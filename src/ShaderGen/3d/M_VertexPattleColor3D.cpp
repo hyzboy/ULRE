@@ -1,4 +1,4 @@
-#include"FixedDefFactory3D.h"
+﻿#include"FixedDefFactory3D.h"
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 
@@ -11,14 +11,14 @@ namespace
     };
 
     const FixedUBODescriptors VERTEX_PATTLE_COLOR_3D_UBOS = {
-        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {UBODescriptorSemantic::ColorPattle,  uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        UBODescriptorSemantic::ViewportInfo,
+        UBODescriptorSemantic::CameraInfo,
+        UBODescriptorSemantic::ColorPattle,
     };
 
     const FixedSSBODescriptors VERTEX_PATTLE_COLOR_3D_SSBOS = {
-        {SSBODescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {SSBODescriptorSemantic::TransformID,  uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformID,
     };
 
     const FixedMaterialDef VERTEX_PATTLE_COLOR_3D_DEF {

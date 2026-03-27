@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /// Build2DCommon.h �?2D 材质转换公共辅助
 ///
@@ -109,23 +109,24 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
 inline void PushBaseUBODescriptors(FixedUBODescriptors &descriptors, const Material2DCreateConfig *cfg)
 {
     if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
-        AddFixedUBODescriptor(descriptors, UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
+        AddFixedUBODescriptor(descriptors, UBODescriptorSemantic::ViewportInfo);
 }
 
 inline void PushBaseSSBODescriptors(FixedSSBODescriptors &descriptors, const Material2DCreateConfig *cfg)
 {
     if(cfg->local_to_world)
     {
-        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
-        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT));
+        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::LocalToWorld);
+        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::TransformID);
     }
 
     if(cfg->material_instance)
     {
-        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT));
-        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstance, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
+        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstanceID);
+        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstance);
     }
 }
 
 }//namespace build2d
 }//namespace hgl::graph::mtl
+

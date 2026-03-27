@@ -1,4 +1,4 @@
-#include"FixedDefFactory3D.h"
+﻿#include"FixedDefFactory3D.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 
 namespace hgl::graph::mtl{
@@ -10,13 +10,13 @@ namespace
     };
 
     const FixedUBODescriptors VERTEX_COLOR_3D_UBOS = {
-        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        UBODescriptorSemantic::ViewportInfo,
+        UBODescriptorSemantic::CameraInfo,
     };
 
     const FixedSSBODescriptors VERTEX_COLOR_3D_SSBOS = {
-        {SSBODescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {SSBODescriptorSemantic::TransformID,  uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformID,
     };
 
     const FixedMaterialDef VERTEX_COLOR_3D_DEF {

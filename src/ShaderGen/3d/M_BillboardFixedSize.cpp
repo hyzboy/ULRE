@@ -1,4 +1,4 @@
-#include<hgl/shadergen/MaterialCreateInfo.h>
+﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -19,15 +19,15 @@ namespace
 
     // Non-texture descriptors �?texture entries built dynamically.
     const FixedUBODescriptors BILLBOARD_FIXED_BASE_UBOS = {
-        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        UBODescriptorSemantic::ViewportInfo,
+        UBODescriptorSemantic::CameraInfo,
     };
 
     const FixedSSBODescriptors BILLBOARD_FIXED_BASE_SSBOS = {
-        {SSBODescriptorSemantic::LocalToWorld,       uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {SSBODescriptorSemantic::TransformID,        uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
-        {SSBODescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
-        {SSBODescriptorSemantic::MaterialInstance,   uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformID,
+        SSBODescriptorSemantic::MaterialInstanceID,
+        SSBODescriptorSemantic::MaterialInstance,
     };
 
     constexpr SamplerSlot BILLBOARD_FIXED_TEX_SLOTS[] = {
@@ -58,10 +58,7 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
 
     FixedTextureSamplerDescriptors dynamic_samplers;
     for (uint32_t i = 0; i < BILLBOARD_FIXED_TEX_SLOT_COUNT; ++i)
-        AddFixedTextureSampler(dynamic_samplers,
-                               BILLBOARD_FIXED_TEX_SLOTS[i],
-                               uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                               SamplerType::Sampler2D,
+        AddFixedTextureSampler(dynamic_samplers, BILLBOARD_FIXED_TEX_SLOTS[i], SamplerType::Sampler2D,
                                SET_TYPE_MATERIAL,
                                0, 0,
                                cfg->base_color_channel);
@@ -114,3 +111,4 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
     return mci;
 }
 }//namespace hgl::graph::mtl
+

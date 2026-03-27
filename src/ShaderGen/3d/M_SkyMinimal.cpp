@@ -1,4 +1,4 @@
-#include"FixedDefFactory3D.h"
+﻿#include"FixedDefFactory3D.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 
 namespace hgl::graph::mtl{
@@ -9,14 +9,14 @@ namespace
     };
 
     const FixedUBODescriptors SKY_MINIMAL_UBOS = {
-        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {UBODescriptorSemantic::SkyInfo,      uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)},
+        UBODescriptorSemantic::ViewportInfo,
+        UBODescriptorSemantic::CameraInfo,
+        UBODescriptorSemantic::SkyInfo,
     };
 
     const FixedSSBODescriptors SKY_MINIMAL_SSBOS = {
-        {SSBODescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {SSBODescriptorSemantic::TransformID,  uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformID,
     };
 
     const FixedMaterialDef SKY_MINIMAL_DEF {

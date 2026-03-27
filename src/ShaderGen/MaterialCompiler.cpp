@@ -24,6 +24,8 @@ static bool HasPerMaterialDescriptor(const FixedMaterialDef &def);
 
 namespace
 {
+    static constexpr uint32_t kDefaultDescriptorStageBits = uint32_t(ShaderStage::VertexFragment);
+
     static MaterialCreateInfo *CreatePreparedCompositorMaterial(
         const contract::PhysicalDeviceProfileLite *profile,
         const FixedMaterialDef &def,
@@ -74,30 +76,30 @@ namespace
 
         if (def.ubo_descriptors)
         {
-            for (const auto &[semantic, stage_bits] : *def.ubo_descriptors)
+            for (const auto semantic : *def.ubo_descriptors)
             {
-                if (!mci->AddUBO(stage_bits, semantic))
+                if (!mci->AddUBO(kDefaultDescriptorStageBits, semantic))
                     return FailAfterMci("AddUBO() failed");
             }
         }
 
         if (def.ssbo_descriptors)
         {
-            for (const auto &[semantic, stage_bits] : *def.ssbo_descriptors)
+            for (const auto semantic : *def.ssbo_descriptors)
             {
                 if (semantic == SSBODescriptorSemantic::LocalToWorld)
                 {
-                    mci->SetLocalToWorld(stage_bits);
+                    mci->SetLocalToWorld(kDefaultDescriptorStageBits);
                     continue;
                 }
 
                 if (semantic == SSBODescriptorSemantic::MaterialInstance)
                 {
-                    mi_stage_bits = stage_bits;
+                    mi_stage_bits = kDefaultDescriptorStageBits;
                     continue;
                 }
 
-                if (!mci->AddSSBO(stage_bits, semantic))
+                if (!mci->AddSSBO(kDefaultDescriptorStageBits, semantic))
                     return FailAfterMci("AddSSBO() failed");
             }
         }
@@ -112,7 +114,16 @@ namespace
                 if (descriptor.set_type != SET_TYPE_MATERIAL)
                     return FailAfterMci("texture sampler slot set_type must be SET_TYPE_MATERIAL");
 
-                if (!mci->AddTextureSampler(ShaderStage(descriptor.stage_flags), descriptor.sampler_type, slot, descriptor.channel_hint))
+                if (!mci->AddTextureSampler(ShaderStage::Vertex,
+                                            descriptor.sampler_type,
+                                            slot,
+                                            descriptor.channel_hint))
+                    return FailAfterMci("AddTextureSampler(slot) failed");
+
+                if (!mci->AddTextureSampler(ShaderStage::Fragment,
+                                            descriptor.sampler_type,
+                                            slot,
+                                            descriptor.channel_hint))
                     return FailAfterMci("AddTextureSampler(slot) failed");
             }
         }
@@ -147,9 +158,15 @@ namespace
         {
             BindingContract contract;
             if (def.ubo_descriptors)
-                contract.ubos = *def.ubo_descriptors;
+            {
+                for (const auto semantic : *def.ubo_descriptors)
+                    contract.ubos[semantic] = kDefaultDescriptorStageBits;
+            }
             if (def.ssbo_descriptors)
-                contract.ssbos = *def.ssbo_descriptors;
+            {
+                for (const auto semantic : *def.ssbo_descriptors)
+                    contract.ssbos[semantic] = kDefaultDescriptorStageBits;
+            }
             mci->SetBindingContract(contract);
         }
 
@@ -180,23 +197,19 @@ static bool HasPerMaterialDescriptor(const FixedMaterialDef &def)
 {
     if (def.ubo_descriptors)
     {
-        for (const auto &[semantic, stage_flags] : *def.ubo_descriptors)
+        for (const auto semantic : *def.ubo_descriptors)
         {
             if (GetDescriptorSemanticMeta(semantic).set_type == SET_TYPE_MATERIAL)
                 return true;
-
-            (void)stage_flags;
         }
     }
 
     if (def.ssbo_descriptors)
     {
-        for (const auto &[semantic, stage_flags] : *def.ssbo_descriptors)
+        for (const auto semantic : *def.ssbo_descriptors)
         {
             if (GetDescriptorSemanticMeta(semantic).set_type == SET_TYPE_MATERIAL)
                 return true;
-
-            (void)stage_flags;
         }
     }
 

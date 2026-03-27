@@ -1,4 +1,4 @@
-#include<hgl/shadergen/MaterialCreateInfo.h>
+﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -28,21 +28,18 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
     cfg->local_to_world=true;
 
     FixedUBODescriptors ubos = {
-        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        UBODescriptorSemantic::ViewportInfo,
+        UBODescriptorSemantic::CameraInfo,
     };
 
     FixedSSBODescriptors ssbos = {
-        {SSBODescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {SSBODescriptorSemantic::TransformID,  uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformID,
     };
 
     FixedTextureSamplerDescriptors samplers;
     for (uint32_t i = 0; i < BILLBOARD_DYNAMIC_TEX_SLOT_COUNT; ++i)
-        AddFixedTextureSampler(samplers,
-                               BILLBOARD_DYNAMIC_TEX_SLOTS[i],
-                               uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                               SamplerType::Sampler2D,
+        AddFixedTextureSampler(samplers, BILLBOARD_DYNAMIC_TEX_SLOTS[i], SamplerType::Sampler2D,
                                SET_TYPE_MATERIAL,
                                0, 0,
                                cfg->base_color_channel);
@@ -104,3 +101,4 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
     return mci;
 }
 }//namespace hgl::graph::mtl
+

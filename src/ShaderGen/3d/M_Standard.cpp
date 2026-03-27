@@ -1,4 +1,4 @@
-#include <hgl/shadergen/MaterialCreateInfo.h>
+﻿#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
@@ -33,16 +33,16 @@ namespace
 
     // Non-texture descriptors only �?texture entries are built dynamically in CreateStandardVariant().
     const FixedUBODescriptors STANDARD_BASE_UBOS = {
-        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {UBODescriptorSemantic::SkyInfo,      uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        UBODescriptorSemantic::ViewportInfo,
+        UBODescriptorSemantic::CameraInfo,
+        UBODescriptorSemantic::SkyInfo,
     };
 
     const FixedSSBODescriptors STANDARD_BASE_SSBOS = {
-        {SSBODescriptorSemantic::LocalToWorld,       uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {SSBODescriptorSemantic::TransformID,        uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
-        {SSBODescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
-        {SSBODescriptorSemantic::MaterialInstance,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformID,
+        SSBODescriptorSemantic::MaterialInstanceID,
+        SSBODescriptorSemantic::MaterialInstance,
     };
 
     // Ordered list of texture slots used by the Standard material.
@@ -108,14 +108,11 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         resolved_base, resolved_normal
     };
     for (uint32_t i = 0; i < STANDARD_TEX_SLOT_COUNT; ++i)
-        AddFixedTextureSampler(dynamic_samplers,
-                               STANDARD_TEX_SLOTS[i],
-                               uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                               tex_slot_modes[i] == TextureSourceMode::Array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D);
+        AddFixedTextureSampler(dynamic_samplers, STANDARD_TEX_SLOTS[i], tex_slot_modes[i] == TextureSourceMode::Array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D);
 
     // When any slot is Array the MIT SSBO provides per-instance layer indices.
     if (any_array)
-        AddFixedSSBODescriptor(dynamic_ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
+        AddFixedSSBODescriptor(dynamic_ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID);
 
     std::vector<const char *> unused_resources;
     ApplySkyLightResourceInjection(
@@ -235,3 +232,4 @@ MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *pr
 }
 
 }//namespace hgl::graph::mtl
+

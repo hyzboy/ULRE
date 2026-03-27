@@ -1,4 +1,4 @@
-#include"Build2DCommon.h"
+﻿#include"Build2DCommon.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
@@ -50,10 +50,7 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     FixedTextureSamplerDescriptors samplers;
     build2d::PushBaseUBODescriptors(ubos, &new_cfg);
     build2d::PushBaseSSBODescriptors(ssbos, &new_cfg);
-    AddFixedTextureSampler(samplers,
-                           SamplerSlot::Text,
-                           uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                           SamplerType::Sampler2D);
+    AddFixedTextureSampler(samplers, SamplerSlot::Text, SamplerType::Sampler2D);
 
     FixedMaterialDef def {
         "Text2D",
@@ -74,3 +71,4 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     return mci;
 }
 }//namespace hgl::graph::mtl
+

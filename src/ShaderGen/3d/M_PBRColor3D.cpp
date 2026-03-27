@@ -1,4 +1,4 @@
-#include <hgl/shadergen/MaterialCreateInfo.h>
+﻿#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
@@ -28,15 +28,15 @@ namespace
     };
 
     const FixedUBODescriptors PBR_COLOR_3D_UBOS = {
-        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {UBODescriptorSemantic::SkyInfo,      uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)},
+        UBODescriptorSemantic::CameraInfo,
+        UBODescriptorSemantic::SkyInfo,
     };
 
     const FixedSSBODescriptors PBR_COLOR_3D_SSBOS = {
-        {SSBODescriptorSemantic::LocalToWorld,       uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
-        {SSBODescriptorSemantic::TransformID,        uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
-        {SSBODescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)},
-        {SSBODescriptorSemantic::MaterialInstance,   uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)},
+        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformID,
+        SSBODescriptorSemantic::MaterialInstanceID,
+        SSBODescriptorSemantic::MaterialInstance,
     };
 
     const FixedMaterialDef PBR_COLOR_3D_DEF {
@@ -131,3 +131,4 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
 }
 
 }//namespace hgl::graph::mtl
+

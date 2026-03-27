@@ -1,4 +1,4 @@
-#include"FixedDefFactory3D.h"
+﻿#include"FixedDefFactory3D.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 
 namespace hgl::graph::mtl{
@@ -12,15 +12,15 @@ namespace
     };
 
     const FixedUBODescriptors PURE_COLOR_3D_UBOS = {
-        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        UBODescriptorSemantic::ViewportInfo,
+        UBODescriptorSemantic::CameraInfo,
     };
 
     const FixedSSBODescriptors PURE_COLOR_3D_SSBOS = {
-        {SSBODescriptorSemantic::LocalToWorld,       uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {SSBODescriptorSemantic::TransformID,        uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
-        {SSBODescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
-        {SSBODescriptorSemantic::MaterialInstance,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformID,
+        SSBODescriptorSemantic::MaterialInstanceID,
+        SSBODescriptorSemantic::MaterialInstance,
     };
 
     const FixedMaterialDef PURE_COLOR_3D_DEF {

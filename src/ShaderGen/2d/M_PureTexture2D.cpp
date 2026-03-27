@@ -1,4 +1,4 @@
-#include"Build2DCommon.h"
+﻿#include"Build2DCommon.h"
 #include"FixedDefFactory2D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/mtl/SamplerName.h>
@@ -50,13 +50,10 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
     FixedTextureSamplerDescriptors samplers;
     build2d::PushBaseUBODescriptors(ubos, &inner);
     build2d::PushBaseSSBODescriptors(ssbos, &inner);
-    AddFixedTextureSampler(samplers,
-                           SamplerSlot::BaseColor,
-                           uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                           use_array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D);
+    AddFixedTextureSampler(samplers, SamplerSlot::BaseColor, use_array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D);
 
     if(use_array)
-        AddFixedSSBODescriptor(ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
+        AddFixedSSBODescriptor(ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID);
 
     FixedMaterialDef def {
         "PureTexture2D",
@@ -101,3 +98,4 @@ MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLit
     return CreatePureTextureVariant(profile, key, cfg);
 }
 }//namespace hgl::graph::mtl
+

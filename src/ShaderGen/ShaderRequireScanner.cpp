@@ -62,12 +62,11 @@ namespace
         }
         else
         {
-            for (const auto &[semantic, stage_flags] : requirements.ubos)
+            for (const auto semantic : requirements.ubos)
             {
                 std::fprintf(stderr,
-                             "[ShaderRequireScanner]   UBO: semantic=%s, stage_flags=0x%08X\n",
-                             GetUBODescriptorSemanticName(semantic),
-                             stage_flags);
+                             "[ShaderRequireScanner]   UBO: semantic=%s\n",
+                             GetUBODescriptorSemanticName(semantic));
             }
         }
 
@@ -77,12 +76,11 @@ namespace
         }
         else
         {
-            for (const auto &[semantic, stage_flags] : requirements.ssbos)
+            for (const auto semantic : requirements.ssbos)
             {
                 std::fprintf(stderr,
-                             "[ShaderRequireScanner]   SSBO: semantic=%s, stage_flags=0x%08X\n",
-                             GetSSBODescriptorSemanticName(semantic),
-                             stage_flags);
+                             "[ShaderRequireScanner]   SSBO: semantic=%s\n",
+                             GetSSBODescriptorSemanticName(semantic));
             }
         }
 
@@ -95,11 +93,10 @@ namespace
             for (const auto &[slot, sampler] : requirements.samplers)
             {
                 std::fprintf(stderr,
-                             "[ShaderRequireScanner]   TEX: slot=%s, type=%s, channel=%s, stage_flags=0x%08X\n",
+                             "[ShaderRequireScanner]   TEX: slot=%s, type=%s, channel=%s\n",
                              SamplerSlotNameList[size_t(slot)],
                              GetSamplerTypeName(sampler.sampler_type),
-                             ToTextureChannelHintName(sampler.channel_hint),
-                             sampler.stage_flags);
+                             ToTextureChannelHintName(sampler.channel_hint));
             }
         }
     }
@@ -172,6 +169,35 @@ namespace
             return nullptr;
 
         return &iter->second;
+    }
+
+    static void BuildReflectionSeedDescriptors(const FixedUBODescriptors *source,
+                                               FixedUBODescriptors &out_descriptors)
+    {
+        if (source)
+            out_descriptors = *source;
+        else
+            out_descriptors.clear();
+    }
+
+    static void BuildReflectionSeedDescriptors(const FixedSSBODescriptors *source,
+                                               FixedSSBODescriptors &out_descriptors)
+    {
+        if (source)
+            out_descriptors = *source;
+        else
+            out_descriptors.clear();
+    }
+
+    static void BuildReflectionSeedDescriptors(const FixedTextureSamplerDescriptors *source,
+                                               FixedTextureSamplerDescriptors &out_descriptors)
+    {
+        out_descriptors.clear();
+
+        if (!source)
+            return;
+
+        out_descriptors = *source;
     }
 
     static void AppendReflectedStageResources(const uint32_t descriptor_type,
@@ -286,22 +312,13 @@ namespace
                     return false;
                 }
 
-                auto iter = out_requirements.samplers.find(slot);
-                if (iter == out_requirements.samplers.end())
-                {
-                    AddFixedTextureSampler(out_requirements.samplers,
-                                           slot,
-                                           resource.stage_flags,
-                                           base_sampler->sampler_type,
-                                           base_sampler->set_type,
-                                           base_sampler->atlas_cols,
-                                           base_sampler->atlas_rows,
-                                           base_sampler->channel_hint);
-                }
-                else
-                {
-                    iter->second.stage_flags |= resource.stage_flags;
-                }
+                AddFixedTextureSampler(out_requirements.samplers,
+                                       slot,
+                                       base_sampler->sampler_type,
+                                       base_sampler->set_type,
+                                       base_sampler->atlas_cols,
+                                       base_sampler->atlas_rows,
+                                       base_sampler->channel_hint);
             }
         }
 
@@ -323,9 +340,22 @@ bool CollectShaderAutoRequirements(const FixedMaterialDef &base_def,
     if (diagnostics)
         diagnostics->clear();
 
+    FixedUBODescriptors reflection_seed_ubos;
+    FixedSSBODescriptors reflection_seed_ssbos;
+    FixedTextureSamplerDescriptors reflection_seed_samplers;
+
+    BuildReflectionSeedDescriptors(base_def.ubo_descriptors, reflection_seed_ubos);
+    BuildReflectionSeedDescriptors(base_def.ssbo_descriptors, reflection_seed_ssbos);
+    BuildReflectionSeedDescriptors(base_def.texture_samplers, reflection_seed_samplers);
+
+    FixedMaterialDef reflection_seed_def = base_def;
+    reflection_seed_def.ubo_descriptors = reflection_seed_ubos.empty() ? nullptr : &reflection_seed_ubos;
+    reflection_seed_def.ssbo_descriptors = reflection_seed_ssbos.empty() ? nullptr : &reflection_seed_ssbos;
+    reflection_seed_def.texture_samplers = reflection_seed_samplers.empty() ? nullptr : &reflection_seed_samplers;
+
     std::string prepared_vs;
     std::string prepared_fs;
-    if (!PrepareCompositorGLSLForReflection(base_def,
+    if (!PrepareCompositorGLSLForReflection(reflection_seed_def,
                                             vertex_glsl,
                                             fragment_glsl,
                                             prepared_vs,
@@ -375,24 +405,14 @@ void MergeShaderAutoRequirements(const FixedMaterialDef &base_def,
     if (base_def.texture_samplers)
         sampler_storage = *base_def.texture_samplers;
 
-    for (const auto &[semantic, stage_flags] : auto_requirements.ubos)
-        AddFixedUBODescriptor(ubo_storage, semantic, stage_flags);
+    for (const auto semantic : auto_requirements.ubos)
+        AddFixedUBODescriptor(ubo_storage, semantic);
 
-    for (const auto &[semantic, stage_flags] : auto_requirements.ssbos)
-        AddFixedSSBODescriptor(ssbo_storage, semantic, stage_flags);
+    for (const auto semantic : auto_requirements.ssbos)
+        AddFixedSSBODescriptor(ssbo_storage, semantic);
 
     for (const auto &[slot, sampler] : auto_requirements.samplers)
-    {
-        auto iter = sampler_storage.find(slot);
-        if (iter == sampler_storage.end())
-        {
-            sampler_storage.emplace(slot, sampler);
-        }
-        else
-        {
-            iter->second.stage_flags |= sampler.stage_flags;
-        }
-    }
+        sampler_storage.try_emplace(slot, sampler);
 
     out_def = base_def;
     out_def.ubo_descriptors = ubo_storage.empty() ? nullptr : &ubo_storage;
