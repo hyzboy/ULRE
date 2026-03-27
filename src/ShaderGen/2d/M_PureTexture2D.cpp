@@ -43,7 +43,7 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, &inner);
-    vertices.push_back({VAT_VEC2, VertexInputRate::Vertex, VAN::TexCoord});
+    vertices.push_back({VAT_VEC2, VAN::TexCoord});
 
     FixedUBODescriptors ubos;
     FixedSSBODescriptors ssbos;

@@ -17,7 +17,7 @@ MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLit
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, cfg);
-    vertices.push_back({VAT_VEC4, VertexInputRate::Vertex, VAN::Color});
+    vertices.push_back({VAT_VEC4, VAN::Color});
 
     FixedUBODescriptors ubos;
     FixedSSBODescriptors ssbos;

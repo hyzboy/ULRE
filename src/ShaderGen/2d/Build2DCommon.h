@@ -97,7 +97,7 @@ inline std::string Build2DVertexPreamble(const Material2DCreateConfig *cfg,
 inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Material2DCreateConfig *cfg)
 {
     // Position
-    v.push_back({cfg->position_format, VertexInputRate::Vertex, VAN::Position});
+    v.push_back({cfg->position_format, VAN::Position});
 
     // MaterialInstanceID is descriptor-backed in SSBO-only mode.
 }

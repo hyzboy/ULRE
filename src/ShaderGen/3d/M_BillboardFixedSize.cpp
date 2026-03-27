@@ -14,7 +14,7 @@ namespace
     constexpr const uint32_t mi_bytes=sizeof(uint32_t)*2;       // uvec2 = 2 x uint32
 
     constexpr FixedVertexEntry BILLBOARD_FIXED_VERTEX[] = {
-        { VAT_VEC3, VertexInputRate::Vertex, VAN::Position },
+        { VAT_VEC3, VAN::Position },
     };
 
     // Non-texture descriptors �?texture entries built dynamically.

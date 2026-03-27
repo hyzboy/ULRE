@@ -8,12 +8,6 @@
 
 namespace hgl::graph
 {
-    enum class VertexInputRate:uint8_t
-    {
-        Vertex = 0,
-        Instance = 1,
-    };
-
     const uint GetShaderCountByBits(const uint32_t bits);
     const uint GetMaxShaderStage(const uint32_t bits);
     const char *GetShaderStageName(const VkShaderStageFlagBits &);
@@ -28,8 +22,6 @@ namespace hgl::graph
 
         uint8   basetype;
         uint8   vec_size;
-
-        uint8               input_rate;     //此功能废弃，但为了兼容旧数据结构，仍保留在此
 
         Interpolation       interpolation;
     };
@@ -90,9 +82,6 @@ namespace hgl::graph
                     return cmp;
 
                 if(auto cmp = items[i].vec_size <=> saa.items[i].vec_size; cmp != 0)
-                    return cmp;
-
-                if(auto cmp = items[i].input_rate <=> saa.items[i].input_rate; cmp != 0)
                     return cmp;
 
                 if(auto cmp = items[i].attrib <=> saa.items[i].attrib; cmp != 0)

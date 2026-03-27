@@ -9,8 +9,8 @@ namespace
     constexpr const uint32_t VERTEX_LUMINANCE_2D_MI_BYTES = sizeof(hgl::math::Vector4f);
 
     constexpr FixedVertexEntry VERTEX_LUMINANCE_2D_VERTEX[] = {
-        { VAT_VEC2, VertexInputRate::Vertex, VAN::Position },
-        { VAT_FLOAT, VertexInputRate::Vertex, VAN::Luminance },
+        { VAT_VEC2, VAN::Position },
+        { VAT_FLOAT, VAN::Luminance },
     };
 
     const FixedUBODescriptors VERTEX_LUMINANCE_2D_UBOS = {

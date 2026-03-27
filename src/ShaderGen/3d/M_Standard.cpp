@@ -26,9 +26,9 @@ namespace
     constexpr const uint32_t mi_bytes_simple = sizeof(uint32_t) + sizeof(float) * 3;
 
     constexpr FixedVertexEntry STANDARD_VERTEX[] = {
-        { VAT_VEC3, VertexInputRate::Vertex, VAN::Position },
-        { VAT_VEC2, VertexInputRate::Vertex, VAN::TexCoord },
-        { VAT_VEC3, VertexInputRate::Vertex, VAN::Normal },
+        { VAT_VEC3, VAN::Position },
+        { VAT_VEC2, VAN::TexCoord },
+        { VAT_VEC3, VAN::Normal },
     };
 
     // Non-texture descriptors only �?texture entries are built dynamically in CreateStandardVariant().

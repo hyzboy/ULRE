@@ -11,7 +11,7 @@ namespace hgl::graph::mtl{
 namespace
 {
     constexpr FixedVertexEntry BILLBOARD_DYNAMIC_VERTEX[] = {
-        { VAT_VEC3, VertexInputRate::Vertex, VAN::Position },
+        { VAT_VEC3, VAN::Position },
     };
 
     constexpr SamplerSlot BILLBOARD_DYNAMIC_TEX_SLOTS[] = {

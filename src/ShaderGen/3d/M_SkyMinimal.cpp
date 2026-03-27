@@ -5,7 +5,7 @@ namespace hgl::graph::mtl{
 namespace
 {
     constexpr FixedVertexEntry SKY_MINIMAL_VERTEX[] = {
-        { VAT_VEC3, VertexInputRate::Vertex, VAN::Position },
+        { VAT_VEC3, VAN::Position },
     };
 
     const FixedUBODescriptors SKY_MINIMAL_UBOS = {

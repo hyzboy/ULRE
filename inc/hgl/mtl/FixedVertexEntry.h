@@ -8,7 +8,6 @@ namespace hgl::graph::mtl{
 struct FixedVertexEntry
 {
     VAType              type;
-    VertexInputRate     input_rate;
     VertexAttrib        attrib;
 };
 

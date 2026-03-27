@@ -63,7 +63,7 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
         {
             attr_desc->format    =GetVulkanFormat(via);
 
-            bind_desc->inputRate =VkVertexInputRate(via->input_rate);
+            bind_desc->inputRate =VkVertexInputRate::VK_VERTEX_INPUT_RATE_VERTEX;
         }
         else
         {
@@ -153,15 +153,8 @@ namespace
             result+=AnsiString::numberOf(via->location);
             result+=",type:";
             result+=GetVertexAttribName((VABaseType)via->basetype,via->vec_size);
-            result+=",input_rate:";
-
-            if(via->input_rate==VK_VERTEX_INPUT_RATE_VERTEX)
-                result+="vertex";
-            else
-                result+="instance";
 
             result+=",interpolation:";
-
             result+=GetInterpolationName(via->interpolation);
 
             result+="]";

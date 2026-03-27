@@ -6,8 +6,8 @@ namespace hgl::graph::mtl{
 namespace
 {
     constexpr FixedVertexEntry VERTEX_PATTLE_COLOR_3D_VERTEX[] = {
-        { VAT_VEC3, VertexInputRate::Vertex, VAN::Position },
-        { VAT_UINT, VertexInputRate::Vertex, VAN::Color },
+        { VAT_VEC3, VAN::Position },
+        { VAT_UINT, VAN::Color },
     };
 
     const FixedUBODescriptors VERTEX_PATTLE_COLOR_3D_UBOS = {
