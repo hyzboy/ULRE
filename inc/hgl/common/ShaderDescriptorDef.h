@@ -139,13 +139,6 @@ namespace hgl::graph
         std::string value;
     };
 
-    struct SubpassInputDescriptor
-    {
-        std::string name;
-        uint8_t input_attachment_index;
-        uint8_t binding;
-    };
-
     struct ShaderPushConstant
     {
         std::string name;

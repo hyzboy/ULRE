@@ -80,29 +80,6 @@ bool ShaderDescriptorInfo::AddConstValue(ConstValueDescriptor *sd)
     return(true);
 }
 
-VertexShaderDescriptorInfo::~VertexShaderDescriptorInfo()
-{
-    for(auto *p:subpass_input)
-        delete p;
-}
-
-bool VertexShaderDescriptorInfo::AddSubpassInput(const std::string &name,uint8_t index)
-{
-    for(auto *si:subpass_input)
-    {
-        if(si->input_attachment_index==index)return(false);
-        if(si->name==name)return(false);
-    }
-
-    SubpassInputDescriptor *ssi=new SubpassInputDescriptor;
-
-    ssi->name=name;
-    ssi->input_attachment_index=index;
-
-    subpass_input.push_back(ssi);
-    return(true);
-}
-
 void ShaderDescriptorInfo::SetPushConstant(const std::string &name,uint8_t offset,uint8_t size)
 {
     push_constant.name  =name;

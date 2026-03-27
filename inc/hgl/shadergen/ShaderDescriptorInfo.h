@@ -16,7 +16,6 @@ using SSBODescriptorList=std::vector<const SSBODescriptor *>;
 using TextureDescriptorList = std::vector<const TextureDescriptor *>;
 using TextureSamplerDescriptorList=std::vector<const TextureSamplerDescriptor *>;
 using ConstValueDescriptorList=std::vector<ConstValueDescriptor *>;
-using SubpassInputDescriptorList=std::vector<SubpassInputDescriptor *>;
 
 /**
 * Shader数据管理器,用于生成正式Shader前的资源统计
@@ -95,29 +94,7 @@ public:
     const bool IsEmptyOutput()const{return output.IsEmpty();}
 };//class CustomShaderDescriptorInfo
 
-class VertexShaderDescriptorInfo:public CustomShaderDescriptorInfo<ShaderStage::Vertex,VIAArray,VIA,SVArray,ShaderVariable  >
-{
-    SubpassInputDescriptorList          subpass_input;
-
-public:
-
-    const SubpassInputDescriptorList &  GetSubpassInputList()const{return subpass_input;}
-
-public:
-
-    using CustomShaderDescriptorInfo<ShaderStage::Vertex,VIAArray,VIA,SVArray,ShaderVariable>::CustomShaderDescriptorInfo;
-    ~VertexShaderDescriptorInfo()override;
-
-    bool AddSubpassInput(const std::string &name,uint8_t index);
-    bool AddSubpassInput(const char *name,uint8_t index)
-    {
-        return AddSubpassInput(std::string(name?name:""),index);
-    }
-};//class VertexShaderDescriptorInfo
-
-using TessCtrlShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessControl, SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
-using TessEvalShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessEval,    SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
-using GeometryShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::Geometry,    SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
+using VertexShaderDescriptorInfo  =CustomShaderDescriptorInfo<ShaderStage::Vertex,      VIAArray, VIA,              SVArray,    ShaderVariable  >;
 using FragmentShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::Fragment,    SVArray,  ShaderVariable,   VIAArray,   VIA             >;
 using ComputeShaderDescriptorInfo =CustomShaderDescriptorInfo<ShaderStage::Compute,     SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
 
