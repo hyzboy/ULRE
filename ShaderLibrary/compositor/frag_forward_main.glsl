@@ -31,10 +31,8 @@
 // Fragment output
 layout(location=0) out vec4 outColor;
 
-// 4. Lighting helper — must follow SURFACE_FUNCTION_FILE (which defines EvalSurface)
-#ifdef ENABLE_LIGHTING
-#  include "common/lighting.glsl"
-#endif
+// 4. Lighting helper — injected via LIGHTING_FUNCTION_FILE by C++ assembler
+//    (replaces old #include "common/lighting.glsl")
 
 // 7. Bayer 4x4 ordered dither helper
 #ifdef ALPHA_MODE_DITHER
@@ -126,8 +124,8 @@ void main()
 
     // Output based on alpha mode
 #ifdef ENABLE_LIGHTING
-    vec3 litColor = EvalLighting(so, si.viewDir, sky.sun_direction.xyz, sky.sun_color.rgb);
-    litColor += so.baseColor * sky.base_sky_color.rgb * so.ao;
+    vec3 litColor = EvalLighting(so, si.viewDir, ULRE_GetSkyLightDir(), ULRE_GetSkyLightColor());
+    litColor += so.baseColor * ULRE_GetSkyAmbientColor() * so.ao;
     litColor += so.emissive;
     outColor = vec4(litColor, so.alpha);
 #elif defined(ALPHA_MODE_MASKED)

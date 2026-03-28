@@ -117,6 +117,7 @@ private:
 
         mtl::PBRColor3DMaterialCreateConfig cfg;
         cfg.sky_ambient_model = mtl::SkyLightAmbientModel::FakeAtmosphere;
+        cfg.lighting_model = mtl::LightingModel::PBR;
         material = material_manager->CreateMaterial(mtl::MaterialPreset::PBRColor3D, &cfg);
         if (!material)
         {

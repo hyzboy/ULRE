@@ -9,7 +9,6 @@
 #ifdef ENABLE_LIGHTING
 #  include "common/ubo_camera.glsl"
 #  include "common/ubo_sky.glsl"
-#  include "common/ubo_viewport.glsl"
 #endif
 
 #if defined(NEEDS_SKY) || defined(HAS_DIRECTION)

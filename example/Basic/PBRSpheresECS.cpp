@@ -152,6 +152,7 @@ private:
                         mtl::WithLocalToWorld::With,
                         mtl::WithSky::With);
         cfg.sky_ambient_model = mtl::SkyLightAmbientModel::FakeAtmosphere;
+        cfg.lighting_model = mtl::LightingModel::PBR;
         cfg.SetTextureSourceModeOverride(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
         cfg.SetTextureSourceModeOverride(mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array);
         material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);

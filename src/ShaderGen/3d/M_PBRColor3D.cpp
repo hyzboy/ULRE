@@ -59,6 +59,7 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
 
     // Dynamic descriptor injection for non-Simple sky models
     SkyLightAmbientModel ambient = cfg ? cfg->sky_ambient_model : SkyLightAmbientModel::Simple;
+    LightingModel lighting = cfg ? cfg->lighting_model : LightingModel::Lambert;
 
     FixedTextureSamplerDescriptors dynamic_samplers;
 
@@ -83,7 +84,7 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
 
     CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(var_key, *var_desc, ambient);
+    auto result = assembler.Assemble(var_key, *var_desc, ambient, lighting);
 
     if (!result.success)
     {

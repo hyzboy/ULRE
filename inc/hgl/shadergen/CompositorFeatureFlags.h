@@ -1,5 +1,6 @@
 #pragma once
 
+#include <hgl/mtl/LightingModel.h>
 #include <string>
 
 namespace hgl::graph {
@@ -23,6 +24,9 @@ struct CompositorFeatureFlags
     bool alpha_dither     = false;
     bool has_texcoord     = false;
     bool has_clip_pos     = false;
+
+    // Lighting model (only used when enable_lighting == true)
+    mtl::LightingModel lighting_model = mtl::LightingModel::Lambert;
 
     // Surface function path (FS only)
     std::string surface_path;

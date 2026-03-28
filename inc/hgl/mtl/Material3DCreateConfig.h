@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/mtl/SkyLight.h>
+#include<hgl/mtl/LightingModel.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
 #include<hgl/common/TextureSamplerTypeDef.h>
@@ -19,6 +20,8 @@ struct Material3DCreateConfig:public MaterialCreateConfig
     VAType              position_format;        ///<position格式
 
     SkyLightAmbientModel sky_ambient_model;     ///<天空环境光实现方式（按材质配置）
+
+    LightingModel       lighting_model;          ///<光照模型（Lambert/BlinnPhong/PBR）
 
 //    bool                reverse_depth;          ///<使用反向深度
 
@@ -42,6 +45,8 @@ public:
 
         sky_ambient_model=SkyLightAmbientModel::Simple;
 
+        lighting_model=LightingModel::Lambert;
+
 //        reverse_depth=false;
     }
 
@@ -57,6 +62,9 @@ public:
             return cmp;
 
         if(auto cmp=sky_ambient_model<=>cfg.sky_ambient_model; cmp!=0)
+            return cmp;
+
+        if(auto cmp=lighting_model<=>cfg.lighting_model; cmp!=0)
             return cmp;
 
         return position_format <=> cfg.position_format;

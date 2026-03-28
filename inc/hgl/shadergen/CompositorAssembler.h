@@ -5,6 +5,7 @@
 #include <hgl/mtl/new/PassType.h>
 #include <hgl/mtl/new/ShaderPermutationKey.h>
 #include <hgl/mtl/SkyLight.h>
+#include <hgl/mtl/LightingModel.h>
 #include <string>
 #include <vector>
 
@@ -64,7 +65,8 @@ namespace hgl::graph
             const char     *vs_template_override      = nullptr,
             const char     *fs_template_override      = nullptr,
             const char     *surface_function_override  = nullptr,
-            mtl::SkyLightAmbientModel sky_model        = mtl::SkyLightAmbientModel::Simple
+            mtl::SkyLightAmbientModel sky_model        = mtl::SkyLightAmbientModel::Simple,
+            mtl::LightingModel        lighting_model   = mtl::LightingModel::Lambert
         ) const;
 
         /// VariantDesc overload — derives SurfaceType/BlendMode/PassType/QualityTier from key,
@@ -72,7 +74,8 @@ namespace hgl::graph
         AssembleResult Assemble(
             const mtl::MaterialVariantKey  &key,
             const mtl::MaterialVariantDesc &desc,
-            mtl::SkyLightAmbientModel sky_model = mtl::SkyLightAmbientModel::Simple
+            mtl::SkyLightAmbientModel sky_model = mtl::SkyLightAmbientModel::Simple,
+            mtl::LightingModel        lighting_model = mtl::LightingModel::Lambert
         ) const;
 
     private:
@@ -85,6 +88,7 @@ namespace hgl::graph
         std::string InjectDefines(const std::string &source, const ShaderPermutationKey &key) const;
         std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;
         std::string ReplaceSkyLightInclude(const std::string &source, mtl::SkyLightAmbientModel sky_model) const;
+        std::string ReplaceLightingInclude(const std::string &source, mtl::LightingModel lighting_model) const;
         bool        ReadFile(const std::string &path, std::string &out_content, std::string &out_error) const;
 
         std::string shader_lib_path_;

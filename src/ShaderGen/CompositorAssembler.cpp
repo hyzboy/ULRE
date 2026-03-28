@@ -3,6 +3,7 @@
 #include <hgl/shadergen/ShaderGenPathConfig.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/SkyLight.h>
+#include <hgl/mtl/LightingModel.h>
 #include <fstream>
 #include <sstream>
 
@@ -81,6 +82,9 @@ namespace
 
         if (f.needs_sky)
             out += "#include SKYLIGHT_FUNCTION_FILE\n";
+
+        if (f.enable_lighting)
+            out += "#include LIGHTING_FUNCTION_FILE\n";
 
         AppendInclude(out, f.surface_path);
         AppendInclude(out, "compositor/frag_forward_main.glsl");
@@ -236,7 +240,7 @@ namespace hgl::graph
 
         if (template_path == "compositor/main_forward_lit.frag.glsl")
         {
-            out_source = BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .needs_camera = true, .needs_sky = true, .surface_path = surface_path});
+            out_source = BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .enable_lighting = true, .needs_camera = true, .needs_sky = true, .surface_path = surface_path});
             return true;
         }
 
@@ -491,6 +495,23 @@ namespace hgl::graph
         return result;
     }
 
+    std::string CompositorAssembler::ReplaceLightingInclude(const std::string &source, mtl::LightingModel lighting_model) const
+    {
+        const std::string marker = "#include LIGHTING_FUNCTION_FILE";
+        auto pos = source.find(marker);
+        if (pos == std::string::npos)
+            return source;
+
+        std::string replacement = "#include \"" + std::string(mtl::GetLightingModelGLSLPath(lighting_model)) + "\"";
+
+        std::string result;
+        result.reserve(source.size() + replacement.size());
+        result.append(source, 0, pos);
+        result.append(replacement);
+        result.append(source, pos + marker.size(), std::string::npos);
+        return result;
+    }
+
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         SurfaceType     surface,
         BlendMode       blend,
@@ -498,7 +519,8 @@ namespace hgl::graph
         const char     *vs_template_override,
         const char     *fs_template_override,
         const char     *surface_function_override,
-        mtl::SkyLightAmbientModel sky_model
+        mtl::SkyLightAmbientModel sky_model,
+        mtl::LightingModel lighting_model
     ) const
     {
         AssembleResult result{};
@@ -565,6 +587,9 @@ namespace hgl::graph
         // 7. 替换 FS 中的 SKYLIGHT_FUNCTION_FILE（按天光模型选择实现文件）
         fs_source = ReplaceSkyLightInclude(fs_source, sky_model);
 
+        // 8. 替换 FS 中的 LIGHTING_FUNCTION_FILE（按光照模型选择实现文件）
+        fs_source = ReplaceLightingInclude(fs_source, lighting_model);
+
         result.vertex_glsl   = std::move(vs_source);
         result.fragment_glsl = std::move(fs_source);
         result.success       = true;
@@ -574,7 +599,8 @@ namespace hgl::graph
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         const mtl::MaterialVariantKey  &key,
         const mtl::MaterialVariantDesc &desc,
-        mtl::SkyLightAmbientModel sky_model
+        mtl::SkyLightAmbientModel sky_model,
+        mtl::LightingModel lighting_model
     ) const
     {
         AssembleResult result{};
@@ -637,6 +663,9 @@ namespace hgl::graph
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
 
         fs_source = ReplaceSkyLightInclude(fs_source, sky_model);
+
+        // 替换 FS 中的 LIGHTING_FUNCTION_FILE（按光照模型选择实现文件）
+        fs_source = ReplaceLightingInclude(fs_source, lighting_model);
 
         result.vertex_glsl   = std::move(vs_source);
         result.fragment_glsl = std::move(fs_source);

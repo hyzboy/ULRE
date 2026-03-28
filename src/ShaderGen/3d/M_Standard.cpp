@@ -96,6 +96,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     cfg_with_mi.material_instance = true;
 
     SkyLightAmbientModel ambient = cfg_with_mi.sky_ambient_model;
+    LightingModel lighting = cfg_with_mi.lighting_model;
 
     // Start with stable non-texture descriptors, then append texture entries.
     FixedSSBODescriptors dynamic_ssbos = STANDARD_BASE_SSBOS;
@@ -154,7 +155,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(assemble_key, *var_desc, ambient);
+    auto result = assembler.Assemble(assemble_key, *var_desc, ambient, lighting);
 
     if (!result.success)
     {
