@@ -6,7 +6,6 @@ struct MaterialInstance
     uint  base_color;        float metallic;          float roughness;     };
 
 #include "common/ssbo_material_instance.glsl"
-#include "common/skylight_simple.glsl"
 
 
 const float PBR_PI = 3.14159265359;

@@ -2,6 +2,7 @@
 #include <hgl/shadergen/CompositorFeatureFlags.h>
 #include <hgl/shadergen/ShaderGenPathConfig.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
+#include <hgl/mtl/SkyLight.h>
 #include <fstream>
 #include <sstream>
 
@@ -77,6 +78,10 @@ namespace
             AppendDefine(out, "HAS_CLIP_POS");
 
         AppendInclude(out, "compositor/frag_forward_ubo.glsl");
+
+        if (f.needs_sky)
+            out += "#include SKYLIGHT_FUNCTION_FILE\n";
+
         AppendInclude(out, f.surface_path);
         AppendInclude(out, "compositor/frag_forward_main.glsl");
         return out;
@@ -455,13 +460,45 @@ namespace hgl::graph
         return result;
     }
 
+    static const char *GetSkyLightGLSLPath(mtl::SkyLightAmbientModel model)
+    {
+        using mtl::SkyLightAmbientModel;
+        switch (model)
+        {
+            case SkyLightAmbientModel::Simple:              return "common/skylight_simple.glsl";
+            case SkyLightAmbientModel::FakeAtmosphere:      return "common/skylight_fake_atm.glsl";
+            case SkyLightAmbientModel::CubeMap:             return "common/skylight_cubemap.glsl";
+            case SkyLightAmbientModel::SphericalHarmonics:  return "common/skylight_sh.glsl";
+            case SkyLightAmbientModel::IBL:                 return "common/skylight_ibl.glsl";
+            default:                                        return "common/skylight_simple.glsl";
+        }
+    }
+
+    std::string CompositorAssembler::ReplaceSkyLightInclude(const std::string &source, mtl::SkyLightAmbientModel sky_model) const
+    {
+        const std::string marker = "#include SKYLIGHT_FUNCTION_FILE";
+        auto pos = source.find(marker);
+        if (pos == std::string::npos)
+            return source;
+
+        std::string replacement = "#include \"" + std::string(GetSkyLightGLSLPath(sky_model)) + "\"";
+
+        std::string result;
+        result.reserve(source.size() + replacement.size());
+        result.append(source, 0, pos);
+        result.append(replacement);
+        result.append(source, pos + marker.size(), std::string::npos);
+        return result;
+    }
+
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         SurfaceType     surface,
         BlendMode       blend,
         PassType        pass,
         const char     *vs_template_override,
         const char     *fs_template_override,
-        const char     *surface_function_override
+        const char     *surface_function_override,
+        mtl::SkyLightAmbientModel sky_model
     ) const
     {
         AssembleResult result{};
@@ -525,6 +562,9 @@ namespace hgl::graph
         // 6. 替换 FS 中的 SURFACE_FUNCTION_FILE（自定义/遗留文件模板仍支持）
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
 
+        // 7. 替换 FS 中的 SKYLIGHT_FUNCTION_FILE（按天光模型选择实现文件）
+        fs_source = ReplaceSkyLightInclude(fs_source, sky_model);
+
         result.vertex_glsl   = std::move(vs_source);
         result.fragment_glsl = std::move(fs_source);
         result.success       = true;
@@ -533,7 +573,8 @@ namespace hgl::graph
 
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         const mtl::MaterialVariantKey  &key,
-        const mtl::MaterialVariantDesc &desc
+        const mtl::MaterialVariantDesc &desc,
+        mtl::SkyLightAmbientModel sky_model
     ) const
     {
         AssembleResult result{};
@@ -594,6 +635,8 @@ namespace hgl::graph
         fs_source = InjectDefines(fs_source, perm);
 
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
+
+        fs_source = ReplaceSkyLightInclude(fs_source, sky_model);
 
         result.vertex_glsl   = std::move(vs_source);
         result.fragment_glsl = std::move(fs_source);

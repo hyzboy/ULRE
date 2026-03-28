@@ -7,7 +7,7 @@
 ///
 /// 文件用途：
 ///   - 公共头文件（inc/），C++ 侧均通过 #include<hgl/mtl/SkyLight.h> 引用
-///   - GLSL 侧由合成器注入 SKYLIGHT_GLSL_HEADER + GetSkyLightModelImplGLSL() 提供宏常量与模型实现（详见 MFSkyLight.h）
+///   - GLSL 侧天光函数实现位于 ShaderLibrary/common/skylight_*.glsl，由 CompositorAssembler 通过 SKYLIGHT_FUNCTION_FILE 标记注入
 ///
 /// GLSL 数值与 C++ 枚举的对应关系（保持两侧同步）：
 ///
@@ -124,11 +124,11 @@ inline SkyLightDataRequirement GetSkyLightDataRequirement(const SkyLightAmbientM
 
 // ─────────────────────────────────────────────────────────────────────────────
 // C++ 侧的 GLSL 模型数值常量
-// 与 MFSkyLight.h 内 SKYLIGHT_GLSL_HEADER 的 #define ULRE_SKYLIGHT_MODEL_* 保持一致
+// 与 ShaderLibrary/common/skylight_*.glsl 中的 ULRE_SKYLIGHT_MODEL_* #define 保持一致
 // ShaderPermutationKey::AppendGLSLDefines 通过下表映射，避免 magic number
 // ─────────────────────────────────────────────────────────────────────────────
 
-// GLSL 层数将和 C++ 枚举値保持 +1 关系，修改枚举时必须同步修改以下局部常量和 MFSkyLight.h
+// GLSL 层数将和 C++ 枚举値保持 +1 关系，修改枚举时必须同步修改以下局部常量和 skylight_*.glsl
 constexpr uint32_t SKYLIGHT_GLSL_SIMPLE   = 1;   ///< ULRE_SKYLIGHT_MODEL_SIMPLE
 constexpr uint32_t SKYLIGHT_GLSL_FAKE_ATM = 2;   ///< ULRE_SKYLIGHT_MODEL_FAKE_ATM
 constexpr uint32_t SKYLIGHT_GLSL_CUBEMAP  = 3;   ///< ULRE_SKYLIGHT_MODEL_CUBEMAP

@@ -83,7 +83,7 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
 
     CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(var_key, *var_desc);
+    auto result = assembler.Assemble(var_key, *var_desc, ambient);
 
     if (!result.success)
     {

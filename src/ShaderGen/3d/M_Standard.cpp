@@ -154,7 +154,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(assemble_key, *var_desc);
+    auto result = assembler.Assemble(assemble_key, *var_desc, ambient);
 
     if (!result.success)
     {

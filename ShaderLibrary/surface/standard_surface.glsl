@@ -10,7 +10,6 @@ struct MaterialInstance
 };
 
 #include "common/ssbo_material_instance.glsl"
-#include "common/skylight_simple.glsl"
 
 
 float D_GGX(float NdotH, float alpha2)

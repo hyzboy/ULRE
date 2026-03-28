@@ -19,6 +19,7 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/EnvironmentSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -57,6 +58,11 @@ private:
     std::shared_ptr<TransformComponent> sphere_transforms[GRID_SIZE][GRID_SIZE]{};
 
     double elapsed_time = 0.0;
+
+    MaterialInstance* mi_sky_sphere = nullptr;
+    Pipeline* sky_pipeline = nullptr;
+    Geometry* prim_sky_sphere = nullptr;
+    Entity* sky_entity = nullptr;
 
 private:
     static uint HashU32(uint row, uint col, uint salt)
@@ -110,6 +116,7 @@ private:
         }
 
         mtl::PBRColor3DMaterialCreateConfig cfg;
+        cfg.sky_ambient_model = mtl::SkyLightAmbientModel::FakeAtmosphere;
         material = material_manager->CreateMaterial(mtl::MaterialPreset::PBRColor3D, &cfg);
         if (!material)
         {
@@ -395,6 +402,65 @@ private:
         return true;
     }
 
+    bool InitSkySphere()
+    {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* device = graphics_context->GetDevice();
+        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        if (!material_manager || !device || !geometry_manager || !primitive_manager)
+            return false;
+
+        mtl::SkyMinimalCreateConfig sky_cfg;
+        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &sky_cfg);
+        if (!mi_sky_sphere)
+            return false;
+
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        sky_pipeline = render_pass ? render_pass->CreatePipeline(mi_sky_sphere, InlinePipeline::Sky) : nullptr;
+        if (!sky_pipeline)
+            return false;
+
+        {
+            using namespace inline_geometry;
+            auto pc = std::make_unique<GeometryCreater>(device, mi_sky_sphere->GetVIL());
+            HexSphereCreateInfo hsci;
+            hsci.subdivisions = 3;
+            hsci.radius = 256;
+            prim_sky_sphere = CreateHexSphere(pc.get(), &hsci);
+            if (!prim_sky_sphere)
+                return false;
+            geometry_manager->Add(prim_sky_sphere);
+        }
+
+        Primitive* ri = primitive_manager->CreatePrimitive(prim_sky_sphere, mi_sky_sphere, sky_pipeline);
+        if (!ri)
+            return false;
+
+        sky_entity = ecs_world->CreateEntity<Entity>("SkySphere");
+        auto transform = sky_entity->AddComponent<TransformComponent>(Mobility::Movable);
+        auto prim_comp = sky_entity->AddComponent<PrimitiveComponent>();
+
+        transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        transform->SetMovable(false);
+
+        prim_comp->SetPrimitive(ri);
+        prim_comp->SetVisible(true);
+
+        return true;
+    }
+
     bool EnsureCameraSystem()
     {
         if (!ecs_world)
@@ -481,6 +547,20 @@ public:
             return false;
 
         if (!InitECS())
+            return false;
+
+        {
+            auto env = ecs_world->GetSystem<EnvironmentSystem>();
+            if (!env)
+                env = ecs_world->RegisterRenderSystem<EnvironmentSystem>();
+            if (env)
+            {
+                env->EditSkyInfo();
+                env->SyncSkyUBO();
+            }
+        }
+
+        if (!InitSkySphere())
             return false;
 
         if (!InitCamera())
