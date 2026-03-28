@@ -541,13 +541,10 @@ namespace hgl::graph
         ShaderPermutationKey perm;
         perm.SetSurfaceType(key.surface_type);
 
-        const bool has_slot_modes = key.HasAnyTextureSourceBits();
         for (uint8 i = 0; i < uint8(mtl::SamplerSlotCount); ++i)
         {
             const mtl::SamplerSlot slot = static_cast<mtl::SamplerSlot>(i);
-            const mtl::TextureSourceMode mode = has_slot_modes
-                ? key.GetTextureSourceMode(slot)
-                : key.texture_source_mode;
+            const mtl::TextureSourceMode mode = key.GetTextureSourceMode(slot);
             perm.SetSlotArrayMode(slot, mode == mtl::TextureSourceMode::Array);
         }
 

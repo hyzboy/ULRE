@@ -53,7 +53,7 @@ static MaterialVariantKey MakePureTexture2DKey()
     MaterialVariantKey key{};
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::Quad2D;
-    key.texture_source_mode = TextureSourceMode::Simple;
+    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     key.SetHasTexture(SamplerSlot::BaseColor);
     return key;
 }
@@ -63,7 +63,7 @@ static MaterialVariantKey MakeText2DKey()
     MaterialVariantKey key{};
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::Quad2D;
-    key.texture_source_mode = TextureSourceMode::Atlas;
+    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Atlas);
     key.SetHasTexture(SamplerSlot::BaseColor);
     return key;
 }
@@ -144,7 +144,7 @@ static MaterialVariantKey MakeBillboard2DDynamicKey()
     MaterialVariantKey key{};
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::BillboardCameraFacing;
-    key.texture_source_mode = TextureSourceMode::Simple;
+    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     key.SetHasTexture(SamplerSlot::BaseColor);
     key.blend_mode = BlendMode::Transparent;
     key.pass_hint = PassType::ForwardTransparent;
@@ -156,7 +156,7 @@ static MaterialVariantKey MakeBillboard2DFixedKey()
     MaterialVariantKey key{};
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::BillboardAxisLocked;
-    key.texture_source_mode = TextureSourceMode::Simple;
+    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     key.SetHasTexture(SamplerSlot::BaseColor);
     key.blend_mode = BlendMode::Transparent;
     key.pass_hint = PassType::ForwardTransparent;
@@ -168,7 +168,7 @@ static MaterialVariantKey MakeStandardKey()
     MaterialVariantKey key{};
     key.surface_type = SurfaceType::Standard;
     key.geometry_mode = GeometryMode::Mesh3D;
-    key.texture_source_mode = TextureSourceMode::Simple;
+    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     key.SetTextureSourceMode(SamplerSlot::Normal,    TextureSourceMode::Simple);
     return key;
@@ -309,7 +309,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
             static_cast<unsigned>(key.geometry_mode),
-            static_cast<unsigned>(key.texture_source_mode),
+            static_cast<unsigned>(key.GetTextureSourceMode(SamplerSlot::BaseColor)),
             key.texture_source_bits,
             key.sampler_feature_bits,
             key.vertex_attribute_feature_bits,
@@ -325,7 +325,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
             static_cast<unsigned>(key.geometry_mode),
-            static_cast<unsigned>(key.texture_source_mode),
+            static_cast<unsigned>(key.GetTextureSourceMode(SamplerSlot::BaseColor)),
             key.texture_source_bits,
             key.sampler_feature_bits,
             key.vertex_attribute_feature_bits,
@@ -366,15 +366,7 @@ void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreate
     {
         key.texture_source_bits = cfg->texture_source_bits_override;
 
-        // Derive key.texture_source_mode from per-slot bits (first non-None mode wins).
-        key.texture_source_mode = TextureSourceMode::None;
-        for (uint8_t s = 0; s < uint8_t(SamplerSlot::RANGE_SIZE); ++s)
-        {
-            const TextureSourceMode m = TextureSourceMode((key.texture_source_bits >> (uint32_t(s) * MaterialVariantKey::TextureSourceBitsPerSlot))
-                                      & MaterialVariantKey::TextureSourceMask);
-            if (m != TextureSourceMode::None) { key.texture_source_mode = m; break; }
-        }
-
+        // Derive primary texture source mode from per-slot bits.
         // If caller did not provide an explicit sampler feature override,
         // derive mask from per-slot texture source bits to keep key coherent.
         if (cfg->sampler_feature_bits_override != 0)

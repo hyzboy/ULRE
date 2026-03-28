@@ -42,10 +42,7 @@ namespace hgl::graph::mtl
     {
         SurfaceType       surface_type        = SurfaceType::Unlit;
         GeometryMode      geometry_mode       = GeometryMode::Mesh3D;
-        // Legacy coarse mode (whole-material). Kept for compatibility with
-        // existing call sites while migrating to per-slot texture_source_bits.
-        TextureSourceMode texture_source_mode = TextureSourceMode::None;
-        // 2 bits per SamplerSlot entry. 0=None, 1=Simple, 2=Array, 3=Atlas.
+
         uint32            texture_source_bits           = 0;
         uint32            sampler_feature_bits          = 0;
         uint32            vertex_attribute_feature_bits = 0;
@@ -117,19 +114,6 @@ namespace hgl::graph::mtl
             return (extra_feature_bits & EF_DebugShading) != 0;
         }
 
-        bool HasAnyTextureSourceBits() const noexcept
-        {
-            return texture_source_bits != 0;
-        }
-
-        TextureSourceMode GetPrimaryTextureSourceMode() const noexcept
-        {
-            // Prefer per-slot BaseColor when available; fall back to legacy field.
-            return HasAnyTextureSourceBits()
-                ? GetTextureSourceMode(SamplerSlot::BaseColor)
-                : texture_source_mode;
-        }
-
         uint64 Hash() const noexcept
         {
             uint64 h = 1469598103934665603ull;
@@ -140,7 +124,6 @@ namespace hgl::graph::mtl
 
             mix(static_cast<uint64>(surface_type));
             mix(static_cast<uint64>(geometry_mode));
-            mix(static_cast<uint64>(texture_source_mode));
             mix(static_cast<uint64>(texture_source_bits));
             mix(static_cast<uint64>(sampler_feature_bits));
             mix(static_cast<uint64>(vertex_attribute_feature_bits));
@@ -155,7 +138,6 @@ namespace hgl::graph::mtl
         {
             return surface_type == rhs.surface_type
                 && geometry_mode == rhs.geometry_mode
-                && texture_source_mode == rhs.texture_source_mode
                 && texture_source_bits == rhs.texture_source_bits
                 && sampler_feature_bits == rhs.sampler_feature_bits
                 && vertex_attribute_feature_bits == rhs.vertex_attribute_feature_bits

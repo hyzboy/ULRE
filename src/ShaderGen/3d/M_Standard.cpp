@@ -84,11 +84,9 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     const TextureSourceMode base_mode = input_key.GetTextureSourceMode(SamplerSlot::BaseColor);
     const TextureSourceMode normal_mode = input_key.GetTextureSourceMode(SamplerSlot::Normal);
-    const bool has_per_slot_mode = input_key.HasAnyTextureSourceBits();
-    const TextureSourceMode legacy_mode = input_key.GetPrimaryTextureSourceMode();
 
-    const TextureSourceMode resolved_base = has_per_slot_mode ? base_mode : legacy_mode;
-    const TextureSourceMode resolved_normal = has_per_slot_mode ? normal_mode : legacy_mode;
+    const TextureSourceMode resolved_base = base_mode;
+    const TextureSourceMode resolved_normal = normal_mode;
 
     const bool base_is_array = resolved_base == TextureSourceMode::Array;
     const bool normal_is_array = resolved_normal == TextureSourceMode::Array;
@@ -129,32 +127,23 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     MaterialVariantKey route_key = input_key;
     route_key.surface_type        = SurfaceType::Standard;
-    route_key.texture_source_mode = any_array ? TextureSourceMode::Array : TextureSourceMode::Simple;
-    route_key.texture_source_bits = 0;
-    route_key.sampler_feature_bits = SamplerFeatureBit(SamplerSlot::BaseColor)
-                                   | SamplerFeatureBit(SamplerSlot::Normal);
+    route_key.SetTextureSourceMode(SamplerSlot::BaseColor, any_array ? TextureSourceMode::Array : TextureSourceMode::Simple);
+    route_key.SetTextureSourceMode(SamplerSlot::Normal, any_array ? TextureSourceMode::Array : TextureSourceMode::Simple);
+    route_key.SetHasTexture(SamplerSlot::BaseColor);
+    route_key.SetHasTexture(SamplerSlot::Normal);
 
     MaterialVariantKey assemble_key = route_key;
-    if (has_per_slot_mode)
-    {
-        assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, resolved_base);
-        assemble_key.SetTextureSourceMode(SamplerSlot::Normal,    resolved_normal);
-    }
-    else
-    {
-        assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, route_key.texture_source_mode);
-        assemble_key.SetTextureSourceMode(SamplerSlot::Normal,    route_key.texture_source_mode);
-    }
+    assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, resolved_base);
+    assemble_key.SetTextureSourceMode(SamplerSlot::Normal,    resolved_normal);
 
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(route_key);
     if (!var_desc)
     {
         std::fprintf(stderr,
-            "[Standard] VariantRegistry lookup failed (route_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X any_array=%d)\n",
+            "[Standard] VariantRegistry lookup failed (route_hash=%llu surface=%u geom=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X any_array=%d)\n",
             static_cast<unsigned long long>(route_key.Hash()),
             static_cast<unsigned>(route_key.surface_type),
             static_cast<unsigned>(route_key.geometry_mode),
-            static_cast<unsigned>(route_key.texture_source_mode),
             route_key.texture_source_bits,
             route_key.sampler_feature_bits,
             route_key.vertex_attribute_feature_bits,
@@ -219,7 +208,8 @@ MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *pr
 {
     MaterialVariantKey key;
     key.surface_type = SurfaceType::Standard;
-    key.texture_source_mode = tex_source;
+    key.SetTextureSourceMode(SamplerSlot::BaseColor, tex_source);
+            key.SetTextureSourceMode(SamplerSlot::Normal, tex_source);
     return CreateStandardVariant(profile, key, cfg);
 }
 

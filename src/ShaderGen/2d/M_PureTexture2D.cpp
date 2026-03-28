@@ -14,10 +14,7 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
     if(!profile||!cfg)
         return(nullptr);
 
-    const bool has_slot_mode = key.HasAnyTextureSourceBits();
-    const TextureSourceMode mode = has_slot_mode
-        ? key.GetTextureSourceMode(SamplerSlot::BaseColor)
-        : key.texture_source_mode;
+    const TextureSourceMode mode = key.GetTextureSourceMode(SamplerSlot::BaseColor);
     const bool use_array = (mode == TextureSourceMode::Array);
 
     // Array mode needs MI data for MaterialInstanceTextureID SSBO.
@@ -76,14 +73,6 @@ MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLit
     if(cfg && cfg->texture_source_bits_override != 0)
     {
         key.texture_source_bits = cfg->texture_source_bits_override;
-
-        key.texture_source_mode = TextureSourceMode::None;
-        for (uint8_t s = 0; s < uint8_t(SamplerSlot::RANGE_SIZE); ++s)
-        {
-            const TextureSourceMode m = TextureSourceMode((key.texture_source_bits >> (uint32_t(s) * MaterialVariantKey::TextureSourceBitsPerSlot))
-                                      & MaterialVariantKey::TextureSourceMask);
-            if (m != TextureSourceMode::None) { key.texture_source_mode = m; break; }
-        }
 
         if (cfg->sampler_feature_bits_override != 0)
             key.sampler_feature_bits = cfg->sampler_feature_bits_override;

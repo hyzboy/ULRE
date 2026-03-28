@@ -66,7 +66,7 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
 
     MaterialVariantKey var_key;
     var_key.geometry_mode       = GeometryMode::BillboardCameraFacing;
-    var_key.texture_source_mode = TextureSourceMode::Simple;
+    var_key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     var_key.SetHasTexture(SamplerSlot::BaseColor);
     var_key.blend_mode          = cfg->blend_mode;
     var_key.pass_hint           = BlendModeToPassHint(cfg->blend_mode);

@@ -107,7 +107,7 @@ std::string VariantRegistry::DumpSnapshot() const
     out.reserve(rows.size()*120);
 
     out += "# VariantRegistry Snapshot\n";
-    out += "hash|name|factory|surface|geometry|tex_mode|tex_bits|sampler_bits|va_bits|extra_bits|blend|pass\n";
+    out += "hash|name|factory|surface|geometry|tex_modes|tex_bits|sampler_bits|va_bits|extra_bits|blend|pass\n";
 
     for(const auto &[hash,entry_ptr]:rows)
     {
@@ -127,8 +127,26 @@ std::string VariantRegistry::DumpSnapshot() const
         out += "|";
         out += std::to_string(static_cast<uint32>(k.geometry_mode));
         out += "|";
-        out += std::to_string(static_cast<uint32>(k.texture_source_mode));
-        out += "|";
+        {
+            bool first = true;
+            for (size_t i = 0; i < SamplerSlotCount; ++i)
+            {
+                const SamplerSlot slot = static_cast<SamplerSlot>(i);
+                const TextureSourceMode mode = k.GetTextureSourceMode(slot);
+                if (mode != TextureSourceMode::None)
+                {
+                    if (!first)
+                        out += ",";
+                    out += SamplerSlotNameList[i];
+                    out += ":";
+                    out += std::to_string(static_cast<uint32>(mode));
+                    first = false;
+                }
+            }
+            if (first)
+                out += "None";
+            out += "|";
+        }
         out += std::to_string(k.texture_source_bits);
         out += "|";
         out += std::to_string(k.sampler_feature_bits);
@@ -177,10 +195,12 @@ MaterialVariantDesc MakeDesc(
     return d;
 }
 
+#include <initializer_list>
+
 // Helper: build a key like MapPresetToVariantKey
 inline MaterialVariantKey K(SurfaceType st,
                              GeometryMode gm,
-                             TextureSourceMode tsm = TextureSourceMode::None,
+                             std::initializer_list<std::pair<SamplerSlot, TextureSourceMode>> tex_modes = {},
                              uint32 vertex_bits = 0,
                              uint32 sampler_bits = 0,
                              uint32 extra_bits = EF_None)
@@ -188,9 +208,12 @@ inline MaterialVariantKey K(SurfaceType st,
     MaterialVariantKey k;
     k.surface_type        = st;
     k.geometry_mode       = gm;
-    k.texture_source_mode = tsm;
-    k.vertex_attribute_feature_bits = vertex_bits;
     k.sampler_feature_bits = sampler_bits;
+    for(const auto& pair : tex_modes)
+    {
+        k.SetTextureSourceMode(pair.first, pair.second);
+    }
+    k.vertex_attribute_feature_bits = vertex_bits;
     k.extra_feature_bits = extra_bits;
     return k;
 }
@@ -204,7 +227,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     using TSM = TextureSourceMode;
 
     RegisterVariant(
-        K(ST::Unlit, GM::Quad2D, TSM::None,
+        K(ST::Unlit, GM::Quad2D, {},
             VertexAttribFeatureBit(VertexAttrib::Color)),
         MakeDesc("VertexColor2D",
                  MaterialPreset::VertexColor2D,
@@ -221,7 +244,7 @@ void VariantRegistry::InitializeBuiltinVariants()
                  ""));
 
     RegisterVariant(
-        K(ST::Unlit, GM::Quad2D, TSM::Simple,
+        K(ST::Unlit, GM::Quad2D, {{SamplerSlot::BaseColor, TSM::Simple}},
             0,
             SamplerFeatureBit(SamplerSlot::BaseColor)),
         MakeDesc("PureTexture2D",
@@ -231,7 +254,7 @@ void VariantRegistry::InitializeBuiltinVariants()
                  ""));
 
     RegisterVariant(
-        K(ST::Unlit, GM::Quad2D, TSM::Array,
+        K(ST::Unlit, GM::Quad2D, {{SamplerSlot::BaseColor, TSM::Array}},
             0,
             SamplerFeatureBit(SamplerSlot::BaseColor)),
         MakeDesc("PureTexture2DArray",
@@ -241,7 +264,7 @@ void VariantRegistry::InitializeBuiltinVariants()
                  ""));
 
     RegisterVariant(
-        K(ST::Unlit, GM::Quad2D, TSM::Atlas,
+        K(ST::Unlit, GM::Quad2D, {{SamplerSlot::BaseColor, TSM::Atlas}},
             0,
             SamplerFeatureBit(SamplerSlot::BaseColor)),
         MakeDesc("Text2D",
@@ -261,7 +284,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: VertexColor
     // ------------------------------------------------------------------
     RegisterVariant(
-                K(ST::Unlit, GM::Mesh3D, TSM::None,
+                K(ST::Unlit, GM::Mesh3D, {},
                     VertexAttribFeatureBit(VertexAttrib::Color)),
         MakeDesc("VertexColor3D",
                          MaterialPreset::VertexColor3D,
@@ -273,7 +296,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: VertexLuminance3D (VEC3 position)
     // ------------------------------------------------------------------
     RegisterVariant(
-                K(ST::Unlit, GM::Mesh3D, TSM::None,
+                K(ST::Unlit, GM::Mesh3D, {},
                     VertexAttribFeatureBit(VertexAttrib::Luminance)),
         MakeDesc("VertexLuminance3D",
                          MaterialPreset::VertexLuminance3D,
@@ -285,7 +308,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: VertexLuminance2D (VEC2 position)
     // ------------------------------------------------------------------
     RegisterVariant(
-                K(ST::Unlit, GM::Mesh3D, TSM::None,
+                K(ST::Unlit, GM::Mesh3D, {},
                     VertexAttribFeatureBit(VertexAttrib::Luminance) | VertexAttribFeatureBit(VertexAttrib::Position)),
         MakeDesc("VertexLuminance2D",
                          MaterialPreset::VertexLuminance2D,
@@ -297,7 +320,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: VertexPattleColor
     // ------------------------------------------------------------------
     RegisterVariant(
-                K(ST::Unlit, GM::Mesh3D, TSM::None,
+                K(ST::Unlit, GM::Mesh3D, {},
                     VertexAttribFeatureBit(VertexAttrib::Color),
                     0,
                     EF_DebugShading),
@@ -311,7 +334,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: Gizmo
     // ------------------------------------------------------------------
     RegisterVariant(
-        K(ST::Unlit, GM::Mesh3D, TSM::None, 0, 0, EF_DebugShading),
+        K(ST::Unlit, GM::Mesh3D, {}, 0, 0, EF_DebugShading),
         MakeDesc("Gizmo3D",
                  MaterialPreset::Gizmo3D,
                  "compositor/main_forward_unlit_normal.vert.glsl",
@@ -324,7 +347,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     {
         MaterialVariantKey key;
         key.geometry_mode       = GM::BillboardCameraFacing;
-        key.texture_source_mode = TSM::Simple;
+        key.SetTextureSourceMode(SamplerSlot::BaseColor, TSM::Simple);
         key.SetHasTexture(SamplerSlot::BaseColor);
         key.blend_mode          = BlendMode::Transparent;
         key.pass_hint           = PassType::ForwardTransparent;
@@ -342,7 +365,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     {
         MaterialVariantKey key;
         key.geometry_mode       = GM::BillboardAxisLocked;
-        key.texture_source_mode = TSM::Simple;
+        key.SetTextureSourceMode(SamplerSlot::BaseColor, TSM::Simple);
         key.SetHasTexture(SamplerSlot::BaseColor);
         key.blend_mode          = BlendMode::Transparent;
         key.pass_hint           = PassType::ForwardTransparent;
@@ -360,7 +383,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     {
         MaterialVariantKey key;
         key.geometry_mode       = GM::BillboardCameraFacing;
-        key.texture_source_mode = TSM::Simple;
+        key.SetTextureSourceMode(SamplerSlot::BaseColor, TSM::Simple);
         key.SetHasTexture(SamplerSlot::BaseColor);
         key.blend_mode          = BlendMode::Masked;
         key.pass_hint           = PassType::ForwardMasked;
@@ -378,7 +401,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     {
         MaterialVariantKey key;
         key.geometry_mode       = GM::BillboardCameraFacing;
-        key.texture_source_mode = TSM::Simple;
+        key.SetTextureSourceMode(SamplerSlot::BaseColor, TSM::Simple);
         key.SetHasTexture(SamplerSlot::BaseColor);
         key.blend_mode          = BlendMode::Dither;
         key.pass_hint           = PassType::ForwardDither;
@@ -396,7 +419,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     {
         MaterialVariantKey key;
         key.geometry_mode       = GM::BillboardAxisLocked;
-        key.texture_source_mode = TSM::Simple;
+        key.SetTextureSourceMode(SamplerSlot::BaseColor, TSM::Simple);
         key.SetHasTexture(SamplerSlot::BaseColor);
         key.blend_mode          = BlendMode::Masked;
         key.pass_hint           = PassType::ForwardMasked;
@@ -414,7 +437,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     {
         MaterialVariantKey key;
         key.geometry_mode       = GM::BillboardAxisLocked;
-        key.texture_source_mode = TSM::Simple;
+        key.SetTextureSourceMode(SamplerSlot::BaseColor, TSM::Simple);
         key.SetHasTexture(SamplerSlot::BaseColor);
         key.blend_mode          = BlendMode::Dither;
         key.pass_hint           = PassType::ForwardDither;
@@ -452,7 +475,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     // Standard 3D (texture-based, lit)
     // ------------------------------------------------------------------
     RegisterVariant(
-                K(ST::Standard, GM::Mesh3D, TSM::Simple,
+                K(ST::Standard, GM::Mesh3D, {{SamplerSlot::BaseColor, TSM::Simple}, {SamplerSlot::Normal, TSM::Simple}},
                     0,
                                         SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
         MakeDesc("Standard",
@@ -465,7 +488,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     // Standard Texture Array
     // ------------------------------------------------------------------
     RegisterVariant(
-                K(ST::Standard, GM::Mesh3D, TSM::Array,
+                K(ST::Standard, GM::Mesh3D, {{SamplerSlot::BaseColor, TSM::Array}, {SamplerSlot::Normal, TSM::Array}},
                     0,
                                         SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
         MakeDesc("StandardTextureArray",
