@@ -27,7 +27,7 @@ namespace
         SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
         SSBODescriptorSemantic::MaterialInstanceID,
-        SSBODescriptorSemantic::MaterialInstance,
+        SSBODescriptorSemantic::MaterialInstanceData,
     };
 
     constexpr SamplerSlot BILLBOARD_FIXED_TEX_SLOTS[] = {

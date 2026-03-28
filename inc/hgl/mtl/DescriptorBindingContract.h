@@ -42,7 +42,7 @@ namespace hgl::graph::mtl
         "TransformID",
         "TransformData",
         "MaterialInstanceID",
-        "MaterialInstance",
+        "MaterialInstanceData",
         "MaterialInstanceTextureID",
         "BoneJoint",
         "BoneJointWeight",
@@ -75,10 +75,10 @@ namespace hgl::graph::mtl
     constexpr DescriptorSemanticMeta SSBODescriptorSemanticMetaList[] =
     {
         {DescriptorSetType::Unknow, nullptr,        nullptr,                nullptr,                     BufferUpdateClass::Default       }, // Unknown
-        {SET_TYPE_TRANSFORM,        "tid",          "TID_BINDING",          "TransformIDData",           BufferUpdateClass::TransformData }, // TransformID
-        {SET_TYPE_TRANSFORM,        "l2w",          "L2W_BINDING",          "LocalToWorldData",          BufferUpdateClass::TransformData }, // TransformData
-        {SET_TYPE_MATERIAL,         "mid",          "MID_BINDING",          "MaterialInstanceIDData",    BufferUpdateClass::Default       }, // MaterialInstanceID
-        {SET_TYPE_MATERIAL,         "mtl",          "MI_BINDING",           "MaterialInstanceData",      BufferUpdateClass::Default       }, // MaterialInstance
+        {SET_TYPE_TRANSFORM,        "tid",          "TID_BINDING",          "TransformID",               BufferUpdateClass::TransformData }, // TransformID
+        {SET_TYPE_TRANSFORM,        "l2w",          "L2W_BINDING",          "TransformData",             BufferUpdateClass::TransformData }, // TransformData
+        {SET_TYPE_MATERIAL,         "mid",          "MID_BINDING",          "MaterialInstanceID",        BufferUpdateClass::Default       }, // MaterialInstanceID
+        {SET_TYPE_MATERIAL,         "mtl",          "MI_BINDING",           "MaterialInstanceData",      BufferUpdateClass::Default       }, // MaterialInstanceData
         {SET_TYPE_MATERIAL,         "mit",          "MIT_BINDING",          "MaterialInstanceTextureID", BufferUpdateClass::Default       }, // MaterialInstanceTextureID, 这里存的是每个实例对应的纹理ID（layer index），配合TextureArray使用。所以它是SSBO不是TextureSampler
         {SET_TYPE_TRANSFORM,        "joint",        "JOINT_BINDING",        "JointInfo",                 BufferUpdateClass::TransformData }, // BoneJoint
         {SET_TYPE_TRANSFORM,        "joint_weight", "JOINT_WEIGHT_BINDING", "JointWeightInfo",           BufferUpdateClass::TransformData }, // BoneJointWeight

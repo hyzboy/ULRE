@@ -446,7 +446,7 @@ namespace hgl::ecs
                         batch->mi_buffer->BindMaterialInstanceID(material);
                     break;
                 }
-                case graph::mtl::SSBODescriptorSemantic::MaterialInstance:
+                case graph::mtl::SSBODescriptorSemantic::MaterialInstanceData:
                 {
                     if (batch
                      && batch->mi_buffer
@@ -545,7 +545,7 @@ namespace hgl::ecs
         case graph::mtl::SSBODescriptorSemantic::TransformData:
         case graph::mtl::SSBODescriptorSemantic::TransformID:
         case graph::mtl::SSBODescriptorSemantic::MaterialInstanceID:
-        case graph::mtl::SSBODescriptorSemantic::MaterialInstance:
+        case graph::mtl::SSBODescriptorSemantic::MaterialInstanceData:
         case graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID:
             // Resolved per-batch inside ApplyBatchMaterialBindings; not checkable here.
             return false;

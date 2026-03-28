@@ -45,7 +45,7 @@ void *Material::GetMIData(int id)
 }
 
 // ---------------------------------------------------------------------------
-// MaterialInstance — constructors / destructor
+// MaterialInstanceData — constructors / destructor
 // ---------------------------------------------------------------------------
 
 /// 旧路径：domain = nullptr
@@ -73,7 +73,7 @@ MaterialInstance::~MaterialInstance()
 }
 
 // ---------------------------------------------------------------------------
-// MaterialInstance — data access
+// MaterialInstanceData — data access
 // ---------------------------------------------------------------------------
 
 void *MaterialInstance::GetMIData()

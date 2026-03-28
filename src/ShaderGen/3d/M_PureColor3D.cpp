@@ -20,7 +20,7 @@ namespace
         SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
         SSBODescriptorSemantic::MaterialInstanceID,
-        SSBODescriptorSemantic::MaterialInstance,
+        SSBODescriptorSemantic::MaterialInstanceData,
     };
 
     const FixedMaterialDef PURE_COLOR_3D_DEF {

@@ -67,6 +67,6 @@ public:
             void        InitMITLayout(uint8_t slot_flags);                  ///<根据slot_flags初始化per-slot偏移表并分配packed数组
             void        SetTextureArrayLayer(mtl::SamplerSlot slot, uint32_t layer);
             uint32_t    GetTextureArrayLayer(mtl::SamplerSlot slot) const;
-};//class MaterialInstance
+};//class MaterialInstanceData
 }//namespace hgl::graph
 

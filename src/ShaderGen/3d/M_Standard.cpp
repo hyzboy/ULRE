@@ -42,7 +42,7 @@ namespace
         SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
         SSBODescriptorSemantic::MaterialInstanceID,
-        SSBODescriptorSemantic::MaterialInstance,
+        SSBODescriptorSemantic::MaterialInstanceData,
     };
 
     // Ordered list of texture slots used by the Standard material.

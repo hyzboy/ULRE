@@ -51,7 +51,7 @@ namespace
         const bool infer_has_camera = HasUBOSemantic(def, UBODescriptorSemantic::CameraInfo);
         const bool infer_has_sky    = HasUBOSemantic(def, UBODescriptorSemantic::SkyInfo);
         const bool infer_has_l2w    = HasSSBOSemantic(def, SSBODescriptorSemantic::TransformData);
-        const bool infer_has_mi     = HasSSBOSemantic(def, SSBODescriptorSemantic::MaterialInstance)
+        const bool infer_has_mi     = HasSSBOSemantic(def, SSBODescriptorSemantic::MaterialInstanceData)
                                    || HasPerMaterialDescriptor(def)
                                    || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
 
@@ -93,7 +93,7 @@ namespace
                     continue;
                 }
 
-                if (semantic == SSBODescriptorSemantic::MaterialInstance)
+                if (semantic == SSBODescriptorSemantic::MaterialInstanceData)
                 {
                     mi_stage_bits = kDefaultDescriptorStageBits;
                     continue;

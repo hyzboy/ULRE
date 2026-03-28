@@ -22,7 +22,7 @@ namespace
         SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
         SSBODescriptorSemantic::MaterialInstanceID,
-        SSBODescriptorSemantic::MaterialInstance,
+        SSBODescriptorSemantic::MaterialInstanceData,
     };
 
     const FixedMaterialDef VERTEX_LUMINANCE_2D_DEF {

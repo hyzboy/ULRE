@@ -417,15 +417,15 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
     if(data_bytes>0)
         material_instance_glsl=glsl_codes;
 
-    if(!descriptor_db.AddSSBOStruct(SSBODescriptorSemantic::MaterialInstance))
+    if(!descriptor_db.AddSSBOStruct(SSBODescriptorSemantic::MaterialInstanceData))
         return false;
 
     material_instance_max_count=std::min<uint32_t>(ssbo_range/data_bytes,HGL_U16_MAX);
 
-    material_instance_ssbo=CreateSSBODescriptor(SSBODescriptorSemantic::MaterialInstance,shader_stage_flag_bits);
+    material_instance_ssbo=CreateSSBODescriptor(SSBODescriptorSemantic::MaterialInstanceData,shader_stage_flag_bits);
 
     descriptor_db.AddSSBO(shader_stage_flag_bits,
-                          GetDescriptorSemanticMeta(SSBODescriptorSemantic::MaterialInstance).set_type,
+                          GetDescriptorSemanticMeta(SSBODescriptorSemantic::MaterialInstanceData).set_type,
                           material_instance_ssbo);
 
     ForEachShaderByStage(shader_map,shader_stage_flag_bits,

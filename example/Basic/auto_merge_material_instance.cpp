@@ -247,7 +247,7 @@ private:
 
         std::cout << "[TestApp::InitECS] === ECS Setup Complete ===" << std::endl;
         std::cout << "[TestApp::InitECS] Created " << DRAW_OBJECT_COUNT << " entities" << std::endl;
-        std::cout << "[TestApp::InitECS] Each entity uses a different MaterialInstance (different color)" << std::endl;
+        std::cout << "[TestApp::InitECS] Each entity uses a different MaterialInstanceData (different color)" << std::endl;
         std::cout << "[TestApp::InitECS] RenderCollector will automatically merge them into batches" << std::endl;
         std::cout << "[TestApp::InitECS] MaterialInstanceAssignmentBuffer will deduplicate MIs" << std::endl;
 

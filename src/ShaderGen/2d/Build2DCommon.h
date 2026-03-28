@@ -123,7 +123,7 @@ inline void PushBaseSSBODescriptors(FixedSSBODescriptors &descriptors, const Mat
     if(cfg->material_instance)
     {
         AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstanceID);
-        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstance);
+        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstanceData);
     }
 }
 

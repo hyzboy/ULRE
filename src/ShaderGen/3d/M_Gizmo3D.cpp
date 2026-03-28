@@ -20,7 +20,7 @@ namespace
         SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
         SSBODescriptorSemantic::MaterialInstanceID,
-        SSBODescriptorSemantic::MaterialInstance,
+        SSBODescriptorSemantic::MaterialInstanceData,
     };
 
     constexpr const char GIZMO_3D_MI_GLSL[] = "vec4 Color;";

@@ -73,7 +73,7 @@ namespace hgl::ecs
             return;
         }
 
-        mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialInstance,
+        mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialInstanceData,
                   material_instance_buffer->GetGPUBuffer());
 
         BindMaterialInstanceID(mtl);
@@ -296,7 +296,7 @@ namespace hgl::ecs
 
         if (mi_set.GetCount() == 0)
         {
-            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: No MaterialInstance collected" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: No MaterialInstanceData collected" << std::endl;
             return;
         }
 

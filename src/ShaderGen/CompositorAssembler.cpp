@@ -392,7 +392,7 @@ namespace hgl::graph
         {
             switch (surface)
             {
-            // Reuse existing 3D surfaces — MaterialInstance layout is compatible
+            // Reuse existing 3D surfaces — MaterialInstanceData layout is compatible
             case SurfaceType::PureColor2D:
                 return "surface/unlit_color3d_surface.glsl";
             case SurfaceType::VertexColor2D:

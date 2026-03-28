@@ -162,7 +162,7 @@ public: //Material
     Material *          CreateMaterial  (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质（Phase-A兼容）
     Material *          CreateMaterial  (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质（Phase-A兼容）
 
-public: //MaterialInstance
+public: //MaterialInstanceData
 
     MaterialInstance *  CreateMaterialInstance(Material *);
     MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil);
@@ -223,7 +223,7 @@ public: // ResourceDomain — Phase 1 / Phase 3
      */
     void ReleaseResourceDomain(ResourceDomain *domain);
 
-public: // ResourceDomain MaterialInstance creation (Phase 1)
+public: // ResourceDomain MaterialInstanceData creation (Phase 1)
 
     /// 从资源域分配 MI，走域独立的数据池（旧 Material 池不变）。
     MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VIL *vil = nullptr);

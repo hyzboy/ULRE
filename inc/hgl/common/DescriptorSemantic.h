@@ -28,7 +28,7 @@ namespace hgl::graph::mtl
         TransformID,
         TransformData,
         MaterialInstanceID,
-        MaterialInstance,
+        MaterialInstanceData,
         MaterialInstanceTextureID,
         BoneJoint,
         BoneJointWeight,

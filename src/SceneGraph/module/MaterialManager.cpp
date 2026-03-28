@@ -651,7 +651,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
         return nullptr;
 
     Add(mi);
-    // MaterialInstance is a C++ object managed by MaterialManager, not a Vulkan object
+    // MaterialInstanceData is a C++ object managed by MaterialManager, not a Vulkan object
     // No need to track with ObjectTracker
 
     if(mi_data&&mi_bytes>0)

@@ -52,7 +52,7 @@ public:
     uint32_t GetMIMaxCount()  const { return mi_max_count; }
 
     // ----------------------------------------------------------------
-    // MI 槽位管理 — 仅被 MaterialInstance 析构路径和 CreateMI 使用
+    // MI 槽位管理 — 仅被 MaterialInstanceData 析构路径和 CreateMI 使用
     // ----------------------------------------------------------------
 
     /**
