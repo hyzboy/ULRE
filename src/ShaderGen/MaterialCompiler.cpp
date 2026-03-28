@@ -50,7 +50,7 @@ namespace
 
         const bool infer_has_camera = HasUBOSemantic(def, UBODescriptorSemantic::CameraInfo);
         const bool infer_has_sky    = HasUBOSemantic(def, UBODescriptorSemantic::SkyInfo);
-        const bool infer_has_l2w    = HasSSBOSemantic(def, SSBODescriptorSemantic::LocalToWorld);
+        const bool infer_has_l2w    = HasSSBOSemantic(def, SSBODescriptorSemantic::TransformData);
         const bool infer_has_mi     = HasSSBOSemantic(def, SSBODescriptorSemantic::MaterialInstance)
                                    || HasPerMaterialDescriptor(def)
                                    || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
@@ -87,7 +87,7 @@ namespace
         {
             for (const auto semantic : *def.ssbo_descriptors)
             {
-                if (semantic == SSBODescriptorSemantic::LocalToWorld)
+                if (semantic == SSBODescriptorSemantic::TransformData)
                 {
                     mci->SetLocalToWorld(kDefaultDescriptorStageBits);
                     continue;

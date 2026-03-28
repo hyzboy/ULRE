@@ -445,10 +445,10 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 
     local_to_world_max_count=std::min<uint32_t>(ssbo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
 
-    if(!AddSSBOStruct(shader_stage_flag_bits,SSBODescriptorSemantic::LocalToWorld))
+    if(!AddSSBOStruct(shader_stage_flag_bits,SSBODescriptorSemantic::TransformData))
         return(false);
 
-    local_to_world_ssbo=descriptor_db.GetSSBO(SSBODescriptorSemantic::LocalToWorld);
+    local_to_world_ssbo=descriptor_db.GetSSBO(SSBODescriptorSemantic::TransformData);
 
     local_to_world_stage_bits=shader_stage_flag_bits;
 

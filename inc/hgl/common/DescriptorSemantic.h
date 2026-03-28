@@ -26,7 +26,7 @@ namespace hgl::graph::mtl
     {
         Unknown = 0,
         TransformID,
-        LocalToWorld,
+        TransformData,
         MaterialInstanceID,
         MaterialInstance,
         MaterialInstanceTextureID,

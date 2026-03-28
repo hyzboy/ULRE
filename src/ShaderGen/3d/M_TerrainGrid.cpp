@@ -19,7 +19,7 @@ namespace
     };
 
     const FixedSSBODescriptors TERRAIN_GRID_SSBOS = {
-        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
     };
 

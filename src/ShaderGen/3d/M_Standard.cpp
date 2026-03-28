@@ -39,7 +39,7 @@ namespace
     };
 
     const FixedSSBODescriptors STANDARD_BASE_SSBOS = {
-        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
         SSBODescriptorSemantic::MaterialInstanceID,
         SSBODescriptorSemantic::MaterialInstance,

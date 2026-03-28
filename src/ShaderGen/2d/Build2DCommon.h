@@ -116,7 +116,7 @@ inline void PushBaseSSBODescriptors(FixedSSBODescriptors &descriptors, const Mat
 {
     if(cfg->local_to_world)
     {
-        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::LocalToWorld);
+        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::TransformData);
         AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::TransformID);
     }
 

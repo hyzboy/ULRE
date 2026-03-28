@@ -15,7 +15,7 @@ namespace
     };
 
     const FixedSSBODescriptors SKY_MINIMAL_SSBOS = {
-        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
     };
 

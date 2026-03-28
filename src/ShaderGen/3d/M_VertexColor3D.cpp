@@ -15,7 +15,7 @@ namespace
     };
 
     const FixedSSBODescriptors VERTEX_COLOR_3D_SSBOS = {
-        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
     };
 

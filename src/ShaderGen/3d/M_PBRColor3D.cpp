@@ -33,7 +33,7 @@ namespace
     };
 
     const FixedSSBODescriptors PBR_COLOR_3D_SSBOS = {
-        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
         SSBODescriptorSemantic::MaterialInstanceID,
         SSBODescriptorSemantic::MaterialInstance,

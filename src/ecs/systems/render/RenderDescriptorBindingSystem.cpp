@@ -424,7 +424,7 @@ namespace hgl::ecs
             {
                 switch (ssbo_semantic)
                 {
-                case graph::mtl::SSBODescriptorSemantic::LocalToWorld:
+                case graph::mtl::SSBODescriptorSemantic::TransformData:
                 {
                     if (batch
                      && batch->transform_buffer
@@ -542,7 +542,7 @@ namespace hgl::ecs
     {
         switch (semantic)
         {
-        case graph::mtl::SSBODescriptorSemantic::LocalToWorld:
+        case graph::mtl::SSBODescriptorSemantic::TransformData:
         case graph::mtl::SSBODescriptorSemantic::TransformID:
         case graph::mtl::SSBODescriptorSemantic::MaterialInstanceID:
         case graph::mtl::SSBODescriptorSemantic::MaterialInstance:

@@ -182,12 +182,12 @@ namespace hgl::ecs
 
 //        LogDeviceBufferSnapshot("[TransformAssignmentBuffer::BindTransform] before bind", transform_buffer);
 
-        const bool l2w_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::LocalToWorld,transform_buffer->GetGPUBuffer());
+        const bool l2w_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::TransformData,transform_buffer->GetGPUBuffer());
         GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO ");
 
         if (!l2w_bind_ok)
         {
-            GLogWarning("[TransformAssignmentBuffer::BindTransform] LocalToWorld bind failed");
+            GLogWarning("[TransformAssignmentBuffer::BindTransform] TransformData bind failed");
         }
 
         BindTransformID(mtl);
@@ -645,7 +645,7 @@ namespace hgl::ecs
         // Create or reuse Transform SSBO
         if (!transform_buffer && buffer_manager)
         {
-            transform_buffer = buffer_manager->CreateSSBO("ECS:LocalToWorld",
+            transform_buffer = buffer_manager->CreateSSBO("ECS:TransformData",
                                                           sizeof(math::Matrix4f) * transform_buffer_max_count,
                                                           nullptr,
                                                           graph::SharingMode::Exclusive);
@@ -674,14 +674,14 @@ namespace hgl::ecs
 
         if (recreated)
         {
-            GLogInfo("[TransformAssignmentBuffer] LocalToWorld buffer ready: required=%u capacity=%u bytes=%llu policy=%d",
+            GLogInfo("[TransformAssignmentBuffer] TransformData buffer ready: required=%u capacity=%u bytes=%llu policy=%d",
                      static_cast<uint32_t>(required_count),
                      transform_buffer_max_count,
                      static_cast<unsigned long long>(transform_buffer->GetSize()),
                      static_cast<int>(policy));
 
             std::fprintf(stderr,
-                         "[TransformAssignmentBuffer] LocalToWorld buffer ready: required=%u capacity=%u bytes=%llu policy=%d\n",
+                         "[TransformAssignmentBuffer] TransformData buffer ready: required=%u capacity=%u bytes=%llu policy=%d\n",
                          static_cast<uint32_t>(required_count),
                          transform_buffer_max_count,
                          static_cast<unsigned long long>(transform_buffer->GetSize()),

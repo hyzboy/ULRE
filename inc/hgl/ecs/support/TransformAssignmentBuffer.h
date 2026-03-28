@@ -25,7 +25,7 @@ namespace hgl::ecs
      * ECS Transform 分配缓冲
      *
      * 职责：
-     * - 管理所有 RenderItem 的 LocalToWorld 矩阵数据（UBO/SSBO）
+     * - 管理所有 RenderItem 的 TransformData 矩阵数据（UBO/SSBO）
      * - 生成 Transform 索引分发数据（VAB）
      * - 为每个实例分配唯一的 transform_index
      * - 支持动态更新变换矩阵

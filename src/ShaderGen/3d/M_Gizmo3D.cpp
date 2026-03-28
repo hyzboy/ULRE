@@ -17,7 +17,7 @@ namespace
     };
 
     const FixedSSBODescriptors GIZMO_3D_SSBOS = {
-        SSBODescriptorSemantic::LocalToWorld,
+        SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
         SSBODescriptorSemantic::MaterialInstanceID,
         SSBODescriptorSemantic::MaterialInstance,
