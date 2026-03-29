@@ -278,18 +278,22 @@ namespace
         if (defines.empty())
             return source;
 
-        auto pos = source.find('\n');
-        if (pos != std::string::npos && source.size() >= 8
-            && source.substr(0, 8) == "#version")
+        // Find the end of the #version line, wherever it appears in the source.
+        const auto ver_pos = source.find("#version");
+        if (ver_pos != std::string::npos)
         {
-            std::string result;
-            result.reserve(source.size() + defines.size() + 2);
-            result.append(source, 0, pos + 1);
-            result += '\n';
-            result += defines;
-            result += '\n';
-            result.append(source, pos + 1, std::string::npos);
-            return result;
+            const auto eol = source.find('\n', ver_pos);
+            if (eol != std::string::npos)
+            {
+                std::string result;
+                result.reserve(source.size() + defines.size() + 2);
+                result.append(source, 0, eol + 1);
+                result += '\n';
+                result += defines;
+                result += '\n';
+                result.append(source, eol + 1, std::string::npos);
+                return result;
+            }
         }
 
         return defines + "\n" + source;

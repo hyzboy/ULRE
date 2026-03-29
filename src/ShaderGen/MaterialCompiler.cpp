@@ -247,21 +247,24 @@ std::string InjectLayoutDefinesPreserveVersion(const std::string &source,const s
     if(layout_defs.empty())
         return source;
 
-    if(source.rfind("#version",0)==0)
+    // Find #version wherever it appears (may be preceded by a comment header
+    // when the source was produced from an .inja template).
+    const size_t ver_pos = source.find("#version");
+    if(ver_pos != std::string::npos)
     {
-        const size_t pos=source.find('\n');
-        if(pos==std::string::npos)
-            return source+"\n"+layout_defs;
+        const size_t eol = source.find('\n', ver_pos);
+        if(eol == std::string::npos)
+            return source + "\n" + layout_defs;
 
         std::string out;
-        out.reserve(source.size()+layout_defs.size()+1);
-        out.append(source,0,pos+1);
+        out.reserve(source.size() + layout_defs.size() + 1);
+        out.append(source, 0, eol + 1);
         out.append(layout_defs);
-        out.append(source,pos+1,std::string::npos);
+        out.append(source, eol + 1, std::string::npos);
         return out;
     }
 
-    return layout_defs+source;
+    return layout_defs + source;
 }
 
 MaterialCreateInfo *CompileCompositorMaterial(

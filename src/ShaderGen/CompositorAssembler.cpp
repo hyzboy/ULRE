@@ -4,6 +4,8 @@
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
+#include <inja/inja.hpp>
+#include <nlohmann/json.hpp>
 #include <fstream>
 #include <sstream>
 
@@ -428,22 +430,28 @@ namespace hgl::graph
     {
         std::string defines;
         key.AppendGLSLDefines(defines);
+        if (defines.empty())
+            return source;
 
-        // 查找 #version 行的末尾
-        auto pos = source.find('\n');
-        if (pos != std::string::npos && source.substr(0, 8) == "#version")
+        // Find the end of the #version line, wherever it appears in the source.
+        const auto ver_pos = source.find("#version");
+        if (ver_pos != std::string::npos)
         {
-            std::string result;
-            result.reserve(source.size() + defines.size() + 2);
-            result.append(source, 0, pos + 1);
-            result.append("\n");
-            result.append(defines);
-            result.append("\n");
-            result.append(source, pos + 1, std::string::npos);
-            return result;
+            const auto eol = source.find('\n', ver_pos);
+            if (eol != std::string::npos)
+            {
+                std::string result;
+                result.reserve(source.size() + defines.size() + 2);
+                result.append(source, 0, eol + 1);
+                result += '\n';
+                result += defines;
+                result += '\n';
+                result.append(source, eol + 1, std::string::npos);
+                return result;
+            }
         }
 
-        // 没有 #version 行则直接在头部插入
+        // No #version found — prepend at top.
         return defines + "\n" + source;
     }
 
@@ -462,6 +470,52 @@ namespace hgl::graph
         result.append(replacement);
         result.append(source, pos + marker.size(), std::string::npos);
         return result;
+    }
+
+    static bool EndsWithInja(const std::string &path)
+    {
+        return path.size() >= 5 && path.compare(path.size() - 5, 5, ".inja") == 0;
+    }
+
+    // Build inja data for the lit vertex template.
+    // The defines block carries the hardcoded lit-VS feature flags;
+    // InjectDefines() will add SPK permutation defines on top afterwards.
+    static nlohmann::json BuildLitVertInjaData()
+    {
+        nlohmann::json d;
+        d["defines"]    = "#define HAS_UV0\n"
+                          "#define HAS_WORLD_POS\n"
+                          "#define HAS_WORLD_NORMAL\n";
+        d["extensions"] = std::string{};
+        return d;
+    }
+
+    // Build inja data for the lit fragment template.
+    static nlohmann::json BuildLitFragInjaData(
+        const std::string &surface_path,
+        const std::string &skylight_fn,
+        const std::string &lighting_fn,
+        bool blend_masked,
+        bool blend_dither)
+    {
+        nlohmann::json d;
+        std::string defines;
+        defines += "#define ENABLE_LIGHTING\n";
+        defines += "#define NEEDS_CAMERA\n";
+        defines += "#define NEEDS_SKY\n";
+        defines += "#define HAS_WORLD_POS\n";
+        defines += "#define HAS_WORLD_NORMAL\n";
+        defines += "#define HAS_UV0\n";
+        if (blend_masked) defines += "#define ALPHA_MODE_MASKED\n";
+        if (blend_dither) defines += "#define ALPHA_MODE_DITHER\n";
+        d["defines"]    = defines;
+        d["extensions"] = std::string{};
+        d["needs_sky"]       = true;
+        d["enable_lighting"] = true;
+        d["surface_path"]           = surface_path;
+        d["skylight_function_file"] = skylight_fn;
+        d["lighting_function_file"] = lighting_fn;
+        return d;
     }
 
     static const char *GetSkyLightGLSLPath(mtl::SkyLightAmbientModel model)
@@ -657,14 +711,48 @@ namespace hgl::graph
             return result;
         }
 
+        // Render inja templates before injecting SPK defines.
+        // EndsWithInja() is false for legacy .glsl paths so this is a no-op there.
+        if (EndsWithInja(desc.vs_template_path))
+        {
+            try { vs_source = inja::Environment{}.render(vs_source, BuildLitVertInjaData()); }
+            catch (const std::exception &ex)
+            {
+                result.error_message = std::string("inja VS render error: ") + ex.what();
+                result.success = false;
+                return result;
+            }
+        }
+
+        if (EndsWithInja(desc.fs_template_path))
+        {
+            const bool masked = (key.blend_mode == BlendMode::Masked);
+            const bool dither = (key.blend_mode == BlendMode::Dither);
+            try
+            {
+                fs_source = inja::Environment{}.render(
+                    fs_source,
+                    BuildLitFragInjaData(
+                        surface_rel,
+                        GetSkyLightGLSLPath(sky_model),
+                        mtl::GetLightingModelGLSLPath(lighting_model),
+                        masked, dither));
+            }
+            catch (const std::exception &ex)
+            {
+                result.error_message = std::string("inja FS render error: ") + ex.what();
+                result.success = false;
+                return result;
+            }
+        }
+
         vs_source = InjectDefines(vs_source, perm);
         fs_source = InjectDefines(fs_source, perm);
 
+        // For legacy .glsl templates the Replace* calls resolve macro includes.
+        // For .inja templates the paths are already emitted by inja, so these are no-ops.
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
-
         fs_source = ReplaceSkyLightInclude(fs_source, sky_model);
-
-        // 替换 FS 中的 LIGHTING_FUNCTION_FILE（按光照模型选择实现文件）
         fs_source = ReplaceLightingInclude(fs_source, lighting_model);
 
         result.vertex_glsl   = std::move(vs_source);

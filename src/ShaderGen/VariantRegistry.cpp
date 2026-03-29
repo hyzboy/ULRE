@@ -480,8 +480,8 @@ void VariantRegistry::InitializeBuiltinVariants()
                                         SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
         MakeDesc("Standard",
                          MaterialPreset::Standard,
-                 "compositor/main_forward_lit.vert.glsl",
-                 "compositor/main_forward_lit.frag.glsl",
+                 "compositor/main_forward_lit.vert.inja",
+                 "compositor/main_forward_lit.frag.inja",
                  "surface/standard_surface.glsl"));
 
     // ------------------------------------------------------------------
@@ -493,8 +493,8 @@ void VariantRegistry::InitializeBuiltinVariants()
                                         SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
         MakeDesc("StandardTextureArray",
                          MaterialPreset::Standard,
-                 "compositor/main_forward_lit.vert.glsl",
-                 "compositor/main_forward_lit.frag.glsl",
+                 "compositor/main_forward_lit.vert.inja",
+                 "compositor/main_forward_lit.frag.inja",
                                  "surface/standard_surface.glsl"));
 
     // ------------------------------------------------------------------
@@ -504,8 +504,8 @@ void VariantRegistry::InitializeBuiltinVariants()
         K(ST::Standard, GM::Mesh3D),
         MakeDesc("PBRColor3D",
                  MaterialPreset::PBRColor3D,
-                 "compositor/main_forward_lit.vert.glsl",
-                 "compositor/main_forward_lit.frag.glsl",
+                 "compositor/main_forward_lit.vert.inja",
+                 "compositor/main_forward_lit.frag.inja",
                  "surface/pbrcolor3d_surface.glsl"));
 }
 
