@@ -531,7 +531,7 @@ namespace hgl::ecs
         if (!context)
             return false;
 
-        if (semantic == graph::mtl::UBODescriptorSemantic::Unknown)
+        if (!RangeCheck(semantic))
             return false;
 
         auto *accessor = scene_ubo_resolvers[size_t(semantic)];
@@ -540,22 +540,7 @@ namespace hgl::ecs
 
     bool RenderDescriptorBindingSystem::IsSSBOSemanticResolvable(graph::mtl::SSBODescriptorSemantic semantic) const
     {
-        switch (semantic)
-        {
-        case graph::mtl::SSBODescriptorSemantic::TransformData:
-        case graph::mtl::SSBODescriptorSemantic::TransformID:
-        case graph::mtl::SSBODescriptorSemantic::MaterialInstanceID:
-        case graph::mtl::SSBODescriptorSemantic::MaterialInstanceData:
-        case graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID:
-            // Resolved per-batch inside ApplyBatchMaterialBindings; not checkable here.
-            return false;
-        case graph::mtl::SSBODescriptorSemantic::END_RANGE:
-            return true;
-
-        case graph::mtl::SSBODescriptorSemantic::Unknown:
-        default:
-            return false;
-        }
+        return RangeCheck(semantic);
     }
 
     void RenderDescriptorBindingSystem::ValidateContractsSideChannel()
