@@ -6,6 +6,7 @@
 #include<cstdio>
 #include<vector>
 #include<hgl/mtl/MaterialVariantDesc.h>
+#include"Build3DCommon.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -64,12 +65,8 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
         }
     };
 
-    MaterialVariantKey var_key;
-    var_key.geometry_mode       = GeometryMode::BillboardCameraFacing;
-    var_key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-    var_key.SetHasTexture(SamplerSlot::BaseColor);
-    var_key.blend_mode          = cfg->blend_mode;
-    var_key.pass_hint           = BlendModeToPassHint(cfg->blend_mode);
+    MaterialVariantKey var_key = build3d::MakeBillboardKeyBase(cfg->blend_mode);
+    var_key.geometry_mode = GeometryMode::BillboardCameraFacing;
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
     if (!var_desc)
     {

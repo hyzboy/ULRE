@@ -78,6 +78,26 @@ inline Material3DCreateConfig MakeLocalConfig(const Material3DCreateConfig *cfg)
     return cfg ? *cfg : Material3DCreateConfig();
 }
 
+inline PassType BlendModeToPassHint(const BlendMode blend_mode)
+{
+    switch (blend_mode) {
+    case BlendMode::Masked:  return PassType::ForwardMasked;
+    case BlendMode::Dither:  return PassType::ForwardDither;
+    case BlendMode::Opaque:  return PassType::ForwardOpaque;
+    default:                 return PassType::ForwardTransparent;
+    }
+}
+
+inline MaterialVariantKey MakeBillboardKeyBase(const BlendMode blend_mode)
+{
+    MaterialVariantKey key;
+    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
+    key.SetHasTexture(SamplerSlot::BaseColor);
+    key.blend_mode = blend_mode;
+    key.pass_hint = BlendModeToPassHint(blend_mode);
+    return key;
+}
+
 }
 }
 }
