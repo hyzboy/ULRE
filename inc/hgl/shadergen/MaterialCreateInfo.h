@@ -122,12 +122,8 @@ namespace hgl::graph
             bool SetLocalToWorld(const uint32_t shader_stage_flag_bits);
             //bool SetWorldPosition(const uint32_t shader_stage_flag_bits);
 
-            bool AddUBO(const ShaderStage flag_bits,const UBODescriptorSemantic semantic);
-            bool AddUBO(const uint32_t flag_bits,const UBODescriptorSemantic semantic);
             bool AddUBOStruct(const uint32_t flag_bits,const UBODescriptorSemantic semantic);
 
-            bool AddSSBO(const ShaderStage flag_bits,const SSBODescriptorSemantic semantic);
-            bool AddSSBO(const uint32_t flag_bits,const SSBODescriptorSemantic semantic);
             bool AddSSBOStruct(const uint32_t flag_bits,const SSBODescriptorSemantic semantic);
 
             bool AddTexture(const ShaderStage flag_bits,const TextureType &tt,const SamplerSlot slot);

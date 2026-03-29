@@ -1,6 +1,4 @@
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
-#include<vector>
-#include<algorithm>
 #include<unordered_set>
 
 namespace hgl{namespace graph{
@@ -169,72 +167,37 @@ void MaterialDescriptorInfo::Resort()
         descriptor_count+=p.count;
         p.set=set;
 
-        // Collect descriptor pointers
-        std::vector<ShaderDescriptor *> ordered;
-        ordered.reserve(static_cast<size_t>(p.count));
+        // std::map iterates in ascending key (enum integer) order — this is exactly
+        // the desired binding order (builtin semantics inserted via RangeCheck guards).
+        int binding=0;
 
-        for(const auto &kv:p.ubo_descriptor_map)
+        for(auto &kv:p.ubo_descriptor_map)
             if(kv.second)
-                ordered.emplace_back(kv.second);
-
-        for(const auto &kv:p.ssbo_descriptor_map)
-            if(kv.second)
-                ordered.emplace_back(kv.second);
-
-        for(const auto &kv:p.texture_descriptor_map)
-            if(kv.second)
-                ordered.emplace_back(kv.second);
-
-        for(const auto &kv:p.texture_sampler_descriptor_map)
-            if(kv.second)
-                ordered.emplace_back(kv.second);
-
-        // Sort: builtin semantics first in enum order, then unknowns/custom by name
-        std::sort(ordered.begin(),ordered.end(),
-            [](const ShaderDescriptor *a,const ShaderDescriptor *b)->bool
             {
-                const auto *a_ubo=dynamic_cast<const UBODescriptor *>(a);
-                const auto *b_ubo=dynamic_cast<const UBODescriptor *>(b);
+                kv.second->set=set;
+                kv.second->binding=binding++;
+            }
 
-                if(a_ubo&&b_ubo)
-                {
-                    const bool a_builtin=RangeCheck(a_ubo->semantic);
-                    const bool b_builtin=RangeCheck(b_ubo->semantic);
-                    if(a_builtin!=b_builtin)
-                        return a_builtin;
-                    if(a_builtin)
-                        return uint8_t(a_ubo->semantic)<uint8_t(b_ubo->semantic);
-                    return std::strcmp(a->name,b->name)<0;
-                }
+        for(auto &kv:p.ssbo_descriptor_map)
+            if(kv.second)
+            {
+                kv.second->set=set;
+                kv.second->binding=binding++;
+            }
 
-                const auto *a_ssbo=dynamic_cast<const SSBODescriptor *>(a);
-                const auto *b_ssbo=dynamic_cast<const SSBODescriptor *>(b);
+        for(auto &kv:p.texture_descriptor_map)
+            if(kv.second)
+            {
+                kv.second->set=set;
+                kv.second->binding=binding++;
+            }
 
-                if(a_ssbo&&b_ssbo)
-                {
-                    const bool a_builtin=RangeCheck(a_ssbo->semantic);
-                    const bool b_builtin=RangeCheck(b_ssbo->semantic);
-                    if(a_builtin!=b_builtin)
-                        return a_builtin;
-                    if(a_builtin)
-                        return uint8_t(a_ssbo->semantic)<uint8_t(b_ssbo->semantic);
-                    return std::strcmp(a->name,b->name)<0;
-                }
-
-                const bool a_builtin=false;
-                const bool b_builtin=false;
-                if(a_builtin!=b_builtin)
-                    return a_builtin;
-                return std::strcmp(a->name,b->name)<0;
-            });
-
-        int i=0;
-        for(auto *sd:ordered)
-        {
-            sd->set=set;
-            sd->binding=i;
-            ++i;
-        }
+        for(auto &kv:p.texture_sampler_descriptor_map)
+            if(kv.second)
+            {
+                kv.second->set=set;
+                kv.second->binding=binding++;
+            }
 
         ++set;
     }

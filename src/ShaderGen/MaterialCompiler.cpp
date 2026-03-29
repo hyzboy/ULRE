@@ -78,7 +78,7 @@ namespace
         {
             for (const auto semantic : *def.ubo_descriptors)
             {
-                if (!mci->AddUBO(kDefaultDescriptorStageBits, semantic))
+                if (!mci->AddUBOStruct(kDefaultDescriptorStageBits, semantic))
                     return FailAfterMci("AddUBO() failed");
             }
         }
@@ -99,7 +99,7 @@ namespace
                     continue;
                 }
 
-                if (!mci->AddSSBO(kDefaultDescriptorStageBits, semantic))
+                if (!mci->AddSSBOStruct(kDefaultDescriptorStageBits, semantic))
                     return FailAfterMci("AddSSBO() failed");
             }
         }

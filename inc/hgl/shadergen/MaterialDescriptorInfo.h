@@ -77,28 +77,6 @@ public:
         return index < mtl::SamplerSlotCount ? texture_sampler_by_slot[index] : nullptr;
     }
 
-    TextureDescriptor *GetTexture(const std::string &name)
-    {
-        mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
-        return mtl::TryGetSlotFromDescriptorName(name.c_str(), slot) ? GetTexture(slot) : nullptr;
-    }
-    TextureSamplerDescriptor *GetTextureSampler(const std::string &name)
-    {
-        mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
-        return mtl::TryGetSlotFromDescriptorName(name.c_str(), slot) ? GetTextureSampler(slot) : nullptr;
-    }
-
-    TextureDescriptor *GetTexture(const char *name)
-    {
-        mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
-        return (name && mtl::TryGetSlotFromDescriptorName(name, slot)) ? GetTexture(slot) : nullptr;
-    }
-    TextureSamplerDescriptor *GetTextureSampler(const char *name)
-    {
-        mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
-        return (name && mtl::TryGetSlotFromDescriptorName(name, slot)) ? GetTextureSampler(slot) : nullptr;
-    }
-
     UBODescriptor  *GetUBO (mtl::UBODescriptorSemantic semantic);
     SSBODescriptor *GetSSBO(mtl::SSBODescriptorSemantic semantic);
 

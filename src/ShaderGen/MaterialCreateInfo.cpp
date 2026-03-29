@@ -50,8 +50,9 @@ static bool ExecuteOnShadersByStage(
     return expected>0&&result==expected;
 }
 
-static bool ResolveUBOSemanticMeta(
-    const UBODescriptorSemantic semantic,
+template<typename SemanticT>
+static bool ResolveSemanticMeta(
+    const SemanticT semantic,
     const DescriptorSemanticMeta *&meta)
 {
     if(!RangeCheck(semantic))
@@ -69,23 +70,18 @@ static bool ResolveUBOSemanticMeta(
     return true;
 }
 
+static bool ResolveUBOSemanticMeta(
+    const UBODescriptorSemantic semantic,
+    const DescriptorSemanticMeta *&meta)
+{
+    return ResolveSemanticMeta(semantic, meta);
+}
+
 static bool ResolveSSBOSemanticMeta(
     const SSBODescriptorSemantic semantic,
     const DescriptorSemanticMeta *&meta)
 {
-    if(!RangeCheck(semantic))
-        return false;
-
-    const DescriptorSemanticMeta &candidate = GetDescriptorSemanticMeta(semantic);
-
-    if(!candidate.struct_name || !*candidate.struct_name)
-        return false;
-
-    if(!candidate.name || !*candidate.name)
-        return false;
-
-    meta = &candidate;
-    return true;
+    return ResolveSemanticMeta(semantic, meta);
 }
 
 static const UBODescriptor *ResolveUBODescriptor(
@@ -255,15 +251,6 @@ bool MaterialCreateInfo::AddResolvedUBO(const ShaderStage flag_bit,const Descrip
     return sc->AddUBO(ubo);
 }
 
-bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const UBODescriptorSemantic semantic)
-{
-    return AddUBOStruct(uint32_t(flag_bit),semantic);
-}
-
-bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const UBODescriptorSemantic semantic)
-{
-    return AddUBOStruct(flag_bits,semantic);
-}
 
 bool MaterialCreateInfo::AddResolvedUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const UBODescriptorSemantic semantic,const std::string &struct_name,const std::string &name)
 {
@@ -312,15 +299,6 @@ bool MaterialCreateInfo::AddResolvedSSBO(const ShaderStage flag_bit,const Descri
     return sc->AddSSBO(ssbo);
 }
 
-bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const SSBODescriptorSemantic semantic)
-{
-    return AddSSBOStruct(uint32_t(flag_bit),semantic);
-}
-
-bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const SSBODescriptorSemantic semantic)
-{
-    return AddSSBOStruct(flag_bits,semantic);
-}
 
 bool MaterialCreateInfo::AddResolvedSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const SSBODescriptorSemantic semantic,const std::string &struct_name,const std::string &name)
 {
@@ -410,12 +388,11 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
 
     if(data_bytes==0)return(false);
 
-    if(data_bytes>0&&glsl_codes.size()<4)return(false);
+    if(glsl_codes.size()<4)return(false);
 
     material_instance_stride=data_bytes;
 
-    if(data_bytes>0)
-        material_instance_glsl=glsl_codes;
+    material_instance_glsl=glsl_codes;
 
     if(!descriptor_db.AddSSBOStruct(SSBODescriptorSemantic::MaterialInstanceData))
         return false;
