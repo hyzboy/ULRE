@@ -32,8 +32,6 @@ StandardVariantPolicyResult BuildStandardVariantPolicy(const MaterialVariantKey 
     config.surface = SurfaceType::Standard;
     config.slot_rules = kStandardSlotRules;
     config.slot_rule_count = uint32(sizeof(kStandardSlotRules) / sizeof(kStandardSlotRules[0]));
-    config.normalize_controlled_slots_to_any_array = true;
-    config.force_has_texture_for_controlled_slots = true;
     config.any_array_checks_all_slots = false;
 
     const GenericVariantPolicyResult generic = BuildGenericVariantPolicy(input_key, config);

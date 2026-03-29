@@ -25,12 +25,6 @@ struct GenericVariantPolicyConfig
     const GenericVariantPolicySlotRule *slot_rules = nullptr;
     uint32 slot_rule_count = 0;
 
-    // Backward-compatible fallback: used only when slot_rules is empty.
-    const SamplerSlot *controlled_slots = nullptr;
-    uint32 controlled_slot_count = 0;
-
-    bool normalize_controlled_slots_to_any_array = true;
-    bool force_has_texture_for_controlled_slots = true;
     bool any_array_checks_all_slots = false;
 };
 
