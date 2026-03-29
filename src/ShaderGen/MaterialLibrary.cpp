@@ -317,28 +317,41 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
 
     (void)s_preset_resolve_table_ok;
 
-    const MaterialPresetMeta *meta=FindMaterialPresetMeta(mtl_id);
-    if(!meta||!meta->make_key)
+    // Commit B: table-first mapping path.
+    const PresetResolveEntry *entry=FindPresetResolveEntry(mtl_id);
+    if(entry&&entry->make_key)
     {
-        // Commit A: side-by-side table is available but legacy path remains primary.
-        const PresetResolveEntry *entry=FindPresetResolveEntry(mtl_id);
-        if(entry&&entry->make_key)
-            return entry->make_key();
-
-        return MaterialVariantKey{};
+        return entry->make_key();
     }
 
-    return meta->make_key();
+    // Legacy fallback path retained for compatibility while migrating.
+    const MaterialPresetMeta *meta=FindMaterialPresetMeta(mtl_id);
+    if(meta&&meta->make_key)
+    {
+        std::fprintf(stderr,
+            "[MaterialLibrary] WARNING: MapPresetToVariantKey fallback hit preset=%u (%s)\n",
+            static_cast<unsigned>(mtl_id),
+            meta->name?meta->name:"<null>");
+        return meta->make_key();
+    }
+
+    std::fprintf(stderr,
+        "[MaterialLibrary] ERROR: MapPresetToVariantKey failed preset=%u\n",
+        static_cast<unsigned>(mtl_id));
+    return MaterialVariantKey{};
 }
 
 const char *GetMaterialPresetName(const MaterialPreset mtl_id)
 {
+    const PresetResolveEntry *entry=FindPresetResolveEntry(mtl_id);
+    if(entry)
+        return entry->name;
+
     const MaterialPresetMeta *meta=FindMaterialPresetMeta(mtl_id);
     if(meta)
         return meta->name;
 
-    const PresetResolveEntry *entry=FindPresetResolveEntry(mtl_id);
-    return entry?entry->name:nullptr;
+    return nullptr;
 }
 
 MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileLite *profile,
@@ -506,6 +519,16 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                              const MaterialPreset mtl_id,
                                              MaterialCreateConfig *cfg)
 {
+    const PresetResolveEntry *entry=FindPresetResolveEntry(mtl_id);
+    if(entry&&entry->canonical_preset!=mtl_id)
+    {
+        std::printf(
+            "[MaterialLibrary] Preset alias resolved preset=%u (%s) -> canonical=%u (lod=0)\n",
+            static_cast<unsigned>(mtl_id),
+            entry->name?entry->name:"<null>",
+            static_cast<unsigned>(entry->canonical_preset));
+    }
+
     MaterialVariantKey key = MapPresetToVariantKey(mtl_id);
 
     ApplyCreateConfigToVariantKey(key, cfg);
