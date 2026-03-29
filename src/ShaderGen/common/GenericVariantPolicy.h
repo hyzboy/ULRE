@@ -8,10 +8,24 @@
 namespace hgl::graph::mtl
 {
 
+struct GenericVariantPolicySlotRule
+{
+    SamplerSlot slot = SamplerSlot::BaseColor;
+
+    bool participates_in_any_array = true;
+    bool normalize_route_mode_to_any_array = true;
+    bool force_route_has_texture = true;
+    bool copy_resolved_mode_to_assemble = true;
+};
+
 struct GenericVariantPolicyConfig
 {
     SurfaceType surface = SurfaceType::Standard;
 
+    const GenericVariantPolicySlotRule *slot_rules = nullptr;
+    uint32 slot_rule_count = 0;
+
+    // Backward-compatible fallback: used only when slot_rules is empty.
     const SamplerSlot *controlled_slots = nullptr;
     uint32 controlled_slot_count = 0;
 

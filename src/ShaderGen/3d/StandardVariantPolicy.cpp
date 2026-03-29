@@ -9,15 +9,29 @@ namespace hgl::graph::mtl
 
 StandardVariantPolicyResult BuildStandardVariantPolicy(const MaterialVariantKey &input_key)
 {
-    constexpr SamplerSlot kStandardControlledSlots[] = {
-        SamplerSlot::BaseColor,
-        SamplerSlot::Normal,
+    // Keep Standard schema-fixed: these rules model BaseColor+Normal only.
+    // Additional texture semantics should be introduced as a separate material type.
+    constexpr GenericVariantPolicySlotRule kStandardSlotRules[] = {
+        {
+            SamplerSlot::BaseColor,
+            true,
+            true,
+            true,
+            true,
+        },
+        {
+            SamplerSlot::Normal,
+            true,
+            true,
+            true,
+            true,
+        },
     };
 
     GenericVariantPolicyConfig config;
     config.surface = SurfaceType::Standard;
-    config.controlled_slots = kStandardControlledSlots;
-    config.controlled_slot_count = uint32(sizeof(kStandardControlledSlots) / sizeof(kStandardControlledSlots[0]));
+    config.slot_rules = kStandardSlotRules;
+    config.slot_rule_count = uint32(sizeof(kStandardSlotRules) / sizeof(kStandardSlotRules[0]));
     config.normalize_controlled_slots_to_any_array = true;
     config.force_has_texture_for_controlled_slots = true;
     config.any_array_checks_all_slots = false;

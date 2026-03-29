@@ -57,12 +57,14 @@ namespace
     };
 
     // Ordered list of texture slots used by the Standard material.
-    // Texture sampler descriptors are built from this list at variant-creation time.
+    // Standard is a schema-fixed material: extending slots (e.g. Emissive/ORM) means a new material type,
+    // not an in-place quality/feature variant inside Standard.
     constexpr SamplerSlot STANDARD_TEX_SLOTS[] = {
         SamplerSlot::BaseColor,
         SamplerSlot::Normal,
     };
     constexpr uint32_t STANDARD_TEX_SLOT_COUNT = uint32_t(sizeof(STANDARD_TEX_SLOTS) / sizeof(STANDARD_TEX_SLOTS[0]));
+    static_assert(STANDARD_TEX_SLOT_COUNT == 2, "Standard material slot schema is fixed (BaseColor + Normal).");
 
     const FixedMaterialDef STANDARD_DEF_TEMPLATE {
         "Standard_v1",
@@ -151,6 +153,11 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     const StandardVariantPolicyResult &policy = direct_policy;
 #endif
 
+    const TextureSourceMode standard_tex_slot_modes[] = {
+        policy.resolved_base,
+        policy.resolved_normal,
+    };
+
     Material3DCreateConfig cfg_with_mi;
     SkyLightAmbientModel ambient = SkyLightAmbientModel::Simple;
     LightingModel lighting = LightingModel::Lambert;
@@ -163,10 +170,10 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     BuildStandardDescriptorState(
         cfg,
-        policy.resolved_base,
-        policy.resolved_normal,
         STANDARD_TEX_SLOTS,
+        standard_tex_slot_modes,
         STANDARD_TEX_SLOT_COUNT,
+        policy.any_array,
         STANDARD_BASE_SSBOS,
         cfg_with_mi,
         ambient,

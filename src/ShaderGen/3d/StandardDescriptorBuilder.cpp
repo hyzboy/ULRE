@@ -9,10 +9,10 @@ namespace hgl::graph::mtl
 
 void BuildStandardDescriptorState(
     const Material3DCreateConfig *cfg,
-    const TextureSourceMode resolved_base,
-    const TextureSourceMode resolved_normal,
     const SamplerSlot *tex_slots,
+    const TextureSourceMode *tex_slot_modes,
     const uint32_t tex_slot_count,
+    const bool policy_any_array,
     const FixedSSBODescriptors &base_ssbos,
     Material3DCreateConfig &cfg_with_mi,
     SkyLightAmbientModel &ambient,
@@ -28,17 +28,10 @@ void BuildStandardDescriptorState(
     ambient = cfg_with_mi.sky_ambient_model;
     lighting = cfg_with_mi.lighting_model;
 
-    const bool base_is_array = resolved_base == TextureSourceMode::Array;
-    const bool normal_is_array = resolved_normal == TextureSourceMode::Array;
-    any_array = base_is_array || normal_is_array;
+    any_array = policy_any_array;
 
     dynamic_ssbos = base_ssbos;
     dynamic_samplers.clear();
-
-    const TextureSourceMode tex_slot_modes[] = {
-        resolved_base,
-        resolved_normal,
-    };
 
     for (uint32_t i = 0; i < tex_slot_count; ++i)
     {
