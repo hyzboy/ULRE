@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/mtl/FixedMaterialDef.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/new/MaterialVariantKey.h>
 
 namespace hgl
@@ -62,6 +63,19 @@ inline MaterialVariantKey MakeVariantKeyWithAttrib(const VertexAttrib attrib)
     MaterialVariantKey key{};
     key.SetVertexAttribEnabled(attrib);
     return key;
+}
+
+inline MaterialVariantKey MakeVariantKeyWithAttribAndDebug(const VertexAttrib attrib)
+{
+    MaterialVariantKey key{};
+    key.SetVertexAttribEnabled(attrib);
+    key.SetDebugShading(true);
+    return key;
+}
+
+inline Material3DCreateConfig MakeLocalConfig(const Material3DCreateConfig *cfg)
+{
+    return cfg ? *cfg : Material3DCreateConfig();
 }
 
 }
