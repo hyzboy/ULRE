@@ -1,6 +1,4 @@
 #include "StandardProfileAdapter.h"
-#include <hgl/mtl/MaterialRuntimeContext.h>
-
 
 namespace hgl::graph::mtl
 {

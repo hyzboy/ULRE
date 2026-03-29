@@ -12,7 +12,6 @@ namespace hgl::graph::mtl{
 
 struct MaterialCreateConfig;
 class MaterialCreateInfo;
-struct MaterialRuntimeContext;
 
 /// 仅声明材质创建函数，不产生任何注册或全局常量副作用。
 #define DECLARE_MATERIAL_CREATOR(name,cfg_type) \
@@ -30,24 +29,10 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                              const MaterialPreset mtl_id,
                                              MaterialCreateConfig *cfg);
 
-// Runtime-context pass-through entry (Stage D placeholder).
-// Current ShaderGen common layer does not execute policy selection; context is reserved
-// for forward/VBuffer path-specific strategy owners.
-MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                             const MaterialPreset mtl_id,
-                                             MaterialCreateConfig *cfg,
-                                             const MaterialRuntimeContext *runtime_context);
-
 // Low-level entry path: callers already know the exact variant/shader-facing routing key.
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialVariantKey &key,
                                              MaterialCreateConfig *cfg);
-
-// Runtime-context pass-through entry (Stage D placeholder) for explicit variant keys.
-MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                             const MaterialVariantKey &key,
-                                             MaterialCreateConfig *cfg,
-                                             const MaterialRuntimeContext *runtime_context);
 
 // Bootstrap-only global fallback. This exists so the current program can run with a single built-in
 // material implementation level. It should not be treated as the final architecture for forward,

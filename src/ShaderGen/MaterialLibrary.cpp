@@ -648,15 +648,6 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     return nullptr;
 }
 
-MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                             const MaterialVariantKey &key,
-                                             MaterialCreateConfig *cfg,
-                                             const MaterialRuntimeContext *runtime_context)
-{
-    (void)runtime_context;
-    return CreateMaterialCreateInfo(profile, key, cfg);
-}
-
 void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreateConfig *cfg)
 {
     if (!cfg)
@@ -714,15 +705,6 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     ApplyCreateConfigToVariantKey(key, cfg);
 
     return CreateMaterialCreateInfo(profile, key, cfg);
-}
-
-MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                             const MaterialPreset mtl_id,
-                                             MaterialCreateConfig *cfg,
-                                             const MaterialRuntimeContext *runtime_context)
-{
-    (void)runtime_context;
-    return CreateMaterialCreateInfo(profile, mtl_id, cfg);
 }
 
 }//namespace hgl::graph::mtl
