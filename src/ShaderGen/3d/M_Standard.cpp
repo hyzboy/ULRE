@@ -8,9 +8,16 @@
 #include <cstdio>
 #include <vector>
 
-#include "../common/MFSkyLight.h"
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/SamplerName.h>
+
+#include "StandardDescriptorBuilder.h"
+#include "StandardProfileAdapter.h"
+#include "StandardVariantPolicy.h"
+
+#ifndef ULRE_STANDARD_USE_PROFILE_ADAPTER
+#define ULRE_STANDARD_USE_PROFILE_ADAPTER 0
+#endif
 
 namespace hgl::graph::mtl{
 namespace
@@ -82,80 +89,76 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         std::fprintf(stderr, "[Standard] CreateStandardVariant warning: profile is null\n");
     }
 
-    const TextureSourceMode base_mode = input_key.GetTextureSourceMode(SamplerSlot::BaseColor);
-    const TextureSourceMode normal_mode = input_key.GetTextureSourceMode(SamplerSlot::Normal);
+    StandardVariantPolicyResult policy;
 
-    const TextureSourceMode resolved_base = base_mode;
-    const TextureSourceMode resolved_normal = normal_mode;
+#if ULRE_STANDARD_USE_PROFILE_ADAPTER
+    {
+        const MaterialProfileAsset profile = BuildBuiltinStandardDefaultProfile();
+        std::vector<std::string> profile_diagnostics;
+        if (!BuildStandardPolicyFromProfile(profile, input_key, policy, profile_diagnostics))
+        {
+            std::fprintf(stderr, "[Standard] BuildStandardPolicyFromProfile failed\n");
+            for (const auto &msg : profile_diagnostics)
+                std::fprintf(stderr, "[Standard] %s\n", msg.c_str());
+            return nullptr;
+        }
+    }
+#else
+    policy = BuildStandardVariantPolicy(input_key);
+#endif
 
-    const bool base_is_array = resolved_base == TextureSourceMode::Array;
-    const bool normal_is_array = resolved_normal == TextureSourceMode::Array;
-    const bool any_array = base_is_array || normal_is_array;
-
-    Material3DCreateConfig cfg_with_mi = cfg ? *cfg : Material3DCreateConfig();
-    cfg_with_mi.material_instance = true;
-
-    SkyLightAmbientModel ambient = cfg_with_mi.sky_ambient_model;
-    LightingModel lighting = cfg_with_mi.lighting_model;
+    Material3DCreateConfig cfg_with_mi;
+    SkyLightAmbientModel ambient = SkyLightAmbientModel::Simple;
+    LightingModel lighting = LightingModel::Lambert;
 
     // Start with stable non-texture descriptors, then append texture entries.
-    FixedSSBODescriptors dynamic_ssbos = STANDARD_BASE_SSBOS;
+    FixedSSBODescriptors dynamic_ssbos;
     FixedTextureSamplerDescriptors dynamic_samplers;
-
-    // Per-slot resolved modes, in the same order as STANDARD_TEX_SLOTS.
-    const TextureSourceMode tex_slot_modes[STANDARD_TEX_SLOT_COUNT] = {
-        resolved_base, resolved_normal
-    };
-    for (uint32_t i = 0; i < STANDARD_TEX_SLOT_COUNT; ++i)
-        AddFixedTextureSampler(dynamic_samplers, STANDARD_TEX_SLOTS[i], tex_slot_modes[i] == TextureSourceMode::Array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D);
-
-    // When any slot is Array the MIT SSBO provides per-instance layer indices.
-    if (any_array)
-        AddFixedSSBODescriptor(dynamic_ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID);
-
     std::vector<const char *> unused_resources;
-    ApplySkyLightResourceInjection(
-        GetSkyLightResourceInjectionSpec(ambient),
+    bool any_array = false;
+
+    BuildStandardDescriptorState(
+        cfg,
+        policy.resolved_base,
+        policy.resolved_normal,
+        STANDARD_TEX_SLOTS,
+        STANDARD_TEX_SLOT_COUNT,
+        STANDARD_BASE_SSBOS,
+        cfg_with_mi,
+        ambient,
+        lighting,
+        dynamic_ssbos,
         dynamic_samplers,
-        unused_resources);
+        unused_resources,
+        any_array);
 
-    FixedMaterialDef dynamic_def = STANDARD_DEF_TEMPLATE;
-    dynamic_def.ssbo_descriptors        = &dynamic_ssbos;
-    dynamic_def.texture_samplers        = &dynamic_samplers;
-    dynamic_def.mi_glsl_codes           = mi_codes_simple;
-    dynamic_def.mi_struct_bytes         = mi_bytes_simple;
-    dynamic_def.name                    = any_array ? "StandardTextureArray_v1" : "Standard_v1";
+    FixedMaterialDef dynamic_def = BuildStandardDynamicDef(
+        STANDARD_DEF_TEMPLATE,
+        dynamic_ssbos,
+        dynamic_samplers,
+        mi_codes_simple,
+        mi_bytes_simple,
+        any_array);
 
-    MaterialVariantKey route_key = input_key;
-    route_key.surface_type        = SurfaceType::Standard;
-    route_key.SetTextureSourceMode(SamplerSlot::BaseColor, any_array ? TextureSourceMode::Array : TextureSourceMode::Simple);
-    route_key.SetTextureSourceMode(SamplerSlot::Normal, any_array ? TextureSourceMode::Array : TextureSourceMode::Simple);
-    route_key.SetHasTexture(SamplerSlot::BaseColor);
-    route_key.SetHasTexture(SamplerSlot::Normal);
-
-    MaterialVariantKey assemble_key = route_key;
-    assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, resolved_base);
-    assemble_key.SetTextureSourceMode(SamplerSlot::Normal,    resolved_normal);
-
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(route_key);
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(policy.route_key);
     if (!var_desc)
     {
         std::fprintf(stderr,
             "[Standard] VariantRegistry lookup failed (route_hash=%llu surface=%u geom=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X any_array=%d)\n",
-            static_cast<unsigned long long>(route_key.Hash()),
-            static_cast<unsigned>(route_key.surface_type),
-            static_cast<unsigned>(route_key.geometry_mode),
-            route_key.texture_source_bits,
-            route_key.sampler_feature_bits,
-            route_key.vertex_attribute_feature_bits,
-            route_key.extra_feature_bits,
+            static_cast<unsigned long long>(policy.route_key.Hash()),
+            static_cast<unsigned>(policy.route_key.surface_type),
+            static_cast<unsigned>(policy.route_key.geometry_mode),
+            policy.route_key.texture_source_bits,
+            policy.route_key.sampler_feature_bits,
+            policy.route_key.vertex_attribute_feature_bits,
+            policy.route_key.extra_feature_bits,
             any_array ? 1 : 0);
         return nullptr;
     }
 
     CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(assemble_key, *var_desc, ambient, lighting);
+    auto result = assembler.Assemble(policy.assemble_key, *var_desc, ambient, lighting);
 
     if (!result.success)
     {
@@ -201,7 +204,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     return mci;
 }
 
-// Unified factory �?TextureSourceMode::Simple  -> sampler2D  (classic single-texture Standard)
+// Unified factory  TextureSourceMode::Simple  -> sampler2D  (classic single-texture Standard)
 //                  TextureSourceMode::Array   -> sampler2DArray (texture-atlas / array Standard)
 MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *profile,
                                    const Material3DCreateConfig *cfg,
@@ -214,7 +217,7 @@ MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *pr
     return CreateStandardVariant(profile, key, cfg);
 }
 
-// Compat wrappers �?keep the two named entry-points so MaterialLibrary.cpp
+// Compat wrappers keep the two named entry-points so MaterialLibrary.cpp
 // does not need to change its dispatch table.
 MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *profile,
                                    const Material3DCreateConfig *cfg)
