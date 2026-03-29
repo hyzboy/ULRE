@@ -34,22 +34,22 @@ MaterialDescriptorInfo::~MaterialDescriptorInfo()
                 delete sd;
         };
 
-        for(auto &kv:set.ubo_descriptor_map)
-            release_descriptor(kv.second);
+        for(auto *d:set.ubo_descriptor_map)
+            release_descriptor(d);
 
-        for(auto &kv:set.ssbo_descriptor_map)
-            release_descriptor(kv.second);
+        for(auto *d:set.ssbo_descriptor_map)
+            release_descriptor(d);
 
-        for(auto &kv:set.texture_descriptor_map)
-            release_descriptor(kv.second);
+        for(auto *d:set.texture_descriptor_map)
+            release_descriptor(d);
 
-        for(auto &kv:set.texture_sampler_descriptor_map)
-            release_descriptor(kv.second);
+        for(auto *d:set.texture_sampler_descriptor_map)
+            release_descriptor(d);
 
-        set.ubo_descriptor_map.clear();
-        set.ssbo_descriptor_map.clear();
-        set.texture_descriptor_map.clear();
-        set.texture_sampler_descriptor_map.clear();
+        for(auto &p:set.ubo_descriptor_map) p=nullptr;
+        for(auto &p:set.ssbo_descriptor_map) p=nullptr;
+        for(auto &p:set.texture_descriptor_map) p=nullptr;
+        for(auto &p:set.texture_sampler_descriptor_map) p=nullptr;
         set.count=0;
         set.set=-1;
     }
@@ -167,37 +167,20 @@ void MaterialDescriptorInfo::Resort()
         descriptor_count+=p.count;
         p.set=set;
 
-        // std::map iterates in ascending key (enum integer) order — this is exactly
-        // the desired binding order (builtin semantics inserted via RangeCheck guards).
+        // Array indices are ascending enum order — exactly the desired binding order.
         int binding=0;
 
-        for(auto &kv:p.ubo_descriptor_map)
-            if(kv.second)
-            {
-                kv.second->set=set;
-                kv.second->binding=binding++;
-            }
+        for(auto *d:p.ubo_descriptor_map)
+            if(d) { d->set=set; d->binding=binding++; }
 
-        for(auto &kv:p.ssbo_descriptor_map)
-            if(kv.second)
-            {
-                kv.second->set=set;
-                kv.second->binding=binding++;
-            }
+        for(auto *d:p.ssbo_descriptor_map)
+            if(d) { d->set=set; d->binding=binding++; }
 
-        for(auto &kv:p.texture_descriptor_map)
-            if(kv.second)
-            {
-                kv.second->set=set;
-                kv.second->binding=binding++;
-            }
+        for(auto *d:p.texture_descriptor_map)
+            if(d) { d->set=set; d->binding=binding++; }
 
-        for(auto &kv:p.texture_sampler_descriptor_map)
-            if(kv.second)
-            {
-                kv.second->set=set;
-                kv.second->binding=binding++;
-            }
+        for(auto *d:p.texture_sampler_descriptor_map)
+            if(d) { d->set=set; d->binding=binding++; }
 
         ++set;
     }

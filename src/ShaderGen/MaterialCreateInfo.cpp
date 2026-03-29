@@ -373,6 +373,18 @@ bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const Samp
     return sc->AddTextureSampler(image_sampler);
 }
 
+bool MaterialCreateInfo::AddTextureSampler(const uint32_t flag_bits,const SamplerType &st,const SamplerSlot slot,const TextureChannelHint channel_hint)
+{
+    RANGE_CHECK_RETURN_FALSE(st);
+    RANGE_CHECK_RETURN_FALSE(slot);
+
+    return ExecuteOnShadersByStage(shader_map,flag_bits,
+        [&](const ShaderStage stage)
+        {
+            return AddTextureSampler(stage,st,slot,channel_hint);
+        });
+}
+
 /**
 * 设置材质实例代码与数据长度
 * @param glsl_codes     材质实例GLSL代码
@@ -414,6 +426,26 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
     material_instance_stage_bits=shader_stage_flag_bits;
 
     return(true);
+}
+
+void MaterialCreateInfo::BuildBindingContract()
+{
+    binding_contract.ubos.clear();
+    binding_contract.ssbos.clear();
+
+    for(size_t i=0;i<UBODescriptorSemanticCount;++i)
+    {
+        const UBODescriptor *d = descriptor_db.GetUBO(UBODescriptorSemantic(i));
+        if(d)
+            binding_contract.ubos[UBODescriptorSemantic(i)] = d->stage_flag;
+    }
+
+    for(size_t i=0;i<SSBODescriptorSemanticCount;++i)
+    {
+        const SSBODescriptor *d = descriptor_db.GetSSBO(SSBODescriptorSemantic(i));
+        if(d)
+            binding_contract.ssbos[SSBODescriptorSemantic(i)] = d->stage_flag;
+    }
 }
 
 bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)

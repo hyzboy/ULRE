@@ -1,6 +1,5 @@
 #pragma once
 
-#include <map>
 #include <vulkan/vulkan.h>
 #include <hgl/common/DescriptorSetTypeDef.h>
 #include <hgl/mtl/DescriptorBindingContract.h>
@@ -153,10 +152,10 @@ namespace hgl::graph
         int set;
         int count;
 
-        std::map<mtl::UBODescriptorSemantic,UBODescriptor*>    ubo_descriptor_map;
-        std::map<mtl::SSBODescriptorSemantic,SSBODescriptor*>  ssbo_descriptor_map;
-        std::map<mtl::SamplerSlot,TextureDescriptor*>          texture_descriptor_map;
-        std::map<mtl::SamplerSlot,TextureSamplerDescriptor*>   texture_sampler_descriptor_map;
+        UBODescriptor           *ubo_descriptor_map             [mtl::UBODescriptorSemanticCount]  = {};
+        SSBODescriptor          *ssbo_descriptor_map            [mtl::SSBODescriptorSemanticCount] = {};
+        TextureDescriptor       *texture_descriptor_map         [mtl::SamplerSlotCount]            = {};
+        TextureSamplerDescriptor *texture_sampler_descriptor_map[mtl::SamplerSlotCount]            = {};
 
     public:
 

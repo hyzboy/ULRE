@@ -111,39 +111,12 @@ namespace
                 if (!RangeCheck(descriptor.sampler_type))
                     return FailAfterMci("texture sampler slot has invalid SamplerType");
 
-
-                // Add to existing shader stages
-                if (mci->hasVertex())
+                if (!mci->AddTextureSampler(mci->GetShaderStage(),
+                                            descriptor.sampler_type,
+                                            slot,
+                                            descriptor.channel_hint))
                 {
-                    if (!mci->AddTextureSampler(ShaderStage::Vertex,
-                                                descriptor.sampler_type,
-                                                slot,
-                                                descriptor.channel_hint))
-                    {
-                        return FailAfterMci("AddTextureSampler(slot) to Vertex failed");
-                    }
-                }
-
-                if (mci->hasFragment())
-                {
-                    if (!mci->AddTextureSampler(ShaderStage::Fragment,
-                                                descriptor.sampler_type,
-                                                slot,
-                                                descriptor.channel_hint))
-                    {
-                        return FailAfterMci("AddTextureSampler(slot) to Fragment failed");
-                    }
-                }
-
-                if (mci->hasShader(ShaderStage::Geometry))
-                {
-                    if (!mci->AddTextureSampler(ShaderStage::Geometry,
-                                                descriptor.sampler_type,
-                                                slot,
-                                                descriptor.channel_hint))
-                    {
-                        return FailAfterMci("AddTextureSampler(slot) to Geometry failed");
-                    }
+                    return FailAfterMci("AddTextureSampler(slot) failed");
                 }
             }
         }
@@ -175,20 +148,7 @@ namespace
         if (frag)
             frag->SetFinalGLSL(fs_glsl);
 
-        {
-            BindingContract contract;
-            if (def.ubo_descriptors)
-            {
-                for (const auto semantic : *def.ubo_descriptors)
-                    contract.ubos[semantic] = kDefaultDescriptorStageBits;
-            }
-            if (def.ssbo_descriptors)
-            {
-                for (const auto semantic : *def.ssbo_descriptors)
-                    contract.ssbos[semantic] = kDefaultDescriptorStageBits;
-            }
-            mci->SetBindingContract(contract);
-        }
+        mci->BuildBindingContract();
 
         if (!InjectLayoutDefines(*mci))
             return FailAfterMci("InjectLayoutDefines() failed");

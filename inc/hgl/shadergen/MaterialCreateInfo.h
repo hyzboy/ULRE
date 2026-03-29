@@ -94,7 +94,9 @@ namespace hgl::graph
             const MaterialDescriptorInfo &GetDescriptorInfo()const{return descriptor_db;}
             const BindingContract &GetBindingContract()const{return binding_contract;}
 
-            void SetBindingContract(const BindingContract &contract){binding_contract=contract;}
+            /// Populate binding_contract from the actual descriptors in descriptor_db.
+            /// Call after all AddUBOStruct / AddSSBOStruct / AddTextureSampler calls.
+            void BuildBindingContract();
 
             /// Delegates to descriptor_db.Resort() — finalises set and binding numbers.
             /// Call this before BuildShaderLayoutContract() if you need layout numbers
@@ -128,6 +130,7 @@ namespace hgl::graph
 
             bool AddTexture(const ShaderStage flag_bits,const TextureType &tt,const SamplerSlot slot);
             bool AddTextureSampler(const ShaderStage flag_bits,const SamplerType &st,const SamplerSlot slot,const TextureChannelHint channel_hint=TextureChannelHint::RGBA);
+            bool AddTextureSampler(const uint32_t flag_bits,const SamplerType &st,const SamplerSlot slot,const TextureChannelHint channel_hint=TextureChannelHint::RGBA);
 
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
         };//class MaterialCreateInfo
