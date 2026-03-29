@@ -46,22 +46,20 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     build2d::PushBaseVertexEntries(vertices, &new_cfg);
     vertices.push_back({VAT_VEC2, VAN::TexCoord});
 
+    FixedMaterialDef def{};
     FixedUBODescriptors ubos;
     FixedSSBODescriptors ssbos;
     FixedTextureSamplerDescriptors samplers;
-    build2d::PushBaseUBODescriptors(ubos, &new_cfg);
-    build2d::PushBaseSSBODescriptors(ssbos, &new_cfg);
     AddFixedTextureSampler(samplers, SamplerSlot::Text, SamplerType::Sampler2D);
-
-    FixedMaterialDef def {
-        "Text2D",
-        new_cfg.prim,
-        vertices.data(), uint32_t(vertices.size()),
-        &ubos,
-        &ssbos,
-        &samplers,
-        mi_codes, mi_bytes,
-    };
+    build2d::BuildBase2DFixedDef(def,
+                                 "Text2D",
+                                 &new_cfg,
+                                 vertices,
+                                 ubos,
+                                 ssbos,
+                                 &samplers,
+                                 mi_codes,
+                                 mi_bytes);
 
     std::string vs = vs_preamble + result.vertex_glsl;
     std::string fs = fs_preamble + result.fragment_glsl;
