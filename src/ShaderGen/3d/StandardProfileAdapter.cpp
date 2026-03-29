@@ -1,4 +1,6 @@
 #include "StandardProfileAdapter.h"
+#include <hgl/mtl/MaterialRuntimeContext.h>
+
 
 namespace hgl::graph::mtl
 {
@@ -26,6 +28,14 @@ MaterialProfileAsset BuildBuiltinStandardDefaultProfile()
 
     profile.slots.push_back(base_color);
     profile.slots.push_back(normal);
+
+    // Stage D.2: Bootstrap single candidate implementation (Standard)
+    MaterialImplementationCandidate std_impl;
+    std_impl.impl_id = "Standard";
+    std_impl.surface = SurfaceType::Standard;
+    // No slot mode requirements: Standard works with both Simple and Array modes
+
+    profile.implementations.push_back(std_impl);
     return profile;
 }
 

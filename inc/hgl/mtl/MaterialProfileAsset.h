@@ -63,24 +63,11 @@ struct MaterialParamSpec
 
 struct MaterialRuntimeHints
 {
-    bool allow_object_level_downgrade = true;
-    bool allow_tile_level_downgrade = true;
-    bool allow_pixel_level_downgrade = true;
-
     std::vector<uint8> lod_chain;
 };
 
 struct MaterialImplementationCandidate
 {
-    enum class CostClass : uint8
-    {
-        Low = 0,
-        Medium,
-        High,
-
-        ENUM_CLASS_RANGE(Low, High)
-    };
-
     struct SlotModeRequirement
     {
         SamplerSlot slot = SamplerSlot::BaseColor;
@@ -89,7 +76,6 @@ struct MaterialImplementationCandidate
 
     std::string impl_id;
     hgl::graph::SurfaceType surface = hgl::graph::SurfaceType::Standard;
-    CostClass cost = CostClass::Medium;
 
     std::vector<SlotModeRequirement> slot_mode_requirements;
 };

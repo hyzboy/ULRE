@@ -119,6 +119,7 @@ SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             ShaderPermutationKey.cpp
                             ${STD_MTL_HEADER_PATH}/MaterialLibrary.h
                             ${STD_MTL_HEADER_PATH}/MaterialProfileAsset.h
+                            ${STD_MTL_HEADER_PATH}/MaterialRuntimeContext.h
                             ${STD_MTL_HEADER_PATH}/MaterialPreset.h
                             ${STD_MTL_HEADER_PATH}/MaterialVariantDesc.h
                             ${MTL_TYPE_INCLUDE_PATH}/MaterialVariantKey.h

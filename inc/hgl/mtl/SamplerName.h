@@ -27,8 +27,9 @@ namespace hgl::graph::mtl
         Simple,
         Array,
         Atlas,
+        PCG,
 
-        ENUM_CLASS_RANGE(None, Atlas)
+        ENUM_CLASS_RANGE(None, PCG)
     };
 
     constexpr size_t SamplerSlotCount = size_t(SamplerSlot::RANGE_SIZE);
