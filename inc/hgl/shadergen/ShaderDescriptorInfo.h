@@ -3,7 +3,6 @@
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/common/ShaderDescriptorDef.h>
 #include <hgl/common/VertexInputDef.h>
-#include <hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/mtl/ShaderVariableType.h>
 #include<ankerl/unordered_dense.h>
 #include<vector>
@@ -55,10 +54,10 @@ public:
 
 public:
 
-    bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
-    bool AddSSBO(DescriptorSetType type,const SSBODescriptor *sd);
-    bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);
-    bool AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sd);
+    bool AddUBO(const UBODescriptor *sd);
+    bool AddSSBO(const SSBODescriptor *sd);
+    bool AddTexture(const TextureDescriptor *sd);
+    bool AddTextureSampler(const TextureSamplerDescriptor *sd);
 
     bool AddConstValue(ConstValueDescriptor *sd);
 

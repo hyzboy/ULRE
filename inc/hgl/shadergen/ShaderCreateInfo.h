@@ -3,7 +3,6 @@
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/common/InterpolationDef.h>
-#include <hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/log/Log.h>
 #include<string>
 
@@ -49,10 +48,10 @@ public:
     ShaderCreateInfo(ShaderDescriptorInfo *sdi,MaterialDescriptorInfo *m);
     virtual ~ShaderCreateInfo();
 
-    bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
-    bool AddSSBO(DescriptorSetType type,const SSBODescriptor *sd);
-    bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);
-    bool AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sd);
+    bool AddUBO(const UBODescriptor *sd);
+    bool AddSSBO(const SSBODescriptor *sd);
+    bool AddTexture(const TextureDescriptor *sd);
+    bool AddTextureSampler(const TextureSamplerDescriptor *sd);
 
     void SetMaterialInstance(UBODescriptor *);
     void SetMaterialInstance(SSBODescriptor *);

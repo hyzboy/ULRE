@@ -252,7 +252,7 @@ bool MaterialCreateInfo::AddResolvedUBO(const ShaderStage flag_bit,const Descrip
     if(!ubo)
         return false;
 
-    return sc->AddUBO(set_type,ubo);
+    return sc->AddUBO(ubo);
 }
 
 bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const UBODescriptorSemantic semantic)
@@ -309,7 +309,7 @@ bool MaterialCreateInfo::AddResolvedSSBO(const ShaderStage flag_bit,const Descri
     if(!ssbo)
         return false;
 
-    return sc->AddSSBO(set_type,ssbo);
+    return sc->AddSSBO(ssbo);
 }
 
 bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const SSBODescriptorSemantic semantic)
@@ -369,7 +369,7 @@ bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const TextureType
     if(!texture)
         return false;
 
-    return sc->AddTexture(SET_TYPE_MATERIAL,texture);
+    return sc->AddTexture(texture);
 }
 
 bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const SamplerType &st,const SamplerSlot slot,const TextureChannelHint channel_hint)
@@ -392,7 +392,7 @@ bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const Samp
     if(!image_sampler)
         return false;
 
-    return sc->AddTextureSampler(SET_TYPE_MATERIAL,image_sampler);
+    return sc->AddTextureSampler(image_sampler);
 }
 
 /**

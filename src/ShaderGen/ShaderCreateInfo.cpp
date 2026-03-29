@@ -41,34 +41,34 @@ ShaderCreateInfo::~ShaderCreateInfo()
         FreeSPVData(spv_data);
 }
 
-bool ShaderCreateInfo::AddUBO(DescriptorSetType type,const UBODescriptor *sd)
+bool ShaderCreateInfo::AddUBO(const UBODescriptor *sd)
 {
-    return GetShaderDescriptorInfo()->AddUBO(type,sd);
+    return GetShaderDescriptorInfo()->AddUBO(sd);
 }
 
-bool ShaderCreateInfo::AddSSBO(DescriptorSetType type,const SSBODescriptor *sd)
+bool ShaderCreateInfo::AddSSBO(const SSBODescriptor *sd)
 {
-    return GetShaderDescriptorInfo()->AddSSBO(type,sd);
+    return GetShaderDescriptorInfo()->AddSSBO(sd);
 }
 
-bool ShaderCreateInfo::AddTexture(DescriptorSetType type,const TextureDescriptor *sd)
+bool ShaderCreateInfo::AddTexture(const TextureDescriptor *sd)
 {
-    return GetShaderDescriptorInfo()->AddTexture(type,sd);
+    return GetShaderDescriptorInfo()->AddTexture(sd);
 }
 
-bool ShaderCreateInfo::AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sd)
+bool ShaderCreateInfo::AddTextureSampler(const TextureSamplerDescriptor *sd)
 {
-    return GetShaderDescriptorInfo()->AddTextureSampler(type,sd);
+    return GetShaderDescriptorInfo()->AddTextureSampler(sd);
 }
 
 void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo)
 {
-    AddUBO(SET_TYPE_MATERIAL,ubo);
+    AddUBO(ubo);
 }
 
 void ShaderCreateInfo::SetMaterialInstance(SSBODescriptor *ssbo)
 {
-    AddSSBO(SET_TYPE_MATERIAL,ssbo);
+    AddSSBO(ssbo);
 }
 
 bool ShaderCreateInfo::CompileFinalGLSLToSPV()

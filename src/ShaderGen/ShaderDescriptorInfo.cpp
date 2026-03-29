@@ -31,7 +31,7 @@ std::string ShaderDescriptorInfo::GetStageName()const
     }
 }
 
-bool ShaderDescriptorInfo::AddUBO(DescriptorSetType type,const UBODescriptor *ubo)
+bool ShaderDescriptorInfo::AddUBO(const UBODescriptor *ubo)
 {
     if(!ubo)
         return(false);
@@ -40,7 +40,7 @@ bool ShaderDescriptorInfo::AddUBO(DescriptorSetType type,const UBODescriptor *ub
     return true;
 }
 
-bool ShaderDescriptorInfo::AddSSBO(DescriptorSetType type,const SSBODescriptor *ssbo)
+bool ShaderDescriptorInfo::AddSSBO(const SSBODescriptor *ssbo)
 {
     if(!ssbo)
         return(false);
@@ -49,7 +49,7 @@ bool ShaderDescriptorInfo::AddSSBO(DescriptorSetType type,const SSBODescriptor *
     return true;
 }
 
-bool ShaderDescriptorInfo::AddTexture(DescriptorSetType type,const TextureDescriptor *sd)
+bool ShaderDescriptorInfo::AddTexture(const TextureDescriptor *sd)
 {
     if(!sd)
         return(false);
@@ -58,7 +58,7 @@ bool ShaderDescriptorInfo::AddTexture(DescriptorSetType type,const TextureDescri
     return true;
 }
 
-bool ShaderDescriptorInfo::AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sampler)
+bool ShaderDescriptorInfo::AddTextureSampler(const TextureSamplerDescriptor *sampler)
 {
     if(!sampler)
         return(false);
