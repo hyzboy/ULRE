@@ -106,7 +106,7 @@ namespace
         for (size_t i = 0; i < UBODescriptorSemanticCount; ++i)
         {
             const UBODescriptorSemantic candidate = static_cast<UBODescriptorSemantic>(i);
-            if (!IsBuiltinDescriptorSemantic(candidate))
+            if (!RangeCheck(candidate))
                 continue;
 
             const DescriptorSemanticMeta &meta = GetDescriptorSemanticMeta(candidate);
@@ -126,7 +126,7 @@ namespace
         for (size_t i = 0; i < SSBODescriptorSemanticCount; ++i)
         {
             const SSBODescriptorSemantic candidate = static_cast<SSBODescriptorSemantic>(i);
-            if (!IsBuiltinDescriptorSemantic(candidate))
+            if (!RangeCheck(candidate))
                 continue;
 
             const DescriptorSemanticMeta &meta = GetDescriptorSemanticMeta(candidate);

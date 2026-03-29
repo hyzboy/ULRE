@@ -549,7 +549,7 @@ namespace hgl::ecs
         case graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID:
             // Resolved per-batch inside ApplyBatchMaterialBindings; not checkable here.
             return false;
-        case graph::mtl::SSBODescriptorSemantic::Custom:
+        case graph::mtl::SSBODescriptorSemantic::END_RANGE:
             return true;
 
         case graph::mtl::SSBODescriptorSemantic::Unknown:

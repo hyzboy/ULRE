@@ -54,7 +54,7 @@ static bool ResolveUBOSemanticMeta(
     const UBODescriptorSemantic semantic,
     const DescriptorSemanticMeta *&meta)
 {
-    if(!IsBuiltinDescriptorSemantic(semantic))
+    if(!RangeCheck(semantic))
         return false;
 
     const DescriptorSemanticMeta &candidate = GetDescriptorSemanticMeta(semantic);
@@ -73,7 +73,7 @@ static bool ResolveSSBOSemanticMeta(
     const SSBODescriptorSemantic semantic,
     const DescriptorSemanticMeta *&meta)
 {
-    if(!IsBuiltinDescriptorSemantic(semantic))
+    if(!RangeCheck(semantic))
         return false;
 
     const DescriptorSemanticMeta &candidate = GetDescriptorSemanticMeta(semantic);
@@ -96,7 +96,7 @@ static const UBODescriptor *ResolveUBODescriptor(
     const std::string &name,
     const UBODescriptorSemantic semantic = UBODescriptorSemantic::Unknown)
 {
-    if(IsBuiltinDescriptorSemantic(semantic))
+    if(RangeCheck(semantic))
     {
         UBODescriptor *ubo = mdi.GetUBO(semantic);
         if(ubo)
@@ -125,7 +125,7 @@ static const SSBODescriptor *ResolveSSBODescriptor(
     const std::string &name,
     const SSBODescriptorSemantic semantic = SSBODescriptorSemantic::Unknown)
 {
-    if(IsBuiltinDescriptorSemantic(semantic))
+    if(RangeCheck(semantic))
     {
         SSBODescriptor *ssbo = mdi.GetSSBO(semantic);
         if(ssbo)
@@ -154,7 +154,7 @@ static const TextureDescriptor *ResolveTextureDescriptor(
     const std::string &name,
     const mtl::SamplerSlot slot)
 {
-    TextureDescriptor *texture=mdi.GetTexture(name);
+    TextureDescriptor *texture=mdi.GetTexture(slot);
 
     if(texture)
     {
@@ -182,7 +182,7 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
     const mtl::SamplerSlot slot,
     const TextureChannelHint channel_hint=TextureChannelHint::RGBA)
 {
-    TextureSamplerDescriptor *image_sampler=mdi.GetTextureSampler(name);
+    TextureSamplerDescriptor *image_sampler=mdi.GetTextureSampler(slot);
 
     if(image_sampler)
     {

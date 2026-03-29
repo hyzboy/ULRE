@@ -18,7 +18,7 @@ public:
         : BufferAccessBase()
         , semantic(sem)
     {
-        if (mtl::IsBuiltinDescriptorSemantic(sem))
+        if (RangeCheck(sem))
         {
             const auto &meta = mtl::GetDescriptorSemanticMeta(sem);
             SetUBOMeta(meta.set_type);
@@ -58,9 +58,12 @@ public:
  * cam_accessor.Commit();  // 内部自动调用 Flush 如有需要
  * ```
  */
-template<typename T,mtl::UBODescriptorSemantic Semantic=mtl::UBODescriptorSemantic::Unknown>
+template<typename T,mtl::UBODescriptorSemantic Semantic>
 class UBOAccessor:public UBOAccessorBase
 {
+    static_assert(RangeCheck(Semantic),
+        "UBOAccessor: Semantic must be a builtin UBO descriptor semantic (not Unknown or Custom)");
+
 public:
     T *mapped_data;                 ///< 映射后的数据指针 / Mapped data pointer
     VkDeviceSize aligned_size = 0;
@@ -68,24 +71,10 @@ public:
     friend class VulkanDevice;
 
 private:
-    static constexpr bool HasBuiltinSemanticMeta()
-    {
-        return Semantic != mtl::UBODescriptorSemantic::Unknown
-            && Semantic != mtl::UBODescriptorSemantic::Custom;
-    }
 
     static constexpr const mtl::DescriptorSemanticMeta &GetSemanticMeta()
     {
         return mtl::GetDescriptorSemanticMeta(Semantic);
-    }
-
-    void ApplySemanticMetaIfNeeded()
-    {
-        if constexpr (HasBuiltinSemanticMeta())
-        {
-            const auto &meta = GetSemanticMeta();
-            SetUBOMeta(meta.set_type);
-        }
     }
 
     // 跟踪结构体数据是否被 Update() 修改过，用于 CommitInternal() 决策
@@ -137,7 +126,6 @@ private:
         , aligned_size(aligned_size_param)
     {
         SetBuffer(buf);
-        ApplySemanticMetaIfNeeded();
         if(gpu_buf)
             MapInternal();
         InitDefaultsIfNeeded();
@@ -162,7 +150,6 @@ private:
         , aligned_size(buf ? buf->GetSize() : 0)
     {
         SetBuffer(buf);
-        ApplySemanticMetaIfNeeded();
         if(gpu_buf)
             MapInternal();
         InitDefaultsIfNeeded();
@@ -189,26 +176,17 @@ public:
 
     static constexpr DescriptorSetType GetDefaultSetType()
     {
-        if constexpr (HasBuiltinSemanticMeta())
-            return GetSemanticMeta().set_type;
-
-        return DescriptorSetType::PerMaterial;
+        return GetSemanticMeta().set_type;
     }
 
     static constexpr const char *GetDefaultDescriptorName()
     {
-        if constexpr (HasBuiltinSemanticMeta())
-            return GetSemanticMeta().name;
-
-        return nullptr;
+        return GetSemanticMeta().name;
     }
 
     static constexpr BufferUpdateClass GetDefaultUpdateClass()
     {
-        if constexpr (HasBuiltinSemanticMeta())
-            return GetSemanticMeta().buffer_update_class;
-
-        return BufferUpdateClass::Default;
+        return GetSemanticMeta().buffer_update_class;
     }
 
     static UBOAccessor *Create(VkBufferOwner *buf, bool take_ownership = false)

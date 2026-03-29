@@ -56,10 +56,11 @@ MaterialDescriptorInfo::~MaterialDescriptorInfo()
         set.set=-1;
     }
 
-    ubo_map.clear();
-    ssbo_map.clear();
-    texture_map.clear();
-    texture_sampler_map.clear();
+    for(auto &p:ubo_by_semantic)
+        p=nullptr;
+
+    for(auto &p:ssbo_by_semantic)
+        p=nullptr;
 
     for(auto &p:texture_by_slot)
         p=nullptr;
@@ -79,8 +80,8 @@ const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetTy
 
     {
         const auto sem = obj->semantic;
-        if(mtl::IsBuiltinDescriptorSemantic(sem))
-            ubo_map[sem] = obj;
+        if(RangeCheck(sem))
+            ubo_by_semantic[size_t(sem)] = obj;
     }
 
     return obj;
@@ -97,8 +98,8 @@ const SSBODescriptor *MaterialDescriptorInfo::AddSSBO(uint32_t ssb,DescriptorSet
 
     {
         const auto sem = obj->semantic;
-        if(mtl::IsBuiltinDescriptorSemantic(sem))
-            ssbo_map[sem] = obj;
+        if(RangeCheck(sem))
+            ssbo_by_semantic[size_t(sem)] = obj;
     }
 
     return obj;
@@ -113,15 +114,12 @@ const TextureDescriptor *MaterialDescriptorInfo::AddTexture(uint32_t shader_stag
 
     TextureDescriptor *obj=sds->AddTexture(shader_stage_flag_bits,sd);
 
-    texture_map[obj->name] = obj;
-
     {
         mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
         if(mtl::TryGetSlotFromDescriptorName(obj->name,slot))
-                texture_by_slot[size_t(slot)] = obj;
+            texture_by_slot[size_t(slot)] = obj;
     }
-
-            return obj;
+    return obj;
 }
 
 const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32_t ssb,DescriptorSetType set_type,TextureSamplerDescriptor *sd)
@@ -133,75 +131,28 @@ const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32
 
     TextureSamplerDescriptor *obj=sds->AddTextureSampler(ssb,sd);
 
-    texture_sampler_map[obj->name] = obj;
-
     {
         mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
         if(mtl::TryGetSlotFromDescriptorName(obj->name,slot))
-                texture_sampler_by_slot[size_t(slot)] = obj;
+            texture_sampler_by_slot[size_t(slot)] = obj;
     }
-
-            return obj;
+    return obj;
 }
 
 UBODescriptor *MaterialDescriptorInfo::GetUBO(mtl::UBODescriptorSemantic semantic)
 {
-    if(!mtl::IsBuiltinDescriptorSemantic(semantic))
+    if(!RangeCheck(semantic))
         return nullptr;
 
-    const auto iter=ubo_map.find(semantic);
-    if(iter!=ubo_map.end())
-        return iter->second;
-
-    return nullptr;
+    return ubo_by_semantic[size_t(semantic)];
 }
 
 SSBODescriptor *MaterialDescriptorInfo::GetSSBO(mtl::SSBODescriptorSemantic semantic)
 {
-    if(!mtl::IsBuiltinDescriptorSemantic(semantic))
+    if(!RangeCheck(semantic))
         return nullptr;
 
-    const auto iter=ssbo_map.find(semantic);
-    if(iter!=ssbo_map.end())
-        return iter->second;
-
-    return nullptr;
-}
-
-TextureDescriptor *MaterialDescriptorInfo::GetTexture(const std::string &name)
-{
-    const auto iter=texture_map.find(name);
-    if(iter!=texture_map.end())
-        return iter->second;
-
-    return(nullptr);
-}
-
-TextureDescriptor *MaterialDescriptorInfo::GetTexture(mtl::SamplerSlot slot)
-{
-    const size_t index=size_t(slot);
-    if(index>=mtl::SamplerSlotCount)
-        return nullptr;
-
-    return texture_by_slot[index];
-}
-
-TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(const std::string &name)
-{
-    const auto iter=texture_sampler_map.find(name);
-    if(iter!=texture_sampler_map.end())
-        return iter->second;
-
-    return(nullptr);
-}
-
-TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(mtl::SamplerSlot slot)
-{
-    const size_t index=size_t(slot);
-    if(index>=mtl::SamplerSlotCount)
-        return nullptr;
-
-    return texture_sampler_by_slot[index];
+    return ssbo_by_semantic[size_t(semantic)];
 }
 
 void MaterialDescriptorInfo::Resort()
@@ -247,8 +198,8 @@ void MaterialDescriptorInfo::Resort()
 
                 if(a_ubo&&b_ubo)
                 {
-                    const bool a_builtin=mtl::IsBuiltinDescriptorSemantic(a_ubo->semantic);
-                    const bool b_builtin=mtl::IsBuiltinDescriptorSemantic(b_ubo->semantic);
+                    const bool a_builtin=RangeCheck(a_ubo->semantic);
+                    const bool b_builtin=RangeCheck(b_ubo->semantic);
                     if(a_builtin!=b_builtin)
                         return a_builtin;
                     if(a_builtin)
@@ -261,8 +212,8 @@ void MaterialDescriptorInfo::Resort()
 
                 if(a_ssbo&&b_ssbo)
                 {
-                    const bool a_builtin=mtl::IsBuiltinDescriptorSemantic(a_ssbo->semantic);
-                    const bool b_builtin=mtl::IsBuiltinDescriptorSemantic(b_ssbo->semantic);
+                    const bool a_builtin=RangeCheck(a_ssbo->semantic);
+                    const bool b_builtin=RangeCheck(b_ssbo->semantic);
                     if(a_builtin!=b_builtin)
                         return a_builtin;
                     if(a_builtin)

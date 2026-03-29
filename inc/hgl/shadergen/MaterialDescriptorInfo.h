@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/common/ShaderDescriptorDef.h>
-#include<ankerl/unordered_dense.h>
+#include <hgl/mtl/SamplerName.h>
 #include<string>
 
 namespace hgl{namespace graph{
@@ -16,14 +16,11 @@ class MaterialDescriptorInfo
 
     bool ubo_struct_by_semantic [mtl::UBODescriptorSemanticCount] = {};
     bool ssbo_struct_by_semantic[mtl::SSBODescriptorSemanticCount] = {};
-    ankerl::unordered_dense::map<mtl::UBODescriptorSemantic,UBODescriptor *> ubo_map;
-    ankerl::unordered_dense::map<mtl::SSBODescriptorSemantic,SSBODescriptor *> ssbo_map;
+    UBODescriptor  *ubo_by_semantic [mtl::UBODescriptorSemanticCount] = {};
+    SSBODescriptor *ssbo_by_semantic[mtl::SSBODescriptorSemanticCount] = {};
 
     TextureDescriptor        *texture_by_slot        [mtl::SamplerSlotCount] = {};
     TextureSamplerDescriptor *texture_sampler_by_slot[mtl::SamplerSlotCount] = {};
-
-    ankerl::unordered_dense::map<std::string,TextureDescriptor *> texture_map;
-    ankerl::unordered_dense::map<std::string,TextureSamplerDescriptor *> texture_sampler_map;
 
 public:
 
@@ -32,7 +29,7 @@ public:
 
     bool AddUBOStruct(const mtl::UBODescriptorSemantic semantic)
     {
-        if(!mtl::IsBuiltinDescriptorSemantic(semantic))
+        if(!RangeCheck(semantic))
             return false;
 
         ubo_struct_by_semantic[size_t(semantic)] = true;
@@ -41,7 +38,7 @@ public:
 
     bool AddSSBOStruct(const mtl::SSBODescriptorSemantic semantic)
     {
-        if(!mtl::IsBuiltinDescriptorSemantic(semantic))
+        if(!RangeCheck(semantic))
             return false;
 
         ssbo_struct_by_semantic[size_t(semantic)] = true;
@@ -50,7 +47,7 @@ public:
 
     bool hasUBOStruct(const mtl::UBODescriptorSemantic semantic) const
     {
-        if(!mtl::IsBuiltinDescriptorSemantic(semantic))
+        if(!RangeCheck(semantic))
             return false;
 
         return ubo_struct_by_semantic[size_t(semantic)];
@@ -58,7 +55,7 @@ public:
 
     bool hasSSBOStruct(const mtl::SSBODescriptorSemantic semantic) const
     {
-        if(!mtl::IsBuiltinDescriptorSemantic(semantic))
+        if(!RangeCheck(semantic))
             return false;
 
         return ssbo_struct_by_semantic[size_t(semantic)];
@@ -69,12 +66,38 @@ public:
     const TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd);
     const TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureSamplerDescriptor *sd);
 
-    TextureDescriptor *GetTexture(const std::string &name);
-    TextureSamplerDescriptor *GetTextureSampler(const std::string &name);
-    TextureDescriptor *GetTexture(mtl::SamplerSlot slot);
-    TextureSamplerDescriptor *GetTextureSampler(mtl::SamplerSlot slot);
-    TextureDescriptor *GetTexture(const char *name){return GetTexture(std::string(name?name:""));}
-    TextureSamplerDescriptor *GetTextureSampler(const char *name){return GetTextureSampler(std::string(name?name:""));}
+    TextureDescriptor *GetTexture(mtl::SamplerSlot slot)
+    {
+        const size_t index = size_t(slot);
+        return index < mtl::SamplerSlotCount ? texture_by_slot[index] : nullptr;
+    }
+    TextureSamplerDescriptor *GetTextureSampler(mtl::SamplerSlot slot)
+    {
+        const size_t index = size_t(slot);
+        return index < mtl::SamplerSlotCount ? texture_sampler_by_slot[index] : nullptr;
+    }
+
+    TextureDescriptor *GetTexture(const std::string &name)
+    {
+        mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
+        return mtl::TryGetSlotFromDescriptorName(name.c_str(), slot) ? GetTexture(slot) : nullptr;
+    }
+    TextureSamplerDescriptor *GetTextureSampler(const std::string &name)
+    {
+        mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
+        return mtl::TryGetSlotFromDescriptorName(name.c_str(), slot) ? GetTextureSampler(slot) : nullptr;
+    }
+
+    TextureDescriptor *GetTexture(const char *name)
+    {
+        mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
+        return (name && mtl::TryGetSlotFromDescriptorName(name, slot)) ? GetTexture(slot) : nullptr;
+    }
+    TextureSamplerDescriptor *GetTextureSampler(const char *name)
+    {
+        mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
+        return (name && mtl::TryGetSlotFromDescriptorName(name, slot)) ? GetTextureSampler(slot) : nullptr;
+    }
 
     UBODescriptor  *GetUBO (mtl::UBODescriptorSemantic semantic);
     SSBODescriptor *GetSSBO(mtl::SSBODescriptorSemantic semantic);

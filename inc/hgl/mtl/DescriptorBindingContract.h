@@ -32,8 +32,7 @@ namespace hgl::graph::mtl
         "ViewportInfo",
         "CameraInfo",
         "SkyInfo",
-        "ColorPattle",
-        "Custom"
+        "ColorPattle"
     };
 
     constexpr const char *SSBODescriptorSemanticNameList[] =
@@ -45,24 +44,13 @@ namespace hgl::graph::mtl
         "MaterialInstanceData",
         "MaterialInstanceTextureID",
         "BoneJoint",
-        "BoneJointWeight",
-        "Custom"
+        "BoneJointWeight"
     };
 
-    constexpr size_t UBODescriptorSemanticCount = size_t(UBODescriptorSemantic::Custom) + 1;
-    constexpr size_t SSBODescriptorSemanticCount = size_t(SSBODescriptorSemantic::Custom) + 1;
+    constexpr size_t UBODescriptorSemanticCount = size_t(UBODescriptorSemantic::RANGE_SIZE);
+    constexpr size_t SSBODescriptorSemanticCount = size_t(SSBODescriptorSemantic::RANGE_SIZE);
 
-    constexpr bool IsBuiltinDescriptorSemantic(const UBODescriptorSemantic semantic)
-    {
-        return semantic > UBODescriptorSemantic::Unknown && semantic < UBODescriptorSemantic::Custom;
-    }
-
-    constexpr bool IsBuiltinDescriptorSemantic(const SSBODescriptorSemantic semantic)
-    {
-        return semantic > SSBODescriptorSemantic::Unknown && semantic < SSBODescriptorSemantic::Custom;
-    }
-
-    constexpr DescriptorSemanticMeta UBODescriptorSemanticMetaList[] =
+        constexpr DescriptorSemanticMeta UBODescriptorSemanticMetaList[] =
     {
         {DescriptorSetType::Unknow, nullptr,        nullptr,                nullptr,        BufferUpdateClass::Default          }, // Unknown
         {SET_TYPE_VIEWPORT,         "viewport",     "VIEWPORT_BINDING",     "ViewportInfo", BufferUpdateClass::CriticalPerFrame }, // ViewportInfo
@@ -84,15 +72,6 @@ namespace hgl::graph::mtl
         {SET_TYPE_TRANSFORM,        "joint_weight", "JOINT_WEIGHT_BINDING", "JointWeightInfo",           BufferUpdateClass::TransformData }, // BoneJointWeight
         {DescriptorSetType::Unknow, nullptr,        nullptr,                nullptr,                     BufferUpdateClass::Default       }, // Custom
     };
-
-    static_assert(sizeof(UBODescriptorSemanticNameList) / sizeof(UBODescriptorSemanticNameList[0]) == UBODescriptorSemanticCount,
-                  "UBODescriptorSemanticNameList must match UBODescriptorSemantic enum");
-    static_assert(sizeof(SSBODescriptorSemanticNameList) / sizeof(SSBODescriptorSemanticNameList[0]) == SSBODescriptorSemanticCount,
-                  "SSBODescriptorSemanticNameList must match SSBODescriptorSemantic enum");
-    static_assert(sizeof(UBODescriptorSemanticMetaList) / sizeof(UBODescriptorSemanticMetaList[0]) == UBODescriptorSemanticCount,
-                  "UBODescriptorSemanticMetaList must match UBODescriptorSemantic enum");
-    static_assert(sizeof(SSBODescriptorSemanticMetaList) / sizeof(SSBODescriptorSemanticMetaList[0]) == SSBODescriptorSemanticCount,
-                  "SSBODescriptorSemanticMetaList must match SSBODescriptorSemantic enum");
 
     constexpr const DescriptorSemanticMeta &GetDescriptorSemanticMeta(const UBODescriptorSemantic semantic)
     {

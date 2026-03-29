@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/CoreType.h>
+#include<hgl/type/EnumUtil.h>
 
 namespace hgl::graph::mtl
 {
@@ -19,7 +19,8 @@ namespace hgl::graph::mtl
         CameraInfo,
         SkyInfo,
         ColorPattle,
-        Custom,
+
+        ENUM_CLASS_RANGE(Unknown, ColorPattle)
     };
 
     enum class SSBODescriptorSemantic : uint8
@@ -32,6 +33,7 @@ namespace hgl::graph::mtl
         MaterialInstanceTextureID,
         BoneJoint,
         BoneJointWeight,
-        Custom,
+
+        ENUM_CLASS_RANGE(Unknown, BoneJointWeight)
     };
 }//namespace hgl::graph::mtl
