@@ -25,20 +25,18 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, cfg);
 
+    FixedMaterialDef def{};
     FixedUBODescriptors ubos;
     FixedSSBODescriptors ssbos;
-    build2d::PushBaseUBODescriptors(ubos, cfg);
-    build2d::PushBaseSSBODescriptors(ssbos, cfg);
-
-    FixedMaterialDef def {
-        "PureColor2D",
-        cfg->prim,
-        vertices.data(), uint32_t(vertices.size()),
-        &ubos,
-        &ssbos,
-        nullptr,
-        mi_codes, mi_bytes,
-    };
+    build2d::BuildBase2DFixedDef(def,
+                                 "PureColor2D",
+                                 cfg,
+                                 vertices,
+                                 ubos,
+                                 ssbos,
+                                 nullptr,
+                                 mi_codes,
+                                 mi_bytes);
 
     return CreateFromFixedDef2D("PureColor2D", profile, def, key, vs_preamble, fs_preamble, cfg);
 }

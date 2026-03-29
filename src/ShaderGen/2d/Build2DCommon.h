@@ -127,6 +127,31 @@ inline void PushBaseSSBODescriptors(FixedSSBODescriptors &descriptors, const Mat
     }
 }
 
+inline void BuildBase2DFixedDef(FixedMaterialDef &def,
+                                const char *debug_tag,
+                                const Material2DCreateConfig *cfg,
+                                std::vector<FixedVertexEntry> &vertices,
+                                FixedUBODescriptors &ubos,
+                                FixedSSBODescriptors &ssbos,
+                                FixedTextureSamplerDescriptors *samplers = nullptr,
+                                const char *mi_codes = nullptr,
+                                uint32_t mi_bytes = 0)
+{
+    PushBaseUBODescriptors(ubos, cfg);
+    PushBaseSSBODescriptors(ssbos, cfg);
+
+    def = {
+        debug_tag,
+        cfg->prim,
+        vertices.data(), uint32_t(vertices.size()),
+        &ubos,
+        &ssbos,
+        samplers,
+        mi_codes,
+        mi_bytes,
+    };
+}
+
 }//namespace build2d
 }//namespace hgl::graph::mtl
 

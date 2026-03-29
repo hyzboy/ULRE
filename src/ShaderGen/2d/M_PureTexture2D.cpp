@@ -45,23 +45,21 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
     FixedUBODescriptors ubos;
     FixedSSBODescriptors ssbos;
     FixedTextureSamplerDescriptors samplers;
-    build2d::PushBaseUBODescriptors(ubos, &inner);
-    build2d::PushBaseSSBODescriptors(ssbos, &inner);
     AddFixedTextureSampler(samplers, SamplerSlot::BaseColor, use_array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D);
 
     if(use_array)
         AddFixedSSBODescriptor(ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID);
 
-    FixedMaterialDef def {
-        "PureTexture2D",
-        inner.prim,
-        vertices.data(), uint32_t(vertices.size()),
-        &ubos,
-        &ssbos,
-        &samplers,
-        use_array ? mi_codes : nullptr,
-        use_array ? mi_bytes : 0,
-    };
+    FixedMaterialDef def{};
+    build2d::BuildBase2DFixedDef(def,
+                                 "PureTexture2D",
+                                 &inner,
+                                 vertices,
+                                 ubos,
+                                 ssbos,
+                                 &samplers,
+                                 use_array ? mi_codes : nullptr,
+                                 use_array ? mi_bytes : 0);
 
     return CreateFromFixedDef2D("PureTexture2D", profile, def, key, vs_preamble, fs_preamble, &inner, true);
 }
