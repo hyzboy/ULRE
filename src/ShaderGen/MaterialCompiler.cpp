@@ -317,9 +317,10 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
     mci.Resort();
     const ShaderLayoutContract layout = hgl::graph::BuildShaderLayoutContract(mci);
     const std::string layout_defs = hgl::graph::EmitShaderLayoutDefines(layout);
-    const std::string vert_sampler_defs = vert ? hgl::graph::EmitSimpleSamplerGLSL(*vert) : std::string();
-    const std::string frag_sampler_defs = frag ? hgl::graph::EmitSimpleSamplerGLSL(*frag) : std::string();
-    const std::string frag_mit_defs     = frag ? hgl::graph::EmitMaterialInstanceTextureGLSL(*frag) : std::string();
+    const MaterialDescriptorInfo &mdi = mci.GetDescriptorInfo();
+    const std::string vert_sampler_defs = vert ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Vertex)   : std::string();
+    const std::string frag_sampler_defs = frag ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Fragment) : std::string();
+    const std::string frag_mit_defs     = frag ? hgl::graph::EmitMaterialInstanceTextureGLSL(mdi, ShaderStage::Fragment) : std::string();
 
     if (!layout_defs.empty() || !vert_sampler_defs.empty() || !frag_sampler_defs.empty() || !frag_mit_defs.empty())
     {

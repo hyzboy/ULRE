@@ -41,36 +41,6 @@ ShaderCreateInfo::~ShaderCreateInfo()
         FreeSPVData(spv_data);
 }
 
-bool ShaderCreateInfo::AddUBO(const UBODescriptor *sd)
-{
-    return GetShaderDescriptorInfo()->AddUBO(sd);
-}
-
-bool ShaderCreateInfo::AddSSBO(const SSBODescriptor *sd)
-{
-    return GetShaderDescriptorInfo()->AddSSBO(sd);
-}
-
-bool ShaderCreateInfo::AddTexture(const TextureDescriptor *sd)
-{
-    return GetShaderDescriptorInfo()->AddTexture(sd);
-}
-
-bool ShaderCreateInfo::AddTextureSampler(const TextureSamplerDescriptor *sd)
-{
-    return GetShaderDescriptorInfo()->AddTextureSampler(sd);
-}
-
-void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo)
-{
-    AddUBO(ubo);
-}
-
-void ShaderCreateInfo::SetMaterialInstance(SSBODescriptor *ssbo)
-{
-    AddSSBO(ssbo);
-}
-
 bool ShaderCreateInfo::CompileFinalGLSLToSPV()
 {
     if(final_shader.empty())

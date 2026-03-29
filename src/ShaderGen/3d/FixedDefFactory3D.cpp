@@ -4,8 +4,6 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
-#include<hgl/shadergen/ShaderRequireScanner.h>
-#include<hgl/shadergen/ShaderGenPathConfig.h>
 #include<hgl/mtl/MaterialVariantDesc.h>
 #include<cstdio>
 
@@ -36,36 +34,9 @@ MaterialCreateInfo *CreateFromFixedDef3D(
         return nullptr;
     }
 
-    ShaderAutoRequirements auto_requirements;
-    std::string require_diagnostics;
-    const bool require_ok = CollectShaderAutoRequirements(def,
-                                                          GetShaderLibraryPath(),
-                                                          result.vertex_glsl,
-                                                          result.fragment_glsl,
-                                                          auto_requirements,
-                                                          &require_diagnostics);
-    if (!require_ok)
-    {
-        std::fprintf(stderr, "[%s] reflection collection failed:\n%s",
-                     debug_tag,
-                     require_diagnostics.c_str());
-        return nullptr;
-    }
-
-    FixedUBODescriptors merged_ubos;
-    FixedSSBODescriptors merged_ssbos;
-    FixedTextureSamplerDescriptors merged_samplers;
-    FixedMaterialDef merged_def = def;
-    MergeShaderAutoRequirements(def,
-                                auto_requirements,
-                                merged_def,
-                                merged_ubos,
-                                merged_ssbos,
-                                merged_samplers);
-
     MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        merged_def,
+        def,
         result.vertex_glsl,
         result.fragment_glsl,
         cfg);

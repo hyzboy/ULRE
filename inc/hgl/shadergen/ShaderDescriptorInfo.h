@@ -10,10 +10,6 @@
 
 namespace hgl{namespace graph
 {
-using UBODescriptorList=std::vector<const UBODescriptor *>;
-using SSBODescriptorList=std::vector<const SSBODescriptor *>;
-using TextureDescriptorList = std::vector<const TextureDescriptor *>;
-using TextureSamplerDescriptorList=std::vector<const TextureSamplerDescriptor *>;
 using ConstValueDescriptorList=std::vector<ConstValueDescriptor *>;
 
 /**
@@ -24,12 +20,6 @@ class ShaderDescriptorInfo
 protected:
 
     ShaderStage                         stage_flag;
-
-    //ubo/object在这里以及MaterialDescriptorInfo中均有一份，mdi中的用于产生set/binding号，这里的用于产生shader
-    UBODescriptorList                   ubo_list;
-    SSBODescriptorList                  ssbo_list;
-    TextureDescriptorList               texture_list;
-    TextureSamplerDescriptorList        texture_sampler_list;
 
     ConstValueDescriptorList            const_value_list;
 
@@ -45,19 +35,9 @@ public:
 
 public:
 
-    const UBODescriptorList &           GetUBOList()const{return ubo_list;}
-    const SSBODescriptorList &          GetSSBOList()const{return ssbo_list;}
-    const TextureDescriptorList &       GetTextureList()const{return texture_list;}
-    const TextureSamplerDescriptorList &GetTextureSamplerList()const{return texture_sampler_list;}
-
     const ConstValueDescriptorList &    GetConstList()const{return const_value_list;}
 
 public:
-
-    bool AddUBO(const UBODescriptor *sd);
-    bool AddSSBO(const SSBODescriptor *sd);
-    bool AddTexture(const TextureDescriptor *sd);
-    bool AddTextureSampler(const TextureSamplerDescriptor *sd);
 
     bool AddConstValue(ConstValueDescriptor *sd);
 

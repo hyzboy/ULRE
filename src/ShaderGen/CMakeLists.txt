@@ -102,8 +102,6 @@ SET(STD_MTL_3D_SOURCE_FILES ${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/M_SkyMinimal.cpp
                             3d/StandardVariantPolicy.h
                             3d/StandardVariantPolicy.cpp
-                            3d/StandardProfileAdapter.h
-                            3d/StandardProfileAdapter.cpp
                             3d/StandardDescriptorBuilder.h
                             3d/StandardDescriptorBuilder.cpp
                             3d/M_Standard.cpp

@@ -2,8 +2,6 @@
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
-#include <hgl/shadergen/ShaderRequireScanner.h>
-#include <hgl/shadergen/ShaderGenPathConfig.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <cstdio>
 #include <vector>
@@ -93,34 +91,9 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
         return nullptr;
     }
 
-    ShaderAutoRequirements auto_requirements;
-    std::string require_diagnostics;
-    const bool require_ok = CollectShaderAutoRequirements(dynamic_def,
-                                                          GetShaderLibraryPath(),
-                                                          result.vertex_glsl,
-                                                          result.fragment_glsl,
-                                                          auto_requirements,
-                                                          &require_diagnostics);
-    if (!require_ok)
-    {
-        std::fprintf(stderr, "[PBRColor3D] reflection collection failed:\n%s", require_diagnostics.c_str());
-        return nullptr;
-    }
-
-    FixedUBODescriptors merged_ubos;
-    FixedSSBODescriptors merged_ssbos;
-    FixedTextureSamplerDescriptors merged_samplers;
-    FixedMaterialDef merged_def = dynamic_def;
-    MergeShaderAutoRequirements(dynamic_def,
-                                auto_requirements,
-                                merged_def,
-                                merged_ubos,
-                                merged_ssbos,
-                                merged_samplers);
-
     MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        merged_def,
+        dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
         cfg);

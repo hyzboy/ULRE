@@ -239,16 +239,8 @@ bool MaterialCreateInfo::AddResolvedUBO(const ShaderStage flag_bit,const Descrip
     if(!descriptor_db.hasUBOStruct(semantic))
         return(false);
 
-    ShaderCreateInfo *sc=shader_map[flag_bit];
-
-    if(!sc)
-        return(false);
-
     const UBODescriptor *ubo=ResolveUBODescriptor(descriptor_db,flag_bit,set_type,struct_name,name,semantic);
-    if(!ubo)
-        return false;
-
-    return sc->AddUBO(ubo);
+    return ubo != nullptr;
 }
 
 
@@ -287,16 +279,8 @@ bool MaterialCreateInfo::AddResolvedSSBO(const ShaderStage flag_bit,const Descri
     if(!descriptor_db.hasSSBOStruct(semantic))
         return(false);
 
-    ShaderCreateInfo *sc=shader_map[flag_bit];
-
-    if(!sc)
-        return(false);
-
     const SSBODescriptor *ssbo=ResolveSSBODescriptor(descriptor_db,flag_bit,set_type,struct_name,name,semantic);
-    if(!ssbo)
-        return false;
-
-    return sc->AddSSBO(ssbo);
+    return ssbo != nullptr;
 }
 
 
@@ -329,48 +313,26 @@ bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const SSBODescri
 
 bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const TextureType &tt,const SamplerSlot slot)
 {
-    if(!shader_map.ContainsKey(flag_bit))
-        return(false);
-
     RANGE_CHECK_RETURN_FALSE(tt);
     RANGE_CHECK_RETURN_FALSE(slot);
-
-    ShaderCreateInfo *sc = shader_map[flag_bit];
-
-    if(!sc)
-        return(false);
 
     const std::string st_name(GetTextureTypeName(tt));        //这里可能需要根据纹理类型，在前面增加i/u的前缀
     const std::string name=ToDescriptorName(slot);
 
     const TextureDescriptor *texture=ResolveTextureDescriptor(descriptor_db,flag_bit,SET_TYPE_MATERIAL,st_name,name,slot);
-    if(!texture)
-        return false;
-
-    return sc->AddTexture(texture);
+    return texture != nullptr;
 }
 
 bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const SamplerType &st,const SamplerSlot slot,const TextureChannelHint channel_hint)
 {
-    if(!shader_map.ContainsKey(flag_bit))
-        return(false);
-
     RANGE_CHECK_RETURN_FALSE(st);
     RANGE_CHECK_RETURN_FALSE(slot);
-
-    ShaderCreateInfo *sc=shader_map[flag_bit];
-
-    if(!sc)
-        return(false);
 
     const std::string st_name(GetSamplerTypeName(st));      //这里可能需要根据纹理类型，在前面增加i/u的前缀
     const std::string name=ToDescriptorName(slot);
 
     const TextureSamplerDescriptor *image_sampler=ResolveTextureSamplerDescriptor(descriptor_db,flag_bit,SET_TYPE_MATERIAL,st_name,name,slot,channel_hint);
-    if(!image_sampler)
-        return false;
-
-    return sc->AddTextureSampler(image_sampler);
+    return image_sampler != nullptr;
 }
 
 bool MaterialCreateInfo::AddTextureSampler(const uint32_t flag_bits,const SamplerType &st,const SamplerSlot slot,const TextureChannelHint channel_hint)
@@ -417,12 +379,6 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
                           GetDescriptorSemanticMeta(SSBODescriptorSemantic::MaterialInstanceData).set_type,
                           material_instance_ssbo);
 
-    ForEachShaderByStage(shader_map,shader_stage_flag_bits,
-        [&](ShaderCreateInfo &shader,ShaderStage)
-        {
-        shader.SetMaterialInstance(material_instance_ssbo);
-        });
-
     material_instance_stage_bits=shader_stage_flag_bits;
 
     return(true);
@@ -430,21 +386,20 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
 
 void MaterialCreateInfo::BuildBindingContract()
 {
-    binding_contract.ubos.clear();
-    binding_contract.ssbos.clear();
+    binding_contract = BindingContract{};
 
     for(size_t i=0;i<UBODescriptorSemanticCount;++i)
     {
         const UBODescriptor *d = descriptor_db.GetUBO(UBODescriptorSemantic(i));
         if(d)
-            binding_contract.ubos[UBODescriptorSemantic(i)] = d->stage_flag;
+            binding_contract.ubos[i] = d->stage_flag;
     }
 
     for(size_t i=0;i<SSBODescriptorSemanticCount;++i)
     {
         const SSBODescriptor *d = descriptor_db.GetSSBO(SSBODescriptorSemantic(i));
         if(d)
-            binding_contract.ssbos[SSBODescriptorSemantic(i)] = d->stage_flag;
+            binding_contract.ssbos[i] = d->stage_flag;
     }
 }
 

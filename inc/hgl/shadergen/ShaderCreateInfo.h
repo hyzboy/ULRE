@@ -48,14 +48,6 @@ public:
     ShaderCreateInfo(ShaderDescriptorInfo *sdi,MaterialDescriptorInfo *m);
     virtual ~ShaderCreateInfo();
 
-    bool AddUBO(const UBODescriptor *sd);
-    bool AddSSBO(const SSBODescriptor *sd);
-    bool AddTexture(const TextureDescriptor *sd);
-    bool AddTextureSampler(const TextureSamplerDescriptor *sd);
-
-    void SetMaterialInstance(UBODescriptor *);
-    void SetMaterialInstance(SSBODescriptor *);
-
     const std::string &GetFinalGLSL()const{return final_shader;}
 
     void SetFinalGLSL(const std::string &glsl){final_shader=glsl;}

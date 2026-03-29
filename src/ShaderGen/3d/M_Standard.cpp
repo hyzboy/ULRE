@@ -2,8 +2,6 @@
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
-#include <hgl/shadergen/ShaderRequireScanner.h>
-#include <hgl/shadergen/ShaderGenPathConfig.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <cstdio>
 #include <vector>
@@ -12,16 +10,7 @@
 #include <hgl/mtl/SamplerName.h>
 
 #include "StandardDescriptorBuilder.h"
-#include "StandardProfileAdapter.h"
 #include "StandardVariantPolicy.h"
-
-#ifndef ULRE_STANDARD_USE_PROFILE_ADAPTER
-#define ULRE_STANDARD_USE_PROFILE_ADAPTER 1
-#endif
-
-#ifndef ULRE_STANDARD_POLICY_EQUIV_CHECK
-#define ULRE_STANDARD_POLICY_EQUIV_CHECK 1
-#endif
 
 namespace hgl::graph::mtl{
 namespace
@@ -78,18 +67,6 @@ namespace
         mi_bytes_simple,
     };
 
-    bool IsSameStandardPolicy(const StandardVariantPolicyResult &lhs,
-                              const StandardVariantPolicyResult &rhs)
-    {
-        return lhs.resolved_base == rhs.resolved_base
-            && lhs.resolved_normal == rhs.resolved_normal
-            && lhs.base_is_array == rhs.base_is_array
-            && lhs.normal_is_array == rhs.normal_is_array
-            && lhs.any_array == rhs.any_array
-            && lhs.route_key.Hash() == rhs.route_key.Hash()
-            && lhs.assemble_key.Hash() == rhs.assemble_key.Hash();
-    }
-
 } // anonymous namespace
 
 MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileLite *profile,
@@ -107,51 +84,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         std::fprintf(stderr, "[Standard] CreateStandardVariant warning: profile is null\n");
     }
 
-    const StandardVariantPolicyResult direct_policy = BuildStandardVariantPolicy(input_key);
-
-    StandardVariantPolicyResult adapter_policy{};
-    bool adapter_ok = false;
-    std::vector<std::string> profile_diagnostics;
-
-#if ULRE_STANDARD_USE_PROFILE_ADAPTER || ULRE_STANDARD_POLICY_EQUIV_CHECK
-    {
-        const MaterialProfileAsset profile_asset = BuildBuiltinStandardDefaultProfile();
-        adapter_ok = BuildStandardPolicyFromProfile(profile_asset,
-                                                    input_key,
-                                                    adapter_policy,
-                                                    profile_diagnostics);
-
-#if ULRE_STANDARD_USE_PROFILE_ADAPTER
-        if (!adapter_ok)
-        {
-            std::fprintf(stderr, "[Standard] BuildStandardPolicyFromProfile failed\n");
-            for (const auto &msg : profile_diagnostics)
-                std::fprintf(stderr, "[Standard] %s\n", msg.c_str());
-            return nullptr;
-        }
-#endif
-    }
-#endif
-
-#if ULRE_STANDARD_POLICY_EQUIV_CHECK
-    if (adapter_ok && !IsSameStandardPolicy(direct_policy, adapter_policy))
-    {
-        std::fprintf(stderr,
-                     "[Standard] Policy equivalence mismatch direct(route=%llu assemble=%llu any_array=%d) adapter(route=%llu assemble=%llu any_array=%d)\n",
-                     static_cast<unsigned long long>(direct_policy.route_key.Hash()),
-                     static_cast<unsigned long long>(direct_policy.assemble_key.Hash()),
-                     direct_policy.any_array ? 1 : 0,
-                     static_cast<unsigned long long>(adapter_policy.route_key.Hash()),
-                     static_cast<unsigned long long>(adapter_policy.assemble_key.Hash()),
-                     adapter_policy.any_array ? 1 : 0);
-    }
-#endif
-
-#if ULRE_STANDARD_USE_PROFILE_ADAPTER
-    const StandardVariantPolicyResult &policy = adapter_policy;
-#else
-    const StandardVariantPolicyResult &policy = direct_policy;
-#endif
+    const StandardVariantPolicyResult policy = BuildStandardVariantPolicy(input_key);
 
     const TextureSourceMode standard_tex_slot_modes[] = {
         policy.resolved_base,
@@ -218,34 +151,9 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         return nullptr;
     }
 
-    ShaderAutoRequirements auto_requirements;
-    std::string require_diagnostics;
-    const bool require_ok = CollectShaderAutoRequirements(dynamic_def,
-                                                          GetShaderLibraryPath(),
-                                                          result.vertex_glsl,
-                                                          result.fragment_glsl,
-                                                          auto_requirements,
-                                                          &require_diagnostics);
-    if (!require_ok)
-    {
-        std::fprintf(stderr, "[Standard] reflection collection failed:\n%s", require_diagnostics.c_str());
-        return nullptr;
-    }
-
-    FixedUBODescriptors merged_ubos;
-    FixedSSBODescriptors merged_ssbos;
-    FixedTextureSamplerDescriptors merged_samplers;
-    FixedMaterialDef merged_def = dynamic_def;
-    MergeShaderAutoRequirements(dynamic_def,
-                                auto_requirements,
-                                merged_def,
-                                merged_ubos,
-                                merged_ssbos,
-                                merged_samplers);
-
     MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        merged_def,
+        dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
         &cfg_with_mi);

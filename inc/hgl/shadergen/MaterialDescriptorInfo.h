@@ -71,7 +71,17 @@ public:
         const size_t index = size_t(slot);
         return index < mtl::SamplerSlotCount ? texture_by_slot[index] : nullptr;
     }
+    const TextureDescriptor *GetTexture(mtl::SamplerSlot slot) const
+    {
+        const size_t index = size_t(slot);
+        return index < mtl::SamplerSlotCount ? texture_by_slot[index] : nullptr;
+    }
     TextureSamplerDescriptor *GetTextureSampler(mtl::SamplerSlot slot)
+    {
+        const size_t index = size_t(slot);
+        return index < mtl::SamplerSlotCount ? texture_sampler_by_slot[index] : nullptr;
+    }
+    const TextureSamplerDescriptor *GetTextureSampler(mtl::SamplerSlot slot) const
     {
         const size_t index = size_t(slot);
         return index < mtl::SamplerSlotCount ? texture_sampler_by_slot[index] : nullptr;

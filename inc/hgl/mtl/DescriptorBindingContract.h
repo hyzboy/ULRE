@@ -6,15 +6,14 @@
 #include<hgl/mtl/SamplerName.h>
 #include<hgl/vk/BufferPolicy.h>
 #include<vector>
-#include<map>
 #include<string>
 
 namespace hgl::graph::mtl
 {
     struct BindingContract
     {
-        std::map<UBODescriptorSemantic, uint32_t> ubos;
-        std::map<SSBODescriptorSemantic, uint32_t> ssbos;
+        uint32_t ubos[size_t(UBODescriptorSemantic::RANGE_SIZE)] = {};
+        uint32_t ssbos[size_t(SSBODescriptorSemantic::RANGE_SIZE)] = {};
     };
 
     struct DescriptorSemanticMeta
@@ -133,42 +132,21 @@ namespace hgl::graph::mtl
     {
         diagnostics.clear();
 
-        auto validate_ubo_map = [&diagnostics](const std::map<UBODescriptorSemantic, uint32_t> &requirements)
+        for (size_t i = 1; i < UBODescriptorSemanticCount; ++i)
         {
-            size_t i = 0;
-            for (const auto &[semantic, stage_flags] : requirements)
-            {
-                if (semantic == UBODescriptorSemantic::Unknown)
-                {
-                    std::string message = "UBO requirement #" + std::to_string(i)
-                                          + " has semantic Unknown; set explicit UBODescriptorSemantic.";
-                    diagnostics.emplace_back(std::move(message));
-                }
+            if (contract.ubos[i] == 0)
+                continue;
+            if (UBODescriptorSemantic(i) == UBODescriptorSemantic::Unknown)
+                diagnostics.emplace_back("UBO slot 0 (Unknown) has non-zero stage_flags; set explicit UBODescriptorSemantic.");
+        }
 
-                (void)stage_flags;
-                ++i;
-            }
-        };
-
-        auto validate_ssbo_map = [&diagnostics](const std::map<SSBODescriptorSemantic, uint32_t> &requirements)
+        for (size_t i = 1; i < SSBODescriptorSemanticCount; ++i)
         {
-            size_t i = 0;
-            for (const auto &[semantic, stage_flags] : requirements)
-            {
-                if (semantic == SSBODescriptorSemantic::Unknown)
-                {
-                    std::string message = "SSBO requirement #" + std::to_string(i)
-                                          + " has semantic Unknown; set explicit SSBODescriptorSemantic.";
-                    diagnostics.emplace_back(std::move(message));
-                }
-
-                (void)stage_flags;
-                ++i;
-            }
-        };
-
-        validate_ubo_map(contract.ubos);
-        validate_ssbo_map(contract.ssbos);
+            if (contract.ssbos[i] == 0)
+                continue;
+            if (SSBODescriptorSemantic(i) == SSBODescriptorSemantic::Unknown)
+                diagnostics.emplace_back("SSBO slot 0 (Unknown) has non-zero stage_flags; set explicit SSBODescriptorSemantic.");
+        }
 
         return diagnostics.empty();
     }

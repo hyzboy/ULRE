@@ -31,42 +31,6 @@ std::string ShaderDescriptorInfo::GetStageName()const
     }
 }
 
-bool ShaderDescriptorInfo::AddUBO(const UBODescriptor *ubo)
-{
-    if(!ubo)
-        return(false);
-
-    ubo_list.push_back(ubo);
-    return true;
-}
-
-bool ShaderDescriptorInfo::AddSSBO(const SSBODescriptor *ssbo)
-{
-    if(!ssbo)
-        return(false);
-
-    ssbo_list.push_back(ssbo);
-    return true;
-}
-
-bool ShaderDescriptorInfo::AddTexture(const TextureDescriptor *sd)
-{
-    if(!sd)
-        return(false);
-
-    texture_list.push_back(sd);
-    return true;
-}
-
-bool ShaderDescriptorInfo::AddTextureSampler(const TextureSamplerDescriptor *sampler)
-{
-    if(!sampler)
-        return(false);
-
-    texture_sampler_list.push_back(sampler);
-    return true;
-}
-
 bool ShaderDescriptorInfo::AddConstValue(ConstValueDescriptor *sd)
 {
     if(!sd)return(false);

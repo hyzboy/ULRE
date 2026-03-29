@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <hgl/common/DescriptorSetTypeDef.h>
 #include <hgl/mtl/DescriptorBindingContract.h>
+#include <cctype>
 
 namespace hgl::graph
 {
@@ -56,6 +57,16 @@ namespace hgl::graph
 
         virtual ~ShaderDescriptor()=default;
 
+        virtual std::string GetBindingMacroName() const
+        {
+            if (!name || !name[0]) return {};
+            std::string result;
+            for (const char *p = name; *p; ++p)
+                result += static_cast<char>(std::toupper(static_cast<unsigned char>(*p)));
+            result += "_BINDING";
+            return result;
+        }
+
         std::strong_ordering operator<=>(const ShaderDescriptor &sr)const
         {
             if(auto cmp=set<=>sr.set;cmp!=0)
@@ -81,6 +92,17 @@ namespace hgl::graph
         {
             desc_type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         }
+
+        std::string GetBindingMacroName() const override
+        {
+            if (semantic != mtl::UBODescriptorSemantic::Unknown)
+            {
+                const auto &meta = mtl::GetDescriptorSemanticMeta(semantic);
+                if (meta.binding_macro_name && *meta.binding_macro_name)
+                    return meta.binding_macro_name;
+            }
+            return ShaderDescriptor::GetBindingMacroName();
+        }
     };
 
     struct SSBODescriptor:public ShaderDescriptor
@@ -93,6 +115,17 @@ namespace hgl::graph
         SSBODescriptor()
         {
             desc_type=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        }
+
+        std::string GetBindingMacroName() const override
+        {
+            if (semantic != mtl::SSBODescriptorSemantic::Unknown)
+            {
+                const auto &meta = mtl::GetDescriptorSemanticMeta(semantic);
+                if (meta.binding_macro_name && *meta.binding_macro_name)
+                    return meta.binding_macro_name;
+            }
+            return ShaderDescriptor::GetBindingMacroName();
         }
     };
 
@@ -108,6 +141,13 @@ namespace hgl::graph
         {
             desc_type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         }
+
+        std::string GetBindingMacroName() const override
+        {
+            if (slot != mtl::SamplerSlot::RANGE_SIZE)
+                return mtl::ToBindingMacroName(slot);
+            return ShaderDescriptor::GetBindingMacroName();
+        }
     };
 
     struct TextureSamplerDescriptor:public ShaderDescriptor
@@ -121,6 +161,13 @@ namespace hgl::graph
         TextureSamplerDescriptor()
         {
             desc_type=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        }
+
+        std::string GetBindingMacroName() const override
+        {
+            if (slot != mtl::SamplerSlot::RANGE_SIZE)
+                return mtl::ToBindingMacroName(slot);
+            return ShaderDescriptor::GetBindingMacroName();
         }
     };
 

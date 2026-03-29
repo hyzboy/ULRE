@@ -1,6 +1,5 @@
 #include <hgl/shadergen/SimpleSamplerGLSLEmitter.h>
-#include <hgl/shadergen/ShaderCreateInfo.h>
-#include <hgl/shadergen/ShaderDescriptorInfo.h>
+#include <hgl/shadergen/MaterialDescriptorInfo.h>
 #include <hgl/mtl/SamplerName.h>
 #include <hgl/common/ShaderDescriptorDef.h>
 #include <algorithm>
@@ -114,11 +113,9 @@ namespace
     }
 }
 
-std::string EmitSimpleSamplerGLSL(const ShaderCreateInfo &shader)
+std::string EmitSimpleSamplerGLSL(const MaterialDescriptorInfo &mdi, ShaderStage stage)
 {
-    const ShaderDescriptorInfo *info = shader.GetShaderDescriptorInfo();
-    if (!info)
-        return {};
+    const uint32_t stage_bit = uint32_t(stage);
 
     struct SamplerEntry
     {
@@ -147,11 +144,16 @@ std::string EmitSimpleSamplerGLSL(const ShaderCreateInfo &shader)
             array_samplers.push_back({sd, sd->channel_hint});
     };
 
-    for (const TextureDescriptor *texture : info->GetTextureList())
-        collect_texture(texture);
+    for (size_t i = 0; i < mtl::SamplerSlotCount; ++i)
+    {
+        if (const TextureDescriptor *tex = mdi.GetTexture(mtl::SamplerSlot(i)))
+            if (tex->stage_flag & stage_bit)
+                collect_texture(tex);
 
-    for (const TextureSamplerDescriptor *sampler : info->GetTextureSamplerList())
-        collect_sampler(sampler);
+        if (const TextureSamplerDescriptor *samp = mdi.GetTextureSampler(mtl::SamplerSlot(i)))
+            if (samp->stage_flag & stage_bit)
+                collect_sampler(samp);
+    }
 
     if (samplers.empty() && array_samplers.empty())
         return {};
@@ -204,11 +206,9 @@ std::string EmitSimpleSamplerGLSL(const ShaderCreateInfo &shader)
     return out;
 }
 
-std::string EmitMaterialInstanceTextureGLSL(const ShaderCreateInfo &shader)
+std::string EmitMaterialInstanceTextureGLSL(const MaterialDescriptorInfo &mdi, ShaderStage stage)
 {
-    const ShaderDescriptorInfo *info = shader.GetShaderDescriptorInfo();
-    if (!info)
-        return {};
+    const uint32_t stage_bit = uint32_t(stage);
 
     // Collect array sampler slots (same detection as EmitSimpleSamplerGLSL).
     std::vector<mtl::SamplerSlot> array_slots;
@@ -223,10 +223,16 @@ std::string EmitMaterialInstanceTextureGLSL(const ShaderCreateInfo &shader)
             array_slots.push_back(slot);
     };
 
-    for (const TextureDescriptor *texture : info->GetTextureList())
-        try_collect(texture);
-    for (const TextureSamplerDescriptor *sampler : info->GetTextureSamplerList())
-        try_collect(sampler);
+    for (size_t i = 0; i < mtl::SamplerSlotCount; ++i)
+    {
+        if (const TextureDescriptor *tex = mdi.GetTexture(mtl::SamplerSlot(i)))
+            if (tex->stage_flag & stage_bit)
+                try_collect(tex);
+
+        if (const TextureSamplerDescriptor *samp = mdi.GetTextureSampler(mtl::SamplerSlot(i)))
+            if (samp->stage_flag & stage_bit)
+                try_collect(samp);
+    }
 
     if (array_slots.empty())
         return {};

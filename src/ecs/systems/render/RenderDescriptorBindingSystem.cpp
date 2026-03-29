@@ -33,16 +33,14 @@ namespace hgl::ecs
             if (!material)
                 return;
 
-            for (const auto &[ubo_semantic, stage_flags] : contract.ubos)
+            for (size_t i = 1; i < graph::mtl::UBODescriptorSemanticCount; ++i)
             {
-                if (ubo_semantic == graph::mtl::UBODescriptorSemantic::Unknown)
+                if (contract.ubos[i] == 0)
                     continue;
 
-                auto *accessor = scene_ubo_resolvers[size_t(ubo_semantic)];
+                auto *accessor = scene_ubo_resolvers[i];
                 if (accessor)
                     material->BindUBO(accessor);
-
-                (void)stage_flags;
             }
         }
 
@@ -420,9 +418,12 @@ namespace hgl::ecs
             const auto &contract = material->GetBindingContract();
             ApplySceneUBOBindings(material, contract, scene_ubo_resolvers);
 
-            for (const auto &[ssbo_semantic, stage_flags] : contract.ssbos)
+            for (size_t i = 1; i < graph::mtl::SSBODescriptorSemanticCount; ++i)
             {
-                switch (ssbo_semantic)
+                if (contract.ssbos[i] == 0)
+                    continue;
+
+                switch (graph::mtl::SSBODescriptorSemantic(i))
                 {
                 case graph::mtl::SSBODescriptorSemantic::TransformData:
                 {
@@ -467,8 +468,6 @@ namespace hgl::ecs
                 default:
                     break;
                 }
-
-                (void)stage_flags;
             }
 
         }
@@ -487,9 +486,12 @@ namespace hgl::ecs
             const auto &contract = material->GetBindingContract();
             ApplySceneUBOBindings(material, contract, scene_ubo_resolvers);
 
-            for (const auto &[ssbo_semantic, stage_flags] : contract.ssbos)
+            for (size_t i = 1; i < graph::mtl::SSBODescriptorSemanticCount; ++i)
             {
-                switch (ssbo_semantic)
+                if (contract.ssbos[i] == 0)
+                    continue;
+
+                switch (graph::mtl::SSBODescriptorSemantic(i))
                 {
                 case graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID:
                 {
@@ -500,8 +502,6 @@ namespace hgl::ecs
                 default:
                     break;
                 }
-
-                (void)stage_flags;
             }
         }
     }
@@ -564,50 +564,43 @@ namespace hgl::ecs
             bool all_required_ok = true;
             std::string first_error;
 
-            auto validate_ubo_requirements = [&](const std::map<graph::mtl::UBODescriptorSemantic, uint32_t> &requirements)
+            for (size_t i = 1; i < graph::mtl::UBODescriptorSemanticCount; ++i)
             {
-                for (const auto &[ubo_semantic, stage_flags] : requirements)
+                if (contract.ubos[i] == 0)
+                    continue;
+
+                const auto ubo_semantic = graph::mtl::UBODescriptorSemantic(i);
+                if (IsUBOSemanticResolvable(ubo_semantic))
+                    continue;
+
+                ++frame_stats.required_missing;
+                all_required_ok = false;
+
+                if (first_error.empty())
                 {
-                    const bool resolvable = IsUBOSemanticResolvable(ubo_semantic);
-                    if (resolvable)
-                        continue;
-
-                    ++frame_stats.required_missing;
-                    all_required_ok = false;
-
-                    if (first_error.empty())
-                    {
-                        first_error = "missing semantic=";
-                        first_error += graph::mtl::GetUBODescriptorSemanticName(ubo_semantic);
-                    }
-
-                    (void)stage_flags;
+                    first_error = "missing semantic=";
+                    first_error += graph::mtl::GetUBODescriptorSemanticName(ubo_semantic);
                 }
-            };
+            }
 
-            auto validate_ssbo_requirements = [&](const std::map<graph::mtl::SSBODescriptorSemantic, uint32_t> &requirements)
+            for (size_t i = 1; i < graph::mtl::SSBODescriptorSemanticCount; ++i)
             {
-                for (const auto &[ssbo_semantic, stage_flags] : requirements)
+                if (contract.ssbos[i] == 0)
+                    continue;
+
+                const auto ssbo_semantic = graph::mtl::SSBODescriptorSemantic(i);
+                if (IsSSBOSemanticResolvable(ssbo_semantic))
+                    continue;
+
+                ++frame_stats.required_missing;
+                all_required_ok = false;
+
+                if (first_error.empty())
                 {
-                    const bool resolvable = IsSSBOSemanticResolvable(ssbo_semantic);
-                    if (resolvable)
-                        continue;
-
-                    ++frame_stats.required_missing;
-                    all_required_ok = false;
-
-                    if (first_error.empty())
-                    {
-                        first_error = "missing semantic=";
-                        first_error += graph::mtl::GetSSBODescriptorSemanticName(ssbo_semantic);
-                    }
-
-                    (void)stage_flags;
+                    first_error = "missing semantic=";
+                    first_error += graph::mtl::GetSSBODescriptorSemanticName(ssbo_semantic);
                 }
-            };
-
-            validate_ubo_requirements(contract.ubos);
-            validate_ssbo_requirements(contract.ssbos);
+}
 
             auto it = contract_last_ok.find(material);
             if (it == contract_last_ok.end())
