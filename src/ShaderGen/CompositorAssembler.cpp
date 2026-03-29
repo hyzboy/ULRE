@@ -6,9 +6,31 @@
 #include <hgl/mtl/LightingModel.h>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 
 namespace
 {
+    using GeneratedVSBuilder = std::string (*)();
+    using GeneratedFSBuilder = std::string (*)(hgl::graph::BlendMode blend, const std::string &surface_path);
+
+    struct GeneratedVSTemplateRoute
+    {
+        const char *template_path;
+        GeneratedVSBuilder builder;
+    };
+
+    struct GeneratedFSTemplateRoute
+    {
+        const char *template_path;
+        GeneratedFSBuilder builder;
+    };
+
+    struct SurfaceFunctionRoute
+    {
+        hgl::graph::SurfaceType surface;
+        const char *path;
+    };
+
     void AppendDefine(std::string &out, const char *name)
     {
         out += "#define ";
@@ -111,6 +133,236 @@ namespace
         AppendInclude(out, "compositor/main_terrain_grid.vert.glsl");
         return out;
     }
+
+    std::string BuildForwardUnlitVertexColorVS()
+    {
+        return BuildForwardVertexEntry({.has_vertex_color = true});
+    }
+
+    std::string BuildForwardUnlitLuminanceVS()
+    {
+        return BuildForwardVertexEntry({.has_luminance = true});
+    }
+
+    std::string BuildForwardUnlitLuminance2DVS()
+    {
+        return BuildForwardVertexEntry({.vert_input_2d = true, .has_luminance = true});
+    }
+
+    std::string BuildForwardUnlitNormalVS()
+    {
+        return BuildForwardVertexEntry({.has_world_pos = true, .has_world_normal = true});
+    }
+
+    std::string BuildForwardSkyVS()
+    {
+        return BuildForwardVertexEntry({.has_direction = true});
+    }
+
+    std::string BuildForwardLitVS()
+    {
+        return BuildForwardVertexEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true});
+    }
+
+    std::string BuildForwardUnlitVertexColorFS(const hgl::graph::BlendMode, const std::string &surface_path)
+    {
+        return BuildForwardFragmentEntry({.has_vertex_color = true, .surface_path = surface_path});
+    }
+
+    std::string BuildForwardUnlitLuminanceFS(const hgl::graph::BlendMode, const std::string &surface_path)
+    {
+        return BuildForwardFragmentEntry({.has_luminance = true, .surface_path = surface_path});
+    }
+
+    std::string BuildForwardUnlitNormalFS(const hgl::graph::BlendMode, const std::string &surface_path)
+    {
+        return BuildForwardFragmentEntry({.has_world_pos = true, .has_world_normal = true, .needs_camera = true, .surface_path = surface_path});
+    }
+
+    std::string BuildForwardBillboardFS(const hgl::graph::BlendMode blend, const std::string &surface_path)
+    {
+        const bool alpha_masked = (blend == hgl::graph::BlendMode::Masked);
+        const bool alpha_dither = (blend == hgl::graph::BlendMode::Dither);
+        return BuildForwardFragmentEntry({.alpha_masked = alpha_masked, .alpha_dither = alpha_dither, .has_texcoord = true, .surface_path = surface_path});
+    }
+
+    std::string BuildForwardSkyFS(const hgl::graph::BlendMode, const std::string &surface_path)
+    {
+        return BuildForwardFragmentEntry({.has_direction = true, .surface_path = surface_path});
+    }
+
+    std::string BuildTerrainGridFS(const hgl::graph::BlendMode, const std::string &surface_path)
+    {
+        return BuildForwardFragmentEntry({.has_world_normal = true, .has_clip_pos = true, .surface_path = surface_path});
+    }
+
+    std::string BuildForwardLitFS(const hgl::graph::BlendMode, const std::string &surface_path)
+    {
+        return BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .enable_lighting = true, .needs_camera = true, .needs_sky = true, .surface_path = surface_path});
+    }
+
+    static const GeneratedVSTemplateRoute kGeneratedVSTemplateRoutes[] = {
+        {"compositor/main_forward_unlit_vertexcolor.vert.glsl", &BuildForwardUnlitVertexColorVS},
+        {"compositor/main_forward_unlit_luminance.vert.glsl",   &BuildForwardUnlitLuminanceVS},
+        {"compositor/main_forward_unlit_luminance_2d.vert.glsl", &BuildForwardUnlitLuminance2DVS},
+        {"compositor/main_forward_unlit_normal.vert.glsl",      &BuildForwardUnlitNormalVS},
+        {"compositor/main_forward_sky.vert.glsl",               &BuildForwardSkyVS},
+        {"compositor/main_forward_billboard_dynamic.vert.glsl", &BuildBillboardDynamicVertexEntry},
+        {"compositor/main_forward_billboard_fixed.vert.glsl",   &BuildBillboardFixedVertexEntry},
+        {"compositor/main_terrain_grid.vert.glsl",              &BuildTerrainGridVertexEntry},
+        {"compositor/main_forward_lit.vert.glsl",               &BuildForwardLitVS},
+    };
+
+    static const GeneratedFSTemplateRoute kGeneratedFSTemplateRoutes[] = {
+        {"compositor/main_forward_unlit_vertexcolor.frag.glsl", &BuildForwardUnlitVertexColorFS},
+        {"compositor/main_forward_unlit_luminance.frag.glsl",   &BuildForwardUnlitLuminanceFS},
+        {"compositor/main_forward_unlit_normal.frag.glsl",      &BuildForwardUnlitNormalFS},
+        {"compositor/main_forward_billboard.frag.glsl",         &BuildForwardBillboardFS},
+        {"compositor/main_forward_sky.frag.glsl",               &BuildForwardSkyFS},
+        {"compositor/main_terrain_grid.frag.glsl",              &BuildTerrainGridFS},
+        {"compositor/main_forward_lit.frag.glsl",               &BuildForwardLitFS},
+    };
+
+    static const SurfaceFunctionRoute kSurfaceFunctionRoutes[] = {
+        {hgl::graph::SurfaceType::PureColor2D,  "surface/unlit_color3d_surface.glsl"},
+        {hgl::graph::SurfaceType::VertexColor2D,"surface/unlit_vertexcolor_surface.glsl"},
+        {hgl::graph::SurfaceType::PureTexture2D,"surface/2d/puretexture2d_surface.glsl"},
+        {hgl::graph::SurfaceType::Text2D,       "surface/2d/text2d_surface.glsl"},
+        {hgl::graph::SurfaceType::Standard,     "surface/standard_surface.glsl"},
+        {hgl::graph::SurfaceType::Unlit,        "surface/unlit_color3d_surface.glsl"},
+        {hgl::graph::SurfaceType::Skin,         "surface/skin_surface.glsl"},
+        {hgl::graph::SurfaceType::Hair,         "surface/hair_surface.glsl"},
+        {hgl::graph::SurfaceType::Cloth,        "surface/cloth_surface.glsl"},
+        {hgl::graph::SurfaceType::Eye,          "surface/eye_surface.glsl"},
+        {hgl::graph::SurfaceType::Foliage,      "surface/foliage_surface.glsl"},
+        {hgl::graph::SurfaceType::ClearCoat,    "surface/clearcoat_surface.glsl"},
+        {hgl::graph::SurfaceType::Water,        "surface/water_surface.glsl"},
+        {hgl::graph::SurfaceType::Terrain,      "surface/terrain_surface.glsl"},
+        {hgl::graph::SurfaceType::Sky,          "surface/sky_surface.glsl"},
+    };
+
+    template<typename Route, size_t N>
+    const Route *FindRouteByTemplatePath(const Route (&routes)[N], const std::string &template_path)
+    {
+        for(const auto &route : routes)
+        {
+            if(template_path == route.template_path)
+                return &route;
+        }
+
+        return nullptr;
+    }
+
+    template<size_t N>
+    const SurfaceFunctionRoute *FindSurfaceFunctionRoute(const SurfaceFunctionRoute (&routes)[N], const hgl::graph::SurfaceType surface)
+    {
+        for(const auto &route : routes)
+        {
+            if(route.surface == surface)
+                return &route;
+        }
+
+        return nullptr;
+    }
+
+    size_t FindVersionDirectiveLineEnd(const std::string &source)
+    {
+        if(source.empty())
+            return std::string::npos;
+
+        size_t begin = 0;
+
+        // UTF-8 BOM support
+        if(source.size() >= 3
+        && static_cast<unsigned char>(source[0]) == 0xEF
+        && static_cast<unsigned char>(source[1]) == 0xBB
+        && static_cast<unsigned char>(source[2]) == 0xBF)
+        {
+            begin = 3;
+        }
+
+        while(begin < source.size())
+        {
+            const char ch = source[begin];
+            if(ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n')
+            {
+                ++begin;
+                continue;
+            }
+            break;
+        }
+
+        if(begin + 8 <= source.size() && source.compare(begin, 8, "#version") == 0)
+        {
+            const size_t eol = source.find('\n', begin);
+            return eol == std::string::npos ? source.size() : (eol + 1);
+        }
+
+        return std::string::npos;
+    }
+
+    std::string BuildGLSLPreviewFirstLines(const std::string &source, const size_t max_lines)
+    {
+        if(source.empty() || max_lines == 0)
+            return std::string();
+
+        size_t line_count = 0;
+        size_t pos = 0;
+
+        while(pos < source.size() && line_count < max_lines)
+        {
+            const size_t eol = source.find('\n', pos);
+            ++line_count;
+
+            if(eol == std::string::npos)
+                return source;
+
+            pos = eol + 1;
+        }
+
+        if(pos >= source.size())
+            return source;
+
+        return source.substr(0, pos);
+    }
+
+    std::string BuildAssembleReadFailureMessage(const char *stage,
+                                                const std::string &template_path,
+                                                const std::string &file_path,
+                                                const std::string &reason)
+    {
+        std::string msg;
+        msg.reserve(256 + reason.size());
+        msg += "[CompositorAssembler] ";
+        msg += stage;
+        msg += " template load failed. template=";
+        msg += template_path.empty() ? "<auto-route>" : template_path;
+        msg += " file=";
+        msg += file_path;
+        msg += " reason=";
+        msg += reason;
+        return msg;
+    }
+
+    std::string BuildAssemblePreprocessFailureMessage(const char *stage,
+                                                      const std::string &template_path,
+                                                      const std::string &detail,
+                                                      const std::string &glsl_source)
+    {
+        std::string msg;
+        msg.reserve(384 + detail.size() + std::min<size_t>(glsl_source.size(), 2048));
+        msg += "[CompositorAssembler] ";
+        msg += stage;
+        msg += " preprocess failed. template=";
+        msg += template_path.empty() ? "<auto-route>" : template_path;
+        msg += " detail=";
+        msg += detail;
+        msg += "\n[";
+        msg += stage;
+        msg += " GLSL first 80 lines]\n";
+        msg += BuildGLSLPreviewFirstLines(glsl_source, 80);
+        return msg;
+    }
 }
 
 namespace hgl::graph
@@ -139,58 +391,9 @@ namespace hgl::graph
 
     bool CompositorAssembler::TryBuildGeneratedVSTemplatePath(const std::string &template_path, std::string &out_source) const
     {
-        if (template_path == "compositor/main_forward_unlit_vertexcolor.vert.glsl")
+        if(const GeneratedVSTemplateRoute *route = FindRouteByTemplatePath(kGeneratedVSTemplateRoutes, template_path))
         {
-            out_source = BuildForwardVertexEntry({.has_vertex_color = true});
-            return true;
-        }
-
-        if (template_path == "compositor/main_forward_unlit_luminance.vert.glsl")
-        {
-            out_source = BuildForwardVertexEntry({.has_luminance = true});
-            return true;
-        }
-
-        if (template_path == "compositor/main_forward_unlit_luminance_2d.vert.glsl")
-        {
-            out_source = BuildForwardVertexEntry({.vert_input_2d = true, .has_luminance = true});
-            return true;
-        }
-
-        if (template_path == "compositor/main_forward_unlit_normal.vert.glsl")
-        {
-            out_source = BuildForwardVertexEntry({.has_world_pos = true, .has_world_normal = true});
-            return true;
-        }
-
-        if (template_path == "compositor/main_forward_sky.vert.glsl")
-        {
-            out_source = BuildForwardVertexEntry({.has_direction = true});
-            return true;
-        }
-
-        if (template_path == "compositor/main_forward_billboard_dynamic.vert.glsl")
-        {
-            out_source = BuildBillboardDynamicVertexEntry();
-            return true;
-        }
-
-        if (template_path == "compositor/main_forward_billboard_fixed.vert.glsl")
-        {
-            out_source = BuildBillboardFixedVertexEntry();
-            return true;
-        }
-
-        if (template_path == "compositor/main_terrain_grid.vert.glsl")
-        {
-            out_source = BuildTerrainGridVertexEntry();
-            return true;
-        }
-
-        if (template_path == "compositor/main_forward_lit.vert.glsl")
-        {
-            // HAS_WORLD_POS + HAS_WORLD_NORMAL + HAS_UV0
-            out_source = BuildForwardVertexEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true});
+            out_source = route->builder();
             return true;
         }
 
@@ -199,48 +402,9 @@ namespace hgl::graph
 
     bool CompositorAssembler::TryBuildGeneratedFSTemplatePath(const std::string &template_path, BlendMode blend, const std::string &surface_path, std::string &out_source) const
     {
-        if (template_path == "compositor/main_forward_unlit_vertexcolor.frag.glsl")
+        if(const GeneratedFSTemplateRoute *route = FindRouteByTemplatePath(kGeneratedFSTemplateRoutes, template_path))
         {
-            out_source = BuildForwardFragmentEntry({.has_vertex_color = true, .surface_path = surface_path});
-            return true;
-        }
-
-        if (template_path == "compositor/main_forward_unlit_luminance.frag.glsl")
-        {
-            // has_luminance=true (param 12); has_direction stays false
-            out_source = BuildForwardFragmentEntry({.has_luminance = true, .surface_path = surface_path});
-            return true;
-        }
-
-        if (template_path == "compositor/main_forward_unlit_normal.frag.glsl")
-        {
-            out_source = BuildForwardFragmentEntry({.has_world_pos = true, .has_world_normal = true, .needs_camera = true, .surface_path = surface_path});
-            return true;
-        }
-
-        if (template_path == "compositor/main_forward_billboard.frag.glsl")
-        {
-            const bool alpha_masked = (blend == BlendMode::Masked);
-            const bool alpha_dither = (blend == BlendMode::Dither);
-            out_source = BuildForwardFragmentEntry({.alpha_masked = alpha_masked, .alpha_dither = alpha_dither, .has_texcoord = true, .surface_path = surface_path});
-            return true;
-        }
-
-        if (template_path == "compositor/main_forward_sky.frag.glsl")
-        {
-            out_source = BuildForwardFragmentEntry({.has_direction = true, .surface_path = surface_path});
-            return true;
-        }
-
-        if (template_path == "compositor/main_terrain_grid.frag.glsl")
-        {
-            out_source = BuildForwardFragmentEntry({.has_world_normal = true, .has_clip_pos = true, .surface_path = surface_path});
-            return true;
-        }
-
-        if (template_path == "compositor/main_forward_lit.frag.glsl")
-        {
-            out_source = BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .enable_lighting = true, .needs_camera = true, .needs_sky = true, .surface_path = surface_path});
+            out_source = route->builder(blend, surface_path);
             return true;
         }
 
@@ -387,41 +551,10 @@ namespace hgl::graph
 
     std::string CompositorAssembler::GetSurfaceFunctionPath(SurfaceType surface) const
     {
-        // 2D Materials
-        if (Is2DSurfaceType(surface))
-        {
-            switch (surface)
-            {
-            // Reuse existing 3D surfaces — MaterialInstanceData layout is compatible
-            case SurfaceType::PureColor2D:
-                return "surface/unlit_color3d_surface.glsl";
-            case SurfaceType::VertexColor2D:
-                return "surface/unlit_vertexcolor_surface.glsl";
-            // New 2D-specific surfaces
-            case SurfaceType::PureTexture2D:
-                return "surface/2d/puretexture2d_surface.glsl";
-            case SurfaceType::Text2D:
-                return "surface/2d/text2d_surface.glsl";
-            default:
-                break;
-            }
-        }
+        if(const SurfaceFunctionRoute *route = FindSurfaceFunctionRoute(kSurfaceFunctionRoutes, surface))
+            return route->path;
 
-        switch (surface)
-        {
-        case SurfaceType::Standard:   return "surface/standard_surface.glsl";
-        case SurfaceType::Unlit:      return "surface/unlit_color3d_surface.glsl";
-        case SurfaceType::Skin:       return "surface/skin_surface.glsl";        // 后续实现
-        case SurfaceType::Hair:       return "surface/hair_surface.glsl";        // 后续实现
-        case SurfaceType::Cloth:      return "surface/cloth_surface.glsl";       // 后续实现
-        case SurfaceType::Eye:        return "surface/eye_surface.glsl";         // 后续实现
-        case SurfaceType::Foliage:    return "surface/foliage_surface.glsl";     // 后续实现
-        case SurfaceType::ClearCoat:  return "surface/clearcoat_surface.glsl";   // 后续实现
-        case SurfaceType::Water:      return "surface/water_surface.glsl";       // 后续实现
-        case SurfaceType::Terrain:    return "surface/terrain_surface.glsl";     // 后续实现
-        case SurfaceType::Sky:        return "surface/sky_surface.glsl";         // 后续实现
-        default:                      return "surface/standard_surface.glsl";
-        }
+        return "surface/standard_surface.glsl";
     }
 
     std::string CompositorAssembler::InjectDefines(const std::string &source, const ShaderPermutationKey &key) const
@@ -429,17 +562,19 @@ namespace hgl::graph
         std::string defines;
         key.AppendGLSLDefines(defines);
 
-        // 查找 #version 行的末尾
-        auto pos = source.find('\n');
-        if (pos != std::string::npos && source.substr(0, 8) == "#version")
+        if(defines.empty())
+            return source;
+
+        const size_t insert_pos = FindVersionDirectiveLineEnd(source);
+        if(insert_pos != std::string::npos)
         {
             std::string result;
             result.reserve(source.size() + defines.size() + 2);
-            result.append(source, 0, pos + 1);
+            result.append(source, 0, insert_pos);
             result.append("\n");
             result.append(defines);
             result.append("\n");
-            result.append(source, pos + 1, std::string::npos);
+            result.append(source, insert_pos, std::string::npos);
             return result;
         }
 
@@ -545,17 +680,24 @@ namespace hgl::graph
         if (vs_template_override && vs_template_override[0])
         {
             // Template override: Generated-first, disk fallback
+            std::string read_error;
             if (!TryBuildGeneratedVSTemplatePath(vs_template_override, vs_source)
-             && !ReadFile(vs_path, vs_source, result.error_message))
+             && !ReadFile(vs_path, vs_source, read_error))
             {
+                result.error_message = BuildAssembleReadFailureMessage("VS", vs_template_override, vs_path, read_error);
                 result.success = false;
                 return result;
             }
         }
-        else if (!ReadFile(vs_path, vs_source, result.error_message))
+        else
         {
-            result.success = false;
-            return result;
+            std::string read_error;
+            if(!ReadFile(vs_path, vs_source, read_error))
+            {
+                result.error_message = BuildAssembleReadFailureMessage("VS", std::string(), vs_path, read_error);
+                result.success = false;
+                return result;
+            }
         }
 
         // 4. FS 模板
@@ -563,23 +705,49 @@ namespace hgl::graph
         if (fs_template_override && fs_template_override[0])
         {
             // Template override: Generated-first, disk fallback
+            std::string read_error;
             if (!TryBuildGeneratedFSTemplatePath(fs_template_override, blend, surface_rel, fs_source)
-             && !ReadFile(fs_path, fs_source, result.error_message))
+             && !ReadFile(fs_path, fs_source, read_error))
             {
+                result.error_message = BuildAssembleReadFailureMessage("FS", fs_template_override, fs_path, read_error);
                 result.success = false;
                 return result;
             }
         }
-        else if (!ReadFile(fs_path, fs_source, result.error_message))
+        else
         {
-            // Compositor path: disk-first, Generated fallback
-            result.success = false;
-            return result;
+            std::string read_error;
+            if(!ReadFile(fs_path, fs_source, read_error))
+            {
+                result.error_message = BuildAssembleReadFailureMessage("FS", std::string(), fs_path, read_error);
+                result.success = false;
+                return result;
+            }
         }
 
         // 5. 注入 #define
         vs_source = InjectDefines(vs_source, key);
         fs_source = InjectDefines(fs_source, key);
+
+        if(vs_source.empty())
+        {
+            result.error_message = BuildAssemblePreprocessFailureMessage("VS",
+                                                                          std::string(vs_template_override ? vs_template_override : ""),
+                                                                          "InjectDefines produced empty source",
+                                                                          vs_source);
+            result.success = false;
+            return result;
+        }
+
+        if(fs_source.empty())
+        {
+            result.error_message = BuildAssemblePreprocessFailureMessage("FS",
+                                                                          fs_template_override ? fs_template_override : std::string(),
+                                                                          "InjectDefines produced empty source",
+                                                                          fs_source);
+            result.success = false;
+            return result;
+        }
 
         // 6. 替换 FS 中的 SURFACE_FUNCTION_FILE（自定义/遗留文件模板仍支持）
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
@@ -628,37 +796,71 @@ namespace hgl::graph
         std::string vs_source;
         if (!desc.vs_template_path.empty())
         {
+            std::string read_error;
             if (!TryBuildGeneratedVSTemplatePath(desc.vs_template_path, vs_source)
-             && !ReadFile(vs_path, vs_source, result.error_message))
+             && !ReadFile(vs_path, vs_source, read_error))
             {
+                result.error_message = BuildAssembleReadFailureMessage("VS", desc.vs_template_path, vs_path, read_error);
                 result.success = false;
                 return result;
             }
         }
-        else if (!ReadFile(vs_path, vs_source, result.error_message))
+        else
         {
-            result.success = false;
-            return result;
+            std::string read_error;
+            if(!ReadFile(vs_path, vs_source, read_error))
+            {
+                result.error_message = BuildAssembleReadFailureMessage("VS", std::string(), vs_path, read_error);
+                result.success = false;
+                return result;
+            }
         }
 
         std::string fs_source;
         if (!desc.fs_template_path.empty())
         {
+            std::string read_error;
             if (!TryBuildGeneratedFSTemplatePath(desc.fs_template_path, key.blend_mode, surface_rel, fs_source)
-             && !ReadFile(fs_path, fs_source, result.error_message))
+             && !ReadFile(fs_path, fs_source, read_error))
             {
+                result.error_message = BuildAssembleReadFailureMessage("FS", desc.fs_template_path, fs_path, read_error);
                 result.success = false;
                 return result;
             }
         }
-        else if (!ReadFile(fs_path, fs_source, result.error_message))
+        else
         {
-            result.success = false;
-            return result;
+            std::string read_error;
+            if(!ReadFile(fs_path, fs_source, read_error))
+            {
+                result.error_message = BuildAssembleReadFailureMessage("FS", std::string(), fs_path, read_error);
+                result.success = false;
+                return result;
+            }
         }
 
         vs_source = InjectDefines(vs_source, perm);
         fs_source = InjectDefines(fs_source, perm);
+
+        if(vs_source.empty())
+        {
+            result.error_message = BuildAssemblePreprocessFailureMessage("VS",
+                                                                          desc.vs_template_path,
+                                                                          "InjectDefines produced empty source",
+                                                                          vs_source);
+            result.success = false;
+            return result;
+        }
+
+        if(fs_source.empty())
+        {
+            result.error_message = BuildAssemblePreprocessFailureMessage("FS",
+                                                                          desc.fs_template_path,
+                                                                          "InjectDefines produced empty source",
+                                                                          fs_source);
+            result.success = false;
+            return result;
+        }
 
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
 
