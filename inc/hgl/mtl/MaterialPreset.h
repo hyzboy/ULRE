@@ -25,6 +25,11 @@ namespace hgl::graph::mtl
         PBRColor3D,
         VertexLuminance2D,
 
-        ENUM_CLASS_RANGE(VertexColor2D, VertexLuminance2D)
+        // Semantic presets (currently aliases to Standard pipeline)
+        HumanSkin,
+        Wood,
+        Stone,
+
+        ENUM_CLASS_RANGE(VertexColor2D, Stone)
     };
 }

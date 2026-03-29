@@ -31,6 +31,14 @@ struct MaterialPresetMeta
     MakeVariantKeyProc make_key;
 };
 
+struct PresetResolveEntry
+{
+    MaterialPreset preset;
+    const char *name;
+    MaterialPreset canonical_preset;
+    MakeVariantKeyProc make_key;
+};
+
 static MaterialVariantKey MakeVertexColor2DKey()
 {
     MaterialVariantKey key{};
@@ -200,6 +208,33 @@ static const MaterialPresetMeta kPresetMetaList[] =
     {MaterialPreset::Billboard2DFixed,    "Billboard2DFixed",    MakeBillboard2DFixedKey},
     {MaterialPreset::Standard,            "Standard",            MakeStandardKey},
     {MaterialPreset::PBRColor3D,          "PBRColor3D",          MakePBRColor3DKey},
+    {MaterialPreset::HumanSkin,           "HumanSkin",           MakeStandardKey},
+    {MaterialPreset::Wood,                "Wood",                MakeStandardKey},
+    {MaterialPreset::Stone,               "Stone",               MakeStandardKey},
+};
+
+static const PresetResolveEntry kPresetResolveTable[] =
+{
+    {MaterialPreset::VertexColor2D,       "VertexColor2D",       MaterialPreset::VertexColor2D,       MakeVertexColor2DKey},
+    {MaterialPreset::PureColor2D,         "PureColor2D",         MaterialPreset::PureColor2D,         MakePureColor2DKey},
+    {MaterialPreset::PureTexture2D,       "PureTexture2D",       MaterialPreset::PureTexture2D,       MakePureTexture2DKey},
+    {MaterialPreset::Text2D,              "Text2D",              MaterialPreset::Text2D,              MakeText2DKey},
+    {MaterialPreset::PureColor3D,         "PureColor3D",         MaterialPreset::PureColor3D,         MakePureColor3DKey},
+    {MaterialPreset::VertexColor3D,       "VertexColor3D",       MaterialPreset::VertexColor3D,       MakeVertexColor3DKey},
+    {MaterialPreset::VertexLuminance3D,   "VertexLuminance3D",   MaterialPreset::VertexLuminance3D,   MakeVertexLuminance3DKey},
+    {MaterialPreset::VertexLuminance2D,   "VertexLuminance2D",   MaterialPreset::VertexLuminance2D,   MakeVertexLuminance2DKey},
+    {MaterialPreset::VertexPattleColor3D, "VertexPattleColor3D", MaterialPreset::VertexPattleColor3D, MakeVertexPattleColor3DKey},
+    {MaterialPreset::Gizmo3D,             "Gizmo3D",             MaterialPreset::Gizmo3D,             MakeGizmo3DKey},
+    {MaterialPreset::TerrainGrid,         "TerrainGrid",         MaterialPreset::TerrainGrid,         MakeTerrainGridKey},
+    {MaterialPreset::SkyMinimal,          "SkyMinimal",          MaterialPreset::SkyMinimal,          MakeSkyMinimalKey},
+    {MaterialPreset::Billboard2DDynamic,  "Billboard2DDynamic",  MaterialPreset::Billboard2DDynamic,  MakeBillboard2DDynamicKey},
+    {MaterialPreset::Billboard2DFixed,    "Billboard2DFixed",    MaterialPreset::Billboard2DFixed,    MakeBillboard2DFixedKey},
+    {MaterialPreset::Standard,            "Standard",            MaterialPreset::Standard,            MakeStandardKey},
+    {MaterialPreset::PBRColor3D,          "PBRColor3D",          MaterialPreset::PBRColor3D,          MakePBRColor3DKey},
+    // Semantic aliases (LOD reserved, current lod=0 target is Standard)
+    {MaterialPreset::HumanSkin,           "HumanSkin",           MaterialPreset::Standard,            MakeStandardKey},
+    {MaterialPreset::Wood,                "Wood",                MaterialPreset::Standard,            MakeStandardKey},
+    {MaterialPreset::Stone,               "Stone",               MaterialPreset::Standard,            MakeStandardKey},
 };
 
 static const MaterialPresetMeta *FindMaterialPresetMeta(const MaterialPreset preset)
@@ -211,13 +246,87 @@ static const MaterialPresetMeta *FindMaterialPresetMeta(const MaterialPreset pre
     return nullptr;
 }
 
+static const PresetResolveEntry *FindPresetResolveEntry(const MaterialPreset preset)
+{
+    for(const auto &entry:kPresetResolveTable)
+        if(entry.preset==preset)
+            return &entry;
+
+    return nullptr;
+}
+
+static bool ValidatePresetResolveTable()
+{
+    bool ok=true;
+
+    for(const auto &legacy:kPresetMetaList)
+    {
+        const PresetResolveEntry *entry=FindPresetResolveEntry(legacy.preset);
+        if(!entry)
+        {
+            std::fprintf(stderr,
+                "[MaterialLibrary] PresetResolveTable missing legacy preset=%u (%s)\n",
+                static_cast<unsigned>(legacy.preset),
+                legacy.name?legacy.name:"<null>");
+            ok=false;
+            continue;
+        }
+
+        if(entry->canonical_preset!=legacy.preset)
+        {
+            std::fprintf(stderr,
+                "[MaterialLibrary] PresetResolveTable canonical mismatch preset=%u canonical=%u\n",
+                static_cast<unsigned>(legacy.preset),
+                static_cast<unsigned>(entry->canonical_preset));
+            ok=false;
+            continue;
+        }
+
+        if(legacy.make_key&&entry->make_key)
+        {
+            const MaterialVariantKey legacy_key=legacy.make_key();
+            const MaterialVariantKey resolve_key=entry->make_key();
+            if(legacy_key.Hash()!=resolve_key.Hash())
+            {
+                std::fprintf(stderr,
+                    "[MaterialLibrary] PresetResolveTable hash mismatch preset=%u legacy=%llu resolve=%llu\n",
+                    static_cast<unsigned>(legacy.preset),
+                    static_cast<unsigned long long>(legacy_key.Hash()),
+                    static_cast<unsigned long long>(resolve_key.Hash()));
+                ok=false;
+            }
+        }
+    }
+
+    return ok;
+}
+
 }
 
 MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
 {
+    static const bool s_preset_resolve_table_ok=[]()
+    {
+        const bool ok=ValidatePresetResolveTable();
+        if(ok)
+            std::printf("[MaterialLibrary] PresetResolveTable validation passed.\n");
+        else
+            std::fprintf(stderr,"[MaterialLibrary] PresetResolveTable validation failed.\n");
+        return ok;
+    }();
+
+    (void)s_preset_resolve_table_ok;
+
     const MaterialPresetMeta *meta=FindMaterialPresetMeta(mtl_id);
     if(!meta||!meta->make_key)
+    {
+        // Commit A: side-by-side table is available but legacy path remains primary.
+        const PresetResolveEntry *entry=FindPresetResolveEntry(mtl_id);
+        if(entry&&entry->make_key)
+            return entry->make_key();
+
         return MaterialVariantKey{};
+    }
 
     return meta->make_key();
 }
@@ -225,7 +334,11 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
 const char *GetMaterialPresetName(const MaterialPreset mtl_id)
 {
     const MaterialPresetMeta *meta=FindMaterialPresetMeta(mtl_id);
-    return meta?meta->name:nullptr;
+    if(meta)
+        return meta->name;
+
+    const PresetResolveEntry *entry=FindPresetResolveEntry(mtl_id);
+    return entry?entry->name:nullptr;
 }
 
 MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileLite *profile,
