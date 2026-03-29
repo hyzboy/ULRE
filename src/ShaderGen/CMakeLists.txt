@@ -53,6 +53,11 @@ SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
 SET(SHADERGEN_COMMON_MATFUNC_FILES  common/MFSkyLight.h)
 SOURCE_GROUP("Common\\Material Functions" FILES ${SHADERGEN_COMMON_MATFUNC_FILES})
 
+# Common / Variant Policy
+SET(SHADERGEN_COMMON_VARIANT_POLICY_FILES common/GenericVariantPolicy.h
+                                          common/GenericVariantPolicy.cpp)
+SOURCE_GROUP("Common\\Variant Policy" FILES ${SHADERGEN_COMMON_VARIANT_POLICY_FILES})
+
 # Fixed Material Config
 SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerProfileAPI.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenContract.h
@@ -165,6 +170,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${GLSL_COMPILER_SOURCE}
     ${SHADERGEN_COMMON_FILES}
     ${SHADERGEN_COMMON_MATFUNC_FILES}
+    ${SHADERGEN_COMMON_VARIANT_POLICY_FILES}
     ${SHADER_LIBRARY_FILES}
     ${STD_MTL_SOURCE}
     ${STD_MTL_2D_SOURCE_FILES}
