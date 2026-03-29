@@ -66,10 +66,10 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
     return CreateFromFixedDef2D("PureTexture2D", profile, def, key, vs_preamble, fs_preamble, &inner, true);
 }
 
-MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,
+                                         const mtl::Material2DCreateConfig *cfg,
+                                         MaterialVariantKey key)
 {
-    MaterialVariantKey key = MapPresetToVariantKey(MaterialPreset::PureTexture2D);
-
     if(cfg && cfg->texture_source_bits_override != 0)
     {
         key.texture_source_bits = cfg->texture_source_bits_override;

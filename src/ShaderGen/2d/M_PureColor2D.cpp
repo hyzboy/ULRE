@@ -6,7 +6,9 @@
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite *profile,Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite *profile,
+                                        Material2DCreateConfig *cfg,
+                                        const MaterialVariantKey &key)
 {
     if(!profile||!cfg)
         return(nullptr);
@@ -18,8 +20,6 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
 
     auto vs_preamble = build2d::Build2DVertexPreamble(cfg, false, true);
     auto fs_preamble = build2d::Build2DFragmentPreamble(cfg, false, true);
-
-    const MaterialVariantKey var_key = MapPresetToVariantKey(MaterialPreset::PureColor2D);
 
     // Build DEF dynamically
     std::vector<FixedVertexEntry> vertices;
@@ -40,6 +40,6 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
         mi_codes, mi_bytes,
     };
 
-    return CreateFromFixedDef2D("PureColor2D", profile, def, var_key, vs_preamble, fs_preamble, cfg);
+    return CreateFromFixedDef2D("PureColor2D", profile, def, key, vs_preamble, fs_preamble, cfg);
 }
 }//namespace hgl::graph::mtl

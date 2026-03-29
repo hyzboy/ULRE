@@ -9,15 +9,16 @@
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,const Text2DMaterialCreateConfig *cfg)
+MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,
+                                   const Text2DMaterialCreateConfig *cfg,
+                                   const MaterialVariantKey &key)
 {
     constexpr const char mi_codes[]="uint TextColor;";
     constexpr const uint32_t mi_bytes=sizeof(uint32);
     if(!profile||!cfg)
         return(nullptr);
 
-    const MaterialVariantKey var_key = MapPresetToVariantKey(MaterialPreset::Text2D);
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(key);
     if (!var_desc)
     {
         std::fprintf(stderr, "[Text2D] VariantRegistry lookup failed\n");
@@ -34,7 +35,7 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     auto fs_preamble = build2d::Build2DFragmentPreamble(&new_cfg, true, true, SamplerSlot::Text);
 
     CompositorAssembler assembler;
-    const auto result = assembler.Assemble(var_key, *var_desc);
+    const auto result = assembler.Assemble(key, *var_desc);
     if (!result.success)
     {
         std::fprintf(stderr, "[Text2D] CompositorAssembler failed: %s\n", result.error_message.c_str());

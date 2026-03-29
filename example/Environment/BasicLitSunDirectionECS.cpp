@@ -173,6 +173,8 @@ private:
                         mtl::WithCamera::With,
                         mtl::WithLocalToWorld::With,
                         mtl::WithSky::With);
+        cfg.sky_ambient_model = mtl::SkyLightAmbientModel::FakeAtmosphere;
+        cfg.lighting_model = mtl::LightingModel::PBR;
         material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
         if (!material)
             return false;
