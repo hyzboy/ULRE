@@ -23,13 +23,27 @@ inline MaterialCreateInfo *Create##name(const contract::PhysicalDeviceProfileLit
     return Create##name(profile,&cfg);  \
 }
 
+// Semantic entry path: MaterialPreset is authoring/content intent. The library resolves it through
+// runtime material LOD and then maps it to a concrete MaterialVariantKey / shading implementation.
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialPreset mtl_id,
                                              MaterialCreateConfig *cfg);
 
+// Low-level entry path: callers already know the exact variant/shader-facing routing key.
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialVariantKey &key,
                                              MaterialCreateConfig *cfg);
+
+// Bootstrap-only global fallback. This exists so the current program can run with a single built-in
+// material implementation level. It should not be treated as the final architecture for forward,
+// clustered, or VBuffer/deferred paths where material LOD may be chosen per object, per tile, or
+// even per pixel.
+MaterialLOD GetDefaultMaterialLOD();
+
+// Resolve a semantic preset to the preset family used by the current material implementation level.
+// At this stage semantic presets still collapse to Standard at MaterialLOD::Base.
+MaterialPreset ResolveMaterialPresetForLOD(MaterialPreset preset,
+                                           MaterialLOD lod = MaterialLOD::Base);
 
 const char *GetMaterialPresetName(const MaterialPreset mtl_id);
 

@@ -183,6 +183,25 @@ static MaterialVariantKey MakePBRColor3DKey()
     return key;
 }
 
+static bool IsSemanticMaterialPreset(const MaterialPreset preset)
+{
+    switch(preset)
+    {
+        case MaterialPreset::HumanSkin:
+        case MaterialPreset::AmphibiansSkin:
+        case MaterialPreset::Wood:
+        case MaterialPreset::TreeBark:
+        case MaterialPreset::Stone:
+        case MaterialPreset::Leaf:
+        case MaterialPreset::Metal:
+        case MaterialPreset::BirdFeathers:
+        case MaterialPreset::Scales:
+            return true;
+        default:
+            return false;
+    }
+}
+
 static const PresetResolveEntry kPresetResolveTable[] =
 {
     {MaterialPreset::VertexColor2D,       "VertexColor2D",       MaterialPreset::VertexColor2D,       MakeVertexColor2DKey},
@@ -203,8 +222,14 @@ static const PresetResolveEntry kPresetResolveTable[] =
     {MaterialPreset::PBRColor3D,          "PBRColor3D",          MaterialPreset::PBRColor3D,          MakePBRColor3DKey},
     // Semantic aliases (LOD reserved, current lod=0 target is Standard)
     {MaterialPreset::HumanSkin,           "HumanSkin",           MaterialPreset::Standard,            MakeStandardKey},
+    {MaterialPreset::AmphibiansSkin,      "AmphibiansSkin",      MaterialPreset::Standard,            MakeStandardKey},
     {MaterialPreset::Wood,                "Wood",                MaterialPreset::Standard,            MakeStandardKey},
+    {MaterialPreset::TreeBark,            "TreeBark",            MaterialPreset::Standard,            MakeStandardKey},
     {MaterialPreset::Stone,               "Stone",               MaterialPreset::Standard,            MakeStandardKey},
+    {MaterialPreset::Leaf,                "Leaf",                MaterialPreset::Standard,            MakeStandardKey},
+    {MaterialPreset::Metal,               "Metal",               MaterialPreset::Standard,            MakeStandardKey},
+    {MaterialPreset::BirdFeathers,        "BirdFeathers",        MaterialPreset::Standard,            MakeStandardKey},
+    {MaterialPreset::Scales,              "Scales",              MaterialPreset::Standard,            MakeStandardKey},
 };
 
 static const PresetResolveEntry *FindPresetResolveEntry(const MaterialPreset preset)
@@ -276,6 +301,29 @@ static bool ValidatePresetResolveTable()
 
 }
 
+MaterialLOD GetDefaultMaterialLOD()
+{
+    // Temporary bootstrap fallback: current runtime only exposes one built-in material
+    // implementation level. Future forward / VBuffer paths may choose LOD from richer context
+    // instead of using a single global default.
+    return MaterialLOD::Base;
+}
+
+MaterialPreset ResolveMaterialPresetForLOD(const MaterialPreset preset,
+                                           const MaterialLOD lod)
+{
+    switch(lod)
+    {
+        case MaterialLOD::Base:
+        default:
+            // Current bootstrap behavior: semantic presets still reuse the Standard family.
+            if(IsSemanticMaterialPreset(preset))
+                return MaterialPreset::Standard;
+
+            return preset;
+    }
+}
+
 MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
 {
     static const bool s_preset_resolve_table_ok=[]()
@@ -290,8 +338,10 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
 
     (void)s_preset_resolve_table_ok;
 
+    const MaterialPreset resolved_preset = ResolveMaterialPresetForLOD(mtl_id, GetDefaultMaterialLOD());
+
     // Commit B: table-first mapping path.
-    const PresetResolveEntry *entry=FindPresetResolveEntry(mtl_id);
+    const PresetResolveEntry *entry=FindPresetResolveEntry(resolved_preset);
     if(entry&&entry->make_key)
     {
         return entry->make_key();
@@ -637,17 +687,20 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                              const MaterialPreset mtl_id,
                                              MaterialCreateConfig *cfg)
 {
+    const MaterialLOD lod = GetDefaultMaterialLOD();
+    const MaterialPreset resolved_preset = ResolveMaterialPresetForLOD(mtl_id, lod);
     const PresetResolveEntry *entry=FindPresetResolveEntry(mtl_id);
-    if(entry&&entry->canonical_preset!=mtl_id)
+    if(entry&&resolved_preset!=mtl_id)
     {
         std::printf(
-            "[MaterialLibrary] Preset alias resolved preset=%u (%s) -> canonical=%u (lod=0)\n",
+            "[MaterialLibrary] Preset alias resolved preset=%u (%s) -> canonical=%u (lod=%u)\n",
             static_cast<unsigned>(mtl_id),
             entry->name?entry->name:"<null>",
-            static_cast<unsigned>(entry->canonical_preset));
+            static_cast<unsigned>(resolved_preset),
+            static_cast<unsigned>(lod));
     }
 
-    MaterialVariantKey key = MapPresetToVariantKey(mtl_id);
+    MaterialVariantKey key = MapPresetToVariantKey(resolved_preset);
 
     ApplyCreateConfigToVariantKey(key, cfg);
 
