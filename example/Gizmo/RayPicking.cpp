@@ -351,9 +351,9 @@ public:
             ray_pts[0][0] = ray.origin.x;
             ray_pts[0][1] = ray.origin.y;
             ray_pts[0][2] = ray.origin.z;
-            ray_pts[1][0] = endpoint.x;
-            ray_pts[1][1] = endpoint.y;
-            ray_pts[1][2] = endpoint.z;
+            ray_pts[1][0] = 0;
+            ray_pts[1][1] = 0;
+            ray_pts[1][2] = 0;
             prim_line_vab->Write(ray_pts, 2);  // 更新两个顶点
         }
     }
