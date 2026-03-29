@@ -2,6 +2,7 @@
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include <algorithm>
+#include <initializer_list>
 
 namespace hgl::graph::mtl{
 
@@ -195,8 +196,6 @@ MaterialVariantDesc MakeDesc(
     return d;
 }
 
-#include <initializer_list>
-
 // Helper: build a key like MapPresetToVariantKey
 inline MaterialVariantKey K(SurfaceType st,
                              GeometryMode gm,
@@ -215,6 +214,18 @@ inline MaterialVariantKey K(SurfaceType st,
     }
     k.vertex_attribute_feature_bits = vertex_bits;
     k.extra_feature_bits = extra_bits;
+    return k;
+}
+
+// Helper: build a billboard key (BaseColor/Simple, has-texture, explicit blend+pass).
+inline MaterialVariantKey KB(GeometryMode gm, BlendMode blend, PassType pass)
+{
+    MaterialVariantKey k;
+    k.geometry_mode = gm;
+    k.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
+    k.SetHasTexture(SamplerSlot::BaseColor);
+    k.blend_mode = blend;
+    k.pass_hint  = pass;
     return k;
 }
 
@@ -284,10 +295,10 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: VertexColor
     // ------------------------------------------------------------------
     RegisterVariant(
-                K(ST::Unlit, GM::Mesh3D, {},
-                    VertexAttribFeatureBit(VertexAttrib::Color)),
+        K(ST::Unlit, GM::Mesh3D, {},
+            VertexAttribFeatureBit(VertexAttrib::Color)),
         MakeDesc("VertexColor3D",
-                         MaterialPreset::VertexColor3D,
+                 MaterialPreset::VertexColor3D,
                  "compositor/main_forward_unlit_vertexcolor.vert.glsl",
                  "compositor/main_forward_unlit_vertexcolor.frag.glsl",
                  "surface/unlit_vertexcolor_surface.glsl"));
@@ -296,10 +307,10 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: VertexLuminance3D (VEC3 position)
     // ------------------------------------------------------------------
     RegisterVariant(
-                K(ST::Unlit, GM::Mesh3D, {},
-                    VertexAttribFeatureBit(VertexAttrib::Luminance)),
+        K(ST::Unlit, GM::Mesh3D, {},
+            VertexAttribFeatureBit(VertexAttrib::Luminance)),
         MakeDesc("VertexLuminance3D",
-                         MaterialPreset::VertexLuminance3D,
+                 MaterialPreset::VertexLuminance3D,
                  "compositor/main_forward_unlit_luminance.vert.glsl",
                  "compositor/main_forward_unlit_luminance.frag.glsl",
                  "surface/unlit_luminance_surface.glsl"));
@@ -308,10 +319,10 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: VertexLuminance2D (VEC2 position)
     // ------------------------------------------------------------------
     RegisterVariant(
-                K(ST::Unlit, GM::Mesh3D, {},
-                    VertexAttribFeatureBit(VertexAttrib::Luminance) | VertexAttribFeatureBit(VertexAttrib::Position)),
+        K(ST::Unlit, GM::Mesh3D, {},
+            VertexAttribFeatureBit(VertexAttrib::Luminance) | VertexAttribFeatureBit(VertexAttrib::Position)),
         MakeDesc("VertexLuminance2D",
-                         MaterialPreset::VertexLuminance2D,
+                 MaterialPreset::VertexLuminance2D,
                  "compositor/main_forward_unlit_luminance_2d.vert.glsl",
                  "compositor/main_forward_unlit_luminance.frag.glsl",
                  "surface/unlit_luminance_surface.glsl"));
@@ -320,12 +331,12 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: VertexPattleColor
     // ------------------------------------------------------------------
     RegisterVariant(
-                K(ST::Unlit, GM::Mesh3D, {},
-                    VertexAttribFeatureBit(VertexAttrib::Color),
-                    0,
-                    EF_DebugShading),
+        K(ST::Unlit, GM::Mesh3D, {},
+            VertexAttribFeatureBit(VertexAttrib::Color),
+            0,
+            EF_DebugShading),
         MakeDesc("VertexPattleColor3D",
-                         MaterialPreset::VertexPattleColor3D,
+                 MaterialPreset::VertexPattleColor3D,
                  "compositor/main_forward_unlit_pattle.vert.glsl",
                  "compositor/main_forward_unlit_vertexcolor.frag.glsl",
                  "surface/unlit_vertexcolor_surface.glsl"));
@@ -342,112 +353,29 @@ void VariantRegistry::InitializeBuiltinVariants()
                  "surface/gizmo3d_surface.glsl"));
 
     // ------------------------------------------------------------------
-    // Billboard Dynamic (camera-facing, transparent)
+    // Billboard variants (2 geometries × 3 blend modes)
     // ------------------------------------------------------------------
-    {
-        MaterialVariantKey key;
-        key.geometry_mode       = GM::BillboardCameraFacing;
-        key.SetTextureSourceMode(SamplerSlot::BaseColor, TSM::Simple);
-        key.SetHasTexture(SamplerSlot::BaseColor);
-        key.blend_mode          = BlendMode::Transparent;
-        key.pass_hint           = PassType::ForwardTransparent;
-        RegisterVariant(key,
-            MakeDesc("Billboard2DDynamic",
-                     MaterialPreset::Billboard2DDynamic,
-                     "compositor/main_forward_billboard_dynamic.vert.glsl",
+    static const struct {
+        const char    *name;
+        MaterialPreset preset;
+        GeometryMode   gm;
+        BlendMode      blend;
+        PassType       pass;
+        const char    *vs_path;
+    } kBillboardVariants[] = {
+        {"Billboard2DDynamic",       MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, BlendMode::Transparent, PassType::ForwardTransparent, "compositor/main_forward_billboard_dynamic.vert.glsl"},
+        {"Billboard2DDynamicMasked", MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, BlendMode::Masked,      PassType::ForwardMasked,      "compositor/main_forward_billboard_dynamic.vert.glsl"},
+        {"Billboard2DDynamicDither", MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, BlendMode::Dither,      PassType::ForwardDither,      "compositor/main_forward_billboard_dynamic.vert.glsl"},
+        {"Billboard2DFixed",         MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   BlendMode::Transparent, PassType::ForwardTransparent, "compositor/main_forward_billboard_fixed.vert.glsl"},
+        {"Billboard2DFixedMasked",   MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   BlendMode::Masked,      PassType::ForwardMasked,      "compositor/main_forward_billboard_fixed.vert.glsl"},
+        {"Billboard2DFixedDither",   MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   BlendMode::Dither,      PassType::ForwardDither,      "compositor/main_forward_billboard_fixed.vert.glsl"},
+    };
+    for (const auto &e : kBillboardVariants)
+        RegisterVariant(KB(e.gm, e.blend, e.pass),
+            MakeDesc(e.name, e.preset,
+                     e.vs_path,
                      "compositor/main_forward_billboard.frag.glsl",
                      "surface/billboard_texture_surface.glsl"));
-    }
-
-    // ------------------------------------------------------------------
-    // Billboard Fixed Size (axis-locked, transparent)
-    // ------------------------------------------------------------------
-    {
-        MaterialVariantKey key;
-        key.geometry_mode       = GM::BillboardAxisLocked;
-        key.SetTextureSourceMode(SamplerSlot::BaseColor, TSM::Simple);
-        key.SetHasTexture(SamplerSlot::BaseColor);
-        key.blend_mode          = BlendMode::Transparent;
-        key.pass_hint           = PassType::ForwardTransparent;
-        RegisterVariant(key,
-            MakeDesc("Billboard2DFixed",
-                     MaterialPreset::Billboard2DFixed,
-                     "compositor/main_forward_billboard_fixed.vert.glsl",
-                     "compositor/main_forward_billboard.frag.glsl",
-                     "surface/billboard_texture_surface.glsl"));
-    }
-
-    // ------------------------------------------------------------------
-    // Billboard Dynamic (camera-facing, masked)
-    // ------------------------------------------------------------------
-    {
-        MaterialVariantKey key;
-        key.geometry_mode       = GM::BillboardCameraFacing;
-        key.SetTextureSourceMode(SamplerSlot::BaseColor, TSM::Simple);
-        key.SetHasTexture(SamplerSlot::BaseColor);
-        key.blend_mode          = BlendMode::Masked;
-        key.pass_hint           = PassType::ForwardMasked;
-        RegisterVariant(key,
-            MakeDesc("Billboard2DDynamicMasked",
-                     MaterialPreset::Billboard2DDynamic,
-                     "compositor/main_forward_billboard_dynamic.vert.glsl",
-                     "compositor/main_forward_billboard.frag.glsl",
-                     "surface/billboard_texture_surface.glsl"));
-    }
-
-    // ------------------------------------------------------------------
-    // Billboard Dynamic (camera-facing, dither)
-    // ------------------------------------------------------------------
-    {
-        MaterialVariantKey key;
-        key.geometry_mode       = GM::BillboardCameraFacing;
-        key.SetTextureSourceMode(SamplerSlot::BaseColor, TSM::Simple);
-        key.SetHasTexture(SamplerSlot::BaseColor);
-        key.blend_mode          = BlendMode::Dither;
-        key.pass_hint           = PassType::ForwardDither;
-        RegisterVariant(key,
-            MakeDesc("Billboard2DDynamicDither",
-                     MaterialPreset::Billboard2DDynamic,
-                     "compositor/main_forward_billboard_dynamic.vert.glsl",
-                     "compositor/main_forward_billboard.frag.glsl",
-                     "surface/billboard_texture_surface.glsl"));
-    }
-
-    // ------------------------------------------------------------------
-    // Billboard Fixed Size (axis-locked, masked)
-    // ------------------------------------------------------------------
-    {
-        MaterialVariantKey key;
-        key.geometry_mode       = GM::BillboardAxisLocked;
-        key.SetTextureSourceMode(SamplerSlot::BaseColor, TSM::Simple);
-        key.SetHasTexture(SamplerSlot::BaseColor);
-        key.blend_mode          = BlendMode::Masked;
-        key.pass_hint           = PassType::ForwardMasked;
-        RegisterVariant(key,
-            MakeDesc("Billboard2DFixedMasked",
-                     MaterialPreset::Billboard2DFixed,
-                     "compositor/main_forward_billboard_fixed.vert.glsl",
-                     "compositor/main_forward_billboard.frag.glsl",
-                     "surface/billboard_texture_surface.glsl"));
-    }
-
-    // ------------------------------------------------------------------
-    // Billboard Fixed Size (axis-locked, dither)
-    // ------------------------------------------------------------------
-    {
-        MaterialVariantKey key;
-        key.geometry_mode       = GM::BillboardAxisLocked;
-        key.SetTextureSourceMode(SamplerSlot::BaseColor, TSM::Simple);
-        key.SetHasTexture(SamplerSlot::BaseColor);
-        key.blend_mode          = BlendMode::Dither;
-        key.pass_hint           = PassType::ForwardDither;
-        RegisterVariant(key,
-            MakeDesc("Billboard2DFixedDither",
-                     MaterialPreset::Billboard2DFixed,
-                     "compositor/main_forward_billboard_fixed.vert.glsl",
-                     "compositor/main_forward_billboard.frag.glsl",
-                     "surface/billboard_texture_surface.glsl"));
-    }
 
     // ------------------------------------------------------------------
     // Terrain
@@ -472,30 +400,23 @@ void VariantRegistry::InitializeBuiltinVariants()
                  "surface/sky_minimal_surface.glsl"));
 
     // ------------------------------------------------------------------
-    // Standard 3D (texture-based, lit)
+    // Standard 3D variants (texture-based, lit)
     // ------------------------------------------------------------------
-    RegisterVariant(
-                K(ST::Standard, GM::Mesh3D, {{SamplerSlot::BaseColor, TSM::Simple}, {SamplerSlot::Normal, TSM::Simple}},
-                    0,
-                                        SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
-        MakeDesc("Standard",
-                         MaterialPreset::Standard,
-                 "compositor/main_forward_lit.vert.glsl",
-                 "compositor/main_forward_lit.frag.glsl",
-                 "surface/standard_surface.glsl"));
-
-    // ------------------------------------------------------------------
-    // Standard Texture Array
-    // ------------------------------------------------------------------
-    RegisterVariant(
-                K(ST::Standard, GM::Mesh3D, {{SamplerSlot::BaseColor, TSM::Array}, {SamplerSlot::Normal, TSM::Array}},
-                    0,
-                                        SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
-        MakeDesc("StandardTextureArray",
-                         MaterialPreset::Standard,
-                 "compositor/main_forward_lit.vert.glsl",
-                 "compositor/main_forward_lit.frag.glsl",
-                                 "surface/standard_surface.glsl"));
+    static const struct { const char *name; TSM tsm; } kStdVariants[] = {
+        {"Standard",             TSM::Simple},
+        {"StandardTextureArray", TSM::Array},
+    };
+    for (const auto &e : kStdVariants)
+        RegisterVariant(
+            K(ST::Standard, GM::Mesh3D,
+              {{SamplerSlot::BaseColor, e.tsm}, {SamplerSlot::Normal, e.tsm}},
+              0,
+              SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
+            MakeDesc(e.name,
+                     MaterialPreset::Standard,
+                     "compositor/main_forward_lit.vert.glsl",
+                     "compositor/main_forward_lit.frag.glsl",
+                     "surface/standard_surface.glsl"));
 
     // ------------------------------------------------------------------
     // PBRColor3D (Standard surface, color-only via MaterialInstanceData)
