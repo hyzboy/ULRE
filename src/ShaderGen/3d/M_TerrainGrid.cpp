@@ -1,4 +1,5 @@
 ﻿#include"FixedDefFactory3D.h"
+#include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/UBOCommon.h>
 
@@ -13,15 +14,9 @@ namespace
         SamplerSlot::Normal,
     };
 
-    const FixedUBODescriptors TERRAIN_GRID_UBOS = {
-        UBODescriptorSemantic::ViewportInfo,
-        UBODescriptorSemantic::CameraInfo,
-    };
+    const FixedUBODescriptors TERRAIN_GRID_UBOS = build3d::MakeViewportCameraUBOs();
 
-    const FixedSSBODescriptors TERRAIN_GRID_SSBOS = {
-        SSBODescriptorSemantic::TransformData,
-        SSBODescriptorSemantic::TransformID,
-    };
+    const FixedSSBODescriptors TERRAIN_GRID_SSBOS = build3d::MakeTransformSSBOs(false);
 
     const FixedTextureSamplerDescriptors TERRAIN_GRID_SAMPLERS = []
     {
@@ -46,8 +41,7 @@ namespace
 
 MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite *profile, const TerrainGridCreateConfig *cfg)
 {
-    MaterialVariantKey var_key;
-    var_key.surface_type = SurfaceType::Terrain;
+    const MaterialVariantKey var_key = build3d::MakeVariantKeyWithSurface(SurfaceType::Terrain);
     return CreateFromFixedDef3D("TerrainGrid", profile, TERRAIN_GRID_DEF, var_key, cfg);
 }
 }//namespace hgl::graph::mtl

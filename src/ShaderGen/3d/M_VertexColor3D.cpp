@@ -1,4 +1,5 @@
 ﻿#include"FixedDefFactory3D.h"
+#include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 
 namespace hgl::graph::mtl{
@@ -9,15 +10,9 @@ namespace
         { VAT_VEC4, VAN::Color },
     };
 
-    const FixedUBODescriptors VERTEX_COLOR_3D_UBOS = {
-        UBODescriptorSemantic::ViewportInfo,
-        UBODescriptorSemantic::CameraInfo,
-    };
+    const FixedUBODescriptors VERTEX_COLOR_3D_UBOS = build3d::MakeViewportCameraUBOs();
 
-    const FixedSSBODescriptors VERTEX_COLOR_3D_SSBOS = {
-        SSBODescriptorSemantic::TransformData,
-        SSBODescriptorSemantic::TransformID,
-    };
+    const FixedSSBODescriptors VERTEX_COLOR_3D_SSBOS = build3d::MakeTransformSSBOs(false);
 
     const FixedMaterialDef VERTEX_COLOR_3D_DEF {
         "VertexColor3D",
@@ -34,8 +29,7 @@ namespace
 
 MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
 {
-    MaterialVariantKey var_key;
-    var_key.SetVertexAttribEnabled(VertexAttrib::Color);
+    const MaterialVariantKey var_key = build3d::MakeVariantKeyWithAttrib(VertexAttrib::Color);
     return CreateFromFixedDef3D("VertexColor3D", profile, VERTEX_COLOR_3D_DEF, var_key, cfg);
 }
 }//namespace hgl::graph::mtl

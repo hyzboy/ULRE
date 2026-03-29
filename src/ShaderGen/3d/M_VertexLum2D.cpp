@@ -1,4 +1,5 @@
 ﻿#include"FixedDefFactory3D.h"
+#include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/math/Vector.h>
 
@@ -13,17 +14,9 @@ namespace
         { VAT_FLOAT, VAN::Luminance },
     };
 
-    const FixedUBODescriptors VERTEX_LUMINANCE_2D_UBOS = {
-        UBODescriptorSemantic::ViewportInfo,
-        UBODescriptorSemantic::CameraInfo,
-    };
+    const FixedUBODescriptors VERTEX_LUMINANCE_2D_UBOS = build3d::MakeViewportCameraUBOs();
 
-    const FixedSSBODescriptors VERTEX_LUMINANCE_2D_SSBOS = {
-        SSBODescriptorSemantic::TransformData,
-        SSBODescriptorSemantic::TransformID,
-        SSBODescriptorSemantic::MaterialInstanceID,
-        SSBODescriptorSemantic::MaterialInstanceData,
-    };
+    const FixedSSBODescriptors VERTEX_LUMINANCE_2D_SSBOS = build3d::MakeTransformSSBOs(true);
 
     const FixedMaterialDef VERTEX_LUMINANCE_2D_DEF {
         "VertexLuminance2D",
@@ -42,8 +35,7 @@ MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfil
 {
     cfg->material_instance=true;
 
-    MaterialVariantKey var_key;
-    var_key.SetVertexAttribEnabled(VertexAttrib::Luminance);
+    MaterialVariantKey var_key = build3d::MakeVariantKeyWithAttrib(VertexAttrib::Luminance);
     var_key.SetVertexAttribEnabled(VertexAttrib::Position);
     return CreateFromFixedDef3D("VertexLuminance2D", profile, VERTEX_LUMINANCE_2D_DEF, var_key, cfg);
 }
