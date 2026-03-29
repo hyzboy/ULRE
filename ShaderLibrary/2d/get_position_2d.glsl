@@ -1,11 +1,12 @@
-/// get_position_2d.glsl — 2D 顶点位置计算
+/// get_position_2d.glsl - 2D position fetch utility
 ///
-/// 由 Build2DVertexPreamble 注入以下 #define 控制变体：
-///   COORD_ORTHO         — 正交投影
-///   COORD_ZERO_TO_ONE   — [0,1] 坐标映射到 [-1,1]
-///   HAS_LOCAL_TO_WORLD  — 需要 LocalToWorld 变换
-///   POSITION_TYPE       — 顶点输入类型（vec2 / ivec2 / …）
-///   POSITION_LOCATION   — 顶点输入 location（由 layout defines 注入）
+/// The following #defines must be set before including this file
+/// (typically injected by Build2DVertexPreamble):
+///   COORD_ORTHO         - orthographic projection via ubo_viewport
+///   COORD_ZERO_TO_ONE   - remap [0,1] input coords to [-1,1] NDC
+///   HAS_LOCAL_TO_WORLD  - apply LocalToWorld transform from ssbo_transform
+///   POSITION_TYPE       - input attribute type (vec2 / ivec2 / ...)
+///   POSITION_LOCATION   - input attribute location (set by layout defines)
 
 #ifdef COORD_ORTHO
 #include "common/ubo_viewport.glsl"

@@ -1,4 +1,4 @@
-﻿// Hejl Richard tone map
+// Hejl Richard tone map
 // see: http://filmicworlds.com/blog/filmic-tonemapping-operators/
 vec3 ToneMapping(vec3 color)
 {

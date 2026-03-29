@@ -1,4 +1,4 @@
-﻿vec3 ToneMapping(vec3 color)
+vec3 ToneMapping(vec3 color)
 {
 	float white = 2.;
 	float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));

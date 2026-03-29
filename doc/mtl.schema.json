@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HGL Material Definition",
+  "description": "Schema for .mtl data-driven material definitions",
+  "type": "object",
+  "required": ["name", "features", "vertex_inputs", "descriptors", "shader_templates"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The unique name of the material."
+    },
+    "primitive_type": {
+      "type": "string",
+      "description": "The primitive topology type (e.g., TriangleList, LineList).",
+      "default": "TriangleList"
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "local_to_world": { "type": "boolean", "default": true },
+        "material_instance": { "type": "boolean", "default": true }
+      }
+    },
+    "vertex_inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "attrib"],
+        "properties": {
+          "type": { "type": "string" },
+          "attrib": { "type": "string" }
+        }
+      }
+    },
+    "descriptors": {
+      "type": "object",
+      "properties": {
+        "ubos": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "ssbos": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "samplers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": { "type": "string" },
+              "channel_hint": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "lod_targets": {
+      "type": "array",
+      "description": "Fallback materials for LOD degradation",
+      "items": { "type": "string" }
+    },
+    "variants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "values"],
+        "properties": {
+          "name": { "type": "string" },
+          "values": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "shader_templates": {
+      "type": "object",
+      "required": ["vertex", "fragment"],
+      "properties": {
+        "vertex": { "type": "string" },
+        "fragment": { "type": "string" }
+      }
+    }
+  }
+}

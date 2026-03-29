@@ -1,4 +1,4 @@
-﻿// ACES tone map
+// ACES tone map
 // see: https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
 // - ACES Filmic Tone Mapping Curve
 //   https://web.archive.org/web/20191027010704/https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/

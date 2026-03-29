@@ -1,14 +1,14 @@
-// ──────────────────────────────────────────────────────────────────────────
-// vert_forward_main.glsl — Unified forward vertex main template.
+// --------------------------------------------------------------------------
+// vert_forward_main.glsl - Unified forward vertex main template.
 //
 // Control defines (set before #including this file):
 //
 //   Varying flags (must match the fragment shader's HAS_* defines):
 //     HAS_WORLD_POS      output fragWorldPos (vec3)
-//     HAS_WORLD_NORMAL   input  inNormal  → output fragWorldNormal (vec3)
-//     HAS_UV0            input  inUV0     → output fragUV0 (vec2)
-//     HAS_VERTEX_COLOR   input  inColor   → output fragVertexColor (vec4)
-//     HAS_LUMINANCE      input  inLuminance → output fragLuminance (float)
+//     HAS_WORLD_NORMAL   input  inNormal  ? output fragWorldNormal (vec3)
+//     HAS_UV0            input  inUV0     ? output fragUV0 (vec2)
+//     HAS_VERTEX_COLOR   input  inColor   ? output fragVertexColor (vec4)
+//     HAS_LUMINANCE      input  inLuminance ? output fragLuminance (float)
 //     HAS_DIRECTION      output fragDirection = normalize(position) (sky)
 //
 //   Geometry source:
@@ -18,7 +18,7 @@
 //   Position mode:
 //     VERT_INPUT_2D      position attribute is vec2 (padded to vec3 with z=0)
 //     (default)          position attribute is vec3
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 
 // --- Vertex inputs ---
 #if GEOMETRY_FETCH_SSBO

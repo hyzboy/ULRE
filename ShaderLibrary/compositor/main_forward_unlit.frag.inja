@@ -1,0 +1,23 @@
+// --- main_forward_unlit.frag.inja --------------------------------------------
+// Inja template for the forward unlit fragment stage.
+//
+// C++-built variables:
+//   defines     - pre-built block of all active #define lines
+//   extensions  - pre-built block of #extension directives (empty by default)
+//
+// Boolean template conditionals (conditional #includes only):
+//   needs_sky       - include skylight function file
+//   enable_lighting - include lighting function file
+//
+// String variables:
+//   surface_path           - path to the surface function .glsl
+//   skylight_function_file - e.g. "common/skylight_simple.glsl"
+//   lighting_function_file - e.g. "common/lighting_lambert.glsl"
+// -----------------------------------------------------------------------------
+#version 450
+{{ extensions }}{{ defines }}
+#include "compositor/frag_forward_ubo.glsl"
+{% if needs_sky %}#include "{{ skylight_function_file }}"
+{% endif %}{% if enable_lighting %}#include "{{ lighting_function_file }}"
+{% endif %}#include "{{ surface_path }}"
+#include "compositor/frag_forward_main.glsl"

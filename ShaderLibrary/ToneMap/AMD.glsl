@@ -29,7 +29,7 @@ vec3 ToneMapping(vec3 color)
 {
     const float hdrMax = 16.0; // How much HDR range before clipping. HDR modes likely need this pushed up to say 25.0.
     const float contrast = 2.0; // Use as a baseline to tune the amount of contrast the tonemapper has.
-    const float shoulder = 1.0; // Likely don�t need to mess with this factor, unless matching existing tonemapper is not working well..
+    const float shoulder = 1.0; // Likely don?t need to mess with this factor, unless matching existing tonemapper is not working well..
     const float midIn = 0.18; // most games will have a {0.0 to 1.0} range for LDR so midIn should be 0.18.
     const float midOut = 0.18; // Use for LDR. For HDR10 10:10:10:2 use maybe 0.18/25.0 to start. For scRGB, I forget what a good starting point is, need to re-calculate.
 

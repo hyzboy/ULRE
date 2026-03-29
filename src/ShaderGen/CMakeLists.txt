@@ -2,9 +2,9 @@ set(SHADERGEN_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/shadergen)
 set(STD_MTL_HEADER_PATH     ${ROOT_INCLUDE_PATH}/hgl/mtl)
 set(MTL_TYPE_INCLUDE_PATH   ${ROOT_INCLUDE_PATH}/hgl/mtl/new)
 
-# Add inja include path
-include_directories(${ULRE_3RDPTY_ROOT_PATH}/inja/single_include)
-include_directories(${ULRE_3RDPTY_ROOT_PATH}/inja/third_party/include)
+# inja and nlohmann_json are provided via vcpkg
+find_package(inja CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # Shader Create Info
@@ -146,6 +146,25 @@ SET(COMPOSITOR_SOURCE_FILES  CompositorAssembler.cpp)
 SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
                                 ${COMPOSITOR_SOURCE_FILES})
 
+# Inja Assembler
+SET(INJA_ASSEMBLER_FILES    ${SHADERGEN_INCLUDE_PATH}/InjaAssembler.h
+                            InjaAssembler.cpp)
+SOURCE_GROUP("Inja Assembler" FILES ${INJA_ASSEMBLER_FILES})
+
+# Data Parsers
+SET(DATA_PARSER_FILES   ${STD_MTL_HEADER_PATH}/MaterialDef.h
+                        ${STD_MTL_HEADER_PATH}/MaterialPresetDef.h
+                        data/JsonMatParser.h
+                        data/JsonMatParser.cpp
+                        data/MatPresetParser.h
+                        data/MatPresetParser.cpp)
+SOURCE_GROUP("Data\\Parsers" FILES ${DATA_PARSER_FILES})
+
+# SPV Cache
+SET(SPV_CACHE_FILES cache/SpvCache.h
+                    cache/SpvCache.cpp)
+SOURCE_GROUP("Data\\SPV Cache" FILES ${SPV_CACHE_FILES})
+
 add_cm_library(ULRE.ShaderGen "ULRE"    
     ${SHADERGEN_INCLUDE_PATH}
     ${DESC_INFO_HEADER_FILES}
@@ -169,4 +188,12 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${SHADER_LAYOUT_SOURCE_FILES}
     ${COMPOSITOR_HEADER_FILES}
     ${COMPOSITOR_SOURCE_FILES}
+    ${INJA_ASSEMBLER_FILES}
+    ${DATA_PARSER_FILES}
+    ${SPV_CACHE_FILES}
+)
+
+target_link_libraries(ULRE.ShaderGen PRIVATE
+    pantor::inja
+    nlohmann_json::nlohmann_json
 )

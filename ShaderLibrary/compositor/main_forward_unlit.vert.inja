@@ -1,0 +1,11 @@
+// --- main_forward_unlit.vert.inja --------------------------------------------
+// Inja template for the forward unlit vertex stage.
+//
+// C++-built variables:
+//   defines     - pre-built block of all active #define lines
+//   extensions  - pre-built block of #extension directives (empty by default)
+// -----------------------------------------------------------------------------
+#version 450
+{{ extensions }}{{ defines }}
+#include "compositor/vert_forward_ubo.glsl"
+#include "compositor/vert_forward_main.glsl"

@@ -49,6 +49,15 @@ namespace hgl::graph::mtl
     static_assert(sizeof(SamplerSlotNameList) / sizeof(SamplerSlotNameList[0]) == SamplerSlotCount,
                   "SamplerSlotNameList must match SamplerSlot enum order");
 
+    inline const char *GetSamplerSlotName(const SamplerSlot slot)
+    {
+        const size_t index = size_t(slot);
+        if (index >= SamplerSlotCount)
+            return "";
+
+        return SamplerSlotNameList[index];
+    }
+
     inline std::string ToUpperASCII(const char *text)
     {
         std::string result;

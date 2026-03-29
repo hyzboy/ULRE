@@ -1,17 +1,17 @@
-// ──────────────────────────────────────────────────────────────────────────
-// frag_forward_main.glsl — Unified forward fragment main template.
+// --------------------------------------------------------------------------
+// frag_forward_main.glsl - Unified forward fragment main template.
 //
 // Control defines (set before #including this file):
 //
 //   Varying flags (must match the vertex shader's HAS_* defines):
-//     HAS_WORLD_POS      fragWorldPos (vec3)      — also drives si.viewDir
+//     HAS_WORLD_POS      fragWorldPos (vec3)      - also drives si.viewDir
 //     HAS_WORLD_NORMAL   fragWorldNormal (vec3)
 //     HAS_UV0            fragUV0 (vec2)
 //     HAS_VERTEX_COLOR   fragVertexColor (vec4)
-//     HAS_TEXCOORD       fragTexCoord (vec2)       — maps to si.uv0
-//     HAS_DIRECTION      fragDirection (vec3)      — maps to si.worldPos+viewDir; pulls ubo_sky
+//     HAS_TEXCOORD       fragTexCoord (vec2)       - maps to si.uv0
+//     HAS_DIRECTION      fragDirection (vec3)      - maps to si.worldPos+viewDir; pulls ubo_sky
 //     HAS_LUMINANCE      fragLuminance (float)
-//     HAS_CLIP_POS       fragClipPos (vec4)        — maps to si.worldPos; pulls ubo_camera
+//     HAS_CLIP_POS       fragClipPos (vec4)        - maps to si.worldPos; pulls ubo_camera
 //
 //   UBO flags:
 //     NEEDS_SKY          include ubo_sky.glsl before SURFACE_FUNCTION_FILE
@@ -26,12 +26,12 @@
 //
 //   Injected macro (replaced by C++ assembler before compilation):
 //     SURFACE_FUNCTION_FILE  path to the surface .glsl file
-// ──────────────────────────────────────────────────────────────────────────
+// --------------------------------------------------------------------------
 
 // Fragment output
 layout(location=0) out vec4 outColor;
 
-// 4. Lighting helper — injected via LIGHTING_FUNCTION_FILE by C++ assembler
+// 4. Lighting helper - injected via LIGHTING_FUNCTION_FILE by C++ assembler
 //    (replaces old #include "common/lighting.glsl")
 
 // 7. Bayer 4x4 ordered dither helper

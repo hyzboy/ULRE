@@ -1,4 +1,4 @@
-﻿// Uncharted 2 tone map
+// Uncharted 2 tone map
 // see: http://filmicworlds.com/blog/filmic-tonemapping-operators/
 vec3 toneMapUncharted2Impl(vec3 color)
 {
