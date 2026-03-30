@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
-#include <hgl/mtl/FixedMaterialDef.h>
-#include <hgl/mtl/new/MaterialVariantKey.h>
+#include <hgl/mtl/StaticMaterialDef.h>
+#include <hgl/mtl/MaterialVariantKey.h>
 #include <string>
 
 namespace hgl::graph::contract
@@ -16,7 +16,7 @@ struct Material2DCreateConfig;
 
 MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
                                          const contract::PhysicalDeviceProfileLite *profile,
-                                         const FixedMaterialDef &def,
+                                         const StaticMaterialDef &def,
                                          const MaterialVariantKey &var_key,
                                          const std::string &vs_preamble,
                                          const std::string &fs_preamble,

@@ -10,8 +10,8 @@ namespace hgl{namespace graph
 {
 struct SPVData;
 
-class MaterialDescriptorInfo;
-class ShaderDescriptorInfo;
+class MaterialDescriptorDB;
+class ShaderStageIO;
 
 struct UBODescriptor;
 struct SSBODescriptor;
@@ -26,8 +26,8 @@ protected:
 
     ShaderStage shader_stage;                      ///<着色器阶段
 
-    ShaderDescriptorInfo *sdi;                      ///<着色器描述符信息(owned)
-    MaterialDescriptorInfo *descriptor_db;
+    ShaderStageIO *sdi;                      ///<着色器描述符信息(owned)
+    MaterialDescriptorDB *descriptor_db;
 
     std::string final_shader;
 
@@ -39,13 +39,13 @@ protected:
 
 public:
 
-    ShaderDescriptorInfo *GetShaderDescriptorInfo(){return sdi;}
-    const ShaderDescriptorInfo *GetShaderDescriptorInfo()const{return sdi;}
+    ShaderStageIO *GetShaderDescriptorInfo(){return sdi;}
+    const ShaderStageIO *GetShaderDescriptorInfo()const{return sdi;}
     const ShaderStage GetShaderStage()const{return shader_stage;}
 
 public:
 
-    ShaderCreateInfo(ShaderDescriptorInfo *sdi,MaterialDescriptorInfo *m);
+    ShaderCreateInfo(ShaderStageIO *sdi,MaterialDescriptorDB *m);
     virtual ~ShaderCreateInfo();
 
     const std::string &GetFinalGLSL()const{return final_shader;}

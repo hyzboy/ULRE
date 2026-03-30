@@ -1,6 +1,6 @@
 ﻿#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/UBOCommon.h>
-#include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <cstdio>
@@ -25,19 +25,19 @@ namespace
         { VAT_VEC3, VAN::Normal   },
     };
 
-    const FixedUBODescriptors PBR_COLOR_3D_UBOS = {
+    const UBOSemanticSet PBR_COLOR_3D_UBOS = {
         UBODescriptorSemantic::CameraInfo,
         UBODescriptorSemantic::SkyInfo,
     };
 
-    const FixedSSBODescriptors PBR_COLOR_3D_SSBOS = {
+    const SSBOSemanticSet PBR_COLOR_3D_SSBOS = {
         SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
         SSBODescriptorSemantic::MaterialInstanceID,
         SSBODescriptorSemantic::MaterialInstanceData,
     };
 
-    const FixedMaterialDef PBR_COLOR_3D_DEF {
+    const StaticMaterialDef PBR_COLOR_3D_DEF {
         "PBRColor3D",
         PrimitiveType::Triangles,
         PBR_COLOR_3D_VERTEX,
@@ -59,7 +59,7 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     SkyLightAmbientModel ambient = cfg ? cfg->sky_ambient_model : SkyLightAmbientModel::Simple;
     LightingModel lighting = cfg ? cfg->lighting_model : LightingModel::Lambert;
 
-    FixedTextureSamplerDescriptors dynamic_samplers;
+    StaticTextureSamplerDescriptors dynamic_samplers;
 
     std::vector<const char *> unused_resources;
     ApplySkyLightResourceInjection(
@@ -67,7 +67,7 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
         dynamic_samplers,
         unused_resources);
 
-    FixedMaterialDef dynamic_def = PBR_COLOR_3D_DEF;
+    StaticMaterialDef dynamic_def = PBR_COLOR_3D_DEF;
     dynamic_def.texture_samplers        = &dynamic_samplers;
 
     // Assemble GLSL via VariantRegistry (Standard, Mesh3D, no texture ??color via MI)

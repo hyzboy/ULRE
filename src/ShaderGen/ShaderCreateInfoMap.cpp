@@ -1,9 +1,9 @@
-#include<hgl/shadergen/ShaderCreateInfoMap.h>
+﻿#include<hgl/shadergen/ShaderStageMap.h>
 #include<hgl/shadergen/ShaderCreateInfo.h>
 
 namespace hgl{namespace graph{
 
-bool ShaderCreateInfoMap::Add(ShaderCreateInfo *sc)
+bool ShaderStageMap::Add(ShaderCreateInfo *sc)
 {
     if(!sc)
         return false;

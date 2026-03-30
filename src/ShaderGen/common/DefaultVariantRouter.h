@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
-#include <hgl/mtl/new/MaterialVariantKey.h>
-#include <hgl/mtl/SamplerName.h>
+#include <hgl/mtl/MaterialVariantKey.h>
+#include <hgl/mtl/SamplerSlot.h>
 
 #include <array>
 

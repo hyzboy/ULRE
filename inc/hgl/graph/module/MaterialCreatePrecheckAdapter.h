@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/type/String.h>
 #include <functional>
@@ -6,7 +6,7 @@
 namespace hgl::graph
 {
     class Material;
-    class ShaderCreateInfoMap;
+    class ShaderStageMap;
 
     namespace mtl
     {
@@ -23,7 +23,7 @@ namespace hgl::graph
     struct MaterialCreatePrecheckResult
     {
         Material *cached_material = nullptr;
-        const ShaderCreateInfoMap *shader_map = nullptr;
+        const ShaderStageMap *shader_map = nullptr;
     };
 
     MaterialCreatePrecheckDecision RunMaterialCreatePrecheck(const mtl::MaterialCreateInfo *mci,

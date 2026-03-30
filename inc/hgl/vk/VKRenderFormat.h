@@ -21,7 +21,7 @@ class RenderFormat
 
     VulkanDevice *  device;
     VkPipelineCache pipeline_cache;
-    AnsiString      name;               ///< RenderPass名称，用于调试
+    AnsiString      name;               ///< RenderFormat名称，用于调试
 
     VkFormatList    color_formats;
     VkFormat        depth_format;

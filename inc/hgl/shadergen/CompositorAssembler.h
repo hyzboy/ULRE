@@ -1,9 +1,9 @@
-#pragma once
+﻿#pragma once
 
-#include <hgl/mtl/new/SurfaceType.h>
-#include <hgl/mtl/new/BlendMode.h>
-#include <hgl/mtl/new/PassType.h>
-#include <hgl/mtl/new/ShaderPermutationKey.h>
+#include <hgl/mtl/SurfaceType.h>
+#include <hgl/mtl/BlendMode.h>
+#include <hgl/mtl/PassType.h>
+#include <hgl/mtl/LegacyShaderPermutationKey.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
 #include <string>

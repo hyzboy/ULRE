@@ -1,8 +1,8 @@
 ﻿#pragma once
 
-#include<hgl/shadergen/MaterialDescriptorInfo.h>
-#include<hgl/mtl/DescriptorBindingContract.h>
-#include<hgl/shadergen/ShaderCreateInfoMap.h>
+#include<hgl/shadergen/MaterialDescriptorDB.h>
+#include<hgl/mtl/DescriptorSemanticRegistry.h>
+#include<hgl/shadergen/ShaderStageMap.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
 #include<string>
@@ -30,8 +30,8 @@ namespace hgl::graph
             uint32_t ubo_range;
             uint32_t ssbo_range;
 
-            MaterialDescriptorInfo descriptor_db;                    ///<材质描述符管理器
-            BindingContract binding_contract;                       ///<descriptor semantic contract (phase 2)
+            MaterialDescriptorDB descriptor_db;                    ///<材质描述符管理器
+            DescriptorBindingSlots binding_contract;                       ///<descriptor semantic contract (phase 2)
 
             std::string material_instance_glsl;                     ///<MaterialInstance代码
             uint32_t material_instance_stride;                      ///<MaterialInstance数据长度
@@ -43,7 +43,7 @@ namespace hgl::graph
             uint32_t local_to_world_stage_bits;
             SSBODescriptor *local_to_world_ssbo;
 
-            ShaderCreateInfoMap shader_map;                         ///<着色器列表
+            ShaderStageMap shader_map;                         ///<着色器列表
 
             bool has_local_to_world;
 
@@ -87,12 +87,12 @@ namespace hgl::graph
             ShaderCreateInfoVertex *           GetVertexShader(){return reinterpret_cast<ShaderCreateInfoVertex *>(GetStageShader(ShaderStage::Vertex));}
             const ShaderCreateInfoVertex *     GetVertexShader()const{return reinterpret_cast<const ShaderCreateInfoVertex *>(GetStageShader(ShaderStage::Vertex));}
 
-            const ShaderCreateInfoMap &GetShaderMap()const{return shader_map;}
+            const ShaderStageMap &GetShaderMap()const{return shader_map;}
 
         public:
 
-            const MaterialDescriptorInfo &GetDescriptorInfo()const{return descriptor_db;}
-            const BindingContract &GetBindingContract()const{return binding_contract;}
+            const MaterialDescriptorDB &GetDescriptorInfo()const{return descriptor_db;}
+            const DescriptorBindingSlots &GetBindingContract()const{return binding_contract;}
 
             /// Populate binding_contract from the actual descriptors in descriptor_db.
             /// Call after all AddUBOStruct / AddSSBOStruct / AddTextureSampler calls.

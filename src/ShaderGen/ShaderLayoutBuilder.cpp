@@ -1,4 +1,4 @@
-/// ShaderLayoutBuilder.cpp
+﻿/// ShaderLayoutBuilder.cpp
 ///
 /// Builds ShaderLayoutContract from a MaterialCreateInfo after Resort() has run.
 /// Three buckets are filled:
@@ -6,13 +6,13 @@
 ///   2. descriptor_sets   — one entry per non-empty ShaderDescriptorSet
 ///   3. descriptor_bindings — one entry per individual ShaderDescriptor
 
-#include <hgl/shadergen/ShaderLayoutBuilder.h>
+#include <hgl/shadergen/ShaderLayoutResolver.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/common/ShaderDescriptorDef.h>
 #include <hgl/common/VertexInputDef.h>
-#include <hgl/mtl/DescriptorBindingContract.h>
-#include <hgl/mtl/SamplerName.h>
+#include <hgl/mtl/DescriptorSemanticRegistry.h>
+#include <hgl/mtl/SamplerSlot.h>
 #include <algorithm>
 #include <cctype>
 #include <cstring>

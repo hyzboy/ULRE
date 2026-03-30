@@ -7,9 +7,9 @@
 /// GLSL 代码已移�?ShaderLibrary/2d/ 目录下的文件�?
 
 #include<hgl/mtl/Material2DCreateConfig.h>
-#include<hgl/mtl/FixedMaterialDef.h>
-#include<hgl/mtl/DescriptorBindingContract.h>
-#include<hgl/mtl/SamplerName.h>
+#include<hgl/mtl/StaticMaterialDef.h>
+#include<hgl/mtl/DescriptorSemanticRegistry.h>
+#include<hgl/mtl/SamplerSlot.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<string>
 #include<vector>
@@ -106,34 +106,34 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
 // Common fixed descriptor builders
 // ─────────────────────────────────────────────────────────────
 
-inline void PushBaseUBODescriptors(FixedUBODescriptors &descriptors, const Material2DCreateConfig *cfg)
+inline void PushBaseUBODescriptors(UBOSemanticSet &descriptors, const Material2DCreateConfig *cfg)
 {
     if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
-        AddFixedUBODescriptor(descriptors, UBODescriptorSemantic::ViewportInfo);
+        AddUBODescriptor(descriptors, UBODescriptorSemantic::ViewportInfo);
 }
 
-inline void PushBaseSSBODescriptors(FixedSSBODescriptors &descriptors, const Material2DCreateConfig *cfg)
+inline void PushBaseSSBODescriptors(SSBOSemanticSet &descriptors, const Material2DCreateConfig *cfg)
 {
     if(cfg->local_to_world)
     {
-        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::TransformData);
-        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::TransformID);
+        AddSSBODescriptor(descriptors, SSBODescriptorSemantic::TransformData);
+        AddSSBODescriptor(descriptors, SSBODescriptorSemantic::TransformID);
     }
 
     if(cfg->material_instance)
     {
-        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstanceID);
-        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstanceData);
+        AddSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstanceID);
+        AddSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstanceData);
     }
 }
 
-inline void BuildBase2DFixedDef(FixedMaterialDef &def,
+inline void BuildBase2DFixedDef(StaticMaterialDef &def,
                                 const char *debug_tag,
                                 const Material2DCreateConfig *cfg,
                                 std::vector<FixedVertexEntry> &vertices,
-                                FixedUBODescriptors &ubos,
-                                FixedSSBODescriptors &ssbos,
-                                FixedTextureSamplerDescriptors *samplers = nullptr,
+                                UBOSemanticSet &ubos,
+                                SSBOSemanticSet &ssbos,
+                                StaticTextureSamplerDescriptors *samplers = nullptr,
                                 const char *mi_codes = nullptr,
                                 uint32_t mi_bytes = 0)
 {

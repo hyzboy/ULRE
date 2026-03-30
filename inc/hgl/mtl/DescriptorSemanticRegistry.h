@@ -1,16 +1,16 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/common/DescriptorSemantic.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/common/TextureSamplerTypeDef.h>
-#include<hgl/mtl/SamplerName.h>
+#include<hgl/mtl/SamplerSlot.h>
 #include<hgl/vk/BufferPolicy.h>
 #include<vector>
 #include<string>
 
 namespace hgl::graph::mtl
 {
-    struct BindingContract
+    struct DescriptorBindingSlots
     {
         uint32_t ubos[size_t(UBODescriptorSemantic::RANGE_SIZE)] = {};
         uint32_t ssbos[size_t(SSBODescriptorSemantic::RANGE_SIZE)] = {};
@@ -128,7 +128,7 @@ namespace hgl::graph::mtl
         return GetDescriptorSemanticName(semantic);
     }
 
-    inline bool ValidateBindingContract(const BindingContract &contract, std::vector<std::string> &diagnostics)
+    inline bool ValidateBindingContract(const DescriptorBindingSlots &contract, std::vector<std::string> &diagnostics)
     {
         diagnostics.clear();
 

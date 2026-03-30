@@ -1,8 +1,8 @@
-/// FixedDefFactory3D.cpp — 通用 3D 工厂函数实现
+﻿/// FixedDefFactory3D.cpp — 通用 3D 工厂函数实现
 
-#include"FixedDefFactory3D.h"
+#include"MaterialFactory3D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/MaterialVariantDesc.h>
 #include<cstdio>
@@ -12,7 +12,7 @@ namespace hgl::graph::mtl{
 MaterialCreateInfo *CreateFromFixedDef3D(
     const char *debug_tag,
     const contract::PhysicalDeviceProfileLite *profile,
-    const FixedMaterialDef &def,
+    const StaticMaterialDef &def,
     const MaterialVariantKey &var_key,
     const Material3DCreateConfig *cfg)
 {

@@ -1,10 +1,10 @@
-#include<hgl/mtl/MaterialLibrary.h>
-#include<hgl/mtl/SamplerName.h>
+﻿#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/SamplerSlot.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialVariantDesc.h>
-#include<hgl/shadergen/ShaderGenPathConfig.h>
-#include<hgl/shadergen/contract/ShaderGenContract.h>
+#include<hgl/shadergen/ShaderLibraryPath.h>
+#include<hgl/shadergen/device/DeviceProfile.h>
 #include<cstdio>
 
 namespace hgl::graph::mtl{

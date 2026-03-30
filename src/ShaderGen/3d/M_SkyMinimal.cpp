@@ -1,4 +1,4 @@
-﻿#include"FixedDefFactory3D.h"
+﻿#include"MaterialFactory3D.h"
 #include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 
@@ -9,11 +9,11 @@ namespace
         { VAT_VEC3, VAN::Position },
     };
 
-    const FixedUBODescriptors SKY_MINIMAL_UBOS = build3d::MakeViewportCameraSkyUBOs();
+    const UBOSemanticSet SKY_MINIMAL_UBOS = build3d::MakeViewportCameraSkyUBOs();
 
-    const FixedSSBODescriptors SKY_MINIMAL_SSBOS = build3d::MakeTransformSSBOs(false);
+    const SSBOSemanticSet SKY_MINIMAL_SSBOS = build3d::MakeTransformSSBOs(false);
 
-    const FixedMaterialDef SKY_MINIMAL_DEF {
+    const StaticMaterialDef SKY_MINIMAL_DEF {
         "SkyMinimal",
         PrimitiveType::Triangles,
         SKY_MINIMAL_VERTEX,

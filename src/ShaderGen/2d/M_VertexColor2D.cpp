@@ -1,5 +1,5 @@
-#include"Build2DCommon.h"
-#include"FixedDefFactory2D.h"
+﻿#include"Build2DCommon.h"
+#include"MaterialFactory2D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/mtl/MaterialLibrary.h>
 
@@ -19,9 +19,9 @@ MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLit
     build2d::PushBaseVertexEntries(vertices, cfg);
     vertices.push_back({VAT_VEC4, VAN::Color});
 
-    FixedMaterialDef def{};
-    FixedUBODescriptors ubos;
-    FixedSSBODescriptors ssbos;
+    StaticMaterialDef def{};
+    UBOSemanticSet ubos;
+    SSBOSemanticSet ssbos;
     build2d::BuildBase2DFixedDef(def,
                                  "VertexColor2D",
                                  cfg,

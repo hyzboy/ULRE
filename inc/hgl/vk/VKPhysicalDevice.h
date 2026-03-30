@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/type/String.h>
-#include<hgl/shadergen/contract/ShaderGenContract.h>
+#include<hgl/shadergen/device/DeviceProfile.h>
 #include<cstring>
 
 // Comparison operators for Vulkan structures used in ValueArray

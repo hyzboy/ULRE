@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // 统一 SkyLight 资源注入工具。
 // GLSL 天光函数实现已迁移到 ShaderLibrary/common/skylight_*.glsl 文件，
@@ -6,7 +6,7 @@
 // 本文件仅保留 C++ 侧的 descriptor 资源注入辅助功能。
 
 #include<hgl/mtl/SkyLight.h>        // SkyLightAmbientModel
-#include<hgl/mtl/FixedMaterialDef.h>
+#include<hgl/mtl/StaticMaterialDef.h>
 
 #include <vulkan/vulkan.h>
 #include<vector>
@@ -56,7 +56,7 @@ inline SkyLightResourceInjectionSpec GetSkyLightResourceInjectionSpec(const SkyL
 
 inline void ApplySkyLightResourceInjection(
     const SkyLightResourceInjectionSpec &spec,
-    FixedTextureSamplerDescriptors &texture_samplers_io,
+    StaticTextureSamplerDescriptors &texture_samplers_io,
     std::vector<const char *> &fragment_resources_io)
 {
     (void)texture_samplers_io;

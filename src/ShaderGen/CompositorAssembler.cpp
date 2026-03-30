@@ -1,6 +1,6 @@
-#include <hgl/shadergen/CompositorAssembler.h>
+﻿#include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/CompositorFeatureFlags.h>
-#include <hgl/shadergen/ShaderGenPathConfig.h>
+#include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>

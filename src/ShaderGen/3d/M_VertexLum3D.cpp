@@ -1,4 +1,4 @@
-﻿#include"FixedDefFactory3D.h"
+﻿#include"MaterialFactory3D.h"
 #include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/math/Vector.h>
@@ -14,11 +14,11 @@ namespace
         { VAT_FLOAT, VAN::Luminance },
     };
 
-    const FixedUBODescriptors VERTEX_LUMINANCE_3D_UBOS = build3d::MakeViewportCameraUBOs();
+    const UBOSemanticSet VERTEX_LUMINANCE_3D_UBOS = build3d::MakeViewportCameraUBOs();
 
-    const FixedSSBODescriptors VERTEX_LUMINANCE_3D_SSBOS = build3d::MakeTransformSSBOs(true);
+    const SSBOSemanticSet VERTEX_LUMINANCE_3D_SSBOS = build3d::MakeTransformSSBOs(true);
 
-    const FixedMaterialDef VERTEX_LUMINANCE_3D_DEF {
+    const StaticMaterialDef VERTEX_LUMINANCE_3D_DEF {
         "VertexLuminance3D",
         PrimitiveType::Triangles,
         VERTEX_LUMINANCE_3D_VERTEX,

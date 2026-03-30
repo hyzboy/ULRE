@@ -1,8 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include <vulkan/vulkan.h>
 #include <hgl/common/DescriptorSetTypeDef.h>
-#include <hgl/mtl/DescriptorBindingContract.h>
+#include <hgl/mtl/DescriptorSemanticRegistry.h>
 #include <cctype>
 
 namespace hgl::graph

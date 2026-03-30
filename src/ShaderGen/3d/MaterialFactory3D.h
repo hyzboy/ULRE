@@ -1,12 +1,12 @@
-#pragma once
+﻿#pragma once
 
 /// FixedDefFactory3D.h — 通用 3D 工厂函数
 ///
-/// 将 FixedMaterialDef + MaterialVariantKey → MaterialCreateInfo* 的公共流程提取为单一入口，
+/// 将 StaticMaterialDef + MaterialVariantKey → MaterialCreateInfo* 的公共流程提取为单一入口，
 /// 消除各 M_*.cpp 中重复的 registry-lookup → assemble → compile 样板代码。
 
-#include<hgl/mtl/FixedMaterialDef.h>
-#include<hgl/mtl/new/MaterialVariantKey.h>
+#include<hgl/mtl/StaticMaterialDef.h>
+#include<hgl/mtl/MaterialVariantKey.h>
 
 namespace hgl::graph::mtl{
 
@@ -14,7 +14,7 @@ namespace contract{struct PhysicalDeviceProfileLite;}
 struct Material3DCreateConfig;
 class MaterialCreateInfo;
 
-/// 通用 3D 工厂：FixedMaterialDef + VariantKey → MaterialCreateInfo*
+/// 通用 3D 工厂：StaticMaterialDef + VariantKey → MaterialCreateInfo*
 ///
 /// 内部流程：
 ///   1. GetBuiltinVariantRegistry().QueryVariant(var_key)
@@ -30,7 +30,7 @@ class MaterialCreateInfo;
 MaterialCreateInfo *CreateFromFixedDef3D(
     const char *debug_tag,
     const contract::PhysicalDeviceProfileLite *profile,
-    const FixedMaterialDef &def,
+    const StaticMaterialDef &def,
     const MaterialVariantKey &var_key,
     const Material3DCreateConfig *cfg);
 

@@ -1,4 +1,4 @@
-#include<hgl/framework/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -170,9 +170,9 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
-                        mtl::WithCamera::With,
-                        mtl::WithLocalToWorld::With,
-                        mtl::WithSky::With);
+                        mtl::IncludeCamera::With,
+                        mtl::IncludeL2W::With,
+                        mtl::IncludeSky::With);
         cfg.sky_ambient_model = mtl::SkyLightAmbientModel::FakeAtmosphere;
         cfg.lighting_model = mtl::LightingModel::PBR;
         material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);

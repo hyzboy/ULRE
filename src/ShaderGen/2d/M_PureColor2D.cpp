@@ -1,5 +1,5 @@
-#include"Build2DCommon.h"
-#include"FixedDefFactory2D.h"
+﻿#include"Build2DCommon.h"
+#include"MaterialFactory2D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/math/Vector.h>
 #include<hgl/mtl/MaterialLibrary.h>
@@ -25,9 +25,9 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, cfg);
 
-    FixedMaterialDef def{};
-    FixedUBODescriptors ubos;
-    FixedSSBODescriptors ssbos;
+    StaticMaterialDef def{};
+    UBOSemanticSet ubos;
+    SSBOSemanticSet ssbos;
     build2d::BuildBase2DFixedDef(def,
                                  "PureColor2D",
                                  cfg,

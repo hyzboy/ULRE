@@ -1,4 +1,4 @@
-// 该范例主要演示使用ECS架构结合Static/Movable Transform分离的时钟示例
+﻿// 该范例主要演示使用ECS架构结合Static/Movable Transform分离的时钟示例
 // 刻度是静态的三角形（Static Transform），指针是动态更新的三角形（Movable Transform）
 // This example demonstrates a clock using ECS architecture with Static/Movable Transform separation
 //
@@ -106,7 +106,7 @@ private:
         {
             mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                             CoordinateSystem2D::NDC,
-                                            mtl::WithLocalToWorld::With);
+                                            mtl::IncludeL2W::With);
 
             material = material_manager->CreateMaterial(mtl::MaterialPreset::PureColor2D, &cfg);
 

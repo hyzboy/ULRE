@@ -1,4 +1,4 @@
-// 画一个圆角矩形，它是UI的基本绘图元件
+﻿// 画一个圆角矩形，它是UI的基本绘图元件
 // 通过控制尺寸、每个角的半径，可绘制出正圆、矩形、圆角矩形
 
 #include<hgl/WorkManager.h>
@@ -75,7 +75,7 @@ private:
 
         mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                         CoordinateSystem2D::ZeroToOne,
-                                        mtl::WithLocalToWorld::Without);
+                                        mtl::IncludeL2W::Without);
 
         material=material_manager->CreateMaterial(mtl::MaterialPreset::PureTexture2D,&cfg);
 

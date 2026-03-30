@@ -49,7 +49,7 @@ namespace
 
     bool BuildLegacyShaderModules(MaterialManager *manager,
                                   const AnsiString &mtl_name,
-                                  const ShaderCreateInfoMap &sci_map,
+                                  const ShaderStageMap &sci_map,
                                   ShaderModuleMap *shader_maps)
     {
         if (!manager || !shader_maps)
@@ -302,7 +302,7 @@ Material *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
 bool MaterialManager::ExecuteMaterialBuildPipeline(Material *mtl,
                                                    const AnsiString &mtl_name,
                                                    const mtl::MaterialCreateInfo *mci,
-                                                   const ShaderCreateInfoMap &sci_map)
+                                                   const ShaderStageMap &sci_map)
 {
     if(!mtl || !mci)
     {
@@ -372,7 +372,7 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
         return nullptr;
     }
 
-    const ShaderCreateInfoMap &sci_map = *precheck_result.shader_map;
+    const ShaderStageMap &sci_map = *precheck_result.shader_map;
 
     AutoDelete<Material> mtl=new Material(mtl_name,mci);
     if(!ExecuteMaterialBuildPipeline(mtl,

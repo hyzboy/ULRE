@@ -1,8 +1,8 @@
-#pragma once
+﻿#pragma once
 
-#include<hgl/mtl/FixedMaterialDef.h>
+#include<hgl/mtl/StaticMaterialDef.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<hgl/mtl/new/MaterialVariantKey.h>
+#include<hgl/mtl/MaterialVariantKey.h>
 
 namespace hgl
 {
@@ -13,7 +13,7 @@ namespace mtl
 namespace build3d
 {
 
-inline FixedUBODescriptors MakeViewportCameraUBOs()
+inline UBOSemanticSet MakeViewportCameraUBOs()
 {
     return {
         UBODescriptorSemantic::ViewportInfo,
@@ -21,7 +21,7 @@ inline FixedUBODescriptors MakeViewportCameraUBOs()
     };
 }
 
-inline FixedUBODescriptors MakeViewportCameraSkyUBOs()
+inline UBOSemanticSet MakeViewportCameraSkyUBOs()
 {
     return {
         UBODescriptorSemantic::ViewportInfo,
@@ -30,9 +30,9 @@ inline FixedUBODescriptors MakeViewportCameraSkyUBOs()
     };
 }
 
-inline FixedSSBODescriptors MakeTransformSSBOs(const bool with_material_instance)
+inline SSBOSemanticSet MakeTransformSSBOs(const bool with_material_instance)
 {
-    FixedSSBODescriptors descriptors = {
+    SSBOSemanticSet descriptors = {
         SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
     };

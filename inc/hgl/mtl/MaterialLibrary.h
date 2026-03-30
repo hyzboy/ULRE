@@ -1,10 +1,10 @@
 ﻿#pragma once
 
 #include<hgl/vk/VK.h>
-#include<hgl/shadergen/contract/ShaderGenContract.h>
-#include<hgl/mtl/StdMaterial.h>
+#include<hgl/shadergen/device/DeviceProfile.h>
+#include<hgl/mtl/MaterialBuildFlags.h>
 #include<hgl/mtl/MaterialPreset.h>
-#include<hgl/mtl/new/MaterialVariantKey.h>
+#include<hgl/mtl/MaterialVariantKey.h>
 #include<vector>
 #include<string>
 

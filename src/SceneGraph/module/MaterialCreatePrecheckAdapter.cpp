@@ -1,4 +1,4 @@
-#include <hgl/graph/module/MaterialCreatePrecheckAdapter.h>
+﻿#include <hgl/graph/module/MaterialCreatePrecheckAdapter.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <cstdio>
 
@@ -27,7 +27,7 @@ namespace hgl::graph
                 return MaterialCreatePrecheckDecision::UseCached;
         }
 
-        const ShaderCreateInfoMap &sci_map = mci->GetShaderMap();
+        const ShaderStageMap &sci_map = mci->GetShaderMap();
         if (sci_map.GetCount() < 2)
         {
             std::fprintf(stderr,

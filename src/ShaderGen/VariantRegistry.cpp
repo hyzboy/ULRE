@@ -202,7 +202,7 @@ inline MaterialVariantKey K(SurfaceType st,
                              std::initializer_list<std::pair<SamplerSlot, TextureSourceMode>> tex_modes = {},
                              uint32 vertex_bits = 0,
                              uint32 sampler_bits = 0,
-                             uint32 extra_bits = EF_None)
+                             uint32 extra_bits = static_cast<uint32>(ExtraFeature::None))
 {
     MaterialVariantKey k;
     k.surface_type        = st;
@@ -334,7 +334,7 @@ void VariantRegistry::InitializeBuiltinVariants()
         K(ST::Unlit, GM::Mesh3D, {},
             VertexAttribFeatureBit(VertexAttrib::Color),
             0,
-            EF_DebugShading),
+            static_cast<uint32>(ExtraFeature::DebugShading)),
         MakeDesc("VertexPattleColor3D",
                  MaterialPreset::VertexPattleColor3D,
                  "compositor/main_forward_unlit_pattle.vert.glsl",
@@ -345,7 +345,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: Gizmo
     // ------------------------------------------------------------------
     RegisterVariant(
-        K(ST::Unlit, GM::Mesh3D, {}, 0, 0, EF_DebugShading),
+        K(ST::Unlit, GM::Mesh3D, {}, 0, 0, static_cast<uint32>(ExtraFeature::DebugShading)),
         MakeDesc("Gizmo3D",
                  MaterialPreset::Gizmo3D,
                  "compositor/main_forward_unlit_normal.vert.glsl",

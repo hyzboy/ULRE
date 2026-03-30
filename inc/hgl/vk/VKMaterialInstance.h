@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKResourceDomain.h>
-#include<hgl/mtl/SamplerName.h>
+#include<hgl/mtl/SamplerSlot.h>
 
 namespace hgl::graph{
 

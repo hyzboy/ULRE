@@ -17,7 +17,7 @@
 namespace hgl::graph{
 
 class ShaderCreateInfo;
-class ShaderCreateInfoMap;
+class ShaderStageMap;
 
 namespace mtl
 {
@@ -64,7 +64,7 @@ private: // Helper methods with integrated DebugUtils
     bool ExecuteMaterialBuildPipeline(Material *mtl,
                                       const AnsiString &mtl_name,
                                       const mtl::MaterialCreateInfo *mci,
-                                      const ShaderCreateInfoMap &sci_map);
+                                      const ShaderStageMap &sci_map);
 
 public: //Add
 

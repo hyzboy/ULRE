@@ -1,13 +1,13 @@
 ﻿#pragma once
 
 #include<hgl/shadergen/ShaderCreateInfo.h>
-#include<hgl/shadergen/ShaderDescriptorInfo.h>
+#include<hgl/shadergen/ShaderStageIO.h>
 
 namespace hgl::graph
 {
     class ShaderCreateInfoVertex:public ShaderCreateInfo
     {
-        VertexShaderDescriptorInfo *vsdi;
+        VertexShaderStageIO *vsdi;
 
     public:
 
@@ -16,7 +16,7 @@ namespace hgl::graph
 
     public:
 
-        ShaderCreateInfoVertex(MaterialDescriptorInfo *m);
+        ShaderCreateInfoVertex(MaterialDescriptorDB *m);
         ~ShaderCreateInfoVertex()override=default;
 
         int AddInput(VIAList &);

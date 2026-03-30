@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/type/DataType.h>
-#include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/shadergen/device/DeviceProfile.h>
 
 namespace hgl::graph::mtl::contract
 {

@@ -15,7 +15,7 @@ using ConstValueDescriptorList=std::vector<ConstValueDescriptor *>;
 /**
 * Shader数据管理器,用于生成正式Shader前的资源统计
 */
-class ShaderDescriptorInfo
+class ShaderStageIO
 {
 protected:
 
@@ -27,8 +27,8 @@ protected:
 
 public:
 
-    ShaderDescriptorInfo(ShaderStage);
-    virtual ~ShaderDescriptorInfo();
+    ShaderStageIO(ShaderStage);
+    virtual ~ShaderStageIO();
 
     const ShaderStage                   GetShaderStage()const { return stage_flag; }
     std::string                         GetStageName()const;
@@ -46,16 +46,16 @@ public:
     {
         SetPushConstant(std::string(name?name:""),offset,size);
     }
-};//class ShaderDescriptorInfo
+};//class ShaderStageIO
 
-template<ShaderStage SS,typename IArray,typename I,typename OArray,typename O> class CustomShaderDescriptorInfo:public ShaderDescriptorInfo
+template<ShaderStage SS,typename IArray,typename I,typename OArray,typename O> class CustomShaderDescriptorInfo:public ShaderStageIO
 {
     IArray input;
     OArray output;
 
 public:
 
-    CustomShaderDescriptorInfo():ShaderDescriptorInfo(SS){}
+    CustomShaderDescriptorInfo():ShaderStageIO(SS){}
     virtual ~CustomShaderDescriptorInfo()override=default;
 
     bool AddInput(I &item){return input.Add(item);}
@@ -73,8 +73,8 @@ public:
     const bool IsEmptyOutput()const{return output.IsEmpty();}
 };//class CustomShaderDescriptorInfo
 
-using VertexShaderDescriptorInfo  =CustomShaderDescriptorInfo<ShaderStage::Vertex,      VIAArray, VIA,              SVArray,    ShaderVariable  >;
-using FragmentShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::Fragment,    SVArray,  ShaderVariable,   VIAArray,   VIA             >;
+using VertexShaderStageIO  =CustomShaderDescriptorInfo<ShaderStage::Vertex,      VIAArray, VIA,              SVArray,    ShaderVariable  >;
+using FragmentShaderStageIO=CustomShaderDescriptorInfo<ShaderStage::Fragment,    SVArray,  ShaderVariable,   VIAArray,   VIA             >;
 
 // Compute Shader 还没有启用，这里只是预留一个类型别名
 using ComputeShaderDescriptorInfo =CustomShaderDescriptorInfo<ShaderStage::Compute,     SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;

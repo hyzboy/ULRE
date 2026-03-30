@@ -1,9 +1,9 @@
-#pragma once
+﻿#pragma once
 
-#include <hgl/mtl/new/SurfaceType.h>
-#include <hgl/mtl/new/BlendMode.h>
-#include <hgl/mtl/new/PassType.h>
-#include <hgl/mtl/SamplerName.h>
+#include <hgl/mtl/SurfaceType.h>
+#include <hgl/mtl/BlendMode.h>
+#include <hgl/mtl/PassType.h>
+#include <hgl/mtl/SamplerSlot.h>
 #include <hgl/common/VertexAttribDef.h>
 
 namespace hgl::graph::mtl
@@ -21,10 +21,12 @@ namespace hgl::graph::mtl
         return 1u << static_cast<uint32>(attrib);
     }
 
-    enum ExtraFeatureBits : uint32
+    enum class ExtraFeature : uint32
     {
-        EF_None          = 0,
-        EF_DebugShading  = 1u << 0,
+        None         = 0,
+        DebugShading = 1u << 0,
+
+        ENUM_CLASS_RANGE(None, DebugShading)
     };
 
     enum class GeometryMode : uint8
@@ -46,7 +48,7 @@ namespace hgl::graph::mtl
         uint32            texture_source_bits           = 0;
         uint32            sampler_feature_bits          = 0;
         uint32            vertex_attribute_feature_bits = 0;
-        uint32            extra_feature_bits            = EF_None;
+        uint32            extra_feature_bits            = static_cast<uint32>(ExtraFeature::None);
         BlendMode         blend_mode          = BlendMode::Opaque;
         PassType          pass_hint           = PassType::ForwardOpaque;
 
@@ -103,15 +105,16 @@ namespace hgl::graph::mtl
 
         void SetDebugShading(const bool enabled = true) noexcept
         {
+            constexpr uint32 debug_shading_bit = static_cast<uint32>(ExtraFeature::DebugShading);
             if (enabled)
-                extra_feature_bits |= EF_DebugShading;
+                extra_feature_bits |= debug_shading_bit;
             else
-                extra_feature_bits &= ~EF_DebugShading;
+                extra_feature_bits &= ~debug_shading_bit;
         }
 
         bool IsDebugShading() const noexcept
         {
-            return (extra_feature_bits & EF_DebugShading) != 0;
+            return (extra_feature_bits & static_cast<uint32>(ExtraFeature::DebugShading)) != 0;
         }
 
         uint64 Hash() const noexcept

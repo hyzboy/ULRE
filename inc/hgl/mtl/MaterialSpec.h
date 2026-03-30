@@ -1,10 +1,10 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/CoreType.h>
 #include <hgl/mtl/MaterialPreset.h>
-#include <hgl/mtl/SamplerName.h>
+#include <hgl/mtl/SamplerSlot.h>
 #include <hgl/mtl/ShaderVariableType.h>
-#include <hgl/mtl/new/SurfaceType.h>
+#include <hgl/mtl/SurfaceType.h>
 
 #include <string>
 #include <vector>

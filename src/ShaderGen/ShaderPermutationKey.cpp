@@ -1,6 +1,6 @@
-/// ShaderPermutationKey.cpp — 新排列 key → GLSL #define 映射实现
+﻿/// ShaderPermutationKey.cpp — 新排列 key → GLSL #define 映射实现
 
-#include<hgl/mtl/new/ShaderPermutationKey.h>
+#include<hgl/mtl/LegacyShaderPermutationKey.h>
 #include<stdio.h>
 #include<hgl/common/RenderOptions.h>
 

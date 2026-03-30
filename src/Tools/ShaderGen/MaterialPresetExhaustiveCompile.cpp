@@ -1,4 +1,4 @@
-/// MaterialPresetExhaustiveCompile — exhaustively compile every MaterialPreset and dump GLSL.
+﻿/// MaterialPresetExhaustiveCompile — exhaustively compile every MaterialPreset and dump GLSL.
 ///
 /// Usage:
 ///   MaterialPresetExhaustiveCompile.exe [dump_dir]
@@ -15,8 +15,8 @@
 #include <hgl/mtl/MaterialPreset.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
-#include <hgl/shadergen/ShaderGenPathConfig.h>
-#include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/shadergen/ShaderLibraryPath.h>
+#include <hgl/shadergen/device/DeviceProfile.h>
 #include <hgl/common/ShaderStageDef.h>
 
 #include <cstdio>

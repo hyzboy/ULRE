@@ -1,4 +1,4 @@
-﻿#include"FixedDefFactory3D.h"
+﻿#include"MaterialFactory3D.h"
 #include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 
@@ -10,11 +10,11 @@ namespace
         { VAT_VEC4, VAN::Color },
     };
 
-    const FixedUBODescriptors VERTEX_COLOR_3D_UBOS = build3d::MakeViewportCameraUBOs();
+    const UBOSemanticSet VERTEX_COLOR_3D_UBOS = build3d::MakeViewportCameraUBOs();
 
-    const FixedSSBODescriptors VERTEX_COLOR_3D_SSBOS = build3d::MakeTransformSSBOs(false);
+    const SSBOSemanticSet VERTEX_COLOR_3D_SSBOS = build3d::MakeTransformSSBOs(false);
 
-    const FixedMaterialDef VERTEX_COLOR_3D_DEF {
+    const StaticMaterialDef VERTEX_COLOR_3D_DEF {
         "VertexColor3D",
         PrimitiveType::Triangles,
         VERTEX_COLOR_3D_VERTEX,

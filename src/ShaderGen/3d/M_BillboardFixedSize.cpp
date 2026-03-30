@@ -1,8 +1,8 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<hgl/mtl/SamplerName.h>
+#include<hgl/mtl/SamplerSlot.h>
 #include<cstdio>
 #include<vector>
 #include<hgl/mtl/MaterialVariantDesc.h>
@@ -19,12 +19,12 @@ namespace
     };
 
     // Non-texture descriptors �?texture entries built dynamically.
-    const FixedUBODescriptors BILLBOARD_FIXED_BASE_UBOS = {
+    const UBOSemanticSet BILLBOARD_FIXED_BASE_UBOS = {
         UBODescriptorSemantic::ViewportInfo,
         UBODescriptorSemantic::CameraInfo,
     };
 
-    const FixedSSBODescriptors BILLBOARD_FIXED_BASE_SSBOS = {
+    const SSBOSemanticSet BILLBOARD_FIXED_BASE_SSBOS = {
         SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
         SSBODescriptorSemantic::MaterialInstanceID,
@@ -36,7 +36,7 @@ namespace
     };
     constexpr uint32_t BILLBOARD_FIXED_TEX_SLOT_COUNT = uint32_t(sizeof(BILLBOARD_FIXED_TEX_SLOTS) / sizeof(BILLBOARD_FIXED_TEX_SLOTS[0]));
 
-    const FixedMaterialDef BILLBOARD_FIXED_DEF_TEMPLATE {
+    const StaticMaterialDef BILLBOARD_FIXED_DEF_TEMPLATE {
         "BillboardFixed",
         PrimitiveType::Triangles,
         BILLBOARD_FIXED_VERTEX,
@@ -57,13 +57,13 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
     cfg->local_to_world=true;
     cfg->material_instance=true;
 
-    FixedTextureSamplerDescriptors dynamic_samplers;
+    StaticTextureSamplerDescriptors dynamic_samplers;
     for (uint32_t i = 0; i < BILLBOARD_FIXED_TEX_SLOT_COUNT; ++i)
-        AddFixedTextureSampler(dynamic_samplers, BILLBOARD_FIXED_TEX_SLOTS[i], SamplerType::Sampler2D,
+        AddTextureSampler(dynamic_samplers, BILLBOARD_FIXED_TEX_SLOTS[i], SamplerType::Sampler2D,
                                0, 0,
                                cfg->base_color_channel);
 
-    FixedMaterialDef dynamic_def = BILLBOARD_FIXED_DEF_TEMPLATE;
+    StaticMaterialDef dynamic_def = BILLBOARD_FIXED_DEF_TEMPLATE;
     dynamic_def.texture_samplers = &dynamic_samplers;
 
     auto BlendModeToPassHint = [](BlendMode bm) -> PassType {

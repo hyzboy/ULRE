@@ -1,6 +1,6 @@
-#pragma once
+﻿#pragma once
 
-#include <hgl/mtl/new/MaterialVariantKey.h>
+#include <hgl/mtl/MaterialVariantKey.h>
 
 namespace hgl::graph::mtl
 {

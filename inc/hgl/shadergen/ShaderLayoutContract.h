@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <vector>
@@ -20,7 +20,7 @@ namespace hgl::graph
      *   - descriptor_sets     : layout(set=N) assignments for descriptor sets
      *   - descriptor_bindings : layout(binding=N) assignments for individual descriptors
      *
-     * The contract is built after MaterialDescriptorInfo::Resort() has run (final
+     * The contract is built after MaterialDescriptorDB::Resort() has run (final
      * set/binding numbers are authoritative) and after ShaderCreateInfoVertex::AddInput()
      * has assigned locations (location = insertion order).
      */

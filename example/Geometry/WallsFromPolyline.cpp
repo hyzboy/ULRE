@@ -1,4 +1,4 @@
-#include<hgl/framework/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -123,9 +123,9 @@ public:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
-                        mtl::WithCamera::With,
-                        mtl::WithLocalToWorld::With,
-                        mtl::WithSky::With);
+                        mtl::IncludeCamera::With,
+                        mtl::IncludeL2W::With,
+                        mtl::IncludeSky::With);
 
         mi_data.base_color = GetRGBA(COLOR::FireBrick);
         mi_data.metallic=0;

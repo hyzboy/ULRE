@@ -1,6 +1,6 @@
-#include <hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
+﻿#include <hgl/shadergen/device/DeviceProfileAdapter.h>
 
-#include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
+#include <hgl/shadergen/device/DeviceProfileTargetVersion.h>
 #include <hgl/vk/VKPhysicalDevice.h>
 
 namespace hgl::graph::mtl::contract

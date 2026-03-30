@@ -1,11 +1,11 @@
-#include<hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
+﻿#include<hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
 #include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/QuadComponent.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<hgl/mtl/SamplerName.h>
+#include<hgl/mtl/SamplerSlot.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>

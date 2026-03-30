@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+﻿#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/render/RenderFrameBusinessSyncSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -27,7 +27,7 @@ namespace hgl::ecs
     namespace
     {
         void ApplySceneUBOBindings(graph::Material *material,
-                                   const graph::mtl::BindingContract &contract,
+                                   const graph::mtl::DescriptorBindingSlots &contract,
                                    const std::array<graph::UBOAccessorBase *, graph::mtl::UBODescriptorSemanticCount> &scene_ubo_resolvers)
         {
             if (!material)

@@ -1,6 +1,6 @@
-#include<hgl/shadergen/ShaderCreateInfo.h>
-#include<hgl/shadergen/ShaderDescriptorInfo.h>
-#include<hgl/shadergen/MaterialDescriptorInfo.h>
+﻿#include<hgl/shadergen/ShaderCreateInfo.h>
+#include<hgl/shadergen/ShaderStageIO.h>
+#include<hgl/shadergen/MaterialDescriptorDB.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<string>
 
@@ -22,7 +22,7 @@ static const char *GetShaderStageNameByStage(const ShaderStage stage)
     }
 }
 
-ShaderCreateInfo::ShaderCreateInfo(ShaderDescriptorInfo *s,MaterialDescriptorInfo *m)
+ShaderCreateInfo::ShaderCreateInfo(ShaderStageIO *s,MaterialDescriptorDB *m)
 {
     sdi=s;
     descriptor_db=m;

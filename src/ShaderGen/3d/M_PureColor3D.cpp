@@ -1,4 +1,4 @@
-﻿#include"FixedDefFactory3D.h"
+﻿#include"MaterialFactory3D.h"
 #include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 
@@ -12,11 +12,11 @@ namespace
         { VAT_VEC3, VAN::Position },
     };
 
-    const FixedUBODescriptors PURE_COLOR_3D_UBOS = build3d::MakeViewportCameraUBOs();
+    const UBOSemanticSet PURE_COLOR_3D_UBOS = build3d::MakeViewportCameraUBOs();
 
-    const FixedSSBODescriptors PURE_COLOR_3D_SSBOS = build3d::MakeTransformSSBOs(true);
+    const SSBOSemanticSet PURE_COLOR_3D_SSBOS = build3d::MakeTransformSSBOs(true);
 
-    const FixedMaterialDef PURE_COLOR_3D_DEF {
+    const StaticMaterialDef PURE_COLOR_3D_DEF {
         "PureColor3D",
         PrimitiveType::Triangles,
         PURE_COLOR_3D_VERTEX,

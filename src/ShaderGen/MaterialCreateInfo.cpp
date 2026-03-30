@@ -1,7 +1,7 @@
-#include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/shadergen/ShaderDescriptorInfo.h>
+﻿#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderStageIO.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/shadergen/contract/ShaderGenContract.h>
+#include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/math/Matrix.h>
 #include<string>
@@ -19,7 +19,7 @@ static bool HasShaderStageBit(const uint32_t flag_bits,const ShaderStage stage)
 
 template<typename Func>
 static void ForEachShaderByStage(
-    ShaderCreateInfoMap &shader_map,
+    ShaderStageMap &shader_map,
     const uint32_t stage_bits,
     Func &&func)
 {
@@ -32,7 +32,7 @@ static void ForEachShaderByStage(
 
 template<typename Func>
 static bool ExecuteOnShadersByStage(
-    ShaderCreateInfoMap &shader_map,
+    ShaderStageMap &shader_map,
     const uint32_t stage_bits,
     Func &&func)
 {
@@ -85,7 +85,7 @@ static bool ResolveSSBOSemanticMeta(
 }
 
 static const UBODescriptor *ResolveUBODescriptor(
-    MaterialDescriptorInfo &mdi,
+    MaterialDescriptorDB &mdi,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
     const std::string &struct_name,
@@ -114,7 +114,7 @@ static const UBODescriptor *ResolveUBODescriptor(
 }
 
 static const SSBODescriptor *ResolveSSBODescriptor(
-    MaterialDescriptorInfo &mdi,
+    MaterialDescriptorDB &mdi,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
     const std::string &struct_name,
@@ -143,7 +143,7 @@ static const SSBODescriptor *ResolveSSBODescriptor(
 }
 
 static const TextureDescriptor *ResolveTextureDescriptor(
-    MaterialDescriptorInfo &mdi,
+    MaterialDescriptorDB &mdi,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
     const std::string &type_name,
@@ -170,7 +170,7 @@ static const TextureDescriptor *ResolveTextureDescriptor(
 }
 
 static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
-    MaterialDescriptorInfo &mdi,
+    MaterialDescriptorDB &mdi,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
     const std::string &type_name,
@@ -202,7 +202,7 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     : config(*mc)
 {
     if(hasVertex    ())shader_map.Add(new ShaderCreateInfoVertex(&descriptor_db));
-    if(hasFragment  ())shader_map.Add(new ShaderCreateInfo(new FragmentShaderDescriptorInfo(),&descriptor_db));
+    if(hasFragment  ())shader_map.Add(new ShaderCreateInfo(new FragmentShaderStageIO(),&descriptor_db));
 
     ubo_range=0;
     ssbo_range=0;
@@ -386,7 +386,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
 
 void MaterialCreateInfo::BuildBindingContract()
 {
-    binding_contract = BindingContract{};
+    binding_contract = DescriptorBindingSlots{};
 
     for(size_t i=0;i<UBODescriptorSemanticCount;++i)
     {

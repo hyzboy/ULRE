@@ -1,9 +1,9 @@
-/// ShaderLayoutDefineEmitter.cpp
+﻿/// ShaderLayoutDefineEmitter.cpp
 ///
 /// Converts a ShaderLayoutContract into a GLSL #define block that can be
 /// prepended to any shader stage source.
 
-#include <hgl/shadergen/ShaderLayoutDefineEmitter.h>
+#include <hgl/shadergen/ShaderLayoutEmitter.h>
 #include <string>
 
 namespace hgl::graph

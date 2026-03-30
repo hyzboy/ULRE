@@ -1,8 +1,8 @@
-#ifndef HGL_GLSL_COMPILER_INCLUDE
+﻿#ifndef HGL_GLSL_COMPILER_INCLUDE
 #define HGL_GLSL_COMPILER_INCLUDE
 
 #include<hgl/type/DataType.h>
-#include<hgl/shadergen/ShaderCompilerProfileAPI.h>
+#include<hgl/shadergen/GLSLCompilerConfig.h>
 namespace hgl
 {
     namespace graph

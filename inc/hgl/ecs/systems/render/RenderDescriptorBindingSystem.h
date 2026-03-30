@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/core/System.h>
-#include<hgl/mtl/DescriptorBindingContract.h>
+#include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<hgl/vk/UBOTypes.h>
 #include<hgl/type/String.h>
 #include<vector>

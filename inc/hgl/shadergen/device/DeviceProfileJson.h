@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
-#include <hgl/shadergen/contract/ShaderGenContract.h>
-#include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
+#include <hgl/shadergen/device/DeviceProfile.h>
+#include <hgl/shadergen/device/DeviceProfileTargetVersion.h>
 #include <cctype>
 #include <cstdint>
 #include <string>

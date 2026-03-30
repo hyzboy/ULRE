@@ -1,6 +1,6 @@
-#include <hgl/shadergen/SimpleSamplerGLSLEmitter.h>
-#include <hgl/shadergen/MaterialDescriptorInfo.h>
-#include <hgl/mtl/SamplerName.h>
+﻿#include <hgl/shadergen/SamplerGLSLEmitter.h>
+#include <hgl/shadergen/MaterialDescriptorDB.h>
+#include <hgl/mtl/SamplerSlot.h>
 #include <hgl/common/ShaderDescriptorDef.h>
 #include <algorithm>
 #include <cstring>
@@ -113,7 +113,7 @@ namespace
     }
 }
 
-std::string EmitSimpleSamplerGLSL(const MaterialDescriptorInfo &mdi, ShaderStage stage)
+std::string EmitSimpleSamplerGLSL(const MaterialDescriptorDB &mdi, ShaderStage stage)
 {
     const uint32_t stage_bit = uint32_t(stage);
 
@@ -206,7 +206,7 @@ std::string EmitSimpleSamplerGLSL(const MaterialDescriptorInfo &mdi, ShaderStage
     return out;
 }
 
-std::string EmitMaterialInstanceTextureGLSL(const MaterialDescriptorInfo &mdi, ShaderStage stage)
+std::string EmitMaterialInstanceTextureGLSL(const MaterialDescriptorDB &mdi, ShaderStage stage)
 {
     const uint32_t stage_bit = uint32_t(stage);
 

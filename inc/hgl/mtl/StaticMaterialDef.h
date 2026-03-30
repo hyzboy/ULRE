@@ -1,17 +1,17 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/mtl/FixedVertexEntry.h>
-#include<hgl/mtl/DescriptorBindingContract.h>
+#include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<hgl/vk/VKPrimitiveType.h>
 #include<map>
 #include<set>
 
 namespace hgl::graph::mtl{
 
-using FixedUBODescriptors = std::set<UBODescriptorSemantic>;
-using FixedSSBODescriptors = std::set<SSBODescriptorSemantic>;
+using UBOSemanticSet = std::set<UBODescriptorSemantic>;
+using SSBOSemanticSet = std::set<SSBODescriptorSemantic>;
 
-struct FixedTextureSamplerDescriptor
+struct StaticTextureSamplerDescriptor
 {
     SamplerType sampler_type = SamplerType::Sampler2D;
     uint32_t atlas_cols = 0;
@@ -19,43 +19,43 @@ struct FixedTextureSamplerDescriptor
     TextureChannelHint channel_hint = TextureChannelHint::RGBA;
 };
 
-using FixedTextureSamplerDescriptors = std::map<SamplerSlot, FixedTextureSamplerDescriptor>;
+using StaticTextureSamplerDescriptors = std::map<SamplerSlot, StaticTextureSamplerDescriptor>;
 
-inline constexpr FixedTextureSamplerDescriptor MakeFixedTextureSamplerDescriptor(
+inline constexpr StaticTextureSamplerDescriptor MakeStaticTextureSamplerDescriptor(
     const SamplerType sampler_type,
     const uint32_t atlas_cols = 0,
     const uint32_t atlas_rows = 0,
     const TextureChannelHint channel_hint = TextureChannelHint::RGBA)
 {
-    return FixedTextureSamplerDescriptor{sampler_type, atlas_cols, atlas_rows, channel_hint};
+    return StaticTextureSamplerDescriptor{sampler_type, atlas_cols, atlas_rows, channel_hint};
 }
 
-inline void AddFixedUBODescriptor(FixedUBODescriptors &descriptors,
+inline void AddUBODescriptor(UBOSemanticSet &descriptors,
                                   const UBODescriptorSemantic semantic)
 {
     descriptors.insert(semantic);
 }
 
-inline void AddFixedSSBODescriptor(FixedSSBODescriptors &descriptors,
+inline void AddSSBODescriptor(SSBOSemanticSet &descriptors,
                                    const SSBODescriptorSemantic semantic)
 {
     descriptors.insert(semantic);
 }
 
-inline void AddFixedTextureSampler(FixedTextureSamplerDescriptors &descriptors,
+inline void AddTextureSampler(StaticTextureSamplerDescriptors &descriptors,
                                    const SamplerSlot slot,
                                    const SamplerType sampler_type,
                                    const uint32_t atlas_cols = 0,
                                    const uint32_t atlas_rows = 0,
                                    const TextureChannelHint channel_hint = TextureChannelHint::RGBA)
 {
-    descriptors[slot] = MakeFixedTextureSamplerDescriptor(sampler_type,
+    descriptors[slot] = MakeStaticTextureSamplerDescriptor(sampler_type,
                                                           atlas_cols,
                                                           atlas_rows,
                                                           channel_hint);
 }
 
-struct FixedMaterialDef
+struct StaticMaterialDef
 {
     const char *                name;
 
@@ -64,9 +64,9 @@ struct FixedMaterialDef
     const FixedVertexEntry *    vertex_entries;
     uint32_t                    vertex_entry_count;
 
-    const FixedUBODescriptors *ubo_descriptors = nullptr;
-    const FixedSSBODescriptors *ssbo_descriptors = nullptr;
-    const FixedTextureSamplerDescriptors *texture_samplers = nullptr;
+    const UBOSemanticSet *ubo_descriptors = nullptr;
+    const SSBOSemanticSet *ssbo_descriptors = nullptr;
+    const StaticTextureSamplerDescriptors *texture_samplers = nullptr;
 
     const char *                mi_glsl_codes;
     uint32_t                    mi_struct_bytes;

@@ -1,6 +1,6 @@
-#pragma once
+﻿#pragma once
 
-#include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/shadergen/device/DeviceProfile.h>
 
 namespace hgl::graph
 {

@@ -1,8 +1,8 @@
-#include "StandardVariantPolicy.h"
+﻿#include "StandardVariantRouter.h"
 
-#include "../common/GenericVariantPolicy.h"
+#include "../common/DefaultVariantRouter.h"
 
-#include <hgl/mtl/SamplerName.h>
+#include <hgl/mtl/SamplerSlot.h>
 
 namespace hgl::graph::mtl
 {

@@ -1,8 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
-#include<hgl/mtl/new/BlendMode.h>
+#include<hgl/mtl/BlendMode.h>
 #include<hgl/common/TextureSamplerTypeDef.h>
 #include<glm/glm.hpp>
 

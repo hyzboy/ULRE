@@ -1,4 +1,4 @@
-﻿#include"FixedDefFactory3D.h"
+﻿#include"MaterialFactory3D.h"
 #include"Build3DCommon.h"
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -11,16 +11,16 @@ namespace
         { VAT_UINT, VAN::Color },
     };
 
-    const FixedUBODescriptors VERTEX_PATTLE_COLOR_3D_UBOS = []()
+    const UBOSemanticSet VERTEX_PATTLE_COLOR_3D_UBOS = []()
     {
-        FixedUBODescriptors descriptors = build3d::MakeViewportCameraUBOs();
+        UBOSemanticSet descriptors = build3d::MakeViewportCameraUBOs();
         descriptors.insert(UBODescriptorSemantic::ColorPattle);
         return descriptors;
     }();
 
-    const FixedSSBODescriptors VERTEX_PATTLE_COLOR_3D_SSBOS = build3d::MakeTransformSSBOs(false);
+    const SSBOSemanticSet VERTEX_PATTLE_COLOR_3D_SSBOS = build3d::MakeTransformSSBOs(false);
 
-    const FixedMaterialDef VERTEX_PATTLE_COLOR_3D_DEF {
+    const StaticMaterialDef VERTEX_PATTLE_COLOR_3D_DEF {
         "VertexPattleColor3D",
         PrimitiveType::Triangles,
         VERTEX_PATTLE_COLOR_3D_VERTEX,

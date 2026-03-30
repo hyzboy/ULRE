@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/mtl/SkyLight.h>
 #include<hgl/mtl/LightingModel.h>
@@ -28,18 +28,18 @@ struct Material3DCreateConfig:public MaterialCreateConfig
 public:
 
     Material3DCreateConfig(const PrimitiveType &    p   =PrimitiveType::Triangles,
-                           const WithCamera &       wc  =WithCamera::With,
-                           const WithLocalToWorld & l2w =WithLocalToWorld::With,
-                           const WithSky &          s   =WithSky::Without)
-        :MaterialCreateConfig(p,l2w==WithLocalToWorld::With)
+                           const IncludeCamera &       wc  =IncludeCamera::With,
+                           const IncludeL2W & l2w =IncludeL2W::With,
+                           const IncludeSky &          s   =IncludeSky::Without)
+        :MaterialCreateConfig(p,l2w==IncludeL2W::With)
     {
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=true;       //输出深度
         rt_output.stencil=false;    //不输出stencil
 
-        camera=(wc==WithCamera::With);
+        camera=(wc==IncludeCamera::With);
 
-        sky=(s==WithSky::With);
+        sky=(s==IncludeSky::With);
 
         position_format=VAT_VEC3;
 
@@ -87,7 +87,7 @@ public:
 
     TerrainGridCreateConfig()
         :Material3DCreateConfig(PrimitiveType::Triangles,
-                                WithCamera::With,WithLocalToWorld::With,WithSky::With)
+                                IncludeCamera::With,IncludeL2W::With,IncludeSky::With)
     {
     }
 };
@@ -98,8 +98,8 @@ struct SkyMinimalCreateConfig:public Material3DCreateConfig
 {
 public:
 
-    SkyMinimalCreateConfig(const WithCamera &wc=WithCamera::With)
-        :Material3DCreateConfig(PrimitiveType::Triangles,wc,WithLocalToWorld::With,WithSky::With)
+    SkyMinimalCreateConfig(const IncludeCamera &wc=IncludeCamera::With)
+        :Material3DCreateConfig(PrimitiveType::Triangles,wc,IncludeL2W::With,IncludeSky::With)
     {
     }
 };
@@ -154,9 +154,9 @@ struct PBRColor3DMaterialCreateConfig : public Material3DCreateConfig
 public:
     PBRColor3DMaterialCreateConfig()
         :Material3DCreateConfig(PrimitiveType::Triangles,
-                                WithCamera::With,
-                                WithLocalToWorld::With,
-                                WithSky::With)
+                                IncludeCamera::With,
+                                IncludeL2W::With,
+                                IncludeSky::With)
     {}
 };
 

@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include "SurfaceType.h"
-#include <hgl/mtl/SamplerName.h>
+#include <hgl/mtl/SamplerSlot.h>
 #include <string>
 
 namespace hgl::graph

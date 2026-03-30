@@ -1,7 +1,7 @@
 ﻿#include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKInstance.h>
 #include<hgl/log/Log.h>
-#include<hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
+#include<hgl/shadergen/device/DeviceProfileAdapter.h>
 #include"DebugOutProperties.h"
 
 namespace hgl::graph{

@@ -2,8 +2,8 @@
 
 /// StdMaterial.h — 材质创建辅助枚举
 ///
-/// 原 StdMaterial 虚函数链已被 CompileCompositorMaterial + FixedMaterialDef 取代。
-/// 本文件仅保留 WithSky/WithCamera/WithLocalToWorld 枚举供
+/// 原 StdMaterial 虚函数链已被 CompileCompositorMaterial + StaticMaterialDef 取代。
+/// 本文件仅保留 IncludeSky/IncludeCamera/IncludeL2W 枚举供
 /// Material2DCreateConfig / Material3DCreateConfig 使用。
 
 #include<hgl/type/String.h>
@@ -12,19 +12,19 @@ namespace hgl::graph
 {
     namespace mtl
     {
-        enum class WithSky:uint8
+        enum class IncludeSky:uint8
         {
             Without=0,
             With
         };
 
-        enum class WithCamera:uint8
+        enum class IncludeCamera:uint8
         {
             Without=0,
             With
         };
 
-        enum class WithLocalToWorld:uint8
+        enum class IncludeL2W:uint8
         {
             Without=0,
             With

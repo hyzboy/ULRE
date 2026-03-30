@@ -1,4 +1,4 @@
-#include<hgl/framework/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
@@ -150,9 +150,9 @@ public:
             return false;
 
         mtl::Material3DCreateConfig cfg3d(PrimitiveType::Triangles,
-                                          mtl::WithCamera::With,
-                                          mtl::WithLocalToWorld::With,
-                                          mtl::WithSky::Without);
+                                          mtl::IncludeCamera::With,
+                                          mtl::IncludeL2W::With,
+                                          mtl::IncludeSky::Without);
 
         mtl = mm->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg3d);
         if (!mtl)
@@ -300,9 +300,9 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg3d(PrimitiveType::Triangles,
-                                          mtl::WithCamera::With,
-                                          mtl::WithLocalToWorld::With,
-                                          mtl::WithSky::With);
+                                          mtl::IncludeCamera::With,
+                                          mtl::IncludeL2W::With,
+                                          mtl::IncludeSky::With);
 
         cube_mtl = mm->CreateMaterial(mtl::MaterialPreset::Standard, &cfg3d);
         if (!cube_mtl)

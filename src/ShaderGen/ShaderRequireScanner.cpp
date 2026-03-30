@@ -1,6 +1,6 @@
-#include <hgl/shadergen/ShaderRequireScanner.h>
-#include <hgl/mtl/DescriptorBindingContract.h>
-#include <hgl/shadergen/MaterialCompiler.h>
+﻿#include <hgl/shadergen/ShaderResourceScanner.h>
+#include <hgl/mtl/DescriptorSemanticRegistry.h>
+#include <hgl/shadergen/CompositorCompiler.h>
 #include "GLSLCompiler.h"
 
 #include "SPVParseData.h"
@@ -54,7 +54,7 @@ namespace
         }
     }
 
-    static void DumpCollectedRequirements(const ShaderAutoRequirements &requirements)
+    static void DumpCollectedRequirements(const ShaderResourceDependencies &requirements)
     {
         if (requirements.ubos.empty())
         {
@@ -158,7 +158,7 @@ namespace
         return false;
     }
 
-    static const FixedTextureSamplerDescriptor *FindBaseSamplerDescriptor(const FixedMaterialDef &base_def,
+    static const StaticTextureSamplerDescriptor *FindBaseSamplerDescriptor(const StaticMaterialDef &base_def,
                                                                           const SamplerSlot slot)
     {
         if (!base_def.texture_samplers)
@@ -171,8 +171,8 @@ namespace
         return &iter->second;
     }
 
-    static void BuildReflectionSeedDescriptors(const FixedUBODescriptors *source,
-                                               FixedUBODescriptors &out_descriptors)
+    static void BuildReflectionSeedDescriptors(const UBOSemanticSet *source,
+                                               UBOSemanticSet &out_descriptors)
     {
         if (source)
             out_descriptors = *source;
@@ -180,8 +180,8 @@ namespace
             out_descriptors.clear();
     }
 
-    static void BuildReflectionSeedDescriptors(const FixedSSBODescriptors *source,
-                                               FixedSSBODescriptors &out_descriptors)
+    static void BuildReflectionSeedDescriptors(const SSBOSemanticSet *source,
+                                               SSBOSemanticSet &out_descriptors)
     {
         if (source)
             out_descriptors = *source;
@@ -189,8 +189,8 @@ namespace
             out_descriptors.clear();
     }
 
-    static void BuildReflectionSeedDescriptors(const FixedTextureSamplerDescriptors *source,
-                                               FixedTextureSamplerDescriptors &out_descriptors)
+    static void BuildReflectionSeedDescriptors(const StaticTextureSamplerDescriptors *source,
+                                               StaticTextureSamplerDescriptors &out_descriptors)
     {
         out_descriptors.clear();
 
@@ -252,9 +252,9 @@ namespace
         return true;
     }
 
-    static bool BuildReflectedRequirements(const FixedMaterialDef &base_def,
+    static bool BuildReflectedRequirements(const StaticMaterialDef &base_def,
                                            const std::vector<ReflectedResource> &resources,
-                                           ShaderAutoRequirements &out_requirements,
+                                           ShaderResourceDependencies &out_requirements,
                                            std::string *diagnostics)
     {
         for (const ReflectedResource &resource : resources)
@@ -273,7 +273,7 @@ namespace
                     return false;
                 }
 
-                AddFixedUBODescriptor(out_requirements.ubos, semantic);
+                AddUBODescriptor(out_requirements.ubos, semantic);
                 continue;
             }
 
@@ -288,7 +288,7 @@ namespace
                     return false;
                 }
 
-                AddFixedSSBODescriptor(out_requirements.ssbos, semantic);
+                AddSSBODescriptor(out_requirements.ssbos, semantic);
                 continue;
             }
 
@@ -304,7 +304,7 @@ namespace
                     return false;
                 }
 
-                const FixedTextureSamplerDescriptor *base_sampler = FindBaseSamplerDescriptor(base_def, slot);
+                const StaticTextureSamplerDescriptor *base_sampler = FindBaseSamplerDescriptor(base_def, slot);
                 if (!base_sampler)
                 {
                     if (diagnostics)
@@ -312,7 +312,7 @@ namespace
                     return false;
                 }
 
-                AddFixedTextureSampler(out_requirements.samplers,
+                AddTextureSampler(out_requirements.samplers,
                                        slot,
                                        base_sampler->sampler_type,
                                        base_sampler->atlas_cols,
@@ -325,11 +325,11 @@ namespace
     }
 }
 
-bool CollectShaderAutoRequirements(const FixedMaterialDef &base_def,
+bool CollectShaderAutoRequirements(const StaticMaterialDef &base_def,
                                    const std::string &shader_library_path,
                                    const std::string &vertex_glsl,
                                    const std::string &fragment_glsl,
-                                   ShaderAutoRequirements &out_requirements,
+                                   ShaderResourceDependencies &out_requirements,
                                    std::string *diagnostics)
 {
     out_requirements.ubos.clear();
@@ -339,15 +339,15 @@ bool CollectShaderAutoRequirements(const FixedMaterialDef &base_def,
     if (diagnostics)
         diagnostics->clear();
 
-    FixedUBODescriptors reflection_seed_ubos;
-    FixedSSBODescriptors reflection_seed_ssbos;
-    FixedTextureSamplerDescriptors reflection_seed_samplers;
+    UBOSemanticSet reflection_seed_ubos;
+    SSBOSemanticSet reflection_seed_ssbos;
+    StaticTextureSamplerDescriptors reflection_seed_samplers;
 
     BuildReflectionSeedDescriptors(base_def.ubo_descriptors, reflection_seed_ubos);
     BuildReflectionSeedDescriptors(base_def.ssbo_descriptors, reflection_seed_ssbos);
     BuildReflectionSeedDescriptors(base_def.texture_samplers, reflection_seed_samplers);
 
-    FixedMaterialDef reflection_seed_def = base_def;
+    StaticMaterialDef reflection_seed_def = base_def;
     reflection_seed_def.ubo_descriptors = reflection_seed_ubos.empty() ? nullptr : &reflection_seed_ubos;
     reflection_seed_def.ssbo_descriptors = reflection_seed_ssbos.empty() ? nullptr : &reflection_seed_ssbos;
     reflection_seed_def.texture_samplers = reflection_seed_samplers.empty() ? nullptr : &reflection_seed_samplers;
@@ -384,12 +384,12 @@ bool CollectShaderAutoRequirements(const FixedMaterialDef &base_def,
     return true;
 }
 
-void MergeShaderAutoRequirements(const FixedMaterialDef &base_def,
-                                 const ShaderAutoRequirements &auto_requirements,
-                                 FixedMaterialDef &out_def,
-                                 FixedUBODescriptors &ubo_storage,
-                                 FixedSSBODescriptors &ssbo_storage,
-                                 FixedTextureSamplerDescriptors &sampler_storage)
+void MergeShaderAutoRequirements(const StaticMaterialDef &base_def,
+                                 const ShaderResourceDependencies &auto_requirements,
+                                 StaticMaterialDef &out_def,
+                                 UBOSemanticSet &ubo_storage,
+                                 SSBOSemanticSet &ssbo_storage,
+                                 StaticTextureSamplerDescriptors &sampler_storage)
 {
     ubo_storage.clear();
     ssbo_storage.clear();
@@ -405,10 +405,10 @@ void MergeShaderAutoRequirements(const FixedMaterialDef &base_def,
         sampler_storage = *base_def.texture_samplers;
 
     for (const auto semantic : auto_requirements.ubos)
-        AddFixedUBODescriptor(ubo_storage, semantic);
+        AddUBODescriptor(ubo_storage, semantic);
 
     for (const auto semantic : auto_requirements.ssbos)
-        AddFixedSSBODescriptor(ssbo_storage, semantic);
+        AddSSBODescriptor(ssbo_storage, semantic);
 
     for (const auto &[slot, sampler] : auto_requirements.samplers)
         sampler_storage.try_emplace(slot, sampler);

@@ -1,20 +1,20 @@
-#include<hgl/shadergen/ShaderDescriptorInfo.h>
+﻿#include<hgl/shadergen/ShaderStageIO.h>
 
 namespace hgl{namespace graph{
-ShaderDescriptorInfo::ShaderDescriptorInfo(ShaderStage flag_bit)
+ShaderStageIO::ShaderStageIO(ShaderStage flag_bit)
 {
     stage_flag=flag_bit;
 
     mem_zero(push_constant);
 }
 
-ShaderDescriptorInfo::~ShaderDescriptorInfo()
+ShaderStageIO::~ShaderStageIO()
 {
     for(auto *p:const_value_list)
         delete p;
 }
 
-std::string ShaderDescriptorInfo::GetStageName()const
+std::string ShaderStageIO::GetStageName()const
 {
     switch(stage_flag)
     {
@@ -31,7 +31,7 @@ std::string ShaderDescriptorInfo::GetStageName()const
     }
 }
 
-bool ShaderDescriptorInfo::AddConstValue(ConstValueDescriptor *sd)
+bool ShaderStageIO::AddConstValue(ConstValueDescriptor *sd)
 {
     if(!sd)return(false);
 
@@ -44,7 +44,7 @@ bool ShaderDescriptorInfo::AddConstValue(ConstValueDescriptor *sd)
     return(true);
 }
 
-void ShaderDescriptorInfo::SetPushConstant(const std::string &name,uint8_t offset,uint8_t size)
+void ShaderStageIO::SetPushConstant(const std::string &name,uint8_t offset,uint8_t size)
 {
     push_constant.name  =name;
     push_constant.offset=offset;

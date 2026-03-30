@@ -1,4 +1,4 @@
-#include <hgl/shadergen/ShaderGenPathConfig.h>
+﻿#include <hgl/shadergen/ShaderLibraryPath.h>
 
 namespace hgl::graph
 {

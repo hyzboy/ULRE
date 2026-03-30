@@ -1,4 +1,4 @@
-﻿#include"FixedDefFactory3D.h"
+﻿#include"MaterialFactory3D.h"
 #include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/math/Vector.h>
@@ -12,14 +12,14 @@ namespace
         { VAT_VEC3, VAN::Normal },
     };
 
-    const FixedUBODescriptors GIZMO_3D_UBOS = build3d::MakeViewportCameraUBOs();
+    const UBOSemanticSet GIZMO_3D_UBOS = build3d::MakeViewportCameraUBOs();
 
-    const FixedSSBODescriptors GIZMO_3D_SSBOS = build3d::MakeTransformSSBOs(true);
+    const SSBOSemanticSet GIZMO_3D_SSBOS = build3d::MakeTransformSSBOs(true);
 
     constexpr const char GIZMO_3D_MI_GLSL[] = "vec4 Color;";
     constexpr uint32_t GIZMO_3D_MI_BYTES = sizeof(math::Vector4f);
 
-    const FixedMaterialDef GIZMO_3D_DEF {
+    const StaticMaterialDef GIZMO_3D_DEF {
         "Gizmo3D",
         PrimitiveType::Triangles,
         GIZMO_3D_VERTEX,

@@ -1,26 +1,26 @@
-﻿/// MaterialCompiler.cpp — FixedMaterialDef → MaterialCreateInfo 编译器实现
+﻿/// MaterialCompiler.cpp — StaticMaterialDef → MaterialCreateInfo 编译器实现
 ///
 /// 流程：
-///   1. 从 FixedMaterialDef 的 UBO/SSBO/TextureSampler 组构建 MaterialDescriptorInfo
+///   1. 从 StaticMaterialDef 的 UBO/SSBO/TextureSampler 组构建 MaterialDescriptorDB
 ///   2. 从 FixedVertexEntry[] 设置顶点输入
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
-#include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
-#include <hgl/shadergen/ShaderLayoutBuilder.h>
-#include <hgl/shadergen/ShaderLayoutDefineEmitter.h>
-#include <hgl/shadergen/SimpleSamplerGLSLEmitter.h>
+#include <hgl/shadergen/ShaderLayoutResolver.h>
+#include <hgl/shadergen/ShaderLayoutEmitter.h>
+#include <hgl/shadergen/SamplerGLSLEmitter.h>
 #include <cstdio>
 #include <string>
 
 namespace hgl::graph::mtl {
 
-static bool HasUBOSemantic(const FixedMaterialDef &def, const UBODescriptorSemantic semantic);
-static bool HasSSBOSemantic(const FixedMaterialDef &def, const SSBODescriptorSemantic semantic);
-static bool HasPerMaterialDescriptor(const FixedMaterialDef &def);
+static bool HasUBOSemantic(const StaticMaterialDef &def, const UBODescriptorSemantic semantic);
+static bool HasSSBOSemantic(const StaticMaterialDef &def, const SSBODescriptorSemantic semantic);
+static bool HasPerMaterialDescriptor(const StaticMaterialDef &def);
 
 namespace
 {
@@ -28,7 +28,7 @@ namespace
 
     static MaterialCreateInfo *CreatePreparedCompositorMaterial(
         const contract::PhysicalDeviceProfileLite *profile,
-        const FixedMaterialDef &def,
+        const StaticMaterialDef &def,
         const std::string &vs_glsl,
         const std::string &fs_glsl,
         const Material3DCreateConfig *config,
@@ -157,7 +157,7 @@ namespace
     }
 }
 
-static bool HasUBOSemantic(const FixedMaterialDef &def, const UBODescriptorSemantic semantic)
+static bool HasUBOSemantic(const StaticMaterialDef &def, const UBODescriptorSemantic semantic)
 {
     if (!def.ubo_descriptors || semantic == UBODescriptorSemantic::Unknown)
         return false;
@@ -165,7 +165,7 @@ static bool HasUBOSemantic(const FixedMaterialDef &def, const UBODescriptorSeman
     return def.ubo_descriptors->contains(semantic);
 }
 
-static bool HasSSBOSemantic(const FixedMaterialDef &def, const SSBODescriptorSemantic semantic)
+static bool HasSSBOSemantic(const StaticMaterialDef &def, const SSBODescriptorSemantic semantic)
 {
     if (!def.ssbo_descriptors || semantic == SSBODescriptorSemantic::Unknown)
         return false;
@@ -173,7 +173,7 @@ static bool HasSSBOSemantic(const FixedMaterialDef &def, const SSBODescriptorSem
     return def.ssbo_descriptors->contains(semantic);
 }
 
-static bool HasPerMaterialDescriptor(const FixedMaterialDef &def)
+static bool HasPerMaterialDescriptor(const StaticMaterialDef &def)
 {
     if (def.ubo_descriptors)
     {
@@ -226,7 +226,7 @@ std::string InjectLayoutDefinesPreserveVersion(const std::string &source,const s
 
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
-    const FixedMaterialDef &    def,
+    const StaticMaterialDef &    def,
     const std::string &         vs_glsl,
     const std::string &         fs_glsl,
     const Material3DCreateConfig *config)
@@ -260,7 +260,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
 }
 
 bool PrepareCompositorGLSLForReflection(
-    const FixedMaterialDef &def,
+    const StaticMaterialDef &def,
     const std::string &vs_glsl,
     const std::string &fs_glsl,
     std::string &out_vs_glsl,
@@ -288,16 +288,16 @@ bool PrepareCompositorGLSLForReflection(
 
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
-    const FixedMaterialDef &    def,
+    const StaticMaterialDef &    def,
     const std::string &         vs_glsl,
     const std::string &         fs_glsl,
     const Material2DCreateConfig *config)
 {
     Material3DCreateConfig cfg3d(
         config ? config->prim : def.primitive_type,
-        WithCamera::Without,
-        config && config->local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without,
-        WithSky::Without);
+        IncludeCamera::Without,
+        config && config->local_to_world ? IncludeL2W::With : IncludeL2W::Without,
+        IncludeSky::Without);
 
     if (config)
     {
@@ -317,7 +317,7 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
     mci.Resort();
     const ShaderLayoutContract layout = hgl::graph::BuildShaderLayoutContract(mci);
     const std::string layout_defs = hgl::graph::EmitShaderLayoutDefines(layout);
-    const MaterialDescriptorInfo &mdi = mci.GetDescriptorInfo();
+    const MaterialDescriptorDB &mdi = mci.GetDescriptorInfo();
     const std::string vert_sampler_defs = vert ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Vertex)   : std::string();
     const std::string frag_sampler_defs = frag ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Fragment) : std::string();
     const std::string frag_mit_defs     = frag ? hgl::graph::EmitMaterialInstanceTextureGLSL(mdi, ShaderStage::Fragment) : std::string();

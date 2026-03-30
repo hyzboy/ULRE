@@ -8,7 +8,7 @@ enum class ShaderStage:uint32_t;
 
 class ShaderCreateInfo;
 
-class ShaderCreateInfoMap
+class ShaderStageMap
 {
     using MapType=ankerl::unordered_dense::map<ShaderStage,ShaderCreateInfo *>;
     MapType map;

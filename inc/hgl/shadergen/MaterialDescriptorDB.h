@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/common/ShaderDescriptorDef.h>
-#include <hgl/mtl/SamplerName.h>
+#include <hgl/mtl/SamplerSlot.h>
 #include<string>
 
 namespace hgl{namespace graph{
@@ -9,7 +9,7 @@ namespace hgl{namespace graph{
 * 材质描述符管理</p>
 * 该类使用于SHADER生成前，用于统计编号set/binding
 */
-class MaterialDescriptorInfo
+class MaterialDescriptorDB
 {
     uint descriptor_count;
     ShaderDescriptorSetArray desc_set_array;
@@ -24,8 +24,8 @@ class MaterialDescriptorInfo
 
 public:
 
-    MaterialDescriptorInfo();
-    ~MaterialDescriptorInfo();
+    MaterialDescriptorDB();
+    ~MaterialDescriptorDB();
 
     bool AddUBOStruct(const mtl::UBODescriptorSemantic semantic)
     {
@@ -106,5 +106,5 @@ public:
     {
         return desc_set_array[size_t(type)].count>0;
     }
-};//class MaterialDescriptorInfo
+};//class MaterialDescriptorDB
 }}//namespace hgl::graph

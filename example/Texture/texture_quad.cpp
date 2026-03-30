@@ -1,4 +1,4 @@
-// 画一个带纹理的四边形 (ECS)
+﻿// 画一个带纹理的四边形 (ECS)
 #include<hgl/framework/WorkManager.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -80,7 +80,7 @@ private:
 
         mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                         CoordinateSystem2D::NDC,
-                                        mtl::WithLocalToWorld::Without);
+                                        mtl::IncludeL2W::Without);
 
         material=material_manager->CreateMaterial(mtl::MaterialPreset::PureTexture2D,&cfg);
 

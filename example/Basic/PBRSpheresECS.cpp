@@ -1,4 +1,4 @@
-// 该范例演示 10x10 的 Standard 网格：
+﻿// 该范例演示 10x10 的 Standard 网格：
 // 使用 baseColor + normal 纹理（Albedo+Normal）
 // 通过 metallic/roughness 参数渐变来控制材质
 // This example renders a 10x10 Standard grid:
@@ -148,9 +148,9 @@ private:
         }
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
-                        mtl::WithCamera::With,
-                        mtl::WithLocalToWorld::With,
-                        mtl::WithSky::With);
+                        mtl::IncludeCamera::With,
+                        mtl::IncludeL2W::With,
+                        mtl::IncludeSky::With);
         cfg.sky_ambient_model = mtl::SkyLightAmbientModel::FakeAtmosphere;
         cfg.lighting_model = mtl::LightingModel::PBR;
         cfg.SetTextureSourceModeOverride(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);

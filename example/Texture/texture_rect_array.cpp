@@ -1,4 +1,4 @@
-// 画一个带纹理的矩形，2D模式专用 (ECS)
+﻿// 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
@@ -128,7 +128,7 @@ private:
 
         mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                         CoordinateSystem2D::ZeroToOne,
-                                        mtl::WithLocalToWorld::With);
+                                        mtl::IncludeL2W::With);
 
         cfg.SetTextureSourceModeOverride(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
 

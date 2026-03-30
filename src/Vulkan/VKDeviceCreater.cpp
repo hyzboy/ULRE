@@ -7,7 +7,7 @@
 #include<hgl/vk/VKDeviceCreater.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSurface.h>
-#include<hgl/shadergen/ShaderCompilerProfileAPI.h>
+#include<hgl/shadergen/GLSLCompilerConfig.h>
 
 #include<hgl/log/Log.h>
 

@@ -1,16 +1,16 @@
 ﻿#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/UBOCommon.h>
-#include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <cstdio>
 #include <vector>
 
 #include <hgl/mtl/MaterialVariantDesc.h>
-#include <hgl/mtl/SamplerName.h>
+#include <hgl/mtl/SamplerSlot.h>
 
 #include "StandardDescriptorBuilder.h"
-#include "StandardVariantPolicy.h"
+#include "StandardVariantRouter.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -32,13 +32,13 @@ namespace
     };
 
     // Non-texture descriptors only �?texture entries are built dynamically in CreateStandardVariant().
-    const FixedUBODescriptors STANDARD_BASE_UBOS = {
+    const UBOSemanticSet STANDARD_BASE_UBOS = {
         UBODescriptorSemantic::ViewportInfo,
         UBODescriptorSemantic::CameraInfo,
         UBODescriptorSemantic::SkyInfo,
     };
 
-    const FixedSSBODescriptors STANDARD_BASE_SSBOS = {
+    const SSBOSemanticSet STANDARD_BASE_SSBOS = {
         SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
         SSBODescriptorSemantic::MaterialInstanceID,
@@ -55,7 +55,7 @@ namespace
     constexpr uint32_t STANDARD_TEX_SLOT_COUNT = uint32_t(sizeof(STANDARD_TEX_SLOTS) / sizeof(STANDARD_TEX_SLOTS[0]));
     static_assert(STANDARD_TEX_SLOT_COUNT == 2, "Standard material slot schema is fixed (BaseColor + Normal).");
 
-    const FixedMaterialDef STANDARD_DEF_TEMPLATE {
+    const StaticMaterialDef STANDARD_DEF_TEMPLATE {
         "Standard_v1",
         PrimitiveType::Triangles,
         STANDARD_VERTEX,
@@ -96,8 +96,8 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     LightingModel lighting = LightingModel::Lambert;
 
     // Start with stable non-texture descriptors, then append texture entries.
-    FixedSSBODescriptors dynamic_ssbos;
-    FixedTextureSamplerDescriptors dynamic_samplers;
+    SSBOSemanticSet dynamic_ssbos;
+    StaticTextureSamplerDescriptors dynamic_samplers;
     std::vector<const char *> unused_resources;
     bool any_array = false;
 
@@ -116,7 +116,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         unused_resources,
         any_array);
 
-    FixedMaterialDef dynamic_def = BuildStandardDynamicDef(
+    StaticMaterialDef dynamic_def = BuildStandardDynamicDef(
         STANDARD_DEF_TEMPLATE,
         dynamic_ssbos,
         dynamic_samplers,

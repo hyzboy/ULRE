@@ -2,10 +2,10 @@
 
 namespace hgl::graph{
 
-ShaderCreateInfoVertex::ShaderCreateInfoVertex(MaterialDescriptorInfo *m)
-    :ShaderCreateInfo(new VertexShaderDescriptorInfo(),m)
+ShaderCreateInfoVertex::ShaderCreateInfoVertex(MaterialDescriptorDB *m)
+    :ShaderCreateInfo(new VertexShaderStageIO(),m)
 {
-    vsdi=static_cast<VertexShaderDescriptorInfo *>(sdi);
+    vsdi=static_cast<VertexShaderStageIO *>(sdi);
 }
 
 int ShaderCreateInfoVertex::AddInput(VIAList &via_list)

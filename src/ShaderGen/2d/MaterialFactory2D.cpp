@@ -1,6 +1,6 @@
-#include"FixedDefFactory2D.h"
+﻿#include"MaterialFactory2D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/MaterialVariantDesc.h>
 #include<cstdio>
@@ -11,7 +11,7 @@ namespace hgl::graph::mtl{
 // Text2D and other highly specialized creators should keep dedicated code paths.
 MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
                                          const contract::PhysicalDeviceProfileLite *profile,
-                                         const FixedMaterialDef &def,
+                                         const StaticMaterialDef &def,
                                          const MaterialVariantKey &var_key,
                                          const std::string &vs_preamble,
                                          const std::string &fs_preamble,

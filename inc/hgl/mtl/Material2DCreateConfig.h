@@ -16,8 +16,8 @@ public:
 
     Material2DCreateConfig(const PrimitiveType &p=PrimitiveType::Lines,
                            const CoordinateSystem2D &cs=CoordinateSystem2D::NDC,
-                           const WithLocalToWorld &l2w=WithLocalToWorld::Without)
-        :MaterialCreateConfig(p,l2w==WithLocalToWorld::With)
+                           const IncludeL2W &l2w=IncludeL2W::Without)
+        :MaterialCreateConfig(p,l2w==IncludeL2W::With)
     {
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=false;      //不输出深度
@@ -51,7 +51,7 @@ struct Text2DMaterialCreateConfig:public Material2DCreateConfig
 {
 public:
 
-    Text2DMaterialCreateConfig():Material2DCreateConfig(PrimitiveType::Triangles,CoordinateSystem2D::Ortho,WithLocalToWorld::Without)
+    Text2DMaterialCreateConfig():Material2DCreateConfig(PrimitiveType::Triangles,CoordinateSystem2D::Ortho,IncludeL2W::Without)
     {
         material_instance=true;        //包含材质实例
 

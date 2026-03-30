@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/line/LineRenderPipeline.h>
+﻿#include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/LinesComponent.h>
 #include <hgl/ecs/components/BoundingBoxComponent.h>
@@ -237,9 +237,9 @@ namespace hgl::ecs
         // ------- Create material -------
         graph::mtl::Material3DCreateConfig cfg(
             graph::PrimitiveType::Lines,
-            graph::mtl::WithCamera::With,
-            graph::mtl::WithLocalToWorld::With,
-            graph::mtl::WithSky::Without);
+            graph::mtl::IncludeCamera::With,
+            graph::mtl::IncludeL2W::With,
+            graph::mtl::IncludeSky::Without);
 
         auto* mat_mgr = gc->GetMaterialManager();
         if (!mat_mgr)

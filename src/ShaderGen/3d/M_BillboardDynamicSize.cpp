@@ -1,8 +1,8 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<hgl/mtl/SamplerName.h>
+#include<hgl/mtl/SamplerSlot.h>
 #include<cstdio>
 #include<vector>
 #include<hgl/mtl/MaterialVariantDesc.h>
@@ -28,23 +28,23 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
 
     cfg->local_to_world=true;
 
-    FixedUBODescriptors ubos = {
+    UBOSemanticSet ubos = {
         UBODescriptorSemantic::ViewportInfo,
         UBODescriptorSemantic::CameraInfo,
     };
 
-    FixedSSBODescriptors ssbos = {
+    SSBOSemanticSet ssbos = {
         SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
     };
 
-    FixedTextureSamplerDescriptors samplers;
+    StaticTextureSamplerDescriptors samplers;
     for (uint32_t i = 0; i < BILLBOARD_DYNAMIC_TEX_SLOT_COUNT; ++i)
-        AddFixedTextureSampler(samplers, BILLBOARD_DYNAMIC_TEX_SLOTS[i], SamplerType::Sampler2D,
+        AddTextureSampler(samplers, BILLBOARD_DYNAMIC_TEX_SLOTS[i], SamplerType::Sampler2D,
                                0, 0,
                                cfg->base_color_channel);
 
-    FixedMaterialDef dynamic_def {
+    StaticMaterialDef dynamic_def {
         "BillboardDynamic",
         PrimitiveType::Triangles,
         BILLBOARD_DYNAMIC_VERTEX,

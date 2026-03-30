@@ -1,8 +1,8 @@
-#include<hgl/shadergen/MaterialDescriptorInfo.h>
+﻿#include<hgl/shadergen/MaterialDescriptorDB.h>
 #include<unordered_set>
 
 namespace hgl{namespace graph{
-MaterialDescriptorInfo::MaterialDescriptorInfo()
+MaterialDescriptorDB::MaterialDescriptorDB()
 {
     int set_type=(int)DescriptorSetType::BEGIN_RANGE;
 
@@ -19,7 +19,7 @@ MaterialDescriptorInfo::MaterialDescriptorInfo()
     descriptor_count=0;
 }
 
-MaterialDescriptorInfo::~MaterialDescriptorInfo()
+MaterialDescriptorDB::~MaterialDescriptorDB()
 {
     std::unordered_set<ShaderDescriptor *> released;
 
@@ -67,7 +67,7 @@ MaterialDescriptorInfo::~MaterialDescriptorInfo()
         p=nullptr;
 }
 
-const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetType set_type,UBODescriptor *sd)
+const UBODescriptor *MaterialDescriptorDB::AddUBO(uint32_t ssb,DescriptorSetType set_type,UBODescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -85,7 +85,7 @@ const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetTy
     return obj;
 }
 
-const SSBODescriptor *MaterialDescriptorInfo::AddSSBO(uint32_t ssb,DescriptorSetType set_type,SSBODescriptor *sd)
+const SSBODescriptor *MaterialDescriptorDB::AddSSBO(uint32_t ssb,DescriptorSetType set_type,SSBODescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -103,7 +103,7 @@ const SSBODescriptor *MaterialDescriptorInfo::AddSSBO(uint32_t ssb,DescriptorSet
     return obj;
 }
 
-const TextureDescriptor *MaterialDescriptorInfo::AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd)
+const TextureDescriptor *MaterialDescriptorDB::AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -120,7 +120,7 @@ const TextureDescriptor *MaterialDescriptorInfo::AddTexture(uint32_t shader_stag
     return obj;
 }
 
-const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32_t ssb,DescriptorSetType set_type,TextureSamplerDescriptor *sd)
+const TextureSamplerDescriptor *MaterialDescriptorDB::AddTextureSampler(uint32_t ssb,DescriptorSetType set_type,TextureSamplerDescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -137,7 +137,7 @@ const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32
     return obj;
 }
 
-UBODescriptor *MaterialDescriptorInfo::GetUBO(mtl::UBODescriptorSemantic semantic)
+UBODescriptor *MaterialDescriptorDB::GetUBO(mtl::UBODescriptorSemantic semantic)
 {
     if(!RangeCheck(semantic))
         return nullptr;
@@ -145,7 +145,7 @@ UBODescriptor *MaterialDescriptorInfo::GetUBO(mtl::UBODescriptorSemantic semanti
     return ubo_by_semantic[size_t(semantic)];
 }
 
-SSBODescriptor *MaterialDescriptorInfo::GetSSBO(mtl::SSBODescriptorSemantic semantic)
+SSBODescriptor *MaterialDescriptorDB::GetSSBO(mtl::SSBODescriptorSemantic semantic)
 {
     if(!RangeCheck(semantic))
         return nullptr;
@@ -153,7 +153,7 @@ SSBODescriptor *MaterialDescriptorInfo::GetSSBO(mtl::SSBODescriptorSemantic sema
     return ssbo_by_semantic[size_t(semantic)];
 }
 
-void MaterialDescriptorInfo::Resort()
+void MaterialDescriptorDB::Resort()
 {
     descriptor_count=0;
 

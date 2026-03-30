@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VKBufferAccessBase.h>
 #include<hgl/common/DescriptorSemantic.h>
-#include<hgl/mtl/DescriptorBindingContract.h>
+#include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<type_traits>
 
 namespace hgl::graph{

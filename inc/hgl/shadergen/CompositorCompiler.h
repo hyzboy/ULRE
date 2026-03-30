@@ -1,15 +1,15 @@
-#pragma once
+﻿#pragma once
 
-/// MaterialCompiler.h — FixedMaterialDef → MaterialCreateInfo 编译器接口
+/// MaterialCompiler.h — StaticMaterialDef → MaterialCreateInfo 编译器接口
 ///
 /// 使用 CompileCompositorMaterial 编译 Compositor 模板产出的完整 GLSL。
 /// 内部流程：
-///   1. 按 def 的 ubo/ssbo/texture_samplers 三组定义构建 MaterialDescriptorInfo
+///   1. 按 def 的 ubo/ssbo/texture_samplers 三组定义构建 MaterialDescriptorDB
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 ///   3. 填充并返回 MaterialCreateInfo*
 
-#include<hgl/mtl/FixedMaterialDef.h>
-#include<hgl/shadergen/contract/ShaderGenContract.h>
+#include<hgl/mtl/StaticMaterialDef.h>
+#include<hgl/shadergen/device/DeviceProfile.h>
 #include <string>
 
 namespace hgl::graph::mtl{
@@ -32,7 +32,7 @@ class MaterialCreateInfo;
  */
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
-    const FixedMaterialDef &    def,
+    const StaticMaterialDef &    def,
     const std::string &         vs_glsl,
     const std::string &         fs_glsl,
     const Material3DCreateConfig *config = nullptr);
@@ -45,7 +45,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
  */
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
-    const FixedMaterialDef &    def,
+    const StaticMaterialDef &    def,
     const std::string &         vs_glsl,
     const std::string &         fs_glsl,
     const Material2DCreateConfig *config);
@@ -68,7 +68,7 @@ std::string InjectLayoutDefinesPreserveVersion(
     const std::string &layout_defs);
 
 bool PrepareCompositorGLSLForReflection(
-    const FixedMaterialDef &def,
+    const StaticMaterialDef &def,
     const std::string &vs_glsl,
     const std::string &fs_glsl,
     std::string &out_vs_glsl,

@@ -1,4 +1,4 @@
-﻿#include"FixedDefFactory3D.h"
+﻿#include"MaterialFactory3D.h"
 #include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/UBOCommon.h>
@@ -14,19 +14,19 @@ namespace
         SamplerSlot::Normal,
     };
 
-    const FixedUBODescriptors TERRAIN_GRID_UBOS = build3d::MakeViewportCameraUBOs();
+    const UBOSemanticSet TERRAIN_GRID_UBOS = build3d::MakeViewportCameraUBOs();
 
-    const FixedSSBODescriptors TERRAIN_GRID_SSBOS = build3d::MakeTransformSSBOs(false);
+    const SSBOSemanticSet TERRAIN_GRID_SSBOS = build3d::MakeTransformSSBOs(false);
 
-    const FixedTextureSamplerDescriptors TERRAIN_GRID_SAMPLERS = []
+    const StaticTextureSamplerDescriptors TERRAIN_GRID_SAMPLERS = []
     {
-        FixedTextureSamplerDescriptors descriptors;
-        AddFixedTextureSampler(descriptors, TERRAIN_GRID_TEX_SLOTS[0], SamplerType::Sampler2D);
-        AddFixedTextureSampler(descriptors, TERRAIN_GRID_TEX_SLOTS[1], SamplerType::Sampler2D);
+        StaticTextureSamplerDescriptors descriptors;
+        AddTextureSampler(descriptors, TERRAIN_GRID_TEX_SLOTS[0], SamplerType::Sampler2D);
+        AddTextureSampler(descriptors, TERRAIN_GRID_TEX_SLOTS[1], SamplerType::Sampler2D);
         return descriptors;
     }();
 
-    const FixedMaterialDef TERRAIN_GRID_DEF {
+    const StaticMaterialDef TERRAIN_GRID_DEF {
         "TerrainGrid",
         PrimitiveType::Triangles,
         TERRAIN_GRID_VERTEX_PTR,

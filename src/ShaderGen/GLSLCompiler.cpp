@@ -1,13 +1,13 @@
-#include"GLSLCompiler.h"
+﻿#include"GLSLCompiler.h"
 #include"TBuiltInResourceCompat.h"
 #include"SPVParseData.h"
-#include <hgl/shadergen/ShaderGenPathConfig.h>
+#include <hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/platform/ExternalModule.h>
 #include<hgl/type/StringList.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/log/Logger.h>
-#include<hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
-#include<hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileJson.h>
+#include<hgl/shadergen/device/DeviceProfileTargetVersion.h>
+#include<hgl/shadergen/device/DeviceProfileJson.h>
 #include<vector>
 #include<string>
 

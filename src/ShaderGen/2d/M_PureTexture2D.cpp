@@ -1,7 +1,7 @@
 ﻿#include"Build2DCommon.h"
-#include"FixedDefFactory2D.h"
+#include"MaterialFactory2D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/mtl/SamplerName.h>
+#include<hgl/mtl/SamplerSlot.h>
 #include<hgl/math/Vector.h>
 #include<hgl/mtl/MaterialLibrary.h>
 
@@ -42,15 +42,15 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
     build2d::PushBaseVertexEntries(vertices, &inner);
     vertices.push_back({VAT_VEC2, VAN::TexCoord});
 
-    FixedUBODescriptors ubos;
-    FixedSSBODescriptors ssbos;
-    FixedTextureSamplerDescriptors samplers;
-    AddFixedTextureSampler(samplers, SamplerSlot::BaseColor, use_array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D);
+    UBOSemanticSet ubos;
+    SSBOSemanticSet ssbos;
+    StaticTextureSamplerDescriptors samplers;
+    AddTextureSampler(samplers, SamplerSlot::BaseColor, use_array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D);
 
     if(use_array)
-        AddFixedSSBODescriptor(ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID);
+        AddSSBODescriptor(ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID);
 
-    FixedMaterialDef def{};
+    StaticMaterialDef def{};
     build2d::BuildBase2DFixedDef(def,
                                  "PureTexture2D",
                                  &inner,

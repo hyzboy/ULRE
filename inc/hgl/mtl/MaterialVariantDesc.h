@@ -1,8 +1,8 @@
-#ifndef HGL_MTL_MATERIAL_VARIANT_DESC_H
+﻿#ifndef HGL_MTL_MATERIAL_VARIANT_DESC_H
 #define HGL_MTL_MATERIAL_VARIANT_DESC_H
 
 #include<hgl/mtl/MaterialPreset.h>
-#include<hgl/mtl/new/MaterialVariantKey.h>
+#include<hgl/mtl/MaterialVariantKey.h>
 #include<string>
 #include<vector>
 #include<unordered_map>

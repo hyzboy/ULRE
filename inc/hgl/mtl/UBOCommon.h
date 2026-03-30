@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/mtl/DescriptorBindingContract.h>
+#include<hgl/mtl/DescriptorSemanticRegistry.h>
 
 namespace hgl::graph{
 struct UBODescriptor;

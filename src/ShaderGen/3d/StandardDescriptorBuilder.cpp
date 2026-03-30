@@ -1,8 +1,8 @@
-#include "StandardDescriptorBuilder.h"
+﻿#include "StandardDescriptorBuilder.h"
 
 #include "../common/MFSkyLight.h"
 
-#include <hgl/mtl/SamplerName.h>
+#include <hgl/mtl/SamplerSlot.h>
 
 namespace hgl::graph::mtl
 {
@@ -13,12 +13,12 @@ void BuildStandardDescriptorState(
     const TextureSourceMode *tex_slot_modes,
     const uint32_t tex_slot_count,
     const bool policy_any_array,
-    const FixedSSBODescriptors &base_ssbos,
+    const SSBOSemanticSet &base_ssbos,
     Material3DCreateConfig &cfg_with_mi,
     SkyLightAmbientModel &ambient,
     LightingModel &lighting,
-    FixedSSBODescriptors &dynamic_ssbos,
-    FixedTextureSamplerDescriptors &dynamic_samplers,
+    SSBOSemanticSet &dynamic_ssbos,
+    StaticTextureSamplerDescriptors &dynamic_samplers,
     std::vector<const char *> &unused_resources,
     bool &any_array)
 {
@@ -38,11 +38,11 @@ void BuildStandardDescriptorState(
         const SamplerType sampler_type = (tex_slot_modes[i] == TextureSourceMode::Array)
             ? SamplerType::Sampler2DArray
             : SamplerType::Sampler2D;
-        AddFixedTextureSampler(dynamic_samplers, tex_slots[i], sampler_type);
+        AddTextureSampler(dynamic_samplers, tex_slots[i], sampler_type);
     }
 
     if (any_array)
-        AddFixedSSBODescriptor(dynamic_ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID);
+        AddSSBODescriptor(dynamic_ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID);
 
     unused_resources.clear();
     ApplySkyLightResourceInjection(
@@ -51,15 +51,15 @@ void BuildStandardDescriptorState(
         unused_resources);
 }
 
-FixedMaterialDef BuildStandardDynamicDef(
-    const FixedMaterialDef &def_template,
-    FixedSSBODescriptors &dynamic_ssbos,
-    FixedTextureSamplerDescriptors &dynamic_samplers,
+StaticMaterialDef BuildStandardDynamicDef(
+    const StaticMaterialDef &def_template,
+    SSBOSemanticSet &dynamic_ssbos,
+    StaticTextureSamplerDescriptors &dynamic_samplers,
     const char *mi_codes,
     const uint32_t mi_bytes,
     const bool any_array)
 {
-    FixedMaterialDef dynamic_def = def_template;
+    StaticMaterialDef dynamic_def = def_template;
     dynamic_def.ssbo_descriptors = &dynamic_ssbos;
     dynamic_def.texture_samplers = &dynamic_samplers;
     dynamic_def.mi_glsl_codes = mi_codes;
