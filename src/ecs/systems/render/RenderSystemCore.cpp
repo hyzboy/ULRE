@@ -77,7 +77,7 @@ bool RenderSystemCore::BeginRenderPass()
     }
 
     render_cmd->SetClearColor(0, clear_color);
-    render_cmd->BeginRenderPass();
+    render_cmd->BeginRenderingDynamic(render_target->GetCurrentRTD());
     render_pass_begun = true;
     return true;
 }
@@ -101,7 +101,7 @@ void RenderSystemCore::EndFrame() {
     }
 
     if (render_cmd && render_pass_begun)
-        render_cmd->EndRenderPass();
+        render_cmd->EndRenderingDynamic(render_target->GetCurrentRTD());
 
     render_target->EndRender();
 

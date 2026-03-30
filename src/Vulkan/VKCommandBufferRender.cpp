@@ -8,6 +8,8 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKRenderTargetData.h>
+#include<hgl/vk/VKTexture.h>
 
 namespace hgl::graph{
 bool RenderCmdBuffer::BindVAB(const VABList *vab_list)
@@ -320,4 +322,164 @@ void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const Geom
 //                     0,                 //vertex offset
 //                     0);                //first instance
 //}
+
+namespace
+{
+    inline VkImageAspectFlags GetDepthAspectFlags(VkFormat fmt)
+    {
+        switch(fmt)
+        {
+            case VK_FORMAT_D16_UNORM_S8_UINT:
+            case VK_FORMAT_D24_UNORM_S8_UINT:
+            case VK_FORMAT_D32_SFLOAT_S8_UINT:
+                return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            default:
+                return VK_IMAGE_ASPECT_DEPTH_BIT;
+        }
+    }
+}//anonymous namespace
+
+bool RenderCmdBuffer::BeginRenderingDynamic(const RenderTargetData *rtd)
+{
+    if(!rtd) return false;
+
+    const uint32_t barrier_count = rtd->color_count + (rtd->depth_texture ? 1 : 0);
+
+    if(barrier_count > 0)
+    {
+        // Use a fixed upper-bound stack array (16 color attachments + 1 depth is well beyond typical use)
+        VkImageMemoryBarrier barriers[17] = {};
+
+        // Pre-render color barriers: UNDEFINED → COLOR_ATTACHMENT_OPTIMAL
+        // (loadOp=CLEAR means we discard previous content, so UNDEFINED old-layout is always valid)
+        for(uint32_t i = 0; i < rtd->color_count; i++)
+        {
+            Texture2D *tex = rtd->color_textures[i];
+            VkImageMemoryBarrier &b = barriers[i];
+            b.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            b.srcAccessMask                   = 0;
+            b.dstAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            b.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED; // discard; we CLEAR
+            b.newLayout                       = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            b.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            b.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            b.image                           = tex->GetImage();
+            b.subresourceRange                = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        }
+
+        // Pre-render depth barrier: UNDEFINED → DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        if(rtd->depth_texture)
+        {
+            Texture2D *tex = rtd->depth_texture;
+            VkImageMemoryBarrier &b = barriers[rtd->color_count];
+            b.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            b.srcAccessMask                   = 0;
+            b.dstAccessMask                   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            b.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED; // discard; we CLEAR
+            b.newLayout                       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            b.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            b.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            b.image                           = tex->GetImage();
+            b.subresourceRange                = {GetDepthAspectFlags(tex->GetFormat()), 0, 1, 0, 1};
+        }
+
+        vkCmdPipelineBarrier(cmd_buf,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+            0,
+            0, nullptr,
+            0, nullptr,
+            barrier_count, barriers);
+    }
+
+    // Build color attachment info array
+    VkRenderingAttachmentInfoKHR color_attachments[16] = {};
+    for(uint32_t i = 0; i < rtd->color_count; i++)
+    {
+        Texture2D *tex = rtd->color_textures[i];
+        VkRenderingAttachmentInfoKHR &ai  = color_attachments[i];
+        ai.sType                          = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+        ai.imageView                      = tex->GetVulkanImageView();
+        ai.imageLayout                    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        ai.resolveMode                    = VK_RESOLVE_MODE_NONE;
+        ai.resolveImageView               = VK_NULL_HANDLE;
+        ai.resolveImageLayout             = VK_IMAGE_LAYOUT_UNDEFINED;
+        ai.loadOp                         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        ai.storeOp                        = VK_ATTACHMENT_STORE_OP_STORE;
+        ai.clearValue                     = clear_values[i];
+    }
+
+    // Build depth attachment info
+    VkRenderingAttachmentInfoKHR depth_attachment = {};
+    const bool has_depth = (rtd->depth_texture != nullptr);
+    if(has_depth)
+    {
+        Texture2D *tex = rtd->depth_texture;
+        depth_attachment.sType            = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+        depth_attachment.imageView        = tex->GetVulkanImageView();
+        depth_attachment.imageLayout      = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        depth_attachment.resolveMode      = VK_RESOLVE_MODE_NONE;
+        depth_attachment.resolveImageView = VK_NULL_HANDLE;
+        depth_attachment.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        depth_attachment.loadOp           = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depth_attachment.storeOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depth_attachment.clearValue       = clear_values[cv_count - 1]; // last slot is depth
+    }
+
+    VkRenderingInfoKHR rendering_info    = {};
+    rendering_info.sType                 = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+    rendering_info.renderArea            = render_area;
+    rendering_info.layerCount            = 1;
+    rendering_info.colorAttachmentCount  = rtd->color_count;
+    rendering_info.pColorAttachments     = color_attachments;
+    rendering_info.pDepthAttachment      = has_depth ? &depth_attachment : nullptr;
+    rendering_info.pStencilAttachment    = nullptr;
+
+    dev_attr->pfn_vkCmdBeginRenderingKHR(cmd_buf, &rendering_info);
+
+    vkCmdSetViewport(cmd_buf, 0, 1, &viewport);
+    vkCmdSetScissor (cmd_buf, 0, 1, &render_area);
+
+    pipeline_layout = VK_NULL_HANDLE;
+
+    return true;
+}
+
+void RenderCmdBuffer::EndRenderingDynamic(const RenderTargetData *rtd)
+{
+    dev_attr->pfn_vkCmdEndRenderingKHR(cmd_buf);
+
+    if(!rtd || rtd->color_count == 0) return;
+
+    // Post-render barrier: COLOR_ATTACHMENT_OPTIMAL → final_color_layout
+    // srcAccess = write, dstAccess = 0 (semaphore handles cross-submission visibility)
+    VkImageMemoryBarrier barriers[16] = {};
+    for(uint32_t i = 0; i < rtd->color_count; i++)
+    {
+        Texture2D *tex = rtd->color_textures[i];
+        VkImageMemoryBarrier &b = barriers[i];
+        b.sType                 = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        b.srcAccessMask         = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        b.dstAccessMask         = 0;
+        b.oldLayout             = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        b.newLayout             = rtd->final_color_layout;
+        b.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+        b.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+        b.image                 = tex->GetImage();
+        b.subresourceRange      = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+        // Update CPU-side layout tracking
+        TextureData *td = tex->GetData();
+        if(td) td->image_layout = rtd->final_color_layout;
+    }
+
+    vkCmdPipelineBarrier(cmd_buf,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        0,
+        0, nullptr,
+        0, nullptr,
+        rtd->color_count, barriers);
+}
+
 }//namespace hgl::graph

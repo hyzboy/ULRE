@@ -96,6 +96,8 @@ public: // Command Buffer
 
 public:
 
+    virtual RenderTargetData* GetCurrentRTD() override { return &rtd_list[current_frame]; }
+
     virtual RenderCmdBuffer *BeginRender()override
     {
         //std::cout<<"Begin Render frame="<<current_frame<<std::endl;

@@ -328,6 +328,9 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     if(!device_attr->device)
         return(nullptr);
 
+    device_attr->pfn_vkCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)vkGetDeviceProcAddr(device_attr->device, "vkCmdBeginRenderingKHR");
+    device_attr->pfn_vkCmdEndRenderingKHR   = (PFN_vkCmdEndRenderingKHR)  vkGetDeviceProcAddr(device_attr->device, "vkCmdEndRenderingKHR");
+
     ChooseSurfaceFormat();
 
     if(physical_device->SupportU8Index()

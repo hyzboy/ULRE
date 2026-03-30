@@ -262,6 +262,7 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
         rtd->color_textures=new Texture2D*[1];
         rtd->color_textures[0]=sc_image->color;
         rtd->depth_texture=sc_image->depth;
+        rtd->final_color_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
         ++rtd;
         ++sc_image;

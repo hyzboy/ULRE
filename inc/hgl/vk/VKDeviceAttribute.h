@@ -33,6 +33,9 @@ struct VulkanDevAttr
 
     VkPipelineCache                     pipeline_cache  =VK_NULL_HANDLE;
 
+    PFN_vkCmdBeginRenderingKHR          pfn_vkCmdBeginRenderingKHR = nullptr;
+    PFN_vkCmdEndRenderingKHR            pfn_vkCmdEndRenderingKHR   = nullptr;
+
 #ifdef _DEBUG
     DebugUtils *                        debug_utils     =nullptr;
 #endif//_DEBUG

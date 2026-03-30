@@ -63,6 +63,8 @@ public: // Command Buffer
 
 public:
 
+    virtual RenderTargetData* GetCurrentRTD() override { return data; }
+
     virtual RenderCmdBuffer *BeginRender()override
     {
         if(!data)

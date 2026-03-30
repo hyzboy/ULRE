@@ -4,12 +4,14 @@
 #include<hgl/vk/VKVABList.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/VKDescriptorSet.h>
+#include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
 class DomainMaterialBinding;
+struct RenderTargetData; // Forward declaration for BeginRenderingDynamic/EndRenderingDynamic
 class VulkanCmdBuffer
 {
 public:
@@ -125,15 +127,21 @@ public:
 
     void BeginRendering(const VkRenderingInfoKHR *ri)
     {
-        if(!ri)return;
+        if(!ri || !dev_attr->pfn_vkCmdBeginRenderingKHR)return;
 
-        vkCmdBeginRenderingKHR(cmd_buf,ri);
+        dev_attr->pfn_vkCmdBeginRenderingKHR(cmd_buf,ri);
     }
 
     void EndRendering()
     {
-        vkCmdEndRenderingKHR(cmd_buf);
+        if(dev_attr->pfn_vkCmdEndRenderingKHR)
+            dev_attr->pfn_vkCmdEndRenderingKHR(cmd_buf);
     }
+
+    // Dynamic Rendering helpers: emit pre/post barriers and call vkCmdBeginRendering/EndRendering.
+    // BeginRender() + SetClearColor() must be called before BeginRenderingDynamic().
+    bool BeginRenderingDynamic(const RenderTargetData *rtd);
+    void EndRenderingDynamic  (const RenderTargetData *rtd);
 
     bool BindPipeline(Pipeline *p)
     {

@@ -19,6 +19,11 @@ struct RenderTargetData
     Texture2D **        color_textures;         ///<颜色成分纹理列表
     Texture2D *         depth_texture;          ///<深度成分纹理
 
+    // Target layout for color attachments after rendering.
+    // Swapchain: VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    // Offscreen: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL (default)
+    VkImageLayout       final_color_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
 public:
 
     Texture2D *GetColorTexture(const uint32_t index)
