@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "../common/MFSkyLight.h"
-#include <hgl/mtl/MaterialVariantDesc.h>
+#include <hgl/mtl/MaterialVariantRegistry.h>
 
 namespace hgl::graph::mtl{
 namespace

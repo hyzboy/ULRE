@@ -4,7 +4,7 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
-#include<hgl/mtl/MaterialVariantDesc.h>
+#include<hgl/mtl/MaterialVariantRegistry.h>
 #include<cstdio>
 
 namespace hgl::graph::mtl{

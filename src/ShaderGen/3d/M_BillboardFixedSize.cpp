@@ -5,7 +5,7 @@
 #include<hgl/mtl/SamplerSlot.h>
 #include<cstdio>
 #include<vector>
-#include<hgl/mtl/MaterialVariantDesc.h>
+#include<hgl/mtl/MaterialVariantRegistry.h>
 #include"Build3DCommon.h"
 
 namespace hgl::graph::mtl{

@@ -12,7 +12,7 @@ SET(SHADER_CREATER_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfo.h
                                 ${SHADERGEN_INCLUDE_PATH}/ShaderStageMap.h
                                 ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoVertex.h)
 SET(SHADER_CREATER_SOURCE_FILES ShaderCreateInfo.cpp
-                                ShaderCreateInfoMap.cpp
+                                ShaderStageMap.cpp
                                 ShaderCreateInfoVertex.cpp)
 SOURCE_GROUP("Material Create Info\\Shader" FILES   ${SHADER_CREATER_HEADER_FILES}
                                                     ${SHADER_CREATER_SOURCE_FILES})
@@ -27,8 +27,8 @@ SOURCE_GROUP("Material Create Info" FILES   ${MATERIAL_CREATE_INFO_HEADER_FILES}
 SET(DESC_INFO_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderStageIO.h
                             ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorDB.h
                             ${STD_MTL_HEADER_PATH}/DescriptorSemanticRegistry.h)
-SET(DESC_INFO_SOURCE_FILES  ShaderDescriptorInfo.cpp
-                            MaterialDescriptorInfo.cpp)
+SET(DESC_INFO_SOURCE_FILES  ShaderStageIO.cpp
+                            MaterialDescriptorDB.cpp)
 SOURCE_GROUP("Material Create Info\\Descriptor Info" FILES  ${DESC_INFO_HEADER_FILES}
                                                             ${DESC_INFO_SOURCE_FILES})
 
@@ -70,7 +70,6 @@ SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h
                     ${STD_MTL_HEADER_PATH}/MaterialBuildFlags.h
                     ${STD_MTL_HEADER_PATH}/StaticMaterialDef.h
-                    ${STD_MTL_HEADER_PATH}/MaterialVertexFormat.h
                     MaterialCreateConfig.cpp
                     GLSLStructSize.cpp)
 SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
@@ -118,6 +117,7 @@ SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             ${STD_MTL_HEADER_PATH}/MaterialSpec.h
                             ${STD_MTL_HEADER_PATH}/MaterialPreset.h
                             ${STD_MTL_HEADER_PATH}/MaterialVariantDesc.h
+                            ${STD_MTL_HEADER_PATH}/MaterialVariantRegistry.h
                             ${MTL_TYPE_INCLUDE_PATH}/MaterialVariantKey.h
                             ${MTL_TYPE_INCLUDE_PATH}/SurfaceType.h
                             ${MTL_TYPE_INCLUDE_PATH}/BlendMode.h
@@ -127,25 +127,25 @@ SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 
 # Material Compiler
 SET(MATERIAL_COMPILER_FILES ${SHADERGEN_INCLUDE_PATH}/CompositorCompiler.h
-                            MaterialCompiler.cpp)
+                            CompositorCompiler.cpp)
 SOURCE_GROUP("Material Compiler" FILES ${MATERIAL_COMPILER_FILES})
 
 # Material Compiler / Requirements
 SET(SHADER_REQUIRE_SCANNER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderResourceScanner.h
-                                 ShaderRequireScanner.cpp)
+                                 ShaderResourceScanner.cpp)
 SOURCE_GROUP("Material Compiler\\Requirements" FILES ${SHADER_REQUIRE_SCANNER_FILES})
 
 # Material Compiler / Sampler
 SET(SAMPLER_GLSL_EMITTER_FILES ${SHADERGEN_INCLUDE_PATH}/SamplerGLSLEmitter.h
-                               SimpleSamplerGLSLEmitter.cpp)
+                               SamplerGLSLEmitter.cpp)
 SOURCE_GROUP("Material Compiler\\Sampler" FILES ${SAMPLER_GLSL_EMITTER_FILES})
 
 # Material Compiler / Layout
 SET(SHADER_LAYOUT_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderLayoutContract.h
                                 ${SHADERGEN_INCLUDE_PATH}/ShaderLayoutResolver.h
                                 ${SHADERGEN_INCLUDE_PATH}/ShaderLayoutEmitter.h)
-SET(SHADER_LAYOUT_SOURCE_FILES  ShaderLayoutBuilder.cpp
-                                ShaderLayoutDefineEmitter.cpp)
+SET(SHADER_LAYOUT_SOURCE_FILES  ShaderLayoutResolver.cpp
+                                ShaderLayoutEmitter.cpp)
 SOURCE_GROUP("Material Compiler\\Layout" FILES  ${SHADER_LAYOUT_HEADER_FILES}
                                                 ${SHADER_LAYOUT_SOURCE_FILES})
 

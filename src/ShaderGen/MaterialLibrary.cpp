@@ -2,7 +2,7 @@
 #include<hgl/mtl/SamplerSlot.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<hgl/mtl/MaterialVariantDesc.h>
+#include<hgl/mtl/MaterialVariantRegistry.h>
 #include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<cstdio>

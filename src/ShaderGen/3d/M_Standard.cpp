@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <vector>
 
-#include <hgl/mtl/MaterialVariantDesc.h>
+#include <hgl/mtl/MaterialVariantRegistry.h>
 #include <hgl/mtl/SamplerSlot.h>
 
 #include "StandardDescriptorBuilder.h"
