@@ -9,26 +9,22 @@
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
-RenderPass::RenderPass(VulkanDevice *dev,const AnsiString &n,VkRenderPass rp,const VkFormatList &cf,VkFormat df)
+RenderPass::RenderPass(VulkanDevice *dev,const AnsiString &n,const VkFormatList &cf,VkFormat df)
 {
     device=dev;
     name=n;
     pipeline_cache=dev->GetPipelineCache();
-    render_pass=rp;
     color_formats=cf;
     depth_format=df;
 
-    vkGetRenderAreaGranularity(*device,render_pass,&granularity);
-
-    LogInfo("[RenderPass::RenderPass] Created RenderPass '%s' with VkRenderPass=0x%llx, color attachment count=%u, depth format=%u, granularity=(%ux%u)",
-             name.c_str(), (unsigned long long)(uintptr_t)render_pass, color_formats.GetCount(), depth_format,
-             granularity.width, granularity.height);
+    LogInfo("[RenderPass::RenderPass] Created RenderPass '%s', color attachment count=%u, depth format=%u",
+             name.c_str(), color_formats.GetCount(), depth_format);
 }
 
 RenderPass::~RenderPass()
 {
-    LogInfo("[RenderPass::~RenderPass] Destroying RenderPass with %u pipelines (VkRenderPass=0x%llx, RenderPass*=0x%llx)",
-             (unsigned int)pipeline_list.GetCount(), (unsigned long long)(uintptr_t)render_pass, (unsigned long long)(uintptr_t)this);
+    LogInfo("[RenderPass::~RenderPass] Destroying RenderPass '%s' with %u pipelines (RenderPass*=0x%llx)",
+             name.c_str(), (unsigned int)pipeline_list.GetCount(), (unsigned long long)(uintptr_t)this);
 
     // 列出所有要被销毁的管道
     for (size_t i = 0; i < pipeline_list.GetCount(); i++)
@@ -40,13 +36,7 @@ RenderPass::~RenderPass()
 
     LogDebug("[RenderPass::~RenderPass] Clearing pipeline_list...");
     pipeline_list.Clear();
-    LogDebug("[RenderPass::~RenderPass] Pipelines cleared, now destroying VkRenderPass");
-
-    if (device)
-        device->UntrackObject(VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)(uintptr_t)render_pass);
-
-    vkDestroyRenderPass(*device,render_pass,nullptr);
-    LogInfo("[RenderPass::~RenderPass] RenderPass destroyed");
+    LogInfo("[RenderPass::~RenderPass] Pipelines cleared");
 }
 
 Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
@@ -65,8 +55,14 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
     pd->pipeline_info.layout = pl;
 
     {
-        pd->pipeline_info.renderPass = render_pass;
-        pd->pipeline_info.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
+        VkPipelineRenderingCreateInfoKHR rendering_ci = {};
+        rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+        rendering_ci.colorAttachmentCount = (uint32_t)color_formats.GetCount();
+        rendering_ci.pColorAttachmentFormats = color_formats.GetData();
+        rendering_ci.depthAttachmentFormat = depth_format;
+        pd->pipeline_info.pNext = &rendering_ci;
+        pd->pipeline_info.renderPass = VK_NULL_HANDLE;
+        pd->pipeline_info.subpass = 0;
     }
 
     if (vkCreateGraphicsPipelines(  *device,

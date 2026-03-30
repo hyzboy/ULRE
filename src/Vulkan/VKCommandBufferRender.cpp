@@ -2,7 +2,6 @@
 #include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 #include<hgl/vk/VKRenderPass.h>
-#include<hgl/vk/VKFramebuffer.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/vk/VKPhysicalDevice.h>
@@ -75,43 +74,24 @@ void RenderCmdBuffer::SetRenderArea(const VkExtent2D &ext2d)
     render_area.extent=ext2d;
 }
 
-bool RenderCmdBuffer::BindFramebuffer(Framebuffer *fbo)
+bool RenderCmdBuffer::BeginSetup(const RenderTargetData *rtd)
 {
-    if(!fbo)return(false);
+    if(!rtd) return false;
 
-    cv_count=fbo->GetAttachmentCount();
+    cv_count = rtd->color_count + (rtd->depth_texture ? 1 : 0);
     SetClear();
 
-    render_area.offset.x=0;
-    render_area.offset.y=0;
-    render_area.extent=fbo->GetExtent();
+    render_area.offset = {0, 0};
+    render_area.extent = rtd->extent;
 
-    rp_begin.renderPass         = *fbo->GetRenderPass();
-    rp_begin.framebuffer        = *fbo;
-    rp_begin.renderArea         = render_area;
-    rp_begin.clearValueCount    = cv_count;
-    rp_begin.pClearValues       = clear_values;
+    viewport.x        = 0;
+    viewport.y        = 0;
+    viewport.width    = (float)rtd->extent.width;
+    viewport.height   = (float)rtd->extent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
 
-    viewport.x          = 0;
-    viewport.y          = 0;
-    viewport.minDepth   = 0.0f;
-    viewport.maxDepth   = 1.0f;
-    viewport.width      = render_area.extent.width;
-    viewport.height     = render_area.extent.height;
-
-    return(true);
-};
-
-bool RenderCmdBuffer::BeginRenderPass()
-{
-    vkCmdBeginRenderPass(cmd_buf, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
-
-    vkCmdSetViewport(cmd_buf,0,1,&viewport);
-    vkCmdSetScissor(cmd_buf,0,1,&render_area);
-
-    pipeline_layout=VK_NULL_HANDLE;
-
-    return(true);
+    return true;
 }
 
 bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)

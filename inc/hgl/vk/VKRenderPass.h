@@ -21,13 +21,10 @@ class RenderPass
 
     VulkanDevice *  device;
     VkPipelineCache pipeline_cache;
-    VkRenderPass    render_pass;
     AnsiString      name;               ///< RenderPass名称，用于调试
 
     VkFormatList    color_formats;
     VkFormat        depth_format;
-
-    VkExtent2D      granularity;        //FBO尺寸对齐粒度
 
 protected:
 
@@ -40,16 +37,13 @@ private:
 
     friend class RenderPassManager;
 
-    RenderPass(VulkanDevice *,const AnsiString &name,VkRenderPass rp,const VkFormatList &cf,VkFormat df);
+    RenderPass(VulkanDevice *,const AnsiString &name,const VkFormatList &cf,VkFormat df);
 
 public:
 
     virtual ~RenderPass();
 
-    operator const VkRenderPass()const{return render_pass;}
-
     const AnsiString &      GetName         ()const{return name;}
-    const VkRenderPass      GetVkRenderPass ()const{return render_pass;}
     const VkPipelineCache   GetPipelineCache()const{return pipeline_cache;}
 
     const uint              GetColorCount   ()const{return color_formats.GetCount();}
@@ -61,8 +55,6 @@ public:
         return color_formats.GetData()[index];
     }
     const VkFormat          GetDepthFormat  ()const{return depth_format;}
-
-    const VkExtent2D &      GetGranularity  ()const{return granularity;}
 
 public:
 

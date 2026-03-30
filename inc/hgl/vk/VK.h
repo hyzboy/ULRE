@@ -17,31 +17,6 @@ inline bool operator==(const VkAttachmentReference& lhs, const VkAttachmentRefer
            lhs.layout == rhs.layout;
 }
 
-inline bool operator==(const VkSubpassDependency& lhs, const VkSubpassDependency& rhs)
-{
-    return lhs.srcSubpass == rhs.srcSubpass &&
-           lhs.dstSubpass == rhs.dstSubpass &&
-           lhs.srcStageMask == rhs.srcStageMask &&
-           lhs.dstStageMask == rhs.dstStageMask &&
-           lhs.srcAccessMask == rhs.srcAccessMask &&
-           lhs.dstAccessMask == rhs.dstAccessMask &&
-           lhs.dependencyFlags == rhs.dependencyFlags;
-}
-
-inline bool operator==(const VkSubpassDescription& lhs, const VkSubpassDescription& rhs)
-{
-    return lhs.flags == rhs.flags &&
-           lhs.pipelineBindPoint == rhs.pipelineBindPoint &&
-           lhs.inputAttachmentCount == rhs.inputAttachmentCount &&
-           lhs.pInputAttachments == rhs.pInputAttachments &&
-           lhs.colorAttachmentCount == rhs.colorAttachmentCount &&
-           lhs.pColorAttachments == rhs.pColorAttachments &&
-           lhs.pResolveAttachments == rhs.pResolveAttachments &&
-           lhs.pDepthStencilAttachment == rhs.pDepthStencilAttachment &&
-           lhs.preserveAttachmentCount == rhs.preserveAttachmentCount &&
-           lhs.pPreserveAttachments == rhs.pPreserveAttachments;
-}
-
 inline bool operator==(const VkAttachmentDescription& lhs, const VkAttachmentDescription& rhs)
 {
     return lhs.flags == rhs.flags &&

@@ -20,17 +20,9 @@ private:
 
     friend class GraphModuleManager;
 
-private:
-
-    RenderPass *    CreateRenderPass(   const AnsiString &name,
-                                        const ValueArray<VkAttachmentDescription> &desc_list,
-                                        const ValueArray<VkSubpassDescription> &subpass,
-                                        const ValueArray<VkSubpassDependency> &dependency,
-                                        const RenderbufferInfo *);
-
 public:
 
-    RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
+    RenderPass *    AcquireRenderPass(const RenderbufferInfo *);
 
     void Release() override;
 };//class RenderPassManager

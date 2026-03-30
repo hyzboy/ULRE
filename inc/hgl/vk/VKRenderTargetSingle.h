@@ -17,7 +17,7 @@ protected:
     friend class SwapchainModule;
     friend class RenderTargetManager;
 
-    RenderTarget(hgl::ecs::ECSContext *ctx,RenderTargetData *rtd):IRenderTarget(ctx,rtd->fbo->GetExtent())
+    RenderTarget(hgl::ecs::ECSContext *ctx,RenderTargetData *rtd):IRenderTarget(ctx,rtd->extent)
     {
         data=rtd;
     }
@@ -33,8 +33,7 @@ public:
         }
     }
 
-    Framebuffer *       GetFramebuffer      ()override{return data->fbo;}
-    RenderPass *        GetRenderPass       ()override{return data->fbo->GetRenderPass();}
+    RenderPass *        GetRenderPass       ()override{return data->render_pass;}
 
     uint32_t            GetColorCount       ()override{return data->color_count;}
 

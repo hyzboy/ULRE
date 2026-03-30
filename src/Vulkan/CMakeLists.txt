@@ -201,15 +201,10 @@ SET(VK_TEXTURE_DEVICE_FILES     Texture/BufferImageCopy2D.h
 SOURCE_GROUP("Texture\\Device" FILES ${VK_TEXTURE_DEVICE_FILES})
 
 # --- 8. Render Pass ---
-SET(VK_RENDER_PASS_FILES        ${VK_INCLUDE_PATH}/VKFramebuffer.h
-                                ${VK_INCLUDE_PATH}/VKRenderPass.h
+SET(VK_RENDER_PASS_FILES        ${VK_INCLUDE_PATH}/VKRenderPass.h
                                 ${VK_INCLUDE_PATH}/VKLoadStoreOpInfo.h
-                                ${VK_INCLUDE_PATH}/VKSubpass.h
-                                ${VK_INCLUDE_PATH}/VKSubpassInfo.h
                                 ${VK_INCLUDE_PATH}/VKAttachment.h
-                                VKFramebuffer.cpp
-                                VKRenderPass.cpp
-                                VKSubpass.cpp)
+                                VKRenderPass.cpp)
 
 SOURCE_GROUP("RenderPass" FILES ${VK_RENDER_PASS_FILES})
 
@@ -258,7 +253,6 @@ SET(VK_BUFFER_OPS_FILES         VKDeviceMemory.cpp
                                 VKDeviceStagedBuffer.cpp
                                 VKDeviceImage.cpp
                                 VKDeviceSampler.cpp
-                                VKDeviceFramebuffer.cpp
                                 VKDeviceMaterial.cpp)
 
 SOURCE_GROUP("BufferOperations" FILES ${VK_BUFFER_OPS_FILES})

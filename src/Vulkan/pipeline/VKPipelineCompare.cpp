@@ -210,9 +210,6 @@ namespace hgl::graph
         if(a->layout!=b->layout)
             return(false);
 
-        if(a->renderPass!=b->renderPass)
-            return(false);
-
         if(a->subpass!=b->subpass)
             return(false);
 

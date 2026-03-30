@@ -37,9 +37,13 @@ namespace hgl
         bool ThemeForm::BeginRender()
         {
             if(!cmd_buf->Begin())return(false);
-            if(!cmd_buf->BindRenderTarget(render_target->GetRenderPass(),render_target->GetFramebuffer()))return(false);
+
+            RenderTargetData *rtd=render_target->GetCurrentRTD();
+            if(!cmd_buf->BeginSetup(rtd))return(false);
 
             cmd_buf->SetClearColor(0,0,0,0,1.0f);
+
+            if(!cmd_buf->BeginRenderingDynamic(rtd))return(false);
 
             return(true);
         }

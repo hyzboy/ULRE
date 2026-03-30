@@ -2,7 +2,6 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKRenderPass.h>
-#include<hgl/vk/VKFramebuffer.h>
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKBuffer.h>
@@ -47,7 +46,6 @@ public:
     IRenderTarget(hgl::ecs::ECSContext *,const VkExtent2D &);
     virtual ~IRenderTarget();
 
-    virtual Framebuffer *       GetFramebuffer  ()=0;
     virtual RenderPass *        GetRenderPass   ()=0;
 
     virtual Texture2D *         GetColorTexture (const int index=0)=0;

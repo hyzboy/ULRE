@@ -24,13 +24,6 @@ public:
     RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderPassManager *rpm);
     virtual ~RenderTargetManager()=default;
 
-public: //FrameBuffer相关
-
-    Framebuffer *CreateFBO(RenderPass *rp,ImageView **color_list,const uint image_count,ImageView *depth);
-//    Framebuffer *CreateFBO(RenderPass *,ValueArray<ImageView *> &color,ImageView *depth);
-    Framebuffer *CreateFBO(RenderPass *,ImageView *color,ImageView *depth);
-    Framebuffer *CreateFBO(RenderPass *,ImageView *);
-
 public:
 
     RenderTarget *CreateRT(const AnsiString &name, const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);

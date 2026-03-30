@@ -8,12 +8,9 @@ namespace hgl
     {
         bool DefaultThemeForm::Render()
         {
-            if(!cmd_buf->BeginRenderPass())
-                return(false);
+            RenderTargetData *rtd=render_target->GetCurrentRTD();
 
-
-
-            cmd_buf->EndRenderPass();
+            cmd_buf->EndRenderingDynamic(rtd);
             return(true);
         }
     }//namespace gui

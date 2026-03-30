@@ -1,7 +1,6 @@
 ﻿#include<hgl/vk/VKRenderTargetData.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSemaphore.h>
-#include<hgl/vk/VKFramebuffer.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
@@ -29,7 +28,7 @@ RenderCmdBuffer *RenderTargetData::BeginRender()
         return(nullptr);
 
     cmd_buf->Begin();
-    cmd_buf->BindFramebuffer(fbo);
+    cmd_buf->BeginSetup(this);
     return cmd_buf;
 }
 
@@ -46,7 +45,7 @@ void RenderTargetData::Clear()
 {
     LogDebug("[RenderTargetData] Clear");
     SAFE_CLEAR(render_complete_semaphore);
-    SAFE_CLEAR(fbo);
+    render_pass = nullptr;
 
     // cmd_buf and queue will be cleared separately or by their owners
     // DO NOT delete them here as they may still be referenced

@@ -8,8 +8,6 @@ struct SwapchainImage
     Texture2D *                    color            =nullptr;
     Texture2D *                    depth            =nullptr;
 
-    Framebuffer *                  fbo              =nullptr;
-
     RenderCmdBuffer *              cmd_buf          =nullptr;
 
 public:

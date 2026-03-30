@@ -67,7 +67,6 @@ private:
     VkRect2D render_area;
     VkViewport viewport;
 
-    RenderPassBeginInfo rp_begin;
     VkPipelineLayout pipeline_layout;
 
     /*
@@ -119,27 +118,10 @@ public:
 
     //以上设定在Begin开始后即不可改变
 
-    bool BindFramebuffer(Framebuffer *);
+    bool BeginSetup(const RenderTargetData *rtd);
 
-    bool BeginRenderPass();
-    void NextSubpass(){vkCmdNextSubpass(cmd_buf,VK_SUBPASS_CONTENTS_INLINE);}
-    void EndRenderPass(){vkCmdEndRenderPass(cmd_buf);}
-
-    void BeginRendering(const VkRenderingInfoKHR *ri)
-    {
-        if(!ri || !dev_attr->pfn_vkCmdBeginRenderingKHR)return;
-
-        dev_attr->pfn_vkCmdBeginRenderingKHR(cmd_buf,ri);
-    }
-
-    void EndRendering()
-    {
-        if(dev_attr->pfn_vkCmdEndRenderingKHR)
-            dev_attr->pfn_vkCmdEndRenderingKHR(cmd_buf);
-    }
-
-    // Dynamic Rendering helpers: emit pre/post barriers and call vkCmdBeginRendering/EndRendering.
-    // BeginRender() + SetClearColor() must be called before BeginRenderingDynamic().
+    // Dynamic Rendering helpers: emit pre/post barriers and call vkCmdBeginRenderingKHR/vkCmdEndRenderingKHR.
+    // BeginSetup() + SetClearColor() must be called before BeginRenderingDynamic().
     bool BeginRenderingDynamic(const RenderTargetData *rtd);
     void EndRenderingDynamic  (const RenderTargetData *rtd);
 

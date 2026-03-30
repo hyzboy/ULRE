@@ -21,7 +21,7 @@ protected:
 
     friend class RenderTargetManager;
 
-    MultiFrameRenderTarget(hgl::ecs::ECSContext *ctx,const uint32_t fn,RenderTargetData *rtl):IRenderTarget(ctx,rtl[0].fbo->GetExtent())
+    MultiFrameRenderTarget(hgl::ecs::ECSContext *ctx,const uint32_t fn,RenderTargetData *rtl):IRenderTarget(ctx,rtl[0].extent)
     {
         frame_number=fn;
         current_frame=0;
@@ -69,8 +69,7 @@ public:
 
 public:
 
-    Framebuffer *       GetFramebuffer              ()override{return rtd_list[current_frame].fbo;}
-    RenderPass *        GetRenderPass               ()override{return rtd_list[current_frame].fbo->GetRenderPass();}
+    RenderPass *        GetRenderPass               ()override{return rtd_list[current_frame].render_pass;}
 
     uint32_t            GetColorCount               ()override{return rtd_list[current_frame].color_count;}
 
@@ -86,7 +85,6 @@ public: // Command Buffer
     Semaphore *         GetRenderCompleteSemaphore  ()override{return rtd_list[current_frame].render_complete_semaphore;}
     RenderCmdBuffer *   GetRenderCmdBuffer          ()override{return rtd_list[current_frame].cmd_buf;}
 
-    Framebuffer *       GetFramebuffer              (const uint32_t index){return rtd_list[index].fbo;}
     RenderCmdBuffer *   GetRenderCmdBuffer          (const uint32_t index){return rtd_list[index].cmd_buf;}
 
     virtual bool        Submit                      (Semaphore *wait_sem)override{return rtd_list[current_frame].Submit(wait_sem);}

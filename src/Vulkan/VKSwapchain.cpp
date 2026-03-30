@@ -1,6 +1,5 @@
 ﻿#include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKTexture.h>
-#include<hgl/vk/VKFramebuffer.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
@@ -9,7 +8,6 @@ namespace hgl::graph{
 SwapchainImage::~SwapchainImage()
 {
     // SwapchainImage owns these resources, cleanup on destruction
-    SAFE_CLEAR(fbo);
     SAFE_CLEAR(depth);
     SAFE_CLEAR(color);
 

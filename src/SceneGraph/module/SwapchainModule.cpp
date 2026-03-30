@@ -147,10 +147,6 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
         if(!swapchain->sc_image[i].depth)
             return(false);
 
-        swapchain->sc_image[i].fbo=rt_manager->CreateFBO(sc_render_pass,
-                                                         swapchain->sc_image[i].color->GetImageView(),
-                                                         swapchain->sc_image[i].depth->GetImageView());
-
         AnsiString num_string=AnsiString::numberOf(i);
 
         swapchain->sc_image[i].cmd_buf=device->CreateRenderCommandBuffer(AnsiString("Swapchain_RenderCmdBuffer_")+num_string);
@@ -160,8 +156,6 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
         {
             dev_attr->debug_utils->SetTexture(swapchain->sc_image[i].color,"SwapchainColor_"+num_string);
             dev_attr->debug_utils->SetTexture(swapchain->sc_image[i].depth,"SwapchainDepth_"+num_string);
-
-            dev_attr->debug_utils->SetFramebuffer(swapchain->sc_image[i].fbo->GetFramebuffer(),"SwapchainFBO_"+num_string);
         }
     #endif//_DEBUG
     }
@@ -215,9 +209,9 @@ namespace
     {
         void Clear() override
         {
-            // SwapchainImage owns fbo, color_textures, depth_texture, cmd_buf
+            // SwapchainImage owns color_textures, depth_texture, cmd_buf
             // We only reference them, so nullify before calling base Clear()
-            fbo = nullptr;
+            render_pass = nullptr;
             color_textures = nullptr;  // array pointer is nullified, but not deleted
             color_count = 0;
             depth_texture = nullptr;
@@ -252,7 +246,8 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
 
     for(uint32_t i=0;i<swapchain->image_count;i++)
     {
-        rtd->fbo=sc_image->fbo;
+        rtd->render_pass=sc_render_pass;
+        rtd->extent=swapchain->extent;
         rtd->queue=device->CreateQueue("SwapchainImage", swapchain->image_count, false);
         rtd->render_complete_semaphore=device->CreateGPUSemaphore("SwapchainImage:RenderComplete");
 
@@ -376,7 +371,7 @@ SwapchainModule::SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_c
 #ifdef _DEBUG
     {
         if(dev_attr->debug_utils)
-            dev_attr->debug_utils->SetRenderPass(sc_render_pass->GetVkRenderPass(),"SwapchainRenderPass");
+            (void)sc_render_pass; // dynamic rendering - no VkRenderPass handle
     }
 #endif//_DEBUG
 
@@ -502,15 +497,6 @@ bool SwapchainModule::Initialize()
             frame.vk_image = sc_image->color->GetImage();
             frame.image_view = sc_image->color->GetVulkanImageView();
         }
-
-        // Extract framebuffer
-        if (sc_image->fbo)
-        {
-            frame.framebuffer = sc_image->fbo->GetFramebuffer();
-        }
-
-        // Get render pass if available
-        frame.render_pass = sc_render_pass ? sc_render_pass->GetVkRenderPass() : VK_NULL_HANDLE;
 
         // Extract command buffer (RenderCmdBuffer can be cast to VkCommandBuffer)
         if (sc_image->cmd_buf)

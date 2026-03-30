@@ -5,11 +5,15 @@
 
 namespace hgl::graph{
 
+class RenderPass; // forward declaration
+
 struct RenderTargetData
 {
     OBJECT_LOGGER
 
-    Framebuffer *       fbo;
+    RenderPass *        render_pass = nullptr;  ///< Format-aware pipeline factory (owned by RenderPassManager)
+    VkExtent2D          extent      = {};        ///< Render area extent
+
     DeviceQueue *       queue;
     Semaphore *         render_complete_semaphore;
 
