@@ -1,4 +1,4 @@
-﻿/// ShaderLayoutDefineEmitter.cpp
+﻿/// ShaderLayoutEmitter.cpp
 ///
 /// Converts a ShaderLayoutContract into a GLSL #define block that can be
 /// prepended to any shader stage source.

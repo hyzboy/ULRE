@@ -58,42 +58,42 @@ namespace
     {
         if (requirements.ubos.empty())
         {
-            std::fprintf(stderr, "[ShaderRequireScanner]   UBO: (none)\n");
+            std::fprintf(stderr, "[ShaderResourceScanner]   UBO: (none)\n");
         }
         else
         {
             for (const auto semantic : requirements.ubos)
             {
                 std::fprintf(stderr,
-                             "[ShaderRequireScanner]   UBO: semantic=%s\n",
+                             "[ShaderResourceScanner]   UBO: semantic=%s\n",
                              GetUBODescriptorSemanticName(semantic));
             }
         }
 
         if (requirements.ssbos.empty())
         {
-            std::fprintf(stderr, "[ShaderRequireScanner]   SSBO: (none)\n");
+            std::fprintf(stderr, "[ShaderResourceScanner]   SSBO: (none)\n");
         }
         else
         {
             for (const auto semantic : requirements.ssbos)
             {
                 std::fprintf(stderr,
-                             "[ShaderRequireScanner]   SSBO: semantic=%s\n",
+                             "[ShaderResourceScanner]   SSBO: semantic=%s\n",
                              GetSSBODescriptorSemanticName(semantic));
             }
         }
 
         if (requirements.samplers.empty())
         {
-            std::fprintf(stderr, "[ShaderRequireScanner]   TEX: (none)\n");
+            std::fprintf(stderr, "[ShaderResourceScanner]   TEX: (none)\n");
         }
         else
         {
             for (const auto &[slot, sampler] : requirements.samplers)
             {
                 std::fprintf(stderr,
-                             "[ShaderRequireScanner]   TEX: slot=%s, type=%s, channel=%s\n",
+                             "[ShaderResourceScanner]   TEX: slot=%s, type=%s, channel=%s\n",
                              SamplerSlotNameList[size_t(slot)],
                              GetSamplerTypeName(sampler.sampler_type),
                              ToTextureChannelHintName(sampler.channel_hint));
@@ -375,7 +375,7 @@ bool CollectShaderAutoRequirements(const StaticMaterialDef &base_def,
         return false;
 
     std::fprintf(stderr,
-                 "[ShaderRequireScanner] reflection collection: shader_lib='%s', vs_bytes=%zu, fs_bytes=%zu\n",
+                 "[ShaderResourceScanner] reflection collection: shader_lib='%s', vs_bytes=%zu, fs_bytes=%zu\n",
                  shader_library_path.c_str(),
                  prepared_vs.size(),
                  prepared_fs.size());

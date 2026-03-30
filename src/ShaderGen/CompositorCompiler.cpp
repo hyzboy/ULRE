@@ -1,4 +1,4 @@
-﻿/// MaterialCompiler.cpp — StaticMaterialDef → MaterialCreateInfo 编译器实现
+﻿/// CompositorCompiler.cpp — StaticMaterialDef → MaterialCreateInfo 编译器实现
 ///
 /// 流程：
 ///   1. 从 StaticMaterialDef 的 UBO/SSBO/TextureSampler 组构建 MaterialDescriptorDB

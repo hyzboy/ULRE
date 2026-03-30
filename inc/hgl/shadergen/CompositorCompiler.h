@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-/// MaterialCompiler.h — StaticMaterialDef → MaterialCreateInfo 编译器接口
+/// CompositorCompiler.h — StaticMaterialDef → MaterialCreateInfo 编译器接口
 ///
 /// 使用 CompileCompositorMaterial 编译 Compositor 模板产出的完整 GLSL。
 /// 内部流程：
