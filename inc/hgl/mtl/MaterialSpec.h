@@ -80,7 +80,7 @@ struct MaterialImplementationCandidate
     std::vector<SlotModeRequirement> slot_mode_requirements;
 };
 
-struct MaterialProfileAsset
+struct MaterialSpec
 {
     std::string profile_id;
     MaterialPreset semantic_preset = MaterialPreset::Standard;
@@ -92,7 +92,6 @@ struct MaterialProfileAsset
     std::vector<MaterialImplementationCandidate> implementations;
 };
 
-bool ValidateMaterialProfileAsset(const MaterialProfileAsset &asset,
-                                  std::vector<std::string> &diagnostics);
+bool ValidateMaterialSpec(const MaterialSpec &asset,std::vector<std::string> &diagnostics);
 
 } // namespace hgl::graph::mtl

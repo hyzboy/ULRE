@@ -21,12 +21,12 @@ bool IsValidTextureModeForSlotPolicy(const TextureSourceMode mode)
 
 void PushDiag(std::vector<std::string> &diagnostics, const std::string &message)
 {
-    diagnostics.push_back("[MaterialProfileAsset] " + message);
+    diagnostics.push_back("[MaterialSpec] " + message);
 }
 
 }
 
-bool ValidateMaterialProfileAsset(const MaterialProfileAsset &asset,
+bool ValidateMaterialSpec(const MaterialSpec &asset,
                                   std::vector<std::string> &diagnostics)
 {
     diagnostics.clear();
