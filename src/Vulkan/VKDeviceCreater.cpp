@@ -249,6 +249,13 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         create_info.pNext=&index_type_uint8_features;
     }
 
+    // 启用 Vulkan 1.3 dynamicRendering（vkCmdBeginRendering / vkCmdEndRendering）
+    VkPhysicalDeviceVulkan13Features features13{};
+    features13.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    features13.pNext            = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+    features13.dynamicRendering = VK_TRUE;
+    create_info.pNext           = &features13;
+
     VkDevice device;
 
     if(physical_device->CreateDevice(&create_info,&device)==VK_SUCCESS)
