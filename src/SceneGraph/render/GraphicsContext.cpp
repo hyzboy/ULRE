@@ -2,7 +2,6 @@
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKPhysicalDevice.h>
 #include <hgl/graph/module/GraphModuleManager.h>
-#include <hgl/graph/module/RenderPassManager.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/RenderTargetManager.h>
 #include <hgl/graph/module/MaterialManager.h>
@@ -34,10 +33,6 @@ namespace hgl::graph
             return false;
 
         // Initialize all managers through module system
-        rp_manager = module_manager->GetOrCreate<RenderPassManager>();
-        if (!rp_manager)
-            return false;
-
         tex_manager = module_manager->GetOrCreate<TextureManager>();
         if (!tex_manager)
             return false;
@@ -80,7 +75,6 @@ namespace hgl::graph
         std::cout << "[DEBUG] GraphicsContext::Shutdown() - GraphModuleManager deleted" << std::endl;
 
         // Clear all manager pointers (they're owned by module_manager)
-        rp_manager = nullptr;
         tex_manager = nullptr;
         rt_manager = nullptr;
         material_manager = nullptr;
@@ -96,7 +90,6 @@ namespace hgl::graph
             return;
 
         // 通知所有模块窗口大小改变
-        if (rp_manager) rp_manager->OnResize(extent);
         if (tex_manager) tex_manager->OnResize(extent);
         if (rt_manager) rt_manager->OnResize(extent);
         if (material_manager) material_manager->OnResize(extent);

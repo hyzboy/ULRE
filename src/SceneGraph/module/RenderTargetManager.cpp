@@ -4,7 +4,6 @@
 #include <hgl/graph/GraphTypes.h>
 #include <hgl/graph/module/GraphModule.h>
 #include <hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include <hgl/Macro.h>
@@ -14,7 +13,7 @@
 #include <hgl/vk/VKFormat.h>
 #include <hgl/vk/VKImageView.h>
 #include <hgl/vk/VKRenderbufferInfo.h>
-#include <hgl/vk/VKRenderPass.h>
+#include <hgl/vk/VKRenderFormat.h>
 #include <hgl/vk/VKRenderTargetData.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include <hgl/vk/VKTexture.h>
@@ -23,18 +22,17 @@
 
 namespace hgl::graph{
 
-RenderTargetManager::RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderPassManager *rpm)
+RenderTargetManager::RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm)
     :GraphModuleInherit<RenderTargetManager,GraphModule>(gc,"RenderTargetManager")
 {
     tex_manager=tm;
-    rp_manager=rpm;
     ecs_context=ecs_ctx;
 }
 
-RenderTarget *RenderTargetManager::CreateRT(const AnsiString &name, const FramebufferInfo *fbi,RenderPass *rp,const uint32_t fence_count)
+RenderTarget *RenderTargetManager::CreateRT(const AnsiString &name, const FramebufferInfo *fbi,RenderFormat *rf,const uint32_t fence_count)
 {
     if(!fbi)return(nullptr);
-    if(!rp)return(nullptr);
+    if(!rf)return(nullptr);
     if(!ecs_context)return(nullptr);
 
     const uint32_t color_count=fbi->GetColorCount();
@@ -70,7 +68,7 @@ RenderTarget *RenderTargetManager::CreateRT(const AnsiString &name, const Frameb
         VulkanDevice *dev=GetDevice();
 
         ObjectNameBuilder rt_name = ObjectNameBuilder(name).Append(ObjectTypeTag::RenderTarget);
-        rtd->render_pass=rp;
+        rtd->render_format=rf;
         rtd->extent=extent;
         rtd->queue=dev->CreateQueue(rt_name, fence_count, false);
         rtd->render_complete_semaphore=dev->CreateGPUSemaphore(rt_name);
@@ -90,11 +88,11 @@ RenderTarget *RenderTargetManager::CreateRT(const AnsiString &name, const Frameb
 {
     if(!fbi)return(nullptr);
 
-    RenderPass *rp=rp_manager->AcquireRenderPass(fbi);
+    RenderFormat *rf=GetDevice()->AcquireRenderFormat(fbi);
 
-    if(!rp)return(nullptr);
+    if(!rf)return(nullptr);
 
-    return CreateRT(name, fbi,rp,fence_count);
+    return CreateRT(name, fbi,rf,fence_count);
 }
 
 RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
@@ -118,13 +116,12 @@ RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *
 
     VulkanDevice *device = gc->GetDevice();
     TextureManager *tex_manager = gc->GetTextureManager();
-    RenderPassManager *rp_manager = gc->GetRenderPassManager();
 
-    if(!device || !tex_manager || !rp_manager)
+    if(!device || !tex_manager)
         return(nullptr);
 
-    RenderPass *rp = rp_manager->AcquireRenderPass(fbi);
-    if(!rp)
+    RenderFormat *rf = device->AcquireRenderFormat(fbi);
+    if(!rf)
         return(nullptr);
 
     const uint32_t color_count = fbi->GetColorCount();
@@ -158,7 +155,7 @@ RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *
         RenderTargetData *rtd = new RenderTargetData{};
 
         const AnsiString rt_name = name + ":RT";
-        rtd->render_pass = rp;
+        rtd->render_format = rf;
         rtd->extent = extent;
         rtd->queue = device->CreateQueue(rt_name, fence_count, false);
         rtd->render_complete_semaphore = device->CreateGPUSemaphore(rt_name);

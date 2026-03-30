@@ -10,23 +10,21 @@ namespace hgl::ecs
 namespace hgl::graph{
 
 class TextureManager;
-class RenderPassManager;
 class GraphicsContext;
 
 GRAPH_MODULE_CLASS(RenderTargetManager)
 {
     TextureManager *tex_manager;
-    RenderPassManager *rp_manager;
     hgl::ecs::ECSContext *ecs_context=nullptr;
 
 public:
 
-    RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderPassManager *rpm);
+    RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm);
     virtual ~RenderTargetManager()=default;
 
 public:
 
-    RenderTarget *CreateRT(const AnsiString &name, const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
+    RenderTarget *CreateRT(const AnsiString &name, const FramebufferInfo *fbi,RenderFormat *,const uint32_t fence_count=1);
     RenderTarget *CreateRT(const AnsiString &name, const FramebufferInfo *fbi,const uint32_t fence_count=1);
 
     // Create an offscreen render target without legacy entry (ECS/GraphicsContext path).

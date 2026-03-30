@@ -69,7 +69,7 @@ public:
 
 public:
 
-    RenderPass *        GetRenderPass               ()override{return rtd_list[current_frame].render_pass;}
+    RenderFormat *      GetRenderFormat             ()override{return rtd_list[current_frame].render_format;}
 
     uint32_t            GetColorCount               ()override{return rtd_list[current_frame].color_count;}
 

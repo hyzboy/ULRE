@@ -21,7 +21,6 @@ GRAPH_MODULE_CLASS(SwapchainModule)
 
     TextureManager *        tex_manager         =nullptr;
     RenderTargetManager *   rt_manager          =nullptr;
-    RenderPassManager *     rp_manager          =nullptr;
     hgl::ecs::ECSContext *  ecs_context         =nullptr;
 
     // New architecture: SwapchainData owns swapchain and frame resources
@@ -29,7 +28,7 @@ GRAPH_MODULE_CLASS(SwapchainModule)
     Swapchain *             vk_swapchain        =nullptr;  ///< Keep swapchain alive to maintain sc_image validity
 
     // Legacy support (will be deprecated)
-    RenderPass *            sc_render_pass      =nullptr;
+    RenderFormat *          sc_render_pass      =nullptr;
     SwapchainRenderTarget * sc_render_target    =nullptr;
 
 protected:
@@ -48,7 +47,7 @@ public:
 
 public:
 
-    SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm);
+    SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm);
     virtual ~SwapchainModule();
 
     // New Architecture Methods
@@ -63,7 +62,7 @@ public:
 public:
 
     // Legacy methods (@deprecated - kept for backward compatibility)
-    RenderPass *            GetRenderPass   ()const{return sc_render_pass;}
+    RenderFormat *          GetRenderFormat ()const{return sc_render_pass;}
 
     bool                    GetSwapchainSize(VkExtent2D *)const;
 

@@ -1,4 +1,4 @@
-﻿// PlaneGrid3D
+// PlaneGrid3D
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -80,7 +80,7 @@ private:
         }
 
         auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
         pipeline = render_pass ? render_pass->CreatePipeline(material_instance[0], InlinePipeline::Solid3D) : nullptr;
 
         return pipeline;

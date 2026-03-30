@@ -201,10 +201,10 @@ SET(VK_TEXTURE_DEVICE_FILES     Texture/BufferImageCopy2D.h
 SOURCE_GROUP("Texture\\Device" FILES ${VK_TEXTURE_DEVICE_FILES})
 
 # --- 8. Render Pass ---
-SET(VK_RENDER_PASS_FILES        ${VK_INCLUDE_PATH}/VKRenderPass.h
+SET(VK_RENDER_PASS_FILES        ${VK_INCLUDE_PATH}/VKRenderFormat.h
                                 ${VK_INCLUDE_PATH}/VKLoadStoreOpInfo.h
                                 ${VK_INCLUDE_PATH}/VKAttachment.h
-                                VKRenderPass.cpp)
+                                VKRenderFormat.cpp)
 
 SOURCE_GROUP("RenderPass" FILES ${VK_RENDER_PASS_FILES})
 

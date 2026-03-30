@@ -34,7 +34,7 @@ namespace example::modules
             return false;
 
         auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
         pipeline = render_pass ? render_pass->CreatePipeline(material, inline_pipeline_type) : nullptr;
         return pipeline != nullptr;
     }

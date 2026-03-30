@@ -1,4 +1,6 @@
 ﻿#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKRenderFormat.h>
+#include<hgl/vk/VKRenderbufferInfo.h>
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKFence.h>
 #include<hgl/vk/VKQueue.h>
@@ -19,6 +21,22 @@ namespace hgl::graph{
 namespace
 {
     std::unordered_map<VkDevice, VulkanDevice *> g_device_map;
+
+    AnsiString GenerateRenderFormatKey(const RenderbufferInfo *rbi)
+    {
+        AnsiString key;
+        hgl::Sprintf(key,"RenderFormat_%d_%u_%u_%u",
+                     rbi->GetDepthFormat(),
+                     (uint)rbi->GetColorLayout(),
+                     (uint)rbi->GetDepthLayout(),
+                     rbi->GetColorCount());
+        for(const VkFormat &fmt:rbi->GetColorFormatList())
+        {
+            key+="_";
+            key+=AnsiString::numberOf((int)fmt);
+        }
+        return key;
+    }
 
     void BuildDebugNames(const AnsiString &name, std::string &buffer_name, std::string &memory_name)
     {
@@ -76,6 +94,10 @@ VulkanDevice::~VulkanDevice()
     DumpTrackedObjects();
 
     LogInfo("=== End VulkanDevice Destructor ===");
+
+    for(auto &kv:render_format_cache)
+        delete kv.second;
+    render_format_cache.Clear();
 
     delete attr;
 }
@@ -410,6 +432,33 @@ ComputePipeline *VulkanDevice::CreateComputePipeline(const AnsiString &name, VkS
 #endif//_DEBUG
 
     return new ComputePipeline(name, attr->device, pipeline, pipeline_layout);
+}
+
+RenderFormat *VulkanDevice::AcquireRenderFormat(const RenderbufferInfo *rbi)
+{
+    HGL_CAPTURE_SCOPE();
+
+    {
+        const auto *phy_dev=GetPhyDevice();
+
+        for(const VkFormat &fmt:rbi->GetColorFormatList())
+            if(!phy_dev->IsColorAttachmentOptimal(fmt))
+                return(nullptr);
+
+        if(rbi->HasDepthOrStencil())
+            if(!phy_dev->IsDepthAttachmentOptimal(rbi->GetDepthFormat()))
+                return(nullptr);
+    }
+
+    AnsiString key=GenerateRenderFormatKey(rbi);
+    RenderFormat *rf=nullptr;
+
+    if(render_format_cache.Get(key,rf))
+        return rf;
+
+    rf=new RenderFormat(this,key,rbi->GetColorFormatList(),rbi->GetDepthFormat());
+    render_format_cache.Add(key,rf);
+    return rf;
 }
 
 }//namespace hgl::graph

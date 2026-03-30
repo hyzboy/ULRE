@@ -5,7 +5,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKRenderPass.h>
+#include<hgl/vk/VKRenderFormat.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -24,7 +24,7 @@ namespace hgl::graph
     namespace
     {
         static GraphicsContext *graphics_context=nullptr;
-        static RenderPass *gizmo_render_pass=nullptr;
+        static RenderFormat *gizmo_render_pass=nullptr;
         static MaterialManager *gizmo_mtl_manager=nullptr;
 
         struct GizmoResource
@@ -104,7 +104,7 @@ namespace hgl::graph
 
             VulkanDevice *device=graphics_context->GetDevice();
             auto *buffer_manager = graphics_context->GetBufferManager();
-            RenderPass *render_pass=gizmo_render_pass;
+            RenderFormat *render_pass=gizmo_render_pass;
 
             if(!device || !render_pass)
                 return(false);
@@ -227,7 +227,7 @@ namespace hgl::graph
         }
     }//namespace
 
-    bool InitGizmoResource(GraphicsContext *gc, RenderPass *rp)
+    bool InitGizmoResource(GraphicsContext *gc, RenderFormat *rp)
     {
         if(!gc)
             return(false);

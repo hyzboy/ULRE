@@ -1,4 +1,4 @@
-﻿/*
+/*
  TransformGizmoSystem 使用示例
 
  展示如何使用 TransformGizmoSystem 控制物体变换
@@ -80,7 +80,7 @@ private:
             return false;
 
         auto *render_target = render_context->GetCurrentRenderTarget();
-        auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        auto *render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
         if(!render_pass)
             return false;
 

@@ -33,7 +33,7 @@ public:
         }
     }
 
-    RenderPass *        GetRenderPass       ()override{return data->render_pass;}
+    RenderFormat *      GetRenderFormat     ()override{return data->render_format;}
 
     uint32_t            GetColorCount       ()override{return data->color_count;}
 

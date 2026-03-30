@@ -45,7 +45,7 @@ void RenderTargetData::Clear()
 {
     LogDebug("[RenderTargetData] Clear");
     SAFE_CLEAR(render_complete_semaphore);
-    render_pass = nullptr;
+    render_format = nullptr;
 
     // cmd_buf and queue will be cleared separately or by their owners
     // DO NOT delete them here as they may still be referenced

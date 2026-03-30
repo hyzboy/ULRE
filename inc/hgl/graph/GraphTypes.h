@@ -8,7 +8,6 @@ namespace hgl::graph
     class GraphModule;
 
     class BufferManager;
-    class RenderPassManager;
     class GeometryManager;
     class MaterialManager;
     class PrimitiveManager;

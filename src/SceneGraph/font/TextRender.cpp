@@ -13,7 +13,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/vk/VKMaterial.h>
-#include<hgl/vk/VKRenderPass.h>
+#include<hgl/vk/VKRenderFormat.h>
 #include<hgl/type/AlignUtil.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/color/Color.h>
@@ -130,7 +130,7 @@ namespace hgl::graph
         }
     }
 
-    TextRender *TextRender::CreateWithGraphicsContext(GraphicsContext *gc,RenderPass *rp,FontSource *fs,int limit,const VkExtent2D *extent)
+    TextRender *TextRender::CreateWithGraphicsContext(GraphicsContext *gc,RenderFormat *rp,FontSource *fs,int limit,const VkExtent2D *extent)
     {
         if(!gc || !fs || !rp)
             return(nullptr);
@@ -165,7 +165,7 @@ namespace hgl::graph
         return text_render;
     }
 
-    bool TextRender::InitMaterial(RenderPass *rp)
+    bool TextRender::InitMaterial(RenderFormat *rp)
     {
         mtl::Text2DMaterialCreateConfig mtl_cfg;
 
@@ -193,7 +193,7 @@ namespace hgl::graph
         return(true);
     }
 
-    bool TextRender::Init(RenderPass *rp,Sampler *text_sampler)
+    bool TextRender::Init(RenderFormat *rp,Sampler *text_sampler)
     {
         sampler=text_sampler;
 

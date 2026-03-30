@@ -5,13 +5,13 @@
 
 namespace hgl::graph{
 
-class RenderPass; // forward declaration
+class RenderFormat; // forward declaration
 
 struct RenderTargetData
 {
     OBJECT_LOGGER
 
-    RenderPass *        render_pass = nullptr;  ///< Format-aware pipeline factory (owned by RenderPassManager)
+    RenderFormat *      render_format = nullptr;  ///< Format-aware pipeline factory (owned by VulkanDevice)
     VkExtent2D          extent      = {};        ///< Render area extent
 
     DeviceQueue *       queue;

@@ -18,7 +18,6 @@ SOURCE_GROUP("1.Core\\GraphicsContext" FILES ${GRAPHICS_CONTEXT_FILES})
 
 SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/GraphModuleManager.h
-                        ${SG_INCLUDE_PATH}/module/RenderPassManager.h
                         ${SG_INCLUDE_PATH}/module/TextureManager.h
                         ${SG_INCLUDE_PATH}/module/SamplerManager.h
                         ${SG_INCLUDE_PATH}/module/MaterialManager.h
@@ -32,7 +31,6 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/SwapchainModule.h
                         module/GraphModule.cpp
                         module/GraphModuleManager.cpp
-                        module/RenderPassManager.cpp
                         module/TextureManager.cpp
                         module/SamplerManager.cpp
                         module/MaterialManager.cpp

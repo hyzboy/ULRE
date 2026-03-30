@@ -1,4 +1,4 @@
-﻿// SimplestAxis
+// SimplestAxis
 // 直接从0,0,0向三个方向画一条直线，用于确认坐标轴方向
 
 #include<hgl/framework/WorkManager.h>
@@ -63,7 +63,7 @@ private:
         material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor3D,&cfg);
 
         auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
         pipeline = render_pass ? render_pass->CreatePipeline(material_instance, InlinePipeline::Solid3D) : nullptr;
 
         return pipeline;

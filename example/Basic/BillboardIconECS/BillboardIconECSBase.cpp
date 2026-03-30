@@ -47,7 +47,7 @@ bool BillboardIconECSBase::InitPlaneGridResources()
     if (!mi_plane_grid) return false;
 
     auto* render_target = render_context->GetCurrentRenderTarget();
-    auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+    auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
     pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, InlinePipeline::Solid3D) : nullptr;
     if (!pipeline_plane_grid) return false;
 

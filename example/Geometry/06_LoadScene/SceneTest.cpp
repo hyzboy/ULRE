@@ -111,7 +111,7 @@ private:
             return(false);
 
         auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
         md->pipeline = render_pass ? render_pass->CreatePipeline(md->material, InlinePipeline::Solid3D) : nullptr;
 
         return md->pipeline;

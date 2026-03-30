@@ -11,11 +11,11 @@ namespace hgl::graph{
 using VkFormatList=ValueArray<VkFormat>;
 
 /**
- * RenderPass功能封装<br>
- * RenderPass在创建时，需要指定输入的color imageview与depth imageview象素格式，
- * 在随后创建Framebuffer时，需要同时指定RenderPass与ColorImageView,DepthImageView，象素格式要一致。
+ * RenderFormat — pipeline factory keyed on attachment formats.<br>
+ * Holds colour/depth attachment formats, creates Pipelines using
+ * VkPipelineRenderingCreateInfoKHR (Dynamic Rendering; no VkRenderPass).
  */
-class RenderPass
+class RenderFormat
 {
     OBJECT_LOGGER
 
@@ -35,13 +35,13 @@ protected:
 
 private:
 
-    friend class RenderPassManager;
+    friend class VulkanDevice;
 
-    RenderPass(VulkanDevice *,const AnsiString &name,const VkFormatList &cf,VkFormat df);
+    RenderFormat(VulkanDevice *,const AnsiString &name,const VkFormatList &cf,VkFormat df);
 
 public:
 
-    virtual ~RenderPass();
+    virtual ~RenderFormat();
 
     const AnsiString &      GetName         ()const{return name;}
     const VkPipelineCache   GetPipelineCache()const{return pipeline_cache;}
@@ -78,5 +78,5 @@ public:
                              const PipelineData *pd,
                              PrimitiveType prim = PrimitiveType::Triangles,
                              bool prim_restart = false);
-};//class RenderPass
+};//class RenderFormat
 }//namespace hgl::graph

@@ -2,6 +2,7 @@
 
 #include<hgl/type/ValueArray.h>
 #include<hgl/type/String.h>
+#include<hgl/type/UnorderedMap.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/graph/data/ImageRegion.h>
 #include<hgl/platform/Window.h>
@@ -27,6 +28,8 @@
 #include<vector>
 
 namespace hgl::graph{
+class RenderFormat;
+class RenderbufferInfo;
 class TileData;
 class TileFont;
 class FontDataSource;
@@ -52,6 +55,7 @@ class VulkanDevice
     VulkanDevAttr *attr;
     bool draw_phase_active = false;
     std::vector<IGPUBuffer*> gpu_buffer_registry;  // All Layer2 buffers, iterated by ECS UploadSystem
+    UnorderedMap<AnsiString, RenderFormat *> render_format_cache;
 
     struct ObjectDebugRecord
     {
@@ -392,5 +396,9 @@ public:
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
 
     TileFont *CreateTileFont(FontDataSource *fs,int limit_count=-1);                                                        ///<创建一个Tile字体
+
+public: // RenderFormat Cache
+
+    RenderFormat *AcquireRenderFormat(const RenderbufferInfo *rbi);
 };//class VulkanDevice
 }//namespace hgl::graph

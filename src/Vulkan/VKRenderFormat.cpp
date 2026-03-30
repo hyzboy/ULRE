@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKRenderPass.h>
+﻿#include<hgl/vk/VKRenderFormat.h>
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
 #include<cstdio>
@@ -9,7 +9,7 @@
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
-RenderPass::RenderPass(VulkanDevice *dev,const AnsiString &n,const VkFormatList &cf,VkFormat df)
+RenderFormat::RenderFormat(VulkanDevice *dev,const AnsiString &n,const VkFormatList &cf,VkFormat df)
 {
     device=dev;
     name=n;
@@ -17,13 +17,13 @@ RenderPass::RenderPass(VulkanDevice *dev,const AnsiString &n,const VkFormatList 
     color_formats=cf;
     depth_format=df;
 
-    LogInfo("[RenderPass::RenderPass] Created RenderPass '%s', color attachment count=%u, depth format=%u",
+    LogInfo("[RenderFormat::RenderFormat] Created RenderFormat '%s', color attachment count=%u, depth format=%u",
              name.c_str(), color_formats.GetCount(), depth_format);
 }
 
-RenderPass::~RenderPass()
+RenderFormat::~RenderFormat()
 {
-    LogInfo("[RenderPass::~RenderPass] Destroying RenderPass '%s' with %u pipelines (RenderPass*=0x%llx)",
+    LogInfo("[RenderFormat::~RenderFormat] Destroying RenderFormat '%s' with %u pipelines (RenderFormat*=0x%llx)",
              name.c_str(), (unsigned int)pipeline_list.GetCount(), (unsigned long long)(uintptr_t)this);
 
     // 列出所有要被销毁的管道
@@ -31,15 +31,15 @@ RenderPass::~RenderPass()
     {
         Pipeline* p = pipeline_list[i];
         if (p)
-            LogInfo("  [RenderPass::~RenderPass] Clearing Pipeline [%zu]: '%s'", i, p->GetName().c_str());
+            LogInfo("  [RenderFormat::~RenderFormat] Clearing Pipeline [%zu]: '%s'", i, p->GetName().c_str());
     }
 
-    LogDebug("[RenderPass::~RenderPass] Clearing pipeline_list...");
+    LogDebug("[RenderFormat::~RenderFormat] Clearing pipeline_list...");
     pipeline_list.Clear();
-    LogInfo("[RenderPass::~RenderPass] Pipelines cleared");
+    LogInfo("[RenderFormat::~RenderFormat] Pipelines cleared");
 }
 
-Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
+Pipeline *RenderFormat::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -79,7 +79,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
 
     Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,vil,pd);
 
-    LogInfo("[RenderPass::CreatePipeline] Created Pipeline '%s' in RenderPass '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
+    LogInfo("[RenderFormat::CreatePipeline] Created Pipeline '%s' in RenderFormat '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
              name.c_str(), this->name.c_str(), (unsigned long long)(uintptr_t)graphicsPipeline, (unsigned long long)(uintptr_t)pipeline);
 
     if (device)
@@ -88,7 +88,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
     return pipeline;
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart)
+Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart)
 {
     // Build dedup key from stable pointer identities
     char key_buf[96];
@@ -118,36 +118,36 @@ Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const Pipeline
     return(p);
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart)
+Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart)
 {
     if(!mtl)return(nullptr);
 
     return CreatePipeline(mtl,vil,GetPipelineData(ip),prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const PipelineData *pd,const bool prim_restart)
+Pipeline *RenderFormat::CreatePipeline(Material *mtl,const PipelineData *pd,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),pd,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const InlinePipeline &ip,const bool prim_restart)
+Pipeline *RenderFormat::CreatePipeline(Material *mtl,const InlinePipeline &ip,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),ip,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const bool prim_restart)
+Pipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const bool prim_restart)
 {
     if(!mi)return(nullptr);
 
     return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),ip,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const bool prim_restart)
+Pipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const bool prim_restart)
 {
     return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),cpd,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const bool prim_restart)
+Pipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const bool prim_restart)
 {
     const PipelineData *pd=GetPipelineData(pipeline_filename);
 
@@ -156,13 +156,13 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const OSString &pipeli
     return CreatePipeline(mi,pd,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
-                                     const ShaderStageCreateInfoList &ssci,
-                                     VkPipelineLayout layout,
-                                     const VIL *vil,
-                                     const PipelineData *cpd,
-                                     PrimitiveType prim,
-                                     bool prim_restart)
+Pipeline *RenderFormat::CreatePipeline(const AnsiString &name,
+                                       const ShaderStageCreateInfoList &ssci,
+                                       VkPipelineLayout layout,
+                                       const VIL *vil,
+                                       const PipelineData *cpd,
+                                       PrimitiveType prim,
+                                       bool prim_restart)
 {
     PipelineData *pd = new PipelineData(cpd);
 

@@ -1,4 +1,4 @@
-﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -55,7 +55,7 @@ private:
         mi_sky_sphere=material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal,&cfg);
 
         auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
         mtl_pipeline = render_pass ? render_pass->CreatePipeline(mi_sky_sphere, InlinePipeline::Sky) : nullptr;
 
         return mtl_pipeline;

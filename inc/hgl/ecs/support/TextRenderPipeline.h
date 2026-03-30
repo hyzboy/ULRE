@@ -14,7 +14,7 @@ namespace hgl
     {
         class RenderContext;
         class GraphicsContext;
-        class RenderPass;
+        class RenderFormat;
         class IRenderTarget;
         class VulkanDevice;
         class FontSource;
@@ -75,7 +75,7 @@ namespace hgl
             graph::GraphicsContext* frame_graphics_context = nullptr;
             graph::MaterialManager* frame_material_manager = nullptr;
             graph::PrimitiveManager* frame_primitive_manager = nullptr;
-            graph::RenderPass* frame_render_pass = nullptr;
+            graph::RenderFormat* frame_render_pass = nullptr;
             graph::VulkanDevice* frame_device = nullptr;
             graph::IRenderTarget* frame_render_target = nullptr;
 
@@ -99,7 +99,7 @@ namespace hgl
             bool PrepareFrameResources(graph::GraphicsContext*& graphics_context,
                                        graph::MaterialManager*& material_manager,
                                        graph::PrimitiveManager*& primitive_manager,
-                                       graph::RenderPass*& render_pass,
+                                       graph::RenderFormat*& render_pass,
                                        graph::VulkanDevice*& device,
                                        graph::IRenderTarget*& render_target);
 
@@ -109,7 +109,7 @@ namespace hgl
             void ProcessInputs(std::unordered_map<graph::FontSource*, BatchInput>& inputs,
                                graph::MaterialManager* material_manager,
                                graph::PrimitiveManager* primitive_manager,
-                               graph::RenderPass* render_pass,
+                               graph::RenderFormat* render_pass,
                                graph::VulkanDevice* device);
 
             void ClearChanges(const std::vector<std::shared_ptr<TextComponent>>& texts);

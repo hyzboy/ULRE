@@ -30,7 +30,6 @@ namespace hgl::graph
 
     // Forward declarations
     class GraphModuleManager;
-    class RenderPassManager;
     class TextureManager;
     class RenderTargetManager;
     class MaterialManager;
@@ -61,7 +60,6 @@ namespace hgl::graph
 
         GraphModuleManager *module_manager = nullptr;
 
-        RenderPassManager *rp_manager = nullptr;
         TextureManager *tex_manager = nullptr;
         RenderTargetManager *rt_manager = nullptr;
         MaterialManager *material_manager = nullptr;
@@ -107,7 +105,6 @@ namespace hgl::graph
         VkDevice GetVkDevice() const;
 
         // 模块管理器访问
-        RenderPassManager *GetRenderPassManager() { return rp_manager; }
         TextureManager *GetTextureManager() { return tex_manager; }
         MaterialManager *GetMaterialManager() { return material_manager; }
         BufferManager *GetBufferManager() { return buffer_manager; }

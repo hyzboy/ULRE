@@ -22,7 +22,7 @@ class Pipeline
 
 private:
 
-    friend class RenderPass;
+    friend class RenderFormat;
 
     Pipeline(const AnsiString &n,VkDevice dev,VkPipeline p,const VIL *v,PipelineData *pd)
     {

@@ -22,7 +22,7 @@ namespace hgl::ecs
     graph::Primitive* QuadResourcePrepareSystem::shared_primitive = nullptr;
     graph::MaterialInstance* QuadResourcePrepareSystem::shared_material_instance = nullptr;
     graph::Pipeline* QuadResourcePrepareSystem::shared_pipeline = nullptr;
-    graph::RenderPass* QuadResourcePrepareSystem::shared_render_pass = nullptr;
+    graph::RenderFormat* QuadResourcePrepareSystem::shared_render_pass = nullptr;
     graph::Sampler* QuadResourcePrepareSystem::shared_sampler = nullptr;
 
     static graph::InlinePipeline g_default_quad_inline_pipeline = graph::InlinePipeline::Solid3D;
@@ -101,7 +101,7 @@ namespace hgl::ecs
         return InlinePipelineToBlendMode(g_default_quad_inline_pipeline);
     }
 
-    graph::Pipeline* QuadResourcePrepareSystem::CreateConfiguredPipeline(graph::RenderPass* render_pass,
+    graph::Pipeline* QuadResourcePrepareSystem::CreateConfiguredPipeline(graph::RenderFormat* render_pass,
                                                                          graph::MaterialInstance* material_instance,
                                                                          const ECSContext* world)
     {
@@ -158,7 +158,7 @@ namespace hgl::ecs
             return false;
 
         auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
         if (!render_pass)
             return false;
 

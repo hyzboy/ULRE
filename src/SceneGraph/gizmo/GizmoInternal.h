@@ -77,7 +77,7 @@ namespace hgl::graph
         ENUM_CLASS_RANGE(Square,Torus)
     };
 
-    bool InitGizmoResource(GraphicsContext *, RenderPass *);
+    bool InitGizmoResource(GraphicsContext *, RenderFormat *);
     void FreeGizmoResource();
     bool EnsureGizmoSystemResources(::hgl::ecs::ECSContext *world);
     void ForceReleaseGizmoSystemResources();

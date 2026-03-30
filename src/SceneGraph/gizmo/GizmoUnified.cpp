@@ -467,7 +467,7 @@ bool EnsureGizmoSystemResources(hgl::ecs::ECSContext *world)
     auto *graphics = world->GetGraphicsContext();
     auto *render_context = world->GetRenderContext();
     auto *render_target = render_context ? render_context->GetCurrentRenderTarget() : nullptr;
-    auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+    auto *render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
 
     if (!graphics || !render_pass)
         return false;

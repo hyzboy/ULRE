@@ -15,7 +15,7 @@ namespace hgl::graph
     class FontDataSource;
     class FontSource;
     class GraphicsContext;
-    class RenderPass;
+    class RenderFormat;
     class TileFont;
     class TextGeometry;
     class MaterialManager;
@@ -80,8 +80,8 @@ namespace hgl::graph
         TextRender(AppFramework *,TileFont *);
 
         bool InitTextLayoutEngine();
-        bool InitMaterial(RenderPass *);
-        bool Init(RenderPass *,Sampler *);
+        bool InitMaterial(RenderFormat *);
+        bool Init(RenderFormat *,Sampler *);
 
     public:
 
@@ -89,7 +89,7 @@ namespace hgl::graph
 
     public:
 
-        static TextRender *CreateWithGraphicsContext(GraphicsContext *gc,RenderPass *rp,FontSource *fs,int limit=1024,const VkExtent2D *extent=nullptr);
+        static TextRender *CreateWithGraphicsContext(GraphicsContext *gc,RenderFormat *rp,FontSource *fs,int limit=1024,const VkExtent2D *extent=nullptr);
 
         TextGeometry *Begin(const TextGeometryType &tpt=TextGeometryType::FixedStyle,int limit=2048);                   ///<创建一个文本绘制几何体
 

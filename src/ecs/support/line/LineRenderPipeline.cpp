@@ -224,7 +224,7 @@ namespace hgl::ecs
         if (!rt)
             return false;
 
-        graph::RenderPass* rp = rt->GetRenderPass();
+        graph::RenderFormat* rp = rt->GetRenderFormat();
         if (!rp)
             return false;
 

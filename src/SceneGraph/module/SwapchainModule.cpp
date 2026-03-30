@@ -1,7 +1,6 @@
 ﻿#include <vulkan/vulkan.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/vk/VKDevice.h>
@@ -211,7 +210,7 @@ namespace
         {
             // SwapchainImage owns color_textures, depth_texture, cmd_buf
             // We only reference them, so nullify before calling base Clear()
-            render_pass = nullptr;
+            render_format = nullptr;
             color_textures = nullptr;  // array pointer is nullified, but not deleted
             color_count = 0;
             depth_texture = nullptr;
@@ -246,7 +245,7 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
 
     for(uint32_t i=0;i<swapchain->image_count;i++)
     {
-        rtd->render_pass=sc_render_pass;
+        rtd->render_format=sc_render_pass;
         rtd->extent=swapchain->extent;
         rtd->queue=device->CreateQueue("SwapchainImage", swapchain->image_count, false);
         rtd->render_complete_semaphore=device->CreateGPUSemaphore("SwapchainImage:RenderComplete");
@@ -348,25 +347,24 @@ void SwapchainModule::Release()
         SAFE_CLEAR(sc_render_target);
     }
 
-    LogDebug("SwapchainModule::Release() - NOT releasing sc_render_pass (it's managed by RenderPassManager), sc_render_pass="+ToHexString<char>((uintptr_t)sc_render_pass));
-    // NOTE: sc_render_pass is NOT deleted here because it's managed by RenderPassManager
-    // It's only held as a reference. RenderPassManager::Release() will delete it.
+    LogDebug("SwapchainModule::Release() - NOT releasing sc_render_pass (it's managed by VulkanDevice), sc_render_pass="+ToHexString<char>((uintptr_t)sc_render_pass));
+    // NOTE: sc_render_pass is NOT deleted here because it's managed by VulkanDevice cache
+    // It's only held as a reference. VulkanDevice destructor will delete it.
 }
 
-SwapchainModule::SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm)
+SwapchainModule::SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm)
     :GraphModuleInherit<SwapchainModule,GraphModule>(gc,"SwapchainModule")
 {
     HGL_CAPTURE_SCOPE();
     tex_manager=tm;
     rt_manager=rtm;
-    rp_manager=rpm;
     ecs_context=ecs_ctx;
 
     auto *dev_attr=GetDevAttr();
 
     SwapchainRenderbufferInfo rbi(dev_attr->surface_format.format,dev_attr->physical_device->GetDepthFormat());
 
-    sc_render_pass=rp_manager->AcquireRenderPass(&rbi);
+    sc_render_pass=GetDevice()->AcquireRenderFormat(&rbi);
 
 #ifdef _DEBUG
     {

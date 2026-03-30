@@ -19,7 +19,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/vk/VKRenderPass.h>
+#include<hgl/vk/VKRenderFormat.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/tile/TileData.h>
 #include<hgl/vk/VKFormat.h>
@@ -350,7 +350,7 @@ namespace hgl::ecs
     bool TextRenderPipeline::PrepareFrameResources(graph::GraphicsContext*& graphics_context,
                                                    graph::MaterialManager*& material_manager,
                                                    graph::PrimitiveManager*& primitive_manager,
-                                                   graph::RenderPass*& render_pass,
+                                                   graph::RenderFormat*& render_pass,
                                                    graph::VulkanDevice*& device,
                                                    graph::IRenderTarget*& render_target)
     {
@@ -378,7 +378,7 @@ namespace hgl::ecs
         if (!render_target && world)
             render_target = world->GetRenderTarget();
 
-        render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
 
         if (!material_manager || !primitive_manager || !render_pass)
             return false;
@@ -420,7 +420,7 @@ namespace hgl::ecs
     void TextRenderPipeline::ProcessInputs(std::unordered_map<graph::FontSource*, BatchInput>& inputs,
                                            graph::MaterialManager* material_manager,
                                            graph::PrimitiveManager* primitive_manager,
-                                           graph::RenderPass* render_pass,
+                                           graph::RenderFormat* render_pass,
                                            graph::VulkanDevice* device)
     {
         for (auto& pair : inputs)

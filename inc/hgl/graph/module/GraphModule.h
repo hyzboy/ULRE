@@ -8,7 +8,6 @@ namespace hgl::graph{
 
 class TextureManager;
 class RenderTargetManager;
-class RenderPassManager;
 class GraphicsContext;
 
 namespace mtl::contract

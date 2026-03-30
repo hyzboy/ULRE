@@ -158,7 +158,7 @@ public:
         if (!mtl)
             return false;
 
-        auto *rp = runtime.GetRenderTarget()->GetRenderPass();
+        auto *rp = runtime.GetRenderTarget()->GetRenderFormat();
         pipeline = rp ? rp->CreatePipeline(mtl, InlinePipeline::Solid3D) : nullptr;
         if (!pipeline)
             return false;
@@ -340,7 +340,7 @@ private:
         if (!render_target && ecs_context)
             render_target = ecs_context->GetRenderTarget();
 
-        auto *rp = render_target ? render_target->GetRenderPass() : nullptr;
+        auto *rp = render_target ? render_target->GetRenderFormat() : nullptr;
         cube_pipeline = rp ? rp->CreatePipeline(cube_mtl, InlinePipeline::Solid3D) : nullptr;
         if (!cube_pipeline)
             return false;

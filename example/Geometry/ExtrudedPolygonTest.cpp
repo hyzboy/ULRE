@@ -1,4 +1,4 @@
-﻿// ExtrudedPolygonTest.cpp
+// ExtrudedPolygonTest.cpp
 // 测试2D多边形挤压为3D多边形功能
 
 #include<hgl/framework/WorkManager.h>
@@ -66,7 +66,7 @@ private:
         material_instance = material_manager->CreateMaterialInstance(material,(VIL *)nullptr,&color);
 
         auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
         pipeline = render_pass ? render_pass->CreatePipeline(material_instance, InlinePipeline::Solid3D) : nullptr;
 
         return pipeline != nullptr;

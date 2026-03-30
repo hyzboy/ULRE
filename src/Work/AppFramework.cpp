@@ -215,8 +215,7 @@ namespace hgl
         auto *rt_manager = new graph::RenderTargetManager(
             graphics_context,
             default_ecs_context,
-            graphics_context->GetTextureManager(),
-            graphics_context->GetRenderPassManager());
+            graphics_context->GetTextureManager());
 
         graphics_context->GetModuleManager()->Register(rt_manager);
 
@@ -225,8 +224,7 @@ namespace hgl
             graphics_context,
             default_ecs_context,
             graphics_context->GetTextureManager(),
-            rt_manager,
-            graphics_context->GetRenderPassManager());
+            rt_manager);
 
         graphics_context->GetModuleManager()->Register(sc_module);
 
