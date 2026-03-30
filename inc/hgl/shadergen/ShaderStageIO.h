@@ -48,35 +48,76 @@ public:
     }
 };//class ShaderStageIO
 
-template<ShaderStage SS,typename IArray,typename I,typename OArray,typename O> class CustomShaderDescriptorInfo:public ShaderStageIO
+class VertexShaderStageIO : public ShaderStageIO
 {
-    IArray input;
-    OArray output;
+    VIAArray input;
+    SVArray  output;
 
 public:
 
-    CustomShaderDescriptorInfo():ShaderStageIO(SS){}
-    virtual ~CustomShaderDescriptorInfo()override=default;
+    VertexShaderStageIO() : ShaderStageIO(ShaderStage::Vertex) {}
+    virtual ~VertexShaderStageIO() override = default;
 
-    bool AddInput(I &item){return input.Add(item);}
-    bool AddOutput(O &item){return output.Add(item);}
+    bool AddInput(VIA &item)            { return input.Add(item); }
+    bool AddOutput(ShaderVariable &item){ return output.Add(item); }
 
-    bool hasInput(const char *name)const{return input.Contains(name);}     ///<是否有指定输入
+    bool hasInput(const VertexAttrib attrib) const { return input.Contains(attrib); }  ///<是否有指定输入
+    bool hasInput(const char *name) const
+    {
+        const VertexAttrib attrib = GetVertexAttribByName(name);
+        return (attrib != VertexAttrib::RANGE_SIZE) ? input.Contains(attrib) : false;
+    }
 
 public:
 
-    IArray &GetInput(){return input;}
-    const IArray &GetInput()const{return input;}
-    OArray &GetOutput(){return output;}
+    VIAArray       &GetInput()       { return input; }
+    const VIAArray &GetInput() const { return input; }
+    SVArray        &GetOutput()      { return output; }
 
-    const bool IsEmptyInput()const{return input.IsEmpty();}
-    const bool IsEmptyOutput()const{return output.IsEmpty();}
-};//class CustomShaderDescriptorInfo
+    bool IsEmptyInput()  const { return input.count == 0; }
+    bool IsEmptyOutput() const { return output.IsEmpty(); }
+};//class VertexShaderStageIO
 
-using VertexShaderStageIO  =CustomShaderDescriptorInfo<ShaderStage::Vertex,      VIAArray, VIA,              SVArray,    ShaderVariable  >;
-using FragmentShaderStageIO=CustomShaderDescriptorInfo<ShaderStage::Fragment,    SVArray,  ShaderVariable,   VIAArray,   VIA             >;
+class FragmentShaderStageIO : public ShaderStageIO
+{
+    SVArray  input;
+    VIAArray output;
 
-// Compute Shader 还没有启用，这里只是预留一个类型别名
-using ComputeShaderDescriptorInfo =CustomShaderDescriptorInfo<ShaderStage::Compute,     SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
+public:
+
+    FragmentShaderStageIO() : ShaderStageIO(ShaderStage::Fragment) {}
+    virtual ~FragmentShaderStageIO() override = default;
+
+    bool AddInput(ShaderVariable &item){ return input.Add(item); }
+    bool AddOutput(VIA &item)          { return output.Add(item); }
+
+    bool hasInput(const char *name) const { return input.Contains(name); }  ///<是否有指定输入
+
+public:
+
+    SVArray        &GetInput()       { return input; }
+    const SVArray  &GetInput() const { return input; }
+    VIAArray       &GetOutput()      { return output; }
+
+    bool IsEmptyInput()  const { return input.IsEmpty(); }
+    bool IsEmptyOutput() const { return output.count == 0; }
+};//class FragmentShaderStageIO
+
+// Compute Shader 还没有启用，暂时注释掉
+// class ComputeShaderStageIO : public ShaderStageIO
+// {
+//     SVArray input;
+//     SVArray output;
+// public:
+//     ComputeShaderStageIO() : ShaderStageIO(ShaderStage::Compute) {}
+//     virtual ~ComputeShaderStageIO() override = default;
+//     bool AddInput(ShaderVariable &item) { return input.Add(item); }
+//     bool AddOutput(ShaderVariable &item){ return output.Add(item); }
+//     SVArray       &GetInput()       { return input; }
+//     const SVArray &GetInput() const { return input; }
+//     SVArray       &GetOutput()      { return output; }
+//     bool IsEmptyInput()  const { return input.IsEmpty(); }
+//     bool IsEmptyOutput() const { return output.IsEmpty(); }
+// };//class ComputeShaderStageIO
 
 }}//namespace hgl::graph
