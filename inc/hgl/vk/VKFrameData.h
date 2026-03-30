@@ -19,8 +19,6 @@ class Fence;
  *
  * Resource Ownership Model:
  * - VkImageView: owned by TextureManager
- * - VkFramebuffer: owned by RenderTargetManager
- * - VkRenderPass: owned by RenderPassManager
  * - VkCommandBuffer: owned by CommandPool (Device)
  * - DeviceQueue*: owned by SwapchainModule (per-frame)
  * - Semaphore*: owned by SwapchainModule (for synchronization)
@@ -41,10 +39,6 @@ struct FrameResources
     VkImage vk_image = VK_NULL_HANDLE;           ///< Swapchain image
     uint32_t image_index = ~0u;                  ///< Index of swapchain image
     VkImageView image_view = VK_NULL_HANDLE;     ///< ImageView for rendering (owned by TextureManager)
-
-    // Rendering resources (owned by respective managers)
-    VkFramebuffer framebuffer = VK_NULL_HANDLE;  ///< Owned by RenderTargetManager
-    VkRenderPass render_pass = VK_NULL_HANDLE;   ///< Owned by RenderPassManager
 
     // Command execution (owned by SwapchainModule)
     VkCommandBuffer cmd_buffer = VK_NULL_HANDLE; ///< Command buffer from CommandPool
@@ -80,8 +74,6 @@ struct FrameResources
         vk_image = VK_NULL_HANDLE;
         image_index = ~0u;
         image_view = VK_NULL_HANDLE;
-        framebuffer = VK_NULL_HANDLE;
-        render_pass = VK_NULL_HANDLE;
         cmd_buffer = VK_NULL_HANDLE;
         texture_views.clear();
     }
