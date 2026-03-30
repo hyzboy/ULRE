@@ -64,7 +64,7 @@ namespace hgl::graph
             halo_color = sun_color;
 
             // 白天，光强固定为可见（由材质做映射）
-            sun_intensity = 1.0f;
+            sun_intensity = 5.0f;
             moon_intensity = 0.0f;
         }
         else
