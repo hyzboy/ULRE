@@ -13,9 +13,6 @@ static const char *GetShaderStageNameByStage(const ShaderStage stage)
     switch (stage)
     {
         case ShaderStage::Vertex: return "Vertex";
-        case ShaderStage::TessControl: return "TessControl";
-        case ShaderStage::TessEval: return "TessEval";
-        case ShaderStage::Geometry: return "Geometry";
         case ShaderStage::Fragment: return "Fragment";
         case ShaderStage::Compute: return "Compute";
         case ShaderStage::Task: return "Task";

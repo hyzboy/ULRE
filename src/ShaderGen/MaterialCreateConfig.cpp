@@ -27,11 +27,11 @@ std::string MaterialCreateConfig::ToHashStdString()
     *p='_';++p;
 
     if(shader_stage_flag_bit&(uint32)ShaderStage::Vertex){*p='V';++p;}
-    if(shader_stage_flag_bit&(uint32)ShaderStage::TessControl){*p='T';++p;}     //tc/te有一个就行了
-    if(shader_stage_flag_bit&(uint32)ShaderStage::Geometry){*p='G';++p;}
+    //不再支持Tessellation和GeometryShader
     if(shader_stage_flag_bit&(uint32)ShaderStage::Fragment){*p='F';++p;}
     if(shader_stage_flag_bit&(uint32)ShaderStage::Compute){*p='C';++p;}
-    if(shader_stage_flag_bit&(uint32)ShaderStage::Mesh){*p='M';++p;}     //mesh/task有一个就行了
+    if(shader_stage_flag_bit&(uint32)ShaderStage::Mesh){*p='M';++p;}
+    if(shader_stage_flag_bit&(uint32)ShaderStage::Task){*p='T';++p;}
     *p='_';++p;
 
     *p=0;
@@ -138,7 +138,7 @@ std::string BillboardMaterialCreateConfig::ToHashStdString()
     {
     case BlendMode::Masked:         hash += "_Masked";  break;
     case BlendMode::Dither:         hash += "_Dither";  break;
-    case BlendMode::AlphaToCoverage: hash += "_A2C";    break;
+    case BlendMode::AlphaToCoverage:hash += "_A2C";     break;
     case BlendMode::Opaque:         hash += "_Opaque";  break;
     default: break; // Transparent is the default, no suffix needed
     }
