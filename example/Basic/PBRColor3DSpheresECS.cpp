@@ -281,7 +281,7 @@ private:
             tci.inner_radius  = 0.6f;
             tci.outer_radius  = 1.0f;
             tci.segments      = 64;
-            tci.generate_caps = false;
+            tci.generate_caps = true;
             return CreateTube(pc, &tci);
         });
 

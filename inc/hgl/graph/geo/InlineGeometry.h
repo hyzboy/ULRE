@@ -601,6 +601,8 @@ namespace hgl::graph
             float inner_radius = 0.25f;     // 内半径
             uint  segments = 16;            // 圆周分段数
             bool  generate_caps = true;     // 是否生成端面
+            uint  stacks = 1;               // 沿高度的细分段数（>=1），默认1 表示仅底/顶两层
+            uint  cap_radial_segments = 1;  // 端面径向细分数（>=1），默认1 表示内环/外环两级
         };
 
         /**
