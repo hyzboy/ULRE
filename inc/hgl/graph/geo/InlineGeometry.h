@@ -205,23 +205,9 @@ namespace hgl::graph
             */
         Geometry *CreateCylinder(GeometryCreater *,const CylinderCreateInfo *cci);
 
-        // 新增：空心圆柱（管）创建信息
-        struct HollowCylinderCreateInfo
-        {
-            float halfExtend;           // 高度的一半
-            float innerRadius;          // 内半径
-            float outerRadius;          // 外半径
-            uint  numberSlices;         // 圆切分段数
-
-            // 端面（圆环）纹理平铺：径向与周向平铺次数
-            float cap_radial_tiles = 1.0f;    // 从内圈到外圈的平铺次数
-            float cap_angular_tiles = 1.0f;   // 沿圆周的平铺次数
-        };
-
-        /**
-            * 创建一个空心圆柱（管）(三角形)
-            */
-        Geometry *CreateHollowCylinder(GeometryCreater *pc,const HollowCylinderCreateInfo *hcci);
+        // Note: HollowCylinder has been superseded by TubeCreateInfo / CreateTube.
+        // The old HollowCylinderCreateInfo and CreateHollowCylinder declaration
+        // were removed. Use TubeCreateInfo and CreateTube instead.
 
         struct ConeCreateInfo
         {

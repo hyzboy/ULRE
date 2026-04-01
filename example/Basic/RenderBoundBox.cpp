@@ -365,14 +365,16 @@ private:
         }
 
         {
-            HollowCylinderCreateInfo hcci;
-            hcci.halfExtend    =1.25f;
-            hcci.innerRadius   =0.8f;
-            hcci.outerRadius   =1.25f;
-            hcci.numberSlices  =64;
+            TubeCreateInfo tci;
+            tci.length = 1.25f * 2.0f;
+            tci.inner_radius = 0.8f;
+            tci.outer_radius = 1.25f;
+            tci.segments = 64;
+            tci.generate_caps = true;
+
             auto geom = create_geometry("HollowCylinder", [&](GeometryCreater *pc)
             {
-                return CreateHollowCylinder(pc, &hcci);
+                return CreateTube(pc, &tci);
             });
             if (!geom)
                 return false;

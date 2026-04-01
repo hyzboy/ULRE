@@ -299,15 +299,16 @@ private:
         }
 
         {
-            HollowCylinderCreateInfo hcci;
-            hcci.halfExtend = 1.25f;
-            hcci.innerRadius = 0.8f;
-            hcci.outerRadius = 1.25f;
-            hcci.numberSlices = 64;
+            TubeCreateInfo tci;
+            tci.length = 1.25f * 2.0f; // hollow halfExtend -> tube full length
+            tci.inner_radius = 0.8f;
+            tci.outer_radius = 1.25f;
+            tci.segments = 64;
+            tci.generate_caps = true;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
-                return CreateHollowCylinder(pc, &hcci);
+                return CreateTube(pc, &tci);
             });
             if (!geom || !CreateRenderMesh(geom))
                 return false;
