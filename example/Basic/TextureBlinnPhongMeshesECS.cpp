@@ -230,7 +230,9 @@ private:
         {
             auto geom = create_geometry([](GeometryCreater* pc)
             {
-                return CreateDome(pc, 64);
+                    DomeCreateInfo dci;
+                    dci.number_slices = 64;
+                    return CreateDome(pc, &dci);
             });
             if (!geom || !CreateRenderMesh(geom))
                 return false;

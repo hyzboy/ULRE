@@ -243,7 +243,13 @@ private:
         };
 
         builtin_geometries[0] = create_geometry([](GeometryCreater *pc) { return CreateSphere(pc, 64); });
-        builtin_geometries[1] = create_geometry([](GeometryCreater *pc) { return CreateDome(pc, 64,true); });
+        builtin_geometries[1] = create_geometry([](GeometryCreater *pc)
+        {
+            DomeCreateInfo dci;
+            dci.number_slices = 64;
+            dci.inside_out = true;
+            return CreateDome(pc, &dci);
+        });
 
         builtin_geometries[2] = create_geometry([](GeometryCreater *pc)
         {

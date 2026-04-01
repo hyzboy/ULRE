@@ -19,4 +19,6 @@ CreateProject(03_BasicLitSunDirectionECS        BasicLitSunDirectionECS.cpp)
 
 CreateProject(04_SubWorldBuiltinGeometryECS      04_SubWorldBuiltinGeometryECS.cpp ../common/SubWorldModuleBase.cpp ../common/SubWorldAnimatedGeometryModule.cpp)
 
+CreateProject(05_DomeSkyMinimal                  05_DomeSkyMinimal.cpp)
+
 

@@ -172,11 +172,21 @@ namespace hgl::graph
             */
         Geometry *CreateSphere(GeometryCreater *,const uint numberSlices);
 
+        struct DomeCreateInfo
+        {
+            uint number_slices = 32;   ///< 穹顶细分精度（用于推导 ico sphere 细分等级）
+            bool inside_out = false;   ///< 是否调转三角形顺序（从内部可见）
+
+            bool normal = true;        ///< 是否写入法线
+            bool tangent = false;      ///< 是否写入切线
+            bool tex_coord = true;     ///< 是否写入纹理坐标
+        };
+
         /**
             * 创建一个穹顶(三角形)
-            * @param inside_out 是否调转三角形顺序（用于天空半球，从内部观察）
+            * 说明：使用 DomeCreateInfo 控制正反面与属性写入。
             */
-        Geometry *CreateDome(GeometryCreater *pc, const uint numberSlices, bool inside_out = false);
+        Geometry *CreateDome(GeometryCreater *pc, const DomeCreateInfo *dci);
 
         struct TorusCreateInfo
         {

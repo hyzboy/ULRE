@@ -33,10 +33,13 @@ namespace hgl::graph::inline_geometry
         return (uint64_t(lo) << 32) | uint64_t(hi);
     }
 
-    Geometry *CreateDome(GeometryCreater *pc, const uint numberSlices, bool inside_out)
+    Geometry *CreateDome(GeometryCreater *pc, const DomeCreateInfo *dci)
     {
-        if (!pc)
+        if (!pc || !dci)
             return nullptr;
+
+        const uint numberSlices = dci->number_slices;
+        const bool inside_out = dci->inside_out;
 
         if (!GeometryValidator::ValidateSlices(numberSlices, 3))
             return nullptr;
@@ -172,6 +175,10 @@ namespace hgl::graph::inline_geometry
         if (!builder.IsValid())
             return nullptr;
 
+        const bool write_normal = dci->normal && builder.HasNormals();
+        const bool write_tangent = dci->normal && dci->tangent && builder.HasTangents();
+        const bool write_tex_coord = dci->tex_coord && builder.HasTexCoords();
+
         const float half_pi = std::numbers::pi_v<float> * 0.5f;
 
         for (const Vector3f &p : dome_vertices)
@@ -186,16 +193,23 @@ namespace hgl::graph::inline_geometry
             const float u = 0.5f + 0.5f * r * cosf(theta);
             const float v = 0.5f + 0.5f * r * sinf(theta);
 
-            Vector3f tdir(-sinf(theta), cosf(theta), 0.0f);
-            if (glm::length(tdir) < 1e-6f)
-                tdir = Vector3f(1.0f, 0.0f, 0.0f);
+            builder.WriteVertex(p.x, p.y, p.z);
 
-            tdir = glm::normalize(tdir - n * Dot(n, tdir));
+            if (write_normal)
+                builder.WriteNormal(n.x, n.y, n.z);
 
-            builder.WriteFullVertex(p.x, p.y, p.z,
-                                   n.x, n.y, n.z,
-                                   tdir.x, tdir.y, tdir.z,
-                                   u, v);
+            if (write_tangent)
+            {
+                Vector3f tdir(-sinf(theta), cosf(theta), 0.0f);
+                if (glm::length(tdir) < 1e-6f)
+                    tdir = Vector3f(1.0f, 0.0f, 0.0f);
+
+                tdir = glm::normalize(tdir - n * Dot(n, tdir));
+                builder.WriteTangent(tdir.x, tdir.y, tdir.z);
+            }
+
+            if (write_tex_coord)
+                builder.WriteTexCoord(u, v);
         }
 
         const IndexType index_type = pc->GetIndexType();
