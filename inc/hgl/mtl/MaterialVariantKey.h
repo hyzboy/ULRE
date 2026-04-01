@@ -5,6 +5,7 @@
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include <hgl/common/VertexAttribDef.h>
+#include <hgl/type/FNV1a.h>
 
 namespace hgl::graph::mtl
 {
@@ -119,20 +120,16 @@ namespace hgl::graph::mtl
 
         uint64 Hash() const noexcept
         {
-            uint64 h = 1469598103934665603ull;
-            auto mix = [&h](const uint64 v)
-            {
-                h ^= v + 0x9e3779b97f4a7c15ull + (h << 6) + (h >> 2);
-            };
+            uint64 h = hgl::hash::FNV1aInit<uint64>();
 
-            mix(static_cast<uint64>(surface_type));
-            mix(static_cast<uint64>(geometry_mode));
-            mix(static_cast<uint64>(texture_source_bits));
-            mix(static_cast<uint64>(sampler_feature_bits));
-            mix(static_cast<uint64>(vertex_attribute_feature_bits));
-            mix(static_cast<uint64>(extra_feature_bits));
-            mix(static_cast<uint64>(blend_mode));
-            mix(static_cast<uint64>(pass_hint));
+            h = hgl::hash::FNV1aAppend(h, surface_type);
+            h = hgl::hash::FNV1aAppend(h, geometry_mode);
+            h = hgl::hash::FNV1aAppend(h, texture_source_bits);
+            h = hgl::hash::FNV1aAppend(h, sampler_feature_bits);
+            h = hgl::hash::FNV1aAppend(h, vertex_attribute_feature_bits);
+            h = hgl::hash::FNV1aAppend(h, extra_feature_bits);
+            h = hgl::hash::FNV1aAppend(h, blend_mode);
+            h = hgl::hash::FNV1aAppend(h, pass_hint);
 
             return h;
         }

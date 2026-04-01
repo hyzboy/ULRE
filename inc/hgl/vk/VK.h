@@ -36,6 +36,18 @@ inline bool operator==(const VkSurfaceFormatKHR& lhs, const VkSurfaceFormatKHR& 
            lhs.colorSpace == rhs.colorSpace;
 }
 
+inline bool operator==(const VkPipelineColorBlendAttachmentState& lhs, const VkPipelineColorBlendAttachmentState& rhs)
+{
+    return lhs.blendEnable == rhs.blendEnable &&
+           lhs.srcColorBlendFactor == rhs.srcColorBlendFactor &&
+           lhs.dstColorBlendFactor == rhs.dstColorBlendFactor &&
+           lhs.colorBlendOp == rhs.colorBlendOp &&
+           lhs.srcAlphaBlendFactor == rhs.srcAlphaBlendFactor &&
+           lhs.dstAlphaBlendFactor == rhs.dstAlphaBlendFactor &&
+           lhs.alphaBlendOp == rhs.alphaBlendOp &&
+           lhs.colorWriteMask == rhs.colorWriteMask;
+}
+
 // Comparison operator for VkPipelineShaderStageCreateInfo
 inline bool operator==(const VkPipelineShaderStageCreateInfo& lhs, const VkPipelineShaderStageCreateInfo& rhs)
 {

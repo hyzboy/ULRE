@@ -66,6 +66,16 @@ namespace
             if(physical_device->CheckExtensionSupport(ext_name))
                 ext_list->Add(ext_name);
 
+#ifdef VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME
+        if(physical_device->CheckExtensionSupport(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME))
+            ext_list->Add(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
+#endif
+
+#ifdef VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME
+        if(physical_device->SupportGraphicsPipelineLibrary())
+            ext_list->Add(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME);
+#endif
+
         if(require.lineRasterization>=VulkanHardwareRequirement::SupportLevel::Want)
             ext_list->Add(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
 
@@ -224,6 +234,10 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 
     VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8_features;
 
+#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT
+    VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
+#endif
+
     // 启用 descriptorBindingPartiallyBound (Vulkan 1.2 core / VK_EXT_descriptor_indexing)
     // 允许描述符集中未使用的绑定不必写入有效描述符
     VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features{};
@@ -254,6 +268,16 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     features13.pNext            = const_cast<void*>(static_cast<const void*>(create_info.pNext));
     features13.dynamicRendering = VK_TRUE;
     create_info.pNext           = &features13;
+
+#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT
+    if(physical_device->SupportGraphicsPipelineLibrary())
+    {
+        graphics_pipeline_library_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
+        graphics_pipeline_library_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+        graphics_pipeline_library_features.graphicsPipelineLibrary = VK_TRUE;
+        create_info.pNext = &graphics_pipeline_library_features;
+    }
+#endif
 
     VkDevice device;
 

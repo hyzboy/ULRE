@@ -2,6 +2,7 @@
 
 #include <hgl/ecs/core/System.h>
 #include <hgl/ecs/core/SystemGroup.h>
+#include <hgl/type/FNV1a.h>
 #include <vector>
 #include <functional>
 #include <set>
@@ -129,12 +130,11 @@ namespace hgl
             // Returns a hash for caching decisions
             uint64_t GetHash() const
             {
-                uint64_t hash = 1469598103934665603ULL;
+                uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
                 for (const auto& group_name : active_render_groups)
                 {
                     const uint64_t value = static_cast<uint64_t>(std::hash<std::string>{}(group_name));
-                    hash ^= value;
-                    hash *= 1099511628211ULL;
+                    hash = hgl::hash::FNV1aAppend(hash, value);
                 }
                 return hash;
             }

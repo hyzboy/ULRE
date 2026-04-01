@@ -60,6 +60,8 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
     instance=inst;
     physical_device=pd;
 
+    bool graphics_pipeline_library_feature=false;
+
     // First, get basic properties to detect the API version
     vkGetPhysicalDeviceProperties(physical_device,&properties);
 
@@ -79,6 +81,10 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
         if(func)
         {
             VkPhysicalDeviceFeatures2 features2;
+
+#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT
+            VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
+#endif
 
             features2.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
             features2.pNext=nullptr;
@@ -115,11 +121,22 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
                 features14.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
                 features14.pNext=nullptr;
                 *ppNext=&features14;
+                ppNext=&features14.pNext;
             }
+
+#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT
+            graphics_pipeline_library_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
+            graphics_pipeline_library_features.pNext=nullptr;
+            *ppNext=&graphics_pipeline_library_features;
+#endif
 
             func(physical_device,&features2);
 
             mem_copy(features,features2.features);
+
+#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT
+            graphics_pipeline_library_feature = (graphics_pipeline_library_features.graphicsPipelineLibrary == VK_TRUE);
+#endif
         }
         else
         {
@@ -236,6 +253,12 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
         debug_out(debug_front.c_str(),extension_properties);
     }
 
+#ifdef VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME
+    graphics_pipeline_library = CheckExtensionSupport(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME) && graphics_pipeline_library_feature;
+#else
+    graphics_pipeline_library = false;
+#endif
+
     {
         uint32_t family_count;
 
@@ -253,6 +276,18 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
         support_u8_index=CheckExtensionSupport(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
 
     dynamic_state=CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
+
+    const char *gpl_extension_support = "no-sdk";
+
+#ifdef VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME
+    gpl_extension_support = CheckExtensionSupport(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME)?"yes":"no";
+#endif
+
+    GLogInfo("%s graphics pipeline library support: extension=%s feature=%s enabled=%s",
+             debug_front.c_str(),
+             gpl_extension_support,
+             graphics_pipeline_library_feature?"yes":"no",
+             graphics_pipeline_library?"yes":"no");
 
     physical_device_profile = mtl::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*this);
 

@@ -139,6 +139,9 @@ SET(PIPELINE_HEADER_PATH   ${VK_INCLUDE_PATH}/pipeline)
 SET(PIPELINE_SOURCE_PATH   pipeline)
 
 SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
+                            ${PIPELINE_HEADER_PATH}/VKGplRequest.h
+                            ${PIPELINE_HEADER_PATH}/VKLinkBackend.h
+                            ${PIPELINE_HEADER_PATH}/VKRenderStateProfile.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineData.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineLayoutData.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineHash.h
@@ -149,6 +152,8 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
                             ${PIPELINE_SOURCE_PATH}/VKPipelineDataManage.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineDataSaveLoad.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineHash.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKLinkBackend.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKRenderStateProfile.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipeline.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineCache.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineLayoutData.cpp
