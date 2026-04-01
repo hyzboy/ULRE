@@ -1,0 +1,214 @@
+#include<hgl/vk/pipeline/VKRenderStateProfile.h>
+#include<hgl/vk/pipeline/VKPipelineData.h>
+#include<cstring>
+
+namespace hgl::graph{
+namespace
+{
+    constexpr uint64_t Fnv1aOffset = 1469598103934665603ull;
+    constexpr uint64_t Fnv1aPrime = 1099511628211ull;
+
+    inline void HashBytes(uint64_t &h, const void *ptr, size_t len)
+    {
+        if (!ptr || len == 0)
+            return;
+
+        const auto *p = reinterpret_cast<const unsigned char *>(ptr);
+        for (size_t i = 0; i < len; ++i)
+        {
+            h ^= static_cast<uint64_t>(p[i]);
+            h *= Fnv1aPrime;
+        }
+    }
+
+    inline void HashU32(uint64_t &h, uint32_t v)
+    {
+        HashBytes(h, &v, sizeof(v));
+    }
+
+    inline void HashFloat(uint64_t &h, float v)
+    {
+        HashBytes(h, &v, sizeof(v));
+    }
+
+    static bool EqualBlendState(const VkPipelineColorBlendStateCreateInfo &a,
+                                const VkPipelineColorBlendStateCreateInfo &b)
+    {
+        if (a.logicOpEnable != b.logicOpEnable) return false;
+        if (a.logicOp != b.logicOp) return false;
+        if (a.attachmentCount != b.attachmentCount) return false;
+
+        for (int i = 0; i < 4; ++i)
+            if (a.blendConstants[i] != b.blendConstants[i])
+                return false;
+
+        return true;
+    }
+}
+
+RenderStateProfile RenderStateProfile::FromPipelineData(const PipelineData &pd, PrimitiveType prim, bool prim_restart)
+{
+    RenderStateProfile rsp;
+
+    rsp.topology = pd.input_assembly.topology;
+    rsp.primitive_restart = prim_restart ? VK_TRUE : pd.input_assembly.primitiveRestartEnable;
+
+    if (pd.rasterization)
+        rsp.raster = *pd.rasterization;
+
+    if (pd.depth_stencil)
+        rsp.depth_stencil = *pd.depth_stencil;
+
+    if (pd.multi_sample)
+        rsp.multisample = *pd.multi_sample;
+
+    if (pd.color_blend)
+    {
+        rsp.blend = *pd.color_blend;
+
+        const uint32_t count = pd.color_blend->attachmentCount;
+        rsp.blend_attachments.Resize(count);
+
+        for (uint32_t i = 0; i < count; ++i)
+            rsp.blend_attachments[i] = pd.color_blend_attachments[i];
+
+        rsp.blend.pAttachments = rsp.blend_attachments.GetData();
+    }
+
+    rsp.dynamic_states.Resize(pd.dynamic_state.dynamicStateCount);
+    for (uint32_t i = 0; i < pd.dynamic_state.dynamicStateCount; ++i)
+        rsp.dynamic_states[i] = pd.dynamic_state_enables[i];
+
+    rsp.blend.pAttachments = rsp.blend_attachments.GetData();
+    rsp.blend.attachmentCount = rsp.blend_attachments.GetCount();
+
+    rsp.multisample.pSampleMask = nullptr;
+    rsp.raster.pNext = nullptr;
+    rsp.depth_stencil.pNext = nullptr;
+    rsp.multisample.pNext = nullptr;
+    rsp.blend.pNext = nullptr;
+
+    if (rsp.topology == VK_PRIMITIVE_TOPOLOGY_MAX_ENUM)
+    {
+        PipelineData tmp(1);
+        if (tmp.SetPrim(prim, prim_restart))
+        {
+            rsp.topology = tmp.input_assembly.topology;
+            rsp.primitive_restart = tmp.input_assembly.primitiveRestartEnable;
+        }
+    }
+
+    return rsp;
+}
+
+uint64_t RenderStateProfile::Hash() const
+{
+    uint64_t h = Fnv1aOffset;
+
+    HashU32(h, static_cast<uint32_t>(topology));
+    HashU32(h, static_cast<uint32_t>(primitive_restart));
+
+    HashU32(h, static_cast<uint32_t>(raster.depthClampEnable));
+    HashU32(h, static_cast<uint32_t>(raster.rasterizerDiscardEnable));
+    HashU32(h, static_cast<uint32_t>(raster.polygonMode));
+    HashU32(h, static_cast<uint32_t>(raster.cullMode));
+    HashU32(h, static_cast<uint32_t>(raster.frontFace));
+    HashU32(h, static_cast<uint32_t>(raster.depthBiasEnable));
+    HashFloat(h, raster.depthBiasConstantFactor);
+    HashFloat(h, raster.depthBiasClamp);
+    HashFloat(h, raster.depthBiasSlopeFactor);
+    HashFloat(h, raster.lineWidth);
+
+    HashU32(h, static_cast<uint32_t>(depth_stencil.depthTestEnable));
+    HashU32(h, static_cast<uint32_t>(depth_stencil.depthWriteEnable));
+    HashU32(h, static_cast<uint32_t>(depth_stencil.depthCompareOp));
+    HashU32(h, static_cast<uint32_t>(depth_stencil.depthBoundsTestEnable));
+    HashU32(h, static_cast<uint32_t>(depth_stencil.stencilTestEnable));
+    HashBytes(h, &depth_stencil.front, sizeof(depth_stencil.front));
+    HashBytes(h, &depth_stencil.back, sizeof(depth_stencil.back));
+    HashFloat(h, depth_stencil.minDepthBounds);
+    HashFloat(h, depth_stencil.maxDepthBounds);
+
+    HashU32(h, static_cast<uint32_t>(multisample.rasterizationSamples));
+    HashU32(h, static_cast<uint32_t>(multisample.sampleShadingEnable));
+    HashFloat(h, multisample.minSampleShading);
+    HashU32(h, static_cast<uint32_t>(multisample.alphaToCoverageEnable));
+    HashU32(h, static_cast<uint32_t>(multisample.alphaToOneEnable));
+
+    HashU32(h, static_cast<uint32_t>(blend.logicOpEnable));
+    HashU32(h, static_cast<uint32_t>(blend.logicOp));
+    for (int i = 0; i < 4; ++i)
+        HashFloat(h, blend.blendConstants[i]);
+
+    const uint32_t blend_count = blend_attachments.GetCount();
+    HashU32(h, blend_count);
+    for (uint32_t i = 0; i < blend_count; ++i)
+        HashBytes(h, &blend_attachments[i], sizeof(VkPipelineColorBlendAttachmentState));
+
+    const uint32_t dynamic_count = dynamic_states.GetCount();
+    HashU32(h, dynamic_count);
+    for (uint32_t i = 0; i < dynamic_count; ++i)
+        HashU32(h, static_cast<uint32_t>(dynamic_states[i]));
+
+    return h;
+}
+
+bool RenderStateProfile::Equals(const RenderStateProfile &rhs) const
+{
+    if (topology != rhs.topology) return false;
+    if (primitive_restart != rhs.primitive_restart) return false;
+
+    if (raster.depthClampEnable != rhs.raster.depthClampEnable) return false;
+    if (raster.rasterizerDiscardEnable != rhs.raster.rasterizerDiscardEnable) return false;
+    if (raster.polygonMode != rhs.raster.polygonMode) return false;
+    if (raster.cullMode != rhs.raster.cullMode) return false;
+    if (raster.frontFace != rhs.raster.frontFace) return false;
+    if (raster.depthBiasEnable != rhs.raster.depthBiasEnable) return false;
+    if (raster.depthBiasConstantFactor != rhs.raster.depthBiasConstantFactor) return false;
+    if (raster.depthBiasClamp != rhs.raster.depthBiasClamp) return false;
+    if (raster.depthBiasSlopeFactor != rhs.raster.depthBiasSlopeFactor) return false;
+    if (raster.lineWidth != rhs.raster.lineWidth) return false;
+
+    if (depth_stencil.depthTestEnable != rhs.depth_stencil.depthTestEnable) return false;
+    if (depth_stencil.depthWriteEnable != rhs.depth_stencil.depthWriteEnable) return false;
+    if (depth_stencil.depthCompareOp != rhs.depth_stencil.depthCompareOp) return false;
+    if (depth_stencil.depthBoundsTestEnable != rhs.depth_stencil.depthBoundsTestEnable) return false;
+    if (depth_stencil.stencilTestEnable != rhs.depth_stencil.stencilTestEnable) return false;
+    if (depth_stencil.front.compareMask != rhs.depth_stencil.front.compareMask) return false;
+    if (depth_stencil.front.writeMask != rhs.depth_stencil.front.writeMask) return false;
+    if (depth_stencil.front.reference != rhs.depth_stencil.front.reference) return false;
+    if (depth_stencil.front.compareOp != rhs.depth_stencil.front.compareOp) return false;
+    if (depth_stencil.front.failOp != rhs.depth_stencil.front.failOp) return false;
+    if (depth_stencil.front.passOp != rhs.depth_stencil.front.passOp) return false;
+    if (depth_stencil.front.depthFailOp != rhs.depth_stencil.front.depthFailOp) return false;
+    if (depth_stencil.back.compareMask != rhs.depth_stencil.back.compareMask) return false;
+    if (depth_stencil.back.writeMask != rhs.depth_stencil.back.writeMask) return false;
+    if (depth_stencil.back.reference != rhs.depth_stencil.back.reference) return false;
+    if (depth_stencil.back.compareOp != rhs.depth_stencil.back.compareOp) return false;
+    if (depth_stencil.back.failOp != rhs.depth_stencil.back.failOp) return false;
+    if (depth_stencil.back.passOp != rhs.depth_stencil.back.passOp) return false;
+    if (depth_stencil.back.depthFailOp != rhs.depth_stencil.back.depthFailOp) return false;
+    if (depth_stencil.minDepthBounds != rhs.depth_stencil.minDepthBounds) return false;
+    if (depth_stencil.maxDepthBounds != rhs.depth_stencil.maxDepthBounds) return false;
+
+    if (multisample.rasterizationSamples != rhs.multisample.rasterizationSamples) return false;
+    if (multisample.sampleShadingEnable != rhs.multisample.sampleShadingEnable) return false;
+    if (multisample.minSampleShading != rhs.multisample.minSampleShading) return false;
+    if (multisample.alphaToCoverageEnable != rhs.multisample.alphaToCoverageEnable) return false;
+    if (multisample.alphaToOneEnable != rhs.multisample.alphaToOneEnable) return false;
+
+    if (!EqualBlendState(blend, rhs.blend)) return false;
+
+    if (blend_attachments.GetCount() != rhs.blend_attachments.GetCount()) return false;
+    for (uint32_t i = 0; i < blend_attachments.GetCount(); ++i)
+        if (memcmp(&blend_attachments[i], &rhs.blend_attachments[i], sizeof(VkPipelineColorBlendAttachmentState)) != 0)
+            return false;
+
+    if (dynamic_states.GetCount() != rhs.dynamic_states.GetCount()) return false;
+    for (uint32_t i = 0; i < dynamic_states.GetCount(); ++i)
+        if (dynamic_states[i] != rhs.dynamic_states[i])
+            return false;
+
+    return true;
+}
+}//namespace hgl::graph
