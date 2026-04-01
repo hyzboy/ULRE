@@ -20,7 +20,6 @@ SET(GEOMETRY_PRIMITIVES_SPHERE  SphereDomeTorus.cpp
 
 SET(GEOMETRY_PRIMITIVES_CYLINDER CylinderConeTorusIndices.cpp
                                  Cylinder.cpp
-                                 HollowCylinder.cpp
                                  Cone.cpp)
 
 SET(GEOMETRY_PRIMITIVES_CAPSULE Capsule.cpp

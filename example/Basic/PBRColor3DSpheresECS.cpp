@@ -276,12 +276,13 @@ private:
 
         builtin_geometries[5] = create_geometry([](GeometryCreater *pc)
         {
-            HollowCylinderCreateInfo hcci;
-            hcci.halfExtend = 1.0f;
-            hcci.innerRadius = 0.6f;
-            hcci.outerRadius = 1.0f;
-            hcci.numberSlices = 64;
-            return CreateHollowCylinder(pc, &hcci);
+            TubeCreateInfo tci;
+            tci.length        = 2.0f; // halfExtend * 2
+            tci.inner_radius  = 0.6f;
+            tci.outer_radius  = 1.0f;
+            tci.segments      = 64;
+            tci.generate_caps = false;
+            return CreateTube(pc, &tci);
         });
 
         builtin_geometries[6] = create_geometry([](GeometryCreater *pc)

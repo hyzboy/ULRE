@@ -153,7 +153,7 @@ namespace hgl::graph::inline_geometry
         {
             using IndexT = typename std::remove_pointer<decltype(ip)>::type;
 
-            // Outer surface
+            // Outer surface (fix winding so normals point outward)
             for(uint i = 0; i < segments; i++)
             {
                 IndexT v0 = i * 2;
@@ -161,11 +161,11 @@ namespace hgl::graph::inline_geometry
                 IndexT v2 = (i + 1) * 2;
                 IndexT v3 = (i + 1) * 2 + 1;
 
-                *ip++ = v0; *ip++ = v1; *ip++ = v2;
-                *ip++ = v2; *ip++ = v1; *ip++ = v3;
+                *ip++ = v0; *ip++ = v2; *ip++ = v1;
+                *ip++ = v2; *ip++ = v3; *ip++ = v1;
             }
 
-            // Inner surface
+            // Inner surface (invert winding so inner faces are visible when viewed from inside)
             IndexT inner_base = outer_verts;
             for(uint i = 0; i < segments; i++)
             {
@@ -174,8 +174,9 @@ namespace hgl::graph::inline_geometry
                 IndexT v2 = inner_base + (i + 1) * 2;
                 IndexT v3 = inner_base + (i + 1) * 2 + 1;
 
-                *ip++ = v0; *ip++ = v2; *ip++ = v1;
-                *ip++ = v2; *ip++ = v3; *ip++ = v1;
+                // Reverse winding compared to outer surface
+                *ip++ = v0; *ip++ = v1; *ip++ = v2;
+                *ip++ = v2; *ip++ = v1; *ip++ = v3;
             }
 
             // Caps
