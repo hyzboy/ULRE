@@ -59,7 +59,7 @@ private:
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        mtl_pipeline = render_pass ? render_pass->CreatePipeline(mi_sky_sphere, InlinePipeline::Sky) : nullptr;
+        mtl_pipeline = render_pass ? render_pass->CreatePipeline(mi_sky_sphere, InlinePipeline::Solid3D) : nullptr;
 
         return mtl_pipeline;
     }
@@ -86,7 +86,7 @@ private:
 
             DomeCreateInfo dci;
             dci.number_slices = 64;
-            dci.inside_out = false;
+            dci.inside_out = true;
             dci.normal = false;
             dci.tangent = false;
             dci.tex_coord = false;
