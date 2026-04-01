@@ -6,6 +6,8 @@
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/pipeline/VKComputePipeline.h>
+#include<hgl/vk/pipeline/VKLinkBackend.h>
+#include<hgl/vk/pipeline/VKGplRequest.h>
 #include<hgl/vk/VKObjectName.h>
 #include<hgl/vk/IGPUBuffer.h>
 #include<hgl/log/Log.h>
@@ -18,6 +20,10 @@
 #include <string>
 
 namespace hgl::graph{
+#ifndef ULRE_GPL_ENABLE
+#define ULRE_GPL_ENABLE 0
+#endif
+
 namespace
 {
     std::unordered_map<VkDevice, VulkanDevice *> g_device_map;
@@ -79,6 +85,16 @@ VulkanDevice::VulkanDevice(VulkanDevAttr *da)
 {
     attr=da;
 
+    gpl_supported = (attr && attr->physical_device) ? attr->physical_device->SupportGraphicsPipelineLibrary() : false;
+    gpl_enabled = gpl_supported && (ULRE_GPL_ENABLE != 0);
+    link_backend_mono = std::make_unique<MonolithicLinkBackend>();
+    link_backend_gpl = std::make_unique<GplLinkBackend>();
+
+    LogInfo("[VulkanDevice] Graphics pipeline library support=%s runtime_enabled=%s compile_default=%d",
+            gpl_supported?"yes":"no",
+            gpl_enabled?"yes":"no",
+            ULRE_GPL_ENABLE);
+
     if(attr && attr->device)
         g_device_map[attr->device] = this;
 }
@@ -106,6 +122,28 @@ VulkanDevice *VulkanDevice::FromDevice(VkDevice device)
 {
     auto it = g_device_map.find(device);
     return it == g_device_map.end() ? nullptr : it->second;
+}
+
+void VulkanDevice::SetGplEnabled(bool enabled)
+{
+    const bool next_enabled = gpl_supported && enabled;
+
+    if(enabled && !gpl_supported)
+    {
+        LogWarning("[VulkanDevice] Graphics pipeline library requested but not supported, keeping disabled");
+    }
+
+    gpl_enabled = next_enabled;
+
+    LogInfo("[VulkanDevice] Graphics pipeline library runtime_enabled=%s", gpl_enabled?"yes":"no");
+}
+
+Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GplPipelineRequest &req)
+{
+    (void)req;
+
+    LogWarning("[VulkanDevice] AcquireGraphicsPipeline is not implemented yet in PR-A skeleton");
+    return nullptr;
 }
 
 void VulkanDevice::RegisterGPUBuffer(IGPUBuffer *buf)

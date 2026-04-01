@@ -24,6 +24,7 @@
 #include<unordered_map>
 #include<source_location>
 #include<ostream>
+#include<memory>
 #include<string>
 #include<vector>
 
@@ -45,6 +46,8 @@ class Fence;
 class DeviceQueue;
 class Semaphore;
 class MaterialParameters;
+struct GplPipelineRequest;
+class ILinkBackend;
 
 struct CopyBufferToImageInfo;
 
@@ -56,6 +59,10 @@ class VulkanDevice
     bool draw_phase_active = false;
     std::vector<IGPUBuffer*> gpu_buffer_registry;  // All Layer2 buffers, iterated by ECS UploadSystem
     UnorderedMap<AnsiString, RenderFormat *> render_format_cache;
+    bool gpl_supported = false;
+    bool gpl_enabled = false;
+    std::unique_ptr<ILinkBackend> link_backend_mono;
+    std::unique_ptr<ILinkBackend> link_backend_gpl;
 
     struct ObjectDebugRecord
     {
@@ -151,6 +158,10 @@ public: //内存相关
 
     void SetDrawPhaseActive(bool active) { draw_phase_active = active; }
     bool IsDrawPhaseActive() const { return draw_phase_active; }
+    bool IsGplSupported() const { return gpl_supported; }
+    void SetGplEnabled(bool enabled);
+    bool IsGplEnabled() const { return gpl_enabled; }
+    Pipeline *AcquireGraphicsPipeline(const GplPipelineRequest &req);
 
     // ---- IGPUBuffer Registry (used by RenderBufferUploadSystem) ----
     void RegisterGPUBuffer  (IGPUBuffer *buf);

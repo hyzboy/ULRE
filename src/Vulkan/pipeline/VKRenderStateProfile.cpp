@@ -1,34 +1,24 @@
 #include<hgl/vk/pipeline/VKRenderStateProfile.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
+#include<hgl/type/FNV1a.h>
 #include<cstring>
 
 namespace hgl::graph{
 namespace
 {
-    constexpr uint64_t Fnv1aOffset = 1469598103934665603ull;
-    constexpr uint64_t Fnv1aPrime = 1099511628211ull;
-
     inline void HashBytes(uint64_t &h, const void *ptr, size_t len)
     {
-        if (!ptr || len == 0)
-            return;
-
-        const auto *p = reinterpret_cast<const unsigned char *>(ptr);
-        for (size_t i = 0; i < len; ++i)
-        {
-            h ^= static_cast<uint64_t>(p[i]);
-            h *= Fnv1aPrime;
-        }
+        h = hgl::hash::FNV1aAppendBytes(h, ptr, len);
     }
 
     inline void HashU32(uint64_t &h, uint32_t v)
     {
-        HashBytes(h, &v, sizeof(v));
+        h = hgl::hash::FNV1aAppendValueBytes(h, v);
     }
 
     inline void HashFloat(uint64_t &h, float v)
     {
-        HashBytes(h, &v, sizeof(v));
+        h = hgl::hash::FNV1aAppendValueBytes(h, v);
     }
 
     static bool EqualBlendState(const VkPipelineColorBlendStateCreateInfo &a,
@@ -103,7 +93,7 @@ RenderStateProfile RenderStateProfile::FromPipelineData(const PipelineData &pd, 
 
 uint64_t RenderStateProfile::Hash() const
 {
-    uint64_t h = Fnv1aOffset;
+    uint64_t h = hgl::hash::FNV1aInit<uint64_t>();
 
     HashU32(h, static_cast<uint32_t>(topology));
     HashU32(h, static_cast<uint32_t>(primitive_restart));

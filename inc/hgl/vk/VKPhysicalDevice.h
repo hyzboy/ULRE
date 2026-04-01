@@ -61,6 +61,7 @@ private:
 
     bool support_u8_index=false;
     bool dynamic_state=false;
+    bool graphics_pipeline_library=false;
     VkDeviceSize rebar_size=0;  // Resizable BAR size (0 if not available)
 
 public:
@@ -230,6 +231,7 @@ public:
 
     const VkBool32  SupportSmoothLines          ()const{return features14.smoothLines;}
     const VkBool32  SupportStippledSmoothLines  ()const{return features14.stippledSmoothLines;}
+    const bool      SupportGraphicsPipelineLibrary()const{return graphics_pipeline_library;}
 
     const void      GetPointSize(float &granularity,float &min_size,float &max_size) const
     {
