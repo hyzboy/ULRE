@@ -16,6 +16,7 @@ SET(GEOMETRY_PRIMITIVES_BASIC   InlineGeometryCommon.h
                                 AxisBoundingBoxSquareArray.cpp)
 
 SET(GEOMETRY_PRIMITIVES_SPHERE  SphereDomeTorus.cpp
+                                Dome.cpp
                                 HexSphere.cpp)
 
 SET(GEOMETRY_PRIMITIVES_CYLINDER CylinderConeTorusIndices.cpp

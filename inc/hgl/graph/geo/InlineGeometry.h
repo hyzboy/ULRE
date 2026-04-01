@@ -174,8 +174,9 @@ namespace hgl::graph
 
         /**
             * 创建一个穹顶(三角形)
+            * @param inside_out 是否调转三角形顺序（用于天空半球，从内部观察）
             */
-        Geometry *CreateDome(GeometryCreater *pc, const uint numberSlices);
+        Geometry *CreateDome(GeometryCreater *pc, const uint numberSlices, bool inside_out = false);
 
         struct TorusCreateInfo
         {

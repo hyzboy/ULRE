@@ -391,7 +391,7 @@ private:
 
         builtin_geometries[1] = create_geometry([](GeometryCreater *pc)
         {
-            return CreateDome(pc, 64);
+            return CreateDome(pc, 64,false);
         });
 
         builtin_geometries[2] = create_geometry([](GeometryCreater *pc)
