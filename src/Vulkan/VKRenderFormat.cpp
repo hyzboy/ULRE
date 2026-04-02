@@ -122,7 +122,8 @@ Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const Pipeli
         Pipeline *p = device->AcquireGraphicsPipeline(req);
         if (p)
         {
-            pipeline_list.Add(p);
+            // Unified acquire may return a pipeline already owned by this RenderFormat
+            // (created through RenderFormat::CreatePipeline(name,...)). Do not re-add.
             pipeline_by_name.Add(cache_key, p);
             return p;
         }

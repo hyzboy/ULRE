@@ -30,6 +30,7 @@
 #include<string>
 #include<vector>
 #include<hgl/vk/pipeline/VKGplRequest.h>
+#include<hgl/vk/pipeline/VKPipelineLibraryCache.h>
 
 namespace hgl::graph{
 class RenderFormat;
@@ -66,6 +67,7 @@ class VulkanDevice
     bool gpl_enabled = false;
     std::unique_ptr<ILinkBackend> link_backend_mono;
     std::unique_ptr<ILinkBackend> link_backend_gpl;
+    PipelineLibraryCache pipeline_library_cache;
     std::unordered_map<LinkedPipelineKey, Pipeline *> linked_pipeline_cache;
     mutable std::mutex linked_pipeline_cache_mutex;
     std::atomic<uint64_t> linked_pipeline_cache_hits{0};
@@ -170,6 +172,7 @@ public: //内存相关
     void SetGplEnabled(bool enabled);
     bool IsGplEnabled() const { return gpl_enabled; }
     Pipeline *AcquireGraphicsPipeline(const GplPipelineRequest &req);
+    PipelineLibraryCache::Snapshot GetPipelineLibraryCacheSnapshot() const { return pipeline_library_cache.GetSnapshot(); }
 
     // ---- IGPUBuffer Registry (used by RenderBufferUploadSystem) ----
     void RegisterGPUBuffer  (IGPUBuffer *buf);

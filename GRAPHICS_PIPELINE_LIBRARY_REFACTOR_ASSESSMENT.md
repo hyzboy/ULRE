@@ -1,8 +1,33 @@
 # Graphics Pipeline Libraries 可执行重构方案
 
 - 项目: ULRE
-- 日期: 2026-03-31
+- 日期: 2026-04-03
 - 目标: 按“VkDevice 总管理 + 4类分片去重 + Link 统一出口 + 批处理阶段决策”的架构完成可回退重构，并让 GPL/非GPL 共用同一控制流
+
+## 0. 当前完成进度（截至 2026-04-03）
+
+### 已完成
+
+1. `VulkanDevice` 统一入口 `AcquireGraphicsPipeline(req)` 已接入请求校验、`RenderStateProfile` 计算、`LinkedPipelineKey` 计算、缓存查询与后端分派骨架。
+2. `VKGplRequest` 与 key 构建函数已落地（含稳定哈希来源、debug 字段隔离）。
+3. `RenderStateProfile` 已接入请求链并参与 link key。
+4. `LinkedPipelineCache` 占位实现已落地（互斥保护、命中/未命中/插入统计、节流日志）。
+5. `RenderFormat::CreatePipeline(...)` 已接入统一入口转发，统一入口失败时保留 legacy 回退。
+6. 构建系统已清理 `ULRE_GPL_ENABLE` 与 `ULRE_PIPELINE_UNIFIED_ACQUIRE`，策略改为“设备支持 GPL 即启用”。
+7. 已落地 `PipelineLibraryCache`（VI/PR/FS/FO 四维虚拟库），并在 `AcquireGraphicsPipeline` 中接入命中统计与节流观测日志。
+8. `MonolithicLinkBackend::Build(...)` 已实现真实创建路径，统一入口可通过单体后端产出 `Pipeline*`。
+9. `GplLinkBackend::Build(...)` 已实现最小可运行路径（当前临时回退到 monolithic create，避免统一入口在 GPL 设备上退回 legacy）。
+
+### 进行中
+
+1. `GplLinkBackend::Build(...)` 真实 GPL library/link 构建逻辑未完成（当前为可运行过渡实现）。
+2. `RenderFormat` 旧去重缓存和旧直连创建路径尚未彻底移除（仅过渡桥接完成）。
+
+### 未开始
+
+1. `PrimitiveBatchPipeline` 前移 pipeline 决策与批处理阶段接入。
+2. 场景级 pipeline 预热接口与性能面板补齐。
+3. 全量回归、性能压测与稳定性压测。
 
 ## 1. 最终架构目标
 
@@ -36,7 +61,7 @@
 
 ## 决策 C: 双路径可回退
 
-- 设备支持 GPL 且开关开启: Link 后端使用 GPL libraries。
+- 设备支持 GPL: Link 后端使用 GPL libraries。
 - 否则: Link 后端使用 monolithic `vkCreateGraphicsPipelines`。
 
 ## 决策 D: 统一控制流（关键）
@@ -44,9 +69,7 @@
 - 两种模式都必须经过同一入口 `AcquireGraphicsPipeline(req)`。
 - 两种模式都必须构建同一套 `VertexInputKey/PreRasterKey/FragmentShaderKey/FragmentOutputKey/LinkedPipelineKey`。
 - 两种模式都必须命中同一 `LinkedPipelineCache`。
-- 仅最后一步后端不同：
-   - GPL: `CreateLinkedFromLibraries(...)`
-   - 非GPL: `CreateMonolithicFromRequest(...)`
+- 仅最后一步后端不同：GPL 使用 `CreateLinkedFromLibraries(...)`；非GPL 使用 `CreateMonolithicFromRequest(...)`。
 - 禁止存在“非GPL直接走旧 RenderFormat::CreatePipeline 的旁路”。
 
 ## 3. 新增数据结构与接口草案
@@ -156,7 +179,7 @@
 
 ## 5. 分阶段执行计划
 
-## 阶段 0: 预备改造（1-2 天）
+## 阶段 0: 预备改造（1-2 天，已完成）
 
 任务:
 
@@ -171,7 +194,7 @@
 2. GPL 支持设备默认走统一路径，不支持设备自动回落
 3. 非GPL路径改为通过 `ILinkBackend(Monolithic)` 调用，而不是旧旁路
 
-## 阶段 1: 数据模型与 key 上线（2-4 天）
+## 阶段 1: 数据模型与 key 上线（2-4 天，已完成）
 
 任务:
 
@@ -184,7 +207,7 @@
 1. 单元测试验证 key 等价性与哈希稳定性
 2. 从现有 `Material + VIL + RenderFormat + PipelineData` 可生成请求对象
 
-## 阶段 2: 4 类 library cache（4-6 天）
+## 阶段 2: 4 类 library cache（4-6 天，进行中）
 
 任务:
 
@@ -198,7 +221,7 @@
 1. 重复请求命中率正确
 2. 销毁流程无泄漏
 
-## 阶段 3: link cache 与对外 Acquire（3-5 天）
+## 阶段 3: link cache 与对外 Acquire（3-5 天，进行中）
 
 任务:
 
@@ -215,7 +238,7 @@
 2. 在非GPL模式下，输出与旧路径一致（画面/状态一致）
 3. 两模式 `LinkedPipelineKey` 统计可对齐（命中行为可比）
 
-## 阶段 4: 接入批处理阶段（3-4 天）
+## 阶段 4: 接入批处理阶段（3-4 天，未开始）
 
 任务:
 
@@ -229,7 +252,7 @@
 1. 帧内提交路径无 pipeline 创建日志
 2. 关键场景渲染正确
 
-## 阶段 5: 清理与推广（2-3 天）
+## 阶段 5: 清理与推广（2-3 天，未开始）
 
 任务:
 
@@ -273,7 +296,7 @@
 ## 7.1 功能验收
 
 1. Primitive/Text/Line/Terrain/Quad 全路径可渲染
-2. GPL 开关切换不影响画面结果
+2. GPL 支持/不支持设备两路径画面结果一致
 3. 设备不支持 GPL 时自动回退
 4. GPL/非GPL 两模式输出的 RenderStateProfile 哈希一致（同请求）
 
@@ -292,33 +315,24 @@
 
 ## 8. 回滚策略
 
-1. 运行时开关一键回退 monolithic。
+1. 保留统一入口，异常时自动降级到 `MonolithicLinkBackend`。
 2. 保留旧创建路径至少两个里程碑版本。
 3. 新路径任何异常时自动降级，不阻断渲染。
 4. 降级后仍走统一 `AcquireGraphicsPipeline(req)`，只切换 `MonolithicLinkBackend`
 
 ## 9. 风险与应对
 
-1. 驱动兼容差异
-- 应对: 严格 feature gate + fallback。
-
-2. key 设计不完整导致错误复用
-- 应对: key 字段评审清单 + 回放测试。
-
-3. 生命周期复杂化
-- 应对: manager 持有与引用计数统一，`Pipeline` 仅作为可绑定包装。
-
-4. 性能收益不稳定
-- 应对: 先做观测再优化，预热策略按场景统计驱动。
-
-5. 控制流分叉回潮
-- 应对: 代码评审强制规则：除 Link 后端外，不允许出现 GPL/非GPL 条件分支。
+- 驱动兼容差异。应对: 严格 feature gate + fallback。
+- key 设计不完整导致错误复用。应对: key 字段评审清单 + 回放测试。
+- 生命周期复杂化。应对: manager 持有与引用计数统一，`Pipeline` 仅作为可绑定包装。
+- 性能收益不稳定。应对: 先做观测再优化，预热策略按场景统计驱动。
+- 控制流分叉回潮。应对: 代码评审强制规则：除 Link 后端外，不允许出现 GPL/非GPL 条件分支。
 
 ## 10. 本方案执行顺序建议
 
-1. 先提交阶段 0 和阶段 1（不改变渲染行为）。
-2. 再提交阶段 2 和阶段 3（启用 GPL 但默认关闭）。
-3. 最后提交阶段 4 和阶段 5（接入生产路径并逐步开启）。
+1. 先完成阶段 2 与阶段 3 的后端实装（不改变上层 API）。
+2. 再接入阶段 4（批处理前移），保留统一入口内自动降级。
+3. 最后执行阶段 5（删除旧旁路、补齐观测与预热）。
 
 补充里程碑检查:
 
@@ -328,7 +342,7 @@
 
 该顺序可以保证每个 PR 都可独立回退，且风险可控。
 
-## 11. 阶段0+阶段1代码骨架清单（可直接开工）
+## 11. 阶段0+阶段1代码骨架清单（已落地，供对照）
 
 本节只给最小骨架，不切换现有渲染行为。
 
@@ -520,18 +534,18 @@ public:
 建议改动:
 
 1. 增加辅助函数 `BuildPipelineRequest(item/material/render_target)`。
-2. 在 `BuildMaterialBatches` 内加入可切换路径（默认仍旧逻辑）。
-3. 通过配置开关控制是否启用新入口。
+2. 在 `BuildMaterialBatches` 内接入统一入口（不再引入独立开关）。
+3. 失败场景仅允许在统一入口内部降级，不允许新增旁路。
 
 ## 11.7 PR切分建议（直接按单子执行）
 
-1. PR-A: `ILinkBackend` + `VulkanDevice` GPL开关与探测（不改渲染路径）
-2. PR-B: `GplPipelineRequest` + `RenderStateProfile` + 哈希测试
-3. PR-C: `RenderFormat` 内部请求转发骨架（默认旧路径）
-4. PR-D: `PrimitiveBatchPipeline` 预埋新入口（默认关闭）
+1. PR-A: `ILinkBackend` + `VulkanDevice` GPL探测与统一入口骨架（已完成）
+2. PR-B: `GplPipelineRequest` + `RenderStateProfile` + key/hash 接入（已完成）
+3. PR-C: `RenderFormat` 内部请求转发骨架 + fallback（已完成）
+4. PR-D: `PrimitiveBatchPipeline` 前移新入口（未开始）
 
 每个 PR 必须满足:
 
 1. 可单独回滚。
-2. 关闭新开关时输出与当前一致。
+2. 统一入口自动降级时输出与当前一致。
 3. 新增日志不超过 Debug 级别。

@@ -169,6 +169,21 @@ Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GplPipelineRequest &req)
         RenderStateProfile::FromPipelineData(*req.pipeline_data, req.primitive, req.primitive_restart);
 
     const LinkedPipelineKey linked_key = BuildLinkedPipelineKey(req, state_profile);
+    pipeline_library_cache.Touch(linked_key);
+
+    {
+        const PipelineLibraryCache::Snapshot s = pipeline_library_cache.GetSnapshot();
+        const uint64_t total_inserts = s.vertex_input_inserts + s.pre_raster_inserts + s.fragment_shader_inserts + s.fragment_output_inserts;
+        if (should_log_counter(total_inserts))
+        {
+            LogDebug("[VulkanDevice] VirtualLibraryCache VI=%zu PR=%zu FS=%zu FO=%zu inserts=%llu",
+                     s.vertex_input_size,
+                     s.pre_raster_size,
+                     s.fragment_shader_size,
+                     s.fragment_output_size,
+                     static_cast<unsigned long long>(total_inserts));
+        }
+    }
 
     {
         std::lock_guard<std::mutex> lock(linked_pipeline_cache_mutex);
