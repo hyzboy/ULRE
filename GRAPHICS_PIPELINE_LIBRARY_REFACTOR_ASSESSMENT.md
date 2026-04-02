@@ -19,6 +19,7 @@
 9. `GplLinkBackend::Build(...)` 已实现最小可运行路径（当前临时回退到 monolithic create，避免统一入口在 GPL 设备上退回 legacy）。
 10. `PrimitiveBatchPipeline::BuildMaterialBatches(...)` 已开始前移 pipeline 决策：批处理阶段按 `RenderFormat + Material + VIL + PipelineData` 统一获取 pipeline 并回写到 `Primitive`。
 11. 批处理前移链路已补齐失败统计、节流告警与保底策略（获取失败保留原 pipeline，不中断渲染）。
+12. `TextRenderPipeline::ProcessInputs(...)` 已接入构建阶段 pipeline 预解析（首次创建 + 后续按模板刷新），并在已有 primitive 上同步更新 pipeline。
 
 ### 进行中
 

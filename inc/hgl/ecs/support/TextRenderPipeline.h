@@ -2,6 +2,7 @@
 
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/font/TextLayout.h>
+#include<hgl/log/Log.h>
 #include<cstdint>
 #include<unordered_map>
 #include<vector>
@@ -37,6 +38,8 @@ namespace hgl
 
         class TextRenderPipeline
         {
+            OBJECT_LOGGER
+
         private:
             struct RenderResources
             {

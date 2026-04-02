@@ -31,11 +31,21 @@
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/type/AlignUtil.h>
 #include<cmath>
+#include<atomic>
 
 namespace hgl::ecs
 {
     namespace
     {
+        std::atomic<uint64_t> g_text_pipeline_resolve_attempts{0};
+        std::atomic<uint64_t> g_text_pipeline_resolve_successes{0};
+        std::atomic<uint64_t> g_text_pipeline_resolve_failures{0};
+
+        inline bool ShouldLogPow2(const uint64_t v)
+        {
+            return v != 0 && ((v & (v - 1)) == 0);
+        }
+
         graph::TileFont* CreateTileFont(graph::RenderContext* rc,
                                         graph::FontSource* fs,
                                         int limit_count,
@@ -423,6 +433,10 @@ namespace hgl::ecs
                                            graph::RenderFormat* render_pass,
                                            graph::VulkanDevice* device)
     {
+        uint32_t frame_pipeline_attempts = 0;
+        uint32_t frame_pipeline_successes = 0;
+        uint32_t frame_pipeline_failures = 0;
+
         for (auto& pair : inputs)
         {
             auto& input = pair.second;
@@ -473,6 +487,41 @@ namespace hgl::ecs
                 resources->pipeline = render_pass->CreatePipeline(mi, graph::InlinePipeline::Solid2D);
                 if (!resources->pipeline)
                     continue;
+
+                ++frame_pipeline_attempts;
+                ++frame_pipeline_successes;
+                ++g_text_pipeline_resolve_attempts;
+                ++g_text_pipeline_resolve_successes;
+            }
+            else
+            {
+                const graph::PipelineData* template_pd = resources->pipeline->GetData();
+                if (template_pd)
+                {
+                    ++frame_pipeline_attempts;
+                    ++g_text_pipeline_resolve_attempts;
+
+                    graph::Pipeline* refreshed = render_pass->CreatePipeline(mi, template_pd, false);
+                    if (refreshed)
+                    {
+                        resources->pipeline = refreshed;
+                        ++frame_pipeline_successes;
+                        ++g_text_pipeline_resolve_successes;
+
+                        if (resources->primitive)
+                            resources->primitive->UpdatePipeline(refreshed);
+                    }
+                    else
+                    {
+                        ++frame_pipeline_failures;
+                        const uint64_t failures_total = ++g_text_pipeline_resolve_failures;
+                        if (ShouldLogPow2(failures_total))
+                        {
+                            LogWarning("[ECS::TextRenderPipeline] Pipeline pre-resolve failed: total_failures=%llu",
+                                       static_cast<unsigned long long>(failures_total));
+                        }
+                    }
+                }
             }
 
             graph::TextGeometry* geometry = resources->geometry;
@@ -526,6 +575,21 @@ namespace hgl::ecs
             }
 
             resources->last_string_count = static_cast<uint32_t>(input.texts.size());
+        }
+
+        if (frame_pipeline_attempts || frame_pipeline_failures)
+        {
+            const uint64_t success_total = g_text_pipeline_resolve_successes.load();
+            const uint64_t failure_total = g_text_pipeline_resolve_failures.load();
+            if (frame_pipeline_failures > 0 || ShouldLogPow2(success_total + failure_total))
+            {
+                LogDebug("[ECS::TextRenderPipeline] Pipeline resolve summary: attempts=%u success=%u fail=%u totals(s=%llu,f=%llu)",
+                         frame_pipeline_attempts,
+                         frame_pipeline_successes,
+                         frame_pipeline_failures,
+                         static_cast<unsigned long long>(success_total),
+                         static_cast<unsigned long long>(failure_total));
+            }
         }
     }
 
