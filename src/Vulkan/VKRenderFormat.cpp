@@ -4,11 +4,16 @@
 #include<cstdio>
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
+#include<hgl/vk/pipeline/VKGplRequest.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
+#ifndef ULRE_PIPELINE_UNIFIED_ACQUIRE
+#define ULRE_PIPELINE_UNIFIED_ACQUIRE 0
+#endif
+
 RenderFormat::RenderFormat(VulkanDevice *dev,const AnsiString &n,const VkFormatList &cf,VkFormat df)
 {
     device=dev;
@@ -90,6 +95,9 @@ Pipeline *RenderFormat::CreatePipeline(const AnsiString &name,PipelineData *pd,c
 
 Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart)
 {
+    if (!mtl || !vil || !cpd)
+        return nullptr;
+
     // Build dedup key from stable pointer identities
     char key_buf[96];
     std::snprintf(key_buf, sizeof(key_buf), "%llu|%llu|%llu|%u",
@@ -102,6 +110,31 @@ Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const Pipeli
     Pipeline *cached = nullptr;
     if (pipeline_by_name.Get(cache_key, cached))
         return cached;
+
+#if ULRE_PIPELINE_UNIFIED_ACQUIRE
+    if (device)
+    {
+        GplPipelineRequest req;
+        req.material = mtl;
+        req.vil = vil;
+        req.render_format = this;
+        req.pipeline_data = cpd;
+        req.primitive = mtl->GetPrimitiveType();
+        req.primitive_restart = prim_restart;
+        req.debug_name = mtl->GetName();
+
+        Pipeline *p = device->AcquireGraphicsPipeline(req);
+        if (p)
+        {
+            pipeline_list.Add(p);
+            pipeline_by_name.Add(cache_key, p);
+            return p;
+        }
+
+        LogDebug("[RenderFormat::CreatePipeline] Unified acquire path returned null, fallback to legacy path. material=%s",
+                 mtl->GetName().c_str());
+    }
+#endif
 
     PipelineData *pd=new PipelineData(cpd);
 
