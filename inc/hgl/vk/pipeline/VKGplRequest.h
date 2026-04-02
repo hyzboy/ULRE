@@ -10,6 +10,7 @@ class Material;
 class RenderFormat;
 class VertexInputLayout;
 struct PipelineData;
+struct RenderStateProfile;
 
 struct VertexInputKey
 {
@@ -64,6 +65,15 @@ struct GplPipelineRequest
     bool primitive_restart = false;
     AnsiString debug_name;
 };
+
+bool IsValidGplPipelineRequest(const GplPipelineRequest &req);
+
+VertexInputKey BuildVertexInputKey(const VertexInputLayout *vil);
+PreRasterKey BuildPreRasterKey(const GplPipelineRequest &req);
+FragmentShaderKey BuildFragmentShaderKey(const GplPipelineRequest &req);
+FragmentOutputKey BuildFragmentOutputKey(const RenderFormat *rf);
+LinkedPipelineKey BuildLinkedPipelineKey(const GplPipelineRequest &req,
+                                         const RenderStateProfile &state_profile);
 }//namespace hgl::graph
 
 namespace std

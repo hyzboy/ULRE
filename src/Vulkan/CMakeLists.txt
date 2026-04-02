@@ -152,6 +152,7 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
                             ${PIPELINE_SOURCE_PATH}/VKPipelineDataManage.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineDataSaveLoad.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineHash.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKGplRequest.cpp
                             ${PIPELINE_SOURCE_PATH}/VKLinkBackend.cpp
                             ${PIPELINE_SOURCE_PATH}/VKRenderStateProfile.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipeline.cpp

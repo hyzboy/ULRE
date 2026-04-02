@@ -8,6 +8,7 @@
 #include<hgl/vk/pipeline/VKComputePipeline.h>
 #include<hgl/vk/pipeline/VKLinkBackend.h>
 #include<hgl/vk/pipeline/VKGplRequest.h>
+#include<hgl/vk/pipeline/VKRenderStateProfile.h>
 #include<hgl/vk/VKObjectName.h>
 #include<hgl/vk/IGPUBuffer.h>
 #include<hgl/log/Log.h>
@@ -140,10 +141,59 @@ void VulkanDevice::SetGplEnabled(bool enabled)
 
 Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GplPipelineRequest &req)
 {
-    (void)req;
+    if (!IsValidGplPipelineRequest(req))
+    {
+        LogWarning("[VulkanDevice] AcquireGraphicsPipeline invalid request: material=%p vil=%p render_format=%p pipeline_data=%p",
+                   static_cast<const void *>(req.material),
+                   static_cast<const void *>(req.vil),
+                   static_cast<const void *>(req.render_format),
+                   static_cast<const void *>(req.pipeline_data));
+        return nullptr;
+    }
 
-    LogWarning("[VulkanDevice] AcquireGraphicsPipeline is not implemented yet in PR-A skeleton");
-    return nullptr;
+    const RenderStateProfile state_profile =
+        RenderStateProfile::FromPipelineData(*req.pipeline_data, req.primitive, req.primitive_restart);
+
+    const LinkedPipelineKey linked_key = BuildLinkedPipelineKey(req, state_profile);
+    (void)linked_key;
+
+    ILinkBackend *backend = nullptr;
+
+    if (gpl_enabled && link_backend_gpl)
+        backend = link_backend_gpl.get();
+    else
+        backend = link_backend_mono.get();
+
+    if (!backend)
+    {
+        LogError("[VulkanDevice] AcquireGraphicsPipeline has no available link backend");
+        return nullptr;
+    }
+
+    PipelineBuildContext ctx;
+    ctx.device = this;
+    ctx.pipeline_cache = GetPipelineCache();
+
+    Pipeline *result = backend->Build(ctx, req);
+
+    if (!result)
+    {
+        static bool warned_mono_failed = false;
+        static bool warned_gpl_failed = false;
+
+        bool *warned = (backend->GetType() == LinkBackendType::Gpl)
+                     ? &warned_gpl_failed
+                     : &warned_mono_failed;
+
+        if (!(*warned))
+        {
+            LogWarning("[VulkanDevice] AcquireGraphicsPipeline backend build failed once: backend=%s",
+                       backend->GetType() == LinkBackendType::Gpl ? "gpl" : "mono");
+            *warned = true;
+        }
+    }
+
+    return result;
 }
 
 void VulkanDevice::RegisterGPUBuffer(IGPUBuffer *buf)
