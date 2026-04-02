@@ -18,6 +18,7 @@
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKMaterialInstance.h>   // Phase 4: GetDomain()
+#include<hgl/vk/VKRenderTarget.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
@@ -474,6 +475,8 @@ namespace hgl::ecs
         auto& cache = world->GetRenderFrameCache();
 
         auto buffer_manager = GetBufferManager();
+        auto* render_target = world->GetRenderTarget();
+        auto* render_format = render_target ? render_target->GetRenderFormat() : nullptr;
 
         for (auto& itemPtr : cache.renderItems)
         {
@@ -483,6 +486,42 @@ namespace hgl::ecs
 
             auto* material = item->GetMaterial();
             auto* pipeline = item->GetPipeline();
+
+            // Stage-4 prework: resolve pipeline before renderer hot path.
+            // Reuse current pipeline's PipelineData as creation template.
+            if (material && render_format)
+            {
+                const graph::PipelineData* pipeline_data = nullptr;
+                const graph::VIL* vil = nullptr;
+                bool prim_restart = false;
+
+                auto* mi = item->GetMaterialInstance();
+                if (mi)
+                    vil = mi->GetVIL();
+
+                if (!vil && pipeline)
+                    vil = pipeline->GetVIL();
+
+                if (!vil)
+                    vil = material->GetDefaultVIL();
+
+                if (pipeline && pipeline->GetData())
+                {
+                    pipeline_data = pipeline->GetData();
+                    prim_restart = (pipeline_data->input_assembly.primitiveRestartEnable == VK_TRUE);
+                }
+
+                if (vil && pipeline_data)
+                {
+                    if (graph::Pipeline* acquired = render_format->CreatePipeline(material, vil, pipeline_data, prim_restart))
+                    {
+                        if (auto* primitive = item->GetPrimitive())
+                            primitive->UpdatePipeline(acquired);
+
+                        pipeline = acquired;
+                    }
+                }
+            }
 
             if (!material || !pipeline)
                 continue;

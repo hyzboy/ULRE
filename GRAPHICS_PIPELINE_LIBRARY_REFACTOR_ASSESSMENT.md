@@ -17,17 +17,18 @@
 7. 已落地 `PipelineLibraryCache`（VI/PR/FS/FO 四维虚拟库），并在 `AcquireGraphicsPipeline` 中接入命中统计与节流观测日志。
 8. `MonolithicLinkBackend::Build(...)` 已实现真实创建路径，统一入口可通过单体后端产出 `Pipeline*`。
 9. `GplLinkBackend::Build(...)` 已实现最小可运行路径（当前临时回退到 monolithic create，避免统一入口在 GPL 设备上退回 legacy）。
+10. `PrimitiveBatchPipeline::BuildMaterialBatches(...)` 已开始前移 pipeline 决策：批处理阶段按 `RenderFormat + Material + VIL + PipelineData` 统一获取 pipeline 并回写到 `Primitive`。
 
 ### 进行中
 
 1. `GplLinkBackend::Build(...)` 真实 GPL library/link 构建逻辑未完成（当前为可运行过渡实现）。
 2. `RenderFormat` 旧去重缓存和旧直连创建路径尚未彻底移除（仅过渡桥接完成）。
+3. `PrimitiveBatchPipeline` 仅完成前移接入骨架，尚需补齐失败统计/兜底策略与覆盖测试。
 
 ### 未开始
 
-1. `PrimitiveBatchPipeline` 前移 pipeline 决策与批处理阶段接入。
-2. 场景级 pipeline 预热接口与性能面板补齐。
-3. 全量回归、性能压测与稳定性压测。
+1. 场景级 pipeline 预热接口与性能面板补齐。
+2. 全量回归、性能压测与稳定性压测。
 
 ## 1. 最终架构目标
 
@@ -238,7 +239,7 @@
 2. 在非GPL模式下，输出与旧路径一致（画面/状态一致）
 3. 两模式 `LinkedPipelineKey` 统计可对齐（命中行为可比）
 
-## 阶段 4: 接入批处理阶段（3-4 天，未开始）
+## 阶段 4: 接入批处理阶段（3-4 天，进行中）
 
 任务:
 
