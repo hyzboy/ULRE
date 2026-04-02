@@ -22,11 +22,14 @@
 #include<type_traits>
 #include<utility>
 #include<unordered_map>
+#include<mutex>
+#include<atomic>
 #include<source_location>
 #include<ostream>
 #include<memory>
 #include<string>
 #include<vector>
+#include<hgl/vk/pipeline/VKGplRequest.h>
 
 namespace hgl::graph{
 class RenderFormat;
@@ -63,6 +66,11 @@ class VulkanDevice
     bool gpl_enabled = false;
     std::unique_ptr<ILinkBackend> link_backend_mono;
     std::unique_ptr<ILinkBackend> link_backend_gpl;
+    std::unordered_map<LinkedPipelineKey, Pipeline *> linked_pipeline_cache;
+    mutable std::mutex linked_pipeline_cache_mutex;
+    std::atomic<uint64_t> linked_pipeline_cache_hits{0};
+    std::atomic<uint64_t> linked_pipeline_cache_misses{0};
+    std::atomic<uint64_t> linked_pipeline_cache_inserts{0};
 
     struct ObjectDebugRecord
     {

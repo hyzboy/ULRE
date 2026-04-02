@@ -112,6 +112,11 @@ VulkanDevice::~VulkanDevice()
 
     LogInfo("=== End VulkanDevice Destructor ===");
 
+    {
+        std::lock_guard<std::mutex> lock(linked_pipeline_cache_mutex);
+        linked_pipeline_cache.clear();
+    }
+
     for(auto &kv:render_format_cache)
         delete kv.second;
     render_format_cache.Clear();
@@ -141,6 +146,12 @@ void VulkanDevice::SetGplEnabled(bool enabled)
 
 Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GplPipelineRequest &req)
 {
+    auto should_log_counter = [](const uint64_t v) -> bool
+    {
+        // Log at 1,2,4,8... to avoid log spam while still exposing trend.
+        return v != 0 && ((v & (v - 1)) == 0);
+    };
+
     if (!IsValidGplPipelineRequest(req))
     {
         LogWarning("[VulkanDevice] AcquireGraphicsPipeline invalid request: material=%p vil=%p render_format=%p pipeline_data=%p",
@@ -155,7 +166,35 @@ Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GplPipelineRequest &req)
         RenderStateProfile::FromPipelineData(*req.pipeline_data, req.primitive, req.primitive_restart);
 
     const LinkedPipelineKey linked_key = BuildLinkedPipelineKey(req, state_profile);
-    (void)linked_key;
+
+    {
+        std::lock_guard<std::mutex> lock(linked_pipeline_cache_mutex);
+        auto it = linked_pipeline_cache.find(linked_key);
+        if (it != linked_pipeline_cache.end() && it->second)
+        {
+            const uint64_t hits = ++linked_pipeline_cache_hits;
+            if (should_log_counter(hits))
+            {
+                LogDebug("[VulkanDevice] LinkedPipelineCache HIT count=%llu misses=%llu inserts=%llu size=%zu",
+                         static_cast<unsigned long long>(hits),
+                         static_cast<unsigned long long>(linked_pipeline_cache_misses.load()),
+                         static_cast<unsigned long long>(linked_pipeline_cache_inserts.load()),
+                         linked_pipeline_cache.size());
+            }
+            return it->second;
+        }
+    }
+
+    const uint64_t misses = ++linked_pipeline_cache_misses;
+    if (should_log_counter(misses))
+    {
+        std::lock_guard<std::mutex> lock(linked_pipeline_cache_mutex);
+        LogDebug("[VulkanDevice] LinkedPipelineCache MISS count=%llu hits=%llu inserts=%llu size=%zu",
+                 static_cast<unsigned long long>(misses),
+                 static_cast<unsigned long long>(linked_pipeline_cache_hits.load()),
+                 static_cast<unsigned long long>(linked_pipeline_cache_inserts.load()),
+                 linked_pipeline_cache.size());
+    }
 
     ILinkBackend *backend = nullptr;
 
@@ -190,6 +229,20 @@ Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GplPipelineRequest &req)
             LogWarning("[VulkanDevice] AcquireGraphicsPipeline backend build failed once: backend=%s",
                        backend->GetType() == LinkBackendType::Gpl ? "gpl" : "mono");
             *warned = true;
+        }
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(linked_pipeline_cache_mutex);
+        linked_pipeline_cache[linked_key] = result;
+        const uint64_t inserts = ++linked_pipeline_cache_inserts;
+        if (should_log_counter(inserts))
+        {
+            LogDebug("[VulkanDevice] LinkedPipelineCache INSERT count=%llu hits=%llu misses=%llu size=%zu",
+                     static_cast<unsigned long long>(inserts),
+                     static_cast<unsigned long long>(linked_pipeline_cache_hits.load()),
+                     static_cast<unsigned long long>(linked_pipeline_cache_misses.load()),
+                     linked_pipeline_cache.size());
         }
     }
 

@@ -4,7 +4,9 @@
 #include<hgl/vk/VKRenderFormat.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/type/FNV1a.h>
+#include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<cstring>
+#include<cstddef>
 
 namespace hgl::graph{
 namespace
@@ -37,6 +39,60 @@ namespace
         HashU64(h, static_cast<uint64_t>(len));
         if (len > 0)
             HashBytes(h, p, len);
+    }
+
+    void HashSpecializationInfo(uint64_t &h, const VkSpecializationInfo *spec)
+    {
+        if (!spec)
+        {
+            HashU32(h, 0u);
+            HashU32(h, 0u);
+            return;
+        }
+
+        HashU32(h, spec->mapEntryCount);
+        if (spec->mapEntryCount > 0 && spec->pMapEntries)
+            HashBytes(h, spec->pMapEntries, sizeof(VkSpecializationMapEntry) * spec->mapEntryCount);
+
+        HashU64(h, static_cast<uint64_t>(spec->dataSize));
+        if (spec->dataSize > 0 && spec->pData)
+            HashBytes(h, spec->pData, spec->dataSize);
+    }
+
+    void HashShaderStages(uint64_t &h,
+                          const ShaderStageCreateInfoList &stages,
+                          const bool include_fragment,
+                          const bool include_non_fragment)
+    {
+        uint32_t filtered_count = 0;
+
+        const VkPipelineShaderStageCreateInfo *list = stages.GetData();
+        const uint32_t count = stages.GetCount();
+
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            const auto &s = list[i];
+            const bool is_fragment = (s.stage == VK_SHADER_STAGE_FRAGMENT_BIT);
+
+            if ((is_fragment && !include_fragment) || (!is_fragment && !include_non_fragment))
+                continue;
+
+            ++filtered_count;
+            HashU32(h, static_cast<uint32_t>(s.stage));
+
+            const char *entry = s.pName;
+            const size_t entry_len = entry ? std::strlen(entry) : 0;
+            HashU64(h, static_cast<uint64_t>(entry_len));
+            if (entry_len > 0)
+                HashBytes(h, entry, entry_len);
+
+            // Shader module handle is part of stage identity in current runtime.
+            HashU64(h, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(s.module)));
+
+            HashSpecializationInfo(h, s.pSpecializationInfo);
+        }
+
+        HashU32(h, filtered_count);
     }
 }
 
@@ -84,24 +140,7 @@ PreRasterKey BuildPreRasterKey(const GplPipelineRequest &req)
     HashBool(h, req.primitive_restart);
 
     const auto &stages = req.material->GetStageList();
-    HashU32(h, stages.GetCount());
-
-    const VkPipelineShaderStageCreateInfo *list = stages.GetData();
-    for (uint32_t i = 0; i < stages.GetCount(); ++i)
-    {
-        const auto &s = list[i];
-
-        if (s.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
-            continue;
-
-        HashU32(h, static_cast<uint32_t>(s.stage));
-
-        const char *entry = s.pName;
-        const size_t entry_len = entry ? std::strlen(entry) : 0;
-        HashU64(h, static_cast<uint64_t>(entry_len));
-        if (entry_len > 0)
-            HashBytes(h, entry, entry_len);
-    }
+    HashShaderStages(h, stages, false, true);
 
     return { h };
 }
@@ -116,24 +155,7 @@ FragmentShaderKey BuildFragmentShaderKey(const GplPipelineRequest &req)
     HashAnsiString(h, req.material->GetName());
 
     const auto &stages = req.material->GetStageList();
-    HashU32(h, stages.GetCount());
-
-    const VkPipelineShaderStageCreateInfo *list = stages.GetData();
-    for (uint32_t i = 0; i < stages.GetCount(); ++i)
-    {
-        const auto &s = list[i];
-
-        if (s.stage != VK_SHADER_STAGE_FRAGMENT_BIT)
-            continue;
-
-        HashU32(h, static_cast<uint32_t>(s.stage));
-
-        const char *entry = s.pName;
-        const size_t entry_len = entry ? std::strlen(entry) : 0;
-        HashU64(h, static_cast<uint64_t>(entry_len));
-        if (entry_len > 0)
-            HashBytes(h, entry, entry_len);
-    }
+    HashShaderStages(h, stages, true, false);
 
     return { h };
 }
@@ -170,9 +192,27 @@ LinkedPipelineKey BuildLinkedPipelineKey(const GplPipelineRequest &req,
     {
         HashAnsiString(layout_hash, req.material->GetName());
         HashU32(layout_hash, static_cast<uint32_t>(req.material->GetPrimitiveType()));
+        HashBool(layout_hash, req.material->hasLocalToWorld());
+        HashBool(layout_hash, req.material->hasMI());
+        HashU32(layout_hash, req.material->GetMIDataBytes());
+        HashU32(layout_hash, req.material->GetMIMaxCount());
+        HashU32(layout_hash, req.material->GetTextureArraySlotFlags());
+
+        for (uint32_t i = 0; i < static_cast<uint32_t>(DESCRIPTOR_SET_TYPE_COUNT); ++i)
+            HashBool(layout_hash, req.material->hasSet(static_cast<DescriptorSetType>(i)));
+
+        const auto &binding_contract = req.material->GetBindingContract();
+        for (size_t i = 0; i < size_t(mtl::UBODescriptorSemantic::RANGE_SIZE); ++i)
+            HashU32(layout_hash, binding_contract.ubos[i]);
+
+        for (size_t i = 0; i < size_t(mtl::SSBODescriptorSemantic::RANGE_SIZE); ++i)
+            HashU32(layout_hash, binding_contract.ssbos[i]);
 
         const auto &stages = req.material->GetStageList();
-        HashU32(layout_hash, stages.GetCount());
+        HashShaderStages(layout_hash, stages, true, true);
+
+        HashU64(layout_hash,
+                static_cast<uint64_t>(reinterpret_cast<uintptr_t>(req.material->GetPipelineLayout())));
     }
 
     key.layout_hash = layout_hash;
