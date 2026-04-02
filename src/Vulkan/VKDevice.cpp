@@ -21,10 +21,6 @@
 #include <string>
 
 namespace hgl::graph{
-#ifndef ULRE_GPL_ENABLE
-#define ULRE_GPL_ENABLE 0
-#endif
-
 namespace
 {
     std::unordered_map<VkDevice, VulkanDevice *> g_device_map;
@@ -87,14 +83,13 @@ VulkanDevice::VulkanDevice(VulkanDevAttr *da)
     attr=da;
 
     gpl_supported = (attr && attr->physical_device) ? attr->physical_device->SupportGraphicsPipelineLibrary() : false;
-    gpl_enabled = gpl_supported && (ULRE_GPL_ENABLE != 0);
+    gpl_enabled = gpl_supported;
     link_backend_mono = std::make_unique<MonolithicLinkBackend>();
     link_backend_gpl = std::make_unique<GplLinkBackend>();
 
-    LogInfo("[VulkanDevice] Graphics pipeline library support=%s runtime_enabled=%s compile_default=%d",
+    LogInfo("[VulkanDevice] Graphics pipeline library support=%s runtime_enabled=%s",
             gpl_supported?"yes":"no",
-            gpl_enabled?"yes":"no",
-            ULRE_GPL_ENABLE);
+            gpl_enabled?"yes":"no");
 
     if(attr && attr->device)
         g_device_map[attr->device] = this;
@@ -132,14 +127,22 @@ VulkanDevice *VulkanDevice::FromDevice(VkDevice device)
 
 void VulkanDevice::SetGplEnabled(bool enabled)
 {
-    const bool next_enabled = gpl_supported && enabled;
-
-    if(enabled && !gpl_supported)
+    // GPL is policy-on by default. This setter is preserved for API compatibility,
+    // but cannot force-enable on unsupported devices and ignores explicit disable.
+    if(!enabled)
     {
-        LogWarning("[VulkanDevice] Graphics pipeline library requested but not supported, keeping disabled");
+        LogWarning("[VulkanDevice] SetGplEnabled(false) ignored: GPL policy is always-on when supported");
     }
 
-    gpl_enabled = next_enabled;
+    if(!gpl_supported)
+    {
+        LogWarning("[VulkanDevice] Graphics pipeline library requested but not supported, keeping disabled");
+        gpl_enabled = false;
+    }
+    else
+    {
+        gpl_enabled = true;
+    }
 
     LogInfo("[VulkanDevice] Graphics pipeline library runtime_enabled=%s", gpl_enabled?"yes":"no");
 }

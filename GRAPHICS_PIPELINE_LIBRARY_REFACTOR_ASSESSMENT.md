@@ -160,15 +160,15 @@
 
 任务:
 
-1. 引入配置开关 `ULRE_GPL_ENABLE`（运行时与编译时）
-2. 设备能力探测并记录日志
+1. 设备能力探测并记录日志（GPL 支持即启用，不再提供额外开关）
+2. 统一 RenderFormat -> VulkanDevice 入口（失败可回退）
 3. 把现有 monolithic 创建提炼成单独函数 `CreatePipelineMonolithic`
 4. 定义统一 Link 后端接口 `ILinkBackend`
 
 完成标准:
 
 1. 现有行为零回归
-2. 可以强制开/关 GPL 路径（即使暂未实现）
+2. GPL 支持设备默认走统一路径，不支持设备自动回落
 3. 非GPL路径改为通过 `ILinkBackend(Monolithic)` 调用，而不是旧旁路
 
 ## 阶段 1: 数据模型与 key 上线（2-4 天）

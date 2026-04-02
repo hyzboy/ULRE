@@ -10,9 +10,6 @@
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
-#ifndef ULRE_PIPELINE_UNIFIED_ACQUIRE
-#define ULRE_PIPELINE_UNIFIED_ACQUIRE 0
-#endif
 
 RenderFormat::RenderFormat(VulkanDevice *dev,const AnsiString &n,const VkFormatList &cf,VkFormat df)
 {
@@ -111,7 +108,6 @@ Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const Pipeli
     if (pipeline_by_name.Get(cache_key, cached))
         return cached;
 
-#if ULRE_PIPELINE_UNIFIED_ACQUIRE
     if (device)
     {
         GplPipelineRequest req;
@@ -134,7 +130,6 @@ Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const Pipeli
         LogDebug("[RenderFormat::CreatePipeline] Unified acquire path returned null, fallback to legacy path. material=%s",
                  mtl->GetName().c_str());
     }
-#endif
 
     PipelineData *pd=new PipelineData(cpd);
 
