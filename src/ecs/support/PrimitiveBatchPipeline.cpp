@@ -27,11 +27,22 @@
 #include<limits>
 #include<chrono>
 #include<cstdint>
+#include<atomic>
 
 namespace hgl::ecs
 {
     namespace
     {
+        std::atomic<uint64_t> g_pipeline_preresolve_attempts{0};
+        std::atomic<uint64_t> g_pipeline_preresolve_successes{0};
+        std::atomic<uint64_t> g_pipeline_preresolve_failures{0};
+        std::atomic<uint64_t> g_pipeline_preresolve_skips{0};
+
+        inline bool ShouldLogPow2(const uint64_t v)
+        {
+            return v != 0 && ((v & (v - 1)) == 0);
+        }
+
         void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
         {
             if (!draw_cmd || !batch || !batch->geom_draw_range)
@@ -478,6 +489,11 @@ namespace hgl::ecs
         auto* render_target = world->GetRenderTarget();
         auto* render_format = render_target ? render_target->GetRenderFormat() : nullptr;
 
+        uint32_t frame_attempts = 0;
+        uint32_t frame_successes = 0;
+        uint32_t frame_failures = 0;
+        uint32_t frame_skips = 0;
+
         for (auto& itemPtr : cache.renderItems)
         {
             RenderItem* item = itemPtr.get();
@@ -513,12 +529,45 @@ namespace hgl::ecs
 
                 if (vil && pipeline_data)
                 {
+                    ++frame_attempts;
+                    const uint64_t attempts_total = ++g_pipeline_preresolve_attempts;
+
                     if (graph::Pipeline* acquired = render_format->CreatePipeline(material, vil, pipeline_data, prim_restart))
                     {
                         if (auto* primitive = item->GetPrimitive())
                             primitive->UpdatePipeline(acquired);
 
                         pipeline = acquired;
+                        ++frame_successes;
+                        ++g_pipeline_preresolve_successes;
+                    }
+                    else
+                    {
+                        ++frame_failures;
+                        const uint64_t failures_total = ++g_pipeline_preresolve_failures;
+
+                        if (ShouldLogPow2(failures_total))
+                        {
+                            LogWarning("[ECS::PrimitiveBatchPipeline] Pipeline pre-resolve failed: frame_failures=%u total_failures=%llu material=%s",
+                                       frame_failures,
+                                       static_cast<unsigned long long>(failures_total),
+                                       material->GetName().c_str());
+                        }
+
+                        // Keep original pipeline to preserve rendering continuity.
+                        (void)attempts_total;
+                    }
+                }
+                else
+                {
+                    ++frame_skips;
+                    const uint64_t skips_total = ++g_pipeline_preresolve_skips;
+                    if (ShouldLogPow2(skips_total))
+                    {
+                        LogDebug("[ECS::PrimitiveBatchPipeline] Pipeline pre-resolve skipped: missing template data (vil=%p pipeline_data=%p), total_skips=%llu",
+                                 static_cast<const void *>(vil),
+                                 static_cast<const void *>(pipeline_data),
+                                 static_cast<unsigned long long>(skips_total));
                     }
                 }
             }
@@ -546,6 +595,25 @@ namespace hgl::ecs
             {
                 (*batch_ptr)->buffer_manager = buffer_manager;
                 (*batch_ptr)->AddItem(item);
+            }
+        }
+
+        if (frame_attempts || frame_failures || frame_skips)
+        {
+            const uint64_t successes_total = g_pipeline_preresolve_successes.load();
+            const uint64_t failures_total = g_pipeline_preresolve_failures.load();
+            const uint64_t skips_total = g_pipeline_preresolve_skips.load();
+
+            if (frame_failures > 0 || ShouldLogPow2(successes_total + failures_total + skips_total))
+            {
+                LogDebug("[ECS::PrimitiveBatchPipeline] Pre-resolve summary: attempts=%u success=%u fail=%u skip=%u totals(s=%llu,f=%llu,k=%llu)",
+                         frame_attempts,
+                         frame_successes,
+                         frame_failures,
+                         frame_skips,
+                         static_cast<unsigned long long>(successes_total),
+                         static_cast<unsigned long long>(failures_total),
+                         static_cast<unsigned long long>(skips_total));
             }
         }
     }

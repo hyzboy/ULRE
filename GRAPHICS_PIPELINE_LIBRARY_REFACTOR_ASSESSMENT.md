@@ -18,6 +18,7 @@
 8. `MonolithicLinkBackend::Build(...)` 已实现真实创建路径，统一入口可通过单体后端产出 `Pipeline*`。
 9. `GplLinkBackend::Build(...)` 已实现最小可运行路径（当前临时回退到 monolithic create，避免统一入口在 GPL 设备上退回 legacy）。
 10. `PrimitiveBatchPipeline::BuildMaterialBatches(...)` 已开始前移 pipeline 决策：批处理阶段按 `RenderFormat + Material + VIL + PipelineData` 统一获取 pipeline 并回写到 `Primitive`。
+11. 批处理前移链路已补齐失败统计、节流告警与保底策略（获取失败保留原 pipeline，不中断渲染）。
 
 ### 进行中
 
