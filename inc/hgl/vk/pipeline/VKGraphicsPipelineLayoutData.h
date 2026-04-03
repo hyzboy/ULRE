@@ -5,7 +5,7 @@
 #include<hgl/type/UnorderedMap.h>
 
 namespace hgl::graph{
-struct PipelineLayoutData
+struct GraphicsPipelineLayoutData
 {
     VkDevice device;
 
@@ -27,6 +27,6 @@ public:
         return idx;
     }
 
-    ~PipelineLayoutData();
-};//class PipelineLayoutData
+    ~GraphicsPipelineLayoutData();
+};//class GraphicsPipelineLayoutData
 }//namespace hgl::graph

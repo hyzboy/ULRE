@@ -23,7 +23,7 @@ using ShaderStageCreateInfoList=ValueArray<VkPipelineShaderStageCreateInfo>;
 
 const bool Compare(const VkGraphicsPipelineCreateInfo *,const VkGraphicsPipelineCreateInfo *);
 
-struct PipelineData
+struct GraphicsPipelineData
 {
 private:
 
@@ -67,11 +67,11 @@ public:
 
 public:
 
-    PipelineData(const PipelineData &)=delete;
-    PipelineData(const PipelineData *);
-    PipelineData(const uint32_t color_attachment_count);
-    PipelineData();
-    ~PipelineData();
+    GraphicsPipelineData(const GraphicsPipelineData &)=delete;
+    GraphicsPipelineData(const GraphicsPipelineData *);
+    GraphicsPipelineData(const uint32_t color_attachment_count);
+    GraphicsPipelineData();
+    ~GraphicsPipelineData();
 
     void InitShaderStage(const ShaderStageCreateInfoList &);
     void InitVertexInputState(const VIL *);
@@ -148,11 +148,11 @@ public:
 
     bool SaveToStream(io::DataOutputStream *dos)const;
     bool LoadFromMemory(uchar *,uint);
-};//struct PipelineData
+};//struct GraphicsPipelineData
 
 /**
- * 根据文件名获取PipelineData
+ * 根据文件名获取GraphicsPipelineData
  * @param filename 文件名(注意不包含扩展名)
  */
-const PipelineData *GetPipelineData(const OSString &filename);
+const GraphicsPipelineData *GetGraphicsPipelineData(const OSString &filename);
 }//namespace hgl::graph

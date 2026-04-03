@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/pipeline/VKPipelineData.h>
+﻿#include<hgl/vk/pipeline/VKGraphicsPipelineData.h>
 #include<hgl/type/String.h>
 #include<hgl/io/MemoryOutputStream.h>
 #include<hgl/io/DataOutputStream.h>
@@ -9,7 +9,7 @@
 using namespace hgl;
 
 namespace hgl::graph{
-PipelineData::~PipelineData()
+GraphicsPipelineData::~GraphicsPipelineData()
 {
     if(file_data)
     {
@@ -40,7 +40,7 @@ constexpr size_t PipelineFileHeaderLength=sizeof(PipelineFileHeader)-1;
 
 #define WRITE_AND_CHECK_SIZE(ptr,type)  if(dos->Write(ptr,sizeof(type))!=sizeof(type))return(false);
 
-bool PipelineData::SaveToStream(io::DataOutputStream *dos)const
+bool GraphicsPipelineData::SaveToStream(io::DataOutputStream *dos)const
 {
     if(!dos)return(false);
 
@@ -98,7 +98,7 @@ constexpr uint PIPELINE_FILE_MIN_LENGTH=PipelineFileHeaderLength+   //file heade
                                                     data+=sizeof(type)*count; \
                                                     size-=sizeof(type)*count;
 
-bool PipelineData::LoadFromMemory(uchar *origin_data,uint size)
+bool GraphicsPipelineData::LoadFromMemory(uchar *origin_data,uint size)
 {
     uint8 *data=origin_data;
 
@@ -165,7 +165,7 @@ bool PipelineData::LoadFromMemory(uchar *origin_data,uint size)
     return(true);
 }
 
-bool SaveToFile(const OSString &filename,PipelineData *pd)
+bool SaveToFile(const OSString &filename,GraphicsPipelineData *pd)
 {
     if(filename.IsEmpty()||!pd)
         return(false);
@@ -182,7 +182,7 @@ bool SaveToFile(const OSString &filename,PipelineData *pd)
     return(true);
 }
 
-bool LoadFromFile(const OSString &filename,PipelineData *pd)
+bool LoadFromFile(const OSString &filename,GraphicsPipelineData *pd)
 {
     if(filename.IsEmpty()||!pd)
         return(false);
@@ -198,7 +198,7 @@ bool LoadFromFile(const OSString &filename,PipelineData *pd)
     return result;
 }
 
-PipelineData *LoadPipelineFromFile(const OSString &filename)
+GraphicsPipelineData *LoadPipelineFromFile(const OSString &filename)
 {
     if(filename.IsEmpty())
         return(nullptr);
@@ -209,7 +209,7 @@ PipelineData *LoadPipelineFromFile(const OSString &filename)
     if(!data)
         return(nullptr);
 
-    PipelineData *pd=new PipelineData;
+    GraphicsPipelineData *pd=new GraphicsPipelineData;
 
     bool result=pd->LoadFromMemory((uchar *)data,size);
 

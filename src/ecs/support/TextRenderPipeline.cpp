@@ -477,7 +477,7 @@ namespace hgl::ecs
 
             if (!resources->pipeline)
             {
-                resources->pipeline = render_pass->CreatePipeline(mi, graph::PipelinePreset::Solid2D);
+                resources->pipeline = render_pass->CreatePipeline(mi, graph::GraphicsPipelinePreset::Solid2D);
                 if (!resources->pipeline)
                     continue;
 
@@ -488,7 +488,7 @@ namespace hgl::ecs
             }
             else
             {
-                const graph::PipelineData* template_pd = resources->pipeline->GetData();
+                const graph::GraphicsPipelineData* template_pd = resources->pipeline->GetData();
                 if (template_pd)
                 {
                     ++frame_pipeline_attempts;

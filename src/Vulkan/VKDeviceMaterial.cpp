@@ -5,15 +5,15 @@
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/vk/VKVertexInputLayout.h>
-#include<hgl/vk/pipeline/VKPipelineLayoutData.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
 
 namespace hgl::graph{
 
-PipelineLayoutData *CreatePipelineLayoutData(VkDevice device,const MaterialDescriptorManager *desc_manager);
+GraphicsPipelineLayoutData *CreateGraphicsPipelineLayoutData(VkDevice device,const MaterialDescriptorManager *desc_manager);
 
 namespace
 {
-    DescriptorSet *CreateDS(VkDevice device,VkDescriptorPool desc_pool,const PipelineLayoutData *pld,const DescriptorSetType &type)
+    DescriptorSet *CreateDS(VkDevice device,VkDescriptorPool desc_pool,const GraphicsPipelineLayoutData *pld,const DescriptorSetType &type)
     {
         RANGE_CHECK_RETURN_NULLPTR(type);
 
@@ -37,7 +37,7 @@ namespace
     }
 }//namespace
 
-MaterialParameters *VulkanDevice::CreateMP(const MaterialDescriptorManager *desc_manager,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type)
+MaterialParameters *VulkanDevice::CreateMP(const MaterialDescriptorManager *desc_manager,const GraphicsPipelineLayoutData *pld,const DescriptorSetType &desc_set_type)
 {
     if(!desc_manager||!pld)return(nullptr);
     RANGE_CHECK_RETURN_NULLPTR(desc_set_type)

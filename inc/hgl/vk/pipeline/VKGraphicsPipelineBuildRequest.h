@@ -9,7 +9,7 @@ namespace hgl::graph{
 class Material;
 class RenderFormat;
 class VertexInputLayout;
-struct PipelineData;
+struct GraphicsPipelineData;
 struct RenderStateProfile;
 
 struct GplVertexInputKey
@@ -60,7 +60,7 @@ struct GraphicsPipelineBuildRequest
     const Material *material = nullptr;
     const VertexInputLayout *vil = nullptr;
     const RenderFormat *render_format = nullptr;
-    const PipelineData *pipeline_data = nullptr;
+    const GraphicsPipelineData *pipeline_data = nullptr;
     PrimitiveType primitive = PrimitiveType::Triangles;
     bool primitive_restart = false;
     AnsiString debug_name;

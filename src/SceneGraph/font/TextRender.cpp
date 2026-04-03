@@ -182,7 +182,7 @@ namespace hgl::graph
             if(!mi_fs)return(false);
         }
 
-        pipeline=rp->CreatePipeline(mi_fs,PipelinePreset::Solid2D);
+        pipeline=rp->CreatePipeline(mi_fs,GraphicsPipelinePreset::Solid2D);
         if(!pipeline)return(false);
 
         if(!mtl_fs->BindTextureSampler(  mtl::SamplerSlot::Text,

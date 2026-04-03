@@ -26,7 +26,7 @@ class RenderFormat
 
 protected:
 
-    GraphicsPipeline *CreatePipeline(const AnsiString &,PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
+    GraphicsPipeline *CreatePipeline(const AnsiString &,GraphicsPipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
 
 private:
 
@@ -53,14 +53,14 @@ public:
 
 public:
 
-    GraphicsPipeline *CreatePipeline(Material *,const VIL *,const PipelineData *,   const bool prim_restart=false);
-    GraphicsPipeline *CreatePipeline(Material *,const VIL *,const PipelinePreset &, const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(Material *,const VIL *,const GraphicsPipelineData *,   const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(Material *,const VIL *,const GraphicsPipelinePreset &, const bool prim_restart=false);
 
-    GraphicsPipeline *CreatePipeline(Material *mtl,         const PipelineData *,   const bool prim_restart=false);
-    GraphicsPipeline *CreatePipeline(Material *mtl,         const PipelinePreset &, const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(Material *mtl,         const GraphicsPipelineData *,   const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(Material *mtl,         const GraphicsPipelinePreset &, const bool prim_restart=false);
 
-    GraphicsPipeline *CreatePipeline(MaterialInstance *,    const PipelinePreset &, const bool prim_restart=false);
-    GraphicsPipeline *CreatePipeline(MaterialInstance *,    const PipelineData *,   const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(MaterialInstance *,    const GraphicsPipelinePreset &, const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(MaterialInstance *,    const GraphicsPipelineData *,   const bool prim_restart=false);
     GraphicsPipeline *CreatePipeline(MaterialInstance *,    const OSString &,       const bool prim_restart=false);
 
     /**
@@ -70,7 +70,7 @@ public:
                              const ShaderStageCreateInfoList &ssci,
                              VkPipelineLayout layout,
                              const VIL *vil,
-                             const PipelineData *pd,
+                             const GraphicsPipelineData *pd,
                              PrimitiveType prim = PrimitiveType::Triangles,
                              bool prim_restart = false);
 

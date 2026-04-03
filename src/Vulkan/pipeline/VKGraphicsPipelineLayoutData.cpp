@@ -1,13 +1,13 @@
-﻿#include<hgl/vk/pipeline/VKPipelineLayoutData.h>
+﻿#include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 
 namespace hgl::graph{
-PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager)
+GraphicsPipelineLayoutData *VulkanDevice::CreateGraphicsPipelineLayoutData(const MaterialDescriptorManager *desc_manager)
 {
-    PipelineLayoutData *pld=new PipelineLayoutData();  // 使用 new 而不是 hgl_zero_new（因为有析构函数）
-    memset(pld, 0, sizeof(PipelineLayoutData));  // 手动清零需要的部分
+    GraphicsPipelineLayoutData *pld=new GraphicsPipelineLayoutData();  // 使用 new 而不是 hgl_zero_new（因为有析构函数）
+    memset(pld, 0, sizeof(GraphicsPipelineLayoutData));  // 手动清零需要的部分
 
     if(desc_manager)
     {
@@ -68,7 +68,7 @@ PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescrip
     return(pld);
 }
 
-PipelineLayoutData::~PipelineLayoutData()
+GraphicsPipelineLayoutData::~GraphicsPipelineLayoutData()
 {
     vkDestroyPipelineLayout(device,pipeline_layout,nullptr);
 

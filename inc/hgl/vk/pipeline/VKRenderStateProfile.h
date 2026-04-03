@@ -6,7 +6,7 @@
 #include<cstdint>
 
 namespace hgl::graph{
-struct PipelineData;
+struct GraphicsPipelineData;
 
 struct RenderStateProfile
 {
@@ -26,6 +26,6 @@ struct RenderStateProfile
     bool Equals(const RenderStateProfile &) const;
     bool operator==(const RenderStateProfile &rhs) const { return Equals(rhs); }
 
-    static RenderStateProfile FromPipelineData(const PipelineData &, PrimitiveType, bool prim_restart);
+    static RenderStateProfile FromGraphicsPipelineData(const GraphicsPipelineData &, PrimitiveType, bool prim_restart);
 };
 }//namespace hgl::graph

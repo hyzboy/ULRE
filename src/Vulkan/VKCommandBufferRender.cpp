@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
-#include<hgl/vk/pipeline/VKPipelineLayoutData.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
 #include<hgl/vk/pipeline/VKRenderFormat.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKDeviceAttribute.h>
@@ -138,7 +138,7 @@ bool RenderCmdBuffer::BindDescriptorSets(DomainMaterialBinding *binding)
     mp->Update();
     const VkDescriptorSet ds = mp->GetVkDescriptorSet();
 
-    const auto *pld = binding->GetMaterial()->GetPipelineLayoutData();
+    const auto *pld = binding->GetMaterial()->GetGraphicsPipelineLayoutData();
     const uint32_t first_set = pld ? (uint32_t)pld->GetVulkanSetIndex(DescriptorSetType::PerMaterial) : 0;
 
     pipeline_layout = binding->GetPipelineLayout();

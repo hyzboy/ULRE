@@ -425,9 +425,9 @@ public: //shader & material
 
     ShaderModule *CreateShaderModule(VkShaderStageFlagBits,const uint32_t *,const size_t);
 
-    PipelineLayoutData *CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager);
+    GraphicsPipelineLayoutData *CreateGraphicsPipelineLayoutData(const MaterialDescriptorManager *desc_manager);
 
-    MaterialParameters *CreateMP(const MaterialDescriptorManager *desc_manager,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type);
+    MaterialParameters *CreateMP(const MaterialDescriptorManager *desc_manager,const GraphicsPipelineLayoutData *pld,const DescriptorSetType &desc_set_type);
 
 public: //Command Buffer 相关
 

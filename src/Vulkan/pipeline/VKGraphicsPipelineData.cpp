@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/pipeline/VKPipelineData.h>
+﻿#include<hgl/vk/pipeline/VKGraphicsPipelineData.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/type/MemoryUtil.h>
@@ -16,7 +16,7 @@ void SetDefault(VkPipelineColorBlendAttachmentState *cba)
     cba->dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 }
 
-PipelineData::PipelineData(const PipelineData *pd)
+GraphicsPipelineData::GraphicsPipelineData(const GraphicsPipelineData *pd)
 {
     file_data=nullptr;
 
@@ -66,7 +66,7 @@ PipelineData::PipelineData(const PipelineData *pd)
     }
 }
 
-PipelineData::PipelineData(const uint32_t color_attachment_count)
+GraphicsPipelineData::GraphicsPipelineData(const uint32_t color_attachment_count)
 {
     file_data=nullptr;
 
@@ -168,7 +168,7 @@ PipelineData::PipelineData(const uint32_t color_attachment_count)
     }
 }
 
-void PipelineData::InitColorBlend(const uint32_t color_attachment_count,const VkPipelineColorBlendAttachmentState *pcbas)
+void GraphicsPipelineData::InitColorBlend(const uint32_t color_attachment_count,const VkPipelineColorBlendAttachmentState *pcbas)
 {
     color_blend_attachments=hgl_align_malloc<VkPipelineColorBlendAttachmentState>(color_attachment_count);
 
@@ -197,7 +197,7 @@ void PipelineData::InitColorBlend(const uint32_t color_attachment_count,const Vk
     pipeline_info.pColorBlendState=color_blend;
 }
 
-void PipelineData::SetColorAttachments(const uint32_t count)
+void GraphicsPipelineData::SetColorAttachments(const uint32_t count)
 {
     if(!color_blend_attachments)
     {
@@ -227,7 +227,7 @@ void PipelineData::SetColorAttachments(const uint32_t count)
     color_blend->pAttachments = color_blend_attachments;
 }
 
-PipelineData::PipelineData()
+GraphicsPipelineData::GraphicsPipelineData()
 {
     file_data=nullptr;
 
@@ -266,13 +266,13 @@ PipelineData::PipelineData()
     InitDynamicState();
 }
 
-void PipelineData::InitShaderStage(const ShaderStageCreateInfoList &ssl)
+void GraphicsPipelineData::InitShaderStage(const ShaderStageCreateInfoList &ssl)
 {
     pipeline_info.stageCount = ssl.GetCount();
     pipeline_info.pStages = ssl.GetData();
 }
 
-void PipelineData::InitVertexInputState(const VIL *vil)
+void GraphicsPipelineData::InitVertexInputState(const VIL *vil)
 {
     vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertex_input_state.pNext = nullptr;
@@ -330,7 +330,7 @@ namespace
     }
 }//namespace
 
-bool PipelineData::SetPrim(const PrimitiveType topology,bool prim_restart)
+bool GraphicsPipelineData::SetPrim(const PrimitiveType topology,bool prim_restart)
 {
     VkPrimitiveTopology geometry=GetVkPrimitive(topology);
 
@@ -347,7 +347,7 @@ bool PipelineData::SetPrim(const PrimitiveType topology,bool prim_restart)
     return(true);
 }
 
-void PipelineData::InitViewportState()
+void GraphicsPipelineData::InitViewportState()
 {
     viewport.x = 0.0f;
     viewport.y = 0.0f;
@@ -370,7 +370,7 @@ void PipelineData::InitViewportState()
     pipeline_info.pViewportState     = &viewport_state;
 }
 
-void PipelineData::InitDynamicState()
+void GraphicsPipelineData::InitDynamicState()
 {
     mem_zero(dynamic_state_enables);
 
@@ -408,7 +408,7 @@ void PipelineData::InitDynamicState()
     pipeline_info.pDynamicState      = &dynamic_state;
 }
 
-void PipelineData::AddDynamicState(VkDynamicState ds)
+void GraphicsPipelineData::AddDynamicState(VkDynamicState ds)
 {
     for(uint32_t i = 0;i < dynamic_state.dynamicStateCount;i++)
         if(dynamic_state_enables[i] == ds)
@@ -418,7 +418,7 @@ void PipelineData::AddDynamicState(VkDynamicState ds)
     ++dynamic_state.dynamicStateCount;
 }
 
-bool PipelineData::SetColorWriteMask(uint index,bool r,bool g,bool b,bool a)
+bool GraphicsPipelineData::SetColorWriteMask(uint index,bool r,bool g,bool b,bool a)
 {
     if(index>=color_blend->attachmentCount)
         return(false);
@@ -435,7 +435,7 @@ bool PipelineData::SetColorWriteMask(uint index,bool r,bool g,bool b,bool a)
     return(true);
 }
 
-bool PipelineData::OpenBlend(uint index)
+bool GraphicsPipelineData::OpenBlend(uint index)
 {
     if(index>=color_blend->attachmentCount)
         return(false);
@@ -445,7 +445,7 @@ bool PipelineData::OpenBlend(uint index)
     return(true);
 }
 
-bool PipelineData::CloseBlend(uint index)
+bool GraphicsPipelineData::CloseBlend(uint index)
 {
     if(index>=color_blend->attachmentCount)
         return(false);
@@ -455,7 +455,7 @@ bool PipelineData::CloseBlend(uint index)
     return(true);
 }
 
-bool PipelineData::SetColorBlend(uint index,VkBlendOp op,VkBlendFactor src,VkBlendFactor dst)
+bool GraphicsPipelineData::SetColorBlend(uint index,VkBlendOp op,VkBlendFactor src,VkBlendFactor dst)
 {
     if(index>=color_blend->attachmentCount)
         return(false);
@@ -469,7 +469,7 @@ bool PipelineData::SetColorBlend(uint index,VkBlendOp op,VkBlendFactor src,VkBle
     return(true);
 }
 
-bool PipelineData::SetAlphaBlend(uint index,VkBlendOp op,VkBlendFactor src,VkBlendFactor dst)
+bool GraphicsPipelineData::SetAlphaBlend(uint index,VkBlendOp op,VkBlendFactor src,VkBlendFactor dst)
 {
     if(index>=color_blend->attachmentCount)
         return(false);

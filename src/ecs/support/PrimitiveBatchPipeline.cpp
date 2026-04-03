@@ -507,10 +507,10 @@ namespace hgl::ecs
             auto* pipeline = item->GetPipeline();
 
             // Stage-4 prework: resolve pipeline before renderer hot path.
-            // Reuse current pipeline's PipelineData as creation template.
+            // Reuse current pipeline's GraphicsPipelineData as creation template.
             if (material && render_format)
             {
-                const graph::PipelineData* pipeline_data = nullptr;
+                const graph::GraphicsPipelineData* pipeline_data = nullptr;
                 const graph::VIL* vil = nullptr;
                 bool prim_restart = false;
 

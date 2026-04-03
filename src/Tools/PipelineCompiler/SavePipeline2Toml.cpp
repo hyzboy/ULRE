@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/pipeline/VKPipelineData.h>
+﻿#include<hgl/graph/pipeline/VKGraphicsPipelineData.h>
 #include<hgl/vk/VKString.h>
 #include<toml.hpp>
 
@@ -158,7 +158,7 @@ namespace
     }
 }//namespace
 
-std::string SavePipelineToToml(const PipelineData *data)
+std::string SavePipelineToToml(const GraphicsPipelineData *data)
 {
     toml::value result;
 

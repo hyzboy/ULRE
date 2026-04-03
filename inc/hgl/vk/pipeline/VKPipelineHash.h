@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/vk/pipeline/VKPipelineData.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineData.h>
 #include<hgl/util/hash/Hash.h>
 
 namespace hgl::graph{

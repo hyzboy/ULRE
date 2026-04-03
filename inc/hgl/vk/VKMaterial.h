@@ -46,7 +46,7 @@ class Material
 
     ShaderStageCreateInfoList shader_stage_list;
 
-    PipelineLayoutData *pipeline_layout_data;
+    GraphicsPipelineLayoutData *pipeline_layout_data;
 
     MaterialParameters *mp_array[DESCRIPTOR_SET_TYPE_COUNT];
 
@@ -80,7 +80,7 @@ public:
 
 //    const   MaterialDescriptorManager *         GetDescriptorManager    ()const{return desc_manager;}
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
-    const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return pipeline_layout_data;}
+    const   GraphicsPipelineLayoutData *                GetGraphicsPipelineLayoutData   ()const{return pipeline_layout_data;}
 
 public:
 

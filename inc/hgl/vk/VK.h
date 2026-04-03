@@ -127,7 +127,7 @@ class DeviceRenderPassManage;
 class Fence;
 class Semaphore;
 
-struct PipelineLayoutData;
+struct GraphicsPipelineLayoutData;
 class DescriptorSet;
 enum class DescriptorSetType;
 
@@ -230,8 +230,8 @@ class MaterialDescriptorManager;
 class Material;
 class MaterialParameters;
 class MaterialInstance;
-struct PipelineData;
-enum class PipelinePreset;
+struct GraphicsPipelineData;
+enum class GraphicsPipelinePreset;
 class GraphicsPipeline;
 
 struct VAConfig;

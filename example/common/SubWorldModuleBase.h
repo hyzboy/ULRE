@@ -52,7 +52,7 @@ namespace example::modules
 
         bool InitMaterialAndPipeline(hgl::graph::mtl::Material3DCreateConfig& cfg,
                          hgl::graph::mtl::MaterialPreset preset,
-                         hgl::graph::PipelinePreset inline_pipeline_type);
+                         hgl::graph::GraphicsPipelinePreset inline_pipeline_type);
 
         bool BuildMaterialInstances(const hgl::Color4f* colors, size_t count);
 

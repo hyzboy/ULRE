@@ -5,7 +5,7 @@ namespace hgl::graph
 {
     GraphicsPipeline* RenderContext::CreatePipeline(Material* material,
                                             const VertexInputLayout* vil,
-                                            const PipelineData* pd,
+                                            const GraphicsPipelineData* pd,
                                             bool prim_restart)
     {
         if (!current_render_target)

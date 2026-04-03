@@ -108,7 +108,7 @@ private:
 
             auto* render_target = render_context->GetCurrentRenderTarget();
             auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-            pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, PipelinePreset::Solid3D) : nullptr;
+            pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, GraphicsPipelinePreset::Solid3D) : nullptr;
             if(!pipeline_plane_grid)return(false);
         }
 
@@ -121,7 +121,7 @@ private:
 
             auto* render_target = render_context->GetCurrentRenderTarget();
             auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-            pipeline_line = render_pass ? render_pass->CreatePipeline(mi_line, PipelinePreset::Solid3D) : nullptr;
+            pipeline_line = render_pass ? render_pass->CreatePipeline(mi_line, GraphicsPipelinePreset::Solid3D) : nullptr;
 
             if(!pipeline_line)
                 return(false);

@@ -144,15 +144,15 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKGraphicsPipeline.h
                             ${PIPELINE_HEADER_PATH}/VKGplLibraryHandleCache.h
                             ${PIPELINE_HEADER_PATH}/VKGplLibraryStatsTracker.h
                             ${PIPELINE_HEADER_PATH}/VKRenderStateProfile.h
-                            ${PIPELINE_HEADER_PATH}/VKPipelineData.h
-                            ${PIPELINE_HEADER_PATH}/VKPipelineLayoutData.h
+                            ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineData.h
+                            ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineLayoutData.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineHash.h
-                            ${PIPELINE_HEADER_PATH}/VKPipelinePreset.h
+                            ${PIPELINE_HEADER_PATH}/VKGraphicsPipelinePreset.h
                             ${PIPELINE_HEADER_PATH}/VKComputePipeline.h
-                            ${PIPELINE_SOURCE_PATH}/VKPipelineCompare.cpp
-                            ${PIPELINE_SOURCE_PATH}/VKPipelineData.cpp
-                            ${PIPELINE_SOURCE_PATH}/VKPipelineDataManage.cpp
-                            ${PIPELINE_SOURCE_PATH}/VKPipelineDataSaveLoad.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineCompare.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineData.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineDataManage.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineDataSaveLoad.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineHash.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineBuildRequest.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineBuilder.cpp
@@ -161,7 +161,7 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKGraphicsPipeline.h
                             ${PIPELINE_SOURCE_PATH}/VKRenderStateProfile.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGraphicsPipeline.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineCache.cpp
-                            ${PIPELINE_SOURCE_PATH}/VKPipelineLayoutData.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineLayoutData.cpp
                             VKComputePipeline.cpp)
 
 SOURCE_GROUP("GraphicsPipeline" FILES ${VK_PIPELINE_FILES})

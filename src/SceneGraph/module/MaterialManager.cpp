@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/module/MaterialManager.h>
-#include<hgl/vk/pipeline/VKPipelineLayoutData.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKMaterial.h>
@@ -215,18 +215,18 @@ const ShaderModule *MaterialManager::CreateShaderModuleFromSPV(const AnsiString 
     return sm;
 }
 
-PipelineLayoutData *MaterialManager::CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager)
+GraphicsPipelineLayoutData *MaterialManager::CreateMaterialGraphicsPipelineLayoutData(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager)
 {
     VulkanDevice *device = GetDevice();
     if(!device)
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateMaterialPipelineLayoutData failed for '%s': device is null\n",
+            "[MaterialManager] CreateMaterialGraphicsPipelineLayoutData failed for '%s': device is null\n",
             mtl_name.c_str());
         return nullptr;
     }
 
-    PipelineLayoutData *pld = device->CreatePipelineLayoutData(desc_manager);
+    GraphicsPipelineLayoutData *pld = device->CreateGraphicsPipelineLayoutData(desc_manager);
 
     if(pld)
     {
@@ -240,7 +240,7 @@ PipelineLayoutData *MaterialManager::CreateMaterialPipelineLayoutData(const Ansi
     return pld;
 }
 
-MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager, const PipelineLayoutData *pld, const DescriptorSetType &desc_set_type)
+MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager, const GraphicsPipelineLayoutData *pld, const DescriptorSetType &desc_set_type)
 {
     VulkanDevice *device = GetDevice();
     if(!device)
@@ -278,7 +278,7 @@ void MaterialManager::ApplyMaterialFinalizePlan(Material *mtl, const AnsiString 
     MaterialFinalizePlan finalize_plan;
     BuildMaterialFinalizePlan(mtl->desc_manager, mci, finalize_plan);
 
-    mtl->pipeline_layout_data = CreateMaterialPipelineLayoutData(mtl_name, mtl->desc_manager);
+    mtl->pipeline_layout_data = CreateMaterialGraphicsPipelineLayoutData(mtl_name, mtl->desc_manager);
 
     for(const auto set_type : finalize_plan.mp_set_types)
     {

@@ -100,7 +100,7 @@ private:
             if(!grid_mi)
                 return false;
 
-            grid_pipeline = render_pass->CreatePipeline(grid_mi, PipelinePreset::Solid3D);
+            grid_pipeline = render_pass->CreatePipeline(grid_mi, GraphicsPipelinePreset::Solid3D);
             if(!grid_pipeline)
                 return false;
 
@@ -135,7 +135,7 @@ private:
             if(!cube_mi)
                 return false;
 
-            cube_pipeline = render_pass->CreatePipeline(cube_material, PipelinePreset::Solid3D);
+            cube_pipeline = render_pass->CreatePipeline(cube_material, GraphicsPipelinePreset::Solid3D);
             if(!cube_pipeline)
                 return false;
 

@@ -4,7 +4,7 @@
 // and the GPU's MSAA hardware converts it into coverage bits at sample boundaries.
 // This gives smooth stochastic transparency without requiring sorted rendering.
 //
-// GraphicsPipeline: built-in PipelinePreset::AlphaToCoverage3D (MSAA x4 + A2C).
+// GraphicsPipeline: built-in GraphicsPipelinePreset::AlphaToCoverage3D (MSAA x4 + A2C).
 
 #include "IconGradient.h"
 #include "BillboardIconECSBase.h"
@@ -18,7 +18,7 @@ protected:
 
     void ConfigureQuadPipelineMode() override
     {
-        QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, PipelinePreset::AlphaToCoverage3D);
+        QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, GraphicsPipelinePreset::AlphaToCoverage3D);
         QuadResourcePrepareSystem::SetChannelHintForWorld(ecs_context, TextureChannelHint::Grayscale);
     }
 };

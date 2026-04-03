@@ -18,7 +18,7 @@ BillboardIconECSBase::~BillboardIconECSBase()
 
 void BillboardIconECSBase::ConfigureQuadPipelineMode()
 {
-    QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, PipelinePreset::Solid3D);
+    QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, GraphicsPipelinePreset::Solid3D);
 }
 
 bool BillboardIconECSBase::InitPlaneGridResources()
@@ -48,7 +48,7 @@ bool BillboardIconECSBase::InitPlaneGridResources()
 
     auto* render_target = render_context->GetCurrentRenderTarget();
     auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-    pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, PipelinePreset::Solid3D) : nullptr;
+    pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, GraphicsPipelinePreset::Solid3D) : nullptr;
     if (!pipeline_plane_grid) return false;
 
     return true;

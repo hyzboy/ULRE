@@ -271,8 +271,8 @@ namespace hgl::ecs
         const uint64_t vkcreate_before = graph::RenderFormat::GetVkCreateCount();
 
         pipeline_ = support_wide_lines_
-            ? rp->CreatePipeline(mi_, graph::PipelinePreset::DynamicLineWidth3D)
-            : rp->CreatePipeline(mi_, graph::PipelinePreset::Solid3D);
+            ? rp->CreatePipeline(mi_, graph::GraphicsPipelinePreset::DynamicLineWidth3D)
+            : rp->CreatePipeline(mi_, graph::GraphicsPipelinePreset::Solid3D);
 
         const uint64_t vkcreate_after = graph::RenderFormat::GetVkCreateCount();
         const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;

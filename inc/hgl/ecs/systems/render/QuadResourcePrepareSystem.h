@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/System.h>
-#include<hgl/vk/pipeline/VKPipelinePreset.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/mtl/BlendMode.h>
 #include<hgl/common/TextureSamplerTypeDef.h>
 #include<glm/glm.hpp>
@@ -61,15 +61,15 @@ namespace hgl::ecs
         static graph::GraphicsPipeline* GetSharedPipeline() { return shared_pipeline; }
         static graph::Sampler* GetSharedSampler() { return shared_sampler; }
 
-        static void SetPipelineForWorld(const ECSContext* world, graph::PipelinePreset pipeline);
-        static graph::PipelinePreset GetPipelineForWorld(const ECSContext* world);
+        static void SetPipelineForWorld(const ECSContext* world, graph::GraphicsPipelinePreset pipeline);
+        static graph::GraphicsPipelinePreset GetPipelineForWorld(const ECSContext* world);
         static graph::BlendMode GetBlendModeForWorld(const ECSContext* world);
 
         static void SetChannelHintForWorld(const ECSContext* world, graph::TextureChannelHint hint);
         static graph::TextureChannelHint GetChannelHintForWorld(const ECSContext* world);
 
-        static void SetPipeline(graph::PipelinePreset pipeline);
-        static graph::PipelinePreset GetPipeline();
+        static void SetPipeline(graph::GraphicsPipelinePreset pipeline);
+        static graph::GraphicsPipelinePreset GetPipeline();
         static graph::BlendMode GetBlendMode();
         static graph::GraphicsPipeline* CreateConfiguredPipeline(graph::RenderFormat* render_pass,
                      graph::MaterialInstance* material_instance,

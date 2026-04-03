@@ -20,7 +20,7 @@ namespace example::modules
 
     bool SubWorldModuleBase::InitMaterialAndPipeline(graph::mtl::Material3DCreateConfig& cfg,
                                                      graph::mtl::MaterialPreset preset,
-                                                     PipelinePreset inline_pipeline_type)
+                                                     GraphicsPipelinePreset inline_pipeline_type)
     {
         if (!render_context || !graphics_context)
             return false;

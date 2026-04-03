@@ -2,7 +2,7 @@
 #include<hgl/util/xml/XMLParse.h>
 #include<hgl/util/xml/ElementParseCreater.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/pipeline/VKPipelineData.h>
+#include<hgl/graph/pipeline/VKGraphicsPipelineData.h>
 
 using namespace hgl;
 
@@ -508,7 +508,7 @@ namespace
 
     class RootElementCreater:public xml::ElementAttribute
     {
-        VK_NAMESPACE::PipelineData *data;
+        VK_NAMESPACE::GraphicsPipelineData *data;
 
         TessellationElement *tess;
         RasterizerElement *rasterizer;
@@ -518,7 +518,7 @@ namespace
 
     public:
 
-        RootElementCreater(VK_NAMESPACE::PipelineData *pd):ElementAttribute(u8"root")
+        RootElementCreater(VK_NAMESPACE::GraphicsPipelineData *pd):ElementAttribute(u8"root")
         {
             data=pd;
 
@@ -552,9 +552,9 @@ namespace
     };//class RootElementCreater:public ElementAttribute
 }//namespace
 
-VK_NAMESPACE::PipelineData *LoadPipeline(const hgl::OSString &filename)
+VK_NAMESPACE::GraphicsPipelineData *LoadPipeline(const hgl::OSString &filename)
 {
-    VK_NAMESPACE::PipelineData *data=new VK_NAMESPACE::PipelineData;
+    VK_NAMESPACE::GraphicsPipelineData *data=new VK_NAMESPACE::GraphicsPipelineData;
 
     RootElementCreater root_ec(data);
     xml::ElementParseCreater epc(&root_ec);

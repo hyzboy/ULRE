@@ -3,8 +3,8 @@
 #include<cstdint>
 #include<cstdio>
 #include<atomic>
-#include<hgl/vk/pipeline/VKPipelinePreset.h>
-#include<hgl/vk/pipeline/VKPipelineData.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineData.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
@@ -35,7 +35,7 @@ RenderFormat::~RenderFormat()
              name.c_str(), (unsigned long long)(uintptr_t)this);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
+GraphicsPipeline *RenderFormat::CreatePipeline(const AnsiString &name,GraphicsPipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -67,7 +67,7 @@ GraphicsPipeline *RenderFormat::CreatePipeline(const AnsiString &name,PipelineDa
         nullptr,
         &graphicsPipeline) != VK_SUCCESS)
     {
-        //有一种常见问题就是PipelineData未调用SetPrim
+        //有一种常见问题就是GraphicsPipelineData未调用SetPrim
 
         delete pd;
         return(nullptr);
@@ -86,7 +86,7 @@ GraphicsPipeline *RenderFormat::CreatePipeline(const AnsiString &name,PipelineDa
     return pipeline;
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const GraphicsPipelineData *cpd,const bool prim_restart)
 {
     if (!mtl || !vil || !cpd)
         return nullptr;
@@ -109,38 +109,38 @@ GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,cons
     return p;
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const PipelinePreset &ip,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const GraphicsPipelinePreset &ip,const bool prim_restart)
 {
     if(!mtl)return(nullptr);
 
-    return CreatePipeline(mtl,vil,GetPipelineData(ip),prim_restart);
+    return CreatePipeline(mtl,vil,GetGraphicsPipelineData(ip),prim_restart);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const PipelineData *pd,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const GraphicsPipelineData *pd,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),pd,prim_restart);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const PipelinePreset &ip,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const GraphicsPipelinePreset &ip,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),ip,prim_restart);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const PipelinePreset &ip,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const GraphicsPipelinePreset &ip,const bool prim_restart)
 {
     if(!mi)return(nullptr);
 
     return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),ip,prim_restart);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const GraphicsPipelineData *cpd,const bool prim_restart)
 {
     return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),cpd,prim_restart);
 }
 
 GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const bool prim_restart)
 {
-    const PipelineData *pd=GetPipelineData(pipeline_filename);
+    const GraphicsPipelineData *pd=GetGraphicsPipelineData(pipeline_filename);
 
     if(!pd)return(nullptr);
 
@@ -151,11 +151,11 @@ GraphicsPipeline *RenderFormat::CreatePipeline(const AnsiString &name,
                                        const ShaderStageCreateInfoList &ssci,
                                        VkPipelineLayout layout,
                                        const VIL *vil,
-                                       const PipelineData *cpd,
+                                       const GraphicsPipelineData *cpd,
                                        PrimitiveType prim,
                                        bool prim_restart)
 {
-    PipelineData *pd = new PipelineData(cpd);
+    GraphicsPipelineData *pd = new GraphicsPipelineData(cpd);
 
     pd->SetPrim(prim, prim_restart);
 

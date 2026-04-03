@@ -1,5 +1,5 @@
 #include<hgl/vk/pipeline/VKRenderStateProfile.h>
-#include<hgl/vk/pipeline/VKPipelineData.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineData.h>
 #include<hgl/type/FNV1a.h>
 #include<cstring>
 
@@ -36,7 +36,7 @@ namespace
     }
 }
 
-RenderStateProfile RenderStateProfile::FromPipelineData(const PipelineData &pd, PrimitiveType prim, bool prim_restart)
+RenderStateProfile RenderStateProfile::FromGraphicsPipelineData(const GraphicsPipelineData &pd, PrimitiveType prim, bool prim_restart)
 {
     RenderStateProfile rsp;
 
@@ -80,7 +80,7 @@ RenderStateProfile RenderStateProfile::FromPipelineData(const PipelineData &pd, 
 
     if (rsp.topology == VK_PRIMITIVE_TOPOLOGY_MAX_ENUM)
     {
-        PipelineData tmp(1);
+        GraphicsPipelineData tmp(1);
         if (tmp.SetPrim(prim, prim_restart))
         {
             rsp.topology = tmp.input_assembly.topology;

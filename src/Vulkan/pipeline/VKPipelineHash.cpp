@@ -5,7 +5,7 @@
 
 namespace hgl::graph{
 
-const bool CountHash(PipelineHashCode *hash_code,const PipelineData *pd)
+const bool CountHash(PipelineHashCode *hash_code,const GraphicsPipelineData *pd)
 {
     if(!hash_code||!pd)return(false);
 

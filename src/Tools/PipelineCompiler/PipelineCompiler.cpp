@@ -1,20 +1,20 @@
 ﻿#include<hgl/type/String.h>
-#include<hgl/graph/pipeline/VKPipelineData.h>
-#include<hgl/graph/pipeline/VKPipelinePreset.h>
+#include<hgl/graph/pipeline/VKGraphicsPipelineData.h>
+#include<hgl/graph/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<iostream>
 
 namespace hgl::graph{
 
-    bool LoadFromFile(const OSString &filename,PipelineData *pd);
-    bool SaveToFile(const OSString &filename,PipelineData *pd);
+    bool LoadFromFile(const OSString &filename,GraphicsPipelineData *pd);
+    bool SaveToFile(const OSString &filename,GraphicsPipelineData *pd);
 
-    std::string SavePipelineToToml(const PipelineData *data);
-    bool LoadPipelineFromTomlFile(PipelineData *pd,const OSString &filename);
+    std::string SavePipelineToToml(const GraphicsPipelineData *data);
+    bool LoadPipelineFromTomlFile(GraphicsPipelineData *pd,const OSString &filename);
 
-    bool Compare(const PipelineData *pd1,const PipelineData *pd2);
+    bool Compare(const GraphicsPipelineData *pd1,const GraphicsPipelineData *pd2);
 
-    void SaveToToml(const OSString &filename,const PipelineData &pd)
+    void SaveToToml(const OSString &filename,const GraphicsPipelineData &pd)
     {
         std::string str=SavePipelineToToml(&pd);
 
@@ -28,15 +28,15 @@ namespace hgl::graph{
         }
     }
 
-    void SavePipelinePreset2Toml(const OSString &pathname)
+    void SaveGraphicsPipelinePreset2Toml(const OSString &pathname)
     {
         if(!filesystem::IsDirectory(pathname))
         {
-            os_err<<OS_TEXT("SavePipelinePreset2Toml(")<<pathname.c_str()<<OS_TEXT(") failed, not a directory.")<<std::endl;
+            os_err<<OS_TEXT("SaveGraphicsPipelinePreset2Toml(")<<pathname.c_str()<<OS_TEXT(") failed, not a directory.")<<std::endl;
             return;
         }
 
-    #define SAVE_PIPELINE_TO_FILE(name) SaveToToml(filesystem::JoinPathWithFilename(pathname,OS_TEXT(#name) OS_TEXT(".pipeline.toml")),GetPipelineData(PipelinePreset::name));
+    #define SAVE_PIPELINE_TO_FILE(name) SaveToToml(filesystem::JoinPathWithFilename(pathname,OS_TEXT(#name) OS_TEXT(".pipeline.toml")),GetGraphicsPipelineData(GraphicsPipelinePreset::name));
 
         SAVE_PIPELINE_TO_FILE(Solid3D)
         SAVE_PIPELINE_TO_FILE(Alpha3D)
@@ -55,7 +55,7 @@ int os_main(int argc,os_char **argv)
     if(argc<2)
     {
         std::cout<<"example: PipelineCompiler init"<<std::endl
-                 <<"         the method should save all inline PipelineData to .toml files."<<std::endl<<std::endl;
+                 <<"         the method should save all inline GraphicsPipelineData to .toml files."<<std::endl<<std::endl;
 
         std::cout<<"example: PipelineCompiler [pipeline filename]"<<std::endl
                  <<"         the method should load the pipeline toml file, and to save a binary pipeline file."<<std::endl<<std::endl;
@@ -71,7 +71,7 @@ int os_main(int argc,os_char **argv)
 
         os_out<<OS_TEXT("Create Inline pipeline file at")<<cur_path.c_str()<<std::endl;
 
-        VK_NAMESPACE::SavePipelinePreset2Toml(cur_path);
+        VK_NAMESPACE::SaveGraphicsPipelinePreset2Toml(cur_path);
 
         return 0;
     }
@@ -80,7 +80,7 @@ int os_main(int argc,os_char **argv)
 
     os_out<<OS_TEXT("pipeline filename: ")<<toml_filename.c_str()<<std::endl;
 
-    VK_NAMESPACE::PipelineData pd;
+    VK_NAMESPACE::GraphicsPipelineData pd;
 
     if(!LoadPipelineFromTomlFile(&pd,toml_filename))
     {
@@ -101,7 +101,7 @@ int os_main(int argc,os_char **argv)
 
     std::cout<<"save ok!"<<std::endl;
 
-    VK_NAMESPACE::PipelineData pd2;
+    VK_NAMESPACE::GraphicsPipelineData pd2;
 
     if(!VK_NAMESPACE::LoadFromFile(bin_filename,&pd2))
     {

@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/pipeline/VKPipelineData.h>
+﻿#include<hgl/graph/pipeline/VKGraphicsPipelineData.h>
 
 
 namespace hgl::graph{
@@ -64,7 +64,7 @@ namespace
     COMPARE_END
 }//namespace
 
-bool Compare(const PipelineData *pd1,const PipelineData *pd2)
+bool Compare(const GraphicsPipelineData *pd1,const GraphicsPipelineData *pd2)
 {
     if(!pd1||!pd2)return(false);
 

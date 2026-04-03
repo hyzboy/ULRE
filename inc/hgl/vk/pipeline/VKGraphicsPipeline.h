@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include<hgl/vk/VK.h>
-#include<hgl/vk/pipeline/VKPipelineData.h>
-#include<hgl/vk/pipeline/VKPipelinePreset.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineData.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/io/DataOutputStream.h>
 
 namespace hgl::graph{
@@ -15,7 +15,7 @@ class GraphicsPipeline
     VkPipeline pipeline;
 
     const VIL *vil;
-    PipelineData *data;
+    GraphicsPipelineData *data;
 
     bool alpha_test;
     bool alpha_blend;
@@ -25,7 +25,7 @@ private:
     friend class RenderFormat;
     friend class GplGraphicsPipelineBuilder;
 
-    GraphicsPipeline(const AnsiString &n,VkDevice dev,VkPipeline p,const VIL *v,PipelineData *pd)
+    GraphicsPipeline(const AnsiString &n,VkDevice dev,VkPipeline p,const VIL *v,GraphicsPipelineData *pd)
     {
         name=n;
 
@@ -47,7 +47,7 @@ public:
     operator VkPipeline(){return pipeline;}
 
     const VIL *GetVIL()const{return vil;}
-    const PipelineData *GetData()const{return data;}
+    const GraphicsPipelineData *GetData()const{return data;}
 
     const bool IsAlphaTest()const{return data && data->alpha_test>0;}
     const bool IsAlphaBlend()const{return data && data->alpha_blend;}

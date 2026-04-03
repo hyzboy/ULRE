@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/pipeline/VKPipelineData.h>
+﻿#include<hgl/graph/pipeline/VKGraphicsPipelineData.h>
 #include<hgl/vk/VKString.h>
 #include<hgl/io/LoadString.h>
 #include<toml.hpp>
@@ -162,7 +162,7 @@ namespace
         return(true);
     }
 
-    bool LoadFromToml(PipelineData *data,VkPipelineColorBlendStateCreateInfo *cbsci,toml::value &tv)
+    bool LoadFromToml(GraphicsPipelineData *data,VkPipelineColorBlendStateCreateInfo *cbsci,toml::value &tv)
     {
         if(tv.contains("LogicOp"))
         {
@@ -199,7 +199,7 @@ namespace
     }
 }//namespace
 
-bool LoadPipelineFromToml(PipelineData *pd,const std::string &toml_string)
+bool LoadPipelineFromToml(GraphicsPipelineData *pd,const std::string &toml_string)
 {
     toml::value root=toml::parse_str(toml_string);
 
@@ -231,7 +231,7 @@ bool LoadPipelineFromToml(PipelineData *pd,const std::string &toml_string)
     return(true);
 }
 
-bool LoadPipelineFromTomlFile(PipelineData *pd,const OSString &filename)
+bool LoadPipelineFromTomlFile(GraphicsPipelineData *pd,const OSString &filename)
 {
     if(!pd)return(false);
 

@@ -76,7 +76,7 @@ namespace hgl::graph
          */
         GraphicsPipeline* CreatePipeline(Material* material,
                                 const VertexInputLayout* vil,
-                                const PipelineData* pd,
+                                const GraphicsPipelineData* pd,
                                 bool prim_restart = false);
 
     public:

@@ -158,7 +158,7 @@ GraphicsPipeline *VulkanDevice::AcquireGraphicsPipeline(const GraphicsPipelineBu
     }
 
     const RenderStateProfile state_profile =
-        RenderStateProfile::FromPipelineData(*req.pipeline_data, req.primitive, req.primitive_restart);
+        RenderStateProfile::FromGraphicsPipelineData(*req.pipeline_data, req.primitive, req.primitive_restart);
 
     const GplLinkedPipelineKey linked_key = BuildLinkedPipelineKey(req, state_profile);
     pipeline_library_cache.Touch(linked_key);

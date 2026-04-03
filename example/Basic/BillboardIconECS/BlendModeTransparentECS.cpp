@@ -4,7 +4,7 @@
 // The billboard quad is rendered with a pipeline that has src=SRC_ALPHA,
 // dst=ONE_MINUS_SRC_ALPHA blending so semi-transparent regions show through.
 //
-// Uses built-in PipelinePreset::Alpha3D.
+// Uses built-in GraphicsPipelinePreset::Alpha3D.
 
 #include "IconFreepik.h"
 #include "BillboardIconECSBase.h"
@@ -18,7 +18,7 @@ protected:
 
     void ConfigureQuadPipelineMode() override
     {
-        QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, PipelinePreset::Alpha3D);
+        QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, GraphicsPipelinePreset::Alpha3D);
     }
 };
 

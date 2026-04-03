@@ -1,6 +1,6 @@
 #include<hgl/vk/pipeline/VKGplLibraryHandleCache.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
-#include<hgl/vk/pipeline/VKPipelineData.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineData.h>
 #include<hgl/vk/pipeline/VKRenderFormat.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKVertexInputLayout.h>
@@ -26,7 +26,7 @@ VkPipeline CreateVILibrary(VkDevice device, VkPipelineCache cache,
                             const GraphicsPipelineBuildRequest &req)
 {
     const VertexInputLayout *vil = req.vil;
-    const PipelineData      *pd  = req.pipeline_data;
+    const GraphicsPipelineData      *pd  = req.pipeline_data;
     const uint32_t           count = vil->GetVertexAttribCount();
 
     VkVertexInputBindingDescription   *bindings   = vil->NewBindListCopy();
@@ -71,7 +71,7 @@ VkPipeline CreateVILibrary(VkDevice device, VkPipelineCache cache,
 VkPipeline CreatePRLibrary(VkDevice device, VkPipelineCache cache,
                             const GraphicsPipelineBuildRequest &req)
 {
-    const PipelineData *pd = req.pipeline_data;
+    const GraphicsPipelineData *pd = req.pipeline_data;
 
     // Filter vertex-side shader stages from the material's combined list
     const ShaderStageCreateInfoList &all_stages = req.material->GetStageList();
@@ -151,7 +151,7 @@ VkPipeline CreatePRLibrary(VkDevice device, VkPipelineCache cache,
 VkPipeline CreateFSLibrary(VkDevice device, VkPipelineCache cache,
                             const GraphicsPipelineBuildRequest &req)
 {
-    const PipelineData *pd = req.pipeline_data;
+    const GraphicsPipelineData *pd = req.pipeline_data;
 
     const ShaderStageCreateInfoList &all_stages = req.material->GetStageList();
     const uint32_t stage_count = static_cast<uint32_t>(all_stages.GetCount());
@@ -211,7 +211,7 @@ VkPipeline CreateFSLibrary(VkDevice device, VkPipelineCache cache,
 VkPipeline CreateFOLibrary(VkDevice device, VkPipelineCache cache,
                             const GraphicsPipelineBuildRequest &req)
 {
-    const PipelineData  *pd  = req.pipeline_data;
+    const GraphicsPipelineData  *pd  = req.pipeline_data;
     const RenderFormat  *rf  = req.render_format;
     const uint32_t       n   = rf->GetColorCount();
 
