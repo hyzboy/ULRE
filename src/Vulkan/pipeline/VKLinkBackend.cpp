@@ -1,5 +1,8 @@
 #include<hgl/vk/pipeline/VKLinkBackend.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/pipeline/VKGplLibraryPool.h>
 #include<hgl/vk/pipeline/VKGplRequest.h>
+#include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/VKRenderFormat.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/log/Log.h>
@@ -60,17 +63,82 @@ Pipeline *GplLinkBackend::Build(const PipelineBuildContext &context, const GplPi
 {
     if (!context.device)
     {
-        LogError("[GplLinkBackend] Build requires non-null context.device");
+        GLogError("[GplLinkBackend] Build requires non-null context.device");
         return nullptr;
     }
 
-    static bool warned = false;
-    if (!warned)
+    // ── One-time pool initialization ──────────────────────────────────────────
+    std::call_once(init_flag_, [&]()
     {
-        LogWarning("[GplLinkBackend] Minimal runnable mode active: fallback to monolithic create until GPL library/link backend is implemented");
-        warned = true;
+        library_pool_ = std::make_unique<GplLibraryPool>();
+        library_pool_->Init(context.device->GetDevice(), context.pipeline_cache);
+    });
+
+    // ── Compute per-library keys ──────────────────────────────────────────────
+    const VertexInputKey    vi_key  = BuildVertexInputKey(request.vil);
+    const PreRasterKey      pr_key  = BuildPreRasterKey(request);
+    const FragmentShaderKey fs_key  = BuildFragmentShaderKey(request);
+    const FragmentOutputKey fo_key  = BuildFragmentOutputKey(request.render_format);
+
+    // ── Acquire (or create-and-cache) the four library handles ────────────────
+    const VkPipeline vi_lib = library_pool_->AcquireVI(vi_key, request);
+    const VkPipeline pr_lib = library_pool_->AcquirePR(pr_key, request);
+    const VkPipeline fs_lib = library_pool_->AcquireFS(fs_key, request);
+    const VkPipeline fo_lib = library_pool_->AcquireFO(fo_key, request);
+
+    if (vi_lib == VK_NULL_HANDLE || pr_lib == VK_NULL_HANDLE
+     || fs_lib == VK_NULL_HANDLE || fo_lib == VK_NULL_HANDLE)
+    {
+        GLogError("[GplLinkBackend] One or more library stages failed to create "
+                  "(VI=%s PR=%s FS=%s FO=%s), will fallback to monolithic",
+                  vi_lib != VK_NULL_HANDLE ? "ok" : "FAIL",
+                  pr_lib != VK_NULL_HANDLE ? "ok" : "FAIL",
+                  fs_lib != VK_NULL_HANDLE ? "ok" : "FAIL",
+                  fo_lib != VK_NULL_HANDLE ? "ok" : "FAIL");
+        return nullptr;
     }
 
-    return CreateMonolithicFromRequest("GplLinkBackend", request);
+    // ── Link the four libraries into the final executable pipeline ─────────────
+    const VkPipeline libs[4] = { vi_lib, pr_lib, fs_lib, fo_lib };
+
+    VkPipelineLibraryCreateInfoKHR lib_ci{};
+    lib_ci.sType        = VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR;
+    lib_ci.libraryCount = 4;
+    lib_ci.pLibraries   = libs;
+
+    const uint32_t color_count = request.render_format->GetColorCount();
+    VkPipelineRenderingCreateInfoKHR rendering_ci{};
+    rendering_ci.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+    rendering_ci.pNext                   = nullptr;
+    rendering_ci.colorAttachmentCount    = color_count;
+    rendering_ci.pColorAttachmentFormats = request.render_format->GetColorFormat().GetData();
+    rendering_ci.depthAttachmentFormat   = request.render_format->GetDepthFormat();
+
+    lib_ci.pNext = &rendering_ci;
+
+    VkGraphicsPipelineCreateInfo link_ci{};
+    link_ci.sType      = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    link_ci.pNext      = &lib_ci;
+    link_ci.flags      = VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT;
+    link_ci.layout     = request.material->GetPipelineLayout();
+    link_ci.renderPass = VK_NULL_HANDLE;
+
+    VkDevice vk_device = context.device->GetDevice();
+
+    VkPipeline final_pipeline = VK_NULL_HANDLE;
+    if (vkCreateGraphicsPipelines(vk_device, context.pipeline_cache, 1,
+                                  &link_ci, nullptr, &final_pipeline) != VK_SUCCESS)
+    {
+        GLogError("[GplLinkBackend] Link step failed (vkCreateGraphicsPipelines)");
+        return nullptr;
+    }
+
+    RenderFormat::IncrVkCreateCount();
+
+    AnsiString name = request.debug_name;
+    if (name.IsEmpty())
+        name = request.material->GetName();
+
+    return new Pipeline(name, vk_device, final_pipeline, request.vil, nullptr);
 }
 }//namespace hgl::graph

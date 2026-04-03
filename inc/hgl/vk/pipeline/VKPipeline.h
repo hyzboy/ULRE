@@ -23,6 +23,7 @@ class Pipeline
 private:
 
     friend class RenderFormat;
+    friend class GplLinkBackend;
 
     Pipeline(const AnsiString &n,VkDevice dev,VkPipeline p,const VIL *v,PipelineData *pd)
     {

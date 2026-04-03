@@ -217,4 +217,9 @@ uint64_t RenderFormat::GetVkCreateCount()
 {
     return g_rf_vkcreate_count.load(std::memory_order_relaxed);
 }
+
+void RenderFormat::IncrVkCreateCount()
+{
+    ++g_rf_vkcreate_count;
+}
 }//namespace hgl::graph

@@ -82,5 +82,9 @@ public:
     /// Returns the process-lifetime count of successful vkCreateGraphicsPipelines calls.
     /// Use the delta between two calls to count pipelines created in a time window.
     static uint64_t GetVkCreateCount();
+
+    /// Increments the global vkCreateGraphicsPipelines counter by 1.
+    /// Called by non-RenderFormat paths (e.g. GplLinkBackend) that issue their own vkCreateGraphicsPipelines.
+    static void IncrVkCreateCount();
 };//class RenderFormat
 }//namespace hgl::graph
