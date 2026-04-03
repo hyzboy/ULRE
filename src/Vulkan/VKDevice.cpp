@@ -240,18 +240,18 @@ Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GraphicsPipelineBuildReque
         static bool warned_mono_failed = false;
         static bool warned_gpl_failed = false;
 
-        bool *warned = (backend->GetType() == LinkBackendType::Gpl)
+        bool *warned = (backend->GetType() == GraphicsPipelineBuilderType::Gpl)
                      ? &warned_gpl_failed
                      : &warned_mono_failed;
 
         if (!(*warned))
         {
             LogWarning("[VulkanDevice] AcquireGraphicsPipeline backend build failed once: backend=%s",
-                       backend->GetType() == LinkBackendType::Gpl ? "gpl" : "mono");
+                       backend->GetType() == GraphicsPipelineBuilderType::Gpl ? "gpl" : "mono");
             *warned = true;
         }
 
-        if (backend->GetType() == LinkBackendType::Gpl && link_backend_mono)
+        if (backend->GetType() == GraphicsPipelineBuilderType::Gpl && link_backend_mono)
         {
             static bool warned_fallback_once = false;
             if (!warned_fallback_once)

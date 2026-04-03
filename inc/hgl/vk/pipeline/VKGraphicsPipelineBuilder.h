@@ -11,7 +11,7 @@ class VulkanDevice;
 class GplLibraryPool;
 struct GraphicsPipelineBuildRequest;
 
-enum class LinkBackendType
+enum class GraphicsPipelineBuilderType
 {
     Monolithic,
     Gpl,
@@ -27,7 +27,7 @@ class IGraphicsPipelineBuilder
 {
 public:
     virtual ~IGraphicsPipelineBuilder() = default;
-    virtual LinkBackendType GetType() const = 0;
+    virtual GraphicsPipelineBuilderType GetType() const = 0;
     virtual Pipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) = 0;
 };
 
@@ -36,7 +36,7 @@ class MonolithicGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
     OBJECT_LOGGER
 
 public:
-    LinkBackendType GetType() const override { return LinkBackendType::Monolithic; }
+    GraphicsPipelineBuilderType GetType() const override { return GraphicsPipelineBuilderType::Monolithic; }
     Pipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
 };
 
@@ -48,7 +48,7 @@ class GplGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
     std::once_flag                  init_flag_;
 
 public:
-    LinkBackendType GetType() const override { return LinkBackendType::Gpl; }
+    GraphicsPipelineBuilderType GetType() const override { return GraphicsPipelineBuilderType::Gpl; }
     Pipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
 };
 }//namespace hgl::graph
