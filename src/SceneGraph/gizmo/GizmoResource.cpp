@@ -125,7 +125,7 @@ namespace hgl::graph
             }
 
             {
-                gizmo_triangle.pipeline=render_pass->CreatePipeline(gizmo_triangle.mtl,InlinePipeline::GizmoOverlay3D);
+                gizmo_triangle.pipeline=render_pass->CreatePipeline(gizmo_triangle.mtl,PipelinePreset::GizmoOverlay3D);
                 if(!gizmo_triangle.pipeline)
                     return(false);
             }

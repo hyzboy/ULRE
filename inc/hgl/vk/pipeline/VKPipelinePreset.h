@@ -3,7 +3,7 @@
 #include<hgl/type/EnumUtil.h>
 
 namespace hgl::graph{
-enum class InlinePipeline
+enum class PipelinePreset
 {
     Solid3D=0,
     Alpha3D,
@@ -21,12 +21,12 @@ enum class InlinePipeline
     Sky,
 
     ENUM_CLASS_RANGE(Solid3D,Alpha2D)
-};//enum class InlinePipeline
+};//enum class PipelinePreset
 
 struct PipelineData;
 
 /**
  * 获取内置管线数据
  */
-const PipelineData *GetPipelineData(const InlinePipeline &);
+const PipelineData *GetPipelineData(const PipelinePreset &);
 }//namespace hgl::graph

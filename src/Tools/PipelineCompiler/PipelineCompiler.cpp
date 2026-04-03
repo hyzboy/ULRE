@@ -1,6 +1,6 @@
 ﻿#include<hgl/type/String.h>
 #include<hgl/graph/pipeline/VKPipelineData.h>
-#include<hgl/graph/pipeline/VKInlinePipeline.h>
+#include<hgl/graph/pipeline/VKPipelinePreset.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<iostream>
 
@@ -28,15 +28,15 @@ namespace hgl::graph{
         }
     }
 
-    void SaveInlinePipeline2Toml(const OSString &pathname)
+    void SavePipelinePreset2Toml(const OSString &pathname)
     {
         if(!filesystem::IsDirectory(pathname))
         {
-            os_err<<OS_TEXT("SaveInlinePipeline2Toml(")<<pathname.c_str()<<OS_TEXT(") failed, not a directory.")<<std::endl;
+            os_err<<OS_TEXT("SavePipelinePreset2Toml(")<<pathname.c_str()<<OS_TEXT(") failed, not a directory.")<<std::endl;
             return;
         }
 
-    #define SAVE_PIPELINE_TO_FILE(name) SaveToToml(filesystem::JoinPathWithFilename(pathname,OS_TEXT(#name) OS_TEXT(".pipeline.toml")),GetPipelineData(InlinePipeline::name));
+    #define SAVE_PIPELINE_TO_FILE(name) SaveToToml(filesystem::JoinPathWithFilename(pathname,OS_TEXT(#name) OS_TEXT(".pipeline.toml")),GetPipelineData(PipelinePreset::name));
 
         SAVE_PIPELINE_TO_FILE(Solid3D)
         SAVE_PIPELINE_TO_FILE(Alpha3D)
@@ -71,7 +71,7 @@ int os_main(int argc,os_char **argv)
 
         os_out<<OS_TEXT("Create Inline pipeline file at")<<cur_path.c_str()<<std::endl;
 
-        VK_NAMESPACE::SaveInlinePipeline2Toml(cur_path);
+        VK_NAMESPACE::SavePipelinePreset2Toml(cur_path);
 
         return 0;
     }

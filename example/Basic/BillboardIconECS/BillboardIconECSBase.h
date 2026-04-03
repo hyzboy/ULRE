@@ -6,7 +6,7 @@
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/vk/pipeline/VKInlinePipeline.h>
+#include<hgl/vk/pipeline/VKPipelinePreset.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>

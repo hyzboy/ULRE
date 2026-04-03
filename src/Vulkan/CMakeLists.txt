@@ -147,7 +147,7 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKGraphicsPipeline.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineData.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineLayoutData.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineHash.h
-                            ${PIPELINE_HEADER_PATH}/VKInlinePipeline.h
+                            ${PIPELINE_HEADER_PATH}/VKPipelinePreset.h
                             ${PIPELINE_HEADER_PATH}/VKComputePipeline.h
                             ${PIPELINE_SOURCE_PATH}/VKPipelineCompare.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineData.cpp

@@ -326,25 +326,25 @@ void GplLibraryHandleCache::Init(VkDevice device, VkPipelineCache pipeline_cache
     pipeline_cache_ = pipeline_cache;
 }
 
-VkPipeline GplLibraryHandleCache::AcquireVI(const GplVertexInputKey &key, const GraphicsPipelineBuildRequest &req)
+VkPipeline GplLibraryHandleCache::AcquireVertexInputLibrary(const GplVertexInputKey &key, const GraphicsPipelineBuildRequest &req)
 {
     return AcquireLibrary(vi_lib_, lib_mutex_, key,
         [&]{ return CreateVILibrary(device_, pipeline_cache_, req); });
 }
 
-VkPipeline GplLibraryHandleCache::AcquirePR(const GplPreRasterKey &key, const GraphicsPipelineBuildRequest &req)
+VkPipeline GplLibraryHandleCache::AcquirePreRasterLibrary(const GplPreRasterKey &key, const GraphicsPipelineBuildRequest &req)
 {
     return AcquireLibrary(pr_lib_, lib_mutex_, key,
         [&]{ return CreatePRLibrary(device_, pipeline_cache_, req); });
 }
 
-VkPipeline GplLibraryHandleCache::AcquireFS(const GplFragmentShaderKey &key, const GraphicsPipelineBuildRequest &req)
+VkPipeline GplLibraryHandleCache::AcquireFragmentShaderLibrary(const GplFragmentShaderKey &key, const GraphicsPipelineBuildRequest &req)
 {
     return AcquireLibrary(fs_lib_, lib_mutex_, key,
         [&]{ return CreateFSLibrary(device_, pipeline_cache_, req); });
 }
 
-VkPipeline GplLibraryHandleCache::AcquireFO(const GplFragmentOutputKey &key, const GraphicsPipelineBuildRequest &req)
+VkPipeline GplLibraryHandleCache::AcquireFragmentOutputLibrary(const GplFragmentOutputKey &key, const GraphicsPipelineBuildRequest &req)
 {
     return AcquireLibrary(fo_lib_, lib_mutex_, key,
         [&]{ return CreateFOLibrary(device_, pipeline_cache_, req); });

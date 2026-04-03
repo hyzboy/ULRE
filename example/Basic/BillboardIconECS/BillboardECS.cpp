@@ -103,7 +103,7 @@ private:
         // Create pipeline
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, InlinePipeline::Solid3D) : nullptr;
+        pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, PipelinePreset::Solid3D) : nullptr;
         if (!pipeline_plane_grid) return false;
 
         std::cout << "[BillboardECS] PlaneGrid pipeline: " << (void*)pipeline_plane_grid << std::endl;

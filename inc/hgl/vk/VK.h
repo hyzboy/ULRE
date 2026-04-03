@@ -231,7 +231,7 @@ class Material;
 class MaterialParameters;
 class MaterialInstance;
 struct PipelineData;
-enum class InlinePipeline;
+enum class PipelinePreset;
 class GraphicsPipeline;
 
 struct VAConfig;

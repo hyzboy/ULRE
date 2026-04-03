@@ -10,7 +10,7 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>
-#include<hgl/vk/pipeline/VKInlinePipeline.h>
+#include<hgl/vk/pipeline/VKPipelinePreset.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/ecs/support/PipelineResolveMetrics.h>
@@ -31,22 +31,22 @@ namespace hgl::ecs
     graph::RenderFormat* QuadResourcePrepareSystem::shared_render_pass = nullptr;
     graph::Sampler* QuadResourcePrepareSystem::shared_sampler = nullptr;
 
-    static graph::InlinePipeline g_default_quad_inline_pipeline = graph::InlinePipeline::Solid3D;
-    static std::unordered_map<const ECSContext*, graph::InlinePipeline> g_world_quad_inline_pipeline;
+    static graph::PipelinePreset g_default_quad_inline_pipeline = graph::PipelinePreset::Solid3D;
+    static std::unordered_map<const ECSContext*, graph::PipelinePreset> g_world_quad_inline_pipeline;
     static std::unordered_map<const ECSContext*, graph::TextureChannelHint> g_world_quad_channel_hint;
 
-    static graph::BlendMode InlinePipelineToBlendMode(graph::InlinePipeline pipeline)
+    static graph::BlendMode PipelinePresetToBlendMode(graph::PipelinePreset pipeline)
     {
         switch (pipeline)
         {
-        case graph::InlinePipeline::Masked3D:          return graph::BlendMode::Masked;
-        case graph::InlinePipeline::Dither3D:          return graph::BlendMode::Dither;
+        case graph::PipelinePreset::Masked3D:          return graph::BlendMode::Masked;
+        case graph::PipelinePreset::Dither3D:          return graph::BlendMode::Dither;
         default:                                        return graph::BlendMode::Transparent;
         }
     }
 
     void QuadResourcePrepareSystem::SetPipelineForWorld(const ECSContext* world,
-                                                        graph::InlinePipeline pipeline)
+                                                        graph::PipelinePreset pipeline)
     {
         if (!world)
             return;
@@ -54,7 +54,7 @@ namespace hgl::ecs
         g_world_quad_inline_pipeline[world] = pipeline;
     }
 
-    graph::InlinePipeline QuadResourcePrepareSystem::GetPipelineForWorld(const ECSContext* world)
+    graph::PipelinePreset QuadResourcePrepareSystem::GetPipelineForWorld(const ECSContext* world)
     {
         if (world)
         {
@@ -68,7 +68,7 @@ namespace hgl::ecs
 
     graph::BlendMode QuadResourcePrepareSystem::GetBlendModeForWorld(const ECSContext* world)
     {
-        return InlinePipelineToBlendMode(GetPipelineForWorld(world));
+        return PipelinePresetToBlendMode(GetPipelineForWorld(world));
     }
 
     void QuadResourcePrepareSystem::SetChannelHintForWorld(const ECSContext* world,
@@ -92,19 +92,19 @@ namespace hgl::ecs
         return graph::TextureChannelHint::RGBA;
     }
 
-    void QuadResourcePrepareSystem::SetPipeline(graph::InlinePipeline pipeline)
+    void QuadResourcePrepareSystem::SetPipeline(graph::PipelinePreset pipeline)
     {
         g_default_quad_inline_pipeline = pipeline;
     }
 
-    graph::InlinePipeline QuadResourcePrepareSystem::GetPipeline()
+    graph::PipelinePreset QuadResourcePrepareSystem::GetPipeline()
     {
         return g_default_quad_inline_pipeline;
     }
 
     graph::BlendMode QuadResourcePrepareSystem::GetBlendMode()
     {
-        return InlinePipelineToBlendMode(g_default_quad_inline_pipeline);
+        return PipelinePresetToBlendMode(g_default_quad_inline_pipeline);
     }
 
     graph::GraphicsPipeline* QuadResourcePrepareSystem::CreateConfiguredPipeline(graph::RenderFormat* render_pass,

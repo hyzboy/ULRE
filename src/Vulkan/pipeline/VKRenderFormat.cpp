@@ -3,7 +3,7 @@
 #include<cstdint>
 #include<cstdio>
 #include<atomic>
-#include<hgl/vk/pipeline/VKInlinePipeline.h>
+#include<hgl/vk/pipeline/VKPipelinePreset.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/VKMaterial.h>
@@ -109,7 +109,7 @@ GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,cons
     return p;
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const PipelinePreset &ip,const bool prim_restart)
 {
     if(!mtl)return(nullptr);
 
@@ -121,12 +121,12 @@ GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const PipelineData 
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),pd,prim_restart);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const InlinePipeline &ip,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const PipelinePreset &ip,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),ip,prim_restart);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const PipelinePreset &ip,const bool prim_restart)
 {
     if(!mi)return(nullptr);
 

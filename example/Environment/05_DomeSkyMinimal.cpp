@@ -59,7 +59,7 @@ private:
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        mtl_pipeline = render_pass ? render_pass->CreatePipeline(mi_sky_sphere, InlinePipeline::Solid3D) : nullptr;
+        mtl_pipeline = render_pass ? render_pass->CreatePipeline(mi_sky_sphere, PipelinePreset::Solid3D) : nullptr;
 
         return mtl_pipeline;
     }

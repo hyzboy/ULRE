@@ -154,7 +154,7 @@ public:
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material, PipelinePreset::Solid3D) : nullptr;
         if(!pipeline) return false;
 
         const VIL *vil = material->GetDefaultVIL();

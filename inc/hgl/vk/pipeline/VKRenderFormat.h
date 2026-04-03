@@ -54,12 +54,12 @@ public:
 public:
 
     GraphicsPipeline *CreatePipeline(Material *,const VIL *,const PipelineData *,   const bool prim_restart=false);
-    GraphicsPipeline *CreatePipeline(Material *,const VIL *,const InlinePipeline &, const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(Material *,const VIL *,const PipelinePreset &, const bool prim_restart=false);
 
     GraphicsPipeline *CreatePipeline(Material *mtl,         const PipelineData *,   const bool prim_restart=false);
-    GraphicsPipeline *CreatePipeline(Material *mtl,         const InlinePipeline &, const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(Material *mtl,         const PipelinePreset &, const bool prim_restart=false);
 
-    GraphicsPipeline *CreatePipeline(MaterialInstance *,    const InlinePipeline &, const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(MaterialInstance *,    const PipelinePreset &, const bool prim_restart=false);
     GraphicsPipeline *CreatePipeline(MaterialInstance *,    const PipelineData *,   const bool prim_restart=false);
     GraphicsPipeline *CreatePipeline(MaterialInstance *,    const OSString &,       const bool prim_restart=false);
 

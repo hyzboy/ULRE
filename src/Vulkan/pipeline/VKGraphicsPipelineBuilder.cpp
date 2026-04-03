@@ -81,10 +81,10 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
     const GplFragmentOutputKey fo_key = BuildFragmentOutputKey(request.render_format);
 
     // ── Acquire (or create-and-cache) the four library handles ────────────────
-    const VkPipeline vi_lib = library_pool_->AcquireVI(vi_key, request);
-    const VkPipeline pr_lib = library_pool_->AcquirePR(pr_key, request);
-    const VkPipeline fs_lib = library_pool_->AcquireFS(fs_key, request);
-    const VkPipeline fo_lib = library_pool_->AcquireFO(fo_key, request);
+    const VkPipeline vi_lib = library_pool_->AcquireVertexInputLibrary(vi_key, request);
+    const VkPipeline pr_lib = library_pool_->AcquirePreRasterLibrary(pr_key, request);
+    const VkPipeline fs_lib = library_pool_->AcquireFragmentShaderLibrary(fs_key, request);
+    const VkPipeline fo_lib = library_pool_->AcquireFragmentOutputLibrary(fo_key, request);
 
     if (vi_lib == VK_NULL_HANDLE || pr_lib == VK_NULL_HANDLE
      || fs_lib == VK_NULL_HANDLE || fo_lib == VK_NULL_HANDLE)

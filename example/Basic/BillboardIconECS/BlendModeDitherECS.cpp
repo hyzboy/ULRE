@@ -18,7 +18,7 @@ protected:
 
     void ConfigureQuadPipelineMode() override
     {
-        QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, InlinePipeline::Dither3D);
+        QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, PipelinePreset::Dither3D);
         QuadResourcePrepareSystem::SetChannelHintForWorld(ecs_context, TextureChannelHint::Grayscale);
     }
 };

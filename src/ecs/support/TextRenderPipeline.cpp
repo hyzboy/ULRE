@@ -477,7 +477,7 @@ namespace hgl::ecs
 
             if (!resources->pipeline)
             {
-                resources->pipeline = render_pass->CreatePipeline(mi, graph::InlinePipeline::Solid2D);
+                resources->pipeline = render_pass->CreatePipeline(mi, graph::PipelinePreset::Solid2D);
                 if (!resources->pipeline)
                     continue;
 

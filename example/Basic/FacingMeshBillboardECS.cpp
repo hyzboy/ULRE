@@ -126,7 +126,7 @@ private:
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        solid.pipeline = render_pass ? render_pass->CreatePipeline(solid.material, InlinePipeline::Solid3D) : nullptr;
+        solid.pipeline = render_pass ? render_pass->CreatePipeline(solid.material, PipelinePreset::Solid3D) : nullptr;
 
         return solid.pipeline != nullptr;
     }

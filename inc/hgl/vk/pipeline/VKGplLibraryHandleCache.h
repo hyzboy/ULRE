@@ -35,26 +35,26 @@ public:
     void Init(VkDevice device, VkPipelineCache pipeline_cache);
 
     /**
-     * AcquireVI  — Vertex Input Interface 库
+     * AcquireVertexInputLibrary  — Vertex Input Interface 库
      * @param key    本次请求对应的 VertexInputKey
-     * @param req    完整 GplPipelineRequest（用于首次创建）
+     * @param req    完整 GraphicsPipelineBuildRequest（用于首次创建）
      * @return 成功返回 VkPipeline（库 handle），失败返回 VK_NULL_HANDLE
      */
-    VkPipeline AcquireVI(const GplVertexInputKey   &key, const GraphicsPipelineBuildRequest &req);
+    VkPipeline AcquireVertexInputLibrary(const GplVertexInputKey   &key, const GraphicsPipelineBuildRequest &req);
 
     /**
-     * AcquirePR  — Pre-Rasterization Shaders 库
+     * AcquirePreRasterLibrary  — Pre-Rasterization Shaders 库
      */
-    VkPipeline AcquirePR(const GplPreRasterKey     &key, const GraphicsPipelineBuildRequest &req);
+    VkPipeline AcquirePreRasterLibrary(const GplPreRasterKey     &key, const GraphicsPipelineBuildRequest &req);
 
     /**
-     * AcquireFS  — Fragment Shader 库
+     * AcquireFragmentShaderLibrary  — Fragment Shader 库
      */
-    VkPipeline AcquireFS(const GplFragmentShaderKey &key, const GraphicsPipelineBuildRequest &req);
+    VkPipeline AcquireFragmentShaderLibrary(const GplFragmentShaderKey &key, const GraphicsPipelineBuildRequest &req);
 
     /**
-     * AcquireFO  — Fragment Output Interface 库
+     * AcquireFragmentOutputLibrary  — Fragment Output Interface 库
      */
-    VkPipeline AcquireFO(const GplFragmentOutputKey &key, const GraphicsPipelineBuildRequest &req);
+    VkPipeline AcquireFragmentOutputLibrary(const GplFragmentOutputKey &key, const GraphicsPipelineBuildRequest &req);
 };
 }//namespace hgl::graph

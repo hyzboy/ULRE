@@ -85,7 +85,7 @@ private:
         //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid2D) : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material, PipelinePreset::Solid2D) : nullptr;
 
         if(!pipeline)
             return(false);

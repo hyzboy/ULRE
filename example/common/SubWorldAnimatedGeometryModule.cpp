@@ -11,7 +11,7 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 
-#include<hgl/vk/pipeline/VKInlinePipeline.h>
+#include<hgl/vk/pipeline/VKPipelinePreset.h>
 #include<hgl/vk/VKMaterial.h>
 
 #include<glm/glm.hpp>
@@ -73,7 +73,7 @@ namespace
         bool OnInitializeSharedResources() override
         {
             mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-            if (!InitMaterialAndPipeline(cfg, mtl::MaterialPreset::Gizmo3D, InlinePipeline::Solid3D))
+            if (!InitMaterialAndPipeline(cfg, mtl::MaterialPreset::Gizmo3D, PipelinePreset::Solid3D))
                 return false;
 
             const Color4f colors[] =
