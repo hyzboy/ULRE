@@ -59,11 +59,11 @@ Pipeline *MonolithicGraphicsPipelineBuilder::Build(const PipelineBuildContext &c
     return CreateMonolithicFromRequest("MonolithicGraphicsPipelineBuilder", request);
 }
 
-Pipeline *GplLinkBackend::Build(const PipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
+Pipeline *GplGraphicsPipelineBuilder::Build(const PipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
 {
     if (!context.device)
     {
-        GLogError("[GplLinkBackend] Build requires non-null context.device");
+        GLogError("[GplGraphicsPipelineBuilder] Build requires non-null context.device");
         return nullptr;
     }
 
@@ -89,7 +89,7 @@ Pipeline *GplLinkBackend::Build(const PipelineBuildContext &context, const Graph
     if (vi_lib == VK_NULL_HANDLE || pr_lib == VK_NULL_HANDLE
      || fs_lib == VK_NULL_HANDLE || fo_lib == VK_NULL_HANDLE)
     {
-        GLogError("[GplLinkBackend] One or more library stages failed to create "
+        GLogError("[GplGraphicsPipelineBuilder] One or more library stages failed to create "
                   "(VI=%s PR=%s FS=%s FO=%s), will fallback to monolithic",
                   vi_lib != VK_NULL_HANDLE ? "ok" : "FAIL",
                   pr_lib != VK_NULL_HANDLE ? "ok" : "FAIL",
@@ -129,7 +129,7 @@ Pipeline *GplLinkBackend::Build(const PipelineBuildContext &context, const Graph
     if (vkCreateGraphicsPipelines(vk_device, context.pipeline_cache, 1,
                                   &link_ci, nullptr, &final_pipeline) != VK_SUCCESS)
     {
-        GLogError("[GplLinkBackend] Link step failed (vkCreateGraphicsPipelines)");
+        GLogError("[GplGraphicsPipelineBuilder] Link step failed (vkCreateGraphicsPipelines)");
         return nullptr;
     }
 

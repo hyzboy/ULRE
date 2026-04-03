@@ -40,7 +40,7 @@ public:
     Pipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
 };
 
-class GplLinkBackend final : public IGraphicsPipelineBuilder
+class GplGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
 {
     OBJECT_LOGGER
 
