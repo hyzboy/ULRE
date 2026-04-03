@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/vk/VK.h>
-#include<hgl/vk/pipeline/VKGplRequest.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<mutex>
 #include<unordered_map>
 #include<memory>

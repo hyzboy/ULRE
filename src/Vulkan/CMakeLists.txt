@@ -139,7 +139,7 @@ SET(PIPELINE_HEADER_PATH   ${VK_INCLUDE_PATH}/pipeline)
 SET(PIPELINE_SOURCE_PATH   pipeline)
 
 SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKGraphicsPipeline.h
-                            ${PIPELINE_HEADER_PATH}/VKGplRequest.h
+                            ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineBuildRequest.h
                             ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineBuilder.h
                             ${PIPELINE_HEADER_PATH}/VKGplLibraryHandleCache.h
                             ${PIPELINE_HEADER_PATH}/VKGplLibraryStatsTracker.h
@@ -154,7 +154,7 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKGraphicsPipeline.h
                             ${PIPELINE_SOURCE_PATH}/VKPipelineDataManage.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineDataSaveLoad.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineHash.cpp
-                            ${PIPELINE_SOURCE_PATH}/VKGplRequest.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineBuildRequest.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineBuilder.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGplLibraryHandleCache.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGplLibraryStatsTracker.cpp

@@ -1,4 +1,4 @@
-#include<hgl/vk/pipeline/VKGplRequest.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKRenderStateProfile.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/pipeline/VKRenderFormat.h>
@@ -96,7 +96,7 @@ namespace
     }
 }
 
-bool IsValidGplPipelineRequest(const GraphicsPipelineBuildRequest &req)
+bool IsValidGraphicsPipelineBuildRequest(const GraphicsPipelineBuildRequest &req)
 {
     return req.material
         && req.vil

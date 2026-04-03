@@ -1,7 +1,7 @@
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuilder.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/pipeline/VKGplLibraryHandleCache.h>
-#include<hgl/vk/pipeline/VKGplRequest.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/vk/pipeline/VKRenderFormat.h>
 #include<hgl/vk/VKMaterial.h>

@@ -5,7 +5,7 @@
 #include<atomic>
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
-#include<hgl/vk/pipeline/VKGplRequest.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/object/ObjectTracker.h>

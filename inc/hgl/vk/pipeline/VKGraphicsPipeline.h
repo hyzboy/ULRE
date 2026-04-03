@@ -49,7 +49,7 @@ public:
     const VIL *GetVIL()const{return vil;}
     const PipelineData *GetData()const{return data;}
 
-    const bool IsAlphaTest()const{return data->alpha_test>0;}
-    const bool IsAlphaBlend()const{return data->alpha_blend;}
+    const bool IsAlphaTest()const{return data && data->alpha_test>0;}
+    const bool IsAlphaBlend()const{return data && data->alpha_blend;}
 };//class GraphicsPipeline
 }//namespace hgl::graph

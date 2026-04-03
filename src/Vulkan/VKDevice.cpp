@@ -7,7 +7,7 @@
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/pipeline/VKComputePipeline.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuilder.h>
-#include<hgl/vk/pipeline/VKGplRequest.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKRenderStateProfile.h>
 #include<hgl/vk/VKObjectName.h>
 #include<hgl/vk/IGPUBuffer.h>
@@ -129,22 +129,12 @@ VulkanDevice *VulkanDevice::FromDevice(VkDevice device)
 
 void VulkanDevice::SetGplEnabled(bool enabled)
 {
-    // GPL is policy-on by default. This setter is preserved for API compatibility,
-    // but cannot force-enable on unsupported devices and ignores explicit disable.
-    if(!enabled)
-    {
-        LogWarning("[VulkanDevice] SetGplEnabled(false) ignored: GPL policy is always-on when supported");
-    }
-
-    if(!gpl_supported)
+    if(!gpl_supported && enabled)
     {
         LogWarning("[VulkanDevice] Graphics pipeline library requested but not supported, keeping disabled");
-        gpl_enabled = false;
     }
-    else
-    {
-        gpl_enabled = true;
-    }
+
+    gpl_enabled = gpl_supported && enabled;
 
     LogInfo("[VulkanDevice] Graphics pipeline library runtime_enabled=%s", gpl_enabled?"yes":"no");
 }
@@ -157,7 +147,7 @@ GraphicsPipeline *VulkanDevice::AcquireGraphicsPipeline(const GraphicsPipelineBu
         return v != 0 && ((v & (v - 1)) == 0);
     };
 
-    if (!IsValidGplPipelineRequest(req))
+    if (!IsValidGraphicsPipelineBuildRequest(req))
     {
         LogWarning("[VulkanDevice] AcquireGraphicsPipeline invalid request: material=%p vil=%p render_format=%p pipeline_data=%p",
                    static_cast<const void *>(req.material),

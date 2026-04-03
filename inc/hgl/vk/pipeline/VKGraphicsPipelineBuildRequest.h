@@ -66,7 +66,7 @@ struct GraphicsPipelineBuildRequest
     AnsiString debug_name;
 };
 
-bool IsValidGplPipelineRequest(const GraphicsPipelineBuildRequest &req);
+bool IsValidGraphicsPipelineBuildRequest(const GraphicsPipelineBuildRequest &req);
 
 GplVertexInputKey  BuildVertexInputKey(const VertexInputLayout *vil);
 GplPreRasterKey    BuildPreRasterKey(const GraphicsPipelineBuildRequest &req);

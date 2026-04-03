@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/vk/pipeline/VKGplRequest.h>
+#include <hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include <cstddef>
 #include <cstdint>
 #include <mutex>

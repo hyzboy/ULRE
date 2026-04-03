@@ -29,7 +29,7 @@
 #include<memory>
 #include<string>
 #include<vector>
-#include<hgl/vk/pipeline/VKGplRequest.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGplLibraryStatsTracker.h>
 
 namespace hgl::graph{
@@ -172,6 +172,8 @@ public: //内存相关
     void SetDrawPhaseActive(bool active) { draw_phase_active = active; }
     bool IsDrawPhaseActive() const { return draw_phase_active; }
     bool IsGplSupported() const { return gpl_supported; }
+    /// Runtime switch for graphics pipeline library usage.
+    /// If the device does not support GPL, this always keeps GPL disabled.
     void SetGplEnabled(bool enabled);
     bool IsGplEnabled() const { return gpl_enabled; }
     GraphicsPipeline *AcquireGraphicsPipeline(const GraphicsPipelineBuildRequest &req);
