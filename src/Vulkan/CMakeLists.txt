@@ -213,8 +213,6 @@ SOURCE_GROUP("Texture\\Device" FILES ${VK_TEXTURE_DEVICE_FILES})
 
 # --- 8. Render Pass ---
 SET(VK_RENDER_PASS_FILES        ${VK_INCLUDE_PATH}/pipeline/VKRenderFormat.h
-                                ${VK_INCLUDE_PATH}/pipeline/VKLoadStoreOpInfo.h
-                                ${VK_INCLUDE_PATH}/pipeline/VKAttachment.h
                                 pipeline/VKRenderFormat.cpp)
 
 SOURCE_GROUP("RenderPass" FILES ${VK_RENDER_PASS_FILES})
