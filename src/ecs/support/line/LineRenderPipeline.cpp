@@ -24,6 +24,7 @@
 #include <hgl/vk/VKVertexInputConfig.h>
 #include <hgl/vk/UBOAccessor.h>
 #include <hgl/math/geometry/Frustum.h>
+#include <hgl/ecs/support/PipelineResolveMetrics.h>
 #include <hgl/log/Log.h>
 #include <glm/glm.hpp>
 #include <algorithm>
@@ -31,6 +32,12 @@
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        PipelineResolveCounters g_line_pipeline_resolve_counters;
+        PipelineHotpathCounters g_line_render_hotpath_counters;
+    }
+
     // -------------------------------------------------------------------------
     // Type aliases (local to this TU)
     // -------------------------------------------------------------------------
@@ -260,12 +267,29 @@ namespace hgl::ecs
             return false;
 
         // ------- Create pipeline -------
+        RecordPipelineResolveAttempt(g_line_pipeline_resolve_counters);
+        const uint64_t vkcreate_before = graph::RenderFormat::GetVkCreateCount();
+
         pipeline_ = support_wide_lines_
             ? rp->CreatePipeline(mi_, graph::InlinePipeline::DynamicLineWidth3D)
             : rp->CreatePipeline(mi_, graph::InlinePipeline::Solid3D);
 
+        const uint64_t vkcreate_after = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
+
         if (!pipeline_)
+        {
+            const uint64_t failures = RecordPipelineResolveFailure(g_line_pipeline_resolve_counters);
+            if (ShouldLogPow2(failures))
+            {
+                GLogWarning("[LineRenderPipeline] Pipeline resolve failed: total_failures=%llu",
+                            static_cast<unsigned long long>(failures));
+            }
             return false;
+        }
+
+        RecordPipelineResolveSuccess(g_line_pipeline_resolve_counters);
+        LogPipelineResolveCreated("LineRenderPipeline", vkcreate_delta, g_line_pipeline_resolve_counters);
 
         // ------- Create color palette UBO -------
         auto* buf_mgr = gc->GetBufferManager();
@@ -574,6 +598,8 @@ namespace hgl::ecs
         if (!pipeline_ || !mi_)
             return;
 
+        const uint64_t vkcreate_before = graph::RenderFormat::GetVkCreateCount();
+
         auto* mat = mi_->GetMaterial();
         if (mat)
             cmd->BindDescriptorSets(mat);
@@ -600,6 +626,10 @@ namespace hgl::ecs
                         total_line_count_,
                         draw_lines);
         }
+
+        const uint64_t vkcreate_after = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
+        LogPipelineHotpathCreateViolation("LineRenderPipeline", vkcreate_delta, g_line_render_hotpath_counters);
     }
 
     void LineRenderPipeline::Shutdown()

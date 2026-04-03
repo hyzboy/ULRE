@@ -248,7 +248,22 @@ Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GplPipelineRequest &req)
                        backend->GetType() == LinkBackendType::Gpl ? "gpl" : "mono");
             *warned = true;
         }
+
+        if (backend->GetType() == LinkBackendType::Gpl && link_backend_mono)
+        {
+            static bool warned_fallback_once = false;
+            if (!warned_fallback_once)
+            {
+                LogWarning("[VulkanDevice] AcquireGraphicsPipeline fallback: GPL backend failed, retry with monolithic backend");
+                warned_fallback_once = true;
+            }
+
+            result = link_backend_mono->Build(ctx, req);
+        }
     }
+
+    if (!result)
+        return nullptr;
 
     {
         std::lock_guard<std::mutex> lock(linked_pipeline_cache_mutex);

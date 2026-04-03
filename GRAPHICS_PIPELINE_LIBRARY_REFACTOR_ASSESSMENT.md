@@ -22,12 +22,16 @@
 12. `TextRenderPipeline::ProcessInputs(...)` 已接入构建阶段 pipeline 预解析（首次创建 + 后续按模板刷新），并在已有 primitive 上同步更新 pipeline。
 13. `RenderFormat::GetVkCreateCount()` 全局 `vkCreateGraphicsPipelines` 调用计数器已落地（`VKRenderFormat.h/cpp`），支持帧内创建数量区间统计。
 14. `PrimitiveBatchPipeline::BuildMaterialBatches()` 已接入帧间 pipeline 创建越界检测：批处理结束时记录快照，下一帧批处理开始时对比，若检测到热路径创建则 `LogWarning`（阶段4验收标准 7.1/7.2 可观测化）。
+15. `VulkanDevice::AcquireGraphicsPipeline(...)` 已补齐后端失败降级策略：GPL backend 失败时自动重试 monolithic backend，并禁止将空 `Pipeline*` 写入 `LinkedPipelineCache`。
+16. `LineRenderPipeline` 已接入 pipeline 解析统计与渲染热路径创建断言：初始化创建记录 attempts/success/failure，`Render(...)` 中若检测到 `vkCreateGraphicsPipelines` 增量则按 pow2 节流 `LogWarning`。
+17. `QuadResourcePrepareSystem` 已接入 pipeline 解析统计（attempts/success/failure）与创建增量观测，`CreateConfiguredPipeline(...)` 统一输出阶段4可观测日志。
+18. `TerrainRenderPipeline::Render(...)` 已接入热路径 pipeline 创建断言：若渲染期间出现 `vkCreateGraphicsPipelines` 增量则按 pow2 节流 `LogWarning`。
 
 ### 进行中
 
 1. `GplLinkBackend::Build(...)` 真实 GPL library/link 构建逻辑未完成（当前为可运行过渡实现）。
 2. `RenderFormat` 旧去重缓存和旧直连创建路径尚未彻底移除（仅过渡桥接完成）。
-3. `PrimitiveBatchPipeline` 仅完成前移接入骨架，尚需补齐失败统计/兜底策略与覆盖测试。
+3. 阶段4剩余工作转入回归验证：Primitive/Text/Line/Terrain/Quad 多场景压测与日志基线（确认 steady-state 下热路径创建告警为 0）。
 
 ### 未开始
 

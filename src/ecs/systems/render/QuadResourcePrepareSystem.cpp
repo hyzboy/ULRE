@@ -13,11 +13,17 @@
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKFormat.h>
+#include<hgl/ecs/support/PipelineResolveMetrics.h>
 #include<cstdint>
 #include<unordered_map>
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        PipelineResolveCounters g_quad_pipeline_resolve_counters;
+    }
+
     // Static member initialization
     graph::Primitive* QuadResourcePrepareSystem::shared_primitive = nullptr;
     graph::MaterialInstance* QuadResourcePrepareSystem::shared_material_instance = nullptr;
@@ -108,7 +114,29 @@ namespace hgl::ecs
         if (!render_pass || !material_instance)
             return nullptr;
 
-        return render_pass->CreatePipeline(material_instance, GetPipelineForWorld(world));
+        RecordPipelineResolveAttempt(g_quad_pipeline_resolve_counters);
+        const uint64_t vkcreate_before = graph::RenderFormat::GetVkCreateCount();
+
+        graph::Pipeline* pipeline = render_pass->CreatePipeline(material_instance, GetPipelineForWorld(world));
+
+        const uint64_t vkcreate_after = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
+
+        if (!pipeline)
+        {
+            const uint64_t failures = RecordPipelineResolveFailure(g_quad_pipeline_resolve_counters);
+            if (ShouldLogPow2(failures))
+            {
+                GLogWarning("[QuadResourcePrepareSystem] Pipeline resolve failed: total_failures=%llu",
+                            static_cast<unsigned long long>(failures));
+            }
+            return nullptr;
+        }
+
+        RecordPipelineResolveSuccess(g_quad_pipeline_resolve_counters);
+        LogPipelineResolveCreated("QuadResourcePrepareSystem", vkcreate_delta, g_quad_pipeline_resolve_counters);
+
+        return pipeline;
     }
 
     QuadResourcePrepareSystem::QuadResourcePrepareSystem(const std::string& name)

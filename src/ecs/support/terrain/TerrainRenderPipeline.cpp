@@ -1,11 +1,18 @@
 #include <hgl/ecs/support/terrain/TerrainRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/support/PipelineResolveMetrics.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/vk/VKCommandBuffer.h>
+#include <hgl/vk/VKRenderFormat.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        PipelineHotpathCounters g_terrain_render_hotpath_counters;
+    }
+
     const std::string TerrainRenderPipeline::kName{ "Terrain" };
 
     TerrainRenderPipeline::TerrainRenderPipeline(ECSContext* ctx)
@@ -94,6 +101,8 @@ namespace hgl::ecs
         if (!cmd || tile_buffer_.IsEmpty())
             return;
 
+        const uint64_t vkcreate_before = graph::RenderFormat::GetVkCreateCount();
+
         // All tiles share the same pipeline and material (first tile is representative)
         TerrainTileComponent* representative = visible_tiles_[0];
 
@@ -114,6 +123,10 @@ namespace hgl::ecs
         //    Each VkDrawIndirectCommand carries the per-tile vertex count (gw*gh*6).
         cmd->DrawIndirect(tile_buffer_.GetIndirectBuffer()->GetVkBuffer(),
                           tile_buffer_.GetTileCount());
+
+        const uint64_t vkcreate_after = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
+        LogPipelineHotpathCreateViolation("TerrainRenderPipeline", vkcreate_delta, g_terrain_render_hotpath_counters);
     }
 
 }  // namespace hgl::ecs

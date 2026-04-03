@@ -24,6 +24,7 @@
 #include<hgl/graph/tile/TileData.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/vk/VKBuffer.h>
+#include<hgl/ecs/support/PipelineResolveMetrics.h>
 
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/common/RenderOptions.h>
@@ -31,20 +32,12 @@
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/type/AlignUtil.h>
 #include<cmath>
-#include<atomic>
 
 namespace hgl::ecs
 {
     namespace
     {
-        std::atomic<uint64_t> g_text_pipeline_resolve_attempts{0};
-        std::atomic<uint64_t> g_text_pipeline_resolve_successes{0};
-        std::atomic<uint64_t> g_text_pipeline_resolve_failures{0};
-
-        inline bool ShouldLogPow2(const uint64_t v)
-        {
-            return v != 0 && ((v & (v - 1)) == 0);
-        }
+        PipelineResolveCounters g_text_pipeline_resolve_counters;
 
         graph::TileFont* CreateTileFont(graph::RenderContext* rc,
                                         graph::FontSource* fs,
@@ -490,8 +483,8 @@ namespace hgl::ecs
 
                 ++frame_pipeline_attempts;
                 ++frame_pipeline_successes;
-                ++g_text_pipeline_resolve_attempts;
-                ++g_text_pipeline_resolve_successes;
+                RecordPipelineResolveAttempt(g_text_pipeline_resolve_counters);
+                RecordPipelineResolveSuccess(g_text_pipeline_resolve_counters);
             }
             else
             {
@@ -499,14 +492,14 @@ namespace hgl::ecs
                 if (template_pd)
                 {
                     ++frame_pipeline_attempts;
-                    ++g_text_pipeline_resolve_attempts;
+                    RecordPipelineResolveAttempt(g_text_pipeline_resolve_counters);
 
                     graph::Pipeline* refreshed = render_pass->CreatePipeline(mi, template_pd, false);
                     if (refreshed)
                     {
                         resources->pipeline = refreshed;
                         ++frame_pipeline_successes;
-                        ++g_text_pipeline_resolve_successes;
+                        RecordPipelineResolveSuccess(g_text_pipeline_resolve_counters);
 
                         if (resources->primitive)
                             resources->primitive->UpdatePipeline(refreshed);
@@ -514,7 +507,7 @@ namespace hgl::ecs
                     else
                     {
                         ++frame_pipeline_failures;
-                        const uint64_t failures_total = ++g_text_pipeline_resolve_failures;
+                        const uint64_t failures_total = RecordPipelineResolveFailure(g_text_pipeline_resolve_counters);
                         if (ShouldLogPow2(failures_total))
                         {
                             LogWarning("[ECS::TextRenderPipeline] Pipeline pre-resolve failed: total_failures=%llu",
@@ -577,20 +570,11 @@ namespace hgl::ecs
             resources->last_string_count = static_cast<uint32_t>(input.texts.size());
         }
 
-        if (frame_pipeline_attempts || frame_pipeline_failures)
-        {
-            const uint64_t success_total = g_text_pipeline_resolve_successes.load();
-            const uint64_t failure_total = g_text_pipeline_resolve_failures.load();
-            if (frame_pipeline_failures > 0 || ShouldLogPow2(success_total + failure_total))
-            {
-                LogDebug("[ECS::TextRenderPipeline] Pipeline resolve summary: attempts=%u success=%u fail=%u totals(s=%llu,f=%llu)",
-                         frame_pipeline_attempts,
-                         frame_pipeline_successes,
-                         frame_pipeline_failures,
-                         static_cast<unsigned long long>(success_total),
-                         static_cast<unsigned long long>(failure_total));
-            }
-        }
+        LogPipelineResolveFrameSummary("ECS::TextRenderPipeline",
+                                       frame_pipeline_attempts,
+                                       frame_pipeline_successes,
+                                       frame_pipeline_failures,
+                                       g_text_pipeline_resolve_counters);
     }
 
     void TextRenderPipeline::ClearChanges(const std::vector<std::shared_ptr<TextComponent>>& texts)
