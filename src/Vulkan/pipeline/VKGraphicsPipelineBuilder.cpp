@@ -48,15 +48,15 @@ Pipeline *CreateMonolithicFromRequest(const char *tag, const GraphicsPipelineBui
 }
 }
 
-Pipeline *MonolithicLinkBackend::Build(const PipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
+Pipeline *MonolithicGraphicsPipelineBuilder::Build(const PipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
 {
     if (!context.device)
     {
-        LogError("[MonolithicLinkBackend] Build requires non-null context.device");
+        LogError("[MonolithicGraphicsPipelineBuilder] Build requires non-null context.device");
         return nullptr;
     }
 
-    return CreateMonolithicFromRequest("MonolithicLinkBackend", request);
+    return CreateMonolithicFromRequest("MonolithicGraphicsPipelineBuilder", request);
 }
 
 Pipeline *GplLinkBackend::Build(const PipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)

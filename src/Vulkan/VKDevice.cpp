@@ -84,7 +84,7 @@ VulkanDevice::VulkanDevice(VulkanDevAttr *da)
 
     gpl_supported = (attr && attr->physical_device) ? attr->physical_device->SupportGraphicsPipelineLibrary() : false;
     gpl_enabled = gpl_supported;
-    link_backend_mono = std::make_unique<MonolithicLinkBackend>();
+    link_backend_mono = std::make_unique<MonolithicGraphicsPipelineBuilder>();
     link_backend_gpl = std::make_unique<GplLinkBackend>();
 
     LogInfo("[VulkanDevice] Graphics pipeline library support=%s runtime_enabled=%s",

@@ -31,7 +31,7 @@ public:
     virtual Pipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) = 0;
 };
 
-class MonolithicLinkBackend final : public IGraphicsPipelineBuilder
+class MonolithicGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
 {
     OBJECT_LOGGER
 
