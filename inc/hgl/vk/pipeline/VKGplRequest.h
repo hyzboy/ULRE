@@ -12,42 +12,42 @@ class VertexInputLayout;
 struct PipelineData;
 struct RenderStateProfile;
 
-struct VertexInputKey
+struct GplVertexInputKey
 {
     uint64_t hash = 0;
-    bool operator==(const VertexInputKey &rhs) const { return hash == rhs.hash; }
+    bool operator==(const GplVertexInputKey &rhs) const { return hash == rhs.hash; }
 };
 
-struct PreRasterKey
+struct GplPreRasterKey
 {
     uint64_t hash = 0;
-    bool operator==(const PreRasterKey &rhs) const { return hash == rhs.hash; }
+    bool operator==(const GplPreRasterKey &rhs) const { return hash == rhs.hash; }
 };
 
-struct FragmentShaderKey
+struct GplFragmentShaderKey
 {
     uint64_t hash = 0;
-    bool operator==(const FragmentShaderKey &rhs) const { return hash == rhs.hash; }
+    bool operator==(const GplFragmentShaderKey &rhs) const { return hash == rhs.hash; }
 };
 
-struct FragmentOutputKey
+struct GplFragmentOutputKey
 {
     uint64_t hash = 0;
-    bool operator==(const FragmentOutputKey &rhs) const { return hash == rhs.hash; }
+    bool operator==(const GplFragmentOutputKey &rhs) const { return hash == rhs.hash; }
 };
 
-struct LinkedPipelineKey
+struct GplLinkedPipelineKey
 {
-    VertexInputKey vi;
-    PreRasterKey pre;
-    FragmentShaderKey fs;
-    FragmentOutputKey fo;
+    GplVertexInputKey  vi;
+    GplPreRasterKey    pr;
+    GplFragmentShaderKey fs;
+    GplFragmentOutputKey fo;
     uint64_t state_hash = 0;
     uint64_t layout_hash = 0;
-    bool operator==(const LinkedPipelineKey &rhs) const
+    bool operator==(const GplLinkedPipelineKey &rhs) const
     {
         return vi == rhs.vi
-            && pre == rhs.pre
+            && pr == rhs.pr
             && fs == rhs.fs
             && fo == rhs.fo
             && state_hash == rhs.state_hash
@@ -68,61 +68,61 @@ struct GplPipelineRequest
 
 bool IsValidGplPipelineRequest(const GplPipelineRequest &req);
 
-VertexInputKey BuildVertexInputKey(const VertexInputLayout *vil);
-PreRasterKey BuildPreRasterKey(const GplPipelineRequest &req);
-FragmentShaderKey BuildFragmentShaderKey(const GplPipelineRequest &req);
-FragmentOutputKey BuildFragmentOutputKey(const RenderFormat *rf);
-LinkedPipelineKey BuildLinkedPipelineKey(const GplPipelineRequest &req,
-                                         const RenderStateProfile &state_profile);
+GplVertexInputKey  BuildVertexInputKey(const VertexInputLayout *vil);
+GplPreRasterKey    BuildPreRasterKey(const GplPipelineRequest &req);
+GplFragmentShaderKey BuildFragmentShaderKey(const GplPipelineRequest &req);
+GplFragmentOutputKey BuildFragmentOutputKey(const RenderFormat *rf);
+GplLinkedPipelineKey BuildLinkedPipelineKey(const GplPipelineRequest &req,
+                                            const RenderStateProfile &state_profile);
 }//namespace hgl::graph
 
 namespace std
 {
 template<>
-struct hash<hgl::graph::VertexInputKey>
+struct hash<hgl::graph::GplVertexInputKey>
 {
-    size_t operator()(const hgl::graph::VertexInputKey &key) const noexcept
+    size_t operator()(const hgl::graph::GplVertexInputKey &key) const noexcept
     {
         return static_cast<size_t>(key.hash);
     }
 };
 
 template<>
-struct hash<hgl::graph::PreRasterKey>
+struct hash<hgl::graph::GplPreRasterKey>
 {
-    size_t operator()(const hgl::graph::PreRasterKey &key) const noexcept
+    size_t operator()(const hgl::graph::GplPreRasterKey &key) const noexcept
     {
         return static_cast<size_t>(key.hash);
     }
 };
 
 template<>
-struct hash<hgl::graph::FragmentShaderKey>
+struct hash<hgl::graph::GplFragmentShaderKey>
 {
-    size_t operator()(const hgl::graph::FragmentShaderKey &key) const noexcept
+    size_t operator()(const hgl::graph::GplFragmentShaderKey &key) const noexcept
     {
         return static_cast<size_t>(key.hash);
     }
 };
 
 template<>
-struct hash<hgl::graph::FragmentOutputKey>
+struct hash<hgl::graph::GplFragmentOutputKey>
 {
-    size_t operator()(const hgl::graph::FragmentOutputKey &key) const noexcept
+    size_t operator()(const hgl::graph::GplFragmentOutputKey &key) const noexcept
     {
         return static_cast<size_t>(key.hash);
     }
 };
 
 template<>
-struct hash<hgl::graph::LinkedPipelineKey>
+struct hash<hgl::graph::GplLinkedPipelineKey>
 {
-    size_t operator()(const hgl::graph::LinkedPipelineKey &key) const noexcept
+    size_t operator()(const hgl::graph::GplLinkedPipelineKey &key) const noexcept
     {
-        size_t h = std::hash<hgl::graph::VertexInputKey>{}(key.vi);
-        h ^= (std::hash<hgl::graph::PreRasterKey>{}(key.pre) << 1);
-        h ^= (std::hash<hgl::graph::FragmentShaderKey>{}(key.fs) << 2);
-        h ^= (std::hash<hgl::graph::FragmentOutputKey>{}(key.fo) << 3);
+        size_t h = std::hash<hgl::graph::GplVertexInputKey>{}(key.vi);
+        h ^= (std::hash<hgl::graph::GplPreRasterKey>{}(key.pr) << 1);
+        h ^= (std::hash<hgl::graph::GplFragmentShaderKey>{}(key.fs) << 2);
+        h ^= (std::hash<hgl::graph::GplFragmentOutputKey>{}(key.fo) << 3);
         h ^= (std::hash<uint64_t>{}(key.state_hash) << 4);
         h ^= (std::hash<uint64_t>{}(key.layout_hash) << 5);
         return h;

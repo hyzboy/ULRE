@@ -1,5 +1,5 @@
 ﻿#include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKRenderFormat.h>
+#include<hgl/vk/pipeline/VKRenderFormat.h>
 #include<hgl/vk/VKRenderbufferInfo.h>
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKFence.h>
@@ -170,7 +170,7 @@ Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GplPipelineRequest &req)
     const RenderStateProfile state_profile =
         RenderStateProfile::FromPipelineData(*req.pipeline_data, req.primitive, req.primitive_restart);
 
-    const LinkedPipelineKey linked_key = BuildLinkedPipelineKey(req, state_profile);
+    const GplLinkedPipelineKey linked_key = BuildLinkedPipelineKey(req, state_profile);
     pipeline_library_cache.Touch(linked_key);
 
     {

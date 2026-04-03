@@ -30,7 +30,7 @@
 #include<string>
 #include<vector>
 #include<hgl/vk/pipeline/VKGplRequest.h>
-#include<hgl/vk/pipeline/VKPipelineLibraryCache.h>
+#include<hgl/vk/pipeline/VKGplLibraryCache.h>
 
 namespace hgl::graph{
 class RenderFormat;
@@ -68,7 +68,7 @@ class VulkanDevice
     std::unique_ptr<ILinkBackend> link_backend_mono;
     std::unique_ptr<ILinkBackend> link_backend_gpl;
     PipelineLibraryCache pipeline_library_cache;
-    std::unordered_map<LinkedPipelineKey, Pipeline *> linked_pipeline_cache;
+    std::unordered_map<GplLinkedPipelineKey, Pipeline *> linked_pipeline_cache;
     mutable std::mutex linked_pipeline_cache_mutex;
     std::atomic<uint64_t> linked_pipeline_cache_hits{0};
     std::atomic<uint64_t> linked_pipeline_cache_misses{0};

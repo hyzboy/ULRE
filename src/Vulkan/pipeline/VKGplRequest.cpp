@@ -1,7 +1,7 @@
 #include<hgl/vk/pipeline/VKGplRequest.h>
 #include<hgl/vk/pipeline/VKRenderStateProfile.h>
 #include<hgl/vk/VKMaterial.h>
-#include<hgl/vk/VKRenderFormat.h>
+#include<hgl/vk/pipeline/VKRenderFormat.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/type/FNV1a.h>
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
@@ -104,7 +104,7 @@ bool IsValidGplPipelineRequest(const GplPipelineRequest &req)
         && req.pipeline_data;
 }
 
-VertexInputKey BuildVertexInputKey(const VertexInputLayout *vil)
+GplVertexInputKey BuildVertexInputKey(const VertexInputLayout *vil)
 {
     if (!vil)
         return {};
@@ -128,7 +128,7 @@ VertexInputKey BuildVertexInputKey(const VertexInputLayout *vil)
     return { h };
 }
 
-PreRasterKey BuildPreRasterKey(const GplPipelineRequest &req)
+GplPreRasterKey BuildPreRasterKey(const GplPipelineRequest &req)
 {
     if (!req.material)
         return {};
@@ -145,7 +145,7 @@ PreRasterKey BuildPreRasterKey(const GplPipelineRequest &req)
     return { h };
 }
 
-FragmentShaderKey BuildFragmentShaderKey(const GplPipelineRequest &req)
+GplFragmentShaderKey BuildFragmentShaderKey(const GplPipelineRequest &req)
 {
     if (!req.material)
         return {};
@@ -160,7 +160,7 @@ FragmentShaderKey BuildFragmentShaderKey(const GplPipelineRequest &req)
     return { h };
 }
 
-FragmentOutputKey BuildFragmentOutputKey(const RenderFormat *rf)
+GplFragmentOutputKey BuildFragmentOutputKey(const RenderFormat *rf)
 {
     if (!rf)
         return {};
@@ -176,13 +176,13 @@ FragmentOutputKey BuildFragmentOutputKey(const RenderFormat *rf)
     return { h };
 }
 
-LinkedPipelineKey BuildLinkedPipelineKey(const GplPipelineRequest &req,
-                                         const RenderStateProfile &state_profile)
+GplLinkedPipelineKey BuildLinkedPipelineKey(const GplPipelineRequest &req,
+                                            const RenderStateProfile &state_profile)
 {
-    LinkedPipelineKey key{};
+    GplLinkedPipelineKey key{};
 
     key.vi = BuildVertexInputKey(req.vil);
-    key.pre = BuildPreRasterKey(req);
+    key.pr = BuildPreRasterKey(req);
     key.fs = BuildFragmentShaderKey(req);
     key.fo = BuildFragmentOutputKey(req.render_format);
     key.state_hash = state_profile.Hash();

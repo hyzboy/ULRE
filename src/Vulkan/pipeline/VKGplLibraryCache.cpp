@@ -1,4 +1,4 @@
-#include <hgl/vk/pipeline/VKPipelineLibraryCache.h>
+#include <hgl/vk/pipeline/VKGplLibraryCache.h>
 
 namespace hgl::graph
 {
@@ -17,12 +17,12 @@ void PipelineLibraryCache::TouchBucket(Bucket<TKey> &bucket, const TKey &key)
     ++bucket.inserts;
 }
 
-void PipelineLibraryCache::Touch(const LinkedPipelineKey &key)
+void PipelineLibraryCache::Touch(const GplLinkedPipelineKey &key)
 {
     std::lock_guard<std::mutex> lock(cache_mutex);
 
     TouchBucket(vertex_input_bucket, key.vi);
-    TouchBucket(pre_raster_bucket, key.pre);
+    TouchBucket(pre_raster_bucket, key.pr);
     TouchBucket(fragment_shader_bucket, key.fs);
     TouchBucket(fragment_output_bucket, key.fo);
 }

@@ -3,7 +3,7 @@
 #include<hgl/vk/pipeline/VKGplLibraryPool.h>
 #include<hgl/vk/pipeline/VKGplRequest.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
-#include<hgl/vk/VKRenderFormat.h>
+#include<hgl/vk/pipeline/VKRenderFormat.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/log/Log.h>
 
@@ -75,10 +75,10 @@ Pipeline *GplLinkBackend::Build(const PipelineBuildContext &context, const GplPi
     });
 
     // ── Compute per-library keys ──────────────────────────────────────────────
-    const VertexInputKey    vi_key  = BuildVertexInputKey(request.vil);
-    const PreRasterKey      pr_key  = BuildPreRasterKey(request);
-    const FragmentShaderKey fs_key  = BuildFragmentShaderKey(request);
-    const FragmentOutputKey fo_key  = BuildFragmentOutputKey(request.render_format);
+    const GplVertexInputKey    vi_key = BuildVertexInputKey(request.vil);
+    const GplPreRasterKey      pr_key = BuildPreRasterKey(request);
+    const GplFragmentShaderKey fs_key = BuildFragmentShaderKey(request);
+    const GplFragmentOutputKey fo_key = BuildFragmentOutputKey(request.render_format);
 
     // ── Acquire (or create-and-cache) the four library handles ────────────────
     const VkPipeline vi_lib = library_pool_->AcquireVI(vi_key, request);

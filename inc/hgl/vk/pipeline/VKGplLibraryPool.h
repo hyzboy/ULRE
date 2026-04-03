@@ -23,10 +23,10 @@ class GplLibraryPool
 
     mutable std::mutex lib_mutex_;
 
-    std::unordered_map<VertexInputKey,    VkPipeline> vi_lib_;
-    std::unordered_map<PreRasterKey,      VkPipeline> pr_lib_;
-    std::unordered_map<FragmentShaderKey, VkPipeline> fs_lib_;
-    std::unordered_map<FragmentOutputKey, VkPipeline> fo_lib_;
+    std::unordered_map<GplVertexInputKey,   VkPipeline> vi_lib_;
+    std::unordered_map<GplPreRasterKey,     VkPipeline> pr_lib_;
+    std::unordered_map<GplFragmentShaderKey,VkPipeline> fs_lib_;
+    std::unordered_map<GplFragmentOutputKey,VkPipeline> fo_lib_;
 
 public:
     GplLibraryPool() = default;
@@ -40,21 +40,21 @@ public:
      * @param req    完整 GplPipelineRequest（用于首次创建）
      * @return 成功返回 VkPipeline（库 handle），失败返回 VK_NULL_HANDLE
      */
-    VkPipeline AcquireVI(const VertexInputKey    &key, const GplPipelineRequest &req);
+    VkPipeline AcquireVI(const GplVertexInputKey   &key, const GplPipelineRequest &req);
 
     /**
      * AcquirePR  — Pre-Rasterization Shaders 库
      */
-    VkPipeline AcquirePR(const PreRasterKey      &key, const GplPipelineRequest &req);
+    VkPipeline AcquirePR(const GplPreRasterKey     &key, const GplPipelineRequest &req);
 
     /**
      * AcquireFS  — Fragment Shader 库
      */
-    VkPipeline AcquireFS(const FragmentShaderKey  &key, const GplPipelineRequest &req);
+    VkPipeline AcquireFS(const GplFragmentShaderKey &key, const GplPipelineRequest &req);
 
     /**
      * AcquireFO  — Fragment Output Interface 库
      */
-    VkPipeline AcquireFO(const FragmentOutputKey  &key, const GplPipelineRequest &req);
+    VkPipeline AcquireFO(const GplFragmentOutputKey &key, const GplPipelineRequest &req);
 };
 }//namespace hgl::graph

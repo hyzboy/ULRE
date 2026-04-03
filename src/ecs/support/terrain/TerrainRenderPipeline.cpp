@@ -3,7 +3,7 @@
 #include <hgl/ecs/support/PipelineResolveMetrics.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/vk/VKCommandBuffer.h>
-#include <hgl/vk/VKRenderFormat.h>
+#include <hgl/vk/pipeline/VKRenderFormat.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::ecs

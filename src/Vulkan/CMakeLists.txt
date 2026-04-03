@@ -142,7 +142,7 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
                             ${PIPELINE_HEADER_PATH}/VKGplRequest.h
                             ${PIPELINE_HEADER_PATH}/VKLinkBackend.h
                             ${PIPELINE_HEADER_PATH}/VKGplLibraryPool.h
-                            ${PIPELINE_HEADER_PATH}/VKPipelineLibraryCache.h
+                            ${PIPELINE_HEADER_PATH}/VKGplLibraryCache.h
                             ${PIPELINE_HEADER_PATH}/VKRenderStateProfile.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineData.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineLayoutData.h
@@ -157,7 +157,7 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
                             ${PIPELINE_SOURCE_PATH}/VKGplRequest.cpp
                             ${PIPELINE_SOURCE_PATH}/VKLinkBackend.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGplLibraryPool.cpp
-                            ${PIPELINE_SOURCE_PATH}/VKPipelineLibraryCache.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKGplLibraryCache.cpp
                             ${PIPELINE_SOURCE_PATH}/VKRenderStateProfile.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipeline.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineCache.cpp
@@ -211,10 +211,10 @@ SET(VK_TEXTURE_DEVICE_FILES     Texture/BufferImageCopy2D.h
 SOURCE_GROUP("Texture\\Device" FILES ${VK_TEXTURE_DEVICE_FILES})
 
 # --- 8. Render Pass ---
-SET(VK_RENDER_PASS_FILES        ${VK_INCLUDE_PATH}/VKRenderFormat.h
-                                ${VK_INCLUDE_PATH}/VKLoadStoreOpInfo.h
-                                ${VK_INCLUDE_PATH}/VKAttachment.h
-                                VKRenderFormat.cpp)
+SET(VK_RENDER_PASS_FILES        ${VK_INCLUDE_PATH}/pipeline/VKRenderFormat.h
+                                ${VK_INCLUDE_PATH}/pipeline/VKLoadStoreOpInfo.h
+                                ${VK_INCLUDE_PATH}/pipeline/VKAttachment.h
+                                pipeline/VKRenderFormat.cpp)
 
 SOURCE_GROUP("RenderPass" FILES ${VK_RENDER_PASS_FILES})
 

@@ -1,7 +1,7 @@
 #include<hgl/vk/pipeline/VKGplLibraryPool.h>
 #include<hgl/vk/pipeline/VKGplRequest.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
-#include<hgl/vk/VKRenderFormat.h>
+#include<hgl/vk/pipeline/VKRenderFormat.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/log/Log.h>
@@ -326,25 +326,25 @@ void GplLibraryPool::Init(VkDevice device, VkPipelineCache pipeline_cache)
     pipeline_cache_ = pipeline_cache;
 }
 
-VkPipeline GplLibraryPool::AcquireVI(const VertexInputKey &key, const GplPipelineRequest &req)
+VkPipeline GplLibraryPool::AcquireVI(const GplVertexInputKey &key, const GplPipelineRequest &req)
 {
     return AcquireLibrary(vi_lib_, lib_mutex_, key,
         [&]{ return CreateVILibrary(device_, pipeline_cache_, req); });
 }
 
-VkPipeline GplLibraryPool::AcquirePR(const PreRasterKey &key, const GplPipelineRequest &req)
+VkPipeline GplLibraryPool::AcquirePR(const GplPreRasterKey &key, const GplPipelineRequest &req)
 {
     return AcquireLibrary(pr_lib_, lib_mutex_, key,
         [&]{ return CreatePRLibrary(device_, pipeline_cache_, req); });
 }
 
-VkPipeline GplLibraryPool::AcquireFS(const FragmentShaderKey &key, const GplPipelineRequest &req)
+VkPipeline GplLibraryPool::AcquireFS(const GplFragmentShaderKey &key, const GplPipelineRequest &req)
 {
     return AcquireLibrary(fs_lib_, lib_mutex_, key,
         [&]{ return CreateFSLibrary(device_, pipeline_cache_, req); });
 }
 
-VkPipeline GplLibraryPool::AcquireFO(const FragmentOutputKey &key, const GplPipelineRequest &req)
+VkPipeline GplLibraryPool::AcquireFO(const GplFragmentOutputKey &key, const GplPipelineRequest &req)
 {
     return AcquireLibrary(fo_lib_, lib_mutex_, key,
         [&]{ return CreateFOLibrary(device_, pipeline_cache_, req); });

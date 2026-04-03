@@ -47,17 +47,17 @@ private:
     mutable std::mutex cache_mutex;
     uint64_t next_virtual_id = 1;
 
-    Bucket<VertexInputKey> vertex_input_bucket;
-    Bucket<PreRasterKey> pre_raster_bucket;
-    Bucket<FragmentShaderKey> fragment_shader_bucket;
-    Bucket<FragmentOutputKey> fragment_output_bucket;
+    Bucket<GplVertexInputKey>   vertex_input_bucket;
+    Bucket<GplPreRasterKey>     pre_raster_bucket;
+    Bucket<GplFragmentShaderKey> fragment_shader_bucket;
+    Bucket<GplFragmentOutputKey> fragment_output_bucket;
 
 private:
     template<typename TKey>
     void TouchBucket(Bucket<TKey> &bucket, const TKey &key);
 
 public:
-    void Touch(const LinkedPipelineKey &key);
+    void Touch(const GplLinkedPipelineKey &key);
     Snapshot GetSnapshot() const;
     void Reset();
 };
