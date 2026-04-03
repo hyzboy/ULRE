@@ -284,6 +284,81 @@ Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GplPipelineRequest &req)
     return result;
 }
 
+VulkanDevice::LinkedPipelineCacheStats VulkanDevice::GetLinkedPipelineCacheStats() const
+{
+    LinkedPipelineCacheStats stats;
+    stats.hits    = linked_pipeline_cache_hits.load(std::memory_order_relaxed);
+    stats.misses  = linked_pipeline_cache_misses.load(std::memory_order_relaxed);
+    stats.inserts = linked_pipeline_cache_inserts.load(std::memory_order_relaxed);
+    {
+        std::lock_guard<std::mutex> lock(linked_pipeline_cache_mutex);
+        stats.size = linked_pipeline_cache.size();
+    }
+    return stats;
+}
+
+void VulkanDevice::PreheatPipelines(const GplPipelineRequest *requests, size_t count)
+{
+    if (!requests || count == 0)
+        return;
+
+    const uint64_t vk_create_before = RenderFormat::GetVkCreateCount();
+    size_t success = 0;
+    size_t failure = 0;
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        Pipeline *p = AcquireGraphicsPipeline(requests[i]);
+        if (p)
+            ++success;
+        else
+        {
+            ++failure;
+            LogWarning("[VulkanDevice::PreheatPipelines] Request[%zu] failed: material=%p vil=%p render_format=%p pipeline_data=%p",
+                       i,
+                       static_cast<const void *>(requests[i].material),
+                       static_cast<const void *>(requests[i].vil),
+                       static_cast<const void *>(requests[i].render_format),
+                       static_cast<const void *>(requests[i].pipeline_data));
+        }
+    }
+
+    const uint64_t new_creates = RenderFormat::GetVkCreateCount() - vk_create_before;
+    const LinkedPipelineCacheStats stats = GetLinkedPipelineCacheStats();
+
+    LogInfo("[VulkanDevice::PreheatPipelines] Preheated %zu requests: success=%zu failure=%zu "
+            "new_vkCreate=%llu cache_hits=%llu cache_size=%zu",
+            count,
+            success,
+            failure,
+            static_cast<unsigned long long>(new_creates),
+            static_cast<unsigned long long>(stats.hits),
+            stats.size);
+}
+
+void VulkanDevice::DumpPipelineCacheStats()
+{
+    const LinkedPipelineCacheStats lc = GetLinkedPipelineCacheStats();
+    const PipelineLibraryCache::Snapshot lib = GetPipelineLibraryCacheSnapshot();
+
+    LogInfo("[VulkanDevice::DumpPipelineCacheStats] "
+            "LinkedCache{ hits=%llu misses=%llu inserts=%llu size=%zu } "
+            "LibraryCache{ VI(size=%zu inserts=%llu) PR(size=%zu inserts=%llu) "
+            "FS(size=%zu inserts=%llu) FO(size=%zu inserts=%llu) }",
+            static_cast<unsigned long long>(lc.hits),
+            static_cast<unsigned long long>(lc.misses),
+            static_cast<unsigned long long>(lc.inserts),
+            lc.size,
+            lib.vertex_input_size,
+            static_cast<unsigned long long>(lib.vertex_input_inserts),
+            lib.pre_raster_size,
+            static_cast<unsigned long long>(lib.pre_raster_inserts),
+            lib.fragment_shader_size,
+            static_cast<unsigned long long>(lib.fragment_shader_inserts),
+            lib.fragment_output_size,
+            static_cast<unsigned long long>(lib.fragment_output_inserts));
+}
+
 void VulkanDevice::RegisterGPUBuffer(IGPUBuffer *buf)
 {
     if (!buf)

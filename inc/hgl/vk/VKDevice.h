@@ -174,6 +174,29 @@ public: //内存相关
     Pipeline *AcquireGraphicsPipeline(const GplPipelineRequest &req);
     PipelineLibraryCache::Snapshot GetPipelineLibraryCacheSnapshot() const { return pipeline_library_cache.GetSnapshot(); }
 
+    struct LinkedPipelineCacheStats
+    {
+        uint64_t hits    = 0;   ///< 缓存命中次数（无 vkCreateGraphicsPipelines）
+        uint64_t misses  = 0;   ///< 缓存未命中次数（触发实际创建）
+        uint64_t inserts = 0;   ///< 写入缓存次数
+        size_t   size    = 0;   ///< 当前缓存条目数
+    };
+    LinkedPipelineCacheStats GetLinkedPipelineCacheStats() const;
+
+    /**
+     * 场景级 pipeline 预热：在场景加载阶段（Init）批量驱动 AcquireGraphicsPipeline，
+     * 将首帧 vkCreateGraphicsPipelines 挪至加载期。
+     * 失败请求仅 LogWarning，不中断后续请求。
+     *
+     * @param requests  GplPipelineRequest 数组指针
+     * @param count     请求数量
+     */
+    void PreheatPipelines(const GplPipelineRequest *requests, size_t count);
+
+    /// 将 LinkedPipelineCacheStats + PipelineLibraryCache::Snapshot 合并输出一条 LogInfo 日志。
+    /// 用于析构前或调试断点处一次性查看缓存统计全貌。
+    void DumpPipelineCacheStats();
+
     // ---- IGPUBuffer Registry (used by RenderBufferUploadSystem) ----
     void RegisterGPUBuffer  (IGPUBuffer *buf);
     void UnregisterGPUBuffer(IGPUBuffer *buf);

@@ -31,6 +31,8 @@
 21. `GplLinkBackend::Build(...)` 已实现真实 Vulkan GPL 四段库创建与 link 逻辑：新增 `GplLibraryPool`（`VKGplLibraryPool.h/.cpp`），含 VI/PR/FS/FO 四类 `VkPipeline` 缓存（带 double-check 并发写保护）；`GplLinkBackend` 通过 `std::call_once` 懒初始化 pool，正确链接四段库，并统一调用 `RenderFormat::IncrVkCreateCount()`。
 22. `RenderFormat` 旧去重缓存（`pipeline_by_name` 字符串键 map）与旧直连创建 fallback 路径已彻底移除：`pipeline_by_name` 替换为 `pipeline_set_`（指针集合，仅用于防 `pipeline_list` 双重 add）；`CreatePipeline(Material*...)` 统一走 `device->AcquireGraphicsPipeline`，不再有直接调用 `vkCreateGraphicsPipelines` 的旁路；GPL 路径产生的 Pipeline 所有权缺口同步修复（全路径均经由 `pipeline_set_` 进入 `pipeline_list`）。
 23. Pipeline 所有权模型重新划定：修复了跨 `RenderFormat` 共用 `Pipeline*` 导致双重 `vkDestroyPipeline` 的 bug。`VulkanDevice::linked_pipeline_cache` 成为 `AcquireGraphicsPipeline` 路径所有 Pipeline 的唯一 owner（析构时 `delete`）；`RenderFormat::pipeline_list` 仅 own 7-arg Compositor 路径（不经过 `linked_pipeline_cache`）的 Pipeline；`pipeline_set_` 冗余结构同步移除。
+24. 运行时崩溃修复（exit-time double-delete）：`RenderFormat::~RenderFormat` 在 `VulkanDevice::~VulkanDevice` 先销毁 `linked_pipeline_cache` 后仍试图 `pipeline_list.Clear()` delete 同一 `Pipeline*`，导致 UAF 崩溃。根本修复：`pipeline_list` 与 `ManagedArray` 包含物整体从 `RenderFormat` 中移除（`VKRenderFormat.h` 去掉成员与 include，`VKRenderFormat.cpp` 析构函数与 7-arg 路径去掉 Add/Clear）；`VulkanDevice::linked_pipeline_cache` 成为全量 Pipeline 的唯一 owner。同步新增 `VulkanDevice::LinkedPipelineCacheStats` 结构体与 `GetLinkedPipelineCacheStats()` 接口，供调试面板/日志查询命中率与缓存规模。
+25. 场景级 pipeline 预热 API 落地：`VulkanDevice::PreheatPipelines(const GplPipelineRequest*, size_t)` 在加载阶段批量调 `AcquireGraphicsPipeline`，将首帧 `vkCreateGraphicsPipelines` 挪至 init 期；失败请求仅 `LogWarning` 不中断；调用后汇报 `success/failure/new_vkCreate/cache_hits`。同步新增 `VulkanDevice::DumpPipelineCacheStats()`，一次调用输出 `LinkedPipelineCacheStats` + `PipelineLibraryCache::Snapshot` 完整统计（供析构前或调试断点使用）。
 
 ### 进行中
 
@@ -38,8 +40,9 @@
 
 ### 未开始
 
-1. 场景级 pipeline 预热接口与性能面板补齐。
-2. 全量回归、性能压测与稳定性压测。
+1. 场景级 pipeline 预热接口补齐（`VulkanDevice::PreheatPipelines` 批量 API，在场景加载阶段统一驱动缓存填充）。
+2. 调试性能面板集成：将 `GetLinkedPipelineCacheStats()` 与 `GetPipelineLibraryCacheSnapshot()` 接入帧调试 UI 或定期日志 dump。
+3. 全量回归、性能压测与稳定性压测。
 
 ## 1. 最终架构目标
 
