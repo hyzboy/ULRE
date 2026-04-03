@@ -139,6 +139,7 @@ SET(PIPELINE_HEADER_PATH   ${VK_INCLUDE_PATH}/pipeline)
 SET(PIPELINE_SOURCE_PATH   pipeline)
 
 SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKGraphicsPipeline.h
+                            ${PIPELINE_HEADER_PATH}/VKGplPipelineKey.h
                             ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineBuildRequest.h
                             ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineBuilder.h
                             ${PIPELINE_HEADER_PATH}/VKGplLibraryHandleCache.h

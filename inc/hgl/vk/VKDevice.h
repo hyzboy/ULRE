@@ -29,7 +29,7 @@
 #include<memory>
 #include<string>
 #include<vector>
-#include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
+#include<hgl/vk/pipeline/VKGplPipelineKey.h>
 #include<hgl/vk/pipeline/VKGplLibraryStatsTracker.h>
 
 namespace hgl::graph{
