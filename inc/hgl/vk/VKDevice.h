@@ -33,7 +33,7 @@
 #include<hgl/vk/pipeline/VKGplLibraryStatsTracker.h>
 
 namespace hgl::graph{
-class RenderFormat;
+class RenderTargetFormat;
 class RenderbufferInfo;
 class TileData;
 class TileFont;
@@ -62,7 +62,7 @@ class VulkanDevice
     VulkanDevAttr *attr;
     bool draw_phase_active = false;
     std::vector<IGPUBuffer*> gpu_buffer_registry;  // All Layer2 buffers, iterated by ECS UploadSystem
-    UnorderedMap<AnsiString, RenderFormat *> render_format_cache;
+    UnorderedMap<AnsiString, RenderTargetFormat *> render_format_cache;
     bool gpl_supported = false;
     bool gpl_enabled = false;
     std::unique_ptr<IGraphicsPipelineBuilder> link_backend_mono;
@@ -459,8 +459,8 @@ public:
 
     TileFont *CreateTileFont(FontDataSource *fs,int limit_count=-1);                                                        ///<创建一个Tile字体
 
-public: // RenderFormat Cache
+public: // RenderTargetFormat Cache
 
-    RenderFormat *AcquireRenderFormat(const RenderbufferInfo *rbi);
+    RenderTargetFormat *AcquireRenderFormat(const RenderbufferInfo *rbi);
 };//class VulkanDevice
 }//namespace hgl::graph

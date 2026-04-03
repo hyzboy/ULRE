@@ -3,7 +3,7 @@
 #include<hgl/vk/pipeline/VKGplLibraryHandleCache.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
-#include<hgl/vk/pipeline/VKRenderFormat.h>
+#include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/log/Log.h>
 
@@ -27,7 +27,7 @@ GraphicsPipeline *CreateMonolithicFromRequest(const char *tag, const GraphicsPip
     if (pipeline_name.IsEmpty())
         pipeline_name = request.material->GetName();
 
-    RenderFormat *render_format = const_cast<RenderFormat *>(request.render_format);
+    RenderTargetFormat *render_format = const_cast<RenderTargetFormat *>(request.render_format);
 
     GraphicsPipeline *pipeline = render_format->CreatePipeline(
         pipeline_name,
@@ -133,7 +133,7 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
         return nullptr;
     }
 
-    RenderFormat::IncrVkCreateCount();
+    RenderTargetFormat::IncrVkCreateCount();
 
     AnsiString name = request.debug_name;
     if (name.IsEmpty())

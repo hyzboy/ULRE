@@ -25,7 +25,7 @@ namespace hgl
 namespace hgl::graph{
 
 // 统一 Gizmo 世界（推荐使用）
-class RenderFormat;
+class RenderTargetFormat;
 
 }//namespace hgl::graph
 

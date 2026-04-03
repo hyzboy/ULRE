@@ -231,7 +231,7 @@ namespace hgl::ecs
         if (!rt)
             return false;
 
-        graph::RenderFormat* rp = rt->GetRenderFormat();
+        graph::RenderTargetFormat* rp = rt->GetRenderFormat();
         if (!rp)
             return false;
 
@@ -268,13 +268,13 @@ namespace hgl::ecs
 
         // ------- Create pipeline -------
         RecordPipelineResolveAttempt(g_line_pipeline_resolve_counters);
-        const uint64_t vkcreate_before = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
 
         pipeline_ = support_wide_lines_
             ? rp->CreatePipeline(mi_, graph::GraphicsPipelinePreset::DynamicLineWidth3D)
             : rp->CreatePipeline(mi_, graph::GraphicsPipelinePreset::Solid3D);
 
-        const uint64_t vkcreate_after = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_after = graph::RenderTargetFormat::GetVkCreateCount();
         const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
 
         if (!pipeline_)
@@ -605,7 +605,7 @@ namespace hgl::ecs
         if (!pipeline_ || !mi_)
             return;
 
-        const uint64_t vkcreate_before = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
 
         auto* mat = mi_->GetMaterial();
         if (mat)
@@ -634,7 +634,7 @@ namespace hgl::ecs
                         draw_lines);
         }
 
-        const uint64_t vkcreate_after = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_after = graph::RenderTargetFormat::GetVkCreateCount();
         const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
         const uint64_t violation_log_count = RecordPipelineHotpathViolationAndGetLogCount(vkcreate_delta,
                                                                                            g_line_render_hotpath_counters);

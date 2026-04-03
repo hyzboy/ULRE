@@ -144,7 +144,7 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKGraphicsPipeline.h
                             ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineBuilder.h
                             ${PIPELINE_HEADER_PATH}/VKGplLibraryHandleCache.h
                             ${PIPELINE_HEADER_PATH}/VKGplLibraryStatsTracker.h
-                            ${PIPELINE_HEADER_PATH}/VKRenderStateProfile.h
+                            ${PIPELINE_HEADER_PATH}/VKGraphicsRenderState.h
                             ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineData.h
                             ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineLayoutData.h
                             ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineHash.h
@@ -159,7 +159,7 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKGraphicsPipeline.h
                             ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineBuilder.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGplLibraryHandleCache.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGplLibraryStatsTracker.cpp
-                            ${PIPELINE_SOURCE_PATH}/VKRenderStateProfile.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKGraphicsRenderState.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGraphicsPipeline.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineCache.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineLayoutData.cpp
@@ -212,8 +212,8 @@ SET(VK_TEXTURE_DEVICE_FILES     Texture/BufferImageCopy2D.h
 SOURCE_GROUP("Texture\\Device" FILES ${VK_TEXTURE_DEVICE_FILES})
 
 # --- 8. Render Pass ---
-SET(VK_RENDER_PASS_FILES        ${VK_INCLUDE_PATH}/pipeline/VKRenderFormat.h
-                                pipeline/VKRenderFormat.cpp)
+SET(VK_RENDER_PASS_FILES        ${VK_INCLUDE_PATH}/pipeline/VKRenderTargetFormat.h
+                                pipeline/VKRenderTargetFormat.cpp)
 
 SOURCE_GROUP("RenderPass" FILES ${VK_RENDER_PASS_FILES})
 

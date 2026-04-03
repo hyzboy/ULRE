@@ -13,7 +13,7 @@ namespace hgl
         class Primitive;
         class MaterialInstance;
         class GraphicsPipeline;
-        class RenderFormat;
+        class RenderTargetFormat;
         class Sampler;
     }
 }
@@ -43,7 +43,7 @@ namespace hgl::ecs
         static graph::Primitive* shared_primitive;
         static graph::MaterialInstance* shared_material_instance;
         static graph::GraphicsPipeline* shared_pipeline;
-        static graph::RenderFormat* shared_render_pass;
+        static graph::RenderTargetFormat* shared_render_pass;
         static graph::Sampler* shared_sampler;
 
     public:
@@ -71,7 +71,7 @@ namespace hgl::ecs
         static void SetPipeline(graph::GraphicsPipelinePreset pipeline);
         static graph::GraphicsPipelinePreset GetPipeline();
         static graph::BlendMode GetBlendMode();
-        static graph::GraphicsPipeline* CreateConfiguredPipeline(graph::RenderFormat* render_pass,
+        static graph::GraphicsPipeline* CreateConfiguredPipeline(graph::RenderTargetFormat* render_pass,
                      graph::MaterialInstance* material_instance,
                      const ECSContext* world = nullptr);
 

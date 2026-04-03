@@ -33,7 +33,7 @@ public:
         }
     }
 
-    RenderFormat *      GetRenderFormat     ()override{return data->render_format;}
+    RenderTargetFormat *      GetRenderFormat     ()override{return data->render_format;}
 
     uint32_t            GetColorCount       ()override{return data->color_count;}
 

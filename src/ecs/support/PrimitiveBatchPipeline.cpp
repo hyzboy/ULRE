@@ -478,7 +478,7 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        const uint64_t vkcreate_at_start = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_at_start = graph::RenderTargetFormat::GetVkCreateCount();
         const uint64_t outside = ComputeOutsideBatchPipelineCreation(vkcreate_at_start,
                                                                      g_pipeline_batch_phase_tracker);
         if (outside > 0)
@@ -599,7 +599,7 @@ namespace hgl::ecs
             }
         }
 
-        const uint64_t vkcreate_at_end = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_at_end = graph::RenderTargetFormat::GetVkCreateCount();
         const uint64_t vkcreate_this_batch = vkcreate_at_end - vkcreate_at_start;
         const uint64_t skips_total = g_pipeline_preresolve_skips.load();
         uint64_t successes_total = 0;

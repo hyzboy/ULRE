@@ -121,7 +121,7 @@ class VulkanCmdBuffer;
 class RenderCmdBuffer;
 class TextureCmdBuffer;
 
-class RenderFormat;
+class RenderTargetFormat;
 class DeviceRenderPassManage;
 
 class Fence;

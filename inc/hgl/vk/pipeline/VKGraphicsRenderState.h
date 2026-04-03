@@ -8,7 +8,7 @@
 namespace hgl::graph{
 struct GraphicsPipelineData;
 
-struct RenderStateProfile
+struct GraphicsRenderState
 {
     VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     VkBool32 primitive_restart = VK_FALSE;
@@ -23,9 +23,9 @@ struct RenderStateProfile
     ValueArray<VkDynamicState> dynamic_states;
 
     uint64_t Hash() const;
-    bool Equals(const RenderStateProfile &) const;
-    bool operator==(const RenderStateProfile &rhs) const { return Equals(rhs); }
+    bool Equals(const GraphicsRenderState &) const;
+    bool operator==(const GraphicsRenderState &rhs) const { return Equals(rhs); }
 
-    static RenderStateProfile FromGraphicsPipelineData(const GraphicsPipelineData &, PrimitiveType, bool prim_restart);
+    static GraphicsRenderState FromGraphicsPipelineData(const GraphicsPipelineData &, PrimitiveType, bool prim_restart);
 };
 }//namespace hgl::graph

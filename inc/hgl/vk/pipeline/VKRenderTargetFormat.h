@@ -9,11 +9,11 @@ namespace hgl::graph{
 using VkFormatList=ValueArray<VkFormat>;
 
 /**
- * RenderFormat — pipeline factory keyed on attachment formats.<br>
+ * RenderTargetFormat — pipeline factory keyed on attachment formats.<br>
  * Holds colour/depth attachment formats, creates Pipelines using
  * VkPipelineRenderingCreateInfoKHR (Dynamic Rendering; no VkRenderPass).
  */
-class RenderFormat
+class RenderTargetFormat
 {
     OBJECT_LOGGER
 
@@ -32,11 +32,11 @@ private:
 
     friend class VulkanDevice;
 
-    RenderFormat(VulkanDevice *,const AnsiString &name,const VkFormatList &cf,VkFormat df);
+    RenderTargetFormat(VulkanDevice *,const AnsiString &name,const VkFormatList &cf,VkFormat df);
 
 public:
 
-    virtual ~RenderFormat();
+    virtual ~RenderTargetFormat();
 
     const AnsiString &      GetName         ()const{return name;}
     const VkPipelineCache   GetPipelineCache()const{return pipeline_cache;}
@@ -79,7 +79,7 @@ public:
     static uint64_t GetVkCreateCount();
 
     /// Increments the global vkCreateGraphicsPipelines counter by 1.
-    /// Called by non-RenderFormat paths (e.g. GplGraphicsPipelineBuilder) that issue their own vkCreateGraphicsPipelines.
+    /// Called by non-RenderTargetFormat paths (e.g. GplGraphicsPipelineBuilder) that issue their own vkCreateGraphicsPipelines.
     static void IncrVkCreateCount();
-};//class RenderFormat
+};//class RenderTargetFormat
 }//namespace hgl::graph

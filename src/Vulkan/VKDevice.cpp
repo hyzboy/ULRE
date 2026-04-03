@@ -1,5 +1,5 @@
 ﻿#include<hgl/vk/VKDevice.h>
-#include<hgl/vk/pipeline/VKRenderFormat.h>
+#include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/vk/VKRenderbufferInfo.h>
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKFence.h>
@@ -8,7 +8,7 @@
 #include<hgl/vk/pipeline/VKComputePipeline.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuilder.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
-#include<hgl/vk/pipeline/VKRenderStateProfile.h>
+#include<hgl/vk/pipeline/VKGraphicsRenderState.h>
 #include<hgl/vk/VKObjectName.h>
 #include<hgl/vk/IGPUBuffer.h>
 #include<hgl/log/Log.h>
@@ -157,8 +157,8 @@ GraphicsPipeline *VulkanDevice::AcquireGraphicsPipeline(const GraphicsPipelineBu
         return nullptr;
     }
 
-    const RenderStateProfile state_profile =
-        RenderStateProfile::FromGraphicsPipelineData(*req.pipeline_data, req.primitive, req.primitive_restart);
+    const GraphicsRenderState state_profile =
+        GraphicsRenderState::FromGraphicsPipelineData(*req.pipeline_data, req.primitive, req.primitive_restart);
 
     const GplLinkedPipelineKey linked_key = BuildLinkedPipelineKey(req, state_profile);
     pipeline_library_cache.Touch(linked_key);
@@ -292,7 +292,7 @@ void VulkanDevice::PreheatPipelines(const GraphicsPipelineBuildRequest *requests
     if (!requests || count == 0)
         return;
 
-    const uint64_t vk_create_before = RenderFormat::GetVkCreateCount();
+    const uint64_t vk_create_before = RenderTargetFormat::GetVkCreateCount();
     size_t success = 0;
     size_t failure = 0;
 
@@ -313,7 +313,7 @@ void VulkanDevice::PreheatPipelines(const GraphicsPipelineBuildRequest *requests
         }
     }
 
-    const uint64_t new_creates = RenderFormat::GetVkCreateCount() - vk_create_before;
+    const uint64_t new_creates = RenderTargetFormat::GetVkCreateCount() - vk_create_before;
     const LinkedPipelineCacheStats stats = GetLinkedPipelineCacheStats();
 
     LogInfo("[VulkanDevice::PreheatPipelines] Preheated %zu requests: success=%zu failure=%zu "
@@ -684,7 +684,7 @@ ComputePipeline *VulkanDevice::CreateComputePipeline(const AnsiString &name, VkS
     return new ComputePipeline(name, attr->device, pipeline, pipeline_layout);
 }
 
-RenderFormat *VulkanDevice::AcquireRenderFormat(const RenderbufferInfo *rbi)
+RenderTargetFormat *VulkanDevice::AcquireRenderFormat(const RenderbufferInfo *rbi)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -701,12 +701,12 @@ RenderFormat *VulkanDevice::AcquireRenderFormat(const RenderbufferInfo *rbi)
     }
 
     AnsiString key=GenerateRenderFormatKey(rbi);
-    RenderFormat *rf=nullptr;
+    RenderTargetFormat *rf=nullptr;
 
     if(render_format_cache.Get(key,rf))
         return rf;
 
-    rf=new RenderFormat(this,key,rbi->GetColorFormatList(),rbi->GetDepthFormat());
+    rf=new RenderTargetFormat(this,key,rbi->GetColorFormatList(),rbi->GetDepthFormat());
     render_format_cache.Add(key,rf);
     return rf;
 }

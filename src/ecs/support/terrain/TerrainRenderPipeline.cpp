@@ -3,7 +3,7 @@
 #include <hgl/ecs/support/PipelineResolveMetrics.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/vk/VKCommandBuffer.h>
-#include <hgl/vk/pipeline/VKRenderFormat.h>
+#include <hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::ecs
@@ -101,7 +101,7 @@ namespace hgl::ecs
         if (!cmd || tile_buffer_.IsEmpty())
             return;
 
-        const uint64_t vkcreate_before = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
 
         // All tiles share the same pipeline and material (first tile is representative)
         TerrainTileComponent* representative = visible_tiles_[0];
@@ -124,7 +124,7 @@ namespace hgl::ecs
         cmd->DrawIndirect(tile_buffer_.GetIndirectBuffer()->GetVkBuffer(),
                           tile_buffer_.GetTileCount());
 
-        const uint64_t vkcreate_after = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_after = graph::RenderTargetFormat::GetVkCreateCount();
         const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
         const uint64_t violation_log_count = RecordPipelineHotpathViolationAndGetLogCount(vkcreate_delta,
                                                                                            g_terrain_render_hotpath_counters);

@@ -1,7 +1,7 @@
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
-#include<hgl/vk/pipeline/VKRenderStateProfile.h>
+#include<hgl/vk/pipeline/VKGraphicsRenderState.h>
 #include<hgl/vk/VKMaterial.h>
-#include<hgl/vk/pipeline/VKRenderFormat.h>
+#include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/type/FNV1a.h>
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
@@ -160,7 +160,7 @@ GplFragmentShaderKey BuildFragmentShaderKey(const GraphicsPipelineBuildRequest &
     return { h };
 }
 
-GplFragmentOutputKey BuildFragmentOutputKey(const RenderFormat *rf)
+GplFragmentOutputKey BuildFragmentOutputKey(const RenderTargetFormat *rf)
 {
     if (!rf)
         return {};
@@ -177,7 +177,7 @@ GplFragmentOutputKey BuildFragmentOutputKey(const RenderFormat *rf)
 }
 
 GplLinkedPipelineKey BuildLinkedPipelineKey(const GraphicsPipelineBuildRequest &req,
-                                            const RenderStateProfile &state_profile)
+                                            const GraphicsRenderState &state_profile)
 {
     GplLinkedPipelineKey key{};
 

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/vk/VK.h>
-#include<hgl/vk/pipeline/VKRenderFormat.h>
+#include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKBuffer.h>
@@ -46,7 +46,7 @@ public:
     IRenderTarget(hgl::ecs::ECSContext *,const VkExtent2D &);
     virtual ~IRenderTarget();
 
-    virtual RenderFormat *       GetRenderFormat ()=0;
+    virtual RenderTargetFormat *       GetRenderFormat ()=0;
 
     virtual Texture2D *         GetColorTexture (const int index=0)=0;
     virtual Texture2D *         GetDepthTexture ()=0;

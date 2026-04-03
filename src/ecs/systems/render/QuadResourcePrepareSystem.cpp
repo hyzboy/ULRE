@@ -28,7 +28,7 @@ namespace hgl::ecs
     graph::Primitive* QuadResourcePrepareSystem::shared_primitive = nullptr;
     graph::MaterialInstance* QuadResourcePrepareSystem::shared_material_instance = nullptr;
     graph::GraphicsPipeline* QuadResourcePrepareSystem::shared_pipeline = nullptr;
-    graph::RenderFormat* QuadResourcePrepareSystem::shared_render_pass = nullptr;
+    graph::RenderTargetFormat* QuadResourcePrepareSystem::shared_render_pass = nullptr;
     graph::Sampler* QuadResourcePrepareSystem::shared_sampler = nullptr;
 
     static graph::GraphicsPipelinePreset g_default_quad_inline_pipeline = graph::GraphicsPipelinePreset::Solid3D;
@@ -107,7 +107,7 @@ namespace hgl::ecs
         return GraphicsPipelinePresetToBlendMode(g_default_quad_inline_pipeline);
     }
 
-    graph::GraphicsPipeline* QuadResourcePrepareSystem::CreateConfiguredPipeline(graph::RenderFormat* render_pass,
+    graph::GraphicsPipeline* QuadResourcePrepareSystem::CreateConfiguredPipeline(graph::RenderTargetFormat* render_pass,
                                                                          graph::MaterialInstance* material_instance,
                                                                          const ECSContext* world)
     {
@@ -115,11 +115,11 @@ namespace hgl::ecs
             return nullptr;
 
         RecordPipelineResolveAttempt(g_quad_pipeline_resolve_counters);
-        const uint64_t vkcreate_before = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
 
         graph::GraphicsPipeline* pipeline = render_pass->CreatePipeline(material_instance, GetPipelineForWorld(world));
 
-        const uint64_t vkcreate_after = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_after = graph::RenderTargetFormat::GetVkCreateCount();
         const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
 
         if (!pipeline)

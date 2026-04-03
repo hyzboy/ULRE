@@ -1,7 +1,7 @@
 #include<hgl/vk/pipeline/VKGplLibraryHandleCache.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineData.h>
-#include<hgl/vk/pipeline/VKRenderFormat.h>
+#include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/log/Log.h>
@@ -212,7 +212,7 @@ VkPipeline CreateFOLibrary(VkDevice device, VkPipelineCache cache,
                             const GraphicsPipelineBuildRequest &req)
 {
     const GraphicsPipelineData  *pd  = req.pipeline_data;
-    const RenderFormat  *rf  = req.render_format;
+    const RenderTargetFormat  *rf  = req.render_format;
     const uint32_t       n   = rf->GetColorCount();
 
     // Build per-attachment blend states: replicate [0] across all n color attachments

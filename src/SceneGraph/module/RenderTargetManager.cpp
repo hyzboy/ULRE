@@ -13,7 +13,7 @@
 #include <hgl/vk/VKFormat.h>
 #include <hgl/vk/VKImageView.h>
 #include <hgl/vk/VKRenderbufferInfo.h>
-#include <hgl/vk/pipeline/VKRenderFormat.h>
+#include <hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include <hgl/vk/VKRenderTargetData.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include <hgl/vk/VKTexture.h>
@@ -29,7 +29,7 @@ RenderTargetManager::RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContex
     ecs_context=ecs_ctx;
 }
 
-RenderTarget *RenderTargetManager::CreateRT(const AnsiString &name, const FramebufferInfo *fbi,RenderFormat *rf,const uint32_t fence_count)
+RenderTarget *RenderTargetManager::CreateRT(const AnsiString &name, const FramebufferInfo *fbi,RenderTargetFormat *rf,const uint32_t fence_count)
 {
     if(!fbi)return(nullptr);
     if(!rf)return(nullptr);
@@ -88,7 +88,7 @@ RenderTarget *RenderTargetManager::CreateRT(const AnsiString &name, const Frameb
 {
     if(!fbi)return(nullptr);
 
-    RenderFormat *rf=GetDevice()->AcquireRenderFormat(fbi);
+    RenderTargetFormat *rf=GetDevice()->AcquireRenderFormat(fbi);
 
     if(!rf)return(nullptr);
 
@@ -120,7 +120,7 @@ RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *
     if(!device || !tex_manager)
         return(nullptr);
 
-    RenderFormat *rf = device->AcquireRenderFormat(fbi);
+    RenderTargetFormat *rf = device->AcquireRenderFormat(fbi);
     if(!rf)
         return(nullptr);
 

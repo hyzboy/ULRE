@@ -11,7 +11,7 @@ namespace hgl::graph
         if (!current_render_target)
             return nullptr;
 
-        RenderFormat* rp = current_render_target->GetRenderFormat();
+        RenderTargetFormat* rp = current_render_target->GetRenderFormat();
         return rp ? rp->CreatePipeline(material, vil, pd, prim_restart) : nullptr;
     }
 

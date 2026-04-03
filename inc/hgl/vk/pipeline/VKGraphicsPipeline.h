@@ -19,7 +19,7 @@ class GraphicsPipeline
 
 private:
 
-    friend class RenderFormat;
+    friend class RenderTargetFormat;
     friend class GplGraphicsPipelineBuilder;
 
     GraphicsPipeline(const AnsiString &n,VkDevice dev,VkPipeline p,const VIL *v,GraphicsPipelineData *pd)

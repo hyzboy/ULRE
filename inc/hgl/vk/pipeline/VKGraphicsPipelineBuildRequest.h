@@ -6,16 +6,16 @@
 
 namespace hgl::graph{
 class Material;
-class RenderFormat;
+class RenderTargetFormat;
 class VertexInputLayout;
 struct GraphicsPipelineData;
-struct RenderStateProfile;
+struct GraphicsRenderState;
 
 struct GraphicsPipelineBuildRequest
 {
     const Material *material = nullptr;
     const VertexInputLayout *vil = nullptr;
-    const RenderFormat *render_format = nullptr;
+    const RenderTargetFormat *render_format = nullptr;
     const GraphicsPipelineData *pipeline_data = nullptr;
     PrimitiveType primitive = PrimitiveType::Triangles;
     bool primitive_restart = false;
@@ -27,7 +27,7 @@ bool IsValidGraphicsPipelineBuildRequest(const GraphicsPipelineBuildRequest &req
 GplVertexInputKey  BuildVertexInputKey(const VertexInputLayout *vil);
 GplPreRasterKey    BuildPreRasterKey(const GraphicsPipelineBuildRequest &req);
 GplFragmentShaderKey BuildFragmentShaderKey(const GraphicsPipelineBuildRequest &req);
-GplFragmentOutputKey BuildFragmentOutputKey(const RenderFormat *rf);
+GplFragmentOutputKey BuildFragmentOutputKey(const RenderTargetFormat *rf);
 GplLinkedPipelineKey BuildLinkedPipelineKey(const GraphicsPipelineBuildRequest &req,
-                                            const RenderStateProfile &state_profile);
+                                            const GraphicsRenderState &state_profile);
 }//namespace hgl::graph

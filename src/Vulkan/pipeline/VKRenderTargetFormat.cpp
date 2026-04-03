@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/pipeline/VKRenderFormat.h>
+﻿#include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
 #include<cstdio>
@@ -17,7 +17,7 @@ namespace {
 
 namespace hgl::graph{
 
-RenderFormat::RenderFormat(VulkanDevice *dev,const AnsiString &n,const VkFormatList &cf,VkFormat df)
+RenderTargetFormat::RenderTargetFormat(VulkanDevice *dev,const AnsiString &n,const VkFormatList &cf,VkFormat df)
 {
     device=dev;
     name=n;
@@ -25,17 +25,17 @@ RenderFormat::RenderFormat(VulkanDevice *dev,const AnsiString &n,const VkFormatL
     color_formats=cf;
     depth_format=df;
 
-    LogInfo("[RenderFormat::RenderFormat] Created RenderFormat '%s', color attachment count=%u, depth format=%u",
+    LogInfo("[RenderTargetFormat::RenderTargetFormat] Created RenderTargetFormat '%s', color attachment count=%u, depth format=%u",
              name.c_str(), color_formats.GetCount(), depth_format);
 }
 
-RenderFormat::~RenderFormat()
+RenderTargetFormat::~RenderTargetFormat()
 {
-    LogInfo("[RenderFormat::~RenderFormat] Destroying RenderFormat '%s' (RenderFormat*=0x%llx)",
+    LogInfo("[RenderTargetFormat::~RenderTargetFormat] Destroying RenderTargetFormat '%s' (RenderTargetFormat*=0x%llx)",
              name.c_str(), (unsigned long long)(uintptr_t)this);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(const AnsiString &name,GraphicsPipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
+GraphicsPipeline *RenderTargetFormat::CreatePipeline(const AnsiString &name,GraphicsPipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -77,7 +77,7 @@ GraphicsPipeline *RenderFormat::CreatePipeline(const AnsiString &name,GraphicsPi
 
     GraphicsPipeline *pipeline = new GraphicsPipeline(name,*device,graphicsPipeline,vil,pd);
 
-    LogInfo("[RenderFormat::CreatePipeline] Created GraphicsPipeline '%s' in RenderFormat '%s' (VkPipeline=0x%llx, GraphicsPipeline*=0x%llx)",
+    LogInfo("[RenderTargetFormat::CreatePipeline] Created GraphicsPipeline '%s' in RenderTargetFormat '%s' (VkPipeline=0x%llx, GraphicsPipeline*=0x%llx)",
              name.c_str(), this->name.c_str(), (unsigned long long)(uintptr_t)graphicsPipeline, (unsigned long long)(uintptr_t)pipeline);
 
     if (device)
@@ -86,7 +86,7 @@ GraphicsPipeline *RenderFormat::CreatePipeline(const AnsiString &name,GraphicsPi
     return pipeline;
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const GraphicsPipelineData *cpd,const bool prim_restart)
+GraphicsPipeline *RenderTargetFormat::CreatePipeline(Material *mtl,const VIL *vil,const GraphicsPipelineData *cpd,const bool prim_restart)
 {
     if (!mtl || !vil || !cpd)
         return nullptr;
@@ -105,40 +105,40 @@ GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,cons
 
     GraphicsPipeline *p = device->AcquireGraphicsPipeline(req);
     // Ownership of p is held by VulkanDevice::linked_pipeline_cache.
-    // RenderFormat does NOT add it to pipeline_list.
+    // RenderTargetFormat does NOT add it to pipeline_list.
     return p;
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const GraphicsPipelinePreset &ip,const bool prim_restart)
+GraphicsPipeline *RenderTargetFormat::CreatePipeline(Material *mtl,const VIL *vil,const GraphicsPipelinePreset &ip,const bool prim_restart)
 {
     if(!mtl)return(nullptr);
 
     return CreatePipeline(mtl,vil,GetGraphicsPipelineData(ip),prim_restart);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const GraphicsPipelineData *pd,const bool prim_restart)
+GraphicsPipeline *RenderTargetFormat::CreatePipeline(Material *mtl,const GraphicsPipelineData *pd,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),pd,prim_restart);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const GraphicsPipelinePreset &ip,const bool prim_restart)
+GraphicsPipeline *RenderTargetFormat::CreatePipeline(Material *mtl,const GraphicsPipelinePreset &ip,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),ip,prim_restart);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const GraphicsPipelinePreset &ip,const bool prim_restart)
+GraphicsPipeline *RenderTargetFormat::CreatePipeline(MaterialInstance *mi,const GraphicsPipelinePreset &ip,const bool prim_restart)
 {
     if(!mi)return(nullptr);
 
     return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),ip,prim_restart);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const GraphicsPipelineData *cpd,const bool prim_restart)
+GraphicsPipeline *RenderTargetFormat::CreatePipeline(MaterialInstance *mi,const GraphicsPipelineData *cpd,const bool prim_restart)
 {
     return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),cpd,prim_restart);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const bool prim_restart)
+GraphicsPipeline *RenderTargetFormat::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const bool prim_restart)
 {
     const GraphicsPipelineData *pd=GetGraphicsPipelineData(pipeline_filename);
 
@@ -147,7 +147,7 @@ GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const OSStri
     return CreatePipeline(mi,pd,prim_restart);
 }
 
-GraphicsPipeline *RenderFormat::CreatePipeline(const AnsiString &name,
+GraphicsPipeline *RenderTargetFormat::CreatePipeline(const AnsiString &name,
                                        const ShaderStageCreateInfoList &ssci,
                                        VkPipelineLayout layout,
                                        const VIL *vil,
@@ -164,12 +164,12 @@ GraphicsPipeline *RenderFormat::CreatePipeline(const AnsiString &name,
     return p;
 }
 
-uint64_t RenderFormat::GetVkCreateCount()
+uint64_t RenderTargetFormat::GetVkCreateCount()
 {
     return g_rf_vkcreate_count.load(std::memory_order_relaxed);
 }
 
-void RenderFormat::IncrVkCreateCount()
+void RenderTargetFormat::IncrVkCreateCount()
 {
     ++g_rf_vkcreate_count;
 }

@@ -1,4 +1,4 @@
-#include<hgl/vk/pipeline/VKRenderStateProfile.h>
+#include<hgl/vk/pipeline/VKGraphicsRenderState.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineData.h>
 #include<hgl/type/FNV1a.h>
 #include<cstring>
@@ -36,9 +36,9 @@ namespace
     }
 }
 
-RenderStateProfile RenderStateProfile::FromGraphicsPipelineData(const GraphicsPipelineData &pd, PrimitiveType prim, bool prim_restart)
+GraphicsRenderState GraphicsRenderState::FromGraphicsPipelineData(const GraphicsPipelineData &pd, PrimitiveType prim, bool prim_restart)
 {
-    RenderStateProfile rsp;
+    GraphicsRenderState rsp;
 
     rsp.topology = pd.input_assembly.topology;
     rsp.primitive_restart = prim_restart ? VK_TRUE : pd.input_assembly.primitiveRestartEnable;
@@ -91,7 +91,7 @@ RenderStateProfile RenderStateProfile::FromGraphicsPipelineData(const GraphicsPi
     return rsp;
 }
 
-uint64_t RenderStateProfile::Hash() const
+uint64_t GraphicsRenderState::Hash() const
 {
     uint64_t h = hgl::hash::FNV1aInit<uint64_t>();
 
@@ -143,7 +143,7 @@ uint64_t RenderStateProfile::Hash() const
     return h;
 }
 
-bool RenderStateProfile::Equals(const RenderStateProfile &rhs) const
+bool GraphicsRenderState::Equals(const GraphicsRenderState &rhs) const
 {
     if (topology != rhs.topology) return false;
     if (primitive_restart != rhs.primitive_restart) return false;

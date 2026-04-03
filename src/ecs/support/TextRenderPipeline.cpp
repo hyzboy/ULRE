@@ -19,7 +19,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/vk/pipeline/VKRenderFormat.h>
+#include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/tile/TileData.h>
 #include<hgl/vk/VKFormat.h>
@@ -353,7 +353,7 @@ namespace hgl::ecs
     bool TextRenderPipeline::PrepareFrameResources(graph::GraphicsContext*& graphics_context,
                                                    graph::MaterialManager*& material_manager,
                                                    graph::PrimitiveManager*& primitive_manager,
-                                                   graph::RenderFormat*& render_pass,
+                                                   graph::RenderTargetFormat*& render_pass,
                                                    graph::VulkanDevice*& device,
                                                    graph::IRenderTarget*& render_target)
     {
@@ -423,7 +423,7 @@ namespace hgl::ecs
     void TextRenderPipeline::ProcessInputs(std::unordered_map<graph::FontSource*, BatchInput>& inputs,
                                            graph::MaterialManager* material_manager,
                                            graph::PrimitiveManager* primitive_manager,
-                                           graph::RenderFormat* render_pass,
+                                           graph::RenderTargetFormat* render_pass,
                                            graph::VulkanDevice* device)
     {
         uint32_t frame_pipeline_attempts = 0;

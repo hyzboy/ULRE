@@ -28,7 +28,7 @@ GRAPH_MODULE_CLASS(SwapchainModule)
     Swapchain *             vk_swapchain        =nullptr;  ///< Keep swapchain alive to maintain sc_image validity
 
     // Legacy support (will be deprecated)
-    RenderFormat *          sc_render_pass      =nullptr;
+    RenderTargetFormat *          sc_render_pass      =nullptr;
     SwapchainRenderTarget * sc_render_target    =nullptr;
 
 protected:
@@ -62,7 +62,7 @@ public:
 public:
 
     // Legacy methods (@deprecated - kept for backward compatibility)
-    RenderFormat *          GetRenderFormat ()const{return sc_render_pass;}
+    RenderTargetFormat *          GetRenderFormat ()const{return sc_render_pass;}
 
     bool                    GetSwapchainSize(VkExtent2D *)const;
 
