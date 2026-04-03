@@ -3,8 +3,8 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/type/ManagedArray.h>
-#include<hgl/type/UnorderedMap.h>
 #include<hgl/log/Log.h>
+#include<unordered_set>
 
 namespace hgl::graph{
 
@@ -29,7 +29,7 @@ class RenderFormat
 protected:
 
     ManagedArray<Pipeline> pipeline_list;
-    UnorderedMap<AnsiString, Pipeline *> pipeline_by_name;  ///< dedup cache: key=(mtl|vil|cpd|restart)
+    std::unordered_set<Pipeline *> pipeline_set_;  ///< tracks owned pipelines to prevent double-add
 
     Pipeline *CreatePipeline(const AnsiString &,PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
 

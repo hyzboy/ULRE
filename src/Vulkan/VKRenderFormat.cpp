@@ -103,56 +103,28 @@ Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const Pipeli
     if (!mtl || !vil || !cpd)
         return nullptr;
 
-    // Build dedup key from stable pointer identities
-    char key_buf[96];
-    std::snprintf(key_buf, sizeof(key_buf), "%llu|%llu|%llu|%u",
-        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(mtl)),
-        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(vil)),
-        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(cpd)),
-        static_cast<unsigned>(prim_restart));
-    const AnsiString cache_key = key_buf;
+    if (!device)
+        return nullptr;
 
-    Pipeline *cached = nullptr;
-    if (pipeline_by_name.Get(cache_key, cached))
-        return cached;
+    GplPipelineRequest req;
+    req.material       = mtl;
+    req.vil            = vil;
+    req.render_format  = this;
+    req.pipeline_data  = cpd;
+    req.primitive      = mtl->GetPrimitiveType();
+    req.primitive_restart = prim_restart;
+    req.debug_name     = mtl->GetName();
 
-    if (device)
+    Pipeline *p = device->AcquireGraphicsPipeline(req);
+    if (p && pipeline_set_.find(p) == pipeline_set_.end())
     {
-        GplPipelineRequest req;
-        req.material = mtl;
-        req.vil = vil;
-        req.render_format = this;
-        req.pipeline_data = cpd;
-        req.primitive = mtl->GetPrimitiveType();
-        req.primitive_restart = prim_restart;
-        req.debug_name = mtl->GetName();
-
-        Pipeline *p = device->AcquireGraphicsPipeline(req);
-        if (p)
-        {
-            // Unified acquire may return a pipeline already owned by this RenderFormat
-            // (created through RenderFormat::CreatePipeline(name,...)). Do not re-add.
-            pipeline_by_name.Add(cache_key, p);
-            return p;
-        }
-
-        LogDebug("[RenderFormat::CreatePipeline] Unified acquire path returned null, fallback to legacy path. material=%s",
-                 mtl->GetName().c_str());
-    }
-
-    PipelineData *pd=new PipelineData(cpd);
-
-    pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);
-
-    Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),vil);
-
-    if(p)
-    {
+        // New pipeline (not previously tracked by this RenderFormat) — take ownership.
+        // Monolithic path already added p to pipeline_list via CreatePipeline(7-arg);
+        // GPL path returns a raw new Pipeline that has no owner yet.
+        pipeline_set_.insert(p);
         pipeline_list.Add(p);
-        pipeline_by_name.Add(cache_key, p);
     }
-
-    return(p);
+    return p;
 }
 
 Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart)
@@ -207,8 +179,11 @@ Pipeline *RenderFormat::CreatePipeline(const AnsiString &name,
 
     Pipeline *p = CreatePipeline(name, pd, ssci, layout, vil);
 
-    if(p)
+    if (p && pipeline_set_.find(p) == pipeline_set_.end())
+    {
+        pipeline_set_.insert(p);
         pipeline_list.Add(p);
+    }
 
     return p;
 }

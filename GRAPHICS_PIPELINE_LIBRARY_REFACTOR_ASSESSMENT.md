@@ -29,12 +29,11 @@
 19. 已新增共享观测工具 `PipelineResolveMetrics.h`，并统一接入 Text/Line/Quad/Terrain/PrimitiveBatch 五条路径：`attempts/successes/failures`、pow2 节流、summary、hot-path 违例、outside-batch 检测全部复用同一套 helper。
 20. `PipelineResolveMetrics.h` 已扩展为统一观测内核（计数/判定 helper）：`PrimitiveBatchPipeline` 的 outside-batch 检测与含 skip 的 summary 判定已并入共享逻辑；各渲染路径仅保留一致化日志输出，避免重复实现。
 21. `GplLinkBackend::Build(...)` 已实现真实 Vulkan GPL 四段库创建与 link 逻辑：新增 `GplLibraryPool`（`VKGplLibraryPool.h/.cpp`），含 VI/PR/FS/FO 四类 `VkPipeline` 缓存（带 double-check 并发写保护）；`GplLinkBackend` 通过 `std::call_once` 懒初始化 pool，正确链接四段库，并统一调用 `RenderFormat::IncrVkCreateCount()`。
+22. `RenderFormat` 旧去重缓存（`pipeline_by_name` 字符串键 map）与旧直连创建 fallback 路径已彻底移除：`pipeline_by_name` 替换为 `pipeline_set_`（指针集合，仅用于防 `pipeline_list` 双重 add）；`CreatePipeline(Material*...)` 统一走 `device->AcquireGraphicsPipeline`，不再有直接调用 `vkCreateGraphicsPipelines` 的旁路；GPL 路径产生的 Pipeline 所有权缺口同步修复（全路径均经由 `pipeline_set_` 进入 `pipeline_list`）。
 
 ### 进行中
 
-1. `RenderFormat` 旧去重缓存和旧直连创建路径尚未彻底移除（仅过渡桥接完成）。
-2. `RenderFormat` 旧去重缓存和旧直连创建路径尚未彻底移除（仅过渡桥接完成）。
-3. 阶段4剩余工作转入回归验证：Primitive/Text/Line/Terrain/Quad 多场景压测与日志基线（确认 steady-state 下热路径创建告警为 0），并据结果清理观测噪声与日志级别。
+1. 阶段4剩余工作转入回归验证：Primitive/Text/Line/Terrain/Quad 多场景压测与日志基线（确认 steady-state 下热路径创建告警为 0），并据结果清理观测噪声与日志级别。
 
 ### 未开始
 
