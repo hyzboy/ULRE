@@ -48,7 +48,7 @@ GraphicsPipeline *CreateMonolithicFromRequest(const char *tag, const GraphicsPip
 }
 }
 
-GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const PipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
+GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
 {
     if (!context.device)
     {
@@ -59,7 +59,7 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const PipelineBuildCo
     return CreateMonolithicFromRequest("MonolithicGraphicsPipelineBuilder", request);
 }
 
-GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const PipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
+GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
 {
     if (!context.device)
     {

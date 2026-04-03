@@ -17,7 +17,7 @@ enum class GraphicsPipelineBuilderType
     Gpl,
 };
 
-struct PipelineBuildContext
+struct GraphicsPipelineBuildContext
 {
     VulkanDevice *device = nullptr;
     VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
@@ -28,7 +28,7 @@ class IGraphicsPipelineBuilder
 public:
     virtual ~IGraphicsPipelineBuilder() = default;
     virtual GraphicsPipelineBuilderType GetType() const = 0;
-    virtual GraphicsPipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) = 0;
+    virtual GraphicsPipeline *Build(const GraphicsPipelineBuildContext &, const GraphicsPipelineBuildRequest &) = 0;
 };
 
 class MonolithicGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
@@ -37,7 +37,7 @@ class MonolithicGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
 
 public:
     GraphicsPipelineBuilderType GetType() const override { return GraphicsPipelineBuilderType::Monolithic; }
-    GraphicsPipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
+    GraphicsPipeline *Build(const GraphicsPipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
 };
 
 class GplGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
@@ -49,6 +49,6 @@ class GplGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
 
 public:
     GraphicsPipelineBuilderType GetType() const override { return GraphicsPipelineBuilderType::Gpl; }
-    GraphicsPipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
+    GraphicsPipeline *Build(const GraphicsPipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
 };
 }//namespace hgl::graph

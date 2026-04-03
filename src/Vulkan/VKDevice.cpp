@@ -219,7 +219,7 @@ GraphicsPipeline *VulkanDevice::AcquireGraphicsPipeline(const GraphicsPipelineBu
         return nullptr;
     }
 
-    PipelineBuildContext ctx;
+    GraphicsPipelineBuildContext ctx;
     ctx.device = this;
     ctx.pipeline_cache = GetPipelineCache();
 
