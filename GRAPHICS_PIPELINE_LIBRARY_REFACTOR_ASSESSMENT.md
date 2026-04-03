@@ -20,6 +20,8 @@
 10. `PrimitiveBatchPipeline::BuildMaterialBatches(...)` 已开始前移 pipeline 决策：批处理阶段按 `RenderFormat + Material + VIL + PipelineData` 统一获取 pipeline 并回写到 `Primitive`。
 11. 批处理前移链路已补齐失败统计、节流告警与保底策略（获取失败保留原 pipeline，不中断渲染）。
 12. `TextRenderPipeline::ProcessInputs(...)` 已接入构建阶段 pipeline 预解析（首次创建 + 后续按模板刷新），并在已有 primitive 上同步更新 pipeline。
+13. `RenderFormat::GetVkCreateCount()` 全局 `vkCreateGraphicsPipelines` 调用计数器已落地（`VKRenderFormat.h/cpp`），支持帧内创建数量区间统计。
+14. `PrimitiveBatchPipeline::BuildMaterialBatches()` 已接入帧间 pipeline 创建越界检测：批处理结束时记录快照，下一帧批处理开始时对比，若检测到热路径创建则 `LogWarning`（阶段4验收标准 7.1/7.2 可观测化）。
 
 ### 进行中
 

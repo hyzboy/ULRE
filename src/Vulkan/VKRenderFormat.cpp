@@ -2,6 +2,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
 #include<cstdio>
+#include<atomic>
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/pipeline/VKGplRequest.h>
@@ -9,6 +10,11 @@
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
+
+namespace {
+    std::atomic<uint64_t> g_rf_vkcreate_count{0};
+} // anonymous namespace
+
 namespace hgl::graph{
 
 RenderFormat::RenderFormat(VulkanDevice *dev,const AnsiString &n,const VkFormatList &cf,VkFormat df)
@@ -78,6 +84,8 @@ Pipeline *RenderFormat::CreatePipeline(const AnsiString &name,PipelineData *pd,c
         delete pd;
         return(nullptr);
     }
+
+    ++g_rf_vkcreate_count;
 
     Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,vil,pd);
 
@@ -203,5 +211,10 @@ Pipeline *RenderFormat::CreatePipeline(const AnsiString &name,
         pipeline_list.Add(p);
 
     return p;
+}
+
+uint64_t RenderFormat::GetVkCreateCount()
+{
+    return g_rf_vkcreate_count.load(std::memory_order_relaxed);
 }
 }//namespace hgl::graph

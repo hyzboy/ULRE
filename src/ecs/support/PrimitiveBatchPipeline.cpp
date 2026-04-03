@@ -483,6 +483,19 @@ namespace hgl::ecs
         if (!world)
             return;
 
+        // Guard: detect pipeline creations that happened OUTSIDE the batch phase
+        // (i.e., in the hot renderer path between the previous batch-end and now).
+        static uint64_t s_prev_batch_end_vkcreate = 0;
+        const uint64_t vkcreate_at_start = graph::RenderFormat::GetVkCreateCount();
+        if (s_prev_batch_end_vkcreate > 0)
+        {
+            const uint64_t outside = vkcreate_at_start - s_prev_batch_end_vkcreate;
+            if (outside > 0)
+            {
+                LogWarning("[ECS::PrimitiveBatchPipeline] Stage-4 violation: %llu pipeline(s) created OUTSIDE batch phase (between last batch-end and this batch-start). Hot-path pipeline creation must be eliminated.",
+                           static_cast<unsigned long long>(outside));
+            }
+        }
         auto& cache = world->GetRenderFrameCache();
 
         auto buffer_manager = GetBufferManager();
@@ -606,16 +619,21 @@ namespace hgl::ecs
 
             if (frame_failures > 0 || ShouldLogPow2(successes_total + failures_total + skips_total))
             {
-                LogDebug("[ECS::PrimitiveBatchPipeline] Pre-resolve summary: attempts=%u success=%u fail=%u skip=%u totals(s=%llu,f=%llu,k=%llu)",
+                const uint64_t vkcreate_at_end = graph::RenderFormat::GetVkCreateCount();
+                const uint64_t vkcreate_this_batch = vkcreate_at_end - vkcreate_at_start;
+                LogDebug("[ECS::PrimitiveBatchPipeline] Pre-resolve summary: attempts=%u success=%u fail=%u skip=%u totals(s=%llu,f=%llu,k=%llu) vkcreate_this_batch=%llu",
                          frame_attempts,
                          frame_successes,
                          frame_failures,
                          frame_skips,
                          static_cast<unsigned long long>(successes_total),
                          static_cast<unsigned long long>(failures_total),
-                         static_cast<unsigned long long>(skips_total));
+                         static_cast<unsigned long long>(skips_total),
+                         static_cast<unsigned long long>(vkcreate_this_batch));
             }
         }
+
+        s_prev_batch_end_vkcreate = graph::RenderFormat::GetVkCreateCount();
     }
 
     void PrimitiveBatchPipeline::FinalizeBatches()

@@ -78,5 +78,9 @@ public:
                              const PipelineData *pd,
                              PrimitiveType prim = PrimitiveType::Triangles,
                              bool prim_restart = false);
+
+    /// Returns the process-lifetime count of successful vkCreateGraphicsPipelines calls.
+    /// Use the delta between two calls to count pipelines created in a time window.
+    static uint64_t GetVkCreateCount();
 };//class RenderFormat
 }//namespace hgl::graph
