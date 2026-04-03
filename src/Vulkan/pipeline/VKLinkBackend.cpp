@@ -10,7 +10,7 @@
 namespace hgl::graph{
 namespace
 {
-Pipeline *CreateMonolithicFromRequest(const char *tag, const GplPipelineRequest &request)
+Pipeline *CreateMonolithicFromRequest(const char *tag, const GraphicsPipelineBuildRequest &request)
 {
     if (!request.material || !request.render_format || !request.vil || !request.pipeline_data)
     {
@@ -48,7 +48,7 @@ Pipeline *CreateMonolithicFromRequest(const char *tag, const GplPipelineRequest 
 }
 }
 
-Pipeline *MonolithicLinkBackend::Build(const PipelineBuildContext &context, const GplPipelineRequest &request)
+Pipeline *MonolithicLinkBackend::Build(const PipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
 {
     if (!context.device)
     {
@@ -59,7 +59,7 @@ Pipeline *MonolithicLinkBackend::Build(const PipelineBuildContext &context, cons
     return CreateMonolithicFromRequest("MonolithicLinkBackend", request);
 }
 
-Pipeline *GplLinkBackend::Build(const PipelineBuildContext &context, const GplPipelineRequest &request)
+Pipeline *GplLinkBackend::Build(const PipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
 {
     if (!context.device)
     {

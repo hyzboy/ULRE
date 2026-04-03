@@ -94,7 +94,7 @@ Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const Pipeli
     if (!device)
         return nullptr;
 
-    GplPipelineRequest req;
+    GraphicsPipelineBuildRequest req;
     req.material       = mtl;
     req.vil            = vil;
     req.render_format  = this;

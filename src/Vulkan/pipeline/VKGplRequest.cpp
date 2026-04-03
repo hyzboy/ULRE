@@ -96,7 +96,7 @@ namespace
     }
 }
 
-bool IsValidGplPipelineRequest(const GplPipelineRequest &req)
+bool IsValidGplPipelineRequest(const GraphicsPipelineBuildRequest &req)
 {
     return req.material
         && req.vil
@@ -128,7 +128,7 @@ GplVertexInputKey BuildVertexInputKey(const VertexInputLayout *vil)
     return { h };
 }
 
-GplPreRasterKey BuildPreRasterKey(const GplPipelineRequest &req)
+GplPreRasterKey BuildPreRasterKey(const GraphicsPipelineBuildRequest &req)
 {
     if (!req.material)
         return {};
@@ -145,7 +145,7 @@ GplPreRasterKey BuildPreRasterKey(const GplPipelineRequest &req)
     return { h };
 }
 
-GplFragmentShaderKey BuildFragmentShaderKey(const GplPipelineRequest &req)
+GplFragmentShaderKey BuildFragmentShaderKey(const GraphicsPipelineBuildRequest &req)
 {
     if (!req.material)
         return {};
@@ -176,7 +176,7 @@ GplFragmentOutputKey BuildFragmentOutputKey(const RenderFormat *rf)
     return { h };
 }
 
-GplLinkedPipelineKey BuildLinkedPipelineKey(const GplPipelineRequest &req,
+GplLinkedPipelineKey BuildLinkedPipelineKey(const GraphicsPipelineBuildRequest &req,
                                             const RenderStateProfile &state_profile)
 {
     GplLinkedPipelineKey key{};

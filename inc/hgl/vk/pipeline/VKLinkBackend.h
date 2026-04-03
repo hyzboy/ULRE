@@ -9,7 +9,7 @@ namespace hgl::graph{
 class Pipeline;
 class VulkanDevice;
 class GplLibraryPool;
-struct GplPipelineRequest;
+struct GraphicsPipelineBuildRequest;
 
 enum class LinkBackendType
 {
@@ -28,7 +28,7 @@ class ILinkBackend
 public:
     virtual ~ILinkBackend() = default;
     virtual LinkBackendType GetType() const = 0;
-    virtual Pipeline *Build(const PipelineBuildContext &, const GplPipelineRequest &) = 0;
+    virtual Pipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) = 0;
 };
 
 class MonolithicLinkBackend final : public ILinkBackend
@@ -37,7 +37,7 @@ class MonolithicLinkBackend final : public ILinkBackend
 
 public:
     LinkBackendType GetType() const override { return LinkBackendType::Monolithic; }
-    Pipeline *Build(const PipelineBuildContext &, const GplPipelineRequest &) override;
+    Pipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
 };
 
 class GplLinkBackend final : public ILinkBackend
@@ -49,6 +49,6 @@ class GplLinkBackend final : public ILinkBackend
 
 public:
     LinkBackendType GetType() const override { return LinkBackendType::Gpl; }
-    Pipeline *Build(const PipelineBuildContext &, const GplPipelineRequest &) override;
+    Pipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
 };
 }//namespace hgl::graph

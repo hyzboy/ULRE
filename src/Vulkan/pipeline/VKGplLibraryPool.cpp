@@ -23,7 +23,7 @@ static constexpr VkPipelineCreateFlags kLibraryFlags =
 // No shader stages, no layout.
 
 VkPipeline CreateVILibrary(VkDevice device, VkPipelineCache cache,
-                            const GplPipelineRequest &req)
+                            const GraphicsPipelineBuildRequest &req)
 {
     const VertexInputLayout *vil = req.vil;
     const PipelineData      *pd  = req.pipeline_data;
@@ -69,7 +69,7 @@ VkPipeline CreateVILibrary(VkDevice device, VkPipelineCache cache,
 //           viewport state (dynamic), and depth format (no color).
 
 VkPipeline CreatePRLibrary(VkDevice device, VkPipelineCache cache,
-                            const GplPipelineRequest &req)
+                            const GraphicsPipelineBuildRequest &req)
 {
     const PipelineData *pd = req.pipeline_data;
 
@@ -149,7 +149,7 @@ VkPipeline CreatePRLibrary(VkDevice device, VkPipelineCache cache,
 // Captures: FS shader stage, depth/stencil state, multisample state, depth format.
 
 VkPipeline CreateFSLibrary(VkDevice device, VkPipelineCache cache,
-                            const GplPipelineRequest &req)
+                            const GraphicsPipelineBuildRequest &req)
 {
     const PipelineData *pd = req.pipeline_data;
 
@@ -209,7 +209,7 @@ VkPipeline CreateFSLibrary(VkDevice device, VkPipelineCache cache,
 // No layout, no shader stages.
 
 VkPipeline CreateFOLibrary(VkDevice device, VkPipelineCache cache,
-                            const GplPipelineRequest &req)
+                            const GraphicsPipelineBuildRequest &req)
 {
     const PipelineData  *pd  = req.pipeline_data;
     const RenderFormat  *rf  = req.render_format;
@@ -326,25 +326,25 @@ void GplLibraryPool::Init(VkDevice device, VkPipelineCache pipeline_cache)
     pipeline_cache_ = pipeline_cache;
 }
 
-VkPipeline GplLibraryPool::AcquireVI(const GplVertexInputKey &key, const GplPipelineRequest &req)
+VkPipeline GplLibraryPool::AcquireVI(const GplVertexInputKey &key, const GraphicsPipelineBuildRequest &req)
 {
     return AcquireLibrary(vi_lib_, lib_mutex_, key,
         [&]{ return CreateVILibrary(device_, pipeline_cache_, req); });
 }
 
-VkPipeline GplLibraryPool::AcquirePR(const GplPreRasterKey &key, const GplPipelineRequest &req)
+VkPipeline GplLibraryPool::AcquirePR(const GplPreRasterKey &key, const GraphicsPipelineBuildRequest &req)
 {
     return AcquireLibrary(pr_lib_, lib_mutex_, key,
         [&]{ return CreatePRLibrary(device_, pipeline_cache_, req); });
 }
 
-VkPipeline GplLibraryPool::AcquireFS(const GplFragmentShaderKey &key, const GplPipelineRequest &req)
+VkPipeline GplLibraryPool::AcquireFS(const GplFragmentShaderKey &key, const GraphicsPipelineBuildRequest &req)
 {
     return AcquireLibrary(fs_lib_, lib_mutex_, key,
         [&]{ return CreateFSLibrary(device_, pipeline_cache_, req); });
 }
 
-VkPipeline GplLibraryPool::AcquireFO(const GplFragmentOutputKey &key, const GplPipelineRequest &req)
+VkPipeline GplLibraryPool::AcquireFO(const GplFragmentOutputKey &key, const GraphicsPipelineBuildRequest &req)
 {
     return AcquireLibrary(fo_lib_, lib_mutex_, key,
         [&]{ return CreateFOLibrary(device_, pipeline_cache_, req); });

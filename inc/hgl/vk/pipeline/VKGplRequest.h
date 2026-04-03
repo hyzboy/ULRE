@@ -55,7 +55,7 @@ struct GplLinkedPipelineKey
     }
 };
 
-struct GplPipelineRequest
+struct GraphicsPipelineBuildRequest
 {
     const Material *material = nullptr;
     const VertexInputLayout *vil = nullptr;
@@ -66,13 +66,13 @@ struct GplPipelineRequest
     AnsiString debug_name;
 };
 
-bool IsValidGplPipelineRequest(const GplPipelineRequest &req);
+bool IsValidGplPipelineRequest(const GraphicsPipelineBuildRequest &req);
 
 GplVertexInputKey  BuildVertexInputKey(const VertexInputLayout *vil);
-GplPreRasterKey    BuildPreRasterKey(const GplPipelineRequest &req);
-GplFragmentShaderKey BuildFragmentShaderKey(const GplPipelineRequest &req);
+GplPreRasterKey    BuildPreRasterKey(const GraphicsPipelineBuildRequest &req);
+GplFragmentShaderKey BuildFragmentShaderKey(const GraphicsPipelineBuildRequest &req);
 GplFragmentOutputKey BuildFragmentOutputKey(const RenderFormat *rf);
-GplLinkedPipelineKey BuildLinkedPipelineKey(const GplPipelineRequest &req,
+GplLinkedPipelineKey BuildLinkedPipelineKey(const GraphicsPipelineBuildRequest &req,
                                             const RenderStateProfile &state_profile);
 }//namespace hgl::graph
 

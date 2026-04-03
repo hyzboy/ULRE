@@ -149,7 +149,7 @@ void VulkanDevice::SetGplEnabled(bool enabled)
     LogInfo("[VulkanDevice] Graphics pipeline library runtime_enabled=%s", gpl_enabled?"yes":"no");
 }
 
-Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GplPipelineRequest &req)
+Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GraphicsPipelineBuildRequest &req)
 {
     auto should_log_counter = [](const uint64_t v) -> bool
     {
@@ -297,7 +297,7 @@ VulkanDevice::LinkedPipelineCacheStats VulkanDevice::GetLinkedPipelineCacheStats
     return stats;
 }
 
-void VulkanDevice::PreheatPipelines(const GplPipelineRequest *requests, size_t count)
+void VulkanDevice::PreheatPipelines(const GraphicsPipelineBuildRequest *requests, size_t count)
 {
     if (!requests || count == 0)
         return;
