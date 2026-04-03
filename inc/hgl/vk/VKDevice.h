@@ -51,7 +51,7 @@ class DeviceQueue;
 class Semaphore;
 class MaterialParameters;
 struct GraphicsPipelineBuildRequest;
-class ILinkBackend;
+class IGraphicsPipelineBuilder;
 
 struct CopyBufferToImageInfo;
 
@@ -65,8 +65,8 @@ class VulkanDevice
     UnorderedMap<AnsiString, RenderFormat *> render_format_cache;
     bool gpl_supported = false;
     bool gpl_enabled = false;
-    std::unique_ptr<ILinkBackend> link_backend_mono;
-    std::unique_ptr<ILinkBackend> link_backend_gpl;
+    std::unique_ptr<IGraphicsPipelineBuilder> link_backend_mono;
+    std::unique_ptr<IGraphicsPipelineBuilder> link_backend_gpl;
     PipelineLibraryCache pipeline_library_cache;
     std::unordered_map<GplLinkedPipelineKey, Pipeline *> linked_pipeline_cache;
     mutable std::mutex linked_pipeline_cache_mutex;

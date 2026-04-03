@@ -6,7 +6,7 @@
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/pipeline/VKComputePipeline.h>
-#include<hgl/vk/pipeline/VKLinkBackend.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineBuilder.h>
 #include<hgl/vk/pipeline/VKGplRequest.h>
 #include<hgl/vk/pipeline/VKRenderStateProfile.h>
 #include<hgl/vk/VKObjectName.h>
@@ -216,7 +216,7 @@ Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GraphicsPipelineBuildReque
                  linked_pipeline_cache.size());
     }
 
-    ILinkBackend *backend = nullptr;
+    IGraphicsPipelineBuilder *backend = nullptr;
 
     if (gpl_enabled && link_backend_gpl)
         backend = link_backend_gpl.get();

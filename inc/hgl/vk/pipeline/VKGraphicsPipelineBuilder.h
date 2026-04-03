@@ -23,15 +23,15 @@ struct PipelineBuildContext
     VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
 };
 
-class ILinkBackend
+class IGraphicsPipelineBuilder
 {
 public:
-    virtual ~ILinkBackend() = default;
+    virtual ~IGraphicsPipelineBuilder() = default;
     virtual LinkBackendType GetType() const = 0;
     virtual Pipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) = 0;
 };
 
-class MonolithicLinkBackend final : public ILinkBackend
+class MonolithicLinkBackend final : public IGraphicsPipelineBuilder
 {
     OBJECT_LOGGER
 
@@ -40,7 +40,7 @@ public:
     Pipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
 };
 
-class GplLinkBackend final : public ILinkBackend
+class GplLinkBackend final : public IGraphicsPipelineBuilder
 {
     OBJECT_LOGGER
 
