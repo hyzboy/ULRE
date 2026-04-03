@@ -289,7 +289,14 @@ namespace hgl::ecs
         }
 
         RecordPipelineResolveSuccess(g_line_pipeline_resolve_counters);
-        LogPipelineResolveCreated("LineRenderPipeline", vkcreate_delta, g_line_pipeline_resolve_counters);
+        if (ShouldLogPipelineResolveCreated(vkcreate_delta))
+        {
+            GLogInfo("[LineRenderPipeline] Pipeline resolve created vk pipelines=%llu (attempts=%llu successes=%llu failures=%llu)",
+                     static_cast<unsigned long long>(vkcreate_delta),
+                     static_cast<unsigned long long>(g_line_pipeline_resolve_counters.attempts.load()),
+                     static_cast<unsigned long long>(g_line_pipeline_resolve_counters.successes.load()),
+                     static_cast<unsigned long long>(g_line_pipeline_resolve_counters.failures.load()));
+        }
 
         // ------- Create color palette UBO -------
         auto* buf_mgr = gc->GetBufferManager();
@@ -629,7 +636,14 @@ namespace hgl::ecs
 
         const uint64_t vkcreate_after = graph::RenderFormat::GetVkCreateCount();
         const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
-        LogPipelineHotpathCreateViolation("LineRenderPipeline", vkcreate_delta, g_line_render_hotpath_counters);
+        const uint64_t violation_log_count = RecordPipelineHotpathViolationAndGetLogCount(vkcreate_delta,
+                                                                                           g_line_render_hotpath_counters);
+        if (violation_log_count > 0)
+        {
+            GLogWarning("[LineRenderPipeline] Stage-4 violation: render hot path created %llu vk pipeline(s), total_violations=%llu",
+                        static_cast<unsigned long long>(vkcreate_delta),
+                        static_cast<unsigned long long>(violation_log_count));
+        }
     }
 
     void LineRenderPipeline::Shutdown()

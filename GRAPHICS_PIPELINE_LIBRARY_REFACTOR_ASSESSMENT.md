@@ -26,6 +26,7 @@
 16. `LineRenderPipeline` 已接入 pipeline 解析统计与渲染热路径创建断言：初始化创建记录 attempts/success/failure，`Render(...)` 中若检测到 `vkCreateGraphicsPipelines` 增量则按 pow2 节流 `LogWarning`。
 17. `QuadResourcePrepareSystem` 已接入 pipeline 解析统计（attempts/success/failure）与创建增量观测，`CreateConfiguredPipeline(...)` 统一输出阶段4可观测日志。
 18. `TerrainRenderPipeline::Render(...)` 已接入热路径 pipeline 创建断言：若渲染期间出现 `vkCreateGraphicsPipelines` 增量则按 pow2 节流 `LogWarning`。
+19. 已新增共享观测工具 `PipelineResolveMetrics.h`，并统一接入 Text/Line/Quad/Terrain/PrimitiveBatch 五条路径：`attempts/successes/failures`、pow2 节流、summary、hot-path 违例、outside-batch 检测全部复用同一套 helper。
 
 ### 进行中
 

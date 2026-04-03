@@ -126,7 +126,14 @@ namespace hgl::ecs
 
         const uint64_t vkcreate_after = graph::RenderFormat::GetVkCreateCount();
         const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
-        LogPipelineHotpathCreateViolation("TerrainRenderPipeline", vkcreate_delta, g_terrain_render_hotpath_counters);
+        const uint64_t violation_log_count = RecordPipelineHotpathViolationAndGetLogCount(vkcreate_delta,
+                                                                                           g_terrain_render_hotpath_counters);
+        if (violation_log_count > 0)
+        {
+            GLogWarning("[TerrainRenderPipeline] Stage-4 violation: render hot path created %llu vk pipeline(s), total_violations=%llu",
+                        static_cast<unsigned long long>(vkcreate_delta),
+                        static_cast<unsigned long long>(violation_log_count));
+        }
     }
 
 }  // namespace hgl::ecs

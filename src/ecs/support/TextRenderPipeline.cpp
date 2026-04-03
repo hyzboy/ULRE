@@ -570,11 +570,21 @@ namespace hgl::ecs
             resources->last_string_count = static_cast<uint32_t>(input.texts.size());
         }
 
-        LogPipelineResolveFrameSummary("ECS::TextRenderPipeline",
-                                       frame_pipeline_attempts,
-                                       frame_pipeline_successes,
-                                       frame_pipeline_failures,
-                                       g_text_pipeline_resolve_counters);
+        uint64_t success_total = 0;
+        uint64_t failure_total = 0;
+        if (ShouldLogPipelineResolveFrameSummary(frame_pipeline_attempts,
+                                                 frame_pipeline_failures,
+                                                 g_text_pipeline_resolve_counters,
+                                                 success_total,
+                                                 failure_total))
+        {
+            LogDebug("[ECS::TextRenderPipeline] Pipeline resolve summary: attempts=%u success=%u fail=%u totals(s=%llu,f=%llu)",
+                     frame_pipeline_attempts,
+                     frame_pipeline_successes,
+                     frame_pipeline_failures,
+                     static_cast<unsigned long long>(success_total),
+                     static_cast<unsigned long long>(failure_total));
+        }
     }
 
     void TextRenderPipeline::ClearChanges(const std::vector<std::shared_ptr<TextComponent>>& texts)

@@ -22,6 +22,7 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
+#include<hgl/ecs/support/PipelineResolveMetrics.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
 #include<limits>
@@ -33,15 +34,9 @@ namespace hgl::ecs
 {
     namespace
     {
-        std::atomic<uint64_t> g_pipeline_preresolve_attempts{0};
-        std::atomic<uint64_t> g_pipeline_preresolve_successes{0};
-        std::atomic<uint64_t> g_pipeline_preresolve_failures{0};
+        PipelineResolveCounters g_pipeline_preresolve_counters;
         std::atomic<uint64_t> g_pipeline_preresolve_skips{0};
-
-        inline bool ShouldLogPow2(const uint64_t v)
-        {
-            return v != 0 && ((v & (v - 1)) == 0);
-        }
+        PipelineBatchPhaseTracker g_pipeline_batch_phase_tracker;
 
         void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
         {
@@ -483,18 +478,13 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        // Guard: detect pipeline creations that happened OUTSIDE the batch phase
-        // (i.e., in the hot renderer path between the previous batch-end and now).
-        static uint64_t s_prev_batch_end_vkcreate = 0;
         const uint64_t vkcreate_at_start = graph::RenderFormat::GetVkCreateCount();
-        if (s_prev_batch_end_vkcreate > 0)
+        const uint64_t outside = ComputeOutsideBatchPipelineCreation(vkcreate_at_start,
+                                                                     g_pipeline_batch_phase_tracker);
+        if (outside > 0)
         {
-            const uint64_t outside = vkcreate_at_start - s_prev_batch_end_vkcreate;
-            if (outside > 0)
-            {
-                LogWarning("[ECS::PrimitiveBatchPipeline] Stage-4 violation: %llu pipeline(s) created OUTSIDE batch phase (between last batch-end and this batch-start). Hot-path pipeline creation must be eliminated.",
-                           static_cast<unsigned long long>(outside));
-            }
+            LogWarning("[ECS::PrimitiveBatchPipeline] Stage-4 violation: %llu pipeline(s) created OUTSIDE batch phase (between last batch-end and this batch-start). Hot-path pipeline creation must be eliminated.",
+                       static_cast<unsigned long long>(outside));
         }
         auto& cache = world->GetRenderFrameCache();
 
@@ -543,7 +533,7 @@ namespace hgl::ecs
                 if (vil && pipeline_data)
                 {
                     ++frame_attempts;
-                    const uint64_t attempts_total = ++g_pipeline_preresolve_attempts;
+                    RecordPipelineResolveAttempt(g_pipeline_preresolve_counters);
 
                     if (graph::Pipeline* acquired = render_format->CreatePipeline(material, vil, pipeline_data, prim_restart))
                     {
@@ -552,12 +542,12 @@ namespace hgl::ecs
 
                         pipeline = acquired;
                         ++frame_successes;
-                        ++g_pipeline_preresolve_successes;
+                        RecordPipelineResolveSuccess(g_pipeline_preresolve_counters);
                     }
                     else
                     {
                         ++frame_failures;
-                        const uint64_t failures_total = ++g_pipeline_preresolve_failures;
+                        const uint64_t failures_total = RecordPipelineResolveFailure(g_pipeline_preresolve_counters);
 
                         if (ShouldLogPow2(failures_total))
                         {
@@ -566,9 +556,7 @@ namespace hgl::ecs
                                        static_cast<unsigned long long>(failures_total),
                                        material->GetName().c_str());
                         }
-
                         // Keep original pipeline to preserve rendering continuity.
-                        (void)attempts_total;
                     }
                 }
                 else
@@ -611,29 +599,31 @@ namespace hgl::ecs
             }
         }
 
-        if (frame_attempts || frame_failures || frame_skips)
+        const uint64_t vkcreate_at_end = graph::RenderFormat::GetVkCreateCount();
+        const uint64_t vkcreate_this_batch = vkcreate_at_end - vkcreate_at_start;
+        const uint64_t skips_total = g_pipeline_preresolve_skips.load();
+        uint64_t successes_total = 0;
+        uint64_t failures_total = 0;
+        if (ShouldLogPipelineResolveFrameSummaryWithSkips(frame_attempts,
+                                                          frame_failures,
+                                                          frame_skips,
+                                                          g_pipeline_preresolve_counters,
+                                                          skips_total,
+                                                          successes_total,
+                                                          failures_total))
         {
-            const uint64_t successes_total = g_pipeline_preresolve_successes.load();
-            const uint64_t failures_total = g_pipeline_preresolve_failures.load();
-            const uint64_t skips_total = g_pipeline_preresolve_skips.load();
-
-            if (frame_failures > 0 || ShouldLogPow2(successes_total + failures_total + skips_total))
-            {
-                const uint64_t vkcreate_at_end = graph::RenderFormat::GetVkCreateCount();
-                const uint64_t vkcreate_this_batch = vkcreate_at_end - vkcreate_at_start;
-                LogDebug("[ECS::PrimitiveBatchPipeline] Pre-resolve summary: attempts=%u success=%u fail=%u skip=%u totals(s=%llu,f=%llu,k=%llu) vkcreate_this_batch=%llu",
-                         frame_attempts,
-                         frame_successes,
-                         frame_failures,
-                         frame_skips,
-                         static_cast<unsigned long long>(successes_total),
-                         static_cast<unsigned long long>(failures_total),
-                         static_cast<unsigned long long>(skips_total),
-                         static_cast<unsigned long long>(vkcreate_this_batch));
-            }
+            LogDebug("[ECS::PrimitiveBatchPipeline] Pre-resolve summary: attempts=%u success=%u fail=%u skip=%u totals(s=%llu,f=%llu,k=%llu) vkcreate_this_batch=%llu",
+                     frame_attempts,
+                     frame_successes,
+                     frame_failures,
+                     frame_skips,
+                     static_cast<unsigned long long>(successes_total),
+                     static_cast<unsigned long long>(failures_total),
+                     static_cast<unsigned long long>(skips_total),
+                     static_cast<unsigned long long>(vkcreate_this_batch));
         }
 
-        s_prev_batch_end_vkcreate = graph::RenderFormat::GetVkCreateCount();
+        EndPipelineBatchPhase(g_pipeline_batch_phase_tracker, vkcreate_at_end);
     }
 
     void PrimitiveBatchPipeline::FinalizeBatches()

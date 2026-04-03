@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <cstdint>
-#include <hgl/log/Log.h>
 
 namespace hgl::ecs
 {
@@ -16,6 +15,11 @@ namespace hgl::ecs
     struct PipelineHotpathCounters
     {
         ::std::atomic<uint64_t> violations{0};
+    };
+
+    struct PipelineBatchPhaseTracker
+    {
+        uint64_t prev_batch_end_vkcreate = 0;
     };
 
     inline bool ShouldLogPow2(const uint64_t v)
@@ -38,60 +42,64 @@ namespace hgl::ecs
         return ++counters.failures;
     }
 
-    inline void LogPipelineResolveCreated(const char* owner,
-                                          const uint64_t vkcreate_delta,
-                                          const PipelineResolveCounters& counters)
+    inline bool ShouldLogPipelineResolveCreated(const uint64_t vkcreate_delta)
     {
-        if (vkcreate_delta == 0)
-            return;
-
-        GLogInfo("[%s] Pipeline resolve created vk pipelines=%llu (attempts=%llu successes=%llu failures=%llu)",
-                 owner,
-                 static_cast<unsigned long long>(vkcreate_delta),
-                 static_cast<unsigned long long>(counters.attempts.load()),
-                 static_cast<unsigned long long>(counters.successes.load()),
-                 static_cast<unsigned long long>(counters.failures.load()));
+        return vkcreate_delta > 0;
     }
 
-    inline void LogPipelineResolveFrameSummary(const char* owner,
-                                               const uint32_t frame_attempts,
-                                               const uint32_t frame_successes,
-                                               const uint32_t frame_failures,
-                                               const PipelineResolveCounters& counters)
+    inline bool ShouldLogPipelineResolveFrameSummary(const uint32_t frame_attempts,
+                                                     const uint32_t frame_failures,
+                                                     const PipelineResolveCounters& counters,
+                                                     uint64_t& success_total,
+                                                     uint64_t& failure_total)
     {
         if (!frame_attempts && !frame_failures)
-            return;
+            return false;
 
-        const uint64_t success_total = counters.successes.load();
-        const uint64_t failure_total = counters.failures.load();
-
-        if (frame_failures > 0 || ShouldLogPow2(success_total + failure_total))
-        {
-            GLogDebug("[%s] Pipeline resolve summary: attempts=%u success=%u fail=%u totals(s=%llu,f=%llu)",
-                      owner,
-                      frame_attempts,
-                      frame_successes,
-                      frame_failures,
-                      static_cast<unsigned long long>(success_total),
-                      static_cast<unsigned long long>(failure_total));
-        }
+        success_total = counters.successes.load();
+        failure_total = counters.failures.load();
+        return frame_failures > 0 || ShouldLogPow2(success_total + failure_total);
     }
 
-    inline void LogPipelineHotpathCreateViolation(const char* owner,
-                                                  const uint64_t vkcreate_delta,
-                                                  PipelineHotpathCounters& counters)
+    inline uint64_t RecordPipelineHotpathViolationAndGetLogCount(const uint64_t vkcreate_delta,
+                                                                 PipelineHotpathCounters& counters)
     {
         if (vkcreate_delta == 0)
-            return;
+            return 0;
 
         const uint64_t violations = ++counters.violations;
-        if (ShouldLogPow2(violations))
-        {
-            GLogWarning("[%s] Stage-4 violation: render hot path created %llu vk pipeline(s), total_violations=%llu",
-                        owner,
-                        static_cast<unsigned long long>(vkcreate_delta),
-                        static_cast<unsigned long long>(violations));
-        }
+        return ShouldLogPow2(violations) ? violations : 0;
+    }
+
+    inline uint64_t ComputeOutsideBatchPipelineCreation(const uint64_t vkcreate_at_start,
+                                                        const PipelineBatchPhaseTracker& tracker)
+    {
+        if (tracker.prev_batch_end_vkcreate == 0)
+            return 0;
+
+        return vkcreate_at_start - tracker.prev_batch_end_vkcreate;
+    }
+
+    inline void EndPipelineBatchPhase(PipelineBatchPhaseTracker& tracker,
+                                      const uint64_t vkcreate_at_end)
+    {
+        tracker.prev_batch_end_vkcreate = vkcreate_at_end;
+    }
+
+    inline bool ShouldLogPipelineResolveFrameSummaryWithSkips(const uint32_t frame_attempts,
+                                                              const uint32_t frame_failures,
+                                                              const uint32_t frame_skips,
+                                                              const PipelineResolveCounters& counters,
+                                                              const uint64_t total_skips,
+                                                              uint64_t& success_total,
+                                                              uint64_t& failure_total)
+    {
+        if (!frame_attempts && !frame_failures && !frame_skips)
+            return false;
+
+        success_total = counters.successes.load();
+        failure_total = counters.failures.load();
+        return frame_failures > 0 || ShouldLogPow2(success_total + failure_total + total_skips);
     }
 
 }

@@ -134,7 +134,14 @@ namespace hgl::ecs
         }
 
         RecordPipelineResolveSuccess(g_quad_pipeline_resolve_counters);
-        LogPipelineResolveCreated("QuadResourcePrepareSystem", vkcreate_delta, g_quad_pipeline_resolve_counters);
+        if (ShouldLogPipelineResolveCreated(vkcreate_delta))
+        {
+            GLogInfo("[QuadResourcePrepareSystem] Pipeline resolve created vk pipelines=%llu (attempts=%llu successes=%llu failures=%llu)",
+                     static_cast<unsigned long long>(vkcreate_delta),
+                     static_cast<unsigned long long>(g_quad_pipeline_resolve_counters.attempts.load()),
+                     static_cast<unsigned long long>(g_quad_pipeline_resolve_counters.successes.load()),
+                     static_cast<unsigned long long>(g_quad_pipeline_resolve_counters.failures.load()));
+        }
 
         return pipeline;
     }
