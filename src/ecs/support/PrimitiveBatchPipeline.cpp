@@ -61,7 +61,7 @@ namespace hgl::ecs
             indexed_draw_cmd->firstInstance = batch->first_instance;
         }
 
-        RenderQueue DetermineRenderQueue(const graph::Pipeline* pipeline)
+        RenderQueue DetermineRenderQueue(const graph::GraphicsPipeline* pipeline)
         {
             if (!pipeline)
                 return RenderQueue::Opaque;
@@ -535,7 +535,7 @@ namespace hgl::ecs
                     ++frame_attempts;
                     RecordPipelineResolveAttempt(g_pipeline_preresolve_counters);
 
-                    if (graph::Pipeline* acquired = render_format->CreatePipeline(material, vil, pipeline_data, prim_restart))
+                    if (graph::GraphicsPipeline* acquired = render_format->CreatePipeline(material, vil, pipeline_data, prim_restart))
                     {
                         if (auto* primitive = item->GetPrimitive())
                             primitive->UpdatePipeline(acquired);
@@ -551,7 +551,7 @@ namespace hgl::ecs
 
                         if (ShouldLogPow2(failures_total))
                         {
-                            LogWarning("[ECS::PrimitiveBatchPipeline] Pipeline pre-resolve failed: frame_failures=%u total_failures=%llu material=%s",
+                            LogWarning("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve failed: frame_failures=%u total_failures=%llu material=%s",
                                        frame_failures,
                                        static_cast<unsigned long long>(failures_total),
                                        material->GetName().c_str());
@@ -565,7 +565,7 @@ namespace hgl::ecs
                     const uint64_t skips_total = ++g_pipeline_preresolve_skips;
                     if (ShouldLogPow2(skips_total))
                     {
-                        LogDebug("[ECS::PrimitiveBatchPipeline] Pipeline pre-resolve skipped: missing template data (vil=%p pipeline_data=%p), total_skips=%llu",
+                        LogDebug("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve skipped: missing template data (vil=%p pipeline_data=%p), total_skips=%llu",
                                  static_cast<const void *>(vil),
                                  static_cast<const void *>(pipeline_data),
                                  static_cast<unsigned long long>(skips_total));

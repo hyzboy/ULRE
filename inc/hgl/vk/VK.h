@@ -232,7 +232,7 @@ class MaterialParameters;
 class MaterialInstance;
 struct PipelineData;
 enum class InlinePipeline;
-class Pipeline;
+class GraphicsPipeline;
 
 struct VAConfig;
 class VILConfig;

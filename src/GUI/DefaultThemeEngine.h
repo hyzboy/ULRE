@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/gui/ThemeEngine.h>
-#include<hgl/graph/pipeline/VKPipeline.h>
+#include<hgl/graph/pipeline/VKGraphicsPipeline.h>
 #include<hgl/type/UnorderedMap.h>
 #include"DefaultThemeForm.h"
 
@@ -21,7 +21,7 @@ namespace hgl
             struct
             {
                 Material *material;
-                Pipeline *pieline;
+                GraphicsPipeline *pieline;
             }panel;
 
         public:

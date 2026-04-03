@@ -4,7 +4,7 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
-#include<hgl/vk/pipeline/VKPipeline.h>
+#include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 
 namespace hgl::ecs
@@ -111,7 +111,7 @@ namespace hgl::ecs
         return primitive->GetMaterial();
     }
 
-    hgl::graph::Pipeline* PrimitiveComponent::GetPipeline() const
+    hgl::graph::GraphicsPipeline* PrimitiveComponent::GetPipeline() const
     {
         if (!primitive)
             return nullptr;

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/vk/VK.h>
-#include<hgl/vk/pipeline/VKPipeline.h>
+#include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
@@ -26,7 +26,7 @@ class RenderFormat
 
 protected:
 
-    Pipeline *CreatePipeline(const AnsiString &,PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
+    GraphicsPipeline *CreatePipeline(const AnsiString &,PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
 
 private:
 
@@ -53,20 +53,20 @@ public:
 
 public:
 
-    Pipeline *CreatePipeline(Material *,const VIL *,const PipelineData *,   const bool prim_restart=false);
-    Pipeline *CreatePipeline(Material *,const VIL *,const InlinePipeline &, const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(Material *,const VIL *,const PipelineData *,   const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(Material *,const VIL *,const InlinePipeline &, const bool prim_restart=false);
 
-    Pipeline *CreatePipeline(Material *mtl,         const PipelineData *,   const bool prim_restart=false);
-    Pipeline *CreatePipeline(Material *mtl,         const InlinePipeline &, const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(Material *mtl,         const PipelineData *,   const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(Material *mtl,         const InlinePipeline &, const bool prim_restart=false);
 
-    Pipeline *CreatePipeline(MaterialInstance *,    const InlinePipeline &, const bool prim_restart=false);
-    Pipeline *CreatePipeline(MaterialInstance *,    const PipelineData *,   const bool prim_restart=false);
-    Pipeline *CreatePipeline(MaterialInstance *,    const OSString &,       const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(MaterialInstance *,    const InlinePipeline &, const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(MaterialInstance *,    const PipelineData *,   const bool prim_restart=false);
+    GraphicsPipeline *CreatePipeline(MaterialInstance *,    const OSString &,       const bool prim_restart=false);
 
     /**
-     * 从原始着色器阶段 + Pipeline Layout + VIL 创建管线（供 Compositor 系统使用）
+     * 从原始着色器阶段 + GraphicsPipeline Layout + VIL 创建管线（供 Compositor 系统使用）
      */
-    Pipeline *CreatePipeline(const AnsiString &name,
+    GraphicsPipeline *CreatePipeline(const AnsiString &name,
                              const ShaderStageCreateInfoList &ssci,
                              VkPipelineLayout layout,
                              const VIL *vil,

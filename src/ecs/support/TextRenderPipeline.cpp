@@ -14,7 +14,7 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/vk/pipeline/VKPipeline.h>
+#include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>
@@ -494,7 +494,7 @@ namespace hgl::ecs
                     ++frame_pipeline_attempts;
                     RecordPipelineResolveAttempt(g_text_pipeline_resolve_counters);
 
-                    graph::Pipeline* refreshed = render_pass->CreatePipeline(mi, template_pd, false);
+                    graph::GraphicsPipeline* refreshed = render_pass->CreatePipeline(mi, template_pd, false);
                     if (refreshed)
                     {
                         resources->pipeline = refreshed;
@@ -510,7 +510,7 @@ namespace hgl::ecs
                         const uint64_t failures_total = RecordPipelineResolveFailure(g_text_pipeline_resolve_counters);
                         if (ShouldLogPow2(failures_total))
                         {
-                            LogWarning("[ECS::TextRenderPipeline] Pipeline pre-resolve failed: total_failures=%llu",
+                            LogWarning("[ECS::TextRenderPipeline] GraphicsPipeline pre-resolve failed: total_failures=%llu",
                                        static_cast<unsigned long long>(failures_total));
                         }
                     }
@@ -578,7 +578,7 @@ namespace hgl::ecs
                                                  success_total,
                                                  failure_total))
         {
-            LogDebug("[ECS::TextRenderPipeline] Pipeline resolve summary: attempts=%u success=%u fail=%u totals(s=%llu,f=%llu)",
+            LogDebug("[ECS::TextRenderPipeline] GraphicsPipeline resolve summary: attempts=%u success=%u fail=%u totals(s=%llu,f=%llu)",
                      frame_pipeline_attempts,
                      frame_pipeline_successes,
                      frame_pipeline_failures,

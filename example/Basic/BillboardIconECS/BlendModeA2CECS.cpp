@@ -4,7 +4,7 @@
 // and the GPU's MSAA hardware converts it into coverage bits at sample boundaries.
 // This gives smooth stochastic transparency without requiring sorted rendering.
 //
-// Pipeline: built-in InlinePipeline::AlphaToCoverage3D (MSAA x4 + A2C).
+// GraphicsPipeline: built-in InlinePipeline::AlphaToCoverage3D (MSAA x4 + A2C).
 
 #include "IconGradient.h"
 #include "BillboardIconECSBase.h"

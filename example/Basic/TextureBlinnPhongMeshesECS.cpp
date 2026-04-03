@@ -50,7 +50,7 @@ private:
 
     Material* material = nullptr;
     MaterialInstance* material_instance = nullptr;
-    Pipeline* pipeline = nullptr;
+    GraphicsPipeline* pipeline = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
@@ -62,7 +62,7 @@ private:
     std::vector<std::unique_ptr<RenderMesh>> meshes;
 
     MaterialInstance* mi_sky_sphere = nullptr;
-    Pipeline* sky_pipeline = nullptr;
+    GraphicsPipeline* sky_pipeline = nullptr;
     Geometry* prim_sky_sphere = nullptr;
     Entity* sky_entity = nullptr;
 

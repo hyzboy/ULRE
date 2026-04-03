@@ -16,7 +16,7 @@ class Material;
  * 资源域 (ResourceDomain)
  *
  * 持有与特定 Material 模板兼容的独立 MaterialInstance 数据池。
- * 同一套 Shader/Pipeline 可关联多个 ResourceDomain，使不同的资源集合
+ * 同一套 Shader/GraphicsPipeline 可关联多个 ResourceDomain，使不同的资源集合
  * （例如UI图标 vs 角色头像 Billboard）彼此隔离，互不串绑。
  *
  * Phase 1: 已支持 MI 数据池。Texture/Sampler 绑定在后续阶段引入。

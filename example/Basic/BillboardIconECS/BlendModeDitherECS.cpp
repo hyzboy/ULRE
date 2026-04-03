@@ -4,7 +4,7 @@
 // The material uses a dither-pattern technique so that semi-transparent pixels
 // appear as a screen-space stipple pattern without requiring alpha blending.
 //
-// Pipeline: Solid3D base (dithering is entirely shader-side).
+// GraphicsPipeline: Solid3D base (dithering is entirely shader-side).
 
 #include "IconGradient.h"
 #include "BillboardIconECSBase.h"

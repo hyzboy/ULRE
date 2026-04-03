@@ -405,7 +405,7 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
             device_attr->debug_utils->SetSurfaceKHR(surface->GetSurface(),"Surface");
             device_attr->debug_utils->SetCommandPool(device_attr->cmd_pool,"Main Command Pool");
             device_attr->debug_utils->SetDescriptorPool(device_attr->desc_pool,"Main Descriptor Pool");
-            device_attr->debug_utils->SetPipelineCache(device_attr->pipeline_cache,"Main Pipeline Cache");
+            device_attr->debug_utils->SetPipelineCache(device_attr->pipeline_cache,"Main GraphicsPipeline Cache");
         }
     #endif//_DEBUG
 

@@ -2,7 +2,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/pipeline/VKGplLibraryHandleCache.h>
 #include<hgl/vk/pipeline/VKGplRequest.h>
-#include<hgl/vk/pipeline/VKPipeline.h>
+#include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/vk/pipeline/VKRenderFormat.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/log/Log.h>
@@ -10,7 +10,7 @@
 namespace hgl::graph{
 namespace
 {
-Pipeline *CreateMonolithicFromRequest(const char *tag, const GraphicsPipelineBuildRequest &request)
+GraphicsPipeline *CreateMonolithicFromRequest(const char *tag, const GraphicsPipelineBuildRequest &request)
 {
     if (!request.material || !request.render_format || !request.vil || !request.pipeline_data)
     {
@@ -29,7 +29,7 @@ Pipeline *CreateMonolithicFromRequest(const char *tag, const GraphicsPipelineBui
 
     RenderFormat *render_format = const_cast<RenderFormat *>(request.render_format);
 
-    Pipeline *pipeline = render_format->CreatePipeline(
+    GraphicsPipeline *pipeline = render_format->CreatePipeline(
         pipeline_name,
         request.material->GetStageList(),
         request.material->GetPipelineLayout(),
@@ -48,7 +48,7 @@ Pipeline *CreateMonolithicFromRequest(const char *tag, const GraphicsPipelineBui
 }
 }
 
-Pipeline *MonolithicGraphicsPipelineBuilder::Build(const PipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
+GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const PipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
 {
     if (!context.device)
     {
@@ -59,7 +59,7 @@ Pipeline *MonolithicGraphicsPipelineBuilder::Build(const PipelineBuildContext &c
     return CreateMonolithicFromRequest("MonolithicGraphicsPipelineBuilder", request);
 }
 
-Pipeline *GplGraphicsPipelineBuilder::Build(const PipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
+GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const PipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
 {
     if (!context.device)
     {
@@ -139,6 +139,6 @@ Pipeline *GplGraphicsPipelineBuilder::Build(const PipelineBuildContext &context,
     if (name.IsEmpty())
         name = request.material->GetName();
 
-    return new Pipeline(name, vk_device, final_pipeline, request.vil, nullptr);
+    return new GraphicsPipeline(name, vk_device, final_pipeline, request.vil, nullptr);
 }
 }//namespace hgl::graph

@@ -6,7 +6,7 @@
 #include<hgl/io/DataOutputStream.h>
 
 namespace hgl::graph{
-class Pipeline
+class GraphicsPipeline
 {
     VkDevice device;
 
@@ -25,7 +25,7 @@ private:
     friend class RenderFormat;
     friend class GplGraphicsPipelineBuilder;
 
-    Pipeline(const AnsiString &n,VkDevice dev,VkPipeline p,const VIL *v,PipelineData *pd)
+    GraphicsPipeline(const AnsiString &n,VkDevice dev,VkPipeline p,const VIL *v,PipelineData *pd)
     {
         name=n;
 
@@ -40,7 +40,7 @@ private:
 
 public:
 
-    virtual ~Pipeline();
+    virtual ~GraphicsPipeline();
 
     const AnsiString &GetName()const{return name;}
 

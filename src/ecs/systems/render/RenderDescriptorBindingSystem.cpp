@@ -495,7 +495,7 @@ namespace hgl::ecs
                 {
                 case graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID:
                 {
-                    // Pipeline materials manage their own MIT SSBO via RegisterSceneUBOResolver
+                    // GraphicsPipeline materials manage their own MIT SSBO via RegisterSceneUBOResolver
                     // or a dedicated registration path — no mi_buffer available here.
                     break;
                 }

@@ -49,7 +49,7 @@ namespace hgl::graph
 
         Sampler *           sampler;
 
-        Pipeline *          pipeline;
+        GraphicsPipeline *  pipeline;
 
         TileFont *          tile_font;
         layout::TextLayout *tl_engine;

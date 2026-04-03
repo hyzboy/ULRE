@@ -92,12 +92,12 @@ private:
 
     Material *          mtl_plane_grid      = nullptr;
     MaterialInstance *  mi_plane_grid       = nullptr;
-    Pipeline *          pipeline_plane_grid = nullptr;
+    GraphicsPipeline *          pipeline_plane_grid = nullptr;
     Geometry *          geom_plane_grid     = nullptr;
     Primitive *         prim_plane_grid     = nullptr;
 
     MaterialInstance *  mi_billboard        = nullptr;
-    Pipeline *          pipeline_billboard  = nullptr;
+    GraphicsPipeline *          pipeline_billboard  = nullptr;
     Primitive *         prim_billboard      = nullptr;
 
     Texture2D *         texture             = nullptr;

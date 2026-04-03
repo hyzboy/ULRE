@@ -30,7 +30,7 @@
 ```
 RenderPipelineGroup
 ├── RenderPipelineBase    ← 业务逻辑（数据、阶段方法）
-└── RenderPipelineSystem  ← 薄代理（ECS Phase → Pipeline 方法调用）
+└── RenderPipelineSystem  ← 薄代理（ECS Phase → GraphicsPipeline 方法调用）
 ```
 
 `ECSContext` 只需要知道"名称"，全部细节由 Group 负责。
@@ -124,7 +124,7 @@ protected:
 **关键设计说明**
 
 1. `pipeline_` / `systems_` 存储在 Group 内，但 `Initialize()` 同时将它们注册到 `ECSContext`。Context 持有 `shared_ptr` 或直接持有，因此 **Group 析构不等于资源消失**——Shutdown 之前 Context 仍可正常使用它们。
-2. 大多数派生类将 Pipeline 和 System 的创建都写在 `Initialize()` 中（因为需要 `context` 参数），`CreatePipeline()` 和 `RegisterSystems()` 保持空实现（仅供特殊扩展场景使用）。
+2. 大多数派生类将 GraphicsPipeline 和 System 的创建都写在 `Initialize()` 中（因为需要 `context` 参数），`CreatePipeline()` 和 `RegisterSystems()` 保持空实现（仅供特殊扩展场景使用）。
 
 ---
 
@@ -262,7 +262,7 @@ bool EnsureSystemGroupSystems(ECSContext* ctx, const std::string& group_name, IR
 }
 ```
 
-**幂等保证**：同一 Group 无论调用多少次 `EnsureSystemGroupSystems`，其 Systems 和 Pipeline 只会注册一次。
+**幂等保证**：同一 Group 无论调用多少次 `EnsureSystemGroupSystems`，其 Systems 和 GraphicsPipeline 只会注册一次。
 
 ### 5.3 `RegisterDefaultEcsSystems()` — 便捷函数
 
@@ -419,7 +419,7 @@ EnsureSystemGroupSystems(ctx, "Particle", render_target);
 
 | 关注点 | 实现方式 |
 |--------|---------|
-| ECSContext 无需了解具体渲染类型 | Group 持有 Pipeline+System，通过名称字符串注册 |
+| ECSContext 无需了解具体渲染类型 | Group 持有 GraphicsPipeline+System，通过名称字符串注册 |
 | System 只做调度，不含业务逻辑 | 每个 System 只有 6 行：`GetPipeline()`+`OnXxx()` |
 | 新渲染类型不修改核心文件 | 只需新建 Group + 在 DefaultSystems 注册 installer |
 | 整类渲染可按需开关 | `SystemGroupRegistry::SetGroupEnabled(name, false)` |

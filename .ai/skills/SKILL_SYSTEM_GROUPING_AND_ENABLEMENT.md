@@ -160,7 +160,7 @@ RenderPrimitiveCollectSystem ─┐
                                                                                    ├─ 绘制提交
 ```
 
-**新架构模式（统一 Pipeline Group）：**
+**新架构模式（统一 GraphicsPipeline Group）：**
 - **RenderCollect阶段：** RenderPrimitiveCollectSystem 收集可见Component
 - **RenderBatch阶段：** PrimitiveRenderPipelineGroup 内部自动处理 Cull/Sort/Batch
 - **RenderDrawSubmit阶段：** 同一 PipelineGroup 提交GPU绘制命令

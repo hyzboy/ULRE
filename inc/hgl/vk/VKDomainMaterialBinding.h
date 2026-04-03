@@ -15,7 +15,7 @@ class Sampler;
 /**
  * 域-材质绑定视图 (DomainMaterialBinding)
  *
- * 将一个 ResourceDomain 与一个 Material (Shader/Pipeline 模板) 绑定。
+ * 将一个 ResourceDomain 与一个 Material (Shader/GraphicsPipeline 模板) 绑定。
  * 仅持有 PerMaterial 描述符集——这是唯一域私有的集合；
  * Static/PerFrame/PerObject 集由 Material 统一持有、整体绑定一次。
  *

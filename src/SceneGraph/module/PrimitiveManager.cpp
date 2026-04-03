@@ -7,7 +7,7 @@ GRAPH_MODULE_CONSTRUCT(PrimitiveManager)
 {
 }
 
-Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialInstance *mi, Pipeline *p)
+Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialInstance *mi, GraphicsPipeline *p)
 {
     if(!p||!mi||!r)
         return(nullptr);
@@ -20,7 +20,7 @@ Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialInstance *mi, 
     return ri;
 }
 
-Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p)
+Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, GraphicsPipeline *p)
 {
     if(!p||!mi||!pc)
         return(nullptr);

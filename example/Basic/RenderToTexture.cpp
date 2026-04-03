@@ -63,7 +63,7 @@ private:
 
     Material *mtl = nullptr;
     MaterialInstance *mi = nullptr;
-    Pipeline *pipeline = nullptr;
+    GraphicsPipeline *pipeline = nullptr;
     Geometry *geometry = nullptr;
     Primitive *primitive = nullptr;
 
@@ -227,7 +227,7 @@ private:
 
     Material *cube_mtl = nullptr;
     MaterialInstance *cube_mi = nullptr;
-    Pipeline *cube_pipeline = nullptr;
+    GraphicsPipeline *cube_pipeline = nullptr;
     Sampler *cube_sampler = nullptr;
     Primitive *cube_primitive = nullptr;
 

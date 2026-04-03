@@ -53,7 +53,7 @@ private:
     Entity *            quad_entity         = nullptr;
 
     MaterialInstance *  material_instance   = nullptr;
-    Pipeline *          pipeline            = nullptr;
+    GraphicsPipeline *  pipeline            = nullptr;
     Primitive *         prim_quad           = nullptr;
 
 private:

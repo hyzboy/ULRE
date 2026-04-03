@@ -50,13 +50,13 @@ private:
 
     Material *grid_material = nullptr;
     MaterialInstance *grid_mi = nullptr;
-    Pipeline *grid_pipeline = nullptr;
+    GraphicsPipeline *grid_pipeline = nullptr;
     Geometry *grid_geometry = nullptr;
     Primitive *grid_primitive = nullptr;
 
     Material *cube_material = nullptr;
     MaterialInstance *cube_mi = nullptr;
-    Pipeline *cube_pipeline = nullptr;
+    GraphicsPipeline *cube_pipeline = nullptr;
     Geometry *cube_geometry = nullptr;
     Primitive *cube_primitive = nullptr;
 

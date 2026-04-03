@@ -37,7 +37,7 @@ namespace hgl::ecs
 
     std::unique_ptr<RenderPipelineBase> LineRenderPipelineGroup::CreatePipeline()
     {
-        // Pipeline created in Initialize() with context
+        // GraphicsPipeline created in Initialize() with context
         return nullptr;
     }
 

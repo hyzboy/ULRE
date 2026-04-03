@@ -5,7 +5,7 @@
 #include <hgl/graph/mesh/Primitive.h>
 #include <hgl/vk/VKMaterial.h>
 #include <hgl/vk/VKMaterialInstance.h>
-#include <hgl/vk/pipeline/VKPipeline.h>
+#include <hgl/vk/pipeline/VKGraphicsPipeline.h>
 
 namespace hgl::ecs
 {
@@ -46,7 +46,7 @@ namespace hgl::ecs
         return primitive ? primitive->GetMaterial() : nullptr;
     }
 
-    graph::Pipeline* AssetPrimitiveRenderItem::GetPipeline() const
+    graph::GraphicsPipeline* AssetPrimitiveRenderItem::GetPipeline() const
     {
         return primitive ? primitive->GetPipeline() : nullptr;
     }

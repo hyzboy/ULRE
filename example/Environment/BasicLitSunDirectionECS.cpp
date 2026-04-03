@@ -54,13 +54,13 @@ private:
     std::shared_ptr<EnvironmentSystem> environment_system;
     std::shared_ptr<SunDirectionControlSystem> sun_gizmo_system;
 
-    Pipeline* sky_pipeline = nullptr;
+    GraphicsPipeline* sky_pipeline = nullptr;
     Geometry* sky_geometry = nullptr;
     MaterialInstance* sky_material_instance = nullptr;
 
     Material* material = nullptr;
     MaterialInstance* material_instance = nullptr;
-    Pipeline* pipeline = nullptr;
+    GraphicsPipeline* pipeline = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;

@@ -59,7 +59,7 @@ private:
 
     // 传统渲染资源
     Material* material = nullptr;
-    Pipeline* pipeline = nullptr;
+    GraphicsPipeline* pipeline = nullptr;
     Geometry* geometry = nullptr;
 
     // 刻度数据

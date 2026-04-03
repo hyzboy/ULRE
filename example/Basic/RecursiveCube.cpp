@@ -40,7 +40,7 @@ private:
 
     Material *material = nullptr;
     MaterialInstance *mi = nullptr;
-    Pipeline *pipeline = nullptr;
+    GraphicsPipeline *pipeline = nullptr;
 
     Geometry *geometry = nullptr;
     std::vector<Primitive *> primitives;

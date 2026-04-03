@@ -134,11 +134,11 @@ SET(VK_VERTEX_INPUT_FILES       ${VK_INCLUDE_PATH}/VKVertexInput.h
 
 SOURCE_GROUP("VertexInput" FILES ${VK_VERTEX_INPUT_FILES})
 
-# --- 4. Pipeline ---
+# --- 4. GraphicsPipeline ---
 SET(PIPELINE_HEADER_PATH   ${VK_INCLUDE_PATH}/pipeline)
 SET(PIPELINE_SOURCE_PATH   pipeline)
 
-SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
+SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKGraphicsPipeline.h
                             ${PIPELINE_HEADER_PATH}/VKGplRequest.h
                             ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineBuilder.h
                             ${PIPELINE_HEADER_PATH}/VKGplLibraryHandleCache.h
@@ -159,12 +159,12 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
                             ${PIPELINE_SOURCE_PATH}/VKGplLibraryHandleCache.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGplLibraryStatsTracker.cpp
                             ${PIPELINE_SOURCE_PATH}/VKRenderStateProfile.cpp
-                            ${PIPELINE_SOURCE_PATH}/VKPipeline.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKGraphicsPipeline.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineCache.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineLayoutData.cpp
                             VKComputePipeline.cpp)
 
-SOURCE_GROUP("Pipeline" FILES ${VK_PIPELINE_FILES})
+SOURCE_GROUP("GraphicsPipeline" FILES ${VK_PIPELINE_FILES})
 
 # --- 5. Descriptor Sets ---
 SET(VK_DESCRIPTOR_SETS_FILES    ${VK_INCLUDE_PATH}/VKDescriptorSet.h

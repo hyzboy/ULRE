@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/geo/VKGeometry.h>
-#include<hgl/vk/pipeline/VKPipeline.h>
+#include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialParameters.h>
@@ -16,7 +16,7 @@ namespace hgl::graph{
 */
 class Primitive
 {
-    Pipeline *          pipeline;
+    GraphicsPipeline *  pipeline;
     MaterialInstance *  mat_inst;
     Geometry *          geometry;
 
@@ -25,9 +25,9 @@ class Primitive
 
 private:
 
-    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
+    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,GraphicsPipeline *);
 
-    Primitive(Geometry *,MaterialInstance *,Pipeline *,GeometryDataBuffer *);
+    Primitive(Geometry *,MaterialInstance *,GraphicsPipeline *,GeometryDataBuffer *);
 
 public:
 
@@ -38,9 +38,9 @@ public:
         SAFE_CLEAR(data_buffer);
     }
 
-            void                UpdatePipeline      (Pipeline *p){pipeline=p;}
+            void                UpdatePipeline      (GraphicsPipeline *p){pipeline=p;}
 
-            Pipeline *          GetPipeline         (){return pipeline;}
+            GraphicsPipeline *          GetPipeline         (){return pipeline;}
             VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
             Material *          GetMaterial         (){return mat_inst->GetMaterial();}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
@@ -82,5 +82,5 @@ public:
             uint32_t            GetDataIndexCount()const{return draw_range.data_index_count;}
 };//class Primitive
 
-Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
+Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,GraphicsPipeline *);
 }//namespace hgl::graph

@@ -60,7 +60,7 @@ private:
         Material* material = nullptr;
         const VIL* vil = nullptr;
 
-        Pipeline* pipeline = nullptr;
+        GraphicsPipeline* pipeline = nullptr;
         MaterialInstance* mi[DEMO_COLOR_COUNT]{};
     };
 

@@ -80,7 +80,7 @@ namespace hgl::ecs
         uint32_t needed,
         graph::VulkanDevice*     dev,
         graph::MaterialInstance* mi,
-        graph::Pipeline*         p,
+        graph::GraphicsPipeline*         p,
         uint32_t                 width)
     {
         if (needed <= gpu_capacity)
@@ -282,7 +282,7 @@ namespace hgl::ecs
             const uint64_t failures = RecordPipelineResolveFailure(g_line_pipeline_resolve_counters);
             if (ShouldLogPow2(failures))
             {
-                GLogWarning("[LineRenderPipeline] Pipeline resolve failed: total_failures=%llu",
+                GLogWarning("[LineRenderPipeline] GraphicsPipeline resolve failed: total_failures=%llu",
                             static_cast<unsigned long long>(failures));
             }
             return false;
@@ -291,7 +291,7 @@ namespace hgl::ecs
         RecordPipelineResolveSuccess(g_line_pipeline_resolve_counters);
         if (ShouldLogPipelineResolveCreated(vkcreate_delta))
         {
-            GLogInfo("[LineRenderPipeline] Pipeline resolve created vk pipelines=%llu (attempts=%llu successes=%llu failures=%llu)",
+            GLogInfo("[LineRenderPipeline] GraphicsPipeline resolve created vk pipelines=%llu (attempts=%llu successes=%llu failures=%llu)",
                      static_cast<unsigned long long>(vkcreate_delta),
                      static_cast<unsigned long long>(g_line_pipeline_resolve_counters.attempts.load()),
                      static_cast<unsigned long long>(g_line_pipeline_resolve_counters.successes.load()),

@@ -38,7 +38,7 @@ private:
     std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
     std::shared_ptr<hgl::graph::SunDirectionControlSystem> sun_gizmo_system;
 
-    Pipeline *mtl_pipeline = nullptr;
+    GraphicsPipeline *mtl_pipeline = nullptr;
     Geometry *prim_sky_sphere = nullptr;
     MaterialInstance *mi_sky_sphere = nullptr;
 

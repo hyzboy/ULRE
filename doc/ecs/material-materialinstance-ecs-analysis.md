@@ -62,7 +62,7 @@
 
 ## 3. ECS 侧如何整理 Material/MI 数据
 
-## 3.1 先按 Material+Pipeline 建批
+## 3.1 先按 Material+GraphicsPipeline 建批
 
 ECS 使用 `MaterialPipelineKey {material*, pipeline*}` 作为 batch key。
 

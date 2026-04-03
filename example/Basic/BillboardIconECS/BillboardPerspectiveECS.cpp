@@ -3,7 +3,7 @@
 // Demonstrates perspective-correct billboard scaling using 100 icon sprites
 // arranged in a spiral.  Billboards always face the camera (FacingTransformSystem).
 //
-// Pipeline: standard Solid3D (no blending).
+// GraphicsPipeline: standard Solid3D (no blending).
 
 #include "IconFreepik.h"
 #include "BillboardIconECSBase.h"

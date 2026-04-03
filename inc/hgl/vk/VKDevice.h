@@ -68,7 +68,7 @@ class VulkanDevice
     std::unique_ptr<IGraphicsPipelineBuilder> link_backend_mono;
     std::unique_ptr<IGraphicsPipelineBuilder> link_backend_gpl;
     GplLibraryStatsTracker pipeline_library_cache;
-    std::unordered_map<GplLinkedPipelineKey, Pipeline *> linked_pipeline_cache;
+    std::unordered_map<GplLinkedPipelineKey, GraphicsPipeline *> linked_pipeline_cache;
     mutable std::mutex linked_pipeline_cache_mutex;
     std::atomic<uint64_t> linked_pipeline_cache_hits{0};
     std::atomic<uint64_t> linked_pipeline_cache_misses{0};
@@ -174,7 +174,7 @@ public: //内存相关
     bool IsGplSupported() const { return gpl_supported; }
     void SetGplEnabled(bool enabled);
     bool IsGplEnabled() const { return gpl_enabled; }
-    Pipeline *AcquireGraphicsPipeline(const GraphicsPipelineBuildRequest &req);
+    GraphicsPipeline *AcquireGraphicsPipeline(const GraphicsPipelineBuildRequest &req);
     GplLibraryStatsTracker::Snapshot GetPipelineLibraryCacheSnapshot() const { return pipeline_library_cache.GetSnapshot(); }
 
     struct LinkedPipelineCacheStats

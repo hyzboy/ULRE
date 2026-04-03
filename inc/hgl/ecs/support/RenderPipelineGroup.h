@@ -18,7 +18,7 @@ namespace hgl::ecs
      *   - 1-4 RenderPipelineSystem derived instances (Collect, Build, Render, etc.)
      * 
      * Group is responsible for:
-     *   1. Creating the Pipeline instance
+     *   1. Creating the GraphicsPipeline instance
      *   2. Creating and registering System instances to Context
      *   3. Lifecycle management (Initialize/Shutdown)
      * 
@@ -29,12 +29,12 @@ namespace hgl::ecs
      *   line_group->Shutdown(context);    // Cleans up
      * 
      * Design Pattern:
-     *   - Pipeline (logical/data owner): Business logic for rendering
-     *   - Systems (thin proxies): Delegates to Pipeline at specific phases
+     *   - GraphicsPipeline (logical/data owner): Business logic for rendering
+     *   - Systems (thin proxies): Delegates to GraphicsPipeline at specific phases
      *   - Group (container): Owns both, ensures they work together
      * 
      * This architecture ensures:
-     *   ✓ ECS Context stays element-agnostic (never knows about specific Pipeline types)
+     *   ✓ ECS Context stays element-agnostic (never knows about specific GraphicsPipeline types)
      *   ✓ Systems are "thin" (only delegate, no business logic)
      *   ✓ New render types can be added without modifying Context
      *   ✓ Complete encapsulation of rendering logic

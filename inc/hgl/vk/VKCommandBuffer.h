@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKVABList.h>
-#include<hgl/vk/pipeline/VKPipeline.h>
+#include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/graph/mesh/Primitive.h>
@@ -125,7 +125,7 @@ public:
     bool BeginRenderingDynamic(const RenderTargetData *rtd);
     void EndRenderingDynamic  (const RenderTargetData *rtd);
 
-    bool BindPipeline(Pipeline *p)
+    bool BindPipeline(GraphicsPipeline *p)
     {
         if(!p)return(false);
 

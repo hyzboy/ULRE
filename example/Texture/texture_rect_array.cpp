@@ -65,7 +65,7 @@ private:
     Sampler *           sampler             = nullptr;
     Material *          material            = nullptr;
 
-    Pipeline *          pipeline            = nullptr;
+    GraphicsPipeline *  pipeline            = nullptr;
     Primitive *         mesh_rect           = nullptr;
 
     struct

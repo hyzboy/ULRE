@@ -11,8 +11,8 @@ namespace hgl::graph
     class VertexInputLayout;
     using VIL = VertexInputLayout;
 
-    // Forward-declared in VKPipeline.h
-    class Pipeline;
+    // Forward-declared in VKGraphicsPipeline.h
+    class GraphicsPipeline;
 
     /**
      * LoadStaticMeshScene - 从 .scene minipack 文件加载场景树到 StaticMesh
@@ -36,7 +36,7 @@ namespace hgl::graph
         const VIL                *vil,
         MaterialInstance * const *mi_array,
         int                       mi_count,
-        Pipeline                 *default_pipeline,
+        GraphicsPipeline                 *default_pipeline,
         const OSString           &pack_path,
         const OSString           &base_dir);
 

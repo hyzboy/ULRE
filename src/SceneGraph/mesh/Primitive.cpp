@@ -47,7 +47,7 @@ void GeometryDrawRange::Set(const Geometry *geometry)
     first_index     = geometry->GetFirstIndex();
 }
 
-Primitive::Primitive(Geometry *r,MaterialInstance *mi,Pipeline *p,GeometryDataBuffer *gdb)
+Primitive::Primitive(Geometry *r,MaterialInstance *mi,GraphicsPipeline *p,GeometryDataBuffer *gdb)
 {
     geometry=r;
     pipeline=p;
@@ -71,7 +71,7 @@ bool Primitive::UpdateGeometry()
     return data_buffer->Update(geometry,mat_inst->GetVIL());
 }
 
-Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p)
+Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPipeline *p)
 //用Direct这个前缀是为了区别于MeshManager/WorkObject等路径上的CreateMesh()
 {
     if(!geom||!mi||!p)return(nullptr);

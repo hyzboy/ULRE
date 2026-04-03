@@ -29,7 +29,7 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     Material *          mtl_sky_sphere      =nullptr;
-    Pipeline *          mtl_pipeline        =nullptr;
+    GraphicsPipeline *          mtl_pipeline        =nullptr;
 
     Geometry *          prim_sky_sphere     =nullptr;
     MaterialInstance *  mi_sky_sphere       =nullptr;

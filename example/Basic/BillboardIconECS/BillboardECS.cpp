@@ -60,7 +60,7 @@ private:
     // PlaneGrid resources
     Material* mtl_plane_grid = nullptr;
     MaterialInstance* mi_plane_grid = nullptr;
-    Pipeline* pipeline_plane_grid = nullptr;
+    GraphicsPipeline* pipeline_plane_grid = nullptr;
     Geometry* geom_plane_grid = nullptr;
     Primitive* prim_plane_grid = nullptr;
 

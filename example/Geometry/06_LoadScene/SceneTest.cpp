@@ -58,7 +58,7 @@ private:
         Material *material = nullptr;
         const VIL *vil = nullptr;
 
-        Pipeline *pipeline = nullptr;
+        GraphicsPipeline *pipeline = nullptr;
         MaterialInstance *mi[COLOR_COUNT]{};
     };
 

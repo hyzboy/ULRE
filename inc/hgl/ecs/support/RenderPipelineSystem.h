@@ -6,14 +6,14 @@
 namespace hgl::ecs
 {
     /**
-     * RenderPipelineSystem - Base class for all Pipeline-driven System classes
+     * RenderPipelineSystem - Base class for all GraphicsPipeline-driven System classes
      * 
      * This class standardizes how Systems interact with RenderPipeline objects.
      * Derived classes implement stage-specific virtual methods (OnCollect, OnBuild, etc.)
      * and declare which pipeline they control via GetPipeline().
      * 
      * The base class handles:
-     *   - Pipeline lookup and validation
+     *   - GraphicsPipeline lookup and validation
      *   - Error handling (missing pipelines, disabled pipelines)
      *   - Automatic phase registration
      * 

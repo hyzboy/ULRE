@@ -4,7 +4,7 @@
 // Pixels whose alpha falls below a threshold are fully discarded by the shader;
 // no blending is performed, and depth writes are therefore correct.
 //
-// Pipeline: Solid3D base (alpha cutout is entirely shader-side via discard).
+// GraphicsPipeline: Solid3D base (alpha cutout is entirely shader-side via discard).
 
 #include "IconFreepik.h"
 #include "BillboardIconECSBase.h"

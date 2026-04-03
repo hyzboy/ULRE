@@ -16,7 +16,7 @@
 
 namespace hgl::ecs
 {
-    PipelineMaterialRenderer::PipelineMaterialRenderer(graph::Material* m, graph::Pipeline* p)
+    PipelineMaterialRenderer::PipelineMaterialRenderer(graph::Material* m, graph::GraphicsPipeline* p)
         : material(m)
         , pipeline(p)
         , cmd_buf(nullptr)

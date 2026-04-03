@@ -16,7 +16,7 @@ namespace hgl
         class DeviceBuffer;
         class Material;
         class MaterialInstance;
-        class Pipeline;
+        class GraphicsPipeline;
         class Geometry;
         class Primitive;
         class RenderCmdBuffer;
@@ -74,7 +74,7 @@ namespace hgl::ecs
         graph::VulkanDevice*    device_         = nullptr;
         graph::Material*        material_       = nullptr;
         graph::MaterialInstance* mi_            = nullptr;
-        graph::Pipeline*        pipeline_       = nullptr;
+        graph::GraphicsPipeline*        pipeline_       = nullptr;
 
         // Palette UBO (owned; buf_ is the raw GPU buffer handle)
         void*    ubo_color_   = nullptr;  ///< typed as UBOLineColorPalette* at runtime
@@ -101,7 +101,7 @@ namespace hgl::ecs
             bool EnsureCapacity(uint32_t needed,
                                 graph::VulkanDevice*     dev,
                                 graph::MaterialInstance* mi,
-                                graph::Pipeline*         p,
+                                graph::GraphicsPipeline*         p,
                                 uint32_t                 width);
             bool AddSegment(const hgl::math::Vector3f& from,
                             const hgl::math::Vector3f& to,

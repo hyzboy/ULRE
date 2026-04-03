@@ -53,7 +53,7 @@ private:
     Sampler *           sampler             =nullptr;
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    Pipeline *          pipeline            =nullptr;
+    GraphicsPipeline *  pipeline            =nullptr;
 
 private:
 

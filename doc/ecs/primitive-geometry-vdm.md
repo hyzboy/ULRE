@@ -20,7 +20,7 @@
 
 ```
 Primitive
-├── Pipeline *           ← 渲染管线（着色器+RasterState）
+├── GraphicsPipeline *           ← 渲染管线（着色器+RasterState）
 ├── MaterialInstance *   ← 材质实例（参数/纹理绑定）
 ├── Geometry *           ← 几何接口（名称 + 包围体 + 数据访问代理）
 │     └── GeometryData * ← 几何实现（VAB/IBO 的持有和分配）
@@ -36,7 +36,7 @@ Primitive
 ```cpp
 class Primitive
 {
-    Pipeline *          pipeline;       // 渲染管线
+    GraphicsPipeline *  pipeline;       // 渲染管线
     MaterialInstance *  mat_inst;       // 材质实例
     Geometry *          geometry;       // 几何体接口
 
@@ -45,11 +45,11 @@ class Primitive
 };
 ```
 
-### 2.1 `Pipeline`
+### 2.1 `GraphicsPipeline`
 
-Vulkan Pipeline 对象，包含着色器、顶点输入格式（`VIL`）、光栅化状态等。`Primitive` 直接持有指针，不拥有所有权，由 `PipelineManager` 管理生命周期。
+Vulkan GraphicsPipeline 对象，包含着色器、顶点输入格式（`VIL`）、光栅化状态等。`Primitive` 直接持有指针，不拥有所有权，由 `PipelineManager` 管理生命周期。
 
-**约束**：`DirectCreatePrimitive()` 会检查 `MaterialInstance::GetVIL()` 与 `Pipeline::GetVIL()` 是否完全一致——格式或绑定点不匹配则拒绝创建。
+**约束**：`DirectCreatePrimitive()` 会检查 `MaterialInstance::GetVIL()` 与 `GraphicsPipeline::GetVIL()` 是否完全一致——格式或绑定点不匹配则拒绝创建。
 
 ### 2.2 `MaterialInstance`
 
@@ -268,9 +268,9 @@ template<typename T> T GetBufferAccessor(const AnsiString &name, VkFormat format
 ## 7. `DirectCreatePrimitive()` — 创建 Primitive 的完整流程
 
 ```cpp
-Primitive *DirectCreatePrimitive(Geometry *geom, MaterialInstance *mi, Pipeline *p)
+Primitive *DirectCreatePrimitive(Geometry *geom, MaterialInstance *mi, GraphicsPipeline *p)
 {
-    // 1. 检查 VIL 一致性（Material.VIL == Pipeline.VIL）
+    // 1. 检查 VIL 一致性（Material.VIL == GraphicsPipeline.VIL）
     if (*vil != *p->GetVIL()) return nullptr;
 
     // 2. 确定 binding slot 最大值 → 决定 GeometryDataBuffer 大小
@@ -306,7 +306,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom, MaterialInstance *mi, Pipeline 
 ```
 PrimitiveManager
 └── owns Primitive *
-      ├── (not owned) Pipeline *         ← PipelineManager 持有
+      ├── (not owned) GraphicsPipeline *         ← PipelineManager 持有
       ├── (not owned) MaterialInstance * ← 调用方持有
       ├── (not owned) Geometry *         ← GeometryManager 持有
       │     └── owns GeometryData *

@@ -24,7 +24,7 @@ namespace hgl
         class Primitive;
         class TextGeometry;
         class MaterialInstance;
-        class Pipeline;
+        class GraphicsPipeline;
         class Sampler;
         class DeviceBuffer;
         class MaterialManager;
@@ -45,7 +45,7 @@ namespace hgl
             {
                 graph::TileFont* tile_font = nullptr;
                 graph::Material* material = nullptr;
-                graph::Pipeline* pipeline = nullptr;
+                graph::GraphicsPipeline* pipeline = nullptr;
                 graph::Sampler* sampler = nullptr;
                 graph::DeviceBuffer* material_instance_buffer = nullptr;
 

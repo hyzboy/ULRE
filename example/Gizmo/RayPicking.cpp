@@ -60,12 +60,12 @@ private:
     // 传统渲染资源
     Material *          mtl_plane_grid      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
-    Pipeline *          pipeline_plane_grid =nullptr;
+    GraphicsPipeline *          pipeline_plane_grid =nullptr;
     Geometry *          geom_plane_grid     =nullptr;
 
     Material *          mtl_line            =nullptr;
     MaterialInstance *  mi_line             =nullptr;
-    Pipeline *          pipeline_line       =nullptr;
+    GraphicsPipeline *          pipeline_line       =nullptr;
     Geometry *          geom_line           =nullptr;
     Primitive *         prim_line           =nullptr;
     VAB *               prim_line_vab       =nullptr;

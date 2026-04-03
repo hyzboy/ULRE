@@ -154,7 +154,7 @@ static bool TryLoadScene(
     const VIL                *vil,
     MaterialInstance * const *mi_array,
     int                       mi_count,
-    Pipeline                 *default_pipeline,
+    GraphicsPipeline                 *default_pipeline,
     const OSString           &pack_path,
     const OSString           &base_dir,
     std::vector<Primitive *> &prim_list,
@@ -694,7 +694,7 @@ StaticMesh *LoadStaticMeshScene(
     const VIL                *vil,
     MaterialInstance * const *mi_array,
     int                       mi_count,
-    Pipeline                 *default_pipeline,
+    GraphicsPipeline                 *default_pipeline,
     const OSString           &pack_path,
     const OSString           &base_dir)
 {

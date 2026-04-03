@@ -12,7 +12,7 @@ namespace hgl
         class Primitive;
         class Material;
         class MaterialInstance;
-        class Pipeline;
+        class GraphicsPipeline;
     }
 }
 
@@ -66,7 +66,7 @@ namespace hgl::ecs
         graph::Primitive*        GetPrimitive()        const override { return primitive; }
         graph::MaterialInstance* GetMaterialInstance() const override;
         graph::Material*         GetMaterial()         const override;
-        graph::Pipeline*         GetPipeline()         const override;
+        graph::GraphicsPipeline*         GetPipeline()         const override;
 
         // ---- Asset-specific ----
 

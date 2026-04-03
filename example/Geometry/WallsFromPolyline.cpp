@@ -35,7 +35,7 @@ private:
 
     Material *material = nullptr;
     MaterialInstance *material_instance = nullptr;
-    Pipeline *pipeline = nullptr;
+    GraphicsPipeline *pipeline = nullptr;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
 

@@ -7,7 +7,7 @@ namespace hgl::graph
 {
     class Material;
     class MaterialInstance;
-    class Pipeline;
+    class GraphicsPipeline;
 }
 
 namespace hgl::ecs
@@ -35,7 +35,7 @@ namespace hgl::ecs
 
         hgl::graph::Material*         material  = nullptr;  ///< Vulkan 材质（含高度图绑定，不持有）
         hgl::graph::MaterialInstance* mat_inst  = nullptr;  ///< 材质实例（不持有）
-        hgl::graph::Pipeline*         pipeline  = nullptr;  ///< Vulkan 管线（不持有；全体 Tile 共享）
+        hgl::graph::GraphicsPipeline*         pipeline  = nullptr;  ///< Vulkan 管线（不持有；全体 Tile 共享）
 
         bool visible = true;  ///< 是否参与渲染
 

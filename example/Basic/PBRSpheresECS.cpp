@@ -71,7 +71,7 @@ private:
     Entity *      camera_entity = nullptr;
 
     Material *          material  = nullptr;
-    Pipeline *          pipeline  = nullptr;
+    GraphicsPipeline *  pipeline  = nullptr;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -91,7 +91,7 @@ private:
     double elapsed_time = 0.0;
 
     MaterialInstance* mi_sky_sphere = nullptr;
-    Pipeline* sky_pipeline = nullptr;
+    GraphicsPipeline* sky_pipeline = nullptr;
     Geometry* prim_sky_sphere = nullptr;
     Entity* sky_entity = nullptr;
 

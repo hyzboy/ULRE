@@ -6,7 +6,7 @@
 #include<memory>
 
 namespace hgl::graph{
-class Pipeline;
+class GraphicsPipeline;
 class VulkanDevice;
 class GplLibraryHandleCache;
 struct GraphicsPipelineBuildRequest;
@@ -28,7 +28,7 @@ class IGraphicsPipelineBuilder
 public:
     virtual ~IGraphicsPipelineBuilder() = default;
     virtual GraphicsPipelineBuilderType GetType() const = 0;
-    virtual Pipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) = 0;
+    virtual GraphicsPipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) = 0;
 };
 
 class MonolithicGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
@@ -37,7 +37,7 @@ class MonolithicGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
 
 public:
     GraphicsPipelineBuilderType GetType() const override { return GraphicsPipelineBuilderType::Monolithic; }
-    Pipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
+    GraphicsPipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
 };
 
 class GplGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
@@ -49,6 +49,6 @@ class GplGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
 
 public:
     GraphicsPipelineBuilderType GetType() const override { return GraphicsPipelineBuilderType::Gpl; }
-    Pipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
+    GraphicsPipeline *Build(const PipelineBuildContext &, const GraphicsPipelineBuildRequest &) override;
 };
 }//namespace hgl::graph

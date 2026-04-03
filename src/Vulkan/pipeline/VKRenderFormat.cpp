@@ -35,7 +35,7 @@ RenderFormat::~RenderFormat()
              name.c_str(), (unsigned long long)(uintptr_t)this);
 }
 
-Pipeline *RenderFormat::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
+GraphicsPipeline *RenderFormat::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -75,9 +75,9 @@ Pipeline *RenderFormat::CreatePipeline(const AnsiString &name,PipelineData *pd,c
 
     ++g_rf_vkcreate_count;
 
-    Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,vil,pd);
+    GraphicsPipeline *pipeline = new GraphicsPipeline(name,*device,graphicsPipeline,vil,pd);
 
-    LogInfo("[RenderFormat::CreatePipeline] Created Pipeline '%s' in RenderFormat '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
+    LogInfo("[RenderFormat::CreatePipeline] Created GraphicsPipeline '%s' in RenderFormat '%s' (VkPipeline=0x%llx, GraphicsPipeline*=0x%llx)",
              name.c_str(), this->name.c_str(), (unsigned long long)(uintptr_t)graphicsPipeline, (unsigned long long)(uintptr_t)pipeline);
 
     if (device)
@@ -86,7 +86,7 @@ Pipeline *RenderFormat::CreatePipeline(const AnsiString &name,PipelineData *pd,c
     return pipeline;
 }
 
-Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart)
 {
     if (!mtl || !vil || !cpd)
         return nullptr;
@@ -103,42 +103,42 @@ Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const Pipeli
     req.primitive_restart = prim_restart;
     req.debug_name     = mtl->GetName();
 
-    Pipeline *p = device->AcquireGraphicsPipeline(req);
+    GraphicsPipeline *p = device->AcquireGraphicsPipeline(req);
     // Ownership of p is held by VulkanDevice::linked_pipeline_cache.
     // RenderFormat does NOT add it to pipeline_list.
     return p;
 }
 
-Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart)
 {
     if(!mtl)return(nullptr);
 
     return CreatePipeline(mtl,vil,GetPipelineData(ip),prim_restart);
 }
 
-Pipeline *RenderFormat::CreatePipeline(Material *mtl,const PipelineData *pd,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const PipelineData *pd,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),pd,prim_restart);
 }
 
-Pipeline *RenderFormat::CreatePipeline(Material *mtl,const InlinePipeline &ip,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(Material *mtl,const InlinePipeline &ip,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),ip,prim_restart);
 }
 
-Pipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const bool prim_restart)
 {
     if(!mi)return(nullptr);
 
     return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),ip,prim_restart);
 }
 
-Pipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const bool prim_restart)
 {
     return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),cpd,prim_restart);
 }
 
-Pipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const bool prim_restart)
+GraphicsPipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const bool prim_restart)
 {
     const PipelineData *pd=GetPipelineData(pipeline_filename);
 
@@ -147,7 +147,7 @@ Pipeline *RenderFormat::CreatePipeline(MaterialInstance *mi,const OSString &pipe
     return CreatePipeline(mi,pd,prim_restart);
 }
 
-Pipeline *RenderFormat::CreatePipeline(const AnsiString &name,
+GraphicsPipeline *RenderFormat::CreatePipeline(const AnsiString &name,
                                        const ShaderStageCreateInfoList &ssci,
                                        VkPipelineLayout layout,
                                        const VIL *vil,
@@ -159,7 +159,7 @@ Pipeline *RenderFormat::CreatePipeline(const AnsiString &name,
 
     pd->SetPrim(prim, prim_restart);
 
-    Pipeline *p = CreatePipeline(name, pd, ssci, layout, vil);
+    GraphicsPipeline *p = CreatePipeline(name, pd, ssci, layout, vil);
 
     return p;
 }

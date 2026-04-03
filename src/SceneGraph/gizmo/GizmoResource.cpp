@@ -1,5 +1,5 @@
 ﻿#include<hgl/vk/VKMaterialInstance.h>
-#include<hgl/vk/pipeline/VKPipeline.h>
+#include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -31,7 +31,7 @@ namespace hgl::graph
         {
             Material *          mtl;
             MaterialInstance *  mi[size_t(GizmoColor::RANGE_SIZE)];
-            Pipeline *          pipeline;
+            GraphicsPipeline *  pipeline;
             VertexDataManager * vdm;
 
             GeometryCreater *  prim_creater;

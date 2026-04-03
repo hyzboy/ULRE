@@ -27,7 +27,7 @@ namespace hgl
             case VK_OBJECT_TYPE_PIPELINE_CACHE: return "PipelineCache";
             case VK_OBJECT_TYPE_PIPELINE_LAYOUT: return "PipelineLayout";
             case VK_OBJECT_TYPE_RENDER_PASS: return "RenderPass";
-            case VK_OBJECT_TYPE_PIPELINE: return "Pipeline";
+            case VK_OBJECT_TYPE_PIPELINE: return "GraphicsPipeline";
             case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT: return "DescriptorSetLayout";
             case VK_OBJECT_TYPE_SAMPLER: return "Sampler";
             case VK_OBJECT_TYPE_DESCRIPTOR_POOL: return "DescriptorPool";

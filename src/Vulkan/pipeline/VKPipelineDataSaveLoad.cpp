@@ -35,7 +35,7 @@ PipelineData::~PipelineData()
     SAFE_CLEAR      (tessellation);
 }
 
-constexpr u8char PipelineFileHeader[]=u8"Pipeline\x1A";
+constexpr u8char PipelineFileHeader[]=u8"GraphicsPipeline\x1A";
 constexpr size_t PipelineFileHeaderLength=sizeof(PipelineFileHeader)-1;
 
 #define WRITE_AND_CHECK_SIZE(ptr,type)  if(dos->Write(ptr,sizeof(type))!=sizeof(type))return(false);

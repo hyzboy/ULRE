@@ -54,7 +54,7 @@ private:
     // 传统渲染资源（共享）
     MaterialInstance *  material_instance   =nullptr;
     Primitive *         prim_triangle       =nullptr;
-    Pipeline *          pipeline            =nullptr;
+    GraphicsPipeline *  pipeline            =nullptr;
 
     // 存储所有创建的实体
     std::vector<Entity*> triangle_entities;

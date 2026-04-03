@@ -35,7 +35,7 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     Material *          material            =nullptr;
-    Pipeline *          pipeline            =nullptr;
+    GraphicsPipeline *  pipeline            =nullptr;
 
     Geometry *         prim_axis           =nullptr;
     MaterialInstance *  material_instance   =nullptr;

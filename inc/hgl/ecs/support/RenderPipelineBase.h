@@ -29,7 +29,7 @@ namespace hgl::ecs
      *   8. Render(cmd) — RenderDrawSubmit phase: record GPU draw commands
      * 
      * Systems call these methods in order, no internal system ordering needed.
-     * Pipeline maintains all per-frame state (collected items, batches, etc.)
+     * GraphicsPipeline maintains all per-frame state (collected items, batches, etc.)
      * and makes it available to systems at different phases.
      */
     class RenderPipelineBase

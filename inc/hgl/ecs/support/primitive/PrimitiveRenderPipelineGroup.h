@@ -17,7 +17,7 @@ namespace hgl::ecs
      * Usage:
      *   auto group = std::make_unique<PrimitiveRenderPipelineGroup>();
      *   group->Initialize(context);
-     *   // -> Pipeline registered as "Primitive" in Context's pipeline map
+     *   // -> GraphicsPipeline registered as "Primitive" in Context's pipeline map
      *   // -> All systems registered to Context and assigned correct ExecutionPhase
      */
     class PrimitiveRenderPipelineGroup : public RenderPipelineGroup

@@ -16,7 +16,7 @@ namespace hgl
         class Primitive;
         class Material;
         class MaterialInstance;
-        class Pipeline;
+        class GraphicsPipeline;
     }
 }
 
@@ -31,7 +31,7 @@ namespace hgl::ecs
      * Features:
      * - Holds reference to hgl::graph::Primitive
      * - Supports MaterialInstanceData override
-     * - Provides access to Material, Pipeline, and AABB data
+     * - Provides access to Material, GraphicsPipeline, and AABB data
      * - Compatible with RenderCollector for batched rendering
      */
     class PrimitiveComponent : public RenderableComponent
@@ -69,8 +69,8 @@ namespace hgl::ecs
         hgl::graph::MaterialInstance* GetMaterialInstance() const;
         hgl::graph::Material* GetMaterial() const;
 
-        // Pipeline access
-        hgl::graph::Pipeline* GetPipeline() const;
+        // GraphicsPipeline access
+        hgl::graph::GraphicsPipeline* GetPipeline() const;
 
         // Bounding volume
         bool GetLocalAABB(hgl::math::AABB& outAABB) const;
