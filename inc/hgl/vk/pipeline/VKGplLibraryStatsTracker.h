@@ -8,7 +8,7 @@
 
 namespace hgl::graph
 {
-class PipelineLibraryCache
+class GplLibraryStatsTracker
 {
 public:
     struct Snapshot

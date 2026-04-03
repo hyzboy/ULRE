@@ -174,7 +174,7 @@ Pipeline *VulkanDevice::AcquireGraphicsPipeline(const GraphicsPipelineBuildReque
     pipeline_library_cache.Touch(linked_key);
 
     {
-        const PipelineLibraryCache::Snapshot s = pipeline_library_cache.GetSnapshot();
+        const GplLibraryStatsTracker::Snapshot s = pipeline_library_cache.GetSnapshot();
         const uint64_t total_inserts = s.vertex_input_inserts + s.pre_raster_inserts + s.fragment_shader_inserts + s.fragment_output_inserts;
         if (should_log_counter(total_inserts))
         {
@@ -339,7 +339,7 @@ void VulkanDevice::PreheatPipelines(const GraphicsPipelineBuildRequest *requests
 void VulkanDevice::DumpPipelineCacheStats()
 {
     const LinkedPipelineCacheStats lc = GetLinkedPipelineCacheStats();
-    const PipelineLibraryCache::Snapshot lib = GetPipelineLibraryCacheSnapshot();
+    const GplLibraryStatsTracker::Snapshot lib = GetPipelineLibraryCacheSnapshot();
 
     LogInfo("[VulkanDevice::DumpPipelineCacheStats] "
             "LinkedCache{ hits=%llu misses=%llu inserts=%llu size=%zu } "

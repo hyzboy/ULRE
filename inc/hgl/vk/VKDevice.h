@@ -30,7 +30,7 @@
 #include<string>
 #include<vector>
 #include<hgl/vk/pipeline/VKGplRequest.h>
-#include<hgl/vk/pipeline/VKGplLibraryCache.h>
+#include<hgl/vk/pipeline/VKGplLibraryStatsTracker.h>
 
 namespace hgl::graph{
 class RenderFormat;
@@ -67,7 +67,7 @@ class VulkanDevice
     bool gpl_enabled = false;
     std::unique_ptr<IGraphicsPipelineBuilder> link_backend_mono;
     std::unique_ptr<IGraphicsPipelineBuilder> link_backend_gpl;
-    PipelineLibraryCache pipeline_library_cache;
+    GplLibraryStatsTracker pipeline_library_cache;
     std::unordered_map<GplLinkedPipelineKey, Pipeline *> linked_pipeline_cache;
     mutable std::mutex linked_pipeline_cache_mutex;
     std::atomic<uint64_t> linked_pipeline_cache_hits{0};
@@ -175,7 +175,7 @@ public: //内存相关
     void SetGplEnabled(bool enabled);
     bool IsGplEnabled() const { return gpl_enabled; }
     Pipeline *AcquireGraphicsPipeline(const GraphicsPipelineBuildRequest &req);
-    PipelineLibraryCache::Snapshot GetPipelineLibraryCacheSnapshot() const { return pipeline_library_cache.GetSnapshot(); }
+    GplLibraryStatsTracker::Snapshot GetPipelineLibraryCacheSnapshot() const { return pipeline_library_cache.GetSnapshot(); }
 
     struct LinkedPipelineCacheStats
     {
@@ -196,7 +196,7 @@ public: //内存相关
      */
     void PreheatPipelines(const GraphicsPipelineBuildRequest *requests, size_t count);
 
-    /// 将 LinkedPipelineCacheStats + PipelineLibraryCache::Snapshot 合并输出一条 LogInfo 日志。
+    /// 将 LinkedPipelineCacheStats + GplLibraryStatsTracker::Snapshot 合并输出一条 LogInfo 日志。
     /// 用于析构前或调试断点处一次性查看缓存统计全貌。
     void DumpPipelineCacheStats();
 

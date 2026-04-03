@@ -1,9 +1,9 @@
-#include <hgl/vk/pipeline/VKGplLibraryCache.h>
+#include <hgl/vk/pipeline/VKGplLibraryStatsTracker.h>
 
 namespace hgl::graph
 {
 template<typename TKey>
-void PipelineLibraryCache::TouchBucket(Bucket<TKey> &bucket, const TKey &key)
+void GplLibraryStatsTracker::TouchBucket(Bucket<TKey> &bucket, const TKey &key)
 {
     auto it = bucket.entries.find(key);
     if (it != bucket.entries.end())
@@ -17,7 +17,7 @@ void PipelineLibraryCache::TouchBucket(Bucket<TKey> &bucket, const TKey &key)
     ++bucket.inserts;
 }
 
-void PipelineLibraryCache::Touch(const GplLinkedPipelineKey &key)
+void GplLibraryStatsTracker::Touch(const GplLinkedPipelineKey &key)
 {
     std::lock_guard<std::mutex> lock(cache_mutex);
 
@@ -27,7 +27,7 @@ void PipelineLibraryCache::Touch(const GplLinkedPipelineKey &key)
     TouchBucket(fragment_output_bucket, key.fo);
 }
 
-PipelineLibraryCache::Snapshot PipelineLibraryCache::GetSnapshot() const
+GplLibraryStatsTracker::Snapshot GplLibraryStatsTracker::GetSnapshot() const
 {
     std::lock_guard<std::mutex> lock(cache_mutex);
 
@@ -56,7 +56,7 @@ PipelineLibraryCache::Snapshot PipelineLibraryCache::GetSnapshot() const
     return s;
 }
 
-void PipelineLibraryCache::Reset()
+void GplLibraryStatsTracker::Reset()
 {
     std::lock_guard<std::mutex> lock(cache_mutex);
 
