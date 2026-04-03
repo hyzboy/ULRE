@@ -2,9 +2,7 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
-#include<hgl/type/ManagedArray.h>
 #include<hgl/log/Log.h>
-#include<unordered_set>
 
 namespace hgl::graph{
 
@@ -27,9 +25,6 @@ class RenderFormat
     VkFormat        depth_format;
 
 protected:
-
-    ManagedArray<Pipeline> pipeline_list;
-    std::unordered_set<Pipeline *> pipeline_set_;  ///< tracks owned pipelines to prevent double-add
 
     Pipeline *CreatePipeline(const AnsiString &,PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
 

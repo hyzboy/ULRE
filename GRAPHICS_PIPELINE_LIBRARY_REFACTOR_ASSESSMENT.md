@@ -30,6 +30,7 @@
 20. `PipelineResolveMetrics.h` 已扩展为统一观测内核（计数/判定 helper）：`PrimitiveBatchPipeline` 的 outside-batch 检测与含 skip 的 summary 判定已并入共享逻辑；各渲染路径仅保留一致化日志输出，避免重复实现。
 21. `GplLinkBackend::Build(...)` 已实现真实 Vulkan GPL 四段库创建与 link 逻辑：新增 `GplLibraryPool`（`VKGplLibraryPool.h/.cpp`），含 VI/PR/FS/FO 四类 `VkPipeline` 缓存（带 double-check 并发写保护）；`GplLinkBackend` 通过 `std::call_once` 懒初始化 pool，正确链接四段库，并统一调用 `RenderFormat::IncrVkCreateCount()`。
 22. `RenderFormat` 旧去重缓存（`pipeline_by_name` 字符串键 map）与旧直连创建 fallback 路径已彻底移除：`pipeline_by_name` 替换为 `pipeline_set_`（指针集合，仅用于防 `pipeline_list` 双重 add）；`CreatePipeline(Material*...)` 统一走 `device->AcquireGraphicsPipeline`，不再有直接调用 `vkCreateGraphicsPipelines` 的旁路；GPL 路径产生的 Pipeline 所有权缺口同步修复（全路径均经由 `pipeline_set_` 进入 `pipeline_list`）。
+23. Pipeline 所有权模型重新划定：修复了跨 `RenderFormat` 共用 `Pipeline*` 导致双重 `vkDestroyPipeline` 的 bug。`VulkanDevice::linked_pipeline_cache` 成为 `AcquireGraphicsPipeline` 路径所有 Pipeline 的唯一 owner（析构时 `delete`）；`RenderFormat::pipeline_list` 仅 own 7-arg Compositor 路径（不经过 `linked_pipeline_cache`）的 Pipeline；`pipeline_set_` 冗余结构同步移除。
 
 ### 进行中
 

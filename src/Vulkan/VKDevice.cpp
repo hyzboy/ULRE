@@ -109,6 +109,8 @@ VulkanDevice::~VulkanDevice()
 
     {
         std::lock_guard<std::mutex> lock(linked_pipeline_cache_mutex);
+        for (auto &kv : linked_pipeline_cache)
+            delete kv.second;
         linked_pipeline_cache.clear();
     }
 

@@ -31,20 +31,8 @@ RenderFormat::RenderFormat(VulkanDevice *dev,const AnsiString &n,const VkFormatL
 
 RenderFormat::~RenderFormat()
 {
-    LogInfo("[RenderFormat::~RenderFormat] Destroying RenderFormat '%s' with %u pipelines (RenderFormat*=0x%llx)",
-             name.c_str(), (unsigned int)pipeline_list.GetCount(), (unsigned long long)(uintptr_t)this);
-
-    // 列出所有要被销毁的管道
-    for (size_t i = 0; i < pipeline_list.GetCount(); i++)
-    {
-        Pipeline* p = pipeline_list[i];
-        if (p)
-            LogInfo("  [RenderFormat::~RenderFormat] Clearing Pipeline [%zu]: '%s'", i, p->GetName().c_str());
-    }
-
-    LogDebug("[RenderFormat::~RenderFormat] Clearing pipeline_list...");
-    pipeline_list.Clear();
-    LogInfo("[RenderFormat::~RenderFormat] Pipelines cleared");
+    LogInfo("[RenderFormat::~RenderFormat] Destroying RenderFormat '%s' (RenderFormat*=0x%llx)",
+             name.c_str(), (unsigned long long)(uintptr_t)this);
 }
 
 Pipeline *RenderFormat::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
@@ -116,14 +104,8 @@ Pipeline *RenderFormat::CreatePipeline(Material *mtl,const VIL *vil,const Pipeli
     req.debug_name     = mtl->GetName();
 
     Pipeline *p = device->AcquireGraphicsPipeline(req);
-    if (p && pipeline_set_.find(p) == pipeline_set_.end())
-    {
-        // New pipeline (not previously tracked by this RenderFormat) — take ownership.
-        // Monolithic path already added p to pipeline_list via CreatePipeline(7-arg);
-        // GPL path returns a raw new Pipeline that has no owner yet.
-        pipeline_set_.insert(p);
-        pipeline_list.Add(p);
-    }
+    // Ownership of p is held by VulkanDevice::linked_pipeline_cache.
+    // RenderFormat does NOT add it to pipeline_list.
     return p;
 }
 
@@ -178,12 +160,6 @@ Pipeline *RenderFormat::CreatePipeline(const AnsiString &name,
     pd->SetPrim(prim, prim_restart);
 
     Pipeline *p = CreatePipeline(name, pd, ssci, layout, vil);
-
-    if (p && pipeline_set_.find(p) == pipeline_set_.end())
-    {
-        pipeline_set_.insert(p);
-        pipeline_list.Add(p);
-    }
 
     return p;
 }
