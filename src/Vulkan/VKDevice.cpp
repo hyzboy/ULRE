@@ -684,7 +684,7 @@ ComputePipeline *VulkanDevice::CreateComputePipeline(const AnsiString &name, VkS
     return new ComputePipeline(name, attr->device, pipeline, pipeline_layout);
 }
 
-RenderTargetFormat *VulkanDevice::AcquireRenderFormat(const RenderbufferInfo *rbi)
+RenderTargetFormat *VulkanDevice::AcquireRenderTargetFormat(const RenderbufferInfo *rbi)
 {
     HGL_CAPTURE_SCOPE();
 

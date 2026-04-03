@@ -88,7 +88,7 @@ RenderTarget *RenderTargetManager::CreateRT(const AnsiString &name, const Frameb
 {
     if(!fbi)return(nullptr);
 
-    RenderTargetFormat *rf=GetDevice()->AcquireRenderFormat(fbi);
+    RenderTargetFormat *rf=GetDevice()->AcquireRenderTargetFormat(fbi);
 
     if(!rf)return(nullptr);
 
@@ -120,7 +120,7 @@ RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *
     if(!device || !tex_manager)
         return(nullptr);
 
-    RenderTargetFormat *rf = device->AcquireRenderFormat(fbi);
+    RenderTargetFormat *rf = device->AcquireRenderTargetFormat(fbi);
     if(!rf)
         return(nullptr);
 

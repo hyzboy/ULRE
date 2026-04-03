@@ -364,7 +364,7 @@ SwapchainModule::SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_c
 
     SwapchainRenderbufferInfo rbi(dev_attr->surface_format.format,dev_attr->physical_device->GetDepthFormat());
 
-    sc_render_pass=GetDevice()->AcquireRenderFormat(&rbi);
+    sc_render_pass=GetDevice()->AcquireRenderTargetFormat(&rbi);
 
 #ifdef _DEBUG
     {

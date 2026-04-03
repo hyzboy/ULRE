@@ -461,6 +461,6 @@ public:
 
 public: // RenderTargetFormat Cache
 
-    RenderTargetFormat *AcquireRenderFormat(const RenderbufferInfo *rbi);
+    RenderTargetFormat *AcquireRenderTargetFormat(const RenderbufferInfo *rbi);
 };//class VulkanDevice
 }//namespace hgl::graph
