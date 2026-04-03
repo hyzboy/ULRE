@@ -2,13 +2,13 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/log/Log.h>
-#include<hgl/vk/pipeline/VKGplLibraryPool.h>
+#include<hgl/vk/pipeline/VKGplLibraryHandleCache.h>
 #include<memory>
 
 namespace hgl::graph{
 class Pipeline;
 class VulkanDevice;
-class GplLibraryPool;
+class GplLibraryHandleCache;
 struct GraphicsPipelineBuildRequest;
 
 enum class GraphicsPipelineBuilderType
@@ -44,7 +44,7 @@ class GplGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
 {
     OBJECT_LOGGER
 
-    std::unique_ptr<GplLibraryPool> library_pool_;
+    std::unique_ptr<GplLibraryHandleCache> library_pool_;
     std::once_flag                  init_flag_;
 
 public:

@@ -1,6 +1,6 @@
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuilder.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/pipeline/VKGplLibraryPool.h>
+#include<hgl/vk/pipeline/VKGplLibraryHandleCache.h>
 #include<hgl/vk/pipeline/VKGplRequest.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/pipeline/VKRenderFormat.h>
@@ -70,7 +70,7 @@ Pipeline *GplGraphicsPipelineBuilder::Build(const PipelineBuildContext &context,
     // ── One-time pool initialization ──────────────────────────────────────────
     std::call_once(init_flag_, [&]()
     {
-        library_pool_ = std::make_unique<GplLibraryPool>();
+        library_pool_ = std::make_unique<GplLibraryHandleCache>();
         library_pool_->Init(context.device->GetDevice(), context.pipeline_cache);
     });
 

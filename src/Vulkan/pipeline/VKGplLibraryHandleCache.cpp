@@ -1,4 +1,4 @@
-#include<hgl/vk/pipeline/VKGplLibraryPool.h>
+#include<hgl/vk/pipeline/VKGplLibraryHandleCache.h>
 #include<hgl/vk/pipeline/VKGplRequest.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/pipeline/VKRenderFormat.h>
@@ -55,7 +55,7 @@ VkPipeline CreateVILibrary(VkDevice device, VkPipelineCache cache,
     VkPipeline lib = VK_NULL_HANDLE;
     if (vkCreateGraphicsPipelines(device, cache, 1, &ci, nullptr, &lib) != VK_SUCCESS)
     {
-        GLogError("[GplLibraryPool] CreateVILibrary failed");
+        GLogError("[GplLibraryHandleCache] CreateVILibrary failed");
         lib = VK_NULL_HANDLE;
     }
 
@@ -94,7 +94,7 @@ VkPipeline CreatePRLibrary(VkDevice device, VkPipelineCache cache,
 
     if (pr_stage_count == 0)
     {
-        GLogError("[GplLibraryPool] CreatePRLibrary: no vertex-side shader stages found");
+        GLogError("[GplLibraryHandleCache] CreatePRLibrary: no vertex-side shader stages found");
         return VK_NULL_HANDLE;
     }
 
@@ -139,7 +139,7 @@ VkPipeline CreatePRLibrary(VkDevice device, VkPipelineCache cache,
     VkPipeline lib = VK_NULL_HANDLE;
     if (vkCreateGraphicsPipelines(device, cache, 1, &ci, nullptr, &lib) != VK_SUCCESS)
     {
-        GLogError("[GplLibraryPool] CreatePRLibrary failed");
+        GLogError("[GplLibraryHandleCache] CreatePRLibrary failed");
         return VK_NULL_HANDLE;
     }
     return lib;
@@ -170,7 +170,7 @@ VkPipeline CreateFSLibrary(VkDevice device, VkPipelineCache cache,
 
     if (!found_fs)
     {
-        GLogError("[GplLibraryPool] CreateFSLibrary: no fragment shader stage found");
+        GLogError("[GplLibraryHandleCache] CreateFSLibrary: no fragment shader stage found");
         return VK_NULL_HANDLE;
     }
 
@@ -198,7 +198,7 @@ VkPipeline CreateFSLibrary(VkDevice device, VkPipelineCache cache,
     VkPipeline lib = VK_NULL_HANDLE;
     if (vkCreateGraphicsPipelines(device, cache, 1, &ci, nullptr, &lib) != VK_SUCCESS)
     {
-        GLogError("[GplLibraryPool] CreateFSLibrary failed");
+        GLogError("[GplLibraryHandleCache] CreateFSLibrary failed");
         return VK_NULL_HANDLE;
     }
     return lib;
@@ -220,7 +220,7 @@ VkPipeline CreateFOLibrary(VkDevice device, VkPipelineCache cache,
     VkPipelineColorBlendAttachmentState blend_attachments[16]; // max 8 color attachments, 16 is safe
     if (n > 16)
     {
-        GLogError("[GplLibraryPool] CreateFOLibrary: too many color attachments (%u)", n);
+        GLogError("[GplLibraryHandleCache] CreateFOLibrary: too many color attachments (%u)", n);
         return VK_NULL_HANDLE;
     }
     for (uint32_t i = 0; i < n; ++i)
@@ -260,7 +260,7 @@ VkPipeline CreateFOLibrary(VkDevice device, VkPipelineCache cache,
     VkPipeline lib = VK_NULL_HANDLE;
     if (vkCreateGraphicsPipelines(device, cache, 1, &ci, nullptr, &lib) != VK_SUCCESS)
     {
-        GLogError("[GplLibraryPool] CreateFOLibrary failed");
+        GLogError("[GplLibraryHandleCache] CreateFOLibrary failed");
         return VK_NULL_HANDLE;
     }
     return lib;
@@ -301,9 +301,9 @@ VkPipeline AcquireLibrary(std::unordered_map<TKey, VkPipeline> &map,
 }
 }//anonymous namespace
 
-// ─── GplLibraryPool ─────────────────────────────────────────────────────────
+// ─── GplLibraryHandleCache ─────────────────────────────────────────────────────────
 
-GplLibraryPool::~GplLibraryPool()
+GplLibraryHandleCache::~GplLibraryHandleCache()
 {
     if (device_ == VK_NULL_HANDLE)
         return;
@@ -320,31 +320,31 @@ GplLibraryPool::~GplLibraryPool()
         vkDestroyPipeline(device_, lib, nullptr);
 }
 
-void GplLibraryPool::Init(VkDevice device, VkPipelineCache pipeline_cache)
+void GplLibraryHandleCache::Init(VkDevice device, VkPipelineCache pipeline_cache)
 {
     device_         = device;
     pipeline_cache_ = pipeline_cache;
 }
 
-VkPipeline GplLibraryPool::AcquireVI(const GplVertexInputKey &key, const GraphicsPipelineBuildRequest &req)
+VkPipeline GplLibraryHandleCache::AcquireVI(const GplVertexInputKey &key, const GraphicsPipelineBuildRequest &req)
 {
     return AcquireLibrary(vi_lib_, lib_mutex_, key,
         [&]{ return CreateVILibrary(device_, pipeline_cache_, req); });
 }
 
-VkPipeline GplLibraryPool::AcquirePR(const GplPreRasterKey &key, const GraphicsPipelineBuildRequest &req)
+VkPipeline GplLibraryHandleCache::AcquirePR(const GplPreRasterKey &key, const GraphicsPipelineBuildRequest &req)
 {
     return AcquireLibrary(pr_lib_, lib_mutex_, key,
         [&]{ return CreatePRLibrary(device_, pipeline_cache_, req); });
 }
 
-VkPipeline GplLibraryPool::AcquireFS(const GplFragmentShaderKey &key, const GraphicsPipelineBuildRequest &req)
+VkPipeline GplLibraryHandleCache::AcquireFS(const GplFragmentShaderKey &key, const GraphicsPipelineBuildRequest &req)
 {
     return AcquireLibrary(fs_lib_, lib_mutex_, key,
         [&]{ return CreateFSLibrary(device_, pipeline_cache_, req); });
 }
 
-VkPipeline GplLibraryPool::AcquireFO(const GplFragmentOutputKey &key, const GraphicsPipelineBuildRequest &req)
+VkPipeline GplLibraryHandleCache::AcquireFO(const GplFragmentOutputKey &key, const GraphicsPipelineBuildRequest &req)
 {
     return AcquireLibrary(fo_lib_, lib_mutex_, key,
         [&]{ return CreateFOLibrary(device_, pipeline_cache_, req); });

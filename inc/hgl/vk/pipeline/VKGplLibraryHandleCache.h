@@ -14,9 +14,9 @@ struct GraphicsPipelineBuildRequest;
  *
  * 以四个 XxxKey 为 key 分别缓存 VkPipeline 库 handle。
  * 同一 key 多次请求只创建一次，缓存命中时直接返回已有 handle。
- * 库 handle 在 GplLibraryPool 析构时统一销毁（保留供后续 variant 快速 link）。
+ * 库 handle 在 GplLibraryHandleCache 析构时统一销毁（保留供后续 variant 快速 link）。
  */
-class GplLibraryPool
+class GplLibraryHandleCache
 {
     VkDevice        device_         = VK_NULL_HANDLE;
     VkPipelineCache pipeline_cache_ = VK_NULL_HANDLE;
@@ -29,8 +29,8 @@ class GplLibraryPool
     std::unordered_map<GplFragmentOutputKey,VkPipeline> fo_lib_;
 
 public:
-    GplLibraryPool() = default;
-    ~GplLibraryPool();
+    GplLibraryHandleCache() = default;
+    ~GplLibraryHandleCache();
 
     void Init(VkDevice device, VkPipelineCache pipeline_cache);
 
