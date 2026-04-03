@@ -70,8 +70,8 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
     // ── One-time pool initialization ──────────────────────────────────────────
     std::call_once(init_flag_, [&]()
     {
-        library_pool_ = std::make_unique<GplLibraryHandleCache>();
-        library_pool_->Init(context.device->GetDevice(), context.pipeline_cache);
+        handle_cache_ = std::make_unique<GplLibraryHandleCache>();
+        handle_cache_->Init(context.device->GetDevice(), context.pipeline_cache);
     });
 
     // ── Compute per-library keys ──────────────────────────────────────────────
@@ -81,10 +81,10 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
     const GplFragmentOutputKey fo_key = BuildFragmentOutputKey(request.render_format);
 
     // ── Acquire (or create-and-cache) the four library handles ────────────────
-    const VkPipeline vi_lib = library_pool_->AcquireVertexInputLibrary(vi_key, request);
-    const VkPipeline pr_lib = library_pool_->AcquirePreRasterLibrary(pr_key, request);
-    const VkPipeline fs_lib = library_pool_->AcquireFragmentShaderLibrary(fs_key, request);
-    const VkPipeline fo_lib = library_pool_->AcquireFragmentOutputLibrary(fo_key, request);
+    const VkPipeline vi_lib = handle_cache_->AcquireVertexInputLibrary(vi_key, request);
+    const VkPipeline pr_lib = handle_cache_->AcquirePreRasterLibrary(pr_key, request);
+    const VkPipeline fs_lib = handle_cache_->AcquireFragmentShaderLibrary(fs_key, request);
+    const VkPipeline fo_lib = handle_cache_->AcquireFragmentOutputLibrary(fo_key, request);
 
     if (vi_lib == VK_NULL_HANDLE || pr_lib == VK_NULL_HANDLE
      || fs_lib == VK_NULL_HANDLE || fo_lib == VK_NULL_HANDLE)

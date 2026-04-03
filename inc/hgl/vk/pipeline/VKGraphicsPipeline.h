@@ -17,9 +17,6 @@ class GraphicsPipeline
     const VIL *vil;
     GraphicsPipelineData *data;
 
-    bool alpha_test;
-    bool alpha_blend;
-
 private:
 
     friend class RenderFormat;
@@ -33,9 +30,6 @@ private:
         pipeline=p;
         vil=v;
         data=pd;
-
-        alpha_test=false;
-        alpha_blend=false;
     }
 
 public:

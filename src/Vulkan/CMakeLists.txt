@@ -146,14 +146,14 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKGraphicsPipeline.h
                             ${PIPELINE_HEADER_PATH}/VKRenderStateProfile.h
                             ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineData.h
                             ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineLayoutData.h
-                            ${PIPELINE_HEADER_PATH}/VKPipelineHash.h
+                            ${PIPELINE_HEADER_PATH}/VKGraphicsPipelineHash.h
                             ${PIPELINE_HEADER_PATH}/VKGraphicsPipelinePreset.h
                             ${PIPELINE_HEADER_PATH}/VKComputePipeline.h
                             ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineCompare.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineData.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineDataManage.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineDataSaveLoad.cpp
-                            ${PIPELINE_SOURCE_PATH}/VKPipelineHash.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineHash.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineBuildRequest.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGraphicsPipelineBuilder.cpp
                             ${PIPELINE_SOURCE_PATH}/VKGplLibraryHandleCache.cpp

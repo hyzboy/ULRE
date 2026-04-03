@@ -1,11 +1,11 @@
-﻿#include<hgl/vk/pipeline/VKPipelineHash.h>
+﻿#include<hgl/vk/pipeline/VKGraphicsPipelineHash.h>
 #include<hgl/util/hash/Hash.h>
 #include<hgl/io/MemoryOutputStream.h>
 #include<hgl/io/DataOutputStream.h>
 
 namespace hgl::graph{
 
-const bool CountHash(PipelineHashCode *hash_code,const GraphicsPipelineData *pd)
+const bool CountHash(GraphicsPipelineHashCode *hash_code,const GraphicsPipelineData *pd)
 {
     if(!hash_code||!pd)return(false);
 
@@ -15,7 +15,7 @@ const bool CountHash(PipelineHashCode *hash_code,const GraphicsPipelineData *pd)
     if(!pd->SaveToStream(dos))
         return(false);
 
-    return hgl::util::hash::Hash(PipelineHash, mos.GetData(), mos.Tell(), hash_code->code);
+    return hgl::util::hash::Hash(GraphicsPipelineHash, mos.GetData(), mos.Tell(), hash_code->code);
 }
 
 }//namespace hgl::graph

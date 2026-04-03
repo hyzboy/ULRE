@@ -44,7 +44,7 @@ class GplGraphicsPipelineBuilder final : public IGraphicsPipelineBuilder
 {
     OBJECT_LOGGER
 
-    std::unique_ptr<GplLibraryHandleCache> library_pool_;
+    std::unique_ptr<GplLibraryHandleCache> handle_cache_;
     std::once_flag                  init_flag_;
 
 public:
