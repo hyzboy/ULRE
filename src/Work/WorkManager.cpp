@@ -114,6 +114,9 @@ namespace hgl
             {
                 SleepSecond(0.001);
             }
+
+            if (dev)
+                dev->TickStatsDump();
         }
     }
 }//namespcae hgl

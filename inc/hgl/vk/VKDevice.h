@@ -74,6 +74,9 @@ class VulkanDevice
     std::atomic<uint64_t> linked_pipeline_cache_misses{0};
     std::atomic<uint64_t> linked_pipeline_cache_inserts{0};
 
+    uint32_t stats_dump_period_{0};         ///< 定期 dump 间隔帧数；0 = 禁用
+    uint64_t stats_dump_frame_counter_{0};  ///< TickStatsDump 调用次数计数器
+
     struct ObjectDebugRecord
     {
         AnsiString name;
@@ -196,6 +199,18 @@ public: //内存相关
     /// 将 LinkedPipelineCacheStats + PipelineLibraryCache::Snapshot 合并输出一条 LogInfo 日志。
     /// 用于析构前或调试断点处一次性查看缓存统计全貌。
     void DumpPipelineCacheStats();
+
+    /**
+     * 设置定期 dump 间隔帧数。每调用 TickStatsDump() 一次算一帧。
+     * period == 0 时禁用定期 dump（默认）。
+     */
+    void SetStatsDumpPeriod(uint32_t period) { stats_dump_period_ = period; }
+
+    /**
+     * 每帧调用一次；当内部帧计数达到 period 的整数倍时自动调用 DumpPipelineCacheStats()。
+     * 在 WorkManager::Run() 循环尾部调用。
+     */
+    void TickStatsDump();
 
     // ---- IGPUBuffer Registry (used by RenderBufferUploadSystem) ----
     void RegisterGPUBuffer  (IGPUBuffer *buf);

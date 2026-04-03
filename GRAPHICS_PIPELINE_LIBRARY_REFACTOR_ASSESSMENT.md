@@ -33,6 +33,7 @@
 23. Pipeline 所有权模型重新划定：修复了跨 `RenderFormat` 共用 `Pipeline*` 导致双重 `vkDestroyPipeline` 的 bug。`VulkanDevice::linked_pipeline_cache` 成为 `AcquireGraphicsPipeline` 路径所有 Pipeline 的唯一 owner（析构时 `delete`）；`RenderFormat::pipeline_list` 仅 own 7-arg Compositor 路径（不经过 `linked_pipeline_cache`）的 Pipeline；`pipeline_set_` 冗余结构同步移除。
 24. 运行时崩溃修复（exit-time double-delete）：`RenderFormat::~RenderFormat` 在 `VulkanDevice::~VulkanDevice` 先销毁 `linked_pipeline_cache` 后仍试图 `pipeline_list.Clear()` delete 同一 `Pipeline*`，导致 UAF 崩溃。根本修复：`pipeline_list` 与 `ManagedArray` 包含物整体从 `RenderFormat` 中移除（`VKRenderFormat.h` 去掉成员与 include，`VKRenderFormat.cpp` 析构函数与 7-arg 路径去掉 Add/Clear）；`VulkanDevice::linked_pipeline_cache` 成为全量 Pipeline 的唯一 owner。同步新增 `VulkanDevice::LinkedPipelineCacheStats` 结构体与 `GetLinkedPipelineCacheStats()` 接口，供调试面板/日志查询命中率与缓存规模。
 25. 场景级 pipeline 预热 API 落地：`VulkanDevice::PreheatPipelines(const GplPipelineRequest*, size_t)` 在加载阶段批量调 `AcquireGraphicsPipeline`，将首帧 `vkCreateGraphicsPipelines` 挪至 init 期；失败请求仅 `LogWarning` 不中断；调用后汇报 `success/failure/new_vkCreate/cache_hits`。同步新增 `VulkanDevice::DumpPipelineCacheStats()`，一次调用输出 `LinkedPipelineCacheStats` + `PipelineLibraryCache::Snapshot` 完整统计（供析构前或调试断点使用）。
+26. 定期 pipeline 缓存统计 dump 落地：新增 `VulkanDevice::SetStatsDumpPeriod(uint32_t period)` 与 `VulkanDevice::TickStatsDump()`；`TickStatsDump` 维护内部帧计数器，达到 period 的整数倍时自动调 `DumpPipelineCacheStats()`；已接入 `WorkManager::Run()` 主循环末尾（`period=0` 默认禁用，生产部署零开销）。
 
 ### 进行中
 
@@ -40,9 +41,7 @@
 
 ### 未开始
 
-1. 场景级 pipeline 预热接口补齐（`VulkanDevice::PreheatPipelines` 批量 API，在场景加载阶段统一驱动缓存填充）。
-2. 调试性能面板集成：将 `GetLinkedPipelineCacheStats()` 与 `GetPipelineLibraryCacheSnapshot()` 接入帧调试 UI 或定期日志 dump。
-3. 全量回归、性能压测与稳定性压测。
+1. 全量回归、性能压测与稳定性压测：Primitive/Text/Line/Terrain/Quad 多场景压测，确认 steady-state 下热路径创建告警为 0，清理观测噪声与日志级别。
 
 ## 1. 最终架构目标
 

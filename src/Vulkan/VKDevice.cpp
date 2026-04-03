@@ -359,6 +359,15 @@ void VulkanDevice::DumpPipelineCacheStats()
             static_cast<unsigned long long>(lib.fragment_output_inserts));
 }
 
+void VulkanDevice::TickStatsDump()
+{
+    if (stats_dump_period_ == 0)
+        return;
+    const uint64_t idx = ++stats_dump_frame_counter_;
+    if ((idx % stats_dump_period_) == 0)
+        DumpPipelineCacheStats();
+}
+
 void VulkanDevice::RegisterGPUBuffer(IGPUBuffer *buf)
 {
     if (!buf)
