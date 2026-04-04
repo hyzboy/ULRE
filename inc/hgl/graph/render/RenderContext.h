@@ -64,22 +64,6 @@ namespace hgl::graph
         RenderContext& operator=(const RenderContext&) = delete;
 
     public:
-        // ===== 渲染状态相关接口 =====
-
-        /**
-         * 创建管线
-         * @param material 材质
-         * @param vil      顶点输入配置
-         * @param cd       管线数据
-         * @param prim_restart 是否启用基元重启
-         * @return 管线指针，失败返回 nullptr
-         */
-        GraphicsPipeline* CreatePipeline(Material* material,
-                                const VertexInputLayout* vil,
-                                const GraphicsPipelineData* pd,
-                                bool prim_restart = false);
-
-    public:
         // ===== 渲染目标和命令缓冲区管理 =====
 
         /**

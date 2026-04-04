@@ -48,17 +48,6 @@ public:
     const VkFormat          GetDepthFormat  ()const{return depth_format;}
 
 public:
-
-    GraphicsPipeline *CreatePipeline(Material *,const VIL *,const GraphicsPipelineData *,   const bool prim_restart=false);
-    GraphicsPipeline *CreatePipeline(Material *,const VIL *,const GraphicsPipelinePreset &, const bool prim_restart=false);
-
-    GraphicsPipeline *CreatePipeline(Material *mtl,         const GraphicsPipelineData *,   const bool prim_restart=false);
-    GraphicsPipeline *CreatePipeline(Material *mtl,         const GraphicsPipelinePreset &, const bool prim_restart=false);
-
-    GraphicsPipeline *CreatePipeline(MaterialInstance *,    const GraphicsPipelinePreset &, const bool prim_restart=false);
-    GraphicsPipeline *CreatePipeline(MaterialInstance *,    const GraphicsPipelineData *,   const bool prim_restart=false);
-    GraphicsPipeline *CreatePipeline(MaterialInstance *,    const OSString &,       const bool prim_restart=false);
-
     /// Returns the process-lifetime count of successful vkCreateGraphicsPipelines calls.
     /// Use the delta between two calls to count pipelines created in a time window.
     static uint64_t GetVkCreateCount();

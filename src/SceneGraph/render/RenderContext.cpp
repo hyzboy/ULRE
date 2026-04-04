@@ -3,19 +3,6 @@
 
 namespace hgl::graph
 {
-    GraphicsPipeline* RenderContext::CreatePipeline(Material* material,
-                                            const VertexInputLayout* vil,
-                                            const GraphicsPipelineData* pd,
-                                            bool prim_restart)
-    {
-        if (!current_render_target)
-            return nullptr;
-
-        RenderTargetFormat* rp = current_render_target->GetRenderFormat();
-        return rp ? rp->CreatePipeline(material, vil, pd, prim_restart) : nullptr;
-    }
-
-
     void RenderContext::SetCurrentRenderTarget(IRenderTarget* rt)
     {
         current_render_target = rt;
