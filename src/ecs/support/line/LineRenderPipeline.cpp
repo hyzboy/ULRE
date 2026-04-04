@@ -23,6 +23,8 @@
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/vk/VKVertexInputConfig.h>
 #include <hgl/vk/UBOAccessor.h>
+#include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
+#include <hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include <hgl/math/geometry/Frustum.h>
 #include <hgl/ecs/support/PipelineResolveMetrics.h>
 #include <hgl/log/Log.h>
@@ -227,14 +229,6 @@ namespace hgl::ecs
         if (!gc)
             return false;
 
-        auto* rt = context_->GetRenderTarget();
-        if (!rt)
-            return false;
-
-        graph::RenderTargetFormat* rp = rt->GetRenderFormat();
-        if (!rp)
-            return false;
-
         device_ = gc->GetDevice();
         if (!device_)
             return false;
@@ -262,41 +256,13 @@ namespace hgl::ecs
         // ------- Create material instance -------
         graph::VILConfig vil;
         vil.Add(graph::VAN::Color, VF_V1U8);
-        mi_ = mat_mgr->CreateMaterialInstance(material_, &vil);
+        const auto preset = support_wide_lines_
+            ? graph::GraphicsPipelinePreset::DynamicLineWidth3D
+            : graph::GraphicsPipelinePreset::Solid3D;
+
+        mi_ = mat_mgr->CreateMaterialInstance(material_, &vil, preset);
         if (!mi_)
             return false;
-
-        // ------- Create pipeline -------
-        RecordPipelineResolveAttempt(g_line_pipeline_resolve_counters);
-        const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
-
-        pipeline_ = support_wide_lines_
-            ? rp->CreatePipeline(mi_, graph::GraphicsPipelinePreset::DynamicLineWidth3D)
-            : rp->CreatePipeline(mi_, graph::GraphicsPipelinePreset::Solid3D);
-
-        const uint64_t vkcreate_after = graph::RenderTargetFormat::GetVkCreateCount();
-        const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
-
-        if (!pipeline_)
-        {
-            const uint64_t failures = RecordPipelineResolveFailure(g_line_pipeline_resolve_counters);
-            if (ShouldLogPow2(failures))
-            {
-                GLogWarning("[LineRenderPipeline] GraphicsPipeline resolve failed: total_failures=%llu",
-                            static_cast<unsigned long long>(failures));
-            }
-            return false;
-        }
-
-        RecordPipelineResolveSuccess(g_line_pipeline_resolve_counters);
-        if (ShouldLogPipelineResolveCreated(vkcreate_delta))
-        {
-            GLogInfo("[LineRenderPipeline] GraphicsPipeline resolve created vk pipelines=%llu (attempts=%llu successes=%llu failures=%llu)",
-                     static_cast<unsigned long long>(vkcreate_delta),
-                     static_cast<unsigned long long>(g_line_pipeline_resolve_counters.attempts.load()),
-                     static_cast<unsigned long long>(g_line_pipeline_resolve_counters.successes.load()),
-                     static_cast<unsigned long long>(g_line_pipeline_resolve_counters.failures.load()));
-        }
 
         // ------- Create color palette UBO -------
         auto* buf_mgr = gc->GetBufferManager();
@@ -324,6 +290,88 @@ namespace hgl::ecs
         return true;
     }
 
+    bool LineRenderPipeline::ResolvePipelineForCurrentRenderTarget()
+    {
+        if (!context_ || !device_ || !material_ || !mi_)
+            return false;
+
+        auto* render_target = context_->GetRenderTarget();
+        if (!render_target)
+        {
+            if (auto* render_context = context_->GetRenderContext())
+                render_target = render_context->GetCurrentRenderTarget();
+        }
+
+        auto* render_format = render_target ? render_target->GetRenderFormat() : nullptr;
+        if (!render_format)
+            return false;
+
+        if (pipeline_ && render_format_ == render_format)
+            return true;
+
+        RecordPipelineResolveAttempt(g_line_pipeline_resolve_counters);
+        const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
+
+        const graph::GraphicsPipelinePreset preset = mi_->GetRenderPreset();
+        const graph::GraphicsPipelineData* pipeline_data = graph::GetGraphicsPipelineData(preset);
+        if (!pipeline_data)
+        {
+            const uint64_t failures = RecordPipelineResolveFailure(g_line_pipeline_resolve_counters);
+            if (ShouldLogPow2(failures))
+            {
+                GLogWarning("[LineRenderPipeline] Missing GraphicsPipelineData for preset=%u, total_failures=%llu",
+                            static_cast<unsigned int>(preset),
+                            static_cast<unsigned long long>(failures));
+            }
+            return false;
+        }
+
+        graph::GraphicsPipelineBuildRequest req;
+        req.material = material_;
+        req.vil = mi_->GetVIL();
+        req.render_format = render_format;
+        req.pipeline_data = pipeline_data;
+        req.primitive = material_->GetPrimitiveType();
+        req.primitive_restart = (pipeline_data->input_assembly.primitiveRestartEnable == VK_TRUE);
+
+        graph::GraphicsPipeline* resolved = device_->AcquireGraphicsPipeline(req);
+        const uint64_t vkcreate_after = graph::RenderTargetFormat::GetVkCreateCount();
+        const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
+
+        if (!resolved)
+        {
+            const uint64_t failures = RecordPipelineResolveFailure(g_line_pipeline_resolve_counters);
+            if (ShouldLogPow2(failures))
+            {
+                GLogWarning("[LineRenderPipeline] GraphicsPipeline resolve failed: total_failures=%llu",
+                            static_cast<unsigned long long>(failures));
+            }
+            return false;
+        }
+
+        pipeline_ = resolved;
+        render_format_ = render_format;
+
+        const uint32_t num_slots = support_wide_lines_ ? MAX_WIDTHS : 1;
+        for (uint32_t i = 0; i < num_slots; ++i)
+        {
+            if (slots_[i].primitive)
+                slots_[i].primitive->UpdatePipeline(resolved);
+        }
+
+        RecordPipelineResolveSuccess(g_line_pipeline_resolve_counters);
+        if (ShouldLogPipelineResolveCreated(vkcreate_delta))
+        {
+            GLogInfo("[LineRenderPipeline] GraphicsPipeline resolve created vk pipelines=%llu (attempts=%llu successes=%llu failures=%llu)",
+                     static_cast<unsigned long long>(vkcreate_delta),
+                     static_cast<unsigned long long>(g_line_pipeline_resolve_counters.attempts.load()),
+                     static_cast<unsigned long long>(g_line_pipeline_resolve_counters.successes.load()),
+                     static_cast<unsigned long long>(g_line_pipeline_resolve_counters.failures.load()));
+        }
+
+        return true;
+    }
+
     bool LineRenderPipeline::PrepareFrame()
     {
         if (!context_)
@@ -335,6 +383,9 @@ namespace hgl::ecs
         prepared_frame_ = frame;
 
         if (!initialized_ && !Initialize())
+            return false;
+
+        if (!ResolvePipelineForCurrentRenderTarget())
             return false;
 
         SyncTransformBinding();
@@ -679,7 +730,8 @@ namespace hgl::ecs
             }
         }
 
-        pipeline_    = nullptr; // owned by RenderPass
+        pipeline_    = nullptr;
+        render_format_ = nullptr;
         device_      = nullptr;
         initialized_ = false;
         bound_transform_buffer_ = nullptr;

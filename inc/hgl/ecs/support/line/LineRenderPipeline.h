@@ -17,6 +17,7 @@ namespace hgl
         class Material;
         class MaterialInstance;
         class GraphicsPipeline;
+        class RenderTargetFormat;
         class Geometry;
         class Primitive;
         class RenderCmdBuffer;
@@ -75,6 +76,7 @@ namespace hgl::ecs
         graph::Material*        material_       = nullptr;
         graph::MaterialInstance* mi_            = nullptr;
         graph::GraphicsPipeline*        pipeline_       = nullptr;
+        graph::RenderTargetFormat*     render_format_  = nullptr;
 
         // Palette UBO (owned; buf_ is the raw GPU buffer handle)
         void*    ubo_color_   = nullptr;  ///< typed as UBOLineColorPalette* at runtime
@@ -150,6 +152,7 @@ namespace hgl::ecs
 
     private:
         bool Initialize();
+        bool ResolvePipelineForCurrentRenderTarget();
         uint32_t GetSlotIndex(uint8_t width) const;
         void FlushPaletteToGPU();
         void SyncTransformBinding();

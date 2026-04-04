@@ -49,8 +49,6 @@ namespace hgl::graph
 
         Sampler *           sampler;
 
-        GraphicsPipeline *  pipeline;
-
         TileFont *          tile_font;
         layout::TextLayout *tl_engine;
 

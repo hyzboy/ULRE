@@ -31,7 +31,6 @@ namespace hgl::graph
         {
             Material *          mtl;
             MaterialInstance *  mi[size_t(GizmoColor::RANGE_SIZE)];
-            GraphicsPipeline *  pipeline;
             VertexDataManager * vdm;
 
             GeometryCreater *  prim_creater;
@@ -52,7 +51,7 @@ namespace hgl::graph
                 if (graphics_context)
                 {
                     auto *primitive_manager = graphics_context->GetPrimitiveManager();
-                    primitive = primitive_manager ? primitive_manager->CreatePrimitive(geometry,gizmo_triangle.mi[0],gizmo_triangle.pipeline) : nullptr;
+                    primitive = primitive_manager ? primitive_manager->CreatePrimitive(geometry,gizmo_triangle.mi[0]) : nullptr;
                 }
                 else
                 {
@@ -88,7 +87,7 @@ namespace hgl::graph
             {
                 color=GetColor4f(gizmo_color[i],1.0);
 
-                gr->mi[i]=gizmo_mtl_manager->CreateMaterialInstance(gr->mtl,(VIL *)nullptr,&color);
+                gr->mi[i]=gizmo_mtl_manager->CreateMaterialInstance(gr->mtl,(VIL *)nullptr,&color,GraphicsPipelinePreset::GizmoOverlay3D);
 
                 if(!gr->mi[i])
                     return(false);
@@ -124,11 +123,7 @@ namespace hgl::graph
                 gizmo_triangle.mtl->Update();
             }
 
-            {
-                gizmo_triangle.pipeline=render_pass->CreatePipeline(gizmo_triangle.mtl,GraphicsPipelinePreset::GizmoOverlay3D);
-                if(!gizmo_triangle.pipeline)
-                    return(false);
-            }
+            (void)render_pass;
 
             if(!InitMI(&gizmo_triangle))
                 return(false);
@@ -256,7 +251,6 @@ namespace hgl::graph
         SAFE_CLEAR(gizmo_triangle.prim_creater);
         SAFE_CLEAR(gizmo_triangle.vdm);
 
-        gizmo_triangle.pipeline = nullptr;
         gizmo_triangle.mtl = nullptr;
         for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
             gizmo_triangle.mi[i] = nullptr;

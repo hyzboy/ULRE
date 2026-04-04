@@ -14,7 +14,8 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/vk/pipeline/VKGraphicsPipeline.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>
@@ -24,8 +25,6 @@
 #include<hgl/graph/tile/TileData.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/vk/VKBuffer.h>
-#include<hgl/ecs/support/PipelineResolveMetrics.h>
-
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/common/RenderOptions.h>
 #include<hgl/type/String.h>
@@ -37,8 +36,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        PipelineResolveCounters g_text_pipeline_resolve_counters;
-
         graph::TileFont* CreateTileFont(graph::RenderContext* rc,
                                         graph::FontSource* fs,
                                         int limit_count,
@@ -179,7 +176,6 @@ namespace hgl::ecs
         if (!PrepareFrameResources(frame_graphics_context,
                                    frame_material_manager,
                                    frame_primitive_manager,
-                                   frame_render_pass,
                                    frame_device,
                                    frame_render_target))
             return false;
@@ -199,7 +195,6 @@ namespace hgl::ecs
         ProcessInputs(frame_inputs,
                       frame_material_manager,
                       frame_primitive_manager,
-                      frame_render_pass,
                       frame_device);
     }
 
@@ -350,10 +345,49 @@ namespace hgl::ecs
         return resources_by_font.GetValuePointer(font_source);
     }
 
+    bool TextRenderPipeline::ResolvePipelineForCurrentRenderTarget(RenderResources& resources,
+                                                                   graph::VulkanDevice* device,
+                                                                   graph::IRenderTarget* render_target)
+    {
+        if (!device || !render_target || !resources.material || !resources.material_instance)
+            return false;
+
+        auto* render_format = render_target->GetRenderFormat();
+        if (!render_format)
+            return false;
+
+        if (resources.pipeline && resources.render_format == render_format)
+            return true;
+
+        const graph::GraphicsPipelinePreset preset = resources.material_instance->GetRenderPreset();
+        const graph::GraphicsPipelineData* pipeline_data = graph::GetGraphicsPipelineData(preset);
+        if (!pipeline_data)
+            return false;
+
+        graph::GraphicsPipelineBuildRequest req;
+        req.material = resources.material;
+        req.vil = resources.material_instance->GetVIL();
+        req.render_format = render_format;
+        req.pipeline_data = pipeline_data;
+        req.primitive = resources.material->GetPrimitiveType();
+        req.primitive_restart = (pipeline_data->input_assembly.primitiveRestartEnable == VK_TRUE);
+
+        auto* resolved = device->AcquireGraphicsPipeline(req);
+        if (!resolved)
+            return false;
+
+        resources.pipeline = resolved;
+        resources.render_format = render_format;
+
+        if (resources.primitive)
+            resources.primitive->UpdatePipeline(resolved);
+
+        return true;
+    }
+
     bool TextRenderPipeline::PrepareFrameResources(graph::GraphicsContext*& graphics_context,
                                                    graph::MaterialManager*& material_manager,
                                                    graph::PrimitiveManager*& primitive_manager,
-                                                   graph::RenderTargetFormat*& render_pass,
                                                    graph::VulkanDevice*& device,
                                                    graph::IRenderTarget*& render_target)
     {
@@ -381,9 +415,7 @@ namespace hgl::ecs
         if (!render_target && world)
             render_target = world->GetRenderTarget();
 
-        render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-
-        if (!material_manager || !primitive_manager || !render_pass)
+        if (!material_manager || !primitive_manager || !render_target)
             return false;
 
         return true;
@@ -423,13 +455,8 @@ namespace hgl::ecs
     void TextRenderPipeline::ProcessInputs(std::unordered_map<graph::FontSource*, BatchInput>& inputs,
                                            graph::MaterialManager* material_manager,
                                            graph::PrimitiveManager* primitive_manager,
-                                           graph::RenderTargetFormat* render_pass,
                                            graph::VulkanDevice* device)
     {
-        uint32_t frame_pipeline_attempts = 0;
-        uint32_t frame_pipeline_successes = 0;
-        uint32_t frame_pipeline_failures = 0;
-
         for (auto& pair : inputs)
         {
             auto& input = pair.second;
@@ -456,13 +483,16 @@ namespace hgl::ecs
                 graph::VILConfig vil_config;
                 vil_config.Add(graph::VAN::Position, VF_V2I16);
 
-                mi = material_manager->CreateMaterialInstance(resources->material, &vil_config);
+                mi = material_manager->CreateMaterialInstance(resources->material, &vil_config, graph::GraphicsPipelinePreset::Solid2D);
                 if (!mi)
                     continue;
 
                 resources->material_instance = mi;
                 input.dirty = true;
             }
+
+            if (!ResolvePipelineForCurrentRenderTarget(*resources, device, frame_render_target))
+                continue;
 
             if (input.dirty)
             {
@@ -472,48 +502,6 @@ namespace hgl::ecs
                                                                     sizeof(graph::layout::CharStyle));
                     if(auto *mgpu = resources->material_instance_buffer->GetGPUBuffer())
                         mgpu->Write(&resources->char_style, 0, upload_bytes);
-                }
-            }
-
-            if (!resources->pipeline)
-            {
-                resources->pipeline = render_pass->CreatePipeline(mi, graph::GraphicsPipelinePreset::Solid2D);
-                if (!resources->pipeline)
-                    continue;
-
-                ++frame_pipeline_attempts;
-                ++frame_pipeline_successes;
-                RecordPipelineResolveAttempt(g_text_pipeline_resolve_counters);
-                RecordPipelineResolveSuccess(g_text_pipeline_resolve_counters);
-            }
-            else
-            {
-                const graph::GraphicsPipelineData* template_pd = resources->pipeline->GetData();
-                if (template_pd)
-                {
-                    ++frame_pipeline_attempts;
-                    RecordPipelineResolveAttempt(g_text_pipeline_resolve_counters);
-
-                    graph::GraphicsPipeline* refreshed = render_pass->CreatePipeline(mi, template_pd, false);
-                    if (refreshed)
-                    {
-                        resources->pipeline = refreshed;
-                        ++frame_pipeline_successes;
-                        RecordPipelineResolveSuccess(g_text_pipeline_resolve_counters);
-
-                        if (resources->primitive)
-                            resources->primitive->UpdatePipeline(refreshed);
-                    }
-                    else
-                    {
-                        ++frame_pipeline_failures;
-                        const uint64_t failures_total = RecordPipelineResolveFailure(g_text_pipeline_resolve_counters);
-                        if (ShouldLogPow2(failures_total))
-                        {
-                            LogWarning("[ECS::TextRenderPipeline] GraphicsPipeline pre-resolve failed: total_failures=%llu",
-                                       static_cast<unsigned long long>(failures_total));
-                        }
-                    }
                 }
             }
 
@@ -568,22 +556,6 @@ namespace hgl::ecs
             }
 
             resources->last_string_count = static_cast<uint32_t>(input.texts.size());
-        }
-
-        uint64_t success_total = 0;
-        uint64_t failure_total = 0;
-        if (ShouldLogPipelineResolveFrameSummary(frame_pipeline_attempts,
-                                                 frame_pipeline_failures,
-                                                 g_text_pipeline_resolve_counters,
-                                                 success_total,
-                                                 failure_total))
-        {
-            LogDebug("[ECS::TextRenderPipeline] GraphicsPipeline resolve summary: attempts=%u success=%u fail=%u totals(s=%llu,f=%llu)",
-                     frame_pipeline_attempts,
-                     frame_pipeline_successes,
-                     frame_pipeline_failures,
-                     static_cast<unsigned long long>(success_total),
-                     static_cast<unsigned long long>(failure_total));
         }
     }
 

@@ -15,16 +15,16 @@ namespace hgl
     {
         class RenderContext;
         class GraphicsContext;
-        class RenderTargetFormat;
         class IRenderTarget;
         class VulkanDevice;
         class FontSource;
         class TileFont;
         class Material;
+        class GraphicsPipeline;
+        class RenderTargetFormat;
         class Primitive;
         class TextGeometry;
         class MaterialInstance;
-        class GraphicsPipeline;
         class Sampler;
         class DeviceBuffer;
         class MaterialManager;
@@ -46,6 +46,7 @@ namespace hgl
                 graph::TileFont* tile_font = nullptr;
                 graph::Material* material = nullptr;
                 graph::GraphicsPipeline* pipeline = nullptr;
+                graph::RenderTargetFormat* render_format = nullptr;
                 graph::Sampler* sampler = nullptr;
                 graph::DeviceBuffer* material_instance_buffer = nullptr;
 
@@ -78,7 +79,6 @@ namespace hgl
             graph::GraphicsContext* frame_graphics_context = nullptr;
             graph::MaterialManager* frame_material_manager = nullptr;
             graph::PrimitiveManager* frame_primitive_manager = nullptr;
-            graph::RenderTargetFormat* frame_render_pass = nullptr;
             graph::VulkanDevice* frame_device = nullptr;
             graph::IRenderTarget* frame_render_target = nullptr;
 
@@ -99,10 +99,13 @@ namespace hgl
         private:
             RenderResources* GetOrCreateResources(graph::FontSource* font_source, uint32_t estimate_chars);
 
+            bool ResolvePipelineForCurrentRenderTarget(RenderResources& resources,
+                                                       graph::VulkanDevice* device,
+                                                       graph::IRenderTarget* render_target);
+
             bool PrepareFrameResources(graph::GraphicsContext*& graphics_context,
                                        graph::MaterialManager*& material_manager,
                                        graph::PrimitiveManager*& primitive_manager,
-                                       graph::RenderTargetFormat*& render_pass,
                                        graph::VulkanDevice*& device,
                                        graph::IRenderTarget*& render_target);
 
@@ -112,7 +115,6 @@ namespace hgl
             void ProcessInputs(std::unordered_map<graph::FontSource*, BatchInput>& inputs,
                                graph::MaterialManager* material_manager,
                                graph::PrimitiveManager* primitive_manager,
-                               graph::RenderTargetFormat* render_pass,
                                graph::VulkanDevice* device);
 
             void ClearChanges(const std::vector<std::shared_ptr<TextComponent>>& texts);

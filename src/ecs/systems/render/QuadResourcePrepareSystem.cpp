@@ -13,21 +13,14 @@
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKFormat.h>
-#include<hgl/ecs/support/PipelineResolveMetrics.h>
 #include<cstdint>
 #include<unordered_map>
 
 namespace hgl::ecs
 {
-    namespace
-    {
-        PipelineResolveCounters g_quad_pipeline_resolve_counters;
-    }
-
     // Static member initialization
     graph::Primitive* QuadResourcePrepareSystem::shared_primitive = nullptr;
     graph::MaterialInstance* QuadResourcePrepareSystem::shared_material_instance = nullptr;
-    graph::GraphicsPipeline* QuadResourcePrepareSystem::shared_pipeline = nullptr;
     graph::RenderTargetFormat* QuadResourcePrepareSystem::shared_render_pass = nullptr;
     graph::Sampler* QuadResourcePrepareSystem::shared_sampler = nullptr;
 
@@ -128,45 +121,6 @@ namespace hgl::ecs
         return GraphicsPipelinePresetToBlendMode(g_default_quad_inline_pipeline);
     }
 
-    graph::GraphicsPipeline* QuadResourcePrepareSystem::CreateConfiguredPipeline(graph::RenderTargetFormat* render_pass,
-                                                                         graph::MaterialInstance* material_instance,
-                                                                         const ECSContext* world)
-    {
-        if (!render_pass || !material_instance)
-            return nullptr;
-
-        RecordPipelineResolveAttempt(g_quad_pipeline_resolve_counters);
-        const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
-
-        graph::GraphicsPipeline* pipeline = render_pass->CreatePipeline(material_instance, GetPresetForWorld(world));
-
-        const uint64_t vkcreate_after = graph::RenderTargetFormat::GetVkCreateCount();
-        const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
-
-        if (!pipeline)
-        {
-            const uint64_t failures = RecordPipelineResolveFailure(g_quad_pipeline_resolve_counters);
-            if (ShouldLogPow2(failures))
-            {
-                GLogWarning("[QuadResourcePrepareSystem] GraphicsPipeline resolve failed: total_failures=%llu",
-                            static_cast<unsigned long long>(failures));
-            }
-            return nullptr;
-        }
-
-        RecordPipelineResolveSuccess(g_quad_pipeline_resolve_counters);
-        if (ShouldLogPipelineResolveCreated(vkcreate_delta))
-        {
-            GLogInfo("[QuadResourcePrepareSystem] GraphicsPipeline resolve created vk pipelines=%llu (attempts=%llu successes=%llu failures=%llu)",
-                     static_cast<unsigned long long>(vkcreate_delta),
-                     static_cast<unsigned long long>(g_quad_pipeline_resolve_counters.attempts.load()),
-                     static_cast<unsigned long long>(g_quad_pipeline_resolve_counters.successes.load()),
-                     static_cast<unsigned long long>(g_quad_pipeline_resolve_counters.failures.load()));
-        }
-
-        return pipeline;
-    }
-
     QuadResourcePrepareSystem::QuadResourcePrepareSystem(const std::string& name)
         : System(name)
     {
@@ -233,9 +187,6 @@ namespace hgl::ecs
             return false;
 
         shared_material_instance->SetRenderPreset(GetPresetForWorld(world));
-
-        // Pipeline is resolved later in PrimitiveBatchPipeline using material-instance preset.
-        shared_pipeline = nullptr;
 
         // Create shared quad geometry (explicit quad for VS/FS-only billboard path)
         auto pc = std::make_unique<graph::GeometryCreater>(device, shared_material_instance->GetVIL());
@@ -306,7 +257,6 @@ namespace hgl::ecs
 
         shared_primitive = nullptr;
         shared_material_instance = nullptr;
-        shared_pipeline = nullptr;
         shared_render_pass = nullptr;
         shared_sampler = nullptr;
     }

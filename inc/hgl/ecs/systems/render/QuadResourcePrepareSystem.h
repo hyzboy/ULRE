@@ -12,7 +12,6 @@ namespace hgl
     {
         class Primitive;
         class MaterialInstance;
-        class GraphicsPipeline;
         class RenderTargetFormat;
         class Sampler;
     }
@@ -42,7 +41,6 @@ namespace hgl::ecs
         // Shared resources used by all quads
         static graph::Primitive* shared_primitive;
         static graph::MaterialInstance* shared_material_instance;
-        static graph::GraphicsPipeline* shared_pipeline;
         static graph::RenderTargetFormat* shared_render_pass;
         static graph::Sampler* shared_sampler;
 
@@ -58,7 +56,6 @@ namespace hgl::ecs
         // Accessors for shared resources
         static graph::Primitive* GetSharedPrimitive() { return shared_primitive; }
         static graph::MaterialInstance* GetSharedMaterialInstance() { return shared_material_instance; }
-        static graph::GraphicsPipeline* GetSharedPipeline() { return shared_pipeline; }
         static graph::Sampler* GetSharedSampler() { return shared_sampler; }
 
         static void SetPresetForWorld(const ECSContext* world, graph::GraphicsPipelinePreset preset);
@@ -77,9 +74,6 @@ namespace hgl::ecs
         static void SetPipeline(graph::GraphicsPipelinePreset pipeline);
         static graph::GraphicsPipelinePreset GetPipeline();
         static graph::BlendMode GetBlendMode();
-        static graph::GraphicsPipeline* CreateConfiguredPipeline(graph::RenderTargetFormat* render_pass,
-                     graph::MaterialInstance* material_instance,
-                     const ECSContext* world = nullptr);
 
     public:
 

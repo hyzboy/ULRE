@@ -121,15 +121,7 @@ namespace hgl::ecs
         if (auto *previous_mi = quad->GetOverrideMaterial())
             previous_material = previous_mi->GetMaterial();
 
-        auto *render_context = world->GetRenderContext();
-        auto *render_target = render_context ? render_context->GetCurrentRenderTarget() : nullptr;
-        auto *render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        if (!render_pass)
-            return false;
-
-        auto *pipeline = QuadResourcePrepareSystem::CreateConfiguredPipeline(render_pass, mi, world);
-        if (!pipeline)
-            return false;
+        mi->SetRenderPreset(QuadResourcePrepareSystem::GetPresetForWorld(world));
 
         graph::Primitive *current_primitive = quad->GetPrimitive();
         graph::Geometry *geometry = current_primitive ? current_primitive->GetGeometry() : nullptr;
@@ -146,9 +138,9 @@ namespace hgl::ecs
         graph::Primitive *quad_primitive = nullptr;
 
         if (current_primitive
+         && current_primitive != shared_primitive
          && current_primitive->GetMaterial() == mi->GetMaterial())
         {
-            current_primitive->UpdatePipeline(pipeline);
             if (!current_primitive->ChangeMaterialInstance(mi))
                 return false;
 
@@ -156,7 +148,7 @@ namespace hgl::ecs
         }
         else
         {
-            quad_primitive = primitive_manager->CreatePrimitive(geometry, mi, pipeline);
+            quad_primitive = primitive_manager->CreatePrimitive(geometry, mi);
             if (!quad_primitive)
                 return false;
 

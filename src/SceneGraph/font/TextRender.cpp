@@ -55,7 +55,6 @@ namespace hgl::graph
 
         mtl_fs      =nullptr;
         sampler     =nullptr;
-        pipeline    =nullptr;
         tile_font   =tf;
 
         fixed_style.CharColor=GetColor4ub(COLOR::White);
@@ -178,12 +177,11 @@ namespace hgl::graph
 
             vil_config.Add(VAN::Position,VF_V2I16);
 
-            mi_fs=mtl_manager->CreateMaterialInstance(mtl_fs,&vil_config,&fixed_style,sizeof(fixed_style));
+            mi_fs=mtl_manager->CreateMaterialInstance(mtl_fs,&vil_config,&fixed_style,sizeof(fixed_style),GraphicsPipelinePreset::Solid2D);
             if(!mi_fs)return(false);
         }
 
-        pipeline=rp->CreatePipeline(mi_fs,GraphicsPipelinePreset::Solid2D);
-        if(!pipeline)return(false);
+        (void)rp;
 
         if(!mtl_fs->BindTextureSampler(  mtl::SamplerSlot::Text,
                          tile_font->GetTexture(),
@@ -262,7 +260,7 @@ namespace hgl::graph
     Primitive *TextRender::CreatePrimitive(TextGeometry *text_geometry)
     {
         if(primitive_manager)
-            return primitive_manager->CreatePrimitive(text_geometry,mi_fs,pipeline);
+            return primitive_manager->CreatePrimitive(text_geometry,mi_fs);
 
         return(nullptr);
     }
