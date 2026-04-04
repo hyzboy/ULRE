@@ -45,6 +45,7 @@ struct MaterialAssetRecord
 {
     // ── 标识 ──────────────────────────────────────────────────────────────────
     std::string     id;                                     ///< 逻辑资产名（缓存键 / 文件名干）
+    std::string     domain_id;                              ///< 资源域标识（同 Material 不同域 = 不同渲染批次）
     MaterialPreset  preset  = MaterialPreset::Standard;     ///< 材质预设
 
     // ── 维度选择 ──────────────────────────────────────────────────────────────
