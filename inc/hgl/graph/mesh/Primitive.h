@@ -16,7 +16,6 @@ namespace hgl::graph{
 */
 class Primitive
 {
-    GraphicsPipelinePreRaster *  pipeline;
     MaterialInstance *  mat_inst;
     Geometry *          geometry;
 
@@ -31,16 +30,11 @@ private:
 
 public:
 
-    virtual ~Primitive()
-    {
-        //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
+    virtual ~Primitive();
 
-        SAFE_CLEAR(data_buffer);
-    }
+            void                UpdatePipeline      (GraphicsPipelinePreRaster *p);
 
-            void                UpdatePipeline      (GraphicsPipelinePreRaster *p){pipeline=p;}
-
-            GraphicsPipelinePreRaster * GetPipeline         (){return pipeline;}
+            GraphicsPipelinePreRaster * GetPipeline         () const;
             VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
             Material *          GetMaterial         (){return mat_inst->GetMaterial();}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
