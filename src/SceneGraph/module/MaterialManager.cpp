@@ -309,9 +309,16 @@ void MaterialManager::ApplyMaterialFinalizePlan(Material *mtl, const AnsiString 
 
 Material *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
 {
+    acquire_material_cache_lookups.fetch_add(1);
+
     Material *cached = nullptr;
     if(material_by_name.Get(name, cached))
+    {
+        acquire_material_cache_hits.fetch_add(1);
         return cached;
+    }
+
+    acquire_material_cache_misses.fetch_add(1);
 
     return nullptr;
 }
@@ -404,6 +411,7 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
     }
 
     Add(mtl);
+    acquire_material_created.fetch_add(1);
 
     material_by_name.Add(mtl_name,mtl);
     // Material is a C++ object managed by MaterialManager, not a Vulkan object
@@ -454,6 +462,8 @@ Material *MaterialManager::AcquireMaterial(const MaterialSpec &spec, MaterialSpe
 
 Material *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
+    acquire_material_requests.fetch_add(1);
+
     Material *mtl = CreateMaterial(mtl_id, cfg);
 
     if(out_key)
@@ -464,6 +474,8 @@ Material *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl
 
 Material *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
+    acquire_material_requests.fetch_add(1);
+
     Material *mtl = CreateMaterial(mtl_id, cfg);
 
     if(out_key)
@@ -474,6 +486,8 @@ Material *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl
 
 Material *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
+    acquire_material_requests.fetch_add(1);
+
     Material *mtl = CreateMaterial(key, cfg);
 
     if(out_key)
@@ -484,6 +498,8 @@ Material *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, m
 
 Material *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
+    acquire_material_requests.fetch_add(1);
+
     Material *mtl = CreateMaterial(key, cfg);
 
     if(out_key)
@@ -664,12 +680,11 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl)
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl, GraphicsPipelinePreset preset)
 {
-    MaterialInstance *mi = CreateMaterialInstance(mtl);
+    MaterialInstanceSpec spec;
+    spec.material = mtl;
+    spec.preset = preset;
 
-    if(mi)
-        mi->SetRenderPreset(preset);
-
-    return mi;
+    return AcquireMaterialInstance(spec, nullptr);
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil)
@@ -694,12 +709,12 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil, GraphicsPipelinePreset preset)
 {
-    MaterialInstance *mi = CreateMaterialInstance(mtl, vil);
+    MaterialInstanceSpec spec;
+    spec.material = mtl;
+    spec.vil = vil;
+    spec.preset = preset;
 
-    if(mi)
-        mi->SetRenderPreset(preset);
-
-    return mi;
+    return AcquireMaterialInstance(spec, nullptr);
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg)
@@ -724,12 +739,12 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg, GraphicsPipelinePreset preset)
 {
-    MaterialInstance *mi = CreateMaterialInstance(mtl, vil_cfg);
+    MaterialInstanceSpec spec;
+    spec.material = mtl;
+    spec.vil_cfg = vil_cfg;
+    spec.preset = preset;
 
-    if(mi)
-        mi->SetRenderPreset(preset);
-
-    return mi;
+    return AcquireMaterialInstance(spec, nullptr);
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil,const void *mi_data,const uint32 mi_bytes)
@@ -802,6 +817,8 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
 
 MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)
 {
+    acquire_mi_requests.fetch_add(1);
+
     if(!spec.IsValid())
         return nullptr;
 
@@ -824,6 +841,8 @@ MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanc
 
     if(!mi)
         return nullptr;
+
+    acquire_mi_created.fetch_add(1);
 
     mi->SetRenderPreset(spec.preset);
 

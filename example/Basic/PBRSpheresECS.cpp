@@ -153,7 +153,7 @@ private:
         cfg.lighting_model = mtl::LightingModel::PBR;
         cfg.SetTextureSourceModeOverride(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
         cfg.SetTextureSourceModeOverride(mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array);
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
+        material = material_manager->AcquireMaterial(mtl::MaterialPreset::Standard, &cfg);
         if (!material) {
             printf("[ERROR] InitMaterial: Failed to create Standard+Array material\n");
             return false;
@@ -311,8 +311,14 @@ private:
                 store.roughness = d.roughness;
                 store.normal_scale = d.normal_scale;
 
-                sphere_mi[row][col] = material_manager->CreateMaterialInstance(
-                    material, (VIL *)nullptr, &d, GraphicsPipelinePreset::Solid3D);
+                MaterialInstanceSpec mi_spec;
+                mi_spec.material = material;
+                mi_spec.vil = nullptr;
+                mi_spec.instance_data = &d;
+                mi_spec.instance_data_size = sizeof(d);
+                mi_spec.preset = GraphicsPipelinePreset::Solid3D;
+
+                sphere_mi[row][col] = material_manager->AcquireMaterialInstance(mi_spec);
 
                 if (!sphere_mi[row][col]) {
                     printf("[ERROR] CreateStandardMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
@@ -563,7 +569,15 @@ private:
             return false;
 
         mtl::SkyMinimalCreateConfig sky_cfg;
-        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &sky_cfg, GraphicsPipelinePreset::Sky);
+        Material *sky_material = material_manager->AcquireMaterial(mtl::MaterialPreset::SkyMinimal, &sky_cfg);
+        if (!sky_material)
+            return false;
+
+        MaterialInstanceSpec sky_mi_spec;
+        sky_mi_spec.material = sky_material;
+        sky_mi_spec.vil = nullptr;
+        sky_mi_spec.preset = GraphicsPipelinePreset::Sky;
+        mi_sky_sphere = material_manager->AcquireMaterialInstance(sky_mi_spec);
         if (!mi_sky_sphere)
             return false;
 

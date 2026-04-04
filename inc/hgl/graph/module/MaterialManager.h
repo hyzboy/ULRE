@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <atomic>
+#include <cstdio>
 
 namespace hgl::graph{
 
@@ -83,6 +85,21 @@ struct MaterialInstanceSpec
     bool IsValid() const { return material || domain; }
 };
 
+struct MaterialAcquireStats
+{
+    uint64_t requests = 0;
+    uint64_t cache_lookups = 0;
+    uint64_t cache_hits = 0;
+    uint64_t cache_misses = 0;
+    uint64_t created = 0;
+};
+
+struct MaterialInstanceAcquireStats
+{
+    uint64_t requests = 0;
+    uint64_t created = 0;
+};
+
 constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;//GetBitOffset((uint32_t)VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)+1;
 
 GRAPH_MODULE_CLASS(MaterialManager)
@@ -97,6 +114,15 @@ private:
 
     // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding
     std::unordered_map<ResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
+
+    std::atomic<uint64_t> acquire_material_requests {0};
+    std::atomic<uint64_t> acquire_material_cache_lookups {0};
+    std::atomic<uint64_t> acquire_material_cache_hits {0};
+    std::atomic<uint64_t> acquire_material_cache_misses {0};
+    std::atomic<uint64_t> acquire_material_created {0};
+
+    std::atomic<uint64_t> acquire_mi_requests {0};
+    std::atomic<uint64_t> acquire_mi_created {0};
 
 private:
 
@@ -156,6 +182,22 @@ public: // Override Release from GraphModule - cleanup all resources
 
     void Release() override
     {
+        const MaterialAcquireStats mat_stats = GetMaterialAcquireStats();
+        const MaterialInstanceAcquireStats mi_stats = GetMaterialInstanceAcquireStats();
+
+        if (mat_stats.requests > 0 || mi_stats.requests > 0)
+        {
+            std::fprintf(stderr,
+                "[MaterialManager] AcquireStats: material(req=%llu lookup=%llu hit=%llu miss=%llu created=%llu) mi(req=%llu created=%llu)\n",
+                static_cast<unsigned long long>(mat_stats.requests),
+                static_cast<unsigned long long>(mat_stats.cache_lookups),
+                static_cast<unsigned long long>(mat_stats.cache_hits),
+                static_cast<unsigned long long>(mat_stats.cache_misses),
+                static_cast<unsigned long long>(mat_stats.created),
+                static_cast<unsigned long long>(mi_stats.requests),
+                static_cast<unsigned long long>(mi_stats.created));
+        }
+
         // 清理所有材质实例（MI dtor 会调 domain->FreeMISlot，domain 须在此之后释放）
         if (rm_material_instance.GetCount() > 0)
             rm_material_instance.Clear();
@@ -184,6 +226,8 @@ public: // Override Release from GraphModule - cleanup all resources
             }
             stage_map.Clear();
         }
+
+        ResetAcquireStats();
     }
 
 public: //Shader
@@ -206,6 +250,38 @@ public: //ShaderGen Profiler (debug entry, collect-only)
 
     std::map<std::string, uint32_t> GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count = 128) const;
 
+public: // Acquire stats
+
+    MaterialAcquireStats GetMaterialAcquireStats() const
+    {
+        MaterialAcquireStats s;
+        s.requests = acquire_material_requests.load();
+        s.cache_lookups = acquire_material_cache_lookups.load();
+        s.cache_hits = acquire_material_cache_hits.load();
+        s.cache_misses = acquire_material_cache_misses.load();
+        s.created = acquire_material_created.load();
+        return s;
+    }
+
+    MaterialInstanceAcquireStats GetMaterialInstanceAcquireStats() const
+    {
+        MaterialInstanceAcquireStats s;
+        s.requests = acquire_mi_requests.load();
+        s.created = acquire_mi_created.load();
+        return s;
+    }
+
+    void ResetAcquireStats()
+    {
+        acquire_material_requests.store(0);
+        acquire_material_cache_lookups.store(0);
+        acquire_material_cache_hits.store(0);
+        acquire_material_cache_misses.store(0);
+        acquire_material_created.store(0);
+        acquire_mi_requests.store(0);
+        acquire_mi_created.store(0);
+    }
+
 public: //Material
 
     Material *          AcquireMaterial (const MaterialSpec &spec, MaterialSpecKey *out_key = nullptr);
@@ -225,15 +301,20 @@ public: //MaterialInstanceData
     bool                UpdateInstanceData(MaterialInstance *mi, const void *data, const uint32 data_size);
 
     MaterialInstance *  CreateMaterialInstance(Material *);
+    [[deprecated("Use AcquireMaterialInstance(MaterialInstanceSpec) instead")]]
     MaterialInstance *  CreateMaterialInstance(Material *, GraphicsPipelinePreset);
     MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil);
+    [[deprecated("Use AcquireMaterialInstance(MaterialInstanceSpec) instead")]]
     MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil, GraphicsPipelinePreset);
     MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg);
+    [[deprecated("Use AcquireMaterialInstance(MaterialInstanceSpec) instead")]]
     MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg, GraphicsPipelinePreset);
 
     MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil, const void *, const uint32);
+    [[deprecated("Use AcquireMaterialInstance(MaterialInstanceSpec) instead")]]
     MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil, const void *, const uint32, GraphicsPipelinePreset);
     MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg, const void *, const uint32);
+    [[deprecated("Use AcquireMaterialInstance(MaterialInstanceSpec) instead")]]
     MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg, const void *, const uint32, GraphicsPipelinePreset);
 
     template<typename T>
@@ -261,6 +342,7 @@ public: //MaterialInstanceData
     }
 
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
+    [[deprecated("Use AcquireMaterial + AcquireMaterialInstance(MaterialInstanceSpec) instead")]]
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size, GraphicsPipelinePreset);
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
     {
@@ -272,6 +354,7 @@ public: //MaterialInstanceData
     }
 
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
+    [[deprecated("Use AcquireMaterial + AcquireMaterialInstance(MaterialInstanceSpec) instead")]]
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size, GraphicsPipelinePreset);
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
     {

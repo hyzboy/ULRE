@@ -152,12 +152,18 @@ public:
                                           mtl::IncludeL2W::With,
                                           mtl::IncludeSky::Without);
 
-        mtl = mm->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg3d);
+        mtl = mm->AcquireMaterial(mtl::MaterialPreset::Gizmo3D, &cfg3d);
         if (!mtl)
             return false;
 
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        mi = mm->CreateMaterialInstance(mtl, (VIL*)nullptr, &sphere_color, GraphicsPipelinePreset::Solid3D);
+        MaterialInstanceSpec sphere_mi_spec;
+        sphere_mi_spec.material = mtl;
+        sphere_mi_spec.vil = nullptr;
+        sphere_mi_spec.instance_data = &sphere_color;
+        sphere_mi_spec.instance_data_size = sizeof(sphere_color);
+        sphere_mi_spec.preset = GraphicsPipelinePreset::Solid3D;
+        mi = mm->AcquireMaterialInstance(sphere_mi_spec);
         if (!mi)
             return false;
 
@@ -296,7 +302,7 @@ private:
                                           mtl::IncludeL2W::With,
                                           mtl::IncludeSky::With);
 
-        cube_mtl = mm->CreateMaterial(mtl::MaterialPreset::Standard, &cfg3d);
+        cube_mtl = mm->AcquireMaterial(mtl::MaterialPreset::Standard, &cfg3d);
         if (!cube_mtl)
             return false;
 
@@ -334,7 +340,13 @@ private:
         cube_mi_data.roughness = 0.92f;
         cube_mi_data.normal_scale = 0.35f;
 
-        cube_mi = mm->CreateMaterialInstance(cube_mtl, (VIL*)nullptr, &cube_mi_data, GraphicsPipelinePreset::Solid3D);
+        MaterialInstanceSpec cube_mi_spec;
+        cube_mi_spec.material = cube_mtl;
+        cube_mi_spec.vil = nullptr;
+        cube_mi_spec.instance_data = &cube_mi_data;
+        cube_mi_spec.instance_data_size = sizeof(cube_mi_data);
+        cube_mi_spec.preset = GraphicsPipelinePreset::Solid3D;
+        cube_mi = mm->AcquireMaterialInstance(cube_mi_spec);
         if (!cube_mi)
             return false;
 

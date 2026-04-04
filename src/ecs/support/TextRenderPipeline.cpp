@@ -490,7 +490,12 @@ namespace hgl::ecs
                 graph::VILConfig vil_config;
                 vil_config.Add(graph::VAN::Position, VF_V2I16);
 
-                mi = material_manager->CreateMaterialInstance(resources->material, &vil_config, graph::GraphicsPipelinePreset::Solid2D);
+                graph::MaterialInstanceSpec mi_spec;
+                mi_spec.material = resources->material;
+                mi_spec.vil_cfg = &vil_config;
+                mi_spec.preset = graph::GraphicsPipelinePreset::Solid2D;
+
+                mi = material_manager->AcquireMaterialInstance(mi_spec);
                 if (!mi)
                     continue;
 

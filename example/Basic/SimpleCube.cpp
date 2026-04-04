@@ -65,14 +65,21 @@ private:
         if (!material_manager)
             return false;
 
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
+        material = material_manager->AcquireMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
 
         if(!material)
             return false;
 
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
-        mi = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &color, GraphicsPipelinePreset::Solid3D);
+        MaterialInstanceSpec mi_spec;
+        mi_spec.material = material;
+        mi_spec.vil = nullptr;
+        mi_spec.instance_data = &color;
+        mi_spec.instance_data_size = sizeof(color);
+        mi_spec.preset = GraphicsPipelinePreset::Solid3D;
+
+        mi = material_manager->AcquireMaterialInstance(mi_spec);
 
         if(!mi)
             return false;

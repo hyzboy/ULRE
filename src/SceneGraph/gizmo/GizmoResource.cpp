@@ -87,7 +87,14 @@ namespace hgl::graph
             {
                 color=GetColor4f(gizmo_color[i],1.0);
 
-                gr->mi[i]=gizmo_mtl_manager->CreateMaterialInstance(gr->mtl,(VIL *)nullptr,&color,GraphicsPipelinePreset::GizmoOverlay3D);
+                MaterialInstanceSpec mi_spec;
+                mi_spec.material = gr->mtl;
+                mi_spec.vil = nullptr;
+                mi_spec.instance_data = &color;
+                mi_spec.instance_data_size = sizeof(color);
+                mi_spec.preset = GraphicsPipelinePreset::GizmoOverlay3D;
+
+                gr->mi[i]=gizmo_mtl_manager->AcquireMaterialInstance(mi_spec);
 
                 if(!gr->mi[i])
                     return(false);

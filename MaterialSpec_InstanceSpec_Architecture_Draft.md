@@ -1,6 +1,22 @@
 # 材质规格化架构草案（MaterialSpec / MaterialInstanceSpec）
 日期: 2026-04-04  
-状态: Draft v0.2
+状态: Draft v0.3
+
+## 0. 实现进展（2026-04-04）
+### 已完成
+1. `MaterialManager` 已新增规格化 API：`AcquireMaterial`、`AcquireMaterialInstance`、`UpdateInstanceData`。
+2. 旧 `CreateMaterialInstance(..., GraphicsPipelinePreset)` 关键重载已内部转调到 `AcquireMaterialInstance`。
+3. 示例迁移完成并通过编译：`SimpleCube`、`RenderToTexture`、`PBRSpheresECS`。
+4. 已接入第一版统计：Material/MI Acquire 请求数、缓存查找命中/未命中、创建数。
+
+### 统计接口（已落地）
+1. `GetMaterialAcquireStats()`
+2. `GetMaterialInstanceAcquireStats()`
+3. `ResetAcquireStats()`
+
+### 待完成
+1. 继续收口其余旧 `CreateMaterialInstance` 入口到统一适配路径。
+2. 将统计接入调试日志或 profiler 面板。
 
 ## 1. 目标与原则
 ### 1.1 目标
@@ -179,6 +195,14 @@
 3. Pipeline 命中率在稳定场景持续上升。
 4. 无因参数更新导致的对象重建抖动。
 5. 无 descriptor 绑定错位与层索引错位。
+6. 退出时可看到 `MaterialManager` 输出 Acquire 统计汇总日志（请求、查找、命中、未命中、创建）。
+
+### 8.1 统计日志人工验收步骤
+1. 运行任意已迁移示例：`07_SimpleCube`、`12_RenderToTexture`、`08_PBRSpheresECS`。
+2. 正常退出程序窗口。
+3. 观察 stderr/调试输出，存在如下格式日志：
+   - `[MaterialManager] AcquireStats: material(req=... lookup=... hit=... miss=... created=...) mi(req=... created=...)`
+4. 多次运行后，稳定场景应表现为：`created` 增速低于 `requests`，且 `hit` 占比逐步提升。
 
 ## 9. 风险与规避
 1. 风险：Key 字段过多导致组合爆炸。
@@ -196,3 +220,8 @@
 5. 先迁移 2 个示例：
    - SimpleCube
    - PBRSpheresECS
+
+## 11. 当前实现状态（代码）
+1. 已迁移示例：`SimpleCube`、`RenderToTexture`、`PBRSpheresECS`。
+2. 引擎内核心调用点已迁移：`TextRenderPipeline`、`TextRender`、`GizmoResource`。
+3. 旧 `CreateMaterialInstance(..., GraphicsPipelinePreset)` 重载已加 `[[deprecated]]` 标记并保留兼容。
