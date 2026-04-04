@@ -18,6 +18,8 @@
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKMaterialInstance.h>   // Phase 4: GetDomain()
+#include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
@@ -507,35 +509,42 @@ namespace hgl::ecs
             auto* pipeline = item->GetPipeline();
 
             // Stage-4 prework: resolve pipeline before renderer hot path.
-            // Reuse current pipeline's GraphicsPipelineData as creation template.
+            // Resolve from MaterialInstance preset instead of depending on an existing pipeline.
             if (material && render_format)
             {
                 const graph::GraphicsPipelineData* pipeline_data = nullptr;
                 const graph::VIL* vil = nullptr;
                 bool prim_restart = false;
+                graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid3D;
 
                 auto* mi = item->GetMaterialInstance();
                 if (mi)
+                {
                     vil = mi->GetVIL();
-
-                if (!vil && pipeline)
-                    vil = pipeline->GetVIL();
+                    preset = mi->GetRenderPreset();
+                }
 
                 if (!vil)
                     vil = material->GetDefaultVIL();
 
-                if (pipeline && pipeline->GetData())
-                {
-                    pipeline_data = pipeline->GetData();
+                pipeline_data = graph::GetGraphicsPipelineData(preset);
+                if (pipeline_data)
                     prim_restart = (pipeline_data->input_assembly.primitiveRestartEnable == VK_TRUE);
-                }
 
-                if (vil && pipeline_data)
+                if (vil && pipeline_data && device)
                 {
                     ++frame_attempts;
                     RecordPipelineResolveAttempt(g_pipeline_preresolve_counters);
 
-                    if (graph::GraphicsPipeline* acquired = render_format->CreatePipeline(material, vil, pipeline_data, prim_restart))
+                    graph::GraphicsPipelineBuildRequest req;
+                    req.material = material;
+                    req.vil = vil;
+                    req.render_format = render_format;
+                    req.pipeline_data = pipeline_data;
+                    req.primitive = material->GetPrimitiveType();
+                    req.primitive_restart = prim_restart;
+
+                    if (graph::GraphicsPipeline* acquired = device->AcquireGraphicsPipeline(req))
                     {
                         if (auto* primitive = item->GetPrimitive())
                             primitive->UpdatePipeline(acquired);
@@ -551,10 +560,11 @@ namespace hgl::ecs
 
                         if (ShouldLogPow2(failures_total))
                         {
-                            LogWarning("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve failed: frame_failures=%u total_failures=%llu material=%s",
+                            LogWarning("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve failed: frame_failures=%u total_failures=%llu material=%s preset=%d",
                                        frame_failures,
                                        static_cast<unsigned long long>(failures_total),
-                                       material->GetName().c_str());
+                                       material->GetName().c_str(),
+                                       int(preset));
                         }
                         // Keep original pipeline to preserve rendering continuity.
                     }
@@ -565,9 +575,11 @@ namespace hgl::ecs
                     const uint64_t skips_total = ++g_pipeline_preresolve_skips;
                     if (ShouldLogPow2(skips_total))
                     {
-                        LogDebug("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve skipped: missing template data (vil=%p pipeline_data=%p), total_skips=%llu",
+                        LogDebug("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve skipped: missing data (vil=%p pipeline_data=%p device=%p preset=%d), total_skips=%llu",
                                  static_cast<const void *>(vil),
                                  static_cast<const void *>(pipeline_data),
+                                 static_cast<const void *>(device),
+                                 int(preset),
                                  static_cast<unsigned long long>(skips_total));
                     }
                 }
