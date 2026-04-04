@@ -45,7 +45,6 @@ private:
     Entity *camera_entity = nullptr;
 
     Material *material = nullptr;
-    GraphicsPipeline *pipeline = nullptr;
 
     VertexDataManager *mesh_vdm = nullptr;
     Geometry *builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
@@ -60,7 +59,6 @@ private:
     double elapsed_time = 0.0;
 
     MaterialInstance* mi_sky_sphere = nullptr;
-    GraphicsPipeline* sky_pipeline = nullptr;
     Geometry* prim_sky_sphere = nullptr;
     Entity* sky_entity = nullptr;
 
@@ -125,16 +123,6 @@ private:
             return false;
         }
 
-        auto *render_target = render_context->GetCurrentRenderTarget();
-        auto *render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, GraphicsPipelinePreset::Solid3D) : nullptr;
-
-        if (!pipeline)
-        {
-            printf("[ERROR] InitMaterial: Failed to create pipeline\n");
-            return false;
-        }
-
         return true;
     }
 
@@ -178,7 +166,7 @@ private:
                 store.metallic = d.metallic;
                 store.roughness = d.roughness;
 
-                sphere_mi[row][col] = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &d);
+                sphere_mi[row][col] = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &d, GraphicsPipelinePreset::Solid3D);
                 if (!sphere_mi[row][col])
                 {
                     printf("[ERROR] CreatePBRColorMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
@@ -357,7 +345,7 @@ private:
 
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
-            base_primitives[i] = primitive_manager->CreatePrimitive(builtin_geometries[i], sphere_mi[0][i], pipeline);
+            base_primitives[i] = primitive_manager->CreatePrimitive(builtin_geometries[i], sphere_mi[0][i]);
 
             if (!base_primitives[i])
             {
@@ -428,14 +416,8 @@ private:
             return false;
 
         mtl::SkyMinimalCreateConfig sky_cfg;
-        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &sky_cfg);
+        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &sky_cfg, GraphicsPipelinePreset::Sky);
         if (!mi_sky_sphere)
-            return false;
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        sky_pipeline = render_pass ? render_pass->CreatePipeline(mi_sky_sphere, GraphicsPipelinePreset::Sky) : nullptr;
-        if (!sky_pipeline)
             return false;
 
         {
@@ -450,7 +432,7 @@ private:
             geometry_manager->Add(prim_sky_sphere);
         }
 
-        Primitive* ri = primitive_manager->CreatePrimitive(prim_sky_sphere, mi_sky_sphere, sky_pipeline);
+        Primitive* ri = primitive_manager->CreatePrimitive(prim_sky_sphere, mi_sky_sphere);
         if (!ri)
             return false;
 

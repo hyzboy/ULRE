@@ -11,9 +11,6 @@ namespace hgl::graph
     class VertexInputLayout;
     using VIL = VertexInputLayout;
 
-    // Forward-declared in VKGraphicsPipeline.h
-    class GraphicsPipeline;
-
     /**
      * LoadStaticMeshScene - 从 .scene minipack 文件加载场景树到 StaticMesh
      *
@@ -22,7 +19,6 @@ namespace hgl::graph
      * @param vil             顶点输入布局，必须与 default_mi 的材质匹配
      * @param mi_array        材质实例数组，按 material_index % mi_count 路由颜色
      * @param mi_count        数组长度
-     * @param default_pipeline 默认管线，对所有 primitive 使用同一管线
      * @param pack_path       .scene minipack 文件的完整路径
      * @param base_dir        .geometry 文件所在目录（通常就是 pack 文件所在目录）
      *
@@ -36,7 +32,6 @@ namespace hgl::graph
         const VIL                *vil,
         MaterialInstance * const *mi_array,
         int                       mi_count,
-        GraphicsPipeline                 *default_pipeline,
         const OSString           &pack_path,
         const OSString           &base_dir);
 

@@ -61,7 +61,6 @@ private:
     // 传统渲染资源
     MaterialInstance *  material_instance   =nullptr;
     Primitive *         prim_triangle       =nullptr;
-    GraphicsPipeline *  pipeline            =nullptr;
 
 private:
 
@@ -93,24 +92,9 @@ private:
 
         vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
-        material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor2D,&cfg,&vil_config);
+        material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor2D,&cfg,GraphicsPipelinePreset::Solid2D,&vil_config);
 
-        if(!material_instance)
-            return(false);
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material_instance, GraphicsPipelinePreset::Solid2D) : nullptr;
-
-        if (pipeline)
-            std::cout << "[TestApp::InitMaterial] Created GraphicsPipeline in RenderPass (render_pass*=0x" << std::hex << (uintptr_t)render_pass
-                      << ", VkPipeline=0x" << (VkPipeline)(*pipeline) << std::dec
-                      << ", GraphicsPipeline*=0x" << (uintptr_t)pipeline << ")" << std::endl;
-        else
-            std::cout << "[TestApp::InitMaterial] FAILED to create GraphicsPipeline (render_target=0x" << std::hex << (uintptr_t)render_target
-                      << ", render_pass=0x" << (uintptr_t)render_pass << std::dec << ")" << std::endl;
-
-        return pipeline != nullptr;
+        return material_instance != nullptr;
     }
 
     bool InitVBO()
@@ -149,7 +133,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        prim_triangle = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        prim_triangle = primitive_manager->CreatePrimitive(geometry, material_instance);
 
         if(!prim_triangle)
             return(false);

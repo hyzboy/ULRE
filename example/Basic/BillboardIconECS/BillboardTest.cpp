@@ -92,12 +92,10 @@ private:
 
     Material *          mtl_plane_grid      = nullptr;
     MaterialInstance *  mi_plane_grid       = nullptr;
-    GraphicsPipeline *          pipeline_plane_grid = nullptr;
     Geometry *          geom_plane_grid     = nullptr;
     Primitive *         prim_plane_grid     = nullptr;
 
     MaterialInstance *  mi_billboard        = nullptr;
-    GraphicsPipeline *          pipeline_billboard  = nullptr;
     Primitive *         prim_billboard      = nullptr;
 
     Texture2D *         texture             = nullptr;
@@ -134,19 +132,11 @@ private:
         VILConfig vil_config;
         vil_config.Add(VAN::Luminance, VF_V1UN8);
 
-        mi_plane_grid = material_manager->CreateMaterialInstance(mtl_plane_grid, &vil_config, &white_color);
+        mi_plane_grid = material_manager->CreateMaterialInstance(mtl_plane_grid, &vil_config, &white_color, GraphicsPipelinePreset::Solid3D);
         if(!mi_plane_grid)
             return false;
 
         std::cout << "[BillboardECS] PlaneGrid MI: " << (void*)mi_plane_grid << std::endl;
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, GraphicsPipelinePreset::Solid3D) : nullptr;
-        if(!pipeline_plane_grid)
-            return false;
-
-        std::cout << "[BillboardECS] PlaneGrid pipeline: " << (void*)pipeline_plane_grid << std::endl;
 
         return true;
     }
@@ -168,20 +158,12 @@ private:
         mtl::BillboardMaterialCreateConfig cfg(PrimitiveType::Billboard);
         cfg.fixed_size = true;
 
-        mi_billboard = material_manager->CreateMaterialInstance(mtl::MaterialPreset::Billboard2DFixed, &cfg);
+        mi_billboard = material_manager->CreateMaterialInstance(mtl::MaterialPreset::Billboard2DFixed, &cfg, GraphicsPipelinePreset::Solid3D);
         if(!mi_billboard)
             return false;
 
         std::cout << "[BillboardECS] Billboard MI: " << (void*)mi_billboard
                   << ", Material: " << (void*)mi_billboard->GetMaterial() << std::endl;
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline_billboard = render_pass ? render_pass->CreatePipeline(mi_billboard, GraphicsPipelinePreset::Solid3D) : nullptr;
-        if(!pipeline_billboard)
-            return false;
-
-        std::cout << "[BillboardECS] Billboard pipeline: " << (void*)pipeline_billboard << std::endl;
 
         return true;
     }
@@ -265,7 +247,7 @@ private:
                 return false;
 
             geometry_manager->Add(geom_plane_grid);
-            prim_plane_grid = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
+            prim_plane_grid = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid);
             if(!prim_plane_grid)
                 return false;
 
@@ -284,7 +266,7 @@ private:
             if(!pc->WriteIBO(billboard_index_data))
                 return false;
 
-            prim_billboard = primitive_manager->CreatePrimitive(pc.get(), mi_billboard, pipeline_billboard);
+            prim_billboard = primitive_manager->CreatePrimitive(pc.get(), mi_billboard);
             if(!prim_billboard)
                 return false;
 

@@ -50,7 +50,6 @@ private:
 
     Material* material = nullptr;
     MaterialInstance* material_instance = nullptr;
-    GraphicsPipeline* pipeline = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
@@ -62,7 +61,6 @@ private:
     std::vector<std::unique_ptr<RenderMesh>> meshes;
 
     MaterialInstance* mi_sky_sphere = nullptr;
-    GraphicsPipeline* sky_pipeline = nullptr;
     Geometry* prim_sky_sphere = nullptr;
     Entity* sky_entity = nullptr;
 
@@ -123,15 +121,11 @@ private:
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
 
-        material_instance = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &mi_data);
+        material_instance = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &mi_data, GraphicsPipelinePreset::Solid3D);
         if (!material_instance)
             return false;
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, GraphicsPipelinePreset::Solid3D) : nullptr;
-
-        return pipeline != nullptr;
+        return true;
     }
 
     bool InitVDM()
@@ -178,7 +172,7 @@ private:
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
         if (!primitive)
             return nullptr;
 
@@ -483,14 +477,8 @@ private:
             return false;
 
         mtl::SkyMinimalCreateConfig sky_cfg;
-        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &sky_cfg);
+        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &sky_cfg, GraphicsPipelinePreset::Sky);
         if (!mi_sky_sphere)
-            return false;
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        sky_pipeline = render_pass ? render_pass->CreatePipeline(mi_sky_sphere, GraphicsPipelinePreset::Sky) : nullptr;
-        if (!sky_pipeline)
             return false;
 
         {
@@ -505,7 +493,7 @@ private:
             geometry_manager->Add(prim_sky_sphere);
         }
 
-        Primitive* ri = primitive_manager->CreatePrimitive(prim_sky_sphere, mi_sky_sphere, sky_pipeline);
+        Primitive* ri = primitive_manager->CreatePrimitive(prim_sky_sphere, mi_sky_sphere);
         if (!ri)
             return false;
 

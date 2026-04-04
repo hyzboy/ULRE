@@ -36,7 +36,6 @@ private:
 
     Material *          material        = nullptr;
     MaterialInstance *  mi              = nullptr;
-    GraphicsPipeline *  pipeline        = nullptr;
 
     Geometry *          geometry        = nullptr;
     Primitive *         primitive       = nullptr;
@@ -66,16 +65,12 @@ private:
 
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
-        mi = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &color);
+        mi = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &color, GraphicsPipelinePreset::Solid3D);
 
         if(!mi)
             return false;
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, GraphicsPipelinePreset::Solid3D) : nullptr;
-
-        return pipeline != nullptr;
+        return mi != nullptr;
     }
 
     bool CreateTubeGeometry()
@@ -130,7 +125,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        primitive = primitive_manager->CreatePrimitive(geometry, mi, pipeline);
+        primitive = primitive_manager->CreatePrimitive(geometry, mi);
         return primitive != nullptr;
     }
 

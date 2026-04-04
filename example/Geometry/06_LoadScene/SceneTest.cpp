@@ -58,7 +58,6 @@ private:
         Material *material = nullptr;
         const VIL *vil = nullptr;
 
-        GraphicsPipeline *pipeline = nullptr;
         MaterialInstance *mi[COLOR_COUNT]{};
     };
 
@@ -99,7 +98,7 @@ private:
         {
             color = GetColor4f(TestColor[i],1.0);
 
-            md->mi[i] = material_manager->CreateMaterialInstance(md->material,(VIL *)nullptr,&color);
+            md->mi[i] = material_manager->CreateMaterialInstance(md->material,(VIL *)nullptr,&color,GraphicsPipelinePreset::Solid3D);
 
             if(!md->mi[i])
                 return(false);
@@ -110,11 +109,7 @@ private:
         if(!md->vil)
             return(false);
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        md->pipeline = render_pass ? render_pass->CreatePipeline(md->material, GraphicsPipelinePreset::Solid3D) : nullptr;
-
-        return md->pipeline;
+        return md->vil != nullptr;
     }
 
     bool InitSolidMDP()
@@ -161,7 +156,7 @@ private:
 
         scene_mesh_ = LoadStaticMeshScene(
             device, geo_mgr,
-            solid.vil, solid.mi, (int)COLOR_COUNT, solid.pipeline,
+            solid.vil, solid.mi, (int)COLOR_COUNT,
             pack_path, base_dir);
 
         return scene_mesh_ != nullptr;

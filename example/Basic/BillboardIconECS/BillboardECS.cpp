@@ -60,7 +60,6 @@ private:
     // PlaneGrid resources
     Material* mtl_plane_grid = nullptr;
     MaterialInstance* mi_plane_grid = nullptr;
-    GraphicsPipeline* pipeline_plane_grid = nullptr;
     Geometry* geom_plane_grid = nullptr;
     Primitive* prim_plane_grid = nullptr;
 
@@ -95,18 +94,10 @@ private:
         VILConfig vil_config;
         vil_config.Add(VAN::Luminance, VF_V1UN8);
 
-        mi_plane_grid = material_manager->CreateMaterialInstance(mtl_plane_grid, &vil_config, &white_color);
+        mi_plane_grid = material_manager->CreateMaterialInstance(mtl_plane_grid, &vil_config, &white_color, GraphicsPipelinePreset::Solid3D);
         if (!mi_plane_grid) return false;
 
         std::cout << "[BillboardECS] PlaneGrid MI: " << (void*)mi_plane_grid << std::endl;
-
-        // Create pipeline
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, GraphicsPipelinePreset::Solid3D) : nullptr;
-        if (!pipeline_plane_grid) return false;
-
-        std::cout << "[BillboardECS] PlaneGrid pipeline: " << (void*)pipeline_plane_grid << std::endl;
 
         return true;
     }
@@ -145,7 +136,7 @@ private:
             if (!geom_plane_grid) return false;
 
             geometry_manager->Add(geom_plane_grid);
-            prim_plane_grid = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
+            prim_plane_grid = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid);
             if (!prim_plane_grid) return false;
 
             std::cout << "[BillboardECS] PlaneGrid geometry: " << (void*)geom_plane_grid

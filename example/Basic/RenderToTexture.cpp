@@ -63,7 +63,6 @@ private:
 
     Material *mtl = nullptr;
     MaterialInstance *mi = nullptr;
-    GraphicsPipeline *pipeline = nullptr;
     Geometry *geometry = nullptr;
     Primitive *primitive = nullptr;
 
@@ -104,7 +103,6 @@ public:
         geometry = nullptr;
         mi = nullptr;
         mtl = nullptr;
-        pipeline = nullptr;
     }
 
     Texture2D *GetColorTexture() const
@@ -158,13 +156,8 @@ public:
         if (!mtl)
             return false;
 
-        auto *rp = runtime.GetRenderTarget()->GetRenderFormat();
-        pipeline = rp ? rp->CreatePipeline(mtl, GraphicsPipelinePreset::Solid3D) : nullptr;
-        if (!pipeline)
-            return false;
-
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        mi = mm->CreateMaterialInstance(mtl, (VIL*)nullptr, &sphere_color);
+        mi = mm->CreateMaterialInstance(mtl, (VIL*)nullptr, &sphere_color, GraphicsPipelinePreset::Solid3D);
         if (!mi)
             return false;
 
@@ -175,7 +168,7 @@ public:
 
         gm->Add(geometry);
 
-        primitive = pm->CreatePrimitive(geometry, mi, pipeline);
+        primitive = pm->CreatePrimitive(geometry, mi);
         if (!primitive)
             return false;
 
@@ -227,7 +220,6 @@ private:
 
     Material *cube_mtl = nullptr;
     MaterialInstance *cube_mi = nullptr;
-    GraphicsPipeline *cube_pipeline = nullptr;
     Sampler *cube_sampler = nullptr;
     Primitive *cube_primitive = nullptr;
 
@@ -336,22 +328,13 @@ private:
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
 
-        auto *render_target = rc->GetCurrentRenderTarget();
-        if (!render_target && ecs_context)
-            render_target = ecs_context->GetRenderTarget();
-
-        auto *rp = render_target ? render_target->GetRenderFormat() : nullptr;
-        cube_pipeline = rp ? rp->CreatePipeline(cube_mtl, GraphicsPipelinePreset::Solid3D) : nullptr;
-        if (!cube_pipeline)
-            return false;
-
         mtl::StandardMaterialInstance cube_mi_data{};
         cube_mi_data.base_color = 0xFFFFFFFFu;
         cube_mi_data.metallic = 0.08f;
         cube_mi_data.roughness = 0.92f;
         cube_mi_data.normal_scale = 0.35f;
 
-        cube_mi = mm->CreateMaterialInstance(cube_mtl, (VIL*)nullptr, &cube_mi_data);
+        cube_mi = mm->CreateMaterialInstance(cube_mtl, (VIL*)nullptr, &cube_mi_data, GraphicsPipelinePreset::Solid3D);
         if (!cube_mi)
             return false;
 
@@ -366,7 +349,7 @@ private:
 
         gm->Add(cube_geometry);
 
-        cube_primitive = pm->CreatePrimitive(cube_geometry, cube_mi, cube_pipeline);
+        cube_primitive = pm->CreatePrimitive(cube_geometry, cube_mi);
         if (!cube_primitive)
             return false;
 
@@ -418,7 +401,6 @@ public:
         cube_mi = nullptr;
         cube_mtl = nullptr;
         cube_sampler = nullptr;
-        cube_pipeline = nullptr;
         fallback_albedo = nullptr;
         normal_tex = nullptr;
     }

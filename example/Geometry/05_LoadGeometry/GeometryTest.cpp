@@ -62,7 +62,6 @@ private:
         Material *material = nullptr;
         const VIL *vil = nullptr;
 
-        GraphicsPipeline *pipeline = nullptr;
         MaterialInstance *mi[COLOR_COUNT]{};
     };
 
@@ -125,7 +124,7 @@ private:
         {
             color = GetColor4f(TestColor[i],1.0);
 
-            md->mi[i] = material_manager->CreateMaterialInstance(md->material,(VIL *)nullptr,&color);
+            md->mi[i] = material_manager->CreateMaterialInstance(md->material,(VIL *)nullptr,&color,GraphicsPipelinePreset::Solid3D);
 
             if(!md->mi[i])
                 return(false);
@@ -136,11 +135,7 @@ private:
         if(!md->vil)
             return(false);
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        md->pipeline = render_pass ? render_pass->CreatePipeline(md->material, GraphicsPipelinePreset::Solid3D) : nullptr;
-
-        return md->pipeline;
+        return true;
     }
 
     bool InitSolidMDP()
@@ -213,7 +208,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry, wire.mi[5], wire.pipeline);
+        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry, wire.mi[5]);
         return bbox_primitive != nullptr;
     }
 
@@ -234,7 +229,7 @@ private:
         if (!primitive_manager)
             return nullptr;
 
-        Primitive *primitive = primitive_manager->CreatePrimitive(geometry,md->mi[color],md->pipeline);
+        Primitive *primitive = primitive_manager->CreatePrimitive(geometry,md->mi[color]);
 
         if(!primitive)
             return nullptr;

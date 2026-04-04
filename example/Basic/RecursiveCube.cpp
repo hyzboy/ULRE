@@ -40,7 +40,6 @@ private:
 
     Material *material = nullptr;
     MaterialInstance *mi = nullptr;
-    GraphicsPipeline *pipeline = nullptr;
 
     Geometry *geometry = nullptr;
     std::vector<Primitive *> primitives;
@@ -119,15 +118,11 @@ private:
             return false;
 
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-        mi = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &color);
+        mi = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &color, GraphicsPipelinePreset::Solid3D);
         if (!mi)
             return false;
 
-        auto *render_target = render_context->GetCurrentRenderTarget();
-        auto *render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, GraphicsPipelinePreset::Solid3D) : nullptr;
-
-        return pipeline != nullptr;
+        return mi != nullptr;
     }
 
     bool CreateCubeGeometry()
@@ -171,7 +166,7 @@ private:
                              bool animate,
                              EntityID parent_id)
     {
-        if (!ecs_context || !primitive_manager || !geometry || !mi || !pipeline)
+        if (!ecs_context || !primitive_manager || !geometry || !mi)
             return nullptr;
 
         auto *entity = ecs_context->CreateEntity<Entity>(name);
@@ -183,7 +178,7 @@ private:
         transform->SetLocalScale(glm::vec3(scale, scale, scale));
         transform->SetMovable(animate);
 
-        auto prim = primitive_manager->CreatePrimitive(geometry, mi, pipeline);
+        auto prim = primitive_manager->CreatePrimitive(geometry, mi);
         if (!prim)
             return nullptr;
 

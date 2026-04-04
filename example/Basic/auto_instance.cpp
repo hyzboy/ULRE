@@ -54,7 +54,6 @@ private:
     // 传统渲染资源（共享）
     MaterialInstance *  material_instance   =nullptr;
     Primitive *         prim_triangle       =nullptr;
-    GraphicsPipeline *  pipeline            =nullptr;
 
     // 存储所有创建的实体
     std::vector<Entity*> triangle_entities;
@@ -84,17 +83,13 @@ private:
 
             vil_config.Add(VAN::Color,VF_V4UN8);
 
-            material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor2D,&cfg,&vil_config);
+            material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor2D,&cfg,GraphicsPipelinePreset::Solid2D,&vil_config);
         }
 
         if(!material_instance)
             return(false);
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material_instance, GraphicsPipelinePreset::Solid2D) : nullptr;
-
-        return pipeline;
+        return material_instance != nullptr;
     }
 
     bool InitVBO()
@@ -125,7 +120,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        prim_triangle = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        prim_triangle = primitive_manager->CreatePrimitive(geometry, material_instance);
 
         if(!prim_triangle)
             return(false);

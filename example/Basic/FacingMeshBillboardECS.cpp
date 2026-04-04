@@ -60,7 +60,6 @@ private:
         Material* material = nullptr;
         const VIL* vil = nullptr;
 
-        GraphicsPipeline* pipeline = nullptr;
         MaterialInstance* mi[DEMO_COLOR_COUNT]{};
     };
 
@@ -119,16 +118,12 @@ private:
         for (size_t i = 0; i < DEMO_COLOR_COUNT; ++i)
         {
             color = GetColor4f(DemoColors[i], 1.0f);
-            solid.mi[i] = material_manager->CreateMaterialInstance(solid.material, (VIL*)nullptr, &color);
+            solid.mi[i] = material_manager->CreateMaterialInstance(solid.material, (VIL*)nullptr, &color, GraphicsPipelinePreset::Solid3D);
             if (!solid.mi[i])
                 return false;
         }
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        solid.pipeline = render_pass ? render_pass->CreatePipeline(solid.material, GraphicsPipelinePreset::Solid3D) : nullptr;
-
-        return solid.pipeline != nullptr;
+        return !solid.mi[0] ? false : true;
     }
 
     bool InitVDM()
@@ -170,8 +165,7 @@ private:
             return nullptr;
 
         Primitive* primitive = primitive_manager->CreatePrimitive(geometry,
-                                                                  solid.mi[color_index % DEMO_COLOR_COUNT],
-                                                                  solid.pipeline);
+                                                                  solid.mi[color_index % DEMO_COLOR_COUNT]);
         if (!primitive)
             return nullptr;
 

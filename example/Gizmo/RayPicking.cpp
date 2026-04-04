@@ -60,12 +60,10 @@ private:
     // 传统渲染资源
     Material *          mtl_plane_grid      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
-    GraphicsPipeline *          pipeline_plane_grid =nullptr;
     Geometry *          geom_plane_grid     =nullptr;
 
     Material *          mtl_line            =nullptr;
     MaterialInstance *  mi_line             =nullptr;
-    GraphicsPipeline *          pipeline_line       =nullptr;
     Geometry *          geom_line           =nullptr;
     Primitive *         prim_line           =nullptr;
     VAB *               prim_line_vab       =nullptr;
@@ -103,28 +101,16 @@ private:
             mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
             if(!mtl_plane_grid)return(false);
 
-            mi_plane_grid=material_manager->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
+            mi_plane_grid=material_manager->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color,GraphicsPipelinePreset::Solid3D);
             if(!mi_plane_grid)return(false);
-
-            auto* render_target = render_context->GetCurrentRenderTarget();
-            auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-            pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, GraphicsPipelinePreset::Solid3D) : nullptr;
-            if(!pipeline_plane_grid)return(false);
         }
 
         {
             mtl_line = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
             if(!mtl_line)return(false);
 
-            mi_line=material_manager->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);
+            mi_line=material_manager->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color,GraphicsPipelinePreset::Solid3D);
             if(!mi_line)return(false);
-
-            auto* render_target = render_context->GetCurrentRenderTarget();
-            auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-            pipeline_line = render_pass ? render_pass->CreatePipeline(mi_line, GraphicsPipelinePreset::Solid3D) : nullptr;
-
-            if(!pipeline_line)
-                return(false);
         }
 
         return(true);
@@ -214,7 +200,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
+            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid);
             if(!prim_plane)
                 return false;
 
@@ -239,7 +225,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            prim_line = primitive_manager->CreatePrimitive(geom_line, mi_line, pipeline_line);
+            prim_line = primitive_manager->CreatePrimitive(geom_line, mi_line);
             if(!prim_line)
                 return false;
 

@@ -50,13 +50,11 @@ private:
 
     Material *grid_material = nullptr;
     MaterialInstance *grid_mi = nullptr;
-    GraphicsPipeline *grid_pipeline = nullptr;
     Geometry *grid_geometry = nullptr;
     Primitive *grid_primitive = nullptr;
 
     Material *cube_material = nullptr;
     MaterialInstance *cube_mi = nullptr;
-    GraphicsPipeline *cube_pipeline = nullptr;
     Geometry *cube_geometry = nullptr;
     Primitive *cube_primitive = nullptr;
 
@@ -79,11 +77,6 @@ private:
         if(!material_manager || !geometry_manager || !primitive_manager || !device)
             return false;
 
-        auto *render_target = render_context->GetCurrentRenderTarget();
-        auto *render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        if(!render_pass)
-            return false;
-
         {
             mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
             cfg.local_to_world = true;
@@ -96,12 +89,8 @@ private:
             vil_config.Add(VAN::Luminance, VF_V1UN8);
 
             const Color4f white = GetColor4f(COLOR::White, 1.0f);
-            grid_mi = material_manager->CreateMaterialInstance(grid_material, &vil_config, &white);
+            grid_mi = material_manager->CreateMaterialInstance(grid_material, &vil_config, &white, GraphicsPipelinePreset::Solid3D);
             if(!grid_mi)
-                return false;
-
-            grid_pipeline = render_pass->CreatePipeline(grid_mi, GraphicsPipelinePreset::Solid3D);
-            if(!grid_pipeline)
                 return false;
 
             auto pc = std::make_unique<GeometryCreater>(device, grid_mi->GetVIL());
@@ -118,7 +107,7 @@ private:
 
             geometry_manager->Add(grid_geometry);
 
-            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_mi, grid_pipeline);
+            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_mi);
             if(!grid_primitive)
                 return false;
         }
@@ -131,12 +120,8 @@ private:
                 return false;
 
             const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            cube_mi = material_manager->CreateMaterialInstance(cube_material, (VIL *)nullptr, &blue);
+            cube_mi = material_manager->CreateMaterialInstance(cube_material, (VIL *)nullptr, &blue, GraphicsPipelinePreset::Solid3D);
             if(!cube_mi)
-                return false;
-
-            cube_pipeline = render_pass->CreatePipeline(cube_material, GraphicsPipelinePreset::Solid3D);
-            if(!cube_pipeline)
                 return false;
 
             auto pc = std::make_unique<GeometryCreater>(device, cube_material->GetDefaultVIL());
@@ -152,7 +137,7 @@ private:
 
             geometry_manager->Add(cube_geometry);
 
-            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_mi, cube_pipeline);
+            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_mi);
             if(!cube_primitive)
                 return false;
         }

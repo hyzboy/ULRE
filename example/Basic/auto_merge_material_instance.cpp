@@ -53,7 +53,6 @@ private:
 
     // 传统渲染资源
     Material* material = nullptr;
-    GraphicsPipeline* pipeline = nullptr;
     Geometry* geometry = nullptr;
 
     // 每个三角形的数据
@@ -99,7 +98,7 @@ private:
             // 为每个三角形创建不同颜色的MaterialInstance
             for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
             {
-                triangles[i].mi = material_manager->CreateMaterialInstance(material);
+                triangles[i].mi = material_manager->CreateMaterialInstance(material, GraphicsPipelinePreset::Solid2D);
 
                 if (!triangles[i].mi)
                     return false;
@@ -123,18 +122,6 @@ private:
                     <<", Color: R="<<mi_color->r<<", G="<<mi_color->g<<", B="<<mi_color->b<<", A="<<mi_color->a<<std::endl;
             }
         }
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, GraphicsPipelinePreset::Solid2D) : nullptr;
-
-        if (!pipeline)
-        {
-            std::cout << "[TestApp::InitMaterial] ERROR: Failed to create pipeline!" << std::endl;
-            return false;
-        }
-
-        std::cout << "[TestApp::InitMaterial] Created pipeline: " << (void*)pipeline << std::endl;
 
         return true;
     }
@@ -203,7 +190,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, triangles[i].mi, pipeline);
+            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, triangles[i].mi);
 
             if (!triangles[i].primitive)
             {

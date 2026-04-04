@@ -59,7 +59,6 @@ private:
 
     // 传统渲染资源
     Material* material = nullptr;
-    GraphicsPipeline* pipeline = nullptr;
     Geometry* geometry = nullptr;
 
     // 刻度数据
@@ -120,7 +119,7 @@ private:
             // 刻度颜色（白色）
             Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
 
-            mi_tick = material_manager->CreateMaterialInstance(material);
+            mi_tick = material_manager->CreateMaterialInstance(material, GraphicsPipelinePreset::Solid2D);
             if(mi_tick)
                 mi_tick->WriteMIData(tick_color);
 
@@ -133,24 +132,12 @@ private:
 
             for (uint i = 0; i < 3; i++)
             {
-                hands[i].mi = material_manager->CreateMaterialInstance(material);
+                hands[i].mi = material_manager->CreateMaterialInstance(material, GraphicsPipelinePreset::Solid2D);
                 if (!hands[i].mi)
                     return false;
                 hands[i].mi->WriteMIData(hand_colors[i]);
             }
         }
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, GraphicsPipelinePreset::Solid2D) : nullptr;
-
-        if (!pipeline)
-        {
-            std::cout << "[ClockApp::InitMaterial] ERROR: Failed to create pipeline!" << std::endl;
-            return false;
-        }
-
-        std::cout << "[ClockApp::InitMaterial] Created pipeline: " << (void*)pipeline << std::endl;
 
         return true;
     }
@@ -227,7 +214,7 @@ private:
         // === 创建12个刻度（Static Transform） ===
         for (uint i = 0; i < TICK_COUNT; i++)
         {
-            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, mi_tick, pipeline);
+            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, mi_tick);
 
             if (!ticks[i].primitive)
             {
@@ -274,7 +261,7 @@ private:
 
         for (uint i = 0; i < 3; i++)
         {
-            hands[i].primitive = primitive_manager->CreatePrimitive(geometry, hands[i].mi, pipeline);
+            hands[i].primitive = primitive_manager->CreatePrimitive(geometry, hands[i].mi);
 
             if (!hands[i].primitive)
             {

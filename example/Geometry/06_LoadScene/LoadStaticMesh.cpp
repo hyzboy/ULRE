@@ -154,7 +154,6 @@ static bool TryLoadScene(
     const VIL                *vil,
     MaterialInstance * const *mi_array,
     int                       mi_count,
-    GraphicsPipeline                 *default_pipeline,
     const OSString           &pack_path,
     const OSString           &base_dir,
     std::vector<Primitive *> &prim_list,
@@ -427,7 +426,7 @@ static bool TryLoadScene(
             }
 
             MaterialInstance *mi = mi_array[(pp[i].material_index >= 0 ? pp[i].material_index : 0) % mi_count];
-            Primitive *prim = DirectCreatePrimitive(geo, mi, default_pipeline);
+            Primitive *prim = DirectCreatePrimitive(geo, mi);
             if (!prim)
             {
                 MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: DirectCreatePrimitive failed for primitive #") + OSString::numberOf(i) + OS_TEXT(" in ") + pack_path);
@@ -694,14 +693,13 @@ StaticMesh *LoadStaticMeshScene(
     const VIL                *vil,
     MaterialInstance * const *mi_array,
     int                       mi_count,
-    GraphicsPipeline                 *default_pipeline,
     const OSString           &pack_path,
     const OSString           &base_dir)
 {
     using namespace hgl::io::minipack;
     using namespace hgl::math;
 
-    if (!device || !geo_mgr || !vil || !mi_array || mi_count <= 0 || !default_pipeline)
+    if (!device || !geo_mgr || !vil || !mi_array || mi_count <= 0)
     {
         MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: null argument"));
         return nullptr;
@@ -727,7 +725,6 @@ StaticMesh *LoadStaticMeshScene(
                 vil,
                 mi_array,
                 mi_count,
-                default_pipeline,
                 pack_path,
                 base_dir,
                 prim_list,
@@ -864,7 +861,7 @@ StaticMesh *LoadStaticMeshScene(
                 geo_mgr->Add(geo);
 
                 MaterialInstance *mi = mi_array[(matIndex >= 0 ? matIndex : 0) % mi_count];
-                Primitive *prim = DirectCreatePrimitive(geo, mi, default_pipeline);
+                Primitive *prim = DirectCreatePrimitive(geo, mi);
                 if (!prim)
                 {
                     MLogError(LoadStaticMesh,
