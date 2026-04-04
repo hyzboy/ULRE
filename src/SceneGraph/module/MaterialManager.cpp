@@ -27,6 +27,23 @@
 
 namespace hgl::graph{
 
+bool MaterialSpec::IsValid() const
+{
+    switch (family)
+    {
+        case Family::Preset2D:
+            return cfg2d != nullptr;
+        case Family::Preset3D:
+            return cfg3d != nullptr;
+        case Family::Variant2D:
+            return variant_key != nullptr && cfg2d != nullptr;
+        case Family::Variant3D:
+            return variant_key != nullptr && cfg3d != nullptr;
+        default:
+            return false;
+    }
+}
+
 namespace
 {
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
@@ -406,6 +423,75 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     return CreateMaterial(key, cfg);
 }
 
+Material *MaterialManager::AcquireMaterial(const MaterialSpec &spec, MaterialSpecKey *out_key)
+{
+    if(!spec.IsValid())
+        return nullptr;
+
+    Material *result = nullptr;
+
+    switch(spec.family)
+    {
+        case MaterialSpec::Family::Preset2D:
+            result = AcquireMaterial(spec.preset, spec.cfg2d, out_key);
+            break;
+        case MaterialSpec::Family::Preset3D:
+            result = AcquireMaterial(spec.preset, spec.cfg3d, out_key);
+            break;
+        case MaterialSpec::Family::Variant2D:
+            result = AcquireMaterial(*spec.variant_key, spec.cfg2d, out_key);
+            break;
+        case MaterialSpec::Family::Variant3D:
+            result = AcquireMaterial(*spec.variant_key, spec.cfg3d, out_key);
+            break;
+        default:
+            result = nullptr;
+            break;
+    }
+
+    return result;
+}
+
+Material *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
+{
+    Material *mtl = CreateMaterial(mtl_id, cfg);
+
+    if(out_key)
+        out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
+
+    return mtl;
+}
+
+Material *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
+{
+    Material *mtl = CreateMaterial(mtl_id, cfg);
+
+    if(out_key)
+        out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
+
+    return mtl;
+}
+
+Material *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
+{
+    Material *mtl = CreateMaterial(key, cfg);
+
+    if(out_key)
+        out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
+
+    return mtl;
+}
+
+Material *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
+{
+    Material *mtl = CreateMaterial(key, cfg);
+
+    if(out_key)
+        out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
+
+    return mtl;
+}
+
 void MaterialManager::ResetShaderGenProfiler()
 {
     // Legacy-only mode keeps ShaderGen debug APIs as no-op for compatibility.
@@ -671,12 +757,14 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil,const void *mi_data,const uint32 mi_bytes, GraphicsPipelinePreset preset)
 {
-    MaterialInstance *mi = CreateMaterialInstance(mtl, vil, mi_data, mi_bytes);
+    MaterialInstanceSpec spec;
+    spec.material = mtl;
+    spec.vil = vil;
+    spec.instance_data = mi_data;
+    spec.instance_data_size = mi_bytes;
+    spec.preset = preset;
 
-    if(mi)
-        mi->SetRenderPreset(preset);
-
-    return mi;
+    return AcquireMaterialInstance(spec, nullptr);
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *mi_data,const uint32 mi_bytes)
@@ -702,12 +790,61 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *mi_data,const uint32 mi_bytes, GraphicsPipelinePreset preset)
 {
-    MaterialInstance *mi = CreateMaterialInstance(mtl, vil_cfg, mi_data, mi_bytes);
+    MaterialInstanceSpec spec;
+    spec.material = mtl;
+    spec.vil_cfg = vil_cfg;
+    spec.instance_data = mi_data;
+    spec.instance_data_size = mi_bytes;
+    spec.preset = preset;
 
-    if(mi)
-        mi->SetRenderPreset(preset);
+    return AcquireMaterialInstance(spec, nullptr);
+}
+
+MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)
+{
+    if(!spec.IsValid())
+        return nullptr;
+
+    MaterialInstance *mi = nullptr;
+
+    if(spec.domain)
+    {
+        if(spec.vil_cfg)
+            mi = CreateMaterialInstance(spec.domain, spec.vil_cfg, spec.instance_data, spec.instance_data_size);
+        else
+            mi = CreateMaterialInstance(spec.domain, spec.vil, spec.instance_data, spec.instance_data_size);
+    }
+    else
+    {
+        if(spec.vil_cfg)
+            mi = CreateMaterialInstance(spec.material, spec.vil_cfg, spec.instance_data, spec.instance_data_size);
+        else
+            mi = CreateMaterialInstance(spec.material, spec.vil, spec.instance_data, spec.instance_data_size);
+    }
+
+    if(!mi)
+        return nullptr;
+
+    mi->SetRenderPreset(spec.preset);
+
+    if(out_key)
+    {
+        out_key->material = mi->GetMaterial();
+        out_key->vil = mi->GetVIL();
+        out_key->preset = mi->GetRenderPreset();
+        out_key->domain = mi->GetDomain();
+    }
 
     return mi;
+}
+
+bool MaterialManager::UpdateInstanceData(MaterialInstance *mi, const void *data, const uint32 data_size)
+{
+    if(!mi || !data || data_size == 0)
+        return false;
+
+    mi->WriteMIData(data, data_size);
+    return true;
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)

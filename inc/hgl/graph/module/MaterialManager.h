@@ -32,6 +32,57 @@ using MaterialID            = int;
 using MaterialInstanceID    = int;
 using ShaderModuleMapByName = UnorderedMap<AnsiString,ShaderModule *>;
 
+struct MaterialSpecKey
+{
+    AnsiString cache_name;
+};
+
+struct MaterialInstanceSpecKey
+{
+    Material *material = nullptr;
+    const VIL *vil = nullptr;
+    GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
+    ResourceDomain *domain = nullptr;
+};
+
+struct MaterialSpec
+{
+    enum class Family : uint8_t
+    {
+        Invalid = 0,
+        Preset2D,
+        Preset3D,
+        Variant2D,
+        Variant3D,
+    };
+
+    Family family = Family::Invalid;
+
+    mtl::MaterialPreset preset{};
+    const mtl::MaterialVariantKey *variant_key = nullptr;
+
+    mtl::Material2DCreateConfig *cfg2d = nullptr;
+    mtl::Material3DCreateConfig *cfg3d = nullptr;
+
+    bool IsValid() const;
+};
+
+struct MaterialInstanceSpec
+{
+    Material *material = nullptr;
+    ResourceDomain *domain = nullptr;
+
+    const VIL *vil = nullptr;
+    const VILConfig *vil_cfg = nullptr;
+
+    const void *instance_data = nullptr;
+    uint32 instance_data_size = 0;
+
+    GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
+
+    bool IsValid() const { return material || domain; }
+};
+
 constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;//GetBitOffset((uint32_t)VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)+1;
 
 GRAPH_MODULE_CLASS(MaterialManager)
@@ -157,12 +208,21 @@ public: //ShaderGen Profiler (debug entry, collect-only)
 
 public: //Material
 
+    Material *          AcquireMaterial (const MaterialSpec &spec, MaterialSpecKey *out_key = nullptr);
+    Material *          AcquireMaterial (const mtl::MaterialPreset, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    Material *          AcquireMaterial (const mtl::MaterialPreset, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    Material *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    Material *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+
     Material *          CreateMaterial  (const mtl::MaterialPreset, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质
     Material *          CreateMaterial  (const mtl::MaterialPreset, mtl::Material3DCreateConfig *);  ///<基于内置材质ID创建3D材质
     Material *          CreateMaterial  (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质（Phase-A兼容）
     Material *          CreateMaterial  (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质（Phase-A兼容）
 
 public: //MaterialInstanceData
+
+    MaterialInstance *  AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key = nullptr);
+    bool                UpdateInstanceData(MaterialInstance *mi, const void *data, const uint32 data_size);
 
     MaterialInstance *  CreateMaterialInstance(Material *);
     MaterialInstance *  CreateMaterialInstance(Material *, GraphicsPipelinePreset);
