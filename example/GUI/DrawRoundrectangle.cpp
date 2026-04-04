@@ -2,7 +2,7 @@
 // 通过控制尺寸、每个角的半径，可绘制出正圆、矩形、圆角矩形
 
 #include<hgl/WorkManager.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/math/Math.h>
 
@@ -81,10 +81,12 @@ private:
             .pipeline = GraphicsPipelinePreset::Solid2D,
         };
 
-        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kRoundRectCfg);
-
-        if(!material)
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        auto handle = registry.Acquire(kRoundRectCfg);
+        if(!handle.IsValid())
             return(false);
+
+        material = handle.material;
 
         texture=texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
@@ -98,10 +100,7 @@ private:
            sampler))                           ///<采样器
             return(false);
 
-        graph::MaterialInstanceSpec spec;
-        spec.material = material;
-        spec.preset = GraphicsPipelinePreset::Solid2D;
-        material_instance = material_manager->AcquireMaterialInstance(spec);
+        material_instance = registry.CreateMI(handle, GraphicsPipelinePreset::Solid2D);
 
         return(material_instance!=nullptr);
     }

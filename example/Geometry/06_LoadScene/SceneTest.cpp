@@ -1,6 +1,6 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/mesh/StaticMesh.h>
@@ -136,7 +136,12 @@ private:
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        solid.material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kSolidCfg);
+        {
+            MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+            auto handle = registry.Acquire(kSolidCfg);
+            if (!handle.IsValid()) return false;
+            solid.material = handle.material;
+        }
 
         return InitMaterialInstance(&solid);
     }

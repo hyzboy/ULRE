@@ -2,7 +2,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -162,7 +162,12 @@ private:
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        solid.material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kSolidCfg);
+        {
+            MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+            auto handle = registry.Acquire(kSolidCfg);
+            if (!handle.IsValid()) return false;
+            solid.material = handle.material;
+        }
 
         return InitMaterialInstance(&solid);
     }
@@ -187,7 +192,12 @@ private:
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        wire.material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kWireCfg);
+        {
+            MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+            auto handle = registry.Acquire(kWireCfg);
+            if (!handle.IsValid()) return false;
+            wire.material = handle.material;
+        }
 
         return InitMaterialInstance(&wire);
     }

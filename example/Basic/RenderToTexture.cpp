@@ -1,5 +1,6 @@
 ﻿#include<hgl/framework/WorkManager.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/module/RenderTargetManager.h>
@@ -152,18 +153,16 @@ public:
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        mtl = LoadMaterialFromRecord(mm, nullptr, nullptr, kSphereCfg);
-        if (!mtl)
+        MaterialAssetRegistry registry(mm, nullptr, nullptr);
+        auto handle = registry.Acquire(kSphereCfg);
+        if (!handle.IsValid())
             return false;
+        mtl = handle.material;
 
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        MaterialInstanceSpec sphere_mi_spec;
-        sphere_mi_spec.material = mtl;
-        sphere_mi_spec.vil = nullptr;
-        sphere_mi_spec.instance_data = &sphere_color;
-        sphere_mi_spec.instance_data_size = sizeof(sphere_color);
-        sphere_mi_spec.preset = GraphicsPipelinePreset::Solid3D;
-        mi = mm->AcquireMaterialInstance(sphere_mi_spec);
+        mi = registry.CreateMI(handle, GraphicsPipelinePreset::Solid3D,
+                               (const VertexInputLayout*)nullptr,
+                               &sphere_color, sizeof(sphere_color));
         if (!mi)
             return false;
 
@@ -303,9 +302,11 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        cube_mtl = LoadMaterialFromRecord(mm, nullptr, nullptr, kCubeCfg);
-        if (!cube_mtl)
+        MaterialAssetRegistry registry(mm, nullptr, nullptr);
+        auto handle = registry.Acquire(kCubeCfg);
+        if (!handle.IsValid())
             return false;
+        cube_mtl = handle.material;
 
         cube_sampler = sm->CreateSampler();
         if (!cube_sampler)
@@ -341,13 +342,9 @@ private:
         cube_mi_data.roughness = 0.92f;
         cube_mi_data.normal_scale = 0.35f;
 
-        MaterialInstanceSpec cube_mi_spec;
-        cube_mi_spec.material = cube_mtl;
-        cube_mi_spec.vil = nullptr;
-        cube_mi_spec.instance_data = &cube_mi_data;
-        cube_mi_spec.instance_data_size = sizeof(cube_mi_data);
-        cube_mi_spec.preset = GraphicsPipelinePreset::Solid3D;
-        cube_mi = mm->AcquireMaterialInstance(cube_mi_spec);
+        cube_mi = registry.CreateMI(handle, GraphicsPipelinePreset::Solid3D,
+                                     (const VertexInputLayout*)nullptr,
+                                     &cube_mi_data, sizeof(cube_mi_data));
         if (!cube_mi)
             return false;
 

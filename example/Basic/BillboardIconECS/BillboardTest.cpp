@@ -5,7 +5,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -125,22 +125,19 @@ private:
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        mtl_plane_grid = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kPlaneGridCfg);
-        if(!mtl_plane_grid)
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        auto handle = registry.Acquire(kPlaneGridCfg);
+        if (!handle.IsValid())
             return false;
+        mtl_plane_grid = handle.material;
 
         std::cout << "[BillboardECS] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;
 
         VILConfig vil_config;
         vil_config.Add(VAN::Luminance, VF_V1UN8);
 
-            graph::MaterialInstanceSpec spec;
-            spec.material = mtl_plane_grid;
-            spec.vil_cfg = &vil_config;
-            spec.instance_data = &white_color;
-            spec.instance_data_size = sizeof(white_color);
-            spec.preset = GraphicsPipelinePreset::Solid3D;
-            mi_plane_grid = material_manager->AcquireMaterialInstance(spec);
+        mi_plane_grid = registry.CreateMI(handle, GraphicsPipelinePreset::Solid3D,
+                                          &vil_config, &white_color, sizeof(white_color));
         if(!mi_plane_grid)
             return false;
 
@@ -169,12 +166,10 @@ private:
             .prim      = PrimitiveType::Billboard,
             .billboard = { .fixed_size = true },
         };
-        auto* billboard_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kBillboardCfg);
-        if (!billboard_material) return false;
-        graph::MaterialInstanceSpec spec;
-        spec.material = billboard_material;
-        spec.preset = GraphicsPipelinePreset::Solid3D;
-        mi_billboard = material_manager->AcquireMaterialInstance(spec);
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        auto handle = registry.Acquire(kBillboardCfg);
+        if (!handle.IsValid()) return false;
+        mi_billboard = registry.CreateMI(handle, GraphicsPipelinePreset::Solid3D);
         if(!mi_billboard)
             return false;
 

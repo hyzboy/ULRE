@@ -3,7 +3,7 @@
 
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/color/Color.h>
@@ -80,8 +80,12 @@ namespace
             };
             auto* material_manager = graphics_context->GetMaterialManager();
             if (!material_manager) return false;
-            material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kAnimGeomCfg);
-            if (!material) return false;
+            {
+                MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+                auto handle = registry.Acquire(kAnimGeomCfg);
+                if (!handle.IsValid()) return false;
+                material = handle.material;
+            }
 
             const Color4f colors[] =
             {

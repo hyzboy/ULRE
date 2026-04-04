@@ -1,5 +1,5 @@
 #include "BillboardIconECSBase.h"
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include <iostream>
 #include <memory>
 
@@ -41,19 +41,16 @@ bool BillboardIconECSBase::InitPlaneGridResources()
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };
-    mtl_plane_grid = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kPlaneGridCfg);
-    if (!mtl_plane_grid) return false;
+    MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+    auto handle = registry.Acquire(kPlaneGridCfg);
+    if (!handle.IsValid()) return false;
+    mtl_plane_grid = handle.material;
 
     VILConfig vil_config;
     vil_config.Add(VAN::Luminance, VF_V1UN8);
 
-    graph::MaterialInstanceSpec spec;
-    spec.material = mtl_plane_grid;
-    spec.vil_cfg = &vil_config;
-    spec.instance_data = &white_color;
-    spec.instance_data_size = sizeof(white_color);
-    spec.preset = GraphicsPipelinePreset::Solid3D;
-    mi_plane_grid = material_manager->AcquireMaterialInstance(spec);
+    mi_plane_grid = registry.CreateMI(handle, GraphicsPipelinePreset::Solid3D,
+                                      &vil_config, &white_color, sizeof(white_color));
     if (!mi_plane_grid) return false;
 
     return true;
