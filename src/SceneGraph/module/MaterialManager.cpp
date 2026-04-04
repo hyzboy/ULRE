@@ -576,6 +576,16 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl)
     return mi;
 }
 
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl, GraphicsPipelinePreset preset)
+{
+    MaterialInstance *mi = CreateMaterialInstance(mtl);
+
+    if(mi)
+        mi->SetRenderPreset(preset);
+
+    return mi;
+}
+
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil)
 {
     HGL_CAPTURE_SCOPE();
@@ -596,6 +606,16 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
     return mi;
 }
 
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil, GraphicsPipelinePreset preset)
+{
+    MaterialInstance *mi = CreateMaterialInstance(mtl, vil);
+
+    if(mi)
+        mi->SetRenderPreset(preset);
+
+    return mi;
+}
+
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg)
 {
     HGL_CAPTURE_SCOPE();
@@ -612,6 +632,16 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
             device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
                               ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
     }
+
+    return mi;
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg, GraphicsPipelinePreset preset)
+{
+    MaterialInstance *mi = CreateMaterialInstance(mtl, vil_cfg);
+
+    if(mi)
+        mi->SetRenderPreset(preset);
 
     return mi;
 }
@@ -639,6 +669,16 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
     return mi;
 }
 
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil,const void *mi_data,const uint32 mi_bytes, GraphicsPipelinePreset preset)
+{
+    MaterialInstance *mi = CreateMaterialInstance(mtl, vil, mi_data, mi_bytes);
+
+    if(mi)
+        mi->SetRenderPreset(preset);
+
+    return mi;
+}
+
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *mi_data,const uint32 mi_bytes)
 {
     HGL_CAPTURE_SCOPE();
@@ -660,6 +700,16 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
     return mi;
 }
 
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *mi_data,const uint32 mi_bytes, GraphicsPipelinePreset preset)
+{
+    MaterialInstance *mi = CreateMaterialInstance(mtl, vil_cfg, mi_data, mi_bytes);
+
+    if(mi)
+        mi->SetRenderPreset(preset);
+
+    return mi;
+}
+
 MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
@@ -672,6 +722,16 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
     return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
 }
 
+MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size, GraphicsPipelinePreset preset)
+{
+    MaterialInstance *mi = CreateMaterialInstance(mtl_id,mcc,vil_cfg,data,data_size);
+
+    if(mi)
+        mi->SetRenderPreset(preset);
+
+    return mi;
+}
+
 MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
@@ -682,6 +742,16 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
         return(nullptr);
 
     return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size, GraphicsPipelinePreset preset)
+{
+    MaterialInstance *mi = CreateMaterialInstance(mtl_id,mcc,vil_cfg,data,data_size);
+
+    if(mi)
+        mi->SetRenderPreset(preset);
+
+    return mi;
 }
 
 // ============================================================================

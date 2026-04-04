@@ -29,7 +29,6 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     Material *          mtl_sky_sphere      =nullptr;
-    GraphicsPipeline *          mtl_pipeline        =nullptr;
 
     Geometry *          prim_sky_sphere     =nullptr;
     MaterialInstance *  mi_sky_sphere       =nullptr;
@@ -52,13 +51,9 @@ private:
 
         mtl::SkyMinimalCreateConfig cfg;
 
-        mi_sky_sphere=material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal,&cfg);
+        mi_sky_sphere=material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal,&cfg, GraphicsPipelinePreset::Sky);
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        mtl_pipeline = render_pass ? render_pass->CreatePipeline(mi_sky_sphere, GraphicsPipelinePreset::Sky) : nullptr;
-
-        return mtl_pipeline;
+        return mi_sky_sphere != nullptr;
     }
 
     bool CreateRenderObject()
@@ -97,7 +92,7 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!prim_sky_sphere || !mi_sky_sphere || !mtl_pipeline)
+        if(!prim_sky_sphere || !mi_sky_sphere)
             return false;
 
         auto* render_context = GetRenderContext();
@@ -112,7 +107,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(prim_sky_sphere,mi_sky_sphere,mtl_pipeline);
+        Primitive *ri=primitive_manager->CreatePrimitive(prim_sky_sphere,mi_sky_sphere);
         if(!ri)
             return false;
 

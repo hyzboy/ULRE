@@ -35,7 +35,6 @@ private:
 
     Material *material = nullptr;
     MaterialInstance *material_instance = nullptr;
-    GraphicsPipeline *pipeline = nullptr;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
 
@@ -149,13 +148,8 @@ public:
                           sampler))
             return false;
 
-        material_instance = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &mi_data);
+        material_instance = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &mi_data, GraphicsPipelinePreset::Solid3D);
         if(!material_instance) return false;
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, GraphicsPipelinePreset::Solid3D) : nullptr;
-        if(!pipeline) return false;
 
         const VIL *vil = material->GetDefaultVIL();
         auto* buffer_manager = graphics_context->GetBufferManager();
@@ -207,7 +201,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -242,7 +236,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -276,7 +270,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -311,7 +305,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }

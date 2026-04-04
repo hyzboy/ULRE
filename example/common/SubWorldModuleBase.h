@@ -17,7 +17,6 @@ namespace hgl::graph
     class Geometry;
     class Primitive;
     class Material;
-    class GraphicsPipeline;
     class MaterialInstance;
 }
 
@@ -41,7 +40,7 @@ namespace example::modules
         std::shared_ptr<hgl::ecs::SubWorldComponent> subworld_component;
 
         hgl::graph::Material* material = nullptr;
-        hgl::graph::GraphicsPipeline* pipeline = nullptr;
+
         std::vector<hgl::graph::MaterialInstance*> material_instances;
         std::vector<std::unique_ptr<MeshResource>> mesh_resources;
 

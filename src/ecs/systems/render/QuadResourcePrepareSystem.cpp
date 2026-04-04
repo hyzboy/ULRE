@@ -45,16 +45,16 @@ namespace hgl::ecs
         }
     }
 
-    void QuadResourcePrepareSystem::SetPipelineForWorld(const ECSContext* world,
-                                                        graph::GraphicsPipelinePreset pipeline)
+    void QuadResourcePrepareSystem::SetPresetForWorld(const ECSContext* world,
+                                                      graph::GraphicsPipelinePreset preset)
     {
         if (!world)
             return;
 
-        g_world_quad_inline_pipeline[world] = pipeline;
+        g_world_quad_inline_pipeline[world] = preset;
     }
 
-    graph::GraphicsPipelinePreset QuadResourcePrepareSystem::GetPipelineForWorld(const ECSContext* world)
+    graph::GraphicsPipelinePreset QuadResourcePrepareSystem::GetPresetForWorld(const ECSContext* world)
     {
         if (world)
         {
@@ -66,9 +66,20 @@ namespace hgl::ecs
         return g_default_quad_inline_pipeline;
     }
 
+    void QuadResourcePrepareSystem::SetPipelineForWorld(const ECSContext* world,
+                                                        graph::GraphicsPipelinePreset pipeline)
+    {
+        SetPresetForWorld(world, pipeline);
+    }
+
+    graph::GraphicsPipelinePreset QuadResourcePrepareSystem::GetPipelineForWorld(const ECSContext* world)
+    {
+        return GetPresetForWorld(world);
+    }
+
     graph::BlendMode QuadResourcePrepareSystem::GetBlendModeForWorld(const ECSContext* world)
     {
-        return GraphicsPipelinePresetToBlendMode(GetPipelineForWorld(world));
+        return GraphicsPipelinePresetToBlendMode(GetPresetForWorld(world));
     }
 
     void QuadResourcePrepareSystem::SetChannelHintForWorld(const ECSContext* world,
@@ -92,14 +103,24 @@ namespace hgl::ecs
         return graph::TextureChannelHint::RGBA;
     }
 
+    void QuadResourcePrepareSystem::SetPreset(graph::GraphicsPipelinePreset preset)
+    {
+        g_default_quad_inline_pipeline = preset;
+    }
+
+    graph::GraphicsPipelinePreset QuadResourcePrepareSystem::GetPreset()
+    {
+        return g_default_quad_inline_pipeline;
+    }
+
     void QuadResourcePrepareSystem::SetPipeline(graph::GraphicsPipelinePreset pipeline)
     {
-        g_default_quad_inline_pipeline = pipeline;
+        SetPreset(pipeline);
     }
 
     graph::GraphicsPipelinePreset QuadResourcePrepareSystem::GetPipeline()
     {
-        return g_default_quad_inline_pipeline;
+        return GetPreset();
     }
 
     graph::BlendMode QuadResourcePrepareSystem::GetBlendMode()
@@ -117,7 +138,7 @@ namespace hgl::ecs
         RecordPipelineResolveAttempt(g_quad_pipeline_resolve_counters);
         const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
 
-        graph::GraphicsPipeline* pipeline = render_pass->CreatePipeline(material_instance, GetPipelineForWorld(world));
+        graph::GraphicsPipeline* pipeline = render_pass->CreatePipeline(material_instance, GetPresetForWorld(world));
 
         const uint64_t vkcreate_after = graph::RenderTargetFormat::GetVkCreateCount();
         const uint64_t vkcreate_delta = vkcreate_after - vkcreate_before;
@@ -211,10 +232,10 @@ namespace hgl::ecs
         if (!shared_material_instance)
             return false;
 
-        // Create pipeline according to the configured quad pipeline mode
-        shared_pipeline = CreateConfiguredPipeline(render_pass, shared_material_instance, world);
-        if (!shared_pipeline)
-            return false;
+        shared_material_instance->SetRenderPreset(GetPresetForWorld(world));
+
+        // Pipeline is resolved later in PrimitiveBatchPipeline using material-instance preset.
+        shared_pipeline = nullptr;
 
         // Create shared quad geometry (explicit quad for VS/FS-only billboard path)
         auto pc = std::make_unique<graph::GeometryCreater>(device, shared_material_instance->GetVIL());
@@ -235,7 +256,7 @@ namespace hgl::ecs
         if (!pc->WriteIBO(index_data))
             return false;
 
-        shared_primitive = primitive_manager->CreatePrimitive(pc.get(), shared_material_instance, shared_pipeline);
+        shared_primitive = primitive_manager->CreatePrimitive(pc.get(), shared_material_instance);
         if (!shared_primitive)
             return false;
 

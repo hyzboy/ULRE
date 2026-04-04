@@ -53,7 +53,6 @@ private:
     Sampler *           sampler             =nullptr;
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    GraphicsPipeline *  pipeline            =nullptr;
 
 private:
 
@@ -82,14 +81,6 @@ private:
         if(!material)
             return(false);
 
-        //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, GraphicsPipelinePreset::Solid2D) : nullptr;
-
-        if(!pipeline)
-            return(false);
-
         texture=texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
         if(!texture)return(false);
@@ -102,9 +93,9 @@ private:
            sampler))                           ///<采样器
             return(false);
 
-        material_instance=material_manager->CreateMaterialInstance(material);
+        material_instance=material_manager->CreateMaterialInstance(material, GraphicsPipelinePreset::Solid2D);
 
-        return(true);
+        return(material_instance!=nullptr);
     }
 
     bool InitVBO()
@@ -142,7 +133,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
 
         if(!primitive)
             return false;

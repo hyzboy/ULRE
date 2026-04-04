@@ -34,7 +34,6 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     Material *          material            = nullptr;
-    GraphicsPipeline *  pipeline            = nullptr;
 
     Geometry *         prim_rect_cube      = nullptr;
     Geometry *         prim_circle_cylinder = nullptr;
@@ -63,13 +62,9 @@ private:
 
         Color4f color=GetColor4f(COLOR::BlenderAxisRed);
 
-        material_instance = material_manager->CreateMaterialInstance(material,(VIL *)nullptr,&color);
+        material_instance = material_manager->CreateMaterialInstance(material,(VIL *)nullptr,&color, GraphicsPipelinePreset::Solid3D);
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material_instance, GraphicsPipelinePreset::Solid3D) : nullptr;
-
-        return pipeline != nullptr;
+        return material_instance != nullptr;
     }
 
     bool CreateRenderObjects()
@@ -151,7 +146,7 @@ private:
 
     bool CreateMeshEntity(const char *name, Geometry *geometry, const glm::vec3 &pos)
     {
-        if(!ecs_context || !geometry || !material_instance || !pipeline)
+        if(!ecs_context || !geometry || !material_instance)
             return false;
 
         auto* render_context = GetRenderContext();
@@ -166,7 +161,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, material_instance);
         if(!mesh)
             return false;
 

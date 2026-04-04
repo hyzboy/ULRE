@@ -54,13 +54,11 @@ private:
     std::shared_ptr<EnvironmentSystem> environment_system;
     std::shared_ptr<SunDirectionControlSystem> sun_gizmo_system;
 
-    GraphicsPipeline* sky_pipeline = nullptr;
     Geometry* sky_geometry = nullptr;
     MaterialInstance* sky_material_instance = nullptr;
 
     Material* material = nullptr;
     MaterialInstance* material_instance = nullptr;
-    GraphicsPipeline* pipeline = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
@@ -125,14 +123,8 @@ private:
             return false;
 
         mtl::SkyMinimalCreateConfig cfg;
-        sky_material_instance = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &cfg);
+        sky_material_instance = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &cfg, GraphicsPipelinePreset::Sky);
         if (!sky_material_instance)
-            return false;
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        sky_pipeline = render_pass ? render_pass->CreatePipeline(sky_material_instance, GraphicsPipelinePreset::Sky) : nullptr;
-        if (!sky_pipeline)
             return false;
 
         using namespace inline_geometry;
@@ -201,19 +193,13 @@ private:
                                           sampler))
             return false;
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, GraphicsPipelinePreset::Solid3D) : nullptr;
-        if (!pipeline)
-            return false;
-
         mtl::StandardMaterialInstance mi_data{};
         mi_data.base_color = 0xFFFFFFFFu;
         mi_data.metallic = 0.08f;
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
 
-        material_instance = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &mi_data);
+        material_instance = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &mi_data, GraphicsPipelinePreset::Solid3D);
         if (!material_instance)
             return false;
 
@@ -264,7 +250,7 @@ private:
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
         if (!primitive)
             return nullptr;
 
@@ -364,7 +350,7 @@ private:
 
     bool InitSceneEntities()
     {
-        if (!ecs_context || !rm_floor || !sky_geometry || !sky_material_instance || !sky_pipeline)
+        if (!ecs_context || !rm_floor || !sky_geometry || !sky_material_instance)
             return false;
 
         {
@@ -380,7 +366,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            Primitive* sky_primitive = primitive_manager->CreatePrimitive(sky_geometry, sky_material_instance, sky_pipeline);
+            Primitive* sky_primitive = primitive_manager->CreatePrimitive(sky_geometry, sky_material_instance);
             if (!sky_primitive)
                 return false;
 

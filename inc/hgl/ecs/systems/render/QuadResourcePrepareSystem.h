@@ -61,12 +61,18 @@ namespace hgl::ecs
         static graph::GraphicsPipeline* GetSharedPipeline() { return shared_pipeline; }
         static graph::Sampler* GetSharedSampler() { return shared_sampler; }
 
+        static void SetPresetForWorld(const ECSContext* world, graph::GraphicsPipelinePreset preset);
+        static graph::GraphicsPipelinePreset GetPresetForWorld(const ECSContext* world);
+
         static void SetPipelineForWorld(const ECSContext* world, graph::GraphicsPipelinePreset pipeline);
         static graph::GraphicsPipelinePreset GetPipelineForWorld(const ECSContext* world);
         static graph::BlendMode GetBlendModeForWorld(const ECSContext* world);
 
         static void SetChannelHintForWorld(const ECSContext* world, graph::TextureChannelHint hint);
         static graph::TextureChannelHint GetChannelHintForWorld(const ECSContext* world);
+
+        static void SetPreset(graph::GraphicsPipelinePreset preset);
+        static graph::GraphicsPipelinePreset GetPreset();
 
         static void SetPipeline(graph::GraphicsPipelinePreset pipeline);
         static graph::GraphicsPipelinePreset GetPipeline();

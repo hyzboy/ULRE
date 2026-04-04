@@ -65,7 +65,6 @@ private:
     Sampler *           sampler             = nullptr;
     Material *          material            = nullptr;
 
-    GraphicsPipeline *  pipeline            = nullptr;
     Primitive *         mesh_rect           = nullptr;
 
     struct
@@ -137,13 +136,6 @@ private:
         if(!material)
             return(false);
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, GraphicsPipelinePreset::Solid2D) : nullptr;
-
-        if(!pipeline)
-            return(false);
-
         sampler=sampler_manager->CreateSampler();
 
         if(!material->BindTextureSampler( mtl::SamplerSlot::BaseColor,
@@ -153,7 +145,7 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].mi=material_manager->CreateMaterialInstance(material);
+            render_obj[i].mi=material_manager->CreateMaterialInstance(material, GraphicsPipelinePreset::Solid2D);
 
             if(!render_obj[i].mi)
                 return(false);
@@ -193,7 +185,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        mesh_rect = primitive_manager->CreatePrimitive(geometry, render_obj[0].mi, pipeline);
+        mesh_rect = primitive_manager->CreatePrimitive(geometry, render_obj[0].mi);
 
         if(!mesh_rect)
             return(false);

@@ -35,7 +35,6 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     Material *          material            =nullptr;
-    GraphicsPipeline *  pipeline            =nullptr;
 
     Geometry *         geom_plane_grid     =nullptr;
     MaterialInstance *  material_instance[3]{};
@@ -74,16 +73,12 @@ private:
         {
             GridColor=GetColor4f(ce,1.0);
 
-            material_instance[i]=material_manager->CreateMaterialInstance(material,&vil_config,&GridColor);
+            material_instance[i]=material_manager->CreateMaterialInstance(material,&vil_config,&GridColor, GraphicsPipelinePreset::Solid3D);
 
             ce=COLOR((int)ce+1);
         }
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material_instance[0], GraphicsPipelinePreset::Solid3D) : nullptr;
-
-        return pipeline;
+        return material_instance[0] && material_instance[1] && material_instance[2];
     }
 
     bool CreateRenderObject()
@@ -134,7 +129,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,mi,pipeline);
+        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,mi);
 
         if(!ri)
             return false;

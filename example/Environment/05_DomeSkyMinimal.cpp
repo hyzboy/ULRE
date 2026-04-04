@@ -29,7 +29,6 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     Material *          mtl_sky_sphere      = nullptr;
-    GraphicsPipeline *          mtl_pipeline        = nullptr;
 
     Geometry *          prim_sky_dome       = nullptr;
     Geometry *          prim_ground_plane   = nullptr;
@@ -53,15 +52,11 @@ private:
 
         mtl::SkyMinimalCreateConfig cfg;
 
-        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &cfg);
+        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &cfg, GraphicsPipelinePreset::Sky);
         if (!mi_sky_sphere)
             return false;
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        mtl_pipeline = render_pass ? render_pass->CreatePipeline(mi_sky_sphere, GraphicsPipelinePreset::Solid3D) : nullptr;
-
-        return mtl_pipeline;
+        return true;
     }
 
     bool CreateRenderObject()
@@ -116,7 +111,7 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!prim_sky_dome || !prim_ground_plane || !mi_sky_sphere || !mtl_pipeline)
+        if(!prim_sky_dome || !prim_ground_plane || !mi_sky_sphere)
             return false;
 
         auto* render_context = GetRenderContext();
@@ -131,7 +126,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *sky_prim = primitive_manager->CreatePrimitive(prim_sky_dome, mi_sky_sphere, mtl_pipeline);
+        Primitive *sky_prim = primitive_manager->CreatePrimitive(prim_sky_dome, mi_sky_sphere);
         if(!sky_prim)
             return false;
 
@@ -147,7 +142,7 @@ private:
         sky_prim_comp->SetPrimitive(sky_prim);
         sky_prim_comp->SetVisible(true);
 
-        Primitive *ground_prim = primitive_manager->CreatePrimitive(prim_ground_plane, mi_sky_sphere, mtl_pipeline);
+        Primitive *ground_prim = primitive_manager->CreatePrimitive(prim_ground_plane, mi_sky_sphere);
         if(!ground_prim)
             return false;
 

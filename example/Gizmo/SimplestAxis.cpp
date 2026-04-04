@@ -35,7 +35,6 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     Material *          material            =nullptr;
-    GraphicsPipeline *  pipeline            =nullptr;
 
     Geometry *         prim_axis           =nullptr;
     MaterialInstance *  material_instance   =nullptr;
@@ -60,13 +59,9 @@ private:
 
         cfg.local_to_world=true;
 
-        material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor3D,&cfg);
+        material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor3D,&cfg, GraphicsPipelinePreset::Solid3D);
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material_instance, GraphicsPipelinePreset::Solid3D) : nullptr;
-
-        return pipeline;
+        return material_instance != nullptr;
     }
 
     bool CreateRenderObject()
@@ -114,7 +109,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(prim_axis,material_instance,pipeline);
+        Primitive *ri=primitive_manager->CreatePrimitive(prim_axis,material_instance);
         if(!ri)
             return false;
 

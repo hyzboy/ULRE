@@ -33,10 +33,7 @@ namespace example::modules
         if (!material)
             return false;
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, inline_pipeline_type) : nullptr;
-        return pipeline != nullptr;
+        return true;
     }
 
     bool SubWorldModuleBase::BuildMaterialInstances(const Color4f* colors, size_t count)
@@ -53,7 +50,7 @@ namespace example::modules
 
         for (size_t i = 0; i < count; ++i)
         {
-            auto* mi = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &colors[i]);
+            auto* mi = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &colors[i], GraphicsPipelinePreset::Solid3D);
             if (!mi)
                 return false;
 
@@ -66,7 +63,7 @@ namespace example::modules
     SubWorldModuleBase::MeshResource*
     SubWorldModuleBase::CreatePrimitiveMesh(Geometry* geometry, MaterialInstance* mi)
     {
-        if (!render_context || !graphics_context || !geometry || !mi || !pipeline)
+        if (!render_context || !graphics_context || !geometry || !mi)
             return nullptr;
 
         auto* geometry_manager = graphics_context->GetGeometryManager();
@@ -76,7 +73,7 @@ namespace example::modules
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, mi, pipeline);
+        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, mi);
         if (!primitive)
             return nullptr;
 

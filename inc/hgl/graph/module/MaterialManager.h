@@ -165,11 +165,16 @@ public: //Material
 public: //MaterialInstanceData
 
     MaterialInstance *  CreateMaterialInstance(Material *);
+    MaterialInstance *  CreateMaterialInstance(Material *, GraphicsPipelinePreset);
     MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil);
+    MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil, GraphicsPipelinePreset);
     MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg);
+    MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg, GraphicsPipelinePreset);
 
     MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil, const void *, const uint32);
+    MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil, const void *, const uint32, GraphicsPipelinePreset);
     MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg, const void *, const uint32);
+    MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg, const void *, const uint32, GraphicsPipelinePreset);
 
     template<typename T>
     MaterialInstance *  CreateMaterialInstance(Material *mtl, const VIL *vil, const T *data)
@@ -178,21 +183,43 @@ public: //MaterialInstanceData
     }
 
     template<typename T>
+    MaterialInstance *  CreateMaterialInstance(Material *mtl, const VIL *vil, const T *data, GraphicsPipelinePreset preset)
+    {
+        return CreateMaterialInstance(mtl,vil,data,sizeof(T),preset);
+    }
+
+    template<typename T>
     MaterialInstance *  CreateMaterialInstance(Material *mtl, const VILConfig *vil_cfg, const T *data)
     {
         return CreateMaterialInstance(mtl,vil_cfg,data,sizeof(T));
     }
 
+    template<typename T>
+    MaterialInstance *  CreateMaterialInstance(Material *mtl, const VILConfig *vil_cfg, const T *data, GraphicsPipelinePreset preset)
+    {
+        return CreateMaterialInstance(mtl,vil_cfg,data,sizeof(T),preset);
+    }
+
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size, GraphicsPipelinePreset);
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
     {
         return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
     }
+    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,GraphicsPipelinePreset preset,const VILConfig *vil_cfg=nullptr)
+    {
+        return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0,preset);
+    }
 
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size, GraphicsPipelinePreset);
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
     {
         return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
+    }
+    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,GraphicsPipelinePreset preset,const VILConfig *vil_cfg=nullptr)
+    {
+        return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0,preset);
     }
 
 public: // ResourceDomain — Phase 1 / Phase 3
