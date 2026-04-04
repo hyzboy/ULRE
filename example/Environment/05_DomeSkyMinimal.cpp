@@ -81,7 +81,7 @@ private:
 
             DomeCreateInfo dci;
             dci.number_slices = 64;
-            dci.inside_out = true;
+            dci.inside_out = false;
             dci.normal = false;
             dci.tangent = false;
             dci.tex_coord = false;
