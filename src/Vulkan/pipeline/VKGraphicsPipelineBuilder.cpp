@@ -8,45 +8,6 @@
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
-namespace
-{
-GraphicsPipeline *CreateMonolithicFromRequest(const char *tag, const GraphicsPipelineBuildRequest &request)
-{
-    if (!request.material || !request.render_format || !request.vil || !request.pipeline_data)
-    {
-        GLogError("[%s] Build invalid request: material=%p render_format=%p vil=%p pipeline_data=%p",
-                  tag,
-                  static_cast<const void *>(request.material),
-                  static_cast<const void *>(request.render_format),
-                  static_cast<const void *>(request.vil),
-                  static_cast<const void *>(request.pipeline_data));
-        return nullptr;
-    }
-
-    AnsiString pipeline_name = request.debug_name;
-    if (pipeline_name.IsEmpty())
-        pipeline_name = request.material->GetName();
-
-    RenderTargetFormat *render_format = const_cast<RenderTargetFormat *>(request.render_format);
-
-    GraphicsPipeline *pipeline = render_format->CreatePipeline(
-        pipeline_name,
-        request.material->GetStageList(),
-        request.material->GetPipelineLayout(),
-        request.vil,
-        request.pipeline_data,
-        request.primitive,
-        request.primitive_restart);
-
-    if (!pipeline)
-    {
-        GLogError("[%s] Build failed: name=%s", tag, pipeline_name.c_str());
-        return nullptr;
-    }
-
-    return pipeline;
-}
-}
 
 GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
 {
@@ -56,7 +17,51 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
         return nullptr;
     }
 
-    return CreateMonolithicFromRequest("MonolithicGraphicsPipelineBuilder", request);
+    if (!request.material || !request.render_format || !request.vil || !request.pipeline_data)
+    {
+        GLogError("[MonolithicGraphicsPipelineBuilder] Build invalid request: "
+                  "material=%p render_format=%p vil=%p pipeline_data=%p",
+                  static_cast<const void *>(request.material),
+                  static_cast<const void *>(request.render_format),
+                  static_cast<const void *>(request.vil),
+                  static_cast<const void *>(request.pipeline_data));
+        return nullptr;
+    }
+
+    GraphicsPipelineData *pd = new GraphicsPipelineData(request.pipeline_data);
+    pd->SetPrim(request.primitive, request.primitive_restart);
+    pd->InitShaderStage(request.material->GetStageList());
+    pd->InitVertexInputState(request.vil);
+    pd->SetColorAttachments(request.render_format->GetColorCount());
+    pd->pipeline_info.layout = request.material->GetPipelineLayout();
+
+    VkPipelineRenderingCreateInfoKHR rendering_ci{};
+    rendering_ci.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+    rendering_ci.colorAttachmentCount    = request.render_format->GetColorCount();
+    rendering_ci.pColorAttachmentFormats = request.render_format->GetColorFormat().GetData();
+    rendering_ci.depthAttachmentFormat   = request.render_format->GetDepthFormat();
+    pd->pipeline_info.pNext              = &rendering_ci;
+    pd->pipeline_info.renderPass         = VK_NULL_HANDLE;
+    pd->pipeline_info.subpass            = 0;
+
+    VkPipeline vk_pipeline = VK_NULL_HANDLE;
+    if (vkCreateGraphicsPipelines(context.device->GetDevice(),
+                                   context.pipeline_cache,
+                                   1, &pd->pipeline_info,
+                                   nullptr, &vk_pipeline) != VK_SUCCESS)
+    {
+        GLogError("[MonolithicGraphicsPipelineBuilder] vkCreateGraphicsPipelines failed");
+        delete pd;
+        return nullptr;
+    }
+
+    RenderTargetFormat::IncrVkCreateCount();
+
+    AnsiString name = request.debug_name;
+    if (name.IsEmpty())
+        name = request.material->GetName();
+
+    return new GraphicsPipeline(name, context.device->GetDevice(), vk_pipeline, request.vil, pd);
 }
 
 GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)

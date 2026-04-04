@@ -24,10 +24,6 @@ class RenderTargetFormat
     VkFormatList    color_formats;
     VkFormat        depth_format;
 
-protected:
-
-    GraphicsPipeline *CreatePipeline(const AnsiString &,GraphicsPipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
-
 private:
 
     friend class VulkanDevice;
@@ -62,17 +58,6 @@ public:
     GraphicsPipeline *CreatePipeline(MaterialInstance *,    const GraphicsPipelinePreset &, const bool prim_restart=false);
     GraphicsPipeline *CreatePipeline(MaterialInstance *,    const GraphicsPipelineData *,   const bool prim_restart=false);
     GraphicsPipeline *CreatePipeline(MaterialInstance *,    const OSString &,       const bool prim_restart=false);
-
-    /**
-     * 从原始着色器阶段 + GraphicsPipeline Layout + VIL 创建管线（供 Compositor 系统使用）
-     */
-    GraphicsPipeline *CreatePipeline(const AnsiString &name,
-                             const ShaderStageCreateInfoList &ssci,
-                             VkPipelineLayout layout,
-                             const VIL *vil,
-                             const GraphicsPipelineData *pd,
-                             PrimitiveType prim = PrimitiveType::Triangles,
-                             bool prim_restart = false);
 
     /// Returns the process-lifetime count of successful vkCreateGraphicsPipelines calls.
     /// Use the delta between two calls to count pipelines created in a time window.

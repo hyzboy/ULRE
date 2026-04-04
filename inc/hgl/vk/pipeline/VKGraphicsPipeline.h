@@ -6,6 +6,8 @@
 #include<hgl/io/DataOutputStream.h>
 
 namespace hgl::graph{
+class MonolithicGraphicsPipelineBuilder;
+class GplGraphicsPipelineBuilder;
 class GraphicsPipeline
 {
     VkDevice device;
@@ -19,7 +21,7 @@ class GraphicsPipeline
 
 private:
 
-    friend class RenderTargetFormat;
+    friend class MonolithicGraphicsPipelineBuilder;
     friend class GplGraphicsPipelineBuilder;
 
     GraphicsPipeline(const AnsiString &n,VkDevice dev,VkPipeline p,const VIL *v,GraphicsPipelineData *pd)
