@@ -52,7 +52,7 @@ private:
 
         mtl::SkyMinimalCreateConfig cfg;
 
-        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &cfg, GraphicsPipelinePreset::Sky);
+        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &cfg, GraphicsPipelinePreset::Solid3D);
         if (!mi_sky_sphere)
             return false;
 
@@ -81,7 +81,7 @@ private:
 
             DomeCreateInfo dci;
             dci.number_slices = 64;
-            dci.inside_out = false;
+            dci.inside_out = true;
             dci.normal = false;
             dci.tangent = false;
             dci.tex_coord = false;
