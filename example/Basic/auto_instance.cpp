@@ -10,7 +10,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -86,14 +86,11 @@ private:
 
             vil_config.Add(VAN::Color,VF_V4UN8);
 
-            auto* material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kAutoInstanceCfg);
-            if (material)
+            MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+            auto handle = registry.Acquire(kAutoInstanceCfg);
+            if (handle.IsValid())
             {
-                graph::MaterialInstanceSpec spec;
-                spec.material = material;
-                spec.vil_cfg = &vil_config;
-                spec.preset = GraphicsPipelinePreset::Solid2D;
-                material_instance = material_manager->AcquireMaterialInstance(spec);
+                material_instance = registry.CreateMI(handle, kAutoInstanceCfg.pipeline, &vil_config);
             }
         }
 

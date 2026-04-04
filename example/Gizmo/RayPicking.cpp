@@ -16,7 +16,7 @@
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
@@ -102,35 +102,29 @@ private:
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
 
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+
         VILConfig vil_config;
 
         vil_config.Add(VAN::Luminance,VF_V1UN8);
 
         {
-            mtl_plane_grid = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kPlaneGridCfg);
-            if(!mtl_plane_grid)return(false);
+            auto handle = registry.Acquire(kPlaneGridCfg);
+            if(!handle.IsValid())return(false);
 
-            graph::MaterialInstanceSpec spec;
-            spec.material = mtl_plane_grid;
-            spec.vil_cfg = &vil_config;
-            spec.instance_data = &white_color;
-            spec.instance_data_size = sizeof(white_color);
-            spec.preset = GraphicsPipelinePreset::Solid3D;
-            mi_plane_grid = material_manager->AcquireMaterialInstance(spec);
+            mtl_plane_grid = handle.material;
+
+            mi_plane_grid = registry.CreateMI(handle, kPlaneGridCfg.pipeline, &vil_config, &white_color, sizeof(white_color));
             if(!mi_plane_grid)return(false);
         }
 
         {
-            mtl_line = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kLineCfg);
-            if(!mtl_line)return(false);
+            auto handle = registry.Acquire(kLineCfg);
+            if(!handle.IsValid())return(false);
 
-            graph::MaterialInstanceSpec spec;
-            spec.material = mtl_line;
-            spec.vil_cfg = &vil_config;
-            spec.instance_data = &yellow_color;
-            spec.instance_data_size = sizeof(yellow_color);
-            spec.preset = GraphicsPipelinePreset::Solid3D;
-            mi_line = material_manager->AcquireMaterialInstance(spec);
+            mtl_line = handle.material;
+
+            mi_line = registry.CreateMI(handle, kLineCfg.pipeline, &vil_config, &yellow_color, sizeof(yellow_color));
             if(!mi_line)return(false);
         }
 

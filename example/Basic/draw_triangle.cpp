@@ -9,7 +9,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -94,15 +94,12 @@ private:
 
         vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
-        auto* material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kTriangleCfg);
-        if (material)
-        {
-            graph::MaterialInstanceSpec spec;
-            spec.material = material;
-            spec.vil_cfg = &vil_config;
-            spec.preset = GraphicsPipelinePreset::Solid2D;
-            material_instance = material_manager->AcquireMaterialInstance(spec);
-        }
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        auto handle = registry.Acquire(kTriangleCfg);
+        if (!handle.IsValid())
+            return false;
+
+        material_instance = registry.CreateMI(handle, kTriangleCfg.pipeline, &vil_config);
 
         return material_instance != nullptr;
     }

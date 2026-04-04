@@ -2,7 +2,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -94,9 +94,12 @@ private:
                 {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::None, "res/image/Brickwall/Normal.Tex2D"},
             },
         };
-        material = LoadMaterialFromRecord(material_manager, texture_manager, sampler_manager, kStandardCfg);
-        if (!material)
+        MaterialAssetRegistry registry(material_manager, texture_manager, sampler_manager);
+        auto handle = registry.Acquire(kStandardCfg);
+        if (!handle.IsValid())
             return false;
+
+        material = handle.material;
 
         mtl::StandardMaterialInstance mi_data{};
         mi_data.base_color = 0xFFFFFFFFu;
@@ -104,12 +107,7 @@ private:
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
 
-        graph::MaterialInstanceSpec spec;
-        spec.material = material;
-        spec.instance_data = &mi_data;
-        spec.instance_data_size = sizeof(mi_data);
-        spec.preset = GraphicsPipelinePreset::Solid3D;
-        material_instance = material_manager->AcquireMaterialInstance(spec);
+        material_instance = registry.CreateMI(handle, GraphicsPipelinePreset::Solid3D, (const VertexInputLayout*)nullptr, &mi_data, sizeof(mi_data));
         if (!material_instance)
             return false;
 
@@ -471,14 +469,13 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
-        auto* sky_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kSkyCfg);
-        if (!sky_material)
+
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        auto sky_handle = registry.Acquire(kSkyCfg);
+        if (!sky_handle.IsValid())
             return false;
 
-        graph::MaterialInstanceSpec spec;
-        spec.material = sky_material;
-        spec.preset = GraphicsPipelinePreset::Sky;
-        mi_sky_sphere = material_manager->AcquireMaterialInstance(spec);
+        mi_sky_sphere = registry.CreateMI(sky_handle, GraphicsPipelinePreset::Sky);
         if (!mi_sky_sphere)
             return false;
 

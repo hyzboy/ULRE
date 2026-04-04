@@ -23,6 +23,8 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/MaterialManager.h
                         ${SG_INCLUDE_PATH}/module/MaterialCreatePrecheckAdapter.h
                         ${SG_INCLUDE_PATH}/module/MaterialFinalizeFlowAdapter.h
+                        ${SG_INCLUDE_PATH}/module/MaterialDomainHandle.h
+                        ${SG_INCLUDE_PATH}/module/MaterialAssetRegistry.h
                         ${SG_INCLUDE_PATH}/module/BufferManager.h
                         ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
                         ${SG_INCLUDE_PATH}/module/GeometryManager.h
@@ -36,6 +38,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/MaterialManager.cpp
                         module/MaterialCreatePrecheckAdapter.cpp
                         module/MaterialFinalizeFlowAdapter.cpp
+                        module/MaterialAssetRegistry.cpp
                         module/BufferManager.cpp
                         module/RenderTargetManager.cpp
                         module/GeometryManager.cpp

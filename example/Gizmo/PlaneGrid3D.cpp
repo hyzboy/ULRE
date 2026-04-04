@@ -4,7 +4,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -62,8 +62,10 @@ private:
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
 
-        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kPlaneGridCfg);
-        if(!material)return(false);
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        auto handle = registry.Acquire(kPlaneGridCfg);
+        if(!handle.IsValid())return(false);
+        material = handle.material;
 
         VILConfig vil_config;
 
@@ -76,13 +78,7 @@ private:
         {
             GridColor=GetColor4f(ce,1.0);
 
-            graph::MaterialInstanceSpec spec;
-            spec.material = material;
-            spec.vil_cfg = &vil_config;
-            spec.instance_data = &GridColor;
-            spec.instance_data_size = sizeof(GridColor);
-            spec.preset = GraphicsPipelinePreset::Solid3D;
-            material_instance[i] = material_manager->AcquireMaterialInstance(spec);
+            material_instance[i] = registry.CreateMI(handle, kPlaneGridCfg.pipeline, &vil_config, &GridColor, sizeof(GridColor));
 
             ce=COLOR((int)ce+1);
         }

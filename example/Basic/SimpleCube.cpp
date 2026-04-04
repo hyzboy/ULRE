@@ -10,7 +10,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -69,21 +69,16 @@ private:
         if (!material_manager)
             return false;
 
-        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kCubeCfg);
-
-        if(!material)
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        auto handle = registry.Acquire(kCubeCfg);
+        if (!handle.IsValid())
             return false;
+
+        material = handle.material;
 
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
-        MaterialInstanceSpec mi_spec;
-        mi_spec.material = material;
-        mi_spec.vil = nullptr;
-        mi_spec.instance_data = &color;
-        mi_spec.instance_data_size = sizeof(color);
-        mi_spec.preset = GraphicsPipelinePreset::Solid3D;
-
-        mi = material_manager->AcquireMaterialInstance(mi_spec);
+        mi = registry.CreateMI(handle, kCubeCfg.pipeline, (const VertexInputLayout*)nullptr, &color, sizeof(color));
 
         if(!mi)
             return false;

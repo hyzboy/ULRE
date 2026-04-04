@@ -1,7 +1,7 @@
 ﻿// 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -136,10 +136,12 @@ private:
             },
         };
 
-        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kTexArrayCfg);
-
-        if(!material)
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        auto handle = registry.Acquire(kTexArrayCfg);
+        if(!handle.IsValid())
             return(false);
+
+        material = handle.material;
 
         sampler=sampler_manager->CreateSampler();
 
@@ -150,10 +152,7 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            graph::MaterialInstanceSpec spec;
-            spec.material = material;
-            spec.preset = GraphicsPipelinePreset::Solid2D;
-            render_obj[i].mi = material_manager->AcquireMaterialInstance(spec);
+            render_obj[i].mi = registry.CreateMI(handle, GraphicsPipelinePreset::Solid2D);
 
             if(!render_obj[i].mi)
                 return(false);

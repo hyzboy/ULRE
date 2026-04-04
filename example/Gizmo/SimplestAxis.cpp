@@ -5,7 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -62,12 +62,10 @@ private:
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
 
-        auto* material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kAxisCfg);
-        if (!material) return false;
-        graph::MaterialInstanceSpec spec;
-        spec.material = material;
-        spec.preset = GraphicsPipelinePreset::Solid3D;
-        material_instance = material_manager->AcquireMaterialInstance(spec);
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        auto handle = registry.Acquire(kAxisCfg);
+        if (!handle.IsValid()) return false;
+        material_instance = registry.CreateMI(handle, kAxisCfg.pipeline);
 
         return material_instance != nullptr;
     }

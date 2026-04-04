@@ -1,7 +1,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -57,12 +57,10 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        auto* sky_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kSkyCfg);
-        if (!sky_material) return false;
-        graph::MaterialInstanceSpec spec;
-        spec.material = sky_material;
-        spec.preset = GraphicsPipelinePreset::Solid3D;
-        mi_sky_sphere = material_manager->AcquireMaterialInstance(spec);
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        auto handle = registry.Acquire(kSkyCfg);
+        if (!handle.IsValid()) return false;
+        mi_sky_sphere = registry.CreateMI(handle, kSkyCfg.pipeline);
         if (!mi_sky_sphere)
             return false;
 

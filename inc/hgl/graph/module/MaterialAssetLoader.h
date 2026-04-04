@@ -29,20 +29,40 @@
 namespace hgl::graph
 {
 
-/// 将 MaterialAssetRecord 转换为相应的 CreateConfig 并获取材质。
-/// 若 tex_* 路径非空且 tm/sm 均非 null，则自动加载纹理并绑定到材质。
-/// @return 获取到的 Material*，失败返回 nullptr。
-inline Material *LoadMaterialFromRecord(
-    MaterialManager   *mm,
-    TextureManager    *tm,      ///< 可为 null（跳过纹理加载）
-    SamplerManager    *sm,      ///< 可为 null（跳过纹理加载）
+// ── 纹理绑定辅助函数（供 Registry 和旧 Loader 共用）──────────────────────────
+
+/// 将 record 中的纹理加载并绑定到 Material（旧路径，兼容用）
+inline bool BindTexturesFromRecord(
+    Material *material,
+    TextureManager *tm,
+    SamplerManager *sm,
+    const mtl::MaterialAssetRecord &rec)
+{
+    if (!material || !tm || !sm) return false;
+
+    for (const auto &tc : rec.textures)
+    {
+        if (tc.path.empty()) continue;
+        auto *tex = tm->LoadTexture2D(hgl::ToOSString(tc.path), true);
+        if (!tex) return false;
+        auto *smp = sm->CreateSampler();
+        if (!smp) return false;
+        if (!material->BindTextureSampler(tc.slot, tex, smp))
+            return false;
+    }
+    return true;
+}
+
+// ── Material 创建（不含纹理绑定）──────────────────────────────────────────────
+
+/// 从 MaterialAssetRecord 创建/获取 Material（仅 AcquireMaterial，不绑纹理）。
+inline Material *CreateMaterialFromRecord(
+    MaterialManager *mm,
     const mtl::MaterialAssetRecord &rec)
 {
     if (!mm) return nullptr;
 
     using namespace mtl;
-
-    Material *material = nullptr;
 
     // ── Billboard2DFixed / Billboard2DDynamic ────────────────────────────────
     if (rec.preset == MaterialPreset::Billboard2DFixed ||
@@ -61,7 +81,7 @@ inline Material *LoadMaterialFromRecord(
             cfg.texture_id = rec.billboard.texture_id;
         if (rec.pos_format.Check())
             cfg.position_format = rec.pos_format;
-        material = mm->AcquireMaterial(rec.preset, &cfg);
+        return mm->AcquireMaterial(rec.preset, &cfg);
     }
     // ── 2D ──────────────────────────────────────────────────────────────────
     else if (rec.dim == MaterialAssetRecord::Dim::D2)
@@ -75,7 +95,7 @@ inline Material *LoadMaterialFromRecord(
         for (const auto &tc : rec.textures)
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
-        material = mm->AcquireMaterial(rec.preset, &cfg);
+        return mm->AcquireMaterial(rec.preset, &cfg);
     }
     // ── 3D (含 SkyMinimal / TerrainGrid / Standard / PBR 等) ─────────────────
     else
@@ -92,24 +112,29 @@ inline Material *LoadMaterialFromRecord(
         for (const auto &tc : rec.textures)
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
-        material = mm->AcquireMaterial(rec.preset, &cfg);
+        return mm->AcquireMaterial(rec.preset, &cfg);
     }
+}
 
+// ── 旧兼容入口（Material 创建 + 可选纹理绑定）─────────────────────────────────
+
+/// 将 MaterialAssetRecord 转换为相应的 CreateConfig 并获取材质。
+/// 若 tex_* 路径非空且 tm/sm 均非 null，则自动加载纹理并绑定到材质。
+/// @return 获取到的 Material*，失败返回 nullptr。
+inline Material *LoadMaterialFromRecord(
+    MaterialManager   *mm,
+    TextureManager    *tm,      ///< 可为 null（跳过纹理加载）
+    SamplerManager    *sm,      ///< 可为 null（跳过纹理加载）
+    const mtl::MaterialAssetRecord &rec)
+{
+    Material *material = CreateMaterialFromRecord(mm, rec);
     if (!material) return nullptr;
 
-    // ── 纹理绑定（tm/sm 均非 null 且路径非空时执行）────────────────────────────
+    // ── 纹理绑定（tm/sm 均非 null 时执行）────────────────────────────
     if (tm && sm)
     {
-        for (const auto &tc : rec.textures)
-        {
-            if (tc.path.empty()) continue;
-            auto *tex = tm->LoadTexture2D(hgl::ToOSString(tc.path), true);
-            if (!tex) return nullptr;
-            auto *smp = sm->CreateSampler();
-            if (!smp) return nullptr;
-            if (!material->BindTextureSampler(tc.slot, tex, smp))
-                return nullptr;
-        }
+        if (!BindTexturesFromRecord(material, tm, sm, rec))
+            return nullptr;
     }
 
     return material;

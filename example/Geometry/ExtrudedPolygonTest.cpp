@@ -4,7 +4,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/Extruded.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -62,16 +62,14 @@ private:
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kExtrudedCfg);
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        auto handle = registry.Acquire(kExtrudedCfg);
+        if (!handle.IsValid()) return false;
+        material = handle.material;
 
         Color4f color=GetColor4f(COLOR::BlenderAxisRed);
 
-        graph::MaterialInstanceSpec spec;
-        spec.material = material;
-        spec.instance_data = &color;
-        spec.instance_data_size = sizeof(color);
-        spec.preset = GraphicsPipelinePreset::Solid3D;
-        material_instance = material_manager->AcquireMaterialInstance(spec);
+        material_instance = registry.CreateMI(handle, kExtrudedCfg.pipeline, (const VertexInputLayout*)nullptr, &color, sizeof(color));
 
         return material_instance != nullptr;
     }

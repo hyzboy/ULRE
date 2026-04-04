@@ -11,7 +11,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/color/Color.h>
 #include<ctime>
 #include<chrono>
@@ -110,22 +110,19 @@ private:
                 .pipeline = GraphicsPipelinePreset::Solid2D,
             };
 
-            material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kClockCfg);
-
-            if (!material)
+            MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+            auto handle = registry.Acquire(kClockCfg);
+            if (!handle.IsValid())
                 return false;
 
-            std::cout << "[ClockApp::InitMaterial] Created material: " << (void*)material << std::endl;
-        }
+            material = handle.material;
 
-        {
+            std::cout << "[ClockApp::InitMaterial] Created material: " << (void*)material << std::endl;
+
             // 刻度颜色（白色）
             Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
 
-            graph::MaterialInstanceSpec spec;
-            spec.material = material;
-            spec.preset = GraphicsPipelinePreset::Solid2D;
-            mi_tick = material_manager->AcquireMaterialInstance(spec);
+            mi_tick = registry.CreateMI(handle, kClockCfg.pipeline);
             if(mi_tick)
                 mi_tick->WriteMIData(tick_color);
 
@@ -138,10 +135,7 @@ private:
 
             for (uint i = 0; i < 3; i++)
             {
-                graph::MaterialInstanceSpec spec;
-                spec.material = material;
-                spec.preset = GraphicsPipelinePreset::Solid2D;
-                hands[i].mi = material_manager->AcquireMaterialInstance(spec);
+                hands[i].mi = registry.CreateMI(handle, kClockCfg.pipeline);
                 if (!hands[i].mi)
                     return false;
                 hands[i].mi->WriteMIData(hand_colors[i]);

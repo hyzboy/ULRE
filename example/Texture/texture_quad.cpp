@@ -1,6 +1,6 @@
 ﻿// 画一个带纹理的四边形 (ECS)
 #include<hgl/framework/WorkManager.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -84,15 +84,12 @@ private:
             },
         };
 
-        auto *material = LoadMaterialFromRecord(material_manager, tex_manager, sampler_manager, kTexQuadCfg);
-
-        if(!material)
+        MaterialAssetRegistry registry(material_manager, tex_manager, sampler_manager);
+        auto handle = registry.Acquire(kTexQuadCfg);
+        if(!handle.IsValid())
             return(false);
 
-        graph::MaterialInstanceSpec spec;
-        spec.material = material;
-        spec.preset = GraphicsPipelinePreset::Solid2D;
-        material_instance = material_manager->AcquireMaterialInstance(spec);
+        material_instance = registry.CreateMI(handle, GraphicsPipelinePreset::Solid2D);
 
         return(material_instance!=nullptr);
     }

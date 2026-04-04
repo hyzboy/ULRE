@@ -2,7 +2,8 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -136,15 +137,13 @@ public:
         mi_data.roughness=0.95f;
         mi_data.normal_scale=0.35f;
 
-        material = LoadMaterialFromRecord(material_manager, texture_manager, sampler_manager, kWallsCfg);
-        if(!material) return false;
+        MaterialAssetRegistry registry(material_manager, texture_manager, sampler_manager);
+        auto handle = registry.Acquire(kWallsCfg);
+        if(!handle.IsValid()) return false;
 
-        graph::MaterialInstanceSpec spec;
-        spec.material = material;
-        spec.instance_data = &mi_data;
-        spec.instance_data_size = sizeof(mi_data);
-        spec.preset = GraphicsPipelinePreset::Solid3D;
-        material_instance = material_manager->AcquireMaterialInstance(spec);
+        material = handle.material;
+
+        material_instance = registry.CreateMI(handle, GraphicsPipelinePreset::Solid3D, (const VertexInputLayout*)nullptr, &mi_data, sizeof(mi_data));
         if(!material_instance) return false;
 
         const VIL *vil = material->GetDefaultVIL();

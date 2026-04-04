@@ -11,7 +11,7 @@
 #include<hgl/math/VectorTypes.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -77,6 +77,8 @@ private:
         if(!material_manager || !geometry_manager || !primitive_manager || !device)
             return false;
 
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+
         {
             static const mtl::MaterialAssetRecord kGridCfg {
                 .id       = "gizmo_grid",
@@ -85,21 +87,17 @@ private:
                 .pipeline = GraphicsPipelinePreset::Solid3D,
             };
 
-            grid_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kGridCfg);
-            if(!grid_material)
+            auto handle = registry.Acquire(kGridCfg);
+            if(!handle.IsValid())
                 return false;
+
+            grid_material = handle.material;
 
             VILConfig vil_config;
             vil_config.Add(VAN::Luminance, VF_V1UN8);
 
             const Color4f white = GetColor4f(COLOR::White, 1.0f);
-            graph::MaterialInstanceSpec spec;
-            spec.material = grid_material;
-            spec.vil_cfg = &vil_config;
-            spec.instance_data = &white;
-            spec.instance_data_size = sizeof(white);
-            spec.preset = GraphicsPipelinePreset::Solid3D;
-            grid_mi = material_manager->AcquireMaterialInstance(spec);
+            grid_mi = registry.CreateMI(handle, kGridCfg.pipeline, &vil_config, &white, sizeof(white));
             if(!grid_mi)
                 return false;
 
@@ -129,17 +127,14 @@ private:
                 .pipeline = GraphicsPipelinePreset::Solid3D,
             };
 
-            cube_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kCubeCfg);
-            if(!cube_material)
+            auto handle = registry.Acquire(kCubeCfg);
+            if(!handle.IsValid())
                 return false;
 
+            cube_material = handle.material;
+
             const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            graph::MaterialInstanceSpec spec;
-            spec.material = cube_material;
-            spec.instance_data = &blue;
-            spec.instance_data_size = sizeof(blue);
-            spec.preset = GraphicsPipelinePreset::Solid3D;
-            cube_mi = material_manager->AcquireMaterialInstance(spec);
+            cube_mi = registry.CreateMI(handle, kCubeCfg.pipeline, (const VertexInputLayout*)nullptr, &blue, sizeof(blue));
             if(!cube_mi)
                 return false;
 

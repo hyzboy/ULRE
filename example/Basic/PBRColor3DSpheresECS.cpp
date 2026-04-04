@@ -7,7 +7,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -45,6 +45,7 @@ private:
     Entity *camera_entity = nullptr;
 
     Material *material = nullptr;
+    MaterialDomainHandle material_handle;
 
     VertexDataManager *mesh_vdm = nullptr;
     Geometry *builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
@@ -121,12 +122,14 @@ private:
             .lighting    = mtl::LightingModel::PBR,
             .pipeline    = GraphicsPipelinePreset::Solid3D,
         };
-        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kPBRColorCfg);
-        if (!material)
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        material_handle = registry.Acquire(kPBRColorCfg);
+        if (!material_handle.IsValid())
         {
             printf("[ERROR] InitMaterial: Failed to create PBRColor3D material\n");
             return false;
         }
+        material = material_handle.material;
 
         return true;
     }
@@ -154,6 +157,8 @@ private:
             return false;
         }
 
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+
         for (uint row = 0; row < GRID_SIZE; ++row)
         {
             for (uint col = 0; col < GRID_SIZE; ++col)
@@ -171,12 +176,7 @@ private:
                 store.metallic = d.metallic;
                 store.roughness = d.roughness;
 
-                graph::MaterialInstanceSpec spec;
-                spec.material = material;
-                spec.instance_data = &d;
-                spec.instance_data_size = sizeof(d);
-                spec.preset = GraphicsPipelinePreset::Solid3D;
-                sphere_mi[row][col] = material_manager->AcquireMaterialInstance(spec);
+                sphere_mi[row][col] = registry.CreateMI(material_handle, GraphicsPipelinePreset::Solid3D, (const VertexInputLayout*)nullptr, &d, sizeof(d));
                 if (!sphere_mi[row][col])
                 {
                     printf("[ERROR] CreatePBRColorMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
@@ -425,6 +425,8 @@ private:
         if (!material_manager || !device || !geometry_manager || !primitive_manager)
             return false;
 
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+
         static const mtl::MaterialAssetRecord kSkyCfg {
             .id       = "pbr_color_sky",
             .preset   = mtl::MaterialPreset::SkyMinimal,
@@ -432,14 +434,11 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
-        auto* sky_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kSkyCfg);
-        if (!sky_material)
+        auto sky_handle = registry.Acquire(kSkyCfg);
+        if (!sky_handle.IsValid())
             return false;
 
-        graph::MaterialInstanceSpec spec;
-        spec.material = sky_material;
-        spec.preset = GraphicsPipelinePreset::Sky;
-        mi_sky_sphere = material_manager->AcquireMaterialInstance(spec);
+        mi_sky_sphere = registry.CreateMI(sky_handle, kSkyCfg.pipeline);
         if (!mi_sky_sphere)
             return false;
 

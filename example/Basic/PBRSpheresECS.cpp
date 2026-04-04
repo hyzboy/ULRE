@@ -9,7 +9,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -71,6 +71,7 @@ private:
     Entity *      camera_entity = nullptr;
 
     Material *          material  = nullptr;
+    MaterialDomainHandle material_handle;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -157,11 +158,14 @@ private:
                 {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array, ""},
             },
         };
-        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kPBRArrayCfg);
-        if (!material) {
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        material_handle = registry.Acquire(kPBRArrayCfg);
+        if (!material_handle.IsValid()) {
             printf("[ERROR] InitMaterial: Failed to create Standard+Array material\n");
             return false;
         }
+
+        material = material_handle.material;
 
         sampler = sampler_manager->CreateSampler();
         if (!sampler) {
@@ -294,6 +298,8 @@ private:
             return false;
         }
 
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+
         for (uint row = 0; row < GRID_SIZE; ++row)
         {
             for (uint col = 0; col < GRID_SIZE; ++col)
@@ -315,14 +321,7 @@ private:
                 store.roughness = d.roughness;
                 store.normal_scale = d.normal_scale;
 
-                MaterialInstanceSpec mi_spec;
-                mi_spec.material = material;
-                mi_spec.vil = nullptr;
-                mi_spec.instance_data = &d;
-                mi_spec.instance_data_size = sizeof(d);
-                mi_spec.preset = GraphicsPipelinePreset::Solid3D;
-
-                sphere_mi[row][col] = material_manager->AcquireMaterialInstance(mi_spec);
+                sphere_mi[row][col] = registry.CreateMI(material_handle, GraphicsPipelinePreset::Solid3D, (const VertexInputLayout*)nullptr, &d, sizeof(d));
 
                 if (!sphere_mi[row][col]) {
                     printf("[ERROR] CreateStandardMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
@@ -579,15 +578,13 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
-        Material *sky_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kSkyCfg);
-        if (!sky_material)
+
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        auto sky_handle = registry.Acquire(kSkyCfg);
+        if (!sky_handle.IsValid())
             return false;
 
-        MaterialInstanceSpec sky_mi_spec;
-        sky_mi_spec.material = sky_material;
-        sky_mi_spec.vil = nullptr;
-        sky_mi_spec.preset = GraphicsPipelinePreset::Sky;
-        mi_sky_sphere = material_manager->AcquireMaterialInstance(sky_mi_spec);
+        mi_sky_sphere = registry.CreateMI(sky_handle, GraphicsPipelinePreset::Sky);
         if (!mi_sky_sphere)
             return false;
 

@@ -11,7 +11,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -89,10 +89,12 @@ private:
                 .pipeline = GraphicsPipelinePreset::Solid2D,
             };
 
-            material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kMergeCfg);
-
-            if (!material)
+            MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+            auto handle = registry.Acquire(kMergeCfg);
+            if (!handle.IsValid())
                 return false;
+
+            material = handle.material;
 
             std::cout << "[TestApp::InitMaterial] Created material: " << (void*)material << std::endl;
             std::cout << "[TestApp::InitMaterial] Material has MI: " << material->hasMI() << std::endl;
@@ -101,10 +103,7 @@ private:
             // 为每个三角形创建不同颜色的MaterialInstance
             for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
             {
-                graph::MaterialInstanceSpec spec;
-                spec.material = material;
-                spec.preset = GraphicsPipelinePreset::Solid2D;
-                triangles[i].mi = material_manager->AcquireMaterialInstance(spec);
+                triangles[i].mi = registry.CreateMI(handle, kMergeCfg.pipeline);
 
                 if (!triangles[i].mi)
                     return false;

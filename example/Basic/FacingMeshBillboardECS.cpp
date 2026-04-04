@@ -13,7 +13,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetLoader.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -111,9 +111,12 @@ private:
         if (!material_manager)
             return false;
 
-        solid.material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kSolidCfg);
-        if (!solid.material)
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        auto handle = registry.Acquire(kSolidCfg);
+        if (!handle.IsValid())
             return false;
+
+        solid.material = handle.material;
 
         solid.vil = solid.material->GetDefaultVIL();
         if (!solid.vil)
@@ -123,12 +126,7 @@ private:
         for (size_t i = 0; i < DEMO_COLOR_COUNT; ++i)
         {
             color = GetColor4f(DemoColors[i], 1.0f);
-            graph::MaterialInstanceSpec spec;
-            spec.material = solid.material;
-            spec.instance_data = &color;
-            spec.instance_data_size = sizeof(color);
-            spec.preset = GraphicsPipelinePreset::Solid3D;
-            solid.mi[i] = material_manager->AcquireMaterialInstance(spec);
+            solid.mi[i] = registry.CreateMI(handle, kSolidCfg.pipeline, (const VertexInputLayout*)nullptr, &color, sizeof(color));
             if (!solid.mi[i])
                 return false;
         }
