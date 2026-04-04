@@ -113,7 +113,14 @@ namespace hgl::ecs
             ? graph::mtl::MaterialPreset::Billboard2DFixed
             : graph::mtl::MaterialPreset::Billboard2DDynamic;
 
-        auto* mi = material_manager->CreateMaterialInstance(preset, &cfg);
+        auto* quad_material = material_manager->AcquireMaterial(preset, &cfg);
+        if (!quad_material)
+            return false;
+
+        graph::MaterialInstanceSpec spec;
+        spec.material = quad_material;
+        spec.preset = QuadResourcePrepareSystem::GetPresetForWorld(world);
+        auto* mi = material_manager->AcquireMaterialInstance(spec);
         if (!mi)
             return false;
 

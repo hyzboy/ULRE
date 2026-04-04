@@ -246,7 +246,7 @@ namespace hgl::ecs
         if (!mat_mgr)
             return false;
 
-        material_ = mat_mgr->CreateMaterial(graph::mtl::MaterialPreset::VertexPattleColor3D, &cfg);
+        material_ = mat_mgr->AcquireMaterial(graph::mtl::MaterialPreset::VertexPattleColor3D, &cfg);
         if (!material_)
             return false;
 
@@ -260,7 +260,11 @@ namespace hgl::ecs
             ? graph::GraphicsPipelinePreset::DynamicLineWidth3D
             : graph::GraphicsPipelinePreset::Solid3D;
 
-        mi_ = mat_mgr->CreateMaterialInstance(material_, &vil, preset);
+        graph::MaterialInstanceSpec spec;
+        spec.material = material_;
+        spec.vil_cfg = &vil;
+        spec.preset = preset;
+        mi_ = mat_mgr->AcquireMaterialInstance(spec);
         if (!mi_)
             return false;
 
