@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <limits>
 #include <utility>
+#include <unordered_map>
 
 #include<hgl/math/geometry/Frustum.h>
 #include<hgl/ecs/core/MaterialBatch.h>
@@ -36,6 +37,7 @@ namespace hgl::ecs
         graph::VulkanDevice* device = nullptr;
         math::Frustum frustum;
         uint32_t prepared_frame_index = std::numeric_limits<uint32_t>::max();
+        std::unordered_map<graph::Primitive*, graph::GraphicsPipeline*> resolved_pipeline_cache;
 
     public:
         bool PrepareFrame(ECSContext* ctx);

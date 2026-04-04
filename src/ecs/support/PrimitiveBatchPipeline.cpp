@@ -31,6 +31,7 @@
 #include<chrono>
 #include<cstdint>
 #include<atomic>
+#include<unordered_set>
 
 namespace hgl::ecs
 {
@@ -498,6 +499,7 @@ namespace hgl::ecs
         uint32_t frame_successes = 0;
         uint32_t frame_failures = 0;
         uint32_t frame_skips = 0;
+        std::unordered_set<graph::Primitive*> seen_primitives;
 
         for (auto& itemPtr : cache.renderItems)
         {
@@ -506,7 +508,17 @@ namespace hgl::ecs
                 continue;
 
             auto* material = item->GetMaterial();
-            auto* pipeline = item->GetPipeline();
+            auto* primitive = item->GetPrimitive();
+            graph::GraphicsPipeline* pipeline = nullptr;
+
+            if (primitive)
+            {
+                seen_primitives.insert(primitive);
+
+                auto it = resolved_pipeline_cache.find(primitive);
+                if (it != resolved_pipeline_cache.end())
+                    pipeline = it->second;
+            }
 
             // Stage-4 prework: resolve pipeline before renderer hot path.
             // Resolve from MaterialInstance preset instead of depending on an existing pipeline.
@@ -546,10 +558,9 @@ namespace hgl::ecs
 
                     if (graph::GraphicsPipeline* acquired = device->AcquireGraphicsPipeline(req))
                     {
-                        if (auto* primitive = item->GetPrimitive())
-                            primitive->UpdatePipeline(acquired);
-
                         pipeline = acquired;
+                        if (primitive)
+                            resolved_pipeline_cache[primitive] = acquired;
                         ++frame_successes;
                         RecordPipelineResolveSuccess(g_pipeline_preresolve_counters);
                     }
@@ -609,6 +620,14 @@ namespace hgl::ecs
                 (*batch_ptr)->buffer_manager = buffer_manager;
                 (*batch_ptr)->AddItem(item);
             }
+        }
+
+        for (auto it = resolved_pipeline_cache.begin(); it != resolved_pipeline_cache.end();)
+        {
+            if (seen_primitives.find(it->first) == seen_primitives.end())
+                it = resolved_pipeline_cache.erase(it);
+            else
+                ++it;
         }
 
         const uint64_t vkcreate_at_end = graph::RenderTargetFormat::GetVkCreateCount();

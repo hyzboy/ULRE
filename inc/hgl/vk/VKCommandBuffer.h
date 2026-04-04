@@ -241,11 +241,13 @@ public: //dynamic state
 
 public:
 
-    void Render(Primitive *ri)
+    void Render(Primitive *ri, GraphicsPipeline *pipeline)
     {
         if(!ri)return;
 
-        BindPipeline(ri->GetPipeline());
+        if(!pipeline)return;
+
+        BindPipeline(pipeline);
         BindDescriptorSets(ri->GetMaterial());
         BindDataBuffer(ri->GetDataBuffer());
 

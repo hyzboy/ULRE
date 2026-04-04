@@ -67,7 +67,7 @@ namespace hgl::ecs
         for (auto* primitive : primitives)
         {
             if (primitive)
-                cmd->Render(primitive);
+                cmd->Render(primitive, primitive->GetPipeline());
         }
     }
 
