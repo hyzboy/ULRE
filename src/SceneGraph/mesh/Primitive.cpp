@@ -3,16 +3,8 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
-#include<unordered_map>
-#include<mutex>
 
 namespace hgl::graph{
-
-namespace
-{
-    std::unordered_map<const Primitive *, GraphicsPipelinePreRaster *> g_primitive_pipeline_map;
-    std::mutex g_primitive_pipeline_mutex;
-}
 
 GeometryDataBuffer::GeometryDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManager *_vdm)
 {
@@ -63,35 +55,11 @@ Primitive::Primitive(Geometry *r,MaterialInstance *mi,GraphicsPipelinePreRaster 
 
     data_buffer=gdb;
     draw_range.Set(geometry);
-
-    UpdatePipeline(p);
 }
 
 Primitive::~Primitive()
 {
-    {
-        std::lock_guard<std::mutex> lock(g_primitive_pipeline_mutex);
-        g_primitive_pipeline_map.erase(this);
-    }
-
     SAFE_CLEAR(data_buffer);
-}
-
-void Primitive::UpdatePipeline(GraphicsPipelinePreRaster *p)
-{
-    std::lock_guard<std::mutex> lock(g_primitive_pipeline_mutex);
-    g_primitive_pipeline_map[this] = p;
-}
-
-GraphicsPipelinePreRaster *Primitive::GetPipeline() const
-{
-    std::lock_guard<std::mutex> lock(g_primitive_pipeline_mutex);
-
-    auto it = g_primitive_pipeline_map.find(this);
-    if (it == g_primitive_pipeline_map.end())
-        return nullptr;
-
-    return it->second;
 }
 
 bool Primitive::UpdateGeometry()

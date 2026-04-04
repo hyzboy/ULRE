@@ -32,9 +32,6 @@ public:
 
     virtual ~Primitive();
 
-            void                UpdatePipeline      (GraphicsPipelinePreRaster *p);
-
-            GraphicsPipelinePreRaster * GetPipeline         () const;
             VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
             Material *          GetMaterial         (){return mat_inst->GetMaterial();}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}

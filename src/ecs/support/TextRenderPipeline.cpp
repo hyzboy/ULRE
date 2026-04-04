@@ -389,9 +389,6 @@ namespace hgl::ecs
         resources.pipeline = resolved;
         resources.render_format = render_format;
 
-        if (resources.primitive)
-            resources.primitive->UpdatePipeline(resolved);
-
         return true;
     }
 

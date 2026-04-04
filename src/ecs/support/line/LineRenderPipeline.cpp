@@ -355,8 +355,9 @@ namespace hgl::ecs
         const uint32_t num_slots = support_wide_lines_ ? MAX_WIDTHS : 1;
         for (uint32_t i = 0; i < num_slots; ++i)
         {
-            if (slots_[i].primitive)
-                slots_[i].primitive->UpdatePipeline(resolved);
+            if (!slots_[i].primitive)
+                continue;
+            // Primitive pipeline state now completely decoupled; cached in pipeline_ member
         }
 
         RecordPipelineResolveSuccess(g_line_pipeline_resolve_counters);

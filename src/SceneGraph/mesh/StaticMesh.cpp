@@ -47,23 +47,11 @@ bool StaticMesh::AddPrimitive(Primitive *sm)
     geometry_set.Add(sm->GetGeometry());
     if (auto mi = sm->GetMaterialInstance()) mat_inst_set.Add(mi);
 
-    // 处理 Pipeline 缓存：如果不在缓存中，从 Primitive 读取后缓存
-    auto it = _primitive_pipeline_cache.find(sm);
-    if (it == _primitive_pipeline_cache.end())
-    {
-        // 外部导入的 Primitive：首次读取后缓存
-        if (auto pl = sm->GetPipeline())
-        {
-            _primitive_pipeline_cache[sm] = pl;
-            pipeline_set.Add(pl);
-        }
-    }
-    else
-    {
-        // 缓存中已有：直接使用
-        if (it->second)
-            pipeline_set.Add(it->second);
-    }
+    // 处理 Pipeline 缓存：
+    // 外部导入的 Primitive 可能没有 pipeline 信息（已完全解耦），
+    // 所以缓存初始为空，不从 Primitive 读取。
+    // 如需要可在将来指定。
+    _primitive_pipeline_cache[sm] = nullptr;
 
     RefreshBoundingVolumes();
     return true;
