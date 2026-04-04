@@ -48,4 +48,13 @@ public:
     const bool IsAlphaTest()const{return data && data->alpha_test>0;}
     const bool IsAlphaBlend()const{return data && data->alpha_blend;}
 };//class GraphicsPipeline
+
+// Semantic aliases for the 4 Vulkan Graphics Pipeline Library stages.
+// All resolve to GraphicsPipeline; the alias name conveys which stage's
+// contract the caller is binding to.
+using GraphicsPipelineVertexInput    = GraphicsPipeline;
+using GraphicsPipelinePreRaster      = GraphicsPipeline;
+using GraphicsPipelineFragment       = GraphicsPipeline;
+using GraphicsPipelineFragmentOutput = GraphicsPipeline;
+
 }//namespace hgl::graph

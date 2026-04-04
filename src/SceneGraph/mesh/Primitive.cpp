@@ -47,7 +47,7 @@ void GeometryDrawRange::Set(const Geometry *geometry)
     first_index     = geometry->GetFirstIndex();
 }
 
-Primitive::Primitive(Geometry *r,MaterialInstance *mi,GraphicsPipeline *p,GeometryDataBuffer *gdb)
+Primitive::Primitive(Geometry *r,MaterialInstance *mi,GraphicsPipelinePreRaster *p,GeometryDataBuffer *gdb)
 {
     geometry=r;
     pipeline=p;
@@ -71,14 +71,14 @@ bool Primitive::UpdateGeometry()
     return data_buffer->Update(geometry,mat_inst->GetVIL());
 }
 
-Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPipeline *p)
+Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPipelinePreRaster *p)
 //用Direct这个前缀是为了区别于MeshManager/WorkObject等路径上的CreateMesh()
 {
-    if(!geom||!mi||!p)return(nullptr);
+    if(!geom||!mi)return(nullptr);
 
     const VIL *vil=mi->GetVIL();
 
-    if(*vil!=*p->GetVIL())
+    if(p && *vil!=*p->GetVIL())
         return(nullptr);
 
     const uint32_t input_count=vil->GetVertexAttribCount();

@@ -2,6 +2,7 @@
 
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKResourceDomain.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/mtl/SamplerSlot.h>
 
 namespace hgl::graph{
@@ -25,6 +26,8 @@ protected:
     const VIL *vil;
 
     int mi_id;
+
+    GraphicsPipelinePreset render_preset = GraphicsPipelinePreset::Solid3D;  ///< PreRaster 配置（Phase 0: batch 阶段自动解析用）
 
     int8_t   mit_slot_offset[mtl::SamplerSlotCount]; ///< per-slot offset into mit_packed (-1 = not active)
     uint32_t mit_packed_count = 0;              ///< number of active Array slots
@@ -54,6 +57,9 @@ public:
     virtual ~MaterialInstance();
 
     const   int     GetMIID     ()const{return mi_id;}
+
+            void                SetRenderPreset(GraphicsPipelinePreset p){render_preset=p;}
+            GraphicsPipelinePreset GetRenderPreset()const{return render_preset;}
 
             void *  GetMIData   ();                                         ///<取得材质实例数据
             void    WriteMIData (const void *data,const uint32 size);       ///<写入材质实例数据

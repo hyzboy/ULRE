@@ -16,7 +16,7 @@ namespace hgl::graph{
 */
 class Primitive
 {
-    GraphicsPipeline *  pipeline;
+    GraphicsPipelinePreRaster *  pipeline;
     MaterialInstance *  mat_inst;
     Geometry *          geometry;
 
@@ -25,9 +25,9 @@ class Primitive
 
 private:
 
-    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,GraphicsPipeline *);
+    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,GraphicsPipelinePreRaster *);
 
-    Primitive(Geometry *,MaterialInstance *,GraphicsPipeline *,GeometryDataBuffer *);
+    Primitive(Geometry *,MaterialInstance *,GraphicsPipelinePreRaster *,GeometryDataBuffer *);
 
 public:
 
@@ -38,9 +38,9 @@ public:
         SAFE_CLEAR(data_buffer);
     }
 
-            void                UpdatePipeline      (GraphicsPipeline *p){pipeline=p;}
+            void                UpdatePipeline      (GraphicsPipelinePreRaster *p){pipeline=p;}
 
-            GraphicsPipeline *          GetPipeline         (){return pipeline;}
+            GraphicsPipelinePreRaster * GetPipeline         (){return pipeline;}
             VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
             Material *          GetMaterial         (){return mat_inst->GetMaterial();}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
@@ -82,5 +82,5 @@ public:
             uint32_t            GetDataIndexCount()const{return draw_range.data_index_count;}
 };//class Primitive
 
-Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,GraphicsPipeline *);
+Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,GraphicsPipelinePreRaster * = nullptr);
 }//namespace hgl::graph

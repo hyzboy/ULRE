@@ -12,7 +12,6 @@ using PrimitiveID = int;
 class GeometryCreater;
 class Geometry;
 class MaterialInstance;
-class GraphicsPipeline;
 
 GRAPH_MODULE_CLASS(PrimitiveManager)
 {
@@ -39,8 +38,11 @@ public: // Add/Get/Release
 
 public: // Create
 
-    Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi, GraphicsPipeline *p);
-    Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, GraphicsPipeline *p);
+    Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi, GraphicsPipelinePreRaster *p);
+    Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, GraphicsPipelinePreRaster *p);
+
+    Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi);
+    Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi);
 };
 
 }//namespace hgl::graph
