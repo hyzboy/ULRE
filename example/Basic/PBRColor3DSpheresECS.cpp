@@ -7,7 +7,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -113,10 +113,15 @@ private:
             return false;
         }
 
-        mtl::PBRColor3DMaterialCreateConfig cfg;
-        cfg.sky_ambient_model = mtl::SkyLightAmbientModel::FakeAtmosphere;
-        cfg.lighting_model = mtl::LightingModel::PBR;
-        material = material_manager->AcquireMaterial(mtl::MaterialPreset::PBRColor3D, &cfg);
+        static const mtl::MaterialAssetRecord kPBRColorCfg {
+            .id          = "pbr_color_spheres",
+            .preset      = mtl::MaterialPreset::PBRColor3D,
+            .sky         = true,
+            .sky_ambient = mtl::SkyLightAmbientModel::FakeAtmosphere,
+            .lighting    = mtl::LightingModel::PBR,
+            .pipeline    = GraphicsPipelinePreset::Solid3D,
+        };
+        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kPBRColorCfg);
         if (!material)
         {
             printf("[ERROR] InitMaterial: Failed to create PBRColor3D material\n");
@@ -420,8 +425,14 @@ private:
         if (!material_manager || !device || !geometry_manager || !primitive_manager)
             return false;
 
-        mtl::SkyMinimalCreateConfig sky_cfg;
-        auto* sky_material = material_manager->AcquireMaterial(mtl::MaterialPreset::SkyMinimal, &sky_cfg);
+        static const mtl::MaterialAssetRecord kSkyCfg {
+            .id       = "pbr_color_sky",
+            .preset   = mtl::MaterialPreset::SkyMinimal,
+            .l2w      = false,
+            .sky      = true,
+            .pipeline = GraphicsPipelinePreset::Sky,
+        };
+        auto* sky_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kSkyCfg);
         if (!sky_material)
             return false;
 

@@ -2,7 +2,7 @@
 // 通过控制尺寸、每个角的半径，可绘制出正圆、矩形、圆角矩形
 
 #include<hgl/WorkManager.h>
-#include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/math/Math.h>
 
@@ -72,11 +72,16 @@ private:
         if (!material_manager || !texture_manager || !sampler_manager)
             return false;
 
-        mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
-                                        CoordinateSystem2D::ZeroToOne,
-                                        mtl::IncludeL2W::Without);
+        static const mtl::MaterialAssetRecord kRoundRectCfg {
+            .id       = "roundrect_texture",
+            .preset   = mtl::MaterialPreset::PureTexture2D,
+            .dim      = mtl::MaterialAssetRecord::Dim::D2,
+            .l2w      = false,
+            .coord_2d = CoordinateSystem2D::ZeroToOne,
+            .pipeline = GraphicsPipelinePreset::Solid2D,
+        };
 
-        material=material_manager->AcquireMaterial(mtl::MaterialPreset::PureTexture2D,&cfg);
+        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kRoundRectCfg);
 
         if(!material)
             return(false);

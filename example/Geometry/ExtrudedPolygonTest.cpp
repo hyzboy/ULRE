@@ -4,7 +4,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/Extruded.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -57,8 +57,12 @@ private:
         if (!material_manager)
             return false;
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        material=material_manager->AcquireMaterial(mtl::MaterialPreset::Gizmo3D,&cfg);
+        static const mtl::MaterialAssetRecord kExtrudedCfg {
+            .id       = "extruded_polygon",
+            .preset   = mtl::MaterialPreset::Gizmo3D,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
+        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kExtrudedCfg);
 
         Color4f color=GetColor4f(COLOR::BlenderAxisRed);
 

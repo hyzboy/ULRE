@@ -10,7 +10,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -75,15 +75,18 @@ private:
             return false;
 
         {
-            mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
-                                            CoordinateSystem2D::NDC,
-                                            mtl::IncludeL2W::With);
+            static const mtl::MaterialAssetRecord kAutoInstanceCfg {
+                .id       = "auto_instance_vertex_color",
+                .preset   = mtl::MaterialPreset::VertexColor2D,
+                .dim      = mtl::MaterialAssetRecord::Dim::D2,
+                .pipeline = GraphicsPipelinePreset::Solid2D,
+            };
 
             VILConfig vil_config;
 
             vil_config.Add(VAN::Color,VF_V4UN8);
 
-            auto* material = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexColor2D,&cfg);
+            auto* material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kAutoInstanceCfg);
             if (material)
             {
                 graph::MaterialInstanceSpec spec;

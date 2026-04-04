@@ -7,7 +7,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -99,7 +99,11 @@ private:
 private:
     bool InitMaterial()
     {
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
+        static const mtl::MaterialAssetRecord kRecursiveCubeCfg {
+            .id       = "recursive_cube_main",
+            .preset   = mtl::MaterialPreset::Gizmo3D,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
 
         auto *render_context = GetRenderContext();
         if (!render_context)
@@ -113,7 +117,7 @@ private:
         if (!material_manager)
             return false;
 
-        material = material_manager->AcquireMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
+        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kRecursiveCubeCfg);
         if (!material)
             return false;
 

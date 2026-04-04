@@ -11,7 +11,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/color/Color.h>
 #include<ctime>
 #include<chrono>
@@ -103,11 +103,14 @@ private:
             return false;
 
         {
-            mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
-                                            CoordinateSystem2D::NDC,
-                                            mtl::IncludeL2W::With);
+            static const mtl::MaterialAssetRecord kClockCfg {
+                .id       = "clock_pure_color",
+                .preset   = mtl::MaterialPreset::PureColor2D,
+                .dim      = mtl::MaterialAssetRecord::Dim::D2,
+                .pipeline = GraphicsPipelinePreset::Solid2D,
+            };
 
-            material = material_manager->AcquireMaterial(mtl::MaterialPreset::PureColor2D, &cfg);
+            material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kClockCfg);
 
             if (!material)
                 return false;

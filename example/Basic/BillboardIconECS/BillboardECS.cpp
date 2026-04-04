@@ -13,7 +13,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -81,11 +81,14 @@ private:
         auto* material_manager = graphics_context->GetMaterialManager();
         if (!material_manager) return false;
 
+        static const mtl::MaterialAssetRecord kPlaneGridCfg {
+            .id       = "billboard_ecs_plane_grid",
+            .preset   = mtl::MaterialPreset::VertexLuminance2D,
+            .prim     = PrimitiveType::Lines,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
         // Create material
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-        cfg.local_to_world = true;
-
-        mtl_plane_grid = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
+        mtl_plane_grid = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kPlaneGridCfg);
         if (!mtl_plane_grid) return false;
 
         std::cout << "[BillboardECS] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;

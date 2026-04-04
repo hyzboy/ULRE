@@ -5,7 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -55,11 +55,14 @@ private:
         if (!material_manager)
             return false;
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
+        static const mtl::MaterialAssetRecord kAxisCfg {
+            .id       = "axis_vertex_color",
+            .preset   = mtl::MaterialPreset::VertexColor3D,
+            .prim     = PrimitiveType::Lines,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
 
-        cfg.local_to_world=true;
-
-        auto* material = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexColor3D,&cfg);
+        auto* material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kAxisCfg);
         if (!material) return false;
         graph::MaterialInstanceSpec spec;
         spec.material = material;

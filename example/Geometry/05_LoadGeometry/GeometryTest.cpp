@@ -2,7 +2,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -157,8 +157,12 @@ private:
         if (!material_manager)
             return false;
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        solid.material = material_manager->AcquireMaterial(mtl::MaterialPreset::Gizmo3D,&cfg);
+        static const mtl::MaterialAssetRecord kSolidCfg {
+            .id       = "geometry_gizmo3d",
+            .preset   = mtl::MaterialPreset::Gizmo3D,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
+        solid.material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kSolidCfg);
 
         return InitMaterialInstance(&solid);
     }
@@ -177,8 +181,13 @@ private:
         if (!material_manager)
             return false;
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-        wire.material=material_manager->AcquireMaterial(mtl::MaterialPreset::PureColor3D,&cfg);
+        static const mtl::MaterialAssetRecord kWireCfg {
+            .id       = "geometry_wire",
+            .preset   = mtl::MaterialPreset::PureColor3D,
+            .prim     = PrimitiveType::Lines,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
+        wire.material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kWireCfg);
 
         return InitMaterialInstance(&wire);
     }

@@ -1,7 +1,7 @@
 ﻿// 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -125,13 +125,18 @@ private:
         if (!material_manager || !sampler_manager)
             return false;
 
-        mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
-                                        CoordinateSystem2D::ZeroToOne,
-                                        mtl::IncludeL2W::With);
+        static const mtl::MaterialAssetRecord kTexArrayCfg {
+            .id              = "texture_rect_array",
+            .preset          = mtl::MaterialPreset::PureTexture2D,
+            .dim             = mtl::MaterialAssetRecord::Dim::D2,
+            .coord_2d  = CoordinateSystem2D::ZeroToOne,
+            .pipeline  = GraphicsPipelinePreset::Solid2D,
+            .textures  = {
+                {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
+            },
+        };
 
-        cfg.SetTextureSourceModeOverride(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
-
-        material=material_manager->AcquireMaterial(mtl::MaterialPreset::PureTexture2D,&cfg);
+        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kTexArrayCfg);
 
         if(!material)
             return(false);

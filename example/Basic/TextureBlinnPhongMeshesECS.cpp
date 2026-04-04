@@ -2,7 +2,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -82,37 +82,20 @@ private:
         if (!material_manager || !texture_manager || !sampler_manager)
             return false;
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
-                                        mtl::IncludeCamera::With,
-                                        mtl::IncludeL2W::With,
-                                        mtl::IncludeSky::With);
-        cfg.sky_ambient_model = mtl::SkyLightAmbientModel::FakeAtmosphere;
-        cfg.lighting_model = mtl::LightingModel::BlinnPhong;
-
-        material = material_manager->AcquireMaterial(mtl::MaterialPreset::Standard, &cfg);
+        static const mtl::MaterialAssetRecord kStandardCfg {
+            .id             = "blinnphong_standard",
+            .preset         = mtl::MaterialPreset::Standard,
+            .sky            = true,
+            .sky_ambient    = mtl::SkyLightAmbientModel::FakeAtmosphere,
+            .lighting       = mtl::LightingModel::BlinnPhong,
+            .pipeline       = GraphicsPipelinePreset::Solid3D,
+            .textures       = {
+                {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/Brickwall/Albedo.Tex2D"},
+                {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::None, "res/image/Brickwall/Normal.Tex2D"},
+            },
+        };
+        material = LoadMaterialFromRecord(material_manager, texture_manager, sampler_manager, kStandardCfg);
         if (!material)
-            return false;
-
-        base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
-        if (!base_texture)
-            return false;
-
-        normal_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
-        if (!normal_texture)
-            return false;
-
-        sampler = sampler_manager->CreateSampler();
-        if (!sampler)
-            return false;
-
-        if (!material->BindTextureSampler(mtl::SamplerSlot::BaseColor,
-                                          base_texture,
-                                          sampler))
-            return false;
-
-        if (!material->BindTextureSampler(mtl::SamplerSlot::Normal,
-                                          normal_texture,
-                                          sampler))
             return false;
 
         mtl::StandardMaterialInstance mi_data{};
@@ -481,8 +464,14 @@ private:
         if (!material_manager || !device || !geometry_manager || !primitive_manager)
             return false;
 
-        mtl::SkyMinimalCreateConfig sky_cfg;
-        auto* sky_material = material_manager->AcquireMaterial(mtl::MaterialPreset::SkyMinimal, &sky_cfg);
+        static const mtl::MaterialAssetRecord kSkyCfg {
+            .id       = "blinnphong_sky",
+            .preset   = mtl::MaterialPreset::SkyMinimal,
+            .l2w      = false,
+            .sky      = true,
+            .pipeline = GraphicsPipelinePreset::Sky,
+        };
+        auto* sky_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kSkyCfg);
         if (!sky_material)
             return false;
 

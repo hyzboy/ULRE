@@ -1,7 +1,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -50,9 +50,14 @@ private:
         if (!material_manager)
             return false;
 
-        mtl::SkyMinimalCreateConfig cfg;
-
-        auto* sky_material = material_manager->AcquireMaterial(mtl::MaterialPreset::SkyMinimal, &cfg);
+        static const mtl::MaterialAssetRecord kSkyCfg {
+            .id       = "dome_sky_minimal",
+            .preset   = mtl::MaterialPreset::SkyMinimal,
+            .l2w      = false,
+            .sky      = true,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
+        auto* sky_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kSkyCfg);
         if (!sky_material) return false;
         graph::MaterialInstanceSpec spec;
         spec.material = sky_material;

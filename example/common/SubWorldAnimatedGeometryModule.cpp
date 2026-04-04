@@ -3,6 +3,7 @@
 
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/color/Color.h>
@@ -72,9 +73,15 @@ namespace
     protected:
         bool OnInitializeSharedResources() override
         {
-            mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-            if (!InitMaterialAndPipeline(cfg, mtl::MaterialPreset::Gizmo3D, GraphicsPipelinePreset::Solid3D))
-                return false;
+            static const mtl::MaterialAssetRecord kAnimGeomCfg {
+                .id       = "subworld_anim_geom",
+                .preset   = mtl::MaterialPreset::Gizmo3D,
+                .pipeline = GraphicsPipelinePreset::Solid3D,
+            };
+            auto* material_manager = graphics_context->GetMaterialManager();
+            if (!material_manager) return false;
+            material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kAnimGeomCfg);
+            if (!material) return false;
 
             const Color4f colors[] =
             {

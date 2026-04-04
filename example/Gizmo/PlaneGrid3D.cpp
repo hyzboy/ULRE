@@ -4,7 +4,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -55,11 +55,14 @@ private:
         if (!material_manager)
             return false;
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
+        static const mtl::MaterialAssetRecord kPlaneGridCfg {
+            .id       = "plane_grid",
+            .preset   = mtl::MaterialPreset::VertexLuminance2D,
+            .prim     = PrimitiveType::Lines,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
 
-        cfg.local_to_world=true;
-
-        material = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
+        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kPlaneGridCfg);
         if(!material)return(false);
 
         VILConfig vil_config;

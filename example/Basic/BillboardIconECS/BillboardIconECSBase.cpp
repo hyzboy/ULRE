@@ -1,4 +1,5 @@
 #include "BillboardIconECSBase.h"
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include <iostream>
 #include <memory>
 
@@ -34,10 +35,13 @@ bool BillboardIconECSBase::InitPlaneGridResources()
     auto* material_manager = graphics_context->GetMaterialManager();
     if (!material_manager) return false;
 
-    mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-    cfg.local_to_world = true;
-
-    mtl_plane_grid = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
+    static const mtl::MaterialAssetRecord kPlaneGridCfg {
+        .id       = "billboard_icon_plane_grid",
+        .preset   = mtl::MaterialPreset::VertexLuminance2D,
+        .prim     = PrimitiveType::Lines,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
+    mtl_plane_grid = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kPlaneGridCfg);
     if (!mtl_plane_grid) return false;
 
     VILConfig vil_config;

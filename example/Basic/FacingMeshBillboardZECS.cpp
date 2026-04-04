@@ -11,7 +11,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -91,6 +91,12 @@ private:
 
     bool InitMaterial()
     {
+        static const mtl::MaterialAssetRecord kSolidCfg {
+            .id       = "facing_billboard_z_solid",
+            .preset   = mtl::MaterialPreset::Gizmo3D,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
+
         auto* render_context = GetRenderContext();
         if (!render_context)
             return false;
@@ -103,8 +109,7 @@ private:
         if (!material_manager)
             return false;
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        solid.material = material_manager->AcquireMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
+        solid.material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kSolidCfg);
         if (!solid.material)
             return false;
 

@@ -11,7 +11,7 @@
 #include<hgl/math/VectorTypes.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -78,10 +78,14 @@ private:
             return false;
 
         {
-            mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-            cfg.local_to_world = true;
+            static const mtl::MaterialAssetRecord kGridCfg {
+                .id       = "gizmo_grid",
+                .preset   = mtl::MaterialPreset::VertexLuminance2D,
+                .prim     = PrimitiveType::Lines,
+                .pipeline = GraphicsPipelinePreset::Solid3D,
+            };
 
-            grid_material = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
+            grid_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kGridCfg);
             if(!grid_material)
                 return false;
 
@@ -119,9 +123,13 @@ private:
         }
 
         {
-            mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
+            static const mtl::MaterialAssetRecord kCubeCfg {
+                .id       = "gizmo_cube",
+                .preset   = mtl::MaterialPreset::Gizmo3D,
+                .pipeline = GraphicsPipelinePreset::Solid3D,
+            };
 
-            cube_material = material_manager->AcquireMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
+            cube_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kCubeCfg);
             if(!cube_material)
                 return false;
 

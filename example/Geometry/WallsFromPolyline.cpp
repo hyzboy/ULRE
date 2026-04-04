@@ -2,7 +2,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -121,32 +121,23 @@ public:
         if (!geometry_manager)
             return false;
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
-                        mtl::IncludeCamera::With,
-                        mtl::IncludeL2W::With,
-                        mtl::IncludeSky::With);
+        static const mtl::MaterialAssetRecord kWallsCfg {
+            .id             = "walls_standard",
+            .preset         = mtl::MaterialPreset::Standard,
+            .sky      = true,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+            .textures = {
+                {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/Brickwall/Albedo.Tex2D"},
+            },
+        };
 
         mi_data.base_color = GetRGBA(COLOR::FireBrick);
         mi_data.metallic=0;
         mi_data.roughness=0.95f;
         mi_data.normal_scale=0.35f;
 
-        material = material_manager->AcquireMaterial(mtl::MaterialPreset::Standard, &cfg);
+        material = LoadMaterialFromRecord(material_manager, texture_manager, sampler_manager, kWallsCfg);
         if(!material) return false;
-
-        // Standard surface (QUALITY_TIER=Medium) samples TexAlbedo; bind a fallback texture.
-        base_color_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
-        if (!base_color_texture)
-            return false;
-
-        sampler = sampler_manager->CreateSampler();
-        if (!sampler)
-            return false;
-
-        if (!material->BindTextureSampler(mtl::SamplerSlot::BaseColor,
-                          base_color_texture,
-                          sampler))
-            return false;
 
         graph::MaterialInstanceSpec spec;
         spec.material = material;

@@ -1,5 +1,5 @@
 ﻿#include<hgl/framework/WorkManager.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/module/RenderTargetManager.h>
@@ -147,12 +147,12 @@ public:
         if (!mm || !gm || !pm || !device)
             return false;
 
-        mtl::Material3DCreateConfig cfg3d(PrimitiveType::Triangles,
-                                          mtl::IncludeCamera::With,
-                                          mtl::IncludeL2W::With,
-                                          mtl::IncludeSky::Without);
-
-        mtl = mm->AcquireMaterial(mtl::MaterialPreset::Gizmo3D, &cfg3d);
+        static const mtl::MaterialAssetRecord kSphereCfg {
+            .id       = "rtt_sphere_gizmo",
+            .preset   = mtl::MaterialPreset::Gizmo3D,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
+        mtl = LoadMaterialFromRecord(mm, nullptr, nullptr, kSphereCfg);
         if (!mtl)
             return false;
 
@@ -297,12 +297,13 @@ private:
         if (!mm || !sm || !tm || !gm || !pm || !device)
             return false;
 
-        mtl::Material3DCreateConfig cfg3d(PrimitiveType::Triangles,
-                                          mtl::IncludeCamera::With,
-                                          mtl::IncludeL2W::With,
-                                          mtl::IncludeSky::With);
-
-        cube_mtl = mm->AcquireMaterial(mtl::MaterialPreset::Standard, &cfg3d);
+        static const mtl::MaterialAssetRecord kCubeCfg {
+            .id       = "rtt_cube_standard",
+            .preset   = mtl::MaterialPreset::Standard,
+            .sky      = true,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
+        cube_mtl = LoadMaterialFromRecord(mm, nullptr, nullptr, kCubeCfg);
         if (!cube_mtl)
             return false;
 

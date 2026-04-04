@@ -16,7 +16,7 @@
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
@@ -89,16 +89,25 @@ private:
         if (!device)
             return false;
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-
-        cfg.local_to_world=true;
+        static const mtl::MaterialAssetRecord kPlaneGridCfg {
+            .id       = "ray_picking_plane_grid",
+            .preset   = mtl::MaterialPreset::VertexLuminance2D,
+            .prim     = PrimitiveType::Lines,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
+        static const mtl::MaterialAssetRecord kLineCfg {
+            .id       = "ray_picking_line",
+            .preset   = mtl::MaterialPreset::VertexLuminance3D,
+            .prim     = PrimitiveType::Lines,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
 
         VILConfig vil_config;
 
         vil_config.Add(VAN::Luminance,VF_V1UN8);
 
         {
-            mtl_plane_grid = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
+            mtl_plane_grid = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kPlaneGridCfg);
             if(!mtl_plane_grid)return(false);
 
             graph::MaterialInstanceSpec spec;
@@ -112,7 +121,7 @@ private:
         }
 
         {
-            mtl_line = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
+            mtl_line = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kLineCfg);
             if(!mtl_line)return(false);
 
             graph::MaterialInstanceSpec spec;

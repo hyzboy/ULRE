@@ -5,7 +5,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -119,11 +119,13 @@ private:
         if (!material_manager)
             return false;
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-
-        cfg.local_to_world = true;
-
-        mtl_plane_grid = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
+        static const mtl::MaterialAssetRecord kPlaneGridCfg {
+            .id       = "billboard_test_plane_grid",
+            .preset   = mtl::MaterialPreset::VertexLuminance2D,
+            .prim     = PrimitiveType::Lines,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
+        mtl_plane_grid = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kPlaneGridCfg);
         if(!mtl_plane_grid)
             return false;
 
@@ -161,10 +163,13 @@ private:
         if (!material_manager)
             return false;
 
-        mtl::BillboardMaterialCreateConfig cfg(PrimitiveType::Billboard);
-        cfg.fixed_size = true;
-
-        auto* billboard_material = material_manager->AcquireMaterial(mtl::MaterialPreset::Billboard2DFixed, &cfg);
+        static const mtl::MaterialAssetRecord kBillboardCfg {
+            .id        = "billboard_test_fixed",
+            .preset    = mtl::MaterialPreset::Billboard2DFixed,
+            .prim      = PrimitiveType::Billboard,
+            .billboard = { .fixed_size = true },
+        };
+        auto* billboard_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kBillboardCfg);
         if (!billboard_material) return false;
         graph::MaterialInstanceSpec spec;
         spec.material = billboard_material;

@@ -1,6 +1,6 @@
 ﻿// 画一个带纹理的四边形 (ECS)
 #include<hgl/framework/WorkManager.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -73,28 +73,20 @@ private:
         if (!material_manager || !sampler_manager || !tex_manager)
             return false;
 
-        Texture2D * texture = nullptr;
-        Sampler *   sampler = nullptr;
-        Material *  material= nullptr;
+        static const mtl::MaterialAssetRecord kTexQuadCfg {
+            .id             = "texture_quad",
+            .preset         = mtl::MaterialPreset::PureTexture2D,
+            .dim            = mtl::MaterialAssetRecord::Dim::D2,
+            .l2w            = false,
+            .pipeline  = GraphicsPipelinePreset::Solid2D,
+            .textures  = {
+                {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/lena.Tex2D"},
+            },
+        };
 
-        mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
-                                        CoordinateSystem2D::NDC,
-                                        mtl::IncludeL2W::Without);
-
-        material=material_manager->AcquireMaterial(mtl::MaterialPreset::PureTexture2D,&cfg);
+        auto *material = LoadMaterialFromRecord(material_manager, tex_manager, sampler_manager, kTexQuadCfg);
 
         if(!material)
-            return(false);
-
-        texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
-
-        if(!texture)return(false);
-
-        sampler=sampler_manager->CreateSampler();
-
-        if(!material->BindTextureSampler( mtl::SamplerSlot::BaseColor,
-                          texture,
-                          sampler))
             return(false);
 
         graph::MaterialInstanceSpec spec;

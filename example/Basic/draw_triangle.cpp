@@ -9,7 +9,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -78,21 +78,23 @@ private:
         if (!material_manager)
             return false;
 
-        mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
-                                        CoordinateSystem2D::Ortho,
-                                        mtl::IncludeL2W::Without);
+        static const mtl::MaterialAssetRecord kTriangleCfg {
+            .id         = "draw_triangle_vertex_color",
+            .preset     = mtl::MaterialPreset::VertexColor2D,
+            .dim        = mtl::MaterialAssetRecord::Dim::D2,
+            .l2w        = false,
+            .pos_format = POSITION_SHADER_FORMAT,   // VAT_IVEC2: shader中 ivec2 顶点输入
+            .coord_2d   = CoordinateSystem2D::Ortho,
+            .pipeline   = GraphicsPipelinePreset::Solid2D,
+        };
 
         VILConfig vil_config;
 
-        cfg.position_format     =       POSITION_SHADER_FORMAT;     //这里指定shader中使用ivec2当做顶点输入格式
-                                //      ^
-                                //      +  这上下两种格式要配套，否则会出错
-                                //      v
         vil_config.Add(VAN::Position,   POSITION_DATA_FORMAT);     //这里指定VAB中使用RG16I当做顶点数据格式
 
         vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
-        auto* material = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexColor2D,&cfg);
+        auto* material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kTriangleCfg);
         if (material)
         {
             graph::MaterialInstanceSpec spec;

@@ -9,7 +9,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -145,15 +145,19 @@ private:
             return false;
         }
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
-                        mtl::IncludeCamera::With,
-                        mtl::IncludeL2W::With,
-                        mtl::IncludeSky::With);
-        cfg.sky_ambient_model = mtl::SkyLightAmbientModel::FakeAtmosphere;
-        cfg.lighting_model = mtl::LightingModel::PBR;
-        cfg.SetTextureSourceModeOverride(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
-        cfg.SetTextureSourceModeOverride(mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array);
-        material = material_manager->AcquireMaterial(mtl::MaterialPreset::Standard, &cfg);
+        static const mtl::MaterialAssetRecord kPBRArrayCfg {
+            .id              = "pbr_spheres_standard",
+            .preset          = mtl::MaterialPreset::Standard,
+            .sky             = true,
+            .sky_ambient     = mtl::SkyLightAmbientModel::FakeAtmosphere,
+            .lighting  = mtl::LightingModel::PBR,
+            .pipeline  = GraphicsPipelinePreset::Solid3D,
+            .textures  = {
+                {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
+                {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array, ""},
+            },
+        };
+        material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kPBRArrayCfg);
         if (!material) {
             printf("[ERROR] InitMaterial: Failed to create Standard+Array material\n");
             return false;
@@ -568,8 +572,14 @@ private:
         if (!material_manager || !device || !geometry_manager || !primitive_manager)
             return false;
 
-        mtl::SkyMinimalCreateConfig sky_cfg;
-        Material *sky_material = material_manager->AcquireMaterial(mtl::MaterialPreset::SkyMinimal, &sky_cfg);
+        static const mtl::MaterialAssetRecord kSkyCfg {
+            .id       = "pbr_spheres_sky",
+            .preset   = mtl::MaterialPreset::SkyMinimal,
+            .l2w      = false,
+            .sky      = true,
+            .pipeline = GraphicsPipelinePreset::Sky,
+        };
+        Material *sky_material = LoadMaterialFromRecord(material_manager, nullptr, nullptr, kSkyCfg);
         if (!sky_material)
             return false;
 
