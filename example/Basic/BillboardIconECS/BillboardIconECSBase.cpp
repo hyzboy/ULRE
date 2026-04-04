@@ -37,13 +37,19 @@ bool BillboardIconECSBase::InitPlaneGridResources()
     mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
     cfg.local_to_world = true;
 
-    mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
+    mtl_plane_grid = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
     if (!mtl_plane_grid) return false;
 
     VILConfig vil_config;
     vil_config.Add(VAN::Luminance, VF_V1UN8);
 
-    mi_plane_grid = material_manager->CreateMaterialInstance(mtl_plane_grid, &vil_config, &white_color, GraphicsPipelinePreset::Solid3D);
+    graph::MaterialInstanceSpec spec;
+    spec.material = mtl_plane_grid;
+    spec.vil_cfg = &vil_config;
+    spec.instance_data = &white_color;
+    spec.instance_data_size = sizeof(white_color);
+    spec.preset = GraphicsPipelinePreset::Solid3D;
+    mi_plane_grid = material_manager->AcquireMaterialInstance(spec);
     if (!mi_plane_grid) return false;
 
     return true;

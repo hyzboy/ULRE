@@ -131,7 +131,7 @@ public:
         mi_data.roughness=0.95f;
         mi_data.normal_scale=0.35f;
 
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
+        material = material_manager->AcquireMaterial(mtl::MaterialPreset::Standard, &cfg);
         if(!material) return false;
 
         // Standard surface (QUALITY_TIER=Medium) samples TexAlbedo; bind a fallback texture.
@@ -148,7 +148,12 @@ public:
                           sampler))
             return false;
 
-        material_instance = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &mi_data, GraphicsPipelinePreset::Solid3D);
+        graph::MaterialInstanceSpec spec;
+        spec.material = material;
+        spec.instance_data = &mi_data;
+        spec.instance_data_size = sizeof(mi_data);
+        spec.preset = GraphicsPipelinePreset::Solid3D;
+        material_instance = material_manager->AcquireMaterialInstance(spec);
         if(!material_instance) return false;
 
         const VIL *vil = material->GetDefaultVIL();

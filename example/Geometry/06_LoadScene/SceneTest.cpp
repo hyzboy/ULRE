@@ -98,7 +98,12 @@ private:
         {
             color = GetColor4f(TestColor[i],1.0);
 
-            md->mi[i] = material_manager->CreateMaterialInstance(md->material,(VIL *)nullptr,&color,GraphicsPipelinePreset::Solid3D);
+            graph::MaterialInstanceSpec spec;
+            spec.material = md->material;
+            spec.instance_data = &color;
+            spec.instance_data_size = sizeof(color);
+            spec.preset = GraphicsPipelinePreset::Solid3D;
+            md->mi[i] = material_manager->AcquireMaterialInstance(spec);
 
             if(!md->mi[i])
                 return(false);
@@ -127,7 +132,7 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        solid.material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D,&cfg);
+        solid.material = material_manager->AcquireMaterial(mtl::MaterialPreset::Gizmo3D,&cfg);
 
         return InitMaterialInstance(&solid);
     }

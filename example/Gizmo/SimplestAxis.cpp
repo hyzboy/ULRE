@@ -59,7 +59,12 @@ private:
 
         cfg.local_to_world=true;
 
-        material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor3D,&cfg, GraphicsPipelinePreset::Solid3D);
+        auto* material = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexColor3D,&cfg);
+        if (!material) return false;
+        graph::MaterialInstanceSpec spec;
+        spec.material = material;
+        spec.preset = GraphicsPipelinePreset::Solid3D;
+        material_instance = material_manager->AcquireMaterialInstance(spec);
 
         return material_instance != nullptr;
     }

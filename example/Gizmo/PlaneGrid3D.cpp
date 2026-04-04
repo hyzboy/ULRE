@@ -59,7 +59,7 @@ private:
 
         cfg.local_to_world=true;
 
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
+        material = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
         if(!material)return(false);
 
         VILConfig vil_config;
@@ -73,7 +73,13 @@ private:
         {
             GridColor=GetColor4f(ce,1.0);
 
-            material_instance[i]=material_manager->CreateMaterialInstance(material,&vil_config,&GridColor, GraphicsPipelinePreset::Solid3D);
+            graph::MaterialInstanceSpec spec;
+            spec.material = material;
+            spec.vil_cfg = &vil_config;
+            spec.instance_data = &GridColor;
+            spec.instance_data_size = sizeof(GridColor);
+            spec.preset = GraphicsPipelinePreset::Solid3D;
+            material_instance[i] = material_manager->AcquireMaterialInstance(spec);
 
             ce=COLOR((int)ce+1);
         }

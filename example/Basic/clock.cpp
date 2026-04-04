@@ -107,7 +107,7 @@ private:
                                             CoordinateSystem2D::NDC,
                                             mtl::IncludeL2W::With);
 
-            material = material_manager->CreateMaterial(mtl::MaterialPreset::PureColor2D, &cfg);
+            material = material_manager->AcquireMaterial(mtl::MaterialPreset::PureColor2D, &cfg);
 
             if (!material)
                 return false;
@@ -119,7 +119,10 @@ private:
             // 刻度颜色（白色）
             Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
 
-            mi_tick = material_manager->CreateMaterialInstance(material, GraphicsPipelinePreset::Solid2D);
+            graph::MaterialInstanceSpec spec;
+            spec.material = material;
+            spec.preset = GraphicsPipelinePreset::Solid2D;
+            mi_tick = material_manager->AcquireMaterialInstance(spec);
             if(mi_tick)
                 mi_tick->WriteMIData(tick_color);
 
@@ -132,7 +135,10 @@ private:
 
             for (uint i = 0; i < 3; i++)
             {
-                hands[i].mi = material_manager->CreateMaterialInstance(material, GraphicsPipelinePreset::Solid2D);
+                graph::MaterialInstanceSpec spec;
+                spec.material = material;
+                spec.preset = GraphicsPipelinePreset::Solid2D;
+                hands[i].mi = material_manager->AcquireMaterialInstance(spec);
                 if (!hands[i].mi)
                     return false;
                 hands[i].mi->WriteMIData(hand_colors[i]);

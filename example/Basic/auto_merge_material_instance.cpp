@@ -86,7 +86,7 @@ private:
                                             CoordinateSystem2D::NDC,
                                             mtl::IncludeL2W::With);
 
-            material = material_manager->CreateMaterial(mtl::MaterialPreset::PureColor2D, &cfg);
+            material = material_manager->AcquireMaterial(mtl::MaterialPreset::PureColor2D, &cfg);
 
             if (!material)
                 return false;
@@ -98,7 +98,10 @@ private:
             // 为每个三角形创建不同颜色的MaterialInstance
             for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
             {
-                triangles[i].mi = material_manager->CreateMaterialInstance(material, GraphicsPipelinePreset::Solid2D);
+                graph::MaterialInstanceSpec spec;
+                spec.material = material;
+                spec.preset = GraphicsPipelinePreset::Solid2D;
+                triangles[i].mi = material_manager->AcquireMaterialInstance(spec);
 
                 if (!triangles[i].mi)
                     return false;

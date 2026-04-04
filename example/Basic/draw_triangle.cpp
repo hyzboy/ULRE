@@ -92,7 +92,15 @@ private:
 
         vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
-        material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor2D,&cfg,GraphicsPipelinePreset::Solid2D,&vil_config);
+        auto* material = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexColor2D,&cfg);
+        if (material)
+        {
+            graph::MaterialInstanceSpec spec;
+            spec.material = material;
+            spec.vil_cfg = &vil_config;
+            spec.preset = GraphicsPipelinePreset::Solid2D;
+            material_instance = material_manager->AcquireMaterialInstance(spec);
+        }
 
         return material_instance != nullptr;
     }

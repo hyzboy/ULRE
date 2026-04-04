@@ -123,7 +123,12 @@ private:
             return false;
 
         mtl::SkyMinimalCreateConfig cfg;
-        sky_material_instance = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &cfg, GraphicsPipelinePreset::Sky);
+        auto* sky_material = material_manager->AcquireMaterial(mtl::MaterialPreset::SkyMinimal, &cfg);
+        if (!sky_material) return false;
+        graph::MaterialInstanceSpec spec;
+        spec.material = sky_material;
+        spec.preset = GraphicsPipelinePreset::Sky;
+        sky_material_instance = material_manager->AcquireMaterialInstance(spec);
         if (!sky_material_instance)
             return false;
 
@@ -167,7 +172,7 @@ private:
                         mtl::IncludeSky::With);
         cfg.sky_ambient_model = mtl::SkyLightAmbientModel::FakeAtmosphere;
         cfg.lighting_model = mtl::LightingModel::PBR;
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
+        material = material_manager->AcquireMaterial(mtl::MaterialPreset::Standard, &cfg);
         if (!material)
             return false;
 
@@ -199,7 +204,12 @@ private:
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
 
-        material_instance = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &mi_data, GraphicsPipelinePreset::Solid3D);
+        graph::MaterialInstanceSpec spec;
+        spec.material = material;
+        spec.instance_data = &mi_data;
+        spec.instance_data_size = sizeof(mi_data);
+        spec.preset = GraphicsPipelinePreset::Solid3D;
+        material_instance = material_manager->AcquireMaterialInstance(spec);
         if (!material_instance)
             return false;
 

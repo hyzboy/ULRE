@@ -98,18 +98,30 @@ private:
         vil_config.Add(VAN::Luminance,VF_V1UN8);
 
         {
-            mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
+            mtl_plane_grid = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
             if(!mtl_plane_grid)return(false);
 
-            mi_plane_grid=material_manager->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color,GraphicsPipelinePreset::Solid3D);
+            graph::MaterialInstanceSpec spec;
+            spec.material = mtl_plane_grid;
+            spec.vil_cfg = &vil_config;
+            spec.instance_data = &white_color;
+            spec.instance_data_size = sizeof(white_color);
+            spec.preset = GraphicsPipelinePreset::Solid3D;
+            mi_plane_grid = material_manager->AcquireMaterialInstance(spec);
             if(!mi_plane_grid)return(false);
         }
 
         {
-            mtl_line = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
+            mtl_line = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
             if(!mtl_line)return(false);
 
-            mi_line=material_manager->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color,GraphicsPipelinePreset::Solid3D);
+            graph::MaterialInstanceSpec spec;
+            spec.material = mtl_line;
+            spec.vil_cfg = &vil_config;
+            spec.instance_data = &yellow_color;
+            spec.instance_data_size = sizeof(yellow_color);
+            spec.preset = GraphicsPipelinePreset::Solid3D;
+            mi_line = material_manager->AcquireMaterialInstance(spec);
             if(!mi_line)return(false);
         }
 

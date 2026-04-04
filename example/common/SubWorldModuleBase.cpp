@@ -29,7 +29,7 @@ namespace example::modules
         if (!material_manager)
             return false;
 
-        material = material_manager->CreateMaterial(preset, &cfg);
+        material = material_manager->AcquireMaterial(preset, &cfg);
         if (!material)
             return false;
 
@@ -50,7 +50,12 @@ namespace example::modules
 
         for (size_t i = 0; i < count; ++i)
         {
-            auto* mi = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &colors[i], GraphicsPipelinePreset::Solid3D);
+            graph::MaterialInstanceSpec spec;
+            spec.material = material;
+            spec.instance_data = &colors[i];
+            spec.instance_data_size = sizeof(colors[i]);
+            spec.preset = GraphicsPipelinePreset::Solid3D;
+            auto* mi = material_manager->AcquireMaterialInstance(spec);
             if (!mi)
                 return false;
 

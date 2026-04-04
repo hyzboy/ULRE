@@ -131,7 +131,7 @@ private:
 
         cfg.SetTextureSourceModeOverride(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
 
-        material=material_manager->CreateMaterial(mtl::MaterialPreset::PureTexture2D,&cfg);
+        material=material_manager->AcquireMaterial(mtl::MaterialPreset::PureTexture2D,&cfg);
 
         if(!material)
             return(false);
@@ -145,7 +145,10 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].mi=material_manager->CreateMaterialInstance(material, GraphicsPipelinePreset::Solid2D);
+            graph::MaterialInstanceSpec spec;
+            spec.material = material;
+            spec.preset = GraphicsPipelinePreset::Solid2D;
+            render_obj[i].mi = material_manager->AcquireMaterialInstance(spec);
 
             if(!render_obj[i].mi)
                 return(false);

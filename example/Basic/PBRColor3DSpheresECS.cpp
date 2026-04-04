@@ -116,7 +116,7 @@ private:
         mtl::PBRColor3DMaterialCreateConfig cfg;
         cfg.sky_ambient_model = mtl::SkyLightAmbientModel::FakeAtmosphere;
         cfg.lighting_model = mtl::LightingModel::PBR;
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::PBRColor3D, &cfg);
+        material = material_manager->AcquireMaterial(mtl::MaterialPreset::PBRColor3D, &cfg);
         if (!material)
         {
             printf("[ERROR] InitMaterial: Failed to create PBRColor3D material\n");
@@ -166,7 +166,12 @@ private:
                 store.metallic = d.metallic;
                 store.roughness = d.roughness;
 
-                sphere_mi[row][col] = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &d, GraphicsPipelinePreset::Solid3D);
+                graph::MaterialInstanceSpec spec;
+                spec.material = material;
+                spec.instance_data = &d;
+                spec.instance_data_size = sizeof(d);
+                spec.preset = GraphicsPipelinePreset::Solid3D;
+                sphere_mi[row][col] = material_manager->AcquireMaterialInstance(spec);
                 if (!sphere_mi[row][col])
                 {
                     printf("[ERROR] CreatePBRColorMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
@@ -416,7 +421,14 @@ private:
             return false;
 
         mtl::SkyMinimalCreateConfig sky_cfg;
-        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &sky_cfg, GraphicsPipelinePreset::Sky);
+        auto* sky_material = material_manager->AcquireMaterial(mtl::MaterialPreset::SkyMinimal, &sky_cfg);
+        if (!sky_material)
+            return false;
+
+        graph::MaterialInstanceSpec spec;
+        spec.material = sky_material;
+        spec.preset = GraphicsPipelinePreset::Sky;
+        mi_sky_sphere = material_manager->AcquireMaterialInstance(spec);
         if (!mi_sky_sphere)
             return false;
 

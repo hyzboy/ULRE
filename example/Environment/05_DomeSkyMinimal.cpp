@@ -52,7 +52,12 @@ private:
 
         mtl::SkyMinimalCreateConfig cfg;
 
-        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &cfg, GraphicsPipelinePreset::Solid3D);
+        auto* sky_material = material_manager->AcquireMaterial(mtl::MaterialPreset::SkyMinimal, &cfg);
+        if (!sky_material) return false;
+        graph::MaterialInstanceSpec spec;
+        spec.material = sky_material;
+        spec.preset = GraphicsPipelinePreset::Solid3D;
+        mi_sky_sphere = material_manager->AcquireMaterialInstance(spec);
         if (!mi_sky_sphere)
             return false;
 

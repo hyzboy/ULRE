@@ -81,7 +81,7 @@ private:
                                         CoordinateSystem2D::NDC,
                                         mtl::IncludeL2W::Without);
 
-        material=material_manager->CreateMaterial(mtl::MaterialPreset::PureTexture2D,&cfg);
+        material=material_manager->AcquireMaterial(mtl::MaterialPreset::PureTexture2D,&cfg);
 
         if(!material)
             return(false);
@@ -97,7 +97,10 @@ private:
                           sampler))
             return(false);
 
-        material_instance=material_manager->CreateMaterialInstance(material, GraphicsPipelinePreset::Solid2D);
+        graph::MaterialInstanceSpec spec;
+        spec.material = material;
+        spec.preset = GraphicsPipelinePreset::Solid2D;
+        material_instance = material_manager->AcquireMaterialInstance(spec);
 
         return(material_instance!=nullptr);
     }

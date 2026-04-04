@@ -81,7 +81,7 @@ private:
             mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
             cfg.local_to_world = true;
 
-            grid_material = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
+            grid_material = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
             if(!grid_material)
                 return false;
 
@@ -89,7 +89,13 @@ private:
             vil_config.Add(VAN::Luminance, VF_V1UN8);
 
             const Color4f white = GetColor4f(COLOR::White, 1.0f);
-            grid_mi = material_manager->CreateMaterialInstance(grid_material, &vil_config, &white, GraphicsPipelinePreset::Solid3D);
+            graph::MaterialInstanceSpec spec;
+            spec.material = grid_material;
+            spec.vil_cfg = &vil_config;
+            spec.instance_data = &white;
+            spec.instance_data_size = sizeof(white);
+            spec.preset = GraphicsPipelinePreset::Solid3D;
+            grid_mi = material_manager->AcquireMaterialInstance(spec);
             if(!grid_mi)
                 return false;
 
@@ -115,12 +121,17 @@ private:
         {
             mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
-            cube_material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
+            cube_material = material_manager->AcquireMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
             if(!cube_material)
                 return false;
 
             const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            cube_mi = material_manager->CreateMaterialInstance(cube_material, (VIL *)nullptr, &blue, GraphicsPipelinePreset::Solid3D);
+            graph::MaterialInstanceSpec spec;
+            spec.material = cube_material;
+            spec.instance_data = &blue;
+            spec.instance_data_size = sizeof(blue);
+            spec.preset = GraphicsPipelinePreset::Solid3D;
+            cube_mi = material_manager->AcquireMaterialInstance(spec);
             if(!cube_mi)
                 return false;
 

@@ -123,7 +123,7 @@ private:
 
         cfg.local_to_world = true;
 
-        mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
+        mtl_plane_grid = material_manager->AcquireMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
         if(!mtl_plane_grid)
             return false;
 
@@ -132,7 +132,13 @@ private:
         VILConfig vil_config;
         vil_config.Add(VAN::Luminance, VF_V1UN8);
 
-        mi_plane_grid = material_manager->CreateMaterialInstance(mtl_plane_grid, &vil_config, &white_color, GraphicsPipelinePreset::Solid3D);
+            graph::MaterialInstanceSpec spec;
+            spec.material = mtl_plane_grid;
+            spec.vil_cfg = &vil_config;
+            spec.instance_data = &white_color;
+            spec.instance_data_size = sizeof(white_color);
+            spec.preset = GraphicsPipelinePreset::Solid3D;
+            mi_plane_grid = material_manager->AcquireMaterialInstance(spec);
         if(!mi_plane_grid)
             return false;
 
@@ -158,7 +164,12 @@ private:
         mtl::BillboardMaterialCreateConfig cfg(PrimitiveType::Billboard);
         cfg.fixed_size = true;
 
-        mi_billboard = material_manager->CreateMaterialInstance(mtl::MaterialPreset::Billboard2DFixed, &cfg, GraphicsPipelinePreset::Solid3D);
+        auto* billboard_material = material_manager->AcquireMaterial(mtl::MaterialPreset::Billboard2DFixed, &cfg);
+        if (!billboard_material) return false;
+        graph::MaterialInstanceSpec spec;
+        spec.material = billboard_material;
+        spec.preset = GraphicsPipelinePreset::Solid3D;
+        mi_billboard = material_manager->AcquireMaterialInstance(spec);
         if(!mi_billboard)
             return false;
 
