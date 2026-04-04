@@ -111,14 +111,6 @@ namespace hgl::ecs
         return primitive->GetMaterial();
     }
 
-    hgl::graph::GraphicsPipeline* PrimitiveComponent::GetPipeline() const
-    {
-        if (!primitive)
-            return nullptr;
-
-        return primitive->GetPipeline();
-    }
-
     bool PrimitiveComponent::GetLocalAABB(hgl::math::AABB& outAABB) const
     {
         if (!primitive)

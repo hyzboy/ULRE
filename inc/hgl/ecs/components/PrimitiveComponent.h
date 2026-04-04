@@ -16,7 +16,6 @@ namespace hgl
         class Primitive;
         class Material;
         class MaterialInstance;
-        class GraphicsPipeline;
     }
 }
 
@@ -68,9 +67,6 @@ namespace hgl::ecs
         // Material access (returns override if set, otherwise primitive's material)
         hgl::graph::MaterialInstance* GetMaterialInstance() const;
         hgl::graph::Material* GetMaterial() const;
-
-        // GraphicsPipeline access
-        hgl::graph::GraphicsPipeline* GetPipeline() const;
 
         // Bounding volume
         bool GetLocalAABB(hgl::math::AABB& outAABB) const;

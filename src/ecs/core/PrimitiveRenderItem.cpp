@@ -7,7 +7,6 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
-#include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 
 namespace hgl::ecs
 {
@@ -55,11 +54,6 @@ namespace hgl::ecs
     hgl::graph::Material* PrimitiveRenderItem::GetMaterial() const
     {
         return primitiveComp ? primitiveComp->GetMaterial() : nullptr;
-    }
-
-    hgl::graph::GraphicsPipeline* PrimitiveRenderItem::GetPipeline() const
-    {
-        return primitiveComp ? primitiveComp->GetPipeline() : nullptr;
     }
 
     void PrimitiveRenderItem::UpdateWorldMatrix()

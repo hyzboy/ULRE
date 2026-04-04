@@ -50,6 +50,9 @@ class StaticMesh
 
     BoundingVolumes   bounding_volumes;                                                                           ///< 所有 Primitive 合并的本地包围体
 
+    // Pipeline 缓存映射（Primitive* -> GraphicsPipeline*）
+    std::unordered_map<Primitive *, GraphicsPipelinePreRaster *> _primitive_pipeline_cache;
+
     // 场景树
     std::vector<StaticMeshNode> nodes_;
     std::vector<int32_t>        rootNodes_;                                                                       ///< nodes_ 中根节点的下标

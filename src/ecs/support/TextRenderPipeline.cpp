@@ -212,6 +212,16 @@ namespace hgl::ecs
         }
     }
 
+    void TextRenderPipeline::GetRenderEntries(std::vector<RenderEntry>& out_entries) const
+    {
+        for (const auto& pair : resources_by_font)
+        {
+            const auto& res = pair.second;
+            if (res.primitive && res.pipeline)
+                out_entries.emplace_back(res.primitive, res.pipeline);
+        }
+    }
+
     TextRenderPipeline::RenderResources* TextRenderPipeline::GetOrCreateResources(graph::FontSource* font_source,
                                                                                    uint32_t estimate_chars)
     {

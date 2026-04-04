@@ -8,6 +8,7 @@
 #include<vector>
 #include<memory>
 #include<limits>
+#include<utility>
 
 namespace hgl
 {
@@ -39,6 +40,9 @@ namespace hgl
         class TextRenderPipeline
         {
             OBJECT_LOGGER
+
+        public:
+            using RenderEntry = std::pair<graph::Primitive*, graph::GraphicsPipeline*>;
 
         private:
             struct RenderResources
@@ -95,6 +99,7 @@ namespace hgl
             void RunSync();
 
             void GetRenderPrimitives(std::vector<graph::Primitive*>& out_primitives) const;
+            void GetRenderEntries(std::vector<RenderEntry>& out_entries) const;
 
         private:
             RenderResources* GetOrCreateResources(graph::FontSource* font_source, uint32_t estimate_chars);

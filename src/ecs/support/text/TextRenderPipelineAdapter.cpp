@@ -61,13 +61,15 @@ namespace hgl::ecs
         if (!cmd)
             return;
 
-        std::vector<hgl::graph::Primitive*> primitives;
-        impl_->GetRenderPrimitives(primitives);
+        std::vector<TextRenderPipeline::RenderEntry> entries;
+        impl_->GetRenderEntries(entries);
 
-        for (auto* primitive : primitives)
+        for (const auto& entry : entries)
         {
-            if (primitive)
-                cmd->Render(primitive, primitive->GetPipeline());
+            auto* primitive = entry.first;
+            auto* pipeline = entry.second;
+            if (primitive && pipeline)
+                cmd->Render(primitive, pipeline);
         }
     }
 

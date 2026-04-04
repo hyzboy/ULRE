@@ -9,7 +9,6 @@ namespace hgl
         class Primitive;
         class Material;
         class MaterialInstance;
-        class GraphicsPipeline;
     }
 }
 
@@ -57,7 +56,6 @@ namespace hgl::ecs
         hgl::graph::Primitive* GetPrimitive() const override;
         hgl::graph::MaterialInstance* GetMaterialInstance() const override;
         hgl::graph::Material* GetMaterial() const override;
-        hgl::graph::GraphicsPipeline* GetPipeline() const override;
 
         // Update world matrix from transform
         void UpdateWorldMatrix();
