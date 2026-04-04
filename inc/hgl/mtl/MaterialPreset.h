@@ -39,6 +39,9 @@ namespace hgl::graph::mtl
     // This is a bootstrap state rather than the final architecture.
     enum class MaterialPreset : uint8
     {
+        // Error/Fallback material
+        Checkerboard3D,    ///< Gray checkerboard pattern for missing/error cases
+
         VertexColor2D,
         PureColor2D,
         PureTexture2D,
@@ -68,6 +71,6 @@ namespace hgl::graph::mtl
         BirdFeathers,
         Scales,
 
-        ENUM_CLASS_RANGE(VertexColor2D, Scales)
+        ENUM_CLASS_RANGE(Checkerboard3D,Scales)
     };
 }

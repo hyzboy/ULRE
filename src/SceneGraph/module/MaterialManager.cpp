@@ -323,6 +323,57 @@ Material *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
     return nullptr;
 }
 
+Material *MaterialManager::TryInitializeFallbackMaterial()
+{
+    if(fallback_material)
+        return fallback_material;
+
+    // Try to create a Checkerboard3D material as fallback
+    // If Checkerboard3D is not available, fallback to Standard
+
+    static const AnsiString fallback_name("__sys__fallback_checkerboard3d");
+
+    // Check if already cached from a previous attempt
+    fallback_material = TryGetCachedMaterial(fallback_name);
+    if(fallback_material)
+        return fallback_material;
+
+    // Try to create Checkerboard3D preset
+    mtl::Material3DCreateConfig cfg;
+
+    fallback_material = CreateMaterial(mtl::MaterialPreset::Checkerboard3D, &cfg);
+
+    if(!fallback_material)
+    {
+        // If Checkerboard3D fails, try Standard as ultimate fallback
+        std::fprintf(stderr,
+            "[MaterialManager] TryInitializeFallbackMaterial failed creating Checkerboard3D, trying Standard\n");
+
+        fallback_material = CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
+
+        if(!fallback_material)
+        {
+            std::fprintf(stderr,
+                "[MaterialManager] TryInitializeFallbackMaterial failed: could not create any fallback material\n");
+            return nullptr;
+        }
+    }
+
+    std::fprintf(stdout,
+        "[MaterialManager] Fallback material initialized: %s\n",
+        fallback_material->GetName().c_str());
+
+    return fallback_material;
+}
+
+Material *MaterialManager::GetFallbackMaterial()
+{
+    if(!fallback_material)
+        TryInitializeFallbackMaterial();
+
+    return fallback_material;
+}
+
 bool MaterialManager::ExecuteMaterialBuildPipeline(Material *mtl,
                                                    const AnsiString &mtl_name,
                                                    const mtl::MaterialCreateInfo *mci,
@@ -466,6 +517,13 @@ Material *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl
 
     Material *mtl = CreateMaterial(mtl_id, cfg);
 
+    if(!mtl)
+    {
+        mtl = GetFallbackMaterial();
+        if(mtl)
+            acquire_fallback_used.fetch_add(1);
+    }
+
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
 
@@ -477,6 +535,13 @@ Material *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl
     acquire_material_requests.fetch_add(1);
 
     Material *mtl = CreateMaterial(mtl_id, cfg);
+
+    if(!mtl)
+    {
+        mtl = GetFallbackMaterial();
+        if(mtl)
+            acquire_fallback_used.fetch_add(1);
+    }
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
@@ -490,6 +555,13 @@ Material *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, m
 
     Material *mtl = CreateMaterial(key, cfg);
 
+    if(!mtl)
+    {
+        mtl = GetFallbackMaterial();
+        if(mtl)
+            acquire_fallback_used.fetch_add(1);
+    }
+
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
 
@@ -501,6 +573,13 @@ Material *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, m
     acquire_material_requests.fetch_add(1);
 
     Material *mtl = CreateMaterial(key, cfg);
+
+    if(!mtl)
+    {
+        mtl = GetFallbackMaterial();
+        if(mtl)
+            acquire_fallback_used.fetch_add(1);
+    }
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
@@ -873,7 +952,14 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
     Material *mtl=this->CreateMaterial(mtl_id,mcc);
 
     if(!mtl)
-        return(nullptr);
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateMaterialInstance failed to create material (preset=2D %s), using fallback\n",
+            mtl::GetMaterialPresetName(mtl_id));
+        mtl = GetFallbackMaterial();
+        if(!mtl)
+           return nullptr;
+    }
 
     return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
 }
@@ -895,7 +981,14 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
     Material *mtl=this->CreateMaterial(mtl_id,mcc);
 
     if(!mtl)
-        return(nullptr);
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateMaterialInstance failed to create material (preset=3D %s), using fallback\n",
+            mtl::GetMaterialPresetName(mtl_id));
+        mtl = GetFallbackMaterial();
+        if(!mtl)
+            return nullptr;
+    }
 
     return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
 }

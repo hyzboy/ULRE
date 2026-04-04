@@ -92,6 +92,7 @@ struct MaterialAcquireStats
     uint64_t cache_hits = 0;
     uint64_t cache_misses = 0;
     uint64_t created = 0;
+    uint64_t fallback_used = 0;
 };
 
 struct MaterialInstanceAcquireStats
@@ -120,9 +121,13 @@ private:
     std::atomic<uint64_t> acquire_material_cache_hits {0};
     std::atomic<uint64_t> acquire_material_cache_misses {0};
     std::atomic<uint64_t> acquire_material_created {0};
+    std::atomic<uint64_t> acquire_fallback_used {0};
 
     std::atomic<uint64_t> acquire_mi_requests {0};
     std::atomic<uint64_t> acquire_mi_created {0};
+
+    // Fallback material for error handling (initialized on first use)
+    Material *fallback_material = nullptr;
 
 private:
 
@@ -142,6 +147,9 @@ private: // Helper methods with integrated DebugUtils
                                       const AnsiString &mtl_name,
                                       const mtl::MaterialCreateInfo *mci,
                                       const ShaderStageMap &sci_map);
+
+     Material *TryInitializeFallbackMaterial();
+     Material *GetFallbackMaterial();
 
 public: //Add
 
@@ -188,12 +196,13 @@ public: // Override Release from GraphModule - cleanup all resources
         if (mat_stats.requests > 0 || mi_stats.requests > 0)
         {
             std::fprintf(stderr,
-                "[MaterialManager] AcquireStats: material(req=%llu lookup=%llu hit=%llu miss=%llu created=%llu) mi(req=%llu created=%llu)\n",
+                "[MaterialManager] AcquireStats: material(req=%llu lookup=%llu hit=%llu miss=%llu created=%llu fallback=%llu) mi(req=%llu created=%llu)\n",
                 static_cast<unsigned long long>(mat_stats.requests),
                 static_cast<unsigned long long>(mat_stats.cache_lookups),
                 static_cast<unsigned long long>(mat_stats.cache_hits),
                 static_cast<unsigned long long>(mat_stats.cache_misses),
                 static_cast<unsigned long long>(mat_stats.created),
+                static_cast<unsigned long long>(mat_stats.fallback_used),
                 static_cast<unsigned long long>(mi_stats.requests),
                 static_cast<unsigned long long>(mi_stats.created));
         }
@@ -260,6 +269,7 @@ public: // Acquire stats
         s.cache_hits = acquire_material_cache_hits.load();
         s.cache_misses = acquire_material_cache_misses.load();
         s.created = acquire_material_created.load();
+            s.fallback_used = acquire_fallback_used.load();
         return s;
     }
 
@@ -278,6 +288,7 @@ public: // Acquire stats
         acquire_material_cache_hits.store(0);
         acquire_material_cache_misses.store(0);
         acquire_material_created.store(0);
+            acquire_fallback_used.store(0);
         acquire_mi_requests.store(0);
         acquire_mi_created.store(0);
     }

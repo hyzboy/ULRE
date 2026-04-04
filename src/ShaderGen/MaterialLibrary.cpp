@@ -230,6 +230,8 @@ static const PresetResolveEntry kPresetResolveTable[] =
     {MaterialPreset::Metal,               "Metal",               MaterialPreset::Standard,            MakeStandardKey},
     {MaterialPreset::BirdFeathers,        "BirdFeathers",        MaterialPreset::Standard,            MakeStandardKey},
     {MaterialPreset::Scales,              "Scales",              MaterialPreset::Standard,            MakeStandardKey},
+    // Fallback/error visualization material (routes to Standard shader for now)
+    {MaterialPreset::Checkerboard3D,      "Checkerboard3D",      MaterialPreset::Standard,            MakeStandardKey},
 };
 
 static const PresetResolveEntry *FindPresetResolveEntry(const MaterialPreset preset)
@@ -540,6 +542,8 @@ static const VariantFactoryDispatchEntry kVariantFactoryDispatchTable[] =
     {MaterialPreset::Billboard2DFixed,    "Billboard2DFixed",    DispatchBillboard2DFixed},
     {MaterialPreset::Standard,            "Standard",            DispatchStandard},
     {MaterialPreset::PBRColor3D,          "PBRColor3D",          DispatchPBRColor3D},
+    // Fallback/error visualization (routes to Standard factory)
+    {MaterialPreset::Checkerboard3D,      "Checkerboard3D",      DispatchStandard},
 };
 
 static const VariantFactoryDispatchEntry *FindVariantFactoryDispatchEntry(const MaterialPreset factory_type)
