@@ -4,6 +4,8 @@
 #include <hgl/mtl/RenderAlphaMode.h>
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/SamplerSlot.h>
+#include <hgl/mtl/SkyLight.h>
+#include <hgl/mtl/LightingModel.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/type/FNV1a.h>
 
@@ -52,6 +54,8 @@ namespace hgl::graph::mtl
         uint32            extra_feature_bits            = static_cast<uint32>(ExtraFeature::None);
         RenderAlphaMode         blend_mode          = RenderAlphaMode::Opaque;
         PassType          pass_hint           = PassType::ForwardOpaque;
+        SkyLightAmbientModel sky_ambient_model = SkyLightAmbientModel::Simple;
+        LightingModel lighting_model = LightingModel::Lambert;
 
         static constexpr uint32 TextureSourceBitsPerSlot = 2;
         static constexpr uint32 TextureSourceSlotCount   = uint32(SamplerSlot::RANGE_SIZE);
@@ -121,6 +125,8 @@ namespace hgl::graph::mtl
             h = hgl::hash::FNV1aAppend(h, extra_feature_bits);
             h = hgl::hash::FNV1aAppend(h, blend_mode);
             h = hgl::hash::FNV1aAppend(h, pass_hint);
+            h = hgl::hash::FNV1aAppend(h, sky_ambient_model);
+            h = hgl::hash::FNV1aAppend(h, lighting_model);
 
             return h;
         }
@@ -134,7 +140,9 @@ namespace hgl::graph::mtl
                 && vertex_attribute_feature_bits == rhs.vertex_attribute_feature_bits
                 && extra_feature_bits == rhs.extra_feature_bits
                 && blend_mode == rhs.blend_mode
-                && pass_hint == rhs.pass_hint;
+                && pass_hint == rhs.pass_hint
+                && sky_ambient_model == rhs.sky_ambient_model
+                && lighting_model == rhs.lighting_model;
         }
     };
 }

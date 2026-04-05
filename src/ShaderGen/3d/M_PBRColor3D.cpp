@@ -73,6 +73,8 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     // Assemble GLSL via VariantRegistry (Standard, Mesh3D, no texture ??color via MI)
     MaterialVariantKey var_key;
     var_key.surface_type = SurfaceType::Standard;
+    var_key.sky_ambient_model = ambient;
+    var_key.lighting_model = lighting;
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
     if (!var_desc)
     {
@@ -82,7 +84,7 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
 
     CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(var_key, *var_desc, ambient, lighting);
+    auto result = assembler.Assemble(var_key, *var_desc);
 
     if (!result.success)
     {

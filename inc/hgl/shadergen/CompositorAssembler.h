@@ -72,9 +72,7 @@ namespace hgl::graph
         /// uses desc's shader template paths (empty path → auto-routing fallback).
         AssembleResult Assemble(
             const mtl::MaterialVariantKey  &key,
-            const mtl::MaterialVariantDesc &desc,
-            mtl::SkyLightAmbientModel sky_model = mtl::SkyLightAmbientModel::Simple,
-            mtl::LightingModel        lighting_model = mtl::LightingModel::Lambert
+            const mtl::MaterialVariantDesc &desc
         ) const;
 
     private:

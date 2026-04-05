@@ -27,19 +27,9 @@ namespace hgl::graph::mtl
         // 描述符配置
         uint32 descriptor_binding_count;    // 总描述符 binding 数量
 
-        // 特性标记
-        bool requires_normal_map;           // 是否需要法线贴图
-        bool requires_mr_map;               // 是否需要 Metallic+Roughness 贴图
-        bool requires_vertex_color;         // 是否需要顶点色
-        bool supports_2d_array;             // 是否支持 2D 数组纹理采样
-
         MaterialVariantDesc()
             : mi_struct_size(0),
-              descriptor_binding_count(0),
-              requires_normal_map(false),
-              requires_mr_map(false),
-              requires_vertex_color(false),
-              supports_2d_array(false)
+              descriptor_binding_count(0)
         {
         }
 
@@ -58,11 +48,7 @@ namespace hgl::graph::mtl
               vs_template_path(vs_path),
               fs_template_path(fs_path),
               surface_function_path(surface_path),
-              descriptor_binding_count(desc_count),
-              requires_normal_map(false),
-              requires_mr_map(false),
-              requires_vertex_color(false),
-              supports_2d_array(false)
+              descriptor_binding_count(desc_count)
         {
         }
     };

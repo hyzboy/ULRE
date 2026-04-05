@@ -142,7 +142,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(policy.assemble_key, *var_desc, ambient, lighting);
+    auto result = assembler.Assemble(policy.assemble_key, *var_desc);
 
     if (!result.success)
     {

@@ -687,6 +687,8 @@ namespace hgl::graph
         key.surface_type = surface;
         key.blend_mode = blend;
         key.pass_hint = pass;
+        key.sky_ambient_model = sky_model;
+        key.lighting_model = lighting_model;
 
         // 2. 获取模板文件路径（支持覆盖）
         std::string vs_path = (vs_template_override && vs_template_override[0])
@@ -777,10 +779,10 @@ namespace hgl::graph
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
 
         // 7. 替换 FS 中的 SKYLIGHT_FUNCTION_FILE（按天光模型选择实现文件）
-        fs_source = ReplaceSkyLightInclude(fs_source, sky_model);
+        fs_source = ReplaceSkyLightInclude(fs_source, key.sky_ambient_model);
 
         // 8. 替换 FS 中的 LIGHTING_FUNCTION_FILE（按光照模型选择实现文件）
-        fs_source = ReplaceLightingInclude(fs_source, lighting_model);
+        fs_source = ReplaceLightingInclude(fs_source, key.lighting_model);
 
         result.vertex_glsl   = std::move(vs_source);
         result.fragment_glsl = std::move(fs_source);
@@ -790,9 +792,7 @@ namespace hgl::graph
 
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         const mtl::MaterialVariantKey  &key,
-        const mtl::MaterialVariantDesc &desc,
-        mtl::SkyLightAmbientModel sky_model,
-        mtl::LightingModel lighting_model
+        const mtl::MaterialVariantDesc &desc
     ) const
     {
         AssembleResult result{};
@@ -878,10 +878,10 @@ namespace hgl::graph
 
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
 
-        fs_source = ReplaceSkyLightInclude(fs_source, sky_model);
+        fs_source = ReplaceSkyLightInclude(fs_source, key.sky_ambient_model);
 
         // 替换 FS 中的 LIGHTING_FUNCTION_FILE（按光照模型选择实现文件）
-        fs_source = ReplaceLightingInclude(fs_source, lighting_model);
+        fs_source = ReplaceLightingInclude(fs_source, key.lighting_model);
 
         result.vertex_glsl   = std::move(vs_source);
         result.fragment_glsl = std::move(fs_source);
