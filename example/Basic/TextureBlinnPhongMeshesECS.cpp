@@ -105,8 +105,6 @@ private:
         if (!material_instance)
             return false;
 
-        material = material_instance->GetMaterial();
-
         return true;
     }
 
@@ -124,7 +122,7 @@ private:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, material->GetDefaultVIL());
+        mesh_vdm = new VertexDataManager(buffer_manager, material_instance->GetVIL());
         if (!mesh_vdm)
             return false;
 

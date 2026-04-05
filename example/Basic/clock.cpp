@@ -119,7 +119,6 @@ private:
                 return false;
 
             mi_tick->WriteMIData(tick_color);
-            material = mi_tick->GetMaterial();
 
             std::cout << "[ClockApp::InitMaterial] Created material: " << (void*)material << std::endl;
 
@@ -158,7 +157,7 @@ private:
         if (!device || !buffer_manager || !geometry_manager)
             return false;
 
-        GeometryCreater pc(device, material->GetDefaultVIL(), buffer_manager);
+        GeometryCreater pc(device, mi_tick->GetVIL(), buffer_manager);
         pc.Init("TriangleForClock", VERTEX_COUNT);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data))
             return false;

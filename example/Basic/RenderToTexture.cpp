@@ -160,9 +160,7 @@ public:
         if (!mi)
             return false;
 
-        mtl = mi->GetMaterial();
-
-        auto pc = std::make_unique<GeometryCreater>(device, mtl->GetDefaultVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, mi->GetVIL());
         geometry = inline_geometry::CreateSphere(pc.get(), 64);
         if (!geometry)
             return false;
@@ -311,8 +309,6 @@ private:
         if (!cube_mi)
             return false;
 
-        cube_mtl = cube_mi->GetMaterial();
-
         cube_sampler = sm->CreateSampler();
         if (!cube_sampler)
             return false;
@@ -341,7 +337,7 @@ private:
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
 
-        auto pc = std::make_unique<GeometryCreater>(device, cube_mtl->GetDefaultVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, cube_mi->GetVIL());
         inline_geometry::CubeCreateInfo cci{};
         cci.tex_coord = true;
         cci.normal = true;

@@ -117,8 +117,7 @@ private:
         if (!solid.mi[0])
             return false;
 
-        solid.material = solid.mi[0]->GetMaterial();
-        solid.vil = solid.material->GetDefaultVIL();
+        solid.vil = solid.mi[0]->GetVIL();
         if (!solid.vil)
             return false;
 

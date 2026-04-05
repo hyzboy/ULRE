@@ -69,8 +69,6 @@ private:
         if(!mi)
             return false;
 
-        material = mi->GetMaterial();
-
         return mi != nullptr;
     }
 
@@ -94,7 +92,7 @@ private:
         if (!device)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material->GetDefaultVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, mi->GetVIL());
 
         CylinderCreateInfo cci;
         cci.halfExtend   = 0.5f;   // cylinder height = 1.0

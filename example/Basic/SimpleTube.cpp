@@ -70,8 +70,6 @@ private:
         if(!mi)
             return false;
 
-        material = mi->GetMaterial();
-
         return mi != nullptr;
     }
 
@@ -95,7 +93,7 @@ private:
         if (!device)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material->GetDefaultVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, mi->GetVIL());
 
         TubeCreateInfo tci;
         tci.length = 1.0f;           // total length = 1.0 (half-extend = 0.5 inside CreateTube)

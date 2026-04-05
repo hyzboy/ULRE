@@ -173,15 +173,8 @@ private:
                     return false;
                 }
 
-                if (!material)
-                    material = sphere_mi[row][col]->GetMaterial();
-            }
-        }
 
-        if (!material)
-        {
-            printf("[ERROR] CreatePBRColorMaterialInstances: Failed to resolve material from MI\n");
-            return false;
+            }
         }
 
         return true;
@@ -210,7 +203,8 @@ private:
             return false;
         }
 
-        mesh_vdm = new VertexDataManager(buffer_manager, material->GetDefaultVIL());
+        if (sphere_mi[0][0] == nullptr) return false;
+        mesh_vdm = new VertexDataManager(buffer_manager, sphere_mi[0][0]->GetVIL());
         if (!mesh_vdm)
         {
             printf("[ERROR] InitVDM: Failed to create VertexDataManager\n");
