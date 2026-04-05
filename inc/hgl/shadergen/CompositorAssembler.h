@@ -3,7 +3,6 @@
 #include <hgl/mtl/SurfaceType.h>
 #include <hgl/mtl/RenderAlphaMode.h>
 #include <hgl/mtl/PassType.h>
-#include <hgl/mtl/LegacyShaderPermutationKey.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
 #include <string>
@@ -25,7 +24,7 @@ namespace hgl::graph
      *   1. 输入：SurfaceType, RenderAlphaMode, PassType, QualityTier, PlatformBackend
      *   2. 查表选择 VS/FS Compositor Template 文件路径
      *   3. 读取模板文件内容
-     *   4. 注入 #define 宏（ShaderPermutationKey::AppendGLSLDefines()）
+        *   4. 注入 #define 宏（由 MaterialVariantKey 派生）
      *   5. 替换 #include SURFACE_FUNCTION_FILE 为实际路径
      *   6. 返回完整 GLSL 字符串
      */
@@ -85,7 +84,7 @@ namespace hgl::graph
         std::string GetCompositorVSPath(SurfaceType surface, PassType pass) const;
         std::string GetCompositorFSPath(SurfaceType surface, RenderAlphaMode blend, PassType pass) const;
         std::string GetSurfaceFunctionPath(SurfaceType surface) const;
-        std::string InjectDefines(const std::string &source, const ShaderPermutationKey &key) const;
+        std::string InjectDefines(const std::string &source, const mtl::MaterialVariantKey &key) const;
         std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;
         std::string ReplaceSkyLightInclude(const std::string &source, mtl::SkyLightAmbientModel sky_model) const;
         std::string ReplaceLightingInclude(const std::string &source, mtl::LightingModel lighting_model) const;

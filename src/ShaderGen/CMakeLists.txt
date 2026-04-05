@@ -112,7 +112,6 @@ SOURCE_GROUP("Standard Material\\3D" FILES ${STD_MTL_3D_SOURCE_FILES})
 SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             MaterialSpecValidator.cpp
                             VariantRegistry.cpp
-                            ShaderPermutationKey.cpp
                             ${STD_MTL_HEADER_PATH}/MaterialLibrary.h
                             ${STD_MTL_HEADER_PATH}/MaterialSpec.h
                             ${STD_MTL_HEADER_PATH}/MaterialPreset.h
@@ -121,8 +120,7 @@ SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             ${MTL_TYPE_INCLUDE_PATH}/MaterialVariantKey.h
                             ${MTL_TYPE_INCLUDE_PATH}/SurfaceType.h
                             ${MTL_TYPE_INCLUDE_PATH}/RenderAlphaMode.h
-                            ${MTL_TYPE_INCLUDE_PATH}/PassType.h
-                            ${MTL_TYPE_INCLUDE_PATH}/LegacyShaderPermutationKey.h)
+                            ${MTL_TYPE_INCLUDE_PATH}/PassType.h)
 SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 
 # Material Compiler

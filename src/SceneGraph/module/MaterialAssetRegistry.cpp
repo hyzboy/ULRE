@@ -13,7 +13,7 @@ namespace hgl::graph
 
 // ── 将 record 中的纹理加载并绑定到 DomainMaterialBinding ─────────────────────
 
-static bool BindTexturesFromRecord(
+static bool BindDomainTexturesFromRecord(
     DomainMaterialBinding *dmb,
     TextureManager *tm,
     SamplerManager *sm,
@@ -32,6 +32,36 @@ static bool BindTexturesFromRecord(
             return false;
     }
     return true;
+}
+
+// Legacy compatibility: many render paths still bind per-material descriptors
+// from Material directly (without domain binding registration).
+// Keep this best-effort fallback to avoid unbound sampler validation errors.
+static void BindMaterialTexturesCompat(
+    Material *material,
+    TextureManager *tm,
+    SamplerManager *sm,
+    const mtl::MaterialAssetRecord &rec)
+{
+    if (!material || !tm || !sm)
+        return;
+
+    for (const auto &tc : rec.textures)
+    {
+        if (tc.path.empty())
+            continue;
+
+        auto *tex = tm->LoadTexture2D(hgl::ToOSString(tc.path), true);
+        if (!tex)
+            continue;
+
+        auto *smp = sm->CreateSampler();
+        if (!smp)
+            continue;
+
+        // Non-fatal by design: may already be bound in cached material path.
+        material->BindTextureSampler(tc.slot, tex, smp);
+    }
 }
 
 // ── FNV-1a 64-bit texture config hash ────────────────────────────────────────
@@ -131,8 +161,12 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
         // 绑定纹理到 DMB
         if (tm && sm && !rec.textures.empty())
         {
-            if (!BindTexturesFromRecord(handle.binding, tm, sm, rec))
+            if (!BindDomainTexturesFromRecord(handle.binding, tm, sm, rec))
                 return {};
+
+            // Compatibility fallback for code paths that still use Material MP
+            // instead of DomainMaterialBinding MP during draw binding.
+            BindMaterialTexturesCompat(handle.material, tm, sm, rec);
         }
 
         dmb_cache[key] = handle.binding;

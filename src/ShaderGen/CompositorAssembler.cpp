@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <cstdio>
 
 namespace
 {
@@ -558,10 +559,30 @@ namespace hgl::graph
         return "surface/standard_surface.glsl";
     }
 
-    std::string CompositorAssembler::InjectDefines(const std::string &source, const ShaderPermutationKey &key) const
+    std::string CompositorAssembler::InjectDefines(const std::string &source, const mtl::MaterialVariantKey &key) const
     {
         std::string defines;
-        key.AppendGLSLDefines(defines);
+        {
+            char buf[128] = {};
+            const uint32 shadow_mode = 0u;
+            std::snprintf(buf,
+                          sizeof(buf),
+                          "#define SURFACE_TYPE %d\n"
+                          "#define SHADOW_MODE %u\n",
+                          static_cast<int>(key.surface_type),
+                          shadow_mode);
+            defines += buf;
+        }
+
+        for (uint8 i = 0; i < uint8(mtl::SamplerSlotCount); ++i)
+        {
+            const mtl::SamplerSlot slot = static_cast<mtl::SamplerSlot>(i);
+            if (key.GetTextureSourceMode(slot) == mtl::TextureSourceMode::Array)
+            {
+                defines += "#define TEXTURE_ARRAY_MODE\n";
+                break;
+            }
+        }
 
         if(defines.empty())
             return source;
@@ -661,9 +682,11 @@ namespace hgl::graph
     {
         AssembleResult result{};
 
-        // 1. 构建 permutation key
-        ShaderPermutationKey key;
-        key.SetSurfaceType(surface);
+        // 1. Build key used for macro define injection.
+        mtl::MaterialVariantKey key{};
+        key.surface_type = surface;
+        key.blend_mode = blend;
+        key.pass_hint = pass;
 
         // 2. 获取模板文件路径（支持覆盖）
         std::string vs_path = (vs_template_override && vs_template_override[0])
@@ -774,16 +797,6 @@ namespace hgl::graph
     {
         AssembleResult result{};
 
-        ShaderPermutationKey perm;
-        perm.SetSurfaceType(key.surface_type);
-
-        for (uint8 i = 0; i < uint8(mtl::SamplerSlotCount); ++i)
-        {
-            const mtl::SamplerSlot slot = static_cast<mtl::SamplerSlot>(i);
-            const mtl::TextureSourceMode mode = key.GetTextureSourceMode(slot);
-            perm.SetSlotArrayMode(slot, mode == mtl::TextureSourceMode::Array);
-        }
-
         std::string vs_path = desc.vs_template_path.empty()
             ? GetCompositorVSPath(key.surface_type, key.pass_hint)
             : shader_lib_path_ + "/" + desc.vs_template_path;
@@ -840,8 +853,8 @@ namespace hgl::graph
             }
         }
 
-        vs_source = InjectDefines(vs_source, perm);
-        fs_source = InjectDefines(fs_source, perm);
+        vs_source = InjectDefines(vs_source, key);
+        fs_source = InjectDefines(fs_source, key);
 
         if(vs_source.empty())
         {
