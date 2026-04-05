@@ -4,7 +4,7 @@
 
 namespace hgl::graph
 {
-    enum class BlendMode : uint8
+    enum class RenderAlphaMode : uint8
     {
         Opaque = 0,
         Masked,

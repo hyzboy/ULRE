@@ -78,18 +78,18 @@ inline Material3DCreateConfig MakeLocalConfig(const Material3DCreateConfig *cfg)
     return cfg ? *cfg : Material3DCreateConfig();
 }
 
-inline PassType BlendModeToPassHint(const BlendMode blend_mode)
+inline PassType BlendModeToPassHint(const RenderAlphaMode blend_mode)
 {
     switch (blend_mode) {
-    case BlendMode::Masked:          return PassType::ForwardMasked;
-    case BlendMode::Dither:          return PassType::ForwardDither;
-    case BlendMode::Opaque:          return PassType::ForwardOpaque;
-    case BlendMode::AlphaToCoverage: return PassType::ForwardA2C;
+    case RenderAlphaMode::Masked:          return PassType::ForwardMasked;
+    case RenderAlphaMode::Dither:          return PassType::ForwardDither;
+    case RenderAlphaMode::Opaque:          return PassType::ForwardOpaque;
+    case RenderAlphaMode::AlphaToCoverage: return PassType::ForwardA2C;
     default:                         return PassType::ForwardTransparent;
     }
 }
 
-inline MaterialVariantKey MakeBillboardKeyBase(const BlendMode blend_mode)
+inline MaterialVariantKey MakeBillboardKeyBase(const RenderAlphaMode blend_mode)
 {
     MaterialVariantKey key;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);

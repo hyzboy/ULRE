@@ -147,7 +147,7 @@ static MaterialVariantKey MakeBillboard2DDynamicKey()
     key.geometry_mode = GeometryMode::BillboardCameraFacing;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     key.SetHasTexture(SamplerSlot::BaseColor);
-    key.blend_mode = BlendMode::Transparent;
+    key.blend_mode = RenderAlphaMode::Transparent;
     key.pass_hint = PassType::ForwardTransparent;
     return key;
 }
@@ -159,7 +159,7 @@ static MaterialVariantKey MakeBillboard2DFixedKey()
     key.geometry_mode = GeometryMode::BillboardAxisLocked;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     key.SetHasTexture(SamplerSlot::BaseColor);
-    key.blend_mode = BlendMode::Transparent;
+    key.blend_mode = RenderAlphaMode::Transparent;
     key.pass_hint = PassType::ForwardTransparent;
     return key;
 }

@@ -21,7 +21,7 @@
 #include <hgl/mtl/LightingModel.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/SamplerSlot.h>
-#include <hgl/mtl/BlendMode.h>
+#include <hgl/mtl/RenderAlphaMode.h>
 #include <hgl/common/CoordinateSystem.h>
 #include <hgl/common/PrimitiveTypeDef.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
@@ -87,7 +87,7 @@ struct MaterialAssetRecord
         bool               fixed_size          = false;                     ///< 像素固定大小
         uint32             pixel_w             = 64;                        ///< 像素宽度
         uint32             pixel_h             = 64;                        ///< 像素高度
-        BlendMode          blend_mode          = BlendMode::Transparent;    ///< 混合模式
+        RenderAlphaMode          blend_mode          = RenderAlphaMode::Transparent;    ///< 混合模式
         TextureChannelHint base_color_channel  = TextureChannelHint::RGBA;  ///< 通道提示
         bool               front_face_ccw      = false;                     ///< false = Clockwise
         std::string        texture_id;                                      ///< 纹理唯一标识

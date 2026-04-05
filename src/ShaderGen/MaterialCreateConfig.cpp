@@ -136,10 +136,10 @@ std::string BillboardMaterialCreateConfig::ToHashStdString()
 
     switch (blend_mode)
     {
-    case BlendMode::Masked:         hash += "_Masked";  break;
-    case BlendMode::Dither:         hash += "_Dither";  break;
-    case BlendMode::AlphaToCoverage:hash += "_A2C";     break;
-    case BlendMode::Opaque:         hash += "_Opaque";  break;
+    case RenderAlphaMode::Masked:         hash += "_Masked";  break;
+    case RenderAlphaMode::Dither:         hash += "_Dither";  break;
+    case RenderAlphaMode::AlphaToCoverage:hash += "_A2C";     break;
+    case RenderAlphaMode::Opaque:         hash += "_Opaque";  break;
     default: break; // Transparent is the default, no suffix needed
     }
 

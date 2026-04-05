@@ -1,4 +1,4 @@
-// BlendMode Transparent ECS - Alpha Blend Demo
+// RenderAlphaMode Transparent ECS - Alpha Blend Demo
 //
 // Demonstrates conventional alpha blending for billboard transparency.
 // The billboard quad is rendered with a pipeline that has src=SRC_ALPHA,
@@ -26,6 +26,6 @@ protected:
 int os_main(int argc, os_char** argv)
 {
     return RunFramework<BlendModeTransparentECSApp>(
-        OS_TEXT("BlendMode Transparent ECS - Alpha Blend Demo"),
+        OS_TEXT("RenderAlphaMode Transparent ECS - Alpha Blend Demo"),
         argc, argv, 1280, 720);
 }

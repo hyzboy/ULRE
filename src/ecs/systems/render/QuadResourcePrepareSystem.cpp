@@ -40,15 +40,15 @@ namespace hgl::ecs
     static std::unordered_map<const ECSContext*, graph::TextureChannelHint> g_world_quad_channel_hint;
     static std::unordered_map<const ECSContext*, bool> g_world_billboard_fixed_size;
 
-    static graph::BlendMode GraphicsPipelinePresetToBlendMode(graph::GraphicsPipelinePreset pipeline)
+    static graph::RenderAlphaMode GraphicsPipelinePresetToBlendMode(graph::GraphicsPipelinePreset pipeline)
     {
         switch (pipeline)
         {
-        case graph::GraphicsPipelinePreset::Masked3D:           return graph::BlendMode::Masked;
-        case graph::GraphicsPipelinePreset::Dither3D:           return graph::BlendMode::Dither;
-        case graph::GraphicsPipelinePreset::AlphaToCoverage3D:  return graph::BlendMode::AlphaToCoverage;
-        case graph::GraphicsPipelinePreset::Alpha3D:            return graph::BlendMode::Transparent;
-        default:                                                return graph::BlendMode::Opaque;
+        case graph::GraphicsPipelinePreset::Masked3D:           return graph::RenderAlphaMode::Masked;
+        case graph::GraphicsPipelinePreset::Dither3D:           return graph::RenderAlphaMode::Dither;
+        case graph::GraphicsPipelinePreset::AlphaToCoverage3D:  return graph::RenderAlphaMode::AlphaToCoverage;
+        case graph::GraphicsPipelinePreset::Alpha3D:            return graph::RenderAlphaMode::Transparent;
+        default:                                                return graph::RenderAlphaMode::Opaque;
         }
     }
 
@@ -84,7 +84,7 @@ namespace hgl::ecs
         return GetPresetForWorld(world);
     }
 
-    graph::BlendMode QuadResourcePrepareSystem::GetBlendModeForWorld(const ECSContext* world)
+    graph::RenderAlphaMode QuadResourcePrepareSystem::GetBlendModeForWorld(const ECSContext* world)
     {
         return GraphicsPipelinePresetToBlendMode(GetPresetForWorld(world));
     }
@@ -157,7 +157,7 @@ namespace hgl::ecs
         return GetPreset();
     }
 
-    graph::BlendMode QuadResourcePrepareSystem::GetBlendMode()
+    graph::RenderAlphaMode QuadResourcePrepareSystem::GetBlendMode()
     {
         return GraphicsPipelinePresetToBlendMode(g_default_quad_inline_pipeline);
     }

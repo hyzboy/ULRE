@@ -1,4 +1,4 @@
-// BlendMode Masked ECS - Alpha Cutout Demo
+// RenderAlphaMode Masked ECS - Alpha Cutout Demo
 //
 // Demonstrates hard alpha cutout (clip/discard) for billboard transparency.
 // Pixels whose alpha falls below a threshold are fully discarded by the shader;
@@ -26,6 +26,6 @@ protected:
 int os_main(int argc, os_char** argv)
 {
     return RunFramework<BlendModeMaskedECSApp>(
-        OS_TEXT("BlendMode Masked ECS - Alpha Cutout Demo"),
+        OS_TEXT("RenderAlphaMode Masked ECS - Alpha Cutout Demo"),
         argc, argv, 1280, 720);
 }

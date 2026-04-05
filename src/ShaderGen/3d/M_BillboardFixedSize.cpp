@@ -75,12 +75,12 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
     dynamic_def.texture_samplers  = &dynamic_samplers;
     dynamic_def.ssbo_descriptors  = &dynamic_ssbos;
 
-    auto BlendModeToPassHint = [](BlendMode bm) -> PassType {
+    auto BlendModeToPassHint = [](RenderAlphaMode bm) -> PassType {
         switch (bm) {
-        case BlendMode::Masked:          return PassType::ForwardMasked;
-        case BlendMode::Dither:          return PassType::ForwardDither;
-        case BlendMode::Opaque:          return PassType::ForwardOpaque;
-        case BlendMode::AlphaToCoverage: return PassType::ForwardA2C;
+        case RenderAlphaMode::Masked:          return PassType::ForwardMasked;
+        case RenderAlphaMode::Dither:          return PassType::ForwardDither;
+        case RenderAlphaMode::Opaque:          return PassType::ForwardOpaque;
+        case RenderAlphaMode::AlphaToCoverage: return PassType::ForwardA2C;
         default:                         return PassType::ForwardTransparent;
         }
     };

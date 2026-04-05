@@ -36,7 +36,7 @@ static bool TestAssembleGLSL(CompositorAssembler &assembler)
 
     auto result = assembler.Assemble(
         SurfaceType::Standard,
-        BlendMode::Opaque,
+        RenderAlphaMode::Opaque,
         PassType::ForwardOpaque
     );
 
@@ -70,7 +70,7 @@ static bool TestCompileSPV(CompositorAssembler &assembler, const std::string &sh
 
     auto result = assembler.Assemble(
         SurfaceType::Standard,
-        BlendMode::Opaque,
+        RenderAlphaMode::Opaque,
         PassType::ForwardOpaque
     );
 

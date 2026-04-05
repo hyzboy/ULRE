@@ -1,4 +1,4 @@
-// BlendMode Alpha-to-Coverage ECS - MSAA A2C Demo
+// RenderAlphaMode Alpha-to-Coverage ECS - MSAA A2C Demo
 //
 // Demonstrates alpha-to-coverage (A2C): the fragment shader outputs the surface alpha
 // and the GPU's MSAA hardware converts it into coverage bits at sample boundaries.
@@ -27,6 +27,6 @@ protected:
 int os_main(int argc, os_char** argv)
 {
     return RunFramework<BlendModeA2CECSApp>(
-        OS_TEXT("BlendMode Alpha-to-Coverage ECS - MSAA A2C Demo"),
+        OS_TEXT("RenderAlphaMode Alpha-to-Coverage ECS - MSAA A2C Demo"),
         argc, argv, 1280, 720);
 }

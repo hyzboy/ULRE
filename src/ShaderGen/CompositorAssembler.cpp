@@ -12,7 +12,7 @@
 namespace
 {
     using GeneratedVSBuilder = std::string (*)();
-    using GeneratedFSBuilder = std::string (*)(hgl::graph::BlendMode blend, const std::string &surface_path);
+    using GeneratedFSBuilder = std::string (*)(hgl::graph::RenderAlphaMode blend, const std::string &surface_path);
 
     struct GeneratedVSTemplateRoute
     {
@@ -165,39 +165,39 @@ namespace
         return BuildForwardVertexEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true});
     }
 
-    std::string BuildForwardUnlitVertexColorFS(const hgl::graph::BlendMode, const std::string &surface_path)
+    std::string BuildForwardUnlitVertexColorFS(const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
         return BuildForwardFragmentEntry({.has_vertex_color = true, .surface_path = surface_path});
     }
 
-    std::string BuildForwardUnlitLuminanceFS(const hgl::graph::BlendMode, const std::string &surface_path)
+    std::string BuildForwardUnlitLuminanceFS(const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
         return BuildForwardFragmentEntry({.has_luminance = true, .surface_path = surface_path});
     }
 
-    std::string BuildForwardUnlitNormalFS(const hgl::graph::BlendMode, const std::string &surface_path)
+    std::string BuildForwardUnlitNormalFS(const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
         return BuildForwardFragmentEntry({.has_world_pos = true, .has_world_normal = true, .needs_camera = true, .surface_path = surface_path});
     }
 
-    std::string BuildForwardBillboardFS(const hgl::graph::BlendMode blend, const std::string &surface_path)
+    std::string BuildForwardBillboardFS(const hgl::graph::RenderAlphaMode blend, const std::string &surface_path)
     {
-        const bool alpha_masked = (blend == hgl::graph::BlendMode::Masked);
-        const bool alpha_dither = (blend == hgl::graph::BlendMode::Dither);
+        const bool alpha_masked = (blend == hgl::graph::RenderAlphaMode::Masked);
+        const bool alpha_dither = (blend == hgl::graph::RenderAlphaMode::Dither);
         return BuildForwardFragmentEntry({.alpha_masked = alpha_masked, .alpha_dither = alpha_dither, .has_texcoord = true, .surface_path = surface_path});
     }
 
-    std::string BuildForwardSkyFS(const hgl::graph::BlendMode, const std::string &surface_path)
+    std::string BuildForwardSkyFS(const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
         return BuildForwardFragmentEntry({.has_direction = true, .surface_path = surface_path});
     }
 
-    std::string BuildTerrainGridFS(const hgl::graph::BlendMode, const std::string &surface_path)
+    std::string BuildTerrainGridFS(const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
         return BuildForwardFragmentEntry({.has_world_normal = true, .has_clip_pos = true, .surface_path = surface_path});
     }
 
-    std::string BuildForwardLitFS(const hgl::graph::BlendMode, const std::string &surface_path)
+    std::string BuildForwardLitFS(const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
         return BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .enable_lighting = true, .needs_camera = true, .needs_sky = true, .surface_path = surface_path});
     }
@@ -401,7 +401,7 @@ namespace hgl::graph
         return false;
     }
 
-    bool CompositorAssembler::TryBuildGeneratedFSTemplatePath(const std::string &template_path, BlendMode blend, const std::string &surface_path, std::string &out_source) const
+    bool CompositorAssembler::TryBuildGeneratedFSTemplatePath(const std::string &template_path, RenderAlphaMode blend, const std::string &surface_path, std::string &out_source) const
     {
         if(const GeneratedFSTemplateRoute *route = FindRouteByTemplatePath(kGeneratedFSTemplateRoutes, template_path))
         {
@@ -474,7 +474,7 @@ namespace hgl::graph
         }
     }
 
-    std::string CompositorAssembler::GetCompositorFSPath(SurfaceType surface, BlendMode blend, PassType pass) const
+    std::string CompositorAssembler::GetCompositorFSPath(SurfaceType surface, RenderAlphaMode blend, PassType pass) const
     {
         // 2D Materials — reuse frag_forward_main.glsl, routed by pass type
         if (Is2DSurfaceType(surface))
@@ -650,7 +650,7 @@ namespace hgl::graph
 
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         SurfaceType     surface,
-        BlendMode       blend,
+        RenderAlphaMode       blend,
         PassType        pass,
         const char     *vs_template_override,
         const char     *fs_template_override,
@@ -876,25 +876,25 @@ namespace hgl::graph
         return result;
     }
 
-    std::vector<PassType> CompositorAssembler::GetPassTypesForBlendMode(BlendMode blend)
+    std::vector<PassType> CompositorAssembler::GetPassTypesForBlendMode(RenderAlphaMode blend)
     {
         switch (blend)
         {
-        case BlendMode::Opaque:
+        case RenderAlphaMode::Opaque:
             return { PassType::ForwardOpaque, PassType::ShadowOpaque, PassType::EarlyZSolid };
 
-        case BlendMode::Masked:
+        case RenderAlphaMode::Masked:
             return { PassType::ForwardMasked, PassType::ShadowMasked, PassType::EarlyZMasked };
 
-        case BlendMode::Transparent:
+        case RenderAlphaMode::Transparent:
             // 透明物体无阴影、无 EarlyZ（从后往前排序第 8 Pass 渲染）
             return { PassType::ForwardTransparent };
 
-        case BlendMode::Dither:
+        case RenderAlphaMode::Dither:
             // Dither 小批目使用 ShadowOpaque（不需要 alpha 阴影）
             return { PassType::ForwardDither, PassType::ShadowOpaque };
 
-        case BlendMode::AlphaToCoverage:
+        case RenderAlphaMode::AlphaToCoverage:
             // A2C 阴影和 Masked 相同——需要 alpha discard 避免阴影漏光
             return { PassType::ForwardA2C, PassType::ShadowMasked };
 

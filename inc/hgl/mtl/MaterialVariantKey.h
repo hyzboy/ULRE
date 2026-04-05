@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/mtl/SurfaceType.h>
-#include <hgl/mtl/BlendMode.h>
+#include <hgl/mtl/RenderAlphaMode.h>
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include <hgl/common/VertexAttribDef.h>
@@ -50,7 +50,7 @@ namespace hgl::graph::mtl
         uint32            sampler_feature_bits          = 0;
         uint32            vertex_attribute_feature_bits = 0;
         uint32            extra_feature_bits            = static_cast<uint32>(ExtraFeature::None);
-        BlendMode         blend_mode          = BlendMode::Opaque;
+        RenderAlphaMode         blend_mode          = RenderAlphaMode::Opaque;
         PassType          pass_hint           = PassType::ForwardOpaque;
 
         static constexpr uint32 TextureSourceBitsPerSlot = 2;

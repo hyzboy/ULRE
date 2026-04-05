@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/mtl/SurfaceType.h>
-#include <hgl/mtl/BlendMode.h>
+#include <hgl/mtl/RenderAlphaMode.h>
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/LegacyShaderPermutationKey.h>
 #include <hgl/mtl/SkyLight.h>
@@ -22,7 +22,7 @@ namespace hgl::graph
      * CompositorAssembler — 组合 Compositor Template + Surface Function 生成完整 GLSL
      *
      * 第一版最小实现：
-     *   1. 输入：SurfaceType, BlendMode, PassType, QualityTier, PlatformBackend
+     *   1. 输入：SurfaceType, RenderAlphaMode, PassType, QualityTier, PlatformBackend
      *   2. 查表选择 VS/FS Compositor Template 文件路径
      *   3. 读取模板文件内容
      *   4. 注入 #define 宏（ShaderPermutationKey::AppendGLSLDefines()）
@@ -47,20 +47,20 @@ namespace hgl::graph
         /// shader_library_path: ShaderLibrary 根目录的绝对路径（不带尾部斜杠）
         explicit CompositorAssembler(const std::string &shader_library_path);
 
-        /// 根据 BlendMode 返回该模式需要生成 SPV 的所有 PassType 列表
+        /// 根据 RenderAlphaMode 返回该模式需要生成 SPV 的所有 PassType 列表
         /// Opaque→[ForwardOpaque,ShadowOpaque,EarlyZSolid]
         /// Masked→[ForwardMasked,ShadowMasked,EarlyZMasked]
         /// Transparent→[ForwardTransparent]
         /// Dither→[ForwardDither,ShadowOpaque]
         /// AlphaToCoverage→[ForwardA2C,ShadowMasked]
-        static std::vector<PassType> GetPassTypesForBlendMode(BlendMode blend);
+        static std::vector<PassType> GetPassTypesForBlendMode(RenderAlphaMode blend);
 
         /// vs_template_override: 非空时覆盖默认 VS 模板路径（相对于 ShaderLibrary 根目录）
         /// fs_template_override: 非空时覆盖默认 FS 模板路径（相对于 ShaderLibrary 根目录）
         /// surface_function_override: 非空时覆盖默认 Surface Function 路径
         AssembleResult Assemble(
             SurfaceType     surface,
-            BlendMode       blend,
+            RenderAlphaMode       blend,
             PassType        pass,
             const char     *vs_template_override      = nullptr,
             const char     *fs_template_override      = nullptr,
@@ -69,7 +69,7 @@ namespace hgl::graph
             mtl::LightingModel        lighting_model   = mtl::LightingModel::Lambert
         ) const;
 
-        /// VariantDesc overload — derives SurfaceType/BlendMode/PassType/QualityTier from key,
+        /// VariantDesc overload — derives SurfaceType/RenderAlphaMode/PassType/QualityTier from key,
         /// uses desc's shader template paths (empty path → auto-routing fallback).
         AssembleResult Assemble(
             const mtl::MaterialVariantKey  &key,
@@ -81,9 +81,9 @@ namespace hgl::graph
     private:
 
         bool        TryBuildGeneratedVSTemplatePath(const std::string &template_path, std::string &out_source) const;
-        bool        TryBuildGeneratedFSTemplatePath(const std::string &template_path, BlendMode blend, const std::string &surface_path, std::string &out_source) const;
+        bool        TryBuildGeneratedFSTemplatePath(const std::string &template_path, RenderAlphaMode blend, const std::string &surface_path, std::string &out_source) const;
         std::string GetCompositorVSPath(SurfaceType surface, PassType pass) const;
-        std::string GetCompositorFSPath(SurfaceType surface, BlendMode blend, PassType pass) const;
+        std::string GetCompositorFSPath(SurfaceType surface, RenderAlphaMode blend, PassType pass) const;
         std::string GetSurfaceFunctionPath(SurfaceType surface) const;
         std::string InjectDefines(const std::string &source, const ShaderPermutationKey &key) const;
         std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;

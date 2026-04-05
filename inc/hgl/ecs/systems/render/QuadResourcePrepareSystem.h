@@ -2,7 +2,7 @@
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
-#include<hgl/mtl/BlendMode.h>
+#include<hgl/mtl/RenderAlphaMode.h>
 #include<hgl/mtl/MaterialPreset.h>
 #include<hgl/common/TextureSamplerTypeDef.h>
 #include<hgl/type/String.h>
@@ -102,7 +102,7 @@ namespace hgl::ecs
 
         static void SetPipelineForWorld(const ECSContext* world, graph::GraphicsPipelinePreset pipeline);
         static graph::GraphicsPipelinePreset GetPipelineForWorld(const ECSContext* world);
-        static graph::BlendMode GetBlendModeForWorld(const ECSContext* world);
+        static graph::RenderAlphaMode GetBlendModeForWorld(const ECSContext* world);
 
         static void SetChannelHintForWorld(const ECSContext* world, graph::TextureChannelHint hint);
         static graph::TextureChannelHint GetChannelHintForWorld(const ECSContext* world);
@@ -116,7 +116,7 @@ namespace hgl::ecs
 
         static void SetPipeline(graph::GraphicsPipelinePreset pipeline);
         static graph::GraphicsPipelinePreset GetPipeline();
-        static graph::BlendMode GetBlendMode();
+        static graph::RenderAlphaMode GetBlendMode();
 
     public:
 
