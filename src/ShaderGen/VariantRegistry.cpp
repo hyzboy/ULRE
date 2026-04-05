@@ -133,8 +133,8 @@ std::string VariantRegistry::DumpSnapshot() const
         out += "|";
         out += d.variant_name;
         out += "|";
-        out += d.has_factory_type
-            ? std::to_string(static_cast<uint32>(d.factory_type))
+        out += d.factory_type
+            ? std::to_string(static_cast<uint32>(*d.factory_type))
             : std::string("-1");
         out += "|";
         out += std::to_string(static_cast<uint32>(k.surface_type));
@@ -202,7 +202,6 @@ MaterialVariantDesc MakeDesc(
     MaterialVariantDesc d;
     d.variant_name          = name;
     d.factory_type          = factory_type;
-    d.has_factory_type      = true;
     d.vs_template_path      = vs_path;
     d.fs_template_path      = fs_path;
     d.surface_function_path = surface_path ? surface_path : "";

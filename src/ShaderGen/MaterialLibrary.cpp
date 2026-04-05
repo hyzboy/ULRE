@@ -627,7 +627,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         return nullptr;
     }
 
-    if(!variant_desc->has_factory_type)
+    if(!variant_desc->factory_type)
     {
         std::fprintf(stderr,
             "[MaterialLibrary] CreateMaterialCreateInfo failed: variant has no factory_type assigned (variant=%s key_hash=%llu)\n",
@@ -636,13 +636,15 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         return nullptr;
     }
 
-    if(MaterialCreateInfo *mci=DispatchVariantFactory(variant_desc->factory_type,profile,key,cfg))
+    const MaterialPreset factory_type = *variant_desc->factory_type;
+
+    if(MaterialCreateInfo *mci=DispatchVariantFactory(factory_type,profile,key,cfg))
         return mci;
 
     std::fprintf(stderr,
         "[MaterialLibrary] CreateMaterialCreateInfo failed: factory dispatch failed (variant=%s factory_type=%u key_hash=%llu resolved_key_hash=%llu)\n",
         variant_desc->variant_name.c_str(),
-        static_cast<unsigned>(variant_desc->factory_type),
+        static_cast<unsigned>(factory_type),
         static_cast<unsigned long long>(key.Hash()),
         static_cast<unsigned long long>(resolved_key.Hash()));
     return nullptr;

@@ -2,6 +2,7 @@
 #define HGL_MTL_MATERIAL_VARIANT_DESC_H
 
 #include<hgl/mtl/MaterialPreset.h>
+#include<optional>
 #include<string>
 
 namespace hgl::graph::mtl
@@ -12,8 +13,7 @@ namespace hgl::graph::mtl
     {
         // 标识
         std::string variant_name;           // 变体名称，用于日志和调试
-        MaterialPreset factory_type = MaterialPreset::VertexColor2D;
-        bool has_factory_type = false;
+        std::optional<MaterialPreset> factory_type;
 
         // 材质实例布局
         std::string mi_struct_name;         // MI 结构体名（如 StandardMaterialInstance）
@@ -31,6 +31,7 @@ namespace hgl::graph::mtl
             : mi_struct_size(0),
               descriptor_binding_count(0)
         {
+                        factory_type.reset();
         }
 
         MaterialVariantDesc(
@@ -43,7 +44,6 @@ namespace hgl::graph::mtl
             uint32 desc_count = 3)
             : variant_name(name),
                             factory_type(type),
-              has_factory_type(true),
               mi_struct_size(mi_size),
               vs_template_path(vs_path),
               fs_template_path(fs_path),
