@@ -47,7 +47,8 @@ namespace hgl::ecs
         case graph::GraphicsPipelinePreset::Masked3D:           return graph::BlendMode::Masked;
         case graph::GraphicsPipelinePreset::Dither3D:           return graph::BlendMode::Dither;
         case graph::GraphicsPipelinePreset::AlphaToCoverage3D:  return graph::BlendMode::AlphaToCoverage;
-        default:                                                return graph::BlendMode::Transparent;
+        case graph::GraphicsPipelinePreset::Alpha3D:            return graph::BlendMode::Transparent;
+        default:                                                return graph::BlendMode::Opaque;
         }
     }
 
