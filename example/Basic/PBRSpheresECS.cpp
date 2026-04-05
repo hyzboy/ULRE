@@ -146,7 +146,7 @@ private:
             return false;
         }
 
-        static const mtl::MaterialAssetRecord kPBRArrayCfg {
+        static const mtl::MaterialAssetRecord kPBRArrayAcquireCfg {
             .id              = "pbr_spheres_standard",
             .preset          = mtl::MaterialPreset::Standard,
             .sky             = true,
@@ -159,7 +159,7 @@ private:
             },
         };
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        material_handle = registry.Acquire(kPBRArrayCfg);
+        material_handle = registry.Acquire(kPBRArrayAcquireCfg);
         if (!material_handle.IsValid()) {
             printf("[ERROR] InitMaterial: Failed to create Standard+Array material\n");
             return false;
@@ -321,7 +321,11 @@ private:
                 store.roughness = d.roughness;
                 store.normal_scale = d.normal_scale;
 
-                sphere_mi[row][col] = registry.CreateMI(material_handle, GraphicsPipelinePreset::Solid3D, (const VertexInputLayout*)nullptr, &d, sizeof(d));
+                sphere_mi[row][col] = registry.CreateMI(
+                    material_handle,
+                    mtl::MaterialAssetRecord{ .pipeline = GraphicsPipelinePreset::Solid3D },
+                    &d,
+                    sizeof(d));
 
                 if (!sphere_mi[row][col]) {
                     printf("[ERROR] CreateStandardMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
@@ -584,7 +588,7 @@ private:
         if (!sky_handle.IsValid())
             return false;
 
-        mi_sky_sphere = registry.CreateMI(sky_handle, GraphicsPipelinePreset::Sky);
+        mi_sky_sphere = registry.CreateMI(sky_handle, kSkyCfg);
         if (!mi_sky_sphere)
             return false;
 

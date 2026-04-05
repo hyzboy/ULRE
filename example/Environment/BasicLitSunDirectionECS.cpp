@@ -134,7 +134,7 @@ private:
         auto sky_handle = registry.Acquire(kSkyCfg);
         if (!sky_handle.IsValid()) return false;
 
-        sky_material_instance = registry.CreateMI(sky_handle, GraphicsPipelinePreset::Sky);
+        sky_material_instance = registry.CreateMI(sky_handle, kSkyCfg);
         if (!sky_material_instance)
             return false;
 

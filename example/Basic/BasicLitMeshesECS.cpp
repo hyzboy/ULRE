@@ -492,7 +492,7 @@ private:
         if (!sky_handle.IsValid())
             return false;
 
-        mi_sky_sphere = registry.CreateMI(sky_handle, GraphicsPipelinePreset::Sky);
+        mi_sky_sphere = registry.CreateMI(sky_handle, kSkyCfg);
         if (!mi_sky_sphere)
             return false;
 

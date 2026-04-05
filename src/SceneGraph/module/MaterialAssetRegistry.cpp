@@ -197,48 +197,6 @@ MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialAssetRecor
 
 MaterialInstance *MaterialAssetRegistry::CreateMI(
     const MaterialDomainHandle &handle,
-    GraphicsPipelinePreset pipeline,
-    const VertexInputLayout *vil,
-    const void *instance_data,
-    uint32_t instance_data_size)
-{
-    if (!handle.IsValid())
-        return nullptr;
-
-    MaterialInstanceSpec spec;
-    spec.material = handle.material;
-    spec.domain   = handle.domain;
-    spec.preset   = pipeline;
-    spec.vil      = vil;
-    spec.instance_data      = instance_data;
-    spec.instance_data_size = instance_data_size;
-
-    return mm->AcquireMaterialInstance(spec);
-}
-
-MaterialInstance *MaterialAssetRegistry::CreateMI(
-    const MaterialDomainHandle &handle,
-    GraphicsPipelinePreset pipeline,
-    const VILConfig *vil_cfg,
-    const void *instance_data,
-    uint32_t instance_data_size)
-{
-    if (!handle.IsValid())
-        return nullptr;
-
-    MaterialInstanceSpec spec;
-    spec.material = handle.material;
-    spec.domain   = handle.domain;
-    spec.preset   = pipeline;
-    spec.vil_cfg  = vil_cfg;
-    spec.instance_data      = instance_data;
-    spec.instance_data_size = instance_data_size;
-
-    return mm->AcquireMaterialInstance(spec);
-}
-
-MaterialInstance *MaterialAssetRegistry::CreateMI(
-    const MaterialDomainHandle &handle,
     const mtl::MaterialAssetRecord &rec,
     const void *instance_data,
     uint32_t instance_data_size)
@@ -246,27 +204,29 @@ MaterialInstance *MaterialAssetRegistry::CreateMI(
     if (!handle.IsValid())
         return nullptr;
 
-    if (rec.mi_vil_overrides.empty())
-    {
-        return CreateMI(handle,
-                        rec.pipeline,
-                        static_cast<const VertexInputLayout *>(nullptr),
-                        instance_data,
-                        instance_data_size);
-    }
+    MaterialInstanceSpec spec;
+    spec.material = handle.material;
+    spec.domain   = handle.domain;
+    spec.preset   = rec.pipeline;
+    spec.instance_data      = instance_data;
+    spec.instance_data_size = instance_data_size;
 
     VILConfig vil_cfg;
-
-    for (const auto &ov : rec.mi_vil_overrides)
+    if (!rec.mi_vil_overrides.empty())
     {
-        VAConfig vac;
-        vac.format = ov.format;
+        for (const auto &ov : rec.mi_vil_overrides)
+        {
+            VAConfig vac;
+            vac.format = ov.format;
 
-        if (!vil_cfg.Add(ov.attrib, vac))
-            return nullptr;
+            if (!vil_cfg.Add(ov.attrib, vac))
+                return nullptr;
+        }
+
+        spec.vil_cfg = &vil_cfg;
     }
 
-    return CreateMI(handle, rec.pipeline, &vil_cfg, instance_data, instance_data_size);
+    return mm->AcquireMaterialInstance(spec);
 }
 
 } // namespace hgl::graph
