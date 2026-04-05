@@ -9,6 +9,7 @@ class ShaderWriter
 {
     std::string &out;
     std::string pending_layout_prefix;
+    int indent_level;
 
     void FlushLayoutPrefix();
 
@@ -28,7 +29,8 @@ public:
 
     ShaderWriter &EmitLine(const std::string &line);
     ShaderWriter &BeginBlock();
-    ShaderWriter &EndBlock();
+    // trailing=nullptr → "}", trailing=";" → "};", trailing="mit;" → "} mit;"
+    ShaderWriter &EndBlock(const char *trailing = nullptr);
     ShaderWriter &NewLine();
 };
 }

@@ -95,16 +95,7 @@ std::string EmitSimpleSamplerGLSL(const MaterialDescriptorDB &mdi, ShaderStage s
     std::vector<SamplerEntry> samplers;
     std::vector<SamplerEntry> array_samplers;
 
-    auto collect_texture = [&](const TextureDescriptor *sd)
-    {
-        if (!sd || sd->set < 0 || sd->binding < 0) return;
-        if (IsSimpleSampler2D(sd->type.c_str()))
-            samplers.push_back({sd, sd->channel_hint});
-        else if (IsArraySampler2D(sd->type.c_str()))
-            array_samplers.push_back({sd, sd->channel_hint});
-    };
-
-    auto collect_sampler = [&](const TextureSamplerDescriptor *sd)
+    auto collect = [&](const auto *sd)
     {
         if (!sd || sd->set < 0 || sd->binding < 0) return;
         if (IsSimpleSampler2D(sd->type.c_str()))
@@ -117,11 +108,11 @@ std::string EmitSimpleSamplerGLSL(const MaterialDescriptorDB &mdi, ShaderStage s
     {
         if (const TextureDescriptor *tex = mdi.GetTexture(mtl::SamplerSlot(i)))
             if (tex->stage_flag & stage_bit)
-                collect_texture(tex);
+                collect(tex);
 
         if (const TextureSamplerDescriptor *samp = mdi.GetTextureSampler(mtl::SamplerSlot(i)))
             if (samp->stage_flag & stage_bit)
-                collect_sampler(samp);
+                collect(samp);
     }
 
     if (samplers.empty() && array_samplers.empty())
@@ -217,35 +208,28 @@ std::string EmitMaterialInstanceTextureGLSL(const MaterialDescriptorDB &mdi, Sha
     // 1. struct MaterialInstanceTexture { uint SlotName; ... };
     writer.EmitLine("struct MaterialInstanceTexture").BeginBlock();
     for (const mtl::SamplerSlot slot : array_slots)
-    {
-        writer.EmitLine(std::string("    uint ") + mtl::SamplerSlotNameList[uint8(slot)] + ";");
-    }
-    writer.EmitLine("};").NewLine();
+        writer.EmitLine(std::string("uint ") + mtl::SamplerSlotNameList[uint8(slot)] + ";");
+    writer.EndBlock(";").NewLine();
 
     // 2. SSBO layout (uses PERMATERIAL_SET / MIT_BINDING from layout defines).
-    writer.EmitLine("layout(std430, set=PERMATERIAL_SET, binding=MIT_BINDING) readonly buffer MaterialInstanceTextureID");
-    writer.EmitLine("{");
-    writer.EmitLine("    MaterialInstanceTexture tex_id[];");
-    writer.EmitLine("} mit;");
-    writer.NewLine();
+    writer.EmitLine("layout(std430, set=PERMATERIAL_SET, binding=MIT_BINDING) readonly buffer MaterialInstanceTextureID").BeginBlock();
+    writer.EmitLine("MaterialInstanceTexture tex_id[];");
+    writer.EndBlock("mit;").NewLine();
 
     // 3. GetMaterialInstanceTexture(uint instance_id)
-    writer.EmitLine("MaterialInstanceTexture GetMaterialInstanceTexture(uint instance_id)");
-    writer.EmitLine("{");
-    writer.EmitLine("    return mit.tex_id[instance_id];");
-    writer.EmitLine("}");
-    writer.NewLine();
+    writer.EmitLine("MaterialInstanceTexture GetMaterialInstanceTexture(uint instance_id)").BeginBlock();
+    writer.EmitLine("return mit.tex_id[instance_id];");
+    writer.EndBlock().NewLine();
 
     // 4. _ULRE_InitTextureLayerIndices(uint instance_id)
-    writer.EmitLine("void _ULRE_InitTextureLayerIndices(uint instance_id)");
-    writer.EmitLine("{");
-    writer.EmitLine("    MaterialInstanceTexture _m = GetMaterialInstanceTexture(instance_id);");
+    writer.EmitLine("void _ULRE_InitTextureLayerIndices(uint instance_id)").BeginBlock();
+    writer.EmitLine("MaterialInstanceTexture _m = GetMaterialInstanceTexture(instance_id);");
     for (const mtl::SamplerSlot slot : array_slots)
     {
         const char *name = mtl::SamplerSlotNameList[uint8(slot)];
-        writer.EmitLine(std::string("    _tex_layer_") + name + " = _m." + name + ";");
+        writer.EmitLine(std::string("_tex_layer_") + name + " = _m." + name + ";");
     }
-    writer.EmitLine("}");
+    writer.EndBlock();
 
     writer.EmitLine("// ------------------------------------------------------").NewLine();
     return out;

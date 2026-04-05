@@ -1,5 +1,6 @@
 ﻿#include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/CompositorFeatureFlags.h>
+#include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/MaterialVariantKey.h>
@@ -33,76 +34,44 @@ namespace
         const char *path;
     };
 
-    void AppendDefine(std::string &out, const char *name)
-    {
-        out += "#define ";
-        out += name;
-        out += '\n';
-    }
-
-    void AppendInclude(std::string &out, const std::string &path)
-    {
-        out += "#include \"";
-        out += path;
-        out += "\"\n";
-    }
-
     std::string BuildForwardVertexEntry(const hgl::graph::CompositorFeatureFlags &f)
     {
         std::string out = "#version 450\n\n";
+        hgl::graph::ShaderWriter writer(out);
 
-        if (f.vert_input_2d)
-            AppendDefine(out, "VERT_INPUT_2D");
-        if (f.has_uv0)
-            AppendDefine(out, "HAS_UV0");
-        if (f.has_vertex_color)
-            AppendDefine(out, "HAS_VERTEX_COLOR");
-        if (f.has_world_pos)
-            AppendDefine(out, "HAS_WORLD_POS");
-        if (f.has_world_normal)
-            AppendDefine(out, "HAS_WORLD_NORMAL");
-        if (f.has_luminance)
-            AppendDefine(out, "HAS_LUMINANCE");
-        if (f.has_direction)
-            AppendDefine(out, "HAS_DIRECTION");
+        if (f.vert_input_2d)    writer.EmitDefine("VERT_INPUT_2D");
+        if (f.has_uv0)          writer.EmitDefine("HAS_UV0");
+        if (f.has_vertex_color) writer.EmitDefine("HAS_VERTEX_COLOR");
+        if (f.has_world_pos)    writer.EmitDefine("HAS_WORLD_POS");
+        if (f.has_world_normal) writer.EmitDefine("HAS_WORLD_NORMAL");
+        if (f.has_luminance)    writer.EmitDefine("HAS_LUMINANCE");
+        if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
 
-        AppendInclude(out, "compositor/vert_forward_ubo.glsl");
-        AppendInclude(out, "compositor/vert_forward_main.glsl");
+        writer.EmitInclude("compositor/vert_forward_ubo.glsl")
+              .EmitInclude("compositor/vert_forward_main.glsl");
         return out;
     }
 
     std::string BuildForwardFragmentEntry(const hgl::graph::CompositorFeatureFlags &f)
     {
         std::string out = "#version 450\n\n";
+        hgl::graph::ShaderWriter writer(out);
 
-        if (f.enable_lighting)
-            AppendDefine(out, "ENABLE_LIGHTING");
-        if (f.needs_camera)
-            AppendDefine(out, "NEEDS_CAMERA");
-        if (f.needs_sky)
-            AppendDefine(out, "NEEDS_SKY");
-        if (f.alpha_masked)
-            AppendDefine(out, "ALPHA_MODE_MASKED");
-        if (f.alpha_dither)
-            AppendDefine(out, "ALPHA_MODE_DITHER");
-        if (f.has_world_pos)
-            AppendDefine(out, "HAS_WORLD_POS");
-        if (f.has_world_normal)
-            AppendDefine(out, "HAS_WORLD_NORMAL");
-        if (f.has_uv0)
-            AppendDefine(out, "HAS_UV0");
-        if (f.has_vertex_color)
-            AppendDefine(out, "HAS_VERTEX_COLOR");
-        if (f.has_texcoord)
-            AppendDefine(out, "HAS_TEXCOORD");
-        if (f.has_direction)
-            AppendDefine(out, "HAS_DIRECTION");
-        if (f.has_luminance)
-            AppendDefine(out, "HAS_LUMINANCE");
-        if (f.has_clip_pos)
-            AppendDefine(out, "HAS_CLIP_POS");
+        if (f.enable_lighting)  writer.EmitDefine("ENABLE_LIGHTING");
+        if (f.needs_camera)     writer.EmitDefine("NEEDS_CAMERA");
+        if (f.needs_sky)        writer.EmitDefine("NEEDS_SKY");
+        if (f.alpha_masked)     writer.EmitDefine("ALPHA_MODE_MASKED");
+        if (f.alpha_dither)     writer.EmitDefine("ALPHA_MODE_DITHER");
+        if (f.has_world_pos)    writer.EmitDefine("HAS_WORLD_POS");
+        if (f.has_world_normal) writer.EmitDefine("HAS_WORLD_NORMAL");
+        if (f.has_uv0)          writer.EmitDefine("HAS_UV0");
+        if (f.has_vertex_color) writer.EmitDefine("HAS_VERTEX_COLOR");
+        if (f.has_texcoord)     writer.EmitDefine("HAS_TEXCOORD");
+        if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
+        if (f.has_luminance)    writer.EmitDefine("HAS_LUMINANCE");
+        if (f.has_clip_pos)     writer.EmitDefine("HAS_CLIP_POS");
 
-        AppendInclude(out, "compositor/frag_forward_ubo.glsl");
+        writer.EmitInclude("compositor/frag_forward_ubo.glsl");
 
         if (f.needs_sky)
             out += "#include SKYLIGHT_FUNCTION_FILE\n";
@@ -110,29 +79,29 @@ namespace
         if (f.enable_lighting)
             out += "#include LIGHTING_FUNCTION_FILE\n";
 
-        AppendInclude(out, f.surface_path);
-        AppendInclude(out, "compositor/frag_forward_main.glsl");
+        writer.EmitInclude(f.surface_path)
+              .EmitInclude("compositor/frag_forward_main.glsl");
         return out;
     }
 
     std::string BuildBillboardDynamicVertexEntry()
     {
         std::string out = "#version 450\n\n";
-        AppendInclude(out, "compositor/main_forward_billboard_dynamic.vert.glsl");
+        hgl::graph::ShaderWriter(out).EmitInclude("compositor/main_forward_billboard_dynamic.vert.glsl");
         return out;
     }
 
     std::string BuildBillboardFixedVertexEntry()
     {
         std::string out = "#version 450\n\n";
-        AppendInclude(out, "compositor/main_forward_billboard_fixed.vert.glsl");
+        hgl::graph::ShaderWriter(out).EmitInclude("compositor/main_forward_billboard_fixed.vert.glsl");
         return out;
     }
 
     std::string BuildTerrainGridVertexEntry()
     {
         std::string out = "#version 450\n\n";
-        AppendInclude(out, "compositor/main_terrain_grid.vert.glsl");
+        hgl::graph::ShaderWriter(out).EmitInclude("compositor/main_terrain_grid.vert.glsl");
         return out;
     }
 

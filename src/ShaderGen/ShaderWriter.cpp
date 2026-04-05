@@ -3,7 +3,7 @@
 namespace hgl::graph
 {
 ShaderWriter::ShaderWriter(std::string &output)
-    : out(output)
+    : out(output), indent_level(0)
 {
 }
 
@@ -110,6 +110,8 @@ ShaderWriter &ShaderWriter::EmitInclude(const std::string &path)
 ShaderWriter &ShaderWriter::EmitLine(const std::string &line)
 {
     FlushLayoutPrefix();
+    if (indent_level > 0)
+        out.append(static_cast<size_t>(indent_level) * 4, ' ');
     out += line;
     out += '\n';
     return *this;
@@ -118,14 +120,28 @@ ShaderWriter &ShaderWriter::EmitLine(const std::string &line)
 ShaderWriter &ShaderWriter::BeginBlock()
 {
     FlushLayoutPrefix();
+    if (indent_level > 0)
+        out.append(static_cast<size_t>(indent_level) * 4, ' ');
     out += "{\n";
+    ++indent_level;
     return *this;
 }
 
-ShaderWriter &ShaderWriter::EndBlock()
+ShaderWriter &ShaderWriter::EndBlock(const char *trailing)
 {
     FlushLayoutPrefix();
-    out += "}\n";
+    if (indent_level > 0)
+        --indent_level;
+    if (indent_level > 0)
+        out.append(static_cast<size_t>(indent_level) * 4, ' ');
+    out += '}';
+    if (trailing && trailing[0])
+    {
+        if (trailing[0] != ';')
+            out += ' ';
+        out += trailing;
+    }
+    out += '\n';
     return *this;
 }
 
