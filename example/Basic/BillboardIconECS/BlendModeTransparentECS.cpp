@@ -19,6 +19,7 @@ protected:
     void ConfigureQuadPipelineMode() override
     {
         QuadResourcePrepareSystem::SetPresetForWorld(ecs_context, GraphicsPipelinePreset::Alpha3D);
+        QuadResourcePrepareSystem::SetFixedSizeForWorld(ecs_context, false);
     }
 };
 

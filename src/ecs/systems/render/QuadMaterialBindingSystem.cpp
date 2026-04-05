@@ -76,6 +76,12 @@ namespace hgl::ecs
         if (texture_path.IsEmpty())
             return true;
 
+        // ── Domain texture-array path ─────────────────────────────
+        if (quad->HasDomainTag())
+            return EnsureQuadMaterialDomain(quad);
+
+        // ── Legacy single-texture path ────────────────────────────
+
         // If texture hasn't changed and material already exists, skip
         if (!quad->IsTextureDirty() && quad->GetOverrideMaterial())
             return true;
@@ -195,6 +201,89 @@ namespace hgl::ecs
         quad->SetPrimitive(quad_primitive);
         quad->SetOverrideMaterial(mi);
         quad->SetTextureObjects(texture, shared_sampler);
+        quad->SetAppliedTexturePath(texture_path);
+        return true;
+    }
+
+    bool QuadMaterialBindingSystem::EnsureQuadMaterialDomain(QuadComponent* quad)
+    {
+        const auto& texture_path = quad->GetTexturePath();
+        const auto& domain_tag   = quad->GetDomainTag();
+
+        // Register this texture into the domain (returns layer index or -1)
+        const int layer = QuadResourcePrepareSystem::RegisterDomainTexture(domain_tag, texture_path);
+        if (layer < 0)
+            return false;
+
+        // Get domain resources (may not be fully built yet if dirty)
+        auto* dr = QuadResourcePrepareSystem::GetDomainResources(domain_tag);
+        if (!dr || !dr->material || !dr->primitive)
+            return false; // will be ready next frame after EnsureDomainResources()
+
+        // If texture hasn't changed and material already exists, skip
+        if (!quad->IsTextureDirty() && quad->GetOverrideMaterial())
+            return true;
+
+        auto* graphics_context = world->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        if (!material_manager || !primitive_manager)
+            return false;
+
+        // Create a MaterialInstance from the domain's shared Material
+        graph::MaterialInstanceSpec spec;
+        spec.material = dr->material;
+        spec.preset   = QuadResourcePrepareSystem::GetPresetForWorld(world);
+        auto* mi = material_manager->AcquireMaterialInstance(spec);
+        if (!mi)
+            return false;
+
+        mi->SetRenderPreset(QuadResourcePrepareSystem::GetPresetForWorld(world));
+
+        // Set the texture array layer for this quad's texture
+        mi->SetTextureArrayLayer(graph::mtl::SamplerSlot::BaseColor, static_cast<uint32_t>(layer));
+
+        // Write texture size to MI data (use texture array dimensions)
+        if (dr->texture_array)
+        {
+            math::Vector2u texture_size(dr->texture_array->GetWidth(), dr->texture_array->GetHeight());
+            mi->WriteMIData(texture_size);
+        }
+
+        // Assign domain primitive or reuse current
+        graph::Primitive *current_primitive = quad->GetPrimitive();
+        graph::Primitive *quad_primitive = nullptr;
+
+        if (current_primitive
+         && current_primitive != dr->primitive
+         && current_primitive->GetMaterial() == mi->GetMaterial())
+        {
+            if (!current_primitive->ChangeMaterialInstance(mi))
+                return false;
+
+            quad_primitive = current_primitive;
+        }
+        else
+        {
+            graph::Geometry *geometry = dr->primitive->GetGeometry();
+            if (!geometry)
+                return false;
+
+            quad_primitive = primitive_manager->CreatePrimitive(geometry, mi);
+            if (!quad_primitive)
+                return false;
+
+            if (current_primitive && current_primitive != dr->primitive)
+                primitive_manager->Release(current_primitive);
+        }
+
+        // Update quad component
+        quad->SetPrimitive(quad_primitive);
+        quad->SetOverrideMaterial(mi);
+        quad->SetTextureObjects(nullptr, dr->sampler); // texture lives in the domain array
         quad->SetAppliedTexturePath(texture_path);
         return true;
     }

@@ -79,6 +79,22 @@ namespace hgl::ecs
         return quad ? quad->GetTexturePath() : empty;
     }
 
+    void BillboardComponent::SetDomainTag(const std::string& tag)
+    {
+        auto* owner = GetOwner();
+        if (!quad)
+            quad = GetOrAddComponentHelper<QuadComponent>(owner);
+
+        if (quad)
+            quad->SetDomainTag(tag);
+    }
+
+    const std::string& BillboardComponent::GetDomainTag() const
+    {
+        static const std::string empty;
+        return quad ? quad->GetDomainTag() : empty;
+    }
+
     void BillboardComponent::SetFrontFace(VkFrontFace face)
     {
         auto* owner = GetOwner();

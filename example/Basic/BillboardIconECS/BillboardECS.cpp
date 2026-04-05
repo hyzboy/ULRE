@@ -287,6 +287,7 @@ private:
             std::cout << "  -> SetFrontFace(CLOCKWISE)" << std::endl;
 
             billboard->SetTexture(OS_TEXT("res/image/lena.Tex2D"));
+            billboard->SetDomainTag("billboard_ecs");
             std::cout << "  -> SetTexture(lena.Tex2D)" << std::endl;
         }
 

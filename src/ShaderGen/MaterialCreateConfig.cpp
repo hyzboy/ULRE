@@ -146,6 +146,9 @@ std::string BillboardMaterialCreateConfig::ToHashStdString()
     if (base_color_channel == TextureChannelHint::Grayscale)
         hash += "_Gray";
 
+    if (use_texture_array)
+        hash += "_TexArr";
+
     return hash;
 }
 

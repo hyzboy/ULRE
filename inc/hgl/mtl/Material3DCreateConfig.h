@@ -120,6 +120,8 @@ struct BillboardMaterialCreateConfig:public Material3DCreateConfig
 
     TextureChannelHint base_color_channel = TextureChannelHint::RGBA; ///<BaseColor纹理通道提示
 
+    bool        use_texture_array = false; ///<是否使用TextureArray(sampler2DArray)替代sampler2D
+
 public:
 
     using Material3DCreateConfig::Material3DCreateConfig;

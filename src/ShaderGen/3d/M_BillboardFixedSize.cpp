@@ -57,32 +57,55 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
     cfg->local_to_world=true;
     cfg->material_instance=true;
 
+    const bool use_array = cfg->use_texture_array;
+
     StaticTextureSamplerDescriptors dynamic_samplers;
     for (uint32_t i = 0; i < BILLBOARD_FIXED_TEX_SLOT_COUNT; ++i)
-        AddTextureSampler(dynamic_samplers, BILLBOARD_FIXED_TEX_SLOTS[i], SamplerType::Sampler2D,
+        AddTextureSampler(dynamic_samplers, BILLBOARD_FIXED_TEX_SLOTS[i],
+                               use_array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D,
                                0, 0,
                                cfg->base_color_channel);
 
+    // When using texture arrays, the MIT SSBO carries per-instance layer indices.
+    SSBOSemanticSet dynamic_ssbos = BILLBOARD_FIXED_BASE_SSBOS;
+    if (use_array)
+        AddSSBODescriptor(dynamic_ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID);
+
     StaticMaterialDef dynamic_def = BILLBOARD_FIXED_DEF_TEMPLATE;
-    dynamic_def.texture_samplers = &dynamic_samplers;
+    dynamic_def.texture_samplers  = &dynamic_samplers;
+    dynamic_def.ssbo_descriptors  = &dynamic_ssbos;
 
     auto BlendModeToPassHint = [](BlendMode bm) -> PassType {
         switch (bm) {
-        case BlendMode::Masked:  return PassType::ForwardMasked;
-        case BlendMode::Dither:  return PassType::ForwardDither;
-        case BlendMode::Opaque:  return PassType::ForwardOpaque;
-        default:                 return PassType::ForwardTransparent;
+        case BlendMode::Masked:          return PassType::ForwardMasked;
+        case BlendMode::Dither:          return PassType::ForwardDither;
+        case BlendMode::Opaque:          return PassType::ForwardOpaque;
+        case BlendMode::AlphaToCoverage: return PassType::ForwardA2C;
+        default:                         return PassType::ForwardTransparent;
         }
     };
 
     MaterialVariantKey var_key = build3d::MakeBillboardKeyBase(cfg->blend_mode);
     var_key.geometry_mode = GeometryMode::BillboardAxisLocked;
+
+    std::fprintf(stderr, "[BillboardFixed] use_array=%d  blend=%d  samplerType=%s\n",
+        (int)use_array, (int)cfg->blend_mode,
+        use_array ? "Sampler2DArray" : "Sampler2D");
+
+    // Lookup with Simple key (registry only has Simple variants)
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
     if (!var_desc)
     {
         std::fprintf(stderr, "[BillboardFixed] VariantRegistry lookup failed\n");
         return nullptr;
     }
+
+    // After lookup, switch to Array so CompositorAssembler emits TEXTURE_ARRAY_MODE
+    if (use_array)
+        var_key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Array);
+
+    std::fprintf(stderr, "[BillboardFixed] variant found: %s, assembling...\n",
+        var_desc->variant_name.c_str());
 
     CompositorAssembler assembler;
 
@@ -95,6 +118,8 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
         return nullptr;
     }
 
+    std::fprintf(stderr, "[BillboardFixed] assemble OK, compiling material...\n");
+
     MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
@@ -104,6 +129,8 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
 
     if (!mci)
         std::fprintf(stderr, "[BillboardFixed] CompileCompositorMaterial failed\n");
+    else
+        std::fprintf(stderr, "[BillboardFixed] material created OK\n");
     return mci;
 }
 }//namespace hgl::graph::mtl

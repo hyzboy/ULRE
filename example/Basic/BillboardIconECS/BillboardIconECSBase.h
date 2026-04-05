@@ -67,6 +67,11 @@ protected:
 
     virtual const os_char* GetIconTextures(int) const = 0;
 
+    // Domain tag for texture-array batching.  All billboards sharing the
+    // same tag are packed into one Texture2DArray → one draw call.
+    // Default returns GetEntityPrefix(); override for a custom tag.
+    virtual const char* GetDomainTag() const { return GetEntityPrefix(); }
+
     bool InitPlaneGridResources();
     bool CreateGeometryAndPrimitives();
     bool EnsureRenderSystems();

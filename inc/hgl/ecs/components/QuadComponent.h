@@ -5,6 +5,7 @@
 #include<hgl/math/VectorTypes.h>
 #include<hgl/type/String.h>
 #include<vulkan/vulkan.h>
+#include<string>
 
 namespace hgl::graph
 {
@@ -50,6 +51,7 @@ namespace hgl::ecs
         hgl::OSString       texture_path;       ///< Optional texture path (system loads/binds)
         hgl::OSString       applied_texture;    ///< Last applied texture path
         bool                texture_dirty;      ///< Texture path changed
+        std::string         domain_tag;         ///< Domain tag for texture array batching (empty = legacy single-texture path)
         class hgl::graph::Texture2D* texture;   ///< Cached texture (optional)
         class hgl::graph::Sampler* sampler;     ///< Cached sampler (optional)
 
@@ -94,6 +96,12 @@ namespace hgl::ecs
         const hgl::OSString& GetAppliedTexturePath() const { return applied_texture; }
         bool IsTextureDirty() const { return texture_dirty; }
         void ClearTextureDirty() { texture_dirty = false; }
+
+        // Domain tag for texture array batching
+        void SetDomainTag(const std::string& tag) { domain_tag = tag; }
+        const std::string& GetDomainTag() const { return domain_tag; }
+        bool HasDomainTag() const { return !domain_tag.empty(); }
+
         void SetTextureObjects(hgl::graph::Texture2D* tex, hgl::graph::Sampler* samp)
         {
             texture = tex;

@@ -20,6 +20,7 @@ BillboardIconECSBase::~BillboardIconECSBase()
 void BillboardIconECSBase::ConfigureQuadPipelineMode()
 {
     QuadResourcePrepareSystem::SetPresetForWorld(ecs_context, GraphicsPipelinePreset::Solid3D);
+    QuadResourcePrepareSystem::SetFixedSizeForWorld(ecs_context, false);    // dynamic world-space billboards
 }
 
 bool BillboardIconECSBase::InitPlaneGridResources()
@@ -194,6 +195,7 @@ bool BillboardIconECSBase::InitializeECS()
             billboard->SetWorldSize(8.0f, 8.0f);
             billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
             billboard->SetTexture(GetIconTextures(i));
+            billboard->SetDomainTag(GetDomainTag());
         }
     }
 

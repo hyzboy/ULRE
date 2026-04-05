@@ -52,5 +52,6 @@ namespace hgl::ecs
     private:
 
         bool EnsureQuadMaterial(QuadComponent* quad);
+        bool EnsureQuadMaterialDomain(QuadComponent* quad);  ///< Domain texture-array path
     };
 }//namespace hgl::ecs

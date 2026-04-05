@@ -81,10 +81,11 @@ inline Material3DCreateConfig MakeLocalConfig(const Material3DCreateConfig *cfg)
 inline PassType BlendModeToPassHint(const BlendMode blend_mode)
 {
     switch (blend_mode) {
-    case BlendMode::Masked:  return PassType::ForwardMasked;
-    case BlendMode::Dither:  return PassType::ForwardDither;
-    case BlendMode::Opaque:  return PassType::ForwardOpaque;
-    default:                 return PassType::ForwardTransparent;
+    case BlendMode::Masked:          return PassType::ForwardMasked;
+    case BlendMode::Dither:          return PassType::ForwardDither;
+    case BlendMode::Opaque:          return PassType::ForwardOpaque;
+    case BlendMode::AlphaToCoverage: return PassType::ForwardA2C;
+    default:                         return PassType::ForwardTransparent;
     }
 }
 

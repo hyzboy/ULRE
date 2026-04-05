@@ -7,6 +7,7 @@ CreateProject(04_BlendModeMaskedECS             ${BILLBOARD_ICON_BASE}  BlendMod
 CreateProject(05_BlendModeDitherECS             ${BILLBOARD_ICON_BASE}  BlendModeDitherECS.cpp)
 CreateProject(06_BlendModeA2CECS                ${BILLBOARD_ICON_BASE}  BlendModeA2CECS.cpp)
 CreateProject(07_BlendModeTransparentECS        ${BILLBOARD_ICON_BASE}  BlendModeTransparentECS.cpp)
+CreateProject(08_DomainIsolationDemo            DomainIsolationDemo.cpp)
 
 set(BILLBOARD_TARGETS
     01_Billboard
@@ -16,6 +17,7 @@ set(BILLBOARD_TARGETS
     05_BlendModeDitherECS
     06_BlendModeA2CECS
     07_BlendModeTransparentECS
+    08_DomainIsolationDemo
 )
 
 foreach(target_name IN LISTS BILLBOARD_TARGETS)

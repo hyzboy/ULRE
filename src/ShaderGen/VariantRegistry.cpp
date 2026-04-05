@@ -363,12 +363,14 @@ void VariantRegistry::InitializeBuiltinVariants()
         PassType       pass;
         const char    *vs_path;
     } kBillboardVariants[] = {
-        {"Billboard2DDynamic",       MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, BlendMode::Transparent, PassType::ForwardTransparent, "compositor/main_forward_billboard_dynamic.vert.glsl"},
-        {"Billboard2DDynamicMasked", MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, BlendMode::Masked,      PassType::ForwardMasked,      "compositor/main_forward_billboard_dynamic.vert.glsl"},
-        {"Billboard2DDynamicDither", MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, BlendMode::Dither,      PassType::ForwardDither,      "compositor/main_forward_billboard_dynamic.vert.glsl"},
-        {"Billboard2DFixed",         MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   BlendMode::Transparent, PassType::ForwardTransparent, "compositor/main_forward_billboard_fixed.vert.glsl"},
-        {"Billboard2DFixedMasked",   MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   BlendMode::Masked,      PassType::ForwardMasked,      "compositor/main_forward_billboard_fixed.vert.glsl"},
-        {"Billboard2DFixedDither",   MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   BlendMode::Dither,      PassType::ForwardDither,      "compositor/main_forward_billboard_fixed.vert.glsl"},
+        {"Billboard2DDynamic",       MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, BlendMode::Transparent,      PassType::ForwardTransparent, "compositor/main_forward_billboard_dynamic.vert.glsl"},
+        {"Billboard2DDynamicMasked", MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, BlendMode::Masked,           PassType::ForwardMasked,      "compositor/main_forward_billboard_dynamic.vert.glsl"},
+        {"Billboard2DDynamicDither", MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, BlendMode::Dither,           PassType::ForwardDither,      "compositor/main_forward_billboard_dynamic.vert.glsl"},
+        {"Billboard2DDynamicA2C",    MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, BlendMode::AlphaToCoverage,  PassType::ForwardA2C,         "compositor/main_forward_billboard_dynamic.vert.glsl"},
+        {"Billboard2DFixed",         MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   BlendMode::Transparent,      PassType::ForwardTransparent, "compositor/main_forward_billboard_fixed.vert.glsl"},
+        {"Billboard2DFixedMasked",   MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   BlendMode::Masked,           PassType::ForwardMasked,      "compositor/main_forward_billboard_fixed.vert.glsl"},
+        {"Billboard2DFixedDither",   MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   BlendMode::Dither,           PassType::ForwardDither,      "compositor/main_forward_billboard_fixed.vert.glsl"},
+        {"Billboard2DFixedA2C",      MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   BlendMode::AlphaToCoverage,  PassType::ForwardA2C,         "compositor/main_forward_billboard_fixed.vert.glsl"},
     };
     for (const auto &e : kBillboardVariants)
         RegisterVariant(KB(e.gm, e.blend, e.pass),

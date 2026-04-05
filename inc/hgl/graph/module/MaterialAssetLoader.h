@@ -32,6 +32,7 @@ namespace hgl::graph
 // ── 纹理绑定辅助函数（供 Registry 和旧 Loader 共用）──────────────────────────
 
 /// 将 record 中的纹理加载并绑定到 Material（旧路径，兼容用）
+[[deprecated("Use MaterialAssetRegistry::Acquire() — textures are now bound to DomainMaterialBinding")]]
 inline bool BindTexturesFromRecord(
     Material *material,
     TextureManager *tm,
@@ -81,6 +82,13 @@ inline Material *CreateMaterialFromRecord(
             cfg.texture_id = rec.billboard.texture_id;
         if (rec.pos_format.Check())
             cfg.position_format = rec.pos_format;
+        for (const auto &tc : rec.textures)
+            if (tc.source_mode == TextureSourceMode::Array)
+            { cfg.use_texture_array = true; break; }
+
+        std::fprintf(stderr, "[CreateMaterialFromRecord] Billboard preset=%d  use_texture_array=%d  blend=%d\n",
+            (int)rec.preset, (int)cfg.use_texture_array, (int)cfg.blend_mode);
+
         return mm->AcquireMaterial(rec.preset, &cfg);
     }
     // ── 2D ──────────────────────────────────────────────────────────────────
@@ -121,6 +129,7 @@ inline Material *CreateMaterialFromRecord(
 /// 将 MaterialAssetRecord 转换为相应的 CreateConfig 并获取材质。
 /// 若 tex_* 路径非空且 tm/sm 均非 null，则自动加载纹理并绑定到材质。
 /// @return 获取到的 Material*，失败返回 nullptr。
+[[deprecated("Use MaterialAssetRegistry::Acquire() + CreateMI() instead")]]
 inline Material *LoadMaterialFromRecord(
     MaterialManager   *mm,
     TextureManager    *tm,      ///< 可为 null（跳过纹理加载）

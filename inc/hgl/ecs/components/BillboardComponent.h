@@ -5,6 +5,7 @@
 #include<hgl/type/String.h>
 #include<hgl/type/UnorderedMap.h>
 #include<vulkan/vulkan.h>
+#include<string>
 
 namespace hgl::ecs
 {
@@ -80,6 +81,9 @@ namespace hgl::ecs
 
         void SetTexture(const hgl::OSString& path);
         const hgl::OSString& GetTexturePath() const;
+
+        void SetDomainTag(const std::string& tag);
+        const std::string& GetDomainTag() const;
 
         void SetFrontFace(VkFrontFace face);
         VkFrontFace GetFrontFace() const;
