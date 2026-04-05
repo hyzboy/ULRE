@@ -19,6 +19,9 @@ namespace hgl::graph::mtl
                                        ShaderResourceDependencies &out_requirements,
                                        std::string *diagnostics = nullptr);
 
+    // Lifetime contract:
+    // out_def borrows ubo_storage/ssbo_storage/sampler_storage via pointer fields.
+    // Callers must guarantee those storages outlive every use of out_def.
     void MergeShaderAutoRequirements(const StaticMaterialDef &base_def,
                                      const ShaderResourceDependencies &auto_requirements,
                                      StaticMaterialDef &out_def,

@@ -10,33 +10,34 @@ std::string MaterialCreateConfig::ToHashStdString()
     std::string hash;
     hash.reserve(128);
 
-    char str[16];
-    char *p=str;
+    hash.push_back('M');
 
-    *p='M';++p;
+    if(material_instance)
+        hash.push_back('I');
 
-    if(material_instance){*p='I';++p;}
+    hash.push_back('_');
+    hash.push_back(static_cast<char>('0' + rt_output.color));
 
-    *p='_';++p;
+    if(rt_output.depth)
+        hash.push_back('D');
+    if(rt_output.stencil)
+        hash.push_back('S');
 
-    *p='0'+rt_output.color;++p;
+    hash.push_back('_');
 
-    if(rt_output.depth){*p='D';++p;}
-    if(rt_output.stencil){*p='S';++p;}
-
-    *p='_';++p;
-
-    if(shader_stage_flag_bit&(uint32)ShaderStage::Vertex){*p='V';++p;}
+    if(shader_stage_flag_bit&(uint32)ShaderStage::Vertex)
+        hash.push_back('V');
     //不再支持Tessellation和GeometryShader
-    if(shader_stage_flag_bit&(uint32)ShaderStage::Fragment){*p='F';++p;}
-    if(shader_stage_flag_bit&(uint32)ShaderStage::Compute){*p='C';++p;}
-    if(shader_stage_flag_bit&(uint32)ShaderStage::Mesh){*p='M';++p;}
-    if(shader_stage_flag_bit&(uint32)ShaderStage::Task){*p='T';++p;}
-    *p='_';++p;
+    if(shader_stage_flag_bit&(uint32)ShaderStage::Fragment)
+        hash.push_back('F');
+    if(shader_stage_flag_bit&(uint32)ShaderStage::Compute)
+        hash.push_back('C');
+    if(shader_stage_flag_bit&(uint32)ShaderStage::Mesh)
+        hash.push_back('M');
+    if(shader_stage_flag_bit&(uint32)ShaderStage::Task)
+        hash.push_back('T');
 
-    *p=0;
-
-    hash=str;
+    hash.push_back('_');
 
     if(const char *prim_name=GetPrimName(prim))
         hash+=prim_name;
@@ -96,8 +97,7 @@ std::string Material3DCreateConfig::ToHashStdString()
         hash+="_Sky";
 
     hash+="_Amb";
-    char amb_model_str[2]={(char)('0'+(uint8)sky_ambient_model),0};
-    hash+=amb_model_str;
+    hash.push_back(static_cast<char>('0'+(uint8)sky_ambient_model));
 
     if(local_to_world)
         hash+="_L2W";

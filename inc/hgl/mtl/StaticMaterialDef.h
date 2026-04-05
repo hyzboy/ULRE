@@ -64,6 +64,11 @@ struct StaticMaterialDef
     const FixedVertexEntry *    vertex_entries;
     uint32_t                    vertex_entry_count;
 
+    // Borrowed pointers (non-owning).
+    // Lifetime contract:
+    // - If non-null, the pointed containers must outlive every consumer using this StaticMaterialDef.
+    // - Static/global defs may point to static storage.
+    // - Runtime merged defs may point to caller-owned temporary storage only within the call chain.
     const UBOSemanticSet *ubo_descriptors = nullptr;
     const SSBOSemanticSet *ssbo_descriptors = nullptr;
     const StaticTextureSamplerDescriptors *texture_samplers = nullptr;

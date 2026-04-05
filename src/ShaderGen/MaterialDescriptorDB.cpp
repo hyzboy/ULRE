@@ -1,5 +1,5 @@
 ﻿#include<hgl/shadergen/MaterialDescriptorDB.h>
-#include<unordered_set>
+#include<cassert>
 
 namespace hgl{namespace graph{
 MaterialDescriptorDB::MaterialDescriptorDB()
@@ -21,30 +21,35 @@ MaterialDescriptorDB::MaterialDescriptorDB()
 
 MaterialDescriptorDB::~MaterialDescriptorDB()
 {
-    std::unordered_set<ShaderDescriptor *> released;
-
     for(auto &set:desc_set_array)
     {
-        auto release_descriptor = [&](ShaderDescriptor *sd)
-        {
-            if(!sd)
-                return;
-
-            if(released.insert(sd).second)
-                delete sd;
-        };
-
         for(auto *d:set.ubo_descriptor_map)
-            release_descriptor(d);
+        {
+            if(!d) continue;
+            assert(d != nullptr);
+            delete d;
+        }
 
         for(auto *d:set.ssbo_descriptor_map)
-            release_descriptor(d);
+        {
+            if(!d) continue;
+            assert(d != nullptr);
+            delete d;
+        }
 
         for(auto *d:set.texture_descriptor_map)
-            release_descriptor(d);
+        {
+            if(!d) continue;
+            assert(d != nullptr);
+            delete d;
+        }
 
         for(auto *d:set.texture_sampler_descriptor_map)
-            release_descriptor(d);
+        {
+            if(!d) continue;
+            assert(d != nullptr);
+            delete d;
+        }
 
         for(auto &p:set.ubo_descriptor_map) p=nullptr;
         for(auto &p:set.ssbo_descriptor_map) p=nullptr;

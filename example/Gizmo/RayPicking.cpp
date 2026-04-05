@@ -91,12 +91,14 @@ private:
 
         static const mtl::MaterialAssetRecord kPlaneGridCfg {
             .id       = "ray_picking_plane_grid",
+            .domain_id = "plane_grid_domain",      // Separate domain for 2D Position layout
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
         static const mtl::MaterialAssetRecord kLineCfg {
             .id       = "ray_picking_line",
+            .domain_id = "line_3d_domain",         // Separate domain for 3D Position layout
             .preset   = mtl::MaterialPreset::VertexLuminance3D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
@@ -105,9 +107,9 @@ private:
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
 
         VILConfig vil_config;
+        vil_config.Add(VAN::Luminance, VF_V1UN8);
 
-        vil_config.Add(VAN::Luminance,VF_V1UN8);
-
+        // Plane grid: 2D Position + Luminance
         {
             auto handle = registry.Acquire(kPlaneGridCfg);
             if(!handle.IsValid())return(false);
@@ -118,13 +120,14 @@ private:
             if(!mi_plane_grid)return(false);
         }
 
+        // Ray line: 3D Position + Luminance (separate Material, use its default VIL)
         {
             auto handle = registry.Acquire(kLineCfg);
             if(!handle.IsValid())return(false);
 
             mtl_line = handle.material;
 
-            mi_line = registry.CreateMI(handle, kLineCfg.pipeline, &vil_config, &yellow_color, sizeof(yellow_color));
+            mi_line = registry.CreateMI(handle, kLineCfg.pipeline,&vil_config, &yellow_color, sizeof(yellow_color));
             if(!mi_line)return(false);
         }
 
@@ -298,8 +301,10 @@ private:
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(geom_plane_grid);
-        SAFE_CLEAR(geom_line);
+        // Geometry objects are owned by GeometryManager after Add().
+        // Avoid manual delete here to prevent double-free during manager shutdown.
+        geom_plane_grid = nullptr;
+        geom_line = nullptr;
     }
 
     bool Init() override
