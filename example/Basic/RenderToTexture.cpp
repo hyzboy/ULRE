@@ -296,6 +296,8 @@ private:
         if (!cube_mi)
             return false;
 
+        cube_mtl=cube_mi->GetMaterial();
+
         cube_sampler = sm->CreateSampler();
         if (!cube_sampler)
             return false;

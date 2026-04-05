@@ -47,31 +47,43 @@ Material::~Material()
 
 const VkPipelineLayout Material::GetPipelineLayout()const
 {
+    if(!pipeline_layout_data)
+        return VK_NULL_HANDLE;
     return pipeline_layout_data->pipeline_layout;
 }
 
 const bool Material::hasSet(const DescriptorSetType &dst)const
 {
+    if(!desc_manager)
+        return false;
     return desc_manager->hasSet(dst);
 }
 
 const VIL *Material::GetDefaultVIL()const
 {
+    if(!vertex_input)
+        return nullptr;
     return vertex_input->GetDefaultVIL();
 }
 
 VIL *Material::CreateVIL(const VILConfig *format_map)
 {
+    if(!vertex_input)
+        return nullptr;
     return vertex_input->CreateVIL(format_map);
 }
 
 bool Material::Release(VIL *vil)
 {
+    if(!vertex_input)
+        return false;
     return vertex_input->Release(vil);
 }
 
 const uint Material::GetVILCount()
 {
+    if(!vertex_input)
+        return 0;
     return vertex_input->GetInstanceCount();
 }
 

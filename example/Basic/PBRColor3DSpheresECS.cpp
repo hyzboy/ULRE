@@ -96,8 +96,6 @@ private:
             .id          = "pbr_color_spheres",
             .preset      = mtl::MaterialPreset::PBRColor3D,
             .sky         = true,
-            .sky_ambient = mtl::SkyLightAmbientModel::FakeAtmosphere,
-            .lighting    = mtl::LightingModel::PBR,
             .pipeline    = GraphicsPipelinePreset::Solid3D,
         };
 
@@ -354,7 +352,8 @@ private:
     }
 
     bool InitSkySphere()
-    {
+    {
+
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         auto* primitive_manager = GetPrimitiveManager();
