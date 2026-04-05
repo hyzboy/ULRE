@@ -136,7 +136,7 @@ private:
 
         std::cout << "[BillboardECS] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;
 
-        mi_plane_grid = registry.CreateMI(handle, kPlaneGridCfg,
+        mi_plane_grid = registry.AcquireMI(kPlaneGridCfg,
                           &white_color, sizeof(white_color));
         if(!mi_plane_grid)
             return false;
@@ -169,7 +169,7 @@ private:
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
         auto handle = registry.Acquire(kBillboardCfg);
         if (!handle.IsValid()) return false;
-        mi_billboard = registry.CreateMI(handle, kBillboardCfg);
+        mi_billboard = registry.AcquireMI(kBillboardCfg);
         if(!mi_billboard)
             return false;
 

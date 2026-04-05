@@ -119,7 +119,7 @@ private:
 
             mtl_plane_grid = handle.material;
 
-            mi_plane_grid = registry.CreateMI(handle, kPlaneGridCfg, &white_color, sizeof(white_color));
+            mi_plane_grid = registry.AcquireMI(kPlaneGridCfg, &white_color, sizeof(white_color));
             if(!mi_plane_grid)return(false);
         }
 
@@ -130,7 +130,7 @@ private:
 
             mtl_line = handle.material;
 
-            mi_line = registry.CreateMI(handle, kLineCfg, &yellow_color, sizeof(yellow_color));
+            mi_line = registry.AcquireMI(kLineCfg, &yellow_color, sizeof(yellow_color));
             if(!mi_line)return(false);
         }
 

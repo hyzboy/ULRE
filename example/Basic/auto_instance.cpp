@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
+// 该范例主要演示使用ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
 // This example demonstrates drawing multiple triangles using ECS architecture with automatic instancing
 //
 // 本范例展示了：
@@ -89,7 +89,7 @@ private:
             auto handle = registry.Acquire(kAutoInstanceCfg);
             if (handle.IsValid())
             {
-                material_instance = registry.CreateMI(handle, kAutoInstanceCfg);
+                material_instance = registry.AcquireMI(kAutoInstanceCfg);
             }
         }
 

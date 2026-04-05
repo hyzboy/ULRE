@@ -1,4 +1,4 @@
-﻿// 画一个带纹理的四边形 (ECS)
+// 画一个带纹理的四边形 (ECS)
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -89,7 +89,7 @@ private:
         if(!handle.IsValid())
             return(false);
 
-        material_instance = registry.CreateMI(handle, kTexQuadCfg);
+        material_instance = registry.AcquireMI(kTexQuadCfg);
 
         return(material_instance!=nullptr);
     }

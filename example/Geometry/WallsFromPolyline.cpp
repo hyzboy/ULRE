@@ -1,4 +1,4 @@
-﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -143,7 +143,7 @@ public:
 
         material = handle.material;
 
-        material_instance = registry.CreateMI(handle, kWallsCfg, &mi_data, sizeof(mi_data));
+        material_instance = registry.AcquireMI(kWallsCfg, &mi_data, sizeof(mi_data));
         if(!material_instance) return false;
 
         const VIL *vil = material->GetDefaultVIL();

@@ -97,7 +97,7 @@ private:
             grid_material = handle.material;
 
             const Color4f white = GetColor4f(COLOR::White, 1.0f);
-            grid_mi = registry.CreateMI(handle, kGridCfg, &white, sizeof(white));
+            grid_mi = registry.AcquireMI(kGridCfg, &white, sizeof(white));
             if(!grid_mi)
                 return false;
 
@@ -134,7 +134,7 @@ private:
             cube_material = handle.material;
 
             const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            cube_mi = registry.CreateMI(handle, kCubeCfg, &blue, sizeof(blue));
+            cube_mi = registry.AcquireMI(kCubeCfg, &blue, sizeof(blue));
             if(!cube_mi)
                 return false;
 

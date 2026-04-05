@@ -126,7 +126,7 @@ private:
         for (size_t i = 0; i < DEMO_COLOR_COUNT; ++i)
         {
             color = GetColor4f(DemoColors[i], 1.0f);
-            solid.mi[i] = registry.CreateMI(handle, kSolidCfg, &color, sizeof(color));
+            solid.mi[i] = registry.AcquireMI(kSolidCfg, &color, sizeof(color));
             if (!solid.mi[i])
                 return false;
         }

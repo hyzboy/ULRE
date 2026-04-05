@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用ECS架构结合Static/Movable Transform分离的时钟示例
+// 该范例主要演示使用ECS架构结合Static/Movable Transform分离的时钟示例
 // 刻度是静态的三角形（Static Transform），指针是动态更新的三角形（Movable Transform）
 // This example demonstrates a clock using ECS architecture with Static/Movable Transform separation
 //
@@ -122,7 +122,7 @@ private:
             // 刻度颜色（白色）
             Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
 
-            mi_tick = registry.CreateMI(handle, kClockCfg);
+            mi_tick = registry.AcquireMI(kClockCfg);
             if(mi_tick)
                 mi_tick->WriteMIData(tick_color);
 
@@ -135,7 +135,7 @@ private:
 
             for (uint i = 0; i < 3; i++)
             {
-                hands[i].mi = registry.CreateMI(handle, kClockCfg);
+                hands[i].mi = registry.AcquireMI(kClockCfg);
                 if (!hands[i].mi)
                     return false;
                 hands[i].mi->WriteMIData(hand_colors[i]);

@@ -60,7 +60,7 @@ private:
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
         auto handle = registry.Acquire(kSkyCfg);
         if (!handle.IsValid()) return false;
-        mi_sky_sphere = registry.CreateMI(handle, kSkyCfg);
+        mi_sky_sphere = registry.AcquireMI(kSkyCfg);
         if (!mi_sky_sphere)
             return false;
 

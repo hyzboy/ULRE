@@ -7,8 +7,6 @@ add_subdirectory(Environment)
 
 add_subdirectory(GLTF)
 
-#add_subdirectory(Landscape)
-
 macro(CreateProject name)
     add_executable(${name} ${ARGN})
     target_link_libraries(${name} ${ULRE})

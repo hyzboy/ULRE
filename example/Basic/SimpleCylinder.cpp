@@ -70,7 +70,7 @@ private:
 
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
-        mi = registry.CreateMI(handle, kCylinderCfg, &color, sizeof(color));
+        mi = registry.AcquireMI(kCylinderCfg, &color, sizeof(color));
 
         if(!mi)
             return false;

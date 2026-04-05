@@ -173,7 +173,7 @@ private:
         if (!handle.IsValid()) return false;
         mtl_plane_grid = handle.material;
 
-        mi_plane_grid = registry.CreateMI(handle, kPlaneGridCfg,
+        mi_plane_grid = registry.AcquireMI(kPlaneGridCfg,
                           &white_color, sizeof(white_color));
         if (!mi_plane_grid) return false;
 

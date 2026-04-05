@@ -1,4 +1,4 @@
-﻿// 画一个带纹理的矩形，2D模式专用 (ECS)
+// 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
@@ -152,7 +152,7 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].mi = registry.CreateMI(handle, kTexArrayCfg);
+            render_obj[i].mi = registry.AcquireMI(kTexArrayCfg);
 
             if(!render_obj[i].mi)
                 return(false);

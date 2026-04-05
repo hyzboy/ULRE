@@ -1,4 +1,4 @@
-﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -160,7 +160,7 @@ public:
         mtl = handle.material;
 
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        mi = registry.CreateMI(handle, kSphereCfg,
+        mi = registry.AcquireMI(kSphereCfg,
                        &sphere_color, sizeof(sphere_color));
         if (!mi)
             return false;
@@ -341,7 +341,7 @@ private:
         cube_mi_data.roughness = 0.92f;
         cube_mi_data.normal_scale = 0.35f;
 
-        cube_mi = registry.CreateMI(handle, kCubeCfg,
+        cube_mi = registry.AcquireMI(kCubeCfg,
                          &cube_mi_data, sizeof(cube_mi_data));
         if (!cube_mi)
             return false;

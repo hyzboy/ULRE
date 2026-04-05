@@ -159,7 +159,12 @@ private:
 
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
         static const mtl::MaterialAssetRecord kPBRColorMICfg {
-            .pipeline = GraphicsPipelinePreset::Solid3D,
+            .id          = "pbr_color_spheres",
+            .preset      = mtl::MaterialPreset::PBRColor3D,
+            .sky         = true,
+            .sky_ambient = mtl::SkyLightAmbientModel::FakeAtmosphere,
+            .lighting    = mtl::LightingModel::PBR,
+            .pipeline    = GraphicsPipelinePreset::Solid3D,
         };
 
         for (uint row = 0; row < GRID_SIZE; ++row)
@@ -179,7 +184,7 @@ private:
                 store.metallic = d.metallic;
                 store.roughness = d.roughness;
 
-                sphere_mi[row][col] = registry.CreateMI(material_handle, kPBRColorMICfg, &d, sizeof(d));
+                sphere_mi[row][col] = registry.AcquireMI(kPBRColorMICfg, &d, sizeof(d));
                 if (!sphere_mi[row][col])
                 {
                     printf("[ERROR] CreatePBRColorMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
@@ -441,7 +446,7 @@ private:
         if (!sky_handle.IsValid())
             return false;
 
-        mi_sky_sphere = registry.CreateMI(sky_handle, kSkyCfg);
+        mi_sky_sphere = registry.AcquireMI(kSkyCfg);
         if (!mi_sky_sphere)
             return false;
 

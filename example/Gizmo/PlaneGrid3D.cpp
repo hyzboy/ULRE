@@ -77,7 +77,7 @@ private:
         {
             GridColor=GetColor4f(ce,1.0);
 
-            material_instance[i] = registry.CreateMI(handle, kPlaneGridCfg, &GridColor, sizeof(GridColor));
+            material_instance[i] = registry.AcquireMI(kPlaneGridCfg, &GridColor, sizeof(GridColor));
 
             ce=COLOR((int)ce+1);
         }

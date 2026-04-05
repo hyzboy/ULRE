@@ -1,4 +1,4 @@
-﻿// 画一个圆角矩形，它是UI的基本绘图元件
+// 画一个圆角矩形，它是UI的基本绘图元件
 // 通过控制尺寸、每个角的半径，可绘制出正圆、矩形、圆角矩形
 
 #include<hgl/WorkManager.h>
@@ -100,7 +100,7 @@ private:
            sampler))                           ///<采样器
             return(false);
 
-        material_instance = registry.CreateMI(handle, kRoundRectCfg);
+        material_instance = registry.AcquireMI(kRoundRectCfg);
 
         return(material_instance!=nullptr);
     }

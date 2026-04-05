@@ -1,4 +1,4 @@
-﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -134,7 +134,7 @@ private:
         auto sky_handle = registry.Acquire(kSkyCfg);
         if (!sky_handle.IsValid()) return false;
 
-        sky_material_instance = registry.CreateMI(sky_handle, kSkyCfg);
+        sky_material_instance = registry.AcquireMI(kSkyCfg);
         if (!sky_material_instance)
             return false;
 
@@ -197,7 +197,7 @@ private:
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
 
-        material_instance = registry.CreateMI(handle, kStandardCfg, &mi_data, sizeof(mi_data));
+        material_instance = registry.AcquireMI(kStandardCfg, &mi_data, sizeof(mi_data));
         if (!material_instance)
             return false;
 

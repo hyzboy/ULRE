@@ -1,4 +1,4 @@
-﻿// 该范例演示 10x10 的 Standard 网格：
+// 该范例演示 10x10 的 Standard 网格：
 // 使用 baseColor + normal 纹理（Albedo+Normal）
 // 通过 metallic/roughness 参数渐变来控制材质
 // This example renders a 10x10 Standard grid:
@@ -321,9 +321,19 @@ private:
                 store.roughness = d.roughness;
                 store.normal_scale = d.normal_scale;
 
-                sphere_mi[row][col] = registry.CreateMI(
-                    material_handle,
-                    mtl::MaterialAssetRecord{ .pipeline = GraphicsPipelinePreset::Solid3D },
+                sphere_mi[row][col] = registry.AcquireMI(
+                    mtl::MaterialAssetRecord{
+                        .id          = "pbr_spheres_standard",
+                        .preset      = mtl::MaterialPreset::Standard,
+                        .sky         = true,
+                        .sky_ambient = mtl::SkyLightAmbientModel::FakeAtmosphere,
+                        .lighting    = mtl::LightingModel::PBR,
+                        .pipeline    = GraphicsPipelinePreset::Solid3D,
+                        .textures    = {
+                            {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
+                            {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array, ""},
+                        },
+                    },
                     &d,
                     sizeof(d));
 
@@ -588,7 +598,7 @@ private:
         if (!sky_handle.IsValid())
             return false;
 
-        mi_sky_sphere = registry.CreateMI(sky_handle, kSkyCfg);
+        mi_sky_sphere = registry.AcquireMI(kSkyCfg);
         if (!mi_sky_sphere)
             return false;
 

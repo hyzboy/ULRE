@@ -126,7 +126,7 @@ private:
 
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
-        mi = registry.CreateMI(handle, kRecursiveCubeCfg, &color, sizeof(color));
+        mi = registry.AcquireMI(kRecursiveCubeCfg, &color, sizeof(color));
         if (!mi)
             return false;
 
