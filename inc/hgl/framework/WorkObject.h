@@ -4,6 +4,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include <memory>
@@ -63,14 +64,21 @@ namespace hgl
 
         ecs::ECSContext *           GetECSContext       (){return world.get();}
         graph::RenderContext *      GetRenderContext    (){return render_context;}
+        graph::GraphicsContext *    GetGraphicsContext  ()
+        {
+            if (render_context)
+                return render_context->GetGraphicsContext();
+
+            if (world)
+                return world->GetGraphicsContext();
+
+            return nullptr;
+        }
 
         graph::VulkanDevice *       GetDevice           ()
         {
-            if (render_context)
-            {
-                if (auto *gc = render_context->GetGraphicsContext())
-                    return gc->GetDevice();
-            }
+            if (auto *gc = GetGraphicsContext())
+                return gc->GetDevice();
             if (world && world->GetGPUDevice())
                 return world->GetGPUDevice();
             return nullptr;
@@ -82,25 +90,57 @@ namespace hgl
         }
         graph::TextureManager *     GetTextureManager   ()
         {
-            if (render_context)
-            {
-                if (auto *gc = render_context->GetGraphicsContext())
-                    return gc->GetTextureManager();
-            }
-            if (world)
-                return world->GetGraphicsContext() ? world->GetGraphicsContext()->GetTextureManager() : nullptr;
+            if (auto *gc = GetGraphicsContext())
+                return gc->GetTextureManager();
             return nullptr;
         }
         graph::BufferManager *      GetBufferManager    ()
         {
-            if (render_context)
-            {
-                if (auto *gc = render_context->GetGraphicsContext())
-                    return gc->GetBufferManager();
-            }
-            if (world)
-                return world->GetGraphicsContext() ? world->GetGraphicsContext()->GetBufferManager() : nullptr;
+            if (auto *gc = GetGraphicsContext())
+                return gc->GetBufferManager();
             return nullptr;
+        }
+        graph::MaterialManager *    GetMaterialManager  ()
+        {
+            if (auto *gc = GetGraphicsContext())
+                return gc->GetMaterialManager();
+            return nullptr;
+        }
+        graph::SamplerManager *     GetSamplerManager   ()
+        {
+            if (auto *gc = GetGraphicsContext())
+                return gc->GetSamplerManager();
+            return nullptr;
+        }
+        graph::GeometryManager *    GetGeometryManager  ()
+        {
+            if (auto *gc = GetGraphicsContext())
+                return gc->GetGeometryManager();
+            return nullptr;
+        }
+        graph::PrimitiveManager *   GetPrimitiveManager ()
+        {
+            if (auto *gc = GetGraphicsContext())
+                return gc->GetPrimitiveManager();
+            return nullptr;
+        }
+        graph::MaterialAssetRegistry *GetMaterialAssetRegistry()
+        {
+            if (auto *gc = GetGraphicsContext())
+                return gc->GetMaterialAssetRegistry();
+
+            return nullptr;
+        }
+        graph::MaterialInstance *AcquireMI(const graph::mtl::MaterialAssetRecord &rec,
+                                           const void *instance_data = nullptr,
+                                           uint32 instance_data_size = 0,
+                                           graph::MaterialDomainHandle *out_handle = nullptr)
+        {
+            auto *registry = GetMaterialAssetRegistry();
+            if (!registry)
+                return nullptr;
+
+            return registry->AcquireMI(rec, instance_data, instance_data_size, out_handle);
         }
 
         const VkExtent2D *          GetExtent           ();

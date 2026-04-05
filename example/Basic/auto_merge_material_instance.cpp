@@ -69,18 +69,6 @@ private:
 
     bool InitMaterial()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
         {
             static const mtl::MaterialAssetRecord kMergeCfg {
                 .id       = "auto_merge_pure_color",
@@ -88,12 +76,10 @@ private:
                 .dim      = mtl::MaterialAssetRecord::Dim::D2,
                 .pipeline = GraphicsPipelinePreset::Solid2D,
             };
-
-            MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
             // 为每个三角形创建不同颜色的MaterialInstance
             for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
             {
-                triangles[i].mi = registry.AcquireMI(kMergeCfg);
+                triangles[i].mi = AcquireMI(kMergeCfg);
 
                 if (!triangles[i].mi)
                     return false;
@@ -131,17 +117,10 @@ private:
 
     bool InitGeometry()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* device = GetDevice();
+        auto* buffer_manager = GetBufferManager();
+        auto* geometry_manager = GetGeometryManager();
         if (!device || !buffer_manager || !geometry_manager)
             return false;
 
@@ -167,13 +146,6 @@ private:
 
     bool InitECS()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
 
         // === 步骤1: 获取ECS世界 ===
         ecs_world = GetECSContext();
@@ -189,7 +161,7 @@ private:
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
             // 为每个三角形创建Primitive（共享Geometry，但使用不同的MaterialInstance）
-            auto* primitive_manager = graphics_context->GetPrimitiveManager();
+            auto* primitive_manager = GetPrimitiveManager();
             if (!primitive_manager)
                 return false;
 
@@ -286,4 +258,5 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Auto Merge Material Instance (ECS Version)"), argc, argv, 1024, 1024);
 }
+
 

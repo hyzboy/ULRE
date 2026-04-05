@@ -95,23 +95,9 @@ private:
             .id       = "facing_billboard_z_solid",
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        };
         Color4f color = GetColor4f(DemoColors[0], 1.0f);
-        solid.mi[0] = registry.AcquireMI(kSolidCfg, &color, sizeof(color));
+        solid.mi[0] = AcquireMI(kSolidCfg, &color, sizeof(color));
         if (!solid.mi[0])
             return false;
 
@@ -122,7 +108,7 @@ private:
         for (size_t i = 1; i < DEMO_COLOR_COUNT; ++i)
         {
             color = GetColor4f(DemoColors[i], 1.0f);
-            solid.mi[i] = registry.AcquireMI(kSolidCfg, &color, sizeof(color));
+            solid.mi[i] = AcquireMI(kSolidCfg, &color, sizeof(color));
             if (!solid.mi[i])
                 return false;
         }
@@ -131,16 +117,8 @@ private:
     }
 
     bool InitVDM()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* buffer_manager = graphics_context->GetBufferManager();
+    {
+        auto* buffer_manager = GetBufferManager();
         if (!buffer_manager)
             return false;
 
@@ -164,7 +142,7 @@ private:
         if (!graphics_context)
             return nullptr;
 
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return nullptr;
 
@@ -411,3 +389,4 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<FacingMeshBillboardZECSApp>(OS_TEXT("Facing Mesh Billboard Z-Up ECS"), argc, argv, 1280, 720);
 }
+

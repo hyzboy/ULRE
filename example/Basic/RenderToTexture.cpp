@@ -91,13 +91,6 @@ public:
                     gm->Release(geometry);
             }
 
-            if (auto *mm = gc->GetMaterialManager())
-            {
-                if (mi)
-                    mm->Destroy(mi);
-                if (mtl)
-                    mm->Destroy(mtl);
-            }
         }
 
         primitive = nullptr;
@@ -141,11 +134,10 @@ public:
         if (!gc)
             return false;
 
-        auto *mm = gc->GetMaterialManager();
         auto *gm = gc->GetGeometryManager();
         auto *pm = gc->GetPrimitiveManager();
         auto *device = gc->GetDevice();
-        if (!mm || !gm || !pm || !device)
+        if (!gm || !pm || !device)
             return false;
 
         static const mtl::MaterialAssetRecord kSphereCfg {
@@ -153,10 +145,8 @@ public:
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        MaterialAssetRegistry registry(mm, nullptr, nullptr);
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        mi = registry.AcquireMI(kSphereCfg,
-                       &sphere_color, sizeof(sphere_color));
+        mi = owner->AcquireMI(kSphereCfg, &sphere_color, sizeof(sphere_color));
         if (!mi)
             return false;
 
@@ -281,13 +271,12 @@ private:
         if (!gc)
             return false;
 
-        auto *mm = gc->GetMaterialManager();
         auto *sm = gc->GetSamplerManager();
         auto *tm = gc->GetTextureManager();
         auto *gm = gc->GetGeometryManager();
         auto *pm = gc->GetPrimitiveManager();
         auto *device = gc->GetDevice();
-        if (!mm || !sm || !tm || !gm || !pm || !device)
+        if (!sm || !tm || !gm || !pm || !device)
             return false;
 
         static const mtl::MaterialAssetRecord kCubeCfg {
@@ -296,15 +285,13 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        MaterialAssetRegistry registry(mm, nullptr, nullptr);
-
         mtl::StandardMaterialInstance cube_mi_data{};
         cube_mi_data.base_color = 0xFFFFFFFFu;
         cube_mi_data.metallic = 0.08f;
         cube_mi_data.roughness = 0.92f;
         cube_mi_data.normal_scale = 0.35f;
 
-        cube_mi = registry.AcquireMI(kCubeCfg,
+        cube_mi = AcquireMI(kCubeCfg,
              &cube_mi_data, sizeof(cube_mi_data));
         if (!cube_mi)
             return false;
@@ -379,14 +366,6 @@ public:
             {
                 if (auto *pm = gc ? gc->GetPrimitiveManager() : nullptr)
                     pm->Release(cube_primitive);
-            }
-
-            if (auto *mm = gc ? gc->GetMaterialManager() : nullptr)
-            {
-                if (cube_mi)
-                    mm->Destroy(cube_mi);
-                if (cube_mtl)
-                    mm->Destroy(cube_mtl);
             }
 
             if (cube_sampler)

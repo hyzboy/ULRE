@@ -1,4 +1,4 @@
-﻿// CompositorAssembler + GLSL 编译测试
+// CompositorAssembler + GLSL 编译测试
 // 测试 Surface Function + Compositor Template 的 GLSL 生成与 SPV 编译全链路
 
 #include <hgl/shadergen/CompositorAssembler.h>

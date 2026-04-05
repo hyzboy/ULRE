@@ -36,19 +36,7 @@ private:
 private:
 
     bool InitMDP()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
+    {
         static const mtl::MaterialAssetRecord kSkyCfg {
             .id       = "sky_minimal",
             .preset   = mtl::MaterialPreset::SkyMinimal,
@@ -56,24 +44,15 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        mi_sky_sphere = registry.AcquireMI(kSkyCfg);
+        mi_sky_sphere = AcquireMI(kSkyCfg);
 
         return mi_sky_sphere != nullptr;
     }
 
     bool CreateRenderObject()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+    {
+        auto* device = GetDevice();
+        auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
             return false;
 
@@ -99,17 +78,8 @@ private:
             return false;
 
         if(!prim_sky_sphere || !mi_sky_sphere)
-            return false;
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+            return false;
+        auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;
 
@@ -200,4 +170,5 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("SimplestAtmosphere"),argc,argv,1280,720);
 }
+
 

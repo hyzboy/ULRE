@@ -55,8 +55,7 @@ private:
         if(shadergen_report_dumped)
             return;
 
-        auto *render_context = GetRenderContext();
-        auto *graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
+        auto *graphics_context = GetGraphicsContext();
         if(!graphics_context)
             return;
 
@@ -106,19 +105,7 @@ private:
 private:
 
     bool InitPlaneGridMP()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
+    {
         static const mtl::MaterialAssetRecord kPlaneGridCfg {
             .id       = "billboard_test_plane_grid",
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
@@ -128,8 +115,7 @@ private:
                 { VAN::Luminance, VF_V1UN8 },
             },
         };
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        mi_plane_grid = registry.AcquireMI(kPlaneGridCfg,
+        mi_plane_grid = AcquireMI(kPlaneGridCfg,
                           &white_color, sizeof(white_color));
         if(!mi_plane_grid)
             return false;
@@ -144,27 +130,14 @@ private:
     }
 
     bool InitBillboardMP()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
+    {
         static const mtl::MaterialAssetRecord kBillboardCfg {
             .id        = "billboard_test_fixed",
             .preset    = mtl::MaterialPreset::Billboard2DFixed,
             .prim      = PrimitiveType::Billboard,
             .billboard = { .fixed_size = true },
         };
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        mi_billboard = registry.AcquireMI(kBillboardCfg);
+        mi_billboard = AcquireMI(kBillboardCfg);
         if(!mi_billboard)
             return false;
 
@@ -175,16 +148,8 @@ private:
     }
 
     bool InitTexture()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        TextureManager *tex_manager = graphics_context->GetTextureManager();
+    {
+        TextureManager *tex_manager = GetTextureManager();
         if (!tex_manager)
             return false;
 
@@ -195,7 +160,7 @@ private:
         std::cout << "[BillboardECS] Texture loaded: " << (void*)texture
                   << " (" << texture->GetWidth() << "x" << texture->GetHeight() << ")" << std::endl;
 
-        auto* sampler_manager = graphics_context->GetSamplerManager();
+        auto* sampler_manager = GetSamplerManager();
         if (!sampler_manager)
             return false;
 
@@ -219,21 +184,13 @@ private:
     }
 
     bool CreateRenderObject()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
+    {
+        auto* device = GetDevice();
         if (!device)
             return false;
 
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* geometry_manager = GetGeometryManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!geometry_manager || !primitive_manager)
             return false;
 
@@ -384,4 +341,5 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Billboard (ECS)"),argc,argv,1280,720);
 }
+
 

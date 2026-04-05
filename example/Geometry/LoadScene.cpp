@@ -1,4 +1,4 @@
-﻿#include "SceneData.h"
+#include "SceneData.h"
 
 #include<hgl/type/String.h>
 #include<hgl/log/Log.h>

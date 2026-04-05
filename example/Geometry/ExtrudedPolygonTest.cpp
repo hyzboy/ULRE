@@ -44,28 +44,15 @@ private:
 private:
 
     bool InitMDP()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
+    {
         static const mtl::MaterialAssetRecord kExtrudedCfg {
             .id       = "extruded_polygon",
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
         Color4f color=GetColor4f(COLOR::BlenderAxisRed);
 
-        material_instance = registry.AcquireMI(kExtrudedCfg, &color, sizeof(color));
+        material_instance = AcquireMI(kExtrudedCfg, &color, sizeof(color));
 
         if (material_instance)
             material = material_instance->GetMaterial();
@@ -74,17 +61,9 @@ private:
     }
 
     bool CreateRenderObjects()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+    {
+        auto* device = GetDevice();
+        auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
             return false;
 
@@ -153,17 +132,8 @@ private:
     bool CreateMeshEntity(const char *name, Geometry *geometry, const glm::vec3 &pos)
     {
         if(!ecs_context || !geometry || !material_instance)
-            return false;
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+            return false;
+        auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;
 
@@ -273,4 +243,5 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<ExtrudedPolygonTestApp>(OS_TEXT("Extruded Polygon"),argc,argv,1280,720);
 }
+
 

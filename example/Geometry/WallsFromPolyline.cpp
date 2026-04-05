@@ -101,24 +101,13 @@ public:
     }
 
     bool Init() override
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
+    {
+        auto* texture_manager = GetTextureManager();
+        auto* sampler_manager = GetSamplerManager();
+                if (!texture_manager || !sampler_manager)
             return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* texture_manager = graphics_context->GetTextureManager();
-        auto* sampler_manager = graphics_context->GetSamplerManager();
-        if (!material_manager)
-            return false;
-        if (!texture_manager || !sampler_manager)
-            return false;
-
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* geometry_manager = GetGeometryManager();
         if (!geometry_manager)
             return false;
 
@@ -136,15 +125,13 @@ public:
         mi_data.metallic=0;
         mi_data.roughness=0.95f;
         mi_data.normal_scale=0.35f;
-
-        MaterialAssetRegistry registry(material_manager, texture_manager, sampler_manager);
-        material_instance = registry.AcquireMI(kWallsCfg, &mi_data, sizeof(mi_data));
+        material_instance = AcquireMI(kWallsCfg, &mi_data, sizeof(mi_data));
         if(!material_instance) return false;
 
         material = material_instance->GetMaterial();
 
         const VIL *vil = material->GetDefaultVIL();
-        auto* buffer_manager = graphics_context->GetBufferManager();
+        auto* buffer_manager = GetBufferManager();
         if (!buffer_manager)
             return false;
 
@@ -189,7 +176,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = graphics_context->GetPrimitiveManager();
+                auto* primitive_manager = GetPrimitiveManager();
                 if (!primitive_manager)
                     return false;
 
@@ -224,7 +211,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = graphics_context->GetPrimitiveManager();
+                auto* primitive_manager = GetPrimitiveManager();
                 if (!primitive_manager)
                     return false;
 
@@ -258,7 +245,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = graphics_context->GetPrimitiveManager();
+                auto* primitive_manager = GetPrimitiveManager();
                 if (!primitive_manager)
                     return false;
 
@@ -293,7 +280,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = graphics_context->GetPrimitiveManager();
+                auto* primitive_manager = GetPrimitiveManager();
                 if (!primitive_manager)
                     return false;
 
@@ -322,4 +309,5 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Walls From Polyline Example - Complex"), argc, argv, 1280, 720);
 }
+
 

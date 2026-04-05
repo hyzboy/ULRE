@@ -37,6 +37,7 @@ namespace hgl::graph
     class SamplerManager;
     class GeometryManager;
     class PrimitiveManager;
+    class MaterialAssetRegistry;
 
     /**
      * GraphicsContext - Vulkan图形资源管理器聚合类
@@ -67,6 +68,7 @@ namespace hgl::graph
         SamplerManager *sampler_manager = nullptr;
         GeometryManager *geometry_manager = nullptr;
         PrimitiveManager *primitive_manager = nullptr;
+        MaterialAssetRegistry *material_asset_registry = nullptr;
 
     public:
         explicit GraphicsContext(VulkanDevice *dev);
@@ -111,6 +113,7 @@ namespace hgl::graph
         SamplerManager *GetSamplerManager() { return sampler_manager; }
         GeometryManager *GetGeometryManager() { return geometry_manager; }
         PrimitiveManager *GetPrimitiveManager() { return primitive_manager; }
+        MaterialAssetRegistry *GetMaterialAssetRegistry() { return material_asset_registry; }
 
         // 扩展访问（不常用）
         GraphModuleManager *GetModuleManager() { return module_manager; }

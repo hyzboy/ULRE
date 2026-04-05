@@ -1,4 +1,4 @@
-﻿#include<hgl/type/StringViewList.h>
+#include<hgl/type/StringViewList.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/graph/font/FontSource.h>

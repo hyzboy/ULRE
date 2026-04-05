@@ -72,15 +72,6 @@ private:
      */
     bool InitPlaneGridResources()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context) return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context) return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager) return false;
-
         static const mtl::MaterialAssetRecord kPlaneGridCfg {
             .id       = "billboard_ecs_plane_grid",
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
@@ -90,10 +81,9 @@ private:
                 { VAN::Luminance, VF_V1UN8 },
             },
         };
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
         // Create material instance
-        mi_plane_grid = registry.AcquireMI(kPlaneGridCfg,
-                          &white_color, sizeof(white_color));
+        mi_plane_grid = AcquireMI(kPlaneGridCfg,&white_color, sizeof(white_color));
+
         if (!mi_plane_grid) return false;
 
         mtl_plane_grid = mi_plane_grid->GetMaterial();
@@ -116,11 +106,11 @@ private:
         auto* graphics_context = render_context->GetGraphicsContext();
         if (!graphics_context) return false;
 
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         if (!device) return false;
 
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* geometry_manager = GetGeometryManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!geometry_manager || !primitive_manager) return false;
 
         using namespace inline_geometry;
@@ -423,3 +413,4 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<BillboardECSApp>(OS_TEXT("Billboard ECS Example"), argc, argv, 1280, 720);
 }
+

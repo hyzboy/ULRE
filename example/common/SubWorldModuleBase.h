@@ -4,6 +4,8 @@
 
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialAssetRecord.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/vk/VK.h>
 
@@ -54,6 +56,11 @@ namespace example::modules
                          hgl::graph::GraphicsPipelinePreset inline_pipeline_type);
 
         bool BuildMaterialInstances(const hgl::Color4f* colors, size_t count);
+
+        hgl::graph::MaterialInstance *AcquireMI(const hgl::graph::mtl::MaterialAssetRecord &rec,
+                            const void *instance_data = nullptr,
+                            uint32_t instance_data_size = 0,
+                            hgl::graph::MaterialDomainHandle *out_handle = nullptr);
 
         MeshResource* CreatePrimitiveMesh(hgl::graph::Geometry* geometry,
                                           hgl::graph::MaterialInstance* mi);

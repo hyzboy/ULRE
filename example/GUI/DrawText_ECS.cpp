@@ -1,4 +1,4 @@
-﻿#include<hgl/io/LoadString.h>
+#include<hgl/io/LoadString.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/graph/font/FontSource.h>

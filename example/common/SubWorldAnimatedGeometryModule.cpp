@@ -78,8 +78,6 @@ namespace
                 .preset   = mtl::MaterialPreset::Gizmo3D,
                 .pipeline = GraphicsPipelinePreset::Solid3D,
             };
-            auto* material_manager = graphics_context->GetMaterialManager();
-            if (!material_manager) return false;
             const Color4f colors[] =
             {
                 GetColor4f(COLOR::BlenderAxisRed, 1.0f),
@@ -88,8 +86,7 @@ namespace
             };
 
             {
-                MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-                auto* seed_mi = registry.AcquireMI(kAnimGeomCfg, &colors[0], sizeof(colors[0]));
+                auto* seed_mi = AcquireMI(kAnimGeomCfg, &colors[0], sizeof(colors[0]));
                 if (!seed_mi) return false;
                 material = seed_mi->GetMaterial();
             }
@@ -181,3 +178,4 @@ namespace example::modules
         return std::make_unique<SubWorldAnimatedGeometryModuleImpl>();
     }
 }
+

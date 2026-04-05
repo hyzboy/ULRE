@@ -106,20 +106,10 @@ private:
     bool InitSkySphereResource()
     {
         if (!ecs_context)
-            return false;
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* device = graphics_context->GetDevice();
-        if (!material_manager || !geometry_manager || !device)
+            return false;
+        auto* geometry_manager = GetGeometryManager();
+        auto* device = GetDevice();
+        if (!geometry_manager || !device)
             return false;
 
         static const mtl::MaterialAssetRecord kSkyCfg {
@@ -129,9 +119,7 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        sky_material_instance = registry.AcquireMI(kSkyCfg);
+        sky_material_instance = AcquireMI(kSkyCfg);
         if (!sky_material_instance)
             return false;
 
@@ -154,19 +142,10 @@ private:
     }
 
     bool InitMaterial()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* texture_manager = graphics_context->GetTextureManager();
-        auto* sampler_manager = graphics_context->GetSamplerManager();
-        if (!material_manager || !texture_manager || !sampler_manager)
+    {
+        auto* texture_manager = GetTextureManager();
+        auto* sampler_manager = GetSamplerManager();
+        if (!texture_manager || !sampler_manager)
             return false;
 
         static const mtl::MaterialAssetRecord kStandardCfg {
@@ -181,14 +160,13 @@ private:
                 {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::None, "res/image/Brickwall/Normal.Tex2D"},
             },
         };
-        MaterialAssetRegistry registry(material_manager, texture_manager, sampler_manager);
         mtl::StandardMaterialInstance mi_data{};
         mi_data.base_color = 0xFFFFFFFFu;
         mi_data.metallic = 0.08f;
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
 
-        material_instance = registry.AcquireMI(kStandardCfg, &mi_data, sizeof(mi_data));
+        material_instance = AcquireMI(kStandardCfg, &mi_data, sizeof(mi_data));
         if (!material_instance)
             return false;
 
@@ -196,16 +174,8 @@ private:
     }
 
     bool InitVDM()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* buffer_manager = graphics_context->GetBufferManager();
+    {
+        auto* buffer_manager = GetBufferManager();
         if (!buffer_manager)
             return false;
 
@@ -232,8 +202,8 @@ private:
         if (!graphics_context)
             return nullptr;
 
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* geometry_manager = GetGeometryManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!geometry_manager || !primitive_manager)
             return nullptr;
 
@@ -342,16 +312,8 @@ private:
         if (!ecs_context || !rm_floor || !sky_geometry || !sky_material_instance)
             return false;
 
-        {
-            auto* render_context = GetRenderContext();
-            if (!render_context)
-                return false;
-
-            auto* graphics_context = render_context->GetGraphicsContext();
-            if (!graphics_context)
-                return false;
-
-            auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        {
+            auto* primitive_manager = GetPrimitiveManager();
             if (!primitive_manager)
                 return false;
 
@@ -489,3 +451,4 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<BasicLitSunDirectionECSApp>(OS_TEXT("Standard Sun Direction ECS"), argc, argv, 1280, 720);
 }
+

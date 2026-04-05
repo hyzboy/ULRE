@@ -90,18 +90,6 @@ private:
 
     bool InitMaterial()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
         {
             static const mtl::MaterialAssetRecord kClockCfg {
                 .id       = "clock_pure_color",
@@ -109,12 +97,10 @@ private:
                 .dim      = mtl::MaterialAssetRecord::Dim::D2,
                 .pipeline = GraphicsPipelinePreset::Solid2D,
             };
-
-            MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
             // 刻度颜色（白色）
             Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
 
-            mi_tick = registry.AcquireMI(kClockCfg);
+            mi_tick = AcquireMI(kClockCfg);
             if(!mi_tick)
                 return false;
 
@@ -131,7 +117,7 @@ private:
 
             for (uint i = 0; i < 3; i++)
             {
-                hands[i].mi = registry.AcquireMI(kClockCfg);
+                hands[i].mi = AcquireMI(kClockCfg);
                 if (!hands[i].mi)
                     return false;
                 hands[i].mi->WriteMIData(hand_colors[i]);
@@ -143,17 +129,10 @@ private:
 
     bool InitGeometry()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* device = GetDevice();
+        auto* buffer_manager = GetBufferManager();
+        auto* geometry_manager = GetGeometryManager();
         if (!device || !buffer_manager || !geometry_manager)
             return false;
 
@@ -193,7 +172,7 @@ private:
             return false;
         }
 
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
         {
             std::cout << "[ClockApp::InitECS] ERROR: Missing PrimitiveManager!" << std::endl;
@@ -380,4 +359,5 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<ClockApp>(OS_TEXT("Clock (Static and Movable Transform Separation with ECS)"), argc, argv, 1024, 1024);
 }
+
 

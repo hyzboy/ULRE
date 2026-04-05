@@ -9,6 +9,7 @@
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
+#include <hgl/graph/module/MaterialAssetRegistry.h>
 
 namespace hgl::graph
 {
@@ -57,6 +58,10 @@ namespace hgl::graph
         if (!buffer_manager)
             return false;
 
+        material_asset_registry = new MaterialAssetRegistry(material_manager, tex_manager, sampler_manager);
+        if (!material_asset_registry)
+            return false;
+
         // Set graphics context for module manager
         module_manager->SetGraphicsContext(this);
 
@@ -73,6 +78,8 @@ namespace hgl::graph
         // This ensures proper cleanup order
         SAFE_CLEAR(module_manager)
         std::cout << "[DEBUG] GraphicsContext::Shutdown() - GraphModuleManager deleted" << std::endl;
+
+        SAFE_CLEAR(material_asset_registry)
 
         // Clear all manager pointers (they're owned by module_manager)
         tex_manager = nullptr;

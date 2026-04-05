@@ -76,16 +76,8 @@ private:
 private:
 
     bool InitTexture()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* tex_manager = graphics_context->GetTextureManager();
+    {
+        auto* tex_manager = GetTextureManager();
         if (!tex_manager)
             return false;
 
@@ -111,18 +103,9 @@ private:
     }
 
     bool InitMaterial()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* sampler_manager = graphics_context->GetSamplerManager();
-        if (!material_manager || !sampler_manager)
+    {
+        auto* sampler_manager = GetSamplerManager();
+        if (!sampler_manager)
             return false;
 
         static const mtl::MaterialAssetRecord kTexArrayCfg {
@@ -135,9 +118,7 @@ private:
                 {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
             },
         };
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        render_obj[0].mi = registry.AcquireMI(kTexArrayCfg);
+        render_obj[0].mi = AcquireMI(kTexArrayCfg);
         if(!render_obj[0].mi)
             return(false);
 
@@ -153,7 +134,7 @@ private:
         for(uint32_t i=0;i<TexCount;i++)
         {
             if(i > 0)
-                render_obj[i].mi = registry.AcquireMI(kTexArrayCfg);
+                render_obj[i].mi = AcquireMI(kTexArrayCfg);
 
             if(!render_obj[i].mi)
                 return(false);
@@ -166,19 +147,11 @@ private:
     }
 
     bool InitVBOAndRenderList()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+    {
+        auto* device = GetDevice();
+        auto* buffer_manager = GetBufferManager();
+        auto* geometry_manager = GetGeometryManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
@@ -255,4 +228,5 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw many rectangle with texture"),argc,argv,256*TexCount,256);
 }
+
 

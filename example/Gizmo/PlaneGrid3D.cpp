@@ -42,19 +42,7 @@ private:
 private:
 
     bool InitMDP()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
+    {
         static const mtl::MaterialAssetRecord kPlaneGridCfg {
             .id       = "plane_grid",
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
@@ -64,8 +52,6 @@ private:
                 { VAN::Luminance, VF_V1UN8 },
             },
         };
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
         Color4f GridColor;
         COLOR ce=COLOR::BlenderAxisRed;
 
@@ -73,7 +59,7 @@ private:
         {
             GridColor=GetColor4f(ce,1.0);
 
-            material_instance[i] = registry.AcquireMI(kPlaneGridCfg, &GridColor, sizeof(GridColor));
+            material_instance[i] = AcquireMI(kPlaneGridCfg, &GridColor, sizeof(GridColor));
 
             if(i == 0 && material_instance[i])
                 material = material_instance[i]->GetMaterial();
@@ -85,17 +71,9 @@ private:
     }
 
     bool CreateRenderObject()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+    {
+        auto* device = GetDevice();
+        auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
             return false;
 
@@ -119,16 +97,8 @@ private:
     }
 
     bool Add(const char *name,MaterialInstance *mi,const glm::quat &rotation)
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+    {
+        auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;
 
@@ -233,4 +203,5 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("PlaneGrid3D"),argc,argv,1280,720);
 }
+
 

@@ -155,9 +155,6 @@ private:
         auto* graphics_context = render_context->GetGraphicsContext();
         if (!graphics_context) return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager) return false;
-
         static const mtl::MaterialAssetRecord kPlaneGridCfg {
             .id        = "domain_demo_plane_grid",
             .domain_id = "grid",
@@ -168,8 +165,7 @@ private:
                 { VAN::Luminance, VF_V1UN8 },
             },
         };
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        mi_plane_grid = registry.AcquireMI(kPlaneGridCfg,
+        mi_plane_grid = AcquireMI(kPlaneGridCfg,
                           &white_color, sizeof(white_color));
         if (!mi_plane_grid) return false;
 
@@ -186,11 +182,11 @@ private:
         auto* graphics_context = render_context->GetGraphicsContext();
         if (!graphics_context) return false;
 
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         if (!device) return false;
 
-        auto* geometry_manager  = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* geometry_manager  = GetGeometryManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!geometry_manager || !primitive_manager) return false;
 
         using namespace inline_geometry;
@@ -372,10 +368,8 @@ public:
         if (!InitializeECS())               return false;
         if (!InitializeCamera())            return false;
 
-        // R8 验证：打印 ResourceDomain 数量
+        // R8 验证：双螺旋已创建
         {
-            auto* mm = GetRenderContext()->GetGraphicsContext()->GetMaterialManager();
-            printf("[R8 DomainIsolation] ResourceDomain count = %u\n", mm->GetDomainCount());
             printf("[R8 DomainIsolation] Freepik spiral: 50 billboards (left)\n");
             printf("[R8 DomainIsolation] Gradient spiral: 50 billboards (right)\n");
         }
@@ -395,3 +389,4 @@ int os_main(int argc, os_char** argv)
         OS_TEXT("R8 Domain Isolation Demo - Dual Icon Billboard Arrays"),
         argc, argv, 1280, 720);
 }
+

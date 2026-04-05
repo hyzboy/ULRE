@@ -71,20 +71,9 @@ private:
 private:
 
     bool InitMaterialAndPipeline()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* device = graphics_context->GetDevice();
-        if (!material_manager)
-            return false;
-        if (!device)
+    {
+        auto* device = GetDevice();
+                if (!device)
             return false;
 
         static const mtl::MaterialAssetRecord kPlaneGridCfg {
@@ -107,18 +96,15 @@ private:
                 { VAN::Luminance, VF_V1UN8 },
             },
         };
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-
         // Plane grid: 2D Position + Luminance
         {
-            mi_plane_grid = registry.AcquireMI(kPlaneGridCfg, &white_color, sizeof(white_color));
+            mi_plane_grid = AcquireMI(kPlaneGridCfg, &white_color, sizeof(white_color));
             if(!mi_plane_grid)return(false);
         }
 
         // Ray line: 3D Position + Luminance (separate Material)
         {
-            mi_line = registry.AcquireMI(kLineCfg, &yellow_color, sizeof(yellow_color));
+            mi_line = AcquireMI(kLineCfg, &yellow_color, sizeof(yellow_color));
             if(!mi_line)return(false);
         }
 
@@ -126,17 +112,9 @@ private:
     }
 
     bool CreateGeometry()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+    {
+        auto* device = GetDevice();
+        auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
             return false;
 
@@ -164,9 +142,9 @@ private:
 
         // === 创建射线线段几何体 ===
         {
-            auto* device = graphics_context->GetDevice();
-            auto* buffer_manager = graphics_context->GetBufferManager();
-            auto* geometry_manager = graphics_context->GetGeometryManager();
+            auto* device = GetDevice();
+            auto* buffer_manager = GetBufferManager();
+            auto* geometry_manager = GetGeometryManager();
             if (!device || !buffer_manager || !geometry_manager)
                 return false;
 
@@ -186,15 +164,7 @@ private:
     }
 
     bool InitECS()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
+    {
         // === 步骤1: 获取ECS世界 ===
         ecs_world = GetECSContext();
         if(!ecs_world)
@@ -205,7 +175,7 @@ private:
             plane_grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
 
             // 创建Primitive
-            auto* primitive_manager = graphics_context->GetPrimitiveManager();
+            auto* primitive_manager = GetPrimitiveManager();
             if (!primitive_manager)
                 return false;
 
@@ -230,7 +200,7 @@ private:
             ray_line_entity = ecs_world->CreateEntity<Entity>("RayLine");
 
             // 创建Primitive
-            auto* primitive_manager = graphics_context->GetPrimitiveManager();
+            auto* primitive_manager = GetPrimitiveManager();
             if (!primitive_manager)
                 return false;
 
@@ -360,4 +330,5 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("RayPicking (ECS Version)"),argc,argv,1280,720);
 }
+
 

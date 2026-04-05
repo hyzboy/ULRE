@@ -48,24 +48,10 @@ private:
             .id       = "tube_main",
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+        };
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
-        mi = registry.AcquireMI(kTubeCfg, &color, sizeof(color));
+        mi = AcquireMI(kTubeCfg, &color, sizeof(color));
 
         if(!mi)
             return false;
@@ -75,21 +61,12 @@ private:
 
     bool CreateTubeGeometry()
     {
-        using namespace inline_geometry;
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+        using namespace inline_geometry;
+        auto* geometry_manager = GetGeometryManager();
         if (!geometry_manager)
             return false;
 
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         if (!device)
             return false;
 
@@ -112,16 +89,8 @@ private:
     }
 
     bool InitPrimitive()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+    {
+        auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;
 
@@ -212,3 +181,4 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Simple Tube (ECS)"), argc, argv, 1280, 720);
 }
+

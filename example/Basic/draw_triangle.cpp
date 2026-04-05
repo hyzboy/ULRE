@@ -65,19 +65,7 @@ private:
 private:
 
     bool InitMaterial()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
+    {
         static const mtl::MaterialAssetRecord kTriangleCfg {
             .id         = "draw_triangle_vertex_color",
             .preset     = mtl::MaterialPreset::VertexColor2D,
@@ -91,9 +79,7 @@ private:
                 { VAN::Color, COLOR_DATA_FORMAT },
             },
         };
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        material_instance = registry.AcquireMI(kTriangleCfg);
+        material_instance = AcquireMI(kTriangleCfg);
 
         return material_instance != nullptr;
     }
@@ -106,20 +92,11 @@ private:
         {
             position_data[i][0]=position_data_float[i][0]*ext->width;
             position_data[i][1]=position_data_float[i][1]*ext->height;
-        }
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        }
+        auto* device = GetDevice();
+        auto* buffer_manager = GetBufferManager();
+        auto* geometry_manager = GetGeometryManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
@@ -214,4 +191,5 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw triangle use ECS"),argc,argv);
 }
+
 

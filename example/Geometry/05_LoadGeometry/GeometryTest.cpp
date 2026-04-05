@@ -104,29 +104,14 @@ private:
     bool InitMaterialInstance(MaterialData *md, const mtl::MaterialAssetRecord &cfg)
     {
         if(!md)
-            return(false);
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-
+            return(false);
         Color4f color;
 
         for(size_t i = 0;i < COLOR_COUNT;i++)
         {
             color = GetColor4f(TestColor[i],1.0);
 
-            md->mi[i] = registry.AcquireMI(cfg, &color, sizeof(color));
+            md->mi[i] = AcquireMI(cfg, &color, sizeof(color));
 
             if(!md->mi[i])
                 return(false);
@@ -147,19 +132,7 @@ private:
     }
 
     bool InitSolidMDP()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
+    {
         static const mtl::MaterialAssetRecord kSolidCfg {
             .id       = "geometry_gizmo3d",
             .preset   = mtl::MaterialPreset::Gizmo3D,
@@ -169,19 +142,7 @@ private:
     }
 
     bool InitWireMDP()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
+    {
         static const mtl::MaterialAssetRecord kWireCfg {
             .id       = "geometry_wire",
             .preset   = mtl::MaterialPreset::PureColor3D,
@@ -193,18 +154,9 @@ private:
 
     bool CreateBoundingBoxMesh()
     {
-        using namespace inline_geometry;
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+        using namespace inline_geometry;
+        auto* device = GetDevice();
+        auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
             return false;
 
@@ -217,7 +169,7 @@ private:
             return false;
 
         geometry_manager->Add(bbox_geometry);
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;
 
@@ -238,7 +190,7 @@ private:
         if (!graphics_context)
             return nullptr;
 
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return nullptr;
 
@@ -431,3 +383,4 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Load Geometry"),argc,argv,1280,720);
 }
+

@@ -25,7 +25,7 @@ namespace example::modules
         if (!render_context || !graphics_context)
             return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
+        auto *material_manager = graphics_context->GetMaterialManager();
         if (!material_manager)
             return false;
 
@@ -41,7 +41,7 @@ namespace example::modules
         if (!render_context || !graphics_context || !material || !colors || count == 0)
             return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
+        auto *material_manager = graphics_context->GetMaterialManager();
         if (!material_manager)
             return false;
 
@@ -63,6 +63,21 @@ namespace example::modules
         }
 
         return true;
+    }
+
+    graph::MaterialInstance *SubWorldModuleBase::AcquireMI(const graph::mtl::MaterialAssetRecord &rec,
+                                                           const void *instance_data,
+                                                           uint32_t instance_data_size,
+                                                           graph::MaterialDomainHandle *out_handle)
+    {
+        if (!graphics_context)
+            return nullptr;
+
+        auto *registry = graphics_context->GetMaterialAssetRegistry();
+        if (!registry)
+            return nullptr;
+
+        return registry->AcquireMI(rec, instance_data, instance_data_size, out_handle);
     }
 
     SubWorldModuleBase::MeshResource*

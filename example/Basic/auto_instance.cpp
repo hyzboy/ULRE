@@ -1,4 +1,4 @@
-// 该范例主要演示使用ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
+﻿// 该范例主要演示使用ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
 // This example demonstrates drawing multiple triangles using ECS architecture with automatic instancing
 //
 // 本范例展示了：
@@ -62,18 +62,6 @@ private:
 
     bool InitMaterial()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
         {
             static const mtl::MaterialAssetRecord kAutoInstanceCfg {
                 .id       = "auto_instance_vertex_color",
@@ -84,9 +72,7 @@ private:
                     { VAN::Color, VF_V4UN8 },
                 },
             };
-
-            MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-            material_instance = registry.AcquireMI(kAutoInstanceCfg);
+            material_instance = AcquireMI(kAutoInstanceCfg);
         }
 
         if(!material_instance)
@@ -97,18 +83,11 @@ private:
 
     bool InitVBO()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* device = GetDevice();
+        auto* buffer_manager = GetBufferManager();
+        auto* geometry_manager = GetGeometryManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
@@ -216,4 +195,5 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("AutoInstance (ECS Version)"),argc,argv,1024,1024);
 }
+
 

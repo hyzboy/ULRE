@@ -57,19 +57,10 @@ private:
 private:
 
     bool InitMaterial()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* texture_manager = graphics_context->GetTextureManager();
-        auto* sampler_manager = graphics_context->GetSamplerManager();
-        if (!material_manager || !texture_manager || !sampler_manager)
+    {
+        auto* texture_manager = GetTextureManager();
+        auto* sampler_manager = GetSamplerManager();
+        if (!texture_manager || !sampler_manager)
             return false;
 
         static const mtl::MaterialAssetRecord kRoundRectCfg {
@@ -80,9 +71,7 @@ private:
             .coord_2d = CoordinateSystem2D::ZeroToOne,
             .pipeline = GraphicsPipelinePreset::Solid2D,
         };
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        material_instance = registry.AcquireMI(kRoundRectCfg);
+        material_instance = AcquireMI(kRoundRectCfg);
 
         if(!material_instance)
             return(false);
@@ -111,20 +100,11 @@ private:
             ecs_world = GetECSContext();
             if(!ecs_world)
                 return false;
-        }
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        }
+        auto* device = GetDevice();
+        auto* buffer_manager = GetBufferManager();
+        auto* geometry_manager = GetGeometryManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
@@ -183,4 +163,5 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw a rectangle with texture"),argc,argv,256,256);
 }
+
 

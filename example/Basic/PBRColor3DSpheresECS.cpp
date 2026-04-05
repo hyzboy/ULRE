@@ -90,56 +90,8 @@ private:
         return glm::quat(glm::vec3(rx, ry, rz));
     }
 
-    bool InitMaterial()
-    {
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-        {
-            printf("[ERROR] InitMaterial: No render_context\n");
-            return false;
-        }
-
-        auto *graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-        {
-            printf("[ERROR] InitMaterial: No graphics_context\n");
-            return false;
-        }
-
-        auto *material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-        {
-            printf("[ERROR] InitMaterial: No material_manager\n");
-            return false;
-        }
-
-        return true;
-    }
-
     bool CreatePBRColorMaterialInstances()
     {
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-        {
-            printf("[ERROR] CreatePBRColorMaterialInstances: No render_context\n");
-            return false;
-        }
-
-        auto *graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-        {
-            printf("[ERROR] CreatePBRColorMaterialInstances: No graphics_context\n");
-            return false;
-        }
-
-        auto *material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-        {
-            printf("[ERROR] CreatePBRColorMaterialInstances: No material_manager\n");
-            return false;
-        }
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
         static const mtl::MaterialAssetRecord kPBRColorMICfg {
             .id          = "pbr_color_spheres",
             .preset      = mtl::MaterialPreset::PBRColor3D,
@@ -166,7 +118,7 @@ private:
                 store.metallic = d.metallic;
                 store.roughness = d.roughness;
 
-                sphere_mi[row][col] = registry.AcquireMI(kPBRColorMICfg, &d, sizeof(d));
+                sphere_mi[row][col] = AcquireMI(kPBRColorMICfg, &d, sizeof(d));
                 if (!sphere_mi[row][col])
                 {
                     printf("[ERROR] CreatePBRColorMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
@@ -196,7 +148,7 @@ private:
             return false;
         }
 
-        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *buffer_manager = GetBufferManager();
         if (!buffer_manager)
         {
             printf("[ERROR] InitVDM: No buffer_manager\n");
@@ -339,7 +291,7 @@ private:
             return false;
         }
 
-        auto *primitive_manager = graphics_context->GetPrimitiveManager();
+        auto *primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
         {
             printf("[ERROR] CreateBasePrimitives: No primitive_manager\n");
@@ -402,24 +354,12 @@ private:
     }
 
     bool InitSkySphere()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
+    {
+        auto* device = GetDevice();
+        auto* geometry_manager = GetGeometryManager();
+        auto* primitive_manager = GetPrimitiveManager();
+        if (!device || !geometry_manager || !primitive_manager)
             return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* device = graphics_context->GetDevice();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
-        if (!material_manager || !device || !geometry_manager || !primitive_manager)
-            return false;
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-
         static const mtl::MaterialAssetRecord kSkyCfg {
             .id       = "pbr_color_sky",
             .preset   = mtl::MaterialPreset::SkyMinimal,
@@ -427,7 +367,7 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
-        mi_sky_sphere = registry.AcquireMI(kSkyCfg);
+        mi_sky_sphere = AcquireMI(kSkyCfg);
         if (!mi_sky_sphere)
             return false;
 
@@ -532,9 +472,6 @@ public:
     {
         SetClearColor(Color4f(0.08f, 0.08f, 0.08f, 1.0f));
 
-        if (!InitMaterial())
-            return false;
-
         if (!CreatePBRColorMaterialInstances())
             return false;
 
@@ -601,3 +538,4 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("PBRColor3D BuiltinGeometry 10x10 (ECS, no textures)"), argc, argv, 1280, 720);
 }
+

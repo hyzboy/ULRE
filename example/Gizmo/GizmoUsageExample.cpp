@@ -61,24 +61,12 @@ private:
     std::string debug_cache;
 
     bool InitSceneResources()
-    {
-        auto *render_context = GetRenderContext();
-        if(!render_context)
+    {
+        auto *geometry_manager = GetGeometryManager();
+        auto *primitive_manager = GetPrimitiveManager();
+        auto *device = GetDevice();
+        if(!geometry_manager || !primitive_manager || !device)
             return false;
-
-        auto *graphics_context = render_context->GetGraphicsContext();
-        if(!graphics_context)
-            return false;
-
-        auto *material_manager = graphics_context->GetMaterialManager();
-        auto *geometry_manager = graphics_context->GetGeometryManager();
-        auto *primitive_manager = graphics_context->GetPrimitiveManager();
-        auto *device = graphics_context->GetDevice();
-        if(!material_manager || !geometry_manager || !primitive_manager || !device)
-            return false;
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-
         {
             static const mtl::MaterialAssetRecord kGridCfg {
                 .id       = "gizmo_grid",
@@ -91,7 +79,7 @@ private:
             };
 
             const Color4f white = GetColor4f(COLOR::White, 1.0f);
-            grid_mi = registry.AcquireMI(kGridCfg, &white, sizeof(white));
+            grid_mi = AcquireMI(kGridCfg, &white, sizeof(white));
             if(!grid_mi)
                 return false;
 
@@ -124,7 +112,7 @@ private:
             };
 
             const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            cube_mi = registry.AcquireMI(kCubeCfg, &blue, sizeof(blue));
+            cube_mi = AcquireMI(kCubeCfg, &blue, sizeof(blue));
             if(!cube_mi)
                 return false;
 
@@ -331,4 +319,5 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<GizmoExampleApp>(OS_TEXT("Gizmo Usage Example"), argc, argv, 1280, 720);
 }
+
 

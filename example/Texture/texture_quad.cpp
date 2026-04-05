@@ -58,19 +58,10 @@ private:
 private:
 
     bool InitMaterial()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* sampler_manager = graphics_context->GetSamplerManager();
-        auto* tex_manager = graphics_context->GetTextureManager();
-        if (!material_manager || !sampler_manager || !tex_manager)
+    {
+        auto* sampler_manager = GetSamplerManager();
+        auto* tex_manager = GetTextureManager();
+        if (!sampler_manager || !tex_manager)
             return false;
 
         static const mtl::MaterialAssetRecord kTexQuadCfg {
@@ -83,27 +74,17 @@ private:
                 {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/lena.Tex2D"},
             },
         };
-
-        MaterialAssetRegistry registry(material_manager, tex_manager, sampler_manager);
-        material_instance = registry.AcquireMI(kTexQuadCfg);
+        material_instance = AcquireMI(kTexQuadCfg);
 
         return(material_instance!=nullptr);
     }
 
     bool InitVBO()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+    {
+        auto* device = GetDevice();
+        auto* buffer_manager = GetBufferManager();
+        auto* geometry_manager = GetGeometryManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
@@ -167,4 +148,5 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw a quad with texture"),argc,argv,256,256);
 }
+
 

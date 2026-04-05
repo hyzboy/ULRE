@@ -42,44 +42,22 @@ private:
 private:
 
     bool InitMDP()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
+    {
         static const mtl::MaterialAssetRecord kAxisCfg {
             .id       = "axis_vertex_color",
             .preset   = mtl::MaterialPreset::VertexColor3D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        material_instance = registry.AcquireMI(kAxisCfg);
+        material_instance = AcquireMI(kAxisCfg);
 
         return material_instance != nullptr;
     }
 
     bool CreateRenderObject()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+    {
+        auto* device = GetDevice();
+        auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
             return false;
 
@@ -99,17 +77,8 @@ private:
     bool InitScene()
     {
         if(!ecs_context)
-            return false;
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+            return false;
+        auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;
 
@@ -196,4 +165,5 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("SimplestAxis"),argc,argv,1280,720);
 }
+
 

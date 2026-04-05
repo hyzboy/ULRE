@@ -68,33 +68,6 @@ private:
 
     bool InitMaterial()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-        {
-            std::fprintf(stderr, "[BasicLitMeshesECS] InitMaterial failed: GetRenderContext returned null\n");
-            return false;
-        }
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-        {
-            std::fprintf(stderr, "[BasicLitMeshesECS] InitMaterial failed: GetGraphicsContext returned null\n");
-            return false;
-        }
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* texture_manager = graphics_context->GetTextureManager();
-        auto* sampler_manager = graphics_context->GetSamplerManager();
-        if (!material_manager || !texture_manager || !sampler_manager)
-        {
-            std::fprintf(stderr,
-                "[BasicLitMeshesECS] InitMaterial failed: manager lookup failed (material=%p texture=%p sampler=%p)\n",
-                material_manager,
-                texture_manager,
-                sampler_manager);
-            return false;
-        }
-
         static const mtl::MaterialAssetRecord kStandardCfg {
             .id             = "basic_lit_standard",
             .preset         = mtl::MaterialPreset::Standard,
@@ -107,14 +80,13 @@ private:
                 {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::None, "res/image/Brickwall/Normal.Tex2D"},
             },
         };
-        MaterialAssetRegistry registry(material_manager, texture_manager, sampler_manager);
         mtl::StandardMaterialInstance mi_data{};
         mi_data.base_color = 0xFFFFFFFFu;
         mi_data.metallic = 0.08f;
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
 
-        material_instance = registry.AcquireMI(kStandardCfg, &mi_data, sizeof(mi_data));
+        material_instance = AcquireMI(kStandardCfg, &mi_data, sizeof(mi_data));
         if (!material_instance)
         {
             std::fprintf(stderr,
@@ -128,16 +100,8 @@ private:
     }
 
     bool InitVDM()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* buffer_manager = graphics_context->GetBufferManager();
+    {
+        auto* buffer_manager = GetBufferManager();
         if (!buffer_manager)
             return false;
 
@@ -164,8 +128,8 @@ private:
         if (!graphics_context)
             return nullptr;
 
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* geometry_manager = GetGeometryManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!geometry_manager || !primitive_manager)
             return nullptr;
 
@@ -459,20 +423,11 @@ private:
     }
 
     bool InitSkySphere()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* device = graphics_context->GetDevice();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
-        if (!material_manager || !device || !geometry_manager || !primitive_manager)
+    {
+        auto* device = GetDevice();
+        auto* geometry_manager = GetGeometryManager();
+        auto* primitive_manager = GetPrimitiveManager();
+        if (!device || !geometry_manager || !primitive_manager)
             return false;
 
         static const mtl::MaterialAssetRecord kSkyCfg {
@@ -482,9 +437,7 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        mi_sky_sphere = registry.AcquireMI(kSkyCfg);
+        mi_sky_sphere = AcquireMI(kSkyCfg);
         if (!mi_sky_sphere)
             return false;
 
@@ -583,3 +536,4 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<BasicLitMeshesECSApp>(OS_TEXT("Standard Meshes ECS"), argc, argv, 1280, 720);
 }
+

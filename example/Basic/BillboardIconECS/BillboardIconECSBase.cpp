@@ -27,15 +27,6 @@ bool BillboardIconECSBase::InitPlaneGridResources()
 {
     if (mi_plane_grid) return true;
 
-    auto* render_context = GetRenderContext();
-    if (!render_context) return false;
-
-    auto* graphics_context = render_context->GetGraphicsContext();
-    if (!graphics_context) return false;
-
-    auto* material_manager = graphics_context->GetMaterialManager();
-    if (!material_manager) return false;
-
     static const mtl::MaterialAssetRecord kPlaneGridCfg {
         .id       = "billboard_icon_plane_grid",
         .preset   = mtl::MaterialPreset::VertexLuminance2D,
@@ -45,9 +36,7 @@ bool BillboardIconECSBase::InitPlaneGridResources()
             { VAN::Luminance, VF_V1UN8 },
         },
     };
-    MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-    mi_plane_grid = registry.AcquireMI(kPlaneGridCfg,
-                                      &white_color, sizeof(white_color));
+    mi_plane_grid = AcquireMI(kPlaneGridCfg,&white_color, sizeof(white_color));
     if (!mi_plane_grid) return false;
 
     mtl_plane_grid = mi_plane_grid->GetMaterial();
@@ -63,11 +52,11 @@ bool BillboardIconECSBase::CreateGeometryAndPrimitives()
     auto* graphics_context = render_context->GetGraphicsContext();
     if (!graphics_context) return false;
 
-    auto* device = graphics_context->GetDevice();
+    auto* device = GetDevice();
     if (!device) return false;
 
-    auto* geometry_manager = graphics_context->GetGeometryManager();
-    auto* primitive_manager = graphics_context->GetPrimitiveManager();
+    auto* geometry_manager = GetGeometryManager();
+    auto* primitive_manager = GetPrimitiveManager();
     if (!geometry_manager || !primitive_manager) return false;
 
     using namespace inline_geometry;
@@ -239,3 +228,4 @@ void BillboardIconECSBase::Tick(double delta_time)
 {
     WorkObject::Tick(delta_time);
 }
+

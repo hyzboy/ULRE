@@ -119,29 +119,14 @@ private:
     bool InitMaterialInstance(MaterialData *md, const mtl::MaterialAssetRecord &cfg)
     {
         if(!md)
-            return false;
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-
+            return false;
         Color4f color;
 
         for(size_t i=0;i<COLOR_COUNT;i++)
         {
             color = GetColor4f(TestColor[i],1.0f);
 
-            md->mi[i] = registry.AcquireMI(cfg, &color, sizeof(color));
+            md->mi[i] = AcquireMI(cfg, &color, sizeof(color));
 
             if(!md->mi[i])
                 return false;
@@ -158,7 +143,11 @@ private:
         if(!md->vil)
             return false;
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* rc = GetRenderContext();
+        if (!rc)
+            return false;
+
+        auto* render_target = rc->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
         if (!render_pass)
             return false;
@@ -172,20 +161,7 @@ private:
             .id       = "bounds_solid",
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
+        };
         return InitMaterialInstance(&solid, kSolidCfg);
     }
 
@@ -196,34 +172,13 @@ private:
             .preset   = mtl::MaterialPreset::PureColor3D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
-            return false;
-
+        };
         return InitMaterialInstance(&wire, kWireCfg);
     }
 
     bool InitVDM()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* buffer_manager = graphics_context->GetBufferManager();
+    {
+        auto* buffer_manager = GetBufferManager();
         if (!buffer_manager)
             return false;
 
@@ -248,7 +203,7 @@ private:
         if (!graphics_context)
             return nullptr;
 
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return nullptr;
 
@@ -524,17 +479,9 @@ private:
     }
 
     bool CreateBoundingBoxMesh()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+    {
+        auto* device = GetDevice();
+        auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
             return false;
 
@@ -549,7 +496,7 @@ private:
             return false;
 
         geometry_manager->Add(bbox_geometry);
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;
 
@@ -736,4 +683,5 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Render Bounding Box (ECS)"),argc,argv,1280,720);
 }
+
 
