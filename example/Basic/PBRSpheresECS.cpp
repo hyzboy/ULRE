@@ -337,18 +337,6 @@ private:
 
     bool InitVDM()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context) {
-            printf("[ERROR] InitVDM: No render_context\n");
-            return false;
-        }
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context) {
-            printf("[ERROR] InitVDM: No graphics_context\n");
-            return false;
-        }
-
         auto* buffer_manager = GetBufferManager();
         if (!buffer_manager) {
             printf("[ERROR] InitVDM: No buffer_manager\n");
@@ -481,18 +469,6 @@ private:
 
     bool CreateBasePrimitives()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context) {
-            printf("[ERROR] CreateBasePrimitives: No render_context\n");
-            return false;
-        }
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context) {
-            printf("[ERROR] CreateBasePrimitives: No graphics_context\n");
-            return false;
-        }
-
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager) {
             printf("[ERROR] CreateBasePrimitives: No primitive_manager\n");
@@ -558,7 +534,8 @@ private:
     }
 
     bool InitSkySphere()
-    {
+    {
+
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         auto* primitive_manager = GetPrimitiveManager();

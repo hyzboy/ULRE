@@ -16,6 +16,7 @@
 #include<ctime>
 #include<chrono>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -130,18 +131,15 @@ private:
     bool InitGeometry()
     {
 
-        auto* device = GetDevice();
-        auto* buffer_manager = GetBufferManager();
-        auto* geometry_manager = GetGeometryManager();
-        if (!device || !buffer_manager || !geometry_manager)
+        auto* graphics_context = GetGraphicsContext();
+        if (!graphics_context)
             return false;
 
-        GeometryCreater pc(device, mi_tick->GetVIL(), buffer_manager);
-        pc.Init("TriangleForClock", VERTEX_COUNT);
-        if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data))
-            return false;
-
-        geometry = pc.Create();
+        geometry = GraphicsGeometryFactory::CreateGeometry(graphics_context,
+                                                           mi_tick,
+                                                           "TriangleForClock",
+                                                           VERTEX_COUNT,
+                                                           {{VAN::Position, VF_V2F, position_data}});
 
         if (!geometry)
         {
@@ -150,8 +148,6 @@ private:
         }
 
         std::cout << "[ClockApp::InitGeometry] Created geometry: " << (void*)geometry << std::endl;
-
-        geometry_manager->Add(geometry);
 
         return true;
     }

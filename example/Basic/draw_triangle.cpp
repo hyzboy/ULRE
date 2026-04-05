@@ -11,6 +11,7 @@
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -65,7 +66,8 @@ private:
 private:
 
     bool InitMaterial()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kTriangleCfg {
             .id         = "draw_triangle_vertex_color",
             .preset     = mtl::MaterialPreset::VertexColor2D,
@@ -92,26 +94,18 @@ private:
         {
             position_data[i][0]=position_data_float[i][0]*ext->width;
             position_data[i][1]=position_data_float[i][1]*ext->height;
-        }
-        auto* device = GetDevice();
-        auto* buffer_manager = GetBufferManager();
-        auto* geometry_manager = GetGeometryManager();
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
+        }
+
+        auto* graphics_context = GetGraphicsContext();
+        if (!graphics_context)
             return false;
 
-        GeometryCreater pc(device, material_instance->GetVIL(), buffer_manager);
-        pc.Init("Triangle", VERTEX_COUNT);
-        if (!pc.WriteVAB(VAN::Position, POSITION_DATA_FORMAT, position_data) ||
-            !pc.WriteVAB(VAN::Color, COLOR_DATA_FORMAT, color_data))
-            return false;
-
-        auto* geometry = pc.Create();
-        if (!geometry)
-            return false;
-        geometry_manager->Add(geometry);
-
-        prim_triangle = primitive_manager->CreatePrimitive(geometry, material_instance);
+        prim_triangle = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
+                                                                 material_instance,
+                                                                 "Triangle",
+                                                                 VERTEX_COUNT,
+                                                                 {{VAN::Position, POSITION_DATA_FORMAT, position_data},
+                                                                  {VAN::Color, COLOR_DATA_FORMAT, color_data}});
 
         if(!prim_triangle)
             return(false);

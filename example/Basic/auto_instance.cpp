@@ -12,6 +12,7 @@
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -83,26 +84,16 @@ private:
 
     bool InitVBO()
     {
-
-        auto* device = GetDevice();
-        auto* buffer_manager = GetBufferManager();
-        auto* geometry_manager = GetGeometryManager();
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
+        auto* graphics_context = GetGraphicsContext();
+        if (!graphics_context)
             return false;
 
-        GeometryCreater pc(device, material_instance->GetVIL(), buffer_manager);
-        pc.Init("Triangle", VERTEX_COUNT);
-        if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
-            !pc.WriteVAB(VAN::Color, VF_V4UN8, color_data))
-            return false;
-
-        auto* geometry = pc.Create();
-        if (!geometry)
-            return false;
-        geometry_manager->Add(geometry);
-
-        prim_triangle = primitive_manager->CreatePrimitive(geometry, material_instance);
+        prim_triangle = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
+                                                                 material_instance,
+                                                                 "Triangle",
+                                                                 VERTEX_COUNT,
+                                                                 {{VAN::Position,VF_V2F,position_data},
+                                                                  {VAN::Color,VF_V4UN8,color_data}});
 
         if(!prim_triangle)
             return(false);

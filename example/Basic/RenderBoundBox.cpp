@@ -12,6 +12,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -119,7 +120,8 @@ private:
     bool InitMaterialInstance(MaterialData *md, const mtl::MaterialAssetRecord &cfg)
     {
         if(!md)
-            return false;
+            return false;
+
         Color4f color;
 
         for(size_t i=0;i<COLOR_COUNT;i++)
@@ -161,7 +163,8 @@ private:
             .id       = "bounds_solid",
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
+        };
+
         return InitMaterialInstance(&solid, kSolidCfg);
     }
 
@@ -172,12 +175,14 @@ private:
             .preset   = mtl::MaterialPreset::PureColor3D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
+        };
+
         return InitMaterialInstance(&wire, kWireCfg);
     }
 
     bool InitVDM()
-    {
+    {
+
         auto* buffer_manager = GetBufferManager();
         if (!buffer_manager)
             return false;
@@ -229,7 +234,15 @@ private:
         {
             std::cout << "[RenderBoundBox] CreateGeometry START: " << label << std::endl;
 
-            auto pc = std::make_unique<GeometryCreater>(mesh_vdm);
+            auto *graphics_context = GetGraphicsContext();
+            if (!graphics_context)
+            {
+                std::cout << "[RenderBoundBox] CreateGeometry FAIL: GraphicsContext null (" << label << ")" << std::endl;
+                return nullptr;
+            }
+
+            GraphicsGeometryFactory geometry_factory(graphics_context);
+            auto pc = geometry_factory.CreateCreater(mesh_vdm);
             if (!pc)
             {
                 std::cout << "[RenderBoundBox] CreateGeometry FAIL: GeometryCreater null (" << label << ")" << std::endl;
@@ -479,15 +492,19 @@ private:
     }
 
     bool CreateBoundingBoxMesh()
-    {
-        auto* device = GetDevice();
-        auto* geometry_manager = GetGeometryManager();
-        if (!device || !geometry_manager)
+    {
+
+        auto *graphics_context = GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        GraphicsGeometryFactory geometry_factory(graphics_context);
+
+        auto pc = geometry_factory.CreateCreater(wire.material->GetDefaultVIL());
+        if (!pc)
             return false;
 
         using namespace inline_geometry;
-
-        auto pc = std::make_unique<GeometryCreater>(device, wire.material->GetDefaultVIL());
 
         inline_geometry::BoundingBoxCreateInfo bbci;
         bbox_geometry = CreateBoundingBox(pc.get(),&bbci);
@@ -495,7 +512,9 @@ private:
         if(!bbox_geometry)
             return false;
 
-        geometry_manager->Add(bbox_geometry);
+        if(!geometry_factory.RegisterGeometry(bbox_geometry))
+            return false;
+
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;

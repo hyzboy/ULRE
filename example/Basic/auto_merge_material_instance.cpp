@@ -19,6 +19,7 @@
 
 // 引入几何创建器
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
@@ -118,18 +119,15 @@ private:
     bool InitGeometry()
     {
 
-        auto* device = GetDevice();
-        auto* buffer_manager = GetBufferManager();
-        auto* geometry_manager = GetGeometryManager();
-        if (!device || !buffer_manager || !geometry_manager)
+        auto* graphics_context = GetGraphicsContext();
+        if (!graphics_context)
             return false;
 
-        GeometryCreater pc(device, material->GetDefaultVIL(), buffer_manager);
-        pc.Init("Triangle", VERTEX_COUNT);
-        if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data))
-            return false;
-
-        geometry = pc.Create();
+        geometry = GraphicsGeometryFactory::CreateGeometry(graphics_context,
+                                                           triangles[0].mi,
+                                                           "Triangle",
+                                                           VERTEX_COUNT,
+                                                           {{VAN::Position, VF_V2F, position_data}});
 
         if (!geometry)
         {
@@ -138,8 +136,6 @@ private:
         }
 
         std::cout << "[TestApp::InitGeometry] Created geometry: " << (void*)geometry << std::endl;
-
-        geometry_manager->Add(geometry);
 
         return true;
     }
