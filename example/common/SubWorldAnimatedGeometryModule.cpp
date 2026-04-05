@@ -80,19 +80,19 @@ namespace
             };
             auto* material_manager = graphics_context->GetMaterialManager();
             if (!material_manager) return false;
-            {
-                MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-                auto handle = registry.Acquire(kAnimGeomCfg);
-                if (!handle.IsValid()) return false;
-                material = handle.material;
-            }
-
             const Color4f colors[] =
             {
                 GetColor4f(COLOR::BlenderAxisRed, 1.0f),
                 GetColor4f(COLOR::BlenderAxisGreen, 1.0f),
                 GetColor4f(COLOR::SkyBlue, 1.0f)
             };
+
+            {
+                MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+                auto* seed_mi = registry.AcquireMI(kAnimGeomCfg, &colors[0], sizeof(colors[0]));
+                if (!seed_mi) return false;
+                material = seed_mi->GetMaterial();
+            }
 
             return BuildMaterialInstances(colors, sizeof(colors) / sizeof(colors[0]));
         }

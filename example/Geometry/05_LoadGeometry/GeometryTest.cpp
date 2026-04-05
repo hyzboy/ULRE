@@ -101,7 +101,7 @@ private:
 
 private:
 
-    bool InitMaterialInstance(MaterialData *md)
+    bool InitMaterialInstance(MaterialData *md, const mtl::MaterialAssetRecord &cfg)
     {
         if(!md)
             return(false);
@@ -118,22 +118,25 @@ private:
         if (!material_manager)
             return false;
 
+        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
+
         Color4f color;
 
         for(size_t i = 0;i < COLOR_COUNT;i++)
         {
             color = GetColor4f(TestColor[i],1.0);
 
-            graph::MaterialInstanceSpec spec;
-            spec.material = md->material;
-            spec.instance_data = &color;
-            spec.instance_data_size = sizeof(color);
-            spec.preset = GraphicsPipelinePreset::Solid3D;
-            md->mi[i] = material_manager->AcquireMaterialInstance(spec);
+            md->mi[i] = registry.AcquireMI(cfg, &color, sizeof(color));
 
             if(!md->mi[i])
                 return(false);
+
+            if (!md->material)
+                md->material = md->mi[i]->GetMaterial();
         }
+
+        if (!md->material)
+            return false;
 
         md->vil = md->material->GetDefaultVIL();
 
@@ -162,14 +165,7 @@ private:
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        {
-            MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-            auto handle = registry.Acquire(kSolidCfg);
-            if (!handle.IsValid()) return false;
-            solid.material = handle.material;
-        }
-
-        return InitMaterialInstance(&solid);
+        return InitMaterialInstance(&solid, kSolidCfg);
     }
 
     bool InitWireMDP()
@@ -192,14 +188,7 @@ private:
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        {
-            MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-            auto handle = registry.Acquire(kWireCfg);
-            if (!handle.IsValid()) return false;
-            wire.material = handle.material;
-        }
-
-        return InitMaterialInstance(&wire);
+        return InitMaterialInstance(&wire, kWireCfg);
     }
 
     bool CreateBoundingBoxMesh()

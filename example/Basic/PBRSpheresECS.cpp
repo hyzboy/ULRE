@@ -71,7 +71,6 @@ private:
     Entity *      camera_entity = nullptr;
 
     Material *          material  = nullptr;
-    MaterialDomainHandle material_handle;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -159,13 +158,19 @@ private:
             },
         };
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        material_handle = registry.Acquire(kPBRArrayAcquireCfg);
-        if (!material_handle.IsValid()) {
-            printf("[ERROR] InitMaterial: Failed to create Standard+Array material\n");
+        mtl::StandardMaterialInstance seed_mi_data{};
+        seed_mi_data.base_color = PackRGBA8Float(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
+        seed_mi_data.metallic = 0.0f;
+        seed_mi_data.roughness = 1.0f;
+        seed_mi_data.normal_scale = 0.35f;
+
+        auto* seed_mi = registry.AcquireMI(kPBRArrayAcquireCfg, &seed_mi_data, sizeof(seed_mi_data));
+        if (!seed_mi) {
+            printf("[ERROR] InitMaterial: Failed to create seed MI for Standard+Array material\n");
             return false;
         }
 
-        material = material_handle.material;
+        material = seed_mi->GetMaterial();
 
         sampler = sampler_manager->CreateSampler();
         if (!sampler) {
@@ -594,10 +599,6 @@ private:
         };
 
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        auto sky_handle = registry.Acquire(kSkyCfg);
-        if (!sky_handle.IsValid())
-            return false;
-
         mi_sky_sphere = registry.AcquireMI(kSkyCfg);
         if (!mi_sky_sphere)
             return false;

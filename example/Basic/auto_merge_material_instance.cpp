@@ -90,16 +90,6 @@ private:
             };
 
             MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-            auto handle = registry.Acquire(kMergeCfg);
-            if (!handle.IsValid())
-                return false;
-
-            material = handle.material;
-
-            std::cout << "[TestApp::InitMaterial] Created material: " << (void*)material << std::endl;
-            std::cout << "[TestApp::InitMaterial] Material has MI: " << material->hasMI() << std::endl;
-            std::cout << "[TestApp::InitMaterial] Material MI data bytes: " << material->GetMIDataBytes() << std::endl;
-
             // 为每个三角形创建不同颜色的MaterialInstance
             for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
             {
@@ -107,6 +97,14 @@ private:
 
                 if (!triangles[i].mi)
                     return false;
+
+                if (!material)
+                {
+                    material = triangles[i].mi->GetMaterial();
+                    std::cout << "[TestApp::InitMaterial] Created material: " << (void*)material << std::endl;
+                    std::cout << "[TestApp::InitMaterial] Material has MI: " << material->hasMI() << std::endl;
+                    std::cout << "[TestApp::InitMaterial] Material MI data bytes: " << material->GetMIDataBytes() << std::endl;
+                }
 
                 // 使用不同的颜色
                 Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);

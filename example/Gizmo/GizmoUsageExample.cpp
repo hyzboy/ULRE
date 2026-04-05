@@ -90,16 +90,12 @@ private:
                 },
             };
 
-            auto handle = registry.Acquire(kGridCfg);
-            if(!handle.IsValid())
-                return false;
-
-            grid_material = handle.material;
-
             const Color4f white = GetColor4f(COLOR::White, 1.0f);
             grid_mi = registry.AcquireMI(kGridCfg, &white, sizeof(white));
             if(!grid_mi)
                 return false;
+
+            grid_material = grid_mi->GetMaterial();
 
             auto pc = std::make_unique<GeometryCreater>(device, grid_mi->GetVIL());
 
@@ -127,16 +123,12 @@ private:
                 .pipeline = GraphicsPipelinePreset::Solid3D,
             };
 
-            auto handle = registry.Acquire(kCubeCfg);
-            if(!handle.IsValid())
-                return false;
-
-            cube_material = handle.material;
-
             const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
             cube_mi = registry.AcquireMI(kCubeCfg, &blue, sizeof(blue));
             if(!cube_mi)
                 return false;
+
+            cube_material = cube_mi->GetMaterial();
 
             auto pc = std::make_unique<GeometryCreater>(device, cube_material->GetDefaultVIL());
 

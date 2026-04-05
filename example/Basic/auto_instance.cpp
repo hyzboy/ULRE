@@ -86,11 +86,7 @@ private:
             };
 
             MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-            auto handle = registry.Acquire(kAutoInstanceCfg);
-            if (handle.IsValid())
-            {
-                material_instance = registry.AcquireMI(kAutoInstanceCfg);
-            }
+            material_instance = registry.AcquireMI(kAutoInstanceCfg);
         }
 
         if(!material_instance)

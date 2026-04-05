@@ -154,16 +154,13 @@ public:
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
         MaterialAssetRegistry registry(mm, nullptr, nullptr);
-        auto handle = registry.Acquire(kSphereCfg);
-        if (!handle.IsValid())
-            return false;
-        mtl = handle.material;
-
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
         mi = registry.AcquireMI(kSphereCfg,
                        &sphere_color, sizeof(sphere_color));
         if (!mi)
             return false;
+
+        mtl = mi->GetMaterial();
 
         auto pc = std::make_unique<GeometryCreater>(device, mtl->GetDefaultVIL());
         geometry = inline_geometry::CreateSphere(pc.get(), 64);
@@ -302,10 +299,19 @@ private:
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
         MaterialAssetRegistry registry(mm, nullptr, nullptr);
-        auto handle = registry.Acquire(kCubeCfg);
-        if (!handle.IsValid())
+
+        mtl::StandardMaterialInstance cube_mi_data{};
+        cube_mi_data.base_color = 0xFFFFFFFFu;
+        cube_mi_data.metallic = 0.08f;
+        cube_mi_data.roughness = 0.92f;
+        cube_mi_data.normal_scale = 0.35f;
+
+        cube_mi = registry.AcquireMI(kCubeCfg,
+             &cube_mi_data, sizeof(cube_mi_data));
+        if (!cube_mi)
             return false;
-        cube_mtl = handle.material;
+
+        cube_mtl = cube_mi->GetMaterial();
 
         cube_sampler = sm->CreateSampler();
         if (!cube_sampler)
@@ -334,17 +340,6 @@ private:
             return false;
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
-
-        mtl::StandardMaterialInstance cube_mi_data{};
-        cube_mi_data.base_color = 0xFFFFFFFFu;
-        cube_mi_data.metallic = 0.08f;
-        cube_mi_data.roughness = 0.92f;
-        cube_mi_data.normal_scale = 0.35f;
-
-        cube_mi = registry.AcquireMI(kCubeCfg,
-                         &cube_mi_data, sizeof(cube_mi_data));
-        if (!cube_mi)
-            return false;
 
         auto pc = std::make_unique<GeometryCreater>(device, cube_mtl->GetDefaultVIL());
         inline_geometry::CubeCreateInfo cci{};

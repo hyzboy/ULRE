@@ -45,7 +45,6 @@ private:
     Entity *camera_entity = nullptr;
 
     Material *material = nullptr;
-    MaterialDomainHandle material_handle;
 
     VertexDataManager *mesh_vdm = nullptr;
     Geometry *builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
@@ -114,23 +113,6 @@ private:
             return false;
         }
 
-        static const mtl::MaterialAssetRecord kPBRColorCfg {
-            .id          = "pbr_color_spheres",
-            .preset      = mtl::MaterialPreset::PBRColor3D,
-            .sky         = true,
-            .sky_ambient = mtl::SkyLightAmbientModel::FakeAtmosphere,
-            .lighting    = mtl::LightingModel::PBR,
-            .pipeline    = GraphicsPipelinePreset::Solid3D,
-        };
-        MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        material_handle = registry.Acquire(kPBRColorCfg);
-        if (!material_handle.IsValid())
-        {
-            printf("[ERROR] InitMaterial: Failed to create PBRColor3D material\n");
-            return false;
-        }
-        material = material_handle.material;
-
         return true;
     }
 
@@ -190,7 +172,16 @@ private:
                     printf("[ERROR] CreatePBRColorMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
                     return false;
                 }
+
+                if (!material)
+                    material = sphere_mi[row][col]->GetMaterial();
             }
+        }
+
+        if (!material)
+        {
+            printf("[ERROR] CreatePBRColorMaterialInstances: Failed to resolve material from MI\n");
+            return false;
         }
 
         return true;
@@ -442,10 +433,6 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
-        auto sky_handle = registry.Acquire(kSkyCfg);
-        if (!sky_handle.IsValid())
-            return false;
-
         mi_sky_sphere = registry.AcquireMI(kSkyCfg);
         if (!mi_sky_sphere)
             return false;

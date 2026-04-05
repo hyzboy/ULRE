@@ -82,11 +82,12 @@ private:
         };
 
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        auto handle = registry.Acquire(kRoundRectCfg);
-        if(!handle.IsValid())
+        material_instance = registry.AcquireMI(kRoundRectCfg);
+
+        if(!material_instance)
             return(false);
 
-        material = handle.material;
+        material = material_instance->GetMaterial();
 
         texture=texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
@@ -99,8 +100,6 @@ private:
            texture,                            ///<纹理
            sampler))                           ///<采样器
             return(false);
-
-        material_instance = registry.AcquireMI(kRoundRectCfg);
 
         return(material_instance!=nullptr);
     }

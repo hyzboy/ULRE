@@ -129,17 +129,14 @@ private:
             },
         };
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        auto handle = registry.Acquire(kPlaneGridCfg);
-        if (!handle.IsValid())
-            return false;
-        mtl_plane_grid = handle.material;
-
-        std::cout << "[BillboardECS] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;
-
         mi_plane_grid = registry.AcquireMI(kPlaneGridCfg,
                           &white_color, sizeof(white_color));
         if(!mi_plane_grid)
             return false;
+
+        mtl_plane_grid = mi_plane_grid->GetMaterial();
+
+        std::cout << "[BillboardECS] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;
 
         std::cout << "[BillboardECS] PlaneGrid MI: " << (void*)mi_plane_grid << std::endl;
 
@@ -167,8 +164,6 @@ private:
             .billboard = { .fixed_size = true },
         };
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        auto handle = registry.Acquire(kBillboardCfg);
-        if (!handle.IsValid()) return false;
         mi_billboard = registry.AcquireMI(kBillboardCfg);
         if(!mi_billboard)
             return false;

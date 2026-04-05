@@ -93,10 +93,6 @@ private:
         };
 
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        auto handle = registry.Acquire(kTriangleCfg);
-        if (!handle.IsValid())
-            return false;
-
         material_instance = registry.AcquireMI(kTriangleCfg);
 
         return material_instance != nullptr;

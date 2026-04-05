@@ -111,20 +111,17 @@ private:
             };
 
             MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-            auto handle = registry.Acquire(kClockCfg);
-            if (!handle.IsValid())
-                return false;
-
-            material = handle.material;
-
-            std::cout << "[ClockApp::InitMaterial] Created material: " << (void*)material << std::endl;
-
             // 刻度颜色（白色）
             Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
 
             mi_tick = registry.AcquireMI(kClockCfg);
-            if(mi_tick)
-                mi_tick->WriteMIData(tick_color);
+            if(!mi_tick)
+                return false;
+
+            mi_tick->WriteMIData(tick_color);
+            material = mi_tick->GetMaterial();
+
+            std::cout << "[ClockApp::InitMaterial] Created material: " << (void*)material << std::endl;
 
             // 指针颜色
             Color4f hand_colors[3] = {

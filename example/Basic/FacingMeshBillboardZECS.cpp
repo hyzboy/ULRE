@@ -110,18 +110,17 @@ private:
             return false;
 
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        auto handle = registry.Acquire(kSolidCfg);
-        if (!handle.IsValid())
+        Color4f color = GetColor4f(DemoColors[0], 1.0f);
+        solid.mi[0] = registry.AcquireMI(kSolidCfg, &color, sizeof(color));
+        if (!solid.mi[0])
             return false;
 
-        solid.material = handle.material;
-
+        solid.material = solid.mi[0]->GetMaterial();
         solid.vil = solid.material->GetDefaultVIL();
         if (!solid.vil)
             return false;
 
-        Color4f color;
-        for (size_t i = 0; i < DEMO_COLOR_COUNT; ++i)
+        for (size_t i = 1; i < DEMO_COLOR_COUNT; ++i)
         {
             color = GetColor4f(DemoColors[i], 1.0f);
             solid.mi[i] = registry.AcquireMI(kSolidCfg, &color, sizeof(color));

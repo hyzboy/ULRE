@@ -63,13 +63,12 @@ private:
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        auto handle = registry.Acquire(kExtrudedCfg);
-        if (!handle.IsValid()) return false;
-        material = handle.material;
-
         Color4f color=GetColor4f(COLOR::BlenderAxisRed);
 
         material_instance = registry.AcquireMI(kExtrudedCfg, &color, sizeof(color));
+
+        if (material_instance)
+            material = material_instance->GetMaterial();
 
         return material_instance != nullptr;
     }

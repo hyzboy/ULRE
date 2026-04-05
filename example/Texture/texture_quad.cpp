@@ -85,10 +85,6 @@ private:
         };
 
         MaterialAssetRegistry registry(material_manager, tex_manager, sampler_manager);
-        auto handle = registry.Acquire(kTexQuadCfg);
-        if(!handle.IsValid())
-            return(false);
-
         material_instance = registry.AcquireMI(kTexQuadCfg);
 
         return(material_instance!=nullptr);

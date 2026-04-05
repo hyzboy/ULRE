@@ -66,10 +66,6 @@ private:
         };
 
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        auto handle = registry.Acquire(kPlaneGridCfg);
-        if(!handle.IsValid())return(false);
-        material = handle.material;
-
         Color4f GridColor;
         COLOR ce=COLOR::BlenderAxisRed;
 
@@ -78,6 +74,9 @@ private:
             GridColor=GetColor4f(ce,1.0);
 
             material_instance[i] = registry.AcquireMI(kPlaneGridCfg, &GridColor, sizeof(GridColor));
+
+            if(i == 0 && material_instance[i])
+                material = material_instance[i]->GetMaterial();
 
             ce=COLOR((int)ce+1);
         }

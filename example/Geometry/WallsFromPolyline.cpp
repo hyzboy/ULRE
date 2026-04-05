@@ -138,13 +138,10 @@ public:
         mi_data.normal_scale=0.35f;
 
         MaterialAssetRegistry registry(material_manager, texture_manager, sampler_manager);
-        auto handle = registry.Acquire(kWallsCfg);
-        if(!handle.IsValid()) return false;
-
-        material = handle.material;
-
         material_instance = registry.AcquireMI(kWallsCfg, &mi_data, sizeof(mi_data));
         if(!material_instance) return false;
+
+        material = material_instance->GetMaterial();
 
         const VIL *vil = material->GetDefaultVIL();
         auto* buffer_manager = graphics_context->GetBufferManager();

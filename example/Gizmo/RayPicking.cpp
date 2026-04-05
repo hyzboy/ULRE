@@ -58,11 +58,9 @@ private:
     Entity* ray_line_entity = nullptr;
 
     // 传统渲染资源
-    Material *          mtl_plane_grid      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
     Geometry *          geom_plane_grid     =nullptr;
 
-    Material *          mtl_line            =nullptr;
     MaterialInstance *  mi_line             =nullptr;
     Geometry *          geom_line           =nullptr;
     Primitive *         prim_line           =nullptr;
@@ -114,22 +112,12 @@ private:
 
         // Plane grid: 2D Position + Luminance
         {
-            auto handle = registry.Acquire(kPlaneGridCfg);
-            if(!handle.IsValid())return(false);
-
-            mtl_plane_grid = handle.material;
-
             mi_plane_grid = registry.AcquireMI(kPlaneGridCfg, &white_color, sizeof(white_color));
             if(!mi_plane_grid)return(false);
         }
 
         // Ray line: 3D Position + Luminance (separate Material)
         {
-            auto handle = registry.Acquire(kLineCfg);
-            if(!handle.IsValid())return(false);
-
-            mtl_line = handle.material;
-
             mi_line = registry.AcquireMI(kLineCfg, &yellow_color, sizeof(yellow_color));
             if(!mi_line)return(false);
         }

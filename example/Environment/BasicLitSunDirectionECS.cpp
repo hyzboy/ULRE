@@ -131,9 +131,6 @@ private:
         };
 
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        auto sky_handle = registry.Acquire(kSkyCfg);
-        if (!sky_handle.IsValid()) return false;
-
         sky_material_instance = registry.AcquireMI(kSkyCfg);
         if (!sky_material_instance)
             return false;
@@ -185,12 +182,6 @@ private:
             },
         };
         MaterialAssetRegistry registry(material_manager, texture_manager, sampler_manager);
-        auto handle = registry.Acquire(kStandardCfg);
-        if (!handle.IsValid())
-            return false;
-
-        material = handle.material;
-
         mtl::StandardMaterialInstance mi_data{};
         mi_data.base_color = 0xFFFFFFFFu;
         mi_data.metallic = 0.08f;
@@ -200,6 +191,8 @@ private:
         material_instance = registry.AcquireMI(kStandardCfg, &mi_data, sizeof(mi_data));
         if (!material_instance)
             return false;
+
+        material = material_instance->GetMaterial();
 
         return true;
     }

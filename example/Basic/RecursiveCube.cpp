@@ -118,17 +118,13 @@ private:
             return false;
 
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        auto handle = registry.Acquire(kRecursiveCubeCfg);
-        if (!handle.IsValid())
-            return false;
-
-        material = handle.material;
-
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
         mi = registry.AcquireMI(kRecursiveCubeCfg, &color, sizeof(color));
         if (!mi)
             return false;
+
+        material = mi->GetMaterial();
 
         return mi != nullptr;
     }

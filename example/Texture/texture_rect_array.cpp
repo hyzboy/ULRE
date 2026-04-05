@@ -137,11 +137,11 @@ private:
         };
 
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        auto handle = registry.Acquire(kTexArrayCfg);
-        if(!handle.IsValid())
+        render_obj[0].mi = registry.AcquireMI(kTexArrayCfg);
+        if(!render_obj[0].mi)
             return(false);
 
-        material = handle.material;
+        material = render_obj[0].mi->GetMaterial();
 
         sampler=sampler_manager->CreateSampler();
 
@@ -152,7 +152,8 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].mi = registry.AcquireMI(kTexArrayCfg);
+            if(i > 0)
+                render_obj[i].mi = registry.AcquireMI(kTexArrayCfg);
 
             if(!render_obj[i].mi)
                 return(false);

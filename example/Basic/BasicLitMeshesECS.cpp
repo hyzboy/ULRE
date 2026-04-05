@@ -108,16 +108,6 @@ private:
             },
         };
         MaterialAssetRegistry registry(material_manager, texture_manager, sampler_manager);
-        auto handle = registry.Acquire(kStandardCfg);
-        if (!handle.IsValid())
-        {
-            std::fprintf(stderr,
-                "[BasicLitMeshesECS] InitMaterial failed: CreateMaterial(MaterialPreset::Standard) returned null\n");
-            return false;
-        }
-
-        material = handle.material;
-
         mtl::StandardMaterialInstance mi_data{};
         mi_data.base_color = 0xFFFFFFFFu;
         mi_data.metallic = 0.08f;
@@ -126,7 +116,13 @@ private:
 
         material_instance = registry.AcquireMI(kStandardCfg, &mi_data, sizeof(mi_data));
         if (!material_instance)
+        {
+            std::fprintf(stderr,
+                "[BasicLitMeshesECS] InitMaterial failed: AcquireMI(MaterialPreset::Standard) returned null\n");
             return false;
+        }
+
+        material = material_instance->GetMaterial();
 
         return true;
     }
@@ -488,10 +484,6 @@ private:
         };
 
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-        auto sky_handle = registry.Acquire(kSkyCfg);
-        if (!sky_handle.IsValid())
-            return false;
-
         mi_sky_sphere = registry.AcquireMI(kSkyCfg);
         if (!mi_sky_sphere)
             return false;

@@ -46,13 +46,11 @@ bool BillboardIconECSBase::InitPlaneGridResources()
         },
     };
     MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-    auto handle = registry.Acquire(kPlaneGridCfg);
-    if (!handle.IsValid()) return false;
-    mtl_plane_grid = handle.material;
-
     mi_plane_grid = registry.AcquireMI(kPlaneGridCfg,
                                       &white_color, sizeof(white_color));
     if (!mi_plane_grid) return false;
+
+    mtl_plane_grid = mi_plane_grid->GetMaterial();
 
     return true;
 }
