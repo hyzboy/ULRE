@@ -7,6 +7,7 @@
 #include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/vk/VKResourceDomain.h>
 #include <hgl/vk/VKDomainMaterialBinding.h>
+#include <hgl/vk/VKVertexInputConfig.h>
 
 namespace hgl::graph
 {
@@ -124,9 +125,15 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     if (!handle.material)
         return {};
 
-    // 2. ResourceDomain (按 domain_id 缓存)
+    const AnsiString &mat_name = handle.material->GetName();
+    std::string mat_name_str(mat_name.c_str() ? mat_name.c_str() : "",
+                             mat_name.c_str() ? static_cast<size_t>(mat_name.Length()) : 0);
+
+    // 2. ResourceDomain (按 material_name + domain_id 缓存)
     const std::string &did = rec.domain_id;          // 空串 → 默认域
-    auto it_domain = domain_cache.find(did);
+    const std::string domain_cache_key = mat_name_str + "#" + did;
+
+    auto it_domain = domain_cache.find(domain_cache_key);
     if (it_domain != domain_cache.end())
     {
         handle.domain = it_domain->second;
@@ -136,14 +143,10 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
         handle.domain = mm->CreateResourceDomain(handle.material);
         if (!handle.domain)
             return {};
-        domain_cache[did] = handle.domain;
+        domain_cache[domain_cache_key] = handle.domain;
     }
 
     // 3. DomainMaterialBinding (按 material_name + domain_id + texture_hash 缓存)
-    const AnsiString &mat_name = handle.material->GetName();
-    std::string mat_name_str(mat_name.c_str() ? mat_name.c_str() : "",
-                             mat_name.c_str() ? static_cast<size_t>(mat_name.Length()) : 0);
-
     uint64_t tex_hash = ComputeTextureConfigHash(rec.textures);
     DMBKey key { std::move(mat_name_str), did, tex_hash };
 
@@ -217,6 +220,38 @@ MaterialInstance *MaterialAssetRegistry::CreateMI(
     spec.instance_data_size = instance_data_size;
 
     return mm->AcquireMaterialInstance(spec);
+}
+
+MaterialInstance *MaterialAssetRegistry::CreateMI(
+    const MaterialDomainHandle &handle,
+    const mtl::MaterialAssetRecord &rec,
+    const void *instance_data,
+    uint32_t instance_data_size)
+{
+    if (!handle.IsValid())
+        return nullptr;
+
+    if (rec.mi_vil_overrides.empty())
+    {
+        return CreateMI(handle,
+                        rec.pipeline,
+                        static_cast<const VertexInputLayout *>(nullptr),
+                        instance_data,
+                        instance_data_size);
+    }
+
+    VILConfig vil_cfg;
+
+    for (const auto &ov : rec.mi_vil_overrides)
+    {
+        VAConfig vac;
+        vac.format = ov.format;
+
+        if (!vil_cfg.Add(ov.attrib, vac))
+            return nullptr;
+    }
+
+    return CreateMI(handle, rec.pipeline, &vil_cfg, instance_data, instance_data_size);
 }
 
 } // namespace hgl::graph

@@ -32,7 +32,7 @@ class MaterialAssetRegistry
     TextureManager  *tm;
     SamplerManager  *sm;
 
-    // domain_id → ResourceDomain*
+    // (material_cache_name + domain_id) → ResourceDomain*
     std::unordered_map<std::string, ResourceDomain*> domain_cache;
 
     // DMB 缓存 key = (material_cache_name, domain_id, texture_config_hash)
@@ -67,6 +67,7 @@ public:
     MaterialDomainHandle Acquire(const mtl::MaterialAssetRecord &rec);
 
     /// 从三元组创建 MI（per-object slot，每次都新建，用于合批）
+    [[deprecated("Use CreateMI(handle, MaterialAssetRecord, ...) so MI vertex-input overrides are carried by record")]]
     MaterialInstance *CreateMI(const MaterialDomainHandle &handle,
                                GraphicsPipelinePreset pipeline,
                                const VertexInputLayout *vil = nullptr,
@@ -74,9 +75,16 @@ public:
                                uint32_t instance_data_size = 0);
 
     /// VILConfig 重载
+    [[deprecated("Use CreateMI(handle, MaterialAssetRecord, ...) so MI vertex-input overrides are carried by record")]]
     MaterialInstance *CreateMI(const MaterialDomainHandle &handle,
                                GraphicsPipelinePreset pipeline,
                                const VILConfig *vil_cfg,
+                               const void *instance_data = nullptr,
+                               uint32_t instance_data_size = 0);
+
+    /// Record 驱动重载：pipeline 与可选 VIL 覆写均来自 rec
+    MaterialInstance *CreateMI(const MaterialDomainHandle &handle,
+                               const mtl::MaterialAssetRecord &rec,
                                const void *instance_data = nullptr,
                                uint32_t instance_data_size = 0);
 

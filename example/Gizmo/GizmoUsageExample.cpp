@@ -85,6 +85,9 @@ private:
                 .preset   = mtl::MaterialPreset::VertexLuminance2D,
                 .prim     = PrimitiveType::Lines,
                 .pipeline = GraphicsPipelinePreset::Solid3D,
+                .mi_vil_overrides = {
+                    { VAN::Luminance, VF_V1UN8 },
+                },
             };
 
             auto handle = registry.Acquire(kGridCfg);
@@ -93,11 +96,8 @@ private:
 
             grid_material = handle.material;
 
-            VILConfig vil_config;
-            vil_config.Add(VAN::Luminance, VF_V1UN8);
-
             const Color4f white = GetColor4f(COLOR::White, 1.0f);
-            grid_mi = registry.CreateMI(handle, kGridCfg.pipeline, &vil_config, &white, sizeof(white));
+            grid_mi = registry.CreateMI(handle, kGridCfg, &white, sizeof(white));
             if(!grid_mi)
                 return false;
 
@@ -134,7 +134,7 @@ private:
             cube_material = handle.material;
 
             const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            cube_mi = registry.CreateMI(handle, kCubeCfg.pipeline, (const VertexInputLayout*)nullptr, &blue, sizeof(blue));
+            cube_mi = registry.CreateMI(handle, kCubeCfg, &blue, sizeof(blue));
             if(!cube_mi)
                 return false;
 

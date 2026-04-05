@@ -95,6 +95,9 @@ private:
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
+            .mi_vil_overrides = {
+                { VAN::Luminance, VF_V1UN8 },
+            },
         };
         static const mtl::MaterialAssetRecord kLineCfg {
             .id       = "ray_picking_line",
@@ -102,12 +105,12 @@ private:
             .preset   = mtl::MaterialPreset::VertexLuminance3D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
+            .mi_vil_overrides = {
+                { VAN::Luminance, VF_V1UN8 },
+            },
         };
 
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
-
-        VILConfig vil_config;
-        vil_config.Add(VAN::Luminance, VF_V1UN8);
 
         // Plane grid: 2D Position + Luminance
         {
@@ -116,18 +119,18 @@ private:
 
             mtl_plane_grid = handle.material;
 
-            mi_plane_grid = registry.CreateMI(handle, kPlaneGridCfg.pipeline, &vil_config, &white_color, sizeof(white_color));
+            mi_plane_grid = registry.CreateMI(handle, kPlaneGridCfg, &white_color, sizeof(white_color));
             if(!mi_plane_grid)return(false);
         }
 
-        // Ray line: 3D Position + Luminance (separate Material, use its default VIL)
+        // Ray line: 3D Position + Luminance (separate Material)
         {
             auto handle = registry.Acquire(kLineCfg);
             if(!handle.IsValid())return(false);
 
             mtl_line = handle.material;
 
-            mi_line = registry.CreateMI(handle, kLineCfg.pipeline,&vil_config, &yellow_color, sizeof(yellow_color));
+            mi_line = registry.CreateMI(handle, kLineCfg, &yellow_color, sizeof(yellow_color));
             if(!mi_line)return(false);
         }
 
