@@ -100,7 +100,7 @@ private:
            sampler))                           ///<采样器
             return(false);
 
-        material_instance = registry.CreateMI(handle, GraphicsPipelinePreset::Solid2D);
+        material_instance = registry.CreateMI(handle, kRoundRectCfg);
 
         return(material_instance!=nullptr);
     }

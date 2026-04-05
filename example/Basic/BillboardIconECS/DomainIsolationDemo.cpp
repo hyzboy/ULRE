@@ -164,17 +164,17 @@ private:
             .preset    = mtl::MaterialPreset::VertexLuminance2D,
             .prim      = PrimitiveType::Lines,
             .pipeline  = GraphicsPipelinePreset::Solid3D,
+            .mi_vil_overrides = {
+                { VAN::Luminance, VF_V1UN8 },
+            },
         };
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
         auto handle = registry.Acquire(kPlaneGridCfg);
         if (!handle.IsValid()) return false;
         mtl_plane_grid = handle.material;
 
-        VILConfig vil_config;
-        vil_config.Add(VAN::Luminance, VF_V1UN8);
-
-        mi_plane_grid = registry.CreateMI(handle, GraphicsPipelinePreset::Solid3D,
-                                          &vil_config, &white_color, sizeof(white_color));
+        mi_plane_grid = registry.CreateMI(handle, kPlaneGridCfg,
+                          &white_color, sizeof(white_color));
         if (!mi_plane_grid) return false;
 
         return true;

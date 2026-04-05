@@ -78,7 +78,7 @@ private:
 
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
-        mi = registry.CreateMI(handle, kCubeCfg.pipeline, (const VertexInputLayout*)nullptr, &color, sizeof(color));
+        mi = registry.CreateMI(handle, kCubeCfg, &color, sizeof(color));
 
         if(!mi)
             return false;

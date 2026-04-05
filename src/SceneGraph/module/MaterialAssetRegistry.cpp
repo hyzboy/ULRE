@@ -178,6 +178,21 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     return handle;
 }
 
+MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialAssetRecord &rec,
+                                                   const void *instance_data,
+                                                   uint32_t instance_data_size,
+                                                   MaterialDomainHandle *out_handle)
+{
+    MaterialDomainHandle handle = Acquire(rec);
+    if (!handle.IsValid())
+        return nullptr;
+
+    if (out_handle)
+        *out_handle = handle;
+
+    return CreateMI(handle, rec, instance_data, instance_data_size);
+}
+
 // ── CreateMI ─────────────────────────────────────────────────────────────────
 
 MaterialInstance *MaterialAssetRegistry::CreateMI(

@@ -89,7 +89,7 @@ private:
         if(!handle.IsValid())
             return(false);
 
-        material_instance = registry.CreateMI(handle, GraphicsPipelinePreset::Solid2D);
+        material_instance = registry.CreateMI(handle, kTexQuadCfg);
 
         return(material_instance!=nullptr);
     }

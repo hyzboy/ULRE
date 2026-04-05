@@ -60,16 +60,15 @@ private:
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
+            .mi_vil_overrides = {
+                { VAN::Luminance, VF_V1UN8 },
+            },
         };
 
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
         auto handle = registry.Acquire(kPlaneGridCfg);
         if(!handle.IsValid())return(false);
         material = handle.material;
-
-        VILConfig vil_config;
-
-        vil_config.Add(VAN::Luminance,VF_V1UN8);
 
         Color4f GridColor;
         COLOR ce=COLOR::BlenderAxisRed;
@@ -78,7 +77,7 @@ private:
         {
             GridColor=GetColor4f(ce,1.0);
 
-            material_instance[i] = registry.CreateMI(handle, kPlaneGridCfg.pipeline, &vil_config, &GridColor, sizeof(GridColor));
+            material_instance[i] = registry.CreateMI(handle, kPlaneGridCfg, &GridColor, sizeof(GridColor));
 
             ce=COLOR((int)ce+1);
         }

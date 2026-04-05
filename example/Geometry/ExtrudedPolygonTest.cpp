@@ -69,7 +69,7 @@ private:
 
         Color4f color=GetColor4f(COLOR::BlenderAxisRed);
 
-        material_instance = registry.CreateMI(handle, kExtrudedCfg.pipeline, (const VertexInputLayout*)nullptr, &color, sizeof(color));
+        material_instance = registry.CreateMI(handle, kExtrudedCfg, &color, sizeof(color));
 
         return material_instance != nullptr;
     }

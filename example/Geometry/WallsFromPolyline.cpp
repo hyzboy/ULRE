@@ -143,7 +143,7 @@ public:
 
         material = handle.material;
 
-        material_instance = registry.CreateMI(handle, GraphicsPipelinePreset::Solid3D, (const VertexInputLayout*)nullptr, &mi_data, sizeof(mi_data));
+        material_instance = registry.CreateMI(handle, kWallsCfg, &mi_data, sizeof(mi_data));
         if(!material_instance) return false;
 
         const VIL *vil = material->GetDefaultVIL();

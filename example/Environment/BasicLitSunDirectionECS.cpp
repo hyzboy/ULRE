@@ -197,7 +197,7 @@ private:
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
 
-        material_instance = registry.CreateMI(handle, GraphicsPipelinePreset::Solid3D, (const VertexInputLayout*)nullptr, &mi_data, sizeof(mi_data));
+        material_instance = registry.CreateMI(handle, kStandardCfg, &mi_data, sizeof(mi_data));
         if (!material_instance)
             return false;
 

@@ -103,7 +103,7 @@ private:
             // 为每个三角形创建不同颜色的MaterialInstance
             for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
             {
-                triangles[i].mi = registry.CreateMI(handle, kMergeCfg.pipeline);
+                triangles[i].mi = registry.CreateMI(handle, kMergeCfg);
 
                 if (!triangles[i].mi)
                     return false;

@@ -160,9 +160,8 @@ public:
         mtl = handle.material;
 
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        mi = registry.CreateMI(handle, GraphicsPipelinePreset::Solid3D,
-                               (const VertexInputLayout*)nullptr,
-                               &sphere_color, sizeof(sphere_color));
+        mi = registry.CreateMI(handle, kSphereCfg,
+                       &sphere_color, sizeof(sphere_color));
         if (!mi)
             return false;
 
@@ -342,9 +341,8 @@ private:
         cube_mi_data.roughness = 0.92f;
         cube_mi_data.normal_scale = 0.35f;
 
-        cube_mi = registry.CreateMI(handle, GraphicsPipelinePreset::Solid3D,
-                                     (const VertexInputLayout*)nullptr,
-                                     &cube_mi_data, sizeof(cube_mi_data));
+        cube_mi = registry.CreateMI(handle, kCubeCfg,
+                         &cube_mi_data, sizeof(cube_mi_data));
         if (!cube_mi)
             return false;
 

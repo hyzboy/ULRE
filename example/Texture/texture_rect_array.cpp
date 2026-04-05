@@ -152,7 +152,7 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].mi = registry.CreateMI(handle, GraphicsPipelinePreset::Solid2D);
+            render_obj[i].mi = registry.CreateMI(handle, kTexArrayCfg);
 
             if(!render_obj[i].mi)
                 return(false);

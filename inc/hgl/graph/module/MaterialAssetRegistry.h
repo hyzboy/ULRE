@@ -66,6 +66,14 @@ public:
     /// Material 已缓存，Domain 按 domain_id 缓存，DMB 按纹理配置缓存
     MaterialDomainHandle Acquire(const mtl::MaterialAssetRecord &rec);
 
+    /// 一站式：Acquire + CreateMI（推荐外部调用）
+    /// - 大多数调用方只需要 MI，不需要直接接触 MaterialDomainHandle。
+    /// - 若需要后续访问 DMB，可传 out_handle 取回完整句柄。
+    MaterialInstance *AcquireMI(const mtl::MaterialAssetRecord &rec,
+                                const void *instance_data = nullptr,
+                                uint32_t instance_data_size = 0,
+                                MaterialDomainHandle *out_handle = nullptr);
+
     /// 从三元组创建 MI（per-object slot，每次都新建，用于合批）
     [[deprecated("Use CreateMI(handle, MaterialAssetRecord, ...) so MI vertex-input overrides are carried by record")]]
     MaterialInstance *CreateMI(const MaterialDomainHandle &handle,

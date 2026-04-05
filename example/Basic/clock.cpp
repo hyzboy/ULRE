@@ -122,7 +122,7 @@ private:
             // 刻度颜色（白色）
             Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
 
-            mi_tick = registry.CreateMI(handle, kClockCfg.pipeline);
+            mi_tick = registry.CreateMI(handle, kClockCfg);
             if(mi_tick)
                 mi_tick->WriteMIData(tick_color);
 
@@ -135,7 +135,7 @@ private:
 
             for (uint i = 0; i < 3; i++)
             {
-                hands[i].mi = registry.CreateMI(handle, kClockCfg.pipeline);
+                hands[i].mi = registry.CreateMI(handle, kClockCfg);
                 if (!hands[i].mi)
                     return false;
                 hands[i].mi->WriteMIData(hand_colors[i]);

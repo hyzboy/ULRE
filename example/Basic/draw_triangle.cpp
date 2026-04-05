@@ -86,20 +86,18 @@ private:
             .pos_format = POSITION_SHADER_FORMAT,   // VAT_IVEC2: shader中 ivec2 顶点输入
             .coord_2d   = CoordinateSystem2D::Ortho,
             .pipeline   = GraphicsPipelinePreset::Solid2D,
+            .mi_vil_overrides = {
+                { VAN::Position, POSITION_DATA_FORMAT },
+                { VAN::Color, COLOR_DATA_FORMAT },
+            },
         };
-
-        VILConfig vil_config;
-
-        vil_config.Add(VAN::Position,   POSITION_DATA_FORMAT);     //这里指定VAB中使用RG16I当做顶点数据格式
-
-        vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
         auto handle = registry.Acquire(kTriangleCfg);
         if (!handle.IsValid())
             return false;
 
-        material_instance = registry.CreateMI(handle, kTriangleCfg.pipeline, &vil_config);
+        material_instance = registry.CreateMI(handle, kTriangleCfg);
 
         return material_instance != nullptr;
     }

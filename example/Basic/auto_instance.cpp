@@ -80,17 +80,16 @@ private:
                 .preset   = mtl::MaterialPreset::VertexColor2D,
                 .dim      = mtl::MaterialAssetRecord::Dim::D2,
                 .pipeline = GraphicsPipelinePreset::Solid2D,
+                .mi_vil_overrides = {
+                    { VAN::Color, VF_V4UN8 },
+                },
             };
-
-            VILConfig vil_config;
-
-            vil_config.Add(VAN::Color,VF_V4UN8);
 
             MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
             auto handle = registry.Acquire(kAutoInstanceCfg);
             if (handle.IsValid())
             {
-                material_instance = registry.CreateMI(handle, kAutoInstanceCfg.pipeline, &vil_config);
+                material_instance = registry.CreateMI(handle, kAutoInstanceCfg);
             }
         }
 

@@ -65,7 +65,7 @@ private:
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
         auto handle = registry.Acquire(kAxisCfg);
         if (!handle.IsValid()) return false;
-        material_instance = registry.CreateMI(handle, kAxisCfg.pipeline);
+        material_instance = registry.CreateMI(handle, kAxisCfg);
 
         return material_instance != nullptr;
     }

@@ -86,6 +86,9 @@ private:
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
+            .mi_vil_overrides = {
+                { VAN::Luminance, VF_V1UN8 },
+            },
         };
         MaterialAssetRegistry registry(material_manager, nullptr, nullptr);
         auto handle = registry.Acquire(kPlaneGridCfg);
@@ -95,11 +98,8 @@ private:
         std::cout << "[BillboardECS] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;
 
         // Create material instance
-        VILConfig vil_config;
-        vil_config.Add(VAN::Luminance, VF_V1UN8);
-
-        mi_plane_grid = registry.CreateMI(handle, GraphicsPipelinePreset::Solid3D,
-                                          &vil_config, &white_color, sizeof(white_color));
+        mi_plane_grid = registry.CreateMI(handle, kPlaneGridCfg,
+                          &white_color, sizeof(white_color));
         if (!mi_plane_grid) return false;
 
         std::cout << "[BillboardECS] PlaneGrid MI: " << (void*)mi_plane_grid << std::endl;
