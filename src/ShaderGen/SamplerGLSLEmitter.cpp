@@ -1,5 +1,6 @@
 ﻿#include <hgl/shadergen/SamplerGLSLEmitter.h>
 #include <hgl/shadergen/MaterialDescriptorDB.h>
+#include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include <hgl/common/ShaderDescriptorDef.h>
 #include <algorithm>
@@ -31,35 +32,19 @@ namespace
         const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(slot);
         const char *legacy_name = mtl::ToDescriptorName(slot);
         const std::string upper_name = mtl::ToUpperASCII(mtl::SamplerSlotNameList[uint8(slot)]);
+        ShaderWriter writer(out);
 
-        out += "layout(set=";
-        out += std::to_string(descriptor->set);
-        out += ", binding=";
-        out += std::to_string(descriptor->binding);
-        out += ") uniform sampler2D ";
-        out += sampler_symbol;
-        out += ";\n";
-
-        out += "#ifndef ";
-        out += legacy_name;
-        out += "\n#define ";
-        out += legacy_name;
-        out += ' ';
-        out += sampler_symbol;
-        out += "\n#endif\n";
-
-        out += "#define HAS_SAMPLER_";
-        out += upper_name;
-        out += "\n";
+        writer.EmitLayoutBinding(descriptor->set, descriptor->binding)
+              .EmitUniform("sampler2D", sampler_symbol)
+              .EmitIfndefDef(legacy_name, sampler_symbol)
+              .EmitDefine("HAS_SAMPLER_" + upper_name);
 
         if (channel_hint == TextureChannelHint::Grayscale)
         {
-            out += "#define SAMPLER_";
-            out += upper_name;
-            out += "_GRAYSCALE\n";
+            writer.EmitDefine("SAMPLER_" + upper_name + "_GRAYSCALE");
         }
 
-        out += "\n";
+        writer.NewLine();
     }
 
     // Generates sampler2DArray binding + layer index global + getter — no #ifdef guards.
@@ -69,47 +54,31 @@ namespace
         const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(slot);
         const char *slot_name      = mtl::SamplerSlotNameList[uint8(slot)];
         const std::string upper_name = mtl::ToUpperASCII(slot_name);
+        ShaderWriter writer(out);
 
-        out += "layout(set=";
-        out += std::to_string(descriptor->set);
-        out += ", binding=";
-        out += std::to_string(descriptor->binding);
-        out += ") uniform sampler2DArray ";
-        out += sampler_symbol;
-        out += ";\n";
+        writer.EmitLayoutBinding(descriptor->set, descriptor->binding)
+              .EmitUniform("sampler2DArray", sampler_symbol);
 
         // Per-slot layer index — written by _ULRE_InitTextureLayerIndices() at frame start.
-        out += "uint _tex_layer_";
-        out += slot_name;
-        out += ";\n";
+        writer.EmitVariable("uint", std::string("_tex_layer_") + slot_name);
 
-        out += "#define HAS_SAMPLER_";
-        out += upper_name;
-        out += "\n";
-
-        out += "#define SAMPLER_";
-        out += upper_name;
-        out += "_ARRAY\n";
+        writer.EmitDefine("HAS_SAMPLER_" + upper_name)
+              .EmitDefine("SAMPLER_" + upper_name + "_ARRAY");
 
         if (channel_hint == TextureChannelHint::Grayscale)
         {
-            out += "#define SAMPLER_";
-            out += upper_name;
-            out += "_GRAYSCALE\n";
+            writer.EmitDefine("SAMPLER_" + upper_name + "_GRAYSCALE");
         }
 
-        out += "\n";
+        writer.NewLine();
     }
 
     static void AppendGenericSampler(std::string &out, const ShaderDescriptor *descriptor)
     {
-        out += "layout(set=";
-        out += std::to_string(descriptor->set);
-        out += ", binding=";
-        out += std::to_string(descriptor->binding);
-        out += ") uniform sampler2D ";
-        out += descriptor->name;
-        out += ";\n\n";
+        ShaderWriter writer(out);
+        writer.EmitLayoutBinding(descriptor->set, descriptor->binding)
+              .EmitUniform("sampler2D", descriptor->name)
+              .NewLine();
     }
 }
 
@@ -241,42 +210,44 @@ std::string EmitMaterialInstanceTextureGLSL(const MaterialDescriptorDB &mdi, Sha
     std::sort(array_slots.begin(), array_slots.end());
 
     std::string out;
+    ShaderWriter writer(out);
     out.reserve(512);
-    out += "// ---- Auto-generated MaterialInstanceTexture SSBO ----\n";
+    writer.EmitLine("// ---- Auto-generated MaterialInstanceTexture SSBO ----");
 
     // 1. struct MaterialInstanceTexture { uint SlotName; ... };
-    out += "struct MaterialInstanceTexture\n{\n";
+    writer.EmitLine("struct MaterialInstanceTexture").BeginBlock();
     for (const mtl::SamplerSlot slot : array_slots)
     {
-        out += "    uint ";
-        out += mtl::SamplerSlotNameList[uint8(slot)];
-        out += ";\n";
+        writer.EmitLine(std::string("    uint ") + mtl::SamplerSlotNameList[uint8(slot)] + ";");
     }
-    out += "};\n\n";
+    writer.EmitLine("};").NewLine();
 
     // 2. SSBO layout (uses PERMATERIAL_SET / MIT_BINDING from layout defines).
-    out += "layout(std430, set=PERMATERIAL_SET, binding=MIT_BINDING) readonly buffer MaterialInstanceTextureID\n";
-    out += "{\n    MaterialInstanceTexture tex_id[];\n} mit;\n\n";
+    writer.EmitLine("layout(std430, set=PERMATERIAL_SET, binding=MIT_BINDING) readonly buffer MaterialInstanceTextureID");
+    writer.EmitLine("{");
+    writer.EmitLine("    MaterialInstanceTexture tex_id[];");
+    writer.EmitLine("} mit;");
+    writer.NewLine();
 
     // 3. GetMaterialInstanceTexture(uint instance_id)
-    out += "MaterialInstanceTexture GetMaterialInstanceTexture(uint instance_id)\n";
-    out += "{\n    return mit.tex_id[instance_id];\n}\n\n";
+    writer.EmitLine("MaterialInstanceTexture GetMaterialInstanceTexture(uint instance_id)");
+    writer.EmitLine("{");
+    writer.EmitLine("    return mit.tex_id[instance_id];");
+    writer.EmitLine("}");
+    writer.NewLine();
 
     // 4. _ULRE_InitTextureLayerIndices(uint instance_id)
-    out += "void _ULRE_InitTextureLayerIndices(uint instance_id)\n{\n";
-    out += "    MaterialInstanceTexture _m = GetMaterialInstanceTexture(instance_id);\n";
+    writer.EmitLine("void _ULRE_InitTextureLayerIndices(uint instance_id)");
+    writer.EmitLine("{");
+    writer.EmitLine("    MaterialInstanceTexture _m = GetMaterialInstanceTexture(instance_id);");
     for (const mtl::SamplerSlot slot : array_slots)
     {
         const char *name = mtl::SamplerSlotNameList[uint8(slot)];
-        out += "    _tex_layer_";
-        out += name;
-        out += " = _m.";
-        out += name;
-        out += ";\n";
+        writer.EmitLine(std::string("    _tex_layer_") + name + " = _m." + name + ";");
     }
-    out += "}\n";
+    writer.EmitLine("}");
 
-    out += "// ------------------------------------------------------\n\n";
+    writer.EmitLine("// ------------------------------------------------------").NewLine();
     return out;
 }
 }

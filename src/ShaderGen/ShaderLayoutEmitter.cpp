@@ -4,6 +4,7 @@
 /// prepended to any shader stage source.
 
 #include <hgl/shadergen/ShaderLayoutEmitter.h>
+#include <hgl/shadergen/ShaderWriter.h>
 #include <string>
 
 namespace hgl::graph
@@ -16,17 +17,14 @@ static void AppendSection(std::string       &out,
     if (entries.empty())
         return;
 
-    out += "// ";
-    out += section_comment;
-    out += '\n';
+    ShaderWriter writer(out);
+
+    writer.EmitLine(std::string("// ") + section_comment);
 
     for (const ShaderLayoutEntry &e : entries)
     {
-        out += "#define ";
-        out += e.macro_name;
-        out += ' ';
-        out += std::to_string(e.value);
-        out += '\n';
+        const std::string value_text = std::to_string(e.value);
+        writer.EmitDefine(e.macro_name, value_text.c_str());
     }
 }
 
@@ -36,15 +34,16 @@ std::string EmitShaderLayoutDefines(const ShaderLayoutContract &contract)
         return {};
 
     std::string out;
+    ShaderWriter writer(out);
     out.reserve(512);
 
-    out += "// ---- Auto-generated layout defines ----\n";
+    writer.EmitLine("// ---- Auto-generated layout defines ----");
 
     AppendSection(out, "Vertex input locations", contract.vertex_locations);
     AppendSection(out, "Descriptor sets",        contract.descriptor_sets);
     AppendSection(out, "Descriptor bindings",    contract.descriptor_bindings);
 
-    out += "// ----------------------------------------\n\n";
+    writer.EmitLine("// ----------------------------------------").NewLine();
     return out;
 }
 
