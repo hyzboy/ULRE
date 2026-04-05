@@ -93,7 +93,6 @@ inline MaterialVariantKey MakeBillboardKeyBase(const RenderAlphaMode blend_mode)
 {
     MaterialVariantKey key;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-    key.SetHasTexture(SamplerSlot::BaseColor);
     key.blend_mode = blend_mode;
     key.pass_hint = BlendModeToPassHint(blend_mode);
     return key;

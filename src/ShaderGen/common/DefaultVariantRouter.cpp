@@ -65,7 +65,11 @@ GenericVariantPolicyResult BuildGenericVariantPolicy(const MaterialVariantKey &i
         if (!config.slot_rules[i].force_route_has_texture)
             continue;
 
-        result.route_key.SetHasTexture(config.slot_rules[i].slot);
+        // Ensure the feature bit is set. If no source mode has been assigned yet,
+        // default to Simple so that source_bits and feature_bits stay consistent.
+        const SamplerSlot fslot = config.slot_rules[i].slot;
+        if (result.route_key.GetTextureSourceMode(fslot) == TextureSourceMode::None)
+            result.route_key.SetTextureSourceMode(fslot, TextureSourceMode::Simple);
     }
 
     result.assemble_key = result.route_key;

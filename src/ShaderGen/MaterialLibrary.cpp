@@ -55,7 +55,6 @@ static MaterialVariantKey MakePureTexture2DKey()
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::Quad2D;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-    key.SetHasTexture(SamplerSlot::BaseColor);
     return key;
 }
 
@@ -65,7 +64,6 @@ static MaterialVariantKey MakeText2DKey()
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::Quad2D;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Atlas);
-    key.SetHasTexture(SamplerSlot::BaseColor);
     return key;
 }
 
@@ -146,7 +144,6 @@ static MaterialVariantKey MakeBillboard2DDynamicKey()
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::BillboardCameraFacing;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-    key.SetHasTexture(SamplerSlot::BaseColor);
     key.blend_mode = RenderAlphaMode::Transparent;
     key.pass_hint = PassType::ForwardTransparent;
     return key;
@@ -158,7 +155,6 @@ static MaterialVariantKey MakeBillboard2DFixedKey()
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::BillboardAxisLocked;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-    key.SetHasTexture(SamplerSlot::BaseColor);
     key.blend_mode = RenderAlphaMode::Transparent;
     key.pass_hint = PassType::ForwardTransparent;
     return key;

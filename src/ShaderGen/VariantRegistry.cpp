@@ -2,6 +2,7 @@
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include <algorithm>
+#include <cstdio>
 #include <initializer_list>
 
 namespace hgl::graph::mtl{
@@ -12,13 +13,25 @@ namespace hgl::graph::mtl{
 
 void VariantRegistry::RegisterVariant(const MaterialVariantKey &key, const MaterialVariantDesc &desc)
 {
-    variant_map[key.Hash()] = VariantEntry{key,desc};
+    const uint64 hash = key.Hash();
+    auto it = variant_map.find(hash);
+    if (it != variant_map.end() && !(it->second.key == key))
+    {
+        std::fprintf(stderr,
+            "[VariantRegistry] Hash collision on RegisterVariant '%s' (hash=0x%016llx); existing entry kept.\n",
+            desc.variant_name.empty() ? "<unnamed>" : desc.variant_name.c_str(),
+            static_cast<unsigned long long>(hash));
+        return;
+    }
+    variant_map[hash] = VariantEntry{key, desc};
 }
 
 const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKey &key) const
 {
     auto it = variant_map.find(key.Hash());
     if (it == variant_map.end())
+        return nullptr;
+    if (!(it->second.key == key))
         return nullptr;
     return &it->second.desc;
 }
@@ -223,7 +236,6 @@ inline MaterialVariantKey KB(GeometryMode gm, RenderAlphaMode blend, PassType pa
     MaterialVariantKey k;
     k.geometry_mode = gm;
     k.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-    k.SetHasTexture(SamplerSlot::BaseColor);
     k.blend_mode = blend;
     k.pass_hint  = pass;
     return k;
@@ -353,7 +365,7 @@ void VariantRegistry::InitializeBuiltinVariants()
                  "surface/gizmo3d_surface.glsl"));
 
     // ------------------------------------------------------------------
-    // Billboard variants (2 geometries × 3 blend modes)
+    // Billboard variants (2 geometries × 4 blend modes)
     // ------------------------------------------------------------------
     static const struct {
         const char    *name;
@@ -363,10 +375,12 @@ void VariantRegistry::InitializeBuiltinVariants()
         PassType       pass;
         const char    *vs_path;
     } kBillboardVariants[] = {
+        {"Billboard2DDynamicOpaque", MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, RenderAlphaMode::Opaque,           PassType::ForwardOpaque,      "compositor/main_forward_billboard_dynamic.vert.glsl"},
         {"Billboard2DDynamic",       MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, RenderAlphaMode::Transparent,      PassType::ForwardTransparent, "compositor/main_forward_billboard_dynamic.vert.glsl"},
         {"Billboard2DDynamicMasked", MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, RenderAlphaMode::Masked,           PassType::ForwardMasked,      "compositor/main_forward_billboard_dynamic.vert.glsl"},
         {"Billboard2DDynamicDither", MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, RenderAlphaMode::Dither,           PassType::ForwardDither,      "compositor/main_forward_billboard_dynamic.vert.glsl"},
         {"Billboard2DDynamicA2C",    MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, RenderAlphaMode::AlphaToCoverage,  PassType::ForwardA2C,         "compositor/main_forward_billboard_dynamic.vert.glsl"},
+        {"Billboard2DFixedOpaque",   MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   RenderAlphaMode::Opaque,           PassType::ForwardOpaque,      "compositor/main_forward_billboard_fixed.vert.glsl"},
         {"Billboard2DFixed",         MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   RenderAlphaMode::Transparent,      PassType::ForwardTransparent, "compositor/main_forward_billboard_fixed.vert.glsl"},
         {"Billboard2DFixedMasked",   MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   RenderAlphaMode::Masked,           PassType::ForwardMasked,      "compositor/main_forward_billboard_fixed.vert.glsl"},
         {"Billboard2DFixedDither",   MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   RenderAlphaMode::Dither,           PassType::ForwardDither,      "compositor/main_forward_billboard_fixed.vert.glsl"},

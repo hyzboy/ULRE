@@ -76,15 +76,6 @@ namespace hgl::graph::mtl
             return TextureSourceMode((texture_source_bits >> shift) & TextureSourceMask);
         }
 
-        void SetHasTexture(const SamplerSlot slot, const bool enabled = true) noexcept
-        {
-            const uint32 bit = SamplerFeatureBit(slot);
-            if (enabled)
-                sampler_feature_bits |= bit;
-            else
-                sampler_feature_bits &= ~bit;
-        }
-
         bool HasTexture(const SamplerSlot slot) const noexcept
         {
             return (sampler_feature_bits & SamplerFeatureBit(slot)) != 0;
