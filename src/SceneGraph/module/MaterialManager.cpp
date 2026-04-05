@@ -688,7 +688,6 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     AnsiString hash_name="variant";
     char key_hash[32] = {};
     std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
-    std::printf("[DEBUG] CreateMaterial hash=%s ST=%d GM=%d tex=%u sampler=%u\n", key_hash, int(key.surface_type), int(key.geometry_mode), key.texture_source_bits, key.sampler_feature_bits);
     hash_name+="#";
     hash_name+=key_hash;
     hash_name+="?";
@@ -737,163 +736,6 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     return mat;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl)
-{
-    HGL_CAPTURE_SCOPE();
-
-    if(!mtl)return(nullptr);
-
-    MaterialInstance *mi=mtl->CreateMI();
-
-    if(mi)
-    {
-        Add(mi);
-        VulkanDevice *device = GetDevice();
-        if(device)
-            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
-                              ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
-    }
-
-    return mi;
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl, GraphicsPipelinePreset preset)
-{
-    MaterialInstanceSpec spec;
-    spec.material = mtl;
-    spec.preset = preset;
-
-    return AcquireMaterialInstance(spec, nullptr);
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil)
-{
-    HGL_CAPTURE_SCOPE();
-
-    if(!mtl)return(nullptr);
-
-    MaterialInstance *mi=mtl->CreateMI(vil);
-
-    if(mi)
-    {
-        Add(mi);
-        VulkanDevice *device = GetDevice();
-        if(device)
-            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
-                              ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
-    }
-
-    return mi;
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil, GraphicsPipelinePreset preset)
-{
-    MaterialInstanceSpec spec;
-    spec.material = mtl;
-    spec.vil = vil;
-    spec.preset = preset;
-
-    return AcquireMaterialInstance(spec, nullptr);
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg)
-{
-    HGL_CAPTURE_SCOPE();
-
-    if(!mtl)return(nullptr);
-
-    MaterialInstance *mi=mtl->CreateMI(vil_cfg);
-
-    if(mi)
-    {
-        Add(mi);
-        VulkanDevice *device = GetDevice();
-        if(device)
-            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
-                              ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
-    }
-
-    return mi;
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg, GraphicsPipelinePreset preset)
-{
-    MaterialInstanceSpec spec;
-    spec.material = mtl;
-    spec.vil_cfg = vil_cfg;
-    spec.preset = preset;
-
-    return AcquireMaterialInstance(spec, nullptr);
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil,const void *mi_data,const uint32 mi_bytes)
-{
-    HGL_CAPTURE_SCOPE();
-
-    if(!mtl)return(nullptr);
-
-    MaterialInstance *mi=mtl->CreateMI(vil);
-
-    if(!mi)
-        return nullptr;
-
-    Add(mi);
-    VulkanDevice *device = GetDevice();
-    if(device)
-        device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
-                          ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
-
-    if(mi_data&&mi_bytes>0)
-        mi->WriteMIData(mi_data,mi_bytes);
-
-    return mi;
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil,const void *mi_data,const uint32 mi_bytes, GraphicsPipelinePreset preset)
-{
-    MaterialInstanceSpec spec;
-    spec.material = mtl;
-    spec.vil = vil;
-    spec.instance_data = mi_data;
-    spec.instance_data_size = mi_bytes;
-    spec.preset = preset;
-
-    return AcquireMaterialInstance(spec, nullptr);
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *mi_data,const uint32 mi_bytes)
-{
-    HGL_CAPTURE_SCOPE();
-
-    if(!mtl)return(nullptr);
-
-    MaterialInstance *mi=mtl->CreateMI(vil_cfg);
-
-    if(!mi)
-        return nullptr;
-
-    Add(mi);
-    // MaterialInstanceData is a C++ object managed by MaterialManager, not a Vulkan object
-    // No need to track with ObjectTracker
-
-    if(mi_data&&mi_bytes>0)
-        mi->WriteMIData(mi_data,mi_bytes);
-
-    return mi;
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *mi_data,const uint32 mi_bytes, GraphicsPipelinePreset preset)
-{
-    MaterialInstanceSpec spec;
-    spec.material = mtl;
-    spec.vil_cfg = vil_cfg;
-    spec.instance_data = mi_data;
-    spec.instance_data_size = mi_bytes;
-    spec.preset = preset;
-
-    return AcquireMaterialInstance(spec, nullptr);
-}
-
 MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)
 {
     acquire_mi_requests.fetch_add(1);
@@ -912,10 +754,33 @@ MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanc
     }
     else
     {
+        Material *mtl = spec.material;
+        if(!mtl) return nullptr;
+
         if(spec.vil_cfg)
-            mi = CreateMaterialInstance(spec.material, spec.vil_cfg, spec.instance_data, spec.instance_data_size);
+        {
+            mi = mtl->CreateMI(spec.vil_cfg);
+            if(mi)
+            {
+                Add(mi);
+                if(spec.instance_data && spec.instance_data_size > 0)
+                    mi->WriteMIData(spec.instance_data, spec.instance_data_size);
+            }
+        }
         else
-            mi = CreateMaterialInstance(spec.material, spec.vil, spec.instance_data, spec.instance_data_size);
+        {
+            mi = mtl->CreateMI(spec.vil);
+            if(mi)
+            {
+                Add(mi);
+                VulkanDevice *device = GetDevice();
+                if(device)
+                    device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
+                                      ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
+                if(spec.instance_data && spec.instance_data_size > 0)
+                    mi->WriteMIData(spec.instance_data, spec.instance_data_size);
+            }
+        }
     }
 
     if(!mi)
@@ -943,64 +808,6 @@ bool MaterialManager::UpdateInstanceData(MaterialInstance *mi, const void *data,
 
     mi->WriteMIData(data, data_size);
     return true;
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
-{
-    HGL_CAPTURE_SCOPE();
-
-    Material *mtl=this->CreateMaterial(mtl_id,mcc);
-
-    if(!mtl)
-    {
-        std::fprintf(stderr,
-            "[MaterialManager] CreateMaterialInstance failed to create material (preset=2D %s), using fallback\n",
-            mtl::GetMaterialPresetName(mtl_id));
-        mtl = GetFallbackMaterial();
-        if(!mtl)
-           return nullptr;
-    }
-
-    return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size, GraphicsPipelinePreset preset)
-{
-    MaterialInstance *mi = CreateMaterialInstance(mtl_id,mcc,vil_cfg,data,data_size);
-
-    if(mi)
-        mi->SetRenderPreset(preset);
-
-    return mi;
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
-{
-    HGL_CAPTURE_SCOPE();
-
-    Material *mtl=this->CreateMaterial(mtl_id,mcc);
-
-    if(!mtl)
-    {
-        std::fprintf(stderr,
-            "[MaterialManager] CreateMaterialInstance failed to create material (preset=3D %s), using fallback\n",
-            mtl::GetMaterialPresetName(mtl_id));
-        mtl = GetFallbackMaterial();
-        if(!mtl)
-            return nullptr;
-    }
-
-    return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size, GraphicsPipelinePreset preset)
-{
-    MaterialInstance *mi = CreateMaterialInstance(mtl_id,mcc,vil_cfg,data,data_size);
-
-    if(mi)
-        mi->SetRenderPreset(preset);
-
-    return mi;
 }
 
 // ============================================================================

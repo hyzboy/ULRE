@@ -15,8 +15,6 @@
 ///       .tex_base_color = "res/image/Brick/Albedo.Tex2D",
 ///       .tex_normal     = "res/image/Brick/Normal.Tex2D",
 ///   };
-///   Material* mtl = LoadMaterialFromRecord(mm, tm, sm, kMeshMtl);
-
 #include <hgl/mtl/MaterialAssetRecord.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
@@ -28,31 +26,6 @@
 
 namespace hgl::graph
 {
-
-// ── 纹理绑定辅助函数（供 Registry 和旧 Loader 共用）──────────────────────────
-
-/// 将 record 中的纹理加载并绑定到 Material（旧路径，兼容用）
-[[deprecated("Use MaterialAssetRegistry::Acquire() — textures are now bound to DomainMaterialBinding")]]
-inline bool BindTexturesFromRecord(
-    Material *material,
-    TextureManager *tm,
-    SamplerManager *sm,
-    const mtl::MaterialAssetRecord &rec)
-{
-    if (!material || !tm || !sm) return false;
-
-    for (const auto &tc : rec.textures)
-    {
-        if (tc.path.empty()) continue;
-        auto *tex = tm->LoadTexture2D(hgl::ToOSString(tc.path), true);
-        if (!tex) return false;
-        auto *smp = sm->CreateSampler();
-        if (!smp) return false;
-        if (!material->BindTextureSampler(tc.slot, tex, smp))
-            return false;
-    }
-    return true;
-}
 
 // ── Material 创建（不含纹理绑定）──────────────────────────────────────────────
 
@@ -122,31 +95,5 @@ inline Material *CreateMaterialFromRecord(
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
         return mm->AcquireMaterial(rec.preset, &cfg);
     }
-}
-
-// ── 旧兼容入口（Material 创建 + 可选纹理绑定）─────────────────────────────────
-
-/// 将 MaterialAssetRecord 转换为相应的 CreateConfig 并获取材质。
-/// 若 tex_* 路径非空且 tm/sm 均非 null，则自动加载纹理并绑定到材质。
-/// @return 获取到的 Material*，失败返回 nullptr。
-[[deprecated("Use MaterialAssetRegistry::Acquire() + CreateMI() instead")]]
-inline Material *LoadMaterialFromRecord(
-    MaterialManager   *mm,
-    TextureManager    *tm,      ///< 可为 null（跳过纹理加载）
-    SamplerManager    *sm,      ///< 可为 null（跳过纹理加载）
-    const mtl::MaterialAssetRecord &rec)
-{
-    Material *material = CreateMaterialFromRecord(mm, rec);
-    if (!material) return nullptr;
-
-    // ── 纹理绑定（tm/sm 均非 null 时执行）────────────────────────────
-    if (tm && sm)
-    {
-        if (!BindTexturesFromRecord(material, tm, sm, rec))
-            return nullptr;
-    }
-
-    return material;
-}
-
 } // namespace hgl::graph
+}
