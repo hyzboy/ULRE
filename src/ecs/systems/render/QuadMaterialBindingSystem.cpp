@@ -20,7 +20,7 @@ namespace hgl::ecs
     QuadMaterialBindingSystem::QuadMaterialBindingSystem(const std::string& name)
         : System(name)
     {
-        SetSystemType(SystemType::Material);
+        SetSystemType(SystemType::ShaderProgram);
         SetExecutionOrder(ExecutionPhase::RenderMaterialBind);
         SetRenderElementType("Billboard");
         AddDependency<QuadResourcePrepareSystem>();
@@ -130,7 +130,7 @@ namespace hgl::ecs
         if (!mi)
             return false;
 
-        graph::Material *previous_material = nullptr;
+        graph::ShaderProgram *previous_material = nullptr;
         if (auto *previous_mi = quad->GetOverrideMaterial())
             previous_material = previous_mi->GetMaterial();
 
@@ -169,7 +169,7 @@ namespace hgl::ecs
                 primitive_manager->Release(current_primitive);
         }
 
-        graph::Material *material = mi->GetMaterial();
+        graph::ShaderProgram *material = mi->GetMaterial();
         if (!material)
         {
             return false;
@@ -233,7 +233,7 @@ namespace hgl::ecs
         if (!material_manager || !primitive_manager)
             return false;
 
-        // Create a MaterialInstance from the domain's shared Material
+        // Create a MaterialInstance from the domain's shared ShaderProgram
         graph::MaterialInstanceSpec spec;
         spec.material = dr->material;
         spec.preset   = QuadResourcePrepareSystem::GetPresetForWorld(world);

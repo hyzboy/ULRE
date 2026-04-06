@@ -40,7 +40,7 @@ enum class ObjectTypeTag : uint8_t
     // Custom types (for logging)
     RenderTarget,
     Texture,
-    Material,
+    ShaderProgram,
     MaterialInstance,
     Mesh,
 
@@ -91,7 +91,7 @@ inline const char* GetTagString(ObjectTypeTag tag)
         case ObjectTypeTag::VKSwapchain:              return "VKSwapchain";
         case ObjectTypeTag::RenderTarget:           return "RT";
         case ObjectTypeTag::Texture:                return "Texture";
-        case ObjectTypeTag::Material:               return "Material";
+        case ObjectTypeTag::ShaderProgram:               return "ShaderProgram";
         case ObjectTypeTag::MaterialInstance:       return "MaterialInstance";
         case ObjectTypeTag::Mesh:                   return "Mesh";
         case ObjectTypeTag::IndirectDrawBuffer:     return "IndirectDrawBuf";

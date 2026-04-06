@@ -53,7 +53,7 @@ private:
     ECSContext* ecs_world = nullptr;   // 由默认 ECSContext 统一维护
 
     // 传统渲染资源
-    Material* material = nullptr;
+    ShaderProgram* material = nullptr;
     Geometry* geometry = nullptr;
 
     // 每个三角形的数据
@@ -89,8 +89,8 @@ private:
                 {
                     material = triangles[i].mi->GetMaterial();
                     std::cout << "[TestApp::InitMaterial] Created material: " << (void*)material << std::endl;
-                    std::cout << "[TestApp::InitMaterial] Material has MI: " << material->hasMI() << std::endl;
-                    std::cout << "[TestApp::InitMaterial] Material MI data bytes: " << material->GetMIDataBytes() << std::endl;
+                    std::cout << "[TestApp::InitMaterial] ShaderProgram has MI: " << material->hasMI() << std::endl;
+                    std::cout << "[TestApp::InitMaterial] ShaderProgram MI data bytes: " << material->GetMIDataBytes() << std::endl;
                 }
 
                 // 使用不同的颜色
@@ -252,7 +252,7 @@ public:
 
 int os_main(int argc, os_char** argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Auto Merge Material Instance (ECS Version)"), argc, argv, 1024, 1024);
+    return RunFramework<TestApp>(OS_TEXT("Auto Merge ShaderProgram Instance (ECS Version)"), argc, argv, 1024, 1024);
 }
 
 

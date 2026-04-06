@@ -9,7 +9,7 @@ namespace hgl
     namespace graph
     {
         class Primitive;
-        class Material;
+        class ShaderProgram;
         class MaterialInstance;
     }
 
@@ -52,7 +52,7 @@ namespace hgl::ecs
         // For material batching support
         virtual hgl::graph::Primitive* GetPrimitive() const = 0;
         virtual hgl::graph::MaterialInstance* GetMaterialInstance() const = 0;
-        virtual hgl::graph::Material* GetMaterial() const = 0;
+        virtual hgl::graph::ShaderProgram* GetMaterial() const = 0;
 
         // Comparison for sorting
         virtual int Compare(const RenderItem& other) const;

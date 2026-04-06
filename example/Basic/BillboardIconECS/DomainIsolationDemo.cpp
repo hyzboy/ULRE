@@ -141,7 +141,7 @@ private:
     Entity* camera_entity = nullptr;
 
     // PlaneGrid resources
-    Material*         mtl_plane_grid  = nullptr;
+    ShaderProgram*         mtl_plane_grid  = nullptr;
     MaterialInstance* mi_plane_grid   = nullptr;
     Geometry*         geom_plane_grid = nullptr;
     Primitive*        prim_plane_grid = nullptr;

@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialInstance.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
 
@@ -154,7 +154,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPip
 
     if(geom->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
-        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than Material, Material name: "+mtl_name);
+        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than ShaderProgram, ShaderProgram name: "+mtl_name);
 
         return(nullptr);
     }
@@ -183,14 +183,14 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPip
 
         if(!vab)
         {
-            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(vab_name)+"\" in Material: "+mtl_name);
+            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(vab_name)+"\" in ShaderProgram: "+mtl_name);
             return(nullptr);
         }
 
         if(vab->GetFormat()!=vif->format)
         {
             GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vab_name)+
-                        AnsiString("\" format can't match Primitive, Material(")+mtl_name+
+                        AnsiString("\" format can't match Primitive, ShaderProgram(")+mtl_name+
                         AnsiString(") Format(")+GetVulkanFormatName(vif->format)+
                         AnsiString(") , VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
                         ")");
@@ -200,7 +200,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPip
         if(vab->GetStride()!=vif->stride)
         {
             GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vab_name)+
-                        AnsiString("\" stride can't match Primitive, Material(")+mtl_name+
+                        AnsiString("\" stride can't match Primitive, ShaderProgram(")+mtl_name+
                         AnsiString(") stride(")+AnsiString::numberOf(vif->stride)+
                         AnsiString(") , VAB stride(")+AnsiString::numberOf(vab->GetStride())+
                         ")");

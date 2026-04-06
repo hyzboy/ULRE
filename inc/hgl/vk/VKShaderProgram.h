@@ -10,6 +10,7 @@
 
 namespace hgl::graph{
 
+class MaterialManager;
 class IGPUBuffer;
 class ResourceDomain;   ///< Phase 5: forward decl
 class UBOAccessorBase;
@@ -29,7 +30,7 @@ using ShaderStageCreateInfoList=ValueArray<VkPipelineShaderStageCreateInfo>;
  * 用于管理shader，提供DescriptorSetLayoutCreater.
  * 在材质需要用到UBO.SSBO数据情况下，Material不能被用于渲染，需要一个MaterialInstance来提供数据才能进行渲染。所以一般情况下，不使用Material进行渲染。<br>
  */
-class Material
+class ShaderProgram
 {
     OBJECT_LOGGER
 
@@ -63,11 +64,11 @@ private:
 
     friend class MaterialManager;
 
-    Material(const AnsiString &,const mtl::MaterialCreateInfo *);
+    ShaderProgram(const AnsiString &,const mtl::MaterialCreateInfo *);
 
 public:
 
-    virtual ~Material();
+    virtual ~ShaderProgram();
 
     const   AnsiString &                        GetName                 ()const{return name;}
     const   mtl::DescriptorBindingSlots &              GetBindingContract      ()const{return binding_contract;}
@@ -146,9 +147,9 @@ public:
     void ReleaseMI(int);    ///<释放材质实例
     void *GetMIData(int);   ///<取得指定ID号的材质实例数据访问指针
 
-    MaterialInstance *CreateMI(const VIL *);
-    MaterialInstance *CreateMI(const VILConfig *vil_cfg=nullptr);
-};//class Material
+    MaterialInstance *CreateMI(MaterialManager *, const VIL *);
+    MaterialInstance *CreateMI(MaterialManager *, const VILConfig *vil_cfg=nullptr);
+};//class ShaderProgram
 
-using MaterialSet=std::unordered_set<Material *>;
+using MaterialSet=std::unordered_set<ShaderProgram *>;
 }//namespace hgl::graph

@@ -39,7 +39,7 @@ private:
     ECSContext *ecs_context = nullptr;
     Entity *camera_entity = nullptr;
 
-    Material *material = nullptr;
+    ShaderProgram *material = nullptr;
     MaterialInstance *mi = nullptr;
 
     Geometry *geometry = nullptr;

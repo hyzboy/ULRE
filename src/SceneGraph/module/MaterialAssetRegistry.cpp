@@ -3,7 +3,7 @@
 #include <hgl/graph/module/MaterialManager.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/SamplerManager.h>
-#include <hgl/vk/VKMaterial.h>
+#include <hgl/vk/VKShaderProgram.h>
 #include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/vk/VKResourceDomain.h>
 #include <hgl/vk/VKDomainMaterialBinding.h>
@@ -41,10 +41,10 @@ static bool BindDomainTexturesFromRecord(
 }
 
 // Legacy compatibility: many render paths still bind per-material descriptors
-// from Material directly (without domain binding registration).
+// from ShaderProgram directly (without domain binding registration).
 // Keep this best-effort fallback to avoid unbound sampler validation errors.
 static void BindMaterialTexturesCompat(
-    Material *material,
+    ShaderProgram *material,
     TextureManager *tm,
     SamplerManager *sm,
     const mtl::MaterialAssetRecord &rec)
@@ -70,7 +70,7 @@ static void BindMaterialTexturesCompat(
     }
 }
 
-static const VIL *ResolveVILFromRecord(Material *material, const mtl::MaterialAssetRecord &rec)
+static const VIL *ResolveVILFromRecord(ShaderProgram *material, const mtl::MaterialAssetRecord &rec)
 {
     if (!material)
         return nullptr;
@@ -94,7 +94,7 @@ static const VIL *ResolveVILFromRecord(Material *material, const mtl::MaterialAs
     return material->GetDefaultVIL();
 }
 
-static const VIL *ResolveVILFromGeometry(Material *material,
+static const VIL *ResolveVILFromGeometry(ShaderProgram *material,
                                          const Geometry *geometry,
                                          const mtl::MaterialAssetRecord &fallback_rec)
 {
@@ -132,7 +132,7 @@ static const VIL *ResolveVILFromGeometry(Material *material,
     return ResolveVILFromRecord(material, fallback_rec);
 }
 
-static const VIL *ResolveRuntimeVIL(Material *material,
+static const VIL *ResolveRuntimeVIL(ShaderProgram *material,
                                     const mtl::MaterialAssetRecord &final_rec,
                                     const GeometrySignature &geometry)
 {
@@ -322,7 +322,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
 {
     MaterialDomainHandle handle;
 
-    // 1. Material (AcquireMaterial 内部已缓存)
+    // 1. ShaderProgram (AcquireMaterial 内部已缓存)
     handle.material = CreateMaterialFromRecord(mm, rec);
     if (!handle.material)
         return {};
@@ -369,7 +369,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
             if (!BindDomainTexturesFromRecord(handle.binding, tm, sm, rec))
                 return {};
 
-            // Compatibility fallback for code paths that still use Material MP
+            // Compatibility fallback for code paths that still use ShaderProgram MP
             // instead of DomainMaterialBinding MP during draw binding.
             BindMaterialTexturesCompat(handle.material, tm, sm, rec);
         }

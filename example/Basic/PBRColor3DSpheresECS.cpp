@@ -45,7 +45,7 @@ private:
     ECSContext *ecs_world = nullptr;
     Entity *camera_entity = nullptr;
 
-    Material *material = nullptr;
+    ShaderProgram *material = nullptr;
 
     VertexDataManager *mesh_vdm = nullptr;
     Geometry *builtin_geometries[GEOMETRY_VARIANT_COUNT]{};

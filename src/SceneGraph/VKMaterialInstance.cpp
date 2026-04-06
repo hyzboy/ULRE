@@ -1,15 +1,16 @@
 ﻿#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKResourceDomain.h>
+#include<hgl/graph/module/MaterialManager.h>
 #include<cstring>
 
 namespace hgl::graph{
 
 // ---------------------------------------------------------------------------
-// Material::CreateMI — 旧路径（不涉及 ResourceDomain）
+// ShaderProgram::CreateMI — 旧路径（不涉及 ResourceDomain）
 // ---------------------------------------------------------------------------
 
-MaterialInstance *Material::CreateMI(const VIL *vil)
+MaterialInstance *ShaderProgram::CreateMI(MaterialManager *material_manager, const VIL *vil)
 {
     // Phase 5: 旧路径统一通过懒初始化的 default_domain 分配 MI 槽位
     if(!default_domain && hasMI())
@@ -17,17 +18,17 @@ MaterialInstance *Material::CreateMI(const VIL *vil)
 
     int mi_id = default_domain ? default_domain->AllocMISlot() : -1;
 
-    auto *mi = new MaterialInstance(this, default_domain, vil ? vil : GetDefaultVIL(), mi_id);
+    auto *mi = new MaterialInstance(material_manager, default_domain, vil ? vil : GetDefaultVIL(), mi_id);
     mi->InitMITLayout(texture_array_slot_flags);
     return mi;
 }
 
-MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
+MaterialInstance *ShaderProgram::CreateMI(MaterialManager *material_manager, const VILConfig *vil_cfg)
 {
-    return CreateMI(CreateVIL(vil_cfg));
+    return CreateMI(material_manager, CreateVIL(vil_cfg));
 }
 
-void Material::ReleaseMI(int mi_id)
+void ShaderProgram::ReleaseMI(int mi_id)
 {
     // Phase 5: 保留接口兼容性；通过 default_domain 代理释放
     if(mi_id < 0 || !default_domain) return;
@@ -35,7 +36,7 @@ void Material::ReleaseMI(int mi_id)
     default_domain->FreeMISlot(mi_id);
 }
 
-void *Material::GetMIData(int id)
+void *ShaderProgram::GetMIData(int id)
 {
     // Phase 5: 通过 default_domain 代理访问
     if(!default_domain)
@@ -49,15 +50,20 @@ void *Material::GetMIData(int id)
 // ---------------------------------------------------------------------------
 
 /// 旧路径：domain = nullptr
-MaterialInstance::MaterialInstance(Material *mtl, const VIL *v, const int id)
-    : material(mtl), domain(nullptr), vil(v), mi_id(id)
+ShaderProgram *MaterialInstance::GetMaterial() const
+{
+    return material_manager ? material_manager->ResolveMaterial(this) : nullptr;
+}
+
+MaterialInstance::MaterialInstance(MaterialManager *mm, const VIL *v, const int id)
+    : material_manager(mm), domain(nullptr), vil(v), mi_id(id)
 {
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }
 
 /// Phase 1 新路径：经由 ResourceDomain 分配
-MaterialInstance::MaterialInstance(Material *mtl, ResourceDomain *d, const VIL *v, const int id)
-    : material(mtl), domain(d), vil(v), mi_id(id)
+MaterialInstance::MaterialInstance(MaterialManager *mm, ResourceDomain *d, const VIL *v, const int id)
+    : material_manager(mm), domain(d), vil(v), mi_id(id)
 {
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }
@@ -66,8 +72,6 @@ MaterialInstance::~MaterialInstance()
 {
     if(domain)
         domain->FreeMISlot(mi_id);
-    else
-        material->ReleaseMI(mi_id);
 
     delete[] mit_packed;
 }
@@ -81,12 +85,13 @@ void *MaterialInstance::GetMIData()
     if(domain)
         return domain->GetMIData(mi_id);
 
-    return material->GetMIData(mi_id);
+    return nullptr;
 }
 
 void MaterialInstance::WriteMIData(const void *data,const uint32 size)
 {
-    if(!data||!size||size>material->GetMIDataBytes())return;
+    ShaderProgram *material = GetMaterial();
+    if(!data||!size||!material||size>material->GetMIDataBytes())return;
 
     void *tp=GetMIData();
 

@@ -46,7 +46,7 @@ struct MaterialAssetRecord
 {
     // ── 标识 ──────────────────────────────────────────────────────────────────
     std::string     id;                                     ///< 逻辑资产名（缓存键 / 文件名干）
-    std::string     domain_id;                              ///< 资源域标识（同 Material 不同域 = 不同渲染批次）
+    std::string     domain_id;                              ///< 资源域标识（同 ShaderProgram 不同域 = 不同渲染批次）
     MaterialPreset  preset  = MaterialPreset::Standard;     ///< 材质预设
 
     // ── 维度选择 ──────────────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ struct MaterialAssetRecord
     GraphicsPipelinePreset pipeline = GraphicsPipelinePreset::Solid3D;
 
     // ── MaterialInstance 顶点输入覆写（可选）─────────────────────────────────────
-    // 空列表 = 使用 Material 默认 VIL。
+    // 空列表 = 使用 ShaderProgram 默认 VIL。
     // 非空 = 在 CreateMI 时构建 VILConfig 覆写指定 attrib 的格式。
     struct VILOverride
     {

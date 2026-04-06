@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKResourceDomain.h>
@@ -41,7 +41,7 @@ struct MaterialSpecKey
 
 struct MaterialInstanceSpecKey
 {
-    Material *material = nullptr;
+    ShaderProgram *material = nullptr;
     const VIL *vil = nullptr;
     GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
     ResourceDomain *domain = nullptr;
@@ -71,7 +71,7 @@ struct MaterialSpec
 
 struct MaterialInstanceSpec
 {
-    Material *material = nullptr;
+    ShaderProgram *material = nullptr;
     ResourceDomain *domain = nullptr;
 
     const VIL *vil = nullptr;
@@ -108,10 +108,11 @@ GRAPH_MODULE_CLASS(MaterialManager)
 private:
 
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
-    UnorderedMap<AnsiString,Material *> material_by_name;
+    UnorderedMap<AnsiString,ShaderProgram *> material_by_name;
 
-    AutoIdObjectManager<MaterialID,             Material>           rm_material;                ///<材质合集
+    AutoIdObjectManager<MaterialID,             ShaderProgram>           rm_material;                ///<材质合集
     AutoIdObjectManager<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
+    std::unordered_map<const MaterialInstance *, ShaderProgram *>        material_instance_material_map;
 
     // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding
     std::unordered_map<ResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
@@ -127,7 +128,7 @@ private:
     std::atomic<uint64_t> acquire_mi_created {0};
 
     // Fallback material for error handling (initialized on first use)
-    Material *fallback_material = nullptr;
+    ShaderProgram *fallback_material = nullptr;
 
 private:
 
@@ -138,39 +139,46 @@ private:
 
 private: // Helper methods with integrated DebugUtils
 
-    Material *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
-    Material *CreateMaterial(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);   ///<基于内置材质ID创建2D材质
-    Material *CreateMaterial(const mtl::MaterialPreset, mtl::Material3DCreateConfig *);   ///<基于内置材质ID创建3D材质
-    Material *CreateMaterial(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质
-    Material *CreateMaterial(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质
+    ShaderProgram *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
+    ShaderProgram *CreateMaterial(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);   ///<基于内置材质ID创建2D材质
+    ShaderProgram *CreateMaterial(const mtl::MaterialPreset, mtl::Material3DCreateConfig *);   ///<基于内置材质ID创建3D材质
+    ShaderProgram *CreateMaterial(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质
+    ShaderProgram *CreateMaterial(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质
     class GraphicsPipelineLayoutData *CreateMaterialGraphicsPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class GraphicsPipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
-    void ApplyMaterialFinalizePlan(Material *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci);
-    Material *TryGetCachedMaterial(const AnsiString &name);
-    bool ExecuteMaterialBuildPipeline(Material *mtl,
+    void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci);
+    ShaderProgram *TryGetCachedMaterial(const AnsiString &name);
+    bool ExecuteMaterialBuildPipeline(ShaderProgram *mtl,
                                       const AnsiString &mtl_name,
                                       const mtl::MaterialCreateInfo *mci,
                                       const ShaderStageMap &sci_map);
 
-     Material *TryInitializeFallbackMaterial();
-     Material *GetFallbackMaterial();
+     ShaderProgram *TryInitializeFallbackMaterial();
+     ShaderProgram *GetFallbackMaterial();
+    void BindInstanceMaterial(MaterialInstance *mi, ShaderProgram *material);
+    void ForgetInstanceMaterial(MaterialInstance *mi);
 
 public: //Add
 
-    MaterialID              Add(Material *          mtl ){return rm_material.Add(mtl);}
+    MaterialID              Add(ShaderProgram *          mtl ){return rm_material.Add(mtl);}
     MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
 
 public: //Get
 
-    Material *          GetMaterial         (const MaterialID           &id){return rm_material.Get(id);}
+    ShaderProgram *          GetMaterial         (const MaterialID           &id){return rm_material.Get(id);}
     MaterialInstance *  GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
+    ShaderProgram *          ResolveMaterial     (const MaterialInstance *mi)const;
 
 public: //Release
 
-    void Release(Material *         mtl ){rm_material.Release(mtl);}
-    void Release(MaterialInstance * mi  ){rm_material_instance.Release(mi);}
+    void Release(ShaderProgram *         mtl ){rm_material.Release(mtl);}
+    void Release(MaterialInstance * mi  )
+    {
+        ForgetInstanceMaterial(mi);
+        rm_material_instance.Release(mi);
+    }
 
-    void Destroy(Material *mtl)
+    void Destroy(ShaderProgram *mtl)
     {
         if (!mtl)
             return;
@@ -187,6 +195,7 @@ public: //Release
         if (!mi)
             return;
 
+        ForgetInstanceMaterial(mi);
         rm_material_instance.Release(mi, true);
     }
 
@@ -214,6 +223,8 @@ public: // Override Release from GraphModule - cleanup all resources
         // 清理所有材质实例（MI dtor 会调 domain->FreeMISlot，domain 须在此之后释放）
         if (rm_material_instance.GetCount() > 0)
             rm_material_instance.Clear();
+
+        material_instance_material_map.clear();
 
         // Phase 3: 清理所有 DomainMaterialBinding 及 ResourceDomain
         for (auto &kv : domain_bindings_map)
@@ -297,13 +308,13 @@ public: // Acquire stats
         acquire_mi_created.store(0);
     }
 
-public: //Material
+public: //ShaderProgram
 
-    Material *          AcquireMaterial (const MaterialSpec &spec, MaterialSpecKey *out_key = nullptr);
-    Material *          AcquireMaterial (const mtl::MaterialPreset, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
-    Material *          AcquireMaterial (const mtl::MaterialPreset, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
-    Material *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
-    Material *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    ShaderProgram *          AcquireMaterial (const MaterialSpec &spec, MaterialSpecKey *out_key = nullptr);
+    ShaderProgram *          AcquireMaterial (const mtl::MaterialPreset, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    ShaderProgram *          AcquireMaterial (const mtl::MaterialPreset, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    ShaderProgram *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    ShaderProgram *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
 
 public: //MaterialInstanceData
 
@@ -316,11 +327,11 @@ public: // ResourceDomain — Phase 1 / Phase 3
      * 创建一个以 mtl 为模板的资源域，并初始化其 MI 数据池。
      * Phase 1: 池 stride/max_count 从 mtl 复制，分配独立 ActiveMemoryBlockManager。
      */
-    ResourceDomain *        CreateResourceDomain        (Material *mtl);
+    ResourceDomain *        CreateResourceDomain        (ShaderProgram *mtl);
 
     /**
      * 以显式 MI 布局创建资源域。
-     * Phase A: 解耦 ResourceDomain 与具体 Material 变体所有权。
+     * Phase A: 解耦 ResourceDomain 与具体 ShaderProgram 变体所有权。
      */
     ResourceDomain *        CreateResourceDomain        (uint32_t mi_data_bytes, uint32_t mi_max_count);
 
@@ -330,7 +341,7 @@ public: // ResourceDomain — Phase 1 / Phase 3
      * Phase 3: 同一 domain 可绑定多个 Material（Opaque + Masked 等），各 binding 独立管理。
      * 关系检查：MI stride 必须兼容；描述符集类型差异以 Warning 形式打印。
      */
-    DomainMaterialBinding * CreateDomainMaterialBinding (ResourceDomain *domain, Material *mtl);
+    DomainMaterialBinding * CreateDomainMaterialBinding (ResourceDomain *domain, ShaderProgram *mtl);
 
     /**
      * 释放一个 DomainMaterialBinding，并将其从所属域的追踪列表中移除。
@@ -348,17 +359,17 @@ public: // ResourceDomain MaterialInstanceData creation (Phase 1)
 
     // Create MI from a semantic-owned domain binding to a concrete runtime variant material.
     MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain,
-                                               Material *material,
+                                               ShaderProgram *material,
                                                const VIL *vil,
                                                const void *data,
                                                const uint32 data_size);
 
     // Phase D: update MI render material/vil without reallocating MI slot.
-    bool RebindMaterialInstance(MaterialInstance *mi, Material *material, const VIL *vil);
+    bool RebindMaterialInstance(MaterialInstance *mi, ShaderProgram *material, const VIL *vil);
 
 public: // Phase 0 Stats — 帧级资源量观测
 
-    /// 当前存活 Material 数量
+    /// 当前存活 ShaderProgram 数量
     uint32_t GetMaterialCount()         const { return (uint32_t)rm_material.GetCount(); }
 
     /// 当前存活 MaterialInstance 数量

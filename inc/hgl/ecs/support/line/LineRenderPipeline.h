@@ -14,7 +14,7 @@ namespace hgl
     {
         class VulkanDevice;
         class DeviceBuffer;
-        class Material;
+        class ShaderProgram;
         class MaterialInstance;
         class GraphicsPipeline;
         class RenderTargetFormat;
@@ -73,7 +73,7 @@ namespace hgl::ecs
 
         // ------- GPU resources (created in Initialize()) -------
         graph::VulkanDevice*    device_         = nullptr;
-        graph::Material*        material_       = nullptr;
+        graph::ShaderProgram*        material_       = nullptr;
         graph::MaterialInstance* mi_            = nullptr;
         graph::GraphicsPipeline*        pipeline_       = nullptr;
         graph::RenderTargetFormat*     render_format_  = nullptr;

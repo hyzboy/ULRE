@@ -3,7 +3,7 @@
 /// MaterialAssetRegistry.h — 从 MaterialAssetRecord 一站式创建材质层级
 ///
 /// 内部按层级自动缓存：
-///   Material       — AcquireMaterial 已缓存
+///   ShaderProgram       — AcquireMaterial 已缓存
 ///   ResourceDomain — 按 domain_id 缓存
 ///   DMB            — 按 (material_name, domain_id, texture_config_hash) 缓存
 ///   MI             — per-object slot，每次新建
@@ -25,7 +25,7 @@ class MaterialManager;
 class TextureManager;
 class SamplerManager;
 class MaterialInstance;
-class Material;
+class ShaderProgram;
 
 class MaterialAssetRegistry
 {
@@ -68,7 +68,7 @@ private:
 
         // Phase B groundwork: semantic-level canonical material/domain.
         // Behavior remains compatible until ResolveMI switches to semantic-owned domain path.
-        Material *canonical_material = nullptr;
+        ShaderProgram *canonical_material = nullptr;
         ResourceDomain *shared_domain = nullptr;
     };
 
@@ -96,7 +96,7 @@ private:
     };
 
     // Runtime variant cache (Phase C): final runtime key -> concrete material variant.
-    std::unordered_map<VariantKey, Material*, VariantKeyHash> variant_cache;
+    std::unordered_map<VariantKey, ShaderProgram*, VariantKeyHash> variant_cache;
 
     struct EntitySemanticKey
     {
@@ -133,7 +133,7 @@ public:
     ~MaterialAssetRegistry() = default;
 
     /// 核心 API：传入 record，返回三元组
-    /// Material 已缓存，Domain 按 domain_id 缓存，DMB 按纹理配置缓存
+    /// ShaderProgram 已缓存，Domain 按 domain_id 缓存，DMB 按纹理配置缓存
     MaterialDomainHandle Acquire(const mtl::MaterialAssetRecord &rec);
 
     /// 注册最小语义材质并返回稳定ID（不创建Material/MI）。

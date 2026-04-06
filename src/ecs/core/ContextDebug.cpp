@@ -1,6 +1,6 @@
 ﻿#include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<algorithm>
 
 namespace hgl
@@ -88,7 +88,7 @@ namespace hgl
         #endif
         }
 
-        bool ECSContext::GetMaterialBindingKeys(const hgl::graph::Material *material,
+        bool ECSContext::GetMaterialBindingKeys(const hgl::graph::ShaderProgram *material,
                                                 std::vector<std::string> &out_keys) const
         {
             out_keys.clear();
@@ -115,11 +115,11 @@ namespace hgl
         #if !ULRE_ECS_DEBUG_API
             return false;
         #else
-            const hgl::graph::Material *matched_material = nullptr;
+            const hgl::graph::ShaderProgram *matched_material = nullptr;
 
             for (const auto &pair : render_frame_cache.materialBatches)
             {
-                const hgl::graph::Material *material = pair.first.material;
+                const hgl::graph::ShaderProgram *material = pair.first.material;
                 if (!material)
                     continue;
 
@@ -139,7 +139,7 @@ namespace hgl
 
                     for (const auto &pair : render_frame_cache.materialBatches)
                     {
-                        const hgl::graph::Material *material = pair.first.material;
+                        const hgl::graph::ShaderProgram *material = pair.first.material;
                         if (!material)
                             continue;
 

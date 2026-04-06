@@ -3,14 +3,14 @@
 namespace hgl::graph
 {
 
-class Material;
+class ShaderProgram;
 class ResourceDomain;
 class DomainMaterialBinding;
 
 /// Registry 返回的三元组，调用方拿它去创建 MI
 struct MaterialDomainHandle
 {
-    Material              *material = nullptr;
+    ShaderProgram              *material = nullptr;
     ResourceDomain        *domain   = nullptr;
     DomainMaterialBinding *binding  = nullptr;
 

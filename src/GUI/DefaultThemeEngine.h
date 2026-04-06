@@ -20,7 +20,7 @@ namespace hgl
         {
             struct
             {
-                Material *material;
+                ShaderProgram *material;
                 GraphicsPipeline *pieline;
             }panel;
 

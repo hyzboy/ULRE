@@ -10,12 +10,12 @@ namespace hgl
 namespace hgl::graph
 {
 
-class Material;
+class ShaderProgram;
 
 /**
  * 资源域 (ResourceDomain)
  *
- * 持有与特定 Material 模板兼容的独立 MaterialInstance 数据池。
+ * 持有与特定 ShaderProgram 模板兼容的独立 MaterialInstance 数据池。
  * 同一套 Shader/GraphicsPipeline 可关联多个 ResourceDomain，使不同的资源集合
  * （例如UI图标 vs 角色头像 Billboard）彼此隔离，互不串绑。
  *
@@ -31,10 +31,10 @@ class ResourceDomain
 private:
 
     friend class MaterialManager;
-    friend class Material;          ///< Material::CreateMI 通过便利构造函数创建默认域
+    friend class ShaderProgram;          ///< ShaderProgram::CreateMI 通过便利构造函数创建默认域
 
     ResourceDomain(uint32_t mi_bytes, uint32_t mi_count);
-    explicit ResourceDomain(Material *mtl);
+    explicit ResourceDomain(ShaderProgram *mtl);
 
 public:
 

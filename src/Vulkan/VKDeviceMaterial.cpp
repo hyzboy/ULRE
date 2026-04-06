@@ -1,5 +1,5 @@
 ﻿#include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKDescriptorSet.h>
@@ -49,7 +49,7 @@ MaterialParameters *VulkanDevice::CreateMP(const MaterialDescriptorManager *desc
 #ifdef _DEBUG
     const U8String addr_string=HexToString<u8char,uint64_t>((uint64_t)(ds->GetDescriptorSet()));
 
-    LogInfo(U8_TEXT("Create [DescriptSets:")+addr_string+U8_TEXT("] OK! Material Name: \"")+(const U8String &)(desc_manager->GetMaterialName())+U8_TEXT("\" Type: ")+(u8char *)(GetDescriptorSetTypeName(desc_set_type)));
+    LogInfo(U8_TEXT("Create [DescriptSets:")+addr_string+U8_TEXT("] OK! ShaderProgram Name: \"")+(const U8String &)(desc_manager->GetMaterialName())+U8_TEXT("\" Type: ")+(u8char *)(GetDescriptorSetTypeName(desc_set_type)));
 #endif//_DEBUG
 
     return(new MaterialParameters(desc_manager,desc_set_type,ds));

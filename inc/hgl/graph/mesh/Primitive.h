@@ -4,7 +4,7 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/vk/VKDescriptorSet.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VertexAttrib.h>
@@ -41,7 +41,7 @@ public:
     virtual ~Primitive();
 
             VkPipelineLayout    GetPipelineLayout   (){return mat_inst ? mat_inst->GetMaterial()->GetPipelineLayout() : VK_NULL_HANDLE;}
-            Material *          GetMaterial         (){return mat_inst ? mat_inst->GetMaterial() : nullptr;}
+            ShaderProgram *          GetMaterial         (){return mat_inst ? mat_inst->GetMaterial() : nullptr;}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}

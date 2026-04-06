@@ -4,7 +4,7 @@
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/vk/pipeline/VKRenderTargetFormat.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{

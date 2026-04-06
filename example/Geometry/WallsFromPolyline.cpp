@@ -34,7 +34,7 @@ private:
 
     mtl::StandardMaterialInstance mi_data;
 
-    Material *material = nullptr;
+    ShaderProgram *material = nullptr;
     MaterialInstance *material_instance = nullptr;
     SemanticMaterialId semantic_material_id = 0;
     Sampler *sampler = nullptr;
