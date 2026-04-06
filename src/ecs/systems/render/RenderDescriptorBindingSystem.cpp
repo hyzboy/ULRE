@@ -403,7 +403,9 @@ namespace hgl::ecs
             return;
 
         const auto &cache = context->GetRenderFrameCache();
-        std::unordered_set<graph::Material *> mi_bound_materials;
+        std::unordered_set<uint64_t> transform_bound_material_domain_pairs;
+        std::unordered_set<uint64_t> transform_id_bound_material_domain_pairs;
+        std::unordered_set<uint64_t> mi_bound_material_domain_pairs;
 
         for (const auto &pair : cache.materialBatches)
         {
@@ -414,6 +416,7 @@ namespace hgl::ecs
             out_active.insert(material);
 
             const MaterialBatch *batch = pair.second.get();
+            auto *domain = pair.first.domain;
 
             const auto &contract = material->GetBindingContract();
             ApplySceneUBOBindings(material, contract, scene_ubo_resolvers);
@@ -431,14 +434,30 @@ namespace hgl::ecs
                      && batch->transform_buffer
                      && material->hasLocalToWorld())
                     {
-                        batch->transform_buffer->BindTransform(material);
+                        const uint64_t bind_key = (uint64_t(reinterpret_cast<uintptr_t>(material)) << 1)
+                                                ^ uint64_t(reinterpret_cast<uintptr_t>(domain));
+
+                        if (!transform_bound_material_domain_pairs.contains(bind_key))
+                        {
+                            batch->transform_buffer->BindTransform(material);
+                            transform_bound_material_domain_pairs.insert(bind_key);
+                        }
                     }
                     break;
                 }
                 case graph::mtl::SSBODescriptorSemantic::TransformID:
                 {
                     if (batch && batch->transform_buffer)
-                        batch->transform_buffer->BindTransformID(material);
+                    {
+                        const uint64_t bind_key = (uint64_t(reinterpret_cast<uintptr_t>(material)) << 1)
+                                                ^ uint64_t(reinterpret_cast<uintptr_t>(domain));
+
+                        if (!transform_id_bound_material_domain_pairs.contains(bind_key))
+                        {
+                            batch->transform_buffer->BindTransformID(material);
+                            transform_id_bound_material_domain_pairs.insert(bind_key);
+                        }
+                    }
                     break;
                 }
                 case graph::mtl::SSBODescriptorSemantic::MaterialInstanceID:
@@ -451,11 +470,33 @@ namespace hgl::ecs
                 {
                     if (batch
                      && batch->mi_buffer
-                     && material->hasMI()
-                     && !mi_bound_materials.contains(material))
+                     && material->hasMI())
                     {
-                        batch->mi_buffer->BindMaterialInstance(material);
-                        mi_bound_materials.insert(material);
+                        const uint64_t bind_key = (uint64_t(reinterpret_cast<uintptr_t>(material)) << 1)
+                                                ^ uint64_t(reinterpret_cast<uintptr_t>(domain));
+
+                        static uint32_t s_mi_bind_tick = 0;
+                        const bool log_this = (++s_mi_bind_tick <= 6u);
+
+                        if (!mi_bound_material_domain_pairs.contains(bind_key))
+                        {
+                            if (log_this)
+                                LogDebug("[DescBind::MIDATA] BIND material=%p(%s) domain=%p bind_key=%llu",
+                                         (void*)material,
+                                         material->GetName().c_str(),
+                                         (void*)domain,
+                                         static_cast<unsigned long long>(bind_key));
+
+                            batch->mi_buffer->BindMaterialInstance(material);
+                            mi_bound_material_domain_pairs.insert(bind_key);
+                        }
+                        else if (log_this)
+                        {
+                            LogDebug("[DescBind::MIDATA] SKIP(dup) material=%p domain=%p bind_key=%llu",
+                                     (void*)material,
+                                     (void*)domain,
+                                     static_cast<unsigned long long>(bind_key));
+                        }
                     }
                     break;
                 }

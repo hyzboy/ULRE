@@ -11,6 +11,7 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/common/RenderOptions.h>
 #include <algorithm>
+#include <hgl/log/Log.h>
 
 namespace hgl::ecs
 {
@@ -137,6 +138,29 @@ namespace hgl::ecs
             std::cout << "[MaterialInstanceAssignmentBuffer::StatMaterialInstance] WARNING: MI count ("
                       << unique_mi_count << ") exceeds material max count ("
                       << material->GetMIMaxCount() << ")" << std::endl;
+        }
+
+        // Diagnostic: log first few frames
+        {
+            static uint32_t s_stat_tick = 0;
+            if (++s_stat_tick <= 3u)
+            {
+                std::cout << "[MIAB::Stat] material=" << (void*)material
+                          << "(" << (material ? material->GetName().c_str() : "null") << ")"
+                          << " mi_data_bytes=" << material_instance_data_bytes
+                          << " items=" << item_count
+                          << " unique_MIs=" << unique_mi_count
+                          << std::endl;
+                uint32_t mi_idx = 0;
+                for (graph::MaterialInstance* mi : mi_set)
+                {
+                    std::cout << "[MIAB::Stat]   MI[" << mi_idx++
+                              << "] ptr=" << (void*)mi
+                              << " domain=" << (mi ? (void*)mi->GetDomain() : nullptr)
+                              << " data=" << (mi ? mi->GetMIData() : nullptr)
+                              << std::endl;
+                }
+            }
         }
 
         // MI 数据上传与 MI ID 分发解耦：仅当存在 MI payload 时才分配/写入 MI SSBO
@@ -298,6 +322,17 @@ namespace hgl::ecs
         {
             std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: No MaterialInstanceData collected" << std::endl;
             return;
+        }
+
+        // Diagnostic
+        {
+            static uint32_t s_write_tick = 0;
+            if (++s_write_tick <= 3u)
+                std::cout << "[MIAB::Write] items=" << item_count
+                          << " unique_MIs=" << mi_set.GetCount()
+                          << " mi_id_buf=" << (void*)material_instance_id_buffer
+                          << " mi_data_buf=" << (void*)material_instance_buffer
+                          << std::endl;
         }
 
         // 2. Create or reuse MaterialInstanceID SSBO

@@ -23,7 +23,9 @@ class Material;
  */
 class ResourceDomain
 {
-    Material *source_material   = nullptr;  ///< 该域基于的 Material 模板
+    // Compatibility source material pointer.
+    // Phase A: domain layout can be created explicitly without binding to a variant material.
+    Material *source_material   = nullptr;
 
     uint32_t  mi_data_bytes     = 0;        ///< 单个 MI 数据 stride（从 source_material 复制）
     uint32_t  mi_max_count      = 0;        ///< 渲染批次最大实例数（从 source_material 复制）
@@ -35,6 +37,7 @@ private:
     friend class MaterialManager;
     friend class Material;          ///< Phase 5: Material::CreateMI 需创建默认域
 
+    ResourceDomain(uint32_t mi_bytes, uint32_t mi_count, Material *source = nullptr);
     explicit ResourceDomain(Material *mtl);
 
 public:
@@ -46,6 +49,7 @@ public:
     // ----------------------------------------------------------------
 
     Material *GetSourceMaterial() const { return source_material; }
+    void SetSourceMaterial(Material *m) { source_material = m; }
 
     bool     hasMI()          const { return mi_data_bytes > 0; }
     uint32_t GetMIDataBytes() const { return mi_data_bytes; }

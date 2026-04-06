@@ -319,6 +319,12 @@ public: // ResourceDomain — Phase 1 / Phase 3
     ResourceDomain *        CreateResourceDomain        (Material *mtl);
 
     /**
+     * 以显式 MI 布局创建资源域。
+     * Phase A: 解耦 ResourceDomain 与具体 Material 变体所有权。
+     */
+    ResourceDomain *        CreateResourceDomain        (uint32_t mi_data_bytes, uint32_t mi_max_count, Material *source = nullptr);
+
+    /**
      * 创建一个 (domain, material) 绑定视图，并分配该 pair 专属的 VkDescriptorSet 集合。
      * Phase 2: 支持压缩绑定 Texture/Sampler/UBO/SSBO，与同一 Shader 的其它域完全隔离。
      * Phase 3: 同一 domain 可绑定多个 Material（Opaque + Masked 等），各 binding 独立管理。
@@ -345,6 +351,16 @@ public: // ResourceDomain MaterialInstanceData creation (Phase 1)
     MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg);
     MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size);
     MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size);
+
+    // Phase D: create MI from a semantic-owned domain while binding to a concrete runtime variant material.
+    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain,
+                                               Material *material,
+                                               const VIL *vil,
+                                               const void *data,
+                                               const uint32 data_size);
+
+    // Phase D: update MI render material/vil without reallocating MI slot.
+    bool RebindMaterialInstance(MaterialInstance *mi, Material *material, const VIL *vil);
 
     template<typename T>
     MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VIL *vil, const T *data)

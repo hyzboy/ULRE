@@ -9,6 +9,9 @@
 #include <hgl/vk/VKDomainMaterialBinding.h>
 #include <hgl/vk/VKVertexInputConfig.h>
 
+#include <vector>
+#include <cstdio>
+
 namespace hgl::graph
 {
 
@@ -63,6 +66,30 @@ static void BindMaterialTexturesCompat(
         // Non-fatal by design: may already be bound in cached material path.
         material->BindTextureSampler(tc.slot, tex, smp);
     }
+}
+
+static const VIL *ResolveVILFromRecord(Material *material, const mtl::MaterialAssetRecord &rec)
+{
+    if (!material)
+        return nullptr;
+
+    if (rec.mi_vil_overrides.empty())
+        return material->GetDefaultVIL();
+
+    VILConfig vil_cfg;
+    for (const auto &ov : rec.mi_vil_overrides)
+    {
+        VAConfig vac;
+        vac.format = ov.format;
+
+        if (!vil_cfg.Add(ov.attrib, vac))
+            return material->GetDefaultVIL();
+    }
+
+    if (auto *vil = material->CreateVIL(&vil_cfg))
+        return vil;
+
+    return material->GetDefaultVIL();
 }
 
 // ── FNV-1a 64-bit texture config hash ────────────────────────────────────────
@@ -178,7 +205,7 @@ size_t MaterialAssetRegistry::DMBKeyHash::operator()(const DMBKey &k) const
     return h;
 }
 
-size_t MaterialAssetRegistry::FinalMaterialKeyHash::operator()(const FinalMaterialKey &k) const
+size_t MaterialAssetRegistry::VariantKeyHash::operator()(const VariantKey &k) const
 {
     size_t h = 14695981039346656037ULL;
 
@@ -212,6 +239,21 @@ size_t MaterialAssetRegistry::FinalMaterialKeyHash::operator()(const FinalMateri
         feed(&prim, 1);
         feed(&k.geometry.vil_hash, sizeof(k.geometry.vil_hash));
     }
+
+    return h;
+}
+
+size_t MaterialAssetRegistry::EntitySemanticKeyHash::operator()(const EntitySemanticKey &k) const
+{
+    size_t h = 14695981039346656037ULL;
+
+    const auto *e = reinterpret_cast<const uint8_t*>(&k.entity_id);
+    for (size_t i = 0; i < sizeof(k.entity_id); ++i)
+        h = (h ^ e[i]) * 1099511628211ULL;
+
+    const auto *s = reinterpret_cast<const uint8_t*>(&k.semantic_id);
+    for (size_t i = 0; i < sizeof(k.semantic_id); ++i)
+        h = (h ^ s[i]) * 1099511628211ULL;
 
     return h;
 }
@@ -292,7 +334,25 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
 SemanticMaterialId MaterialAssetRegistry::RegisterSemanticMaterial(const mtl::MaterialAssetRecord &rec)
 {
     const SemanticMaterialId id = ComputeSemanticMaterialHash(rec);
-    semantic_cache.emplace(id, rec);
+
+    auto it = semantic_cache.find(id);
+    if (it == semantic_cache.end())
+    {
+        SemanticMaterialEntry entry;
+        entry.rec = rec;
+
+        // Build canonical material/domain once as Phase B foundation.
+        entry.canonical_material = CreateMaterialFromRecord(mm, rec);
+        if (entry.canonical_material && mm)
+        {
+            entry.shared_domain = mm->CreateResourceDomain(entry.canonical_material->GetMIDataBytes(),
+                                                           entry.canonical_material->GetMIMaxCount(),
+                                                           entry.canonical_material);
+        }
+
+        semantic_cache.emplace(id, std::move(entry));
+    }
+
     return id;
 }
 
@@ -302,7 +362,7 @@ bool MaterialAssetRegistry::QuerySemanticMaterial(SemanticMaterialId id, mtl::Ma
     if (it == semantic_cache.end())
         return false;
 
-    out_rec = it->second;
+    out_rec = it->second.rec;
     return true;
 }
 
@@ -313,31 +373,24 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(SemanticMaterialId semantic_i
                                                    uint32_t instance_data_size,
                                                    MaterialDomainHandle *out_handle)
 {
-    FinalMaterialKey key;
+    // Legacy compatibility path: no entity id means old variant-level MI cache behavior.
+    return ResolveMI(0, semantic_id, request, geometry, instance_data, instance_data_size, out_handle);
+}
+
+MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
+                                                   SemanticMaterialId semantic_id,
+                                                   const RuntimeMaterialRequest &request,
+                                                   const GeometrySignature &geometry,
+                                                   const void *instance_data,
+                                                   uint32_t instance_data_size,
+                                                   MaterialDomainHandle *out_handle)
+{
+    VariantKey key;
     key.semantic_id = semantic_id;
     key.request = request;
     key.geometry = geometry;
 
-    // Fast path: resolved MI cache
-    auto it = final_mi_cache.find(key);
-    if (it != final_mi_cache.end())
-    {
-        if (out_handle)
-        {
-            mtl::MaterialAssetRecord semantic_rec;
-            if (QuerySemanticMaterial(semantic_id, semantic_rec))
-            {
-                semantic_rec.pipeline = request.pipeline;
-                semantic_rec.domain_id = request.domain_id;
-                semantic_rec.prim = geometry.primitive;
-                *out_handle = Acquire(semantic_rec);
-            }
-        }
-
-        return it->second;
-    }
-
-    // Compose final record from semantic + runtime + geometry.
+    // Build final record from semantic + runtime + geometry.
     mtl::MaterialAssetRecord final_rec;
     if (!QuerySemanticMaterial(semantic_id, final_rec))
         return nullptr;
@@ -353,11 +406,92 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(SemanticMaterialId semantic_i
     if (out_handle)
         *out_handle = handle;
 
-    MaterialInstance *mi = CreateMI(handle, final_rec, instance_data, instance_data_size);
+    variant_cache[key] = handle.material;
+
+    // Legacy path: still keep variant-level MI cache for callsites that do not provide entity id.
+    if (entity_id == 0)
+    {
+        if (!legacy_resolve_warned)
+        {
+            legacy_resolve_warned = true;
+            std::fprintf(stderr,
+                "[MaterialAssetRegistry] ResolveMI legacy path without entity id is in compatibility mode; "
+                "migrate to ResolveMI(entity_id, ...) for stable per-entity MI slots.\n");
+        }
+
+        auto it = legacy_final_mi_cache.find(key);
+        if (it != legacy_final_mi_cache.end())
+        {
+            ++legacy_resolve_hit_count;
+
+            mm->RebindMaterialInstance(it->second, handle.material, ResolveVILFromRecord(handle.material, final_rec));
+            it->second->SetRenderPreset(request.pipeline);
+
+            if (instance_data && instance_data_size > 0)
+                it->second->WriteMIData(instance_data, instance_data_size);
+
+            return it->second;
+        }
+
+        ++legacy_resolve_miss_count;
+
+        MaterialInstance *mi = CreateMI(handle, final_rec, instance_data, instance_data_size);
+        if (!mi)
+            return nullptr;
+
+        legacy_final_mi_cache.emplace(std::move(key), mi);
+        return mi;
+    }
+
+    // New Phase D path: stable MI slot per (entity, semantic).
+    EntitySemanticKey es_key { entity_id, semantic_id };
+    auto it = entity_mi_cache.find(es_key);
+    if (it != entity_mi_cache.end())
+    {
+        ++entity_resolve_hit_count;
+
+        mm->RebindMaterialInstance(it->second, handle.material, ResolveVILFromRecord(handle.material, final_rec));
+        it->second->SetRenderPreset(request.pipeline);
+
+        if (instance_data && instance_data_size > 0)
+            it->second->WriteMIData(instance_data, instance_data_size);
+
+        return it->second;
+    }
+
+    ++entity_resolve_miss_count;
+
+    auto sem_it = semantic_cache.find(semantic_id);
+    if (sem_it == semantic_cache.end())
+        return nullptr;
+
+    auto &entry = sem_it->second;
+    if (!entry.shared_domain)
+    {
+        if (!entry.canonical_material)
+            entry.canonical_material = CreateMaterialFromRecord(mm, entry.rec);
+
+        if (entry.canonical_material)
+        {
+            entry.shared_domain = mm->CreateResourceDomain(entry.canonical_material->GetMIDataBytes(),
+                                                           entry.canonical_material->GetMIMaxCount(),
+                                                           entry.canonical_material);
+        }
+    }
+
+    if (!entry.shared_domain)
+        return nullptr;
+
+    MaterialInstance *mi = mm->CreateMaterialInstance(entry.shared_domain,
+                                                      handle.material,
+                                                      ResolveVILFromRecord(handle.material, final_rec),
+                                                      instance_data,
+                                                      instance_data_size);
     if (!mi)
         return nullptr;
 
-    final_mi_cache.emplace(std::move(key), mi);
+    mi->SetRenderPreset(request.pipeline);
+    entity_mi_cache.emplace(es_key, mi);
     return mi;
 }
 
@@ -410,6 +544,47 @@ MaterialInstance *MaterialAssetRegistry::CreateMI(
     }
 
     return mm->AcquireMaterialInstance(spec);
+}
+
+void MaterialAssetRegistry::ReleaseEntityResolvedMI(uint64_t entity_id, SemanticMaterialId semantic_id)
+{
+    if (entity_id == 0)
+        return;
+
+    if (semantic_id != 0)
+    {
+        EntitySemanticKey key { entity_id, semantic_id };
+        auto it = entity_mi_cache.find(key);
+        if (it != entity_mi_cache.end())
+        {
+            if (mm && it->second)
+                mm->Release(it->second);
+
+            entity_mi_cache.erase(it);
+        }
+        return;
+    }
+
+    std::vector<EntitySemanticKey> keys;
+    keys.reserve(entity_mi_cache.size());
+
+    for (const auto &kv : entity_mi_cache)
+    {
+        if (kv.first.entity_id == entity_id)
+            keys.push_back(kv.first);
+    }
+
+    for (const auto &k : keys)
+    {
+        auto it = entity_mi_cache.find(k);
+        if (it == entity_mi_cache.end())
+            continue;
+
+        if (mm && it->second)
+            mm->Release(it->second);
+
+        entity_mi_cache.erase(it);
+    }
 }
 
 } // namespace hgl::graph

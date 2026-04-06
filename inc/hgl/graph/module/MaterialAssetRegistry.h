@@ -24,6 +24,7 @@ class MaterialManager;
 class TextureManager;
 class SamplerManager;
 class MaterialInstance;
+class Material;
 
 class MaterialAssetRegistry
 {
@@ -56,17 +57,27 @@ class MaterialAssetRegistry
 
     std::unordered_map<DMBKey, DomainMaterialBinding*, DMBKeyHash> dmb_cache;
 
+    struct SemanticMaterialEntry
+    {
+        mtl::MaterialAssetRecord rec;
+
+        // Phase B groundwork: semantic-level canonical material/domain.
+        // Behavior remains compatible until ResolveMI switches to semantic-owned domain path.
+        Material *canonical_material = nullptr;
+        ResourceDomain *shared_domain = nullptr;
+    };
+
     // Semantic-only material registration cache:
     // key = semantic hash id (runtime policy fields excluded)
-    std::unordered_map<SemanticMaterialId, mtl::MaterialAssetRecord> semantic_cache;
+    std::unordered_map<SemanticMaterialId, SemanticMaterialEntry> semantic_cache;
 
-    struct FinalMaterialKey
+    struct VariantKey
     {
         SemanticMaterialId semantic_id = 0;
         RuntimeMaterialRequest request;
         GeometrySignature geometry;
 
-        bool operator==(const FinalMaterialKey &o) const
+        bool operator==(const VariantKey &o) const
         {
             return semantic_id == o.semantic_id
                 && request == o.request
@@ -74,13 +85,42 @@ class MaterialAssetRegistry
         }
     };
 
-    struct FinalMaterialKeyHash
+    struct VariantKeyHash
     {
-        size_t operator()(const FinalMaterialKey &k) const;
+        size_t operator()(const VariantKey &k) const;
     };
 
-    // Runtime resolved MI cache.
-    std::unordered_map<FinalMaterialKey, MaterialInstance*, FinalMaterialKeyHash> final_mi_cache;
+    // Runtime variant cache (Phase C): final runtime key -> concrete material variant.
+    std::unordered_map<VariantKey, Material*, VariantKeyHash> variant_cache;
+
+    struct EntitySemanticKey
+    {
+        uint64_t entity_id = 0;
+        SemanticMaterialId semantic_id = 0;
+
+        bool operator==(const EntitySemanticKey &o) const
+        {
+            return entity_id == o.entity_id && semantic_id == o.semantic_id;
+        }
+    };
+
+    struct EntitySemanticKeyHash
+    {
+        size_t operator()(const EntitySemanticKey &k) const;
+    };
+
+    // Runtime MI cache (Phase D): entity + semantic -> stable MI slot.
+    std::unordered_map<EntitySemanticKey, MaterialInstance*, EntitySemanticKeyHash> entity_mi_cache;
+
+    // Legacy path: unresolved callers without entity id still use variant-key-level MI cache.
+    std::unordered_map<VariantKey, MaterialInstance*, VariantKeyHash> legacy_final_mi_cache;
+
+    // Resolve path observability counters (Phase D rollout).
+    uint64_t legacy_resolve_hit_count = 0;
+    uint64_t legacy_resolve_miss_count = 0;
+    uint64_t entity_resolve_hit_count = 0;
+    uint64_t entity_resolve_miss_count = 0;
+    bool legacy_resolve_warned = false;
 
 public:
 
@@ -109,6 +149,15 @@ public:
                                 uint32_t instance_data_size = 0,
                                 MaterialDomainHandle *out_handle = nullptr);
 
+    // Phase D path: resolve with entity id to guarantee per-entity stable MI slot.
+    MaterialInstance *ResolveMI(uint64_t entity_id,
+                                SemanticMaterialId semantic_id,
+                                const RuntimeMaterialRequest &request,
+                                const GeometrySignature &geometry,
+                                const void *instance_data = nullptr,
+                                uint32_t instance_data_size = 0,
+                                MaterialDomainHandle *out_handle = nullptr);
+
     /// 一站式：Acquire + CreateMI（推荐外部调用）
     /// - 大多数调用方只需要 MI，不需要直接接触 MaterialDomainHandle。
     /// - 若需要后续访问 DMB，可传 out_handle 取回完整句柄。
@@ -123,11 +172,18 @@ public:
                                const void *instance_data = nullptr,
                                uint32_t instance_data_size = 0);
 
+    // Phase D lifecycle helpers for entity-scoped MI cache.
+    void ReleaseEntityResolvedMI(uint64_t entity_id, SemanticMaterialId semantic_id = 0);
+
     /// 统计
     uint32_t GetDomainCacheSize() const { return static_cast<uint32_t>(domain_cache.size()); }
     uint32_t GetDMBCacheSize()    const { return static_cast<uint32_t>(dmb_cache.size()); }
     uint32_t GetSemanticMaterialCount() const { return static_cast<uint32_t>(semantic_cache.size()); }
-    uint32_t GetResolvedMICacheSize() const { return static_cast<uint32_t>(final_mi_cache.size()); }
+    uint32_t GetResolvedMICacheSize() const { return static_cast<uint32_t>(legacy_final_mi_cache.size() + entity_mi_cache.size()); }
+    uint64_t GetLegacyResolveHitCount() const { return legacy_resolve_hit_count; }
+    uint64_t GetLegacyResolveMissCount() const { return legacy_resolve_miss_count; }
+    uint64_t GetEntityResolveHitCount() const { return entity_resolve_hit_count; }
+    uint64_t GetEntityResolveMissCount() const { return entity_resolve_miss_count; }
 };
 
 } // namespace hgl::graph

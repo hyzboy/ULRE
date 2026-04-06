@@ -18,6 +18,32 @@
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        uint32_t ComputeVILHash(const graph::VIL *vil)
+        {
+            if (!vil)
+                return 0;
+
+            uint64_t h = 14695981039346656037ULL;
+            auto feed = [&](const void *p, size_t n)
+            {
+                const auto *bytes = reinterpret_cast<const uint8_t*>(p);
+                for (size_t i = 0; i < n; ++i)
+                    h = (h ^ bytes[i]) * 1099511628211ULL;
+            };
+
+            const uint32_t count = vil->GetVertexAttribCount();
+            feed(&count, sizeof(count));
+
+            const auto *vif = vil->GetVIFList();
+            if (vif && count > 0)
+                feed(vif, sizeof(graph::VertexInputFormat) * count);
+
+            return static_cast<uint32_t>((h >> 32) ^ (h & 0xFFFFFFFFu));
+        }
+    }
+
     RenderPrimitiveCollectSystem::RenderPrimitiveCollectSystem(const std::string& name)
         : System(name)
     {
@@ -102,6 +128,13 @@ namespace hgl::ecs
             if (!world->IsEntityRenderEnabled(entity))
                 continue;
 
+            auto transform = entity->GetComponent<TransformComponent>();
+            if (!transform)
+            {
+                ++skipped_no_transform;
+                continue;
+            }
+
             if (semantic_runtime_resolve_enabled && primitiveComp->HasSemanticMaterial())
             {
                 auto *gc = world->GetGraphicsContext();
@@ -112,21 +145,63 @@ namespace hgl::ecs
                 {
                     graph::RuntimeMaterialRequest request;
                     request.domain_id = "";
-                    request.pipeline = graph::GraphicsPipelinePreset::Solid2D;
+
+                    const void *instance_data = nullptr;
+                    uint32 instance_data_size = 0;
+
+                    auto *current_mi = primitiveComp->GetMaterialInstance();
+                    if (current_mi)
+                    {
+                        request.pipeline = current_mi->GetRenderPreset();
+
+                        // Preserve current MI payload so a cache miss still creates
+                        // a correctly initialized runtime MI.
+                        if (auto *current_material = current_mi->GetMaterial())
+                        {
+                            instance_data_size = current_material->GetMIDataBytes();
+                            if (instance_data_size > 0)
+                                instance_data = current_mi->GetMIData();
+                        }
+                    }
+
+                    // Runtime auto-transparency decision source (distance-based, 3D only).
+                    const glm::vec3 world_pos = transform->GetWorldPosition();
+                    const float distance = glm::length(world_pos - camera_pos);
+                    if (auto_transparency_enabled
+                     && request.pipeline == graph::GraphicsPipelinePreset::Solid3D
+                     && distance < auto_transparency_near_distance)
+                    {
+                        if (use_real_alpha3d_enabled)
+                        {
+                            request.transparency_mode = 3; // blend
+                            request.pipeline = graph::GraphicsPipelinePreset::Alpha3D;
+                        }
+                        else
+                        {
+                            request.transparency_mode = 2; // dither
+                            request.pipeline = graph::GraphicsPipelinePreset::Dither3D;
+                        }
+                    }
+                    else
+                    {
+                        request.transparency_mode = 0; // opaque
+                    }
 
                     graph::GeometrySignature geometry;
-                    geometry.primitive = graph::PrimitiveType::Triangles;
+                    if (auto *material = primitive->GetMaterial())
+                        geometry.primitive = material->GetPrimitiveType();
 
-                    if (auto *resolved = registry->ResolveMI(primitiveComp->GetSemanticMaterial(), request, geometry))
+                    if (current_mi)
+                        geometry.vil_hash = ComputeVILHash(current_mi->GetVIL());
+
+                    if (auto *resolved = registry->ResolveMI(hgl::ecs::ToRuntimeEntityKey(entity_id),
+                                                             primitiveComp->GetSemanticMaterial(),
+                                                             request,
+                                                             geometry,
+                                                             instance_data,
+                                                             instance_data_size))
                         primitiveComp->SetOverrideMaterial(resolved);
                 }
-            }
-
-            auto transform = entity->GetComponent<TransformComponent>();
-            if (!transform)
-            {
-                ++skipped_no_transform;
-                continue;
             }
 
             auto item = std::make_unique<PrimitiveRenderItem>(entity_id, transform, primitiveComp, world);

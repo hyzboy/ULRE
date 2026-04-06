@@ -450,8 +450,8 @@ namespace hgl
                 subscene_states.clear();
 
                 LogDebug("[ECSContext] Shutdown(inactive) - releasing %zu material batches",
-                         render_frame_cache.materialBatches.GetCount());
-                render_frame_cache.materialBatches.Clear();
+                         render_frame_cache.materialBatches.size());
+                render_frame_cache.materialBatches.clear();
                 shutdown_in_progress = false;
                 return;
             }
@@ -498,8 +498,8 @@ namespace hgl
 
             // Finally, clear materialBatches after all systems/entities are destroyed
             LogDebug("[ECSContext] Shutdown - releasing %zu material batches",
-                     render_frame_cache.materialBatches.GetCount());
-            render_frame_cache.materialBatches.Clear();
+                     render_frame_cache.materialBatches.size());
+            render_frame_cache.materialBatches.clear();
             LogDebug("[ECSContext] Shutdown - material batches cleared");
             OnDestroy();
             shutdown_in_progress = false;

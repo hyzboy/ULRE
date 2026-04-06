@@ -51,7 +51,7 @@ namespace hgl::ecs
             return;
 
         std::vector<MaterialBatch*> ordered_batches;
-        ordered_batches.reserve(cache.materialBatches.GetCount());
+        ordered_batches.reserve(cache.materialBatches.size());
 
         for (auto& pair : cache.materialBatches)
         {

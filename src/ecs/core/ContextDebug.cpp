@@ -135,7 +135,7 @@ namespace hgl
                 if (material_binding_query_log_enabled)
                 {
                     std::vector<std::string> active_material_names;
-                    active_material_names.reserve(render_frame_cache.materialBatches.GetCount());
+                    active_material_names.reserve(render_frame_cache.materialBatches.size());
 
                     for (const auto &pair : render_frame_cache.materialBatches)
                     {

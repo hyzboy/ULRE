@@ -26,6 +26,9 @@ namespace hgl::ecs
         ECSContext* world = nullptr;
         const graph::CameraInfo* cameraInfo = nullptr;
         bool semantic_runtime_resolve_enabled = false;
+        bool auto_transparency_enabled = false;
+        bool use_real_alpha3d_enabled = true;
+        float auto_transparency_near_distance = 3.0f;
 
     public:
 
@@ -39,6 +42,12 @@ namespace hgl::ecs
         const graph::CameraInfo* GetCameraInfo() const { return cameraInfo; }
         void SetSemanticRuntimeResolveEnabled(bool enabled) { semantic_runtime_resolve_enabled = enabled; }
         bool GetSemanticRuntimeResolveEnabled() const { return semantic_runtime_resolve_enabled; }
+        void SetAutoTransparencyEnabled(bool enabled) { auto_transparency_enabled = enabled; }
+        bool GetAutoTransparencyEnabled() const { return auto_transparency_enabled; }
+        void SetUseRealAlpha3DEnabled(bool enabled) { use_real_alpha3d_enabled = enabled; }
+        bool GetUseRealAlpha3DEnabled() const { return use_real_alpha3d_enabled; }
+        void SetAutoTransparencyNearDistance(float v) { auto_transparency_near_distance = v; }
+        float GetAutoTransparencyNearDistance() const { return auto_transparency_near_distance; }
 
         void Update(float deltaTime) override;
     };

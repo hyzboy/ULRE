@@ -40,6 +40,14 @@ namespace hgl::ecs
             return generation < other.generation;
         }
     };
+
+    // Canonical packed runtime key for hash maps that need POD integral keys.
+    // index+1 ensures entity index 0 maps to a non-zero key, keeping 0 as the
+    // "no entity" sentinel used by the legacy ResolveMI path.
+    constexpr uint64_t ToRuntimeEntityKey(const EntityID &id)
+    {
+        return (uint64_t(id.index + 1) << 32) | uint64_t(id.generation);
+    }
 }
 
 namespace std

@@ -1,6 +1,9 @@
 ﻿#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/ComponentRecords.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
@@ -157,6 +160,16 @@ namespace hgl::ecs
     void PrimitiveComponent::OnDetach()
     {
         RenderableComponent::OnDetach();
+
+        if (owner_context && semanticMaterialId != 0)
+        {
+            auto *gc = owner_context->GetGraphicsContext();
+            auto *registry = gc ? gc->GetMaterialAssetRegistry() : nullptr;
+            if (registry)
+            {
+                registry->ReleaseEntityResolvedMI(hgl::ecs::ToRuntimeEntityKey(GetOwnerID()), semanticMaterialId);
+            }
+        }
 
         // Don't delete primitive or material - they're managed externally
         // Just clear our references

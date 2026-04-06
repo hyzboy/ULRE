@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
+#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
 #include<source_location>
 #include<cstdio>
 #include<hgl/ecs/core/Context.h>
@@ -32,6 +32,7 @@
 #include<cstdint>
 #include<atomic>
 #include<unordered_set>
+#include<unordered_map>
 
 namespace hgl::ecs
 {
@@ -405,6 +406,15 @@ namespace hgl::ecs
 
         batch.icb_draw->Unmap();
         batch.icb_draw_indexed->Unmap();
+
+        {
+            static uint32_t s_batch_result_tick = 0;
+            if (++s_batch_result_tick <= 3u)
+                LogDebug("[BatchPipeline::BuildBatches] result: draw_batches=%u items=%zu first_instance_count=%u",
+                         batch.draw_batches_count,
+                         count,
+                         batch.draw_batches_count > 0 ? batch.draw_batches[0].instance_count : 0u);
+        }
     }
 
     void PrimitiveBatchPipeline::FinalizeBatch(MaterialBatch& batch)
@@ -474,6 +484,18 @@ namespace hgl::ecs
 
         if (batch.mi_buffer && !batch.items.empty())
             batch.mi_buffer->WriteItems(batch.items);
+
+        {
+            static uint32_t s_upd_tick = 0;
+            if (++s_upd_tick <= 3u)
+                LogDebug("[BatchPipeline::UpdateMIBuf] material=%p(%s) domain=%p hasMI=%d mi_buf=%p items=%zu",
+                         (void*)batch.key.material,
+                         batch.key.material ? batch.key.material->GetName().c_str() : "null",
+                         (void*)batch.key.domain,
+                         batch.key.material ? (int)batch.key.material->hasMI() : -1,
+                         (void*)batch.mi_buffer,
+                         batch.items.size());
+        }
     }
 
     void PrimitiveBatchPipeline::BuildMaterialBatches()
@@ -606,19 +628,19 @@ namespace hgl::ecs
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 
             MaterialPipelineKey key(material, pipeline, domain, queue);
-            auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
+            auto it = cache.materialBatches.find(key);
 
-            if (!batch_ptr)
+            if (it == cache.materialBatches.end())
             {
                 auto batch = std::make_unique<MaterialBatch>(key, device, buffer_manager);
                 batch->cameraInfo = camera_info;
                 batch->AddItem(item);
-                cache.materialBatches[key] = std::move(batch);
+                cache.materialBatches.emplace(key, std::move(batch));
             }
             else
             {
-                (*batch_ptr)->buffer_manager = buffer_manager;
-                (*batch_ptr)->AddItem(item);
+                it->second->buffer_manager = buffer_manager;
+                it->second->AddItem(item);
             }
         }
 
@@ -628,6 +650,50 @@ namespace hgl::ecs
                 it = resolved_pipeline_cache.erase(it);
             else
                 ++it;
+        }
+
+        // Diagnostics: detect if one material is split across multiple domains in one frame.
+        {
+            std::unordered_map<graph::Material *, std::unordered_set<graph::ResourceDomain *>> material_domains;
+            uint32_t total_items_in_batches = 0;
+
+            for (const auto &pair : cache.materialBatches)
+            {
+                auto *mat = pair.first.material;
+                auto *dom = pair.first.domain;
+                if (mat)
+                    material_domains[mat].insert(dom);
+
+                if (pair.second)
+                    total_items_in_batches += static_cast<uint32_t>(pair.second->items.size());
+            }
+
+            uint32_t split_material_count = 0;
+            for (const auto &it : material_domains)
+            {
+                if (it.second.size() > 1)
+                    ++split_material_count;
+            }
+
+            if (split_material_count > 0)
+            {
+                LogWarning("[ECS::PrimitiveBatchPipeline] material-domain split detected: materials_with_multi_domain=%u total_batches=%u total_items=%u",
+                           split_material_count,
+                           static_cast<uint32_t>(cache.materialBatches.size()),
+                           total_items_in_batches);
+            }
+            else if (cache.materialBatches.size() > 0)
+            {
+                static uint32_t s_batch_diag_tick = 0;
+                ++s_batch_diag_tick;
+                if ((s_batch_diag_tick & 63u) == 1u)
+                {
+                    LogDebug("[ECS::PrimitiveBatchPipeline] batch summary: batches=%u items=%u visible_items=%zu",
+                             static_cast<uint32_t>(cache.materialBatches.size()),
+                             total_items_in_batches,
+                             cache.renderItems.size());
+                }
+            }
         }
 
         const uint64_t vkcreate_at_end = graph::RenderTargetFormat::GetVkCreateCount();

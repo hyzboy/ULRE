@@ -5,17 +5,21 @@
 namespace hgl::graph
 {
 
-ResourceDomain::ResourceDomain(Material *mtl)
-    : source_material(mtl)
+ResourceDomain::ResourceDomain(uint32_t mi_bytes, uint32_t mi_count, Material *source)
+    : source_material(source)
 {
-    if(!mtl)
-        return;
-
-    mi_data_bytes = mtl->GetMIDataBytes();
-    mi_max_count  = mtl->GetMIMaxCount();
+    mi_data_bytes = mi_bytes;
+    mi_max_count  = mi_count;
 
     if(mi_data_bytes > 0)
         mi_data_manager = new hgl::ActiveMemoryBlockManager(mi_data_bytes);
+}
+
+ResourceDomain::ResourceDomain(Material *mtl)
+    : ResourceDomain(mtl ? mtl->GetMIDataBytes() : 0,
+                     mtl ? mtl->GetMIMaxCount() : 0,
+                     mtl)
+{
 }
 
 ResourceDomain::~ResourceDomain()

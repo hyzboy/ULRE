@@ -77,10 +77,12 @@ private:
         };
 
         auto *registry = GetMaterialAssetRegistry();
-        if (registry)
-            semantic_material_id = registry->RegisterSemanticMaterial(kAutoInstanceCfg);
+        if (!registry)
+            return false;
 
-        material_instance = AcquireMI(kAutoInstanceCfg);
+        semantic_material_id = registry->RegisterSemanticMaterial(kAutoInstanceCfg);
+
+        material_instance = registry->AcquireMI(kAutoInstanceCfg);
 
         return material_instance != nullptr;
     }

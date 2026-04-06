@@ -819,7 +819,14 @@ ResourceDomain *MaterialManager::CreateResourceDomain(Material *mtl)
     if(!mtl)
         return nullptr;
 
-    return new ResourceDomain(mtl);
+    return CreateResourceDomain(mtl->GetMIDataBytes(), mtl->GetMIMaxCount(), mtl);
+}
+
+ResourceDomain *MaterialManager::CreateResourceDomain(uint32_t mi_data_bytes,
+                                                      uint32_t mi_max_count,
+                                                      Material *source)
+{
+    return new ResourceDomain(mi_data_bytes, mi_max_count, source);
 }
 
 DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDomain *domain, Material *mtl)
@@ -980,6 +987,39 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain
         mi->WriteMIData(data, data_size);
 
     return mi;
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain,
+                                                          Material *material,
+                                                          const VIL *vil,
+                                                          const void *data,
+                                                          const uint32 data_size)
+{
+    if(!domain || !material)
+        return nullptr;
+
+    const VIL *use_vil = vil ? vil : material->GetDefaultVIL();
+    int mi_id = domain->AllocMISlot();
+
+    MaterialInstance *mi = new MaterialInstance(material, domain, use_vil, mi_id);
+    mi->InitMITLayout(material->GetTextureArraySlotFlags());
+    Add(mi);
+
+    if(data && data_size > 0)
+        mi->WriteMIData(data, data_size);
+
+    return mi;
+}
+
+bool MaterialManager::RebindMaterialInstance(MaterialInstance *mi, Material *material, const VIL *vil)
+{
+    if(!mi || !material)
+        return false;
+
+    mi->material = material;
+    mi->vil = vil ? vil : material->GetDefaultVIL();
+    mi->InitMITLayout(material->GetTextureArraySlotFlags());
+    return true;
 }
 
 }//namespace hgl::graph

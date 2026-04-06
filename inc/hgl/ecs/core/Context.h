@@ -15,7 +15,7 @@
 #include<map>
 #include<set>
 #include<unordered_map>
-#include <hgl/type/UnorderedMap.h>
+#include <ankerl/unordered_dense.h>
 #include<typeinfo>
 #include<type_traits>
 #include<hgl/ecs/core/MaterialPipelineKey.h>
@@ -57,7 +57,7 @@ namespace hgl
         struct RenderFrameCache
         {
             std::vector<std::unique_ptr<RenderItem>> renderItems;
-            hgl::UnorderedMap<MaterialPipelineKey, std::unique_ptr<MaterialBatch>> materialBatches;
+            ankerl::unordered_dense::map<MaterialPipelineKey, std::unique_ptr<MaterialBatch>, std::hash<MaterialPipelineKey>> materialBatches;
             const graph::CameraInfo* cameraInfo = nullptr;
             uint32_t renderableCount = 0;
 
