@@ -42,7 +42,7 @@ private:
     Entity *      cube_entity    =nullptr;
     Entity *      camera_entity  =nullptr;
 
-    ShaderProgram *          material        = nullptr;
+    MaterialTemplate *          material        = nullptr;
     SemanticMaterialId  semantic_material_id = 0;
 
     Primitive *         primitive       = nullptr;

@@ -47,7 +47,7 @@ private:
     ECSContext* ecs_context = nullptr;
     Entity* camera_entity = nullptr;
 
-    ShaderProgram* material = nullptr;
+    MaterialTemplate* material = nullptr;
     MaterialInstance* material_instance = nullptr;
     SemanticMaterialId standard_semantic_id = 0;
     VertexDataManager* mesh_vdm = nullptr;

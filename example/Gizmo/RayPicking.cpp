@@ -103,7 +103,7 @@ private:
             if(!mi_plane_grid)return(false);
         }
 
-        // Ray line: 3D Position + Luminance (separate ShaderProgram)
+        // Ray line: 3D Position + Luminance (separate MaterialTemplate)
         {
             mi_line = AcquireMI(kLineCfg, &yellow_color, sizeof(yellow_color));
             if(!mi_line)return(false);

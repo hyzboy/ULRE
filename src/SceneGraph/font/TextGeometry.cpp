@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/font/TextGeometry.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKShaderProgram.h>
+#include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/graph/geo/VKGeometryData.h>
 

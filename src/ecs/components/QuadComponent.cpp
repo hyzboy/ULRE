@@ -31,7 +31,7 @@ namespace hgl::ecs
     void QuadComponent::OnUpdate(float deltaTime)
     {
         // Quad component doesn't need per-frame updates
-        // ShaderProgram/texture loading is handled by QuadResourcePrepareSystem and QuadMaterialBindingSystem
+        // MaterialTemplate/texture loading is handled by QuadResourcePrepareSystem and QuadMaterialBindingSystem
         PrimitiveComponent::OnUpdate(deltaTime);
     }
 

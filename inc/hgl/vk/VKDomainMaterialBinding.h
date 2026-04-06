@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKShaderProgram.h>
+#include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialResourceDomain.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
@@ -15,18 +15,18 @@ class Sampler;
 /**
  * 域-材质绑定视图 (DomainMaterialBinding)
  *
- * 将一个 MaterialResourceDomain 与一个 ShaderProgram (Shader/GraphicsPipeline 模板) 绑定。
+ * 将一个 MaterialResourceDomain 与一个 MaterialTemplate (Shader/GraphicsPipeline 模板) 绑定。
  * 仅持有 PerMaterial 描述符集——这是唯一域私有的集合；
- * Static/PerFrame/PerObject 集由 ShaderProgram 统一持有、整体绑定一次。
+ * Static/PerFrame/PerObject 集由 MaterialTemplate 统一持有、整体绑定一次。
  *
  * 典型用法:
  *   - 同一 billboard shader 绑定两个不同 Texture2DArray (UI 图标 vs 玩家头像)
- *   - 同一资源域绑定 Opaque + Masked 两个 ShaderProgram (Phase 3)
+ *   - 同一资源域绑定 Opaque + Masked 两个 MaterialTemplate (Phase 3)
  */
 class DomainMaterialBinding
 {
     MaterialResourceDomain     *domain          = nullptr;
-    ShaderProgram           *material        = nullptr;
+    MaterialTemplate           *material        = nullptr;
     MaterialParameters *mp_per_material = nullptr;
 
 private:
@@ -34,7 +34,7 @@ private:
     friend class MaterialManager;
 
     /// MaterialManager 独占构造。mp_per_material 由 MaterialManager 分配后传入。
-    DomainMaterialBinding(MaterialResourceDomain *d, ShaderProgram *m, MaterialParameters *mp);
+    DomainMaterialBinding(MaterialResourceDomain *d, MaterialTemplate *m, MaterialParameters *mp);
 
 public:
 
@@ -45,7 +45,7 @@ public:
     // ----------------------------------------------------------------
 
     MaterialResourceDomain     *GetDomain        () const { return domain; }
-    ShaderProgram           *GetMaterial      () const { return material; }
+    MaterialTemplate           *GetMaterial      () const { return material; }
     MaterialParameters *GetPerMaterialMP () const { return mp_per_material; }
 
     const VkPipelineLayout GetPipelineLayout() const { return material->GetPipelineLayout(); }

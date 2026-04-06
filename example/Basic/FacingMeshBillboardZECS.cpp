@@ -55,7 +55,7 @@ private:
 
     struct MaterialData
     {
-        ShaderProgram* material = nullptr;
+        MaterialTemplate* material = nullptr;
         const VIL* vil = nullptr;
 
         MaterialInstance* mi[DEMO_COLOR_COUNT]{};

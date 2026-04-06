@@ -17,7 +17,7 @@
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/vk/VKDevice.h>
-#include <hgl/vk/VKShaderProgram.h>
+#include <hgl/vk/VKMaterialTemplate.h>
 #include <hgl/vk/VKBuffer.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>

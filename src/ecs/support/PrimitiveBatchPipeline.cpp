@@ -654,7 +654,7 @@ namespace hgl::ecs
 
         // Diagnostics: detect if one material is split across multiple domains in one frame.
         {
-            std::unordered_map<graph::ShaderProgram *, std::unordered_set<graph::MaterialResourceDomain *>> material_domains;
+            std::unordered_map<graph::MaterialTemplate *, std::unordered_set<graph::MaterialResourceDomain *>> material_domains;
             uint32_t total_items_in_batches = 0;
 
             for (const auto &pair : cache.materialBatches)

@@ -90,7 +90,7 @@ private:
     Entity *      billboard_entity = nullptr;
     Entity *      camera_entity  = nullptr;
 
-    ShaderProgram *          mtl_plane_grid      = nullptr;
+    MaterialTemplate *          mtl_plane_grid      = nullptr;
     MaterialInstance *  mi_plane_grid       = nullptr;
     Geometry *          geom_plane_grid     = nullptr;
     Primitive *         prim_plane_grid     = nullptr;
@@ -145,7 +145,7 @@ private:
             return false;
 
         std::cout << "[BillboardECS] Billboard MI: " << (void*)mi_billboard
-                  << ", ShaderProgram: " << (void*)mi_billboard->GetMaterial() << std::endl;
+                  << ", MaterialTemplate: " << (void*)mi_billboard->GetMaterial() << std::endl;
 
         return true;
     }

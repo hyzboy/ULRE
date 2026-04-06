@@ -11,7 +11,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/mesh/Primitive.h>
-#include<hgl/vk/VKShaderProgram.h>
+#include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/log/Log.h>
 #include<glm/glm.hpp>

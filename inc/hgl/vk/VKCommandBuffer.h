@@ -168,7 +168,7 @@ public:
         return(true);
     }
 
-    bool BindDescriptorSets(ShaderProgram *);
+    bool BindDescriptorSets(MaterialTemplate *);
 
     bool BindDescriptorSets(DomainMaterialBinding *);
 

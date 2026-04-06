@@ -34,7 +34,7 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    ShaderProgram *          material            =nullptr;
+    MaterialTemplate *          material            =nullptr;
 
     Geometry *         geom_plane_grid     =nullptr;
     MaterialInstance *  material_instance[3]{};

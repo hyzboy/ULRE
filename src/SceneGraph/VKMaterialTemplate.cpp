@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKShaderProgram.h>
+﻿#include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
@@ -12,7 +12,7 @@ namespace hgl::graph{
 
 void ReleaseVertexInput(VertexInput *vi);
 
-ShaderProgram::ShaderProgram(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
+MaterialTemplate::MaterialTemplate(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
 {
     name=n;
     geometry=mci->GetPrimitiveType();
@@ -32,7 +32,7 @@ ShaderProgram::ShaderProgram(const AnsiString &n,const mtl::MaterialCreateInfo *
     has_l2w_matrix=mci->HasLocalToWorld();
 }
 
-ShaderProgram::~ShaderProgram()
+MaterialTemplate::~MaterialTemplate()
 {
     SAFE_CLEAR(default_domain);   // Phase 5: dtor frees lazy default domain
 
@@ -45,49 +45,49 @@ ShaderProgram::~ShaderProgram()
         SAFE_CLEAR(mp);
 }
 
-const VkPipelineLayout ShaderProgram::GetPipelineLayout()const
+const VkPipelineLayout MaterialTemplate::GetPipelineLayout()const
 {
     if(!pipeline_layout_data)
         return VK_NULL_HANDLE;
     return pipeline_layout_data->pipeline_layout;
 }
 
-const bool ShaderProgram::hasSet(const DescriptorSetType &dst)const
+const bool MaterialTemplate::hasSet(const DescriptorSetType &dst)const
 {
     if(!desc_manager)
         return false;
     return desc_manager->hasSet(dst);
 }
 
-const VIL *ShaderProgram::GetDefaultVIL()const
+const VIL *MaterialTemplate::GetDefaultVIL()const
 {
     if(!vertex_input)
         return nullptr;
     return vertex_input->GetDefaultVIL();
 }
 
-VIL *ShaderProgram::CreateVIL(const VILConfig *format_map)
+VIL *MaterialTemplate::CreateVIL(const VILConfig *format_map)
 {
     if(!vertex_input)
         return nullptr;
     return vertex_input->CreateVIL(format_map);
 }
 
-bool ShaderProgram::Release(VIL *vil)
+bool MaterialTemplate::Release(VIL *vil)
 {
     if(!vertex_input)
         return false;
     return vertex_input->Release(vil);
 }
 
-const uint ShaderProgram::GetVILCount()
+const uint MaterialTemplate::GetVILCount()
 {
     if(!vertex_input)
         return 0;
     return vertex_input->GetInstanceCount();
 }
 
-bool ShaderProgram::BindUBO(const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic)
+bool MaterialTemplate::BindUBO(const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic)
 {
     const DescriptorSetType type = mtl::GetExpectedSetType(semantic);
     MaterialParameters *mp=GetMP(type);
@@ -98,7 +98,7 @@ bool ShaderProgram::BindUBO(const mtl::UBODescriptorSemantic semantic,const IGPU
     return mp->BindUBO(semantic,gpu,dynamic);
 }
 
-bool ShaderProgram::BindUBO(const UBOAccessorBase *ubo,bool dynamic)
+bool MaterialTemplate::BindUBO(const UBOAccessorBase *ubo,bool dynamic)
 {
     if(!ubo)
         return false;
@@ -106,7 +106,7 @@ bool ShaderProgram::BindUBO(const UBOAccessorBase *ubo,bool dynamic)
     return BindUBO(ubo->GetSemantic(),ubo->GetGPUBuffer(),dynamic);
 }
 
-bool ShaderProgram::BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic)
+bool MaterialTemplate::BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic)
 {
     const DescriptorSetType type = mtl::GetExpectedSetType(semantic);
     MaterialParameters *mp=GetMP(type);
@@ -117,7 +117,7 @@ bool ShaderProgram::BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IG
     return mp->BindSSBO(semantic,gpu,dynamic);
 }
 
-bool ShaderProgram::BindTexture(const DescriptorSetType &type,mtl::SamplerSlot slot,Texture *tex)
+bool MaterialTemplate::BindTexture(const DescriptorSetType &type,mtl::SamplerSlot slot,Texture *tex)
 {
     MaterialParameters *mp = GetMP(type);
 
@@ -127,7 +127,7 @@ bool ShaderProgram::BindTexture(const DescriptorSetType &type,mtl::SamplerSlot s
     return mp->BindTexture(slot,tex);
 }
 
-bool ShaderProgram::BindTextureSampler(const DescriptorSetType &type,mtl::SamplerSlot slot,Texture *tex,Sampler *sampler)
+bool MaterialTemplate::BindTextureSampler(const DescriptorSetType &type,mtl::SamplerSlot slot,Texture *tex,Sampler *sampler)
 {
     MaterialParameters *mp=GetMP(type);
 
@@ -137,7 +137,7 @@ bool ShaderProgram::BindTextureSampler(const DescriptorSetType &type,mtl::Sample
     return mp->BindTextureSampler(slot,tex,sampler);
 }
 
-void ShaderProgram::Update()
+void MaterialTemplate::Update()
 {
     for(auto &mp:mp_array)
     {

@@ -205,7 +205,7 @@ namespace hgl::ecs
     QuadResourcePrepareSystem::QuadResourcePrepareSystem(const std::string& name)
         : System(name)
     {
-        SetSystemType(SystemType::ShaderProgram);
+        SetSystemType(SystemType::MaterialTemplate);
         SetExecutionOrder(ExecutionPhase::RenderResourceSetup);
         SetRenderElementType("Billboard");
         AddDependency<RenderTargetSystem>();
@@ -432,7 +432,7 @@ namespace hgl::ecs
             if (!dr.sampler)
                 dr.sampler = sampler_manager->CreateSampler();
 
-            // ── ShaderProgram + DMB via MaterialAssetRegistry ──────────
+            // ── MaterialTemplate + DMB via MaterialAssetRegistry ──────────
             if (!dr.material || !dr.dmb)
             {
                 const bool domain_fixed = IsFixedSizeForWorld(world);
@@ -503,7 +503,7 @@ namespace hgl::ecs
                                        dr.sampler);
             dr.dmb->Update();
 
-            // Also bind to the ShaderProgram's own descriptor set — this is what
+            // Also bind to the MaterialTemplate's own descriptor set — this is what
             // the command buffer actually binds at draw time.
             dr.material->BindTextureSampler(graph::mtl::SamplerSlot::BaseColor,
                                             dr.texture_array,
@@ -518,7 +518,7 @@ namespace hgl::ecs
                                                        graph::mtl::SamplerSlot::BaseColor,
                                                        dr.texture_array,
                                                        dr.sampler);
-                // ShaderProgram-level binding so per-frame sync picks it up
+                // MaterialTemplate-level binding so per-frame sync picks it up
                 desc_sys->RegisterMaterialTextureSampler(dr.material,
                                                          graph::mtl::SamplerSlot::BaseColor,
                                                          dr.texture_array,

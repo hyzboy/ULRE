@@ -10,7 +10,7 @@ namespace hgl::graph::mtl
     // capability, user quality preferences, object distance, screen-space importance, tile-level
     // lighting complexity, or even per-pixel classification in a deferred/VBuffer pipeline.
     //
-    // In the planned VBuffer path, an earlier pass writes ShaderProgramID and MaterialInstanceID into
+    // In the planned VBuffer path, an earlier pass writes MaterialTemplateID and MaterialInstanceID into
     // the VBuffer, and a later compute stage classifies screen-space tiles and shading workload.
     // Pixels or regions that are sufficiently far away, visually unimportant, or under constrained
     // shading budget may be downgraded to a lower material implementation level automatically.

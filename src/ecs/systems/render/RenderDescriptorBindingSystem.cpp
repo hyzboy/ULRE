@@ -10,7 +10,7 @@
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/VKShaderProgram.h>
+#include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/module/BufferManager.h>
@@ -26,7 +26,7 @@ namespace hgl::ecs
 {
     namespace
     {
-        void ApplySceneUBOBindings(graph::ShaderProgram *material,
+        void ApplySceneUBOBindings(graph::MaterialTemplate *material,
                                    const graph::mtl::DescriptorBindingSlots &contract,
                                    const std::array<graph::UBOAccessorBase *, graph::mtl::UBODescriptorSemanticCount> &scene_ubo_resolvers)
         {
@@ -224,7 +224,7 @@ namespace hgl::ecs
         scene_ubo_resolvers[size_t(graph::mtl::UBODescriptorSemantic::ViewportInfo)] = viewport_ubo;
     }
 
-    bool RenderDescriptorBindingSystem::RegisterMaterialTexture(graph::ShaderProgram *material,
+    bool RenderDescriptorBindingSystem::RegisterMaterialTexture(graph::MaterialTemplate *material,
                                                                 graph::mtl::SamplerSlot slot,
                                                                 graph::Texture *texture)
     {
@@ -236,7 +236,7 @@ namespace hgl::ecs
         return true;
     }
 
-    bool RenderDescriptorBindingSystem::RegisterMaterialTextureSampler(graph::ShaderProgram *material,
+    bool RenderDescriptorBindingSystem::RegisterMaterialTextureSampler(graph::MaterialTemplate *material,
                                                                        graph::mtl::SamplerSlot slot,
                                                                        graph::Texture *texture,
                                                                        graph::Sampler *sampler)
@@ -252,7 +252,7 @@ namespace hgl::ecs
         return true;
     }
 
-    void RenderDescriptorBindingSystem::RemoveMaterialBinding(graph::ShaderProgram *material, graph::mtl::SamplerSlot slot)
+    void RenderDescriptorBindingSystem::RemoveMaterialBinding(graph::MaterialTemplate *material, graph::mtl::SamplerSlot slot)
     {
         if (!material)
             return;
@@ -266,7 +266,7 @@ namespace hgl::ecs
             material_resource_bindings.erase(material_it);
     }
 
-    void RenderDescriptorBindingSystem::ClearMaterialBindings(graph::ShaderProgram *material)
+    void RenderDescriptorBindingSystem::ClearMaterialBindings(graph::MaterialTemplate *material)
     {
         if (!material)
             return;
@@ -274,13 +274,13 @@ namespace hgl::ecs
         material_resource_bindings.erase(material);
     }
 
-    void RenderDescriptorBindingSystem::RegisterPipelineMaterial(graph::ShaderProgram *material)
+    void RenderDescriptorBindingSystem::RegisterPipelineMaterial(graph::MaterialTemplate *material)
     {
         if (material)
             pipeline_materials.insert(material);
     }
 
-    void RenderDescriptorBindingSystem::UnregisterPipelineMaterial(graph::ShaderProgram *material)
+    void RenderDescriptorBindingSystem::UnregisterPipelineMaterial(graph::MaterialTemplate *material)
     {
         if (material)
             pipeline_materials.erase(material);
@@ -333,7 +333,7 @@ namespace hgl::ecs
             domain_resource_bindings.erase(binding);
     }
 
-    const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::ShaderProgram *material,
+    const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::MaterialTemplate *material,
                                                                                                                              graph::mtl::SamplerSlot slot) const
     {
         if (!material)
@@ -389,7 +389,7 @@ namespace hgl::ecs
         EnsureViewportUBO();
         RefreshSceneUBOResolvers();
 
-        std::unordered_set<const graph::ShaderProgram *> active_materials;
+        std::unordered_set<const graph::MaterialTemplate *> active_materials;
         ApplyBatchMaterialBindings(active_materials);
         ApplyPipelineMaterialBindings(active_materials);
         ApplyDomainBindings();
@@ -397,7 +397,7 @@ namespace hgl::ecs
     }
 
     void RenderDescriptorBindingSystem::ApplyBatchMaterialBindings(
-        std::unordered_set<const graph::ShaderProgram *> &out_active)
+        std::unordered_set<const graph::MaterialTemplate *> &out_active)
     {
         if (!context)
             return;
@@ -409,7 +409,7 @@ namespace hgl::ecs
 
         for (const auto &pair : cache.materialBatches)
         {
-            graph::ShaderProgram *material = pair.first.material;
+            graph::MaterialTemplate *material = pair.first.material;
             if (!material)
                 continue;
 
@@ -515,9 +515,9 @@ namespace hgl::ecs
     }
 
     void RenderDescriptorBindingSystem::ApplyPipelineMaterialBindings(
-        std::unordered_set<const graph::ShaderProgram *> &out_active)
+        std::unordered_set<const graph::MaterialTemplate *> &out_active)
     {
-        for (graph::ShaderProgram *material : pipeline_materials)
+        for (graph::MaterialTemplate *material : pipeline_materials)
         {
             if (!material)
                 continue;
@@ -548,7 +548,7 @@ namespace hgl::ecs
     }
 
     void RenderDescriptorBindingSystem::PurgeStaleBindings(
-        const std::unordered_set<const graph::ShaderProgram *> &active)
+        const std::unordered_set<const graph::MaterialTemplate *> &active)
     {
         for (auto it = material_resource_bindings.begin(); it != material_resource_bindings.end();)
         {
@@ -595,7 +595,7 @@ namespace hgl::ecs
         for (const auto &pair : cache.materialBatches)
         {
             const auto &key = pair.first;
-            const graph::ShaderProgram *material = key.material;
+            const graph::MaterialTemplate *material = key.material;
             if (!material)
                 continue;
 

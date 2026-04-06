@@ -56,7 +56,7 @@ private:
     MaterialInstance* sky_material_instance = nullptr;
     SemanticMaterialId sky_semantic_id = 0;
 
-    ShaderProgram* material = nullptr;
+    MaterialTemplate* material = nullptr;
     MaterialInstance* material_instance = nullptr;
     SemanticMaterialId standard_semantic_id = 0;
     VertexDataManager* mesh_vdm = nullptr;

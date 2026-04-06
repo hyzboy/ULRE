@@ -87,7 +87,7 @@ namespace hgl::ecs
     {
     private:
         graph::BufferManager* buffer_manager;   ///<缓冲区管理器
-        graph::ShaderProgram* material;              ///<所属材质
+        graph::MaterialTemplate* material;              ///<所属材质
 
     private:    // 材质实例数据
         MaterialInstanceSet mi_set;         ///<材质实例集合（去重）
@@ -113,7 +113,7 @@ namespace hgl::ecs
         void Clear();
 
     public:
-        MaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::ShaderProgram* mtl);
+        MaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::MaterialTemplate* mtl);
         ~MaterialInstanceAssignmentBuffer() { Clear(); }
 
         /**
@@ -124,18 +124,18 @@ namespace hgl::ecs
         /**
          * 绑定MaterialInstanceID SSBO到材质
          */
-        void BindMaterialInstanceID(graph::ShaderProgram* mtl) const;
+        void BindMaterialInstanceID(graph::MaterialTemplate* mtl) const;
 
         /**
          * 绑定材质实例数据到材质
          */
-        void BindMaterialInstance(graph::ShaderProgram* mtl) const;
+        void BindMaterialInstance(graph::MaterialTemplate* mtl) const;
 
         /**
          * 绑定MaterialInstanceTextureID SSBO到材质（TextureArray用）
          * 当材质实例包含 MIT 数据时自动填充并绑定；无 MIT 数据时为空操作。
          */
-        void BindMaterialInstanceTextureID(graph::ShaderProgram* mtl) const;
+        void BindMaterialInstanceTextureID(graph::MaterialTemplate* mtl) const;
 
         /**
          * 写入所有RenderItem的材质实例数据

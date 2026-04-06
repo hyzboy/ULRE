@@ -16,7 +16,7 @@ namespace hgl
     {
         class Primitive;
         class MaterialInstance;
-        class ShaderProgram;
+        class MaterialTemplate;
         class RenderTargetFormat;
         class Sampler;
         class Texture2DArray;
@@ -51,7 +51,7 @@ namespace hgl::ecs
         {
             std::string                             domain_tag;
             graph::Texture2DArray*                  texture_array   = nullptr;
-            graph::ShaderProgram*                        material        = nullptr;
+            graph::MaterialTemplate*                        material        = nullptr;
             graph::DomainMaterialBinding*           dmb             = nullptr;
             graph::Sampler*                         sampler         = nullptr;
             graph::Primitive*                       primitive       = nullptr;

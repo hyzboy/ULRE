@@ -51,7 +51,7 @@ private:
 
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
-    ShaderProgram *          material            =nullptr;
+    MaterialTemplate *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
     SemanticMaterialId  semantic_material_id=0;
 
@@ -91,7 +91,7 @@ private:
 
         sampler=sampler_manager->CreateSampler();
 
-        if(!material->BindImageSampler( DescriptorSetType::ShaderProgram,     ///<描述符合集
+        if(!material->BindImageSampler( DescriptorSetType::MaterialTemplate,     ///<描述符合集
            mtl::SamplerName::ToDescriptorName(SamplerName::SamplerSlot::BaseColor),        ///<采样器名称
            texture,                            ///<纹理
            sampler))                           ///<采样器

@@ -94,7 +94,7 @@ bool RenderCmdBuffer::BeginSetup(const RenderTargetData *rtd)
     return true;
 }
 
-bool RenderCmdBuffer::BindDescriptorSets(ShaderProgram *mtl)
+bool RenderCmdBuffer::BindDescriptorSets(MaterialTemplate *mtl)
 {
     if(!mtl)return(false);
 

@@ -6,7 +6,7 @@ namespace hgl
 {
     namespace graph
     {
-        class ShaderProgram;
+        class MaterialTemplate;
         class GraphicsPipeline;
         class MaterialResourceDomain;    // Phase 4
     }
@@ -23,19 +23,19 @@ namespace hgl::ecs
     };
 
     /**
-     * ShaderProgram/GraphicsPipeline/Domain/Queue index for batching
+     * MaterialTemplate/GraphicsPipeline/Domain/Queue index for batching
      * Phase 4: MaterialResourceDomain* added so items from different domains
      * do not get incorrectly merged into the same draw batch.
      * domain == nullptr → default (backward-compatible with all existing code)
      */
     struct MaterialPipelineKey
     {
-        hgl::graph::ShaderProgram*       material = nullptr;
+        hgl::graph::MaterialTemplate*       material = nullptr;
         hgl::graph::GraphicsPipeline*       pipeline = nullptr;
         hgl::graph::MaterialResourceDomain* domain   = nullptr;   ///< Phase 4: nullptr = default domain
         RenderQueue                 queue    = RenderQueue::Opaque;
 
-        MaterialPipelineKey(hgl::graph::ShaderProgram*       m = nullptr,
+        MaterialPipelineKey(hgl::graph::MaterialTemplate*       m = nullptr,
                             hgl::graph::GraphicsPipeline*       p = nullptr,
                             hgl::graph::MaterialResourceDomain* d = nullptr,
                             RenderQueue                 q = RenderQueue::Opaque)
@@ -70,7 +70,7 @@ namespace std
     {
         size_t operator()(const hgl::ecs::MaterialPipelineKey& key) const noexcept
         {
-            size_t h1 = std::hash<hgl::graph::ShaderProgram*>{}(key.material);
+            size_t h1 = std::hash<hgl::graph::MaterialTemplate*>{}(key.material);
             size_t h2 = std::hash<hgl::graph::GraphicsPipeline*>{}(key.pipeline);
             size_t h3 = std::hash<hgl::graph::MaterialResourceDomain*>{}(key.domain);
             size_t h4 = std::hash<int>{}(static_cast<int>(key.queue));

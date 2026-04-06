@@ -7,7 +7,7 @@
 #include<hgl/type/StringList.h>
 #include<hgl/graph/VertexBuffer.h>
 #include<hgl/graph/mesh/NTB.h>
-//#include<hgl/graph/ShaderProgram/ShaderProgram.h>
+//#include<hgl/graph/MaterialTemplate/MaterialTemplate.h>
 #include<hgl/graph/mesh/Mesh.h>
 #include<hgl/io/FileOutputStream.h>
 #include<assimp/Importer.hpp>

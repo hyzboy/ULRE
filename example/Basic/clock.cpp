@@ -59,7 +59,7 @@ private:
     ECSContext* ecs_world = nullptr;
 
     // 传统渲染资源
-    ShaderProgram* material = nullptr;
+    MaterialTemplate* material = nullptr;
     Geometry* geometry = nullptr;
 
     // 刻度数据

@@ -48,12 +48,12 @@ private:
 
     std::shared_ptr<TransformGizmoSystem> gizmo_system;
 
-    ShaderProgram *grid_material = nullptr;
+    MaterialTemplate *grid_material = nullptr;
     MaterialInstance *grid_mi = nullptr;
     Geometry *grid_geometry = nullptr;
     Primitive *grid_primitive = nullptr;
 
-    ShaderProgram *cube_material = nullptr;
+    MaterialTemplate *cube_material = nullptr;
     MaterialInstance *cube_mi = nullptr;
     Geometry *cube_geometry = nullptr;
     Primitive *cube_primitive = nullptr;

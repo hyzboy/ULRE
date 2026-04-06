@@ -28,7 +28,7 @@ private:
     hgl::ecs::Entity *ground_entity = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    ShaderProgram *          mtl_sky_sphere      = nullptr;
+    MaterialTemplate *          mtl_sky_sphere      = nullptr;
 
     Geometry *          prim_sky_dome       = nullptr;
     Geometry *          prim_ground_plane   = nullptr;

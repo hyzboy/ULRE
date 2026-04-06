@@ -2,7 +2,7 @@
 #include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
-#include<hgl/vk/VKShaderProgram.h>
+#include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialResourceDomain.h>
@@ -287,7 +287,7 @@ MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name
     return mp;
 }
 
-void MaterialManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci)
+void MaterialManager::ApplyMaterialFinalizePlan(MaterialTemplate *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci)
 {
     if(!mtl)
         return;
@@ -307,11 +307,11 @@ void MaterialManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiSt
     // Phase 5: MI 数据池随第一次 CreateMI 时通过 default_domain 懒初始化，此处不再直接分配
 }
 
-ShaderProgram *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
+MaterialTemplate *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
 {
     acquire_material_cache_lookups.fetch_add(1);
 
-    ShaderProgram *cached = nullptr;
+    MaterialTemplate *cached = nullptr;
     if(material_by_name.Get(name, cached))
     {
         acquire_material_cache_hits.fetch_add(1);
@@ -323,7 +323,7 @@ ShaderProgram *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
     return nullptr;
 }
 
-ShaderProgram *MaterialManager::TryInitializeFallbackMaterial()
+MaterialTemplate *MaterialManager::TryInitializeFallbackMaterial()
 {
     if(fallback_material)
         return fallback_material;
@@ -366,7 +366,7 @@ ShaderProgram *MaterialManager::TryInitializeFallbackMaterial()
     return fallback_material;
 }
 
-ShaderProgram *MaterialManager::GetFallbackMaterial()
+MaterialTemplate *MaterialManager::GetFallbackMaterial()
 {
     if(!fallback_material)
         TryInitializeFallbackMaterial();
@@ -374,7 +374,7 @@ ShaderProgram *MaterialManager::GetFallbackMaterial()
     return fallback_material;
 }
 
-void MaterialManager::BindInstanceMaterial(MaterialInstance *mi, ShaderProgram *material)
+void MaterialManager::BindInstanceMaterial(MaterialInstance *mi, MaterialTemplate *material)
 {
     if(!mi)
         return;
@@ -393,7 +393,7 @@ void MaterialManager::ForgetInstanceMaterial(MaterialInstance *mi)
     material_instance_material_map.erase(mi);
 }
 
-ShaderProgram *MaterialManager::ResolveMaterial(const MaterialInstance *mi) const
+MaterialTemplate *MaterialManager::ResolveMaterial(const MaterialInstance *mi) const
 {
     if(!mi)
         return nullptr;
@@ -402,7 +402,7 @@ ShaderProgram *MaterialManager::ResolveMaterial(const MaterialInstance *mi) cons
     return it != material_instance_material_map.end() ? it->second : nullptr;
 }
 
-bool MaterialManager::ExecuteMaterialBuildPipeline(ShaderProgram *mtl,
+bool MaterialManager::ExecuteMaterialBuildPipeline(MaterialTemplate *mtl,
                                                    const AnsiString &mtl_name,
                                                    const mtl::MaterialCreateInfo *mci,
                                                    const ShaderStageMap &sci_map)
@@ -444,7 +444,7 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(ShaderProgram *mtl,
     return true;
 }
 
-ShaderProgram *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
+MaterialTemplate *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -460,7 +460,7 @@ ShaderProgram *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const 
     const MaterialCreatePrecheckDecision precheck_decision = RunMaterialCreatePrecheck(
         mci,
         mtl_name,
-        [&](const AnsiString &name)->ShaderProgram * { return TryGetCachedMaterial(name); },
+        [&](const AnsiString &name)->MaterialTemplate * { return TryGetCachedMaterial(name); },
         precheck_result);
 
     if(precheck_decision == MaterialCreatePrecheckDecision::UseCached)
@@ -477,7 +477,7 @@ ShaderProgram *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const 
 
     const ShaderStageMap &sci_map = *precheck_result.shader_map;
 
-    AutoDelete<ShaderProgram> mtl=new ShaderProgram(mtl_name,mci);
+    AutoDelete<MaterialTemplate> mtl=new MaterialTemplate(mtl_name,mci);
     if(!ExecuteMaterialBuildPipeline(mtl,
                                      mtl_name,
                                      mci,
@@ -493,12 +493,12 @@ ShaderProgram *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const 
     acquire_material_created.fetch_add(1);
 
     material_by_name.Add(mtl_name,mtl);
-    // ShaderProgram is a C++ object managed by MaterialManager, not a Vulkan object
+    // MaterialTemplate is a C++ object managed by MaterialManager, not a Vulkan object
     // No need to track with ObjectTracker
     return mtl.Finish();
 }
 
-ShaderProgram *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg)
+MaterialTemplate *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -510,12 +510,12 @@ ShaderProgram *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,
     return CreateMaterial(key, cfg);
 }
 
-ShaderProgram *MaterialManager::AcquireMaterial(const MaterialSpec &spec, MaterialSpecKey *out_key)
+MaterialTemplate *MaterialManager::AcquireMaterial(const MaterialSpec &spec, MaterialSpecKey *out_key)
 {
     if(!spec.IsValid())
         return nullptr;
 
-    ShaderProgram *result = nullptr;
+    MaterialTemplate *result = nullptr;
 
     switch(spec.family)
     {
@@ -539,11 +539,11 @@ ShaderProgram *MaterialManager::AcquireMaterial(const MaterialSpec &spec, Materi
     return result;
 }
 
-ShaderProgram *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
+MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
     acquire_material_requests.fetch_add(1);
 
-    ShaderProgram *mtl = CreateMaterial(mtl_id, cfg);
+    MaterialTemplate *mtl = CreateMaterial(mtl_id, cfg);
 
     if(!mtl)
     {
@@ -558,11 +558,11 @@ ShaderProgram *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id
     return mtl;
 }
 
-ShaderProgram *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
+MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
     acquire_material_requests.fetch_add(1);
 
-    ShaderProgram *mtl = CreateMaterial(mtl_id, cfg);
+    MaterialTemplate *mtl = CreateMaterial(mtl_id, cfg);
 
     if(!mtl)
     {
@@ -577,11 +577,11 @@ ShaderProgram *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id
     return mtl;
 }
 
-ShaderProgram *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
+MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
     acquire_material_requests.fetch_add(1);
 
-    ShaderProgram *mtl = CreateMaterial(key, cfg);
+    MaterialTemplate *mtl = CreateMaterial(key, cfg);
 
     if(!mtl)
     {
@@ -596,11 +596,11 @@ ShaderProgram *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &k
     return mtl;
 }
 
-ShaderProgram *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
+MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
     acquire_material_requests.fetch_add(1);
 
-    ShaderProgram *mtl = CreateMaterial(key, cfg);
+    MaterialTemplate *mtl = CreateMaterial(key, cfg);
 
     if(!mtl)
     {
@@ -645,7 +645,7 @@ std::map<std::string, uint32_t> MaterialManager::GetShaderGenRecentValidationCat
     return {};
 }
 
-ShaderProgram *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg)
+MaterialTemplate *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -662,7 +662,7 @@ ShaderProgram *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,
     return CreateMaterial(key, cfg);
 }
 
-ShaderProgram *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material2DCreateConfig *cfg)
+MaterialTemplate *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material2DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -679,7 +679,7 @@ ShaderProgram *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &ke
     hash_name+=cfg->ToHashStdString().c_str();
 
     {
-        ShaderProgram *cached = TryGetCachedMaterial(hash_name);
+        MaterialTemplate *cached = TryGetCachedMaterial(hash_name);
         if (cached)
             return cached;
     }
@@ -691,7 +691,7 @@ ShaderProgram *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &ke
     if(!mci)
         return(nullptr);
 
-    ShaderProgram *mat = this->CreateMaterial(hash_name,mci);
+    MaterialTemplate *mat = this->CreateMaterial(hash_name,mci);
     if (mat)
     {
         uint8_t flags = 0;
@@ -703,7 +703,7 @@ ShaderProgram *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &ke
     return mat;
 }
 
-ShaderProgram *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg)
+MaterialTemplate *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -722,7 +722,7 @@ ShaderProgram *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &ke
     hash_name+=cfg->ToHashStdString().c_str();
 
     {
-        ShaderProgram *cached = TryGetCachedMaterial(hash_name);
+        MaterialTemplate *cached = TryGetCachedMaterial(hash_name);
         if (cached)
             return cached;
     }
@@ -752,7 +752,7 @@ ShaderProgram *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &ke
         return(nullptr);
     }
 
-    ShaderProgram *mat = this->CreateMaterial(hash_name,mci);
+    MaterialTemplate *mat = this->CreateMaterial(hash_name,mci);
     if (mat)
     {
         uint8_t flags = 0;
@@ -783,7 +783,7 @@ MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanc
     }
     else
     {
-        ShaderProgram *mtl = spec.material;
+        MaterialTemplate *mtl = spec.material;
         if(!mtl) return nullptr;
 
         if(spec.vil_cfg)
@@ -845,7 +845,7 @@ bool MaterialManager::UpdateInstanceData(MaterialInstance *mi, const void *data,
 // MaterialResourceDomain — Phase 1
 // ============================================================================
 
-MaterialResourceDomain *MaterialManager::CreateMaterialResourceDomain(ShaderProgram *mtl)
+MaterialResourceDomain *MaterialManager::CreateMaterialResourceDomain(MaterialTemplate *mtl)
 {
     if(!mtl)
         return nullptr;
@@ -859,7 +859,7 @@ MaterialResourceDomain *MaterialManager::CreateMaterialResourceDomain(uint32_t m
     return new MaterialResourceDomain(mi_data_bytes, mi_max_count);
 }
 
-DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(MaterialResourceDomain *domain, ShaderProgram *mtl)
+DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(MaterialResourceDomain *domain, MaterialTemplate *mtl)
 {
     if (!domain || !mtl)
         return nullptr;
@@ -928,7 +928,7 @@ void MaterialManager::ReleaseMaterialResourceDomain(MaterialResourceDomain *doma
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialResourceDomain *domain,
-                                                          ShaderProgram *material,
+                                                          MaterialTemplate *material,
                                                           const VIL *vil,
                                                           const void *data,
                                                           const uint32 data_size)
@@ -950,7 +950,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialResourceDomain
     return mi;
 }
 
-bool MaterialManager::RebindMaterialInstance(MaterialInstance *mi, ShaderProgram *material, const VIL *vil)
+bool MaterialManager::RebindMaterialInstance(MaterialInstance *mi, MaterialTemplate *material, const VIL *vil)
 {
     if(!mi || !material)
         return false;

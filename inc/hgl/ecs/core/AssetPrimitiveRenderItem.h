@@ -10,7 +10,7 @@ namespace hgl
     namespace graph
     {
         class Primitive;
-        class ShaderProgram;
+        class MaterialTemplate;
         class MaterialInstance;
     }
 }
@@ -64,7 +64,7 @@ namespace hgl::ecs
 
         graph::Primitive*        GetPrimitive()        const override { return primitive; }
         graph::MaterialInstance* GetMaterialInstance() const override;
-        graph::ShaderProgram*         GetMaterial()         const override;
+        graph::MaterialTemplate*         GetMaterial()         const override;
 
         // ---- Asset-specific ----
 

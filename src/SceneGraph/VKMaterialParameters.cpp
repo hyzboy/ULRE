@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
-#include<hgl/vk/VKShaderProgram.h>
+#include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKBuffer.h>
 

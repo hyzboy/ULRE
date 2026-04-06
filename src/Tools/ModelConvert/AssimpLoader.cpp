@@ -161,7 +161,7 @@ void OutMaterial(const MaterialData *ms,const OSString &filename)
 
     fos.CreateTrunc(filename);
 
-    dos.WriteFully("ShaderProgram\x1A\x1",10);
+    dos.WriteFully("MaterialTemplate\x1A\x1",10);
     dos.WriteFloat(ms->diffuse,3);
     dos.WriteFloat(ms->specular,3);
     dos.WriteFloat(ms->ambient,3);
@@ -181,7 +181,7 @@ void OutMaterial(const MaterialData *ms,const OSString &filename)
     GLogInfo(OS_TEXT("wireframe: ")+OSString(ms->wireframe?OS_TEXT("true"):OS_TEXT("false")));
     GLogInfo(OS_TEXT("two_sided: ")+OSString(ms->two_sided?OS_TEXT("true"):OS_TEXT("false")));
 
-    GLogInfo(OS_TEXT("ShaderProgram Texture Count ")+OSString(ms->tex_count));
+    GLogInfo(OS_TEXT("MaterialTemplate Texture Count ")+OSString(ms->tex_count));
 
     for(int i=0;i<ms->tex_count;i++)
         OutMaterialTexture(ms->tex_list[i],&dos);
@@ -253,7 +253,7 @@ void AssimpLoader::LoadMaterial()
     unsigned int max;   // changed: to unsigned
 
     LOG_BR;
-    GLogInfo(OS_TEXT("ShaderProgram Count ")+OSString(scene->mNumMaterials));
+    GLogInfo(OS_TEXT("MaterialTemplate Count ")+OSString(scene->mNumMaterials));
     LOG_BR;
 
     aiString filename;
@@ -511,7 +511,7 @@ void AssimpLoader::LoadMesh()
         GLogInfo(mesh_name+U8_TEXT(" texcoord count is ")+UTF8String(mesh->GetNumUVChannels()));
 
         if(mesh->GetNumUVChannels()>0)
-            GLogInfo(mesh_name+U8_TEXT(" ShaderProgram Index is ")+UTF8String(mesh->mMaterialIndex));
+            GLogInfo(mesh_name+U8_TEXT(" MaterialTemplate Index is ")+UTF8String(mesh->mMaterialIndex));
 
         if(mesh->HasPositions())GLogInfo(mesh_name+U8_TEXT(" have Position, vertices count ")+UTF8String(mesh->mNumVertices));
         if(mesh->HasFaces())GLogInfo(mesh_name+U8_TEXT(" have Faces,faces count ")+UTF8String(mesh->mNumFaces));

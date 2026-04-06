@@ -7,10 +7,10 @@
 namespace hgl::graph{
 
 // ---------------------------------------------------------------------------
-// ShaderProgram::CreateMI — 旧路径（不涉及 MaterialResourceDomain）
+// MaterialTemplate::CreateMI — 旧路径（不涉及 MaterialResourceDomain）
 // ---------------------------------------------------------------------------
 
-MaterialInstance *ShaderProgram::CreateMI(MaterialManager *material_manager, const VIL *vil)
+MaterialInstance *MaterialTemplate::CreateMI(MaterialManager *material_manager, const VIL *vil)
 {
     // Phase 5: 旧路径统一通过懒初始化的 default_domain 分配 MI 槽位
     if(!default_domain && hasMI())
@@ -23,12 +23,12 @@ MaterialInstance *ShaderProgram::CreateMI(MaterialManager *material_manager, con
     return mi;
 }
 
-MaterialInstance *ShaderProgram::CreateMI(MaterialManager *material_manager, const VILConfig *vil_cfg)
+MaterialInstance *MaterialTemplate::CreateMI(MaterialManager *material_manager, const VILConfig *vil_cfg)
 {
     return CreateMI(material_manager, CreateVIL(vil_cfg));
 }
 
-void ShaderProgram::ReleaseMI(int mi_id)
+void MaterialTemplate::ReleaseMI(int mi_id)
 {
     // Phase 5: 保留接口兼容性；通过 default_domain 代理释放
     if(mi_id < 0 || !default_domain) return;
@@ -36,7 +36,7 @@ void ShaderProgram::ReleaseMI(int mi_id)
     default_domain->FreeMISlot(mi_id);
 }
 
-void *ShaderProgram::GetMIData(int id)
+void *MaterialTemplate::GetMIData(int id)
 {
     // Phase 5: 通过 default_domain 代理访问
     if(!default_domain)
@@ -50,7 +50,7 @@ void *ShaderProgram::GetMIData(int id)
 // ---------------------------------------------------------------------------
 
 /// 旧路径：domain = nullptr
-ShaderProgram *MaterialInstance::GetMaterial() const
+MaterialTemplate *MaterialInstance::GetMaterial() const
 {
     return material_manager ? material_manager->ResolveMaterial(this) : nullptr;
 }
@@ -90,7 +90,7 @@ void *MaterialInstance::GetMIData()
 
 void MaterialInstance::WriteMIData(const void *data,const uint32 size)
 {
-    ShaderProgram *material = GetMaterial();
+    MaterialTemplate *material = GetMaterial();
     if(!data||!size||!material||size>material->GetMIDataBytes())return;
 
     void *tp=GetMIData();

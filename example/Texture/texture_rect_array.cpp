@@ -63,7 +63,7 @@ private:
 
     Texture2DArray *    texture             = nullptr;
     Sampler *           sampler             = nullptr;
-    ShaderProgram *          material            = nullptr;
+    MaterialTemplate *          material            = nullptr;
 
     Primitive *         mesh_rect           = nullptr;
 

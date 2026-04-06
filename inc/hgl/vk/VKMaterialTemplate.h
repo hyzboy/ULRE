@@ -30,7 +30,7 @@ using ShaderStageCreateInfoList=ValueArray<VkPipelineShaderStageCreateInfo>;
  * 用于管理shader，提供DescriptorSetLayoutCreater.
  * 在材质需要用到UBO.SSBO数据情况下，Material不能被用于渲染，需要一个MaterialInstance来提供数据才能进行渲染。所以一般情况下，不使用Material进行渲染。<br>
  */
-class ShaderProgram
+class MaterialTemplate
 {
     OBJECT_LOGGER
 
@@ -64,11 +64,11 @@ private:
 
     friend class MaterialManager;
 
-    ShaderProgram(const AnsiString &,const mtl::MaterialCreateInfo *);
+    MaterialTemplate(const AnsiString &,const mtl::MaterialCreateInfo *);
 
 public:
 
-    virtual ~ShaderProgram();
+    virtual ~MaterialTemplate();
 
     const   AnsiString &                        GetName                 ()const{return name;}
     const   mtl::DescriptorBindingSlots &       GetBindingContract      ()const{return binding_contract;}
@@ -149,7 +149,7 @@ public:
 
     MaterialInstance *CreateMI(MaterialManager *, const VIL *);
     MaterialInstance *CreateMI(MaterialManager *, const VILConfig *vil_cfg=nullptr);
-};//class ShaderProgram
+};//class MaterialTemplate
 
-using MaterialSet=std::unordered_set<ShaderProgram *>;
+using MaterialSet=std::unordered_set<MaterialTemplate *>;
 }//namespace hgl::graph

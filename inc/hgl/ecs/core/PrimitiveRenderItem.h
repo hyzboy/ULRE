@@ -7,7 +7,7 @@ namespace hgl
     namespace graph
     {
         class Primitive;
-        class ShaderProgram;
+        class MaterialTemplate;
         class MaterialInstance;
     }
 }
@@ -58,10 +58,10 @@ namespace hgl::ecs
         void SetResolvedMI(hgl::graph::MaterialInstance* mi) { resolved_mi = mi; }
         hgl::graph::MaterialInstance* GetResolvedMI() const { return resolved_mi; }
 
-        // ShaderProgram batching interface
+        // MaterialTemplate batching interface
         hgl::graph::Primitive* GetPrimitive() const override;
         hgl::graph::MaterialInstance* GetMaterialInstance() const override;
-        hgl::graph::ShaderProgram* GetMaterial() const override;
+        hgl::graph::MaterialTemplate* GetMaterial() const override;
 
         // Update world matrix from transform
         void UpdateWorldMatrix();

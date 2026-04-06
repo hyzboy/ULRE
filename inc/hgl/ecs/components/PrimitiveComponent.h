@@ -15,7 +15,7 @@ namespace hgl
     namespace graph
     {
         class Primitive;
-        class ShaderProgram;
+        class MaterialTemplate;
         class MaterialInstance;
     }
 }
@@ -31,7 +31,7 @@ namespace hgl::ecs
      * Features:
      * - Holds reference to hgl::graph::Primitive
      * - Supports MaterialInstanceData override
-     * - Provides access to ShaderProgram, GraphicsPipeline, and AABB data
+     * - Provides access to MaterialTemplate, GraphicsPipeline, and AABB data
      * - Compatible with RenderCollector for batched rendering
      */
     class PrimitiveComponent : public RenderableComponent
@@ -61,7 +61,7 @@ namespace hgl::ecs
         void SetPrimitive(hgl::graph::Primitive* prim);
         hgl::graph::Primitive* GetPrimitive() const { return primitive; }
 
-        // ShaderProgram override
+        // MaterialTemplate override
         void SetOverrideMaterial(hgl::graph::MaterialInstance* mi);
         hgl::graph::MaterialInstance* GetOverrideMaterial() const { return overrideMaterial; }
         void ClearOverrideMaterial() { overrideMaterial = nullptr; }
@@ -71,9 +71,9 @@ namespace hgl::ecs
         hgl::graph::SemanticMaterialId GetSemanticMaterial() const { return semanticMaterialId; }
         bool HasSemanticMaterial() const { return semanticMaterialId != 0; }
 
-        // ShaderProgram access (returns override if set, otherwise primitive's material)
+        // MaterialTemplate access (returns override if set, otherwise primitive's material)
         hgl::graph::MaterialInstance* GetMaterialInstance() const;
-        hgl::graph::ShaderProgram* GetMaterial() const;
+        hgl::graph::MaterialTemplate* GetMaterial() const;
 
         // Bounding volume
         bool GetLocalAABB(hgl::math::AABB& outAABB) const;

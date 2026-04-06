@@ -33,7 +33,7 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    ShaderProgram *          material            = nullptr;
+    MaterialTemplate *          material            = nullptr;
 
     Geometry *         prim_rect_cube      = nullptr;
     Geometry *         prim_circle_cylinder = nullptr;

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
-#include<hgl/vk/VKShaderProgram.h>
+#include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKMaterialResourceDomain.h>
@@ -30,7 +30,7 @@ namespace mtl
     class MaterialCreateInfo;
 }//namespace mtl
 
-using ShaderProgramID            = int;
+using MaterialTemplateID    = int;
 using MaterialInstanceID    = int;
 using ShaderModuleMapByName = UnorderedMap<AnsiString,ShaderModule *>;
 
@@ -41,7 +41,7 @@ struct MaterialSpecKey
 
 struct MaterialInstanceSpecKey
 {
-    ShaderProgram *material = nullptr;
+    MaterialTemplate *material = nullptr;
     const VIL *vil = nullptr;
     GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
     MaterialResourceDomain *domain = nullptr;
@@ -71,7 +71,7 @@ struct MaterialSpec
 
 struct MaterialInstanceSpec
 {
-    ShaderProgram *material = nullptr;
+    MaterialTemplate *material = nullptr;
     MaterialResourceDomain *domain = nullptr;
 
     const VIL *vil = nullptr;
@@ -108,11 +108,11 @@ GRAPH_MODULE_CLASS(MaterialManager)
 private:
 
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
-    UnorderedMap<AnsiString,ShaderProgram *> material_by_name;
+    UnorderedMap<AnsiString,MaterialTemplate *> material_by_name;
 
-    AutoIdObjectManager<ShaderProgramID,            ShaderProgram>          rm_shader_program;          ///<材质合集
+    AutoIdObjectManager<MaterialTemplateID,            MaterialTemplate>          rm_shader_program;          ///<材质合集
     AutoIdObjectManager<MaterialInstanceID,         MaterialInstance>       rm_material_instance;       ///<材质实例合集
-    std::unordered_map<const MaterialInstance *,    ShaderProgram *>        material_instance_material_map;
+    std::unordered_map<const MaterialInstance *,    MaterialTemplate *>        material_instance_material_map;
 
     // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding
     std::unordered_map<MaterialResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
@@ -128,7 +128,7 @@ private:
     std::atomic<uint64_t> acquire_mi_created {0};
 
     // Fallback material for error handling (initialized on first use)
-    ShaderProgram *fallback_material = nullptr;
+    MaterialTemplate *fallback_material = nullptr;
 
 private:
 
@@ -139,46 +139,46 @@ private:
 
 private: // Helper methods with integrated DebugUtils
 
-    ShaderProgram *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
-    ShaderProgram *CreateMaterial(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);   ///<基于内置材质ID创建2D材质
-    ShaderProgram *CreateMaterial(const mtl::MaterialPreset, mtl::Material3DCreateConfig *);   ///<基于内置材质ID创建3D材质
-    ShaderProgram *CreateMaterial(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质
-    ShaderProgram *CreateMaterial(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质
+    MaterialTemplate *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
+    MaterialTemplate *CreateMaterial(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);   ///<基于内置材质ID创建2D材质
+    MaterialTemplate *CreateMaterial(const mtl::MaterialPreset, mtl::Material3DCreateConfig *);   ///<基于内置材质ID创建3D材质
+    MaterialTemplate *CreateMaterial(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质
+    MaterialTemplate *CreateMaterial(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质
     class GraphicsPipelineLayoutData *CreateMaterialGraphicsPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class GraphicsPipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
-    void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci);
-    ShaderProgram *TryGetCachedMaterial(const AnsiString &name);
-    bool ExecuteMaterialBuildPipeline(ShaderProgram *mtl,
+    void ApplyMaterialFinalizePlan(MaterialTemplate *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci);
+    MaterialTemplate *TryGetCachedMaterial(const AnsiString &name);
+    bool ExecuteMaterialBuildPipeline(MaterialTemplate *mtl,
                                       const AnsiString &mtl_name,
                                       const mtl::MaterialCreateInfo *mci,
                                       const ShaderStageMap &sci_map);
 
-     ShaderProgram *TryInitializeFallbackMaterial();
-     ShaderProgram *GetFallbackMaterial();
-    void BindInstanceMaterial(MaterialInstance *mi, ShaderProgram *material);
+     MaterialTemplate *TryInitializeFallbackMaterial();
+     MaterialTemplate *GetFallbackMaterial();
+    void BindInstanceMaterial(MaterialInstance *mi, MaterialTemplate *material);
     void ForgetInstanceMaterial(MaterialInstance *mi);
 
 public: //Add
 
-    ShaderProgramID         Add(ShaderProgram *          mtl ){return rm_shader_program.Add(mtl);}
+    MaterialTemplateID         Add(MaterialTemplate *          mtl ){return rm_shader_program.Add(mtl);}
     MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
 
 public: //Get
 
-    ShaderProgram *         GetMaterial         (const ShaderProgramID      &id){return rm_shader_program.Get(id);}
+    MaterialTemplate *         GetMaterial         (const MaterialTemplateID      &id){return rm_shader_program.Get(id);}
     MaterialInstance *      GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
-    ShaderProgram *         ResolveMaterial     (const MaterialInstance *   mi)const;
+    MaterialTemplate *         ResolveMaterial     (const MaterialInstance *   mi)const;
 
 public: //Release
 
-    void Release(ShaderProgram *         mtl ){rm_shader_program.Release(mtl);}
+    void Release(MaterialTemplate *         mtl ){rm_shader_program.Release(mtl);}
     void Release(MaterialInstance * mi  )
     {
         ForgetInstanceMaterial(mi);
         rm_material_instance.Release(mi);
     }
 
-    void Destroy(ShaderProgram *mtl)
+    void Destroy(MaterialTemplate *mtl)
     {
         if (!mtl)
             return;
@@ -308,13 +308,13 @@ public: // Acquire stats
         acquire_mi_created.store(0);
     }
 
-public: //ShaderProgram
+public: //MaterialTemplate
 
-    ShaderProgram *          AcquireMaterial (const MaterialSpec &spec, MaterialSpecKey *out_key = nullptr);
-    ShaderProgram *          AcquireMaterial (const mtl::MaterialPreset, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
-    ShaderProgram *          AcquireMaterial (const mtl::MaterialPreset, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
-    ShaderProgram *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
-    ShaderProgram *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    MaterialTemplate *          AcquireMaterial (const MaterialSpec &spec, MaterialSpecKey *out_key = nullptr);
+    MaterialTemplate *          AcquireMaterial (const mtl::MaterialPreset, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    MaterialTemplate *          AcquireMaterial (const mtl::MaterialPreset, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    MaterialTemplate *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    MaterialTemplate *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
 
 public: //MaterialInstanceData
 
@@ -327,11 +327,11 @@ public: // MaterialResourceDomain — Phase 1 / Phase 3
      * 创建一个以 mtl 为模板的资源域，并初始化其 MI 数据池。
      * Phase 1: 池 stride/max_count 从 mtl 复制，分配独立 ActiveMemoryBlockManager。
      */
-    MaterialResourceDomain *        CreateMaterialResourceDomain        (ShaderProgram *mtl);
+    MaterialResourceDomain *        CreateMaterialResourceDomain        (MaterialTemplate *mtl);
 
     /**
      * 以显式 MI 布局创建资源域。
-     * Phase A: 解耦 MaterialResourceDomain 与具体 ShaderProgram 变体所有权。
+     * Phase A: 解耦 MaterialResourceDomain 与具体 MaterialTemplate 变体所有权。
      */
     MaterialResourceDomain *        CreateMaterialResourceDomain        (uint32_t mi_data_bytes, uint32_t mi_max_count);
 
@@ -341,7 +341,7 @@ public: // MaterialResourceDomain — Phase 1 / Phase 3
      * Phase 3: 同一 domain 可绑定多个 Material（Opaque + Masked 等），各 binding 独立管理。
      * 关系检查：MI stride 必须兼容；描述符集类型差异以 Warning 形式打印。
      */
-    DomainMaterialBinding * CreateDomainMaterialBinding (MaterialResourceDomain *domain, ShaderProgram *mtl);
+    DomainMaterialBinding * CreateDomainMaterialBinding (MaterialResourceDomain *domain, MaterialTemplate *mtl);
 
     /**
      * 释放一个 DomainMaterialBinding，并将其从所属域的追踪列表中移除。
@@ -359,17 +359,17 @@ public: // MaterialResourceDomain MaterialInstanceData creation (Phase 1)
 
     // Create MI from a semantic-owned domain binding to a concrete runtime variant material.
     MaterialInstance *  CreateMaterialInstance(MaterialResourceDomain *domain,
-                                               ShaderProgram *material,
+                                               MaterialTemplate *material,
                                                const VIL *vil,
                                                const void *data,
                                                const uint32 data_size);
 
     // Phase D: update MI render material/vil without reallocating MI slot.
-    bool RebindMaterialInstance(MaterialInstance *mi, ShaderProgram *material, const VIL *vil);
+    bool RebindMaterialInstance(MaterialInstance *mi, MaterialTemplate *material, const VIL *vil);
 
 public: // Phase 0 Stats — 帧级资源量观测
 
-    /// 当前存活 ShaderProgram 数量
+    /// 当前存活 MaterialTemplate 数量
     uint32_t GetMaterialCount()         const { return (uint32_t)rm_shader_program.GetCount(); }
 
     /// 当前存活 MaterialInstance 数量

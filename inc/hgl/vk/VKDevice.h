@@ -44,7 +44,7 @@ class IndirectDispatchBuffer;
 class StagedBuffer;
 class IGPUBuffer;
 class ComputePipeline;
-class Material;
+class MaterialTemplate;
 class Texture;
 class Fence;
 class DeviceQueue;

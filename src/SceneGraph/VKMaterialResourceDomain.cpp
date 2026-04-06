@@ -1,5 +1,5 @@
 ﻿#include<hgl/vk/VKMaterialResourceDomain.h>
-#include<hgl/vk/VKShaderProgram.h>
+#include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
 
 hgl::graph::MaterialResourceDomain::MaterialResourceDomain(uint32_t mi_bytes, uint32_t mi_count)
@@ -11,7 +11,7 @@ hgl::graph::MaterialResourceDomain::MaterialResourceDomain(uint32_t mi_bytes, ui
         mi_data_manager = new hgl::ActiveMemoryBlockManager(mi_data_bytes);
 }
 
-hgl::graph::MaterialResourceDomain::MaterialResourceDomain(hgl::graph::ShaderProgram *mtl)
+hgl::graph::MaterialResourceDomain::MaterialResourceDomain(hgl::graph::MaterialTemplate *mtl)
     : MaterialResourceDomain(mtl ? mtl->GetMIDataBytes() : uint32_t(0),
                      mtl ? mtl->GetMIMaxCount() : uint32_t(0))
 {

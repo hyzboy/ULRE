@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKShaderProgram.h>
+#include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKMaterialResourceDomain.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/mtl/SamplerSlot.h>
@@ -14,7 +14,7 @@ class MaterialManager;
 * 材质实例类本质只是提供一个数据区，供RenderCollector合并成一个大UBO。
 *
 * Phase 1: 支持可选 MaterialResourceDomain。
-*   - domain == nullptr : MI 数据由 ShaderProgram 自身的数据池管理（旧路径）。
+*   - domain == nullptr : MI 数据由 MaterialTemplate 自身的数据池管理（旧路径）。
 *   - domain != nullptr : MI 数据由指定 MaterialResourceDomain 的独立数据池管理（新路径）。
 */
 class MaterialInstance
@@ -37,14 +37,14 @@ protected:
 
 public:
 
-            ShaderProgram *      GetMaterial ()const;
+            MaterialTemplate *      GetMaterial ()const;
             MaterialResourceDomain *GetDomain   ()      { return domain; }
 
     const   VIL *           GetVIL      ()const { return vil; }
 
 private:
 
-    friend class ShaderProgram;
+    friend class MaterialTemplate;
     friend class MaterialResourceDomain;
     friend class MaterialManager;
 

@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsRenderState.h>
-#include<hgl/vk/VKShaderProgram.h>
+#include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/type/FNV1a.h>
