@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
+﻿#include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/core/Context.h>

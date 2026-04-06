@@ -1,4 +1,4 @@
-// PlaneGrid3D
+﻿// PlaneGrid3D
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -42,7 +42,8 @@ private:
 private:
 
     bool InitMDP()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kPlaneGridCfg {
             .id       = "plane_grid",
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
@@ -71,7 +72,8 @@ private:
     }
 
     bool CreateRenderObject()
-    {
+    {
+
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
@@ -97,7 +99,8 @@ private:
     }
 
     bool Add(const char *name,MaterialInstance *mi,const glm::quat &rotation)
-    {
+    {
+
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;

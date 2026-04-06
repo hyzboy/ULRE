@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/graph/mesh/StaticMesh.h>
 #include <memory>

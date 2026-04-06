@@ -1,4 +1,4 @@
-// RayPicking (ECS Version)
+﻿// RayPicking (ECS Version)
 // 该范例主要演示使用ECS架构实现射线拾取功能
 // This example demonstrates ray picking using ECS architecture
 //
@@ -71,7 +71,8 @@ private:
 private:
 
     bool InitMaterialAndPipeline()
-    {
+    {
+
         auto* device = GetDevice();
                 if (!device)
             return false;
@@ -112,7 +113,8 @@ private:
     }
 
     bool CreateGeometry()
-    {
+    {
+
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
@@ -164,7 +166,8 @@ private:
     }
 
     bool InitECS()
-    {
+    {
+
         // === 步骤1: 获取ECS世界 ===
         ecs_world = GetECSContext();
         if(!ecs_world)

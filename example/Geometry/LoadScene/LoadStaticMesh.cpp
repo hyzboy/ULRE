@@ -1,4 +1,4 @@
-// LoadStaticMesh.cpp — 从 .scene minipack 加载场景树到 StaticMesh
+﻿// LoadStaticMesh.cpp — 从 .scene minipack 加载场景树到 StaticMesh
 // 此文件暂置于 example/Geometry/，以便与 LoadGeometry.cpp 共享翻译单元。
 // 等 LoadGeometry 迁入引擎库后，此文件可随之迁移至 src/SceneGraph/mesh/。
 

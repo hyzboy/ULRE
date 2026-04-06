@@ -1,4 +1,4 @@
-// SimpleTube.cpp - 基于示例创建一个低精度 Tube (用于 RenderDoc 导出测试)
+﻿// SimpleTube.cpp - 基于示例创建一个低精度 Tube (用于 RenderDoc 导出测试)
 // Demonstrates creating a Tube primitive via the inline geometry helper
 
 #include<hgl/framework/WorkManager.h>

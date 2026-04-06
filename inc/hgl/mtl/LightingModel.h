@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /// LightingModel.h — 光照模型唯一权威定义
 ///

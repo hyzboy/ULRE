@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/type/EnumUtil.h>
 #include <hgl/type/StrChar.h>

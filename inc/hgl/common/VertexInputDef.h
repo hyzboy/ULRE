@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/common/InterpolationDef.h>

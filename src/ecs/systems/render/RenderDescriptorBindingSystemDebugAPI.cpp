@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+﻿#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<algorithm>
 
 namespace hgl::ecs

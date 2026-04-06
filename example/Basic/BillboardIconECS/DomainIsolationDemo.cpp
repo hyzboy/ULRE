@@ -1,4 +1,4 @@
-// R8 — domain_id 语义化演示：双图标集 Billboard 阵列
+﻿// R8 — domain_id 语义化演示：双图标集 Billboard 阵列
 //
 // 两组 Billboard 螺旋各使用不同的图标集（Freepik / Gradient），
 // PlaneGrid 材质通过 domain_id 区分批次，验证 ResourceDomain 隔离端到端正确。

@@ -1,4 +1,4 @@
-#include <hgl/graph/asset/AssetWorldRegistry.h>
+﻿#include <hgl/graph/asset/AssetWorldRegistry.h>
 #include <algorithm>
 
 namespace hgl::graph

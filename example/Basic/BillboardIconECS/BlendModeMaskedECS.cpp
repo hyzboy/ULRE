@@ -1,4 +1,4 @@
-// RenderAlphaMode Masked ECS - Alpha Cutout Demo
+﻿// RenderAlphaMode Masked ECS - Alpha Cutout Demo
 //
 // Demonstrates hard alpha cutout (clip/discard) for billboard transparency.
 // Pixels whose alpha falls below a threshold are fully discarded by the shader;

@@ -1,4 +1,4 @@
-// RenderAlphaMode Alpha-to-Coverage ECS - MSAA A2C Demo
+﻿// RenderAlphaMode Alpha-to-Coverage ECS - MSAA A2C Demo
 //
 // Demonstrates alpha-to-coverage (A2C): the fragment shader outputs the surface alpha
 // and the GPU's MSAA hardware converts it into coverage bits at sample boundaries.

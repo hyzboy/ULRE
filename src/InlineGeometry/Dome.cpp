@@ -1,4 +1,4 @@
-#include "InlineGeometryCommon.h"
+﻿#include "InlineGeometryCommon.h"
 #include <vector>
 #include <unordered_map>
 #include <cstdint>

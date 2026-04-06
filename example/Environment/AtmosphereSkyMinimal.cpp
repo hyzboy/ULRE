@@ -1,4 +1,4 @@
-#include<hgl/framework/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
@@ -36,7 +36,8 @@ private:
 private:
 
     bool InitMDP()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kSkyCfg {
             .id       = "sky_minimal",
             .preset   = mtl::MaterialPreset::SkyMinimal,
@@ -50,7 +51,8 @@ private:
     }
 
     bool CreateRenderObject()
-    {
+    {
+
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
@@ -78,7 +80,8 @@ private:
             return false;
 
         if(!prim_sky_sphere || !mi_sky_sphere)
-            return false;
+            return false;
+
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;

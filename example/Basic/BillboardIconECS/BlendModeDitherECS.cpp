@@ -1,4 +1,4 @@
-// RenderAlphaMode Dither ECS - Bayer Ordered Dither Demo
+﻿// RenderAlphaMode Dither ECS - Bayer Ordered Dither Demo
 //
 // Demonstrates Bayer ordered dithering applied to billboard transparency.
 // The material uses a dither-pattern technique so that semi-transparent pixels

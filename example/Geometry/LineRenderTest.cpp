@@ -1,4 +1,4 @@
-#include<hgl/framework/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/components/CameraComponent.h>
@@ -57,7 +57,7 @@ public:
         // EN: Setup line color palette
         auto* line_pipeline = dynamic_cast<LineRenderPipeline*>(ecs->GetRenderPipeline("Line"));
         LogInfo("[LineRenderTest] Init: GetRenderPipeline returned %p\n", line_pipeline);
-        
+
         if (line_pipeline)
         {
             LogInfo("[LineRenderTest] Init: Setting 8 palette colors\n");

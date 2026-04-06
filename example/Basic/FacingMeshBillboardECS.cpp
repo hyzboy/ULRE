@@ -1,4 +1,4 @@
-// Facing Mesh Billboard ECS Example
+﻿// Facing Mesh Billboard ECS Example
 //
 // This example creates a batch of real 3D meshes and makes them always face the camera.
 // Similar to billboard behavior, but with full 3D geometry instead of quad sprites.

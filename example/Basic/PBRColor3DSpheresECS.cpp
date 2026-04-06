@@ -1,4 +1,4 @@
-// 该范例演示 10x10 的 PBRColor3D 网格：
+﻿// 该范例演示 10x10 的 PBRColor3D 网格：
 // 不使用纹理，仅使用 baseColor + metallic + roughness。
 // This example renders a 10x10 PBRColor3D grid:
 // No textures; only baseColor + metallic + roughness.

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/vk/pipeline/VKGplPipelineKey.h>
 #include <cstddef>

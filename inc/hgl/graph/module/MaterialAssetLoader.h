@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /// MaterialAssetLoader.h — 从 MaterialAssetRecord 驱动材质创建的内联辅助函数
 ///

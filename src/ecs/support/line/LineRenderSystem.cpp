@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/line/LineRenderSystem.h>
+﻿#include <hgl/ecs/support/line/LineRenderSystem.h>
 #include <hgl/ecs/support/line/LineBuildSystem.h>
 #include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>

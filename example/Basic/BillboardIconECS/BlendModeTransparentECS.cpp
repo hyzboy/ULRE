@@ -1,4 +1,4 @@
-// RenderAlphaMode Transparent ECS - Alpha Blend Demo
+﻿// RenderAlphaMode Transparent ECS - Alpha Blend Demo
 //
 // Demonstrates conventional alpha blending for billboard transparency.
 // The billboard quad is rendered with a pipeline that has src=SRC_ALPHA,

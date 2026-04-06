@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/terrain/TerrainRenderPipeline.h>
+﻿#include <hgl/ecs/support/terrain/TerrainRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/support/PipelineResolveMetrics.h>
 #include <hgl/graph/core/GraphicsContext.h>

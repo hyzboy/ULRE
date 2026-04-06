@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/ecs/core/System.h>
 #include <string>

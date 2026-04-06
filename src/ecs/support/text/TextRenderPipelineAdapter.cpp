@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/text/TextRenderPipelineAdapter.h>
+﻿#include <hgl/ecs/support/text/TextRenderPipelineAdapter.h>
 #include <hgl/ecs/support/TextRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/vk/VKCommandBuffer.h>

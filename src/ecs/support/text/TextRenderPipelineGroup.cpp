@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/text/TextRenderPipelineGroup.h>
+﻿#include <hgl/ecs/support/text/TextRenderPipelineGroup.h>
 #include <hgl/ecs/support/text/TextRenderPipelineAdapter.h>
 #include <hgl/ecs/support/text/TextCollectSystem.h>
 #include <hgl/ecs/support/text/TextBuildSystem.h>

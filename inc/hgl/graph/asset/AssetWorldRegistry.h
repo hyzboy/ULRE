@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/graph/asset/AssetWorldDef.h>
 #include <memory>

@@ -1,4 +1,4 @@
-// ExtrudedPolygonTest.cpp
+﻿// ExtrudedPolygonTest.cpp
 // 测试2D多边形挤压为3D多边形功能
 
 #include<hgl/framework/WorkManager.h>
@@ -44,7 +44,8 @@ private:
 private:
 
     bool InitMDP()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kExtrudedCfg {
             .id       = "extruded_polygon",
             .preset   = mtl::MaterialPreset::Gizmo3D,
@@ -61,7 +62,8 @@ private:
     }
 
     bool CreateRenderObjects()
-    {
+    {
+
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
@@ -132,7 +134,8 @@ private:
     bool CreateMeshEntity(const char *name, Geometry *geometry, const glm::vec3 &pos)
     {
         if(!ecs_context || !geometry || !material_instance)
-            return false;
+            return false;
+
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;

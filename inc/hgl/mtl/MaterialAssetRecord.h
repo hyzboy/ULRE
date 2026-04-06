@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /// MaterialAssetRecord.h — 可序列化材质资产描述符
 ///

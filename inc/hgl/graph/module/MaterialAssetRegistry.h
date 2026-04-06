@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /// MaterialAssetRegistry.h — 从 MaterialAssetRecord 一站式创建材质层级
 ///

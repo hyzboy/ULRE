@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
+﻿#include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipeline.h>
 #include <hgl/ecs/support/primitive/PrimitiveCullSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveSortSystem.h>

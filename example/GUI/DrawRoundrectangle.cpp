@@ -1,4 +1,4 @@
-// 画一个圆角矩形，它是UI的基本绘图元件
+﻿// 画一个圆角矩形，它是UI的基本绘图元件
 // 通过控制尺寸、每个角的半径，可绘制出正圆、矩形、圆角矩形
 
 #include<hgl/WorkManager.h>
@@ -57,7 +57,8 @@ private:
 private:
 
     bool InitMaterial()
-    {
+    {
+
         auto* texture_manager = GetTextureManager();
         auto* sampler_manager = GetSamplerManager();
         if (!texture_manager || !sampler_manager)
@@ -100,7 +101,8 @@ private:
             ecs_world = GetECSContext();
             if(!ecs_world)
                 return false;
-        }
+        }
+
         auto* device = GetDevice();
         auto* buffer_manager = GetBufferManager();
         auto* geometry_manager = GetGeometryManager();

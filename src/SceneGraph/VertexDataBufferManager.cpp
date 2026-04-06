@@ -1,4 +1,4 @@
-#include<hgl/graph/VertexDataBufferManager.h>
+﻿#include<hgl/graph/VertexDataBufferManager.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKStagedBuffer.h>

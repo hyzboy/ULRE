@@ -1,4 +1,4 @@
-// SimpleCylinder.cpp - 基于 SimpleCube.cpp 改为创建 Cylinder 的示例
+﻿// SimpleCylinder.cpp - 基于 SimpleCube.cpp 改为创建 Cylinder 的示例
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>

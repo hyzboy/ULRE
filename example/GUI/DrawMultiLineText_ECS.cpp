@@ -1,4 +1,4 @@
-#include<hgl/type/StringViewList.h>
+﻿#include<hgl/type/StringViewList.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/graph/font/FontSource.h>
@@ -57,7 +57,7 @@ protected:
             auto text_comp = entity->AddComponent<TextComponent>();
             if(!text_comp)
                 continue;
-            
+
             hgl::graph::layout::CharStyle cs;
 
             cs.CharColor.r=rand_color(dre);

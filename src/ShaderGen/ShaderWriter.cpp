@@ -1,4 +1,4 @@
-#include <hgl/shadergen/ShaderWriter.h>
+﻿#include <hgl/shadergen/ShaderWriter.h>
 
 namespace hgl::graph
 {

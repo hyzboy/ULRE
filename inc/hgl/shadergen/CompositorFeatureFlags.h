@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/mtl/LightingModel.h>
 #include <string>

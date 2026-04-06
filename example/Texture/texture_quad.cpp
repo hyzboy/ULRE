@@ -1,4 +1,4 @@
-// 画一个带纹理的四边形 (ECS)
+﻿// 画一个带纹理的四边形 (ECS)
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -58,7 +58,8 @@ private:
 private:
 
     bool InitMaterial()
-    {
+    {
+
         auto* sampler_manager = GetSamplerManager();
         auto* tex_manager = GetTextureManager();
         if (!sampler_manager || !tex_manager)
@@ -80,7 +81,8 @@ private:
     }
 
     bool InitVBO()
-    {
+    {
+
         auto* device = GetDevice();
         auto* buffer_manager = GetBufferManager();
         auto* geometry_manager = GetGeometryManager();

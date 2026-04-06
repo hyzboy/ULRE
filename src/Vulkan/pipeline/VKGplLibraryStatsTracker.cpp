@@ -1,4 +1,4 @@
-#include <hgl/vk/pipeline/VKGplLibraryStatsTracker.h>
+﻿#include <hgl/vk/pipeline/VKGplLibraryStatsTracker.h>
 
 namespace hgl::graph
 {

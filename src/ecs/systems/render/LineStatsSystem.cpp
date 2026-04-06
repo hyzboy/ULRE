@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/render/LineStatsSystem.h>
+﻿#include<hgl/ecs/systems/render/LineStatsSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/line/LineCollectSystem.h>
 #include<hgl/ecs/support/line/LineRenderSystem.h>

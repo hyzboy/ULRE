@@ -1,4 +1,4 @@
-// SimplestAxis
+﻿// SimplestAxis
 // 直接从0,0,0向三个方向画一条直线，用于确认坐标轴方向
 
 #include<hgl/framework/WorkManager.h>
@@ -42,7 +42,8 @@ private:
 private:
 
     bool InitMDP()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kAxisCfg {
             .id       = "axis_vertex_color",
             .preset   = mtl::MaterialPreset::VertexColor3D,
@@ -55,7 +56,8 @@ private:
     }
 
     bool CreateRenderObject()
-    {
+    {
+
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
@@ -77,7 +79,8 @@ private:
     bool InitScene()
     {
         if(!ecs_context)
-            return false;
+            return false;
+
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;

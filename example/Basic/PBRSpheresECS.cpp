@@ -1,4 +1,4 @@
-// 该范例演示 10x10 的 Standard 网格：
+﻿// 该范例演示 10x10 的 Standard 网格：
 // 使用 baseColor + normal 纹理（Albedo+Normal）
 // 通过 metallic/roughness 参数渐变来控制材质
 // This example renders a 10x10 Standard grid:
@@ -233,7 +233,7 @@ private:
         Texture2D *probe_base = texture_manager->LoadTexture2D(first_base, true);
         Texture2D *probe_normal = texture_manager->LoadTexture2D(first_normal, true);
         if (!probe_base || !probe_normal) {
-            printf("[ERROR] InitTextures: Failed to load probe textures - base=%p normal=%p\n", 
+            printf("[ERROR] InitTextures: Failed to load probe textures - base=%p normal=%p\n",
                    probe_base, probe_normal);
             return false;
         }
@@ -255,7 +255,7 @@ private:
         SAFE_CLEAR(probe_normal)
 
         if (!base_color_texture || !normal_texture) {
-            printf("[ERROR] InitTextures: Failed to create Texture2DArray - base_color=%p normal=%p\n", 
+            printf("[ERROR] InitTextures: Failed to create Texture2DArray - base_color=%p normal=%p\n",
                    base_color_texture, normal_texture);
             return false;
         }

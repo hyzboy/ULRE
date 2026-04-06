@@ -1,4 +1,4 @@
-// Billboard (ECS)
+﻿// Billboard (ECS)
 //
 // This example demonstrates rendering a billboard and a plane grid using ECS.
 

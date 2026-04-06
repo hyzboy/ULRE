@@ -1,4 +1,4 @@
-// 画一个带纹理的矩形，2D模式专用 (ECS)
+﻿// 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
@@ -76,7 +76,8 @@ private:
 private:
 
     bool InitTexture()
-    {
+    {
+
         auto* tex_manager = GetTextureManager();
         if (!tex_manager)
             return false;
@@ -103,7 +104,8 @@ private:
     }
 
     bool InitMaterial()
-    {
+    {
+
         auto* sampler_manager = GetSamplerManager();
         if (!sampler_manager)
             return false;
@@ -147,7 +149,8 @@ private:
     }
 
     bool InitVBOAndRenderList()
-    {
+    {
+
         auto* device = GetDevice();
         auto* buffer_manager = GetBufferManager();
         auto* geometry_manager = GetGeometryManager();

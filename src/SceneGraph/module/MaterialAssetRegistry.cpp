@@ -1,4 +1,4 @@
-#include <hgl/graph/module/MaterialAssetRegistry.h>
+﻿#include <hgl/graph/module/MaterialAssetRegistry.h>
 #include <hgl/graph/module/MaterialAssetLoader.h>
 #include <hgl/graph/module/MaterialManager.h>
 #include <hgl/graph/module/TextureManager.h>

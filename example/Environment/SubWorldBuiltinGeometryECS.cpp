@@ -1,4 +1,4 @@
-#include<hgl/framework/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>

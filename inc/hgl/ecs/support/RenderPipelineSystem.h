@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/ecs/core/System.h>
 #include <hgl/ecs/support/RenderPipelineBase.h>
@@ -7,16 +7,16 @@ namespace hgl::ecs
 {
     /**
      * RenderPipelineSystem - Base class for all GraphicsPipeline-driven System classes
-     * 
+     *
      * This class standardizes how Systems interact with RenderPipeline objects.
      * Derived classes implement stage-specific virtual methods (OnCollect, OnBuild, etc.)
      * and declare which pipeline they control via GetPipeline().
-     * 
+     *
      * The base class handles:
      *   - GraphicsPipeline lookup and validation
      *   - Error handling (missing pipelines, disabled pipelines)
      *   - Automatic phase registration
-     * 
+     *
      * Derived classes only need to:
      *   1. Implement GetPipeline(context) - return the specific pipeline
      *   2. Override the appropriate On*() method for their phase
@@ -29,7 +29,7 @@ namespace hgl::ecs
     public:
         explicit RenderPipelineSystem(const std::string& name = "RenderPipelineSystem")
             : System(name) {}
-        
+
         virtual ~RenderPipelineSystem() = default;
 
         /**

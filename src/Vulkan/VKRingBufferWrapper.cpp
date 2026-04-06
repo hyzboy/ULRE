@@ -1,4 +1,4 @@
-#include<hgl/vk/VKRingBufferWrapper.h>
+﻿#include<hgl/vk/VKRingBufferWrapper.h>
 #include<hgl/vk/VKBuffer.h>
 
 namespace hgl::graph

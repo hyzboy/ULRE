@@ -415,7 +415,7 @@ namespace hgl
             // AppFramework destroys GraphicsContext before deleting ECSContext, so
             // deferring this to ECSContext destructor can access dangling pointers.
             // Text/Primitive specific support-pipeline members removed; all pipelines live in render_pipelines.
-            
+
             // Release all registered render pipelines
             render_pipelines.clear();
 
@@ -1145,13 +1145,13 @@ namespace hgl
 
                 HGL_CAPTURE_SCOPE();
                 LogDebug("[ECS] Render Begin: %s (phase %d)", entry.system->GetName().c_str(), entry.phase);
-                
+
                 if (system_profiling_enabled)
                     profiler.Begin(entry.system.get());
                 entry.system->Render(current_render_cmd, deltaTime);
                 if (system_profiling_enabled)
                     profiler.End(entry.system.get());
-                
+
                 LogDebug("[ECS] Render End: %s", entry.system->GetName().c_str());
             }
 

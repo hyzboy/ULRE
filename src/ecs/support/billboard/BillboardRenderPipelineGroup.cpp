@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/billboard/BillboardRenderPipelineGroup.h>
+﻿#include <hgl/ecs/support/billboard/BillboardRenderPipelineGroup.h>
 #include <hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
 #include <hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
 #include <hgl/ecs/core/Context.h>

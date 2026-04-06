@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/ecs/support/RenderPipelineSystem.h>
 
@@ -6,7 +6,7 @@ namespace hgl::ecs
 {
     /**
      * PrimitiveSortSystem - RenderSort phase for primitives
-     * 
+     *
      * Sorts collected primitive items by distance and material.
      * Derived from SortSystem to provide unified System interface.
      */

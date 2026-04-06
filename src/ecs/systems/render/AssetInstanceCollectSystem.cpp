@@ -1,4 +1,4 @@
-#include <hgl/ecs/systems/render/AssetInstanceCollectSystem.h>
+﻿#include <hgl/ecs/systems/render/AssetInstanceCollectSystem.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/AssetPrimitiveRenderItem.h>
 #include <hgl/ecs/components/AssetInstanceComponent.h>

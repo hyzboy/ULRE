@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/shadergen/ShaderLayoutContract.h>
 #include <hgl/common/VertexAttribDef.h>

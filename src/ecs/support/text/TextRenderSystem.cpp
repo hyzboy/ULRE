@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/text/TextRenderSystem.h>
+﻿#include <hgl/ecs/support/text/TextRenderSystem.h>
 #include <hgl/ecs/support/text/TextSyncSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>

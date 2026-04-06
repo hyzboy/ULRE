@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/ecs/support/RenderPipelineSystem.h>
 
@@ -6,7 +6,7 @@ namespace hgl::ecs
 {
     /**
      * PrimitiveRenderSystem - RenderDrawSubmit phase for primitives
-     * 
+     *
      * Records GPU draw commands for all primitive material batches.
      * Derived from RenderPipelineDrawSystem to provide unified System interface.
      */

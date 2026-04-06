@@ -1,4 +1,4 @@
-// Billboard ECS Example - Refactored with decoupled Quad + FacingTransform
+﻿// Billboard ECS Example - Refactored with decoupled Quad + FacingTransform
 //
 // This example demonstrates the new decoupled architecture:
 // - QuadComponent: Handles quad geometry and rendering

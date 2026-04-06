@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialParameters.h>

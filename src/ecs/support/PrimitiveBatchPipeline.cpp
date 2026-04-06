@@ -1,4 +1,4 @@
-#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
+﻿#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
 #include<source_location>
 #include<cstdio>
 #include<hgl/ecs/core/Context.h>

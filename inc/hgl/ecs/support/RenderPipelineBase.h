@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <memory>
@@ -16,7 +16,7 @@ namespace hgl::ecs
 
     /**
      * RenderPipelineBase - Abstract base class for all render pipelines
-     * 
+     *
      * Provides a unified interface for geometry/text/line/billboard/particle rendering.
      * All pipelines follow the same multi-phase pattern:
      *   1. PrepareFrame() — initialize per-frame state (optional phase before Collect)
@@ -27,7 +27,7 @@ namespace hgl::ecs
      *   6. RunSync() — RenderBufferUpload/FrameSync phase: sync descriptors/UBOs
      *   7. GetRenderPrimitives() — query scheduled primitives for draw call recording
      *   8. Render(cmd) — RenderDrawSubmit phase: record GPU draw commands
-     * 
+     *
      * Systems call these methods in order, no internal system ordering needed.
      * GraphicsPipeline maintains all per-frame state (collected items, batches, etc.)
      * and makes it available to systems at different phases.

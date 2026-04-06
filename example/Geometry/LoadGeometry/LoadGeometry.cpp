@@ -1,4 +1,4 @@
-#include<hgl/io/FileInputStream.h>
+﻿#include<hgl/io/FileInputStream.h>
 #include<hgl/type/String.h>
 #include<hgl/log/Log.h>
 #include<hgl/math/Sum.h>

@@ -1,4 +1,4 @@
-/*
+﻿/*
  SunDirectionControlSystem 使用示例
 
  展示如何使用 SunDirectionControlSystem 控制太阳方向
@@ -43,7 +43,8 @@ private:
 
 private:
     bool InitMDP()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kSkyCfg {
             .id       = "sky_sun_gizmo",
             .preset   = mtl::MaterialPreset::SkyMinimal,
@@ -57,7 +58,8 @@ private:
     }
 
     bool CreateRenderObject()
-    {
+    {
+
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
@@ -81,7 +83,8 @@ private:
     bool InitECSScene()
     {
         if(!ecs_context || !prim_sky_sphere || !mi_sky_sphere)
-            return false;
+            return false;
+
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;

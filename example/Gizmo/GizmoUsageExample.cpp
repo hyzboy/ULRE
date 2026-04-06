@@ -1,4 +1,4 @@
-/*
+﻿/*
  TransformGizmoSystem 使用示例
 
  展示如何使用 TransformGizmoSystem 控制物体变换
@@ -61,7 +61,8 @@ private:
     std::string debug_cache;
 
     bool InitSceneResources()
-    {
+    {
+
         auto *geometry_manager = GetGeometryManager();
         auto *primitive_manager = GetPrimitiveManager();
         auto *device = GetDevice();

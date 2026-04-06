@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/core/Object.h>
 #include<hgl/ecs/core/Context.h>

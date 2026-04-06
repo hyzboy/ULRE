@@ -1,4 +1,4 @@
-#include<hgl/ecs/core/RenderGraph.h>
+﻿#include<hgl/ecs/core/RenderGraph.h>
 #include<hgl/ecs/core/SystemGroup.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
@@ -182,12 +182,12 @@ namespace hgl
 
                 if (!pass.enabled)
                 {
-                    LogDebug("[ECS RENDER] Skipping disabled pass %zu (phases %d-%d)", 
+                    LogDebug("[ECS RENDER] Skipping disabled pass %zu (phases %d-%d)",
                              pass_idx, static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
                     continue;
                 }
 
-                LogInfo("[ECS RENDER] Executing pass %zu (phases %d-%d)", 
+                LogInfo("[ECS RENDER] Executing pass %zu (phases %d-%d)",
                         pass_idx, static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
 
                 // Invoke before-pass callback
@@ -228,7 +228,7 @@ namespace hgl
                 if (pass.runRender)
                 {
                     HGL_CAPTURE_SCOPE();
-                    LogDebug("[ECS RENDER] Render phase range %d to %d", 
+                    LogDebug("[ECS RENDER] Render phase range %d to %d",
                             static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
                     RunRenderSystemsInRange(pass.startPhase, pass.endPhase, deltaTime);
                 }

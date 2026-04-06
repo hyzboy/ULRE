@@ -1,4 +1,4 @@
-#include<hgl/graph/font/TextRender.h>
+﻿#include<hgl/graph/font/TextRender.h>
 #include<hgl/graph/font/TextGeometry.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextLayout.h>

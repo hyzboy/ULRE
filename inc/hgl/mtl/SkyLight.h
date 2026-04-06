@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /// SkyLight.h — 天光模型唯一权威定义
 ///

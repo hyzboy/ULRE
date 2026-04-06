@@ -1,4 +1,4 @@
-// Recursive Cube (ECS)
+﻿// Recursive Cube (ECS)
 //
 // This example places a base cube at origin and spawns 6 independent chains.
 // Each chain moves outward along a face normal by the parent cube size,

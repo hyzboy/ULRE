@@ -1,4 +1,4 @@
-#include<hgl/mtl/MaterialVariantRegistry.h>
+﻿#include<hgl/mtl/MaterialVariantRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include <algorithm>

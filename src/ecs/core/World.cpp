@@ -1,4 +1,4 @@
-#include<hgl/ecs/core/World.h>
+﻿#include<hgl/ecs/core/World.h>
 
 namespace hgl::ecs
 {

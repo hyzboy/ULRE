@@ -1,4 +1,4 @@
-#include <hgl/graph/module/MaterialFinalizeFlowAdapter.h>
+﻿#include <hgl/graph/module/MaterialFinalizeFlowAdapter.h>
 #include <hgl/vk/VKMaterialDescriptorManager.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 

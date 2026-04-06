@@ -1,4 +1,4 @@
-#include<hgl/ecs/support/TextRenderPipeline.h>
+﻿#include<hgl/ecs/support/TextRenderPipeline.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>

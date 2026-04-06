@@ -1,4 +1,4 @@
-// Billboard Perspective ECS Example - Near Large, Far Small
+﻿// Billboard Perspective ECS Example - Near Large, Far Small
 //
 // Demonstrates perspective-correct billboard scaling using 100 icon sprites
 // arranged in a spiral.  Billboards always face the camera (FacingTransformSystem).

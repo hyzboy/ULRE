@@ -1,4 +1,4 @@
-#include<hgl/vk/VKDomainMaterialBinding.h>
+﻿#include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/vk/VKMaterialParameters.h>
 
 namespace hgl::graph

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/font/TextLayout.h>

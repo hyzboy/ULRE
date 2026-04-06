@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <memory>
 #include <vector>
@@ -26,7 +26,7 @@ class ScaleGizmoMode
 public:
     // ─── Visual entities (owned, not in GizmoECS) ─────────────────────────
     hgl::ecs::Entity                                    *entity        = nullptr;
-    
+
     std::vector<GizmoVisualPrimitive>                    primitives;
 
     // ─── Hover state ──────────────────────────────────────────────────────

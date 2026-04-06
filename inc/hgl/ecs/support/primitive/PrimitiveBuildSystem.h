@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/ecs/support/RenderPipelineSystem.h>
 
@@ -6,7 +6,7 @@ namespace hgl::ecs
 {
     /**
      * PrimitiveBuildSystem - RenderBatch phase for primitives
-     * 
+     *
      * Builds material batches and writes to vertex/index buffers.
      * Derived from BuildSystem to provide unified System interface.
      */

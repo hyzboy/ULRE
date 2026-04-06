@@ -1,4 +1,4 @@
-#include<hgl/vk/VKResourceDomain.h>
+﻿#include<hgl/vk/VKResourceDomain.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
 

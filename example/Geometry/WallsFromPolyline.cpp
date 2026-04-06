@@ -1,4 +1,4 @@
-#include<hgl/framework/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -101,7 +101,8 @@ public:
     }
 
     bool Init() override
-    {
+    {
+
         auto* texture_manager = GetTextureManager();
         auto* sampler_manager = GetSamplerManager();
                 if (!texture_manager || !sampler_manager)

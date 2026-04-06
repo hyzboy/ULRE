@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/primitive/PrimitiveBuildSystem.h>
+﻿#include <hgl/ecs/support/primitive/PrimitiveBuildSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
 

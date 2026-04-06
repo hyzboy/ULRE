@@ -1,4 +1,4 @@
-// Facing Mesh Billboard Z-Up ECS Example
+﻿// Facing Mesh Billboard Z-Up ECS Example
 //
 // This example creates a batch of real 3D meshes and makes them always face the camera
 // while keeping Z as the up axis (Z-up billboard, no roll).

@@ -1,4 +1,4 @@
-#include <hgl/ecs/components/AssetInstanceComponent.h>
+﻿#include <hgl/ecs/components/AssetInstanceComponent.h>
 
 // AssetInstanceComponent is header-only; this .cpp exists only so CMake
 // includes the translation unit, enabling the component to be picked up

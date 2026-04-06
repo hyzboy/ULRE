@@ -1,4 +1,4 @@
-#include<hgl/framework/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -78,7 +78,8 @@ private:
     bool InitMaterialInstance(MaterialData *md, const mtl::MaterialAssetRecord &cfg)
     {
         if(!md)
-            return(false);
+            return(false);
+
         Color4f color;
 
         for(size_t i = 0;i < COLOR_COUNT;i++)
@@ -106,7 +107,8 @@ private:
     }
 
     bool InitSolidMDP()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kSolidCfg {
             .id       = "scene_gizmo3d",
             .preset   = mtl::MaterialPreset::Gizmo3D,

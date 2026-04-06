@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/vk/VKVertexInputAttribute.h>
 #include<hgl/vk/VertexAttrib.h>
