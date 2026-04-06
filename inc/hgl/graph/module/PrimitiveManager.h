@@ -12,6 +12,7 @@ using PrimitiveID = int;
 class GeometryCreater;
 class Geometry;
 class MaterialInstance;
+using SemanticMaterialId = uint64;
 
 GRAPH_MODULE_CLASS(PrimitiveManager)
 {
@@ -43,6 +44,9 @@ public: // Create
 
     Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi);
     Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi);
+
+    Primitive *CreatePrimitive(Geometry *r, SemanticMaterialId semantic_id);
+    Primitive *CreatePrimitive(GeometryCreater *pc, SemanticMaterialId semantic_id);
 };
 
 }//namespace hgl::graph

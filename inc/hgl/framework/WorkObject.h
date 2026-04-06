@@ -146,6 +146,16 @@ namespace hgl
             return registry->AcquireMI(rec, instance_data, instance_data_size, out_handle);
         }
 
+        // Semantic-path helper: register semantic material directly from MaterialAssetRecord.
+        graph::SemanticMaterialId RegisterSemanticMaterial(const graph::mtl::MaterialAssetRecord &rec)
+        {
+            auto *registry = GetMaterialAssetRegistry();
+            if (!registry)
+                return 0;
+
+            return registry->RegisterSemanticMaterial(rec);
+        }
+
         const VkExtent2D *          GetExtent           ();
         const graph::ViewportInfo * GetViewportInfo     ()const;
         graph::Camera *             GetCamera           ();

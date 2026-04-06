@@ -35,7 +35,7 @@ private:
     Entity *      camera_entity  =nullptr;
 
     Material *          material        = nullptr;
-    MaterialInstance *  mi              = nullptr;
+    SemanticMaterialId  semantic_material_id = 0;
 
     Primitive *         primitive       = nullptr;
 
@@ -49,14 +49,8 @@ private:
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
 
-        Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-
-        mi = AcquireMI(kCylinderCfg, &color, sizeof(color));
-
-        if(!mi)
-            return false;
-
-        return mi != nullptr;
+        semantic_material_id = RegisterSemanticMaterial(kCylinderCfg);
+        return semantic_material_id != 0;
     }
 
     bool CreateCylinderPrimitive()
@@ -73,7 +67,7 @@ private:
         cci.numberSlices = 6;      // very low tessellation (hexagonal prism look)
 
         primitive = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                             mi,
+                                                             semantic_material_id,
                                                              [&](GeometryCreater *pc)
                                                              {
                                                                  return CreateCylinder(pc, &cci);
@@ -97,6 +91,7 @@ private:
 
         auto primitive_comp = cylinder_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->SetPrimitive(primitive);
+        primitive_comp->SetSemanticMaterial(semantic_material_id);
         primitive_comp->SetVisible(true);
 
         return true;

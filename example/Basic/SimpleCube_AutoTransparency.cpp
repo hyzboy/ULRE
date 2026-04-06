@@ -45,7 +45,6 @@ private:
     Entity *      cube_entity = nullptr;
     Entity *      camera_entity = nullptr;
 
-    MaterialInstance *  mi = nullptr;
     Primitive *         primitive = nullptr;
     SemanticMaterialId  semantic_material_id = 0;
 
@@ -59,17 +58,8 @@ private:
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
 
-        Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-
-        auto *registry = GetMaterialAssetRegistry();
-        if (!registry)
-            return false;
-
-        semantic_material_id = registry->RegisterSemanticMaterial(kCubeCfg);
-
-        mi = registry->AcquireMI(kCubeCfg, &color, sizeof(color));
-
-        return mi != nullptr;
+        semantic_material_id = RegisterSemanticMaterial(kCubeCfg);
+        return semantic_material_id != 0;
     }
 
     bool CreateCubePrimitive()
@@ -86,7 +76,7 @@ private:
         cci.segments_z = 4;
 
         primitive = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                             mi,
+                                                             semantic_material_id,
                                                              [&](GeometryCreater *pc)
                                                              {
                                                                  return CreateCube(pc, &cci);

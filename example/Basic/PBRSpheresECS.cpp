@@ -90,7 +90,6 @@ private:
 
     double elapsed_time = 0.0;
 
-    MaterialInstance* mi_sky_sphere = nullptr;
     Entity* sky_entity = nullptr;
 
 private:
@@ -557,12 +556,12 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
-        mi_sky_sphere = AcquireMI(kSkyCfg);
-        if (!mi_sky_sphere)
+        const SemanticMaterialId sky_semantic_id = RegisterSemanticMaterial(kSkyCfg);
+        if (sky_semantic_id == 0)
             return false;
 
         Primitive* ri = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                                 mi_sky_sphere,
+                                                                 sky_semantic_id,
                                                                  [](GeometryCreater* pc)
                                                                  {
                                                                      using namespace inline_geometry;
@@ -585,6 +584,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(ri);
+        prim_comp->SetSemanticMaterial(sky_semantic_id);
         prim_comp->SetVisible(true);
 
         return true;

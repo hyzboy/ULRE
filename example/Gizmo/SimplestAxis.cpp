@@ -38,6 +38,7 @@ private:
 
     Geometry *         prim_axis           =nullptr;
     MaterialInstance *  material_instance   =nullptr;
+    SemanticMaterialId  semantic_material_id=0;
 
 private:
 
@@ -50,6 +51,11 @@ private:
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
+
+        semantic_material_id = RegisterSemanticMaterial(kAxisCfg);
+        if (semantic_material_id == 0)
+            return false;
+
         material_instance = AcquireMI(kAxisCfg);
 
         return material_instance != nullptr;
@@ -85,7 +91,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(prim_axis,material_instance);
+        Primitive *ri=primitive_manager->CreatePrimitive(prim_axis,semantic_material_id);
         if(!ri)
             return false;
 
@@ -99,6 +105,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(ri);
+        prim_comp->SetSemanticMaterial(semantic_material_id);
         prim_comp->SetVisible(true);
 
         return true;

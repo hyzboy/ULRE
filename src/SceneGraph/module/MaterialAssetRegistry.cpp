@@ -395,8 +395,7 @@ SemanticMaterialId MaterialAssetRegistry::RegisterSemanticMaterial(const mtl::Ma
         if (entry.canonical_material && mm)
         {
             entry.shared_domain = mm->CreateResourceDomain(entry.canonical_material->GetMIDataBytes(),
-                                                           entry.canonical_material->GetMIMaxCount(),
-                                                           entry.canonical_material);
+                                                           entry.canonical_material->GetMIMaxCount());
         }
 
         semantic_cache.emplace(id, std::move(entry));
@@ -526,8 +525,7 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         if (entry.canonical_material)
         {
             entry.shared_domain = mm->CreateResourceDomain(entry.canonical_material->GetMIDataBytes(),
-                                                           entry.canonical_material->GetMIMaxCount(),
-                                                           entry.canonical_material);
+                                                           entry.canonical_material->GetMIMaxCount());
         }
     }
 

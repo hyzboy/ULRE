@@ -23,21 +23,17 @@ class Material;
  */
 class ResourceDomain
 {
-    // Compatibility source material pointer.
-    // Phase A: domain layout can be created explicitly without binding to a variant material.
-    Material *source_material   = nullptr;
-
-    uint32_t  mi_data_bytes     = 0;        ///< 单个 MI 数据 stride（从 source_material 复制）
-    uint32_t  mi_max_count      = 0;        ///< 渲染批次最大实例数（从 source_material 复制）
+    uint32_t  mi_data_bytes     = 0;        ///< 单个 MI 数据 stride
+    uint32_t  mi_max_count      = 0;        ///< 渲染批次最大实例数
 
     hgl::ActiveMemoryBlockManager *mi_data_manager = nullptr;  ///< 该域独立的 MI 数据池
 
 private:
 
     friend class MaterialManager;
-    friend class Material;          ///< Phase 5: Material::CreateMI 需创建默认域
+    friend class Material;          ///< Material::CreateMI 通过便利构造函数创建默认域
 
-    ResourceDomain(uint32_t mi_bytes, uint32_t mi_count, Material *source = nullptr);
+    ResourceDomain(uint32_t mi_bytes, uint32_t mi_count);
     explicit ResourceDomain(Material *mtl);
 
 public:
@@ -47,9 +43,6 @@ public:
     // ----------------------------------------------------------------
     // 基础属性查询
     // ----------------------------------------------------------------
-
-    Material *GetSourceMaterial() const { return source_material; }
-    void SetSourceMaterial(Material *m) { source_material = m; }
 
     bool     hasMI()          const { return mi_data_bytes > 0; }
     uint32_t GetMIDataBytes() const { return mi_data_bytes; }

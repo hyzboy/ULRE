@@ -40,6 +40,7 @@ private:
     Geometry *         prim_triangle       = nullptr;
     Geometry *         prim_pentagon       = nullptr;
     MaterialInstance *  material_instance   = nullptr;
+    SemanticMaterialId  semantic_material_id = 0;
 
 private:
 
@@ -51,6 +52,11 @@ private:
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
+
+        semantic_material_id = RegisterSemanticMaterial(kExtrudedCfg);
+        if (semantic_material_id == 0)
+            return false;
+
         Color4f color=GetColor4f(COLOR::BlenderAxisRed);
 
         material_instance = AcquireMI(kExtrudedCfg, &color, sizeof(color));
@@ -140,7 +146,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, material_instance);
+        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, semantic_material_id);
         if(!mesh)
             return false;
 
@@ -154,6 +160,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(mesh);
+        prim_comp->SetSemanticMaterial(semantic_material_id);
         prim_comp->SetVisible(true);
 
         return true;

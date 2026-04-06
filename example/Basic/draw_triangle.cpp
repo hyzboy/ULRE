@@ -55,8 +55,8 @@ private:
     uint64_t entity_id          =0;          // 对象追踪ID
 
     // 传统渲染资源
-    MaterialInstance *  material_instance   =nullptr;
     Primitive *         prim_triangle       =nullptr;
+    SemanticMaterialId  semantic_material_id=0;
 
 private:
 
@@ -77,9 +77,8 @@ private:
             },
         };
 
-        material_instance = AcquireMI(kTriangleCfg);
-
-        return material_instance != nullptr;
+        semantic_material_id = RegisterSemanticMaterial(kTriangleCfg);
+        return semantic_material_id != 0;
     }
 
     bool InitVBO()
@@ -97,7 +96,7 @@ private:
             return false;
 
         prim_triangle = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                                 material_instance,
+                                     semantic_material_id,
                                                                  "Triangle",
                                                                  VERTEX_COUNT,
                                                                  {{VAN::Position, POSITION_DATA_FORMAT, position_data},
@@ -142,6 +141,7 @@ private:
         HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
         auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         ecs_primitive->SetPrimitive(prim_triangle);
+        ecs_primitive->SetSemanticMaterial(semantic_material_id);
         ecs_primitive->SetVisible(true);
 
         return true;

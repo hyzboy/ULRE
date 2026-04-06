@@ -54,9 +54,11 @@ private:
 
     Geometry* sky_geometry = nullptr;
     MaterialInstance* sky_material_instance = nullptr;
+    SemanticMaterialId sky_semantic_id = 0;
 
     Material* material = nullptr;
     MaterialInstance* material_instance = nullptr;
+    SemanticMaterialId standard_semantic_id = 0;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
@@ -118,6 +120,11 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
+
+        sky_semantic_id = RegisterSemanticMaterial(kSkyCfg);
+        if (sky_semantic_id == 0)
+            return false;
+
         sky_material_instance = AcquireMI(kSkyCfg);
         if (!sky_material_instance)
             return false;
@@ -166,6 +173,10 @@ private:
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
 
+        standard_semantic_id = RegisterSemanticMaterial(kStandardCfg);
+        if (standard_semantic_id == 0)
+            return false;
+
         material_instance = AcquireMI(kStandardCfg, &mi_data, sizeof(mi_data));
         if (!material_instance)
             return false;
@@ -192,7 +203,7 @@ private:
 
     RenderMesh* CreateRenderMesh(Geometry* geometry)
     {
-        if (!geometry || !material_instance)
+        if (!geometry || standard_semantic_id == 0)
             return nullptr;
 
         auto* render_context = GetRenderContext();
@@ -210,7 +221,7 @@ private:
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
+        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, standard_semantic_id);
         if (!primitive)
             return nullptr;
 
@@ -310,7 +321,7 @@ private:
 
     bool InitSceneEntities()
     {
-        if (!ecs_context || !rm_floor || !sky_geometry || !sky_material_instance)
+        if (!ecs_context || !rm_floor || !sky_geometry || sky_semantic_id == 0)
             return false;
 
         {
@@ -319,7 +330,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            Primitive* sky_primitive = primitive_manager->CreatePrimitive(sky_geometry, sky_material_instance);
+            Primitive* sky_primitive = primitive_manager->CreatePrimitive(sky_geometry, sky_semantic_id);
             if (!sky_primitive)
                 return false;
 
@@ -333,6 +344,7 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(sky_primitive);
+            primitive_comp->SetSemanticMaterial(sky_semantic_id);
             primitive_comp->SetVisible(true);
         }
 
@@ -347,6 +359,7 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(rm_floor->primitive);
+            primitive_comp->SetSemanticMaterial(standard_semantic_id);
             primitive_comp->SetVisible(true);
         }
 
@@ -374,6 +387,7 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(rm->primitive);
+            primitive_comp->SetSemanticMaterial(standard_semantic_id);
             primitive_comp->SetVisible(true);
 
             ++index;

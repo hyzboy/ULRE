@@ -49,6 +49,7 @@ private:
 
     Material* material = nullptr;
     MaterialInstance* material_instance = nullptr;
+    SemanticMaterialId standard_semantic_id = 0;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
@@ -59,7 +60,6 @@ private:
 
     std::vector<std::unique_ptr<RenderMesh>> meshes;
 
-    MaterialInstance* mi_sky_sphere = nullptr;
     Entity* sky_entity = nullptr;
 
 private:
@@ -90,6 +90,10 @@ private:
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
 
+        standard_semantic_id = RegisterSemanticMaterial(kStandardCfg);
+        if (standard_semantic_id == 0)
+            return false;
+
         material_instance = AcquireMI(kStandardCfg, &mi_data, sizeof(mi_data));
         if (!material_instance)
             return false;
@@ -116,7 +120,7 @@ private:
 
     RenderMesh* CreateRenderMesh(Geometry* geometry)
     {
-        if (!geometry || !material_instance)
+        if (!geometry || standard_semantic_id == 0)
             return nullptr;
 
         auto* render_context = GetRenderContext();
@@ -132,7 +136,7 @@ private:
             return nullptr;
 
         GraphicsGeometryFactory geometry_factory(graphics_context);
-        Primitive* primitive = geometry_factory.CreatePrimitive(geometry, material_instance);
+        Primitive* primitive = geometry_factory.CreatePrimitive(geometry, standard_semantic_id);
         if (!primitive)
             return nullptr;
 
@@ -379,6 +383,7 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(rm_floor->primitive);
+            primitive_comp->SetSemanticMaterial(standard_semantic_id);
             primitive_comp->SetVisible(true);
         }
 
@@ -406,6 +411,7 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(rm->primitive);
+            primitive_comp->SetSemanticMaterial(standard_semantic_id);
             primitive_comp->SetVisible(true);
 
             ++index;
@@ -443,12 +449,12 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
-        mi_sky_sphere = AcquireMI(kSkyCfg);
-        if (!mi_sky_sphere)
+        const SemanticMaterialId sky_semantic_id = RegisterSemanticMaterial(kSkyCfg);
+        if (sky_semantic_id == 0)
             return false;
 
         Primitive* ri = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                                 mi_sky_sphere,
+                                                                 sky_semantic_id,
                                                                  [](GeometryCreater* pc)
                                                                  {
                                                                      using namespace inline_geometry;
@@ -470,6 +476,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(ri);
+        prim_comp->SetSemanticMaterial(sky_semantic_id);
         prim_comp->SetVisible(true);
 
         return true;

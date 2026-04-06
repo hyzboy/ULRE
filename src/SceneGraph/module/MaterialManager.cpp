@@ -747,10 +747,11 @@ MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanc
 
     if(spec.domain)
     {
-        if(spec.vil_cfg)
-            mi = CreateMaterialInstance(spec.domain, spec.vil_cfg, spec.instance_data, spec.instance_data_size);
-        else
-            mi = CreateMaterialInstance(spec.domain, spec.vil, spec.instance_data, spec.instance_data_size);
+        if(!spec.material) return nullptr;
+        const VIL *resolved_vil = spec.vil_cfg ? spec.material->CreateVIL(spec.vil_cfg)
+                                               : (spec.vil ? spec.vil : spec.material->GetDefaultVIL());
+        mi = CreateMaterialInstance(spec.domain, spec.material, resolved_vil,
+                                    spec.instance_data, spec.instance_data_size);
     }
     else
     {
@@ -819,14 +820,13 @@ ResourceDomain *MaterialManager::CreateResourceDomain(Material *mtl)
     if(!mtl)
         return nullptr;
 
-    return CreateResourceDomain(mtl->GetMIDataBytes(), mtl->GetMIMaxCount(), mtl);
+    return CreateResourceDomain(mtl->GetMIDataBytes(), mtl->GetMIMaxCount());
 }
 
 ResourceDomain *MaterialManager::CreateResourceDomain(uint32_t mi_data_bytes,
-                                                      uint32_t mi_max_count,
-                                                      Material *source)
+                                                      uint32_t mi_max_count)
 {
-    return new ResourceDomain(mi_data_bytes, mi_max_count, source);
+    return new ResourceDomain(mi_data_bytes, mi_max_count);
 }
 
 DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDomain *domain, Material *mtl)
@@ -834,37 +834,14 @@ DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDoma
     if (!domain || !mtl)
         return nullptr;
 
-    Material *source_mtl = domain->GetSourceMaterial();
-
     // Hard reject: MI stride mismatch means MI data cannot be shared
-    if (source_mtl != mtl && domain->GetMIDataBytes() != mtl->GetMIDataBytes())
+    if (domain->GetMIDataBytes() != mtl->GetMIDataBytes())
     {
         std::fprintf(stderr,
             "[MaterialManager] CreateDomainMaterialBinding: MI stride mismatch "
             "domain=%u mtl=%u\n",
             domain->GetMIDataBytes(), mtl->GetMIDataBytes());
         return nullptr;
-    }
-
-    // Phase 3 diagnostic: warn if descriptor set types differ between source and target
-    if (source_mtl && source_mtl != mtl)
-    {
-        ENUM_CLASS_FOR(DescriptorSetType, int, i)
-        {
-            const bool src_has = source_mtl->hasSet((DescriptorSetType)i);
-            const bool tgt_has = mtl->hasSet((DescriptorSetType)i);
-            if (src_has != tgt_has)
-            {
-                std::fprintf(stderr,
-                    "[MaterialManager] CreateDomainMaterialBinding: descriptor set %d "
-                    "present in %s but absent from %s (source='%s' target='%s')\n",
-                    i,
-                    src_has ? "source" : "target",
-                    src_has ? "target" : "source",
-                    source_mtl->GetName().c_str(),
-                    mtl->GetName().c_str());
-            }
-        }
     }
 
     VulkanDevice *device = GetDevice();
@@ -918,75 +895,6 @@ void MaterialManager::ReleaseResourceDomain(ResourceDomain *domain)
     }
 
     delete domain;
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VIL *vil)
-{
-    if (!domain)
-        return nullptr;
-
-    Material *mtl = domain->GetSourceMaterial();
-    if(!mtl) return nullptr;
-
-    const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
-    int mi_id = domain->AllocMISlot();
-    MaterialInstance *mi = new MaterialInstance(mtl, domain, use_vil, mi_id);
-    mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
-    Add(mi);
-    return mi;
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg)
-{
-    if(!domain) return nullptr;
-
-    Material *mtl = domain->GetSourceMaterial();
-    if(!mtl) return nullptr;
-
-    const VIL *vil = vil_cfg ? mtl->CreateVIL(vil_cfg) : mtl->GetDefaultVIL();
-    int mi_id = domain->AllocMISlot();
-    MaterialInstance *mi = new MaterialInstance(mtl, domain, vil, mi_id);
-    mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
-    Add(mi);
-    return mi;
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size)
-{
-    if(!domain) return nullptr;
-
-    Material *mtl = domain->GetSourceMaterial();
-    if(!mtl) return nullptr;
-
-    const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
-    int mi_id = domain->AllocMISlot();
-    MaterialInstance *mi = new MaterialInstance(mtl, domain, use_vil, mi_id);
-    mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
-    Add(mi);
-
-    if(data && data_size > 0)
-        mi->WriteMIData(data, data_size);
-
-    return mi;
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size)
-{
-    if(!domain) return nullptr;
-
-    Material *mtl = domain->GetSourceMaterial();
-    if(!mtl) return nullptr;
-
-    const VIL *vil = vil_cfg ? mtl->CreateVIL(vil_cfg) : mtl->GetDefaultVIL();
-    int mi_id = domain->AllocMISlot();
-    MaterialInstance *mi = new MaterialInstance(mtl, domain, vil, mi_id);
-    mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
-    Add(mi);
-
-    if(data && data_size > 0)
-        mi->WriteMIData(data, data_size);
-
-    return mi;
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain,

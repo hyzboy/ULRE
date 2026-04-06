@@ -322,7 +322,7 @@ public: // ResourceDomain — Phase 1 / Phase 3
      * 以显式 MI 布局创建资源域。
      * Phase A: 解耦 ResourceDomain 与具体 Material 变体所有权。
      */
-    ResourceDomain *        CreateResourceDomain        (uint32_t mi_data_bytes, uint32_t mi_max_count, Material *source = nullptr);
+    ResourceDomain *        CreateResourceDomain        (uint32_t mi_data_bytes, uint32_t mi_max_count);
 
     /**
      * 创建一个 (domain, material) 绑定视图，并分配该 pair 专属的 VkDescriptorSet 集合。
@@ -346,13 +346,7 @@ public: // ResourceDomain — Phase 1 / Phase 3
 
 public: // ResourceDomain MaterialInstanceData creation (Phase 1)
 
-    /// 从资源域分配 MI，走域独立的数据池（旧 Material 池不变）。
-    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VIL *vil = nullptr);
-    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg);
-    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size);
-
-    // Phase D: create MI from a semantic-owned domain while binding to a concrete runtime variant material.
+    // Create MI from a semantic-owned domain binding to a concrete runtime variant material.
     MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain,
                                                Material *material,
                                                const VIL *vil,
@@ -361,18 +355,6 @@ public: // ResourceDomain MaterialInstanceData creation (Phase 1)
 
     // Phase D: update MI render material/vil without reallocating MI slot.
     bool RebindMaterialInstance(MaterialInstance *mi, Material *material, const VIL *vil);
-
-    template<typename T>
-    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VIL *vil, const T *data)
-    {
-        return CreateMaterialInstance(domain, vil, data, sizeof(T));
-    }
-
-    template<typename T>
-    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg, const T *data)
-    {
-        return CreateMaterialInstance(domain, vil_cfg, data, sizeof(T));
-    }
 
 public: // Phase 0 Stats — 帧级资源量观测
 

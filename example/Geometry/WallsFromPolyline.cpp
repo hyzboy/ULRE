@@ -36,6 +36,7 @@ private:
 
     Material *material = nullptr;
     MaterialInstance *material_instance = nullptr;
+    SemanticMaterialId semantic_material_id = 0;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
 
@@ -94,6 +95,7 @@ public:
             transform->SetMovable(false);
 
             prim_comp->SetPrimitive(primitive);
+            prim_comp->SetSemanticMaterial(semantic_material_id);
             prim_comp->SetVisible(true);
         }
 
@@ -121,6 +123,10 @@ public:
                 {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/Brickwall/Albedo.Tex2D"},
             },
         };
+
+        semantic_material_id = RegisterSemanticMaterial(kWallsCfg);
+        if (semantic_material_id == 0)
+            return false;
 
         mi_data.base_color = GetRGBA(COLOR::FireBrick);
         mi_data.metallic=0;
@@ -181,7 +187,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, semantic_material_id);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -216,7 +222,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, semantic_material_id);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -250,7 +256,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, semantic_material_id);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -285,7 +291,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, semantic_material_id);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }

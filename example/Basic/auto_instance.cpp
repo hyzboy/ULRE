@@ -75,11 +75,7 @@ private:
             },
         };
 
-        auto *registry = GetMaterialAssetRegistry();
-        if (!registry)
-            return false;
-
-        semantic_material_id = registry->RegisterSemanticMaterial(kAutoInstanceCfg);
+        semantic_material_id = RegisterSemanticMaterial(kAutoInstanceCfg);
 
         return semantic_material_id != 0;
     }

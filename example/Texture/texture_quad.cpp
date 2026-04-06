@@ -53,6 +53,7 @@ private:
     Entity *            quad_entity         = nullptr;
 
     MaterialInstance *  material_instance   = nullptr;
+    SemanticMaterialId  semantic_material_id= 0;
     Primitive *         prim_quad           = nullptr;
 
 private:
@@ -75,6 +76,11 @@ private:
                 {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/lena.Tex2D"},
             },
         };
+
+        semantic_material_id = RegisterSemanticMaterial(kTexQuadCfg);
+        if (semantic_material_id == 0)
+            return false;
+
         material_instance = AcquireMI(kTexQuadCfg);
 
         return(material_instance!=nullptr);
@@ -101,7 +107,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        prim_quad = primitive_manager->CreatePrimitive(geometry, material_instance);
+        prim_quad = primitive_manager->CreatePrimitive(geometry, semantic_material_id);
 
         if(!prim_quad)
             return(false);
@@ -125,6 +131,7 @@ private:
         quad_transform->SetMovable(false);
 
         quad_primitive->SetPrimitive(prim_quad);
+        quad_primitive->SetSemanticMaterial(semantic_material_id);
         quad_primitive->SetVisible(true);
 
         return true;

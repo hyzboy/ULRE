@@ -53,6 +53,7 @@ private:
     Sampler *           sampler             =nullptr;
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
+    SemanticMaterialId  semantic_material_id=0;
 
 private:
 
@@ -72,6 +73,11 @@ private:
             .coord_2d = CoordinateSystem2D::ZeroToOne,
             .pipeline = GraphicsPipelinePreset::Solid2D,
         };
+
+        semantic_material_id = RegisterSemanticMaterial(kRoundRectCfg);
+        if (semantic_material_id == 0)
+            return false;
+
         material_instance = AcquireMI(kRoundRectCfg);
 
         if(!material_instance)
@@ -121,7 +127,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
+        Primitive *primitive = primitive_manager->CreatePrimitive(geometry, semantic_material_id);
 
         if(!primitive)
             return false;
@@ -139,6 +145,7 @@ private:
             return false;
 
         prim_comp->SetPrimitive(primitive);
+        prim_comp->SetSemanticMaterial(semantic_material_id);
         prim_comp->SetVisible(true);
 
         return true;

@@ -121,6 +121,30 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, Ma
     return primitive_manager->CreatePrimitive(geometry, mi);
 }
 
+Primitive *GraphicsGeometryFactory::CreatePrimitive(Geometry *geometry, SemanticMaterialId semantic_id) const
+{
+    if(!graphics || !geometry || semantic_id == 0)
+        return nullptr;
+
+    auto *primitive_manager = graphics->GetPrimitiveManager();
+    if(!primitive_manager)
+        return nullptr;
+
+    return primitive_manager->CreatePrimitive(geometry, semantic_id);
+}
+
+Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, SemanticMaterialId semantic_id) const
+{
+    if(!graphics || !creater || semantic_id == 0)
+        return nullptr;
+
+    auto *geometry = CreateManagedGeometry(creater);
+    if(!geometry)
+        return nullptr;
+
+    return CreatePrimitive(geometry, semantic_id);
+}
+
 Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_context,
                                                   MaterialInstance *material_instance,
                                                   const AnsiString &geometry_name,

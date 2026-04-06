@@ -4,9 +4,7 @@
 
 namespace hgl::graph
 {
-
-ResourceDomain::ResourceDomain(uint32_t mi_bytes, uint32_t mi_count, Material *source)
-    : source_material(source)
+ResourceDomain::ResourceDomain(uint32_t mi_bytes, uint32_t mi_count)
 {
     mi_data_bytes = mi_bytes;
     mi_max_count  = mi_count;
@@ -17,8 +15,7 @@ ResourceDomain::ResourceDomain(uint32_t mi_bytes, uint32_t mi_count, Material *s
 
 ResourceDomain::ResourceDomain(Material *mtl)
     : ResourceDomain(mtl ? mtl->GetMIDataBytes() : 0,
-                     mtl ? mtl->GetMIMaxCount() : 0,
-                     mtl)
+                     mtl ? mtl->GetMIMaxCount() : 0)
 {
 }
 
