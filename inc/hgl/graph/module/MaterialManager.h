@@ -30,7 +30,7 @@ namespace mtl
     class MaterialCreateInfo;
 }//namespace mtl
 
-using MaterialID            = int;
+using ShaderProgramID            = int;
 using MaterialInstanceID    = int;
 using ShaderModuleMapByName = UnorderedMap<AnsiString,ShaderModule *>;
 
@@ -110,9 +110,9 @@ private:
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
     UnorderedMap<AnsiString,ShaderProgram *> material_by_name;
 
-    AutoIdObjectManager<MaterialID,             ShaderProgram>           rm_material;                ///<材质合集
-    AutoIdObjectManager<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
-    std::unordered_map<const MaterialInstance *, ShaderProgram *>        material_instance_material_map;
+    AutoIdObjectManager<ShaderProgramID,            ShaderProgram>          rm_shader_program;          ///<材质合集
+    AutoIdObjectManager<MaterialInstanceID,         MaterialInstance>       rm_material_instance;       ///<材质实例合集
+    std::unordered_map<const MaterialInstance *,    ShaderProgram *>        material_instance_material_map;
 
     // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding
     std::unordered_map<MaterialResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
@@ -160,18 +160,18 @@ private: // Helper methods with integrated DebugUtils
 
 public: //Add
 
-    MaterialID              Add(ShaderProgram *          mtl ){return rm_material.Add(mtl);}
+    ShaderProgramID         Add(ShaderProgram *          mtl ){return rm_shader_program.Add(mtl);}
     MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
 
 public: //Get
 
-    ShaderProgram *          GetMaterial         (const MaterialID           &id){return rm_material.Get(id);}
-    MaterialInstance *  GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
-    ShaderProgram *          ResolveMaterial     (const MaterialInstance *mi)const;
+    ShaderProgram *         GetMaterial         (const ShaderProgramID      &id){return rm_shader_program.Get(id);}
+    MaterialInstance *      GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
+    ShaderProgram *         ResolveMaterial     (const MaterialInstance *   mi)const;
 
 public: //Release
 
-    void Release(ShaderProgram *         mtl ){rm_material.Release(mtl);}
+    void Release(ShaderProgram *         mtl ){rm_shader_program.Release(mtl);}
     void Release(MaterialInstance * mi  )
     {
         ForgetInstanceMaterial(mi);
@@ -187,7 +187,7 @@ public: //Release
         if (!name.IsEmpty())
             material_by_name.DeleteByKey(name);
 
-        rm_material.Release(mtl, true);
+        rm_shader_program.Release(mtl, true);
     }
 
     void Destroy(MaterialInstance *mi)
@@ -236,8 +236,8 @@ public: // Override Release from GraphModule - cleanup all resources
         domain_bindings_map.clear();
 
         // 清理所有材质
-        if (rm_material.GetCount() > 0)
-            rm_material.Clear();
+        if (rm_shader_program.GetCount() > 0)
+            rm_shader_program.Clear();
 
         if (material_by_name.GetCount() > 0)
             material_by_name.Clear();
@@ -284,7 +284,7 @@ public: // Acquire stats
         s.cache_hits = acquire_material_cache_hits.load();
         s.cache_misses = acquire_material_cache_misses.load();
         s.created = acquire_material_created.load();
-            s.fallback_used = acquire_fallback_used.load();
+        s.fallback_used = acquire_fallback_used.load();
         return s;
     }
 
@@ -303,7 +303,7 @@ public: // Acquire stats
         acquire_material_cache_hits.store(0);
         acquire_material_cache_misses.store(0);
         acquire_material_created.store(0);
-            acquire_fallback_used.store(0);
+        acquire_fallback_used.store(0);
         acquire_mi_requests.store(0);
         acquire_mi_created.store(0);
     }
@@ -370,7 +370,7 @@ public: // MaterialResourceDomain MaterialInstanceData creation (Phase 1)
 public: // Phase 0 Stats — 帧级资源量观测
 
     /// 当前存活 ShaderProgram 数量
-    uint32_t GetMaterialCount()         const { return (uint32_t)rm_material.GetCount(); }
+    uint32_t GetMaterialCount()         const { return (uint32_t)rm_shader_program.GetCount(); }
 
     /// 当前存活 MaterialInstance 数量
     uint32_t GetMaterialInstanceCount() const { return (uint32_t)rm_material_instance.GetCount(); }
