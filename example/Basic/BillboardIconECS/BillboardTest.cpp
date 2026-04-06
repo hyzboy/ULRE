@@ -5,6 +5,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VKVertexInputConfig.h>
@@ -105,7 +106,8 @@ private:
 private:
 
     bool InitPlaneGridMP()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kPlaneGridCfg {
             .id       = "billboard_test_plane_grid",
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
@@ -130,7 +132,8 @@ private:
     }
 
     bool InitBillboardMP()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kBillboardCfg {
             .id        = "billboard_test_fixed",
             .preset    = mtl::MaterialPreset::Billboard2DFixed,
@@ -148,7 +151,8 @@ private:
     }
 
     bool InitTexture()
-    {
+    {
+
         TextureManager *tex_manager = GetTextureManager();
         if (!tex_manager)
             return false;
@@ -184,20 +188,20 @@ private:
     }
 
     bool CreateRenderObject()
-    {
-        auto* device = GetDevice();
-        if (!device)
+    {
+
+        auto* graphics_context = GetGraphicsContext();
+        if (!graphics_context)
             return false;
 
-        auto* geometry_manager = GetGeometryManager();
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!geometry_manager || !primitive_manager)
-            return false;
+        GraphicsGeometryFactory geometry_factory(graphics_context);
 
         using namespace inline_geometry;
 
         {
-            auto pc = std::make_unique<GeometryCreater>(device, mi_plane_grid->GetVIL());
+            auto pc = geometry_factory.CreateCreater(mi_plane_grid);
+            if (!pc)
+                return false;
 
             PlaneGridCreateInfo pgci;
             pgci.grid_size.Set(500, 500);
@@ -209,8 +213,9 @@ private:
             if(!geom_plane_grid)
                 return false;
 
-            geometry_manager->Add(geom_plane_grid);
-            prim_plane_grid = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid);
+            if(!geometry_factory.RegisterGeometry(geom_plane_grid))
+                return false;
+            prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid);
             if(!prim_plane_grid)
                 return false;
 
@@ -219,7 +224,9 @@ private:
         }
 
         {
-            auto pc = std::make_unique<GeometryCreater>(device, mi_billboard->GetVIL());
+            auto pc = geometry_factory.CreateCreater(mi_billboard);
+            if (!pc)
+                return false;
 
             pc->Init("Billboard", 4, 6, IndexType::U16);
 
@@ -229,7 +236,7 @@ private:
             if(!pc->WriteIBO(billboard_index_data))
                 return false;
 
-            prim_billboard = primitive_manager->CreatePrimitive(pc.get(), mi_billboard);
+            prim_billboard = geometry_factory.CreatePrimitive(pc.get(), mi_billboard);
             if(!prim_billboard)
                 return false;
 
@@ -298,8 +305,6 @@ private:
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(geom_plane_grid);
-        delete prim_plane_grid;
     }
 
     bool Init() override

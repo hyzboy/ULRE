@@ -7,6 +7,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -103,7 +104,8 @@ private:
             .id       = "recursive_cube_main",
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
+        };
+
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
         mi = AcquireMI(kRecursiveCubeCfg, &color, sizeof(color));
@@ -117,16 +119,17 @@ private:
 
     bool CreateCubeGeometry()
     {
-        using namespace inline_geometry;
-        auto *geometry_manager = GetGeometryManager();
-        if (!geometry_manager)
+        using namespace inline_geometry;
+
+        auto *graphics_context = GetGraphicsContext();
+        if (!graphics_context)
             return false;
 
-        auto *device = GetDevice();
-        if (!device)
-            return false;
+        GraphicsGeometryFactory geometry_factory(graphics_context);
 
-        auto pc = std::make_unique<GeometryCreater>(device, mi->GetVIL());
+        auto pc = geometry_factory.CreateCreater(mi);
+        if (!pc)
+            return false;
 
         CubeCreateInfo cci;
         cci.segments_x = 1;
@@ -137,8 +140,7 @@ private:
         if (!geometry)
             return false;
 
-        geometry_manager->Add(geometry);
-        return true;
+        return geometry_factory.RegisterGeometry(geometry) != nullptr;
     }
 
     Entity *CreateCubeEntity(const glm::vec3 &local_pos,
@@ -206,7 +208,8 @@ private:
         ecs_context = GetECSContext();
 
         if (!ecs_context)
-            return false;
+            return false;
+
         primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;
@@ -264,7 +267,6 @@ public:
     {
         for (auto *prim : primitives)
             SAFE_CLEAR(prim)
-        SAFE_CLEAR(geometry)
     }
 
     bool Init() override

@@ -10,6 +10,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -44,7 +45,6 @@ private:
     Material *          material        = nullptr;
     MaterialInstance *  mi              = nullptr;
 
-    Geometry *          geometry        = nullptr;
     Primitive *         primitive       = nullptr;
 
 private:
@@ -55,7 +55,8 @@ private:
             .id       = "cube_main",
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
+        };
+
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
         mi = AcquireMI(kCubeCfg, &color, sizeof(color));
@@ -66,40 +67,25 @@ private:
         return mi != nullptr;
     }
 
-    bool CreateCubeGeometry()
+    bool CreateCubePrimitive()
     {
-        using namespace inline_geometry;
-        auto* geometry_manager = GetGeometryManager();
-        if (!geometry_manager)
-            return false;
+        using namespace inline_geometry;
 
-        auto* device = GetDevice();
-        if (!device)
+        auto* graphics_context = GetGraphicsContext();
+        if (!graphics_context)
             return false;
-
-        auto pc = std::make_unique<GeometryCreater>(device, mi->GetVIL());
 
         CubeCreateInfo cci;
         cci.segments_x = 2;
         cci.segments_y = 3;
         cci.segments_z = 4;
 
-        geometry = CreateCube(pc.get(), &cci);
-
-        if(!geometry)
-            return false;
-
-        geometry_manager->Add(geometry);
-        return true;
-    }
-
-    bool InitPrimitive()
-    {
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-            return false;
-
-        primitive = primitive_manager->CreatePrimitive(geometry, mi);
+        primitive = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
+                                                             mi,
+                                                             [&](GeometryCreater *pc)
+                                                             {
+                                                                 return CreateCube(pc, &cci);
+                                                             });
         return primitive != nullptr;
     }
 
@@ -150,8 +136,6 @@ private:
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(primitive)
-        SAFE_CLEAR(geometry)
     }
 
     bool Init() override
@@ -161,10 +145,7 @@ public:
         if(!InitMaterial())
             return false;
 
-        if(!CreateCubeGeometry())
-            return false;
-
-        if(!InitPrimitive())
+        if(!CreateCubePrimitive())
             return false;
 
         if(!InitECS())

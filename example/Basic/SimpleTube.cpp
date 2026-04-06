@@ -4,6 +4,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -37,7 +38,6 @@ private:
     Material *          material        = nullptr;
     MaterialInstance *  mi              = nullptr;
 
-    Geometry *          geometry        = nullptr;
     Primitive *         primitive       = nullptr;
 
 private:
@@ -48,7 +48,8 @@ private:
             .id       = "tube_main",
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
+        };
+
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
         mi = AcquireMI(kTubeCfg, &color, sizeof(color));
@@ -59,18 +60,13 @@ private:
         return mi != nullptr;
     }
 
-    bool CreateTubeGeometry()
+    bool CreateTubePrimitive()
     {
-        using namespace inline_geometry;
-        auto* geometry_manager = GetGeometryManager();
-        if (!geometry_manager)
-            return false;
+        using namespace inline_geometry;
 
-        auto* device = GetDevice();
-        if (!device)
+        auto* graphics_context = GetGraphicsContext();
+        if (!graphics_context)
             return false;
-
-        auto pc = std::make_unique<GeometryCreater>(device, mi->GetVIL());
 
         TubeCreateInfo tci;
         tci.length = 1.0f;           // total length = 1.0 (half-extend = 0.5 inside CreateTube)
@@ -79,22 +75,12 @@ private:
         tci.segments = 32;           // very low tessellation (hexagonal)
         tci.generate_caps = true;
 
-        geometry = CreateTube(pc.get(), &tci);
-
-        if(!geometry)
-            return false;
-
-        geometry_manager->Add(geometry);
-        return true;
-    }
-
-    bool InitPrimitive()
-    {
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-            return false;
-
-        primitive = primitive_manager->CreatePrimitive(geometry, mi);
+        primitive = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
+                                                             mi,
+                                                             [&](GeometryCreater *pc)
+                                                             {
+                                                                 return CreateTube(pc, &tci);
+                                                             });
         return primitive != nullptr;
     }
 
@@ -145,8 +131,6 @@ private:
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(primitive)
-        SAFE_CLEAR(geometry)
     }
 
     bool Init() override
@@ -156,10 +140,7 @@ public:
         if(!InitMaterial())
             return false;
 
-        if(!CreateTubeGeometry())
-            return false;
-
-        if(!InitPrimitive())
+        if(!CreateTubePrimitive())
             return false;
 
         if(!InitECS())

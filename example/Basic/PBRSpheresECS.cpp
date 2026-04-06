@@ -9,6 +9,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -90,7 +91,6 @@ private:
     double elapsed_time = 0.0;
 
     MaterialInstance* mi_sky_sphere = nullptr;
-    Geometry* prim_sky_sphere = nullptr;
     Entity* sky_entity = nullptr;
 
 private:
@@ -365,13 +365,23 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geometry = [this](auto &&creator) -> Geometry *
+        auto* graphics_context = GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        GraphicsGeometryFactory geometry_factory(graphics_context);
+
+        auto create_geometry = [this, &geometry_factory](auto &&creator) -> Geometry *
         {
             auto pc = std::make_unique<GeometryCreater>(mesh_vdm);
             if (!pc)
                 return nullptr;
 
-            return creator(pc.get());
+            auto* geometry = creator(pc.get());
+            if (!geometry)
+                return nullptr;
+
+            return geometry_factory.RegisterGeometry(geometry);
         };
 
         builtin_geometries[0] = create_geometry([](GeometryCreater *pc)
@@ -536,10 +546,8 @@ private:
     bool InitSkySphere()
     {
 
-        auto* device = GetDevice();
-        auto* geometry_manager = GetGeometryManager();
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!device || !geometry_manager || !primitive_manager)
+        auto* graphics_context = GetGraphicsContext();
+        if (!graphics_context)
             return false;
 
         static const mtl::MaterialAssetRecord kSkyCfg {
@@ -553,21 +561,19 @@ private:
         if (!mi_sky_sphere)
             return false;
 
-        {
-            using namespace inline_geometry;
-            auto pc = std::make_unique<GeometryCreater>(device, mi_sky_sphere->GetVIL());
-            HexSphereCreateInfo hsci;
-            hsci.subdivisions = 3;
-            hsci.radius = 256;
-            prim_sky_sphere = CreateHexSphere(pc.get(), &hsci);
-            if (!prim_sky_sphere)
-                return false;
-            geometry_manager->Add(prim_sky_sphere);
-        }
-
-        Primitive* ri = primitive_manager->CreatePrimitive(prim_sky_sphere, mi_sky_sphere);
+        Primitive* ri = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
+                                                                 mi_sky_sphere,
+                                                                 [](GeometryCreater* pc)
+                                                                 {
+                                                                     using namespace inline_geometry;
+                                                                     HexSphereCreateInfo hsci;
+                                                                     hsci.subdivisions = 3;
+                                                                     hsci.radius = 256;
+                                                                     return CreateHexSphere(pc, &hsci);
+                                                                 });
         if (!ri)
             return false;
+
 
         sky_entity = ecs_world->CreateEntity<Entity>("SkySphere");
         auto transform = sky_entity->AddComponent<TransformComponent>(Mobility::Movable);
@@ -642,7 +648,6 @@ public:
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
             SAFE_CLEAR(base_primitives[i])
-            SAFE_CLEAR(builtin_geometries[i])
         }
 
         SAFE_CLEAR(mesh_vdm)

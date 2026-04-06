@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <initializer_list>
+#include <utility>
 #include <hgl/vk/VKFormat.h>
 #include <hgl/type/String.h>
 
@@ -48,6 +49,30 @@ public:
     Primitive *CreatePrimitive(GeometryCreater *creater, MaterialInstance *mi) const;
 
 public:
+    template<typename GeometryBuilder>
+    static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
+                                      MaterialInstance *material_instance,
+                                      GeometryBuilder &&builder)
+    {
+        if(!graphics_context || !material_instance)
+            return nullptr;
+
+        GraphicsGeometryFactory geometry_factory(graphics_context);
+
+        auto pc = geometry_factory.CreateCreater(material_instance);
+        if(!pc)
+            return nullptr;
+
+        Geometry *geometry = builder(pc.get());
+        if(!geometry)
+            return nullptr;
+
+        if(!geometry_factory.RegisterGeometry(geometry))
+            return nullptr;
+
+        return geometry_factory.CreatePrimitive(geometry, material_instance);
+    }
+
     static Geometry *CreateGeometry(GraphicsContext *graphics_context,
                                     MaterialInstance *material_instance,
                                     const AnsiString &geometry_name,

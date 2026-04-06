@@ -3,6 +3,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -36,7 +37,6 @@ private:
     Material *          material        = nullptr;
     MaterialInstance *  mi              = nullptr;
 
-    Geometry *          geometry        = nullptr;
     Primitive *         primitive       = nullptr;
 
 private:
@@ -47,7 +47,8 @@ private:
             .id       = "cylinder_main",
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
+        };
+
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
         mi = AcquireMI(kCylinderCfg, &color, sizeof(color));
@@ -58,40 +59,25 @@ private:
         return mi != nullptr;
     }
 
-    bool CreateCylinderGeometry()
+    bool CreateCylinderPrimitive()
     {
-        using namespace inline_geometry;
-        auto* geometry_manager = GetGeometryManager();
-        if (!geometry_manager)
-            return false;
+        using namespace inline_geometry;
 
-        auto* device = GetDevice();
-        if (!device)
+        auto* graphics_context = GetGraphicsContext();
+        if (!graphics_context)
             return false;
-
-        auto pc = std::make_unique<GeometryCreater>(device, mi->GetVIL());
 
         CylinderCreateInfo cci;
         cci.halfExtend   = 0.5f;   // cylinder height = 1.0
         cci.radius       = 1.0f;
         cci.numberSlices = 6;      // very low tessellation (hexagonal prism look)
 
-        geometry = CreateCylinder(pc.get(), &cci);
-
-        if(!geometry)
-            return false;
-
-        geometry_manager->Add(geometry);
-        return true;
-    }
-
-    bool InitPrimitive()
-    {
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-            return false;
-
-        primitive = primitive_manager->CreatePrimitive(geometry, mi);
+        primitive = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
+                                                             mi,
+                                                             [&](GeometryCreater *pc)
+                                                             {
+                                                                 return CreateCylinder(pc, &cci);
+                                                             });
         return primitive != nullptr;
     }
 
@@ -142,8 +128,6 @@ private:
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(primitive)
-        SAFE_CLEAR(geometry)
     }
 
     bool Init() override
@@ -153,10 +137,7 @@ public:
         if(!InitMaterial())
             return false;
 
-        if(!CreateCylinderGeometry())
-            return false;
-
-        if(!InitPrimitive())
+        if(!CreateCylinderPrimitive())
             return false;
 
         if(!InitECS())

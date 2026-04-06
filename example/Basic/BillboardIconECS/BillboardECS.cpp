@@ -13,6 +13,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VKVertexInputConfig.h>
@@ -106,18 +107,14 @@ private:
         auto* graphics_context = render_context->GetGraphicsContext();
         if (!graphics_context) return false;
 
-        auto* device = GetDevice();
-        if (!device) return false;
-
-        auto* geometry_manager = GetGeometryManager();
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!geometry_manager || !primitive_manager) return false;
+        GraphicsGeometryFactory geometry_factory(graphics_context);
 
         using namespace inline_geometry;
 
         // Create plane grid geometry
         {
-            auto pc = std::make_unique<GeometryCreater>(device, mi_plane_grid->GetVIL());
+            auto pc = geometry_factory.CreateCreater(mi_plane_grid);
+            if (!pc) return false;
 
             PlaneGridCreateInfo pgci;
             pgci.grid_size.Set(500, 500);
@@ -128,8 +125,8 @@ private:
             geom_plane_grid = CreatePlaneGrid2D(pc.get(), &pgci);
             if (!geom_plane_grid) return false;
 
-            geometry_manager->Add(geom_plane_grid);
-            prim_plane_grid = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid);
+            if (!geometry_factory.RegisterGeometry(geom_plane_grid)) return false;
+            prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid);
             if (!prim_plane_grid) return false;
 
             std::cout << "[BillboardECS] PlaneGrid geometry: " << (void*)geom_plane_grid
@@ -366,8 +363,6 @@ private:
 public:
     ~BillboardECSApp()
     {
-        SAFE_CLEAR(geom_plane_grid);
-        delete prim_plane_grid;
     }
 
     bool Init() override

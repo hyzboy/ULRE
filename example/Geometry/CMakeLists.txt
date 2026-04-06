@@ -21,5 +21,5 @@ CreateProject(02_WallsFromPolyline              WallsFromPolyline.cpp)
 CreateProject(03_LineRenderTest                 LineRenderTest.cpp)
 
 
-add_subdirectory(05_LoadGeometry)
-add_subdirectory(06_LoadScene)
+add_subdirectory(LoadGeometry)
+add_subdirectory(LoadScene)

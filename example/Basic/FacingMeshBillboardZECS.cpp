@@ -73,8 +73,6 @@ private:
 
         ~RenderMesh()
         {
-            delete primitive;
-            delete geometry;
         }
     };
 
@@ -95,7 +93,8 @@ private:
             .id       = "facing_billboard_z_solid",
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
+        };
+
         Color4f color = GetColor4f(DemoColors[0], 1.0f);
         solid.mi[0] = AcquireMI(kSolidCfg, &color, sizeof(color));
         if (!solid.mi[0])
@@ -117,7 +116,8 @@ private:
     }
 
     bool InitVDM()
-    {
+    {
+
         auto* buffer_manager = GetBufferManager();
         if (!buffer_manager)
             return false;

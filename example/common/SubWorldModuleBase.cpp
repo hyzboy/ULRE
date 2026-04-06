@@ -14,8 +14,6 @@ namespace example::modules
 {
     SubWorldModuleBase::MeshResource::~MeshResource()
     {
-        delete primitive;
-        delete geometry;
     }
 
     bool SubWorldModuleBase::InitMaterialAndPipeline(graph::mtl::Material3DCreateConfig& cfg,

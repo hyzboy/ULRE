@@ -2,6 +2,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
@@ -40,8 +41,6 @@ private:
 
         ~RenderMesh()
         {
-            delete primitive;
-            delete geometry;
         }
     };
 
@@ -61,7 +60,6 @@ private:
     std::vector<std::unique_ptr<RenderMesh>> meshes;
 
     MaterialInstance* mi_sky_sphere = nullptr;
-    Geometry* prim_sky_sphere = nullptr;
     Entity* sky_entity = nullptr;
 
 private:
@@ -100,7 +98,8 @@ private:
     }
 
     bool InitVDM()
-    {
+    {
+
         auto* buffer_manager = GetBufferManager();
         if (!buffer_manager)
             return false;
@@ -128,14 +127,12 @@ private:
         if (!graphics_context)
             return nullptr;
 
-        auto* geometry_manager = GetGeometryManager();
         auto* primitive_manager = GetPrimitiveManager();
-        if (!geometry_manager || !primitive_manager)
+        if (!primitive_manager)
             return nullptr;
 
-        geometry_manager->Add(geometry);
-
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
+        GraphicsGeometryFactory geometry_factory(graphics_context);
+        Primitive* primitive = geometry_factory.CreatePrimitive(geometry, material_instance);
         if (!primitive)
             return nullptr;
 
@@ -153,13 +150,23 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geometry = [this](auto&& creator) -> Geometry*
+        auto* graphics_context = GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        GraphicsGeometryFactory geometry_factory(graphics_context);
+
+        auto create_geometry = [this, &geometry_factory](auto&& creator) -> Geometry*
         {
             auto pc = std::make_unique<GeometryCreater>(mesh_vdm);
             if (!pc)
                 return nullptr;
 
-            return creator(pc.get());
+            auto* geometry = creator(pc.get());
+            if (!geometry)
+                return nullptr;
+
+            return geometry_factory.RegisterGeometry(geometry);
         };
 
         {
@@ -423,11 +430,10 @@ private:
     }
 
     bool InitSkySphere()
-    {
-        auto* device = GetDevice();
-        auto* geometry_manager = GetGeometryManager();
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!device || !geometry_manager || !primitive_manager)
+    {
+
+        auto* graphics_context = GetGraphicsContext();
+        if (!graphics_context)
             return false;
 
         static const mtl::MaterialAssetRecord kSkyCfg {
@@ -441,19 +447,16 @@ private:
         if (!mi_sky_sphere)
             return false;
 
-        {
-            using namespace inline_geometry;
-            auto pc = std::make_unique<GeometryCreater>(device, mi_sky_sphere->GetVIL());
-            HexSphereCreateInfo hsci;
-            hsci.subdivisions = 3;
-            hsci.radius = 256;
-            prim_sky_sphere = CreateHexSphere(pc.get(), &hsci);
-            if (!prim_sky_sphere)
-                return false;
-            geometry_manager->Add(prim_sky_sphere);
-        }
-
-        Primitive* ri = primitive_manager->CreatePrimitive(prim_sky_sphere, mi_sky_sphere);
+        Primitive* ri = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
+                                                                 mi_sky_sphere,
+                                                                 [](GeometryCreater* pc)
+                                                                 {
+                                                                     using namespace inline_geometry;
+                                                                     HexSphereCreateInfo hsci;
+                                                                     hsci.subdivisions = 3;
+                                                                     hsci.radius = 256;
+                                                                     return CreateHexSphere(pc, &hsci);
+                                                                 });
         if (!ri)
             return false;
 

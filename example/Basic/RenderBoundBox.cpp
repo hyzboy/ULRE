@@ -87,8 +87,6 @@ private:
 
         ~RenderMesh()
         {
-            delete primitive;
-            delete geometry;
         }
     };
 
@@ -230,18 +228,16 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geometry = [this](const char *label, auto &&creator) -> Geometry *
+        auto *graphics_context = GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        GraphicsGeometryFactory geometry_factory(graphics_context);
+
+        auto create_geometry = [this, &geometry_factory](const char *label, auto &&creator) -> Geometry *
         {
             std::cout << "[RenderBoundBox] CreateGeometry START: " << label << std::endl;
 
-            auto *graphics_context = GetGraphicsContext();
-            if (!graphics_context)
-            {
-                std::cout << "[RenderBoundBox] CreateGeometry FAIL: GraphicsContext null (" << label << ")" << std::endl;
-                return nullptr;
-            }
-
-            GraphicsGeometryFactory geometry_factory(graphics_context);
             auto pc = geometry_factory.CreateCreater(mesh_vdm);
             if (!pc)
             {
@@ -666,8 +662,6 @@ public:
     ~TestApp()
     {
         SAFE_CLEAR(mesh_vdm)
-        delete bbox_primitive;
-        delete bbox_geometry;
     }
 
     bool Init() override

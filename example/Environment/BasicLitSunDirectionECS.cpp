@@ -42,8 +42,6 @@ private:
 
         ~RenderMesh()
         {
-            delete primitive;
-            delete geometry;
         }
     };
 
@@ -106,7 +104,8 @@ private:
     bool InitSkySphereResource()
     {
         if (!ecs_context)
-            return false;
+            return false;
+
         auto* geometry_manager = GetGeometryManager();
         auto* device = GetDevice();
         if (!geometry_manager || !device)
@@ -142,7 +141,8 @@ private:
     }
 
     bool InitMaterial()
-    {
+    {
+
         auto* texture_manager = GetTextureManager();
         auto* sampler_manager = GetSamplerManager();
         if (!texture_manager || !sampler_manager)
@@ -174,7 +174,8 @@ private:
     }
 
     bool InitVDM()
-    {
+    {
+
         auto* buffer_manager = GetBufferManager();
         if (!buffer_manager)
             return false;
@@ -312,7 +313,8 @@ private:
         if (!ecs_context || !rm_floor || !sky_geometry || !sky_material_instance)
             return false;
 
-        {
+        {
+
             auto* primitive_manager = GetPrimitiveManager();
             if (!primitive_manager)
                 return false;
