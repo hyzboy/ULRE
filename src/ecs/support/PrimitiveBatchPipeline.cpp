@@ -682,6 +682,64 @@ namespace hgl::ecs
                            static_cast<uint32_t>(cache.materialBatches.size()),
                            total_items_in_batches);
 
+                std::unordered_map<uint64_t, std::unordered_set<graph::ResourceDomain *>> semantic_domains;
+                std::unordered_map<uint64_t, uint32_t> semantic_item_counts;
+
+                for (const auto &itemPtr : cache.renderItems)
+                {
+                    if (!itemPtr || !itemPtr->isVisible)
+                        continue;
+
+                    auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(itemPtr.get());
+                    if (!prim_item)
+                        continue;
+
+                    auto pc = prim_item->GetPrimitiveComponent();
+                    if (!pc)
+                        continue;
+
+                    const uint64_t semantic_id = pc->GetSemanticMaterial();
+                    if (semantic_id == 0)
+                        continue;
+
+                    auto *mi = itemPtr->GetMaterialInstance();
+                    auto *dom = mi ? mi->GetDomain() : nullptr;
+
+                    semantic_domains[semantic_id].insert(dom);
+                    ++semantic_item_counts[semantic_id];
+                }
+
+                uint32_t semantic_split_count = 0;
+                for (const auto &it : semantic_domains)
+                {
+                    if (it.second.size() > 1)
+                        ++semantic_split_count;
+                }
+
+                if (semantic_split_count > 0)
+                {
+                    LogWarning("[ECS::PrimitiveBatchPipeline] semantic-domain split detected: semantics_with_multi_domain=%u",
+                               semantic_split_count);
+
+                    uint32_t semantic_logged = 0;
+                    for (const auto &it : semantic_domains)
+                    {
+                        if (it.second.size() <= 1)
+                            continue;
+
+                        auto cnt_it = semantic_item_counts.find(it.first);
+                        const uint32_t item_count = cnt_it != semantic_item_counts.end() ? cnt_it->second : 0;
+
+                        LogWarning("[ECS::PrimitiveBatchPipeline] semantic-split: semantic_id=%llu domain_count=%zu item_count=%u",
+                                   static_cast<unsigned long long>(it.first),
+                                   it.second.size(),
+                                   item_count);
+
+                        if (++semantic_logged >= 8)
+                            break;
+                    }
+                }
+
                 uint32_t logged = 0;
                 for (const auto &itemPtr : cache.renderItems)
                 {
