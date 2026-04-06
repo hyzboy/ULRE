@@ -8,13 +8,8 @@
 // 4. ECS与传统渲染系统的集成
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
-#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
-#include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 
  // 引入ECS相关头文件
  #include<hgl/ecs/core/Context.h>
@@ -67,7 +62,6 @@ private:
 
     bool InitMaterial()
     {
-
         static const mtl::MaterialAssetRecord kTriangleCfg {
             .id         = "draw_triangle_vertex_color",
             .preset     = mtl::MaterialPreset::VertexColor2D,
@@ -76,11 +70,13 @@ private:
             .pos_format = POSITION_SHADER_FORMAT,   // VAT_IVEC2: shader中 ivec2 顶点输入
             .coord_2d   = CoordinateSystem2D::Ortho,
             .pipeline   = GraphicsPipelinePreset::Solid2D,
-            .mi_vil_overrides = {
+            .mi_vil_overrides =
+            {
                 { VAN::Position, POSITION_DATA_FORMAT },
                 { VAN::Color, COLOR_DATA_FORMAT },
             },
         };
+
         material_instance = AcquireMI(kTriangleCfg);
 
         return material_instance != nullptr;
