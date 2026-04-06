@@ -70,6 +70,12 @@ public:
                 if(!mi)
                     return(false);
 
+                if(!mat_inst)
+                {
+                    mat_inst=mi;
+                    return(true);
+                }
+
                 if(mi->GetMaterial()!=mat_inst->GetMaterial())      //不能换母材质
                     return(false);
 
