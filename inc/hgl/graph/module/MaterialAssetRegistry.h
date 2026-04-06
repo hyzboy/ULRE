@@ -12,6 +12,7 @@
 #include <hgl/graph/module/RuntimeMaterialRequest.h>
 #include <hgl/mtl/MaterialAssetRecord.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
+#include <hgl/log/Log.h>
 
 #include <string>
 #include <unordered_map>
@@ -28,6 +29,10 @@ class Material;
 
 class MaterialAssetRegistry
 {
+    OBJECT_LOGGER
+
+private:
+
     MaterialManager *mm;
     TextureManager  *tm;
     SamplerManager  *sm;
@@ -158,9 +163,9 @@ public:
                                 uint32_t instance_data_size = 0,
                                 MaterialDomainHandle *out_handle = nullptr);
 
-    /// 一站式：Acquire + CreateMI（推荐外部调用）
-    /// - 大多数调用方只需要 MI，不需要直接接触 MaterialDomainHandle。
-    /// - 若需要后续访问 DMB，可传 out_handle 取回完整句柄。
+    /// 一站式：Acquire + CreateMI
+    /// @deprecated 新代码请使用 ResolveMI(entity_id, semantic_id, ...) per-entity 路径。
+    ///   AcquireMI 不携带 entity_id，无法稳定分配 per-entity MI 槽位；仅供工具 / 离线路径使用。
     MaterialInstance *AcquireMI(const mtl::MaterialAssetRecord &rec,
                                 const void *instance_data = nullptr,
                                 uint32_t instance_data_size = 0,

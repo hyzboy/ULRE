@@ -46,11 +46,14 @@ public:
     Geometry *CreateManagedGeometry(GeometryCreater *creater) const;
 
 public:
+    [[deprecated("Use SemanticMaterialId overload; direct MI binding will be removed in a future cleanup phase.")]]
     Primitive *CreatePrimitive(Geometry *geometry, MaterialInstance *mi) const;
+    [[deprecated("Use SemanticMaterialId overload; direct MI binding will be removed in a future cleanup phase.")]]
     Primitive *CreatePrimitive(GeometryCreater *creater, MaterialInstance *mi) const;
 
 public:
     template<typename GeometryBuilder>
+    [[deprecated("Use SemanticMaterialId overload; direct MI binding will be removed in a future cleanup phase.")]]
     static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
                                       MaterialInstance *material_instance,
                                       GeometryBuilder &&builder)
@@ -80,6 +83,7 @@ public:
                                     uint32_t vertex_count,
                                     std::initializer_list<VertexAttribWrite> vertex_writes);
 
+    [[deprecated("Use SemanticMaterialId overload; direct MI binding will be removed in a future cleanup phase.")]]
     static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
                                       MaterialInstance *material_instance,
                                       const AnsiString &geometry_name,

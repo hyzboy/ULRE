@@ -463,9 +463,8 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         if (!legacy_resolve_warned)
         {
             legacy_resolve_warned = true;
-            std::fprintf(stderr,
-                "[MaterialAssetRegistry] ResolveMI legacy path without entity id is in compatibility mode; "
-                "migrate to ResolveMI(entity_id, ...) for stable per-entity MI slots.\n");
+            LogWarning("[MaterialAssetRegistry] ResolveMI called without entity_id (legacy compatibility path). "
+                       "Migrate to ResolveMI(entity_id, semantic_id, ...) for stable per-entity MI slots.");
         }
 
         auto it = legacy_final_mi_cache.find(key);

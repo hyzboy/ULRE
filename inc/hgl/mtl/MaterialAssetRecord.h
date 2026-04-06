@@ -81,6 +81,8 @@ struct MaterialAssetRecord
         VkFormat     format = PF_UNDEFINED;
     };
 
+    // [deprecated] Phase C 后由 Geometry VAB 自动派生 VIL，此字段仅供离线工具/历史数据保留。
+    // 新代码请勿写入；ResolveMI 已优先从 geometry_for_vil_derivation 派生 VIL。
     std::vector<VILOverride> mi_vil_overrides;
 
     // ── 纹理配置列表（以 SamplerSlot 为显式 key）────────────────────────────────
