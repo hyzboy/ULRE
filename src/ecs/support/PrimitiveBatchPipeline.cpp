@@ -681,6 +681,43 @@ namespace hgl::ecs
                            split_material_count,
                            static_cast<uint32_t>(cache.materialBatches.size()),
                            total_items_in_batches);
+
+                uint32_t logged = 0;
+                for (const auto &itemPtr : cache.renderItems)
+                {
+                    if (!itemPtr || !itemPtr->isVisible)
+                        continue;
+
+                    auto *mat = itemPtr->GetMaterial();
+                    auto *mi = itemPtr->GetMaterialInstance();
+                    auto *dom = mi ? mi->GetDomain() : nullptr;
+
+                    if (!mat)
+                        continue;
+
+                    auto it = material_domains.find(mat);
+                    if (it == material_domains.end() || it->second.size() <= 1)
+                        continue;
+
+                    uint64_t runtime_entity_key = ToRuntimeEntityKey(itemPtr->GetEntityID());
+                    uint64_t semantic_id = 0;
+                    if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(itemPtr.get()))
+                    {
+                        auto pc = prim_item->GetPrimitiveComponent();
+                        if (pc)
+                            semantic_id = pc->GetSemanticMaterial();
+                    }
+
+                    LogWarning("[ECS::PrimitiveBatchPipeline] split-sample: entity_key=%llu semantic_id=%llu material=%p mi=%p domain=%p",
+                               static_cast<unsigned long long>(runtime_entity_key),
+                               static_cast<unsigned long long>(semantic_id),
+                               static_cast<void *>(mat),
+                               static_cast<void *>(mi),
+                               static_cast<void *>(dom));
+
+                    if (++logged >= 8)
+                        break;
+                }
             }
             else if (cache.materialBatches.size() > 0)
             {
