@@ -1,20 +1,20 @@
 ﻿#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialInstance.h>
-#include<hgl/vk/VKResourceDomain.h>
+#include<hgl/vk/VKMaterialResourceDomain.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<cstring>
 
 namespace hgl::graph{
 
 // ---------------------------------------------------------------------------
-// ShaderProgram::CreateMI — 旧路径（不涉及 ResourceDomain）
+// ShaderProgram::CreateMI — 旧路径（不涉及 MaterialResourceDomain）
 // ---------------------------------------------------------------------------
 
 MaterialInstance *ShaderProgram::CreateMI(MaterialManager *material_manager, const VIL *vil)
 {
     // Phase 5: 旧路径统一通过懒初始化的 default_domain 分配 MI 槽位
     if(!default_domain && hasMI())
-        default_domain = new ResourceDomain(this);
+        default_domain = new MaterialResourceDomain(this);
 
     int mi_id = default_domain ? default_domain->AllocMISlot() : -1;
 
@@ -61,8 +61,8 @@ MaterialInstance::MaterialInstance(MaterialManager *mm, const VIL *v, const int 
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }
 
-/// Phase 1 新路径：经由 ResourceDomain 分配
-MaterialInstance::MaterialInstance(MaterialManager *mm, ResourceDomain *d, const VIL *v, const int id)
+/// Phase 1 新路径：经由 MaterialResourceDomain 分配
+MaterialInstance::MaterialInstance(MaterialManager *mm, MaterialResourceDomain *d, const VIL *v, const int id)
     : material_manager(mm), domain(d), vil(v), mi_id(id)
 {
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));

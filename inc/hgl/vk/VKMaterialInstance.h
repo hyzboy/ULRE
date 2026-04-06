@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKResourceDomain.h>
+#include<hgl/vk/VKMaterialResourceDomain.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/mtl/SamplerSlot.h>
 
@@ -13,9 +13,9 @@ class MaterialManager;
 * 材质实例类<br>
 * 材质实例类本质只是提供一个数据区，供RenderCollector合并成一个大UBO。
 *
-* Phase 1: 支持可选 ResourceDomain。
+* Phase 1: 支持可选 MaterialResourceDomain。
 *   - domain == nullptr : MI 数据由 ShaderProgram 自身的数据池管理（旧路径）。
-*   - domain != nullptr : MI 数据由指定 ResourceDomain 的独立数据池管理（新路径）。
+*   - domain != nullptr : MI 数据由指定 MaterialResourceDomain 的独立数据池管理（新路径）。
 */
 class MaterialInstance
 {
@@ -23,7 +23,7 @@ protected:
 
     MaterialManager *material_manager;
 
-    ResourceDomain *domain;     ///< (Phase 1) 可选资源域；为 nullptr 时使用旧路径
+    MaterialResourceDomain *domain;     ///< (Phase 1) 可选资源域；为 nullptr 时使用旧路径
 
     const VIL *vil;
 
@@ -38,21 +38,21 @@ protected:
 public:
 
             ShaderProgram *      GetMaterial ()const;
-            ResourceDomain *GetDomain   ()      { return domain; }
+            MaterialResourceDomain *GetDomain   ()      { return domain; }
 
     const   VIL *           GetVIL      ()const { return vil; }
 
 private:
 
     friend class ShaderProgram;
-    friend class ResourceDomain;
+    friend class MaterialResourceDomain;
     friend class MaterialManager;
 
     /// 旧路径构造（domain = nullptr）
     MaterialInstance(MaterialManager *, const VIL *, const int);
 
-    /// 新路径构造（Phase 1，经由 ResourceDomain 分配槽位）
-    MaterialInstance(MaterialManager *, ResourceDomain *, const VIL *, const int);
+    /// 新路径构造（Phase 1，经由 MaterialResourceDomain 分配槽位）
+    MaterialInstance(MaterialManager *, MaterialResourceDomain *, const VIL *, const int);
 
 public:
 

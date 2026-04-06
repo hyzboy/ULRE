@@ -4,7 +4,7 @@
 ///
 /// 内部按层级自动缓存：
 ///   ShaderProgram       — AcquireMaterial 已缓存
-///   ResourceDomain — 按 domain_id 缓存
+///   MaterialResourceDomain — 按 domain_id 缓存
 ///   DMB            — 按 (material_name, domain_id, texture_config_hash) 缓存
 ///   MI             — per-object slot，每次新建
 
@@ -37,8 +37,8 @@ private:
     TextureManager  *tm;
     SamplerManager  *sm;
 
-    // (material_cache_name + domain_id) → ResourceDomain*
-    std::unordered_map<std::string, ResourceDomain*> domain_cache;
+    // (material_cache_name + domain_id) → MaterialResourceDomain*
+    std::unordered_map<std::string, MaterialResourceDomain*> domain_cache;
 
     // DMB 缓存 key = (material_cache_name, domain_id, texture_config_hash)
     struct DMBKey
@@ -69,7 +69,7 @@ private:
         // Phase B groundwork: semantic-level canonical material/domain.
         // Behavior remains compatible until ResolveMI switches to semantic-owned domain path.
         ShaderProgram *canonical_material = nullptr;
-        ResourceDomain *shared_domain = nullptr;
+        MaterialResourceDomain *shared_domain = nullptr;
     };
 
     // Semantic-only material registration cache:

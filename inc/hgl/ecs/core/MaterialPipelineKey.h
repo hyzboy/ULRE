@@ -8,7 +8,7 @@ namespace hgl
     {
         class ShaderProgram;
         class GraphicsPipeline;
-        class ResourceDomain;    // Phase 4
+        class MaterialResourceDomain;    // Phase 4
     }
 }
 
@@ -24,7 +24,7 @@ namespace hgl::ecs
 
     /**
      * ShaderProgram/GraphicsPipeline/Domain/Queue index for batching
-     * Phase 4: ResourceDomain* added so items from different domains
+     * Phase 4: MaterialResourceDomain* added so items from different domains
      * do not get incorrectly merged into the same draw batch.
      * domain == nullptr → default (backward-compatible with all existing code)
      */
@@ -32,12 +32,12 @@ namespace hgl::ecs
     {
         hgl::graph::ShaderProgram*       material = nullptr;
         hgl::graph::GraphicsPipeline*       pipeline = nullptr;
-        hgl::graph::ResourceDomain* domain   = nullptr;   ///< Phase 4: nullptr = default domain
+        hgl::graph::MaterialResourceDomain* domain   = nullptr;   ///< Phase 4: nullptr = default domain
         RenderQueue                 queue    = RenderQueue::Opaque;
 
         MaterialPipelineKey(hgl::graph::ShaderProgram*       m = nullptr,
                             hgl::graph::GraphicsPipeline*       p = nullptr,
-                            hgl::graph::ResourceDomain* d = nullptr,
+                            hgl::graph::MaterialResourceDomain* d = nullptr,
                             RenderQueue                 q = RenderQueue::Opaque)
             : material(m), pipeline(p), domain(d), queue(q) {}
 
@@ -72,7 +72,7 @@ namespace std
         {
             size_t h1 = std::hash<hgl::graph::ShaderProgram*>{}(key.material);
             size_t h2 = std::hash<hgl::graph::GraphicsPipeline*>{}(key.pipeline);
-            size_t h3 = std::hash<hgl::graph::ResourceDomain*>{}(key.domain);
+            size_t h3 = std::hash<hgl::graph::MaterialResourceDomain*>{}(key.domain);
             size_t h4 = std::hash<int>{}(static_cast<int>(key.queue));
             // Combine hashes
             return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3);

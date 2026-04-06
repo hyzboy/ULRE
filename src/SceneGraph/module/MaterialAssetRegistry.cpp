@@ -5,7 +5,7 @@
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/vk/VKShaderProgram.h>
 #include <hgl/vk/VKMaterialInstance.h>
-#include <hgl/vk/VKResourceDomain.h>
+#include <hgl/vk/VKMaterialResourceDomain.h>
 #include <hgl/vk/VKDomainMaterialBinding.h>
 #include <hgl/vk/VKVertexInputConfig.h>
 #include <hgl/graph/geo/VKGeometry.h>
@@ -331,7 +331,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     std::string mat_name_str(mat_name.c_str() ? mat_name.c_str() : "",
                              mat_name.c_str() ? static_cast<size_t>(mat_name.Length()) : 0);
 
-    // 2. ResourceDomain (按 material_name + domain_id 缓存)
+    // 2. MaterialResourceDomain (按 material_name + domain_id 缓存)
     const std::string &did = rec.domain_id;          // 空串 → 默认域
     const std::string domain_cache_key = mat_name_str + "#" + did;
 
@@ -342,7 +342,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     }
     else
     {
-        handle.domain = mm->CreateResourceDomain(handle.material);
+        handle.domain = mm->CreateMaterialResourceDomain(handle.material);
         if (!handle.domain)
             return {};
         domain_cache[domain_cache_key] = handle.domain;
@@ -394,7 +394,7 @@ SemanticMaterialId MaterialAssetRegistry::RegisterSemanticMaterial(const mtl::Ma
         entry.canonical_material = CreateMaterialFromRecord(mm, rec);
         if (entry.canonical_material && mm)
         {
-            entry.shared_domain = mm->CreateResourceDomain(entry.canonical_material->GetMIDataBytes(),
+            entry.shared_domain = mm->CreateMaterialResourceDomain(entry.canonical_material->GetMIDataBytes(),
                                                            entry.canonical_material->GetMIMaxCount());
         }
 
@@ -524,7 +524,7 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
 
         if (entry.canonical_material)
         {
-            entry.shared_domain = mm->CreateResourceDomain(entry.canonical_material->GetMIDataBytes(),
+            entry.shared_domain = mm->CreateMaterialResourceDomain(entry.canonical_material->GetMIDataBytes(),
                                                            entry.canonical_material->GetMIMaxCount());
         }
     }

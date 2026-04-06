@@ -621,7 +621,7 @@ namespace hgl::ecs
             if (!material || !pipeline)
                 continue;
 
-            // Phase 4: include ResourceDomain in batch key so items from different
+            // Phase 4: include MaterialResourceDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
             auto* mi     = item->GetMaterialInstance();
             auto* domain = mi ? mi->GetDomain() : nullptr;
@@ -654,7 +654,7 @@ namespace hgl::ecs
 
         // Diagnostics: detect if one material is split across multiple domains in one frame.
         {
-            std::unordered_map<graph::ShaderProgram *, std::unordered_set<graph::ResourceDomain *>> material_domains;
+            std::unordered_map<graph::ShaderProgram *, std::unordered_set<graph::MaterialResourceDomain *>> material_domains;
             uint32_t total_items_in_batches = 0;
 
             for (const auto &pair : cache.materialBatches)
@@ -682,7 +682,7 @@ namespace hgl::ecs
                            static_cast<uint32_t>(cache.materialBatches.size()),
                            total_items_in_batches);
 
-                std::unordered_map<uint64_t, std::unordered_set<graph::ResourceDomain *>> semantic_domains;
+                std::unordered_map<uint64_t, std::unordered_set<graph::MaterialResourceDomain *>> semantic_domains;
                 std::unordered_map<uint64_t, uint32_t> semantic_item_counts;
 
                 for (const auto &itemPtr : cache.renderItems)

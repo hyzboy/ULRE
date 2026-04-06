@@ -3,7 +3,7 @@
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
-#include<hgl/vk/VKResourceDomain.h>        // Phase 5: default_domain
+#include<hgl/vk/VKMaterialResourceDomain.h>        // Phase 5: default_domain
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/UBOAccessor.h>

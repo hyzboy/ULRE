@@ -13,15 +13,15 @@ namespace hgl::graph
 class ShaderProgram;
 
 /**
- * 资源域 (ResourceDomain)
+ * 资源域 (MaterialResourceDomain)
  *
  * 持有与特定 ShaderProgram 模板兼容的独立 MaterialInstance 数据池。
- * 同一套 Shader/GraphicsPipeline 可关联多个 ResourceDomain，使不同的资源集合
+ * 同一套 Shader/GraphicsPipeline 可关联多个 MaterialResourceDomain，使不同的资源集合
  * （例如UI图标 vs 角色头像 Billboard）彼此隔离，互不串绑。
  *
  * Phase 1: 已支持 MI 数据池。Texture/Sampler 绑定在后续阶段引入。
  */
-class ResourceDomain
+class MaterialResourceDomain
 {
     uint32_t  mi_data_bytes     = 0;        ///< 单个 MI 数据 stride
     uint32_t  mi_max_count      = 0;        ///< 渲染批次最大实例数
@@ -33,12 +33,12 @@ private:
     friend class MaterialManager;
     friend class ShaderProgram;          ///< ShaderProgram::CreateMI 通过便利构造函数创建默认域
 
-    ResourceDomain(uint32_t mi_bytes, uint32_t mi_count);
-    explicit ResourceDomain(ShaderProgram *mtl);
+    MaterialResourceDomain(uint32_t mi_bytes, uint32_t mi_count);
+    explicit MaterialResourceDomain(ShaderProgram *mtl);
 
 public:
 
-    virtual ~ResourceDomain();
+    virtual ~MaterialResourceDomain();
 
     // ----------------------------------------------------------------
     // 基础属性查询
@@ -68,7 +68,7 @@ public:
      */
     void *GetMIData(int mi_id);
 
-}; // class ResourceDomain
+}; // class MaterialResourceDomain
 
 } // namespace hgl::graph
 

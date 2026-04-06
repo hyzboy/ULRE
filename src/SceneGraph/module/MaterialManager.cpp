@@ -5,7 +5,7 @@
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKMaterialParameters.h>
-#include<hgl/vk/VKResourceDomain.h>
+#include<hgl/vk/VKMaterialResourceDomain.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKShaderModuleMap.h>
@@ -842,24 +842,24 @@ bool MaterialManager::UpdateInstanceData(MaterialInstance *mi, const void *data,
 }
 
 // ============================================================================
-// ResourceDomain — Phase 1
+// MaterialResourceDomain — Phase 1
 // ============================================================================
 
-ResourceDomain *MaterialManager::CreateResourceDomain(ShaderProgram *mtl)
+MaterialResourceDomain *MaterialManager::CreateMaterialResourceDomain(ShaderProgram *mtl)
 {
     if(!mtl)
         return nullptr;
 
-    return CreateResourceDomain(mtl->GetMIDataBytes(), mtl->GetMIMaxCount());
+    return CreateMaterialResourceDomain(mtl->GetMIDataBytes(), mtl->GetMIMaxCount());
 }
 
-ResourceDomain *MaterialManager::CreateResourceDomain(uint32_t mi_data_bytes,
+MaterialResourceDomain *MaterialManager::CreateMaterialResourceDomain(uint32_t mi_data_bytes,
                                                       uint32_t mi_max_count)
 {
-    return new ResourceDomain(mi_data_bytes, mi_max_count);
+    return new MaterialResourceDomain(mi_data_bytes, mi_max_count);
 }
 
-DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDomain *domain, ShaderProgram *mtl)
+DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(MaterialResourceDomain *domain, ShaderProgram *mtl)
 {
     if (!domain || !mtl)
         return nullptr;
@@ -898,7 +898,7 @@ void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *bindin
     if (!binding)
         return;
 
-    ResourceDomain *d = binding->GetDomain();
+    MaterialResourceDomain *d = binding->GetDomain();
     auto it = domain_bindings_map.find(d);
     if (it != domain_bindings_map.end())
     {
@@ -911,7 +911,7 @@ void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *bindin
     delete binding;
 }
 
-void MaterialManager::ReleaseResourceDomain(ResourceDomain *domain)
+void MaterialManager::ReleaseMaterialResourceDomain(MaterialResourceDomain *domain)
 {
     if (!domain)
         return;
@@ -927,7 +927,7 @@ void MaterialManager::ReleaseResourceDomain(ResourceDomain *domain)
     delete domain;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain,
+MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialResourceDomain *domain,
                                                           ShaderProgram *material,
                                                           const VIL *vil,
                                                           const void *data,

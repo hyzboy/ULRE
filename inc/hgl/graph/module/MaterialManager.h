@@ -4,7 +4,7 @@
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKShaderModule.h>
-#include<hgl/vk/VKResourceDomain.h>
+#include<hgl/vk/VKMaterialResourceDomain.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
@@ -44,7 +44,7 @@ struct MaterialInstanceSpecKey
     ShaderProgram *material = nullptr;
     const VIL *vil = nullptr;
     GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
-    ResourceDomain *domain = nullptr;
+    MaterialResourceDomain *domain = nullptr;
 };
 
 struct MaterialSpec
@@ -72,7 +72,7 @@ struct MaterialSpec
 struct MaterialInstanceSpec
 {
     ShaderProgram *material = nullptr;
-    ResourceDomain *domain = nullptr;
+    MaterialResourceDomain *domain = nullptr;
 
     const VIL *vil = nullptr;
     const VILConfig *vil_cfg = nullptr;
@@ -115,7 +115,7 @@ private:
     std::unordered_map<const MaterialInstance *, ShaderProgram *>        material_instance_material_map;
 
     // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding
-    std::unordered_map<ResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
+    std::unordered_map<MaterialResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
 
     std::atomic<uint64_t> acquire_material_requests {0};
     std::atomic<uint64_t> acquire_material_cache_lookups {0};
@@ -226,7 +226,7 @@ public: // Override Release from GraphModule - cleanup all resources
 
         material_instance_material_map.clear();
 
-        // Phase 3: 清理所有 DomainMaterialBinding 及 ResourceDomain
+        // Phase 3: 清理所有 DomainMaterialBinding 及 MaterialResourceDomain
         for (auto &kv : domain_bindings_map)
         {
             for (auto *b : kv.second)
@@ -321,19 +321,19 @@ public: //MaterialInstanceData
     MaterialInstance *  AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key = nullptr);
     bool                UpdateInstanceData(MaterialInstance *mi, const void *data, const uint32 data_size);
 
-public: // ResourceDomain — Phase 1 / Phase 3
+public: // MaterialResourceDomain — Phase 1 / Phase 3
 
     /**
      * 创建一个以 mtl 为模板的资源域，并初始化其 MI 数据池。
      * Phase 1: 池 stride/max_count 从 mtl 复制，分配独立 ActiveMemoryBlockManager。
      */
-    ResourceDomain *        CreateResourceDomain        (ShaderProgram *mtl);
+    MaterialResourceDomain *        CreateMaterialResourceDomain        (ShaderProgram *mtl);
 
     /**
      * 以显式 MI 布局创建资源域。
-     * Phase A: 解耦 ResourceDomain 与具体 ShaderProgram 变体所有权。
+     * Phase A: 解耦 MaterialResourceDomain 与具体 ShaderProgram 变体所有权。
      */
-    ResourceDomain *        CreateResourceDomain        (uint32_t mi_data_bytes, uint32_t mi_max_count);
+    MaterialResourceDomain *        CreateMaterialResourceDomain        (uint32_t mi_data_bytes, uint32_t mi_max_count);
 
     /**
      * 创建一个 (domain, material) 绑定视图，并分配该 pair 专属的 VkDescriptorSet 集合。
@@ -341,24 +341,24 @@ public: // ResourceDomain — Phase 1 / Phase 3
      * Phase 3: 同一 domain 可绑定多个 Material（Opaque + Masked 等），各 binding 独立管理。
      * 关系检查：MI stride 必须兼容；描述符集类型差异以 Warning 形式打印。
      */
-    DomainMaterialBinding * CreateDomainMaterialBinding (ResourceDomain *domain, ShaderProgram *mtl);
+    DomainMaterialBinding * CreateDomainMaterialBinding (MaterialResourceDomain *domain, ShaderProgram *mtl);
 
     /**
      * 释放一个 DomainMaterialBinding，并将其从所属域的追踪列表中移除。
-     * 注意：不释放关联的 ResourceDomain。
+     * 注意：不释放关联的 MaterialResourceDomain。
      */
     void ReleaseDomainMaterialBinding(DomainMaterialBinding *binding);
 
     /**
-     * 释放一个 ResourceDomain 及其所有 DomainMaterialBinding。
+     * 释放一个 MaterialResourceDomain 及其所有 DomainMaterialBinding。
      * 调用前请确保该域不再有存活的 MaterialInstance（否则 FreeMISlot 会访问已释放对象）。
      */
-    void ReleaseResourceDomain(ResourceDomain *domain);
+    void ReleaseMaterialResourceDomain(MaterialResourceDomain *domain);
 
-public: // ResourceDomain MaterialInstanceData creation (Phase 1)
+public: // MaterialResourceDomain MaterialInstanceData creation (Phase 1)
 
     // Create MI from a semantic-owned domain binding to a concrete runtime variant material.
-    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain,
+    MaterialInstance *  CreateMaterialInstance(MaterialResourceDomain *domain,
                                                ShaderProgram *material,
                                                const VIL *vil,
                                                const void *data,
@@ -375,7 +375,7 @@ public: // Phase 0 Stats — 帧级资源量观测
     /// 当前存活 MaterialInstance 数量
     uint32_t GetMaterialInstanceCount() const { return (uint32_t)rm_material_instance.GetCount(); }
 
-    /// 当前存活 ResourceDomain 数量（Phase 3）
+    /// 当前存活 MaterialResourceDomain 数量（Phase 3）
     uint32_t GetDomainCount()           const { return (uint32_t)domain_bindings_map.size(); }
 
     /// 当前总 DomainMaterialBinding 数量（Phase 3）

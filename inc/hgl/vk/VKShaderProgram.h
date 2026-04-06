@@ -12,7 +12,7 @@ namespace hgl::graph{
 
 class MaterialManager;
 class IGPUBuffer;
-class ResourceDomain;   ///< Phase 5: forward decl
+class MaterialResourceDomain;   ///< Phase 5: forward decl
 class UBOAccessorBase;
 template<typename T,mtl::UBODescriptorSemantic Semantic> class UBOAccessor;
 
@@ -54,7 +54,7 @@ class ShaderProgram
     uint32_t mi_data_bytes;             ///<实例数据大小
     uint32_t mi_max_count;              ///<实例一次渲染最大数量限制
 
-    ResourceDomain *default_domain = nullptr;   ///< Phase 5: 懒初始化默认域（旧 CreateMI 路径自动创建）
+    MaterialResourceDomain *default_domain = nullptr;   ///< Phase 5: 懒初始化默认域（旧 CreateMI 路径自动创建）
 
     bool has_l2w_matrix;                ///<是否有LocalToWorld矩阵
 
