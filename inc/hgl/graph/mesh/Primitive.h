@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/graph/module/RuntimeMaterialRequest.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/vk/VKDescriptorSet.h>
@@ -22,18 +23,25 @@ class Primitive
     GeometryDataBuffer *data_buffer;
     GeometryDrawRange   draw_range;
 
+    SemanticMaterialId  deferred_semantic_id = 0;
+    uint32_t            deferred_vil_hash    = 0;
+
 private:
 
     friend Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,GraphicsPipelinePreRaster *);
 
     Primitive(Geometry *,MaterialInstance *,GraphicsPipelinePreRaster *,GeometryDataBuffer *);
 
+    friend Primitive *DirectCreatePrimitive(Geometry *,SemanticMaterialId,uint32_t);
+
+    Primitive(Geometry *,SemanticMaterialId,uint32_t);
+
 public:
 
     virtual ~Primitive();
 
-            VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
-            Material *          GetMaterial         (){return mat_inst->GetMaterial();}
+            VkPipelineLayout    GetPipelineLayout   (){return mat_inst ? mat_inst->GetMaterial()->GetPipelineLayout() : VK_NULL_HANDLE;}
+            Material *          GetMaterial         (){return mat_inst ? mat_inst->GetMaterial() : nullptr;}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
@@ -49,6 +57,13 @@ public:
     virtual bool                UpdateGeometry      ();     ///<更新Geometry,一般用于Geometry改变数据后需要通知Mesh的情况
 
 public:
+
+            bool                HasDeferredMI       ()const{return mat_inst==nullptr&&deferred_semantic_id!=0;}
+            SemanticMaterialId  GetDeferredSemanticId()const{return deferred_semantic_id;}
+            uint32_t            GetDeferredVILHash  ()const{return deferred_vil_hash;}
+
+            /// 延迟绑定：仅在 mat_inst==nullptr 时有效，由 ECS 收集系统在 ResolveMI 后调用
+            bool                BindMaterialInstance(MaterialInstance *mi);
 
             bool                ChangeMaterialInstance(MaterialInstance *mi)
             {
@@ -74,4 +89,5 @@ public:
 };//class Primitive
 
 Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,GraphicsPipelinePreRaster * = nullptr);
+Primitive *DirectCreatePrimitive(Geometry *,SemanticMaterialId,uint32_t vil_hash);
 }//namespace hgl::graph

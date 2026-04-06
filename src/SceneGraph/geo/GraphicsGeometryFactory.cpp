@@ -5,10 +5,38 @@
 #include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/module/MaterialAssetRegistry.h>
 #include <hgl/vk/VKMaterialInstance.h>
+#include <hgl/vk/VKVertexInputConfig.h>
+#include <hgl/vk/VKVertexInputLayout.h>
 #include <hgl/vk/VertexDataManager.h>
 
 namespace hgl::graph
 {
+namespace
+{
+static uint32_t ComputeVILHash(const graph::VIL *vil)
+{
+    if (!vil)
+        return 0;
+
+    uint64_t h = 14695981039346656037ULL;
+    auto feed = [&](const void *p, size_t n)
+    {
+        const auto *bytes = reinterpret_cast<const uint8_t*>(p);
+        for (size_t i = 0; i < n; ++i)
+            h = (h ^ bytes[i]) * 1099511628211ULL;
+    };
+
+    const uint32_t count = vil->GetVertexAttribCount();
+    feed(&count, sizeof(count));
+
+    const auto *vif = vil->GetVIFList();
+    if (vif && count > 0)
+        feed(vif, sizeof(graph::VertexInputFormat) * count);
+
+    return static_cast<uint32_t>((h >> 32) ^ (h & 0xFFFFFFFFu));
+}
+}
+
 GraphicsGeometryFactory::GraphicsGeometryFactory(GraphicsContext *gc)
     : graphics(gc)
 {
@@ -143,7 +171,7 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_co
                                                     uint32_t vertex_count,
                                                     std::initializer_list<VertexAttribWrite> vertex_writes)
 {
-    if(!graphics_context || semantic_id == 0)
+    if(!graphics_context || semantic_id == 0 || geometry_name.IsEmpty() || vertex_count == 0)
         return nullptr;
 
     auto *registry = graphics_context->GetMaterialAssetRegistry();
@@ -154,10 +182,60 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_co
     if(!registry->QuerySemanticMaterial(semantic_id, rec))
         return nullptr;
 
-    MaterialInstance *mi = registry->AcquireMI(rec);
-    if(!mi)
+    MaterialDomainHandle handle = registry->Acquire(rec);
+    if(!handle.material)
         return nullptr;
 
-    return CreatePrimitive(graphics_context, mi, geometry_name, vertex_count, vertex_writes);
+    VILConfig vil_cfg;
+    for(const auto &write : vertex_writes)
+    {
+        if(!write.data)
+            return nullptr;
+
+        if(!vil_cfg.Add(write.attrib, VAConfig{write.format}))
+            return nullptr;
+    }
+
+    const VIL *vil = handle.material->CreateVIL(&vil_cfg);
+    if(!vil)
+        vil = handle.material->GetDefaultVIL();
+
+    if(!vil)
+        return nullptr;
+
+    const uint32_t vil_hash = ComputeVILHash(vil);
+
+    GraphicsGeometryFactory geometry_factory(graphics_context);
+
+    auto pc = geometry_factory.CreateCreater(vil);
+    if(!pc)
+        return nullptr;
+
+    if(!pc->Init(geometry_name, vertex_count))
+        return nullptr;
+
+    for(const auto &write : vertex_writes)
+    {
+        if(!pc->WriteVAB(write.attrib, write.format, write.data))
+            return nullptr;
+    }
+
+    auto *geometry = geometry_factory.CreateManagedGeometry(pc.get());
+    if(!geometry)
+        return nullptr;
+
+    Primitive *primitive = DirectCreatePrimitive(geometry, semantic_id, vil_hash);
+    if(!primitive)
+        return nullptr;
+
+    auto *primitive_manager = graphics_context->GetPrimitiveManager();
+    if(!primitive_manager)
+    {
+        delete primitive;
+        return nullptr;
+    }
+
+    primitive_manager->Add(primitive);
+    return primitive;
 }
 }

@@ -57,6 +57,18 @@ Primitive::Primitive(Geometry *r,MaterialInstance *mi,GraphicsPipelinePreRaster 
     draw_range.Set(geometry);
 }
 
+Primitive::Primitive(Geometry *r,SemanticMaterialId sid,uint32_t vil_hash)
+{
+    geometry=r;
+    mat_inst=nullptr;
+
+    data_buffer=nullptr;
+    draw_range.Set(geometry);
+
+    deferred_semantic_id=sid;
+    deferred_vil_hash=vil_hash;
+}
+
 Primitive::~Primitive()
 {
     SAFE_CLEAR(data_buffer);
@@ -73,7 +85,58 @@ bool Primitive::UpdateGeometry()
     if(draw_range.index_count>draw_range.data_index_count)
         draw_range.index_count = draw_range.data_index_count;
 
+    if(!data_buffer||!mat_inst)
+        return(false);
+
     return data_buffer->Update(geometry,mat_inst->GetVIL());
+}
+
+bool Primitive::BindMaterialInstance(MaterialInstance *mi)
+{
+    if(!mi||!geometry)
+        return(false);
+
+    const VIL *vil=mi->GetVIL();
+    if(!vil)
+        return(false);
+
+    const uint32_t input_count=vil->GetVertexAttribCount();
+    const VertexInputFormat *vif=vil->GetVIFList();
+
+    uint32_t max_binding=0;
+    for(uint i=0;i<input_count;i++)
+    {
+        if(vif[i].binding>max_binding)
+            max_binding=vif[i].binding;
+    }
+
+    GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(max_binding+1,geometry->GetIBO(),geometry->GetVDM());
+
+    VAB *vab;
+
+    for(uint i=0;i<input_count;i++)
+    {
+        vab=geometry->GetVAB(vif->attrib);
+
+        if(!vab)
+        {
+            delete geom_data_buffer;
+            return(false);
+        }
+
+        const uint32_t bind_index=vif->binding;
+        geom_data_buffer->vab_list[bind_index]=vab->GetVkBuffer();
+        geom_data_buffer->vab_offset[bind_index]=0;
+        ++vif;
+    }
+
+    delete data_buffer;
+    data_buffer=geom_data_buffer;
+
+    mat_inst=mi;
+    deferred_semantic_id=0;
+
+    return(true);
 }
 
 Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPipelinePreRaster *p)
@@ -151,6 +214,14 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPip
     }
 
     return(new Primitive(geom,mi,p,geom_data_buffer));
+}
+
+Primitive *DirectCreatePrimitive(Geometry *geom,SemanticMaterialId sid,uint32_t vil_hash)
+{
+    if(!geom||sid==0)
+        return(nullptr);
+
+    return(new Primitive(geom,sid,vil_hash));
 }
 
 bool GeometryDataBuffer::Update(const Geometry *geom,const VIL *vil)

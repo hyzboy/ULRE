@@ -163,6 +163,12 @@ namespace hgl::ecs
                                 instance_data = current_mi->GetMIData();
                         }
                     }
+                    else if (primitive->HasDeferredMI())
+                    {
+                        graph::mtl::MaterialAssetRecord rec;
+                        if (registry->QuerySemanticMaterial(primitive->GetDeferredSemanticId(), rec))
+                            request.pipeline = rec.pipeline;
+                    }
 
                     // Runtime auto-transparency decision source (distance-based, 3D only).
                     const glm::vec3 world_pos = transform->GetWorldPosition();
@@ -193,6 +199,8 @@ namespace hgl::ecs
 
                     if (current_mi)
                         geometry.vil_hash = ComputeVILHash(current_mi->GetVIL());
+                    else if (primitive->HasDeferredMI())
+                        geometry.vil_hash = primitive->GetDeferredVILHash();
 
                     if (auto *resolved = registry->ResolveMI(hgl::ecs::ToRuntimeEntityKey(entity_id),
                                                              primitiveComp->GetSemanticMaterial(),
@@ -200,7 +208,12 @@ namespace hgl::ecs
                                                              geometry,
                                                              instance_data,
                                                              instance_data_size))
+                    {
+                        if (primitive->HasDeferredMI())
+                            primitive->BindMaterialInstance(resolved);
+
                         primitiveComp->SetOverrideMaterial(resolved);
+                    }
                 }
             }
 
