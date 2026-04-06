@@ -3,6 +3,7 @@
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
+#include <hgl/graph/module/MaterialAssetRegistry.h>
 #include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/vk/VertexDataManager.h>
 
@@ -134,5 +135,29 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_co
 
     GraphicsGeometryFactory geometry_factory(graphics_context);
     return geometry_factory.CreatePrimitive(geometry, material_instance);
+}
+
+Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_context,
+                                                    SemanticMaterialId semantic_id,
+                                                    const AnsiString &geometry_name,
+                                                    uint32_t vertex_count,
+                                                    std::initializer_list<VertexAttribWrite> vertex_writes)
+{
+    if(!graphics_context || semantic_id == 0)
+        return nullptr;
+
+    auto *registry = graphics_context->GetMaterialAssetRegistry();
+    if(!registry)
+        return nullptr;
+
+    mtl::MaterialAssetRecord rec;
+    if(!registry->QuerySemanticMaterial(semantic_id, rec))
+        return nullptr;
+
+    MaterialInstance *mi = registry->AcquireMI(rec);
+    if(!mi)
+        return nullptr;
+
+    return CreatePrimitive(graphics_context, mi, geometry_name, vertex_count, vertex_writes);
 }
 }

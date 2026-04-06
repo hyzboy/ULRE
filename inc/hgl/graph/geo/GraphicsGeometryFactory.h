@@ -5,6 +5,7 @@
 #include <utility>
 #include <hgl/vk/VKFormat.h>
 #include <hgl/type/String.h>
+#include <hgl/graph/module/RuntimeMaterialRequest.h>
 
 namespace hgl::graph
 {
@@ -81,6 +82,12 @@ public:
 
     static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
                                       MaterialInstance *material_instance,
+                                      const AnsiString &geometry_name,
+                                      uint32_t vertex_count,
+                                      std::initializer_list<VertexAttribWrite> vertex_writes);
+
+    static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
+                                      SemanticMaterialId semantic_id,
                                       const AnsiString &geometry_name,
                                       uint32_t vertex_count,
                                       std::initializer_list<VertexAttribWrite> vertex_writes);

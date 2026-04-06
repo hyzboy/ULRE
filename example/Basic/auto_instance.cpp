@@ -54,7 +54,6 @@ private:
     ECSContext *  ecs_world      =nullptr;   // 由默认 ECSContext 统一维护
 
     // 传统渲染资源（共享）
-    MaterialInstance *  material_instance   =nullptr;
     Primitive *         prim_triangle       =nullptr;
     SemanticMaterialId  semantic_material_id=0;
 
@@ -82,9 +81,7 @@ private:
 
         semantic_material_id = registry->RegisterSemanticMaterial(kAutoInstanceCfg);
 
-        material_instance = registry->AcquireMI(kAutoInstanceCfg);
-
-        return material_instance != nullptr;
+        return semantic_material_id != 0;
     }
 
     bool InitVBO()
@@ -95,7 +92,7 @@ private:
             return false;
 
         prim_triangle = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                                 material_instance,
+                                                                 semantic_material_id,
                                                                  "Triangle",
                                                                  VERTEX_COUNT,
                                                                  {{VAN::Position,VF_V2F,position_data},
