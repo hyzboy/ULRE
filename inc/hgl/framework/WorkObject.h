@@ -131,6 +131,9 @@ namespace hgl
 
             return nullptr;
         }
+        // Compatibility helper: directly acquires MI from MaterialAssetRecord.
+        // New semantic/runtime composition path should prefer:
+        // Register semantic material -> resolve final MI during render collection.
         graph::MaterialInstance *AcquireMI(const graph::mtl::MaterialAssetRecord &rec,
                                            const void *instance_data = nullptr,
                                            uint32 instance_data_size = 0,

@@ -89,6 +89,79 @@ static uint64_t ComputeTextureConfigHash(
     return hash;
 }
 
+// ── SemanticMaterialId hash (runtime policy fields intentionally excluded) ──
+
+static uint64_t ComputeSemanticMaterialHash(const mtl::MaterialAssetRecord &rec)
+{
+    uint64_t hash = 14695981039346656037ULL; // FNV offset basis
+
+    auto feed = [&](const void *p, size_t n)
+    {
+        auto *bytes = static_cast<const uint8_t*>(p);
+        for (size_t i = 0; i < n; ++i)
+            hash = (hash ^ bytes[i]) * 1099511628211ULL;
+    };
+
+    auto feed_str = [&](const std::string &s)
+    {
+        feed(s.data(), s.size());
+        const uint8_t z = 0;
+        feed(&z, 1);
+    };
+
+    // semantic core
+    {
+        const uint8_t preset = static_cast<uint8_t>(rec.preset);
+        const uint8_t dim = static_cast<uint8_t>(rec.dim);
+        const uint8_t prim = static_cast<uint8_t>(rec.prim);
+        const uint8_t l2w = rec.l2w ? 1u : 0u;
+        const uint8_t coord2d = static_cast<uint8_t>(rec.coord_2d);
+        const uint8_t camera = rec.camera ? 1u : 0u;
+        const uint8_t sky = rec.sky ? 1u : 0u;
+        const uint8_t sky_ambient = static_cast<uint8_t>(rec.sky_ambient);
+        const uint8_t lighting = static_cast<uint8_t>(rec.lighting);
+
+        feed(&preset, 1);
+        feed(&dim, 1);
+        feed(&prim, 1);
+        feed(&l2w, 1);
+        feed(&rec.pos_format, sizeof(rec.pos_format));
+        feed(&coord2d, 1);
+        feed(&camera, 1);
+        feed(&sky, 1);
+        feed(&sky_ambient, 1);
+        feed(&lighting, 1);
+    }
+
+    // semantic texture references
+    for (const auto &tc : rec.textures)
+    {
+        const uint8_t slot = static_cast<uint8_t>(tc.slot);
+        const uint8_t mode = static_cast<uint8_t>(tc.source_mode);
+        feed(&slot, 1);
+        feed(&mode, 1);
+        feed_str(tc.path);
+    }
+
+    // billboard semantic fields
+    {
+        const uint8_t fixed_size = rec.billboard.fixed_size ? 1u : 0u;
+        const uint8_t blend_mode = static_cast<uint8_t>(rec.billboard.blend_mode);
+        const uint8_t base_channel = static_cast<uint8_t>(rec.billboard.base_color_channel);
+        const uint8_t front_face_ccw = rec.billboard.front_face_ccw ? 1u : 0u;
+
+        feed(&fixed_size, 1);
+        feed(&rec.billboard.pixel_w, sizeof(rec.billboard.pixel_w));
+        feed(&rec.billboard.pixel_h, sizeof(rec.billboard.pixel_h));
+        feed(&blend_mode, 1);
+        feed(&base_channel, 1);
+        feed(&front_face_ccw, 1);
+        feed_str(rec.billboard.texture_id);
+    }
+
+    return hash;
+}
+
 // ── DMBKeyHash ───────────────────────────────────────────────────────────────
 
 size_t MaterialAssetRegistry::DMBKeyHash::operator()(const DMBKey &k) const
@@ -102,6 +175,44 @@ size_t MaterialAssetRegistry::DMBKeyHash::operator()(const DMBKey &k) const
     const auto *bytes = reinterpret_cast<const uint8_t*>(&k.texture_hash);
     for (size_t i = 0; i < sizeof(k.texture_hash); ++i)
         h = (h ^ bytes[i]) * 1099511628211ULL;
+    return h;
+}
+
+size_t MaterialAssetRegistry::FinalMaterialKeyHash::operator()(const FinalMaterialKey &k) const
+{
+    size_t h = 14695981039346656037ULL;
+
+    auto feed = [&](const void *p, size_t n)
+    {
+        const auto *bytes = reinterpret_cast<const uint8_t*>(p);
+        for (size_t i = 0; i < n; ++i)
+            h = (h ^ bytes[i]) * 1099511628211ULL;
+    };
+
+    auto feed_str = [&](const std::string &s)
+    {
+        feed(s.data(), s.size());
+        const uint8_t z = 0;
+        feed(&z, 1);
+    };
+
+    feed(&k.semantic_id, sizeof(k.semantic_id));
+
+    {
+        const uint8_t pipeline = static_cast<uint8_t>(k.request.pipeline);
+        feed(&pipeline, 1);
+        feed_str(k.request.domain_id);
+        feed(&k.request.policy_flags, sizeof(k.request.policy_flags));
+        feed(&k.request.transparency_mode, sizeof(k.request.transparency_mode));
+        feed(&k.request.lod_tier, sizeof(k.request.lod_tier));
+    }
+
+    {
+        const uint8_t prim = static_cast<uint8_t>(k.geometry.primitive);
+        feed(&prim, 1);
+        feed(&k.geometry.vil_hash, sizeof(k.geometry.vil_hash));
+    }
+
     return h;
 }
 
@@ -176,6 +287,78 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     }
 
     return handle;
+}
+
+SemanticMaterialId MaterialAssetRegistry::RegisterSemanticMaterial(const mtl::MaterialAssetRecord &rec)
+{
+    const SemanticMaterialId id = ComputeSemanticMaterialHash(rec);
+    semantic_cache.emplace(id, rec);
+    return id;
+}
+
+bool MaterialAssetRegistry::QuerySemanticMaterial(SemanticMaterialId id, mtl::MaterialAssetRecord &out_rec) const
+{
+    const auto it = semantic_cache.find(id);
+    if (it == semantic_cache.end())
+        return false;
+
+    out_rec = it->second;
+    return true;
+}
+
+MaterialInstance *MaterialAssetRegistry::ResolveMI(SemanticMaterialId semantic_id,
+                                                   const RuntimeMaterialRequest &request,
+                                                   const GeometrySignature &geometry,
+                                                   const void *instance_data,
+                                                   uint32_t instance_data_size,
+                                                   MaterialDomainHandle *out_handle)
+{
+    FinalMaterialKey key;
+    key.semantic_id = semantic_id;
+    key.request = request;
+    key.geometry = geometry;
+
+    // Fast path: resolved MI cache
+    auto it = final_mi_cache.find(key);
+    if (it != final_mi_cache.end())
+    {
+        if (out_handle)
+        {
+            mtl::MaterialAssetRecord semantic_rec;
+            if (QuerySemanticMaterial(semantic_id, semantic_rec))
+            {
+                semantic_rec.pipeline = request.pipeline;
+                semantic_rec.domain_id = request.domain_id;
+                semantic_rec.prim = geometry.primitive;
+                *out_handle = Acquire(semantic_rec);
+            }
+        }
+
+        return it->second;
+    }
+
+    // Compose final record from semantic + runtime + geometry.
+    mtl::MaterialAssetRecord final_rec;
+    if (!QuerySemanticMaterial(semantic_id, final_rec))
+        return nullptr;
+
+    final_rec.pipeline = request.pipeline;
+    final_rec.domain_id = request.domain_id;
+    final_rec.prim = geometry.primitive;
+
+    MaterialDomainHandle handle = Acquire(final_rec);
+    if (!handle.IsValid())
+        return nullptr;
+
+    if (out_handle)
+        *out_handle = handle;
+
+    MaterialInstance *mi = CreateMI(handle, final_rec, instance_data, instance_data_size);
+    if (!mi)
+        return nullptr;
+
+    final_mi_cache.emplace(std::move(key), mi);
+    return mi;
 }
 
 MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialAssetRecord &rec,

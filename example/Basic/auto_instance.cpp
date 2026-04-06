@@ -22,6 +22,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -55,6 +56,7 @@ private:
     // 传统渲染资源（共享）
     MaterialInstance *  material_instance   =nullptr;
     Primitive *         prim_triangle       =nullptr;
+    SemanticMaterialId  semantic_material_id=0;
 
     // 存储所有创建的实体
     std::vector<Entity*> triangle_entities;
@@ -63,21 +65,22 @@ private:
 
     bool InitMaterial()
     {
-        {
-            static const mtl::MaterialAssetRecord kAutoInstanceCfg {
-                .id       = "auto_instance_vertex_color",
-                .preset   = mtl::MaterialPreset::VertexColor2D,
-                .dim      = mtl::MaterialAssetRecord::Dim::D2,
-                .pipeline = GraphicsPipelinePreset::Solid2D,
-                .mi_vil_overrides = {
-                    { VAN::Color, VF_V4UN8 },
-                },
-            };
-            material_instance = AcquireMI(kAutoInstanceCfg);
-        }
+        static const mtl::MaterialAssetRecord kAutoInstanceCfg {
+            .id       = "auto_instance_vertex_color",
+            .preset   = mtl::MaterialPreset::VertexColor2D,
+            .dim      = mtl::MaterialAssetRecord::Dim::D2,
+            .pipeline = GraphicsPipelinePreset::Solid2D,
+            .mi_vil_overrides =
+            {
+                { VAN::Color, VF_V4UN8 },
+            },
+        };
 
-        if(!material_instance)
-            return(false);
+        auto *registry = GetMaterialAssetRegistry();
+        if (registry)
+            semantic_material_id = registry->RegisterSemanticMaterial(kAutoInstanceCfg);
+
+        material_instance = AcquireMI(kAutoInstanceCfg);
 
         return material_instance != nullptr;
     }
@@ -85,6 +88,7 @@ private:
     bool InitVBO()
     {
         auto* graphics_context = GetGraphicsContext();
+
         if (!graphics_context)
             return false;
 
@@ -95,10 +99,7 @@ private:
                                                                  {{VAN::Position,VF_V2F,position_data},
                                                                   {VAN::Color,VF_V4UN8,color_data}});
 
-        if(!prim_triangle)
-            return(false);
-
-        return(true);
+        return prim_triangle!=nullptr;
     }
 
     bool InitECS()
@@ -144,6 +145,7 @@ private:
             // RenderCollector会检测到这一点并自动使用Instance渲染
             auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(prim_triangle);
+            primitive_comp->SetSemanticMaterial(semantic_material_id);
             primitive_comp->SetVisible(true);
 
             // 保存实体引用
@@ -166,6 +168,9 @@ public:
 
         if(!InitECS())
             return(false);
+
+        if (auto render_collect = ecs_world->GetSystem<RenderPrimitiveCollectSystem>())
+            render_collect->SetSemanticRuntimeResolveEnabled(true);
 
         // 已在框架层设置默认 ECSContext
         // RenderCollector会自动收集所有PrimitiveComponent并进行批处理

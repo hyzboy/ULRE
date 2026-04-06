@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/components/RenderableComponent.h>
+#include<hgl/graph/module/RuntimeMaterialRequest.h>
 #include<glm/glm.hpp>
 
 // Forward declarations to avoid heavy includes
@@ -39,6 +40,7 @@ namespace hgl::ecs
 
         hgl::graph::Primitive* primitive;              // The primitive to render (not owned)
         hgl::graph::MaterialInstance* overrideMaterial; // Optional material override (not owned)
+        hgl::graph::SemanticMaterialId semanticMaterialId = 0; // 0 = unset
 
     public:
 
@@ -63,6 +65,11 @@ namespace hgl::ecs
         void SetOverrideMaterial(hgl::graph::MaterialInstance* mi);
         hgl::graph::MaterialInstance* GetOverrideMaterial() const { return overrideMaterial; }
         void ClearOverrideMaterial() { overrideMaterial = nullptr; }
+
+        // Semantic material id (Phase 2 path)
+        void SetSemanticMaterial(hgl::graph::SemanticMaterialId id) { semanticMaterialId = id; }
+        hgl::graph::SemanticMaterialId GetSemanticMaterial() const { return semanticMaterialId; }
+        bool HasSemanticMaterial() const { return semanticMaterialId != 0; }
 
         // Material access (returns override if set, otherwise primitive's material)
         hgl::graph::MaterialInstance* GetMaterialInstance() const;

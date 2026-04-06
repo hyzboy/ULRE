@@ -8,6 +8,11 @@
 #include<hgl/ecs/systems/tick/VisibilitySystem.h>
 #include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/graph/CameraInfo.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/graph/mesh/Primitive.h>
+#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/log/Log.h>
 #include<glm/glm.hpp>
 
@@ -96,6 +101,26 @@ namespace hgl::ecs
 
             if (!world->IsEntityRenderEnabled(entity))
                 continue;
+
+            if (semantic_runtime_resolve_enabled && primitiveComp->HasSemanticMaterial())
+            {
+                auto *gc = world->GetGraphicsContext();
+                auto *registry = gc ? gc->GetMaterialAssetRegistry() : nullptr;
+                auto *primitive = primitiveComp->GetPrimitive();
+
+                if (registry && primitive)
+                {
+                    graph::RuntimeMaterialRequest request;
+                    request.domain_id = "";
+                    request.pipeline = graph::GraphicsPipelinePreset::Solid2D;
+
+                    graph::GeometrySignature geometry;
+                    geometry.primitive = graph::PrimitiveType::Triangles;
+
+                    if (auto *resolved = registry->ResolveMI(primitiveComp->GetSemanticMaterial(), request, geometry))
+                        primitiveComp->SetOverrideMaterial(resolved);
+                }
+            }
 
             auto transform = entity->GetComponent<TransformComponent>();
             if (!transform)

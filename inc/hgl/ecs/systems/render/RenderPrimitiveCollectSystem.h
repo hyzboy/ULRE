@@ -25,6 +25,7 @@ namespace hgl::ecs
 
         ECSContext* world = nullptr;
         const graph::CameraInfo* cameraInfo = nullptr;
+        bool semantic_runtime_resolve_enabled = false;
 
     public:
 
@@ -36,6 +37,8 @@ namespace hgl::ecs
         void SetWorld(ECSContext* w) { world = w; }
         void SetCameraInfo(const graph::CameraInfo* info) { cameraInfo = info; }
         const graph::CameraInfo* GetCameraInfo() const { return cameraInfo; }
+        void SetSemanticRuntimeResolveEnabled(bool enabled) { semantic_runtime_resolve_enabled = enabled; }
+        bool GetSemanticRuntimeResolveEnabled() const { return semantic_runtime_resolve_enabled; }
 
         void Update(float deltaTime) override;
     };

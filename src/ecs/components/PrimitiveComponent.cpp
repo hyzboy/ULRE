@@ -22,6 +22,7 @@ namespace hgl::ecs
             RenderableRecord renderable;
             bool hasPrimitive = false;
             bool hasOverrideMaterial = false;
+            hgl::graph::SemanticMaterialId semanticMaterialId = 0;
         };
     }
 
@@ -43,6 +44,7 @@ namespace hgl::ecs
         data.renderable.boundingRadius = primitive->GetBoundingRadius();
         data.hasPrimitive = primitive->GetPrimitive() != nullptr;
         data.hasOverrideMaterial = primitive->GetOverrideMaterial() != nullptr;
+        data.semanticMaterialId = primitive->GetSemanticMaterial();
 
         out_record.type = GetSerializationType();
         out_record.payload = data;
@@ -57,6 +59,7 @@ namespace hgl::ecs
         auto primitive = std::make_shared<PrimitiveComponent>();
         primitive->SetVisible(data.renderable.visible);
         primitive->SetBoundingRadius(data.renderable.boundingRadius);
+        primitive->SetSemanticMaterial(data.semanticMaterialId);
         entity->AddComponentInstance(primitive);
     }
 
@@ -159,6 +162,7 @@ namespace hgl::ecs
         // Just clear our references
         primitive = nullptr;
         overrideMaterial = nullptr;
+        semanticMaterialId = 0;
     }
 }//namespace hgl::ecs
 
