@@ -135,6 +135,9 @@ namespace hgl::ecs
                 continue;
             }
 
+            // D-2: resolved MI for this frame, propagated to the render item
+            graph::MaterialInstance* frame_resolved_mi = nullptr;
+
             if (semantic_runtime_resolve_enabled && primitiveComp->HasSemanticMaterial())
             {
                 auto *gc = world->GetGraphicsContext();
@@ -212,6 +215,8 @@ namespace hgl::ecs
                                                              instance_data,
                                                              instance_data_size))
                     {
+                        frame_resolved_mi = resolved;  // D-2: store for render item
+
                         if (primitive->HasDeferredMI())
                             primitive->BindMaterialInstance(resolved);
 
@@ -221,6 +226,8 @@ namespace hgl::ecs
             }
 
             auto item = std::make_unique<PrimitiveRenderItem>(entity_id, transform, primitiveComp, world);
+            if (frame_resolved_mi)
+                item->SetResolvedMI(frame_resolved_mi);  // D-2: propagate to render item
 
             glm::vec3 worldPos = transform->GetWorldPosition();
             item->worldPosition = worldPos;

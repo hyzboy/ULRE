@@ -32,6 +32,8 @@ namespace hgl::ecs
         std::shared_ptr<TransformComponent> transform;
         std::shared_ptr<PrimitiveComponent> primitiveComp;
         glm::mat4 worldMatrix;
+        // D-2: resolved MI from semantic resolve path, set by collector for this frame
+        hgl::graph::MaterialInstance* resolved_mi = nullptr;
 
     public:
         PrimitiveRenderItem(
@@ -51,6 +53,10 @@ namespace hgl::ecs
 
         // PrimitiveComponent-specific accessors
         std::shared_ptr<PrimitiveComponent> GetPrimitiveComponent() const { return primitiveComp; }
+
+        // D-2: set the resolved MI for this frame (semantic path)
+        void SetResolvedMI(hgl::graph::MaterialInstance* mi) { resolved_mi = mi; }
+        hgl::graph::MaterialInstance* GetResolvedMI() const { return resolved_mi; }
 
         // Material batching interface
         hgl::graph::Primitive* GetPrimitive() const override;
