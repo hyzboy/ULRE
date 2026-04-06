@@ -8,6 +8,8 @@
 #include <hgl/vk/VKResourceDomain.h>
 #include <hgl/vk/VKDomainMaterialBinding.h>
 #include <hgl/vk/VKVertexInputConfig.h>
+#include <hgl/graph/geo/VKGeometry.h>
+#include <hgl/vk/VKVertexAttribBuffer.h>
 
 #include <vector>
 #include <cstdio>
@@ -90,6 +92,53 @@ static const VIL *ResolveVILFromRecord(Material *material, const mtl::MaterialAs
         return vil;
 
     return material->GetDefaultVIL();
+}
+
+static const VIL *ResolveVILFromGeometry(Material *material,
+                                         const Geometry *geometry,
+                                         const mtl::MaterialAssetRecord &fallback_rec)
+{
+    if (!material)
+        return nullptr;
+
+    if (!geometry)
+        return ResolveVILFromRecord(material, fallback_rec);
+
+    VILConfig vil_cfg;
+    bool has_any = false;
+
+    for (int i = 0; i < static_cast<int>(VAN::RANGE_SIZE); ++i)
+    {
+        const auto attrib = static_cast<VertexAttrib>(i);
+        auto *vab = geometry->GetVAB(attrib);
+        if (!vab)
+            continue;
+
+        has_any = true;
+
+        VAConfig vac;
+        vac.format = vab->GetFormat();
+
+        if (!vil_cfg.Add(attrib, vac))
+            return ResolveVILFromRecord(material, fallback_rec);
+    }
+
+    if (!has_any)
+        return ResolveVILFromRecord(material, fallback_rec);
+
+    if (auto *vil = material->CreateVIL(&vil_cfg))
+        return vil;
+
+    return ResolveVILFromRecord(material, fallback_rec);
+}
+
+static const VIL *ResolveRuntimeVIL(Material *material,
+                                    const mtl::MaterialAssetRecord &final_rec,
+                                    const GeometrySignature &geometry)
+{
+    return ResolveVILFromGeometry(material,
+                                  geometry.geometry_for_vil_derivation,
+                                  final_rec);
 }
 
 // ── FNV-1a 64-bit texture config hash ────────────────────────────────────────
@@ -424,7 +473,7 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         {
             ++legacy_resolve_hit_count;
 
-            mm->RebindMaterialInstance(it->second, handle.material, ResolveVILFromRecord(handle.material, final_rec));
+            mm->RebindMaterialInstance(it->second, handle.material, ResolveRuntimeVIL(handle.material, final_rec, geometry));
             it->second->SetRenderPreset(request.pipeline);
 
             if (instance_data && instance_data_size > 0)
@@ -435,7 +484,11 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
 
         ++legacy_resolve_miss_count;
 
-        MaterialInstance *mi = CreateMI(handle, final_rec, instance_data, instance_data_size);
+        MaterialInstance *mi = mm->CreateMaterialInstance(handle.domain,
+                                                          handle.material,
+                                                          ResolveRuntimeVIL(handle.material, final_rec, geometry),
+                                                          instance_data,
+                                                          instance_data_size);
         if (!mi)
             return nullptr;
 
@@ -450,7 +503,7 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
     {
         ++entity_resolve_hit_count;
 
-        mm->RebindMaterialInstance(it->second, handle.material, ResolveVILFromRecord(handle.material, final_rec));
+        mm->RebindMaterialInstance(it->second, handle.material, ResolveRuntimeVIL(handle.material, final_rec, geometry));
         it->second->SetRenderPreset(request.pipeline);
 
         if (instance_data && instance_data_size > 0)
@@ -484,7 +537,7 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
 
     MaterialInstance *mi = mm->CreateMaterialInstance(entry.shared_domain,
                                                       handle.material,
-                                                      ResolveVILFromRecord(handle.material, final_rec),
+                                                      ResolveRuntimeVIL(handle.material, final_rec, geometry),
                                                       instance_data,
                                                       instance_data_size);
     if (!mi)

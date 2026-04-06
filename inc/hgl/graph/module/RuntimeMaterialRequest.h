@@ -9,6 +9,8 @@
 namespace hgl::graph
 {
 
+class Geometry;
+
 using SemanticMaterialId = uint64_t;
 
 struct RuntimeMaterialRequest
@@ -44,6 +46,11 @@ struct GeometrySignature
 
     // Optional future extension points for VIL/vertex layout signatures.
     uint32_t vil_hash = 0;
+
+    // Phase C: optional runtime-only source for VIL auto-derivation.
+    // This field is intentionally excluded from operator== so VariantKey
+    // remains stable and hash-compatible with prior behavior.
+    const Geometry *geometry_for_vil_derivation = nullptr;
 
     bool operator==(const GeometrySignature &o) const
     {

@@ -200,7 +200,10 @@ namespace hgl::ecs
                     if (current_mi)
                         geometry.vil_hash = ComputeVILHash(current_mi->GetVIL());
                     else if (primitive->HasDeferredMI())
+                    {
+                        geometry.geometry_for_vil_derivation = primitive->GetGeometry();
                         geometry.vil_hash = primitive->GetDeferredVILHash();
+                    }
 
                     if (auto *resolved = registry->ResolveMI(hgl::ecs::ToRuntimeEntityKey(entity_id),
                                                              primitiveComp->GetSemanticMaterial(),
