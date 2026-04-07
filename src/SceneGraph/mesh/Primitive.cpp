@@ -87,18 +87,16 @@ bool Primitive::UpdateGeometry()
 
 bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot)
 {
-    if (!slot.IsValid() || !geometry)
-        return false;
-
-    const VIL *new_vil = slot.vil;
-    if (!new_vil)
+    // Note: slot.IsValid() requires mi_id>=0, but we accept mi_id=-1 for non-instanced material binding.
+    // Check material_template instead to allow deferred MI slots that resolved material but couldn't allocate MI slot.
+    if (!slot.material_template || !slot.vil || !geometry)
         return false;
 
     // For deferred primitives, create the GeometryDataBuffer from the resolved VIL
     if (HasDeferredMI())
     {
-        const uint32_t input_count=new_vil->GetVertexAttribCount();
-        const VertexInputFormat *vif=new_vil->GetVIFList();
+        const uint32_t input_count = slot.vil->GetVertexAttribCount();
+        const VertexInputFormat *vif = slot.vil->GetVIFList();
 
         uint32_t max_binding=0;
         for(uint i=0;i<input_count;i++)
@@ -133,7 +131,7 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot)
     material_template    = slot.material_template;
     domain               = slot.domain;
     mi_id                = slot.mi_id;
-    vil                  = new_vil;
+    vil                  = slot.vil;
     render_preset        = slot.preset;
     deferred_semantic_id = 0;
     deferred_vil_hash    = 0;
