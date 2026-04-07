@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/VKGeometry.h>
+#include<hgl/graph/PrimitiveMaterialSlot.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 
 namespace
@@ -35,6 +36,41 @@ namespace hgl::graph{
 
 GRAPH_MODULE_CONSTRUCT(PrimitiveManager)
 {
+}
+
+Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, const PrimitiveMaterialSlot &slot)
+{
+    if(!r || !slot.IsValid())
+        return nullptr;
+
+    Primitive *ri = hgl::graph::DirectCreatePrimitive(r, slot);
+
+    if(ri)
+        Add(ri);
+
+    return ri;
+}
+
+Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, const PrimitiveMaterialSlot &slot)
+{
+    if(!pc || !slot.IsValid())
+        return nullptr;
+
+    Geometry *geometry = pc->Create();
+
+    if(!geometry)
+        return nullptr;
+
+    Primitive *ri = hgl::graph::DirectCreatePrimitive(geometry, slot);
+
+    if(ri)
+    {
+        Add(ri);
+        return ri;
+    }
+
+    delete geometry;
+    return nullptr;
 }
 
 Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialInstance *mi, GraphicsPipelinePreRaster *p)

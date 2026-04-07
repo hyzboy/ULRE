@@ -13,6 +13,7 @@ class GeometryCreater;
 class Geometry;
 class MaterialInstance;
 using SemanticMaterialId = uint64;
+struct PrimitiveMaterialSlot;
 
 GRAPH_MODULE_CLASS(PrimitiveManager)
 {
@@ -39,10 +40,17 @@ public: // Add/Get/Release
 
 public: // Create
 
+    Primitive *CreatePrimitive(Geometry *r, const PrimitiveMaterialSlot &slot);
+    Primitive *CreatePrimitive(GeometryCreater *pc, const PrimitiveMaterialSlot &slot);
+
+    [[deprecated("Use CreatePrimitive(Geometry*, const PrimitiveMaterialSlot&) — Phase C")]]
     Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi, GraphicsPipelinePreRaster *p);
+    [[deprecated("Use CreatePrimitive(GeometryCreater*, const PrimitiveMaterialSlot&) — Phase C")]]
     Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, GraphicsPipelinePreRaster *p);
 
+    [[deprecated("Use CreatePrimitive(Geometry*, const PrimitiveMaterialSlot&) — Phase C")]]
     Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi);
+    [[deprecated("Use CreatePrimitive(GeometryCreater*, const PrimitiveMaterialSlot&) — Phase C")]]
     Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi);
 
     Primitive *CreatePrimitive(Geometry *r, SemanticMaterialId semantic_id);

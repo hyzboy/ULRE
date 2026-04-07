@@ -44,6 +44,9 @@ public:
     GraphicsPipelinePreset GetRenderPreset() const { return render_preset; }
     void SetRenderPreset(GraphicsPipelinePreset p) { render_preset = p; }
 
+    /// 转换为 PrimitiveMaterialSlot，供 DirectCreatePrimitive/PrimitiveManager::CreatePrimitive 使用（Phase C）
+    PrimitiveMaterialSlot ToSlot() const { return { material, domain, mi_id, vil, render_preset }; }
+
     void *GetMIData();
     void WriteMIData(const void *data, uint32_t size);
 

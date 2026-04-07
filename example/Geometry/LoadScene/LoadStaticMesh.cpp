@@ -426,7 +426,7 @@ static bool TryLoadScene(
             }
 
             MaterialInstance *mi = mi_array[(pp[i].material_index >= 0 ? pp[i].material_index : 0) % mi_count];
-            Primitive *prim = DirectCreatePrimitive(geo, mi);
+            Primitive *prim = DirectCreatePrimitive(geo, mi->ToSlot());
             if (!prim)
             {
                 MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: DirectCreatePrimitive failed for primitive #") + OSString::numberOf(i) + OS_TEXT(" in ") + pack_path);
@@ -861,7 +861,7 @@ StaticMesh *LoadStaticMeshScene(
                 geo_mgr->Add(geo);
 
                 MaterialInstance *mi = mi_array[(matIndex >= 0 ? matIndex : 0) % mi_count];
-                Primitive *prim = DirectCreatePrimitive(geo, mi);
+                Primitive *prim = DirectCreatePrimitive(geo, mi->ToSlot());
                 if (!prim)
                 {
                     MLogError(LoadStaticMesh,
