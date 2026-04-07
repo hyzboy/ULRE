@@ -18,7 +18,6 @@ class MaterialInstance
     friend class MaterialManager;
     friend class MaterialAssetRegistry;
 
-    MaterialManager *       material_manager = nullptr;
     MaterialTemplate *      material         = nullptr;
     MaterialResourceDomain *domain           = nullptr;
     const VIL *             vil              = nullptr;
@@ -32,8 +31,6 @@ class MaterialInstance
 public:
 
     MaterialInstance();
-    MaterialInstance(MaterialManager *mm, const VIL *v, int id);
-    MaterialInstance(MaterialManager *mm, MaterialResourceDomain *d, const VIL *v, int id);
     MaterialInstance(const PrimitiveMaterialSlot &slot);
     ~MaterialInstance();
 

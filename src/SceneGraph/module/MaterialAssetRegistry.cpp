@@ -458,13 +458,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
 
     // Helper: build PrimitiveMaterialSlot from a resolved MI.
     auto make_slot = [](MaterialInstance *mi) -> PrimitiveMaterialSlot {
-        PrimitiveMaterialSlot s;
-        s.material_template = mi->GetMaterial();
-        s.domain            = mi->GetDomain();
-        s.mi_id             = mi->GetMIID();
-        s.vil               = mi->GetVIL();
-        s.preset            = mi->GetRenderPreset();
-        return s;
+        return mi->ToSlot();
     };
 
     // Legacy path: still keep variant-level MI cache for callsites that do not provide entity id.

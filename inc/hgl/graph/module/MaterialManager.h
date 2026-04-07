@@ -111,11 +111,10 @@ private:
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
     UnorderedMap<AnsiString,MaterialTemplate *> material_by_name;
 
-    AutoIdObjectManager<MaterialTemplateID,            MaterialTemplate>          rm_shader_program;          ///<材质合集
-    AutoIdObjectManager<MaterialInstanceID,         MaterialInstance>       rm_material_instance;       ///<材质实例合集
-    std::unordered_map<const MaterialInstance *,    MaterialTemplate *>        material_instance_material_map;
+    AutoIdObjectManager<MaterialTemplateID,            MaterialTemplate>          rm_shader_program;
+    AutoIdObjectManager<MaterialInstanceID,         MaterialInstance>       rm_material_instance;
 
-    std::unordered_map<MaterialTemplate *,          MaterialResourceDomain *>   default_domain_map;         ///< Phase 1: template → lazy default domain
+    std::unordered_map<MaterialTemplate *,          MaterialResourceDomain *>   default_domain_map;
 
     // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding
     std::unordered_map<MaterialResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
@@ -158,8 +157,6 @@ private: // Helper methods with integrated DebugUtils
 
      MaterialTemplate *TryInitializeFallbackMaterial();
      MaterialTemplate *GetFallbackMaterial();
-    void BindInstanceMaterial(MaterialInstance *mi, MaterialTemplate *material);
-    void ForgetInstanceMaterial(MaterialInstance *mi);
 
 public: //Material resource access
 
@@ -181,7 +178,6 @@ public: //Release
     void Release(MaterialTemplate *         mtl ){rm_shader_program.Release(mtl);}
     void Release(MaterialInstance * mi  )
     {
-        ForgetInstanceMaterial(mi);
         rm_material_instance.Release(mi);
     }
 
@@ -209,7 +205,6 @@ public: //Release
         if (!mi)
             return;
 
-        ForgetInstanceMaterial(mi);
         rm_material_instance.Release(mi, true);
     }
 
@@ -237,8 +232,6 @@ public: // Override Release from GraphModule - cleanup all resources
         // 清理所有材质实例（MI dtor 会调 domain->FreeMISlot，domain 须在此之后释放）
         if (rm_material_instance.GetCount() > 0)
             rm_material_instance.Clear();
-
-        material_instance_material_map.clear();
 
         // Phase 3: 清理所有 DomainMaterialBinding 及 MaterialResourceDomain
         for (auto &kv : domain_bindings_map)

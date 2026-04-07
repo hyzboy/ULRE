@@ -12,18 +12,6 @@ MaterialInstance::MaterialInstance()
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }
 
-MaterialInstance::MaterialInstance(MaterialManager *mm, const VIL *v, int id)
-    : material_manager(mm), vil(v), mi_id(id)
-{
-    std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
-}
-
-MaterialInstance::MaterialInstance(MaterialManager *mm, MaterialResourceDomain *d, const VIL *v, int id)
-    : material_manager(mm), domain(d), vil(v), mi_id(id)
-{
-    std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
-}
-
 MaterialInstance::MaterialInstance(const PrimitiveMaterialSlot &slot)
     : material(slot.material_template), domain(slot.domain), vil(slot.vil), mi_id(slot.mi_id), render_preset(slot.preset)
 {

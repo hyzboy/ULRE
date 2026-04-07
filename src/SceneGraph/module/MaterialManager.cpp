@@ -383,32 +383,9 @@ MaterialResourceDomain *MaterialManager::GetOrCreateDefaultDomain(MaterialTempla
     return domain;
 }
 
-void MaterialManager::BindInstanceMaterial(MaterialInstance *mi, MaterialTemplate *material)
-{
-    if(!mi)
-        return;
-
-    if(material)
-        material_instance_material_map[mi] = material;
-    else
-        material_instance_material_map.erase(mi);
-}
-
-void MaterialManager::ForgetInstanceMaterial(MaterialInstance *mi)
-{
-    if(!mi)
-        return;
-
-    material_instance_material_map.erase(mi);
-}
-
 MaterialTemplate *MaterialManager::ResolveMaterial(const MaterialInstance *mi) const
 {
-    if(!mi)
-        return nullptr;
-
-    auto it = material_instance_material_map.find(mi);
-    return it != material_instance_material_map.end() ? it->second : nullptr;
+    return mi ? mi->GetMaterial() : nullptr;
 }
 
 bool MaterialManager::ExecuteMaterialBuildPipeline(MaterialTemplate *mtl,
@@ -821,10 +798,11 @@ MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanc
 
     if(out_key)
     {
-        out_key->material = mi->GetMaterial();
-        out_key->vil = mi->GetVIL();
-        out_key->preset = mi->GetRenderPreset();
-        out_key->domain = mi->GetDomain();
+        const PrimitiveMaterialSlot s = mi->ToSlot();
+        out_key->material = s.material_template;
+        out_key->vil      = s.vil;
+        out_key->preset   = s.preset;
+        out_key->domain   = s.domain;
     }
 
     return mi;
@@ -975,10 +953,13 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialResourceDomain
     const VIL *use_vil = vil ? vil : material->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
 
-    MaterialInstance *mi = new MaterialInstance(this, domain, use_vil, mi_id);
+    MaterialInstance *mi = new MaterialInstance();
+    mi->material = material;
+    mi->domain   = domain;
+    mi->vil      = use_vil;
+    mi->mi_id    = mi_id;
     mi->InitMITLayout(material->GetTextureArraySlotFlags());
     Add(mi);
-    BindInstanceMaterial(mi, material);
 
     if(data && data_size > 0)
         mi->WriteMIData(data, data_size);
@@ -991,7 +972,7 @@ bool MaterialManager::RebindMaterialInstance(MaterialInstance *mi, MaterialTempl
     if(!mi || !material)
         return false;
 
-    BindInstanceMaterial(mi, material);
+    mi->material = material;
     mi->vil = vil ? vil : material->GetDefaultVIL();
     mi->InitMITLayout(material->GetTextureArraySlotFlags());
     return true;
