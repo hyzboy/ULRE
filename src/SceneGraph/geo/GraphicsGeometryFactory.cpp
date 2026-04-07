@@ -92,21 +92,21 @@ Geometry *GraphicsGeometryFactory::CreateManagedGeometry(GeometryCreater *create
     return RegisterGeometry(creater->Create());
 }
 
-Primitive *GraphicsGeometryFactory::CreatePrimitive(Geometry *geometry, MaterialInstance *mi) const
+Primitive *GraphicsGeometryFactory::CreatePrimitive(Geometry *geometry, const PrimitiveMaterialSlot &slot) const
 {
-    if(!graphics || !geometry || !mi)
+    if(!graphics || !geometry || !slot.IsValid())
         return nullptr;
 
     auto *primitive_manager = graphics->GetPrimitiveManager();
     if(!primitive_manager)
         return nullptr;
 
-    return primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
+    return primitive_manager->CreatePrimitive(geometry, slot);
 }
 
-Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, MaterialInstance *mi) const
+Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, const PrimitiveMaterialSlot &slot) const
 {
-    if(!graphics || !creater || !mi)
+    if(!graphics || !creater || !slot.IsValid())
         return nullptr;
 
     auto *geometry = CreateManagedGeometry(creater);
@@ -117,7 +117,7 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, Ma
     if(!primitive_manager)
         return nullptr;
 
-    return primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
+    return primitive_manager->CreatePrimitive(geometry, slot);
 }
 
 Primitive *GraphicsGeometryFactory::CreatePrimitive(Geometry *geometry, SemanticMaterialId semantic_id) const
@@ -175,17 +175,37 @@ Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_cont
 }
 
 Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_context,
-                                                    MaterialInstance *material_instance,
+                                                    const PrimitiveMaterialSlot &slot,
                                                     const AnsiString &geometry_name,
                                                     uint32_t vertex_count,
                                                     std::initializer_list<VertexAttribWrite> vertex_writes)
 {
-    auto *geometry = CreateGeometry(graphics_context, material_instance, geometry_name, vertex_count, vertex_writes);
-    if(!geometry)
+    if(!graphics_context || !slot.IsValid() || !slot.vil)
         return nullptr;
 
     GraphicsGeometryFactory geometry_factory(graphics_context);
-    return geometry_factory.CreatePrimitive(geometry, material_instance);
+
+    auto pc = geometry_factory.CreateCreater(slot.vil);
+    if(!pc)
+        return nullptr;
+
+    if(!pc->Init(geometry_name, vertex_count))
+        return nullptr;
+
+    for(const auto &write : vertex_writes)
+    {
+        if(!write.data)
+            return nullptr;
+
+        if(!pc->WriteVAB(write.attrib, write.format, write.data))
+            return nullptr;
+    }
+
+    auto *geometry = geometry_factory.CreateManagedGeometry(pc.get());
+    if(!geometry)
+        return nullptr;
+
+    return geometry_factory.CreatePrimitive(geometry, slot);
 }
 
 Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_context,

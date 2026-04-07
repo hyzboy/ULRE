@@ -12,12 +12,12 @@ StaticMesh::~StaticMesh()
 }
 
 // Primitive 管理
-Primitive *StaticMesh::CreatePrimitive(Geometry *geometry, MaterialInstance *mi, GraphicsPipeline *p)
+Primitive *StaticMesh::CreatePrimitive(Geometry *geometry, const PrimitiveMaterialSlot &slot, GraphicsPipeline *p)
 {
-    if(!geometry || !mi || !p)
+    if(!geometry || !slot.IsValid() || !p)
         return nullptr;
 
-    Primitive *sm = DirectCreatePrimitive(geometry, mi->ToSlot());
+    Primitive *sm = DirectCreatePrimitive(geometry, slot);
     if(!sm)
         return nullptr;
 
@@ -25,7 +25,6 @@ Primitive *StaticMesh::CreatePrimitive(Geometry *geometry, MaterialInstance *mi,
 
     // 跟踪资源
     geometry_set.Add(geometry);
-    mat_inst_set.Add(mi);
     pipeline_set.Add(p);
 
     // 缓存 Primitive -> Pipeline 映射

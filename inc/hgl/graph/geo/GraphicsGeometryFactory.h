@@ -51,27 +51,24 @@ public:
     Geometry *CreateManagedGeometry(GeometryCreater *creater) const;
 
 public:
-    [[deprecated("Use SemanticMaterialId overload; direct MI binding will be removed in a future cleanup phase.")]]
-    Primitive *CreatePrimitive(Geometry *geometry, MaterialInstance *mi) const;
-    [[deprecated("Use SemanticMaterialId overload; direct MI binding will be removed in a future cleanup phase.")]]
-    Primitive *CreatePrimitive(GeometryCreater *creater, MaterialInstance *mi) const;
+    Primitive *CreatePrimitive(Geometry *geometry, const PrimitiveMaterialSlot &slot) const;
+    Primitive *CreatePrimitive(GeometryCreater *creater, const PrimitiveMaterialSlot &slot) const;
 
     Primitive *CreatePrimitive(Geometry *geometry, SemanticMaterialId semantic_id) const;
     Primitive *CreatePrimitive(GeometryCreater *creater, SemanticMaterialId semantic_id) const;
 
 public:
     template<typename GeometryBuilder>
-    [[deprecated("Use SemanticMaterialId overload; direct MI binding will be removed in a future cleanup phase.")]]
     static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
-                                      MaterialInstance *material_instance,
+                                      const PrimitiveMaterialSlot &slot,
                                       GeometryBuilder &&builder)
     {
-        if(!graphics_context || !material_instance)
+        if(!graphics_context || !slot.IsValid() || !slot.vil)
             return nullptr;
 
         GraphicsGeometryFactory geometry_factory(graphics_context);
 
-        auto pc = geometry_factory.CreateCreater(material_instance);
+        auto pc = geometry_factory.CreateCreater(slot.vil);
         if(!pc)
             return nullptr;
 
@@ -82,7 +79,7 @@ public:
         if(!geometry_factory.RegisterGeometry(geometry))
             return nullptr;
 
-        return geometry_factory.CreatePrimitive(geometry, material_instance);
+        return geometry_factory.CreatePrimitive(geometry, slot);
     }
 
     template<typename GeometryBuilder>
@@ -131,9 +128,8 @@ public:
                                     uint32_t vertex_count,
                                     std::initializer_list<VertexAttribWrite> vertex_writes);
 
-    [[deprecated("Use SemanticMaterialId overload; direct MI binding will be removed in a future cleanup phase.")]]
     static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
-                                      MaterialInstance *material_instance,
+                                      const PrimitiveMaterialSlot &slot,
                                       const AnsiString &geometry_name,
                                       uint32_t vertex_count,
                                       std::initializer_list<VertexAttribWrite> vertex_writes);
