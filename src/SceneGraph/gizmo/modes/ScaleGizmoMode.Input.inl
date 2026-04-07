@@ -34,12 +34,9 @@ void ScaleGizmoMode::UpdateHover(const GizmoFrameInput &input,
 
         const bool in_group = (best_group >= 0 && p.group_id == best_group);
         if (static_cast<int>(i) == best_index || in_group)
-        {
-            auto *yellow_mi = GetGizmoMI3D(GizmoColor::Yellow);
-            p.primitive->SetMIIDOverride(yellow_mi ? yellow_mi->GetMIID() : -1);
-        }
+            p.primitive->SetPrimitive(GetGizmoMeshPrimitive(p.shape, GizmoColor::Yellow));
         else
-            p.primitive->SetMIIDOverride(p.base_mi_id);
+            p.primitive->SetPrimitive(GetGizmoMeshPrimitive(p.shape, p.base_color));
     }
 }
 

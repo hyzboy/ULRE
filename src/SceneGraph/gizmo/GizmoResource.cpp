@@ -41,7 +41,7 @@ namespace hgl::graph
         struct GizmoMesh
         {
             Geometry *geometry;
-            Primitive *primitive;
+            Primitive *primitive[size_t(GizmoColor::RANGE_SIZE)];
 
         public:
 
@@ -51,17 +51,20 @@ namespace hgl::graph
                 if (graphics_context)
                 {
                     auto *primitive_manager = graphics_context->GetPrimitiveManager();
-                    primitive = primitive_manager ? primitive_manager->CreatePrimitive(geometry,gizmo_triangle.mi[0]) : nullptr;
+                    for (size_t c = 0; c < size_t(GizmoColor::RANGE_SIZE); ++c)
+                        primitive[c] = primitive_manager ? primitive_manager->CreatePrimitive(geometry, gizmo_triangle.mi[c]) : nullptr;
                 }
                 else
                 {
-                    primitive = nullptr;
+                    for (size_t c = 0; c < size_t(GizmoColor::RANGE_SIZE); ++c)
+                        primitive[c] = nullptr;
                 }
             }
 
             void Clear()
             {
-                primitive=nullptr;
+                for (size_t c = 0; c < size_t(GizmoColor::RANGE_SIZE); ++c)
+                    primitive[c] = nullptr;
                 geometry=nullptr;
             }
         };//class GizmoMesh
@@ -274,13 +277,14 @@ namespace hgl::graph
         return gizmo_triangle.mi[size_t(color)];
     }
 
-    Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape)
+    Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape, const GizmoColor &color)
     {
         if(!graphics_context)
             return nullptr;
 
         RANGE_CHECK_RETURN_NULLPTR(shape)
+        RANGE_CHECK_RETURN_NULLPTR(color)
 
-        return gizmo_mesh[size_t(shape)].primitive;
+        return gizmo_mesh[size_t(shape)].primitive[size_t(color)];
     }
 }//namespace hgl::graph

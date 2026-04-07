@@ -24,7 +24,7 @@ namespace hgl::graph
     {
         std::shared_ptr<hgl::ecs::PrimitiveComponent>  primitive;
         std::shared_ptr<hgl::ecs::TransformComponent>  transform;
-        int               base_mi_id    = -1;
+        GizmoColor        base_color    = GizmoColor::White;
         GizmoShape        shape         = GizmoShape::Sphere;
         int               group_id      = -1;
     };

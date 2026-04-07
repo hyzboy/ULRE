@@ -84,7 +84,7 @@ namespace hgl::graph
     bool IsGizmoSystemResourcesResident();
 
     MaterialInstance *GetGizmoMI3D(const GizmoColor &);
-    Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape);
+    Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape, const GizmoColor &color);
 
     // 辅助函数
     hgl::ecs::Entity *GetGizmoRootEntity(const GizmoECS *gizmo);
