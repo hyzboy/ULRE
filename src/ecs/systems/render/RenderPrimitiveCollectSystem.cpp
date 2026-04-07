@@ -12,7 +12,6 @@
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialTemplate.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/log/Log.h>
 #include<glm/glm.hpp>
 
@@ -135,9 +134,6 @@ namespace hgl::ecs
                 continue;
             }
 
-            // D-2: resolved MI for this frame, propagated to the render item
-            graph::MaterialInstance* frame_resolved_mi = nullptr;
-
             if (semantic_runtime_resolve_enabled && primitiveComp->HasSemanticMaterial())
             {
                 auto *gc = world->GetGraphicsContext();
@@ -152,18 +148,17 @@ namespace hgl::ecs
                     const void *instance_data = nullptr;
                     uint32 instance_data_size = 0;
 
-                    auto *current_mi = primitiveComp->GetMaterialInstance();
-                    if (current_mi)
+                    if (primitive->GetMaterialTemplate())
                     {
-                        request.pipeline = current_mi->GetRenderPreset();
+                        request.pipeline = primitive->GetRenderPreset();
 
                         // Preserve current MI payload so a cache miss still creates
                         // a correctly initialized runtime MI.
-                        if (auto *current_material = current_mi->GetMaterial())
+                        if (auto *current_material = primitive->GetMaterialTemplate())
                         {
                             instance_data_size = current_material->GetMIDataBytes();
                             if (instance_data_size > 0)
-                                instance_data = current_mi->GetMIData();
+                                instance_data = primitive->GetMIData();
                         }
                     }
                     else if (primitive->HasDeferredMI())
@@ -197,11 +192,11 @@ namespace hgl::ecs
                     }
 
                     graph::GeometrySignature geometry;
-                    if (auto *material = primitive->GetMaterial())
+                    if (auto *material = primitive->GetMaterialTemplate())
                         geometry.primitive = material->GetPrimitiveType();
 
-                    if (current_mi)
-                        geometry.vil_hash = ComputeVILHash(current_mi->GetVIL());
+                    if (primitive->GetVIL())
+                        geometry.vil_hash = ComputeVILHash(primitive->GetVIL());
                     else if (primitive->HasDeferredMI())
                     {
                         geometry.geometry_for_vil_derivation = primitive->GetGeometry();
@@ -215,8 +210,6 @@ namespace hgl::ecs
                                                              instance_data,
                                                              instance_data_size))
                     {
-                        frame_resolved_mi = resolved;  // D-2: store for render item
-
                         if (primitive->HasDeferredMI())
                             primitive->BindMaterialInstance(resolved);
 
@@ -226,8 +219,6 @@ namespace hgl::ecs
             }
 
             auto item = std::make_unique<PrimitiveRenderItem>(entity_id, transform, primitiveComp, world);
-            if (frame_resolved_mi)
-                item->SetResolvedMI(frame_resolved_mi);  // D-2: propagate to render item
 
             glm::vec3 worldPos = transform->GetWorldPosition();
             item->worldPosition = worldPos;

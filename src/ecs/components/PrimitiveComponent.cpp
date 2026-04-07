@@ -114,7 +114,7 @@ namespace hgl::ecs
         if (!primitive)
             return nullptr;
 
-        return primitive->GetMaterial();
+        return primitive->GetMaterialTemplate();
     }
 
     bool PrimitiveComponent::GetLocalAABB(hgl::math::AABB& outAABB) const

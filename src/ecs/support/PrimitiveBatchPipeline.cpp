@@ -17,7 +17,6 @@
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/vk/VKMaterialInstance.h>   // Phase 4: GetDomain()
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -543,7 +542,7 @@ namespace hgl::ecs
             }
 
             // Stage-4 prework: resolve pipeline before renderer hot path.
-            // Resolve from MaterialInstance preset instead of depending on an existing pipeline.
+            // Resolve from Primitive-owned material state instead of depending on an existing pipeline.
             if (material && render_format)
             {
                 const graph::GraphicsPipelineData* pipeline_data = nullptr;
@@ -551,11 +550,10 @@ namespace hgl::ecs
                 bool prim_restart = false;
                 graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid3D;
 
-                auto* mi = item->GetMaterialInstance();
-                if (mi)
+                if (primitive)
                 {
-                    vil = mi->GetVIL();
-                    preset = mi->GetRenderPreset();
+                    vil = primitive->GetVIL();
+                    preset = primitive->GetRenderPreset();
                 }
 
                 if (!vil)
@@ -623,8 +621,7 @@ namespace hgl::ecs
 
             // Phase 4: include MaterialResourceDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
-            auto* mi     = item->GetMaterialInstance();
-            auto* domain = mi ? mi->GetDomain() : nullptr;
+            auto* domain = primitive ? primitive->GetDomain() : nullptr;
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 
             MaterialPipelineKey key(material, pipeline, domain, queue);

@@ -6,7 +6,6 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialTemplate.h>
-#include<hgl/vk/VKMaterialInstance.h>
 
 namespace hgl::ecs
 {
@@ -48,18 +47,13 @@ namespace hgl::ecs
 
     hgl::graph::MaterialInstance* PrimitiveRenderItem::GetMaterialInstance() const
     {
-        // D-2: prefer frame-resolved MI from semantic path
-        if (resolved_mi)
-            return resolved_mi;
         return primitiveComp ? primitiveComp->GetMaterialInstance() : nullptr;
     }
 
     hgl::graph::MaterialTemplate* PrimitiveRenderItem::GetMaterial() const
     {
-        // D-2: prefer frame-resolved MI from semantic path
-        if (resolved_mi)
-            return resolved_mi->GetMaterial();
-        return primitiveComp ? primitiveComp->GetMaterial() : nullptr;
+        auto *primitive = GetPrimitive();
+        return primitive ? primitive->GetMaterialTemplate() : nullptr;
     }
 
     void PrimitiveRenderItem::UpdateWorldMatrix()

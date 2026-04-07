@@ -42,7 +42,7 @@ namespace hgl::ecs
 
     graph::MaterialTemplate* AssetPrimitiveRenderItem::GetMaterial() const
     {
-        return primitive ? primitive->GetMaterial() : nullptr;
+        return primitive ? primitive->GetMaterialTemplate() : nullptr;
     }
 
     void AssetPrimitiveRenderItem::UpdateWorldMatrix()
