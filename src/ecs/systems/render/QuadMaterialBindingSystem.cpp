@@ -161,9 +161,7 @@ namespace hgl::ecs
          && current_primitive != shared_primitive
          && current_primitive->GetMaterial() == quad_material)
         {
-            // Phase B: construct slot from known values, not from MI getter
-            const graph::VIL *use_vil = quad_material->GetDefaultVIL();
-            hgl::graph::PrimitiveMaterialSlot slot{quad_material, mi->GetDomain(), mi->GetMIID(), use_vil, current_preset};
+            const hgl::graph::PrimitiveMaterialSlot slot = mi->ToSlot();
             if (!current_primitive->BindMaterialSlot(slot))
                 return false;
 
@@ -262,6 +260,7 @@ namespace hgl::ecs
 
         // Set the texture array layer for this quad's texture
         mi->SetTextureArrayLayer(graph::mtl::SamplerSlot::BaseColor, static_cast<uint32_t>(layer));
+        const uint8_t texture_array_slot_flags = dr->material->GetTextureArraySlotFlags();
 
         // Write texture size to MI data (use texture array dimensions)
         if (dr->texture_array)
@@ -278,9 +277,7 @@ namespace hgl::ecs
          && current_primitive != dr->primitive
          && current_primitive->GetMaterial() == dr->material)
         {
-            // Phase B: construct slot from known values
-            const graph::VIL *use_vil = dr->material->GetDefaultVIL();
-            hgl::graph::PrimitiveMaterialSlot slot{dr->material, mi->GetDomain(), mi->GetMIID(), use_vil, current_preset};
+            const hgl::graph::PrimitiveMaterialSlot slot = mi->ToSlot();
             if (!current_primitive->BindMaterialSlot(slot))
                 return false;
 
@@ -298,6 +295,13 @@ namespace hgl::ecs
 
             if (current_primitive && current_primitive != dr->primitive)
                 primitive_manager->Release(current_primitive);
+        }
+
+        if (texture_array_slot_flags)
+        {
+            quad_primitive->InitMITLayout(texture_array_slot_flags);
+            quad_primitive->SetTextureArrayLayer(graph::mtl::SamplerSlot::BaseColor,
+                                                 static_cast<uint32_t>(layer));
         }
 
         // Update quad component

@@ -634,6 +634,22 @@ namespace hgl::ecs
                 continue;
             }
 
+            if (primitive && material->GetTextureArraySlotFlags() != 0 && primitive->GetMITDataBytes() == 0)
+            {
+                static uint64_t s_missing_mit_payload = 0;
+                if (ShouldLogPow2(++s_missing_mit_payload))
+                {
+                    const AnsiString prim_name = primitive->GetGeometryName();
+                    LogError("[BatchPipeline] array-sampler material requires MIT payload, but primitive has none: material=%p(%s) prim='%s' array_slot_flags=0x%02X mi_id=%d total_errors=%llu",
+                             static_cast<const void *>(material),
+                             material->GetName().c_str(),
+                             prim_name.c_str(),
+                             unsigned(material->GetTextureArraySlotFlags()),
+                             primitive->GetMIID(),
+                             static_cast<unsigned long long>(s_missing_mit_payload));
+                }
+            }
+
             // Phase 4: include MaterialResourceDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
             auto* domain = primitive ? primitive->GetDomain() : nullptr;

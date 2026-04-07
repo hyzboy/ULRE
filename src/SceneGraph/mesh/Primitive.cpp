@@ -133,6 +133,12 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot)
     mi_id                = slot.mi_id;
     vil                  = slot.vil;
     render_preset        = slot.preset;
+    InitMITLayout(slot.texture_array_slot_flags);
+    if (slot.mit_data && mit_packed && slot.mit_data_count > 0)
+    {
+        const uint32_t copy_count = (slot.mit_data_count < mit_packed_count) ? slot.mit_data_count : mit_packed_count;
+        std::memcpy(mit_packed, slot.mit_data, copy_count * sizeof(uint32_t));
+    }
     deferred_semantic_id = 0;
     deferred_vil_hash    = 0;
 
@@ -154,6 +160,13 @@ Primitive::Primitive(Geometry *r, const PrimitiveMaterialSlot &slot, GeometryDat
     vil               = slot.vil;
     render_preset     = slot.preset;
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
+
+    InitMITLayout(slot.texture_array_slot_flags);
+    if (slot.mit_data && mit_packed && slot.mit_data_count > 0)
+    {
+        const uint32_t copy_count = (slot.mit_data_count < mit_packed_count) ? slot.mit_data_count : mit_packed_count;
+        std::memcpy(mit_packed, slot.mit_data, copy_count * sizeof(uint32_t));
+    }
 }
 
 Primitive *DirectCreatePrimitive(Geometry *geom, const PrimitiveMaterialSlot &slot)

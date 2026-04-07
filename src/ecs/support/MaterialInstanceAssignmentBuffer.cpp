@@ -49,12 +49,45 @@ namespace hgl::ecs
 
     void MaterialInstanceAssignmentBuffer::BindMaterialInstanceTextureID(graph::MaterialTemplate* mtl) const
     {
-        if (!mtl || !mit_buffer)
+        if (!mtl)
             return;
+
+        if (!mit_buffer)
+        {
+            if (mtl->GetTextureArraySlotFlags() != 0)
+            {
+                static uint64_t s_missing_mit_buffer = 0;
+                if ((++s_missing_mit_buffer <= 8u) || ((s_missing_mit_buffer & (s_missing_mit_buffer - 1)) == 0))
+                {
+                    std::cerr << "[MIAB::BindMIT] ERROR: material requires MIT SSBO but no MIT buffer was created: material="
+                              << static_cast<const void *>(mtl)
+                              << "(" << mtl->GetName().c_str() << ")"
+                              << " array_slot_flags=0x" << std::hex << unsigned(mtl->GetTextureArraySlotFlags()) << std::dec
+                              << " total_errors=" << static_cast<unsigned long long>(s_missing_mit_buffer)
+                              << std::endl;
+                }
+            }
+            return;
+        }
 
         auto *gpu = mit_buffer->GetGPUBuffer();
         if (!gpu)
+        {
+            if (mtl->GetTextureArraySlotFlags() != 0)
+            {
+                static uint64_t s_missing_mit_gpu = 0;
+                if ((++s_missing_mit_gpu <= 8u) || ((s_missing_mit_gpu & (s_missing_mit_gpu - 1)) == 0))
+                {
+                    std::cerr << "[MIAB::BindMIT] ERROR: material requires MIT SSBO but MIT GPU buffer is null: material="
+                              << static_cast<const void *>(mtl)
+                              << "(" << mtl->GetName().c_str() << ")"
+                              << " array_slot_flags=0x" << std::hex << unsigned(mtl->GetTextureArraySlotFlags()) << std::dec
+                              << " total_errors=" << static_cast<unsigned long long>(s_missing_mit_gpu)
+                              << std::endl;
+                }
+            }
             return;
+        }
 
         mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID,
                       gpu);

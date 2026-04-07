@@ -34,6 +34,9 @@ struct PrimitiveMaterialSlot
     int                      mi_id             = -1;
     const VIL               *vil               = nullptr;
     GraphicsPipelinePreset   preset            = GraphicsPipelinePreset::Solid3D;
+    uint8_t                  texture_array_slot_flags = 0;
+    const uint32_t          *mit_data          = nullptr;
+    uint32_t                 mit_data_count    = 0;
 
     bool IsValid() const { return material_template != nullptr && mi_id >= 0; }
 };

@@ -19,6 +19,17 @@ MaterialInstance::MaterialInstance(const PrimitiveMaterialSlot &slot)
     // and therefore cannot safely claim slot ownership.
 {
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
+
+    if (slot.texture_array_slot_flags != 0)
+    {
+        InitMITLayout(slot.texture_array_slot_flags);
+
+        if (slot.mit_data && mit_packed && slot.mit_data_count > 0)
+        {
+            const uint32_t copy_count = (slot.mit_data_count < mit_packed_count) ? slot.mit_data_count : mit_packed_count;
+            std::memcpy(mit_packed, slot.mit_data, copy_count * sizeof(uint32_t));
+        }
+    }
 }
 
 MaterialInstance::~MaterialInstance()

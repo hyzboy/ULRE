@@ -50,7 +50,19 @@ public:
     void SetRenderPreset(GraphicsPipelinePreset p) { render_preset = p; }
 
     /// 转换为 PrimitiveMaterialSlot，供 DirectCreatePrimitive/PrimitiveManager::CreatePrimitive 使用（Phase C）
-    PrimitiveMaterialSlot ToSlot() const { return { material, GetDomain(), mi_id, vil, render_preset }; }
+    PrimitiveMaterialSlot ToSlot() const
+    {
+        return {
+            material,
+            GetDomain(),
+            mi_id,
+            vil,
+            render_preset,
+            uint8_t(mit_packed_count > 0 ? material ? material->GetTextureArraySlotFlags() : 0 : 0),
+            mit_packed,
+            mit_packed_count
+        };
+    }
 
     void *GetMIData();
     void WriteMIData(const void *data, uint32_t size);
