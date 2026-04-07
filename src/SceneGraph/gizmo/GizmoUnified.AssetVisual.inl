@@ -51,13 +51,13 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
         return false;
 
     prim_comp->SetPrimitive(primitive);
-    prim_comp->SetOverrideMaterial(base_material);
+    prim_comp->SetMIIDOverride(base_material ? base_material->GetMIID() : -1);
     prim_comp->SetVisible(false);
 
     GizmoVisualPrimitive item;
     item.primitive = prim_comp;
     item.transform = entity->GetComponent<hgl::ecs::TransformComponent>();
-    item.base_material = base_material;
+    item.base_mi_id = base_material ? base_material->GetMIID() : -1;
     item.shape = shape;
     item.group_id = group_id;
     out_list.push_back(item);
@@ -111,8 +111,9 @@ static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
             if (!entry.primitive)
                 continue;
 
-            entry.primitive->SetOverrideMaterial(highlighted ? GetGizmoMI3D(GizmoColor::Yellow)
-                                                             : entry.base_material);
+            const auto *yellow_mi = GetGizmoMI3D(GizmoColor::Yellow);
+            const int yellow_id = yellow_mi ? yellow_mi->GetMIID() : -1;
+            entry.primitive->SetMIIDOverride(highlighted ? yellow_id : entry.base_mi_id);
         }
     };
 

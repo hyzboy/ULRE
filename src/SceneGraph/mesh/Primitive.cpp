@@ -248,6 +248,91 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPip
     return(new Primitive(geom,mi,p,geom_data_buffer));
 }
 
+// ---------------------------------------------------------------------------
+// Slot-based ctor (Phase 2d: no MaterialInstance object needed)
+// ---------------------------------------------------------------------------
+
+Primitive::Primitive(Geometry *r, const PrimitiveMaterialSlot &slot, GeometryDataBuffer *gdb)
+{
+    geometry   = r;
+    data_buffer = gdb;
+    draw_range.Set(geometry);
+
+    material_template = slot.material_template;
+    domain            = slot.domain;
+    mi_id             = slot.mi_id;
+    vil               = slot.vil;
+    render_preset     = slot.preset;
+    std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
+}
+
+Primitive *DirectCreatePrimitive(Geometry *geom, const PrimitiveMaterialSlot &slot)
+{
+    if(!geom || !slot.material_template || !slot.vil)
+        return nullptr;
+
+    const VIL *vil = slot.vil;
+    const uint32_t input_count = vil->GetVertexAttribCount();
+    const AnsiString &mtl_name = slot.material_template->GetName();
+
+    if(geom->GetVABCount() < input_count)
+    {
+        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than MaterialTemplate, MaterialTemplate name: " + mtl_name);
+        return nullptr;
+    }
+
+    const VertexInputFormat *vif = vil->GetVIFList();
+
+    uint32_t max_binding = 0;
+    for(uint i = 0; i < input_count; i++)
+    {
+        if(vif[i].binding > max_binding)
+            max_binding = vif[i].binding;
+    }
+
+    GeometryDataBuffer *geom_data_buffer = new GeometryDataBuffer(max_binding + 1, geom->GetIBO(), geom->GetVDM());
+
+    for(uint i = 0; i < input_count; i++)
+    {
+        VAB *vab = geom->GetVAB(vif->attrib);
+        const char *vab_name = GetVertexAttribName(vif->attrib);
+
+        if(!vab)
+        {
+            GLogError("[FATAL ERROR] not found VAB \"" + AnsiString(vab_name) + "\" in MaterialTemplate: " + mtl_name);
+            delete geom_data_buffer;
+            return nullptr;
+        }
+
+        if(vab->GetFormat() != vif->format)
+        {
+            GLogError(  "[FATAL ERROR] VAB \"" + AnsiString(vab_name) +
+                        AnsiString("\" format can't match Primitive, MaterialTemplate(") + mtl_name +
+                        AnsiString(") Format(") + GetVulkanFormatName(vif->format) +
+                        AnsiString(") , VAB Format(") + GetVulkanFormatName(vab->GetFormat()) + ")");
+            delete geom_data_buffer;
+            return nullptr;
+        }
+
+        if(vab->GetStride() != vif->stride)
+        {
+            GLogError(  "[FATAL ERROR] VAB \"" + AnsiString(vab_name) +
+                        AnsiString("\" stride can't match Primitive, MaterialTemplate(") + mtl_name +
+                        AnsiString(") stride(") + AnsiString::numberOf(vif->stride) +
+                        AnsiString(") , VAB stride(") + AnsiString::numberOf(vab->GetStride()) + ")");
+            delete geom_data_buffer;
+            return nullptr;
+        }
+
+        const uint32_t bind_index = vif->binding;
+        geom_data_buffer->vab_list[bind_index]   = vab->GetVkBuffer();
+        geom_data_buffer->vab_offset[bind_index] = 0;
+        ++vif;
+    }
+
+    return new Primitive(geom, slot, geom_data_buffer);
+}
+
 Primitive *DirectCreatePrimitive(Geometry *geom,SemanticMaterialId sid,uint32_t vil_hash)
 {
     if(!geom||sid==0)

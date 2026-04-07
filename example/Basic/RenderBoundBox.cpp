@@ -586,7 +586,7 @@ private:
             rm->transform->SetMovable(false);
 
             rm->primitive_comp->SetPrimitive(rm->primitive);
-            rm->primitive_comp->SetOverrideMaterial(solid.mi[index % COLOR_COUNT]);
+            rm->primitive_comp->SetMIIDOverride(solid.mi[index % COLOR_COUNT]->GetMIID());
             rm->primitive_comp->SetVisible(true);
 
             ++index;
@@ -626,7 +626,7 @@ private:
             bbox->transform->SetMovable(false);
 
             bbox->primitive_comp->SetPrimitive(bbox_primitive);
-            bbox->primitive_comp->SetOverrideMaterial(wire.mi[i % COLOR_COUNT]);
+            bbox->primitive_comp->SetMIIDOverride(wire.mi[i % COLOR_COUNT]->GetMIID());
             bbox->primitive_comp->SetVisible(true);
 
             bounding_boxes.push_back(std::move(bbox));

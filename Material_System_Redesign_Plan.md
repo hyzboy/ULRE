@@ -4,17 +4,22 @@
 
 ---
 
-## 零、当前完成进度（2026-04-07）
+## 零、当前完成进度（2026-04-21 最新更新）
 
 | Phase | 标题 | 状态 | 备注 |
 |-------|------|------|------|
 | **Phase 1** | `MaterialTemplate` 瘦身：移出 MI 工厂 | ✅ 完成 | 见下文 |
 | **Phase 2a** | `Primitive` 吸收 MI 字段 | ✅ 完成 | 见下文（有设计偏差，已记录） |
-| **Phase 2b** | 更新所有 MI 调用点 | ⬜ 未开始 | |
-| **Phase 2c** | 删除 `MaterialInstance` 类 | ⬜ 未开始 | |
-| **Phase 3** | `PrimitiveComponent` 简化 | ⬜ 未开始 | |
+| **Phase 2b** | 更新所有 MI 调用点 | ✅ 完成 | ECS 热路径全部切到 `Primitive` 直接访问 |
+| **Phase 2c** | ECS 热路径清理（MI 热路径旁路） | ✅ 完成 | 见下文；`08_PBRSpheresECS.exe` 构建验证通过 |
+| **Phase 2d** | 清除剩余 MI 调用点 (LINE / TEXT / GIZMO) | 🔄 计划中 | 见本节 Phase 2d 完整计划 |
+| **Phase 3** | `PrimitiveComponent` 简化 | ⬜ 未开始（部分在 2d 中完成） | |
 | **Phase 4** | `Primitive::ChangeBinding` 域一致性 guard | ⬜ 未开始（接口已在 2a 中准备） | |
 | **Phase 5** | 拆分 `MaterialAssetRegistry`，新增 `SemanticMaterialVariantManager` | ⬜ 未开始 | |
+
+### Phase 2c 实际完成内容
+
+Phase 2c 已将 ECS 热路径（`RenderPrimitiveCollectSystem`、`PrimitiveBatchPipeline`、`MaterialInstanceAssignmentBuffer`、`PrimitiveRenderItem`）中的所有 `MaterialInstance*` 访问替换为 `Primitive` 直接字段访问。`VKMaterialInstance.h` 尚未删除，因为 LINE / TEXT / GIZMO 仍持有 `MaterialInstance*`（见 Phase 2d）。构建验证：`ULRE.ECS`、`ULRE.SceneGraph`、`08_PBRSpheresECS.exe` 全部 exit code 0。
 
 ### Phase 1 完成详情
 
@@ -535,3 +540,342 @@ Phase 1 可独立先行；Phase 3 和 Phase 4 可在 Phase 2 完成后并行；P
 | MIT 纹理数组数据内联到 Primitive 增加 Primitive 体积 | MIT 字段本身很小（slot_offset 8字节 + packed_count 4字节 + 指针 8字节）；且原来也是 per-object 数据 |
 | `MaterialAssetRegistry` 的 `ResolveMI` / `AcquireMI` 返回值类型变化 | 引入 `PrimitiveMaterialSlot` 值类型作为过渡；旧签名标记 `[[deprecated]]` |
 | `MaterialInstanceAssignmentBuffer` 依赖 `mi_set.Find(mi)` 做 MI→index 映射 | 改为 `primitive_set.Find(prim)` 或直接用 `prim->GetMIID()` |
+
+---
+
+## 九、Phase 2d — LINE / TEXT / GIZMO 脱 MaterialInstance
+
+> **目标**：彻底清除 `MaterialInstance*` 在 LINE、TEXT、GIZMO 三个子系统中的最后使用，使 `VKMaterialInstance.h/.cpp` 可以被删除。
+
+### 背景：为何 MI 还存在？
+
+`Phase 2c` 只清理了 ECS 热路径（PBR Spheres 等通用渲染）。以下三处仍直接持有 `MaterialInstance*`：
+
+| 子系统 | 持有位置 | MI 用途 |
+|---|---|---|
+| **LINE** | `LineRenderPipeline::mi_`，`LineWidthSlot::EnsureCapacity(MI*)` | 仅用 `GetVIL()`、`GetRenderPreset()`（Line 无 MI 数据 payload） |
+| **TEXT** | `TextRender::mi_fs`，`TextRenderPipeline::RenderResources::material_instance` | `GetVIL()`、`GetRenderPreset()`；`WriteMIData(fixed_style)` |
+| **GIZMO** | `GizmoResource::mi[RANGE_SIZE]`，`GizmoVisualPrimitive::base_material`，`SetOverrideMaterial(MI*)` | 颜色数组（每种颜色一个 MI）；高亮时切换颜色 |
+
+### 关键技术决策
+
+**Gizmo 颜色切换的硬件本质**：  
+"换材质实例"在硬件上本质是改一个 `mi_id` 整数（shader 用它索引 MI 数据 SSBO）。无需整个 `MaterialInstance*` 对象。可在 `PrimitiveComponent` 上加 `mi_id_override` 字段，per-component 覆盖 `prim->GetMIID()`，而不修改共享 `Primitive`。
+
+**MIAB 数据上传的兼容性**：  
+`ActiveMemoryBlockManager::GetData(int id)` 返回 `base + id * unit_size`，即 `mi_id` 就是 SSBO 数组下标（0-based，已验证）。MIAB 当前按 `prim_set` 顺序打包上传 MI 数据，`mi_index = prim_set.Find(prim)`。Gizmo override 只需在上传时把对应 prim 的源数据换成 override 槽的数据，`mi_index` 不变。
+
+---
+
+### Step A — `PrimitiveComponent`：加 `mi_id_override`
+
+#### 文件：`inc/hgl/ecs/components/PrimitiveComponent.h`
+
+```cpp
+// 删除
+class MaterialInstance;  // forward decl
+void SetOverrideMaterial(hgl::graph::MaterialInstance* mi);
+
+// 新增 private 字段
+int mi_id_override = -1;   // -1 = 用 Primitive 默认槽；>=0 = per-component 颜色覆盖
+
+// 新增 public 接口（inline）
+int  GetMIIDOverride() const { return mi_id_override; }
+void SetMIIDOverride(int id)  { mi_id_override = id; }
+void ClearMIIDOverride()      { mi_id_override = -1; }
+```
+
+#### 文件：`src/ecs/components/PrimitiveComponent.cpp`
+
+- 删除 `SetOverrideMaterial` 实现整块（约 5 行）
+- 删除 `#include <hgl/vk/VKMaterialInstance.h>`（如存在）
+
+---
+
+### Step B — `MaterialInstanceAssignmentBuffer`：支持 override
+
+**文件**：`src/ecs/support/MaterialInstanceAssignmentBuffer.cpp`
+
+**修改 `RenderItem` 基类**（`inc/hgl/ecs/core/RenderItem.h` 或等价）：
+
+```cpp
+virtual int GetMIIDOverride() const { return -1; }
+```
+
+**修改 `PrimitiveRenderItem`**（`.h` 或 `.cpp`）：
+
+```cpp
+int GetMIIDOverride() const override
+{
+    auto* comp = GetPrimitiveComponent();   // 或 prim_component.get()
+    return comp ? comp->GetMIIDOverride() : -1;
+}
+```
+
+**修改 `StatMaterialInstance` 中的 SSBO 上传循环**：
+
+```cpp
+// 在 prim_set 迭代前，构建 prim→override_mi_id 映射（O(n) 一次扫描）
+// 用 std::unordered_map<Primitive*, int> override_map 或直接在循环中查
+for (size_t pi = 0; pi < prim_set.GetCount(); pi++)
+{
+    graph::Primitive* prim = prim_set[pi];
+
+    // 查找第一个带 override 的 item（gizmo 每 prim 唯一，无冲突）
+    int eff_mi_id = -1;
+    for (RenderItem* item : items)   // items 需通过参数传入或缓存为成员
+    {
+        if (item && item->GetPrimitive() == prim)
+        {
+            int ov = item->GetMIIDOverride();
+            if (ov >= 0) { eff_mi_id = ov; break; }
+        }
+    }
+
+    const void* src = nullptr;
+    if (eff_mi_id >= 0 && prim && prim->GetDomain())
+        src = prim->GetDomain()->GetMIData(eff_mi_id);
+    else
+        src = prim ? prim->GetMIData() : nullptr;
+
+    if (src) memcpy(mip, src, material_instance_data_bytes);
+    else     memset(mip, 0,   material_instance_data_bytes);
+    mip += material_instance_data_bytes;
+}
+```
+
+> `items` 向量需要能在 `StatMaterialInstance` 中访问。最简单：将 `StatMaterialInstance(const std::vector<RenderItem*>& items)` 已有的参数直接用于 override 查找（函数签名不变）。
+
+---
+
+### Step C — LINE：移除 `mi_`
+
+**估计工作量**：1-2 小时
+
+#### 文件：`inc/hgl/ecs/support/line/LineRenderPipeline.h`
+
+```cpp
+// 删除
+class MaterialInstance;
+graph::MaterialInstance* mi_ = nullptr;
+
+// 新增
+const graph::VIL*              vil_    = nullptr;
+graph::GraphicsPipelinePreset  preset_ = GraphicsPipelinePreset::Solid3D;
+
+// LineWidthSlot::EnsureCapacity 签名改为：
+bool EnsureCapacity(uint32_t needed,
+                    graph::VulkanDevice*     dev,
+                    const graph::VIL*        vil,
+                    graph::GraphicsPipeline* p,
+                    uint32_t                 width);
+```
+
+#### 文件：`src/ecs/support/line/LineRenderPipeline.cpp`
+
+| 位置 | 旧 | 新 |
+|---|---|---|
+| `Init()` — AcquireMaterialInstance 块 | `mi_ = AcquireMaterialInstance(spec)` | 删除；`vil_ = material_->GetDefaultVIL()`；`preset_ = …` |
+| `Init()` — guard | `if (!mi_)` | `if (!vil_)` |
+| `ResolvePipeline` | `mi_->GetRenderPreset()` | `preset_` |
+| `ResolvePipeline` | `req.vil = mi_->GetVIL()` | `req.vil = vil_` |
+| `EnsureCapacity` 内 | `mi->GetVIL()` | `vil`（参数） |
+| `EnsureCapacity` 内 | `DirectCreatePrimitive(geometry, mi, p)` | 见注① |
+| `Render()` | `mi_->GetMaterial()` | `material_`（已有） |
+| `Shutdown()` | `mat_mgr->Destroy(mi_)` | 删除 |
+
+**注①** — Line 无 MI 数据（`mi_data_bytes == 0`，`AllocMISlot` 返回 -1 属正常）。新调用：
+```cpp
+graph::MaterialResourceDomain* domain_ = mat_mgr->GetOrCreateDefaultDomain(material_);
+PrimitiveMaterialSlot slot{ material_, domain_, -1, vil, preset_ };
+primitive = DirectCreatePrimitive(geometry, slot);   // 需新增此重载
+```
+
+---
+
+### Step D — TEXT (TextRenderPipeline — ECS 侧)
+
+**估计工作量**：1-2 小时
+
+**文件**：`src/ecs/support/TextRenderPipeline.cpp`
+
+`RenderResources` 内：
+
+```cpp
+// 删除
+graph::MaterialInstance* material_instance = nullptr;
+
+// 新增
+const graph::VIL*              vil    = nullptr;
+graph::GraphicsPipelinePreset  preset = GraphicsPipelinePreset::Solid2D;
+```
+
+`ProcessInputs()` 内（~line 487）：
+- 删除 `AcquireMaterialInstance(spec)` 调用块（约 10-15 行）
+- 改为：`resources->vil = material->CreateVIL(&vil_cfg)`；`resources->preset = GraphicsPipelinePreset::Solid2D`
+
+`ResolvePipelineForCurrentRenderTarget()` 内：
+
+```
+mi->GetRenderPreset()  →  resources.preset
+mi->GetVIL()           →  resources.vil
+```
+
+清理时删除 `mat_mgr->Release(material_instance)` 调用。
+
+---
+
+### Step E — TEXT (TextRender — SceneGraph 传统侧)
+
+**估计工作量**：1-2 小时
+
+#### 文件：`inc/hgl/graph/font/TextRender.h`
+
+```cpp
+// 删除
+MaterialInstance* mi_fs;
+
+// 新增
+const graph::VIL*              vil_fs    = nullptr;
+graph::GraphicsPipelinePreset  preset_fs = GraphicsPipelinePreset::Solid2D;
+graph::MaterialResourceDomain* domain_fs = nullptr;
+int                            mi_id_fs  = -1;
+```
+
+#### 文件：`src/SceneGraph/font/TextRender.cpp`
+
+| 位置 | 旧 | 新 |
+|---|---|---|
+| `InitMaterial()`（~line 187） | `mi_fs = AcquireMaterialInstance(mi_spec)` | `domain_fs = mat_mgr->GetOrCreateDefaultDomain(mtl_fs)`；`mi_id_fs = domain_fs->AllocMISlot()`；`vil_fs = mtl_fs->CreateVIL(&vil_cfg)` |
+| `InitMaterial()` guard | `if (!mi_fs)` | `if (mi_id_fs < 0)` |
+| `SetFixedStyle()`（~line 73） | `mi_fs->WriteMIData(fixed_style)` | `memcpy(domain_fs->GetMIData(mi_id_fs), &fixed_style, sizeof(fixed_style))` |
+| `Begin()`（~line 213） | `mi_fs->GetVIL()` | `vil_fs` |
+| `CreatePrimitive()`（~line 270） | `CreatePrimitive(text_geometry, mi_fs)` | `PrimitiveMaterialSlot slot{mtl_fs, domain_fs, mi_id_fs, vil_fs, preset_fs}`；`CreatePrimitive(text_geometry, slot)` |
+| 析构函数 | （无显式释放） | `if (mi_id_fs >= 0 && domain_fs) domain_fs->FreeMISlot(mi_id_fs)` |
+
+---
+
+### Step F — GIZMO：mi 数组 → mi_id 数组
+
+**估计工作量**：2-3 小时
+
+#### `GizmoResource` struct（`src/SceneGraph/gizmo/GizmoResource.cpp`）
+
+```cpp
+// 删除：MaterialInstance* mi[size_t(GizmoColor::RANGE_SIZE)];
+// 新增：
+int                     mi_id[size_t(GizmoColor::RANGE_SIZE)] = {};
+MaterialResourceDomain* domain = nullptr;
+```
+
+`InitMI()`：
+
+```cpp
+gr->domain = gizmo_mtl_manager->GetOrCreateDefaultDomain(gr->mtl);
+if (!gr->domain) return false;
+for (uint i = 0; i < uint(GizmoColor::RANGE_SIZE); i++)
+{
+    Color4f color = GetColor4f(gizmo_color[i], 1.0f);
+    gr->mi_id[i] = gr->domain->AllocMISlot();
+    if (gr->mi_id[i] < 0) return false;
+    memcpy(gr->domain->GetMIData(gr->mi_id[i]), &color, sizeof(color));
+}
+return true;
+```
+
+`GizmoMesh::Create`（`CreatePrimitive` 调用）：
+
+```cpp
+const VIL* vil = gizmo_triangle.mtl->GetDefaultVIL();
+PrimitiveMaterialSlot slot{ gizmo_triangle.mtl, gizmo_triangle.domain,
+                             gizmo_triangle.mi_id[0], vil,
+                             GraphicsPipelinePreset::GizmoOverlay3D };
+primitive = primitive_manager->CreatePrimitive(geometry, slot);
+```
+
+清理（Shutdown）：
+
+```cpp
+for (uint i = 0; i < uint(GizmoColor::RANGE_SIZE); i++)
+    if (gizmo_triangle.domain && gizmo_triangle.mi_id[i] >= 0)
+        gizmo_triangle.domain->FreeMISlot(gizmo_triangle.mi_id[i]);
+```
+
+`GetGizmoMI3D` → `GetGizmoMIID3D`：
+
+```cpp
+int GetGizmoMIID3D(const GizmoColor& color)
+{
+    return gizmo_triangle.mi_id[size_t(color)];
+}
+```
+
+#### `GizmoInternal.h`
+
+```cpp
+// 删除：MaterialInstance* GetGizmoMI3D(const GizmoColor&);
+// 新增：
+int GetGizmoMIID3D(const GizmoColor&);
+```
+
+#### `GizmoModeRuntime.h`
+
+```cpp
+struct GizmoVisualPrimitive {
+    // 删除：MaterialInstance* base_material = nullptr;
+    // 新增：
+    int base_mi_id = -1;
+    // ...（其余不变）
+};
+```
+
+#### `GizmoUnified.AssetVisual.inl`
+
+```cpp
+// line ~45：GetGizmoMI3D(color) → GetGizmoMIID3D(color)，结果存 base_mi_id
+// line ~53-54：prim_comp->SetOverrideMaterial(base_material) → prim_comp->SetMIIDOverride(base_mi_id)
+//              item.base_material = base_material → item.base_mi_id = base_mi_id
+// line ~114：SetOverrideMaterial(…GetGizmoMI3D(Yellow)…/entry.base_material)
+//          → SetMIIDOverride(…GetGizmoMIID3D(Yellow)…/entry.base_mi_id)
+```
+
+#### `[Move/Rotate/Scale]GizmoMode.Input.inl`（相同模式）
+
+```cpp
+// line ~37：p.primitive->SetOverrideMaterial(GetGizmoMI3D(Yellow))
+//         → p.primitive->SetMIIDOverride(GetGizmoMIID3D(Yellow))
+// line ~39：p.primitive->SetOverrideMaterial(p.base_material)
+//         → p.primitive->SetMIIDOverride(p.base_mi_id)
+```
+
+---
+
+### Step G — 删除 `VKMaterialInstance`（最终）
+
+**前置条件**：Steps A–F 全部完成，全量构建通过，`grep -r "MaterialInstance"` 仅剩 `VKMaterialInstance.h/.cpp` 本身。
+
+1. 删除 `inc/hgl/vk/VKMaterialInstance.h`
+2. 删除 `src/SceneGraph/VKMaterialInstance.cpp`
+3. 从 SceneGraph 的 CMakeLists.txt 移除 `VKMaterialInstance.cpp`
+4. 从 `MaterialManager` 删除：`AcquireMaterialInstance`、`CreateMaterialInstance`、`Destroy(MaterialInstance*)` 及所有 MI 相关内部类型（`MaterialInstanceSpec` 等）
+
+**完成标志**：全量构建 0 错误；代码库中不再存在 `MaterialInstance` 类型。
+
+---
+
+### 实施顺序
+
+```
+Step A  PrimitiveComponent 加 mi_id_override
+    │
+    ├──── Step C  LINE 移除 mi_                    （可先行，无跨步依赖）
+    │
+    ├──── Step D  TEXT (TextRenderPipeline) 移除 MI
+    │        └──── Step E  TEXT (TextRender legacy) 移除 MI
+    │
+    └──── Step F  GIZMO: mi[] → mi_id[]，切换 SetMIIDOverride
+              └──── Step B  MIAB 支持 override 数据上传（F 后验证效果）
+                        └──── Step G  删除 VKMaterialInstance
+```
+
+**建议执行顺序**：A → C → D → E → F → B → 全量构建验证 → G。

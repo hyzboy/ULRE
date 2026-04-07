@@ -34,9 +34,12 @@ void RotateGizmoMode::UpdateHover(const GizmoFrameInput &input,
 
         const bool in_group = (best_group >= 0 && p.group_id == best_group);
         if (static_cast<int>(i) == best_index || in_group)
-            p.primitive->SetOverrideMaterial(GetGizmoMI3D(GizmoColor::Yellow));
+        {
+            auto *yellow_mi = GetGizmoMI3D(GizmoColor::Yellow);
+            p.primitive->SetMIIDOverride(yellow_mi ? yellow_mi->GetMIID() : -1);
+        }
         else
-            p.primitive->SetOverrideMaterial(p.base_material);
+            p.primitive->SetMIIDOverride(p.base_mi_id);
     }
 }
 

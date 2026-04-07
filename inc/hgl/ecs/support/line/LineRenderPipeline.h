@@ -2,6 +2,7 @@
 
 #include <hgl/ecs/support/RenderPipelineBase.h>
 #include <hgl/vk/VKBufferAccessor.h>
+#include <hgl/graph/PrimitiveMaterialSlot.h>
 #include <hgl/color/Color4f.h>
 #include <memory>
 #include <vector>
@@ -15,7 +16,6 @@ namespace hgl
         class VulkanDevice;
         class DeviceBuffer;
         class MaterialTemplate;
-        class MaterialInstance;
         class GraphicsPipeline;
         class RenderTargetFormat;
         class Geometry;
@@ -74,7 +74,8 @@ namespace hgl::ecs
         // ------- GPU resources (created in Initialize()) -------
         graph::VulkanDevice*    device_         = nullptr;
         graph::MaterialTemplate*        material_       = nullptr;
-        graph::MaterialInstance* mi_            = nullptr;
+        const graph::VIL*               vil_            = nullptr;
+        graph::GraphicsPipelinePreset   preset_         = graph::GraphicsPipelinePreset::Solid3D;
         graph::GraphicsPipeline*        pipeline_       = nullptr;
         graph::RenderTargetFormat*     render_format_  = nullptr;
 
@@ -101,10 +102,10 @@ namespace hgl::ecs
             void Reset();
             void Clear();
             bool EnsureCapacity(uint32_t needed,
-                                graph::VulkanDevice*     dev,
-                                graph::MaterialInstance* mi,
-                                graph::GraphicsPipeline*         p,
-                                uint32_t                 width);
+                                graph::VulkanDevice*                     dev,
+                                const graph::PrimitiveMaterialSlot&      slot,
+                                graph::GraphicsPipeline*                 p,
+                                uint32_t                                 width);
             bool AddSegment(const hgl::math::Vector3f& from,
                             const hgl::math::Vector3f& to,
                             uint8_t                     color_index);

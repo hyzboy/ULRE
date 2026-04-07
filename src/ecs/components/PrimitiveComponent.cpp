@@ -5,8 +5,6 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/mesh/Primitive.h>
-#include<hgl/graph/PrimitiveMaterialSlot.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
@@ -97,23 +95,6 @@ namespace hgl::ecs
         return primitive->GetMaterialTemplate();
     }
 
-    void PrimitiveComponent::SetOverrideMaterial(hgl::graph::MaterialInstance* mi)
-    {
-        // Migration shim: gizmo/legacy callers still use MaterialInstance*.
-        // Build a PrimitiveMaterialSlot and bind it directly to the primitive.
-        // Note: gizmos share Primitive objects across components; full per-component
-        // material isolation requires Phase 3 / gizmo refactor.
-        if (!mi || !primitive)
-            return;
-        const hgl::graph::PrimitiveMaterialSlot slot{
-            mi->GetMaterial(),
-            mi->GetDomain(),
-            mi->GetMIID(),
-            mi->GetVIL(),
-            mi->GetRenderPreset()
-        };
-        primitive->BindMaterialSlot(slot);
-    }
 
     bool PrimitiveComponent::GetLocalAABB(hgl::math::AABB& outAABB) const
     {

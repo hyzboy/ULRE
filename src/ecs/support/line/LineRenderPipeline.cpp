@@ -80,10 +80,10 @@ namespace hgl::ecs
 
     bool LineRenderPipeline::LineWidthSlot::EnsureCapacity(
         uint32_t needed,
-        graph::VulkanDevice*     dev,
-        graph::MaterialInstance* mi,
-        graph::GraphicsPipeline*         p,
-        uint32_t                 width)
+        graph::VulkanDevice*                 dev,
+        const graph::PrimitiveMaterialSlot&  slot,
+        graph::GraphicsPipeline*             p,
+        uint32_t                             width)
     {
         if (needed <= gpu_capacity)
             return true;
@@ -101,13 +101,13 @@ namespace hgl::ecs
 
         // Create new geometry (2 verts per line)
         const graph::AnsiString name = graph::AnsiString("LineSlot_W") + graph::AnsiString::numberOf(width);
-        geometry = graph::CreateGeometry(dev, mi->GetVIL(), name, new_cap * 2, 0,
+        geometry = graph::CreateGeometry(dev, slot.vil, name, new_cap * 2, 0,
                          graph::IndexType::AUTO, nullptr,
                          graph::BufferAllocPolicy::StagedUpload);
         if (!geometry)
             return false;
 
-        primitive = graph::DirectCreatePrimitive(geometry, mi, p);
+        primitive = graph::DirectCreatePrimitive(geometry, slot);
         if (!primitive)
         {
             SAFE_CLEAR(geometry);
@@ -253,20 +253,17 @@ namespace hgl::ecs
         if (auto rdbs = context_->GetSystem<RenderDescriptorBindingSystem>())
             rdbs->RegisterPipelineMaterial(material_);
 
-        // ------- Create material instance -------
+        // ------- Create VIL and note render preset -------
         graph::VILConfig vil;
         vil.Add(graph::VAN::Color, VF_V1U8);
         const auto preset = support_wide_lines_
             ? graph::GraphicsPipelinePreset::DynamicLineWidth3D
             : graph::GraphicsPipelinePreset::Solid3D;
 
-        graph::MaterialInstanceSpec spec;
-        spec.material = material_;
-        spec.vil_cfg = &vil;
-        spec.preset = preset;
-        mi_ = mat_mgr->AcquireMaterialInstance(spec);
-        if (!mi_)
+        vil_ = material_->CreateVIL(&vil);
+        if (!vil_)
             return false;
+        preset_ = preset;
 
         // ------- Create color palette UBO -------
         auto* buf_mgr = gc->GetBufferManager();
@@ -296,7 +293,7 @@ namespace hgl::ecs
 
     bool LineRenderPipeline::ResolvePipelineForCurrentRenderTarget()
     {
-        if (!context_ || !device_ || !material_ || !mi_)
+        if (!context_ || !device_ || !material_ || !vil_)
             return false;
 
         auto* render_target = context_->GetRenderTarget();
@@ -316,7 +313,7 @@ namespace hgl::ecs
         RecordPipelineResolveAttempt(g_line_pipeline_resolve_counters);
         const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
 
-        const graph::GraphicsPipelinePreset preset = mi_->GetRenderPreset();
+        const graph::GraphicsPipelinePreset preset = preset_;
         const graph::GraphicsPipelineData* pipeline_data = graph::GetGraphicsPipelineData(preset);
         if (!pipeline_data)
         {
@@ -332,7 +329,7 @@ namespace hgl::ecs
 
         graph::GraphicsPipelineBuildRequest req;
         req.material = material_;
-        req.vil = mi_->GetVIL();
+        req.vil = vil_;
         req.render_format = render_format;
         req.pipeline_data = pipeline_data;
         req.primitive = material_->GetPrimitiveType();
@@ -537,7 +534,7 @@ namespace hgl::ecs
         {
             if (slot_counts[i] == 0)
                 continue;
-            if (!slots_[i].EnsureCapacity(slot_counts[i], device_, mi_, pipeline_, i + 1))
+            if (!slots_[i].EnsureCapacity(slot_counts[i], device_, graph::PrimitiveMaterialSlot{material_, nullptr, -1, vil_, preset_}, pipeline_, i + 1))
             {
                 GLogWarning("[LineRenderPipeline] EnsureCapacity failed: slot=%u need=%u cap=%u",
                             i + 1,
@@ -658,12 +655,12 @@ namespace hgl::ecs
         if (!cmd || !initialized_ || total_line_count_ == 0)
             return;
 
-        if (!pipeline_ || !mi_)
+        if (!pipeline_ || !vil_)
             return;
 
         const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
 
-        auto* mat = mi_->GetMaterial();
+        auto* mat = material_;
         if (mat)
             cmd->BindDescriptorSets(mat);
 
@@ -713,7 +710,6 @@ namespace hgl::ecs
             auto* mat_mgr = gc->GetMaterialManager();
             if (mat_mgr)
             {
-                if (mi_)       { mat_mgr->Destroy(mi_); mi_ = nullptr; }
                 if (material_)
                 {
                     if (auto rdbs = context_->GetSystem<RenderDescriptorBindingSystem>())

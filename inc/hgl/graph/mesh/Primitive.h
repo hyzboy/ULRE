@@ -42,6 +42,10 @@ private:
 
     Primitive(Geometry *,MaterialInstance *,GraphicsPipelinePreRaster *,GeometryDataBuffer *);
 
+    friend Primitive *DirectCreatePrimitive(Geometry *,const PrimitiveMaterialSlot &);
+
+    Primitive(Geometry *,const PrimitiveMaterialSlot &,GeometryDataBuffer *);  // slot-based ctor (no MI object)
+
     friend Primitive *DirectCreatePrimitive(Geometry *,SemanticMaterialId,uint32_t);
 
     Primitive(Geometry *,SemanticMaterialId,uint32_t);
@@ -103,5 +107,6 @@ public:
 };//class Primitive
 
 Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,GraphicsPipelinePreRaster * = nullptr);
+Primitive *DirectCreatePrimitive(Geometry *,const PrimitiveMaterialSlot &);
 Primitive *DirectCreatePrimitive(Geometry *,SemanticMaterialId,uint32_t vil_hash);
 }//namespace hgl::graph

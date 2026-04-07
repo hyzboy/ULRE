@@ -534,7 +534,7 @@ private:
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
                 prim_comp->SetPrimitive(base_primitives[col]);
-                prim_comp->SetOverrideMaterial(sphere_mi[row][col]);
+                prim_comp->SetMIIDOverride(sphere_mi[row][col]->GetMIID());
                 prim_comp->SetVisible(true);
             }
         }

@@ -199,7 +199,7 @@ private:
             transform->SetMovable(false);
 
             primitive->SetPrimitive(mesh_rect);
-            primitive->SetOverrideMaterial(render_obj[i].mi);
+            primitive->SetMIIDOverride(render_obj[i].mi->GetMIID());
             primitive->SetVisible(true);
         }
 

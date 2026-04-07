@@ -16,7 +16,6 @@ namespace hgl
     {
         class Primitive;
         class MaterialTemplate;
-        class MaterialInstance;  // Legacy/gizmo overlay path
     }
 }
 
@@ -40,6 +39,7 @@ namespace hgl::ecs
 
         hgl::graph::Primitive* primitive;              // The primitive to render (not owned)
         hgl::graph::SemanticMaterialId semanticMaterialId = 0; // 0 = unset
+        int mi_id_override = -1;  // -1 = use Primitive default slot; >=0 = per-component MI color override (gizmo)
 
     public:
 
@@ -67,8 +67,10 @@ namespace hgl::ecs
         // MaterialTemplate access
         hgl::graph::MaterialTemplate* GetMaterial() const;
 
-        // Material override — legacy/gizmo path (calls primitive->BindMaterialSlot internally)
-        void SetOverrideMaterial(hgl::graph::MaterialInstance* mi);
+        // Per-component MI slot override (gizmo color switching)
+        int  GetMIIDOverride() const    { return mi_id_override; }
+        void SetMIIDOverride(int id)    { mi_id_override = id; }
+        void ClearMIIDOverride()        { mi_id_override = -1; }
 
         // Bounding volume
         bool GetLocalAABB(hgl::math::AABB& outAABB) const;
