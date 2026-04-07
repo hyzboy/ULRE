@@ -161,7 +161,7 @@ private:
         transform->SetLocalScale(glm::vec3(scale, scale, scale));
         transform->SetMovable(animate);
 
-        auto prim = primitive_manager->CreatePrimitive(geometry, mi);
+        auto prim = primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
         if (!prim)
             return nullptr;
 

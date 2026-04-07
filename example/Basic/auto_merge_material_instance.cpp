@@ -161,7 +161,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, triangles[i].mi);
+            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, triangles[i].mi->ToSlot());
 
             if (!triangles[i].primitive)
             {

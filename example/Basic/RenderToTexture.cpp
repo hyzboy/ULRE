@@ -157,7 +157,7 @@ public:
 
         gm->Add(geometry);
 
-        primitive = pm->CreatePrimitive(geometry, mi);
+        primitive = pm->CreatePrimitive(geometry, mi->ToSlot());
         if (!primitive)
             return false;
 
@@ -337,7 +337,7 @@ private:
 
         gm->Add(cube_geometry);
 
-        cube_primitive = pm->CreatePrimitive(cube_geometry, cube_mi);
+        cube_primitive = pm->CreatePrimitive(cube_geometry, cube_mi->ToSlot());
         if (!cube_primitive)
             return false;
 

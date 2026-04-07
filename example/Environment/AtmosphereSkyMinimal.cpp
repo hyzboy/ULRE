@@ -86,7 +86,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(prim_sky_sphere,mi_sky_sphere);
+        Primitive *ri=primitive_manager->CreatePrimitive(prim_sky_sphere,mi_sky_sphere->ToSlot());
         if(!ri)
             return false;
 

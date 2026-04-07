@@ -170,14 +170,14 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        mesh_rect = primitive_manager->CreatePrimitive(geometry, render_obj[0].mi);
+        mesh_rect = primitive_manager->CreatePrimitive(geometry, render_obj[0].mi->ToSlot());
 
         if(!mesh_rect)
             return(false);
 
         for(uint32_t i = 1; i < TexCount; ++i)
         {
-            render_obj[i].primitive = primitive_manager->CreatePrimitive(geometry, render_obj[i].mi);
+            render_obj[i].primitive = primitive_manager->CreatePrimitive(geometry, render_obj[i].mi->ToSlot());
             if(!render_obj[i].primitive)
                 return false;
         }

@@ -91,7 +91,7 @@ namespace example::modules
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, mi);
+        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
         if (!primitive)
             return nullptr;
 

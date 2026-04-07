@@ -105,7 +105,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,mi);
+        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,mi->ToSlot());
 
         if(!ri)
             return false;

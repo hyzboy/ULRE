@@ -175,7 +175,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry, wire.mi[5]);
+        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry, wire.mi[5]->ToSlot());
         return bbox_primitive != nullptr;
     }
 
@@ -196,7 +196,7 @@ private:
         if (!primitive_manager)
             return nullptr;
 
-        Primitive *primitive = primitive_manager->CreatePrimitive(geometry,md->mi[color]);
+        Primitive *primitive = primitive_manager->CreatePrimitive(geometry,md->mi[color]->ToSlot());
 
         if(!primitive)
             return nullptr;

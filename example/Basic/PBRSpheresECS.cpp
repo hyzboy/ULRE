@@ -488,7 +488,7 @@ private:
         {
             // Per-entity override material is still applied in InitECS.
             base_primitives[i] = primitive_manager->CreatePrimitive(
-                builtin_geometries[i], sphere_mi[0][i]);
+                builtin_geometries[i], sphere_mi[0][i]->ToSlot());
 
             if (!base_primitives[i]) {
                 printf("[ERROR] CreateBasePrimitives: Failed to create primitive %u\n", i);

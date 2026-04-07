@@ -147,7 +147,7 @@ private:
             return nullptr;
 
         Primitive* primitive = primitive_manager->CreatePrimitive(geometry,
-                                                                  solid.mi[color_index % DEMO_COLOR_COUNT]);
+                                                                  solid.mi[color_index % DEMO_COLOR_COUNT]->ToSlot());
         if (!primitive)
             return nullptr;
 

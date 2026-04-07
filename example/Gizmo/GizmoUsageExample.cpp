@@ -100,7 +100,7 @@ private:
 
             geometry_manager->Add(grid_geometry);
 
-            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_mi);
+            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_mi->ToSlot());
             if(!grid_primitive)
                 return false;
         }
@@ -132,7 +132,7 @@ private:
 
             geometry_manager->Add(cube_geometry);
 
-            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_mi);
+            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_mi->ToSlot());
             if(!cube_primitive)
                 return false;
         }

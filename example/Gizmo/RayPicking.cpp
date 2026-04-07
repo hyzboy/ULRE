@@ -182,7 +182,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid);
+            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid->ToSlot());
             if(!prim_plane)
                 return false;
 
@@ -207,7 +207,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            prim_line = primitive_manager->CreatePrimitive(geom_line, mi_line);
+            prim_line = primitive_manager->CreatePrimitive(geom_line, mi_line->ToSlot());
             if(!prim_line)
                 return false;
 

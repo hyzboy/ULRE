@@ -105,7 +105,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *sky_prim = primitive_manager->CreatePrimitive(prim_sky_dome, mi_sky_sphere);
+        Primitive *sky_prim = primitive_manager->CreatePrimitive(prim_sky_dome, mi_sky_sphere->ToSlot());
         if(!sky_prim)
             return false;
 
@@ -121,7 +121,7 @@ private:
         sky_prim_comp->SetPrimitive(sky_prim);
         sky_prim_comp->SetVisible(true);
 
-        Primitive *ground_prim = primitive_manager->CreatePrimitive(prim_ground_plane, mi_sky_sphere);
+        Primitive *ground_prim = primitive_manager->CreatePrimitive(prim_ground_plane, mi_sky_sphere->ToSlot());
         if(!ground_prim)
             return false;
 

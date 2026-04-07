@@ -307,7 +307,7 @@ private:
 
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
-            base_primitives[i] = primitive_manager->CreatePrimitive(builtin_geometries[i], sphere_mi[0][i]);
+            base_primitives[i] = primitive_manager->CreatePrimitive(builtin_geometries[i], sphere_mi[0][i]->ToSlot());
 
             if (!base_primitives[i])
             {

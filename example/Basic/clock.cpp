@@ -188,7 +188,7 @@ private:
         // === 创建12个刻度（Static Transform） ===
         for (uint i = 0; i < TICK_COUNT; i++)
         {
-            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, mi_tick);
+            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, mi_tick->ToSlot());
 
             if (!ticks[i].primitive)
             {
@@ -235,7 +235,7 @@ private:
 
         for (uint i = 0; i < 3; i++)
         {
-            hands[i].primitive = primitive_manager->CreatePrimitive(geometry, hands[i].mi);
+            hands[i].primitive = primitive_manager->CreatePrimitive(geometry, hands[i].mi->ToSlot());
 
             if (!hands[i].primitive)
             {

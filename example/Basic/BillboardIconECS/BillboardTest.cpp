@@ -215,7 +215,7 @@ private:
 
             if(!geometry_factory.RegisterGeometry(geom_plane_grid))
                 return false;
-            prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid);
+            prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid->ToSlot());
             if(!prim_plane_grid)
                 return false;
 
@@ -236,7 +236,7 @@ private:
             if(!pc->WriteIBO(billboard_index_data))
                 return false;
 
-            prim_billboard = geometry_factory.CreatePrimitive(pc.get(), mi_billboard);
+            prim_billboard = geometry_factory.CreatePrimitive(pc.get(), mi_billboard->ToSlot());
             if(!prim_billboard)
                 return false;
 

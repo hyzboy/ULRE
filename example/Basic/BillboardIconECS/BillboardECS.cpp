@@ -126,7 +126,7 @@ private:
             if (!geom_plane_grid) return false;
 
             if (!geometry_factory.RegisterGeometry(geom_plane_grid)) return false;
-            prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid);
+            prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid->ToSlot());
             if (!prim_plane_grid) return false;
 
             std::cout << "[BillboardECS] PlaneGrid geometry: " << (void*)geom_plane_grid
