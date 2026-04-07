@@ -414,7 +414,7 @@ bool MaterialAssetRegistry::QuerySemanticMaterial(SemanticMaterialId id, mtl::Ma
     return true;
 }
 
-MaterialInstance *MaterialAssetRegistry::ResolveMI(SemanticMaterialId semantic_id,
+PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(SemanticMaterialId semantic_id,
                                                    const RuntimeMaterialRequest &request,
                                                    const GeometrySignature &geometry,
                                                    const void *instance_data,
@@ -425,7 +425,7 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(SemanticMaterialId semantic_i
     return ResolveMI(0, semantic_id, request, geometry, instance_data, instance_data_size, out_handle);
 }
 
-MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
+PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
                                                    SemanticMaterialId semantic_id,
                                                    const RuntimeMaterialRequest &request,
                                                    const GeometrySignature &geometry,
@@ -441,7 +441,7 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
     // Build final record from semantic + runtime + geometry.
     mtl::MaterialAssetRecord final_rec;
     if (!QuerySemanticMaterial(semantic_id, final_rec))
-        return nullptr;
+        return {};
 
     final_rec.pipeline = request.pipeline;
     final_rec.domain_id = request.domain_id;
@@ -449,12 +449,23 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
 
     MaterialDomainHandle handle = Acquire(final_rec);
     if (!handle.IsValid())
-        return nullptr;
+        return {};
 
     if (out_handle)
         *out_handle = handle;
 
     variant_cache[key] = handle.material;
+
+    // Helper: build PrimitiveMaterialSlot from a resolved MI.
+    auto make_slot = [](MaterialInstance *mi) -> PrimitiveMaterialSlot {
+        PrimitiveMaterialSlot s;
+        s.material_template = mi->GetMaterial();
+        s.domain            = mi->GetDomain();
+        s.mi_id             = mi->GetMIID();
+        s.vil               = mi->GetVIL();
+        s.preset            = mi->GetRenderPreset();
+        return s;
+    };
 
     // Legacy path: still keep variant-level MI cache for callsites that do not provide entity id.
     if (entity_id == 0)
@@ -477,7 +488,7 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
             if (instance_data && instance_data_size > 0)
                 it->second->WriteMIData(instance_data, instance_data_size);
 
-            return it->second;
+            return make_slot(it->second);
         }
 
         ++legacy_resolve_miss_count;
@@ -488,10 +499,10 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
                                                           instance_data,
                                                           instance_data_size);
         if (!mi)
-            return nullptr;
+            return {};
 
         legacy_final_mi_cache.emplace(std::move(key), mi);
-        return mi;
+        return make_slot(mi);
     }
 
     // New Phase D path: stable MI slot per (entity, semantic).
@@ -507,14 +518,14 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         if (instance_data && instance_data_size > 0)
             it->second->WriteMIData(instance_data, instance_data_size);
 
-        return it->second;
+        return make_slot(it->second);
     }
 
     ++entity_resolve_miss_count;
 
     auto sem_it = semantic_cache.find(semantic_id);
     if (sem_it == semantic_cache.end())
-        return nullptr;
+        return {};
 
     auto &entry = sem_it->second;
     if (!entry.shared_domain)
@@ -530,7 +541,7 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
     }
 
     if (!entry.shared_domain)
-        return nullptr;
+        return {};
 
     MaterialInstance *mi = mm->CreateMaterialInstance(entry.shared_domain,
                                                       handle.material,
@@ -538,11 +549,11 @@ MaterialInstance *MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
                                                       instance_data,
                                                       instance_data_size);
     if (!mi)
-        return nullptr;
+        return {};
 
     mi->SetRenderPreset(request.pipeline);
     entity_mi_cache.emplace(es_key, mi);
-    return mi;
+    return make_slot(mi);
 }
 
 MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialAssetRecord &rec,

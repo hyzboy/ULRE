@@ -35,11 +35,6 @@ namespace hgl::ecs
         return context->GetEntity(entity_id);
     }
 
-    graph::MaterialInstance* AssetPrimitiveRenderItem::GetMaterialInstance() const
-    {
-        return primitive ? primitive->GetMaterialInstance() : nullptr;
-    }
-
     graph::MaterialTemplate* AssetPrimitiveRenderItem::GetMaterial() const
     {
         return primitive ? primitive->GetMaterialTemplate() : nullptr;

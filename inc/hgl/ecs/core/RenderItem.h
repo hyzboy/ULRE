@@ -10,7 +10,6 @@ namespace hgl
     {
         class Primitive;
         class MaterialTemplate;
-        class MaterialInstance;
     }
 
     namespace ecs
@@ -51,7 +50,6 @@ namespace hgl::ecs
 
         // For material batching support
         virtual hgl::graph::Primitive* GetPrimitive() const = 0;
-        virtual hgl::graph::MaterialInstance* GetMaterialInstance() const = 0;
         virtual hgl::graph::MaterialTemplate* GetMaterial() const = 0;
 
         // Comparison for sorting

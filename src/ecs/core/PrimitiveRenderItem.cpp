@@ -45,11 +45,6 @@ namespace hgl::ecs
         return primitiveComp ? primitiveComp->GetPrimitive() : nullptr;
     }
 
-    hgl::graph::MaterialInstance* PrimitiveRenderItem::GetMaterialInstance() const
-    {
-        return primitiveComp ? primitiveComp->GetMaterialInstance() : nullptr;
-    }
-
     hgl::graph::MaterialTemplate* PrimitiveRenderItem::GetMaterial() const
     {
         auto *primitive = GetPrimitive();

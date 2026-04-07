@@ -10,7 +10,6 @@ namespace hgl
     {
         class Primitive;
         class MaterialTemplate;
-        class MaterialInstance;
     }
 }
 
@@ -56,7 +55,6 @@ namespace hgl::ecs
 
         // MaterialTemplate batching interface
         hgl::graph::Primitive* GetPrimitive() const override;
-        hgl::graph::MaterialInstance* GetMaterialInstance() const override;
         hgl::graph::MaterialTemplate* GetMaterial() const override;
 
         // Update world matrix from transform

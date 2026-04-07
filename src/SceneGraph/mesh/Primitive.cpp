@@ -52,12 +52,11 @@ void GeometryDrawRange::Set(const Geometry *geometry)
 Primitive::Primitive(Geometry *r,MaterialInstance *mi,GraphicsPipelinePreRaster *p,GeometryDataBuffer *gdb)
 {
     geometry=r;
-    mat_inst=mi;
 
     data_buffer=gdb;
     draw_range.Set(geometry);
 
-    // Phase 2a: populate direct fields from MI (Primitive is friend of MaterialInstance)
+    // Phase 2c: populate direct fields from MI (no mat_inst bridge)
     if(mi)
     {
         material_template = mi->GetMaterial();
@@ -82,7 +81,6 @@ Primitive::Primitive(Geometry *r,MaterialInstance *mi,GraphicsPipelinePreRaster 
 Primitive::Primitive(Geometry *r,SemanticMaterialId sid,uint32_t vil_hash)
 {
     geometry=r;
-    mat_inst=nullptr;
 
     data_buffer=nullptr;
     draw_range.Set(geometry);
@@ -90,7 +88,7 @@ Primitive::Primitive(Geometry *r,SemanticMaterialId sid,uint32_t vil_hash)
     deferred_semantic_id=sid;
     deferred_vil_hash=vil_hash;
 
-    // Phase 2a: zero-init MIT for deferred primitives
+    // Phase 2c: zero-init MIT for deferred primitives
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }
 
@@ -117,69 +115,60 @@ bool Primitive::UpdateGeometry()
     return data_buffer->Update(geometry,vil);
 }
 
-bool Primitive::BindMaterialInstance(MaterialInstance *mi)
+bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot)
 {
-    if(!mi||!geometry)
-        return(false);
+    if (!slot.IsValid() || !geometry)
+        return false;
 
-    const VIL *vil=mi->GetVIL();
-    if(!vil)
-        return(false);
+    const VIL *new_vil = slot.vil;
+    if (!new_vil)
+        return false;
 
-    const uint32_t input_count=vil->GetVertexAttribCount();
-    const VertexInputFormat *vif=vil->GetVIFList();
-
-    uint32_t max_binding=0;
-    for(uint i=0;i<input_count;i++)
+    // For deferred primitives, create the GeometryDataBuffer from the resolved VIL
+    if (HasDeferredMI())
     {
-        if(vif[i].binding>max_binding)
-            max_binding=vif[i].binding;
-    }
+        const uint32_t input_count=new_vil->GetVertexAttribCount();
+        const VertexInputFormat *vif=new_vil->GetVIFList();
 
-    GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(max_binding+1,geometry->GetIBO(),geometry->GetVDM());
-
-    VAB *vab;
-
-    for(uint i=0;i<input_count;i++)
-    {
-        vab=geometry->GetVAB(vif->attrib);
-
-        if(!vab)
+        uint32_t max_binding=0;
+        for(uint i=0;i<input_count;i++)
         {
-            delete geom_data_buffer;
-            return(false);
+            if(vif[i].binding>max_binding)
+                max_binding=vif[i].binding;
         }
 
-        const uint32_t bind_index=vif->binding;
-        geom_data_buffer->vab_list[bind_index]=vab->GetVkBuffer();
-        geom_data_buffer->vab_offset[bind_index]=0;
-        ++vif;
+        GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(max_binding+1,geometry->GetIBO(),geometry->GetVDM());
+
+        for(uint i=0;i<input_count;i++)
+        {
+            VAB *vab=geometry->GetVAB(vif->attrib);
+
+            if(!vab)
+            {
+                delete geom_data_buffer;
+                return false;
+            }
+
+            const uint32_t bind_index=vif->binding;
+            geom_data_buffer->vab_list[bind_index]=vab->GetVkBuffer();
+            geom_data_buffer->vab_offset[bind_index]=0;
+            ++vif;
+        }
+
+        delete data_buffer;
+        data_buffer=geom_data_buffer;
     }
 
-    delete data_buffer;
-    data_buffer=geom_data_buffer;
+    // Update all direct fields
+    material_template    = slot.material_template;
+    domain               = slot.domain;
+    mi_id                = slot.mi_id;
+    vil                  = new_vil;
+    render_preset        = slot.preset;
+    deferred_semantic_id = 0;
+    deferred_vil_hash    = 0;
 
-    mat_inst=mi;
-    this->vil=vil;  // local var already validated above
-    deferred_semantic_id=0;
-
-    // Phase 2a: sync direct fields from MI
-    material_template = mi->GetMaterial();
-    domain            = mi->GetDomain();
-    mi_id             = mi->GetMIID();
-    render_preset     = mi->GetRenderPreset();
-    delete[] mit_packed;
-    mit_packed        = nullptr;
-    mit_packed_count  = 0;
-    std::memcpy(mit_slot_offset, mi->mit_slot_offset, sizeof(mit_slot_offset));
-    mit_packed_count  = mi->mit_packed_count;
-    if(mit_packed_count > 0)
-    {
-        mit_packed = new uint32_t[mit_packed_count];
-        std::memcpy(mit_packed, mi->mit_packed, mit_packed_count * sizeof(uint32_t));
-    }
-
-    return(true);
+    return true;
 }
 
 Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPipelinePreRaster *p)

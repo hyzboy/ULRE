@@ -5,8 +5,9 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/mesh/Primitive.h>
-#include<hgl/vk/VKMaterialTemplate.h>
+#include<hgl/graph/PrimitiveMaterialSlot.h>
 #include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 
@@ -46,7 +47,7 @@ namespace hgl::ecs
         data.renderable.visible = primitive->IsVisible();
         data.renderable.boundingRadius = primitive->GetBoundingRadius();
         data.hasPrimitive = primitive->GetPrimitive() != nullptr;
-        data.hasOverrideMaterial = primitive->GetOverrideMaterial() != nullptr;
+        data.hasOverrideMaterial = false;   // Phase 2c: override material removed
         data.semanticMaterialId = primitive->GetSemanticMaterial();
 
         out_record.type = GetSerializationType();
@@ -88,33 +89,30 @@ namespace hgl::ecs
         }
     }
 
-    void PrimitiveComponent::SetOverrideMaterial(hgl::graph::MaterialInstance* mi)
-    {
-        overrideMaterial = mi;
-    }
-
-    hgl::graph::MaterialInstance* PrimitiveComponent::GetMaterialInstance() const
-    {
-        // Return override material if set, otherwise primitive's material
-        if (overrideMaterial)
-            return overrideMaterial;
-
-        if (!primitive)
-            return nullptr;
-
-        return primitive->GetMaterialInstance();
-    }
-
     hgl::graph::MaterialTemplate* PrimitiveComponent::GetMaterial() const
     {
-        // Return override material's base if set
-        if (overrideMaterial)
-            return overrideMaterial->GetMaterial();
-
         if (!primitive)
             return nullptr;
 
         return primitive->GetMaterialTemplate();
+    }
+
+    void PrimitiveComponent::SetOverrideMaterial(hgl::graph::MaterialInstance* mi)
+    {
+        // Migration shim: gizmo/legacy callers still use MaterialInstance*.
+        // Build a PrimitiveMaterialSlot and bind it directly to the primitive.
+        // Note: gizmos share Primitive objects across components; full per-component
+        // material isolation requires Phase 3 / gizmo refactor.
+        if (!mi || !primitive)
+            return;
+        const hgl::graph::PrimitiveMaterialSlot slot{
+            mi->GetMaterial(),
+            mi->GetDomain(),
+            mi->GetMIID(),
+            mi->GetVIL(),
+            mi->GetRenderPreset()
+        };
+        primitive->BindMaterialSlot(slot);
     }
 
     bool PrimitiveComponent::GetLocalAABB(hgl::math::AABB& outAABB) const
@@ -174,7 +172,6 @@ namespace hgl::ecs
         // Don't delete primitive or material - they're managed externally
         // Just clear our references
         primitive = nullptr;
-        overrideMaterial = nullptr;
         semanticMaterialId = 0;
     }
 }//namespace hgl::ecs

@@ -12,6 +12,7 @@
 #include <hgl/graph/module/RuntimeMaterialRequest.h>
 #include <hgl/mtl/MaterialAssetRecord.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
+#include <hgl/graph/PrimitiveMaterialSlot.h>
 #include <hgl/log/Log.h>
 
 #include <string>
@@ -144,10 +145,11 @@ public:
     bool QuerySemanticMaterial(SemanticMaterialId id, mtl::MaterialAssetRecord &out_rec) const;
 
     /// 运行时解析入口：
-    /// semantic_id + runtime request + geometry signature -> final MI
+    /// semantic_id + runtime request + geometry signature -> final PrimitiveMaterialSlot
     ///
-    /// 该路径为 Phase 2 新增，默认复用 Acquire/CreateMI 流程。
-    MaterialInstance *ResolveMI(SemanticMaterialId semantic_id,
+    /// 返回的槽位指向 entity_mi_cache 内部管理的域槽，生命周期归 Registry 所有。
+    /// 调用方可直接传给 Primitive::BindMaterialSlot()。
+    PrimitiveMaterialSlot ResolveMI(SemanticMaterialId semantic_id,
                                 const RuntimeMaterialRequest &request,
                                 const GeometrySignature &geometry,
                                 const void *instance_data = nullptr,
@@ -155,7 +157,7 @@ public:
                                 MaterialDomainHandle *out_handle = nullptr);
 
     // Phase D path: resolve with entity id to guarantee per-entity stable MI slot.
-    MaterialInstance *ResolveMI(uint64_t entity_id,
+    PrimitiveMaterialSlot ResolveMI(uint64_t entity_id,
                                 SemanticMaterialId semantic_id,
                                 const RuntimeMaterialRequest &request,
                                 const GeometrySignature &geometry,

@@ -10,6 +10,7 @@
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
+#include<hgl/graph/PrimitiveMaterialSlot.h>
 
 namespace hgl::graph{
 /**
@@ -17,7 +18,7 @@ namespace hgl::graph{
 */
 class Primitive
 {
-    /// Phase 2a — MI 字段直接内联（Phase 2c 前 mat_inst 保留作桥接）
+    /// Phase 2c — MI fields inlined directly; mat_inst bridge removed
     MaterialTemplate           *material_template = nullptr;  ///< primary render key
     MaterialResourceDomain     *domain            = nullptr;  ///< data pool domain
     int                         mi_id             = -1;       ///< slot index in domain
@@ -27,7 +28,6 @@ class Primitive
     uint32_t                    mit_packed_count  = 0;
     uint32_t                   *mit_packed        = nullptr;
 
-    MaterialInstance *          mat_inst          = nullptr;  ///< @deprecated Phase 2c bridge
     Geometry *          geometry;
 
     GeometryDataBuffer *data_buffer;
@@ -51,8 +51,7 @@ public:
     virtual ~Primitive();
 
             VkPipelineLayout            GetPipelineLayout   ()      { return material_template ? material_template->GetPipelineLayout() : VK_NULL_HANDLE; }
-            MaterialTemplate *          GetMaterial         ()      { return material_template; }  ///< @deprecated Phase 2c: use GetMaterialTemplate()
-            MaterialInstance *          GetMaterialInstance ()      { return mat_inst; }           ///< @deprecated Phase 2c
+            MaterialTemplate *          GetMaterial         ()      { return material_template; }  ///< @deprecated use GetMaterialTemplate()
             MaterialTemplate *          GetMaterialTemplate ()const { return material_template; }
             MaterialResourceDomain *    GetDomain           ()const { return domain; }
     const   VIL *                       GetVIL              ()const { return vil; }
@@ -87,36 +86,10 @@ public:
             SemanticMaterialId  GetDeferredSemanticId()const{return deferred_semantic_id;}
             uint32_t            GetDeferredVILHash  ()const{return deferred_vil_hash;}
 
-            /// 延迟绑定：仅在 mat_inst==nullptr 时有效，由 ECS 收集系统在 ResolveMI 后调用
-            bool                BindMaterialInstance(MaterialInstance *mi);
-
-            bool                ChangeMaterialInstance(MaterialInstance *mi)
-            {
-                if(!mi)
-                    return(false);
-
-                if(!mat_inst)
-                {
-                    mat_inst=mi;
-                    material_template=mi->GetMaterial();
-                    domain=mi->GetDomain();
-                    mi_id=mi->GetMIID();
-                    vil=mi->GetVIL();
-                    render_preset=mi->GetRenderPreset();
-                    return(true);
-                }
-
-                if(mi->GetMaterial()!=mat_inst->GetMaterial())      //不能换母材质
-                    return(false);
-
-                mat_inst=mi;
-                material_template=mi->GetMaterial();
-                domain=mi->GetDomain();
-                mi_id=mi->GetMIID();
-                vil=mi->GetVIL();
-                render_preset=mi->GetRenderPreset();
-                return(true);
-            }
+            /// 绑定材质槽（Phase 2c）：替代 BindMaterialInstance/ChangeMaterialInstance。
+            /// 用于延迟绑定（HasDeferredMI()==true 时会创建 GeometryDataBuffer）
+            /// 以及每帧的变体更新（透明度变化等）。
+            bool                BindMaterialSlot(const PrimitiveMaterialSlot &slot);
 
             // 设置绘制数量（vertex/index），若大于数据量会被裁剪至数据量
             bool                SetDrawCounts(uint32_t draw_vertex_count,uint32_t draw_index_count=0);

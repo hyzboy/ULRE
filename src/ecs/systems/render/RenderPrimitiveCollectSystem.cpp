@@ -203,17 +203,15 @@ namespace hgl::ecs
                         geometry.vil_hash = primitive->GetDeferredVILHash();
                     }
 
-                    if (auto *resolved = registry->ResolveMI(hgl::ecs::ToRuntimeEntityKey(entity_id),
-                                                             primitiveComp->GetSemanticMaterial(),
-                                                             request,
-                                                             geometry,
-                                                             instance_data,
-                                                             instance_data_size))
                     {
-                        if (primitive->HasDeferredMI())
-                            primitive->BindMaterialInstance(resolved);
-
-                        primitiveComp->SetOverrideMaterial(resolved);
+                        auto slot = registry->ResolveMI(hgl::ecs::ToRuntimeEntityKey(entity_id),
+                                                        primitiveComp->GetSemanticMaterial(),
+                                                        request,
+                                                        geometry,
+                                                        instance_data,
+                                                        instance_data_size);
+                        if (slot.IsValid())
+                            primitive->BindMaterialSlot(slot);
                     }
                 }
             }

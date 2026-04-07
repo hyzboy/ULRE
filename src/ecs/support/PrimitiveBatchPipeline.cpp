@@ -699,8 +699,8 @@ namespace hgl::ecs
                     if (semantic_id == 0)
                         continue;
 
-                    auto *mi = itemPtr->GetMaterialInstance();
-                    auto *dom = mi ? mi->GetDomain() : nullptr;
+                    auto *prim_diag = pc ? pc->GetPrimitive() : nullptr;
+                    auto *dom = prim_diag ? prim_diag->GetDomain() : nullptr;
 
                     semantic_domains[semantic_id].insert(dom);
                     ++semantic_item_counts[semantic_id];
@@ -744,8 +744,8 @@ namespace hgl::ecs
                         continue;
 
                     auto *mat = itemPtr->GetMaterial();
-                    auto *mi = itemPtr->GetMaterialInstance();
-                    auto *dom = mi ? mi->GetDomain() : nullptr;
+                    auto *prim_diag = itemPtr->GetPrimitive();
+                    auto *dom = prim_diag ? prim_diag->GetDomain() : nullptr;
 
                     if (!mat)
                         continue;
@@ -763,11 +763,11 @@ namespace hgl::ecs
                             semantic_id = pc->GetSemanticMaterial();
                     }
 
-                    LogWarning("[ECS::PrimitiveBatchPipeline] split-sample: entity_key=%llu semantic_id=%llu material=%p mi=%p domain=%p",
+                    LogWarning("[ECS::PrimitiveBatchPipeline] split-sample: entity_key=%llu semantic_id=%llu material=%p prim=%p domain=%p",
                                static_cast<unsigned long long>(runtime_entity_key),
                                static_cast<unsigned long long>(semantic_id),
                                static_cast<void *>(mat),
-                               static_cast<void *>(mi),
+                               static_cast<void *>(prim_diag),
                                static_cast<void *>(dom));
 
                     if (++logged >= 8)

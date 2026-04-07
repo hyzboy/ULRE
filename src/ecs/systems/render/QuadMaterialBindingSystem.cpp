@@ -7,6 +7,7 @@
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/SamplerSlot.h>
 #include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/PrimitiveMaterialSlot.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -154,7 +155,9 @@ namespace hgl::ecs
          && current_primitive != shared_primitive
          && current_primitive->GetMaterial() == mi->GetMaterial())
         {
-            if (!current_primitive->ChangeMaterialInstance(mi))
+            // ChangeMaterialInstance removed in Phase 2c — use BindMaterialSlot instead
+            hgl::graph::PrimitiveMaterialSlot slot{mi->GetMaterial(), mi->GetDomain(), mi->GetMIID(), mi->GetVIL(), mi->GetRenderPreset()};
+            if (!current_primitive->BindMaterialSlot(slot))
                 return false;
 
             quad_primitive = current_primitive;
@@ -261,7 +264,9 @@ namespace hgl::ecs
          && current_primitive != dr->primitive
          && current_primitive->GetMaterial() == mi->GetMaterial())
         {
-            if (!current_primitive->ChangeMaterialInstance(mi))
+            // ChangeMaterialInstance removed in Phase 2c — use BindMaterialSlot instead
+            hgl::graph::PrimitiveMaterialSlot slot{mi->GetMaterial(), mi->GetDomain(), mi->GetMIID(), mi->GetVIL(), mi->GetRenderPreset()};
+            if (!current_primitive->BindMaterialSlot(slot))
                 return false;
 
             quad_primitive = current_primitive;

@@ -11,6 +11,7 @@ namespace hgl::graph
 {
     class Texture2D;
     class Sampler;
+    class MaterialInstance;
 }
 
 namespace hgl::ecs
@@ -52,8 +53,9 @@ namespace hgl::ecs
         hgl::OSString       applied_texture;    ///< Last applied texture path
         bool                texture_dirty;      ///< Texture path changed
         std::string         domain_tag;         ///< Domain tag for texture array batching (empty = legacy single-texture path)
-        class hgl::graph::Texture2D* texture;   ///< Cached texture (optional)
-        class hgl::graph::Sampler* sampler;     ///< Cached sampler (optional)
+        class hgl::graph::Texture2D* texture;       ///< Cached texture (optional)
+        class hgl::graph::Sampler* sampler;         ///< Cached sampler (optional)
+        class hgl::graph::MaterialInstance* override_mi = nullptr; ///< MI for this quad (legacy path)
 
     public:
 
@@ -109,6 +111,10 @@ namespace hgl::ecs
         }
         hgl::graph::Texture2D* GetTexture() const { return texture; }
         hgl::graph::Sampler* GetSampler() const { return sampler; }
+
+        // Legacy MI tracking — used by QuadMaterialBindingSystem (not yet migrated)
+        hgl::graph::MaterialInstance* GetOverrideMaterial() const { return override_mi; }
+        void SetOverrideMaterial(hgl::graph::MaterialInstance* mi) { override_mi = mi; }
 
     public:
 

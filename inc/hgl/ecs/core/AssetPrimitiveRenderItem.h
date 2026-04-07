@@ -11,7 +11,6 @@ namespace hgl
     {
         class Primitive;
         class MaterialTemplate;
-        class MaterialInstance;
     }
 }
 
@@ -63,7 +62,6 @@ namespace hgl::ecs
         glm::mat4                           GetWorldMatrix() const override { return world_matrix; }
 
         graph::Primitive*        GetPrimitive()        const override { return primitive; }
-        graph::MaterialInstance* GetMaterialInstance() const override;
         graph::MaterialTemplate*         GetMaterial()         const override;
 
         // ---- Asset-specific ----

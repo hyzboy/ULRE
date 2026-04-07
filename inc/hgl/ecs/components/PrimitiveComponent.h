@@ -16,7 +16,7 @@ namespace hgl
     {
         class Primitive;
         class MaterialTemplate;
-        class MaterialInstance;
+        class MaterialInstance;  // Legacy/gizmo overlay path
     }
 }
 
@@ -39,7 +39,6 @@ namespace hgl::ecs
     private:
 
         hgl::graph::Primitive* primitive;              // The primitive to render (not owned)
-        hgl::graph::MaterialInstance* overrideMaterial; // Optional material override (not owned)
         hgl::graph::SemanticMaterialId semanticMaterialId = 0; // 0 = unset
 
     public:
@@ -47,7 +46,6 @@ namespace hgl::ecs
         explicit PrimitiveComponent(const std::string& name = "Primitive")
             : RenderableComponent(name)
             , primitive(nullptr)
-            , overrideMaterial(nullptr)
         {
         }
 
@@ -61,19 +59,16 @@ namespace hgl::ecs
         void SetPrimitive(hgl::graph::Primitive* prim);
         hgl::graph::Primitive* GetPrimitive() const { return primitive; }
 
-        // MaterialTemplate override
-        void SetOverrideMaterial(hgl::graph::MaterialInstance* mi);
-        hgl::graph::MaterialInstance* GetOverrideMaterial() const { return overrideMaterial; }
-        void ClearOverrideMaterial() { overrideMaterial = nullptr; }
-
         // Semantic material id (Phase 2 path)
         void SetSemanticMaterial(hgl::graph::SemanticMaterialId id) { semanticMaterialId = id; }
         hgl::graph::SemanticMaterialId GetSemanticMaterial() const { return semanticMaterialId; }
         bool HasSemanticMaterial() const { return semanticMaterialId != 0; }
 
-        // MaterialTemplate access (returns override if set, otherwise primitive's material)
-        hgl::graph::MaterialInstance* GetMaterialInstance() const;
+        // MaterialTemplate access
         hgl::graph::MaterialTemplate* GetMaterial() const;
+
+        // Material override — legacy/gizmo path (calls primitive->BindMaterialSlot internally)
+        void SetOverrideMaterial(hgl::graph::MaterialInstance* mi);
 
         // Bounding volume
         bool GetLocalAABB(hgl::math::AABB& outAABB) const;
