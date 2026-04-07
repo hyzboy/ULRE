@@ -9,7 +9,6 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKRingBufferWrapper.h>
 #include<hgl/ecs/core/RenderItem.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<vector>
 #include <hgl/type/UnorderedMap.h>
 #include<hgl/common/RenderOptions.h>
@@ -22,13 +21,13 @@ namespace hgl::graph
 namespace hgl::ecs
 {
     /**
-     * 材质实例集合 - 用于去重和索引管理
+     * Primitive 集合 - 用于去重和 SSBO 槽位索引管理（B6: 替代 MaterialInstanceSet）
      */
-    class MaterialInstanceSet
+    class PrimitiveSet
     {
     private:
-        std::vector<graph::MaterialInstance*> instances;
-        hgl::UnorderedMap<graph::MaterialInstance*, uint16> index_map;
+        std::vector<graph::Primitive*> instances;
+        hgl::UnorderedMap<graph::Primitive*, uint16> index_map;
 
     public:
         void Clear()
@@ -43,29 +42,29 @@ namespace hgl::ecs
             index_map.Reserve(count);
         }
 
-        void Add(graph::MaterialInstance* mi)
+        void Add(graph::Primitive* prim)
         {
-            if (!mi)
+            if (!prim)
                 return;
 
-            if (!index_map.ContainsKey(mi))
+            if (!index_map.ContainsKey(prim))
             {
                 uint16 index = static_cast<uint16>(instances.size());
-                instances.push_back(mi);
-                index_map[mi] = index;
+                instances.push_back(prim);
+                index_map[prim] = index;
             }
         }
 
-        uint16 Find(graph::MaterialInstance* mi) const
+        uint16 Find(graph::Primitive* prim) const
         {
-            auto index = index_map.GetValuePointer(mi);
+            auto index = index_map.GetValuePointer(prim);
             return index ? *index : 0;
         }
 
         size_t GetCount() const { return instances.size(); }
         size_t GetAllocCount() const { return instances.capacity(); }
 
-        const std::vector<graph::MaterialInstance*>& GetInstances() const { return instances; }
+        const std::vector<graph::Primitive*>& GetInstances() const { return instances; }
 
         // 迭代器支持
         auto begin() { return instances.begin(); }
@@ -90,7 +89,7 @@ namespace hgl::ecs
         graph::MaterialTemplate* material;              ///<所属材质
 
     private:    // 材质实例数据
-        MaterialInstanceSet mi_set;         ///<材质实例集合（去重）
+        PrimitiveSet prim_set;              ///<Primitive 集合（按 mi_id 去重，B6）
 
         uint32_t material_instance_data_bytes;      ///<单个材质实例数据字节数
         graph::DeviceBuffer* material_instance_buffer;  ///<材质实例数据(UBO/SSBO)
