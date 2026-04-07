@@ -31,7 +31,7 @@ class MaterialResourceDomain
 private:
 
     friend class MaterialManager;
-    friend class MaterialTemplate;          ///< MaterialTemplate::CreateMI 通过便利构造函数创建默认域
+    friend class MaterialTemplate;
 
     MaterialResourceDomain(uint32_t mi_bytes, uint32_t mi_count);
     explicit MaterialResourceDomain(MaterialTemplate *mtl);
@@ -49,7 +49,7 @@ public:
     uint32_t GetMIMaxCount()  const { return mi_max_count; }
 
     // ----------------------------------------------------------------
-    // MI 槽位管理 — 仅被 MaterialInstanceData 析构路径和 CreateMI 使用
+    // MI 槽位管理 — 仅被 MaterialInstanceData 析构路径使用
     // ----------------------------------------------------------------
 
     /**

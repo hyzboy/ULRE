@@ -304,7 +304,6 @@ void MaterialManager::ApplyMaterialFinalizePlan(MaterialTemplate *mtl, const Ans
 
     mtl->mi_data_bytes = finalize_plan.mi_data_bytes;
     mtl->mi_max_count  = finalize_plan.mi_max_count;
-    // Phase 5: MI 数据池随第一次 CreateMI 时通过 default_domain 懒初始化，此处不再直接分配
 }
 
 MaterialTemplate *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
@@ -372,6 +371,16 @@ MaterialTemplate *MaterialManager::GetFallbackMaterial()
         TryInitializeFallbackMaterial();
 
     return fallback_material;
+}
+
+MaterialResourceDomain *MaterialManager::GetOrCreateDefaultDomain(MaterialTemplate *mtl)
+{
+    if (!mtl || !mtl->hasMI()) return nullptr;
+    auto it = default_domain_map.find(mtl);
+    if (it != default_domain_map.end()) return it->second;
+    MaterialResourceDomain *domain = CreateMaterialResourceDomain(mtl);
+    default_domain_map[mtl] = domain;
+    return domain;
 }
 
 void MaterialManager::BindInstanceMaterial(MaterialInstance *mi, MaterialTemplate *material)
@@ -786,31 +795,20 @@ MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanc
         MaterialTemplate *mtl = spec.material;
         if(!mtl) return nullptr;
 
-        if(spec.vil_cfg)
+        MaterialResourceDomain *def_domain = GetOrCreateDefaultDomain(mtl);
+        if(!def_domain) return nullptr;
+
+        const VIL *use_vil = spec.vil_cfg ? mtl->CreateVIL(spec.vil_cfg)
+                                          : (spec.vil ? spec.vil : mtl->GetDefaultVIL());
+
+        mi = CreateMaterialInstance(def_domain, mtl, use_vil,
+                                    spec.instance_data, spec.instance_data_size);
+        if(mi)
         {
-            mi = mtl->CreateMI(this, spec.vil_cfg);
-            if(mi)
-            {
-                Add(mi);
-                BindInstanceMaterial(mi, mtl);
-                if(spec.instance_data && spec.instance_data_size > 0)
-                    mi->WriteMIData(spec.instance_data, spec.instance_data_size);
-            }
-        }
-        else
-        {
-            mi = mtl->CreateMI(this, spec.vil);
-            if(mi)
-            {
-                Add(mi);
-                BindInstanceMaterial(mi, mtl);
-                VulkanDevice *device = GetDevice();
-                if(device)
-                    device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
-                                      ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
-                if(spec.instance_data && spec.instance_data_size > 0)
-                    mi->WriteMIData(spec.instance_data, spec.instance_data_size);
-            }
+            VulkanDevice *device = GetDevice();
+            if(device)
+                device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
+                                    ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
         }
     }
 

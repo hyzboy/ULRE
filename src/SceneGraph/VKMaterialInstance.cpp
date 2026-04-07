@@ -7,45 +7,6 @@
 namespace hgl::graph{
 
 // ---------------------------------------------------------------------------
-// MaterialTemplate::CreateMI — 旧路径（不涉及 MaterialResourceDomain）
-// ---------------------------------------------------------------------------
-
-MaterialInstance *MaterialTemplate::CreateMI(MaterialManager *material_manager, const VIL *vil)
-{
-    // Phase 5: 旧路径统一通过懒初始化的 default_domain 分配 MI 槽位
-    if(!default_domain && hasMI())
-        default_domain = new MaterialResourceDomain(this);
-
-    int mi_id = default_domain ? default_domain->AllocMISlot() : -1;
-
-    auto *mi = new MaterialInstance(material_manager, default_domain, vil ? vil : GetDefaultVIL(), mi_id);
-    mi->InitMITLayout(texture_array_slot_flags);
-    return mi;
-}
-
-MaterialInstance *MaterialTemplate::CreateMI(MaterialManager *material_manager, const VILConfig *vil_cfg)
-{
-    return CreateMI(material_manager, CreateVIL(vil_cfg));
-}
-
-void MaterialTemplate::ReleaseMI(int mi_id)
-{
-    // Phase 5: 保留接口兼容性；通过 default_domain 代理释放
-    if(mi_id < 0 || !default_domain) return;
-
-    default_domain->FreeMISlot(mi_id);
-}
-
-void *MaterialTemplate::GetMIData(int id)
-{
-    // Phase 5: 通过 default_domain 代理访问
-    if(!default_domain)
-        return nullptr;
-
-    return default_domain->GetMIData(id);
-}
-
-// ---------------------------------------------------------------------------
 // MaterialInstanceData — constructors / destructor
 // ---------------------------------------------------------------------------
 

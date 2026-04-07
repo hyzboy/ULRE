@@ -3,7 +3,6 @@
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
-#include<hgl/vk/VKMaterialResourceDomain.h>        // Phase 5: default_domain
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/UBOAccessor.h>
@@ -26,7 +25,6 @@ MaterialTemplate::MaterialTemplate(const AnsiString &n,const mtl::MaterialCreate
     mem_zero(mp_array);
 
     mi_data_bytes=0;
-    default_domain=nullptr;
     mi_max_count=0;
 
     has_l2w_matrix=mci->HasLocalToWorld();
@@ -34,8 +32,6 @@ MaterialTemplate::MaterialTemplate(const AnsiString &n,const mtl::MaterialCreate
 
 MaterialTemplate::~MaterialTemplate()
 {
-    SAFE_CLEAR(default_domain);   // Phase 5: dtor frees lazy default domain
-
     ReleaseVertexInput(vertex_input);
     delete shader_maps;             //不用SAFE_CLEAR是因为这个一定会有
     SAFE_CLEAR(desc_manager);

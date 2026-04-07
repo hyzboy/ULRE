@@ -114,6 +114,8 @@ private:
     AutoIdObjectManager<MaterialInstanceID,         MaterialInstance>       rm_material_instance;       ///<材质实例合集
     std::unordered_map<const MaterialInstance *,    MaterialTemplate *>        material_instance_material_map;
 
+    std::unordered_map<MaterialTemplate *,          MaterialResourceDomain *>   default_domain_map;         ///< Phase 1: template → lazy default domain
+
     // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding
     std::unordered_map<MaterialResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
 
@@ -155,6 +157,7 @@ private: // Helper methods with integrated DebugUtils
 
      MaterialTemplate *TryInitializeFallbackMaterial();
      MaterialTemplate *GetFallbackMaterial();
+     MaterialResourceDomain *GetOrCreateDefaultDomain(MaterialTemplate *mtl);
     void BindInstanceMaterial(MaterialInstance *mi, MaterialTemplate *material);
     void ForgetInstanceMaterial(MaterialInstance *mi);
 
@@ -182,6 +185,13 @@ public: //Release
     {
         if (!mtl)
             return;
+
+        auto dom_it = default_domain_map.find(mtl);
+        if (dom_it != default_domain_map.end())
+        {
+            ReleaseMaterialResourceDomain(dom_it->second);
+            default_domain_map.erase(dom_it);
+        }
 
         const AnsiString &name = mtl->GetName();
         if (!name.IsEmpty())
@@ -234,6 +244,11 @@ public: // Override Release from GraphModule - cleanup all resources
             delete kv.first;
         }
         domain_bindings_map.clear();
+
+        // Phase 1: 清理懒初始化的 default domain
+        for (auto &kv : default_domain_map)
+            delete kv.second;
+        default_domain_map.clear();
 
         // 清理所有材质
         if (rm_shader_program.GetCount() > 0)
