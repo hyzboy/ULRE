@@ -119,6 +119,17 @@ private:
     // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding
     std::unordered_map<MaterialResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
 
+    // Phase E — domain 句柄表（domain_id + generation，支持域整体替换）
+    struct DomainEntry {
+        MaterialResourceDomain *domain     = nullptr;
+        uint32_t                generation = 0;  // 0 = invalid/released
+    };
+    std::vector<DomainEntry>                                    domain_table_;    // index 0 = invalid sentinel
+    std::unordered_map<MaterialResourceDomain *, uint32_t>      domain_id_map_;   // reverse: ptr → id
+
+    uint32_t RegisterDomain  (MaterialResourceDomain *domain);  ///< 首次注册返回新 id（1-based），重复注册返回已有 id
+    void     UnregisterDomain(MaterialResourceDomain *domain);  ///< 标记条目失效（generation 保留，domain 置 null）
+
     std::atomic<uint64_t> acquire_material_requests {0};
     std::atomic<uint64_t> acquire_material_cache_lookups {0};
     std::atomic<uint64_t> acquire_material_cache_hits {0};
@@ -246,6 +257,10 @@ public: // Override Release from GraphModule - cleanup all resources
         for (auto &kv : default_domain_map)
             delete kv.second;
         default_domain_map.clear();
+
+        // Phase E: 清理 domain 句柄表
+        domain_table_.clear();
+        domain_id_map_.clear();
 
         // 清理所有材质
         if (rm_shader_program.GetCount() > 0)
@@ -384,6 +399,19 @@ public: // MaterialResourceDomain — Phase 1 / Phase 3
      * 调用前请确保该域不再有存活的 MaterialInstance（否则 FreeMISlot 会访问已释放对象）。
      */
     void ReleaseMaterialResourceDomain(MaterialResourceDomain *domain);
+
+    // Phase E — domain 句柄解析与热替换
+    /**
+     * 通过 domain_id + generation 安全查找 domain 指针。
+     * generation 不匹配（域已被替换）或 id 越界时返回 nullptr。
+     */
+    MaterialResourceDomain *ResolveDomain(uint32_t domain_id, uint32_t generation) const;
+
+    /**
+     * 热替换指定槽位的 domain，并递增 generation 令旧 MI 句柄失效。
+     * new_domain 可为 nullptr（仅失效不替换）。
+     */
+    void ReplaceDomain(uint32_t domain_id, MaterialResourceDomain *new_domain);
 
 public: // MaterialResourceDomain MaterialInstanceData creation (Phase 1)
 

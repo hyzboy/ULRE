@@ -4,6 +4,7 @@
 
 #include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/vk/VKMaterialResourceDomain.h>
+#include <hgl/graph/module/MaterialManager.h>
 
 namespace hgl::graph {
 
@@ -13,7 +14,8 @@ MaterialInstance::MaterialInstance()
 }
 
 MaterialInstance::MaterialInstance(const PrimitiveMaterialSlot &slot)
-    : material(slot.material_template), domain(slot.domain), vil(slot.vil), mi_id(slot.mi_id), render_preset(slot.preset)
+    : material(slot.material_template), vil(slot.vil), mi_id(slot.mi_id), render_preset(slot.preset)
+    // domain_resolver/domain_id/domain_generation left at defaults (0) — this ctor has no manager context
 {
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }
@@ -23,12 +25,21 @@ MaterialInstance::~MaterialInstance()
     delete[] mit_packed;
 }
 
+// Phase E: resolve domain pointer through the manager's domain table
+MaterialResourceDomain *MaterialInstance::GetDomain() const
+{
+    if (!domain_resolver || domain_id == 0)
+        return nullptr;
+    return domain_resolver->ResolveDomain(domain_id, domain_generation);
+}
+
 void *MaterialInstance::GetMIData()
 {
-    if (!domain || mi_id < 0)
+    auto *d = GetDomain();
+    if (!d || mi_id < 0)
         return nullptr;
 
-    return domain->GetMIData(mi_id);
+    return d->GetMIData(mi_id);
 }
 
 void MaterialInstance::WriteMIData(const void *data, uint32_t size)
