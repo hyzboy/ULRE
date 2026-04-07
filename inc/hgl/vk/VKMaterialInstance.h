@@ -22,6 +22,7 @@ class MaterialInstance
     MaterialManager *       domain_resolver   = nullptr; ///< non-owning back-ref to manager, for domain lookup (Phase E)
     uint32_t                domain_id         = 0;       ///< index into MaterialManager::domain_table_ (0 = invalid)
     uint32_t                domain_generation = 0;       ///< generation at time of MI creation
+    bool                    owns_slot         = false;   ///< true when this MI is responsible for releasing mi_id back to domain
     const VIL *             vil               = nullptr;
     int                     mi_id             = -1;
     GraphicsPipelinePreset  render_preset     = GraphicsPipelinePreset::Solid3D;
@@ -36,12 +37,15 @@ public:
     MaterialInstance(const PrimitiveMaterialSlot &slot);
     ~MaterialInstance();
 
+    // Legacy semantic getter: prefer carrying material_template in PrimitiveMaterialSlot/Primitive instead.
     MaterialTemplate *GetMaterial() const { return material; }
     MaterialResourceDomain *GetDomain() const;  ///< resolves domain_id+generation through domain_resolver (Phase E)
     uint32_t GetDomainID()         const { return domain_id; }
     uint32_t GetDomainGeneration() const { return domain_generation; }
+    // Legacy semantic getter: prefer carrying VIL in PrimitiveMaterialSlot/Primitive instead.
     const VIL *GetVIL() const { return vil; }
     int GetMIID() const { return mi_id; }
+    // Legacy semantic getters/setters: prefer carrying preset in PrimitiveMaterialSlot/Primitive instead.
     GraphicsPipelinePreset GetRenderPreset() const { return render_preset; }
     void SetRenderPreset(GraphicsPipelinePreset p) { render_preset = p; }
 

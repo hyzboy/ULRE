@@ -16,12 +16,19 @@ MaterialInstance::MaterialInstance()
 MaterialInstance::MaterialInstance(const PrimitiveMaterialSlot &slot)
     : material(slot.material_template), vil(slot.vil), mi_id(slot.mi_id), render_preset(slot.preset)
     // domain_resolver/domain_id/domain_generation left at defaults (0) — this ctor has no manager context
+    // and therefore cannot safely claim slot ownership.
 {
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }
 
 MaterialInstance::~MaterialInstance()
 {
+    if (owns_slot && mi_id >= 0)
+    {
+        if (auto *domain = GetDomain())
+            domain->FreeMISlot(mi_id);
+    }
+
     delete[] mit_packed;
 }
 

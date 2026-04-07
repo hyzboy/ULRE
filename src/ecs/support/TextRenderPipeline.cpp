@@ -490,19 +490,23 @@ namespace hgl::ecs
                 graph::VILConfig vil_config;
                 vil_config.Add(graph::VAN::Position, VF_V2I16);
 
-                graph::MaterialInstanceSpec mi_spec;
-                mi_spec.material = resources->material;
-                mi_spec.vil_cfg = &vil_config;
-                mi_spec.preset = graph::GraphicsPipelinePreset::Solid2D;
+                resources->cached_preset = graph::GraphicsPipelinePreset::Solid2D;
+                resources->cached_vil = resources->material->CreateVIL(&vil_config);
+                auto *domain = material_manager->GetOrCreateDefaultDomain(resources->material);
 
-                mi = material_manager->AcquireMaterialInstance(mi_spec);
+                if (!resources->cached_vil || !domain)
+                    continue;
+
+                mi = material_manager->CreateMaterialInstance(domain,
+                                                             resources->material,
+                                                             resources->cached_vil,
+                                                             nullptr,
+                                                             0);
                 if (!mi)
                     continue;
 
+                mi->SetRenderPreset(resources->cached_preset);
                 resources->material_instance = mi;
-                // Phase B: cache preset and vil
-                resources->cached_preset = mi_spec.preset;
-                resources->cached_vil = resources->material->CreateVIL(&vil_config);
                 input.dirty = true;
             }
 
@@ -524,7 +528,8 @@ namespace hgl::ecs
             if (!geometry)
             {
                 const uint32_t estimate = input.total_chars;
-                geometry = new graph::TextGeometry(device, mi->GetVIL(), estimate);
+                const graph::VIL *use_vil = resources->cached_vil ? resources->cached_vil : mi->GetVIL();
+                geometry = new graph::TextGeometry(device, use_vil, estimate);
                 resources->geometry = geometry;
             }
 

@@ -177,15 +177,11 @@ namespace hgl::graph
 
             vil_config.Add(VAN::Position,VF_V2I16);
 
-            MaterialInstanceSpec mi_spec;
-            mi_spec.material = mtl_fs;
-            mi_spec.vil_cfg = &vil_config;
-            mi_spec.instance_data = &fixed_style;
-            mi_spec.instance_data_size = sizeof(fixed_style);
-            mi_spec.preset = GraphicsPipelinePreset::Solid2D;
-
-            mi_fs=mtl_manager->AcquireMaterialInstance(mi_spec);
+            auto *domain = mtl_manager->GetOrCreateDefaultDomain(mtl_fs);
+            const VIL *vil = mtl_fs->CreateVIL(&vil_config);
+            mi_fs = mtl_manager->CreateMaterialInstance(domain, mtl_fs, vil, &fixed_style, sizeof(fixed_style));
             if(!mi_fs)return(false);
+            mi_fs->SetRenderPreset(GraphicsPipelinePreset::Solid2D);
         }
 
         (void)rp;

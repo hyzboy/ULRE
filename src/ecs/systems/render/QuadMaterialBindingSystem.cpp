@@ -123,13 +123,20 @@ namespace hgl::ecs
         if (!quad_material)
             return false;
 
-        graph::MaterialInstanceSpec spec;
-        spec.material = quad_material;
         graph::GraphicsPipelinePreset current_preset = QuadResourcePrepareSystem::GetPresetForWorld(world);
-        spec.preset = current_preset;
-        auto* mi = material_manager->AcquireMaterialInstance(spec);
+        auto *domain = material_manager->GetOrCreateDefaultDomain(quad_material);
+        if (!domain)
+            return false;
+
+        auto* mi = material_manager->CreateMaterialInstance(domain,
+                                                            quad_material,
+                                                            quad_material->GetDefaultVIL(),
+                                                            nullptr,
+                                                            0);
         if (!mi)
             return false;
+
+        mi->SetRenderPreset(current_preset);
 
         graph::MaterialTemplate *previous_material = nullptr;
         if (auto *previous_mi = quad->GetOverrideMaterial())
@@ -238,13 +245,20 @@ namespace hgl::ecs
             return false;
 
         // Create a MaterialInstance from the domain's shared MaterialTemplate
-        graph::MaterialInstanceSpec spec;
-        spec.material = dr->material;
         graph::GraphicsPipelinePreset current_preset = QuadResourcePrepareSystem::GetPresetForWorld(world);
-        spec.preset = current_preset;
-        auto* mi = material_manager->AcquireMaterialInstance(spec);
+        auto *domain = dr->dmb ? dr->dmb->GetDomain() : nullptr;
+        if (!domain)
+            return false;
+
+        auto* mi = material_manager->CreateMaterialInstance(domain,
+                                                            dr->material,
+                                                            dr->material->GetDefaultVIL(),
+                                                            nullptr,
+                                                            0);
         if (!mi)
             return false;
+
+        mi->SetRenderPreset(current_preset);
 
         // Set the texture array layer for this quad's texture
         mi->SetTextureArrayLayer(graph::mtl::SamplerSlot::BaseColor, static_cast<uint32_t>(layer));

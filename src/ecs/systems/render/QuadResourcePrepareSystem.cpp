@@ -27,7 +27,6 @@ namespace hgl::ecs
 {
     // Static member initialization
     graph::Primitive* QuadResourcePrepareSystem::shared_primitive = nullptr;
-    graph::MaterialInstance* QuadResourcePrepareSystem::shared_material_instance = nullptr;
     graph::RenderTargetFormat* QuadResourcePrepareSystem::shared_render_pass = nullptr;
     graph::Sampler* QuadResourcePrepareSystem::shared_sampler = nullptr;
 
@@ -273,11 +272,13 @@ namespace hgl::ecs
         if (!shared_material)
             return false;
 
-        graph::MaterialInstanceSpec spec;
-        spec.material = shared_material;
-        spec.preset = GetPresetForWorld(world);
-        shared_material_instance = material_manager->AcquireMaterialInstance(spec);
-        if (!shared_material_instance)
+        const auto current_preset = GetPresetForWorld(world);
+        const graph::PrimitiveMaterialSlot shared_slot = material_manager->AllocMaterialInstanceSlot(
+            material_manager->GetOrCreateDefaultDomain(shared_material),
+            shared_material,
+            shared_material->GetDefaultVIL(),
+            current_preset);
+        if (!shared_slot.IsValid())
             return false;
 
         // Phase B: use material's VIL directly instead of MI getter
@@ -302,7 +303,7 @@ namespace hgl::ecs
         if (!pc->WriteIBO(index_data))
             return false;
 
-        shared_primitive = primitive_manager->CreatePrimitive(pc.get(), shared_material_instance->ToSlot());
+        shared_primitive = primitive_manager->CreatePrimitive(pc.get(), shared_slot);
         if (!shared_primitive)
             return false;
 
@@ -344,14 +345,10 @@ namespace hgl::ecs
         if (geometry)
             delete geometry;
 
-        if (shared_material_instance && material_manager)
-            material_manager->Destroy(shared_material_instance);
-
         if (shared_sampler && sampler_manager)
             sampler_manager->Release(shared_sampler);
 
         shared_primitive = nullptr;
-        shared_material_instance = nullptr;
         shared_render_pass = nullptr;
         shared_sampler = nullptr;
     }
@@ -531,12 +528,14 @@ namespace hgl::ecs
                 // Phase B: use material's VIL directly instead of creating temp MI
                 const graph::VIL *use_vil = dr.material->GetDefaultVIL();
                 
-                graph::MaterialInstanceSpec mi_spec;
-                mi_spec.material = dr.material;
-                mi_spec.preset   = GetPresetForWorld(world);
-                auto* temp_mi = material_manager->AcquireMaterialInstance(mi_spec);
+                const auto current_preset = GetPresetForWorld(world);
+                const graph::PrimitiveMaterialSlot slot = material_manager->AllocMaterialInstanceSlot(
+                    dr.dmb->GetDomain(),
+                    dr.material,
+                    use_vil,
+                    current_preset);
 
-                if (temp_mi)
+                if (slot.IsValid())
                 {
                     auto pc = std::make_unique<graph::GeometryCreater>(device, use_vil);
                     pc->Init(AnsiString(("DomainQuad_" + dr.domain_tag).c_str()), 4, 6, graph::IndexType::U16);
@@ -553,7 +552,7 @@ namespace hgl::ecs
                     pc->WriteVAB(graph::VAN::Position, VF_V3F, position_data);
                     pc->WriteIBO(index_data);
 
-                    dr.primitive = primitive_manager->CreatePrimitive(pc.get(), temp_mi->ToSlot());
+                    dr.primitive = primitive_manager->CreatePrimitive(pc.get(), slot);
                 }
             }
 

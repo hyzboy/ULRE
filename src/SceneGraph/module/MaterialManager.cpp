@@ -754,6 +754,15 @@ MaterialTemplate *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey 
 
 MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)
 {
+    static bool s_warned_legacy_acquire_mi = false;
+    if (!s_warned_legacy_acquire_mi)
+    {
+        s_warned_legacy_acquire_mi = true;
+        std::fprintf(stderr,
+            "[MaterialManager] AcquireMaterialInstance is deprecated. "
+            "Prefer slot-first APIs: AllocMaterialInstanceSlot or MaterialAssetRegistry::ResolveMI(...).\n");
+    }
+
     acquire_mi_requests.fetch_add(1);
 
     if(!spec.IsValid())
@@ -1031,6 +1040,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialResourceDomain
     const uint32_t d_id   = RegisterDomain(domain);
     mi->domain_id         = d_id;
     mi->domain_generation = (d_id < static_cast<uint32_t>(domain_table_.size())) ? domain_table_[d_id].generation : 0u;
+    mi->owns_slot         = true;
     mi->vil      = use_vil;
     mi->mi_id    = mi_id;
     mi->InitMITLayout(material->GetTextureArraySlotFlags());

@@ -573,6 +573,14 @@ MaterialInstance *MaterialAssetRegistry::CreateMI(
     const void *instance_data,
     uint32_t instance_data_size)
 {
+    static bool s_warned_create_mi_compat = false;
+    if (!s_warned_create_mi_compat)
+    {
+        s_warned_create_mi_compat = true;
+        LogWarning("[MaterialAssetRegistry] CreateMI compatibility path still uses AcquireMaterialInstance. "
+                   "Prefer slot-first resolve/binding flow for new callsites.");
+    }
+
     if (!handle.IsValid())
         return nullptr;
 
