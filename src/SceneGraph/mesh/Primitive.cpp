@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialInstance.h>
+#include<cstring>
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
@@ -55,6 +56,27 @@ Primitive::Primitive(Geometry *r,MaterialInstance *mi,GraphicsPipelinePreRaster 
 
     data_buffer=gdb;
     draw_range.Set(geometry);
+
+    // Phase 2a: populate direct fields from MI (Primitive is friend of MaterialInstance)
+    if(mi)
+    {
+        material_template = mi->GetMaterial();
+        domain            = mi->GetDomain();
+        mi_id             = mi->GetMIID();
+        vil               = mi->GetVIL();
+        render_preset     = mi->GetRenderPreset();
+        std::memcpy(mit_slot_offset, mi->mit_slot_offset, sizeof(mit_slot_offset));
+        mit_packed_count  = mi->mit_packed_count;
+        if(mit_packed_count > 0)
+        {
+            mit_packed = new uint32_t[mit_packed_count];
+            std::memcpy(mit_packed, mi->mit_packed, mit_packed_count * sizeof(uint32_t));
+        }
+    }
+    else
+    {
+        std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
+    }
 }
 
 Primitive::Primitive(Geometry *r,SemanticMaterialId sid,uint32_t vil_hash)
@@ -67,11 +89,15 @@ Primitive::Primitive(Geometry *r,SemanticMaterialId sid,uint32_t vil_hash)
 
     deferred_semantic_id=sid;
     deferred_vil_hash=vil_hash;
+
+    // Phase 2a: zero-init MIT for deferred primitives
+    std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }
 
 Primitive::~Primitive()
 {
     SAFE_CLEAR(data_buffer);
+    delete[] mit_packed;
 }
 
 bool Primitive::UpdateGeometry()
@@ -85,10 +111,10 @@ bool Primitive::UpdateGeometry()
     if(draw_range.index_count>draw_range.data_index_count)
         draw_range.index_count = draw_range.data_index_count;
 
-    if(!data_buffer||!mat_inst)
+    if(!data_buffer||!vil)
         return(false);
 
-    return data_buffer->Update(geometry,mat_inst->GetVIL());
+    return data_buffer->Update(geometry,vil);
 }
 
 bool Primitive::BindMaterialInstance(MaterialInstance *mi)
@@ -134,7 +160,24 @@ bool Primitive::BindMaterialInstance(MaterialInstance *mi)
     data_buffer=geom_data_buffer;
 
     mat_inst=mi;
+    this->vil=vil;  // local var already validated above
     deferred_semantic_id=0;
+
+    // Phase 2a: sync direct fields from MI
+    material_template = mi->GetMaterial();
+    domain            = mi->GetDomain();
+    mi_id             = mi->GetMIID();
+    render_preset     = mi->GetRenderPreset();
+    delete[] mit_packed;
+    mit_packed        = nullptr;
+    mit_packed_count  = 0;
+    std::memcpy(mit_slot_offset, mi->mit_slot_offset, sizeof(mit_slot_offset));
+    mit_packed_count  = mi->mit_packed_count;
+    if(mit_packed_count > 0)
+    {
+        mit_packed = new uint32_t[mit_packed_count];
+        std::memcpy(mit_packed, mi->mit_packed, mit_packed_count * sizeof(uint32_t));
+    }
 
     return(true);
 }
@@ -222,6 +265,57 @@ Primitive *DirectCreatePrimitive(Geometry *geom,SemanticMaterialId sid,uint32_t 
         return(nullptr);
 
     return(new Primitive(geom,sid,vil_hash));
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2a — MI data methods (mirrors MaterialInstance implementation)
+// ---------------------------------------------------------------------------
+
+void Primitive::WriteMIData(const void *data, uint32_t size)
+{
+    if(!data || !size || !material_template || size > material_template->GetMIDataBytes())
+        return;
+
+    void *tp = GetMIData();
+    if(tp)
+        std::memcpy(tp, data, size);
+}
+
+void Primitive::InitMITLayout(uint8_t slot_flags)
+{
+    delete[] mit_packed;
+    mit_packed       = nullptr;
+    mit_packed_count = 0;
+    std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
+
+    if(!slot_flags) return;
+
+    uint32_t offset = 0;
+    for(uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
+    {
+        if(slot_flags & (1u << s))
+        {
+            mit_slot_offset[s] = static_cast<int8_t>(offset);
+            ++offset;
+        }
+    }
+    mit_packed_count = offset;
+    mit_packed = new uint32_t[mit_packed_count];
+    std::memset(mit_packed, 0, mit_packed_count * sizeof(uint32_t));
+}
+
+void Primitive::SetTextureArrayLayer(mtl::SamplerSlot slot, uint32_t layer)
+{
+    const int8_t off = mit_slot_offset[uint8_t(slot)];
+    if(off < 0) return;
+    mit_packed[off] = layer;
+}
+
+uint32_t Primitive::GetTextureArrayLayer(mtl::SamplerSlot slot) const
+{
+    const int8_t off = mit_slot_offset[uint8_t(slot)];
+    if(off < 0) return 0;
+    return mit_packed[off];
 }
 
 bool GeometryDataBuffer::Update(const Geometry *geom,const VIL *vil)

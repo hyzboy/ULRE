@@ -47,6 +47,7 @@ private:
     friend class MaterialTemplate;
     friend class MaterialResourceDomain;
     friend class MaterialManager;
+    friend class Primitive;
 
     /// 旧路径构造（domain = nullptr）
     MaterialInstance(MaterialManager *, const VIL *, const int);

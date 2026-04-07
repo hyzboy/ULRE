@@ -17,7 +17,17 @@ namespace hgl::graph{
 */
 class Primitive
 {
-    MaterialInstance *  mat_inst;
+    /// Phase 2a — MI 字段直接内联（Phase 2c 前 mat_inst 保留作桥接）
+    MaterialTemplate           *material_template = nullptr;  ///< primary render key
+    MaterialResourceDomain     *domain            = nullptr;  ///< data pool domain
+    int                         mi_id             = -1;       ///< slot index in domain
+    const VIL                  *vil               = nullptr;  ///< vertex input layout
+    GraphicsPipelinePreset      render_preset     = GraphicsPipelinePreset::Solid3D;
+    int8_t                      mit_slot_offset[mtl::SamplerSlotCount]; ///< per-slot offset into mit_packed (-1 = not active)
+    uint32_t                    mit_packed_count  = 0;
+    uint32_t                   *mit_packed        = nullptr;
+
+    MaterialInstance *          mat_inst          = nullptr;  ///< @deprecated Phase 2c bridge
     Geometry *          geometry;
 
     GeometryDataBuffer *data_buffer;
@@ -40,9 +50,24 @@ public:
 
     virtual ~Primitive();
 
-            VkPipelineLayout    GetPipelineLayout   (){return mat_inst ? mat_inst->GetMaterial()->GetPipelineLayout() : VK_NULL_HANDLE;}
-            MaterialTemplate *          GetMaterial         (){return mat_inst ? mat_inst->GetMaterial() : nullptr;}
-            MaterialInstance *  GetMaterialInstance (){return mat_inst;}
+            VkPipelineLayout            GetPipelineLayout   ()      { return material_template ? material_template->GetPipelineLayout() : VK_NULL_HANDLE; }
+            MaterialTemplate *          GetMaterial         ()      { return material_template; }  ///< @deprecated Phase 2c: use GetMaterialTemplate()
+            MaterialInstance *          GetMaterialInstance ()      { return mat_inst; }           ///< @deprecated Phase 2c
+            MaterialTemplate *          GetMaterialTemplate ()const { return material_template; }
+            MaterialResourceDomain *    GetDomain           ()const { return domain; }
+    const   VIL *                       GetVIL              ()const { return vil; }
+            int                         GetMIID             ()const { return mi_id; }
+            GraphicsPipelinePreset      GetRenderPreset     ()const { return render_preset; }
+            void                        SetRenderPreset     (GraphicsPipelinePreset p){ render_preset = p; }
+            void *                      GetMIData           ()      { return (domain && mi_id >= 0) ? domain->GetMIData(mi_id) : nullptr; }
+            void                        WriteMIData         (const void *data, uint32_t size);
+    template<typename T>
+            void                        WriteMIData         (const T &v){ WriteMIData(&v, sizeof(T)); }
+    const   uint32_t                    GetMITDataBytes     ()const { return mit_packed_count * sizeof(uint32_t); }
+            void *                      GetMITData          ()      { return mit_packed; }
+            void                        InitMITLayout       (uint8_t slot_flags);
+            void                        SetTextureArrayLayer(mtl::SamplerSlot slot, uint32_t layer);
+            uint32_t                    GetTextureArrayLayer(mtl::SamplerSlot slot) const;
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
     const   BoundingVolumes &   GetBoundingVolumes  ()const{return geometry->GetBoundingVolumes();}
@@ -58,7 +83,7 @@ public:
 
 public:
 
-            bool                HasDeferredMI       ()const{return mat_inst==nullptr&&deferred_semantic_id!=0;}
+            bool                HasDeferredMI       ()const{return material_template==nullptr&&deferred_semantic_id!=0;}
             SemanticMaterialId  GetDeferredSemanticId()const{return deferred_semantic_id;}
             uint32_t            GetDeferredVILHash  ()const{return deferred_vil_hash;}
 
@@ -73,6 +98,11 @@ public:
                 if(!mat_inst)
                 {
                     mat_inst=mi;
+                    material_template=mi->GetMaterial();
+                    domain=mi->GetDomain();
+                    mi_id=mi->GetMIID();
+                    vil=mi->GetVIL();
+                    render_preset=mi->GetRenderPreset();
                     return(true);
                 }
 
@@ -80,6 +110,11 @@ public:
                     return(false);
 
                 mat_inst=mi;
+                material_template=mi->GetMaterial();
+                domain=mi->GetDomain();
+                mi_id=mi->GetMIID();
+                vil=mi->GetVIL();
+                render_preset=mi->GetRenderPreset();
                 return(true);
             }
 
