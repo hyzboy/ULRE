@@ -39,6 +39,7 @@ private:
     SemanticMaterialId  semantic_material_id = 0;
 
     Primitive *         primitive       = nullptr;
+    bool                mi_color_initialized = false;
 
 private:
 
@@ -149,6 +150,13 @@ public:
 
     void Tick(double delta_time) override
     {
+        if (!mi_color_initialized && primitive && primitive->GetMIData())
+        {
+            const Color4f tube_color = GetColor4f(COLOR::BlenderAxisGreen, 1.0f);
+            primitive->WriteMIData(tube_color);
+            mi_color_initialized = true;
+        }
+
         WorkObject::Tick(delta_time);
     }
 };

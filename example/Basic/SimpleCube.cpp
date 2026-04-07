@@ -38,14 +38,15 @@ class TestApp:public WorkObject
 {
 private:
 
-    ECSContext *  ecs_context      =nullptr;
+    ECSContext *  ecs_context    =nullptr;
     Entity *      cube_entity    =nullptr;
     Entity *      camera_entity  =nullptr;
 
-    MaterialTemplate *          material        = nullptr;
+    MaterialTemplate *  material        = nullptr;
     SemanticMaterialId  semantic_material_id = 0;
 
     Primitive *         primitive       = nullptr;
+    bool                mi_color_initialized = false;
 
 private:
 
@@ -154,6 +155,13 @@ public:
 
     void Tick(double delta_time) override
     {
+        if (!mi_color_initialized && primitive && primitive->GetMIData())
+        {
+            const Color4f cube_color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+            primitive->WriteMIData(cube_color);
+            mi_color_initialized = true;
+        }
+
         WorkObject::Tick(delta_time);
     }
 };
