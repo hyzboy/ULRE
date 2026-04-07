@@ -125,16 +125,16 @@ namespace hgl::ecs
 
         graph::MaterialInstanceSpec spec;
         spec.material = quad_material;
-        spec.preset = QuadResourcePrepareSystem::GetPresetForWorld(world);
+        graph::GraphicsPipelinePreset current_preset = QuadResourcePrepareSystem::GetPresetForWorld(world);
+        spec.preset = current_preset;
         auto* mi = material_manager->AcquireMaterialInstance(spec);
         if (!mi)
             return false;
 
         graph::MaterialTemplate *previous_material = nullptr;
         if (auto *previous_mi = quad->GetOverrideMaterial())
-            previous_material = previous_mi->GetMaterial();
-
-        mi->SetRenderPreset(QuadResourcePrepareSystem::GetPresetForWorld(world));
+            // Phase B: use direct material reference instead of MI getter
+            previous_material = previous_mi->GetDomain() ? quad_material : nullptr;
 
         graph::Primitive *current_primitive = quad->GetPrimitive();
         graph::Geometry *geometry = current_primitive ? current_primitive->GetGeometry() : nullptr;
@@ -152,10 +152,11 @@ namespace hgl::ecs
 
         if (current_primitive
          && current_primitive != shared_primitive
-         && current_primitive->GetMaterial() == mi->GetMaterial())
+         && current_primitive->GetMaterial() == quad_material)
         {
-            // ChangeMaterialInstance removed in Phase 2c — use BindMaterialSlot instead
-            hgl::graph::PrimitiveMaterialSlot slot{mi->GetMaterial(), mi->GetDomain(), mi->GetMIID(), mi->GetVIL(), mi->GetRenderPreset()};
+            // Phase B: construct slot from known values, not from MI getter
+            const graph::VIL *use_vil = quad_material->GetDefaultVIL();
+            hgl::graph::PrimitiveMaterialSlot slot{quad_material, mi->GetDomain(), mi->GetMIID(), use_vil, current_preset};
             if (!current_primitive->BindMaterialSlot(slot))
                 return false;
 
@@ -171,7 +172,8 @@ namespace hgl::ecs
                 primitive_manager->Release(current_primitive);
         }
 
-        graph::MaterialTemplate *material = mi->GetMaterial();
+        // Phase B: use quad_material directly
+        graph::MaterialTemplate *material = quad_material;
         if (!material)
         {
             return false;
@@ -238,12 +240,11 @@ namespace hgl::ecs
         // Create a MaterialInstance from the domain's shared MaterialTemplate
         graph::MaterialInstanceSpec spec;
         spec.material = dr->material;
-        spec.preset   = QuadResourcePrepareSystem::GetPresetForWorld(world);
+        graph::GraphicsPipelinePreset current_preset = QuadResourcePrepareSystem::GetPresetForWorld(world);
+        spec.preset = current_preset;
         auto* mi = material_manager->AcquireMaterialInstance(spec);
         if (!mi)
             return false;
-
-        mi->SetRenderPreset(QuadResourcePrepareSystem::GetPresetForWorld(world));
 
         // Set the texture array layer for this quad's texture
         mi->SetTextureArrayLayer(graph::mtl::SamplerSlot::BaseColor, static_cast<uint32_t>(layer));
@@ -261,10 +262,11 @@ namespace hgl::ecs
 
         if (current_primitive
          && current_primitive != dr->primitive
-         && current_primitive->GetMaterial() == mi->GetMaterial())
+         && current_primitive->GetMaterial() == dr->material)
         {
-            // ChangeMaterialInstance removed in Phase 2c — use BindMaterialSlot instead
-            hgl::graph::PrimitiveMaterialSlot slot{mi->GetMaterial(), mi->GetDomain(), mi->GetMIID(), mi->GetVIL(), mi->GetRenderPreset()};
+            // Phase B: construct slot from known values
+            const graph::VIL *use_vil = dr->material->GetDefaultVIL();
+            hgl::graph::PrimitiveMaterialSlot slot{dr->material, mi->GetDomain(), mi->GetMIID(), use_vil, current_preset};
             if (!current_primitive->BindMaterialSlot(slot))
                 return false;
 

@@ -20,6 +20,7 @@
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdio>
+#include<cstring>
 #include<cstdint>
 #include<vector>
 #include<algorithm>
@@ -836,6 +837,44 @@ bool MaterialManager::UpdateInstanceData(MaterialInstance *mi, const void *data,
 
     mi->WriteMIData(data, data_size);
     return true;
+}
+
+// ============================================================================
+// Phase A: Slot-first API — AllocMaterialInstanceSlot
+// ============================================================================
+
+PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
+    MaterialResourceDomain *domain,
+    MaterialTemplate *material,
+    const VIL *vil,
+    GraphicsPipelinePreset preset,
+    const void *instance_data,
+    uint32_t instance_data_size)
+{
+    if (!domain || !material)
+        return {}; // return empty slot
+
+    const VIL *use_vil = vil ? vil : material->GetDefaultVIL();
+    int mi_id = domain->AllocMISlot();
+    if (mi_id < 0)
+        return {}; // allocation failed
+
+    // Write instance data if provided
+    if (instance_data && instance_data_size > 0)
+    {
+        void *mi_data = domain->GetMIData(mi_id);
+        if (mi_data)
+            std::memcpy(mi_data, instance_data, instance_data_size);
+    }
+
+    // Build and return slot
+    PrimitiveMaterialSlot slot;
+    slot.material_template = material;
+    slot.domain = domain;
+    slot.mi_id = mi_id;
+    slot.vil = use_vil;
+    slot.preset = preset;
+    return slot;
 }
 
 // ============================================================================

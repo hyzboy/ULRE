@@ -6,6 +6,7 @@
 #include<hgl/vk/VKMaterialResourceDomain.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/graph/PrimitiveMaterialSlot.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
 #include<hgl/graph/module/ShaderGenValidationTypes.h>
@@ -336,7 +337,25 @@ public: //MaterialTemplate
 
 public: //MaterialInstanceData
 
+    /// @deprecated Use slot-first path via AllocMaterialInstanceSlot or MaterialAssetRegistry::ResolveMI().
     MaterialInstance *  AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key = nullptr);
+    
+    /// Phase A (NEW): Slot-first 接口 — 按 domain 分配实例槽并直接返回 slot。
+    /// 调用方可直接传给 Primitive::BindMaterialSlot() 或缓存在组件中。
+    /// @param domain 目标数据域（负责 MI 槽位与 MIT 布局）
+    /// @param material MaterialTemplate（提供渲染管线、描述符定义）
+    /// @param vil VertexInputLayout（来自 material->GetDefaultVIL() 或 config）
+    /// @param preset GraphicsPipelinePreset（Solid3D/Solid2D/Wireframe 等）
+    /// @param instance_data 可选初始 MI 数据
+    /// @param instance_data_size MI 数据大小
+    /// @return PrimitiveMaterialSlot（完整渲染绑定包）
+    PrimitiveMaterialSlot AllocMaterialInstanceSlot(MaterialResourceDomain *domain,
+                                                     MaterialTemplate *material,
+                                                     const VIL *vil,
+                                                     GraphicsPipelinePreset preset,
+                                                     const void *instance_data = nullptr,
+                                                     uint32_t instance_data_size = 0);
+    
     bool                UpdateInstanceData(MaterialInstance *mi, const void *data, const uint32 data_size);
 
 public: // MaterialResourceDomain — Phase 1 / Phase 3

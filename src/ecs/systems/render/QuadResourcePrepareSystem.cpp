@@ -280,10 +280,11 @@ namespace hgl::ecs
         if (!shared_material_instance)
             return false;
 
-        shared_material_instance->SetRenderPreset(GetPresetForWorld(world));
+        // Phase B: use material's VIL directly instead of MI getter
+        const graph::VIL *use_vil = shared_material->GetDefaultVIL();
 
         // Create shared quad geometry (explicit quad for VS/FS-only billboard path)
-        auto pc = std::make_unique<graph::GeometryCreater>(device, shared_material_instance->GetVIL());
+        auto pc = std::make_unique<graph::GeometryCreater>(device, use_vil);
         pc->Init("Quad", 4, 6, graph::IndexType::U16);
 
         static const float position_data[12] =
@@ -527,7 +528,9 @@ namespace hgl::ecs
             // ── Shared primitive for this domain ─────────────────────
             if (!dr.primitive)
             {
-                // Create a temp MI to get VIL for geometry creation
+                // Phase B: use material's VIL directly instead of creating temp MI
+                const graph::VIL *use_vil = dr.material->GetDefaultVIL();
+                
                 graph::MaterialInstanceSpec mi_spec;
                 mi_spec.material = dr.material;
                 mi_spec.preset   = GetPresetForWorld(world);
@@ -535,7 +538,7 @@ namespace hgl::ecs
 
                 if (temp_mi)
                 {
-                    auto pc = std::make_unique<graph::GeometryCreater>(device, temp_mi->GetVIL());
+                    auto pc = std::make_unique<graph::GeometryCreater>(device, use_vil);
                     pc->Init(AnsiString(("DomainQuad_" + dr.domain_tag).c_str()), 4, 6, graph::IndexType::U16);
 
                     static const float position_data[12] =

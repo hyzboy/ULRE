@@ -368,14 +368,15 @@ namespace hgl::ecs
         if (resources.pipeline && resources.render_format == render_format)
             return true;
 
-        const graph::GraphicsPipelinePreset preset = resources.material_instance->GetRenderPreset();
+        // Phase B: use cached preset/vil instead of GetRenderPreset/GetVIL
+        const graph::GraphicsPipelinePreset preset = resources.cached_preset;
         const graph::GraphicsPipelineData* pipeline_data = graph::GetGraphicsPipelineData(preset);
         if (!pipeline_data)
             return false;
 
         graph::GraphicsPipelineBuildRequest req;
         req.material = resources.material;
-        req.vil = resources.material_instance->GetVIL();
+        req.vil = resources.cached_vil;
         req.render_format = render_format;
         req.pipeline_data = pipeline_data;
         req.primitive = resources.material->GetPrimitiveType();
@@ -499,6 +500,9 @@ namespace hgl::ecs
                     continue;
 
                 resources->material_instance = mi;
+                // Phase B: cache preset and vil
+                resources->cached_preset = mi_spec.preset;
+                resources->cached_vil = resources->material->CreateVIL(&vil_config);
                 input.dirty = true;
             }
 

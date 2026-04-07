@@ -3,6 +3,7 @@
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/log/Log.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<cstdint>
 #include<unordered_map>
 #include<vector>
@@ -30,6 +31,7 @@ namespace hgl
         class DeviceBuffer;
         class MaterialManager;
         class PrimitiveManager;
+        class VertexInputLayout;
     }
 
     namespace ecs
@@ -58,6 +60,10 @@ namespace hgl
                 graph::TextGeometry* geometry = nullptr;
                 graph::Primitive* primitive = nullptr;
                 graph::MaterialInstance* material_instance = nullptr;
+                
+                // Phase B: cache preset/vil to avoid MI getter dependency
+                graph::GraphicsPipelinePreset cached_preset = graph::GraphicsPipelinePreset::Solid2D;
+                const graph::VertexInputLayout* cached_vil = nullptr;
 
                 uint32_t last_draw_char_count = 0;
                 uint32_t last_string_count = 0;
