@@ -48,35 +48,6 @@ void GeometryDrawRange::Set(const Geometry *geometry)
     first_index     = geometry->GetFirstIndex();
 }
 
-Primitive::Primitive(Geometry *r,MaterialInstance *mi,GraphicsPipelinePreRaster *p,GeometryDataBuffer *gdb)
-{
-    geometry=r;
-
-    data_buffer=gdb;
-    draw_range.Set(geometry);
-
-    // Phase 2c: populate direct fields from MI (no mat_inst bridge)
-    if(mi)
-    {
-        material_template = mi->GetMaterial();
-        domain            = mi->GetDomain();
-        mi_id             = mi->GetMIID();
-        vil               = mi->GetVIL();
-        render_preset     = mi->GetRenderPreset();
-        std::memcpy(mit_slot_offset, mi->mit_slot_offset, sizeof(mit_slot_offset));
-        mit_packed_count  = mi->mit_packed_count;
-        if(mit_packed_count > 0)
-        {
-            mit_packed = new uint32_t[mit_packed_count];
-            std::memcpy(mit_packed, mi->mit_packed, mit_packed_count * sizeof(uint32_t));
-        }
-    }
-    else
-    {
-        std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
-    }
-}
-
 Primitive::Primitive(Geometry *r,SemanticMaterialId sid,uint32_t vil_hash)
 {
     geometry=r;
@@ -170,86 +141,8 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot)
     return true;
 }
 
-Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPipelinePreRaster *p)
-//用Direct这个前缀是为了区别于MeshManager/WorkObject等路径上的CreateMesh()
-{
-    if(!geom||!mi)return(nullptr);
-
-    const VIL *vil=mi->GetVIL();
-
-    if(p && *vil!=*p->GetVIL())
-        return(nullptr);
-
-    const uint32_t input_count=vil->GetVertexAttribCount();
-    const AnsiString &mtl_name=mi->GetMaterial()->GetName();
-
-    if(geom->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
-    {
-        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than MaterialTemplate, MaterialTemplate name: "+mtl_name);
-
-        return(nullptr);
-    }
-
-    const VertexInputFormat *vif=vil->GetVIFList();
-
-    uint32_t max_binding=0;
-    for(uint i=0;i<input_count;i++)
-    {
-        if(vif[i].binding>max_binding)
-            max_binding=vif[i].binding;
-    }
-
-    GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(max_binding+1,geom->GetIBO(),geom->GetVDM());
-
-    VAB *vab;
-
-    for(uint i=0;i<input_count;i++)
-    {
-        //注: VIF来自于材质，但VAB来自于Geometry。
-        //    两个并不一定一样，排序也不一定一样。所以不能让PRIMTIVE直接提供BUFFER_LIST/OFFSET来搞一次性绑定。
-
-        vab=geom->GetVAB(vif->attrib);
-
-        const char *vab_name=GetVertexAttribName(vif->attrib);
-
-        if(!vab)
-        {
-            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(vab_name)+"\" in MaterialTemplate: "+mtl_name);
-            return(nullptr);
-        }
-
-        if(vab->GetFormat()!=vif->format)
-        {
-            GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vab_name)+
-                        AnsiString("\" format can't match Primitive, MaterialTemplate(")+mtl_name+
-                        AnsiString(") Format(")+GetVulkanFormatName(vif->format)+
-                        AnsiString(") , VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
-                        ")");
-            return(nullptr);
-        }
-
-        if(vab->GetStride()!=vif->stride)
-        {
-            GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vab_name)+
-                        AnsiString("\" stride can't match Primitive, MaterialTemplate(")+mtl_name+
-                        AnsiString(") stride(")+AnsiString::numberOf(vif->stride)+
-                        AnsiString(") , VAB stride(")+AnsiString::numberOf(vab->GetStride())+
-                        ")");
-            return(nullptr);
-        }
-
-        const uint32_t bind_index=vif->binding;
-        geom_data_buffer->vab_list[bind_index]=vab->GetVkBuffer();
-        geom_data_buffer->vab_offset[bind_index]=0;
-        ++vif;
-    }
-
-    return(new Primitive(geom,mi,p,geom_data_buffer));
-}
-
 // ---------------------------------------------------------------------------
-// Slot-based ctor (Phase 2d: no MaterialInstance object needed)
-// ---------------------------------------------------------------------------
+// Slot-based ctor
 
 Primitive::Primitive(Geometry *r, const PrimitiveMaterialSlot &slot, GeometryDataBuffer *gdb)
 {

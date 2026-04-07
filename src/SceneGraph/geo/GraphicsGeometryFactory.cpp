@@ -101,7 +101,7 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(Geometry *geometry, Material
     if(!primitive_manager)
         return nullptr;
 
-    return primitive_manager->CreatePrimitive(geometry, mi);
+    return primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
 }
 
 Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, MaterialInstance *mi) const
@@ -117,7 +117,7 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, Ma
     if(!primitive_manager)
         return nullptr;
 
-    return primitive_manager->CreatePrimitive(geometry, mi);
+    return primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
 }
 
 Primitive *GraphicsGeometryFactory::CreatePrimitive(Geometry *geometry, SemanticMaterialId semantic_id) const

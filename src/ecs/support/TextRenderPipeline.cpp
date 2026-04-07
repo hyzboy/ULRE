@@ -563,7 +563,7 @@ namespace hgl::ecs
             graph::Primitive* primitive = resources->primitive;
             if (!primitive)
             {
-                primitive = primitive_manager->CreatePrimitive(geometry, mi, resources->pipeline);
+                primitive = primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
                 if (!primitive)
                     continue;
 

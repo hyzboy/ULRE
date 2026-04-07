@@ -17,7 +17,7 @@ Primitive *StaticMesh::CreatePrimitive(Geometry *geometry, MaterialInstance *mi,
     if(!geometry || !mi || !p)
         return nullptr;
 
-    Primitive *sm = DirectCreatePrimitive(geometry, mi, p);
+    Primitive *sm = DirectCreatePrimitive(geometry, mi->ToSlot());
     if(!sm)
         return nullptr;
 

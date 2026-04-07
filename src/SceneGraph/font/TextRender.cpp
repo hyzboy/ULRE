@@ -267,7 +267,7 @@ namespace hgl::graph
     Primitive *TextRender::CreatePrimitive(TextGeometry *text_geometry)
     {
         if(primitive_manager)
-            return primitive_manager->CreatePrimitive(text_geometry,mi_fs);
+            return primitive_manager->CreatePrimitive(text_geometry,mi_fs->ToSlot());
 
         return(nullptr);
     }

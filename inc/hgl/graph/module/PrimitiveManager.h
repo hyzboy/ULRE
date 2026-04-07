@@ -43,16 +43,6 @@ public: // Create
     Primitive *CreatePrimitive(Geometry *r, const PrimitiveMaterialSlot &slot);
     Primitive *CreatePrimitive(GeometryCreater *pc, const PrimitiveMaterialSlot &slot);
 
-    [[deprecated("Use CreatePrimitive(Geometry*, const PrimitiveMaterialSlot&) — Phase C")]]
-    Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi, GraphicsPipelinePreRaster *p);
-    [[deprecated("Use CreatePrimitive(GeometryCreater*, const PrimitiveMaterialSlot&) — Phase C")]]
-    Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, GraphicsPipelinePreRaster *p);
-
-    [[deprecated("Use CreatePrimitive(Geometry*, const PrimitiveMaterialSlot&) — Phase C")]]
-    Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi);
-    [[deprecated("Use CreatePrimitive(GeometryCreater*, const PrimitiveMaterialSlot&) — Phase C")]]
-    Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi);
-
     Primitive *CreatePrimitive(Geometry *r, SemanticMaterialId semantic_id);
     Primitive *CreatePrimitive(GeometryCreater *pc, SemanticMaterialId semantic_id);
 };

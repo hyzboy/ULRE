@@ -302,7 +302,7 @@ namespace hgl::ecs
         if (!pc->WriteIBO(index_data))
             return false;
 
-        shared_primitive = primitive_manager->CreatePrimitive(pc.get(), shared_material_instance);
+        shared_primitive = primitive_manager->CreatePrimitive(pc.get(), shared_material_instance->ToSlot());
         if (!shared_primitive)
             return false;
 
@@ -553,7 +553,7 @@ namespace hgl::ecs
                     pc->WriteVAB(graph::VAN::Position, VF_V3F, position_data);
                     pc->WriteIBO(index_data);
 
-                    dr.primitive = primitive_manager->CreatePrimitive(pc.get(), temp_mi);
+                    dr.primitive = primitive_manager->CreatePrimitive(pc.get(), temp_mi->ToSlot());
                 }
             }
 

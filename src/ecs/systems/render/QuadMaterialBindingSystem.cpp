@@ -164,7 +164,7 @@ namespace hgl::ecs
         }
         else
         {
-            quad_primitive = primitive_manager->CreatePrimitive(geometry, mi);
+            quad_primitive = primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
             if (!quad_primitive)
                 return false;
 
@@ -278,7 +278,7 @@ namespace hgl::ecs
             if (!geometry)
                 return false;
 
-            quad_primitive = primitive_manager->CreatePrimitive(geometry, mi);
+            quad_primitive = primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
             if (!quad_primitive)
                 return false;
 
