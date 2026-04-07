@@ -88,8 +88,10 @@ namespace hgl::ecs
         world->GetComponents<PrimitiveComponent>(primitives);
 
         size_t skipped_invisible = 0;
+        size_t skipped_no_primitive = 0;
         size_t skipped_no_owner = 0;
         size_t skipped_no_transform = 0;
+        size_t deferred_no_resolve = 0;
         size_t added = 0;
 
         const glm::vec3 camera_pos = glm::vec3(cameraInfo->pos);
@@ -102,9 +104,9 @@ namespace hgl::ecs
             if (!primitiveComp->IsVisible() || !primitiveComp->CanRender())
             {
                 if (!primitiveComp->IsVisible())
-                {
                     ++skipped_invisible;
-                }
+                else // visible but CanRender()==false means no primitive set
+                    ++skipped_no_primitive;
                 continue;
             }
 
@@ -136,9 +138,21 @@ namespace hgl::ecs
 
             if (semantic_runtime_resolve_enabled && primitiveComp->HasSemanticMaterial())
             {
+                static uint32_t s_semantic_enter = 0;
+                const bool log_semantic_entry = (++s_semantic_enter <= 6u);
+                
                 auto *gc = world->GetGraphicsContext();
                 auto *registry = gc ? gc->GetMaterialAssetRegistry() : nullptr;
                 auto *primitive = primitiveComp->GetPrimitive();
+
+                if (log_semantic_entry)
+                {
+                    LogDebug("[RenderPrimitiveCollect::SemanticResolve] ENTER: prim='%s'  registry=%p  primitive=%p  HasDeferred=%d",
+                             primitive ? primitive->GetGeometryName().c_str() : "(no prim)",
+                             static_cast<const void*>(registry),
+                             static_cast<const void*>(primitive),
+                             primitive ? (int)primitive->HasDeferredMI() : -1);
+                }
 
                 if (registry && primitive)
                 {
@@ -210,8 +224,36 @@ namespace hgl::ecs
                                                         geometry,
                                                         instance_data,
                                                         instance_data_size);
-                        if (slot.IsValid())
+                        
+                        static uint32_t s_resolve_tick = 0;
+                        const bool log_resolve = (++s_resolve_tick <= 6u);
+                        if (log_resolve)
+                        {
+                            LogDebug("[RenderPrimitiveCollect::ResolveMI] semantic_id=%llu  slot.IsValid=%d  slot.material=%p domain=%p mi_id=%d  vil=%p",
+                                     static_cast<unsigned long long>(primitiveComp->GetSemanticMaterial()),
+                                     (int)slot.IsValid(),
+                                     static_cast<const void*>(slot.material_template),
+                                     static_cast<const void*>(slot.domain),
+                                     (int)slot.mi_id,
+                                     static_cast<const void*>(slot.vil));
+                        }
+                        
+                        // Note: ResolveMI may return slot.material_template!=nullptr but mi_id=-1 if slot allocation failed.
+                        // Still bind it to set the material on the primitive — mi_id=-1 means no instanced MI data, but we need material/VIL.
+                        if (slot.material_template)
+                        {
                             primitive->BindMaterialSlot(slot);
+                            if (log_resolve)
+                                LogDebug("[RenderPrimitiveCollect::BindMaterialSlot] prim='%s' bound. GetMaterialTemplate now=%p mi_id=%d",
+                                         primitive->GetGeometryName().c_str(),
+                                         static_cast<const void*>(primitive->GetMaterialTemplate()),
+                                         (int)slot.mi_id);
+                        }
+                        else if (log_resolve)
+                        {
+                            LogWarning("[RenderPrimitiveCollect::ResolveMI] FAILED: no material resolved! semantic_id=%llu",
+                                       static_cast<unsigned long long>(primitiveComp->GetSemanticMaterial()));
+                        }
                     }
                 }
             }
@@ -225,19 +267,36 @@ namespace hgl::ecs
 
             item->UpdateWorldMatrix();
 
+            auto* primitive = primitiveComp->GetPrimitive();
+            if (primitive && primitive->HasDeferredMI() && !semantic_runtime_resolve_enabled)
+                ++deferred_no_resolve;
+
             cache.renderItems.push_back(std::unique_ptr<RenderItem>(std::move(item)));
             cache.renderableCount++;
             ++added;
         }
 
-        //if (cache.renderableCount == 0)
-        //{
-        //    LogInfo("[RenderPrimitiveCollectSystem] No renderables: total=%zu visible=%zu no_owner=%zu no_transform=%zu",
-        //             primitives.size(),
-        //             added,
-        //             skipped_no_owner,
-        //             skipped_no_transform);
-        //}
+        // Always emit a summary every frame (throttled: first 5 frames then pow2)
+        {
+            static uint64_t s_collect_frame = 0;
+            const uint64_t n = ++s_collect_frame;
+            const bool should_log = (n <= 5) || ((n & (n - 1)) == 0);
+            if (should_log || deferred_no_resolve > 0 || (added == 0 && primitives.size() > 0))
+            {
+                LogInfo("[RenderPrimitiveCollect #%llu] total=%zu  added=%zu  skipped: invisible=%zu no_prim=%zu no_owner=%zu no_transform=%zu  deferred_no_resolve=%zu  semantic_resolve=%s",
+                        static_cast<unsigned long long>(n),
+                        primitives.size(), added,
+                        skipped_invisible, skipped_no_primitive,
+                        skipped_no_owner, skipped_no_transform,
+                        deferred_no_resolve,
+                        semantic_runtime_resolve_enabled ? "ON" : "OFF");
+
+                if (deferred_no_resolve > 0)
+                    LogWarning("[RenderPrimitiveCollect] %zu primitive(s) have deferred MI (no material_template) but semantic_runtime_resolve is DISABLED — they will produce no draw calls. "
+                               "Call SetSemanticRuntimeResolveEnabled(true) on RenderPrimitiveCollectSystem.",
+                               deferred_no_resolve);
+            }
+        }
     }
 }//namespace hgl::ecs
 
