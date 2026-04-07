@@ -617,7 +617,22 @@ namespace hgl::ecs
             }
 
             if (!material || !pipeline)
+            {
+                static uint64_t s_no_draw_skip = 0;
+                if (ShouldLogPow2(++s_no_draw_skip))
+                {
+                    const bool  has_deferred = primitive && primitive->HasDeferredMI();
+                    const AnsiString prim_name = primitive ? primitive->GetGeometryName() : AnsiString("(no primitive)");
+                    LogWarning("[BatchPipeline] item skipped (no draw call): material=%p pipeline=%p  primitive='%s'  HasDeferredMI=%d  "
+                               "total_skipped=%llu  — if HasDeferredMI=1 and material=null, enable SetSemanticRuntimeResolveEnabled(true).",
+                               static_cast<const void *>(material),
+                               static_cast<const void *>(pipeline),
+                               prim_name.c_str(),
+                               (int)has_deferred,
+                               static_cast<unsigned long long>(s_no_draw_skip));
+                }
                 continue;
+            }
 
             // Phase 4: include MaterialResourceDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
