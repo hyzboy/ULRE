@@ -25,7 +25,7 @@ namespace hgl::ecs
 
         ECSContext* world = nullptr;
         const graph::CameraInfo* cameraInfo = nullptr;
-        bool semantic_runtime_resolve_enabled = false;
+        bool semantic_runtime_resolve_enabled = true;  // Default ON: deferred-MI primitives need runtime material resolution
         bool auto_transparency_enabled = false;
         bool use_real_alpha3d_enabled = true;
         float auto_transparency_near_distance = 3.0f;
