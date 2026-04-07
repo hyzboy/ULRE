@@ -16,8 +16,6 @@ namespace hgl::ecs
 
 namespace hgl::graph
 {
-    class MaterialInstance;  // kept for GetGizmoMI3D access in inl files
-
     // 由 `GizmoMode` 对象拥有的可视原语条目。
     // （原为 `GizmoECS::AssetVisualPrimitive` — 已提取以便各 Mode 类可以拥有自己的列表。）
     struct GizmoVisualPrimitive

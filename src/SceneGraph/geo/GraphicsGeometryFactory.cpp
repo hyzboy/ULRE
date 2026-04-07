@@ -4,7 +4,6 @@
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/module/MaterialAssetRegistry.h>
-#include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/vk/VKVertexInputConfig.h>
 #include <hgl/vk/VKVertexInputLayout.h>
 #include <hgl/vk/VertexDataManager.h>

@@ -5,8 +5,9 @@
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKMaterialTemplate.h>
-#include<hgl/vk/VKMaterialParameters.h>
+#include<hgl/vk/VKMaterialResourceDomain.h>
 #include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>

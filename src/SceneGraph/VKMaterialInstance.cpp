@@ -1,63 +1,58 @@
-﻿#include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKMaterialInstance.h>
-#include<hgl/vk/VKMaterialResourceDomain.h>
-#include<hgl/graph/module/MaterialManager.h>
-#include<cstring>
+// Compatibility implementation retained temporarily for legacy callers.
 
-namespace hgl::graph{
+#include <cstring>
 
-// ---------------------------------------------------------------------------
-// MaterialInstanceData — constructors / destructor
-// ---------------------------------------------------------------------------
+#include <hgl/vk/VKMaterialInstance.h>
+#include <hgl/vk/VKMaterialResourceDomain.h>
 
-/// 旧路径：domain = nullptr
-MaterialTemplate *MaterialInstance::GetMaterial() const
-{
-    return material_manager ? material_manager->ResolveMaterial(this) : nullptr;
-}
+namespace hgl::graph {
 
-MaterialInstance::MaterialInstance(MaterialManager *mm, const VIL *v, const int id)
-    : material_manager(mm), domain(nullptr), vil(v), mi_id(id)
+MaterialInstance::MaterialInstance()
 {
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }
 
-/// Phase 1 新路径：经由 MaterialResourceDomain 分配
-MaterialInstance::MaterialInstance(MaterialManager *mm, MaterialResourceDomain *d, const VIL *v, const int id)
+MaterialInstance::MaterialInstance(MaterialManager *mm, const VIL *v, int id)
+    : material_manager(mm), vil(v), mi_id(id)
+{
+    std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
+}
+
+MaterialInstance::MaterialInstance(MaterialManager *mm, MaterialResourceDomain *d, const VIL *v, int id)
     : material_manager(mm), domain(d), vil(v), mi_id(id)
+{
+    std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
+}
+
+MaterialInstance::MaterialInstance(const PrimitiveMaterialSlot &slot)
+    : material(slot.material_template), domain(slot.domain), vil(slot.vil), mi_id(slot.mi_id), render_preset(slot.preset)
 {
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }
 
 MaterialInstance::~MaterialInstance()
 {
-    if(domain)
-        domain->FreeMISlot(mi_id);
-
     delete[] mit_packed;
 }
 
-// ---------------------------------------------------------------------------
-// MaterialInstanceData — data access
-// ---------------------------------------------------------------------------
-
 void *MaterialInstance::GetMIData()
 {
-    if(domain)
-        return domain->GetMIData(mi_id);
+    if (!domain || mi_id < 0)
+        return nullptr;
 
-    return nullptr;
+    return domain->GetMIData(mi_id);
 }
 
-void MaterialInstance::WriteMIData(const void *data,const uint32 size)
+void MaterialInstance::WriteMIData(const void *data, uint32_t size)
 {
-    MaterialTemplate *material = GetMaterial();
-    if(!data||!size||!material||size>material->GetMIDataBytes())return;
+    if (!data || size == 0)
+        return;
 
-    void *tp=GetMIData();
+    void *dst = GetMIData();
+    if (!dst)
+        return;
 
-    if(tp)
-        memcpy(tp,data,size);
+    std::memcpy(dst, data, size);
 }
 
 void MaterialInstance::InitMITLayout(uint8_t slot_flags)
@@ -67,35 +62,42 @@ void MaterialInstance::InitMITLayout(uint8_t slot_flags)
     mit_packed_count = 0;
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 
-    if (!slot_flags) return;
-
     uint32_t offset = 0;
-    for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
+
+    for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlotCount); ++s)
     {
-        if (slot_flags & (1u << s))
+        if ((slot_flags & (1u << s)) != 0)
         {
             mit_slot_offset[s] = static_cast<int8_t>(offset);
             ++offset;
         }
     }
+
     mit_packed_count = offset;
-    mit_packed = new uint32_t[mit_packed_count];
-    std::memset(mit_packed, 0, mit_packed_count * sizeof(uint32_t));
+
+    if (mit_packed_count > 0)
+    {
+        mit_packed = new uint32_t[mit_packed_count];
+        std::memset(mit_packed, 0, mit_packed_count * sizeof(uint32_t));
+    }
 }
 
 void MaterialInstance::SetTextureArrayLayer(mtl::SamplerSlot slot, uint32_t layer)
 {
     const int8_t off = mit_slot_offset[uint8_t(slot)];
-    if (off < 0) return;
+    if (off < 0 || !mit_packed)
+        return;
+
     mit_packed[off] = layer;
 }
 
 uint32_t MaterialInstance::GetTextureArrayLayer(mtl::SamplerSlot slot) const
 {
     const int8_t off = mit_slot_offset[uint8_t(slot)];
-    if (off < 0) return 0;
+    if (off < 0 || !mit_packed)
+        return 0;
+
     return mit_packed[off];
 }
 
-}//namespace hgl::graph
-
+} // namespace hgl::graph

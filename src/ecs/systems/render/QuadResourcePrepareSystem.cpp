@@ -16,7 +16,6 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VertexAttrib.h>

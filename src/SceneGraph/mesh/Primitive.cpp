@@ -1,5 +1,4 @@
 ﻿#include<hgl/graph/mesh/Primitive.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<cstring>
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>

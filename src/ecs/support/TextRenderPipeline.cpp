@@ -12,7 +12,6 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/vk/VKMaterialTemplate.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>

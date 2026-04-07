@@ -1,5 +1,4 @@
-﻿#include<hgl/vk/VKMaterialInstance.h>
-#include<hgl/vk/pipeline/VKGraphicsPipeline.h>
+﻿#include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -30,7 +29,8 @@ namespace hgl::graph
         struct GizmoResource
         {
             MaterialTemplate *          mtl;
-            MaterialInstance *  mi[size_t(GizmoColor::RANGE_SIZE)];
+            MaterialResourceDomain *    domain = nullptr;
+            int                         mi_id[size_t(GizmoColor::RANGE_SIZE)] = {};
             VertexDataManager * vdm;
 
             GeometryCreater *  prim_creater;
@@ -48,11 +48,21 @@ namespace hgl::graph
             void Create(Geometry *p)
             {
                 geometry=p;
-                if (graphics_context)
+                if (graphics_context && gizmo_triangle.domain && gizmo_triangle.mtl)
                 {
-                    auto *primitive_manager = graphics_context->GetPrimitiveManager();
+                    const VIL *vil = gizmo_triangle.mtl->GetDefaultVIL();
                     for (size_t c = 0; c < size_t(GizmoColor::RANGE_SIZE); ++c)
-                        primitive[c] = primitive_manager ? primitive_manager->CreatePrimitive(geometry, gizmo_triangle.mi[c]) : nullptr;
+                    {
+                        if (gizmo_triangle.mi_id[c] >= 0)
+                        {
+                            PrimitiveMaterialSlot slot{gizmo_triangle.mtl, gizmo_triangle.domain,
+                                                       gizmo_triangle.mi_id[c], vil,
+                                                       GraphicsPipelinePreset::GizmoOverlay3D};
+                            primitive[c] = DirectCreatePrimitive(geometry, slot);
+                        }
+                        else
+                            primitive[c] = nullptr;
+                    }
                 }
                 else
                 {
@@ -81,26 +91,23 @@ namespace hgl::graph
 
         bool InitMI(GizmoResource *gr)
         {
-            if(!gr||!gr->mtl)
+            if(!gr||!gr->mtl||!gizmo_mtl_manager)
+                return(false);
+
+            gr->domain = gizmo_mtl_manager->GetOrCreateDefaultDomain(gr->mtl);
+            if(!gr->domain)
                 return(false);
 
             Color4f color;
 
             for(uint i=0;i<uint(GizmoColor::RANGE_SIZE);i++)
             {
-                color=GetColor4f(gizmo_color[i],1.0);
-
-                MaterialInstanceSpec mi_spec;
-                mi_spec.material = gr->mtl;
-                mi_spec.vil = nullptr;
-                mi_spec.instance_data = &color;
-                mi_spec.instance_data_size = sizeof(color);
-                mi_spec.preset = GraphicsPipelinePreset::GizmoOverlay3D;
-
-                gr->mi[i]=gizmo_mtl_manager->AcquireMaterialInstance(mi_spec);
-
-                if(!gr->mi[i])
+                gr->mi_id[i] = gr->domain->AllocMISlot();
+                if(gr->mi_id[i] < 0)
                     return(false);
+
+                color=GetColor4f(gizmo_color[i],1.0);
+                memcpy(gr->domain->GetMIData(gr->mi_id[i]), &color, sizeof(color));
             }
 
             return(true);
@@ -258,23 +265,32 @@ namespace hgl::graph
         for(GizmoMesh &gr:gizmo_mesh)
             gr.Clear();
 
+        if(gizmo_triangle.domain)
+        {
+            for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
+                if(gizmo_triangle.mi_id[i] >= 0)
+                    gizmo_triangle.domain->FreeMISlot(gizmo_triangle.mi_id[i]);
+        }
+
         SAFE_CLEAR(gizmo_triangle.prim_creater);
         SAFE_CLEAR(gizmo_triangle.vdm);
 
         gizmo_triangle.mtl = nullptr;
+        gizmo_triangle.domain = nullptr;
         for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
-            gizmo_triangle.mi[i] = nullptr;
+            gizmo_triangle.mi_id[i] = -1;
 
         gizmo_mtl_manager = nullptr;
         gizmo_render_pass = nullptr;
         graphics_context = nullptr;
     }
 
-    MaterialInstance *GetGizmoMI3D(const GizmoColor &color)
+    int GetGizmoMIID3D(const GizmoColor &color)
     {
-        RANGE_CHECK_RETURN_NULLPTR(color)
+        if(size_t(color) >= size_t(GizmoColor::RANGE_SIZE))
+            return -1;
 
-        return gizmo_triangle.mi[size_t(color)];
+        return gizmo_triangle.mi_id[size_t(color)];
     }
 
     Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape, const GizmoColor &color)

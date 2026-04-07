@@ -2,10 +2,10 @@
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/vk/VKMaterialTemplate.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKMaterialResourceDomain.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
+#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
 #include<hgl/graph/module/ShaderGenValidationTypes.h>
@@ -157,9 +157,12 @@ private: // Helper methods with integrated DebugUtils
 
      MaterialTemplate *TryInitializeFallbackMaterial();
      MaterialTemplate *GetFallbackMaterial();
-     MaterialResourceDomain *GetOrCreateDefaultDomain(MaterialTemplate *mtl);
     void BindInstanceMaterial(MaterialInstance *mi, MaterialTemplate *material);
     void ForgetInstanceMaterial(MaterialInstance *mi);
+
+public: //Material resource access
+
+    MaterialResourceDomain *GetOrCreateDefaultDomain(MaterialTemplate *mtl);
 
 public: //Add
 

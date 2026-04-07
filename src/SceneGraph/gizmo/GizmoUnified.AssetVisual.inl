@@ -42,10 +42,6 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
     if (!primitive)
         return false;
 
-    auto *base_material = GetGizmoMI3D(color);
-    if (!base_material)
-        return false;
-
     auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
     if (!prim_comp)
         return false;

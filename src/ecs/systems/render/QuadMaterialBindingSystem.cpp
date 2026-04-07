@@ -13,7 +13,6 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/type/StdString.h>
 
 namespace hgl::ecs

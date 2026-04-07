@@ -3,7 +3,6 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKMaterialTemplate.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialResourceDomain.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
