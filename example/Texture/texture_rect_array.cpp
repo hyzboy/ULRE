@@ -65,12 +65,13 @@ private:
     Sampler *           sampler             = nullptr;
     MaterialTemplate *          material            = nullptr;
 
-    Primitive *         mesh_rect           = nullptr;
+    Primitive *         mesh_rect           = nullptr;  // kept for geometry lifecycle
 
     struct
     {
-        Entity *            entity;
-        MaterialInstance *  mi;
+        Entity *            entity    = nullptr;
+        MaterialInstance *  mi        = nullptr;
+        Primitive *         primitive = nullptr;  // one per entity for distinct MIT layer
     }render_obj[TexCount]{};
 
 private:
@@ -174,6 +175,14 @@ private:
         if(!mesh_rect)
             return(false);
 
+        for(uint32_t i = 1; i < TexCount; ++i)
+        {
+            render_obj[i].primitive = primitive_manager->CreatePrimitive(geometry, render_obj[i].mi);
+            if(!render_obj[i].primitive)
+                return false;
+        }
+        render_obj[0].primitive = mesh_rect;
+
         return(true);
     }
 
@@ -198,8 +207,7 @@ private:
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform->SetMovable(false);
 
-            primitive->SetPrimitive(mesh_rect);
-            primitive->SetMIIDOverride(render_obj[i].mi->GetMIID());
+            primitive->SetPrimitive(render_obj[i].primitive);
             primitive->SetVisible(true);
         }
 
