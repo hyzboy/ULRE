@@ -52,7 +52,8 @@ private:
     ECSContext *        ecs_world           = nullptr;
     Entity *            quad_entity         = nullptr;
 
-    MaterialInstance *  material_instance   = nullptr;
+    MaterialTemplate *  material            = nullptr;
+    const VIL *         material_vil        = nullptr;
     SemanticMaterialId  semantic_material_id= 0;
     Primitive *         prim_quad           = nullptr;
 
@@ -81,9 +82,20 @@ private:
         if (semantic_material_id == 0)
             return false;
 
-        material_instance = AcquireMI(kTexQuadCfg);
+        auto *registry = GetMaterialAssetRegistry();
+        if(!registry)
+            return false;
 
-        return(material_instance!=nullptr);
+        auto handle = registry->Acquire(kTexQuadCfg);
+        if(!handle.IsValid() || !handle.material)
+            return false;
+
+        material = handle.material;
+        material_vil = handle.material->GetDefaultVIL();
+        if(!material_vil)
+            return false;
+
+        return true;
     }
 
     bool InitVBO()
@@ -96,7 +108,7 @@ private:
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
-        GeometryCreater pc(device, material_instance->GetVIL(), buffer_manager);
+        GeometryCreater pc(device, material_vil, buffer_manager);
         pc.Init("TextureQuad", VERTEX_COUNT);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
             !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))

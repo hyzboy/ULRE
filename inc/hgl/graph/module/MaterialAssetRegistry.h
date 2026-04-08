@@ -27,6 +27,7 @@ class TextureManager;
 class SamplerManager;
 class MaterialInstance;
 class MaterialTemplate;
+class Geometry;
 
 class MaterialAssetRegistry
 {
@@ -137,6 +138,13 @@ public:
     /// MaterialTemplate 已缓存，Domain 按 domain_id 缓存，DMB 按纹理配置缓存
     MaterialDomainHandle Acquire(const mtl::MaterialAssetRecord &rec);
 
+    /// Resolve the VIL that should be used by geometry creation for a record.
+    /// If geometry is provided, formats are derived from geometry VAB; otherwise
+    /// mi_vil_overrides/default VIL fallback is used.
+    const VIL *ResolveVIL(const MaterialTemplate *material,
+                          const mtl::MaterialAssetRecord &rec,
+                          const Geometry *geometry = nullptr) const;
+
     /// 注册最小语义材质并返回稳定ID（不创建Material/MI）。
     /// 注意：此ID故意不包含 pipeline/domain_id/mi_vil_overrides 等运行时策略字段。
     SemanticMaterialId RegisterSemanticMaterial(const mtl::MaterialAssetRecord &rec);
@@ -168,12 +176,14 @@ public:
     /// 一站式：Acquire + CreateMI
     /// @deprecated 新代码请使用 ResolveMI(entity_id, semantic_id, ...) per-entity 路径。
     ///   AcquireMI 不携带 entity_id，无法稳定分配 per-entity MI 槽位；仅供工具 / 离线路径使用。
+    [[deprecated("Use ResolveMI(entity_id, semantic_id, ...) for stable per-entity slot binding")]]
     MaterialInstance *AcquireMI(const mtl::MaterialAssetRecord &rec,
                                 const void *instance_data = nullptr,
                                 uint32_t instance_data_size = 0,
                                 MaterialDomainHandle *out_handle = nullptr);
 
     /// Record 驱动重载：pipeline 与可选 VIL 覆写均来自 rec
+    [[deprecated("Use ResolveMI or AllocMaterialInstanceSlot (slot-first path)")]]
     MaterialInstance *CreateMI(const MaterialDomainHandle &handle,
                                const mtl::MaterialAssetRecord &rec,
                                const void *instance_data = nullptr,

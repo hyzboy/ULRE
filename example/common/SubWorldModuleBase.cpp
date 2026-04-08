@@ -31,6 +31,10 @@ namespace example::modules
         if (!material)
             return false;
 
+        material_domain = material_manager->GetOrCreateDefaultDomain(material);
+        if (!material_domain)
+            return false;
+
         return true;
     }
 
@@ -43,45 +47,70 @@ namespace example::modules
         if (!material_manager)
             return false;
 
-        material_instances.clear();
-        material_instances.reserve(count);
+        material_slots.clear();
+        material_slots.reserve(count);
+
+        if (!material_domain)
+            material_domain = material_manager->GetOrCreateDefaultDomain(material);
+        if (!material_domain)
+            return false;
 
         for (size_t i = 0; i < count; ++i)
         {
-            graph::MaterialInstanceSpec spec;
-            spec.material = material;
-            spec.instance_data = &colors[i];
-            spec.instance_data_size = sizeof(colors[i]);
-            spec.preset = GraphicsPipelinePreset::Solid3D;
-            auto* mi = material_manager->AcquireMaterialInstance(spec);
-            if (!mi)
+            auto slot = material_manager->AllocMaterialInstanceSlot(
+                material_domain,
+                material,
+                material->GetDefaultVIL(),
+                GraphicsPipelinePreset::Solid3D,
+                &colors[i],
+                sizeof(colors[i]));
+
+            if (!slot.IsValid())
                 return false;
 
-            material_instances.push_back(mi);
+            material_slots.push_back(slot);
         }
 
         return true;
     }
 
-    graph::MaterialInstance *SubWorldModuleBase::AcquireMI(const graph::mtl::MaterialAssetRecord &rec,
-                                                           const void *instance_data,
-                                                           uint32_t instance_data_size,
-                                                           graph::MaterialDomainHandle *out_handle)
+    graph::PrimitiveMaterialSlot SubWorldModuleBase::AcquireSlot(const graph::mtl::MaterialAssetRecord &rec,
+                                                                 const void *instance_data,
+                                                                 uint32_t instance_data_size,
+                                                                 graph::MaterialDomainHandle *out_handle)
     {
         if (!graphics_context)
-            return nullptr;
+            return {};
 
         auto *registry = graphics_context->GetMaterialAssetRegistry();
-        if (!registry)
-            return nullptr;
+        auto *material_manager = graphics_context->GetMaterialManager();
+        if (!registry || !material_manager)
+            return {};
 
-        return registry->AcquireMI(rec, instance_data, instance_data_size, out_handle);
+        auto handle = registry->Acquire(rec);
+        if (!handle.IsValid() || !handle.material)
+            return {};
+
+        const VIL *resolved_vil = registry->ResolveVIL(handle.material, rec);
+        if (!resolved_vil)
+            return {};
+
+        if (out_handle)
+            *out_handle = handle;
+
+        return material_manager->AllocMaterialInstanceSlot(
+            handle.domain,
+            handle.material,
+            resolved_vil,
+            rec.pipeline,
+            instance_data,
+            instance_data_size);
     }
 
     SubWorldModuleBase::MeshResource*
-    SubWorldModuleBase::CreatePrimitiveMesh(Geometry* geometry, MaterialInstance* mi)
+    SubWorldModuleBase::CreatePrimitiveMesh(Geometry* geometry, const PrimitiveMaterialSlot &slot)
     {
-        if (!render_context || !graphics_context || !geometry || !mi)
+        if (!render_context || !graphics_context || !geometry || !slot.IsValid())
             return nullptr;
 
         auto* geometry_manager = graphics_context->GetGeometryManager();
@@ -91,7 +120,7 @@ namespace example::modules
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
+        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, slot);
         if (!primitive)
             return nullptr;
 

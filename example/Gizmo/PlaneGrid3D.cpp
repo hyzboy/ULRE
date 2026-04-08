@@ -9,6 +9,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/PrimitiveMaterialSlot.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
@@ -37,7 +38,7 @@ private:
     MaterialTemplate *          material            =nullptr;
 
     Geometry *         geom_plane_grid     =nullptr;
-    MaterialInstance *  material_instance[3]{};
+    PrimitiveMaterialSlot material_slot[3];
 
 private:
 
@@ -56,19 +57,41 @@ private:
         Color4f GridColor;
         COLOR ce=COLOR::BlenderAxisRed;
 
+        auto *registry = GetMaterialAssetRegistry();
+        auto *material_manager = GetMaterialManager();
+        if(!registry || !material_manager)
+            return false;
+
         for(uint i=0;i<3;i++)
         {
             GridColor=GetColor4f(ce,1.0);
 
-            material_instance[i] = AcquireMI(kPlaneGridCfg, &GridColor, sizeof(GridColor));
+            auto handle = registry->Acquire(kPlaneGridCfg);
+            if (!handle.IsValid() || !handle.material)
+                return false;
 
-            if(i == 0 && material_instance[i])
-                material = material_instance[i]->GetMaterial();
+            const VIL *resolved_vil = registry->ResolveVIL(handle.material, kPlaneGridCfg);
+            if (!resolved_vil)
+                return false;
+
+            material_slot[i] = material_manager->AllocMaterialInstanceSlot(
+                handle.domain,
+                handle.material,
+                resolved_vil,
+                kPlaneGridCfg.pipeline,
+                &GridColor,
+                sizeof(GridColor));
+
+            if (!material_slot[i].IsValid())
+                return false;
+
+            if(i == 0)
+                material = material_slot[i].material_template;
 
             ce=COLOR((int)ce+1);
         }
 
-        return material_instance[0] && material_instance[1] && material_instance[2];
+        return material_slot[0].IsValid() && material_slot[1].IsValid() && material_slot[2].IsValid();
     }
 
     bool CreateRenderObject()
@@ -89,7 +112,7 @@ private:
         pgci.lum=180;
         pgci.sub_lum=255;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material_instance[0]->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, material_slot[0].vil);
 
         geom_plane_grid=CreatePlaneGrid2D(pc.get(),&pgci);
         if (geom_plane_grid)
@@ -98,14 +121,14 @@ private:
         return geom_plane_grid;
     }
 
-    bool Add(const char *name,MaterialInstance *mi,const glm::quat &rotation)
+    bool Add(const char *name,const PrimitiveMaterialSlot &slot,const glm::quat &rotation)
     {
 
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,mi->ToSlot());
+        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,slot);
 
         if(!ri)
             return false;
@@ -130,13 +153,13 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!Add("PlaneXY", material_instance[0], glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
+        if(!Add("PlaneXY", material_slot[0], glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
             return false;
 
         const float rot90 = glm::radians(90.0f);
-        if(!Add("PlaneYZ", material_instance[1], glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
+        if(!Add("PlaneYZ", material_slot[1], glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
             return false;
-        if(!Add("PlaneXZ", material_instance[2], glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
+        if(!Add("PlaneXZ", material_slot[2], glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
             return false;
 
         return true;

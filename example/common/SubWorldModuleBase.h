@@ -6,6 +6,7 @@
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialAssetRecord.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/graph/PrimitiveMaterialSlot.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/vk/VK.h>
 
@@ -19,7 +20,7 @@ namespace hgl::graph
     class Geometry;
     class Primitive;
     class MaterialTemplate;
-    class MaterialInstance;
+    class MaterialResourceDomain;
 }
 
 namespace example::modules
@@ -42,8 +43,9 @@ namespace example::modules
         std::shared_ptr<hgl::ecs::SubWorldComponent> subworld_component;
 
         hgl::graph::MaterialTemplate* material = nullptr;
+        hgl::graph::MaterialResourceDomain* material_domain = nullptr;
 
-        std::vector<hgl::graph::MaterialInstance*> material_instances;
+        std::vector<hgl::graph::PrimitiveMaterialSlot> material_slots;
         std::vector<std::unique_ptr<MeshResource>> mesh_resources;
 
     protected:
@@ -57,13 +59,13 @@ namespace example::modules
 
         bool BuildMaterialInstances(const hgl::Color4f* colors, size_t count);
 
-        hgl::graph::MaterialInstance *AcquireMI(const hgl::graph::mtl::MaterialAssetRecord &rec,
-                            const void *instance_data = nullptr,
-                            uint32_t instance_data_size = 0,
-                            hgl::graph::MaterialDomainHandle *out_handle = nullptr);
+        hgl::graph::PrimitiveMaterialSlot AcquireSlot(const hgl::graph::mtl::MaterialAssetRecord &rec,
+                       const void *instance_data = nullptr,
+                       uint32_t instance_data_size = 0,
+                       hgl::graph::MaterialDomainHandle *out_handle = nullptr);
 
         MeshResource* CreatePrimitiveMesh(hgl::graph::Geometry* geometry,
-                                          hgl::graph::MaterialInstance* mi);
+                          const hgl::graph::PrimitiveMaterialSlot &slot);
 
     public:
         bool Mount(hgl::graph::RenderContext* in_render_context,

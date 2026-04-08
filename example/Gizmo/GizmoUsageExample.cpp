@@ -16,6 +16,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/PrimitiveMaterialSlot.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
@@ -49,12 +50,12 @@ private:
     std::shared_ptr<TransformGizmoSystem> gizmo_system;
 
     MaterialTemplate *grid_material = nullptr;
-    MaterialInstance *grid_mi = nullptr;
+    PrimitiveMaterialSlot grid_slot;
     Geometry *grid_geometry = nullptr;
     Primitive *grid_primitive = nullptr;
 
     MaterialTemplate *cube_material = nullptr;
-    MaterialInstance *cube_mi = nullptr;
+    PrimitiveMaterialSlot cube_slot;
     Geometry *cube_geometry = nullptr;
     Primitive *cube_primitive = nullptr;
 
@@ -65,8 +66,10 @@ private:
 
         auto *geometry_manager = GetGeometryManager();
         auto *primitive_manager = GetPrimitiveManager();
+        auto *registry = GetMaterialAssetRegistry();
+        auto *material_manager = GetMaterialManager();
         auto *device = GetDevice();
-        if(!geometry_manager || !primitive_manager || !device)
+        if(!geometry_manager || !primitive_manager || !registry || !material_manager || !device)
             return false;
         {
             static const mtl::MaterialAssetRecord kGridCfg {
@@ -80,13 +83,27 @@ private:
             };
 
             const Color4f white = GetColor4f(COLOR::White, 1.0f);
-            grid_mi = AcquireMI(kGridCfg, &white, sizeof(white));
-            if(!grid_mi)
+            auto handle = registry->Acquire(kGridCfg);
+            if(!handle.IsValid() || !handle.material)
                 return false;
 
-            grid_material = grid_mi->GetMaterial();
+            const VIL *resolved_vil = registry->ResolveVIL(handle.material, kGridCfg);
+            if(!resolved_vil)
+                return false;
 
-            auto pc = std::make_unique<GeometryCreater>(device, grid_mi->GetVIL());
+            grid_slot = material_manager->AllocMaterialInstanceSlot(
+                handle.domain,
+                handle.material,
+                resolved_vil,
+                kGridCfg.pipeline,
+                &white,
+                sizeof(white));
+            if(!grid_slot.IsValid())
+                return false;
+
+            grid_material = grid_slot.material_template;
+
+            auto pc = std::make_unique<GeometryCreater>(device, grid_slot.vil);
 
             inline_geometry::PlaneGridCreateInfo pgci;
             pgci.grid_size.Set(64, 64);
@@ -100,7 +117,7 @@ private:
 
             geometry_manager->Add(grid_geometry);
 
-            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_mi->ToSlot());
+            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_slot);
             if(!grid_primitive)
                 return false;
         }
@@ -113,13 +130,27 @@ private:
             };
 
             const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            cube_mi = AcquireMI(kCubeCfg, &blue, sizeof(blue));
-            if(!cube_mi)
+            auto handle = registry->Acquire(kCubeCfg);
+            if(!handle.IsValid() || !handle.material)
                 return false;
 
-            cube_material = cube_mi->GetMaterial();
+            const VIL *resolved_vil = registry->ResolveVIL(handle.material, kCubeCfg);
+            if(!resolved_vil)
+                return false;
 
-            auto pc = std::make_unique<GeometryCreater>(device, cube_material->GetDefaultVIL());
+            cube_slot = material_manager->AllocMaterialInstanceSlot(
+                handle.domain,
+                handle.material,
+                resolved_vil,
+                kCubeCfg.pipeline,
+                &blue,
+                sizeof(blue));
+            if(!cube_slot.IsValid())
+                return false;
+
+            cube_material = cube_slot.material_template;
+
+            auto pc = std::make_unique<GeometryCreater>(device, cube_slot.vil);
 
             inline_geometry::CubeCreateInfo cci;
             cci.segments_x = 2;
@@ -132,7 +163,7 @@ private:
 
             geometry_manager->Add(cube_geometry);
 
-            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_mi->ToSlot());
+            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_slot);
             if(!cube_primitive)
                 return false;
         }

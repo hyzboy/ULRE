@@ -67,7 +67,7 @@ private:
             return false;
 
         material = handle.material;
-        axis_vil = handle.material->GetDefaultVIL();
+        axis_vil = registry->ResolveVIL(handle.material, kAxisCfg);
         if(!axis_vil)
             return false;
 

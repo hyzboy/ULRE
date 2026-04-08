@@ -130,6 +130,10 @@ private:
         if(!handle.IsValid())
             return false;
 
+        const VIL *resolved_vil = registry->ResolveVIL(handle.material, kTexArrayCfg);
+        if(!resolved_vil)
+            return false;
+
         material = handle.material;
 
         sampler=sampler_manager->CreateSampler();
@@ -144,7 +148,7 @@ private:
             render_obj[i].slot = material_manager->AllocMaterialInstanceSlot(
                 handle.domain,
                 handle.material,
-                handle.material->GetDefaultVIL(),
+                resolved_vil,
                 kTexArrayCfg.pipeline);
 
             if(!render_obj[i].slot.IsValid())

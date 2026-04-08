@@ -23,6 +23,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/PrimitiveMaterialSlot.h>
 #include<memory>
 
 // 引入ECS相关头文件
@@ -58,10 +59,10 @@ private:
     Entity* ray_line_entity = nullptr;
 
     // 传统渲染资源
-    MaterialInstance *  mi_plane_grid       =nullptr;
+    PrimitiveMaterialSlot plane_grid_slot;
     Geometry *          geom_plane_grid     =nullptr;
 
-    MaterialInstance *  mi_line             =nullptr;
+    PrimitiveMaterialSlot line_slot;
     Geometry *          geom_line           =nullptr;
     Primitive *         prim_line           =nullptr;
     VAB *               prim_line_vab       =nullptr;
@@ -97,16 +98,53 @@ private:
                 { VAN::Luminance, VF_V1UN8 },
             },
         };
+        auto* registry = GetMaterialAssetRegistry();
+        auto* material_manager = GetMaterialManager();
+        if (!registry || !material_manager)
+            return false;
+
         // Plane grid: 2D Position + Luminance
         {
-            mi_plane_grid = AcquireMI(kPlaneGridCfg, &white_color, sizeof(white_color));
-            if(!mi_plane_grid)return(false);
+            auto handle = registry->Acquire(kPlaneGridCfg);
+            if (!handle.IsValid() || !handle.material)
+                return false;
+
+            const VIL *resolved_vil = registry->ResolveVIL(handle.material, kPlaneGridCfg);
+            if (!resolved_vil)
+                return false;
+
+            plane_grid_slot = material_manager->AllocMaterialInstanceSlot(
+                handle.domain,
+                handle.material,
+                resolved_vil,
+                kPlaneGridCfg.pipeline,
+                &white_color,
+                sizeof(white_color));
+
+            if (!plane_grid_slot.IsValid())
+                return false;
         }
 
         // Ray line: 3D Position + Luminance (separate MaterialTemplate)
         {
-            mi_line = AcquireMI(kLineCfg, &yellow_color, sizeof(yellow_color));
-            if(!mi_line)return(false);
+            auto handle = registry->Acquire(kLineCfg);
+            if (!handle.IsValid() || !handle.material)
+                return false;
+
+            const VIL *resolved_vil = registry->ResolveVIL(handle.material, kLineCfg);
+            if (!resolved_vil)
+                return false;
+
+            line_slot = material_manager->AllocMaterialInstanceSlot(
+                handle.domain,
+                handle.material,
+                resolved_vil,
+                kLineCfg.pipeline,
+                &yellow_color,
+                sizeof(yellow_color));
+
+            if (!line_slot.IsValid())
+                return false;
         }
 
         return(true);
@@ -124,7 +162,7 @@ private:
 
         // === 创建平面网格几何体 ===
         {
-            auto pc = std::make_unique<GeometryCreater>(device, mi_plane_grid->GetVIL());
+            auto pc = std::make_unique<GeometryCreater>(device, plane_grid_slot.vil);
 
             struct PlaneGridCreateInfo pgci;
 
@@ -150,7 +188,7 @@ private:
             if (!device || !buffer_manager || !geometry_manager)
                 return false;
 
-            GeometryCreater pc(device, mi_line->GetVIL(), buffer_manager);
+            GeometryCreater pc(device, line_slot.vil, buffer_manager);
             pc.Init("RayLine", 2);
             if (!pc.WriteVAB(VAN::Position, VF_V3F, position_data) ||
                 !pc.WriteVAB(VAN::Luminance, VF_V1UN8, lumiance_data))
@@ -182,7 +220,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid->ToSlot());
+            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid, plane_grid_slot);
             if(!prim_plane)
                 return false;
 
@@ -207,7 +245,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            prim_line = primitive_manager->CreatePrimitive(geom_line, mi_line->ToSlot());
+            prim_line = primitive_manager->CreatePrimitive(geom_line, line_slot);
             if(!prim_line)
                 return false;
 

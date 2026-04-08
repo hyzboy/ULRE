@@ -388,6 +388,7 @@ public: //MaterialTemplate
 public: //MaterialInstanceData
 
     /// @deprecated Use slot-first path via AllocMaterialInstanceSlot or MaterialAssetRegistry::ResolveMI().
+    [[deprecated("Use slot-first APIs: AllocMaterialInstanceSlot or MaterialAssetRegistry::ResolveMI")]]
     MaterialInstance *  AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key = nullptr);
     
     /// Phase A (NEW): Slot-first 接口 — 按 domain 分配实例槽并直接返回 slot。
@@ -406,6 +407,7 @@ public: //MaterialInstanceData
                                                      const void *instance_data = nullptr,
                                                      uint32_t instance_data_size = 0);
     
+    [[deprecated("Prefer Primitive::WriteMIData or slot-first update paths")]]
     bool                UpdateInstanceData(MaterialInstance *mi, const void *data, const uint32 data_size);
 
 public: // MaterialResourceDomain — Phase 1 / Phase 3
@@ -459,6 +461,7 @@ public: // MaterialResourceDomain — Phase 1 / Phase 3
 public: // MaterialResourceDomain MaterialInstanceData creation (Phase 1)
 
     // Create MI from a semantic-owned domain binding to a concrete runtime variant material.
+    [[deprecated("Prefer slot-first APIs: AllocMaterialInstanceSlot / ResolveMI")]]
     MaterialInstance *  CreateMaterialInstance(MaterialResourceDomain *domain,
                                                MaterialTemplate *material,
                                                const VIL *vil,
@@ -466,6 +469,7 @@ public: // MaterialResourceDomain MaterialInstanceData creation (Phase 1)
                                                const uint32 data_size);
 
     // Phase D: update MI render material/vil without reallocating MI slot.
+    [[deprecated("Prefer re-resolving slot via ResolveMI instead of MI rebind")]]
     bool RebindMaterialInstance(MaterialInstance *mi, MaterialTemplate *material, const VIL *vil);
 
 public: // Phase 0 Stats — 帧级资源量观测

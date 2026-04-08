@@ -82,6 +82,10 @@ private:
         if (!handle.IsValid())
             return false;
 
+        const VIL *resolved_vil = registry->ResolveVIL(handle.material, kMergeCfg);
+        if (!resolved_vil)
+            return false;
+
         material = handle.material;
         std::cout << "[TestApp::InitMaterial] Created material: " << (void*)material << std::endl;
         std::cout << "[TestApp::InitMaterial] MaterialTemplate has MI: " << material->hasMI() << std::endl;
@@ -113,9 +117,13 @@ private:
         if (!handle.IsValid())
             return false;
 
+        const VIL *resolved_vil = registry->ResolveVIL(handle.material, kMergeCfg);
+        if (!resolved_vil)
+            return false;
+
         // 创建共用的 Geometry（所有三角形共享顶点数据）
         GraphicsGeometryFactory factory(graphics_context);
-        auto creater = factory.CreateCreater(handle.material->GetDefaultVIL());
+        auto creater = factory.CreateCreater(resolved_vil);
         if (!creater)
             return false;
 
@@ -175,6 +183,10 @@ private:
         if (!handle.IsValid())
             return false;
 
+        const VIL *resolved_vil = registry->ResolveVIL(handle.material, kMergeCfg);
+        if (!resolved_vil)
+            return false;
+
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
             // 为每个三角形分配独立的 MI 槽位
@@ -183,7 +195,7 @@ private:
             auto slot = material_manager->AllocMaterialInstanceSlot(
                 handle.domain,
                 handle.material,
-                handle.material->GetDefaultVIL(),
+                resolved_vil,
                 kMergeCfg.pipeline,
                 &color,
                 sizeof(color));

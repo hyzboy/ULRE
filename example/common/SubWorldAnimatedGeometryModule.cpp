@@ -86,9 +86,10 @@ namespace
             };
 
             {
-                auto* seed_mi = AcquireMI(kAnimGeomCfg, &colors[0], sizeof(colors[0]));
-                if (!seed_mi) return false;
-                material = seed_mi->GetMaterial();
+                auto seed_slot = AcquireSlot(kAnimGeomCfg, &colors[0], sizeof(colors[0]));
+                if (!seed_slot.IsValid()) return false;
+                material = seed_slot.material_template;
+                material_domain = seed_slot.domain;
             }
 
             return BuildMaterialInstances(colors, sizeof(colors) / sizeof(colors[0]));
@@ -104,7 +105,7 @@ namespace
 
         bool OnBuildLocalScene(ECSContext* sub_context) override
         {
-            if (!render_context || !graphics_context || !sub_context || material_instances.size() < 3)
+            if (!render_context || !graphics_context || !sub_context || material_slots.size() < 3)
                 return false;
 
             auto* device = graphics_context->GetDevice();
@@ -130,9 +131,9 @@ namespace
             cyl_ci.numberSlices = 32;
             auto* cyl_geom = CreateCylinder(pc.get(), &cyl_ci);
 
-            auto* cube_mesh = CreatePrimitiveMesh(cube_geom, material_instances[0]);
-            auto* sphere_mesh = CreatePrimitiveMesh(sphere_geom, material_instances[1]);
-            auto* cyl_mesh = CreatePrimitiveMesh(cyl_geom, material_instances[2]);
+            auto* cube_mesh = CreatePrimitiveMesh(cube_geom, material_slots[0]);
+            auto* sphere_mesh = CreatePrimitiveMesh(sphere_geom, material_slots[1]);
+            auto* cyl_mesh = CreatePrimitiveMesh(cyl_geom, material_slots[2]);
 
             if (!cube_mesh || !sphere_mesh || !cyl_mesh)
                 return false;

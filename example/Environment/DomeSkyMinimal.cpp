@@ -6,6 +6,7 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/PrimitiveMaterialSlot.h>
 #include<memory>
 
 #include<hgl/ecs/core/Context.h>
@@ -29,10 +30,11 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     MaterialTemplate *          mtl_sky_sphere      = nullptr;
+    const VIL *                 sky_vil             = nullptr;
+    PrimitiveMaterialSlot       sky_slot;
 
     Geometry *          prim_sky_dome       = nullptr;
     Geometry *          prim_ground_plane   = nullptr;
-    MaterialInstance *  mi_sky_sphere       = nullptr;
 
 private:
 
@@ -46,8 +48,26 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
-        mi_sky_sphere = AcquireMI(kSkyCfg);
-        if (!mi_sky_sphere)
+        auto *registry = GetMaterialAssetRegistry();
+        auto *material_manager = GetMaterialManager();
+        if (!registry || !material_manager)
+            return false;
+
+        auto handle = registry->Acquire(kSkyCfg);
+        if (!handle.IsValid() || !handle.material)
+            return false;
+
+        mtl_sky_sphere = handle.material;
+        sky_vil = registry->ResolveVIL(handle.material, kSkyCfg);
+        if (!sky_vil)
+            return false;
+
+        sky_slot = material_manager->AllocMaterialInstanceSlot(
+            handle.domain,
+            handle.material,
+            sky_vil,
+            kSkyCfg.pipeline);
+        if (!sky_slot.IsValid())
             return false;
 
         return true;
@@ -64,7 +84,7 @@ private:
         using namespace inline_geometry;
 
         {
-            auto pc = std::make_unique<GeometryCreater>(device, mi_sky_sphere->GetVIL());
+            auto pc = std::make_unique<GeometryCreater>(device, sky_vil);
 
             DomeCreateInfo dci;
             dci.number_slices = 64;
@@ -81,7 +101,7 @@ private:
         }
 
         {
-            auto pc = std::make_unique<GeometryCreater>(device, mi_sky_sphere->GetVIL());
+            auto pc = std::make_unique<GeometryCreater>(device, sky_vil);
 
             prim_ground_plane = CreatePlaneSqaure(pc.get());
             if (!prim_ground_plane)
@@ -98,14 +118,14 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!prim_sky_dome || !prim_ground_plane || !mi_sky_sphere)
+        if(!prim_sky_dome || !prim_ground_plane || !sky_slot.IsValid())
             return false;
 
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;
 
-        Primitive *sky_prim = primitive_manager->CreatePrimitive(prim_sky_dome, mi_sky_sphere->ToSlot());
+        Primitive *sky_prim = primitive_manager->CreatePrimitive(prim_sky_dome, sky_slot);
         if(!sky_prim)
             return false;
 
@@ -121,7 +141,7 @@ private:
         sky_prim_comp->SetPrimitive(sky_prim);
         sky_prim_comp->SetVisible(true);
 
-        Primitive *ground_prim = primitive_manager->CreatePrimitive(prim_ground_plane, mi_sky_sphere->ToSlot());
+        Primitive *ground_prim = primitive_manager->CreatePrimitive(prim_ground_plane, sky_slot);
         if(!ground_prim)
             return false;
 

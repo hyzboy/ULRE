@@ -13,6 +13,7 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/PrimitiveMaterialSlot.h>
 #include<memory>
 
 #include<hgl/ecs/core/Context.h>
@@ -39,7 +40,8 @@ private:
     std::shared_ptr<hgl::graph::SunDirectionControlSystem> sun_gizmo_system;
 
     Geometry *prim_sky_sphere = nullptr;
-    MaterialInstance *mi_sky_sphere = nullptr;
+    const VIL *sky_vil = nullptr;
+    PrimitiveMaterialSlot sky_slot;
 
 private:
     bool InitMDP()
@@ -52,9 +54,26 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
-        mi_sky_sphere = AcquireMI(kSkyCfg);
+        auto *registry = GetMaterialAssetRegistry();
+        auto *material_manager = GetMaterialManager();
+        if (!registry || !material_manager)
+            return false;
 
-        return mi_sky_sphere != nullptr;
+        auto handle = registry->Acquire(kSkyCfg);
+        if (!handle.IsValid() || !handle.material)
+            return false;
+
+        sky_vil = registry->ResolveVIL(handle.material, kSkyCfg);
+        if (!sky_vil)
+            return false;
+
+        sky_slot = material_manager->AllocMaterialInstanceSlot(
+            handle.domain,
+            handle.material,
+            sky_vil,
+            kSkyCfg.pipeline);
+
+        return sky_slot.IsValid();
     }
 
     bool CreateRenderObject()
@@ -67,7 +86,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, mi_sky_sphere->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, sky_vil);
 
         HexSphereCreateInfo hsci;
         hsci.subdivisions = 3;
@@ -82,14 +101,14 @@ private:
 
     bool InitECSScene()
     {
-        if(!ecs_context || !prim_sky_sphere || !mi_sky_sphere)
+        if(!ecs_context || !prim_sky_sphere || !sky_slot.IsValid())
             return false;
 
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;
 
-        Primitive *ri = primitive_manager->CreatePrimitive(prim_sky_sphere, mi_sky_sphere->ToSlot());
+        Primitive *ri = primitive_manager->CreatePrimitive(prim_sky_sphere, sky_slot);
         if(!ri)
             return false;
 
