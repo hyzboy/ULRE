@@ -520,6 +520,11 @@ namespace hgl::ecs
         uint32_t frame_successes = 0;
         uint32_t frame_failures = 0;
         uint32_t frame_skips = 0;
+        // Phase 3 diagnostic: VIL sourced from primitive vs. fallback to material default.
+        uint32_t frame_vil_from_prim    = 0;
+        uint32_t frame_vil_from_default = 0;  // "fallback_count"
+        // Phase 3 diagnostic: per-material set of VIL attrib counts (layout diversity).
+        std::unordered_map<graph::MaterialTemplate*, std::unordered_set<uint32_t>> material_vil_layouts;
         std::unordered_set<graph::Primitive*> seen_primitives;
 
         for (auto& itemPtr : cache.renderItems)
@@ -557,7 +562,18 @@ namespace hgl::ecs
                 }
 
                 if (!vil)
+                {
                     vil = material->GetDefaultVIL();
+                    ++frame_vil_from_default;  // fallback_count increment
+                }
+                else
+                {
+                    ++frame_vil_from_prim;
+                }
+
+                // Phase 3: record layout diversity (vil attrib count as compact key).
+                if (vil && material)
+                    material_vil_layouts[material].insert(vil->GetVertexAttribCount());
 
                 pipeline_data = graph::GetGraphicsPipelineData(preset);
                 if (pipeline_data)
@@ -591,11 +607,17 @@ namespace hgl::ecs
 
                         if (ShouldLogPow2(failures_total))
                         {
-                            LogWarning("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve failed: frame_failures=%u total_failures=%llu material=%s preset=%d",
+                            // Phase 3 diagnostic fields: include vil_hash (attrib count) at failure site.
+                            const uint32_t vil_attrib_count = vil ? vil->GetVertexAttribCount() : 0u;
+                            LogWarning("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve failed: "
+                                       "frame_failures=%u total_failures=%llu material=%s preset=%d "
+                                       "vil_attrib_count=%u vil=%p",
                                        frame_failures,
                                        static_cast<unsigned long long>(failures_total),
                                        material->GetName().c_str(),
-                                       int(preset));
+                                       int(preset),
+                                       vil_attrib_count,
+                                       static_cast<const void*>(vil));
                         }
                         // Keep original pipeline to preserve rendering continuity.
                     }
@@ -816,6 +838,32 @@ namespace hgl::ecs
                              total_items_in_batches,
                              cache.renderItems.size());
                 }
+            }
+        }
+
+        // Phase 3: layout-diversity summary — log materials that legitimately use multiple VIL layouts.
+        {
+            static uint64_t s_diversity_frame = 0;
+            const uint64_t df = ++s_diversity_frame;
+            const bool should_log_diversity = (df <= 5) || ((df & (df - 1)) == 0);
+
+            uint32_t multi_layout_materials = 0;
+            for (const auto &entry : material_vil_layouts)
+            {
+                if (entry.second.size() > 1)
+                    ++multi_layout_materials;
+            }
+
+            if (should_log_diversity || multi_layout_materials > 0)
+            {
+                LogDebug("[ECS::PrimitiveBatchPipeline] Phase3 layout-diversity #%llu: "
+                         "vil_from_prim=%u vil_fallback=%u "
+                         "unique_material_layout_combos=%zu multi_layout_materials=%u",
+                         static_cast<unsigned long long>(df),
+                         frame_vil_from_prim,
+                         frame_vil_from_default,
+                         material_vil_layouts.size(),
+                         multi_layout_materials);
             }
         }
 

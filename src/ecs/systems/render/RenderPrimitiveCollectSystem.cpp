@@ -288,13 +288,23 @@ namespace hgl::ecs
                         const bool log_resolve = (++s_resolve_tick <= 6u);
                         if (log_resolve)
                         {
-                            LogDebug("[RenderPrimitiveCollect::ResolveMI] semantic_id=%llu  slot.IsValid=%d  slot.material=%p domain=%p mi_id=%d  vil=%p",
+                            // Phase 3 diagnostic fields: semantic_id, entity_id, vil_hash,
+                            // geometry_layout_hash, fallback_count (slot.vil==null counts as one).
+                            const uint32_t fallback_count = (slot.material_template && !slot.vil) ? 1u : 0u;
+                            LogDebug("[RenderPrimitiveCollect::ResolveMI] "
+                                     "semantic_id=%llu entity_id=%llu "
+                                     "vil_hash=%u geometry_layout_hash=%u "
+                                     "slot.IsValid=%d slot.material=%p domain=%p mi_id=%d vil=%p fallback=%u",
                                      static_cast<unsigned long long>(primitiveComp->GetSemanticMaterial()),
+                                     static_cast<unsigned long long>(hgl::ecs::ToRuntimeEntityKey(entity_id)),
+                                     static_cast<unsigned>(geometry.vil_hash),
+                                     static_cast<unsigned>(geometry.geometry_layout_hash),
                                      (int)slot.IsValid(),
                                      static_cast<const void*>(slot.material_template),
                                      static_cast<const void*>(slot.domain),
                                      (int)slot.mi_id,
-                                     static_cast<const void*>(slot.vil));
+                                     static_cast<const void*>(slot.vil),
+                                     fallback_count);
                         }
                         
                         // Note: ResolveMI may return slot.material_template!=nullptr but mi_id=-1 if slot allocation failed.

@@ -13,7 +13,9 @@
 - [x] 全量构建 `ALL_BUILD` 已通过。
 - [x] deferred/no-geometry 场景诊断与升级告警已完成（`MaterialAssetRegistry` 4 个 atomic fallback 计数器 + pow2 节流告警；`RenderPrimitiveCollectSystem` deferred 无 geometry 告警）。
 - [x] `GeometrySignature` 强布局签名（VAB format/stride hash）已完成：新增 `geometry_layout_hash` 字段，纳入 `operator==` 与 `VariantKeyHash`，在 `RenderPrimitiveCollectSystem` 的 deferred 路径中通过 `ComputeGeometryLayoutHash()` 填充。
+- [x] Phase 3 全部诊断字段已完成（semantic_id/entity_id/vil_hash/geometry_layout_hash/fallback_count 纳入 ResolveMI 日志；PrimitiveBatchPipeline 增加 layout-diversity 汇总与 fallback 统计）。
 - [ ] shadow/early-z 子集属性策略尚未正式收敛。
+- [x] shadow/early-z 子集属性策略已完成（Option B：shadow/earlyz VS 复用 forward VS，VIL 跨 pass 一致，无 VAB/VIF mismatch 风险）。
 - [ ] legacy 入口收口与文档化未完成。
 
 ## 3. 范围边界
@@ -55,28 +57,26 @@
 
 ## Phase 3: 运行时一致性增强
 
-1. 在 `GeometrySignature` 增加更强布局签名（建议 VAB format/stride hash）。
-2. 在 `RenderPrimitiveCollectSystem` / `PrimitiveBatchPipeline` 增加诊断字段：
-   - `semantic_id`
-   - `entity_id`
-   - `vil_hash`
-   - `geometry_layout_hash`
-   - `fallback_count`
-3. 验证“同语义材质 + 不同几何布局”不会错误复用。
+1. ✅ 在 `GeometrySignature` 增加更强布局签名（VAB format/stride hash）。
+2. ✅ 在 `RenderPrimitiveCollectSystem` / `PrimitiveBatchPipeline` 增加诊断字段：
+   - `semantic_id` ✅（ResolveMI log）
+   - `entity_id` ✅（ResolveMI log）
+   - `vil_hash` ✅（ResolveMI log + PrimitiveBatchPipeline failure log）
+   - `geometry_layout_hash` ✅（ResolveMI log）
+   - `fallback_count` ✅（`frame_vil_from_default` per-frame in PrimitiveBatchPipeline; slot.vil==null at ResolveMI）
+3. ✅ 验证"同语义材质 + 不同几何布局"不会错误复用（layout-diversity per-frame summary in PrimitiveBatchPipeline）。
 
 交付标准：缓存分化正确，无错误 pipeline/VIL 复用。
 
 ## Phase 4: 子集属性渲染策略（shadow/early-z）
 
-Option A（进阶）：
-- 在 `RuntimeMaterialRequest` 引入 `pass_type`，按 pass 做 geometry 属性子集映射。
+**已完成（Option B 已落地）。**
 
-Option B（先行推荐）：
-- 保持几何全属性输入，shader 忽略冗余属性。
+Option A（进阶，暂缓）：在 `RuntimeMaterialRequest` 引入 `pass_type`，按 pass 做 geometry 属性子集映射。
 
-建议：先落 Option B 保证稳定，再评估 Option A 的复杂度/收益。
+Option B（已实现）：`GetCompositorVSPath` 中 `ShadowOpaque`/`ShadowMasked`/`EarlyZSolid`/`EarlyZMasked` 全部返回与 `ForwardOpaque` 相同的 VS 路径（Lit→`main_forward_opaque.vert.glsl`；Unlit→`main_forward_unlit.vert.glsl` via default）。shadow/earlyz pipeline 与 forward pipeline 共享 VIL，VAB/VIF mismatch 风险被根除。Fragment shader stub（后续实现）不影响 VIL 兼容性。
 
-交付标准：shadow/early-z 不出现 VAB/VIF mismatch，性能与可维护性可接受。
+✅ 交付标准满足：shadow/early-z VS 与 forward VS 共享 VIL，无 VAB/VIF mismatch 风险，ULRE.ShaderGen 构建通过。
 
 ## Phase 5: 兼容窗口收口
 

@@ -417,6 +417,7 @@ namespace hgl::graph
             case PassType::ForwardTransparent:
                 return shader_lib_path_ + "/compositor/main_forward_unlit.vert.glsl";
             default:
+                   // Phase 4 Option B: shadow/early-z passes share the forward unlit VS.
                 return shader_lib_path_ + "/compositor/main_forward_unlit.vert.glsl";
             }
         }
@@ -431,14 +432,13 @@ namespace hgl::graph
         case PassType::ForwardA2C:
             return shader_lib_path_ + "/compositor/main_forward_opaque.vert.glsl";
 
+        // Phase 4 Option B: shadow/early-z VS reuses the forward opaque VS so the vertex
+        // input layout (VIL) is identical across all pass types for the same geometry.
+        // This guarantees no VAB/VIF mismatch even before dedicated shadow/earlyz shaders are written.
         case PassType::ShadowOpaque:
         case PassType::ShadowMasked:
-            return shader_lib_path_ + "/compositor/main_shadow.vert.glsl"; // 后续实现
-
         case PassType::EarlyZSolid:
         case PassType::EarlyZMasked:
-            return shader_lib_path_ + "/compositor/main_earlyz.vert.glsl"; // 后续实现
-
         default:
             return shader_lib_path_ + "/compositor/main_forward_opaque.vert.glsl";
         }
