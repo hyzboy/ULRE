@@ -6,9 +6,6 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr const char VERTEX_LUMINANCE_3D_MI_CODES[] = "vec4 Color;";
-    constexpr const uint32_t VERTEX_LUMINANCE_3D_MI_BYTES = sizeof(hgl::math::Vector4f);
-
     constexpr FixedVertexEntry VERTEX_LUMINANCE_3D_VERTEX[] = {
         { VAT_VEC3, VAN::Position },
         { VAT_FLOAT, VAN::Luminance },
@@ -26,8 +23,8 @@ namespace
         &VERTEX_LUMINANCE_3D_UBOS,
         &VERTEX_LUMINANCE_3D_SSBOS,
         nullptr,
-        VERTEX_LUMINANCE_3D_MI_CODES,
-        VERTEX_LUMINANCE_3D_MI_BYTES,
+        nullptr, 0,
+        InstanceDataLayout::Color4f,
     };
 }
 

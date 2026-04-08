@@ -55,15 +55,13 @@ StaticMaterialDef BuildStandardDynamicDef(
     const StaticMaterialDef &def_template,
     SSBOSemanticSet &dynamic_ssbos,
     StaticTextureSamplerDescriptors &dynamic_samplers,
-    const char *mi_codes,
-    const uint32_t mi_bytes,
+    InstanceDataLayout mi_layout,
     const bool any_array)
 {
     StaticMaterialDef dynamic_def = def_template;
     dynamic_def.ssbo_descriptors = &dynamic_ssbos;
     dynamic_def.texture_samplers = &dynamic_samplers;
-    dynamic_def.mi_glsl_codes = mi_codes;
-    dynamic_def.mi_struct_bytes = mi_bytes;
+    dynamic_def.mi_instance_layout = mi_layout;
     dynamic_def.name = any_array ? "StandardTextureArray_v1" : "Standard_v1";
     return dynamic_def;
 }

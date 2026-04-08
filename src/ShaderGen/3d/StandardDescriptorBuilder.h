@@ -27,8 +27,7 @@ StaticMaterialDef BuildStandardDynamicDef(
     const StaticMaterialDef &def_template,
     SSBOSemanticSet &dynamic_ssbos,
     StaticTextureSamplerDescriptors &dynamic_samplers,
-    const char *mi_codes,
-    uint32_t mi_bytes,
+    InstanceDataLayout mi_layout,
     bool any_array);
 
 } // namespace hgl::graph::mtl

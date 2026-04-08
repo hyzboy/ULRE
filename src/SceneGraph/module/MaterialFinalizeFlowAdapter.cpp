@@ -9,7 +9,7 @@ namespace hgl::graph
                                    MaterialFinalizePlan &out_plan)
     {
         out_plan.mp_set_types.clear();
-        out_plan.mi_data_bytes = mci.GetMaterialInstanceStride();
+        out_plan.required_instance_layout = mtl::ResolveInstanceDataLayout(mci.GetMaterialInstanceStride());
         out_plan.mi_max_count = mci.GetMaterialInstanceMaxCount();
 
         if (!desc_manager)

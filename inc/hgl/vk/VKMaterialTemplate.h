@@ -4,6 +4,7 @@
 #include<hgl/type/String.h>
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
+#include<hgl/mtl/InstanceDataLayout.h>
 #include<hgl/log/Log.h>
 #include<unordered_set>
 
@@ -50,11 +51,11 @@ class MaterialTemplate
 
     MaterialParameters *mp_array[DESCRIPTOR_SET_TYPE_COUNT];
 
-    uint32_t mi_data_bytes;             ///<实例数据大小
     uint32_t mi_max_count;              ///<实例一次渲染最大数量限制
 
     bool has_l2w_matrix;                ///<是否有LocalToWorld矩阵
 
+    mtl::InstanceDataLayout required_instance_layout = mtl::InstanceDataLayout::None; ///< 需方：MaterialTemplate 所需的实例数据格式
     uint8_t texture_array_slot_flags = 0; ///< bit N = SamplerSlot(N) uses TextureArray mode
 
 private:
@@ -137,9 +138,11 @@ public:
             void    SetTextureArraySlotFlags(uint8_t f){texture_array_slot_flags=f;}
     const uint8_t   GetTextureArraySlotFlags()const{return texture_array_slot_flags;}
 
-    const bool      hasMI           ()const{return mi_data_bytes>0;}
-    const uint32_t  GetMIDataBytes  ()const{return mi_data_bytes;}
+    const bool      hasMI   ()const{return required_instance_layout != mtl::InstanceDataLayout::None;}
+    const uint32_t  GetMIDataBytes  ()const{return mtl::GetInstanceDataStride(required_instance_layout);}
     const uint32_t  GetMIMaxCount   ()const{return mi_max_count;}
+
+    mtl::InstanceDataLayout GetRequiredLayout()const{return required_instance_layout;}
 };//class MaterialTemplate
 
 using MaterialTemplateSet=std::unordered_set<MaterialTemplate *>;

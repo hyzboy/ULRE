@@ -1,8 +1,6 @@
 layout(location=TEXCOORD_LOCATION) in vec2 TexCoord;
 
-struct MaterialInstance {
-    uint TextColor;
-};
+#include "instance_data/Text2D.glsl"
 
 #include "common/ssbo_material_instance.glsl"
 

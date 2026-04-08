@@ -1,14 +1,7 @@
 
 #include "common/surface_interface.glsl"
 
-struct MaterialInstance
-{
-    uint  base_color;
-    float metallic;
-    float roughness;
-    float normal_scale;
-};
-
+#include "instance_data/PBRStandard.glsl"
 #include "common/ssbo_material_instance.glsl"
 
 

@@ -1,11 +1,7 @@
 
 #include "common/surface_interface.glsl"
 
-struct MaterialInstance
-{
-    vec4 color;     };
-
-
+#include "instance_data/Color4f.glsl"
 #include "common/ssbo_material_instance.glsl"
 SurfaceOutput EvalSurface(SurfaceInput si)
 {

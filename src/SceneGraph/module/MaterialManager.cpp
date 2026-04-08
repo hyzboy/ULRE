@@ -304,7 +304,7 @@ void MaterialManager::ApplyMaterialFinalizePlan(MaterialTemplate *mtl, const Ans
         mtl->mp_array[(int)set_type] = CreateMaterialMP(mtl_name, mtl->desc_manager, mtl->pipeline_layout_data, set_type);
     }
 
-    mtl->mi_data_bytes = finalize_plan.mi_data_bytes;
+    mtl->required_instance_layout = finalize_plan.required_instance_layout;
     mtl->mi_max_count  = finalize_plan.mi_max_count;
 }
 
@@ -937,18 +937,23 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
 // MaterialResourceDomain — Phase 1
 // ============================================================================
 
+MaterialResourceDomain *MaterialManager::CreateMaterialResourceDomain(
+    mtl::InstanceDataLayout layout, uint32_t max_count, uint8_t tex_array_slots)
+{
+    return new MaterialResourceDomain(layout, max_count, tex_array_slots);
+}
+
+// Convenience overload: create a domain that matches the given MaterialTemplate's requirements.
+// Phase E will remove this once all callsites pass layout + texslots explicitly.
 MaterialResourceDomain *MaterialManager::CreateMaterialResourceDomain(MaterialTemplate *mtl)
 {
     if(!mtl)
         return nullptr;
 
-    return CreateMaterialResourceDomain(mtl->GetMIDataBytes(), mtl->GetMIMaxCount());
-}
-
-MaterialResourceDomain *MaterialManager::CreateMaterialResourceDomain(uint32_t mi_data_bytes,
-                                                      uint32_t mi_max_count)
-{
-    return new MaterialResourceDomain(mi_data_bytes, mi_max_count);
+    return CreateMaterialResourceDomain(
+        mtl->GetRequiredLayout(),
+        mtl->GetMIMaxCount(),
+        0);       // texture_array_slot_flags will be wired up in Phase E
 }
 
 DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(MaterialResourceDomain *domain, MaterialTemplate *mtl)
@@ -956,13 +961,28 @@ DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(MaterialReso
     if (!domain || !mtl)
         return nullptr;
 
-    // Hard reject: MI stride mismatch means MI data cannot be shared
-    if (domain->GetMIDataBytes() != mtl->GetMIDataBytes())
+    // Phase D: semantic layout match — enum comparison prevents stride collisions
+    // (e.g. Color4f=16B vs PBRStandard=16B share the same stride but are incompatible)
+    if (domain->GetLayout() != mtl->GetRequiredLayout())
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateDomainMaterialBinding: MI stride mismatch "
-            "domain=%u mtl=%u\n",
-            domain->GetMIDataBytes(), mtl->GetMIDataBytes());
+            "[MaterialManager] CreateDomainMaterialBinding: layout mismatch "
+            "domain=%s mtl=%s\n",
+            mtl::GetInstanceDataName(domain->GetLayout()),
+            mtl::GetInstanceDataName(mtl->GetRequiredLayout()));
+        return nullptr;
+    }
+
+    // Phase D: bitmask subset check — Domain must supply every TextureArray slot the Template requires
+    const uint8_t required_slots = mtl->GetTextureArraySlotFlags();
+    if (required_slots != 0 &&
+        (domain->GetTextureArraySlots() & required_slots) != required_slots)
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateDomainMaterialBinding: texture array slot mismatch "
+            "domain=0x%02x required=0x%02x\n",
+            unsigned(domain->GetTextureArraySlots()),
+            unsigned(required_slots));
         return nullptr;
     }
 
@@ -1043,7 +1063,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialResourceDomain
     mi->owns_slot         = true;
     mi->vil      = use_vil;
     mi->mi_id    = mi_id;
-    mi->InitMITLayout(material->GetTextureArraySlotFlags());
+    mi->InitMITLayout(domain->GetTextureArraySlots());
     Add(mi);
 
     if(data && data_size > 0)
@@ -1059,7 +1079,9 @@ bool MaterialManager::RebindMaterialInstance(MaterialInstance *mi, MaterialTempl
 
     mi->material = material;
     mi->vil = vil ? vil : material->GetDefaultVIL();
-    mi->InitMITLayout(material->GetTextureArraySlotFlags());
+    // Phase E: prefer Domain slot flags as authoritative source; fall back to Template on null domain (rare)
+    MaterialResourceDomain *d = mi->GetDomain();
+    mi->InitMITLayout(d ? d->GetTextureArraySlots() : material->GetTextureArraySlotFlags());
     return true;
 }
 

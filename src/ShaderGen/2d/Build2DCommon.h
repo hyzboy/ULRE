@@ -134,8 +134,7 @@ inline void BuildBase2DFixedDef(StaticMaterialDef &def,
                                 UBOSemanticSet &ubos,
                                 SSBOSemanticSet &ssbos,
                                 StaticTextureSamplerDescriptors *samplers = nullptr,
-                                const char *mi_codes = nullptr,
-                                uint32_t mi_bytes = 0)
+                                InstanceDataLayout mi_layout = InstanceDataLayout::None)
 {
     PushBaseUBODescriptors(ubos, cfg);
     PushBaseSSBODescriptors(ssbos, cfg);
@@ -147,9 +146,8 @@ inline void BuildBase2DFixedDef(StaticMaterialDef &def,
         &ubos,
         &ssbos,
         samplers,
-        mi_codes,
-        mi_bytes,
     };
+    def.mi_instance_layout = mi_layout;
 }
 
 }//namespace build2d

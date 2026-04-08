@@ -1,5 +1,6 @@
 #pragma once
 
+#include <hgl/mtl/MaterialPreset.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 
 namespace hgl::graph
@@ -16,6 +17,9 @@ using VIL = VertexInputLayout;
  *
  * MaterialAssetRegistry::ResolveMI() returns this instead of MaterialInstance*.
  * Primitive::BindMaterialSlot() consumes it.
+ *
+ * Scope: this slot only carries resolved render binding state.
+ * It intentionally does NOT carry RuntimeMaterialRequest.
  *
  * The slot's fields correspond 1-to-1 with the MI accessors they replace:
  *   MaterialInstance::GetMaterial()    → material_template
@@ -37,6 +41,7 @@ struct PrimitiveMaterialSlot
     uint8_t                  texture_array_slot_flags = 0;
     const uint32_t          *mit_data          = nullptr;
     uint32_t                 mit_data_count    = 0;
+    mtl::MaterialPreset      material_preset   = mtl::MaterialPreset::Standard;
 
     bool IsValid() const { return material_template != nullptr && mi_id >= 0; }
 };

@@ -2,6 +2,7 @@
 
 #include<hgl/mtl/FixedVertexEntry.h>
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
+#include<hgl/mtl/InstanceDataLayout.h>
 #include<hgl/vk/VKPrimitiveType.h>
 #include<map>
 #include<set>
@@ -73,8 +74,9 @@ struct StaticMaterialDef
     const SSBOSemanticSet *ssbo_descriptors = nullptr;
     const StaticTextureSamplerDescriptors *texture_samplers = nullptr;
 
-    const char *                mi_glsl_codes;
-    uint32_t                    mi_struct_bytes;
+    const char *                mi_glsl_codes = nullptr;    ///< @deprecated Dead store — use mi_instance_layout
+    uint32_t                    mi_struct_bytes = 0;        ///< @deprecated Dead store — use mi_instance_layout
+    InstanceDataLayout          mi_instance_layout = InstanceDataLayout::None;
 };
 
 }//namespace hgl::graph::mtl

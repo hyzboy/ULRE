@@ -11,9 +11,6 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr const char mi_codes[]="uvec2 BillboardSize;";
-    constexpr const uint32_t mi_bytes=sizeof(uint32_t)*2;       // uvec2 = 2 x uint32
-
     constexpr FixedVertexEntry BILLBOARD_DYNAMIC_VERTEX[] = {
         { VAT_VEC3, VAN::Position },
     };
@@ -43,8 +40,8 @@ namespace
         &BILLBOARD_DYNAMIC_BASE_UBOS,
         &BILLBOARD_DYNAMIC_BASE_SSBOS,
         nullptr,
-        mi_codes,
-        mi_bytes,
+        nullptr, 0,
+        InstanceDataLayout::BillboardFixed,
     };
 }//namespace
 

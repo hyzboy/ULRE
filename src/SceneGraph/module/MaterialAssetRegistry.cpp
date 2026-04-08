@@ -394,8 +394,7 @@ SemanticMaterialId MaterialAssetRegistry::RegisterSemanticMaterial(const mtl::Ma
         entry.canonical_material = CreateMaterialFromRecord(mm, rec);
         if (entry.canonical_material && mm)
         {
-            entry.shared_domain = mm->CreateMaterialResourceDomain(entry.canonical_material->GetMIDataBytes(),
-                                                           entry.canonical_material->GetMIMaxCount());
+            entry.shared_domain = mm->CreateMaterialResourceDomain(entry.canonical_material);
         }
 
         semantic_cache.emplace(id, std::move(entry));
@@ -478,6 +477,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
 
             mm->RebindMaterialInstance(it->second, handle.material, ResolveRuntimeVIL(handle.material, final_rec, geometry));
             it->second->SetRenderPreset(request.pipeline);
+            it->second->SetMaterialPreset(final_rec.preset);
 
             if (instance_data && instance_data_size > 0)
                 it->second->WriteMIData(instance_data, instance_data_size);
@@ -495,6 +495,8 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         if (!mi)
             return {};
 
+        mi->SetMaterialPreset(final_rec.preset);
+
         legacy_final_mi_cache.emplace(std::move(key), mi);
         return make_slot(mi);
     }
@@ -508,6 +510,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
 
         mm->RebindMaterialInstance(it->second, handle.material, ResolveRuntimeVIL(handle.material, final_rec, geometry));
         it->second->SetRenderPreset(request.pipeline);
+        it->second->SetMaterialPreset(final_rec.preset);
 
         if (instance_data && instance_data_size > 0)
             it->second->WriteMIData(instance_data, instance_data_size);
@@ -529,8 +532,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
 
         if (entry.canonical_material)
         {
-            entry.shared_domain = mm->CreateMaterialResourceDomain(entry.canonical_material->GetMIDataBytes(),
-                                                           entry.canonical_material->GetMIMaxCount());
+            entry.shared_domain = mm->CreateMaterialResourceDomain(entry.canonical_material);
         }
     }
 
@@ -546,6 +548,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         return {};
 
     mi->SetRenderPreset(request.pipeline);
+    mi->SetMaterialPreset(final_rec.preset);
     entity_mi_cache.emplace(es_key, mi);
     return make_slot(mi);
 }
@@ -606,7 +609,10 @@ MaterialInstance *MaterialAssetRegistry::CreateMI(
         spec.vil_cfg = &vil_cfg;
     }
 
-    return mm->AcquireMaterialInstance(spec);
+    MaterialInstance *mi = mm->AcquireMaterialInstance(spec);
+    if (mi)
+        mi->SetMaterialPreset(rec.preset);
+    return mi;
 }
 
 void MaterialAssetRegistry::ReleaseEntityResolvedMI(uint64_t entity_id, SemanticMaterialId semantic_id)

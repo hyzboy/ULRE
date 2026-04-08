@@ -1,9 +1,5 @@
 
-struct MaterialInstance
-{
-    float normal_strength;
-};
-
+#include "instance_data/TextureBlinnPhong.glsl"
 #include "common/ssbo_material_instance.glsl"
 #include "common/skylight_simple.glsl"
 

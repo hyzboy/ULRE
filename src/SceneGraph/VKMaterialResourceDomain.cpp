@@ -1,20 +1,18 @@
 ﻿#include<hgl/vk/VKMaterialResourceDomain.h>
-#include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
 
-hgl::graph::MaterialResourceDomain::MaterialResourceDomain(uint32_t mi_bytes, uint32_t mi_count)
+hgl::graph::MaterialResourceDomain::MaterialResourceDomain(
+    hgl::graph::mtl::InstanceDataLayout layout,
+    uint32_t max_count,
+    uint8_t tex_array_slots)
 {
-    mi_data_bytes = mi_bytes;
-    mi_max_count  = mi_count;
+    instance_layout         = layout;
+    mi_max_count            = max_count;
+    texture_array_slot_flags = tex_array_slots;
 
-    if(mi_data_bytes > 0)
-        mi_data_manager = new hgl::ActiveMemoryBlockManager(mi_data_bytes);
-}
-
-hgl::graph::MaterialResourceDomain::MaterialResourceDomain(hgl::graph::MaterialTemplate *mtl)
-    : MaterialResourceDomain(mtl ? mtl->GetMIDataBytes() : uint32_t(0),
-                     mtl ? mtl->GetMIMaxCount() : uint32_t(0))
-{
+    const uint32_t stride = hgl::graph::mtl::GetInstanceDataStride(layout);
+    if(stride > 0)
+        mi_data_manager = new hgl::ActiveMemoryBlockManager(stride);
 }
 
 hgl::graph::MaterialResourceDomain::~MaterialResourceDomain()

@@ -24,7 +24,7 @@ MaterialTemplate::MaterialTemplate(const AnsiString &n,const mtl::MaterialCreate
 
     mem_zero(mp_array);
 
-    mi_data_bytes=0;
+    required_instance_layout = mtl::InstanceDataLayout::None;
     mi_max_count=0;
 
     has_l2w_matrix=mci->HasLocalToWorld();

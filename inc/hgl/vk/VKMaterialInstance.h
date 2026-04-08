@@ -26,6 +26,7 @@ class MaterialInstance
     const VIL *             vil               = nullptr;
     int                     mi_id             = -1;
     GraphicsPipelinePreset  render_preset     = GraphicsPipelinePreset::Solid3D;
+    mtl::MaterialPreset     material_preset   = mtl::MaterialPreset::Standard;
 
     int8_t                  mit_slot_offset[mtl::SamplerSlotCount];
     uint32_t                mit_packed_count = 0;
@@ -48,6 +49,8 @@ public:
     // Legacy semantic getters/setters: prefer carrying preset in PrimitiveMaterialSlot/Primitive instead.
     GraphicsPipelinePreset GetRenderPreset() const { return render_preset; }
     void SetRenderPreset(GraphicsPipelinePreset p) { render_preset = p; }
+    mtl::MaterialPreset GetMaterialPreset() const { return material_preset; }
+    void SetMaterialPreset(mtl::MaterialPreset p) { material_preset = p; }
 
     /// 转换为 PrimitiveMaterialSlot，供 DirectCreatePrimitive/PrimitiveManager::CreatePrimitive 使用（Phase C）
     PrimitiveMaterialSlot ToSlot() const
@@ -60,7 +63,8 @@ public:
             render_preset,
             uint8_t(mit_packed_count > 0 ? material ? material->GetTextureArraySlotFlags() : 0 : 0),
             mit_packed,
-            mit_packed_count
+            mit_packed_count,
+            material_preset
         };
     }
 

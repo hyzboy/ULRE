@@ -13,8 +13,6 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
                                    const Text2DMaterialCreateConfig *cfg,
                                    const MaterialVariantKey &key)
 {
-    constexpr const char mi_codes[]="uint TextColor;";
-    constexpr const uint32_t mi_bytes=sizeof(uint32);
     if(!profile||!cfg)
         return(nullptr);
 
@@ -58,8 +56,7 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
                                  ubos,
                                  ssbos,
                                  &samplers,
-                                 mi_codes,
-                                 mi_bytes);
+                                 InstanceDataLayout::Text2D);
 
     std::string vs = vs_preamble + result.vertex_glsl;
     std::string fs = fs_preamble + result.fragment_glsl;

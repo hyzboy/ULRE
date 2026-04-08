@@ -17,14 +17,6 @@ namespace
 {
     // MI layout — same whether slots are sampler2D or sampler2DArray.
     // Layer indices for Array slots are stored separately in the MIT SSBO (MaterialInstanceTextureID).
-    constexpr const char mi_codes_simple[] = R"(
-        uint  base_color;
-        float metallic;
-        float roughness;
-        float normal_scale;
-    )";
-    constexpr const uint32_t mi_bytes_simple = sizeof(uint32_t) + sizeof(float) * 3;
-
     constexpr FixedVertexEntry STANDARD_VERTEX[] = {
         { VAT_VEC3, VAN::Position },
         { VAT_VEC2, VAN::TexCoord },
@@ -63,8 +55,8 @@ namespace
         &STANDARD_BASE_UBOS,
         &STANDARD_BASE_SSBOS,
         nullptr,
-        mi_codes_simple,
-        mi_bytes_simple,
+        nullptr, 0,
+        InstanceDataLayout::PBRStandard,
     };
 
 } // anonymous namespace
@@ -120,8 +112,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         STANDARD_DEF_TEMPLATE,
         dynamic_ssbos,
         dynamic_samplers,
-        mi_codes_simple,
-        mi_bytes_simple,
+        InstanceDataLayout::PBRStandard,
         any_array);
 
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(policy.route_key);

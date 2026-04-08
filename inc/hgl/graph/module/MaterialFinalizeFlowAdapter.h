@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include <hgl/common/DescriptorSetTypeDef.h>
+#include <hgl/mtl/InstanceDataLayout.h>
 #include <vector>
-#include <cstdint>
 
 namespace hgl::graph
 {
@@ -16,7 +16,7 @@ namespace hgl::graph
     struct MaterialFinalizePlan
     {
         std::vector<DescriptorSetType> mp_set_types;
-        uint32_t mi_data_bytes = 0;
+        mtl::InstanceDataLayout required_instance_layout = mtl::InstanceDataLayout::None;
         uint32_t mi_max_count = 0;
     };
 

@@ -57,9 +57,14 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
                                  vertices,
                                  ubos,
                                  ssbos,
-                                 &samplers,
-                                 use_array ? mi_codes : nullptr,
-                                 use_array ? mi_bytes : 0);
+                                 &samplers);
+    // Array mode: keep legacy mi_glsl_codes/mi_struct_bytes to register MI data SSBO stride.
+    // GLSL uses MATERIAL_INSTANCE_ID_ONLY so the data SSBO binding is declared but not read.
+    if (use_array)
+    {
+        def.mi_glsl_codes  = mi_codes;
+        def.mi_struct_bytes = mi_bytes;
+    }
 
     return CreateFromFixedDef2D("PureTexture2D", profile, def, key, vs_preamble, fs_preamble, &inner, true);
 }

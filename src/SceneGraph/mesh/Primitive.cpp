@@ -133,6 +133,7 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot)
     mi_id                = slot.mi_id;
     vil                  = slot.vil;
     render_preset        = slot.preset;
+    material_preset      = slot.material_preset;
     InitMITLayout(slot.texture_array_slot_flags);
     if (slot.mit_data && mit_packed && slot.mit_data_count > 0)
     {
@@ -159,6 +160,7 @@ Primitive::Primitive(Geometry *r, const PrimitiveMaterialSlot &slot, GeometryDat
     mi_id             = slot.mi_id;
     vil               = slot.vil;
     render_preset     = slot.preset;
+    material_preset   = slot.material_preset;
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 
     InitMITLayout(slot.texture_array_slot_flags);

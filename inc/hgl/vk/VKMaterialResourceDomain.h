@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <cstdint>
+#include <hgl/mtl/InstanceDataLayout.h>
 
 namespace hgl
 {
@@ -10,31 +10,29 @@ namespace hgl
 namespace hgl::graph
 {
 
-class MaterialTemplate;
-
 /**
  * 资源域 (MaterialResourceDomain)
  *
- * 持有与特定 MaterialTemplate 模板兼容的独立 MaterialInstance 数据池。
+ * 持有与特定 InstanceDataLayout 兼容的独立 MaterialInstance 数据池，同时声明该域
+ * 提供的 TextureArray slot 集合（供方）。
  * 同一套 Shader/GraphicsPipeline 可关联多个 MaterialResourceDomain，使不同的资源集合
  * （例如UI图标 vs 角色头像 Billboard）彼此隔离，互不串绑。
- *
- * Phase 1: 已支持 MI 数据池。Texture/Sampler 绑定在后续阶段引入。
  */
 class MaterialResourceDomain
 {
-    uint32_t  mi_data_bytes     = 0;        ///< 单个 MI 数据 stride
-    uint32_t  mi_max_count      = 0;        ///< 渲染批次最大实例数
+    mtl::InstanceDataLayout  instance_layout         = mtl::InstanceDataLayout::None;
+    uint32_t                 mi_max_count             = 0;       ///< 渲染批次最大实例数
+    uint8_t                  texture_array_slot_flags = 0;       ///< 供方：该域提供哪些 TextureArray slot
 
-    hgl::ActiveMemoryBlockManager *mi_data_manager = nullptr;  ///< 该域独立的 MI 数据池
+    hgl::ActiveMemoryBlockManager *mi_data_manager = nullptr;    ///< 该域独立的 MI 数据池
 
 private:
 
     friend class MaterialManager;
-    friend class MaterialTemplate;
 
-    MaterialResourceDomain(uint32_t mi_bytes, uint32_t mi_count);
-    explicit MaterialResourceDomain(MaterialTemplate *mtl);
+    explicit MaterialResourceDomain(mtl::InstanceDataLayout layout,
+                                    uint32_t max_count,
+                                    uint8_t tex_array_slots = 0);
 
 public:
 
@@ -44,9 +42,11 @@ public:
     // 基础属性查询
     // ----------------------------------------------------------------
 
-    bool     hasMI()          const { return mi_data_bytes > 0; }
-    uint32_t GetMIDataBytes() const { return mi_data_bytes; }
-    uint32_t GetMIMaxCount()  const { return mi_max_count; }
+    mtl::InstanceDataLayout GetLayout()         const { return instance_layout; }
+    bool     hasMI()                            const { return instance_layout != mtl::InstanceDataLayout::None; }
+    uint32_t GetMIDataBytes()                   const { return mtl::GetInstanceDataStride(instance_layout); }
+    uint32_t GetMIMaxCount()                    const { return mi_max_count; }
+    uint8_t  GetTextureArraySlots()             const { return texture_array_slot_flags; }
 
     // ----------------------------------------------------------------
     // MI 槽位管理 — 仅被 MaterialInstanceData 析构路径使用

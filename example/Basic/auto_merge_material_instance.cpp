@@ -60,8 +60,7 @@ private:
     struct TriangleData
     {
         Entity* entity;
-        MaterialInstance* mi;
-        Primitive* primitive;
+        Primitive* primitive;  ///< 包含所有渲染绑定态：MaterialTemplate、domain、mi_id、VIL、MIT
     };
 
     TriangleData triangles[DRAW_OBJECT_COUNT];
@@ -70,64 +69,63 @@ private:
 
     bool InitMaterial()
     {
-        {
-            static const mtl::MaterialAssetRecord kMergeCfg {
-                .id       = "auto_merge_pure_color",
-                .preset   = mtl::MaterialPreset::PureColor2D,
-                .dim      = mtl::MaterialAssetRecord::Dim::D2,
-                .pipeline = GraphicsPipelinePreset::Solid2D,
-            };
-            // 为每个三角形创建不同颜色的MaterialInstance
-            for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
-            {
-                triangles[i].mi = AcquireMI(kMergeCfg);
+        // 只需要获取 MaterialTemplate，实际 MI 分配在 InitECS 时进行
+        static const mtl::MaterialAssetRecord kMergeCfg {
+            .id       = "auto_merge_pure_color",
+            .preset   = mtl::MaterialPreset::PureColor2D,
+            .dim      = mtl::MaterialAssetRecord::Dim::D2,
+            .pipeline = GraphicsPipelinePreset::Solid2D,
+        };
 
-                if (!triangles[i].mi)
-                    return false;
+        auto registry = GetMaterialAssetRegistry();
+        auto handle = registry->Acquire(kMergeCfg);
+        if (!handle.IsValid())
+            return false;
 
-                if (!material)
-                {
-                    material = triangles[i].mi->GetMaterial();
-                    std::cout << "[TestApp::InitMaterial] Created material: " << (void*)material << std::endl;
-                    std::cout << "[TestApp::InitMaterial] MaterialTemplate has MI: " << material->hasMI() << std::endl;
-                    std::cout << "[TestApp::InitMaterial] MaterialTemplate MI data bytes: " << material->GetMIDataBytes() << std::endl;
-                }
-
-                // 使用不同的颜色
-                Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
-
-                std::cout << "[TestApp::InitMaterial] Triangle[" << i << "] color: "
-                          << "R=" << color.r << ", G=" << color.g << ", B=" << color.b << ", A=" << color.a << std::endl;
-
-                triangles[i].mi->WriteMIData(color);       //设置MaterialInstance的数据
-            }
-        }
-
-        {
-            for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
-            {
-                Color4f *mi_color=(Color4f *)triangles[i].mi->GetMIData();
-
-                std::cout<<"[TestApp::InitMaterial] Triangle["<<i<<"] MI Data Address: "<<(void*)mi_color
-                    <<", Color: R="<<mi_color->r<<", G="<<mi_color->g<<", B="<<mi_color->b<<", A="<<mi_color->a<<std::endl;
-            }
-        }
+        material = handle.material;
+        std::cout << "[TestApp::InitMaterial] Created material: " << (void*)material << std::endl;
+        std::cout << "[TestApp::InitMaterial] MaterialTemplate has MI: " << material->hasMI() << std::endl;
+        std::cout << "[TestApp::InitMaterial] MaterialTemplate MI data bytes: " << material->GetMIDataBytes() << std::endl;
 
         return true;
     }
 
     bool InitGeometry()
     {
-
         auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
-        geometry = GraphicsGeometryFactory::CreateGeometry(graphics_context,
-                                                           triangles[0].mi,
-                                                           "Triangle",
-                                                           VERTEX_COUNT,
-                                                           {{VAN::Position, VF_V2F, position_data}});
+        auto* material_manager = GetMaterialManager();
+        if (!material_manager)
+            return false;
+
+        // 获取第一个三角形的 slot（仅用于获取 VIL）
+        static const mtl::MaterialAssetRecord kMergeCfg {
+            .id       = "auto_merge_pure_color",
+            .preset   = mtl::MaterialPreset::PureColor2D,
+            .dim      = mtl::MaterialAssetRecord::Dim::D2,
+            .pipeline = GraphicsPipelinePreset::Solid2D,
+        };
+
+        auto registry = GetMaterialAssetRegistry();
+        auto handle = registry->Acquire(kMergeCfg);
+        if (!handle.IsValid())
+            return false;
+
+        // 创建共用的 Geometry（所有三角形共享顶点数据）
+        GraphicsGeometryFactory factory(graphics_context);
+        auto creater = factory.CreateCreater(handle.material->GetDefaultVIL());
+        if (!creater)
+            return false;
+
+        if (!creater->Init("Triangle", VERTEX_COUNT))
+            return false;
+
+        if (!creater->WriteVAB(VAN::Position, VF_V2F, position_data))
+            return false;
+
+        geometry = creater->Create();
 
         if (!geometry)
         {
@@ -154,14 +152,47 @@ private:
         std::cout << "[TestApp::InitECS] Got ECS context: " << (void*)ecs_world << std::endl;
 
         // === 步骤2: 创建12个三角形实体，每个使用不同的MaterialInstance ===
+        auto* material_manager = GetMaterialManager();
+        if (!material_manager)
+            return false;
+
+        auto* primitive_manager = GetPrimitiveManager();
+        if (!primitive_manager)
+            return false;
+
+        auto* registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        static const mtl::MaterialAssetRecord kMergeCfg {
+            .id       = "auto_merge_pure_color",
+            .preset   = mtl::MaterialPreset::PureColor2D,
+            .dim      = mtl::MaterialAssetRecord::Dim::D2,
+            .pipeline = GraphicsPipelinePreset::Solid2D,
+        };
+
+        auto handle = registry->Acquire(kMergeCfg);
+        if (!handle.IsValid())
+            return false;
+
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
-            // 为每个三角形创建Primitive（共享Geometry，但使用不同的MaterialInstance）
-            auto* primitive_manager = GetPrimitiveManager();
-            if (!primitive_manager)
+            // 为每个三角形分配独立的 MI 槽位
+            Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
+
+            auto slot = material_manager->AllocMaterialInstanceSlot(
+                handle.domain,
+                handle.material,
+                handle.material->GetDefaultVIL(),
+                kMergeCfg.pipeline,
+                &color,
+                sizeof(color));
+
+            if (!slot.IsValid())
                 return false;
 
-            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, triangles[i].mi->ToSlot());
+            // 为每个三角形创建Primitive（共享Geometry，但使用不同的MaterialInstance）
+            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, slot);
 
             if (!triangles[i].primitive)
             {
@@ -169,8 +200,16 @@ private:
                 return false;
             }
 
-            std::cout << "[TestApp::InitECS] Created primitive[" << i << "]: " << (void*)triangles[i].primitive
-                      << ", MI: " << (void*)triangles[i].mi << std::endl;
+            std::cout << "[TestApp::InitECS] Created primitive[" << i << "]: " << (void*)triangles[i].primitive << std::endl;
+
+            // 验证 MI 数据（通过 primitive 访问）
+            Color4f *mi_color = (Color4f *)triangles[i].primitive->GetMIData();
+            if (mi_color)
+            {
+                std::cout << "[TestApp::InitECS] Triangle[" << i << "] MI Data: "
+                          << "R=" << mi_color->r << ", G=" << mi_color->g 
+                          << ", B=" << mi_color->b << ", A=" << mi_color->a << std::endl;
+            }
 
             // 创建实体
             triangles[i].entity = ecs_world->CreateEntity<Entity>("ColoredTriangle_" + std::to_string(i));
@@ -202,6 +241,24 @@ private:
 
             std::cout << "[TestApp::InitECS] Entity[" << i << "] setup complete" << std::endl;
         }
+
+        // 再次验证 MI 数据是否正常
+        std::cout << "\n=== Verifying Material Instance Data ===" << std::endl;
+        for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
+        {
+            Color4f *mi_color = (Color4f *)triangles[i].primitive->GetMIData();
+            if (mi_color)
+            {
+                std::cout << "Triangle[" << i << "] MI Data Address: " << (void*)mi_color
+                          << ", Color: R=" << mi_color->r << ", G=" << mi_color->g
+                          << ", B=" << mi_color->b << ", A=" << mi_color->a << std::endl;
+            }
+            else
+            {
+                std::cout << "Triangle[" << i << "] WARNING: Failed to get MI data!" << std::endl;
+            }
+        }
+        std::cout << "=== Verification Complete ===\n" << std::endl;
 
         std::cout << "[TestApp::InitECS] === ECS Setup Complete ===" << std::endl;
         std::cout << "[TestApp::InitECS] Created " << DRAW_OBJECT_COUNT << " entities" << std::endl;

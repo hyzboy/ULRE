@@ -13,9 +13,6 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
     if(!profile||!cfg)
         return(nullptr);
 
-    constexpr const char mi_codes[]="vec4 Color;";
-    constexpr const uint32_t mi_bytes=sizeof(math::Vector4f);
-
     cfg->material_instance=true;
 
     auto vs_preamble = build2d::Build2DVertexPreamble(cfg, false, true);
@@ -35,8 +32,7 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
                                  ubos,
                                  ssbos,
                                  nullptr,
-                                 mi_codes,
-                                 mi_bytes);
+                                 InstanceDataLayout::Color4f);
 
     return CreateFromFixedDef2D("PureColor2D", profile, def, key, vs_preamble, fs_preamble, cfg);
 }

@@ -369,16 +369,17 @@ public: //MaterialInstanceData
 public: // MaterialResourceDomain — Phase 1 / Phase 3
 
     /**
-     * 创建一个以 mtl 为模板的资源域，并初始化其 MI 数据池。
-     * Phase 1: 池 stride/max_count 从 mtl 复制，分配独立 ActiveMemoryBlockManager。
+     * 以语义级布局枚举创建资源域（推荐接口）。
+     * layout 决定 MI 数据格式，tex_array_slots 声明本域提供的 TextureArray 集合（供方）。
      */
-    MaterialResourceDomain *        CreateMaterialResourceDomain        (MaterialTemplate *mtl);
+    MaterialResourceDomain *        CreateMaterialResourceDomain        (mtl::InstanceDataLayout layout,
+                                                                         uint32_t max_count,
+                                                                         uint8_t tex_array_slots = 0);
 
     /**
-     * 以显式 MI 布局创建资源域。
-     * Phase A: 解耦 MaterialResourceDomain 与具体 MaterialTemplate 变体所有权。
+     * 以 MaterialTemplate 为模板创建资源域（过渡接口，Phase C 后废弃）。
      */
-    MaterialResourceDomain *        CreateMaterialResourceDomain        (uint32_t mi_data_bytes, uint32_t mi_max_count);
+    MaterialResourceDomain *        CreateMaterialResourceDomain        (MaterialTemplate *mtl);
 
     /**
      * 创建一个 (domain, material) 绑定视图，并分配该 pair 专属的 VkDescriptorSet 集合。

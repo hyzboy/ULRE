@@ -53,6 +53,7 @@ namespace
         const bool infer_has_l2w    = HasSSBOSemantic(def, SSBODescriptorSemantic::TransformData);
         const bool infer_has_mi     = HasSSBOSemantic(def, SSBODescriptorSemantic::MaterialInstanceData)
                                    || HasPerMaterialDescriptor(def)
+                                   || (def.mi_instance_layout != InstanceDataLayout::None)
                                    || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
 
         cfg.camera            = cfg.camera            || infer_has_camera;
@@ -131,7 +132,14 @@ namespace
             }
         }
 
-        if (def.mi_glsl_codes && def.mi_struct_bytes > 0)
+        if (def.mi_instance_layout != InstanceDataLayout::None)
+        {
+            mci->SetMaterialInstance(
+                GetInstanceDataName(def.mi_instance_layout),
+                GetInstanceDataStride(def.mi_instance_layout),
+                mi_stage_bits);
+        }
+        else if (def.mi_glsl_codes && def.mi_struct_bytes > 0)
         {
             mci->SetMaterialInstance(
                 def.mi_glsl_codes,

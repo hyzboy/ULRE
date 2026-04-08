@@ -8,10 +8,7 @@
 
 #include "common/surface_interface.glsl"
 
-struct MaterialInstance
-{
-    uint TextColor;
-};
+#include "instance_data/Text2D.glsl"
 
 #include "common/ssbo_material_instance.glsl"
 

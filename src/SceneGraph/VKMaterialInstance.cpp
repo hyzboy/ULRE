@@ -14,7 +14,7 @@ MaterialInstance::MaterialInstance()
 }
 
 MaterialInstance::MaterialInstance(const PrimitiveMaterialSlot &slot)
-    : material(slot.material_template), vil(slot.vil), mi_id(slot.mi_id), render_preset(slot.preset)
+    : material(slot.material_template), vil(slot.vil), mi_id(slot.mi_id), render_preset(slot.preset), material_preset(slot.material_preset)
     // domain_resolver/domain_id/domain_generation left at defaults (0) — this ctor has no manager context
     // and therefore cannot safely claim slot ownership.
 {
