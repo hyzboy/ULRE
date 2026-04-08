@@ -52,7 +52,7 @@ private:
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
     MaterialTemplate *          material            =nullptr;
-    MaterialInstance *  material_instance   =nullptr;
+    const VIL *         material_vil        =nullptr;
     SemanticMaterialId  semantic_material_id=0;
 
 private:
@@ -78,12 +78,18 @@ private:
         if (semantic_material_id == 0)
             return false;
 
-        material_instance = AcquireMI(kRoundRectCfg);
+        auto *registry = GetMaterialAssetRegistry();
+        if(!registry)
+            return false;
 
-        if(!material_instance)
-            return(false);
+        auto handle = registry->Acquire(kRoundRectCfg);
+        if(!handle.IsValid() || !handle.material)
+            return false;
 
-        material = material_instance->GetMaterial();
+        material = handle.material;
+        material_vil = handle.material->GetDefaultVIL();
+        if(!material_vil)
+            return false;
 
         texture=texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
@@ -97,7 +103,7 @@ private:
            sampler))                           ///<采样器
             return(false);
 
-        return(material_instance!=nullptr);
+        return(material!=nullptr);
     }
 
     bool InitVBO()
@@ -116,7 +122,7 @@ private:
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
-        GeometryCreater pc(device, material_instance->GetVIL(), buffer_manager);
+        GeometryCreater pc(device, material_vil, buffer_manager);
         pc.Init("TextureRect", 6);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
             !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))

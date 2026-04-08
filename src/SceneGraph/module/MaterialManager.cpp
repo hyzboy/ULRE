@@ -907,17 +907,56 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
     const void *instance_data,
     uint32_t instance_data_size)
 {
+    alloc_slot_requests.fetch_add(1);
+
     if (!domain || !material)
+    {
+        alloc_slot_failed.fetch_add(1);
         return {}; // return empty slot
+    }
 
     const VIL *use_vil = vil ? vil : material->GetDefaultVIL();
-    int mi_id = domain->AllocMISlot();
-    if (mi_id < 0)
-        return {}; // allocation failed
+    if (!use_vil)
+    {
+        alloc_slot_failed.fetch_add(1);
+        return {};
+    }
+
+    const bool needs_mi = material->hasMI();
+    int mi_id = -1;
+
+    if (needs_mi)
+        alloc_slot_with_mi.fetch_add(1);
+    else
+        alloc_slot_no_mi.fetch_add(1);
+
+    if (needs_mi)
+    {
+        mi_id = domain->AllocMISlot();
+        if (mi_id < 0)
+        {
+            std::fprintf(stderr,
+                "[MaterialManager] AllocMaterialInstanceSlot failed: material='%s' requires MI but domain allocation failed\n",
+                material->GetName().c_str());
+            alloc_slot_failed.fetch_add(1);
+            return {}; // allocation failed
+        }
+    }
 
     // Write instance data if provided
     if (instance_data && instance_data_size > 0)
     {
+        if (!needs_mi)
+        {
+            std::fprintf(stderr,
+                "[MaterialManager] AllocMaterialInstanceSlot rejected payload: material='%s' has no MI layout (size=%u)\n",
+                material->GetName().c_str(),
+                static_cast<unsigned>(instance_data_size));
+            alloc_slot_no_mi_payload_rejected.fetch_add(1);
+            alloc_slot_failed.fetch_add(1);
+            return {}; // non-MI material should not receive MI payload
+        }
+
         void *mi_data = domain->GetMIData(mi_id);
         if (mi_data)
             std::memcpy(mi_data, instance_data, instance_data_size);
@@ -930,6 +969,7 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
     slot.mi_id = mi_id;
     slot.vil = use_vil;
     slot.preset = preset;
+    alloc_slot_created.fetch_add(1);
     return slot;
 }
 

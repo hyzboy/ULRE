@@ -102,6 +102,16 @@ struct MaterialInstanceAcquireStats
     uint64_t created = 0;
 };
 
+struct MaterialSlotAllocateStats
+{
+    uint64_t requests = 0;
+    uint64_t created = 0;
+    uint64_t with_mi = 0;
+    uint64_t no_mi = 0;
+    uint64_t failed = 0;
+    uint64_t no_mi_payload_rejected = 0;
+};
+
 constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;//GetBitOffset((uint32_t)VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)+1;
 
 GRAPH_MODULE_CLASS(MaterialManager)
@@ -139,6 +149,13 @@ private:
 
     std::atomic<uint64_t> acquire_mi_requests {0};
     std::atomic<uint64_t> acquire_mi_created {0};
+
+    std::atomic<uint64_t> alloc_slot_requests {0};
+    std::atomic<uint64_t> alloc_slot_created {0};
+    std::atomic<uint64_t> alloc_slot_with_mi {0};
+    std::atomic<uint64_t> alloc_slot_no_mi {0};
+    std::atomic<uint64_t> alloc_slot_failed {0};
+    std::atomic<uint64_t> alloc_slot_no_mi_payload_rejected {0};
 
     // Fallback material for error handling (initialized on first use)
     MaterialTemplate *fallback_material = nullptr;
@@ -225,11 +242,12 @@ public: // Override Release from GraphModule - cleanup all resources
     {
         const MaterialAcquireStats mat_stats = GetMaterialAcquireStats();
         const MaterialInstanceAcquireStats mi_stats = GetMaterialInstanceAcquireStats();
+        const MaterialSlotAllocateStats slot_stats = GetMaterialSlotAllocateStats();
 
-        if (mat_stats.requests > 0 || mi_stats.requests > 0)
+        if (mat_stats.requests > 0 || mi_stats.requests > 0 || slot_stats.requests > 0)
         {
             std::fprintf(stderr,
-                "[MaterialManager] AcquireStats: material(req=%llu lookup=%llu hit=%llu miss=%llu created=%llu fallback=%llu) mi(req=%llu created=%llu)\n",
+                "[MaterialManager] AcquireStats: material(req=%llu lookup=%llu hit=%llu miss=%llu created=%llu fallback=%llu) mi(req=%llu created=%llu) slot(req=%llu created=%llu with_mi=%llu no_mi=%llu failed=%llu no_mi_payload_rejected=%llu)\n",
                 static_cast<unsigned long long>(mat_stats.requests),
                 static_cast<unsigned long long>(mat_stats.cache_lookups),
                 static_cast<unsigned long long>(mat_stats.cache_hits),
@@ -237,7 +255,13 @@ public: // Override Release from GraphModule - cleanup all resources
                 static_cast<unsigned long long>(mat_stats.created),
                 static_cast<unsigned long long>(mat_stats.fallback_used),
                 static_cast<unsigned long long>(mi_stats.requests),
-                static_cast<unsigned long long>(mi_stats.created));
+                static_cast<unsigned long long>(mi_stats.created),
+                static_cast<unsigned long long>(slot_stats.requests),
+                static_cast<unsigned long long>(slot_stats.created),
+                static_cast<unsigned long long>(slot_stats.with_mi),
+                static_cast<unsigned long long>(slot_stats.no_mi),
+                static_cast<unsigned long long>(slot_stats.failed),
+                static_cast<unsigned long long>(slot_stats.no_mi_payload_rejected));
         }
 
         // 清理所有材质实例（MI dtor 会调 domain->FreeMISlot，domain 须在此之后释放）
@@ -323,6 +347,18 @@ public: // Acquire stats
         return s;
     }
 
+    MaterialSlotAllocateStats GetMaterialSlotAllocateStats() const
+    {
+        MaterialSlotAllocateStats s;
+        s.requests = alloc_slot_requests.load();
+        s.created = alloc_slot_created.load();
+        s.with_mi = alloc_slot_with_mi.load();
+        s.no_mi = alloc_slot_no_mi.load();
+        s.failed = alloc_slot_failed.load();
+        s.no_mi_payload_rejected = alloc_slot_no_mi_payload_rejected.load();
+        return s;
+    }
+
     void ResetAcquireStats()
     {
         acquire_material_requests.store(0);
@@ -333,6 +369,12 @@ public: // Acquire stats
         acquire_fallback_used.store(0);
         acquire_mi_requests.store(0);
         acquire_mi_created.store(0);
+        alloc_slot_requests.store(0);
+        alloc_slot_created.store(0);
+        alloc_slot_with_mi.store(0);
+        alloc_slot_no_mi.store(0);
+        alloc_slot_failed.store(0);
+        alloc_slot_no_mi_payload_rejected.store(0);
     }
 
 public: //MaterialTemplate

@@ -70,7 +70,7 @@ private:
     struct
     {
         Entity *            entity    = nullptr;
-        MaterialInstance *  mi        = nullptr;
+        PrimitiveMaterialSlot slot;
         Primitive *         primitive = nullptr;  // one per entity for distinct MIT layer
     }render_obj[TexCount]{};
 
@@ -121,11 +121,16 @@ private:
                 {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
             },
         };
-        render_obj[0].mi = AcquireMI(kTexArrayCfg);
-        if(!render_obj[0].mi)
-            return(false);
+        auto* registry = GetMaterialAssetRegistry();
+        auto* material_manager = GetMaterialManager();
+        if(!registry || !material_manager)
+            return false;
 
-        material = render_obj[0].mi->GetMaterial();
+        auto handle = registry->Acquire(kTexArrayCfg);
+        if(!handle.IsValid())
+            return false;
+
+        material = handle.material;
 
         sampler=sampler_manager->CreateSampler();
 
@@ -136,14 +141,14 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            if(i > 0)
-                render_obj[i].mi = AcquireMI(kTexArrayCfg);
+            render_obj[i].slot = material_manager->AllocMaterialInstanceSlot(
+                handle.domain,
+                handle.material,
+                handle.material->GetDefaultVIL(),
+                kTexArrayCfg.pipeline);
 
-            if(!render_obj[i].mi)
-                return(false);
-
-            // Array 模式：使用 SetTextureArrayLayer 设置纹理层索引
-            render_obj[i].mi->SetTextureArrayLayer(mtl::SamplerSlot::BaseColor, i);
+            if(!render_obj[i].slot.IsValid())
+                return false;
         }
 
         return(true);
@@ -159,7 +164,7 @@ private:
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
-        GeometryCreater pc(device, render_obj[0].mi->GetVIL(), buffer_manager);
+        GeometryCreater pc(device, render_obj[0].slot.vil, buffer_manager);
         pc.Init("TextureRect", 6);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
             !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))
@@ -170,16 +175,21 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        mesh_rect = primitive_manager->CreatePrimitive(geometry, render_obj[0].mi->ToSlot());
+        mesh_rect = primitive_manager->CreatePrimitive(geometry, render_obj[0].slot);
 
         if(!mesh_rect)
             return(false);
 
+        // Array 模式：通过 Primitive 的 MIT 写入纹理层索引
+        mesh_rect->SetTextureArrayLayer(mtl::SamplerSlot::BaseColor, 0);
+
         for(uint32_t i = 1; i < TexCount; ++i)
         {
-            render_obj[i].primitive = primitive_manager->CreatePrimitive(geometry, render_obj[i].mi->ToSlot());
+            render_obj[i].primitive = primitive_manager->CreatePrimitive(geometry, render_obj[i].slot);
             if(!render_obj[i].primitive)
                 return false;
+
+            render_obj[i].primitive->SetTextureArrayLayer(mtl::SamplerSlot::BaseColor, i);
         }
         render_obj[0].primitive = mesh_rect;
 

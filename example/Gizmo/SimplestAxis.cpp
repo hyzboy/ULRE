@@ -35,9 +35,10 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     MaterialTemplate *          material            =nullptr;
+    const VIL *                 axis_vil            =nullptr;
+    PrimitiveMaterialSlot       axis_slot;
 
     Geometry *         prim_axis           =nullptr;
-    MaterialInstance *  material_instance   =nullptr;
     SemanticMaterialId  semantic_material_id=0;
 
 private:
@@ -56,9 +57,50 @@ private:
         if (semantic_material_id == 0)
             return false;
 
-        material_instance = AcquireMI(kAxisCfg);
+        auto *registry = GetMaterialAssetRegistry();
+        auto *material_manager = GetMaterialManager();
+        if(!registry || !material_manager)
+            return false;
 
-        return material_instance != nullptr;
+        auto handle = registry->Acquire(kAxisCfg);
+        if(!handle.IsValid() || !handle.material)
+            return false;
+
+        material = handle.material;
+        axis_vil = handle.material->GetDefaultVIL();
+        if(!axis_vil)
+            return false;
+
+        axis_slot = material_manager->AllocMaterialInstanceSlot(
+            handle.domain,
+            handle.material,
+            axis_vil,
+            kAxisCfg.pipeline);
+        if(!axis_slot.IsValid())
+            return false;
+
+        // Regression guard: non-MI materials must still produce a valid slot with mi_id == -1.
+        if (material->hasMI())
+        {
+            if (axis_slot.mi_id < 0)
+            {
+                std::fprintf(stderr,
+                    "[SimplestAxis] unexpected invalid MI id for MI-enabled material\n");
+                return false;
+            }
+        }
+        else
+        {
+            if (axis_slot.mi_id != -1)
+            {
+                std::fprintf(stderr,
+                    "[SimplestAxis] unexpected MI id for no-MI material: %d\n",
+                    axis_slot.mi_id);
+                return false;
+            }
+        }
+
+        return true;
     }
 
     bool CreateRenderObject()
@@ -71,7 +113,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material_instance->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, axis_vil);
 
         inline_geometry::AxisCreateInfo aci;
 
@@ -91,7 +133,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(prim_axis,semantic_material_id);
+        Primitive *ri=primitive_manager->CreatePrimitive(prim_axis,axis_slot);
         if(!ri)
             return false;
 
@@ -105,7 +147,6 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(ri);
-        prim_comp->SetSemanticMaterial(semantic_material_id);
         prim_comp->SetVisible(true);
 
         return true;

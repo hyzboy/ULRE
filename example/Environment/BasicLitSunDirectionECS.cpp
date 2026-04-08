@@ -53,19 +53,15 @@ private:
     std::shared_ptr<SunDirectionControlSystem> sun_gizmo_system;
 
     Geometry* sky_geometry = nullptr;
-    MaterialInstance* sky_material_instance = nullptr;
+    const VIL* sky_vil = nullptr;
     SemanticMaterialId sky_semantic_id = 0;
 
     MaterialTemplate* material = nullptr;
-    MaterialInstance* material_instance = nullptr;
+    const VIL* standard_vil = nullptr;
     SemanticMaterialId standard_semantic_id = 0;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
-
-    Texture2D* base_texture = nullptr;
-    Texture2D* normal_texture = nullptr;
-    Sampler* sampler = nullptr;
 
     std::vector<std::unique_ptr<RenderMesh>> meshes;
 
@@ -125,13 +121,21 @@ private:
         if (sky_semantic_id == 0)
             return false;
 
-        sky_material_instance = AcquireMI(kSkyCfg);
-        if (!sky_material_instance)
+        auto* registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        auto sky_handle = registry->Acquire(kSkyCfg);
+        if (!sky_handle.IsValid() || !sky_handle.material)
+            return false;
+
+        sky_vil = sky_handle.material->GetDefaultVIL();
+        if (!sky_vil)
             return false;
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, sky_material_instance->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, sky_vil);
         if (!pc)
             return false;
 
@@ -150,9 +154,8 @@ private:
     bool InitMaterial()
     {
 
-        auto* texture_manager = GetTextureManager();
-        auto* sampler_manager = GetSamplerManager();
-        if (!texture_manager || !sampler_manager)
+        auto* registry = GetMaterialAssetRegistry();
+        if (!registry)
             return false;
 
         static const mtl::MaterialAssetRecord kStandardCfg {
@@ -177,8 +180,13 @@ private:
         if (standard_semantic_id == 0)
             return false;
 
-        material_instance = AcquireMI(kStandardCfg, &mi_data, sizeof(mi_data));
-        if (!material_instance)
+        auto standard_handle = registry->Acquire(kStandardCfg);
+        if (!standard_handle.IsValid() || !standard_handle.material)
+            return false;
+
+        material = standard_handle.material;
+        standard_vil = standard_handle.material->GetDefaultVIL();
+        if (!standard_vil)
             return false;
 
         return true;
@@ -191,7 +199,7 @@ private:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, material_instance->GetVIL());
+        mesh_vdm = new VertexDataManager(buffer_manager, standard_vil);
         if (!mesh_vdm)
             return false;
 

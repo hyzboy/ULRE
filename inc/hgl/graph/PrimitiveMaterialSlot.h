@@ -43,7 +43,12 @@ struct PrimitiveMaterialSlot
     uint32_t                 mit_data_count    = 0;
     mtl::MaterialPreset      material_preset   = mtl::MaterialPreset::Standard;
 
-    bool IsValid() const { return material_template != nullptr && mi_id >= 0; }
+    bool IsValid() const
+    {
+        return material_template != nullptr
+            && domain != nullptr
+            && vil != nullptr;
+    }
 };
 
 } // namespace hgl::graph
