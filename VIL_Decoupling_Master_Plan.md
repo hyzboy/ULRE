@@ -16,7 +16,7 @@
 - [x] Phase 3 全部诊断字段已完成（semantic_id/entity_id/vil_hash/geometry_layout_hash/fallback_count 纳入 ResolveMI 日志；PrimitiveBatchPipeline 增加 layout-diversity 汇总与 fallback 统计）。
 - [ ] shadow/early-z 子集属性策略尚未正式收敛。
 - [x] shadow/early-z 子集属性策略已完成（Option B：shadow/earlyz VS 复用 forward VS，VIL 跨 pass 一致，无 VAB/VIF mismatch 风险）。
-- [ ] legacy 入口收口与文档化未完成。
+- [x] legacy 入口收口与文档化已完成（`AcquireMI/CreateMI` 保留 deprecated；旧 overrides 语义描述清理；迁移建议与回归清单已固化）。
 
 ## 3. 范围边界
 
@@ -80,11 +80,23 @@ Option B（已实现）：`GetCompositorVSPath` 中 `ShadowOpaque`/`ShadowMasked
 
 ## Phase 5: 兼容窗口收口
 
-1. `AcquireMI/CreateMI` 保留 deprecated，但彻底去除旧 overrides 语义遗留描述。
-2. 更新迁移文档与示例注释，明确新范式。
-3. 输出最终改造报告与回归清单。
+1. ✅ `AcquireMI/CreateMI` 保留 deprecated，已去除旧 overrides 语义遗留描述。
+2. ✅ 迁移说明更新：`CreateMI` 注释明确 VIL 仅 geometry-first/default-fallback；不再存在 record 侧 VIL 覆写。
+3. ✅ 最终改造报告与回归清单：
+   - 运行时语义：VIL 仅由 `Geometry` 派生，缺 geometry 时仅回退 `material->GetDefaultVIL()`。
+   - 兼容入口：`AcquireMI/CreateMI` 仍可用但仅作 deprecated 过渡，不再承载任何 overrides 语义。
+   - 关键日志：`ResolveMI`（entity_id/semantic_id/vil_hash/geometry_layout_hash/fallback）与 `PrimitiveBatchPipeline`（layout-diversity/fallback）可观测。
+   - 构建回归：`ULRE.SceneGraph` 与 `ULRE.ShaderGen` 需保持可构建（本轮变更已验证）。
 
-交付标准：legacy 入口职责单一，迁移路径清晰。
+✅ 交付标准满足：legacy 入口职责单一，迁移路径清晰。
+
+## 7. 下一步（执行项）
+
+Phase 1-5 已完成。后续建议转入调用面收尾迁移：
+
+1. 将 `example/**` 中遗留的 deprecated `AcquireMI` 调用迁移到 slot-first / `ResolveMI` 路径。
+2. 迁移清单与批次划分见仓库根目录：`AcquireMI_Migration_Backlog.md`。
+3. 完成后执行检索门禁：`\bAcquireMI\(` 在 `example/**/*.cpp` 结果为 0。
 
 ## 5. 关键文件清单
 

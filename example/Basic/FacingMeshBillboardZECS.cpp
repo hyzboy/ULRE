@@ -55,10 +55,8 @@ private:
 
     struct MaterialData
     {
-        MaterialTemplate* material = nullptr;
         const VIL* vil = nullptr;
-
-        MaterialInstance* mi[DEMO_COLOR_COUNT]{};
+        PrimitiveMaterialSlot slot[DEMO_COLOR_COUNT]{};
     };
 
     struct RenderMesh
@@ -77,6 +75,7 @@ private:
     };
 
     ECSContext* ecs_context = nullptr;
+    SemanticMaterialId solid_semantic_id = 0;
 
     MaterialData solid;
     VertexDataManager* mesh_vdm = nullptr;
@@ -95,24 +94,48 @@ private:
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
 
-        Color4f color = GetColor4f(DemoColors[0], 1.0f);
-        solid.mi[0] = AcquireMI(kSolidCfg, &color, sizeof(color));
-        if (!solid.mi[0])
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry)
             return false;
 
-        solid.vil = solid.mi[0]->GetVIL();
+        solid_semantic_id = RegisterSemanticMaterial(kSolidCfg);
+        if (solid_semantic_id == 0)
+            return false;
+
+        RuntimeMaterialRequest request;
+        request.pipeline = kSolidCfg.pipeline;
+
+        GeometrySignature geometry;
+        geometry.primitive = PrimitiveType::Triangles;
+
+        Color4f color = GetColor4f(DemoColors[0], 1.0f);
+        solid.slot[0] = registry->ResolveMI(0x200000000ULL,
+                                            solid_semantic_id,
+                                            request,
+                                            geometry,
+                                            &color,
+                                            sizeof(color));
+        if (!solid.slot[0].IsValid())
+            return false;
+
+        solid.vil = solid.slot[0].vil;
         if (!solid.vil)
             return false;
 
         for (size_t i = 1; i < DEMO_COLOR_COUNT; ++i)
         {
             color = GetColor4f(DemoColors[i], 1.0f);
-            solid.mi[i] = AcquireMI(kSolidCfg, &color, sizeof(color));
-            if (!solid.mi[i])
+            solid.slot[i] = registry->ResolveMI(0x200000000ULL + static_cast<uint64>(i),
+                                                solid_semantic_id,
+                                                request,
+                                                geometry,
+                                                &color,
+                                                sizeof(color));
+            if (!solid.slot[i].IsValid())
                 return false;
         }
 
-        return !solid.mi[0] ? false : true;
+        return true;
     }
 
     bool InitVDM()
@@ -147,7 +170,7 @@ private:
             return nullptr;
 
         Primitive* primitive = primitive_manager->CreatePrimitive(geometry,
-                                                                  solid.mi[color_index % DEMO_COLOR_COUNT]->ToSlot());
+                                      solid.slot[color_index % DEMO_COLOR_COUNT]);
         if (!primitive)
             return nullptr;
 

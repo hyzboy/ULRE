@@ -72,6 +72,7 @@ private:
     Entity *      camera_entity = nullptr;
 
     MaterialTemplate *  material  = nullptr;
+    MaterialDomainHandle material_handle;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -154,13 +155,28 @@ private:
                 {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array, ""},
             },
         };
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry) {
+            printf("[ERROR] InitMaterial: No MaterialAssetRegistry\n");
+            return false;
+        }
+
+        material_handle = registry->Acquire(kPBRArrayAcquireCfg);
+        if (!material_handle.IsValid()) {
+            printf("[ERROR] InitMaterial: registry->Acquire failed\n");
+            return false;
+        }
+
         mtl::StandardMaterialInstance seed_mi_data{};
         seed_mi_data.base_color = PackRGBA8Float(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
         seed_mi_data.metallic = 0.0f;
         seed_mi_data.roughness = 1.0f;
         seed_mi_data.normal_scale = 0.35f;
 
-        auto* seed_mi = AcquireMI(kPBRArrayAcquireCfg, &seed_mi_data, sizeof(seed_mi_data));
+        auto* seed_mi = registry->CreateMI(material_handle,
+                                           kPBRArrayAcquireCfg,
+                                           &seed_mi_data,
+                                           sizeof(seed_mi_data));
         if (!seed_mi) {
             printf("[ERROR] InitMaterial: Failed to create seed MI for Standard+Array material\n");
             return false;
@@ -283,6 +299,29 @@ private:
 
     bool CreateStandardMaterialInstances()
     {
+        static const mtl::MaterialAssetRecord kPBRArrayAcquireCfg {
+            .id              = "pbr_spheres_standard",
+            .preset          = mtl::MaterialPreset::Standard,
+            .sky             = true,
+            .sky_ambient     = mtl::SkyLightAmbientModel::FakeAtmosphere,
+            .lighting        = mtl::LightingModel::PBR,
+            .pipeline        = GraphicsPipelinePreset::Solid3D,
+            .textures        = {
+                {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
+                {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array, ""},
+            },
+        };
+
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        if (!material_handle.IsValid())
+            material_handle = registry->Acquire(kPBRArrayAcquireCfg);
+
+        if (!material_handle.IsValid())
+            return false;
+
         for (uint row = 0; row < GRID_SIZE; ++row)
         {
             for (uint col = 0; col < GRID_SIZE; ++col)
@@ -304,21 +343,10 @@ private:
                 store.roughness = d.roughness;
                 store.normal_scale = d.normal_scale;
 
-                sphere_mi[row][col] = AcquireMI(
-                    mtl::MaterialAssetRecord{
-                        .id          = "pbr_spheres_standard",
-                        .preset      = mtl::MaterialPreset::Standard,
-                        .sky         = true,
-                        .sky_ambient = mtl::SkyLightAmbientModel::FakeAtmosphere,
-                        .lighting    = mtl::LightingModel::PBR,
-                        .pipeline    = GraphicsPipelinePreset::Solid3D,
-                        .textures    = {
-                            {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
-                            {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array, ""},
-                        },
-                    },
-                    &d,
-                    sizeof(d));
+                sphere_mi[row][col] = registry->CreateMI(material_handle,
+                                                         kPBRArrayAcquireCfg,
+                                                         &d,
+                                                         sizeof(d));
 
                 if (!sphere_mi[row][col]) {
                     printf("[ERROR] CreateStandardMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);

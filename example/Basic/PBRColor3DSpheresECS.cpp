@@ -46,6 +46,7 @@ private:
     Entity *camera_entity = nullptr;
 
     MaterialTemplate *material = nullptr;
+    MaterialDomainHandle material_handle;
 
     VertexDataManager *mesh_vdm = nullptr;
     Geometry *builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
@@ -98,6 +99,16 @@ private:
             .pipeline    = GraphicsPipelinePreset::Solid3D,
         };
 
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        if (!material_handle.IsValid())
+            material_handle = registry->Acquire(kPBRColorMICfg);
+
+        if (!material_handle.IsValid())
+            return false;
+
         for (uint row = 0; row < GRID_SIZE; ++row)
         {
             for (uint col = 0; col < GRID_SIZE; ++col)
@@ -115,7 +126,10 @@ private:
                 store.metallic = d.metallic;
                 store.roughness = d.roughness;
 
-                sphere_mi[row][col] = AcquireMI(kPBRColorMICfg, &d, sizeof(d));
+                sphere_mi[row][col] = registry->CreateMI(material_handle,
+                                                         kPBRColorMICfg,
+                                                         &d,
+                                                         sizeof(d));
                 if (!sphere_mi[row][col])
                 {
                     printf("[ERROR] CreatePBRColorMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
@@ -125,6 +139,8 @@ private:
 
             }
         }
+
+        material = material_handle.material;
 
         return true;
     }

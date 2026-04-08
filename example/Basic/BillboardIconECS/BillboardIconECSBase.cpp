@@ -32,7 +32,14 @@ bool BillboardIconECSBase::InitPlaneGridResources()
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };
-    mi_plane_grid = AcquireMI(kPlaneGridCfg,&white_color, sizeof(white_color));
+
+    auto *registry = GetMaterialAssetRegistry();
+    if (!registry) return false;
+
+    const MaterialDomainHandle handle = registry->Acquire(kPlaneGridCfg);
+    if (!handle.IsValid()) return false;
+
+    mi_plane_grid = registry->CreateMI(handle, kPlaneGridCfg, &white_color, sizeof(white_color));
     if (!mi_plane_grid) return false;
 
     mtl_plane_grid = mi_plane_grid->GetMaterial();

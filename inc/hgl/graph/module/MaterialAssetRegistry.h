@@ -182,7 +182,8 @@ public:
                                 uint32_t instance_data_size = 0,
                                 MaterialDomainHandle *out_handle = nullptr);
 
-    /// Record 驱动重载：pipeline 与可选 VIL 覆写均来自 rec
+    /// Record 驱动兼容入口：pipeline/domain/preset/prim 来自 rec；
+    /// VIL 始终按 geometry-first 运行时解析（无几何时回退 material default VIL）。
     [[deprecated("Use ResolveMI or AllocMaterialInstanceSlot (slot-first path)")]]
     MaterialInstance *CreateMI(const MaterialDomainHandle &handle,
                                const mtl::MaterialAssetRecord &rec,

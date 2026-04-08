@@ -47,8 +47,7 @@ private:
     ECSContext* ecs_context = nullptr;
     Entity* camera_entity = nullptr;
 
-    MaterialTemplate* material = nullptr;
-    MaterialInstance* material_instance = nullptr;
+    const VIL* material_vil = nullptr;
     SemanticMaterialId standard_semantic_id = 0;
     VertexDataManager* mesh_vdm = nullptr;
 
@@ -88,15 +87,21 @@ private:
         if (standard_semantic_id == 0)
             return false;
 
-        material_instance = AcquireMI(kStandardCfg, &mi_data, sizeof(mi_data));
-        if (!material_instance)
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        MaterialDomainHandle handle = registry->Acquire(kStandardCfg);
+        if (!handle.IsValid() || !handle.material)
+            return false;
+
+        material_vil = registry->ResolveVIL(handle.material, kStandardCfg, nullptr);
+        if (!material_vil)
         {
             std::fprintf(stderr,
-                "[BasicLitMeshesECS] InitMaterial failed: AcquireMI(MaterialPreset::Standard) returned null\n");
+                "[BasicLitMeshesECS] InitMaterial failed: ResolveVIL returned null\n");
             return false;
         }
-
-        material = material_instance->GetMaterial();
 
         return true;
     }
@@ -108,7 +113,7 @@ private:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, material_instance->GetVIL());
+        mesh_vdm = new VertexDataManager(buffer_manager, material_vil);
         if (!mesh_vdm)
             return false;
 

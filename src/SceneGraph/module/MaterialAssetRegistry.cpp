@@ -654,6 +654,7 @@ MaterialInstance *MaterialAssetRegistry::CreateMI(
     {
         s_warned_create_mi_compat = true;
         LogWarning("[MaterialAssetRegistry] CreateMI compatibility path still uses AcquireMaterialInstance. "
+                   "Record-side VIL overrides are removed; VIL is geometry-first/default-fallback only. "
                    "Prefer slot-first resolve/binding flow for new callsites.");
     }
 

@@ -79,8 +79,15 @@ private:
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
+
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry) return false;
+
+        const MaterialDomainHandle handle = registry->Acquire(kPlaneGridCfg);
+        if (!handle.IsValid()) return false;
+
         // Create material instance
-        mi_plane_grid = AcquireMI(kPlaneGridCfg,&white_color, sizeof(white_color));
+        mi_plane_grid = registry->CreateMI(handle, kPlaneGridCfg, &white_color, sizeof(white_color));
 
         if (!mi_plane_grid) return false;
 
