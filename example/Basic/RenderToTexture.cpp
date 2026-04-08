@@ -145,8 +145,16 @@ public:
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
+        auto *registry = owner->GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        const MaterialDomainHandle handle = registry->Acquire(kSphereCfg);
+        if (!handle.IsValid())
+            return false;
+
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        mi = owner->AcquireMI(kSphereCfg, &sphere_color, sizeof(sphere_color));
+        mi = registry->CreateMI(handle, kSphereCfg, &sphere_color, sizeof(sphere_color));
         if (!mi)
             return false;
 
@@ -291,7 +299,15 @@ private:
         cube_mi_data.roughness = 0.92f;
         cube_mi_data.normal_scale = 0.35f;
 
-        cube_mi = AcquireMI(kCubeCfg,
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        const MaterialDomainHandle handle = registry->Acquire(kCubeCfg);
+        if (!handle.IsValid())
+            return false;
+
+        cube_mi = registry->CreateMI(handle, kCubeCfg,
              &cube_mi_data, sizeof(cube_mi_data));
         if (!cube_mi)
             return false;

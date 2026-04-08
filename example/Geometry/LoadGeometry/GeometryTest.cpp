@@ -104,13 +104,21 @@ private:
         if(!md)
             return(false);
 
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        const MaterialDomainHandle handle = registry->Acquire(cfg);
+        if (!handle.IsValid())
+            return false;
+
         Color4f color;
 
         for(size_t i = 0;i < COLOR_COUNT;i++)
         {
             color = GetColor4f(TestColor[i],1.0);
 
-            md->mi[i] = AcquireMI(cfg, &color, sizeof(color));
+            md->mi[i] = registry->CreateMI(handle, cfg, &color, sizeof(color));
 
             if(!md->mi[i])
                 return(false);

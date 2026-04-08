@@ -128,11 +128,19 @@ public:
         if (semantic_material_id == 0)
             return false;
 
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        const MaterialDomainHandle handle = registry->Acquire(kWallsCfg);
+        if (!handle.IsValid())
+            return false;
+
         mi_data.base_color = GetRGBA(COLOR::FireBrick);
         mi_data.metallic=0;
         mi_data.roughness=0.95f;
         mi_data.normal_scale=0.35f;
-        material_instance = AcquireMI(kWallsCfg, &mi_data, sizeof(mi_data));
+        material_instance = registry->CreateMI(handle, kWallsCfg, &mi_data, sizeof(mi_data));
         if(!material_instance) return false;
 
         material = material_instance->GetMaterial();

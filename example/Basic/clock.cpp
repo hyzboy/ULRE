@@ -98,10 +98,18 @@ private:
                 .dim      = mtl::MaterialAssetRecord::Dim::D2,
                 .pipeline = GraphicsPipelinePreset::Solid2D,
             };
+            auto *registry = GetMaterialAssetRegistry();
+            if (!registry)
+                return false;
+
+            const MaterialDomainHandle handle = registry->Acquire(kClockCfg);
+            if (!handle.IsValid())
+                return false;
+
             // 刻度颜色（白色）
             Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
 
-            mi_tick = AcquireMI(kClockCfg);
+            mi_tick = registry->CreateMI(handle, kClockCfg);
             if(!mi_tick)
                 return false;
 
@@ -118,7 +126,7 @@ private:
 
             for (uint i = 0; i < 3; i++)
             {
-                hands[i].mi = AcquireMI(kClockCfg);
+                hands[i].mi = registry->CreateMI(handle, kClockCfg);
                 if (!hands[i].mi)
                     return false;
                 hands[i].mi->WriteMIData(hand_colors[i]);

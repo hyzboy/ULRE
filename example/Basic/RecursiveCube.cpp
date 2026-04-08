@@ -106,9 +106,17 @@ private:
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
 
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        const MaterialDomainHandle handle = registry->Acquire(kRecursiveCubeCfg);
+        if (!handle.IsValid())
+            return false;
+
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
-        mi = AcquireMI(kRecursiveCubeCfg, &color, sizeof(color));
+        mi = registry->CreateMI(handle, kRecursiveCubeCfg, &color, sizeof(color));
         if (!mi)
             return false;
 

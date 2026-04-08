@@ -57,9 +57,17 @@ private:
         if (semantic_material_id == 0)
             return false;
 
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        const MaterialDomainHandle handle = registry->Acquire(kExtrudedCfg);
+        if (!handle.IsValid())
+            return false;
+
         Color4f color=GetColor4f(COLOR::BlenderAxisRed);
 
-        material_instance = AcquireMI(kExtrudedCfg, &color, sizeof(color));
+        material_instance = registry->CreateMI(handle, kExtrudedCfg, &color, sizeof(color));
 
         if (material_instance)
             material = material_instance->GetMaterial();
