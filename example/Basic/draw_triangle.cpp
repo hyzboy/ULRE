@@ -91,7 +91,7 @@ private:
             return false;
 
         prim_triangle = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                     semantic_material_id,
+                                                                 semantic_material_id,
                                                                  "Triangle",
                                                                  VERTEX_COUNT,
                                                                  {{VAN::Position, POSITION_DATA_FORMAT, position_data},

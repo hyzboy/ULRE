@@ -3,6 +3,7 @@
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph{
 
@@ -120,6 +121,9 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot)
             const uint32_t bind_index=vif->binding;
             geom_data_buffer->vab_list[bind_index]=vab->GetVkBuffer();
             geom_data_buffer->vab_offset[bind_index]=0;
+            GLogDebug("[BIND_SLOT_DEFERRED] prim='%s' bind_idx=%u VkBuffer=%p",
+                      geometry->GetName().c_str(), bind_index,
+                      (void*)geom_data_buffer->vab_list[bind_index]);
             ++vif;
         }
 
@@ -142,6 +146,18 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot)
     }
     deferred_semantic_id = 0;
     deferred_vil_hash    = 0;
+
+    if (data_buffer)
+    {
+        static uint32_t s_bind_slot_tick = 0;
+        if (++s_bind_slot_tick <= 4u)
+        {
+            for (uint32_t _i = 0; _i < data_buffer->vab_count; ++_i)
+                GLogDebug("[BIND_SLOT_DONE] tick=%u prim='%s' vab[%u]=VkBuffer:%p",
+                          s_bind_slot_tick, geometry->GetName().c_str(), _i,
+                          (void*)data_buffer->vab_list[_i]);
+        }
+    }
 
     return true;
 }

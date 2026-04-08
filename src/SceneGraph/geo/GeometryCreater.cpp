@@ -7,6 +7,7 @@
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph{
 GeometryCreater::GeometryCreater(VulkanDevice *dev,const VIL *v,BufferManager *bm)
@@ -139,6 +140,10 @@ const int GeometryCreater::InitVAB(const VertexAttrib &attrib,const VkFormat for
 
         if(!vab)
             return(-1);
+
+        GLogDebug("[VAB_CREATE] geom='%s' attrib=%s idx=%d VkBuffer=%p data_ptr=%p",
+                  geometry_name.c_str(), GetVertexAttribName(attrib), vab_index,
+                  (void*)vab->GetVkBuffer(), data);
     }
 
     return(vab_index);

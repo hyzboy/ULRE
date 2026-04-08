@@ -1,5 +1,6 @@
 ﻿#include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
+#include<hgl/log/Log.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
 #include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/graph/mesh/Primitive.h>
@@ -186,15 +187,17 @@ bool RenderCmdBuffer::BindDataBuffer(const GeometryDataBuffer *geom_data_buffer)
         return(false);
     }
 
-//    std::cerr << "[RenderCmdBuffer::BindDataBuffer] Calling vkCmdBindVertexBuffers..." << std::endl;
-
-    // Log each buffer
-    //for(uint32_t i = 0; i < geom_data_buffer->vab_count; i++)
-    //{
-    //    std::cerr << "[RenderCmdBuffer::BindDataBuffer]   Buffer[" << i << "]: "
-    //              << geom_data_buffer->vab_list[i]
-    //              << ", offset: " << geom_data_buffer->vab_offset[i] << std::endl;
-    //}
+    {
+        static uint32_t s_binddatabuf_tick = 0;
+        if (++s_binddatabuf_tick <= 4u)
+        {
+            for (uint32_t _i = 0; _i < geom_data_buffer->vab_count; ++_i)
+                GLogDebug("[VULKAN_BIND_VBO] tick=%u slot[%u] VkBuffer=%p offset=%llu",
+                          s_binddatabuf_tick, _i,
+                          (void*)geom_data_buffer->vab_list[_i],
+                          (unsigned long long)geom_data_buffer->vab_offset[_i]);
+        }
+    }
 
     vkCmdBindVertexBuffers(cmd_buf,
                            0,               //first binding

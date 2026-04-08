@@ -51,6 +51,20 @@ namespace hgl::ecs
 
         vab_list->Restart();
 
+        // Log VAB list being bound this frame
+        if (batch->geom_data_buffer)
+        {
+            static uint32_t s_bindvab_tick = 0;
+            if (++s_bindvab_tick <= 4u)
+            {
+                for (uint32_t _i = 0; _i < batch->geom_data_buffer->vab_count; ++_i)
+                    GLogDebug("[BIND_VAB] tick=%u slot[%u] VkBuffer=%p offset=%llu",
+                             s_bindvab_tick, _i,
+                             (void*)batch->geom_data_buffer->vab_list[_i],
+                             (unsigned long long)batch->geom_data_buffer->vab_offset[_i]);
+            }
+        }
+
         // 添加几何数据的VAB
         if (!vab_list->Add(batch->geom_data_buffer))
         {

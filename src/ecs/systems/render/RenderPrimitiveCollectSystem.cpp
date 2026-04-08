@@ -250,6 +250,9 @@ namespace hgl::ecs
                     if (primitive->GetVIL())
                     {
                         geometry.vil_hash = ComputeVILHash(primitive->GetVIL());
+                        geometry.geometry_for_vil_derivation = primitive->GetGeometry();
+                        if (geometry.geometry_for_vil_derivation)
+                            geometry.geometry_layout_hash = ComputeGeometryLayoutHash(geometry.geometry_for_vil_derivation);
                     }
                     else if (primitive->HasDeferredMI())
                     {
