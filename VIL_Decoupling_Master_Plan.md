@@ -11,8 +11,8 @@
 - [x] example 侧 overrides 初始化块已清理。
 - [x] 全仓检索 `mi_vil_overrides|VILOverride` 为 0。
 - [x] 全量构建 `ALL_BUILD` 已通过。
-- [ ] deferred/no-geometry 场景诊断与升级告警未完成。
-- [ ] `GeometrySignature` 强布局签名（VAB format/stride hash）未完成。
+- [x] deferred/no-geometry 场景诊断与升级告警已完成（`MaterialAssetRegistry` 4 个 atomic fallback 计数器 + pow2 节流告警；`RenderPrimitiveCollectSystem` deferred 无 geometry 告警）。
+- [x] `GeometrySignature` 强布局签名（VAB format/stride hash）已完成：新增 `geometry_layout_hash` 字段，纳入 `operator==` 与 `VariantKeyHash`，在 `RenderPrimitiveCollectSystem` 的 deferred 路径中通过 `ComputeGeometryLayoutHash()` 填充。
 - [ ] shadow/early-z 子集属性策略尚未正式收敛。
 - [ ] legacy 入口收口与文档化未完成。
 

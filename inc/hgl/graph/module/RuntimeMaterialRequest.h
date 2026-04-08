@@ -44,18 +44,25 @@ struct GeometrySignature
 {
     PrimitiveType primitive = PrimitiveType::Triangles;
 
-    // Optional future extension points for VIL/vertex layout signatures.
+    // FNV-1a hash of the bound VIL's VertexInputFormat list (format + location).
+    // Zero when VIL has not been derived yet (deferred path).
     uint32_t vil_hash = 0;
 
-    // Phase C: optional runtime-only source for VIL auto-derivation.
-    // This field is intentionally excluded from operator== so VariantKey
-    // remains stable and hash-compatible with prior behavior.
+    // Phase 3: strong layout discriminator — FNV-1a hash of each VAB's
+    // (format, stride) pair in binding order.  Differentiates deferred
+    // primitives whose VIL has not been created yet (vil_hash == 0) but
+    // whose geometry layouts are distinct.
+    uint32_t geometry_layout_hash = 0;
+
+    // Runtime-only source for VIL auto-derivation.  Intentionally excluded
+    // from operator== so VariantKey remains stable across pointer changes.
     const Geometry *geometry_for_vil_derivation = nullptr;
 
     bool operator==(const GeometrySignature &o) const
     {
         return primitive == o.primitive
-            && vil_hash == o.vil_hash;
+            && vil_hash == o.vil_hash
+            && geometry_layout_hash == o.geometry_layout_hash;
     }
 };
 

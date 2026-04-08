@@ -12,6 +12,7 @@
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialTemplate.h>
+#include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/log/Log.h>
 #include<glm/glm.hpp>
 
@@ -22,6 +23,38 @@ namespace hgl::ecs
         bool ShouldLogPow2(const uint64_t v)
         {
             return v != 0 && ((v & (v - 1)) == 0);
+        }
+
+        uint32_t ComputeGeometryLayoutHash(const graph::Geometry *geo)
+        {
+            if (!geo)
+                return 0;
+
+            const uint32_t count = geo->GetVABCount();
+            if (count == 0)
+                return 0;
+
+            uint64_t h = 14695981039346656037ULL;
+            auto feed = [&](const void *p, size_t n)
+            {
+                const auto *bytes = reinterpret_cast<const uint8_t*>(p);
+                for (size_t i = 0; i < n; ++i)
+                    h = (h ^ bytes[i]) * 1099511628211ULL;
+            };
+
+            feed(&count, sizeof(count));
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                const graph::VAB *vab = geo->GetVAB(i);
+                if (!vab)
+                    continue;
+                const VkFormat  fmt    = vab->GetFormat();
+                const uint32_t  stride = vab->GetStride();
+                feed(&fmt,    sizeof(fmt));
+                feed(&stride, sizeof(stride));
+            }
+
+            return static_cast<uint32_t>((h >> 32) ^ (h & 0xFFFFFFFFu));
         }
 
         uint32_t ComputeVILHash(const graph::VIL *vil)
@@ -215,11 +248,14 @@ namespace hgl::ecs
                         geometry.primitive = material->GetPrimitiveType();
 
                     if (primitive->GetVIL())
+                    {
                         geometry.vil_hash = ComputeVILHash(primitive->GetVIL());
+                    }
                     else if (primitive->HasDeferredMI())
                     {
                         geometry.geometry_for_vil_derivation = primitive->GetGeometry();
                         geometry.vil_hash = primitive->GetDeferredVILHash();
+                        geometry.geometry_layout_hash = ComputeGeometryLayoutHash(geometry.geometry_for_vil_derivation);
 
                         if (!geometry.geometry_for_vil_derivation)
                         {
