@@ -1,4 +1,4 @@
-﻿// Billboard (ECS)
+// Billboard (ECS)
 //
 // This example demonstrates rendering a billboard and a plane grid using ECS.
 
@@ -113,9 +113,6 @@ private:
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-            .mi_vil_overrides = {
-                { VAN::Luminance, VF_V1UN8 },
-            },
         };
         mi_plane_grid = AcquireMI(kPlaneGridCfg,
                           &white_color, sizeof(white_color));
@@ -346,5 +343,6 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Billboard (ECS)"),argc,argv,1280,720);
 }
+
 
 

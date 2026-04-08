@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
+// 该范例主要演示使用ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
 // This example demonstrates drawing multiple triangles using ECS architecture with automatic instancing
 //
 // 本范例展示了：
@@ -69,10 +69,6 @@ private:
             .preset   = mtl::MaterialPreset::VertexColor2D,
             .dim      = mtl::MaterialAssetRecord::Dim::D2,
             .pipeline = GraphicsPipelinePreset::Solid2D,
-            .mi_vil_overrides =
-            {
-                { VAN::Color, VF_V4UN8 },
-            },
         };
 
         semantic_material_id = RegisterSemanticMaterial(kAutoInstanceCfg);
@@ -186,5 +182,6 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("AutoInstance (ECS Version)"),argc,argv,1024,1024);
 }
+
 
 

@@ -114,10 +114,6 @@ private:
             .preset   = mtl::MaterialPreset::VertexColor2D,
             .dim      = mtl::MaterialAssetRecord::Dim::D2,
             .pipeline = GraphicsPipelinePreset::Solid2D,
-            .mi_vil_overrides =
-            {
-                { VAN::Color, VF_V4UN8 },
-            },
         };
 
         semantic_material_id = RegisterSemanticMaterial(kEufloriaCfg);
@@ -339,3 +335,4 @@ int os_main(int, os_char**)
 {
     return RunFramework<EufloriaSeedApp>(OS_TEXT("Eufloria Seed"), 800, 800);
 }
+

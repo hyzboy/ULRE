@@ -1,4 +1,4 @@
-﻿// PlaneGrid3D
+// PlaneGrid3D
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -50,9 +50,6 @@ private:
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-            .mi_vil_overrides = {
-                { VAN::Luminance, VF_V1UN8 },
-            },
         };
         Color4f GridColor;
         COLOR ce=COLOR::BlenderAxisRed;
@@ -229,5 +226,6 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("PlaneGrid3D"),argc,argv,1280,720);
 }
+
 
 

@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
+// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
 // This example demonstrates managing and drawing a gradient colored triangle using the new ECS architecture
 //
 // 本范例展示了：
@@ -70,11 +70,6 @@ private:
             .pos_format = POSITION_SHADER_FORMAT,   // VAT_IVEC2: shader中 ivec2 顶点输入
             .coord_2d   = CoordinateSystem2D::Ortho,
             .pipeline   = GraphicsPipelinePreset::Solid2D,
-            .mi_vil_overrides =
-            {
-                { VAN::Position, POSITION_DATA_FORMAT },
-                { VAN::Color, COLOR_DATA_FORMAT },
-            },
         };
 
         semantic_material_id = RegisterSemanticMaterial(kTriangleCfg);
@@ -181,5 +176,6 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw triangle use ECS"),argc,argv);
 }
+
 
 

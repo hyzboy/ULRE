@@ -1,4 +1,4 @@
-﻿#include "BillboardIconECSBase.h"
+#include "BillboardIconECSBase.h"
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include <iostream>
@@ -31,9 +31,6 @@ bool BillboardIconECSBase::InitPlaneGridResources()
         .preset   = mtl::MaterialPreset::VertexLuminance2D,
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
-        .mi_vil_overrides = {
-            { VAN::Luminance, VF_V1UN8 },
-        },
     };
     mi_plane_grid = AcquireMI(kPlaneGridCfg,&white_color, sizeof(white_color));
     if (!mi_plane_grid) return false;
@@ -224,4 +221,5 @@ void BillboardIconECSBase::Tick(double delta_time)
 {
     WorkObject::Tick(delta_time);
 }
+
 

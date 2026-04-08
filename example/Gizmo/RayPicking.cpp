@@ -1,4 +1,4 @@
-﻿// RayPicking (ECS Version)
+// RayPicking (ECS Version)
 // 该范例主要演示使用ECS架构实现射线拾取功能
 // This example demonstrates ray picking using ECS architecture
 //
@@ -84,9 +84,6 @@ private:
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-            .mi_vil_overrides = {
-                { VAN::Luminance, VF_V1UN8 },
-            },
         };
         static const mtl::MaterialAssetRecord kLineCfg {
             .id       = "ray_picking_line",
@@ -94,9 +91,6 @@ private:
             .preset   = mtl::MaterialPreset::VertexLuminance3D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-            .mi_vil_overrides = {
-                { VAN::Luminance, VF_V1UN8 },
-            },
         };
         auto* registry = GetMaterialAssetRegistry();
         auto* material_manager = GetMaterialManager();
@@ -152,7 +146,6 @@ private:
 
     bool CreateGeometry()
     {
-
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
@@ -371,5 +364,6 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("RayPicking (ECS Version)"),argc,argv,1280,720);
 }
+
 
 

@@ -26,7 +26,6 @@
 #include <hgl/common/PrimitiveTypeDef.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
 #include <hgl/vk/VertexAttrib.h>
-#include <hgl/vk/VKFormat.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 
 #include <vector>
@@ -71,19 +70,6 @@ struct MaterialAssetRecord
 
     // ── MaterialInstance 管线预设 ──────────────────────────────────────────────
     GraphicsPipelinePreset pipeline = GraphicsPipelinePreset::Solid3D;
-
-    // ── MaterialInstance 顶点输入覆写（可选）─────────────────────────────────────
-    // 空列表 = 使用 MaterialTemplate 默认 VIL。
-    // 非空 = 在 CreateMI 时构建 VILConfig 覆写指定 attrib 的格式。
-    struct VILOverride
-    {
-        VertexAttrib attrib = VAN::Position;
-        VkFormat     format = PF_UNDEFINED;
-    };
-
-    // [deprecated] Phase C 后由 Geometry VAB 自动派生 VIL，此字段仅供离线工具/历史数据保留。
-    // 新代码请勿写入；ResolveMI 已优先从 geometry_for_vil_derivation 派生 VIL。
-    std::vector<VILOverride> mi_vil_overrides;
 
     // ── 纹理配置列表（以 SamplerSlot 为显式 key）────────────────────────────────
     struct TextureSlotConfig

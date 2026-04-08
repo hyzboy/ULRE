@@ -1,4 +1,4 @@
-﻿// R8 — domain_id 语义化演示：双图标集 Billboard 阵列
+// R8 — domain_id 语义化演示：双图标集 Billboard 阵列
 //
 // 两组 Billboard 螺旋各使用不同的图标集（Freepik / Gradient），
 // PlaneGrid 材质通过 domain_id 区分批次，验证 MaterialResourceDomain 隔离端到端正确。
@@ -162,9 +162,6 @@ private:
             .preset    = mtl::MaterialPreset::VertexLuminance2D,
             .prim      = PrimitiveType::Lines,
             .pipeline  = GraphicsPipelinePreset::Solid3D,
-            .mi_vil_overrides = {
-                { VAN::Luminance, VF_V1UN8 },
-            },
         };
         mi_plane_grid = AcquireMI(kPlaneGridCfg,
                           &white_color, sizeof(white_color));
@@ -384,4 +381,5 @@ int os_main(int argc, os_char** argv)
         OS_TEXT("R8 Domain Isolation Demo - Dual Icon Billboard Arrays"),
         argc, argv, 1280, 720);
 }
+
 

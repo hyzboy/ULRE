@@ -1,4 +1,4 @@
-﻿/*
+/*
  TransformGizmoSystem 使用示例
 
  展示如何使用 TransformGizmoSystem 控制物体变换
@@ -77,9 +77,6 @@ private:
                 .preset   = mtl::MaterialPreset::VertexLuminance2D,
                 .prim     = PrimitiveType::Lines,
                 .pipeline = GraphicsPipelinePreset::Solid3D,
-                .mi_vil_overrides = {
-                    { VAN::Luminance, VF_V1UN8 },
-                },
             };
 
             const Color4f white = GetColor4f(COLOR::White, 1.0f);
@@ -351,5 +348,6 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<GizmoExampleApp>(OS_TEXT("Gizmo Usage Example"), argc, argv, 1280, 720);
 }
+
 
 

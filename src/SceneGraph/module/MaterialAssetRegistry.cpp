@@ -17,32 +17,6 @@
 namespace hgl::graph
 {
 
-namespace
-{
-static std::string BuildVILOverridesDebugString(const mtl::MaterialAssetRecord &rec)
-{
-    if (rec.mi_vil_overrides.empty())
-        return "<none>";
-
-    std::string out;
-    out.reserve(rec.mi_vil_overrides.size() * 24);
-
-    bool first = true;
-    for (const auto &ov : rec.mi_vil_overrides)
-    {
-        if (!first)
-            out += ", ";
-
-        first = false;
-        out += GetVertexAttribName(ov.attrib);
-        out += "=";
-        out += GetVulkanFormatName(ov.format);
-    }
-
-    return out;
-}
-}
-
 // ── 将 record 中的纹理加载并绑定到 DomainMaterialBinding ─────────────────────
 
 static bool BindDomainTexturesFromRecord(
@@ -98,38 +72,10 @@ static void BindMaterialTexturesCompat(
 
 static const VIL *ResolveVILFromRecord(MaterialTemplate *material, const mtl::MaterialAssetRecord &rec)
 {
+    (void)rec;
+
     if (!material)
         return nullptr;
-
-    if (rec.mi_vil_overrides.empty())
-        return material->GetDefaultVIL();
-
-    VILConfig vil_cfg;
-    for (const auto &ov : rec.mi_vil_overrides)
-    {
-        VAConfig vac;
-        vac.format = ov.format;
-
-        if (!vil_cfg.Add(ov.attrib, vac))
-        {
-            std::fprintf(stderr,
-                "[MaterialAssetRegistry] ResolveVILFromRecord fallback(default): add override failed, material='%s' domain='%s' override=%s expected_overrides=[%s]\n",
-                material->GetName().c_str(),
-                rec.domain_id.c_str(),
-                GetVertexAttribName(ov.attrib),
-                BuildVILOverridesDebugString(rec).c_str());
-            return material->GetDefaultVIL();
-        }
-    }
-
-    if (auto *vil = material->CreateVIL(&vil_cfg))
-        return vil;
-
-    std::fprintf(stderr,
-        "[MaterialAssetRegistry] ResolveVILFromRecord fallback(default): CreateVIL failed, material='%s' domain='%s' overrides=[%s]\n",
-        material->GetName().c_str(),
-        rec.domain_id.c_str(),
-        BuildVILOverridesDebugString(rec).c_str());
 
     return material->GetDefaultVIL();
 }
@@ -373,10 +319,9 @@ const VIL *MaterialAssetRegistry::ResolveVIL(const MaterialTemplate *material,
     if (!resolved)
     {
         std::fprintf(stderr,
-            "[MaterialAssetRegistry] ResolveVIL failed: ResolveVILFromGeometry returned null for material='%s' domain='%s' overrides=[%s]\n",
+            "[MaterialAssetRegistry] ResolveVIL failed: ResolveVILFromGeometry returned null for material='%s' domain='%s'\n",
             material->GetName().c_str(),
-            rec.domain_id.c_str(),
-            BuildVILOverridesDebugString(rec).c_str());
+            rec.domain_id.c_str());
     }
 
     return resolved;
@@ -659,21 +604,6 @@ MaterialInstance *MaterialAssetRegistry::CreateMI(
     spec.preset   = rec.pipeline;
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
-
-    VILConfig vil_cfg;
-    if (!rec.mi_vil_overrides.empty())
-    {
-        for (const auto &ov : rec.mi_vil_overrides)
-        {
-            VAConfig vac;
-            vac.format = ov.format;
-
-            if (!vil_cfg.Add(ov.attrib, vac))
-                return nullptr;
-        }
-
-        spec.vil_cfg = &vil_cfg;
-    }
 
     MaterialInstance *mi = mm->AcquireMaterialInstance(spec);
     if (mi)

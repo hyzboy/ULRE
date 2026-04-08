@@ -1,4 +1,4 @@
-﻿// Billboard ECS Example - Refactored with decoupled Quad + FacingTransform
+// Billboard ECS Example - Refactored with decoupled Quad + FacingTransform
 //
 // This example demonstrates the new decoupled architecture:
 // - QuadComponent: Handles quad geometry and rendering
@@ -78,9 +78,6 @@ private:
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-            .mi_vil_overrides = {
-                { VAN::Luminance, VF_V1UN8 },
-            },
         };
         // Create material instance
         mi_plane_grid = AcquireMI(kPlaneGridCfg,&white_color, sizeof(white_color));
@@ -408,4 +405,5 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<BillboardECSApp>(OS_TEXT("Billboard ECS Example"), argc, argv, 1280, 720);
 }
+
 
