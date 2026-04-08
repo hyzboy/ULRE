@@ -19,6 +19,11 @@ namespace hgl::ecs
 {
     namespace
     {
+        bool ShouldLogPow2(const uint64_t v)
+        {
+            return v != 0 && ((v & (v - 1)) == 0);
+        }
+
         uint32_t ComputeVILHash(const graph::VIL *vil)
         {
             if (!vil)
@@ -215,6 +220,24 @@ namespace hgl::ecs
                     {
                         geometry.geometry_for_vil_derivation = primitive->GetGeometry();
                         geometry.vil_hash = primitive->GetDeferredVILHash();
+
+                        if (!geometry.geometry_for_vil_derivation)
+                        {
+                            static uint64_t s_deferred_no_geometry = 0;
+                            const uint64_t n = ++s_deferred_no_geometry;
+
+                            if (ShouldLogPow2(n))
+                            {
+                                const uint64_t runtime_entity_id = hgl::ecs::ToRuntimeEntityKey(entity_id);
+
+                                LogWarning("[RenderPrimitiveCollect::ResolveMI] deferred primitive missing geometry_for_vil_derivation: semantic_id=%llu entity_id=%llu prim='%s' deferred_vil_hash=%u total=%llu (fallback to material default VIL)",
+                                           static_cast<unsigned long long>(primitiveComp->GetSemanticMaterial()),
+                                           static_cast<unsigned long long>(runtime_entity_id),
+                                           primitive->GetGeometryName().c_str(),
+                                           static_cast<unsigned>(geometry.vil_hash),
+                                           static_cast<unsigned long long>(n));
+                            }
+                        }
                     }
 
                     {

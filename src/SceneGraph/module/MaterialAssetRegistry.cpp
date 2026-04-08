@@ -13,9 +13,23 @@
 
 #include <vector>
 #include <cstdio>
+#include <atomic>
 
 namespace hgl::graph
 {
+
+namespace
+{
+static bool ShouldLogPow2(const uint64_t v)
+{
+    return v != 0 && ((v & (v - 1)) == 0);
+}
+
+static std::atomic<uint64_t> g_resolve_vil_fallback_no_geometry {0};
+static std::atomic<uint64_t> g_resolve_vil_fallback_no_vab {0};
+static std::atomic<uint64_t> g_resolve_vil_fallback_add_failed {0};
+static std::atomic<uint64_t> g_resolve_vil_fallback_create_failed {0};
+}
 
 // ── 将 record 中的纹理加载并绑定到 DomainMaterialBinding ─────────────────────
 
@@ -88,7 +102,19 @@ static const VIL *ResolveVILFromGeometry(MaterialTemplate *material,
         return nullptr;
 
     if (!geometry)
+    {
+        const uint64_t n = ++g_resolve_vil_fallback_no_geometry;
+        if (ShouldLogPow2(n))
+        {
+            std::fprintf(stderr,
+                "[MaterialAssetRegistry] ResolveVIL fallback(default): geometry missing, material='%s' domain='%s' id='%s' total=%llu\n",
+                material->GetName().c_str(),
+                fallback_rec.domain_id.c_str(),
+                fallback_rec.id.c_str(),
+                static_cast<unsigned long long>(n));
+        }
         return ResolveVILFromRecord(material, fallback_rec);
+    }
 
     VILConfig vil_cfg;
     bool has_any = false;
@@ -106,14 +132,49 @@ static const VIL *ResolveVILFromGeometry(MaterialTemplate *material,
         vac.format = vab->GetFormat();
 
         if (!vil_cfg.Add(attrib, vac))
+        {
+            const uint64_t n = ++g_resolve_vil_fallback_add_failed;
+            if (ShouldLogPow2(n))
+            {
+                std::fprintf(stderr,
+                    "[MaterialAssetRegistry] ResolveVIL fallback(default): VILConfig::Add failed, material='%s' attrib='%s' format='%s' total=%llu\n",
+                    material->GetName().c_str(),
+                    GetVertexAttribName(attrib),
+                    GetVulkanFormatName(vab->GetFormat()),
+                    static_cast<unsigned long long>(n));
+            }
             return ResolveVILFromRecord(material, fallback_rec);
+        }
     }
 
     if (!has_any)
+    {
+        const uint64_t n = ++g_resolve_vil_fallback_no_vab;
+        if (ShouldLogPow2(n))
+        {
+            std::fprintf(stderr,
+                "[MaterialAssetRegistry] ResolveVIL fallback(default): geometry has no VAB, material='%s' domain='%s' id='%s' total=%llu\n",
+                material->GetName().c_str(),
+                fallback_rec.domain_id.c_str(),
+                fallback_rec.id.c_str(),
+                static_cast<unsigned long long>(n));
+        }
         return ResolveVILFromRecord(material, fallback_rec);
+    }
 
     if (auto *vil = material->CreateVIL(&vil_cfg))
         return vil;
+
+    const uint64_t n = ++g_resolve_vil_fallback_create_failed;
+    if (ShouldLogPow2(n))
+    {
+        std::fprintf(stderr,
+            "[MaterialAssetRegistry] ResolveVIL fallback(default): CreateVIL failed, material='%s' domain='%s' id='%s' total=%llu\n",
+            material->GetName().c_str(),
+            fallback_rec.domain_id.c_str(),
+            fallback_rec.id.c_str(),
+            static_cast<unsigned long long>(n));
+    }
 
     return ResolveVILFromRecord(material, fallback_rec);
 }
