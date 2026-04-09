@@ -79,7 +79,7 @@ private:
 
     VertexDataManager * mesh_vdm = nullptr;
     Geometry *          builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
-    Primitive *         base_primitives[GEOMETRY_VARIANT_COUNT]{};
+    Primitive *         sphere_primitives[GRID_SIZE][GRID_SIZE]{};
 
     // One MI per cell: col controls metallic, row controls roughness
     mtl::StandardMaterialInstance   sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
@@ -512,15 +512,19 @@ private:
             return false;
         }
 
-        for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
+        for (uint row = 0; row < GRID_SIZE; ++row)
         {
-            // Per-entity override material is still applied in InitECS.
-            base_primitives[i] = primitive_manager->CreatePrimitive(
-                builtin_geometries[i], sphere_mi[0][i]->ToSlot());
+            for (uint col = 0; col < GRID_SIZE; ++col)
+            {
+                // Each sphere must own an independent Primitive slot; sharing Primitive
+                // collapses MI assignment to per-Primitive granularity.
+                sphere_primitives[row][col] = primitive_manager->CreatePrimitive(
+                    builtin_geometries[col], sphere_mi[row][col]->ToSlot());
 
-            if (!base_primitives[i]) {
-                printf("[ERROR] CreateBasePrimitives: Failed to create primitive %u\n", i);
-                return false;
+                if (!sphere_primitives[row][col]) {
+                    printf("[ERROR] CreateBasePrimitives: Failed to create primitive [%u][%u]\n", row, col);
+                    return false;
+                }
             }
         }
 
@@ -561,8 +565,7 @@ private:
                 transform->SetMovable(true);
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
-                prim_comp->SetPrimitive(base_primitives[col]);
-                prim_comp->SetMIIDOverride(sphere_mi[row][col]->GetMIID());
+                prim_comp->SetPrimitive(sphere_primitives[row][col]);
                 prim_comp->SetVisible(true);
             }
         }
@@ -673,9 +676,12 @@ public:
 
     ~TestApp()
     {
-        for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
+        for (uint row = 0; row < GRID_SIZE; ++row)
         {
-            SAFE_CLEAR(base_primitives[i])
+            for (uint col = 0; col < GRID_SIZE; ++col)
+            {
+                SAFE_CLEAR(sphere_primitives[row][col])
+            }
         }
 
         SAFE_CLEAR(mesh_vdm)
