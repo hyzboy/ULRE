@@ -1,13 +1,13 @@
 ﻿#pragma once
 
 #include<hgl/type/Str.Comp.h>
-#include<hgl/type/String.h>
-#include<hgl/type/ValueArray.h>
+#include<hgl/type/MemoryAlloc.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKInterpolation.h>
 #include<hgl/vk/VKSamplerType.h>
 #include<hgl/vk/VKImageType.h>
 #include<string>
+#include<vector>
 
 namespace hgl::graph{
 enum class ShaderVariableBaseType:uint8
@@ -262,7 +262,7 @@ inline bool operator==(const ShaderVariable& lhs, const ShaderVariable& rhs) {
            lhs.interpolation == rhs.interpolation;
 }
 
-using SVList=ValueArray<ShaderVariable>;
+using SVList=std::vector<ShaderVariable>;
 
 struct ShaderVariableArray
 {

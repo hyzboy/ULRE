@@ -1,9 +1,9 @@
 ﻿#pragma once
 #include<hgl/vk/VKFormat.h>
 #include<hgl/vk/VKVertexInputLayout.h>
-#include<hgl/type/OrderedSet.h>
 #include<hgl/vk/VKVertexInputAttribute.h>
 #include <vector>
+#include <ankerl/unordered_dense.h>
 
 namespace hgl::graph{
 class VILConfig;
@@ -34,7 +34,7 @@ class VertexInput
 
     VIL *default_vil;
 
-    OrderedSet<VIL *> vil_sets;
+    ankerl::unordered_dense::set<VIL *> vil_sets;
 
 public:
 
@@ -48,7 +48,7 @@ public:
     const   VIL *   GetDefaultVIL()const{return default_vil;}
     VIL *           CreateVIL(const VILConfig *format_map=nullptr);
     bool            Release(VIL *);
-    const uint32_t  GetInstanceCount()const{return vil_sets.GetCount();}
+    const uint32_t  GetInstanceCount()const{return static_cast<uint32_t>(vil_sets.size());}
 };//class VertexInput
 
 VertexInput *GetVertexInput(const VIAArray &);

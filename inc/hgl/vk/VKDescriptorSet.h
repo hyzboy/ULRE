@@ -1,13 +1,13 @@
 ﻿#pragma once
 
 #include<hgl/vk/VK.h>
-#include<hgl/type/OrderedSet.h>
-#include<hgl/type/ManagedArray.h>
 #include<hgl/log/Log.h>
+#include<absl/container/btree_set.h>
+#include<vector>
 
 namespace hgl::graph{ class VkBufferOwner; }  // forward-decl for BindUBO/BindSSBO offset+range params
 
-// Comparison operators for Vulkan structures used in ValueArray
+// Comparison operators for Vulkan structures used in std::vector
 inline bool operator==(const VkDescriptorBufferInfo& lhs, const VkDescriptorBufferInfo& rhs) {
     return lhs.buffer == rhs.buffer &&
            lhs.offset == rhs.offset &&
@@ -47,13 +47,13 @@ class DescriptorSet
 
     VkPipelineLayout pipeline_layout;
 
-    ValueArray<VkDescriptorBufferInfo> vab_list;
-    ValueArray<VkDescriptorImageInfo> image_list;
-    ValueArray<VkWriteDescriptorSet> wds_list;
-    ValueArray<int> wds_buffer_info_indices;
-    ValueArray<int> wds_image_info_indices;
+    std::vector<VkDescriptorBufferInfo> vab_list;
+    std::vector<VkDescriptorImageInfo> image_list;
+    std::vector<VkWriteDescriptorSet> wds_list;
+    std::vector<int> wds_buffer_info_indices;
+    std::vector<int> wds_image_info_indices;
 
-    OrderedSet<uint32_t> binded_sets;
+    absl::btree_set<uint32_t> binded_sets;
 
     bool is_dirty;
 
@@ -70,11 +70,11 @@ public:
         desc_set        =ds;
         pipeline_layout =pl;
 
-        vab_list.Reserve(vab_count);
-        image_list.Reserve(vab_count);
-        wds_list.Reserve(vab_count);
-        wds_buffer_info_indices.Reserve(vab_count);
-        wds_image_info_indices.Reserve(vab_count);
+        vab_list.reserve(vab_count);
+        image_list.reserve(vab_count);
+        wds_list.reserve(vab_count);
+        wds_buffer_info_indices.reserve(vab_count);
+        wds_image_info_indices.reserve(vab_count);
 
         is_dirty=true;
     }
@@ -85,12 +85,12 @@ public:
     const VkDescriptorSet   GetDescriptorSet    ()const{return desc_set;}
     const VkPipelineLayout  GetPipelineLayout   ()const{return pipeline_layout;}
 
-    const bool              IsReady             ()const{return wds_list.GetCount()==vab_count;}
+    const bool              IsReady             ()const{return static_cast<int>(wds_list.size())==vab_count;}
 
     // Debug/Test accessors: used by descriptor lifetime regression tests
-    const ValueArray<VkDescriptorBufferInfo> &DebugGetBufferInfoList() const { return vab_list; }
-    const ValueArray<VkDescriptorImageInfo>  &DebugGetImageInfoList () const { return image_list; }
-    const ValueArray<VkWriteDescriptorSet>   &DebugGetWriteSetList  () const { return wds_list; }
+    const std::vector<VkDescriptorBufferInfo> &DebugGetBufferInfoList() const { return vab_list; }
+    const std::vector<VkDescriptorImageInfo>  &DebugGetImageInfoList () const { return image_list; }
+    const std::vector<VkWriteDescriptorSet>   &DebugGetWriteSetList  () const { return wds_list; }
 
     void Clear();
 

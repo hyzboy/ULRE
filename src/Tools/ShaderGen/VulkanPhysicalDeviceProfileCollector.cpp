@@ -103,7 +103,7 @@ namespace
         const auto &families = pd.GetQueueFamilyProperties();
 
         out << "      \"queue_families\": [\n";
-        for (int i = 0; i < families.GetCount(); ++i)
+        for (int i = 0; i < families.size(); ++i)
         {
             const auto &q = families[i];
             out << "        {\"index\": " << i
@@ -111,7 +111,7 @@ namespace
                 << ", \"queueCount\": " << q.queueCount
                 << ", \"timestampValidBits\": " << q.timestampValidBits
                 << "}";
-            if (i + 1 < families.GetCount())
+            if (i + 1 < families.size())
                 out << ",";
             out << "\n";
         }
@@ -141,7 +141,7 @@ int main(int argc, char **argv)
     }
 
     const auto &devices = instance->GetDeviceList();
-    const int device_count = devices.GetCount();
+    const int device_count = static_cast<int>(devices.size());
 
     std::ostringstream json_out;
 
@@ -196,7 +196,7 @@ int main(int argc, char **argv)
         WriteQueueFamilies(json_out, *pd);
 
         json_out << "    }";
-        if (i + 1 < devices.GetCount())
+        if (i + 1 < static_cast<int>(devices.size()))
             json_out << ",";
         json_out << "\n";
 

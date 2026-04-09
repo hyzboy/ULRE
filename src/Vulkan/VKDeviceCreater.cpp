@@ -10,6 +10,7 @@
 #include<hgl/shadergen/GLSLCompilerConfig.h>
 
 #include<hgl/log/Log.h>
+#include<string>
 
 namespace hgl::graph{
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &);
@@ -27,7 +28,7 @@ void LogSurfaceFormat(const VkSurfaceFormatKHR &sf)
 
 void LogSurfaceFormat(const VkSurfaceFormatList &surface_formats_list)
 {
-    GLogDebug("Current physics device support %u surface format", surface_formats_list.GetCount());
+    GLogDebug("Current physics device support %u surface format", static_cast<uint32_t>(surface_formats_list.size()));
 
     for(auto &sf:surface_formats_list)
         LogSurfaceFormat(sf);
@@ -291,7 +292,7 @@ void VulkanDeviceCreater::ChooseSurfaceFormat()
 {
     const VkSurfaceFormatList &surface_formats_list=surface->GetFormats();
 
-    if(surface_formats_list.IsEmpty())
+    if(surface_formats_list.empty())
         return;
 
 #ifdef _DEBUG
@@ -400,8 +401,11 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 
         if(device_attr->debug_utils)
         {
-            device_attr->debug_utils->SetPhysicalDevice(physical_device->GetVulkanDevice(),"Physical Device:"+AnsiString(physical_device->GetDeviceName()));
-            device_attr->debug_utils->SetDevice(device_attr->device,"Device:"+AnsiString(physical_device->GetDeviceName()));
+            const std::string physical_name = std::string("Physical Device:") + physical_device->GetDeviceName();
+            const std::string device_name = std::string("Device:") + physical_device->GetDeviceName();
+
+            device_attr->debug_utils->SetPhysicalDevice(physical_device->GetVulkanDevice(), physical_name.c_str());
+            device_attr->debug_utils->SetDevice(device_attr->device, device_name.c_str());
             device_attr->debug_utils->SetSurfaceKHR(surface->GetSurface(),"Surface");
             device_attr->debug_utils->SetCommandPool(device_attr->cmd_pool,"Main Command Pool");
             device_attr->debug_utils->SetDescriptorPool(device_attr->desc_pool,"Main Descriptor Pool");

@@ -7,6 +7,7 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/log/Log.h>
 #include<iostream>
+#include<string>
 
 namespace hgl::graph{
 
@@ -229,7 +230,7 @@ IndexBuffer *VulkanDevice::CreateIBO(const ObjectNameBuilder &name, IndexType in
 
     ObjectNameBuilder memory_name = name.base_name[0] == '\0'
         ? ObjectNameBuilder("Memory")
-        : ObjectNameBuilder(AnsiString(name.base_name) + ".Memory");
+        : ObjectNameBuilder((std::string(name.base_name) + ".Memory").c_str());
 
     DeviceBufferData buf;
     if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,memory_name,loc))
@@ -309,7 +310,7 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
     else if(buf_usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) buffer_type = "TransferSrcBuffer";
     else if(buf_usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) buffer_type = "TransferDstBuffer";
 
-    AnsiString memory_name = AnsiString(buffer_type) + ":Memory";
+    std::string memory_name = std::string(buffer_type) + ":Memory";
 
     if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode,mem_usage,ObjectNameBuilder(memory_name.c_str()),loc))
         return(nullptr);
@@ -365,7 +366,7 @@ DeviceBuffer *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
     DeviceBufferData buf;
     ObjectNameBuilder memory_name = name.base_name[0] == '\0'
         ? ObjectNameBuilder("Memory")
-        : ObjectNameBuilder(AnsiString(name.base_name) + ".Memory");
+        : ObjectNameBuilder((std::string(name.base_name) + ".Memory").c_str());
 
     if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode,mem_usage,memory_name,loc))
         return(nullptr);
@@ -433,7 +434,7 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
     DeviceBufferData buf;
     ObjectNameBuilder memory_name = name.base_name[0] == '\0'
         ? ObjectNameBuilder("Memory")
-        : ObjectNameBuilder(AnsiString(name.base_name) + ".Memory");
+        : ObjectNameBuilder((std::string(name.base_name) + ".Memory").c_str());
 
     if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,memory_name,loc))
         return(nullptr);

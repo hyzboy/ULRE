@@ -3,6 +3,7 @@
 #include<hgl/vk/VKStagedBuffer.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<cassert>
+#include<string>
 
 namespace hgl::graph{
 
@@ -88,10 +89,10 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(const ObjectNameBuilder &name, Vk
         if (parent.base_name[0] == '\0')
             return ObjectNameBuilder(suffix);
 
-        AnsiString full(parent.base_name);
+        std::string full(parent.base_name);
         full += ".";
         full += suffix;
-        return ObjectNameBuilder(full);
+        return ObjectNameBuilder(full.c_str());
     };
 
     // Create staging buffer (CPU accessible)

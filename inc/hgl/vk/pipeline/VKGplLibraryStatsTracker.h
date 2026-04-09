@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
-#include <unordered_map>
+#include <ankerl/unordered_dense.h>
 
 namespace hgl::graph
 {
@@ -38,7 +38,7 @@ private:
     template<typename TKey>
     struct Bucket
     {
-        std::unordered_map<TKey, uint64_t> entries;
+        ankerl::unordered_dense::map<TKey, uint64_t> entries;
         uint64_t hits = 0;
         uint64_t misses = 0;
         uint64_t inserts = 0;

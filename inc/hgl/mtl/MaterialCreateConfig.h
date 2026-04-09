@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include<hgl/mtl/MaterialBuildFlags.h>
-#include<hgl/type/String.h>
 #include<hgl/common/PrimitiveTypeDef.h>
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/common/RenderTargetOutputConfig.h>

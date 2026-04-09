@@ -3,7 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<mutex>
-#include<unordered_map>
+#include<ankerl/unordered_dense.h>
 #include<memory>
 
 namespace hgl::graph{
@@ -23,10 +23,10 @@ class GplLibraryHandleCache
 
     mutable std::mutex lib_mutex_;
 
-    std::unordered_map<GplVertexInputKey,   VkPipeline> vi_lib_;
-    std::unordered_map<GplPreRasterKey,     VkPipeline> pr_lib_;
-    std::unordered_map<GplFragmentShaderKey,VkPipeline> fs_lib_;
-    std::unordered_map<GplFragmentOutputKey,VkPipeline> fo_lib_;
+    ankerl::unordered_dense::map<GplVertexInputKey,   VkPipeline> vi_lib_;
+    ankerl::unordered_dense::map<GplPreRasterKey,     VkPipeline> pr_lib_;
+    ankerl::unordered_dense::map<GplFragmentShaderKey,VkPipeline> fs_lib_;
+    ankerl::unordered_dense::map<GplFragmentOutputKey,VkPipeline> fo_lib_;
 
 public:
     GplLibraryHandleCache() = default;

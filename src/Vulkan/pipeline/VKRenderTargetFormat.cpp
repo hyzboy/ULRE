@@ -22,7 +22,7 @@ RenderTargetFormat::RenderTargetFormat(VulkanDevice *dev,const AnsiString &n,con
     depth_format=df;
 
     LogInfo("[RenderTargetFormat::RenderTargetFormat] Created RenderTargetFormat '%s', color attachment count=%u, depth format=%u",
-             name.c_str(), color_formats.GetCount(), depth_format);
+             name.c_str(), static_cast<uint32_t>(color_formats.size()), depth_format);
 }
 
 RenderTargetFormat::~RenderTargetFormat()

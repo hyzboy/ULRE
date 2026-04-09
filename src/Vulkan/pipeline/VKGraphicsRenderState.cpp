@@ -57,20 +57,20 @@ GraphicsRenderState GraphicsRenderState::FromGraphicsPipelineData(const Graphics
         rsp.blend = *pd.color_blend;
 
         const uint32_t count = pd.color_blend->attachmentCount;
-        rsp.blend_attachments.Resize(count);
+        rsp.blend_attachments.resize(count);
 
         for (uint32_t i = 0; i < count; ++i)
             rsp.blend_attachments[i] = pd.color_blend_attachments[i];
 
-        rsp.blend.pAttachments = rsp.blend_attachments.GetData();
+        rsp.blend.pAttachments = rsp.blend_attachments.data();
     }
 
-    rsp.dynamic_states.Resize(pd.dynamic_state.dynamicStateCount);
+    rsp.dynamic_states.resize(pd.dynamic_state.dynamicStateCount);
     for (uint32_t i = 0; i < pd.dynamic_state.dynamicStateCount; ++i)
         rsp.dynamic_states[i] = pd.dynamic_state_enables[i];
 
-    rsp.blend.pAttachments = rsp.blend_attachments.GetData();
-    rsp.blend.attachmentCount = rsp.blend_attachments.GetCount();
+    rsp.blend.pAttachments = rsp.blend_attachments.data();
+    rsp.blend.attachmentCount = static_cast<uint32_t>(rsp.blend_attachments.size());
 
     rsp.multisample.pSampleMask = nullptr;
     rsp.raster.pNext = nullptr;
@@ -130,12 +130,12 @@ uint64_t GraphicsRenderState::Hash() const
     for (int i = 0; i < 4; ++i)
         HashFloat(h, blend.blendConstants[i]);
 
-    const uint32_t blend_count = blend_attachments.GetCount();
+    const uint32_t blend_count = static_cast<uint32_t>(blend_attachments.size());
     HashU32(h, blend_count);
     for (uint32_t i = 0; i < blend_count; ++i)
         HashBytes(h, &blend_attachments[i], sizeof(VkPipelineColorBlendAttachmentState));
 
-    const uint32_t dynamic_count = dynamic_states.GetCount();
+    const uint32_t dynamic_count = static_cast<uint32_t>(dynamic_states.size());
     HashU32(h, dynamic_count);
     for (uint32_t i = 0; i < dynamic_count; ++i)
         HashU32(h, static_cast<uint32_t>(dynamic_states[i]));
@@ -189,13 +189,13 @@ bool GraphicsRenderState::Equals(const GraphicsRenderState &rhs) const
 
     if (!EqualBlendState(blend, rhs.blend)) return false;
 
-    if (blend_attachments.GetCount() != rhs.blend_attachments.GetCount()) return false;
-    for (uint32_t i = 0; i < blend_attachments.GetCount(); ++i)
+    if (blend_attachments.size() != rhs.blend_attachments.size()) return false;
+    for (uint32_t i = 0; i < blend_attachments.size(); ++i)
         if (memcmp(&blend_attachments[i], &rhs.blend_attachments[i], sizeof(VkPipelineColorBlendAttachmentState)) != 0)
             return false;
 
-    if (dynamic_states.GetCount() != rhs.dynamic_states.GetCount()) return false;
-    for (uint32_t i = 0; i < dynamic_states.GetCount(); ++i)
+    if (dynamic_states.size() != rhs.dynamic_states.size()) return false;
+    for (uint32_t i = 0; i < dynamic_states.size(); ++i)
         if (dynamic_states[i] != rhs.dynamic_states[i])
             return false;
 

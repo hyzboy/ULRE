@@ -2,10 +2,10 @@
 #define HGL_GRAPH_VULKAN_INSTANCE_INCLUDE
 
 #include<hgl/type/String.h>
-#include<hgl/type/ManagedArray.h>
 #include<hgl/platform/Window.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKDebugOut.h>
+#include<vector>
 
 namespace hgl::graph{
     #define VK_BOOL1BIT(name)   bool name:1;
@@ -56,13 +56,15 @@ namespace hgl::graph{
     };
     #undef VK_BOOL1BIT
 
+    VulkanInstance *CreateInstance(const U8String &,VKDebugOut *,CreateInstanceLayerInfo *);                            ///<创建一个Vulkan实例
+
     class VulkanInstance
     {
         VkInstance inst;
 
         VKDebugOut *debug_out;
 
-        ManagedArray<VulkanPhyDevice> physical_devices;
+        std::vector<VulkanPhyDevice *> physical_devices;
 
     private:
 
@@ -70,7 +72,7 @@ namespace hgl::graph{
 
     private:
 
-        friend VulkanInstance *CreateInstance(const U8String &app_name,VKDebugOut *out=nullptr,CreateInstanceLayerInfo *cili=nullptr);
+        friend VulkanInstance *CreateInstance(const U8String &,VKDebugOut *,CreateInstanceLayerInfo *);
 
         VulkanInstance(VkInstance,VKDebugOut *);
 
@@ -81,7 +83,7 @@ namespace hgl::graph{
                 operator VkInstance (){return inst;}
 
         const   VkInstance                   GetVulkanInstance  ()const{return inst;}
-        const   ManagedArray<VulkanPhyDevice> &GetDeviceList      ()const{return physical_devices;}
+        const   std::vector<VulkanPhyDevice *> &GetDeviceList      ()const{return physical_devices;}
         const   VulkanPhyDevice *            GetDevice          (VkPhysicalDeviceType)const;
 
         template<typename T>
@@ -100,12 +102,11 @@ namespace hgl::graph{
     };//class VulkanInstance
 
             void                            InitVulkanInstanceProperties();
-    const   ValueArray<VkLayerProperties> &       GetInstanceLayerProperties();
-    const   ValueArray<VkExtensionProperties> &   GetInstanceExtensionProperties();
+    const   std::vector<VkLayerProperties> &      GetInstanceLayerProperties();
+    const   std::vector<VkExtensionProperties> &  GetInstanceExtensionProperties();
     const   bool                            CheckInstanceLayerSupport(const AnsiString &);
     const   bool                            GetInstanceLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl);
     const   bool                            CheckInstanceExtensionSupport(const AnsiString &);
 
-    VulkanInstance *CreateInstance(const U8String &,VKDebugOut *,CreateInstanceLayerInfo *);                            ///<创建一个Vulkan实例
 }//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_INSTANCE_INCLUDE

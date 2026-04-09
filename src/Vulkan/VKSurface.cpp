@@ -1,8 +1,6 @@
 ﻿#include<hgl/vk/VKSurface.h>
 
 namespace hgl::graph{
-using VkQueueFamilyPropertiesList=ValueArray<VkQueueFamilyProperties>;
-
 VulkanSurface::VulkanSurface(const VulkanPhyDevice *phy_dev,VkSurfaceKHR sface)
 {
     physical_device=phy_dev;
@@ -18,7 +16,7 @@ VulkanSurface::VulkanSurface(const VulkanPhyDevice *phy_dev,VkSurfaceKHR sface)
     {
         const auto &queue_family_properties=physical_device->GetQueueFamilyProperties();
 
-        const int family_count=queue_family_properties.GetCount();
+        const int family_count=static_cast<int>(queue_family_properties.size());
 
         supports_present=new VkBool32[family_count];
 
@@ -36,30 +34,30 @@ VulkanSurface::VulkanSurface(const VulkanPhyDevice *phy_dev,VkSurfaceKHR sface)
 
         if(vkGetPhysicalDeviceSurfacePresentModesKHR(pd, surface, &count, nullptr) == VK_SUCCESS)
         {
-            present_mode_list.Resize(count);
-            vkGetPhysicalDeviceSurfacePresentModesKHR(pd, surface, &count, present_mode_list.GetData());
+            present_mode_list.resize(count);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(pd, surface, &count, present_mode_list.data());
         }
         else
         {
-            present_mode_list.Clear();
+            present_mode_list.clear();
         }
 
         if(vkGetPhysicalDeviceSurfaceFormatsKHR(pd, surface, &count, nullptr) == VK_SUCCESS)
         {
-            surface_format_list.Resize(count);
-            vkGetPhysicalDeviceSurfaceFormatsKHR(pd, surface, &count, surface_format_list.GetData());
+            surface_format_list.resize(count);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(pd, surface, &count, surface_format_list.data());
         }
         else
         {
-            surface_format_list.Clear();
+            surface_format_list.clear();
         }
 
         {
             const auto &queue_family_properties=physical_device->GetQueueFamilyProperties();
 
-            const VkQueueFamilyProperties *qfp=queue_family_properties.GetData();
+            const VkQueueFamilyProperties *qfp=queue_family_properties.data();
 
-            const int family_count=queue_family_properties.GetCount();
+            const int family_count=static_cast<int>(queue_family_properties.size());
 
             for(int i=0;i<family_count;i++)
             {

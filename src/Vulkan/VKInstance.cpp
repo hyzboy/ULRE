@@ -86,7 +86,7 @@ VulkanInstance::VulkanInstance(VkInstance i,VKDebugOut *out)
         vkEnumeratePhysicalDevices(inst, &gpu_count,pd_list);
 
         for(uint32_t i=0;i<gpu_count;i++)
-            physical_devices.Add(new VulkanPhyDevice(inst,pd_list[i]));
+            physical_devices.push_back(new VulkanPhyDevice(inst,pd_list[i]));
 
         delete[] pd_list;
     }
@@ -98,7 +98,10 @@ VulkanInstance::~VulkanInstance()
 {
     SAFE_CLEAR(debug_out);
 
-    physical_devices.Clear();
+    for(VulkanPhyDevice *pd:physical_devices)
+        delete pd;
+
+    physical_devices.clear();
     vkDestroyInstance(inst,nullptr);
 }
 

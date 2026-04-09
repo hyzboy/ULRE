@@ -1,9 +1,7 @@
 ﻿#pragma once
 #include<hgl/vk/VKFormat.h>
 #include<hgl/common/VertexAttribDef.h>
-#include<hgl/type/String.h>
-#include<hgl/type/UnorderedMap.h>
-#include<vector>
+#include<ankerl/unordered_dense.h>
 
 namespace hgl::graph{
 struct VAConfig
@@ -28,20 +26,40 @@ public:
     auto operator <=> (const VAConfig &vc)const=default;
 };//struct VAConfig
 
-class VILConfig:public hgl::UnorderedMap<VertexAttrib,VAConfig>
+class VILConfig:public ankerl::unordered_dense::map<VertexAttrib,VAConfig>
 {
 public:
 
-    using Base=hgl::UnorderedMap<VertexAttrib,VAConfig>;
+    using Base=ankerl::unordered_dense::map<VertexAttrib,VAConfig>;
 
     using Base::Base;
+
+    int GetCount() const
+    {
+        return static_cast<int>(this->size());
+    }
+
+    bool ContainsKey(const VertexAttrib &attrib) const
+    {
+        return this->find(attrib) != this->end();
+    }
+
+    bool Get(const VertexAttrib &attrib,VAConfig &cfg) const
+    {
+        auto it=this->find(attrib);
+        if(it==this->end())
+            return false;
+
+        cfg=it->second;
+        return true;
+    }
 
     bool Add(const VertexAttrib &attrib,const VAConfig &cfg)
     {
         if(this->ContainsKey(attrib))
             return(false);
 
-        return static_cast<Base *>(this)->Add(attrib,cfg);
+        return this->emplace(attrib,cfg).second;
     }
 
     auto operator <=> (const VILConfig &vc)const
@@ -49,18 +67,13 @@ public:
         int off=this->GetCount()-vc.GetCount();
         if(off)return(off);
 
-        std::vector<VertexAttrib> keys;
-        std::vector<VAConfig> values;
-
-        this->GetKeyValueArrays(keys, values);
-
-        for(size_t i=0;i<keys.size();++i)
+        for(const auto &[key,value]:*this)
         {
             VAConfig vac;
-            if(!vc.Get(keys[i],vac))
+            if(!vc.Get(key,vac))
                 return(1);
 
-            auto cmp=values[i]<=>vac;
+            auto cmp=value<=>vac;
             if(cmp!=0)return(cmp<0?-1:1);
         }
 

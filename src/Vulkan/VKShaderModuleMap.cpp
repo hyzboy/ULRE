@@ -10,6 +10,6 @@ bool ShaderModuleMap::Add(const ShaderModule *sm)
 
     if(this->ContainsKey(stage))return(false);
 
-    return UnorderedMap<VkShaderStageFlagBits,const ShaderModule *>::Add(stage,sm);
+    return this->emplace(stage,sm).second;
 }
 }//namespace hgl::graph

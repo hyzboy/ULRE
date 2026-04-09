@@ -4,8 +4,9 @@
 #include<hgl/type/String.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<cstring>
+#include<vector>
 
-// Comparison operators for Vulkan structures used in ValueArray
+// Comparison operators for Vulkan structures used in std::vector
 inline bool operator==(const VkExtensionProperties& lhs, const VkExtensionProperties& rhs) {
     return lhs.specVersion == rhs.specVersion &&
            std::strcmp(lhs.extensionName, rhs.extensionName) == 0;
@@ -29,7 +30,7 @@ inline bool operator==(const VkQueueFamilyProperties& lhs, const VkQueueFamilyPr
 
 namespace hgl::graph{
 
-using VkQueueFamilyPropertiesList=ValueArray<VkQueueFamilyProperties>;
+using VkQueueFamilyPropertiesList=std::vector<VkQueueFamilyProperties>;
 
 class VulkanPhyDevice
 {
@@ -50,8 +51,8 @@ class VulkanPhyDevice
 
     VkPhysicalDeviceMemoryProperties    memory_properties;
 
-    ValueArray<VkLayerProperties>       layer_properties;
-    ValueArray<VkExtensionProperties>   extension_properties;
+    std::vector<VkLayerProperties>      layer_properties;
+    std::vector<VkExtensionProperties>  extension_properties;
 
     VkQueueFamilyPropertiesList         queue_family_properties;
 

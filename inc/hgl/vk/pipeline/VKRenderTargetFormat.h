@@ -3,10 +3,11 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/log/Log.h>
+#include<vector>
 
 namespace hgl::graph{
 
-using VkFormatList=ValueArray<VkFormat>;
+using VkFormatList=std::vector<VkFormat>;
 
 /**
  * RenderTargetFormat — pipeline factory keyed on attachment formats.<br>
@@ -37,13 +38,13 @@ public:
     const AnsiString &      GetName         ()const{return name;}
     const VkPipelineCache   GetPipelineCache()const{return pipeline_cache;}
 
-    const uint              GetColorCount   ()const{return color_formats.GetCount();}
+    const uint              GetColorCount   ()const{return static_cast<uint>(color_formats.size());}
     const VkFormatList &    GetColorFormat  ()const{return color_formats;}
     const VkFormat          GetColorFormat  (int index)const
     {
-        if(index<0||index>=color_formats.GetCount())return VK_FORMAT_UNDEFINED;
+        if(index<0||index>=static_cast<int>(color_formats.size()))return VK_FORMAT_UNDEFINED;
 
-        return color_formats.GetData()[index];
+        return color_formats[index];
     }
     const VkFormat          GetDepthFormat  ()const{return depth_format;}
 

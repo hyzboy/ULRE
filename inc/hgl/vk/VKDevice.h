@@ -2,7 +2,6 @@
 
 #include<hgl/type/ValueArray.h>
 #include<hgl/type/String.h>
-#include<hgl/type/UnorderedMap.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/graph/data/ImageRegion.h>
 #include<hgl/platform/Window.h>
@@ -21,7 +20,7 @@
 #include<typeinfo>
 #include<type_traits>
 #include<utility>
-#include<unordered_map>
+#include<ankerl/unordered_dense.h>
 #include<mutex>
 #include<atomic>
 #include<source_location>
@@ -62,13 +61,13 @@ class VulkanDevice
     VulkanDevAttr *attr;
     bool draw_phase_active = false;
     std::vector<IGPUBuffer*> gpu_buffer_registry;  // All Layer2 buffers, iterated by ECS UploadSystem
-    UnorderedMap<AnsiString, RenderTargetFormat *> render_format_cache;
+    ankerl::unordered_dense::map<std::string, RenderTargetFormat *> render_format_cache;
     bool gpl_supported = false;
     bool gpl_enabled = false;
     std::unique_ptr<IGraphicsPipelineBuilder> link_backend_mono;
     std::unique_ptr<IGraphicsPipelineBuilder> link_backend_gpl;
     GplLibraryStatsTracker pipeline_library_cache;
-    std::unordered_map<GplLinkedPipelineKey, GraphicsPipeline *> linked_pipeline_cache;
+    ankerl::unordered_dense::map<GplLinkedPipelineKey, GraphicsPipeline *> linked_pipeline_cache;
     mutable std::mutex linked_pipeline_cache_mutex;
     std::atomic<uint64_t> linked_pipeline_cache_hits{0};
     std::atomic<uint64_t> linked_pipeline_cache_misses{0};
@@ -79,7 +78,7 @@ class VulkanDevice
 
     struct ObjectDebugRecord
     {
-        AnsiString name;
+        std::string name;
         std::string file;
         std::string function;
         uint32_t line = 0;
@@ -106,7 +105,7 @@ class VulkanDevice
         }
     };
 
-    std::unordered_map<ObjectKey, ObjectDebugRecord, ObjectKeyHash> tracked_objects;
+    ankerl::unordered_dense::map<ObjectKey, ObjectDebugRecord, ObjectKeyHash> tracked_objects;
 
 private:
 

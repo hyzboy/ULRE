@@ -46,14 +46,14 @@ bool MaterialSpec::IsValid() const
 
 namespace
 {
-    void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
+    void CreateShaderStageList(ShaderStageCreateInfoList &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
 
         const int shader_count=shader_maps->GetCount();
-        shader_stage_list.Resize(shader_count);
+        shader_stage_list.resize(static_cast<size_t>(shader_count));
 
-        VkPipelineShaderStageCreateInfo *p=shader_stage_list.GetData();
+        VkPipelineShaderStageCreateInfo *p=shader_stage_list.data();
 
         for(auto [stage, module] : *shader_maps)
         {

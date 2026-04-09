@@ -6,7 +6,8 @@
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<hgl/mtl/InstanceDataLayout.h>
 #include<hgl/log/Log.h>
-#include<unordered_set>
+#include<ankerl/unordered_dense.h>
+#include<vector>
 
 
 namespace hgl::graph{
@@ -23,7 +24,7 @@ namespace mtl
 
 class MaterialParameters;
 
-using ShaderStageCreateInfoList=ValueArray<VkPipelineShaderStageCreateInfo>;
+using ShaderStageCreateInfoList=std::vector<VkPipelineShaderStageCreateInfo>;
 
 /**
  * 材质类<br>
@@ -145,5 +146,5 @@ public:
     mtl::InstanceDataLayout GetRequiredLayout()const{return required_instance_layout;}
 };//class MaterialTemplate
 
-using MaterialTemplateSet=std::unordered_set<MaterialTemplate *>;
+using MaterialTemplateSet=ankerl::unordered_dense::set<MaterialTemplate *>;
 }//namespace hgl::graph

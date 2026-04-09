@@ -6,8 +6,6 @@
 /// 本文件仅保留 IncludeSky/IncludeCamera/IncludeL2W 枚举供
 /// Material2DCreateConfig / Material3DCreateConfig 使用。
 
-#include<hgl/type/String.h>
-
 namespace hgl::graph
 {
     namespace mtl

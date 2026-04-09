@@ -66,8 +66,8 @@ namespace
     {
         uint32_t filtered_count = 0;
 
-        const VkPipelineShaderStageCreateInfo *list = stages.GetData();
-        const uint32_t count = stages.GetCount();
+        const VkPipelineShaderStageCreateInfo *list = stages.data();
+        const uint32_t count = static_cast<uint32_t>(stages.size());
 
         for (uint32_t i = 0; i < count; ++i)
         {

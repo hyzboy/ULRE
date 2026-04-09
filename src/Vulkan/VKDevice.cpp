@@ -17,26 +17,26 @@
 #include <thread>
 #include <utility>
 #include <cstdint>
-#include <unordered_map>
+#include <ankerl/unordered_dense.h>
+#include <absl/container/btree_map.h>
 #include <string>
 
 namespace hgl::graph{
 namespace
 {
-    std::unordered_map<VkDevice, VulkanDevice *> g_device_map;
+    ankerl::unordered_dense::map<VkDevice, VulkanDevice *> g_device_map;
 
-    AnsiString GenerateRenderFormatKey(const RenderbufferInfo *rbi)
+    std::string GenerateRenderFormatKey(const RenderbufferInfo *rbi)
     {
-        AnsiString key;
-        hgl::Sprintf(key,"RenderFormat_%d_%u_%u_%u",
-                     rbi->GetDepthFormat(),
-                     (uint)rbi->GetColorLayout(),
-                     (uint)rbi->GetDepthLayout(),
-                     rbi->GetColorCount());
+        std::string key = "RenderFormat_"
+                        + std::to_string(static_cast<int>(rbi->GetDepthFormat())) + "_"
+                        + std::to_string(static_cast<uint>(rbi->GetColorLayout())) + "_"
+                        + std::to_string(static_cast<uint>(rbi->GetDepthLayout())) + "_"
+                        + std::to_string(rbi->GetColorCount());
         for(const VkFormat &fmt:rbi->GetColorFormatList())
         {
-            key+="_";
-            key+=AnsiString::numberOf((int)fmt);
+            key += "_";
+            key += std::to_string(static_cast<int>(fmt));
         }
         return key;
     }
@@ -116,7 +116,7 @@ VulkanDevice::~VulkanDevice()
 
     for(auto &kv:render_format_cache)
         delete kv.second;
-    render_format_cache.Clear();
+    render_format_cache.clear();
 
     delete attr;
 }
@@ -380,7 +380,7 @@ void VulkanDevice::TrackObject(VkObjectType type, uint64_t handle, const ObjectN
         return;
 
     ObjectDebugRecord record;
-    record.name = name.ToString();  // 只在需要时转换为字符串
+    record.name = name.ToString().c_str();  // 只在需要时转换为字符串
     record.file = loc.file_name();
     record.function = loc.function_name();
     record.line = loc.line();
@@ -395,7 +395,7 @@ void VulkanDevice::TrackObject(VkObjectType type, uint64_t handle, const ObjectN
     auto it = tracked_objects.find(key);
     if (it != tracked_objects.end())
     {
-        if (!record.name.IsEmpty())
+        if (!record.name.empty())
             it->second.name = record.name;
 
         if (it->second.file.empty())
@@ -423,13 +423,13 @@ void VulkanDevice::TrackObjectWithoutLocation(VkObjectType type, uint64_t handle
     auto it = tracked_objects.find(key);
     if (it != tracked_objects.end())
     {
-        if (it->second.name.IsEmpty())
-            it->second.name = name.ToString();  // 只在需要时转换为字符串
+        if (it->second.name.empty())
+            it->second.name = name.ToString().c_str();  // 只在需要时转换为字符串
         return;
     }
 
     ObjectDebugRecord record;
-    record.name = name.ToString();
+    record.name = name.ToString().c_str();
     record.file = "";
     record.function = "";
     record.line = 0;
@@ -467,7 +467,7 @@ void VulkanDevice::DumpTrackedObjects() const
     GLogWarning("%lu objects still alive at device destruction", (unsigned long)tracked_objects.size());
 
     // 按类型分类统计
-    std::map<VkObjectType, int> type_counts;
+    absl::btree_map<VkObjectType, int> type_counts;
     for (const auto &entry : tracked_objects)
     {
         type_counts[entry.first.type]++;
@@ -700,14 +700,13 @@ RenderTargetFormat *VulkanDevice::AcquireRenderTargetFormat(const RenderbufferIn
                 return(nullptr);
     }
 
-    AnsiString key=GenerateRenderFormatKey(rbi);
-    RenderTargetFormat *rf=nullptr;
+    const std::string key = GenerateRenderFormatKey(rbi);
+    auto it = render_format_cache.find(key);
+    if(it != render_format_cache.end())
+        return it->second;
 
-    if(render_format_cache.Get(key,rf))
-        return rf;
-
-    rf=new RenderTargetFormat(this,key,rbi->GetColorFormatList(),rbi->GetDepthFormat());
-    render_format_cache.Add(key,rf);
+    RenderTargetFormat *rf = new RenderTargetFormat(this,key.c_str(),rbi->GetColorFormatList(),rbi->GetDepthFormat());
+    render_format_cache.emplace(key,rf);
     return rf;
 }
 

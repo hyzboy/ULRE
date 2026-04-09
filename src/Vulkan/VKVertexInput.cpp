@@ -143,7 +143,7 @@ VertexInput::~VertexInput()
 {
     delete default_vil;
 
-    if(vil_sets.GetCount()>0)
+    if(!vil_sets.empty())
     {
         //还有在用的，这是个错误
     }
@@ -159,14 +159,17 @@ VIL *VertexInput::CreateVIL(const VILConfig *cfg)
 
     VIL *vil=vic.CreateVIL(cfg);
 
-    vil_sets.Add(vil);
+    if(!vil)
+        return nullptr;
+
+    vil_sets.insert(vil);
 
     return vil;
 }
 
 bool VertexInput::Release(VIL *vil)
 {
-    return vil_sets.Delete(vil);
+    return vil_sets.erase(vil)>0;
 }
 
 namespace
@@ -243,7 +246,8 @@ VertexInput *GetVertexInput(const std::vector<VIA> &vias)
 
 void ReleaseVertexInput(VertexInput *vi)
 {
-    if(!vi)return;
+    if(!vi)
+        return;
 
     vertex_input_manager.Release(vi);
 }
