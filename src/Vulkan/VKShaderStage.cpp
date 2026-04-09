@@ -1,4 +1,6 @@
 ﻿#include<hgl/vk/VKVertexInputAttribute.h>
+#include<hgl/type/Str.Length.h>
+#include<hgl/type/Str.Comp.h>
 
 namespace hgl
 {

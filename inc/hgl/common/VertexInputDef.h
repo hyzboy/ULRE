@@ -3,9 +3,10 @@
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/common/InterpolationDef.h>
 #include <hgl/vk/VKFormat.h>
-#include <hgl/type/ValueArray.h>
-#include <hgl/type/String.h>
+#include <hgl/type/MemoryAlloc.h>
 #include <compare>
+#include <string>
+#include <vector>
 
 namespace hgl::graph
 {
@@ -32,15 +33,15 @@ namespace hgl::graph
 
     using VIA=VertexInputAttribute;
 
-    using VIAList=ValueArray<VIA>;
+    using VIAList=std::vector<VIA>;
 
     inline bool operator==(const VertexInputAttribute& lhs, const VertexInputAttribute& rhs) {
         return !memcmp(&lhs,&rhs,sizeof(VertexInputAttribute));
     }
 
-    inline const AnsiString GetShaderAttributeTypename(const VertexInputAttribute *ss)
+    inline std::string GetShaderAttributeTypename(const VertexInputAttribute *ss)
     {
-        return AnsiString(GetVertexAttribName((VABaseType)ss->basetype,ss->vec_size));
+        return std::string(GetVertexAttribName((VABaseType)ss->basetype,ss->vec_size));
     }
 
     const VkFormat GetVulkanFormat(const VertexInputAttribute *sa);
