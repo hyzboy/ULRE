@@ -7,11 +7,15 @@
 #include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/vk/VKMaterialResourceDomain.h>
 #include <hgl/vk/VKDomainMaterialBinding.h>
+#include <hgl/vk/VKVertexInput.h>
 #include <hgl/vk/VKVertexInputConfig.h>
+#include <hgl/common/VertexInputDef.h>
 #include <hgl/graph/geo/VKGeometry.h>
 #include <hgl/vk/VKVertexAttribBuffer.h>
+#include <hgl/mtl/VertexAttributeSpec.h>
 
 #include <vector>
+#include <cassert>
 #include <cstdio>
 #include <atomic>
 
@@ -29,6 +33,26 @@ static std::atomic<uint64_t> g_resolve_vil_fallback_no_geometry {0};
 static std::atomic<uint64_t> g_resolve_vil_fallback_no_vab {0};
 static std::atomic<uint64_t> g_resolve_vil_fallback_add_failed {0};
 static std::atomic<uint64_t> g_resolve_vil_fallback_create_failed {0};
+static std::atomic<uint64_t> g_resolve_vil_fallback_incompatible {0};
+
+static const VertexInputAttribute *FindMaterialVIAByAttrib(const VertexInput *vi,const VertexAttrib attrib)
+{
+    if(!vi)
+        return nullptr;
+
+    const auto &via_array = vi->GetVIAArray();
+    const VertexInputAttribute *via = via_array.items;
+
+    for(uint i = 0; i < via_array.count; ++i)
+    {
+        if(via->attrib == attrib)
+            return via;
+
+        ++via;
+    }
+
+    return nullptr;
+}
 }
 
 // ── 将 record 中的纹理加载并绑定到 DomainMaterialBinding ─────────────────────
@@ -125,6 +149,36 @@ static const VIL *ResolveVILFromGeometry(MaterialTemplate *material,
         auto *vab = geometry->GetVAB(attrib);
         if (!vab)
             continue;
+
+        const VertexInputAttribute *mat_via = FindMaterialVIAByAttrib(material->GetVertexInput(), attrib);
+        if (mat_via)
+        {
+            VAType shader_type;
+            shader_type.basetype = VABaseType(mat_via->basetype);
+            shader_type.vec_size = mat_via->vec_size;
+
+            const VkFormat geom_format = vab->GetFormat();
+            if(!mtl::IsStorageFormatCompatibleWithShaderType(shader_type, geom_format))
+            {
+                const uint64_t n = ++g_resolve_vil_fallback_incompatible;
+                if (ShouldLogPow2(n))
+                {
+                    std::fprintf(stderr,
+                        "[MaterialAssetRegistry] ResolveVIL fallback(default): incompatible geometry format, material='%s' attrib='%s' shader='%s' format='%s' total=%llu\n",
+                        material->GetName().c_str(),
+                        GetVertexAttribName(attrib),
+                        GetVertexAttribName((VABaseType)mat_via->basetype, mat_via->vec_size),
+                        GetVulkanFormatName(geom_format),
+                        static_cast<unsigned long long>(n));
+                }
+
+#ifdef _DEBUG
+                assert(false && "MaterialAssetRegistry::ResolveVILFromGeometry incompatible geometry format");
+#endif
+
+                return ResolveVILFromRecord(material, fallback_rec);
+            }
+        }
 
         has_any = true;
 

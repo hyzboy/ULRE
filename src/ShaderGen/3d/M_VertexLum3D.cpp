@@ -6,11 +6,6 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr FixedVertexEntry VERTEX_LUMINANCE_3D_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
-        { VAT_UNORM_BYTE, VAN::Luminance },
-    };
-
     constexpr VertexAttributeSpec VERTEX_LUMINANCE_3D_VERTEX_SPECS[] = {
         { VAN::Position,  VAT_VEC3,  PF_RGB32F },
         { VAN::Luminance, VAT_FLOAT, PF_R8UN   },
@@ -23,8 +18,8 @@ namespace
     const StaticMaterialDef VERTEX_LUMINANCE_3D_DEF {
         "VertexLuminance3D",
         PrimitiveType::Triangles,
-        VERTEX_LUMINANCE_3D_VERTEX,
-        uint32_t(sizeof(VERTEX_LUMINANCE_3D_VERTEX) / sizeof(VERTEX_LUMINANCE_3D_VERTEX[0])),
+        nullptr,
+        0,
         &VERTEX_LUMINANCE_3D_UBOS,
         &VERTEX_LUMINANCE_3D_SSBOS,
         nullptr,

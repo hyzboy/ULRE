@@ -127,6 +127,9 @@ public:
 template<typename DataAccessType>
 class BufferAccessor:public BufferAccessBase
 {
+public:
+    using DataAccessT = DataAccessType;
+
 private:
      uint32_t buffer_total_count;        ///< 总元素数量 / Total element count
      uint32_t buffer_stride;             ///< 单元素字节数 / Stride in bytes

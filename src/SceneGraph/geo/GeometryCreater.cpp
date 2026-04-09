@@ -8,6 +8,8 @@
 #include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/log/Log.h>
+#include<cassert>
+#include<cstdio>
 
 namespace hgl::graph{
 GeometryCreater::GeometryCreater(VulkanDevice *dev,const VIL *v,BufferManager *bm)
@@ -116,19 +118,63 @@ bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,c
 
 const int GeometryCreater::InitVAB(const VertexAttrib &attrib,const VkFormat format,const void *data)
 {
-    if(!geometry_data)return(-1);
+    if(!geometry_data)
+    {
+        std::fprintf(stderr,
+            "[GeometryCreater] InitVAB failed: geometry_data missing, attrib='%s'\n",
+            GetVertexAttribName(attrib));
+#ifdef _DEBUG
+        assert(false && "GeometryCreater::InitVAB geometry_data missing");
+#endif
+        return(-1);
+    }
 
     const int vab_index=geometry_data->GetVABIndex(attrib);
 
     if(vab_index<0||vab_index>=vil->GetVertexAttribCount())
+    {
+        std::fprintf(stderr,
+            "[GeometryCreater] InitVAB failed: attrib='%s' not present in VIL, index=%d attrib_count=%u\n",
+            GetVertexAttribName(attrib),
+            vab_index,
+            vil ? vil->GetVertexAttribCount() : 0u);
+#ifdef _DEBUG
+        assert(false && "GeometryCreater::InitVAB attrib missing in VIL");
+#endif
         return(-1);
+    }
 
     if(format!=VK_FORMAT_UNDEFINED)
     {
         const VIF *vif=vil->GetConfig(vab_index);
 
         if(vif->format!=format)
+        {
+            std::fprintf(stderr,
+                "[GeometryCreater] InitVAB format mismatch: geom='%s' attrib='%s' expected='%s' requested='%s'\n",
+                geometry_name.c_str(),
+                GetVertexAttribName(attrib),
+                GetVulkanFormatName(vif->format),
+                GetVulkanFormatName(format));
+#ifdef _DEBUG
+            assert(false && "GeometryCreater::InitVAB format mismatch");
+#endif
             return(-2);
+        }
+
+        const uint32_t expected_stride = GetStrideByFormat(format);
+        if(expected_stride == 0)
+        {
+            std::fprintf(stderr,
+                "[GeometryCreater] InitVAB invalid format stride: geom='%s' attrib='%s' format='%s'\n",
+                geometry_name.c_str(),
+                GetVertexAttribName(attrib),
+                GetVulkanFormatName(format));
+#ifdef _DEBUG
+            assert(false && "GeometryCreater::InitVAB invalid format stride");
+#endif
+            return(-3);
+        }
     }
 
     VAB *vab=geometry_data->GetVABByIndex(vab_index);
@@ -153,15 +199,83 @@ VertexAttribBuffer *GeometryCreater::GetVAB(const VertexAttrib attrib,const VkFo
 {
     const int vab_index=InitVAB(attrib,format,nullptr);
 
-    if(vab_index<0)return nullptr;
+    if(vab_index<0)
+        return nullptr;
 
-    return geometry_data->GetVABByIndex(vab_index);
+    VAB *vab = geometry_data->GetVABByIndex(vab_index);
+
+    if(vab && format != VK_FORMAT_UNDEFINED)
+    {
+        const uint32_t expected_stride = GetStrideByFormat(format);
+        if(vab->GetFormat() != format || vab->GetStride() != expected_stride)
+        {
+            std::fprintf(stderr,
+                "[GeometryCreater] GetVAB validation failed: geom='%s' attrib='%s' format='%s' actual_format='%s' expected_stride=%u actual_stride=%u\n",
+                geometry_name.c_str(),
+                GetVertexAttribName(attrib),
+                GetVulkanFormatName(format),
+                GetVulkanFormatName(vab->GetFormat()),
+                expected_stride,
+                vab->GetStride());
+#ifdef _DEBUG
+            assert(false && "GeometryCreater::GetVAB validation failed");
+#endif
+            return nullptr;
+        }
+    }
+
+    return vab;
 }
 
 bool GeometryCreater::WriteVAB(const VertexAttrib attrib,const VkFormat format,const void *data)
 {
-    if(!geometry_data)return(false);
-    if(!data)return(false);
+    if(!geometry_data)
+    {
+        std::fprintf(stderr,
+            "[GeometryCreater] WriteVAB failed: geometry_data missing, attrib='%s'\n",
+            GetVertexAttribName(attrib));
+#ifdef _DEBUG
+        assert(false && "GeometryCreater::WriteVAB geometry_data missing");
+#endif
+        return(false);
+    }
+
+    if(!data)
+    {
+        std::fprintf(stderr,
+            "[GeometryCreater] WriteVAB failed: null data, geom='%s' attrib='%s'\n",
+            geometry_name.c_str(),
+            GetVertexAttribName(attrib));
+#ifdef _DEBUG
+        assert(false && "GeometryCreater::WriteVAB null data");
+#endif
+        return(false);
+    }
+
+    if(format == VK_FORMAT_UNDEFINED)
+    {
+        std::fprintf(stderr,
+            "[GeometryCreater] WriteVAB failed: explicit format required, geom='%s' attrib='%s'\n",
+            geometry_name.c_str(),
+            GetVertexAttribName(attrib));
+#ifdef _DEBUG
+        assert(false && "GeometryCreater::WriteVAB explicit format required");
+#endif
+        return(false);
+    }
+
+    if(GetStrideByFormat(format) == 0)
+    {
+        std::fprintf(stderr,
+            "[GeometryCreater] WriteVAB failed: invalid format stride, geom='%s' attrib='%s' format='%s'\n",
+            geometry_name.c_str(),
+            GetVertexAttribName(attrib),
+            GetVulkanFormatName(format));
+#ifdef _DEBUG
+        assert(false && "GeometryCreater::WriteVAB invalid format stride");
+#endif
+        return(false);
+    }
 
     return InitVAB(attrib,format,data)>=0;
 }

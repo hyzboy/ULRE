@@ -1,6 +1,9 @@
 ﻿#include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/VKVertexInputConfig.h>
+#include<hgl/mtl/VertexAttributeSpec.h>
+#include<cassert>
 #include<hgl/type/ObjectManager.h>
+#include<cstdio>
 
 namespace hgl::graph{
 VertexInputConfig::VertexInputConfig(const VIAArray &viaa)
@@ -70,6 +73,41 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
             attr_desc->format    =(vac.format==PF_UNDEFINED?GetVulkanFormat(via):vac.format);
 
             bind_desc->inputRate =vac.input_rate;
+        }
+
+        VAType shader_type;
+        shader_type.basetype = VABaseType(via->basetype);
+        shader_type.vec_size = via->vec_size;
+
+        if(!mtl::IsStorageFormatCompatibleWithShaderType(shader_type, attr_desc->format))
+        {
+            const VkFormat fallback_format = GetVulkanFormat(via);
+            if(mtl::IsStorageFormatCompatibleWithShaderType(shader_type, fallback_format))
+            {
+                std::fprintf(stderr,
+                    "[VertexInputConfig] incompatible shader/storage pair, fallback applied: attrib='%s' shader='%s' requested='%s' fallback='%s'\n",
+                    GetVertexAttribName(via->attrib),
+                    GetVertexAttribName((VABaseType)via->basetype, via->vec_size),
+                    GetVulkanFormatName(attr_desc->format),
+                    GetVulkanFormatName(fallback_format));
+
+                attr_desc->format = fallback_format;
+            }
+            else
+            {
+                std::fprintf(stderr,
+                    "[VertexInputConfig] incompatible shader/storage pair, VIL rejected: attrib='%s' shader='%s' requested='%s'\n",
+                    GetVertexAttribName(via->attrib),
+                    GetVertexAttribName((VABaseType)via->basetype, via->vec_size),
+                    GetVulkanFormatName(attr_desc->format));
+
+#ifdef _DEBUG
+                assert(false && "VertexInputConfig::CreateVIL incompatible shader/storage pair");
+#endif
+
+                delete vil;
+                return nullptr;
+            }
         }
 
         bind_desc->stride    =GetStrideByFormat(attr_desc->format);

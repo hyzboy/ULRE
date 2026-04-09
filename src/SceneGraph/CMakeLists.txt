@@ -314,3 +314,5 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SG_INCLUDE_PATH}
 
                                         ${SSBO_VERTEX_FETCH_FILES}
 )
+
+add_subdirectory(tests)

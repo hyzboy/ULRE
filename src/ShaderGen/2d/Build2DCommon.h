@@ -102,6 +102,14 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
     // MaterialInstanceID is descriptor-backed in SSBO-only mode.
 }
 
+inline void PushBaseVertexSpecs(std::vector<VertexAttributeSpec> &v, const Material2DCreateConfig *cfg)
+{
+    // Position
+    v.push_back(MakeLegacyVertexAttributeSpec(cfg->position_format, VAN::Position));
+
+    // MaterialInstanceID is descriptor-backed in SSBO-only mode.
+}
+
 // ─────────────────────────────────────────────────────────────
 // Common fixed descriptor builders
 // ─────────────────────────────────────────────────────────────
@@ -148,6 +156,31 @@ inline void BuildBase2DFixedDef(StaticMaterialDef &def,
         samplers,
     };
     def.mi_instance_layout = mi_layout;
+}
+
+inline void BuildBase2DSpecDef(StaticMaterialDef &def,
+                               const char *debug_tag,
+                               const Material2DCreateConfig *cfg,
+                               std::vector<VertexAttributeSpec> &specs,
+                               UBOSemanticSet &ubos,
+                               SSBOSemanticSet &ssbos,
+                               StaticTextureSamplerDescriptors *samplers = nullptr,
+                               InstanceDataLayout mi_layout = InstanceDataLayout::None)
+{
+    PushBaseUBODescriptors(ubos, cfg);
+    PushBaseSSBODescriptors(ssbos, cfg);
+
+    def = {
+        debug_tag,
+        cfg->prim,
+        nullptr, 0,
+        &ubos,
+        &ssbos,
+        samplers,
+    };
+    def.mi_instance_layout = mi_layout;
+    def.vertex_attribute_specs = specs.data();
+    def.vertex_attribute_spec_count = uint32_t(specs.size());
 }
 
 }//namespace build2d

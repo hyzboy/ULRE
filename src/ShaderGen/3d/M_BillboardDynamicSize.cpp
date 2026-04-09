@@ -11,8 +11,8 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr FixedVertexEntry BILLBOARD_DYNAMIC_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
+    constexpr VertexAttributeSpec BILLBOARD_DYNAMIC_VERTEX_SPECS[] = {
+        { VAN::Position, VAT_VEC3, PF_RGB32F },
     };
 
     const UBOSemanticSet BILLBOARD_DYNAMIC_BASE_UBOS = {
@@ -35,13 +35,15 @@ namespace
     const StaticMaterialDef BILLBOARD_DYNAMIC_DEF_TEMPLATE {
         "BillboardDynamic",
         PrimitiveType::Triangles,
-        BILLBOARD_DYNAMIC_VERTEX,
-        uint32_t(sizeof(BILLBOARD_DYNAMIC_VERTEX) / sizeof(BILLBOARD_DYNAMIC_VERTEX[0])),
+        nullptr,
+        0,
         &BILLBOARD_DYNAMIC_BASE_UBOS,
         &BILLBOARD_DYNAMIC_BASE_SSBOS,
         nullptr,
         nullptr, 0,
         InstanceDataLayout::BillboardFixed,
+        BILLBOARD_DYNAMIC_VERTEX_SPECS,
+        uint32_t(sizeof(BILLBOARD_DYNAMIC_VERTEX_SPECS) / sizeof(BILLBOARD_DYNAMIC_VERTEX_SPECS[0])),
     };
 }//namespace
 
@@ -90,6 +92,7 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
 
     // Lookup with Simple key (registry only has Simple variants)
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+
     if (!var_desc)
     {
         std::fprintf(stderr, "[BillboardDynamic] VariantRegistry lookup failed\n");

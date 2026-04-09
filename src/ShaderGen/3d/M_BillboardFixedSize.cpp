@@ -11,8 +11,8 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr FixedVertexEntry BILLBOARD_FIXED_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
+    constexpr VertexAttributeSpec BILLBOARD_FIXED_VERTEX_SPECS[] = {
+        { VAN::Position, VAT_VEC3, PF_RGB32F },
     };
 
     // Non-texture descriptors �?texture entries built dynamically.
@@ -36,13 +36,15 @@ namespace
     const StaticMaterialDef BILLBOARD_FIXED_DEF_TEMPLATE {
         "BillboardFixed",
         PrimitiveType::Triangles,
-        BILLBOARD_FIXED_VERTEX,
-        uint32_t(sizeof(BILLBOARD_FIXED_VERTEX) / sizeof(BILLBOARD_FIXED_VERTEX[0])),
+        nullptr,
+        0,
         &BILLBOARD_FIXED_BASE_UBOS,
         &BILLBOARD_FIXED_BASE_SSBOS,
         nullptr,
         nullptr, 0,
         InstanceDataLayout::BillboardFixed,
+        BILLBOARD_FIXED_VERTEX_SPECS,
+        uint32_t(sizeof(BILLBOARD_FIXED_VERTEX_SPECS) / sizeof(BILLBOARD_FIXED_VERTEX_SPECS[0])),
     };
 }//namespace
 
@@ -91,6 +93,7 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
 
     // Lookup with Simple key (registry only has Simple variants)
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+
     if (!var_desc)
     {
         std::fprintf(stderr, "[BillboardFixed] VariantRegistry lookup failed\n");

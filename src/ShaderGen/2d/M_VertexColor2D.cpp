@@ -15,19 +15,19 @@ MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLit
     auto vs_preamble = build2d::Build2DVertexPreamble(cfg, false, false);
     auto fs_preamble = build2d::Build2DFragmentPreamble(cfg, false, false);
 
-    std::vector<FixedVertexEntry> vertices;
-    build2d::PushBaseVertexEntries(vertices, cfg);
-    vertices.push_back({VAT_VEC4, VAN::Color});
+    std::vector<VertexAttributeSpec> specs;
+    build2d::PushBaseVertexSpecs(specs, cfg);
+    specs.push_back(MakeLegacyVertexAttributeSpec(VAT_VEC4, VAN::Color));
 
     StaticMaterialDef def{};
     UBOSemanticSet ubos;
     SSBOSemanticSet ssbos;
-    build2d::BuildBase2DFixedDef(def,
-                                 "VertexColor2D",
-                                 cfg,
-                                 vertices,
-                                 ubos,
-                                 ssbos);
+    build2d::BuildBase2DSpecDef(def,
+                                "VertexColor2D",
+                                cfg,
+                                specs,
+                                ubos,
+                                ssbos);
 
     return CreateFromFixedDef2D("VertexColor2D", profile, def, key, vs_preamble, fs_preamble, cfg);
 }

@@ -28,6 +28,9 @@ int ShaderCreateInfoVertex::AddInput(const VAType &type,const VertexAttrib attri
 
 int ShaderCreateInfoVertex::AddInput(const mtl::VertexAttributeSpec &spec)
 {
+    if(!mtl::ValidateVertexAttributeSpec(spec))
+        return -2;
+
     VIA via{};
 
     via.attrib = spec.attrib;
@@ -40,7 +43,7 @@ int ShaderCreateInfoVertex::AddInput(const mtl::VertexAttributeSpec &spec)
     via.storage_format = spec.storage_format;
     via.interpolation = spec.interpolation;
 
-    return vsdi->AddInput(via);
+    return(vsdi->AddInput(via)?1:-1);
 }
 }//namespace hgl::graph
 

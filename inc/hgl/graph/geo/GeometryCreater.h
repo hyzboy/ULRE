@@ -7,6 +7,8 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKMemory.h>
+#include<cassert>
+#include<cstdio>
 
 namespace hgl::graph{
 class BufferManager;
@@ -85,6 +87,28 @@ public: //顶点缓冲区
             BufferAccessorType GetBufferAccessor(const VertexAttrib attrib)
             {
                 VAB *vab = GetVAB(attrib);
+
+                if(vab)
+                {
+                    const VkFormat expected = BufferAccessorType::DataAccessT::GetVulkanFormat();
+                    const VkFormat actual = vab->GetFormat();
+
+                    if(expected != VK_FORMAT_UNDEFINED && actual != expected)
+                    {
+                        std::fprintf(stderr,
+                            "[GeometryCreater] GetBufferAccessor format mismatch: attrib='%s' expected='%s' actual='%s'\n",
+                            GetVertexAttribName(attrib),
+                            GetVulkanFormatName(expected),
+                            GetVulkanFormatName(actual));
+
+#ifdef _DEBUG
+                        assert(false && "GeometryCreater::GetBufferAccessor format mismatch");
+#endif
+
+                        return BufferAccessorType();
+                    }
+                }
+
                 return BufferAccessorType(vab, GetVertexOffset(), GetVertexCount());
             }
 

@@ -128,15 +128,23 @@ namespace
             if (def.vertex_attribute_specs && def.vertex_attribute_spec_count > 0)
             {
                 for (uint32_t i = 0; i < def.vertex_attribute_spec_count; ++i)
-                    vsc->AddInput(def.vertex_attribute_specs[i]);
+                {
+                    if(vsc->AddInput(def.vertex_attribute_specs[i]) <= 0)
+                        return FailAfterMci("AddInput(VertexAttributeSpec) failed");
+                }
             }
-            else
+            else if (def.vertex_entries && def.vertex_entry_count > 0)
             {
                 for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
                 {
                     const FixedVertexEntry &entry = def.vertex_entries[i];
-                    vsc->AddInput(entry.type, entry.attrib);
+                    if(vsc->AddInput(entry.type, entry.attrib) <= 0)
+                        return FailAfterMci("AddInput(FixedVertexEntry) failed");
                 }
+            }
+            else
+            {
+                return FailAfterMci("No vertex declaration (spec and legacy entries are both empty)");
             }
         }
 

@@ -5,9 +5,9 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr FixedVertexEntry VERTEX_COLOR_3D_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
-        { VAT_VEC4, VAN::Color },
+    constexpr VertexAttributeSpec VERTEX_COLOR_3D_VERTEX_SPECS[] = {
+        { VAN::Position, VAT_VEC3, PF_RGB32F  },
+        { VAN::Color,    VAT_VEC4, PF_RGBA32F },
     };
 
     const UBOSemanticSet VERTEX_COLOR_3D_UBOS = build3d::MakeViewportCameraUBOs();
@@ -17,13 +17,16 @@ namespace
     const StaticMaterialDef VERTEX_COLOR_3D_DEF {
         "VertexColor3D",
         PrimitiveType::Triangles,
-        VERTEX_COLOR_3D_VERTEX,
-        uint32_t(sizeof(VERTEX_COLOR_3D_VERTEX) / sizeof(VERTEX_COLOR_3D_VERTEX[0])),
+        nullptr,
+        0,
         &VERTEX_COLOR_3D_UBOS,
         &VERTEX_COLOR_3D_SSBOS,
         nullptr,
         nullptr,
         0,
+        InstanceDataLayout::None,
+        VERTEX_COLOR_3D_VERTEX_SPECS,
+        uint32_t(sizeof(VERTEX_COLOR_3D_VERTEX_SPECS) / sizeof(VERTEX_COLOR_3D_VERTEX_SPECS[0])),
     };
 }
 

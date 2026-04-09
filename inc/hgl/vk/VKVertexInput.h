@@ -17,6 +17,7 @@ class VertexInputConfig
 public:
 
     const uint      GetCount()const{return via_array.count;}
+    const VIAArray &GetVIAArray()const{return via_array;}
 
 public:
 
@@ -41,6 +42,7 @@ public:
     ~VertexInput();
 
     const uint      GetCount()const{return vic.GetCount();}
+    const VIAArray &GetVIAArray()const{return vic.GetVIAArray();}
 
     const   VIL *   GetDefaultVIL()const{return default_vil;}
     VIL *           CreateVIL(const VILConfig *format_map=nullptr);

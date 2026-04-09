@@ -6,9 +6,9 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr FixedVertexEntry VERTEX_PATTLE_COLOR_3D_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
-        { VAT_UINT, VAN::Color },
+    constexpr VertexAttributeSpec VERTEX_PATTLE_COLOR_3D_VERTEX_SPECS[] = {
+        { VAN::Position, VAT_VEC3, PF_RGB32F },
+        { VAN::Color,    VAT_UINT, PF_R32U   },
     };
 
     const UBOSemanticSet VERTEX_PATTLE_COLOR_3D_UBOS = []()
@@ -23,13 +23,16 @@ namespace
     const StaticMaterialDef VERTEX_PATTLE_COLOR_3D_DEF {
         "VertexPattleColor3D",
         PrimitiveType::Triangles,
-        VERTEX_PATTLE_COLOR_3D_VERTEX,
-        uint32_t(sizeof(VERTEX_PATTLE_COLOR_3D_VERTEX) / sizeof(VERTEX_PATTLE_COLOR_3D_VERTEX[0])),
+        nullptr,
+        0,
         &VERTEX_PATTLE_COLOR_3D_UBOS,
         &VERTEX_PATTLE_COLOR_3D_SSBOS,
         nullptr,
         nullptr,
         0,
+        InstanceDataLayout::None,
+        VERTEX_PATTLE_COLOR_3D_VERTEX_SPECS,
+        uint32_t(sizeof(VERTEX_PATTLE_COLOR_3D_VERTEX_SPECS) / sizeof(VERTEX_PATTLE_COLOR_3D_VERTEX_SPECS[0])),
     };
 }//namespace
 

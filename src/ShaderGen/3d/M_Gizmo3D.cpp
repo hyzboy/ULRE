@@ -7,9 +7,9 @@ namespace hgl::graph::mtl
 {
 namespace
 {
-    constexpr FixedVertexEntry GIZMO_3D_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
-        { VAT_VEC3, VAN::Normal },
+    constexpr VertexAttributeSpec GIZMO_3D_VERTEX_SPECS[] = {
+        { VAN::Position, VAT_VEC3, PF_RGB32F },
+        { VAN::Normal,   VAT_VEC3, PF_RGB32F },
     };
 
     const UBOSemanticSet GIZMO_3D_UBOS = build3d::MakeViewportCameraUBOs();
@@ -19,13 +19,15 @@ namespace
     const StaticMaterialDef GIZMO_3D_DEF {
         "Gizmo3D",
         PrimitiveType::Triangles,
-        GIZMO_3D_VERTEX,
-        uint32_t(sizeof(GIZMO_3D_VERTEX) / sizeof(GIZMO_3D_VERTEX[0])),
+        nullptr,
+        0,
         &GIZMO_3D_UBOS,
         &GIZMO_3D_SSBOS,
         nullptr,
         nullptr, 0,
         InstanceDataLayout::Color4f,
+        GIZMO_3D_VERTEX_SPECS,
+        uint32_t(sizeof(GIZMO_3D_VERTEX_SPECS) / sizeof(GIZMO_3D_VERTEX_SPECS[0])),
     };
 }
 
