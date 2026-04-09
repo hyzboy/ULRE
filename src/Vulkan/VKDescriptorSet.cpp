@@ -3,10 +3,23 @@
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKSampler.h>
+#include<hgl/vk/IGPUBuffer.h>
+#include<cstdio>
 
 namespace hgl::graph{
 namespace
 {
+    static int FindWriteIndexByBinding(const ValueArray<VkWriteDescriptorSet> &wds_list, const int binding)
+    {
+        const int count = wds_list.GetCount();
+        for (int i = 0; i < count; ++i)
+        {
+            if (static_cast<int>(wds_list[i].dstBinding) == binding)
+                return i;
+        }
+        return -1;
+    }
+
     struct WriteDescriptorSet:public vkstruct<VkWriteDescriptorSet,VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET>
     {
     public:
@@ -144,9 +157,43 @@ bool DescriptorSet::BindUBO(const int binding,const VkBufferOwner *buf,const VkD
 bool DescriptorSet::BindSSBO(const int binding,const VkBufferOwner *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
 {
     if(binding<0||!buf)
+    {
+        std::fprintf(stderr,
+            "[DescriptorSet::BindSSBO(owner)] FAILED: invalid args binding=%d buf=0x%llX offset=%llu range=%llu dynamic=%d desc_set=0x%llX\n",
+            binding,
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(buf)),
+            static_cast<unsigned long long>(offset),
+            static_cast<unsigned long long>(range),
+            dynamic ? 1 : 0,
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(desc_set)));
         return(false);
+    }
 
-    if(binded_sets.Contains(binding))return(false);
+    if(binded_sets.Contains(binding))
+    {
+        SyncWriteDescriptorInfoPointers();
+
+        const int wi = FindWriteIndexByBinding(wds_list, binding);
+        const VkDescriptorBufferInfo incoming{ buf->GetBuffer(), offset, range };
+        const VkDescriptorType incoming_type = dynamic ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+        if (wi >= 0)
+        {
+            const VkWriteDescriptorSet &w = wds_list[wi];
+            if (w.descriptorType == incoming_type && w.pBufferInfo && (*w.pBufferInfo == incoming))
+                return true; // idempotent rebind
+        }
+
+        std::fprintf(stderr,
+            "[DescriptorSet::BindSSBO(owner)] FAILED: binding conflict binding=%d dynamic=%d desc_set=0x%llX incoming_vk_buf=0x%llX incoming_offset=%llu incoming_range=%llu\n",
+            binding,
+            dynamic ? 1 : 0,
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(desc_set)),
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(buf->GetBuffer())),
+            static_cast<unsigned long long>(offset),
+            static_cast<unsigned long long>(range));
+        return false;
+    }
 
     const int buf_index=vab_list.Add(DescriptorBufferInfo(buf,offset,range));
 
@@ -185,9 +232,43 @@ bool DescriptorSet::BindUBO(const int binding,const IGPUBuffer *gpu,bool dynamic
 bool DescriptorSet::BindSSBO(const int binding,const IGPUBuffer *gpu,bool dynamic)
 {
     if(binding<0||!gpu)
+    {
+        std::fprintf(stderr,
+            "[DescriptorSet::BindSSBO(gpu)] FAILED: invalid args binding=%d gpu=0x%llX dynamic=%d desc_set=0x%llX\n",
+            binding,
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)),
+            dynamic ? 1 : 0,
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(desc_set)));
         return(false);
+    }
 
-    if(binded_sets.Contains(binding))return(false);
+    if(binded_sets.Contains(binding))
+    {
+        SyncWriteDescriptorInfoPointers();
+
+        const int wi = FindWriteIndexByBinding(wds_list, binding);
+        const VkDescriptorBufferInfo incoming = gpu->GetDescriptorBufferInfo();
+        const VkDescriptorType incoming_type = dynamic ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+        if (wi >= 0)
+        {
+            const VkWriteDescriptorSet &w = wds_list[wi];
+            if (w.descriptorType == incoming_type && w.pBufferInfo && (*w.pBufferInfo == incoming))
+                return true; // idempotent rebind
+        }
+
+        std::fprintf(stderr,
+            "[DescriptorSet::BindSSBO(gpu)] FAILED: binding conflict binding=%d dynamic=%d desc_set=0x%llX incoming_vk_buf=0x%llX incoming_offset=%llu incoming_range=%llu size=%llu dirty=%d\n",
+            binding,
+            dynamic ? 1 : 0,
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(desc_set)),
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu->GetVkDeviceBuffer())),
+            static_cast<unsigned long long>(incoming.offset),
+            static_cast<unsigned long long>(incoming.range),
+            static_cast<unsigned long long>(gpu->GetSize()),
+            gpu->IsDirty() ? 1 : 0);
+        return false;
+    }
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 

@@ -3,6 +3,7 @@
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKBuffer.h>
+#include<cstdio>
 
 namespace hgl::graph{
 MaterialParameters::MaterialParameters(const MaterialDescriptorManager *mdm,const DescriptorSetType &type,DescriptorSet *ds)
@@ -48,10 +49,28 @@ bool MaterialParameters::BindUBO(const mtl::UBODescriptorSemantic semantic,const
 bool MaterialParameters::BindSSBO(const int &index,const IGPUBuffer *gpu,bool dynamic)
 {
     if(index<0||!gpu)
+    {
+        std::fprintf(stderr,
+            "[MaterialParameters::BindSSBO(index)] FAILED: invalid args index=%d gpu=0x%llX dynamic=%d set_type=%u descriptor_set=0x%llX\n",
+            index,
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)),
+            dynamic ? 1 : 0,
+            static_cast<unsigned>(set_type),
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(descriptor_set)));
         return(false);
+    }
 
     if(!descriptor_set->BindSSBO(index,gpu,dynamic))
+    {
+        std::fprintf(stderr,
+            "[MaterialParameters::BindSSBO(index)] FAILED: descriptor_set->BindSSBO returned false index=%d gpu=0x%llX dynamic=%d set_type=%u descriptor_set=0x%llX\n",
+            index,
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)),
+            dynamic ? 1 : 0,
+            static_cast<unsigned>(set_type),
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(descriptor_set)));
         return(false);
+    }
 
     return(true);
 }
@@ -59,15 +78,41 @@ bool MaterialParameters::BindSSBO(const int &index,const IGPUBuffer *gpu,bool dy
 bool MaterialParameters::BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic)
 {
     if(!gpu)
+    {
+        std::fprintf(stderr,
+            "[MaterialParameters::BindSSBO(semantic)] FAILED: gpu=null semantic=%u dynamic=%d set_type=%u descriptor_set=0x%llX\n",
+            static_cast<unsigned>(semantic),
+            dynamic ? 1 : 0,
+            static_cast<unsigned>(set_type),
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(descriptor_set)));
         return(false);
+    }
 
     const int index=desc_manager->GetSSBO(set_type,semantic,dynamic);
 
     if(index<0)
+    {
+        std::fprintf(stderr,
+            "[MaterialParameters::BindSSBO(semantic)] FAILED: no SSBO binding semantic=%u dynamic=%d set_type=%u descriptor_set=0x%llX\n",
+            static_cast<unsigned>(semantic),
+            dynamic ? 1 : 0,
+            static_cast<unsigned>(set_type),
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(descriptor_set)));
         return(false);
+    }
 
     if(!descriptor_set->BindSSBO(index,gpu,dynamic))
+    {
+        std::fprintf(stderr,
+            "[MaterialParameters::BindSSBO(semantic)] FAILED: descriptor_set->BindSSBO returned false semantic=%u index=%d dynamic=%d set_type=%u descriptor_set=0x%llX gpu=0x%llX\n",
+            static_cast<unsigned>(semantic),
+            index,
+            dynamic ? 1 : 0,
+            static_cast<unsigned>(set_type),
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(descriptor_set)),
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)));
         return(false);
+    }
 
     return(true);
 }

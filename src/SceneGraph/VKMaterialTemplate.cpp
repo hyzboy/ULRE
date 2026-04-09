@@ -6,6 +6,7 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/UBOAccessor.h>
+#include<cstdio>
 
 namespace hgl::graph{
 
@@ -108,9 +109,33 @@ bool MaterialTemplate::BindSSBO(const mtl::SSBODescriptorSemantic semantic,const
     MaterialParameters *mp=GetMP(type);
 
     if(!mp)
+    {
+        std::fprintf(stderr,
+            "[MaterialTemplate::BindSSBO] FAILED: no MaterialParameters for set=%u semantic=%u material=%s mtl=0x%llX gpu=0x%llX dynamic=%d\n",
+            static_cast<unsigned>(type),
+            static_cast<unsigned>(semantic),
+            GetName().c_str(),
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(this)),
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)),
+            dynamic ? 1 : 0);
         return(false);
+    }
 
-    return mp->BindSSBO(semantic,gpu,dynamic);
+    const bool ok = mp->BindSSBO(semantic,gpu,dynamic);
+    if(!ok)
+    {
+        std::fprintf(stderr,
+            "[MaterialTemplate::BindSSBO] FAILED: mp->BindSSBO returned false set=%u semantic=%u material=%s mtl=0x%llX mp=0x%llX gpu=0x%llX dynamic=%d\n",
+            static_cast<unsigned>(type),
+            static_cast<unsigned>(semantic),
+            GetName().c_str(),
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(this)),
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(mp)),
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)),
+            dynamic ? 1 : 0);
+    }
+
+    return ok;
 }
 
 bool MaterialTemplate::BindTexture(const DescriptorSetType &type,mtl::SamplerSlot slot,Texture *tex)

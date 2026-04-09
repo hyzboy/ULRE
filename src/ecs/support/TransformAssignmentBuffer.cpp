@@ -182,12 +182,25 @@ namespace hgl::ecs
 
 //        LogDeviceBufferSnapshot("[TransformAssignmentBuffer::BindTransform] before bind", transform_buffer);
 
-        const bool l2w_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::TransformData,transform_buffer->GetGPUBuffer());
-        GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO ");
+        auto *l2w_gpu = transform_buffer->GetGPUBuffer();
+        const bool l2w_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::TransformData, l2w_gpu);
+        GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO semantic=TransformData material=%s mtl=0x%llX gpu=0x%llX vk=0x%llX size=%llu dirty=%d",
+             mtl->GetName().c_str(),
+             static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(mtl)),
+             static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(l2w_gpu)),
+                 static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_buffer->GetBuffer())),
+             l2w_gpu ? static_cast<unsigned long long>(l2w_gpu->GetSize()) : 0ULL,
+             l2w_gpu ? (l2w_gpu->IsDirty() ? 1 : 0) : -1);
 
         if (!l2w_bind_ok)
         {
-            GLogWarning("[TransformAssignmentBuffer::BindTransform] TransformData bind failed");
+            GLogWarning("[TransformAssignmentBuffer::BindTransform] TransformData bind failed material=%s mtl=0x%llX gpu=0x%llX vk=0x%llX size=%llu dirty=%d",
+                        mtl->GetName().c_str(),
+                        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(mtl)),
+                        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(l2w_gpu)),
+                        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_buffer->GetBuffer())),
+                        l2w_gpu ? static_cast<unsigned long long>(l2w_gpu->GetSize()) : 0ULL,
+                        l2w_gpu ? (l2w_gpu->IsDirty() ? 1 : 0) : -1);
         }
 
         BindTransformID(mtl);
@@ -196,14 +209,22 @@ namespace hgl::ecs
     void TransformAssignmentBuffer::BindTransformID(graph::MaterialTemplate* mtl)
     {
         if (!mtl)
+        {
+            GLogWarning("[TransformAssignmentBuffer::BindTransformID] skip: material is null");
             return;
+        }
 
         if (!transform_id_buffer)
         {
             // Line and other pipeline-driven paths may not go through WriteItems(),
             // so lazily provision a minimal TransformID SSBO for gl_InstanceIndex==0.
             if (!EnsureTransformIDBufferCapacity(1, graph::BufferAllocPolicy::Auto))
+            {
+                GLogWarning("[TransformAssignmentBuffer::BindTransformID] skip: EnsureTransformIDBufferCapacity failed material=%s mtl=0x%llX",
+                            mtl->GetName().c_str(),
+                            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(mtl)));
                 return;
+            }
 
             auto *fallback_gpu = transform_id_buffer ? transform_id_buffer->GetGPUBuffer() : nullptr;
             if (fallback_gpu)
@@ -219,13 +240,25 @@ namespace hgl::ecs
 
         auto *gpu = transform_id_buffer->GetGPUBuffer();
         if (!gpu)
+        {
+            GLogWarning("[TransformAssignmentBuffer::BindTransformID] skip: transform_id_buffer has null GPU buffer material=%s mtl=0x%llX vk=0x%llX",
+                        mtl->GetName().c_str(),
+                        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(mtl)),
+                        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_id_vk_buffer)));
             return;
+        }
 
-        const bool tid_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::TransformID,gpu);
+        const bool tid_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::TransformID, gpu);
 
         if (!tid_bind_ok)
         {
-            GLogWarning("[TransformAssignmentBuffer::BindTransformID] TransformID bind failed");
+            GLogWarning("[TransformAssignmentBuffer::BindTransformID] TransformID bind failed material=%s mtl=0x%llX gpu=0x%llX vk=0x%llX size=%llu dirty=%d",
+                        mtl->GetName().c_str(),
+                        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(mtl)),
+                        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)),
+                        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_id_vk_buffer)),
+                        static_cast<unsigned long long>(gpu->GetSize()),
+                        gpu->IsDirty() ? 1 : 0);
         }
     }
 
