@@ -138,9 +138,9 @@ const int GeometryCreater::InitVAB(const VertexAttrib &attrib,const VkFormat for
             GetVertexAttribName(attrib),
             vab_index,
             vil ? vil->GetVertexAttribCount() : 0u);
-#ifdef _DEBUG
-        assert(false && "GeometryCreater::InitVAB attrib missing in VIL");
-#endif
+//#ifdef _DEBUG
+//        assert(false && "GeometryCreater::InitVAB attrib missing in VIL");
+//#endif
         return(-1);
     }
 
