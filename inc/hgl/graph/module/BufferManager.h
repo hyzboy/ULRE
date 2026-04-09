@@ -22,7 +22,7 @@ private:
 
     // TODO: Split into specialized sub-managers (UBO/SSBO/VBO/IBO) while keeping BufferManager as the single entry point.
 
-    void AddBuffer(const AnsiString &buf_name, VkBufferOwner *buf, const std::source_location &loc);
+    void AddBuffer(const std::string &buf_name, VkBufferOwner *buf, const std::source_location &loc);
 
 private:
 
@@ -76,8 +76,8 @@ public: // VAB/VAO
 
 public: // Buffer creation methods
 
-    #define BUFFER_MANAGER_CREATE_FUNC(name)  DeviceBuffer *Create##name(const AnsiString &buf_name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());   \
-                                              DeviceBuffer *Create##name(const AnsiString &buf_name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return Create##name(buf_name, size, nullptr, sm, loc); }
+    #define BUFFER_MANAGER_CREATE_FUNC(name)  DeviceBuffer *Create##name(const std::string &buf_name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());   \
+                                              DeviceBuffer *Create##name(const std::string &buf_name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return Create##name(buf_name, size, nullptr, sm, loc); }
 
     BUFFER_MANAGER_CREATE_FUNC(UBO)
     BUFFER_MANAGER_CREATE_FUNC(SSBO)

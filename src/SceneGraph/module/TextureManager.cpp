@@ -2,6 +2,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/object/ObjectTracker.h>
 
 namespace hgl::graph{
@@ -106,7 +107,7 @@ const TextureID TextureManager::Add(Texture *tex)
     if (dev)
     {
         AnsiString name = "Texture_" + AnsiString::numberOf(static_cast<int>(tex->GetID()));
-        dev->TrackTexture(tex, name);
+        dev->TrackTexture(tex, ObjectNameBuilder(name.c_str()));
     }
 
     return tex->GetID();

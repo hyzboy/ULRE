@@ -298,11 +298,11 @@ VulkanPhyDevice::~VulkanPhyDevice()
 {
 }
 
-const bool VulkanPhyDevice::GetLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)const
+const bool VulkanPhyDevice::GetLayerVersion(const std::string &name,uint32_t &spec,uint32_t &impl)const
 {
     for(const VkLayerProperties &lp:layer_properties)
     {
-        if(name.Comp(lp.layerName)==0)
+        if(name == lp.layerName)
         {
             spec=lp.specVersion;
             impl=lp.implementationVersion;
@@ -314,22 +314,22 @@ const bool VulkanPhyDevice::GetLayerVersion(const AnsiString &name,uint32_t &spe
     return(false);
 }
 
-const uint32_t VulkanPhyDevice::GetExtensionVersion(const AnsiString &name)const
+const uint32_t VulkanPhyDevice::GetExtensionVersion(const std::string &name)const
 {
     for(const VkExtensionProperties &ep:extension_properties)
     {
-        if(name.Comp(ep.extensionName)==0)
+        if(name == ep.extensionName)
             return ep.specVersion;
     }
 
     return 0;
 }
 
-const bool VulkanPhyDevice::CheckExtensionSupport(const AnsiString &name)const
+const bool VulkanPhyDevice::CheckExtensionSupport(const std::string &name)const
 {
     for(const VkExtensionProperties &ep:extension_properties)
     {
-        if(name.Comp(ep.extensionName)==0)
+        if(name == ep.extensionName)
             return(true);
     }
 

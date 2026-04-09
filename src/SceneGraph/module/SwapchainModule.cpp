@@ -26,6 +26,7 @@
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKFence.h>
 #include<hgl/vk/VKSurface.h>
+#include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/object/ObjectTracker.h>
 
 
@@ -148,7 +149,7 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
 
         AnsiString num_string=AnsiString::numberOf(i);
 
-        swapchain->sc_image[i].cmd_buf=device->CreateRenderCommandBuffer(AnsiString("Swapchain_RenderCmdBuffer_")+num_string);
+        swapchain->sc_image[i].cmd_buf=device->CreateRenderCommandBuffer(ObjectNameBuilder((AnsiString("Swapchain_RenderCmdBuffer_")+num_string).c_str()));
 
     #ifdef _DEBUG
         if(dev_attr->debug_utils)

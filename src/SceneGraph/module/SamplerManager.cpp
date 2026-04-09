@@ -1,5 +1,6 @@
 ﻿#include <hgl/graph/module/SamplerManager.h>
 #include <hgl/vk/VKDevice.h>
+#include <hgl/vk/VKObjectNameBuilder.h>
 #include <cstdint>
 
 namespace hgl::graph{
@@ -16,7 +17,7 @@ Sampler *SamplerManager::CreateSampler(VkSamplerCreateInfo *sci)
     {
         AnsiString name = "Sampler_" + AnsiString::numberOf((uint64_t)(uintptr_t)sampler);
         VkSampler vk_sampler = *sampler;
-        dev->TrackObject(VK_OBJECT_TYPE_SAMPLER, (uint64_t)(uintptr_t)vk_sampler, name);
+        dev->TrackObject(VK_OBJECT_TYPE_SAMPLER, (uint64_t)(uintptr_t)vk_sampler, ObjectNameBuilder(name.c_str()));
         Add(sampler);
     }
     return sampler;
@@ -30,7 +31,7 @@ Sampler *SamplerManager::CreateSampler(Texture *tex)
     {
         AnsiString name = "Sampler_" + AnsiString::numberOf((uint64_t)(uintptr_t)sampler);
         VkSampler vk_sampler = *sampler;
-        dev->TrackObject(VK_OBJECT_TYPE_SAMPLER, (uint64_t)(uintptr_t)vk_sampler, name);
+        dev->TrackObject(VK_OBJECT_TYPE_SAMPLER, (uint64_t)(uintptr_t)vk_sampler, ObjectNameBuilder(name.c_str()));
         Add(sampler);
     }
     return sampler;

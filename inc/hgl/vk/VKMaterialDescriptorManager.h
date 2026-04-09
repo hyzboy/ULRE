@@ -6,7 +6,7 @@
 namespace hgl::graph{
 class MaterialDescriptorManager
 {
-    AnsiString mtl_name;
+    std::string mtl_name;
 
     int ubo_binding_map[DESCRIPTOR_SET_TYPE_COUNT][mtl::UBODescriptorSemanticCount][2];
     int ssbo_binding_map[DESCRIPTOR_SET_TYPE_COUNT][mtl::SSBODescriptorSemanticCount][2];
@@ -24,11 +24,11 @@ private:
 
 public:
 
-    MaterialDescriptorManager(const AnsiString &,ShaderDescriptor *,const uint);
-    MaterialDescriptorManager(const AnsiString &,const ShaderDescriptorSetArray &);
+    MaterialDescriptorManager(const std::string &,ShaderDescriptor *,const uint);
+    MaterialDescriptorManager(const std::string &,const ShaderDescriptorSetArray &);
     ~MaterialDescriptorManager();
 
-    const AnsiString &GetMaterialName()const{return mtl_name;}
+    const std::string &GetMaterialName()const{return mtl_name;}
 
     const uint GetBindCount(const DescriptorSetType &set_type)const
     {

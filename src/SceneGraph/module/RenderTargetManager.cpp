@@ -154,7 +154,7 @@ RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *
     {
         RenderTargetData *rtd = new RenderTargetData{};
 
-        const AnsiString rt_name = name + ":RT";
+        const ObjectNameBuilder rt_name(std::string(name.c_str()));
         rtd->render_format = rf;
         rtd->extent = extent;
         rtd->queue = device->CreateQueue(rt_name, fence_count, false);

@@ -34,16 +34,16 @@ bool VulkanCmdBuffer::Begin()
 }
 
 #ifdef _DEBUG
-void VulkanCmdBuffer::SetDebugName(const AnsiString &object_name)
+void VulkanCmdBuffer::SetDebugName(const std::string &object_name)
 {
     if(dev_attr->debug_utils)
-        dev_attr->debug_utils->SetCommandBuffer(cmd_buf,object_name);
+    dev_attr->debug_utils->SetCommandBuffer(cmd_buf,object_name.c_str());
 }
 
-void VulkanCmdBuffer::BeginRegion(const AnsiString &region_name,const Color4f &color)
+void VulkanCmdBuffer::BeginRegion(const std::string &region_name,const Color4f &color)
 {
     if(dev_attr->debug_utils)
-        dev_attr->debug_utils->CmdBegin(cmd_buf,region_name,color);
+    dev_attr->debug_utils->CmdBegin(cmd_buf,region_name.c_str(),color);
 }
 
 void VulkanCmdBuffer::EndRegion()

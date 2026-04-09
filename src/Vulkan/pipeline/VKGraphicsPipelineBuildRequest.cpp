@@ -32,10 +32,10 @@ namespace
         h = hgl::hash::FNV1aAppendBytes(h, ptr, len);
     }
 
-    inline void HashAnsiString(uint64_t &h, const AnsiString &s)
+    inline void HashStdString(uint64_t &h, const std::string &s)
     {
         const char *p = s.c_str();
-        const size_t len = p ? std::strlen(p) : 0;
+        const size_t len = s.size();
         HashU64(h, static_cast<uint64_t>(len));
         if (len > 0)
             HashBytes(h, p, len);
@@ -135,7 +135,7 @@ GplPreRasterKey BuildPreRasterKey(const GraphicsPipelineBuildRequest &req)
 
     uint64_t h = hgl::hash::FNV1aInit<uint64_t>();
 
-    HashAnsiString(h, req.material->GetName());
+    HashStdString(h, req.material->GetName());
     HashU32(h, static_cast<uint32_t>(req.primitive));
     HashBool(h, req.primitive_restart);
 
@@ -152,7 +152,7 @@ GplFragmentShaderKey BuildFragmentShaderKey(const GraphicsPipelineBuildRequest &
 
     uint64_t h = hgl::hash::FNV1aInit<uint64_t>();
 
-    HashAnsiString(h, req.material->GetName());
+    HashStdString(h, req.material->GetName());
 
     const auto &stages = req.material->GetStageList();
     HashShaderStages(h, stages, true, false);
@@ -190,7 +190,7 @@ GplLinkedPipelineKey BuildLinkedPipelineKey(const GraphicsPipelineBuildRequest &
     uint64_t layout_hash = hgl::hash::FNV1aInit<uint64_t>();
     if (req.material)
     {
-        HashAnsiString(layout_hash, req.material->GetName());
+        HashStdString(layout_hash, req.material->GetName());
         HashU32(layout_hash, static_cast<uint32_t>(req.material->GetPrimitiveType()));
         HashBool(layout_hash, req.material->hasLocalToWorld());
         HashBool(layout_hash, req.material->hasMI());

@@ -194,7 +194,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom, const PrimitiveMaterialSlot &sl
 
     const VIL *vil = slot.vil;
     const uint32_t input_count = vil->GetVertexAttribCount();
-    const AnsiString &mtl_name = slot.material_template->GetName();
+    const std::string &mtl_name = slot.material_template->GetName();
 
     if(geom->GetVABCount() < input_count)
     {
@@ -220,27 +220,28 @@ Primitive *DirectCreatePrimitive(Geometry *geom, const PrimitiveMaterialSlot &sl
 
         if(!vab)
         {
-            GLogError("[FATAL ERROR] not found VAB \"" + AnsiString(vab_name) + "\" in MaterialTemplate: " + mtl_name);
+            GLogError(std::string("[FATAL ERROR] not found VAB \"") + (vab_name ? vab_name : "") +
+                      "\" in MaterialTemplate: " + mtl_name);
             delete geom_data_buffer;
             return nullptr;
         }
 
         if(vab->GetFormat() != vif->format)
         {
-            GLogError(  "[FATAL ERROR] VAB \"" + AnsiString(vab_name) +
-                        AnsiString("\" format can't match Primitive, MaterialTemplate(") + mtl_name +
-                        AnsiString(") Format(") + GetVulkanFormatName(vif->format) +
-                        AnsiString(") , VAB Format(") + GetVulkanFormatName(vab->GetFormat()) + ")");
+            GLogError(std::string("[FATAL ERROR] VAB \"") + (vab_name ? vab_name : "") +
+                      "\" format can't match Primitive, MaterialTemplate(" + mtl_name +
+                      ") Format(" + GetVulkanFormatName(vif->format) +
+                      ") , VAB Format(" + GetVulkanFormatName(vab->GetFormat()) + ")");
             delete geom_data_buffer;
             return nullptr;
         }
 
         if(vab->GetStride() != vif->stride)
         {
-            GLogError(  "[FATAL ERROR] VAB \"" + AnsiString(vab_name) +
-                        AnsiString("\" stride can't match Primitive, MaterialTemplate(") + mtl_name +
-                        AnsiString(") stride(") + AnsiString::numberOf(vif->stride) +
-                        AnsiString(") , VAB stride(") + AnsiString::numberOf(vab->GetStride()) + ")");
+            GLogError(std::string("[FATAL ERROR] VAB \"") + (vab_name ? vab_name : "") +
+                      "\" stride can't match Primitive, MaterialTemplate(" + mtl_name +
+                      ") stride(" + std::to_string(vif->stride) +
+                      ") , VAB stride(" + std::to_string(vab->GetStride()) + ")");
             delete geom_data_buffer;
             return nullptr;
         }

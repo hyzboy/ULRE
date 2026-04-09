@@ -546,7 +546,7 @@ void VulkanDevice::WaitIdle() const
     }
 }
 
-VkCommandBuffer VulkanDevice::CreateCommandBuffer(const AnsiString &name)
+VkCommandBuffer VulkanDevice::CreateCommandBuffer(const std::string &name)
 {
     if(!attr->cmd_pool)
         return(VK_NULL_HANDLE);
@@ -566,7 +566,7 @@ VkCommandBuffer VulkanDevice::CreateCommandBuffer(const AnsiString &name)
 
 #ifdef _DEBUG
     if(attr->debug_utils)
-        attr->debug_utils->SetCommandBuffer(cmd_buf,name);
+    attr->debug_utils->SetCommandBuffer(cmd_buf,name.c_str());
 #endif//_DEBUG
 
     return cmd_buf;
@@ -659,7 +659,7 @@ DeviceQueue *VulkanDevice::CreateQueue(const ObjectNameBuilder &name, const uint
     return result;
 }
 
-ComputePipeline *VulkanDevice::CreateComputePipeline(const AnsiString &name, VkShaderModule shader_module, VkPipelineLayout pipeline_layout)
+ComputePipeline *VulkanDevice::CreateComputePipeline(const std::string &name, VkShaderModule shader_module, VkPipelineLayout pipeline_layout)
 {
     VkComputePipelineCreateInfo compute_pipeline_info = {};
     compute_pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -672,16 +672,16 @@ ComputePipeline *VulkanDevice::CreateComputePipeline(const AnsiString &name, VkS
     VkPipeline pipeline;
     if (vkCreateComputePipelines(attr->device, attr->pipeline_cache, 1, &compute_pipeline_info, nullptr, &pipeline) != VK_SUCCESS)
     {
-        LogError(name + " create compute pipeline failed!");
+        LogError((name + " create compute pipeline failed!").c_str());
         return nullptr;
     }
 
 #ifdef _DEBUG
     if(attr->debug_utils)
-        attr->debug_utils->SetPipeline(pipeline, name);
+        attr->debug_utils->SetPipeline(pipeline, name.c_str());
 #endif//_DEBUG
 
-    return new ComputePipeline(name, attr->device, pipeline, pipeline_layout);
+    return new ComputePipeline(name.c_str(), attr->device, pipeline, pipeline_layout);
 }
 
 RenderTargetFormat *VulkanDevice::AcquireRenderTargetFormat(const RenderbufferInfo *rbi)

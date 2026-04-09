@@ -454,9 +454,8 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     if (!handle.material)
         return {};
 
-    const AnsiString &mat_name = handle.material->GetName();
-    std::string mat_name_str(mat_name.c_str() ? mat_name.c_str() : "",
-                             mat_name.c_str() ? static_cast<size_t>(mat_name.Length()) : 0);
+    const std::string &mat_name = handle.material->GetName();
+    std::string mat_name_str = mat_name;
 
     // 2. MaterialResourceDomain (按 material_name + domain_id 缓存)
     const std::string &did = rec.domain_id;          // 空串 → 默认域

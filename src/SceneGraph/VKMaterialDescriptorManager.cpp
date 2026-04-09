@@ -108,7 +108,7 @@ void MaterialDescriptorManager::RegisterEnumBinding(const ShaderDescriptor *sd)
     }
 }
 
-MaterialDescriptorManager::MaterialDescriptorManager(const AnsiString &name,ShaderDescriptor *sd_list,const uint sd_count)
+MaterialDescriptorManager::MaterialDescriptorManager(const std::string &name,ShaderDescriptor *sd_list,const uint sd_count)
 {
     mtl_name=name;
 
@@ -164,7 +164,7 @@ MaterialDescriptorManager::MaterialDescriptorManager(const AnsiString &name,Shad
     }
 }
 
-MaterialDescriptorManager::MaterialDescriptorManager(const AnsiString &name,const ShaderDescriptorSetArray &sds_array)
+MaterialDescriptorManager::MaterialDescriptorManager(const std::string &name,const ShaderDescriptorSetArray &sds_array)
 {
     mtl_name=name;
 

@@ -109,7 +109,7 @@ class VulkanDevice
 
 private:
 
-    VkCommandBuffer CreateCommandBuffer(const AnsiString &);
+    VkCommandBuffer CreateCommandBuffer(const std::string &);
 
 private:
 
@@ -329,7 +329,7 @@ public: //Buffer相关
     DeviceBuffer *Create##LargeName(                   VkDeviceSize size,void *data,BufferAllocPolicy policy,SharingMode sm,BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,data,      policy,sm,update_class,loc);} \
     DeviceBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,void *data,BufferAllocPolicy policy,SharingMode sm,BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,data,      policy,sm,update_class,loc);} \
 \
-    template<typename T> T *Create##LargeName(const DescriptorSetType &set_type,const AnsiString &name, const std::source_location &loc = std::source_location::current())  \
+    template<typename T> T *Create##LargeName(const DescriptorSetType &set_type,const std::string &name, const std::source_location &loc = std::source_location::current())  \
     {   \
         const VkDeviceSize range_size = T::GetSize();    \
         const VkDeviceSize alloc_size = AlignStructuredBufferSize(range_size, VK_BUFFER_USAGE_##type##_BUFFER_BIT);    \
@@ -351,53 +351,53 @@ public: //Buffer相关
 
 #undef CREATE_BUFFER_OBJECT
 
-    DeviceBuffer *CreateUBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
+    DeviceBuffer *CreateUBO(const std::string &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
     {
         DeviceBuffer *buf = CreateUBO(size, data, policy, sm, update_class);
         TrackBuffer(buf, name, loc);
         return buf;
     }
 
-    DeviceBuffer *CreateUBO(const AnsiString &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    DeviceBuffer *CreateUBO(const std::string &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
     {
         return CreateUBO(name, size, data, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
 
-    DeviceBuffer *CreateUBO(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    DeviceBuffer *CreateUBO(const std::string &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
     {
         return CreateUBO(name, size, nullptr, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
 
-    DeviceBuffer *CreateSSBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
+    DeviceBuffer *CreateSSBO(const std::string &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
     {
         DeviceBuffer *buf = CreateSSBO(size, data, policy, sm, update_class);
         TrackBuffer(buf, name, loc);
         return buf;
     }
 
-    DeviceBuffer *CreateSSBO(const AnsiString &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    DeviceBuffer *CreateSSBO(const std::string &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
     {
         return CreateSSBO(name, size, data, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
 
-    DeviceBuffer *CreateSSBO(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    DeviceBuffer *CreateSSBO(const std::string &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
     {
         return CreateSSBO(name, size, nullptr, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
 
-    DeviceBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
+    DeviceBuffer *CreateINBO(const std::string &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
     {
         DeviceBuffer *buf = CreateINBO(size, data, policy, sm, update_class);
         TrackBuffer(buf, name, loc);
         return buf;
     }
 
-    DeviceBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    DeviceBuffer *CreateINBO(const std::string &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
     {
         return CreateINBO(name, size, data, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
 
-    DeviceBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    DeviceBuffer *CreateINBO(const std::string &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
     {
         return CreateINBO(name, size, nullptr, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
@@ -450,7 +450,7 @@ public: // Compute Pipeline相关
      * @param pipeline_layout 管线布局
      * @return 计算管线指针，失败返回nullptr
      */
-    ComputePipeline *CreateComputePipeline(const AnsiString &name, VkShaderModule shader_module, VkPipelineLayout pipeline_layout);
+    ComputePipeline *CreateComputePipeline(const std::string &name, VkShaderModule shader_module, VkPipelineLayout pipeline_layout);
 
 public:
 

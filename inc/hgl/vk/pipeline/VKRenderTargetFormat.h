@@ -20,7 +20,7 @@ class RenderTargetFormat
 
     VulkanDevice *  device;
     VkPipelineCache pipeline_cache;
-    AnsiString      name;               ///< RenderFormat名称，用于调试
+    std::string     name;               ///< RenderFormat名称，用于调试
 
     VkFormatList    color_formats;
     VkFormat        depth_format;
@@ -29,13 +29,13 @@ private:
 
     friend class VulkanDevice;
 
-    RenderTargetFormat(VulkanDevice *,const AnsiString &name,const VkFormatList &cf,VkFormat df);
+    RenderTargetFormat(VulkanDevice *,const std::string &name,const VkFormatList &cf,VkFormat df);
 
 public:
 
     virtual ~RenderTargetFormat();
 
-    const AnsiString &      GetName         ()const{return name;}
+    const std::string &     GetName         ()const{return name;}
     const VkPipelineCache   GetPipelineCache()const{return pipeline_cache;}
 
     const uint              GetColorCount   ()const{return static_cast<uint>(color_formats.size());}

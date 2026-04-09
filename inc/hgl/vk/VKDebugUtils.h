@@ -4,6 +4,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/vk/VKTexture.h>
+#include<string>
 
 namespace hgl::graph{
 struct DebugUtilsFunction
@@ -41,7 +42,8 @@ public:
 
     void SetName(VkObjectType,uint64_t,const char *);
 
-#define DU_FUNC(n,N)    void Set##n(Vk##n obj,const char *name){SetName(VK_OBJECT_TYPE_##N,(uint64_t)obj,name);}
+#define DU_FUNC(n,N)    void Set##n(Vk##n obj,const char *name){SetName(VK_OBJECT_TYPE_##N,(uint64_t)obj,name);}    \
+                        void Set##n(Vk##n obj,const std::string &name){SetName(VK_OBJECT_TYPE_##N,(uint64_t)obj,name.c_str());}
 
     DU_FUNC(Instance            ,INSTANCE              )
     DU_FUNC(PhysicalDevice      ,PHYSICAL_DEVICE       )
@@ -94,11 +96,20 @@ public:
 
 #undef DU_FUNC
 
-    void SetTexture(Texture *tex,const AnsiString &info)
+    void SetTexture(Texture *tex,const std::string &info)
     {
-        SetImage(       tex->GetImage(),            info+"_Image"       );
-        SetImageView(   tex->GetVulkanImageView(),  info+"_ImageView"   );
-        SetDeviceMemory(tex->GetDeviceMemory(),     info+"_Memory"      );
+        const std::string image_name = info + "_Image";
+        const std::string image_view_name = info + "_ImageView";
+        const std::string memory_name = info + "_Memory";
+
+        SetImage(       tex->GetImage(),            image_name.c_str()      );
+        SetImageView(   tex->GetVulkanImageView(),  image_view_name.c_str() );
+        SetDeviceMemory(tex->GetDeviceMemory(),     memory_name.c_str()     );
+    }
+
+    void SetTexture(Texture *tex,const char *info)
+    {
+        SetTexture(tex, info ? std::string(info) : std::string());
     }
 
     void QueueBegin  (VkQueue,const char *,const Color4f &color=Color4f(1,1,1,1));

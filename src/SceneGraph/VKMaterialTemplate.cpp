@@ -12,7 +12,7 @@ namespace hgl::graph{
 
 void ReleaseVertexInput(VertexInput *vi);
 
-MaterialTemplate::MaterialTemplate(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
+MaterialTemplate::MaterialTemplate(const std::string &n,const mtl::MaterialCreateInfo *mci)
 {
     name=n;
     geometry=mci->GetPrimitiveType();

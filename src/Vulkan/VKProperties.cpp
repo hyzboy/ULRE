@@ -2,6 +2,7 @@
 #include<hgl/vk/VKInstance.h>
 #include"DebugOutProperties.h"
 #include<vector>
+#include<string>
 
 namespace hgl::graph{
 
@@ -40,23 +41,23 @@ void InitVulkanInstanceProperties()
     }
 }
 
-const bool CheckInstanceLayerSupport(const AnsiString &layer_name)
+const bool CheckInstanceLayerSupport(const std::string &layer_name)
 {
-    if(!layer_name||!*layer_name)
+    if(layer_name.empty())
         return(false);
 
     for(const VkLayerProperties &lp:layer_properties)
-        if(layer_name.Comp(lp.layerName)==0)
+        if(layer_name == lp.layerName)
             return(true);
 
     return(false);
 }
 
-const bool GetInstanceLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)
+const bool GetInstanceLayerVersion(const std::string &name,uint32_t &spec,uint32_t &impl)
 {
     for(const VkLayerProperties &lp:layer_properties)
     {
-        if(name.Comp(lp.layerName)==0)
+        if(name == lp.layerName)
         {
             spec=lp.specVersion;
             impl=lp.implementationVersion;
@@ -113,11 +114,11 @@ void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *lay
     VK_LAYER_BANDICAM_ADD(helper)
 }
 
-const bool CheckInstanceExtensionSupport(const AnsiString &name)
+const bool CheckInstanceExtensionSupport(const std::string &name)
 {
     for(const VkExtensionProperties &ep:extension_properties)
     {
-        if(name.Comp(ep.extensionName)==0)
+        if(name == ep.extensionName)
             return true;
     }
 

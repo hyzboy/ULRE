@@ -104,9 +104,9 @@ namespace hgl::graph{
             void                            InitVulkanInstanceProperties();
     const   std::vector<VkLayerProperties> &      GetInstanceLayerProperties();
     const   std::vector<VkExtensionProperties> &  GetInstanceExtensionProperties();
-    const   bool                            CheckInstanceLayerSupport(const AnsiString &);
-    const   bool                            GetInstanceLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl);
-    const   bool                            CheckInstanceExtensionSupport(const AnsiString &);
+    const   bool                            CheckInstanceLayerSupport(const std::string &);
+    const   bool                            GetInstanceLayerVersion(const std::string &,uint32_t &spec,uint32_t &impl);
+    const   bool                            CheckInstanceExtensionSupport(const std::string &);
 
 }//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_INSTANCE_INCLUDE

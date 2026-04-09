@@ -13,7 +13,7 @@ namespace {
 
 namespace hgl::graph{
 
-RenderTargetFormat::RenderTargetFormat(VulkanDevice *dev,const AnsiString &n,const VkFormatList &cf,VkFormat df)
+RenderTargetFormat::RenderTargetFormat(VulkanDevice *dev,const std::string &n,const VkFormatList &cf,VkFormat df)
 {
     device=dev;
     name=n;

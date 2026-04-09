@@ -38,7 +38,7 @@ struct ObjectNameBuilder
     }
 
     // 构造函数：从AnsiString创建
-    ObjectNameBuilder(const AnsiString& name)
+    ObjectNameBuilder(const std::string& name)
         : ObjectNameBuilder(name.c_str())
     {
     }
@@ -97,9 +97,9 @@ struct ObjectNameBuilder
     }
 
     // 生成完整的层级名字（只在需要输出时调用）
-    AnsiString ToString() const
+    std::string ToString() const
     {
-        AnsiString result(base_name);
+        std::string result(base_name);
 
         for (uint8_t i = 0; i < depth; ++i)
         {
@@ -125,7 +125,7 @@ struct ObjectNameBuilder
     }
 
     // 类型转换操作符（方便使用）
-    operator AnsiString() const
+    operator std::string() const
     {
         return ToString();
     }

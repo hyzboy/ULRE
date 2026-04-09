@@ -14,7 +14,7 @@ class MaterialTemplate;
 class ComputePipeline
 {
     VkDevice device;
-    AnsiString name;
+    std::string name;
     VkPipeline pipeline;
     VkPipelineLayout pipeline_layout;
 
@@ -22,7 +22,7 @@ private:
 
     friend class VulkanDevice;
 
-    ComputePipeline(const AnsiString &n, VkDevice dev, VkPipeline p, VkPipelineLayout pl)
+    ComputePipeline(const std::string &n, VkDevice dev, VkPipeline p, VkPipelineLayout pl)
     {
         name = n;
         device = dev;
@@ -34,7 +34,7 @@ public:
 
     virtual ~ComputePipeline();
 
-    const AnsiString &GetName() const { return name; }
+    const std::string &GetName() const { return name; }
     operator VkPipeline() { return pipeline; }
     VkPipelineLayout GetPipelineLayout() const { return pipeline_layout; }
 };//class ComputePipeline

@@ -115,6 +115,7 @@ namespace hgl
         #if !ULRE_ECS_DEBUG_API
             return false;
         #else
+            const std::string material_name_std = material_name.c_str() ? material_name.c_str() : "";
             const hgl::graph::MaterialTemplate *matched_material = nullptr;
 
             for (const auto &pair : render_frame_cache.materialBatches)
@@ -123,7 +124,7 @@ namespace hgl
                 if (!material)
                     continue;
 
-                if (material->GetName() == material_name)
+                if (material->GetName() == material_name_std)
                 {
                     matched_material = material;
                     break;
@@ -143,11 +144,11 @@ namespace hgl
                         if (!material)
                             continue;
 
-                        const AnsiString &name = material->GetName();
-                        if (name.IsEmpty())
+                        const std::string &name = material->GetName();
+                        if (name.empty())
                             continue;
 
-                        active_material_names.emplace_back(name.c_str());
+                        active_material_names.emplace_back(name);
                     }
 
                     std::sort(active_material_names.begin(), active_material_names.end());

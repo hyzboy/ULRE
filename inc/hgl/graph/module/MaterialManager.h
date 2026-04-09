@@ -7,13 +7,12 @@
 #include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/graph/PrimitiveMaterialSlot.h>
-#include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
 #include<hgl/graph/module/ShaderGenValidationTypes.h>
+#include<ankerl/unordered_dense.h>
 #include <map>
 #include <string>
 #include <vector>
-#include <unordered_map>
 #include <atomic>
 #include <cstdio>
 
@@ -33,11 +32,11 @@ namespace mtl
 
 using MaterialTemplateID    = int;
 using MaterialInstanceID    = int;
-using ShaderModuleMapByName = UnorderedMap<AnsiString,ShaderModule *>;
+using ShaderModuleMapByName = ankerl::unordered_dense::map<std::string,ShaderModule *>;
 
 struct MaterialSpecKey
 {
-    AnsiString cache_name;
+    std::string cache_name;
 };
 
 struct MaterialInstanceSpecKey
@@ -119,15 +118,15 @@ GRAPH_MODULE_CLASS(MaterialManager)
 private:
 
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
-    UnorderedMap<AnsiString,MaterialTemplate *> material_by_name;
+    ankerl::unordered_dense::map<std::string,MaterialTemplate *> material_by_name;
 
     AutoIdObjectManager<MaterialTemplateID,            MaterialTemplate>          rm_shader_program;
     AutoIdObjectManager<MaterialInstanceID,         MaterialInstance>       rm_material_instance;
 
-    std::unordered_map<MaterialTemplate *,          MaterialResourceDomain *>   default_domain_map;
+    ankerl::unordered_dense::map<MaterialTemplate *,          MaterialResourceDomain *>   default_domain_map;
 
     // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding
-    std::unordered_map<MaterialResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
+    ankerl::unordered_dense::map<MaterialResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
 
     // Phase E — domain 句柄表（domain_id + generation，支持域整体替换）
     struct DomainEntry {
@@ -135,7 +134,7 @@ private:
         uint32_t                generation = 0;  // 0 = invalid/released
     };
     std::vector<DomainEntry>                                    domain_table_;    // index 0 = invalid sentinel
-    std::unordered_map<MaterialResourceDomain *, uint32_t>      domain_id_map_;   // reverse: ptr → id
+    ankerl::unordered_dense::map<MaterialResourceDomain *, uint32_t>      domain_id_map_;   // reverse: ptr → id
 
     uint32_t RegisterDomain  (MaterialResourceDomain *domain);  ///< 首次注册返回新 id（1-based），重复注册返回已有 id
     void     UnregisterDomain(MaterialResourceDomain *domain);  ///< 标记条目失效（generation 保留，domain 置 null）
@@ -169,17 +168,17 @@ private:
 
 private: // Helper methods with integrated DebugUtils
 
-    MaterialTemplate *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
+    MaterialTemplate *CreateMaterial(const std::string &, const mtl::MaterialCreateInfo *);
     MaterialTemplate *CreateMaterial(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);   ///<基于内置材质ID创建2D材质
     MaterialTemplate *CreateMaterial(const mtl::MaterialPreset, mtl::Material3DCreateConfig *);   ///<基于内置材质ID创建3D材质
     MaterialTemplate *CreateMaterial(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质
     MaterialTemplate *CreateMaterial(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质
-    class GraphicsPipelineLayoutData *CreateMaterialGraphicsPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
-    class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class GraphicsPipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
-    void ApplyMaterialFinalizePlan(MaterialTemplate *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci);
-    MaterialTemplate *TryGetCachedMaterial(const AnsiString &name);
+    class GraphicsPipelineLayoutData *CreateMaterialGraphicsPipelineLayoutData(const std::string &mtl_name, const class MaterialDescriptorManager *desc_manager);
+    class MaterialParameters *CreateMaterialMP(const std::string &mtl_name, const class MaterialDescriptorManager *desc_manager, const class GraphicsPipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
+    void ApplyMaterialFinalizePlan(MaterialTemplate *mtl, const std::string &mtl_name, const mtl::MaterialCreateInfo &mci);
+    MaterialTemplate *TryGetCachedMaterial(const std::string &name);
     bool ExecuteMaterialBuildPipeline(MaterialTemplate *mtl,
-                                      const AnsiString &mtl_name,
+                                      const std::string &mtl_name,
                                       const mtl::MaterialCreateInfo *mci,
                                       const ShaderStageMap &sci_map);
 
@@ -192,14 +191,14 @@ public: //Material resource access
 
 public: //Add
 
-    MaterialTemplateID         Add(MaterialTemplate *          mtl ){return rm_shader_program.Add(mtl);}
-    MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
+    MaterialTemplateID  Add(MaterialTemplate *  mtl ){return rm_shader_program.Add(mtl);}
+    MaterialInstanceID  Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
 
 public: //Get
 
-    MaterialTemplate *         GetMaterial         (const MaterialTemplateID      &id){return rm_shader_program.Get(id);}
-    MaterialInstance *      GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
-    MaterialTemplate *         ResolveMaterial     (const MaterialInstance *   mi)const;
+    MaterialTemplate *  GetMaterial         (const MaterialTemplateID & id){return rm_shader_program.Get(id);}
+    MaterialInstance *  GetMaterialInstance (const MaterialInstanceID & id){return rm_material_instance.Get(id);}
+    MaterialTemplate *  ResolveMaterial     (const MaterialInstance *   mi)const;
 
 public: //Release
 
@@ -221,9 +220,9 @@ public: //Release
             default_domain_map.erase(dom_it);
         }
 
-        const AnsiString &name = mtl->GetName();
-        if (!name.IsEmpty())
-            material_by_name.DeleteByKey(name);
+        const std::string &name = mtl->GetName();
+        if (!name.empty())
+            material_by_name.erase(name);
 
         rm_shader_program.Release(mtl, true);
     }
@@ -290,8 +289,8 @@ public: // Override Release from GraphModule - cleanup all resources
         if (rm_shader_program.GetCount() > 0)
             rm_shader_program.Clear();
 
-        if (material_by_name.GetCount() > 0)
-            material_by_name.Clear();
+        if (!material_by_name.empty())
+            material_by_name.clear();
 
         for (auto &stage_map : shader_module_by_name)
         {
@@ -299,7 +298,7 @@ public: // Override Release from GraphModule - cleanup all resources
             {
                 delete kv.second;
             }
-            stage_map.Clear();
+            stage_map.clear();
         }
 
         ResetAcquireStats();
@@ -307,8 +306,8 @@ public: // Override Release from GraphModule - cleanup all resources
 
 public: //Shader
 
-    const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name, const ShaderCreateInfo *);
-    const ShaderModule *CreateShaderModuleFromSPV(const AnsiString &shader_module_name,
+    const ShaderModule *CreateShaderModule(const std::string &shader_module_name, const ShaderCreateInfo *);
+    const ShaderModule *CreateShaderModuleFromSPV(const std::string &shader_module_name,
                                                   const VkShaderStageFlagBits stage,
                                                   const uint32_t *spv_data,
                                                   const size_t spv_size);

@@ -49,11 +49,11 @@ public:
     }
 
 #ifdef _DEBUG
-    void SetDebugName(const AnsiString &);
-    void BeginRegion(const AnsiString &,const Color4f &);
+    void SetDebugName(const std::string &);
+    void BeginRegion(const std::string &,const Color4f &);
     void EndRegion();
 #else
-    void BeginRegion(const AnsiString &,const Color4f &){}
+    void BeginRegion(const std::string &,const Color4f &){}
     void EndRegion(){}
 #endif//_DEBUG
 };//class VulkanCmdBuffer

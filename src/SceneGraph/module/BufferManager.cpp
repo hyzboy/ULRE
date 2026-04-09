@@ -1,16 +1,17 @@
 ﻿#include<hgl/graph/module/BufferManager.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKObjectNameBuilder.h>
 #include <cstdint>
 
 namespace hgl::graph{
 
-void BufferManager::AddBuffer(const AnsiString &buf_name, VkBufferOwner *buf, const std::source_location &loc)
+void BufferManager::AddBuffer(const std::string &buf_name, VkBufferOwner *buf, const std::source_location &loc)
 {
     rm_buffers.Add(buf);
 
     VulkanDevice *device = GetDevice();
     if (device)
-        device->TrackBuffer(buf, buf_name, loc);
+    device->TrackBuffer(buf, ObjectNameBuilder(buf_name), loc);
 }
 
 GRAPH_MODULE_CONSTRUCT(BufferManager)
@@ -31,7 +32,7 @@ VAB *BufferManager::CreateVAB(VkFormat format, uint32_t count, const void *data,
     rm_buffers.Add(vb);
 
     AnsiString name = "VAB_" + AnsiString::numberOf(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(vb)));
-    device->TrackBuffer(vb, name, loc);
+    device->TrackBuffer(vb, ObjectNameBuilder(name.c_str()), loc);
 
     return vb;
 }
@@ -52,13 +53,13 @@ VAB *BufferManager::CreateVAB(const ObjectNameBuilder &name, VkFormat format, ui
     return vb;
 }
 
-#define BUFFER_MANAGER_CREATE_BUFFER(name)    DeviceBuffer *BufferManager::Create##name(const AnsiString &buf_name, VkDeviceSize size, void *data, SharingMode sharing_mode, const std::source_location &loc) \
+#define BUFFER_MANAGER_CREATE_BUFFER(name)    DeviceBuffer *BufferManager::Create##name(const std::string &buf_name, VkDeviceSize size, void *data, SharingMode sharing_mode, const std::source_location &loc) \
                                               {   \
                                                   VulkanDevice *device = GetDevice(); \
                                                   DeviceBuffer *buf = device->Create##name(buf_name, size, data, BufferAllocPolicy::Auto, sharing_mode, BufferUpdateClass::Default, loc);   \
                                                   \
                                                   if (!buf) return(nullptr);    \
-                                                  AddBuffer(#name ":" + buf_name, buf, loc);    \
+                                                  AddBuffer(std::string(#name ":") + buf_name, buf, loc);    \
                                                   return(buf);    \
                                               }
 

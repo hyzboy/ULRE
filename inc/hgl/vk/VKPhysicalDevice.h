@@ -92,9 +92,9 @@ public:
     VkPhysicalDeviceType    GetDeviceType()const{return properties.deviceType;}
     const char *            GetDeviceName()const{return properties.deviceName;}
 
-    const bool              GetLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl)const;
-    const uint32_t          GetExtensionVersion(const AnsiString &name)const;
-    const bool              CheckExtensionSupport(const AnsiString &name)const;
+    const bool              GetLayerVersion(const std::string &,uint32_t &spec,uint32_t &impl)const;
+    const uint32_t          GetExtensionVersion(const std::string &name)const;
+    const bool              CheckExtensionSupport(const std::string &name)const;
 
     const VkQueueFamilyPropertiesList &GetQueueFamilyProperties()const{return queue_family_properties;}
     const mtl::contract::PhysicalDeviceProfileLite &GetPhysicalDeviceProfile()const{return physical_device_profile;}

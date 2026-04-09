@@ -57,8 +57,8 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
 
     RenderTargetFormat::IncrVkCreateCount();
 
-    AnsiString name = request.debug_name;
-    if (name.IsEmpty())
+    std::string name = request.debug_name;
+    if (name.empty())
         name = request.material->GetName();
 
     return new GraphicsPipeline(name, context.device->GetDevice(), vk_pipeline, request.vil, pd);
@@ -140,8 +140,8 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
 
     RenderTargetFormat::IncrVkCreateCount();
 
-    AnsiString name = request.debug_name;
-    if (name.IsEmpty())
+    std::string name = request.debug_name;
+    if (name.empty())
         name = request.material->GetName();
 
     return new GraphicsPipeline(name, vk_device, final_pipeline, request.vil, nullptr);

@@ -12,7 +12,7 @@ class GraphicsPipeline
 {
     VkDevice device;
 
-    AnsiString name;
+    std::string name;
 
     VkPipeline pipeline;
 
@@ -24,7 +24,7 @@ private:
     friend class MonolithicGraphicsPipelineBuilder;
     friend class GplGraphicsPipelineBuilder;
 
-    GraphicsPipeline(const AnsiString &n,VkDevice dev,VkPipeline p,const VIL *v,GraphicsPipelineData *pd)
+    GraphicsPipeline(const std::string &n,VkDevice dev,VkPipeline p,const VIL *v,GraphicsPipelineData *pd)
     {
         name=n;
 
@@ -38,7 +38,7 @@ public:
 
     virtual ~GraphicsPipeline();
 
-    const AnsiString &GetName()const{return name;}
+    const std::string &GetName()const{return name;}
 
     operator VkPipeline(){return pipeline;}
 

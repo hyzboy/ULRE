@@ -65,7 +65,7 @@ namespace
     }
 
     bool BuildLegacyShaderModules(MaterialManager *manager,
-                                  const AnsiString &mtl_name,
+                                  const std::string &mtl_name,
                                   const ShaderStageMap &sci_map,
                                   ShaderModuleMap *shader_maps)
     {
@@ -124,7 +124,7 @@ GRAPH_MODULE_CONSTRUCT(MaterialManager)
     domain_table_.push_back({nullptr, 0u});
 }
 
-const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_name,const ShaderCreateInfo *sci)
+const ShaderModule *MaterialManager::CreateShaderModule(const std::string &sm_name,const ShaderCreateInfo *sci)
 {
     VulkanDevice *device = GetDevice();
     if(!device)
@@ -132,7 +132,7 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
         std::fprintf(stderr, "[MaterialManager] CreateShaderModule failed: device is null for '%s'\n", sm_name.c_str());
         return(nullptr);
     }
-    if(sm_name.IsEmpty())
+    if(sm_name.empty())
     {
         std::fprintf(stderr, "[MaterialManager] CreateShaderModule failed: shader module name is empty\n");
         return(nullptr);
@@ -159,8 +159,8 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
 
     ShaderModuleMapByName &sm_map=shader_module_by_name[bit_offset];
 
-    if(sm_map.Get(sm_name,sm))
-        return sm;
+    if(auto it = sm_map.find(sm_name); it != sm_map.end())
+        return it->second;
 
     sm=device->CreateShaderModule((VkShaderStageFlagBits)sci->GetShaderStage(),sci->GetSPVData(),sci->GetSPVSize());
 
@@ -174,7 +174,7 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
         return(nullptr);
     }
 
-    sm_map.Add(sm_name,sm);
+    sm_map.emplace(sm_name,sm);
 
     #ifdef _DEBUG
         {
@@ -182,8 +182,8 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
 
             if(du)
             {
-                AnsiString shader_name = "Shader:" + sm_name + AnsiString(":") + GetShaderStageName((VkShaderStageFlagBits)sci->GetShaderStage());
-                du->SetShaderModule(*sm, shader_name);
+                std::string shader_name = "Shader:" + sm_name + ":" + GetShaderStageName((VkShaderStageFlagBits)sci->GetShaderStage());
+                du->SetShaderModule(*sm, shader_name.c_str());
             }
         }
     #endif//_DEBUG
@@ -191,14 +191,14 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
     return sm;
 }
 
-const ShaderModule *MaterialManager::CreateShaderModuleFromSPV(const AnsiString &sm_name,
+const ShaderModule *MaterialManager::CreateShaderModuleFromSPV(const std::string &sm_name,
                                                                 const VkShaderStageFlagBits stage,
                                                                 const uint32_t *spv_data,
                                                                 const size_t spv_size)
 {
     VulkanDevice *device = GetDevice();
     if(!device)return(nullptr);
-    if(sm_name.IsEmpty())return(nullptr);
+    if(sm_name.empty())return(nullptr);
     if(!spv_data||spv_size==0)return(nullptr);
 
     const int bit_offset=GetBitOffset((uint32_t)stage);
@@ -209,15 +209,15 @@ const ShaderModule *MaterialManager::CreateShaderModuleFromSPV(const AnsiString 
 
     ShaderModuleMapByName &sm_map=shader_module_by_name[bit_offset];
 
-    if(sm_map.Get(sm_name,sm))
-        return sm;
+    if(auto it = sm_map.find(sm_name); it != sm_map.end())
+        return it->second;
 
     sm=device->CreateShaderModule(stage,spv_data,spv_size);
 
     if(!sm)
         return(nullptr);
 
-    sm_map.Add(sm_name,sm);
+    sm_map.emplace(sm_name,sm);
 
     #ifdef _DEBUG
         {
@@ -225,8 +225,8 @@ const ShaderModule *MaterialManager::CreateShaderModuleFromSPV(const AnsiString 
 
             if(du)
             {
-                AnsiString shader_name = "Shader:" + sm_name + AnsiString(":") + GetShaderStageName(stage);
-                du->SetShaderModule(*sm, shader_name);
+                std::string shader_name = "Shader:" + sm_name + ":" + GetShaderStageName(stage);
+                du->SetShaderModule(*sm, shader_name.c_str());
             }
         }
     #endif//_DEBUG
@@ -234,7 +234,7 @@ const ShaderModule *MaterialManager::CreateShaderModuleFromSPV(const AnsiString 
     return sm;
 }
 
-GraphicsPipelineLayoutData *MaterialManager::CreateMaterialGraphicsPipelineLayoutData(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager)
+GraphicsPipelineLayoutData *MaterialManager::CreateMaterialGraphicsPipelineLayoutData(const std::string &mtl_name, const MaterialDescriptorManager *desc_manager)
 {
     VulkanDevice *device = GetDevice();
     if(!device)
@@ -252,14 +252,17 @@ GraphicsPipelineLayoutData *MaterialManager::CreateMaterialGraphicsPipelineLayou
         #ifdef _DEBUG
             DebugUtils *du = device->GetDebugUtils();
             if(du)
-                du->SetPipelineLayout(pld->pipeline_layout, "PipelineLayout:" + mtl_name);
+            {
+                const std::string name = "PipelineLayout:" + mtl_name;
+                du->SetPipelineLayout(pld->pipeline_layout, name.c_str());
+            }
         #endif//_DEBUG
     }
 
     return pld;
 }
 
-MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager, const GraphicsPipelineLayoutData *pld, const DescriptorSetType &desc_set_type)
+MaterialParameters *MaterialManager::CreateMaterialMP(const std::string &mtl_name, const MaterialDescriptorManager *desc_manager, const GraphicsPipelineLayoutData *pld, const DescriptorSetType &desc_set_type)
 {
     VulkanDevice *device = GetDevice();
     if(!device)
@@ -279,9 +282,11 @@ MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name
             DebugUtils *du = device->GetDebugUtils();
             if(du)
             {
-                AnsiString debug_name = mtl_name + AnsiString(":") + GetDescriptorSetTypeName(desc_set_type);
-                du->SetDescriptorSet(mp->GetVkDescriptorSet(), "DescSet:" + debug_name);
-                du->SetDescriptorSetLayout(pld->layouts[static_cast<int>(desc_set_type)], "DescSetLayout:" + debug_name);
+                std::string debug_name = mtl_name + ":" + GetDescriptorSetTypeName(desc_set_type);
+                const std::string ds_name = "DescSet:" + debug_name;
+                const std::string dsl_name = "DescSetLayout:" + debug_name;
+                du->SetDescriptorSet(mp->GetVkDescriptorSet(), ds_name.c_str());
+                du->SetDescriptorSetLayout(pld->layouts[static_cast<int>(desc_set_type)], dsl_name.c_str());
             }
         #endif//_DEBUG
     }
@@ -289,7 +294,7 @@ MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name
     return mp;
 }
 
-void MaterialManager::ApplyMaterialFinalizePlan(MaterialTemplate *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci)
+void MaterialManager::ApplyMaterialFinalizePlan(MaterialTemplate *mtl, const std::string &mtl_name, const mtl::MaterialCreateInfo &mci)
 {
     if(!mtl)
         return;
@@ -308,15 +313,14 @@ void MaterialManager::ApplyMaterialFinalizePlan(MaterialTemplate *mtl, const Ans
     mtl->mi_max_count  = finalize_plan.mi_max_count;
 }
 
-MaterialTemplate *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
+MaterialTemplate *MaterialManager::TryGetCachedMaterial(const std::string &name)
 {
     acquire_material_cache_lookups.fetch_add(1);
 
-    MaterialTemplate *cached = nullptr;
-    if(material_by_name.Get(name, cached))
+    if(auto it = material_by_name.find(name); it != material_by_name.end())
     {
         acquire_material_cache_hits.fetch_add(1);
-        return cached;
+        return it->second;
     }
 
     acquire_material_cache_misses.fetch_add(1);
@@ -332,7 +336,7 @@ MaterialTemplate *MaterialManager::TryInitializeFallbackMaterial()
     // Try to create a Checkerboard3D material as fallback
     // If Checkerboard3D is not available, fallback to Standard
 
-    static const AnsiString fallback_name("__sys__fallback_checkerboard3d");
+    static const std::string fallback_name("__sys__fallback_checkerboard3d");
 
     // Check if already cached from a previous attempt
     fallback_material = TryGetCachedMaterial(fallback_name);
@@ -391,7 +395,7 @@ MaterialTemplate *MaterialManager::ResolveMaterial(const MaterialInstance *mi) c
 }
 
 bool MaterialManager::ExecuteMaterialBuildPipeline(MaterialTemplate *mtl,
-                                                   const AnsiString &mtl_name,
+                                                   const std::string &mtl_name,
                                                    const mtl::MaterialCreateInfo *mci,
                                                    const ShaderStageMap &sci_map)
 {
@@ -432,7 +436,7 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(MaterialTemplate *mtl,
     return true;
 }
 
-MaterialTemplate *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
+MaterialTemplate *MaterialManager::CreateMaterial(const std::string &mtl_name,const mtl::MaterialCreateInfo *mci)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -445,10 +449,11 @@ MaterialTemplate *MaterialManager::CreateMaterial(const AnsiString &mtl_name,con
     }
 
     MaterialCreatePrecheckResult precheck_result;
+    const AnsiString mtl_name_ansi(mtl_name.c_str());
     const MaterialCreatePrecheckDecision precheck_decision = RunMaterialCreatePrecheck(
         mci,
-        mtl_name,
-        [&](const AnsiString &name)->MaterialTemplate * { return TryGetCachedMaterial(name); },
+        mtl_name_ansi,
+        [&](const AnsiString &name)->MaterialTemplate * { return TryGetCachedMaterial(name.c_str()); },
         precheck_result);
 
     if(precheck_decision == MaterialCreatePrecheckDecision::UseCached)
@@ -480,7 +485,7 @@ MaterialTemplate *MaterialManager::CreateMaterial(const AnsiString &mtl_name,con
     Add(mtl);
     acquire_material_created.fetch_add(1);
 
-    material_by_name.Add(mtl_name,mtl);
+    material_by_name.emplace(mtl_name,mtl);
     // MaterialTemplate is a C++ object managed by MaterialManager, not a Vulkan object
     // No need to track with ObjectTracker
     return mtl.Finish();
@@ -541,7 +546,7 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl
     }
 
     if(out_key)
-        out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
+        out_key->cache_name = mtl ? mtl->GetName() : std::string();
 
     return mtl;
 }
@@ -560,7 +565,7 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl
     }
 
     if(out_key)
-        out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
+        out_key->cache_name = mtl ? mtl->GetName() : std::string();
 
     return mtl;
 }
@@ -579,7 +584,7 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey
     }
 
     if(out_key)
-        out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
+        out_key->cache_name = mtl ? mtl->GetName() : std::string();
 
     return mtl;
 }
@@ -598,7 +603,7 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey
     }
 
     if(out_key)
-        out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
+        out_key->cache_name = mtl ? mtl->GetName() : std::string();
 
     return mtl;
 }
@@ -657,7 +662,7 @@ MaterialTemplate *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey 
     if(!cfg)
         return(nullptr);
 
-    AnsiString hash_name="variant";
+    std::string hash_name="variant";
     char key_hash[32] = {};
     std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
     std::printf("[DEBUG] CreateMaterial hash=%s ST=%d GM=%d tex=%u sampler=%u\n", key_hash, int(key.surface_type), int(key.geometry_mode), key.texture_source_bits, key.sampler_feature_bits);
@@ -701,7 +706,7 @@ MaterialTemplate *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey 
         return(nullptr);
     }
 
-    AnsiString hash_name="variant";
+    std::string hash_name="variant";
     char key_hash[32] = {};
     std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
     hash_name+="#";

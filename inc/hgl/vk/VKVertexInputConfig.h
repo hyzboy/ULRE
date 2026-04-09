@@ -79,5 +79,5 @@ public:
 
         return 0;
     }
-};//class VILConfig:public Map<AnsiString,VAConfig>
+};//class VILConfig:public map<VertexAttrib,VAConfig>
 }//namespace hgl::graph

@@ -35,7 +35,7 @@ class MaterialTemplate
 {
     OBJECT_LOGGER
 
-    AnsiString name;
+    std::string name;
 
     PrimitiveType geometry;                       ///<图元类型
 
@@ -63,13 +63,13 @@ private:
 
     friend class MaterialManager;
 
-    MaterialTemplate(const AnsiString &,const mtl::MaterialCreateInfo *);
+    MaterialTemplate(const std::string &,const mtl::MaterialCreateInfo *);
 
 public:
 
     virtual ~MaterialTemplate();
 
-    const   AnsiString &                        GetName                 ()const{return name;}
+    const   std::string &                       GetName                 ()const{return name;}
     const   mtl::DescriptorBindingSlots &       GetBindingContract      ()const{return binding_contract;}
 
     const   PrimitiveType &                     GetPrimitiveType        ()const{return geometry;}

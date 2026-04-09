@@ -19,7 +19,7 @@ struct GraphicsPipelineBuildRequest
     const GraphicsPipelineData *pipeline_data = nullptr;
     PrimitiveType primitive = PrimitiveType::Triangles;
     bool primitive_restart = false;
-    AnsiString debug_name;
+    std::string debug_name;
 };
 
 bool IsValidGraphicsPipelineBuildRequest(const GraphicsPipelineBuildRequest &req);
