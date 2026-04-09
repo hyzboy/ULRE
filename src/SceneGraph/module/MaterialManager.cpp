@@ -993,7 +993,7 @@ MaterialResourceDomain *MaterialManager::CreateMaterialResourceDomain(MaterialTe
     return CreateMaterialResourceDomain(
         mtl->GetRequiredLayout(),
         mtl->GetMIMaxCount(),
-        0);       // texture_array_slot_flags will be wired up in Phase E
+        mtl->GetTextureArraySlotFlags());
 }
 
 DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(MaterialResourceDomain *domain, MaterialTemplate *mtl)
