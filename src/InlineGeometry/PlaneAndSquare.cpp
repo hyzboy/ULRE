@@ -32,7 +32,7 @@ namespace hgl::graph::inline_geometry
                                 Vector2f(left+col,bottom));
         }
 
-        auto lum = pc->GetBufferAccessor<BufferAccessor1u8>(VAN::Luminance);
+        auto lum = pc->GetBufferAccessor<BufferAccessor1un8>(VAN::Luminance);
 
         if(lum.IsValid())
         {
