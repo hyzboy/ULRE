@@ -64,12 +64,14 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
 
         if(!cfg||!cfg->Get(via->attrib,vac))
         {
+            // Legacy fallback: derive storage format from VAType when not explicitly specified
             attr_desc->format    =GetVulkanFormat(via);
 
             bind_desc->inputRate =VkVertexInputRate::VK_VERTEX_INPUT_RATE_VERTEX;
         }
         else
         {
+            // Use explicit storage format if specified in config, otherwise legacy fallback derivation
             attr_desc->format    =(vac.format==PF_UNDEFINED?GetVulkanFormat(via):vac.format);
 
             bind_desc->inputRate =vac.input_rate;
@@ -81,6 +83,7 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
 
         if(!mtl::IsStorageFormatCompatibleWithShaderType(shader_type, attr_desc->format))
         {
+            // Legacy fallback: try implicit VAType derivation when explicit format is incompatible
             const VkFormat fallback_format = GetVulkanFormat(via);
             if(mtl::IsStorageFormatCompatibleWithShaderType(shader_type, fallback_format))
             {

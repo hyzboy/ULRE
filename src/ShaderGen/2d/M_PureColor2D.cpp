@@ -19,20 +19,20 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
     auto fs_preamble = build2d::Build2DFragmentPreamble(cfg, false, true);
 
     // Build DEF dynamically
-    std::vector<FixedVertexEntry> vertices;
-    build2d::PushBaseVertexEntries(vertices, cfg);
+    std::vector<VertexAttributeSpec> specs;
+    build2d::PushBaseVertexSpecs(specs, cfg);
 
     StaticMaterialDef def{};
     UBOSemanticSet ubos;
     SSBOSemanticSet ssbos;
-    build2d::BuildBase2DFixedDef(def,
-                                 "PureColor2D",
-                                 cfg,
-                                 vertices,
-                                 ubos,
-                                 ssbos,
-                                 nullptr,
-                                 InstanceDataLayout::Color4f);
+    build2d::BuildBase2DSpecDef(def,
+                                "PureColor2D",
+                                cfg,
+                                specs,
+                                ubos,
+                                ssbos,
+                                nullptr,
+                                InstanceDataLayout::Color4f);
 
     return CreateFromFixedDef2D("PureColor2D", profile, def, key, vs_preamble, fs_preamble, cfg);
 }

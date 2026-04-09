@@ -38,9 +38,9 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
                                                         SamplerSlot::BaseColor,
                                                         use_array);
 
-    std::vector<FixedVertexEntry> vertices;
-    build2d::PushBaseVertexEntries(vertices, &inner);
-    vertices.push_back({VAT_VEC2, VAN::TexCoord});
+    std::vector<VertexAttributeSpec> specs;
+    build2d::PushBaseVertexSpecs(specs, &inner);
+    specs.push_back(MakeLegacyVertexAttributeSpec(VAT_VEC2, VAN::TexCoord));
 
     UBOSemanticSet ubos;
     SSBOSemanticSet ssbos;
@@ -51,13 +51,13 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
         AddSSBODescriptor(ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID);
 
     StaticMaterialDef def{};
-    build2d::BuildBase2DFixedDef(def,
-                                 "PureTexture2D",
-                                 &inner,
-                                 vertices,
-                                 ubos,
-                                 ssbos,
-                                 &samplers);
+    build2d::BuildBase2DSpecDef(def,
+                                "PureTexture2D",
+                                &inner,
+                                specs,
+                                ubos,
+                                ssbos,
+                                &samplers);
     // Array mode: keep legacy mi_glsl_codes/mi_struct_bytes to register MI data SSBO stride.
     // GLSL uses MATERIAL_INSTANCE_ID_ONLY so the data SSBO binding is declared but not read.
     if (use_array)

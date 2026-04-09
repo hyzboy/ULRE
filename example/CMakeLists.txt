@@ -19,3 +19,6 @@ macro(CreateProject name)
 endmacro()
 
 CreateProject(CompositorAssemblerTest CompositorAssemblerTest.cpp)
+
+# Phase 5: Legacy Bridge Regression Test
+CreateProject(Phase5BridgeRegressionTest Phase5BridgeRegressionTest.cpp)

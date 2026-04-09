@@ -40,23 +40,23 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
         return nullptr;
     }
 
-    std::vector<FixedVertexEntry> vertices;
-    build2d::PushBaseVertexEntries(vertices, &new_cfg);
-    vertices.push_back({VAT_VEC2, VAN::TexCoord});
+    std::vector<VertexAttributeSpec> specs;
+    build2d::PushBaseVertexSpecs(specs, &new_cfg);
+    specs.push_back(MakeLegacyVertexAttributeSpec(VAT_VEC2, VAN::TexCoord));
 
     StaticMaterialDef def{};
     UBOSemanticSet ubos;
     SSBOSemanticSet ssbos;
     StaticTextureSamplerDescriptors samplers;
     AddTextureSampler(samplers, SamplerSlot::Text, SamplerType::Sampler2D);
-    build2d::BuildBase2DFixedDef(def,
-                                 "Text2D",
-                                 &new_cfg,
-                                 vertices,
-                                 ubos,
-                                 ssbos,
-                                 &samplers,
-                                 InstanceDataLayout::Text2D);
+    build2d::BuildBase2DSpecDef(def,
+                                "Text2D",
+                                &new_cfg,
+                                specs,
+                                ubos,
+                                ssbos,
+                                &samplers,
+                                InstanceDataLayout::Text2D);
 
     std::string vs = vs_preamble + result.vertex_glsl;
     std::string fs = fs_preamble + result.fragment_glsl;

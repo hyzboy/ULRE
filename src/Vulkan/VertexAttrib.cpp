@@ -95,6 +95,9 @@ namespace hgl
 
         const VkFormat GetVulkanFormat(const VAType *type)
         {
+            // Legacy bridge: derives VkFormat from VAType by looking up vk_format_by_basetype.
+            // This mapping is implicit and only used for backwards compatibility.
+            // New code should construct VertexAttributeSpec with explicit storage_format.
             if(!type||!type->Check())
                 return VK_FORMAT_UNDEFINED;
 
@@ -103,6 +106,8 @@ namespace hgl
 
         const VkFormat GetVulkanFormat(const VertexInputAttribute *sa)
         {
+            // Legacy fallback: returns pre-populated storage_format if available,
+            // otherwise derives from VAType components as fallback for old code paths.
             if(!sa)return VK_FORMAT_UNDEFINED;
 
             if(sa->storage_format != VK_FORMAT_UNDEFINED)

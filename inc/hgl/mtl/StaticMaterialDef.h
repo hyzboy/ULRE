@@ -80,6 +80,7 @@ struct StaticMaterialDef
     InstanceDataLayout          mi_instance_layout = InstanceDataLayout::None;
     const VertexAttributeSpec * vertex_attribute_specs = nullptr;
     uint32_t                    vertex_attribute_spec_count = 0;
+    bool                        allow_empty_vertex_declaration = false;
 };
 
 }//namespace hgl::graph::mtl

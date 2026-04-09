@@ -93,8 +93,6 @@ public:
     {
         return !(*this == vil);
     }
-
-
 };//class VertexInputLayout
 
 using VIL=VertexInputLayout;

@@ -2,6 +2,7 @@
 
 #include <hgl/common/InterpolationDef.h>
 #include <hgl/common/VertexAttribDef.h>
+#include <hgl/mtl/FixedVertexEntry.h>
 #include <hgl/vk/VertexAttrib.h>
 
 namespace hgl::graph::mtl{
@@ -140,6 +141,9 @@ inline bool HasExplicitVertexLocation(const VertexAttributeSpec &spec)
     return spec.location != AUTO_VERTEX_ATTRIBUTE_LOCATION;
 }
 
+// DEPRECATED: Converts legacy VAType-based pair to modern VertexAttributeSpec.
+// Should only be used as a bridge for backwards compatibility.
+[[deprecated("This is a legacy bridge function. New code should construct VertexAttributeSpec directly with explicit storage_format.")]]
 inline VertexAttributeSpec MakeLegacyVertexAttributeSpec(const VAType &type,const VertexAttrib attrib)
 {
     VertexAttributeSpec spec{};
@@ -149,6 +153,11 @@ inline VertexAttributeSpec MakeLegacyVertexAttributeSpec(const VAType &type,cons
     spec.storage_format = GetVulkanFormat(&type);
 
     return spec;
+}
+
+inline VertexAttributeSpec MakeLegacyVertexAttributeSpec(const FixedVertexEntry &entry)
+{
+    return MakeLegacyVertexAttributeSpec(entry.type, entry.attrib);
 }
 
 }//namespace hgl::graph::mtl

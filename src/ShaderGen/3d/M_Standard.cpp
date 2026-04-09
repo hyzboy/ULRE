@@ -17,10 +17,10 @@ namespace
 {
     // MI layout — same whether slots are sampler2D or sampler2DArray.
     // Layer indices for Array slots are stored separately in the MIT SSBO (MaterialInstanceTextureID).
-    constexpr FixedVertexEntry STANDARD_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
-        { VAT_VEC2, VAN::TexCoord },
-        { VAT_VEC3, VAN::Normal },
+    constexpr VertexAttributeSpec STANDARD_VERTEX_SPECS[] = {
+        { VAN::Position, VAT_VEC3, PF_RGB32F },
+        { VAN::TexCoord, VAT_VEC2, PF_RG32F  },
+        { VAN::Normal,   VAT_VEC3, PF_RGB32F },
     };
 
     // Non-texture descriptors only �?texture entries are built dynamically in CreateStandardVariant().
@@ -50,13 +50,15 @@ namespace
     const StaticMaterialDef STANDARD_DEF_TEMPLATE {
         "Standard_v1",
         PrimitiveType::Triangles,
-        STANDARD_VERTEX,
-        uint32_t(sizeof(STANDARD_VERTEX) / sizeof(STANDARD_VERTEX[0])),
+        nullptr,
+        0,
         &STANDARD_BASE_UBOS,
         &STANDARD_BASE_SSBOS,
         nullptr,
         nullptr, 0,
         InstanceDataLayout::PBRStandard,
+        STANDARD_VERTEX_SPECS,
+        uint32_t(sizeof(STANDARD_VERTEX_SPECS) / sizeof(STANDARD_VERTEX_SPECS[0])),
     };
 
 } // anonymous namespace

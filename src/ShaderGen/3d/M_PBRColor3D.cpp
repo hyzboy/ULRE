@@ -12,10 +12,10 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr FixedVertexEntry PBR_COLOR_3D_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
-        { VAT_VEC2, VAN::TexCoord },
-        { VAT_VEC3, VAN::Normal   },
+    constexpr VertexAttributeSpec PBR_COLOR_3D_VERTEX_SPECS[] = {
+        { VAN::Position, VAT_VEC3, PF_RGB32F },
+        { VAN::TexCoord, VAT_VEC2, PF_RG32F  },
+        { VAN::Normal,   VAT_VEC3, PF_RGB32F },
     };
 
     const UBOSemanticSet PBR_COLOR_3D_UBOS = {
@@ -33,13 +33,15 @@ namespace
     const StaticMaterialDef PBR_COLOR_3D_DEF {
         "PBRColor3D",
         PrimitiveType::Triangles,
-        PBR_COLOR_3D_VERTEX,
-        uint32_t(sizeof(PBR_COLOR_3D_VERTEX)      / sizeof(PBR_COLOR_3D_VERTEX[0])),
+        nullptr,
+        0,
         &PBR_COLOR_3D_UBOS,
         &PBR_COLOR_3D_SSBOS,
         nullptr,    // texture_samplers
         nullptr, 0, // mi_glsl_codes / mi_struct_bytes (deprecated)
         InstanceDataLayout::PBRColor,
+        PBR_COLOR_3D_VERTEX_SPECS,
+        uint32_t(sizeof(PBR_COLOR_3D_VERTEX_SPECS) / sizeof(PBR_COLOR_3D_VERTEX_SPECS[0])),
     };
 }//namespace
 

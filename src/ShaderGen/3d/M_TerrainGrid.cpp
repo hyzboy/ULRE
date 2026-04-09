@@ -36,6 +36,10 @@ namespace
         &TERRAIN_GRID_SAMPLERS,
         nullptr,
         0,
+        InstanceDataLayout::None,
+        nullptr,
+        0,
+        true,
     };
 }//namespace
 

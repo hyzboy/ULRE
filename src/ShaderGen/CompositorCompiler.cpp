@@ -138,9 +138,13 @@ namespace
                 for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
                 {
                     const FixedVertexEntry &entry = def.vertex_entries[i];
-                    if(vsc->AddInput(entry.type, entry.attrib) <= 0)
-                        return FailAfterMci("AddInput(FixedVertexEntry) failed");
+                    if(vsc->AddInput(mtl::MakeLegacyVertexAttributeSpec(entry)) <= 0)
+                        return FailAfterMci("AddInput(LegacyFixedVertexEntryBridge) failed");
                 }
+            }
+            else if (def.allow_empty_vertex_declaration)
+            {
+                // Some procedural materials synthesize positions entirely from gl_VertexIndex.
             }
             else
             {

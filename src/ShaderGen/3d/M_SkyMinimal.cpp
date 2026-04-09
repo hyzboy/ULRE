@@ -5,8 +5,8 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr FixedVertexEntry SKY_MINIMAL_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
+    constexpr VertexAttributeSpec SKY_MINIMAL_VERTEX_SPECS[] = {
+        { VAN::Position, VAT_VEC3, PF_RGB32F },
     };
 
     const UBOSemanticSet SKY_MINIMAL_UBOS = build3d::MakeViewportCameraSkyUBOs();
@@ -16,13 +16,16 @@ namespace
     const StaticMaterialDef SKY_MINIMAL_DEF {
         "SkyMinimal",
         PrimitiveType::Triangles,
-        SKY_MINIMAL_VERTEX,
-        uint32_t(sizeof(SKY_MINIMAL_VERTEX) / sizeof(SKY_MINIMAL_VERTEX[0])),
+        nullptr,
+        0,
         &SKY_MINIMAL_UBOS,
         &SKY_MINIMAL_SSBOS,
         nullptr,
         nullptr,
         0,
+        InstanceDataLayout::None,
+        SKY_MINIMAL_VERTEX_SPECS,
+        uint32_t(sizeof(SKY_MINIMAL_VERTEX_SPECS) / sizeof(SKY_MINIMAL_VERTEX_SPECS[0])),
     };
 }//namespace
 
