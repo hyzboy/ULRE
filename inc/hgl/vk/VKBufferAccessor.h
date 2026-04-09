@@ -477,17 +477,62 @@ public:
 };
 
 // 常用类型定义 / Common type definitions
-using BufferAccessor1u8  = BufferAccessor<VB1u8>;
-using BufferAccessor1i8  = BufferAccessor<VB1i8>;
-using BufferAccessor1f   = BufferAccessor<VB1f>;
-using BufferAccessor1uf8 = BufferAccessor<VB1uf8>;  ///< uint8 UNORM — write 0-255, GPU reads as float 0.0-1.0
-using BufferAccessor2u8  = BufferAccessor<VB2u8>;
-using BufferAccessor2f   = BufferAccessor<VB2f>;
-using BufferAccessor3f   = BufferAccessor<VB3f>;
-using BufferAccessor4f   = BufferAccessor<VB4f>;
-using BufferAccessor2i   = BufferAccessor<VB2i>;
-using BufferAccessor3i   = BufferAccessor<VB3i>;
-using BufferAccessor4i   = BufferAccessor<VB4i>;
+// 1-component
+using BufferAccessor1i8   = BufferAccessor<VB1i8>;
+using BufferAccessor1i16  = BufferAccessor<VB1i16>;
+using BufferAccessor1i32  = BufferAccessor<VB1i32>;
+using BufferAccessor1u8   = BufferAccessor<VB1u8>;
+using BufferAccessor1u16  = BufferAccessor<VB1u16>;
+using BufferAccessor1u32  = BufferAccessor<VB1u32>;
+using BufferAccessor1f    = BufferAccessor<VB1f>;
+using BufferAccessor1d    = BufferAccessor<VB1d>;
+using BufferAccessor1sn8  = BufferAccessor<VB1sn8>;
+using BufferAccessor1sn16 = BufferAccessor<VB1sn16>;
+using BufferAccessor1un8  = BufferAccessor<VB1un8>;   ///< uint8 UNORM — write 0-255, GPU reads as float 0.0-1.0
+using BufferAccessor1un16 = BufferAccessor<VB1un16>;
+using BufferAccessor1hf   = BufferAccessor<VB1hf>;
+
+// 2-component
+using BufferAccessor2i8   = BufferAccessor<VB2i8>;
+using BufferAccessor2i16  = BufferAccessor<VB2i16>;
+using BufferAccessor2i32  = BufferAccessor<VB2i32>;
+using BufferAccessor2u8   = BufferAccessor<VB2u8>;
+using BufferAccessor2u16  = BufferAccessor<VB2u16>;
+using BufferAccessor2u32  = BufferAccessor<VB2u32>;
+using BufferAccessor2f    = BufferAccessor<VB2f>;
+using BufferAccessor2d    = BufferAccessor<VB2d>;
+using BufferAccessor2sn8  = BufferAccessor<VB2sn8>;
+using BufferAccessor2sn16 = BufferAccessor<VB2sn16>;
+using BufferAccessor2un8  = BufferAccessor<VB2un8>;
+using BufferAccessor2un16 = BufferAccessor<VB2un16>;
+using BufferAccessor2hf   = BufferAccessor<VB2hf>;
+
+// 3-component (limited by Vulkan RGB integer format support in this project)
+using BufferAccessor3i32  = BufferAccessor<VB3i32>;
+using BufferAccessor3u32  = BufferAccessor<VB3u32>;
+using BufferAccessor3f    = BufferAccessor<VB3f>;
+using BufferAccessor3d    = BufferAccessor<VB3d>;
+
+// 4-component
+using BufferAccessor4i8   = BufferAccessor<VB4i8>;
+using BufferAccessor4i16  = BufferAccessor<VB4i16>;
+using BufferAccessor4i32  = BufferAccessor<VB4i32>;
+using BufferAccessor4u8   = BufferAccessor<VB4u8>;
+using BufferAccessor4u16  = BufferAccessor<VB4u16>;
+using BufferAccessor4u32  = BufferAccessor<VB4u32>;
+using BufferAccessor4f    = BufferAccessor<VB4f>;
+using BufferAccessor4d    = BufferAccessor<VB4d>;
+using BufferAccessor4sn8  = BufferAccessor<VB4sn8>;
+using BufferAccessor4sn16 = BufferAccessor<VB4sn16>;
+using BufferAccessor4un8  = BufferAccessor<VB4un8>;
+using BufferAccessor4un16 = BufferAccessor<VB4un16>;
+using BufferAccessor4hf   = BufferAccessor<VB4hf>;
+
+// legacy shortcut names
+using BufferAccessor2i    = BufferAccessor2i32;
+using BufferAccessor3i    = BufferAccessor3i32;
+using BufferAccessor4i    = BufferAccessor4i32;
+using BufferAccessor1uf8  = BufferAccessor1un8;      ///< backward compatibility alias
 
 // 向后兼容别名 / Backward compatibility aliases
 // 推荐逐步迁移到 BufferAccessor，但旧代码可以继续使用这些别名
@@ -500,6 +545,9 @@ using StagedVB4f   = BufferAccessor4f;
 using StagedVB2i   = BufferAccessor2i;
 using StagedVB3i   = BufferAccessor3i;
 using StagedVB4i   = BufferAccessor4i;
+using StagedVB1un8 = BufferAccessor1un8;
+using StagedVB2un8 = BufferAccessor2un8;
+using StagedVB4un8 = BufferAccessor4un8;
 
 // IndexBuffer 访问器（使用 BufferAccessor + RawDataAccess）
 using IndexAccessorU8  = BufferAccessor<RawDataAccess<uint8>>;

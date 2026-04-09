@@ -1275,10 +1275,14 @@ namespace hgl::graph
     typedef VertexAttribDataAccess1<float ,PF_R32F   >   VB1f;
     typedef VertexAttribDataAccess1<double,PF_R64F   >   VB1d;
 
-    typedef VertexAttribDataAccess1<int8  ,PF_R8SN   >   VB1sf8;            //输入-128 to 127,但使用为-1 to +1
-    typedef VertexAttribDataAccess1<int16 ,PF_R16SN  >   VB1sf16;           //输入-32768 to 32767,但使用为-1 to +1
-    typedef VertexAttribDataAccess1<uint8 ,PF_R8UN   >   VB1uf8;            //输入0-255,但使用为0-1
-    typedef VertexAttribDataAccess1<uint16,PF_R16UN  >   VB1uf16;           //输入0-65535,但使用为0-1
+    typedef VertexAttribDataAccess1<int8  ,PF_R8SN   >   VB1sn8;            //输入-128 to 127,但使用为-1 to +1
+    typedef VertexAttribDataAccess1<int16 ,PF_R16SN  >   VB1sn16;           //输入-32768 to 32767,但使用为-1 to +1
+    typedef VertexAttribDataAccess1<uint8 ,PF_R8UN   >   VB1un8;            //输入0-255,但使用为0-1
+    typedef VertexAttribDataAccess1<uint16,PF_R16UN  >   VB1un16;           //输入0-65535,但使用为0-1
+    typedef VB1sn8                                           VB1sf8;         // backward compatibility
+    typedef VB1sn16                                          VB1sf16;        // backward compatibility
+    typedef VB1un8                                           VB1uf8;         // backward compatibility
+    typedef VB1un16                                          VB1uf16;        // backward compatibility
     typedef VertexAttribDataAccess1<half_float,PF_R16F   >   VB1hf;             //half float
 
     typedef VertexAttribDataAccess2<int8  ,PF_RG8I   >   VB2i8   ,VB2b;
@@ -1292,10 +1296,14 @@ namespace hgl::graph
     typedef VertexAttribDataAccess2<float ,PF_RG32F  >   VB2f;
     typedef VertexAttribDataAccess2<double,PF_RG64F  >   VB2d;
 
-    typedef VertexAttribDataAccess2<int8  ,PF_RG8SN  >   VB2sf8;            //输入-128 to 127,但使用为-1 to +1
-    typedef VertexAttribDataAccess2<int16 ,PF_RG16SN >   VB2sf16;           //输入-32768 to 32767,但使用为-1 to +1
-    typedef VertexAttribDataAccess2<uint8 ,PF_RG8UN  >   VB2uf8;            //输入0-255,但使用为0-1
-    typedef VertexAttribDataAccess2<uint16,PF_RG16UN >   VB2uf16;           //输入0-65535,但使用为0-1
+    typedef VertexAttribDataAccess2<int8  ,PF_RG8SN  >   VB2sn8;            //输入-128 to 127,但使用为-1 to +1
+    typedef VertexAttribDataAccess2<int16 ,PF_RG16SN >   VB2sn16;           //输入-32768 to 32767,但使用为-1 to +1
+    typedef VertexAttribDataAccess2<uint8 ,PF_RG8UN  >   VB2un8;            //输入0-255,但使用为0-1
+    typedef VertexAttribDataAccess2<uint16,PF_RG16UN >   VB2un16;           //输入0-65535,但使用为0-1
+    typedef VB2sn8                                           VB2sf8;         // backward compatibility
+    typedef VB2sn16                                          VB2sf16;        // backward compatibility
+    typedef VB2un8                                           VB2uf8;         // backward compatibility
+    typedef VB2un16                                          VB2uf16;        // backward compatibility
     typedef VertexAttribDataAccess2<half_float,PF_RG16F  >   VB2hf;             //half float
 
 //        typedef VertexAttribDataAccess3<int8  ,PF_RGB8I  >   VB3i8   ,VB3b;
@@ -1320,9 +1328,13 @@ namespace hgl::graph
     typedef VertexAttribDataAccess4<float ,PF_RGBA32F>   VB4f;
     typedef VertexAttribDataAccess4<double,PF_RGBA64F>   VB4d;
 
-    typedef VertexAttribDataAccess4<int8  ,PF_RGBA8SN >  VB4sf8;            //输入-128 to 127,但使用为-1 to +1
-    typedef VertexAttribDataAccess4<int16 ,PF_RGBA16SN>  VB4sf16;           //输入-32768 to 32767,但使用为-1 to +1
-    typedef VertexAttribDataAccess4<uint8 ,PF_RGBA8UN >  VB4uf8;            //输入0-255,但使用为0-1
-    typedef VertexAttribDataAccess4<uint16,PF_RGBA16UN>  VB4uf16;           //输入0-65535,但使用为0-1
+    typedef VertexAttribDataAccess4<int8  ,PF_RGBA8SN >  VB4sn8;            //输入-128 to 127,但使用为-1 to +1
+    typedef VertexAttribDataAccess4<int16 ,PF_RGBA16SN>  VB4sn16;           //输入-32768 to 32767,但使用为-1 to +1
+    typedef VertexAttribDataAccess4<uint8 ,PF_RGBA8UN >  VB4un8;            //输入0-255,但使用为0-1
+    typedef VertexAttribDataAccess4<uint16,PF_RGBA16UN>  VB4un16;           //输入0-65535,但使用为0-1
+    typedef VB4sn8                                           VB4sf8;         // backward compatibility
+    typedef VB4sn16                                          VB4sf16;        // backward compatibility
+    typedef VB4un8                                           VB4uf8;         // backward compatibility
+    typedef VB4un16                                          VB4uf16;        // backward compatibility
     typedef VertexAttribDataAccess4<half_float,PF_RGBA16F >  VB4hf;             //half float
 }//namespace hgl::graph
