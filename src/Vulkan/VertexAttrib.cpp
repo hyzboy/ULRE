@@ -51,7 +51,8 @@ namespace hgl
             {"int",   "ivec2","ivec3","ivec4"},
             {"uint",  "uvec2","uvec3","uvec4"},
             {"float",  "vec2", "vec3", "vec4"},
-            {"double","dvec2","dvec3","dvec4"}
+            {"double","dvec2","dvec3","dvec4"},
+            {"float",  "vec2", "vec3", "vec4"},  //UByteNorm: uint8 UNORM, reads as float [0,1] in GLSL
         };
 
         const char *GetVertexAttribName(const VABaseType &base_type,const uint vec_size)
@@ -78,7 +79,8 @@ namespace hgl
                 {PF_R32I,PF_RG32I,PF_RGB32I,PF_RGBA32I},//int
                 {PF_R32U,PF_RG32U,PF_RGB32U,PF_RGBA32U},//uint
                 {PF_R32F,PF_RG32F,PF_RGB32F,PF_RGBA32F},//float
-                {PF_R64F,PF_RG64F,PF_RGB64F,PF_RGBA64F} //double
+                {PF_R64F,PF_RG64F,PF_RGB64F,PF_RGBA64F},//double
+                {PF_R8UN,PF_RG8UN,VK_FORMAT_UNDEFINED,PF_RGBA8UN}, //UByteNorm: R8_UNORM
             };
         }//namespace
 
@@ -102,6 +104,9 @@ namespace hgl
         const VkFormat GetVulkanFormat(const VertexInputAttribute *sa)
         {
             if(!sa)return VK_FORMAT_UNDEFINED;
+
+            if(sa->storage_format != VK_FORMAT_UNDEFINED)
+                return sa->storage_format;
 
             RANGE_CHECK_RETURN(VABaseType(sa->basetype),VK_FORMAT_UNDEFINED)
 

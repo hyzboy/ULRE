@@ -2,6 +2,7 @@
 
 #include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/shadergen/ShaderStageIO.h>
+#include<hgl/mtl/VertexAttributeSpec.h>
 
 namespace hgl::graph
 {
@@ -22,5 +23,6 @@ namespace hgl::graph
         int AddInput(VIAList &);
 
         int AddInput(const VAType &type,const VertexAttrib attrib);
+        int AddInput(const mtl::VertexAttributeSpec &spec);
     };//class ShaderCreateInfoVertex:public ShaderCreateInfo
 }//namespace hgl::graph

@@ -125,10 +125,18 @@ namespace
         ShaderCreateInfoVertex *vsc = mci->GetVertexShader();
         if (vsc)
         {
-            for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+            if (def.vertex_attribute_specs && def.vertex_attribute_spec_count > 0)
             {
-                const FixedVertexEntry &entry = def.vertex_entries[i];
-                vsc->AddInput(entry.type, entry.attrib);
+                for (uint32_t i = 0; i < def.vertex_attribute_spec_count; ++i)
+                    vsc->AddInput(def.vertex_attribute_specs[i]);
+            }
+            else
+            {
+                for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+                {
+                    const FixedVertexEntry &entry = def.vertex_entries[i];
+                    vsc->AddInput(entry.type, entry.attrib);
+                }
             }
         }
 

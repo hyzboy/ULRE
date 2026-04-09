@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/mtl/FixedVertexEntry.h>
+#include<hgl/mtl/VertexAttributeSpec.h>
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<hgl/mtl/InstanceDataLayout.h>
 #include<hgl/vk/VKPrimitiveType.h>
@@ -77,6 +78,8 @@ struct StaticMaterialDef
     const char *                mi_glsl_codes = nullptr;    ///< @deprecated Dead store — use mi_instance_layout
     uint32_t                    mi_struct_bytes = 0;        ///< @deprecated Dead store — use mi_instance_layout
     InstanceDataLayout          mi_instance_layout = InstanceDataLayout::None;
+    const VertexAttributeSpec * vertex_attribute_specs = nullptr;
+    uint32_t                    vertex_attribute_spec_count = 0;
 };
 
 }//namespace hgl::graph::mtl

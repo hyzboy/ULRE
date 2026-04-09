@@ -14,8 +14,9 @@ namespace hgl::graph
         UInt,
         Float,
         Double,
+        UByteNorm,      ///< uint8 written, GPU normalizes to float [0,1] (VK_FORMAT_R8_UNORM)
 
-        ENUM_CLASS_RANGE(Bool,Double)
+        ENUM_CLASS_RANGE(Bool,UByteNorm)
     };
 
     using VABaseType=VertexAttribBaseType;
@@ -38,7 +39,7 @@ namespace hgl::graph
         const bool Check()const
         {
             if(basetype<VertexAttribBaseType::Bool
-                ||basetype>VertexAttribBaseType::Double)return(false);
+                ||basetype>VertexAttribBaseType::UByteNorm)return(false);
 
             if(vec_size<=0||vec_size>4)return(false);
 
@@ -94,6 +95,8 @@ namespace hgl::graph
     constexpr const VAType VAT_VEC4 ={VABaseType::Float,4};
 
     constexpr const VAType VAT_DOUBLE={VABaseType::Double,1};
+
+    constexpr const VAType VAT_UNORM_BYTE={VABaseType::UByteNorm,1};  ///< uint8 vertex data, normalized to float [0,1] in shader
     constexpr const VAType VAT_DVEC2 ={VABaseType::Double,2};
     constexpr const VAType VAT_DVEC3 ={VABaseType::Double,3};
     constexpr const VAType VAT_DVEC4 ={VABaseType::Double,4};

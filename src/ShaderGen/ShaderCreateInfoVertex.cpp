@@ -23,14 +23,22 @@ int ShaderCreateInfoVertex::AddInput(VIAList &via_list)
 
 int ShaderCreateInfoVertex::AddInput(const VAType &type,const VertexAttrib attrib)
 {
-    VIA via;
+    return AddInput(mtl::MakeLegacyVertexAttributeSpec(type, attrib));
+}
 
-    via.attrib          =attrib;
+int ShaderCreateInfoVertex::AddInput(const mtl::VertexAttributeSpec &spec)
+{
+    VIA via{};
 
-    via.basetype        =(uint8) type.basetype;
-    via.vec_size        =        type.vec_size;
+    via.attrib = spec.attrib;
+    via.location = mtl::HasExplicitVertexLocation(spec)
+                 ? spec.location
+                 : static_cast<uint8>(vsdi->GetInput().count);
 
-    via.interpolation   =Interpolation::Smooth;
+    via.basetype = (uint8)spec.shader_type.basetype;
+    via.vec_size = spec.shader_type.vec_size;
+    via.storage_format = spec.storage_format;
+    via.interpolation = spec.interpolation;
 
     return vsdi->AddInput(via);
 }

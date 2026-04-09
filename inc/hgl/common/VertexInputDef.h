@@ -2,6 +2,7 @@
 
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/common/InterpolationDef.h>
+#include <hgl/vk/VKFormat.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/type/String.h>
 #include <compare>
@@ -22,6 +23,8 @@ namespace hgl::graph
 
         uint8   basetype;
         uint8   vec_size;
+
+        VkFormat            storage_format = VK_FORMAT_UNDEFINED;
 
         Interpolation       interpolation;
     };

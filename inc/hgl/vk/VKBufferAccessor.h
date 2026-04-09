@@ -476,6 +476,8 @@ public:
 // 常用类型定义 / Common type definitions
 using BufferAccessor1u8  = BufferAccessor<VB1u8>;
 using BufferAccessor1i8  = BufferAccessor<VB1i8>;
+using BufferAccessor1f   = BufferAccessor<VB1f>;
+using BufferAccessor1uf8 = BufferAccessor<VB1uf8>;  ///< uint8 UNORM — write 0-255, GPU reads as float 0.0-1.0
 using BufferAccessor2u8  = BufferAccessor<VB2u8>;
 using BufferAccessor2f   = BufferAccessor<VB2f>;
 using BufferAccessor3f   = BufferAccessor<VB3f>;

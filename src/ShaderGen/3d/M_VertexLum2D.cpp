@@ -8,7 +8,12 @@ namespace
 {
     constexpr FixedVertexEntry VERTEX_LUMINANCE_2D_VERTEX[] = {
         { VAT_VEC2, VAN::Position },
-        { VAT_FLOAT, VAN::Luminance },
+        { VAT_UNORM_BYTE, VAN::Luminance },
+    };
+
+    constexpr VertexAttributeSpec VERTEX_LUMINANCE_2D_VERTEX_SPECS[] = {
+        { VAN::Position,  VAT_VEC2,  PF_RG32F },
+        { VAN::Luminance, VAT_FLOAT, PF_R8UN  },
     };
 
     const UBOSemanticSet VERTEX_LUMINANCE_2D_UBOS = build3d::MakeViewportCameraUBOs();
@@ -25,6 +30,8 @@ namespace
         nullptr,
         nullptr, 0,
         InstanceDataLayout::Color4f,
+        VERTEX_LUMINANCE_2D_VERTEX_SPECS,
+        uint32_t(sizeof(VERTEX_LUMINANCE_2D_VERTEX_SPECS) / sizeof(VERTEX_LUMINANCE_2D_VERTEX_SPECS[0])),
     };
 }
 
