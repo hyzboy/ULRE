@@ -6,6 +6,7 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialTemplate.h>
+#include<hgl/vk/VKMaterialResourceDomain.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
@@ -134,7 +135,7 @@ namespace hgl::ecs
             SAFE_CLEAR(mit_buffer);
         }
 
-        prim_set.Clear();
+        slot_set.Clear();
         node_count = 0;
         material_instance_id_vk_buffer = VK_NULL_HANDLE;
         mit_data_bytes = 0;
@@ -145,29 +146,41 @@ namespace hgl::ecs
     {
         const size_t item_count = items.size();
 
-        prim_set.Clear();
+        slot_set.Clear();
 
-        // 收集所有唯一的 Primitive（每个 Primitive 占一个 domain MI 槽）
-        prim_set.Reserve(power_to_2(item_count));
+        // 收集唯一 MaterialSlot：优先使用 RenderItem resolved_slot（domain+mi_id），
+        // 无 resolved_slot 时回退到 Primitive* 去重，保证兼容旧路径。
+        slot_set.Reserve(power_to_2(item_count));
 
         for (RenderItem *item : items)
         {
             if (!item)
                 continue;
 
-            graph::Primitive *prim = item->GetPrimitive();
+            if (item->resolved_slot_valid && item->resolved_domain && item->resolved_mi_id >= 0)
+            {
+                const void* mi_data_ptr = item->resolved_domain->GetMIData(item->resolved_mi_id);
+                const uint32_t mit_bytes = item->resolved_mit_count * sizeof(uint32_t);
+                slot_set.AddResolved(item->resolved_domain,
+                                     item->resolved_mi_id,
+                                     mi_data_ptr,
+                                     item->resolved_mit_data,
+                                     mit_bytes);
+                continue;
+            }
 
+            graph::Primitive *prim = item->GetPrimitive();
             if (prim)
-                prim_set.Add(prim);
+                slot_set.AddPrimitive(prim);
         }
 
-        const size_t unique_prim_count = prim_set.GetCount();
+        const size_t unique_slot_count = slot_set.GetCount();
 
         // 检查是否超出材质支持的最大数量
-        if (material && unique_prim_count > material->GetMIMaxCount())
+        if (material && unique_slot_count > material->GetMIMaxCount())
         {
             std::cout << "[MaterialInstanceAssignmentBuffer::StatMaterialInstance] WARNING: prim count ("
-                      << unique_prim_count << ") exceeds material max count ("
+                      << unique_slot_count << ") exceeds material max count ("
                       << material->GetMIMaxCount() << ")" << std::endl;
         }
 
@@ -180,16 +193,16 @@ namespace hgl::ecs
                           << "(" << (material ? material->GetName().c_str() : "null") << ")"
                           << " mi_data_bytes=" << material_instance_data_bytes
                           << " items=" << item_count
-                          << " unique_prims=" << unique_prim_count
+                          << " unique_slots=" << unique_slot_count
                           << std::endl;
-                uint32_t prim_idx = 0;
-                for (graph::Primitive* prim : prim_set)
+                uint32_t slot_idx = 0;
+                for (const auto &entry : slot_set)
                 {
-                    std::cout << "[MIAB::Stat]   Prim[" << prim_idx++
-                              << "] ptr=" << (void*)prim
-                              << " domain=" << (prim ? (void*)prim->GetDomain() : nullptr)
-                              << " mi_id=" << (prim ? prim->GetMIID() : -1)
-                              << " data=" << (prim ? prim->GetMIData() : nullptr)
+                    std::cout << "[MIAB::Stat]   Slot[" << slot_idx++
+                              << "] domain=" << (void*)entry.domain
+                              << " mi_id=" << entry.mi_id
+                              << " prim_fallback=" << (void*)entry.primitive_fallback
+                              << " data=" << entry.mi_data_ptr
                               << std::endl;
                 }
             }
@@ -198,7 +211,7 @@ namespace hgl::ecs
         // MI 数据上传与 MI ID 分发解耦：仅当存在 MI payload 时才分配/写入 MI SSBO
         if (material_instance_data_bytes > 0)
         {
-            const size_t needed = prim_set.GetCount();
+            const size_t needed = slot_set.GetCount();
 
             if (!material_instance_buffer || material_instance_buffer->GetGPUBuffer()->GetSize() < material_instance_data_bytes * needed)
             {
@@ -225,13 +238,16 @@ namespace hgl::ecs
             else
             {
                 auto *mibuf = material_instance_buffer->GetGPUBuffer();
-                uint8* mip = mibuf ? (uint8*)mibuf->Map(0, material_instance_data_bytes * prim_set.GetCount()) : nullptr;
+                uint8* mip = mibuf ? (uint8*)mibuf->Map(0, material_instance_data_bytes * slot_set.GetCount()) : nullptr;
 
                 if (mip)
                 {
-                    for (graph::Primitive* prim : prim_set)
+                    for (const auto &entry : slot_set)
                     {
-                        const void *mi_data = prim ? prim->GetMIData() : nullptr;
+                        const void *mi_data = entry.mi_data_ptr;
+
+                        if (!mi_data && entry.primitive_fallback)
+                            mi_data = entry.primitive_fallback->GetMIData();
 
                         if (mi_data)
                             memcpy(mip, mi_data, material_instance_data_bytes);
@@ -251,11 +267,17 @@ namespace hgl::ecs
             // Detect MIT entry size from the first Primitive that has MIT data
             if (mit_data_bytes == 0)
             {
-                for (graph::Primitive* prim : prim_set)
+                for (const auto &entry : slot_set)
                 {
-                    if (prim && prim->GetMITDataBytes() > 0)
+                    if (entry.mit_data_bytes > 0)
                     {
-                        mit_data_bytes = prim->GetMITDataBytes();
+                        mit_data_bytes = entry.mit_data_bytes;
+                        break;
+                    }
+
+                    if (entry.primitive_fallback && entry.primitive_fallback->GetMITDataBytes() > 0)
+                    {
+                        mit_data_bytes = entry.primitive_fallback->GetMITDataBytes();
                         break;
                     }
                 }
@@ -263,7 +285,7 @@ namespace hgl::ecs
 
             if (mit_data_bytes > 0)
             {
-                const size_t needed = prim_set.GetCount();
+                const size_t needed = slot_set.GetCount();
 
                 // Allocate or reallocate MIT SSBO as needed
                 if (!mit_buffer || mit_buffer_max_count < needed)
@@ -287,15 +309,28 @@ namespace hgl::ecs
                 if (mit_buffer)
                 {
                     auto *mitgpu = mit_buffer->GetGPUBuffer();
-                    uint8_t* mitp = mitgpu ? (uint8_t*)mitgpu->Map(0, mit_data_bytes * prim_set.GetCount()) : nullptr;
+                    uint8_t* mitp = mitgpu ? (uint8_t*)mitgpu->Map(0, mit_data_bytes * slot_set.GetCount()) : nullptr;
 
                     if (mitp)
                     {
-                        for (graph::Primitive* prim : prim_set)
+                        for (const auto &entry : slot_set)
                         {
-                            const void* mit_data = prim ? prim->GetMITData() : nullptr;
+                            const void* mit_data = entry.mit_data_ptr;
+                            uint32_t src_bytes = entry.mit_data_bytes;
+
+                            if ((!mit_data || src_bytes == 0) && entry.primitive_fallback)
+                            {
+                                mit_data = entry.primitive_fallback->GetMITData();
+                                src_bytes = entry.primitive_fallback->GetMITDataBytes();
+                            }
+
                             if (mit_data)
-                                memcpy(mitp, mit_data, mit_data_bytes);
+                            {
+                                const uint32_t copy_bytes = std::min<uint32_t>(mit_data_bytes, src_bytes);
+                                memcpy(mitp, mit_data, copy_bytes);
+                                if (copy_bytes < mit_data_bytes)
+                                    memset(mitp + copy_bytes, 0, mit_data_bytes - copy_bytes);
+                            }
                             else
                                 memset(mitp, 0, mit_data_bytes);
                             mitp += mit_data_bytes;
@@ -331,8 +366,16 @@ namespace hgl::ecs
         if (!mip)
             return;
 
-        graph::Primitive* prim = item->GetPrimitive();
-        *mip = prim ? static_cast<uint32_t>(prim_set.Find(prim)) : 0u;
+        uint16 mi_index = 0;
+        if (item->resolved_slot_valid && item->resolved_domain && item->resolved_mi_id >= 0)
+            mi_index = slot_set.FindResolved(item->resolved_domain, item->resolved_mi_id);
+        else
+        {
+            graph::Primitive* prim = item->GetPrimitive();
+            mi_index = prim ? slot_set.FindPrimitive(prim) : 0;
+        }
+
+        *mip = static_cast<uint32_t>(mi_index);
 
         gpu->Unmap();
     }
@@ -350,7 +393,7 @@ namespace hgl::ecs
         // 1. 收集并写入材质实例数据
         StatMaterialInstance(items);
 
-        if (prim_set.GetCount() == 0)
+        if (slot_set.GetCount() == 0)
         {
             std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: No Primitives collected" << std::endl;
             return;
@@ -361,7 +404,7 @@ namespace hgl::ecs
             static uint32_t s_write_tick = 0;
             if (++s_write_tick <= 3u)
                 std::cout << "[MIAB::Write] items=" << item_count
-                          << " unique_prims=" << prim_set.GetCount()
+                          << " unique_slots=" << slot_set.GetCount()
                           << " mi_id_buf=" << (void*)material_instance_id_buffer
                           << " mi_data_buf=" << (void*)material_instance_buffer
                           << std::endl;
@@ -443,8 +486,14 @@ namespace hgl::ecs
                     continue;
                 }
 
-                graph::Primitive* prim = item->GetPrimitive();
-                uint16 mi_index = prim ? prim_set.Find(prim) : 0;
+                uint16 mi_index = 0;
+                if (item->resolved_slot_valid && item->resolved_domain && item->resolved_mi_id >= 0)
+                    mi_index = slot_set.FindResolved(item->resolved_domain, item->resolved_mi_id);
+                else
+                {
+                    graph::Primitive* prim = item->GetPrimitive();
+                    mi_index = prim ? slot_set.FindPrimitive(prim) : 0;
+                }
                 *mid_ptr++ = static_cast<uint32_t>(mi_index);
 
                 // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个

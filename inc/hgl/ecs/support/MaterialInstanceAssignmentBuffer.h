@@ -16,61 +16,123 @@
 namespace hgl::graph
 {
     class BufferManager;
+    class MaterialResourceDomain;
 }
 
 namespace hgl::ecs
 {
+    struct MaterialSlotEntry
+    {
+        graph::MaterialResourceDomain* domain = nullptr;
+        int mi_id = -1;
+        graph::Primitive* primitive_fallback = nullptr;
+        const void* mi_data_ptr = nullptr;
+        const void* mit_data_ptr = nullptr;
+        uint32_t mit_data_bytes = 0;
+    };
+
     /**
-     * Primitive 集合 - 用于去重和 SSBO 槽位索引管理（B6: 替代 MaterialInstanceSet）
+     * MaterialSlot 集合 - 优先按 domain+mi_id 去重；
+     * 无 resolved slot 时回退按 Primitive* 去重。
      */
-    class PrimitiveSet
+    class MaterialSlotSet
     {
     private:
-        std::vector<graph::Primitive*> instances;
-        hgl::UnorderedMap<graph::Primitive*, uint16> index_map;
+        std::vector<MaterialSlotEntry> entries;
+        hgl::UnorderedMap<uint64_t, uint16> slot_index_map;
+        hgl::UnorderedMap<graph::Primitive*, uint16> primitive_index_map;
+
+        static uint64_t MakeSlotKey(graph::MaterialResourceDomain* domain, int mi_id)
+        {
+            const uint64_t d = uint64_t(reinterpret_cast<uintptr_t>(domain));
+            const uint32_t id = static_cast<uint32_t>(mi_id);
+            return (d << 32) ^ uint64_t(id);
+        }
 
     public:
         void Clear()
         {
-            instances.clear();
-            index_map.Clear();
+            entries.clear();
+            slot_index_map.Clear();
+            primitive_index_map.Clear();
         }
 
         void Reserve(size_t count)
         {
-            instances.reserve(count);
-            index_map.Reserve(count);
+            entries.reserve(count);
+            slot_index_map.Reserve(count);
+            primitive_index_map.Reserve(count);
         }
 
-        void Add(graph::Primitive* prim)
+        uint16 AddResolved(graph::MaterialResourceDomain* domain,
+                           int mi_id,
+                           const void* mi_data_ptr,
+                           const void* mit_data_ptr,
+                           uint32_t mit_data_bytes)
+        {
+            if (!domain || mi_id < 0)
+                return 0;
+
+            const uint64_t key = MakeSlotKey(domain, mi_id);
+            if (auto p = slot_index_map.GetValuePointer(key))
+                return *p;
+
+            const uint16 index = static_cast<uint16>(entries.size());
+            MaterialSlotEntry e;
+            e.domain = domain;
+            e.mi_id = mi_id;
+            e.mi_data_ptr = mi_data_ptr;
+            e.mit_data_ptr = mit_data_ptr;
+            e.mit_data_bytes = mit_data_bytes;
+            entries.push_back(e);
+            slot_index_map[key] = index;
+            return index;
+        }
+
+        uint16 AddPrimitive(graph::Primitive* prim)
         {
             if (!prim)
-                return;
+                return 0;
 
-            if (!index_map.ContainsKey(prim))
-            {
-                uint16 index = static_cast<uint16>(instances.size());
-                instances.push_back(prim);
-                index_map[prim] = index;
-            }
+            if (auto p = primitive_index_map.GetValuePointer(prim))
+                return *p;
+
+            const uint16 index = static_cast<uint16>(entries.size());
+            MaterialSlotEntry e;
+            e.primitive_fallback = prim;
+            entries.push_back(e);
+            primitive_index_map[prim] = index;
+            return index;
         }
 
-        uint16 Find(graph::Primitive* prim) const
+        uint16 FindResolved(graph::MaterialResourceDomain* domain, int mi_id) const
         {
-            auto index = index_map.GetValuePointer(prim);
-            return index ? *index : 0;
+            if (!domain || mi_id < 0)
+                return 0;
+
+            const uint64_t key = MakeSlotKey(domain, mi_id);
+            auto p = slot_index_map.GetValuePointer(key);
+            return p ? *p : 0;
         }
 
-        size_t GetCount() const { return instances.size(); }
-        size_t GetAllocCount() const { return instances.capacity(); }
+        uint16 FindPrimitive(graph::Primitive* prim) const
+        {
+            auto p = primitive_index_map.GetValuePointer(prim);
+            return p ? *p : 0;
+        }
 
-        const std::vector<graph::Primitive*>& GetInstances() const { return instances; }
+        size_t GetCount() const { return entries.size(); }
+        const MaterialSlotEntry* GetEntry(size_t i) const
+        {
+            if (i >= entries.size())
+                return nullptr;
+            return &entries[i];
+        }
 
-        // 迭代器支持
-        auto begin() { return instances.begin(); }
-        auto end() { return instances.end(); }
-        auto begin() const { return instances.begin(); }
-        auto end() const { return instances.end(); }
+        auto begin() { return entries.begin(); }
+        auto end() { return entries.end(); }
+        auto begin() const { return entries.begin(); }
+        auto end() const { return entries.end(); }
     };
 
     /**
@@ -89,7 +151,7 @@ namespace hgl::ecs
         graph::MaterialTemplate* material;              ///<所属材质
 
     private:    // 材质实例数据
-        PrimitiveSet prim_set;              ///<Primitive 集合（按 mi_id 去重，B6）
+        MaterialSlotSet slot_set;           ///<MaterialSlot 集合（domain+mi_id 优先，Primitive* 回退）
 
         uint32_t material_instance_data_bytes;      ///<单个材质实例数据字节数
         graph::DeviceBuffer* material_instance_buffer;  ///<材质实例数据(UBO/SSBO)

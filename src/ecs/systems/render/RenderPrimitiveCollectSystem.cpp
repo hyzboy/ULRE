@@ -178,6 +178,8 @@ namespace hgl::ecs
             {
                 static uint32_t s_semantic_enter = 0;
                 const bool log_semantic_entry = (++s_semantic_enter <= 6u);
+                graph::PrimitiveMaterialSlot resolved_slot_snapshot;
+                bool has_resolved_slot_snapshot = false;
                 
                 auto *gc = world->GetGraphicsContext();
                 auto *registry = gc ? gc->GetMaterialAssetRegistry() : nullptr;
@@ -315,6 +317,8 @@ namespace hgl::ecs
                         if (slot.material_template)
                         {
                             primitive->BindMaterialSlot(slot);
+                            resolved_slot_snapshot = slot;
+                            has_resolved_slot_snapshot = true;
                             if (log_resolve)
                                 LogDebug("[RenderPrimitiveCollect::BindMaterialSlot] prim='%s' bound. GetMaterialTemplate now=%p mi_id=%d",
                                          primitive->GetGeometryName().c_str(),
@@ -328,9 +332,50 @@ namespace hgl::ecs
                         }
                     }
                 }
+
+                auto item = std::make_unique<PrimitiveRenderItem>(entity_id, transform, primitiveComp, world);
+
+                if (domain_direct_mi_ssbo_enabled && has_resolved_slot_snapshot)
+                    item->SetResolvedMaterialSlot(resolved_slot_snapshot);
+
+                glm::vec3 worldPos = transform->GetWorldPosition();
+                item->worldPosition = worldPos;
+                glm::vec3 toCamera = worldPos - camera_pos;
+                item->distanceToCamera = glm::length(toCamera);
+
+                item->UpdateWorldMatrix();
+
+                if (primitive && primitive->HasDeferredMI() && !semantic_runtime_resolve_enabled)
+                    ++deferred_no_resolve;
+
+                cache.renderItems.push_back(std::unique_ptr<RenderItem>(std::move(item)));
+                cache.renderableCount++;
+                ++added;
+                continue;
             }
 
             auto item = std::make_unique<PrimitiveRenderItem>(entity_id, transform, primitiveComp, world);
+
+            if (domain_direct_mi_ssbo_enabled)
+            {
+                auto *primitive_for_slot = primitiveComp->GetPrimitive();
+                if (primitive_for_slot && primitive_for_slot->GetDomain() && primitive_for_slot->GetMIID() >= 0)
+                {
+                    graph::PrimitiveMaterialSlot resolved_slot_snapshot;
+                    resolved_slot_snapshot.material_template = primitive_for_slot->GetMaterialTemplate();
+                    resolved_slot_snapshot.domain = primitive_for_slot->GetDomain();
+                    resolved_slot_snapshot.mi_id = primitive_for_slot->GetMIID();
+                    resolved_slot_snapshot.vil = primitive_for_slot->GetVIL();
+                    resolved_slot_snapshot.preset = primitive_for_slot->GetRenderPreset();
+                    resolved_slot_snapshot.texture_array_slot_flags = resolved_slot_snapshot.material_template
+                        ? resolved_slot_snapshot.material_template->GetTextureArraySlotFlags()
+                        : 0;
+                    resolved_slot_snapshot.mit_data = reinterpret_cast<const uint32_t*>(primitive_for_slot->GetMITData());
+                    resolved_slot_snapshot.mit_data_count = primitive_for_slot->GetMITDataBytes() / sizeof(uint32_t);
+                    resolved_slot_snapshot.material_preset = primitive_for_slot->GetMaterialPreset();
+                    item->SetResolvedMaterialSlot(resolved_slot_snapshot);
+                }
+            }
 
             glm::vec3 worldPos = transform->GetWorldPosition();
             item->worldPosition = worldPos;

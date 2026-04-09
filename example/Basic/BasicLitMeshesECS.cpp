@@ -50,6 +50,8 @@ private:
     const VIL* material_vil = nullptr;
     SemanticMaterialId standard_semantic_id = 0;
     VertexDataManager* mesh_vdm = nullptr;
+    mtl::StandardMaterialInstance standard_mi_data{};
+    bool mi_data_initialized = false;
 
     RenderMesh* rm_floor = nullptr;
 
@@ -77,11 +79,11 @@ private:
                 {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::None, "res/image/Brickwall/Normal.Tex2D"},
             },
         };
-        mtl::StandardMaterialInstance mi_data{};
-        mi_data.base_color = 0xFFFFFFFFu;
-        mi_data.metallic = 0.08f;
-        mi_data.roughness = 0.92f;
-        mi_data.normal_scale = 0.35f;
+        standard_mi_data = {};
+        standard_mi_data.base_color = 0xFFFFFFFFu;
+        standard_mi_data.metallic = 0.08f;
+        standard_mi_data.roughness = 0.92f;
+        standard_mi_data.normal_scale = 0.35f;
 
         standard_semantic_id = RegisterSemanticMaterial(kStandardCfg);
         if (standard_semantic_id == 0)
@@ -544,6 +546,32 @@ public:
             return false;
 
         return true;
+    }
+
+    void Tick(double delta_time) override
+    {
+        if (!mi_data_initialized && !meshes.empty())
+        {
+            size_t ready_count = 0;
+
+            for (const auto &mesh_ptr : meshes)
+            {
+                auto *rm = mesh_ptr.get();
+                if (!rm || !rm->primitive)
+                    continue;
+
+                if (rm->primitive->GetMIData())
+                {
+                    rm->primitive->WriteMIData(standard_mi_data);
+                    ++ready_count;
+                }
+            }
+
+            if (ready_count == meshes.size())
+                mi_data_initialized = true;
+        }
+
+        WorkObject::Tick(delta_time);
     }
 };
 
