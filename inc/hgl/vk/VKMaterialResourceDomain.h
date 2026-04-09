@@ -2,6 +2,8 @@
 
 #include <hgl/mtl/InstanceDataLayout.h>
 
+#include <cstdint>
+
 namespace hgl
 {
     class ActiveMemoryBlockManager;
@@ -9,6 +11,9 @@ namespace hgl
 
 namespace hgl::graph
 {
+
+class BufferManager;
+class DeviceBuffer;
 
 /**
  * 资源域 (MaterialResourceDomain)
@@ -25,6 +30,29 @@ class MaterialResourceDomain
     uint8_t                  texture_array_slot_flags = 0;       ///< 供方：该域提供哪些 TextureArray slot
 
     hgl::ActiveMemoryBlockManager *mi_data_manager = nullptr;    ///< 该域独立的 MI 数据池
+
+    // ----------------------------------------------------------------
+    // Phase C: domain-owned GPU buffers (transitional)
+    // ----------------------------------------------------------------
+    BufferManager *buffer_manager = nullptr;
+    DeviceBuffer  *mi_gpu_buffer  = nullptr;
+    DeviceBuffer  *mit_gpu_buffer = nullptr;
+
+    uint32_t mi_gpu_capacity  = 0;   ///< MI element capacity
+    uint32_t mit_gpu_capacity = 0;   ///< MIT uint32 capacity
+
+    bool mi_dirty = false;
+    uint32_t mi_dirty_begin = 0;
+    uint32_t mi_dirty_end = 0;       ///< one past end
+
+    bool mit_dirty = false;
+    uint32_t mit_dirty_begin = 0;
+    uint32_t mit_dirty_end = 0;      ///< one past end
+
+    uint64_t mi_uploaded_bytes_total = 0;
+    uint64_t mit_uploaded_bytes_total = 0;
+    uint32_t mi_full_upload_fallback_count = 0;
+    uint32_t mit_full_upload_fallback_count = 0;
 
 private:
 
@@ -67,6 +95,39 @@ public:
      * 获取指定槽位的原始数据指针。
      */
     void *GetMIData(int mi_id);
+
+    // ----------------------------------------------------------------
+    // Phase C (transitional): domain-owned SSBO helpers
+    // ----------------------------------------------------------------
+
+    bool EnsureMIBuffer(BufferManager *bm, uint32_t min_mi_count, bool allow_recreate = true);
+    bool EnsureMITBuffer(BufferManager *bm, uint32_t min_uint_count, bool allow_recreate = true);
+
+    DeviceBuffer *GetMIGPUBuffer() const { return mi_gpu_buffer; }
+    DeviceBuffer *GetMITGPUBuffer() const { return mit_gpu_buffer; }
+
+    uint32_t GetMIGPUCapacity() const { return mi_gpu_capacity; }
+    uint32_t GetMITGPUCapacity() const { return mit_gpu_capacity; }
+
+    bool HasMIDirtyRange() const { return mi_dirty; }
+    bool HasMITDirtyRange() const { return mit_dirty; }
+    uint32_t GetMIDirtyBegin() const { return mi_dirty_begin; }
+    uint32_t GetMIDirtyEnd() const { return mi_dirty_end; }
+    uint32_t GetMITDirtyBegin() const { return mit_dirty_begin; }
+    uint32_t GetMITDirtyEnd() const { return mit_dirty_end; }
+
+    void MarkMIDirtyRange(uint32_t begin, uint32_t count);
+    void MarkMITDirtyRange(uint32_t begin, uint32_t count);
+    void ClearMIDirtyRange();
+    void ClearMITDirtyRange();
+
+    bool UploadMIDirtyRange();
+    bool UploadMITDirtyRange(const uint32_t *mit_source_data, uint32_t mit_source_count);
+
+    uint64_t GetMIUploadedBytesTotal() const { return mi_uploaded_bytes_total; }
+    uint64_t GetMITUploadedBytesTotal() const { return mit_uploaded_bytes_total; }
+    uint32_t GetMIFullUploadFallbackCount() const { return mi_full_upload_fallback_count; }
+    uint32_t GetMITFullUploadFallbackCount() const { return mit_full_upload_fallback_count; }
 
 }; // class MaterialResourceDomain
 
