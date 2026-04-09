@@ -21,6 +21,7 @@
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -522,6 +523,13 @@ public:
 
         if (!InitCamera())
             return false;
+
+        if (auto render_collect = ecs_world->GetSystem<RenderPrimitiveCollectSystem>())
+        {
+            render_collect->SetSemanticRuntimeResolveEnabled(true);
+            render_collect->SetDomainDirectMISsboEnabled(true);
+            printf("[PBRColor3DSpheresECS] Enabled domain-direct MI SSBO collect path for shared-primitive validation.\n");
+        }
 
         return true;
     }

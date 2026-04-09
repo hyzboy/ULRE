@@ -27,6 +27,7 @@
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -79,7 +80,7 @@ private:
 
     VertexDataManager * mesh_vdm = nullptr;
     Geometry *          builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
-    Primitive *         sphere_primitives[GRID_SIZE][GRID_SIZE]{};
+    Primitive *         base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
     // One MI per cell: col controls metallic, row controls roughness
     mtl::StandardMaterialInstance   sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
@@ -512,19 +513,14 @@ private:
             return false;
         }
 
-        for (uint row = 0; row < GRID_SIZE; ++row)
+        for (uint col = 0; col < GEOMETRY_VARIANT_COUNT; ++col)
         {
-            for (uint col = 0; col < GRID_SIZE; ++col)
-            {
-                // Each sphere must own an independent Primitive slot; sharing Primitive
-                // collapses MI assignment to per-Primitive granularity.
-                sphere_primitives[row][col] = primitive_manager->CreatePrimitive(
-                    builtin_geometries[col], sphere_mi[row][col]->ToSlot());
+            base_primitives[col] = primitive_manager->CreatePrimitive(
+                builtin_geometries[col], sphere_mi[0][col]->ToSlot());
 
-                if (!sphere_primitives[row][col]) {
-                    printf("[ERROR] CreateBasePrimitives: Failed to create primitive [%u][%u]\n", row, col);
-                    return false;
-                }
+            if (!base_primitives[col]) {
+                printf("[ERROR] CreateBasePrimitives: Failed to create primitive %u\n", col);
+                return false;
             }
         }
 
@@ -565,7 +561,8 @@ private:
                 transform->SetMovable(true);
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
-                prim_comp->SetPrimitive(sphere_primitives[row][col]);
+                prim_comp->SetPrimitive(base_primitives[col]);
+                prim_comp->SetMIIDOverride(sphere_mi[row][col]->GetMIID());
                 prim_comp->SetVisible(true);
             }
         }
@@ -676,12 +673,9 @@ public:
 
     ~TestApp()
     {
-        for (uint row = 0; row < GRID_SIZE; ++row)
+        for (uint col = 0; col < GEOMETRY_VARIANT_COUNT; ++col)
         {
-            for (uint col = 0; col < GRID_SIZE; ++col)
-            {
-                SAFE_CLEAR(sphere_primitives[row][col])
-            }
+            SAFE_CLEAR(base_primitives[col])
         }
 
         SAFE_CLEAR(mesh_vdm)
@@ -731,6 +725,13 @@ public:
 
         if (!InitCamera())
             return false;
+
+        if (auto render_collect = ecs_world->GetSystem<RenderPrimitiveCollectSystem>())
+        {
+            render_collect->SetSemanticRuntimeResolveEnabled(true);
+            render_collect->SetDomainDirectMISsboEnabled(true);
+            printf("[PBRSpheresECS] Enabled domain-direct MI SSBO collect path for shared-primitive validation.\n");
+        }
 
         return true;
     }

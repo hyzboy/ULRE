@@ -336,7 +336,13 @@ namespace hgl::ecs
                 auto item = std::make_unique<PrimitiveRenderItem>(entity_id, transform, primitiveComp, world);
 
                 if (domain_direct_mi_ssbo_enabled && has_resolved_slot_snapshot)
+                {
+                    const int override_mi_id = primitiveComp ? primitiveComp->GetMIIDOverride() : -1;
+                    if (override_mi_id >= 0 && resolved_slot_snapshot.domain)
+                        resolved_slot_snapshot.mi_id = override_mi_id;
+
                     item->SetResolvedMaterialSlot(resolved_slot_snapshot);
+                }
 
                 glm::vec3 worldPos = transform->GetWorldPosition();
                 item->worldPosition = worldPos;
@@ -359,12 +365,17 @@ namespace hgl::ecs
             if (domain_direct_mi_ssbo_enabled)
             {
                 auto *primitive_for_slot = primitiveComp->GetPrimitive();
-                if (primitive_for_slot && primitive_for_slot->GetDomain() && primitive_for_slot->GetMIID() >= 0)
+                const int override_mi_id = primitiveComp ? primitiveComp->GetMIIDOverride() : -1;
+                const int resolved_mi_id = override_mi_id >= 0
+                                         ? override_mi_id
+                                         : (primitive_for_slot ? primitive_for_slot->GetMIID() : -1);
+
+                if (primitive_for_slot && primitive_for_slot->GetDomain() && resolved_mi_id >= 0)
                 {
                     graph::PrimitiveMaterialSlot resolved_slot_snapshot;
                     resolved_slot_snapshot.material_template = primitive_for_slot->GetMaterialTemplate();
                     resolved_slot_snapshot.domain = primitive_for_slot->GetDomain();
-                    resolved_slot_snapshot.mi_id = primitive_for_slot->GetMIID();
+                    resolved_slot_snapshot.mi_id = resolved_mi_id;
                     resolved_slot_snapshot.vil = primitive_for_slot->GetVIL();
                     resolved_slot_snapshot.preset = primitive_for_slot->GetRenderPreset();
                     resolved_slot_snapshot.texture_array_slot_flags = resolved_slot_snapshot.material_template
