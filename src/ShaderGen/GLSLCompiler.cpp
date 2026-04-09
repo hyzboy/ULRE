@@ -3,7 +3,6 @@
 #include"SPVParseData.h"
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/platform/ExternalModule.h>
-#include<hgl/type/StringList.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/log/Logger.h>
 #include<hgl/shadergen/device/DeviceProfileTargetVersion.h>

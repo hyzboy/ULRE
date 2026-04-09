@@ -3,6 +3,7 @@
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/type/OrderedSet.h>
 #include<hgl/vk/VKVertexInputAttribute.h>
+#include <vector>
 
 namespace hgl::graph{
 class VILConfig;
@@ -51,5 +52,6 @@ public:
 };//class VertexInput
 
 VertexInput *GetVertexInput(const VIAArray &);
+VertexInput *GetVertexInput(const std::vector<VIA> &);
 void ReleaseVertexInput(VertexInput *);
 }//namespace hgl::graph

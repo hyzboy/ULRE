@@ -10,7 +10,7 @@ ShaderCreateInfoVertex::ShaderCreateInfoVertex(MaterialDescriptorDB *m)
 
 // Legacy path: Direct VIA list input bypasses ValidateVertexAttributeSpec() checks.
 // This exists only for backwards compatibility; new call sites should use AddInput(VertexAttributeSpec).
-int ShaderCreateInfoVertex::AddInput(VIAList &via_list)
+int ShaderCreateInfoVertex::AddInput(std::vector<VIA> &via_list)
 {
     int count=0;
 
@@ -38,7 +38,7 @@ int ShaderCreateInfoVertex::AddInput(const mtl::VertexAttributeSpec &spec)
     via.attrib = spec.attrib;
     via.location = mtl::HasExplicitVertexLocation(spec)
                  ? spec.location
-                 : static_cast<uint8>(vsdi->GetInput().count);
+                 : static_cast<uint8>(vsdi->GetInput().size());
 
     via.basetype = (uint8)spec.shader_type.basetype;
     via.vec_size = spec.shader_type.vec_size;

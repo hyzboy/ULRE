@@ -4,6 +4,7 @@
 #include<cassert>
 #include<hgl/type/ObjectManager.h>
 #include<cstdio>
+#include <string>
 
 namespace hgl::graph{
 VertexInputConfig::VertexInputConfig(const VIAArray &viaa)
@@ -173,15 +174,15 @@ namespace
     constexpr const uint VertexInputAttributeBytes=sizeof(VertexInputAttribute);
     constexpr const uint VIAIndexLength=(VertexInputAttributeBytes)*16;
 
-    ManagedObjectRegistry<AnsiString,VertexInput> vertex_input_manager;
+    ManagedObjectRegistry<std::string,VertexInput> vertex_input_manager;
 
     //完全没必要的管理
 
     //VIAArray+VertexInput 就算有1024个，也没多少内存占用。完全没必要搞什么引用计数管理
 
-    void MakeVIIndex(AnsiString &result,const VIAArray &viaa)
+    void MakeVIIndex(std::string &result,const VIAArray &viaa)
     {
-        result=AnsiString::numberOf(viaa.count);
+        result=std::to_string(viaa.count);
 
         const VertexInputAttribute *via=viaa.items;
 
@@ -191,7 +192,7 @@ namespace
 
             result+=GetVertexAttribName(via->attrib);
             result+="\",location:";
-            result+=AnsiString::numberOf(via->location);
+            result+=std::to_string(via->location);
             result+=",type:";
             result+=GetVertexAttribName((VABaseType)via->basetype,via->vec_size);
 
@@ -207,7 +208,7 @@ namespace
 
 VertexInput *GetVertexInput(const VIAArray &saa)
 {
-    AnsiString index;
+    std::string index;
 
     MakeVIIndex(index,saa);
 
@@ -221,6 +222,23 @@ VertexInput *GetVertexInput(const VIAArray &saa)
     }
 
     return vi;
+}
+
+VertexInput *GetVertexInput(const std::vector<VIA> &vias)
+{
+    VIAArray via_array;
+
+    const uint count=static_cast<uint>(vias.size());
+    if(count>0)
+    {
+        if(!via_array.Init(count))
+            return nullptr;
+
+        for(uint i=0;i<count;i++)
+            via_array.items[i]=vias[i];
+    }
+
+    return GetVertexInput(via_array);
 }
 
 void ReleaseVertexInput(VertexInput *vi)

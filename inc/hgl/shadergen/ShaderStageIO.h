@@ -48,20 +48,30 @@ public:
 
 class VertexShaderStageIO : public ShaderStageIO
 {
-    VIAArray input;
-    SVArray  output;
+    std::vector<VIA> input;
 
 public:
 
     VertexShaderStageIO() : ShaderStageIO(ShaderStage::Vertex) {}
     virtual ~VertexShaderStageIO() override = default;
 
-    bool AddInput(VIA &item) { return input.Add(item); }
+    bool AddInput(VIA &item)
+    {
+        for(const auto &existing:input)
+        {
+            if(existing.attrib==item.attrib)
+                return false;
+        }
+
+        item.location=static_cast<uint8>(input.size());
+        input.push_back(item);
+        return true;
+    }
 
 public:
 
-    VIAArray       &GetInput()       { return input; }
-    const VIAArray &GetInput() const { return input; }
+    std::vector<VIA>       &GetInput()       { return input; }
+    const std::vector<VIA> &GetInput() const { return input; }
 };//class VertexShaderStageIO
 
 class FragmentShaderStageIO : public ShaderStageIO

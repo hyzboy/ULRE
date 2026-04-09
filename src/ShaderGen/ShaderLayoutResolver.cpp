@@ -2,7 +2,7 @@
 ///
 /// Builds ShaderLayoutContract from a MaterialCreateInfo after Resort() has run.
 /// Three buckets are filled:
-///   1. vertex_locations  — from VIAArray (ShaderCreateInfoVertex::GetInput)
+///   1. vertex_locations  — from std::vector<VIA> (ShaderCreateInfoVertex::GetInput)
 ///   2. descriptor_sets   — one entry per non-empty ShaderDescriptorSet
 ///   3. descriptor_bindings — one entry per individual ShaderDescriptor
 
@@ -138,10 +138,9 @@ ShaderLayoutContract BuildShaderLayoutContract(const mtl::MaterialCreateInfo &mc
     const ShaderCreateInfoVertex *vsc = mci.GetVertexShader();
     if (vsc)
     {
-        const VIAArray &via_array = vsc->GetInput();
-        for (uint i = 0; i < via_array.count; ++i)
+        const std::vector<VIA> &via_array = vsc->GetInput();
+        for (const VIA &via : via_array)
         {
-            const VIA &via = via_array.items[i];
             const std::string macro = GetVertexAttribLocationMacroName(via.attrib);
             if (!macro.empty())
                 contract.vertex_locations.push_back({ macro, static_cast<int>(via.location) });
