@@ -514,6 +514,10 @@ namespace hgl::ecs
         if (!world)
             return;
 
+        bool domain_direct_enabled = false;
+        if (auto collect_system = world->GetSystem<RenderPrimitiveCollectSystem>())
+            domain_direct_enabled = collect_system->GetDomainDirectMISsboEnabled();
+
         const uint64_t vkcreate_at_start = graph::RenderTargetFormat::GetVkCreateCount();
         const uint64_t outside = ComputeOutsideBatchPipelineCreation(vkcreate_at_start,
                                                                      g_pipeline_batch_phase_tracker);
@@ -545,11 +549,31 @@ namespace hgl::ecs
             if (!item || !item->isVisible)
                 continue;
 
-            auto* material = item->GetMaterial();
             auto* primitive = item->GetPrimitive();
-            graph::GraphicsPipeline* pipeline = nullptr;
+            const bool use_resolved_slot = domain_direct_enabled && item->resolved_slot_valid;
+
+            auto* material = use_resolved_slot
+                           ? item->resolved_material_template
+                           : item->GetMaterial();
+
+            auto* domain = use_resolved_slot
+                         ? item->resolved_domain
+                         : (primitive ? primitive->GetDomain() : nullptr);
+
+            const graph::VIL* effective_vil = nullptr;
+            graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid3D;
 
             if (primitive)
+                preset = primitive->GetRenderPreset();
+
+            if (use_resolved_slot)
+                effective_vil = item->resolved_vil;
+            else if (primitive)
+                effective_vil = primitive->GetVIL();
+
+            graph::GraphicsPipeline* pipeline = nullptr;
+
+            if (primitive && !use_resolved_slot)
             {
                 seen_primitives.insert(primitive);
 
@@ -563,19 +587,11 @@ namespace hgl::ecs
             if (material && render_format)
             {
                 const graph::GraphicsPipelineData* pipeline_data = nullptr;
-                const graph::VIL* vil = nullptr;
                 bool prim_restart = false;
-                graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid3D;
 
-                if (primitive)
+                if (!effective_vil)
                 {
-                    vil = primitive->GetVIL();
-                    preset = primitive->GetRenderPreset();
-                }
-
-                if (!vil)
-                {
-                    vil = material->GetDefaultVIL();
+                    effective_vil = material->GetDefaultVIL();
                     ++frame_vil_from_default;  // fallback_count increment
                 }
                 else
@@ -584,21 +600,21 @@ namespace hgl::ecs
                 }
 
                 // Phase 3: record layout diversity (vil attrib count as compact key).
-                if (vil && material)
-                    material_vil_layouts[material].insert(vil->GetVertexAttribCount());
+                if (effective_vil && material)
+                    material_vil_layouts[material].insert(effective_vil->GetVertexAttribCount());
 
                 pipeline_data = graph::GetGraphicsPipelineData(preset);
                 if (pipeline_data)
                     prim_restart = (pipeline_data->input_assembly.primitiveRestartEnable == VK_TRUE);
 
-                if (vil && pipeline_data && device)
+                if (effective_vil && pipeline_data && device)
                 {
                     ++frame_attempts;
                     RecordPipelineResolveAttempt(g_pipeline_preresolve_counters);
 
                     graph::GraphicsPipelineBuildRequest req;
                     req.material = material;
-                    req.vil = vil;
+                    req.vil = effective_vil;
                     req.render_format = render_format;
                     req.pipeline_data = pipeline_data;
                     req.primitive = material->GetPrimitiveType();
@@ -607,7 +623,7 @@ namespace hgl::ecs
                     if (graph::GraphicsPipeline* acquired = device->AcquireGraphicsPipeline(req))
                     {
                         pipeline = acquired;
-                        if (primitive)
+                        if (primitive && !use_resolved_slot)
                             resolved_pipeline_cache[primitive] = acquired;
                         ++frame_successes;
                         RecordPipelineResolveSuccess(g_pipeline_preresolve_counters);
@@ -620,7 +636,7 @@ namespace hgl::ecs
                         if (ShouldLogPow2(failures_total))
                         {
                             // Phase 3 diagnostic fields: include vil_hash (attrib count) at failure site.
-                            const uint32_t vil_attrib_count = vil ? vil->GetVertexAttribCount() : 0u;
+                            const uint32_t vil_attrib_count = effective_vil ? effective_vil->GetVertexAttribCount() : 0u;
                             LogWarning("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve failed: "
                                        "frame_failures=%u total_failures=%llu material=%s preset=%d "
                                        "vil_attrib_count=%u vil=%p",
@@ -629,7 +645,7 @@ namespace hgl::ecs
                                        material->GetName().c_str(),
                                        int(preset),
                                        vil_attrib_count,
-                                       static_cast<const void*>(vil));
+                                       static_cast<const void*>(effective_vil));
                         }
                         // Keep original pipeline to preserve rendering continuity.
                     }
@@ -641,7 +657,7 @@ namespace hgl::ecs
                     if (ShouldLogPow2(skips_total))
                     {
                         LogDebug("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve skipped: missing data (vil=%p pipeline_data=%p device=%p preset=%d), total_skips=%llu",
-                                 static_cast<const void *>(vil),
+                                 static_cast<const void *>(effective_vil),
                                  static_cast<const void *>(pipeline_data),
                                  static_cast<const void *>(device),
                                  int(preset),
@@ -668,7 +684,11 @@ namespace hgl::ecs
                 continue;
             }
 
-            if (primitive && material->GetTextureArraySlotFlags() != 0 && primitive->GetMITDataBytes() == 0)
+            const uint32_t mit_word_count = use_resolved_slot
+                                          ? item->resolved_mit_count
+                                          : (primitive ? (primitive->GetMITDataBytes() / sizeof(uint32_t)) : 0u);
+
+            if (material->GetTextureArraySlotFlags() != 0 && mit_word_count == 0)
             {
                 static uint64_t s_missing_mit_payload = 0;
                 if (ShouldLogPow2(++s_missing_mit_payload))
@@ -679,14 +699,13 @@ namespace hgl::ecs
                              material->GetName().c_str(),
                              prim_name.c_str(),
                              unsigned(material->GetTextureArraySlotFlags()),
-                             primitive->GetMIID(),
+                             use_resolved_slot ? item->resolved_mi_id : primitive->GetMIID(),
                              static_cast<unsigned long long>(s_missing_mit_payload));
                 }
             }
 
             // Phase 4: include MaterialResourceDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
-            auto* domain = primitive ? primitive->GetDomain() : nullptr;
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 
             MaterialPipelineKey key(material, pipeline, domain, queue);
