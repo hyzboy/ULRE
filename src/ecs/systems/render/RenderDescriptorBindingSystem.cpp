@@ -107,6 +107,24 @@ namespace hgl::ecs
             return nullptr;
         }
 
+        bool HasResolvedInstanceSlotForDomain(const hgl::ecs::RenderItem *item,
+                                              const graph::MaterialResourceDomain *domain)
+        {
+            if (!item)
+                return false;
+
+            // Phase B: instance-indexed descriptor paths must rely on explicit
+            // instance eligibility (domain + non-negative mi_id), independent
+            // of draw-path resolved-slot validity.
+            if (!item->resolved_material_template)
+                return false;
+
+            if (item->resolved_domain != domain)
+                return false;
+
+            return item->resolved_mi_id >= 0;
+        }
+
         bool TryBindDomainDirectMIData(const hgl::ecs::MaterialBatch *batch,
                                        graph::MaterialTemplate *material,
                                        graph::MaterialResourceDomain *domain,
@@ -121,10 +139,7 @@ namespace hgl::ecs
             int max_mi_id = -1;
             for (auto *item : batch->items)
             {
-                if (!item || !item->resolved_slot_valid)
-                    continue;
-
-                if (item->resolved_domain != domain || item->resolved_mi_id < 0)
+                if (!HasResolvedInstanceSlotForDomain(item, domain))
                     continue;
 
                 if (item->resolved_mi_id > max_mi_id)
@@ -186,10 +201,7 @@ namespace hgl::ecs
 
             for (auto *item : batch->items)
             {
-                if (!item || !item->resolved_slot_valid)
-                    continue;
-
-                if (item->resolved_domain != domain || item->resolved_mi_id < 0)
+                if (!HasResolvedInstanceSlotForDomain(item, domain))
                     continue;
 
                 if (item->resolved_mi_id > max_mi_id)
@@ -226,10 +238,7 @@ namespace hgl::ecs
             std::vector<uint32_t> mit_staging(total_uint_count, 0u);
             for (auto *item : batch->items)
             {
-                if (!item || !item->resolved_slot_valid)
-                    continue;
-
-                if (item->resolved_domain != domain || item->resolved_mi_id < 0)
+                if (!HasResolvedInstanceSlotForDomain(item, domain))
                     continue;
 
                 if (!item->resolved_mit_data || item->resolved_mit_count == 0)

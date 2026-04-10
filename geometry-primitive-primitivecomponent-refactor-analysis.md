@@ -108,6 +108,7 @@ Status: In progress
 - Done: collect-time `BindMaterialSlot` skipping is now limited to true domain-direct instance slots (`domain != nullptr && mi_id >= 0`).
 - Done: Phase B next-step telemetry added in `PrimitiveBatchPipeline` to classify domain-direct fallback reasons (`fallback_no_snapshot`, `fallback_no_material`, `fallback_no_domain`, `fallback_no_mi`).
 - Done: first cleanup slice landed: resolved-slot draw validity is decoupled from instance-id validity (material+domain can use resolved-slot path even when `mi_id == -1`; instance-indexed paths still gate on `mi_id >= 0`).
+- Done: second cleanup slice landed in descriptor binding: domain-direct MI/MIT instance scans no longer depend on `resolved_slot_valid`; they now use explicit instance-path eligibility (material present + domain match + `mi_id >= 0`).
 - Ongoing: remove/contain residual shared `Primitive` mutable material side-effects from non-transition call paths.
 - Ongoing: tighten `BindMaterialSlot` usage boundary and document allowed usage sites.
 - Validated: `08_PBRSpheresECS` sky sphere regression was recovered after a Phase B cleanup edge case where semantic resolve produced `domain != nullptr` but `mi_id == -1`; those non-instanced semantic slots must still bind back to the shared `Primitive` until the fallback dependency is fully removed.
@@ -134,6 +135,7 @@ Status: In progress (transitional implementation active)
 - Completed: sky-sphere regression fix validated on `08`; batch summary returned to `items=101 resolved_slot=100 primitive_slot=1 batches=2` and descriptor binding remained on the direct path (`mi_direct=1, mi_fallback=0, mit_direct=1, mit_fallback=0`).
 - Completed: fresh rerun validation on `14` after the Phase B fix path shows stable direct binding with no skipped draw items in captured logs (`mode_seen=1 batches=2 mi_direct=1 mi_fallback=0 mit_direct=0 mit_fallback=0 mit_attempt=0 mit_semantic_off=2`).
 - Completed: first Phase B cleanup slice validated on both samples. `08` and `14` now report `resolved_slot=101 primitive_slot=0 fallback=0` with `batches=2` and `item skipped (no draw call)=0`.
+- Completed: second Phase B cleanup slice validated on both samples with unchanged behavior envelope (`resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`).
 - Pending: Phase B cleanup completion and Phase C final API deprecation cutover.
 
 ## 5.3 Next Step Entry (Phase B fallback attribution)
@@ -159,6 +161,30 @@ Current reading after this cleanup:
 - `08_PBRSpheresECS`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`.
 - `14_PBRColor3DSpheresECS`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`.
 - Descriptor binding remains direct-path stable in both samples (`mi_direct=1, mi_fallback=0`; `14` keeps `mit_attempt=0, mit_semantic_off=2` as expected by current contract).
+
+## 5.4 Next Step Entry (Phase B descriptor instance-path decoupling)
+
+This pass continued Phase B by decoupling descriptor instance-path eligibility from draw-path resolved-slot validity.
+
+What changed:
+
+- `RenderDescriptorBindingSystem` domain-direct MI/MIT helper scans now use explicit instance eligibility checks:
+   - resolved material exists
+   - resolved domain matches batch domain
+   - `resolved_mi_id >= 0`
+- The scan logic no longer directly relies on `resolved_slot_valid`.
+
+Why this matters:
+
+- It enforces the intended separation introduced in the first cleanup slice:
+   - draw-path resolved slot eligibility
+   - instance-indexed descriptor eligibility
+- It prevents accidental future coupling where `resolved_slot_valid` semantics changes could silently alter MI/MIT indexing behavior.
+
+Validation after this pass:
+
+- `08`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`, direct summary unchanged.
+- `14`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`, direct summary unchanged (`mit_attempt=0`, `mit_semantic_off=2`).
 
 ## 5.2 Phase B Regression Note: Non-instanced semantic slots
 
