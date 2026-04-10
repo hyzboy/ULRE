@@ -6,6 +6,7 @@
 #include <hgl/type/String.h>
 #include <hgl/math/Vector.h>
 #include <hgl/graph/module/SwapchainModule.h>
+#include <hgl/ecs/core/DefaultSystems.h>
 #include <memory>
 
 namespace hgl
@@ -16,11 +17,13 @@ namespace hgl
         class SwapchainModule;
         class SwapchainRenderTarget;
         class RenderContext;
+        class FontSource;
     }
 
     namespace ecs
     {
         class ECSContext;
+        class TextComponent;
     }
 
     /**
@@ -59,7 +62,15 @@ namespace hgl
         graph::SwapchainModule *sc_module = nullptr;
 
         ecs::ECSContext *default_ecs_context = nullptr;
+        ecs::DefaultEcsDebugConfig default_ecs_debug_config;
         std::unique_ptr<graph::RenderContext> render_context;
+        bool bind_slot_summary_toggle_key_pressed = false;
+        bool debug_hud_toggle_key_pressed = false;
+        bool descriptor_diag_toggle_key_pressed = false;
+        bool material_query_toggle_key_pressed = false;
+        bool ecs_debug_hud_visible = false;
+        graph::FontSource *ecs_debug_hud_font = nullptr;
+        std::shared_ptr<ecs::TextComponent> ecs_debug_hud_text;
 
     protected:
 
@@ -92,6 +103,26 @@ namespace hgl
         virtual void OnActive(bool active);
         virtual void OnClose();
         virtual void Tick();
+
+    public:
+        // High-level ECS debug config entry for editor/UI integration
+        void SetDefaultEcsDebugConfig(const ecs::DefaultEcsDebugConfig &config);
+        const ecs::DefaultEcsDebugConfig &GetDefaultEcsDebugConfig() const { return default_ecs_debug_config; }
+        void SetBindSlotSummaryLogMode(ecs::BindSlotSummaryLogMode mode);
+        ecs::BindSlotSummaryLogMode GetBindSlotSummaryLogMode() const { return default_ecs_debug_config.bind_slot_summary_log_mode; }
+        void CycleBindSlotSummaryLogMode();
+        void SetDescriptorContractDiagLogEnabled(bool enabled);
+        bool IsDescriptorContractDiagLogEnabled() const { return default_ecs_debug_config.descriptor_contract_diag_log_enabled; }
+        void ToggleDescriptorContractDiagLogEnabled();
+        void SetMaterialBindingQueryLogEnabled(bool enabled);
+        bool IsMaterialBindingQueryLogEnabled() const { return default_ecs_debug_config.material_binding_query_log_enabled; }
+        void ToggleMaterialBindingQueryLogEnabled();
+        void SetEcsDebugHudVisible(bool visible);
+        bool IsEcsDebugHudVisible() const { return ecs_debug_hud_visible; }
+
+    private:
+        void InitializeEcsDebugHud();
+        void UpdateEcsDebugHudText();
 
     public:
         // Application state access

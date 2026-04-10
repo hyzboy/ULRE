@@ -10,6 +10,9 @@
 #include <hgl/ecs/core/DefaultSystems.h>
 #include <hgl/log/Logger.h>
 #include <hgl/io/event/MouseEvent.h>
+#include <hgl/io/event/KeyboardEvent.h>
+#include <hgl/ecs/components/TextComponent.h>
+#include <hgl/graph/font/FontSource.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -30,6 +33,17 @@ namespace hgl
     namespace
     {
         static int APP_FRAMEWORK_COUNT = 0;
+
+        const char *BindSlotSummaryLogModeName(ecs::BindSlotSummaryLogMode mode)
+        {
+            switch (mode)
+            {
+                case ecs::BindSlotSummaryLogMode::Off:        return "Off";
+                case ecs::BindSlotSummaryLogMode::Throttled:  return "Throttled";
+                case ecs::BindSlotSummaryLogMode::EveryFrame: return "EveryFrame";
+                default:                                       return "Unknown";
+            }
+        }
 
         graph::VulkanInstance *CreateVulkanInstance(const U8String &app_name)
         {
@@ -63,6 +77,13 @@ namespace hgl
         if (default_ecs_context)
             default_ecs_context->Shutdown();
         GLogDebug("Step 1 complete");
+
+        ecs_debug_hud_text.reset();
+        if (ecs_debug_hud_font)
+        {
+            delete ecs_debug_hud_font;
+            ecs_debug_hud_font = nullptr;
+        }
 
         // 2. GraphicsContext shutdown - calls Release() on all modules (including sc_module)
         // GraphicsContext owns all modules through GraphModuleManager
@@ -136,6 +157,76 @@ namespace hgl
 
                 mouse_coord.x = med->x;
                 mouse_coord.y = med->y;
+            }
+        }
+        else if (header.type == io::InputEventSource::Keyboard)
+        {
+            io::KeyboardEventID event_id = io::KeyboardEventID(header.id);
+            const io::KeyboardEventData *ked = (const io::KeyboardEventData *)&data;
+            const io::KeyboardButton key = io::KeyboardButton(ked->key);
+
+            if (key == io::KeyboardButton::F7)
+            {
+                if (event_id == io::KeyboardEventID::Pressed)
+                {
+                    if (!debug_hud_toggle_key_pressed)
+                    {
+                        debug_hud_toggle_key_pressed = true;
+                        SetEcsDebugHudVisible(!IsEcsDebugHudVisible());
+                    }
+                }
+                else if (event_id == io::KeyboardEventID::Released)
+                {
+                    debug_hud_toggle_key_pressed = false;
+                }
+            }
+
+            if (key == io::KeyboardButton::F8)
+            {
+                if (event_id == io::KeyboardEventID::Pressed)
+                {
+                    if (!bind_slot_summary_toggle_key_pressed)
+                    {
+                        bind_slot_summary_toggle_key_pressed = true;
+                        CycleBindSlotSummaryLogMode();
+                    }
+                }
+                else if (event_id == io::KeyboardEventID::Released)
+                {
+                    bind_slot_summary_toggle_key_pressed = false;
+                }
+            }
+
+            if (key == io::KeyboardButton::F9)
+            {
+                if (event_id == io::KeyboardEventID::Pressed)
+                {
+                    if (!descriptor_diag_toggle_key_pressed)
+                    {
+                        descriptor_diag_toggle_key_pressed = true;
+                        ToggleDescriptorContractDiagLogEnabled();
+                    }
+                }
+                else if (event_id == io::KeyboardEventID::Released)
+                {
+                    descriptor_diag_toggle_key_pressed = false;
+                }
+            }
+
+            if (key == io::KeyboardButton::F10)
+            {
+                if (event_id == io::KeyboardEventID::Pressed)
+                {
+                    if (!material_query_toggle_key_pressed)
+                    {
+                        material_query_toggle_key_pressed = true;
+                        ToggleMaterialBindingQueryLogEnabled();
+                    }
+                }
+                else if (event_id == io::KeyboardEventID::Released)
+                {
+                    material_query_toggle_key_pressed = false;
+                }
             }
         }
 
@@ -245,14 +336,185 @@ namespace hgl
         // Register ECS systems
         if (default_ecs_context)
         {
-            auto systems = ecs::RegisterDefaultEcsSystems(default_ecs_context, GetSwapchainRenderTarget());
+            auto systems = ecs::RegisterDefaultEcsSystems(default_ecs_context,
+                                                          GetSwapchainRenderTarget(),
+                                                          &default_ecs_debug_config);
             if (systems.input_system)
                 AddChildDispatcher(systems.input_system->GetEventDispatcher());
 
             default_ecs_context->Initialize();
+            InitializeEcsDebugHud();
         }
 
         return true;
+    }
+
+    void AppFramework::SetDefaultEcsDebugConfig(const ecs::DefaultEcsDebugConfig &config)
+    {
+        default_ecs_debug_config = config;
+
+        if (default_ecs_context)
+        {
+            ecs::ApplyDefaultEcsDebugConfig(default_ecs_context, default_ecs_debug_config);
+        }
+
+        UpdateEcsDebugHudText();
+    }
+
+    void AppFramework::SetBindSlotSummaryLogMode(ecs::BindSlotSummaryLogMode mode)
+    {
+        default_ecs_debug_config.bind_slot_summary_log_mode = mode;
+
+        if (default_ecs_context)
+        {
+            default_ecs_context->SetBindSlotSummaryLogMode(mode);
+        }
+
+        GLogInfo("[ECS Debug] BindSlotSummaryLogMode set to %s", BindSlotSummaryLogModeName(mode));
+        UpdateEcsDebugHudText();
+    }
+
+    void AppFramework::CycleBindSlotSummaryLogMode()
+    {
+        const ecs::BindSlotSummaryLogMode current = GetBindSlotSummaryLogMode();
+        ecs::BindSlotSummaryLogMode next = ecs::BindSlotSummaryLogMode::Throttled;
+
+        switch (current)
+        {
+            case ecs::BindSlotSummaryLogMode::Off:
+                next = ecs::BindSlotSummaryLogMode::Throttled;
+                break;
+            case ecs::BindSlotSummaryLogMode::Throttled:
+                next = ecs::BindSlotSummaryLogMode::EveryFrame;
+                break;
+            case ecs::BindSlotSummaryLogMode::EveryFrame:
+                next = ecs::BindSlotSummaryLogMode::Off;
+                break;
+            default:
+                next = ecs::BindSlotSummaryLogMode::Throttled;
+                break;
+        }
+
+        SetBindSlotSummaryLogMode(next);
+    }
+
+    void AppFramework::SetDescriptorContractDiagLogEnabled(bool enabled)
+    {
+        default_ecs_debug_config.descriptor_contract_diag_log_enabled = enabled;
+
+        if (default_ecs_context)
+        {
+            default_ecs_context->SetDescriptorContractDiagnosticsLogEnabled(enabled);
+        }
+
+        GLogInfo("[ECS Debug] DescriptorContractDiagLog set to %s", enabled ? "On" : "Off");
+        UpdateEcsDebugHudText();
+    }
+
+    void AppFramework::ToggleDescriptorContractDiagLogEnabled()
+    {
+        SetDescriptorContractDiagLogEnabled(!IsDescriptorContractDiagLogEnabled());
+    }
+
+    void AppFramework::SetMaterialBindingQueryLogEnabled(bool enabled)
+    {
+        default_ecs_debug_config.material_binding_query_log_enabled = enabled;
+
+        if (default_ecs_context)
+        {
+            default_ecs_context->SetMaterialBindingQueryLogEnabled(enabled);
+        }
+
+        GLogInfo("[ECS Debug] MaterialBindingQueryLog set to %s", enabled ? "On" : "Off");
+        UpdateEcsDebugHudText();
+    }
+
+    void AppFramework::ToggleMaterialBindingQueryLogEnabled()
+    {
+        SetMaterialBindingQueryLogEnabled(!IsMaterialBindingQueryLogEnabled());
+    }
+
+    void AppFramework::SetEcsDebugHudVisible(bool visible)
+    {
+        ecs_debug_hud_visible = visible;
+        GLogInfo("[ECS Debug] HUD %s (F7 toggle, F8/F9/F10 controls)", ecs_debug_hud_visible ? "enabled" : "disabled");
+        UpdateEcsDebugHudText();
+    }
+
+    void AppFramework::InitializeEcsDebugHud()
+    {
+        if (!default_ecs_context)
+            return;
+
+        if (!ecs_debug_hud_font)
+            ecs_debug_hud_font = graph::CreateFontSource(OS_TEXT("Consolas"), 20);
+
+        if (!ecs_debug_hud_font)
+            return;
+
+        auto *entity = default_ecs_context->CreateEntity();
+        if (!entity)
+            return;
+
+        ecs_debug_hud_text = entity->AddComponent<ecs::TextComponent>();
+        if (!ecs_debug_hud_text)
+            return;
+
+        graph::layout::CharStyle style;
+        style.CharColor.r = 1.0f;
+        style.CharColor.g = 1.0f;
+        style.CharColor.b = 0.0f;
+        style.CharColor.a = 1.0f;
+
+        ecs_debug_hud_text->SetFontSource(ecs_debug_hud_font);
+        ecs_debug_hud_text->SetStartPosition({16, 16});
+        ecs_debug_hud_text->SetCharStyle(style);
+
+        UpdateEcsDebugHudText();
+    }
+
+    void AppFramework::UpdateEcsDebugHudText()
+    {
+        if (!ecs_debug_hud_text)
+            return;
+
+        if (!ecs_debug_hud_visible)
+        {
+            ecs_debug_hud_text->SetText(U16String());
+            return;
+        }
+
+        const u16char *mode_text = U16_TEXT("Unknown");
+
+        switch (GetBindSlotSummaryLogMode())
+        {
+            case ecs::BindSlotSummaryLogMode::Off:
+                mode_text = U16_TEXT("Off");
+                break;
+            case ecs::BindSlotSummaryLogMode::Throttled:
+                mode_text = U16_TEXT("Throttled");
+                break;
+            case ecs::BindSlotSummaryLogMode::EveryFrame:
+                mode_text = U16_TEXT("EveryFrame");
+                break;
+            default:
+                mode_text = U16_TEXT("Unknown");
+                break;
+        }
+
+        U16String hud_text = U16_TEXT("ECS Debug HUD");
+        hud_text += U16_TEXT("\nBindSlotSummary: ");
+        hud_text += mode_text;
+        hud_text += U16_TEXT("\nDescriptorContractDiag: ");
+        hud_text += IsDescriptorContractDiagLogEnabled() ? U16_TEXT("On") : U16_TEXT("Off");
+        hud_text += U16_TEXT("\nMaterialBindingQuery: ");
+        hud_text += IsMaterialBindingQueryLogEnabled() ? U16_TEXT("On") : U16_TEXT("Off");
+        hud_text += U16_TEXT("\nF7: Hide HUD");
+        hud_text += U16_TEXT("\nF8: Cycle BindSlotSummary");
+        hud_text += U16_TEXT("\nF9: Toggle DescriptorDiag");
+        hud_text += U16_TEXT("\nF10: Toggle MaterialQuery");
+
+        ecs_debug_hud_text->SetText(hud_text);
     }
 
     void AppFramework::OnResize(uint w, uint h)

@@ -180,6 +180,18 @@ namespace
 
 namespace hgl::ecs
 {
+    void ApplyDefaultEcsDebugConfig(ECSContext *ctx, const DefaultEcsDebugConfig &config)
+    {
+        if (!ctx)
+            return;
+
+        ECSDebugConfig merged;
+        merged.descriptor_contract_diag_log_enabled = config.descriptor_contract_diag_log_enabled;
+        merged.material_binding_query_log_enabled = config.material_binding_query_log_enabled;
+        merged.bind_slot_summary_log_mode = config.bind_slot_summary_log_mode;
+        ctx->ApplyDebugConfig(merged);
+    }
+
     void EnsureCoreEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt)
     {
         if (!ctx)
@@ -240,11 +252,16 @@ namespace hgl::ecs
         return true;
     }
 
-    DefaultEcsSystems RegisterDefaultEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt)
+    DefaultEcsSystems RegisterDefaultEcsSystems(ECSContext *ctx,
+                                                graph::IRenderTarget *default_rt,
+                                                const DefaultEcsDebugConfig *debug_config)
     {
         DefaultEcsSystems systems;
         if (!ctx)
             return systems;
+
+        if (debug_config)
+            ApplyDefaultEcsDebugConfig(ctx, *debug_config);
 
         EnsureCoreEcsSystems(ctx, default_rt);
         EnsureSystemGroupSystems(ctx, "Primitive", default_rt);

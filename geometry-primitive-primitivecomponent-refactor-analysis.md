@@ -6,7 +6,7 @@
 
 - Phase A（最小行为修复）：100%（已完成）
 - Phase B（对齐与清理）：100%（已完成）
-- Phase C（API 硬化）：60%（进行中）
+- Phase C（API 硬化）：100%（已完成）
 
 最近状态补充：
 
@@ -148,7 +148,7 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
    - `EntityMaterialBinding`（实例中心）
 2. 废弃“共享对象可变写入隐式表达每实体状态”的歧义 API。
 
-状态：进行中（约 92%）
+状态：已完成（100%）
 
 最近推进（Phase C 批次 1）：
 
@@ -181,6 +181,35 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 - 已完成：`BindSlotSummary` 门禁配置不再依赖环境变量约定；`ULRE_BIND_SLOT_SUMMARY` 读取路径已从 `ECSContext::Initialize()` 移除。
 - 已完成：保留并强化 `ECSContext::SetBindSlotSummaryLogMode(...)` 的系统/子世界统一下发路径。
 
+最近推进（Phase C 批次 6）：
+
+- 已完成：新增更高层默认入口 `DefaultEcsDebugConfig`，并通过 `RegisterDefaultEcsSystems(..., debug_config)` 支持调试配置注入。
+- 已完成：`DefaultSystems` 将高层配置统一转换并下发到 `ECSContext::ApplyDebugConfig(...)`，形成单一配置汇聚路径。
+- 已完成：`AppFramework` 已接入默认 ECS 调试配置注入，完成从应用层到 ECS 层的端到端入口打通。
+- 已完成：修复 `DefaultSystems.cpp` 中 `ECSDebugConfig` 类型限定错误后，关键目标复编通过（`ULRE.Work`、`ULRE.ECS`、`08_PBRSpheresECS`、`14_PBRColor3DSpheresECS`）。
+
+最近推进（Phase C 批次 7）：
+
+- 已完成：`AppFramework` 新增高层统一调试入口（`SetDefaultEcsDebugConfig/GetDefaultEcsDebugConfig`、`SetBindSlotSummaryLogMode/GetBindSlotSummaryLogMode`、`CycleBindSlotSummaryLogMode`），可直接被 Editor/UI 层调用。
+- 已完成：默认系统注册改为消费 `AppFramework` 持有的 `DefaultEcsDebugConfig`，避免初始化时散落局部配置。
+- 已完成：新增无面板场景的运行期切换回路（`F8` 循环 `Off -> Throttled -> EveryFrame -> Off`），用于快速验证统一入口有效性。
+- 已完成：新增入口后关键目标复编通过（`ULRE.Work`、`ULRE.ECS`、`08_PBRSpheresECS`、`14_PBRColor3DSpheresECS`）。
+
+最近推进（Phase C 批次 8）：
+
+- 已完成：将高层统一入口接入实际运行时可视化控件：基于 ECS `TextComponent` 的 Debug HUD 面板（非仅日志/环境变量）。
+- 已完成：新增 HUD 交互：`F7` 显隐面板，`F8` 循环切换 `BindSlotSummaryLogMode`（`Off -> Throttled -> EveryFrame -> Off`），并在 HUD 文本中实时显示当前模式。
+- 已完成：HUD 与统一入口联动：`SetDefaultEcsDebugConfig(...)` / `SetBindSlotSummaryLogMode(...)` 变更后会同步刷新面板内容。
+- 已完成：新增 HUD 后关键目标复编通过（`ULRE.Work`、`ULRE.ECS`、`08_PBRSpheresECS`、`14_PBRColor3DSpheresECS`）。
+
+最近推进（Phase C 批次 9）：
+
+- 已完成：HUD 控制面板扩展为三项统一调试开关：`BindSlotSummaryLogMode`、`DescriptorContractDiag`、`MaterialBindingQuery`。
+- 已完成：新增运行期热键：`F9` 切换 `DescriptorContractDiag`，`F10` 切换 `MaterialBindingQuery`；并与 `F7/F8` 共同形成完整运行时调试入口。
+- 已完成：`AppFramework` 新增对应高层 API（Set/Toggle + 状态查询），统一写回 `DefaultEcsDebugConfig`，避免面板状态与配置模型分离。
+- 已完成：HUD 文本实时显示三项状态与控制提示，形成“可见状态 + 可交互控制 + 统一配置下发”的闭环。
+- 已完成：扩展后关键目标复编通过（`ULRE.Work`、`ULRE.ECS`、`08_PBRSpheresECS`、`14_PBRColor3DSpheresECS`）。
+
 已完成项：
 
 - 已完成：`MaterialResourceDomain` 拥有 MI/MIT GPU 缓冲与脏区上传能力。
@@ -191,7 +220,7 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 
 进行中项：
 
-- 进行中：将 `ECSDebugConfig` 并入更高层统一调试面板（Editor/UI 侧），形成可视化配置入口。
+- 后续演进建议：在 Editor 专用面板复用同一 `AppFramework` 调试 API（无需新增并行配置结构）。
 
 ## 5.1 已完成验证快照
 
