@@ -179,7 +179,7 @@ namespace hgl::ecs
          && !domain_direct_collect_enabled)
         {
             const hgl::graph::PrimitiveMaterialSlot slot = mi->ToSlot();
-            if (!current_primitive->BindMaterialSlot(slot))
+            if (!current_primitive->BindMaterialSlot(slot,"quad"))
                 return false;
 
             quad_primitive = current_primitive;
@@ -297,7 +297,7 @@ namespace hgl::ecs
          && !domain_direct_collect_enabled)
         {
             const hgl::graph::PrimitiveMaterialSlot slot = mi->ToSlot();
-            if (!current_primitive->BindMaterialSlot(slot))
+            if (!current_primitive->BindMaterialSlot(slot,"quad"))
                 return false;
 
             quad_primitive = current_primitive;

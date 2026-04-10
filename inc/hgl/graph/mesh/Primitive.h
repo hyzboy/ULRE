@@ -92,7 +92,7 @@ public:
             /// 绑定材质槽（Phase 2c）：替代 BindMaterialInstance/ChangeMaterialInstance。
             /// 用于延迟绑定（HasDeferredMI()==true 时会创建 GeometryDataBuffer）
             /// 以及每帧的变体更新（透明度变化等）。
-            bool                BindMaterialSlot(const PrimitiveMaterialSlot &slot);
+            bool                BindMaterialSlot(const PrimitiveMaterialSlot &slot,const char *source_tag=nullptr);
 
             // 设置绘制数量（vertex/index），若大于数据量会被裁剪至数据量
             bool                SetDrawCounts(uint32_t draw_vertex_count,uint32_t draw_index_count=0);

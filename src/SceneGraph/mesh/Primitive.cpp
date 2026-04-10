@@ -86,8 +86,20 @@ bool Primitive::UpdateGeometry()
     return data_buffer->Update(geometry,vil);
 }
 
-bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot)
+bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot,const char *source_tag)
 {
+    if (!source_tag)
+    {
+        static uint64_t s_bind_slot_untagged = 0;
+        const uint64_t n = ++s_bind_slot_untagged;
+        if (n <= 8u || ((n & (n - 1)) == 0))
+        {
+            GLogWarning("[BindMaterialSlot] untagged caller detected: prim='%s' total=%llu",
+                        geometry ? geometry->GetName().c_str() : "(no-geometry)",
+                        static_cast<unsigned long long>(n));
+        }
+    }
+
     // Note: slot.IsValid() requires mi_id>=0, but we accept mi_id=-1 for non-instanced material binding.
     // Check material_template instead to allow deferred MI slots that resolved material but couldn't allocate MI slot.
     if (!slot.material_template || !slot.vil || !geometry)

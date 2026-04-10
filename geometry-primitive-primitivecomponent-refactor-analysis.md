@@ -5,13 +5,14 @@
 ## 0. 阶段完成度看板
 
 - Phase A（最小行为修复）：100%（已完成）
-- Phase B（对齐与清理）：90%（进行中）
+- Phase B（对齐与清理）：93%（进行中）
 - Phase C（API 硬化）：60%（进行中）
 
 最近状态补充：
 
 - 已修复 MI 数据链路中的两类初始化问题（`AllocMaterialInstanceSlot` 路径与 `CreateMaterialInstance` 路径）。
 - 已修复一个回归：无 MI 材质（如 `VertexColor2D`）错误地被要求分配 MI 槽，导致 `ResolveMI` 失败并无绘制指令。
+- 已完成 `BindMaterialSlot` 调用来源标注（`collect` / `quad`），并对未标注调用加入运行期告警（软白名单观测）。
 
 ## 1. 背景
 
@@ -111,7 +112,7 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 2. 收敛 `BindMaterialSlot` 的使用边界（仅原型级或 deferred-setup）。
 3. 将 override 路径显式化并可验证。
 
-状态：进行中（约 90%）
+状态：进行中（约 93%）
 
 已完成项：
 
@@ -124,12 +125,14 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 - 已完成：清理切片 4：Quad 绑定在 domain-direct collect 开启时，不再对已有 primitive 原地 `BindMaterialSlot`。
 - 已完成：清理切片 5：Collect 路径仅在“槽位状态发生变化”时才执行 `BindMaterialSlot`；对于已匹配槽位改为 no-op，减少共享 Primitive 的无意义可变写入。
 - 已完成：清理切片 6：Collect 路径新增 `BindSlotSummary` 统计（attempt/success/noop/skip_domain_direct/failed），可量化剩余可变写入面并定位后续收敛目标。
+- 已完成：清理切片 7：`BindMaterialSlot` 增加 `source_tag`，Collect/Quad 调用点显式标注（`collect` / `quad`），未标注调用触发告警，用于后续硬白名单收口。
 - 已完成：修复“无 MI 材质回归”——`CreateMaterialInstance` 仅在 `material->hasMI()` 时分配 MI 槽，恢复 `draw_triangle` 这类路径。
 
 进行中项：
 
 - 进行中：清理非过渡调用路径中残余的共享 Primitive 可变副作用。
-- 进行中：固化 `BindMaterialSlot` 允许调用点文档与守卫。
+- 进行中：固化 `BindMaterialSlot` 允许调用点文档与守卫（从软白名单推进到可选硬白名单）。
+- 进行中：`BindSlotSummary` 在样例日志中的可见性门禁（必要时提升日志级别或加独立调试开关）。
 
 关键回归门禁：
 
@@ -158,7 +161,11 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 
 ## 5.1 已完成验证快照
 
-- `08`/`14`：关键切片验证稳定，`resolved_slot=101 primitive_slot=0 fallback=0`，且无 `item skipped (no draw call)`。
+- 构建回归：`08_PBRSpheresECS`、`14_PBRColor3DSpheresECS`、`01_draw_triangle` 均可成功产出可执行文件。
+- 运行日志抽样（`run01.log` / `run08.log` / `run14.log`）：
+  - `01`：`ResolvedSlotSummary` 与 `DomainDirectSummary` 持续输出，未检出 `item skipped (no draw call)`、`material=null`、`ResolveMI` 失败行。
+  - `08`/`14`：`domain_direct=1`、`items=101`、`resolved_slot=101`、`mi_direct=1`、`mi_fallback=0` 与预期一致。
+  - 三组日志未检出 `BindMaterialSlot` 的 untagged caller 告警。
 - `08`：天空球 `mi_id=-1` 回归已恢复，保持可绘制。
 - `14`：`mit_attempt=0, mit_semantic_off=2` 与当前材质契约一致。
 

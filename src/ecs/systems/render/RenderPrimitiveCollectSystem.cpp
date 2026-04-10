@@ -358,7 +358,7 @@ namespace hgl::ecs
                             else if (NeedsPrimitiveSlotBind(primitive, slot))
                             {
                                 ++slot_bind_attempt;
-                                did_bind_slot = primitive->BindMaterialSlot(slot);
+                                did_bind_slot = primitive->BindMaterialSlot(slot,"collect");
                                 if (!did_bind_slot)
                                 {
                                     ++slot_bind_failed;
