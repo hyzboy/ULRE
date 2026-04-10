@@ -1107,13 +1107,19 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialResourceDomain
         return nullptr;
 
     const VIL *use_vil = vil ? vil : material->GetDefaultVIL();
-    int mi_id = domain->AllocMISlot();
-    if (mi_id < 0)
-        return nullptr;
+    const bool needs_mi = material->hasMI();
+    int mi_id = -1;
 
-    // Ensure deterministic initial MI payload for ResolveMI/CreateMaterialInstance path.
-    if (void *mi_data = domain->GetMIData(mi_id))
-        std::memset(mi_data, 0, material->GetMIDataBytes());
+    if (needs_mi)
+    {
+        mi_id = domain->AllocMISlot();
+        if (mi_id < 0)
+            return nullptr;
+
+        // Ensure deterministic initial MI payload for ResolveMI/CreateMaterialInstance path.
+        if (void *mi_data = domain->GetMIData(mi_id))
+            std::memset(mi_data, 0, material->GetMIDataBytes());
+    }
 
     MaterialInstance *mi = new MaterialInstance();
     mi->material          = material;
@@ -1127,7 +1133,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialResourceDomain
     mi->InitMITLayout(domain->GetTextureArraySlots());
     Add(mi);
 
-    if(data && data_size > 0)
+    if(data && data_size > 0 && needs_mi)
     {
         const uint32 dst_bytes = material->GetMIDataBytes();
         const uint32 copy_bytes = std::min(data_size, dst_bytes);
