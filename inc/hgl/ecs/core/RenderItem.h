@@ -89,16 +89,6 @@ namespace hgl::ecs
         // Phase C: explicit entity-level material binding owned by RenderItem.
         EntityMaterialBinding entity_material_binding;
 
-        // Compatibility bridge for Phase B call sites. Keep synchronized with
-        // entity_material_binding until downstream code fully migrates.
-        bool resolved_slot_valid = false;
-        hgl::graph::MaterialTemplate* resolved_material_template = nullptr;
-        hgl::graph::MaterialResourceDomain* resolved_domain = nullptr;
-        int resolved_mi_id = -1;
-        const hgl::graph::VIL* resolved_vil = nullptr;
-        const uint32_t* resolved_mit_data = nullptr;
-        uint32_t resolved_mit_count = 0;
-
         virtual ~RenderItem() = default;
 
         // Abstract interface - returns EntityID and entity pointer
@@ -119,25 +109,11 @@ namespace hgl::ecs
         void SetResolvedMaterialSlot(const hgl::graph::PrimitiveMaterialSlot& slot)
         {
             entity_material_binding.Assign(slot);
-            resolved_slot_valid = entity_material_binding.valid;
-            resolved_material_template = entity_material_binding.material_template;
-            resolved_domain = entity_material_binding.domain;
-            resolved_mi_id = entity_material_binding.mi_id;
-            resolved_vil = entity_material_binding.vil;
-            resolved_mit_data = entity_material_binding.mit_data;
-            resolved_mit_count = entity_material_binding.mit_count;
         }
 
         void ClearResolvedMaterialSlot()
         {
             entity_material_binding.Clear();
-            resolved_slot_valid = false;
-            resolved_material_template = nullptr;
-            resolved_domain = nullptr;
-            resolved_mi_id = -1;
-            resolved_vil = nullptr;
-            resolved_mit_data = nullptr;
-            resolved_mit_count = 0;
         }
 
         // Comparison for sorting
