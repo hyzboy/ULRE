@@ -405,7 +405,7 @@ namespace hgl::ecs
                     if (override_mi_id >= 0 && resolved_slot_snapshot.domain)
                         resolved_slot_snapshot.mi_id = override_mi_id;
 
-                    item->SetResolvedMaterialSlot(resolved_slot_snapshot);
+                    item->SetEntityMaterialBinding(resolved_slot_snapshot);
                 }
 
                 glm::vec3 worldPos = transform->GetWorldPosition();
@@ -448,7 +448,7 @@ namespace hgl::ecs
                     resolved_slot_snapshot.mit_data = reinterpret_cast<const uint32_t*>(primitive_for_slot->GetMITData());
                     resolved_slot_snapshot.mit_data_count = primitive_for_slot->GetMITDataBytes() / sizeof(uint32_t);
                     resolved_slot_snapshot.material_preset = primitive_for_slot->GetMaterialPreset();
-                    item->SetResolvedMaterialSlot(resolved_slot_snapshot);
+                    item->SetEntityMaterialBinding(resolved_slot_snapshot);
                 }
             }
 

@@ -106,12 +106,12 @@ namespace hgl::ecs
         bool HasEntityMaterialBinding() const { return entity_material_binding.IsDrawBindingValid(); }
         bool HasEntityMaterialBindingSignal() const { return entity_material_binding.HasSnapshotSignal(); }
 
-        void SetResolvedMaterialSlot(const hgl::graph::PrimitiveMaterialSlot& slot)
+        void SetEntityMaterialBinding(const hgl::graph::PrimitiveMaterialSlot& slot)
         {
             entity_material_binding.Assign(slot);
         }
 
-        void ClearResolvedMaterialSlot()
+        void ClearEntityMaterialBinding()
         {
             entity_material_binding.Clear();
         }
