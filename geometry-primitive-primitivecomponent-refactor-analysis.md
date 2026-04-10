@@ -106,6 +106,8 @@ Status: In progress
 
 - Done: override consumption and resolved-slot-first behavior are wired in the ECS path.
 - Done: collect-time `BindMaterialSlot` skipping is now limited to true domain-direct instance slots (`domain != nullptr && mi_id >= 0`).
+- Done: Phase B next-step telemetry added in `PrimitiveBatchPipeline` to classify domain-direct fallback reasons (`fallback_no_snapshot`, `fallback_no_material`, `fallback_no_domain`, `fallback_no_mi`).
+- Done: first cleanup slice landed: resolved-slot draw validity is decoupled from instance-id validity (material+domain can use resolved-slot path even when `mi_id == -1`; instance-indexed paths still gate on `mi_id >= 0`).
 - Ongoing: remove/contain residual shared `Primitive` mutable material side-effects from non-transition call paths.
 - Ongoing: tighten `BindMaterialSlot` usage boundary and document allowed usage sites.
 - Validated: `08_PBRSpheresECS` sky sphere regression was recovered after a Phase B cleanup edge case where semantic resolve produced `domain != nullptr` but `mi_id == -1`; those non-instanced semantic slots must still bind back to the shared `Primitive` until the fallback dependency is fully removed.
@@ -130,7 +132,33 @@ Status: In progress (transitional implementation active)
 - Completed: transition-mode verification for MI direct bind on both key regression samples.
 - Partially completed: MIT direct path verified on `08`; `14` currently reports `mit_attempt=0` with `mit_semantic_off` (MIT semantic not requested), which is expected for current material contract.
 - Completed: sky-sphere regression fix validated on `08`; batch summary returned to `items=101 resolved_slot=100 primitive_slot=1 batches=2` and descriptor binding remained on the direct path (`mi_direct=1, mi_fallback=0, mit_direct=1, mit_fallback=0`).
+- Completed: fresh rerun validation on `14` after the Phase B fix path shows stable direct binding with no skipped draw items in captured logs (`mode_seen=1 batches=2 mi_direct=1 mi_fallback=0 mit_direct=0 mit_fallback=0 mit_attempt=0 mit_semantic_off=2`).
+- Completed: first Phase B cleanup slice validated on both samples. `08` and `14` now report `resolved_slot=101 primitive_slot=0 fallback=0` with `batches=2` and `item skipped (no draw call)=0`.
 - Pending: Phase B cleanup completion and Phase C final API deprecation cutover.
+
+## 5.3 Next Step Entry (Phase B fallback attribution)
+
+To continue cleanup safely, this pass added fallback attribution counters in `PrimitiveBatchPipeline` without changing draw behavior.
+
+What was added:
+
+- `BatchPipeline::ResolvedSlotSummary` now reports why an item did not take resolved-slot domain-direct path:
+   - `fallback_no_snapshot`
+   - `fallback_no_material`
+   - `fallback_no_domain`
+   - `fallback_no_mi`
+
+Why this is the next step:
+
+- Phase B needs to shrink primitive-state fallback paths incrementally.
+- Attribution counters let us separate expected fallback (e.g. non-instanced semantic slots) from accidental fallback (missing/invalid snapshot data).
+- This provides a concrete gate for each subsequent cleanup patch.
+
+Current reading after this cleanup:
+
+- `08_PBRSpheresECS`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`.
+- `14_PBRColor3DSpheresECS`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`.
+- Descriptor binding remains direct-path stable in both samples (`mi_direct=1, mi_fallback=0`; `14` keeps `mit_attempt=0, mit_semantic_off=2` as expected by current contract).
 
 ## 5.2 Phase B Regression Note: Non-instanced semantic slots
 
@@ -185,7 +213,7 @@ Current validation status:
 
 - (1) Done on regression samples (`08`, `14`) via runtime transition diagnostics.
 - (2) Done for current transition patch set (no instability observed in verification runs).
-- (3) In progress (no confirmed regressions observed, broader sweep still pending).
+- (3) Partially done: `14` rerun after the sky fix path shows no `item skipped (no draw call)` lines in the captured run logs; broader example sweep is still pending.
 - (4) Replaced by transition-era descriptor summary diagnostics for this stage; MIAB-only metrics are no longer the sole source of truth in domain-direct mode.
 - Additional gate: non-instanced semantic materials must remain drawable under domain-direct mode; current `08` verification shows the expected second batch for the sky sphere.
 

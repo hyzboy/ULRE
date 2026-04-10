@@ -69,7 +69,9 @@ namespace hgl::ecs
 
         void SetResolvedMaterialSlot(const hgl::graph::PrimitiveMaterialSlot& slot)
         {
-            resolved_slot_valid = slot.material_template != nullptr && slot.domain != nullptr && slot.mi_id >= 0;
+            // Phase B: drawing path only needs material+domain. Instance-indexed
+            // paths must still gate on resolved_mi_id >= 0 at their own callsites.
+            resolved_slot_valid = slot.material_template != nullptr && slot.domain != nullptr;
             resolved_material_template = slot.material_template;
             resolved_domain = slot.domain;
             resolved_mi_id = slot.mi_id;

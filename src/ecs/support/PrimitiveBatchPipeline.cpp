@@ -539,6 +539,11 @@ namespace hgl::ecs
         uint32_t frame_items_considered = 0;
         uint32_t frame_items_resolved_slot = 0;
         uint32_t frame_items_primitive_slot = 0;
+        uint32_t frame_domain_direct_fallback = 0;
+        uint32_t frame_fallback_no_snapshot = 0;
+        uint32_t frame_fallback_snapshot_no_material = 0;
+        uint32_t frame_fallback_snapshot_no_domain = 0;
+        uint32_t frame_fallback_snapshot_no_mi = 0;
         // Phase 3 diagnostic: VIL sourced from primitive vs. fallback to material default.
         uint32_t frame_vil_from_prim    = 0;
         uint32_t frame_vil_from_default = 0;  // "fallback_count"
@@ -560,6 +565,34 @@ namespace hgl::ecs
                 ++frame_items_resolved_slot;
             else
                 ++frame_items_primitive_slot;
+
+            if (domain_direct_enabled && !use_resolved_slot)
+            {
+                ++frame_domain_direct_fallback;
+
+                // Phase B telemetry: explain why an item did not qualify for
+                // resolved-slot domain-direct path in this frame.
+                const bool has_snapshot_signal = item->resolved_material_template != nullptr
+                                              || item->resolved_domain != nullptr
+                                              || item->resolved_mi_id >= 0;
+
+                if (!has_snapshot_signal)
+                {
+                    ++frame_fallback_no_snapshot;
+                }
+                else if (item->resolved_material_template == nullptr)
+                {
+                    ++frame_fallback_snapshot_no_material;
+                }
+                else if (item->resolved_domain == nullptr)
+                {
+                    ++frame_fallback_snapshot_no_domain;
+                }
+                else if (item->resolved_mi_id < 0)
+                {
+                    ++frame_fallback_snapshot_no_mi;
+                }
+            }
 
             auto* material = use_resolved_slot
                            ? item->resolved_material_template
@@ -746,11 +779,16 @@ namespace hgl::ecs
         if (s_resolved_path_summary_tick < 32)
         {
             std::fprintf(stderr,
-                         "[BatchPipeline::ResolvedSlotSummary] domain_direct=%u items=%u resolved_slot=%u primitive_slot=%u batches=%u\n",
+                         "[BatchPipeline::ResolvedSlotSummary] domain_direct=%u items=%u resolved_slot=%u primitive_slot=%u fallback=%u fallback_no_snapshot=%u fallback_no_material=%u fallback_no_domain=%u fallback_no_mi=%u batches=%u\n",
                          domain_direct_enabled ? 1u : 0u,
                          frame_items_considered,
                          frame_items_resolved_slot,
                          frame_items_primitive_slot,
+                         frame_domain_direct_fallback,
+                         frame_fallback_no_snapshot,
+                         frame_fallback_snapshot_no_material,
+                         frame_fallback_snapshot_no_domain,
+                         frame_fallback_snapshot_no_mi,
                          static_cast<uint32_t>(cache.materialBatches.size()));
         }
         ++s_resolved_path_summary_tick;
