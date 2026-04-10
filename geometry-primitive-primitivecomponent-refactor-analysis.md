@@ -148,13 +148,12 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
    - `EntityMaterialBinding`（实例中心）
 2. 废弃“共享对象可变写入隐式表达每实体状态”的歧义 API。
 
-状态：进行中（约 80%）
+状态：进行中（约 92%）
 
 最近推进（Phase C 批次 1）：
 
 - 已完成：`RenderPrimitiveCollectSystem` 增加 `BindSlotSummaryLogMode`（`Off` / `Throttled` / `EveryFrame`）。
 - 已完成：`BindSlotSummary` 配置入口收敛到 `ECSContext::SetBindSlotSummaryLogMode(...)`，并在系统安装/子世界同步时统一下发到 `RenderPrimitiveCollectSystem`。
-- 已完成：环境变量 `ULRE_BIND_SLOT_SUMMARY=off|throttled|always`（或 `0|1|2`）仅作为 `ECSContext::Initialize()` 的可选覆盖层，不再由系统构造函数直接读取。
 - 已完成：默认行为保持 `Throttled`，不改变既有运行开销与日志噪声基线。
 
 最近推进（Phase C 批次 2）：
@@ -170,6 +169,18 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 - 已完成：确认 ECS 代码中已无对 `resolved_slot_valid/resolved_material_template/resolved_domain/resolved_mi_id/resolved_vil/resolved_mit_*` 的直接读路径依赖。
 - 已完成：关键目标 `ULRE.ECS`、`08`、`14`、`03`、`09` 编译通过，证明“删桥”批次未引入构建回归。
 
+最近推进（Phase C 批次 4）：
+
+- 已完成：`RenderItem` 新增显式命名 API：`SetEntityMaterialBinding(...)` / `ClearEntityMaterialBinding()`。
+- 已完成：`RenderPrimitiveCollectSystem` 主调用点改用 `SetEntityMaterialBinding(...)`，减少 Phase B 术语在主路径中的残留。
+- 已完成：删除 `SetResolvedMaterialSlot/ClearResolvedMaterialSlot` 兼容包装，完成命名收口。
+
+最近推进（Phase C 批次 5）：
+
+- 已完成：新增统一调试配置入口 `ECSContext::ApplyDebugConfig(const ECSDebugConfig&)` 与 `GetDebugConfig()`。
+- 已完成：`BindSlotSummary` 门禁配置不再依赖环境变量约定；`ULRE_BIND_SLOT_SUMMARY` 读取路径已从 `ECSContext::Initialize()` 移除。
+- 已完成：保留并强化 `ECSContext::SetBindSlotSummaryLogMode(...)` 的系统/子世界统一下发路径。
+
 已完成项：
 
 - 已完成：`MaterialResourceDomain` 拥有 MI/MIT GPU 缓冲与脏区上传能力。
@@ -180,8 +191,7 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 
 进行中项：
 
-- 进行中：把 `SetResolvedMaterialSlot/ClearResolvedMaterialSlot` 的 Phase B 命名进一步收敛到显式 `EntityMaterialBinding` API（减少历史术语残留）。
-- 进行中：将 `BindSlotSummary` 门禁策略并入更高层统一调试面板（Editor/UI 侧），替代运行时环境变量约定。
+- 进行中：将 `ECSDebugConfig` 并入更高层统一调试面板（Editor/UI 侧），形成可视化配置入口。
 
 ## 5.1 已完成验证快照
 

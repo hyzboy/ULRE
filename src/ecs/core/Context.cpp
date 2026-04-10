@@ -32,39 +32,9 @@
 #include<hgl/object/ObjectTracker.h>
 #include<algorithm>
 #include<chrono>
-#include<cstdlib>
-#include<cstring>
 
 namespace
 {
-    hgl::ecs::BindSlotSummaryLogMode ParseBindSlotSummaryMode(const char *value)
-    {
-        using hgl::ecs::BindSlotSummaryLogMode;
-
-        if (!value || !*value)
-            return BindSlotSummaryLogMode::Throttled;
-
-        if (std::strcmp(value, "0") == 0 || std::strcmp(value, "off") == 0 || std::strcmp(value, "OFF") == 0)
-            return BindSlotSummaryLogMode::Off;
-
-        if (std::strcmp(value, "2") == 0 || std::strcmp(value, "always") == 0 || std::strcmp(value, "ALWAYS") == 0)
-            return BindSlotSummaryLogMode::EveryFrame;
-
-        return BindSlotSummaryLogMode::Throttled;
-    }
-
-    const char *ToString(hgl::ecs::BindSlotSummaryLogMode mode)
-    {
-        using hgl::ecs::BindSlotSummaryLogMode;
-
-        switch (mode)
-        {
-            case BindSlotSummaryLogMode::Off: return "off";
-            case BindSlotSummaryLogMode::EveryFrame: return "always";
-            default: return "throttled";
-        }
-    }
-
     struct SubWorldDispatchStats
     {
         uint32_t shared_count = 0;
@@ -181,15 +151,6 @@ namespace hgl
 
         void ECSContext::Initialize()
         {
-            // Unified Debug config entry: apply optional env override here.
-            // ULRE_BIND_SLOT_SUMMARY=off|throttled|always (or 0|1|2)
-            if (const char *mode_env = std::getenv("ULRE_BIND_SLOT_SUMMARY"))
-            {
-                SetBindSlotSummaryLogMode(ParseBindSlotSummaryMode(mode_env));
-                GLogInfo("[ECSContext] BindSlotSummary mode=%s (env ULRE_BIND_SLOT_SUMMARY)",
-                         ToString(bind_slot_summary_log_mode));
-            }
-
             RegisterComponentQueryBase<RenderableComponent>();
             RegisterComponentQueryBase<PrimitiveComponent>();
 
@@ -1765,6 +1726,22 @@ namespace hgl
 
             if (auto collect_system = GetSystem<RenderPrimitiveCollectSystem>())
                 collect_system->SetBindSlotSummaryLogMode(mode);
+        }
+
+        void ECSContext::ApplyDebugConfig(const ECSDebugConfig& config)
+        {
+            SetDescriptorContractDiagnosticsLogEnabled(config.descriptor_contract_diag_log_enabled);
+            SetMaterialBindingQueryLogEnabled(config.material_binding_query_log_enabled);
+            SetBindSlotSummaryLogMode(config.bind_slot_summary_log_mode);
+        }
+
+        ECSDebugConfig ECSContext::GetDebugConfig() const
+        {
+            ECSDebugConfig config;
+            config.descriptor_contract_diag_log_enabled = descriptor_contract_diag_log_enabled;
+            config.material_binding_query_log_enabled = material_binding_query_log_enabled;
+            config.bind_slot_summary_log_mode = bind_slot_summary_log_mode;
+            return config;
         }
 
         void ECSContext::NotifyComponentAdded(EntityID entity_id, const std::type_index& component_type)

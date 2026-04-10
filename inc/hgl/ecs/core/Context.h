@@ -55,6 +55,13 @@ namespace hgl
             bool render_enabled = true;
         };
 
+        struct ECSDebugConfig
+        {
+            bool descriptor_contract_diag_log_enabled = false;
+            bool material_binding_query_log_enabled = false;
+            BindSlotSummaryLogMode bind_slot_summary_log_mode = BindSlotSummaryLogMode::Throttled;
+        };
+
         struct RenderFrameCache
         {
             std::vector<std::unique_ptr<RenderItem>> renderItems;
@@ -393,6 +400,9 @@ namespace hgl
 
             void SetMaterialBindingQueryLogEnabled(bool enabled) { material_binding_query_log_enabled = enabled; }
             bool IsMaterialBindingQueryLogEnabled() const { return material_binding_query_log_enabled; }
+
+            void ApplyDebugConfig(const ECSDebugConfig& config);
+            ECSDebugConfig GetDebugConfig() const;
 
             void SetBindSlotSummaryLogMode(BindSlotSummaryLogMode mode);
             BindSlotSummaryLogMode GetBindSlotSummaryLogMode() const { return bind_slot_summary_log_mode; }
