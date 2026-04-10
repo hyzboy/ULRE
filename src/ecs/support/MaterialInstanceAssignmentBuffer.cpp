@@ -148,6 +148,8 @@ namespace hgl::ecs
 
         slot_set.Clear();
 
+        uint32_t skipped_non_instance_resolved = 0;
+
         // 收集唯一 MaterialSlot：优先使用 RenderItem resolved_slot（domain+mi_id），
         // 无 resolved_slot 时回退到 Primitive* 去重，保证兼容旧路径。
         slot_set.Reserve(power_to_2(item_count));
@@ -166,6 +168,18 @@ namespace hgl::ecs
                                      mi_data_ptr,
                                      item->resolved_mit_data,
                                      mit_bytes);
+                continue;
+            }
+
+            // Phase B cleanup: in domain-direct mode, resolved non-instanced
+            // slots (material/domain present but mi_id < 0) should not force a
+            // Primitive* fallback slot into MIAB.
+            if (use_resolved_domain_mi_id
+             && item->resolved_material_template
+             && item->resolved_domain
+             && item->resolved_mi_id < 0)
+            {
+                ++skipped_non_instance_resolved;
                 continue;
             }
 
@@ -203,6 +217,14 @@ namespace hgl::ecs
                               << " mi_id=" << entry.mi_id
                               << " prim_fallback=" << (void*)entry.primitive_fallback
                               << " data=" << entry.mi_data_ptr
+                              << std::endl;
+                }
+
+                if (skipped_non_instance_resolved > 0)
+                {
+                    std::cout << "[MIAB::Stat]   skipped_non_instance_resolved="
+                              << skipped_non_instance_resolved
+                              << " (domain-direct mode)"
                               << std::endl;
                 }
             }
@@ -367,12 +389,21 @@ namespace hgl::ecs
             return;
 
         uint16 mi_index = 0;
-        if (item->resolved_slot_valid && item->resolved_domain && item->resolved_mi_id >= 0)
+        if (item->resolved_material_template && item->resolved_domain && item->resolved_mi_id >= 0)
         {
             if (use_resolved_domain_mi_id)
                 mi_index = static_cast<uint16>(item->resolved_mi_id);
             else
                 mi_index = slot_set.FindResolved(item->resolved_domain, item->resolved_mi_id);
+        }
+        else if (use_resolved_domain_mi_id
+              && item->resolved_material_template
+              && item->resolved_domain
+              && item->resolved_mi_id < 0)
+        {
+            // Non-instanced resolved slot in domain-direct mode.
+            // Keep deterministic default index and avoid Primitive* fallback.
+            mi_index = 0;
         }
         else
         {
@@ -474,6 +505,8 @@ namespace hgl::ecs
         {
             auto *mid_gpu = material_instance_id_buffer->GetGPUBuffer();
             uint32_t* mid_ptr = mid_gpu ? (uint32_t*)mid_gpu->Map(0, sizeof(uint32_t) * item_count) : nullptr;
+            uint32_t non_instance_resolved_mid_defaulted = 0;
+            uint32_t primitive_fallback_mid_count = 0;
 
             if (!mid_ptr)
             {
@@ -492,17 +525,26 @@ namespace hgl::ecs
                 }
 
                 uint16 mi_index = 0;
-                if (item->resolved_slot_valid && item->resolved_domain && item->resolved_mi_id >= 0)
+                if (item->resolved_material_template && item->resolved_domain && item->resolved_mi_id >= 0)
                 {
                     if (use_resolved_domain_mi_id)
                         mi_index = static_cast<uint16>(item->resolved_mi_id);
                     else
                         mi_index = slot_set.FindResolved(item->resolved_domain, item->resolved_mi_id);
                 }
+                else if (use_resolved_domain_mi_id
+                      && item->resolved_material_template
+                      && item->resolved_domain
+                      && item->resolved_mi_id < 0)
+                {
+                    mi_index = 0;
+                    ++non_instance_resolved_mid_defaulted;
+                }
                 else
                 {
                     graph::Primitive* prim = item->GetPrimitive();
                     mi_index = prim ? slot_set.FindPrimitive(prim) : 0;
+                    ++primitive_fallback_mid_count;
                 }
                 *mid_ptr++ = static_cast<uint32_t>(mi_index);
 
@@ -516,6 +558,16 @@ namespace hgl::ecs
 
             if (mid_gpu)
                 mid_gpu->Unmap();
+
+            static uint32_t s_mid_assign_tick = 0;
+            if (++s_mid_assign_tick <= 8u)
+            {
+                std::cout << "[MIAB::MIDAssign] items=" << item_count
+                          << " resolved_domain_mode=" << (use_resolved_domain_mi_id ? 1 : 0)
+                          << " non_instance_resolved_defaulted=" << non_instance_resolved_mid_defaulted
+                          << " primitive_fallback_count=" << primitive_fallback_mid_count
+                          << std::endl;
+            }
         }
     }
 }//namespace hgl::ecs

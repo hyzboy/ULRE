@@ -109,6 +109,7 @@ Status: In progress
 - Done: Phase B next-step telemetry added in `PrimitiveBatchPipeline` to classify domain-direct fallback reasons (`fallback_no_snapshot`, `fallback_no_material`, `fallback_no_domain`, `fallback_no_mi`).
 - Done: first cleanup slice landed: resolved-slot draw validity is decoupled from instance-id validity (material+domain can use resolved-slot path even when `mi_id == -1`; instance-indexed paths still gate on `mi_id >= 0`).
 - Done: second cleanup slice landed in descriptor binding: domain-direct MI/MIT instance scans no longer depend on `resolved_slot_valid`; they now use explicit instance-path eligibility (material present + domain match + `mi_id >= 0`).
+- Done: third cleanup slice landed in MIAB: domain-direct mode no longer forces Primitive fallback for resolved non-instanced slots (`material/domain` present with `mi_id < 0`); MI index assignment now treats these as explicit non-instance entries.
 - Ongoing: remove/contain residual shared `Primitive` mutable material side-effects from non-transition call paths.
 - Ongoing: tighten `BindMaterialSlot` usage boundary and document allowed usage sites.
 - Validated: `08_PBRSpheresECS` sky sphere regression was recovered after a Phase B cleanup edge case where semantic resolve produced `domain != nullptr` but `mi_id == -1`; those non-instanced semantic slots must still bind back to the shared `Primitive` until the fallback dependency is fully removed.
@@ -136,6 +137,7 @@ Status: In progress (transitional implementation active)
 - Completed: fresh rerun validation on `14` after the Phase B fix path shows stable direct binding with no skipped draw items in captured logs (`mode_seen=1 batches=2 mi_direct=1 mi_fallback=0 mit_direct=0 mit_fallback=0 mit_attempt=0 mit_semantic_off=2`).
 - Completed: first Phase B cleanup slice validated on both samples. `08` and `14` now report `resolved_slot=101 primitive_slot=0 fallback=0` with `batches=2` and `item skipped (no draw call)=0`.
 - Completed: second Phase B cleanup slice validated on both samples with unchanged behavior envelope (`resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`).
+- Completed: third Phase B cleanup slice validated on both samples with unchanged behavior envelope (`resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`) and direct-bind summaries unchanged.
 - Pending: Phase B cleanup completion and Phase C final API deprecation cutover.
 
 ## 5.3 Next Step Entry (Phase B fallback attribution)
@@ -185,6 +187,28 @@ Validation after this pass:
 
 - `08`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`, direct summary unchanged.
 - `14`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`, direct summary unchanged (`mit_attempt=0`, `mit_semantic_off=2`).
+
+## 5.5 Next Step Entry (Phase B MIAB non-instance fallback tightening)
+
+This pass tightened `MaterialInstanceAssignmentBuffer` fallback behavior in domain-direct mode.
+
+What changed:
+
+- `StatMaterialInstance(...)` now skips adding Primitive fallback slots for resolved non-instanced entries when domain-direct mode is active (`resolved material/domain` present and `mi_id < 0`).
+- `WriteItems(...)` and `UpdateMaterialInstanceData(...)` now use explicit non-instance assignment in that case, instead of implicitly falling back to `FindPrimitive(...)`.
+- Instance-indexed resolved path remains unchanged for `mi_id >= 0`.
+
+Why this matters:
+
+- Further reduces hidden dependence on shared mutable `Primitive` state in MI ID assignment.
+- Keeps draw-path resolved-slot handling and instance-index path handling separated by intent.
+- Makes non-instance behavior deterministic under domain-direct mode.
+
+Validation after this pass:
+
+- `08`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`, direct summary unchanged.
+- `14`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`, direct summary unchanged (`mit_attempt=0`, `mit_semantic_off=2`).
+- MIAB slot stats remain domain+mi_id centric in sampled runs (`unique_slots=100`, slot entries with `prim_fallback=null` in the sampled output).
 
 ## 5.2 Phase B Regression Note: Non-instanced semantic slots
 
