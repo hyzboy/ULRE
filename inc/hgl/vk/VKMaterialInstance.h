@@ -61,7 +61,7 @@ public:
             mi_id,
             vil,
             render_preset,
-            uint8_t(mit_packed_count > 0 ? material ? material->GetTextureArraySlotFlags() : 0 : 0),
+            material ? material->GetTextureArraySlotFlags() : uint8_t(0),
             mit_packed,
             mit_packed_count,
             material_preset
