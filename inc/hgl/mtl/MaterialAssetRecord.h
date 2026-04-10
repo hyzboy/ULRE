@@ -63,8 +63,8 @@ struct MaterialAssetRecord
     CoordinateSystem2D coord_2d = CoordinateSystem2D::NDC;  ///< 2D 坐标系
 
     // ── 3D 专用（dim == D3 时有效）────────────────────────────────────────────
-    bool                camera      = true;                 ///< 包含摄像机矩阵 (IncludeCamera)
-    bool                sky         = false;                ///< 包含天空信息   (IncludeSky)
+    bool                 camera      = true;                 ///< 包含摄像机矩阵 (IncludeCamera)
+    bool                 sky         = false;                ///< 包含天空信息   (IncludeSky)
     SkyLightAmbientModel sky_ambient = SkyLightAmbientModel::Simple;    ///< 天光模型
     LightingModel        lighting    = LightingModel::Lambert;          ///< 光照模型
 
@@ -87,7 +87,7 @@ struct MaterialAssetRecord
         bool               fixed_size          = false;                     ///< 像素固定大小
         uint32             pixel_w             = 64;                        ///< 像素宽度
         uint32             pixel_h             = 64;                        ///< 像素高度
-        RenderAlphaMode          blend_mode          = RenderAlphaMode::Transparent;    ///< 混合模式
+        RenderAlphaMode    blend_mode          = RenderAlphaMode::Transparent;    ///< 混合模式
         TextureChannelHint base_color_channel  = TextureChannelHint::RGBA;  ///< 通道提示
         bool               front_face_ccw      = false;                     ///< false = Clockwise
         std::string        texture_id;                                      ///< 纹理唯一标识

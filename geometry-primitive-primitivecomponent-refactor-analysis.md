@@ -224,7 +224,7 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 
 ## 5.1 已完成验证快照
 
-- 构建回归：`08_PBRSpheresECS`、`14_PBRColor3DSpheresECS`、`01_draw_triangle` 均可成功产出可执行文件。
+- 构建回归：`01_draw_triangle`、`03_BasicLitSunDirectionECS`、`04_BlendModeMaskedECS`、`05_BlendModeDitherECS`、`06_BlendModeA2CECS`、`07_BlendModeTransparentECS`、`08_DomainIsolationDemo`、`08_PBRSpheresECS`、`09_BasicLitMeshesECS`、`10_TextureBlinnPhongMeshesECS`、`14_PBRColor3DSpheresECS` 均可成功产出可执行文件。
 - 运行日志抽样（`run01.log` / `run08.log` / `run14.log`）：
   - `01`：`ResolvedSlotSummary` 与 `DomainDirectSummary` 持续输出，未检出 `item skipped (no draw call)`、`material=null`、`ResolveMI` 失败行。
   - `08`/`14`：`domain_direct=1`、`items=101`、`resolved_slot=101`、`mi_direct=1`、`mi_fallback=0` 与预期一致。
@@ -312,9 +312,65 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 当前验证状态：
 
 - (1) 已在回归样例上完成阶段性验证（`08`、`14`）。
-- (2) 当前补丁集稳定。
-- (3) 大范围样例扫测仍在进行中。
+- (2) 当前补丁集稳定；`01_draw_triangle` 已完成一次实际运行烟测，连续渲染循环与提交链路正常（见 5.3）。
+- (3) 已完成一轮扩展构建扫测（见 5.1 构建回归列表）；运行期批次扫测已全部完成（用户回报）。
 - (4) domain-direct 模式下以 `DomainDirectSummary` 为主，MIAB 统计为辅。
+
+## 5.3 运行期烟测方案与调试入口
+
+### A. 运行期烟测目标
+
+- 验证“可编译”之外的最小运行闭环：窗口可启动、帧循环可持续、渲染提交链路无显式失败。
+- 复用 Phase C 新增统一调试入口，在运行期快速切换门禁与诊断噪声等级。
+
+### B. 建议执行批次（Debug）
+
+批次 1（核心基线）：
+
+- `01_draw_triangle`
+- `08_PBRSpheresECS`
+- `14_PBRColor3DSpheresECS`
+
+批次 2（材质/混合模式覆盖）：
+
+- `03_BasicLitSunDirectionECS`
+- `04_BlendModeMaskedECS`
+- `05_BlendModeDitherECS`
+- `06_BlendModeA2CECS`
+- `07_BlendModeTransparentECS`
+
+批次 3（domain 与网格扩展）：
+
+- `08_DomainIsolationDemo`
+- `09_BasicLitMeshesECS`
+- `10_TextureBlinnPhongMeshesECS`
+
+### C. 单样例执行建议（每个样例）
+
+1. 启动样例并观察是否进入稳定渲染循环（至少数秒）。
+2. 在运行中执行调试热键组合：
+  - `F7`：显示/隐藏 ECS Debug HUD
+  - `F8`：循环 `BindSlotSummary` 模式
+  - `F9`：切换 `DescriptorContractDiag`
+  - `F10`：切换 `MaterialBindingQuery`
+3. 重点检查日志不应出现：
+  - `item skipped (no draw call)`
+  - `material=null`
+  - `ResolveMI` 失败
+  - `blocked untagged caller` / `untagged caller detected`（硬门禁场景）
+4. 关闭样例并记录是否有异常退出或显式错误。
+
+### D. 当前烟测结果（新增证据）
+
+- `01_draw_triangle` 已执行一次实际启动烟测：
+  - 观测到持续帧循环（`RenderGraph` 帧开始/结束持续推进）；
+  - 观测到提交链路正常（`SwapchainSubmitSystem`、`Present result=0`）；
+  - 未见显式致命错误后手动结束进程。
+- 批次 1/2/3 已全部执行完成（用户回报“已全部测试”），当前无新增阻断项。
+
+结论：
+
+- 运行期最小闭环与批次覆盖均已具备；后续重点转为长期稳定性与回归自动化。
 
 ## 8. 待讨论问题
 
