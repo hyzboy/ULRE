@@ -1,6 +1,7 @@
 ﻿#include<hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
 #include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/QuadComponent.h>
@@ -17,6 +18,20 @@
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        bool IsDomainDirectCollectEnabled(ECSContext *world)
+        {
+            if (!world)
+                return false;
+
+            if (auto collect = world->GetSystem<RenderPrimitiveCollectSystem>())
+                return collect->GetDomainDirectMISsboEnabled();
+
+            return false;
+        }
+    }
+
     QuadMaterialBindingSystem::QuadMaterialBindingSystem(const std::string& name)
         : System(name)
     {
@@ -156,10 +171,12 @@ namespace hgl::ecs
 
         graph::Primitive *shared_primitive = QuadResourcePrepareSystem::GetSharedPrimitive();
         graph::Primitive *quad_primitive = nullptr;
+        const bool domain_direct_collect_enabled = IsDomainDirectCollectEnabled(world);
 
         if (current_primitive
          && current_primitive != shared_primitive
-         && current_primitive->GetMaterial() == quad_material)
+         && current_primitive->GetMaterial() == quad_material
+         && !domain_direct_collect_enabled)
         {
             const hgl::graph::PrimitiveMaterialSlot slot = mi->ToSlot();
             if (!current_primitive->BindMaterialSlot(slot))
@@ -272,10 +289,12 @@ namespace hgl::ecs
         // Assign domain primitive or reuse current
         graph::Primitive *current_primitive = quad->GetPrimitive();
         graph::Primitive *quad_primitive = nullptr;
+        const bool domain_direct_collect_enabled = IsDomainDirectCollectEnabled(world);
 
         if (current_primitive
          && current_primitive != dr->primitive
-         && current_primitive->GetMaterial() == dr->material)
+         && current_primitive->GetMaterial() == dr->material
+         && !domain_direct_collect_enabled)
         {
             const hgl::graph::PrimitiveMaterialSlot slot = mi->ToSlot();
             if (!current_primitive->BindMaterialSlot(slot))
