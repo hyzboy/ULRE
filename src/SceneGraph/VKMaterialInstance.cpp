@@ -65,11 +65,16 @@ void MaterialInstance::WriteMIData(const void *data, uint32_t size)
     if (!data || size == 0)
         return;
 
+    if (!material)
+        return;
+
     void *dst = GetMIData();
     if (!dst)
         return;
 
-    std::memcpy(dst, data, size);
+    const uint32_t max_bytes = material->GetMIDataBytes();
+    const uint32_t copy_bytes = (size < max_bytes) ? size : max_bytes;
+    std::memcpy(dst, data, copy_bytes);
 }
 
 void MaterialInstance::InitMITLayout(uint8_t slot_flags)

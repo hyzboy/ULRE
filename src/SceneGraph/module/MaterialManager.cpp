@@ -946,6 +946,11 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
             alloc_slot_failed.fetch_add(1);
             return {}; // allocation failed
         }
+
+        // Ensure deterministic first-frame MI data even when caller does not
+        // provide explicit instance payload.
+        if (void *mi_data = domain->GetMIData(mi_id))
+            std::memset(mi_data, 0, material->GetMIDataBytes());
     }
 
     // Write instance data if provided
@@ -964,7 +969,11 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
 
         void *mi_data = domain->GetMIData(mi_id);
         if (mi_data)
-            std::memcpy(mi_data, instance_data, instance_data_size);
+        {
+            const uint32_t dst_bytes = material->GetMIDataBytes();
+            const uint32_t copy_bytes = std::min(instance_data_size, dst_bytes);
+            std::memcpy(mi_data, instance_data, copy_bytes);
+        }
     }
 
     // Build and return slot
@@ -1099,6 +1108,12 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialResourceDomain
 
     const VIL *use_vil = vil ? vil : material->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
+    if (mi_id < 0)
+        return nullptr;
+
+    // Ensure deterministic initial MI payload for ResolveMI/CreateMaterialInstance path.
+    if (void *mi_data = domain->GetMIData(mi_id))
+        std::memset(mi_data, 0, material->GetMIDataBytes());
 
     MaterialInstance *mi = new MaterialInstance();
     mi->material          = material;
@@ -1113,7 +1128,11 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialResourceDomain
     Add(mi);
 
     if(data && data_size > 0)
-        mi->WriteMIData(data, data_size);
+    {
+        const uint32 dst_bytes = material->GetMIDataBytes();
+        const uint32 copy_bytes = std::min(data_size, dst_bytes);
+        mi->WriteMIData(data, copy_bytes);
+    }
 
     return mi;
 }
