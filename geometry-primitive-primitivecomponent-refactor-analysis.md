@@ -148,7 +148,7 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
    - `EntityMaterialBinding`（实例中心）
 2. 废弃“共享对象可变写入隐式表达每实体状态”的歧义 API。
 
-状态：进行中（约 60%）
+状态：进行中（约 70%）
 
 最近推进（Phase C 批次 1）：
 
@@ -157,15 +157,23 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 - 已完成：环境变量 `ULRE_BIND_SLOT_SUMMARY=off|throttled|always`（或 `0|1|2`）仅作为 `ECSContext::Initialize()` 的可选覆盖层，不再由系统构造函数直接读取。
 - 已完成：默认行为保持 `Throttled`，不改变既有运行开销与日志噪声基线。
 
+最近推进（Phase C 批次 2）：
+
+- 已完成：在 `RenderItem` 层引入显式 `EntityMaterialBinding`，承载实体级 `material_template/domain/mi_id/vil/MIT` 快照。
+- 已完成：`RenderItem::SetResolvedMaterialSlot()` 改为写入 `EntityMaterialBinding`，并同步维护旧的 `resolved_*` 字段作为兼容桥接。
+- 已完成：`PrimitiveBatchPipeline`、`RenderDescriptorBindingSystem`、`MaterialInstanceAssignmentBuffer` 的核心读路径已切换到 `EntityMaterialBinding` 访问接口。
+- 已完成：保持现有行为与回退语义不变，旧字段尚未删除，仅作为迁移过渡层。
+
 已完成项：
 
 - 已完成：`MaterialResourceDomain` 拥有 MI/MIT GPU 缓冲与脏区上传能力。
 - 已完成：Descriptor 绑定优先 domain-direct MI/MIT SSBO，保留 legacy fallback 兼容。
 - 已完成：运行期过渡诊断（`DomainDirectSummary`）覆盖 MIT attempt/semantic-off/reason。
+- 已完成：`RenderItem` 已具备显式实体材质绑定模型，完成从“松散 resolved 字段”到“显式绑定结构”的第一阶段迁移。
 
 进行中项：
 
-- 进行中：迁移到显式实体绑定类型并最终收口 legacy fallback。
+- 进行中：继续将剩余 `resolved_*` 读路径迁移到 `EntityMaterialBinding`，并最终删除兼容桥字段。
 - 进行中：将 `BindSlotSummary` 门禁策略并入更高层统一调试面板（Editor/UI 侧），替代运行时环境变量约定。
 
 ## 5.1 已完成验证快照

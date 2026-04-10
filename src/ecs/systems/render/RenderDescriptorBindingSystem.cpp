@@ -113,16 +113,18 @@ namespace hgl::ecs
             if (!item)
                 return false;
 
+            const auto& binding = item->GetEntityMaterialBinding();
+
             // Phase B: instance-indexed descriptor paths must rely on explicit
             // instance eligibility (domain + non-negative mi_id), independent
             // of draw-path resolved-slot validity.
-            if (!item->resolved_material_template)
+            if (!binding.material_template)
                 return false;
 
-            if (item->resolved_domain != domain)
+            if (binding.domain != domain)
                 return false;
 
-            return item->resolved_mi_id >= 0;
+            return binding.mi_id >= 0;
         }
 
         bool TryBindDomainDirectMIData(const hgl::ecs::MaterialBatch *batch,
@@ -142,8 +144,10 @@ namespace hgl::ecs
                 if (!HasResolvedInstanceSlotForDomain(item, domain))
                     continue;
 
-                if (item->resolved_mi_id > max_mi_id)
-                    max_mi_id = item->resolved_mi_id;
+                const auto& binding = item->GetEntityMaterialBinding();
+
+                if (binding.mi_id > max_mi_id)
+                    max_mi_id = binding.mi_id;
             }
 
             if (max_mi_id < 0)
@@ -204,11 +208,13 @@ namespace hgl::ecs
                 if (!HasResolvedInstanceSlotForDomain(item, domain))
                     continue;
 
-                if (item->resolved_mi_id > max_mi_id)
-                    max_mi_id = item->resolved_mi_id;
+                const auto& binding = item->GetEntityMaterialBinding();
 
-                if (per_entry_uint_count == 0 && item->resolved_mit_count > 0)
-                    per_entry_uint_count = item->resolved_mit_count;
+                if (binding.mi_id > max_mi_id)
+                    max_mi_id = binding.mi_id;
+
+                if (per_entry_uint_count == 0 && binding.mit_count > 0)
+                    per_entry_uint_count = binding.mit_count;
             }
 
             if (max_mi_id < 0)
@@ -241,12 +247,14 @@ namespace hgl::ecs
                 if (!HasResolvedInstanceSlotForDomain(item, domain))
                     continue;
 
-                if (!item->resolved_mit_data || item->resolved_mit_count == 0)
+                const auto& binding = item->GetEntityMaterialBinding();
+
+                if (!binding.mit_data || binding.mit_count == 0)
                     continue;
 
-                const uint32_t copy_count = std::min(per_entry_uint_count, item->resolved_mit_count);
-                uint32_t *dst = mit_staging.data() + static_cast<uint32_t>(item->resolved_mi_id) * per_entry_uint_count;
-                memcpy(dst, item->resolved_mit_data, static_cast<size_t>(copy_count) * sizeof(uint32_t));
+                const uint32_t copy_count = std::min(per_entry_uint_count, binding.mit_count);
+                uint32_t *dst = mit_staging.data() + static_cast<uint32_t>(binding.mi_id) * per_entry_uint_count;
+                memcpy(dst, binding.mit_data, static_cast<size_t>(copy_count) * sizeof(uint32_t));
             }
 
             if (!domain->EnsureMITBuffer(buffer_manager, total_uint_count))

@@ -557,10 +557,12 @@ namespace hgl::ecs
             if (!item || !item->isVisible)
                 continue;
 
+            const auto& binding = item->GetEntityMaterialBinding();
+
             ++frame_items_considered;
 
             auto* primitive = item->GetPrimitive();
-            const bool use_resolved_slot = domain_direct_enabled && item->resolved_slot_valid;
+            const bool use_resolved_slot = domain_direct_enabled && binding.IsDrawBindingValid();
             if (use_resolved_slot)
                 ++frame_items_resolved_slot;
             else
@@ -572,34 +574,32 @@ namespace hgl::ecs
 
                 // Phase B telemetry: explain why an item did not qualify for
                 // resolved-slot domain-direct path in this frame.
-                const bool has_snapshot_signal = item->resolved_material_template != nullptr
-                                              || item->resolved_domain != nullptr
-                                              || item->resolved_mi_id >= 0;
+                const bool has_snapshot_signal = binding.HasSnapshotSignal();
 
                 if (!has_snapshot_signal)
                 {
                     ++frame_fallback_no_snapshot;
                 }
-                else if (item->resolved_material_template == nullptr)
+                else if (binding.material_template == nullptr)
                 {
                     ++frame_fallback_snapshot_no_material;
                 }
-                else if (item->resolved_domain == nullptr)
+                else if (binding.domain == nullptr)
                 {
                     ++frame_fallback_snapshot_no_domain;
                 }
-                else if (item->resolved_mi_id < 0)
+                else if (binding.mi_id < 0)
                 {
                     ++frame_fallback_snapshot_no_mi;
                 }
             }
 
             auto* material = use_resolved_slot
-                           ? item->resolved_material_template
+                           ? binding.material_template
                            : item->GetMaterial();
 
             auto* domain = use_resolved_slot
-                         ? item->resolved_domain
+                         ? binding.domain
                          : (primitive ? primitive->GetDomain() : nullptr);
 
             const graph::VIL* effective_vil = nullptr;
@@ -609,7 +609,7 @@ namespace hgl::ecs
                 preset = primitive->GetRenderPreset();
 
             if (use_resolved_slot)
-                effective_vil = item->resolved_vil;
+                effective_vil = binding.vil;
             else if (primitive)
                 effective_vil = primitive->GetVIL();
 
@@ -727,7 +727,7 @@ namespace hgl::ecs
             }
 
             const uint32_t mit_word_count = use_resolved_slot
-                                          ? item->resolved_mit_count
+                                          ? binding.mit_count
                                           : (primitive ? (primitive->GetMITDataBytes() / sizeof(uint32_t)) : 0u);
 
             if (material->GetTextureArraySlotFlags() != 0 && mit_word_count == 0)
@@ -741,7 +741,7 @@ namespace hgl::ecs
                              material->GetName().c_str(),
                              prim_name.c_str(),
                              unsigned(material->GetTextureArraySlotFlags()),
-                             use_resolved_slot ? item->resolved_mi_id : primitive->GetMIID(),
+                             use_resolved_slot ? binding.mi_id : primitive->GetMIID(),
                              static_cast<unsigned long long>(s_missing_mit_payload));
                 }
             }
