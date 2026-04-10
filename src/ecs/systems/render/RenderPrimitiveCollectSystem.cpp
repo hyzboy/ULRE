@@ -20,6 +20,31 @@ namespace hgl::ecs
 {
     namespace
     {
+        bool NeedsPrimitiveSlotBind(const graph::Primitive *prim, const graph::PrimitiveMaterialSlot &slot)
+        {
+            if (!prim)
+                return false;
+
+            // Deferred primitives must bind once to materialize runtime draw state.
+            if (prim->HasDeferredMI())
+                return true;
+
+            if (prim->GetMaterialTemplate() != slot.material_template)
+                return true;
+            if (prim->GetDomain() != slot.domain)
+                return true;
+            if (prim->GetMIID() != slot.mi_id)
+                return true;
+            if (prim->GetVIL() != slot.vil)
+                return true;
+            if (prim->GetRenderPreset() != slot.preset)
+                return true;
+            if (prim->GetMaterialPreset() != slot.material_preset)
+                return true;
+
+            return false;
+        }
+
         bool ShouldLogPow2(const uint64_t v)
         {
             return v != 0 && ((v & (v - 1)) == 0);
@@ -320,8 +345,19 @@ namespace hgl::ecs
                                                               && slot.domain != nullptr
                                                               && slot.mi_id >= 0;
 
-                            if (!use_domain_direct_slot)
-                                primitive->BindMaterialSlot(slot);
+                            bool did_bind_slot = false;
+                            if (!use_domain_direct_slot && NeedsPrimitiveSlotBind(primitive, slot))
+                            {
+                                did_bind_slot = primitive->BindMaterialSlot(slot);
+                                if (!did_bind_slot)
+                                {
+                                    LogWarning("[RenderPrimitiveCollect::BindMaterialSlot] FAILED: prim='%s' material=%p domain=%p mi_id=%d",
+                                               primitive->GetGeometryName().c_str(),
+                                               static_cast<const void*>(slot.material_template),
+                                               static_cast<const void*>(slot.domain),
+                                               (int)slot.mi_id);
+                                }
+                            }
 
                             resolved_slot_snapshot = slot;
                             has_resolved_slot_snapshot = true;
@@ -329,7 +365,8 @@ namespace hgl::ecs
                             if (log_resolve)
                                 LogDebug("[RenderPrimitiveCollect::BindMaterialSlot] prim='%s' %s. GetMaterialTemplate now=%p mi_id=%d",
                                          primitive->GetGeometryName().c_str(),
-                                         use_domain_direct_slot ? "skipped(shared-primitive-safe)" : "bound",
+                                         use_domain_direct_slot ? "skipped(shared-primitive-safe)"
+                                         : (did_bind_slot ? "bound" : "noop(already-matched)"),
                                          static_cast<const void*>(primitive->GetMaterialTemplate()),
                                          (int)slot.mi_id);
                         }

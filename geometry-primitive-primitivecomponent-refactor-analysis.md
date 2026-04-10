@@ -1,279 +1,239 @@
-# Geometry / Primitive / PrimitiveComponent Responsibility Analysis
+# Geometry / Primitive / PrimitiveComponent 职责重构分析（中文）
 
-Date: 2026-04-10 (updated)
+日期：2026-04-11（持续更新）
 
-## 1. Background
+## 0. 阶段完成度看板
 
-The current ECS rendering flow shows a behavior mismatch in scenes like:
+- Phase A（最小行为修复）：100%（已完成）
+- Phase B（对齐与清理）：88%（进行中）
+- Phase C（API 硬化）：60%（进行中）
 
-- 10 geometry variants
-- 100 entity material-instance configurations
+最近状态补充：
 
-Observed result: only about 10 MI entries are effectively used.
+- 已修复 MI 数据链路中的两类初始化问题（`AllocMaterialInstanceSlot` 路径与 `CreateMaterialInstance` 路径）。
+- 已修复一个回归：无 MI 材质（如 `VertexColor2D`）错误地被要求分配 MI 槽，导致 `ResolveMI` 失败并无绘制指令。
 
-This is not a single-callsite bug. It is a responsibility boundary issue across Geometry, Primitive, PrimitiveComponent, and ECS material instance upload.
+## 1. 背景
 
-## 2. Current Model (As Implemented)
+当前 ECS 渲染流在以下场景出现行为不匹配：
 
-### 2.1 Primitive currently mixes two responsibilities
+- 几何体变体 10 个
+- 实体材质实例配置 100 个
 
-Primitive currently stores both:
+观察结果：实际生效的 MI 条目约 10 个。
 
-- geometry draw carrier state (geometry, draw range, VIL path)
-- mutable per-instance material binding state (material/domain/mi_id/MIT)
+这不是单一调用点 bug，而是 Geometry、Primitive、PrimitiveComponent 与 ECS MI 上传路径之间的职责边界问题。
 
-This makes a shared Primitive act like a shared mutable material-instance container.
+## 2. 现状模型（当前实现）
 
-### 2.2 Render collect mutates Primitive per entity
+### 2.1 Primitive 混合了两类职责
 
-Render collect resolves material slot and then writes it back to Primitive via BindMaterialSlot.
+Primitive 同时承载：
 
-When many entities share one Primitive, later entity updates overwrite prior slot state.
+- 几何绘制载体状态（geometry、draw range、VIL）
+- 可变的“每实例材质绑定状态”（material/domain/mi_id/MIT）
 
-### 2.3 MI upload dedups by Primitive pointer
+这会使“共享 Primitive”在语义上变成“共享可变材质实例容器”。
 
-MaterialInstanceAssignmentBuffer collects unique primitives (Primitive*) and uploads MI by that key.
+### 2.2 Render Collect 逐实体回写 Primitive
 
-So if 100 entities reference 10 Primitive pointers, the MI path naturally collapses to 10 effective entries.
+Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 Primitive。
 
-### 2.4 PrimitiveComponent MI override is not integrated as first-class key
+当多个实体共享同一个 Primitive 时，后写会覆盖先写。
 
-PrimitiveComponent has mi_id_override API, but this path is not treated as the primary dedup key in ECS upload.
+### 2.3 MI 上传按 Primitive 指针去重
 
-Result: setting override does not guarantee unique per-entity MI behavior.
+`MaterialInstanceAssignmentBuffer` 以 `Primitive*` 作为去重键。
 
-## 3. Root Cause Summary
+因此 100 个实体若只引用 10 个 Primitive 指针，MI 路径会自然塌缩为约 10 个有效条目。
 
-The root cause is key mismatch:
+### 2.4 PrimitiveComponent override 不是一等主键
 
-- semantic intent key should be per-entity material slot identity
-- actual runtime key is mostly Primitive pointer identity
+`PrimitiveComponent::mi_id_override` 存在，但未成为 ECS 上传路径的一等去重主键。
 
-Therefore, shared Primitive + per-entity MI is currently inconsistent by design.
+结果：设置 override 也不能保证每实体 MI 唯一行为。
 
-## 4. Target Responsibility Model
+## 3. 根因总结
+
+本质是“键不一致”：
+
+- 语义期望键：每实体材质槽身份
+- 运行时实际键：主要是 `Primitive*` 身份
+
+因此“共享 Primitive + 每实体 MI”按当前设计天然不一致。
+
+## 4. 目标职责模型
 
 ### 4.1 Geometry
 
-Owns only mesh/topology/buffers.
+只负责网格/拓扑/缓冲。
 
 ### 4.2 Primitive
 
-Represents reusable geometry draw prototype and static compatibility data.
-Should not be the mutable owner of per-entity MI slot selection.
+表示可复用几何绘制原型与静态兼容信息，不再作为每实体 MI 槽的可变拥有者。
 
 ### 4.3 PrimitiveComponent / RenderItem
 
-Owns per-entity resolved material slot snapshot:
+拥有每实体“已解析材质槽快照”：
 
 - material_template
 - domain
 - mi_id
-- MIT payload (or MIT reference)
+- MIT payload（或 MIT 引用）
 - render/material preset
 
-### 4.4 MI upload path
+### 4.4 MI 上传路径
 
-Dedup/upload key should be material-slot identity (domain + mi_id + material_template, optionally MIT hash), not Primitive*.
+去重/上传键应为材质槽身份（domain + mi_id + material_template，可选 MIT hash），而非 `Primitive*`。
 
-## 5. Recommended Refactor Plan
+## 5. 推荐重构计划
 
-## Phase A (minimal behavior fix, low API risk)
+## Phase A（最小行为修复，低 API 风险）
 
-1) Add per-item resolved material slot snapshot to RenderItem/PrimitiveRenderItem.
-2) In RenderPrimitiveCollectSystem, write resolved slot to RenderItem instead of mutating shared Primitive.
-3) In MaterialInstanceAssignmentBuffer, dedup by material-slot key, not Primitive*.
+目标：
 
-Expected result:
+1. 在 RenderItem/PrimitiveRenderItem 增加每条目已解析槽快照。
+2. Collect 阶段写入 RenderItem，不再依赖共享 Primitive 回写作为身份键。
+3. MIAB 以材质槽键去重，而不是 Primitive 指针。
 
-- 10 shared Geometry/Primitive can remain
-- 100 per-entity MI slots can coexist and upload correctly
+状态：已完成
 
-Status: Completed
+- 已完成：resolved slot 快照进入 render item 主路径。
+- 已完成：collect 流程消费 resolved slot，不再把共享 Primitive 回写当作主身份来源。
+- 已完成：MI 分配/写入去重路径已对齐到 domain + mi_id。
+- 已验证：`08_PBRSpheresECS` 与 `14_PBRColor3DSpheresECS` 日志稳定（`mode_seen=1`，`mi_direct=1`，`mi_fallback=0`）。
 
-- Done: per-item resolved material slot snapshot is in the render item path.
-- Done: collect flow consumes resolved slot data without relying on shared `Primitive*` mutation as the identity key.
-- Done: MI assignment dedup/write path is aligned to resolved domain + mi_id flow.
-- Verified: `08_PBRSpheresECS` and `14_PBRColor3DSpheresECS` reached stable `mode_seen=1` and `mi_direct=1, mi_fallback=0` in descriptor binding summary logs.
+## Phase B（对齐与清理）
 
-## Phase B (alignment and cleanup)
+目标：
 
-1) Reduce Primitive mutable MI state responsibilities.
-2) Narrow BindMaterialSlot usage to explicit prototype-level or deferred-material setup only.
-3) Make PrimitiveComponent override path explicit and validated in resolve flow.
+1. 降低 Primitive 可变 MI 状态职责。
+2. 收敛 `BindMaterialSlot` 的使用边界（仅原型级或 deferred-setup）。
+3. 将 override 路径显式化并可验证。
 
-Status: In progress
+状态：进行中（约 88%）
 
-- Done: override consumption and resolved-slot-first behavior are wired in the ECS path.
-- Done: collect-time `BindMaterialSlot` skipping is now limited to true domain-direct instance slots (`domain != nullptr && mi_id >= 0`).
-- Done: Phase B next-step telemetry added in `PrimitiveBatchPipeline` to classify domain-direct fallback reasons (`fallback_no_snapshot`, `fallback_no_material`, `fallback_no_domain`, `fallback_no_mi`).
-- Done: first cleanup slice landed: resolved-slot draw validity is decoupled from instance-id validity (material+domain can use resolved-slot path even when `mi_id == -1`; instance-indexed paths still gate on `mi_id >= 0`).
-- Done: second cleanup slice landed in descriptor binding: domain-direct MI/MIT instance scans no longer depend on `resolved_slot_valid`; they now use explicit instance-path eligibility (material present + domain match + `mi_id >= 0`).
-- Done: third cleanup slice landed in MIAB: domain-direct mode no longer forces Primitive fallback for resolved non-instanced slots (`material/domain` present with `mi_id < 0`); MI index assignment now treats these as explicit non-instance entries.
-- Ongoing: remove/contain residual shared `Primitive` mutable material side-effects from non-transition call paths.
-- Ongoing: tighten `BindMaterialSlot` usage boundary and document allowed usage sites.
-- Validated: `08_PBRSpheresECS` sky sphere regression was recovered after a Phase B cleanup edge case where semantic resolve produced `domain != nullptr` but `mi_id == -1`; those non-instanced semantic slots must still bind back to the shared `Primitive` until the fallback dependency is fully removed.
+已完成项：
 
-## Phase C (API hardening)
+- 已完成：override 消费与 resolved-slot-first 行为进入 ECS 主路径。
+- 已完成：Collect 跳过 `BindMaterialSlot` 的条件已收窄为“真 domain-direct 实例槽”（`domain != nullptr && mi_id >= 0`）。
+- 已完成：`PrimitiveBatchPipeline` 增加 fallback 归因统计（`fallback_no_snapshot/material/domain/mi`）。
+- 已完成：清理切片 1：将 resolved-slot 可绘制性与实例索引可用性解耦。
+- 已完成：清理切片 2：Descriptor 绑定实例扫描改为显式 eligibility，不再依赖 `resolved_slot_valid`。
+- 已完成：清理切片 3：MIAB 在 domain-direct 下对 non-instance resolved 项不再强制 Primitive fallback。
+- 已完成：清理切片 4：Quad 绑定在 domain-direct collect 开启时，不再对已有 primitive 原地 `BindMaterialSlot`。
+- 已完成：清理切片 5：Collect 路径仅在“槽位状态发生变化”时才执行 `BindMaterialSlot`；对于已匹配槽位改为 no-op，减少共享 Primitive 的无意义可变写入。
+- 已完成：修复“无 MI 材质回归”——`CreateMaterialInstance` 仅在 `material->hasMI()` 时分配 MI 槽，恢复 `draw_triangle` 这类路径。
 
-1) Introduce explicit data types:
-   - PrimitivePrototype (geometry-centric)
-   - EntityMaterialBinding (instance-centric)
-2) Deprecate ambiguous APIs where shared object mutation implies per-entity state.
+进行中项：
 
-Status: In progress (transitional implementation active)
+- 进行中：清理非过渡调用路径中残余的共享 Primitive 可变副作用。
+- 进行中：固化 `BindMaterialSlot` 允许调用点文档与守卫。
 
-- Done: domain-owned MI/MIT GPU buffer support and dirty-range upload API were added in `MaterialResourceDomain`.
-- Done: descriptor binding now prefers domain-direct MI/MIT SSBO and retains legacy fallback for compatibility.
-- Done: runtime transitional diagnostics added (`DomainDirectSummary`) including MIT attempt/semantic-off/reason stats.
-- Ongoing: finalize full migration to explicit entity binding types and retire legacy fallback path.
+关键回归门禁：
 
-## 5.1 Progress Snapshot (2026-04-10)
+- 非实例语义槽（`mi_id == -1`）在 domain-direct 过渡期仍必须可绘制（例如 `08` 天空球案例）。
 
-- Completed: behavior regression fixed for shared-primitive + per-entity MI identity collapse.
-- Completed: transition-mode verification for MI direct bind on both key regression samples.
-- Partially completed: MIT direct path verified on `08`; `14` currently reports `mit_attempt=0` with `mit_semantic_off` (MIT semantic not requested), which is expected for current material contract.
-- Completed: sky-sphere regression fix validated on `08`; batch summary returned to `items=101 resolved_slot=100 primitive_slot=1 batches=2` and descriptor binding remained on the direct path (`mi_direct=1, mi_fallback=0, mit_direct=1, mit_fallback=0`).
-- Completed: fresh rerun validation on `14` after the Phase B fix path shows stable direct binding with no skipped draw items in captured logs (`mode_seen=1 batches=2 mi_direct=1 mi_fallback=0 mit_direct=0 mit_fallback=0 mit_attempt=0 mit_semantic_off=2`).
-- Completed: first Phase B cleanup slice validated on both samples. `08` and `14` now report `resolved_slot=101 primitive_slot=0 fallback=0` with `batches=2` and `item skipped (no draw call)=0`.
-- Completed: second Phase B cleanup slice validated on both samples with unchanged behavior envelope (`resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`).
-- Completed: third Phase B cleanup slice validated on both samples with unchanged behavior envelope (`resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`) and direct-bind summaries unchanged.
-- Pending: Phase B cleanup completion and Phase C final API deprecation cutover.
+## Phase C（API 硬化）
 
-## 5.3 Next Step Entry (Phase B fallback attribution)
+目标：
 
-To continue cleanup safely, this pass added fallback attribution counters in `PrimitiveBatchPipeline` without changing draw behavior.
+1. 引入显式类型：
+   - `PrimitivePrototype`（几何中心）
+   - `EntityMaterialBinding`（实例中心）
+2. 废弃“共享对象可变写入隐式表达每实体状态”的歧义 API。
 
-What was added:
+状态：进行中（约 60%）
 
-- `BatchPipeline::ResolvedSlotSummary` now reports why an item did not take resolved-slot domain-direct path:
-   - `fallback_no_snapshot`
-   - `fallback_no_material`
-   - `fallback_no_domain`
-   - `fallback_no_mi`
+已完成项：
 
-Why this is the next step:
+- 已完成：`MaterialResourceDomain` 拥有 MI/MIT GPU 缓冲与脏区上传能力。
+- 已完成：Descriptor 绑定优先 domain-direct MI/MIT SSBO，保留 legacy fallback 兼容。
+- 已完成：运行期过渡诊断（`DomainDirectSummary`）覆盖 MIT attempt/semantic-off/reason。
 
-- Phase B needs to shrink primitive-state fallback paths incrementally.
-- Attribution counters let us separate expected fallback (e.g. non-instanced semantic slots) from accidental fallback (missing/invalid snapshot data).
-- This provides a concrete gate for each subsequent cleanup patch.
+进行中项：
 
-Current reading after this cleanup:
+- 进行中：迁移到显式实体绑定类型并最终收口 legacy fallback。
 
-- `08_PBRSpheresECS`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`.
-- `14_PBRColor3DSpheresECS`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`.
-- Descriptor binding remains direct-path stable in both samples (`mi_direct=1, mi_fallback=0`; `14` keeps `mit_attempt=0, mit_semantic_off=2` as expected by current contract).
+## 5.1 已完成验证快照
 
-## 5.4 Next Step Entry (Phase B descriptor instance-path decoupling)
+- `08`/`14`：关键切片验证稳定，`resolved_slot=101 primitive_slot=0 fallback=0`，且无 `item skipped (no draw call)`。
+- `08`：天空球 `mi_id=-1` 回归已恢复，保持可绘制。
+- `14`：`mit_attempt=0, mit_semantic_off=2` 与当前材质契约一致。
 
-This pass continued Phase B by decoupling descriptor instance-path eligibility from draw-path resolved-slot validity.
+## 5.2 最近新增修复（2026-04-11）
 
-What changed:
+### A. MI 槽初始化与写入边界
 
-- `RenderDescriptorBindingSystem` domain-direct MI/MIT helper scans now use explicit instance eligibility checks:
-   - resolved material exists
-   - resolved domain matches batch domain
-   - `resolved_mi_id >= 0`
-- The scan logic no longer directly relies on `resolved_slot_valid`.
+- 在 `AllocMaterialInstanceSlot` 路径，新增“分配后零初始化 + 有界拷贝”。
+- 在 `CreateMaterialInstance` 路径，新增“仅 MI 材质分配槽 + 分配后零初始化 + 有界拷贝”。
+- 在 `MaterialInstance::WriteMIData`，新增按 `GetMIDataBytes()` 截断。
 
-Why this matters:
+效果：
 
-- It enforces the intended separation introduced in the first cleanup slice:
-   - draw-path resolved slot eligibility
-   - instance-indexed descriptor eligibility
-- It prevents accidental future coupling where `resolved_slot_valid` semantics changes could silently alter MI/MIT indexing behavior.
+- 修复了 `mid` 正确但 `mtl` 出现垃圾值的问题。
 
-Validation after this pass:
+### B. 无 MI 材质回归修复
 
-- `08`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`, direct summary unchanged.
-- `14`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`, direct summary unchanged (`mit_attempt=0`, `mit_semantic_off=2`).
+问题：
 
-## 5.5 Next Step Entry (Phase B MIAB non-instance fallback tightening)
+- `draw_triangle`（`VertexColor2D`）无 MI 材质被错误要求分配 MI 槽。
+- 导致 `ResolveMI` 返回空槽，进而无绘制指令。
 
-This pass tightened `MaterialInstanceAssignmentBuffer` fallback behavior in domain-direct mode.
+修复：
 
-What changed:
+- `CreateMaterialInstance` 仅在 `material->hasMI()` 时分配 MI 槽。
 
-- `StatMaterialInstance(...)` now skips adding Primitive fallback slots for resolved non-instanced entries when domain-direct mode is active (`resolved material/domain` present and `mi_id < 0`).
-- `WriteItems(...)` and `UpdateMaterialInstanceData(...)` now use explicit non-instance assignment in that case, instead of implicitly falling back to `FindPrimitive(...)`.
-- Instance-indexed resolved path remains unchanged for `mi_id >= 0`.
+效果：
 
-Why this matters:
+- 解除无 MI 路径阻塞，恢复绘制链路。
 
-- Further reduces hidden dependence on shared mutable `Primitive` state in MI ID assignment.
-- Keeps draw-path resolved-slot handling and instance-index path handling separated by intent.
-- Makes non-instance behavior deterministic under domain-direct mode.
+### C. Collect 路径槽位回写收敛（Phase B 清理切片 5）
 
-Validation after this pass:
+改动：
 
-- `08`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`, direct summary unchanged.
-- `14`: `resolved_slot=101 primitive_slot=0 fallback=0`, `batches=2`, `item skipped (no draw call)=0`, direct summary unchanged (`mit_attempt=0`, `mit_semantic_off=2`).
-- MIAB slot stats remain domain+mi_id centric in sampled runs (`unique_slots=100`, slot entries with `prim_fallback=null` in the sampled output).
+- `RenderPrimitiveCollectSystem` 新增“是否需要绑定槽位”的判定：仅在材质模板、domain、mi_id、VIL、preset 或 material_preset 发生变化时才执行 `BindMaterialSlot`。
+- 对 deferred primitive 保持首次绑定行为（保证运行态可绘制状态构建）。
+- 增加 `BindMaterialSlot` 失败告警，避免静默失败。
 
-## 5.2 Phase B Regression Note: Non-instanced semantic slots
+预期效果：
 
-During Phase B cleanup, `RenderPrimitiveCollectSystem` temporarily skipped `Primitive::BindMaterialSlot(...)` whenever domain-direct mode was enabled.
+- 在不改变绘制行为的前提下，进一步收敛共享 Primitive 的可变写入面。
+- 为后续彻底收口 `BindMaterialSlot` 调用边界提供稳定过渡。
 
-That was too broad.
+## 6. 为什么“100 实体创建 100 Primitive”不是正确解
 
-The failure case was the sky sphere in `08_PBRSpheresECS`:
+该做法仅通过增加对象数量绕过键冲突，牺牲了几何复用目标，属于战术规避，不是架构修复。
 
-- semantic resolve succeeded
-- resolved slot had valid material/domain
-- resolved slot carried `mi_id = -1`
-- collect path skipped primitive binding
-- later batch path did not treat the item as a resolved-slot-backed domain-direct instance
-- result: `material=null`, `pipeline=null`, and the sky sphere never entered a draw batch
+## 7. 风险与验证清单
 
-Refined rule:
+### 风险
 
-- skip `BindMaterialSlot(...)` only for true domain-direct instance slots (`domain != nullptr && mi_id >= 0`)
-- if semantic resolve returns a non-instanced slot (`mi_id == -1`), still bind the slot back to the `Primitive` until the remaining primitive-state dependency is removed from the draw path
+- batch key 变化可能影响排序/分组。
+- descriptor 绑定可能存在历史上对 Primitive 身份的隐式依赖。
+- `BindMaterialSlot` 副作用存在隐式耦合。
 
-Why this matters:
+### 验证清单
 
-- `domain != nullptr` alone does not imply that later stages can consume the slot without shared-primitive fallback state
-- Phase B cleanup must preserve non-MI / non-instanced semantic materials while shrinking primitive-owned mutable state
-- this is now an explicit regression gate for future cleanup passes
+1. 10 几何 + 100 MI 场景应产生 100 个有效 MI 上传语义。
+2. 共享 Primitive 场景帧间稳定。
+3. 无 override 的旧示例行为不变。
+4. 过渡诊断与 MIAB 指标应与预期一致。
 
-## 6. Why previous workaround was insufficient
+当前验证状态：
 
-Workaround used in one sample: create 100 Primitive objects for 100 entities.
+- (1) 已在回归样例上完成阶段性验证（`08`、`14`）。
+- (2) 当前补丁集稳定。
+- (3) 大范围样例扫测仍在进行中。
+- (4) domain-direct 模式下以 `DomainDirectSummary` 为主，MIAB 统计为辅。
 
-It works by bypassing the key mismatch, but duplicates object layer responsibility and weakens the original design goal of geometry reuse.
+## 8. 待讨论问题
 
-So it is a tactical workaround, not an architectural fix.
-
-## 7. Risks and Validation Checklist
-
-### Risks
-
-- batch key changes can alter sorting/grouping behavior
-- descriptor binding assumptions may rely on Primitive identity
-- hidden dependencies on Primitive::BindMaterialSlot side effects
-
-### Validation checklist
-
-1) Scene with 10 geometry + 100 MI must produce 100 effective MI uploads.
-2) Shared-Primitive scenes must remain visually stable frame-to-frame.
-3) Existing examples without MI overrides must remain unchanged.
-4) MIAB diagnostics should report expected unique material-slot count.
-
-Current validation status:
-
-- (1) Done on regression samples (`08`, `14`) via runtime transition diagnostics.
-- (2) Done for current transition patch set (no instability observed in verification runs).
-- (3) Partially done: `14` rerun after the sky fix path shows no `item skipped (no draw call)` lines in the captured run logs; broader example sweep is still pending.
-- (4) Replaced by transition-era descriptor summary diagnostics for this stage; MIAB-only metrics are no longer the sole source of truth in domain-direct mode.
-- Additional gate: non-instanced semantic materials must remain drawable under domain-direct mode; current `08` verification shows the expected second batch for the sky sphere.
-
-## 8. Open discussion points
-
-1) Should MIT be part of dedup key always, or only when texture-array mode is enabled?
-2) Should mi_id_override remain API, or be replaced with explicit EntityMaterialBinding data?
-3) Do we want Primitive-level mutable material fields at all after refactor?
-4) Can we stage migration by feature flag to de-risk sample regressions?
+1. MIT 是否应始终进入 dedup key，还是仅在 texture-array 模式启用？
+2. `mi_id_override` 是否保留，还是迁移为显式 `EntityMaterialBinding`？
+3. Phase C 完成后，Primitive 还是否需要保留可变材质字段？
+4. 是否继续采用 feature-flag 渐进迁移以降低样例回归风险？
 
 ---
 
-Prepared for follow-up design discussion.
+用于后续设计评审与实施跟踪。
