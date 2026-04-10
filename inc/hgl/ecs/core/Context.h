@@ -8,6 +8,7 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/ecs/core/SystemProfiler.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/log/Log.h>
 #include<memory>
 #include<functional>
@@ -159,6 +160,7 @@ namespace hgl
             bool descriptor_contract_diag_log_enabled = false;
             uint64_t descriptor_contract_diag_last_log_ms = 0;
             bool material_binding_query_log_enabled = false;
+            BindSlotSummaryLogMode bind_slot_summary_log_mode = BindSlotSummaryLogMode::Throttled;
             std::unordered_map<uint64_t, SubSceneState> subscene_states;
             uint32_t filtered_entity_count_last_frame = 0;
 
@@ -391,6 +393,9 @@ namespace hgl
 
             void SetMaterialBindingQueryLogEnabled(bool enabled) { material_binding_query_log_enabled = enabled; }
             bool IsMaterialBindingQueryLogEnabled() const { return material_binding_query_log_enabled; }
+
+            void SetBindSlotSummaryLogMode(BindSlotSummaryLogMode mode);
+            BindSlotSummaryLogMode GetBindSlotSummaryLogMode() const { return bind_slot_summary_log_mode; }
 
             void SetDescriptorContractDiagnosticsLogEnabled(bool enabled) { descriptor_contract_diag_log_enabled = enabled; }
             bool IsDescriptorContractDiagnosticsLogEnabled() const { return descriptor_contract_diag_log_enabled; }

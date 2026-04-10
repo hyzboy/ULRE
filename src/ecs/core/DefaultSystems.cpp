@@ -68,6 +68,7 @@ namespace
         {
             render_collect_system->SetWorld(ctx);
             render_collect_system->SetCameraInfo(camera_info);
+            render_collect_system->SetBindSlotSummaryLogMode(ctx->GetBindSlotSummaryLogMode());
         }
 
         // Buffer upload is a shared utility system, not Primitive-specific

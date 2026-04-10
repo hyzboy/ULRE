@@ -15,37 +15,11 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/log/Log.h>
 #include<glm/glm.hpp>
-#include<cstdlib>
-#include<cstring>
 
 namespace hgl::ecs
 {
     namespace
     {
-        BindSlotSummaryLogMode ParseBindSlotSummaryMode(const char *value)
-        {
-            if (!value || !*value)
-                return BindSlotSummaryLogMode::Throttled;
-
-            if (std::strcmp(value, "0") == 0 || std::strcmp(value, "off") == 0 || std::strcmp(value, "OFF") == 0)
-                return BindSlotSummaryLogMode::Off;
-
-            if (std::strcmp(value, "2") == 0 || std::strcmp(value, "always") == 0 || std::strcmp(value, "ALWAYS") == 0)
-                return BindSlotSummaryLogMode::EveryFrame;
-
-            return BindSlotSummaryLogMode::Throttled;
-        }
-
-        const char *ToString(BindSlotSummaryLogMode mode)
-        {
-            switch (mode)
-            {
-                case BindSlotSummaryLogMode::Off: return "off";
-                case BindSlotSummaryLogMode::EveryFrame: return "always";
-                default: return "throttled";
-            }
-        }
-
         bool NeedsPrimitiveSlotBind(const graph::Primitive *prim, const graph::PrimitiveMaterialSlot &slot)
         {
             if (!prim)
@@ -143,12 +117,6 @@ namespace hgl::ecs
         // Declare dependencies
         AddDependency<TransformSystem>(); // Needs world transforms
         AddDependency<CameraSystem>();    // Needs camera info
-
-        // Phase C observability: configure BindSlotSummary verbosity from env.
-        // ULRE_BIND_SLOT_SUMMARY=off|throttled|always (or 0|1|2)
-        bind_slot_summary_log_mode = ParseBindSlotSummaryMode(std::getenv("ULRE_BIND_SLOT_SUMMARY"));
-        LogInfo("[RenderPrimitiveCollect] BindSlotSummary mode=%s (env ULRE_BIND_SLOT_SUMMARY)",
-            ToString(bind_slot_summary_log_mode));
     }
 
     void RenderPrimitiveCollectSystem::Update(float /*deltaTime*/)

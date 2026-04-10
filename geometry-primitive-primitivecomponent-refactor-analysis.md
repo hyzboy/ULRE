@@ -153,7 +153,8 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 最近推进（Phase C 批次 1）：
 
 - 已完成：`RenderPrimitiveCollectSystem` 增加 `BindSlotSummaryLogMode`（`Off` / `Throttled` / `EveryFrame`）。
-- 已完成：支持通过环境变量 `ULRE_BIND_SLOT_SUMMARY=off|throttled|always`（或 `0|1|2`）配置 `BindSlotSummary` 输出门禁。
+- 已完成：`BindSlotSummary` 配置入口收敛到 `ECSContext::SetBindSlotSummaryLogMode(...)`，并在系统安装/子世界同步时统一下发到 `RenderPrimitiveCollectSystem`。
+- 已完成：环境变量 `ULRE_BIND_SLOT_SUMMARY=off|throttled|always`（或 `0|1|2`）仅作为 `ECSContext::Initialize()` 的可选覆盖层，不再由系统构造函数直接读取。
 - 已完成：默认行为保持 `Throttled`，不改变既有运行开销与日志噪声基线。
 
 已完成项：
@@ -165,7 +166,7 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 进行中项：
 
 - 进行中：迁移到显式实体绑定类型并最终收口 legacy fallback。
-- 进行中：将 `BindSlotSummary` 门禁策略纳入统一调试配置入口（替代分散环境变量）。
+- 进行中：将 `BindSlotSummary` 门禁策略并入更高层统一调试面板（Editor/UI 侧），替代运行时环境变量约定。
 
 ## 5.1 已完成验证快照
 

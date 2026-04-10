@@ -98,6 +98,7 @@ namespace hgl::ecs
             {
                 child_collect->SetWorld(child_context);
                 child_collect->SetCameraInfo(parent_camera_info);
+                child_collect->SetBindSlotSummaryLogMode(parent_context->GetBindSlotSummaryLogMode());
             }
 
             // PrimitiveRenderSystem uses context set by RegisterRenderSystem, no manual SetWorld needed
