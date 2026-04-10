@@ -12,6 +12,13 @@ namespace hgl
 
 namespace hgl::ecs
 {
+    enum class BindSlotSummaryLogMode : uint8_t
+    {
+        Off = 0,            ///<关闭常规汇总
+        Throttled = 1,      ///<节流模式
+        EveryFrame = 2      ///<每帧模式
+    };
+
     class ECSContext;
 
     /**
@@ -30,6 +37,7 @@ namespace hgl::ecs
         bool auto_transparency_enabled = false;
         bool use_real_alpha3d_enabled = true;
         float auto_transparency_near_distance = 3.0f;
+        BindSlotSummaryLogMode bind_slot_summary_log_mode = BindSlotSummaryLogMode::Throttled;
 
     public:
 
@@ -51,6 +59,8 @@ namespace hgl::ecs
         bool GetUseRealAlpha3DEnabled() const { return use_real_alpha3d_enabled; }
         void SetAutoTransparencyNearDistance(float v) { auto_transparency_near_distance = v; }
         float GetAutoTransparencyNearDistance() const { return auto_transparency_near_distance; }
+        void SetBindSlotSummaryLogMode(BindSlotSummaryLogMode mode) { bind_slot_summary_log_mode = mode; }
+        BindSlotSummaryLogMode GetBindSlotSummaryLogMode() const { return bind_slot_summary_log_mode; }
 
         void Update(float deltaTime) override;
     };

@@ -150,6 +150,12 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 
 状态：进行中（约 60%）
 
+最近推进（Phase C 批次 1）：
+
+- 已完成：`RenderPrimitiveCollectSystem` 增加 `BindSlotSummaryLogMode`（`Off` / `Throttled` / `EveryFrame`）。
+- 已完成：支持通过环境变量 `ULRE_BIND_SLOT_SUMMARY=off|throttled|always`（或 `0|1|2`）配置 `BindSlotSummary` 输出门禁。
+- 已完成：默认行为保持 `Throttled`，不改变既有运行开销与日志噪声基线。
+
 已完成项：
 
 - 已完成：`MaterialResourceDomain` 拥有 MI/MIT GPU 缓冲与脏区上传能力。
@@ -159,6 +165,7 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 进行中项：
 
 - 进行中：迁移到显式实体绑定类型并最终收口 legacy fallback。
+- 进行中：将 `BindSlotSummary` 门禁策略纳入统一调试配置入口（替代分散环境变量）。
 
 ## 5.1 已完成验证快照
 
