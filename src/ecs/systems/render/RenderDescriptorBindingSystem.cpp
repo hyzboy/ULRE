@@ -18,14 +18,50 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
+#include<hgl/vk/VKMaterialResourceDomain.h>
 #include<unordered_set>
 #include<cstdlib>
+#include<cstdio>
 #include<string>
+#include<vector>
 
 namespace hgl::ecs
 {
     namespace
     {
+        enum class DomainDirectMITBindResult : uint8_t
+        {
+            Success = 0,
+            InvalidInput,
+            NotDomainDirectMode,
+            MaterialNoTextureArraySlots,
+            NoResolvedSlotData,
+            NoMITEntryWidth,
+            ZeroTotalSize,
+            EnsureBufferFailed,
+            UploadFailed,
+            MissingGPUBuffer,
+            Count
+        };
+
+        const char *ToString(DomainDirectMITBindResult r)
+        {
+            switch (r)
+            {
+            case DomainDirectMITBindResult::Success: return "success";
+            case DomainDirectMITBindResult::InvalidInput: return "invalid_input";
+            case DomainDirectMITBindResult::NotDomainDirectMode: return "not_domain_direct_mode";
+            case DomainDirectMITBindResult::MaterialNoTextureArraySlots: return "material_no_texture_array_slots";
+            case DomainDirectMITBindResult::NoResolvedSlotData: return "no_resolved_slot_data";
+            case DomainDirectMITBindResult::NoMITEntryWidth: return "no_mit_entry_width";
+            case DomainDirectMITBindResult::ZeroTotalSize: return "zero_total_size";
+            case DomainDirectMITBindResult::EnsureBufferFailed: return "ensure_buffer_failed";
+            case DomainDirectMITBindResult::UploadFailed: return "upload_failed";
+            case DomainDirectMITBindResult::MissingGPUBuffer: return "missing_gpu_buffer";
+            default: return "unknown";
+            }
+        }
+
         void ApplySceneUBOBindings(graph::MaterialTemplate *material,
                                    const graph::mtl::DescriptorBindingSlots &contract,
                                    const std::array<graph::UBOAccessorBase *, graph::mtl::UBODescriptorSemanticCount> &scene_ubo_resolvers)
@@ -69,6 +105,167 @@ namespace hgl::ecs
                 return gc->GetBufferManager();
 
             return nullptr;
+        }
+
+        bool TryBindDomainDirectMIData(const hgl::ecs::MaterialBatch *batch,
+                                       graph::MaterialTemplate *material,
+                                       graph::MaterialResourceDomain *domain,
+                                       graph::BufferManager *buffer_manager)
+        {
+            if (!batch || !material || !domain || !buffer_manager)
+                return false;
+
+            if (!batch->mi_buffer || !batch->mi_buffer->IsUsingResolvedDomainMIID())
+                return false;
+
+            int max_mi_id = -1;
+            for (auto *item : batch->items)
+            {
+                if (!item || !item->resolved_slot_valid)
+                    continue;
+
+                if (item->resolved_domain != domain || item->resolved_mi_id < 0)
+                    continue;
+
+                if (item->resolved_mi_id > max_mi_id)
+                    max_mi_id = item->resolved_mi_id;
+            }
+
+            if (max_mi_id < 0)
+                return false;
+
+            const uint32_t needed = static_cast<uint32_t>(max_mi_id + 1);
+            if (!domain->EnsureMIBuffer(buffer_manager, needed))
+                return false;
+
+            domain->MarkMIDirtyRange(0, needed);
+            if (!domain->UploadMIDirtyRange())
+                return false;
+
+            auto *mi_buf = domain->GetMIGPUBuffer();
+            auto *mi_gpu = mi_buf ? mi_buf->GetGPUBuffer() : nullptr;
+            if (!mi_gpu)
+                return false;
+
+            material->BindSSBO(graph::mtl::SSBODescriptorSemantic::MaterialInstanceData, mi_gpu);
+            return true;
+        }
+
+        bool TryBindDomainDirectMITData(const hgl::ecs::MaterialBatch *batch,
+                                        graph::MaterialTemplate *material,
+                                        graph::MaterialResourceDomain *domain,
+                                        graph::BufferManager *buffer_manager,
+                                        DomainDirectMITBindResult *out_result = nullptr)
+        {
+            if (out_result)
+                *out_result = DomainDirectMITBindResult::Success;
+
+            if (!batch || !material || !domain || !buffer_manager)
+            {
+                if (out_result)
+                    *out_result = DomainDirectMITBindResult::InvalidInput;
+                return false;
+            }
+
+            if (!batch->mi_buffer || !batch->mi_buffer->IsUsingResolvedDomainMIID())
+            {
+                if (out_result)
+                    *out_result = DomainDirectMITBindResult::NotDomainDirectMode;
+                return false;
+            }
+
+            if (material->GetTextureArraySlotFlags() == 0)
+            {
+                if (out_result)
+                    *out_result = DomainDirectMITBindResult::MaterialNoTextureArraySlots;
+                return false;
+            }
+
+            int max_mi_id = -1;
+            uint32_t per_entry_uint_count = 0;
+
+            for (auto *item : batch->items)
+            {
+                if (!item || !item->resolved_slot_valid)
+                    continue;
+
+                if (item->resolved_domain != domain || item->resolved_mi_id < 0)
+                    continue;
+
+                if (item->resolved_mi_id > max_mi_id)
+                    max_mi_id = item->resolved_mi_id;
+
+                if (per_entry_uint_count == 0 && item->resolved_mit_count > 0)
+                    per_entry_uint_count = item->resolved_mit_count;
+            }
+
+            if (max_mi_id < 0)
+            {
+                if (out_result)
+                    *out_result = DomainDirectMITBindResult::NoResolvedSlotData;
+                return false;
+            }
+
+            if (per_entry_uint_count == 0)
+            {
+                if (out_result)
+                    *out_result = DomainDirectMITBindResult::NoMITEntryWidth;
+                return false;
+            }
+
+            const uint32_t slot_count = static_cast<uint32_t>(max_mi_id + 1);
+            const uint32_t total_uint_count = slot_count * per_entry_uint_count;
+
+            if (total_uint_count == 0)
+            {
+                if (out_result)
+                    *out_result = DomainDirectMITBindResult::ZeroTotalSize;
+                return false;
+            }
+
+            std::vector<uint32_t> mit_staging(total_uint_count, 0u);
+            for (auto *item : batch->items)
+            {
+                if (!item || !item->resolved_slot_valid)
+                    continue;
+
+                if (item->resolved_domain != domain || item->resolved_mi_id < 0)
+                    continue;
+
+                if (!item->resolved_mit_data || item->resolved_mit_count == 0)
+                    continue;
+
+                const uint32_t copy_count = std::min(per_entry_uint_count, item->resolved_mit_count);
+                uint32_t *dst = mit_staging.data() + static_cast<uint32_t>(item->resolved_mi_id) * per_entry_uint_count;
+                memcpy(dst, item->resolved_mit_data, static_cast<size_t>(copy_count) * sizeof(uint32_t));
+            }
+
+            if (!domain->EnsureMITBuffer(buffer_manager, total_uint_count))
+            {
+                if (out_result)
+                    *out_result = DomainDirectMITBindResult::EnsureBufferFailed;
+                return false;
+            }
+
+            domain->MarkMITDirtyRange(0, total_uint_count);
+            if (!domain->UploadMITDirtyRange(mit_staging.data(), total_uint_count))
+            {
+                if (out_result)
+                    *out_result = DomainDirectMITBindResult::UploadFailed;
+                return false;
+            }
+
+            auto *mit_buf = domain->GetMITGPUBuffer();
+            auto *mit_gpu = mit_buf ? mit_buf->GetGPUBuffer() : nullptr;
+            if (!mit_gpu)
+            {
+                if (out_result)
+                    *out_result = DomainDirectMITBindResult::MissingGPUBuffer;
+                return false;
+            }
+
+            material->BindSSBO(graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID, mit_gpu);
+            return true;
         }
 
         void EnsureSceneUBOSourceSystems(hgl::ecs::ECSContext *context,
@@ -406,6 +603,18 @@ namespace hgl::ecs
         std::unordered_set<uint64_t> transform_bound_material_domain_pairs;
         std::unordered_set<uint64_t> transform_id_bound_material_domain_pairs;
         std::unordered_set<uint64_t> mi_bound_material_domain_pairs;
+        std::unordered_set<uint64_t> domain_direct_mi_bound_pairs;
+        std::unordered_set<uint64_t> domain_direct_mit_bound_pairs;
+        graph::BufferManager *buffer_manager = GetBufferManager(context);
+
+        uint32_t domain_direct_mi_hit_count = 0;
+        uint32_t domain_direct_mi_fallback_count = 0;
+        uint32_t domain_direct_mit_hit_count = 0;
+        uint32_t domain_direct_mit_fallback_count = 0;
+        uint32_t domain_direct_mit_attempt_count = 0;
+        uint32_t domain_direct_mit_semantic_off_count = 0;
+        bool domain_direct_mode_seen = false;
+        uint32_t domain_direct_mit_reason_counts[static_cast<size_t>(DomainDirectMITBindResult::Count)] = {};
 
         for (const auto &pair : cache.materialBatches)
         {
@@ -418,8 +627,14 @@ namespace hgl::ecs
             const MaterialBatch *batch = pair.second.get();
             auto *domain = pair.first.domain;
 
+            if (batch && batch->mi_buffer && batch->mi_buffer->IsUsingResolvedDomainMIID())
+                domain_direct_mode_seen = true;
+
             const auto &contract = material->GetBindingContract();
             ApplySceneUBOBindings(material, contract, scene_ubo_resolvers);
+
+            if (contract.ssbos[size_t(graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID)] == 0)
+                ++domain_direct_mit_semantic_off_count;
 
             for (size_t i = 1; i < graph::mtl::SSBODescriptorSemanticCount; ++i)
             {
@@ -487,7 +702,24 @@ namespace hgl::ecs
                                          (void*)domain,
                                          static_cast<unsigned long long>(bind_key));
 
-                            batch->mi_buffer->BindMaterialInstance(material);
+                            bool bound_domain_direct = false;
+                            if (!domain_direct_mi_bound_pairs.contains(bind_key))
+                            {
+                                bound_domain_direct = TryBindDomainDirectMIData(batch, material, domain, buffer_manager);
+                                if (bound_domain_direct)
+                                {
+                                    domain_direct_mi_bound_pairs.insert(bind_key);
+                                    ++domain_direct_mi_hit_count;
+                                }
+                            }
+
+                            // Fallback path: legacy MIAB-owned MaterialInstanceData SSBO
+                            if (!bound_domain_direct)
+                            {
+                                batch->mi_buffer->BindMaterialInstance(material);
+                                ++domain_direct_mi_fallback_count;
+                            }
+
                             mi_bound_material_domain_pairs.insert(bind_key);
                         }
                         else if (log_this)
@@ -503,7 +735,33 @@ namespace hgl::ecs
                 case graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID:
                 {
                     if (batch && batch->mi_buffer)
-                        batch->mi_buffer->BindMaterialInstanceTextureID(material);
+                    {
+                        const uint64_t bind_key = (uint64_t(reinterpret_cast<uintptr_t>(material)) << 1)
+                                                ^ uint64_t(reinterpret_cast<uintptr_t>(domain));
+
+                        bool bound_domain_direct = false;
+                        DomainDirectMITBindResult mit_result = DomainDirectMITBindResult::Success;
+                        if (!domain_direct_mit_bound_pairs.contains(bind_key))
+                        {
+                            ++domain_direct_mit_attempt_count;
+                            bound_domain_direct = TryBindDomainDirectMITData(batch, material, domain, buffer_manager, &mit_result);
+                            if (bound_domain_direct)
+                            {
+                                domain_direct_mit_bound_pairs.insert(bind_key);
+                                ++domain_direct_mit_hit_count;
+                            }
+                        }
+
+                        if (!bound_domain_direct)
+                        {
+                            batch->mi_buffer->BindMaterialInstanceTextureID(material);
+                            ++domain_direct_mit_fallback_count;
+
+                            const size_t reason_index = static_cast<size_t>(mit_result);
+                            if (reason_index < static_cast<size_t>(DomainDirectMITBindResult::Count))
+                                ++domain_direct_mit_reason_counts[reason_index];
+                        }
+                    }
                     break;
                 }
                 default:
@@ -512,6 +770,47 @@ namespace hgl::ecs
             }
 
         }
+
+        // Transitional diagnostics: deterministic summary for domain-direct path verification.
+        static uint32_t s_domain_direct_summary_tick = 0;
+        if (s_domain_direct_summary_tick < 32)
+        {
+            std::fprintf(stderr,
+                         "[DescBind::DomainDirectSummary] mode_seen=%u batches=%u mi_direct=%u mi_fallback=%u mit_direct=%u mit_fallback=%u mit_attempt=%u mit_semantic_off=%u mit_reason_top=%s:%u\n",
+                         domain_direct_mode_seen ? 1u : 0u,
+                         static_cast<uint32_t>(cache.materialBatches.size()),
+                         domain_direct_mi_hit_count,
+                         domain_direct_mi_fallback_count,
+                         domain_direct_mit_hit_count,
+                         domain_direct_mit_fallback_count,
+                         domain_direct_mit_attempt_count,
+                         domain_direct_mit_semantic_off_count,
+                         ([&]() -> const char *
+                          {
+                              size_t best_i = 0;
+                              uint32_t best_v = 0;
+                              for (size_t i = 0; i < static_cast<size_t>(DomainDirectMITBindResult::Count); ++i)
+                              {
+                                  if (domain_direct_mit_reason_counts[i] > best_v)
+                                  {
+                                      best_v = domain_direct_mit_reason_counts[i];
+                                      best_i = i;
+                                  }
+                              }
+                              return ToString(static_cast<DomainDirectMITBindResult>(best_i));
+                          })(),
+                         ([&]() -> uint32_t
+                          {
+                              uint32_t best_v = 0;
+                              for (size_t i = 0; i < static_cast<size_t>(DomainDirectMITBindResult::Count); ++i)
+                              {
+                                  if (domain_direct_mit_reason_counts[i] > best_v)
+                                      best_v = domain_direct_mit_reason_counts[i];
+                              }
+                              return best_v;
+                          })());
+        }
+        ++s_domain_direct_summary_tick;
     }
 
     void RenderDescriptorBindingSystem::ApplyPipelineMaterialBindings(

@@ -368,7 +368,12 @@ namespace hgl::ecs
 
         uint16 mi_index = 0;
         if (item->resolved_slot_valid && item->resolved_domain && item->resolved_mi_id >= 0)
-            mi_index = slot_set.FindResolved(item->resolved_domain, item->resolved_mi_id);
+        {
+            if (use_resolved_domain_mi_id)
+                mi_index = static_cast<uint16>(item->resolved_mi_id);
+            else
+                mi_index = slot_set.FindResolved(item->resolved_domain, item->resolved_mi_id);
+        }
         else
         {
             graph::Primitive* prim = item->GetPrimitive();
@@ -488,7 +493,12 @@ namespace hgl::ecs
 
                 uint16 mi_index = 0;
                 if (item->resolved_slot_valid && item->resolved_domain && item->resolved_mi_id >= 0)
-                    mi_index = slot_set.FindResolved(item->resolved_domain, item->resolved_mi_id);
+                {
+                    if (use_resolved_domain_mi_id)
+                        mi_index = static_cast<uint16>(item->resolved_mi_id);
+                    else
+                        mi_index = slot_set.FindResolved(item->resolved_domain, item->resolved_mi_id);
+                }
                 else
                 {
                     graph::Primitive* prim = item->GetPrimitive();

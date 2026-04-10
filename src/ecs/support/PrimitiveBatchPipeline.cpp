@@ -8,6 +8,7 @@
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -480,6 +481,17 @@ namespace hgl::ecs
 
         if (!batch.mi_buffer && !batch.items.empty())
             batch.mi_buffer = new MaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
+
+        bool domain_direct_enabled = false;
+        if (world)
+        {
+            auto collect_system = world->GetSystem<RenderPrimitiveCollectSystem>();
+            if (collect_system)
+                domain_direct_enabled = collect_system->GetDomainDirectMISsboEnabled();
+        }
+
+        if (batch.mi_buffer)
+            batch.mi_buffer->SetUseResolvedDomainMIID(domain_direct_enabled);
 
         if (batch.mi_buffer && !batch.items.empty())
             batch.mi_buffer->WriteItems(batch.items);

@@ -149,6 +149,7 @@ namespace hgl::ecs
     private:
         graph::BufferManager* buffer_manager;   ///<缓冲区管理器
         graph::MaterialTemplate* material;              ///<所属材质
+        bool use_resolved_domain_mi_id = false;         ///< true: MaterialInstanceID SSBO stores resolved domain mi_id directly
 
     private:    // 材质实例数据
         MaterialSlotSet slot_set;           ///<MaterialSlot 集合（domain+mi_id 优先，Primitive* 回退）
@@ -176,6 +177,9 @@ namespace hgl::ecs
     public:
         MaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::MaterialTemplate* mtl);
         ~MaterialInstanceAssignmentBuffer() { Clear(); }
+
+        void SetUseResolvedDomainMIID(bool value) { use_resolved_domain_mi_id = value; }
+        bool IsUsingResolvedDomainMIID() const { return use_resolved_domain_mi_id; }
 
         /**
          * 获取MaterialInstanceID SSBO VkBuffer（用于绑定到管线）
