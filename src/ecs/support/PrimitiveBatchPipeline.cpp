@@ -536,6 +536,9 @@ namespace hgl::ecs
         uint32_t frame_successes = 0;
         uint32_t frame_failures = 0;
         uint32_t frame_skips = 0;
+        uint32_t frame_items_considered = 0;
+        uint32_t frame_items_resolved_slot = 0;
+        uint32_t frame_items_primitive_slot = 0;
         // Phase 3 diagnostic: VIL sourced from primitive vs. fallback to material default.
         uint32_t frame_vil_from_prim    = 0;
         uint32_t frame_vil_from_default = 0;  // "fallback_count"
@@ -549,8 +552,14 @@ namespace hgl::ecs
             if (!item || !item->isVisible)
                 continue;
 
+            ++frame_items_considered;
+
             auto* primitive = item->GetPrimitive();
             const bool use_resolved_slot = domain_direct_enabled && item->resolved_slot_valid;
+            if (use_resolved_slot)
+                ++frame_items_resolved_slot;
+            else
+                ++frame_items_primitive_slot;
 
             auto* material = use_resolved_slot
                            ? item->resolved_material_template
@@ -732,6 +741,19 @@ namespace hgl::ecs
             else
                 ++it;
         }
+
+        static uint32_t s_resolved_path_summary_tick = 0;
+        if (s_resolved_path_summary_tick < 32)
+        {
+            std::fprintf(stderr,
+                         "[BatchPipeline::ResolvedSlotSummary] domain_direct=%u items=%u resolved_slot=%u primitive_slot=%u batches=%u\n",
+                         domain_direct_enabled ? 1u : 0u,
+                         frame_items_considered,
+                         frame_items_resolved_slot,
+                         frame_items_primitive_slot,
+                         static_cast<uint32_t>(cache.materialBatches.size()));
+        }
+        ++s_resolved_path_summary_tick;
 
         // Diagnostics: detect if one material is split across multiple domains in one frame.
         {

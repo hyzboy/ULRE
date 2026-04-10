@@ -316,7 +316,11 @@ namespace hgl::ecs
                         // Still bind it to set the material on the primitive — mi_id=-1 means no instanced MI data, but we need material/VIL.
                         if (slot.material_template)
                         {
-                            if (!domain_direct_mi_ssbo_enabled)
+                            const bool use_domain_direct_slot = domain_direct_mi_ssbo_enabled
+                                                              && slot.domain != nullptr
+                                                              && slot.mi_id >= 0;
+
+                            if (!use_domain_direct_slot)
                                 primitive->BindMaterialSlot(slot);
 
                             resolved_slot_snapshot = slot;
@@ -325,7 +329,7 @@ namespace hgl::ecs
                             if (log_resolve)
                                 LogDebug("[RenderPrimitiveCollect::BindMaterialSlot] prim='%s' %s. GetMaterialTemplate now=%p mi_id=%d",
                                          primitive->GetGeometryName().c_str(),
-                                         domain_direct_mi_ssbo_enabled ? "skipped(shared-primitive-safe)" : "bound",
+                                         use_domain_direct_slot ? "skipped(shared-primitive-safe)" : "bound",
                                          static_cast<const void*>(primitive->GetMaterialTemplate()),
                                          (int)slot.mi_id);
                         }

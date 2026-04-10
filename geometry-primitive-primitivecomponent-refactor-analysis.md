@@ -105,8 +105,10 @@ Status: Completed
 Status: In progress
 
 - Done: override consumption and resolved-slot-first behavior are wired in the ECS path.
+- Done: collect-time `BindMaterialSlot` skipping is now limited to true domain-direct instance slots (`domain != nullptr && mi_id >= 0`).
 - Ongoing: remove/contain residual shared `Primitive` mutable material side-effects from non-transition call paths.
 - Ongoing: tighten `BindMaterialSlot` usage boundary and document allowed usage sites.
+- Validated: `08_PBRSpheresECS` sky sphere regression was recovered after a Phase B cleanup edge case where semantic resolve produced `domain != nullptr` but `mi_id == -1`; those non-instanced semantic slots must still bind back to the shared `Primitive` until the fallback dependency is fully removed.
 
 ## Phase C (API hardening)
 
@@ -127,7 +129,34 @@ Status: In progress (transitional implementation active)
 - Completed: behavior regression fixed for shared-primitive + per-entity MI identity collapse.
 - Completed: transition-mode verification for MI direct bind on both key regression samples.
 - Partially completed: MIT direct path verified on `08`; `14` currently reports `mit_attempt=0` with `mit_semantic_off` (MIT semantic not requested), which is expected for current material contract.
+- Completed: sky-sphere regression fix validated on `08`; batch summary returned to `items=101 resolved_slot=100 primitive_slot=1 batches=2` and descriptor binding remained on the direct path (`mi_direct=1, mi_fallback=0, mit_direct=1, mit_fallback=0`).
 - Pending: Phase B cleanup completion and Phase C final API deprecation cutover.
+
+## 5.2 Phase B Regression Note: Non-instanced semantic slots
+
+During Phase B cleanup, `RenderPrimitiveCollectSystem` temporarily skipped `Primitive::BindMaterialSlot(...)` whenever domain-direct mode was enabled.
+
+That was too broad.
+
+The failure case was the sky sphere in `08_PBRSpheresECS`:
+
+- semantic resolve succeeded
+- resolved slot had valid material/domain
+- resolved slot carried `mi_id = -1`
+- collect path skipped primitive binding
+- later batch path did not treat the item as a resolved-slot-backed domain-direct instance
+- result: `material=null`, `pipeline=null`, and the sky sphere never entered a draw batch
+
+Refined rule:
+
+- skip `BindMaterialSlot(...)` only for true domain-direct instance slots (`domain != nullptr && mi_id >= 0`)
+- if semantic resolve returns a non-instanced slot (`mi_id == -1`), still bind the slot back to the `Primitive` until the remaining primitive-state dependency is removed from the draw path
+
+Why this matters:
+
+- `domain != nullptr` alone does not imply that later stages can consume the slot without shared-primitive fallback state
+- Phase B cleanup must preserve non-MI / non-instanced semantic materials while shrinking primitive-owned mutable state
+- this is now an explicit regression gate for future cleanup passes
 
 ## 6. Why previous workaround was insufficient
 
@@ -158,6 +187,7 @@ Current validation status:
 - (2) Done for current transition patch set (no instability observed in verification runs).
 - (3) In progress (no confirmed regressions observed, broader sweep still pending).
 - (4) Replaced by transition-era descriptor summary diagnostics for this stage; MIAB-only metrics are no longer the sole source of truth in domain-direct mode.
+- Additional gate: non-instanced semantic materials must remain drawable under domain-direct mode; current `08` verification shows the expected second batch for the sky sphere.
 
 ## 8. Open discussion points
 
