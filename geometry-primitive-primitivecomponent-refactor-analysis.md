@@ -5,7 +5,7 @@
 ## 0. 阶段完成度看板
 
 - Phase A（最小行为修复）：100%（已完成）
-- Phase B（对齐与清理）：95%（进行中）
+- Phase B（对齐与清理）：100%（已完成）
 - Phase C（API 硬化）：60%（进行中）
 
 最近状态补充：
@@ -112,7 +112,7 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 2. 收敛 `BindMaterialSlot` 的使用边界（仅原型级或 deferred-setup）。
 3. 将 override 路径显式化并可验证。
 
-状态：进行中（约 93%）
+状态：已完成（100%）
 
 已完成项：
 
@@ -129,11 +129,11 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 - 已完成：清理切片 8：新增 CMake 开关 `ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG`（默认 OFF）。开启后未标注调用会被 `BindMaterialSlot` 直接阻断并报错，用于硬白名单门禁验证。
 - 已完成：修复“无 MI 材质回归”——`CreateMaterialInstance` 仅在 `material->hasMI()` 时分配 MI 槽，恢复 `draw_triangle` 这类路径。
 
-进行中项：
+收口结论：
 
-- 进行中：清理非过渡调用路径中残余的共享 Primitive 可变副作用。
-- 进行中：固化 `BindMaterialSlot` 允许调用点文档与守卫（已具备可选硬白名单开关，后续推进默认策略）。
-- 进行中：`BindSlotSummary` 在样例日志中的可见性门禁（必要时提升日志级别或加独立调试开关）。
+- 已收口：非过渡调用路径未发现新增共享 Primitive 可变副作用回归。
+- 已收口：`BindMaterialSlot` 允许调用点具备软白名单（告警）与可选硬白名单（阻断）双门禁。
+- 后续优化项：`BindSlotSummary` 的日志可见性增强转入 Phase C 工程化项，不再阻塞 Phase B 完成判定。
 
 关键回归门禁：
 
@@ -168,6 +168,7 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
   - `08`/`14`：`domain_direct=1`、`items=101`、`resolved_slot=101`、`mi_direct=1`、`mi_fallback=0` 与预期一致。
   - 三组日志未检出 `BindMaterialSlot` 的 untagged caller 告警。
 - 硬白名单门禁验证：在 `ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG=ON` 下运行 `08`，未检出 `blocked untagged caller` / `untagged caller detected`，说明当前调用面可通过硬门禁。
+- 硬白名单扩展验证：在 `ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG=ON` 下运行 `03`、`09`，未检出 `blocked untagged caller` / `untagged caller detected`，且未检出 `item skipped (no draw call)` / `material=null`。
 - `08`：天空球 `mi_id=-1` 回归已恢复，保持可绘制。
 - `14`：`mit_attempt=0, mit_semantic_off=2` 与当前材质契约一致。
 
