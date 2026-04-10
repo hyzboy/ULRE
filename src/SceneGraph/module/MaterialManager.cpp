@@ -974,6 +974,7 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
     slot.mi_id = mi_id;
     slot.vil = use_vil;
     slot.preset = preset;
+    slot.texture_array_slot_flags = material->GetTextureArraySlotFlags();
     alloc_slot_created.fetch_add(1);
     return slot;
 }
