@@ -156,6 +156,11 @@ namespace hgl::ecs
         size_t skipped_no_transform = 0;
         size_t deferred_no_resolve = 0;
         size_t added = 0;
+        size_t slot_bind_attempt = 0;
+        size_t slot_bind_success = 0;
+        size_t slot_bind_noop = 0;
+        size_t slot_bind_skip_domain_direct = 0;
+        size_t slot_bind_failed = 0;
 
         const glm::vec3 camera_pos = glm::vec3(cameraInfo->pos);
 
@@ -346,17 +351,31 @@ namespace hgl::ecs
                                                               && slot.mi_id >= 0;
 
                             bool did_bind_slot = false;
-                            if (!use_domain_direct_slot && NeedsPrimitiveSlotBind(primitive, slot))
+                            if (use_domain_direct_slot)
                             {
+                                ++slot_bind_skip_domain_direct;
+                            }
+                            else if (NeedsPrimitiveSlotBind(primitive, slot))
+                            {
+                                ++slot_bind_attempt;
                                 did_bind_slot = primitive->BindMaterialSlot(slot);
                                 if (!did_bind_slot)
                                 {
+                                    ++slot_bind_failed;
                                     LogWarning("[RenderPrimitiveCollect::BindMaterialSlot] FAILED: prim='%s' material=%p domain=%p mi_id=%d",
                                                primitive->GetGeometryName().c_str(),
                                                static_cast<const void*>(slot.material_template),
                                                static_cast<const void*>(slot.domain),
                                                (int)slot.mi_id);
                                 }
+                                else
+                                {
+                                    ++slot_bind_success;
+                                }
+                            }
+                            else
+                            {
+                                ++slot_bind_noop;
                             }
 
                             resolved_slot_snapshot = slot;
@@ -463,6 +482,13 @@ namespace hgl::ecs
                         skipped_no_owner, skipped_no_transform,
                         deferred_no_resolve,
                         semantic_runtime_resolve_enabled ? "ON" : "OFF");
+
+                LogInfo("[RenderPrimitiveCollect::BindSlotSummary] attempt=%zu success=%zu noop=%zu skip_domain_direct=%zu failed=%zu",
+                    slot_bind_attempt,
+                    slot_bind_success,
+                    slot_bind_noop,
+                    slot_bind_skip_domain_direct,
+                    slot_bind_failed);
 
                 if (deferred_no_resolve > 0)
                     LogWarning("[RenderPrimitiveCollect] %zu primitive(s) have deferred MI (no material_template) but semantic_runtime_resolve is DISABLED — they will produce no draw calls. "

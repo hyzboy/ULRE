@@ -5,7 +5,7 @@
 ## 0. 阶段完成度看板
 
 - Phase A（最小行为修复）：100%（已完成）
-- Phase B（对齐与清理）：88%（进行中）
+- Phase B（对齐与清理）：90%（进行中）
 - Phase C（API 硬化）：60%（进行中）
 
 最近状态补充：
@@ -111,7 +111,7 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 2. 收敛 `BindMaterialSlot` 的使用边界（仅原型级或 deferred-setup）。
 3. 将 override 路径显式化并可验证。
 
-状态：进行中（约 88%）
+状态：进行中（约 90%）
 
 已完成项：
 
@@ -123,6 +123,7 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 - 已完成：清理切片 3：MIAB 在 domain-direct 下对 non-instance resolved 项不再强制 Primitive fallback。
 - 已完成：清理切片 4：Quad 绑定在 domain-direct collect 开启时，不再对已有 primitive 原地 `BindMaterialSlot`。
 - 已完成：清理切片 5：Collect 路径仅在“槽位状态发生变化”时才执行 `BindMaterialSlot`；对于已匹配槽位改为 no-op，减少共享 Primitive 的无意义可变写入。
+- 已完成：清理切片 6：Collect 路径新增 `BindSlotSummary` 统计（attempt/success/noop/skip_domain_direct/failed），可量化剩余可变写入面并定位后续收敛目标。
 - 已完成：修复“无 MI 材质回归”——`CreateMaterialInstance` 仅在 `material->hasMI()` 时分配 MI 槽，恢复 `draw_triangle` 这类路径。
 
 进行中项：
@@ -200,6 +201,22 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 
 - 在不改变绘制行为的前提下，进一步收敛共享 Primitive 的可变写入面。
 - 为后续彻底收口 `BindMaterialSlot` 调用边界提供稳定过渡。
+
+### D. Collect 绑定边界可观测性（Phase B 清理切片 6）
+
+改动：
+
+- 在 `RenderPrimitiveCollectSystem` 每帧汇总日志中增加 `BindSlotSummary`：
+   - `attempt`：尝试执行 `BindMaterialSlot` 的次数
+   - `success`：实际绑定成功次数
+   - `noop`：槽位已匹配，跳过绑定次数
+   - `skip_domain_direct`：domain-direct 路径按规则跳过绑定次数
+   - `failed`：绑定失败次数
+
+效果：
+
+- 从“只能靠代码阅读判断边界”升级为“运行期可量化边界收敛效果”。
+- 为 Phase B 收尾（白名单调用点 + 剩余副作用清零）提供数据门禁。
 
 ## 6. 为什么“100 实体创建 100 Primitive”不是正确解
 
