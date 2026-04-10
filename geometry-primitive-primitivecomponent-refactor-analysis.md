@@ -5,7 +5,7 @@
 ## 0. 阶段完成度看板
 
 - Phase A（最小行为修复）：100%（已完成）
-- Phase B（对齐与清理）：93%（进行中）
+- Phase B（对齐与清理）：95%（进行中）
 - Phase C（API 硬化）：60%（进行中）
 
 最近状态补充：
@@ -126,12 +126,13 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 - 已完成：清理切片 5：Collect 路径仅在“槽位状态发生变化”时才执行 `BindMaterialSlot`；对于已匹配槽位改为 no-op，减少共享 Primitive 的无意义可变写入。
 - 已完成：清理切片 6：Collect 路径新增 `BindSlotSummary` 统计（attempt/success/noop/skip_domain_direct/failed），可量化剩余可变写入面并定位后续收敛目标。
 - 已完成：清理切片 7：`BindMaterialSlot` 增加 `source_tag`，Collect/Quad 调用点显式标注（`collect` / `quad`），未标注调用触发告警，用于后续硬白名单收口。
+- 已完成：清理切片 8：新增 CMake 开关 `ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG`（默认 OFF）。开启后未标注调用会被 `BindMaterialSlot` 直接阻断并报错，用于硬白名单门禁验证。
 - 已完成：修复“无 MI 材质回归”——`CreateMaterialInstance` 仅在 `material->hasMI()` 时分配 MI 槽，恢复 `draw_triangle` 这类路径。
 
 进行中项：
 
 - 进行中：清理非过渡调用路径中残余的共享 Primitive 可变副作用。
-- 进行中：固化 `BindMaterialSlot` 允许调用点文档与守卫（从软白名单推进到可选硬白名单）。
+- 进行中：固化 `BindMaterialSlot` 允许调用点文档与守卫（已具备可选硬白名单开关，后续推进默认策略）。
 - 进行中：`BindSlotSummary` 在样例日志中的可见性门禁（必要时提升日志级别或加独立调试开关）。
 
 关键回归门禁：
@@ -166,6 +167,7 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
   - `01`：`ResolvedSlotSummary` 与 `DomainDirectSummary` 持续输出，未检出 `item skipped (no draw call)`、`material=null`、`ResolveMI` 失败行。
   - `08`/`14`：`domain_direct=1`、`items=101`、`resolved_slot=101`、`mi_direct=1`、`mi_fallback=0` 与预期一致。
   - 三组日志未检出 `BindMaterialSlot` 的 untagged caller 告警。
+- 硬白名单门禁验证：在 `ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG=ON` 下运行 `08`，未检出 `blocked untagged caller` / `untagged caller detected`，说明当前调用面可通过硬门禁。
 - `08`：天空球 `mi_id=-1` 回归已恢复，保持可绘制。
 - `14`：`mit_attempt=0, mit_semantic_off=2` 与当前材质契约一致。
 
@@ -213,12 +215,12 @@ Collect 阶段先解析 material slot，再通过 `BindMaterialSlot` 回写到 P
 
 改动：
 
-- 在 `RenderPrimitiveCollectSystem` 每帧汇总日志中增加 `BindSlotSummary`：
-   - `attempt`：尝试执行 `BindMaterialSlot` 的次数
-   - `success`：实际绑定成功次数
-   - `noop`：槽位已匹配，跳过绑定次数
-   - `skip_domain_direct`：domain-direct 路径按规则跳过绑定次数
-   - `failed`：绑定失败次数
+- 在 `RenderPrimitiveCollectSystem` 每帧汇总日志中增加 `BindSlotSummary`。
+- `attempt`：尝试执行 `BindMaterialSlot` 的次数。
+- `success`：实际绑定成功次数。
+- `noop`：槽位已匹配，跳过绑定次数。
+- `skip_domain_direct`：domain-direct 路径按规则跳过绑定次数。
+- `failed`：绑定失败次数。
 
 效果：
 

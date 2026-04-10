@@ -3,6 +3,14 @@ cmake_policy(VERSION 3.28)
 
 PROJECT(ULRE)
 
+option(ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG "Require non-null source_tag in Primitive::BindMaterialSlot" OFF)
+
+if(ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG)
+    add_compile_definitions(ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG=1)
+else()
+    add_compile_definitions(ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG=0)
+endif()
+
 include(CTest)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)

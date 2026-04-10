@@ -98,6 +98,12 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot,const char *s
                         geometry ? geometry->GetName().c_str() : "(no-geometry)",
                         static_cast<unsigned long long>(n));
         }
+
+#if defined(ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG) && (ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG!=0)
+        GLogError("[BindMaterialSlot] blocked untagged caller (ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG=1): prim='%s'",
+                  geometry ? geometry->GetName().c_str() : "(no-geometry)");
+        return false;
+#endif
     }
 
     // Note: slot.IsValid() requires mi_id>=0, but we accept mi_id=-1 for non-instanced material binding.
