@@ -142,7 +142,9 @@ private:
 
     // PlaneGrid resources
     MaterialTemplate*         mtl_plane_grid  = nullptr;
-    MaterialInstance* mi_plane_grid   = nullptr;
+    const VIL*                vil_plane_grid  = nullptr;
+    MaterialInstanceHandle    handle_plane_grid = InvalidMaterialInstanceHandle;
+    PrimitiveMaterialSlot     slot_plane_grid;
     Geometry*         geom_plane_grid = nullptr;
     Primitive*        prim_plane_grid = nullptr;
 
@@ -170,11 +172,28 @@ private:
         const MaterialDomainHandle handle = registry->Acquire(kPlaneGridCfg);
         if (!handle.IsValid()) return false;
 
-        mi_plane_grid = registry->CreateMI(handle, kPlaneGridCfg,
-                                           &white_color, sizeof(white_color));
-        if (!mi_plane_grid) return false;
+        mtl_plane_grid = handle.material;
+        vil_plane_grid = registry->ResolveVIL(handle.material, kPlaneGridCfg, nullptr);
+        if (!vil_plane_grid)
+            vil_plane_grid = handle.material ? handle.material->GetDefaultVIL() : nullptr;
+        if (!mtl_plane_grid || !vil_plane_grid)
+            return false;
 
-        mtl_plane_grid = mi_plane_grid->GetMaterial();
+        MaterialBindingInit init;
+        init.material = mtl_plane_grid;
+        init.domain = handle.domain;
+        init.vil = vil_plane_grid;
+        init.preset = kPlaneGridCfg.pipeline;
+        init.material_preset = kPlaneGridCfg.preset;
+        init.instance_data = &white_color;
+        init.instance_data_size = sizeof(white_color);
+
+        handle_plane_grid = registry->AllocateHandle(init);
+        if (handle_plane_grid == InvalidMaterialInstanceHandle)
+            return false;
+
+        if (!registry->BuildSlot(handle_plane_grid, slot_plane_grid))
+            return false;
 
         return true;
     }
@@ -191,7 +210,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = geometry_factory.CreateCreater(mi_plane_grid);
+        auto pc = geometry_factory.CreateCreater(vil_plane_grid);
         if (!pc) return false;
 
         PlaneGridCreateInfo pgci;
@@ -204,7 +223,7 @@ private:
         if (!geom_plane_grid) return false;
 
         if (!geometry_factory.RegisterGeometry(geom_plane_grid)) return false;
-        prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid->ToSlot());
+        prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, slot_plane_grid);
         if (!prim_plane_grid) return false;
 
         return true;

@@ -40,7 +40,8 @@ private:
     Entity *camera_entity = nullptr;
 
     MaterialTemplate *material = nullptr;
-    MaterialInstance *mi = nullptr;
+    const VIL *material_vil = nullptr;
+    PrimitiveMaterialSlot material_slot;
 
     Geometry *geometry = nullptr;
     std::vector<Primitive *> primitives;
@@ -114,15 +115,29 @@ private:
         if (!handle.IsValid())
             return false;
 
-        Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-
-        mi = registry->CreateMI(handle, kRecursiveCubeCfg, &color, sizeof(color));
-        if (!mi)
+        material = handle.material;
+        material_vil = registry->ResolveVIL(handle.material, kRecursiveCubeCfg, nullptr);
+        if (!material_vil)
+            material_vil = handle.material ? handle.material->GetDefaultVIL() : nullptr;
+        if (!material || !material_vil)
             return false;
 
-        material = mi->GetMaterial();
+        Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
-        return mi != nullptr;
+        MaterialBindingInit init;
+        init.material = material;
+        init.domain = handle.domain;
+        init.vil = material_vil;
+        init.preset = kRecursiveCubeCfg.pipeline;
+        init.material_preset = kRecursiveCubeCfg.preset;
+        init.instance_data = &color;
+        init.instance_data_size = sizeof(color);
+
+        const MaterialInstanceHandle handle_id = registry->AllocateHandle(init);
+        if (handle_id == InvalidMaterialInstanceHandle)
+            return false;
+
+        return registry->BuildSlot(handle_id, material_slot);
     }
 
     bool CreateCubeGeometry()
@@ -135,7 +150,7 @@ private:
 
         GraphicsGeometryFactory geometry_factory(graphics_context);
 
-        auto pc = geometry_factory.CreateCreater(mi);
+        auto pc = geometry_factory.CreateCreater(material_vil);
         if (!pc)
             return false;
 
@@ -157,7 +172,7 @@ private:
                              bool animate,
                              EntityID parent_id)
     {
-        if (!ecs_context || !primitive_manager || !geometry || !mi)
+        if (!ecs_context || !primitive_manager || !geometry)
             return nullptr;
 
         auto *entity = ecs_context->CreateEntity<Entity>(name);
@@ -169,7 +184,7 @@ private:
         transform->SetLocalScale(glm::vec3(scale, scale, scale));
         transform->SetMovable(animate);
 
-        auto prim = primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
+        auto prim = primitive_manager->CreatePrimitive(geometry, material_slot);
         if (!prim)
             return nullptr;
 

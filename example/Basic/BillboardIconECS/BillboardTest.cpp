@@ -91,11 +91,16 @@ private:
     Entity *      camera_entity  = nullptr;
 
     MaterialTemplate *          mtl_plane_grid      = nullptr;
-    MaterialInstance *  mi_plane_grid       = nullptr;
+    const VIL *         vil_plane_grid      = nullptr;
+    MaterialInstanceHandle handle_plane_grid = InvalidMaterialInstanceHandle;
+    PrimitiveMaterialSlot slot_plane_grid;
     Geometry *          geom_plane_grid     = nullptr;
     Primitive *         prim_plane_grid     = nullptr;
 
-    MaterialInstance *  mi_billboard        = nullptr;
+    MaterialTemplate *  mtl_billboard       = nullptr;
+    const VIL *         vil_billboard       = nullptr;
+    MaterialInstanceHandle handle_billboard = InvalidMaterialInstanceHandle;
+    PrimitiveMaterialSlot slot_billboard;
     Primitive *         prim_billboard      = nullptr;
 
     Texture2D *         texture             = nullptr;
@@ -123,18 +128,32 @@ private:
         if (!handle.IsValid())
             return false;
 
-        mi_plane_grid = registry->CreateMI(handle,
-                                           kPlaneGridCfg,
-                                           &white_color,
-                                           sizeof(white_color));
-        if(!mi_plane_grid)
+        mtl_plane_grid = handle.material;
+        vil_plane_grid = registry->ResolveVIL(handle.material, kPlaneGridCfg, nullptr);
+        if (!vil_plane_grid)
+            vil_plane_grid = handle.material ? handle.material->GetDefaultVIL() : nullptr;
+        if (!mtl_plane_grid || !vil_plane_grid)
             return false;
 
-        mtl_plane_grid = mi_plane_grid->GetMaterial();
+        MaterialBindingInit init;
+        init.material = mtl_plane_grid;
+        init.domain = handle.domain;
+        init.vil = vil_plane_grid;
+        init.preset = kPlaneGridCfg.pipeline;
+        init.material_preset = kPlaneGridCfg.preset;
+        init.instance_data = &white_color;
+        init.instance_data_size = sizeof(white_color);
+
+        handle_plane_grid = registry->AllocateHandle(init);
+        if(handle_plane_grid == InvalidMaterialInstanceHandle)
+            return false;
+
+        if (!registry->BuildSlot(handle_plane_grid, slot_plane_grid))
+            return false;
 
         std::cout << "[BillboardECS] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;
 
-        std::cout << "[BillboardECS] PlaneGrid MI: " << (void*)mi_plane_grid << std::endl;
+        std::cout << "[BillboardECS] PlaneGrid slot mi_id: " << slot_plane_grid.mi_id << std::endl;
 
         return true;
     }
@@ -157,12 +176,29 @@ private:
         if (!handle.IsValid())
             return false;
 
-        mi_billboard = registry->CreateMI(handle, kBillboardCfg);
-        if(!mi_billboard)
+        mtl_billboard = handle.material;
+        vil_billboard = registry->ResolveVIL(handle.material, kBillboardCfg, nullptr);
+        if (!vil_billboard)
+            vil_billboard = handle.material ? handle.material->GetDefaultVIL() : nullptr;
+        if (!mtl_billboard || !vil_billboard)
             return false;
 
-        std::cout << "[BillboardECS] Billboard MI: " << (void*)mi_billboard
-                  << ", MaterialTemplate: " << (void*)mi_billboard->GetMaterial() << std::endl;
+        MaterialBindingInit init;
+        init.material = mtl_billboard;
+        init.domain = handle.domain;
+        init.vil = vil_billboard;
+        init.preset = kBillboardCfg.pipeline;
+        init.material_preset = kBillboardCfg.preset;
+
+        handle_billboard = registry->AllocateHandle(init);
+        if(handle_billboard == InvalidMaterialInstanceHandle)
+            return false;
+
+        if (!registry->BuildSlot(handle_billboard, slot_billboard))
+            return false;
+
+        std::cout << "[BillboardECS] Billboard slot mi_id: " << slot_billboard.mi_id
+                  << ", MaterialTemplate: " << (void*)mtl_billboard << std::endl;
 
         return true;
     }
@@ -189,7 +225,7 @@ private:
 
         std::cout << "[BillboardECS] Sampler created: " << (void*)sampler << std::endl;
 
-        const bool bind_ok = mi_billboard->GetMaterial()->BindTextureSampler(mtl::SamplerSlot::BaseColor,
+        const bool bind_ok = mtl_billboard->BindTextureSampler(mtl::SamplerSlot::BaseColor,
                                               texture,
                                               sampler);
         std::cout << "[BillboardECS] BindTextureSampler(BaseColor): " << (bind_ok ? "OK" : "FAILED")
@@ -198,7 +234,13 @@ private:
             return false;
 
         math::Vector2u texture_size(texture->GetWidth(), texture->GetHeight());
-        mi_billboard->WriteMIData(texture_size);
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        if (!registry->WriteMIData(handle_billboard, &texture_size, sizeof(texture_size)))
+            return false;
+
         std::cout << "[BillboardECS] Billboard MI data written (texture size)." << std::endl;
 
         return true;
@@ -216,7 +258,7 @@ private:
         using namespace inline_geometry;
 
         {
-            auto pc = geometry_factory.CreateCreater(mi_plane_grid);
+            auto pc = geometry_factory.CreateCreater(vil_plane_grid);
             if (!pc)
                 return false;
 
@@ -232,7 +274,7 @@ private:
 
             if(!geometry_factory.RegisterGeometry(geom_plane_grid))
                 return false;
-            prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid->ToSlot());
+            prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, slot_plane_grid);
             if(!prim_plane_grid)
                 return false;
 
@@ -241,7 +283,7 @@ private:
         }
 
         {
-            auto pc = geometry_factory.CreateCreater(mi_billboard);
+            auto pc = geometry_factory.CreateCreater(vil_billboard);
             if (!pc)
                 return false;
 
@@ -253,7 +295,7 @@ private:
             if(!pc->WriteIBO(billboard_index_data))
                 return false;
 
-            prim_billboard = geometry_factory.CreatePrimitive(pc.get(), mi_billboard->ToSlot());
+            prim_billboard = geometry_factory.CreatePrimitive(pc.get(), slot_billboard);
             if(!prim_billboard)
                 return false;
 

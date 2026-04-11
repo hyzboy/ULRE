@@ -61,9 +61,12 @@ private:
     hgl::example::OffscreenWorldRuntime runtime;
 
     RenderContext *render_context = nullptr;
+    MaterialAssetRegistry *material_registry = nullptr;
 
     MaterialTemplate *mtl = nullptr;
-    MaterialInstance *mi = nullptr;
+    const VIL *vil = nullptr;
+    MaterialInstanceHandle handle_id = InvalidMaterialInstanceHandle;
+    PrimitiveMaterialSlot slot;
     Geometry *geometry = nullptr;
     Primitive *primitive = nullptr;
 
@@ -93,10 +96,15 @@ public:
 
         }
 
+        if (material_registry && handle_id != InvalidMaterialInstanceHandle)
+            material_registry->ReleaseHandle(handle_id);
+
         primitive = nullptr;
         geometry = nullptr;
-        mi = nullptr;
+        vil = nullptr;
         mtl = nullptr;
+        handle_id = InvalidMaterialInstanceHandle;
+        material_registry = nullptr;
     }
 
     Texture2D *GetColorTexture() const
@@ -149,23 +157,45 @@ public:
         if (!registry)
             return false;
 
+        material_registry = registry;
+
         const MaterialDomainHandle handle = registry->Acquire(kSphereCfg);
         if (!handle.IsValid())
             return false;
 
-        Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        mi = registry->CreateMI(handle, kSphereCfg, &sphere_color, sizeof(sphere_color));
-        if (!mi)
+        mtl = handle.material;
+        vil = registry->ResolveVIL(handle.material, kSphereCfg, nullptr);
+        if (!vil)
+            vil = handle.material ? handle.material->GetDefaultVIL() : nullptr;
+        if (!mtl || !vil)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, mi->GetVIL());
+        Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
+
+        MaterialBindingInit init;
+        init.material = mtl;
+        init.domain = handle.domain;
+        init.vil = vil;
+        init.preset = kSphereCfg.pipeline;
+        init.material_preset = kSphereCfg.preset;
+        init.instance_data = &sphere_color;
+        init.instance_data_size = sizeof(sphere_color);
+
+        handle_id = registry->AllocateHandle(init);
+        if (handle_id == InvalidMaterialInstanceHandle)
+            return false;
+
+        if (!registry->BuildSlot(handle_id, slot))
+            return false;
+
+        auto pc = std::make_unique<GeometryCreater>(device, vil);
         geometry = inline_geometry::CreateSphere(pc.get(), 64);
         if (!geometry)
             return false;
 
         gm->Add(geometry);
 
-        primitive = pm->CreatePrimitive(geometry, mi->ToSlot());
+        primitive = pm->CreatePrimitive(geometry, slot);
         if (!primitive)
             return false;
 
@@ -216,7 +246,9 @@ private:
     Entity *cube_entity = nullptr;
 
     MaterialTemplate *cube_mtl = nullptr;
-    MaterialInstance *cube_mi = nullptr;
+    const VIL *cube_vil = nullptr;
+    MaterialInstanceHandle cube_handle = InvalidMaterialInstanceHandle;
+    PrimitiveMaterialSlot cube_slot;
     Sampler *cube_sampler = nullptr;
     Primitive *cube_primitive = nullptr;
 
@@ -307,12 +339,28 @@ private:
         if (!handle.IsValid())
             return false;
 
-        cube_mi = registry->CreateMI(handle, kCubeCfg,
-             &cube_mi_data, sizeof(cube_mi_data));
-        if (!cube_mi)
+        cube_mtl = handle.material;
+        cube_vil = registry->ResolveVIL(handle.material, kCubeCfg, nullptr);
+        if (!cube_vil)
+            cube_vil = handle.material ? handle.material->GetDefaultVIL() : nullptr;
+        if (!cube_mtl || !cube_vil)
             return false;
 
-        cube_mtl=cube_mi->GetMaterial();
+        MaterialBindingInit init;
+        init.material = cube_mtl;
+        init.domain = handle.domain;
+        init.vil = cube_vil;
+        init.preset = kCubeCfg.pipeline;
+        init.material_preset = kCubeCfg.preset;
+        init.instance_data = &cube_mi_data;
+        init.instance_data_size = sizeof(cube_mi_data);
+
+        cube_handle = registry->AllocateHandle(init);
+        if (cube_handle == InvalidMaterialInstanceHandle)
+            return false;
+
+        if (!registry->BuildSlot(cube_handle, cube_slot))
+            return false;
 
         cube_sampler = sm->CreateSampler();
         if (!cube_sampler)
@@ -342,7 +390,7 @@ private:
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
 
-        auto pc = std::make_unique<GeometryCreater>(device, cube_mi->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, cube_vil);
         inline_geometry::CubeCreateInfo cci{};
         cci.tex_coord = true;
         cci.normal = true;
@@ -353,7 +401,7 @@ private:
 
         gm->Add(cube_geometry);
 
-        cube_primitive = pm->CreatePrimitive(cube_geometry, cube_mi->ToSlot());
+        cube_primitive = pm->CreatePrimitive(cube_geometry, cube_slot);
         if (!cube_primitive)
             return false;
 
@@ -394,7 +442,15 @@ public:
         }
 
         cube_primitive = nullptr;
-        cube_mi = nullptr;
+        if (cube_handle != InvalidMaterialInstanceHandle)
+        {
+            if (auto *registry = GetMaterialAssetRegistry())
+                registry->ReleaseHandle(cube_handle);
+
+            cube_handle = InvalidMaterialInstanceHandle;
+        }
+
+        cube_vil = nullptr;
         cube_mtl = nullptr;
         cube_sampler = nullptr;
         fallback_albedo = nullptr;

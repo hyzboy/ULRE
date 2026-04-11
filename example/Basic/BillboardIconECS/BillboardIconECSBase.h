@@ -8,6 +8,7 @@
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/PrimitiveMaterialSlot.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/color/Color.h>
@@ -56,7 +57,9 @@ protected:
 
     // PlaneGrid resources
     MaterialTemplate*         mtl_plane_grid      = nullptr;
-    MaterialInstance* mi_plane_grid       = nullptr;
+    const VIL*                vil_plane_grid      = nullptr;
+    MaterialInstanceHandle    handle_plane_grid   = InvalidMaterialInstanceHandle;
+    PrimitiveMaterialSlot     slot_plane_grid;
     Geometry*         geom_plane_grid     = nullptr;
     Primitive*        prim_plane_grid     = nullptr;
 
