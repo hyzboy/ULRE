@@ -62,7 +62,8 @@ private:
         MaterialTemplate *material = nullptr;
         const VIL *vil = nullptr;
 
-        MaterialInstance *mi[COLOR_COUNT]{};
+        MaterialInstanceHandle handle[COLOR_COUNT]{};
+        PrimitiveMaterialSlot slot[COLOR_COUNT]{};
     };
 
     MaterialData solid;
@@ -112,28 +113,35 @@ private:
         if (!handle.IsValid())
             return false;
 
+        md->material = handle.material;
+        md->vil = registry->ResolveVIL(handle.material, cfg, nullptr);
+        if (!md->vil)
+            md->vil = handle.material ? handle.material->GetDefaultVIL() : nullptr;
+        if (!md->material || !md->vil)
+            return false;
+
         Color4f color;
 
         for(size_t i = 0;i < COLOR_COUNT;i++)
         {
             color = GetColor4f(TestColor[i],1.0);
 
-            md->mi[i] = registry->CreateMI(handle, cfg, &color, sizeof(color));
+            MaterialBindingInit init;
+            init.material = md->material;
+            init.domain = handle.domain;
+            init.vil = md->vil;
+            init.preset = cfg.pipeline;
+            init.material_preset = cfg.preset;
+            init.instance_data = &color;
+            init.instance_data_size = sizeof(color);
 
-            if(!md->mi[i])
+            md->handle[i] = registry->AllocateHandle(init);
+            if(md->handle[i] == InvalidMaterialInstanceHandle)
                 return(false);
 
-            if (!md->material)
-                md->material = md->mi[i]->GetMaterial();
+            if (!registry->BuildSlot(md->handle[i], md->slot[i]))
+                return(false);
         }
-
-        if (!md->material)
-            return false;
-
-        md->vil = md->material->GetDefaultVIL();
-
-        if(!md->vil)
-            return(false);
 
         return true;
     }
@@ -183,7 +191,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry, wire.mi[5]->ToSlot());
+        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry, wire.slot[5]);
         return bbox_primitive != nullptr;
     }
 
@@ -204,7 +212,7 @@ private:
         if (!primitive_manager)
             return nullptr;
 
-        Primitive *primitive = primitive_manager->CreatePrimitive(geometry,md->mi[color]->ToSlot());
+        Primitive *primitive = primitive_manager->CreatePrimitive(geometry, md->slot[color]);
 
         if(!primitive)
             return nullptr;
@@ -276,7 +284,7 @@ private:
             bbox->transform->SetMovable(false);
 
             bbox->primitive_comp->SetPrimitive(bbox_primitive);
-            bbox->primitive_comp->SetMIIDOverride(wire.mi[i % COLOR_COUNT]->GetMIID());
+            bbox->primitive_comp->SetMIIDOverride(wire.slot[i % COLOR_COUNT].mi_id);
             bbox->primitive_comp->SetVisible(true);
 
             bounding_boxes.push_back(std::move(bbox));
@@ -312,7 +320,7 @@ private:
             rm->transform->SetMovable(false);
 
             rm->primitive_comp->SetPrimitive(rm->primitive);
-            rm->primitive_comp->SetMIIDOverride(solid.mi[i % COLOR_COUNT]->GetMIID());
+            rm->primitive_comp->SetMIIDOverride(solid.slot[i % COLOR_COUNT].mi_id);
             rm->primitive_comp->SetVisible(true);
         }
 

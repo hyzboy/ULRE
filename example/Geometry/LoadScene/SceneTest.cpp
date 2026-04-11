@@ -58,7 +58,8 @@ private:
         MaterialTemplate *material = nullptr;
         const VIL *vil = nullptr;
 
-        MaterialInstance *mi[COLOR_COUNT]{};
+        MaterialInstanceHandle handle[COLOR_COUNT]{};
+        PrimitiveMaterialSlot slot[COLOR_COUNT]{};
     };
 
     MaterialData solid;
@@ -88,30 +89,37 @@ private:
         if (!handle.IsValid())
             return false;
 
+        md->material = handle.material;
+        md->vil = registry->ResolveVIL(handle.material, cfg, nullptr);
+        if (!md->vil)
+            md->vil = handle.material ? handle.material->GetDefaultVIL() : nullptr;
+        if (!md->material || !md->vil)
+            return false;
+
         Color4f color;
 
         for(size_t i = 0;i < COLOR_COUNT;i++)
         {
             color = GetColor4f(TestColor[i],1.0);
 
-            md->mi[i] = registry->CreateMI(handle, cfg, &color, sizeof(color));
+            MaterialBindingInit init;
+            init.material = md->material;
+            init.domain = handle.domain;
+            init.vil = md->vil;
+            init.preset = cfg.pipeline;
+            init.material_preset = cfg.preset;
+            init.instance_data = &color;
+            init.instance_data_size = sizeof(color);
 
-            if(!md->mi[i])
+            md->handle[i] = registry->AllocateHandle(init);
+            if(md->handle[i] == InvalidMaterialInstanceHandle)
                 return(false);
 
-            if (!md->material)
-                md->material = md->mi[i]->GetMaterial();
+            if (!registry->BuildSlot(md->handle[i], md->slot[i]))
+                return(false);
         }
 
-        if (!md->material)
-            return false;
-
-        md->vil = md->material->GetDefaultVIL();
-
-        if(!md->vil)
-            return(false);
-
-        return md->vil != nullptr;
+        return true;
     }
 
     bool InitSolidMDP()
@@ -149,7 +157,7 @@ private:
 
         scene_mesh_ = LoadStaticMeshScene(
             device, geo_mgr,
-            solid.vil, solid.mi, (int)COLOR_COUNT,
+            solid.vil, solid.slot, (int)COLOR_COUNT,
             pack_path, base_dir);
 
         return scene_mesh_ != nullptr;

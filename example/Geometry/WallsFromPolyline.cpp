@@ -35,7 +35,7 @@ private:
     mtl::StandardMaterialInstance mi_data;
 
     MaterialTemplate *material = nullptr;
-    MaterialInstance *material_instance = nullptr;
+    const VIL *material_vil = nullptr;
     SemanticMaterialId semantic_material_id = 0;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
@@ -136,21 +136,22 @@ public:
         if (!handle.IsValid())
             return false;
 
+        material = handle.material;
+        material_vil = registry->ResolveVIL(handle.material, kWallsCfg, nullptr);
+        if (!material_vil)
+            material_vil = handle.material ? handle.material->GetDefaultVIL() : nullptr;
+        if (!material || !material_vil)
+            return false;
+
         mi_data.base_color = GetRGBA(COLOR::FireBrick);
         mi_data.metallic=0;
         mi_data.roughness=0.95f;
         mi_data.normal_scale=0.35f;
-        material_instance = registry->CreateMI(handle, kWallsCfg, &mi_data, sizeof(mi_data));
-        if(!material_instance) return false;
-
-        material = material_instance->GetMaterial();
-
-        const VIL *vil = material->GetDefaultVIL();
         auto* buffer_manager = GetBufferManager();
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, vil);
+        mesh_vdm = new VertexDataManager(buffer_manager, material_vil);
         if (!mesh_vdm)
             return false;
         if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))

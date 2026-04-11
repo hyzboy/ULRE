@@ -34,12 +34,13 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     MaterialTemplate *          material            = nullptr;
+    const VIL *                 material_vil        = nullptr;
 
     Geometry *         prim_rect_cube      = nullptr;
     Geometry *         prim_circle_cylinder = nullptr;
     Geometry *         prim_triangle       = nullptr;
     Geometry *         prim_pentagon       = nullptr;
-    MaterialInstance *  material_instance   = nullptr;
+    MaterialInstanceHandle material_handle = InvalidMaterialInstanceHandle;
     SemanticMaterialId  semantic_material_id = 0;
 
 private:
@@ -65,14 +66,27 @@ private:
         if (!handle.IsValid())
             return false;
 
+        material = handle.material;
+        material_vil = registry->ResolveVIL(handle.material, kExtrudedCfg, nullptr);
+        if (!material_vil)
+            material_vil = handle.material ? handle.material->GetDefaultVIL() : nullptr;
+        if (!material || !material_vil)
+            return false;
+
         Color4f color=GetColor4f(COLOR::BlenderAxisRed);
 
-        material_instance = registry->CreateMI(handle, kExtrudedCfg, &color, sizeof(color));
+        MaterialBindingInit init;
+        init.material = material;
+        init.domain = handle.domain;
+        init.vil = material_vil;
+        init.preset = kExtrudedCfg.pipeline;
+        init.material_preset = kExtrudedCfg.preset;
+        init.instance_data = &color;
+        init.instance_data_size = sizeof(color);
 
-        if (material_instance)
-            material = material_instance->GetMaterial();
+        material_handle = registry->AllocateHandle(init);
 
-        return material_instance != nullptr;
+        return material_handle != InvalidMaterialInstanceHandle;
     }
 
     bool CreateRenderObjects()
@@ -85,7 +99,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material_instance->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, material_vil);
 
         // 测试1: 矩形挤压成立方体
         prim_rect_cube = CreateExtrudedRectangle(pc.get(), 2.0f, 1.5f, 1.0f, math::Vector3f(0, 0, 1));
@@ -147,7 +161,7 @@ private:
 
     bool CreateMeshEntity(const char *name, Geometry *geometry, const glm::vec3 &pos)
     {
-        if(!ecs_context || !geometry || !material_instance)
+        if(!ecs_context || !geometry)
             return false;
 
         auto* primitive_manager = GetPrimitiveManager();
