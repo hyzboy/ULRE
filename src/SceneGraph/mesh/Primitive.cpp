@@ -31,17 +31,6 @@ uint32_t GetMaxBindingIndex(const VIL *vil)
     return max_binding;
 }
 
-bool IsPrimitiveBindingCompatible(const MaterialTemplate *material,const VertexInputFormat &vif,const VAB *vab,std::string &reason)
-{
-    if(!material || !vab)
-    {
-        reason = "material_or_vab_missing";
-        return false;
-    }
-
-    return IsMaterialStorageCompatible(material, vif.attrib, vab->GetFormat(), &reason);
-}
-
 void ReleaseOwnedPrimitiveVIL(MaterialTemplate *material,const VIL *&active_vil,VIL *&owned_runtime_vil)
 {
     if(owned_runtime_vil && material)

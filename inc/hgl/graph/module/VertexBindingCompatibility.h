@@ -73,25 +73,18 @@ inline bool IsMaterialStorageCompatible(const MaterialTemplate *material,
     return IsMaterialVertexAttribStorageCompatible(material->GetVertexInput(), attrib, storage_format, reason);
 }
 
-inline bool BuildGeometryDrivenVILConfig(const MaterialTemplate *material,
-                                         const Geometry *geometry,
-                                         const VIL *requested_vil,
-                                         VILConfig &out_cfg,
-                                         bool &has_any,
-                                         std::string *reason = nullptr,
-                                         bool *has_layout_mismatch = nullptr)
+inline bool BuildGeometryDrivenVILConfigFromVertexInput(const VertexInput *vertex_input,
+                                                        const Geometry *geometry,
+                                                        const VIL *requested_vil,
+                                                        VILConfig &out_cfg,
+                                                        bool &has_any,
+                                                        std::string *reason = nullptr,
+                                                        bool *has_layout_mismatch = nullptr)
 {
     out_cfg.clear();
     has_any = false;
     if(has_layout_mismatch)
         *has_layout_mismatch = false;
-
-    if(!material)
-    {
-        if(reason)
-            *reason = "material_missing";
-        return false;
-    }
 
     if(!geometry)
     {
@@ -120,7 +113,7 @@ inline bool BuildGeometryDrivenVILConfig(const MaterialTemplate *material,
         }
 
         std::string compat_reason;
-        if(!IsMaterialStorageCompatible(material, attrib, vab->GetFormat(), &compat_reason))
+        if(!IsMaterialVertexAttribStorageCompatible(vertex_input, attrib, vab->GetFormat(), &compat_reason))
         {
             if(reason)
                 *reason = compat_reason;
@@ -169,6 +162,35 @@ inline bool BuildGeometryDrivenVILConfig(const MaterialTemplate *material,
     }
 
     return true;
+}
+
+inline bool BuildGeometryDrivenVILConfig(const MaterialTemplate *material,
+                                         const Geometry *geometry,
+                                         const VIL *requested_vil,
+                                         VILConfig &out_cfg,
+                                         bool &has_any,
+                                         std::string *reason = nullptr,
+                                         bool *has_layout_mismatch = nullptr)
+{
+    out_cfg.clear();
+    has_any = false;
+    if(has_layout_mismatch)
+        *has_layout_mismatch = false;
+
+    if(!material)
+    {
+        if(reason)
+            *reason = "material_missing";
+        return false;
+    }
+
+    return BuildGeometryDrivenVILConfigFromVertexInput(material->GetVertexInput(),
+                                                       geometry,
+                                                       requested_vil,
+                                                       out_cfg,
+                                                       has_any,
+                                                       reason,
+                                                       has_layout_mismatch);
 }
 
 }
