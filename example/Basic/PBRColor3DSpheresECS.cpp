@@ -47,6 +47,7 @@ private:
     Entity *camera_entity = nullptr;
 
     MaterialTemplate *material = nullptr;
+    const VIL *material_vil = nullptr;
     MaterialDomainHandle material_handle;
 
     VertexDataManager *mesh_vdm = nullptr;
@@ -54,7 +55,8 @@ private:
     Primitive *base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
     mtl::PBRColor3DMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
-    MaterialInstance *sphere_mi[GRID_SIZE][GRID_SIZE]{};
+    MaterialInstanceHandle sphere_handle[GRID_SIZE][GRID_SIZE]{};
+    PrimitiveMaterialSlot sphere_slot[GRID_SIZE][GRID_SIZE]{};
 
     Entity *sphere_entities[GRID_SIZE][GRID_SIZE]{};
     std::shared_ptr<TransformComponent> sphere_transforms[GRID_SIZE][GRID_SIZE]{};
@@ -110,6 +112,13 @@ private:
         if (!material_handle.IsValid())
             return false;
 
+        material = material_handle.material;
+        material_vil = registry->ResolveVIL(material_handle.material, kPBRColorMICfg, nullptr);
+        if (!material_vil)
+            material_vil = material_handle.material ? material_handle.material->GetDefaultVIL() : nullptr;
+        if (!material || !material_vil)
+            return false;
+
         for (uint row = 0; row < GRID_SIZE; ++row)
         {
             for (uint col = 0; col < GRID_SIZE; ++col)
@@ -127,21 +136,30 @@ private:
                 store.metallic = d.metallic;
                 store.roughness = d.roughness;
 
-                sphere_mi[row][col] = registry->CreateMI(material_handle,
-                                                         kPBRColorMICfg,
-                                                         &d,
-                                                         sizeof(d));
-                if (!sphere_mi[row][col])
+                MaterialBindingInit init;
+                init.material = material;
+                init.domain = material_handle.domain;
+                init.vil = material_vil;
+                init.preset = kPBRColorMICfg.pipeline;
+                init.material_preset = kPBRColorMICfg.preset;
+                init.instance_data = &d;
+                init.instance_data_size = sizeof(d);
+
+                sphere_handle[row][col] = registry->AllocateHandle(init);
+                if (sphere_handle[row][col] == InvalidMaterialInstanceHandle)
                 {
-                    printf("[ERROR] CreatePBRColorMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
+                    printf("[ERROR] CreatePBRColorMaterialInstances: Failed to allocate handle for [%u][%u]\n", row, col);
                     return false;
                 }
 
+                if (!registry->BuildSlot(sphere_handle[row][col], sphere_slot[row][col]))
+                {
+                    printf("[ERROR] CreatePBRColorMaterialInstances: Failed to build slot for [%u][%u]\n", row, col);
+                    return false;
+                }
 
             }
         }
-
-        material = material_handle.material;
 
         return true;
     }
@@ -169,8 +187,8 @@ private:
             return false;
         }
 
-        if (sphere_mi[0][0] == nullptr) return false;
-        mesh_vdm = new VertexDataManager(buffer_manager, sphere_mi[0][0]->GetVIL());
+        if (!material_vil) return false;
+        mesh_vdm = new VertexDataManager(buffer_manager, material_vil);
         if (!mesh_vdm)
         {
             printf("[ERROR] InitVDM: Failed to create VertexDataManager\n");
@@ -324,7 +342,7 @@ private:
 
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
-            base_primitives[i] = primitive_manager->CreatePrimitive(builtin_geometries[i], sphere_mi[0][i]->ToSlot());
+            base_primitives[i] = primitive_manager->CreatePrimitive(builtin_geometries[i], sphere_slot[0][i]);
 
             if (!base_primitives[i])
             {
@@ -369,7 +387,7 @@ private:
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
                 prim_comp->SetPrimitive(base_primitives[col]);
-                prim_comp->SetMIIDOverride(sphere_mi[row][col]->GetMIID());
+                prim_comp->SetMIIDOverride(sphere_slot[row][col].mi_id);
                 prim_comp->SetVisible(true);
             }
         }
@@ -483,6 +501,21 @@ public:
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
             SAFE_CLEAR(base_primitives[i])
+        }
+
+        if (auto *registry = GetMaterialAssetRegistry())
+        {
+            for (uint row = 0; row < GRID_SIZE; ++row)
+            {
+                for (uint col = 0; col < GRID_SIZE; ++col)
+                {
+                    if (sphere_handle[row][col] != InvalidMaterialInstanceHandle)
+                    {
+                        registry->ReleaseHandle(sphere_handle[row][col]);
+                        sphere_handle[row][col] = InvalidMaterialInstanceHandle;
+                    }
+                }
+            }
         }
 
         SAFE_CLEAR(mesh_vdm)

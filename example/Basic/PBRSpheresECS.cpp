@@ -73,6 +73,7 @@ private:
     Entity *      camera_entity = nullptr;
 
     MaterialTemplate *  material  = nullptr;
+    const VIL *         material_vil = nullptr;
     MaterialDomainHandle material_handle;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
@@ -84,7 +85,8 @@ private:
 
     // One MI per cell: col controls metallic, row controls roughness
     mtl::StandardMaterialInstance   sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
-    MaterialInstance *              sphere_mi[GRID_SIZE][GRID_SIZE]{};
+    MaterialInstanceHandle          sphere_handle[GRID_SIZE][GRID_SIZE]{};
+    PrimitiveMaterialSlot           sphere_slot[GRID_SIZE][GRID_SIZE]{};
 
     // 100 entities, one per sphere
     Entity *sphere_entities[GRID_SIZE][GRID_SIZE]{};
@@ -168,22 +170,12 @@ private:
             return false;
         }
 
-        mtl::StandardMaterialInstance seed_mi_data{};
-        seed_mi_data.base_color = PackRGBA8Float(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
-        seed_mi_data.metallic = 0.0f;
-        seed_mi_data.roughness = 1.0f;
-        seed_mi_data.normal_scale = 0.35f;
-
-        auto* seed_mi = registry->CreateMI(material_handle,
-                                           kPBRArrayAcquireCfg,
-                                           &seed_mi_data,
-                                           sizeof(seed_mi_data));
-        if (!seed_mi) {
-            printf("[ERROR] InitMaterial: Failed to create seed MI for Standard+Array material\n");
+        material = material_handle.material;
+        material_vil = registry->ResolveVIL(material_handle.material, kPBRArrayAcquireCfg, nullptr);
+        if (!material_vil)
+            material_vil = material_handle.material ? material_handle.material->GetDefaultVIL() : nullptr;
+        if (!material || !material_vil)
             return false;
-        }
-
-        material = seed_mi->GetMaterial();
 
         sampler = sampler_manager->CreateSampler();
         if (!sampler) {
@@ -344,19 +336,33 @@ private:
                 store.roughness = d.roughness;
                 store.normal_scale = d.normal_scale;
 
-                sphere_mi[row][col] = registry->CreateMI(material_handle,
-                                                         kPBRArrayAcquireCfg,
-                                                         &d,
-                                                         sizeof(d));
+                MaterialBindingInit init;
+                init.material = material;
+                init.domain = material_handle.domain;
+                init.vil = material_vil;
+                init.preset = kPBRArrayAcquireCfg.pipeline;
+                init.material_preset = kPBRArrayAcquireCfg.preset;
+                init.instance_data = &d;
+                init.instance_data_size = sizeof(d);
 
-                if (!sphere_mi[row][col]) {
-                    printf("[ERROR] CreateStandardMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
+                sphere_handle[row][col] = registry->AllocateHandle(init);
+
+                if (sphere_handle[row][col] == InvalidMaterialInstanceHandle) {
+                    printf("[ERROR] CreateStandardMaterialInstances: Failed to allocate handle for [%u][%u]\n", row, col);
+                    return false;
+                }
+
+                if (!registry->BuildSlot(sphere_handle[row][col], sphere_slot[row][col])) {
+                    printf("[ERROR] CreateStandardMaterialInstances: Failed to build slot for [%u][%u]\n", row, col);
                     return false;
                 }
 
                 // Write MIT data: select texture array layer by column index.
-                sphere_mi[row][col]->SetTextureArrayLayer(mtl::SamplerSlot::BaseColor, col);
-                sphere_mi[row][col]->SetTextureArrayLayer(mtl::SamplerSlot::Normal,    col);
+                if (!registry->SetTextureArrayLayer(sphere_handle[row][col], mtl::SamplerSlot::BaseColor, col))
+                    return false;
+
+                if (!registry->SetTextureArrayLayer(sphere_handle[row][col], mtl::SamplerSlot::Normal, col))
+                    return false;
             }
         }
 
@@ -371,12 +377,12 @@ private:
             return false;
         }
 
-        if (!sphere_mi[0][0]) {
-            printf("[ERROR] InitVDM: sphere_mi[0][0] not initialized\n");
+        if (!material_vil) {
+            printf("[ERROR] InitVDM: material_vil not initialized\n");
             return false;
         }
 
-        mesh_vdm = new VertexDataManager(buffer_manager, sphere_mi[0][0]->GetVIL());
+        mesh_vdm = new VertexDataManager(buffer_manager, material_vil);
         if (!mesh_vdm) {
             printf("[ERROR] InitVDM: Failed to create VertexDataManager\n");
             return false;
@@ -516,7 +522,7 @@ private:
         for (uint col = 0; col < GEOMETRY_VARIANT_COUNT; ++col)
         {
             base_primitives[col] = primitive_manager->CreatePrimitive(
-                builtin_geometries[col], sphere_mi[0][col]->ToSlot());
+                builtin_geometries[col], sphere_slot[0][col]);
 
             if (!base_primitives[col]) {
                 printf("[ERROR] CreateBasePrimitives: Failed to create primitive %u\n", col);
@@ -562,7 +568,7 @@ private:
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
                 prim_comp->SetPrimitive(base_primitives[col]);
-                prim_comp->SetMIIDOverride(sphere_mi[row][col]->GetMIID());
+                prim_comp->SetMIIDOverride(sphere_slot[row][col].mi_id);
                 prim_comp->SetVisible(true);
             }
         }
@@ -676,6 +682,21 @@ public:
         for (uint col = 0; col < GEOMETRY_VARIANT_COUNT; ++col)
         {
             SAFE_CLEAR(base_primitives[col])
+        }
+
+        if (auto *registry = GetMaterialAssetRegistry())
+        {
+            for (uint row = 0; row < GRID_SIZE; ++row)
+            {
+                for (uint col = 0; col < GRID_SIZE; ++col)
+                {
+                    if (sphere_handle[row][col] != InvalidMaterialInstanceHandle)
+                    {
+                        registry->ReleaseHandle(sphere_handle[row][col]);
+                        sphere_handle[row][col] = InvalidMaterialInstanceHandle;
+                    }
+                }
+            }
         }
 
         SAFE_CLEAR(mesh_vdm)
