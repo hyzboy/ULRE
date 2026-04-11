@@ -1,15 +1,64 @@
 ﻿#include<hgl/graph/mesh/Primitive.h>
 #include<cstring>
 #include<cstdint>
+#include<hgl/mtl/VertexAttributeSpec.h>
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
+#include<hgl/vk/VKVertexInput.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
 
 namespace
 {
+const VertexInputAttribute *FindMaterialVIAByAttrib(const VertexInput *vi,const VertexAttrib attrib)
+{
+    if(!vi)
+        return nullptr;
+
+    const auto &via_array = vi->GetVIAArray();
+    const VertexInputAttribute *via = via_array.items;
+
+    for(uint i = 0; i < via_array.count; ++i)
+    {
+        if(via->attrib == attrib)
+            return via;
+
+        ++via;
+    }
+
+    return nullptr;
+}
+
+bool IsPrimitiveBindingCompatible(const MaterialTemplate *material,const VertexInputFormat &vif,const VAB *vab,std::string &reason)
+{
+    if(!material || !vab)
+    {
+        reason = "material_or_vab_missing";
+        return false;
+    }
+
+    const VertexInputAttribute *mat_via = FindMaterialVIAByAttrib(material->GetVertexInput(), vif.attrib);
+    if(!mat_via)
+    {
+        reason = "material_vertex_input_missing_attrib";
+        return false;
+    }
+
+    VAType shader_type;
+    shader_type.basetype = VABaseType(mat_via->basetype);
+    shader_type.vec_size = mat_via->vec_size;
+
+    if(!mtl::IsStorageFormatCompatibleWithShaderType(shader_type, vab->GetFormat()))
+    {
+        reason = "shader_storage_incompatible";
+        return false;
+    }
+
+    return true;
+}
+
 void DumpPrimitiveBindingLists(const Geometry *geom,const VIL *vil,const std::string &mtl_name,const char *reason)
 {
     GLogError(std::string("[PRIM_BIND_DIAG] reason=") + (reason ? reason : "(unknown)") +
@@ -184,11 +233,36 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot,const char *s
         for(uint i=0;i<input_count;i++)
         {
             VAB *vab=geometry->GetVAB(vif->attrib);
+            const char *vab_name = GetVertexAttribName(vif->attrib);
 
             if(!vab)
             {
+                DumpPrimitiveBindingLists(geometry, slot.vil, slot.material_template->GetName(), "bind_slot_deferred_vab_missing");
                 delete geom_data_buffer;
                 return false;
+            }
+
+            std::string compat_reason;
+            if(!IsPrimitiveBindingCompatible(slot.material_template, *vif, vab, compat_reason))
+            {
+                GLogError(std::string("[FATAL ERROR] deferred VAB \"") + (vab_name ? vab_name : "") +
+                          "\" can't satisfy Primitive input, MaterialTemplate(" + slot.material_template->GetName() +
+                          ") expected_format(" + GetVulkanFormatName(vif->format) +
+                          ") , VAB Format(" + GetVulkanFormatName(vab->GetFormat()) +
+                          ") reason(" + compat_reason + ")");
+                DumpPrimitiveBindingLists(geometry, slot.vil, slot.material_template->GetName(), compat_reason.c_str());
+                delete geom_data_buffer;
+                return false;
+            }
+
+            if(vab->GetFormat() != vif->format || vab->GetStride() != vif->stride)
+            {
+                GLogWarning(std::string("[PRIM_BIND_COMPAT][DEFERRED] attrib=") + (vab_name ? vab_name : "") +
+                            ", material=" + slot.material_template->GetName() +
+                            ", vif_format=" + GetVulkanFormatName(vif->format) +
+                            ", geo_format=" + GetVulkanFormatName(vab->GetFormat()) +
+                            ", vif_stride=" + std::to_string(vif->stride) +
+                            ", geo_stride=" + std::to_string(vab->GetStride()));
             }
 
             const uint32_t bind_index=vif->binding;
@@ -301,26 +375,27 @@ Primitive *DirectCreatePrimitive(Geometry *geom, const PrimitiveMaterialSlot &sl
             return nullptr;
         }
 
-        if(vab->GetFormat() != vif->format)
+        std::string compat_reason;
+        if(!IsPrimitiveBindingCompatible(slot.material_template, *vif, vab, compat_reason))
         {
             GLogError(std::string("[FATAL ERROR] VAB \"") + (vab_name ? vab_name : "") +
-                      "\" format can't match Primitive, MaterialTemplate(" + mtl_name +
-                      ") Format(" + GetVulkanFormatName(vif->format) +
-                      ") , VAB Format(" + GetVulkanFormatName(vab->GetFormat()) + ")");
-            DumpPrimitiveBindingLists(geom, vil, mtl_name, "vab_format_mismatch");
+                      "\" can't satisfy Primitive input, MaterialTemplate(" + mtl_name +
+                      ") expected_format(" + GetVulkanFormatName(vif->format) +
+                      ") , VAB Format(" + GetVulkanFormatName(vab->GetFormat()) +
+                      ") reason(" + compat_reason + ")");
+            DumpPrimitiveBindingLists(geom, vil, mtl_name, compat_reason.c_str());
             delete geom_data_buffer;
             return nullptr;
         }
 
-        if(vab->GetStride() != vif->stride)
+        if(vab->GetFormat() != vif->format || vab->GetStride() != vif->stride)
         {
-            GLogError(std::string("[FATAL ERROR] VAB \"") + (vab_name ? vab_name : "") +
-                      "\" stride can't match Primitive, MaterialTemplate(" + mtl_name +
-                      ") stride(" + std::to_string(vif->stride) +
-                      ") , VAB stride(" + std::to_string(vab->GetStride()) + ")");
-            DumpPrimitiveBindingLists(geom, vil, mtl_name, "vab_stride_mismatch");
-            delete geom_data_buffer;
-            return nullptr;
+            GLogWarning(std::string("[PRIM_BIND_COMPAT] attrib=") + (vab_name ? vab_name : "") +
+                        ", material=" + mtl_name +
+                        ", vif_format=" + GetVulkanFormatName(vif->format) +
+                        ", geo_format=" + GetVulkanFormatName(vab->GetFormat()) +
+                        ", vif_stride=" + std::to_string(vif->stride) +
+                        ", geo_stride=" + std::to_string(vab->GetStride()));
         }
 
         const uint32_t bind_index = vif->binding;
