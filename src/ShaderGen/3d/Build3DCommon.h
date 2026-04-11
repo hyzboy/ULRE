@@ -54,7 +54,7 @@ inline MaterialVariantKey MakeVariantKey()
 inline MaterialVariantKey MakeVariantKeyWithSurface(const SurfaceType surface_type)
 {
     MaterialVariantKey key{};
-    key.surface_type = surface_type;
+    key.SetSurfaceType(surface_type);
     return key;
 }
 

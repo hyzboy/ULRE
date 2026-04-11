@@ -55,6 +55,7 @@ bool ValidateBuiltinMaterialVariants(const std::string &shader_library_path,
 std::string GetBuiltinMaterialVariantSnapshot();
 
 // Phase-A migration helpers: preset <-> variant mapping.
+SurfaceType MapPresetToSurfaceType(MaterialPreset preset);
 MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id);
 
 /// Apply per-cfg overrides (geometry_mode, texture_source_bits, sampler_feature_bits) to an

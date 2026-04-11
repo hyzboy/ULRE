@@ -665,7 +665,7 @@ MaterialTemplate *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey 
     std::string hash_name="variant";
     char key_hash[32] = {};
     std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
-    std::printf("[DEBUG] CreateMaterial hash=%s ST=%d GM=%d tex=%u sampler=%u\n", key_hash, int(key.surface_type), int(key.geometry_mode), key.texture_source_bits, key.sampler_feature_bits);
+    std::printf("[DEBUG] CreateMaterial hash=%s ST=%d GM=%d tex=%u sampler=%u\n", key_hash, int(key.GetSurfaceType()), int(key.geometry_mode), key.texture_source_bits, key.sampler_feature_bits);
     hash_name+="#";
     hash_name+=key_hash;
     hash_name+="?";
@@ -735,7 +735,7 @@ MaterialTemplate *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey 
         std::fprintf(stderr,
             "[MaterialManager] CreateMaterial(key/3D) failed: CreateMaterialCreateInfo returned null (key_hash=%llu surface=%u geom=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X cfg_hash=%s)\n",
             static_cast<unsigned long long>(key.Hash()),
-            static_cast<unsigned>(key.surface_type),
+            static_cast<unsigned>(key.GetSurfaceType()),
             static_cast<unsigned>(key.geometry_mode),
             key.texture_source_bits,
             key.sampler_feature_bits,

@@ -491,7 +491,7 @@ namespace hgl::graph
                           sizeof(buf),
                           "#define SURFACE_TYPE %d\n"
                           "#define SHADOW_MODE %u\n",
-                          static_cast<int>(key.surface_type),
+                          static_cast<int>(key.GetSurfaceType()),
                           shadow_mode);
             defines += buf;
         }
@@ -606,7 +606,7 @@ namespace hgl::graph
 
         // 1. Build key used for macro define injection.
         mtl::MaterialVariantKey key{};
-        key.surface_type = surface;
+        key.SetSurfaceType(surface);
         key.blend_mode = blend;
         key.pass_hint = pass;
         key.sky_ambient_model = sky_model;
@@ -720,13 +720,13 @@ namespace hgl::graph
         AssembleResult result{};
 
         std::string vs_path = desc.vs_template_path.empty()
-            ? GetCompositorVSPath(key.surface_type, key.pass_hint)
+            ? GetCompositorVSPath(key.GetSurfaceType(), key.pass_hint)
             : shader_lib_path_ + "/" + desc.vs_template_path;
         std::string fs_path = desc.fs_template_path.empty()
-            ? GetCompositorFSPath(key.surface_type, key.blend_mode, key.pass_hint)
+            ? GetCompositorFSPath(key.GetSurfaceType(), key.blend_mode, key.pass_hint)
             : shader_lib_path_ + "/" + desc.fs_template_path;
         std::string surface_rel = desc.surface_function_path.empty()
-            ? GetSurfaceFunctionPath(key.surface_type)
+            ? GetSurfaceFunctionPath(key.GetSurfaceType())
             : desc.surface_function_path;
 
         std::string vs_source;

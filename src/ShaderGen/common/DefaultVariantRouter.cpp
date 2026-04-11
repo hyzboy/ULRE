@@ -44,7 +44,7 @@ GenericVariantPolicyResult BuildGenericVariantPolicy(const MaterialVariantKey &i
     }
 
     result.route_key = input_key;
-    result.route_key.surface_type = config.surface;
+    result.route_key.SetSurfaceType(config.surface);
 
     {
         const TextureSourceMode route_mode = result.any_array

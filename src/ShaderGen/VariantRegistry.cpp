@@ -137,7 +137,7 @@ std::string VariantRegistry::DumpSnapshot() const
             ? std::to_string(static_cast<uint32>(*d.factory_type))
             : std::string("-1");
         out += "|";
-        out += std::to_string(static_cast<uint32>(k.surface_type));
+        out += std::to_string(static_cast<uint32>(k.GetSurfaceType()));
         out += "|";
         out += std::to_string(static_cast<uint32>(k.geometry_mode));
         out += "|";
@@ -217,7 +217,7 @@ inline MaterialVariantKey K(SurfaceType st,
                              uint32 extra_bits = static_cast<uint32>(ExtraFeature::None))
 {
     MaterialVariantKey k;
-    k.surface_type        = st;
+    k.SetSurfaceType(st);
     k.geometry_mode       = gm;
     k.sampler_feature_bits = sampler_bits;
     for(const auto& pair : tex_modes)

@@ -20,19 +20,7 @@ std::string GetBuiltinMaterialVariantSnapshot()
     return GetBuiltinVariantRegistry().DumpSnapshot();
 }
 
-namespace {
-
-using MakeVariantKeyProc = MaterialVariantKey (*)();
-
-struct PresetResolveEntry
-{
-    MaterialPreset preset;
-    const char *name;
-    MaterialPreset canonical_preset;
-    MakeVariantKeyProc make_key;
-};
-
-static SurfaceType MapPresetToSurfaceType(const MaterialPreset preset)
+SurfaceType MapPresetToSurfaceType(const MaterialPreset preset)
 {
     switch(preset)
     {
@@ -60,10 +48,22 @@ static SurfaceType MapPresetToSurfaceType(const MaterialPreset preset)
     }
 }
 
+namespace {
+
+using MakeVariantKeyProc = MaterialVariantKey (*)();
+
+struct PresetResolveEntry
+{
+    MaterialPreset preset;
+    const char *name;
+    MaterialPreset canonical_preset;
+    MakeVariantKeyProc make_key;
+};
+
 static MaterialVariantKey MakeVertexColor2DKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::VertexColor2D);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::VertexColor2D));
     key.geometry_mode = GeometryMode::Quad2D;
     key.SetVertexAttribEnabled(VertexAttrib::Color);
     return key;
@@ -72,7 +72,7 @@ static MaterialVariantKey MakeVertexColor2DKey()
 static MaterialVariantKey MakePureColor2DKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::PureColor2D);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::PureColor2D));
     key.geometry_mode = GeometryMode::Quad2D;
     return key;
 }
@@ -80,7 +80,7 @@ static MaterialVariantKey MakePureColor2DKey()
 static MaterialVariantKey MakePureTexture2DKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::PureTexture2D);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::PureTexture2D));
     key.geometry_mode = GeometryMode::Quad2D;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     return key;
@@ -89,7 +89,7 @@ static MaterialVariantKey MakePureTexture2DKey()
 static MaterialVariantKey MakeText2DKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::Text2D);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::Text2D));
     key.geometry_mode = GeometryMode::Quad2D;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Atlas);
     return key;
@@ -98,7 +98,7 @@ static MaterialVariantKey MakeText2DKey()
 static MaterialVariantKey MakePureColor3DKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::PureColor3D);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::PureColor3D));
     key.geometry_mode = GeometryMode::Mesh3D;
     return key;
 }
@@ -106,7 +106,7 @@ static MaterialVariantKey MakePureColor3DKey()
 static MaterialVariantKey MakeVertexColor3DKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::VertexColor3D);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::VertexColor3D));
     key.geometry_mode = GeometryMode::Mesh3D;
     key.SetVertexAttribEnabled(VertexAttrib::Color);
     return key;
@@ -115,7 +115,7 @@ static MaterialVariantKey MakeVertexColor3DKey()
 static MaterialVariantKey MakeVertexLuminance3DKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::VertexLuminance3D);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::VertexLuminance3D));
     key.geometry_mode = GeometryMode::Mesh3D;
     key.SetVertexAttribEnabled(VertexAttrib::Luminance);
     return key;
@@ -124,7 +124,7 @@ static MaterialVariantKey MakeVertexLuminance3DKey()
 static MaterialVariantKey MakeVertexLuminance2DKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::VertexLuminance2D);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::VertexLuminance2D));
     key.geometry_mode = GeometryMode::Mesh3D;
     key.SetVertexAttribEnabled(VertexAttrib::Luminance);
     key.SetVertexAttribEnabled(VertexAttrib::Position);
@@ -134,7 +134,7 @@ static MaterialVariantKey MakeVertexLuminance2DKey()
 static MaterialVariantKey MakeVertexPattleColor3DKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::VertexPattleColor3D);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::VertexPattleColor3D));
     key.geometry_mode = GeometryMode::Mesh3D;
     key.SetVertexAttribEnabled(VertexAttrib::Color);
     key.SetDebugShading(true);
@@ -144,7 +144,7 @@ static MaterialVariantKey MakeVertexPattleColor3DKey()
 static MaterialVariantKey MakeGizmo3DKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::Gizmo3D);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::Gizmo3D));
     key.geometry_mode = GeometryMode::Mesh3D;
     key.SetDebugShading(true);
     return key;
@@ -153,7 +153,7 @@ static MaterialVariantKey MakeGizmo3DKey()
 static MaterialVariantKey MakeTerrainGridKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::TerrainGrid);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::TerrainGrid));
     key.geometry_mode = GeometryMode::Mesh3D;
     return key;
 }
@@ -161,7 +161,7 @@ static MaterialVariantKey MakeTerrainGridKey()
 static MaterialVariantKey MakeSkyMinimalKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::SkyMinimal);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::SkyMinimal));
     key.geometry_mode = GeometryMode::Mesh3D;
     return key;
 }
@@ -169,7 +169,7 @@ static MaterialVariantKey MakeSkyMinimalKey()
 static MaterialVariantKey MakeBillboard2DDynamicKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::Billboard2DDynamic);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::Billboard2DDynamic));
     key.geometry_mode = GeometryMode::BillboardCameraFacing;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     key.blend_mode = RenderAlphaMode::Transparent;
@@ -180,7 +180,7 @@ static MaterialVariantKey MakeBillboard2DDynamicKey()
 static MaterialVariantKey MakeBillboard2DFixedKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::Billboard2DFixed);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::Billboard2DFixed));
     key.geometry_mode = GeometryMode::BillboardAxisLocked;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     key.blend_mode = RenderAlphaMode::Transparent;
@@ -191,7 +191,7 @@ static MaterialVariantKey MakeBillboard2DFixedKey()
 static MaterialVariantKey MakeStandardKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::Standard);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::Standard));
     key.geometry_mode = GeometryMode::Mesh3D;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
@@ -202,7 +202,7 @@ static MaterialVariantKey MakeStandardKey()
 static MaterialVariantKey MakePBRColor3DKey()
 {
     MaterialVariantKey key{};
-    key.surface_type = MapPresetToSurfaceType(MaterialPreset::PBRColor3D);
+    key.SetSurfaceType(MapPresetToSurfaceType(MaterialPreset::PBRColor3D));
     key.geometry_mode = GeometryMode::Mesh3D;
     return key;
 }
@@ -629,7 +629,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         std::fprintf(stderr,
             "[MaterialLibrary] CreateMaterialCreateInfo warning: profile is null (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
             static_cast<unsigned long long>(key.Hash()),
-            static_cast<unsigned>(key.surface_type),
+            static_cast<unsigned>(key.GetSurfaceType()),
             static_cast<unsigned>(key.geometry_mode),
             static_cast<unsigned>(key.GetTextureSourceMode(SamplerSlot::BaseColor)),
             key.texture_source_bits,
@@ -645,7 +645,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         std::fprintf(stderr,
             "[MaterialLibrary] CreateMaterialCreateInfo failed: no registered variant (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
             static_cast<unsigned long long>(key.Hash()),
-            static_cast<unsigned>(key.surface_type),
+            static_cast<unsigned>(key.GetSurfaceType()),
             static_cast<unsigned>(key.geometry_mode),
             static_cast<unsigned>(key.GetTextureSourceMode(SamplerSlot::BaseColor)),
             key.texture_source_bits,

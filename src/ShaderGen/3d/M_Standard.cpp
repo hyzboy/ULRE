@@ -123,7 +123,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         std::fprintf(stderr,
             "[Standard] VariantRegistry lookup failed (route_hash=%llu surface=%u geom=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X any_array=%d)\n",
             static_cast<unsigned long long>(policy.route_key.Hash()),
-            static_cast<unsigned>(policy.route_key.surface_type),
+            static_cast<unsigned>(policy.route_key.GetSurfaceType()),
             static_cast<unsigned>(policy.route_key.geometry_mode),
             policy.route_key.texture_source_bits,
             policy.route_key.sampler_feature_bits,
@@ -163,9 +163,9 @@ MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *pr
                                    TextureSourceMode tex_source)
 {
     MaterialVariantKey key;
-    key.surface_type = SurfaceType::Standard;
+    key.SetSurfaceType(SurfaceType::Standard);
     key.SetTextureSourceMode(SamplerSlot::BaseColor, tex_source);
-            key.SetTextureSourceMode(SamplerSlot::Normal, tex_source);
+    key.SetTextureSourceMode(SamplerSlot::Normal, tex_source);
     return CreateStandardVariant(profile, key, cfg);
 }
 
