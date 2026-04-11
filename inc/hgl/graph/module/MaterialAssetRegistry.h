@@ -23,11 +23,6 @@
 
 namespace hgl::graph
 {
-
-#ifndef ULRE_ENABLE_MATERIAL_LEGACY_MI_API
-#define ULRE_ENABLE_MATERIAL_LEGACY_MI_API 1
-#endif
-
 class MaterialManager;
 class TextureManager;
 class SamplerManager;
@@ -234,25 +229,6 @@ public:
                                 const void *instance_data = nullptr,
                                 uint32_t instance_data_size = 0,
                                 MaterialDomainHandle *out_handle = nullptr);
-
-#if ULRE_ENABLE_MATERIAL_LEGACY_MI_API
-    /// 一站式：Acquire + CreateMI
-    /// @deprecated 新代码请使用 ResolveMI(entity_id, semantic_id, ...) per-entity 路径。
-    ///   AcquireMI 不携带 entity_id，无法稳定分配 per-entity MI 槽位；仅供工具 / 离线路径使用。
-    [[deprecated("Use ResolveMI(entity_id, semantic_id, ...) for stable per-entity slot binding")]]
-    MaterialInstance *AcquireMI(const mtl::MaterialAssetRecord &rec,
-                                const void *instance_data = nullptr,
-                                uint32_t instance_data_size = 0,
-                                MaterialDomainHandle *out_handle = nullptr);
-
-    /// Record 驱动兼容入口：pipeline/domain/preset/prim 来自 rec；
-    /// VIL 始终按 geometry-first 运行时解析（无几何时回退 material default VIL）。
-    [[deprecated("Use ResolveMI or AllocMaterialInstanceSlot (slot-first path)")]]
-    MaterialInstance *CreateMI(const MaterialDomainHandle &handle,
-                               const mtl::MaterialAssetRecord &rec,
-                               const void *instance_data = nullptr,
-                               uint32_t instance_data_size = 0);
-#endif
 
     // Phase D lifecycle helpers for entity-scoped MI cache.
     void ReleaseEntityResolvedMI(uint64_t entity_id, SemanticMaterialId semantic_id = 0);

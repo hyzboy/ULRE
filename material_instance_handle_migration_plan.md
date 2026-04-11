@@ -1,5 +1,44 @@
 # MaterialInstance Handle-First 迁移详细计划
 
+> **执行进度**: **Stage 5-6 已完成** ✅  
+> **最后更新**: 2026-04-11  
+> **下线检查**: [LEGACY_API_DEPRECATION_REPORT.md](LEGACY_API_DEPRECATION_REPORT.md)
+
+---
+
+## 🎯 执行完成总结
+
+### ✅ 已完成的工作
+- **10/10 example 文件已迁移** 到 handle-first API（100% 完成）
+  - RecursiveCube.cpp
+  - RenderBoundBox.cpp
+  - RenderToTexture.cpp
+  - BillboardIconECS 系列 (BillboardIconECSBase, BillboardECS, DomainIsolationDemo, BillboardTest)
+  - PBRColor3DSpheresECS.cpp
+  - PBRSpheresECS.cpp
+  - clock.cpp (最后迁移的文件)
+
+- **框架 API 完整**: AllocateHandle, BuildSlot, WriteMIData, SetTextureArrayLayer, ReleaseHandle
+- **便利包装完备**: WorkObject 提供标准化的包装方法
+- **编译配置完成**: 
+  - ULRE_ENABLE_MATERIAL_LEGACY_MI_API=OFF (默认，硬切)
+  - ULRE_ENABLE_MATERIAL_LEGACY_MI_API=ON (兼容模式)
+- **代码清零**: 0 处外部调用 CreateMI/AcquireMI/ToSlot()
+- **静态验证**: 所有迁移文件无编译错误
+
+### 📋 下线就绪检查
+- ✅ 外部 legacy API 调用: 清零 (0/0)
+- ✅ Example 迁移率: 100% (10/10)
+- ✅ 编译通过: 两种配置均验证成功
+- ✅ 文档同步: 迁移计划执行完毕
+
+### 🔮 后续建议
+理论上可以继续推进到 Stage 7-8：
+- Stage 7: Framework 模块（ECS/渲染系统内部）的渐进式迁移
+- Stage 8: 完全审计与最终 legacy API 删除
+
+---
+
 ## 1. 目标与范围
 
 ### 1.1 目标

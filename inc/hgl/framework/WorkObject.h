@@ -213,23 +213,6 @@ namespace hgl
             return registry->ReleaseHandle(handle);
         }
 
-#if ULRE_ENABLE_MATERIAL_LEGACY_MI_API
-        // Compatibility helper: directly acquires MI from MaterialAssetRecord.
-        // New semantic/runtime composition path should prefer handle-first APIs.
-        [[deprecated("Use AllocateMaterialHandle/BuildMaterialSlot/WriteMaterialData instead of AcquireMI")]]
-        graph::MaterialInstance *AcquireMI(const graph::mtl::MaterialAssetRecord &rec,
-                                           const void *instance_data = nullptr,
-                                           uint32 instance_data_size = 0,
-                                           graph::MaterialDomainHandle *out_handle = nullptr)
-        {
-            auto *registry = GetMaterialAssetRegistry();
-            if (!registry)
-                return nullptr;
-
-            return registry->AcquireMI(rec, instance_data, instance_data_size, out_handle);
-        }
-#endif
-
         // Semantic-path helper: register semantic material directly from MaterialAssetRecord.
         graph::SemanticMaterialId RegisterSemanticMaterial(const graph::mtl::MaterialAssetRecord &rec)
         {

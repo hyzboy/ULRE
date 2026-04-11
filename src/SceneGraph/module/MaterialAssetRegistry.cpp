@@ -698,56 +698,6 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
     return make_slot(mi);
 }
 
-#if ULRE_ENABLE_MATERIAL_LEGACY_MI_API
-MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialAssetRecord &rec,
-                                                   const void *instance_data,
-                                                   uint32_t instance_data_size,
-                                                   MaterialDomainHandle *out_handle)
-{
-    MaterialDomainHandle handle = Acquire(rec);
-    if (!handle.IsValid())
-        return nullptr;
-
-    if (out_handle)
-        *out_handle = handle;
-
-    return CreateMI(handle, rec, instance_data, instance_data_size);
-}
-
-// ── CreateMI ─────────────────────────────────────────────────────────────────
-
-MaterialInstance *MaterialAssetRegistry::CreateMI(
-    const MaterialDomainHandle &handle,
-    const mtl::MaterialAssetRecord &rec,
-    const void *instance_data,
-    uint32_t instance_data_size)
-{
-    static bool s_warned_create_mi_compat = false;
-    if (!s_warned_create_mi_compat)
-    {
-        s_warned_create_mi_compat = true;
-        LogWarning("[MaterialAssetRegistry] CreateMI compatibility path still uses AcquireMaterialInstance. "
-                   "Record-side VIL overrides are removed; VIL is geometry-first/default-fallback only. "
-                   "Prefer slot-first resolve/binding flow for new callsites.");
-    }
-
-    if (!handle.IsValid())
-        return nullptr;
-
-    MaterialInstanceSpec spec;
-    spec.material = handle.material;
-    spec.domain   = handle.domain;
-    spec.preset   = rec.pipeline;
-    spec.instance_data      = instance_data;
-    spec.instance_data_size = instance_data_size;
-
-    MaterialInstance *mi = mm->AcquireMaterialInstance(spec);
-    if (mi)
-        mi->SetMaterialPreset(rec.preset);
-    return mi;
-}
-#endif
-
 void MaterialAssetRegistry::ReleaseEntityResolvedMI(uint64_t entity_id, SemanticMaterialId semantic_id)
 {
     if (entity_id == 0)

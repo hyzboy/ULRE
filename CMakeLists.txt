@@ -4,18 +4,11 @@ cmake_policy(VERSION 3.28)
 PROJECT(ULRE)
 
 option(ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG "Require non-null source_tag in Primitive::BindMaterialSlot" OFF)
-option(ULRE_ENABLE_MATERIAL_LEGACY_MI_API "Enable legacy MaterialInstance compatibility APIs" OFF)
 
 if(ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG)
     add_compile_definitions(ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG=1)
 else()
     add_compile_definitions(ULRE_BIND_MATERIAL_SLOT_REQUIRE_TAG=0)
-endif()
-
-if(ULRE_ENABLE_MATERIAL_LEGACY_MI_API)
-    add_compile_definitions(ULRE_ENABLE_MATERIAL_LEGACY_MI_API=1)
-else()
-    add_compile_definitions(ULRE_ENABLE_MATERIAL_LEGACY_MI_API=0)
 endif()
 
 include(CTest)
