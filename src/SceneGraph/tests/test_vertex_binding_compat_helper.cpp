@@ -93,10 +93,13 @@ static void test_build_geometry_driven_vil_config_requires_material()
 {
     VILConfig cfg;
     bool has_any = true;
+    bool has_layout_mismatch = true;
     std::string reason;
 
-    ASSERT_FALSE(BuildGeometryDrivenVILConfig(nullptr, nullptr, nullptr, cfg, has_any, &reason, nullptr));
+    ASSERT_FALSE(BuildGeometryDrivenVILConfig(nullptr, nullptr, nullptr, cfg, has_any, &reason, &has_layout_mismatch));
     ASSERT_TRUE(reason == "material_missing");
+    ASSERT_TRUE(has_any == false);
+    ASSERT_TRUE(has_layout_mismatch == false);
     ASSERT_TRUE(cfg.empty());
 }
 
@@ -125,11 +128,13 @@ static void test_build_geometry_driven_vil_config_requires_geometry()
 
     VILConfig cfg;
     bool has_any = true;
+    bool has_layout_mismatch = true;
     std::string reason;
 
-    ASSERT_FALSE(BuildGeometryDrivenVILConfigFromVertexInput(vi, nullptr, nullptr, cfg, has_any, &reason, nullptr));
+    ASSERT_FALSE(BuildGeometryDrivenVILConfigFromVertexInput(vi, nullptr, nullptr, cfg, has_any, &reason, &has_layout_mismatch));
     ASSERT_TRUE(reason == "geometry_missing");
     ASSERT_TRUE(has_any == false);
+    ASSERT_TRUE(has_layout_mismatch == false);
     ASSERT_TRUE(cfg.empty());
 
     ReleaseVertexInput(vi);
