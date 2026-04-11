@@ -8,6 +8,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/framework/AppFramework.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -51,6 +52,7 @@ namespace hgl::graph
 
         primitive_manager = gc ? gc->GetPrimitiveManager() : nullptr;
         mtl_manager = gc ? gc->GetMaterialManager() : nullptr;
+        material_registry = gc ? gc->GetMaterialAssetRegistry() : nullptr;
         tl_engine = new layout::TextLayout(tf);
 
         mtl_fs      =nullptr;
@@ -61,7 +63,8 @@ namespace hgl::graph
 
         SetDrawStyle(text_draw_style,&para_style,(float)tile_font->GetFontSource()->GetCharHeight());
 
-        mi_fs=nullptr;
+        fixed_vil = nullptr;
+        fixed_style_handle = 0;
     }
 
     void TextRender::SetFixedStyle(const layout::CharStyle &cs)
@@ -70,7 +73,8 @@ namespace hgl::graph
             return;
 
         fixed_style=cs;
-        mi_fs->WriteMIData(fixed_style);
+        if (material_registry && fixed_style_handle != InvalidMaterialInstanceHandle)
+            material_registry->WriteMIData(fixed_style_handle, &fixed_style, sizeof(fixed_style));
     }
 
     void TextRender::SetParagraphStyle(const layout::ParagraphStyle *ps)
@@ -94,6 +98,13 @@ namespace hgl::graph
 
         SAFE_CLEAR(tl_engine);
         SAFE_CLEAR(tile_font);
+
+        if (material_registry && fixed_style_handle != InvalidMaterialInstanceHandle)
+        {
+            material_registry->ReleaseHandle(fixed_style_handle);
+            fixed_style_handle = InvalidMaterialInstanceHandle;
+        }
+
         // render resource removed
     }
 
@@ -179,9 +190,24 @@ namespace hgl::graph
 
             auto *domain = mtl_manager->GetOrCreateDefaultDomain(mtl_fs);
             const VIL *vil = mtl_fs->CreateVIL(&vil_config);
-            mi_fs = mtl_manager->CreateMaterialInstance(domain, mtl_fs, vil, &fixed_style, sizeof(fixed_style));
-            if(!mi_fs)return(false);
-            mi_fs->SetRenderPreset(GraphicsPipelinePreset::Solid2D);
+
+            if (!domain || !vil || !material_registry)
+                return(false);
+
+            MaterialBindingInit init;
+            init.material = mtl_fs;
+            init.domain = domain;
+            init.vil = vil;
+            init.preset = GraphicsPipelinePreset::Solid2D;
+            init.material_preset = mtl::MaterialPreset::Text2D;
+            init.instance_data = &fixed_style;
+            init.instance_data_size = sizeof(fixed_style);
+
+            fixed_style_handle = material_registry->AllocateHandle(init);
+            if (fixed_style_handle == InvalidMaterialInstanceHandle)
+                return(false);
+
+            fixed_vil = vil;
         }
 
         (void)rp;
@@ -206,7 +232,7 @@ namespace hgl::graph
 
     TextGeometry *TextRender::Begin(const TextGeometryType &tpt,int limit)
     {
-        TextGeometry *tr=new TextGeometry(device,mi_fs->GetVIL(),limit);
+        TextGeometry *tr=new TextGeometry(device,fixed_vil,limit);
 
         text_geometry_set.Add(tr);
 
@@ -263,7 +289,16 @@ namespace hgl::graph
     Primitive *TextRender::CreatePrimitive(TextGeometry *text_geometry)
     {
         if(primitive_manager)
-            return primitive_manager->CreatePrimitive(text_geometry,mi_fs->ToSlot());
+        {
+            if (!material_registry || fixed_style_handle == InvalidMaterialInstanceHandle)
+                return(nullptr);
+
+            PrimitiveMaterialSlot slot;
+            if (!material_registry->BuildSlot(fixed_style_handle, slot))
+                return(nullptr);
+
+            return primitive_manager->CreatePrimitive(text_geometry, slot);
+        }
 
         return(nullptr);
     }

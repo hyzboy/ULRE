@@ -15,6 +15,7 @@
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
+#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>
@@ -119,10 +120,15 @@ namespace hgl::ecs
                 res.primitive = nullptr;
             }
 
-            if (res.material_instance && material_manager)
+            if (res.material_handle != graph::InvalidMaterialInstanceHandle)
             {
-                material_manager->Release(res.material_instance);
-                res.material_instance = nullptr;
+                if (graphics_context)
+                {
+                    if (auto *registry = graphics_context->GetMaterialAssetRegistry())
+                        registry->ReleaseHandle(res.material_handle);
+                }
+
+                res.material_handle = graph::InvalidMaterialInstanceHandle;
             }
 
             if (res.material && material_manager)
@@ -358,7 +364,7 @@ namespace hgl::ecs
                                                                    graph::VulkanDevice* device,
                                                                    graph::IRenderTarget* render_target)
     {
-        if (!device || !render_target || !resources.material || !resources.material_instance)
+        if (!device || !render_target || !resources.material || resources.material_handle == graph::InvalidMaterialInstanceHandle)
             return false;
 
         auto* render_format = render_target->GetRenderFormat();
@@ -484,8 +490,11 @@ namespace hgl::ecs
                 input.dirty = true;
             }
 
-            graph::MaterialInstance* mi = resources->material_instance;
-            if (!mi)
+            auto *registry = frame_graphics_context ? frame_graphics_context->GetMaterialAssetRegistry() : nullptr;
+            if (!registry)
+                continue;
+
+            if (resources->material_handle == graph::InvalidMaterialInstanceHandle)
             {
                 graph::VILConfig vil_config;
                 vil_config.Add(graph::VAN::Position, VF_V2I16);
@@ -497,16 +506,17 @@ namespace hgl::ecs
                 if (!resources->cached_vil || !domain)
                     continue;
 
-                mi = material_manager->CreateMaterialInstance(domain,
-                                                             resources->material,
-                                                             resources->cached_vil,
-                                                             nullptr,
-                                                             0);
-                if (!mi)
+                graph::MaterialBindingInit init;
+                init.material = resources->material;
+                init.domain = domain;
+                init.vil = resources->cached_vil;
+                init.preset = resources->cached_preset;
+                init.material_preset = graph::mtl::MaterialPreset::Text2D;
+
+                resources->material_handle = registry->AllocateHandle(init);
+                if (resources->material_handle == graph::InvalidMaterialInstanceHandle)
                     continue;
 
-                mi->SetRenderPreset(resources->cached_preset);
-                resources->material_instance = mi;
                 input.dirty = true;
             }
 
@@ -528,7 +538,10 @@ namespace hgl::ecs
             if (!geometry)
             {
                 const uint32_t estimate = input.total_chars;
-                const graph::VIL *use_vil = resources->cached_vil ? resources->cached_vil : mi->GetVIL();
+                const graph::VIL *use_vil = resources->cached_vil;
+                if (!use_vil)
+                    continue;
+
                 geometry = new graph::TextGeometry(device, use_vil, estimate);
                 resources->geometry = geometry;
             }
@@ -568,7 +581,11 @@ namespace hgl::ecs
             graph::Primitive* primitive = resources->primitive;
             if (!primitive)
             {
-                primitive = primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
+                graph::PrimitiveMaterialSlot slot;
+                if (!registry->BuildSlot(resources->material_handle, slot))
+                    continue;
+
+                primitive = primitive_manager->CreatePrimitive(geometry, slot);
                 if (!primitive)
                     continue;
 

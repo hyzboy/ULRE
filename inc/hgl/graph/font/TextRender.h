@@ -4,6 +4,7 @@
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/type/OrderedSet.h>
 #include<hgl/type/String.h>
+#include<cstdint>
 
 namespace hgl
 {
@@ -20,6 +21,7 @@ namespace hgl::graph
     class TextGeometry;
     class MaterialManager;
     class PrimitiveManager;
+    class MaterialAssetRegistry;
 
     namespace layout
     {
@@ -60,7 +62,9 @@ namespace hgl::graph
         layout::CharStyle   fixed_style;                    ///<固定字符风格
 
         MaterialTemplate *          mtl_fs;                         ///<固定风格材质
-        MaterialInstance *  mi_fs;                          ///<固定风格材质实例
+        MaterialAssetRegistry *     material_registry = nullptr;
+        const VertexInputLayout *   fixed_vil = nullptr;
+        uint64_t                    fixed_style_handle = 0;
 
     private:
 

@@ -26,7 +26,6 @@ namespace hgl
         class RenderTargetFormat;
         class Primitive;
         class TextGeometry;
-        class MaterialInstance;
         class Sampler;
         class DeviceBuffer;
         class MaterialManager;
@@ -59,7 +58,7 @@ namespace hgl
                 graph::layout::CharStyle char_style{};
                 graph::TextGeometry* geometry = nullptr;
                 graph::Primitive* primitive = nullptr;
-                graph::MaterialInstance* material_instance = nullptr;
+                uint64_t material_handle = 0;
                 
                 // Phase B: cache preset/vil to avoid MI getter dependency
                 graph::GraphicsPipelinePreset cached_preset = graph::GraphicsPipelinePreset::Solid2D;

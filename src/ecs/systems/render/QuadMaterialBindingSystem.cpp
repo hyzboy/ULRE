@@ -144,15 +144,15 @@ namespace hgl::ecs
         if (!domain)
             return false;
 
-        auto* mi = material_manager->CreateMaterialInstance(domain,
-                                                            quad_material,
-                                                            quad_material->GetDefaultVIL(),
-                                                            nullptr,
-                                                            0);
-        if (!mi)
+        const hgl::graph::PrimitiveMaterialSlot slot = material_manager->AllocMaterialInstanceSlot(
+            domain,
+            quad_material,
+            quad_material->GetDefaultVIL(),
+            current_preset,
+            nullptr,
+            0);
+        if (!slot.IsValid())
             return false;
-
-        mi->SetRenderPreset(current_preset);
 
         graph::MaterialTemplate *previous_material = nullptr;
         {
@@ -181,7 +181,6 @@ namespace hgl::ecs
          && current_primitive->GetMaterial() == quad_material
          && !domain_direct_collect_enabled)
         {
-            const hgl::graph::PrimitiveMaterialSlot slot = mi->ToSlot();
             if (!current_primitive->BindMaterialSlot(slot,"quad"))
                 return false;
 
@@ -189,7 +188,7 @@ namespace hgl::ecs
         }
         else
         {
-            quad_primitive = primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
+            quad_primitive = primitive_manager->CreatePrimitive(geometry, slot);
             if (!quad_primitive)
                 return false;
 
@@ -269,15 +268,15 @@ namespace hgl::ecs
         if (!domain)
             return false;
 
-        auto* mi = material_manager->CreateMaterialInstance(domain,
-                                                            dr->material,
-                                                            dr->material->GetDefaultVIL(),
-                                                            nullptr,
-                                                            0);
-        if (!mi)
+        const hgl::graph::PrimitiveMaterialSlot slot = material_manager->AllocMaterialInstanceSlot(
+            domain,
+            dr->material,
+            dr->material->GetDefaultVIL(),
+            current_preset,
+            nullptr,
+            0);
+        if (!slot.IsValid())
             return false;
-
-        mi->SetRenderPreset(current_preset);
 
         const uint8_t texture_array_slot_flags = dr->material->GetTextureArraySlotFlags();
 
@@ -291,7 +290,6 @@ namespace hgl::ecs
          && current_primitive->GetMaterial() == dr->material
          && !domain_direct_collect_enabled)
         {
-            const hgl::graph::PrimitiveMaterialSlot slot = mi->ToSlot();
             if (!current_primitive->BindMaterialSlot(slot,"quad"))
                 return false;
 
@@ -303,7 +301,7 @@ namespace hgl::ecs
             if (!geometry)
                 return false;
 
-            quad_primitive = primitive_manager->CreatePrimitive(geometry, mi->ToSlot());
+            quad_primitive = primitive_manager->CreatePrimitive(geometry, slot);
             if (!quad_primitive)
                 return false;
 
