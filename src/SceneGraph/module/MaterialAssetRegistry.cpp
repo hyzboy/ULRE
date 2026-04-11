@@ -141,56 +141,40 @@ static const VIL *ResolveVILFromGeometry(MaterialTemplate *material,
 
     VILConfig vil_cfg;
     bool has_any = false;
+    std::string build_reason;
 
-    for (int i = 0; i < static_cast<int>(VAN::RANGE_SIZE); ++i)
+    if(!BuildGeometryDrivenVILConfig(material, geometry, nullptr, vil_cfg, has_any, &build_reason, nullptr))
     {
-        const auto attrib = static_cast<VertexAttrib>(i);
-        auto *vab = geometry->GetVAB(attrib);
-        if (!vab)
-            continue;
-
-        std::string compat_reason;
-        if(!IsMaterialStorageCompatible(material, attrib, vab->GetFormat(), &compat_reason))
+        if(build_reason == "shader_storage_incompatible" ||
+           build_reason == "material_vertex_input_missing_attrib")
         {
-            const VkFormat geom_format = vab->GetFormat();
             const uint64_t n = ++g_resolve_vil_fallback_incompatible;
             if (ShouldLogPow2(n))
             {
                 std::fprintf(stderr,
-                    "[MaterialAssetRegistry] ResolveVIL fallback(default): incompatible geometry format, material='%s' attrib='%s' format='%s' reason='%s' total=%llu\n",
+                    "[MaterialAssetRegistry] ResolveVIL fallback(default): incompatible geometry format, material='%s' reason='%s' total=%llu\n",
                     material->GetName().c_str(),
-                    GetVertexAttribName(attrib),
-                    GetVulkanFormatName(geom_format),
-                    compat_reason.c_str(),
+                    build_reason.c_str(),
                     static_cast<unsigned long long>(n));
             }
 
 #ifdef _DEBUG
             assert(false && "MaterialAssetRegistry::ResolveVILFromGeometry incompatible geometry format");
 #endif
-
-            return ResolveVILFromRecord(material, fallback_rec);
         }
-
-        has_any = true;
-
-        VAConfig vac;
-        vac.format = vab->GetFormat();
-
-        if (!vil_cfg.Add(attrib, vac))
+        else if(build_reason == "runtime_vil_config_add_failed")
         {
             const uint64_t n = ++g_resolve_vil_fallback_add_failed;
             if (ShouldLogPow2(n))
             {
                 std::fprintf(stderr,
-                    "[MaterialAssetRegistry] ResolveVIL fallback(default): VILConfig::Add failed, material='%s' attrib='%s' format='%s' total=%llu\n",
+                    "[MaterialAssetRegistry] ResolveVIL fallback(default): VILConfig::Add failed, material='%s' total=%llu\n",
                     material->GetName().c_str(),
-                    GetVertexAttribName(attrib),
-                    GetVulkanFormatName(vab->GetFormat()),
                     static_cast<unsigned long long>(n));
             }
-            return ResolveVILFromRecord(material, fallback_rec);
         }
+
+        return ResolveVILFromRecord(material, fallback_rec);
     }
 
     if (!has_any)

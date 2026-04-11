@@ -69,49 +69,46 @@ bool ResolveEffectivePrimitiveVIL(const Geometry *geom,
     }
 
     VILConfig runtime_cfg;
+    bool has_any = false;
     bool needs_runtime_vil = false;
 
-    const uint32_t input_count = requested_vil->GetVertexAttribCount();
-    const VertexInputFormat *vif = requested_vil->GetVIFList();
+    if(!BuildGeometryDrivenVILConfig(material,
+                                     geom,
+                                     requested_vil,
+                                     runtime_cfg,
+                                     has_any,
+                                     &reason,
+                                     &needs_runtime_vil))
+        return false;
 
-    for(uint32_t i = 0; i < input_count; ++i)
+    if(!has_any)
     {
-        VAB *vab = geom->GetVAB(vif->attrib);
-        const char *vab_name = GetVertexAttribName(vif->attrib);
+        reason = "geometry_has_no_required_vab";
+        return false;
+    }
 
-        if(!vab)
+    if(needs_runtime_vil)
+    {
+        const uint32_t input_count = requested_vil->GetVertexAttribCount();
+        const VertexInputFormat *vif = requested_vil->GetVIFList();
+
+        for(uint32_t i = 0; i < input_count; ++i)
         {
-            reason = "vab_missing_for_required_attrib";
-            return false;
+            VAB *vab = geom->GetVAB(vif->attrib);
+            if(vab && (vab->GetFormat() != vif->format || vab->GetStride() != vif->stride))
+            {
+                const char *vab_name = GetVertexAttribName(vif->attrib);
+                GLogWarning(std::string(compat_log_tag ? compat_log_tag : "[PRIM_BIND_COMPAT]") +
+                            " attrib=" + (vab_name ? vab_name : "") +
+                            ", material=" + material_name +
+                            ", vif_format=" + GetVulkanFormatName(vif->format) +
+                            ", geo_format=" + GetVulkanFormatName(vab->GetFormat()) +
+                            ", vif_stride=" + std::to_string(vif->stride) +
+                            ", geo_stride=" + std::to_string(vab->GetStride()));
+            }
+
+            ++vif;
         }
-
-        std::string compat_reason;
-        if(!IsPrimitiveBindingCompatible(material, *vif, vab, compat_reason))
-        {
-            reason = compat_reason;
-            return false;
-        }
-
-        if(!runtime_cfg.Add(vif->attrib, VAConfig(vab->GetFormat(), vif->input_rate)))
-        {
-            reason = "runtime_vil_config_add_failed";
-            return false;
-        }
-
-        if(vab->GetFormat() != vif->format || vab->GetStride() != vif->stride)
-        {
-            needs_runtime_vil = true;
-
-            GLogWarning(std::string(compat_log_tag ? compat_log_tag : "[PRIM_BIND_COMPAT]") +
-                        " attrib=" + (vab_name ? vab_name : "") +
-                        ", material=" + material_name +
-                        ", vif_format=" + GetVulkanFormatName(vif->format) +
-                        ", geo_format=" + GetVulkanFormatName(vab->GetFormat()) +
-                        ", vif_stride=" + std::to_string(vif->stride) +
-                        ", geo_stride=" + std::to_string(vab->GetStride()));
-        }
-
-        ++vif;
     }
 
     if(!needs_runtime_vil)
