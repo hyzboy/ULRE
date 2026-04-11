@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/mesh/Primitive.h>
 #include<cstring>
 #include<cstdint>
-#include<hgl/mtl/VertexAttributeSpec.h>
+#include<hgl/graph/module/VertexBindingCompatibility.h>
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
@@ -31,25 +31,6 @@ uint32_t GetMaxBindingIndex(const VIL *vil)
     return max_binding;
 }
 
-const VertexInputAttribute *FindMaterialVIAByAttrib(const VertexInput *vi,const VertexAttrib attrib)
-{
-    if(!vi)
-        return nullptr;
-
-    const auto &via_array = vi->GetVIAArray();
-    const VertexInputAttribute *via = via_array.items;
-
-    for(uint i = 0; i < via_array.count; ++i)
-    {
-        if(via->attrib == attrib)
-            return via;
-
-        ++via;
-    }
-
-    return nullptr;
-}
-
 bool IsPrimitiveBindingCompatible(const MaterialTemplate *material,const VertexInputFormat &vif,const VAB *vab,std::string &reason)
 {
     if(!material || !vab)
@@ -58,24 +39,7 @@ bool IsPrimitiveBindingCompatible(const MaterialTemplate *material,const VertexI
         return false;
     }
 
-    const VertexInputAttribute *mat_via = FindMaterialVIAByAttrib(material->GetVertexInput(), vif.attrib);
-    if(!mat_via)
-    {
-        reason = "material_vertex_input_missing_attrib";
-        return false;
-    }
-
-    VAType shader_type;
-    shader_type.basetype = VABaseType(mat_via->basetype);
-    shader_type.vec_size = mat_via->vec_size;
-
-    if(!mtl::IsStorageFormatCompatibleWithShaderType(shader_type, vab->GetFormat()))
-    {
-        reason = "shader_storage_incompatible";
-        return false;
-    }
-
-    return true;
+    return IsMaterialStorageCompatible(material, vif.attrib, vab->GetFormat(), &reason);
 }
 
 void ReleaseOwnedPrimitiveVIL(MaterialTemplate *material,const VIL *&active_vil,VIL *&owned_runtime_vil)
