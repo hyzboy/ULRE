@@ -25,7 +25,7 @@ class Primitive
     int                         mi_id             = -1;       ///< slot index in domain
     const VIL                  *vil               = nullptr;  ///< vertex input layout
     GraphicsPipelinePreset      render_preset     = GraphicsPipelinePreset::Solid3D;
-        mtl::MaterialPreset         material_preset   = mtl::MaterialPreset::Standard;
+    mtl::MaterialPreset         material_preset   = mtl::MaterialPreset::Standard;
     int8_t                      mit_slot_offset[mtl::SamplerSlotCount]; ///< per-slot offset into mit_packed (-1 = not active)
     uint32_t                    mit_packed_count  = 0;
     uint32_t                   *mit_packed        = nullptr;
