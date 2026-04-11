@@ -62,11 +62,13 @@ private:
     MaterialTemplate* material = nullptr;
     Geometry* geometry = nullptr;
 
+    // Material handles (handle-first API)
+    MaterialInstanceHandle mi_tick_handle;
+
     // 刻度数据
     struct TickData
     {
         Entity* entity;
-        MaterialInstance* mi;
         Primitive* primitive;
     };
 
@@ -78,7 +80,7 @@ private:
     struct HandData
     {
         Entity* entity;
-        MaterialInstance* mi;
+        MaterialInstanceHandle mi_handle;
         Primitive* primitive;
         TransformComponent* transform;
         float length_scale;  // 指针长度倍数
@@ -86,6 +88,27 @@ private:
 
     enum HandType { Hour, Minute, Second };
     HandData hands[3];  // 0=hour, 1=minute, 2=second
+
+public:
+    ~ClockApp()
+    {
+        // Clean up material handles
+        auto* registry = GetMaterialAssetRegistry();
+        if (registry)
+        {
+            if (mi_tick_handle != InvalidMaterialInstanceHandle)
+            {
+                registry->ReleaseHandle(mi_tick_handle);
+            }
+            for (uint i = 0; i < 3; i++)
+            {
+                if (hands[i].mi_handle != InvalidMaterialInstanceHandle)
+                {
+                    registry->ReleaseHandle(hands[i].mi_handle);
+                }
+            }
+        }
+    }
 
 private:
 
@@ -109,13 +132,27 @@ private:
             // 刻度颜色（白色）
             Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
 
-            mi_tick = registry->CreateMI(handle, kClockCfg);
-            if(!mi_tick)
+            MaterialTemplate* domain_material = handle.material;
+            const VIL* domain_vil = registry->ResolveVIL(domain_material, kClockCfg, nullptr);
+            if (!domain_vil)
+                domain_vil = domain_material ? domain_material->GetDefaultVIL() : nullptr;
+            if (!domain_material || !domain_vil)
                 return false;
 
-            mi_tick->WriteMIData(tick_color);
+            MaterialBindingInit tick_init;
+            tick_init.material = domain_material;
+            tick_init.domain = handle.domain;
+            tick_init.vil = domain_vil;
+            tick_init.preset = kClockCfg.pipeline;
+            tick_init.material_preset = kClockCfg.preset;
+            tick_init.instance_data = &tick_color;
+            tick_init.instance_data_size = sizeof(tick_color);
 
-            std::cout << "[ClockApp::InitMaterial] Created material: " << (void*)material << std::endl;
+            mi_tick_handle = registry->AllocateHandle(tick_init);
+            if (mi_tick_handle == InvalidMaterialInstanceHandle)
+                return false;
+
+            std::cout << "[ClockApp::InitMaterial] Created material handle: " << (void*)&mi_tick_handle << std::endl;
 
             // 指针颜色
             Color4f hand_colors[3] = {
@@ -126,10 +163,18 @@ private:
 
             for (uint i = 0; i < 3; i++)
             {
-                hands[i].mi = registry->CreateMI(handle, kClockCfg);
-                if (!hands[i].mi)
+                MaterialBindingInit hand_init;
+                hand_init.material = domain_material;
+                hand_init.domain = handle.domain;
+                hand_init.vil = domain_vil;
+                hand_init.preset = kClockCfg.pipeline;
+                hand_init.material_preset = kClockCfg.preset;
+                hand_init.instance_data = &hand_colors[i];
+                hand_init.instance_data_size = sizeof(hand_colors[i]);
+
+                hands[i].mi_handle = registry->AllocateHandle(hand_init);
+                if (hands[i].mi_handle == InvalidMaterialInstanceHandle)
                     return false;
-                hands[i].mi->WriteMIData(hand_colors[i]);
             }
         }
 
@@ -143,8 +188,34 @@ private:
         if (!graphics_context)
             return false;
 
+        // Get material for geometry creation
+        auto* registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+        
+        static const mtl::MaterialAssetRecord kClockCfg {
+            .id       = "clock_pure_color",
+            .preset   = mtl::MaterialPreset::PureColor2D,
+            .dim      = mtl::MaterialAssetRecord::Dim::D2,
+            .pipeline = GraphicsPipelinePreset::Solid2D,
+        };
+        
+        MaterialDomainHandle domain_handle = registry->Acquire(kClockCfg);
+        if (!domain_handle.IsValid())
+            return false;
+        
+        MaterialTemplate* domain_material = domain_handle.material;
+        if (!domain_material)
+            return false;
+
+        const VIL* vil = registry->ResolveVIL(domain_material, kClockCfg, nullptr);
+        if (!vil)
+            vil = domain_material->GetDefaultVIL();
+        if (!vil)
+            return false;
+
         geometry = GraphicsGeometryFactory::CreateGeometry(graphics_context,
-                                                           mi_tick,
+                                                           vil,
                                                            "TriangleForClock",
                                                            VERTEX_COUNT,
                                                            {{VAN::Position, VF_V2F, position_data}});
@@ -193,10 +264,23 @@ private:
 
         std::cout << "[ClockApp::InitECS] Got ECS context: " << (void*)ecs_world << std::endl;
 
+        auto* registry = GetMaterialAssetRegistry();
+        if (!registry)
+        {
+            std::cout << "[ClockApp::InitECS] ERROR: Missing MaterialAssetRegistry!" << std::endl;
+            return false;
+        }
+
         // === 创建12个刻度（Static Transform） ===
         for (uint i = 0; i < TICK_COUNT; i++)
         {
-            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, mi_tick->ToSlot());
+            PrimitiveMaterialSlot slot;
+            if (!registry->BuildSlot(mi_tick_handle, slot))
+            {
+                std::cout << "[ClockApp::InitECS] ERROR: Failed to build slot for tick " << i << std::endl;
+                return false;
+            }
+            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, slot);
 
             if (!ticks[i].primitive)
             {
@@ -243,7 +327,13 @@ private:
 
         for (uint i = 0; i < 3; i++)
         {
-            hands[i].primitive = primitive_manager->CreatePrimitive(geometry, hands[i].mi->ToSlot());
+            PrimitiveMaterialSlot slot;
+            if (!registry->BuildSlot(hands[i].mi_handle, slot))
+            {
+                std::cout << "[ClockApp::InitECS] ERROR: Failed to build slot for hand " << i << std::endl;
+                return false;
+            }
+            hands[i].primitive = primitive_manager->CreatePrimitive(geometry, slot);
 
             if (!hands[i].primitive)
             {
