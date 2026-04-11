@@ -78,61 +78,14 @@ private:
 
     bool InitVBO()
     {
-        auto* graphics_context = GetGraphicsContext();
-
-        if (!graphics_context)
-            return false;
-
-        auto *registry = graphics_context->GetMaterialAssetRegistry();
-        if (!registry)
-            return false;
-
-        mtl::MaterialAssetRecord rec;
-        if (!registry->QuerySemanticMaterial(semantic_material_id, rec))
-            return false;
-
-        MaterialDomainHandle handle = registry->Acquire(rec);
-        if (!handle.material)
-            return false;
-
-        const VIL *vil = handle.material->GetDefaultVIL();
-        if (!vil)
-            return false;
-
-        VertexFormatMap format_map;
-        for (uint32_t i = 0; i < vil->GetVertexAttribCount(); ++i)
-        {
-            const auto *cfg = vil->GetConfig(i);
-            if (!cfg)
-                continue;
-
-            format_map[cfg->attrib] = cfg->format;
-        }
-
-        auto *device = graphics_context->GetDevice();
-        auto *buffer_manager = graphics_context->GetBufferManager();
-        if (!device || !buffer_manager)
-            return false;
-
-        auto pc = std::make_unique<GeometryCreater>(device, format_map, buffer_manager);
-        if (!pc || !pc->Init("Triangle", VERTEX_COUNT))
-            return false;
-
-        if (!pc->WriteVAB(VAN::Position, VF_V2F, position_data))
-            return false;
-
-        if (!pc->WriteVAB(VAN::Color, VF_V4UN8, color_data))
-            return false;
-
-        GraphicsGeometryFactory geometry_factory(graphics_context);
-        Geometry *geometry = pc->Create();
-        if (!geometry)
-            return false;
-
-        if (!geometry_factory.RegisterGeometry(geometry))
-            return false;
-
-        prim_triangle = geometry_factory.CreatePrimitive(geometry, semantic_material_id);
+        prim_triangle = WorkObject::CreateSemanticPrimitive(
+            semantic_material_id,
+            "Triangle",
+            VERTEX_COUNT,
+            {
+                { VAN::Position, VF_V2F, position_data },
+                { VAN::Color,    VF_V4UN8, color_data },
+            });
 
         return prim_triangle!=nullptr;
     }

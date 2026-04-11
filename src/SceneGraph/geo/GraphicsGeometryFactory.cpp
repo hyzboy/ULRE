@@ -344,4 +344,24 @@ Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_cont
                                        vertex_writes);
 }
 
+Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_context,
+                                                    SemanticMaterialId semantic_id,
+                                                    const AnsiString &geometry_name,
+                                                    uint32_t vertex_count,
+                                                    std::initializer_list<VertexAttribWrite> vertex_writes)
+{
+    if(!graphics_context || semantic_id == 0)
+        return nullptr;
+
+    Geometry *geometry = CreateGeometry(graphics_context,
+                                        geometry_name,
+                                        vertex_count,
+                                        vertex_writes);
+    if(!geometry)
+        return nullptr;
+
+    GraphicsGeometryFactory geometry_factory(graphics_context);
+    return geometry_factory.CreatePrimitive(geometry, semantic_id);
+}
+
 }

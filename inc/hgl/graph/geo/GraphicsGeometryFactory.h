@@ -151,5 +151,11 @@ public:
                                     uint32_t vertex_count,
                                     std::initializer_list<VertexAttribWrite> vertex_writes);
 
+    static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
+                                      SemanticMaterialId semantic_id,
+                                      const AnsiString &geometry_name,
+                                      uint32_t vertex_count,
+                                      std::initializer_list<VertexAttribWrite> vertex_writes);
+
 };
 }

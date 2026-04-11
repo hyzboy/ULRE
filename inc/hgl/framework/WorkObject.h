@@ -4,6 +4,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -11,6 +12,8 @@
 
 namespace hgl
 {
+    using PrimitiveVertexWrite = graph::GraphicsGeometryFactory::VertexAttribWrite;
+
     namespace graph
     {
         class RenderContext;
@@ -221,6 +224,22 @@ namespace hgl
                 return 0;
 
             return registry->RegisterSemanticMaterial(rec);
+        }
+
+        graph::Primitive *CreateSemanticPrimitive(graph::SemanticMaterialId semantic_id,
+                                                  const AnsiString &geometry_name,
+                                                  uint32 vertex_count,
+                                                  std::initializer_list<PrimitiveVertexWrite> vertex_writes)
+        {
+            auto *graphics_context = GetGraphicsContext();
+            if (!graphics_context)
+                return nullptr;
+
+            return graph::GraphicsGeometryFactory::CreatePrimitive(graphics_context,
+                                                                   semantic_id,
+                                                                   geometry_name,
+                                                                   vertex_count,
+                                                                   vertex_writes);
         }
 
         const VkExtent2D *          GetExtent           ();
