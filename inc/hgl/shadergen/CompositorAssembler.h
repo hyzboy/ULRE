@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <hgl/mtl/SurfaceType.h>
+#include <hgl/mtl/MaterialSurfaceClass.h>
 #include <hgl/mtl/RenderAlphaMode.h>
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/SkyLight.h>
@@ -21,7 +21,7 @@ namespace hgl::graph
      * CompositorAssembler — 组合 Compositor Template + Surface Function 生成完整 GLSL
      *
      * 第一版最小实现：
-     *   1. 输入：SurfaceType, RenderAlphaMode, PassType, QualityTier, PlatformBackend
+    *   1. 输入：MaterialSurfaceClass, RenderAlphaMode, PassType, QualityTier, PlatformBackend
      *   2. 查表选择 VS/FS Compositor Template 文件路径
      *   3. 读取模板文件内容
         *   4. 注入 #define 宏（由 MaterialVariantKey 派生）
@@ -58,7 +58,7 @@ namespace hgl::graph
         /// fs_template_override: 非空时覆盖默认 FS 模板路径（相对于 ShaderLibrary 根目录）
         /// surface_function_override: 非空时覆盖默认 Surface Function 路径
         AssembleResult Assemble(
-            SurfaceType     surface,
+            mtl::MaterialSurfaceClass surface,
             RenderAlphaMode       blend,
             PassType        pass,
             const char     *vs_template_override      = nullptr,
@@ -68,7 +68,7 @@ namespace hgl::graph
             mtl::LightingModel        lighting_model   = mtl::LightingModel::Lambert
         ) const;
 
-        /// VariantDesc overload — derives SurfaceType/RenderAlphaMode/PassType/QualityTier from key,
+        /// VariantDesc overload — derives MaterialSurfaceClass/RenderAlphaMode/PassType/QualityTier from key,
         /// uses desc's shader template paths (empty path → auto-routing fallback).
         AssembleResult Assemble(
             const mtl::MaterialVariantKey  &key,
@@ -79,9 +79,9 @@ namespace hgl::graph
 
         bool        TryBuildGeneratedVSTemplatePath(const std::string &template_path, std::string &out_source) const;
         bool        TryBuildGeneratedFSTemplatePath(const std::string &template_path, RenderAlphaMode blend, const std::string &surface_path, std::string &out_source) const;
-        std::string GetCompositorVSPath(SurfaceType surface, PassType pass) const;
-        std::string GetCompositorFSPath(SurfaceType surface, RenderAlphaMode blend, PassType pass) const;
-        std::string GetSurfaceFunctionPath(SurfaceType surface) const;
+        std::string GetCompositorVSPath(mtl::MaterialSurfaceClass surface, PassType pass) const;
+        std::string GetCompositorFSPath(mtl::MaterialSurfaceClass surface, RenderAlphaMode blend, PassType pass) const;
+        std::string GetSurfaceFunctionPath(mtl::MaterialSurfaceClass surface) const;
         std::string InjectDefines(const std::string &source, const mtl::MaterialVariantKey &key) const;
         std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;
         std::string ReplaceSkyLightInclude(const std::string &source, mtl::SkyLightAmbientModel sky_model) const;

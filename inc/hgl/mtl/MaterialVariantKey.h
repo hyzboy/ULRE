@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <hgl/mtl/SurfaceType.h>
+#include <hgl/mtl/MaterialSurfaceClass.h>
 #include <hgl/mtl/RenderAlphaMode.h>
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/SamplerSlot.h>
@@ -49,7 +49,7 @@ namespace hgl::graph::mtl
         GeometryMode      geometry_mode       = GeometryMode::Mesh3D;
 
         [[deprecated("Do not write surface_type directly. Use SetSurfaceType / preset-driven mapping APIs.")]]
-        SurfaceType       surface_type        = SurfaceType::Unlit;
+        MaterialSurfaceClass surface_type     = MaterialSurfaceClass::Unlit;
 
         uint32            texture_source_bits           = 0;
         uint32            sampler_feature_bits          = 0;
@@ -64,14 +64,14 @@ namespace hgl::graph::mtl
         static constexpr uint32 TextureSourceSlotCount   = uint32(SamplerSlot::RANGE_SIZE);
         static constexpr uint32 TextureSourceMask        = (1u << TextureSourceBitsPerSlot) - 1u;
 
-        SurfaceType GetSurfaceType() const noexcept
+        MaterialSurfaceClass GetSurfaceType() const noexcept
         {
             return surface_type;
         }
 
         // Compatibility setter during migration. New code should route through
         // MapPresetToVariantKey/MapPresetToSurfaceType instead of manually mutating surface.
-        void SetSurfaceType(const SurfaceType surface) noexcept
+        void SetSurfaceType(const MaterialSurfaceClass surface) noexcept
         {
 #if defined(_DEBUG)
             static bool warned = false;

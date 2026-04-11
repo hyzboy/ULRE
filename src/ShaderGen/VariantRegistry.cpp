@@ -209,7 +209,7 @@ MaterialVariantDesc MakeDesc(
 }
 
 // Helper: build a key like MapPresetToVariantKey
-inline MaterialVariantKey K(SurfaceType st,
+inline MaterialVariantKey K(MaterialSurfaceClass st,
                              GeometryMode gm,
                              std::initializer_list<std::pair<SamplerSlot, TextureSourceMode>> tex_modes = {},
                              uint32 vertex_bits = 0,
@@ -244,7 +244,7 @@ inline MaterialVariantKey KB(GeometryMode gm, RenderAlphaMode blend, PassType pa
 
 void VariantRegistry::InitializeBuiltinVariants()
 {
-    using ST  = SurfaceType;
+    using ST  = MaterialSurfaceClass;
     using GM  = GeometryMode;
     using TSM = TextureSourceMode;
 

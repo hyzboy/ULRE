@@ -45,7 +45,7 @@ namespace
 
 MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite *profile, const TerrainGridCreateConfig *cfg)
 {
-    const MaterialVariantKey var_key = build3d::MakeVariantKeyWithSurface(SurfaceType::Terrain);
+    const MaterialVariantKey var_key = build3d::MakeVariantKeyWithSurface(MaterialSurfaceClass::Terrain);
     return CreateFromFixedDef3D("TerrainGrid", profile, TERRAIN_GRID_DEF, var_key, cfg);
 }
 }//namespace hgl::graph::mtl

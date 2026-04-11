@@ -120,7 +120,7 @@ SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             ${STD_MTL_HEADER_PATH}/MaterialVariantDesc.h
                             ${STD_MTL_HEADER_PATH}/MaterialVariantRegistry.h
                             ${MTL_TYPE_INCLUDE_PATH}/MaterialVariantKey.h
-                            ${MTL_TYPE_INCLUDE_PATH}/SurfaceType.h
+                            ${MTL_TYPE_INCLUDE_PATH}/MaterialSurfaceClass.h
                             ${MTL_TYPE_INCLUDE_PATH}/RenderAlphaMode.h
                             ${MTL_TYPE_INCLUDE_PATH}/PassType.h)
 SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})

@@ -30,7 +30,7 @@ namespace
 
     struct SurfaceFunctionRoute
     {
-        hgl::graph::SurfaceType surface;
+        hgl::graph::mtl::MaterialSurfaceClass surface;
         const char *path;
     };
 
@@ -195,17 +195,17 @@ namespace
     };
 
     static const SurfaceFunctionRoute kSurfaceFunctionRoutes[] = {
-        {hgl::graph::SurfaceType::Standard,     "surface/standard_surface.glsl"},
-        {hgl::graph::SurfaceType::Unlit,        "surface/unlit_color3d_surface.glsl"},
-        {hgl::graph::SurfaceType::Skin,         "surface/skin_surface.glsl"},
-        {hgl::graph::SurfaceType::Hair,         "surface/hair_surface.glsl"},
-        {hgl::graph::SurfaceType::Cloth,        "surface/cloth_surface.glsl"},
-        {hgl::graph::SurfaceType::Eye,          "surface/eye_surface.glsl"},
-        {hgl::graph::SurfaceType::Foliage,      "surface/foliage_surface.glsl"},
-        {hgl::graph::SurfaceType::ClearCoat,    "surface/clearcoat_surface.glsl"},
-        {hgl::graph::SurfaceType::Water,        "surface/water_surface.glsl"},
-        {hgl::graph::SurfaceType::Terrain,      "surface/terrain_surface.glsl"},
-        {hgl::graph::SurfaceType::Sky,          "surface/sky_surface.glsl"},
+        {hgl::graph::mtl::MaterialSurfaceClass::Standard,     "surface/standard_surface.glsl"},
+        {hgl::graph::mtl::MaterialSurfaceClass::Unlit,        "surface/unlit_color3d_surface.glsl"},
+        {hgl::graph::mtl::MaterialSurfaceClass::Skin,         "surface/skin_surface.glsl"},
+        {hgl::graph::mtl::MaterialSurfaceClass::Hair,         "surface/hair_surface.glsl"},
+        {hgl::graph::mtl::MaterialSurfaceClass::Cloth,        "surface/cloth_surface.glsl"},
+        {hgl::graph::mtl::MaterialSurfaceClass::Eye,          "surface/eye_surface.glsl"},
+        {hgl::graph::mtl::MaterialSurfaceClass::Foliage,      "surface/foliage_surface.glsl"},
+        {hgl::graph::mtl::MaterialSurfaceClass::ClearCoat,    "surface/clearcoat_surface.glsl"},
+        {hgl::graph::mtl::MaterialSurfaceClass::Water,        "surface/water_surface.glsl"},
+        {hgl::graph::mtl::MaterialSurfaceClass::Terrain,      "surface/terrain_surface.glsl"},
+        {hgl::graph::mtl::MaterialSurfaceClass::Sky,          "surface/sky_surface.glsl"},
     };
 
     template<typename Route, size_t N>
@@ -221,7 +221,7 @@ namespace
     }
 
     template<size_t N>
-    const SurfaceFunctionRoute *FindSurfaceFunctionRoute(const SurfaceFunctionRoute (&routes)[N], const hgl::graph::SurfaceType surface)
+    const SurfaceFunctionRoute *FindSurfaceFunctionRoute(const SurfaceFunctionRoute (&routes)[N], const hgl::graph::mtl::MaterialSurfaceClass surface)
     {
         for(const auto &route : routes)
         {
@@ -378,10 +378,10 @@ namespace hgl::graph
         return false;
     }
 
-    std::string CompositorAssembler::GetCompositorVSPath(SurfaceType surface, PassType pass) const
+    std::string CompositorAssembler::GetCompositorVSPath(mtl::MaterialSurfaceClass surface, PassType pass) const
     {
         // Unlit 表面使用精简 VS（仅 Position + 双 ID，无 Normal/UV）
-        if (surface == SurfaceType::Unlit)
+        if (surface == mtl::MaterialSurfaceClass::Unlit)
         {
             switch (pass)
             {
@@ -417,10 +417,10 @@ namespace hgl::graph
         }
     }
 
-    std::string CompositorAssembler::GetCompositorFSPath(SurfaceType surface, RenderAlphaMode blend, PassType pass) const
+    std::string CompositorAssembler::GetCompositorFSPath(mtl::MaterialSurfaceClass surface, RenderAlphaMode blend, PassType pass) const
     {
         // Unlit 表面类型使用专用 FS 模板（无光照）
-        if (surface == SurfaceType::Unlit)
+        if (surface == mtl::MaterialSurfaceClass::Unlit)
         {
             switch (pass)
             {
@@ -473,7 +473,7 @@ namespace hgl::graph
         }
     }
 
-    std::string CompositorAssembler::GetSurfaceFunctionPath(SurfaceType surface) const
+    std::string CompositorAssembler::GetSurfaceFunctionPath(mtl::MaterialSurfaceClass surface) const
     {
         if(const SurfaceFunctionRoute *route = FindSurfaceFunctionRoute(kSurfaceFunctionRoutes, surface))
             return route->path;
@@ -592,7 +592,7 @@ namespace hgl::graph
     }
 
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
-        SurfaceType     surface,
+        mtl::MaterialSurfaceClass surface,
         RenderAlphaMode       blend,
         PassType        pass,
         const char     *vs_template_override,

@@ -29,7 +29,7 @@ StandardVariantPolicyResult BuildStandardVariantPolicy(const MaterialVariantKey 
     };
 
     GenericVariantPolicyConfig config;
-    config.surface = SurfaceType::Standard;
+    config.surface = MaterialSurfaceClass::Standard;
     config.slot_rules = kStandardSlotRules;
     config.slot_rule_count = uint32(sizeof(kStandardSlotRules) / sizeof(kStandardSlotRules[0]));
     config.any_array_checks_all_slots = false;

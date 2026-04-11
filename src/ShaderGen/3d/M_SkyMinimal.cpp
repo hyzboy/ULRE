@@ -31,7 +31,7 @@ namespace
 
 MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg)
 {
-    const MaterialVariantKey var_key = build3d::MakeVariantKeyWithSurface(SurfaceType::Sky);
+    const MaterialVariantKey var_key = build3d::MakeVariantKeyWithSurface(MaterialSurfaceClass::Sky);
     return CreateFromFixedDef3D("SkyMinimal", profile, SKY_MINIMAL_DEF, var_key, cfg);
 }
 }//namespace hgl::graph::mtl

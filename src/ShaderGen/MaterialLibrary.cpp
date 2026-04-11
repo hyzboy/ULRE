@@ -20,14 +20,14 @@ std::string GetBuiltinMaterialVariantSnapshot()
     return GetBuiltinVariantRegistry().DumpSnapshot();
 }
 
-SurfaceType MapPresetToSurfaceType(const MaterialPreset preset)
+MaterialSurfaceClass MapPresetToSurfaceType(const MaterialPreset preset)
 {
     switch(preset)
     {
         case MaterialPreset::TerrainGrid:
-            return SurfaceType::Terrain;
+            return MaterialSurfaceClass::Terrain;
         case MaterialPreset::SkyMinimal:
-            return SurfaceType::Sky;
+            return MaterialSurfaceClass::Sky;
 
         case MaterialPreset::Standard:
         case MaterialPreset::PBRColor3D:
@@ -41,10 +41,10 @@ SurfaceType MapPresetToSurfaceType(const MaterialPreset preset)
         case MaterialPreset::BirdFeathers:
         case MaterialPreset::Scales:
         case MaterialPreset::Checkerboard3D:
-            return SurfaceType::Standard;
+            return MaterialSurfaceClass::Standard;
 
         default:
-            return SurfaceType::Unlit;
+            return MaterialSurfaceClass::Unlit;
     }
 }
 

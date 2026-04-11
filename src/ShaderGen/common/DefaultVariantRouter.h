@@ -20,7 +20,7 @@ struct GenericVariantPolicySlotRule
 
 struct GenericVariantPolicyConfig
 {
-    SurfaceType surface = SurfaceType::Standard;
+    MaterialSurfaceClass surface = MaterialSurfaceClass::Standard;
 
     const GenericVariantPolicySlotRule *slot_rules = nullptr;
     uint32 slot_rule_count = 0;
