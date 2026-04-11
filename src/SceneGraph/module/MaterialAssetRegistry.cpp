@@ -52,6 +52,36 @@ static std::atomic<uint64_t> g_resolve_vil_fallback_no_vab {0};
 static std::atomic<uint64_t> g_resolve_vil_fallback_add_failed {0};
 static std::atomic<uint64_t> g_resolve_vil_fallback_create_failed {0};
 static std::atomic<uint64_t> g_resolve_vil_fallback_incompatible {0};
+static std::atomic<uint64_t> g_resolve_geometry_layout_hash_synthesized {0};
+
+static uint32_t ComputeGeometryLayoutHash(const Geometry *geo)
+{
+    if (!geo)
+        return 0;
+
+    // Keep hash deterministic for deferred resolve keys when vil_hash==0.
+    uint32_t h = 2166136261u;
+    const int count = geo->GetVABCount();
+
+    for (int i = 0; i < count; ++i)
+    {
+        const auto *vab = geo->GetVAB(i);
+
+        const uint32_t binding = static_cast<uint32_t>(i);
+        h ^= binding;
+        h *= 16777619u;
+
+        const uint32_t format = vab ? static_cast<uint32_t>(vab->GetFormat()) : 0u;
+        h ^= format;
+        h *= 16777619u;
+
+        const uint32_t stride = vab ? vab->GetStride() : 0u;
+        h ^= stride;
+        h *= 16777619u;
+    }
+
+    return h;
+}
 }
 
 // ── 将 record 中的纹理加载并绑定到 DomainMaterialBinding ─────────────────────
@@ -534,10 +564,26 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
                                                    uint32_t instance_data_size,
                                                    MaterialDomainHandle *out_handle)
 {
+    GeometrySignature effective_geometry = geometry;
+    if (effective_geometry.vil_hash == 0
+     && effective_geometry.geometry_layout_hash == 0
+     && effective_geometry.geometry_for_vil_derivation)
+    {
+        effective_geometry.geometry_layout_hash = ComputeGeometryLayoutHash(effective_geometry.geometry_for_vil_derivation);
+
+        const uint64_t n = ++g_resolve_geometry_layout_hash_synthesized;
+        if (ShouldLogPow2(n))
+        {
+            std::fprintf(stderr,
+                "[MaterialAssetRegistry] ResolveMI synthesized geometry_layout_hash for deferred signature (vil_hash=0), total=%llu\n",
+                static_cast<unsigned long long>(n));
+        }
+    }
+
     VariantKey key;
     key.semantic_id = semantic_id;
     key.request = request;
-    key.geometry = geometry;
+    key.geometry = effective_geometry;
 
     // Build final record from semantic + runtime + geometry.
     mtl::MaterialAssetRecord final_rec;
@@ -546,7 +592,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
 
     final_rec.pipeline = request.pipeline;
     final_rec.domain_id = request.domain_id;
-    final_rec.prim = geometry.primitive;
+    final_rec.prim = effective_geometry.primitive;
 
     MaterialDomainHandle handle = Acquire(final_rec);
     if (!handle.IsValid())
@@ -561,6 +607,58 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         if (slot.domain && slot.mi_id >= 0)
             slot.domain->FreeMISlot(slot.mi_id);
         slot = {};
+    };
+
+    auto apply_runtime_slot = [&](PrimitiveMaterialSlot &slot,
+                                  MaterialResourceDomain *target_domain,
+                                  bool &ok) -> PrimitiveMaterialSlot &
+    {
+        ok = false;
+
+        const VIL *resolved_vil = ResolveRuntimeVIL(handle.material, final_rec, effective_geometry);
+        if (!resolved_vil)
+        {
+            release_slot(slot);
+            return slot;
+        }
+
+        // Align both legacy/entity paths: domain change requires slot re-allocation.
+        if (slot.domain != target_domain)
+        {
+            release_slot(slot);
+            slot = mm->AllocMaterialInstanceSlot(target_domain,
+                                                 handle.material,
+                                                 resolved_vil,
+                                                 request.pipeline,
+                                                 instance_data,
+                                                 instance_data_size);
+
+            if (!slot.IsValid())
+                return slot;
+        }
+        else
+        {
+            slot.material_template = handle.material;
+            slot.vil = resolved_vil;
+            slot.preset = request.pipeline;
+            slot.material_preset = final_rec.preset;
+            slot.texture_array_slot_flags = handle.material ? handle.material->GetTextureArraySlotFlags() : 0;
+
+            if (instance_data && instance_data_size > 0 && slot.mi_id >= 0 && slot.domain)
+            {
+                if (void *dst = slot.domain->GetMIData(slot.mi_id))
+                {
+                    const uint32_t dst_bytes = handle.material ? handle.material->GetMIDataBytes() : 0;
+                    const uint32_t copy_bytes = std::min(instance_data_size, dst_bytes);
+                    if (copy_bytes > 0)
+                        std::memcpy(dst, instance_data, copy_bytes);
+                }
+            }
+        }
+
+        slot.material_preset = final_rec.preset;
+        ok = slot.IsValid();
+        return slot;
     };
 
     // Legacy path: still keep variant-level MI cache for callsites that do not provide entity id.
@@ -579,51 +677,20 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
             ++legacy_resolve_hit_count;
 
             PrimitiveMaterialSlot &slot = it->second;
-            const VIL *resolved_vil = ResolveRuntimeVIL(handle.material, final_rec, geometry);
-
-            // If domain changes, recycle old slot and allocate on new domain.
-            if (slot.domain != handle.domain)
-            {
-                release_slot(slot);
-                slot = mm->AllocMaterialInstanceSlot(handle.domain,
-                                                     handle.material,
-                                                     resolved_vil,
-                                                     request.pipeline,
-                                                     instance_data,
-                                                     instance_data_size);
-            }
-            else
-            {
-                slot.material_template = handle.material;
-                slot.vil = resolved_vil;
-                slot.preset = request.pipeline;
-                slot.material_preset = final_rec.preset;
-                slot.texture_array_slot_flags = handle.material ? handle.material->GetTextureArraySlotFlags() : 0;
-
-                if (instance_data && instance_data_size > 0 && slot.mi_id >= 0 && slot.domain)
-                {
-                    if (void *dst = slot.domain->GetMIData(slot.mi_id))
-                    {
-                        const uint32_t dst_bytes = handle.material ? handle.material->GetMIDataBytes() : 0;
-                        const uint32_t copy_bytes = std::min(instance_data_size, dst_bytes);
-                        if (copy_bytes > 0)
-                            std::memcpy(dst, instance_data, copy_bytes);
-                    }
-                }
-            }
+            bool ok = false;
+            apply_runtime_slot(slot, handle.domain, ok);
+            if (!ok)
+                return {};
 
             return slot;
         }
 
         ++legacy_resolve_miss_count;
 
-        PrimitiveMaterialSlot slot = mm->AllocMaterialInstanceSlot(handle.domain,
-                                                                    handle.material,
-                                                                    ResolveRuntimeVIL(handle.material, final_rec, geometry),
-                                                                    request.pipeline,
-                                                                    instance_data,
-                                                                    instance_data_size);
-        if (!slot.IsValid())
+        PrimitiveMaterialSlot slot = {};
+        bool ok = false;
+        apply_runtime_slot(slot, handle.domain, ok);
+        if (!ok)
             return {};
 
         slot.material_preset = final_rec.preset;
@@ -639,54 +706,20 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         ++entity_resolve_hit_count;
 
         PrimitiveMaterialSlot &slot = it->second;
-        slot.material_template = handle.material;
-        slot.vil = ResolveRuntimeVIL(handle.material, final_rec, geometry);
-        slot.preset = request.pipeline;
-        slot.material_preset = final_rec.preset;
-        slot.texture_array_slot_flags = handle.material ? handle.material->GetTextureArraySlotFlags() : 0;
-
-        if (instance_data && instance_data_size > 0 && slot.mi_id >= 0 && slot.domain)
-        {
-            if (void *dst = slot.domain->GetMIData(slot.mi_id))
-            {
-                const uint32_t dst_bytes = handle.material ? handle.material->GetMIDataBytes() : 0;
-                const uint32_t copy_bytes = std::min(instance_data_size, dst_bytes);
-                if (copy_bytes > 0)
-                    std::memcpy(dst, instance_data, copy_bytes);
-            }
-        }
+        bool ok = false;
+        apply_runtime_slot(slot, handle.domain, ok);
+        if (!ok)
+            return {};
 
         return slot;
     }
 
     ++entity_resolve_miss_count;
 
-    auto sem_it = semantic_cache.find(semantic_id);
-    if (sem_it == semantic_cache.end())
-        return {};
-
-    auto &entry = sem_it->second;
-    if (!entry.shared_domain)
-    {
-        if (!entry.canonical_material)
-            entry.canonical_material = CreateMaterialFromRecord(mm, entry.rec);
-
-        if (entry.canonical_material)
-        {
-            entry.shared_domain = mm->CreateMaterialResourceDomain(entry.canonical_material);
-        }
-    }
-
-    if (!entry.shared_domain)
-        return {};
-
-    PrimitiveMaterialSlot slot = mm->AllocMaterialInstanceSlot(entry.shared_domain,
-                                                                handle.material,
-                                                                ResolveRuntimeVIL(handle.material, final_rec, geometry),
-                                                                request.pipeline,
-                                                                instance_data,
-                                                                instance_data_size);
-    if (!slot.IsValid())
+    PrimitiveMaterialSlot slot = {};
+    bool ok = false;
+    apply_runtime_slot(slot, handle.domain, ok);
+    if (!ok)
         return {};
 
     slot.material_preset = final_rec.preset;

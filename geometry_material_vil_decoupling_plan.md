@@ -16,8 +16,8 @@
 
 ## 总体完成度
 
-- 总进度：约 96%（Phase 0、Phase 1 已完成，Phase 2 已完成共享入口、resolver 语义与 direct/deferred 生命周期回归，Phase 4 的主要调用点迁移已完成）
-- 当前阶段：Phase 2（进行中，文档与全量回归收尾），Phase 3（未开始），Phase 4（基本完成，待专项路径处理）
+- 总进度：约 90%（Phase 0、Phase 1、Phase 2 已完成，Phase 3 已进入实施，Phase 4 的主要调用点迁移已完成）
+- 当前阶段：Phase 3（已完成），Phase 4（基本完成，待专项路径处理），Phase 5（未开始）
 
 ## 分阶段计划与完成度
 
@@ -39,7 +39,7 @@
 
 ## Phase 2：绑定侧兼容校验改造
 
-状态：进行中（96%）
+状态：已完成（100%）
 
 1. 已完成首轮：将 `Primitive` 绑定中的 `format ==` 与 `stride ==` 强校验替换为基于 shader/storage 的兼容校验，且 direct/deferred 两条绑定路径都已接入首轮兼容逻辑。
 2. 使用兼容规则：
@@ -51,16 +51,21 @@
 5. 已完成：抽取共享顶点绑定兼容 helper，`Primitive` 与 `MaterialAssetRegistry` 已复用同一套 shader/storage 兼容判断，减少规则漂移。
 6. 已完成首轮：`Primitive` effective VIL 与 registry 的 `ResolveVILFromGeometry` 已复用同一 geometry-driven `VILConfig` 构建入口，减少双路径实现差异。
 7. 已完成：已新增共享兼容 helper 与共享入口前置语义（reason/失败分支）测试，并补充 `VertexInput` 级共享入口与 resolver 场景验证（成功/布局不匹配/lookup 失败/不兼容存储/必需属性缺失），覆盖 reason 优先级与输出状态 has_any/cfg/has_layout_mismatch 契约。
-8. 已完成首轮：补充 direct/deferred 绑定与 runtime VIL 生命周期回归（释放旧 runtime VIL、active/owned 指针切换、direct rebind 与 deferred rebind 转移语义），并通过 `test_vertex_binding_compat_helper` 实跑验证。
+8. 已完成：补充 direct/deferred 绑定与 runtime VIL 生命周期回归（释放旧 runtime VIL、active/owned 指针切换、direct rebind 与 deferred rebind 转移语义），并通过 `test_vertex_binding_compat_helper` 实跑验证。
 9. 已完成：修复 `test_vertex_binding_compat_helper` 的输入构造（`VertexInputAttribute.storage_format` 显式初始化），消除默认 VIL 构建阶段的未初始化格式断言；当前该测试集可完整通过。
+10. 已完成：构建并运行 Phase 2 关键回归包（`ULRE.SceneGraph`、`test_vertex_type_format_compat`、`test_vertex_binding_compat_helper`）全部通过。
 
 ## Phase 3：运行时 Resolve 对齐
 
-状态：未开始（0%）
+状态：已完成（100%）
 
-1. 对齐 geometry-first 与 material-first 两条运行时 resolve 路径行为。
-2. 确保 deferred 路径（`vil_hash == 0`）行为稳定、可复现。
-3. 保留必要回退策略，但优先 schema 推导。
+1. 已完成首项：`MaterialAssetRegistry::ResolveMI` 的 legacy/entity cache-hit 路径已收口到统一运行时 slot 更新流程（统一 domain 变更重分配语义）。
+2. 已完成首项：cache-hit 刷新阶段新增 `resolved_vil` 失败保护（失败时释放旧 slot 并返回无效），避免保留陈旧绑定状态。
+3. 已完成首项：entity cache-miss 分配已改为使用 resolve 后 domain（`handle.domain`），与运行时域决策保持一致。
+4. 已完成本轮：legacy/entity 的 miss 分支已与 hit 分支统一走同一 runtime slot 应用逻辑（统一 `resolved_vil` 判空、domain 重分配、实例数据写回与失败返回语义），resolve 分支行为进一步收口。
+5. 已完成本轮：对 deferred 签名新增兜底稳定化——当 `vil_hash == 0 && geometry_layout_hash == 0` 且存在 geometry 指针时，运行时按 geometry 计算并补全 `geometry_layout_hash`，提升 key 稳定性与可复现性。
+6. 已完成：在保留 fallback 策略前提下提升 schema 推导优先级；miss/hit 路径统一改为先走 `ResolveRuntimeVIL`（geometry/schema 推导）再做分配，减少 default VIL 直落路径差异。
+7. 已完成验证：构建并运行回归（`ULRE.SceneGraph`、`test_vertex_type_format_compat`、`test_vertex_binding_compat_helper`）全部通过。
 
 ## Phase 4：调用点分批迁移
 
