@@ -18,6 +18,10 @@
 
 namespace hgl::graph{
 
+#ifndef ULRE_ENABLE_MATERIAL_LEGACY_MI_API
+#define ULRE_ENABLE_MATERIAL_LEGACY_MI_API 1
+#endif
+
 class ShaderCreateInfo;
 class ShaderStageMap;
 
@@ -386,9 +390,11 @@ public: //MaterialTemplate
 
 public: //MaterialInstanceData
 
+#if ULRE_ENABLE_MATERIAL_LEGACY_MI_API
     /// @deprecated Use slot-first path via AllocMaterialInstanceSlot or MaterialAssetRegistry::ResolveMI().
     [[deprecated("Use slot-first APIs: AllocMaterialInstanceSlot or MaterialAssetRegistry::ResolveMI")]]
     MaterialInstance *  AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key = nullptr);
+#endif
     
     /// Phase A (NEW): Slot-first 接口 — 按 domain 分配实例槽并直接返回 slot。
     /// 调用方可直接传给 Primitive::BindMaterialSlot() 或缓存在组件中。
@@ -406,8 +412,10 @@ public: //MaterialInstanceData
                                                      const void *instance_data = nullptr,
                                                      uint32_t instance_data_size = 0);
     
+#if ULRE_ENABLE_MATERIAL_LEGACY_MI_API
     [[deprecated("Prefer Primitive::WriteMIData or slot-first update paths")]]
     bool                UpdateInstanceData(MaterialInstance *mi, const void *data, const uint32 data_size);
+#endif
 
 public: // MaterialResourceDomain — Phase 1 / Phase 3
 

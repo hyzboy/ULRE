@@ -757,6 +757,7 @@ MaterialTemplate *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey 
     return mat;
 }
 
+#if ULRE_ENABLE_MATERIAL_LEGACY_MI_API
 MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)
 {
     static bool s_warned_legacy_acquire_mi = false;
@@ -832,6 +833,7 @@ bool MaterialManager::UpdateInstanceData(MaterialInstance *mi, const void *data,
     mi->WriteMIData(data, data_size);
     return true;
 }
+#endif
 
 // ============================================================================
 // Phase E: domain_id + generation 句柄表

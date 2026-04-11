@@ -698,6 +698,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
     return make_slot(mi);
 }
 
+#if ULRE_ENABLE_MATERIAL_LEGACY_MI_API
 MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialAssetRecord &rec,
                                                    const void *instance_data,
                                                    uint32_t instance_data_size,
@@ -745,6 +746,7 @@ MaterialInstance *MaterialAssetRegistry::CreateMI(
         mi->SetMaterialPreset(rec.preset);
     return mi;
 }
+#endif
 
 void MaterialAssetRegistry::ReleaseEntityResolvedMI(uint64_t entity_id, SemanticMaterialId semantic_id)
 {
