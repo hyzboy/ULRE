@@ -124,6 +124,12 @@ public:
     }
 
     static Geometry *CreateGeometry(GraphicsContext *graphics_context,
+                                    const VIL *vil,
+                                    const AnsiString &geometry_name,
+                                    uint32_t vertex_count,
+                                    std::initializer_list<VertexAttribWrite> vertex_writes);
+
+    static Geometry *CreateGeometry(GraphicsContext *graphics_context,
                                     MaterialInstance *material_instance,
                                     const AnsiString &geometry_name,
                                     uint32_t vertex_count,

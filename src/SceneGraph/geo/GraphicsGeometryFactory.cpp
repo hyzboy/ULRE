@@ -145,17 +145,17 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, Se
 }
 
 Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_context,
-                                                  MaterialInstance *material_instance,
+                                                  const VIL *vil,
                                                   const AnsiString &geometry_name,
                                                   uint32_t vertex_count,
                                                   std::initializer_list<VertexAttribWrite> vertex_writes)
 {
-    if(!graphics_context || !material_instance || geometry_name.IsEmpty() || vertex_count == 0)
+    if(!graphics_context || !vil || geometry_name.IsEmpty() || vertex_count == 0)
         return nullptr;
 
     GraphicsGeometryFactory geometry_factory(graphics_context);
 
-    auto pc = geometry_factory.CreateCreater(material_instance);
+    auto pc = geometry_factory.CreateCreater(vil);
     if(!pc)
         return nullptr;
 
@@ -172,6 +172,22 @@ Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_cont
     }
 
     return geometry_factory.CreateManagedGeometry(pc.get());
+}
+
+Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_context,
+                                                  MaterialInstance *material_instance,
+                                                  const AnsiString &geometry_name,
+                                                  uint32_t vertex_count,
+                                                  std::initializer_list<VertexAttribWrite> vertex_writes)
+{
+    if(!graphics_context || !material_instance || geometry_name.IsEmpty() || vertex_count == 0)
+        return nullptr;
+
+    return CreateGeometry(graphics_context,
+                          material_instance->GetVIL(),
+                          geometry_name,
+                          vertex_count,
+                          vertex_writes);
 }
 
 Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_context,
