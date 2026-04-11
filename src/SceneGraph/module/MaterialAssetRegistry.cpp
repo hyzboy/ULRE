@@ -18,12 +18,31 @@
 #include <cassert>
 #include <cstdio>
 #include <atomic>
+#include <algorithm>
+#include <cstring>
 
 namespace hgl::graph
 {
 
 namespace
 {
+static void BuildMITOffsets(const uint8_t slot_flags, std::vector<int8_t> &out_offsets, std::vector<uint32_t> &out_packed)
+{
+    out_offsets.assign(mtl::SamplerSlotCount, int8_t(-1));
+
+    uint32_t offset = 0;
+    for (size_t s = 0; s < mtl::SamplerSlotCount; ++s)
+    {
+        if ((slot_flags & (1u << s)) != 0)
+        {
+            out_offsets[s] = static_cast<int8_t>(offset);
+            ++offset;
+        }
+    }
+
+    out_packed.assign(offset, 0u);
+}
+
 static bool ShouldLogPow2(const uint64_t v)
 {
     return v != 0 && ((v & (v - 1)) == 0);
@@ -766,6 +785,257 @@ void MaterialAssetRegistry::ReleaseEntityResolvedMI(uint64_t entity_id, Semantic
 
         entity_mi_cache.erase(it);
     }
+}
+
+MaterialInstanceHandle MaterialAssetRegistry::AllocateHandle(const MaterialBindingInit &init)
+{
+    if (!mm || !init.material || !init.domain)
+        return InvalidMaterialInstanceHandle;
+
+    PrimitiveMaterialSlot slot = mm->AllocMaterialInstanceSlot(
+        init.domain,
+        init.material,
+        init.vil,
+        init.preset,
+        init.instance_data,
+        init.instance_data_size);
+
+    if (!slot.IsValid())
+        return InvalidMaterialInstanceHandle;
+
+    MaterialBindingRecord rec;
+    rec.material_template = slot.material_template;
+    rec.domain = slot.domain;
+    rec.mi_id = slot.mi_id;
+    rec.vil = slot.vil;
+    rec.preset = slot.preset;
+    rec.material_preset = init.material_preset;
+    rec.texture_array_slot_flags = slot.texture_array_slot_flags;
+
+    const uint32_t payload_bytes = rec.material_template ? rec.material_template->GetMIDataBytes() : 0;
+    if (payload_bytes > 0)
+    {
+        rec.instance_payload.assign((payload_bytes + sizeof(uint32_t) - 1) / sizeof(uint32_t), 0u);
+        if (init.instance_data && init.instance_data_size > 0)
+        {
+            const uint32_t copy_bytes = std::min(payload_bytes, init.instance_data_size);
+            std::memcpy(rec.instance_payload.data(), init.instance_data, copy_bytes);
+        }
+    }
+
+    BuildMITOffsets(rec.texture_array_slot_flags, rec.mit_slot_offset, rec.mit_packed);
+    if (init.mit_data && init.mit_data_count > 0 && !rec.mit_packed.empty())
+    {
+        const uint32_t copy_count = std::min<uint32_t>(init.mit_data_count, static_cast<uint32_t>(rec.mit_packed.size()));
+        std::memcpy(rec.mit_packed.data(), init.mit_data, copy_count * sizeof(uint32_t));
+    }
+
+    if (next_handle == InvalidMaterialInstanceHandle)
+        ++next_handle;
+
+    const MaterialInstanceHandle handle = next_handle++;
+    rec.handle = handle;
+
+    handle_table.emplace(handle, std::move(rec));
+    return handle;
+}
+
+bool MaterialAssetRegistry::BuildSlot(MaterialInstanceHandle handle, PrimitiveMaterialSlot &out_slot) const
+{
+    out_slot = {};
+
+    const auto it = handle_table.find(handle);
+    if (it == handle_table.end() || !it->second.alive)
+        return false;
+
+    const MaterialBindingRecord &rec = it->second;
+    out_slot.material_template = rec.material_template;
+    out_slot.domain = rec.domain;
+    out_slot.mi_id = rec.mi_id;
+    out_slot.vil = rec.vil;
+    out_slot.preset = rec.preset;
+    out_slot.texture_array_slot_flags = rec.texture_array_slot_flags;
+    out_slot.material_preset = rec.material_preset;
+    out_slot.mit_data = rec.mit_packed.empty() ? nullptr : rec.mit_packed.data();
+    out_slot.mit_data_count = static_cast<uint32_t>(rec.mit_packed.size());
+    return out_slot.IsValid();
+}
+
+bool MaterialAssetRegistry::RebindHandle(MaterialInstanceHandle handle, const MaterialBindingRebind &req)
+{
+    auto it = handle_table.find(handle);
+    if (it == handle_table.end() || !it->second.alive)
+    {
+        ++handle_rebind_fail_count;
+        return false;
+    }
+
+    MaterialBindingRecord &rec = it->second;
+    if (!mm || !req.new_material || !req.new_domain)
+    {
+        ++handle_rebind_fail_count;
+        return false;
+    }
+
+    PrimitiveMaterialSlot new_slot = mm->AllocMaterialInstanceSlot(
+        req.new_domain,
+        req.new_material,
+        req.new_vil,
+        req.new_preset,
+        nullptr,
+        0);
+
+    if (!new_slot.IsValid())
+    {
+        ++handle_rebind_fail_count;
+        return false;
+    }
+
+    // Copy MI payload first; keep old binding intact if copy fails unexpectedly.
+    if (req.copy_policy != MaterialRebindCopyPolicy::None
+        && rec.mi_id >= 0 && rec.domain && rec.material_template
+        && new_slot.mi_id >= 0 && new_slot.domain && req.new_material)
+    {
+        void *new_ptr = new_slot.domain->GetMIData(new_slot.mi_id);
+        const void *old_ptr = rec.domain->GetMIData(rec.mi_id);
+
+        if (new_ptr && old_ptr)
+        {
+            const uint32_t old_bytes = rec.material_template->GetMIDataBytes();
+            const uint32_t new_bytes = req.new_material->GetMIDataBytes();
+            const uint32_t copy_bytes = std::min(old_bytes, new_bytes);
+            if (copy_bytes > 0)
+                std::memcpy(new_ptr, old_ptr, copy_bytes);
+        }
+    }
+
+    MaterialResourceDomain *old_domain = rec.domain;
+    const int old_mi_id = rec.mi_id;
+    const std::vector<int8_t> old_offsets = rec.mit_slot_offset;
+    const std::vector<uint32_t> old_packed = rec.mit_packed;
+
+    // Update record to the new binding.
+    rec.material_template = new_slot.material_template;
+    rec.domain = new_slot.domain;
+    rec.mi_id = new_slot.mi_id;
+    rec.vil = new_slot.vil;
+    rec.preset = new_slot.preset;
+    rec.material_preset = req.new_material_preset;
+    rec.texture_array_slot_flags = new_slot.texture_array_slot_flags;
+    BuildMITOffsets(rec.texture_array_slot_flags, rec.mit_slot_offset, rec.mit_packed);
+
+    if (req.copy_policy != MaterialRebindCopyPolicy::None
+        && !old_offsets.empty() && !old_packed.empty()
+        && !rec.mit_slot_offset.empty() && !rec.mit_packed.empty())
+    {
+        for (size_t s = 0; s < mtl::SamplerSlotCount; ++s)
+        {
+            const int8_t old_off = old_offsets[s];
+            const int8_t new_off = rec.mit_slot_offset[s];
+            if (old_off < 0 || new_off < 0)
+                continue;
+
+            if (static_cast<size_t>(old_off) >= old_packed.size()
+                || static_cast<size_t>(new_off) >= rec.mit_packed.size())
+                continue;
+
+            rec.mit_packed[new_off] = old_packed[old_off];
+        }
+    }
+
+    ++rec.binding_version;
+    ++handle_rebind_count;
+    if (old_domain != rec.domain)
+        ++cross_domain_rebind_count;
+
+    if (old_domain && old_mi_id >= 0)
+        old_domain->FreeMISlot(old_mi_id);
+
+    return true;
+}
+
+bool MaterialAssetRegistry::WriteMIData(MaterialInstanceHandle handle, const void *data, uint32_t size)
+{
+    if (!data || size == 0)
+        return false;
+
+    auto it = handle_table.find(handle);
+    if (it == handle_table.end() || !it->second.alive)
+        return false;
+
+    MaterialBindingRecord &rec = it->second;
+    if (!rec.material_template || !rec.domain || rec.mi_id < 0)
+        return false;
+
+    void *dst = rec.domain->GetMIData(rec.mi_id);
+    if (!dst)
+        return false;
+
+    const uint32_t dst_bytes = rec.material_template->GetMIDataBytes();
+    const uint32_t copy_bytes = std::min(dst_bytes, size);
+    if (copy_bytes == 0)
+        return false;
+
+    std::memcpy(dst, data, copy_bytes);
+
+    rec.instance_payload.assign((dst_bytes + sizeof(uint32_t) - 1) / sizeof(uint32_t), 0u);
+    std::memcpy(rec.instance_payload.data(), dst, copy_bytes);
+    return true;
+}
+
+bool MaterialAssetRegistry::SetTextureArrayLayer(MaterialInstanceHandle handle, mtl::SamplerSlot slot, uint32_t layer)
+{
+    auto it = handle_table.find(handle);
+    if (it == handle_table.end() || !it->second.alive)
+        return false;
+
+    MaterialBindingRecord &rec = it->second;
+    if (rec.mit_slot_offset.empty())
+        return false;
+
+    const size_t slot_index = static_cast<size_t>(slot);
+    if (slot_index >= rec.mit_slot_offset.size())
+        return false;
+
+    const int8_t off = rec.mit_slot_offset[slot_index];
+    if (off < 0 || static_cast<size_t>(off) >= rec.mit_packed.size())
+        return false;
+
+    rec.mit_packed[off] = layer;
+    return true;
+}
+
+bool MaterialAssetRegistry::ReleaseHandle(MaterialInstanceHandle handle)
+{
+    auto it = handle_table.find(handle);
+    if (it == handle_table.end())
+        return false;
+
+    MaterialBindingRecord &rec = it->second;
+    if (rec.domain && rec.mi_id >= 0)
+        rec.domain->FreeMISlot(rec.mi_id);
+
+    rec.alive = false;
+    handle_table.erase(it);
+    return true;
+}
+
+bool MaterialAssetRegistry::QueryBindingVersion(MaterialInstanceHandle handle, uint32_t &out_version) const
+{
+    out_version = 0;
+
+    const auto it = handle_table.find(handle);
+    if (it == handle_table.end() || !it->second.alive)
+        return false;
+
+    out_version = it->second.binding_version;
+    return true;
+}
+
+bool MaterialAssetRegistry::QueryHandleAlive(MaterialInstanceHandle handle) const
+{
+    const auto it = handle_table.find(handle);
+    return it != handle_table.end() && it->second.alive;
 }
 
 } // namespace hgl::graph

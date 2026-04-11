@@ -97,8 +97,9 @@ namespace hgl::ecs
 
         // ── Legacy single-texture path ────────────────────────────
 
-        // If texture hasn't changed and material already exists, skip
-        if (!quad->IsTextureDirty() && quad->GetOverrideMaterial())
+        // If texture hasn't changed and a dedicated primitive already exists, skip
+        auto *early_shared = QuadResourcePrepareSystem::GetSharedPrimitive();
+        if (!quad->IsTextureDirty() && quad->GetPrimitive() && quad->GetPrimitive() != early_shared)
             return true;
 
         auto* graphics_context = world->GetGraphicsContext();
@@ -154,9 +155,11 @@ namespace hgl::ecs
         mi->SetRenderPreset(current_preset);
 
         graph::MaterialTemplate *previous_material = nullptr;
-        if (auto *previous_mi = quad->GetOverrideMaterial())
-            // Phase B: use direct material reference instead of MI getter
-            previous_material = previous_mi->GetDomain() ? quad_material : nullptr;
+        {
+            auto *prev_prim = quad->GetPrimitive();
+            if (prev_prim && prev_prim != early_shared)
+                previous_material = prev_prim->GetDomain() ? quad_material : nullptr;
+        }
 
         graph::Primitive *current_primitive = quad->GetPrimitive();
         graph::Geometry *geometry = current_primitive ? current_primitive->GetGeometry() : nullptr;
@@ -220,12 +223,13 @@ namespace hgl::ecs
         }
 
         // Write texture size to material instance data
-        math::Vector2u texture_size(texture->GetWidth(), texture->GetHeight());
-        mi->WriteMIData(texture_size);
+        {
+            math::Vector2u texture_size(texture->GetWidth(), texture->GetHeight());
+            quad_primitive->WriteMIData(texture_size);
+        }
 
         // Update quad component
         quad->SetPrimitive(quad_primitive);
-        quad->SetOverrideMaterial(mi);
         quad->SetTextureObjects(texture, shared_sampler);
         quad->SetAppliedTexturePath(texture_path);
         return true;
@@ -247,7 +251,7 @@ namespace hgl::ecs
             return false; // will be ready next frame after EnsureDomainResources()
 
         // If texture hasn't changed and material already exists, skip
-        if (!quad->IsTextureDirty() && quad->GetOverrideMaterial())
+        if (!quad->IsTextureDirty() && quad->GetPrimitive() && quad->GetPrimitive() != dr->primitive)
             return true;
 
         auto* graphics_context = world->GetGraphicsContext();
@@ -275,16 +279,7 @@ namespace hgl::ecs
 
         mi->SetRenderPreset(current_preset);
 
-        // Set the texture array layer for this quad's texture
-        mi->SetTextureArrayLayer(graph::mtl::SamplerSlot::BaseColor, static_cast<uint32_t>(layer));
         const uint8_t texture_array_slot_flags = dr->material->GetTextureArraySlotFlags();
-
-        // Write texture size to MI data (use texture array dimensions)
-        if (dr->texture_array)
-        {
-            math::Vector2u texture_size(dr->texture_array->GetWidth(), dr->texture_array->GetHeight());
-            mi->WriteMIData(texture_size);
-        }
 
         // Assign domain primitive or reuse current
         graph::Primitive *current_primitive = quad->GetPrimitive();
@@ -323,9 +318,15 @@ namespace hgl::ecs
                                                  static_cast<uint32_t>(layer));
         }
 
+            // Write texture size to primitive data (use texture array dimensions)
+            if (dr->texture_array)
+            {
+                math::Vector2u texture_size(dr->texture_array->GetWidth(), dr->texture_array->GetHeight());
+                quad_primitive->WriteMIData(texture_size);
+            }
+
         // Update quad component
         quad->SetPrimitive(quad_primitive);
-        quad->SetOverrideMaterial(mi);
         quad->SetTextureObjects(nullptr, dr->sampler); // texture lives in the domain array
         quad->SetAppliedTexturePath(texture_path);
         return true;

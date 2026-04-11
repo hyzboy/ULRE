@@ -11,6 +11,7 @@
 #include <hgl/graph/module/MaterialDomainHandle.h>
 #include <hgl/graph/module/RuntimeMaterialRequest.h>
 #include <hgl/mtl/MaterialAssetRecord.h>
+#include <hgl/mtl/SamplerSlot.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include <hgl/graph/PrimitiveMaterialSlot.h>
 #include <hgl/log/Log.h>
@@ -18,6 +19,7 @@
 #include <string>
 #include <unordered_map>
 #include <cstdint>
+#include <vector>
 
 namespace hgl::graph
 {
@@ -28,6 +30,39 @@ class SamplerManager;
 class MaterialInstance;
 class MaterialTemplate;
 class Geometry;
+
+using MaterialInstanceHandle = uint64_t;
+constexpr MaterialInstanceHandle InvalidMaterialInstanceHandle = 0;
+
+enum class MaterialRebindCopyPolicy : uint8_t
+{
+    None = 0,
+    CompatiblePrefix,
+    LayoutAware,
+};
+
+struct MaterialBindingInit
+{
+    MaterialTemplate *material = nullptr;
+    MaterialResourceDomain *domain = nullptr;
+    const VIL *vil = nullptr;
+    GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
+    mtl::MaterialPreset material_preset = mtl::MaterialPreset::Standard;
+    const void *instance_data = nullptr;
+    uint32_t instance_data_size = 0;
+    const uint32_t *mit_data = nullptr;
+    uint32_t mit_data_count = 0;
+};
+
+struct MaterialBindingRebind
+{
+    MaterialTemplate *new_material = nullptr;
+    MaterialResourceDomain *new_domain = nullptr;
+    const VIL *new_vil = nullptr;
+    GraphicsPipelinePreset new_preset = GraphicsPipelinePreset::Solid3D;
+    mtl::MaterialPreset new_material_preset = mtl::MaterialPreset::Standard;
+    MaterialRebindCopyPolicy copy_policy = MaterialRebindCopyPolicy::CompatiblePrefix;
+};
 
 class MaterialAssetRegistry
 {
@@ -129,6 +164,29 @@ private:
     uint64_t entity_resolve_miss_count = 0;
     bool legacy_resolve_warned = false;
 
+    struct MaterialBindingRecord
+    {
+        MaterialInstanceHandle handle = InvalidMaterialInstanceHandle;
+        MaterialTemplate *material_template = nullptr;
+        MaterialResourceDomain *domain = nullptr;
+        int mi_id = -1;
+        const VIL *vil = nullptr;
+        GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
+        mtl::MaterialPreset material_preset = mtl::MaterialPreset::Standard;
+        uint8_t texture_array_slot_flags = 0;
+        std::vector<uint32_t> instance_payload;
+        std::vector<uint32_t> mit_packed;
+        std::vector<int8_t> mit_slot_offset;
+        uint32_t binding_version = 1;
+        bool alive = true;
+    };
+
+    std::unordered_map<MaterialInstanceHandle, MaterialBindingRecord> handle_table;
+    MaterialInstanceHandle next_handle = InvalidMaterialInstanceHandle + 1;
+    uint64_t handle_rebind_count = 0;
+    uint64_t cross_domain_rebind_count = 0;
+    uint64_t handle_rebind_fail_count = 0;
+
 public:
 
     MaterialAssetRegistry(MaterialManager *mm, TextureManager *tm, SamplerManager *sm);
@@ -192,6 +250,20 @@ public:
 
     // Phase D lifecycle helpers for entity-scoped MI cache.
     void ReleaseEntityResolvedMI(uint64_t entity_id, SemanticMaterialId semantic_id = 0);
+
+    // Stage 1 - handle-first API skeleton.
+    MaterialInstanceHandle AllocateHandle(const MaterialBindingInit &init);
+    bool BuildSlot(MaterialInstanceHandle handle, PrimitiveMaterialSlot &out_slot) const;
+    bool RebindHandle(MaterialInstanceHandle handle, const MaterialBindingRebind &req);
+    bool WriteMIData(MaterialInstanceHandle handle, const void *data, uint32_t size);
+    bool SetTextureArrayLayer(MaterialInstanceHandle handle, mtl::SamplerSlot slot, uint32_t layer);
+    bool ReleaseHandle(MaterialInstanceHandle handle);
+
+    // Stage 1 - observability for handle path.
+    bool QueryBindingVersion(MaterialInstanceHandle handle, uint32_t &out_version) const;
+    bool QueryHandleAlive(MaterialInstanceHandle handle) const;
+    uint64_t GetCrossDomainRebindCount() const { return cross_domain_rebind_count; }
+    uint64_t GetHandleRebindFailCount() const { return handle_rebind_fail_count; }
 
     /// 统计
     uint32_t GetDomainCacheSize() const { return static_cast<uint32_t>(domain_cache.size()); }

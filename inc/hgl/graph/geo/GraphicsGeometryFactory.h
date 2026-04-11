@@ -6,6 +6,7 @@
 #include <hgl/vk/VKFormat.h>
 #include <hgl/type/String.h>
 #include <hgl/vk/VKMaterialTemplate.h>
+#include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/RuntimeMaterialRequest.h>
 #include <hgl/graph/module/MaterialDomainHandle.h>
