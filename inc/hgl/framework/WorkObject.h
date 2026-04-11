@@ -131,9 +131,91 @@ namespace hgl
 
             return nullptr;
         }
+        // Handle-first helper: allocate stable material handle directly from MaterialAssetRecord.
+        // This is the preferred replacement for legacy AcquireMI/CreateMI callsites.
+        graph::MaterialInstanceHandle AllocateMaterialHandle(const graph::mtl::MaterialAssetRecord &rec,
+                                                             const void *instance_data = nullptr,
+                                                             uint32 instance_data_size = 0,
+                                                             graph::MaterialDomainHandle *out_handle = nullptr,
+                                                             const graph::VIL *override_vil = nullptr)
+        {
+            auto *registry = GetMaterialAssetRegistry();
+            if (!registry)
+                return graph::InvalidMaterialInstanceHandle;
+
+            graph::MaterialDomainHandle handle = registry->Acquire(rec);
+            if (!handle.IsValid())
+                return graph::InvalidMaterialInstanceHandle;
+
+            if (out_handle)
+                *out_handle = handle;
+
+            const graph::VIL *resolved_vil = override_vil
+                                           ? override_vil
+                                           : registry->ResolveVIL(handle.material, rec, nullptr);
+
+            if (!resolved_vil && handle.material)
+                resolved_vil = handle.material->GetDefaultVIL();
+
+            if (!handle.material || !resolved_vil)
+                return graph::InvalidMaterialInstanceHandle;
+
+            graph::MaterialBindingInit init;
+            init.material = handle.material;
+            init.domain = handle.domain;
+            init.vil = resolved_vil;
+            init.preset = rec.pipeline;
+            init.material_preset = rec.preset;
+            init.instance_data = instance_data;
+            init.instance_data_size = instance_data_size;
+
+            return registry->AllocateHandle(init);
+        }
+
+        bool BuildMaterialSlot(const graph::MaterialInstanceHandle handle,
+                               graph::PrimitiveMaterialSlot &out_slot) const
+        {
+            auto *registry = const_cast<WorkObject *>(this)->GetMaterialAssetRegistry();
+            if (!registry)
+                return false;
+
+            return registry->BuildSlot(handle, out_slot);
+        }
+
+        bool WriteMaterialData(const graph::MaterialInstanceHandle handle,
+                               const void *instance_data,
+                               const uint32 instance_data_size)
+        {
+            auto *registry = GetMaterialAssetRegistry();
+            if (!registry)
+                return false;
+
+            return registry->WriteMIData(handle, instance_data, instance_data_size);
+        }
+
+        bool SetMaterialTextureArrayLayer(const graph::MaterialInstanceHandle handle,
+                                          const graph::mtl::SamplerSlot slot,
+                                          const uint32 layer)
+        {
+            auto *registry = GetMaterialAssetRegistry();
+            if (!registry)
+                return false;
+
+            return registry->SetTextureArrayLayer(handle, slot, layer);
+        }
+
+        bool ReleaseMaterialHandle(const graph::MaterialInstanceHandle handle)
+        {
+            auto *registry = GetMaterialAssetRegistry();
+            if (!registry)
+                return false;
+
+            return registry->ReleaseHandle(handle);
+        }
+
         // Compatibility helper: directly acquires MI from MaterialAssetRecord.
-        // New semantic/runtime composition path should prefer:
-        // Register semantic material -> resolve final MI during render collection.
+        // New semantic/runtime composition path should prefer handle-first APIs.
+        [[deprecated("Use AllocateMaterialHandle/BuildMaterialSlot/WriteMaterialData instead of AcquireMI")]]
         graph::MaterialInstance *AcquireMI(const graph::mtl::MaterialAssetRecord &rec,
                                            const void *instance_data = nullptr,
                                            uint32 instance_data_size = 0,
