@@ -29,6 +29,14 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+namespace
+{
+    const VertexFormatMap kBoundingBoxVertexFormats = {
+        {VAN::Position, PF_RGB32F},
+        {VAN::Color,    PF_RGBA32F},
+    };
+}
+
 namespace hgl::graph{
 Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filename);
 }//namespace hgl::graph
@@ -178,7 +186,7 @@ private:
         if (!device || !geometry_manager)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(wire.material->GetDefaultVIL()));
+        auto pc = std::make_unique<GeometryCreater>(device, kBoundingBoxVertexFormats);
 
         inline_geometry::BoundingBoxCreateInfo bbci;
 

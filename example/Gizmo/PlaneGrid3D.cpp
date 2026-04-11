@@ -28,6 +28,14 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+namespace
+{
+    const VertexFormatMap kPlaneGridVertexFormats = {
+        {VAN::Position,  PF_RG32F},
+        {VAN::Luminance, PF_R8UN},
+    };
+}
+
 class TestApp:public WorkObject
 {
 private:
@@ -109,7 +117,7 @@ private:
         pgci.lum=180;
         pgci.sub_lum=255;
 
-        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(material_slot[0].vil));
+        auto pc = std::make_unique<GeometryCreater>(device, kPlaneGridVertexFormats);
 
         geom_plane_grid=CreatePlaneGrid2D(pc.get(),&pgci);
         if (geom_plane_grid)

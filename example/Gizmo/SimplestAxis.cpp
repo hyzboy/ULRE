@@ -27,6 +27,14 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+namespace
+{
+    const VertexFormatMap kAxisVertexFormats = {
+        {VAN::Position, PF_RGB32F},
+        {VAN::Color,    PF_RGBA32F},
+    };
+}
+
 class TestApp:public WorkObject
 {
 private:
@@ -113,7 +121,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(axis_vil));
+        auto pc = std::make_unique<GeometryCreater>(device, kAxisVertexFormats);
 
         inline_geometry::AxisCreateInfo aci;
 

@@ -157,6 +157,32 @@ namespace
         return true;
     }
 
+    VertexFormatMap BuildVertexFormatMapFromMeta(const GeometryHeader &header,
+                                                 const uint8_t *attribute_format,
+                                                 const uint8_t *attribute_name_length,
+                                                 const char *names_ptr,
+                                                 const OSString &filename)
+    {
+        VertexFormatMap format_map;
+
+        const char *p = names_ptr;
+        for(uint32_t i = 0; i < header.attributeCount; ++i)
+        {
+            const VertexAttrib attrib = GetVertexAttribByName(p);
+            if(attrib == VAN::RANGE_SIZE)
+            {
+                MLogNotice(LoadGeometry,OS_TEXT("Unknown vertex attribute '") + ToOSString(p) + OS_TEXT("' in file ") + filename);
+                p += attribute_name_length[i] + 1;
+                continue;
+            }
+
+            format_map[attrib] = static_cast<VkFormat>(attribute_format[i]);
+            p += attribute_name_length[i] + 1;
+        }
+
+        return format_map;
+    }
+
     // Read attributes/VBOs using AttributeMeta views
     bool ReadAttributesVBO(hgl::io::minipack::MiniPackReader *mpr,
                            GeometryData *geo_data,
@@ -370,8 +396,23 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const VIL *vil,hgl:
     if(!ReadBoundingVolumes(mpr, bounding_volumes, debug_name))
         return nullptr;
 
+    std::vector<uint8_t> attrmeta;
+    const uint8_t *attribute_format = nullptr;
+    const uint8_t *attribute_name_length = nullptr;
+    const char *names_ptr = nullptr;
+
+    VertexFormatMap vertex_format_map;
+
+    if(header.attributeCount > 0)
+    {
+        if(!ReadAttributeMeta(mpr, header, debug_name, attrmeta, attribute_format, attribute_name_length, names_ptr))
+            return nullptr;
+
+        vertex_format_map = BuildVertexFormatMapFromMeta(header, attribute_format, attribute_name_length, names_ptr, debug_name);
+    }
+
     // 3) Create GeometryData and VABs
-    GeometryData *geo_data=CreateGeometryData(device,MakeGeometryVertexFormatMap(vil),header.vertexCount);
+    GeometryData *geo_data=CreateGeometryData(device,vertex_format_map,header.vertexCount);
 
     if(!geo_data)
     {

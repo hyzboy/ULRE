@@ -37,6 +37,19 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+namespace
+{
+    const VertexFormatMap kPlaneGridVertexFormats = {
+        {VAN::Position,  PF_RG32F},
+        {VAN::Luminance, PF_R8UN},
+    };
+
+    const VertexFormatMap kCubeVertexFormats = {
+        {VAN::Position, PF_RGB32F},
+        {VAN::Normal,PF_RGB32F}
+    };
+}
+
 const math::Vector3f GizmoPosition(0, 0, 0);
 
 class GizmoExampleApp : public WorkObject
@@ -100,7 +113,7 @@ private:
 
             grid_material = grid_slot.material_template;
 
-            auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(grid_slot.vil));
+            auto pc = std::make_unique<GeometryCreater>(device, kPlaneGridVertexFormats);
 
             inline_geometry::PlaneGridCreateInfo pgci;
             pgci.grid_size.Set(64, 64);
@@ -147,7 +160,7 @@ private:
 
             cube_material = cube_slot.material_template;
 
-            auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(cube_slot.vil));
+            auto pc = std::make_unique<GeometryCreater>(device, kCubeVertexFormats);
 
             inline_geometry::CubeCreateInfo cci;
             cci.segments_x = 2;

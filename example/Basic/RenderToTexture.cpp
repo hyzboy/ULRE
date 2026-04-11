@@ -38,6 +38,13 @@ using namespace hgl::ecs;
 
 namespace
 {
+    const VertexFormatMap kSurfaceVertexFormats = {
+        {VAN::Position, PF_RGB32F},
+        {VAN::Normal,   PF_RGB32F},
+        {VAN::Tangent,  PF_RGB32F},
+        {VAN::TexCoord, PF_RG32F},
+    };
+
     void LogTextureInfo(const char *tag, Texture2D *tex)
     {
         if (!tex)
@@ -188,7 +195,7 @@ public:
         if (!registry->BuildSlot(handle_id, slot))
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(vil));
+        auto pc = std::make_unique<GeometryCreater>(device, kSurfaceVertexFormats);
         geometry = inline_geometry::CreateSphere(pc.get(), 64);
         if (!geometry)
             return false;
@@ -390,7 +397,7 @@ private:
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
 
-        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(cube_vil));
+        auto pc = std::make_unique<GeometryCreater>(device, kSurfaceVertexFormats);
         inline_geometry::CubeCreateInfo cci{};
         cci.tex_coord = true;
         cci.normal = true;

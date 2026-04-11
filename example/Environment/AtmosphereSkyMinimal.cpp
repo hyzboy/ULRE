@@ -21,6 +21,13 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+namespace
+{
+    const VertexFormatMap kSkyVertexFormats = {
+        {VAN::Position, PF_RGB32F},
+    };
+}
+
 class TestApp:public WorkObject
 {
 private:
@@ -80,7 +87,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(sky_vil));
+        auto pc = std::make_unique<GeometryCreater>(device, kSkyVertexFormats);
 
         struct HexSphereCreateInfo hsci;
 

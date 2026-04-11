@@ -39,6 +39,10 @@ const VertexFormatMap kLitSurfaceVertexFormats = {
     {VAN::Tangent,  PF_RGB32F},
     {VAN::TexCoord, PF_RG32F},
 };
+
+const VertexFormatMap kSkyVertexFormats = {
+    {VAN::Position, PF_RGB32F},
+};
 }
 
 class BasicLitSunDirectionECSApp : public WorkObject
@@ -146,7 +150,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(sky_vil));
+        auto pc = std::make_unique<GeometryCreater>(device, kSkyVertexFormats);
         if (!pc)
             return false;
 

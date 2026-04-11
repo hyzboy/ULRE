@@ -36,6 +36,11 @@ namespace hgl::ecs
 {
     namespace
     {
+        const graph::VertexFormatMap kLineVertexFormats = {
+            {graph::VAN::Position, PF_RGB32F},
+            {graph::VAN::Color,    PF_R8U},
+        };
+
         PipelineResolveCounters g_line_pipeline_resolve_counters;
         PipelineHotpathCounters g_line_render_hotpath_counters;
     }
@@ -101,7 +106,7 @@ namespace hgl::ecs
 
         // Create new geometry (2 verts per line)
         const graph::AnsiString name = graph::AnsiString("LineSlot_W") + graph::AnsiString::numberOf(width);
-        geometry = graph::CreateGeometry(dev, MakeGeometryVertexFormatMap(slot.vil), name, new_cap * 2, 0,
+        geometry = graph::CreateGeometry(dev, kLineVertexFormats, name, new_cap * 2, 0,
                          graph::IndexType::AUTO, nullptr,
                          graph::BufferAllocPolicy::StagedUpload);
         if (!geometry)

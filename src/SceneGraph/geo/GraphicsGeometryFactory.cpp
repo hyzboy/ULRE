@@ -144,6 +144,25 @@ static const VIL *GetOrCreateSchemaVIL(const std::initializer_list<GraphicsGeome
     s_schema_vil_cache.emplace(key, std::move(vil));
     return result;
 }
+
+static VertexFormatMap BuildVertexFormatMapFromVIL(const VIL *vil)
+{
+    VertexFormatMap format_map;
+    if(!vil)
+        return format_map;
+
+    const uint32_t attr_count = vil->GetVertexAttribCount();
+    for(uint32_t i = 0; i < attr_count; ++i)
+    {
+        const auto *cfg = vil->GetConfig(i);
+        if(!cfg)
+            continue;
+
+        format_map[cfg->attrib] = cfg->format;
+    }
+
+    return format_map;
+}
 }
 
 GraphicsGeometryFactory::GraphicsGeometryFactory(GraphicsContext *gc)
@@ -162,7 +181,7 @@ std::unique_ptr<GeometryCreater> GraphicsGeometryFactory::CreateCreater(const VI
     if(!device || !buffer_manager)
         return nullptr;
 
-    return std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(vil), buffer_manager);
+    return std::make_unique<GeometryCreater>(device, BuildVertexFormatMapFromVIL(vil), buffer_manager);
 }
 
 std::unique_ptr<GeometryCreater> GraphicsGeometryFactory::CreateCreater(VertexDataManager *vdm) const

@@ -24,6 +24,13 @@ using namespace hgl::graph;
 
 namespace
 {
+    const VertexFormatMap kSurfaceVertexFormats = {
+        {VAN::Position, PF_RGB32F},
+        {VAN::Normal,   PF_RGB32F},
+        {VAN::Tangent,  PF_RGB32F},
+        {VAN::TexCoord, PF_RG32F},
+    };
+
     class SubWorldPulseSystem final : public System
     {
     private:
@@ -113,7 +120,7 @@ namespace
                 return false;
 
             using namespace inline_geometry;
-            auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(material->GetDefaultVIL()));
+            auto pc = std::make_unique<GeometryCreater>(device, kSurfaceVertexFormats);
             if (!pc)
                 return false;
 

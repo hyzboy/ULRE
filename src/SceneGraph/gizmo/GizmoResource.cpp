@@ -22,6 +22,13 @@ namespace hgl::graph
 
     namespace
     {
+        const VertexFormatMap kGizmoVertexFormats = {
+            {VAN::Position, PF_RGB32F},
+            {VAN::Normal,   PF_RGB32F},
+            {VAN::Tangent,  PF_RGB32F},
+            {VAN::TexCoord, PF_RG32F},
+        };
+
         static GraphicsContext *graphics_context=nullptr;
         static RenderTargetFormat *gizmo_render_pass=nullptr;
         static MaterialManager *gizmo_mtl_manager=nullptr;
@@ -146,7 +153,7 @@ namespace hgl::graph
                 return(false);
 
             {
-                gizmo_triangle.vdm=new VertexDataManager(buffer_manager,MakeGeometryVertexFormatMap(gizmo_triangle.mtl->GetDefaultVIL()));
+                gizmo_triangle.vdm=new VertexDataManager(buffer_manager,kGizmoVertexFormats);
 
                 if(!gizmo_triangle.vdm)
                     return(false);

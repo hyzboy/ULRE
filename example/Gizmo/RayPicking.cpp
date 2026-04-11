@@ -46,6 +46,19 @@ static float position_data[2][3]=
 
 static uint8 lumiance_data[2]={255,255};
 
+namespace
+{
+    const VertexFormatMap kPlaneGridVertexFormats = {
+        {VAN::Position,  PF_RG32F},
+        {VAN::Luminance, PF_R8UN},
+    };
+
+    const VertexFormatMap kLineVertexFormats = {
+        {VAN::Position,  PF_RGB32F},
+        {VAN::Luminance, PF_R8UN},
+    };
+}
+
 static Color4f white_color(1,1,1,1);
 static Color4f yellow_color(1,1,0,1);
 
@@ -155,7 +168,7 @@ private:
 
         // === 创建平面网格几何体 ===
         {
-            auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(plane_grid_slot.vil));
+            auto pc = std::make_unique<GeometryCreater>(device, kPlaneGridVertexFormats);
 
             struct PlaneGridCreateInfo pgci;
 
@@ -181,7 +194,7 @@ private:
             if (!device || !buffer_manager || !geometry_manager)
                 return false;
 
-            GeometryCreater pc(device, MakeGeometryVertexFormatMap(line_slot.vil), buffer_manager);
+            GeometryCreater pc(device, kLineVertexFormats, buffer_manager);
             pc.Init("RayLine", 2);
             if (!pc.WriteVAB(VAN::Position, VF_V3F, position_data) ||
                 !pc.WriteVAB(VAN::Luminance, VF_V1UN8, lumiance_data))

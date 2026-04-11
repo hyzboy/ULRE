@@ -55,6 +55,14 @@ constexpr float tex_coord_data[12]=
     1,1
 };
 
+namespace
+{
+    const VertexFormatMap kTexturedQuadVertexFormats = {
+        {VAN::Position, PF_RG32F},
+        {VAN::TexCoord, PF_RG32F},
+    };
+}
+
 class TestApp:public WorkObject
 {
 private:
@@ -168,7 +176,7 @@ private:
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
-        GeometryCreater pc(device, MakeGeometryVertexFormatMap(render_obj[0].slot.vil), buffer_manager);
+        GeometryCreater pc(device, kTexturedQuadVertexFormats, buffer_manager);
         pc.Init("TextureRect", 6);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
             !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))

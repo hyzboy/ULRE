@@ -26,6 +26,14 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+namespace
+{
+    const VertexFormatMap kExtrudedVertexFormats = {
+        {VAN::Position, PF_RGB32F},
+        {VAN::Normal,   PF_RGB32F},
+    };
+}
+
 class ExtrudedPolygonTestApp : public WorkObject
 {
 private:
@@ -99,7 +107,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(material_vil));
+        auto pc = std::make_unique<GeometryCreater>(device, kExtrudedVertexFormats);
 
         // 测试1: 矩形挤压成立方体
         prim_rect_cube = CreateExtrudedRectangle(pc.get(), 2.0f, 1.5f, 1.0f, math::Vector3f(0, 0, 1));

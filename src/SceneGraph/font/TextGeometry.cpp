@@ -6,6 +6,14 @@
 
 namespace hgl::graph
 {
+    namespace
+    {
+        const VertexFormatMap kTextGeometryVertexFormats = {
+            {VAN::Position, PF_RG16I},
+            {VAN::TexCoord, PF_RG32F},
+        };
+    }
+
     TextGeometry::TextGeometry(VulkanDevice *dev,const VIL *_vil,const uint32_t mc):Geometry("TextGeometry",nullptr)
     {
         device=dev;
@@ -34,7 +42,7 @@ namespace hgl::graph
         max_count=power_to_2(cc);
         draw_char_count=cc;
 
-        geometry_data=CreateGeometryData(device,MakeGeometryVertexFormatMap(vil),max_count);
+        geometry_data=CreateGeometryData(device,kTextGeometryVertexFormats,max_count);
 
         geometry_data->CreateAllVAB();
 
