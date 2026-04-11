@@ -31,17 +31,6 @@ uint32_t GetMaxBindingIndex(const VIL *vil)
     return max_binding;
 }
 
-void ReleaseOwnedPrimitiveVIL(MaterialTemplate *material,const VIL *&active_vil,VIL *&owned_runtime_vil)
-{
-    if(owned_runtime_vil && material)
-        material->Release(owned_runtime_vil);
-
-    if(active_vil == owned_runtime_vil)
-        active_vil = nullptr;
-
-    owned_runtime_vil = nullptr;
-}
-
 bool ResolveEffectivePrimitiveVIL(const Geometry *geom,
                                   MaterialTemplate *material,
                                   const VIL *requested_vil,
@@ -228,7 +217,12 @@ Primitive::Primitive(Geometry *r,SemanticMaterialId sid,uint32_t vil_hash)
 
 Primitive::~Primitive()
 {
-    ReleaseOwnedPrimitiveVIL(material_template, vil, owned_runtime_vil);
+    ReleaseOwnedRuntimeVIL(vil, owned_runtime_vil, [&](VIL *runtime_vil)
+    {
+        if(material_template)
+            material_template->Release(runtime_vil);
+    });
+
     SAFE_CLEAR(data_buffer);
     delete[] mit_packed;
 }
@@ -314,7 +308,15 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot,const char *s
         return false;
     }
 
-    ReleaseOwnedPrimitiveVIL(material_template, vil, owned_runtime_vil);
+    ReplaceRuntimeVILBinding(vil,
+                             owned_runtime_vil,
+                             effective_vil,
+                             owned_effective_vil,
+                             [&](VIL *runtime_vil)
+                             {
+                                 if(material_template)
+                                     material_template->Release(runtime_vil);
+                             });
 
     if(geom_data_buffer != data_buffer)
     {
@@ -326,8 +328,6 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot,const char *s
     material_template    = slot.material_template;
     domain               = slot.domain;
     mi_id                = slot.mi_id;
-    vil                  = effective_vil;
-    owned_runtime_vil    = owned_effective_vil;
     render_preset        = slot.preset;
     material_preset      = slot.material_preset;
     InitMITLayout(slot.texture_array_slot_flags);

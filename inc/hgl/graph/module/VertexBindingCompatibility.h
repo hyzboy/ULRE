@@ -73,34 +73,43 @@ inline bool IsMaterialStorageCompatible(const MaterialTemplate *material,
     return IsMaterialVertexAttribStorageCompatible(material->GetVertexInput(), attrib, storage_format, reason);
 }
 
-inline bool BuildGeometryDrivenVILConfigFromVertexInput(const VertexInput *vertex_input,
-                                                        const Geometry *geometry,
-                                                        const VIL *requested_vil,
-                                                        VILConfig &out_cfg,
-                                                        bool &has_any,
-                                                        std::string *reason = nullptr,
-                                                        bool *has_layout_mismatch = nullptr)
+inline bool BuildGeometryDrivenVILConfigFromVertexInputWithResolver(const VertexInput *vertex_input,
+                                                                    const VIL *requested_vil,
+                                                                    const auto &resolve_storage,
+                                                                    VILConfig &out_cfg,
+                                                                    bool &has_any,
+                                                                    std::string *reason = nullptr,
+                                                                    bool *has_layout_mismatch = nullptr)
 {
     out_cfg.clear();
     has_any = false;
     if(has_layout_mismatch)
         *has_layout_mismatch = false;
 
-    if(!geometry)
-    {
-        if(reason)
-            *reason = "geometry_missing";
-        return false;
-    }
-
     auto add_attrib = [&](const VertexAttrib attrib,
-                          const VkVertexInputRate input_rate,
+                          const VkVertexInputRate requested_input_rate,
                           const VkFormat requested_format,
                           const uint32_t requested_stride,
                           const bool has_requested_layout) -> bool
     {
-        auto *vab = geometry->GetVAB(attrib);
-        if(!vab)
+        bool has_storage = false;
+        VkFormat storage_format = VK_FORMAT_UNDEFINED;
+        uint32_t storage_stride = 0;
+        VkVertexInputRate storage_input_rate = requested_input_rate;
+
+        if(!resolve_storage(attrib,
+                            requested_input_rate,
+                            has_storage,
+                            storage_format,
+                            storage_stride,
+                            storage_input_rate))
+        {
+            if(reason)
+                *reason = "storage_lookup_failed";
+            return false;
+        }
+
+        if(!has_storage)
         {
             if(has_requested_layout)
             {
@@ -113,7 +122,7 @@ inline bool BuildGeometryDrivenVILConfigFromVertexInput(const VertexInput *verte
         }
 
         std::string compat_reason;
-        if(!IsMaterialVertexAttribStorageCompatible(vertex_input, attrib, vab->GetFormat(), &compat_reason))
+        if(!IsMaterialVertexAttribStorageCompatible(vertex_input, attrib, storage_format, &compat_reason))
         {
             if(reason)
                 *reason = compat_reason;
@@ -122,7 +131,7 @@ inline bool BuildGeometryDrivenVILConfigFromVertexInput(const VertexInput *verte
 
         has_any = true;
 
-        if(!out_cfg.Add(attrib, VAConfig(vab->GetFormat(), input_rate)))
+        if(!out_cfg.Add(attrib, VAConfig(storage_format, storage_input_rate)))
         {
             if(reason)
                 *reason = "runtime_vil_config_add_failed";
@@ -131,7 +140,7 @@ inline bool BuildGeometryDrivenVILConfigFromVertexInput(const VertexInput *verte
 
         if(has_layout_mismatch && has_requested_layout)
         {
-            if(vab->GetFormat() != requested_format || vab->GetStride() != requested_stride)
+            if(storage_format != requested_format || storage_stride != requested_stride)
                 *has_layout_mismatch = true;
         }
 
@@ -164,6 +173,58 @@ inline bool BuildGeometryDrivenVILConfigFromVertexInput(const VertexInput *verte
     return true;
 }
 
+inline bool BuildGeometryDrivenVILConfigFromVertexInput(const VertexInput *vertex_input,
+                                                        const Geometry *geometry,
+                                                        const VIL *requested_vil,
+                                                        VILConfig &out_cfg,
+                                                        bool &has_any,
+                                                        std::string *reason = nullptr,
+                                                        bool *has_layout_mismatch = nullptr)
+{
+    if(!geometry)
+    {
+        out_cfg.clear();
+        has_any = false;
+        if(has_layout_mismatch)
+            *has_layout_mismatch = false;
+
+        if(reason)
+            *reason = "geometry_missing";
+        return false;
+    }
+
+    auto resolve_from_geometry = [&](const VertexAttrib attrib,
+                                     const VkVertexInputRate requested_input_rate,
+                                     bool &has_storage,
+                                     VkFormat &storage_format,
+                                     uint32_t &storage_stride,
+                                     VkVertexInputRate &storage_input_rate) -> bool
+    {
+        (void)requested_input_rate;
+
+        auto *vab = geometry->GetVAB(attrib);
+        if(!vab)
+        {
+            has_storage = false;
+            return true;
+        }
+
+        has_storage = true;
+        storage_format = vab->GetFormat();
+        storage_stride = vab->GetStride();
+        storage_input_rate = VK_VERTEX_INPUT_RATE_VERTEX;
+        return true;
+    };
+
+    return BuildGeometryDrivenVILConfigFromVertexInputWithResolver(vertex_input,
+                                                                   requested_vil,
+                                                                   resolve_from_geometry,
+                                                                   out_cfg,
+                                                                   has_any,
+                                                                   reason,
+                                                                   has_layout_mismatch);
+}
+
 inline bool BuildGeometryDrivenVILConfig(const MaterialTemplate *material,
                                          const Geometry *geometry,
                                          const VIL *requested_vil,
@@ -191,6 +252,31 @@ inline bool BuildGeometryDrivenVILConfig(const MaterialTemplate *material,
                                                        has_any,
                                                        reason,
                                                        has_layout_mismatch);
+}
+
+inline void ReleaseOwnedRuntimeVIL(const VIL *&active_vil,
+                                   VIL *&owned_runtime_vil,
+                                   const auto &release_owned)
+{
+    if(owned_runtime_vil)
+        release_owned(owned_runtime_vil);
+
+    if(active_vil == owned_runtime_vil)
+        active_vil = nullptr;
+
+    owned_runtime_vil = nullptr;
+}
+
+inline void ReplaceRuntimeVILBinding(const VIL *&active_vil,
+                                     VIL *&owned_runtime_vil,
+                                     const VIL *new_active_vil,
+                                     VIL *new_owned_runtime_vil,
+                                     const auto &release_owned)
+{
+    ReleaseOwnedRuntimeVIL(active_vil, owned_runtime_vil, release_owned);
+
+    active_vil = new_active_vil;
+    owned_runtime_vil = new_owned_runtime_vil;
 }
 
 }

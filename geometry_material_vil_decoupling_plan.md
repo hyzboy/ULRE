@@ -16,8 +16,8 @@
 
 ## 总体完成度
 
-- 总进度：约 84%（Phase 0、Phase 1 已完成，Phase 2 已完成共享入口与运行时 VIL 首轮收口，Phase 4 的主要调用点迁移已完成）
-- 当前阶段：Phase 2（进行中，验证收尾），Phase 3（未开始），Phase 4（基本完成，待专项路径处理）
+- 总进度：约 96%（Phase 0、Phase 1 已完成，Phase 2 已完成共享入口、resolver 语义与 direct/deferred 生命周期回归，Phase 4 的主要调用点迁移已完成）
+- 当前阶段：Phase 2（进行中，文档与全量回归收尾），Phase 3（未开始），Phase 4（基本完成，待专项路径处理）
 
 ## 分阶段计划与完成度
 
@@ -39,7 +39,7 @@
 
 ## Phase 2：绑定侧兼容校验改造
 
-状态：进行中（84%）
+状态：进行中（96%）
 
 1. 已完成首轮：将 `Primitive` 绑定中的 `format ==` 与 `stride ==` 强校验替换为基于 shader/storage 的兼容校验，且 direct/deferred 两条绑定路径都已接入首轮兼容逻辑。
 2. 使用兼容规则：
@@ -50,8 +50,9 @@
 4. 已完成首轮：`Primitive` 已持有并释放运行时生成的 `VIL`，direct/deferred 两条绑定路径统一走 effective `VIL`。
 5. 已完成：抽取共享顶点绑定兼容 helper，`Primitive` 与 `MaterialAssetRegistry` 已复用同一套 shader/storage 兼容判断，减少规则漂移。
 6. 已完成首轮：`Primitive` effective VIL 与 registry 的 `ResolveVILFromGeometry` 已复用同一 geometry-driven `VILConfig` 构建入口，减少双路径实现差异。
-7. 进行中：已新增共享兼容 helper 与共享入口前置语义（reason/失败分支）测试，并补充 `VertexInput` 级共享入口以提升可测性（含 reason 优先级与输出状态 has_any/cfg/has_layout_mismatch 契约测试）；后续继续补充 direct/deferred 绑定与 runtime VIL 场景回归。
-8. 已完成：修复 `test_vertex_binding_compat_helper` 的输入构造（`VertexInputAttribute.storage_format` 显式初始化），消除默认 VIL 构建阶段的未初始化格式断言；当前该测试集可完整通过。
+7. 已完成：已新增共享兼容 helper 与共享入口前置语义（reason/失败分支）测试，并补充 `VertexInput` 级共享入口与 resolver 场景验证（成功/布局不匹配/lookup 失败/不兼容存储/必需属性缺失），覆盖 reason 优先级与输出状态 has_any/cfg/has_layout_mismatch 契约。
+8. 已完成首轮：补充 direct/deferred 绑定与 runtime VIL 生命周期回归（释放旧 runtime VIL、active/owned 指针切换、direct rebind 与 deferred rebind 转移语义），并通过 `test_vertex_binding_compat_helper` 实跑验证。
+9. 已完成：修复 `test_vertex_binding_compat_helper` 的输入构造（`VertexInputAttribute.storage_format` 显式初始化），消除默认 VIL 构建阶段的未初始化格式断言；当前该测试集可完整通过。
 
 ## Phase 3：运行时 Resolve 对齐
 
