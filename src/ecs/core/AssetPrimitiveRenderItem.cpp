@@ -4,7 +4,6 @@
 #include <hgl/ecs/components/TransformComponent.h>
 #include <hgl/graph/mesh/Primitive.h>
 #include <hgl/vk/VKMaterialTemplate.h>
-#include <hgl/vk/VKMaterialInstance.h>
 
 namespace hgl::ecs
 {

@@ -5,7 +5,6 @@
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKMaterialResourceDomain.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/graph/PrimitiveMaterialSlot.h>
 #include<hgl/type/ObjectManager.h>
 #include<hgl/graph/module/ShaderGenValidationTypes.h>
@@ -31,20 +30,11 @@ namespace mtl
 }//namespace mtl
 
 using MaterialTemplateID    = int;
-using MaterialInstanceID    = int;
 using ShaderModuleMapByName = ankerl::unordered_dense::map<std::string,ShaderModule *>;
 
 struct MaterialSpecKey
 {
     std::string cache_name;
-};
-
-struct MaterialInstanceSpecKey
-{
-    MaterialTemplate *material = nullptr;
-    const VIL *vil = nullptr;
-    GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
-    MaterialResourceDomain *domain = nullptr;
 };
 
 struct MaterialSpec
@@ -69,22 +59,6 @@ struct MaterialSpec
     bool IsValid() const;
 };
 
-struct MaterialInstanceSpec
-{
-    MaterialTemplate *material = nullptr;
-    MaterialResourceDomain *domain = nullptr;
-
-    const VIL *vil = nullptr;
-    const VILConfig *vil_cfg = nullptr;
-
-    const void *instance_data = nullptr;
-    uint32 instance_data_size = 0;
-
-    GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
-
-    bool IsValid() const { return material || domain; }
-};
-
 struct MaterialAcquireStats
 {
     uint64_t requests = 0;
@@ -93,12 +67,6 @@ struct MaterialAcquireStats
     uint64_t cache_misses = 0;
     uint64_t created = 0;
     uint64_t fallback_used = 0;
-};
-
-struct MaterialInstanceAcquireStats
-{
-    uint64_t requests = 0;
-    uint64_t created = 0;
 };
 
 struct MaterialSlotAllocateStats
@@ -121,7 +89,6 @@ private:
     ankerl::unordered_dense::map<std::string,MaterialTemplate *> material_by_name;
 
     AutoIdObjectManager<MaterialTemplateID,            MaterialTemplate>          rm_shader_program;
-    AutoIdObjectManager<MaterialInstanceID,         MaterialInstance>       rm_material_instance;
 
     ankerl::unordered_dense::map<MaterialTemplate *,          MaterialResourceDomain *>   default_domain_map;
 
@@ -145,9 +112,6 @@ private:
     std::atomic<uint64_t> acquire_material_cache_misses {0};
     std::atomic<uint64_t> acquire_material_created {0};
     std::atomic<uint64_t> acquire_fallback_used {0};
-
-    std::atomic<uint64_t> acquire_mi_requests {0};
-    std::atomic<uint64_t> acquire_mi_created {0};
 
     std::atomic<uint64_t> alloc_slot_requests {0};
     std::atomic<uint64_t> alloc_slot_created {0};
@@ -192,21 +156,14 @@ public: //Material resource access
 public: //Add
 
     MaterialTemplateID  Add(MaterialTemplate *  mtl ){return rm_shader_program.Add(mtl);}
-    MaterialInstanceID  Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
 
 public: //Get
 
     MaterialTemplate *  GetMaterial         (const MaterialTemplateID & id){return rm_shader_program.Get(id);}
-    MaterialInstance *  GetMaterialInstance (const MaterialInstanceID & id){return rm_material_instance.Get(id);}
-    MaterialTemplate *  ResolveMaterial     (const MaterialInstance *   mi)const;
 
 public: //Release
 
     void Release(MaterialTemplate *         mtl ){rm_shader_program.Release(mtl);}
-    void Release(MaterialInstance * mi  )
-    {
-        rm_material_instance.Release(mi);
-    }
 
     void Destroy(MaterialTemplate *mtl)
     {
@@ -227,34 +184,23 @@ public: //Release
         rm_shader_program.Release(mtl, true);
     }
 
-    void Destroy(MaterialInstance *mi)
-    {
-        if (!mi)
-            return;
-
-        rm_material_instance.Release(mi, true);
-    }
-
 public: // Override Release from GraphModule - cleanup all resources
 
     void Release() override
     {
         const MaterialAcquireStats mat_stats = GetMaterialAcquireStats();
-        const MaterialInstanceAcquireStats mi_stats = GetMaterialInstanceAcquireStats();
         const MaterialSlotAllocateStats slot_stats = GetMaterialSlotAllocateStats();
 
-        if (mat_stats.requests > 0 || mi_stats.requests > 0 || slot_stats.requests > 0)
+        if (mat_stats.requests > 0 || slot_stats.requests > 0)
         {
             std::fprintf(stderr,
-                "[MaterialManager] AcquireStats: material(req=%llu lookup=%llu hit=%llu miss=%llu created=%llu fallback=%llu) mi(req=%llu created=%llu) slot(req=%llu created=%llu with_mi=%llu no_mi=%llu failed=%llu no_mi_payload_rejected=%llu)\n",
+                "[MaterialManager] AcquireStats: material(req=%llu lookup=%llu hit=%llu miss=%llu created=%llu fallback=%llu) slot(req=%llu created=%llu with_mi=%llu no_mi=%llu failed=%llu no_mi_payload_rejected=%llu)\n",
                 static_cast<unsigned long long>(mat_stats.requests),
                 static_cast<unsigned long long>(mat_stats.cache_lookups),
                 static_cast<unsigned long long>(mat_stats.cache_hits),
                 static_cast<unsigned long long>(mat_stats.cache_misses),
                 static_cast<unsigned long long>(mat_stats.created),
                 static_cast<unsigned long long>(mat_stats.fallback_used),
-                static_cast<unsigned long long>(mi_stats.requests),
-                static_cast<unsigned long long>(mi_stats.created),
                 static_cast<unsigned long long>(slot_stats.requests),
                 static_cast<unsigned long long>(slot_stats.created),
                 static_cast<unsigned long long>(slot_stats.with_mi),
@@ -262,10 +208,6 @@ public: // Override Release from GraphModule - cleanup all resources
                 static_cast<unsigned long long>(slot_stats.failed),
                 static_cast<unsigned long long>(slot_stats.no_mi_payload_rejected));
         }
-
-        // 清理所有材质实例（MI dtor 会调 domain->FreeMISlot，domain 须在此之后释放）
-        if (rm_material_instance.GetCount() > 0)
-            rm_material_instance.Clear();
 
         // Phase 3: 清理所有 DomainMaterialBinding 及 MaterialResourceDomain
         for (auto &kv : domain_bindings_map)
@@ -338,14 +280,6 @@ public: // Acquire stats
         return s;
     }
 
-    MaterialInstanceAcquireStats GetMaterialInstanceAcquireStats() const
-    {
-        MaterialInstanceAcquireStats s;
-        s.requests = acquire_mi_requests.load();
-        s.created = acquire_mi_created.load();
-        return s;
-    }
-
     MaterialSlotAllocateStats GetMaterialSlotAllocateStats() const
     {
         MaterialSlotAllocateStats s;
@@ -366,8 +300,6 @@ public: // Acquire stats
         acquire_material_cache_misses.store(0);
         acquire_material_created.store(0);
         acquire_fallback_used.store(0);
-        acquire_mi_requests.store(0);
-        acquire_mi_created.store(0);
         alloc_slot_requests.store(0);
         alloc_slot_created.store(0);
         alloc_slot_with_mi.store(0);
@@ -454,9 +386,6 @@ public: // Phase 0 Stats — 帧级资源量观测
 
     /// 当前存活 MaterialTemplate 数量
     uint32_t GetMaterialCount()         const { return (uint32_t)rm_shader_program.GetCount(); }
-
-    /// 当前存活 MaterialInstance 数量
-    uint32_t GetMaterialInstanceCount() const { return (uint32_t)rm_material_instance.GetCount(); }
 
     /// 当前存活 MaterialResourceDomain 数量（Phase 3）
     uint32_t GetDomainCount()           const { return (uint32_t)domain_bindings_map.size(); }

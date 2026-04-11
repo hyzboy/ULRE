@@ -74,8 +74,6 @@ private:
 
     TickData ticks[TICK_COUNT];
 
-    MaterialInstance *mi_tick;
-
     // 指针数据
     struct HandData
     {

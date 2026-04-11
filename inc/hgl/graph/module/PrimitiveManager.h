@@ -11,7 +11,6 @@ using PrimitiveID = int;
 // Forward declarations to avoid header ordering issues
 class GeometryCreater;
 class Geometry;
-class MaterialInstance;
 using SemanticMaterialId = uint64;
 struct PrimitiveMaterialSlot;
 

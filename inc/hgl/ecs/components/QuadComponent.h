@@ -11,7 +11,6 @@ namespace hgl::graph
 {
     class Texture2D;
     class Sampler;
-    class MaterialInstance;
 }
 
 namespace hgl::ecs

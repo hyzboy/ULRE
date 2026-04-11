@@ -228,7 +228,6 @@ class MaterialDescriptorManager;
 
 class MaterialTemplate;
 class MaterialParameters;
-class MaterialInstance;
 struct GraphicsPipelineData;
 enum class GraphicsPipelinePreset;
 class GraphicsPipeline;

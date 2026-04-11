@@ -83,12 +83,22 @@ private:
         if (!graphics_context)
             return false;
 
-        prim_triangle = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                                 semantic_material_id,
-                                                                 "Triangle",
-                                                                 VERTEX_COUNT,
-                                                                 {{VAN::Position,VF_V2F,position_data},
-                                                                  {VAN::Color,VF_V4UN8,color_data}});
+        prim_triangle = GraphicsGeometryFactory::CreatePrimitive(
+            graphics_context,
+            semantic_material_id,
+            [&](auto *pc) -> Geometry *
+            {
+                if (!pc || !pc->Init("Triangle", VERTEX_COUNT))
+                    return nullptr;
+
+                if (!pc->WriteVAB(VAN::Position, VF_V2F, position_data))
+                    return nullptr;
+
+                if (!pc->WriteVAB(VAN::Color, VF_V4UN8, color_data))
+                    return nullptr;
+
+                return pc->Create();
+            });
 
         return prim_triangle!=nullptr;
     }

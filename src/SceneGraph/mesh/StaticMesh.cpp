@@ -78,7 +78,6 @@ void StaticMesh::ClearPrimitives()
 
     // 清空集合和缓存
     geometry_set.Clear();
-    mat_inst_set.Clear();
     pipeline_set.Clear();
     _primitive_pipeline_cache.clear();
 
@@ -134,7 +133,6 @@ void StaticMesh::RefreshBoundingVolumes()
 void StaticMesh::RebuildResourceSets()
 {
     geometry_set.Clear();
-    mat_inst_set.Clear();
     pipeline_set.Clear();
 
     for(Primitive *sm : primitive_list)

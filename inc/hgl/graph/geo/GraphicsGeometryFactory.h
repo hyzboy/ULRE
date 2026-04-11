@@ -6,7 +6,6 @@
 #include <hgl/vk/VKFormat.h>
 #include <hgl/type/String.h>
 #include <hgl/vk/VKMaterialTemplate.h>
-#include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/RuntimeMaterialRequest.h>
 #include <hgl/graph/module/MaterialDomainHandle.h>
@@ -19,7 +18,6 @@ class GraphicsContext;
 class GeometryCreater;
 class Geometry;
 class Primitive;
-class MaterialInstance;
 class VertexDataManager;
 class VertexInputLayout;
 using VIL=VertexInputLayout;
@@ -45,7 +43,6 @@ public:
 public:
     std::unique_ptr<GeometryCreater> CreateCreater(const VIL *vil) const;
     std::unique_ptr<GeometryCreater> CreateCreater(VertexDataManager *vdm) const;
-    std::unique_ptr<GeometryCreater> CreateCreater(MaterialInstance *mi) const;
 
 public:
     Geometry *RegisterGeometry(Geometry *geometry) const;
@@ -129,22 +126,5 @@ public:
                                     uint32_t vertex_count,
                                     std::initializer_list<VertexAttribWrite> vertex_writes);
 
-    static Geometry *CreateGeometry(GraphicsContext *graphics_context,
-                                    MaterialInstance *material_instance,
-                                    const AnsiString &geometry_name,
-                                    uint32_t vertex_count,
-                                    std::initializer_list<VertexAttribWrite> vertex_writes);
-
-    static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
-                                      const PrimitiveMaterialSlot &slot,
-                                      const AnsiString &geometry_name,
-                                      uint32_t vertex_count,
-                                      std::initializer_list<VertexAttribWrite> vertex_writes);
-
-    static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
-                                      SemanticMaterialId semantic_id,
-                                      const AnsiString &geometry_name,
-                                      uint32_t vertex_count,
-                                      std::initializer_list<VertexAttribWrite> vertex_writes);
 };
 }

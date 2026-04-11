@@ -31,7 +31,6 @@ struct StaticMeshNode
 };//struct StaticMeshNode
 
 using GeometryPtrSet        =OrderedSet<Geometry *>;
-using MaterialInstanceSet   =OrderedSet<MaterialInstance *>;
 using PipelinePtrSet        =OrderedSet<GraphicsPipeline *>;
 using PrimitiveList         =ManagedArray<Primitive>;
 
@@ -43,7 +42,6 @@ class StaticMesh
 {
     // Primitive / 资源集合
     GeometryPtrSet          geometry_set;                                                                               ///< 关联的 Geometry 集合(仅持引用)
-    MaterialInstanceSet     mat_inst_set;                                                                               ///< 使用到的材质实例集合(仅持引用)
     PipelinePtrSet          pipeline_set;                                                                               ///< 使用到的管线集合(仅持引用)
 
     PrimitiveList           primitive_list;                                                                             ///< Primitive列表
@@ -67,8 +65,6 @@ public: // Geometry / MaterialInstanceData / GraphicsPipeline(仅保存引用,�
     bool                        AttachGeometry      (Geometry *geometry);
     void                        DetachGeometry      (Geometry *geometry);
     const GeometryPtrSet &      GetGeometries       () const { return geometry_set; }
-
-    const MaterialInstanceSet & GetMaterialInstances() const { return mat_inst_set; }
     const PipelinePtrSet &      GetPipelines        () const { return pipeline_set; }
 
 public: // Primitive 管理

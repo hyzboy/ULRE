@@ -5,7 +5,6 @@
 #include <hgl/graph/mesh/LoadStaticMesh.h>
 #include <hgl/graph/mesh/StaticMesh.h>
 #include <hgl/graph/mesh/Primitive.h>
-#include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/io/MiniPack.h>
 #include <hgl/type/StdString.h>

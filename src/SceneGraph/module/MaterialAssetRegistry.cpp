@@ -4,7 +4,6 @@
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/vk/VKMaterialTemplate.h>
-#include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/vk/VKMaterialResourceDomain.h>
 #include <hgl/vk/VKDomainMaterialBinding.h>
 #include <hgl/vk/VKVertexInput.h>

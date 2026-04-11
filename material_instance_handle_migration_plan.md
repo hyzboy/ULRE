@@ -371,6 +371,12 @@ M4: Stage 6-7 完成
     - VKMaterialInstance.cpp
 2. 删除后同步清理包含与构建条目（头文件 include、CMake 源列表）。
 
+### 10.2 当前进度（2026-04-11）
+- 已完成：外围 include 去耦（AssetPrimitiveRenderItem.cpp、LoadStaticMesh.cpp、GraphicsGeometryFactory.h、MaterialAssetRegistry.cpp）。
+- 已完成：example/Basic/clock.cpp 残留 `MaterialInstance *mi_tick` 清理。
+- 现状：`#include <hgl/vk/VKMaterialInstance.h>` 仅剩 `MaterialManager.h` 与 `VKMaterialInstance.cpp`。
+- 阻塞点：`MaterialManager.h` 仍以 `AutoIdObjectManager<MaterialInstanceID, MaterialInstance>` 持有兼容类对象池，删除文件前需先移除该对象池与相关 API 面。
+
 ## 10.3 src 调用点迁移（必须清零）
 1. QuadMaterialBindingSystem.cpp：CreateMaterialInstance 2 处。
 2. TextRenderPipeline.cpp：CreateMaterialInstance 1 处。

@@ -6,7 +6,6 @@
 namespace hgl::graph
 {
     class MaterialTemplate;
-    class MaterialInstance;
     class GraphicsPipeline;
 }
 
@@ -34,7 +33,6 @@ namespace hgl::ecs
         uint32_t grid_height = 32;  ///< 单 Tile Y 方向 Quad 数量
 
         hgl::graph::MaterialTemplate*         material  = nullptr;  ///< Vulkan 材质（含高度图绑定，不持有）
-        hgl::graph::MaterialInstance* mat_inst  = nullptr;  ///< 材质实例（不持有）
         hgl::graph::GraphicsPipeline*         pipeline  = nullptr;  ///< Vulkan 管线（不持有；全体 Tile 共享）
 
         bool visible = true;  ///< 是否参与渲染

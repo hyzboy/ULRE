@@ -389,11 +389,6 @@ MaterialResourceDomain *MaterialManager::GetOrCreateDefaultDomain(MaterialTempla
     return domain;
 }
 
-MaterialTemplate *MaterialManager::ResolveMaterial(const MaterialInstance *mi) const
-{
-    return mi ? mi->GetMaterial() : nullptr;
-}
-
 bool MaterialManager::ExecuteMaterialBuildPipeline(MaterialTemplate *mtl,
                                                    const std::string &mtl_name,
                                                    const mtl::MaterialCreateInfo *mci,

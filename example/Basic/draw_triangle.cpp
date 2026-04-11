@@ -90,12 +90,35 @@ private:
         if (!graphics_context)
             return false;
 
-        prim_triangle = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                                 semantic_material_id,
-                                                                 "Triangle",
-                                                                 VERTEX_COUNT,
-                                                                 {{VAN::Position, POSITION_DATA_FORMAT, position_data},
-                                                                  {VAN::Color, COLOR_DATA_FORMAT, color_data}});
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        mtl::MaterialAssetRecord rec;
+        if (!registry->QuerySemanticMaterial(semantic_material_id, rec))
+            return false;
+
+        MaterialDomainHandle handle = registry->Acquire(rec);
+        if (!handle.material)
+            return false;
+
+        const VIL *vil = handle.material->GetDefaultVIL();
+        if (!vil)
+            return false;
+
+        Geometry *geometry = GraphicsGeometryFactory::CreateGeometry(
+            graphics_context,
+            vil,
+            "Triangle",
+            VERTEX_COUNT,
+            {{VAN::Position, POSITION_DATA_FORMAT, position_data},
+             {VAN::Color, COLOR_DATA_FORMAT, color_data}});
+
+        if (!geometry)
+            return false;
+
+        GraphicsGeometryFactory geometry_factory(graphics_context);
+        prim_triangle = geometry_factory.CreatePrimitive(geometry, semantic_material_id);
 
         if(!prim_triangle)
             return(false);
