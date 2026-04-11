@@ -30,6 +30,16 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
+namespace
+{
+const VertexFormatMap kLitSurfaceVertexFormats = {
+    {VAN::Position, PF_RGB32F},
+    {VAN::Normal,   PF_RGB32F},
+    {VAN::Tangent,  PF_RGB32F},
+    {VAN::TexCoord, PF_RG32F},
+};
+}
+
 class TextureBlinnPhongMeshesECSApp : public WorkObject
 {
 private:
@@ -47,7 +57,6 @@ private:
     ECSContext* ecs_context = nullptr;
     Entity* camera_entity = nullptr;
 
-    const VIL* material_vil = nullptr;
     SemanticMaterialId standard_semantic_id = 0;
     VertexDataManager* mesh_vdm = nullptr;
     mtl::StandardMaterialInstance standard_mi_data{};
@@ -103,8 +112,7 @@ private:
         if (!handle.IsValid() || !handle.material)
             return false;
 
-        material_vil = registry->ResolveVIL(handle.material, kStandardCfg, nullptr);
-        if (!material_vil)
+        if (!registry->ResolveVIL(handle.material, kStandardCfg, nullptr))
             return false;
 
         return true;
@@ -117,7 +125,7 @@ private:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, material_vil);
+        mesh_vdm = new VertexDataManager(buffer_manager, kLitSurfaceVertexFormats);
         if (!mesh_vdm)
             return false;
 

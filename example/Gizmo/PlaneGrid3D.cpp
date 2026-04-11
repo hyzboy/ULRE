@@ -109,7 +109,7 @@ private:
         pgci.lum=180;
         pgci.sub_lum=255;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material_slot[0].vil);
+        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(material_slot[0].vil));
 
         geom_plane_grid=CreatePlaneGrid2D(pc.get(),&pgci);
         if (geom_plane_grid)

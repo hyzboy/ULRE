@@ -10,14 +10,15 @@
 #include<hgl/log/Log.h>
 #include<cassert>
 #include<cstdio>
+#include<cstring>
 
 namespace hgl::graph{
-GeometryCreater::GeometryCreater(VulkanDevice *dev,const VIL *v,BufferManager *bm)
+GeometryCreater::GeometryCreater(VulkanDevice *dev,const VertexFormatMap &format_map,BufferManager *bm)
 {
     device          =dev;
     buffer_manager  =bm;
     vdm             =nullptr;
-    vil             =v;
+    vertex_format_map = format_map;
 
     has_index       =false;
     geometry_data   =nullptr;
@@ -26,13 +27,18 @@ GeometryCreater::GeometryCreater(VulkanDevice *dev,const VIL *v,BufferManager *b
 }
 
 GeometryCreater::GeometryCreater(VertexDataManager *_vdm)
-    :GeometryCreater(_vdm->GetDevice(),_vdm->GetVIL(),_vdm->GetBufferManager())
 {
+    device          = _vdm ? _vdm->GetDevice() : nullptr;
+    buffer_manager  = _vdm ? _vdm->GetBufferManager() : nullptr;
     vdm=_vdm;
+    vertex_format_map.clear();
 
-    has_index=vdm->GetIBO();
+    has_index=vdm ? vdm->GetIBO() : nullptr;
 
-    index_type=vdm->GetIndexType();
+    index_type=vdm ? vdm->GetIndexType() : IndexType::ERR;
+
+    geometry_data   =nullptr;
+    Clear();
 }
 
 GeometryCreater::~GeometryCreater()
@@ -92,9 +98,9 @@ bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,c
     else
     {
         if (buffer_manager)
-            geometry_data=CreateGeometryData(buffer_manager,vil,vertices_number,buffer_policy);
+            geometry_data=CreateGeometryData(buffer_manager,vertex_format_map,vertices_number,buffer_policy);
         else
-            geometry_data=CreateGeometryData(device,vil,vertices_number,buffer_policy);
+            geometry_data=CreateGeometryData(device,vertex_format_map,vertices_number,buffer_policy);
     }
 
     if(!geometry_data)return(false);
@@ -131,13 +137,13 @@ const int GeometryCreater::InitVAB(const VertexAttrib &attrib,const VkFormat for
 
     const int vab_index=geometry_data->GetVABIndex(attrib);
 
-    if(vab_index<0||vab_index>=vil->GetVertexAttribCount())
+    if(vab_index<0||vab_index>=static_cast<int>(geometry_data->GetVABCount()))
     {
         std::fprintf(stderr,
-            "[GeometryCreater] InitVAB failed: attrib='%s' not present in VIL, index=%d attrib_count=%u\n",
+            "[GeometryCreater] InitVAB failed: attrib='%s' not present in geometry layout, index=%d attrib_count=%u\n",
             GetVertexAttribName(attrib),
             vab_index,
-            vil ? vil->GetVertexAttribCount() : 0u);
+            geometry_data ? geometry_data->GetVABCount() : 0u);
 //#ifdef _DEBUG
 //        assert(false && "GeometryCreater::InitVAB attrib missing in VIL");
 //#endif
@@ -146,15 +152,17 @@ const int GeometryCreater::InitVAB(const VertexAttrib &attrib,const VkFormat for
 
     if(format!=VK_FORMAT_UNDEFINED)
     {
-        const VIF *vif=vil->GetConfig(vab_index);
+        const VkFormat expected_format=geometry_data->GetVABFormat(vab_index);
+        if(expected_format==VK_FORMAT_UNDEFINED)
+            return(-1);
 
-        if(vif->format!=format)
+        if(expected_format!=format)
         {
             std::fprintf(stderr,
                 "[GeometryCreater] InitVAB format mismatch: geom='%s' attrib='%s' expected='%s' requested='%s'\n",
                 geometry_name.c_str(),
                 GetVertexAttribName(attrib),
-                GetVulkanFormatName(vif->format),
+                GetVulkanFormatName(expected_format),
                 GetVulkanFormatName(format));
 #ifdef _DEBUG
             assert(false && "GeometryCreater::InitVAB format mismatch");
@@ -330,9 +338,9 @@ Geometry *GeometryCreater::Create()
 // -----------------------------------------------------------------------------
 //  新增：直接创建 Geometry 的便捷函数
 // -----------------------------------------------------------------------------
-Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString &name, const uint32_t vertex_count, const uint32_t index_count , IndexType it, BufferManager *bm, BufferAllocPolicy policy)
+Geometry *CreateGeometry(VulkanDevice *device, const VertexFormatMap &format_map, const AnsiString &name, const uint32_t vertex_count, const uint32_t index_count , IndexType it, BufferManager *bm, BufferAllocPolicy policy)
 {
-    if(!device || !vil || name.IsEmpty() || vertex_count==0)
+    if(!device || format_map.empty() || name.IsEmpty() || vertex_count==0)
         return nullptr;
 
     IndexType index_type = IndexType::ERR;
@@ -356,8 +364,8 @@ Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString 
     }
 
 // 创建 GeometryData（使用 device 分配私有缓冲）
-    GeometryData *pd = bm ? CreateGeometryData(bm, vil, vertex_count, policy)
-                          : CreateGeometryData(device, vil, vertex_count, policy);
+    GeometryData *pd = bm ? CreateGeometryData(bm, format_map, vertex_count, policy)
+                          : CreateGeometryData(device, format_map, vertex_count, policy);
 
     if(!pd)
         return nullptr;

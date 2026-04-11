@@ -80,7 +80,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, sky_vil);
+        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(sky_vil));
 
         struct HexSphereCreateInfo hsci;
 

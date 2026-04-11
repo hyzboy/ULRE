@@ -113,7 +113,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, axis_vil);
+        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(axis_vil));
 
         inline_geometry::AxisCreateInfo aci;
 

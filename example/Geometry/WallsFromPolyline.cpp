@@ -25,6 +25,16 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+namespace
+{
+const VertexFormatMap kWallVertexFormats = {
+    {VAN::Position, PF_RGB32F},
+    {VAN::Normal,   PF_RGB32F},
+    {VAN::Tangent,  PF_RGB32F},
+    {VAN::TexCoord, PF_RG32F},
+};
+}
+
 class TestApp:public WorkObject
 {
 private:
@@ -151,7 +161,7 @@ public:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, material_vil);
+        mesh_vdm = new VertexDataManager(buffer_manager, kWallVertexFormats);
         if (!mesh_vdm)
             return false;
         if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))

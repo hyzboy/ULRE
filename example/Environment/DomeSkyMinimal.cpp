@@ -84,7 +84,7 @@ private:
         using namespace inline_geometry;
 
         {
-            auto pc = std::make_unique<GeometryCreater>(device, sky_vil);
+            auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(sky_vil));
 
             DomeCreateInfo dci;
             dci.number_slices = 64;
@@ -101,7 +101,7 @@ private:
         }
 
         {
-            auto pc = std::make_unique<GeometryCreater>(device, sky_vil);
+            auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(sky_vil));
 
             prim_ground_plane = CreatePlaneSqaure(pc.get());
             if (!prim_ground_plane)

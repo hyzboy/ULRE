@@ -162,7 +162,7 @@ std::unique_ptr<GeometryCreater> GraphicsGeometryFactory::CreateCreater(const VI
     if(!device || !buffer_manager)
         return nullptr;
 
-    return std::make_unique<GeometryCreater>(device, vil, buffer_manager);
+    return std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(vil), buffer_manager);
 }
 
 std::unique_ptr<GeometryCreater> GraphicsGeometryFactory::CreateCreater(VertexDataManager *vdm) const

@@ -37,6 +37,16 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
+namespace
+{
+const VertexFormatMap kLitSurfaceVertexFormats = {
+    {VAN::Position, PF_RGB32F},
+    {VAN::Normal,   PF_RGB32F},
+    {VAN::Tangent,  PF_RGB32F},
+    {VAN::TexCoord, PF_RG32F},
+};
+}
+
 constexpr const COLOR TestColor[]=
 {
     COLOR::MozillaCharcoal,
@@ -201,7 +211,7 @@ private:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, solid.vil);
+        mesh_vdm = new VertexDataManager(buffer_manager, kLitSurfaceVertexFormats);
         if (!mesh_vdm)
             return false;
         if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))

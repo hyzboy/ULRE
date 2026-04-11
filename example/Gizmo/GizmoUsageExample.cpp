@@ -100,7 +100,7 @@ private:
 
             grid_material = grid_slot.material_template;
 
-            auto pc = std::make_unique<GeometryCreater>(device, grid_slot.vil);
+            auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(grid_slot.vil));
 
             inline_geometry::PlaneGridCreateInfo pgci;
             pgci.grid_size.Set(64, 64);
@@ -147,7 +147,7 @@ private:
 
             cube_material = cube_slot.material_template;
 
-            auto pc = std::make_unique<GeometryCreater>(device, cube_slot.vil);
+            auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(cube_slot.vil));
 
             inline_geometry::CubeCreateInfo cci;
             cci.segments_x = 2;

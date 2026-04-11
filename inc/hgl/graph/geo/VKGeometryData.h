@@ -4,6 +4,7 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKMemory.h>
 #include<hgl/common/VertexAttribDef.h>
+#include<hgl/common/VertexFormatMap.h>
 
 namespace hgl::graph{
 
@@ -26,7 +27,7 @@ class GeometryData
 {
 protected:
 
-    const VIL *     vil;
+    VertexFormatMap vertex_format_map;
 
     uint32_t        vertex_count;
     uint32_t        index_count;
@@ -43,7 +44,7 @@ protected:
 
 public:
 
-    GeometryData(const VIL *_vil,const uint32_t vc);
+    GeometryData(const VertexFormatMap &format_map,const uint32_t vertex_count);
     virtual ~GeometryData();
 
 public:
@@ -51,6 +52,7 @@ public:
     const   uint32_t        GetVertexCount  ()const{return vertex_count;}
     const   uint32_t        GetVABCount     ()const;
     const   int             GetVABIndex     (const VertexAttrib)const;
+            VkFormat         GetVABFormat    (const int index)const;
 
             bool            CreateAllVAB(const AnsiString &geometry_name="Geometry");     //根据VIL创建所有VAB
 
@@ -72,9 +74,9 @@ public:
 
 };//class GeometryData
 
-GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc);
-GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc,BufferAllocPolicy policy);
-GeometryData *CreateGeometryData(BufferManager *bm,const VIL *_vil,const uint32_t vc);
-GeometryData *CreateGeometryData(BufferManager *bm,const VIL *_vil,const uint32_t vc,BufferAllocPolicy policy);
-GeometryData *CreateGeometryData(VertexDataManager *vdm,const uint32_t vc);
+GeometryData *CreateGeometryData(VulkanDevice *dev,const VertexFormatMap &format_map,const uint32_t vertex_count);
+GeometryData *CreateGeometryData(VulkanDevice *dev,const VertexFormatMap &format_map,const uint32_t vertex_count,BufferAllocPolicy policy);
+GeometryData *CreateGeometryData(BufferManager *bm,const VertexFormatMap &format_map,const uint32_t vertex_count);
+GeometryData *CreateGeometryData(BufferManager *bm,const VertexFormatMap &format_map,const uint32_t vertex_count,BufferAllocPolicy policy);
+GeometryData *CreateGeometryData(VertexDataManager *vdm,const uint32_t vertex_count);
 }//namespace hgl::graph

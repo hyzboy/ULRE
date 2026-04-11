@@ -37,6 +37,9 @@ namespace hgl::ecs
     static std::unordered_map<const ECSContext*, graph::GraphicsPipelinePreset> g_world_quad_inline_pipeline;
     static std::unordered_map<const ECSContext*, graph::TextureChannelHint> g_world_quad_channel_hint;
     static std::unordered_map<const ECSContext*, bool> g_world_billboard_fixed_size;
+    static const graph::VertexFormatMap kQuadGeometryFormatMap = {
+        {graph::VAN::Position, PF_RGB32F},
+    };
 
     static graph::RenderAlphaMode GraphicsPipelinePresetToBlendMode(graph::GraphicsPipelinePreset pipeline)
     {
@@ -281,11 +284,8 @@ namespace hgl::ecs
         if (!shared_slot.IsValid())
             return false;
 
-        // Phase B: use material's VIL directly instead of MI getter
-        const graph::VIL *use_vil = shared_material->GetDefaultVIL();
-
-        // Create shared quad geometry (explicit quad for VS/FS-only billboard path)
-        auto pc = std::make_unique<graph::GeometryCreater>(device, use_vil);
+        // Create shared quad geometry from explicit geometry format map.
+        auto pc = std::make_unique<graph::GeometryCreater>(device, kQuadGeometryFormatMap);
         pc->Init("Quad", 4, 6, graph::IndexType::U16);
 
         static const float position_data[12] =
@@ -525,19 +525,16 @@ namespace hgl::ecs
             // ── Shared primitive for this domain ─────────────────────
             if (!dr.primitive)
             {
-                // Phase B: use material's VIL directly instead of creating temp MI
-                const graph::VIL *use_vil = dr.material->GetDefaultVIL();
-                
                 const auto current_preset = GetPresetForWorld(world);
                 const graph::PrimitiveMaterialSlot slot = material_manager->AllocMaterialInstanceSlot(
                     dr.dmb->GetDomain(),
                     dr.material,
-                    use_vil,
+                        dr.material->GetDefaultVIL(),
                     current_preset);
 
                 if (slot.IsValid())
                 {
-                    auto pc = std::make_unique<graph::GeometryCreater>(device, use_vil);
+                    auto pc = std::make_unique<graph::GeometryCreater>(device, kQuadGeometryFormatMap);
                     pc->Init(AnsiString(("DomainQuad_" + dr.domain_tag).c_str()), 4, 6, graph::IndexType::U16);
 
                     static const float position_data[12] =

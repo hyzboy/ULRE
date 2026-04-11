@@ -371,7 +371,7 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const VIL *vil,hgl:
         return nullptr;
 
     // 3) Create GeometryData and VABs
-    GeometryData *geo_data=CreateGeometryData(device,vil,header.vertexCount);
+    GeometryData *geo_data=CreateGeometryData(device,MakeGeometryVertexFormatMap(vil),header.vertexCount);
 
     if(!geo_data)
     {

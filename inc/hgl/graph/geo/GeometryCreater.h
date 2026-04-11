@@ -7,8 +7,11 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKMemory.h>
+#include<hgl/common/VertexInputDef.h>
+#include<hgl/common/VertexFormatMap.h>
 #include<cassert>
 #include<cstdio>
+#include<vector>
 
 namespace hgl::graph{
 class BufferManager;
@@ -22,8 +25,7 @@ protected:
     VulkanDevice *      device;
     BufferManager *     buffer_manager;
     VertexDataManager * vdm;
-
-    const VIL *         vil;
+    VertexFormatMap     vertex_format_map;
 
 protected:
 
@@ -48,7 +50,7 @@ protected:
 
 public:
 
-    GeometryCreater(VulkanDevice *,const VIL *,BufferManager *bm=nullptr);
+    GeometryCreater(VulkanDevice *,const VertexFormatMap &,BufferManager *bm=nullptr);
     GeometryCreater(VertexDataManager *);
     virtual ~GeometryCreater();
 
@@ -152,7 +154,7 @@ public: //创建可渲染对象
 };//class GeometryCreater
 
 Geometry *CreateGeometry(         VulkanDevice *  device,
-                            const   VIL *           vil,
+                            const   VertexFormatMap &        format_map,
                             const   AnsiString &    name,
                             const   uint32_t        vertex_count,
                             const   uint32_t        index_count = 0,

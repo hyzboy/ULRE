@@ -31,6 +31,16 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
+namespace
+{
+const VertexFormatMap kLitSurfaceVertexFormats = {
+    {VAN::Position, PF_RGB32F},
+    {VAN::Normal,   PF_RGB32F},
+    {VAN::Tangent,  PF_RGB32F},
+    {VAN::TexCoord, PF_RG32F},
+};
+}
+
 class BasicLitSunDirectionECSApp : public WorkObject
 {
 private:
@@ -57,7 +67,6 @@ private:
     SemanticMaterialId sky_semantic_id = 0;
 
     MaterialTemplate* material = nullptr;
-    const VIL* standard_vil = nullptr;
     SemanticMaterialId standard_semantic_id = 0;
     VertexDataManager* mesh_vdm = nullptr;
     mtl::StandardMaterialInstance standard_mi_data{};
@@ -137,7 +146,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, sky_vil);
+        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(sky_vil));
         if (!pc)
             return false;
 
@@ -187,8 +196,7 @@ private:
             return false;
 
         material = standard_handle.material;
-        standard_vil = standard_handle.material->GetDefaultVIL();
-        if (!standard_vil)
+        if (!standard_handle.material->GetDefaultVIL())
             return false;
 
         return true;
@@ -201,7 +209,7 @@ private:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, standard_vil);
+        mesh_vdm = new VertexDataManager(buffer_manager, kLitSurfaceVertexFormats);
         if (!mesh_vdm)
             return false;
 

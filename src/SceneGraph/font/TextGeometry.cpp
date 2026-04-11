@@ -34,7 +34,7 @@ namespace hgl::graph
         max_count=power_to_2(cc);
         draw_char_count=cc;
 
-        geometry_data=CreateGeometryData(device,vil,max_count);
+        geometry_data=CreateGeometryData(device,MakeGeometryVertexFormatMap(vil),max_count);
 
         geometry_data->CreateAllVAB();
 

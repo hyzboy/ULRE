@@ -99,7 +99,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material_vil);
+        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(material_vil));
 
         // 测试1: 矩形挤压成立方体
         prim_rect_cube = CreateExtrudedRectangle(pc.get(), 2.0f, 1.5f, 1.0f, math::Vector3f(0, 0, 1));

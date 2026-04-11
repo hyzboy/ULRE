@@ -122,7 +122,7 @@ private:
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
-        GeometryCreater pc(device, material_vil, buffer_manager);
+        GeometryCreater pc(device, MakeGeometryVertexFormatMap(material_vil), buffer_manager);
         pc.Init("TextureRect", 6);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
             !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))

@@ -86,7 +86,7 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, sky_vil);
+        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(sky_vil));
 
         HexSphereCreateInfo hsci;
         hsci.subdivisions = 3;

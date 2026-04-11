@@ -188,7 +188,7 @@ public:
         if (!registry->BuildSlot(handle_id, slot))
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, vil);
+        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(vil));
         geometry = inline_geometry::CreateSphere(pc.get(), 64);
         if (!geometry)
             return false;
@@ -390,7 +390,7 @@ private:
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
 
-        auto pc = std::make_unique<GeometryCreater>(device, cube_vil);
+        auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(cube_vil));
         inline_geometry::CubeCreateInfo cci{};
         cci.tex_coord = true;
         cci.normal = true;

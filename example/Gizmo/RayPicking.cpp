@@ -155,7 +155,7 @@ private:
 
         // === 创建平面网格几何体 ===
         {
-            auto pc = std::make_unique<GeometryCreater>(device, plane_grid_slot.vil);
+            auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(plane_grid_slot.vil));
 
             struct PlaneGridCreateInfo pgci;
 
@@ -181,7 +181,7 @@ private:
             if (!device || !buffer_manager || !geometry_manager)
                 return false;
 
-            GeometryCreater pc(device, line_slot.vil, buffer_manager);
+            GeometryCreater pc(device, MakeGeometryVertexFormatMap(line_slot.vil), buffer_manager);
             pc.Init("RayLine", 2);
             if (!pc.WriteVAB(VAN::Position, VF_V3F, position_data) ||
                 !pc.WriteVAB(VAN::Luminance, VF_V1UN8, lumiance_data))

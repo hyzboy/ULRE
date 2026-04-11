@@ -113,7 +113,7 @@ namespace
                 return false;
 
             using namespace inline_geometry;
-            auto pc = std::make_unique<GeometryCreater>(device, material->GetDefaultVIL());
+            auto pc = std::make_unique<GeometryCreater>(device, MakeGeometryVertexFormatMap(material->GetDefaultVIL()));
             if (!pc)
                 return false;
 

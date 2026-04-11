@@ -32,6 +32,16 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
+namespace
+{
+const VertexFormatMap kLitSurfaceVertexFormats = {
+    {VAN::Position, PF_RGB32F},
+    {VAN::Normal,   PF_RGB32F},
+    {VAN::Tangent,  PF_RGB32F},
+    {VAN::TexCoord, PF_RG32F},
+};
+}
+
 static constexpr uint GRID_SIZE = 10;
 static constexpr float SPHERE_SPACING = 2.5f;
 static constexpr uint GEOMETRY_VARIANT_COUNT = GRID_SIZE;
@@ -187,8 +197,7 @@ private:
             return false;
         }
 
-        if (!material_vil) return false;
-        mesh_vdm = new VertexDataManager(buffer_manager, material_vil);
+        mesh_vdm = new VertexDataManager(buffer_manager, kLitSurfaceVertexFormats);
         if (!mesh_vdm)
         {
             printf("[ERROR] InitVDM: Failed to create VertexDataManager\n");

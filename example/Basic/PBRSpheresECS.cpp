@@ -38,6 +38,16 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
+namespace
+{
+const VertexFormatMap kLitSurfaceVertexFormats = {
+    {VAN::Position, PF_RGB32F},
+    {VAN::Normal,   PF_RGB32F},
+    {VAN::Tangent,  PF_RGB32F},
+    {VAN::TexCoord, PF_RG32F},
+};
+}
+
 // 10×10 grid params
 static constexpr uint GRID_SIZE       = 10;    // spheres per axis
 static constexpr float SPHERE_SPACING = 2.5f;  // center-to-center distance
@@ -377,12 +387,7 @@ private:
             return false;
         }
 
-        if (!material_vil) {
-            printf("[ERROR] InitVDM: material_vil not initialized\n");
-            return false;
-        }
-
-        mesh_vdm = new VertexDataManager(buffer_manager, material_vil);
+        mesh_vdm = new VertexDataManager(buffer_manager, kLitSurfaceVertexFormats);
         if (!mesh_vdm) {
             printf("[ERROR] InitVDM: Failed to create VertexDataManager\n");
             return false;
