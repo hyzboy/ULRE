@@ -16,8 +16,8 @@
 
 ## 总体完成度
 
-- 总进度：约 90%（Phase 0、Phase 1、Phase 2 已完成，Phase 3 已进入实施，Phase 4 的主要调用点迁移已完成）
-- 当前阶段：Phase 3（已完成），Phase 4（基本完成，待专项路径处理），Phase 5（未开始）
+- 总进度：约 100%（Phase 0、Phase 1、Phase 2、Phase 3、Phase 5 已完成，Phase 4 的主要调用点迁移已完成）
+- 当前阶段：Phase 5（已完成），Phase 4（基本完成，待专项路径处理）
 
 ## 分阶段计划与完成度
 
@@ -79,10 +79,11 @@
 
 ## Phase 5：遗留路径清理
 
-状态：未开始（0%）
+状态：已完成（100%）
 
-1. 将 VIL-first 入口标记为 deprecated。
-2. 在迁移窗口结束后移除 deprecated 路径。
+1. 已完成：高频 VIL-first 入口已标记 deprecated（`GraphicsGeometryFactory::CreateGeometry(..., const VIL *, ...)`、`GraphicsGeometryFactory::CreateCreater(const VIL *)`、`GraphicsGeometryFactory::CreatePrimitive(..., SemanticMaterialId, builder)`），并附迁移指引到 schema-first 入口。
+2. 已完成：在迁移窗口内完成 deprecated 路径调用清理；`GraphicsGeometryFactory` 的 schema-first `CreateGeometry(...)` 内部实现已改为直接基于 `VertexFormatMap` 构建，不再回调 VIL-first 重载；语义 builder 模板入口内部已改为直接构建 `GeometryCreater(device, format_map, buffer_manager)`，去除对 deprecated `CreateCreater(const VIL *)` 的依赖；示例调用点已全部迁移到显式“创建 geometry + CreatePrimitive(geometry, semantic_id)”路径（`SimpleCube.cpp`、`SimpleCylinder.cpp`、`auto_instance.cpp`、`SimpleCube_AutoTransparency.cpp`、`SimpleTube.cpp`、`BasicLitMeshesECS.cpp`、`PBRColor3DSpheresECS.cpp`、`PBRSpheresECS.cpp`、`TextureBlinnPhongMeshesECS.cpp`）。
+3. 已完成验证：清理与迁移同步回归全部通过；示例目标构建验证覆盖 `07a_SimpleCube_AutoTransparency`、`07c_SimpleTube`、`08_PBRSpheresECS`、`09_BasicLitMeshesECS`、`10_TextureBlinnPhongMeshesECS`、`14_PBRColor3DSpheresECS`，兼容性测试 `test_vertex_type_format_compat` 与 `test_vertex_binding_compat_helper` 持续通过。
 3. 清理注释与文档，防止新代码回流旧路径。
 
 ## 验证计划

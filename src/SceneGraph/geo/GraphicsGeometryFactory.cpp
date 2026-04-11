@@ -163,6 +163,51 @@ static VertexFormatMap BuildVertexFormatMapFromVIL(const VIL *vil)
 
     return format_map;
 }
+
+static VertexFormatMap BuildVertexFormatMapFromWrites(const std::initializer_list<GraphicsGeometryFactory::VertexAttribWrite> &vertex_writes)
+{
+    VertexFormatMap format_map;
+
+    for (const auto &write : vertex_writes)
+        format_map[write.attrib] = write.format;
+
+    return format_map;
+}
+
+static Geometry *CreateGeometryWithFormatMap(GraphicsContext *graphics_context,
+                                             const VertexFormatMap &format_map,
+                                             const AnsiString &geometry_name,
+                                             uint32_t vertex_count,
+                                             std::initializer_list<GraphicsGeometryFactory::VertexAttribWrite> vertex_writes)
+{
+    if(!graphics_context || geometry_name.IsEmpty() || vertex_count == 0)
+        return nullptr;
+
+    auto *device = graphics_context->GetDevice();
+    auto *buffer_manager = graphics_context->GetBufferManager();
+    if(!device || !buffer_manager)
+        return nullptr;
+
+    GraphicsGeometryFactory geometry_factory(graphics_context);
+
+    auto pc = std::make_unique<GeometryCreater>(device, format_map, buffer_manager);
+    if(!pc)
+        return nullptr;
+
+    if(!pc->Init(geometry_name, vertex_count))
+        return nullptr;
+
+    for(const auto &write : vertex_writes)
+    {
+        if(!write.data)
+            return nullptr;
+
+        if(!pc->WriteVAB(write.attrib, write.format, write.data))
+            return nullptr;
+    }
+
+    return geometry_factory.CreateManagedGeometry(pc.get());
+}
 }
 
 GraphicsGeometryFactory::GraphicsGeometryFactory(GraphicsContext *gc)
@@ -274,25 +319,12 @@ Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_cont
     if(!graphics_context || !vil || geometry_name.IsEmpty() || vertex_count == 0)
         return nullptr;
 
-    GraphicsGeometryFactory geometry_factory(graphics_context);
-
-    auto pc = geometry_factory.CreateCreater(vil);
-    if(!pc)
-        return nullptr;
-
-    if(!pc->Init(geometry_name, vertex_count))
-        return nullptr;
-
-    for(const auto &write : vertex_writes)
-    {
-        if(!write.data)
-            return nullptr;
-
-        if(!pc->WriteVAB(write.attrib, write.format, write.data))
-            return nullptr;
-    }
-
-    return geometry_factory.CreateManagedGeometry(pc.get());
+    const VertexFormatMap format_map = BuildVertexFormatMapFromVIL(vil);
+    return CreateGeometryWithFormatMap(graphics_context,
+                                       format_map,
+                                       geometry_name,
+                                       vertex_count,
+                                       vertex_writes);
 }
 
 Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_context,
@@ -304,11 +336,12 @@ Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_cont
     if (!vil)
         return nullptr;
 
-    return CreateGeometry(graphics_context,
-                          vil,
-                          geometry_name,
-                          vertex_count,
-                          vertex_writes);
+    const VertexFormatMap format_map = BuildVertexFormatMapFromWrites(vertex_writes);
+    return CreateGeometryWithFormatMap(graphics_context,
+                                       format_map,
+                                       geometry_name,
+                                       vertex_count,
+                                       vertex_writes);
 }
 
 }

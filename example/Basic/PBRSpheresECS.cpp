@@ -599,16 +599,55 @@ private:
         if (sky_semantic_id == 0)
             return false;
 
-        Primitive* ri = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                                 sky_semantic_id,
-                                                                 [](GeometryCreater* pc)
-                                                                 {
-                                                                     using namespace inline_geometry;
-                                                                     HexSphereCreateInfo hsci;
-                                                                     hsci.subdivisions = 3;
-                                                                     hsci.radius = 256;
-                                                                     return CreateHexSphere(pc, &hsci);
-                                                                 });
+        auto *registry = graphics_context->GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
+
+        mtl::MaterialAssetRecord rec;
+        if (!registry->QuerySemanticMaterial(sky_semantic_id, rec))
+            return false;
+
+        MaterialDomainHandle handle = registry->Acquire(rec);
+        if (!handle.material)
+            return false;
+
+        const VIL *vil = handle.material->GetDefaultVIL();
+        if (!vil)
+            return false;
+
+        VertexFormatMap format_map;
+        for (uint32_t i = 0; i < vil->GetVertexAttribCount(); ++i)
+        {
+            const auto *cfg = vil->GetConfig(i);
+            if (!cfg)
+                continue;
+
+            format_map[cfg->attrib] = cfg->format;
+        }
+
+        auto *device = graphics_context->GetDevice();
+        auto *buffer_manager = graphics_context->GetBufferManager();
+        if (!device || !buffer_manager)
+            return false;
+
+        auto pc = std::make_unique<GeometryCreater>(device, format_map, buffer_manager);
+        if (!pc)
+            return false;
+
+        using namespace inline_geometry;
+        HexSphereCreateInfo hsci;
+        hsci.subdivisions = 3;
+        hsci.radius = 256;
+
+        GraphicsGeometryFactory geometry_factory(graphics_context);
+        Geometry *geometry = CreateHexSphere(pc.get(), &hsci);
+        if (!geometry)
+            return false;
+
+        if (!geometry_factory.RegisterGeometry(geometry))
+            return false;
+
+        Primitive* ri = geometry_factory.CreatePrimitive(geometry, sky_semantic_id);
         if (!ri)
             return false;
 

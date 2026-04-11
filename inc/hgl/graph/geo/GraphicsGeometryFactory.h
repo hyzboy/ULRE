@@ -7,6 +7,7 @@
 #include <hgl/type/String.h>
 #include <hgl/vk/VKMaterialTemplate.h>
 #include <hgl/graph/core/GraphicsContext.h>
+#include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/module/RuntimeMaterialRequest.h>
 #include <hgl/graph/module/MaterialDomainHandle.h>
 #include <hgl/graph/module/MaterialAssetRegistry.h>
@@ -41,6 +42,7 @@ public:
     GraphicsContext *GetGraphicsContext() const { return graphics; }
 
 public:
+    [[deprecated("VIL-first geometry creation is deprecated. Prefer schema-first CreateGeometry(...) overloads or CreateCreater(VertexDataManager*).")]]
     std::unique_ptr<GeometryCreater> CreateCreater(const VIL *vil) const;
     std::unique_ptr<GeometryCreater> CreateCreater(VertexDataManager *vdm) const;
 
@@ -81,6 +83,7 @@ public:
     }
 
     template<typename GeometryBuilder>
+    [[deprecated("Implicit VIL-first semantic CreatePrimitive is deprecated. Prefer schema-first geometry creation + CreatePrimitive(geometry, semantic_id).")]]
     static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
                                       SemanticMaterialId semantic_id,
                                       GeometryBuilder &&builder)
@@ -106,7 +109,23 @@ public:
 
         GraphicsGeometryFactory geometry_factory(graphics_context);
 
-        auto pc = geometry_factory.CreateCreater(vil);
+        auto *device = graphics_context->GetDevice();
+        auto *buffer_manager = graphics_context->GetBufferManager();
+        if(!device || !buffer_manager)
+            return nullptr;
+
+        VertexFormatMap format_map;
+        const uint32_t attr_count = vil->GetVertexAttribCount();
+        for(uint32_t i = 0; i < attr_count; ++i)
+        {
+            const auto *cfg = vil->GetConfig(i);
+            if(!cfg)
+                continue;
+
+            format_map[cfg->attrib] = cfg->format;
+        }
+
+        auto pc = std::make_unique<GeometryCreater>(device, format_map, buffer_manager);
         if(!pc)
             return nullptr;
 
@@ -120,6 +139,7 @@ public:
         return geometry_factory.CreatePrimitive(geometry, semantic_id);
     }
 
+    [[deprecated("VIL-first CreateGeometry is deprecated. Use schema-first CreateGeometry(graphics_context, geometry_name, vertex_count, vertex_writes).")]]
     static Geometry *CreateGeometry(GraphicsContext *graphics_context,
                                     const VIL *vil,
                                     const AnsiString &geometry_name,
