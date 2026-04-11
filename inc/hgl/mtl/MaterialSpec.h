@@ -4,7 +4,6 @@
 #include <hgl/mtl/MaterialPreset.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include <hgl/mtl/ShaderVariableType.h>
-#include <hgl/mtl/SurfaceType.h>
 
 #include <string>
 #include <vector>
@@ -75,7 +74,7 @@ struct MaterialImplementationCandidate
     };
 
     std::string impl_id;
-    hgl::graph::SurfaceType surface = hgl::graph::SurfaceType::Standard;
+    MaterialPreset semantic_preset = MaterialPreset::Standard;
 
     std::vector<SlotModeRequirement> slot_mode_requirements;
 };
