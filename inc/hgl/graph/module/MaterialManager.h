@@ -450,20 +450,6 @@ public: // MaterialResourceDomain — Phase 1 / Phase 3
      */
     void ReplaceDomain(uint32_t domain_id, MaterialResourceDomain *new_domain);
 
-public: // MaterialResourceDomain MaterialInstanceData creation (Phase 1)
-
-    // Create MI from a semantic-owned domain binding to a concrete runtime variant material.
-    [[deprecated("Prefer slot-first APIs: AllocMaterialInstanceSlot / ResolveMI")]]
-    MaterialInstance *  CreateMaterialInstance(MaterialResourceDomain *domain,
-                                               MaterialTemplate *material,
-                                               const VIL *vil,
-                                               const void *data,
-                                               const uint32 data_size);
-
-    // Phase D: update MI render material/vil without reallocating MI slot.
-    [[deprecated("Prefer re-resolving slot via ResolveMI instead of MI rebind")]]
-    bool RebindMaterialInstance(MaterialInstance *mi, MaterialTemplate *material, const VIL *vil);
-
 public: // Phase 0 Stats — 帧级资源量观测
 
     /// 当前存活 MaterialTemplate 数量

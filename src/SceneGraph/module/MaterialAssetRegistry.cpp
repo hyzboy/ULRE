@@ -600,9 +600,10 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
 
     variant_cache[key] = handle.material;
 
-    // Helper: build PrimitiveMaterialSlot from a resolved MI.
-    auto make_slot = [](MaterialInstance *mi) -> PrimitiveMaterialSlot {
-        return mi->ToSlot();
+    auto release_slot = [](PrimitiveMaterialSlot &slot) {
+        if (slot.domain && slot.mi_id >= 0)
+            slot.domain->FreeMISlot(slot.mi_id);
+        slot = {};
     };
 
     // Legacy path: still keep variant-level MI cache for callsites that do not provide entity id.
@@ -620,30 +621,57 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         {
             ++legacy_resolve_hit_count;
 
-            mm->RebindMaterialInstance(it->second, handle.material, ResolveRuntimeVIL(handle.material, final_rec, geometry));
-            it->second->SetRenderPreset(request.pipeline);
-            it->second->SetMaterialPreset(final_rec.preset);
+            PrimitiveMaterialSlot &slot = it->second;
+            const VIL *resolved_vil = ResolveRuntimeVIL(handle.material, final_rec, geometry);
 
-            if (instance_data && instance_data_size > 0)
-                it->second->WriteMIData(instance_data, instance_data_size);
+            // If domain changes, recycle old slot and allocate on new domain.
+            if (slot.domain != handle.domain)
+            {
+                release_slot(slot);
+                slot = mm->AllocMaterialInstanceSlot(handle.domain,
+                                                     handle.material,
+                                                     resolved_vil,
+                                                     request.pipeline,
+                                                     instance_data,
+                                                     instance_data_size);
+            }
+            else
+            {
+                slot.material_template = handle.material;
+                slot.vil = resolved_vil;
+                slot.preset = request.pipeline;
+                slot.material_preset = final_rec.preset;
+                slot.texture_array_slot_flags = handle.material ? handle.material->GetTextureArraySlotFlags() : 0;
 
-            return make_slot(it->second);
+                if (instance_data && instance_data_size > 0 && slot.mi_id >= 0 && slot.domain)
+                {
+                    if (void *dst = slot.domain->GetMIData(slot.mi_id))
+                    {
+                        const uint32_t dst_bytes = handle.material ? handle.material->GetMIDataBytes() : 0;
+                        const uint32_t copy_bytes = std::min(instance_data_size, dst_bytes);
+                        if (copy_bytes > 0)
+                            std::memcpy(dst, instance_data, copy_bytes);
+                    }
+                }
+            }
+
+            return slot;
         }
 
         ++legacy_resolve_miss_count;
 
-        MaterialInstance *mi = mm->CreateMaterialInstance(handle.domain,
-                                                          handle.material,
-                                                          ResolveRuntimeVIL(handle.material, final_rec, geometry),
-                                                          instance_data,
-                                                          instance_data_size);
-        if (!mi)
+        PrimitiveMaterialSlot slot = mm->AllocMaterialInstanceSlot(handle.domain,
+                                                                    handle.material,
+                                                                    ResolveRuntimeVIL(handle.material, final_rec, geometry),
+                                                                    request.pipeline,
+                                                                    instance_data,
+                                                                    instance_data_size);
+        if (!slot.IsValid())
             return {};
 
-        mi->SetMaterialPreset(final_rec.preset);
-
-        legacy_final_mi_cache.emplace(std::move(key), mi);
-        return make_slot(mi);
+        slot.material_preset = final_rec.preset;
+        legacy_final_mi_cache.emplace(std::move(key), slot);
+        return slot;
     }
 
     // New Phase D path: stable MI slot per (entity, semantic).
@@ -653,14 +681,25 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
     {
         ++entity_resolve_hit_count;
 
-        mm->RebindMaterialInstance(it->second, handle.material, ResolveRuntimeVIL(handle.material, final_rec, geometry));
-        it->second->SetRenderPreset(request.pipeline);
-        it->second->SetMaterialPreset(final_rec.preset);
+        PrimitiveMaterialSlot &slot = it->second;
+        slot.material_template = handle.material;
+        slot.vil = ResolveRuntimeVIL(handle.material, final_rec, geometry);
+        slot.preset = request.pipeline;
+        slot.material_preset = final_rec.preset;
+        slot.texture_array_slot_flags = handle.material ? handle.material->GetTextureArraySlotFlags() : 0;
 
-        if (instance_data && instance_data_size > 0)
-            it->second->WriteMIData(instance_data, instance_data_size);
+        if (instance_data && instance_data_size > 0 && slot.mi_id >= 0 && slot.domain)
+        {
+            if (void *dst = slot.domain->GetMIData(slot.mi_id))
+            {
+                const uint32_t dst_bytes = handle.material ? handle.material->GetMIDataBytes() : 0;
+                const uint32_t copy_bytes = std::min(instance_data_size, dst_bytes);
+                if (copy_bytes > 0)
+                    std::memcpy(dst, instance_data, copy_bytes);
+            }
+        }
 
-        return make_slot(it->second);
+        return slot;
     }
 
     ++entity_resolve_miss_count;
@@ -684,18 +723,18 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
     if (!entry.shared_domain)
         return {};
 
-    MaterialInstance *mi = mm->CreateMaterialInstance(entry.shared_domain,
-                                                      handle.material,
-                                                      ResolveRuntimeVIL(handle.material, final_rec, geometry),
-                                                      instance_data,
-                                                      instance_data_size);
-    if (!mi)
+    PrimitiveMaterialSlot slot = mm->AllocMaterialInstanceSlot(entry.shared_domain,
+                                                                handle.material,
+                                                                ResolveRuntimeVIL(handle.material, final_rec, geometry),
+                                                                request.pipeline,
+                                                                instance_data,
+                                                                instance_data_size);
+    if (!slot.IsValid())
         return {};
 
-    mi->SetRenderPreset(request.pipeline);
-    mi->SetMaterialPreset(final_rec.preset);
-    entity_mi_cache.emplace(es_key, mi);
-    return make_slot(mi);
+    slot.material_preset = final_rec.preset;
+    entity_mi_cache.emplace(es_key, slot);
+    return slot;
 }
 
 void MaterialAssetRegistry::ReleaseEntityResolvedMI(uint64_t entity_id, SemanticMaterialId semantic_id)
@@ -709,8 +748,8 @@ void MaterialAssetRegistry::ReleaseEntityResolvedMI(uint64_t entity_id, Semantic
         auto it = entity_mi_cache.find(key);
         if (it != entity_mi_cache.end())
         {
-            if (mm && it->second)
-                mm->Release(it->second);
+            if (it->second.domain && it->second.mi_id >= 0)
+                it->second.domain->FreeMISlot(it->second.mi_id);
 
             entity_mi_cache.erase(it);
         }
@@ -732,8 +771,8 @@ void MaterialAssetRegistry::ReleaseEntityResolvedMI(uint64_t entity_id, Semantic
         if (it == entity_mi_cache.end())
             continue;
 
-        if (mm && it->second)
-            mm->Release(it->second);
+        if (it->second.domain && it->second.mi_id >= 0)
+            it->second.domain->FreeMISlot(it->second.mi_id);
 
         entity_mi_cache.erase(it);
     }

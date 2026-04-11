@@ -26,7 +26,6 @@ namespace hgl::graph
 class MaterialManager;
 class TextureManager;
 class SamplerManager;
-class MaterialInstance;
 class MaterialTemplate;
 class Geometry;
 
@@ -150,11 +149,11 @@ private:
         size_t operator()(const EntitySemanticKey &k) const;
     };
 
-    // Runtime MI cache (Phase D): entity + semantic -> stable MI slot.
-    std::unordered_map<EntitySemanticKey, MaterialInstance*, EntitySemanticKeyHash> entity_mi_cache;
+    // Runtime slot cache (Phase D): entity + semantic -> stable per-entity slot.
+    std::unordered_map<EntitySemanticKey, PrimitiveMaterialSlot, EntitySemanticKeyHash> entity_mi_cache;
 
-    // Legacy path: unresolved callers without entity id still use variant-key-level MI cache.
-    std::unordered_map<VariantKey, MaterialInstance*, VariantKeyHash> legacy_final_mi_cache;
+    // Legacy path: unresolved callers without entity id still use variant-key-level slot cache.
+    std::unordered_map<VariantKey, PrimitiveMaterialSlot, VariantKeyHash> legacy_final_mi_cache;
 
     // Resolve path observability counters (Phase D rollout).
     uint64_t legacy_resolve_hit_count = 0;
