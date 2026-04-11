@@ -90,25 +90,8 @@ private:
         if (!graphics_context)
             return false;
 
-        auto *registry = GetMaterialAssetRegistry();
-        if (!registry)
-            return false;
-
-        mtl::MaterialAssetRecord rec;
-        if (!registry->QuerySemanticMaterial(semantic_material_id, rec))
-            return false;
-
-        MaterialDomainHandle handle = registry->Acquire(rec);
-        if (!handle.material)
-            return false;
-
-        const VIL *vil = handle.material->GetDefaultVIL();
-        if (!vil)
-            return false;
-
         Geometry *geometry = GraphicsGeometryFactory::CreateGeometry(
             graphics_context,
-            vil,
             "Triangle",
             VERTEX_COUNT,
             {{VAN::Position, POSITION_DATA_FORMAT, position_data},

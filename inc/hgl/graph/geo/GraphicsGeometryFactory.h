@@ -126,5 +126,10 @@ public:
                                     uint32_t vertex_count,
                                     std::initializer_list<VertexAttribWrite> vertex_writes);
 
+    static Geometry *CreateGeometry(GraphicsContext *graphics_context,
+                                    const AnsiString &geometry_name,
+                                    uint32_t vertex_count,
+                                    std::initializer_list<VertexAttribWrite> vertex_writes);
+
 };
 }
