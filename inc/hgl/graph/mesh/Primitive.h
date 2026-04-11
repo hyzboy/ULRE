@@ -23,6 +23,7 @@ class Primitive
     MaterialResourceDomain     *domain            = nullptr;  ///< data pool domain
     int                         mi_id             = -1;       ///< slot index in domain
     const VIL                  *vil               = nullptr;  ///< vertex input layout
+        VIL                        *owned_runtime_vil = nullptr;  ///< geometry-driven runtime VIL owned by Primitive
     GraphicsPipelinePreset      render_preset     = GraphicsPipelinePreset::Solid3D;
     mtl::MaterialPreset         material_preset   = mtl::MaterialPreset::Standard;
     int8_t                      mit_slot_offset[mtl::SamplerSlotCount]; ///< per-slot offset into mit_packed (-1 = not active)

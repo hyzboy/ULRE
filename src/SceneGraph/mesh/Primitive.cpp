@@ -6,12 +6,31 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKVertexInput.h>
+#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
 
 namespace
 {
+uint32_t GetMaxBindingIndex(const VIL *vil)
+{
+    if(!vil)
+        return 0;
+
+    uint32_t max_binding = 0;
+    const uint32_t input_count = vil->GetVertexAttribCount();
+    const VertexInputFormat *vif = vil->GetVIFList();
+
+    for(uint32_t i = 0; i < input_count; ++i)
+    {
+        if(vif[i].binding > max_binding)
+            max_binding = vif[i].binding;
+    }
+
+    return max_binding;
+}
+
 const VertexInputAttribute *FindMaterialVIAByAttrib(const VertexInput *vi,const VertexAttrib attrib)
 {
     if(!vi)
@@ -56,6 +75,96 @@ bool IsPrimitiveBindingCompatible(const MaterialTemplate *material,const VertexI
         return false;
     }
 
+    return true;
+}
+
+void ReleaseOwnedPrimitiveVIL(MaterialTemplate *material,const VIL *&active_vil,VIL *&owned_runtime_vil)
+{
+    if(owned_runtime_vil && material)
+        material->Release(owned_runtime_vil);
+
+    if(active_vil == owned_runtime_vil)
+        active_vil = nullptr;
+
+    owned_runtime_vil = nullptr;
+}
+
+bool ResolveEffectivePrimitiveVIL(const Geometry *geom,
+                                  MaterialTemplate *material,
+                                  const VIL *requested_vil,
+                                  const char *compat_log_tag,
+                                  const std::string &material_name,
+                                  const VIL *&effective_vil,
+                                  VIL *&owned_effective_vil,
+                                  std::string &reason)
+{
+    if(!geom || !material || !requested_vil)
+    {
+        reason = "geom_material_or_vil_missing";
+        return false;
+    }
+
+    VILConfig runtime_cfg;
+    bool needs_runtime_vil = false;
+
+    const uint32_t input_count = requested_vil->GetVertexAttribCount();
+    const VertexInputFormat *vif = requested_vil->GetVIFList();
+
+    for(uint32_t i = 0; i < input_count; ++i)
+    {
+        VAB *vab = geom->GetVAB(vif->attrib);
+        const char *vab_name = GetVertexAttribName(vif->attrib);
+
+        if(!vab)
+        {
+            reason = "vab_missing_for_required_attrib";
+            return false;
+        }
+
+        std::string compat_reason;
+        if(!IsPrimitiveBindingCompatible(material, *vif, vab, compat_reason))
+        {
+            reason = compat_reason;
+            return false;
+        }
+
+        if(!runtime_cfg.Add(vif->attrib, VAConfig(vab->GetFormat(), vif->input_rate)))
+        {
+            reason = "runtime_vil_config_add_failed";
+            return false;
+        }
+
+        if(vab->GetFormat() != vif->format || vab->GetStride() != vif->stride)
+        {
+            needs_runtime_vil = true;
+
+            GLogWarning(std::string(compat_log_tag ? compat_log_tag : "[PRIM_BIND_COMPAT]") +
+                        " attrib=" + (vab_name ? vab_name : "") +
+                        ", material=" + material_name +
+                        ", vif_format=" + GetVulkanFormatName(vif->format) +
+                        ", geo_format=" + GetVulkanFormatName(vab->GetFormat()) +
+                        ", vif_stride=" + std::to_string(vif->stride) +
+                        ", geo_stride=" + std::to_string(vab->GetStride()));
+        }
+
+        ++vif;
+    }
+
+    if(!needs_runtime_vil)
+    {
+        effective_vil = requested_vil;
+        owned_effective_vil = nullptr;
+        return true;
+    }
+
+    owned_effective_vil = material->CreateVIL(&runtime_cfg);
+    if(!owned_effective_vil)
+    {
+        reason = "runtime_vil_create_failed";
+        return false;
+    }
+
+    effective_vil = owned_effective_vil;
     return true;
 }
 
@@ -169,6 +278,7 @@ Primitive::Primitive(Geometry *r,SemanticMaterialId sid,uint32_t vil_hash)
 
 Primitive::~Primitive()
 {
+    ReleaseOwnedPrimitiveVIL(material_template, vil, owned_runtime_vil);
     SAFE_CLEAR(data_buffer);
     delete[] mit_packed;
 }
@@ -215,74 +325,59 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot,const char *s
     if (!slot.material_template || !slot.vil || !geometry)
         return false;
 
-    // For deferred primitives, create the GeometryDataBuffer from the resolved VIL
-    if (HasDeferredMI())
+    const std::string material_name = slot.material_template->GetName();
+    const VIL *effective_vil = nullptr;
+    VIL *owned_effective_vil = nullptr;
+    std::string effective_reason;
+
+    if(!ResolveEffectivePrimitiveVIL(geometry,
+                                     slot.material_template,
+                                     slot.vil,
+                                     "[PRIM_BIND_COMPAT][DEFERRED]",
+                                     material_name,
+                                     effective_vil,
+                                     owned_effective_vil,
+                                     effective_reason))
     {
-        const uint32_t input_count = slot.vil->GetVertexAttribCount();
-        const VertexInputFormat *vif = slot.vil->GetVIFList();
+        GLogError(std::string("[FATAL ERROR] BindMaterialSlot can't satisfy Primitive input, MaterialTemplate(") +
+                  material_name + ") reason(" + effective_reason + ")");
+        DumpPrimitiveBindingLists(geometry, slot.vil, material_name, effective_reason.c_str());
+        if(owned_effective_vil)
+            slot.material_template->Release(owned_effective_vil);
+        return false;
+    }
 
-        uint32_t max_binding=0;
-        for(uint i=0;i<input_count;i++)
-        {
-            if(vif[i].binding>max_binding)
-                max_binding=vif[i].binding;
-        }
+    const uint32_t required_vab_count = GetMaxBindingIndex(effective_vil) + 1;
 
-        GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(max_binding+1,geometry->GetIBO(),geometry->GetVDM());
+    GeometryDataBuffer *geom_data_buffer = data_buffer;
+    if(!geom_data_buffer || geom_data_buffer->vab_count != required_vab_count)
+        geom_data_buffer = new GeometryDataBuffer(required_vab_count, geometry->GetIBO(), geometry->GetVDM());
 
-        for(uint i=0;i<input_count;i++)
-        {
-            VAB *vab=geometry->GetVAB(vif->attrib);
-            const char *vab_name = GetVertexAttribName(vif->attrib);
+    if(!geom_data_buffer->Update(geometry, effective_vil))
+    {
+        GLogError(std::string("[FATAL ERROR] BindMaterialSlot failed to update GeometryDataBuffer, MaterialTemplate(") +
+                  material_name + ")");
+        if(geom_data_buffer != data_buffer)
+            delete geom_data_buffer;
+        if(owned_effective_vil)
+            slot.material_template->Release(owned_effective_vil);
+        return false;
+    }
 
-            if(!vab)
-            {
-                DumpPrimitiveBindingLists(geometry, slot.vil, slot.material_template->GetName(), "bind_slot_deferred_vab_missing");
-                delete geom_data_buffer;
-                return false;
-            }
+    ReleaseOwnedPrimitiveVIL(material_template, vil, owned_runtime_vil);
 
-            std::string compat_reason;
-            if(!IsPrimitiveBindingCompatible(slot.material_template, *vif, vab, compat_reason))
-            {
-                GLogError(std::string("[FATAL ERROR] deferred VAB \"") + (vab_name ? vab_name : "") +
-                          "\" can't satisfy Primitive input, MaterialTemplate(" + slot.material_template->GetName() +
-                          ") expected_format(" + GetVulkanFormatName(vif->format) +
-                          ") , VAB Format(" + GetVulkanFormatName(vab->GetFormat()) +
-                          ") reason(" + compat_reason + ")");
-                DumpPrimitiveBindingLists(geometry, slot.vil, slot.material_template->GetName(), compat_reason.c_str());
-                delete geom_data_buffer;
-                return false;
-            }
-
-            if(vab->GetFormat() != vif->format || vab->GetStride() != vif->stride)
-            {
-                GLogWarning(std::string("[PRIM_BIND_COMPAT][DEFERRED] attrib=") + (vab_name ? vab_name : "") +
-                            ", material=" + slot.material_template->GetName() +
-                            ", vif_format=" + GetVulkanFormatName(vif->format) +
-                            ", geo_format=" + GetVulkanFormatName(vab->GetFormat()) +
-                            ", vif_stride=" + std::to_string(vif->stride) +
-                            ", geo_stride=" + std::to_string(vab->GetStride()));
-            }
-
-            const uint32_t bind_index=vif->binding;
-            geom_data_buffer->vab_list[bind_index]=vab->GetVkBuffer();
-            geom_data_buffer->vab_offset[bind_index]=0;
-            GLogDebug("[BIND_SLOT_DEFERRED] prim='%s' bind_idx=%u VkBuffer=%p",
-                      geometry->GetName().c_str(), bind_index,
-                      (void*)geom_data_buffer->vab_list[bind_index]);
-            ++vif;
-        }
-
+    if(geom_data_buffer != data_buffer)
+    {
         delete data_buffer;
-        data_buffer=geom_data_buffer;
+        data_buffer = geom_data_buffer;
     }
 
     // Update all direct fields
     material_template    = slot.material_template;
     domain               = slot.domain;
     mi_id                = slot.mi_id;
-    vil                  = slot.vil;
+    vil                  = effective_vil;
+    owned_runtime_vil    = owned_effective_vil;
     render_preset        = slot.preset;
     material_preset      = slot.material_preset;
     InitMITLayout(slot.texture_array_slot_flags);
@@ -339,72 +434,54 @@ Primitive *DirectCreatePrimitive(Geometry *geom, const PrimitiveMaterialSlot &sl
     if(!geom || !slot.material_template || !slot.vil)
         return nullptr;
 
-    const VIL *vil = slot.vil;
-    const uint32_t input_count = vil->GetVertexAttribCount();
     const std::string &mtl_name = slot.material_template->GetName();
+    const VIL *effective_vil = nullptr;
+    VIL *owned_effective_vil = nullptr;
+    std::string effective_reason;
+
+    if(!ResolveEffectivePrimitiveVIL(geom,
+                                     slot.material_template,
+                                     slot.vil,
+                                     "[PRIM_BIND_COMPAT]",
+                                     mtl_name,
+                                     effective_vil,
+                                     owned_effective_vil,
+                                     effective_reason))
+    {
+        GLogError(std::string("[FATAL ERROR] DirectCreatePrimitive can't satisfy Primitive input, MaterialTemplate(") +
+                  mtl_name + ") reason(" + effective_reason + ")");
+        DumpPrimitiveBindingLists(geom, slot.vil, mtl_name, effective_reason.c_str());
+        return nullptr;
+    }
+
+    const VIL *vil = effective_vil;
+    const uint32_t input_count = vil->GetVertexAttribCount();
 
     if(geom->GetVABCount() < input_count)
     {
         GLogError("[FATAL ERROR] input buffer count of Primitive lesser than MaterialTemplate, MaterialTemplate name: " + mtl_name);
         DumpPrimitiveBindingLists(geom, vil, mtl_name, "vab_count_less_than_vil_input_count");
+        if(owned_effective_vil)
+            slot.material_template->Release(owned_effective_vil);
         return nullptr;
     }
 
-    const VertexInputFormat *vif = vil->GetVIFList();
+    GeometryDataBuffer *geom_data_buffer = new GeometryDataBuffer(GetMaxBindingIndex(vil) + 1, geom->GetIBO(), geom->GetVDM());
 
-    uint32_t max_binding = 0;
-    for(uint i = 0; i < input_count; i++)
+    if(!geom_data_buffer->Update(geom, vil))
     {
-        if(vif[i].binding > max_binding)
-            max_binding = vif[i].binding;
+        delete geom_data_buffer;
+        if(owned_effective_vil)
+            slot.material_template->Release(owned_effective_vil);
+        return nullptr;
     }
 
-    GeometryDataBuffer *geom_data_buffer = new GeometryDataBuffer(max_binding + 1, geom->GetIBO(), geom->GetVDM());
+    PrimitiveMaterialSlot effective_slot = slot;
+    effective_slot.vil = effective_vil;
 
-    for(uint i = 0; i < input_count; i++)
-    {
-        VAB *vab = geom->GetVAB(vif->attrib);
-        const char *vab_name = GetVertexAttribName(vif->attrib);
-
-        if(!vab)
-        {
-            GLogError(std::string("[FATAL ERROR] not found VAB \"") + (vab_name ? vab_name : "") +
-                      "\" in MaterialTemplate: " + mtl_name);
-            DumpPrimitiveBindingLists(geom, vil, mtl_name, "vab_missing_for_required_attrib");
-            delete geom_data_buffer;
-            return nullptr;
-        }
-
-        std::string compat_reason;
-        if(!IsPrimitiveBindingCompatible(slot.material_template, *vif, vab, compat_reason))
-        {
-            GLogError(std::string("[FATAL ERROR] VAB \"") + (vab_name ? vab_name : "") +
-                      "\" can't satisfy Primitive input, MaterialTemplate(" + mtl_name +
-                      ") expected_format(" + GetVulkanFormatName(vif->format) +
-                      ") , VAB Format(" + GetVulkanFormatName(vab->GetFormat()) +
-                      ") reason(" + compat_reason + ")");
-            DumpPrimitiveBindingLists(geom, vil, mtl_name, compat_reason.c_str());
-            delete geom_data_buffer;
-            return nullptr;
-        }
-
-        if(vab->GetFormat() != vif->format || vab->GetStride() != vif->stride)
-        {
-            GLogWarning(std::string("[PRIM_BIND_COMPAT] attrib=") + (vab_name ? vab_name : "") +
-                        ", material=" + mtl_name +
-                        ", vif_format=" + GetVulkanFormatName(vif->format) +
-                        ", geo_format=" + GetVulkanFormatName(vab->GetFormat()) +
-                        ", vif_stride=" + std::to_string(vif->stride) +
-                        ", geo_stride=" + std::to_string(vab->GetStride()));
-        }
-
-        const uint32_t bind_index = vif->binding;
-        geom_data_buffer->vab_list[bind_index]   = vab->GetVkBuffer();
-        geom_data_buffer->vab_offset[bind_index] = 0;
-        ++vif;
-    }
-
-    return new Primitive(geom, slot, geom_data_buffer);
+    Primitive *prim = new Primitive(geom, effective_slot, geom_data_buffer);
+    prim->owned_runtime_vil = owned_effective_vil;
+    return prim;
 }
 
 Primitive *DirectCreatePrimitive(Geometry *geom,SemanticMaterialId sid,uint32_t vil_hash)
