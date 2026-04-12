@@ -4,6 +4,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/math/geometry/GeometryUtils.h>
 #include<hgl/math/VectorOperations.h>
+#include<hgl/graph/geo/FormatAwareWriter.h>
 
 #include <vector>
 #include <algorithm>
@@ -760,6 +761,8 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("WallsFromLines", (uint)finalVerts.size(), (uint)finalIndices.size()))
             return nullptr;
 
+        auto format_writer = pc->GetFormatAwareWriter();
+
         auto pos = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
         auto nrm = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
         auto tan = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Tangent);
@@ -772,13 +775,13 @@ namespace hgl::graph::inline_geometry
             pos->Write(v);
 
             if(nrm.IsValid())
-                nrm->Write(vertNormals[i]);
+                format_writer.WriteNormal(vertNormals[i].x,vertNormals[i].y,vertNormals[i].z);
 
             if(tan.IsValid())
-                tan->Write(Vector3f(1.0f, 0.0f, 0.0f));
+                format_writer.WriteTangent(1.0f,0.0f,0.0f);
 
             if(uv.IsValid())
-                uv->Write(finalUV[i]);
+                format_writer.WriteUV(finalUV[i].x,finalUV[i].y);
         }
 
         const IndexType itype = pc->GetIndexType();

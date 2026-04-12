@@ -1,10 +1,12 @@
-﻿// sphereãcylinearãconeãtours code from McNopper,website: https://github.com/McNopper/GLUS
+﻿// Sphere, cylinder, cone, and torus code adapted from McNopper:
+// https://github.com/McNopper/GLUS
 // GL to VK: swap Y/Z of position/normal/tangent/index
 
 #include<hgl/graph/geo/InlineGeometry.h>
 #include <hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/FormatAwareWriter.h>
 #include <hgl/graph/geo/VKGeometry.h>
 #include <hgl/type/UnorderedMap.h>
 #include <algorithm>
@@ -19,7 +21,7 @@ namespace hgl::graph::inline_geometry
     {
         if(!pc||!hsci) return nullptr;
 
-        // çæåºç¡äºåé¢ä½
+        // Generate a base icosahedron.
         struct Tri { uint a,b,c; };
         std::vector<math::Vector3f> verts;
         std::vector<Tri> tris;
@@ -41,7 +43,7 @@ namespace hgl::graph::inline_geometry
         push(3,9,4); push(3,4,2); push(3,2,6); push(3,6,8); push(3,8,9);
         push(4,9,5); push(2,4,11); push(6,2,10); push(8,6,7); push(9,8,1);
 
-        // ç´¢å¼ç¼å­ä¸­é´ç?
+        // Midpoint cache for edge subdivision.
         struct EdgeKey { uint a,b; bool operator==(const EdgeKey& o)const{return a==o.a&&b==o.b;} };
         struct EdgeHash { size_t operator()(const EdgeKey& k)const { return (size_t(k.a)<<32) ^ k.b; } };
         hgl::UnorderedMap<EdgeKey,uint,EdgeHash> midpoint;
@@ -54,7 +56,7 @@ namespace hgl::graph::inline_geometry
             uint id = (uint)verts.size(); verts.push_back(m); midpoint.Add(key,id); return id;
             };
 
-        // ç»å
+        // Subdivide each triangle.
         for(uint s=0;s<hsci->subdivisions;s++)
         {
             std::vector<Tri> ntris; ntris.reserve(tris.size()*4);
@@ -63,7 +65,7 @@ namespace hgl::graph::inline_geometry
                 uint ab = get_mid(t.a,t.b);
                 uint bc = get_mid(t.b,t.c);
                 uint ca = get_mid(t.c,t.a);
-                // ä¿æé¡ºæ¶éæ­£é¢ï¼a,b,c ä¸ºå¤è§æ¶é¡ºæ¶éï¼ï¼ååä¸è§å½¢
+                // Keep clockwise winding for front faces and split into 4 triangles.
                 ntris.push_back({t.a, ab, ca});
                 ntris.push_back({t.b, bc, ab});
                 ntris.push_back({t.c, ca, bc});
@@ -72,7 +74,7 @@ namespace hgl::graph::inline_geometry
             tris.swap(ntris);
         }
 
-        // å½ä¸åå°åå¾
+        // Scale vertices to the requested radius.
         const float R = hsci->radius;
         for(auto &v:verts) v *= R;
 
@@ -82,6 +84,8 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("HexSphere", vertex_count, index_count))
             return nullptr;
 
+        auto format_writer = pc->GetFormatAwareWriter();
+
         auto pos = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
         auto nrm = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
         auto tan = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Tangent);
@@ -90,7 +94,8 @@ namespace hgl::graph::inline_geometry
         if(!pos.IsValid())
             return nullptr;
 
-        // åé¡¶ç¹å±æ§ï¼æ³çº¿=åä½æ¹åï¼åçº¿åç»åæ¹åï¼å¨æç¹éåæ¶ç»åºå®å¼ï¼
+        // Write vertex attributes: normal is the unit direction from center,
+        // tangent uses longitude direction with a pole fallback.
         for(const auto &v:verts)
         {
             pos->Write(v);
@@ -98,31 +103,34 @@ namespace hgl::graph::inline_geometry
             if(nrm.IsValid())
             {
                 Vector3f n = glm::normalize(v);
-                nrm->Write(n);
+                format_writer.WriteNormal(n.x,n.y,n.z);
             }
 
             if(uv.IsValid())
             {
                 Vector3f n = glm::normalize(v);
-                // çé¢ UVï¼ç»åº¦[-pi,pi] -> u in [0,1]ï¼çº¬åº¦[-pi/2,pi/2] -> v in [0,1]
+                // Spherical UV mapping:
+                // longitude [-pi, pi] -> u in [0, 1], latitude [-pi/2, pi/2] -> v in [0, 1].
                 float u = (atan2f(n.y, n.x) / (2.0f*std::numbers::pi_v<float>)) + 0.5f;
                 float vtex = (asinf(std::clamp(n.z, -1.0f, 1.0f))/std::numbers::pi_v<float>) + 0.5f;
-                uv->Write(Vector2f(u * hsci->uv_scale.x, vtex * hsci->uv_scale.y));
+                format_writer.WriteUV(u * hsci->uv_scale.x,
+                                      vtex * hsci->uv_scale.y);
             }
 
             if(tan.IsValid())
             {
                 Vector3f n = glm::normalize(v);
-                // ç»ååçº¿ï¼æ²¿ +thetaï¼ç»Zï¼æ¹åè¿ä¼¼ï¼(-y, x, 0) å¹¶å»æä¸ n çæå½?
+                // Longitudinal tangent: approximate +theta around Z with (-y, x, 0),
+                // then remove projection onto normal n.
                 Vector3f tdir(-n.y, n.x, 0.0f);
-                if(glm::length(tdir)<1e-6f) tdir = Vector3f(1,0,0); // æç¹å¤é?
+                if(glm::length(tdir)<1e-6f) tdir = Vector3f(1,0,0); // Pole fallback.
                 tdir = (tdir - n * Dot(n, tdir));
                 tdir = glm::normalize(tdir);
-                tan->Write(tdir);
+                format_writer.WriteTangent(tdir.x,tdir.y,tdir.z);
             }
         }
 
-        // ç´¢å¼ï¼é¡ºæ¶éä¸ºæ­£é¢ï¼ç´æ¥æ?tris ä¸­ç (a,b,c) é¡ºåºå?
+        // Indices: clockwise winding is front-facing; use (a, b, c) order directly.
         {
             const IndexType it = pc->GetIndexType();
             if(it==IndexType::U16)
