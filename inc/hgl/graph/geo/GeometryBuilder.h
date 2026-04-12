@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/FormatAwareWriter.h>
 #include<hgl/vk/VKBufferAccessor.h>
 
 namespace hgl::graph::inline_geometry
@@ -18,6 +19,7 @@ namespace hgl::graph::inline_geometry
         BufferAccessor3f accessor_normal;
         BufferAccessor3f accessor_tangent;
         BufferAccessor2f accessor_texcoord;
+        FormatAwareWriter format_writer;
 
     public:
         GeometryBuilder(GeometryCreater *pc);
@@ -45,6 +47,12 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteNormal(float x, float y, float z)
         {
+            if(format_writer.IsValid())
+            {
+                format_writer.WriteNormal(x, y, z);
+                return;
+            }
+
             if(accessor_normal.IsValid())
                 accessor_normal->Write(x, y, z);
         }
@@ -55,6 +63,12 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteTangent(float x, float y, float z)
         {
+            if(format_writer.IsValid())
+            {
+                format_writer.WriteTangent(x, y, z);
+                return;
+            }
+
             if(accessor_tangent.IsValid())
                 accessor_tangent->Write(x, y, z);
         }
@@ -65,6 +79,12 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteTexCoord(float u, float v)
         {
+            if(format_writer.IsValid())
+            {
+                format_writer.WriteUV(u, v);
+                return;
+            }
+
             if(accessor_texcoord.IsValid())
                 accessor_texcoord->Write(u, v);
         }

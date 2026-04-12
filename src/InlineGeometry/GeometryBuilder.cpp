@@ -5,6 +5,7 @@ namespace hgl::graph::inline_geometry
 {
     GeometryBuilder::GeometryBuilder(GeometryCreater *pc)
         : creater(pc)
+        , format_writer(pc ? pc->GetFormatAwareWriter() : FormatAwareWriter())
     {
         if(!pc)
             return;

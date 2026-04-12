@@ -69,6 +69,8 @@ namespace hgl::graph::inline_geometry
     {
         if(!pc)return(nullptr);
 
+        auto format_writer = pc->GetFormatAwareWriter();
+
         uint edge;
         uint vertex_count;
 
@@ -102,8 +104,9 @@ namespace hgl::graph::inline_geometry
             if(color.IsValid())
                 color->Write(cci->center_color);
 
-            if(normal.IsValid())
-                normal->Write(math::AxisVector::Z);
+            format_writer.WriteNormal(math::AxisVector::Z.x,
+                                      math::AxisVector::Z.y,
+                                      math::AxisVector::Z.z);
         }
 
         for(uint i = 0;i < edge;i++)
@@ -118,8 +121,9 @@ namespace hgl::graph::inline_geometry
             if(color.IsValid())
                 color->Write(cci->border_color);
 
-            if(normal.IsValid())
-                normal->Write(math::AxisVector::Z);
+            format_writer.WriteNormal(math::AxisVector::Z.x,
+                                      math::AxisVector::Z.y,
+                                      math::AxisVector::Z.z);
         }
 
         if(has_index)
@@ -161,6 +165,8 @@ namespace hgl::graph::inline_geometry
     {
         if(!pc)return(nullptr);
 
+        auto format_writer = pc->GetFormatAwareWriter();
+
         uint vertex_count;
         uint index_count;
 
@@ -189,8 +195,9 @@ namespace hgl::graph::inline_geometry
             if(color.IsValid())
                 color->Write(cci->border_color);
 
-            if(normal.IsValid())
-                normal->Write(math::AxisVector::Z);
+            format_writer.WriteNormal(math::AxisVector::Z.x,
+                                      math::AxisVector::Z.y,
+                                      math::AxisVector::Z.z);
         }
 
         {

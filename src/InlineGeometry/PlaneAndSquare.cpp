@@ -154,25 +154,36 @@ namespace hgl::graph::inline_geometry
         if(!pc->WriteVAB(VAN::Position,VF_V3F,xy_vertices))
             return(nullptr);
 
+        auto format_writer = pc->GetFormatAwareWriter();
+
         {
             auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
 
             if(normal.IsValid())
-                normal->RepeatWrite(xy_normal,4);
+            {
+                for(int i=0;i<4;i++)
+                    format_writer.WriteNormal(xy_normal.x,xy_normal.y,xy_normal.z);
+            }
         }
 
         {
             auto tangent = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Tangent);
 
             if(tangent.IsValid())
-                tangent->RepeatWrite(xy_tangent,4);
+            {
+                for(int i=0;i<4;i++)
+                    format_writer.WriteTangent(xy_tangent.x,xy_tangent.y,xy_tangent.z);
+            }
         }
 
         {
             auto tex_coord = pc->GetBufferAccessor<BufferAccessor2f>(VAN::TexCoord);
 
             if(tex_coord.IsValid())
-                tex_coord->Write(xy_tex_coord,4);
+            {
+                for(int i=0;i<4;i++)
+                    format_writer.WriteUV(xy_tex_coord[i*2],xy_tex_coord[i*2+1]);
+            }
         }
 
         pc->WriteIBO(indices);
