@@ -506,6 +506,16 @@ namespace hgl::graph
             }
         }
 
+        // Normal/tangent source selection for fragment-side basis reconstruction.
+        // Default remains tangent-attribute path unless variant explicitly requests compressed source.
+        if (key.IsNTSourceCompressed())
+        {
+            defines += "#define ULRE_NT_SOURCE_COMPRESSED\n";
+            defines += "#define ULRE_NT_COMPRESSED_LAEA_RG2\n";
+        }
+        else
+            defines += "#define ULRE_NT_SOURCE_WITH_TANGENT_ATTR\n";
+
         if(defines.empty())
             return source;
 

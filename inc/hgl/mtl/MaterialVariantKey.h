@@ -29,8 +29,9 @@ namespace hgl::graph::mtl
     {
         None         = 0,
         DebugShading = 1u << 0,
+        NTSourceCompressed = 1u << 1,
 
-        ENUM_CLASS_RANGE(None, DebugShading)
+        ENUM_CLASS_RANGE(None, NTSourceCompressed)
     };
 
     enum class GeometryMode : uint8
@@ -136,6 +137,20 @@ namespace hgl::graph::mtl
         bool IsDebugShading() const noexcept
         {
             return (extra_feature_bits & static_cast<uint32>(ExtraFeature::DebugShading)) != 0;
+        }
+
+        void SetNTSourceCompressed(const bool enabled = true) noexcept
+        {
+            constexpr uint32 nt_source_compressed_bit = static_cast<uint32>(ExtraFeature::NTSourceCompressed);
+            if (enabled)
+                extra_feature_bits |= nt_source_compressed_bit;
+            else
+                extra_feature_bits &= ~nt_source_compressed_bit;
+        }
+
+        bool IsNTSourceCompressed() const noexcept
+        {
+            return (extra_feature_bits & static_cast<uint32>(ExtraFeature::NTSourceCompressed)) != 0;
         }
 
         uint64 Hash() const noexcept
