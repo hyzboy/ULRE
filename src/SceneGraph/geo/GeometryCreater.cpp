@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/FormatAwareWriter.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
@@ -22,6 +23,7 @@ GeometryCreater::GeometryCreater(VulkanDevice *dev,const VertexFormatMap &format
 
     has_index       =false;
     geometry_data   =nullptr;
+    inline_geo_format_preset=inline_geometry::InlineGeoFormatPreset::Legacy;
 
     Clear();
 }
@@ -38,6 +40,7 @@ GeometryCreater::GeometryCreater(VertexDataManager *_vdm)
     index_type=vdm ? vdm->GetIndexType() : IndexType::ERR;
 
     geometry_data   =nullptr;
+    inline_geo_format_preset=inline_geometry::InlineGeoFormatPreset::Legacy;
     Clear();
 }
 
@@ -55,6 +58,11 @@ void GeometryCreater::Clear()
     index_number    =0;
     index_type      =IndexType::ERR;
     ibo             =nullptr;
+}
+
+inline_geometry::FormatAwareWriter GeometryCreater::GetFormatAwareWriter()
+{
+    return inline_geometry::FormatAwareWriter(this,inline_geo_format_preset);
 }
 
 bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,const uint32_t index_count,IndexType it)

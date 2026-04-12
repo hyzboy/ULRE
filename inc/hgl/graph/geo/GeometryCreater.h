@@ -15,6 +15,11 @@
 
 namespace hgl::graph{
 class BufferManager;
+namespace inline_geometry
+{
+    enum class InlineGeoFormatPreset : uint8_t;
+    class FormatAwareWriter;
+}
 /**
  * 可绘制原始图形创建器
  */
@@ -40,6 +45,8 @@ protected:
     IndexBuffer *   ibo;              ///<索引缓冲区
 
     BufferAllocPolicy buffer_policy=BufferAllocPolicy::GPUOnly;
+
+    inline_geometry::InlineGeoFormatPreset inline_geo_format_preset;
 
 protected:
 
@@ -67,6 +74,11 @@ public:
 
             void            SetBufferPolicy(const BufferAllocPolicy policy){buffer_policy=policy;}
             const BufferAllocPolicy GetBufferPolicy()const{return buffer_policy;}
+
+            void            SetInlineGeoFormatPreset(const inline_geometry::InlineGeoFormatPreset preset){inline_geo_format_preset=preset;}
+            const inline_geometry::InlineGeoFormatPreset GetInlineGeoFormatPreset()const{return inline_geo_format_preset;}
+
+            inline_geometry::FormatAwareWriter GetFormatAwareWriter();
 
             void            Clear();                                                                                        ///<清除创建器数据
 

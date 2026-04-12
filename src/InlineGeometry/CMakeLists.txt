@@ -1,8 +1,10 @@
 ﻿set(SG_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph)
 
 SET(GEOMETRY_UTILS_FILES    ${SG_INCLUDE_PATH}/geo/GeometryBuilder.h
+                            ${SG_INCLUDE_PATH}/geo/FormatAwareWriter.h
                             ${SG_INCLUDE_PATH}/geo/IndexGenerator.h
                             GeometryBuilder.cpp
+                            FormatAwareWriter.cpp
                             GeometryValidator.h)
 
 SOURCE_GROUP("Utils" FILES ${GEOMETRY_UTILS_FILES})
