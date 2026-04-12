@@ -2,9 +2,9 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryBuilder.h>
 #include<hgl/math/geometry/GeometryUtils.h>
 #include<hgl/math/VectorOperations.h>
-#include<hgl/graph/geo/FormatAwareWriter.h>
 
 #include <vector>
 #include <algorithm>
@@ -761,27 +761,22 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("WallsFromLines", (uint)finalVerts.size(), (uint)finalIndices.size()))
             return nullptr;
 
-        auto format_writer = pc->GetFormatAwareWriter();
-
-        auto pos = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
-        auto nrm = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
-        auto tan = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Tangent);
-        auto uv  = pc->GetBufferAccessor<BufferAccessor2f>(VAN::TexCoord);
+        GeometryBuilder builder(pc);
 
         for(size_t i = 0; i < finalVerts.size(); ++i)
         {
             const auto &v = finalVerts[i];
 
-            pos->Write(v);
+            builder.WriteVertex(v.x, v.y, v.z);
 
-            if(nrm.IsValid())
-                format_writer.WriteNormal(vertNormals[i].x,vertNormals[i].y,vertNormals[i].z);
+            if(builder.HasNormals())
+                builder.WriteNormal(vertNormals[i].x,vertNormals[i].y,vertNormals[i].z);
 
-            if(tan.IsValid())
-                format_writer.WriteTangent(1.0f,0.0f,0.0f);
+            if(builder.HasTangents())
+                builder.WriteTangent(1.0f,0.0f,0.0f);
 
-            if(uv.IsValid())
-                format_writer.WriteUV(finalUV[i].x,finalUV[i].y);
+            if(builder.HasTexCoords())
+                builder.WriteTexCoord(finalUV[i].x,finalUV[i].y);
         }
 
         const IndexType itype = pc->GetIndexType();

@@ -151,39 +151,20 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("Plane",4,6,IndexType::U16))
             return(nullptr);
 
-        if(!pc->WriteVAB(VAN::Position,VF_V3F,xy_vertices))
+        GeometryBuilder builder(pc);
+
+        if(!builder.IsValid())
             return(nullptr);
 
-        auto format_writer = pc->GetFormatAwareWriter();
-
+        for(int i=0;i<4;i++)
         {
-            auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
-
-            if(normal.IsValid())
-            {
-                for(int i=0;i<4;i++)
-                    format_writer.WriteNormal(xy_normal.x,xy_normal.y,xy_normal.z);
-            }
-        }
-
-        {
-            auto tangent = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Tangent);
-
-            if(tangent.IsValid())
-            {
-                for(int i=0;i<4;i++)
-                    format_writer.WriteTangent(xy_tangent.x,xy_tangent.y,xy_tangent.z);
-            }
-        }
-
-        {
-            auto tex_coord = pc->GetBufferAccessor<BufferAccessor2f>(VAN::TexCoord);
-
-            if(tex_coord.IsValid())
-            {
-                for(int i=0;i<4;i++)
-                    format_writer.WriteUV(xy_tex_coord[i*2],xy_tex_coord[i*2+1]);
-            }
+            builder.WriteVertex(xy_vertices[i*3], xy_vertices[i*3+1], xy_vertices[i*3+2]);
+            if(builder.HasNormals())
+                builder.WriteNormal(xy_normal.x,xy_normal.y,xy_normal.z);
+            if(builder.HasTangents())
+                builder.WriteTangent(xy_tangent.x,xy_tangent.y,xy_tangent.z);
+            if(builder.HasTexCoords())
+                builder.WriteTexCoord(xy_tex_coord[i*2],xy_tex_coord[i*2+1]);
         }
 
         pc->WriteIBO(indices);

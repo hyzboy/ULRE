@@ -31,7 +31,7 @@ const VertexFormatMap kWallVertexFormats = {
     {VAN::Position, PF_RGB32F},
     {VAN::Normal,   PF_RGB32F},
     {VAN::Tangent,  PF_RGB32F},
-    {VAN::TexCoord, PF_RG32F},
+    {VAN::TexCoord, PF_RG16F},
 };
 }
 

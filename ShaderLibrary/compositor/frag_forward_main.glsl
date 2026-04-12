@@ -6,6 +6,7 @@
 //   Varying flags (must match the vertex shader's HAS_* defines):
 //     HAS_WORLD_POS      fragWorldPos (vec3)      — also drives si.viewDir
 //     HAS_WORLD_NORMAL   fragWorldNormal (vec3)
+//     HAS_WORLD_TANGENT  fragWorldTangent (vec4)
 //     HAS_UV0            fragUV0 (vec2)
 //     HAS_VERTEX_COLOR   fragVertexColor (vec4)
 //     HAS_TEXCOORD       fragTexCoord (vec2)       — maps to si.uv0
@@ -56,6 +57,16 @@ float BayerDither4x4(ivec2 p)
 #  endif
 #endif
 
+// 9. Normal+tangent source selection.
+//    Default is normal-only reconstruction to keep legacy behavior stable.
+#if defined(ULRE_NT_SOURCE_WITH_TANGENT_ATTR)
+#include "common/get_normal_tangnet_from_normal_tangent_attr.glsl"
+#elif defined(ULRE_NT_SOURCE_COMPRESSED)
+#include "common/get_normal_tangnet_compressed.glsl"
+#else
+#include "common/get_normal_tangnet_from_normal_only.glsl"
+#endif
+
 void main()
 {
 #ifdef TEXTURE_ARRAY_MODE
@@ -92,6 +103,16 @@ void main()
 #endif
 
     si.uv1         = vec2(0.0);
+
+    // worldTangent (via selected GetNormalTangnet implementation)
+    vec3 _resolvedNormal;
+    vec3 _resolvedTangent;
+    GetNormalTangnet(si.worldPos, si.uv0, si.worldNormal, _resolvedNormal, _resolvedTangent);
+    si.worldNormal = _resolvedNormal;
+    si.worldTangent = vec4(_resolvedTangent, 1.0);
+#ifdef HAS_WORLD_TANGENT
+    si.worldTangent.w = fragWorldTangent.w;
+#endif
 
     // vertexColor + luminance base
 #ifdef HAS_VERTEX_COLOR

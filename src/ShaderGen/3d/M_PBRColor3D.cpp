@@ -15,7 +15,8 @@ namespace
     constexpr VertexAttributeSpec PBR_COLOR_3D_VERTEX_SPECS[] = {
         { VAN::Position, VAT_VEC3, PF_RGB32F },
         { VAN::TexCoord, VAT_VEC2, PF_RG32F  },
-        { VAN::Normal,   VAT_VEC3, PF_RGB32F },
+        { VAN::Normal,   VAT_VEC4, PF_RGB32F },
+        { VAN::Tangent,  VAT_VEC4, PF_RGB32F },
     };
 
     const UBOSemanticSet PBR_COLOR_3D_UBOS = {

@@ -66,6 +66,11 @@ layout(location=7) _VARYING_DIR float fragLuminance;
 layout(location=8) _VARYING_DIR vec4 fragClipPos;
 #endif
 
+// --- location 9: World Tangent (optional) ---
+#ifdef HAS_WORLD_TANGENT
+layout(location=9) _VARYING_DIR vec4 fragWorldTangent;
+#endif
+
 #undef _VARYING_DIR
 
 // In fragment stage, auto-define the MI ID override so that

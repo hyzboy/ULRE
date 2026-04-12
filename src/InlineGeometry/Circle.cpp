@@ -69,8 +69,6 @@ namespace hgl::graph::inline_geometry
     {
         if(!pc)return(nullptr);
 
-        auto format_writer = pc->GetFormatAwareWriter();
-
         uint edge;
         uint vertex_count;
 
@@ -92,7 +90,13 @@ namespace hgl::graph::inline_geometry
 
         auto vertex = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
         auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
-        auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
+
+        BufferAccessor3f normal_acc;
+        {
+            VAB *vab = pc->GetVAB(VAN::Normal);
+            if(vab && vab->GetFormat() == PF_RGB32F)
+                normal_acc.Bind(vab, pc->GetVertexOffset(), pc->GetVertexCount());
+        }
 
         if(!vertex.IsValid())
             return(nullptr);
@@ -104,9 +108,10 @@ namespace hgl::graph::inline_geometry
             if(color.IsValid())
                 color->Write(cci->center_color);
 
-            format_writer.WriteNormal(math::AxisVector::Z.x,
-                                      math::AxisVector::Z.y,
-                                      math::AxisVector::Z.z);
+            if(normal_acc.IsValid())
+                normal_acc->Write(math::AxisVector::Z.x,
+                                  math::AxisVector::Z.y,
+                                  math::AxisVector::Z.z);
         }
 
         for(uint i = 0;i < edge;i++)
@@ -121,9 +126,10 @@ namespace hgl::graph::inline_geometry
             if(color.IsValid())
                 color->Write(cci->border_color);
 
-            format_writer.WriteNormal(math::AxisVector::Z.x,
-                                      math::AxisVector::Z.y,
-                                      math::AxisVector::Z.z);
+            if(normal_acc.IsValid())
+                normal_acc->Write(math::AxisVector::Z.x,
+                                  math::AxisVector::Z.y,
+                                  math::AxisVector::Z.z);
         }
 
         if(has_index)
@@ -165,8 +171,6 @@ namespace hgl::graph::inline_geometry
     {
         if(!pc)return(nullptr);
 
-        auto format_writer = pc->GetFormatAwareWriter();
-
         uint vertex_count;
         uint index_count;
 
@@ -177,7 +181,13 @@ namespace hgl::graph::inline_geometry
 
         auto vertex = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
         auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
-        auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
+
+        BufferAccessor3f normal_acc;
+        {
+            VAB *vab = pc->GetVAB(VAN::Normal);
+            if(vab && vab->GetFormat() == PF_RGB32F)
+                normal_acc.Bind(vab, pc->GetVertexOffset(), pc->GetVertexCount());
+        }
 
         if(!vertex.IsValid())
             return(nullptr);
@@ -195,9 +205,10 @@ namespace hgl::graph::inline_geometry
             if(color.IsValid())
                 color->Write(cci->border_color);
 
-            format_writer.WriteNormal(math::AxisVector::Z.x,
-                                      math::AxisVector::Z.y,
-                                      math::AxisVector::Z.z);
+            if(normal_acc.IsValid())
+                normal_acc->Write(math::AxisVector::Z.x,
+                                  math::AxisVector::Z.y,
+                                  math::AxisVector::Z.z);
         }
 
         {

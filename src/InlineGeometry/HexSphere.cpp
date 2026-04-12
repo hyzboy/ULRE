@@ -6,7 +6,7 @@
 #include <hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/FormatAwareWriter.h>
+#include<hgl/graph/geo/GeometryBuilder.h>
 #include <hgl/graph/geo/VKGeometry.h>
 #include <hgl/type/UnorderedMap.h>
 #include <algorithm>
@@ -84,40 +84,35 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("HexSphere", vertex_count, index_count))
             return nullptr;
 
-        auto format_writer = pc->GetFormatAwareWriter();
+        GeometryBuilder builder(pc);
 
-        auto pos = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
-        auto nrm = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
-        auto tan = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Tangent);
-        auto uv  = pc->GetBufferAccessor<BufferAccessor2f>(VAN::TexCoord);
-
-        if(!pos.IsValid())
+        if(!builder.IsValid())
             return nullptr;
 
         // Write vertex attributes: normal is the unit direction from center,
         // tangent uses longitude direction with a pole fallback.
         for(const auto &v:verts)
         {
-            pos->Write(v);
+            builder.WriteVertex(v.x, v.y, v.z);
 
-            if(nrm.IsValid())
+            if(builder.HasNormals())
             {
                 Vector3f n = glm::normalize(v);
-                format_writer.WriteNormal(n.x,n.y,n.z);
+                builder.WriteNormal(n.x,n.y,n.z);
             }
 
-            if(uv.IsValid())
+            if(builder.HasTexCoords())
             {
                 Vector3f n = glm::normalize(v);
                 // Spherical UV mapping:
                 // longitude [-pi, pi] -> u in [0, 1], latitude [-pi/2, pi/2] -> v in [0, 1].
                 float u = (atan2f(n.y, n.x) / (2.0f*std::numbers::pi_v<float>)) + 0.5f;
                 float vtex = (asinf(std::clamp(n.z, -1.0f, 1.0f))/std::numbers::pi_v<float>) + 0.5f;
-                format_writer.WriteUV(u * hsci->uv_scale.x,
+                builder.WriteTexCoord(u * hsci->uv_scale.x,
                                       vtex * hsci->uv_scale.y);
             }
 
-            if(tan.IsValid())
+            if(builder.HasTangents())
             {
                 Vector3f n = glm::normalize(v);
                 // Longitudinal tangent: approximate +theta around Z with (-y, x, 0),
@@ -126,7 +121,7 @@ namespace hgl::graph::inline_geometry
                 if(glm::length(tdir)<1e-6f) tdir = Vector3f(1,0,0); // Pole fallback.
                 tdir = (tdir - n * Dot(n, tdir));
                 tdir = glm::normalize(tdir);
-                format_writer.WriteTangent(tdir.x,tdir.y,tdir.z);
+                builder.WriteTangent(tdir.x,tdir.y,tdir.z);
             }
         }
 

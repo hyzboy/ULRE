@@ -18,7 +18,12 @@ namespace hgl::graph::inline_geometry
         BufferAccessor3f accessor_position;
         BufferAccessor3f accessor_normal;
         BufferAccessor3f accessor_tangent;
+        BufferAccessor1a2bgr10sn accessor_normal_a2bgr10sn;
+        BufferAccessor1a2rgb10sn accessor_normal_a2rgb10sn;
+        BufferAccessor1a2bgr10sn accessor_tangent_a2bgr10sn;
+        BufferAccessor1a2rgb10sn accessor_tangent_a2rgb10sn;
         BufferAccessor2f accessor_texcoord;
+        BufferAccessor2hf accessor_texcoord_hf;
         FormatAwareWriter format_writer;
 
     public:
@@ -45,49 +50,26 @@ namespace hgl::graph::inline_geometry
          * 写入法线
          * @param x, y, z 法线坐标
          */
-        inline void WriteNormal(float x, float y, float z)
-        {
-            if(format_writer.IsValid())
-            {
-                format_writer.WriteNormal(x, y, z);
-                return;
-            }
-
-            if(accessor_normal.IsValid())
-                accessor_normal->Write(x, y, z);
-        }
+        void WriteNormal(float x, float y, float z);
 
         /**
          * 写入切线
          * @param x, y, z 切线坐标
          */
-        inline void WriteTangent(float x, float y, float z)
-        {
-            if(format_writer.IsValid())
-            {
-                format_writer.WriteTangent(x, y, z);
-                return;
-            }
+        void WriteTangent(float x, float y, float z);
 
-            if(accessor_tangent.IsValid())
-                accessor_tangent->Write(x, y, z);
-        }
+        /**
+         * 写入切线（含手性）
+         * @param x, y, z 切线坐标
+         * @param w 切线手性，通常为+1或-1
+         */
+        void WriteTangent(float x, float y, float z, float w);
 
         /**
          * 写入纹理坐标
          * @param u, v 纹理坐标
          */
-        inline void WriteTexCoord(float u, float v)
-        {
-            if(format_writer.IsValid())
-            {
-                format_writer.WriteUV(u, v);
-                return;
-            }
-
-            if(accessor_texcoord.IsValid())
-                accessor_texcoord->Write(u, v);
-        }
+        void WriteTexCoord(float u, float v);
 
         /**
          * 写入完整顶点数据（位置+法线+切线+纹理坐标）
@@ -108,18 +90,32 @@ namespace hgl::graph::inline_geometry
         }
 
         /**
+         * 写入完整顶点数据（位置+法线+切线(含手性)+纹理坐标）
+         */
+        inline void WriteFullVertex(float px, float py, float pz,
+                                   float nx, float ny, float nz,
+                                   float tx, float ty, float tz, float tw,
+                                   float u, float v)
+        {
+            WriteVertex(px, py, pz);
+            WriteNormal(nx, ny, nz);
+            WriteTangent(tx, ty, tz, tw);
+            WriteTexCoord(u, v);
+        }
+
+        /**
          * 检查是否有法线缓冲
          */
-        bool HasNormals() const { return accessor_normal.IsValid(); }
+        bool HasNormals()   const { return creater && creater->GetVAB(VAN::Normal)   != nullptr; }
 
         /**
          * 检查是否有切线缓冲
          */
-        bool HasTangents() const { return accessor_tangent.IsValid(); }
+        bool HasTangents()  const { return creater && creater->GetVAB(VAN::Tangent)  != nullptr; }
 
         /**
          * 检查是否有纹理坐标缓冲
          */
-        bool HasTexCoords() const { return accessor_texcoord.IsValid(); }
+        bool HasTexCoords() const { return creater && creater->GetVAB(VAN::TexCoord) != nullptr; }
     };
 }

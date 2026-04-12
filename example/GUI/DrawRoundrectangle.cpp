@@ -41,7 +41,7 @@ namespace
 {
     const VertexFormatMap kTexturedQuadVertexFormats = {
         {VAN::Position, PF_RG32F},
-        {VAN::TexCoord, PF_RG32F},
+        {VAN::TexCoord, PF_RG16F},
     };
 }
 

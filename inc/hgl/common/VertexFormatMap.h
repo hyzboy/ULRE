@@ -61,5 +61,26 @@ namespace hgl::graph
             {VAN::Tangent, PF_RGB32F},
             {VAN::TexCoord, PF_RG16F},
         };
+
+        inline const VertexFormatMap kLitSurfaceNT_SN8x4_SN8x4_UV_HF16x2 = {
+            {VAN::Position, PF_RGB32F},
+            {VAN::Normal, PF_RGBA8SN},
+            {VAN::Tangent, PF_RGBA8SN},
+            {VAN::TexCoord, PF_RG16F},
+        };
+
+        inline const VertexFormatMap kLitSurfaceNT_HF16x4_HF16x4_UV_HF16x2 = {
+            {VAN::Position, PF_RGB32F},
+            {VAN::Normal, PF_RGBA16F},
+            {VAN::Tangent, PF_RGBA16F},
+            {VAN::TexCoord, PF_RG16F},
+        };
+
+        inline const VertexFormatMap kLitSurfaceNT_A2BGR10SN_A2BGR10SN_UV_HF16x2 = {
+            {VAN::Position, PF_RGB32F},
+            {VAN::Normal, PF_A2BGR10SN},
+            {VAN::Tangent, PF_A2BGR10SN},
+            {VAN::TexCoord, PF_RG16F},
+        };
     }
 }

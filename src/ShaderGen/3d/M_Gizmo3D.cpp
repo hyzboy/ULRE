@@ -9,7 +9,7 @@ namespace
 {
     constexpr VertexAttributeSpec GIZMO_3D_VERTEX_SPECS[] = {
         { VAN::Position, VAT_VEC3, PF_RGB32F },
-        { VAN::Normal,   VAT_VEC3, PF_RGB32F },
+        { VAN::Normal,   VAT_VEC4, PF_RGB32F },
     };
 
     const UBOSemanticSet GIZMO_3D_UBOS = build3d::MakeViewportCameraUBOs();

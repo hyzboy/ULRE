@@ -7,6 +7,7 @@ struct SurfaceInput
 {
     vec3 worldPos;
     vec3 worldNormal;
+    vec4 worldTangent;
     vec2 uv0;
     vec2 uv1;
     vec4 vertexColor;

@@ -114,7 +114,6 @@ public: //顶点缓冲区
                             GetVertexAttribName(attrib),
                             GetVulkanFormatName(expected),
                             GetVulkanFormatName(actual));
-
 #ifdef _DEBUG
                         assert(false && "GeometryCreater::GetBufferAccessor format mismatch");
 #endif

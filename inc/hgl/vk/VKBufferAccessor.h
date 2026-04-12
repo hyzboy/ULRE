@@ -490,6 +490,8 @@ using BufferAccessor1sn8  = BufferAccessor<VB1sn8>;
 using BufferAccessor1sn16 = BufferAccessor<VB1sn16>;
 using BufferAccessor1un8  = BufferAccessor<VB1un8>;   ///< uint8 UNORM — write 0-255, GPU reads as float 0.0-1.0
 using BufferAccessor1un16 = BufferAccessor<VB1un16>;
+using BufferAccessor1a2rgb10sn = BufferAccessor<VB1a2rgb10sn>;
+using BufferAccessor1a2bgr10sn = BufferAccessor<VB1a2bgr10sn>;
 using BufferAccessor1hf   = BufferAccessor<VB1hf>;
 
 // 2-component

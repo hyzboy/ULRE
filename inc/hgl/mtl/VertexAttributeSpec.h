@@ -44,7 +44,12 @@ inline bool IsStorageFormatCompatibleWithShaderType(const VAType &shader_type,co
                               ||storage_format==PF_RG32F;
                 case 3: return storage_format==PF_RGB16F
                               ||storage_format==PF_RGB32F;
-                case 4: return storage_format==PF_RGBA8UN
+                case 4: return storage_format==PF_RGB16F
+                              ||storage_format==PF_RGB32F
+                              ||storage_format==PF_RGBA8UN
+                              ||storage_format==PF_RGBA8SN
+                              ||storage_format==PF_A2RGB10SN
+                              ||storage_format==PF_A2BGR10SN
                               ||storage_format==PF_RGBA16UN
                               ||storage_format==PF_RGBA16F
                               ||storage_format==PF_RGBA32F;

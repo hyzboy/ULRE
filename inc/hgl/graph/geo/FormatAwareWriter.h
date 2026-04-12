@@ -1,6 +1,7 @@
 #pragma once
 
 #include<cstdint>
+#include<hgl/vk/VKBufferAccessor.h>
 
 namespace hgl::graph
 {
@@ -11,8 +12,9 @@ namespace hgl::graph
         enum class InlineGeoFormatPreset : uint8_t
         {
             Legacy = 0,
-            NT_U8x2_U8x2_UV_HF16x2,
-            NT_HF16x2_HF16x2_UV_HF16x2
+            NT_SN8x4_SN8x4_UV_HF16x2,
+            NT_HF16x4_HF16x4_UV_HF16x2,
+            NT_A2BGR10SN_A2BGR10SN_UV_HF16x2
         };
 
         /**
@@ -23,6 +25,23 @@ namespace hgl::graph
         private:
             GeometryCreater *creater;
             InlineGeoFormatPreset preset;
+
+            BufferAccessor3f accessor_position_f32;
+
+            BufferAccessor3f accessor_normal_f32;
+            BufferAccessor4sn8 accessor_normal_sn8x4;
+            BufferAccessor4hf accessor_normal_hf16x4;
+            BufferAccessor1a2bgr10sn accessor_normal_a2bgr10sn;
+            BufferAccessor1a2rgb10sn accessor_normal_a2rgb10sn;
+
+            BufferAccessor3f accessor_tangent_f32;
+            BufferAccessor4sn8 accessor_tangent_sn8x4;
+            BufferAccessor4hf accessor_tangent_hf16x4;
+            BufferAccessor1a2bgr10sn accessor_tangent_a2bgr10sn;
+            BufferAccessor1a2rgb10sn accessor_tangent_a2rgb10sn;
+
+            BufferAccessor2f accessor_uv_f32;
+            BufferAccessor2hf accessor_uv_hf16x2;
 
         public:
             FormatAwareWriter(GeometryCreater *gc=nullptr,
@@ -36,10 +55,14 @@ namespace hgl::graph
             bool WritePosition(float x,float y,float z);
             bool WriteNormal(float x,float y,float z);
             bool WriteTangent(float x,float y,float z);
+            bool WriteTangent(float x,float y,float z,float w);
             bool WriteUV(float u,float v);
 
             bool WriteNormalTangentUV(float nx,float ny,float nz,
                                       float tx,float ty,float tz,
+                                      float u,float v);
+            bool WriteNormalTangentUV(float nx,float ny,float nz,
+                                      float tx,float ty,float tz,float tw,
                                       float u,float v);
         };
     }//namespace inline_geometry
