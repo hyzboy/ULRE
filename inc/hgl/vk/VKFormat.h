@@ -87,6 +87,38 @@ namespace hgl::graph{
 #define PF_A2BGR10U    VK_FORMAT_A2B10G10R10_UINT_PACK32
 #define PF_A2BGR10I    VK_FORMAT_A2B10G10R10_SINT_PACK32
 
+// Semantic storage aliases for normal/tangent payloads.
+// LOW  : 16-bit  (RG8 SNORM, intended for 2-channel encoded unit vectors)
+// MID  : 32-bit  (default packed A2BGR10 SNORM)
+// HIGH : 64-bit  (RGBA16F)
+// FULL : 128-bit (RGBA32F)
+//
+// Project convention:
+// - Mobile LOW quality mode uses 2-channel normal encoding and does NOT include tangent attribute.
+// - PF_TANGENT_LOW is kept only as a semantic alias for completeness; low-quality vertex maps
+//   should prefer no-tangent layouts.
+#define PF_NORMAL_16BITS            PF_RG8SN
+#define PF_NORMAL_32BITS_A2RGB10    PF_A2RGB10SN
+#define PF_NORMAL_32BITS_A2BGR10    PF_A2BGR10SN
+#define PF_NORMAL_32BITS            PF_NORMAL_32BITS_A2BGR10
+#define PF_NORMAL_64BITS            PF_RGBA16F
+#define PF_NORMAL_128BITS           PF_RGBA32F
+#define PF_NORMAL_LOW               PF_NORMAL_16BITS
+#define PF_NORMAL_MID               PF_NORMAL_32BITS
+#define PF_NORMAL_HIGH              PF_NORMAL_64BITS
+#define PF_NORMAL_FULL              PF_NORMAL_128BITS
+
+#define PF_TANGENT_16BITS           PF_RG8SN
+#define PF_TANGENT_32BITS_A2RGB10   PF_A2RGB10SN
+#define PF_TANGENT_32BITS_A2BGR10   PF_A2BGR10SN
+#define PF_TANGENT_32BITS           PF_TANGENT_32BITS_A2BGR10
+#define PF_TANGENT_64BITS           PF_RGBA16F
+#define PF_TANGENT_128BITS          PF_RGBA32F
+#define PF_TANGENT_LOW              PF_TANGENT_16BITS
+#define PF_TANGENT_MID              PF_TANGENT_32BITS
+#define PF_TANGENT_HIGH             PF_TANGENT_64BITS
+#define PF_TANGENT_FULL             PF_TANGENT_128BITS
+
 #define PF_R16UN       VK_FORMAT_R16_UNORM
 #define PF_R16SN       VK_FORMAT_R16_SNORM
 #define PF_R16US       VK_FORMAT_R16_USCALED

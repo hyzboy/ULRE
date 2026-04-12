@@ -29,12 +29,14 @@ namespace hgl::graph
             BufferAccessor3f accessor_position_f32;
 
             BufferAccessor3f accessor_normal_f32;
+            BufferAccessor2sn8 accessor_normal_low_rg8sn;
             BufferAccessor4sn8 accessor_normal_sn8x4;
             BufferAccessor4hf accessor_normal_hf16x4;
             BufferAccessor1a2bgr10sn accessor_normal_a2bgr10sn;
             BufferAccessor1a2rgb10sn accessor_normal_a2rgb10sn;
 
             BufferAccessor3f accessor_tangent_f32;
+            BufferAccessor2sn8 accessor_tangent_low_rg8sn;
             BufferAccessor4sn8 accessor_tangent_sn8x4;
             BufferAccessor4hf accessor_tangent_hf16x4;
             BufferAccessor1a2bgr10sn accessor_tangent_a2bgr10sn;

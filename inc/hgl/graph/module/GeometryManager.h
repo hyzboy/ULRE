@@ -25,7 +25,7 @@ public:
 
     GeometryID  Add         (Geometry *        p   ){return rm_geometry.Add(p);}
     Geometry *  GetGeometry (const GeometryID &id  ){return rm_geometry.Get(id);}
-    void        Release     (Geometry *        p   ){rm_geometry.Release(p);}
+    void        Release     (Geometry *        p   ){rm_geometry.Release(p,true);}
 
     void Release() override
     {

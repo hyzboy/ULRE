@@ -29,6 +29,7 @@ CreateProject(11_RenderBoundBox                 RenderBoundBox.cpp)
 CreateProject(12_RenderToTexture                RenderToTexture.cpp)
 CreateProject(13_RecursiveCube                  RecursiveCube.cpp)
 CreateProject(14_PBRColor3DSpheresECS           PBRColor3DSpheresECS.cpp)
+CreateProject(15_PBRSpheresNTQualityECS         PBRSpheresNTQualityECS.cpp)
 
 
 add_subdirectory(BillboardIconECS)

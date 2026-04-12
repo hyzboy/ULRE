@@ -51,7 +51,7 @@ MaterialParameters *VulkanDevice::CreateMP(const MaterialDescriptorManager *desc
     oss << "0x" << std::hex << std::uppercase << reinterpret_cast<uint64_t>(ds->GetDescriptorSet());
     const std::string addr_string = oss.str();
 
-    LogInfo(std::string("Create [DescriptSets:") + addr_string + "] OK! MaterialTemplate Name: \"" + desc_manager->GetMaterialName().c_str() + "\" Type: " + GetDescriptorSetTypeName(desc_set_type));
+    LogInfo(std::string("Create [DescriptSets:") + addr_string + "] OK! MaterialTemplate Name: \"" + desc_manager->GetMaterialName() + "\" Type: " + std::string(GetDescriptorSetTypeName(desc_set_type)));
 #endif//_DEBUG
 
     return(new MaterialParameters(desc_manager,desc_set_type,ds));

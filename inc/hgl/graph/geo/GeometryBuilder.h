@@ -18,6 +18,8 @@ namespace hgl::graph::inline_geometry
         BufferAccessor3f accessor_position;
         BufferAccessor3f accessor_normal;
         BufferAccessor3f accessor_tangent;
+        BufferAccessor2sn8 accessor_normal_low_rg8sn;
+        BufferAccessor2sn8 accessor_tangent_low_rg8sn;
         BufferAccessor1a2bgr10sn accessor_normal_a2bgr10sn;
         BufferAccessor1a2rgb10sn accessor_normal_a2rgb10sn;
         BufferAccessor1a2bgr10sn accessor_tangent_a2bgr10sn;

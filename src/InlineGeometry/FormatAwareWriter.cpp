@@ -1,6 +1,7 @@
 #include<hgl/graph/geo/FormatAwareWriter.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/math/HalfFloat.h>
+#include<hgl/math/NormalData.h>
 
 namespace
 {
@@ -112,6 +113,18 @@ namespace
                                ClampSNorm8(w));
     }
 
+    static bool WriteVec2SNorm8EncodedNormal(BufferAccessor2sn8 &accessor,const float x,const float y,const float z)
+    {
+        if(!accessor.IsValid())
+            return false;
+
+        const Vector2f enc = Normal3to2(Vector3f(x,y,z));
+
+        // PF_RG8SN storage expects signed normalized bytes.
+        return accessor->Write(ClampSNorm8(enc.x * 2.0f - 1.0f),
+                               ClampSNorm8(enc.y * 2.0f - 1.0f));
+    }
+
     static bool WriteVec4HF16(BufferAccessor4hf &accessor,const float x,const float y,const float z,const float w)
     {
         if(!accessor.IsValid())
@@ -160,10 +173,11 @@ namespace hgl::graph::inline_geometry
             switch(vab->GetFormat())
             {
                 case PF_RGB32F:     accessor_normal_f32.Bind(vab,vertex_offset,vertex_count); break;
+                case PF_NORMAL_LOW: accessor_normal_low_rg8sn.Bind(vab,vertex_offset,vertex_count); break;
                 case PF_RGBA8SN:    accessor_normal_sn8x4.Bind(vab,vertex_offset,vertex_count); break;
                 case PF_RGBA16F:    accessor_normal_hf16x4.Bind(vab,vertex_offset,vertex_count); break;
-                case PF_A2BGR10SN:  accessor_normal_a2bgr10sn.Bind(vab,vertex_offset,vertex_count); break;
-                case PF_A2RGB10SN:  accessor_normal_a2rgb10sn.Bind(vab,vertex_offset,vertex_count); break;
+                case HGL_NT_PACK_FMT_A2BGR10_SNORM:  accessor_normal_a2bgr10sn.Bind(vab,vertex_offset,vertex_count); break;
+                case HGL_NT_PACK_FMT_A2RGB10_SNORM:  accessor_normal_a2rgb10sn.Bind(vab,vertex_offset,vertex_count); break;
                 default: break;
             }
         }
@@ -173,10 +187,11 @@ namespace hgl::graph::inline_geometry
             switch(vab->GetFormat())
             {
                 case PF_RGB32F:     accessor_tangent_f32.Bind(vab,vertex_offset,vertex_count); break;
+                case PF_TANGENT_LOW: accessor_tangent_low_rg8sn.Bind(vab,vertex_offset,vertex_count); break;
                 case PF_RGBA8SN:    accessor_tangent_sn8x4.Bind(vab,vertex_offset,vertex_count); break;
                 case PF_RGBA16F:    accessor_tangent_hf16x4.Bind(vab,vertex_offset,vertex_count); break;
-                case PF_A2BGR10SN:  accessor_tangent_a2bgr10sn.Bind(vab,vertex_offset,vertex_count); break;
-                case PF_A2RGB10SN:  accessor_tangent_a2rgb10sn.Bind(vab,vertex_offset,vertex_count); break;
+                case HGL_NT_PACK_FMT_A2BGR10_SNORM:  accessor_tangent_a2bgr10sn.Bind(vab,vertex_offset,vertex_count); break;
+                case HGL_NT_PACK_FMT_A2RGB10_SNORM:  accessor_tangent_a2rgb10sn.Bind(vab,vertex_offset,vertex_count); break;
                 default: break;
             }
         }
@@ -203,6 +218,9 @@ namespace hgl::graph::inline_geometry
 
     bool FormatAwareWriter::WriteNormal(float x,float y,float z)
     {
+        if(WriteVec2SNorm8EncodedNormal(accessor_normal_low_rg8sn,x,y,z))
+            return true;
+
         if(WriteVec4A2BGR10SN(accessor_normal_a2bgr10sn,x,y,z,1.0f))
             return true;
 
@@ -245,6 +263,9 @@ namespace hgl::graph::inline_geometry
 
     bool FormatAwareWriter::WriteTangent(float x,float y,float z,float w)
     {
+        if(WriteVec2SNorm8EncodedNormal(accessor_tangent_low_rg8sn,x,y,z))
+            return true;
+
         if(WriteVec4A2BGR10SN(accessor_tangent_a2bgr10sn,x,y,z,w))
             return true;
 

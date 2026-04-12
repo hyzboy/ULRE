@@ -1,9 +1,15 @@
 ﻿#include<hgl/graph/geo/GeometryBuilder.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/math/HalfFloat.h>
+#include<hgl/math/NormalData.h>
+#include<algorithm>
 
 namespace
 {
+    using namespace hgl;
+    using namespace hgl::graph;
+    using namespace hgl::graph::inline_geometry;
+
     static int32_t ClampSNorm10(const float value)
     {
         float clamped = value;
@@ -49,6 +55,17 @@ namespace
 
         return b | (g << 10u) | (r << 20u) | (a << 30u);
     }
+
+    static bool WriteVec2SNorm8EncodedNormal(BufferAccessor2sn8 &accessor,const float x,const float y,const float z)
+    {
+        if(!accessor.IsValid())
+            return false;
+
+        const hgl::Vector2f enc = hgl::Normal3to2(hgl::Vector3f(x,y,z));
+
+        return accessor->Write(int8_t(std::clamp(enc.x * 2.0f - 1.0f, -1.0f, 1.0f) * 127.0f),
+                               int8_t(std::clamp(enc.y * 2.0f - 1.0f, -1.0f, 1.0f) * 127.0f));
+    }
 }
 
 namespace hgl::graph::inline_geometry
@@ -75,20 +92,26 @@ namespace hgl::graph::inline_geometry
         if(vab && vab->GetFormat() == PF_RGB32F)
             accessor_normal.Bind(vab, vertex_offset, vertex_count);
         else
-        if(vab && vab->GetFormat() == PF_A2BGR10SN)
+        if(vab && vab->GetFormat() == PF_NORMAL_LOW)
+            accessor_normal_low_rg8sn.Bind(vab, vertex_offset, vertex_count);
+        else
+        if(vab && vab->GetFormat() == HGL_NT_PACK_FMT_A2BGR10_SNORM)
             accessor_normal_a2bgr10sn.Bind(vab, vertex_offset, vertex_count);
         else
-        if(vab && vab->GetFormat() == PF_A2RGB10SN)
+        if(vab && vab->GetFormat() == HGL_NT_PACK_FMT_A2RGB10_SNORM)
             accessor_normal_a2rgb10sn.Bind(vab, vertex_offset, vertex_count);
 
         vab = pc->GetVAB(VAN::Tangent);
         if(vab && vab->GetFormat() == PF_RGB32F)
             accessor_tangent.Bind(vab, vertex_offset, vertex_count);
         else
-        if(vab && vab->GetFormat() == PF_A2BGR10SN)
+        if(vab && vab->GetFormat() == PF_TANGENT_LOW)
+            accessor_tangent_low_rg8sn.Bind(vab, vertex_offset, vertex_count);
+        else
+        if(vab && vab->GetFormat() == HGL_NT_PACK_FMT_A2BGR10_SNORM)
             accessor_tangent_a2bgr10sn.Bind(vab, vertex_offset, vertex_count);
         else
-        if(vab && vab->GetFormat() == PF_A2RGB10SN)
+        if(vab && vab->GetFormat() == HGL_NT_PACK_FMT_A2RGB10_SNORM)
             accessor_tangent_a2rgb10sn.Bind(vab, vertex_offset, vertex_count);
 
         vab = pc->GetVAB(VAN::TexCoord);
@@ -110,6 +133,9 @@ namespace hgl::graph::inline_geometry
             accessor_normal->Write(x, y, z);
             return;
         }
+
+        if(WriteVec2SNorm8EncodedNormal(accessor_normal_low_rg8sn,x,y,z))
+            return;
 
         if(accessor_normal_a2bgr10sn.IsValid())
         {
@@ -139,6 +165,9 @@ namespace hgl::graph::inline_geometry
             accessor_tangent->Write(x, y, z);
             return;
         }
+
+        if(WriteVec2SNorm8EncodedNormal(accessor_tangent_low_rg8sn,x,y,z))
+            return;
 
         if(accessor_tangent_a2bgr10sn.IsValid())
         {

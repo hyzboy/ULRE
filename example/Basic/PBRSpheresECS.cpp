@@ -42,8 +42,8 @@ namespace
 {
 const VertexFormatMap kLitSurfaceVertexFormats = {
     {VAN::Position, PF_RGB32F},
-    {VAN::Normal,   PF_A2BGR10SN},
-    {VAN::Tangent,  PF_A2BGR10SN},
+    {VAN::Normal,   PF_NORMAL_MID},
+    {VAN::Tangent,  PF_TANGENT_MID},
     {VAN::TexCoord, PF_RG16F},
 };
 }

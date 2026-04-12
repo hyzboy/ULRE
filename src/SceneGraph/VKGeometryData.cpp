@@ -267,8 +267,8 @@ namespace
 
     public:
 
-        int32_t             GetVertexOffset ()const override{return vab_node->GetStart();}
-        uint32_t            GetFirstIndex   ()const override{return ib_node->GetStart();}
+        int32_t             GetVertexOffset ()const override{return vab_node?vab_node->GetStart():0;}
+        uint32_t            GetFirstIndex   ()const override{return ib_node?ib_node->GetStart():0;}
         VertexDataManager * GetVDM          ()const override{return vdm;}                           ///<取得顶点数据管理器
 
     public:
