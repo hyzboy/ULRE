@@ -8,6 +8,7 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/graph/module/DescriptorTimingDiagnostics.h>
 #include<hgl/vk/VKRenderTargetData.h>
 #include<hgl/vk/VKTexture.h>
 
@@ -105,13 +106,17 @@ bool RenderCmdBuffer::BindDescriptorSets(MaterialTemplate *mtl)
         MaterialParameters *mp;
         VkDescriptorSet ds[DESCRIPTOR_SET_TYPE_COUNT];
 
+        LOG_DESC_TIMING("RenderCmdBuffer::BindDescriptorSets(MaterialTemplate) ENTRY mtl=%p", (void*)mtl);
+
         ENUM_CLASS_FOR(DescriptorSetType,int,i)
         {
             mp=mtl->GetMP((DescriptorSetType)i);
 
             if(mp)
             {
+                LOG_DESC_TIMING("  DescriptorSetType[%d]: calling mp->Update() mp=%p", (int)i, (void*)mp);
                 mp->Update();
+                LOG_DESC_TIMING("  DescriptorSetType[%d]: mp->Update() DONE, obtained vk handle=%p", (int)i, (void*)mp->GetVkDescriptorSet());
 
                 ds[count]=mp->GetVkDescriptorSet();
                 ++count;
@@ -122,8 +127,12 @@ bool RenderCmdBuffer::BindDescriptorSets(MaterialTemplate *mtl)
         {
             pipeline_layout=mtl->GetPipelineLayout();
 
+            LOG_DESC_TIMING("  calling vkCmdBindDescriptorSets with count=%u", count);
             vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,count,ds,0,0);
+            LOG_DESC_TIMING("  vkCmdBindDescriptorSets DONE");
         }
+
+        LOG_DESC_TIMING("RenderCmdBuffer::BindDescriptorSets(MaterialTemplate) EXIT");
     }
 
     return(true);
@@ -133,18 +142,27 @@ bool RenderCmdBuffer::BindDescriptorSets(DomainMaterialBinding *binding)
 {
     if(!binding) return false;
 
-    MaterialParameters *mp = binding->GetPerMaterialMP();
-    if(!mp) return false;
+    LOG_DESC_TIMING("RenderCmdBuffer::BindDescriptorSets(DomainMaterialBinding) ENTRY binding=%p", (void*)binding);
 
+    MaterialParameters *mp = binding->GetPerMaterialMP();
+    if(!mp) {
+        LOG_DESC_TIMING("  No PerMaterialMP found");
+        return false;
+    }
+
+    LOG_DESC_TIMING("  calling mp->Update() mp=%p", (void*)mp);
     mp->Update();
+    LOG_DESC_TIMING("  mp->Update() DONE");
     const VkDescriptorSet ds = mp->GetVkDescriptorSet();
 
     const auto *pld = binding->GetMaterial()->GetGraphicsPipelineLayoutData();
     const uint32_t first_set = pld ? (uint32_t)pld->GetVulkanSetIndex(DescriptorSetType::PerMaterial) : 0;
 
     pipeline_layout = binding->GetPipelineLayout();
+    LOG_DESC_TIMING("  calling vkCmdBindDescriptorSets first_set=%u", first_set);
     vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             pipeline_layout, first_set, 1, &ds, 0, nullptr);
+    LOG_DESC_TIMING("RenderCmdBuffer::BindDescriptorSets(DomainMaterialBinding) EXIT");
 
     return true;
 }

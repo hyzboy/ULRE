@@ -421,6 +421,68 @@ static void test_resolver_entrypoint_no_requested_vil_all_missing_is_ok()
     ReleaseVertexInput(vi);
 }
 
+static void test_resolver_entrypoint_no_requested_vil_ignores_geometry_extra_attribs()
+{
+    VertexInput *vi = CreateTestVertexInput();
+    ASSERT_TRUE(vi != nullptr);
+
+    bool texcoord_queried = false;
+
+    auto resolver = [&](const VertexAttrib attrib,
+                        const VkVertexInputRate requested_input_rate,
+                        bool &has_storage,
+                        VkFormat &storage_format,
+                        uint32_t &storage_stride,
+                        VkVertexInputRate &storage_input_rate) -> bool
+    {
+        storage_input_rate = requested_input_rate;
+        has_storage = true;
+
+        if(attrib == VAN::Position)
+        {
+            storage_format = PF_RGB32F;
+            storage_stride = GetStrideByFormat(storage_format);
+            return true;
+        }
+
+        if(attrib == VAN::Luminance)
+        {
+            storage_format = PF_R8UN;
+            storage_stride = GetStrideByFormat(storage_format);
+            return true;
+        }
+
+        if(attrib == VAN::TexCoord)
+            texcoord_queried = true;
+
+        has_storage = false;
+        storage_format = VK_FORMAT_UNDEFINED;
+        storage_stride = 0;
+        return true;
+    };
+
+    VILConfig out_cfg;
+    bool has_any = false;
+    bool has_layout_mismatch = true;
+    std::string reason;
+
+    ASSERT_TRUE(BuildGeometryDrivenVILConfigFromVertexInputWithResolver(vi,
+                                                                        nullptr,
+                                                                        resolver,
+                                                                        out_cfg,
+                                                                        has_any,
+                                                                        &reason,
+                                                                        &has_layout_mismatch));
+    ASSERT_TRUE(has_any == true);
+    ASSERT_TRUE(has_layout_mismatch == false);
+    ASSERT_TRUE(out_cfg.GetCount() == 2);
+    ASSERT_TRUE(out_cfg.ContainsKey(VAN::Position));
+    ASSERT_TRUE(out_cfg.ContainsKey(VAN::Luminance));
+    ASSERT_TRUE(texcoord_queried == false);
+
+    ReleaseVertexInput(vi);
+}
+
 static void test_runtime_vil_release_clears_active_when_owned_is_active()
 {
     const VIL *active_vil = reinterpret_cast<const VIL *>(0x100);
@@ -522,6 +584,7 @@ int main()
     TEST(resolver_entrypoint_reports_incompatible_storage);
     TEST(resolver_entrypoint_reports_missing_required_attrib);
     TEST(resolver_entrypoint_no_requested_vil_all_missing_is_ok);
+    TEST(resolver_entrypoint_no_requested_vil_ignores_geometry_extra_attribs);
     TEST(runtime_vil_release_clears_active_when_owned_is_active);
     TEST(runtime_vil_release_preserves_active_when_not_owned);
     TEST(runtime_vil_replace_direct_rebind_releases_old_runtime);

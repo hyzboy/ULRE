@@ -59,62 +59,19 @@ private:
     {
         using namespace inline_geometry;
 
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         TubeCreateInfo tci;
-        tci.length = 1.0f;           // total length = 1.0 (half-extend = 0.5 inside CreateTube)
+        tci.length = 1.0f;
         tci.outer_radius = 1.0f;
         tci.inner_radius = 0.5f;
-        tci.segments = 32;           // very low tessellation (hexagonal)
+        tci.segments = 32;
         tci.generate_caps = true;
 
-        auto *registry = graphics_context->GetMaterialAssetRegistry();
-        if (!registry)
-            return false;
-
-        mtl::MaterialAssetRecord rec;
-        if (!registry->QuerySemanticMaterial(semantic_material_id, rec))
-            return false;
-
-        MaterialDomainHandle handle = registry->Acquire(rec);
-        if (!handle.material)
-            return false;
-
-        const VIL *vil = handle.material->GetDefaultVIL();
-        if (!vil)
-            return false;
-
-        VertexFormatMap format_map;
-        for (uint32_t i = 0; i < vil->GetVertexAttribCount(); ++i)
-        {
-            const auto *cfg = vil->GetConfig(i);
-            if (!cfg)
-                continue;
-
-            format_map[cfg->attrib] = cfg->format;
-        }
-
-        auto *device = graphics_context->GetDevice();
-        auto *buffer_manager = graphics_context->GetBufferManager();
-        if (!device || !buffer_manager)
-            return false;
-
-        auto pc = std::make_unique<GeometryCreater>(device, format_map, buffer_manager);
-        if (!pc)
-            return false;
-
-        GraphicsGeometryFactory geometry_factory(graphics_context);
-        Geometry *geometry = CreateTube(pc.get(), &tci);
-        if (!geometry)
-            return false;
-
-        if (!geometry_factory.RegisterGeometry(geometry))
-            return false;
-
-        primitive = geometry_factory.CreatePrimitive(geometry, semantic_material_id);
-        return primitive != nullptr;
+        return (primitive = CreateComplexSemanticPrimitive(
+            semantic_material_id,
+            "Tube",
+            graph::vfmt::kLitSurface,
+            [&tci](graph::GeometryCreater* pc) { return CreateTube(pc, &tci); }
+        )) != nullptr;
     }
 
     bool InitECS()

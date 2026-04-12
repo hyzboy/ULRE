@@ -162,11 +162,22 @@ inline bool BuildGeometryDrivenVILConfigFromVertexInputWithResolver(const Vertex
     }
     else
     {
-        for(int i = 0; i < int(VAN::RANGE_SIZE); ++i)
+        if(!vertex_input)
         {
-            const VertexAttrib attrib = VertexAttrib(i);
-            if(!add_attrib(attrib, VK_VERTEX_INPUT_RATE_VERTEX, VK_FORMAT_UNDEFINED, 0, false))
+            if(reason)
+                *reason = "material_vertex_input_missing_attrib";
+            return false;
+        }
+
+        const auto &via_array = vertex_input->GetVIAArray();
+        const VertexInputAttribute *via = via_array.items;
+
+        for(uint i = 0; i < via_array.count; ++i)
+        {
+            if(!add_attrib(via->attrib, VK_VERTEX_INPUT_RATE_VERTEX, VK_FORMAT_UNDEFINED, 0, false))
                 return false;
+
+            ++via;
         }
     }
 

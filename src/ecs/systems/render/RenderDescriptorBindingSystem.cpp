@@ -8,6 +8,7 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
+#include<hgl/graph/module/DescriptorTimingDiagnostics.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKMaterialTemplate.h>
@@ -583,13 +584,17 @@ namespace hgl::ecs
 
     void RenderDescriptorBindingSystem::Update(float /*deltaTime*/)
     {
+        LOG_DESC_TIMING("RenderDescriptorBindingSystem::Update() ENTRY");
         SyncBindingsForCurrentCommand(true);
+        LOG_DESC_TIMING("RenderDescriptorBindingSystem::Update() EXIT");
     }
 
     void RenderDescriptorBindingSystem::Render(graph::RenderCmdBuffer * /*cmd*/, float /*deltaTime*/)
     {
         // Critical for RenderDrawOnly path: Update() is not called there.
+        LOG_DESC_TIMING("RenderDescriptorBindingSystem::Render() ENTRY (Render path sync)");
         SyncBindingsForCurrentCommand(false);
+        LOG_DESC_TIMING("RenderDescriptorBindingSystem::Render() EXIT");
     }
 
     void RenderDescriptorBindingSystem::SyncBindingsForCurrentCommand(bool run_contract_diagnostics)
@@ -597,17 +602,32 @@ namespace hgl::ecs
         if (!context)
             return;
 
+        LOG_DESC_TIMING("RenderDescriptorBindingSystem::SyncBindingsForCurrentCommand() - START");
+
         if (run_contract_diagnostics)
             ValidateContractsSideChannel();
 
         EnsureViewportUBO();
         RefreshSceneUBOResolvers();
 
+        LOG_DESC_TIMING("  Calling ApplyBatchMaterialBindings...");
         std::unordered_set<const graph::MaterialTemplate *> active_materials;
         ApplyBatchMaterialBindings(active_materials);
+        LOG_DESC_TIMING("  ApplyBatchMaterialBindings done, active_materials=%zu", active_materials.size());
+
+        LOG_DESC_TIMING("  Calling ApplyPipelineMaterialBindings...");
         ApplyPipelineMaterialBindings(active_materials);
+        LOG_DESC_TIMING("  ApplyPipelineMaterialBindings done");
+
+        LOG_DESC_TIMING("  Calling ApplyDomainBindings...");
         ApplyDomainBindings();
+        LOG_DESC_TIMING("  ApplyDomainBindings done");
+
+        LOG_DESC_TIMING("  Calling PurgeStaleBindings...");
         PurgeStaleBindings(active_materials);
+        LOG_DESC_TIMING("  PurgeStaleBindings done");
+
+        LOG_DESC_TIMING("RenderDescriptorBindingSystem::SyncBindingsForCurrentCommand() - END");
     }
 
     void RenderDescriptorBindingSystem::ApplyBatchMaterialBindings(
@@ -1022,7 +1042,9 @@ namespace hgl::ecs
             // MaterialInstanceTextureID for domain bindings requires a domain-level
             // MIT buffer — not yet implemented for the domain path.
 
+            LOG_DESC_TIMING("    DomainMaterialBinding::Update() binding=%p", (void*)binding);
             binding->Update();
+            LOG_DESC_TIMING("    DomainMaterialBinding::Update() done");
         }
     }
 }

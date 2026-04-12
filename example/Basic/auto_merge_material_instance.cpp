@@ -96,44 +96,11 @@ private:
 
     bool InitGeometry()
     {
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = GetMaterialManager();
-        if (!material_manager)
-            return false;
-
-        // 获取第一个三角形的 slot（仅用于获取 VIL）
-        static const mtl::MaterialAssetRecord kMergeCfg {
-            .id       = "auto_merge_pure_color",
-            .preset   = mtl::MaterialPreset::PureColor2D,
-            .dim      = mtl::MaterialAssetRecord::Dim::D2,
-            .pipeline = GraphicsPipelinePreset::Solid2D,
-        };
-
-        auto registry = GetMaterialAssetRegistry();
-        auto handle = registry->Acquire(kMergeCfg);
-        if (!handle.IsValid())
-            return false;
-
-        const VIL *resolved_vil = registry->ResolveVIL(handle.material, kMergeCfg);
-        if (!resolved_vil)
-            return false;
-
-        // 创建共用的 Geometry（所有三角形共享顶点数据）
-        GraphicsGeometryFactory factory(graphics_context);
-        auto creater = factory.CreateCreater(resolved_vil);
-        if (!creater)
-            return false;
-
-        if (!creater->Init("Triangle", VERTEX_COUNT))
-            return false;
-
-        if (!creater->WriteVAB(VAN::Position, VF_V2F, position_data))
-            return false;
-
-        geometry = creater->Create();
+        // Create geometry directly -- material-agnostic, no semantic_id required
+        geometry = CreateGeometry(
+            "Triangle",
+            VERTEX_COUNT,
+            {{VAN::Position, VF_V2F, position_data}});
 
         if (!geometry)
         {
@@ -148,7 +115,6 @@ private:
 
     bool InitECS()
     {
-
         // === 步骤1: 获取ECS世界 ===
         ecs_world = GetECSContext();
         if (!ecs_world)

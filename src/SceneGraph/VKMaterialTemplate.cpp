@@ -6,6 +6,7 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/UBOAccessor.h>
+#include<hgl/graph/module/DescriptorTimingDiagnostics.h>
 #include<cstdio>
 
 namespace hgl::graph{
@@ -160,10 +161,15 @@ bool MaterialTemplate::BindTextureSampler(const DescriptorSetType &type,mtl::Sam
 
 void MaterialTemplate::Update()
 {
+    LOG_DESC_TIMING("MaterialTemplate::Update() ENTRY mtl=%p name=%s", (void*)this, GetName().c_str());
     for(auto &mp:mp_array)
     {
         if(mp)
+        {
+            LOG_DESC_TIMING_VERBOSE("  Updating mp=%p", (void*)mp);
             mp->Update();
+        }
     }
+    LOG_DESC_TIMING("MaterialTemplate::Update() EXIT");
 }
 }//namespace hgl::graph

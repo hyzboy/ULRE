@@ -31,7 +31,7 @@ GeometryCreater::GeometryCreater(VertexDataManager *_vdm)
     device          = _vdm ? _vdm->GetDevice() : nullptr;
     buffer_manager  = _vdm ? _vdm->GetBufferManager() : nullptr;
     vdm=_vdm;
-    vertex_format_map.clear();
+    vertex_format_map = _vdm ? _vdm->GetVertexFormatMap() : VertexFormatMap();
 
     has_index=vdm ? vdm->GetIBO() : nullptr;
 

@@ -181,42 +181,11 @@ private:
 
     bool InitGeometry()
     {
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        // Get material for geometry creation
-        auto* registry = GetMaterialAssetRegistry();
-        if (!registry)
-            return false;
-        
-        static const mtl::MaterialAssetRecord kClockCfg {
-            .id       = "clock_pure_color",
-            .preset   = mtl::MaterialPreset::PureColor2D,
-            .dim      = mtl::MaterialAssetRecord::Dim::D2,
-            .pipeline = GraphicsPipelinePreset::Solid2D,
-        };
-        
-        MaterialDomainHandle domain_handle = registry->Acquire(kClockCfg);
-        if (!domain_handle.IsValid())
-            return false;
-        
-        MaterialTemplate* domain_material = domain_handle.material;
-        if (!domain_material)
-            return false;
-
-        const VIL* vil = registry->ResolveVIL(domain_material, kClockCfg, nullptr);
-        if (!vil)
-            vil = domain_material->GetDefaultVIL();
-        if (!vil)
-            return false;
-
-        geometry = GraphicsGeometryFactory::CreateGeometry(graphics_context,
-                                                           vil,
-                                                           "TriangleForClock",
-                                                           VERTEX_COUNT,
-                                                           {{VAN::Position, VF_V2F, position_data}});
+        // Create geometry directly; no semantic material binding is needed here.
+        geometry = CreateGeometry(
+            "TriangleForClock",
+            VERTEX_COUNT,
+            {{VAN::Position, VF_V2F, position_data}});
 
         if (!geometry)
         {

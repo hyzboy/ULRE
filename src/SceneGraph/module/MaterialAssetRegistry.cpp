@@ -4,6 +4,7 @@
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/VertexBindingCompatibility.h>
+#include <hgl/graph/module/VertexBindingDiagnostics.h>
 #include <hgl/vk/VKMaterialTemplate.h>
 #include <hgl/vk/VKMaterialResourceDomain.h>
 #include <hgl/vk/VKDomainMaterialBinding.h>
@@ -187,6 +188,14 @@ static const VIL *ResolveVILFromGeometry(MaterialTemplate *material,
                     build_reason.c_str(),
                     static_cast<unsigned long long>(n));
             }
+
+            DumpResolveVILIncompatibleDiagnostics(stderr,
+                                                 "[MaterialAssetRegistry]",
+                                                 material,
+                                                 geometry,
+                                                 fallback_rec,
+                                                 build_reason,
+                                                 vil_cfg);
 
 #ifdef _DEBUG
             assert(false && "MaterialAssetRegistry::ResolveVILFromGeometry incompatible geometry format");

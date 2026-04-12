@@ -4,6 +4,7 @@
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKSampler.h>
 #include<hgl/vk/IGPUBuffer.h>
+#include<hgl/graph/module/DescriptorTimingDiagnostics.h>
 #include<cstdio>
 
 namespace hgl::graph{
@@ -352,12 +353,19 @@ bool DescriptorSet::BindInputAttachment(const int binding,ImageView *iv)
 
 void DescriptorSet::Update()
 {
-    if(!is_dirty)return;
+    LOG_DESC_TIMING("DescriptorSet::Update() ENTRY desc_set=%p is_dirty=%d", (void*)desc_set, (int)is_dirty);
+    
+    if(!is_dirty)
+    {
+        LOG_DESC_TIMING("  desc_set NOT dirty, skipping update");
+        return;
+    }
 
     SyncWriteDescriptorInfoPointers();
 
     if(!wds_list.empty())
     {
+        LOG_DESC_TIMING("  calling vkUpdateDescriptorSets wds_count=%zu desc_set=%p", wds_list.size(), (void*)desc_set);
         //LogInfo(u8"[VKDescriptorSet] Update wds_count=%d image_count=%d buffer_count=%d desc_set=%p",
         //    wds_list.GetCount(),
         //    image_list.GetCount(),
@@ -375,8 +383,10 @@ void DescriptorSet::Update()
         //            (void*)wds.pBufferInfo);
         //}
         vkUpdateDescriptorSets(device,static_cast<uint32_t>(wds_list.size()),wds_list.data(),0,nullptr);
+        LOG_DESC_TIMING("  vkUpdateDescriptorSets DONE");
     }
 
+    LOG_DESC_TIMING("DescriptorSet::Update() EXIT");
     Clear();
 }
 }//namespace hgl::graph

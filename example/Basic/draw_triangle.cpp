@@ -9,7 +9,6 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
-#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 
  // 引入ECS相关头文件
  #include<hgl/ecs/core/Context.h>
@@ -86,22 +85,16 @@ private:
             position_data[i][1]=position_data_float[i][1]*ext->height;
         }
 
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        Geometry *geometry = GraphicsGeometryFactory::CreateGeometry(
-            graphics_context,
+        // 使用 WorkObject::CreateSemanticPrimitive() 创建语义图元
+        // 自动处理几何体创建和材质绑定
+        prim_triangle = WorkObject::CreateSemanticPrimitive(
+            semantic_material_id,
             "Triangle",
             VERTEX_COUNT,
-            {{VAN::Position, POSITION_DATA_FORMAT, position_data},
-             {VAN::Color, COLOR_DATA_FORMAT, color_data}});
-
-        if (!geometry)
-            return false;
-
-        GraphicsGeometryFactory geometry_factory(graphics_context);
-        prim_triangle = geometry_factory.CreatePrimitive(geometry, semantic_material_id);
+            {
+                { VAN::Position, POSITION_DATA_FORMAT, position_data },
+                { VAN::Color,    COLOR_DATA_FORMAT, color_data },
+            });
 
         if(!prim_triangle)
             return(false);

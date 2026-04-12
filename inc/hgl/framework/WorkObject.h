@@ -6,9 +6,11 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/common/VertexFormatMap.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include <memory>
+#include <functional>
 
 namespace hgl
 {
@@ -240,6 +242,57 @@ namespace hgl
                                                                    geometry_name,
                                                                    vertex_count,
                                                                    vertex_writes);
+        }
+
+        graph::Geometry *CreateGeometry(const AnsiString &geometry_name,
+                                        uint32 vertex_count,
+                                        std::initializer_list<PrimitiveVertexWrite> vertex_writes)
+        {
+            auto *graphics_context = GetGraphicsContext();
+            if (!graphics_context)
+                return nullptr;
+
+            return graph::GraphicsGeometryFactory::CreateGeometry(graphics_context,
+                                                                  geometry_name,
+                                                                  vertex_count,
+                                                                  vertex_writes);
+        }
+
+        // Helper for complex geometry (Cube, Cylinder, Tube, SkySphere) with explicit vertex formats.
+        // Geometry creation must be independent of material VIL.
+        // Usage: CreateComplexSemanticPrimitive(semantic_id, "Cube", graph::vfmt::kLitSurface, builder)
+        graph::Primitive *CreateComplexSemanticPrimitive(
+            graph::SemanticMaterialId semantic_id,
+            const AnsiString &geometry_name,
+            const graph::VertexFormatMap &vertex_format_map,
+            std::function<graph::Geometry*(graph::GeometryCreater*)> geometry_builder)
+        {
+            auto *graphics_context = GetGraphicsContext();
+            if (!graphics_context)
+                return nullptr;
+
+            if (vertex_format_map.empty())
+                return nullptr;
+
+            auto *device = graphics_context->GetDevice();
+            auto *buffer_manager = graphics_context->GetBufferManager();
+            if (!device || !buffer_manager)
+                return nullptr;
+
+            // Create geometry via builder callback
+            auto pc = std::make_unique<graph::GeometryCreater>(device, vertex_format_map, buffer_manager);
+            if (!pc)
+                return nullptr;
+
+            graph::GraphicsGeometryFactory geometry_factory(graphics_context);
+            graph::Geometry *geometry = geometry_builder(pc.get());
+            if (!geometry)
+                return nullptr;
+
+            if (!geometry_factory.RegisterGeometry(geometry))
+                return nullptr;
+
+            return geometry_factory.CreatePrimitive(geometry, semantic_id);
         }
 
         const VkExtent2D *          GetExtent           ();

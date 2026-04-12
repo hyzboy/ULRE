@@ -66,60 +66,17 @@ private:
     {
         using namespace inline_geometry;
 
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         CubeCreateInfo cci;
         cci.segments_x = 2;
         cci.segments_y = 3;
         cci.segments_z = 4;
 
-        auto *registry = graphics_context->GetMaterialAssetRegistry();
-        if (!registry)
-            return false;
-
-        mtl::MaterialAssetRecord rec;
-        if (!registry->QuerySemanticMaterial(semantic_material_id, rec))
-            return false;
-
-        MaterialDomainHandle handle = registry->Acquire(rec);
-        if (!handle.material)
-            return false;
-
-        const VIL *vil = handle.material->GetDefaultVIL();
-        if (!vil)
-            return false;
-
-        VertexFormatMap format_map;
-        for (uint32_t i = 0; i < vil->GetVertexAttribCount(); ++i)
-        {
-            const auto *cfg = vil->GetConfig(i);
-            if (!cfg)
-                continue;
-
-            format_map[cfg->attrib] = cfg->format;
-        }
-
-        auto *device = graphics_context->GetDevice();
-        auto *buffer_manager = graphics_context->GetBufferManager();
-        if (!device || !buffer_manager)
-            return false;
-
-        auto pc = std::make_unique<GeometryCreater>(device, format_map, buffer_manager);
-        if (!pc)
-            return false;
-
-        GraphicsGeometryFactory geometry_factory(graphics_context);
-        Geometry *geometry = CreateCube(pc.get(), &cci);
-        if (!geometry)
-            return false;
-
-        if (!geometry_factory.RegisterGeometry(geometry))
-            return false;
-
-        primitive = geometry_factory.CreatePrimitive(geometry, semantic_material_id);
-        return primitive != nullptr;
+        return (primitive = CreateComplexSemanticPrimitive(
+            semantic_material_id,
+            "Cube",
+            graph::vfmt::kLitSurface,
+            [&cci](graph::GeometryCreater* pc) { return CreateCube(pc, &cci); }
+        )) != nullptr;
     }
 
     bool InitECS()

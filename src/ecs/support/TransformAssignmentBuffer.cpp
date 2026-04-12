@@ -4,6 +4,7 @@
 
 #include<hgl/common/RenderOptions.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
+#include<hgl/graph/module/DescriptorTimingDiagnostics.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialTemplate.h>
@@ -180,11 +181,13 @@ namespace hgl::ecs
             return;
         }
 
+        GLogInfo("[#DESC_TIMING]       TransformAssignmentBuffer::BindTransform ENTRY mtl=%p mtl_name=%s", (void*)mtl, mtl->GetName().c_str());
+
 //        LogDeviceBufferSnapshot("[TransformAssignmentBuffer::BindTransform] before bind", transform_buffer);
 
         auto *l2w_gpu = transform_buffer->GetGPUBuffer();
         const bool l2w_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::TransformData, l2w_gpu);
-        GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO semantic=TransformData material=%s mtl=0x%llX gpu=0x%llX vk=0x%llX size=%llu dirty=%d",
+        GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO semantic=TransformData material=%s mtl=0x%llX gpu=0x%llX vk=0x%llX size=%llu dirty=%d [#DESC_TIMING]",
              mtl->GetName().c_str(),
              static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(mtl)),
              static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(l2w_gpu)),
@@ -203,7 +206,9 @@ namespace hgl::ecs
                         l2w_gpu ? (l2w_gpu->IsDirty() ? 1 : 0) : -1);
         }
 
+        GLogInfo("[#DESC_TIMING]       calling BindTransformID...");
         BindTransformID(mtl);
+        GLogInfo("[#DESC_TIMING]       TransformAssignmentBuffer::BindTransform EXIT");
     }
 
     void TransformAssignmentBuffer::BindTransformID(graph::MaterialTemplate* mtl)

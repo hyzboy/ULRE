@@ -1,5 +1,6 @@
 ﻿#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
+#include<hgl/graph/module/DescriptorTimingDiagnostics.h>
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKBuffer.h>
@@ -203,6 +204,8 @@ bool MaterialParameters::BindInputAttachment(const int &index,ImageView *iv)
 
 void MaterialParameters::Update()
 {
+    LOG_DESC_TIMING_VERBOSE("MaterialParameters::Update() ENTRY set_type=%d desc_set=%p", (int)set_type, (void*)descriptor_set);
     descriptor_set->Update();
+    LOG_DESC_TIMING_VERBOSE("MaterialParameters::Update() EXIT");
 }
 }//namespace hgl::graph
