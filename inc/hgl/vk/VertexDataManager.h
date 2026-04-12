@@ -6,11 +6,22 @@
 #include<hgl/common/VertexFormatMap.h>
 #include<hgl/type/BlockAllocator.h>
 #include<hgl/log/Logger.h>
-#include<vector>
+#include<unordered_set>
 
 namespace hgl::graph{
 
 class BufferManager;
+
+/**
+ * VertexDataManager 的客户端接口。
+ * GeometryDataVDM 实现此接口，以便 VDM 析构时安全通知所有依赖它的几何体。
+ */
+class IVDMClient
+{
+public:
+    virtual ~IVDMClient()=default;
+    virtual void OnVDMDestroyed()=0;  ///<VDM 即将销毁，客户端应清空对 VDM 的所有引用
+};
 
 class VertexDataManager
 {
@@ -36,6 +47,15 @@ protected:
 
     BlockAllocator       vbo_data_chain; ///<数据链
     BlockAllocator       ibo_data_chain; ///<数据链
+
+private:
+
+    std::unordered_set<IVDMClient *> clients; ///<依赖本 VDM 的几何体列表
+
+public:
+
+    void RegisterClient  (IVDMClient *c){if(c) clients.insert(c);}   ///<注册一个依赖客户端
+    void UnregisterClient(IVDMClient *c){if(c) clients.erase(c);}    ///<注销一个依赖客户端
 
 public:
 

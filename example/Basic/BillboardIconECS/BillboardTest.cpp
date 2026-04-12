@@ -104,7 +104,7 @@ private:
     Primitive *         prim_billboard      = nullptr;
 
     Texture2D *         texture             = nullptr;
-    Sampler *           sampler             = nullptr;
+    std::weak_ptr<Sampler> sampler;
 
     bool                shadergen_report_dumped = false;
 
@@ -222,12 +222,13 @@ private:
             return false;
 
         sampler = sampler_manager->CreateSampler();
+        auto sampler_raw = sampler.lock().get();
 
-        std::cout << "[BillboardECS] Sampler created: " << (void*)sampler << std::endl;
+        std::cout << "[BillboardECS] Sampler created: " << (void*)sampler_raw << std::endl;
 
         const bool bind_ok = mtl_billboard->BindTextureSampler(mtl::SamplerSlot::BaseColor,
                                               texture,
-                                              sampler);
+                                              sampler_raw);
         std::cout << "[BillboardECS] BindTextureSampler(BaseColor): " << (bind_ok ? "OK" : "FAILED")
                   << std::endl;
         if(!bind_ok)

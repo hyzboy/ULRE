@@ -7,6 +7,7 @@
 #include<hgl/common/TextureSamplerTypeDef.h>
 #include<hgl/type/String.h>
 #include<glm/glm.hpp>
+#include<memory>
 #include<string>
 #include<unordered_map>
 
@@ -52,7 +53,7 @@ namespace hgl::ecs
             graph::Texture2DArray*                  texture_array   = nullptr;
             graph::MaterialTemplate*                        material        = nullptr;
             graph::DomainMaterialBinding*           dmb             = nullptr;
-            graph::Sampler*                         sampler         = nullptr;
+            std::weak_ptr<graph::Sampler>           sampler;
             graph::Primitive*                       primitive       = nullptr;
             uint32_t                                max_layers      = 0;        ///< allocated capacity
             uint32_t                                used_layers     = 0;        ///< next free layer index
@@ -67,7 +68,7 @@ namespace hgl::ecs
         // Shared resources used by all quads (legacy single-texture path)
         static graph::Primitive* shared_primitive;
         static graph::RenderTargetFormat* shared_render_pass;
-        static graph::Sampler* shared_sampler;
+        static std::weak_ptr<graph::Sampler> shared_sampler;
 
         // Per-domain texture array resources
         static std::unordered_map<std::string, DomainResources> s_domain_resources;
@@ -83,7 +84,7 @@ namespace hgl::ecs
 
         // Accessors for shared resources (legacy path)
         static graph::Primitive* GetSharedPrimitive() { return shared_primitive; }
-        static graph::Sampler* GetSharedSampler() { return shared_sampler; }
+        static graph::Sampler*   GetSharedSampler()   { return shared_sampler.lock().get(); }
 
         // Domain texture array management
         /// Register a texture path in a domain, returns the layer index.

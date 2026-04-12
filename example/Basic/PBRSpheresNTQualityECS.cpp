@@ -122,7 +122,7 @@ private:
 
     Texture2DArray *base_color_texture = nullptr;
     Texture2DArray *normal_texture = nullptr;
-    Sampler *sampler = nullptr;
+    std::weak_ptr<Sampler> sampler;
 
     VertexDataManager *mesh_vdm[QUALITY_COUNT]{};
     Geometry *builtin_geometries[QUALITY_COUNT][GEOMETRY_VARIANT_COUNT]{};
@@ -265,17 +265,19 @@ private:
             return false;
 
         sampler = sampler_manager->CreateSampler();
-        if (!sampler)
+        if (sampler.expired())
             return false;
+
+        auto sampler_raw = sampler.lock().get();
 
         if (!material->BindTextureSampler(hgl::graph::mtl::SamplerSlot::BaseColor,
                                           base_color_texture,
-                                          sampler))
+                                          sampler_raw))
             return false;
 
         if (!material->BindTextureSampler(hgl::graph::mtl::SamplerSlot::Normal,
                                           normal_texture,
-                                          sampler))
+                                          sampler_raw))
             return false;
 
         return true;
@@ -636,22 +638,12 @@ public:
             }
         }
 
-        if (auto *geometry_manager = GetGeometryManager())
-        {
-            for (uint q = 0; q < QUALITY_COUNT; ++q)
-                for (uint col = 0; col < GEOMETRY_VARIANT_COUNT; ++col)
-                    if (builtin_geometries[q][col])
-                    {
-                        geometry_manager->Release(builtin_geometries[q][col]);
-                        builtin_geometries[q][col] = nullptr;
-                    }
-        }
-
         for (uint q = 0; q < QUALITY_COUNT; ++q)
             SAFE_CLEAR(mesh_vdm[q])
 
         SAFE_CLEAR(base_color_texture)
         SAFE_CLEAR(normal_texture)
+        sampler.reset();
     }
 
     bool Init() override

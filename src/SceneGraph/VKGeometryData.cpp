@@ -258,7 +258,7 @@ namespace
     /**
     * 使用VertexDataBuffer分配VAB/IBO，在本类析构时归还数据
     */
-    class GeometryDataVDM:public GeometryData
+    class GeometryDataVDM:public GeometryData, public IVDMClient
     {
         VertexDataManager *vdm;
 
@@ -279,15 +279,34 @@ namespace
 
             ib_node=nullptr;
             vab_node=vdm->AcquireVAB(vertex_count);
+
+            vdm->RegisterClient(this);
         }
 
         ~GeometryDataVDM() override
         {
-            if(ib_node)
-                vdm->ReleaseIB(ib_node);
+            if(vdm)
+            {
+                vdm->UnregisterClient(this);
 
-            if(vab_node)
-                vdm->ReleaseVAB(vab_node);
+                if(ib_node)
+                    vdm->ReleaseIB(ib_node);
+
+                if(vab_node)
+                    vdm->ReleaseVAB(vab_node);
+            }
+
+            ib_node=nullptr;
+            vab_node=nullptr;
+            vdm=nullptr;
+        }
+
+        // IVDMClient: VDM 即将销毁，清空所有对 VDM 的引用，避免悬空指针
+        void OnVDMDestroyed() override
+        {
+            ib_node=nullptr;
+            vab_node=nullptr;
+            vdm=nullptr;
         }
 
         IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it,const AnsiString &/*name*/) override
@@ -308,6 +327,8 @@ namespace
 
         VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data,const AnsiString &name) override
         {
+            if(!vdm)return(nullptr);
+
             VAB *vab=vdm->GetVAB(vab_index);
 
             if(!vab)return(nullptr);

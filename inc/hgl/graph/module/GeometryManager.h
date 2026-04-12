@@ -14,7 +14,7 @@ GRAPH_MODULE_CLASS(GeometryManager)
 {
 private:
 
-    AutoIdObjectManager<GeometryID,Geometry> rm_geometry;              ///<图元合集
+    SharedObjectManager<GeometryID,Geometry> rm_geometry;              ///<图元合集
 
     GeometryManager(GraphicsContext *);
     virtual ~GeometryManager()=default;
@@ -23,9 +23,10 @@ private:
 
 public:
 
-    GeometryID  Add         (Geometry *        p   ){return rm_geometry.Add(p);}
-    Geometry *  GetGeometry (const GeometryID &id  ){return rm_geometry.Get(id);}
-    void        Release     (Geometry *        p   ){rm_geometry.Release(p,true);}
+    GeometryID               Add        (Geometry *p)          {return rm_geometry.Add(p);}
+    std::weak_ptr<Geometry>  GetGeometry(const GeometryID &id) {return rm_geometry.Get(id);}
+    void                     Release    (Geometry *p)           {rm_geometry.Release(p);}
+    void                     Release    (const GeometryID &id)  {rm_geometry.Release(id);}
 
     void Release() override
     {

@@ -325,7 +325,7 @@ namespace hgl::ecs
 
         // Update quad component
         quad->SetPrimitive(quad_primitive);
-        quad->SetTextureObjects(nullptr, dr->sampler); // texture lives in the domain array
+        quad->SetTextureObjects(nullptr, dr->sampler.lock().get()); // texture lives in the domain array
         quad->SetAppliedTexturePath(texture_path);
         return true;
     }

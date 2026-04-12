@@ -52,7 +52,7 @@ namespace hgl
                 graph::MaterialTemplate* material = nullptr;
                 graph::GraphicsPipeline* pipeline = nullptr;
                 graph::RenderTargetFormat* render_format = nullptr;
-                graph::Sampler* sampler = nullptr;
+                std::weak_ptr<graph::Sampler> sampler;
                 graph::DeviceBuffer* material_instance_buffer = nullptr;
 
                 graph::layout::CharStyle char_style{};

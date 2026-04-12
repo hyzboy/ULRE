@@ -1,4 +1,4 @@
-﻿#include <hgl/graph/module/MaterialAssetRegistry.h>
+#include <hgl/graph/module/MaterialAssetRegistry.h>
 #include <hgl/graph/module/MaterialAssetLoader.h>
 #include <hgl/graph/module/MaterialManager.h>
 #include <hgl/graph/module/TextureManager.h>
@@ -100,7 +100,7 @@ static bool BindDomainTexturesFromRecord(
         if (tc.path.empty()) continue;
         auto *tex = tm->LoadTexture2D(hgl::ToOSString(tc.path), true);
         if (!tex) return false;
-        auto *smp = sm->CreateSampler();
+        auto *smp = sm->CreateSampler().lock().get();
         if (!smp) return false;
         if (!dmb->BindTextureSampler(tc.slot, tex, smp))
             return false;
@@ -129,7 +129,8 @@ static void BindMaterialTexturesCompat(
         if (!tex)
             continue;
 
-        auto *smp = sm->CreateSampler();
+        auto smp_wp = sm->CreateSampler();
+        auto *smp = smp_wp.lock().get();
         if (!smp)
             continue;
 

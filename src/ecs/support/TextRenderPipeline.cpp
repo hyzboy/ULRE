@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/support/TextRenderPipeline.h>
+#include<hgl/ecs/support/TextRenderPipeline.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
@@ -143,11 +143,8 @@ namespace hgl::ecs
                 res.material = nullptr;
             }
 
-            if (res.sampler && sampler_manager)
-            {
-                sampler_manager->Release(res.sampler);
-                res.sampler = nullptr;
-            }
+            if (res.sampler.expired() == false)
+                res.sampler.reset();
 
             if (res.material_instance_buffer && buffer_manager)
             {
@@ -256,7 +253,7 @@ namespace hgl::ecs
             graph::MaterialManager* material_manager = nullptr;
             graph::SamplerManager* sampler_manager = nullptr;
             graph::MaterialTemplate* material = nullptr;
-            graph::Sampler* sampler = nullptr;
+            std::weak_ptr<graph::Sampler> sampler;
             graph::BufferManager* buffer_manager = nullptr;
             graph::DeviceBuffer* material_instance_buffer = nullptr;
             std::unique_ptr<graph::TileFont> tile_font;
@@ -267,8 +264,7 @@ namespace hgl::ecs
                 if (committed)
                     return;
 
-                if (sampler && sampler_manager)
-                    sampler_manager->Release(sampler);
+                sampler.reset();
 
                 if (material_instance_buffer && buffer_manager)
                     buffer_manager->Release(material_instance_buffer);
@@ -310,7 +306,7 @@ namespace hgl::ecs
         guard.sampler_manager = sampler_manager;
 
         guard.sampler = sampler_manager->CreateSampler();
-        if (!guard.sampler)
+        if (guard.sampler.expired())
             return nullptr;
 
         buffer_manager = graphics_context->GetBufferManager();
@@ -334,9 +330,11 @@ namespace hgl::ecs
             guard.material_instance_buffer = nullptr;
         }
 
+        auto sampler_raw = guard.sampler.lock().get();
+
         if (!guard.material->BindTextureSampler(graph::mtl::SamplerSlot::Text,
                             guard.tile_font->GetTexture(),
-                            guard.sampler))
+                            sampler_raw))
             return nullptr;
 
         if (world)
@@ -347,7 +345,7 @@ namespace hgl::ecs
                 descriptor_binding_system->RegisterMaterialTextureSampler(guard.material,
                                                                           graph::mtl::SamplerSlot::Text,
                                                                           guard.tile_font->GetTexture(),
-                                                                          guard.sampler);
+                                                                          sampler_raw);
             }
         }
 

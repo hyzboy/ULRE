@@ -87,7 +87,7 @@ private:
     MaterialDomainHandle material_handle;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
-    Sampler *           sampler = nullptr;
+    std::weak_ptr<Sampler> sampler;
 
     VertexDataManager * mesh_vdm = nullptr;
     Geometry *          builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
@@ -188,21 +188,23 @@ private:
             return false;
 
         sampler = sampler_manager->CreateSampler();
-        if (!sampler) {
+        if (sampler.expired()) {
             printf("[ERROR] InitMaterial: Failed to create sampler\n");
             return false;
         }
 
+        auto sampler_raw = sampler.lock().get();
+
         if (!material->BindTextureSampler(hgl::graph::mtl::SamplerSlot::BaseColor,
                                           base_color_texture,
-                                          sampler)) {
+                                          sampler_raw)) {
             printf("[ERROR] InitMaterial: Failed to bind BaseColor texture sampler\n");
             return false;
         }
 
         if (!material->BindTextureSampler(hgl::graph::mtl::SamplerSlot::Normal,
                                           normal_texture,
-                                          sampler)) {
+                                          sampler_raw)) {
             printf("[ERROR] InitMaterial: Failed to bind TextureNormal sampler\n");
             return false;
         }
@@ -708,7 +710,7 @@ public:
         SAFE_CLEAR(mesh_vdm)
         SAFE_CLEAR(base_color_texture)
         SAFE_CLEAR(normal_texture)
-        SAFE_CLEAR(sampler)
+        sampler.reset();
     }
 
     bool Init() override

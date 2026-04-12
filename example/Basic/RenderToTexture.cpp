@@ -369,7 +369,7 @@ private:
         if (!registry->BuildSlot(cube_handle, cube_slot))
             return false;
 
-        cube_sampler = sm->CreateSampler();
+        cube_sampler = sm->CreateSampler().lock().get();
         if (!cube_sampler)
             return false;
 

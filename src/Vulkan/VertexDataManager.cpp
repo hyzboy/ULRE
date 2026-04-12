@@ -1,5 +1,6 @@
 ﻿#include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
+#include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/vk/VKDevice.h>
 
@@ -42,6 +43,10 @@ namespace hgl::graph
     VertexDataManager::~VertexDataManager()
     {
         LogVerbose(OS_TEXT("VertexDataManager destroying: vab_cur_size=") + OSString::numberOf(vab_cur_size) + OS_TEXT(", ibo_cur_size=") + OSString::numberOf(ibo_cur_size));
+
+        for(IVDMClient *c : clients)
+            c->OnVDMDestroyed();
+        clients.clear();
 
         if (buffer_manager)
         {

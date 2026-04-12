@@ -70,7 +70,7 @@ private:
     ECSContext *        ecs_world           = nullptr;
 
     Texture2DArray *    texture             = nullptr;
-    Sampler *           sampler             = nullptr;
+    std::weak_ptr<Sampler> sampler;
     MaterialTemplate *          material            = nullptr;
 
     Primitive *         mesh_rect           = nullptr;  // kept for geometry lifecycle
@@ -148,7 +148,7 @@ private:
 
         if(!material->BindTextureSampler( mtl::SamplerSlot::BaseColor,
                           texture,
-                          sampler))
+                          sampler.lock().get()))
             return(false);
 
         for(uint32_t i=0;i<TexCount;i++)

@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
+#include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/core/Context.h>
@@ -28,7 +28,7 @@ namespace hgl::ecs
     // Static member initialization
     graph::Primitive* QuadResourcePrepareSystem::shared_primitive = nullptr;
     graph::RenderTargetFormat* QuadResourcePrepareSystem::shared_render_pass = nullptr;
-    graph::Sampler* QuadResourcePrepareSystem::shared_sampler = nullptr;
+    std::weak_ptr<graph::Sampler> QuadResourcePrepareSystem::shared_sampler;
 
     std::unordered_map<std::string, QuadResourcePrepareSystem::DomainResources>
         QuadResourcePrepareSystem::s_domain_resources;
@@ -312,10 +312,10 @@ namespace hgl::ecs
         if (!sampler_manager)
             return false;
 
-        if (!shared_sampler)
+        if (shared_sampler.expired())
             shared_sampler = sampler_manager->CreateSampler();
 
-        if (!shared_sampler)
+        if (shared_sampler.expired())
             return false;
 
         shared_render_pass = render_pass;
@@ -345,12 +345,10 @@ namespace hgl::ecs
         if (geometry)
             delete geometry;
 
-        if (shared_sampler && sampler_manager)
-            sampler_manager->Release(shared_sampler);
+        shared_sampler.reset();
 
         shared_primitive = nullptr;
         shared_render_pass = nullptr;
-        shared_sampler = nullptr;
     }
 
     bool QuadResourcePrepareSystem::EnsureDomainResources()
@@ -426,7 +424,7 @@ namespace hgl::ecs
             }
 
             // ── Sampler ───────────────────────────────────────────
-            if (!dr.sampler)
+            if (dr.sampler.expired())
                 dr.sampler = sampler_manager->CreateSampler();
 
             // ── MaterialTemplate + DMB via MaterialAssetRegistry ──────────
@@ -495,16 +493,18 @@ namespace hgl::ecs
             }
 
             // Bind texture array to the domain's PerMaterial descriptor set
+            auto sampler_raw = dr.sampler.lock().get();
+
             dr.dmb->BindTextureSampler(graph::mtl::SamplerSlot::BaseColor,
                                        dr.texture_array,
-                                       dr.sampler);
+                                       sampler_raw);
             dr.dmb->Update();
 
             // Also bind to the MaterialTemplate's own descriptor set — this is what
             // the command buffer actually binds at draw time.
             dr.material->BindTextureSampler(graph::mtl::SamplerSlot::BaseColor,
                                             dr.texture_array,
-                                            dr.sampler);
+                                            sampler_raw);
             dr.material->Update();
 
             // Register with descriptor binding system for per-frame sync
@@ -514,12 +514,12 @@ namespace hgl::ecs
                 desc_sys->RegisterDomainTextureSampler(dr.dmb,
                                                        graph::mtl::SamplerSlot::BaseColor,
                                                        dr.texture_array,
-                                                       dr.sampler);
+                                                       sampler_raw);
                 // MaterialTemplate-level binding so per-frame sync picks it up
                 desc_sys->RegisterMaterialTextureSampler(dr.material,
                                                          graph::mtl::SamplerSlot::BaseColor,
                                                          dr.texture_array,
-                                                         dr.sampler);
+                                                         sampler_raw);
             }
 
             // ── Shared primitive for this domain ─────────────────────
@@ -596,8 +596,7 @@ namespace hgl::ecs
             if (dr.texture_array && texture_manager)
                 texture_manager->Destory(dr.texture_array);
 
-            if (dr.sampler && sampler_manager)
-                sampler_manager->Release(dr.sampler);
+            dr.sampler.reset();
         }
 
         s_domain_resources.clear();

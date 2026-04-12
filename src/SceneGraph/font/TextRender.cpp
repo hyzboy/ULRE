@@ -165,7 +165,7 @@ namespace hgl::graph
             return(nullptr);
         }
 
-        if(!text_render->Init(rp,sampler_mgr->CreateSampler()))
+        if(!text_render->Init(rp,sampler_mgr->CreateSampler().lock().get()))
         {
             delete tile_font;
             delete text_render;
