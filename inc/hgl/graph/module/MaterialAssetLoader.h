@@ -32,7 +32,8 @@ namespace hgl::graph
 /// 从 MaterialAssetRecord 创建/获取 MaterialTemplate（仅 AcquireMaterial，不绑纹理）。
 inline MaterialTemplate *CreateMaterialFromRecord(
     MaterialManager *mm,
-    const mtl::MaterialAssetRecord &rec)
+    const mtl::MaterialAssetRecord &rec,
+    MaterialManager::MaterialAccessToken access_token)
 {
     if (!mm) return nullptr;
 
@@ -62,7 +63,7 @@ inline MaterialTemplate *CreateMaterialFromRecord(
         std::fprintf(stderr, "[CreateMaterialFromRecord] Billboard preset=%d  use_texture_array=%d  blend=%d\n",
             (int)rec.preset, (int)cfg.use_texture_array, (int)cfg.blend_mode);
 
-        return mm->AcquireMaterial(rec.preset, &cfg);
+        return mm->AcquireMaterial(rec.preset, &cfg, nullptr, access_token);
     }
     // ── 2D ──────────────────────────────────────────────────────────────────
     else if (rec.dim == MaterialAssetRecord::Dim::D2)
@@ -76,7 +77,7 @@ inline MaterialTemplate *CreateMaterialFromRecord(
         for (const auto &tc : rec.textures)
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
-        return mm->AcquireMaterial(rec.preset, &cfg);
+        return mm->AcquireMaterial(rec.preset, &cfg, nullptr, access_token);
     }
     // ── 3D (含 SkyMinimal / TerrainGrid / Standard / PBR 等) ─────────────────
     else
@@ -93,7 +94,72 @@ inline MaterialTemplate *CreateMaterialFromRecord(
         for (const auto &tc : rec.textures)
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
-        return mm->AcquireMaterial(rec.preset, &cfg);
+        return mm->AcquireMaterial(rec.preset, &cfg, nullptr, access_token);
     }
 } // namespace hgl::graph
+
+/// Transitional helper: legacy public AcquireMaterial path.
+inline MaterialTemplate *CreateMaterialFromRecord(
+    MaterialManager *mm,
+    const mtl::MaterialAssetRecord &rec)
+{
+    if (!mm) return nullptr;
+
+    using namespace mtl;
+
+    if (rec.preset == MaterialPreset::Billboard2DFixed ||
+        rec.preset == MaterialPreset::Billboard2DDynamic)
+    {
+        BillboardMaterialCreateConfig cfg(rec.prim);
+        cfg.local_to_world  = rec.l2w;
+        cfg.fixed_size      = rec.billboard.fixed_size;
+        cfg.pixel_size      = { rec.billboard.pixel_w, rec.billboard.pixel_h };
+        cfg.blend_mode      = rec.billboard.blend_mode;
+        cfg.base_color_channel = rec.billboard.base_color_channel;
+        cfg.front_face      = rec.billboard.front_face_ccw
+                              ? VK_FRONT_FACE_COUNTER_CLOCKWISE
+                              : VK_FRONT_FACE_CLOCKWISE;
+        if (!rec.billboard.texture_id.empty())
+            cfg.texture_id = rec.billboard.texture_id;
+        if (rec.pos_format.Check())
+            cfg.position_format = rec.pos_format;
+        for (const auto &tc : rec.textures)
+            if (tc.source_mode == TextureSourceMode::Array)
+            { cfg.use_texture_array = true; break; }
+
+        std::fprintf(stderr, "[CreateMaterialFromRecord] Billboard preset=%d  use_texture_array=%d  blend=%d\n",
+            (int)rec.preset, (int)cfg.use_texture_array, (int)cfg.blend_mode);
+
+        return mm->AcquireMaterial(rec.preset, &cfg);
+    }
+    else if (rec.dim == MaterialAssetRecord::Dim::D2)
+    {
+        Material2DCreateConfig cfg(
+            rec.prim,
+            rec.coord_2d,
+            rec.l2w ? IncludeL2W::With : IncludeL2W::Without);
+        if (rec.pos_format.Check())
+            cfg.position_format = rec.pos_format;
+        for (const auto &tc : rec.textures)
+            if (tc.source_mode != TextureSourceMode::None)
+                cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
+        return mm->AcquireMaterial(rec.preset, &cfg);
+    }
+    else
+    {
+        Material3DCreateConfig cfg(
+            rec.prim,
+            rec.camera ? IncludeCamera::With : IncludeCamera::Without,
+            rec.l2w    ? IncludeL2W::With    : IncludeL2W::Without,
+            rec.sky    ? IncludeSky::With     : IncludeSky::Without);
+        cfg.sky_ambient_model = rec.sky_ambient;
+        cfg.lighting_model    = rec.lighting;
+        if (rec.pos_format.Check())
+            cfg.position_format = rec.pos_format;
+        for (const auto &tc : rec.textures)
+            if (tc.source_mode != TextureSourceMode::None)
+                cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
+        return mm->AcquireMaterial(rec.preset, &cfg);
+    }
+}
 }

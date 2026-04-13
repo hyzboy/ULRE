@@ -46,6 +46,24 @@ bool MaterialSpec::IsValid() const
 
 namespace
 {
+    bool ShouldLogPow2(uint64_t v)
+    {
+        return v != 0 && ((v & (v - 1)) == 0);
+    }
+
+    void LogLegacyPublicAcquireCall(std::atomic<uint64_t> &counter, const char *signature)
+    {
+        const uint64_t n = counter.fetch_add(1) + 1;
+        if (n <= 8u || ShouldLogPow2(n))
+        {
+            std::fprintf(stderr,
+                         "[MaterialManager] Deprecated public AcquireMaterial path used (%s). "
+                         "Prefer semantic deferred resolve via MaterialAssetRegistry::ResolveMI. total=%llu\n",
+                         signature ? signature : "unknown",
+                         static_cast<unsigned long long>(n));
+        }
+    }
+
     void CreateShaderStageList(ShaderStageCreateInfoList &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
@@ -498,7 +516,9 @@ MaterialTemplate *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_
     return CreateMaterial(key, cfg);
 }
 
-MaterialTemplate *MaterialManager::AcquireMaterial(const MaterialSpec &spec, MaterialSpecKey *out_key)
+MaterialTemplate *MaterialManager::AcquireMaterial(const MaterialSpec &spec,
+                                                   MaterialSpecKey *out_key,
+                                                   MaterialAccessToken)
 {
     if(!spec.IsValid())
         return nullptr;
@@ -508,16 +528,16 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const MaterialSpec &spec, Mat
     switch(spec.family)
     {
         case MaterialSpec::Family::Preset2D:
-            result = AcquireMaterial(spec.preset, spec.cfg2d, out_key);
+            result = AcquireMaterial(spec.preset, spec.cfg2d, out_key, MakeInternalAccessToken());
             break;
         case MaterialSpec::Family::Preset3D:
-            result = AcquireMaterial(spec.preset, spec.cfg3d, out_key);
+            result = AcquireMaterial(spec.preset, spec.cfg3d, out_key, MakeInternalAccessToken());
             break;
         case MaterialSpec::Family::Variant2D:
-            result = AcquireMaterial(*spec.variant_key, spec.cfg2d, out_key);
+            result = AcquireMaterial(*spec.variant_key, spec.cfg2d, out_key, MakeInternalAccessToken());
             break;
         case MaterialSpec::Family::Variant3D:
-            result = AcquireMaterial(*spec.variant_key, spec.cfg3d, out_key);
+            result = AcquireMaterial(*spec.variant_key, spec.cfg3d, out_key, MakeInternalAccessToken());
             break;
         default:
             result = nullptr;
@@ -527,7 +547,16 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const MaterialSpec &spec, Mat
     return result;
 }
 
-MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
+MaterialTemplate *MaterialManager::AcquireMaterial(const MaterialSpec &spec, MaterialSpecKey *out_key)
+{
+    LogLegacyPublicAcquireCall(acquire_material_legacy_public_calls, "MaterialSpec");
+    return AcquireMaterial(spec, out_key, MakeInternalAccessToken());
+}
+
+MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id,
+                                                   mtl::Material2DCreateConfig *cfg,
+                                                   MaterialSpecKey *out_key,
+                                                   MaterialAccessToken)
 {
     acquire_material_requests.fetch_add(1);
 
@@ -546,7 +575,18 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl
     return mtl;
 }
 
-MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
+MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id,
+                                                   mtl::Material2DCreateConfig *cfg,
+                                                   MaterialSpecKey *out_key)
+{
+    LogLegacyPublicAcquireCall(acquire_material_legacy_public_calls, "Preset2D");
+    return AcquireMaterial(mtl_id, cfg, out_key, MakeInternalAccessToken());
+}
+
+MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id,
+                                                   mtl::Material3DCreateConfig *cfg,
+                                                   MaterialSpecKey *out_key,
+                                                   MaterialAccessToken)
 {
     acquire_material_requests.fetch_add(1);
 
@@ -565,7 +605,18 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl
     return mtl;
 }
 
-MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
+MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id,
+                                                   mtl::Material3DCreateConfig *cfg,
+                                                   MaterialSpecKey *out_key)
+{
+    LogLegacyPublicAcquireCall(acquire_material_legacy_public_calls, "Preset3D");
+    return AcquireMaterial(mtl_id, cfg, out_key, MakeInternalAccessToken());
+}
+
+MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key,
+                                                   mtl::Material2DCreateConfig *cfg,
+                                                   MaterialSpecKey *out_key,
+                                                   MaterialAccessToken)
 {
     acquire_material_requests.fetch_add(1);
 
@@ -584,7 +635,18 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey
     return mtl;
 }
 
-MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
+MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key,
+                                                   mtl::Material2DCreateConfig *cfg,
+                                                   MaterialSpecKey *out_key)
+{
+    LogLegacyPublicAcquireCall(acquire_material_legacy_public_calls, "Variant2D");
+    return AcquireMaterial(key, cfg, out_key, MakeInternalAccessToken());
+}
+
+MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key,
+                                                   mtl::Material3DCreateConfig *cfg,
+                                                   MaterialSpecKey *out_key,
+                                                   MaterialAccessToken)
 {
     acquire_material_requests.fetch_add(1);
 
@@ -601,6 +663,14 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey
         out_key->cache_name = mtl ? mtl->GetName() : std::string();
 
     return mtl;
+}
+
+MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key,
+                                                   mtl::Material3DCreateConfig *cfg,
+                                                   MaterialSpecKey *out_key)
+{
+    LogLegacyPublicAcquireCall(acquire_material_legacy_public_calls, "Variant3D");
+    return AcquireMaterial(key, cfg, out_key, MakeInternalAccessToken());
 }
 
 void MaterialManager::ResetShaderGenProfiler()

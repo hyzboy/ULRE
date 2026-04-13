@@ -414,7 +414,8 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     MaterialDomainHandle handle;
 
     // 1. MaterialTemplate (AcquireMaterial 内部已缓存)
-    handle.material = CreateMaterialFromRecord(mm, rec);
+    const MaterialManager::MaterialAccessToken access_token(0);
+    handle.material = CreateMaterialFromRecord(mm, rec, access_token);
     if (!handle.material)
         return {};
 
