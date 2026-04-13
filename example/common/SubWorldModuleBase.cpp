@@ -27,7 +27,7 @@ namespace example::modules
         if (!material_manager)
             return false;
 
-        material = material_manager->AcquireMaterial(preset, &cfg);
+        material = material_manager->AcquireMaterialInternal(preset, &cfg);
         if (!material)
             return false;
 
