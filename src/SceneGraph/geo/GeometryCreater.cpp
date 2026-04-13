@@ -147,11 +147,11 @@ const int GeometryCreater::InitVAB(const VertexAttrib &attrib,const VkFormat for
 
     if(vab_index<0||vab_index>=static_cast<int>(geometry_data->GetVABCount()))
     {
-        std::fprintf(stderr,
-            "[GeometryCreater] InitVAB failed: attrib='%s' not present in geometry layout, index=%d attrib_count=%u\n",
-            GetVertexAttribName(attrib),
-            vab_index,
-            geometry_data ? geometry_data->GetVABCount() : 0u);
+        //std::fprintf(stderr,
+        //    "[GeometryCreater] InitVAB failed: attrib='%s' not present in geometry layout, index=%d attrib_count=%u\n",
+        //    GetVertexAttribName(attrib),
+        //    vab_index,
+        //    geometry_data ? geometry_data->GetVABCount() : 0u);
 //#ifdef _DEBUG
 //        assert(false && "GeometryCreater::InitVAB attrib missing in VIL");
 //#endif

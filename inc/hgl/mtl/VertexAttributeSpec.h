@@ -19,7 +19,7 @@ struct VertexAttributeSpec
     Interpolation        interpolation = Interpolation::Smooth;
 };
 
-inline bool IsStorageFormatCompatibleWithShaderType(const VAType &shader_type,const VkFormat storage_format)
+inline bool IsStorageFormatCompatibleWithShaderType(const VAType &shader_type,const VkFormat storage_format,const VertexAttrib attrib=VertexAttrib::RANGE_SIZE)
 {
     if(!shader_type.Check())
         return false;
@@ -29,16 +29,49 @@ inline bool IsStorageFormatCompatibleWithShaderType(const VAType &shader_type,co
 
     const uint8 n = shader_type.vec_size;
 
+    // Special handling for Normal and Tangent attributes: allow 2/3/4 channel formats
+    // These are direction vectors that can be stored in various compressed formats
+    if((attrib == VertexAttrib::Normal || attrib == VertexAttrib::Tangent) && shader_type.basetype == VABaseType::Float)
+    {
+        // Support common direction vector storage formats regardless of shader vec_size
+        // This allows R8G8_SNORM (2ch), RGB16F (3ch), RGBA8_SNORM (4ch), etc.
+        switch(storage_format)
+        {
+            // 2-channel formats
+            case PF_RG8UN:
+            case PF_RG8SN:
+            case PF_RG16UN:
+            case PF_RG16F:
+            case PF_RG32F:
+            // 3-channel formats
+            case PF_RGB16F:
+            case PF_RGB32F:
+            // 4-channel formats
+            case PF_RGBA8UN:
+            case PF_RGBA8SN:
+            case PF_A2RGB10SN:
+            case PF_A2BGR10SN:
+            case PF_RGBA16UN:
+            case PF_RGBA16F:
+            case PF_RGBA32F:
+                return true;
+            default:
+                break;
+        }
+    }
+
     switch(shader_type.basetype)
     {
         case VABaseType::Float:
             switch(n)
             {
                 case 1: return storage_format==PF_R8UN
+                              ||storage_format==PF_R8SN
                               ||storage_format==PF_R16UN
                               ||storage_format==PF_R16F
                               ||storage_format==PF_R32F;
                 case 2: return storage_format==PF_RG8UN
+                              ||storage_format==PF_RG8SN
                               ||storage_format==PF_RG16UN
                               ||storage_format==PF_RG16F
                               ||storage_format==PF_RG32F;
@@ -138,7 +171,7 @@ inline bool ValidateVertexAttributeSpec(const VertexAttributeSpec &spec)
     if(!spec.shader_type.Check())
         return false;
 
-    return IsStorageFormatCompatibleWithShaderType(spec.shader_type,spec.storage_format);
+    return IsStorageFormatCompatibleWithShaderType(spec.shader_type,spec.storage_format,spec.attrib);
 }
 
 inline bool HasExplicitVertexLocation(const VertexAttributeSpec &spec)

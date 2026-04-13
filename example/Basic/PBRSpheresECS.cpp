@@ -42,8 +42,8 @@ namespace
 {
 const VertexFormatMap kLitSurfaceVertexFormats = {
     {VAN::Position, PF_RGB32F},
-    {VAN::Normal,   PF_NORMAL_MID},
-    {VAN::Tangent,  PF_TANGENT_MID},
+    {VAN::Normal,   PF_NORMAL_LOW},
+    //{VAN::Tangent,  PF_TANGENT_LOW},
     {VAN::TexCoord, PF_RG16F},
 };
 }
@@ -138,17 +138,6 @@ private:
 
     bool InitMaterial()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context) {
-            printf("[ERROR] InitMaterial: No render_context\n");
-            return false;
-        }
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context) {
-            printf("[ERROR] InitMaterial: No graphics_context\n");
-            return false;
-        }
         auto* sampler_manager = GetSamplerManager();
         if (!sampler_manager || !base_color_texture || !normal_texture) {
              printf("[ERROR] InitMaterial: Failed manager/texture checks - sampler_mgr=%p base=%p normal=%p\n",
@@ -181,10 +170,7 @@ private:
         }
 
         material = material_handle.material;
-        material_vil = registry->ResolveVIL(material_handle.material, kPBRArrayAcquireCfg, nullptr);
-        if (!material_vil)
-            material_vil = material_handle.material ? material_handle.material->GetDefaultVIL() : nullptr;
-        if (!material || !material_vil)
+        if (!material)
             return false;
 
         sampler = sampler_manager->CreateSampler();
@@ -348,10 +334,23 @@ private:
                 store.roughness = d.roughness;
                 store.normal_scale = d.normal_scale;
 
+                const Geometry *geometry_for_col = builtin_geometries[col];
+                const VIL *resolved_vil = registry->ResolveVIL(material, kPBRArrayAcquireCfg, geometry_for_col);
+                if (!resolved_vil)
+                    resolved_vil = material->GetDefaultVIL();
+                if (!resolved_vil)
+                {
+                    printf("[ERROR] CreateStandardMaterialInstances: Failed to resolve VIL for col=%u\n", col);
+                    return false;
+                }
+
+                if (row == 0)
+                    material_vil = resolved_vil;
+
                 MaterialBindingInit init;
                 init.material = material;
                 init.domain = material_handle.domain;
-                init.vil = material_vil;
+                init.vil = resolved_vil;
                 init.preset = kPBRArrayAcquireCfg.pipeline;
                 init.material_preset = kPBRArrayAcquireCfg.preset;
                 init.instance_data = &d;
@@ -528,8 +527,7 @@ private:
 
         for (uint col = 0; col < GEOMETRY_VARIANT_COUNT; ++col)
         {
-            base_primitives[col] = primitive_manager->CreatePrimitive(
-                builtin_geometries[col], sphere_slot[0][col]);
+            base_primitives[col] = primitive_manager->CreatePrimitive(builtin_geometries[col], sphere_slot[0][col]);
 
             if (!base_primitives[col]) {
                 printf("[ERROR] CreateBasePrimitives: Failed to create primitive %u\n", col);
@@ -723,13 +721,13 @@ public:
         if (!InitMaterial())
             return false;
 
-        if (!CreateStandardMaterialInstances())
-            return false;
-
         if (!InitVDM())
             return false;
 
         if (!CreateBuiltinGeometries())
+            return false;
+
+        if (!CreateStandardMaterialInstances())
             return false;
 
         if (!CreateBasePrimitives())

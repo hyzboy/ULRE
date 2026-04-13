@@ -10,61 +10,14 @@ namespace
     using namespace hgl::graph;
     using namespace hgl::graph::inline_geometry;
 
-    static int32_t ClampSNorm10(const float value)
-    {
-        float clamped = value;
-
-        if(clamped < -1.0f)
-            clamped = -1.0f;
-        else
-        if(clamped > 1.0f)
-            clamped = 1.0f;
-
-        int32_t scaled = int32_t(clamped * 511.0f);
-
-        if(scaled < -511)
-            scaled = -511;
-        else
-        if(scaled > 511)
-            scaled = 511;
-
-        return scaled;
-    }
-
-    static int32_t ClampSNorm2(const float value)
-    {
-        return (value < 0.0f) ? -1 : 1;
-    }
-
-    static uint32_t PackA2B10G10R10SNorm(const float x,const float y,const float z,const float w)
-    {
-        const uint32_t r = uint32_t(ClampSNorm10(x)) & 0x3FFu;
-        const uint32_t g = uint32_t(ClampSNorm10(y)) & 0x3FFu;
-        const uint32_t b = uint32_t(ClampSNorm10(z)) & 0x3FFu;
-        const uint32_t a = uint32_t(ClampSNorm2(w))  & 0x3u;
-
-        return r | (g << 10u) | (b << 20u) | (a << 30u);
-    }
-
-    static uint32_t PackA2R10G10B10SNorm(const float x,const float y,const float z,const float w)
-    {
-        const uint32_t r = uint32_t(ClampSNorm10(x)) & 0x3FFu;
-        const uint32_t g = uint32_t(ClampSNorm10(y)) & 0x3FFu;
-        const uint32_t b = uint32_t(ClampSNorm10(z)) & 0x3FFu;
-        const uint32_t a = uint32_t(ClampSNorm2(w))  & 0x3u;
-
-        return b | (g << 10u) | (r << 20u) | (a << 30u);
-    }
-
     static bool WriteVec2SNorm8EncodedNormal(BufferAccessor2sn8 &accessor,const float x,const float y,const float z)
     {
         if(!accessor.IsValid())
             return false;
 
-        const hgl::Vector2f enc = hgl::Normal3to2(hgl::Vector3f(x,y,z));
-
-        return accessor->Write(int8_t(std::clamp(enc.x * 2.0f - 1.0f, -1.0f, 1.0f) * 127.0f),
-                               int8_t(std::clamp(enc.y * 2.0f - 1.0f, -1.0f, 1.0f) * 127.0f));
+        const uint16 enc = hgl::Normal3to2u8(hgl::Vector3f(x,y,z));
+        return accessor->Write(int8(enc & 0xFF),
+                               int8((enc >> 8) & 0xFF));
     }
 }
 
@@ -139,13 +92,13 @@ namespace hgl::graph::inline_geometry
 
         if(accessor_normal_a2bgr10sn.IsValid())
         {
-            accessor_normal_a2bgr10sn->Write(PackA2B10G10R10SNorm(x, y, z, 1.0f));
+            accessor_normal_a2bgr10sn->Write(int32(hgl::Normal3to4u10a2BGR(hgl::Vector3f(x, y, z))));
             return;
         }
 
         if(accessor_normal_a2rgb10sn.IsValid())
         {
-            accessor_normal_a2rgb10sn->Write(PackA2R10G10B10SNorm(x, y, z, 1.0f));
+            accessor_normal_a2rgb10sn->Write(int32(hgl::Normal3to4u10a2RGB(hgl::Vector3f(x, y, z))));
             return;
         }
 
@@ -171,13 +124,13 @@ namespace hgl::graph::inline_geometry
 
         if(accessor_tangent_a2bgr10sn.IsValid())
         {
-            accessor_tangent_a2bgr10sn->Write(PackA2B10G10R10SNorm(x, y, z, w));
+            accessor_tangent_a2bgr10sn->Write(int32(hgl::Normal3Tangent1to4u10a2BGR(hgl::Vector3f(x, y, z), w)));
             return;
         }
 
         if(accessor_tangent_a2rgb10sn.IsValid())
         {
-            accessor_tangent_a2rgb10sn->Write(PackA2R10G10B10SNorm(x, y, z, w));
+            accessor_tangent_a2rgb10sn->Write(int32(hgl::Normal3Tangent1to4u10a2RGB(hgl::Vector3f(x, y, z), w)));
             return;
         }
 

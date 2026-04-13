@@ -9,73 +9,6 @@ namespace
     using namespace hgl::graph;
     using namespace hgl::graph::inline_geometry;
 
-    static int8 ClampSNorm8(const float value)
-    {
-        float clamped = value;
-
-        if(clamped < -1.0f)
-            clamped = -1.0f;
-        else
-        if(clamped > 1.0f)
-            clamped = 1.0f;
-
-        int scaled = int(clamped * 127.0f);
-
-        if(scaled < -127)
-            scaled = -127;
-        else
-        if(scaled > 127)
-            scaled = 127;
-
-        return int8(scaled);
-    }
-
-    static int32 ClampSNorm10(const float value)
-    {
-        float clamped = value;
-
-        if(clamped < -1.0f)
-            clamped = -1.0f;
-        else
-        if(clamped > 1.0f)
-            clamped = 1.0f;
-
-        int32 scaled = int32(clamped * 511.0f);
-
-        if(scaled < -511)
-            scaled = -511;
-        else
-        if(scaled > 511)
-            scaled = 511;
-
-        return scaled;
-    }
-
-    static int32 ClampSNorm2(const float value)
-    {
-        return (value < 0.0f) ? -1 : 1;
-    }
-
-    static uint32 PackA2B10G10R10SNorm(const float x,const float y,const float z,const float w)
-    {
-        const uint32 r = uint32(ClampSNorm10(x)) & 0x3FFu;
-        const uint32 g = uint32(ClampSNorm10(y)) & 0x3FFu;
-        const uint32 b = uint32(ClampSNorm10(z)) & 0x3FFu;
-        const uint32 a = uint32(ClampSNorm2(w))  & 0x3u;
-
-        return r | (g << 10u) | (b << 20u) | (a << 30u);
-    }
-
-    static uint32 PackA2R10G10B10SNorm(const float x,const float y,const float z,const float w)
-    {
-        const uint32 r = uint32(ClampSNorm10(x)) & 0x3FFu;
-        const uint32 g = uint32(ClampSNorm10(y)) & 0x3FFu;
-        const uint32 b = uint32(ClampSNorm10(z)) & 0x3FFu;
-        const uint32 a = uint32(ClampSNorm2(w))  & 0x3u;
-
-        return b | (g << 10u) | (r << 20u) | (a << 30u);
-    }
-
     static bool WriteHalf2(BufferAccessor2hf &accessor,const float x,const float y)
     {
         if(!accessor.IsValid())
@@ -107,10 +40,10 @@ namespace
         if(!accessor.IsValid())
             return false;
 
-        return accessor->Write(ClampSNorm8(x),
-                               ClampSNorm8(y),
-                               ClampSNorm8(z),
-                               ClampSNorm8(w));
+        return accessor->Write(hgl::ClampSNorm8(x),
+                               hgl::ClampSNorm8(y),
+                               hgl::ClampSNorm8(z),
+                               hgl::ClampSNorm8(w));
     }
 
     static bool WriteVec2SNorm8EncodedNormal(BufferAccessor2sn8 &accessor,const float x,const float y,const float z)
@@ -118,11 +51,9 @@ namespace
         if(!accessor.IsValid())
             return false;
 
-        const Vector2f enc = Normal3to2(Vector3f(x,y,z));
-
-        // PF_RG8SN storage expects signed normalized bytes.
-        return accessor->Write(ClampSNorm8(enc.x * 2.0f - 1.0f),
-                               ClampSNorm8(enc.y * 2.0f - 1.0f));
+        const uint16 enc = hgl::Normal3to2u8(Vector3f(x,y,z));
+        return accessor->Write(int8(enc & 0xFF),
+                               int8((enc >> 8) & 0xFF));
     }
 
     static bool WriteVec4HF16(BufferAccessor4hf &accessor,const float x,const float y,const float z,const float w)
@@ -138,7 +69,7 @@ namespace
         if(!accessor.IsValid())
             return false;
 
-        return accessor->Write(PackA2B10G10R10SNorm(x,y,z,w));
+        return accessor->Write(int32(hgl::PackA2B10G10R10SNorm(x,y,z,w)));
     }
 
     static bool WriteVec4A2RGB10SN(BufferAccessor1a2rgb10sn &accessor,const float x,const float y,const float z,const float w)
@@ -146,7 +77,7 @@ namespace
         if(!accessor.IsValid())
             return false;
 
-        return accessor->Write(PackA2R10G10B10SNorm(x,y,z,w));
+        return accessor->Write(int32(hgl::PackA2R10G10B10SNorm(x,y,z,w)));
     }
 }
 

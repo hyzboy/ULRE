@@ -82,11 +82,11 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
         shader_type.basetype = VABaseType(via->basetype);
         shader_type.vec_size = via->vec_size;
 
-        if(!mtl::IsStorageFormatCompatibleWithShaderType(shader_type, attr_desc->format))
+        if(!mtl::IsStorageFormatCompatibleWithShaderType(shader_type, attr_desc->format, via->attrib))
         {
             // Legacy fallback: try implicit VAType derivation when explicit format is incompatible
             const VkFormat fallback_format = GetVulkanFormat(via);
-            if(mtl::IsStorageFormatCompatibleWithShaderType(shader_type, fallback_format))
+            if(mtl::IsStorageFormatCompatibleWithShaderType(shader_type, fallback_format, via->attrib))
             {
                 std::fprintf(stderr,
                     "[VertexInputConfig] incompatible shader/storage pair, fallback applied: attrib='%s' shader='%s' requested='%s' fallback='%s'\n",

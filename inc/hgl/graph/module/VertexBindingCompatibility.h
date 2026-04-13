@@ -48,7 +48,7 @@ inline bool IsMaterialVertexAttribStorageCompatible(const VertexInput *vi,
     shader_type.basetype = VABaseType(mat_via->basetype);
     shader_type.vec_size = mat_via->vec_size;
 
-    if(!mtl::IsStorageFormatCompatibleWithShaderType(shader_type, storage_format))
+    if(!mtl::IsStorageFormatCompatibleWithShaderType(shader_type, storage_format, attrib))
     {
         if(reason)
             *reason = "shader_storage_incompatible";
@@ -174,7 +174,8 @@ inline bool BuildGeometryDrivenVILConfigFromVertexInputWithResolver(const Vertex
 
         for(uint i = 0; i < via_array.count; ++i)
         {
-            if(!add_attrib(via->attrib, VK_VERTEX_INPUT_RATE_VERTEX, VK_FORMAT_UNDEFINED, 0, false))
+            // Material is the consumer: if it declares an attribute, geometry must provide the VAB.
+            if(!add_attrib(via->attrib, VK_VERTEX_INPUT_RATE_VERTEX, VK_FORMAT_UNDEFINED, 0, true))
                 return false;
 
             ++via;

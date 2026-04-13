@@ -19,22 +19,19 @@ vec3 _ULRE_BuildTangentFromNormal(vec3 n)
     return normalize(cross(n, bitangent));
 }
 
-// Lambert azimuthal equal-area decode.
-// Input domain: [0,1]x[0,1] (quantized from U8x2 on CPU side).
-vec3 decode_normal_laea_u8x2(vec2 enc01)
+// Simple RG8SN decode: same as normal maps.
+// Input is signed [-1, 1], recover z from sqrt(1 - x² - y²).
+vec3 decode_normal_laea_u8x2(vec2 enc_signed)
 {
-    vec2 fenc = enc01 * 4.0 - 2.0;
-    float f = dot(fenc, fenc);
-    float g = sqrt(max(1.0 - f * 0.25, 0.0));
-
-    return normalize(vec3(fenc.x * g,
-                          fenc.y * g,
-                          1.0 - f * 0.5));
+    vec3 n;
+    n.xy = enc_signed;  // Already [-1, 1] from signed unorm
+    n.z = sqrt(max(0.0, 1.0 - dot(n.xy, n.xy)));
+    return normalize(n);
 }
 
-vec3 decode_tangent_laea_u8x2(vec2 enc01)
+vec3 decode_tangent_laea_u8x2(vec2 enc_signed)
 {
-    return decode_normal_laea_u8x2(enc01);
+    return decode_normal_laea_u8x2(enc_signed);
 }
 
 // Placeholder for half2 decode path. With current GLSL input path uv is already float2.
@@ -52,8 +49,8 @@ void GetNormalTangnet(in vec3 worldPos,
     vec2 _decodedUV = decode_uv_half2(uv);
 
 #if defined(ULRE_NT_COMPRESSED_LAEA_RG2)
-    vec2 n01 = clamp(worldNormal.xy * 0.5 + 0.5, 0.0, 1.0);
-    outNormal = decode_normal_laea_u8x2(n01);
+    // RG8SN comes as [-1, 1] directly from Vulkan format conversion
+    outNormal = decode_normal_laea_u8x2(worldNormal.xy);
 #else
     outNormal = normalize(worldNormal);
 #endif
@@ -62,8 +59,8 @@ void GetNormalTangnet(in vec3 worldPos,
     vec3 t;
 
 #if defined(ULRE_NT_COMPRESSED_LAEA_RG2)
-    vec2 t01 = clamp(fragWorldTangent.xy * 0.5 + 0.5, 0.0, 1.0);
-    t = decode_tangent_laea_u8x2(t01);
+    // Same for tangent: RG8SN -> [-1, 1] auto-converted
+    t = decode_tangent_laea_u8x2(fragWorldTangent.xy);
 #else
     t = normalize(fragWorldTangent.xyz);
 #endif
