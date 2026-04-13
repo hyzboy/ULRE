@@ -28,6 +28,8 @@ StaticMaterialDef BuildStandardDynamicDef(
     SSBOSemanticSet &dynamic_ssbos,
     StaticTextureSamplerDescriptors &dynamic_samplers,
     InstanceDataLayout mi_layout,
-    bool any_array);
+    bool any_array,
+    const VertexAttributeSpec *vertex_spec_override = nullptr,
+    uint32_t vertex_spec_override_count = 0);
 
 } // namespace hgl::graph::mtl

@@ -48,11 +48,6 @@ static bool ShouldLogPow2(const uint64_t v)
     return v != 0 && ((v & (v - 1)) == 0);
 }
 
-static std::atomic<uint64_t> g_resolve_vil_fallback_no_geometry {0};
-static std::atomic<uint64_t> g_resolve_vil_fallback_no_vab {0};
-static std::atomic<uint64_t> g_resolve_vil_fallback_add_failed {0};
-static std::atomic<uint64_t> g_resolve_vil_fallback_create_failed {0};
-static std::atomic<uint64_t> g_resolve_vil_fallback_incompatible {0};
 static std::atomic<uint64_t> g_resolve_geometry_layout_hash_synthesized {0};
 
 static uint32_t ComputeGeometryLayoutHash(const Geometry *geo)
@@ -139,114 +134,67 @@ static void BindMaterialTexturesCompat(
     }
 }
 
-static const VIL *ResolveVILFromRecord(MaterialTemplate *material, const mtl::MaterialAssetRecord &rec)
-{
-    (void)rec;
-
-    if (!material)
-        return nullptr;
-
-    return material->GetDefaultVIL();
-}
-
 static const VIL *ResolveVILFromGeometry(MaterialTemplate *material,
                                          const Geometry *geometry,
-                                         const mtl::MaterialAssetRecord &fallback_rec)
+                                         const mtl::MaterialAssetRecord &rec)
 {
     if (!material)
         return nullptr;
 
     if (!geometry)
     {
-        const uint64_t n = ++g_resolve_vil_fallback_no_geometry;
-        if (ShouldLogPow2(n))
-        {
-            std::fprintf(stderr,
-                "[MaterialAssetRegistry] ResolveVIL fallback(default): geometry missing, material='%s' domain='%s' id='%s' total=%llu\n",
-                material->GetName().c_str(),
-                fallback_rec.domain_id.c_str(),
-                fallback_rec.id.c_str(),
-                static_cast<unsigned long long>(n));
-        }
-        return ResolveVILFromRecord(material, fallback_rec);
+        std::fprintf(stderr,
+            "[MaterialAssetRegistry] ResolveVIL failed: geometry is null, cannot derive VIL. "
+            "material='%s' domain='%s' id='%s'\n",
+            material->GetName().c_str(),
+            rec.domain_id.c_str(),
+            rec.id.c_str());
+        return nullptr;
     }
 
     VILConfig vil_cfg;
     bool has_any = false;
     std::string build_reason;
 
-    if(!BuildGeometryDrivenVILConfig(material, geometry, nullptr, vil_cfg, has_any, &build_reason, nullptr))
+    if (!BuildGeometryDrivenVILConfig(material, geometry, nullptr, vil_cfg, has_any, &build_reason, nullptr))
     {
-        if(build_reason == "shader_storage_incompatible" ||
-           build_reason == "material_vertex_input_missing_attrib")
-        {
-            const uint64_t n = ++g_resolve_vil_fallback_incompatible;
-            if (ShouldLogPow2(n))
-            {
-                std::fprintf(stderr,
-                    "[MaterialAssetRegistry] ResolveVIL fallback(default): incompatible geometry format, material='%s' reason='%s' total=%llu\n",
-                    material->GetName().c_str(),
-                    build_reason.c_str(),
-                    static_cast<unsigned long long>(n));
-            }
+        std::fprintf(stderr,
+            "[MaterialAssetRegistry] ResolveVIL failed: geometry-material mismatch. "
+            "material='%s' reason='%s'\n",
+            material->GetName().c_str(),
+            build_reason.c_str());
 
-            DumpResolveVILIncompatibleDiagnostics(stderr,
-                                                 "[MaterialAssetRegistry]",
-                                                 material,
-                                                 geometry,
-                                                 fallback_rec,
-                                                 build_reason,
-                                                 vil_cfg);
-
-#ifdef _DEBUG
-            assert(false && "MaterialAssetRegistry::ResolveVILFromGeometry incompatible geometry format");
-#endif
-        }
-        else if(build_reason == "runtime_vil_config_add_failed")
-        {
-            const uint64_t n = ++g_resolve_vil_fallback_add_failed;
-            if (ShouldLogPow2(n))
-            {
-                std::fprintf(stderr,
-                    "[MaterialAssetRegistry] ResolveVIL fallback(default): VILConfig::Add failed, material='%s' total=%llu\n",
-                    material->GetName().c_str(),
-                    static_cast<unsigned long long>(n));
-            }
-        }
-
-        return ResolveVILFromRecord(material, fallback_rec);
+        DumpResolveVILIncompatibleDiagnostics(stderr,
+                                             "[MaterialAssetRegistry]",
+                                             material,
+                                             geometry,
+                                             rec,
+                                             build_reason,
+                                             vil_cfg);
+        return nullptr;
     }
 
     if (!has_any)
     {
-        const uint64_t n = ++g_resolve_vil_fallback_no_vab;
-        if (ShouldLogPow2(n))
-        {
-            std::fprintf(stderr,
-                "[MaterialAssetRegistry] ResolveVIL fallback(default): geometry has no VAB, material='%s' domain='%s' id='%s' total=%llu\n",
-                material->GetName().c_str(),
-                fallback_rec.domain_id.c_str(),
-                fallback_rec.id.c_str(),
-                static_cast<unsigned long long>(n));
-        }
-        return ResolveVILFromRecord(material, fallback_rec);
+        std::fprintf(stderr,
+            "[MaterialAssetRegistry] ResolveVIL failed: geometry has no VAB matching any material attribute. "
+            "material='%s' domain='%s' id='%s'\n",
+            material->GetName().c_str(),
+            rec.domain_id.c_str(),
+            rec.id.c_str());
+        return nullptr;
     }
 
     if (auto *vil = material->CreateVIL(&vil_cfg))
         return vil;
 
-    const uint64_t n = ++g_resolve_vil_fallback_create_failed;
-    if (ShouldLogPow2(n))
-    {
-        std::fprintf(stderr,
-            "[MaterialAssetRegistry] ResolveVIL fallback(default): CreateVIL failed, material='%s' domain='%s' id='%s' total=%llu\n",
-            material->GetName().c_str(),
-            fallback_rec.domain_id.c_str(),
-            fallback_rec.id.c_str(),
-            static_cast<unsigned long long>(n));
-    }
-
-    return ResolveVILFromRecord(material, fallback_rec);
+    std::fprintf(stderr,
+        "[MaterialAssetRegistry] ResolveVIL failed: CreateVIL returned null. "
+        "material='%s' domain='%s' id='%s'\n",
+        material->GetName().c_str(),
+        rec.domain_id.c_str(),
+        rec.id.c_str());
+    return nullptr;
 }
 
 static const VIL *ResolveRuntimeVIL(MaterialTemplate *material,

@@ -56,13 +56,20 @@ StaticMaterialDef BuildStandardDynamicDef(
     SSBOSemanticSet &dynamic_ssbos,
     StaticTextureSamplerDescriptors &dynamic_samplers,
     InstanceDataLayout mi_layout,
-    const bool any_array)
+    const bool any_array,
+    const VertexAttributeSpec *vertex_spec_override,
+    const uint32_t vertex_spec_override_count)
 {
     StaticMaterialDef dynamic_def = def_template;
     dynamic_def.ssbo_descriptors = &dynamic_ssbos;
     dynamic_def.texture_samplers = &dynamic_samplers;
     dynamic_def.mi_instance_layout = mi_layout;
     dynamic_def.name = any_array ? "StandardTextureArray_v1" : "Standard_v1";
+    if (vertex_spec_override && vertex_spec_override_count > 0)
+    {
+        dynamic_def.vertex_attribute_specs = vertex_spec_override;
+        dynamic_def.vertex_attribute_spec_count = vertex_spec_override_count;
+    }
     return dynamic_def;
 }
 

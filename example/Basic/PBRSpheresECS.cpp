@@ -337,8 +337,6 @@ private:
                 const Geometry *geometry_for_col = builtin_geometries[col];
                 const VIL *resolved_vil = registry->ResolveVIL(material, kPBRArrayAcquireCfg, geometry_for_col);
                 if (!resolved_vil)
-                    resolved_vil = material->GetDefaultVIL();
-                if (!resolved_vil)
                 {
                     printf("[ERROR] CreateStandardMaterialInstances: Failed to resolve VIL for col=%u\n", col);
                     return false;

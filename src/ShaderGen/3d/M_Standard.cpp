@@ -19,9 +19,17 @@ namespace
     // Layer indices for Array slots are stored separately in the MIT SSBO (MaterialInstanceTextureID).
     constexpr VertexAttributeSpec STANDARD_VERTEX_SPECS[] = {
         { VAN::Position, VAT_VEC3, PF_RGB32F },
-        { VAN::TexCoord, VAT_VEC2, PF_RG32F  },
+        { VAN::TexCoord, VAT_VEC2, PF_RG16F  },
         { VAN::Normal,   VAT_VEC3, PF_NORMAL_MID },
         { VAN::Tangent,  VAT_VEC4, PF_TANGENT_MID },
+    };
+
+    // Compressed variant: Normal as vec2/RG8SN (octahedral encoding), no Tangent.
+    // Used for mobile / low-end hardware where bandwidth is critical.
+    constexpr VertexAttributeSpec STANDARD_VERTEX_SPECS_NT_COMPRESSED[] = {
+        { VAN::Position, VAT_VEC3, PF_RGB32F },
+        { VAN::TexCoord, VAT_VEC2, PF_RG16F  },
+        { VAN::Normal,   VAT_VEC2, PF_NORMAL_LOW },
     };
 
     // Non-texture descriptors only �?texture entries are built dynamically in CreateStandardVariant().
@@ -111,12 +119,16 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         unused_resources,
         any_array);
 
+    const bool nt_compressed = policy.route_key.IsNTSourceCompressed();
+
     StaticMaterialDef dynamic_def = BuildStandardDynamicDef(
         STANDARD_DEF_TEMPLATE,
         dynamic_ssbos,
         dynamic_samplers,
         InstanceDataLayout::PBRStandard,
-        any_array);
+        any_array,
+        nt_compressed ? STANDARD_VERTEX_SPECS_NT_COMPRESSED : nullptr,
+        nt_compressed ? uint32_t(sizeof(STANDARD_VERTEX_SPECS_NT_COMPRESSED) / sizeof(STANDARD_VERTEX_SPECS_NT_COMPRESSED[0])) : 0);
 
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(policy.route_key);
     if (!var_desc)
