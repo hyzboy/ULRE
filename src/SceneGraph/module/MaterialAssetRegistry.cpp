@@ -474,19 +474,14 @@ SemanticMaterialId MaterialAssetRegistry::RegisterSemanticMaterial(const mtl::Ma
 {
     const SemanticMaterialId id = ComputeSemanticMaterialHash(rec);
 
-    auto it = semantic_cache.find(id);
-    if (it == semantic_cache.end())
+    if (semantic_cache.find(id) == semantic_cache.end())
     {
         SemanticMaterialEntry entry;
         entry.rec = rec;
-
-        // Build canonical material/domain once as Phase B foundation.
-        entry.canonical_material = CreateMaterialFromRecord(mm, rec);
-        if (entry.canonical_material && mm)
-        {
-            entry.shared_domain = mm->CreateMaterialResourceDomain(entry.canonical_material);
-        }
-
+        // canonical_material / shared_domain are intentionally NOT created here.
+        // MaterialTemplate = f(semantic, Geometry VAB, runtime state) — all three are
+        // only known at render time. ResolveMI() calls Acquire() with the final merged
+        // record then, so there is nothing to pre-build here.
         semantic_cache.emplace(id, std::move(entry));
     }
 

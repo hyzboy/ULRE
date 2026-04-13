@@ -1,4 +1,5 @@
 ﻿// 该范例主要演示使用ECS架构，在一个材质下使用不同材质实例传递颜色参数绘制三角形
+// 该范例主要演示使用ECS架构，在一个材质下使用不同材质实例传递颜色参数绘制三角形
 // 并依赖RenderCollector中的自动合并功能，让同一材质下所有不同材质实例的对象一次渲染完成
 // This example demonstrates using different material instances under one material with ECS architecture
 //
@@ -8,13 +9,18 @@
 // 3. 所有实体共享同一个Geometry（顶点数据）
 // 4. RenderCollector自动合并相同Material的不同MaterialInstance进行批量渲染
 // 5. MaterialInstanceAssignmentBuffer自动去重和索引管理
+//
+// 架构要点：
+// - Init 阶段只声明"语义材质需求"(RegisterSemanticMaterial)，不创建具体 MaterialTemplate
+// - Primitive 以延迟方式创建 (CreatePrimitive(geometry, semantic_id))
+// - MaterialTemplate / VIL / pipeline preset 在渲染时由 RenderPrimitiveCollectSystem
+//   根据 Geometry 的实际 VAB 布局 + 当前帧运行时状态延迟解析
+// - MI 数据（颜色）的生命周期由 MaterialInstanceHandle 独立管理
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/color/Color.h>
-#include<hgl/graph/module/MaterialManager.h>
-#include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 
 // 引入几何创建器
@@ -43,56 +49,38 @@ constexpr float position_data[VERTEX_COUNT*2]=
 constexpr uint DRAW_OBJECT_COUNT=12;
 constexpr double TRI_ROTATE_ANGLE=360.0/DRAW_OBJECT_COUNT;
 
-//#define USE_MATERIAL_FILE   true        //是否使用材质文件
+// 材质语义描述：只声明"需要什么样的材质"，不在 init 时创建具体的 MaterialTemplate。
+// MaterialTemplate = f(语义需求, Geometry VAB, 运行时渲染状态)，三者只有在渲染时全部已知。
+static const mtl::MaterialAssetRecord kMergeCfg {
+    .id       = "auto_merge_pure_color",
+    .preset   = mtl::MaterialPreset::PureColor2D,
+    .dim      = mtl::MaterialAssetRecord::Dim::D2,
+    .pipeline = GraphicsPipelinePreset::Solid2D,
+};
 
 class TestApp:public WorkObject
 {
 private:
 
-    // ECS组件
-    ECSContext* ecs_world = nullptr;   // 由默认 ECSContext 统一维护
+    ECSContext* ecs_world = nullptr;
 
-    // 传统渲染资源
-    MaterialTemplate* material = nullptr;
+    SemanticMaterialId semantic_id = 0;     ///< 稳定的语义材质标识（不含 pipeline 等运行时字段）
     Geometry* geometry = nullptr;
 
-    // 每个三角形的数据
     struct TriangleData
     {
-        Entity* entity;
-        Primitive* primitive;  ///< 包含所有渲染绑定态：MaterialTemplate、domain、mi_id、VIL、MIT
+        Entity* entity = nullptr;
+        Primitive* primitive = nullptr;
+        MaterialInstanceHandle mi_handle = InvalidMaterialInstanceHandle;   ///< MI 数据生命周期句柄
     };
 
     TriangleData triangles[DRAW_OBJECT_COUNT];
 
 private:
 
-    bool InitMaterial()
-    {
-        // 只需要获取 MaterialTemplate，实际 MI 分配在 InitECS 时进行
-        static const mtl::MaterialAssetRecord kMergeCfg {
-            .id       = "auto_merge_pure_color",
-            .preset   = mtl::MaterialPreset::PureColor2D,
-            .dim      = mtl::MaterialAssetRecord::Dim::D2,
-            .pipeline = GraphicsPipelinePreset::Solid2D,
-        };
-
-        auto registry = GetMaterialAssetRegistry();
-        auto handle = registry->Acquire(kMergeCfg);
-        if (!handle.IsValid())
-            return false;
-
-        material = handle.material;
-        std::cout << "[TestApp::InitMaterial] Created material: " << (void*)material << std::endl;
-        std::cout << "[TestApp::InitMaterial] MaterialTemplate has MI: " << material->hasMI() << std::endl;
-        std::cout << "[TestApp::InitMaterial] MaterialTemplate MI data bytes: " << material->GetMIDataBytes() << std::endl;
-
-        return true;
-    }
-
     bool InitGeometry()
     {
-        // Create geometry directly -- material-agnostic, no semantic_id required
+        // Geometry 的创建完全独立于 Material，只关心顶点数据本身
         geometry = CreateGeometry(
             "Triangle",
             VERTEX_COUNT,
@@ -105,13 +93,26 @@ private:
         }
 
         std::cout << "[TestApp::InitGeometry] Created geometry: " << (void*)geometry << std::endl;
+        return true;
+    }
 
+    bool InitSemanticMaterial()
+    {
+        // 只注册语义材质——不创建 MaterialTemplate、不解析 VIL、不分配 Domain。
+        // semantic_id 是一个稳定的哈希标识，不包含 pipeline/domain_id 等运行时策略字段。
+        semantic_id = RegisterSemanticMaterial(kMergeCfg);
+        if (semantic_id == 0)
+        {
+            std::cout << "[TestApp::InitSemanticMaterial] ERROR: Failed to register semantic material!" << std::endl;
+            return false;
+        }
+
+        std::cout << "[TestApp::InitSemanticMaterial] Registered semantic_id: " << semantic_id << std::endl;
         return true;
     }
 
     bool InitECS()
     {
-        // === 步骤1: 获取ECS世界 ===
         ecs_world = GetECSContext();
         if (!ecs_world)
         {
@@ -119,131 +120,64 @@ private:
             return false;
         }
 
-        std::cout << "[TestApp::InitECS] Got ECS context: " << (void*)ecs_world << std::endl;
-
-        // === 步骤2: 创建12个三角形实体，每个使用不同的MaterialInstance ===
-        auto* material_manager = GetMaterialManager();
-        if (!material_manager)
-            return false;
-
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;
 
-        auto* registry = GetMaterialAssetRegistry();
-        if (!registry)
-            return false;
-
-        static const mtl::MaterialAssetRecord kMergeCfg {
-            .id       = "auto_merge_pure_color",
-            .preset   = mtl::MaterialPreset::PureColor2D,
-            .dim      = mtl::MaterialAssetRecord::Dim::D2,
-            .pipeline = GraphicsPipelinePreset::Solid2D,
-        };
-
-        auto handle = registry->Acquire(kMergeCfg);
-        if (!handle.IsValid())
-            return false;
-
-        const VIL *resolved_vil = registry->ResolveVIL(handle.material, kMergeCfg);
-        if (!resolved_vil)
-            return false;
-
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
-            // 为每个三角形分配独立的 MI 槽位
-            Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
-
-            auto slot = material_manager->AllocMaterialInstanceSlot(
-                handle.domain,
-                &color,
-                sizeof(color));
-
-            if (!slot.domain)
-                return false;
-
-            slot.material_template        = handle.material;
-            slot.vil                      = resolved_vil;
-            slot.preset                   = kMergeCfg.pipeline;
-            slot.texture_array_slot_flags = handle.material->GetTextureArraySlotFlags();
-
-            if (!slot.IsValid())
-                return false;
-
-            // 为每个三角形创建Primitive（共享Geometry，但使用不同的MaterialInstance）
-            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, slot);
-
+            // ── 创建延迟绑定的 Primitive ──────────────────────────────────────
+            // 此时只绑定 Geometry + SemanticMaterialId。
+            // MaterialTemplate / VIL / Domain 在渲染时由 RenderPrimitiveCollectSystem
+            // 根据 Geometry 的实际 VAB 布局 + 运行时状态延迟解析。
+            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, semantic_id);
             if (!triangles[i].primitive)
             {
                 std::cout << "[TestApp::InitECS] ERROR: Failed to create primitive " << i << std::endl;
                 return false;
             }
 
-            std::cout << "[TestApp::InitECS] Created primitive[" << i << "]: " << (void*)triangles[i].primitive << std::endl;
+            // ── 通过 Handle 预分配 MI 数据 ────────────────────────────────────
+            // MI 数据（颜色）的生命周期由 MaterialInstanceHandle 独立管理，
+            // 与 Primitive 解耦。渲染时系统会将 Handle 对应的 domain/mi_id
+            // 绑定到 Primitive 上。
+            const Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
+            triangles[i].mi_handle = AllocateMaterialHandle(kMergeCfg, &color, sizeof(color));
 
-            // 验证 MI 数据（通过 primitive 访问）
-            Color4f *mi_color = (Color4f *)triangles[i].primitive->GetMIData();
-            if (mi_color)
+            if (triangles[i].mi_handle == InvalidMaterialInstanceHandle)
             {
-                std::cout << "[TestApp::InitECS] Triangle[" << i << "] MI Data: "
-                          << "R=" << mi_color->r << ", G=" << mi_color->g 
-                          << ", B=" << mi_color->b << ", A=" << mi_color->a << std::endl;
+                std::cout << "[TestApp::InitECS] ERROR: Failed to allocate MI handle " << i << std::endl;
+                return false;
             }
 
-            // 创建实体
+            std::cout << "[TestApp::InitECS] Created deferred primitive[" << i << "]: "
+                      << (void*)triangles[i].primitive
+                      << " mi_handle=" << triangles[i].mi_handle << std::endl;
+
+            // ── 创建 Entity + Components ──────────────────────────────────────
             triangles[i].entity = ecs_world->CreateEntity<Entity>("ColoredTriangle_" + std::to_string(i));
 
-            // === 步骤3: 添加TransformComponent ===
-            // 每个三角形有不同的旋转角度
             auto transform = triangles[i].entity->AddComponent<TransformComponent>(Mobility::Static);
 
-            // 计算旋转角度
-            double rad = deg2rad(TRI_ROTATE_ANGLE * i);
-
-            // 使用四元数设置旋转（绕Z轴）
-            glm::quat rotation = glm::angleAxis((float)rad, glm::vec3(0.0f, 0.0f, 1.0f));
+            const double rad = deg2rad(TRI_ROTATE_ANGLE * i);
+            const glm::quat rotation = glm::angleAxis((float)rad, glm::vec3(0.0f, 0.0f, 1.0f));
 
             transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform->SetLocalRotation(rotation);
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-
-            // 设置为静态对象
             transform->SetMovable(false);
 
-            std::cout << "[TestApp::InitECS] Entity[" << i << "] rotation angle: " << (TRI_ROTATE_ANGLE * i) << " degrees" << std::endl;
-
-            // === 步骤4: 添加PrimitiveComponent ===
-            // 每个实体使用不同的Primitive（不同的MaterialInstance）
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(triangles[i].primitive);
             primitive_comp->SetVisible(true);
 
-            std::cout << "[TestApp::InitECS] Entity[" << i << "] setup complete" << std::endl;
+            std::cout << "[TestApp::InitECS] Entity[" << i << "] rotation angle: "
+                      << (TRI_ROTATE_ANGLE * i) << " degrees — setup complete" << std::endl;
         }
-
-        // 再次验证 MI 数据是否正常
-        std::cout << "\n=== Verifying Material Instance Data ===" << std::endl;
-        for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
-        {
-            Color4f *mi_color = (Color4f *)triangles[i].primitive->GetMIData();
-            if (mi_color)
-            {
-                std::cout << "Triangle[" << i << "] MI Data Address: " << (void*)mi_color
-                          << ", Color: R=" << mi_color->r << ", G=" << mi_color->g
-                          << ", B=" << mi_color->b << ", A=" << mi_color->a << std::endl;
-            }
-            else
-            {
-                std::cout << "Triangle[" << i << "] WARNING: Failed to get MI data!" << std::endl;
-            }
-        }
-        std::cout << "=== Verification Complete ===\n" << std::endl;
 
         std::cout << "[TestApp::InitECS] === ECS Setup Complete ===" << std::endl;
-        std::cout << "[TestApp::InitECS] Created " << DRAW_OBJECT_COUNT << " entities" << std::endl;
-        std::cout << "[TestApp::InitECS] Each entity uses a different MaterialInstanceData (different color)" << std::endl;
-        std::cout << "[TestApp::InitECS] RenderCollector will automatically merge them into batches" << std::endl;
-        std::cout << "[TestApp::InitECS] MaterialInstanceAssignmentBuffer will deduplicate MIs" << std::endl;
+        std::cout << "[TestApp::InitECS] Created " << DRAW_OBJECT_COUNT << " deferred primitives" << std::endl;
+        std::cout << "[TestApp::InitECS] MaterialTemplate/VIL will be resolved at render time" << std::endl;
 
         return true;
     }
@@ -255,15 +189,15 @@ public:
 
         std::cout << "[TestApp::Init] === Initializing Application ===" << std::endl;
 
-        if (!InitMaterial())
-        {
-            std::cout << "[TestApp::Init] ERROR: InitMaterial failed!" << std::endl;
-            return false;
-        }
-
         if (!InitGeometry())
         {
             std::cout << "[TestApp::Init] ERROR: InitGeometry failed!" << std::endl;
+            return false;
+        }
+
+        if (!InitSemanticMaterial())
+        {
+            std::cout << "[TestApp::Init] ERROR: InitSemanticMaterial failed!" << std::endl;
             return false;
         }
 
@@ -280,8 +214,6 @@ public:
 
     void Tick(double delta_time) override
     {
-        // ECS世界的更新由框架层 Tick 自动调用
-
         WorkObject::Tick(delta_time);
     }
 };//class TestApp:public WorkObject

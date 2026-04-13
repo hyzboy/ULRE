@@ -103,8 +103,9 @@ private:
 
         // Phase B groundwork: semantic-level canonical material/domain.
         // Behavior remains compatible until ResolveMI switches to semantic-owned domain path.
-        MaterialTemplate *canonical_material = nullptr;
-        MaterialResourceDomain *shared_domain = nullptr;
+        // canonical_material / shared_domain removed:
+        // MaterialTemplate is resolved lazily at render time by ResolveMI(),
+        // which combines semantic + Geometry VAB + runtime state via Acquire().
     };
 
     // Semantic-only material registration cache:
