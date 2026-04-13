@@ -340,6 +340,14 @@ public: //MaterialTemplate
     MaterialTemplate *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key, MaterialAccessToken);
     MaterialTemplate *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key, MaterialAccessToken);
 
+    // Internal bridge for engine modules: bypass deprecated public wrappers,
+    // still funneled through tokenized implementation.
+    MaterialTemplate *          AcquireMaterialInternal(const MaterialSpec &spec, MaterialSpecKey *out_key = nullptr);
+    MaterialTemplate *          AcquireMaterialInternal(const mtl::MaterialPreset, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    MaterialTemplate *          AcquireMaterialInternal(const mtl::MaterialPreset, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    MaterialTemplate *          AcquireMaterialInternal(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    MaterialTemplate *          AcquireMaterialInternal(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+
     [[deprecated("Public AcquireMaterial is transitional. Prefer semantic deferred path via MaterialAssetRegistry::ResolveMI.")]]
     MaterialTemplate *          AcquireMaterial (const MaterialSpec &spec, MaterialSpecKey *out_key = nullptr);
     [[deprecated("Public AcquireMaterial is transitional. Prefer semantic deferred path via MaterialAssetRegistry::ResolveMI.")]]

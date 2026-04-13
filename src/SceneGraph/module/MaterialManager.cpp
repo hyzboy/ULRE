@@ -547,6 +547,11 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const MaterialSpec &spec,
     return result;
 }
 
+MaterialTemplate *MaterialManager::AcquireMaterialInternal(const MaterialSpec &spec, MaterialSpecKey *out_key)
+{
+    return AcquireMaterial(spec, out_key, MakeInternalAccessToken());
+}
+
 MaterialTemplate *MaterialManager::AcquireMaterial(const MaterialSpec &spec, MaterialSpecKey *out_key)
 {
     LogLegacyPublicAcquireCall(acquire_material_legacy_public_calls, "MaterialSpec");
@@ -573,6 +578,13 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl
         out_key->cache_name = mtl ? mtl->GetName() : std::string();
 
     return mtl;
+}
+
+MaterialTemplate *MaterialManager::AcquireMaterialInternal(const mtl::MaterialPreset mtl_id,
+                                                           mtl::Material2DCreateConfig *cfg,
+                                                           MaterialSpecKey *out_key)
+{
+    return AcquireMaterial(mtl_id, cfg, out_key, MakeInternalAccessToken());
 }
 
 MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id,
@@ -605,6 +617,13 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl
     return mtl;
 }
 
+MaterialTemplate *MaterialManager::AcquireMaterialInternal(const mtl::MaterialPreset mtl_id,
+                                                           mtl::Material3DCreateConfig *cfg,
+                                                           MaterialSpecKey *out_key)
+{
+    return AcquireMaterial(mtl_id, cfg, out_key, MakeInternalAccessToken());
+}
+
 MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id,
                                                    mtl::Material3DCreateConfig *cfg,
                                                    MaterialSpecKey *out_key)
@@ -635,6 +654,13 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey
     return mtl;
 }
 
+MaterialTemplate *MaterialManager::AcquireMaterialInternal(const mtl::MaterialVariantKey &key,
+                                                           mtl::Material2DCreateConfig *cfg,
+                                                           MaterialSpecKey *out_key)
+{
+    return AcquireMaterial(key, cfg, out_key, MakeInternalAccessToken());
+}
+
 MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key,
                                                    mtl::Material2DCreateConfig *cfg,
                                                    MaterialSpecKey *out_key)
@@ -663,6 +689,13 @@ MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey
         out_key->cache_name = mtl ? mtl->GetName() : std::string();
 
     return mtl;
+}
+
+MaterialTemplate *MaterialManager::AcquireMaterialInternal(const mtl::MaterialVariantKey &key,
+                                                           mtl::Material3DCreateConfig *cfg,
+                                                           MaterialSpecKey *out_key)
+{
+    return AcquireMaterial(key, cfg, out_key, MakeInternalAccessToken());
 }
 
 MaterialTemplate *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key,

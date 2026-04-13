@@ -251,7 +251,7 @@ namespace hgl::ecs
         if (!mat_mgr)
             return false;
 
-        material_ = mat_mgr->AcquireMaterial(graph::mtl::MaterialPreset::VertexPattleColor3D, &cfg);
+        material_ = mat_mgr->AcquireMaterialInternal(graph::mtl::MaterialPreset::VertexPattleColor3D, &cfg);
         if (!material_)
             return false;
 
