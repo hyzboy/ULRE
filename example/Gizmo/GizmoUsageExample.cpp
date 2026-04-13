@@ -103,11 +103,16 @@ private:
 
             grid_slot = material_manager->AllocMaterialInstanceSlot(
                 handle.domain,
-                handle.material,
-                resolved_vil,
-                kGridCfg.pipeline,
                 &white,
                 sizeof(white));
+            if(!grid_slot.domain)
+                return false;
+
+            grid_slot.material_template        = handle.material;
+            grid_slot.vil                      = resolved_vil;
+            grid_slot.preset                   = kGridCfg.pipeline;
+            grid_slot.texture_array_slot_flags = handle.material->GetTextureArraySlotFlags();
+
             if(!grid_slot.IsValid())
                 return false;
 
@@ -150,11 +155,16 @@ private:
 
             cube_slot = material_manager->AllocMaterialInstanceSlot(
                 handle.domain,
-                handle.material,
-                resolved_vil,
-                kCubeCfg.pipeline,
                 &blue,
                 sizeof(blue));
+            if(!cube_slot.domain)
+                return false;
+
+            cube_slot.material_template        = handle.material;
+            cube_slot.vil                      = resolved_vil;
+            cube_slot.preset                   = kCubeCfg.pipeline;
+            cube_slot.texture_array_slot_flags = handle.material->GetTextureArraySlotFlags();
+
             if(!cube_slot.IsValid())
                 return false;
 

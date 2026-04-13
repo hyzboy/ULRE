@@ -585,11 +585,15 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         {
             release_slot(slot);
             slot = mm->AllocMaterialInstanceSlot(target_domain,
-                                                 handle.material,
-                                                 resolved_vil,
-                                                 request.pipeline,
                                                  instance_data,
                                                  instance_data_size);
+            if (!slot.domain)
+                return slot;
+
+            slot.material_template        = handle.material;
+            slot.vil                      = resolved_vil;
+            slot.preset                   = request.pipeline;
+            slot.texture_array_slot_flags = handle.material->GetTextureArraySlotFlags();
 
             if (!slot.IsValid())
                 return slot;
@@ -733,11 +737,16 @@ MaterialInstanceHandle MaterialAssetRegistry::AllocateHandle(const MaterialBindi
 
     PrimitiveMaterialSlot slot = mm->AllocMaterialInstanceSlot(
         init.domain,
-        init.material,
-        init.vil,
-        init.preset,
         init.instance_data,
         init.instance_data_size);
+
+    if (!slot.domain)
+        return InvalidMaterialInstanceHandle;
+
+    slot.material_template        = init.material;
+    slot.vil                      = init.vil;
+    slot.preset                   = init.preset;
+    slot.texture_array_slot_flags = init.material->GetTextureArraySlotFlags();
 
     if (!slot.IsValid())
         return InvalidMaterialInstanceHandle;
@@ -818,11 +827,19 @@ bool MaterialAssetRegistry::RebindHandle(MaterialInstanceHandle handle, const Ma
 
     PrimitiveMaterialSlot new_slot = mm->AllocMaterialInstanceSlot(
         req.new_domain,
-        req.new_material,
-        req.new_vil,
-        req.new_preset,
         nullptr,
         0);
+
+    if (!new_slot.domain)
+    {
+        ++handle_rebind_fail_count;
+        return false;
+    }
+
+    new_slot.material_template        = req.new_material;
+    new_slot.vil                      = req.new_vil;
+    new_slot.preset                   = req.new_preset;
+    new_slot.texture_array_slot_flags = req.new_material->GetTextureArraySlotFlags();
 
     if (!new_slot.IsValid())
     {

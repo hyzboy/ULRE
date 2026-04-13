@@ -68,11 +68,14 @@ private:
         if (!sky_vil)
             return false;
 
-        sky_slot = material_manager->AllocMaterialInstanceSlot(
-            handle.domain,
-            handle.material,
-            sky_vil,
-            kSkyCfg.pipeline);
+        sky_slot = material_manager->AllocMaterialInstanceSlot(handle.domain);
+        if (!sky_slot.domain)
+            return false;
+
+        sky_slot.material_template        = handle.material;
+        sky_slot.vil                      = sky_vil;
+        sky_slot.preset                   = kSkyCfg.pipeline;
+        sky_slot.texture_array_slot_flags = handle.material->GetTextureArraySlotFlags();
 
         return sky_slot.IsValid();
     }

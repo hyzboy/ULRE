@@ -81,11 +81,16 @@ private:
 
             material_slot[i] = material_manager->AllocMaterialInstanceSlot(
                 handle.domain,
-                handle.material,
-                resolved_vil,
-                kPlaneGridCfg.pipeline,
                 &GridColor,
                 sizeof(GridColor));
+
+            if (!material_slot[i].domain)
+                return false;
+
+            material_slot[i].material_template        = handle.material;
+            material_slot[i].vil                      = resolved_vil;
+            material_slot[i].preset                   = kPlaneGridCfg.pipeline;
+            material_slot[i].texture_array_slot_flags = handle.material->GetTextureArraySlotFlags();
 
             if (!material_slot[i].IsValid())
                 return false;

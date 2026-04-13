@@ -122,11 +122,16 @@ private:
 
             plane_grid_slot = material_manager->AllocMaterialInstanceSlot(
                 handle.domain,
-                handle.material,
-                resolved_vil,
-                kPlaneGridCfg.pipeline,
                 &white_color,
                 sizeof(white_color));
+
+            if (!plane_grid_slot.domain)
+                return false;
+
+            plane_grid_slot.material_template        = handle.material;
+            plane_grid_slot.vil                      = resolved_vil;
+            plane_grid_slot.preset                   = kPlaneGridCfg.pipeline;
+            plane_grid_slot.texture_array_slot_flags = handle.material->GetTextureArraySlotFlags();
 
             if (!plane_grid_slot.IsValid())
                 return false;
@@ -144,11 +149,16 @@ private:
 
             line_slot = material_manager->AllocMaterialInstanceSlot(
                 handle.domain,
-                handle.material,
-                resolved_vil,
-                kLineCfg.pipeline,
                 &yellow_color,
                 sizeof(yellow_color));
+
+            if (!line_slot.domain)
+                return false;
+
+            line_slot.material_template        = handle.material;
+            line_slot.vil                      = resolved_vil;
+            line_slot.preset                   = kLineCfg.pipeline;
+            line_slot.texture_array_slot_flags = handle.material->GetTextureArraySlotFlags();
 
             if (!line_slot.IsValid())
                 return false;

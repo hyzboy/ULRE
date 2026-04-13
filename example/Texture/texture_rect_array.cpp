@@ -153,11 +153,15 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].slot = material_manager->AllocMaterialInstanceSlot(
-                handle.domain,
-                handle.material,
-                resolved_vil,
-                kTexArrayCfg.pipeline);
+            render_obj[i].slot = material_manager->AllocMaterialInstanceSlot(handle.domain);
+
+            if(!render_obj[i].slot.domain)
+                return false;
+
+            render_obj[i].slot.material_template        = handle.material;
+            render_obj[i].slot.vil                      = resolved_vil;
+            render_obj[i].slot.preset                   = kTexArrayCfg.pipeline;
+            render_obj[i].slot.texture_array_slot_flags = handle.material->GetTextureArraySlotFlags();
 
             if(!render_obj[i].slot.IsValid())
                 return false;

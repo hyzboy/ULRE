@@ -320,17 +320,13 @@ public: //MaterialInstanceData
 
     /// Phase A (NEW): Slot-first 接口 — 按 domain 分配实例槽并直接返回 slot。
     /// 调用方可直接传给 Primitive::BindMaterialSlot() 或缓存在组件中。
-    /// @param domain 目标数据域（负责 MI 槽位与 MIT 布局）
-    /// @param material MaterialTemplate（提供渲染管线、描述符定义）
-    /// @param vil VertexInputLayout（来自 material->GetDefaultVIL() 或 config）
-    /// @param preset GraphicsPipelinePreset（Solid3D/Solid2D/Wireframe 等）
+    /// 注意：返回的 slot 仅含 domain 与 mi_id；调用方需自行填写
+    /// material_template、vil、preset 和 texture_array_slot_flags。
+    /// @param domain 目标数据域（负责 MI 槽位与布局）
     /// @param instance_data 可选初始 MI 数据
     /// @param instance_data_size MI 数据大小
-    /// @return PrimitiveMaterialSlot（完整渲染绑定包）
+    /// @return PrimitiveMaterialSlot（domain + mi_id 已填写）
     PrimitiveMaterialSlot AllocMaterialInstanceSlot(MaterialResourceDomain *domain,
-                                                     MaterialTemplate *material,
-                                                     const VIL *vil,
-                                                     GraphicsPipelinePreset preset,
                                                      const void *instance_data = nullptr,
                                                      uint32_t instance_data_size = 0);
     

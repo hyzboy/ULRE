@@ -825,28 +825,18 @@ void MaterialManager::ReplaceDomain(uint32_t domain_id, MaterialResourceDomain *
 
 PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
     MaterialResourceDomain *domain,
-    MaterialTemplate *material,
-    const VIL *vil,
-    GraphicsPipelinePreset preset,
     const void *instance_data,
     uint32_t instance_data_size)
 {
     alloc_slot_requests.fetch_add(1);
 
-    if (!domain || !material)
-    {
-        alloc_slot_failed.fetch_add(1);
-        return {}; // return empty slot
-    }
-
-    const VIL *use_vil = vil ? vil : material->GetDefaultVIL();
-    if (!use_vil)
+    if (!domain)
     {
         alloc_slot_failed.fetch_add(1);
         return {};
     }
 
-    const bool needs_mi = material->hasMI();
+    const bool needs_mi = domain->hasMI();
     int mi_id = -1;
 
     if (needs_mi)
@@ -860,16 +850,15 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
         if (mi_id < 0)
         {
             std::fprintf(stderr,
-                "[MaterialManager] AllocMaterialInstanceSlot failed: material='%s' requires MI but domain allocation failed\n",
-                material->GetName().c_str());
+                "[MaterialManager] AllocMaterialInstanceSlot failed: domain requires MI but allocation failed\n");
             alloc_slot_failed.fetch_add(1);
-            return {}; // allocation failed
+            return {};
         }
 
         // Ensure deterministic first-frame MI data even when caller does not
         // provide explicit instance payload.
         if (void *mi_data = domain->GetMIData(mi_id))
-            std::memset(mi_data, 0, material->GetMIDataBytes());
+            std::memset(mi_data, 0, domain->GetMIDataBytes());
     }
 
     // Write instance data if provided
@@ -878,31 +867,25 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
         if (!needs_mi)
         {
             std::fprintf(stderr,
-                "[MaterialManager] AllocMaterialInstanceSlot rejected payload: material='%s' has no MI layout (size=%u)\n",
-                material->GetName().c_str(),
+                "[MaterialManager] AllocMaterialInstanceSlot rejected payload: domain has no MI layout (size=%u)\n",
                 static_cast<unsigned>(instance_data_size));
             alloc_slot_no_mi_payload_rejected.fetch_add(1);
             alloc_slot_failed.fetch_add(1);
-            return {}; // non-MI material should not receive MI payload
+            return {};
         }
 
         void *mi_data = domain->GetMIData(mi_id);
         if (mi_data)
         {
-            const uint32_t dst_bytes = material->GetMIDataBytes();
+            const uint32_t dst_bytes = domain->GetMIDataBytes();
             const uint32_t copy_bytes = std::min(instance_data_size, dst_bytes);
             std::memcpy(mi_data, instance_data, copy_bytes);
         }
     }
 
-    // Build and return slot
     PrimitiveMaterialSlot slot;
-    slot.material_template = material;
     slot.domain = domain;
-    slot.mi_id = mi_id;
-    slot.vil = use_vil;
-    slot.preset = preset;
-    slot.texture_array_slot_flags = material->GetTextureArraySlotFlags();
+    slot.mi_id  = mi_id;
     alloc_slot_created.fetch_add(1);
     return slot;
 }

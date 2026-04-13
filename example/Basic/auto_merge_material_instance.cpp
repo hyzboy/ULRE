@@ -82,10 +82,6 @@ private:
         if (!handle.IsValid())
             return false;
 
-        const VIL *resolved_vil = registry->ResolveVIL(handle.material, kMergeCfg);
-        if (!resolved_vil)
-            return false;
-
         material = handle.material;
         std::cout << "[TestApp::InitMaterial] Created material: " << (void*)material << std::endl;
         std::cout << "[TestApp::InitMaterial] MaterialTemplate has MI: " << material->hasMI() << std::endl;
@@ -160,11 +156,16 @@ private:
 
             auto slot = material_manager->AllocMaterialInstanceSlot(
                 handle.domain,
-                handle.material,
-                resolved_vil,
-                kMergeCfg.pipeline,
                 &color,
                 sizeof(color));
+
+            if (!slot.domain)
+                return false;
+
+            slot.material_template        = handle.material;
+            slot.vil                      = resolved_vil;
+            slot.preset                   = kMergeCfg.pipeline;
+            slot.texture_array_slot_flags = handle.material->GetTextureArraySlotFlags();
 
             if (!slot.IsValid())
                 return false;

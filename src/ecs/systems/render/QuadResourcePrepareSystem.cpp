@@ -276,11 +276,17 @@ namespace hgl::ecs
             return false;
 
         const auto current_preset = GetPresetForWorld(world);
-        const graph::PrimitiveMaterialSlot shared_slot = material_manager->AllocMaterialInstanceSlot(
-            material_manager->GetOrCreateDefaultDomain(shared_material),
-            shared_material,
-            shared_material->GetDefaultVIL(),
-            current_preset);
+        const graph::PrimitiveMaterialSlot shared_slot = [&]() {
+            graph::PrimitiveMaterialSlot s = material_manager->AllocMaterialInstanceSlot(
+                material_manager->GetOrCreateDefaultDomain(shared_material));
+            if (s.domain) {
+                s.material_template        = shared_material;
+                s.vil                      = shared_material->GetDefaultVIL();
+                s.preset                   = current_preset;
+                s.texture_array_slot_flags = shared_material->GetTextureArraySlotFlags();
+            }
+            return s;
+        }();
         if (!shared_slot.IsValid())
             return false;
 
@@ -526,11 +532,17 @@ namespace hgl::ecs
             if (!dr.primitive)
             {
                 const auto current_preset = GetPresetForWorld(world);
-                const graph::PrimitiveMaterialSlot slot = material_manager->AllocMaterialInstanceSlot(
-                    dr.dmb->GetDomain(),
-                    dr.material,
-                        dr.material->GetDefaultVIL(),
-                    current_preset);
+                const graph::PrimitiveMaterialSlot slot = [&]() {
+                    graph::PrimitiveMaterialSlot s = material_manager->AllocMaterialInstanceSlot(
+                        dr.dmb->GetDomain());
+                    if (s.domain) {
+                        s.material_template        = dr.material;
+                        s.vil                      = dr.material->GetDefaultVIL();
+                        s.preset                   = current_preset;
+                        s.texture_array_slot_flags = dr.material->GetTextureArraySlotFlags();
+                    }
+                    return s;
+                }();
 
                 if (slot.IsValid())
                 {

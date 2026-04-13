@@ -79,11 +79,15 @@ private:
         if(!axis_vil)
             return false;
 
-        axis_slot = material_manager->AllocMaterialInstanceSlot(
-            handle.domain,
-            handle.material,
-            axis_vil,
-            kAxisCfg.pipeline);
+        axis_slot = material_manager->AllocMaterialInstanceSlot(handle.domain);
+        if(!axis_slot.domain)
+            return false;
+
+        axis_slot.material_template        = handle.material;
+        axis_slot.vil                      = axis_vil;
+        axis_slot.preset                   = kAxisCfg.pipeline;
+        axis_slot.texture_array_slot_flags = handle.material->GetTextureArraySlotFlags();
+
         if(!axis_slot.IsValid())
             return false;
 

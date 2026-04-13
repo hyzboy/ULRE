@@ -59,11 +59,16 @@ namespace example::modules
         {
             auto slot = material_manager->AllocMaterialInstanceSlot(
                 material_domain,
-                material,
-                material->GetDefaultVIL(),
-                GraphicsPipelinePreset::Solid3D,
                 &colors[i],
                 sizeof(colors[i]));
+
+            if (!slot.domain)
+                return false;
+
+            slot.material_template        = material;
+            slot.vil                      = material->GetDefaultVIL();
+            slot.preset                   = GraphicsPipelinePreset::Solid3D;
+            slot.texture_array_slot_flags = material->GetTextureArraySlotFlags();
 
             if (!slot.IsValid())
                 return false;
@@ -98,13 +103,20 @@ namespace example::modules
         if (out_handle)
             *out_handle = handle;
 
-        return material_manager->AllocMaterialInstanceSlot(
+        PrimitiveMaterialSlot slot = material_manager->AllocMaterialInstanceSlot(
             handle.domain,
-            handle.material,
-            resolved_vil,
-            rec.pipeline,
             instance_data,
             instance_data_size);
+
+        if (!slot.domain)
+            return {};
+
+        slot.material_template        = handle.material;
+        slot.vil                      = resolved_vil;
+        slot.preset                   = rec.pipeline;
+        slot.texture_array_slot_flags = handle.material->GetTextureArraySlotFlags();
+
+        return slot;
     }
 
     SubWorldModuleBase::MeshResource*

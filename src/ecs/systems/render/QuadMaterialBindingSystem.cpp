@@ -144,13 +144,16 @@ namespace hgl::ecs
         if (!domain)
             return false;
 
-        const hgl::graph::PrimitiveMaterialSlot slot = material_manager->AllocMaterialInstanceSlot(
-            domain,
-            quad_material,
-            quad_material->GetDefaultVIL(),
-            current_preset,
-            nullptr,
-            0);
+        const hgl::graph::PrimitiveMaterialSlot slot = [&]() {
+            hgl::graph::PrimitiveMaterialSlot s = material_manager->AllocMaterialInstanceSlot(domain);
+            if (s.domain) {
+                s.material_template        = quad_material;
+                s.vil                      = quad_material->GetDefaultVIL();
+                s.preset                   = current_preset;
+                s.texture_array_slot_flags = quad_material->GetTextureArraySlotFlags();
+            }
+            return s;
+        }();
         if (!slot.IsValid())
             return false;
 
@@ -268,13 +271,16 @@ namespace hgl::ecs
         if (!domain)
             return false;
 
-        const hgl::graph::PrimitiveMaterialSlot slot = material_manager->AllocMaterialInstanceSlot(
-            domain,
-            dr->material,
-            dr->material->GetDefaultVIL(),
-            current_preset,
-            nullptr,
-            0);
+        const hgl::graph::PrimitiveMaterialSlot slot = [&]() {
+            hgl::graph::PrimitiveMaterialSlot s = material_manager->AllocMaterialInstanceSlot(domain);
+            if (s.domain) {
+                s.material_template        = dr->material;
+                s.vil                      = dr->material->GetDefaultVIL();
+                s.preset                   = current_preset;
+                s.texture_array_slot_flags = dr->material->GetTextureArraySlotFlags();
+            }
+            return s;
+        }();
         if (!slot.IsValid())
             return false;
 
