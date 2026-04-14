@@ -26,6 +26,14 @@ namespace hgl::graph
 
 namespace
 {
+static constexpr const char *kDefaultDomainId = "__default__";
+
+static const std::string &NormalizeDomainId(const std::string &domain_id)
+{
+    static const std::string kDefaultDomain(kDefaultDomainId);
+    return domain_id.empty() ? kDefaultDomain : domain_id;
+}
+
 static void BuildMITOffsets(const uint8_t slot_flags, std::vector<int8_t> &out_offsets, std::vector<uint32_t> &out_packed)
 {
     out_offsets.assign(mtl::SamplerSlotCount, int8_t(-1));
@@ -434,7 +442,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     std::string mat_name_str = mat_name;
 
     // 2. MaterialResourceDomain (按 material_name + domain_id 缓存)
-    const std::string &did = rec.domain_id;          // 空串 → 默认域
+    const std::string &did = NormalizeDomainId(rec.domain_id); // 未指定 → 显式默认域
     const std::string domain_cache_key = mat_name_str + "#" + did;
 
     auto it_domain = domain_cache.find(domain_cache_key);

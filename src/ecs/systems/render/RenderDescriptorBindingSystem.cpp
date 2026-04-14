@@ -15,6 +15,7 @@
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/UBOCommon.h>
@@ -108,6 +109,23 @@ namespace hgl::ecs
             return nullptr;
         }
 
+        graph::MaterialManager *GetMaterialManager(hgl::ecs::ECSContext *ctx)
+        {
+            if (!ctx)
+                return nullptr;
+
+            if (auto *rc = ctx->GetRenderContext())
+            {
+                if (auto *gc = rc->GetGraphicsContext())
+                    return gc->GetMaterialManager();
+            }
+
+            if (auto *gc = ctx->GetGraphicsContext())
+                return gc->GetMaterialManager();
+
+            return nullptr;
+        }
+
         bool HasResolvedInstanceSlotForDomain(const hgl::ecs::RenderItem *item,
                                               hgl::graph::MRDHandle domain_handle)
         {
@@ -127,6 +145,26 @@ namespace hgl::ecs
                 return false;
 
             return binding.mi_id >= 0;
+        }
+
+        bool MaterialRequiresResourceDomain(graph::MaterialTemplate *material)
+        {
+            if (!material)
+                return false;
+
+            const auto &contract = material->GetBindingContract();
+            for (size_t i = 1; i < graph::mtl::SSBODescriptorSemanticCount; ++i)
+            {
+                if (contract.ssbos[i] == 0)
+                    continue;
+
+                const auto semantic = graph::mtl::SSBODescriptorSemantic(i);
+                const auto &meta = graph::mtl::GetDescriptorSemanticMeta(semantic);
+                if (meta.scope == graph::mtl::DescriptorBindingScope::ResourceDomain)
+                    return true;
+            }
+
+            return false;
         }
 
         hgl::graph::MaterialResourceDomain *ResolveDomainForBatch(const hgl::ecs::MaterialBatch *batch,
@@ -736,6 +774,7 @@ namespace hgl::ecs
         std::unordered_set<uint64_t> domain_direct_mi_bound_pairs;
         std::unordered_set<uint64_t> domain_direct_mit_bound_pairs;
         graph::BufferManager *buffer_manager = GetBufferManager(context);
+        graph::MaterialManager *material_manager = GetMaterialManager(context);
 
         uint32_t domain_direct_mi_hit_count = 0;
         uint32_t domain_direct_mi_fallback_count = 0;
@@ -745,6 +784,7 @@ namespace hgl::ecs
         uint32_t domain_direct_mit_semantic_off_count = 0;
         bool domain_direct_mode_seen = false;
         uint32_t domain_direct_mit_reason_counts[static_cast<size_t>(DomainDirectMITBindResult::Count)] = {};
+        std::unordered_set<const graph::MaterialTemplate *> warned_missing_domain_materials;
 
         for (const auto &pair : cache.materialBatches)
         {
@@ -763,6 +803,20 @@ namespace hgl::ecs
             const auto &contract = material->GetBindingContract();
             ApplySceneUBOBindings(material, contract, scene_ubo_resolvers);
 
+            // Policy: "no domain" is only acceptable for materials that truly do not
+            // require ResourceDomain semantics. Unspecified domain should resolve to a
+            // default domain in the asset layer; if we reach here with invalid handle
+            // while resource-domain semantics are required, emit a warning.
+            if (!domain_handle.IsValid()
+             && MaterialRequiresResourceDomain(material)
+             && !warned_missing_domain_materials.contains(material))
+            {
+                warned_missing_domain_materials.insert(material);
+                LogWarning("[DescBind] material '%s' requires ResourceDomain semantics but batch has invalid domain_handle. "
+                           "Please bind an explicit/default domain for this material.",
+                           material->GetName().c_str());
+            }
+
             // Resolve and cache the domain binding for this batch every frame.
             // PipelineMaterialRenderer::Render uses it to call BindDescriptorSets(domain_binding)
             // AFTER BindDescriptorSets(material), so domain's PerMaterial set (ResourceDomain
@@ -776,6 +830,22 @@ namespace hgl::ecs
                             if (binding && binding->GetMaterial() == material && binding->GetDomain() == dom) {
                                 resolved = binding;
                                 break;
+                            }
+                        }
+
+                        // Compatibility bridge: some create paths build DomainMaterialBinding but
+                        // do not explicitly register it into RenderDescriptorBindingSystem.
+                        // Recover by querying MaterialManager and auto-registering once.
+                        if (!resolved && material_manager)
+                        {
+                            resolved = material_manager->FindDomainMaterialBinding(domain_handle, material);
+                            if (resolved)
+                            {
+                                registered_domain_bindings.insert(resolved);
+                                LogDebug("[DescBind] Auto-register domain binding material=%p domain_id=%u binding=%p",
+                                         (void*)material,
+                                         domain_handle.id,
+                                         (void*)resolved);
                             }
                         }
                     }
