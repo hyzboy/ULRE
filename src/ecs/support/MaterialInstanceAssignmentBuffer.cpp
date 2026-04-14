@@ -161,11 +161,11 @@ namespace hgl::ecs
 
             const auto& binding = item->GetEntityMaterialBinding();
 
-            if (binding.IsDrawBindingValid() && binding.domain && binding.mi_id >= 0)
+            if (binding.IsDrawBindingValid() && binding.domain_handle.IsValid() && binding.mi_id >= 0)
             {
                 const void* mi_data_ptr = binding.domain->GetMIData(binding.mi_id);
                 const uint32_t mit_bytes = binding.mit_count * sizeof(uint32_t);
-                slot_set.AddResolved(binding.domain,
+                slot_set.AddResolved(binding.domain_handle,
                                      binding.mi_id,
                                      mi_data_ptr,
                                      binding.mit_data,
@@ -178,7 +178,7 @@ namespace hgl::ecs
             // Primitive* fallback slot into MIAB.
             if (use_resolved_domain_mi_id
              && binding.material_template
-             && binding.domain
+             && binding.domain_handle.IsValid()
              && binding.mi_id < 0)
             {
                 ++skipped_non_instance_resolved;
@@ -215,7 +215,7 @@ namespace hgl::ecs
                 for (const auto &entry : slot_set)
                 {
                     std::cout << "[MIAB::Stat]   Slot[" << slot_idx++
-                              << "] domain=" << (void*)entry.domain
+                              << "] domain_handle=" << entry.domain_handle.id
                               << " mi_id=" << entry.mi_id
                               << " prim_fallback=" << (void*)entry.primitive_fallback
                               << " data=" << entry.mi_data_ptr
@@ -392,16 +392,16 @@ namespace hgl::ecs
 
         uint16 mi_index = 0;
         const auto& binding = item->GetEntityMaterialBinding();
-        if (binding.material_template && binding.domain && binding.mi_id >= 0)
+        if (binding.material_template && binding.domain_handle.IsValid() && binding.mi_id >= 0)
         {
             if (use_resolved_domain_mi_id)
                 mi_index = static_cast<uint16>(binding.mi_id);
             else
-                mi_index = slot_set.FindResolved(binding.domain, binding.mi_id);
+                mi_index = slot_set.FindResolved(binding.domain_handle, binding.mi_id);
         }
         else if (use_resolved_domain_mi_id
               && binding.material_template
-              && binding.domain
+              && binding.domain_handle.IsValid()
               && binding.mi_id < 0)
         {
             // Non-instanced resolved slot in domain-direct mode.
@@ -529,16 +529,16 @@ namespace hgl::ecs
 
                 uint16 mi_index = 0;
                 const auto& binding = item->GetEntityMaterialBinding();
-                if (binding.material_template && binding.domain && binding.mi_id >= 0)
+                if (binding.material_template && binding.domain_handle.IsValid() && binding.mi_id >= 0)
                 {
                     if (use_resolved_domain_mi_id)
                         mi_index = static_cast<uint16>(binding.mi_id);
                     else
-                        mi_index = slot_set.FindResolved(binding.domain, binding.mi_id);
+                        mi_index = slot_set.FindResolved(binding.domain_handle, binding.mi_id);
                 }
                 else if (use_resolved_domain_mi_id
                       && binding.material_template
-                      && binding.domain
+                      && binding.domain_handle.IsValid()
                       && binding.mi_id < 0)
                 {
                     mi_index = 0;

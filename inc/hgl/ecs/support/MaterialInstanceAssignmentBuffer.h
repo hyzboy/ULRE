@@ -23,7 +23,7 @@ namespace hgl::ecs
 {
     struct MaterialSlotEntry
     {
-        graph::MaterialResourceDomain* domain = nullptr;
+        graph::MRDHandle domain_handle = {};
         int mi_id = -1;
         graph::Primitive* primitive_fallback = nullptr;
         const void* mi_data_ptr = nullptr;
@@ -42,11 +42,9 @@ namespace hgl::ecs
         hgl::UnorderedMap<uint64_t, uint16> slot_index_map;
         hgl::UnorderedMap<graph::Primitive*, uint16> primitive_index_map;
 
-        static uint64_t MakeSlotKey(graph::MaterialResourceDomain* domain, int mi_id)
+        static uint64_t MakeSlotKey(graph::MRDHandle dh, int mi_id)
         {
-            const uint64_t d = uint64_t(reinterpret_cast<uintptr_t>(domain));
-            const uint32_t id = static_cast<uint32_t>(mi_id);
-            return (d << 32) ^ uint64_t(id);
+            return (uint64_t(dh.id) << 32) ^ (uint64_t(dh.generation) << 16) ^ uint64_t(uint32_t(mi_id));
         }
 
     public:
@@ -64,22 +62,22 @@ namespace hgl::ecs
             primitive_index_map.Reserve(count);
         }
 
-        uint16 AddResolved(graph::MaterialResourceDomain* domain,
+        uint16 AddResolved(graph::MRDHandle dh,
                            int mi_id,
                            const void* mi_data_ptr,
                            const void* mit_data_ptr,
                            uint32_t mit_data_bytes)
         {
-            if (!domain || mi_id < 0)
+            if (!dh.IsValid() || mi_id < 0)
                 return 0;
 
-            const uint64_t key = MakeSlotKey(domain, mi_id);
+            const uint64_t key = MakeSlotKey(dh, mi_id);
             if (auto p = slot_index_map.GetValuePointer(key))
                 return *p;
 
             const uint16 index = static_cast<uint16>(entries.size());
             MaterialSlotEntry e;
-            e.domain = domain;
+            e.domain_handle = dh;
             e.mi_id = mi_id;
             e.mi_data_ptr = mi_data_ptr;
             e.mit_data_ptr = mit_data_ptr;
@@ -105,12 +103,12 @@ namespace hgl::ecs
             return index;
         }
 
-        uint16 FindResolved(graph::MaterialResourceDomain* domain, int mi_id) const
+        uint16 FindResolved(graph::MRDHandle dh, int mi_id) const
         {
-            if (!domain || mi_id < 0)
+            if (!dh.IsValid() || mi_id < 0)
                 return 0;
 
-            const uint64_t key = MakeSlotKey(domain, mi_id);
+            const uint64_t key = MakeSlotKey(dh, mi_id);
             auto p = slot_index_map.GetValuePointer(key);
             return p ? *p : 0;
         }
