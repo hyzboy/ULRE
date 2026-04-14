@@ -28,10 +28,17 @@ namespace
 {
 static constexpr const char *kDefaultDomainId = "__default__";
 
-static const std::string &NormalizeDomainId(const std::string &domain_id)
+static std::atomic<uint64_t> g_default_domain_normalize_count {0};
+
+static const std::string &NormalizeDomainId(const std::string &domain_id, bool *used_default = nullptr)
 {
     static const std::string kDefaultDomain(kDefaultDomainId);
-    return domain_id.empty() ? kDefaultDomain : domain_id;
+    const bool use_default = domain_id.empty();
+
+    if (used_default)
+        *used_default = use_default;
+
+    return use_default ? kDefaultDomain : domain_id;
 }
 
 static void BuildMITOffsets(const uint8_t slot_flags, std::vector<int8_t> &out_offsets, std::vector<uint32_t> &out_packed)
@@ -442,7 +449,20 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     std::string mat_name_str = mat_name;
 
     // 2. MaterialResourceDomain (按 material_name + domain_id 缓存)
-    const std::string &did = NormalizeDomainId(rec.domain_id); // 未指定 → 显式默认域
+    bool used_default_domain = false;
+    const std::string &did = NormalizeDomainId(rec.domain_id, &used_default_domain); // 未指定 → 显式默认域
+    if (used_default_domain)
+    {
+        const uint64_t n = ++g_default_domain_normalize_count;
+        if (ShouldLogPow2(n))
+        {
+            std::fprintf(stderr,
+                "[MaterialAssetRegistry] domain_id is empty; normalized to '%s' (count=%llu, material='%s')\n",
+                kDefaultDomainId,
+                static_cast<unsigned long long>(n),
+                mat_name.c_str());
+        }
+    }
     const std::string domain_cache_key = mat_name_str + "#" + did;
 
     auto it_domain = domain_cache.find(domain_cache_key);

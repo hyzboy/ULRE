@@ -64,6 +64,11 @@ namespace hgl::ecs
             }
         }
 
+        bool ShouldLogPow2(const uint64_t v)
+        {
+            return v != 0 && ((v & (v - 1)) == 0);
+        }
+
         void ApplySceneUBOBindings(graph::MaterialTemplate *material,
                                    const graph::mtl::DescriptorBindingSlots &contract,
                                    const std::array<graph::UBOAccessorBase *, graph::mtl::UBODescriptorSemanticCount> &scene_ubo_resolvers)
@@ -784,7 +789,7 @@ namespace hgl::ecs
         uint32_t domain_direct_mit_semantic_off_count = 0;
         bool domain_direct_mode_seen = false;
         uint32_t domain_direct_mit_reason_counts[static_cast<size_t>(DomainDirectMITBindResult::Count)] = {};
-        std::unordered_set<const graph::MaterialTemplate *> warned_missing_domain_materials;
+        static std::unordered_map<uint64_t, uint64_t> missing_domain_warn_counts;
 
         for (const auto &pair : cache.materialBatches)
         {
@@ -808,13 +813,19 @@ namespace hgl::ecs
             // default domain in the asset layer; if we reach here with invalid handle
             // while resource-domain semantics are required, emit a warning.
             if (!domain_handle.IsValid()
-             && MaterialRequiresResourceDomain(material)
-             && !warned_missing_domain_materials.contains(material))
+             && MaterialRequiresResourceDomain(material))
             {
-                warned_missing_domain_materials.insert(material);
-                LogWarning("[DescBind] material '%s' requires ResourceDomain semantics but batch has invalid domain_handle. "
-                           "Please bind an explicit/default domain for this material.",
-                           material->GetName().c_str());
+                const uint64_t warn_key = (uint64_t(reinterpret_cast<uintptr_t>(material)) << 8)
+                                        ^ uint64_t(static_cast<uint8_t>(pair.first.queue));
+                const uint64_t n = ++missing_domain_warn_counts[warn_key];
+                if (ShouldLogPow2(n))
+                {
+                    LogWarning("[DescBind] material '%s' requires ResourceDomain semantics but batch has invalid domain_handle "
+                               "(queue=%u, count=%llu). Please bind an explicit/default domain for this material.",
+                               material->GetName().c_str(),
+                               static_cast<unsigned>(pair.first.queue),
+                               static_cast<unsigned long long>(n));
+                }
             }
 
             // Resolve and cache the domain binding for this batch every frame.
