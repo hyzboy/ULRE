@@ -10,6 +10,13 @@
 
 namespace hgl::graph::mtl
 {
+    enum class DescriptorBindingScope : uint8_t
+    {
+        Unknown = 0,
+        TemplateShared,
+        ResourceDomain,
+    };
+
     struct DescriptorBindingSlots
     {
         uint32_t ubos[size_t(UBODescriptorSemantic::RANGE_SIZE)] = {};
@@ -19,6 +26,7 @@ namespace hgl::graph::mtl
     struct DescriptorSemanticMeta
     {
         DescriptorSetType set_type = DescriptorSetType::Unknow;
+        DescriptorBindingScope scope = DescriptorBindingScope::Unknown;
         const char *name = nullptr;
         const char *binding_macro_name = nullptr;
         const char *struct_name = nullptr;
@@ -51,25 +59,25 @@ namespace hgl::graph::mtl
 
         constexpr DescriptorSemanticMeta UBODescriptorSemanticMetaList[] =
     {
-        {DescriptorSetType::Unknow, nullptr,        nullptr,                nullptr,        BufferUpdateClass::Default          }, // Unknown
-        {SET_TYPE_VIEWPORT,         "viewport",     "VIEWPORT_BINDING",     "ViewportInfo", BufferUpdateClass::CriticalPerFrame }, // ViewportInfo
-        {SET_TYPE_CAMERA,           "camera",       "CAMERA_BINDING",       "CameraInfo",   BufferUpdateClass::CriticalPerFrame }, // CameraInfo
-        {SET_TYPE_SKY,              "sky",          "SKY_BINDING",          "SkyInfo",      BufferUpdateClass::Deferred         }, // SkyInfo
-        {SET_TYPE_MATERIAL,         "color_pattle", "COLOR_PATTLE_BINDING", "ColorPattle",  BufferUpdateClass::Default          }, // ColorPattle
-        {DescriptorSetType::Unknow, nullptr,        nullptr,                nullptr,        BufferUpdateClass::Default          }, // Custom
+        {DescriptorSetType::Unknow, DescriptorBindingScope::Unknown,        nullptr,        nullptr,                nullptr,        BufferUpdateClass::Default          }, // Unknown
+        {SET_TYPE_VIEWPORT,         DescriptorBindingScope::TemplateShared, "viewport",     "VIEWPORT_BINDING",     "ViewportInfo", BufferUpdateClass::CriticalPerFrame }, // ViewportInfo
+        {SET_TYPE_CAMERA,           DescriptorBindingScope::TemplateShared, "camera",       "CAMERA_BINDING",       "CameraInfo",   BufferUpdateClass::CriticalPerFrame }, // CameraInfo
+        {SET_TYPE_SKY,              DescriptorBindingScope::TemplateShared, "sky",          "SKY_BINDING",          "SkyInfo",      BufferUpdateClass::Deferred         }, // SkyInfo
+        {SET_TYPE_MATERIAL,         DescriptorBindingScope::TemplateShared, "color_pattle", "COLOR_PATTLE_BINDING", "ColorPattle",  BufferUpdateClass::Default          }, // ColorPattle
+        {DescriptorSetType::Unknow, DescriptorBindingScope::Unknown,        nullptr,        nullptr,                nullptr,        BufferUpdateClass::Default          }, // Custom
     };
 
     constexpr DescriptorSemanticMeta SSBODescriptorSemanticMetaList[] =
     {
-        {DescriptorSetType::Unknow, nullptr,        nullptr,                nullptr,                     BufferUpdateClass::Default       }, // Unknown
-        {SET_TYPE_TRANSFORM,        "tid",          "TID_BINDING",          "TransformID",               BufferUpdateClass::TransformData }, // TransformID
-        {SET_TYPE_TRANSFORM,        "l2w",          "L2W_BINDING",          "TransformData",             BufferUpdateClass::TransformData }, // TransformData
-        {SET_TYPE_MATERIAL,         "mid",          "MID_BINDING",          "MaterialInstanceID",        BufferUpdateClass::Default       }, // MaterialInstanceID
-        {SET_TYPE_MATERIAL,         "mtl",          "MI_BINDING",           "MaterialInstanceData",      BufferUpdateClass::Default       }, // MaterialInstanceData
-        {SET_TYPE_MATERIAL,         "mit",          "MIT_BINDING",          "MaterialInstanceTextureID", BufferUpdateClass::Default       }, // MaterialInstanceTextureID, 这里存的是每个实例对应的纹理ID（layer index），配合TextureArray使用。所以它是SSBO不是TextureSampler
-        {SET_TYPE_TRANSFORM,        "joint",        "JOINT_BINDING",        "JointInfo",                 BufferUpdateClass::TransformData }, // BoneJoint
-        {SET_TYPE_TRANSFORM,        "joint_weight", "JOINT_WEIGHT_BINDING", "JointWeightInfo",           BufferUpdateClass::TransformData }, // BoneJointWeight
-        {DescriptorSetType::Unknow, nullptr,        nullptr,                nullptr,                     BufferUpdateClass::Default       }, // Custom
+        {DescriptorSetType::Unknow, DescriptorBindingScope::Unknown,        nullptr,        nullptr,                nullptr,                     BufferUpdateClass::Default       }, // Unknown
+        {SET_TYPE_TRANSFORM,        DescriptorBindingScope::TemplateShared, "tid",          "TID_BINDING",          "TransformID",               BufferUpdateClass::TransformData }, // TransformID
+        {SET_TYPE_TRANSFORM,        DescriptorBindingScope::TemplateShared, "l2w",          "L2W_BINDING",          "TransformData",             BufferUpdateClass::TransformData }, // TransformData
+        {SET_TYPE_MATERIAL,         DescriptorBindingScope::ResourceDomain, "mid",          "MID_BINDING",          "MaterialInstanceID",        BufferUpdateClass::Default       }, // MaterialInstanceID
+        {SET_TYPE_MATERIAL,         DescriptorBindingScope::ResourceDomain, "mtl",          "MI_BINDING",           "MaterialInstanceData",      BufferUpdateClass::Default       }, // MaterialInstanceData
+        {SET_TYPE_MATERIAL,         DescriptorBindingScope::ResourceDomain, "mit",          "MIT_BINDING",          "MaterialInstanceTextureID", BufferUpdateClass::Default       }, // MaterialInstanceTextureID, 这里存的是每个实例对应的纹理ID（layer index），配合TextureArray使用。所以它是SSBO不是TextureSampler
+        {SET_TYPE_TRANSFORM,        DescriptorBindingScope::TemplateShared, "joint",        "JOINT_BINDING",        "JointInfo",                 BufferUpdateClass::TransformData }, // BoneJoint
+        {SET_TYPE_TRANSFORM,        DescriptorBindingScope::TemplateShared, "joint_weight", "JOINT_WEIGHT_BINDING", "JointWeightInfo",           BufferUpdateClass::TransformData }, // BoneJointWeight
+        {DescriptorSetType::Unknow, DescriptorBindingScope::Unknown,        nullptr,        nullptr,                nullptr,                     BufferUpdateClass::Default       }, // Custom
     };
 
     constexpr const DescriptorSemanticMeta &GetDescriptorSemanticMeta(const UBODescriptorSemantic semantic)
@@ -98,6 +106,16 @@ namespace hgl::graph::mtl
     inline DescriptorSetType GetExpectedSetType(SSBODescriptorSemantic semantic)
     {
         return GetDescriptorSemanticMeta(semantic).set_type;
+    }
+
+    inline DescriptorBindingScope GetExpectedBindingScope(UBODescriptorSemantic semantic)
+    {
+        return GetDescriptorSemanticMeta(semantic).scope;
+    }
+
+    inline DescriptorBindingScope GetExpectedBindingScope(SSBODescriptorSemantic semantic)
+    {
+        return GetDescriptorSemanticMeta(semantic).scope;
     }
 
     inline const char *GetDescriptorSemanticName(UBODescriptorSemantic semantic)

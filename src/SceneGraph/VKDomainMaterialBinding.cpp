@@ -14,6 +14,14 @@ DomainMaterialBinding::~DomainMaterialBinding()
     mp_per_material = nullptr;
 }
 
+bool DomainMaterialBinding::BindSSBO(const mtl::SSBODescriptorSemantic semantic,
+                                     const IGPUBuffer *gpu,
+                                     bool dynamic)
+{
+    if (!mp_per_material) return false;
+    return mp_per_material->BindSSBO(semantic, gpu, dynamic);
+}
+
 bool DomainMaterialBinding::BindTexture(const mtl::SamplerSlot slot, Texture *tex)
 {
     if (!mp_per_material) return false;

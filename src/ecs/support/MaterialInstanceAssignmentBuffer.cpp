@@ -6,6 +6,7 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialTemplate.h>
+#include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/vk/VKMaterialResourceDomain.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/mtl/UBOCommon.h>
@@ -46,6 +47,19 @@ namespace hgl::ecs
 
         mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialInstanceID,
                       gpu);
+    }
+
+    void MaterialInstanceAssignmentBuffer::BindMaterialInstanceID(graph::DomainMaterialBinding* binding) const
+    {
+        if (!binding || !material_instance_id_buffer)
+            return;
+
+        auto *gpu = material_instance_id_buffer->GetGPUBuffer();
+        if (!gpu)
+            return;
+
+        binding->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialInstanceID,
+                          gpu);
     }
 
     void MaterialInstanceAssignmentBuffer::BindMaterialInstanceTextureID(graph::MaterialTemplate* mtl) const
@@ -94,6 +108,58 @@ namespace hgl::ecs
                       gpu);
     }
 
+    void MaterialInstanceAssignmentBuffer::BindMaterialInstanceTextureID(graph::DomainMaterialBinding* binding) const
+    {
+        if (!binding)
+            return;
+
+        graph::MaterialTemplate *mtl = binding->GetMaterial();
+        if (!mtl)
+            return;
+
+        if (!mit_buffer)
+        {
+            if (mtl->GetTextureArraySlotFlags() != 0)
+            {
+                static uint64_t s_missing_mit_buffer = 0;
+                if ((++s_missing_mit_buffer <= 8u) || ((s_missing_mit_buffer & (s_missing_mit_buffer - 1)) == 0))
+                {
+                    std::cerr << "[MIAB::BindMIT] ERROR: domain binding requires MIT SSBO but no MIT buffer was created: binding="
+                              << static_cast<const void *>(binding)
+                              << " material=" << static_cast<const void *>(mtl)
+                              << "(" << mtl->GetName().c_str() << ")"
+                              << " array_slot_flags=0x" << std::hex << unsigned(mtl->GetTextureArraySlotFlags()) << std::dec
+                              << " total_errors=" << static_cast<unsigned long long>(s_missing_mit_buffer)
+                              << std::endl;
+                }
+            }
+            return;
+        }
+
+        auto *gpu = mit_buffer->GetGPUBuffer();
+        if (!gpu)
+        {
+            if (mtl->GetTextureArraySlotFlags() != 0)
+            {
+                static uint64_t s_missing_mit_gpu = 0;
+                if ((++s_missing_mit_gpu <= 8u) || ((s_missing_mit_gpu & (s_missing_mit_gpu - 1)) == 0))
+                {
+                    std::cerr << "[MIAB::BindMIT] ERROR: domain binding requires MIT SSBO but MIT GPU buffer is null: binding="
+                              << static_cast<const void *>(binding)
+                              << " material=" << static_cast<const void *>(mtl)
+                              << "(" << mtl->GetName().c_str() << ")"
+                              << " array_slot_flags=0x" << std::hex << unsigned(mtl->GetTextureArraySlotFlags()) << std::dec
+                              << " total_errors=" << static_cast<unsigned long long>(s_missing_mit_gpu)
+                              << std::endl;
+                }
+            }
+            return;
+        }
+
+        binding->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID,
+                          gpu);
+    }
+
     void MaterialInstanceAssignmentBuffer::BindMaterialInstance(graph::MaterialTemplate* mtl) const
     {
         if (!mtl)
@@ -112,6 +178,17 @@ namespace hgl::ecs
                   material_instance_buffer->GetGPUBuffer());
 
         BindMaterialInstanceID(mtl);
+    }
+
+    void MaterialInstanceAssignmentBuffer::BindMaterialInstance(graph::DomainMaterialBinding* binding) const
+    {
+        if (!binding || !material_instance_buffer)
+            return;
+
+        binding->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialInstanceData,
+                          material_instance_buffer->GetGPUBuffer());
+
+        BindMaterialInstanceID(binding);
     }
 
     void MaterialInstanceAssignmentBuffer::Clear()

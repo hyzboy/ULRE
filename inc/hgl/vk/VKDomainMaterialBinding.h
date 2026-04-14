@@ -55,6 +55,7 @@ public:
     // 描述符绑定接口 (PerMaterial 集)
     // ----------------------------------------------------------------
 
+    bool BindSSBO          (const mtl::SSBODescriptorSemantic semantic, const IGPUBuffer *gpu, bool dynamic = false);
     bool BindTexture       (const mtl::SamplerSlot slot, Texture *tex);
     bool BindTextureSampler(const mtl::SamplerSlot slot, Texture *tex, Sampler *sampler);
 

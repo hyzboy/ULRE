@@ -129,10 +129,76 @@ namespace hgl::ecs
             return binding.mi_id >= 0;
         }
 
+        hgl::graph::MaterialResourceDomain *ResolveDomainForBatch(const hgl::ecs::MaterialBatch *batch,
+                                                                  hgl::graph::MRDHandle domain_handle)
+        {
+            if (!batch || !domain_handle.IsValid())
+                return nullptr;
+
+            for (auto *item : batch->items)
+            {
+                if (!HasResolvedInstanceSlotForDomain(item, domain_handle))
+                    continue;
+
+                const auto &binding = item->GetEntityMaterialBinding();
+                if (binding.domain)
+                    return binding.domain;
+            }
+
+            return nullptr;
+        }
+
+        template<typename Binder>
+        bool ForEachMatchingDomainBinding(graph::MaterialTemplate *material,
+                                          graph::MaterialResourceDomain *domain,
+                                          const std::unordered_set<graph::DomainMaterialBinding *> &registered_domain_bindings,
+                                          Binder &&binder)
+        {
+            if (!material || !domain)
+                return false;
+
+            bool bound = false;
+            for (graph::DomainMaterialBinding *binding : registered_domain_bindings)
+            {
+                if (!binding)
+                    continue;
+
+                if (binding->GetMaterial() != material || binding->GetDomain() != domain)
+                    continue;
+
+                binder(binding);
+                bound = true;
+            }
+
+            return bound;
+        }
+
+        bool TryBindBatchMIDToDomainBindings(const hgl::ecs::MaterialBatch *batch,
+                                             graph::MaterialTemplate *material,
+                                             hgl::graph::MRDHandle domain_handle,
+                                             const std::unordered_set<graph::DomainMaterialBinding *> &registered_domain_bindings)
+        {
+            if (!batch || !material || !batch->mi_buffer || !domain_handle.IsValid())
+                return false;
+
+            graph::MaterialResourceDomain *domain = ResolveDomainForBatch(batch, domain_handle);
+            if (!domain)
+                return false;
+
+            return ForEachMatchingDomainBinding(material,
+                                               domain,
+                                               registered_domain_bindings,
+                                               [&](graph::DomainMaterialBinding *binding)
+                                               {
+                                                   batch->mi_buffer->BindMaterialInstanceID(binding);
+                                               });
+        }
+
         bool TryBindDomainDirectMIData(const hgl::ecs::MaterialBatch *batch,
                                        graph::MaterialTemplate *material,
                                        hgl::graph::MRDHandle domain_handle,
-                                       graph::BufferManager *buffer_manager)
+                                       graph::BufferManager *buffer_manager,
+                                       const std::unordered_set<graph::DomainMaterialBinding *> &registered_domain_bindings)
         {
             if (!batch || !material || !domain_handle.IsValid() || !buffer_manager)
                 return false;
@@ -171,14 +237,22 @@ namespace hgl::ecs
             if (!mi_gpu)
                 return false;
 
-            material->BindSSBO(graph::mtl::SSBODescriptorSemantic::MaterialInstanceData, mi_gpu);
-            return true;
+            return ForEachMatchingDomainBinding(material,
+                                               domain,
+                                               registered_domain_bindings,
+                                               [&](graph::DomainMaterialBinding *binding)
+                                               {
+                                                   binding->BindSSBO(graph::mtl::SSBODescriptorSemantic::MaterialInstanceData,
+                                                                     mi_gpu);
+                                                   batch->mi_buffer->BindMaterialInstanceID(binding);
+                                               });
         }
 
         bool TryBindDomainDirectMITData(const hgl::ecs::MaterialBatch *batch,
                                         graph::MaterialTemplate *material,
                                         hgl::graph::MRDHandle domain_handle,
                                         graph::BufferManager *buffer_manager,
+                                        const std::unordered_set<graph::DomainMaterialBinding *> &registered_domain_bindings,
                                         DomainDirectMITBindResult *out_result = nullptr)
         {
             if (out_result)
@@ -289,8 +363,19 @@ namespace hgl::ecs
                 return false;
             }
 
-            material->BindSSBO(graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID, mit_gpu);
-            return true;
+            const bool bound = ForEachMatchingDomainBinding(material,
+                                                            domain,
+                                                            registered_domain_bindings,
+                                                            [&](graph::DomainMaterialBinding *binding)
+                                                            {
+                                                                binding->BindSSBO(graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID,
+                                                                                  mit_gpu);
+                                                            });
+
+            if (!bound && out_result)
+                *out_result = DomainDirectMITBindResult::NoResolvedSlotData;
+
+            return bound;
         }
 
         void EnsureSceneUBOSourceSystems(hgl::ecs::ECSContext *context,
@@ -646,6 +731,7 @@ namespace hgl::ecs
         const auto &cache = context->GetRenderFrameCache();
         std::unordered_set<uint64_t> transform_bound_material_domain_pairs;
         std::unordered_set<uint64_t> transform_id_bound_material_domain_pairs;
+        std::unordered_set<uint64_t> mid_bound_material_domain_pairs;
         std::unordered_set<uint64_t> mi_bound_material_domain_pairs;
         std::unordered_set<uint64_t> domain_direct_mi_bound_pairs;
         std::unordered_set<uint64_t> domain_direct_mit_bound_pairs;
@@ -722,7 +808,23 @@ namespace hgl::ecs
                 case graph::mtl::SSBODescriptorSemantic::MaterialInstanceID:
                 {
                     if (batch && batch->mi_buffer)
-                        batch->mi_buffer->BindMaterialInstanceID(material);
+                    {
+                        const uint64_t bind_key = (uint64_t(reinterpret_cast<uintptr_t>(material)) << 1)
+                                                ^ uint64_t(domain_handle.id);
+
+                        if (!mid_bound_material_domain_pairs.contains(bind_key))
+                        {
+                            const bool bound_domain = TryBindBatchMIDToDomainBindings(batch,
+                                                                                      material,
+                                                                                      domain_handle,
+                                                                                      registered_domain_bindings);
+
+                            if (!bound_domain)
+                                batch->mi_buffer->BindMaterialInstanceID(material);
+
+                            mid_bound_material_domain_pairs.insert(bind_key);
+                        }
+                    }
                     break;
                 }
                 case graph::mtl::SSBODescriptorSemantic::MaterialInstanceData:
@@ -749,7 +851,11 @@ namespace hgl::ecs
                             bool bound_domain_direct = false;
                             if (!domain_direct_mi_bound_pairs.contains(bind_key))
                             {
-                                bound_domain_direct = TryBindDomainDirectMIData(batch, material, domain_handle, buffer_manager);
+                                bound_domain_direct = TryBindDomainDirectMIData(batch,
+                                                                               material,
+                                                                               domain_handle,
+                                                                               buffer_manager,
+                                                                               registered_domain_bindings);
                                 if (bound_domain_direct)
                                 {
                                     domain_direct_mi_bound_pairs.insert(bind_key);
@@ -760,7 +866,18 @@ namespace hgl::ecs
                             // Fallback path: legacy MIAB-owned MaterialInstanceData SSBO
                             if (!bound_domain_direct)
                             {
-                                batch->mi_buffer->BindMaterialInstance(material);
+                                graph::MaterialResourceDomain *domain = ResolveDomainForBatch(batch, domain_handle);
+                                const bool bound_domain = ForEachMatchingDomainBinding(material,
+                                                                                       domain,
+                                                                                       registered_domain_bindings,
+                                                                                       [&](graph::DomainMaterialBinding *binding)
+                                                                                       {
+                                                                                           batch->mi_buffer->BindMaterialInstance(binding);
+                                                                                       });
+
+                                if (!bound_domain)
+                                    batch->mi_buffer->BindMaterialInstance(material);
+
                                 ++domain_direct_mi_fallback_count;
                             }
 
@@ -788,7 +905,12 @@ namespace hgl::ecs
                         if (!domain_direct_mit_bound_pairs.contains(bind_key))
                         {
                             ++domain_direct_mit_attempt_count;
-                            bound_domain_direct = TryBindDomainDirectMITData(batch, material, domain_handle, buffer_manager, &mit_result);
+                            bound_domain_direct = TryBindDomainDirectMITData(batch,
+                                                                            material,
+                                                                            domain_handle,
+                                                                            buffer_manager,
+                                                                            registered_domain_bindings,
+                                                                            &mit_result);
                             if (bound_domain_direct)
                             {
                                 domain_direct_mit_bound_pairs.insert(bind_key);
@@ -798,7 +920,18 @@ namespace hgl::ecs
 
                         if (!bound_domain_direct)
                         {
-                            batch->mi_buffer->BindMaterialInstanceTextureID(material);
+                            graph::MaterialResourceDomain *domain = ResolveDomainForBatch(batch, domain_handle);
+                            const bool bound_domain = ForEachMatchingDomainBinding(material,
+                                                                                   domain,
+                                                                                   registered_domain_bindings,
+                                                                                   [&](graph::DomainMaterialBinding *binding)
+                                                                                   {
+                                                                                       batch->mi_buffer->BindMaterialInstanceTextureID(binding);
+                                                                                   });
+
+                            if (!bound_domain)
+                                batch->mi_buffer->BindMaterialInstanceTextureID(material);
+
                             ++domain_direct_mit_fallback_count;
 
                             const size_t reason_index = static_cast<size_t>(mit_result);

@@ -16,6 +16,7 @@
 namespace hgl::graph
 {
     class BufferManager;
+    class DomainMaterialBinding;
     class MaterialResourceDomain;
 }
 
@@ -188,17 +189,20 @@ namespace hgl::ecs
          * 绑定MaterialInstanceID SSBO到材质
          */
         void BindMaterialInstanceID(graph::MaterialTemplate* mtl) const;
+        void BindMaterialInstanceID(graph::DomainMaterialBinding* binding) const;
 
         /**
          * 绑定材质实例数据到材质
          */
         void BindMaterialInstance(graph::MaterialTemplate* mtl) const;
+        void BindMaterialInstance(graph::DomainMaterialBinding* binding) const;
 
         /**
          * 绑定MaterialInstanceTextureID SSBO到材质（TextureArray用）
          * 当材质实例包含 MIT 数据时自动填充并绑定；无 MIT 数据时为空操作。
          */
         void BindMaterialInstanceTextureID(graph::MaterialTemplate* mtl) const;
+        void BindMaterialInstanceTextureID(graph::DomainMaterialBinding* binding) const;
 
         /**
          * 写入所有RenderItem的材质实例数据
