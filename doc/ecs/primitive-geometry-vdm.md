@@ -347,3 +347,49 @@ Primitive::GetRenderData()    → GeometryDrawRange
 | 动态增删 | 随意，创建/删除 Geometry 互不影响 | 受 BlockAllocator 碎片影响 |
 | 适用场景 | 少量大几何体；动态生成/删除 | 大量小几何体批量渲染（地形/粒子/UI） |
 | `GeometryDataBuffer::vdm` | `nullptr` | 指向所属 VDM（用于批次排序） |
+
+---
+
+## 11. GeometrySignature — 几何体在材质 Variant 中的标识
+
+`GeometrySignature`（定义在 `inc/hgl/graph/module/RuntimeMaterialRequest.h`）是一个轻量结构，描述一个几何体在材质 variant 解析时的"形状特征"，用于 `MaterialAssetRegistry::ResolveMI()` 的缓存键之一。
+
+### 11.1 结构与字段含义
+
+```cpp
+struct GeometrySignature
+{
+    PrimitiveType primitive              = PrimitiveType::Triangles;
+    uint32_t      vil_hash               = 0;   // 材质所需 VIL 属性集的 FNV-1a hash；0 表示 deferred
+    uint32_t      geometry_layout_hash   = 0;   // (format, stride) per VAB 的 FNV-1a hash
+    const Geometry *geometry_for_vil_derivation = nullptr;   // 运行时辅助，不参与 operator==
+};
+```
+
+| 字段 | 含义 |
+|------|------|
+| `primitive` | 图元类型（Triangles / Lines 等），影响管线选择 |
+| `vil_hash` | 已解析 VIL 的哈希；`0` 代表 VIL 尚未创建（deferred 路径） |
+| `geometry_layout_hash` | 每条 VAB 的（format, stride）组合哈希，代表几何体的实际属性布局 |
+| `geometry_for_vil_derivation` | 仅供首次 VIL 推导使用的运行时指针，**故意不纳入 operator==** |
+
+### 11.2 operator== 的条件规则
+
+```cpp
+bool operator==(const GeometrySignature &o) const
+{
+    if (primitive != o.primitive || vil_hash != o.vil_hash) return false;
+    // geometry_layout_hash 仅在 vil_hash == 0（deferred 路径）时参与比较
+    if (vil_hash == 0 && geometry_layout_hash != o.geometry_layout_hash) return false;
+    return true;
+}
+```
+
+**规则**：一旦 `vil_hash != 0`（VIL 已解析），`geometry_layout_hash` **退出等值比较**。
+
+- 这允许"材质所需属性相同但 Geometry 有额外冗余属性"的 Primitive 复用同一个 `variant_cache` 条目。
+- 在 deferred 路径（`vil_hash == 0`）下，尚无 VIL 可比较，所以退而使用 `geometry_layout_hash` 区分不同布局，防止误命中。
+
+### 11.3 与 VDM / GeometryData 的关系
+
+VDM 模式下（`GeometryDataVDM`），`GetVDM()` 返回非空指针，但 `geometry_layout_hash` 仍按 VAB 的 `(format, stride)` 计算，与缓冲区是否共享无关。因此同一个 VDM 内不同格式的 Geometry 仍会产生不同的 `GeometrySignature`，正确隔离各自的材质 variant 缓存。

@@ -203,7 +203,7 @@ SetCurrentRenderCmd(nullptr) → current_render_cmd = nullptr      ← 有效结
 | `RenderTargetSystem` | `RenderPreBeginFrame` | 同步视口到 CameraSystem |
 | `QuadResourcePrepareSystem` | `RenderResourceSetup` | 懒初始化 Quad GPU 资源 |
 | `QuadMaterialBindingSystem` | `RenderMaterialBind` | 绑定 Quad 材质纹理 |
-| `RenderPrimitiveCollectSystem` | `RenderCollect` | 收集可见 Primitive 组件，写入 RenderFrameCache |
+| `RenderPrimitiveCollectSystem` | `RenderCollect` | 收集可见 Primitive 组件，写入 RenderFrameCache；调用 `MaterialCache::BeginFrame()` 然后对每个 Primitive 走 L1→L2→`ResolveMI`→`BindMaterialSlot` 两级缓存路径 |
 | `TextSyncSystem` | `RenderBatch` | 同步文字顶点数据 |
 | `RenderBufferUploadSystem` | `RenderBufferUpload` | 遍历 GPUBufferRegistry，执行 vkCmdCopyBuffer |
 | `RenderDescriptorBindingSystem` | `RenderFrameSync` | 绑定 Camera/Sky/RenderTarget Descriptor |

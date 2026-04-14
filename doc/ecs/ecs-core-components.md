@@ -308,6 +308,8 @@ vector<weak_ptr<TransformComponent>> movable_transforms;  // 动态物体
 ```cpp
 unordered_map<string, unique_ptr<RenderPipelineBase>> render_pipelines;
 RenderFrameCache render_frame_cache;    // 本帧渲染数据：RenderItem, MaterialBatch, CameraInfo
+MaterialCache    material_cache;        // ECS 材质两级缓存（L1 variant hash set + L2 per-Primitive binding state）
+                                        // 在 RenderCollect 阶段由 RenderPrimitiveCollectSystem 使用
 SystemProfiler   profiler;
 VulkanDevice*    gpu_device     = nullptr;
 IRenderTarget*   render_target  = nullptr;

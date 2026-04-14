@@ -159,6 +159,8 @@ Initialize(context)
 
 **注意**：`RenderPrimitiveCollectSystem` **不在**此 Group 内，由 `InstallPrimitiveGroup` 单独注册（它是 Collect 阶段的共享系统，同时也为 Billboard 服务）。
 
+`RenderPrimitiveCollectSystem` 在 `RenderCollect` 阶段负责驱动材质解析缓存：每帧开始时调用 `MaterialCache::BeginFrame()` 重置帧统计，然后通过 **L1**（`ProbeVariant` / `MarkVariantResolved`）和 **L2**（`ProbePrimitiveBinding` / `MarkPrimitiveBound`）两级缓存跳过已解析的 Primitive，仅对首次出现或几何布局变更的 Primitive 调用 `MaterialAssetRegistry::ResolveMI()` 并随后 `BindMaterialSlot`。`MaterialCache` 实例由 `PrimitiveBatchPipeline`（或 Collect 系统本身）持有，生命周期与 pipeline 一致。
+
 ---
 
 ### 4.2 `LineRenderPipelineGroup`
