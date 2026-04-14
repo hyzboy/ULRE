@@ -63,7 +63,7 @@ namespace hgl::graph
                         if (gizmo_triangle.mi_id[c] >= 0)
                         {
                             PrimitiveMaterialSlot slot{gizmo_triangle.mtl, gizmo_triangle.domain,
-                                                       MRDHandle{}, gizmo_triangle.mi_id[c], vil,
+                                                       MRDHandle{}, nullptr, gizmo_triangle.mi_id[c], vil,
                                                        GraphicsPipelinePreset::GizmoOverlay3D};
                             primitive[c] = DirectCreatePrimitive(geometry, slot);
                         }
