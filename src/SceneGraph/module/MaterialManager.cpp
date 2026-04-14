@@ -967,6 +967,24 @@ DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(MaterialReso
     return binding;
 }
 
+DomainMaterialBinding *MaterialManager::FindDomainMaterialBinding(MRDHandle handle, MaterialTemplate *mtl) const
+{
+    if (!handle.IsValid() || !mtl)
+        return nullptr;
+
+    auto it = domain_bindings_map.find(handle);
+    if (it == domain_bindings_map.end())
+        return nullptr;
+
+    for (DomainMaterialBinding *binding : it->second)
+    {
+        if (binding && binding->GetMaterial() == mtl)
+            return binding;
+    }
+
+    return nullptr;
+}
+
 // Phase 3 -- domain lifecycle management
 
 void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *binding)

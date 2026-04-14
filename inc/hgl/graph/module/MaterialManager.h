@@ -381,6 +381,12 @@ public: // MaterialResourceDomain — Phase 1 / Phase 3
     DomainMaterialBinding * CreateDomainMaterialBinding (MaterialResourceDomain *domain, MaterialTemplate *mtl);
 
     /**
+     * 按 (domain handle, material) 查询已创建的 DomainMaterialBinding。
+     * 返回空表示该 pair 尚未创建绑定视图。
+     */
+    DomainMaterialBinding * FindDomainMaterialBinding   (MRDHandle handle, MaterialTemplate *mtl) const;
+
+    /**
      * 释放一个 DomainMaterialBinding，并将其从所属域的追踪列表中移除。
      * 注意：不释放关联的 MaterialResourceDomain。
      */
