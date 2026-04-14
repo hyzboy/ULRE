@@ -104,6 +104,52 @@ namespace hgl::ecs
 
             return static_cast<uint32_t>((h >> 32) ^ (h & 0xFFFFFFFFu));
         }
+
+        uint64_t ComputePrimitiveVariantHash(graph::SemanticMaterialId semantic_id,
+                                             const graph::RuntimeMaterialRequest &request,
+                                             const graph::GeometrySignature &geometry)
+        {
+            uint64_t h = 14695981039346656037ULL;
+            auto feed = [&](const void *p, size_t n)
+            {
+                const auto *bytes = reinterpret_cast<const uint8_t*>(p);
+                for (size_t i = 0; i < n; ++i)
+                    h = (h ^ bytes[i]) * 1099511628211ULL;
+            };
+
+            auto feed_str = [&](const std::string &s)
+            {
+                feed(s.data(), s.size());
+                const uint8_t z = 0;
+                feed(&z, 1);
+            };
+
+            feed(&semantic_id, sizeof(semantic_id));
+
+            {
+                const uint8_t pipeline = static_cast<uint8_t>(request.pipeline);
+                feed(&pipeline, 1);
+                feed_str(request.domain_id);
+                feed(&request.policy_flags, sizeof(request.policy_flags));
+                feed(&request.transparency_mode, sizeof(request.transparency_mode));
+                feed(&request.lod_tier, sizeof(request.lod_tier));
+            }
+
+            {
+                const uint8_t prim = static_cast<uint8_t>(geometry.primitive);
+                feed(&prim, 1);
+                feed(&geometry.vil_hash, sizeof(geometry.vil_hash));
+                // geometry_layout_hash is a pre-VIL discriminator for deferred primitives
+                // (vil_hash == 0).  Once a VIL has been derived the material-required attribs
+                // are fully captured in vil_hash; including geometry_layout_hash would create
+                // spurious cache misses for primitives that share the same material VIL but
+                // differ only in extra geometry attributes the material does not use.
+                if (geometry.vil_hash == 0)
+                    feed(&geometry.geometry_layout_hash, sizeof(geometry.geometry_layout_hash));
+            }
+
+            return h;
+        }
     }
 
     RenderPrimitiveCollectSystem::RenderPrimitiveCollectSystem(const std::string& name)
@@ -161,6 +207,8 @@ namespace hgl::ecs
         size_t slot_bind_noop = 0;
         size_t slot_bind_skip_domain_direct = 0;
         size_t slot_bind_failed = 0;
+
+        material_cache.BeginFrame();
 
         const glm::vec3 camera_pos = glm::vec3(cameraInfo->pos);
 
@@ -312,6 +360,12 @@ namespace hgl::ecs
                     }
 
                     {
+                        const uint64_t variant_hash = ComputePrimitiveVariantHash(
+                            primitiveComp->GetSemanticMaterial(), request, geometry);
+
+                        // Level-1 probe: has this variant been resolved by any entity this session?
+                        const bool l1_hit = material_cache.ProbeVariant(variant_hash);
+
                         auto slot = registry->ResolveMI(hgl::ecs::ToRuntimeEntityKey(entity_id),
                                                         primitiveComp->GetSemanticMaterial(),
                                                         request,
@@ -351,9 +405,27 @@ namespace hgl::ecs
                                                               && slot.mi_id >= 0;
 
                             bool did_bind_slot = false;
+
+                            // Level-2 probe: did this Primitive already bind this variant
+                            // with matching geometry?  Only meaningful when L1 confirmed
+                            // the variant is globally valid.
+                            const bool l2_hit = !use_domain_direct_slot
+                                              && l1_hit
+                                              && material_cache.ProbePrimitiveBinding(
+                                                     primitive, variant_hash,
+                                                     geometry.geometry_layout_hash);
+
                             if (use_domain_direct_slot)
                             {
                                 ++slot_bind_skip_domain_direct;
+                                material_cache.MarkVariantResolved(variant_hash);
+                                material_cache.MarkPrimitiveBound(primitive, variant_hash,
+                                                                  geometry.geometry_layout_hash);
+                            }
+                            else if (l2_hit)
+                            {
+                                // Primitive already has the correct variant bound; skip BindMaterialSlot.
+                                ++slot_bind_noop;
                             }
                             else if (NeedsPrimitiveSlotBind(primitive, slot))
                             {
@@ -362,6 +434,7 @@ namespace hgl::ecs
                                 if (!did_bind_slot)
                                 {
                                     ++slot_bind_failed;
+                                    material_cache.ErasePrimitiveBinding(primitive);
                                     LogWarning("[RenderPrimitiveCollect::BindMaterialSlot] FAILED: prim='%s' material=%p domain=%p mi_id=%d",
                                                primitive->GetGeometryName().c_str(),
                                                static_cast<const void*>(slot.material_template),
@@ -371,11 +444,17 @@ namespace hgl::ecs
                                 else
                                 {
                                     ++slot_bind_success;
+                                    material_cache.MarkVariantResolved(variant_hash);
+                                    material_cache.MarkPrimitiveBound(primitive, variant_hash,
+                                                                      geometry.geometry_layout_hash);
                                 }
                             }
                             else
                             {
                                 ++slot_bind_noop;
+                                material_cache.MarkVariantResolved(variant_hash);
+                                material_cache.MarkPrimitiveBound(primitive, variant_hash,
+                                                                  geometry.geometry_layout_hash);
                             }
 
                             resolved_slot_snapshot = slot;
@@ -501,6 +580,12 @@ namespace hgl::ecs
                     slot_bind_noop,
                     slot_bind_skip_domain_direct,
                     slot_bind_failed);
+
+                LogInfo("[RenderPrimitiveCollect::MaterialCache] l1_hit=%zu l1_miss=%zu l2_bind_skip=%zu geometry_invalidate=%zu",
+                    material_cache.GetFrameL1HitCount(),
+                    material_cache.GetFrameL1MissCount(),
+                    material_cache.GetFrameL2BindSkipCount(),
+                    material_cache.GetFrameGeometryInvalidateCount());
 
                 if (deferred_no_resolve > 0)
                     LogWarning("[RenderPrimitiveCollect] %zu primitive(s) have deferred MI (no material_template) but semantic_runtime_resolve is DISABLED — they will produce no draw calls. "

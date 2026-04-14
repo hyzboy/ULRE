@@ -352,7 +352,10 @@ size_t MaterialAssetRegistry::VariantKeyHash::operator()(const VariantKey &k) co
         const uint8_t prim = static_cast<uint8_t>(k.geometry.primitive);
         feed(&prim, 1);
         feed(&k.geometry.vil_hash, sizeof(k.geometry.vil_hash));
-        feed(&k.geometry.geometry_layout_hash, sizeof(k.geometry.geometry_layout_hash));
+        // geometry_layout_hash participates only when vil_hash == 0 (deferred path).
+        // See GeometrySignature::operator== for the matching equality rule.
+        if (k.geometry.vil_hash == 0)
+            feed(&k.geometry.geometry_layout_hash, sizeof(k.geometry.geometry_layout_hash));
     }
 
     return h;

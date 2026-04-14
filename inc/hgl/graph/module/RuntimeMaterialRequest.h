@@ -60,9 +60,16 @@ struct GeometrySignature
 
     bool operator==(const GeometrySignature &o) const
     {
-        return primitive == o.primitive
-            && vil_hash == o.vil_hash
-            && geometry_layout_hash == o.geometry_layout_hash;
+        if (primitive != o.primitive || vil_hash != o.vil_hash)
+            return false;
+        // geometry_layout_hash is only a discriminator for the deferred path
+        // (vil_hash == 0).  When a VIL has been resolved the material-required
+        // attribs are fully described by vil_hash; including geometry_layout_hash
+        // would prevent primitives that share the same material VIL but differ
+        // in extra unused geometry attributes from sharing a variant cache entry.
+        if (vil_hash == 0 && geometry_layout_hash != o.geometry_layout_hash)
+            return false;
+        return true;
     }
 };
 

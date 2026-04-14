@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/System.h>
+#include<hgl/ecs/support/MaterialCache.h>
 
 namespace hgl
 {
@@ -38,6 +39,7 @@ namespace hgl::ecs
         bool use_real_alpha3d_enabled = true;
         float auto_transparency_near_distance = 3.0f;
         BindSlotSummaryLogMode bind_slot_summary_log_mode = BindSlotSummaryLogMode::Throttled;
+        MaterialCache material_cache;
 
     public:
 
