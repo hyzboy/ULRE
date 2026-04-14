@@ -125,8 +125,8 @@ namespace
 
 GRAPH_MODULE_CONSTRUCT(MaterialManager)
 {
-    // Phase E: entry[0] is the invalid sentinel (domain_id == 0 means "no domain")
-    domain_table_.push_back({nullptr, 0u});
+    // P1: MRDManager owns domain lifecycle; MaterialManager delegates to it
+    mrd_manager_ = new MRDManager();
 }
 
 const ShaderModule *MaterialManager::CreateShaderModule(const std::string &sm_name,const ShaderCreateInfo *sci)
@@ -805,73 +805,6 @@ MaterialTemplate *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey 
 }
 
 // ============================================================================
-// Phase E: domain_id + generation 句柄表
-// ============================================================================
-
-uint32_t MaterialManager::RegisterDomain(MaterialResourceDomain *domain)
-{
-    if (!domain)
-        return 0;
-
-    auto it = domain_id_map_.find(domain);
-    if (it != domain_id_map_.end())
-        return it->second;
-
-    const uint32_t id = static_cast<uint32_t>(domain_table_.size());
-    domain_table_.push_back({domain, 1u});
-    domain_id_map_[domain] = id;
-    return id;
-}
-
-void MaterialManager::UnregisterDomain(MaterialResourceDomain *domain)
-{
-    if (!domain)
-        return;
-
-    auto it = domain_id_map_.find(domain);
-    if (it == domain_id_map_.end())
-        return;
-
-    const uint32_t id = it->second;
-    domain_id_map_.erase(it);
-
-    if (id < static_cast<uint32_t>(domain_table_.size()))
-        domain_table_[id].domain = nullptr;
-    // generation is intentionally kept so stale MI handles resolve to nullptr
-}
-
-MaterialResourceDomain *MaterialManager::ResolveDomain(uint32_t domain_id, uint32_t generation) const
-{
-    if (domain_id == 0 || domain_id >= static_cast<uint32_t>(domain_table_.size()))
-        return nullptr;
-
-    const DomainEntry &e = domain_table_[domain_id];
-    if (e.generation != generation || !e.domain)
-        return nullptr;
-
-    return e.domain;
-}
-
-void MaterialManager::ReplaceDomain(uint32_t domain_id, MaterialResourceDomain *new_domain)
-{
-    if (domain_id == 0 || domain_id >= static_cast<uint32_t>(domain_table_.size()))
-        return;
-
-    DomainEntry &e = domain_table_[domain_id];
-
-    // Evict old entry from reverse map
-    if (e.domain)
-        domain_id_map_.erase(e.domain);
-
-    // Install new domain and increment generation (invalidates all old MI handles)
-    e.domain = new_domain;
-    ++e.generation;
-
-    if (new_domain)
-        domain_id_map_[new_domain] = domain_id;
-}
-
-// ============================================================================
 // Phase A: Slot-first API — AllocMaterialInstanceSlot
 // ============================================================================
 
@@ -1036,9 +969,6 @@ void MaterialManager::ReleaseMaterialResourceDomain(MaterialResourceDomain *doma
 {
     if (!domain)
         return;
-
-    // Phase E: remove from domain table before deleting
-    UnregisterDomain(domain);
 
     auto it = domain_bindings_map.find(domain);
     if (it != domain_bindings_map.end())
