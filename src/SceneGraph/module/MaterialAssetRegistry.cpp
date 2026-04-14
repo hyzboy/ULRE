@@ -358,7 +358,7 @@ size_t MaterialAssetRegistry::VariantKeyHash::operator()(const VariantKey &k) co
     return h;
 }
 
-size_t MaterialAssetRegistry::EntitySemanticKeyHash::operator()(const EntitySemanticKey &k) const
+size_t MaterialAssetRegistry::EntityVariantKeyHash::operator()(const EntityVariantKey &k) const
 {
     size_t h = 14695981039346656037ULL;
 
@@ -369,6 +369,14 @@ size_t MaterialAssetRegistry::EntitySemanticKeyHash::operator()(const EntitySema
     const auto *s = reinterpret_cast<const uint8_t*>(&k.semantic_id);
     for (size_t i = 0; i < sizeof(k.semantic_id); ++i)
         h = (h ^ s[i]) * 1099511628211ULL;
+
+    const auto *r = reinterpret_cast<const uint8_t*>(&k.request_hash);
+    for (size_t i = 0; i < sizeof(k.request_hash); ++i)
+        h = (h ^ r[i]) * 1099511628211ULL;
+
+    const auto *g = reinterpret_cast<const uint8_t*>(&k.geometry_hash);
+    for (size_t i = 0; i < sizeof(k.geometry_hash); ++i)
+        h = (h ^ g[i]) * 1099511628211ULL;
 
     return h;
 }
@@ -539,23 +547,45 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
     key.request = request;
     key.geometry = effective_geometry;
 
-    // Build final record from semantic + runtime + geometry.
+    // Check variant cache before rebuilding the full record (read-write symmetric).
+    MaterialDomainHandle handle;
+    {
+        auto vc_it = variant_cache.find(key);
+        if (vc_it != variant_cache.end())
+        {
+            ++variant_cache_hit_count;
+            handle = vc_it->second;
+        }
+        else
+        {
+            ++variant_cache_miss_count;
+            // Build final record from semantic + runtime + geometry.
+            mtl::MaterialAssetRecord final_rec;
+            if (!QuerySemanticMaterial(semantic_id, final_rec))
+                return {};
+
+            final_rec.pipeline = request.pipeline;
+            final_rec.domain_id = request.domain_id;
+            final_rec.prim = effective_geometry.primitive;
+
+            handle = Acquire(final_rec);
+            if (!handle.IsValid())
+                return {};
+
+            variant_cache[key] = handle;
+        }
+    }
+
+    // Rebuild final_rec for downstream VIL resolution (needed even on cache hit).
     mtl::MaterialAssetRecord final_rec;
     if (!QuerySemanticMaterial(semantic_id, final_rec))
         return {};
-
-    final_rec.pipeline = request.pipeline;
+    final_rec.pipeline  = request.pipeline;
     final_rec.domain_id = request.domain_id;
-    final_rec.prim = effective_geometry.primitive;
-
-    MaterialDomainHandle handle = Acquire(final_rec);
-    if (!handle.IsValid())
-        return {};
+    final_rec.prim      = effective_geometry.primitive;
 
     if (out_handle)
         *out_handle = handle;
-
-    variant_cache[key] = handle.material;
 
     auto release_slot = [](PrimitiveMaterialSlot &slot) {
         if (slot.domain && slot.mi_id >= 0)
@@ -656,9 +686,26 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         return slot;
     }
 
-    // New Phase D path: stable MI slot per (entity, semantic).
-    EntitySemanticKey es_key { entity_id, semantic_id };
-    auto it = entity_mi_cache.find(es_key);
+    // New Phase D path: stable MI slot per (entity, semantic, request variant, geometry variant).
+    // Compute discriminator hashes so one entity can hold multiple concurrent variant slots.
+    const uint64_t req_hash = [&]() -> uint64_t {
+        uint64_t h = 14695981039346656037ULL;
+        const auto *p = reinterpret_cast<const uint8_t*>(&request.pipeline);
+        for (size_t i = 0; i < sizeof(request.pipeline); ++i)
+            h = (h ^ p[i]) * 1099511628211ULL;
+        for (unsigned char c : request.domain_id)
+            h = (h ^ c) * 1099511628211ULL;
+        h = (h ^ static_cast<uint64_t>(request.policy_flags))       * 1099511628211ULL;
+        h = (h ^ static_cast<uint64_t>(request.transparency_mode))  * 1099511628211ULL;
+        h = (h ^ static_cast<uint64_t>(request.lod_tier))           * 1099511628211ULL;
+        return h;
+    }();
+    const uint64_t geo_hash =
+        static_cast<uint64_t>(effective_geometry.geometry_layout_hash)
+        | (static_cast<uint64_t>(effective_geometry.vil_hash) << 32);
+
+    EntityVariantKey ev_key { entity_id, semantic_id, req_hash, geo_hash };
+    auto it = entity_mi_cache.find(ev_key);
     if (it != entity_mi_cache.end())
     {
         ++entity_resolve_hit_count;
@@ -681,7 +728,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         return {};
 
     slot.material_preset = final_rec.preset;
-    entity_mi_cache.emplace(es_key, slot);
+    entity_mi_cache.emplace(ev_key, slot);
     return slot;
 }
 
@@ -690,26 +737,16 @@ void MaterialAssetRegistry::ReleaseEntityResolvedMI(uint64_t entity_id, Semantic
     if (entity_id == 0)
         return;
 
-    if (semantic_id != 0)
-    {
-        EntitySemanticKey key { entity_id, semantic_id };
-        auto it = entity_mi_cache.find(key);
-        if (it != entity_mi_cache.end())
-        {
-            if (it->second.domain && it->second.mi_id >= 0)
-                it->second.domain->FreeMISlot(it->second.mi_id);
-
-            entity_mi_cache.erase(it);
-        }
-        return;
-    }
-
-    std::vector<EntitySemanticKey> keys;
-    keys.reserve(entity_mi_cache.size());
+    // With EntityVariantKey containing request/geometry discriminators, one
+    // (entity_id, semantic_id) pair may have multiple variant entries.
+    // Always scan to collect all matching keys.
+    std::vector<EntityVariantKey> keys;
+    keys.reserve(8);
 
     for (const auto &kv : entity_mi_cache)
     {
-        if (kv.first.entity_id == entity_id)
+        if (kv.first.entity_id == entity_id
+         && (semantic_id == 0 || kv.first.semantic_id == semantic_id))
             keys.push_back(kv.first);
     }
 

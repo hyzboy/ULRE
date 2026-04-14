@@ -131,27 +131,37 @@ private:
         size_t operator()(const VariantKey &k) const;
     };
 
-    // Runtime variant cache (Phase C): final runtime key -> concrete material variant.
-    std::unordered_map<VariantKey, MaterialTemplate*, VariantKeyHash> variant_cache;
+    // Runtime variant cache (Phase C): final runtime key -> resolved handle.
+    // Read-before-write: hit skips QuerySemanticMaterial + Acquire() entirely.
+    std::unordered_map<VariantKey, MaterialDomainHandle, VariantKeyHash> variant_cache;
+    uint64_t variant_cache_hit_count  = 0;
+    uint64_t variant_cache_miss_count = 0;
 
-    struct EntitySemanticKey
+    // Phase D key: (entity, semantic, request_variant, geometry_variant).
+    // Allows one entity to hold multiple concurrent variant slots for the same semantic.
+    struct EntityVariantKey
     {
-        uint64_t entity_id = 0;
+        uint64_t entity_id    = 0;
         SemanticMaterialId semantic_id = 0;
+        uint64_t request_hash = 0;   // FNV-1a of RuntimeMaterialRequest fields
+        uint64_t geometry_hash = 0;  // geometry_layout_hash | (vil_hash << 32)
 
-        bool operator==(const EntitySemanticKey &o) const
+        bool operator==(const EntityVariantKey &o) const
         {
-            return entity_id == o.entity_id && semantic_id == o.semantic_id;
+            return entity_id    == o.entity_id
+                && semantic_id  == o.semantic_id
+                && request_hash == o.request_hash
+                && geometry_hash == o.geometry_hash;
         }
     };
 
-    struct EntitySemanticKeyHash
+    struct EntityVariantKeyHash
     {
-        size_t operator()(const EntitySemanticKey &k) const;
+        size_t operator()(const EntityVariantKey &k) const;
     };
 
-    // Runtime slot cache (Phase D): entity + semantic -> stable per-entity slot.
-    std::unordered_map<EntitySemanticKey, PrimitiveMaterialSlot, EntitySemanticKeyHash> entity_mi_cache;
+    // Runtime slot cache (Phase D): entity + semantic variant -> stable MI slot.
+    std::unordered_map<EntityVariantKey, PrimitiveMaterialSlot, EntityVariantKeyHash> entity_mi_cache;
 
     // Legacy path: unresolved callers without entity id still use variant-key-level slot cache.
     std::unordered_map<VariantKey, PrimitiveMaterialSlot, VariantKeyHash> legacy_final_mi_cache;
@@ -252,6 +262,8 @@ public:
     uint32_t GetDMBCacheSize()    const { return static_cast<uint32_t>(dmb_cache.size()); }
     uint32_t GetSemanticMaterialCount() const { return static_cast<uint32_t>(semantic_cache.size()); }
     uint32_t GetResolvedMICacheSize() const { return static_cast<uint32_t>(legacy_final_mi_cache.size() + entity_mi_cache.size()); }
+    uint64_t GetVariantCacheHitCount()  const { return variant_cache_hit_count; }
+    uint64_t GetVariantCacheMissCount() const { return variant_cache_miss_count; }
     uint64_t GetLegacyResolveHitCount() const { return legacy_resolve_hit_count; }
     uint64_t GetLegacyResolveMissCount() const { return legacy_resolve_miss_count; }
     uint64_t GetEntityResolveHitCount() const { return entity_resolve_hit_count; }
