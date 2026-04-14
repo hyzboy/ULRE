@@ -499,10 +499,10 @@ namespace hgl::ecs
         {
             static uint32_t s_upd_tick = 0;
             if (++s_upd_tick <= 3u)
-                LogDebug("[BatchPipeline::UpdateMIBuf] material=%p(%s) domain=%p hasMI=%d mi_buf=%p items=%zu",
+                LogDebug("[BatchPipeline::UpdateMIBuf] material=%p(%s) domain_id=%u hasMI=%d mi_buf=%p items=%zu",
                          (void*)batch.key.material,
                          batch.key.material ? batch.key.material->GetName().c_str() : "null",
-                         (void*)batch.key.domain,
+                         batch.key.domain_handle.id,
                          batch.key.material ? (int)batch.key.material->hasMI() : -1,
                          (void*)batch.mi_buffer,
                          batch.items.size());
@@ -584,7 +584,7 @@ namespace hgl::ecs
                 {
                     ++frame_fallback_snapshot_no_material;
                 }
-                else if (binding.domain == nullptr)
+                else if (!binding.domain_handle.IsValid())
                 {
                     ++frame_fallback_snapshot_no_domain;
                 }
@@ -598,9 +598,9 @@ namespace hgl::ecs
                            ? binding.material_template
                            : item->GetMaterial();
 
-            auto* domain = use_resolved_slot
-                         ? binding.domain
-                         : (primitive ? primitive->GetDomain() : nullptr);
+            const graph::MRDHandle domain_handle = use_resolved_slot
+                         ? binding.domain_handle
+                         : (primitive ? primitive->GetDomainHandle() : graph::MRDHandle{});
 
             const graph::VIL* effective_vil = nullptr;
             graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid3D;
@@ -750,7 +750,7 @@ namespace hgl::ecs
             // domains are never merged into the same batch (nullptr = default domain).
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 
-            MaterialPipelineKey key(material, pipeline, domain, queue);
+            MaterialPipelineKey key(material, pipeline, domain_handle, queue);
             auto it = cache.materialBatches.find(key);
 
             if (it == cache.materialBatches.end())
@@ -795,15 +795,15 @@ namespace hgl::ecs
 
         // Diagnostics: detect if one material is split across multiple domains in one frame.
         {
-            std::unordered_map<graph::MaterialTemplate *, std::unordered_set<graph::MaterialResourceDomain *>> material_domains;
+            std::unordered_map<graph::MaterialTemplate *, std::unordered_set<uint32_t>> material_domains;
             uint32_t total_items_in_batches = 0;
 
             for (const auto &pair : cache.materialBatches)
             {
                 auto *mat = pair.first.material;
-                auto *dom = pair.first.domain;
+                const uint32_t dom_id = pair.first.domain_handle.id;
                 if (mat)
-                    material_domains[mat].insert(dom);
+                    material_domains[mat].insert(dom_id);
 
                 if (pair.second)
                     total_items_in_batches += static_cast<uint32_t>(pair.second->items.size());
