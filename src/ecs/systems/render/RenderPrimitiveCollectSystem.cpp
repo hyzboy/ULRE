@@ -31,7 +31,7 @@ namespace hgl::ecs
 
             if (prim->GetMaterialTemplate() != slot.material_template)
                 return true;
-            if (prim->GetDomain() != slot.domain)
+            if (prim->GetDomainHandle() != slot.domain_handle)    // P9: handle comparison
                 return true;
             if (prim->GetMIID() != slot.mi_id)
                 return true;
@@ -518,6 +518,7 @@ namespace hgl::ecs
                     graph::PrimitiveMaterialSlot resolved_slot_snapshot;
                     resolved_slot_snapshot.material_template = primitive_for_slot->GetMaterialTemplate();
                     resolved_slot_snapshot.domain = primitive_for_slot->GetDomain();
+                    resolved_slot_snapshot.domain_handle = primitive_for_slot->GetDomainHandle();   // P9
                     resolved_slot_snapshot.mi_id = resolved_mi_id;
                     resolved_slot_snapshot.vil = primitive_for_slot->GetVIL();
                     resolved_slot_snapshot.preset = primitive_for_slot->GetRenderPreset();

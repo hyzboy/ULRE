@@ -838,6 +838,7 @@ bool MaterialAssetRegistry::BuildSlot(MaterialInstanceHandle handle, PrimitiveMa
     const MaterialBindingRecord &rec = it->second;
     out_slot.material_template = rec.material_template;
     out_slot.domain = mm->GetMRDManager()->Get(rec.domain_handle);
+    out_slot.domain_handle = rec.domain_handle;   // P9: propagate handle alongside raw ptr
     out_slot.mi_id = rec.mi_id;
     out_slot.vil = rec.vil;
     out_slot.preset = rec.preset;

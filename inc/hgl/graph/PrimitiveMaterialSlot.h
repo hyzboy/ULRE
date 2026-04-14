@@ -2,6 +2,7 @@
 
 #include <hgl/mtl/MaterialPreset.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
+#include <hgl/graph/MRDHandle.h>
 
 namespace hgl::graph
 {
@@ -35,6 +36,7 @@ struct PrimitiveMaterialSlot
 {
     MaterialTemplate        *material_template = nullptr;
     MaterialResourceDomain  *domain            = nullptr;
+    MRDHandle                domain_handle     = {};          // P9: handle-based identity alongside raw ptr cache
     int                      mi_id             = -1;
     const VIL               *vil               = nullptr;
     GraphicsPipelinePreset   preset            = GraphicsPipelinePreset::Solid3D;
