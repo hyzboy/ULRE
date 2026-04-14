@@ -282,7 +282,7 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot,const char *s
 
     // Update all direct fields
     material_template    = slot.material_template;
-    domain               = slot.domain;
+    mrd_manager_         = slot.mrd_manager;         // P12
     domain_handle        = slot.domain_handle;   // P9
     mi_id                = slot.mi_id;
     render_preset        = slot.preset;
@@ -321,7 +321,7 @@ Primitive::Primitive(Geometry *r, const PrimitiveMaterialSlot &slot, GeometryDat
     draw_range.Set(geometry);
 
     material_template = slot.material_template;
-    domain            = slot.domain;
+    mrd_manager_      = slot.mrd_manager;        // P12
     domain_handle     = slot.domain_handle;  // P9
     mi_id             = slot.mi_id;
     vil               = slot.vil;

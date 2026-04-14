@@ -539,7 +539,7 @@ namespace hgl::ecs
         {
             if (slot_counts[i] == 0)
                 continue;
-            if (!slots_[i].EnsureCapacity(slot_counts[i], device_, graph::PrimitiveMaterialSlot{material_, nullptr, graph::MRDHandle{}, -1, vil_, preset_}, pipeline_, i + 1))
+            if (!slots_[i].EnsureCapacity(slot_counts[i], device_, graph::PrimitiveMaterialSlot{material_, nullptr, graph::MRDHandle{}, nullptr, -1, vil_, preset_}, pipeline_, i + 1))
             {
                 GLogWarning("[LineRenderPipeline] EnsureCapacity failed: slot=%u need=%u cap=%u",
                             i + 1,

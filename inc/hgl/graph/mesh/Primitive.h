@@ -10,6 +10,7 @@
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
+#include<hgl/graph/module/MRDManager.h>
 #include<hgl/graph/PrimitiveMaterialSlot.h>
 
 namespace hgl::graph{
@@ -20,7 +21,7 @@ class Primitive
 {
     /// Phase 2c — MI fields inlined directly; mat_inst bridge removed
     MaterialTemplate           *material_template = nullptr;  ///< primary render key
-    MaterialResourceDomain     *domain            = nullptr;  ///< data pool domain (raw ptr cache)
+    MRDManager                 *mrd_manager_      = nullptr;  ///< P12: data-access delegate (replaces domain* cache)
     MRDHandle                   domain_handle     = {};        ///< P9: stable handle for domain identity
     int                         mi_id             = -1;       ///< slot index in domain
     const VIL                  *vil               = nullptr;  ///< vertex input layout
@@ -56,14 +57,14 @@ public:
             VkPipelineLayout            GetPipelineLayout   ()      { return material_template ? material_template->GetPipelineLayout() : VK_NULL_HANDLE; }
             MaterialTemplate *          GetMaterial         ()      { return material_template; }  ///< @deprecated use GetMaterialTemplate()
             MaterialTemplate *          GetMaterialTemplate ()const { return material_template; }
-            MaterialResourceDomain *    GetDomain           ()const { return domain; }
+            MaterialResourceDomain *    GetDomain           ()const { return (mrd_manager_ && domain_handle.IsValid()) ? mrd_manager_->Get(domain_handle) : nullptr; }  ///< P12: resolved on demand via mrd_manager_
             MRDHandle                   GetDomainHandle     ()const { return domain_handle; }   // P9
     const   VIL *                       GetVIL              ()const { return vil; }
             int                         GetMIID             ()const { return mi_id; }
             GraphicsPipelinePreset      GetRenderPreset     ()const { return render_preset; }
             void                        SetRenderPreset     (GraphicsPipelinePreset p){ render_preset = p; }
             mtl::MaterialPreset         GetMaterialPreset   ()const { return material_preset; }
-            void *                      GetMIData           ()      { return (domain && mi_id >= 0) ? domain->GetMIData(mi_id) : nullptr; }
+            void *                      GetMIData           ()      { return (mrd_manager_ && domain_handle.IsValid() && mi_id >= 0) ? mrd_manager_->GetMIData(domain_handle, mi_id) : nullptr; }  ///< P12: via mrd_manager_
             void                        WriteMIData         (const void *data, uint32_t size);
     template<typename T>
             void                        WriteMIData         (const T &v){ WriteMIData(&v, sizeof(T)); }
