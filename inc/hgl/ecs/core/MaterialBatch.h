@@ -3,6 +3,7 @@
 #include<hgl/ecs/core/MaterialPipelineKey.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
 #include<hgl/vk/VK.h>
+#include<hgl/vk/VKDomainMaterialBinding.h>
 #include<vector>
 
 namespace hgl
@@ -57,6 +58,12 @@ namespace hgl::ecs
         uint32_t                                draw_batches_count      = 0;                ///<有效批次数量
 
         PipelineMaterialRenderer *           renderer                = nullptr;          ///<ECS渲染器实例
+
+    /// Resolved domain binding for this batch (re-resolved each frame by
+    /// RenderDescriptorBindingSystem::ApplyBatchMaterialBindings).
+    /// Passed to PipelineMaterialRenderer::Render so the draw path can
+    /// call BindDescriptorSets(domain_binding) after BindDescriptorSets(material).
+    mutable graph::DomainMaterialBinding*   domain_binding          = nullptr;
 
     public:
 

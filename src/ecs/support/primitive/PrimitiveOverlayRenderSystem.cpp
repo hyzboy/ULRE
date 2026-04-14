@@ -55,7 +55,8 @@ namespace hgl::ecs
                              batch->transform_buffer,
                              batch->mi_buffer,
                              batch->icb_draw,
-                             batch->icb_draw_indexed);
+                             batch->icb_draw_indexed,
+                             batch->domain_binding);
         }
     }
 }

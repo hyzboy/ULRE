@@ -763,6 +763,26 @@ namespace hgl::ecs
             const auto &contract = material->GetBindingContract();
             ApplySceneUBOBindings(material, contract, scene_ubo_resolvers);
 
+            // Resolve and cache the domain binding for this batch every frame.
+            // PipelineMaterialRenderer::Render uses it to call BindDescriptorSets(domain_binding)
+            // AFTER BindDescriptorSets(material), so domain's PerMaterial set (ResourceDomain
+            // semantics: MID/MI/MIT) takes final effect at draw time.
+            {
+                graph::DomainMaterialBinding *resolved = nullptr;
+                if (domain_handle.IsValid()) {
+                    graph::MaterialResourceDomain *dom = ResolveDomainForBatch(batch, domain_handle);
+                    if (dom) {
+                        for (graph::DomainMaterialBinding *binding : registered_domain_bindings) {
+                            if (binding && binding->GetMaterial() == material && binding->GetDomain() == dom) {
+                                resolved = binding;
+                                break;
+                            }
+                        }
+                    }
+                }
+                batch->domain_binding = resolved;
+            }
+
             if (contract.ssbos[size_t(graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID)] == 0)
                 ++domain_direct_mit_semantic_off_count;
 
@@ -814,14 +834,10 @@ namespace hgl::ecs
 
                         if (!mid_bound_material_domain_pairs.contains(bind_key))
                         {
-                            const bool bound_domain = TryBindBatchMIDToDomainBindings(batch,
-                                                                                      material,
-                                                                                      domain_handle,
-                                                                                      registered_domain_bindings);
-
-                            if (!bound_domain)
-                                batch->mi_buffer->BindMaterialInstanceID(material);
-
+                            TryBindBatchMIDToDomainBindings(batch,
+                                                            material,
+                                                            domain_handle,
+                                                            registered_domain_bindings);
                             mid_bound_material_domain_pairs.insert(bind_key);
                         }
                     }
@@ -867,17 +883,13 @@ namespace hgl::ecs
                             if (!bound_domain_direct)
                             {
                                 graph::MaterialResourceDomain *domain = ResolveDomainForBatch(batch, domain_handle);
-                                const bool bound_domain = ForEachMatchingDomainBinding(material,
-                                                                                       domain,
-                                                                                       registered_domain_bindings,
-                                                                                       [&](graph::DomainMaterialBinding *binding)
-                                                                                       {
-                                                                                           batch->mi_buffer->BindMaterialInstance(binding);
-                                                                                       });
-
-                                if (!bound_domain)
-                                    batch->mi_buffer->BindMaterialInstance(material);
-
+                                ForEachMatchingDomainBinding(material,
+                                                             domain,
+                                                             registered_domain_bindings,
+                                                             [&](graph::DomainMaterialBinding *binding)
+                                                             {
+                                                                 batch->mi_buffer->BindMaterialInstance(binding);
+                                                             });
                                 ++domain_direct_mi_fallback_count;
                             }
 
@@ -921,17 +933,13 @@ namespace hgl::ecs
                         if (!bound_domain_direct)
                         {
                             graph::MaterialResourceDomain *domain = ResolveDomainForBatch(batch, domain_handle);
-                            const bool bound_domain = ForEachMatchingDomainBinding(material,
-                                                                                   domain,
-                                                                                   registered_domain_bindings,
-                                                                                   [&](graph::DomainMaterialBinding *binding)
-                                                                                   {
-                                                                                       batch->mi_buffer->BindMaterialInstanceTextureID(binding);
-                                                                                   });
-
-                            if (!bound_domain)
-                                batch->mi_buffer->BindMaterialInstanceTextureID(material);
-
+                            ForEachMatchingDomainBinding(material,
+                                                         domain,
+                                                         registered_domain_bindings,
+                                                         [&](graph::DomainMaterialBinding *binding)
+                                                         {
+                                                             batch->mi_buffer->BindMaterialInstanceTextureID(binding);
+                                                         });
                             ++domain_direct_mit_fallback_count;
 
                             const size_t reason_index = static_cast<size_t>(mit_result);
@@ -1179,8 +1187,28 @@ namespace hgl::ecs
             if (!binding)
                 continue;
 
-            // MaterialInstanceTextureID for domain bindings requires a domain-level
-            // MIT buffer — not yet implemented for the domain path.
+            // Propagate TemplateShared PerMaterial-scoped UBOs (e.g. ColorPattle) into
+            // the domain binding's own PerMaterial MP.  When BindDescriptorSets(domain_binding)
+            // overrides the template's PerMaterial set at draw time, these shared bindings
+            // remain valid and are not silently dropped.
+            if (graph::MaterialParameters *mp = binding->GetPerMaterialMP())
+            {
+                const auto &contract = binding->GetMaterial()->GetBindingContract();
+                for (size_t i = 1; i < graph::mtl::UBODescriptorSemanticCount; ++i)
+                {
+                    if (contract.ubos[i] == 0)
+                        continue;
+                    const auto semantic = graph::mtl::UBODescriptorSemantic(i);
+                    const auto &meta    = graph::mtl::GetDescriptorSemanticMeta(semantic);
+                    if (meta.scope    != graph::mtl::DescriptorBindingScope::TemplateShared)
+                        continue;
+                    if (meta.set_type != graph::DescriptorSetType::PerMaterial)
+                        continue;
+                    auto *accessor = scene_ubo_resolvers[i];
+                    if (accessor && accessor->GetGPUBuffer())
+                        mp->BindUBO(semantic, accessor->GetGPUBuffer());
+                }
+            }
 
             LOG_DESC_TIMING("    DomainMaterialBinding::Update() binding=%p", (void*)binding);
             binding->Update();

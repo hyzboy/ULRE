@@ -9,6 +9,7 @@
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
@@ -187,7 +188,8 @@ namespace hgl::ecs
                                               TransformAssignmentBuffer* transform_buffer,
                                               MaterialInstanceAssignmentBuffer* mi_buffer,
                                               graph::IndirectDrawBuffer* icb_draw,
-                                              graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
+                                             graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
+                                             graph::DomainMaterialBinding* domain_binding)
     {
         // 前置条件检查
         if (!rcb)
@@ -223,6 +225,12 @@ namespace hgl::ecs
 
         // 绑定材质描述符集
         cmd_buf->BindDescriptorSets(material);
+
+        // 若存在域绑定，令其 PerMaterial 集覆盖模板的同名集
+        // Template 负责 TemplateShared 语义（UBO、采样器等）；
+        // Domain 负责 ResourceDomain 语义（MID / MI / MIT）。
+        if (domain_binding)
+            cmd_buf->BindDescriptorSets(domain_binding);
 
         // 遍历绘制批次
         DrawBatch* batch = const_cast<DrawBatch*>(batches.data());
