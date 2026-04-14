@@ -62,8 +62,13 @@ namespace hgl::graph
                     {
                         if (gizmo_triangle.mi_id[c] >= 0)
                         {
+                            const MRDHandle gizmo_domain_handle = (gizmo_mtl_manager && gizmo_triangle.domain)
+                                                              ? gizmo_mtl_manager->GetMRDManager()->GetHandle(gizmo_triangle.domain)
+                                                              : MRDHandle{};
                             PrimitiveMaterialSlot slot{gizmo_triangle.mtl, gizmo_triangle.domain,
-                                                       MRDHandle{}, nullptr, gizmo_triangle.mi_id[c], vil,
+                                                       gizmo_domain_handle,
+                                                       gizmo_mtl_manager ? gizmo_mtl_manager->GetMRDManager() : nullptr,
+                                                       gizmo_triangle.mi_id[c], vil,
                                                        GraphicsPipelinePreset::GizmoOverlay3D};
                             primitive[c] = DirectCreatePrimitive(geometry, slot);
                         }

@@ -872,8 +872,10 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
     }
 
     PrimitiveMaterialSlot slot;
-    slot.domain = domain;
-    slot.mi_id  = mi_id;
+    slot.domain       = domain;
+    slot.domain_handle = mrd_manager_ ? mrd_manager_->GetHandle(domain) : MRDHandle{};
+    slot.mrd_manager   = mrd_manager_;
+    slot.mi_id         = mi_id;
     alloc_slot_created.fetch_add(1);
     return slot;
 }
