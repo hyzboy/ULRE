@@ -69,7 +69,7 @@ private:
         if (!sky_vil)
             return false;
 
-        sky_slot = material_manager->AllocMaterialInstanceSlot(handle.domain);
+        sky_slot = material_manager->AllocMaterialInstanceSlot(handle.domain_handle);
         if (!sky_slot.domain)
             return false;
 

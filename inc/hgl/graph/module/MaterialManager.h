@@ -92,10 +92,10 @@ private:
 
     AutoIdObjectManager<MaterialTemplateID,            MaterialTemplate>          rm_shader_program;
 
-    ankerl::unordered_dense::map<MaterialTemplate *,          MaterialResourceDomain *>   default_domain_map;
+    ankerl::unordered_dense::map<MaterialTemplate *,          MRDHandle>                  default_domain_map;
 
-    // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding
-    ankerl::unordered_dense::map<MaterialResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
+    // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding (P4: key changed to MRDHandle)
+    ankerl::unordered_dense::map<MRDHandle, std::vector<DomainMaterialBinding *>> domain_bindings_map;
 
     std::atomic<uint64_t> acquire_material_requests {0};
     std::atomic<uint64_t> acquire_material_cache_lookups {0};
@@ -165,6 +165,9 @@ public: //Material resource access
 
     MaterialResourceDomain *GetOrCreateDefaultDomain(MaterialTemplate *mtl);
 
+    /// P5: expose MRDManager for callers that need handle↔pointer bridging.
+    MRDManager *GetMRDManager() const { return mrd_manager_; }
+
 public: //Add
 
     MaterialTemplateID  Add(MaterialTemplate *  mtl ){return rm_shader_program.Add(mtl);}
@@ -226,13 +229,12 @@ public: // Override Release from GraphModule - cleanup all resources
         {
             for (auto *b : kv.second)
                 delete b;
-            delete kv.first;
+            // P3: domain lifetime owned by mrd_manager_; do NOT delete kv.first here
         }
         domain_bindings_map.clear();
 
         // Phase 1: 清理懒初始化的 default domain
-        for (auto &kv : default_domain_map)
-            delete kv.second;
+        // P3: domains owned by mrd_manager_; do NOT delete here
         default_domain_map.clear();
 
         // 清理所有材质
@@ -349,6 +351,11 @@ public: //MaterialInstanceData
     PrimitiveMaterialSlot AllocMaterialInstanceSlot(MaterialResourceDomain *domain,
                                                      const void *instance_data = nullptr,
                                                      uint32_t instance_data_size = 0);
+
+    /// P5: MRDHandle overload — resolves handle to domain ptr internally.
+    PrimitiveMaterialSlot AllocMaterialInstanceSlot(MRDHandle domain_handle,
+                                                     const void *instance_data = nullptr,
+                                                     uint32_t instance_data_size = 0);
     
 public: // MaterialResourceDomain — Phase 1 / Phase 3
 
@@ -384,6 +391,7 @@ public: // MaterialResourceDomain — Phase 1 / Phase 3
      * 调用前请确保该域不再有存活的 MaterialInstance（否则 FreeMISlot 会访问已释放对象）。
      */
     void ReleaseMaterialResourceDomain(MaterialResourceDomain *domain);
+    void ReleaseMaterialResourceDomain(MRDHandle handle);
 
 public: // Phase 0 Stats — 帧级资源量观测
 

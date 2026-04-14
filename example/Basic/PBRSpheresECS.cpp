@@ -347,7 +347,7 @@ private:
 
                 MaterialBindingInit init;
                 init.material = material;
-                init.domain = material_handle.domain;
+                init.domain_handle = material_handle.domain_handle;
                 init.vil = resolved_vil;
                 init.preset = kPBRArrayAcquireCfg.pipeline;
                 init.material_preset = kPBRArrayAcquireCfg.preset;

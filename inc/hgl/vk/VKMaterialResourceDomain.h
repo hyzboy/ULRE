@@ -56,7 +56,6 @@ class MaterialResourceDomain
 
 private:
 
-    friend class MaterialManager;
     friend class MRDManager;
 
     explicit MaterialResourceDomain(mtl::InstanceDataLayout layout,

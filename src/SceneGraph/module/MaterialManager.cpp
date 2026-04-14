@@ -388,10 +388,13 @@ MaterialResourceDomain *MaterialManager::GetOrCreateDefaultDomain(MaterialTempla
 {
     if (!mtl || !mtl->hasMI()) return nullptr;
     auto it = default_domain_map.find(mtl);
-    if (it != default_domain_map.end()) return it->second;
-    MaterialResourceDomain *domain = CreateMaterialResourceDomain(mtl);
-    default_domain_map[mtl] = domain;
-    return domain;
+    if (it != default_domain_map.end())
+        return mrd_manager_ ? mrd_manager_->Get(it->second) : nullptr;
+    if (!mrd_manager_) return nullptr;
+    const MRDHandle handle = mrd_manager_->Create(
+        mtl->GetRequiredLayout(), mtl->GetMIMaxCount(), mtl->GetTextureArraySlotFlags());
+    default_domain_map[mtl] = handle;
+    return mrd_manager_->Get(handle);
 }
 
 bool MaterialManager::ExecuteMaterialBuildPipeline(MaterialTemplate *mtl,
@@ -875,6 +878,18 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
     return slot;
 }
 
+// P5: MRDHandle overload — resolves to raw ptr then delegates.
+PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
+    MRDHandle domain_handle,
+    const void *instance_data,
+    uint32_t instance_data_size)
+{
+    return AllocMaterialInstanceSlot(
+        mrd_manager_ ? mrd_manager_->Get(domain_handle) : nullptr,
+        instance_data,
+        instance_data_size);
+}
+
 // ============================================================================
 // MaterialResourceDomain — Phase 1
 // ============================================================================
@@ -882,7 +897,9 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
 MaterialResourceDomain *MaterialManager::CreateMaterialResourceDomain(
     mtl::InstanceDataLayout layout, uint32_t max_count, uint8_t tex_array_slots)
 {
-    return new MaterialResourceDomain(layout, max_count, tex_array_slots);
+    if (!mrd_manager_) return nullptr;
+    const MRDHandle handle = mrd_manager_->Create(layout, max_count, tex_array_slots);
+    return mrd_manager_->Get(handle);
 }
 
 // Convenience overload: create a domain that matches the given MaterialTemplate's requirements.
@@ -939,8 +956,13 @@ DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(MaterialReso
 
     DomainMaterialBinding *binding = new DomainMaterialBinding(domain, mtl, mp_per_material);
 
-    // Phase 3: register binding for lifecycle tracking
-    domain_bindings_map[domain].push_back(binding);
+    // Phase 3 / P4: register binding keyed by MRDHandle
+    if (mrd_manager_)
+    {
+        const MRDHandle h = mrd_manager_->GetHandle(domain);
+        if (h.IsValid())
+            domain_bindings_map[h].push_back(binding);
+    }
 
     return binding;
 }
@@ -953,7 +975,8 @@ void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *bindin
         return;
 
     MaterialResourceDomain *d = binding->GetDomain();
-    auto it = domain_bindings_map.find(d);
+    const MRDHandle h = mrd_manager_ ? mrd_manager_->GetHandle(d) : InvalidMRDHandle;
+    auto it = domain_bindings_map.find(h);
     if (it != domain_bindings_map.end())
     {
         auto &vec = it->second;
@@ -965,12 +988,12 @@ void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *bindin
     delete binding;
 }
 
-void MaterialManager::ReleaseMaterialResourceDomain(MaterialResourceDomain *domain)
+void MaterialManager::ReleaseMaterialResourceDomain(MRDHandle handle)
 {
-    if (!domain)
+    if (!handle.IsValid() || !mrd_manager_)
         return;
 
-    auto it = domain_bindings_map.find(domain);
+    auto it = domain_bindings_map.find(handle);
     if (it != domain_bindings_map.end())
     {
         for (auto *b : it->second)
@@ -978,7 +1001,14 @@ void MaterialManager::ReleaseMaterialResourceDomain(MaterialResourceDomain *doma
         domain_bindings_map.erase(it);
     }
 
-    delete domain;
+    mrd_manager_->Release(handle);
+}
+
+void MaterialManager::ReleaseMaterialResourceDomain(MaterialResourceDomain *domain)
+{
+    if (!domain || !mrd_manager_)
+        return;
+    ReleaseMaterialResourceDomain(mrd_manager_->GetHandle(domain));
 }
 
 }//namespace hgl::graph

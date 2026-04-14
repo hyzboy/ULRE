@@ -167,7 +167,7 @@ namespace hgl
 
             graph::MaterialBindingInit init;
             init.material = handle.material;
-            init.domain = handle.domain;
+            init.domain_handle = handle.domain_handle;
             init.vil = resolved_vil;
             init.preset = rec.pipeline;
             init.material_preset = rec.preset;

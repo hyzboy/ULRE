@@ -104,7 +104,7 @@ namespace example::modules
             *out_handle = handle;
 
         PrimitiveMaterialSlot slot = material_manager->AllocMaterialInstanceSlot(
-            handle.domain,
+            handle.domain_handle,
             instance_data,
             instance_data_size);
 

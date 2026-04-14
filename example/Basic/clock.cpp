@@ -139,7 +139,7 @@ private:
 
             MaterialBindingInit tick_init;
             tick_init.material = domain_material;
-            tick_init.domain = handle.domain;
+            tick_init.domain_handle = handle.domain_handle;
             tick_init.vil = domain_vil;
             tick_init.preset = kClockCfg.pipeline;
             tick_init.material_preset = kClockCfg.preset;
@@ -163,7 +163,7 @@ private:
             {
                 MaterialBindingInit hand_init;
                 hand_init.material = domain_material;
-                hand_init.domain = handle.domain;
+                hand_init.domain_handle = handle.domain_handle;
                 hand_init.vil = domain_vil;
                 hand_init.preset = kClockCfg.pipeline;
                 hand_init.material_preset = kClockCfg.preset;

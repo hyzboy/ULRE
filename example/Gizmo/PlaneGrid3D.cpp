@@ -80,7 +80,7 @@ private:
                 return false;
 
             material_slot[i] = material_manager->AllocMaterialInstanceSlot(
-                handle.domain,
+                handle.domain_handle,
                 &GridColor,
                 sizeof(GridColor));
 

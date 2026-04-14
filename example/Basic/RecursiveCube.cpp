@@ -126,7 +126,7 @@ private:
 
         MaterialBindingInit init;
         init.material = material;
-        init.domain = handle.domain;
+        init.domain_handle = handle.domain_handle;
         init.vil = material_vil;
         init.preset = kRecursiveCubeCfg.pipeline;
         init.material_preset = kRecursiveCubeCfg.preset;

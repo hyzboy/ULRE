@@ -181,7 +181,7 @@ public:
 
         MaterialBindingInit init;
         init.material = mtl;
-        init.domain = handle.domain;
+        init.domain_handle = handle.domain_handle;
         init.vil = vil;
         init.preset = kSphereCfg.pipeline;
         init.material_preset = kSphereCfg.preset;
@@ -355,7 +355,7 @@ private:
 
         MaterialBindingInit init;
         init.material = cube_mtl;
-        init.domain = handle.domain;
+        init.domain_handle = handle.domain_handle;
         init.vil = cube_vil;
         init.preset = kCubeCfg.pipeline;
         init.material_preset = kCubeCfg.preset;

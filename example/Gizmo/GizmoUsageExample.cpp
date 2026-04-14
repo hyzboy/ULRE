@@ -102,7 +102,7 @@ private:
                 return false;
 
             grid_slot = material_manager->AllocMaterialInstanceSlot(
-                handle.domain,
+                handle.domain_handle,
                 &white,
                 sizeof(white));
             if(!grid_slot.domain)
@@ -154,7 +154,7 @@ private:
                 return false;
 
             cube_slot = material_manager->AllocMaterialInstanceSlot(
-                handle.domain,
+                handle.domain_handle,
                 &blue,
                 sizeof(blue));
             if(!cube_slot.domain)

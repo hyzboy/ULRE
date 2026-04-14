@@ -1,5 +1,6 @@
 #include <hgl/graph/module/MRDManager.h>
 #include <hgl/vk/VKMaterialResourceDomain.h>
+#include <cstring>
 
 namespace hgl::graph {
 
@@ -122,38 +123,54 @@ MRDHandle MRDManager::GetHandle(MaterialResourceDomain *domain) const
 // MI slot management (P7 — stubs returning safe defaults until full impl)
 // ---------------------------------------------------------------------------
 
-int MRDManager::AllocMISlot(MRDHandle handle, const void * /*init_data*/, uint32_t /*size*/)
+int MRDManager::AllocMISlot(MRDHandle handle, const void *init_data, uint32_t size)
 {
-    // TODO(P7): delegate to MaterialResourceDomain::AllocMISlot
-    (void)handle;
-    return -1;
+    auto *d = Get(handle);
+    if (!d)
+        return -1;
+    int mi_id = d->AllocMISlot();
+    if (mi_id >= 0 && init_data && size > 0)
+    {
+        void *dst = d->GetMIData(mi_id);
+        if (dst)
+            std::memcpy(dst, init_data, size);
+    }
+    return mi_id;
 }
 
-void MRDManager::FreeMISlot(MRDHandle handle, int /*mi_id*/)
+void MRDManager::FreeMISlot(MRDHandle handle, int mi_id)
 {
-    // TODO(P7): delegate to MaterialResourceDomain::FreeMISlot
-    (void)handle;
+    auto *d = Get(handle);
+    if (d)
+        d->FreeMISlot(mi_id);
 }
 
-void *MRDManager::GetMIData(MRDHandle handle, int /*mi_id*/) const
+void *MRDManager::GetMIData(MRDHandle handle, int mi_id) const
 {
-    // TODO(P7)
-    (void)handle;
-    return nullptr;
+    auto *d = Get(handle);
+    return d ? d->GetMIData(mi_id) : nullptr;
 }
 
-bool MRDManager::WriteMIData(MRDHandle handle, int /*mi_id*/, const void * /*data*/, uint32_t /*size*/)
+bool MRDManager::WriteMIData(MRDHandle handle, int mi_id, const void *data, uint32_t size)
 {
-    // TODO(P7)
-    (void)handle;
-    return false;
+    if (!data || size == 0)
+        return false;
+    auto *d = Get(handle);
+    if (!d)
+        return false;
+    void *dst = d->GetMIData(mi_id);
+    if (!dst)
+        return false;
+    std::memcpy(dst, data, size);
+    return true;
 }
 
-bool MRDManager::EnsureGPUBuffers(MRDHandle handle, BufferManager * /*bm*/)
+bool MRDManager::EnsureGPUBuffers(MRDHandle handle, BufferManager *bm)
 {
-    // TODO(P7): delegate to MaterialResourceDomain::EnsureMIBuffer / EnsureMITBuffer
-    (void)handle;
-    return false;
+    auto *d = Get(handle);
+    if (!d || !d->hasMI())
+        return false;
+    return d->EnsureMIBuffer(bm, d->GetMIMaxCount());
 }
 
 // ---------------------------------------------------------------------------
