@@ -38,7 +38,7 @@ struct PrimitiveMaterialSlot
     MaterialTemplate        *material_template = nullptr;
     InstanceDataDomain  *domain            = nullptr;
     IDDHandle                domain_handle     = {};          // P9: handle-based identity alongside raw ptr cache
-    IDDManager              *mrd_manager       = nullptr;     // P12: for Primitive data-access delegation
+    IDDManager              *idd_manager       = nullptr;     // P12: for Primitive data-access delegation
     int                      mi_id             = -1;
     const VIL               *vil               = nullptr;
     GraphicsPipelinePreset   preset            = GraphicsPipelinePreset::Solid3D;

@@ -115,7 +115,7 @@ private:
     MaterialTemplate *fallback_material = nullptr;
 
     // IDDManager — owns all InstanceDataDomain instances (P1+)
-    IDDManager *mrd_manager_ = nullptr;
+    IDDManager *idd_manager_ = nullptr;
 
 private:
 
@@ -166,7 +166,7 @@ public: //Material resource access
     InstanceDataDomain *GetOrCreateDefaultDomain(MaterialTemplate *mtl);
 
     /// P5: expose IDDManager for callers that need handle↔pointer bridging.
-    IDDManager *GetIDDManager() const { return mrd_manager_; }
+    IDDManager *GetIDDManager() const { return idd_manager_; }
 
 public: //Add
 
@@ -229,12 +229,12 @@ public: // Override Release from GraphModule - cleanup all resources
         {
             for (auto *b : kv.second)
                 delete b;
-            // P3: domain lifetime owned by mrd_manager_; do NOT delete kv.first here
+            // P3: domain lifetime owned by idd_manager_; do NOT delete kv.first here
         }
         domain_bindings_map.clear();
 
         // Phase 1: 清理懒初始化的 default domain
-        // P3: domains owned by mrd_manager_; do NOT delete here
+        // P3: domains owned by idd_manager_; do NOT delete here
         default_domain_map.clear();
 
         // 清理所有材质
@@ -256,8 +256,8 @@ public: // Override Release from GraphModule - cleanup all resources
         ResetAcquireStats();
 
         // P1: teardown IDDManager after all domains are cleaned up
-        delete mrd_manager_;
-        mrd_manager_ = nullptr;
+        delete idd_manager_;
+        idd_manager_ = nullptr;
     }
 
 public: //Shader

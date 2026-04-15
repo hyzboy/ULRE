@@ -869,7 +869,7 @@ bool MaterialAssetRegistry::BuildSlot(MaterialInstanceHandle handle, PrimitiveMa
     out_slot.material_template = rec.material_template;
     out_slot.domain = mm->GetIDDManager()->Get(rec.domain_handle);
     out_slot.domain_handle = rec.domain_handle;   // P9: propagate handle alongside raw ptr
-    out_slot.mrd_manager   = mm->GetIDDManager(); // P12: allow Primitive to delegate data access
+    out_slot.idd_manager   = mm->GetIDDManager(); // P12: allow Primitive to delegate data access
     out_slot.mi_id = rec.mi_id;
     out_slot.vil = rec.vil;
     out_slot.preset = rec.preset;

@@ -126,7 +126,7 @@ namespace
 GRAPH_MODULE_CONSTRUCT(MaterialManager)
 {
     // P1: IDDManager owns domain lifecycle; MaterialManager delegates to it
-    mrd_manager_ = new IDDManager();
+    idd_manager_ = new IDDManager();
 }
 
 const ShaderModule *MaterialManager::CreateShaderModule(const std::string &sm_name,const ShaderCreateInfo *sci)
@@ -389,12 +389,12 @@ InstanceDataDomain *MaterialManager::GetOrCreateDefaultDomain(MaterialTemplate *
     if (!mtl || !mtl->hasMI()) return nullptr;
     auto it = default_domain_map.find(mtl);
     if (it != default_domain_map.end())
-        return mrd_manager_ ? mrd_manager_->Get(it->second) : nullptr;
-    if (!mrd_manager_) return nullptr;
-    const IDDHandle handle = mrd_manager_->Create(
+        return idd_manager_ ? idd_manager_->Get(it->second) : nullptr;
+    if (!idd_manager_) return nullptr;
+    const IDDHandle handle = idd_manager_->Create(
         mtl->GetRequiredLayout(), mtl->GetMIMaxCount(), mtl->GetTextureArraySlotFlags());
     default_domain_map[mtl] = handle;
-    return mrd_manager_->Get(handle);
+    return idd_manager_->Get(handle);
 }
 
 bool MaterialManager::ExecuteMaterialBuildPipeline(MaterialTemplate *mtl,
@@ -873,8 +873,8 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
 
     PrimitiveMaterialSlot slot;
     slot.domain       = domain;
-    slot.domain_handle = mrd_manager_ ? mrd_manager_->GetHandle(domain) : IDDHandle{};
-    slot.mrd_manager   = mrd_manager_;
+    slot.domain_handle = idd_manager_ ? idd_manager_->GetHandle(domain) : IDDHandle{};
+    slot.idd_manager   = idd_manager_;
     slot.mi_id         = mi_id;
     alloc_slot_created.fetch_add(1);
     return slot;
@@ -887,7 +887,7 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
     uint32_t instance_data_size)
 {
     return AllocMaterialInstanceSlot(
-        mrd_manager_ ? mrd_manager_->Get(domain_handle) : nullptr,
+        idd_manager_ ? idd_manager_->Get(domain_handle) : nullptr,
         instance_data,
         instance_data_size);
 }
@@ -899,9 +899,9 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
 InstanceDataDomain *MaterialManager::CreateInstanceDataDomain(
     mtl::InstanceDataLayout layout, uint32_t max_count, uint8_t tex_array_slots)
 {
-    if (!mrd_manager_) return nullptr;
-    const IDDHandle handle = mrd_manager_->Create(layout, max_count, tex_array_slots);
-    return mrd_manager_->Get(handle);
+    if (!idd_manager_) return nullptr;
+    const IDDHandle handle = idd_manager_->Create(layout, max_count, tex_array_slots);
+    return idd_manager_->Get(handle);
 }
 
 // Convenience overload: create a domain that matches the given MaterialTemplate's requirements.
@@ -959,9 +959,9 @@ DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(InstanceData
     DomainMaterialBinding *binding = new DomainMaterialBinding(domain, mtl, mp_per_material);
 
     // Phase 3 / P4: register binding keyed by IDDHandle
-    if (mrd_manager_)
+    if (idd_manager_)
     {
-        const IDDHandle h = mrd_manager_->GetHandle(domain);
+        const IDDHandle h = idd_manager_->GetHandle(domain);
         if (h.IsValid())
             domain_bindings_map[h].push_back(binding);
     }
@@ -995,7 +995,7 @@ void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *bindin
         return;
 
     InstanceDataDomain *d = binding->GetDomain();
-    const IDDHandle h = mrd_manager_ ? mrd_manager_->GetHandle(d) : InvalidIDDHandle;
+    const IDDHandle h = idd_manager_ ? idd_manager_->GetHandle(d) : InvalidIDDHandle;
     auto it = domain_bindings_map.find(h);
     if (it != domain_bindings_map.end())
     {
@@ -1010,7 +1010,7 @@ void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *bindin
 
 void MaterialManager::ReleaseInstanceDataDomain(IDDHandle handle)
 {
-    if (!handle.IsValid() || !mrd_manager_)
+    if (!handle.IsValid() || !idd_manager_)
         return;
 
     auto it = domain_bindings_map.find(handle);
@@ -1021,14 +1021,14 @@ void MaterialManager::ReleaseInstanceDataDomain(IDDHandle handle)
         domain_bindings_map.erase(it);
     }
 
-    mrd_manager_->Release(handle);
+    idd_manager_->Release(handle);
 }
 
 void MaterialManager::ReleaseInstanceDataDomain(InstanceDataDomain *domain)
 {
-    if (!domain || !mrd_manager_)
+    if (!domain || !idd_manager_)
         return;
-    ReleaseInstanceDataDomain(mrd_manager_->GetHandle(domain));
+    ReleaseInstanceDataDomain(idd_manager_->GetHandle(domain));
 }
 
 }//namespace hgl::graph
