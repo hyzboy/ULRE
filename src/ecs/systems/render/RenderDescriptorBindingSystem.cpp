@@ -140,7 +140,7 @@ namespace hgl::ecs
             const auto& binding = item->GetEntityMaterialBinding();
 
             // Phase B: instance-indexed descriptor paths must rely on explicit
-            // instance eligibility (domain + non-negative mi_id), independent
+            // instance eligibility (domain + non-negative slot_id), independent
             // of draw-path resolved-slot validity.
             if (!binding.material_template)
                 return false;
@@ -149,7 +149,7 @@ namespace hgl::ecs
             if (binding.idd_handle != idd_handle)
                 return false;
 
-            return binding.mi_id >= 0;
+            return binding.slot_id >= 0;
         }
 
         bool MaterialRequiresResourceDomain(graph::MaterialTemplate *material)
@@ -246,7 +246,7 @@ namespace hgl::ecs
             if (!batch || !material || !idd_handle.IsValid() || !buffer_manager)
                 return false;
 
-            if (!batch->mi_buffer || !batch->mi_buffer->IsUsingResolvedDomainMIID())
+            if (!batch->mi_buffer || !batch->mi_buffer->IsUsingResolvedDomainSlotID())
                 return false;
 
             // P10: resolve raw domain ptr from first matching item (dual-field P9)
@@ -260,8 +260,8 @@ namespace hgl::ecs
                 const auto& binding = item->GetEntityMaterialBinding();
                 if (!domain) domain = binding.domain;
 
-                if (binding.mi_id > max_mi_id)
-                    max_mi_id = binding.mi_id;
+                if (binding.slot_id > max_mi_id)
+                    max_mi_id = binding.slot_id;
             }
 
             if (!domain || max_mi_id < 0)
@@ -308,7 +308,7 @@ namespace hgl::ecs
                 return false;
             }
 
-            if (!batch->mi_buffer || !batch->mi_buffer->IsUsingResolvedDomainMIID())
+            if (!batch->mi_buffer || !batch->mi_buffer->IsUsingResolvedDomainSlotID())
             {
                 if (out_result)
                     *out_result = DomainDirectMITBindResult::NotDomainDirectMode;
@@ -335,8 +335,8 @@ namespace hgl::ecs
                 const auto& binding = item->GetEntityMaterialBinding();
                 if (!domain) domain = binding.domain;  // P10: grab raw ptr from first matching item
 
-                if (binding.mi_id > max_mi_id)
-                    max_mi_id = binding.mi_id;
+                if (binding.slot_id > max_mi_id)
+                    max_mi_id = binding.slot_id;
 
                 if (per_entry_uint_count == 0 && binding.mit_count > 0)
                     per_entry_uint_count = binding.mit_count;
@@ -378,7 +378,7 @@ namespace hgl::ecs
                     continue;
 
                 const uint32_t copy_count = std::min(per_entry_uint_count, binding.mit_count);
-                uint32_t *dst = mit_staging.data() + static_cast<uint32_t>(binding.mi_id) * per_entry_uint_count;
+                uint32_t *dst = mit_staging.data() + static_cast<uint32_t>(binding.slot_id) * per_entry_uint_count;
                 memcpy(dst, binding.mit_data, static_cast<size_t>(copy_count) * sizeof(uint32_t));
             }
 
@@ -802,7 +802,7 @@ namespace hgl::ecs
             const MaterialBatch *batch = pair.second.get();
             const graph::IDDHandle idd_handle = pair.first.idd_handle;  // P10
 
-            if (batch && batch->mi_buffer && batch->mi_buffer->IsUsingResolvedDomainMIID())
+            if (batch && batch->mi_buffer && batch->mi_buffer->IsUsingResolvedDomainSlotID())
                 domain_direct_mode_seen = true;
 
             const auto &contract = material->GetBindingContract();

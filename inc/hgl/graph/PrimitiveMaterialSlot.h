@@ -26,20 +26,20 @@ using VIL = VertexInputLayout;
  * The slot's fields correspond 1-to-1 with the MI accessors they replace:
  *   MaterialInstance::GetMaterial()    → material_template
  *   MaterialInstance::GetDomain()      → domain
- *   MaterialInstance::GetMIID()        → mi_id
+ *   MaterialInstance::GetSlotID()      → slot_id
  *   MaterialInstance::GetVIL()         → vil
  *   MaterialInstance::GetRenderPreset()→ preset
  *
- * Lifetime: the slot is valid only as long as the domain slot (mi_id) is live.
+ * Lifetime: the slot is valid only as long as the domain slot (slot_id) is live.
  * Ownership (domain slot lifecycle) stays inside MaterialAssetRegistry.
  */
 struct PrimitiveMaterialSlot
 {
     MaterialTemplate        *material_template = nullptr;
-    InstanceDataDomain  *domain            = nullptr;
-    IDDHandle                idd_handle     = {};          // P9: handle-based identity alongside raw ptr cache
+    InstanceDataDomain  *    domain            = nullptr;
+    IDDHandle                idd_handle        = {};          // P9: handle-based identity alongside raw ptr cache
     IDDManager              *idd_manager       = nullptr;     // P12: for Primitive data-access delegation
-    int                      mi_id             = -1;
+    int                      slot_id           = -1;
     const VIL               *vil               = nullptr;
     GraphicsPipelinePreset   preset            = GraphicsPipelinePreset::Solid3D;
     uint8_t                  texture_array_slot_flags = 0;

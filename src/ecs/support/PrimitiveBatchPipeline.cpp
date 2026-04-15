@@ -491,7 +491,7 @@ namespace hgl::ecs
         }
 
         if (batch.mi_buffer)
-            batch.mi_buffer->SetUseResolvedDomainMIID(domain_direct_enabled);
+            batch.mi_buffer->SetUseResolvedDomainSlotID(domain_direct_enabled);
 
         if (batch.mi_buffer && !batch.items.empty())
             batch.mi_buffer->WriteItems(batch.items);
@@ -588,7 +588,7 @@ namespace hgl::ecs
                 {
                     ++frame_fallback_snapshot_no_domain;
                 }
-                else if (binding.mi_id < 0)
+                else if (binding.slot_id < 0)
                 {
                     ++frame_fallback_snapshot_no_mi;
                 }
@@ -736,12 +736,12 @@ namespace hgl::ecs
                 if (ShouldLogPow2(++s_missing_mit_payload))
                 {
                     const AnsiString prim_name = primitive->GetGeometryName();
-                    LogError("[BatchPipeline] array-sampler material requires MIT payload, but primitive has none: material=%p(%s) prim='%s' array_slot_flags=0x%02X mi_id=%d total_errors=%llu",
+                    LogError("[BatchPipeline] array-sampler material requires MIT payload, but primitive has none: material=%p(%s) prim='%s' array_slot_flags=0x%02X slot_id=%d total_errors=%llu",
                              static_cast<const void *>(material),
                              material->GetName().c_str(),
                              prim_name.c_str(),
                              unsigned(material->GetTextureArraySlotFlags()),
-                             use_resolved_slot ? binding.mi_id : primitive->GetMIID(),
+                             use_resolved_slot ? binding.slot_id : primitive->GetSlotID(),
                              static_cast<unsigned long long>(s_missing_mit_payload));
                 }
             }

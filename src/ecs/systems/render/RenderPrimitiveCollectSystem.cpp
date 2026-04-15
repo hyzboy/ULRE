@@ -33,7 +33,7 @@ namespace hgl::ecs
                 return true;
             if (prim->GetDomainHandle() != slot.idd_handle)    // P9: handle comparison
                 return true;
-            if (prim->GetMIID() != slot.mi_id)
+            if (prim->GetSlotID() != slot.slot_id)
                 return true;
             if (prim->GetVIL() != slot.vil)
                 return true;
@@ -297,7 +297,7 @@ namespace hgl::ecs
                         {
                             instance_data_size = current_material->GetMIDataBytes();
                             if (instance_data_size > 0)
-                                instance_data = primitive->GetMIData();
+                                instance_data = primitive->GetSlotData();
                         }
                     }
                     else if (primitive->HasDeferredMI())
@@ -433,7 +433,7 @@ namespace hgl::ecs
                             LogDebug("[RenderPrimitiveCollect::ResolveMI] "
                                      "semantic_id=%llu entity_id=%llu "
                                      "vil_hash=%u geometry_layout_hash=%u "
-                                     "slot.IsValid=%d slot.material=%p domain=%p mi_id=%d vil=%p fallback=%u",
+                                     "slot.IsValid=%d slot.material=%p domain=%p slot_id=%d vil=%p fallback=%u",
                                      static_cast<unsigned long long>(semantic_id),
                                      static_cast<unsigned long long>(hgl::ecs::ToRuntimeEntityKey(entity_id)),
                                      static_cast<unsigned>(geometry.vil_hash),
@@ -441,18 +441,18 @@ namespace hgl::ecs
                                      (int)slot.IsValid(),
                                      static_cast<const void*>(slot.material_template),
                                      static_cast<const void*>(slot.domain),
-                                     (int)slot.mi_id,
+                                     (int)slot.slot_id,
                                      static_cast<const void*>(slot.vil),
                                      fallback_count);
                         }
                         
-                        // Note: ResolveMI may return slot.material_template!=nullptr but mi_id=-1 if slot allocation failed.
-                        // Still bind it to set the material on the primitive — mi_id=-1 means no instanced MI data, but we need material/VIL.
+                        // Note: ResolveMI may return slot.material_template!=nullptr but slot_id=-1 if slot allocation failed.
+                        // Still bind it to set the material on the primitive — slot_id=-1 means no instanced MI data, but we need material/VIL.
                         if (slot.material_template)
                         {
                             const bool use_domain_direct_slot = domain_direct_mi_ssbo_enabled
                                                               && slot.domain != nullptr
-                                                              && slot.mi_id >= 0;
+                                                              && slot.slot_id >= 0;
 
                             bool did_bind_slot = false;
 
@@ -485,11 +485,11 @@ namespace hgl::ecs
                                 {
                                     ++slot_bind_failed;
                                     material_cache.ErasePrimitiveBinding(primitive);
-                                    LogWarning("[RenderPrimitiveCollect::BindMaterialSlot] FAILED: prim='%s' material=%p domain=%p mi_id=%d",
+                                    LogWarning("[RenderPrimitiveCollect::BindMaterialSlot] FAILED: prim='%s' material=%p domain=%p slot_id=%d",
                                                primitive->GetGeometryName().c_str(),
                                                static_cast<const void*>(slot.material_template),
                                                static_cast<const void*>(slot.domain),
-                                               (int)slot.mi_id);
+                                               (int)slot.slot_id);
                                 }
                                 else
                                 {
@@ -511,12 +511,12 @@ namespace hgl::ecs
                             has_resolved_slot_snapshot = true;
 
                             if (log_resolve)
-                                LogDebug("[RenderPrimitiveCollect::BindMaterialSlot] prim='%s' %s. GetMaterialTemplate now=%p mi_id=%d",
+                                LogDebug("[RenderPrimitiveCollect::BindMaterialSlot] prim='%s' %s. GetMaterialTemplate now=%p slot_id=%d",
                                          primitive->GetGeometryName().c_str(),
                                          use_domain_direct_slot ? "skipped(shared-primitive-safe)"
                                          : (did_bind_slot ? "bound" : "noop(already-matched)"),
                                          static_cast<const void*>(primitive->GetMaterialTemplate()),
-                                         (int)slot.mi_id);
+                                         (int)slot.slot_id);
                         }
                         else if (log_resolve)
                         {
@@ -530,9 +530,9 @@ namespace hgl::ecs
 
                 if (domain_direct_mi_ssbo_enabled && has_resolved_slot_snapshot)
                 {
-                    const int override_mi_id = primitiveComp ? primitiveComp->GetMIIDOverride() : -1;
+                    const int override_mi_id = primitiveComp ? primitiveComp->GetSlotIDOverride() : -1;
                     if (override_mi_id >= 0 && resolved_slot_snapshot.domain)
-                        resolved_slot_snapshot.mi_id = override_mi_id;
+                        resolved_slot_snapshot.slot_id = override_mi_id;
 
                     item->SetEntityMaterialBinding(resolved_slot_snapshot);
                 }
@@ -558,10 +558,10 @@ namespace hgl::ecs
             if (domain_direct_mi_ssbo_enabled)
             {
                 auto *primitive_for_slot = primitiveComp->GetPrimitive();
-                const int override_mi_id = primitiveComp ? primitiveComp->GetMIIDOverride() : -1;
+                const int override_mi_id = primitiveComp ? primitiveComp->GetSlotIDOverride() : -1;
                 const int resolved_mi_id = override_mi_id >= 0
                                          ? override_mi_id
-                                         : (primitive_for_slot ? primitive_for_slot->GetMIID() : -1);
+                                         : (primitive_for_slot ? primitive_for_slot->GetSlotID() : -1);
 
                 if (primitive_for_slot && primitive_for_slot->GetDomain() && resolved_mi_id >= 0)
                 {
@@ -569,7 +569,7 @@ namespace hgl::ecs
                     resolved_slot_snapshot.material_template = primitive_for_slot->GetMaterialTemplate();
                     resolved_slot_snapshot.domain = primitive_for_slot->GetDomain();
                     resolved_slot_snapshot.idd_handle = primitive_for_slot->GetDomainHandle();   // P9
-                    resolved_slot_snapshot.mi_id = resolved_mi_id;
+                    resolved_slot_snapshot.slot_id = resolved_mi_id;
                     resolved_slot_snapshot.vil = primitive_for_slot->GetVIL();
                     resolved_slot_snapshot.preset = primitive_for_slot->GetRenderPreset();
                     resolved_slot_snapshot.texture_array_slot_flags = resolved_slot_snapshot.material_template

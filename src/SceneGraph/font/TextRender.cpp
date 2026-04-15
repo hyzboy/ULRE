@@ -74,7 +74,7 @@ namespace hgl::graph
 
         fixed_style=cs;
         if (material_registry && fixed_style_handle != InvalidMaterialInstanceHandle)
-            material_registry->WriteMIData(fixed_style_handle, &fixed_style, sizeof(fixed_style));
+            material_registry->WriteSlotData(fixed_style_handle, &fixed_style, sizeof(fixed_style));
     }
 
     void TextRender::SetParagraphStyle(const layout::ParagraphStyle *ps)

@@ -139,7 +139,7 @@ private:
 
             // ── 通过 Handle 预分配 MI 数据 ────────────────────────────────────
             // MI 数据（颜色）的生命周期由 MaterialInstanceHandle 独立管理，
-            // 与 Primitive 解耦。渲染时系统会将 Handle 对应的 domain/mi_id
+            // 与 Primitive 解耦。渲染时系统会将 Handle 对应的 domain/slot_id
             // 绑定到 Primitive 上。
             const Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
             triangles[i].mi_handle = AllocateMaterialHandle(semantic_id, &color, sizeof(color));

@@ -292,7 +292,7 @@ private:
             bbox->transform->SetMovable(false);
 
             bbox->primitive_comp->SetPrimitive(bbox_primitive);
-            bbox->primitive_comp->SetMIIDOverride(wire.slot[i % COLOR_COUNT].mi_id);
+            bbox->primitive_comp->SetSlotIDOverride(wire.slot[i % COLOR_COUNT].slot_id);
             bbox->primitive_comp->SetVisible(true);
 
             bounding_boxes.push_back(std::move(bbox));
@@ -328,7 +328,7 @@ private:
             rm->transform->SetMovable(false);
 
             rm->primitive_comp->SetPrimitive(rm->primitive);
-            rm->primitive_comp->SetMIIDOverride(solid.slot[i % COLOR_COUNT].mi_id);
+            rm->primitive_comp->SetSlotIDOverride(solid.slot[i % COLOR_COUNT].slot_id);
             rm->primitive_comp->SetVisible(true);
         }
 

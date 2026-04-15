@@ -150,10 +150,10 @@ public:
 
     void Tick(double delta_time) override
     {
-        if (!mi_color_initialized && primitive && primitive->GetMIData())
+        if (!mi_color_initialized && primitive && primitive->GetSlotData())
         {
             const Color4f cube_color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            primitive->WriteMIData(cube_color);
+            primitive->WriteSlotData(cube_color);
             mi_color_initialized = true;
         }
 

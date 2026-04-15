@@ -21,7 +21,7 @@ class BufferManager;
  * 职责：
  *   - 唯一拥有 InstanceDataDomain 的构造权（friend class IDDManager）
  *   - 维护句柄表：domain_table_（id → entry）和 domain_id_map_（ptr → id）
- *   - 提供 MI 槽位管理的统一入口（AllocMISlot / FreeSlot / GetMIData / WriteMIData）
+ *   - 提供 MI 槽位管理的统一入口（AllocMISlot / FreeSlot / GetSlotData / WriteSlotData）
  *   - 懒创建 GPU 缓冲区（EnsureGPUBuffers，由 Collect System 在首帧触发）
  */
 class IDDManager
@@ -32,7 +32,7 @@ class IDDManager
         uint32_t                generation = 0;  // 0 = invalid/released
     };
 
-    std::vector<DomainEntry>                                              domain_table_;   // index 0 = invalid sentinel
+    std::vector<DomainEntry>                                         domain_table_;   // index 0 = invalid sentinel
     ankerl::unordered_dense::map<InstanceDataDomain *, uint32_t>     domain_id_map_;  // reverse: ptr → id
 
     /// 首次注册返回新 id（1-based）；重复注册返回已有 id。
@@ -53,9 +53,7 @@ public:
      * 构造并注册一个新域，返回强类型句柄。
      * 调用方不需要也不应该持有 InstanceDataDomain*；通过 Get(handle) 解引用。
      */
-    IDDHandle Create(mtl::InstanceDataLayout layout,
-                     uint32_t                max_count,
-                     uint8_t                 tex_array_slots = 0);
+    IDDHandle Create(mtl::InstanceDataLayout layout,uint32_t max_count,uint8_t tex_array_slots = 0);
 
     /**
      * 通过句柄安全解引用。generation 不匹配或越界时返回 nullptr。
@@ -85,19 +83,19 @@ public:
     int    AllocSlot  (IDDHandle handle, const void *init_data = nullptr, uint32_t size = 0);
 
     /**
-     * 释放 MI 槽位（不销毁域）。
+     * 释放槽位（不销毁域）。
      */
-    void   FreeSlot   (IDDHandle handle, int mi_id);
+    void   FreeSlot   (IDDHandle handle, int slot_id);
 
     /**
-     * 返回指定槽位的 CPU 端数据指针；句柄或 mi_id 无效时返回 nullptr。
+     * 返回指定槽位的 CPU 端数据指针；句柄或 slot_id 无效时返回 nullptr。
      */
-    void  *GetSlotData    (IDDHandle handle, int mi_id) const;
+    void  *GetSlotData    (IDDHandle handle, int slot_id) const;
 
     /**
      * 向指定槽位写入数据；返回 false 表示参数无效。
      */
-    bool   WriteSlotData  (IDDHandle handle, int mi_id, const void *data, uint32_t size);
+    bool   WriteSlotData  (IDDHandle handle, int slot_id, const void *data, uint32_t size);
 
     // ----------------------------------------------------------------
     // GPU 缓冲区懒初始化（由 RenderPrimitiveCollectSystem 在首帧调用）

@@ -145,10 +145,10 @@ public:
 
     void Tick(double delta_time) override
     {
-        if (!mi_color_initialized && primitive && primitive->GetMIData())
+        if (!mi_color_initialized && primitive && primitive->GetSlotData())
         {
             const Color4f tube_color = GetColor4f(COLOR::BlenderAxisGreen, 1.0f);
-            primitive->WriteMIData(tube_color);
+            primitive->WriteSlotData(tube_color);
             mi_color_initialized = true;
         }
 

@@ -25,9 +25,10 @@ namespace hgl::ecs
     struct MaterialSlotEntry
     {
         graph::IDDHandle idd_handle = {};
-        int mi_id = -1;
+        int slot_id = -1;
         graph::Primitive* primitive_fallback = nullptr;
-        const void* mi_data_ptr = nullptr;
+        const void* slot_data_ptr = nullptr;
+
         const void* mit_data_ptr = nullptr;
         uint32_t mit_data_bytes = 0;
     };
@@ -43,9 +44,9 @@ namespace hgl::ecs
         hgl::UnorderedMap<uint64_t, uint16> slot_index_map;
         hgl::UnorderedMap<graph::Primitive*, uint16> primitive_index_map;
 
-        static uint64_t MakeSlotKey(graph::IDDHandle dh, int mi_id)
+        static uint64_t MakeSlotKey(graph::IDDHandle dh, int slot_id)
         {
-            return (uint64_t(dh.id) << 32) ^ (uint64_t(dh.generation) << 16) ^ uint64_t(uint32_t(mi_id));
+            return (uint64_t(dh.id) << 32) ^ (uint64_t(dh.generation) << 16) ^ uint64_t(uint32_t(slot_id));
         }
 
     public:
@@ -64,23 +65,23 @@ namespace hgl::ecs
         }
 
         uint16 AddResolved(graph::IDDHandle dh,
-                           int mi_id,
-                           const void* mi_data_ptr,
+                           int slot_id,
+                           const void* slot_data_ptr,
                            const void* mit_data_ptr,
                            uint32_t mit_data_bytes)
         {
-            if (!dh.IsValid() || mi_id < 0)
+            if (!dh.IsValid() || slot_id < 0)
                 return 0;
 
-            const uint64_t key = MakeSlotKey(dh, mi_id);
+            const uint64_t key = MakeSlotKey(dh, slot_id);
             if (auto p = slot_index_map.GetValuePointer(key))
                 return *p;
 
             const uint16 index = static_cast<uint16>(entries.size());
             MaterialSlotEntry e;
             e.idd_handle = dh;
-            e.mi_id = mi_id;
-            e.mi_data_ptr = mi_data_ptr;
+            e.slot_id = slot_id;
+            e.slot_data_ptr = slot_data_ptr;
             e.mit_data_ptr = mit_data_ptr;
             e.mit_data_bytes = mit_data_bytes;
             entries.push_back(e);
@@ -104,12 +105,12 @@ namespace hgl::ecs
             return index;
         }
 
-        uint16 FindResolved(graph::IDDHandle dh, int mi_id) const
+        uint16 FindResolved(graph::IDDHandle dh, int slot_id) const
         {
-            if (!dh.IsValid() || mi_id < 0)
+            if (!dh.IsValid() || slot_id < 0)
                 return 0;
 
-            const uint64_t key = MakeSlotKey(dh, mi_id);
+            const uint64_t key = MakeSlotKey(dh, slot_id);
             auto p = slot_index_map.GetValuePointer(key);
             return p ? *p : 0;
         }
@@ -148,10 +149,10 @@ namespace hgl::ecs
     private:
         graph::BufferManager* buffer_manager;   ///<缓冲区管理器
         graph::MaterialTemplate* material;              ///<所属材质
-        bool use_resolved_domain_mi_id = false;         ///< true: MaterialInstanceID SSBO stores resolved domain mi_id directly
+        bool use_resolved_domain_slot_id = false;         ///< true: MaterialInstanceID SSBO stores resolved domain slot_id directly
 
     private:    // 材质实例数据
-        MaterialSlotSet slot_set;           ///<MaterialSlot 集合（domain+mi_id 优先，Primitive* 回退）
+        MaterialSlotSet slot_set;           ///<MaterialSlot 集合（domain+slot_id 优先，Primitive* 回退）
 
         uint32_t material_instance_data_bytes;      ///<单个材质实例数据字节数
         graph::DeviceBuffer* material_instance_buffer;  ///<材质实例数据(UBO/SSBO)
@@ -177,8 +178,8 @@ namespace hgl::ecs
         MaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::MaterialTemplate* mtl);
         ~MaterialInstanceAssignmentBuffer() { Clear(); }
 
-        void SetUseResolvedDomainMIID(bool value) { use_resolved_domain_mi_id = value; }
-        bool IsUsingResolvedDomainMIID() const { return use_resolved_domain_mi_id; }
+        void SetUseResolvedDomainSlotID(bool value) { use_resolved_domain_slot_id = value; }
+        bool IsUsingResolvedDomainSlotID() const { return use_resolved_domain_slot_id; }
 
         /**
          * 获取MaterialInstanceID SSBO VkBuffer（用于绑定到管线）

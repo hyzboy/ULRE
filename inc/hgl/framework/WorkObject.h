@@ -235,7 +235,7 @@ namespace hgl
             if (!registry)
                 return false;
 
-            return registry->WriteMIData(handle, instance_data, instance_data_size);
+            return registry->WriteSlotData(handle, instance_data, instance_data_size);
         }
 
         bool SetMaterialTextureArrayLayer(const graph::MaterialInstanceHandle handle,

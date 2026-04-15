@@ -227,7 +227,7 @@ namespace hgl::ecs
         // Write texture size to material instance data
         {
             math::Vector2u texture_size(texture->GetWidth(), texture->GetHeight());
-            quad_primitive->WriteMIData(texture_size);
+            quad_primitive->WriteSlotData(texture_size);
         }
 
         // Update quad component
@@ -326,7 +326,7 @@ namespace hgl::ecs
             if (dr->texture_array)
             {
                 math::Vector2u texture_size(dr->texture_array->GetWidth(), dr->texture_array->GetHeight());
-                quad_primitive->WriteMIData(texture_size);
+                quad_primitive->WriteSlotData(texture_size);
             }
 
         // Update quad component

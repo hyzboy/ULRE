@@ -178,7 +178,7 @@ private:
         MaterialInstanceHandle handle = InvalidMaterialInstanceHandle;
         MaterialTemplate *material_template = nullptr;
         IDDHandle idd_handle;
-        int mi_id = -1;
+        int slot_id = -1;
         const VIL *vil = nullptr;
         GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
         mtl::MaterialPreset material_preset = mtl::MaterialPreset::Standard;
@@ -248,7 +248,7 @@ public:
     MaterialInstanceHandle AllocateHandle(const MaterialBindingInit &init);
     bool BuildSlot(MaterialInstanceHandle handle, PrimitiveMaterialSlot &out_slot) const;
     bool RebindHandle(MaterialInstanceHandle handle, const MaterialBindingRebind &req);
-    bool WriteMIData(MaterialInstanceHandle handle, const void *data, uint32_t size);
+    bool WriteSlotData(MaterialInstanceHandle handle, const void *data, uint32_t size);
     bool SetTextureArrayLayer(MaterialInstanceHandle handle, mtl::SamplerSlot slot, uint32_t layer);
     bool ReleaseHandle(MaterialInstanceHandle handle);
 

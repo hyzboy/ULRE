@@ -153,7 +153,7 @@ private:
 
         std::cout << "[BillboardECS] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;
 
-        std::cout << "[BillboardECS] PlaneGrid slot mi_id: " << slot_plane_grid.mi_id << std::endl;
+        std::cout << "[BillboardECS] PlaneGrid slot slot_id: " << slot_plane_grid.slot_id << std::endl;
 
         return true;
     }
@@ -197,7 +197,7 @@ private:
         if (!registry->BuildSlot(handle_billboard, slot_billboard))
             return false;
 
-        std::cout << "[BillboardECS] Billboard slot mi_id: " << slot_billboard.mi_id
+        std::cout << "[BillboardECS] Billboard slot slot_id: " << slot_billboard.slot_id
                   << ", MaterialTemplate: " << (void*)mtl_billboard << std::endl;
 
         return true;
@@ -239,7 +239,7 @@ private:
         if (!registry)
             return false;
 
-        if (!registry->WriteMIData(handle_billboard, &texture_size, sizeof(texture_size)))
+        if (!registry->WriteSlotData(handle_billboard, &texture_size, sizeof(texture_size)))
             return false;
 
         std::cout << "[BillboardECS] Billboard MI data written (texture size)." << std::endl;

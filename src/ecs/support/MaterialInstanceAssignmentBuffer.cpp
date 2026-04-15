@@ -227,7 +227,7 @@ namespace hgl::ecs
 
         uint32_t skipped_non_instance_resolved = 0;
 
-        // 收集唯一 MaterialSlot：优先使用 RenderItem resolved_slot（domain+mi_id），
+        // 收集唯一 MaterialSlot：优先使用 RenderItem resolved_slot（domain+slot_id），
         // 无 resolved_slot 时回退到 Primitive* 去重，保证兼容旧路径。
         slot_set.Reserve(power_to_2(item_count));
 
@@ -238,25 +238,25 @@ namespace hgl::ecs
 
             const auto& binding = item->GetEntityMaterialBinding();
 
-            if (binding.IsDrawBindingValid() && binding.idd_handle.IsValid() && binding.mi_id >= 0)
+            if (binding.IsDrawBindingValid() && binding.idd_handle.IsValid() && binding.slot_id >= 0)
             {
-                const void* mi_data_ptr = binding.domain->GetSlotData(binding.mi_id);
+                const void* slot_data_ptr = binding.domain->GetSlotData(binding.slot_id);
                 const uint32_t mit_bytes = binding.mit_count * sizeof(uint32_t);
                 slot_set.AddResolved(binding.idd_handle,
-                                     binding.mi_id,
-                                     mi_data_ptr,
+                                     binding.slot_id,
+                                     slot_data_ptr,
                                      binding.mit_data,
                                      mit_bytes);
                 continue;
             }
 
             // Phase B cleanup: in domain-direct mode, resolved non-instanced
-            // slots (material/domain present but mi_id < 0) should not force a
+            // slots (material/domain present but slot_id < 0) should not force a
             // Primitive* fallback slot into MIAB.
-            if (use_resolved_domain_mi_id
+            if (use_resolved_domain_slot_id
              && binding.material_template
              && binding.idd_handle.IsValid()
-             && binding.mi_id < 0)
+             && binding.slot_id < 0)
             {
                 ++skipped_non_instance_resolved;
                 continue;
@@ -293,9 +293,9 @@ namespace hgl::ecs
                 {
                     std::cout << "[MIAB::Stat]   Slot[" << slot_idx++
                               << "] idd_handle=" << entry.idd_handle.id
-                              << " mi_id=" << entry.mi_id
+                              << " slot_id=" << entry.slot_id
                               << " prim_fallback=" << (void*)entry.primitive_fallback
-                              << " data=" << entry.mi_data_ptr
+                              << " data=" << entry.slot_data_ptr
                               << std::endl;
                 }
 
@@ -345,10 +345,10 @@ namespace hgl::ecs
                 {
                     for (const auto &entry : slot_set)
                     {
-                        const void *mi_data = entry.mi_data_ptr;
+                        const void *mi_data = entry.slot_data_ptr;
 
                         if (!mi_data && entry.primitive_fallback)
-                            mi_data = entry.primitive_fallback->GetMIData();
+                            mi_data = entry.primitive_fallback->GetSlotData();
 
                         if (mi_data)
                             memcpy(mip, mi_data, material_instance_data_bytes);
@@ -469,17 +469,17 @@ namespace hgl::ecs
 
         uint16 mi_index = 0;
         const auto& binding = item->GetEntityMaterialBinding();
-        if (binding.material_template && binding.idd_handle.IsValid() && binding.mi_id >= 0)
+        if (binding.material_template && binding.idd_handle.IsValid() && binding.slot_id >= 0)
         {
-            if (use_resolved_domain_mi_id)
-                mi_index = static_cast<uint16>(binding.mi_id);
+            if (use_resolved_domain_slot_id)
+                mi_index = static_cast<uint16>(binding.slot_id);
             else
-                mi_index = slot_set.FindResolved(binding.idd_handle, binding.mi_id);
+                mi_index = slot_set.FindResolved(binding.idd_handle, binding.slot_id);
         }
-        else if (use_resolved_domain_mi_id
+        else if (use_resolved_domain_slot_id
               && binding.material_template
               && binding.idd_handle.IsValid()
-              && binding.mi_id < 0)
+              && binding.slot_id < 0)
         {
             // Non-instanced resolved slot in domain-direct mode.
             // Keep deterministic default index and avoid Primitive* fallback.
@@ -606,17 +606,17 @@ namespace hgl::ecs
 
                 uint16 mi_index = 0;
                 const auto& binding = item->GetEntityMaterialBinding();
-                if (binding.material_template && binding.idd_handle.IsValid() && binding.mi_id >= 0)
+                if (binding.material_template && binding.idd_handle.IsValid() && binding.slot_id >= 0)
                 {
-                    if (use_resolved_domain_mi_id)
-                        mi_index = static_cast<uint16>(binding.mi_id);
+                    if (use_resolved_domain_slot_id)
+                        mi_index = static_cast<uint16>(binding.slot_id);
                     else
-                        mi_index = slot_set.FindResolved(binding.idd_handle, binding.mi_id);
+                        mi_index = slot_set.FindResolved(binding.idd_handle, binding.slot_id);
                 }
-                else if (use_resolved_domain_mi_id
+                else if (use_resolved_domain_slot_id
                       && binding.material_template
                       && binding.idd_handle.IsValid()
-                      && binding.mi_id < 0)
+                      && binding.slot_id < 0)
                 {
                     mi_index = 0;
                     ++non_instance_resolved_mid_defaulted;
@@ -644,7 +644,7 @@ namespace hgl::ecs
             if (++s_mid_assign_tick <= 8u)
             {
                 std::cout << "[MIAB::MIDAssign] items=" << item_count
-                          << " resolved_domain_mode=" << (use_resolved_domain_mi_id ? 1 : 0)
+                          << " resolved_domain_mode=" << (use_resolved_domain_slot_id ? 1 : 0)
                           << " non_instance_resolved_defaulted=" << non_instance_resolved_mid_defaulted
                           << " primitive_fallback_count=" << primitive_fallback_mid_count
                           << std::endl;

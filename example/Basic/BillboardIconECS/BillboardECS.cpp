@@ -113,7 +113,7 @@ private:
 
         std::cout << "[BillboardECS] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;
 
-        std::cout << "[BillboardECS] PlaneGrid slot mi_id: " << slot_plane_grid.mi_id << std::endl;
+        std::cout << "[BillboardECS] PlaneGrid slot slot_id: " << slot_plane_grid.slot_id << std::endl;
 
         return true;
     }

@@ -215,7 +215,7 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot,const char *s
 #endif
     }
 
-    // Note: slot.IsValid() requires mi_id>=0, but we accept mi_id=-1 for non-instanced material binding.
+    // Note: slot.IsValid() requires slot_id>=0, but we accept slot_id=-1 for non-instanced material binding.
     // Check material_template instead to allow deferred MI slots that resolved material but couldn't allocate MI slot.
     if (!slot.material_template || !slot.vil || !geometry)
         return false;
@@ -284,7 +284,7 @@ bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot,const char *s
     material_template    = slot.material_template;
     idd_manager_         = slot.idd_manager;         // P12
     idd_handle        = slot.idd_handle;   // P9
-    mi_id                = slot.mi_id;
+    slot_id                = slot.slot_id;
     render_preset        = slot.preset;
     material_preset      = slot.material_preset;
     InitMITLayout(slot.texture_array_slot_flags);
@@ -323,7 +323,7 @@ Primitive::Primitive(Geometry *r, const PrimitiveMaterialSlot &slot, GeometryDat
     material_template = slot.material_template;
     idd_manager_      = slot.idd_manager;        // P12
     idd_handle     = slot.idd_handle;  // P9
-    mi_id             = slot.mi_id;
+    slot_id             = slot.slot_id;
     vil               = slot.vil;
     render_preset     = slot.preset;
     material_preset   = slot.material_preset;
@@ -414,12 +414,12 @@ Primitive *DirectCreatePrimitive(Geometry *geom,SemanticMaterialId sid,uint32_t 
 // Phase 2a — MI data methods (mirrors MaterialInstance implementation)
 // ---------------------------------------------------------------------------
 
-void Primitive::WriteMIData(const void *data, uint32_t size)
+void Primitive::WriteSlotData(const void *data, uint32_t size)
 {
     if(!data || !size || !material_template || size > material_template->GetMIDataBytes())
         return;
 
-    void *tp = GetMIData();
+    void *tp = GetSlotData();
     if(tp)
         std::memcpy(tp, data, size);
 }

@@ -572,9 +572,9 @@ public:
                 if (!rm || !rm->primitive)
                     continue;
 
-                if (rm->primitive->GetMIData())
+                if (rm->primitive->GetSlotData())
                 {
-                    rm->primitive->WriteMIData(standard_mi_data);
+                    rm->primitive->WriteSlotData(standard_mi_data);
                     ++ready_count;
                 }
             }

@@ -25,9 +25,9 @@ class DeviceBuffer;
  */
 class InstanceDataDomain
 {
-    mtl::InstanceDataLayout  instance_layout         = mtl::InstanceDataLayout::None;
-    uint32_t                 max_count                  = 0;    ///< 总计可分配的实例数据数量
-    uint8_t                  texture_array_slot_flags = 0;       ///< 供方：该域提供哪些 TextureArray slot
+    mtl::InstanceDataLayout  instance_layout            = mtl::InstanceDataLayout::None;
+    uint32_t                 max_count                  = 0;        ///< 总计可分配的实例数据数量
+    uint8_t                  texture_array_slot_flags   = 0;        ///< 供方：该域提供哪些 TextureArray slot
 
     hgl::ActiveMemoryBlockManager *data_manager = nullptr;      ///< 该域独立的数据池
 
@@ -35,23 +35,26 @@ class InstanceDataDomain
     // Phase C: domain-owned GPU buffers (transitional)
     // ----------------------------------------------------------------
     BufferManager *buffer_manager = nullptr;
-    DeviceBuffer  *gpu_buffer  = nullptr;
-    DeviceBuffer  *mit_gpu_buffer = nullptr;
 
-    uint32_t gpu_capacity  = 0;   ///< MI element capacity
-    uint32_t mit_gpu_capacity = 0;   ///< MIT uint32 capacity
+    DeviceBuffer  *gpu_buffer  = nullptr;
+
+    uint32_t gpu_capacity  = 0;   ///< data element capacity
 
     bool dirty = false;
     uint32_t dirty_begin = 0;
     uint32_t dirty_end = 0;       ///< one past end
 
+    uint64_t uploaded_bytes_total = 0;
+    uint32_t full_upload_fallback_count = 0;
+
+private:// mit
+
+    DeviceBuffer  *mit_gpu_buffer = nullptr;
+    uint32_t mit_gpu_capacity = 0;   ///< MIT uint32 capacity
     bool mit_dirty = false;
     uint32_t mit_dirty_begin = 0;
     uint32_t mit_dirty_end = 0;      ///< one past end
-
-    uint64_t uploaded_bytes_total = 0;
     uint64_t mit_uploaded_bytes_total = 0;
-    uint32_t full_upload_fallback_count = 0;
     uint32_t mit_full_upload_fallback_count = 0;
 
 private:
@@ -81,54 +84,61 @@ public:
     // ----------------------------------------------------------------
 
     /**
-     * 从本域分配一个 MI 槽位。
-     * @return 分配到的 mi_id；若本域不承载 MI 数据则返回 -1。
+     * 从本域分配一个槽位。
+     * @return 分配到的槽位 id；若本域不承载数据则返回 -1。
      */
     int  AllocSlot();
 
     /**
-     * 归还 MI 槽位。
+     * 归还槽位。
      */
-    void FreeSlot(int mi_id);
+    void FreeSlot(int slot_id);
 
     /**
      * 获取指定槽位的原始数据指针。
      */
-    void *GetSlotData(int mi_id);
+    void *GetSlotData(int slot_id);
 
     // ----------------------------------------------------------------
     // Phase C (transitional): domain-owned SSBO helpers
     // ----------------------------------------------------------------
 
     bool EnsureGPUBuffer(BufferManager *bm, uint32_t min_mi_count, bool allow_recreate = true);
-    bool EnsureMITBuffer(BufferManager *bm, uint32_t min_uint_count, bool allow_recreate = true);
 
     DeviceBuffer *GetGPUBuffer() const { return gpu_buffer; }
-    DeviceBuffer *GetMITGPUBuffer() const { return mit_gpu_buffer; }
 
     uint32_t GetGPUCapacity() const { return gpu_capacity; }
-    uint32_t GetMITGPUCapacity() const { return mit_gpu_capacity; }
 
     bool HasDirtyRange() const { return dirty; }
-    bool HasMITDirtyRange() const { return mit_dirty; }
     uint32_t GetDirtyBegin() const { return dirty_begin; }
     uint32_t GetDirtyEnd() const { return dirty_end; }
+
+    void MarkDirtyRange(uint32_t begin, uint32_t count);
+    void ClearDirtyRange();
+
+    bool UploadDirtyRange();
+
+    uint64_t GetUploadedBytesTotal() const { return uploaded_bytes_total; }
+    uint32_t GetFullUploadFallbackCount() const { return full_upload_fallback_count; }
+
+public:
+
+    bool EnsureMITBuffer(BufferManager *bm, uint32_t min_uint_count, bool allow_recreate = true);
+
+    DeviceBuffer *GetMITGPUBuffer() const { return mit_gpu_buffer; }
+
+    uint32_t GetMITGPUCapacity() const { return mit_gpu_capacity; }
+
+    bool HasMITDirtyRange() const { return mit_dirty; }
     uint32_t GetMITDirtyBegin() const { return mit_dirty_begin; }
     uint32_t GetMITDirtyEnd() const { return mit_dirty_end; }
 
-    void MarkDirtyRange(uint32_t begin, uint32_t count);
     void MarkMITDirtyRange(uint32_t begin, uint32_t count);
-    void ClearDirtyRange();
     void ClearMITDirtyRange();
-
-    bool UploadDirtyRange();
+    
     bool UploadMITDirtyRange(const uint32_t *mit_source_data, uint32_t mit_source_count);
-
-    uint64_t GetUploadedBytesTotal() const { return uploaded_bytes_total; }
     uint64_t GetMITUploadedBytesTotal() const { return mit_uploaded_bytes_total; }
-    uint32_t GetFullUploadFallbackCount() const { return full_upload_fallback_count; }
     uint32_t GetMITFullUploadFallbackCount() const { return mit_full_upload_fallback_count; }
-
 }; // class InstanceDataDomain
 
 } // namespace hgl::graph

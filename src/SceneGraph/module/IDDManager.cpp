@@ -128,37 +128,37 @@ int IDDManager::AllocSlot(IDDHandle handle, const void *init_data, uint32_t size
     auto *d = Get(handle);
     if (!d)
         return -1;
-    int mi_id = d->AllocSlot();
-    if (mi_id >= 0 && init_data && size > 0)
+    int slot_id = d->AllocSlot();
+    if (slot_id >= 0 && init_data && size > 0)
     {
-        void *dst = d->GetSlotData(mi_id);
+        void *dst = d->GetSlotData(slot_id);
         if (dst)
             std::memcpy(dst, init_data, size);
     }
-    return mi_id;
+    return slot_id;
 }
 
-void IDDManager::FreeSlot(IDDHandle handle, int mi_id)
+void IDDManager::FreeSlot(IDDHandle handle, int slot_id)
 {
     auto *d = Get(handle);
     if (d)
-        d->FreeSlot(mi_id);
+        d->FreeSlot(slot_id);
 }
 
-void *IDDManager::GetSlotData(IDDHandle handle, int mi_id) const
+void *IDDManager::GetSlotData(IDDHandle handle, int slot_id) const
 {
     auto *d = Get(handle);
-    return d ? d->GetSlotData(mi_id) : nullptr;
+    return d ? d->GetSlotData(slot_id) : nullptr;
 }
 
-bool IDDManager::WriteSlotData(IDDHandle handle, int mi_id, const void *data, uint32_t size)
+bool IDDManager::WriteSlotData(IDDHandle handle, int slot_id, const void *data, uint32_t size)
 {
     if (!data || size == 0)
         return false;
     auto *d = Get(handle);
     if (!d)
         return false;
-    void *dst = d->GetSlotData(mi_id);
+    void *dst = d->GetSlotData(slot_id);
     if (!dst)
         return false;
     std::memcpy(dst, data, size);

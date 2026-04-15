@@ -91,10 +91,10 @@ private:
         if(!axis_slot.IsValid())
             return false;
 
-        // Regression guard: non-MI materials must still produce a valid slot with mi_id == -1.
+        // Regression guard: non-MI materials must still produce a valid slot with slot_id == -1.
         if (material->hasMI())
         {
-            if (axis_slot.mi_id < 0)
+            if (axis_slot.slot_id < 0)
             {
                 std::fprintf(stderr,
                     "[SimplestAxis] unexpected invalid MI id for MI-enabled material\n");
@@ -103,11 +103,11 @@ private:
         }
         else
         {
-            if (axis_slot.mi_id != -1)
+            if (axis_slot.slot_id != -1)
             {
                 std::fprintf(stderr,
                     "[SimplestAxis] unexpected MI id for no-MI material: %d\n",
-                    axis_slot.mi_id);
+                    axis_slot.slot_id);
                 return false;
             }
         }

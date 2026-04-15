@@ -86,25 +86,25 @@ int hgl::graph::InstanceDataDomain::AllocSlot()
     if(!data_manager)
         return -1;
 
-    int mi_id = -1;
-    data_manager->GetOrCreate(&mi_id, 1);
-    return mi_id;
+    int slot_id = -1;
+    data_manager->GetOrCreate(&slot_id, 1);
+    return slot_id;
 }
 
-void hgl::graph::InstanceDataDomain::FreeSlot(int mi_id)
+void hgl::graph::InstanceDataDomain::FreeSlot(int slot_id)
 {
-    if(mi_id < 0 || !data_manager)
+    if(slot_id < 0 || !data_manager)
         return;
 
-    data_manager->Release(&mi_id, 1);
+    data_manager->Release(&slot_id, 1);
 }
 
-void *hgl::graph::InstanceDataDomain::GetSlotData(int mi_id)
+void *hgl::graph::InstanceDataDomain::GetSlotData(int slot_id)
 {
     if(!data_manager)
         return nullptr;
 
-    return data_manager->GetData(mi_id);
+    return data_manager->GetData(slot_id);
 }
 
 bool hgl::graph::InstanceDataDomain::EnsureGPUBuffer(BufferManager *bm, uint32_t min_mi_count, bool allow_recreate)
@@ -278,8 +278,8 @@ bool hgl::graph::InstanceDataDomain::UploadDirtyRange()
 
     for (uint32_t i = 0; i < copy_count; ++i)
     {
-        const uint32_t mi_id = dirty_begin + i;
-        const void *src = data_manager->GetData(mi_id);
+        const uint32_t slot_id = dirty_begin + i;
+        const void *src = data_manager->GetData(slot_id);
         if (src)
             memcpy(dst + static_cast<size_t>(i) * stride, src, stride);
         else

@@ -825,7 +825,7 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
     }
 
     const bool needs_mi = domain->HasLayout();
-    int mi_id = -1;
+    int slot_id = -1;
 
     if (needs_mi)
         alloc_slot_with_mi.fetch_add(1);
@@ -834,8 +834,8 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
 
     if (needs_mi)
     {
-        mi_id = domain->AllocSlot();
-        if (mi_id < 0)
+        slot_id = domain->AllocSlot();
+        if (slot_id < 0)
         {
             std::fprintf(stderr,
                 "[MaterialManager] AllocMaterialInstanceSlot failed: domain requires MI but allocation failed\n");
@@ -845,7 +845,7 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
 
         // Ensure deterministic first-frame MI data even when caller does not
         // provide explicit instance payload.
-        if (void *mi_data = domain->GetSlotData(mi_id))
+        if (void *mi_data = domain->GetSlotData(slot_id))
             std::memset(mi_data, 0, domain->GetDataStride());
     }
 
@@ -862,7 +862,7 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
             return {};
         }
 
-        void *mi_data = domain->GetSlotData(mi_id);
+        void *mi_data = domain->GetSlotData(slot_id);
         if (mi_data)
         {
             const uint32_t dst_bytes = domain->GetDataStride();
@@ -875,7 +875,7 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
     slot.domain       = domain;
     slot.idd_handle = idd_manager_ ? idd_manager_->GetHandle(domain) : IDDHandle{};
     slot.idd_manager   = idd_manager_;
-    slot.mi_id         = mi_id;
+    slot.slot_id         = slot_id;
     alloc_slot_created.fetch_add(1);
     return slot;
 }

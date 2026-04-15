@@ -31,7 +31,7 @@ namespace hgl::ecs
         hgl::graph::MaterialTemplate* material_template = nullptr;
         hgl::graph::InstanceDataDomain* domain = nullptr;
         hgl::graph::IDDHandle idd_handle = {};   // P9: handle-based identity
-        int mi_id = -1;
+        int slot_id = -1;
         const hgl::graph::VIL* vil = nullptr;
         const uint32_t* mit_data = nullptr;
         uint32_t mit_count = 0;
@@ -43,7 +43,7 @@ namespace hgl::ecs
 
         bool HasSnapshotSignal() const
         {
-            return material_template != nullptr || domain != nullptr || mi_id >= 0;
+            return material_template != nullptr || domain != nullptr || slot_id >= 0;
         }
 
         void Clear()
@@ -52,7 +52,7 @@ namespace hgl::ecs
             material_template = nullptr;
             domain = nullptr;
             idd_handle = {};   // P9
-            mi_id = -1;
+            slot_id = -1;
             vil = nullptr;
             mit_data = nullptr;
             mit_count = 0;
@@ -64,7 +64,7 @@ namespace hgl::ecs
             material_template = slot.material_template;
             domain = slot.domain;
             idd_handle = slot.idd_handle;   // P9
-            mi_id = slot.mi_id;
+            slot_id = slot.slot_id;
             vil = slot.vil;
             mit_data = slot.mit_data;
             mit_count = slot.mit_data_count;

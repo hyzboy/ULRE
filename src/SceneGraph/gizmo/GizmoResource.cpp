@@ -37,7 +37,7 @@ namespace hgl::graph
         {
             MaterialTemplate *          mtl;
             InstanceDataDomain *    domain = nullptr;
-            int                         mi_id[size_t(GizmoColor::RANGE_SIZE)] = {};
+            int                         slot_id[size_t(GizmoColor::RANGE_SIZE)] = {};
             VertexDataManager * vdm;
 
             GeometryCreater *  prim_creater;
@@ -60,7 +60,7 @@ namespace hgl::graph
                     const VIL *vil = gizmo_triangle.mtl->GetDefaultVIL();
                     for (size_t c = 0; c < size_t(GizmoColor::RANGE_SIZE); ++c)
                     {
-                        if (gizmo_triangle.mi_id[c] >= 0)
+                        if (gizmo_triangle.slot_id[c] >= 0)
                         {
                             const IDDHandle gizmo_idd_handle = (gizmo_mtl_manager && gizmo_triangle.domain)
                                                               ? gizmo_mtl_manager->GetIDDManager()->GetHandle(gizmo_triangle.domain)
@@ -68,7 +68,7 @@ namespace hgl::graph
                             PrimitiveMaterialSlot slot{gizmo_triangle.mtl, gizmo_triangle.domain,
                                                        gizmo_idd_handle,
                                                        gizmo_mtl_manager ? gizmo_mtl_manager->GetIDDManager() : nullptr,
-                                                       gizmo_triangle.mi_id[c], vil,
+                                                       gizmo_triangle.slot_id[c], vil,
                                                        GraphicsPipelinePreset::GizmoOverlay3D};
                             primitive[c] = DirectCreatePrimitive(geometry, slot);
                         }
@@ -114,12 +114,12 @@ namespace hgl::graph
 
             for(uint i=0;i<uint(GizmoColor::RANGE_SIZE);i++)
             {
-                gr->mi_id[i] = gr->domain->AllocSlot();
-                if(gr->mi_id[i] < 0)
+                gr->slot_id[i] = gr->domain->AllocSlot();
+                if(gr->slot_id[i] < 0)
                     return(false);
 
                 color=GetColor4f(gizmo_color[i],1.0);
-                memcpy(gr->domain->GetSlotData(gr->mi_id[i]), &color, sizeof(color));
+                memcpy(gr->domain->GetSlotData(gr->slot_id[i]), &color, sizeof(color));
             }
 
             return(true);
@@ -280,8 +280,8 @@ namespace hgl::graph
         if(gizmo_triangle.domain)
         {
             for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
-                if(gizmo_triangle.mi_id[i] >= 0)
-                    gizmo_triangle.domain->FreeSlot(gizmo_triangle.mi_id[i]);
+                if(gizmo_triangle.slot_id[i] >= 0)
+                    gizmo_triangle.domain->FreeSlot(gizmo_triangle.slot_id[i]);
         }
 
         SAFE_CLEAR(gizmo_triangle.prim_creater);
@@ -290,7 +290,7 @@ namespace hgl::graph
         gizmo_triangle.mtl = nullptr;
         gizmo_triangle.domain = nullptr;
         for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
-            gizmo_triangle.mi_id[i] = -1;
+            gizmo_triangle.slot_id[i] = -1;
 
         gizmo_mtl_manager = nullptr;
         gizmo_render_pass = nullptr;
@@ -302,7 +302,7 @@ namespace hgl::graph
         if(size_t(color) >= size_t(GizmoColor::RANGE_SIZE))
             return -1;
 
-        return gizmo_triangle.mi_id[size_t(color)];
+        return gizmo_triangle.slot_id[size_t(color)];
     }
 
     Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape, const GizmoColor &color)
