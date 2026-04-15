@@ -476,7 +476,7 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::UpdateMaterialInstanceBuffer(MaterialBatch& batch)
     {
-        if (!batch.key.material || !batch.key.material->hasMI())
+        if (!batch.key.material || !batch.key.material->HasInstanceData())
             return;
 
         if (!batch.mi_buffer && !batch.items.empty())
@@ -499,11 +499,11 @@ namespace hgl::ecs
         {
             static uint32_t s_upd_tick = 0;
             if (++s_upd_tick <= 3u)
-                LogDebug("[BatchPipeline::UpdateMIBuf] material=%p(%s) domain_id=%u hasMI=%d mi_buf=%p items=%zu",
+                LogDebug("[BatchPipeline::UpdateMIBuf] material=%p(%s) domain_id=%u HasInstanceData=%d mi_buf=%p items=%zu",
                          (void*)batch.key.material,
                          batch.key.material ? batch.key.material->GetName().c_str() : "null",
                          batch.key.idd_handle.id,
-                         batch.key.material ? (int)batch.key.material->hasMI() : -1,
+                         batch.key.material ? (int)batch.key.material->HasInstanceData() : -1,
                          (void*)batch.mi_buffer,
                          batch.items.size());
         }

@@ -295,7 +295,7 @@ namespace hgl::ecs
                         // a correctly initialized runtime MI.
                         if (auto *current_material = primitive->GetMaterialTemplate())
                         {
-                            instance_data_size = current_material->GetMIDataBytes();
+                            instance_data_size = current_material->GetInstanceDataStride();
                             if (instance_data_size > 0)
                                 instance_data = primitive->GetSlotData();
                         }
@@ -530,9 +530,9 @@ namespace hgl::ecs
 
                 if (domain_direct_mi_ssbo_enabled && has_resolved_slot_snapshot)
                 {
-                    const int override_mi_id = primitiveComp ? primitiveComp->GetSlotIDOverride() : -1;
-                    if (override_mi_id >= 0 && resolved_slot_snapshot.domain)
-                        resolved_slot_snapshot.slot_id = override_mi_id;
+                    const int override_slot_id = primitiveComp ? primitiveComp->GetSlotIDOverride() : -1;
+                    if (override_slot_id >= 0 && resolved_slot_snapshot.domain)
+                        resolved_slot_snapshot.slot_id = override_slot_id;
 
                     item->SetEntityMaterialBinding(resolved_slot_snapshot);
                 }
@@ -558,18 +558,18 @@ namespace hgl::ecs
             if (domain_direct_mi_ssbo_enabled)
             {
                 auto *primitive_for_slot = primitiveComp->GetPrimitive();
-                const int override_mi_id = primitiveComp ? primitiveComp->GetSlotIDOverride() : -1;
-                const int resolved_mi_id = override_mi_id >= 0
-                                         ? override_mi_id
+                const int override_slot_id = primitiveComp ? primitiveComp->GetSlotIDOverride() : -1;
+                const int resolved_slot_id = override_slot_id >= 0
+                                         ? override_slot_id
                                          : (primitive_for_slot ? primitive_for_slot->GetSlotID() : -1);
 
-                if (primitive_for_slot && primitive_for_slot->GetDomain() && resolved_mi_id >= 0)
+                if (primitive_for_slot && primitive_for_slot->GetDomain() && resolved_slot_id >= 0)
                 {
                     graph::PrimitiveMaterialSlot resolved_slot_snapshot;
                     resolved_slot_snapshot.material_template = primitive_for_slot->GetMaterialTemplate();
                     resolved_slot_snapshot.domain = primitive_for_slot->GetDomain();
                     resolved_slot_snapshot.idd_handle = primitive_for_slot->GetDomainHandle();   // P9
-                    resolved_slot_snapshot.slot_id = resolved_mi_id;
+                    resolved_slot_snapshot.slot_id = resolved_slot_id;
                     resolved_slot_snapshot.vil = primitive_for_slot->GetVIL();
                     resolved_slot_snapshot.preset = primitive_for_slot->GetRenderPreset();
                     resolved_slot_snapshot.texture_array_slot_flags = resolved_slot_snapshot.material_template

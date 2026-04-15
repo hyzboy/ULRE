@@ -52,7 +52,7 @@ class MaterialTemplate
 
     MaterialParameters *mp_array[DESCRIPTOR_SET_TYPE_COUNT];
 
-    uint32_t mi_max_count;              ///<实例一次渲染最大数量限制
+    uint32_t instance_max_count;         ///<实例一次渲染最大数量限制
 
     bool has_l2w_matrix;                ///<是否有LocalToWorld矩阵
 
@@ -139,9 +139,9 @@ public:
             void    SetTextureArraySlotFlags(uint8_t f){texture_array_slot_flags=f;}
     const uint8_t   GetTextureArraySlotFlags()const{return texture_array_slot_flags;}
 
-    const bool      hasMI   ()const{return required_instance_layout != mtl::InstanceDataLayout::None;}
-    const uint32_t  GetMIDataBytes  ()const{return mtl::GetInstanceDataStride(required_instance_layout);}
-    const uint32_t  GetMIMaxCount   ()const{return mi_max_count;}
+    const bool      HasInstanceData      ()const{return required_instance_layout != mtl::InstanceDataLayout::None;}
+    const uint32_t  GetInstanceDataStride()const{return mtl::GetInstanceDataStride(required_instance_layout);}
+    const uint32_t  GetInstanceMaxCount  ()const{return instance_max_count;}
 
     mtl::InstanceDataLayout GetRequiredLayout()const{return required_instance_layout;}
 };//class MaterialTemplate

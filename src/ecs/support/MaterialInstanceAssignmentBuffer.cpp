@@ -32,7 +32,7 @@ namespace hgl::ecs
     {
         if (mtl)
         {
-            material_instance_data_bytes = mtl->GetMIDataBytes();
+            material_instance_data_bytes = mtl->GetInstanceDataStride();
         }
     }
 
@@ -270,11 +270,11 @@ namespace hgl::ecs
         const size_t unique_slot_count = slot_set.GetCount();
 
         // 检查是否超出材质支持的最大数量
-        if (material && unique_slot_count > material->GetMIMaxCount())
+        if (material && unique_slot_count > material->GetInstanceMaxCount())
         {
             std::cout << "[MaterialInstanceAssignmentBuffer::StatMaterialInstance] WARNING: prim count ("
                       << unique_slot_count << ") exceeds material max count ("
-                      << material->GetMIMaxCount() << ")" << std::endl;
+                      << material->GetInstanceMaxCount() << ")" << std::endl;
         }
 
         // Diagnostic: log first few frames

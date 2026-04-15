@@ -146,7 +146,7 @@ private:
 
             // ── 将 MI Handle 关联到 Primitive ─────────────────────────────────
             // 让 RenderPrimitiveCollectSystem 的 Phase 4 快速路径能通过
-            // CompleteBinding 复用已有的 mi_id（携带颜色数据），
+            // CompleteBinding 复用已有的 slot_id（携带颜色数据），
             // 而非 ResolveMI 分配新的空槽位。
             triangles[i].primitive->SetDeferredMIHandle(triangles[i].mi_handle);
 

@@ -315,7 +315,7 @@ void MaterialManager::ApplyMaterialFinalizePlan(MaterialTemplate *mtl, const std
     }
 
     mtl->required_instance_layout = finalize_plan.required_instance_layout;
-    mtl->mi_max_count  = finalize_plan.mi_max_count;
+    mtl->instance_max_count  = finalize_plan.instance_max_count;
 }
 
 MaterialTemplate *MaterialManager::TryGetCachedMaterial(const std::string &name)
@@ -386,13 +386,13 @@ MaterialTemplate *MaterialManager::GetFallbackMaterial()
 
 InstanceDataDomain *MaterialManager::GetOrCreateDefaultDomain(MaterialTemplate *mtl)
 {
-    if (!mtl || !mtl->hasMI()) return nullptr;
+    if (!mtl || !mtl->HasInstanceData()) return nullptr;
     auto it = default_domain_map.find(mtl);
     if (it != default_domain_map.end())
         return idd_manager_ ? idd_manager_->Get(it->second) : nullptr;
     if (!idd_manager_) return nullptr;
     const IDDHandle handle = idd_manager_->Create(
-        mtl->GetRequiredLayout(), mtl->GetMIMaxCount(), mtl->GetTextureArraySlotFlags());
+        mtl->GetRequiredLayout(), mtl->GetInstanceMaxCount(), mtl->GetTextureArraySlotFlags());
     default_domain_map[mtl] = handle;
     return idd_manager_->Get(handle);
 }
@@ -913,7 +913,7 @@ InstanceDataDomain *MaterialManager::CreateInstanceDataDomain(MaterialTemplate *
 
     return CreateInstanceDataDomain(
         mtl->GetRequiredLayout(),
-        mtl->GetMIMaxCount(),
+        mtl->GetInstanceMaxCount(),
         mtl->GetTextureArraySlotFlags());
 }
 

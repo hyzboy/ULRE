@@ -34,7 +34,7 @@ namespace hgl::ecs
     };
 
     /**
-     * MaterialSlot 集合 - 优先按 domain+mi_id 去重；
+     * MaterialSlot 集合 - 优先按 domain+slot_id 去重；
      * 无 resolved slot 时回退按 Primitive* 去重。
      */
     class MaterialSlotSet

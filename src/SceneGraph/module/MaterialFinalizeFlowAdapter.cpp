@@ -10,7 +10,7 @@ namespace hgl::graph
     {
         out_plan.mp_set_types.clear();
         out_plan.required_instance_layout = mtl::ResolveInstanceDataLayout(mci.GetMaterialInstanceStride());
-        out_plan.mi_max_count = mci.GetMaterialInstanceMaxCount();
+        out_plan.instance_max_count = mci.GetMaterialInstanceMaxCount();
 
         if (!desc_manager)
             return;

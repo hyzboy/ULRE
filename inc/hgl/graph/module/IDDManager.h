@@ -21,7 +21,7 @@ class BufferManager;
  * 职责：
  *   - 唯一拥有 InstanceDataDomain 的构造权（friend class IDDManager）
  *   - 维护句柄表：domain_table_（id → entry）和 domain_id_map_（ptr → id）
- *   - 提供 MI 槽位管理的统一入口（AllocMISlot / FreeSlot / GetSlotData / WriteSlotData）
+ *   - 提供 MI 槽位管理的统一入口（AllocSlot / FreeSlot / GetSlotData / WriteSlotData）
  *   - 懒创建 GPU 缓冲区（EnsureGPUBuffers，由 Collect System 在首帧触发）
  */
 class IDDManager

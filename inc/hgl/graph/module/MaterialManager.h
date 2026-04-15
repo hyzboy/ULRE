@@ -394,7 +394,7 @@ public: // InstanceDataDomain — Phase 1 / Phase 3
 
     /**
      * 释放一个 InstanceDataDomain 及其所有 DomainMaterialBinding。
-     * 调用前请确保该域不再有存活的 MaterialInstance（否则 FreeMISlot 会访问已释放对象）。
+     * 调用前请确保该域不再有存活的 MaterialInstance（否则 FreeSlot 会访问已释放对象）。
      */
     void ReleaseInstanceDataDomain(InstanceDataDomain *domain);
     void ReleaseInstanceDataDomain(IDDHandle handle);

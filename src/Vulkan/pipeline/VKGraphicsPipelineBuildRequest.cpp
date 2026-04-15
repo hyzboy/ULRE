@@ -193,9 +193,9 @@ GplLinkedPipelineKey BuildLinkedPipelineKey(const GraphicsPipelineBuildRequest &
         HashStdString(layout_hash, req.material->GetName());
         HashU32(layout_hash, static_cast<uint32_t>(req.material->GetPrimitiveType()));
         HashBool(layout_hash, req.material->hasLocalToWorld());
-        HashBool(layout_hash, req.material->hasMI());
-        HashU32(layout_hash, req.material->GetMIDataBytes());
-        HashU32(layout_hash, req.material->GetMIMaxCount());
+        HashBool(layout_hash, req.material->HasInstanceData());
+        HashU32(layout_hash, req.material->GetInstanceDataStride());
+        HashU32(layout_hash, req.material->GetInstanceMaxCount());
         HashU32(layout_hash, req.material->GetTextureArraySlotFlags());
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(DESCRIPTOR_SET_TYPE_COUNT); ++i)

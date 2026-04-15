@@ -17,7 +17,7 @@ namespace hgl::graph
     {
         std::vector<DescriptorSetType> mp_set_types;
         mtl::InstanceDataLayout required_instance_layout = mtl::InstanceDataLayout::None;
-        uint32_t mi_max_count = 0;
+        uint32_t instance_max_count = 0;
     };
 
     void BuildMaterialFinalizePlan(const MaterialDescriptorManager *desc_manager,

@@ -92,7 +92,7 @@ private:
             return false;
 
         // Regression guard: non-MI materials must still produce a valid slot with slot_id == -1.
-        if (material->hasMI())
+        if (material->HasInstanceData())
         {
             if (axis_slot.slot_id < 0)
             {

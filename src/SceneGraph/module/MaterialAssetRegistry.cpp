@@ -672,7 +672,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
             {
                 if (void *dst = slot.domain->GetSlotData(slot.slot_id))
                 {
-                    const uint32_t dst_bytes = handle.material ? handle.material->GetMIDataBytes() : 0;
+                    const uint32_t dst_bytes = handle.material ? handle.material->GetInstanceDataStride() : 0;
                     const uint32_t copy_bytes = std::min(instance_data_size, dst_bytes);
                     if (copy_bytes > 0)
                         std::memcpy(dst, instance_data, copy_bytes);
@@ -829,7 +829,7 @@ MaterialInstanceHandle MaterialAssetRegistry::AllocateHandle(const MaterialBindi
     rec.texture_array_slot_flags = slot.texture_array_slot_flags;
     rec.binding_complete = (rec.material_template != nullptr && rec.vil != nullptr);
 
-    const uint32_t payload_bytes = rec.material_template ? rec.material_template->GetMIDataBytes() : 0;
+    const uint32_t payload_bytes = rec.material_template ? rec.material_template->GetInstanceDataStride() : 0;
     if (payload_bytes > 0)
     {
         rec.instance_payload.assign((payload_bytes + sizeof(uint32_t) - 1) / sizeof(uint32_t), 0u);
@@ -964,8 +964,8 @@ bool MaterialAssetRegistry::RebindHandle(MaterialInstanceHandle handle, const Ma
 
         if (new_ptr && old_ptr)
         {
-            const uint32_t old_bytes = rec.material_template->GetMIDataBytes();
-            const uint32_t new_bytes = req.new_material->GetMIDataBytes();
+            const uint32_t old_bytes = rec.material_template->GetInstanceDataStride();
+            const uint32_t new_bytes = req.new_material->GetInstanceDataStride();
             const uint32_t copy_bytes = std::min(old_bytes, new_bytes);
             if (copy_bytes > 0)
                 std::memcpy(new_ptr, old_ptr, copy_bytes);
@@ -973,7 +973,7 @@ bool MaterialAssetRegistry::RebindHandle(MaterialInstanceHandle handle, const Ma
     }
 
     IDDHandle old_idd_handle = rec.idd_handle;
-    const int old_mi_id = rec.slot_id;
+    const int old_slot_id = rec.slot_id;
     const std::vector<int8_t> old_offsets = rec.mit_slot_offset;
     const std::vector<uint32_t> old_packed = rec.mit_packed;
 
@@ -1011,10 +1011,10 @@ bool MaterialAssetRegistry::RebindHandle(MaterialInstanceHandle handle, const Ma
     if (old_idd_handle != rec.idd_handle)
         ++cross_domain_rebind_count;
 
-    if (old_idd_handle.IsValid() && old_mi_id >= 0)
+    if (old_idd_handle.IsValid() && old_slot_id >= 0)
     {
         auto *old_domain_ptr = mm->GetIDDManager()->Get(old_idd_handle);
-        if (old_domain_ptr) old_domain_ptr->FreeSlot(old_mi_id);
+        if (old_domain_ptr) old_domain_ptr->FreeSlot(old_slot_id);
     }
 
     return true;
@@ -1041,7 +1041,7 @@ bool MaterialAssetRegistry::WriteSlotData(MaterialInstanceHandle handle, const v
 
     // Prefer material_template stride; fall back to domain stride for partial handles.
     const uint32_t dst_bytes = rec.material_template
-        ? rec.material_template->GetMIDataBytes()
+        ? rec.material_template->GetInstanceDataStride()
         : domain_ptr->GetDataStride();
     const uint32_t copy_bytes = std::min(dst_bytes, size);
     if (copy_bytes == 0)

@@ -416,7 +416,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,SemanticMaterialId sid,uint32_t 
 
 void Primitive::WriteSlotData(const void *data, uint32_t size)
 {
-    if(!data || !size || !material_template || size > material_template->GetMIDataBytes())
+    if(!data || !size || !material_template || size > material_template->GetInstanceDataStride())
         return;
 
     void *tp = GetSlotData();

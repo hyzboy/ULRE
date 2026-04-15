@@ -251,7 +251,7 @@ namespace hgl::ecs
 
             // P10: resolve raw domain ptr from first matching item (dual-field P9)
             graph::InstanceDataDomain *domain = nullptr;
-            int max_mi_id = -1;
+            int max_slot_id = -1;
             for (auto *item : batch->items)
             {
                 if (!HasResolvedInstanceSlotForDomain(item, idd_handle))
@@ -260,14 +260,14 @@ namespace hgl::ecs
                 const auto& binding = item->GetEntityMaterialBinding();
                 if (!domain) domain = binding.domain;
 
-                if (binding.slot_id > max_mi_id)
-                    max_mi_id = binding.slot_id;
+                if (binding.slot_id > max_slot_id)
+                    max_slot_id = binding.slot_id;
             }
 
-            if (!domain || max_mi_id < 0)
+            if (!domain || max_slot_id < 0)
                 return false;
 
-            const uint32_t needed = static_cast<uint32_t>(max_mi_id + 1);
+            const uint32_t needed = static_cast<uint32_t>(max_slot_id + 1);
             if (!domain->EnsureGPUBuffer(buffer_manager, needed))
                 return false;
 
@@ -324,7 +324,7 @@ namespace hgl::ecs
 
             // P10: resolve raw domain ptr from first matching item (dual-field P9)
             graph::InstanceDataDomain *domain = nullptr;
-            int max_mi_id = -1;
+            int max_slot_id = -1;
             uint32_t per_entry_uint_count = 0;
 
             for (auto *item : batch->items)
@@ -335,14 +335,14 @@ namespace hgl::ecs
                 const auto& binding = item->GetEntityMaterialBinding();
                 if (!domain) domain = binding.domain;  // P10: grab raw ptr from first matching item
 
-                if (binding.slot_id > max_mi_id)
-                    max_mi_id = binding.slot_id;
+                if (binding.slot_id > max_slot_id)
+                    max_slot_id = binding.slot_id;
 
                 if (per_entry_uint_count == 0 && binding.mit_count > 0)
                     per_entry_uint_count = binding.mit_count;
             }
 
-            if (!domain || max_mi_id < 0)
+            if (!domain || max_slot_id < 0)
             {
                 if (out_result)
                     *out_result = DomainDirectMITBindResult::NoResolvedSlotData;
@@ -356,7 +356,7 @@ namespace hgl::ecs
                 return false;
             }
 
-            const uint32_t slot_count = static_cast<uint32_t>(max_mi_id + 1);
+            const uint32_t slot_count = static_cast<uint32_t>(max_slot_id + 1);
             const uint32_t total_uint_count = slot_count * per_entry_uint_count;
 
             if (total_uint_count == 0)
@@ -928,7 +928,7 @@ namespace hgl::ecs
                 {
                     if (batch
                      && batch->mi_buffer
-                     && material->hasMI())
+                     && material->HasInstanceData())
                     {
                         const uint64_t bind_key = (uint64_t(reinterpret_cast<uintptr_t>(material)) << 1)
                                                 ^ uint64_t(idd_handle.id);

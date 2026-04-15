@@ -27,7 +27,7 @@ MaterialTemplate::MaterialTemplate(const std::string &n,const mtl::MaterialCreat
     mem_zero(mp_array);
 
     required_instance_layout = mtl::InstanceDataLayout::None;
-    mi_max_count=0;
+    instance_max_count=0;
 
     has_l2w_matrix=mci->HasLocalToWorld();
 }
