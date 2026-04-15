@@ -411,6 +411,34 @@ Primitive *DirectCreatePrimitive(Geometry *geom,SemanticMaterialId sid,uint32_t 
 }
 
 // ---------------------------------------------------------------------------
+// Phase C: domain-direct ctor — slot pre-allocated, material/VIL deferred
+
+Primitive::Primitive(Geometry *r,SemanticMaterialId sid,IDDHandle handle,int slot,IDDManager *mgr)
+{
+    geometry=r;
+
+    data_buffer=nullptr;
+    draw_range.Set(geometry);
+
+    deferred_semantic_id=sid;
+    deferred_vil_hash=0;
+
+    idd_handle=handle;
+    slot_id=slot;
+    idd_manager_=mgr;
+
+    std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
+}
+
+Primitive *DirectCreatePrimitive(Geometry *geom,SemanticMaterialId sid,IDDHandle handle,int slot_id,IDDManager *mgr)
+{
+    if(!geom||sid==0||!handle.IsValid()||slot_id<0)
+        return(nullptr);
+
+    return(new Primitive(geom,sid,handle,slot_id,mgr));
+}
+
+// ---------------------------------------------------------------------------
 // Phase 2a — MI data methods (mirrors MaterialInstance implementation)
 // ---------------------------------------------------------------------------
 

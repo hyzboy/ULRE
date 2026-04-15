@@ -48,8 +48,10 @@ private:
     Primitive(Geometry *,const PrimitiveMaterialSlot &,GeometryDataBuffer *);  // slot-based ctor (no MI object)
 
     friend Primitive *DirectCreatePrimitive(Geometry *,SemanticMaterialId,uint32_t);
+    friend Primitive *DirectCreatePrimitive(Geometry *,SemanticMaterialId,IDDHandle,int,IDDManager*);
 
     Primitive(Geometry *,SemanticMaterialId,uint32_t);
+    Primitive(Geometry *,SemanticMaterialId,IDDHandle,int slot_id,IDDManager*);  // Phase C: domain-direct ctor
 
 public:
 
@@ -112,4 +114,7 @@ public:
 
 Primitive *DirectCreatePrimitive(Geometry *,const PrimitiveMaterialSlot &);
 Primitive *DirectCreatePrimitive(Geometry *,SemanticMaterialId,uint32_t vil_hash);
+
+/// Phase C: 域直通创建 — 已分配 domain slot，渲染时由 ResolveVariant 填充材质/VIL。
+Primitive *DirectCreatePrimitive(Geometry *,SemanticMaterialId,IDDHandle,int slot_id,IDDManager*);
 }//namespace hgl::graph
