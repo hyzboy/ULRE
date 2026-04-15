@@ -39,6 +39,7 @@ class Primitive
 
     SemanticMaterialId  deferred_semantic_id = 0;
     uint32_t            deferred_vil_hash    = 0;
+    uint64_t            deferred_mi_handle   = 0;  // pre-allocated MaterialInstanceHandle for deferred binding
 
 private:
 
@@ -91,6 +92,8 @@ public:
             bool                HasDeferredMI       ()const{return material_template==nullptr&&deferred_semantic_id!=0;}
             SemanticMaterialId  GetDeferredSemanticId()const{return deferred_semantic_id;}
             uint32_t            GetDeferredVILHash  ()const{return deferred_vil_hash;}
+            uint64_t            GetDeferredMIHandle ()const{return deferred_mi_handle;}
+            void                SetDeferredMIHandle (uint64_t h){deferred_mi_handle=h;}
 
             /// 绑定材质槽（Phase 2c）：替代 BindMaterialInstance/ChangeMaterialInstance。
             /// 用于延迟绑定（HasDeferredMI()==true 时会创建 GeometryDataBuffer）

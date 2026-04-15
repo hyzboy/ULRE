@@ -47,11 +47,24 @@ struct PrimitiveMaterialSlot
     uint32_t                 mit_data_count    = 0;
     mtl::MaterialPreset      material_preset   = mtl::MaterialPreset::Standard;
 
-    bool IsValid() const
+    /// Init-time check: domain slot allocated, data can be written.
+    bool HasData() const
+    {
+        return domain != nullptr;
+    }
+
+    /// Render-time check: full binding state ready for pipeline creation.
+    bool IsRenderable() const
     {
         return material_template != nullptr
             && domain != nullptr
             && vil != nullptr;
+    }
+
+    /// Legacy alias — equivalent to IsRenderable().
+    bool IsValid() const
+    {
+        return IsRenderable();
     }
 };
 

@@ -815,7 +815,8 @@ MaterialInstanceHandle MaterialAssetRegistry::AllocateHandle(const MaterialBindi
     slot.preset                   = init.preset;
     slot.texture_array_slot_flags = init.material->GetTextureArraySlotFlags();
 
-    if (!slot.IsValid())
+    // Init-time: only need domain slot allocated; VIL may be deferred until render time.
+    if (!slot.HasData())
         return InvalidMaterialInstanceHandle;
 
     MaterialBindingRecord rec;
@@ -826,6 +827,7 @@ MaterialInstanceHandle MaterialAssetRegistry::AllocateHandle(const MaterialBindi
     rec.preset = slot.preset;
     rec.material_preset = init.material_preset;
     rec.texture_array_slot_flags = slot.texture_array_slot_flags;
+    rec.binding_complete = (rec.material_template != nullptr && rec.vil != nullptr);
 
     const uint32_t payload_bytes = rec.material_template ? rec.material_template->GetMIDataBytes() : 0;
     if (payload_bytes > 0)
@@ -875,7 +877,42 @@ bool MaterialAssetRegistry::BuildSlot(MaterialInstanceHandle handle, PrimitiveMa
     out_slot.material_preset = rec.material_preset;
     out_slot.mit_data = rec.mit_packed.empty() ? nullptr : rec.mit_packed.data();
     out_slot.mit_data_count = static_cast<uint32_t>(rec.mit_packed.size());
-    return out_slot.IsValid();
+    // Return true if domain slot is allocated; caller checks IsRenderable() when needed for rendering.
+    return out_slot.HasData();
+}
+
+bool MaterialAssetRegistry::CompleteBinding(MaterialInstanceHandle handle,
+                                            MaterialTemplate *material,
+                                            const VIL *vil,
+                                            GraphicsPipelinePreset preset)
+{
+    auto it = handle_table.find(handle);
+    if (it == handle_table.end() || !it->second.alive)
+        return false;
+
+    MaterialBindingRecord &rec = it->second;
+
+    if (!material || !vil)
+        return false;
+
+    // Already complete — skip redundant update unless material changed.
+    if (rec.binding_complete
+        && rec.material_template == material
+        && rec.vil == vil
+        && rec.preset == preset)
+        return true;
+
+    rec.material_template = material;
+    rec.vil = vil;
+    rec.preset = preset;
+    rec.texture_array_slot_flags = material->GetTextureArraySlotFlags();
+    rec.binding_complete = true;
+    ++rec.binding_version;
+
+    // Rebuild MIT offsets with updated texture array flags.
+    BuildMITOffsets(rec.texture_array_slot_flags, rec.mit_slot_offset, rec.mit_packed);
+
+    return true;
 }
 
 bool MaterialAssetRegistry::RebindHandle(MaterialInstanceHandle handle, const MaterialBindingRebind &req)
@@ -993,7 +1030,8 @@ bool MaterialAssetRegistry::WriteMIData(MaterialInstanceHandle handle, const voi
         return false;
 
     MaterialBindingRecord &rec = it->second;
-    if (!rec.material_template || !rec.domain_handle.IsValid() || rec.mi_id < 0)
+    // Relaxed guard: only need domain slot — material_template may be deferred.
+    if (!rec.domain_handle.IsValid() || rec.mi_id < 0)
         return false;
 
     auto *domain_ptr = mm->GetMRDManager()->Get(rec.domain_handle);
@@ -1001,7 +1039,10 @@ bool MaterialAssetRegistry::WriteMIData(MaterialInstanceHandle handle, const voi
     if (!dst)
         return false;
 
-    const uint32_t dst_bytes = rec.material_template->GetMIDataBytes();
+    // Prefer material_template stride; fall back to domain stride for partial handles.
+    const uint32_t dst_bytes = rec.material_template
+        ? rec.material_template->GetMIDataBytes()
+        : domain_ptr->GetMIDataBytes();
     const uint32_t copy_bytes = std::min(dst_bytes, size);
     if (copy_bytes == 0)
         return false;

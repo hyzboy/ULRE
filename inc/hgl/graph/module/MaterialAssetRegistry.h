@@ -187,6 +187,7 @@ private:
         std::vector<uint32_t> mit_packed;
         std::vector<int8_t> mit_slot_offset;
         uint32_t binding_version = 1;
+        bool binding_complete = false;  // true when material_template + VIL are resolved
         bool alive = true;
     };
 
@@ -250,6 +251,12 @@ public:
     bool WriteMIData(MaterialInstanceHandle handle, const void *data, uint32_t size);
     bool SetTextureArrayLayer(MaterialInstanceHandle handle, mtl::SamplerSlot slot, uint32_t layer);
     bool ReleaseHandle(MaterialInstanceHandle handle);
+
+    // Render-time completion: fill in deferred material_template + VIL on a partial handle.
+    bool CompleteBinding(MaterialInstanceHandle handle,
+                         MaterialTemplate *material,
+                         const VIL *vil,
+                         GraphicsPipelinePreset preset);
 
     // Stage 1 - observability for handle path.
     bool QueryBindingVersion(MaterialInstanceHandle handle, uint32_t &out_version) const;

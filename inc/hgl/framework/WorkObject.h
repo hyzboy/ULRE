@@ -155,12 +155,17 @@ namespace hgl
             if (out_handle)
                 *out_handle = handle;
 
-            const graph::VIL *resolved_vil = override_vil
-                                           ? override_vil
-                                           : registry->ResolveVIL(handle.material, rec, nullptr);
+            const graph::VIL *resolved_vil = override_vil;
 
+            // Deferred semantic flows usually do not have geometry here.
+            // Avoid calling ResolveVIL(..., geometry=nullptr), which only emits
+            // noisy diagnostics and cannot derive layout from missing geometry.
             if (!resolved_vil && handle.material)
                 resolved_vil = handle.material->GetDefaultVIL();
+
+            // Keep old fallback behavior for uncommon materials without a default VIL.
+            if (!resolved_vil)
+                resolved_vil = registry->ResolveVIL(handle.material, rec, nullptr);
 
             if (!handle.material || !resolved_vil)
                 return graph::InvalidMaterialInstanceHandle;
@@ -172,6 +177,41 @@ namespace hgl
             init.preset = rec.pipeline;
             init.material_preset = rec.preset;
             init.instance_data = instance_data;
+            init.instance_data_size = instance_data_size;
+
+            return registry->AllocateHandle(init);
+        }
+
+        // Deferred semantic-path helper: allocate handle from SemanticMaterialId.
+        // VIL is NOT resolved — the handle carries only domain slot + MI data.
+        // Render-time completion happens via CompleteBinding() in the ECS resolve path.
+        graph::MaterialInstanceHandle AllocateMaterialHandle(graph::SemanticMaterialId semantic_id,
+                                                             const void *instance_data = nullptr,
+                                                             uint32 instance_data_size = 0,
+                                                             graph::MaterialDomainHandle *out_handle = nullptr)
+        {
+            auto *registry = GetMaterialAssetRegistry();
+            if (!registry || semantic_id == 0)
+                return graph::InvalidMaterialInstanceHandle;
+
+            graph::mtl::MaterialAssetRecord rec;
+            if (!registry->QuerySemanticMaterial(semantic_id, rec))
+                return graph::InvalidMaterialInstanceHandle;
+
+            graph::MaterialDomainHandle handle = registry->Acquire(rec);
+            if (!handle.IsValid())
+                return graph::InvalidMaterialInstanceHandle;
+
+            if (out_handle)
+                *out_handle = handle;
+
+            graph::MaterialBindingInit init;
+            init.material       = handle.material;
+            init.domain_handle  = handle.domain_handle;
+            init.vil            = nullptr;   // deferred — resolved at render time
+            init.preset         = rec.pipeline;
+            init.material_preset = rec.preset;
+            init.instance_data  = instance_data;
             init.instance_data_size = instance_data_size;
 
             return registry->AllocateHandle(init);

@@ -252,7 +252,14 @@ namespace hgl::ecs
                 continue;
             }
 
-            if (semantic_runtime_resolve_enabled && primitiveComp->HasSemanticMaterial())
+            graph::Primitive *primitive_for_semantic = primitiveComp->GetPrimitive();
+            const graph::SemanticMaterialId semantic_id = primitiveComp->HasSemanticMaterial()
+                                                       ? primitiveComp->GetSemanticMaterial()
+                                                       : ((primitive_for_semantic && primitive_for_semantic->HasDeferredMI())
+                                                            ? primitive_for_semantic->GetDeferredSemanticId()
+                                                            : graph::SemanticMaterialId(0));
+
+            if (semantic_runtime_resolve_enabled && semantic_id != 0)
             {
                 static uint32_t s_semantic_enter = 0;
                 const bool log_semantic_entry = (++s_semantic_enter <= 6u);
@@ -350,7 +357,7 @@ namespace hgl::ecs
                                 const uint64_t runtime_entity_id = hgl::ecs::ToRuntimeEntityKey(entity_id);
 
                                 LogWarning("[RenderPrimitiveCollect::ResolveMI] deferred primitive missing geometry_for_vil_derivation: semantic_id=%llu entity_id=%llu prim='%s' deferred_vil_hash=%u total=%llu (fallback to material default VIL)",
-                                           static_cast<unsigned long long>(primitiveComp->GetSemanticMaterial()),
+                                               static_cast<unsigned long long>(semantic_id),
                                            static_cast<unsigned long long>(runtime_entity_id),
                                            primitive->GetGeometryName().c_str(),
                                            static_cast<unsigned>(geometry.vil_hash),
@@ -361,17 +368,60 @@ namespace hgl::ecs
 
                     {
                         const uint64_t variant_hash = ComputePrimitiveVariantHash(
-                            primitiveComp->GetSemanticMaterial(), request, geometry);
+                            semantic_id, request, geometry);
 
                         // Level-1 probe: has this variant been resolved by any entity this session?
                         const bool l1_hit = material_cache.ProbeVariant(variant_hash);
 
-                        auto slot = registry->ResolveMI(hgl::ecs::ToRuntimeEntityKey(entity_id),
-                                                        primitiveComp->GetSemanticMaterial(),
+                        // ── Handle-aware fast path ──
+                        // If the Primitive carries a pre-allocated MaterialInstanceHandle,
+                        // complete its binding (material + VIL) and build the slot directly,
+                        // bypassing ResolveMI's MI slot allocation.
+                        const uint64_t deferred_handle = primitive->GetDeferredMIHandle();
+                        graph::PrimitiveMaterialSlot slot;
+
+                        if (deferred_handle != 0)
+                        {
+                            graph::mtl::MaterialAssetRecord rec;
+                            bool handle_ok = false;
+                            if (registry->QuerySemanticMaterial(semantic_id, rec))
+                            {
+                                auto domain_handle = registry->Acquire(rec);
+                                if (domain_handle.IsValid() && domain_handle.material)
+                                {
+                                    const graph::VIL *resolved_vil = registry->ResolveVIL(
+                                        domain_handle.material, rec, primitive->GetGeometry());
+                                    if (resolved_vil)
+                                    {
+                                        registry->CompleteBinding(deferred_handle,
+                                                                  domain_handle.material,
+                                                                  resolved_vil,
+                                                                  request.pipeline);
+                                        handle_ok = registry->BuildSlot(deferred_handle, slot);
+                                    }
+                                }
+                            }
+
+                            if (!handle_ok)
+                            {
+                                // Fallback: handle path failed, use normal ResolveMI.
+                                slot = registry->ResolveMI(hgl::ecs::ToRuntimeEntityKey(entity_id),
+                                                           semantic_id,
+                                                           request,
+                                                           geometry,
+                                                           instance_data,
+                                                           instance_data_size);
+                            }
+                        }
+                        else
+                        {
+                        slot = registry->ResolveMI(hgl::ecs::ToRuntimeEntityKey(entity_id),
+                                                        semantic_id,
                                                         request,
                                                         geometry,
                                                         instance_data,
                                                         instance_data_size);
+                        }
                         
                         static uint32_t s_resolve_tick = 0;
                         const bool log_resolve = (++s_resolve_tick <= 6u);
@@ -384,7 +434,7 @@ namespace hgl::ecs
                                      "semantic_id=%llu entity_id=%llu "
                                      "vil_hash=%u geometry_layout_hash=%u "
                                      "slot.IsValid=%d slot.material=%p domain=%p mi_id=%d vil=%p fallback=%u",
-                                     static_cast<unsigned long long>(primitiveComp->GetSemanticMaterial()),
+                                     static_cast<unsigned long long>(semantic_id),
                                      static_cast<unsigned long long>(hgl::ecs::ToRuntimeEntityKey(entity_id)),
                                      static_cast<unsigned>(geometry.vil_hash),
                                      static_cast<unsigned>(geometry.geometry_layout_hash),
