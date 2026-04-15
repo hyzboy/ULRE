@@ -25,6 +25,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/MaterialCreatePrecheckAdapter.h
                         ${SG_INCLUDE_PATH}/module/MaterialFinalizeFlowAdapter.h
                         ${SG_INCLUDE_PATH}/module/MaterialDomainHandle.h
+                        ${SG_INCLUDE_PATH}/module/MaterialVariant.h
                         ${SG_INCLUDE_PATH}/module/MaterialAssetRegistry.h
                         ${SG_INCLUDE_PATH}/module/VertexBindingDiagnostics.h
                         ${SG_INCLUDE_PATH}/module/BufferManager.h

@@ -9,6 +9,7 @@
 ///   MI             — per-object slot，每次新建
 
 #include <hgl/graph/module/MaterialDomainHandle.h>
+#include <hgl/graph/module/MaterialVariant.h>
 #include <hgl/graph/module/RuntimeMaterialRequest.h>
 #include <hgl/mtl/MaterialAssetRecord.h>
 #include <hgl/mtl/SamplerSlot.h>
@@ -212,6 +213,13 @@ public:
     const VIL *ResolveVIL(const MaterialTemplate *material,
                           const mtl::MaterialAssetRecord &rec,
                           const Geometry *geometry = nullptr) const;
+
+    /// 纯变体解析：semantic_id + runtime request + geometry signature -> MaterialVariant
+    /// 不分配 MI 槽位，只解析材质模板、VIL、preset 等变体信息。
+    /// Phase D 的 DirectCreatePrimitive 路径在渲染时使用此 API。
+    MaterialVariant ResolveVariant(SemanticMaterialId semantic_id,
+                                   const RuntimeMaterialRequest &request,
+                                   const GeometrySignature &geometry);
 
     /// 注册最小语义材质并返回稳定ID（不创建Material/MI）。
     /// 注意：此ID故意不包含 pipeline/domain_id 等运行时策略字段。

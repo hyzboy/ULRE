@@ -540,6 +540,79 @@ bool MaterialAssetRegistry::QuerySemanticMaterial(SemanticMaterialId id, mtl::Ma
     return true;
 }
 
+MaterialVariant MaterialAssetRegistry::ResolveVariant(SemanticMaterialId semantic_id,
+                                                       const RuntimeMaterialRequest &request,
+                                                       const GeometrySignature &geometry)
+{
+    GeometrySignature effective_geometry = geometry;
+    if (effective_geometry.vil_hash == 0
+     && effective_geometry.geometry_layout_hash == 0
+     && effective_geometry.geometry_for_vil_derivation)
+    {
+        effective_geometry.geometry_layout_hash = ComputeGeometryLayoutHash(effective_geometry.geometry_for_vil_derivation);
+
+        const uint64_t n = ++g_resolve_geometry_layout_hash_synthesized;
+        if (ShouldLogPow2(n))
+        {
+            std::fprintf(stderr,
+                "[MaterialAssetRegistry] ResolveVariant synthesized geometry_layout_hash for deferred signature (vil_hash=0), total=%llu\n",
+                static_cast<unsigned long long>(n));
+        }
+    }
+
+    VariantKey key;
+    key.semantic_id = semantic_id;
+    key.request = request;
+    key.geometry = effective_geometry;
+
+    MaterialDomainHandle handle;
+    {
+        auto vc_it = variant_cache.find(key);
+        if (vc_it != variant_cache.end())
+        {
+            ++variant_cache_hit_count;
+            handle = vc_it->second;
+        }
+        else
+        {
+            ++variant_cache_miss_count;
+
+            mtl::MaterialAssetRecord final_rec;
+            if (!QuerySemanticMaterial(semantic_id, final_rec))
+                return {};
+
+            final_rec.pipeline  = request.pipeline;
+            final_rec.domain_id = request.domain_id;
+            final_rec.prim      = effective_geometry.primitive;
+
+            handle = Acquire(final_rec);
+            if (!handle.IsValid())
+                return {};
+
+            variant_cache[key] = handle;
+        }
+    }
+
+    // Rebuild final_rec for VIL resolution (needed even on cache hit).
+    mtl::MaterialAssetRecord final_rec;
+    if (!QuerySemanticMaterial(semantic_id, final_rec))
+        return {};
+    final_rec.pipeline  = request.pipeline;
+    final_rec.domain_id = request.domain_id;
+    final_rec.prim      = effective_geometry.primitive;
+
+    const VIL *resolved_vil = ResolveRuntimeVIL(handle.material, final_rec, effective_geometry);
+
+    MaterialVariant result;
+    result.material_template        = handle.material;
+    result.vil                      = resolved_vil;
+    result.preset                   = request.pipeline;
+    result.material_preset          = final_rec.preset;
+    result.idd_handle               = handle.idd_handle;
+    result.texture_array_slot_flags = handle.material ? handle.material->GetTextureArraySlotFlags() : 0;
+    return result;
+}
+
 PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(SemanticMaterialId semantic_id,
                                                    const RuntimeMaterialRequest &request,
                                                    const GeometrySignature &geometry,
