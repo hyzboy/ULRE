@@ -475,7 +475,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
         InstanceDataDomain *new_domain = mm->CreateInstanceDataDomain(handle.material);
         if (!new_domain)
             return {};
-        handle.domain_handle = mm->GetMRDManager()->GetHandle(new_domain);
+        handle.domain_handle = mm->GetIDDManager()->GetHandle(new_domain);
         domain_cache[domain_cache_key] = handle.domain_handle;
     }
 
@@ -490,7 +490,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     }
     else
     {
-        InstanceDataDomain *domain_ptr = mm->GetMRDManager()->Get(handle.domain_handle);
+        InstanceDataDomain *domain_ptr = mm->GetIDDManager()->Get(handle.domain_handle);
         handle.binding = mm->CreateDomainMaterialBinding(domain_ptr, handle.material);
         if (!handle.binding)
             return {};
@@ -621,7 +621,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         *out_handle = handle;
 
     // P5: resolve domain_handle to raw ptr for the legacy slot-level helpers below.
-    InstanceDataDomain *resolved_target_domain = mm->GetMRDManager()->Get(handle.domain_handle);
+    InstanceDataDomain *resolved_target_domain = mm->GetIDDManager()->Get(handle.domain_handle);
 
     auto release_slot = [](PrimitiveMaterialSlot &slot) {
         if (slot.domain && slot.mi_id >= 0)
@@ -867,9 +867,9 @@ bool MaterialAssetRegistry::BuildSlot(MaterialInstanceHandle handle, PrimitiveMa
 
     const MaterialBindingRecord &rec = it->second;
     out_slot.material_template = rec.material_template;
-    out_slot.domain = mm->GetMRDManager()->Get(rec.domain_handle);
+    out_slot.domain = mm->GetIDDManager()->Get(rec.domain_handle);
     out_slot.domain_handle = rec.domain_handle;   // P9: propagate handle alongside raw ptr
-    out_slot.mrd_manager   = mm->GetMRDManager(); // P12: allow Primitive to delegate data access
+    out_slot.mrd_manager   = mm->GetIDDManager(); // P12: allow Primitive to delegate data access
     out_slot.mi_id = rec.mi_id;
     out_slot.vil = rec.vil;
     out_slot.preset = rec.preset;
@@ -959,7 +959,7 @@ bool MaterialAssetRegistry::RebindHandle(MaterialInstanceHandle handle, const Ma
         && new_slot.mi_id >= 0 && new_slot.domain && req.new_material)
     {
         void *new_ptr = new_slot.domain->GetMIData(new_slot.mi_id);
-        auto *old_domain_ptr = mm->GetMRDManager()->Get(rec.domain_handle);
+        auto *old_domain_ptr = mm->GetIDDManager()->Get(rec.domain_handle);
         const void *old_ptr = old_domain_ptr ? old_domain_ptr->GetMIData(rec.mi_id) : nullptr;
 
         if (new_ptr && old_ptr)
@@ -1013,7 +1013,7 @@ bool MaterialAssetRegistry::RebindHandle(MaterialInstanceHandle handle, const Ma
 
     if (old_domain_handle.IsValid() && old_mi_id >= 0)
     {
-        auto *old_domain_ptr = mm->GetMRDManager()->Get(old_domain_handle);
+        auto *old_domain_ptr = mm->GetIDDManager()->Get(old_domain_handle);
         if (old_domain_ptr) old_domain_ptr->FreeMISlot(old_mi_id);
     }
 
@@ -1034,7 +1034,7 @@ bool MaterialAssetRegistry::WriteMIData(MaterialInstanceHandle handle, const voi
     if (!rec.domain_handle.IsValid() || rec.mi_id < 0)
         return false;
 
-    auto *domain_ptr = mm->GetMRDManager()->Get(rec.domain_handle);
+    auto *domain_ptr = mm->GetIDDManager()->Get(rec.domain_handle);
     void *dst = domain_ptr ? domain_ptr->GetMIData(rec.mi_id) : nullptr;
     if (!dst)
         return false;
@@ -1085,7 +1085,7 @@ bool MaterialAssetRegistry::ReleaseHandle(MaterialInstanceHandle handle)
     MaterialBindingRecord &rec = it->second;
     if (rec.domain_handle.IsValid() && rec.mi_id >= 0)
     {
-        auto *domain_ptr = mm->GetMRDManager()->Get(rec.domain_handle);
+        auto *domain_ptr = mm->GetIDDManager()->Get(rec.domain_handle);
         if (domain_ptr) domain_ptr->FreeMISlot(rec.mi_id);
     }
 

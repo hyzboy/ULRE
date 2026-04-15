@@ -56,7 +56,7 @@ class InstanceDataDomain
 
 private:
 
-    friend class MRDManager;
+    friend class IDDManager;
 
     explicit InstanceDataDomain(mtl::InstanceDataLayout layout,
                                     uint32_t max_count,

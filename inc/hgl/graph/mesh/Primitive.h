@@ -10,7 +10,7 @@
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
-#include<hgl/graph/module/MRDManager.h>
+#include<hgl/graph/module/IDDManager.h>
 #include<hgl/graph/PrimitiveMaterialSlot.h>
 
 namespace hgl::graph{
@@ -21,7 +21,7 @@ class Primitive
 {
     /// Phase 2c — MI fields inlined directly; mat_inst bridge removed
     MaterialTemplate           *material_template = nullptr;  ///< primary render key
-    MRDManager                 *mrd_manager_      = nullptr;  ///< P12: data-access delegate (replaces domain* cache)
+    IDDManager                 *mrd_manager_      = nullptr;  ///< P12: data-access delegate (replaces domain* cache)
     IDDHandle                   domain_handle     = {};        ///< P9: stable handle for domain identity
     int                         mi_id             = -1;       ///< slot index in domain
     const VIL                  *vil               = nullptr;  ///< vertex input layout

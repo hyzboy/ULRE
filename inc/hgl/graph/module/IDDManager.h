@@ -13,18 +13,18 @@ class DomainMaterialBinding;
 class BufferManager;
 
 /**
- * MRDManager — InstanceDataDomain 生命周期管理器
+ * IDDManager — InstanceDataDomain 生命周期管理器
  *
  * 持有并管理所有 InstanceDataDomain 实例，以强类型 IDDHandle（id + generation）
  * 对外提供域引用，彻底替代裸指针跨模块传递。
  *
  * 职责：
- *   - 唯一拥有 InstanceDataDomain 的构造权（friend class MRDManager）
+ *   - 唯一拥有 InstanceDataDomain 的构造权（friend class IDDManager）
  *   - 维护句柄表：domain_table_（id → entry）和 domain_id_map_（ptr → id）
  *   - 提供 MI 槽位管理的统一入口（AllocMISlot / FreeMISlot / GetMIData / WriteMIData）
  *   - 懒创建 GPU 缓冲区（EnsureGPUBuffers，由 Collect System 在首帧触发）
  */
-class MRDManager
+class IDDManager
 {
     struct DomainEntry
     {
@@ -42,8 +42,8 @@ class MRDManager
 
 public:
 
-    MRDManager();
-    ~MRDManager();
+    IDDManager();
+    ~IDDManager();
 
     // ----------------------------------------------------------------
     // 域生命周期 -- Create / Get / Release

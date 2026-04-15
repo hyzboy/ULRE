@@ -125,8 +125,8 @@ namespace
 
 GRAPH_MODULE_CONSTRUCT(MaterialManager)
 {
-    // P1: MRDManager owns domain lifecycle; MaterialManager delegates to it
-    mrd_manager_ = new MRDManager();
+    // P1: IDDManager owns domain lifecycle; MaterialManager delegates to it
+    mrd_manager_ = new IDDManager();
 }
 
 const ShaderModule *MaterialManager::CreateShaderModule(const std::string &sm_name,const ShaderCreateInfo *sci)

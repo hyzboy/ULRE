@@ -9,7 +9,7 @@ namespace hgl::graph
 
 class MaterialTemplate;
 class InstanceDataDomain;
-class MRDManager;
+class IDDManager;
 class VertexInputLayout;
 using VIL = VertexInputLayout;
 
@@ -38,7 +38,7 @@ struct PrimitiveMaterialSlot
     MaterialTemplate        *material_template = nullptr;
     InstanceDataDomain  *domain            = nullptr;
     IDDHandle                domain_handle     = {};          // P9: handle-based identity alongside raw ptr cache
-    MRDManager              *mrd_manager       = nullptr;     // P12: for Primitive data-access delegation
+    IDDManager              *mrd_manager       = nullptr;     // P12: for Primitive data-access delegation
     int                      mi_id             = -1;
     const VIL               *vil               = nullptr;
     GraphicsPipelinePreset   preset            = GraphicsPipelinePreset::Solid3D;

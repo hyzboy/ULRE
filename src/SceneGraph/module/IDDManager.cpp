@@ -1,4 +1,4 @@
-#include <hgl/graph/module/MRDManager.h>
+#include <hgl/graph/module/IDDManager.h>
 #include <hgl/vk/VKInstanceDataDomain.h>
 #include <cstring>
 
@@ -8,13 +8,13 @@ namespace hgl::graph {
 // Ctor / Dtor
 // ---------------------------------------------------------------------------
 
-MRDManager::MRDManager()
+IDDManager::IDDManager()
 {
     // index 0 = invalid sentinel; IsValid() requires id != 0
     domain_table_.push_back(DomainEntry{nullptr, 0});
 }
 
-MRDManager::~MRDManager()
+IDDManager::~IDDManager()
 {
     // Release any still-alive domains
     for (size_t i = 1; i < domain_table_.size(); ++i)
@@ -33,7 +33,7 @@ MRDManager::~MRDManager()
 // Private helpers
 // ---------------------------------------------------------------------------
 
-uint32_t MRDManager::RegisterDomain(InstanceDataDomain *domain)
+uint32_t IDDManager::RegisterDomain(InstanceDataDomain *domain)
 {
     if (!domain)
         return 0;
@@ -66,7 +66,7 @@ uint32_t MRDManager::RegisterDomain(InstanceDataDomain *domain)
     return id;
 }
 
-void MRDManager::UnregisterDomain(InstanceDataDomain *domain)
+void IDDManager::UnregisterDomain(InstanceDataDomain *domain)
 {
     auto it = domain_id_map_.find(domain);
     if (it == domain_id_map_.end())
@@ -82,7 +82,7 @@ void MRDManager::UnregisterDomain(InstanceDataDomain *domain)
 // Public: Create / Get / Release / GetHandle
 // ---------------------------------------------------------------------------
 
-IDDHandle MRDManager::Create(mtl::InstanceDataLayout layout,
+IDDHandle IDDManager::Create(mtl::InstanceDataLayout layout,
                               uint32_t                max_count,
                               uint8_t                 tex_array_slots)
 {
@@ -91,7 +91,7 @@ IDDHandle MRDManager::Create(mtl::InstanceDataLayout layout,
     return IDDHandle{id, domain_table_[id].generation};
 }
 
-InstanceDataDomain *MRDManager::Get(IDDHandle handle) const
+InstanceDataDomain *IDDManager::Get(IDDHandle handle) const
 {
     if (!handle.IsValid() || handle.id >= static_cast<uint32_t>(domain_table_.size()))
         return nullptr;
@@ -99,7 +99,7 @@ InstanceDataDomain *MRDManager::Get(IDDHandle handle) const
     return (e.generation == handle.generation) ? e.domain : nullptr;
 }
 
-void MRDManager::Release(IDDHandle handle)
+void IDDManager::Release(IDDHandle handle)
 {
     InstanceDataDomain *domain = Get(handle);
     if (!domain)
@@ -108,7 +108,7 @@ void MRDManager::Release(IDDHandle handle)
     delete domain;
 }
 
-IDDHandle MRDManager::GetHandle(InstanceDataDomain *domain) const
+IDDHandle IDDManager::GetHandle(InstanceDataDomain *domain) const
 {
     if (!domain)
         return InvalidIDDHandle;
@@ -123,7 +123,7 @@ IDDHandle MRDManager::GetHandle(InstanceDataDomain *domain) const
 // MI slot management (P7 — stubs returning safe defaults until full impl)
 // ---------------------------------------------------------------------------
 
-int MRDManager::AllocMISlot(IDDHandle handle, const void *init_data, uint32_t size)
+int IDDManager::AllocMISlot(IDDHandle handle, const void *init_data, uint32_t size)
 {
     auto *d = Get(handle);
     if (!d)
@@ -138,20 +138,20 @@ int MRDManager::AllocMISlot(IDDHandle handle, const void *init_data, uint32_t si
     return mi_id;
 }
 
-void MRDManager::FreeMISlot(IDDHandle handle, int mi_id)
+void IDDManager::FreeMISlot(IDDHandle handle, int mi_id)
 {
     auto *d = Get(handle);
     if (d)
         d->FreeMISlot(mi_id);
 }
 
-void *MRDManager::GetMIData(IDDHandle handle, int mi_id) const
+void *IDDManager::GetMIData(IDDHandle handle, int mi_id) const
 {
     auto *d = Get(handle);
     return d ? d->GetMIData(mi_id) : nullptr;
 }
 
-bool MRDManager::WriteMIData(IDDHandle handle, int mi_id, const void *data, uint32_t size)
+bool IDDManager::WriteMIData(IDDHandle handle, int mi_id, const void *data, uint32_t size)
 {
     if (!data || size == 0)
         return false;
@@ -165,7 +165,7 @@ bool MRDManager::WriteMIData(IDDHandle handle, int mi_id, const void *data, uint
     return true;
 }
 
-bool MRDManager::EnsureGPUBuffers(IDDHandle handle, BufferManager *bm)
+bool IDDManager::EnsureGPUBuffers(IDDHandle handle, BufferManager *bm)
 {
     auto *d = Get(handle);
     if (!d || !d->hasMI())
@@ -177,7 +177,7 @@ bool MRDManager::EnsureGPUBuffers(IDDHandle handle, BufferManager *bm)
 // Diagnostics
 // ---------------------------------------------------------------------------
 
-uint32_t MRDManager::GetDomainCount() const
+uint32_t IDDManager::GetDomainCount() const
 {
     uint32_t count = 0;
     for (size_t i = 1; i < domain_table_.size(); ++i)

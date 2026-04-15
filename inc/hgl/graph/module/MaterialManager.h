@@ -6,7 +6,7 @@
 #include<hgl/vk/VKInstanceDataDomain.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/graph/PrimitiveMaterialSlot.h>
-#include<hgl/graph/module/MRDManager.h>
+#include<hgl/graph/module/IDDManager.h>
 #include<hgl/type/ObjectManager.h>
 #include<hgl/graph/module/ShaderGenValidationTypes.h>
 #include<ankerl/unordered_dense.h>
@@ -114,8 +114,8 @@ private:
     // Fallback material for error handling (initialized on first use)
     MaterialTemplate *fallback_material = nullptr;
 
-    // MRDManager — owns all InstanceDataDomain instances (P1+)
-    MRDManager *mrd_manager_ = nullptr;
+    // IDDManager — owns all InstanceDataDomain instances (P1+)
+    IDDManager *mrd_manager_ = nullptr;
 
 private:
 
@@ -165,8 +165,8 @@ public: //Material resource access
 
     InstanceDataDomain *GetOrCreateDefaultDomain(MaterialTemplate *mtl);
 
-    /// P5: expose MRDManager for callers that need handle↔pointer bridging.
-    MRDManager *GetMRDManager() const { return mrd_manager_; }
+    /// P5: expose IDDManager for callers that need handle↔pointer bridging.
+    IDDManager *GetIDDManager() const { return mrd_manager_; }
 
 public: //Add
 
@@ -255,7 +255,7 @@ public: // Override Release from GraphModule - cleanup all resources
 
         ResetAcquireStats();
 
-        // P1: teardown MRDManager after all domains are cleaned up
+        // P1: teardown IDDManager after all domains are cleaned up
         delete mrd_manager_;
         mrd_manager_ = nullptr;
     }
