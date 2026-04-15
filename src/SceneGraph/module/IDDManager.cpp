@@ -1,5 +1,6 @@
 #include <hgl/graph/module/IDDManager.h>
 #include <hgl/vk/VKInstanceDataDomain.h>
+#include <hgl/vk/MITBuffer.h>
 #include <cstring>
 
 namespace hgl::graph {
@@ -11,7 +12,7 @@ namespace hgl::graph {
 IDDManager::IDDManager()
 {
     // index 0 = invalid sentinel; IsValid() requires id != 0
-    domain_table_.push_back(DomainEntry{nullptr, 0});
+    domain_table_.push_back(DomainEntry{nullptr, nullptr, 0});
 }
 
 IDDManager::~IDDManager()
@@ -19,6 +20,9 @@ IDDManager::~IDDManager()
     // Release any still-alive domains
     for (size_t i = 1; i < domain_table_.size(); ++i)
     {
+        delete domain_table_[i].mit_buffer;
+        domain_table_[i].mit_buffer = nullptr;
+
         if (domain_table_[i].domain)
         {
             delete domain_table_[i].domain;
@@ -61,7 +65,7 @@ uint32_t IDDManager::RegisterDomain(InstanceDataDomain *domain)
 
     // No free slot — append
     const uint32_t id = static_cast<uint32_t>(domain_table_.size());
-    domain_table_.push_back(DomainEntry{domain, 1});
+    domain_table_.push_back(DomainEntry{domain, nullptr, 1});
     domain_id_map_[domain] = id;
     return id;
 }
@@ -88,6 +92,11 @@ IDDHandle IDDManager::Create(mtl::InstanceDataLayout layout,
 {
     auto *domain = new InstanceDataDomain(layout, max_count, tex_array_slots);
     const uint32_t id = RegisterDomain(domain);
+
+    // 当域声明了纹理槽位时，同步创建 MIT buffer host
+    if (tex_array_slots != 0)
+        domain_table_[id].mit_buffer = new MITBuffer();
+
     return IDDHandle{id, domain_table_[id].generation};
 }
 
@@ -104,6 +113,14 @@ void IDDManager::Release(IDDHandle handle)
     InstanceDataDomain *domain = Get(handle);
     if (!domain)
         return;
+
+    // Clean up MIT buffer before unregistering
+    if (handle.id < static_cast<uint32_t>(domain_table_.size()))
+    {
+        delete domain_table_[handle.id].mit_buffer;
+        domain_table_[handle.id].mit_buffer = nullptr;
+    }
+
     UnregisterDomain(domain);
     delete domain;
 }
@@ -171,6 +188,18 @@ bool IDDManager::EnsureGPUBuffers(IDDHandle handle, BufferManager *bm)
     if (!d || !d->HasLayout())
         return false;
     return d->EnsureGPUBuffer(bm, d->GetMaxCount());
+}
+
+// ---------------------------------------------------------------------------
+// MIT buffer access
+// ---------------------------------------------------------------------------
+
+MITBuffer *IDDManager::GetMITBuffer(IDDHandle handle) const
+{
+    if (!handle.IsValid() || handle.id >= static_cast<uint32_t>(domain_table_.size()))
+        return nullptr;
+    const DomainEntry &e = domain_table_[handle.id];
+    return (e.generation == handle.generation) ? e.mit_buffer : nullptr;
 }
 
 // ---------------------------------------------------------------------------

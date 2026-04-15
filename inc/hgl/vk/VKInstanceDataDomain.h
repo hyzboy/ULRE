@@ -47,16 +47,6 @@ class InstanceDataDomain
     uint64_t uploaded_bytes_total = 0;
     uint32_t full_upload_fallback_count = 0;
 
-private:// mit
-
-    DeviceBuffer  *mit_gpu_buffer = nullptr;
-    uint32_t mit_gpu_capacity = 0;   ///< MIT uint32 capacity
-    bool mit_dirty = false;
-    uint32_t mit_dirty_begin = 0;
-    uint32_t mit_dirty_end = 0;      ///< one past end
-    uint64_t mit_uploaded_bytes_total = 0;
-    uint32_t mit_full_upload_fallback_count = 0;
-
 private:
 
     friend class IDDManager;
@@ -120,25 +110,6 @@ public:
 
     uint64_t GetUploadedBytesTotal() const { return uploaded_bytes_total; }
     uint32_t GetFullUploadFallbackCount() const { return full_upload_fallback_count; }
-
-public:
-
-    bool EnsureMITBuffer(BufferManager *bm, uint32_t min_uint_count, bool allow_recreate = true);
-
-    DeviceBuffer *GetMITGPUBuffer() const { return mit_gpu_buffer; }
-
-    uint32_t GetMITGPUCapacity() const { return mit_gpu_capacity; }
-
-    bool HasMITDirtyRange() const { return mit_dirty; }
-    uint32_t GetMITDirtyBegin() const { return mit_dirty_begin; }
-    uint32_t GetMITDirtyEnd() const { return mit_dirty_end; }
-
-    void MarkMITDirtyRange(uint32_t begin, uint32_t count);
-    void ClearMITDirtyRange();
-    
-    bool UploadMITDirtyRange(const uint32_t *mit_source_data, uint32_t mit_source_count);
-    uint64_t GetMITUploadedBytesTotal() const { return mit_uploaded_bytes_total; }
-    uint32_t GetMITFullUploadFallbackCount() const { return mit_full_upload_fallback_count; }
 }; // class InstanceDataDomain
 
 } // namespace hgl::graph

@@ -69,12 +69,6 @@ hgl::graph::InstanceDataDomain::~InstanceDataDomain()
             buffer_manager->Release(gpu_buffer);
             gpu_buffer = nullptr;
         }
-
-        if (mit_gpu_buffer)
-        {
-            buffer_manager->Release(mit_gpu_buffer);
-            mit_gpu_buffer = nullptr;
-        }
     }
 
     delete data_manager;
@@ -150,43 +144,6 @@ bool hgl::graph::InstanceDataDomain::EnsureGPUBuffer(BufferManager *bm, uint32_t
     return true;
 }
 
-bool hgl::graph::InstanceDataDomain::EnsureMITBuffer(BufferManager *bm, uint32_t min_uint_count, bool allow_recreate)
-{
-    if (!bm)
-        return false;
-
-    if (min_uint_count == 0)
-        return false;
-
-    if (mit_gpu_buffer && mit_gpu_capacity >= min_uint_count)
-    {
-        buffer_manager = bm;
-        return true;
-    }
-
-    if (mit_gpu_buffer && !allow_recreate)
-        return false;
-
-    const uint32_t new_capacity = NextPow2(min_uint_count);
-    DeviceBuffer *new_buffer = bm->CreateSSBO("Domain:MITData",
-                                              static_cast<VkDeviceSize>(sizeof(uint32_t)) * new_capacity,
-                                              nullptr,
-                                              SharingMode::Exclusive);
-    if (!new_buffer)
-        return false;
-
-    if (mit_gpu_buffer)
-        bm->Release(mit_gpu_buffer);
-
-    buffer_manager = bm;
-    mit_gpu_buffer = new_buffer;
-    mit_gpu_capacity = new_capacity;
-
-    MarkMITDirtyRange(0, new_capacity);
-    ++mit_full_upload_fallback_count;
-    return true;
-}
-
 void hgl::graph::InstanceDataDomain::MarkDirtyRange(uint32_t begin, uint32_t count)
 {
     if (count == 0)
@@ -205,36 +162,11 @@ void hgl::graph::InstanceDataDomain::MarkDirtyRange(uint32_t begin, uint32_t cou
     dirty_end = std::max(dirty_end, end);
 }
 
-void hgl::graph::InstanceDataDomain::MarkMITDirtyRange(uint32_t begin, uint32_t count)
-{
-    if (count == 0)
-        return;
-
-    const uint32_t end = begin + count;
-    if (!mit_dirty)
-    {
-        mit_dirty = true;
-        mit_dirty_begin = begin;
-        mit_dirty_end = end;
-        return;
-    }
-
-    mit_dirty_begin = std::min(mit_dirty_begin, begin);
-    mit_dirty_end = std::max(mit_dirty_end, end);
-}
-
 void hgl::graph::InstanceDataDomain::ClearDirtyRange()
 {
     dirty = false;
     dirty_begin = 0;
     dirty_end = 0;
-}
-
-void hgl::graph::InstanceDataDomain::ClearMITDirtyRange()
-{
-    mit_dirty = false;
-    mit_dirty_begin = 0;
-    mit_dirty_end = 0;
 }
 
 bool hgl::graph::InstanceDataDomain::UploadDirtyRange()
@@ -289,48 +221,5 @@ bool hgl::graph::InstanceDataDomain::UploadDirtyRange()
     UnmapWritable(gpu_buffer);
     uploaded_bytes_total += static_cast<uint64_t>(byte_size);
     ClearDirtyRange();
-    return true;
-}
-
-bool hgl::graph::InstanceDataDomain::UploadMITDirtyRange(const uint32_t *mit_source_data, uint32_t mit_source_count)
-{
-    if (!mit_dirty)
-        return true;
-
-    if (!mit_gpu_buffer || !mit_source_data || mit_source_count == 0)
-        return false;
-
-    if (mit_dirty_begin >= mit_dirty_end)
-    {
-        ClearMITDirtyRange();
-        return true;
-    }
-
-    if (mit_dirty_begin >= mit_gpu_capacity || mit_dirty_begin >= mit_source_count)
-    {
-        ClearMITDirtyRange();
-        return false;
-    }
-
-    const uint32_t clamped_end = std::min({mit_dirty_end, mit_gpu_capacity, mit_source_count});
-    const uint32_t copy_count = clamped_end - mit_dirty_begin;
-    if (copy_count == 0)
-    {
-        ClearMITDirtyRange();
-        return true;
-    }
-
-    const VkDeviceSize byte_offset = static_cast<VkDeviceSize>(mit_dirty_begin) * sizeof(uint32_t);
-    const VkDeviceSize byte_size = static_cast<VkDeviceSize>(copy_count) * sizeof(uint32_t);
-
-    void *dst = MapWritable(mit_gpu_buffer, byte_offset, byte_size);
-    if (!dst)
-        return false;
-
-    memcpy(dst, mit_source_data + mit_dirty_begin, static_cast<size_t>(byte_size));
-    UnmapWritable(mit_gpu_buffer);
-
-    mit_uploaded_bytes_total += static_cast<uint64_t>(byte_size);
-    ClearMITDirtyRange();
     return true;
 }

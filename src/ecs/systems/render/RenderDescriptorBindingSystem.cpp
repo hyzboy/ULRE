@@ -21,6 +21,7 @@
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/vk/VKInstanceDataDomain.h>
+#include<hgl/vk/MITBuffer.h>
 #include<unordered_set>
 #include<cstdlib>
 #include<cstdio>
@@ -295,13 +296,14 @@ namespace hgl::ecs
                                         graph::MaterialTemplate *material,
                                         hgl::graph::IDDHandle idd_handle,
                                         graph::BufferManager *buffer_manager,
+                                        graph::IDDManager *idd_manager,
                                         const std::unordered_set<graph::DomainMaterialBinding *> &registered_domain_bindings,
                                         DomainDirectMITBindResult *out_result = nullptr)
         {
             if (out_result)
                 *out_result = DomainDirectMITBindResult::Success;
 
-            if (!batch || !material || !idd_handle.IsValid() || !buffer_manager)
+            if (!batch || !material || !idd_handle.IsValid() || !buffer_manager || !idd_manager)
             {
                 if (out_result)
                     *out_result = DomainDirectMITBindResult::InvalidInput;
@@ -382,22 +384,30 @@ namespace hgl::ecs
                 memcpy(dst, binding.mit_data, static_cast<size_t>(copy_count) * sizeof(uint32_t));
             }
 
-            if (!domain->EnsureMITBuffer(buffer_manager, total_uint_count))
+            graph::MITBuffer *mit = idd_manager->GetMITBuffer(idd_handle);
+            if (!mit)
             {
                 if (out_result)
                     *out_result = DomainDirectMITBindResult::EnsureBufferFailed;
                 return false;
             }
 
-            domain->MarkMITDirtyRange(0, total_uint_count);
-            if (!domain->UploadMITDirtyRange(mit_staging.data(), total_uint_count))
+            if (!mit->EnsureBuffer(buffer_manager, total_uint_count))
+            {
+                if (out_result)
+                    *out_result = DomainDirectMITBindResult::EnsureBufferFailed;
+                return false;
+            }
+
+            mit->MarkDirtyRange(0, total_uint_count);
+            if (!mit->UploadDirtyRange(mit_staging.data(), total_uint_count))
             {
                 if (out_result)
                     *out_result = DomainDirectMITBindResult::UploadFailed;
                 return false;
             }
 
-            auto *mit_buf = domain->GetMITGPUBuffer();
+            auto *mit_buf = mit->GetGPUBuffer();
             auto *mit_gpu = mit_buf ? mit_buf->GetGPUBuffer() : nullptr;
             if (!mit_gpu)
             {
@@ -1002,6 +1012,7 @@ namespace hgl::ecs
                                                                             material,
                                                                             idd_handle,
                                                                             buffer_manager,
+                                                                            material_manager ? material_manager->GetIDDManager() : nullptr,
                                                                             registered_domain_bindings,
                                                                             &mit_result);
                             if (bound_domain_direct)

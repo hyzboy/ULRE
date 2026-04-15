@@ -11,6 +11,7 @@ namespace hgl::graph {
 class InstanceDataDomain;
 class DomainMaterialBinding;
 class BufferManager;
+class MITBuffer;
 
 /**
  * IDDManager — InstanceDataDomain 生命周期管理器
@@ -29,6 +30,7 @@ class IDDManager
     struct DomainEntry
     {
         InstanceDataDomain *    domain     = nullptr;
+        MITBuffer          *    mit_buffer = nullptr;
         uint32_t                generation = 0;  // 0 = invalid/released
     };
 
@@ -102,6 +104,15 @@ public:
     // ----------------------------------------------------------------
 
     bool EnsureGPUBuffers(IDDHandle handle, BufferManager *bm);
+
+    // ----------------------------------------------------------------
+    // MIT (Material Instance Texture ID) buffer 访问
+    // ----------------------------------------------------------------
+
+    /**
+     * 获取指定域关联的 MITBuffer；句柄无效时返回 nullptr。
+     */
+    MITBuffer *GetMITBuffer(IDDHandle handle) const;
 
     // ----------------------------------------------------------------
     // 诊断
