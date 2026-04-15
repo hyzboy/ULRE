@@ -4,7 +4,7 @@
 namespace hgl::graph
 {
 
-DomainMaterialBinding::DomainMaterialBinding(MaterialResourceDomain *d, MaterialTemplate *m, MaterialParameters *mp)
+DomainMaterialBinding::DomainMaterialBinding(InstanceDataDomain *d, MaterialTemplate *m, MaterialParameters *mp)
     : domain(d), material(m), mp_per_material(mp)
 {}
 

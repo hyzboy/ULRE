@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKMaterialResourceDomain.h>
+﻿#include<hgl/vk/VKInstanceDataDomain.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/graph/module/BufferManager.h>
 
@@ -46,7 +46,7 @@ namespace
     }
 }
 
-hgl::graph::MaterialResourceDomain::MaterialResourceDomain(
+hgl::graph::InstanceDataDomain::InstanceDataDomain(
     hgl::graph::mtl::InstanceDataLayout layout,
     uint32_t max_count,
     uint8_t tex_array_slots)
@@ -60,7 +60,7 @@ hgl::graph::MaterialResourceDomain::MaterialResourceDomain(
         mi_data_manager = new hgl::ActiveMemoryBlockManager(stride);
 }
 
-hgl::graph::MaterialResourceDomain::~MaterialResourceDomain()
+hgl::graph::InstanceDataDomain::~InstanceDataDomain()
 {
     if (buffer_manager)
     {
@@ -81,7 +81,7 @@ hgl::graph::MaterialResourceDomain::~MaterialResourceDomain()
     mi_data_manager = nullptr;
 }
 
-int hgl::graph::MaterialResourceDomain::AllocMISlot()
+int hgl::graph::InstanceDataDomain::AllocMISlot()
 {
     if(!mi_data_manager)
         return -1;
@@ -91,7 +91,7 @@ int hgl::graph::MaterialResourceDomain::AllocMISlot()
     return mi_id;
 }
 
-void hgl::graph::MaterialResourceDomain::FreeMISlot(int mi_id)
+void hgl::graph::InstanceDataDomain::FreeMISlot(int mi_id)
 {
     if(mi_id < 0 || !mi_data_manager)
         return;
@@ -99,7 +99,7 @@ void hgl::graph::MaterialResourceDomain::FreeMISlot(int mi_id)
     mi_data_manager->Release(&mi_id, 1);
 }
 
-void *hgl::graph::MaterialResourceDomain::GetMIData(int mi_id)
+void *hgl::graph::InstanceDataDomain::GetMIData(int mi_id)
 {
     if(!mi_data_manager)
         return nullptr;
@@ -107,7 +107,7 @@ void *hgl::graph::MaterialResourceDomain::GetMIData(int mi_id)
     return mi_data_manager->GetData(mi_id);
 }
 
-bool hgl::graph::MaterialResourceDomain::EnsureMIBuffer(BufferManager *bm, uint32_t min_mi_count, bool allow_recreate)
+bool hgl::graph::InstanceDataDomain::EnsureMIBuffer(BufferManager *bm, uint32_t min_mi_count, bool allow_recreate)
 {
     if (!bm)
         return false;
@@ -150,7 +150,7 @@ bool hgl::graph::MaterialResourceDomain::EnsureMIBuffer(BufferManager *bm, uint3
     return true;
 }
 
-bool hgl::graph::MaterialResourceDomain::EnsureMITBuffer(BufferManager *bm, uint32_t min_uint_count, bool allow_recreate)
+bool hgl::graph::InstanceDataDomain::EnsureMITBuffer(BufferManager *bm, uint32_t min_uint_count, bool allow_recreate)
 {
     if (!bm)
         return false;
@@ -187,7 +187,7 @@ bool hgl::graph::MaterialResourceDomain::EnsureMITBuffer(BufferManager *bm, uint
     return true;
 }
 
-void hgl::graph::MaterialResourceDomain::MarkMIDirtyRange(uint32_t begin, uint32_t count)
+void hgl::graph::InstanceDataDomain::MarkMIDirtyRange(uint32_t begin, uint32_t count)
 {
     if (count == 0)
         return;
@@ -205,7 +205,7 @@ void hgl::graph::MaterialResourceDomain::MarkMIDirtyRange(uint32_t begin, uint32
     mi_dirty_end = std::max(mi_dirty_end, end);
 }
 
-void hgl::graph::MaterialResourceDomain::MarkMITDirtyRange(uint32_t begin, uint32_t count)
+void hgl::graph::InstanceDataDomain::MarkMITDirtyRange(uint32_t begin, uint32_t count)
 {
     if (count == 0)
         return;
@@ -223,21 +223,21 @@ void hgl::graph::MaterialResourceDomain::MarkMITDirtyRange(uint32_t begin, uint3
     mit_dirty_end = std::max(mit_dirty_end, end);
 }
 
-void hgl::graph::MaterialResourceDomain::ClearMIDirtyRange()
+void hgl::graph::InstanceDataDomain::ClearMIDirtyRange()
 {
     mi_dirty = false;
     mi_dirty_begin = 0;
     mi_dirty_end = 0;
 }
 
-void hgl::graph::MaterialResourceDomain::ClearMITDirtyRange()
+void hgl::graph::InstanceDataDomain::ClearMITDirtyRange()
 {
     mit_dirty = false;
     mit_dirty_begin = 0;
     mit_dirty_end = 0;
 }
 
-bool hgl::graph::MaterialResourceDomain::UploadMIDirtyRange()
+bool hgl::graph::InstanceDataDomain::UploadMIDirtyRange()
 {
     if (!mi_dirty)
         return true;
@@ -292,7 +292,7 @@ bool hgl::graph::MaterialResourceDomain::UploadMIDirtyRange()
     return true;
 }
 
-bool hgl::graph::MaterialResourceDomain::UploadMITDirtyRange(const uint32_t *mit_source_data, uint32_t mit_source_count)
+bool hgl::graph::InstanceDataDomain::UploadMITDirtyRange(const uint32_t *mit_source_data, uint32_t mit_source_count)
 {
     if (!mit_dirty)
         return true;

@@ -1,5 +1,5 @@
 #include <hgl/graph/module/MRDManager.h>
-#include <hgl/vk/VKMaterialResourceDomain.h>
+#include <hgl/vk/VKInstanceDataDomain.h>
 #include <cstring>
 
 namespace hgl::graph {
@@ -33,7 +33,7 @@ MRDManager::~MRDManager()
 // Private helpers
 // ---------------------------------------------------------------------------
 
-uint32_t MRDManager::RegisterDomain(MaterialResourceDomain *domain)
+uint32_t MRDManager::RegisterDomain(InstanceDataDomain *domain)
 {
     if (!domain)
         return 0;
@@ -66,7 +66,7 @@ uint32_t MRDManager::RegisterDomain(MaterialResourceDomain *domain)
     return id;
 }
 
-void MRDManager::UnregisterDomain(MaterialResourceDomain *domain)
+void MRDManager::UnregisterDomain(InstanceDataDomain *domain)
 {
     auto it = domain_id_map_.find(domain);
     if (it == domain_id_map_.end())
@@ -86,12 +86,12 @@ MRDHandle MRDManager::Create(mtl::InstanceDataLayout layout,
                               uint32_t                max_count,
                               uint8_t                 tex_array_slots)
 {
-    auto *domain = new MaterialResourceDomain(layout, max_count, tex_array_slots);
+    auto *domain = new InstanceDataDomain(layout, max_count, tex_array_slots);
     const uint32_t id = RegisterDomain(domain);
     return MRDHandle{id, domain_table_[id].generation};
 }
 
-MaterialResourceDomain *MRDManager::Get(MRDHandle handle) const
+InstanceDataDomain *MRDManager::Get(MRDHandle handle) const
 {
     if (!handle.IsValid() || handle.id >= static_cast<uint32_t>(domain_table_.size()))
         return nullptr;
@@ -101,14 +101,14 @@ MaterialResourceDomain *MRDManager::Get(MRDHandle handle) const
 
 void MRDManager::Release(MRDHandle handle)
 {
-    MaterialResourceDomain *domain = Get(handle);
+    InstanceDataDomain *domain = Get(handle);
     if (!domain)
         return;
     UnregisterDomain(domain);
     delete domain;
 }
 
-MRDHandle MRDManager::GetHandle(MaterialResourceDomain *domain) const
+MRDHandle MRDManager::GetHandle(InstanceDataDomain *domain) const
 {
     if (!domain)
         return InvalidMRDHandle;

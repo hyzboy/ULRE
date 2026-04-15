@@ -20,7 +20,7 @@ namespace hgl::graph
     class Geometry;
     class Primitive;
     class MaterialTemplate;
-    class MaterialResourceDomain;
+    class InstanceDataDomain;
 }
 
 namespace example::modules
@@ -43,7 +43,7 @@ namespace example::modules
         std::shared_ptr<hgl::ecs::SubWorldComponent> subworld_component;
 
         hgl::graph::MaterialTemplate* material = nullptr;
-        hgl::graph::MaterialResourceDomain* material_domain = nullptr;
+        hgl::graph::InstanceDataDomain* material_domain = nullptr;
 
         std::vector<hgl::graph::PrimitiveMaterialSlot> material_slots;
         std::vector<std::unique_ptr<MeshResource>> mesh_resources;

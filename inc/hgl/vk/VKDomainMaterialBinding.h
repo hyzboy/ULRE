@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKMaterialParameters.h>
-#include<hgl/vk/VKMaterialResourceDomain.h>
+#include<hgl/vk/VKInstanceDataDomain.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
 
 namespace hgl::graph
@@ -15,7 +15,7 @@ class Sampler;
 /**
  * 域-材质绑定视图 (DomainMaterialBinding)
  *
- * 将一个 MaterialResourceDomain 与一个 MaterialTemplate (Shader/GraphicsPipeline 模板) 绑定。
+ * 将一个 InstanceDataDomain 与一个 MaterialTemplate (Shader/GraphicsPipeline 模板) 绑定。
  * 仅持有 PerMaterial 描述符集——这是唯一域私有的集合；
  * Static/PerFrame/PerObject 集由 MaterialTemplate 统一持有、整体绑定一次。
  *
@@ -25,7 +25,7 @@ class Sampler;
  */
 class DomainMaterialBinding
 {
-    MaterialResourceDomain     *domain          = nullptr;
+    InstanceDataDomain     *domain          = nullptr;
     MaterialTemplate           *material        = nullptr;
     MaterialParameters *mp_per_material = nullptr;
 
@@ -35,7 +35,7 @@ private:
     friend class MRDManager;
 
     /// MaterialManager 独占构造。mp_per_material 由 MaterialManager 分配后传入。
-    DomainMaterialBinding(MaterialResourceDomain *d, MaterialTemplate *m, MaterialParameters *mp);
+    DomainMaterialBinding(InstanceDataDomain *d, MaterialTemplate *m, MaterialParameters *mp);
 
 public:
 
@@ -45,7 +45,7 @@ public:
     // 基础属性
     // ----------------------------------------------------------------
 
-    MaterialResourceDomain     *GetDomain        () const { return domain; }
+    InstanceDataDomain     *GetDomain        () const { return domain; }
     MaterialTemplate           *GetMaterial      () const { return material; }
     MaterialParameters *GetPerMaterialMP () const { return mp_per_material; }
 

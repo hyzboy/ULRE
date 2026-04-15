@@ -36,7 +36,7 @@ namespace hgl::graph
         struct GizmoResource
         {
             MaterialTemplate *          mtl;
-            MaterialResourceDomain *    domain = nullptr;
+            InstanceDataDomain *    domain = nullptr;
             int                         mi_id[size_t(GizmoColor::RANGE_SIZE)] = {};
             VertexDataManager * vdm;
 

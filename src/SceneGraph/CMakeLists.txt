@@ -242,12 +242,12 @@ SOURCE_GROUP("9.Vulkan\\Geometry" FILES ${VK_GEOMETRY_FILES})
 SET(VK_SCENEGRAPH_MATERIAL_FILES    ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterialTemplate.h
                                     ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterialParameters.h
                                     ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterialDescriptorManager.h
-                                    ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterialResourceDomain.h
+                                    ${ROOT_INCLUDE_PATH}/hgl/vk/VKInstanceDataDomain.h
                                     ${ROOT_INCLUDE_PATH}/hgl/vk/VKDomainMaterialBinding.h
                                     VKMaterialTemplate.cpp
                                     VKMaterialParameters.cpp
                                     VKMaterialDescriptorManager.cpp
-                                    VKMaterialResourceDomain.cpp
+                                    VKInstanceDataDomain.cpp
                                     VKDomainMaterialBinding.cpp)
 
 SOURCE_GROUP("9.Vulkan\\Material" FILES ${VK_SCENEGRAPH_MATERIAL_FILES})

@@ -6,7 +6,7 @@
 #include <hgl/graph/module/VertexBindingCompatibility.h>
 #include <hgl/graph/module/VertexBindingDiagnostics.h>
 #include <hgl/vk/VKMaterialTemplate.h>
-#include <hgl/vk/VKMaterialResourceDomain.h>
+#include <hgl/vk/VKInstanceDataDomain.h>
 #include <hgl/vk/VKDomainMaterialBinding.h>
 #include <hgl/vk/VKVertexInput.h>
 #include <hgl/vk/VKVertexInputConfig.h>
@@ -448,7 +448,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     const std::string &mat_name = handle.material->GetName();
     std::string mat_name_str = mat_name;
 
-    // 2. MaterialResourceDomain (按 material_name + domain_id 缓存)
+    // 2. InstanceDataDomain (按 material_name + domain_id 缓存)
     bool used_default_domain = false;
     const std::string &did = NormalizeDomainId(rec.domain_id, &used_default_domain); // 未指定 → 显式默认域
     if (used_default_domain)
@@ -472,7 +472,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     }
     else
     {
-        MaterialResourceDomain *new_domain = mm->CreateMaterialResourceDomain(handle.material);
+        InstanceDataDomain *new_domain = mm->CreateInstanceDataDomain(handle.material);
         if (!new_domain)
             return {};
         handle.domain_handle = mm->GetMRDManager()->GetHandle(new_domain);
@@ -490,7 +490,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     }
     else
     {
-        MaterialResourceDomain *domain_ptr = mm->GetMRDManager()->Get(handle.domain_handle);
+        InstanceDataDomain *domain_ptr = mm->GetMRDManager()->Get(handle.domain_handle);
         handle.binding = mm->CreateDomainMaterialBinding(domain_ptr, handle.material);
         if (!handle.binding)
             return {};
@@ -621,7 +621,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
         *out_handle = handle;
 
     // P5: resolve domain_handle to raw ptr for the legacy slot-level helpers below.
-    MaterialResourceDomain *resolved_target_domain = mm->GetMRDManager()->Get(handle.domain_handle);
+    InstanceDataDomain *resolved_target_domain = mm->GetMRDManager()->Get(handle.domain_handle);
 
     auto release_slot = [](PrimitiveMaterialSlot &slot) {
         if (slot.domain && slot.mi_id >= 0)
@@ -630,7 +630,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
     };
 
     auto apply_runtime_slot = [&](PrimitiveMaterialSlot &slot,
-                                  MaterialResourceDomain *target_domain,
+                                  InstanceDataDomain *target_domain,
                                   bool &ok) -> PrimitiveMaterialSlot &
     {
         ok = false;

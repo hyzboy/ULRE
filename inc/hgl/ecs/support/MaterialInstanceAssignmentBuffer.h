@@ -17,7 +17,7 @@ namespace hgl::graph
 {
     class BufferManager;
     class DomainMaterialBinding;
-    class MaterialResourceDomain;
+    class InstanceDataDomain;
 }
 
 namespace hgl::ecs

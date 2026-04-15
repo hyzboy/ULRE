@@ -7,7 +7,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
-#include<hgl/vk/VKMaterialResourceDomain.h>
+#include<hgl/vk/VKInstanceDataDomain.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>

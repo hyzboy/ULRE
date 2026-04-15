@@ -5,7 +5,7 @@
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKMaterialTemplate.h>
-#include<hgl/vk/VKMaterialResourceDomain.h>
+#include<hgl/vk/VKInstanceDataDomain.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
@@ -58,7 +58,7 @@ public:
             VkPipelineLayout            GetPipelineLayout   ()      { return material_template ? material_template->GetPipelineLayout() : VK_NULL_HANDLE; }
             MaterialTemplate *          GetMaterial         ()      { return material_template; }  ///< @deprecated use GetMaterialTemplate()
             MaterialTemplate *          GetMaterialTemplate ()const { return material_template; }
-            MaterialResourceDomain *    GetDomain           ()const { return (mrd_manager_ && domain_handle.IsValid()) ? mrd_manager_->Get(domain_handle) : nullptr; }  ///< P12: resolved on demand via mrd_manager_
+            InstanceDataDomain *    GetDomain           ()const { return (mrd_manager_ && domain_handle.IsValid()) ? mrd_manager_->Get(domain_handle) : nullptr; }  ///< P12: resolved on demand via mrd_manager_
             MRDHandle                   GetDomainHandle     ()const { return domain_handle; }   // P9
     const   VIL *                       GetVIL              ()const { return vil; }
             int                         GetMIID             ()const { return mi_id; }

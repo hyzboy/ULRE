@@ -8,18 +8,18 @@
 
 namespace hgl::graph {
 
-class MaterialResourceDomain;
+class InstanceDataDomain;
 class DomainMaterialBinding;
 class BufferManager;
 
 /**
- * MRDManager — MaterialResourceDomain 生命周期管理器
+ * MRDManager — InstanceDataDomain 生命周期管理器
  *
- * 持有并管理所有 MaterialResourceDomain 实例，以强类型 MRDHandle（id + generation）
+ * 持有并管理所有 InstanceDataDomain 实例，以强类型 MRDHandle（id + generation）
  * 对外提供域引用，彻底替代裸指针跨模块传递。
  *
  * 职责：
- *   - 唯一拥有 MaterialResourceDomain 的构造权（friend class MRDManager）
+ *   - 唯一拥有 InstanceDataDomain 的构造权（friend class MRDManager）
  *   - 维护句柄表：domain_table_（id → entry）和 domain_id_map_（ptr → id）
  *   - 提供 MI 槽位管理的统一入口（AllocMISlot / FreeMISlot / GetMIData / WriteMIData）
  *   - 懒创建 GPU 缓冲区（EnsureGPUBuffers，由 Collect System 在首帧触发）
@@ -28,17 +28,17 @@ class MRDManager
 {
     struct DomainEntry
     {
-        MaterialResourceDomain *domain     = nullptr;
+        InstanceDataDomain *domain     = nullptr;
         uint32_t                generation = 0;  // 0 = invalid/released
     };
 
     std::vector<DomainEntry>                                              domain_table_;   // index 0 = invalid sentinel
-    ankerl::unordered_dense::map<MaterialResourceDomain *, uint32_t>     domain_id_map_;  // reverse: ptr → id
+    ankerl::unordered_dense::map<InstanceDataDomain *, uint32_t>     domain_id_map_;  // reverse: ptr → id
 
     /// 首次注册返回新 id（1-based）；重复注册返回已有 id。
-    uint32_t RegisterDomain  (MaterialResourceDomain *domain);
+    uint32_t RegisterDomain  (InstanceDataDomain *domain);
     /// 标记条目失效（generation 保留，domain 置 null）；不 delete domain。
-    void     UnregisterDomain(MaterialResourceDomain *domain);
+    void     UnregisterDomain(InstanceDataDomain *domain);
 
 public:
 
@@ -51,7 +51,7 @@ public:
 
     /**
      * 构造并注册一个新域，返回强类型句柄。
-     * 调用方不需要也不应该持有 MaterialResourceDomain*；通过 Get(handle) 解引用。
+     * 调用方不需要也不应该持有 InstanceDataDomain*；通过 Get(handle) 解引用。
      */
     MRDHandle Create(mtl::InstanceDataLayout layout,
                      uint32_t                max_count,
@@ -60,7 +60,7 @@ public:
     /**
      * 通过句柄安全解引用。generation 不匹配或越界时返回 nullptr。
      */
-    MaterialResourceDomain *Get(MRDHandle handle) const;
+    InstanceDataDomain *Get(MRDHandle handle) const;
 
     /**
      * 释放域：UnregisterDomain + delete。
@@ -72,7 +72,7 @@ public:
      * 过渡工具：裸指针反查句柄（P4-P6 迁移期使用；P8 后可移除）。
      * 若 domain 未在本 manager 中注册，返回 InvalidMRDHandle。
      */
-    MRDHandle GetHandle(MaterialResourceDomain *domain) const;
+    MRDHandle GetHandle(InstanceDataDomain *domain) const;
 
     // ----------------------------------------------------------------
     // MI 槽位管理（P7 完整实现）

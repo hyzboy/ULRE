@@ -8,7 +8,7 @@ namespace hgl::graph
 {
 
 class MaterialTemplate;
-class MaterialResourceDomain;
+class InstanceDataDomain;
 class MRDManager;
 class VertexInputLayout;
 using VIL = VertexInputLayout;
@@ -36,7 +36,7 @@ using VIL = VertexInputLayout;
 struct PrimitiveMaterialSlot
 {
     MaterialTemplate        *material_template = nullptr;
-    MaterialResourceDomain  *domain            = nullptr;
+    InstanceDataDomain  *domain            = nullptr;
     MRDHandle                domain_handle     = {};          // P9: handle-based identity alongside raw ptr cache
     MRDManager              *mrd_manager       = nullptr;     // P12: for Primitive data-access delegation
     int                      mi_id             = -1;

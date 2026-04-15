@@ -20,7 +20,7 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
-#include<hgl/vk/VKMaterialResourceDomain.h>
+#include<hgl/vk/VKInstanceDataDomain.h>
 #include<unordered_set>
 #include<cstdlib>
 #include<cstdio>
@@ -172,7 +172,7 @@ namespace hgl::ecs
             return false;
         }
 
-        hgl::graph::MaterialResourceDomain *ResolveDomainForBatch(const hgl::ecs::MaterialBatch *batch,
+        hgl::graph::InstanceDataDomain *ResolveDomainForBatch(const hgl::ecs::MaterialBatch *batch,
                                                                   hgl::graph::MRDHandle domain_handle)
         {
             if (!batch || !domain_handle.IsValid())
@@ -193,7 +193,7 @@ namespace hgl::ecs
 
         template<typename Binder>
         bool ForEachMatchingDomainBinding(graph::MaterialTemplate *material,
-                                          graph::MaterialResourceDomain *domain,
+                                          graph::InstanceDataDomain *domain,
                                           const std::unordered_set<graph::DomainMaterialBinding *> &registered_domain_bindings,
                                           Binder &&binder)
         {
@@ -224,7 +224,7 @@ namespace hgl::ecs
             if (!batch || !material || !batch->mi_buffer || !domain_handle.IsValid())
                 return false;
 
-            graph::MaterialResourceDomain *domain = ResolveDomainForBatch(batch, domain_handle);
+            graph::InstanceDataDomain *domain = ResolveDomainForBatch(batch, domain_handle);
             if (!domain)
                 return false;
 
@@ -250,7 +250,7 @@ namespace hgl::ecs
                 return false;
 
             // P10: resolve raw domain ptr from first matching item (dual-field P9)
-            graph::MaterialResourceDomain *domain = nullptr;
+            graph::InstanceDataDomain *domain = nullptr;
             int max_mi_id = -1;
             for (auto *item : batch->items)
             {
@@ -323,7 +323,7 @@ namespace hgl::ecs
             }
 
             // P10: resolve raw domain ptr from first matching item (dual-field P9)
-            graph::MaterialResourceDomain *domain = nullptr;
+            graph::InstanceDataDomain *domain = nullptr;
             int max_mi_id = -1;
             uint32_t per_entry_uint_count = 0;
 
@@ -835,7 +835,7 @@ namespace hgl::ecs
             {
                 graph::DomainMaterialBinding *resolved = nullptr;
                 if (domain_handle.IsValid()) {
-                    graph::MaterialResourceDomain *dom = ResolveDomainForBatch(batch, domain_handle);
+                    graph::InstanceDataDomain *dom = ResolveDomainForBatch(batch, domain_handle);
                     if (dom) {
                         for (graph::DomainMaterialBinding *binding : registered_domain_bindings) {
                             if (binding && binding->GetMaterial() == material && binding->GetDomain() == dom) {
@@ -963,7 +963,7 @@ namespace hgl::ecs
                             // Fallback path: legacy MIAB-owned MaterialInstanceData SSBO
                             if (!bound_domain_direct)
                             {
-                                graph::MaterialResourceDomain *domain = ResolveDomainForBatch(batch, domain_handle);
+                                graph::InstanceDataDomain *domain = ResolveDomainForBatch(batch, domain_handle);
                                 ForEachMatchingDomainBinding(material,
                                                              domain,
                                                              registered_domain_bindings,
@@ -1013,7 +1013,7 @@ namespace hgl::ecs
 
                         if (!bound_domain_direct)
                         {
-                            graph::MaterialResourceDomain *domain = ResolveDomainForBatch(batch, domain_handle);
+                            graph::InstanceDataDomain *domain = ResolveDomainForBatch(batch, domain_handle);
                             ForEachMatchingDomainBinding(material,
                                                          domain,
                                                          registered_domain_bindings,

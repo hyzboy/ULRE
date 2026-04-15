@@ -10,7 +10,7 @@ namespace hgl::graph {
  *
  * id == 0 表示无效；generation 防止 use-after-release 悬空访问。
  * 持有者可以无限制地复制、比较和哈希该句柄；
- * 真正的 MaterialResourceDomain* 由 MRDManager::Get(handle) 按需解引用。
+ * 真正的 InstanceDataDomain* 由 MRDManager::Get(handle) 按需解引用。
  */
 struct MRDHandle
 {

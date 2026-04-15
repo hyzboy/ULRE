@@ -12,7 +12,7 @@ namespace hgl
     {
         class Primitive;
         class MaterialTemplate;
-        class MaterialResourceDomain;
+        class InstanceDataDomain;
         class VertexInputLayout;
         using VIL = VertexInputLayout;
     }
@@ -29,7 +29,7 @@ namespace hgl::ecs
     {
         bool valid = false;
         hgl::graph::MaterialTemplate* material_template = nullptr;
-        hgl::graph::MaterialResourceDomain* domain = nullptr;
+        hgl::graph::InstanceDataDomain* domain = nullptr;
         hgl::graph::MRDHandle domain_handle = {};   // P9: handle-based identity
         int mi_id = -1;
         const hgl::graph::VIL* vil = nullptr;

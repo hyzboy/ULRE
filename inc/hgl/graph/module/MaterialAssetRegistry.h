@@ -4,7 +4,7 @@
 ///
 /// 内部按层级自动缓存：
 ///   MaterialTemplate       — AcquireMaterial 已缓存
-///   MaterialResourceDomain — 按 domain_id 缓存
+///   InstanceDataDomain — 按 domain_id 缓存
 ///   DMB            — 按 (material_name, domain_id, texture_config_hash) 缓存
 ///   MI             — per-object slot，每次新建
 

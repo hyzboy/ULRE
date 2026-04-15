@@ -24,7 +24,7 @@ namespace hgl::ecs
 
     /**
      * MaterialTemplate/GraphicsPipeline/Domain/Queue index for batching.
-     * P10: domain field migrated from raw MaterialResourceDomain* to MRDHandle
+     * P10: domain field migrated from raw InstanceDataDomain* to MRDHandle
      * so batch identity is stable across domain pointer invalidation.
      * domain_handle == {} → default (no domain, backward-compatible)
      */
@@ -32,7 +32,7 @@ namespace hgl::ecs
     {
         hgl::graph::MaterialTemplate*   material      = nullptr;
         hgl::graph::GraphicsPipeline*   pipeline      = nullptr;
-        hgl::graph::MRDHandle           domain_handle = {};     ///< P10: was MaterialResourceDomain*
+        hgl::graph::MRDHandle           domain_handle = {};     ///< P10: was InstanceDataDomain*
         RenderQueue                     queue         = RenderQueue::Opaque;
 
         MaterialPipelineKey(hgl::graph::MaterialTemplate* m = nullptr,

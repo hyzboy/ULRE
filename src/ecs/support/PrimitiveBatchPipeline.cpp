@@ -746,7 +746,7 @@ namespace hgl::ecs
                 }
             }
 
-            // Phase 4: include MaterialResourceDomain in batch key so items from different
+            // Phase 4: include InstanceDataDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 
@@ -823,7 +823,7 @@ namespace hgl::ecs
                            static_cast<uint32_t>(cache.materialBatches.size()),
                            total_items_in_batches);
 
-                std::unordered_map<uint64_t, std::unordered_set<graph::MaterialResourceDomain *>> semantic_domains;
+                std::unordered_map<uint64_t, std::unordered_set<graph::InstanceDataDomain *>> semantic_domains;
                 std::unordered_map<uint64_t, uint32_t> semantic_item_counts;
 
                 for (const auto &itemPtr : cache.renderItems)

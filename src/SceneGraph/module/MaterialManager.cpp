@@ -4,7 +4,7 @@
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKMaterialParameters.h>
-#include<hgl/vk/VKMaterialResourceDomain.h>
+#include<hgl/vk/VKInstanceDataDomain.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKShaderModuleMap.h>
@@ -384,7 +384,7 @@ MaterialTemplate *MaterialManager::GetFallbackMaterial()
     return fallback_material;
 }
 
-MaterialResourceDomain *MaterialManager::GetOrCreateDefaultDomain(MaterialTemplate *mtl)
+InstanceDataDomain *MaterialManager::GetOrCreateDefaultDomain(MaterialTemplate *mtl)
 {
     if (!mtl || !mtl->hasMI()) return nullptr;
     auto it = default_domain_map.find(mtl);
@@ -812,7 +812,7 @@ MaterialTemplate *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey 
 // ============================================================================
 
 PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
-    MaterialResourceDomain *domain,
+    InstanceDataDomain *domain,
     const void *instance_data,
     uint32_t instance_data_size)
 {
@@ -893,10 +893,10 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
 }
 
 // ============================================================================
-// MaterialResourceDomain — Phase 1
+// InstanceDataDomain — Phase 1
 // ============================================================================
 
-MaterialResourceDomain *MaterialManager::CreateMaterialResourceDomain(
+InstanceDataDomain *MaterialManager::CreateInstanceDataDomain(
     mtl::InstanceDataLayout layout, uint32_t max_count, uint8_t tex_array_slots)
 {
     if (!mrd_manager_) return nullptr;
@@ -906,18 +906,18 @@ MaterialResourceDomain *MaterialManager::CreateMaterialResourceDomain(
 
 // Convenience overload: create a domain that matches the given MaterialTemplate's requirements.
 // Phase E will remove this once all callsites pass layout + texslots explicitly.
-MaterialResourceDomain *MaterialManager::CreateMaterialResourceDomain(MaterialTemplate *mtl)
+InstanceDataDomain *MaterialManager::CreateInstanceDataDomain(MaterialTemplate *mtl)
 {
     if(!mtl)
         return nullptr;
 
-    return CreateMaterialResourceDomain(
+    return CreateInstanceDataDomain(
         mtl->GetRequiredLayout(),
         mtl->GetMIMaxCount(),
         mtl->GetTextureArraySlotFlags());
 }
 
-DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(MaterialResourceDomain *domain, MaterialTemplate *mtl)
+DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(InstanceDataDomain *domain, MaterialTemplate *mtl)
 {
     if (!domain || !mtl)
         return nullptr;
@@ -994,7 +994,7 @@ void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *bindin
     if (!binding)
         return;
 
-    MaterialResourceDomain *d = binding->GetDomain();
+    InstanceDataDomain *d = binding->GetDomain();
     const MRDHandle h = mrd_manager_ ? mrd_manager_->GetHandle(d) : InvalidMRDHandle;
     auto it = domain_bindings_map.find(h);
     if (it != domain_bindings_map.end())
@@ -1008,7 +1008,7 @@ void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *bindin
     delete binding;
 }
 
-void MaterialManager::ReleaseMaterialResourceDomain(MRDHandle handle)
+void MaterialManager::ReleaseInstanceDataDomain(MRDHandle handle)
 {
     if (!handle.IsValid() || !mrd_manager_)
         return;
@@ -1024,11 +1024,11 @@ void MaterialManager::ReleaseMaterialResourceDomain(MRDHandle handle)
     mrd_manager_->Release(handle);
 }
 
-void MaterialManager::ReleaseMaterialResourceDomain(MaterialResourceDomain *domain)
+void MaterialManager::ReleaseInstanceDataDomain(InstanceDataDomain *domain)
 {
     if (!domain || !mrd_manager_)
         return;
-    ReleaseMaterialResourceDomain(mrd_manager_->GetHandle(domain));
+    ReleaseInstanceDataDomain(mrd_manager_->GetHandle(domain));
 }
 
 }//namespace hgl::graph

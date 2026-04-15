@@ -16,14 +16,14 @@ class BufferManager;
 class DeviceBuffer;
 
 /**
- * 资源域 (MaterialResourceDomain)
+ * 资源域 (InstanceDataDomain)
  *
  * 持有与特定 InstanceDataLayout 兼容的独立 MaterialInstance 数据池，同时声明该域
  * 提供的 TextureArray slot 集合（供方）。
- * 同一套 Shader/GraphicsPipeline 可关联多个 MaterialResourceDomain，使不同的资源集合
+ * 同一套 Shader/GraphicsPipeline 可关联多个 InstanceDataDomain，使不同的资源集合
  * （例如UI图标 vs 角色头像 Billboard）彼此隔离，互不串绑。
  */
-class MaterialResourceDomain
+class InstanceDataDomain
 {
     mtl::InstanceDataLayout  instance_layout         = mtl::InstanceDataLayout::None;
     uint32_t                 mi_max_count             = 0;       ///< 渲染批次最大实例数
@@ -58,13 +58,13 @@ private:
 
     friend class MRDManager;
 
-    explicit MaterialResourceDomain(mtl::InstanceDataLayout layout,
+    explicit InstanceDataDomain(mtl::InstanceDataLayout layout,
                                     uint32_t max_count,
                                     uint8_t tex_array_slots = 0);
 
 public:
 
-    virtual ~MaterialResourceDomain();
+    virtual ~InstanceDataDomain();
 
     // ----------------------------------------------------------------
     // 基础属性查询
@@ -129,7 +129,7 @@ public:
     uint32_t GetMIFullUploadFallbackCount() const { return mi_full_upload_fallback_count; }
     uint32_t GetMITFullUploadFallbackCount() const { return mit_full_upload_fallback_count; }
 
-}; // class MaterialResourceDomain
+}; // class InstanceDataDomain
 
 } // namespace hgl::graph
 

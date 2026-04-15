@@ -3,7 +3,7 @@
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKShaderModule.h>
-#include<hgl/vk/VKMaterialResourceDomain.h>
+#include<hgl/vk/VKInstanceDataDomain.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/graph/PrimitiveMaterialSlot.h>
 #include<hgl/graph/module/MRDManager.h>
@@ -114,7 +114,7 @@ private:
     // Fallback material for error handling (initialized on first use)
     MaterialTemplate *fallback_material = nullptr;
 
-    // MRDManager — owns all MaterialResourceDomain instances (P1+)
+    // MRDManager — owns all InstanceDataDomain instances (P1+)
     MRDManager *mrd_manager_ = nullptr;
 
 private:
@@ -163,7 +163,7 @@ private: // Helper methods with integrated DebugUtils
 
 public: //Material resource access
 
-    MaterialResourceDomain *GetOrCreateDefaultDomain(MaterialTemplate *mtl);
+    InstanceDataDomain *GetOrCreateDefaultDomain(MaterialTemplate *mtl);
 
     /// P5: expose MRDManager for callers that need handle↔pointer bridging.
     MRDManager *GetMRDManager() const { return mrd_manager_; }
@@ -188,7 +188,7 @@ public: //Release
         auto dom_it = default_domain_map.find(mtl);
         if (dom_it != default_domain_map.end())
         {
-            ReleaseMaterialResourceDomain(dom_it->second);
+            ReleaseInstanceDataDomain(dom_it->second);
             default_domain_map.erase(dom_it);
         }
 
@@ -224,7 +224,7 @@ public: // Override Release from GraphModule - cleanup all resources
                 static_cast<unsigned long long>(slot_stats.no_mi_payload_rejected));
         }
 
-        // Phase 3: 清理所有 DomainMaterialBinding 及 MaterialResourceDomain
+        // Phase 3: 清理所有 DomainMaterialBinding 及 InstanceDataDomain
         for (auto &kv : domain_bindings_map)
         {
             for (auto *b : kv.second)
@@ -348,7 +348,7 @@ public: //MaterialInstanceData
     /// @param instance_data 可选初始 MI 数据
     /// @param instance_data_size MI 数据大小
     /// @return PrimitiveMaterialSlot（domain + mi_id 已填写）
-    PrimitiveMaterialSlot AllocMaterialInstanceSlot(MaterialResourceDomain *domain,
+    PrimitiveMaterialSlot AllocMaterialInstanceSlot(InstanceDataDomain *domain,
                                                      const void *instance_data = nullptr,
                                                      uint32_t instance_data_size = 0);
 
@@ -357,20 +357,20 @@ public: //MaterialInstanceData
                                                      const void *instance_data = nullptr,
                                                      uint32_t instance_data_size = 0);
     
-public: // MaterialResourceDomain — Phase 1 / Phase 3
+public: // InstanceDataDomain — Phase 1 / Phase 3
 
     /**
      * 以语义级布局枚举创建资源域（推荐接口）。
      * layout 决定 MI 数据格式，tex_array_slots 声明本域提供的 TextureArray 集合（供方）。
      */
-    MaterialResourceDomain *        CreateMaterialResourceDomain        (mtl::InstanceDataLayout layout,
+    InstanceDataDomain *        CreateInstanceDataDomain        (mtl::InstanceDataLayout layout,
                                                                          uint32_t max_count,
                                                                          uint8_t tex_array_slots = 0);
 
     /**
      * 以 MaterialTemplate 为模板创建资源域（过渡接口，Phase C 后废弃）。
      */
-    MaterialResourceDomain *        CreateMaterialResourceDomain        (MaterialTemplate *mtl);
+    InstanceDataDomain *        CreateInstanceDataDomain        (MaterialTemplate *mtl);
 
     /**
      * 创建一个 (domain, material) 绑定视图，并分配该 pair 专属的 VkDescriptorSet 集合。
@@ -378,7 +378,7 @@ public: // MaterialResourceDomain — Phase 1 / Phase 3
      * Phase 3: 同一 domain 可绑定多个 Material（Opaque + Masked 等），各 binding 独立管理。
      * 关系检查：MI stride 必须兼容；描述符集类型差异以 Warning 形式打印。
      */
-    DomainMaterialBinding * CreateDomainMaterialBinding (MaterialResourceDomain *domain, MaterialTemplate *mtl);
+    DomainMaterialBinding * CreateDomainMaterialBinding (InstanceDataDomain *domain, MaterialTemplate *mtl);
 
     /**
      * 按 (domain handle, material) 查询已创建的 DomainMaterialBinding。
@@ -388,23 +388,23 @@ public: // MaterialResourceDomain — Phase 1 / Phase 3
 
     /**
      * 释放一个 DomainMaterialBinding，并将其从所属域的追踪列表中移除。
-     * 注意：不释放关联的 MaterialResourceDomain。
+     * 注意：不释放关联的 InstanceDataDomain。
      */
     void ReleaseDomainMaterialBinding(DomainMaterialBinding *binding);
 
     /**
-     * 释放一个 MaterialResourceDomain 及其所有 DomainMaterialBinding。
+     * 释放一个 InstanceDataDomain 及其所有 DomainMaterialBinding。
      * 调用前请确保该域不再有存活的 MaterialInstance（否则 FreeMISlot 会访问已释放对象）。
      */
-    void ReleaseMaterialResourceDomain(MaterialResourceDomain *domain);
-    void ReleaseMaterialResourceDomain(MRDHandle handle);
+    void ReleaseInstanceDataDomain(InstanceDataDomain *domain);
+    void ReleaseInstanceDataDomain(MRDHandle handle);
 
 public: // Phase 0 Stats — 帧级资源量观测
 
     /// 当前存活 MaterialTemplate 数量
     uint32_t GetMaterialCount()         const { return (uint32_t)rm_shader_program.GetCount(); }
 
-    /// 当前存活 MaterialResourceDomain 数量（Phase 3）
+    /// 当前存活 InstanceDataDomain 数量（Phase 3）
     uint32_t GetDomainCount()           const { return (uint32_t)domain_bindings_map.size(); }
 
     /// 当前总 DomainMaterialBinding 数量（Phase 3）
