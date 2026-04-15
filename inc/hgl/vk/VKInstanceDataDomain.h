@@ -29,7 +29,7 @@ class InstanceDataDomain
     uint32_t                 mi_max_count             = 0;       ///< 渲染批次最大实例数
     uint8_t                  texture_array_slot_flags = 0;       ///< 供方：该域提供哪些 TextureArray slot
 
-    hgl::ActiveMemoryBlockManager *mi_data_manager = nullptr;    ///< 该域独立的 MI 数据池
+    hgl::ActiveMemoryBlockManager *data_manager = nullptr;      ///< 该域独立的数据池
 
     // ----------------------------------------------------------------
     // Phase C: domain-owned GPU buffers (transitional)

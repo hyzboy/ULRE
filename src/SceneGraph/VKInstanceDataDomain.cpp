@@ -57,7 +57,7 @@ hgl::graph::InstanceDataDomain::InstanceDataDomain(
 
     const uint32_t stride = hgl::graph::mtl::GetInstanceDataStride(layout);
     if(stride > 0)
-        mi_data_manager = new hgl::ActiveMemoryBlockManager(stride);
+        data_manager = new hgl::ActiveMemoryBlockManager(stride);
 }
 
 hgl::graph::InstanceDataDomain::~InstanceDataDomain()
@@ -77,34 +77,34 @@ hgl::graph::InstanceDataDomain::~InstanceDataDomain()
         }
     }
 
-    delete mi_data_manager;
-    mi_data_manager = nullptr;
+    delete data_manager;
+    data_manager = nullptr;
 }
 
 int hgl::graph::InstanceDataDomain::AllocMISlot()
 {
-    if(!mi_data_manager)
+    if(!data_manager)
         return -1;
 
     int mi_id = -1;
-    mi_data_manager->GetOrCreate(&mi_id, 1);
+    data_manager->GetOrCreate(&mi_id, 1);
     return mi_id;
 }
 
 void hgl::graph::InstanceDataDomain::FreeMISlot(int mi_id)
 {
-    if(mi_id < 0 || !mi_data_manager)
+    if(mi_id < 0 || !data_manager)
         return;
 
-    mi_data_manager->Release(&mi_id, 1);
+    data_manager->Release(&mi_id, 1);
 }
 
 void *hgl::graph::InstanceDataDomain::GetMIData(int mi_id)
 {
-    if(!mi_data_manager)
+    if(!data_manager)
         return nullptr;
 
-    return mi_data_manager->GetData(mi_id);
+    return data_manager->GetData(mi_id);
 }
 
 bool hgl::graph::InstanceDataDomain::EnsureMIBuffer(BufferManager *bm, uint32_t min_mi_count, bool allow_recreate)
@@ -242,7 +242,7 @@ bool hgl::graph::InstanceDataDomain::UploadMIDirtyRange()
     if (!mi_dirty)
         return true;
 
-    if (!mi_gpu_buffer || !mi_data_manager)
+    if (!mi_gpu_buffer || !data_manager)
         return false;
 
     const uint32_t stride = GetMIDataBytes();
@@ -279,7 +279,7 @@ bool hgl::graph::InstanceDataDomain::UploadMIDirtyRange()
     for (uint32_t i = 0; i < copy_count; ++i)
     {
         const uint32_t mi_id = mi_dirty_begin + i;
-        const void *src = mi_data_manager->GetData(mi_id);
+        const void *src = data_manager->GetData(mi_id);
         if (src)
             memcpy(dst + static_cast<size_t>(i) * stride, src, stride);
         else
