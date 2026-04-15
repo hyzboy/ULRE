@@ -268,14 +268,14 @@ namespace hgl::ecs
                 return false;
 
             const uint32_t needed = static_cast<uint32_t>(max_mi_id + 1);
-            if (!domain->EnsureMIBuffer(buffer_manager, needed))
+            if (!domain->EnsureGPUBuffer(buffer_manager, needed))
                 return false;
 
-            domain->MarkMIDirtyRange(0, needed);
-            if (!domain->UploadMIDirtyRange())
+            domain->MarkDirtyRange(0, needed);
+            if (!domain->UploadDirtyRange())
                 return false;
 
-            auto *mi_buf = domain->GetMIGPUBuffer();
+            auto *mi_buf = domain->GetGPUBuffer();
             auto *mi_gpu = mi_buf ? mi_buf->GetGPUBuffer() : nullptr;
             if (!mi_gpu)
                 return false;

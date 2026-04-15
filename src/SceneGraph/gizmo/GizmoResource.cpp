@@ -114,12 +114,12 @@ namespace hgl::graph
 
             for(uint i=0;i<uint(GizmoColor::RANGE_SIZE);i++)
             {
-                gr->mi_id[i] = gr->domain->AllocMISlot();
+                gr->mi_id[i] = gr->domain->AllocSlot();
                 if(gr->mi_id[i] < 0)
                     return(false);
 
                 color=GetColor4f(gizmo_color[i],1.0);
-                memcpy(gr->domain->GetMIData(gr->mi_id[i]), &color, sizeof(color));
+                memcpy(gr->domain->GetSlotData(gr->mi_id[i]), &color, sizeof(color));
             }
 
             return(true);
@@ -281,7 +281,7 @@ namespace hgl::graph
         {
             for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
                 if(gizmo_triangle.mi_id[i] >= 0)
-                    gizmo_triangle.domain->FreeMISlot(gizmo_triangle.mi_id[i]);
+                    gizmo_triangle.domain->FreeSlot(gizmo_triangle.mi_id[i]);
         }
 
         SAFE_CLEAR(gizmo_triangle.prim_creater);

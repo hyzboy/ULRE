@@ -52,7 +52,7 @@ hgl::graph::InstanceDataDomain::InstanceDataDomain(
     uint8_t tex_array_slots)
 {
     instance_layout         = layout;
-    mi_max_count            = max_count;
+    max_count            = max_count;
     texture_array_slot_flags = tex_array_slots;
 
     const uint32_t stride = hgl::graph::mtl::GetInstanceDataStride(layout);
@@ -64,10 +64,10 @@ hgl::graph::InstanceDataDomain::~InstanceDataDomain()
 {
     if (buffer_manager)
     {
-        if (mi_gpu_buffer)
+        if (gpu_buffer)
         {
-            buffer_manager->Release(mi_gpu_buffer);
-            mi_gpu_buffer = nullptr;
+            buffer_manager->Release(gpu_buffer);
+            gpu_buffer = nullptr;
         }
 
         if (mit_gpu_buffer)
@@ -81,7 +81,7 @@ hgl::graph::InstanceDataDomain::~InstanceDataDomain()
     data_manager = nullptr;
 }
 
-int hgl::graph::InstanceDataDomain::AllocMISlot()
+int hgl::graph::InstanceDataDomain::AllocSlot()
 {
     if(!data_manager)
         return -1;
@@ -91,7 +91,7 @@ int hgl::graph::InstanceDataDomain::AllocMISlot()
     return mi_id;
 }
 
-void hgl::graph::InstanceDataDomain::FreeMISlot(int mi_id)
+void hgl::graph::InstanceDataDomain::FreeSlot(int mi_id)
 {
     if(mi_id < 0 || !data_manager)
         return;
@@ -99,7 +99,7 @@ void hgl::graph::InstanceDataDomain::FreeMISlot(int mi_id)
     data_manager->Release(&mi_id, 1);
 }
 
-void *hgl::graph::InstanceDataDomain::GetMIData(int mi_id)
+void *hgl::graph::InstanceDataDomain::GetSlotData(int mi_id)
 {
     if(!data_manager)
         return nullptr;
@@ -107,26 +107,26 @@ void *hgl::graph::InstanceDataDomain::GetMIData(int mi_id)
     return data_manager->GetData(mi_id);
 }
 
-bool hgl::graph::InstanceDataDomain::EnsureMIBuffer(BufferManager *bm, uint32_t min_mi_count, bool allow_recreate)
+bool hgl::graph::InstanceDataDomain::EnsureGPUBuffer(BufferManager *bm, uint32_t min_mi_count, bool allow_recreate)
 {
     if (!bm)
         return false;
 
-    const uint32_t stride = GetMIDataBytes();
+    const uint32_t stride = GetDataStride();
     if (stride == 0)
         return false;
 
-    const uint32_t required_count = std::max(min_mi_count, mi_max_count);
+    const uint32_t required_count = std::max(min_mi_count, max_count);
     if (required_count == 0)
         return false;
 
-    if (mi_gpu_buffer && mi_gpu_capacity >= required_count)
+    if (gpu_buffer && gpu_capacity >= required_count)
     {
         buffer_manager = bm;
         return true;
     }
 
-    if (mi_gpu_buffer && !allow_recreate)
+    if (gpu_buffer && !allow_recreate)
         return false;
 
     const uint32_t new_capacity = NextPow2(required_count);
@@ -137,16 +137,16 @@ bool hgl::graph::InstanceDataDomain::EnsureMIBuffer(BufferManager *bm, uint32_t 
     if (!new_buffer)
         return false;
 
-    if (mi_gpu_buffer)
-        bm->Release(mi_gpu_buffer);
+    if (gpu_buffer)
+        bm->Release(gpu_buffer);
 
     buffer_manager = bm;
-    mi_gpu_buffer = new_buffer;
-    mi_gpu_capacity = new_capacity;
+    gpu_buffer = new_buffer;
+    gpu_capacity = new_capacity;
 
     // New buffer means GPU content is undefined; request full refresh for current capacity.
-    MarkMIDirtyRange(0, new_capacity);
-    ++mi_full_upload_fallback_count;
+    MarkDirtyRange(0, new_capacity);
+    ++full_upload_fallback_count;
     return true;
 }
 
@@ -187,22 +187,22 @@ bool hgl::graph::InstanceDataDomain::EnsureMITBuffer(BufferManager *bm, uint32_t
     return true;
 }
 
-void hgl::graph::InstanceDataDomain::MarkMIDirtyRange(uint32_t begin, uint32_t count)
+void hgl::graph::InstanceDataDomain::MarkDirtyRange(uint32_t begin, uint32_t count)
 {
     if (count == 0)
         return;
 
     const uint32_t end = begin + count;
-    if (!mi_dirty)
+    if (!dirty)
     {
-        mi_dirty = true;
-        mi_dirty_begin = begin;
-        mi_dirty_end = end;
+        dirty = true;
+        dirty_begin = begin;
+        dirty_end = end;
         return;
     }
 
-    mi_dirty_begin = std::min(mi_dirty_begin, begin);
-    mi_dirty_end = std::max(mi_dirty_end, end);
+    dirty_begin = std::min(dirty_begin, begin);
+    dirty_end = std::max(dirty_end, end);
 }
 
 void hgl::graph::InstanceDataDomain::MarkMITDirtyRange(uint32_t begin, uint32_t count)
@@ -223,11 +223,11 @@ void hgl::graph::InstanceDataDomain::MarkMITDirtyRange(uint32_t begin, uint32_t 
     mit_dirty_end = std::max(mit_dirty_end, end);
 }
 
-void hgl::graph::InstanceDataDomain::ClearMIDirtyRange()
+void hgl::graph::InstanceDataDomain::ClearDirtyRange()
 {
-    mi_dirty = false;
-    mi_dirty_begin = 0;
-    mi_dirty_end = 0;
+    dirty = false;
+    dirty_begin = 0;
+    dirty_end = 0;
 }
 
 void hgl::graph::InstanceDataDomain::ClearMITDirtyRange()
@@ -237,48 +237,48 @@ void hgl::graph::InstanceDataDomain::ClearMITDirtyRange()
     mit_dirty_end = 0;
 }
 
-bool hgl::graph::InstanceDataDomain::UploadMIDirtyRange()
+bool hgl::graph::InstanceDataDomain::UploadDirtyRange()
 {
-    if (!mi_dirty)
+    if (!dirty)
         return true;
 
-    if (!mi_gpu_buffer || !data_manager)
+    if (!gpu_buffer || !data_manager)
         return false;
 
-    const uint32_t stride = GetMIDataBytes();
+    const uint32_t stride = GetDataStride();
     if (stride == 0)
         return false;
 
-    if (mi_dirty_begin >= mi_dirty_end)
+    if (dirty_begin >= dirty_end)
     {
-        ClearMIDirtyRange();
+        ClearDirtyRange();
         return true;
     }
 
-    if (mi_dirty_begin >= mi_gpu_capacity)
+    if (dirty_begin >= gpu_capacity)
     {
-        ClearMIDirtyRange();
+        ClearDirtyRange();
         return false;
     }
 
-    const uint32_t clamped_end = std::min(mi_dirty_end, mi_gpu_capacity);
-    const uint32_t copy_count = clamped_end - mi_dirty_begin;
+    const uint32_t clamped_end = std::min(dirty_end, gpu_capacity);
+    const uint32_t copy_count = clamped_end - dirty_begin;
     if (copy_count == 0)
     {
-        ClearMIDirtyRange();
+        ClearDirtyRange();
         return true;
     }
 
-    const VkDeviceSize byte_offset = static_cast<VkDeviceSize>(mi_dirty_begin) * stride;
+    const VkDeviceSize byte_offset = static_cast<VkDeviceSize>(dirty_begin) * stride;
     const VkDeviceSize byte_size = static_cast<VkDeviceSize>(copy_count) * stride;
 
-    uint8_t *dst = static_cast<uint8_t *>(MapWritable(mi_gpu_buffer, byte_offset, byte_size));
+    uint8_t *dst = static_cast<uint8_t *>(MapWritable(gpu_buffer, byte_offset, byte_size));
     if (!dst)
         return false;
 
     for (uint32_t i = 0; i < copy_count; ++i)
     {
-        const uint32_t mi_id = mi_dirty_begin + i;
+        const uint32_t mi_id = dirty_begin + i;
         const void *src = data_manager->GetData(mi_id);
         if (src)
             memcpy(dst + static_cast<size_t>(i) * stride, src, stride);
@@ -286,9 +286,9 @@ bool hgl::graph::InstanceDataDomain::UploadMIDirtyRange()
             memset(dst + static_cast<size_t>(i) * stride, 0, stride);
     }
 
-    UnmapWritable(mi_gpu_buffer);
-    mi_uploaded_bytes_total += static_cast<uint64_t>(byte_size);
-    ClearMIDirtyRange();
+    UnmapWritable(gpu_buffer);
+    uploaded_bytes_total += static_cast<uint64_t>(byte_size);
+    ClearDirtyRange();
     return true;
 }
 

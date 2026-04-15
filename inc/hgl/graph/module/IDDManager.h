@@ -21,14 +21,14 @@ class BufferManager;
  * 职责：
  *   - 唯一拥有 InstanceDataDomain 的构造权（friend class IDDManager）
  *   - 维护句柄表：domain_table_（id → entry）和 domain_id_map_（ptr → id）
- *   - 提供 MI 槽位管理的统一入口（AllocMISlot / FreeMISlot / GetMIData / WriteMIData）
+ *   - 提供 MI 槽位管理的统一入口（AllocMISlot / FreeSlot / GetMIData / WriteMIData）
  *   - 懒创建 GPU 缓冲区（EnsureGPUBuffers，由 Collect System 在首帧触发）
  */
 class IDDManager
 {
     struct DomainEntry
     {
-        InstanceDataDomain *domain     = nullptr;
+        InstanceDataDomain *    domain     = nullptr;
         uint32_t                generation = 0;  // 0 = invalid/released
     };
 
@@ -82,22 +82,22 @@ public:
      * 在指定域中分配一个 MI 槽位，可选初始化数据。
      * @return 槽位 id（>= 0），失败返回 -1。
      */
-    int    AllocMISlot  (IDDHandle handle, const void *init_data = nullptr, uint32_t size = 0);
+    int    AllocSlot  (IDDHandle handle, const void *init_data = nullptr, uint32_t size = 0);
 
     /**
      * 释放 MI 槽位（不销毁域）。
      */
-    void   FreeMISlot   (IDDHandle handle, int mi_id);
+    void   FreeSlot   (IDDHandle handle, int mi_id);
 
     /**
      * 返回指定槽位的 CPU 端数据指针；句柄或 mi_id 无效时返回 nullptr。
      */
-    void  *GetMIData    (IDDHandle handle, int mi_id) const;
+    void  *GetSlotData    (IDDHandle handle, int mi_id) const;
 
     /**
      * 向指定槽位写入数据；返回 false 表示参数无效。
      */
-    bool   WriteMIData  (IDDHandle handle, int mi_id, const void *data, uint32_t size);
+    bool   WriteSlotData  (IDDHandle handle, int mi_id, const void *data, uint32_t size);
 
     // ----------------------------------------------------------------
     // GPU 缓冲区懒初始化（由 RenderPrimitiveCollectSystem 在首帧调用）

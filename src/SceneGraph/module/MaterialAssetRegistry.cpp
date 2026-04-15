@@ -625,7 +625,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
 
     auto release_slot = [](PrimitiveMaterialSlot &slot) {
         if (slot.domain && slot.mi_id >= 0)
-            slot.domain->FreeMISlot(slot.mi_id);
+            slot.domain->FreeSlot(slot.mi_id);
         slot = {};
     };
 
@@ -670,7 +670,7 @@ PrimitiveMaterialSlot MaterialAssetRegistry::ResolveMI(uint64_t entity_id,
 
             if (instance_data && instance_data_size > 0 && slot.mi_id >= 0 && slot.domain)
             {
-                if (void *dst = slot.domain->GetMIData(slot.mi_id))
+                if (void *dst = slot.domain->GetSlotData(slot.mi_id))
                 {
                     const uint32_t dst_bytes = handle.material ? handle.material->GetMIDataBytes() : 0;
                     const uint32_t copy_bytes = std::min(instance_data_size, dst_bytes);
@@ -791,7 +791,7 @@ void MaterialAssetRegistry::ReleaseEntityResolvedMI(uint64_t entity_id, Semantic
             continue;
 
         if (it->second.domain && it->second.mi_id >= 0)
-            it->second.domain->FreeMISlot(it->second.mi_id);
+            it->second.domain->FreeSlot(it->second.mi_id);
 
         entity_mi_cache.erase(it);
     }
@@ -958,9 +958,9 @@ bool MaterialAssetRegistry::RebindHandle(MaterialInstanceHandle handle, const Ma
         && rec.mi_id >= 0 && rec.idd_handle.IsValid() && rec.material_template
         && new_slot.mi_id >= 0 && new_slot.domain && req.new_material)
     {
-        void *new_ptr = new_slot.domain->GetMIData(new_slot.mi_id);
+        void *new_ptr = new_slot.domain->GetSlotData(new_slot.mi_id);
         auto *old_domain_ptr = mm->GetIDDManager()->Get(rec.idd_handle);
-        const void *old_ptr = old_domain_ptr ? old_domain_ptr->GetMIData(rec.mi_id) : nullptr;
+        const void *old_ptr = old_domain_ptr ? old_domain_ptr->GetSlotData(rec.mi_id) : nullptr;
 
         if (new_ptr && old_ptr)
         {
@@ -1014,7 +1014,7 @@ bool MaterialAssetRegistry::RebindHandle(MaterialInstanceHandle handle, const Ma
     if (old_idd_handle.IsValid() && old_mi_id >= 0)
     {
         auto *old_domain_ptr = mm->GetIDDManager()->Get(old_idd_handle);
-        if (old_domain_ptr) old_domain_ptr->FreeMISlot(old_mi_id);
+        if (old_domain_ptr) old_domain_ptr->FreeSlot(old_mi_id);
     }
 
     return true;
@@ -1035,14 +1035,14 @@ bool MaterialAssetRegistry::WriteMIData(MaterialInstanceHandle handle, const voi
         return false;
 
     auto *domain_ptr = mm->GetIDDManager()->Get(rec.idd_handle);
-    void *dst = domain_ptr ? domain_ptr->GetMIData(rec.mi_id) : nullptr;
+    void *dst = domain_ptr ? domain_ptr->GetSlotData(rec.mi_id) : nullptr;
     if (!dst)
         return false;
 
     // Prefer material_template stride; fall back to domain stride for partial handles.
     const uint32_t dst_bytes = rec.material_template
         ? rec.material_template->GetMIDataBytes()
-        : domain_ptr->GetMIDataBytes();
+        : domain_ptr->GetDataStride();
     const uint32_t copy_bytes = std::min(dst_bytes, size);
     if (copy_bytes == 0)
         return false;
@@ -1086,7 +1086,7 @@ bool MaterialAssetRegistry::ReleaseHandle(MaterialInstanceHandle handle)
     if (rec.idd_handle.IsValid() && rec.mi_id >= 0)
     {
         auto *domain_ptr = mm->GetIDDManager()->Get(rec.idd_handle);
-        if (domain_ptr) domain_ptr->FreeMISlot(rec.mi_id);
+        if (domain_ptr) domain_ptr->FreeSlot(rec.mi_id);
     }
 
     rec.alive = false;

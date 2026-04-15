@@ -240,7 +240,7 @@ namespace hgl::ecs
 
             if (binding.IsDrawBindingValid() && binding.idd_handle.IsValid() && binding.mi_id >= 0)
             {
-                const void* mi_data_ptr = binding.domain->GetMIData(binding.mi_id);
+                const void* mi_data_ptr = binding.domain->GetSlotData(binding.mi_id);
                 const uint32_t mit_bytes = binding.mit_count * sizeof(uint32_t);
                 slot_set.AddResolved(binding.idd_handle,
                                      binding.mi_id,

@@ -123,42 +123,42 @@ IDDHandle IDDManager::GetHandle(InstanceDataDomain *domain) const
 // MI slot management (P7 — stubs returning safe defaults until full impl)
 // ---------------------------------------------------------------------------
 
-int IDDManager::AllocMISlot(IDDHandle handle, const void *init_data, uint32_t size)
+int IDDManager::AllocSlot(IDDHandle handle, const void *init_data, uint32_t size)
 {
     auto *d = Get(handle);
     if (!d)
         return -1;
-    int mi_id = d->AllocMISlot();
+    int mi_id = d->AllocSlot();
     if (mi_id >= 0 && init_data && size > 0)
     {
-        void *dst = d->GetMIData(mi_id);
+        void *dst = d->GetSlotData(mi_id);
         if (dst)
             std::memcpy(dst, init_data, size);
     }
     return mi_id;
 }
 
-void IDDManager::FreeMISlot(IDDHandle handle, int mi_id)
+void IDDManager::FreeSlot(IDDHandle handle, int mi_id)
 {
     auto *d = Get(handle);
     if (d)
-        d->FreeMISlot(mi_id);
+        d->FreeSlot(mi_id);
 }
 
-void *IDDManager::GetMIData(IDDHandle handle, int mi_id) const
+void *IDDManager::GetSlotData(IDDHandle handle, int mi_id) const
 {
     auto *d = Get(handle);
-    return d ? d->GetMIData(mi_id) : nullptr;
+    return d ? d->GetSlotData(mi_id) : nullptr;
 }
 
-bool IDDManager::WriteMIData(IDDHandle handle, int mi_id, const void *data, uint32_t size)
+bool IDDManager::WriteSlotData(IDDHandle handle, int mi_id, const void *data, uint32_t size)
 {
     if (!data || size == 0)
         return false;
     auto *d = Get(handle);
     if (!d)
         return false;
-    void *dst = d->GetMIData(mi_id);
+    void *dst = d->GetSlotData(mi_id);
     if (!dst)
         return false;
     std::memcpy(dst, data, size);
@@ -168,9 +168,9 @@ bool IDDManager::WriteMIData(IDDHandle handle, int mi_id, const void *data, uint
 bool IDDManager::EnsureGPUBuffers(IDDHandle handle, BufferManager *bm)
 {
     auto *d = Get(handle);
-    if (!d || !d->hasMI())
+    if (!d || !d->HasLayout())
         return false;
-    return d->EnsureMIBuffer(bm, d->GetMIMaxCount());
+    return d->EnsureGPUBuffer(bm, d->GetMaxCount());
 }
 
 // ---------------------------------------------------------------------------

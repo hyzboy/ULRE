@@ -824,7 +824,7 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
         return {};
     }
 
-    const bool needs_mi = domain->hasMI();
+    const bool needs_mi = domain->HasLayout();
     int mi_id = -1;
 
     if (needs_mi)
@@ -834,7 +834,7 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
 
     if (needs_mi)
     {
-        mi_id = domain->AllocMISlot();
+        mi_id = domain->AllocSlot();
         if (mi_id < 0)
         {
             std::fprintf(stderr,
@@ -845,8 +845,8 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
 
         // Ensure deterministic first-frame MI data even when caller does not
         // provide explicit instance payload.
-        if (void *mi_data = domain->GetMIData(mi_id))
-            std::memset(mi_data, 0, domain->GetMIDataBytes());
+        if (void *mi_data = domain->GetSlotData(mi_id))
+            std::memset(mi_data, 0, domain->GetDataStride());
     }
 
     // Write instance data if provided
@@ -862,10 +862,10 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
             return {};
         }
 
-        void *mi_data = domain->GetMIData(mi_id);
+        void *mi_data = domain->GetSlotData(mi_id);
         if (mi_data)
         {
-            const uint32_t dst_bytes = domain->GetMIDataBytes();
+            const uint32_t dst_bytes = domain->GetDataStride();
             const uint32_t copy_bytes = std::min(instance_data_size, dst_bytes);
             std::memcpy(mi_data, instance_data, copy_bytes);
         }

@@ -65,7 +65,7 @@ public:
             GraphicsPipelinePreset      GetRenderPreset     ()const { return render_preset; }
             void                        SetRenderPreset     (GraphicsPipelinePreset p){ render_preset = p; }
             mtl::MaterialPreset         GetMaterialPreset   ()const { return material_preset; }
-            void *                      GetMIData           ()      { return (idd_manager_ && idd_handle.IsValid() && mi_id >= 0) ? idd_manager_->GetMIData(idd_handle, mi_id) : nullptr; }  ///< P12: via idd_manager_
+            void *                      GetMIData           ()      { return (idd_manager_ && idd_handle.IsValid() && mi_id >= 0) ? idd_manager_->GetSlotData(idd_handle, mi_id) : nullptr; }  ///< P12: via idd_manager_
             void                        WriteMIData         (const void *data, uint32_t size);
     template<typename T>
             void                        WriteMIData         (const T &v){ WriteMIData(&v, sizeof(T)); }
