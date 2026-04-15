@@ -3,7 +3,7 @@
 #include<hgl/ecs/core/EntityHandle.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/graph/PrimitiveMaterialSlot.h>
-#include<hgl/graph/MRDHandle.h>
+#include<hgl/graph/IDDHandle.h>
 #include<memory>
 
 namespace hgl
@@ -30,7 +30,7 @@ namespace hgl::ecs
         bool valid = false;
         hgl::graph::MaterialTemplate* material_template = nullptr;
         hgl::graph::InstanceDataDomain* domain = nullptr;
-        hgl::graph::MRDHandle domain_handle = {};   // P9: handle-based identity
+        hgl::graph::IDDHandle domain_handle = {};   // P9: handle-based identity
         int mi_id = -1;
         const hgl::graph::VIL* vil = nullptr;
         const uint32_t* mit_data = nullptr;

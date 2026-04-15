@@ -22,7 +22,7 @@ class Primitive
     /// Phase 2c — MI fields inlined directly; mat_inst bridge removed
     MaterialTemplate           *material_template = nullptr;  ///< primary render key
     MRDManager                 *mrd_manager_      = nullptr;  ///< P12: data-access delegate (replaces domain* cache)
-    MRDHandle                   domain_handle     = {};        ///< P9: stable handle for domain identity
+    IDDHandle                   domain_handle     = {};        ///< P9: stable handle for domain identity
     int                         mi_id             = -1;       ///< slot index in domain
     const VIL                  *vil               = nullptr;  ///< vertex input layout
     VIL                        *owned_runtime_vil = nullptr;  ///< geometry-driven runtime VIL owned by Primitive
@@ -59,7 +59,7 @@ public:
             MaterialTemplate *          GetMaterial         ()      { return material_template; }  ///< @deprecated use GetMaterialTemplate()
             MaterialTemplate *          GetMaterialTemplate ()const { return material_template; }
             InstanceDataDomain *    GetDomain           ()const { return (mrd_manager_ && domain_handle.IsValid()) ? mrd_manager_->Get(domain_handle) : nullptr; }  ///< P12: resolved on demand via mrd_manager_
-            MRDHandle                   GetDomainHandle     ()const { return domain_handle; }   // P9
+            IDDHandle                   GetDomainHandle     ()const { return domain_handle; }   // P9
     const   VIL *                       GetVIL              ()const { return vil; }
             int                         GetMIID             ()const { return mi_id; }
             GraphicsPipelinePreset      GetRenderPreset     ()const { return render_preset; }

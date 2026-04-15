@@ -42,7 +42,7 @@ enum class MaterialRebindCopyPolicy : uint8_t
 struct MaterialBindingInit
 {
     MaterialTemplate *material = nullptr;
-    MRDHandle         domain_handle;
+    IDDHandle         domain_handle;
     const VIL *vil = nullptr;
     GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
     mtl::MaterialPreset material_preset = mtl::MaterialPreset::Standard;
@@ -55,7 +55,7 @@ struct MaterialBindingInit
 struct MaterialBindingRebind
 {
     MaterialTemplate *new_material = nullptr;
-    MRDHandle         new_domain_handle;
+    IDDHandle         new_domain_handle;
     const VIL *new_vil = nullptr;
     GraphicsPipelinePreset new_preset = GraphicsPipelinePreset::Solid3D;
     mtl::MaterialPreset new_material_preset = mtl::MaterialPreset::Standard;
@@ -72,8 +72,8 @@ private:
     TextureManager  *tm;
     SamplerManager  *sm;
 
-    // (material_cache_name + domain_id) → MRDHandle
-    std::unordered_map<std::string, MRDHandle> domain_cache;
+    // (material_cache_name + domain_id) → IDDHandle
+    std::unordered_map<std::string, IDDHandle> domain_cache;
 
     // DMB 缓存 key = (material_cache_name, domain_id, texture_config_hash)
     struct DMBKey
@@ -177,7 +177,7 @@ private:
     {
         MaterialInstanceHandle handle = InvalidMaterialInstanceHandle;
         MaterialTemplate *material_template = nullptr;
-        MRDHandle domain_handle;
+        IDDHandle domain_handle;
         int mi_id = -1;
         const VIL *vil = nullptr;
         GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;

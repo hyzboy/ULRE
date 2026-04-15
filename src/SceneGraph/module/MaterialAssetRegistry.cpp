@@ -972,7 +972,7 @@ bool MaterialAssetRegistry::RebindHandle(MaterialInstanceHandle handle, const Ma
         }
     }
 
-    MRDHandle old_domain_handle = rec.domain_handle;
+    IDDHandle old_domain_handle = rec.domain_handle;
     const int old_mi_id = rec.mi_id;
     const std::vector<int8_t> old_offsets = rec.mit_slot_offset;
     const std::vector<uint32_t> old_packed = rec.mit_packed;

@@ -92,10 +92,10 @@ private:
 
     AutoIdObjectManager<MaterialTemplateID,            MaterialTemplate>          rm_shader_program;
 
-    ankerl::unordered_dense::map<MaterialTemplate *,          MRDHandle>                  default_domain_map;
+    ankerl::unordered_dense::map<MaterialTemplate *,          IDDHandle>                  default_domain_map;
 
-    // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding (P4: key changed to MRDHandle)
-    ankerl::unordered_dense::map<MRDHandle, std::vector<DomainMaterialBinding *>> domain_bindings_map;
+    // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding (P4: key changed to IDDHandle)
+    ankerl::unordered_dense::map<IDDHandle, std::vector<DomainMaterialBinding *>> domain_bindings_map;
 
     std::atomic<uint64_t> acquire_material_requests {0};
     std::atomic<uint64_t> acquire_material_cache_lookups {0};
@@ -352,8 +352,8 @@ public: //MaterialInstanceData
                                                      const void *instance_data = nullptr,
                                                      uint32_t instance_data_size = 0);
 
-    /// P5: MRDHandle overload — resolves handle to domain ptr internally.
-    PrimitiveMaterialSlot AllocMaterialInstanceSlot(MRDHandle domain_handle,
+    /// P5: IDDHandle overload — resolves handle to domain ptr internally.
+    PrimitiveMaterialSlot AllocMaterialInstanceSlot(IDDHandle domain_handle,
                                                      const void *instance_data = nullptr,
                                                      uint32_t instance_data_size = 0);
     
@@ -384,7 +384,7 @@ public: // InstanceDataDomain — Phase 1 / Phase 3
      * 按 (domain handle, material) 查询已创建的 DomainMaterialBinding。
      * 返回空表示该 pair 尚未创建绑定视图。
      */
-    DomainMaterialBinding * FindDomainMaterialBinding   (MRDHandle handle, MaterialTemplate *mtl) const;
+    DomainMaterialBinding * FindDomainMaterialBinding   (IDDHandle handle, MaterialTemplate *mtl) const;
 
     /**
      * 释放一个 DomainMaterialBinding，并将其从所属域的追踪列表中移除。
@@ -397,7 +397,7 @@ public: // InstanceDataDomain — Phase 1 / Phase 3
      * 调用前请确保该域不再有存活的 MaterialInstance（否则 FreeMISlot 会访问已释放对象）。
      */
     void ReleaseInstanceDataDomain(InstanceDataDomain *domain);
-    void ReleaseInstanceDataDomain(MRDHandle handle);
+    void ReleaseInstanceDataDomain(IDDHandle handle);
 
 public: // Phase 0 Stats — 帧级资源量观测
 

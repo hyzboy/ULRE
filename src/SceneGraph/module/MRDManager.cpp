@@ -82,16 +82,16 @@ void MRDManager::UnregisterDomain(InstanceDataDomain *domain)
 // Public: Create / Get / Release / GetHandle
 // ---------------------------------------------------------------------------
 
-MRDHandle MRDManager::Create(mtl::InstanceDataLayout layout,
+IDDHandle MRDManager::Create(mtl::InstanceDataLayout layout,
                               uint32_t                max_count,
                               uint8_t                 tex_array_slots)
 {
     auto *domain = new InstanceDataDomain(layout, max_count, tex_array_slots);
     const uint32_t id = RegisterDomain(domain);
-    return MRDHandle{id, domain_table_[id].generation};
+    return IDDHandle{id, domain_table_[id].generation};
 }
 
-InstanceDataDomain *MRDManager::Get(MRDHandle handle) const
+InstanceDataDomain *MRDManager::Get(IDDHandle handle) const
 {
     if (!handle.IsValid() || handle.id >= static_cast<uint32_t>(domain_table_.size()))
         return nullptr;
@@ -99,7 +99,7 @@ InstanceDataDomain *MRDManager::Get(MRDHandle handle) const
     return (e.generation == handle.generation) ? e.domain : nullptr;
 }
 
-void MRDManager::Release(MRDHandle handle)
+void MRDManager::Release(IDDHandle handle)
 {
     InstanceDataDomain *domain = Get(handle);
     if (!domain)
@@ -108,22 +108,22 @@ void MRDManager::Release(MRDHandle handle)
     delete domain;
 }
 
-MRDHandle MRDManager::GetHandle(InstanceDataDomain *domain) const
+IDDHandle MRDManager::GetHandle(InstanceDataDomain *domain) const
 {
     if (!domain)
-        return InvalidMRDHandle;
+        return InvalidIDDHandle;
     auto it = domain_id_map_.find(domain);
     if (it == domain_id_map_.end())
-        return InvalidMRDHandle;
+        return InvalidIDDHandle;
     const uint32_t id = it->second;
-    return MRDHandle{id, domain_table_[id].generation};
+    return IDDHandle{id, domain_table_[id].generation};
 }
 
 // ---------------------------------------------------------------------------
 // MI slot management (P7 — stubs returning safe defaults until full impl)
 // ---------------------------------------------------------------------------
 
-int MRDManager::AllocMISlot(MRDHandle handle, const void *init_data, uint32_t size)
+int MRDManager::AllocMISlot(IDDHandle handle, const void *init_data, uint32_t size)
 {
     auto *d = Get(handle);
     if (!d)
@@ -138,20 +138,20 @@ int MRDManager::AllocMISlot(MRDHandle handle, const void *init_data, uint32_t si
     return mi_id;
 }
 
-void MRDManager::FreeMISlot(MRDHandle handle, int mi_id)
+void MRDManager::FreeMISlot(IDDHandle handle, int mi_id)
 {
     auto *d = Get(handle);
     if (d)
         d->FreeMISlot(mi_id);
 }
 
-void *MRDManager::GetMIData(MRDHandle handle, int mi_id) const
+void *MRDManager::GetMIData(IDDHandle handle, int mi_id) const
 {
     auto *d = Get(handle);
     return d ? d->GetMIData(mi_id) : nullptr;
 }
 
-bool MRDManager::WriteMIData(MRDHandle handle, int mi_id, const void *data, uint32_t size)
+bool MRDManager::WriteMIData(IDDHandle handle, int mi_id, const void *data, uint32_t size)
 {
     if (!data || size == 0)
         return false;
@@ -165,7 +165,7 @@ bool MRDManager::WriteMIData(MRDHandle handle, int mi_id, const void *data, uint
     return true;
 }
 
-bool MRDManager::EnsureGPUBuffers(MRDHandle handle, BufferManager *bm)
+bool MRDManager::EnsureGPUBuffers(IDDHandle handle, BufferManager *bm)
 {
     auto *d = Get(handle);
     if (!d || !d->hasMI())

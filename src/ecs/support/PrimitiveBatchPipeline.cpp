@@ -598,9 +598,9 @@ namespace hgl::ecs
                            ? binding.material_template
                            : item->GetMaterial();
 
-            const graph::MRDHandle domain_handle = use_resolved_slot
+            const graph::IDDHandle domain_handle = use_resolved_slot
                          ? binding.domain_handle
-                         : (primitive ? primitive->GetDomainHandle() : graph::MRDHandle{});
+                         : (primitive ? primitive->GetDomainHandle() : graph::IDDHandle{});
 
             const graph::VIL* effective_vil = nullptr;
             graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid3D;

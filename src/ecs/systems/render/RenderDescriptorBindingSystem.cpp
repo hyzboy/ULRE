@@ -132,7 +132,7 @@ namespace hgl::ecs
         }
 
         bool HasResolvedInstanceSlotForDomain(const hgl::ecs::RenderItem *item,
-                                              hgl::graph::MRDHandle domain_handle)
+                                              hgl::graph::IDDHandle domain_handle)
         {
             if (!item)
                 return false;
@@ -145,7 +145,7 @@ namespace hgl::ecs
             if (!binding.material_template)
                 return false;
 
-            // P10: compare by MRDHandle instead of raw pointer
+            // P10: compare by IDDHandle instead of raw pointer
             if (binding.domain_handle != domain_handle)
                 return false;
 
@@ -173,7 +173,7 @@ namespace hgl::ecs
         }
 
         hgl::graph::InstanceDataDomain *ResolveDomainForBatch(const hgl::ecs::MaterialBatch *batch,
-                                                                  hgl::graph::MRDHandle domain_handle)
+                                                                  hgl::graph::IDDHandle domain_handle)
         {
             if (!batch || !domain_handle.IsValid())
                 return nullptr;
@@ -218,7 +218,7 @@ namespace hgl::ecs
 
         bool TryBindBatchMIDToDomainBindings(const hgl::ecs::MaterialBatch *batch,
                                              graph::MaterialTemplate *material,
-                                             hgl::graph::MRDHandle domain_handle,
+                                             hgl::graph::IDDHandle domain_handle,
                                              const std::unordered_set<graph::DomainMaterialBinding *> &registered_domain_bindings)
         {
             if (!batch || !material || !batch->mi_buffer || !domain_handle.IsValid())
@@ -239,7 +239,7 @@ namespace hgl::ecs
 
         bool TryBindDomainDirectMIData(const hgl::ecs::MaterialBatch *batch,
                                        graph::MaterialTemplate *material,
-                                       hgl::graph::MRDHandle domain_handle,
+                                       hgl::graph::IDDHandle domain_handle,
                                        graph::BufferManager *buffer_manager,
                                        const std::unordered_set<graph::DomainMaterialBinding *> &registered_domain_bindings)
         {
@@ -293,7 +293,7 @@ namespace hgl::ecs
 
         bool TryBindDomainDirectMITData(const hgl::ecs::MaterialBatch *batch,
                                         graph::MaterialTemplate *material,
-                                        hgl::graph::MRDHandle domain_handle,
+                                        hgl::graph::IDDHandle domain_handle,
                                         graph::BufferManager *buffer_manager,
                                         const std::unordered_set<graph::DomainMaterialBinding *> &registered_domain_bindings,
                                         DomainDirectMITBindResult *out_result = nullptr)
@@ -800,7 +800,7 @@ namespace hgl::ecs
             out_active.insert(material);
 
             const MaterialBatch *batch = pair.second.get();
-            const graph::MRDHandle domain_handle = pair.first.domain_handle;  // P10
+            const graph::IDDHandle domain_handle = pair.first.domain_handle;  // P10
 
             if (batch && batch->mi_buffer && batch->mi_buffer->IsUsingResolvedDomainMIID())
                 domain_direct_mode_seen = true;

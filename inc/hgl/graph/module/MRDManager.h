@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/graph/MRDHandle.h>
+#include <hgl/graph/IDDHandle.h>
 #include <hgl/mtl/InstanceDataLayout.h>
 #include <ankerl/unordered_dense.h>
 #include <vector>
@@ -15,7 +15,7 @@ class BufferManager;
 /**
  * MRDManager — InstanceDataDomain 生命周期管理器
  *
- * 持有并管理所有 InstanceDataDomain 实例，以强类型 MRDHandle（id + generation）
+ * 持有并管理所有 InstanceDataDomain 实例，以强类型 IDDHandle（id + generation）
  * 对外提供域引用，彻底替代裸指针跨模块传递。
  *
  * 职责：
@@ -53,26 +53,26 @@ public:
      * 构造并注册一个新域，返回强类型句柄。
      * 调用方不需要也不应该持有 InstanceDataDomain*；通过 Get(handle) 解引用。
      */
-    MRDHandle Create(mtl::InstanceDataLayout layout,
+    IDDHandle Create(mtl::InstanceDataLayout layout,
                      uint32_t                max_count,
                      uint8_t                 tex_array_slots = 0);
 
     /**
      * 通过句柄安全解引用。generation 不匹配或越界时返回 nullptr。
      */
-    InstanceDataDomain *Get(MRDHandle handle) const;
+    InstanceDataDomain *Get(IDDHandle handle) const;
 
     /**
      * 释放域：UnregisterDomain + delete。
      * 调用前请确保无存活 MI 实例引用该域。
      */
-    void Release(MRDHandle handle);
+    void Release(IDDHandle handle);
 
     /**
      * 过渡工具：裸指针反查句柄（P4-P6 迁移期使用；P8 后可移除）。
-     * 若 domain 未在本 manager 中注册，返回 InvalidMRDHandle。
+     * 若 domain 未在本 manager 中注册，返回 InvalidIDDHandle。
      */
-    MRDHandle GetHandle(InstanceDataDomain *domain) const;
+    IDDHandle GetHandle(InstanceDataDomain *domain) const;
 
     // ----------------------------------------------------------------
     // MI 槽位管理（P7 完整实现）
@@ -82,28 +82,28 @@ public:
      * 在指定域中分配一个 MI 槽位，可选初始化数据。
      * @return 槽位 id（>= 0），失败返回 -1。
      */
-    int    AllocMISlot  (MRDHandle handle, const void *init_data = nullptr, uint32_t size = 0);
+    int    AllocMISlot  (IDDHandle handle, const void *init_data = nullptr, uint32_t size = 0);
 
     /**
      * 释放 MI 槽位（不销毁域）。
      */
-    void   FreeMISlot   (MRDHandle handle, int mi_id);
+    void   FreeMISlot   (IDDHandle handle, int mi_id);
 
     /**
      * 返回指定槽位的 CPU 端数据指针；句柄或 mi_id 无效时返回 nullptr。
      */
-    void  *GetMIData    (MRDHandle handle, int mi_id) const;
+    void  *GetMIData    (IDDHandle handle, int mi_id) const;
 
     /**
      * 向指定槽位写入数据；返回 false 表示参数无效。
      */
-    bool   WriteMIData  (MRDHandle handle, int mi_id, const void *data, uint32_t size);
+    bool   WriteMIData  (IDDHandle handle, int mi_id, const void *data, uint32_t size);
 
     // ----------------------------------------------------------------
     // GPU 缓冲区懒初始化（由 RenderPrimitiveCollectSystem 在首帧调用）
     // ----------------------------------------------------------------
 
-    bool EnsureGPUBuffers(MRDHandle handle, BufferManager *bm);
+    bool EnsureGPUBuffers(IDDHandle handle, BufferManager *bm);
 
     // ----------------------------------------------------------------
     // 诊断

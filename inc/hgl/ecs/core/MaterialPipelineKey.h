@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <functional>
-#include <hgl/graph/MRDHandle.h>
+#include <hgl/graph/IDDHandle.h>
 
 namespace hgl
 {
@@ -24,7 +24,7 @@ namespace hgl::ecs
 
     /**
      * MaterialTemplate/GraphicsPipeline/Domain/Queue index for batching.
-     * P10: domain field migrated from raw InstanceDataDomain* to MRDHandle
+     * P10: domain field migrated from raw InstanceDataDomain* to IDDHandle
      * so batch identity is stable across domain pointer invalidation.
      * domain_handle == {} → default (no domain, backward-compatible)
      */
@@ -32,12 +32,12 @@ namespace hgl::ecs
     {
         hgl::graph::MaterialTemplate*   material      = nullptr;
         hgl::graph::GraphicsPipeline*   pipeline      = nullptr;
-        hgl::graph::MRDHandle           domain_handle = {};     ///< P10: was InstanceDataDomain*
+        hgl::graph::IDDHandle           domain_handle = {};     ///< P10: was InstanceDataDomain*
         RenderQueue                     queue         = RenderQueue::Opaque;
 
         MaterialPipelineKey(hgl::graph::MaterialTemplate* m = nullptr,
                             hgl::graph::GraphicsPipeline* p = nullptr,
-                            hgl::graph::MRDHandle         dh = {},
+                            hgl::graph::IDDHandle         dh = {},
                             RenderQueue                   q  = RenderQueue::Opaque)
             : material(m), pipeline(p), domain_handle(dh), queue(q) {}
 

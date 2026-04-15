@@ -391,7 +391,7 @@ InstanceDataDomain *MaterialManager::GetOrCreateDefaultDomain(MaterialTemplate *
     if (it != default_domain_map.end())
         return mrd_manager_ ? mrd_manager_->Get(it->second) : nullptr;
     if (!mrd_manager_) return nullptr;
-    const MRDHandle handle = mrd_manager_->Create(
+    const IDDHandle handle = mrd_manager_->Create(
         mtl->GetRequiredLayout(), mtl->GetMIMaxCount(), mtl->GetTextureArraySlotFlags());
     default_domain_map[mtl] = handle;
     return mrd_manager_->Get(handle);
@@ -873,16 +873,16 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
 
     PrimitiveMaterialSlot slot;
     slot.domain       = domain;
-    slot.domain_handle = mrd_manager_ ? mrd_manager_->GetHandle(domain) : MRDHandle{};
+    slot.domain_handle = mrd_manager_ ? mrd_manager_->GetHandle(domain) : IDDHandle{};
     slot.mrd_manager   = mrd_manager_;
     slot.mi_id         = mi_id;
     alloc_slot_created.fetch_add(1);
     return slot;
 }
 
-// P5: MRDHandle overload — resolves to raw ptr then delegates.
+// P5: IDDHandle overload — resolves to raw ptr then delegates.
 PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
-    MRDHandle domain_handle,
+    IDDHandle domain_handle,
     const void *instance_data,
     uint32_t instance_data_size)
 {
@@ -900,7 +900,7 @@ InstanceDataDomain *MaterialManager::CreateInstanceDataDomain(
     mtl::InstanceDataLayout layout, uint32_t max_count, uint8_t tex_array_slots)
 {
     if (!mrd_manager_) return nullptr;
-    const MRDHandle handle = mrd_manager_->Create(layout, max_count, tex_array_slots);
+    const IDDHandle handle = mrd_manager_->Create(layout, max_count, tex_array_slots);
     return mrd_manager_->Get(handle);
 }
 
@@ -958,10 +958,10 @@ DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(InstanceData
 
     DomainMaterialBinding *binding = new DomainMaterialBinding(domain, mtl, mp_per_material);
 
-    // Phase 3 / P4: register binding keyed by MRDHandle
+    // Phase 3 / P4: register binding keyed by IDDHandle
     if (mrd_manager_)
     {
-        const MRDHandle h = mrd_manager_->GetHandle(domain);
+        const IDDHandle h = mrd_manager_->GetHandle(domain);
         if (h.IsValid())
             domain_bindings_map[h].push_back(binding);
     }
@@ -969,7 +969,7 @@ DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(InstanceData
     return binding;
 }
 
-DomainMaterialBinding *MaterialManager::FindDomainMaterialBinding(MRDHandle handle, MaterialTemplate *mtl) const
+DomainMaterialBinding *MaterialManager::FindDomainMaterialBinding(IDDHandle handle, MaterialTemplate *mtl) const
 {
     if (!handle.IsValid() || !mtl)
         return nullptr;
@@ -995,7 +995,7 @@ void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *bindin
         return;
 
     InstanceDataDomain *d = binding->GetDomain();
-    const MRDHandle h = mrd_manager_ ? mrd_manager_->GetHandle(d) : InvalidMRDHandle;
+    const IDDHandle h = mrd_manager_ ? mrd_manager_->GetHandle(d) : InvalidIDDHandle;
     auto it = domain_bindings_map.find(h);
     if (it != domain_bindings_map.end())
     {
@@ -1008,7 +1008,7 @@ void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *bindin
     delete binding;
 }
 
-void MaterialManager::ReleaseInstanceDataDomain(MRDHandle handle)
+void MaterialManager::ReleaseInstanceDataDomain(IDDHandle handle)
 {
     if (!handle.IsValid() || !mrd_manager_)
         return;

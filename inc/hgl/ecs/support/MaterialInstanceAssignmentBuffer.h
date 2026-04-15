@@ -24,7 +24,7 @@ namespace hgl::ecs
 {
     struct MaterialSlotEntry
     {
-        graph::MRDHandle domain_handle = {};
+        graph::IDDHandle domain_handle = {};
         int mi_id = -1;
         graph::Primitive* primitive_fallback = nullptr;
         const void* mi_data_ptr = nullptr;
@@ -43,7 +43,7 @@ namespace hgl::ecs
         hgl::UnorderedMap<uint64_t, uint16> slot_index_map;
         hgl::UnorderedMap<graph::Primitive*, uint16> primitive_index_map;
 
-        static uint64_t MakeSlotKey(graph::MRDHandle dh, int mi_id)
+        static uint64_t MakeSlotKey(graph::IDDHandle dh, int mi_id)
         {
             return (uint64_t(dh.id) << 32) ^ (uint64_t(dh.generation) << 16) ^ uint64_t(uint32_t(mi_id));
         }
@@ -63,7 +63,7 @@ namespace hgl::ecs
             primitive_index_map.Reserve(count);
         }
 
-        uint16 AddResolved(graph::MRDHandle dh,
+        uint16 AddResolved(graph::IDDHandle dh,
                            int mi_id,
                            const void* mi_data_ptr,
                            const void* mit_data_ptr,
@@ -104,7 +104,7 @@ namespace hgl::ecs
             return index;
         }
 
-        uint16 FindResolved(graph::MRDHandle dh, int mi_id) const
+        uint16 FindResolved(graph::IDDHandle dh, int mi_id) const
         {
             if (!dh.IsValid() || mi_id < 0)
                 return 0;

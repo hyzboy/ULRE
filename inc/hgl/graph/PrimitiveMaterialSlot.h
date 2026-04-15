@@ -2,7 +2,7 @@
 
 #include <hgl/mtl/MaterialPreset.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
-#include <hgl/graph/MRDHandle.h>
+#include <hgl/graph/IDDHandle.h>
 
 namespace hgl::graph
 {
@@ -37,7 +37,7 @@ struct PrimitiveMaterialSlot
 {
     MaterialTemplate        *material_template = nullptr;
     InstanceDataDomain  *domain            = nullptr;
-    MRDHandle                domain_handle     = {};          // P9: handle-based identity alongside raw ptr cache
+    IDDHandle                domain_handle     = {};          // P9: handle-based identity alongside raw ptr cache
     MRDManager              *mrd_manager       = nullptr;     // P12: for Primitive data-access delegation
     int                      mi_id             = -1;
     const VIL               *vil               = nullptr;

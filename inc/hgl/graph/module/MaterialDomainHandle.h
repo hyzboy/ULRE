@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <hgl/graph/MRDHandle.h>
+#include <hgl/graph/IDDHandle.h>
 
 namespace hgl::graph
 {
@@ -12,7 +12,7 @@ class DomainMaterialBinding;
 struct MaterialDomainHandle
 {
     MaterialTemplate              *material      = nullptr;
-    MRDHandle                      domain_handle;
+    IDDHandle                      domain_handle;
     DomainMaterialBinding         *binding       = nullptr;
 
     bool IsValid() const { return material && domain_handle.IsValid() && binding; }
