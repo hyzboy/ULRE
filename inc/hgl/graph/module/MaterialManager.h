@@ -353,7 +353,7 @@ public: //MaterialInstanceData
                                                      uint32_t instance_data_size = 0);
 
     /// P5: IDDHandle overload — resolves handle to domain ptr internally.
-    PrimitiveMaterialSlot AllocMaterialInstanceSlot(IDDHandle domain_handle,
+    PrimitiveMaterialSlot AllocMaterialInstanceSlot(IDDHandle idd_handle,
                                                      const void *instance_data = nullptr,
                                                      uint32_t instance_data_size = 0);
     

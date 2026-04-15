@@ -24,7 +24,7 @@ namespace hgl::ecs
 {
     struct MaterialSlotEntry
     {
-        graph::IDDHandle domain_handle = {};
+        graph::IDDHandle idd_handle = {};
         int mi_id = -1;
         graph::Primitive* primitive_fallback = nullptr;
         const void* mi_data_ptr = nullptr;
@@ -78,7 +78,7 @@ namespace hgl::ecs
 
             const uint16 index = static_cast<uint16>(entries.size());
             MaterialSlotEntry e;
-            e.domain_handle = dh;
+            e.idd_handle = dh;
             e.mi_id = mi_id;
             e.mi_data_ptr = mi_data_ptr;
             e.mit_data_ptr = mit_data_ptr;

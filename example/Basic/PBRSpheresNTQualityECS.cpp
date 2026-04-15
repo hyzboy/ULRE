@@ -314,7 +314,7 @@ private:
 
                 MaterialBindingInit init;
                 init.material = material;
-                init.domain_handle = material_handle.domain_handle;
+                init.idd_handle = material_handle.idd_handle;
                 init.vil = material_vil;
                 init.preset = GraphicsPipelinePreset::Solid3D;
                 init.material_preset = mtl::MaterialPreset::Standard;

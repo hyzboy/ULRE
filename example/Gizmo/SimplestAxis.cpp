@@ -79,7 +79,7 @@ private:
         if(!axis_vil)
             return false;
 
-        axis_slot = material_manager->AllocMaterialInstanceSlot(handle.domain_handle);
+        axis_slot = material_manager->AllocMaterialInstanceSlot(handle.idd_handle);
         if(!axis_slot.domain)
             return false;
 

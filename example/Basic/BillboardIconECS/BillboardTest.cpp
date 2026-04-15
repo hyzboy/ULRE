@@ -137,7 +137,7 @@ private:
 
         MaterialBindingInit init;
         init.material = mtl_plane_grid;
-        init.domain_handle = handle.domain_handle;
+        init.idd_handle = handle.idd_handle;
         init.vil = vil_plane_grid;
         init.preset = kPlaneGridCfg.pipeline;
         init.material_preset = kPlaneGridCfg.preset;
@@ -185,7 +185,7 @@ private:
 
         MaterialBindingInit init;
         init.material = mtl_billboard;
-        init.domain_handle = handle.domain_handle;
+        init.idd_handle = handle.idd_handle;
         init.vil = vil_billboard;
         init.preset = kBillboardCfg.pipeline;
         init.material_preset = kBillboardCfg.preset;

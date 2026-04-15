@@ -172,7 +172,7 @@ namespace hgl
 
             graph::MaterialBindingInit init;
             init.material = handle.material;
-            init.domain_handle = handle.domain_handle;
+            init.idd_handle = handle.idd_handle;
             init.vil = resolved_vil;
             init.preset = rec.pipeline;
             init.material_preset = rec.preset;
@@ -207,7 +207,7 @@ namespace hgl
 
             graph::MaterialBindingInit init;
             init.material       = handle.material;
-            init.domain_handle  = handle.domain_handle;
+            init.idd_handle  = handle.idd_handle;
             init.vil            = nullptr;   // deferred — resolved at render time
             init.preset         = rec.pipeline;
             init.material_preset = rec.preset;

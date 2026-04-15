@@ -42,7 +42,7 @@ enum class MaterialRebindCopyPolicy : uint8_t
 struct MaterialBindingInit
 {
     MaterialTemplate *material = nullptr;
-    IDDHandle         domain_handle;
+    IDDHandle         idd_handle;
     const VIL *vil = nullptr;
     GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
     mtl::MaterialPreset material_preset = mtl::MaterialPreset::Standard;
@@ -55,7 +55,7 @@ struct MaterialBindingInit
 struct MaterialBindingRebind
 {
     MaterialTemplate *new_material = nullptr;
-    IDDHandle         new_domain_handle;
+    IDDHandle         new_idd_handle;
     const VIL *new_vil = nullptr;
     GraphicsPipelinePreset new_preset = GraphicsPipelinePreset::Solid3D;
     mtl::MaterialPreset new_material_preset = mtl::MaterialPreset::Standard;
@@ -177,7 +177,7 @@ private:
     {
         MaterialInstanceHandle handle = InvalidMaterialInstanceHandle;
         MaterialTemplate *material_template = nullptr;
-        IDDHandle domain_handle;
+        IDDHandle idd_handle;
         int mi_id = -1;
         const VIL *vil = nullptr;
         GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;

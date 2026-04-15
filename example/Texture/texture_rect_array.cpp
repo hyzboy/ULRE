@@ -153,7 +153,7 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].slot = material_manager->AllocMaterialInstanceSlot(handle.domain_handle);
+            render_obj[i].slot = material_manager->AllocMaterialInstanceSlot(handle.idd_handle);
 
             if(!render_obj[i].slot.domain)
                 return false;

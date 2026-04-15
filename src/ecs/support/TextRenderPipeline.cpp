@@ -506,7 +506,7 @@ namespace hgl::ecs
 
                 graph::MaterialBindingInit init;
                 init.material = resources->material;
-                init.domain_handle = material_manager->GetIDDManager()->GetHandle(domain);
+                init.idd_handle = material_manager->GetIDDManager()->GetHandle(domain);
                 init.vil = resources->cached_vil;
                 init.preset = resources->cached_preset;
                 init.material_preset = graph::mtl::MaterialPreset::Text2D;

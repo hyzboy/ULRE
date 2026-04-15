@@ -85,7 +85,7 @@ private:
 
         MaterialBindingInit init;
         init.material = material;
-        init.domain_handle = handle.domain_handle;
+        init.idd_handle = handle.idd_handle;
         init.vil = material_vil;
         init.preset = kExtrudedCfg.pipeline;
         init.material_preset = kExtrudedCfg.preset;

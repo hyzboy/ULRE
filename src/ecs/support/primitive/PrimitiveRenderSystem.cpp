@@ -79,9 +79,9 @@ namespace hgl::ecs
                       if (lhs->key.pipeline != rhs->key.pipeline)
                           return lhs->key.pipeline < rhs->key.pipeline;
 
-                      if (lhs->key.domain_handle.id != rhs->key.domain_handle.id)
-                          return lhs->key.domain_handle.id < rhs->key.domain_handle.id;
-                      return lhs->key.domain_handle.generation < rhs->key.domain_handle.generation;
+                      if (lhs->key.idd_handle.id != rhs->key.idd_handle.id)
+                          return lhs->key.idd_handle.id < rhs->key.idd_handle.id;
+                      return lhs->key.idd_handle.generation < rhs->key.idd_handle.generation;
                   });
 
         for (MaterialBatch* batch : ordered_batches)

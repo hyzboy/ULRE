@@ -121,7 +121,7 @@ private:
                 return false;
 
             plane_grid_slot = material_manager->AllocMaterialInstanceSlot(
-                handle.domain_handle,
+                handle.idd_handle,
                 &white_color,
                 sizeof(white_color));
 
@@ -148,7 +148,7 @@ private:
                 return false;
 
             line_slot = material_manager->AllocMaterialInstanceSlot(
-                handle.domain_handle,
+                handle.idd_handle,
                 &yellow_color,
                 sizeof(yellow_color));
 

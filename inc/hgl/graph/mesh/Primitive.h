@@ -22,7 +22,7 @@ class Primitive
     /// Phase 2c — MI fields inlined directly; mat_inst bridge removed
     MaterialTemplate           *material_template = nullptr;  ///< primary render key
     IDDManager                 *idd_manager_      = nullptr;  ///< P12: data-access delegate (replaces domain* cache)
-    IDDHandle                   domain_handle     = {};        ///< P9: stable handle for domain identity
+    IDDHandle                   idd_handle     = {};        ///< P9: stable handle for domain identity
     int                         mi_id             = -1;       ///< slot index in domain
     const VIL                  *vil               = nullptr;  ///< vertex input layout
     VIL                        *owned_runtime_vil = nullptr;  ///< geometry-driven runtime VIL owned by Primitive
@@ -58,14 +58,14 @@ public:
             VkPipelineLayout            GetPipelineLayout   ()      { return material_template ? material_template->GetPipelineLayout() : VK_NULL_HANDLE; }
             MaterialTemplate *          GetMaterial         ()      { return material_template; }  ///< @deprecated use GetMaterialTemplate()
             MaterialTemplate *          GetMaterialTemplate ()const { return material_template; }
-            InstanceDataDomain *    GetDomain           ()const { return (idd_manager_ && domain_handle.IsValid()) ? idd_manager_->Get(domain_handle) : nullptr; }  ///< P12: resolved on demand via idd_manager_
-            IDDHandle                   GetDomainHandle     ()const { return domain_handle; }   // P9
+            InstanceDataDomain *    GetDomain           ()const { return (idd_manager_ && idd_handle.IsValid()) ? idd_manager_->Get(idd_handle) : nullptr; }  ///< P12: resolved on demand via idd_manager_
+            IDDHandle                   GetDomainHandle     ()const { return idd_handle; }   // P9
     const   VIL *                       GetVIL              ()const { return vil; }
             int                         GetMIID             ()const { return mi_id; }
             GraphicsPipelinePreset      GetRenderPreset     ()const { return render_preset; }
             void                        SetRenderPreset     (GraphicsPipelinePreset p){ render_preset = p; }
             mtl::MaterialPreset         GetMaterialPreset   ()const { return material_preset; }
-            void *                      GetMIData           ()      { return (idd_manager_ && domain_handle.IsValid() && mi_id >= 0) ? idd_manager_->GetMIData(domain_handle, mi_id) : nullptr; }  ///< P12: via idd_manager_
+            void *                      GetMIData           ()      { return (idd_manager_ && idd_handle.IsValid() && mi_id >= 0) ? idd_manager_->GetMIData(idd_handle, mi_id) : nullptr; }  ///< P12: via idd_manager_
             void                        WriteMIData         (const void *data, uint32_t size);
     template<typename T>
             void                        WriteMIData         (const T &v){ WriteMIData(&v, sizeof(T)); }

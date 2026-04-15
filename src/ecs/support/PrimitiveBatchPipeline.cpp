@@ -502,7 +502,7 @@ namespace hgl::ecs
                 LogDebug("[BatchPipeline::UpdateMIBuf] material=%p(%s) domain_id=%u hasMI=%d mi_buf=%p items=%zu",
                          (void*)batch.key.material,
                          batch.key.material ? batch.key.material->GetName().c_str() : "null",
-                         batch.key.domain_handle.id,
+                         batch.key.idd_handle.id,
                          batch.key.material ? (int)batch.key.material->hasMI() : -1,
                          (void*)batch.mi_buffer,
                          batch.items.size());
@@ -584,7 +584,7 @@ namespace hgl::ecs
                 {
                     ++frame_fallback_snapshot_no_material;
                 }
-                else if (!binding.domain_handle.IsValid())
+                else if (!binding.idd_handle.IsValid())
                 {
                     ++frame_fallback_snapshot_no_domain;
                 }
@@ -598,8 +598,8 @@ namespace hgl::ecs
                            ? binding.material_template
                            : item->GetMaterial();
 
-            const graph::IDDHandle domain_handle = use_resolved_slot
-                         ? binding.domain_handle
+            const graph::IDDHandle idd_handle = use_resolved_slot
+                         ? binding.idd_handle
                          : (primitive ? primitive->GetDomainHandle() : graph::IDDHandle{});
 
             const graph::VIL* effective_vil = nullptr;
@@ -750,7 +750,7 @@ namespace hgl::ecs
             // domains are never merged into the same batch (nullptr = default domain).
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 
-            MaterialPipelineKey key(material, pipeline, domain_handle, queue);
+            MaterialPipelineKey key(material, pipeline, idd_handle, queue);
             auto it = cache.materialBatches.find(key);
 
             if (it == cache.materialBatches.end())
@@ -801,7 +801,7 @@ namespace hgl::ecs
             for (const auto &pair : cache.materialBatches)
             {
                 auto *mat = pair.first.material;
-                const uint32_t dom_id = pair.first.domain_handle.id;
+                const uint32_t dom_id = pair.first.idd_handle.id;
                 if (mat)
                     material_domains[mat].insert(dom_id);
 

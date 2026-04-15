@@ -148,7 +148,7 @@ private:
 
                 MaterialBindingInit init;
                 init.material = material;
-                init.domain_handle = material_handle.domain_handle;
+                init.idd_handle = material_handle.idd_handle;
                 init.vil = material_vil;
                 init.preset = kPBRColorMICfg.pipeline;
                 init.material_preset = kPBRColorMICfg.preset;

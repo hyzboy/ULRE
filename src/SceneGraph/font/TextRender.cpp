@@ -196,7 +196,7 @@ namespace hgl::graph
 
             MaterialBindingInit init;
             init.material = mtl_fs;
-            init.domain_handle = mtl_manager->GetIDDManager()->GetHandle(domain);
+            init.idd_handle = mtl_manager->GetIDDManager()->GetHandle(domain);
             init.vil = vil;
             init.preset = GraphicsPipelinePreset::Solid2D;
             init.material_preset = mtl::MaterialPreset::Text2D;

@@ -104,7 +104,7 @@ private:
 
             MaterialBindingInit init;
             init.material = md->material;
-            init.domain_handle = handle.domain_handle;
+            init.idd_handle = handle.idd_handle;
             init.vil = md->vil;
             init.preset = cfg.pipeline;
             init.material_preset = cfg.preset;

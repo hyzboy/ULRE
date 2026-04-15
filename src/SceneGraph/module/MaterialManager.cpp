@@ -873,7 +873,7 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
 
     PrimitiveMaterialSlot slot;
     slot.domain       = domain;
-    slot.domain_handle = idd_manager_ ? idd_manager_->GetHandle(domain) : IDDHandle{};
+    slot.idd_handle = idd_manager_ ? idd_manager_->GetHandle(domain) : IDDHandle{};
     slot.idd_manager   = idd_manager_;
     slot.mi_id         = mi_id;
     alloc_slot_created.fetch_add(1);
@@ -882,12 +882,12 @@ PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
 
 // P5: IDDHandle overload — resolves to raw ptr then delegates.
 PrimitiveMaterialSlot MaterialManager::AllocMaterialInstanceSlot(
-    IDDHandle domain_handle,
+    IDDHandle idd_handle,
     const void *instance_data,
     uint32_t instance_data_size)
 {
     return AllocMaterialInstanceSlot(
-        idd_manager_ ? idd_manager_->Get(domain_handle) : nullptr,
+        idd_manager_ ? idd_manager_->Get(idd_handle) : nullptr,
         instance_data,
         instance_data_size);
 }

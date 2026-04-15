@@ -30,7 +30,7 @@ namespace hgl::ecs
         bool valid = false;
         hgl::graph::MaterialTemplate* material_template = nullptr;
         hgl::graph::InstanceDataDomain* domain = nullptr;
-        hgl::graph::IDDHandle domain_handle = {};   // P9: handle-based identity
+        hgl::graph::IDDHandle idd_handle = {};   // P9: handle-based identity
         int mi_id = -1;
         const hgl::graph::VIL* vil = nullptr;
         const uint32_t* mit_data = nullptr;
@@ -51,7 +51,7 @@ namespace hgl::ecs
             valid = false;
             material_template = nullptr;
             domain = nullptr;
-            domain_handle = {};   // P9
+            idd_handle = {};   // P9
             mi_id = -1;
             vil = nullptr;
             mit_data = nullptr;
@@ -63,7 +63,7 @@ namespace hgl::ecs
             valid = slot.material_template != nullptr && slot.domain != nullptr;
             material_template = slot.material_template;
             domain = slot.domain;
-            domain_handle = slot.domain_handle;   // P9
+            idd_handle = slot.idd_handle;   // P9
             mi_id = slot.mi_id;
             vil = slot.vil;
             mit_data = slot.mit_data;

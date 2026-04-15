@@ -12,10 +12,10 @@ class DomainMaterialBinding;
 struct MaterialDomainHandle
 {
     MaterialTemplate              *material      = nullptr;
-    IDDHandle                      domain_handle;
+    IDDHandle                      idd_handle;
     DomainMaterialBinding         *binding       = nullptr;
 
-    bool IsValid() const { return material && domain_handle.IsValid() && binding; }
+    bool IsValid() const { return material && idd_handle.IsValid() && binding; }
 };
 
 } // namespace hgl::graph

@@ -31,7 +31,7 @@ namespace hgl::ecs
 
             if (prim->GetMaterialTemplate() != slot.material_template)
                 return true;
-            if (prim->GetDomainHandle() != slot.domain_handle)    // P9: handle comparison
+            if (prim->GetDomainHandle() != slot.idd_handle)    // P9: handle comparison
                 return true;
             if (prim->GetMIID() != slot.mi_id)
                 return true;
@@ -386,15 +386,15 @@ namespace hgl::ecs
                             bool handle_ok = false;
                             if (registry->QuerySemanticMaterial(semantic_id, rec))
                             {
-                                auto domain_handle = registry->Acquire(rec);
-                                if (domain_handle.IsValid() && domain_handle.material)
+                                auto idd_handle = registry->Acquire(rec);
+                                if (idd_handle.IsValid() && idd_handle.material)
                                 {
                                     const graph::VIL *resolved_vil = registry->ResolveVIL(
-                                        domain_handle.material, rec, primitive->GetGeometry());
+                                        idd_handle.material, rec, primitive->GetGeometry());
                                     if (resolved_vil)
                                     {
                                         registry->CompleteBinding(deferred_handle,
-                                                                  domain_handle.material,
+                                                                  idd_handle.material,
                                                                   resolved_vil,
                                                                   request.pipeline);
                                         handle_ok = registry->BuildSlot(deferred_handle, slot);
@@ -568,7 +568,7 @@ namespace hgl::ecs
                     graph::PrimitiveMaterialSlot resolved_slot_snapshot;
                     resolved_slot_snapshot.material_template = primitive_for_slot->GetMaterialTemplate();
                     resolved_slot_snapshot.domain = primitive_for_slot->GetDomain();
-                    resolved_slot_snapshot.domain_handle = primitive_for_slot->GetDomainHandle();   // P9
+                    resolved_slot_snapshot.idd_handle = primitive_for_slot->GetDomainHandle();   // P9
                     resolved_slot_snapshot.mi_id = resolved_mi_id;
                     resolved_slot_snapshot.vil = primitive_for_slot->GetVIL();
                     resolved_slot_snapshot.preset = primitive_for_slot->GetRenderPreset();
