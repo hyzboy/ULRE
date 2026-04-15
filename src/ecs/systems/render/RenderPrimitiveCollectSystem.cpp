@@ -13,6 +13,7 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialTemplate.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
+#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/log/Log.h>
 #include<glm/glm.hpp>
 
@@ -373,54 +374,48 @@ namespace hgl::ecs
                         // Level-1 probe: has this variant been resolved by any entity this session?
                         const bool l1_hit = material_cache.ProbeVariant(variant_hash);
 
-                        // ── Handle-aware fast path ──
-                        // If the Primitive carries a pre-allocated MaterialInstanceHandle,
-                        // complete its binding (material + VIL) and build the slot directly,
-                        // bypassing ResolveMI's MI slot allocation.
-                        const uint64_t deferred_handle = primitive->GetDeferredMIHandle();
+                        // ── Domain-direct fast path (Phase D) ──
+                        // If the Primitive already carries a pre-allocated IDD slot
+                        // (created via DirectCreatePrimitive with IDDHandle+slot_id),
+                        // only resolve the variant (material/VIL/preset) and assemble
+                        // the slot without allocating a new MI.
                         graph::PrimitiveMaterialSlot slot;
 
-                        if (deferred_handle != 0)
-                        {
-                            graph::mtl::MaterialAssetRecord rec;
-                            bool handle_ok = false;
-                            if (registry->QuerySemanticMaterial(semantic_id, rec))
-                            {
-                                auto idd_handle = registry->Acquire(rec);
-                                if (idd_handle.IsValid() && idd_handle.material)
-                                {
-                                    const graph::VIL *resolved_vil = registry->ResolveVIL(
-                                        idd_handle.material, rec, primitive->GetGeometry());
-                                    if (resolved_vil)
-                                    {
-                                        registry->CompleteBinding(deferred_handle,
-                                                                  idd_handle.material,
-                                                                  resolved_vil,
-                                                                  request.pipeline);
-                                        handle_ok = registry->BuildSlot(deferred_handle, slot);
-                                    }
-                                }
-                            }
+                        const bool is_domain_direct = primitive->GetDomainHandle().IsValid()
+                                                   && primitive->GetSlotID() >= 0
+                                                   && primitive->HasDeferredMI();
 
-                            if (!handle_ok)
+                        if (is_domain_direct)
+                        {
+                            graph::MaterialVariant variant = registry->ResolveVariant(
+                                semantic_id, request, geometry);
+
+                            if (variant.IsValid())
                             {
-                                // Fallback: handle path failed, use normal ResolveMI.
-                                slot = registry->ResolveMI(hgl::ecs::ToRuntimeEntityKey(entity_id),
-                                                           semantic_id,
-                                                           request,
-                                                           geometry,
-                                                           instance_data,
-                                                           instance_data_size);
+                                const auto prim_idd_handle = primitive->GetDomainHandle();
+                                auto *idd_mgr = gc->GetMaterialManager()
+                                                    ? gc->GetMaterialManager()->GetIDDManager()
+                                                    : nullptr;
+
+                                slot.material_template        = variant.material_template;
+                                slot.vil                      = variant.vil;
+                                slot.preset                   = variant.preset;
+                                slot.material_preset          = variant.material_preset;
+                                slot.idd_handle               = prim_idd_handle;
+                                slot.idd_manager              = idd_mgr;
+                                slot.domain                   = idd_mgr ? idd_mgr->Get(prim_idd_handle) : nullptr;
+                                slot.slot_id                  = primitive->GetSlotID();
+                                slot.texture_array_slot_flags = variant.texture_array_slot_flags;
                             }
                         }
                         else
                         {
-                        slot = registry->ResolveMI(hgl::ecs::ToRuntimeEntityKey(entity_id),
-                                                        semantic_id,
-                                                        request,
-                                                        geometry,
-                                                        instance_data,
-                                                        instance_data_size);
+                            slot = registry->ResolveMI(hgl::ecs::ToRuntimeEntityKey(entity_id),
+                                                       semantic_id,
+                                                       request,
+                                                       geometry,
+                                                       instance_data,
+                                                       instance_data_size);
                         }
                         
                         static uint32_t s_resolve_tick = 0;
