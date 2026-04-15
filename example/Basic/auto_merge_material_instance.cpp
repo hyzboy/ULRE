@@ -142,7 +142,13 @@ private:
             // 与 Primitive 解耦。渲染时系统会将 Handle 对应的 domain/mi_id
             // 绑定到 Primitive 上。
             const Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
-            triangles[i].mi_handle = AllocateMaterialHandle(kMergeCfg, &color, sizeof(color));
+            triangles[i].mi_handle = AllocateMaterialHandle(semantic_id, &color, sizeof(color));
+
+            // ── 将 MI Handle 关联到 Primitive ─────────────────────────────────
+            // 让 RenderPrimitiveCollectSystem 的 Phase 4 快速路径能通过
+            // CompleteBinding 复用已有的 mi_id（携带颜色数据），
+            // 而非 ResolveMI 分配新的空槽位。
+            triangles[i].primitive->SetDeferredMIHandle(triangles[i].mi_handle);
 
             if (triangles[i].mi_handle == InvalidMaterialInstanceHandle)
             {
