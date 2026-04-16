@@ -2,7 +2,6 @@
 
 #include<hgl/type/Str.Comp.h>
 #include<hgl/type/String.h>
-#include<hgl/type/ValueArray.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKInterpolation.h>
 #include<hgl/vk/VKSamplerType.h>
@@ -261,8 +260,6 @@ inline bool operator==(const ShaderVariable& lhs, const ShaderVariable& rhs) {
            lhs.type == rhs.type &&
            lhs.interpolation == rhs.interpolation;
 }
-
-using SVList=ValueArray<ShaderVariable>;
 
 struct ShaderVariableArray
 {
