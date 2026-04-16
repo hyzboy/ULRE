@@ -1,13 +1,17 @@
 #include <hgl/graph/module/MaterialAssetRegistry.h>
 #include <hgl/graph/module/MaterialAssetLoader.h>
 #include <hgl/graph/module/MaterialManager.h>
+#include <hgl/graph/module/ResourceDomainManager.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/SamplerManager.h>
+#include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/vk/VKMaterial.h>
 #include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/vk/VKResourceDomain.h>
 #include <hgl/vk/VKDomainMaterialBinding.h>
 #include <hgl/vk/VKVertexInputConfig.h>
+
+#include <cctype>
 
 namespace hgl::graph
 {
@@ -89,6 +93,39 @@ static uint64_t ComputeTextureConfigHash(
     return hash;
 }
 
+static uint32_t HashDomainIDString(const std::string &did)
+{
+    uint32_t h = 2166136261u; // FNV-1a 32-bit offset
+    for (unsigned char c : did)
+        h = (h ^ c) * 16777619u;
+
+    // 0 作为默认域，避免哈希碰到 0。
+    return h == 0 ? 1u : h;
+}
+
+static bool TryParseDomainID(const std::string &did, uint32_t &out_id)
+{
+    if (did.empty())
+    {
+        out_id = 0;
+        return true;
+    }
+
+    uint64_t value = 0;
+    for (char ch : did)
+    {
+        if (!std::isdigit(static_cast<unsigned char>(ch)))
+            return false;
+
+        value = value * 10 + uint64_t(ch - '0');
+        if (value > 0xFFFFFFFFull)
+            return false;
+    }
+
+    out_id = static_cast<uint32_t>(value);
+    return true;
+}
+
 // ── DMBKeyHash ───────────────────────────────────────────────────────────────
 
 size_t MaterialAssetRegistry::DMBKeyHash::operator()(const DMBKey &k) const
@@ -139,9 +176,17 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
         return handle;
     }
 
-    // 2. ResourceDomain (按 material_name + domain_id 缓存)
+    // 2. ResourceDomain (按 schema + domain_id 缓存)
     const std::string &did = rec.domain_id;          // 空串 → 默认域
-    const std::string domain_cache_key = mat_name_str + "#" + did;
+    const auto schema = handle.material->GetShaderDataSchema();
+
+    uint32_t numeric_domain_id = 0;
+    if (!TryParseDomainID(did, numeric_domain_id))
+    {
+        numeric_domain_id = HashDomainIDString(did);
+    }
+
+    const std::string domain_cache_key = std::to_string(static_cast<uint32_t>(schema)) + "#" + std::to_string(numeric_domain_id);
 
     auto it_domain = domain_cache.find(domain_cache_key);
     if (it_domain != domain_cache.end())
@@ -150,9 +195,31 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     }
     else
     {
-        handle.domain = mm->CreateResourceDomain(handle.material);
+        auto *gc = mm->GetGraphicsContext();
+        auto *rdm = gc ? gc->GetResourceDomainManager() : nullptr;
+
+        if (rdm)
+        {
+            handle.domain = rdm->Get(schema, numeric_domain_id);
+
+            if (!handle.domain)
+            {
+                ResourceDomainCreateInfo ci;
+                ci.schema = schema;
+                ci.domain_id = numeric_domain_id;
+                ci.initial_capacity = 256;
+                handle.domain = rdm->Create(ci);
+            }
+        }
+        else
+        {
+            // 回退路径：仍走 MaterialManager，兼容未初始化 ResourceDomainManager 的场景。
+            handle.domain = mm->CreateResourceDomain(handle.material);
+        }
+
         if (!handle.domain)
             return {};
+
         domain_cache[domain_cache_key] = handle.domain;
     }
 

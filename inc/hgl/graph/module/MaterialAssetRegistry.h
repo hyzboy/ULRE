@@ -30,7 +30,7 @@ class MaterialAssetRegistry
     TextureManager  *tm;
     SamplerManager  *sm;
 
-    // (material_cache_name + domain_id) → ResourceDomain*
+    // (schema + domain_id) → ResourceDomain*
     std::unordered_map<std::string, ResourceDomain*> domain_cache;
 
     // DMB 缓存 key = (material_cache_name, domain_id, texture_config_hash)
