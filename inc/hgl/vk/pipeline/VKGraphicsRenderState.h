@@ -1,6 +1,5 @@
 #pragma once
 
-#include<hgl/type/ValueArray.h>
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKPrimitiveType.h>
 #include<cstdint>
@@ -17,10 +16,10 @@ struct GraphicsRenderState
     VkPipelineDepthStencilStateCreateInfo depth_stencil{};
     VkPipelineMultisampleStateCreateInfo multisample{};
 
-    ValueArray<VkPipelineColorBlendAttachmentState> blend_attachments;
+    std::vector<VkPipelineColorBlendAttachmentState> blend_attachments;
     VkPipelineColorBlendStateCreateInfo blend{};
 
-    ValueArray<VkDynamicState> dynamic_states;
+    std::vector<VkDynamicState> dynamic_states;
 
     uint64_t Hash() const;
     bool Equals(const GraphicsRenderState &) const;

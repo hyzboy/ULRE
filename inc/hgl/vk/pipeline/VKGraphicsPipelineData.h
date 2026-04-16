@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VKPrimitiveType.h>
 #include<hgl/vk/VKVertexInputLayout.h>
-#include<hgl/type/ValueArray.h>
+#include<vector>
 #include<hgl/type/String.h>
 #include<cmath>
 
@@ -19,7 +19,7 @@ const size_t MAX_SAMPLE_MASK_COUNT=VK_SAMPLE_COUNT_64_BIT;
 
 const size_t VK_DYNAMIC_STATE_RANGE_SIZE=40;
 
-using ShaderStageCreateInfoList=ValueArray<VkPipelineShaderStageCreateInfo>;
+using ShaderStageCreateInfoList=std::vector<VkPipelineShaderStageCreateInfo>;
 
 const bool Compare(const VkGraphicsPipelineCreateInfo *,const VkGraphicsPipelineCreateInfo *);
 

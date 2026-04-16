@@ -268,8 +268,8 @@ GraphicsPipelineData::GraphicsPipelineData()
 
 void GraphicsPipelineData::InitShaderStage(const ShaderStageCreateInfoList &ssl)
 {
-    pipeline_info.stageCount = ssl.GetCount();
-    pipeline_info.pStages = ssl.GetData();
+    pipeline_info.stageCount = (uint32_t)ssl.size();
+    pipeline_info.pStages = ssl.data();
 }
 
 void GraphicsPipelineData::InitVertexInputState(const VIL *vil)

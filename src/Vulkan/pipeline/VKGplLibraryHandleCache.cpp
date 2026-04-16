@@ -75,7 +75,7 @@ VkPipeline CreatePRLibrary(VkDevice device, VkPipelineCache cache,
 
     // Filter vertex-side shader stages from the material's combined list
     const ShaderStageCreateInfoList &all_stages = req.material->GetStageList();
-    const uint32_t stage_count = static_cast<uint32_t>(all_stages.GetCount());
+    const uint32_t stage_count = static_cast<uint32_t>(all_stages.size());
 
     // Collect pre-raster stages into a local array
     VkPipelineShaderStageCreateInfo pr_stages[16]; // VS + GS + TC + TE max 4, well below 16
@@ -154,7 +154,7 @@ VkPipeline CreateFSLibrary(VkDevice device, VkPipelineCache cache,
     const GraphicsPipelineData *pd = req.pipeline_data;
 
     const ShaderStageCreateInfoList &all_stages = req.material->GetStageList();
-    const uint32_t stage_count = static_cast<uint32_t>(all_stages.GetCount());
+    const uint32_t stage_count = static_cast<uint32_t>(all_stages.size());
 
     VkPipelineShaderStageCreateInfo fs_stage{};
     bool found_fs = false;
@@ -238,7 +238,7 @@ VkPipeline CreateFOLibrary(VkDevice device, VkPipelineCache cache,
             blend_state.blendConstants[k] = pd->color_blend->blendConstants[k];
     }
 
-    const VkFormat *color_fmts = rf->GetColorFormat().GetData();
+    const VkFormat *color_fmts = rf->GetColorFormat().data();
 
     VkPipelineRenderingCreateInfoKHR rendering_ci{};
     rendering_ci.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;

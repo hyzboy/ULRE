@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/type/ValueArray.h>
 #include<hgl/type/String.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/RectScope.h>

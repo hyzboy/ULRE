@@ -27,7 +27,7 @@ void LogSurfaceFormat(const VkSurfaceFormatKHR &sf)
 
 void LogSurfaceFormat(const VkSurfaceFormatList &surface_formats_list)
 {
-    GLogDebug("Current physics device support %u surface format", surface_formats_list.GetCount());
+    GLogDebug("Current physics device support %u surface format", (uint32_t)surface_formats_list.size());
 
     for(auto &sf:surface_formats_list)
         LogSurfaceFormat(sf);
@@ -291,7 +291,7 @@ void VulkanDeviceCreater::ChooseSurfaceFormat()
 {
     const VkSurfaceFormatList &surface_formats_list=surface->GetFormats();
 
-    if(surface_formats_list.IsEmpty())
+    if(surface_formats_list.empty())
         return;
 
 #ifdef _DEBUG

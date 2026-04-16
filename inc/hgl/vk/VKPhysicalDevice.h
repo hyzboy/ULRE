@@ -29,7 +29,7 @@ inline bool operator==(const VkQueueFamilyProperties& lhs, const VkQueueFamilyPr
 
 namespace hgl::graph{
 
-using VkQueueFamilyPropertiesList=ValueArray<VkQueueFamilyProperties>;
+using VkQueueFamilyPropertiesList=std::vector<VkQueueFamilyProperties>;
 
 class VulkanPhyDevice
 {
@@ -50,8 +50,8 @@ class VulkanPhyDevice
 
     VkPhysicalDeviceMemoryProperties    memory_properties;
 
-    ValueArray<VkLayerProperties>       layer_properties;
-    ValueArray<VkExtensionProperties>   extension_properties;
+    std::vector<VkLayerProperties>       layer_properties;
+    std::vector<VkExtensionProperties>   extension_properties;
 
     VkQueueFamilyPropertiesList         queue_family_properties;
 

@@ -6,24 +6,24 @@ namespace hgl::graph{
 
 namespace
 {
-    static ValueArray<VkLayerProperties> layer_properties;
-    static ValueArray<VkExtensionProperties> extension_properties;
+    static std::vector<VkLayerProperties> layer_properties;
+    static std::vector<VkExtensionProperties> extension_properties;
 }//namespace
 
-const ValueArray<VkLayerProperties> &GetLayerProperties(){return layer_properties;}
-const ValueArray<VkExtensionProperties> &GetExtensionProperties(){return extension_properties;}
+const std::vector<VkLayerProperties> &GetLayerProperties(){return layer_properties;}
+const std::vector<VkExtensionProperties> &GetExtensionProperties(){return extension_properties;}
 
 void InitVulkanInstanceProperties()
 {
-    layer_properties.Clear();
-    extension_properties.Clear();
+    layer_properties.clear();
+    extension_properties.clear();
 
     {
         uint32_t layer_count;
         vkEnumerateInstanceLayerProperties(&layer_count,nullptr);
 
-        layer_properties.Resize(layer_count);
-        vkEnumerateInstanceLayerProperties(&layer_count,layer_properties.GetData());
+        layer_properties.resize(layer_count);
+        vkEnumerateInstanceLayerProperties(&layer_count,layer_properties.data());
 
         debug_out("Instance",layer_properties);
     }
@@ -32,8 +32,8 @@ void InitVulkanInstanceProperties()
         uint32_t prop_count;
         vkEnumerateInstanceExtensionProperties(nullptr,&prop_count,nullptr);
 
-        extension_properties.Resize(prop_count);
-        vkEnumerateInstanceExtensionProperties(nullptr,&prop_count,extension_properties.GetData());
+        extension_properties.resize(prop_count);
+        vkEnumerateInstanceExtensionProperties(nullptr,&prop_count,extension_properties.data());
 
         debug_out("Instance",extension_properties);
     }

@@ -7,7 +7,7 @@
 namespace hgl::graph{
 namespace
 {
-    void debug_queue_family_properties_out(const char *front,const ValueArray<VkQueueFamilyProperties> &qfp_list)
+    void debug_queue_family_properties_out(const char *front,const std::vector<VkQueueFamilyProperties> &qfp_list)
     {
         constexpr const char *queue_bit_name[]=
         {
@@ -20,11 +20,11 @@ namespace
             "VideoEncode"
         };
 
-        const int count=qfp_list.GetCount();
+        const int count=(int)qfp_list.size();
 
         if(count<=0)return;
 
-        const VkQueueFamilyProperties *p=qfp_list.GetData();
+        const VkQueueFamilyProperties *p=qfp_list.data();
 
         for(int i=0;i<count;i++)
         {
@@ -232,8 +232,8 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 
         vkEnumerateDeviceLayerProperties(physical_device,&property_count,nullptr);
 
-        layer_properties.Resize(property_count);
-        vkEnumerateDeviceLayerProperties(physical_device,&property_count,layer_properties.GetData());
+        layer_properties.resize(property_count);
+        vkEnumerateDeviceLayerProperties(physical_device,&property_count,layer_properties.data());
 
         // Log Vulkan API version support
         GLogInfo("%s supported Vulkan API version: %d.%d",
@@ -247,8 +247,8 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 
         vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,nullptr);
 
-        extension_properties.Resize(exten_count);
-        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,extension_properties.GetData());
+        extension_properties.resize(exten_count);
+        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,extension_properties.data());
 
         debug_out(debug_front.c_str(),extension_properties);
     }
@@ -264,8 +264,8 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,nullptr);
 
-        queue_family_properties.Resize(family_count);
-        vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,queue_family_properties.GetData());
+        queue_family_properties.resize(family_count);
+        vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,queue_family_properties.data());
 
         debug_queue_family_properties_out(debug_front.c_str(),queue_family_properties);
     }

@@ -219,14 +219,14 @@ bool TextureManager::CommitTexture2DMipmaps(Texture2D *tex,VkBuffer buf,const Vk
     return CopyBufferToImage2D(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
-bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf_dev,const ValueArray<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf_dev,const std::vector<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
 {
-    if(!tex||!buf_dev||ir_list.GetCount()<=0)
+    if(!tex||!buf_dev||ir_list.size()<=0)
         return(false);
 
     const VkBuffer buf=buf_dev->GetBuffer();
 
-    const int ir_count=ir_list.GetCount();
+    const int ir_count=(int)ir_list.size();
     int count=0;
 
     AutoDeleteArray<VkBufferImageCopy> buffer_image_copy(ir_count);

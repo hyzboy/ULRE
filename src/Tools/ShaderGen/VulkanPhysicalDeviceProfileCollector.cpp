@@ -103,7 +103,7 @@ namespace
         const auto &families = pd.GetQueueFamilyProperties();
 
         out << "      \"queue_families\": [\n";
-        for (int i = 0; i < families.GetCount(); ++i)
+        for (int i = 0; i < (int)families.size(); ++i)
         {
             const auto &q = families[i];
             out << "        {\"index\": " << i
@@ -111,7 +111,7 @@ namespace
                 << ", \"queueCount\": " << q.queueCount
                 << ", \"timestampValidBits\": " << q.timestampValidBits
                 << "}";
-            if (i + 1 < families.GetCount())
+            if (i + 1 < (int)families.size())
                 out << ",";
             out << "\n";
         }

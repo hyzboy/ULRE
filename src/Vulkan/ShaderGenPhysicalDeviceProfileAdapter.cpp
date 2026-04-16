@@ -64,7 +64,7 @@ namespace hgl::graph::mtl::contract
                                            profile.target_vulkan_version,
                                            profile.target_spv_version);
 
-        profile.queue_family_count = static_cast<uint32_t>(pd.GetQueueFamilyProperties().GetCount());
+        profile.queue_family_count = static_cast<uint32_t>(pd.GetQueueFamilyProperties().size());
 
         profile.limits.max_image_dimension_2d = limits.maxImageDimension2D;
         profile.limits.max_uniform_buffer_range = limits.maxUniformBufferRange;

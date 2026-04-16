@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include<hgl/type/ValueArray.h>
+#include<vector>
 #include<hgl/vk/VKFormat.h>
 
 namespace hgl::graph{
@@ -7,7 +7,7 @@ class RenderbufferInfo
 {
 protected:
 
-    ValueArray<VkFormat> color_format_list;
+    std::vector<VkFormat> color_format_list;
     VkFormat depth_stencil_format;
 
     bool _depth;
@@ -60,7 +60,7 @@ public:
         if(!CheckVulkanFormat(format))return;
 
         if(!SetDepthOrStencil(format))
-            color_format_list.Add(format);
+            color_format_list.push_back(format);
     }
 
     RenderbufferInfo(const VkFormat color,const VkFormat ds):RenderbufferInfo()
@@ -80,7 +80,7 @@ public:
         SetDepthOrStencil(ds);
     }
 
-    RenderbufferInfo(const ValueArray<VkFormat> &cl,const VkFormat ds):RenderbufferInfo(cl.GetData(),cl.GetCount(),ds){}
+    RenderbufferInfo(const std::vector<VkFormat> &cl,const VkFormat ds):RenderbufferInfo(cl.data(),(uint32_t)cl.size(),ds){}
 
     bool AddColor(const VkFormat format)
     {
@@ -89,13 +89,13 @@ public:
         if(IsDepthFormat(format)||IsStencilFormat(format))
             return(false);
 
-        color_format_list.Add(format);
+        color_format_list.push_back(format);
         return(true);
     }
 
     void ClearColor()
     {
-        color_format_list.Free();
+        color_format_list.clear();
     }
 
     bool SetDepth(const VkFormat format)
@@ -154,8 +154,8 @@ public:
     const uint32_t  GetAttachmentCount()const
     {
         return(depth_stencil_format==PF_UNDEFINED
-                ?color_format_list.GetCount()
-                :color_format_list.GetCount()+1);
+                ?(uint32_t)color_format_list.size()
+                :(uint32_t)color_format_list.size()+1);
     }
 
             const bool      HasDepth()const{return _depth;}
@@ -164,10 +164,10 @@ public:
             const bool      HasDepthOrStencil()const{return(_depth||_stencil);}
     virtual const bool      IsSwapchain()const{return false;}
 
-    const uint32_t          GetColorCount ()const{return color_format_list.GetCount();}
-    const VkFormat *        GetColorFormat()const{return color_format_list.GetData();}
+    const uint32_t          GetColorCount ()const{return (uint32_t)color_format_list.size();}
+    const VkFormat *        GetColorFormat()const{return color_format_list.data();}
     const VkFormat          GetDepthFormat()const{return depth_stencil_format;}
-    const ValueArray<VkFormat> &  GetColorFormatList()const{return color_format_list;}
+    const std::vector<VkFormat> &  GetColorFormatList()const{return color_format_list;}
 
     const VkImageLayout     GetColorLayout()const{return color_final_image_layout;}
     const VkImageLayout     GetDepthLayout()const{return depth_final_image_layout;}

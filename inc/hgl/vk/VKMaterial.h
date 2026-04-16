@@ -22,7 +22,7 @@ namespace mtl
 
 class MaterialParameters;
 
-using ShaderStageCreateInfoList=ValueArray<VkPipelineShaderStageCreateInfo>;
+using ShaderStageCreateInfoList=std::vector<VkPipelineShaderStageCreateInfo>;
 
 /**
  * 材质类<br>

@@ -1,14 +1,13 @@
 ﻿#pragma once
 
 #include<hgl/vk/VKPhysicalDevice.h>
-#include<hgl/type/ValueArray.h>
 
 namespace hgl::graph{
 
 constexpr const uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
 
-using VkSurfaceFormatList=ValueArray<VkSurfaceFormatKHR>;
-using VkPresentModeList=ValueArray<VkPresentModeKHR>;
+using VkSurfaceFormatList=std::vector<VkSurfaceFormatKHR>;
+using VkPresentModeList=std::vector<VkPresentModeKHR>;
 
 class VulkanSurface
 {

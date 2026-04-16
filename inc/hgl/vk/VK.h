@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/type/ValueArray.h>
+#include<vector>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/String.h>
 #include<hgl/common/ShaderStageDef.h>

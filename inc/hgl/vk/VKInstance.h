@@ -100,8 +100,8 @@ namespace hgl::graph{
     };//class VulkanInstance
 
             void                            InitVulkanInstanceProperties();
-    const   ValueArray<VkLayerProperties> &       GetInstanceLayerProperties();
-    const   ValueArray<VkExtensionProperties> &   GetInstanceExtensionProperties();
+    const   std::vector<VkLayerProperties> &       GetInstanceLayerProperties();
+    const   std::vector<VkExtensionProperties> &   GetInstanceExtensionProperties();
     const   bool                            CheckInstanceLayerSupport(const AnsiString &);
     const   bool                            GetInstanceLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl);
     const   bool                            CheckInstanceExtensionSupport(const AnsiString &);

@@ -38,7 +38,7 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
     VkPipelineRenderingCreateInfoKHR rendering_ci{};
     rendering_ci.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
     rendering_ci.colorAttachmentCount    = request.render_format->GetColorCount();
-    rendering_ci.pColorAttachmentFormats = request.render_format->GetColorFormat().GetData();
+    rendering_ci.pColorAttachmentFormats = request.render_format->GetColorFormat().data();
     rendering_ci.depthAttachmentFormat   = request.render_format->GetDepthFormat();
     pd->pipeline_info.pNext              = &rendering_ci;
     pd->pipeline_info.renderPass         = VK_NULL_HANDLE;
@@ -116,7 +116,7 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
     rendering_ci.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
     rendering_ci.pNext                   = nullptr;
     rendering_ci.colorAttachmentCount    = color_count;
-    rendering_ci.pColorAttachmentFormats = request.render_format->GetColorFormat().GetData();
+    rendering_ci.pColorAttachmentFormats = request.render_format->GetColorFormat().data();
     rendering_ci.depthAttachmentFormat   = request.render_format->GetDepthFormat();
 
     lib_ci.pNext = &rendering_ci;
