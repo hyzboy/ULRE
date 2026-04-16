@@ -1,7 +1,5 @@
 #version 450
 
-#extension GL_EXT_scalar_block_layout : require
-
 #include "compositor/vert_forward_ubo.glsl"
 #include "common/ubo_color_pattle.glsl"
 
