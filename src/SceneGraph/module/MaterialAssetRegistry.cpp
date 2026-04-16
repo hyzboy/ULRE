@@ -12,6 +12,7 @@
 #include <hgl/vk/VKVertexInputConfig.h>
 
 #include <cctype>
+#include <cstdio>
 
 namespace hgl::graph
 {
@@ -186,7 +187,8 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
         numeric_domain_id = HashDomainIDString(did);
     }
 
-    const std::string domain_cache_key = std::to_string(static_cast<uint32_t>(schema)) + "#" + std::to_string(numeric_domain_id);
+    const std::string normalized_domain_id = std::to_string(numeric_domain_id);
+    const std::string domain_cache_key = std::to_string(static_cast<uint32_t>(schema)) + "#" + normalized_domain_id;
 
     auto it_domain = domain_cache.find(domain_cache_key);
     if (it_domain != domain_cache.end())
@@ -198,23 +200,25 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
         auto *gc = mm->GetGraphicsContext();
         auto *rdm = gc ? gc->GetResourceDomainManager() : nullptr;
 
-        if (rdm)
+        if (!rdm)
         {
-            handle.domain = rdm->Get(schema, numeric_domain_id);
-
-            if (!handle.domain)
-            {
-                ResourceDomainCreateInfo ci;
-                ci.schema = schema;
-                ci.domain_id = numeric_domain_id;
-                ci.initial_capacity = 256;
-                handle.domain = rdm->Create(ci);
-            }
+            std::fprintf(stderr,
+                "[MaterialAssetRegistry] Acquire failed: ResourceDomainManager unavailable for material='%s' schema=%u domain_id=%u\n",
+                mat_name.c_str(),
+                static_cast<unsigned>(schema),
+                static_cast<unsigned>(numeric_domain_id));
+            return {};
         }
-        else
+
+        handle.domain = rdm->Get(schema, numeric_domain_id);
+
+        if (!handle.domain)
         {
-            // 回退路径：仍走 MaterialManager，兼容未初始化 ResourceDomainManager 的场景。
-            handle.domain = mm->CreateResourceDomain(handle.material);
+            ResourceDomainCreateInfo ci;
+            ci.schema = schema;
+            ci.domain_id = numeric_domain_id;
+            ci.initial_capacity = 256;
+            handle.domain = rdm->Create(ci);
         }
 
         if (!handle.domain)
@@ -225,7 +229,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
 
     // 3. DomainMaterialBinding (按 material_name + domain_id + texture_hash 缓存)
     uint64_t tex_hash = ComputeTextureConfigHash(rec.textures);
-    DMBKey key { std::move(mat_name_str), did, tex_hash };
+    DMBKey key { std::move(mat_name_str), normalized_domain_id, tex_hash };
 
     auto it_dmb = dmb_cache.find(key);
     if (it_dmb != dmb_cache.end())
