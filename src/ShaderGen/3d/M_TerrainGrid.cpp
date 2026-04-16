@@ -34,8 +34,7 @@ namespace
         &TERRAIN_GRID_UBOS,
         &TERRAIN_GRID_SSBOS,
         &TERRAIN_GRID_SAMPLERS,
-        nullptr,
-        0,
+        ShaderDataSchema::None
     };
 }//namespace
 

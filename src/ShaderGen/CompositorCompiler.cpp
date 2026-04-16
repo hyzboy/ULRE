@@ -8,6 +8,7 @@
 #include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
+#include <hgl/mtl/ShaderDataSchema.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/shadergen/ShaderLayoutResolver.h>
@@ -53,7 +54,7 @@ namespace
         const bool infer_has_l2w    = HasSSBOSemantic(def, SSBODescriptorSemantic::TransformData);
         const bool infer_has_mi     = HasSSBOSemantic(def, SSBODescriptorSemantic::MaterialInstanceData)
                                    || HasPerMaterialDescriptor(def)
-                                   || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
+                                   || (def.shader_data_schema != ShaderDataSchema::None);
 
         cfg.camera            = cfg.camera            || infer_has_camera;
         cfg.sky               = cfg.sky               || infer_has_sky;
@@ -131,12 +132,15 @@ namespace
             }
         }
 
-        if (def.mi_glsl_codes && def.mi_struct_bytes > 0)
+        if (def.shader_data_schema != ShaderDataSchema::None)
         {
-            mci->SetMaterialInstance(
-                def.mi_glsl_codes,
-                def.mi_struct_bytes,
-                mi_stage_bits);
+            const ShaderDataSchemaInfo &schema_info = GetShaderDataSchemaInfo(def.shader_data_schema);
+
+            if (schema_info.byte_size == 0)
+                return FailAfterMci("shader data schema has zero byte size");
+
+            if (!mci->SetMaterialInstance(schema_info.byte_size, mi_stage_bits))
+                return FailAfterMci("SetMaterialInstance() failed");
         }
 
         ShaderCreateInfoVertex *vert = mci->GetVertexShader();

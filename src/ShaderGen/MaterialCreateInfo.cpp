@@ -348,13 +348,12 @@ bool MaterialCreateInfo::AddTextureSampler(const uint32_t flag_bits,const Sample
 }
 
 /**
-* 设置材质实例代码与数据长度
-* @param glsl_codes     材质实例GLSL代码
+* 设置材质实例数据长度
 * @param data_bytes     单个材质实例数据长度
 * @param shader_stage_flag_bits   具体使用材质实例的shader
 * @return 是否设置成功
 */
-bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const uint32_t data_bytes,const uint32_t shader_stage_flag_bits)
+bool MaterialCreateInfo::SetMaterialInstance(const uint32_t data_bytes,const uint32_t shader_stage_flag_bits)
 {
     if(material_instance_stride>0)return(false);           //已经有数据了
 
@@ -362,11 +361,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
 
     if(data_bytes==0)return(false);
 
-    if(glsl_codes.size()<4)return(false);
-
     material_instance_stride=data_bytes;
-
-    material_instance_glsl=glsl_codes;
 
     if(!descriptor_db.AddSSBOStruct(SSBODescriptorSemantic::MaterialInstanceData))
         return false;

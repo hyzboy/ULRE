@@ -22,8 +22,7 @@ namespace
         &VERTEX_COLOR_3D_UBOS,
         &VERTEX_COLOR_3D_SSBOS,
         nullptr,
-        nullptr,
-        0,
+        ShaderDataSchema::None
     };
 }
 

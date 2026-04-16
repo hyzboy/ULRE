@@ -2,6 +2,7 @@
 
 #include<hgl/mtl/FixedVertexEntry.h>
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
+#include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/vk/VKPrimitiveType.h>
 #include<map>
 #include<set>
@@ -73,8 +74,7 @@ struct StaticMaterialDef
     const SSBOSemanticSet *ssbo_descriptors = nullptr;
     const StaticTextureSamplerDescriptors *texture_samplers = nullptr;
 
-    const char *                mi_glsl_codes;
-    uint32_t                    mi_struct_bytes;
+    ShaderDataSchema            shader_data_schema = ShaderDataSchema::None;
 };
 
 }//namespace hgl::graph::mtl

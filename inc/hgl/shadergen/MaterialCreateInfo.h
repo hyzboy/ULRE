@@ -33,7 +33,6 @@ namespace hgl::graph
             MaterialDescriptorDB descriptor_db;                    ///<材质描述符管理器
             DescriptorBindingSlots binding_contract;                       ///<descriptor semantic contract (phase 2)
 
-            std::string material_instance_glsl;                     ///<MaterialInstance代码
             uint32_t material_instance_stride;                      ///<MaterialInstance数据长度
             uint32_t material_instance_stage_bits;                  ///<MaterialInstance着色器阶段
             uint32_t material_instance_max_count;
@@ -115,11 +114,7 @@ namespace hgl::graph
 
             void SetDevice(const contract::PhysicalDeviceProfileLite *profile);
 
-            bool SetMaterialInstance(const std::string &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage_flag_bits);
-            bool SetMaterialInstance(const char *mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage_flag_bits)
-            {
-                return SetMaterialInstance(std::string(mi_glsl_codes?mi_glsl_codes:""),mi_struct_bytes,shader_stage_flag_bits);
-            }
+            bool SetMaterialInstance(const uint32_t mi_struct_bytes,const uint32_t shader_stage_flag_bits);
 
             bool SetLocalToWorld(const uint32_t shader_stage_flag_bits);
             //bool SetWorldPosition(const uint32_t shader_stage_flag_bits);

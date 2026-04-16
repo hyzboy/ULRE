@@ -1,7 +1,6 @@
 ﻿#include"Build2DCommon.h"
 #include"MaterialFactory2D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/math/Vector.h>
 #include<hgl/mtl/MaterialLibrary.h>
 
 namespace hgl::graph::mtl{
@@ -12,9 +11,6 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
 {
     if(!profile||!cfg)
         return(nullptr);
-
-    constexpr const char mi_codes[]="vec4 Color;";
-    constexpr const uint32_t mi_bytes=sizeof(math::Vector4f);
 
     cfg->material_instance=true;
 
@@ -35,8 +31,7 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
                                  ubos,
                                  ssbos,
                                  nullptr,
-                                 mi_codes,
-                                 mi_bytes);
+                                 ShaderDataSchema::Color4f);
 
     return CreateFromFixedDef2D("PureColor2D", profile, def, key, vs_preamble, fs_preamble, cfg);
 }

@@ -8,6 +8,7 @@
 
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/StaticMaterialDef.h>
+#include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<hgl/mtl/SamplerSlot.h>
 #include<hgl/mtl/UBOCommon.h>
@@ -134,8 +135,7 @@ inline void BuildBase2DFixedDef(StaticMaterialDef &def,
                                 UBOSemanticSet &ubos,
                                 SSBOSemanticSet &ssbos,
                                 StaticTextureSamplerDescriptors *samplers = nullptr,
-                                const char *mi_codes = nullptr,
-                                uint32_t mi_bytes = 0)
+                                ShaderDataSchema schema = ShaderDataSchema::None)
 {
     PushBaseUBODescriptors(ubos, cfg);
     PushBaseSSBODescriptors(ssbos, cfg);
@@ -147,8 +147,7 @@ inline void BuildBase2DFixedDef(StaticMaterialDef &def,
         &ubos,
         &ssbos,
         samplers,
-        mi_codes,
-        mi_bytes,
+        schema,
     };
 }
 

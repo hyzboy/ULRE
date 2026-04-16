@@ -17,10 +17,6 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
     const TextureSourceMode mode = key.GetTextureSourceMode(SamplerSlot::BaseColor);
     const bool use_array = (mode == TextureSourceMode::Array);
 
-    // Array mode needs MI data for MaterialInstanceTextureID SSBO.
-    constexpr const char mi_codes[] = "uvec4 id;";
-    constexpr const uint32_t mi_bytes = sizeof(math::Vector4u);
-
     mtl::Material2DCreateConfig inner=*cfg;
     inner.prim=PrimitiveType::Triangles;
     inner.material_instance=use_array;
@@ -58,8 +54,7 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
                                  ubos,
                                  ssbos,
                                  &samplers,
-                                 use_array ? mi_codes : nullptr,
-                                 use_array ? mi_bytes : 0);
+                                 use_array ? ShaderDataSchema::TextureArrayID : ShaderDataSchema::None);
 
     return CreateFromFixedDef2D("PureTexture2D", profile, def, key, vs_preamble, fs_preamble, &inner, true);
 }

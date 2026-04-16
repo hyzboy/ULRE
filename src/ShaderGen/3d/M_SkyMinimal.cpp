@@ -21,8 +21,7 @@ namespace
         &SKY_MINIMAL_UBOS,
         &SKY_MINIMAL_SSBOS,
         nullptr,
-        nullptr,
-        0,
+        ShaderDataSchema::None
     };
 }//namespace
 

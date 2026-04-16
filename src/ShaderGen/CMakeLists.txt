@@ -71,8 +71,10 @@ SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
 # Standard Material Base
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h
                     ${STD_MTL_HEADER_PATH}/MaterialBuildFlags.h
+                    ${STD_MTL_HEADER_PATH}/ShaderDataSchema.h
                     ${STD_MTL_HEADER_PATH}/StaticMaterialDef.h
                     MaterialCreateConfig.cpp
+                    ShaderDataSchema.cpp
                     GLSLStructSize.cpp)
 SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
 

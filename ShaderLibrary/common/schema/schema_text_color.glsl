@@ -1,0 +1,3 @@
+struct MaterialInstance {
+    uint TextColor;
+};

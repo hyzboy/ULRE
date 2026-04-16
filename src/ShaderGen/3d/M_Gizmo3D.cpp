@@ -16,9 +16,6 @@ namespace
 
     const SSBOSemanticSet GIZMO_3D_SSBOS = build3d::MakeTransformSSBOs(true);
 
-    constexpr const char GIZMO_3D_MI_GLSL[] = "vec4 Color;";
-    constexpr uint32_t GIZMO_3D_MI_BYTES = sizeof(math::Vector4f);
-
     const StaticMaterialDef GIZMO_3D_DEF {
         "Gizmo3D",
         PrimitiveType::Triangles,
@@ -27,8 +24,7 @@ namespace
         &GIZMO_3D_UBOS,
         &GIZMO_3D_SSBOS,
         nullptr,
-        GIZMO_3D_MI_GLSL,
-        GIZMO_3D_MI_BYTES,
+        ShaderDataSchema::Color4f,
     };
 }
 

@@ -12,13 +12,6 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr const char mi_codes[] = R"(
-        uint  base_color;
-        float metallic;
-        float roughness;
-    )";
-    constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 2;
-
     constexpr FixedVertexEntry PBR_COLOR_3D_VERTEX[] = {
         { VAT_VEC3, VAN::Position },
         { VAT_VEC2, VAN::TexCoord },
@@ -45,8 +38,7 @@ namespace
         &PBR_COLOR_3D_UBOS,
         &PBR_COLOR_3D_SSBOS,
         nullptr,
-        mi_codes,
-        mi_bytes,
+        ShaderDataSchema::PBRColorParams,
     };
 }//namespace
 

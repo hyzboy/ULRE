@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/mtl/StaticMaterialDef.h>
+#include <hgl/mtl/ShaderDataSchema.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 
 #include <vector>
@@ -27,8 +28,7 @@ StaticMaterialDef BuildStandardDynamicDef(
     const StaticMaterialDef &def_template,
     SSBOSemanticSet &dynamic_ssbos,
     StaticTextureSamplerDescriptors &dynamic_samplers,
-    const char *mi_codes,
-    uint32_t mi_bytes,
+    ShaderDataSchema schema,
     bool any_array);
 
 } // namespace hgl::graph::mtl
