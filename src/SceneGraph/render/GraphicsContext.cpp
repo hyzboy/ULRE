@@ -5,6 +5,7 @@
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/RenderTargetManager.h>
 #include <hgl/graph/module/MaterialManager.h>
+#include <hgl/graph/module/ResourceDomainManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/GeometryManager.h>
@@ -50,6 +51,10 @@ namespace hgl::graph
         if (!primitive_manager)
             return false;
 
+        resource_domain_manager = module_manager->GetOrCreate<ResourceDomainManager>();
+        if (!resource_domain_manager)
+            return false;
+
         material_manager = module_manager->GetOrCreate<MaterialManager>();
         if (!material_manager)
             return false;
@@ -85,6 +90,7 @@ namespace hgl::graph
         tex_manager = nullptr;
         rt_manager = nullptr;
         material_manager = nullptr;
+        resource_domain_manager = nullptr;
         buffer_manager = nullptr;
         sampler_manager = nullptr;
         geometry_manager = nullptr;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <hgl/mtl/ShaderDataSchema.h>
 
 namespace hgl
 {
@@ -10,32 +11,28 @@ namespace hgl
 namespace hgl::graph
 {
 
-class Material;
-
 /**
  * 资源域 (ResourceDomain)
  *
- * 持有与特定 Material 模板兼容的独立 MaterialInstance 数据池。
- * 同一套 Shader/GraphicsPipeline 可关联多个 ResourceDomain，使不同的资源集合
- * （例如UI图标 vs 角色头像 Billboard）彼此隔离，互不串绑。
- *
- * Phase 1: 已支持 MI 数据池。Texture/Sampler 绑定在后续阶段引入。
+ * 持有一份按 ShaderDataSchema 组织的 MaterialInstance 数据池。
  */
 class ResourceDomain
 {
-    Material *source_material   = nullptr;  ///< 该域基于的 Material 模板
+    mtl::ShaderDataSchema schema = mtl::ShaderDataSchema::None;
+    uint32_t domain_id           = 0;
 
-    uint32_t  mi_data_bytes     = 0;        ///< 单个 MI 数据 stride（从 source_material 复制）
-    uint32_t  mi_max_count      = 0;        ///< 渲染批次最大实例数（从 source_material 复制）
+    uint32_t  mi_data_bytes     = 0;        ///< 单个 MI 数据 stride（由 schema 推导）
+    uint32_t  initial_capacity  = 256;      ///< 逻辑初始容量；当前仅用于记录配置
 
     hgl::ActiveMemoryBlockManager *mi_data_manager = nullptr;  ///< 该域独立的 MI 数据池
 
 private:
 
+    friend class ResourceDomainManager;
     friend class MaterialManager;
     friend class Material;          ///< Phase 5: Material::CreateMI 需创建默认域
 
-    explicit ResourceDomain(Material *mtl);
+    ResourceDomain(mtl::ShaderDataSchema schema, uint32_t domain_id, uint32_t initial_capacity = 256);
 
 public:
 
@@ -45,11 +42,11 @@ public:
     // 基础属性查询
     // ----------------------------------------------------------------
 
-    Material *GetSourceMaterial() const { return source_material; }
-
     bool     hasMI()          const { return mi_data_bytes > 0; }
     uint32_t GetMIDataBytes() const { return mi_data_bytes; }
-    uint32_t GetMIMaxCount()  const { return mi_max_count; }
+    uint32_t GetInitialCapacity() const { return initial_capacity; }
+    uint32_t GetDomainID() const { return domain_id; }
+    mtl::ShaderDataSchema GetShaderDataSchema() const { return schema; }
 
     // ----------------------------------------------------------------
     // MI 槽位管理 — 仅被 MaterialInstanceData 析构路径和 CreateMI 使用

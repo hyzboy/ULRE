@@ -129,6 +129,16 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     std::string mat_name_str(mat_name.c_str() ? mat_name.c_str() : "",
                              mat_name.c_str() ? static_cast<size_t>(mat_name.Length()) : 0);
 
+    // 无 MI 数据的材质不需要 ResourceDomain / DomainMaterialBinding。
+    // 这类材质直接走 Material 路径即可（常见于仅纹理/固定参数材质）。
+    if (!handle.material->hasMI())
+    {
+        if (tm && sm && !rec.textures.empty())
+            BindMaterialTexturesCompat(handle.material, tm, sm, rec);
+
+        return handle;
+    }
+
     // 2. ResourceDomain (按 material_name + domain_id 缓存)
     const std::string &did = rec.domain_id;          // 空串 → 默认域
     const std::string domain_cache_key = mat_name_str + "#" + did;
@@ -184,7 +194,11 @@ MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialAssetRecor
                                                    MaterialDomainHandle *out_handle)
 {
     MaterialDomainHandle handle = Acquire(rec);
-    if (!handle.IsValid())
+    if (!handle.material)
+        return nullptr;
+
+    // 有 MI 数据的材质必须具备 domain + binding。
+    if (handle.material->hasMI() && (!handle.domain || !handle.binding))
         return nullptr;
 
     if (out_handle)
@@ -201,7 +215,11 @@ MaterialInstance *MaterialAssetRegistry::CreateMI(
     const void *instance_data,
     uint32_t instance_data_size)
 {
-    if (!handle.IsValid())
+    if (!handle.material)
+        return nullptr;
+
+    // 有 MI 数据的材质必须具备 domain。
+    if (handle.material->hasMI() && !handle.domain)
         return nullptr;
 
     MaterialInstanceSpec spec;

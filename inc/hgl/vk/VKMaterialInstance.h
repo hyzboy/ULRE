@@ -23,6 +23,8 @@ protected:
 
     ResourceDomain *domain;     ///< (Phase 1) 可选资源域；为 nullptr 时使用旧路径
 
+    uint32_t domain_id = 0xFFFFFFFFu;
+
     const VIL *vil;
 
     int mi_id;
@@ -37,6 +39,7 @@ public:
 
             Material *      GetMaterial ()      { return material; }
             ResourceDomain *GetDomain   ()      { return domain; }
+    const   uint32_t       GetDomainID  ()const { return domain_id; }
 
     const   VIL *           GetVIL      ()const { return vil; }
 

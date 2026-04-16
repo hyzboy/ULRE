@@ -13,7 +13,7 @@ MaterialInstance *Material::CreateMI(const VIL *vil)
 {
     // Phase 5: 旧路径统一通过懒初始化的 default_domain 分配 MI 槽位
     if(!default_domain && hasMI())
-        default_domain = new ResourceDomain(this);
+        default_domain = new ResourceDomain(GetShaderDataSchema(), 0);
 
     int mi_id = default_domain ? default_domain->AllocMISlot() : -1;
 
@@ -50,14 +50,14 @@ void *Material::GetMIData(int id)
 
 /// 旧路径：domain = nullptr
 MaterialInstance::MaterialInstance(Material *mtl, const VIL *v, const int id)
-    : material(mtl), domain(nullptr), vil(v), mi_id(id)
+    : material(mtl), domain(nullptr), domain_id(0xFFFFFFFFu), vil(v), mi_id(id)
 {
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }
 
 /// Phase 1 新路径：经由 ResourceDomain 分配
 MaterialInstance::MaterialInstance(Material *mtl, ResourceDomain *d, const VIL *v, const int id)
-    : material(mtl), domain(d), vil(v), mi_id(id)
+    : material(mtl), domain(d), domain_id(d ? d->GetDomainID() : 0xFFFFFFFFu), vil(v), mi_id(id)
 {
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }

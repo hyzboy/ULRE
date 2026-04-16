@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
@@ -304,6 +305,7 @@ void MaterialManager::ApplyMaterialFinalizePlan(Material *mtl, const AnsiString 
 
     mtl->mi_data_bytes = finalize_plan.mi_data_bytes;
     mtl->mi_max_count  = finalize_plan.mi_max_count;
+    mtl->mi_schema     = finalize_plan.mi_schema;
     // Phase 5: MI 数据池随第一次 CreateMI 时通过 default_domain 懒初始化，此处不再直接分配
 
     std::fprintf(stderr,
@@ -757,10 +759,13 @@ MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanc
 
     if(spec.domain)
     {
+        Material *mtl = spec.material;
+        if(!mtl) return nullptr;
+
         if(spec.vil_cfg)
-            mi = CreateMaterialInstance(spec.domain, spec.vil_cfg, spec.instance_data, spec.instance_data_size);
+            mi = CreateMaterialInstance(mtl, spec.domain, spec.vil_cfg, spec.instance_data, spec.instance_data_size);
         else
-            mi = CreateMaterialInstance(spec.domain, spec.vil, spec.instance_data, spec.instance_data_size);
+            mi = CreateMaterialInstance(mtl, spec.domain, spec.vil, spec.instance_data, spec.instance_data_size);
     }
     else
     {
@@ -829,7 +834,15 @@ ResourceDomain *MaterialManager::CreateResourceDomain(Material *mtl)
     if(!mtl)
         return nullptr;
 
-    return new ResourceDomain(mtl);
+    GraphicsContext *gc = GetGraphicsContext();
+    if (gc)
+    {
+        auto *domain_manager = gc->GetResourceDomainManager();
+        if (domain_manager)
+            return domain_manager->CreateAuto(mtl->GetShaderDataSchema());
+    }
+
+    return new ResourceDomain(mtl->GetShaderDataSchema(), 0);
 }
 
 DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDomain *domain, Material *mtl)
@@ -837,37 +850,24 @@ DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDoma
     if (!domain || !mtl)
         return nullptr;
 
-    Material *source_mtl = domain->GetSourceMaterial();
+    if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateDomainMaterialBinding: schema mismatch "
+            "domain=%u mtl=%u\n",
+            static_cast<unsigned>(domain->GetShaderDataSchema()),
+            static_cast<unsigned>(mtl->GetShaderDataSchema()));
+        return nullptr;
+    }
 
-    // Hard reject: MI stride mismatch means MI data cannot be shared
-    if (source_mtl != mtl && domain->GetMIDataBytes() != mtl->GetMIDataBytes())
+    if (domain->GetMIDataBytes() != mtl->GetMIDataBytes())
     {
         std::fprintf(stderr,
             "[MaterialManager] CreateDomainMaterialBinding: MI stride mismatch "
             "domain=%u mtl=%u\n",
-            domain->GetMIDataBytes(), mtl->GetMIDataBytes());
+            domain->GetMIDataBytes(),
+            mtl->GetMIDataBytes());
         return nullptr;
-    }
-
-    // Phase 3 diagnostic: warn if descriptor set types differ between source and target
-    if (source_mtl && source_mtl != mtl)
-    {
-        ENUM_CLASS_FOR(DescriptorSetType, int, i)
-        {
-            const bool src_has = source_mtl->hasSet((DescriptorSetType)i);
-            const bool tgt_has = mtl->hasSet((DescriptorSetType)i);
-            if (src_has != tgt_has)
-            {
-                std::fprintf(stderr,
-                    "[MaterialManager] CreateDomainMaterialBinding: descriptor set %d "
-                    "present in %s but absent from %s (source='%s' target='%s')\n",
-                    i,
-                    src_has ? "source" : "target",
-                    src_has ? "target" : "source",
-                    source_mtl->GetName().c_str(),
-                    mtl->GetName().c_str());
-            }
-        }
     }
 
     VulkanDevice *device = GetDevice();
@@ -920,16 +920,27 @@ void MaterialManager::ReleaseResourceDomain(ResourceDomain *domain)
         domain_bindings_map.erase(it);
     }
 
+    GraphicsContext *gc = GetGraphicsContext();
+    if (gc)
+    {
+        auto *domain_manager = gc->GetResourceDomainManager();
+        if (domain_manager)
+        {
+            domain_manager->Destroy(domain);
+            return;
+        }
+    }
+
     delete domain;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VIL *vil)
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl, ResourceDomain *domain, const VIL *vil)
 {
-    if (!domain)
+    if (!domain || !mtl)
         return nullptr;
 
-    Material *mtl = domain->GetSourceMaterial();
-    if(!mtl) return nullptr;
+    if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
+        return nullptr;
 
     const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
@@ -939,12 +950,12 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg)
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl, ResourceDomain *domain, const VILConfig *vil_cfg)
 {
-    if(!domain) return nullptr;
+    if(!domain || !mtl) return nullptr;
 
-    Material *mtl = domain->GetSourceMaterial();
-    if(!mtl) return nullptr;
+    if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
+        return nullptr;
 
     const VIL *vil = vil_cfg ? mtl->CreateVIL(vil_cfg) : mtl->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
@@ -954,12 +965,12 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl, ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size)
 {
-    if(!domain) return nullptr;
+    if(!domain || !mtl) return nullptr;
 
-    Material *mtl = domain->GetSourceMaterial();
-    if(!mtl) return nullptr;
+    if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
+        return nullptr;
 
     const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
@@ -973,12 +984,12 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl, ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size)
 {
-    if(!domain) return nullptr;
+    if(!domain || !mtl) return nullptr;
 
-    Material *mtl = domain->GetSourceMaterial();
-    if(!mtl) return nullptr;
+    if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
+        return nullptr;
 
     const VIL *vil = vil_cfg ? mtl->CreateVIL(vil_cfg) : mtl->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();

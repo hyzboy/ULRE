@@ -1,18 +1,15 @@
 #include<hgl/vk/VKResourceDomain.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
 
 namespace hgl::graph
 {
 
-ResourceDomain::ResourceDomain(Material *mtl)
-    : source_material(mtl)
+ResourceDomain::ResourceDomain(mtl::ShaderDataSchema init_schema, uint32_t init_domain_id, uint32_t init_capacity)
+    : schema(init_schema), domain_id(init_domain_id), initial_capacity(init_capacity)
 {
-    if(!mtl)
-        return;
-
-    mi_data_bytes = mtl->GetMIDataBytes();
-    mi_max_count  = mtl->GetMIMaxCount();
+    const mtl::ShaderDataSchemaInfo &schema_info = mtl::GetShaderDataSchemaInfo(schema);
+    mi_data_bytes = schema_info.byte_size;
 
     if(mi_data_bytes > 0)
         mi_data_manager = new hgl::ActiveMemoryBlockManager(mi_data_bytes);

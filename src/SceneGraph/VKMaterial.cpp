@@ -28,6 +28,7 @@ Material::Material(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
     mi_data_bytes=0;
     default_domain=nullptr;
     mi_max_count=0;
+    mi_schema=mtl::ShaderDataSchema::None;
 
     has_l2w_matrix=mci->HasLocalToWorld();
 }

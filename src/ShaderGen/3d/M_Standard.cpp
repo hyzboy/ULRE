@@ -175,7 +175,7 @@ MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *pr
     MaterialVariantKey key;
     key.surface_type = SurfaceType::Standard;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, tex_source);
-            key.SetTextureSourceMode(SamplerSlot::Normal, tex_source);
+    key.SetTextureSourceMode(SamplerSlot::Normal, tex_source);
     return CreateStandardVariant(profile, key, cfg);
 }
 

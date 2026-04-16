@@ -82,7 +82,7 @@ struct MaterialInstanceSpec
 
     GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
 
-    bool IsValid() const { return material || domain; }
+    bool IsValid() const { return material != nullptr; }
 };
 
 struct MaterialAcquireStats
@@ -215,12 +215,11 @@ public: // Override Release from GraphModule - cleanup all resources
         if (rm_material_instance.GetCount() > 0)
             rm_material_instance.Clear();
 
-        // Phase 3: 清理所有 DomainMaterialBinding 及 ResourceDomain
+        // Phase 3: 只清理 binding；domain 生命周期由 ResourceDomainManager 接管。
         for (auto &kv : domain_bindings_map)
         {
             for (auto *b : kv.second)
                 delete b;
-            delete kv.first;
         }
         domain_bindings_map.clear();
 
@@ -341,21 +340,21 @@ public: // ResourceDomain — Phase 1 / Phase 3
 public: // ResourceDomain MaterialInstanceData creation (Phase 1)
 
     /// 从资源域分配 MI，走域独立的数据池（旧 Material 池不变）。
-    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VIL *vil = nullptr);
-    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg);
-    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstance(Material *material, ResourceDomain *domain, const VIL *vil = nullptr);
+    MaterialInstance *  CreateMaterialInstance(Material *material, ResourceDomain *domain, const VILConfig *vil_cfg);
+    MaterialInstance *  CreateMaterialInstance(Material *material, ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstance(Material *material, ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size);
 
     template<typename T>
-    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VIL *vil, const T *data)
+    MaterialInstance *  CreateMaterialInstance(Material *material, ResourceDomain *domain, const VIL *vil, const T *data)
     {
-        return CreateMaterialInstance(domain, vil, data, sizeof(T));
+        return CreateMaterialInstance(material, domain, vil, data, sizeof(T));
     }
 
     template<typename T>
-    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg, const T *data)
+    MaterialInstance *  CreateMaterialInstance(Material *material, ResourceDomain *domain, const VILConfig *vil_cfg, const T *data)
     {
-        return CreateMaterialInstance(domain, vil_cfg, data, sizeof(T));
+        return CreateMaterialInstance(material, domain, vil_cfg, data, sizeof(T));
     }
 
 public: // Phase 0 Stats — 帧级资源量观测
