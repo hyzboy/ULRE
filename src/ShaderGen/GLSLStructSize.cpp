@@ -10,10 +10,10 @@
 /*
  CalculateGLSLStructSize
  - Input: GLSL struct text that starts with '{' and ends with '}' (may contain comments).
- - Output: total byte size when the struct is laid out using std140 (UBO) rules.
+ - Output: total byte size when the struct is laid out using std430 (SSBO) rules.
  - Supports: scalars (float/int/uint/bool), vectors (vec2/vec3/vec4, ivec*, uvec*, bvec*),
-   matrices (matNxM and matN, matCxR semantics), arrays (e.g. vec3 arr[10];),
-   nested inline structs (struct { ... } name;).
+     matrices (matNxM and matN, matCxR semantics), arrays (e.g. vec3 arr[10];),
+     nested inline structs (struct { ... } name;).
  - Returns 0 on parse error.
 */
 
@@ -195,8 +195,8 @@ public:
                     TypeInfo elem=*nestedType;
                     if (arrayCount>0)
                     {
-                        std::size_t arrAlign=round_up(elem.align,16);
-                        std::size_t arrStride=round_up(elem.size,16);
+                        std::size_t arrAlign=elem.align;
+                        std::size_t arrStride=round_up(elem.size,elem.align);
                         TypeInfo t{ arrStride*arrayCount, arrAlign };
                         // place t
                         offset=round_up(offset,t.align);
@@ -277,8 +277,8 @@ public:
                 TypeInfo memberType;
                 if (arrayCount>0)
                 {
-                    std::size_t arrAlign=round_up(elem.align,16);
-                    std::size_t arrStride=round_up(elem.size,16);
+                    std::size_t arrAlign=elem.align;
+                    std::size_t arrStride=round_up(elem.size,elem.align);
                     memberType=TypeInfo{ arrStride*arrayCount, arrAlign };
                 }
                 else
@@ -301,9 +301,9 @@ public:
         {
             maxAlign=std::max(maxAlign,m.align);
         }
-        if (maxAlign==0) maxAlign=16;
-        std::size_t structAlign=round_up(maxAlign,16);
-        std::size_t structSize=round_up(offset,16);
+        if (maxAlign==0) maxAlign=1;
+        std::size_t structAlign=maxAlign;
+        std::size_t structSize=round_up(offset,structAlign);
         return TypeInfo{ structSize, structAlign };
     }
 
@@ -318,7 +318,7 @@ private:
         // Scalars
         if (typeName=="float"||typeName=="int"||typeName=="uint"||typeName=="bool")
         {
-            // std140 scalar = 4 bytes alignment 4
+            // std430 scalar = 4 bytes alignment 4
             return TypeInfo{ 4,4 };
         }
         // doubles (rare in UBOs) - treat scalar 8/8
@@ -333,7 +333,7 @@ private:
                 {
                     std::string rest=typeName.substr(pfx.size());
                     if (rest=="2") return TypeInfo{ 8,8 };
-                    if (rest=="3") return TypeInfo{ 16,16 }; // vec3 occupies 16 in std140
+                    if (rest=="3") return TypeInfo{ 12,16 }; // vec3 has 16-byte alignment, 12-byte size
                     if (rest=="4") return TypeInfo{ 16,16 };
                 }
                 return std::nullopt;
@@ -376,13 +376,12 @@ private:
             std::size_t vecAlign;
             if (r==1) { vecSize=4; vecAlign=4; }
             else if (r==2) { vecSize=8; vecAlign=8; }
-            else if (r==3) { vecSize=12; vecAlign=16; } // vec3 occupies 16
+            else if (r==3) { vecSize=12; vecAlign=16; }
             else { vecSize=16; vecAlign=16; } // r==4
-            // column stride is roundUp(vecSize, 16)
-            std::size_t colStride=round_up(vecSize,16);
+            // std430 matrix columns behave like an array of vectors.
+            std::size_t colStride=round_up(vecSize,vecAlign);
             std::size_t totalSize=colStride*(std::size_t)c;
-            // base alignment for matrix treated as array of columns -> column stride (rounded)
-            std::size_t baseAlign=colStride;
+            std::size_t baseAlign=vecAlign;
             return TypeInfo{ totalSize, baseAlign };
         }
 

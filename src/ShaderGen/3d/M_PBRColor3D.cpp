@@ -12,6 +12,22 @@
 namespace hgl::graph::mtl{
 namespace
 {
+    static void PrintPBRColorRouteKey(const char *label, const MaterialVariantKey &key)
+    {
+        std::fprintf(stderr,
+            "[PBRColor3D] %s hash=%llu surface=%u geom=%u sky=%u light=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X\n",
+            label ? label : "route",
+            static_cast<unsigned long long>(key.Hash()),
+            static_cast<unsigned>(key.surface_type),
+            static_cast<unsigned>(key.geometry_mode),
+            static_cast<unsigned>(key.sky_ambient_model),
+            static_cast<unsigned>(key.lighting_model),
+            key.texture_source_bits,
+            key.sampler_feature_bits,
+            key.vertex_attribute_feature_bits,
+            key.extra_feature_bits);
+    }
+
     constexpr FixedVertexEntry PBR_COLOR_3D_VERTEX[] = {
         { VAT_VEC3, VAN::Position },
         { VAT_VEC2, VAN::TexCoord },
@@ -67,12 +83,19 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     var_key.surface_type = SurfaceType::Standard;
     var_key.sky_ambient_model = ambient;
     var_key.lighting_model = lighting;
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+    MaterialVariantKey resolved_route_key{};
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(var_key, &resolved_route_key);
     if (!var_desc)
     {
-        std::fprintf(stderr, "[PBRColor3D] VariantRegistry lookup failed\n");
+        PrintPBRColorRouteKey("VariantRegistry lookup failed route", var_key);
         return nullptr;
     }
+
+    PrintPBRColorRouteKey("VariantRegistry resolved route-request", var_key);
+    PrintPBRColorRouteKey("VariantRegistry resolved route-final", resolved_route_key);
+    std::fprintf(stderr,
+        "[PBRColor3D] VariantRegistry resolved variant=%s\n",
+        var_desc->variant_name.c_str());
 
     CompositorAssembler assembler;
 

@@ -233,24 +233,20 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     create_info.pEnabledFeatures        =&features;
 
     VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8_features;
+    VkPhysicalDeviceVulkan12Features features12{};
 
 #ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT
     VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
 #endif
 
-    // 启用 descriptorBindingPartiallyBound (Vulkan 1.2 core / VK_EXT_descriptor_indexing)
-    // 允许描述符集中未使用的绑定不必写入有效描述符
-    VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features{};
-    descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-    descriptor_indexing_features.pNext = nullptr;
-    descriptor_indexing_features.descriptorBindingPartiallyBound = VK_TRUE;
-
-    // Chain descriptor indexing features
+    if (!physical_device->GetFeatures12().scalarBlockLayout)
     {
-        const void *prev_pNext = create_info.pNext;
-        descriptor_indexing_features.pNext = const_cast<void*>(prev_pNext);
-        create_info.pNext = &descriptor_indexing_features;
+        std::fprintf(stderr,
+            "[VulkanDeviceCreater] CreateDevice failed: scalarBlockLayout is required but not supported by physical device '%s'\n",
+            physical_device->GetDeviceName());
+        return nullptr;
     }
+
 
     if(physical_device->SupportU8Index()
      &&require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
@@ -261,6 +257,15 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 
         create_info.pNext=&index_type_uint8_features;
     }
+
+    // Vulkan 1.3 baseline in this project: force Vulkan 1.2 scalarBlockLayout so
+    // all MaterialInstance SSBOs can use layout(scalar) consistently.
+    // 启用 descriptorBindingPartiallyBound (promoted to Vulkan 1.2 core; must not use VkPhysicalDeviceDescriptorIndexingFeatures alongside VkPhysicalDeviceVulkan12Features)
+    features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    features12.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+    features12.scalarBlockLayout = VK_TRUE;
+    features12.descriptorBindingPartiallyBound = VK_TRUE;
+    create_info.pNext = &features12;
 
     // 启用 Vulkan 1.3 dynamicRendering（vkCmdBeginRendering / vkCmdEndRendering）
     VkPhysicalDeviceVulkan13Features features13{};

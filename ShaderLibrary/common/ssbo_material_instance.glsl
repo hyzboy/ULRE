@@ -20,15 +20,9 @@ uint GetMaterialInstanceID()
 
 // @require SSBO(MaterialInstance)
 
-#ifdef MATERIAL_INSTANCE_SSBO_SCALAR
 layout(scalar, set=PERMATERIAL_SET, binding=MI_BINDING) readonly buffer MaterialInstanceData {
     MaterialInstance mi[];
 } mtl;
-#else
-layout(std430, set=PERMATERIAL_SET, binding=MI_BINDING) readonly buffer MaterialInstanceData {
-    MaterialInstance mi[];
-} mtl;
-#endif
 
 MaterialInstance GetMaterialInstance(uint miID)
 {

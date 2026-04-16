@@ -71,41 +71,37 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
     dynamic_def.texture_samplers  = &dynamic_samplers;
     dynamic_def.ssbo_descriptors  = &dynamic_ssbos;
 
-    auto BlendModeToPassHint = [](RenderAlphaMode bm) -> PassType {
-        switch (bm) {
-        case RenderAlphaMode::Masked:          return PassType::ForwardMasked;
-        case RenderAlphaMode::Dither:          return PassType::ForwardDither;
-        case RenderAlphaMode::Opaque:          return PassType::ForwardOpaque;
-        case RenderAlphaMode::AlphaToCoverage: return PassType::ForwardA2C;
-        default:                         return PassType::ForwardTransparent;
-        }
-    };
+    MaterialVariantKey lookup_key = build3d::MakeBillboardKeyBase(cfg->blend_mode);
+    lookup_key.geometry_mode = GeometryMode::BillboardAxisLocked;
 
-    MaterialVariantKey var_key = build3d::MakeBillboardKeyBase(cfg->blend_mode);
-    var_key.geometry_mode = GeometryMode::BillboardAxisLocked;
+    MaterialVariantKey assemble_key = lookup_key;
+    if (use_array)
+        assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Array);
 
     std::fprintf(stderr, "[BillboardFixed] use_array=%d  blend=%d  samplerType=%s\n",
         (int)use_array, (int)cfg->blend_mode,
         use_array ? "Sampler2DArray" : "Sampler2D");
 
-    // Lookup with Simple key (registry only has Simple variants)
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+    // Registry normalizes billboard variants to the Simple lookup key. Array mode only
+    // affects final shader assembly (TEXTURE_ARRAY_MODE + sampler2DArray emission).
+    MaterialVariantKey resolved_lookup_key{};
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(lookup_key, &resolved_lookup_key);
     if (!var_desc)
     {
         std::fprintf(stderr, "[BillboardFixed] VariantRegistry lookup failed\n");
         return nullptr;
     }
 
-    // After lookup, switch to Array so CompositorAssembler emits TEXTURE_ARRAY_MODE
-    if (use_array)
-        var_key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Array);
-
-    std::fprintf(stderr, "[BillboardFixed] variant found: %s, assembling...\n",
-        var_desc->variant_name.c_str());
+    std::fprintf(stderr,
+        "[BillboardFixed] variant found: %s, lookup_hash=%llu resolved_lookup_hash=%llu assemble_hash=%llu\n",
+        var_desc->variant_name.c_str(),
+        static_cast<unsigned long long>(lookup_key.Hash()),
+        static_cast<unsigned long long>(resolved_lookup_key.Hash()),
+        static_cast<unsigned long long>(assemble_key.Hash()));
 
     CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(var_key, *var_desc);
+    auto result = assembler.Assemble(assemble_key, *var_desc);
 
     if (!result.success)
     {
