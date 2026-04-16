@@ -15,6 +15,23 @@
 namespace hgl::graph::mtl{
 namespace
 {
+    static void PrintStandardRouteKey(const char *label, const MaterialVariantKey &key, const bool any_array)
+    {
+        std::fprintf(stderr,
+            "[Standard] %s hash=%llu surface=%u geom=%u sky=%u light=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X any_array=%d\n",
+            label ? label : "route",
+            static_cast<unsigned long long>(key.Hash()),
+            static_cast<unsigned>(key.surface_type),
+            static_cast<unsigned>(key.geometry_mode),
+            static_cast<unsigned>(key.sky_ambient_model),
+            static_cast<unsigned>(key.lighting_model),
+            key.texture_source_bits,
+            key.sampler_feature_bits,
+            key.vertex_attribute_feature_bits,
+            key.extra_feature_bits,
+            any_array ? 1 : 0);
+    }
+
     constexpr FixedVertexEntry STANDARD_VERTEX[] = {
         { VAT_VEC3, VAN::Position },
         { VAT_VEC2, VAN::TexCoord },
@@ -112,21 +129,19 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         ShaderDataSchema::StandardParams,
         any_array);
 
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(policy.route_key);
+    MaterialVariantKey resolved_route_key{};
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(policy.route_key, &resolved_route_key);
     if (!var_desc)
     {
-        std::fprintf(stderr,
-            "[Standard] VariantRegistry lookup failed (route_hash=%llu surface=%u geom=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X any_array=%d)\n",
-            static_cast<unsigned long long>(policy.route_key.Hash()),
-            static_cast<unsigned>(policy.route_key.surface_type),
-            static_cast<unsigned>(policy.route_key.geometry_mode),
-            policy.route_key.texture_source_bits,
-            policy.route_key.sampler_feature_bits,
-            policy.route_key.vertex_attribute_feature_bits,
-            policy.route_key.extra_feature_bits,
-            any_array ? 1 : 0);
+        PrintStandardRouteKey("VariantRegistry lookup failed route", policy.route_key, any_array);
         return nullptr;
     }
+
+    PrintStandardRouteKey("VariantRegistry resolved route-request", policy.route_key, any_array);
+    PrintStandardRouteKey("VariantRegistry resolved route-final", resolved_route_key, any_array);
+    std::fprintf(stderr,
+        "[Standard] VariantRegistry resolved variant=%s\n",
+        var_desc->variant_name.c_str());
 
     CompositorAssembler assembler;
 

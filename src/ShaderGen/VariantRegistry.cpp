@@ -4,8 +4,57 @@
 #include <algorithm>
 #include <cstdio>
 #include <initializer_list>
+#include <string>
 
 namespace hgl::graph::mtl{
+
+namespace {
+
+static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
+{
+    std::string text;
+    text.reserve(256);
+
+    text += "hash=";
+    text += std::to_string(static_cast<unsigned long long>(key.Hash()));
+    text += " ST=";
+    text += std::to_string(static_cast<unsigned>(key.surface_type));
+    text += " GM=";
+    text += std::to_string(static_cast<unsigned>(key.geometry_mode));
+    text += " blend=";
+    text += std::to_string(static_cast<unsigned>(key.blend_mode));
+    text += " pass=";
+    text += std::to_string(static_cast<unsigned>(key.pass_hint));
+    text += " sky=";
+    text += std::to_string(static_cast<unsigned>(key.sky_ambient_model));
+    text += " light=";
+    text += std::to_string(static_cast<unsigned>(key.lighting_model));
+    text += " tex_bits=0x";
+
+    char hex[16] = {};
+    std::snprintf(hex, sizeof(hex), "%08X", key.texture_source_bits);
+    text += hex;
+    text += " sampler_bits=0x";
+    std::snprintf(hex, sizeof(hex), "%08X", key.sampler_feature_bits);
+    text += hex;
+    text += " slots=[";
+
+    for (size_t i = 0; i < SamplerSlotCount; ++i)
+    {
+        if (i > 0)
+            text += ",";
+
+        const SamplerSlot slot = static_cast<SamplerSlot>(i);
+        text += SamplerSlotNameList[i];
+        text += ":";
+        text += std::to_string(static_cast<unsigned>(key.GetTextureSourceMode(slot)));
+    }
+
+    text += "]";
+    return text;
+}
+
+} // anonymous namespace
 
 // ---------------------------------------------------------------------------
 // VariantRegistry
@@ -42,18 +91,46 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
 {
     if(const MaterialVariantDesc *exact=QueryVariant(key))
     {
+        std::fprintf(stderr,
+            "[VariantRegistry] exact-match variant=%s %s\n",
+            exact->variant_name.empty() ? "<unnamed>" : exact->variant_name.c_str(),
+            FormatVariantKeyForLog(key).c_str());
         if(resolved_key)
             *resolved_key=key;
         return exact;
     }
 
+    // Fallback step 0: ignore sky ambient model differences.
+    // Sky ambient selects injected helper code during assembly, but most registry
+    // entries are keyed only by surface/geometry/texture routing. Keep the
+    // original request key for downstream factory dispatch and shader assembly.
+    MaterialVariantKey sky_canon = key;
+    sky_canon.sky_ambient_model = SkyLightAmbientModel::Simple;
+
+    if(const MaterialVariantDesc *fallback=QueryVariant(sky_canon))
+    {
+        std::fprintf(stderr,
+            "[VariantRegistry] fallback-step0-sky variant=%s request={%s} resolved={%s}\n",
+            fallback->variant_name.empty() ? "<unnamed>" : fallback->variant_name.c_str(),
+            FormatVariantKeyForLog(key).c_str(),
+            FormatVariantKeyForLog(sky_canon).c_str());
+        if(resolved_key)
+            *resolved_key=sky_canon;
+        return fallback;
+    }
+
     // Fallback step 1: ignore per-slot source bits but preserve sampler feature bits.
     // This matches legacy registry keys that encode coarse mode + sampler mask only.
-    MaterialVariantKey canon=key;
+    MaterialVariantKey canon=sky_canon;
     canon.texture_source_bits=0;
 
     if(const MaterialVariantDesc *fallback=QueryVariant(canon))
     {
+        std::fprintf(stderr,
+            "[VariantRegistry] fallback-step1 variant=%s request={%s} resolved={%s}\n",
+            fallback->variant_name.empty() ? "<unnamed>" : fallback->variant_name.c_str(),
+            FormatVariantKeyForLog(key).c_str(),
+            FormatVariantKeyForLog(canon).c_str());
         if(resolved_key)
             *resolved_key=canon;
         return fallback;
@@ -64,10 +141,19 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
 
     if(const MaterialVariantDesc *fallback=QueryVariant(canon))
     {
+        std::fprintf(stderr,
+            "[VariantRegistry] fallback-step2 variant=%s request={%s} resolved={%s}\n",
+            fallback->variant_name.empty() ? "<unnamed>" : fallback->variant_name.c_str(),
+            FormatVariantKeyForLog(key).c_str(),
+            FormatVariantKeyForLog(canon).c_str());
         if(resolved_key)
             *resolved_key=canon;
         return fallback;
     }
+
+    std::fprintf(stderr,
+        "[VariantRegistry] miss request={%s}\n",
+        FormatVariantKeyForLog(key).c_str());
 
     return nullptr;
 }
@@ -417,21 +503,35 @@ void VariantRegistry::InitializeBuiltinVariants()
     // ------------------------------------------------------------------
     // Standard 3D variants (texture-based, lit)
     // ------------------------------------------------------------------
-    static const struct { const char *name; TSM tsm; } kStdVariants[] = {
-        {"Standard",             TSM::Simple},
-        {"StandardTextureArray", TSM::Array},
+    static const struct {
+        const char *name;
+        TSM tsm;
+        LightingModel lighting;
+        const char *surface_path;
+    } kStdVariants[] = {
+        {"Standard",                 TSM::Simple, LightingModel::Lambert,    "surface/standard_surface.glsl"},
+        {"StandardBlinnPhong",       TSM::Simple, LightingModel::BlinnPhong, "surface/textureblinnphong_surface.glsl"},
+        {"StandardPBR",              TSM::Simple, LightingModel::PBR,        "surface/standard_surface.glsl"},
+        {"StandardTextureArray",     TSM::Array,  LightingModel::Lambert,    "surface/standard_surface.glsl"},
+        {"StandardBlinnPhongArray",  TSM::Array,  LightingModel::BlinnPhong, "surface/textureblinnphong_surface.glsl"},
+        {"StandardPBRArray",         TSM::Array,  LightingModel::PBR,        "surface/standard_surface.glsl"},
     };
     for (const auto &e : kStdVariants)
+    {
+        MaterialVariantKey key = K(ST::Standard, GM::Mesh3D,
+            {{SamplerSlot::BaseColor, e.tsm}, {SamplerSlot::Normal, e.tsm}},
+            0,
+            SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal));
+        key.lighting_model = e.lighting;
+
         RegisterVariant(
-            K(ST::Standard, GM::Mesh3D,
-              {{SamplerSlot::BaseColor, e.tsm}, {SamplerSlot::Normal, e.tsm}},
-              0,
-              SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
+            key,
             MakeDesc(e.name,
                      MaterialPreset::Standard,
                      "compositor/main_forward_lit.vert.glsl",
                      "compositor/main_forward_lit.frag.glsl",
-                     "surface/standard_surface.glsl"));
+                     e.surface_path));
+    }
 
     // ------------------------------------------------------------------
     // PBRColor3D (Standard surface, color-only via MaterialInstanceData)

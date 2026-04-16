@@ -24,6 +24,46 @@ namespace {
 
 using MakeVariantKeyProc = MaterialVariantKey (*)();
 
+static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
+{
+    std::string text;
+    text.reserve(256);
+
+    text += "hash=";
+    text += std::to_string(static_cast<unsigned long long>(key.Hash()));
+    text += " ST=";
+    text += std::to_string(static_cast<unsigned>(key.surface_type));
+    text += " GM=";
+    text += std::to_string(static_cast<unsigned>(key.geometry_mode));
+    text += " sky=";
+    text += std::to_string(static_cast<unsigned>(key.sky_ambient_model));
+    text += " light=";
+    text += std::to_string(static_cast<unsigned>(key.lighting_model));
+    text += " tex_bits=0x";
+
+    char hex[16] = {};
+    std::snprintf(hex, sizeof(hex), "%08X", key.texture_source_bits);
+    text += hex;
+    text += " sampler_bits=0x";
+    std::snprintf(hex, sizeof(hex), "%08X", key.sampler_feature_bits);
+    text += hex;
+    text += " slots=[";
+
+    for (size_t i = 0; i < SamplerSlotCount; ++i)
+    {
+        if (i > 0)
+            text += ",";
+
+        const SamplerSlot slot = static_cast<SamplerSlot>(i);
+        text += SamplerSlotNameList[i];
+        text += ":";
+        text += std::to_string(static_cast<unsigned>(key.GetTextureSourceMode(slot)));
+    }
+
+    text += "]";
+    return text;
+}
+
 struct PresetResolveEntry
 {
     MaterialPreset preset;
@@ -627,6 +667,12 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         return nullptr;
     }
 
+    std::fprintf(stderr,
+        "[MaterialLibrary] resolved variant=%s request={%s} resolved={%s}\n",
+        variant_desc->variant_name.c_str(),
+        FormatVariantKeyForLog(key).c_str(),
+        FormatVariantKeyForLog(resolved_key).c_str());
+
     if(!variant_desc->factory_type)
     {
         std::fprintf(stderr,
@@ -654,6 +700,12 @@ void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreate
 {
     if (!cfg)
         return;
+
+    if (const auto *cfg3d = dynamic_cast<const Material3DCreateConfig *>(cfg))
+    {
+        key.sky_ambient_model = cfg3d->sky_ambient_model;
+        key.lighting_model = cfg3d->lighting_model;
+    }
 
     if (cfg->override_geometry_mode)
         key.geometry_mode = cfg->geometry_mode_override;
@@ -705,6 +757,12 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     MaterialVariantKey key = MapPresetToVariantKey(resolved_preset);
 
     ApplyCreateConfigToVariantKey(key, cfg);
+
+    std::fprintf(stderr,
+        "[MaterialLibrary] request preset=%u resolved_preset=%u key={%s}\n",
+        static_cast<unsigned>(mtl_id),
+        static_cast<unsigned>(resolved_preset),
+        FormatVariantKeyForLog(key).c_str());
 
     return CreateMaterialCreateInfo(profile, key, cfg);
 }

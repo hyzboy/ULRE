@@ -11,6 +11,9 @@ namespace hgl::graph
         out_plan.mp_set_types.clear();
         out_plan.mi_data_bytes = mci.GetMaterialInstanceStride();
         out_plan.mi_max_count = mci.GetMaterialInstanceMaxCount();
+        out_plan.mi_schema = mci.GetMaterialInstanceSchema();
+        out_plan.mi_schema_file = mci.GetMaterialInstanceSchemaFile();
+        out_plan.mi_struct_name = mci.GetMaterialInstanceStructName();
 
         if (!desc_manager)
             return;
