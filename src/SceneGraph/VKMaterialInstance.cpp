@@ -1,6 +1,7 @@
 ﻿#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKResourceDomain.h>
+#include<cstdio>
 #include<cstring>
 
 namespace hgl::graph{
@@ -11,13 +12,16 @@ namespace hgl::graph{
 
 MaterialInstance *Material::CreateMI(const VIL *vil)
 {
-    // Phase 5: 旧路径统一通过懒初始化的 default_domain 分配 MI 槽位
-    if(!default_domain && hasMI())
-        default_domain = new ResourceDomain(GetShaderDataSchema(), 0);
+    // 新架构：有 MI 数据的材质必须显式经 ResourceDomainManager + MaterialManager 路径创建。
+    if(hasMI())
+    {
+        std::fprintf(stderr,
+            "[Material] CreateMI rejected for '%s': material has MI data and requires explicit ResourceDomain\n",
+            GetName().c_str());
+        return nullptr;
+    }
 
-    int mi_id = default_domain ? default_domain->AllocMISlot() : -1;
-
-    auto *mi = new MaterialInstance(this, default_domain, vil ? vil : GetDefaultVIL(), mi_id);
+    auto *mi = new MaterialInstance(this, vil ? vil : GetDefaultVIL(), -1);
     mi->InitMITLayout(texture_array_slot_flags);
     return mi;
 }

@@ -312,12 +312,6 @@ public: //MaterialInstanceData
 public: // ResourceDomain — Phase 1 / Phase 3
 
     /**
-     * 创建一个以 mtl 为模板的资源域，并初始化其 MI 数据池。
-     * Phase 1: 池 stride/max_count 从 mtl 复制，分配独立 ActiveMemoryBlockManager。
-     */
-    ResourceDomain *        CreateResourceDomain        (Material *mtl);
-
-    /**
      * 创建一个 (domain, material) 绑定视图，并分配该 pair 专属的 VkDescriptorSet 集合。
      * Phase 2: 支持压缩绑定 Texture/Sampler/UBO/SSBO，与同一 Shader 的其它域完全隔离。
      * Phase 3: 同一 domain 可绑定多个 Material（Opaque + Masked 等），各 binding 独立管理。

@@ -772,6 +772,14 @@ MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanc
         Material *mtl = spec.material;
         if(!mtl) return nullptr;
 
+        if (mtl->hasMI())
+        {
+            std::fprintf(stderr,
+                "[MaterialManager] AcquireMaterialInstance rejected: material '%s' has MI data and now requires explicit ResourceDomain\n",
+                mtl->GetName().c_str());
+            return nullptr;
+        }
+
         if(spec.vil_cfg)
         {
             mi = mtl->CreateMI(spec.vil_cfg);
@@ -828,22 +836,6 @@ bool MaterialManager::UpdateInstanceData(MaterialInstance *mi, const void *data,
 // ============================================================================
 // ResourceDomain — Phase 1
 // ============================================================================
-
-ResourceDomain *MaterialManager::CreateResourceDomain(Material *mtl)
-{
-    if(!mtl)
-        return nullptr;
-
-    GraphicsContext *gc = GetGraphicsContext();
-    if (gc)
-    {
-        auto *domain_manager = gc->GetResourceDomainManager();
-        if (domain_manager)
-            return domain_manager->CreateAuto(mtl->GetShaderDataSchema());
-    }
-
-    return new ResourceDomain(mtl->GetShaderDataSchema(), 0);
-}
 
 DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDomain *domain, Material *mtl)
 {
