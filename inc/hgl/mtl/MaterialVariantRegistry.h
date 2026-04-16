@@ -6,7 +6,7 @@
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <string>
 #include <vector>
-#include <unordered_map>
+#include <ankerl/unordered_dense.h>
 
 namespace hgl::graph::mtl
 {
@@ -51,7 +51,7 @@ namespace hgl::graph::mtl
         };
 
         // 使用 key 的哈希作为查询键
-        std::unordered_map<uint64, VariantEntry> variant_map;
+        ankerl::unordered_dense::map<uint64, VariantEntry> variant_map;
     };
 
     /// 返回全局内置变体注册表单例（首次调用时初始化）
