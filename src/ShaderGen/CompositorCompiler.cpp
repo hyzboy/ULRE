@@ -27,6 +27,26 @@ namespace
 {
     static constexpr uint32_t kDefaultDescriptorStageBits = uint32_t(ShaderStage::VertexFragment);
 
+    static std::string BuildShaderDataSchemaDebugText(const StaticMaterialDef &def)
+    {
+        if (def.shader_data_schema == ShaderDataSchema::None)
+            return std::string("schema=<none>");
+
+        const ShaderDataSchemaInfo &schema_info = GetShaderDataSchemaInfo(def.shader_data_schema);
+
+        std::string text;
+        text.reserve(128);
+        text += "schema=";
+        text += std::to_string(static_cast<uint32_t>(def.shader_data_schema));
+        text += " file=";
+        text += schema_info.glsl_schema_file ? schema_info.glsl_schema_file : "<null>";
+        text += " struct=";
+        text += schema_info.struct_name ? schema_info.struct_name : "<null>";
+        text += " bytes=";
+        text += std::to_string(schema_info.byte_size);
+        return text;
+    }
+
     static std::string BuildShaderDataSchemaIncludeText(const ShaderDataSchemaInfo &schema_info)
     {
         if (!schema_info.glsl_schema_file || !schema_info.glsl_schema_file[0])
@@ -81,7 +101,12 @@ namespace
         auto FailAfterMci = [&](const char *reason) -> MaterialCreateInfo *
         {
             if (diagnostics)
+            {
                 *diagnostics = reason ? reason : "<unknown>";
+                *diagnostics += " (";
+                *diagnostics += BuildShaderDataSchemaDebugText(def);
+                *diagnostics += ")";
+            }
             delete mci;
             return nullptr;
         };
@@ -282,8 +307,9 @@ MaterialCreateInfo *CompileCompositorMaterial(
     if (!mci->CreateShaderDirect())
     {
         std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s failed: CreateShaderDirect() failed (check GLSLCompiler log)\n",
-            def.name ? def.name : "<unnamed>");
+            "[CompileCompositorMaterial] material=%s failed: CreateShaderDirect() failed (check GLSLCompiler log) (%s)\n",
+            def.name ? def.name : "<unnamed>",
+            BuildShaderDataSchemaDebugText(def).c_str());
         delete mci;
         return nullptr;
     }
