@@ -226,8 +226,8 @@ namespace hgl
             bool RemoveSystemByKey(size_t key);
             void RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime);
             void RunRenderUpdatesFrom(ExecutionPhase phase, float deltaTime);
-            void RunRenderUpdatesRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
-            void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
+            void RunRenderUpdatesRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime, const std::string& element_type = {});
+            void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime, const std::string& element_type = {});
             void RunSystemUpdate(System *system, float deltaTime);
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
             uint64_t ResolveEntitySubsceneID(const Entity* entity) const;

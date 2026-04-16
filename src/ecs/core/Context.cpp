@@ -1088,7 +1088,7 @@ namespace hgl
             }
         }
 
-        void ECSContext::RunRenderUpdatesRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime)
+        void ECSContext::RunRenderUpdatesRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime, const std::string& element_type)
         {
             SortRenderSystems();
 
@@ -1101,6 +1101,9 @@ namespace hgl
                     continue;
 
                 if (entry.phase < min_phase || entry.phase > max_phase)
+                    continue;
+
+                if (!element_type.empty() && entry.system->GetRenderElementType() != element_type)
                     continue;
 
                 RunSystemUpdate(entry.system.get(), deltaTime);
@@ -1126,7 +1129,7 @@ namespace hgl
             LogDebug("[ECS] Update End: %s", system->GetName().c_str());
         }
 
-        void ECSContext::RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime)
+        void ECSContext::RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime, const std::string& element_type)
         {
             SortRenderSystems();
 
@@ -1142,6 +1145,9 @@ namespace hgl
                     continue;
 
                 if (entry.phase < min_phase || entry.phase > max_phase)
+                    continue;
+
+                if (!element_type.empty() && entry.system->GetRenderElementType() != element_type)
                     continue;
 
                 HGL_CAPTURE_SCOPE();

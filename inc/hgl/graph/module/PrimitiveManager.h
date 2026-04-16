@@ -3,6 +3,7 @@
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/type/ObjectManager.h>
+#include<hgl/graph/IDDHandle.h>
 
 namespace hgl::graph{
 
@@ -11,6 +12,7 @@ using PrimitiveID = int;
 // Forward declarations to avoid header ordering issues
 class GeometryCreater;
 class Geometry;
+class IDDManager;
 using SemanticMaterialId = uint64;
 struct PrimitiveMaterialSlot;
 
@@ -44,6 +46,9 @@ public: // Create
 
     Primitive *CreatePrimitive(Geometry *r, SemanticMaterialId semantic_id);
     Primitive *CreatePrimitive(GeometryCreater *pc, SemanticMaterialId semantic_id);
+
+    /// Phase C domain-direct: slot pre-allocated, material/VIL deferred to render time.
+    Primitive *CreatePrimitive(Geometry *r, SemanticMaterialId semantic_id, IDDHandle idd_handle, int slot_id, IDDManager *mgr);
 };
 
 }//namespace hgl::graph

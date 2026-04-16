@@ -101,6 +101,10 @@ public:
             /// 以及每帧的变体更新（透明度变化等）。
             bool                BindMaterialSlot(const PrimitiveMaterialSlot &slot,const char *source_tag=nullptr);
 
+            /// 仅为 domain-direct 路径建立 GeometryDataBuffer（VAB 布局）。
+            /// 不修改 material_template / slot_id，保持 HasDeferredMI()==true。
+            bool                EnsureDataBuffer(const VIL *vil);
+
             // 设置绘制数量（vertex/index），若大于数据量会被裁剪至数据量
             bool                SetDrawCounts(uint32_t draw_vertex_count,uint32_t draw_index_count=0);
 

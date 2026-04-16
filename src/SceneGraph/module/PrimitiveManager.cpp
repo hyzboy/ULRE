@@ -110,4 +110,17 @@ Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, SemanticMateri
     return nullptr;
 }
 
+Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, SemanticMaterialId semantic_id, IDDHandle idd_handle, int slot_id, IDDManager *mgr)
+{
+    if(!r || semantic_id == 0 || !idd_handle.IsValid() || slot_id < 0)
+        return nullptr;
+
+    Primitive *ri = hgl::graph::DirectCreatePrimitive(r, semantic_id, idd_handle, slot_id, mgr);
+
+    if(ri)
+        Add(ri);
+
+    return ri;
+}
+
 }//namespace hgl::graph

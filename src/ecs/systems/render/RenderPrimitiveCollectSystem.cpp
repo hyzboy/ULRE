@@ -393,9 +393,26 @@ namespace hgl::ecs
                             if (variant.IsValid())
                             {
                                 const auto prim_idd_handle = primitive->GetDomainHandle();
-                                auto *idd_mgr = gc->GetMaterialManager()
-                                                    ? gc->GetMaterialManager()->GetIDDManager()
-                                                    : nullptr;
+                                auto *mm      = gc->GetMaterialManager();
+                                auto *idd_mgr = mm ? mm->GetIDDManager() : nullptr;
+                                auto *domain  = idd_mgr ? idd_mgr->Get(prim_idd_handle) : nullptr;
+
+                                // ── Lazy per-domain setup (idempotent) ──────────────────────
+                                // GPU buffer and DomainMaterialBinding are created once on the
+                                // first frame the variant is known, then cached by MaterialManager.
+                                if (domain && mm && variant.material_template)
+                                {
+                                    // 1. Ensure the domain's Vulkan SSBO buffer exists.
+                                    auto *bm = gc->GetBufferManager();
+                                    if (bm)
+                                        idd_mgr->EnsureGPUBuffers(prim_idd_handle, bm);
+
+                                    // 2. Ensure a DomainMaterialBinding exists for this
+                                    //    (domain, material) pair so PerMaterial descriptor
+                                    //    set gets mid/mtl SSBO bindings populated.
+                                    if (!mm->FindDomainMaterialBinding(prim_idd_handle, variant.material_template))
+                                        mm->CreateDomainMaterialBinding(domain, variant.material_template);
+                                }
 
                                 slot.material_template        = variant.material_template;
                                 slot.vil                      = variant.vil;
@@ -403,7 +420,7 @@ namespace hgl::ecs
                                 slot.material_preset          = variant.material_preset;
                                 slot.idd_handle               = prim_idd_handle;
                                 slot.idd_manager              = idd_mgr;
-                                slot.domain                   = idd_mgr ? idd_mgr->Get(prim_idd_handle) : nullptr;
+                                slot.domain                   = domain;
                                 slot.slot_id                  = primitive->GetSlotID();
                                 slot.texture_array_slot_flags = variant.texture_array_slot_flags;
                             }
@@ -462,6 +479,16 @@ namespace hgl::ecs
 
                             if (use_domain_direct_slot)
                             {
+                                // Ensure the Vulkan VAB layout (GeometryDataBuffer) is built
+                                // on the primitive.  This is needed by PrimitiveBatchPipeline::
+                                // BuildBatches which calls primitive->GetDataBuffer().  It only
+                                // depends on VIL+geometry (not slot_id), so it is idempotent and
+                                // safe for any number of entities sharing a Primitive.
+                                // Deliberately does NOT set material_template so HasDeferredMI()
+                                // stays true and domain-direct detection works on future frames.
+                                if (!primitive->GetDataBuffer())
+                                    primitive->EnsureDataBuffer(slot.vil);
+
                                 ++slot_bind_skip_domain_direct;
                                 material_cache.MarkVariantResolved(variant_hash);
                                 material_cache.MarkPrimitiveBound(primitive, variant_hash,

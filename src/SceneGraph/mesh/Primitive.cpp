@@ -195,6 +195,36 @@ bool Primitive::UpdateGeometry()
     return data_buffer->Update(geometry,vil);
 }
 
+// ---------------------------------------------------------------------------
+// EnsureDataBuffer — build the VAB layout for domain-direct primitives.
+// Deliberately does NOT modify material_template / slot_id / idd fields, so
+// HasDeferredMI() stays true and the collect system can re-enter the
+// domain-direct branch on every frame.
+bool Primitive::EnsureDataBuffer(const VIL *vil)
+{
+    if (!vil || !geometry)
+        return false;
+
+    const uint32_t required_vab_count = GetMaxBindingIndex(vil) + 1;
+
+    // Already built with the correct layout — nothing to do.
+    if (data_buffer && data_buffer->vab_count == required_vab_count)
+        return true;
+
+    GeometryDataBuffer *gdb = new GeometryDataBuffer(required_vab_count,
+                                                     geometry->GetIBO(),
+                                                     geometry->GetVDM());
+    if (!gdb->Update(geometry, vil))
+    {
+        delete gdb;
+        return false;
+    }
+
+    delete data_buffer;
+    data_buffer = gdb;
+    return true;
+}
+
 bool Primitive::BindMaterialSlot(const PrimitiveMaterialSlot &slot,const char *source_tag)
 {
     if (!source_tag)

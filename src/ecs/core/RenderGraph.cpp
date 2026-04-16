@@ -212,7 +212,7 @@ namespace hgl
                         LogDebug("[ECS RENDER] Update phase range %d to %d (clamped from %d)",
                                 static_cast<int>(update_min), static_cast<int>(pass.endPhase),
                                 static_cast<int>(pass.startPhase));
-                        RunRenderUpdatesRange(update_min, pass.endPhase, deltaTime);
+                        RunRenderUpdatesRange(update_min, pass.endPhase, deltaTime, pass.element_type);
                     }
                 }
 
@@ -230,7 +230,7 @@ namespace hgl
                     HGL_CAPTURE_SCOPE();
                     LogDebug("[ECS RENDER] Render phase range %d to %d",
                             static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
-                    RunRenderSystemsInRange(pass.startPhase, pass.endPhase, deltaTime);
+                    RunRenderSystemsInRange(pass.startPhase, pass.endPhase, deltaTime, pass.element_type);
                 }
 
                 // Invoke after-pass callback
@@ -357,7 +357,7 @@ namespace hgl
                          static_cast<int>(group.startPhase),
                          static_cast<int>(group.endPhase));
 
-                graph.Add(RenderGraph::Pass(
+                RenderGraph::Pass p(
                     group.startPhase,
                     group.endPhase,
                     nullptr,           // use current render target
@@ -365,7 +365,9 @@ namespace hgl
                     true,              // run Update()
                     true,              // submit transforms
                     true               // run Render()
-                ));
+                );
+                p.element_type = group.name;
+                graph.Add(p);
             }
 
             // Fully data-driven:
@@ -405,7 +407,7 @@ namespace hgl
                          static_cast<int>(group.startPhase),
                          static_cast<int>(group.endPhase));
 
-                graph.Add(RenderGraph::Pass(
+                RenderGraph::Pass p(
                     group.startPhase,
                     group.endPhase,
                     nullptr,
@@ -413,7 +415,9 @@ namespace hgl
                     true,  // run Update()
                     true,  // submit transforms
                     true   // run Render()
-                ));
+                );
+                p.element_type = group.name;
+                graph.Add(p);
             }
 
             return graph;

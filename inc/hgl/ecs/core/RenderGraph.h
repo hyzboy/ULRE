@@ -59,6 +59,11 @@ namespace hgl
                 /// Optional cleanup callback invoked after running this pass
                 std::function<void(ECSContext&, const Pass&)> onAfterPass = nullptr;
 
+                /// If non-empty, only systems whose GetRenderElementType() matches
+                /// this string will execute during this pass.
+                /// Set automatically by CreateAdaptiveRenderGraph / CreateDefaultLinearGraph.
+                std::string element_type;
+
                 Pass() = default;
 
                 Pass(ExecutionPhase start, ExecutionPhase end,

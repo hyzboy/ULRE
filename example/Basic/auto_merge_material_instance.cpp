@@ -8,18 +8,22 @@
 // 2. 每个实体使用不同的MaterialInstance（不同颜色）
 // 3. 所有实体共享同一个Geometry（顶点数据）
 // 4. RenderCollector自动合并相同Material的不同MaterialInstance进行批量渲染
-// 5. MaterialInstanceAssignmentBuffer自动去重和索引管理
+// 5. InstanceDataDomain + IDDManager 直接管理实例数据的生命周期
 //
 // 架构要点：
 // - Init 阶段只声明"语义材质需求"(RegisterSemanticMaterial)，不创建具体 MaterialTemplate
-// - Primitive 以延迟方式创建 (CreatePrimitive(geometry, semantic_id))
+// - Primitive 以 domain-direct 方式创建 (CreatePrimitive(geometry, semantic_id, handle, slot, mgr))
 // - MaterialTemplate / VIL / pipeline preset 在渲染时由 RenderPrimitiveCollectSystem
 //   根据 Geometry 的实际 VAB 布局 + 当前帧运行时状态延迟解析
-// - MI 数据（颜色）的生命周期由 MaterialInstanceHandle 独立管理
+// - MI 颜色数据由 IDDManager 的 Domain/Slot 机制直接管理
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/graph/module/IDDManager.h>
+#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/IDDHandle.h>
+#include<hgl/mtl/InstanceDataLayout.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 
@@ -32,6 +36,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -42,8 +47,8 @@ constexpr uint32_t VERTEX_COUNT=3;
 constexpr float position_data[VERTEX_COUNT*2]=
 {
      0.0,  0.0,
-    -0.1,  0.9,
-     0.1,  0.9
+     0.1,  0.9,
+    -0.1,  0.9
 };
 
 constexpr uint DRAW_OBJECT_COUNT=12;
@@ -71,10 +76,13 @@ private:
     {
         Entity* entity = nullptr;
         Primitive* primitive = nullptr;
-        MaterialInstanceHandle mi_handle = InvalidMaterialInstanceHandle;   ///< MI 数据生命周期句柄
+        int slot_id = -1;                       ///< Domain slot index (颜色数据)
     };
 
     TriangleData triangles[DRAW_OBJECT_COUNT];
+
+    IDDHandle   idd_handle;                     ///< 共享的 InstanceDataDomain 句柄
+    IDDManager* idd_manager = nullptr;
 
 private:
 
@@ -124,41 +132,49 @@ private:
         if (!primitive_manager)
             return false;
 
+        // ── 获取 IDDManager 并创建共享 Domain ─────────────────────────────
+        idd_manager = GetMaterialManager()->GetIDDManager();
+        if (!idd_manager)
+        {
+            std::cout << "[TestApp::InitECS] ERROR: Failed to get IDDManager!" << std::endl;
+            return false;
+        }
+
+        idd_handle = idd_manager->Create(mtl::InstanceDataLayout::Color4f, DRAW_OBJECT_COUNT);
+        if (!idd_handle.IsValid())
+        {
+            std::cout << "[TestApp::InitECS] ERROR: Failed to create InstanceDataDomain!" << std::endl;
+            return false;
+        }
+
+        std::cout << "[TestApp::InitECS] Created shared IDD (Color4f, max=" << DRAW_OBJECT_COUNT << ")" << std::endl;
+
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
-            // ── 创建延迟绑定的 Primitive ──────────────────────────────────────
-            // 此时只绑定 Geometry + SemanticMaterialId。
-            // MaterialTemplate / VIL / Domain 在渲染时由 RenderPrimitiveCollectSystem
-            // 根据 Geometry 的实际 VAB 布局 + 运行时状态延迟解析。
-            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, semantic_id);
+            // ── 分配 Slot 并写入颜色数据 ─────────────────────────────────────
+            const Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
+
+            triangles[i].slot_id = idd_manager->AllocSlot(idd_handle, &color, sizeof(color));
+            if (triangles[i].slot_id < 0)
+            {
+                std::cout << "[TestApp::InitECS] ERROR: Failed to alloc slot " << i << std::endl;
+                return false;
+            }
+
+            // ── 创建 domain-direct Primitive ─────────────────────────────────
+            // 携带预分配的 domain handle + slot_id，material/VIL 在渲染时延迟解析
+            triangles[i].primitive = primitive_manager->CreatePrimitive(
+                geometry, semantic_id, idd_handle, triangles[i].slot_id, idd_manager);
+
             if (!triangles[i].primitive)
             {
                 std::cout << "[TestApp::InitECS] ERROR: Failed to create primitive " << i << std::endl;
                 return false;
             }
 
-            // ── 通过 Handle 预分配 MI 数据 ────────────────────────────────────
-            // MI 数据（颜色）的生命周期由 MaterialInstanceHandle 独立管理，
-            // 与 Primitive 解耦。渲染时系统会将 Handle 对应的 domain/slot_id
-            // 绑定到 Primitive 上。
-            const Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
-            triangles[i].mi_handle = AllocateMaterialHandle(semantic_id, &color, sizeof(color));
-
-            // ── 将 MI Handle 关联到 Primitive ─────────────────────────────────
-            // 让 RenderPrimitiveCollectSystem 的 Phase 4 快速路径能通过
-            // CompleteBinding 复用已有的 slot_id（携带颜色数据），
-            // 而非 ResolveMI 分配新的空槽位。
-            triangles[i].primitive->SetDeferredMIHandle(triangles[i].mi_handle);
-
-            if (triangles[i].mi_handle == InvalidMaterialInstanceHandle)
-            {
-                std::cout << "[TestApp::InitECS] ERROR: Failed to allocate MI handle " << i << std::endl;
-                return false;
-            }
-
-            std::cout << "[TestApp::InitECS] Created deferred primitive[" << i << "]: "
+            std::cout << "[TestApp::InitECS] Created domain-direct primitive[" << i << "]: "
                       << (void*)triangles[i].primitive
-                      << " mi_handle=" << triangles[i].mi_handle << std::endl;
+                      << " slot_id=" << triangles[i].slot_id << std::endl;
 
             // ── 创建 Entity + Components ──────────────────────────────────────
             triangles[i].entity = ecs_world->CreateEntity<Entity>("ColoredTriangle_" + std::to_string(i));
@@ -182,7 +198,7 @@ private:
         }
 
         std::cout << "[TestApp::InitECS] === ECS Setup Complete ===" << std::endl;
-        std::cout << "[TestApp::InitECS] Created " << DRAW_OBJECT_COUNT << " deferred primitives" << std::endl;
+        std::cout << "[TestApp::InitECS] Created " << DRAW_OBJECT_COUNT << " domain-direct primitives" << std::endl;
         std::cout << "[TestApp::InitECS] MaterialTemplate/VIL will be resolved at render time" << std::endl;
 
         return true;
@@ -212,6 +228,11 @@ public:
             std::cout << "[TestApp::Init] ERROR: InitECS failed!" << std::endl;
             return false;
         }
+
+        // Enable domain-direct MI SSBO path so the batch pipeline reads per-domain
+        // slot IDs instead of falling back to the legacy BindMaterialSlot shim.
+        if (auto rcs = GetECSContext()->GetSystem<RenderPrimitiveCollectSystem>())
+            rcs->SetDomainDirectMISsboEnabled(true);
 
         std::cout << "[TestApp::Init] === Initialization Complete ===" << std::endl;
 

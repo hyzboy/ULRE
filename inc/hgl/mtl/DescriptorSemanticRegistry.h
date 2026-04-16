@@ -57,7 +57,7 @@ namespace hgl::graph::mtl
     constexpr size_t UBODescriptorSemanticCount = size_t(UBODescriptorSemantic::RANGE_SIZE);
     constexpr size_t SSBODescriptorSemanticCount = size_t(SSBODescriptorSemantic::RANGE_SIZE);
 
-        constexpr DescriptorSemanticMeta UBODescriptorSemanticMetaList[] =
+    constexpr DescriptorSemanticMeta UBODescriptorSemanticMetaList[] =
     {
         {DescriptorSetType::Unknow, DescriptorBindingScope::Unknown,        nullptr,        nullptr,                nullptr,        BufferUpdateClass::Default          }, // Unknown
         {SET_TYPE_VIEWPORT,         DescriptorBindingScope::TemplateShared, "viewport",     "VIEWPORT_BINDING",     "ViewportInfo", BufferUpdateClass::CriticalPerFrame }, // ViewportInfo
