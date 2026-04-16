@@ -4,10 +4,6 @@
 #include "common/ubo_viewport.glsl"
 #include "common/ssbo_transform.glsl"
 
-struct MaterialInstance {
-    uvec2 BillboardSize;
-};
-
 #define MATERIAL_INSTANCE_SSBO_SCALAR
 #include "common/ssbo_material_instance.glsl"
 #undef MATERIAL_INSTANCE_SSBO_SCALAR

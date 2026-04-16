@@ -8,11 +8,6 @@
 
 #include "common/surface_interface.glsl"
 
-struct MaterialInstance
-{
-    uint TextColor;
-};
-
 #include "common/ssbo_material_instance.glsl"
 
 SurfaceOutput EvalSurface(SurfaceInput si)

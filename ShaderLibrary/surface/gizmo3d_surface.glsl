@@ -1,12 +1,6 @@
 
 #include "common/surface_interface.glsl"
 
-struct MaterialInstance
-{
-    vec4 color;
-};
-
-
 #include "common/ssbo_material_instance.glsl"
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
@@ -16,7 +10,7 @@ SurfaceOutput EvalSurface(SurfaceInput si)
     const vec3 SUN_COLOR     = vec3(1.0, 1.0, 1.0);
 
     float intensity = 0.5 * max(dot(si.worldNormal, SUN_DIRECTION), 0.0) + 0.5;
-    vec3 direct_color = intensity * SUN_COLOR * mi.color.rgb;
+    vec3 direct_color = intensity * SUN_COLOR * mi.Color.rgb;
 
     vec3 spec_color = vec3(0.0);
     if (intensity > 0.0)

@@ -1,8 +1,4 @@
 
-struct MaterialInstance
-{
-    uint  base_color;        float metallic;          float roughness;     };
-
 #include "common/ssbo_material_instance.glsl"
 
 

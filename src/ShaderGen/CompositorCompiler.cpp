@@ -27,6 +27,19 @@ namespace
 {
     static constexpr uint32_t kDefaultDescriptorStageBits = uint32_t(ShaderStage::VertexFragment);
 
+    static std::string BuildShaderDataSchemaIncludeText(const ShaderDataSchemaInfo &schema_info)
+    {
+        if (!schema_info.glsl_schema_file || !schema_info.glsl_schema_file[0])
+            return std::string();
+
+        std::string include_text;
+        include_text.reserve(48 + std::char_traits<char>::length(schema_info.glsl_schema_file));
+        include_text += "#include \"common/schema/";
+        include_text += schema_info.glsl_schema_file;
+        include_text += "\"\n";
+        return include_text;
+    }
+
     static MaterialCreateInfo *CreatePreparedCompositorMaterial(
         const contract::PhysicalDeviceProfileLite *profile,
         const StaticMaterialDef &def,
@@ -146,11 +159,26 @@ namespace
         ShaderCreateInfoVertex *vert = mci->GetVertexShader();
         ShaderCreateInfo *frag = mci->GetStageShader(ShaderStage::Fragment);
 
+        std::string final_vs_glsl = vs_glsl;
+        std::string final_fs_glsl = fs_glsl;
+
+        if (def.shader_data_schema != ShaderDataSchema::None)
+        {
+            const ShaderDataSchemaInfo &schema_info = GetShaderDataSchemaInfo(def.shader_data_schema);
+            const std::string schema_include = BuildShaderDataSchemaIncludeText(schema_info);
+
+            if (schema_include.empty())
+                return FailAfterMci("shader data schema has no GLSL include path");
+
+            final_vs_glsl = InjectLayoutDefinesPreserveVersion(final_vs_glsl, schema_include);
+            final_fs_glsl = InjectLayoutDefinesPreserveVersion(final_fs_glsl, schema_include);
+        }
+
         if (vert)
-            vert->SetFinalGLSL(vs_glsl);
+            vert->SetFinalGLSL(final_vs_glsl);
 
         if (frag)
-            frag->SetFinalGLSL(fs_glsl);
+            frag->SetFinalGLSL(final_fs_glsl);
 
         mci->BuildBindingContract();
 

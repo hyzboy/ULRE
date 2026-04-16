@@ -1,9 +1,5 @@
 layout(location=TEXCOORD_LOCATION) in vec2 TexCoord;
 
-struct MaterialInstance {
-    uint TextColor;
-};
-
 #include "common/ssbo_material_instance.glsl"
 
 layout(location=0) out vec4 fragTextColor;

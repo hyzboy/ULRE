@@ -1,7 +1,3 @@
-struct MaterialInstance {
-    vec4 Color;
-};
-
 #include "common/ssbo_material_instance.glsl"
 
 layout(location=0) out vec4 fragColor;

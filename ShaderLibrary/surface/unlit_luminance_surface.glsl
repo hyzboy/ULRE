@@ -1,20 +1,14 @@
 
 #include "common/surface_interface.glsl"
 
-struct MaterialInstance
-{
-    vec4 color;
-};
-
-
 #include "common/ssbo_material_instance.glsl"
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
     MaterialInstance mi = GetMaterialInstance();
 
     SurfaceOutput so;
-    so.baseColor = si.luminance * mi.color.rgb;
-    so.alpha     = mi.color.a;
+    so.baseColor = si.luminance * mi.Color.rgb;
+    so.alpha     = mi.Color.a;
     so.normal    = si.worldNormal;
     so.metallic  = 0.0;
     so.roughness = 1.0;
@@ -25,5 +19,5 @@ SurfaceOutput EvalSurface(SurfaceInput si)
 
 float EvalAlpha(SurfaceInput si)
 {
-    return GetMaterialInstance().color.a;
+    return GetMaterialInstance().Color.a;
 }
