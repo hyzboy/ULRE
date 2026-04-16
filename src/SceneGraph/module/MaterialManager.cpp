@@ -306,7 +306,6 @@ void MaterialManager::ApplyMaterialFinalizePlan(Material *mtl, const AnsiString 
     mtl->mi_data_bytes = finalize_plan.mi_data_bytes;
     mtl->mi_max_count  = finalize_plan.mi_max_count;
     mtl->mi_schema     = finalize_plan.mi_schema;
-    // Phase 5: MI 数据池随第一次 CreateMI 时通过 default_domain 懒初始化，此处不再直接分配
 
     std::fprintf(stderr,
         "[MaterialManager] Finalize material='%s' mi_bytes=%u mi_max=%u schema=%u schema_file=%s struct=%s descriptor_sets=%zu\n",

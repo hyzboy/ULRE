@@ -12,7 +12,6 @@
 namespace hgl::graph{
 
 class IGPUBuffer;
-class ResourceDomain;   ///< Phase 5: forward decl
 class UBOAccessorBase;
 template<typename T,mtl::UBODescriptorSemantic Semantic> class UBOAccessor;
 
@@ -54,8 +53,6 @@ class Material
     uint32_t mi_data_bytes;             ///<实例数据大小
     uint32_t mi_max_count;              ///<实例一次渲染最大数量限制
     mtl::ShaderDataSchema mi_schema = mtl::ShaderDataSchema::None;
-
-    ResourceDomain *default_domain = nullptr;   ///< Phase 5: 懒初始化默认域（旧 CreateMI 路径自动创建）
 
     bool has_l2w_matrix;                ///<是否有LocalToWorld矩阵
 
@@ -145,9 +142,6 @@ public:
     const uint32_t  GetMIDataBytes  ()const{return mi_data_bytes;}
     const uint32_t  GetMIMaxCount   ()const{return mi_max_count;}
     const mtl::ShaderDataSchema GetShaderDataSchema() const { return mi_schema; }
-
-    void ReleaseMI(int);    ///<释放材质实例
-    void *GetMIData(int);   ///<取得指定ID号的材质实例数据访问指针
 
     MaterialInstance *CreateMI(const VIL *);
     MaterialInstance *CreateMI(const VILConfig *vil_cfg=nullptr);

@@ -31,23 +31,6 @@ MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
     return CreateMI(CreateVIL(vil_cfg));
 }
 
-void Material::ReleaseMI(int mi_id)
-{
-    // Phase 5: 保留接口兼容性；通过 default_domain 代理释放
-    if(mi_id < 0 || !default_domain) return;
-
-    default_domain->FreeMISlot(mi_id);
-}
-
-void *Material::GetMIData(int id)
-{
-    // Phase 5: 通过 default_domain 代理访问
-    if(!default_domain)
-        return nullptr;
-
-    return default_domain->GetMIData(id);
-}
-
 // ---------------------------------------------------------------------------
 // MaterialInstanceData — constructors / destructor
 // ---------------------------------------------------------------------------
@@ -70,8 +53,6 @@ MaterialInstance::~MaterialInstance()
 {
     if(domain)
         domain->FreeMISlot(mi_id);
-    else
-        material->ReleaseMI(mi_id);
 
     delete[] mit_packed;
 }
@@ -85,7 +66,7 @@ void *MaterialInstance::GetMIData()
     if(domain)
         return domain->GetMIData(mi_id);
 
-    return material->GetMIData(mi_id);
+    return nullptr;
 }
 
 void MaterialInstance::WriteMIData(const void *data,const uint32 size)
