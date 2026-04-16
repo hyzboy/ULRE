@@ -211,6 +211,9 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
         material_instance_stride=0;
         material_instance_stage_bits=0;
         material_instance_max_count=0;
+        material_instance_schema=ShaderDataSchema::None;
+        material_instance_schema_file.clear();
+        material_instance_struct_name.clear();
         material_instance_ssbo=nullptr;
     }
 
@@ -377,6 +380,26 @@ bool MaterialCreateInfo::SetMaterialInstance(const uint32_t data_bytes,const uin
     material_instance_stage_bits=shader_stage_flag_bits;
 
     return(true);
+}
+
+bool MaterialCreateInfo::SetMaterialInstance(const ShaderDataSchema schema,
+                                             const ShaderDataSchemaInfo &schema_info,
+                                             const uint32_t shader_stage_flag_bits)
+{
+    if(schema==ShaderDataSchema::None)
+        return false;
+
+    if(schema_info.byte_size==0)
+        return false;
+
+    if(!SetMaterialInstance(schema_info.byte_size,shader_stage_flag_bits))
+        return false;
+
+    material_instance_schema=schema;
+    material_instance_schema_file=schema_info.glsl_schema_file ? schema_info.glsl_schema_file : "";
+    material_instance_struct_name=schema_info.struct_name ? schema_info.struct_name : "";
+
+    return true;
 }
 
 void MaterialCreateInfo::BuildBindingContract()

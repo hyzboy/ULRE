@@ -152,7 +152,7 @@ namespace
             if (schema_info.byte_size == 0)
                 return FailAfterMci("shader data schema has zero byte size");
 
-            if (!mci->SetMaterialInstance(schema_info.byte_size, mi_stage_bits))
+            if (!mci->SetMaterialInstance(def.shader_data_schema, schema_info, mi_stage_bits))
                 return FailAfterMci("SetMaterialInstance() failed");
         }
 
