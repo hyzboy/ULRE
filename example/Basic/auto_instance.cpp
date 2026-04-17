@@ -135,7 +135,7 @@ private:
             // RenderCollector会检测到这一点并自动使用Instance渲染
             auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetUnresolvedGeometry(geom_triangle);
-            primitive_comp->SetMaterialRecord(&kAutoInstanceCfg);
+            primitive_comp->SetMaterialRecipe(&kAutoInstanceCfg);
             primitive_comp->SetVisible(true);
 
             // 保存实体引用

@@ -1,8 +1,8 @@
 #pragma once
 
-/// MaterialSlot — 延迟 MaterialInstance 解析描述符
+/// MaterialResolveRequest — 延迟 MaterialInstance 解析描述符
 ///
-/// PrimitiveComponent 持有 MaterialSlot，ECS MaterialResolveSystem
+/// PrimitiveComponent 持有 MaterialResolveRequest，ECS MaterialResolveSystem
 /// 在渲染收集前根据 record + Geometry GVF 自动解析 MI。
 
 #include<hgl/mtl/MaterialRecipe.h>
@@ -13,7 +13,7 @@ namespace hgl::graph
 {
     class MaterialInstance;
 
-    struct MaterialSlot
+    struct MaterialResolveRequest
     {
         const mtl::MaterialRecipe *record = nullptr;
         std::vector<uint8_t> instance_data;             ///< MI uniform 初始数据（拷贝）

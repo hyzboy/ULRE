@@ -2,7 +2,7 @@
 
 /// MaterialResolveSystem — 延迟 MI 解析 ECS System
 ///
-/// 在 RenderMaterialBind Phase 执行，遍历所有 dirty MaterialSlot 的
+/// 在 RenderMaterialBind Phase 执行，遍历所有 dirty MaterialResolveRequest 的
 /// PrimitiveComponent，根据 record + Geometry GVF 自动解析 MI；
 /// 若 PrimitiveComponent 仅持有 unresolved_geometry，则同时创建 Primitive。
 

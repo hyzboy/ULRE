@@ -63,7 +63,7 @@ namespace
         if (auto camera_system = ctx->GetSystem<hgl::ecs::CameraSystem>())
             camera_info = camera_system->GetCameraInfo();
 
-        // MaterialResolveSystem: resolve deferred MaterialSlots before collection
+        // MaterialResolveSystem: resolve deferred MaterialResolveRequests before collection
         auto material_resolve_system = EnsureRenderSystem<hgl::ecs::MaterialResolveSystem>(ctx);
         if (material_resolve_system)
             material_resolve_system->SetWorld(ctx);

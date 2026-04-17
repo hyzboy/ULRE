@@ -81,7 +81,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetUnresolvedGeometry(prim_axis);
-        prim_comp->SetMaterialRecord(&kAxisCfg);
+        prim_comp->SetMaterialRecipe(&kAxisCfg);
         prim_comp->SetVisible(true);
 
         return true;

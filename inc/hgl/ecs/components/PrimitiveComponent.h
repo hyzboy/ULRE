@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/components/RenderableComponent.h>
-#include<hgl/mtl/MaterialSlot.h>
+#include<hgl/mtl/MaterialResolveRequest.h>
 #include<glm/glm.hpp>
 
 // Forward declarations to avoid heavy includes
@@ -42,7 +42,7 @@ namespace hgl::ecs
         hgl::graph::Primitive* primitive;              // The primitive to render (not owned)
         hgl::graph::MaterialInstance* overrideMaterial; // Optional material override (not owned)
 
-        hgl::graph::MaterialSlot material_slot;        // Deferred MI resolution slot (Phase B)
+        hgl::graph::MaterialResolveRequest material_slot;        // Deferred MI resolution slot (Phase B)
         hgl::graph::Geometry* unresolved_geometry = nullptr; // Geometry awaiting MI (not owned)
 
     public:
@@ -70,13 +70,13 @@ namespace hgl::ecs
         void ClearOverrideMaterial() { overrideMaterial = nullptr; }
 
         // Deferred material resolution (Phase B)
-        void SetMaterialRecord(const hgl::graph::mtl::MaterialRecipe *rec,
+        void SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe *rec,
                                const void *instance_data = nullptr,
                                uint32_t instance_data_size = 0);
         void SetUnresolvedGeometry(hgl::graph::Geometry* geom) { unresolved_geometry = geom; }
         hgl::graph::Geometry* GetUnresolvedGeometry() const { return unresolved_geometry; }
-        hgl::graph::MaterialSlot& GetMaterialSlot() { return material_slot; }
-        const hgl::graph::MaterialSlot& GetMaterialSlot() const { return material_slot; }
+        hgl::graph::MaterialResolveRequest& GetMaterialResolveRequest() { return material_slot; }
+        const hgl::graph::MaterialResolveRequest& GetMaterialResolveRequest() const { return material_slot; }
         bool NeedsMaterialResolve() const { return material_slot.NeedsResolve(); }
 
         // ShaderMaterialProgram access (returns override if set, otherwise primitive's material)

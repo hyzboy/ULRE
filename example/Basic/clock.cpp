@@ -156,7 +156,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetUnresolvedGeometry(geometry);
-            primitive_comp->SetMaterialRecord(&kClockCfg, &tick_color, sizeof(tick_color));
+            primitive_comp->SetMaterialRecipe(&kClockCfg, &tick_color, sizeof(tick_color));
             primitive_comp->SetVisible(true);
 
             std::cout << "[ClockApp::InitECS] Created static tick [" << i << "] at angle " << (30.0f * i) << " degrees" << std::endl;
@@ -187,7 +187,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetUnresolvedGeometry(geometry);
-            primitive_comp->SetMaterialRecord(&kClockCfg, &hands[i].color, sizeof(hands[i].color));
+            primitive_comp->SetMaterialRecipe(&kClockCfg, &hands[i].color, sizeof(hands[i].color));
             primitive_comp->SetVisible(true);
 
             std::cout << "[ClockApp::InitECS] Created movable hand [" << i << "] (" << hand_names[i] << ")" << std::endl;

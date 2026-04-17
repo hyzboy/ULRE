@@ -23,7 +23,7 @@ enum class MaterialParamValueType : uint8
     ENUM_CLASS_RANGE(Integer, String)
 };
 
-struct MaterialSlotPolicy
+struct MaterialResolveRequestPolicy
 {
     enum class IndexSource : uint8
     {
@@ -86,7 +86,7 @@ struct MaterialSpec
     MaterialPreset semantic_preset = MaterialPreset::Standard;
     uint32 schema_version = 1;
 
-    std::vector<MaterialSlotPolicy> slots;
+    std::vector<MaterialResolveRequestPolicy> slots;
     std::vector<MaterialParamSpec> instance_params;
     MaterialRuntimeHints runtime_hints;
     std::vector<MaterialImplementationCandidate> implementations;

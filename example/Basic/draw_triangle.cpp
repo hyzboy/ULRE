@@ -132,7 +132,7 @@ private:
         HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
         auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         ecs_primitive->SetUnresolvedGeometry(geometry);
-        ecs_primitive->SetMaterialRecord(&kTriangleCfg);
+        ecs_primitive->SetMaterialRecipe(&kTriangleCfg);
         ecs_primitive->SetVisible(true);
 
         return true;

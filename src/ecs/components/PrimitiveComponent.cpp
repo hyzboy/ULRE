@@ -88,7 +88,7 @@ namespace hgl::ecs
         overrideMaterial = mi;
     }
 
-    void PrimitiveComponent::SetMaterialRecord(const hgl::graph::mtl::MaterialRecipe *rec,
+    void PrimitiveComponent::SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe *rec,
                                                const void *instance_data,
                                                uint32_t instance_data_size)
     {
@@ -99,7 +99,7 @@ namespace hgl::ecs
 
     hgl::graph::MaterialInstance* PrimitiveComponent::GetMaterialInstance() const
     {
-        // Phase B: resolved MI from MaterialSlot takes priority
+        // Phase B: resolved MI from MaterialResolveRequest takes priority
         if (material_slot.resolved_mi)
             return material_slot.resolved_mi;
 

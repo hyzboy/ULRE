@@ -137,7 +137,7 @@ private:
             // 每个实体使用不同的颜色
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetUnresolvedGeometry(geometry);
-            primitive_comp->SetMaterialRecord(&kMergeCfg, &triangles[i].color, sizeof(triangles[i].color));
+            primitive_comp->SetMaterialRecipe(&kMergeCfg, &triangles[i].color, sizeof(triangles[i].color));
             primitive_comp->SetVisible(true);
 
             std::cout << "[TestApp::InitECS] Entity[" << i << "] setup complete" << std::endl;

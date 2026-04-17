@@ -160,7 +160,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetUnresolvedGeometry(geom_plane_grid);
-            primitive_comp->SetMaterialRecord(&kPlaneGridCfg, &white_color, sizeof(white_color));
+            primitive_comp->SetMaterialRecipe(&kPlaneGridCfg, &white_color, sizeof(white_color));
             primitive_comp->SetVisible(true);
         }
 
@@ -177,7 +177,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetUnresolvedGeometry(geom_line);
-            primitive_comp->SetMaterialRecord(&kLineCfg, &yellow_color, sizeof(yellow_color));
+            primitive_comp->SetMaterialRecipe(&kLineCfg, &yellow_color, sizeof(yellow_color));
             primitive_comp->SetVisible(true);
         }
 

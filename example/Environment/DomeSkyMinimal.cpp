@@ -99,7 +99,7 @@ private:
         sky_transform->SetMovable(false);
 
         sky_prim_comp->SetUnresolvedGeometry(prim_sky_dome);
-        sky_prim_comp->SetMaterialRecord(&kSkyCfg);
+        sky_prim_comp->SetMaterialRecipe(&kSkyCfg);
         sky_prim_comp->SetVisible(true);
 
         ground_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("GroundPlane");
@@ -112,7 +112,7 @@ private:
         ground_transform->SetMovable(false);
 
         ground_prim_comp->SetUnresolvedGeometry(prim_ground_plane);
-        ground_prim_comp->SetMaterialRecord(&kSkyCfg);
+        ground_prim_comp->SetMaterialRecipe(&kSkyCfg);
         ground_prim_comp->SetVisible(true);
 
         return true;

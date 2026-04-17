@@ -141,7 +141,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetUnresolvedGeometry(geometry);
-        prim_comp->SetMaterialRecord(&kExtrudedCfg, &color_data, sizeof(color_data));
+        prim_comp->SetMaterialRecipe(&kExtrudedCfg, &color_data, sizeof(color_data));
         prim_comp->SetVisible(true);
 
         return true;

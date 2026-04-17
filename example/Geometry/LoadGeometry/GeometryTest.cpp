@@ -209,7 +209,7 @@ private:
             bbox->transform->SetMovable(false);
 
             bbox->primitive_comp->SetUnresolvedGeometry(bbox_geometry);
-            bbox->primitive_comp->SetMaterialRecord(&kWireCfg, &entity_colors[i % COLOR_COUNT], sizeof(Color4f));
+            bbox->primitive_comp->SetMaterialRecipe(&kWireCfg, &entity_colors[i % COLOR_COUNT], sizeof(Color4f));
             bbox->primitive_comp->SetVisible(true);
 
             bounding_boxes.push_back(std::move(bbox));
@@ -245,7 +245,7 @@ private:
             rm->transform->SetMovable(false);
 
             rm->primitive_comp->SetUnresolvedGeometry(rm->geometry);
-            rm->primitive_comp->SetMaterialRecord(&kSolidCfg, &entity_colors[i % COLOR_COUNT], sizeof(Color4f));
+            rm->primitive_comp->SetMaterialRecipe(&kSolidCfg, &entity_colors[i % COLOR_COUNT], sizeof(Color4f));
             rm->primitive_comp->SetVisible(true);
         }
 

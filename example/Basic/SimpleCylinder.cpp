@@ -86,7 +86,7 @@ private:
 
         auto primitive_comp = cylinder_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->SetUnresolvedGeometry(geometry);
-        primitive_comp->SetMaterialRecord(&kCylinderCfg, &color, sizeof(color));
+        primitive_comp->SetMaterialRecipe(&kCylinderCfg, &color, sizeof(color));
         primitive_comp->SetVisible(true);
 
         return true;

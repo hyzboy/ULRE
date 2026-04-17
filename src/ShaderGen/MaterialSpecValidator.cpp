@@ -39,7 +39,7 @@ bool ValidateMaterialSpec(const MaterialSpec &asset,
 
     for (size_t i = 0; i < asset.slots.size(); ++i)
     {
-        const MaterialSlotPolicy &slot_policy = asset.slots[i];
+        const MaterialResolveRequestPolicy &slot_policy = asset.slots[i];
 
         if (slot_policy.allowed_modes.empty())
         {

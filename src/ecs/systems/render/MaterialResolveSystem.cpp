@@ -39,7 +39,7 @@ namespace hgl::ecs
             if (!comp || !comp->NeedsMaterialResolve())
                 continue;
 
-            auto &slot = comp->GetMaterialSlot();
+            auto &slot = comp->GetMaterialResolveRequest();
             if (!slot.record)
                 continue;
 

@@ -94,7 +94,7 @@ private:
 
         auto primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->SetUnresolvedGeometry(geometry);
-        primitive_comp->SetMaterialRecord(&kCubeCfg, &color, sizeof(color));
+        primitive_comp->SetMaterialRecipe(&kCubeCfg, &color, sizeof(color));
         primitive_comp->SetVisible(true);
 
         return true;

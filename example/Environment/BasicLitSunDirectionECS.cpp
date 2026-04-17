@@ -296,7 +296,7 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetUnresolvedGeometry(sky_geometry);
-            primitive_comp->SetMaterialRecord(&kSkyCfg);
+            primitive_comp->SetMaterialRecipe(&kSkyCfg);
             primitive_comp->SetVisible(true);
         }
 
@@ -311,7 +311,7 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetUnresolvedGeometry(rm_floor->geometry);
-            primitive_comp->SetMaterialRecord(&kStandardCfg, &mi_data, sizeof(mi_data));
+            primitive_comp->SetMaterialRecipe(&kStandardCfg, &mi_data, sizeof(mi_data));
             primitive_comp->SetVisible(true);
         }
 
@@ -339,7 +339,7 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetUnresolvedGeometry(rm->geometry);
-            primitive_comp->SetMaterialRecord(&kStandardCfg, &mi_data, sizeof(mi_data));
+            primitive_comp->SetMaterialRecipe(&kStandardCfg, &mi_data, sizeof(mi_data));
             primitive_comp->SetVisible(true);
 
             ++index;
