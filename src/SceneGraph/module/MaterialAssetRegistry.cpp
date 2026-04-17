@@ -24,7 +24,7 @@ static bool BindDomainTexturesFromRecord(
     DomainMaterialBinding *dmb,
     TextureManager *tm,
     SamplerManager *sm,
-    const mtl::MaterialAssetRecord &rec)
+    const mtl::MaterialRecipe &rec)
 {
     if (!dmb || !tm || !sm) return false;
 
@@ -48,7 +48,7 @@ static void BindMaterialTexturesCompat(
     ShaderMaterialProgram *material,
     TextureManager *tm,
     SamplerManager *sm,
-    const mtl::MaterialAssetRecord &rec)
+    const mtl::MaterialRecipe &rec)
 {
     if (!material || !tm || !sm)
         return;
@@ -74,7 +74,7 @@ static void BindMaterialTexturesCompat(
 // ── FNV-1a 64-bit texture config hash ────────────────────────────────────────
 
 static uint64_t ComputeTextureConfigHash(
-    const std::vector<mtl::MaterialAssetRecord::TextureSlotConfig> &textures)
+    const std::vector<mtl::MaterialRecipe::TextureSlotConfig> &textures)
 {
     uint64_t hash = 14695981039346656037ULL; // FNV offset basis
 
@@ -155,7 +155,7 @@ MaterialAssetRegistry::MaterialAssetRegistry(
 
 // ── Acquire ──────────────────────────────────────────────────────────────────
 
-MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetRecord &rec)
+MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialRecipe &rec)
 {
     MaterialDomainHandle handle;
 
@@ -260,7 +260,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     return handle;
 }
 
-MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialAssetRecord &rec,
+MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialRecipe &rec,
                                                    const void *instance_data,
                                                    uint32_t instance_data_size,
                                                    MaterialDomainHandle *out_handle)
@@ -285,7 +285,7 @@ MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialAssetRecor
 // ── AcquireMI (GVF auto-derive) ─────────────────────────────────────────────
 
 MaterialInstance *MaterialAssetRegistry::AcquireMI(
-    const mtl::MaterialAssetRecord &rec,
+    const mtl::MaterialRecipe &rec,
     const GeometryVertexFormat &gvf,
     const void *instance_data,
     uint32_t instance_data_size,
@@ -350,7 +350,7 @@ MaterialInstance *MaterialAssetRegistry::AcquireMI(
 
 MaterialInstance *MaterialAssetRegistry::CreateMI(
     const MaterialDomainHandle &handle,
-    const mtl::MaterialAssetRecord &rec,
+    const mtl::MaterialRecipe &rec,
     const void *instance_data,
     uint32_t instance_data_size)
 {

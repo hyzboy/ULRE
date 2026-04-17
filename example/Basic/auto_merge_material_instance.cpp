@@ -51,10 +51,10 @@ private:
 
     Geometry* geometry = nullptr;
 
-    inline static const mtl::MaterialAssetRecord kMergeCfg {
+    inline static const mtl::MaterialRecipe kMergeCfg {
         .id       = "auto_merge_pure_color",
         .preset   = mtl::MaterialPreset::PureColor2D,
-        .dim      = mtl::MaterialAssetRecord::Dim::D2,
+        .dim      = mtl::MaterialRecipe::Dim::D2,
         .pipeline = GraphicsPipelinePreset::Solid2D,
     };
 

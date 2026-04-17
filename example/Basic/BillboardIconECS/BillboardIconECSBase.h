@@ -55,7 +55,7 @@ protected:
     // PlaneGrid resources
     Geometry*         geom_plane_grid     = nullptr;
 
-    inline static const mtl::MaterialAssetRecord kPlaneGridCfg {
+    inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id       = "billboard_icon_plane_grid",
         .preset   = mtl::MaterialPreset::VertexLuminance2D,
         .prim     = PrimitiveType::Lines,

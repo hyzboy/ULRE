@@ -70,7 +70,7 @@ namespace hgl::ecs
         void ClearOverrideMaterial() { overrideMaterial = nullptr; }
 
         // Deferred material resolution (Phase B)
-        void SetMaterialRecord(const hgl::graph::mtl::MaterialAssetRecord *rec,
+        void SetMaterialRecord(const hgl::graph::mtl::MaterialRecipe *rec,
                                const void *instance_data = nullptr,
                                uint32_t instance_data_size = 0);
         void SetUnresolvedGeometry(hgl::graph::Geometry* geom) { unresolved_geometry = geom; }

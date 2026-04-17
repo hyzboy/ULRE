@@ -142,7 +142,7 @@ private:
             return false;
         }
 
-        static const mtl::MaterialAssetRecord kPBRArrayAcquireCfg {
+        static const mtl::MaterialRecipe kPBRArrayAcquireCfg {
             .id              = "pbr_spheres_standard",
             .preset          = mtl::MaterialPreset::Standard,
             .sky             = true,
@@ -299,7 +299,7 @@ private:
                 d.normal_scale = 0.35f;
 
                 sphere_mi[row][col] = AcquireMI(
-                    mtl::MaterialAssetRecord{
+                    mtl::MaterialRecipe{
                         .id          = "pbr_spheres_standard",
                         .preset      = mtl::MaterialPreset::Standard,
                         .sky         = true,
@@ -544,7 +544,7 @@ private:
         if (!graphics_context)
             return false;
 
-        static const mtl::MaterialAssetRecord kSkyCfg {
+        static const mtl::MaterialRecipe kSkyCfg {
             .id       = "pbr_spheres_sky",
             .preset   = mtl::MaterialPreset::SkyMinimal,
             .l2w      = false,

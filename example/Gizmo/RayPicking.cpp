@@ -58,14 +58,14 @@ private:
     Geometry *          geom_line           =nullptr;
     VAB *               prim_line_vab       =nullptr;
 
-    inline static const mtl::MaterialAssetRecord kPlaneGridCfg {
+    inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id       = "ray_picking_plane_grid",
         .domain_id = "plane_grid_domain",
         .preset   = mtl::MaterialPreset::VertexLuminance2D,
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };
-    inline static const mtl::MaterialAssetRecord kLineCfg {
+    inline static const mtl::MaterialRecipe kLineCfg {
         .id       = "ray_picking_line",
         .domain_id = "line_3d_domain",
         .preset   = mtl::MaterialPreset::VertexLuminance3D,

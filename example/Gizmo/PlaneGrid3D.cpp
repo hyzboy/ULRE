@@ -32,7 +32,7 @@ private:
 
     Geometry *         geom_plane_grid     =nullptr;
 
-    inline static const mtl::MaterialAssetRecord kPlaneGridCfg {
+    inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id       = "plane_grid",
         .preset   = mtl::MaterialPreset::VertexLuminance2D,
         .prim     = PrimitiveType::Lines,

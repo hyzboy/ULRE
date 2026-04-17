@@ -33,7 +33,7 @@ private:
 
     std::vector<Geometry*> wall_geometries;
 
-    inline static const mtl::MaterialAssetRecord kWallsCfg {
+    inline static const mtl::MaterialRecipe kWallsCfg {
         .id             = "walls_standard",
         .preset         = mtl::MaterialPreset::Standard,
         .sky      = true,

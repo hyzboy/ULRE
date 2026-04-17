@@ -88,7 +88,7 @@ namespace hgl::ecs
         overrideMaterial = mi;
     }
 
-    void PrimitiveComponent::SetMaterialRecord(const hgl::graph::mtl::MaterialAssetRecord *rec,
+    void PrimitiveComponent::SetMaterialRecord(const hgl::graph::mtl::MaterialRecipe *rec,
                                                const void *instance_data,
                                                uint32_t instance_data_size)
     {

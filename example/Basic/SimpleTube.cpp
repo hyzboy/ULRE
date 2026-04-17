@@ -34,7 +34,7 @@ private:
 
     Geometry *          geometry        = nullptr;
 
-    inline static const mtl::MaterialAssetRecord kTubeCfg {
+    inline static const mtl::MaterialRecipe kTubeCfg {
         .id       = "tube_main",
         .preset   = mtl::MaterialPreset::Gizmo3D,
         .pipeline = GraphicsPipelinePreset::Solid3D,

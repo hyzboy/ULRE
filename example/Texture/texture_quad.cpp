@@ -49,10 +49,10 @@ private:
 
     Geometry *          quad_geometry       = nullptr;
 
-    inline static const mtl::MaterialAssetRecord kTexQuadCfg {
+    inline static const mtl::MaterialRecipe kTexQuadCfg {
         .id             = "texture_quad",
         .preset         = mtl::MaterialPreset::PureTexture2D,
-        .dim            = mtl::MaterialAssetRecord::Dim::D2,
+        .dim            = mtl::MaterialRecipe::Dim::D2,
         .l2w            = false,
         .pipeline  = GraphicsPipelinePreset::Solid2D,
         .textures  = {

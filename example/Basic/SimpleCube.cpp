@@ -41,7 +41,7 @@ private:
 
     Geometry *          geometry        = nullptr;
 
-    inline static const mtl::MaterialAssetRecord kCubeCfg {
+    inline static const mtl::MaterialRecipe kCubeCfg {
         .id       = "cube_main",
         .preset   = mtl::MaterialPreset::Gizmo3D,
         .pipeline = GraphicsPipelinePreset::Solid3D,

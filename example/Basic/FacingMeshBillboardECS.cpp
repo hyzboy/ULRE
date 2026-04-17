@@ -76,7 +76,7 @@ private:
 
     Entity* camera_entity = nullptr;
 
-    inline static const mtl::MaterialAssetRecord kSolidCfg {
+    inline static const mtl::MaterialRecipe kSolidCfg {
         .id       = "facing_billboard_solid",
         .preset   = mtl::MaterialPreset::Gizmo3D,
         .pipeline = GraphicsPipelinePreset::Solid3D,

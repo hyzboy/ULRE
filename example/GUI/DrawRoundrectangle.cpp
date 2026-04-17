@@ -50,10 +50,10 @@ private:
 
     Geometry *          rect_geometry       =nullptr;
 
-    inline static const mtl::MaterialAssetRecord kRoundRectCfg {
+    inline static const mtl::MaterialRecipe kRoundRectCfg {
         .id       = "roundrect_texture",
         .preset   = mtl::MaterialPreset::PureTexture2D,
-        .dim      = mtl::MaterialAssetRecord::Dim::D2,
+        .dim      = mtl::MaterialRecipe::Dim::D2,
         .l2w      = false,
         .coord_2d = CoordinateSystem2D::ZeroToOne,
         .pipeline = GraphicsPipelinePreset::Solid2D,

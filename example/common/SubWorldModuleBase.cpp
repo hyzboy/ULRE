@@ -64,7 +64,7 @@ namespace example::modules
         return true;
     }
 
-    graph::MaterialInstance *SubWorldModuleBase::AcquireMI(const graph::mtl::MaterialAssetRecord &rec,
+    graph::MaterialInstance *SubWorldModuleBase::AcquireMI(const graph::mtl::MaterialRecipe &rec,
                                                            const void *instance_data,
                                                            uint32_t instance_data_size,
                                                            graph::MaterialDomainHandle *out_handle)

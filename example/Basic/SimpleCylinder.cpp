@@ -33,7 +33,7 @@ private:
 
     Geometry *          geometry        = nullptr;
 
-    inline static const mtl::MaterialAssetRecord kCylinderCfg {
+    inline static const mtl::MaterialRecipe kCylinderCfg {
         .id       = "cylinder_main",
         .preset   = mtl::MaterialPreset::Gizmo3D,
         .pipeline = GraphicsPipelinePreset::Solid3D,

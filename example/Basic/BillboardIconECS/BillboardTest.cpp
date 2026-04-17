@@ -108,7 +108,7 @@ private:
     bool InitPlaneGridMP()
     {
 
-        static const mtl::MaterialAssetRecord kPlaneGridCfg {
+        static const mtl::MaterialRecipe kPlaneGridCfg {
             .id       = "billboard_test_plane_grid",
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
             .prim     = PrimitiveType::Lines,
@@ -135,7 +135,7 @@ private:
     bool InitBillboardMP()
     {
 
-        static const mtl::MaterialAssetRecord kBillboardCfg {
+        static const mtl::MaterialRecipe kBillboardCfg {
             .id        = "billboard_test_fixed",
             .preset    = mtl::MaterialPreset::Billboard2DFixed,
             .prim      = PrimitiveType::Billboard,

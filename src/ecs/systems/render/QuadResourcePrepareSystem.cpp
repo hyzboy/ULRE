@@ -6,7 +6,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<hgl/mtl/MaterialAssetRecord.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/SamplerSlot.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -486,7 +486,7 @@ namespace hgl::ecs
                     // Create DMB via registry
                     graph::MaterialAssetRegistry registry(material_manager, texture_manager, sampler_manager);
 
-                    graph::mtl::MaterialAssetRecord rec;
+                    graph::mtl::MaterialRecipe rec;
                     rec.id        = "billboard_domain_" + dr.domain_tag;
                     rec.domain_id = dr.domain_tag;
                     rec.preset    = domain_preset;
@@ -494,7 +494,7 @@ namespace hgl::ecs
                     rec.billboard.blend_mode        = cfg.blend_mode;
                     rec.billboard.base_color_channel = cfg.base_color_channel;
                     rec.billboard.fixed_size        = domain_fixed;
-                    rec.dim       = graph::mtl::MaterialAssetRecord::Dim::D3;
+                    rec.dim       = graph::mtl::MaterialRecipe::Dim::D3;
                     rec.prim      = graph::PrimitiveType::Billboard;
                     rec.pipeline  = GetPresetForWorld(world);
                     rec.textures  = {

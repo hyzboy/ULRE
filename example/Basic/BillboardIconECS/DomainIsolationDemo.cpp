@@ -146,7 +146,7 @@ private:
     // PlaneGrid resources
     Geometry*         geom_plane_grid = nullptr;
 
-    inline static const mtl::MaterialAssetRecord kPlaneGridCfg {
+    inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id        = "domain_demo_plane_grid",
         .domain_id = kGridDomainID,
         .preset    = mtl::MaterialPreset::VertexLuminance2D,

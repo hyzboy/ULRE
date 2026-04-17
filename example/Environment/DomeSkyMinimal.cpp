@@ -28,7 +28,7 @@ private:
     Geometry *          prim_sky_dome       = nullptr;
     Geometry *          prim_ground_plane   = nullptr;
 
-    inline static const mtl::MaterialAssetRecord kSkyCfg {
+    inline static const mtl::MaterialRecipe kSkyCfg {
         .id       = "dome_sky_minimal",
         .preset   = mtl::MaterialPreset::SkyMinimal,
         .l2w      = false,

@@ -7,7 +7,7 @@
 #include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/type/String.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
-#include <hgl/mtl/MaterialAssetRecord.h>
+#include <hgl/mtl/MaterialRecipe.h>
 
 namespace hgl::graph
 {
@@ -88,9 +88,9 @@ public:
                                       uint32_t vertex_count,
                                       std::initializer_list<VertexAttribWrite> vertex_writes);
 
-    /// MaterialAssetRecord 驱动：从 vertex_writes 推算 GVF，自动派生 MI，一步创建 Primitive
+    /// MaterialRecipe 驱动：从 vertex_writes 推算 GVF，自动派生 MI，一步创建 Primitive
     static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
-                                      const mtl::MaterialAssetRecord &rec,
+                                      const mtl::MaterialRecipe &rec,
                                       const AnsiString &geometry_name,
                                       uint32_t vertex_count,
                                       std::initializer_list<VertexAttribWrite> vertex_writes,

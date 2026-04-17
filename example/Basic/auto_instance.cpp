@@ -55,10 +55,10 @@ private:
     // 存储所有创建的实体
     std::vector<Entity*> triangle_entities;
 
-    inline static const mtl::MaterialAssetRecord kAutoInstanceCfg {
+    inline static const mtl::MaterialRecipe kAutoInstanceCfg {
         .id       = "auto_instance_vertex_color",
         .preset   = mtl::MaterialPreset::VertexColor2D,
-        .dim      = mtl::MaterialAssetRecord::Dim::D2,
+        .dim      = mtl::MaterialRecipe::Dim::D2,
         .pipeline = GraphicsPipelinePreset::Solid2D,
     };
 

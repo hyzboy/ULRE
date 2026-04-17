@@ -73,7 +73,7 @@ namespace
     protected:
         bool OnInitializeSharedResources() override
         {
-            static const mtl::MaterialAssetRecord kAnimGeomCfg {
+            static const mtl::MaterialRecipe kAnimGeomCfg {
                 .id       = "subworld_anim_geom",
                 .preset   = mtl::MaterialPreset::Gizmo3D,
                 .pipeline = GraphicsPipelinePreset::Solid3D,

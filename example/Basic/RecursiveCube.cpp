@@ -38,7 +38,7 @@ private:
 
     Geometry *geometry = nullptr;
 
-    inline static const mtl::MaterialAssetRecord kRecursiveCubeCfg {
+    inline static const mtl::MaterialRecipe kRecursiveCubeCfg {
         .id       = "recursive_cube_main",
         .preset   = mtl::MaterialPreset::Gizmo3D,
         .pipeline = GraphicsPipelinePreset::Solid3D,

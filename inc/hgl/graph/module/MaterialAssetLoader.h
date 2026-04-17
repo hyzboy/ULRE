@@ -1,13 +1,13 @@
 #pragma once
 
-/// MaterialAssetLoader.h — 从 MaterialAssetRecord 驱动材质创建的内联辅助函数
+/// MaterialAssetLoader.h — 从 MaterialRecipe 驱动材质创建的内联辅助函数
 ///
-/// 将 MaterialAssetRecord 中的平铺字段还原为对应的
+/// 将 MaterialRecipe 中的平铺字段还原为对应的
 /// Material2DCreateConfig / Material3DCreateConfig / BillboardMaterialCreateConfig，
 /// 调用 ShaderMaterialProgramManager::AcquireMaterial，并可选地加载纹理并绑定到材质。
 ///
 /// 用法示例（示例程序顶部的静态配置表）：
-///   static const mtl::MaterialAssetRecord kMeshMtl {
+///   static const mtl::MaterialRecipe kMeshMtl {
 ///       .id      = "my_mesh",
 ///       .preset  = mtl::MaterialPreset::Standard,
 ///       .sky     = true,
@@ -15,7 +15,7 @@
 ///       .tex_base_color = "res/image/Brick/Albedo.Tex2D",
 ///       .tex_normal     = "res/image/Brick/Normal.Tex2D",
 ///   };
-#include <hgl/mtl/MaterialAssetRecord.h>
+#include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/graph/module/ShaderMaterialProgramManager.h>
@@ -29,10 +29,10 @@ namespace hgl::graph
 
 // ── ShaderMaterialProgram 创建（不含纹理绑定）──────────────────────────────────────────────
 
-/// 从 MaterialAssetRecord 创建/获取 ShaderMaterialProgram（仅 AcquireMaterial，不绑纹理）。
+/// 从 MaterialRecipe 创建/获取 ShaderMaterialProgram（仅 AcquireMaterial，不绑纹理）。
 inline ShaderMaterialProgram *CreateMaterialFromRecord(
     ShaderMaterialProgramManager *mm,
-    const mtl::MaterialAssetRecord &rec)
+    const mtl::MaterialRecipe &rec)
 {
     if (!mm) return nullptr;
 
@@ -65,7 +65,7 @@ inline ShaderMaterialProgram *CreateMaterialFromRecord(
         return mm->AcquireMaterial(rec.preset, &cfg);
     }
     // ── 2D ──────────────────────────────────────────────────────────────────
-    else if (rec.dim == MaterialAssetRecord::Dim::D2)
+    else if (rec.dim == MaterialRecipe::Dim::D2)
     {
         Material2DCreateConfig cfg(
             rec.prim,

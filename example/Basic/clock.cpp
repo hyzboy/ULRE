@@ -57,10 +57,10 @@ private:
 
     Geometry* geometry = nullptr;
 
-    inline static const mtl::MaterialAssetRecord kClockCfg {
+    inline static const mtl::MaterialRecipe kClockCfg {
         .id       = "clock_pure_color",
         .preset   = mtl::MaterialPreset::PureColor2D,
-        .dim      = mtl::MaterialAssetRecord::Dim::D2,
+        .dim      = mtl::MaterialRecipe::Dim::D2,
         .pipeline = GraphicsPipelinePreset::Solid2D,
     };
 

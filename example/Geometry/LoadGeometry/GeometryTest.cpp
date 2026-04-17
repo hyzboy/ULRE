@@ -59,13 +59,13 @@ private:
     GeometryVertexFormat solid_gvf;
     GeometryVertexFormat wire_gvf;
 
-    inline static const mtl::MaterialAssetRecord kSolidCfg {
+    inline static const mtl::MaterialRecipe kSolidCfg {
         .id       = "geometry_gizmo3d",
         .preset   = mtl::MaterialPreset::Gizmo3D,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 
-    inline static const mtl::MaterialAssetRecord kWireCfg {
+    inline static const mtl::MaterialRecipe kWireCfg {
         .id       = "geometry_wire",
         .preset   = mtl::MaterialPreset::PureColor3D,
         .prim     = PrimitiveType::Lines,

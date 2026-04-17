@@ -4,7 +4,7 @@
 
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<hgl/mtl/MaterialAssetRecord.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/vk/VK.h>
@@ -59,7 +59,7 @@ namespace example::modules
 
         bool BuildMaterialInstances(const hgl::Color4f* colors, size_t count);
 
-        hgl::graph::MaterialInstance *AcquireMI(const hgl::graph::mtl::MaterialAssetRecord &rec,
+        hgl::graph::MaterialInstance *AcquireMI(const hgl::graph::mtl::MaterialRecipe &rec,
                             const void *instance_data = nullptr,
                             uint32_t instance_data_size = 0,
                             hgl::graph::MaterialDomainHandle *out_handle = nullptr);

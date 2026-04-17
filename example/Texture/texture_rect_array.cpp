@@ -110,10 +110,10 @@ private:
         if (!sampler_manager)
             return false;
 
-        static const mtl::MaterialAssetRecord kTexArrayCfg {
+        static const mtl::MaterialRecipe kTexArrayCfg {
             .id              = "texture_rect_array",
             .preset          = mtl::MaterialPreset::PureTexture2D,
-            .dim             = mtl::MaterialAssetRecord::Dim::D2,
+            .dim             = mtl::MaterialRecipe::Dim::D2,
             .coord_2d  = CoordinateSystem2D::ZeroToOne,
             .pipeline  = GraphicsPipelinePreset::Solid2D,
             .textures  = {

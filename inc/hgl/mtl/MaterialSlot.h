@@ -5,7 +5,7 @@
 /// PrimitiveComponent 持有 MaterialSlot，ECS MaterialResolveSystem
 /// 在渲染收集前根据 record + Geometry GVF 自动解析 MI。
 
-#include<hgl/mtl/MaterialAssetRecord.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<cstdint>
 #include<vector>
 
@@ -15,12 +15,12 @@ namespace hgl::graph
 
     struct MaterialSlot
     {
-        const mtl::MaterialAssetRecord *record = nullptr;
+        const mtl::MaterialRecipe *record = nullptr;
         std::vector<uint8_t> instance_data;             ///< MI uniform 初始数据（拷贝）
         MaterialInstance *resolved_mi = nullptr;        ///< 已解析的 MI（由 MaterialResolveSystem 写入）
         bool dirty = true;
 
-        void SetRecord(const mtl::MaterialAssetRecord *rec)
+        void SetRecord(const mtl::MaterialRecipe *rec)
         {
             record = rec;
             Invalidate();

@@ -33,7 +33,7 @@ private:
 
     Geometry *         prim_axis           =nullptr;
 
-    inline static const mtl::MaterialAssetRecord kAxisCfg {
+    inline static const mtl::MaterialRecipe kAxisCfg {
         .id       = "axis_vertex_color",
         .preset   = mtl::MaterialPreset::VertexColor3D,
         .prim     = PrimitiveType::Lines,

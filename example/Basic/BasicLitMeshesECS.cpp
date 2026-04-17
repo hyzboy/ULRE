@@ -51,7 +51,7 @@ private:
 
     mtl::StandardMaterialInstance mi_data{};
 
-    inline static const mtl::MaterialAssetRecord kStandardCfg {
+    inline static const mtl::MaterialRecipe kStandardCfg {
         .id             = "basic_lit_standard",
         .preset         = mtl::MaterialPreset::Standard,
         .sky            = true,
@@ -64,7 +64,7 @@ private:
         },
     };
 
-    inline static const mtl::MaterialAssetRecord kSkyCfg {
+    inline static const mtl::MaterialRecipe kSkyCfg {
         .id       = "basic_lit_sky",
         .preset   = mtl::MaterialPreset::SkyMinimal,
         .l2w      = false,

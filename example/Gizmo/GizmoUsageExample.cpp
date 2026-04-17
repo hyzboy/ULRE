@@ -48,14 +48,14 @@ private:
     Geometry *grid_geometry = nullptr;
     Geometry *cube_geometry = nullptr;
 
-    inline static const mtl::MaterialAssetRecord kGridCfg {
+    inline static const mtl::MaterialRecipe kGridCfg {
         .id       = "gizmo_grid",
         .preset   = mtl::MaterialPreset::VertexLuminance2D,
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 
-    inline static const mtl::MaterialAssetRecord kCubeCfg {
+    inline static const mtl::MaterialRecipe kCubeCfg {
         .id       = "gizmo_cube",
         .preset   = mtl::MaterialPreset::Gizmo3D,
         .pipeline = GraphicsPipelinePreset::Solid3D,

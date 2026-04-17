@@ -134,7 +134,7 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_co
 }
 
 Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_context,
-                                                    const mtl::MaterialAssetRecord &rec,
+                                                    const mtl::MaterialRecipe &rec,
                                                     const AnsiString &geometry_name,
                                                     uint32_t vertex_count,
                                                     std::initializer_list<VertexAttribWrite> vertex_writes,

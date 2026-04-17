@@ -75,7 +75,7 @@ private:
 
 private:
 
-    bool InitMaterialInstance(MaterialData *md, const mtl::MaterialAssetRecord &cfg)
+    bool InitMaterialInstance(MaterialData *md, const mtl::MaterialRecipe &cfg)
     {
         if(!md)
             return(false);
@@ -109,7 +109,7 @@ private:
     bool InitSolidMDP()
     {
 
-        static const mtl::MaterialAssetRecord kSolidCfg {
+        static const mtl::MaterialRecipe kSolidCfg {
             .id       = "scene_gizmo3d",
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,

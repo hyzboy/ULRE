@@ -1,6 +1,6 @@
 #pragma once
 
-/// MaterialAssetRecord.h — 可序列化材质资产描述符
+/// MaterialRecipe.h — 可序列化材质资产描述符
 ///
 /// 这是一个纯数据结构（允许 std::string），用于描述一个完整的材质创建参数。
 /// 目前作为"硬编码常量表"在示例程序中使用，模拟从外部文件（JSON/BIN）加载材质配置。
@@ -14,7 +14,7 @@
 ///      ├─ TerrainGridCreateConfig  仅预设构造参数，无额外字段
 ///      └─ BillboardMaterialCreateConfig  固定/动态大小 + 混合模式等
 ///
-/// MaterialAssetRecord 将上述所有字段展平到单个结构体中，
+/// MaterialRecipe 将上述所有字段展平到单个结构体中，
 /// 通过 dim 字段区分 2D / 3D，通过 preset 字段决定子类型处理逻辑。
 
 #include <hgl/mtl/MaterialPreset.h>
@@ -42,7 +42,7 @@ namespace hgl::graph::mtl
 /// - 2D/3D 共用一个结构体，通过 dim 字段区分；未使用的字段在对应分支被忽略
 /// - 纹理路径为空时跳过加载；pos_format 为零初始化时使用维度默认值
 /// - billboard 子结构仅在 preset == Billboard2DFixed / Billboard2DDynamic 时生效
-struct MaterialAssetRecord
+struct MaterialRecipe
 {
     // ── 标识 ──────────────────────────────────────────────────────────────────
     std::string     id;                                     ///< 逻辑资产名（缓存键 / 文件名干）

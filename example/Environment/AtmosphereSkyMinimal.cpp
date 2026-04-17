@@ -27,7 +27,7 @@ private:
 
     Geometry *          prim_sky_sphere     =nullptr;
 
-    inline static const mtl::MaterialAssetRecord kSkyCfg {
+    inline static const mtl::MaterialRecipe kSkyCfg {
         .id       = "sky_minimal",
         .preset   = mtl::MaterialPreset::SkyMinimal,
         .l2w      = false,

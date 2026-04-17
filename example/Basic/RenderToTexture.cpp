@@ -140,7 +140,7 @@ public:
         if (!gm || !pm || !device)
             return false;
 
-        static const mtl::MaterialAssetRecord kSphereCfg {
+        static const mtl::MaterialRecipe kSphereCfg {
             .id       = "rtt_sphere_gizmo",
             .preset   = mtl::MaterialPreset::Gizmo3D,
             .pipeline = GraphicsPipelinePreset::Solid3D,
@@ -280,7 +280,7 @@ private:
         if (!sm || !tm || !gm || !pm || !device)
             return false;
 
-        static const mtl::MaterialAssetRecord kCubeCfg {
+        static const mtl::MaterialRecipe kCubeCfg {
             .id       = "rtt_cube_standard",
             .preset   = mtl::MaterialPreset::Standard,
             .sky      = true,

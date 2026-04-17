@@ -99,13 +99,13 @@ private:
 
     Entity *camera_entity = nullptr;
 
-    inline static const mtl::MaterialAssetRecord kSolidCfg {
+    inline static const mtl::MaterialRecipe kSolidCfg {
         .id       = "bounds_solid",
         .preset   = mtl::MaterialPreset::Gizmo3D,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 
-    inline static const mtl::MaterialAssetRecord kWireCfg {
+    inline static const mtl::MaterialRecipe kWireCfg {
         .id       = "bounds_wire",
         .preset   = mtl::MaterialPreset::PureColor3D,
         .prim     = PrimitiveType::Lines,

@@ -39,7 +39,7 @@ private:
 
     Color4f color_data;
 
-    inline static const mtl::MaterialAssetRecord kExtrudedCfg {
+    inline static const mtl::MaterialRecipe kExtrudedCfg {
         .id       = "extruded_polygon",
         .preset   = mtl::MaterialPreset::Gizmo3D,
         .pipeline = GraphicsPipelinePreset::Solid3D,
