@@ -28,7 +28,7 @@ SET(ULRE    CMCoreType
             CMAssetsManage
             CMUtil
             CM2D
-            CMScript
+#            CMScript
 #            CMGUI
             ULRE.Work
             ULRE.ECS
