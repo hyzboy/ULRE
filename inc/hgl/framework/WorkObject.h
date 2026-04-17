@@ -143,6 +143,19 @@ namespace hgl
             return registry->AcquireMI(rec, instance_data, instance_data_size, out_handle);
         }
 
+        graph::MaterialInstance *AcquireMI(const graph::mtl::MaterialAssetRecord &rec,
+                                           const graph::GeometryVertexFormat &gvf,
+                                           const void *instance_data = nullptr,
+                                           uint32 instance_data_size = 0,
+                                           graph::MaterialDomainHandle *out_handle = nullptr)
+        {
+            auto *registry = GetMaterialAssetRegistry();
+            if (!registry)
+                return nullptr;
+
+            return registry->AcquireMI(rec, gvf, instance_data, instance_data_size, out_handle);
+        }
+
         const VkExtent2D *          GetExtent           ();
         const graph::ViewportInfo * GetViewportInfo     ()const;
         graph::Camera *             GetCamera           ();

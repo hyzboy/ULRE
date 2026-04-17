@@ -74,13 +74,13 @@ private:
                 .preset   = mtl::MaterialPreset::VertexLuminance2D,
                 .prim     = PrimitiveType::Lines,
                 .pipeline = GraphicsPipelinePreset::Solid3D,
-                .mi_vil_overrides = {
-                    { VAN::Luminance, VF_V1UN8 },
-                },
             };
 
+            GeometryVertexFormat gvf_lum;
+            gvf_lum.Set(VAN::Luminance, VF_V1UN8);
+
             const Color4f white = GetColor4f(COLOR::White, 1.0f);
-            grid_mi = AcquireMI(kGridCfg, &white, sizeof(white));
+            grid_mi = AcquireMI(kGridCfg, gvf_lum, &white, sizeof(white));
             if(!grid_mi)
                 return false;
 

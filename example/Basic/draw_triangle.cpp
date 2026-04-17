@@ -76,12 +76,13 @@ private:
             .pos_format = POSITION_SHADER_FORMAT,   // VAT_IVEC2: shader中 ivec2 顶点输入
             .coord_2d   = CoordinateSystem2D::Ortho,
             .pipeline   = GraphicsPipelinePreset::Solid2D,
-            .mi_vil_overrides = {
-                { VAN::Position, POSITION_DATA_FORMAT },
-                { VAN::Color, COLOR_DATA_FORMAT },
-            },
         };
-        material_instance = AcquireMI(kTriangleCfg);
+
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, POSITION_DATA_FORMAT);
+        gvf.Set(VAN::Color, COLOR_DATA_FORMAT);
+
+        material_instance = AcquireMI(kTriangleCfg, gvf);
 
         return material_instance != nullptr;
     }

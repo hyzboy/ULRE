@@ -3,6 +3,7 @@
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
+#include <hgl/graph/module/MaterialAssetRegistry.h>
 #include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/vk/VertexDataManager.h>
 
@@ -130,5 +131,45 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_co
 
     GraphicsGeometryFactory geometry_factory(graphics_context);
     return geometry_factory.CreatePrimitive(geometry, material_instance);
+}
+
+Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_context,
+                                                    const mtl::MaterialAssetRecord &rec,
+                                                    const AnsiString &geometry_name,
+                                                    uint32_t vertex_count,
+                                                    std::initializer_list<VertexAttribWrite> vertex_writes,
+                                                    const void *instance_data,
+                                                    uint32_t instance_data_size)
+{
+    if(!graphics_context || geometry_name.IsEmpty() || vertex_count == 0)
+        return nullptr;
+
+    // 从 vertex_writes 推算 GVF
+    GeometryVertexFormat gvf;
+    for(const auto &w : vertex_writes)
+    {
+        if(!gvf.Set(w.attrib, w.format))
+            return nullptr;
+    }
+
+    if(gvf.GetActiveCount() == 0)
+        return nullptr;
+
+    // 创建 Geometry
+    auto *geometry = CreateGeometry(graphics_context, gvf, geometry_name, vertex_count, vertex_writes);
+    if(!geometry)
+        return nullptr;
+
+    // 从 GVF 自动推算 MI
+    auto *registry = graphics_context->GetMaterialAssetRegistry();
+    if(!registry)
+        return nullptr;
+
+    auto *mi = registry->AcquireMI(rec, gvf, instance_data, instance_data_size);
+    if(!mi)
+        return nullptr;
+
+    GraphicsGeometryFactory geometry_factory(graphics_context);
+    return geometry_factory.CreatePrimitive(geometry, mi);
 }
 }

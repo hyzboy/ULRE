@@ -49,10 +49,11 @@ private:
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-            .mi_vil_overrides = {
-                { VAN::Luminance, VF_V1UN8 },
-            },
         };
+
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Luminance, VF_V1UN8);
+
         Color4f GridColor;
         COLOR ce=COLOR::BlenderAxisRed;
 
@@ -60,7 +61,7 @@ private:
         {
             GridColor=GetColor4f(ce,1.0);
 
-            material_instance[i] = AcquireMI(kPlaneGridCfg, &GridColor, sizeof(GridColor));
+            material_instance[i] = AcquireMI(kPlaneGridCfg, gvf, &GridColor, sizeof(GridColor));
 
             if(i == 0 && material_instance[i])
                 material = material_instance[i]->GetMaterial();

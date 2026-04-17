@@ -69,11 +69,12 @@ private:
                 .preset   = mtl::MaterialPreset::VertexColor2D,
                 .dim      = mtl::MaterialAssetRecord::Dim::D2,
                 .pipeline = GraphicsPipelinePreset::Solid2D,
-                .mi_vil_overrides = {
-                    { VAN::Color, VF_V4UN8 },
-                },
             };
-            material_instance = AcquireMI(kAutoInstanceCfg);
+
+            GeometryVertexFormat gvf;
+            gvf.Set(VAN::Color, VF_V4UN8);
+
+            material_instance = AcquireMI(kAutoInstanceCfg, gvf);
         }
 
         if(!material_instance)

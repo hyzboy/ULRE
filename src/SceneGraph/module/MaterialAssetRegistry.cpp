@@ -10,6 +10,7 @@
 #include <hgl/vk/VKResourceDomain.h>
 #include <hgl/vk/VKDomainMaterialBinding.h>
 #include <hgl/vk/VKVertexInputConfig.h>
+#include <hgl/vk/VKVertexInputLayout.h>
 
 #include <cctype>
 #include <cstdio>
@@ -281,6 +282,70 @@ MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialAssetRecor
     return CreateMI(handle, rec, instance_data, instance_data_size);
 }
 
+// ── AcquireMI (GVF auto-derive) ─────────────────────────────────────────────
+
+MaterialInstance *MaterialAssetRegistry::AcquireMI(
+    const mtl::MaterialAssetRecord &rec,
+    const GeometryVertexFormat &gvf,
+    const void *instance_data,
+    uint32_t instance_data_size,
+    MaterialDomainHandle *out_handle)
+{
+    MaterialDomainHandle handle = Acquire(rec);
+    if (!handle.material)
+        return nullptr;
+
+    if (!handle.domain)
+        return nullptr;
+
+    if (handle.material->hasMI() && !handle.binding)
+        return nullptr;
+
+    if (out_handle)
+        *out_handle = handle;
+
+    // 从 Material DefaultVIL 与 GVF 的差异自动推算 VILConfig
+    const VIL *default_vil = handle.material->GetDefaultVIL();
+    if (!default_vil)
+        return nullptr;
+
+    MaterialInstanceSpec spec;
+    spec.material = handle.material;
+    spec.domain   = handle.domain;
+    spec.preset   = rec.pipeline;
+    spec.instance_data      = instance_data;
+    spec.instance_data_size = instance_data_size;
+
+    VILConfig vil_cfg;
+    const uint32_t attrib_count = default_vil->GetVertexAttribCount();
+
+    for (uint32_t i = 0; i < attrib_count; ++i)
+    {
+        const auto *vif = default_vil->GetConfig(i);
+        if (!vif)
+            continue;
+
+        const VkFormat gvf_format = gvf.GetFormat(vif->attrib);
+
+        if (gvf_format == VK_FORMAT_UNDEFINED)
+            continue;   // Geometry 没有此 attrib，跳过（使用 DefaultVIL 默认值）
+
+        if (gvf_format != vif->format)
+        {
+            VAConfig vac;
+            vac.format = gvf_format;
+
+            if (!vil_cfg.Add(vif->attrib, vac))
+                return nullptr;
+        }
+    }
+
+    if (vil_cfg.GetCount() > 0)
+        spec.vil_cfg = &vil_cfg;
+
+    return mm->AcquireMaterialInstance(spec);
+}
+
 // ── CreateMI ─────────────────────────────────────────────────────────────────
 
 MaterialInstance *MaterialAssetRegistry::CreateMI(
@@ -300,6 +365,9 @@ MaterialInstance *MaterialAssetRegistry::CreateMI(
     spec.instance_data_size = instance_data_size;
 
     VILConfig vil_cfg;
+
+#pragma warning(push)
+#pragma warning(disable : 4996)  // suppress deprecated mi_vil_overrides — backward compat
     if (!rec.mi_vil_overrides.empty())
     {
         for (const auto &ov : rec.mi_vil_overrides)
@@ -313,6 +381,7 @@ MaterialInstance *MaterialAssetRegistry::CreateMI(
 
         spec.vil_cfg = &vil_cfg;
     }
+#pragma warning(pop)
 
     return mm->AcquireMaterialInstance(spec);
 }

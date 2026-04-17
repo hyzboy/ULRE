@@ -31,11 +31,12 @@ bool BillboardIconECSBase::InitPlaneGridResources()
         .preset   = mtl::MaterialPreset::VertexLuminance2D,
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
-        .mi_vil_overrides = {
-            { VAN::Luminance, VF_V1UN8 },
-        },
     };
-    mi_plane_grid = AcquireMI(kPlaneGridCfg,&white_color, sizeof(white_color));
+
+    GeometryVertexFormat gvf_lum;
+    gvf_lum.Set(VAN::Luminance, VF_V1UN8);
+
+    mi_plane_grid = AcquireMI(kPlaneGridCfg, gvf_lum, &white_color, sizeof(white_color));
     if (!mi_plane_grid) return false;
 
     mtl_plane_grid = mi_plane_grid->GetMaterial();

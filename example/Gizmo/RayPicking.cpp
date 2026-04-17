@@ -83,9 +83,6 @@ private:
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-            .mi_vil_overrides = {
-                { VAN::Luminance, VF_V1UN8 },
-            },
         };
         static const mtl::MaterialAssetRecord kLineCfg {
             .id       = "ray_picking_line",
@@ -93,19 +90,20 @@ private:
             .preset   = mtl::MaterialPreset::VertexLuminance3D,
             .prim     = PrimitiveType::Lines,
             .pipeline = GraphicsPipelinePreset::Solid3D,
-            .mi_vil_overrides = {
-                { VAN::Luminance, VF_V1UN8 },
-            },
         };
+
+        GeometryVertexFormat gvf_lum;
+        gvf_lum.Set(VAN::Luminance, VF_V1UN8);
+
         // Plane grid: 2D Position + Luminance
         {
-            mi_plane_grid = AcquireMI(kPlaneGridCfg, &white_color, sizeof(white_color));
+            mi_plane_grid = AcquireMI(kPlaneGridCfg, gvf_lum, &white_color, sizeof(white_color));
             if(!mi_plane_grid)return(false);
         }
 
         // Ray line: 3D Position + Luminance (separate Material)
         {
-            mi_line = AcquireMI(kLineCfg, &yellow_color, sizeof(yellow_color));
+            mi_line = AcquireMI(kLineCfg, gvf_lum, &yellow_color, sizeof(yellow_color));
             if(!mi_line)return(false);
         }
 

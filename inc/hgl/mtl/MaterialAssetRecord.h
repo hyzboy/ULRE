@@ -81,6 +81,7 @@ struct MaterialAssetRecord
         VkFormat     format = PF_UNDEFINED;
     };
 
+    [[deprecated("use GeometryVertexFormat-based auto derivation via AcquireMI(rec, gvf, ...)")]]
     std::vector<VILOverride> mi_vil_overrides;
 
     // ── 纹理配置列表（以 SamplerSlot 为显式 key）────────────────────────────────
@@ -99,7 +100,7 @@ struct MaterialAssetRecord
         bool               fixed_size          = false;                     ///< 像素固定大小
         uint32             pixel_w             = 64;                        ///< 像素宽度
         uint32             pixel_h             = 64;                        ///< 像素高度
-        RenderAlphaMode          blend_mode          = RenderAlphaMode::Transparent;    ///< 混合模式
+        RenderAlphaMode    blend_mode          = RenderAlphaMode::Transparent;    ///< 混合模式
         TextureChannelHint base_color_channel  = TextureChannelHint::RGBA;  ///< 通道提示
         bool               front_face_ccw      = false;                     ///< false = Clockwise
         std::string        texture_id;                                      ///< 纹理唯一标识

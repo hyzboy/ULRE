@@ -10,6 +10,7 @@
 
 #include <hgl/graph/module/MaterialDomainHandle.h>
 #include <hgl/mtl/MaterialAssetRecord.h>
+#include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 
 #include <string>
@@ -68,6 +69,15 @@ public:
     /// - 大多数调用方只需要 MI，不需要直接接触 MaterialDomainHandle。
     /// - 若需要后续访问 DMB，可传 out_handle 取回完整句柄。
     MaterialInstance *AcquireMI(const mtl::MaterialAssetRecord &rec,
+                                const void *instance_data = nullptr,
+                                uint32_t instance_data_size = 0,
+                                MaterialDomainHandle *out_handle = nullptr);
+
+    /// 一站式：Acquire + 从 GVF 自动推算 VIL 覆写 + CreateMI
+    /// - 对比 Material DefaultVIL 与 Geometry 实际顶点格式，自动生成 VILConfig
+    /// - 调用方无需手写 mi_vil_overrides
+    MaterialInstance *AcquireMI(const mtl::MaterialAssetRecord &rec,
+                                const GeometryVertexFormat &gvf,
                                 const void *instance_data = nullptr,
                                 uint32_t instance_data_size = 0,
                                 MaterialDomainHandle *out_handle = nullptr);
