@@ -29,6 +29,7 @@
 #include<hgl/ecs/components/FacingTransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
 #include<hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
 #include<hgl/ecs/systems/transform/FacingTransformSystem.h>
@@ -37,6 +38,8 @@
 #include<glm/gtc/quaternion.hpp>
 #include<iostream>
 #include<memory>
+
+#include "IconGradient.h"
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -67,7 +70,78 @@ private:
 
     // Billboard resources are managed by BillboardRenderSystem
 
+    bool last_key_1 = false;
+    bool last_key_2 = false;
+    bool last_key_3 = false;
+
+    GraphicsPipelinePreset current_pipeline = GraphicsPipelinePreset::Solid3D;
+    int current_icon_index = 22;
+
 private:
+
+    static const char* GetPipelineName(GraphicsPipelinePreset preset)
+    {
+        switch (preset)
+        {
+        case GraphicsPipelinePreset::Solid3D:  return "Solid3D";
+        case GraphicsPipelinePreset::Alpha3D:  return "Alpha3D";
+        case GraphicsPipelinePreset::Dither3D: return "Dither3D";
+        default:                               return "Unknown";
+        }
+    }
+
+    bool ApplyBillboardMode(GraphicsPipelinePreset preset, int icon_index)
+    {
+        if (!ecs_context || !billboard_entity)
+            return false;
+
+        auto billboard = billboard_entity->GetComponent<BillboardComponent>();
+        if (!billboard)
+            return false;
+
+        if (icon_index < 0)
+            icon_index = 0;
+        if (icon_index >= kIconCount)
+            icon_index = kIconCount - 1;
+
+        current_pipeline = preset;
+        current_icon_index = icon_index;
+
+        QuadResourcePrepareSystem::SetPresetForWorld(ecs_context, preset);
+        // Single-channel gradient textures should drive billboard alpha as well.
+        QuadResourcePrepareSystem::SetChannelHintForWorld(ecs_context, TextureChannelHint::Grayscale);
+
+        billboard->SetTexture(kIconTextures[current_icon_index]);
+
+        std::cout << "[BillboardECS] Mode switched: " << GetPipelineName(preset)
+                  << ", texture index=" << current_icon_index << std::endl;
+        return true;
+    }
+
+    void HandleRuntimeModeSwitch()
+    {
+        if (!ecs_context)
+            return;
+
+        auto input_system = ecs_context->GetSystem<InputSystem>();
+        if (!input_system)
+            return;
+
+        const bool key_1 = input_system->IsKeyDown(io::KeyboardButton::_1);
+        const bool key_2 = input_system->IsKeyDown(io::KeyboardButton::_2);
+        const bool key_3 = input_system->IsKeyDown(io::KeyboardButton::_3);
+
+        if (key_1 && !last_key_1)
+            ApplyBillboardMode(GraphicsPipelinePreset::Solid3D, 22);
+        else if (key_2 && !last_key_2)
+            ApplyBillboardMode(GraphicsPipelinePreset::Alpha3D, 10);
+        else if (key_3 && !last_key_3)
+            ApplyBillboardMode(GraphicsPipelinePreset::Dither3D, 6);
+
+        last_key_1 = key_1;
+        last_key_2 = key_2;
+        last_key_3 = key_3;
+    }
 
     /**
      * Initialize plane grid material and resources
@@ -200,6 +274,9 @@ private:
 
         if (!EnsureRenderSystems()) return false;
 
+        QuadResourcePrepareSystem::SetPresetForWorld(ecs_context, GraphicsPipelinePreset::Solid3D);
+        QuadResourcePrepareSystem::SetChannelHintForWorld(ecs_context, TextureChannelHint::Grayscale);
+
         std::cout << "\n[BillboardECS] Creating PlaneGrid entity..." << std::endl;
         // Create plane grid entity
         {
@@ -253,10 +330,13 @@ private:
             billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
             std::cout << "  -> SetFrontFace(CLOCKWISE)" << std::endl;
 
-            billboard->SetTexture(OS_TEXT("res/image/lena.Tex2D"));
+            billboard->SetTexture(kIconTextures[current_icon_index]);
             billboard->SetDomainTag("billboard_ecs");
-            std::cout << "  -> SetTexture(lena.Tex2D)" << std::endl;
+            std::cout << "  -> SetTexture(gradient[" << current_icon_index << "])" << std::endl;
         }
+
+        std::cout << "\n[BillboardECS] Runtime controls: [1]=Solid, [2]=Alpha, [3]=Dither" << std::endl;
+        std::cout << "[BillboardECS] Default mode: Solid3D, texture=" << current_icon_index << "\n" << std::endl;
 
         // ADVANCED: Example of using QuadComponent directly (without facing transform)
         //
@@ -378,6 +458,7 @@ public:
         }
 
         WorkObject::Tick(delta_time);
+        HandleRuntimeModeSwitch();
 
         if (frame_count <= 3)
         {
