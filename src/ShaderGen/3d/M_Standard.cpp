@@ -143,9 +143,15 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         "[Standard] VariantRegistry resolved variant=%s\n",
         var_desc->variant_name.c_str());
 
+    // Populate vertex attribute feature bits from the actual vertex layout.
+    // policy is const, so take a mutable copy of assemble_key.
+    MaterialVariantKey assemble_key = policy.assemble_key;
+    for (uint32_t i = 0; i < dynamic_def.vertex_entry_count; ++i)
+        assemble_key.SetVertexAttribEnabled(dynamic_def.vertex_entries[i].attrib);
+
     CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(policy.assemble_key, *var_desc);
+    auto result = assembler.Assemble(assemble_key, *var_desc);
 
     if (!result.success)
     {

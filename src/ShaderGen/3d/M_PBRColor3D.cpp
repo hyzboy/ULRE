@@ -30,7 +30,6 @@ namespace
 
     constexpr FixedVertexEntry PBR_COLOR_3D_VERTEX[] = {
         { VAT_VEC3, VAN::Position },
-        { VAT_VEC2, VAN::TexCoord },
         { VAT_VEC3, VAN::Normal   },
     };
 
@@ -83,6 +82,7 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     var_key.surface_type = SurfaceType::Standard;
     var_key.sky_ambient_model = ambient;
     var_key.lighting_model = lighting;
+
     MaterialVariantKey resolved_route_key{};
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(var_key, &resolved_route_key);
     if (!var_desc)
@@ -90,6 +90,11 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
         PrintPBRColorRouteKey("VariantRegistry lookup failed route", var_key);
         return nullptr;
     }
+
+    // Populate vertex attribute feature bits from the vertex layout AFTER registry lookup
+    // (registry keys don't carry vertex attrib bits; they affect shader generation only)
+    for (uint32_t i = 0; i < uint32_t(sizeof(PBR_COLOR_3D_VERTEX) / sizeof(PBR_COLOR_3D_VERTEX[0])); ++i)
+        var_key.SetVertexAttribEnabled(PBR_COLOR_3D_VERTEX[i].attrib);
 
     PrintPBRColorRouteKey("VariantRegistry resolved route-request", var_key);
     PrintPBRColorRouteKey("VariantRegistry resolved route-final", resolved_route_key);

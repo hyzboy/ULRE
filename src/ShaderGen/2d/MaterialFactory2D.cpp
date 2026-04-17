@@ -33,8 +33,13 @@ MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
         return nullptr;
     }
 
+    // Populate vertex attribute feature bits from the actual vertex layout.
+    MaterialVariantKey assemble_key = var_key;
+    for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+        assemble_key.SetVertexAttribEnabled(def.vertex_entries[i].attrib);
+
     CompositorAssembler assembler;
-    const auto result = assembler.Assemble(var_key, *var_desc);
+    const auto result = assembler.Assemble(assemble_key, *var_desc);
     if(!result.success)
     {
         std::fprintf(stderr, "[%s] CompositorAssembler failed: %s\n",

@@ -13,8 +13,8 @@
 
 namespace
 {
-    using GeneratedVSBuilder = std::string (*)();
-    using GeneratedFSBuilder = std::string (*)(hgl::graph::RenderAlphaMode blend, const std::string &surface_path);
+    using GeneratedVSBuilder = std::string (*)(const hgl::graph::mtl::MaterialVariantKey &key);
+    using GeneratedFSBuilder = std::string (*)(const hgl::graph::mtl::MaterialVariantKey &key, hgl::graph::RenderAlphaMode blend, const std::string &surface_path);
 
     struct GeneratedVSTemplateRoute
     {
@@ -84,92 +84,96 @@ namespace
         return out;
     }
 
-    std::string BuildBillboardDynamicVertexEntry()
+    std::string BuildBillboardDynamicVertexEntry(const hgl::graph::mtl::MaterialVariantKey &)
     {
         std::string out = "#version 450\n\n";
         hgl::graph::ShaderWriter(out).EmitInclude("compositor/main_forward_billboard_dynamic.vert.glsl");
         return out;
     }
 
-    std::string BuildBillboardFixedVertexEntry()
+    std::string BuildBillboardFixedVertexEntry(const hgl::graph::mtl::MaterialVariantKey &)
     {
         std::string out = "#version 450\n\n";
         hgl::graph::ShaderWriter(out).EmitInclude("compositor/main_forward_billboard_fixed.vert.glsl");
         return out;
     }
 
-    std::string BuildTerrainGridVertexEntry()
+    std::string BuildTerrainGridVertexEntry(const hgl::graph::mtl::MaterialVariantKey &)
     {
         std::string out = "#version 450\n\n";
         hgl::graph::ShaderWriter(out).EmitInclude("compositor/main_terrain_grid.vert.glsl");
         return out;
     }
 
-    std::string BuildForwardUnlitVertexColorVS()
+    std::string BuildForwardUnlitVertexColorVS(const hgl::graph::mtl::MaterialVariantKey &)
     {
         return BuildForwardVertexEntry({.has_vertex_color = true});
     }
 
-    std::string BuildForwardUnlitLuminanceVS()
+    std::string BuildForwardUnlitLuminanceVS(const hgl::graph::mtl::MaterialVariantKey &)
     {
         return BuildForwardVertexEntry({.has_luminance = true});
     }
 
-    std::string BuildForwardUnlitLuminance2DVS()
+    std::string BuildForwardUnlitLuminance2DVS(const hgl::graph::mtl::MaterialVariantKey &)
     {
         return BuildForwardVertexEntry({.vert_input_2d = true, .has_luminance = true});
     }
 
-    std::string BuildForwardUnlitNormalVS()
+    std::string BuildForwardUnlitNormalVS(const hgl::graph::mtl::MaterialVariantKey &)
     {
         return BuildForwardVertexEntry({.has_world_pos = true, .has_world_normal = true});
     }
 
-    std::string BuildForwardSkyVS()
+    std::string BuildForwardSkyVS(const hgl::graph::mtl::MaterialVariantKey &)
     {
         return BuildForwardVertexEntry({.has_direction = true});
     }
 
-    std::string BuildForwardLitVS()
+    std::string BuildForwardLitVS(const hgl::graph::mtl::MaterialVariantKey &key)
     {
-        return BuildForwardVertexEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true});
+        const bool uv0    = key.HasVertexAttrib(hgl::graph::VertexAttrib::TexCoord);
+        const bool normal = key.HasVertexAttrib(hgl::graph::VertexAttrib::Normal);
+        return BuildForwardVertexEntry({.has_uv0 = uv0, .has_world_pos = true, .has_world_normal = normal});
     }
 
-    std::string BuildForwardUnlitVertexColorFS(const hgl::graph::RenderAlphaMode, const std::string &surface_path)
+    std::string BuildForwardUnlitVertexColorFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
         return BuildForwardFragmentEntry({.has_vertex_color = true, .surface_path = surface_path});
     }
 
-    std::string BuildForwardUnlitLuminanceFS(const hgl::graph::RenderAlphaMode, const std::string &surface_path)
+    std::string BuildForwardUnlitLuminanceFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
         return BuildForwardFragmentEntry({.has_luminance = true, .surface_path = surface_path});
     }
 
-    std::string BuildForwardUnlitNormalFS(const hgl::graph::RenderAlphaMode, const std::string &surface_path)
+    std::string BuildForwardUnlitNormalFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
         return BuildForwardFragmentEntry({.has_world_pos = true, .has_world_normal = true, .needs_camera = true, .surface_path = surface_path});
     }
 
-    std::string BuildForwardBillboardFS(const hgl::graph::RenderAlphaMode blend, const std::string &surface_path)
+    std::string BuildForwardBillboardFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode blend, const std::string &surface_path)
     {
         const bool alpha_masked = (blend == hgl::graph::RenderAlphaMode::Masked);
         const bool alpha_dither = (blend == hgl::graph::RenderAlphaMode::Dither);
         return BuildForwardFragmentEntry({.alpha_masked = alpha_masked, .alpha_dither = alpha_dither, .has_texcoord = true, .surface_path = surface_path});
     }
 
-    std::string BuildForwardSkyFS(const hgl::graph::RenderAlphaMode, const std::string &surface_path)
+    std::string BuildForwardSkyFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
         return BuildForwardFragmentEntry({.has_direction = true, .surface_path = surface_path});
     }
 
-    std::string BuildTerrainGridFS(const hgl::graph::RenderAlphaMode, const std::string &surface_path)
+    std::string BuildTerrainGridFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
         return BuildForwardFragmentEntry({.has_world_normal = true, .has_clip_pos = true, .surface_path = surface_path});
     }
 
-    std::string BuildForwardLitFS(const hgl::graph::RenderAlphaMode, const std::string &surface_path)
+    std::string BuildForwardLitFS(const hgl::graph::mtl::MaterialVariantKey &key, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
-        return BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .enable_lighting = true, .needs_camera = true, .needs_sky = true, .surface_path = surface_path});
+        const bool uv0    = key.HasVertexAttrib(hgl::graph::VertexAttrib::TexCoord);
+        const bool normal = key.HasVertexAttrib(hgl::graph::VertexAttrib::Normal);
+        return BuildForwardFragmentEntry({.has_uv0 = uv0, .has_world_pos = true, .has_world_normal = normal, .enable_lighting = true, .needs_camera = true, .needs_sky = true, .surface_path = surface_path});
     }
 
     static const GeneratedVSTemplateRoute kGeneratedVSTemplateRoutes[] = {
@@ -360,22 +364,22 @@ namespace hgl::graph
         return true;
     }
 
-    bool CompositorAssembler::TryBuildGeneratedVSTemplatePath(const std::string &template_path, std::string &out_source) const
+    bool CompositorAssembler::TryBuildGeneratedVSTemplatePath(const std::string &template_path, const mtl::MaterialVariantKey &key, std::string &out_source) const
     {
         if(const GeneratedVSTemplateRoute *route = FindRouteByTemplatePath(kGeneratedVSTemplateRoutes, template_path))
         {
-            out_source = route->builder();
+            out_source = route->builder(key);
             return true;
         }
 
         return false;
     }
 
-    bool CompositorAssembler::TryBuildGeneratedFSTemplatePath(const std::string &template_path, RenderAlphaMode blend, const std::string &surface_path, std::string &out_source) const
+    bool CompositorAssembler::TryBuildGeneratedFSTemplatePath(const std::string &template_path, const mtl::MaterialVariantKey &key, RenderAlphaMode blend, const std::string &surface_path, std::string &out_source) const
     {
         if(const GeneratedFSTemplateRoute *route = FindRouteByTemplatePath(kGeneratedFSTemplateRoutes, template_path))
         {
-            out_source = route->builder(blend, surface_path);
+            out_source = route->builder(key, blend, surface_path);
             return true;
         }
 
@@ -676,7 +680,7 @@ namespace hgl::graph
         {
             // Template override: Generated-first, disk fallback
             std::string read_error;
-            if (!TryBuildGeneratedVSTemplatePath(vs_template_override, vs_source)
+            if (!TryBuildGeneratedVSTemplatePath(vs_template_override, key, vs_source)
              && !ReadFile(vs_path, vs_source, read_error))
             {
                 result.error_message = BuildAssembleReadFailureMessage("VS", vs_template_override, vs_path, read_error);
@@ -701,7 +705,7 @@ namespace hgl::graph
         {
             // Template override: Generated-first, disk fallback
             std::string read_error;
-            if (!TryBuildGeneratedFSTemplatePath(fs_template_override, blend, surface_rel, fs_source)
+            if (!TryBuildGeneratedFSTemplatePath(fs_template_override, key, blend, surface_rel, fs_source)
              && !ReadFile(fs_path, fs_source, read_error))
             {
                 result.error_message = BuildAssembleReadFailureMessage("FS", fs_template_override, fs_path, read_error);
@@ -780,7 +784,7 @@ namespace hgl::graph
         if (!desc.vs_template_path.empty())
         {
             std::string read_error;
-            if (!TryBuildGeneratedVSTemplatePath(desc.vs_template_path, vs_source)
+            if (!TryBuildGeneratedVSTemplatePath(desc.vs_template_path, key, vs_source)
              && !ReadFile(vs_path, vs_source, read_error))
             {
                 result.error_message = BuildAssembleReadFailureMessage("VS", desc.vs_template_path, vs_path, read_error);
@@ -803,7 +807,7 @@ namespace hgl::graph
         if (!desc.fs_template_path.empty())
         {
             std::string read_error;
-            if (!TryBuildGeneratedFSTemplatePath(desc.fs_template_path, key.blend_mode, surface_rel, fs_source)
+            if (!TryBuildGeneratedFSTemplatePath(desc.fs_template_path, key, key.blend_mode, surface_rel, fs_source)
              && !ReadFile(fs_path, fs_source, read_error))
             {
                 result.error_message = BuildAssembleReadFailureMessage("FS", desc.fs_template_path, fs_path, read_error);

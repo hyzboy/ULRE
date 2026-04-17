@@ -77,8 +77,8 @@ namespace hgl::graph
 
     private:
 
-        bool        TryBuildGeneratedVSTemplatePath(const std::string &template_path, std::string &out_source) const;
-        bool        TryBuildGeneratedFSTemplatePath(const std::string &template_path, RenderAlphaMode blend, const std::string &surface_path, std::string &out_source) const;
+        bool        TryBuildGeneratedVSTemplatePath(const std::string &template_path, const mtl::MaterialVariantKey &key, std::string &out_source) const;
+        bool        TryBuildGeneratedFSTemplatePath(const std::string &template_path, const mtl::MaterialVariantKey &key, RenderAlphaMode blend, const std::string &surface_path, std::string &out_source) const;
         std::string GetCompositorVSPath(SurfaceType surface, PassType pass) const;
         std::string GetCompositorFSPath(SurfaceType surface, RenderAlphaMode blend, PassType pass) const;
         std::string GetSurfaceFunctionPath(SurfaceType surface) const;
