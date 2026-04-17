@@ -55,6 +55,11 @@ const uint32_t Geometry::GetVABCount()const
     return geometry_data->GetVABCount();
 }
 
+const GeometryVertexFormat &Geometry::GetGeometryVertexFormat()const
+{
+    return geometry_data->GetGeometryVertexFormat();
+}
+
 const int Geometry::GetVABIndex(const VertexAttrib attrib)const
 {
     return geometry_data->GetVABIndex(attrib);

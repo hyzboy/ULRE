@@ -3,6 +3,7 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph{
 
@@ -88,6 +89,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPip
 
     const uint32_t input_count=vil->GetVertexAttribCount();
     const AnsiString &mtl_name=mi->GetMaterial()->GetName();
+    const GeometryVertexFormat &geometry_vertex_format = geom->GetGeometryVertexFormat();
 
     if(geom->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
@@ -114,9 +116,26 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPip
         //注: VIF来自于材质，但VAB来自于Geometry。
         //    两个并不一定一样，排序也不一定一样。所以不能让PRIMTIVE直接提供BUFFER_LIST/OFFSET来搞一次性绑定。
 
-        vab=geom->GetVAB(vif->attrib);
-
         const char *vab_name=GetVertexAttribName(vif->attrib);
+
+        if(!geometry_vertex_format.Has(vif->attrib))
+        {
+            GLogError("[FATAL ERROR] Geometry missing attrib \""+AnsiString(vab_name)+
+                      AnsiString("\" required by Material: ")+mtl_name);
+            return(nullptr);
+        }
+
+        if(geometry_vertex_format.GetFormat(vif->attrib)!=vif->format)
+        {
+            GLogError(  "[FATAL ERROR] Geometry attrib format mismatch for \""+AnsiString(vab_name)+
+                        AnsiString("\", Material(")+mtl_name+
+                        AnsiString(") Format(")+GetVulkanFormatName(vif->format)+
+                        AnsiString(") , Geometry Format(")+GetVulkanFormatName(geometry_vertex_format.GetFormat(vif->attrib))+
+                        ")");
+            return(nullptr);
+        }
+
+        vab=geom->GetVAB(vif->attrib);
 
         if(!vab)
         {
@@ -158,6 +177,8 @@ bool GeometryDataBuffer::Update(const Geometry *geom,const VIL *vil)
     if(!geom||!vil)
         return(false);
 
+    const GeometryVertexFormat &geometry_vertex_format = geom->GetGeometryVertexFormat();
+
     ibo=geom->GetIBO();
     vdm=geom->GetVDM();
 
@@ -172,9 +193,25 @@ bool GeometryDataBuffer::Update(const Geometry *geom,const VIL *vil)
 
     for(uint i=0;i<input_count;i++)
     {
+        if(!geometry_vertex_format.Has(vif->attrib))
+            return(false);
+
+        if(geometry_vertex_format.GetFormat(vif->attrib)!=vif->format)
+            return(false);
+
+        VAB *vab = geom->GetVAB(vif->attrib);
+        if(!vab)
+            return(false);
+
+        if(vab->GetFormat()!=vif->format)
+            return(false);
+
+        if(vab->GetStride()!=vif->stride)
+            return(false);
+
         if(vif->binding<vab_count)
         {
-            vab_list[vif->binding]=geom->GetVkBuffer(vif->attrib);
+            vab_list[vif->binding]=vab->GetVkBuffer();
             vab_offset[vif->binding]=0;
         }
 

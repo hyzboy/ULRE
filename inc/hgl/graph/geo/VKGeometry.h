@@ -11,6 +11,7 @@ namespace hgl::graph{
 
 // forward declare GeometryData to avoid including heavy headers
 class GeometryData;
+class GeometryVertexFormat;
 
 /**
  * 几何体数据访问接口<br>
@@ -53,6 +54,7 @@ public:
 
     const   uint32_t        GetVABCount     ()const;
     const   int             GetVABIndex     (const VertexAttrib attrib)const;
+    const   GeometryVertexFormat &GetGeometryVertexFormat()const;
 
             VAB *           GetVAB          (const int)const;
             VkBuffer        GetVkBuffer     (const int index)const;
