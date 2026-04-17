@@ -11,6 +11,7 @@
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/graph/module/MaterialManager.h>
+#include <hgl/graph/module/ResourceDomainManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/mesh/Primitive.h>
@@ -38,6 +39,28 @@ namespace hgl::ecs
     {
         PipelineResolveCounters g_line_pipeline_resolve_counters;
         PipelineHotpathCounters g_line_render_hotpath_counters;
+
+        graph::ResourceDomain *ResolveDomainForMaterial(graph::GraphicsContext *graphics_context,
+                                                        graph::Material *material,
+                                                        uint32_t domain_id)
+        {
+            if (!material || !material->hasMI())
+                return nullptr;
+
+            auto *rdm = graphics_context ? graphics_context->GetResourceDomainManager() : nullptr;
+            if (!rdm)
+                return nullptr;
+
+            const auto schema = material->GetShaderDataSchema();
+            if (auto *domain = rdm->Get(schema, domain_id))
+                return domain;
+
+            graph::ResourceDomainCreateInfo ci;
+            ci.schema = schema;
+            ci.domain_id = domain_id;
+            ci.initial_capacity = 1024;
+            return rdm->Create(ci);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -264,6 +287,7 @@ namespace hgl::ecs
         spec.material = material_;
         spec.vil_cfg = &vil;
         spec.preset = preset;
+        spec.domain = ResolveDomainForMaterial(gc, material_, 3001u);
         mi_ = mat_mgr->AcquireMaterialInstance(spec);
         if (!mi_)
             return false;
