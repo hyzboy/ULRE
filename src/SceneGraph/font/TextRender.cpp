@@ -10,6 +10,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/vk/VKMaterial.h>
@@ -24,6 +25,29 @@ namespace hgl::graph
 
     namespace
     {
+        ResourceDomain *ResolveDomainForMaterial(MaterialManager *material_manager,
+                                                 Material *material,
+                                                 uint32_t domain_id)
+        {
+            if (!material || !material->hasMI())
+                return nullptr;
+
+            auto *gc = material_manager ? material_manager->GetGraphicsContext() : nullptr;
+            auto *rdm = gc ? gc->GetResourceDomainManager() : nullptr;
+            if (!rdm)
+                return nullptr;
+
+            const auto schema = material->GetShaderDataSchema();
+            if (auto *domain = rdm->Get(schema, domain_id))
+                return domain;
+
+            ResourceDomainCreateInfo ci;
+            ci.schema = schema;
+            ci.domain_id = domain_id;
+            ci.initial_capacity = 1024;
+            return rdm->Create(ci);
+        }
+
         void SetDrawStyle(TextDrawStyle &tda,const ParagraphStyle *t,const float origin_char_height)
         {
             mem_copy(tda.para_style,*t);
@@ -183,6 +207,7 @@ namespace hgl::graph
             mi_spec.instance_data = &fixed_style;
             mi_spec.instance_data_size = sizeof(fixed_style);
             mi_spec.preset = GraphicsPipelinePreset::Solid2D;
+            mi_spec.domain = ResolveDomainForMaterial(mtl_manager, mtl_fs, 2002u);
 
             mi_fs=mtl_manager->AcquireMaterialInstance(mi_spec);
             if(!mi_fs)return(false);

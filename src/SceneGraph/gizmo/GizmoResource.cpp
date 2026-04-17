@@ -11,6 +11,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include"GizmoResource.h"
 
 namespace hgl::graph
@@ -81,6 +82,25 @@ namespace hgl::graph
             if(!gr||!gr->mtl)
                 return(false);
 
+               ResourceDomain *gizmo_domain = nullptr;
+               if (gr->mtl->hasMI())
+               {
+                   auto *rdm = graphics_context ? graphics_context->GetResourceDomainManager() : nullptr;
+                   if (rdm)
+                   {
+                       const auto schema = gr->mtl->GetShaderDataSchema();
+                       gizmo_domain = rdm->Get(schema, 1u);
+                       if (!gizmo_domain)
+                       {
+                           ResourceDomainCreateInfo ci;
+                           ci.schema            = schema;
+                           ci.domain_id         = 1u;
+                           ci.initial_capacity  = 64;
+                           gizmo_domain = rdm->Create(ci);
+                       }
+                   }
+               }
+
             Color4f color;
 
             for(uint i=0;i<uint(GizmoColor::RANGE_SIZE);i++)
@@ -93,6 +113,7 @@ namespace hgl::graph
                 mi_spec.instance_data = &color;
                 mi_spec.instance_data_size = sizeof(color);
                 mi_spec.preset = GraphicsPipelinePreset::GizmoOverlay3D;
+                    mi_spec.domain = gizmo_domain;
 
                 gr->mi[i]=gizmo_mtl_manager->AcquireMaterialInstance(mi_spec);
 

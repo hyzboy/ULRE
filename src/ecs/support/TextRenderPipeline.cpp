@@ -19,6 +19,7 @@
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/vk/pipeline/VKRenderTargetFormat.h>
@@ -90,6 +91,29 @@ namespace hgl::ecs
             out_style.char_gap = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height * para_style.char_gap));
             out_style.line_gap = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height * para_style.line_gap));
             out_style.line_height = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height + out_style.line_gap));
+        }
+
+        graph::ResourceDomain *ResolveDomainForMaterial(graph::MaterialManager *material_manager,
+                                                        graph::Material *material,
+                                                        uint32_t domain_id)
+        {
+            if (!material || !material->hasMI())
+                return nullptr;
+
+            auto *gc = material_manager ? material_manager->GetGraphicsContext() : nullptr;
+            auto *rdm = gc ? gc->GetResourceDomainManager() : nullptr;
+            if (!rdm)
+                return nullptr;
+
+            const auto schema = material->GetShaderDataSchema();
+            if (auto *domain = rdm->Get(schema, domain_id))
+                return domain;
+
+            graph::ResourceDomainCreateInfo ci;
+            ci.schema = schema;
+            ci.domain_id = domain_id;
+            ci.initial_capacity = 1024;
+            return rdm->Create(ci);
         }
     }
 
@@ -495,6 +519,7 @@ namespace hgl::ecs
                 mi_spec.material = resources->material;
                 mi_spec.vil_cfg = &vil_config;
                 mi_spec.preset = graph::GraphicsPipelinePreset::Solid2D;
+                mi_spec.domain = ResolveDomainForMaterial(material_manager, resources->material, 2001u);
 
                 mi = material_manager->AcquireMaterialInstance(mi_spec);
                 if (!mi)
