@@ -7,6 +7,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/common/RenderOptions.h>
@@ -29,7 +30,7 @@ namespace hgl::ecs
     {
         if (mtl)
         {
-            material_instance_data_bytes = mtl->GetMIDataBytes();
+            material_instance_data_bytes = graph::mtl::GetShaderDataSchemaInfo(mtl->GetShaderDataSchema()).byte_size;
         }
     }
 
@@ -131,15 +132,7 @@ namespace hgl::ecs
 
         const size_t unique_mi_count = mi_set.GetCount();
 
-        // 检查是否超出材质支持的最大数量
-        if (material && unique_mi_count > material->GetMIMaxCount())
-        {
-            std::cout << "[MaterialInstanceAssignmentBuffer::StatMaterialInstance] WARNING: MI count ("
-                      << unique_mi_count << ") exceeds material max count ("
-                      << material->GetMIMaxCount() << ")" << std::endl;
-        }
-
-        // MI 数据上传与 MI ID 分发解耦：仅当存在 MI payload 时才分配/写入 MI SSBO
+        // 当后如需验证 MI 数量上限可通过 domain->GetCapacity() 实现
         if (material_instance_data_bytes > 0)
         {
             const size_t needed = mi_set.GetCount();

@@ -127,6 +127,12 @@ static const os_char* kGradientIcons[] =
 };
 static constexpr int kGradientCount = 23;
 
+// Explicit ResourceDomain IDs used by this demo.
+// Numeric strings are parsed directly as domain_id by MaterialAssetRegistry.
+static constexpr const char *kFreepikDomainID  = "1001";
+static constexpr const char *kGradientDomainID = "1002";
+static constexpr const char *kGridDomainID     = "2001";
+
 // ── App ─────────────────────────────────────────────────────────────────────
 
 static Color4f white_color(1, 1, 1, 1);
@@ -158,7 +164,7 @@ private:
 
         static const mtl::MaterialAssetRecord kPlaneGridCfg {
             .id        = "domain_demo_plane_grid",
-            .domain_id = "grid",
+            .domain_id = kGridDomainID,
             .preset    = mtl::MaterialPreset::VertexLuminance2D,
             .prim      = PrimitiveType::Lines,
             .pipeline  = GraphicsPipelinePreset::Solid3D,
@@ -317,10 +323,10 @@ private:
         }
 
         // 左侧螺旋：Freepik 图标（50 个 billboard）
-        CreateSpiralBillboards("Freepik_", "freepik_icons", kFreepikIcons, kFreepikCount, 50, -30.0f, 5.0f);
+        CreateSpiralBillboards("Freepik_", kFreepikDomainID, kFreepikIcons, kFreepikCount, 50, -30.0f, 5.0f);
 
         // 右侧螺旋：Gradient 图标（50 个 billboard）
-        CreateSpiralBillboards("Gradient_", "gradient_icons", kGradientIcons, kGradientCount, 50, 30.0f, 5.0f);
+        CreateSpiralBillboards("Gradient_", kGradientDomainID, kGradientIcons, kGradientCount, 50, 30.0f, 5.0f);
 
         return true;
     }
@@ -367,6 +373,8 @@ public:
         {
             printf("[R8 DomainIsolation] Freepik spiral: 50 billboards (left)\n");
             printf("[R8 DomainIsolation] Gradient spiral: 50 billboards (right)\n");
+            printf("[R8 DomainIsolation] ResourceDomains: freepik=%s gradient=%s grid=%s\n",
+                   kFreepikDomainID, kGradientDomainID, kGridDomainID);
         }
 
         return true;

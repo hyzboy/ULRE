@@ -50,8 +50,6 @@ class Material
 
     MaterialParameters *mp_array[DESCRIPTOR_SET_TYPE_COUNT];
 
-    uint32_t mi_data_bytes;             ///<实例数据大小
-    uint32_t mi_max_count;              ///<实例一次渲染最大数量限制
     mtl::ShaderDataSchema mi_schema = mtl::ShaderDataSchema::None;
 
     bool has_l2w_matrix;                ///<是否有LocalToWorld矩阵
@@ -138,9 +136,7 @@ public:
             void    SetTextureArraySlotFlags(uint8_t f){texture_array_slot_flags=f;}
     const uint8_t   GetTextureArraySlotFlags()const{return texture_array_slot_flags;}
 
-    const bool      hasMI           ()const{return mi_data_bytes>0;}
-    const uint32_t  GetMIDataBytes  ()const{return mi_data_bytes;}
-    const uint32_t  GetMIMaxCount   ()const{return mi_max_count;}
+    const bool      hasMI           ()const{return mi_schema!=mtl::ShaderDataSchema::None;}
     const mtl::ShaderDataSchema GetShaderDataSchema() const { return mi_schema; }
 
     MaterialInstance *CreateMI(const VIL *);

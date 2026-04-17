@@ -71,7 +71,10 @@ void *MaterialInstance::GetMIData()
 
 void MaterialInstance::WriteMIData(const void *data,const uint32 size)
 {
-    if(!data||!size||size>material->GetMIDataBytes())return;
+    if(!data||!size) return;
+    const uint32_t limit = domain ? domain->GetMIDataBytes() : 0;
+    if(!limit||size>limit)return;
+
 
     void *tp=GetMIData();
 

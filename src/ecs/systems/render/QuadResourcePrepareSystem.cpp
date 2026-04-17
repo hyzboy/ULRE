@@ -15,6 +15,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
@@ -26,6 +27,29 @@
 
 namespace hgl::ecs
 {
+    static graph::ResourceDomain *ResolveDomainForMaterial(graph::GraphicsContext *gc,
+                                                           graph::Material *material,
+                                                           uint32_t domain_id)
+    {
+        if (!material || !material->hasMI())
+            return nullptr;
+
+        auto *rdm = gc ? gc->GetResourceDomainManager() : nullptr;
+        if (!rdm)
+            return nullptr;
+
+        const auto schema = material->GetShaderDataSchema();
+
+        if (auto *domain = rdm->Get(schema, domain_id))
+            return domain;
+
+        graph::ResourceDomainCreateInfo ci;
+        ci.schema = schema;
+        ci.domain_id = domain_id;
+        ci.initial_capacity = 256;
+        return rdm->Create(ci);
+    }
+
     // Static member initialization
     graph::Primitive* QuadResourcePrepareSystem::shared_primitive = nullptr;
     graph::MaterialInstance* QuadResourcePrepareSystem::shared_material_instance = nullptr;
@@ -276,6 +300,7 @@ namespace hgl::ecs
 
         graph::MaterialInstanceSpec spec;
         spec.material = shared_material;
+        spec.domain   = ResolveDomainForMaterial(graphics_context, shared_material, 1u);
         spec.preset = GetPresetForWorld(world);
         shared_material_instance = material_manager->AcquireMaterialInstance(spec);
         if (!shared_material_instance)
@@ -531,6 +556,7 @@ namespace hgl::ecs
                 // Create a temp MI to get VIL for geometry creation
                 graph::MaterialInstanceSpec mi_spec;
                 mi_spec.material = dr.material;
+                mi_spec.domain   = dr.dmb ? dr.dmb->GetDomain() : nullptr;
                 mi_spec.preset   = GetPresetForWorld(world);
                 auto* temp_mi = material_manager->AcquireMaterialInstance(mi_spec);
 

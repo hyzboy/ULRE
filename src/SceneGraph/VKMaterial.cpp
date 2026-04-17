@@ -24,8 +24,6 @@ Material::Material(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
 
     mem_zero(mp_array);
 
-    mi_data_bytes=0;
-    mi_max_count=0;
     mi_schema=mtl::ShaderDataSchema::None;
 
     has_l2w_matrix=mci->HasLocalToWorld();

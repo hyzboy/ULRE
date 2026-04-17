@@ -90,7 +90,6 @@ private:
                     material = triangles[i].mi->GetMaterial();
                     std::cout << "[TestApp::InitMaterial] Created material: " << (void*)material << std::endl;
                     std::cout << "[TestApp::InitMaterial] Material has MI: " << material->hasMI() << std::endl;
-                    std::cout << "[TestApp::InitMaterial] Material MI data bytes: " << material->GetMIDataBytes() << std::endl;
                 }
 
                 // 使用不同的颜色

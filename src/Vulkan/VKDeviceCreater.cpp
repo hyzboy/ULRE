@@ -272,6 +272,7 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     features13.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     features13.pNext            = const_cast<void*>(static_cast<const void*>(create_info.pNext));
     features13.dynamicRendering = VK_TRUE;
+    features13.shaderDemoteToHelperInvocation = physical_device->GetFeatures13().shaderDemoteToHelperInvocation;
     create_info.pNext           = &features13;
 
 #ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT

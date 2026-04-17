@@ -9,6 +9,7 @@
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/font/TextLayoutEngine.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/vk/VKMaterial.h>
@@ -314,7 +315,7 @@ namespace hgl::ecs
 
         guard.buffer_manager = buffer_manager;
 
-        const uint32_t mi_bytes = guard.material->GetMIDataBytes();
+        const uint32_t mi_bytes = graph::mtl::GetShaderDataSchemaInfo(guard.material->GetShaderDataSchema()).byte_size;
         if (mi_bytes > 0)
         {
             guard.material_instance_buffer = buffer_manager->CreateSSBO("Text2D_MI", mi_bytes, graph::SharingMode::Exclusive);
@@ -510,7 +511,7 @@ namespace hgl::ecs
             {
                 if (resources->material_instance_buffer)
                 {
-                    const uint32_t upload_bytes = hgl_min<uint32_t>(resources->material->GetMIDataBytes(),
+                    const uint32_t upload_bytes = hgl_min<uint32_t>(graph::mtl::GetShaderDataSchemaInfo(resources->material->GetShaderDataSchema()).byte_size,
                                                                     sizeof(graph::layout::CharStyle));
                     if(auto *mgpu = resources->material_instance_buffer->GetGPUBuffer())
                         mgpu->Write(&resources->char_style, 0, upload_bytes);

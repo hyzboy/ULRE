@@ -303,8 +303,6 @@ void MaterialManager::ApplyMaterialFinalizePlan(Material *mtl, const AnsiString 
         mtl->mp_array[(int)set_type] = CreateMaterialMP(mtl_name, mtl->desc_manager, mtl->pipeline_layout_data, set_type);
     }
 
-    mtl->mi_data_bytes = finalize_plan.mi_data_bytes;
-    mtl->mi_max_count  = finalize_plan.mi_max_count;
     mtl->mi_schema     = finalize_plan.mi_schema;
 
     std::fprintf(stderr,
@@ -848,16 +846,6 @@ DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDoma
             "domain=%u mtl=%u\n",
             static_cast<unsigned>(domain->GetShaderDataSchema()),
             static_cast<unsigned>(mtl->GetShaderDataSchema()));
-        return nullptr;
-    }
-
-    if (domain->GetMIDataBytes() != mtl->GetMIDataBytes())
-    {
-        std::fprintf(stderr,
-            "[MaterialManager] CreateDomainMaterialBinding: MI stride mismatch "
-            "domain=%u mtl=%u\n",
-            domain->GetMIDataBytes(),
-            mtl->GetMIDataBytes());
         return nullptr;
     }
 
