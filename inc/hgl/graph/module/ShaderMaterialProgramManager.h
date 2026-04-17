@@ -103,7 +103,7 @@ struct MaterialInstanceAcquireStats
 
 constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;//GetBitOffset((uint32_t)VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)+1;
 
-GRAPH_MODULE_CLASS(MaterialManager)
+GRAPH_MODULE_CLASS(ShaderMaterialProgramManager)
 {
 private:
 
@@ -131,8 +131,8 @@ private:
 
 private:
 
-    MaterialManager(GraphicsContext *);
-    ~MaterialManager()=default;
+    ShaderMaterialProgramManager(GraphicsContext *);
+    ~ShaderMaterialProgramManager()=default;
 
     friend class GraphModuleManager;
 
@@ -200,7 +200,7 @@ public: // Override Release from GraphModule - cleanup all resources
         if (mat_stats.requests > 0 || mi_stats.requests > 0)
         {
             std::fprintf(stderr,
-                "[MaterialManager] AcquireStats: material(req=%llu lookup=%llu hit=%llu miss=%llu created=%llu fallback=%llu) mi(req=%llu created=%llu)\n",
+                "[ShaderMaterialProgramManager] AcquireStats: material(req=%llu lookup=%llu hit=%llu miss=%llu created=%llu fallback=%llu) mi(req=%llu created=%llu)\n",
                 static_cast<unsigned long long>(mat_stats.requests),
                 static_cast<unsigned long long>(mat_stats.cache_lookups),
                 static_cast<unsigned long long>(mat_stats.cache_hits),
@@ -365,6 +365,6 @@ public: // Phase 0 Stats — 帧级资源量观测
         return n;
     }
 
-};//class MaterialManager
+};//class ShaderMaterialProgramManager
 
 }//namespace hgl::graph

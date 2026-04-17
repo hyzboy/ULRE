@@ -1,6 +1,6 @@
 #include <hgl/graph/module/MaterialAssetRegistry.h>
 #include <hgl/graph/module/MaterialAssetLoader.h>
-#include <hgl/graph/module/MaterialManager.h>
+#include <hgl/graph/module/ShaderMaterialProgramManager.h>
 #include <hgl/graph/module/ResourceDomainManager.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/SamplerManager.h>
@@ -147,7 +147,7 @@ size_t MaterialAssetRegistry::DMBKeyHash::operator()(const DMBKey &k) const
 // ── Constructor ──────────────────────────────────────────────────────────────
 
 MaterialAssetRegistry::MaterialAssetRegistry(
-    MaterialManager *mm_,
+    ShaderMaterialProgramManager *mm_,
     TextureManager  *tm_,
     SamplerManager  *sm_)
     : mm(mm_), tm(tm_), sm(sm_)

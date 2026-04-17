@@ -32,7 +32,7 @@ namespace hgl::graph
     class GraphModuleManager;
     class TextureManager;
     class RenderTargetManager;
-    class MaterialManager;
+    class ShaderMaterialProgramManager;
     class ResourceDomainManager;
     class BufferManager;
     class SamplerManager;
@@ -64,7 +64,7 @@ namespace hgl::graph
 
         TextureManager *tex_manager = nullptr;
         RenderTargetManager *rt_manager = nullptr;
-        MaterialManager *material_manager = nullptr;
+        ShaderMaterialProgramManager *material_manager = nullptr;
         ResourceDomainManager *resource_domain_manager = nullptr;
         BufferManager *buffer_manager = nullptr;
         SamplerManager *sampler_manager = nullptr;
@@ -110,7 +110,7 @@ namespace hgl::graph
 
         // 模块管理器访问
         TextureManager *GetTextureManager() { return tex_manager; }
-        MaterialManager *GetMaterialManager() { return material_manager; }
+        ShaderMaterialProgramManager *GetMaterialManager() { return material_manager; }
         ResourceDomainManager *GetResourceDomainManager() { return resource_domain_manager; }
         BufferManager *GetBufferManager() { return buffer_manager; }
         SamplerManager *GetSamplerManager() { return sampler_manager; }

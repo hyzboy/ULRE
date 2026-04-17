@@ -18,7 +18,7 @@ namespace hgl::graph
     class RenderTargetFormat;
     class TileFont;
     class TextGeometry;
-    class MaterialManager;
+    class ShaderMaterialProgramManager;
     class PrimitiveManager;
 
     namespace layout
@@ -45,7 +45,7 @@ namespace hgl::graph
         VulkanDevice *      device;
 
         PrimitiveManager *  primitive_manager;
-        MaterialManager *   mtl_manager;
+        ShaderMaterialProgramManager *   mtl_manager;
 
         Sampler *           sampler;
 

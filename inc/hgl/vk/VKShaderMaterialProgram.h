@@ -58,7 +58,7 @@ class ShaderMaterialProgram
 
 private:
 
-    friend class MaterialManager;
+    friend class ShaderMaterialProgramManager;
 
     ShaderMaterialProgram(const AnsiString &,const mtl::MaterialCreateInfo *);
 

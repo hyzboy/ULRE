@@ -8,7 +8,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/framework/AppFramework.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/ShaderMaterialProgramManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -25,7 +25,7 @@ namespace hgl::graph
 
     namespace
     {
-        ResourceDomain *ResolveDomainForMaterial(MaterialManager *material_manager,
+        ResourceDomain *ResolveDomainForMaterial(ShaderMaterialProgramManager *material_manager,
                                                  ShaderMaterialProgram *material,
                                                  uint32_t domain_id)
         {

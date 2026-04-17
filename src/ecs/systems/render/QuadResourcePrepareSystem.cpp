@@ -10,7 +10,7 @@
 #include<hgl/mtl/SamplerSlot.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/ShaderMaterialProgramManager.h>
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>

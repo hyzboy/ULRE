@@ -9,7 +9,7 @@ namespace hgl::graph
 
     class BufferManager;
     class GeometryManager;
-    class MaterialManager;
+    class ShaderMaterialProgramManager;
     class PrimitiveManager;
     class RenderTargetManager;
     class TextureManager;

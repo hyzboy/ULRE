@@ -59,7 +59,7 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id);
 
 /// Apply per-cfg overrides (geometry_mode, texture_source_bits, sampler_feature_bits) to an
 /// already-constructed MaterialVariantKey.  Used by both CreateMaterialCreateInfo and
-/// MaterialManager::CreateMaterial so the same logic is executed regardless of which entry
+/// ShaderMaterialProgramManager::CreateMaterial so the same logic is executed regardless of which entry
 /// point the application uses.
 void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreateConfig *cfg);
 

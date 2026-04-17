@@ -100,7 +100,7 @@ namespace hgl
                 return gc->GetBufferManager();
             return nullptr;
         }
-        graph::MaterialManager *    GetMaterialManager  ()
+        graph::ShaderMaterialProgramManager *    GetMaterialManager  ()
         {
             if (auto *gc = GetGraphicsContext())
                 return gc->GetMaterialManager();

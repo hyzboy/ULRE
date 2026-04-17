@@ -9,7 +9,7 @@
 #include<hgl/color/Color.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/ShaderMaterialProgramManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include"GizmoResource.h"
@@ -26,7 +26,7 @@ namespace hgl::graph
     {
         static GraphicsContext *graphics_context=nullptr;
         static RenderTargetFormat *gizmo_render_pass=nullptr;
-        static MaterialManager *gizmo_mtl_manager=nullptr;
+        static ShaderMaterialProgramManager *gizmo_mtl_manager=nullptr;
 
         struct GizmoResource
         {

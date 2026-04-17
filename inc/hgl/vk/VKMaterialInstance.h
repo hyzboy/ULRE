@@ -47,7 +47,7 @@ private:
 
     friend class ShaderMaterialProgram;
     friend class ResourceDomain;
-    friend class MaterialManager;
+    friend class ShaderMaterialProgramManager;
 
     /// 新路径构造（Phase 1，经由 ResourceDomain 分配槽位）
     MaterialInstance(ShaderMaterialProgram *, ResourceDomain *, const VIL *, const int);

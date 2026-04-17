@@ -28,7 +28,7 @@ namespace hgl
         class MaterialInstance;
         class Sampler;
         class DeviceBuffer;
-        class MaterialManager;
+        class ShaderMaterialProgramManager;
         class PrimitiveManager;
     }
 
@@ -81,7 +81,7 @@ namespace hgl
             std::vector<std::shared_ptr<TextComponent>> frame_texts;
             std::unordered_map<graph::FontSource*, BatchInput> frame_inputs;
             graph::GraphicsContext* frame_graphics_context = nullptr;
-            graph::MaterialManager* frame_material_manager = nullptr;
+            graph::ShaderMaterialProgramManager* frame_material_manager = nullptr;
             graph::PrimitiveManager* frame_primitive_manager = nullptr;
             graph::VulkanDevice* frame_device = nullptr;
             graph::IRenderTarget* frame_render_target = nullptr;
@@ -109,7 +109,7 @@ namespace hgl
                                                        graph::IRenderTarget* render_target);
 
             bool PrepareFrameResources(graph::GraphicsContext*& graphics_context,
-                                       graph::MaterialManager*& material_manager,
+                                       graph::ShaderMaterialProgramManager*& material_manager,
                                        graph::PrimitiveManager*& primitive_manager,
                                        graph::VulkanDevice*& device,
                                        graph::IRenderTarget*& render_target);
@@ -118,7 +118,7 @@ namespace hgl
                              std::unordered_map<graph::FontSource*, BatchInput>& inputs);
 
             void ProcessInputs(std::unordered_map<graph::FontSource*, BatchInput>& inputs,
-                               graph::MaterialManager* material_manager,
+                               graph::ShaderMaterialProgramManager* material_manager,
                                graph::PrimitiveManager* primitive_manager,
                                graph::VulkanDevice* device);
 

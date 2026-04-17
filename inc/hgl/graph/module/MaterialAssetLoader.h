@@ -4,7 +4,7 @@
 ///
 /// 将 MaterialAssetRecord 中的平铺字段还原为对应的
 /// Material2DCreateConfig / Material3DCreateConfig / BillboardMaterialCreateConfig，
-/// 调用 MaterialManager::AcquireMaterial，并可选地加载纹理并绑定到材质。
+/// 调用 ShaderMaterialProgramManager::AcquireMaterial，并可选地加载纹理并绑定到材质。
 ///
 /// 用法示例（示例程序顶部的静态配置表）：
 ///   static const mtl::MaterialAssetRecord kMeshMtl {
@@ -18,7 +18,7 @@
 #include <hgl/mtl/MaterialAssetRecord.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
-#include <hgl/graph/module/MaterialManager.h>
+#include <hgl/graph/module/ShaderMaterialProgramManager.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/type/String.h>
@@ -31,7 +31,7 @@ namespace hgl::graph
 
 /// 从 MaterialAssetRecord 创建/获取 ShaderMaterialProgram（仅 AcquireMaterial，不绑纹理）。
 inline ShaderMaterialProgram *CreateMaterialFromRecord(
-    MaterialManager *mm,
+    ShaderMaterialProgramManager *mm,
     const mtl::MaterialAssetRecord &rec)
 {
     if (!mm) return nullptr;

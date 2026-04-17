@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/module/MaterialManager.h>
+﻿#include<hgl/graph/module/ShaderMaterialProgramManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
 #include<hgl/vk/VKDevice.h>
@@ -65,7 +65,7 @@ namespace
         }
     }
 
-    bool BuildLegacyShaderModules(MaterialManager *manager,
+    bool BuildLegacyShaderModules(ShaderMaterialProgramManager *manager,
                                   const AnsiString &mtl_name,
                                   const ShaderStageMap &sci_map,
                                   ShaderModuleMap *shader_maps)
@@ -73,7 +73,7 @@ namespace
         if (!manager || !shader_maps)
         {
             std::fprintf(stderr,
-                "[MaterialManager] BuildLegacyShaderModules failed for '%s': manager=%p shader_maps=%p\n",
+                "[ShaderMaterialProgramManager] BuildLegacyShaderModules failed for '%s': manager=%p shader_maps=%p\n",
                 mtl_name.c_str(),
                 manager,
                 shader_maps);
@@ -83,7 +83,7 @@ namespace
         if (sci_map.GetCount() < 2)
         {
             std::fprintf(stderr,
-                "[MaterialManager] BuildLegacyShaderModules failed for '%s': shader count=%d (expected >= 2)\n",
+                "[ShaderMaterialProgramManager] BuildLegacyShaderModules failed for '%s': shader count=%d (expected >= 2)\n",
                 mtl_name.c_str(),
                 sci_map.GetCount());
             return false;
@@ -96,7 +96,7 @@ namespace
             if (!sci_ptr)
             {
                 std::fprintf(stderr,
-                    "[MaterialManager] BuildLegacyShaderModules failed for '%s': shader create info is null\n",
+                    "[ShaderMaterialProgramManager] BuildLegacyShaderModules failed for '%s': shader create info is null\n",
                     mtl_name.c_str());
                 return false;
             }
@@ -105,7 +105,7 @@ namespace
             if (!module)
             {
                 std::fprintf(stderr,
-                    "[MaterialManager] BuildLegacyShaderModules failed for '%s': CreateShaderModule returned null for stage=%u\n",
+                    "[ShaderMaterialProgramManager] BuildLegacyShaderModules failed for '%s': CreateShaderModule returned null for stage=%u\n",
                     mtl_name.c_str(),
                     static_cast<unsigned>(sci_ptr->GetShaderStage()));
                 return false;
@@ -119,26 +119,26 @@ namespace
 
 }//namespace
 
-GRAPH_MODULE_CONSTRUCT(MaterialManager)
+GRAPH_MODULE_CONSTRUCT(ShaderMaterialProgramManager)
 {
 }
 
-const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_name,const ShaderCreateInfo *sci)
+const ShaderModule *ShaderMaterialProgramManager::CreateShaderModule(const AnsiString &sm_name,const ShaderCreateInfo *sci)
 {
     VulkanDevice *device = GetDevice();
     if(!device)
     {
-        std::fprintf(stderr, "[MaterialManager] CreateShaderModule failed: device is null for '%s'\n", sm_name.c_str());
+        std::fprintf(stderr, "[ShaderMaterialProgramManager] CreateShaderModule failed: device is null for '%s'\n", sm_name.c_str());
         return(nullptr);
     }
     if(sm_name.IsEmpty())
     {
-        std::fprintf(stderr, "[MaterialManager] CreateShaderModule failed: shader module name is empty\n");
+        std::fprintf(stderr, "[ShaderMaterialProgramManager] CreateShaderModule failed: shader module name is empty\n");
         return(nullptr);
     }
     if(!sci)
     {
-        std::fprintf(stderr, "[MaterialManager] CreateShaderModule failed for '%s': ShaderCreateInfo is null\n", sm_name.c_str());
+        std::fprintf(stderr, "[ShaderMaterialProgramManager] CreateShaderModule failed for '%s': ShaderCreateInfo is null\n", sm_name.c_str());
         return(nullptr);
     }
 
@@ -147,7 +147,7 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
     if(bit_offset<0||bit_offset>VK_SHADER_STAGE_TYPE_COUNT)
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateShaderModule failed for '%s': invalid stage bit offset=%d stage=%u\n",
+            "[ShaderMaterialProgramManager] CreateShaderModule failed for '%s': invalid stage bit offset=%d stage=%u\n",
             sm_name.c_str(),
             bit_offset,
             static_cast<unsigned>(sci->GetShaderStage()));
@@ -166,7 +166,7 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
     if(!sm)
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateShaderModule failed for '%s': VulkanDevice::CreateShaderModule returned null (stage=%u spv_size=%zu)\n",
+            "[ShaderMaterialProgramManager] CreateShaderModule failed for '%s': VulkanDevice::CreateShaderModule returned null (stage=%u spv_size=%zu)\n",
             sm_name.c_str(),
             static_cast<unsigned>(sci->GetShaderStage()),
             sci->GetSPVSize());
@@ -190,7 +190,7 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
     return sm;
 }
 
-const ShaderModule *MaterialManager::CreateShaderModuleFromSPV(const AnsiString &sm_name,
+const ShaderModule *ShaderMaterialProgramManager::CreateShaderModuleFromSPV(const AnsiString &sm_name,
                                                                 const VkShaderStageFlagBits stage,
                                                                 const uint32_t *spv_data,
                                                                 const size_t spv_size)
@@ -233,13 +233,13 @@ const ShaderModule *MaterialManager::CreateShaderModuleFromSPV(const AnsiString 
     return sm;
 }
 
-GraphicsPipelineLayoutData *MaterialManager::CreateMaterialGraphicsPipelineLayoutData(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager)
+GraphicsPipelineLayoutData *ShaderMaterialProgramManager::CreateMaterialGraphicsPipelineLayoutData(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager)
 {
     VulkanDevice *device = GetDevice();
     if(!device)
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateMaterialGraphicsPipelineLayoutData failed for '%s': device is null\n",
+            "[ShaderMaterialProgramManager] CreateMaterialGraphicsPipelineLayoutData failed for '%s': device is null\n",
             mtl_name.c_str());
         return nullptr;
     }
@@ -258,13 +258,13 @@ GraphicsPipelineLayoutData *MaterialManager::CreateMaterialGraphicsPipelineLayou
     return pld;
 }
 
-MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager, const GraphicsPipelineLayoutData *pld, const DescriptorSetType &desc_set_type)
+MaterialParameters *ShaderMaterialProgramManager::CreateMaterialMP(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager, const GraphicsPipelineLayoutData *pld, const DescriptorSetType &desc_set_type)
 {
     VulkanDevice *device = GetDevice();
     if(!device)
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateMaterialMP failed for '%s': device is null (set=%d)\n",
+            "[ShaderMaterialProgramManager] CreateMaterialMP failed for '%s': device is null (set=%d)\n",
             mtl_name.c_str(),
             static_cast<int>(desc_set_type));
         return nullptr;
@@ -288,7 +288,7 @@ MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name
     return mp;
 }
 
-void MaterialManager::ApplyMaterialFinalizePlan(ShaderMaterialProgram *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci)
+void ShaderMaterialProgramManager::ApplyMaterialFinalizePlan(ShaderMaterialProgram *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci)
 {
     if(!mtl)
         return;
@@ -306,7 +306,7 @@ void MaterialManager::ApplyMaterialFinalizePlan(ShaderMaterialProgram *mtl, cons
     mtl->mi_schema     = finalize_plan.mi_schema;
 
     std::fprintf(stderr,
-        "[MaterialManager] Finalize material='%s' mi_bytes=%u mi_max=%u schema=%u schema_file=%s struct=%s descriptor_sets=%zu\n",
+        "[ShaderMaterialProgramManager] Finalize material='%s' mi_bytes=%u mi_max=%u schema=%u schema_file=%s struct=%s descriptor_sets=%zu\n",
         mtl_name.c_str(),
         finalize_plan.mi_data_bytes,
         finalize_plan.mi_max_count,
@@ -316,7 +316,7 @@ void MaterialManager::ApplyMaterialFinalizePlan(ShaderMaterialProgram *mtl, cons
         finalize_plan.mp_set_types.size());
 }
 
-ShaderMaterialProgram *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
+ShaderMaterialProgram *ShaderMaterialProgramManager::TryGetCachedMaterial(const AnsiString &name)
 {
     acquire_material_cache_lookups.fetch_add(1);
 
@@ -332,7 +332,7 @@ ShaderMaterialProgram *MaterialManager::TryGetCachedMaterial(const AnsiString &n
     return nullptr;
 }
 
-ShaderMaterialProgram *MaterialManager::TryInitializeFallbackMaterial()
+ShaderMaterialProgram *ShaderMaterialProgramManager::TryInitializeFallbackMaterial()
 {
     if(fallback_material)
         return fallback_material;
@@ -356,26 +356,26 @@ ShaderMaterialProgram *MaterialManager::TryInitializeFallbackMaterial()
     {
         // If Checkerboard3D fails, try Standard as ultimate fallback
         std::fprintf(stderr,
-            "[MaterialManager] TryInitializeFallbackMaterial failed creating Checkerboard3D, trying Standard\n");
+            "[ShaderMaterialProgramManager] TryInitializeFallbackMaterial failed creating Checkerboard3D, trying Standard\n");
 
         fallback_material = CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
 
         if(!fallback_material)
         {
             std::fprintf(stderr,
-                "[MaterialManager] TryInitializeFallbackMaterial failed: could not create any fallback material\n");
+                "[ShaderMaterialProgramManager] TryInitializeFallbackMaterial failed: could not create any fallback material\n");
             return nullptr;
         }
     }
 
     std::fprintf(stdout,
-        "[MaterialManager] Fallback material initialized: %s\n",
+        "[ShaderMaterialProgramManager] Fallback material initialized: %s\n",
         fallback_material->GetName().c_str());
 
     return fallback_material;
 }
 
-ShaderMaterialProgram *MaterialManager::GetFallbackMaterial()
+ShaderMaterialProgram *ShaderMaterialProgramManager::GetFallbackMaterial()
 {
     if(!fallback_material)
         TryInitializeFallbackMaterial();
@@ -383,7 +383,7 @@ ShaderMaterialProgram *MaterialManager::GetFallbackMaterial()
     return fallback_material;
 }
 
-bool MaterialManager::ExecuteMaterialBuildPipeline(ShaderMaterialProgram *mtl,
+bool ShaderMaterialProgramManager::ExecuteMaterialBuildPipeline(ShaderMaterialProgram *mtl,
                                                    const AnsiString &mtl_name,
                                                    const mtl::MaterialCreateInfo *mci,
                                                    const ShaderStageMap &sci_map)
@@ -391,7 +391,7 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(ShaderMaterialProgram *mtl,
     if(!mtl || !mci)
     {
         std::fprintf(stderr,
-            "[MaterialManager] ExecuteMaterialBuildPipeline failed for '%s': mtl=%p mci=%p\n",
+            "[ShaderMaterialProgramManager] ExecuteMaterialBuildPipeline failed for '%s': mtl=%p mci=%p\n",
             mtl_name.c_str(),
             mtl,
             mci);
@@ -404,7 +404,7 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(ShaderMaterialProgram *mtl,
                                  mtl->shader_maps))
     {
         std::fprintf(stderr,
-            "[MaterialManager] ExecuteMaterialBuildPipeline failed for '%s': BuildLegacyShaderModules returned false\n",
+            "[ShaderMaterialProgramManager] ExecuteMaterialBuildPipeline failed for '%s': BuildLegacyShaderModules returned false\n",
             mtl_name.c_str());
         return false;
     }
@@ -425,14 +425,14 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(ShaderMaterialProgram *mtl,
     return true;
 }
 
-ShaderMaterialProgram *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
+ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
 {
     HGL_CAPTURE_SCOPE();
 
     if(!mci)
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateMaterial(name,mci) failed for '%s': mci is null\n",
+            "[ShaderMaterialProgramManager] CreateMaterial(name,mci) failed for '%s': mci is null\n",
             mtl_name.c_str());
         return(nullptr);
     }
@@ -450,7 +450,7 @@ ShaderMaterialProgram *MaterialManager::CreateMaterial(const AnsiString &mtl_nam
     if(precheck_decision != MaterialCreatePrecheckDecision::Proceed)
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateMaterial(name,mci) failed for '%s': precheck decision=%d\n",
+            "[ShaderMaterialProgramManager] CreateMaterial(name,mci) failed for '%s': precheck decision=%d\n",
             mtl_name.c_str(),
             static_cast<int>(precheck_decision));
         return nullptr;
@@ -465,7 +465,7 @@ ShaderMaterialProgram *MaterialManager::CreateMaterial(const AnsiString &mtl_nam
                                      sci_map))
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateMaterial(name,mci) failed for '%s': ExecuteMaterialBuildPipeline returned false\n",
+            "[ShaderMaterialProgramManager] CreateMaterial(name,mci) failed for '%s': ExecuteMaterialBuildPipeline returned false\n",
             mtl_name.c_str());
         return nullptr;
     }
@@ -474,12 +474,12 @@ ShaderMaterialProgram *MaterialManager::CreateMaterial(const AnsiString &mtl_nam
     acquire_material_created.fetch_add(1);
 
     material_by_name.Add(mtl_name,mtl);
-    // ShaderMaterialProgram is a C++ object managed by MaterialManager, not a Vulkan object
+    // ShaderMaterialProgram is a C++ object managed by ShaderMaterialProgramManager, not a Vulkan object
     // No need to track with ObjectTracker
     return mtl.Finish();
 }
 
-ShaderMaterialProgram *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg)
+ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -493,7 +493,7 @@ ShaderMaterialProgram *MaterialManager::CreateMaterial(const mtl::MaterialPreset
     return CreateMaterial(key, cfg);
 }
 
-ShaderMaterialProgram *MaterialManager::AcquireMaterial(const MaterialSpec &spec, MaterialSpecKey *out_key)
+ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const MaterialSpec &spec, MaterialSpecKey *out_key)
 {
     if(!spec.IsValid())
         return nullptr;
@@ -522,7 +522,7 @@ ShaderMaterialProgram *MaterialManager::AcquireMaterial(const MaterialSpec &spec
     return result;
 }
 
-ShaderMaterialProgram *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
+ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
     acquire_material_requests.fetch_add(1);
 
@@ -541,7 +541,7 @@ ShaderMaterialProgram *MaterialManager::AcquireMaterial(const mtl::MaterialPrese
     return mtl;
 }
 
-ShaderMaterialProgram *MaterialManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
+ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
     acquire_material_requests.fetch_add(1);
 
@@ -560,7 +560,7 @@ ShaderMaterialProgram *MaterialManager::AcquireMaterial(const mtl::MaterialPrese
     return mtl;
 }
 
-ShaderMaterialProgram *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
+ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
     acquire_material_requests.fetch_add(1);
 
@@ -579,7 +579,7 @@ ShaderMaterialProgram *MaterialManager::AcquireMaterial(const mtl::MaterialVaria
     return mtl;
 }
 
-ShaderMaterialProgram *MaterialManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
+ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
     acquire_material_requests.fetch_add(1);
 
@@ -598,17 +598,17 @@ ShaderMaterialProgram *MaterialManager::AcquireMaterial(const mtl::MaterialVaria
     return mtl;
 }
 
-void MaterialManager::ResetShaderGenProfiler()
+void ShaderMaterialProgramManager::ResetShaderGenProfiler()
 {
     // Legacy-only mode keeps ShaderGen debug APIs as no-op for compatibility.
 }
 
-ShaderGenProfilerSnapshot MaterialManager::GetShaderGenProfilerSnapshot() const
+ShaderGenProfilerSnapshot ShaderMaterialProgramManager::GetShaderGenProfilerSnapshot() const
 {
     return {};
 }
 
-bool MaterialManager::GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name) const
+bool ShaderMaterialProgramManager::GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name) const
 {
     out_report = {};
     if (out_material_name)
@@ -616,26 +616,26 @@ bool MaterialManager::GetShaderGenLastValidationReport(ShaderGenValidationReport
     return false;
 }
 
-std::vector<ShaderGenValidationReportRecord> MaterialManager::GetShaderGenRecentValidationReports(const uint32_t max_count) const
+std::vector<ShaderGenValidationReportRecord> ShaderMaterialProgramManager::GetShaderGenRecentValidationReports(const uint32_t max_count) const
 {
     (void)max_count;
     return {};
 }
 
-std::map<std::string, uint32_t> MaterialManager::GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count) const
+std::map<std::string, uint32_t> ShaderMaterialProgramManager::GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count) const
 {
     (void)max_count;
     return {};
 }
 
-ShaderMaterialProgram *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg)
+ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
     if(!cfg)
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateMaterial(preset=Standard/3D) failed: cfg is null (preset=%s)\n",
+            "[ShaderMaterialProgramManager] CreateMaterial(preset=Standard/3D) failed: cfg is null (preset=%s)\n",
             mtl::GetMaterialPresetName(mtl_id));
         return(nullptr);
     }
@@ -647,7 +647,7 @@ ShaderMaterialProgram *MaterialManager::CreateMaterial(const mtl::MaterialPreset
     return CreateMaterial(key, cfg);
 }
 
-ShaderMaterialProgram *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material2DCreateConfig *cfg)
+ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material2DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -694,13 +694,13 @@ ShaderMaterialProgram *MaterialManager::CreateMaterial(const mtl::MaterialVarian
     return mat;
 }
 
-ShaderMaterialProgram *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg)
+ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
     if(!cfg)
     {
-        std::fprintf(stderr, "[MaterialManager] CreateMaterial(key/3D) failed: cfg is null\n");
+        std::fprintf(stderr, "[ShaderMaterialProgramManager] CreateMaterial(key/3D) failed: cfg is null\n");
         return(nullptr);
     }
 
@@ -728,7 +728,7 @@ ShaderMaterialProgram *MaterialManager::CreateMaterial(const mtl::MaterialVarian
     if(!profile)
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateMaterial(key/3D) warning: physical device profile is null (key_hash=%llu)\n",
+            "[ShaderMaterialProgramManager] CreateMaterial(key/3D) warning: physical device profile is null (key_hash=%llu)\n",
             static_cast<unsigned long long>(key.Hash()));
     }
 
@@ -737,7 +737,7 @@ ShaderMaterialProgram *MaterialManager::CreateMaterial(const mtl::MaterialVarian
     if(!mci)
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateMaterial(key/3D) failed: CreateMaterialCreateInfo returned null (key_hash=%llu surface=%u geom=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X cfg_hash=%s)\n",
+            "[ShaderMaterialProgramManager] CreateMaterial(key/3D) failed: CreateMaterialCreateInfo returned null (key_hash=%llu surface=%u geom=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X cfg_hash=%s)\n",
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
             static_cast<unsigned>(key.geometry_mode),
@@ -761,7 +761,7 @@ ShaderMaterialProgram *MaterialManager::CreateMaterial(const mtl::MaterialVarian
     return mat;
 }
 
-MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)
+MaterialInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)
 {
     acquire_mi_requests.fetch_add(1);
 
@@ -796,7 +796,7 @@ MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanc
     return mi;
 }
 
-bool MaterialManager::UpdateInstanceData(MaterialInstance *mi, const void *data, const uint32 data_size)
+bool ShaderMaterialProgramManager::UpdateInstanceData(MaterialInstance *mi, const void *data, const uint32 data_size)
 {
     if(!mi || !data || data_size == 0)
         return false;
@@ -809,7 +809,7 @@ bool MaterialManager::UpdateInstanceData(MaterialInstance *mi, const void *data,
 // ResourceDomain — Phase 1
 // ============================================================================
 
-DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDomain *domain, ShaderMaterialProgram *mtl)
+DomainMaterialBinding *ShaderMaterialProgramManager::CreateDomainMaterialBinding(ResourceDomain *domain, ShaderMaterialProgram *mtl)
 {
     if (!domain || !mtl)
         return nullptr;
@@ -817,7 +817,7 @@ DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDoma
     if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateDomainMaterialBinding: schema mismatch "
+            "[ShaderMaterialProgramManager] CreateDomainMaterialBinding: schema mismatch "
             "domain=%u mtl=%u\n",
             static_cast<unsigned>(domain->GetShaderDataSchema()),
             static_cast<unsigned>(mtl->GetShaderDataSchema()));
@@ -843,7 +843,7 @@ DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDoma
 
 // Phase 3 -- domain lifecycle management
 
-void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *binding)
+void ShaderMaterialProgramManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *binding)
 {
     if (!binding)
         return;
@@ -861,7 +861,7 @@ void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *bindin
     delete binding;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VIL *vil)
+MaterialInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VIL *vil)
 {
     if (!domain || !mtl)
         return nullptr;
@@ -877,7 +877,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(ShaderMaterialProgram 
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VILConfig *vil_cfg)
+MaterialInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VILConfig *vil_cfg)
 {
     if(!domain || !mtl) return nullptr;
 
@@ -892,7 +892,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(ShaderMaterialProgram 
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size)
+MaterialInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size)
 {
     if(!domain || !mtl) return nullptr;
 
@@ -911,7 +911,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(ShaderMaterialProgram 
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size)
+MaterialInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size)
 {
     if(!domain || !mtl) return nullptr;
 

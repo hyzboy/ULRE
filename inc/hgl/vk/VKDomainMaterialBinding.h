@@ -31,9 +31,9 @@ class DomainMaterialBinding
 
 private:
 
-    friend class MaterialManager;
+    friend class ShaderMaterialProgramManager;
 
-    /// MaterialManager 独占构造。mp_per_material 由 MaterialManager 分配后传入。
+    /// ShaderMaterialProgramManager 独占构造。mp_per_material 由 ShaderMaterialProgramManager 分配后传入。
     DomainMaterialBinding(ResourceDomain *d, ShaderMaterialProgram *m, MaterialParameters *mp);
 
 public:

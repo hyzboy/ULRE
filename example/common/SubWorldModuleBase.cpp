@@ -4,7 +4,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/ShaderMaterialProgramManager.h>
 
 using namespace hgl;
 using namespace hgl::ecs;

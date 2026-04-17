@@ -17,7 +17,7 @@
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
-#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/ShaderMaterialProgramManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/module/SamplerManager.h>
@@ -93,7 +93,7 @@ namespace hgl::ecs
             out_style.line_height = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height + out_style.line_gap));
         }
 
-        graph::ResourceDomain *ResolveDomainForMaterial(graph::MaterialManager *material_manager,
+        graph::ResourceDomain *ResolveDomainForMaterial(graph::ShaderMaterialProgramManager *material_manager,
                                                         graph::ShaderMaterialProgram *material,
                                                         uint32_t domain_id)
         {
@@ -267,13 +267,13 @@ namespace hgl::ecs
             return entry;
 
         RenderResources resources;
-        graph::MaterialManager* material_manager = nullptr;
+        graph::ShaderMaterialProgramManager* material_manager = nullptr;
         graph::SamplerManager* sampler_manager = nullptr;
         graph::BufferManager* buffer_manager = nullptr;
 
         struct BuildGuard
         {
-            graph::MaterialManager* material_manager = nullptr;
+            graph::ShaderMaterialProgramManager* material_manager = nullptr;
             graph::SamplerManager* sampler_manager = nullptr;
             graph::ShaderMaterialProgram* material = nullptr;
             graph::Sampler* sampler = nullptr;
@@ -418,7 +418,7 @@ namespace hgl::ecs
     }
 
     bool TextRenderPipeline::PrepareFrameResources(graph::GraphicsContext*& graphics_context,
-                                                   graph::MaterialManager*& material_manager,
+                                                   graph::ShaderMaterialProgramManager*& material_manager,
                                                    graph::PrimitiveManager*& primitive_manager,
                                                    graph::VulkanDevice*& device,
                                                    graph::IRenderTarget*& render_target)
@@ -485,7 +485,7 @@ namespace hgl::ecs
     }
 
     void TextRenderPipeline::ProcessInputs(std::unordered_map<graph::FontSource*, BatchInput>& inputs,
-                                           graph::MaterialManager* material_manager,
+                                           graph::ShaderMaterialProgramManager* material_manager,
                                            graph::PrimitiveManager* primitive_manager,
                                            graph::VulkanDevice* device)
     {

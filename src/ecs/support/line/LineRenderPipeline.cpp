@@ -10,7 +10,7 @@
 #include <hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/render/RenderContext.h>
-#include <hgl/graph/module/MaterialManager.h>
+#include <hgl/graph/module/ShaderMaterialProgramManager.h>
 #include <hgl/graph/module/ResourceDomainManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/geo/GeometryCreater.h>

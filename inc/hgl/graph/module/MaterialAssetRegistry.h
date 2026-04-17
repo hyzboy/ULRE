@@ -20,14 +20,14 @@
 namespace hgl::graph
 {
 
-class MaterialManager;
+class ShaderMaterialProgramManager;
 class TextureManager;
 class SamplerManager;
 class MaterialInstance;
 
 class MaterialAssetRegistry
 {
-    MaterialManager *mm;
+    ShaderMaterialProgramManager *mm;
     TextureManager  *tm;
     SamplerManager  *sm;
 
@@ -58,7 +58,7 @@ class MaterialAssetRegistry
 
 public:
 
-    MaterialAssetRegistry(MaterialManager *mm, TextureManager *tm, SamplerManager *sm);
+    MaterialAssetRegistry(ShaderMaterialProgramManager *mm, TextureManager *tm, SamplerManager *sm);
     ~MaterialAssetRegistry() = default;
 
     /// 核心 API：传入 record，返回三元组
