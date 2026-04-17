@@ -9,13 +9,6 @@ namespace hgl::graph{
 // MaterialInstanceData — constructors / destructor
 // ---------------------------------------------------------------------------
 
-/// 旧路径：domain = nullptr
-MaterialInstance::MaterialInstance(Material *mtl, const VIL *v, const int id)
-    : material(mtl), domain(nullptr), domain_id(0xFFFFFFFFu), vil(v), mi_id(id)
-{
-    std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
-}
-
 /// Phase 1 新路径：经由 ResourceDomain 分配
 MaterialInstance::MaterialInstance(Material *mtl, ResourceDomain *d, const VIL *v, const int id)
     : material(mtl), domain(d), domain_id(d ? d->GetDomainID() : 0xFFFFFFFFu), vil(v), mi_id(id)

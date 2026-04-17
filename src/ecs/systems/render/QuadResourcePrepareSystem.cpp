@@ -31,7 +31,7 @@ namespace hgl::ecs
                                                            graph::Material *material,
                                                            uint32_t domain_id)
     {
-        if (!material || !material->hasMI())
+        if (!material)
             return nullptr;
 
         auto *rdm = gc ? gc->GetResourceDomainManager() : nullptr;

@@ -82,7 +82,7 @@ struct MaterialInstanceSpec
 
     GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
 
-    bool IsValid() const { return material != nullptr; }
+    bool IsValid() const { return material != nullptr && domain != nullptr; }
 };
 
 struct MaterialAcquireStats

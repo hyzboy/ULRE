@@ -752,49 +752,15 @@ MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanc
     if(!spec.IsValid())
         return nullptr;
 
+    Material *mtl = spec.material;
+    if(!mtl)
+        return nullptr;
+
     MaterialInstance *mi = nullptr;
-
-    if(spec.domain)
-    {
-        Material *mtl = spec.material;
-        if(!mtl) return nullptr;
-
-        if(spec.vil_cfg)
-            mi = CreateMaterialInstance(mtl, spec.domain, spec.vil_cfg, spec.instance_data, spec.instance_data_size);
-        else
-            mi = CreateMaterialInstance(mtl, spec.domain, spec.vil, spec.instance_data, spec.instance_data_size);
-    }
+    if(spec.vil_cfg)
+        mi = CreateMaterialInstance(mtl, spec.domain, spec.vil_cfg, spec.instance_data, spec.instance_data_size);
     else
-    {
-        Material *mtl = spec.material;
-        if(!mtl) return nullptr;
-
-        if (mtl->hasMI())
-        {
-            std::fprintf(stderr,
-                "[MaterialManager] AcquireMaterialInstance rejected: material '%s' has MI data and now requires explicit ResourceDomain\n",
-                mtl->GetName().c_str());
-            return nullptr;
-        }
-
-        const VIL *vil = nullptr;
-        if (spec.vil_cfg)
-            vil = mtl->CreateVIL(spec.vil_cfg);
-        else
-            vil = spec.vil ? spec.vil : mtl->GetDefaultVIL();
-
-        mi = new MaterialInstance(mtl, vil, -1);
-        mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
-        Add(mi);
-
-        VulkanDevice *device = GetDevice();
-        if(device)
-            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
-                                ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
-
-        if(spec.instance_data && spec.instance_data_size > 0)
-            mi->WriteMIData(spec.instance_data, spec.instance_data_size);
-    }
+        mi = CreateMaterialInstance(mtl, spec.domain, spec.vil, spec.instance_data, spec.instance_data_size);
 
     if(!mi)
         return nullptr;

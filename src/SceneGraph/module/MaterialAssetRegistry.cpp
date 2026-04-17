@@ -167,16 +167,6 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     std::string mat_name_str(mat_name.c_str() ? mat_name.c_str() : "",
                              mat_name.c_str() ? static_cast<size_t>(mat_name.Length()) : 0);
 
-    // 无 MI 数据的材质不需要 ResourceDomain / DomainMaterialBinding。
-    // 这类材质直接走 Material 路径即可（常见于仅纹理/固定参数材质）。
-    if (!handle.material->hasMI())
-    {
-        if (tm && sm && !rec.textures.empty())
-            BindMaterialTexturesCompat(handle.material, tm, sm, rec);
-
-        return handle;
-    }
-
     // 2. ResourceDomain (按 schema + domain_id 缓存)
     const std::string &did = rec.domain_id;          // 空串 → 默认域
     const auto schema = handle.material->GetShaderDataSchema();
@@ -225,6 +215,16 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
             return {};
 
         domain_cache[domain_cache_key] = handle.domain;
+    }
+
+    // 无 MI 数据的材质不需要 DomainMaterialBinding。
+    // 但仍显式携带 domain，以统一 MI 创建入口的约束。
+    if (!handle.material->hasMI())
+    {
+        if (tm && sm && !rec.textures.empty())
+            BindMaterialTexturesCompat(handle.material, tm, sm, rec);
+
+        return handle;
     }
 
     // 3. DomainMaterialBinding (按 material_name + domain_id + texture_hash 缓存)

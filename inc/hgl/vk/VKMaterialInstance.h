@@ -11,9 +11,9 @@ namespace hgl::graph{
 * 材质实例类<br>
 * 材质实例类本质只是提供一个数据区，供RenderCollector合并成一个大UBO。
 *
-* Phase 1: 支持可选 ResourceDomain。
-*   - domain == nullptr : MI 数据由 Material 自身的数据池管理（旧路径）。
-*   - domain != nullptr : MI 数据由指定 ResourceDomain 的独立数据池管理（新路径）。
+* ResourceDomain 为显式必需：
+*   - MI 数据统一由指定 ResourceDomain 管理。
+*   - 无 MI schema 的材质也会绑定一个 schema=None 的 domain，用于统一创建入口。
 */
 class MaterialInstance
 {
@@ -21,7 +21,7 @@ protected:
 
     Material *material;
 
-    ResourceDomain *domain;     ///< (Phase 1) 可选资源域；为 nullptr 时使用旧路径
+    ResourceDomain *domain;     ///< 显式资源域（统一 MI 创建入口）
 
     uint32_t domain_id = 0xFFFFFFFFu;
 
@@ -48,9 +48,6 @@ private:
     friend class Material;
     friend class ResourceDomain;
     friend class MaterialManager;
-
-    /// 旧路径构造（domain = nullptr）
-    MaterialInstance(Material *, const VIL *, const int);
 
     /// 新路径构造（Phase 1，经由 ResourceDomain 分配槽位）
     MaterialInstance(Material *, ResourceDomain *, const VIL *, const int);

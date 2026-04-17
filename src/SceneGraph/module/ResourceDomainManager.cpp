@@ -23,9 +23,6 @@ void ResourceDomainManager::Release()
 
 ResourceDomain *ResourceDomainManager::Create(const ResourceDomainCreateInfo &info)
 {
-    if (info.schema == mtl::ShaderDataSchema::None)
-        return nullptr;
-
     const uint64_t key = MakeKey(info.schema, info.domain_id);
     auto it = domain_map.find(key);
     if (it != domain_map.end())

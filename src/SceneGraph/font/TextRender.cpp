@@ -29,7 +29,7 @@ namespace hgl::graph
                                                  Material *material,
                                                  uint32_t domain_id)
         {
-            if (!material || !material->hasMI())
+            if (!material)
                 return nullptr;
 
             auto *gc = material_manager ? material_manager->GetGraphicsContext() : nullptr;
