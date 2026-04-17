@@ -7,21 +7,11 @@
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
-#include<cstdio>
 
 namespace hgl::ecs
 {
     namespace
     {
-        constexpr const char *kTrackedWireMaterialId = "bounds_wire";
-
-        static bool IsTrackedWireRecord(const hgl::graph::mtl::MaterialAssetRecord *rec)
-        {
-            return rec
-                && !rec->id.empty()
-                && rec->id == kTrackedWireMaterialId;
-        }
-
         struct RenderableRecord
         {
             bool visible = true;
@@ -102,21 +92,6 @@ namespace hgl::ecs
                                                const void *instance_data,
                                                uint32_t instance_data_size)
     {
-        if (IsTrackedWireRecord(rec))
-        {
-            auto *owner = GetOwner();
-            std::fprintf(stderr,
-                "[WireTrace] PrimitiveComponent::SetMaterialRecord owner='%s' entity=(%u,%u) rec.id=%s prim=%u pipeline=%u mi_bytes=%u has_instance_data=%d\n",
-                owner ? owner->GetName().c_str() : "<null>",
-                static_cast<unsigned>(GetOwnerID().index),
-                static_cast<unsigned>(GetOwnerID().generation),
-                rec->id.c_str(),
-                static_cast<unsigned>(rec->prim),
-                static_cast<unsigned>(rec->pipeline),
-                instance_data_size,
-                (instance_data && instance_data_size > 0) ? 1 : 0);
-        }
-
         material_slot.SetRecord(rec);
         if (instance_data && instance_data_size > 0)
             material_slot.SetInstanceData(instance_data, instance_data_size);

@@ -157,31 +157,12 @@ MaterialAssetRegistry::MaterialAssetRegistry(
 
 MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetRecord &rec)
 {
-    const bool tracked_wire = (!rec.id.empty() && rec.id == "bounds_wire");
     MaterialDomainHandle handle;
 
     // 1. Material (AcquireMaterial 内部已缓存)
     handle.material = CreateMaterialFromRecord(mm, rec);
     if (!handle.material)
-    {
-        if (tracked_wire)
-        {
-            std::fprintf(stderr,
-                "[WireTrace] MaterialAssetRegistry::Acquire failed: CreateMaterialFromRecord rec.id=%s\n",
-                rec.id.c_str());
-        }
         return {};
-    }
-
-    if (tracked_wire)
-    {
-        std::fprintf(stderr,
-            "[WireTrace] MaterialAssetRegistry::Acquire material ok rec.id=%s material='%s' prim=%u hasMI=%d\n",
-            rec.id.c_str(),
-            handle.material->GetName().c_str(),
-            static_cast<unsigned>(handle.material->GetPrimitiveType()),
-            handle.material->hasMI() ? 1 : 0);
-    }
 
     const AnsiString &mat_name = handle.material->GetName();
     std::string mat_name_str(mat_name.c_str() ? mat_name.c_str() : "",
@@ -234,15 +215,6 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
         if (!handle.domain)
             return {};
 
-        if (tracked_wire)
-        {
-            std::fprintf(stderr,
-                "[WireTrace] MaterialAssetRegistry::Acquire domain ready rec.id=%s schema=%u domain_id=%u\n",
-                rec.id.c_str(),
-                static_cast<unsigned>(schema),
-                static_cast<unsigned>(numeric_domain_id));
-        }
-
         domain_cache[domain_cache_key] = handle.domain;
     }
 
@@ -252,13 +224,6 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     {
         if (tm && sm && !rec.textures.empty())
             BindMaterialTexturesCompat(handle.material, tm, sm, rec);
-
-        if (tracked_wire)
-        {
-            std::fprintf(stderr,
-                "[WireTrace] MaterialAssetRegistry::Acquire return (no MI needed) rec.id=%s\n",
-                rec.id.c_str());
-        }
 
         return handle;
     }
@@ -276,15 +241,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
     {
         handle.binding = mm->CreateDomainMaterialBinding(handle.domain, handle.material);
         if (!handle.binding)
-        {
-            if (tracked_wire)
-            {
-                std::fprintf(stderr,
-                    "[WireTrace] MaterialAssetRegistry::Acquire failed: CreateDomainMaterialBinding rec.id=%s\n",
-                    rec.id.c_str());
-            }
             return {};
-        }
 
         // 绑定纹理到 DMB
         if (tm && sm && !rec.textures.empty())
@@ -298,14 +255,6 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
         }
 
         dmb_cache[key] = handle.binding;
-    }
-
-    if (tracked_wire)
-    {
-        std::fprintf(stderr,
-            "[WireTrace] MaterialAssetRegistry::Acquire done rec.id=%s binding=%p\n",
-            rec.id.c_str(),
-            static_cast<void *>(handle.binding));
     }
 
     return handle;
@@ -342,28 +291,15 @@ MaterialInstance *MaterialAssetRegistry::AcquireMI(
     uint32_t instance_data_size,
     MaterialDomainHandle *out_handle)
 {
-    const bool tracked_wire = (!rec.id.empty() && rec.id == "bounds_wire");
     MaterialDomainHandle handle = Acquire(rec);
     if (!handle.material)
-    {
-        if (tracked_wire)
-            std::fprintf(stderr, "[WireTrace] MaterialAssetRegistry::AcquireMI failed: no material rec.id=%s\n", rec.id.c_str());
         return nullptr;
-    }
 
     if (!handle.domain)
-    {
-        if (tracked_wire)
-            std::fprintf(stderr, "[WireTrace] MaterialAssetRegistry::AcquireMI failed: no domain rec.id=%s\n", rec.id.c_str());
         return nullptr;
-    }
 
     if (handle.material->hasMI() && !handle.binding)
-    {
-        if (tracked_wire)
-            std::fprintf(stderr, "[WireTrace] MaterialAssetRegistry::AcquireMI failed: hasMI but no binding rec.id=%s\n", rec.id.c_str());
         return nullptr;
-    }
 
     if (out_handle)
         *out_handle = handle;
@@ -371,11 +307,7 @@ MaterialInstance *MaterialAssetRegistry::AcquireMI(
     // 从 Material DefaultVIL 与 GVF 的差异自动推算 VILConfig
     const VIL *default_vil = handle.material->GetDefaultVIL();
     if (!default_vil)
-    {
-        if (tracked_wire)
-            std::fprintf(stderr, "[WireTrace] MaterialAssetRegistry::AcquireMI failed: default VIL null rec.id=%s\n", rec.id.c_str());
         return nullptr;
-    }
 
     MaterialInstanceSpec spec;
     spec.material = handle.material;
@@ -410,17 +342,6 @@ MaterialInstance *MaterialAssetRegistry::AcquireMI(
 
     if (vil_cfg.GetCount() > 0)
         spec.vil_cfg = &vil_cfg;
-
-    if (tracked_wire)
-    {
-        std::fprintf(stderr,
-            "[WireTrace] MaterialAssetRegistry::AcquireMI create rec.id=%s gvf_active=%u default_vil_attribs=%u overrides=%u pipeline=%u\n",
-            rec.id.c_str(),
-            gvf.GetActiveCount(),
-            default_vil->GetVertexAttribCount(),
-            vil_cfg.GetCount(),
-            static_cast<unsigned>(rec.pipeline));
-    }
 
     return mm->AcquireMaterialInstance(spec);
 }

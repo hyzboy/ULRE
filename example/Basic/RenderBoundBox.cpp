@@ -536,18 +536,10 @@ private:
             if(!rm->primitive_comp->GetLocalAABB(local_aabb))
             {
                 if (rm->geometry)
-                {
                     local_aabb = rm->geometry->GetBoundingVolumes().aabb;
-                    std::cout << "[WireTrace] InitBoundingBoxScene fallback AABB from Geometry owner='"
-                              << rm->entity->GetName() << "'" << std::endl;
-                }
 
                 if (local_aabb.IsEmpty())
-                {
-                    std::cout << "[WireTrace] InitBoundingBoxScene skip owner='"
-                              << rm->entity->GetName() << "': local_aabb empty" << std::endl;
                     continue;
-                }
             }
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
@@ -568,12 +560,6 @@ private:
             bbox->primitive_comp->SetUnresolvedGeometry(bbox_geometry);
             bbox->primitive_comp->SetMaterialRecord(&kWireCfg, &entity_colors[i % COLOR_COUNT], sizeof(Color4f));
             bbox->primitive_comp->SetVisible(true);
-
-            std::cout << "[WireTrace] Setup BBox entity='" << bbox->entity->GetName()
-                      << "' material_id=" << kWireCfg.id
-                      << " prim=" << static_cast<int>(kWireCfg.prim)
-                      << " visible=" << (bbox->primitive_comp->IsVisible() ? 1 : 0)
-                      << std::endl;
 
             bounding_boxes.push_back(std::move(bbox));
         }

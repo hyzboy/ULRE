@@ -87,63 +87,19 @@ namespace hgl::ecs
             if (!batch || batch->items.empty())
                 continue;
 
-            const bool is_line_primitive = batch->key.material
-                && batch->key.material->GetPrimitiveType() == graph::PrimitiveType::Lines;
-
             if (batch->key.queue == RenderQueue::Overlay)
-            {
-                if (is_line_primitive)
-                {
-                    LogDebug("[WireTrace] Render skip line batch: queue=Overlay material=%s items=%zu",
-                             batch->key.material ? batch->key.material->GetName().c_str() : "<null>",
-                             batch->items.size());
-                }
                 continue;
-            }
 
             const auto& key = batch->key;
             if (!key.material || !key.pipeline)
-            {
-                if (is_line_primitive)
-                {
-                    LogDebug("[WireTrace] Render skip line batch: material/pipeline missing material=%p pipeline=%p",
-                             static_cast<void *>(key.material),
-                             static_cast<void *>(key.pipeline));
-                }
                 continue;
-            }
 
             if (batch->draw_batches_count == 0)
-            {
-                if (is_line_primitive)
-                {
-                    LogDebug("[WireTrace] Render skip line batch: draw_batches_count=0 material=%s items=%zu",
-                             key.material->GetName().c_str(),
-                             batch->items.size());
-                }
                 continue;
-            }
 
             auto* renderer = batch->renderer;
             if (!renderer)
-            {
-                if (is_line_primitive)
-                {
-                    LogDebug("[WireTrace] Render skip line batch: renderer is null material=%s",
-                             key.material->GetName().c_str());
-                }
                 continue;
-            }
-
-            if (is_line_primitive)
-            {
-                LogDebug("[WireTrace] Render submit line batch: material=%s queue=%u items=%zu draw_batches=%u pipeline=%p",
-                         key.material->GetName().c_str(),
-                         static_cast<unsigned>(key.queue),
-                         batch->items.size(),
-                         batch->draw_batches_count,
-                         static_cast<void *>(key.pipeline));
-            }
 
             renderer->Render(cmdBuffer,
                              batch->draw_batches,

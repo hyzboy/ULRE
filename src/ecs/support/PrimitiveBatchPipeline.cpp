@@ -37,35 +37,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        constexpr const char *kTrackedWireMaterialId = "bounds_wire";
-
-        static bool IsTrackedWireItem(const RenderItem *item,
-                                      const char **owner_name = nullptr,
-                                      const hgl::graph::mtl::MaterialAssetRecord **out_rec = nullptr)
-        {
-            auto *prim_item = dynamic_cast<const PrimitiveRenderItem *>(item);
-            if (!prim_item)
-                return false;
-
-            auto comp = prim_item->GetPrimitiveComponent();
-            if (!comp)
-                return false;
-
-            auto &slot = comp->GetMaterialSlot();
-            if (owner_name)
-            {
-                auto *owner = comp->GetOwner();
-                *owner_name = owner ? owner->GetName().c_str() : "<null>";
-            }
-
-            if (out_rec)
-                *out_rec = slot.record;
-
-            return slot.record
-                && !slot.record->id.empty()
-                && slot.record->id == kTrackedWireMaterialId;
-        }
-
         PipelineResolveCounters g_pipeline_preresolve_counters;
         std::atomic<uint64_t> g_pipeline_preresolve_skips{0};
         PipelineBatchPhaseTracker g_pipeline_batch_phase_tracker;
@@ -536,10 +507,6 @@ namespace hgl::ecs
             if (!item || !item->isVisible)
                 continue;
 
-            const char *wire_owner_name = nullptr;
-            const hgl::graph::mtl::MaterialAssetRecord *wire_rec = nullptr;
-            const bool tracked_wire = IsTrackedWireItem(item, &wire_owner_name, &wire_rec);
-
             auto* material = item->GetMaterial();
             auto* primitive = item->GetPrimitive();
             graph::GraphicsPipeline* pipeline = nullptr;
@@ -596,33 +563,11 @@ namespace hgl::ecs
                             resolved_pipeline_cache[primitive] = acquired;
                         ++frame_successes;
                         RecordPipelineResolveSuccess(g_pipeline_preresolve_counters);
-
-                        if (tracked_wire)
-                        {
-                            std::fprintf(stderr,
-                                "[WireTrace] Batch pre-resolve ok owner='%s' rec.id=%s material='%s' preset=%u prim=%u pipeline=%p\n",
-                                wire_owner_name ? wire_owner_name : "<null>",
-                                wire_rec ? wire_rec->id.c_str() : "<null>",
-                                material ? material->GetName().c_str() : "<null>",
-                                static_cast<unsigned>(preset),
-                                material ? static_cast<unsigned>(material->GetPrimitiveType()) : 0u,
-                                static_cast<void *>(acquired));
-                        }
                     }
                     else
                     {
                         ++frame_failures;
                         const uint64_t failures_total = RecordPipelineResolveFailure(g_pipeline_preresolve_counters);
-
-                        if (tracked_wire)
-                        {
-                            std::fprintf(stderr,
-                                "[WireTrace] Batch pre-resolve FAILED owner='%s' rec.id=%s material='%s' preset=%u\n",
-                                wire_owner_name ? wire_owner_name : "<null>",
-                                wire_rec ? wire_rec->id.c_str() : "<null>",
-                                material ? material->GetName().c_str() : "<null>",
-                                static_cast<unsigned>(preset));
-                        }
 
                         if (ShouldLogPow2(failures_total))
                         {
@@ -639,19 +584,6 @@ namespace hgl::ecs
                 {
                     ++frame_skips;
                     const uint64_t skips_total = ++g_pipeline_preresolve_skips;
-
-                    if (tracked_wire)
-                    {
-                        std::fprintf(stderr,
-                            "[WireTrace] Batch pre-resolve skipped owner='%s' rec.id=%s vil=%p pipeline_data=%p device=%p preset=%u\n",
-                            wire_owner_name ? wire_owner_name : "<null>",
-                            wire_rec ? wire_rec->id.c_str() : "<null>",
-                            static_cast<const void *>(vil),
-                            static_cast<const void *>(pipeline_data),
-                            static_cast<const void *>(device),
-                            static_cast<unsigned>(preset));
-                    }
-
                     if (ShouldLogPow2(skips_total))
                     {
                         LogDebug("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve skipped: missing data (vil=%p pipeline_data=%p device=%p preset=%d), total_skips=%llu",
@@ -665,18 +597,7 @@ namespace hgl::ecs
             }
 
             if (!material || !pipeline)
-            {
-                if (tracked_wire)
-                {
-                    std::fprintf(stderr,
-                        "[WireTrace] Batch drop owner='%s' rec.id=%s reason=%s%s\n",
-                        wire_owner_name ? wire_owner_name : "<null>",
-                        wire_rec ? wire_rec->id.c_str() : "<null>",
-                        !material ? "no-material" : "",
-                        !pipeline ? " no-pipeline" : "");
-                }
                 continue;
-            }
 
             // Phase 4: include ResourceDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
@@ -693,34 +614,11 @@ namespace hgl::ecs
                 batch->cameraInfo = camera_info;
                 batch->AddItem(item);
                 cache.materialBatches[key] = std::move(batch);
-
-                if (tracked_wire)
-                {
-                    std::fprintf(stderr,
-                        "[WireTrace] Batch create owner='%s' rec.id=%s queue=%u material='%s' prim=%u\n",
-                        wire_owner_name ? wire_owner_name : "<null>",
-                        wire_rec ? wire_rec->id.c_str() : "<null>",
-                        static_cast<unsigned>(queue),
-                        key.material ? key.material->GetName().c_str() : "<null>",
-                        key.material ? static_cast<unsigned>(key.material->GetPrimitiveType()) : 0u);
-                }
             }
             else
             {
                 (*batch_ptr)->buffer_manager = buffer_manager;
                 (*batch_ptr)->AddItem(item);
-
-                if (tracked_wire)
-                {
-                    std::fprintf(stderr,
-                        "[WireTrace] Batch append owner='%s' rec.id=%s queue=%u material='%s' prim=%u items=%u\n",
-                        wire_owner_name ? wire_owner_name : "<null>",
-                        wire_rec ? wire_rec->id.c_str() : "<null>",
-                        static_cast<unsigned>(queue),
-                        key.material ? key.material->GetName().c_str() : "<null>",
-                        key.material ? static_cast<unsigned>(key.material->GetPrimitiveType()) : 0u,
-                        static_cast<unsigned>((*batch_ptr)->items.size()));
-                }
             }
         }
 
