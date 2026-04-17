@@ -61,7 +61,8 @@ private:
     std::string debug_cache;
 
     bool InitSceneResources()
-    {
+    {
+
         auto *geometry_manager = GetGeometryManager();
         auto *primitive_manager = GetPrimitiveManager();
         auto *device = GetDevice();
@@ -85,7 +86,8 @@ private:
 
             grid_material = grid_mi->GetMaterial();
 
-            auto pc = std::make_unique<GeometryCreater>(device, grid_mi->GetVIL());
+            const auto gvf = GeometryVertexFormat::FromVIL(grid_mi->GetVIL());
+            auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
             inline_geometry::PlaneGridCreateInfo pgci;
             pgci.grid_size.Set(64, 64);
@@ -118,7 +120,8 @@ private:
 
             cube_material = cube_mi->GetMaterial();
 
-            auto pc = std::make_unique<GeometryCreater>(device, cube_material->GetDefaultVIL());
+            const auto gvf = GeometryVertexFormat::FromVIL(cube_material->GetDefaultVIL());
+            auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
             inline_geometry::CubeCreateInfo cci;
             cci.segments_x = 2;

@@ -14,8 +14,7 @@ class Geometry;
 class Primitive;
 class MaterialInstance;
 class VertexDataManager;
-class VertexInputLayout;
-using VIL=VertexInputLayout;
+class GeometryVertexFormat;
 
 class GraphicsGeometryFactory
 {
@@ -36,7 +35,7 @@ public:
     GraphicsContext *GetGraphicsContext() const { return graphics; }
 
 public:
-    std::unique_ptr<GeometryCreater> CreateCreater(const VIL *vil) const;
+    std::unique_ptr<GeometryCreater> CreateCreater(const GeometryVertexFormat &gvf) const;
     std::unique_ptr<GeometryCreater> CreateCreater(VertexDataManager *vdm) const;
     std::unique_ptr<GeometryCreater> CreateCreater(MaterialInstance *mi) const;
 

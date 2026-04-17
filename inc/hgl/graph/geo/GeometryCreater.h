@@ -7,6 +7,7 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKMemory.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph{
 class BufferManager;
@@ -21,7 +22,7 @@ protected:
     BufferManager *     buffer_manager;
     VertexDataManager * vdm;
 
-    const VIL *         vil;
+    GeometryVertexFormat geometry_vertex_format;
 
 protected:
 
@@ -46,7 +47,7 @@ protected:
 
 public:
 
-    GeometryCreater(VulkanDevice *,const VIL *,BufferManager *bm=nullptr);
+    GeometryCreater(VulkanDevice *,const GeometryVertexFormat &,BufferManager *bm=nullptr);
     GeometryCreater(VertexDataManager *);
     virtual ~GeometryCreater();
 
@@ -128,7 +129,7 @@ public: //创建可渲染对象
 };//class GeometryCreater
 
 Geometry *CreateGeometry(         VulkanDevice *  device,
-                            const   VIL *           vil,
+                            const   GeometryVertexFormat &gvf,
                             const   AnsiString &    name,
                             const   uint32_t        vertex_count,
                             const   uint32_t        index_count = 0,

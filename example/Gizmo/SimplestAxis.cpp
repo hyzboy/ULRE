@@ -42,7 +42,8 @@ private:
 private:
 
     bool InitMDP()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kAxisCfg {
             .id       = "axis_vertex_color",
             .preset   = mtl::MaterialPreset::VertexColor3D,
@@ -55,7 +56,8 @@ private:
     }
 
     bool CreateRenderObject()
-    {
+    {
+
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
@@ -63,7 +65,8 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material_instance->GetVIL());
+        const auto gvf = GeometryVertexFormat::FromVIL(material_instance->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
         inline_geometry::AxisCreateInfo aci;
 
@@ -77,7 +80,8 @@ private:
     bool InitScene()
     {
         if(!ecs_context)
-            return false;
+            return false;
+
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;

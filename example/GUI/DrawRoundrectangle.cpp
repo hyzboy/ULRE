@@ -57,7 +57,8 @@ private:
 private:
 
     bool InitMaterial()
-    {
+    {
+
         auto* texture_manager = GetTextureManager();
         auto* sampler_manager = GetSamplerManager();
         if (!texture_manager || !sampler_manager)
@@ -100,7 +101,8 @@ private:
             ecs_world = GetECSContext();
             if(!ecs_world)
                 return false;
-        }
+        }
+
         auto* device = GetDevice();
         auto* buffer_manager = GetBufferManager();
         auto* geometry_manager = GetGeometryManager();
@@ -108,7 +110,7 @@ private:
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
-        GeometryCreater pc(device, material_instance->GetVIL(), buffer_manager);
+        GeometryCreater pc(device, GeometryVertexFormat::FromVIL(material_instance->GetVIL()), buffer_manager);
         pc.Init("TextureRect", 6);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
             !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))

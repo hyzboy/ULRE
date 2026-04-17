@@ -101,7 +101,8 @@ public:
     }
 
     bool Init() override
-    {
+    {
+
         auto* texture_manager = GetTextureManager();
         auto* sampler_manager = GetSamplerManager();
                 if (!texture_manager || !sampler_manager)
@@ -135,7 +136,8 @@ public:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, vil);
+        const auto gvf = GeometryVertexFormat::FromVIL(vil);
+        mesh_vdm = new VertexDataManager(buffer_manager, gvf);
         if (!mesh_vdm)
             return false;
         if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))

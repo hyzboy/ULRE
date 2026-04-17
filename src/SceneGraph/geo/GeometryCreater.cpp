@@ -9,12 +9,12 @@
 #include<hgl/graph/module/BufferManager.h>
 
 namespace hgl::graph{
-GeometryCreater::GeometryCreater(VulkanDevice *dev,const VIL *v,BufferManager *bm)
+GeometryCreater::GeometryCreater(VulkanDevice *dev,const GeometryVertexFormat &gvf,BufferManager *bm)
 {
     device          =dev;
     buffer_manager  =bm;
     vdm             =nullptr;
-    vil             =v;
+    geometry_vertex_format = gvf;
 
     has_index       =false;
     geometry_data   =nullptr;
@@ -23,7 +23,7 @@ GeometryCreater::GeometryCreater(VulkanDevice *dev,const VIL *v,BufferManager *b
 }
 
 GeometryCreater::GeometryCreater(VertexDataManager *_vdm)
-    :GeometryCreater(_vdm->GetDevice(),_vdm->GetVIL(),_vdm->GetBufferManager())
+    :GeometryCreater(_vdm->GetDevice(),_vdm->GetGeometryVertexFormat(),_vdm->GetBufferManager())
 {
     vdm=_vdm;
 
@@ -89,9 +89,9 @@ bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,c
     else
     {
         if (buffer_manager)
-            geometry_data=CreateGeometryData(buffer_manager,vil,vertices_number,buffer_policy);
+            geometry_data=CreateGeometryData(buffer_manager,geometry_vertex_format,vertices_number,buffer_policy);
         else
-            geometry_data=CreateGeometryData(device,vil,vertices_number,buffer_policy);
+            geometry_data=CreateGeometryData(device,geometry_vertex_format,vertices_number,buffer_policy);
     }
 
     if(!geometry_data)return(false);
@@ -119,14 +119,15 @@ const int GeometryCreater::InitVAB(const VertexAttrib &attrib,const VkFormat for
 
     const int vab_index=geometry_data->GetVABIndex(attrib);
 
-    if(vab_index<0||vab_index>=vil->GetVertexAttribCount())
+    if(vab_index<0||vab_index>=int(VertexAttrib::RANGE_SIZE))
+        return(-1);
+
+    if(!geometry_vertex_format.Has(attrib))
         return(-1);
 
     if(format!=VK_FORMAT_UNDEFINED)
     {
-        const VIF *vif=vil->GetConfig(vab_index);
-
-        if(vif->format!=format)
+        if(geometry_vertex_format.GetFormat(attrib)!=format)
             return(-2);
     }
 
@@ -211,9 +212,9 @@ Geometry *GeometryCreater::Create()
 // -----------------------------------------------------------------------------
 //  新增：直接创建 Geometry 的便捷函数
 // -----------------------------------------------------------------------------
-Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString &name, const uint32_t vertex_count, const uint32_t index_count , IndexType it, BufferManager *bm, BufferAllocPolicy policy)
+Geometry *CreateGeometry(VulkanDevice *device, const GeometryVertexFormat &gvf, const AnsiString &name, const uint32_t vertex_count, const uint32_t index_count , IndexType it, BufferManager *bm, BufferAllocPolicy policy)
 {
-    if(!device || !vil || name.IsEmpty() || vertex_count==0)
+    if(!device || gvf.GetActiveCount()==0 || name.IsEmpty() || vertex_count==0)
         return nullptr;
 
     IndexType index_type = IndexType::ERR;
@@ -237,8 +238,8 @@ Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString 
     }
 
 // 创建 GeometryData（使用 device 分配私有缓冲）
-    GeometryData *pd = bm ? CreateGeometryData(bm, vil, vertex_count, policy)
-                          : CreateGeometryData(device, vil, vertex_count, policy);
+    GeometryData *pd = bm ? CreateGeometryData(bm, gvf, vertex_count, policy)
+                          : CreateGeometryData(device, gvf, vertex_count, policy);
 
     if(!pd)
         return nullptr;

@@ -4,6 +4,7 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKMemory.h>
 #include<hgl/common/VertexAttribDef.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph{
 
@@ -26,7 +27,7 @@ class GeometryData
 {
 protected:
 
-    const VIL *     vil;
+    GeometryVertexFormat geometry_vertex_format;
 
     uint32_t        vertex_count;
     uint32_t        index_count;
@@ -43,8 +44,10 @@ protected:
 
 public:
 
-    GeometryData(const VIL *_vil,const uint32_t vc);
+    GeometryData(const GeometryVertexFormat &gvf,const uint32_t vc);
     virtual ~GeometryData();
+
+    const GeometryVertexFormat &GetGeometryVertexFormat() const { return geometry_vertex_format; }
 
 public:
 
@@ -52,7 +55,7 @@ public:
     const   uint32_t        GetVABCount     ()const;
     const   int             GetVABIndex     (const VertexAttrib)const;
 
-            bool            CreateAllVAB(const AnsiString &geometry_name="Geometry");     //根据VIL创建所有VAB
+            bool            CreateAllVAB(const AnsiString &geometry_name="Geometry");     //根据GeometryVertexFormat创建所有VAB
 
             VAB *           GetVABByIndex   (const int index)const;
             VAB *           GetVABByAttrib  (const VertexAttrib)const;
@@ -72,9 +75,9 @@ public:
 
 };//class GeometryData
 
-GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc);
-GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc,BufferAllocPolicy policy);
-GeometryData *CreateGeometryData(BufferManager *bm,const VIL *_vil,const uint32_t vc);
-GeometryData *CreateGeometryData(BufferManager *bm,const VIL *_vil,const uint32_t vc,BufferAllocPolicy policy);
+GeometryData *CreateGeometryData(VulkanDevice *dev,const GeometryVertexFormat &gvf,const uint32_t vc);
+GeometryData *CreateGeometryData(VulkanDevice *dev,const GeometryVertexFormat &gvf,const uint32_t vc,BufferAllocPolicy policy);
+GeometryData *CreateGeometryData(BufferManager *bm,const GeometryVertexFormat &gvf,const uint32_t vc);
+GeometryData *CreateGeometryData(BufferManager *bm,const GeometryVertexFormat &gvf,const uint32_t vc,BufferAllocPolicy policy);
 GeometryData *CreateGeometryData(VertexDataManager *vdm,const uint32_t vc);
 }//namespace hgl::graph

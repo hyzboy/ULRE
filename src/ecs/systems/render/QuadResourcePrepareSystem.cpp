@@ -309,7 +309,9 @@ namespace hgl::ecs
         shared_material_instance->SetRenderPreset(GetPresetForWorld(world));
 
         // Create shared quad geometry (explicit quad for VS/FS-only billboard path)
-        auto pc = std::make_unique<graph::GeometryCreater>(device, shared_material_instance->GetVIL());
+        graph::GeometryVertexFormat quad_gvf;
+        quad_gvf.Set(graph::VAN::Position, VF_V3F);
+        auto pc = std::make_unique<graph::GeometryCreater>(device, quad_gvf);
         pc->Init("Quad", 4, 6, graph::IndexType::U16);
 
         static const float position_data[12] =
@@ -562,7 +564,9 @@ namespace hgl::ecs
 
                 if (temp_mi)
                 {
-                    auto pc = std::make_unique<graph::GeometryCreater>(device, temp_mi->GetVIL());
+                    graph::GeometryVertexFormat quad_gvf;
+                    quad_gvf.Set(graph::VAN::Position, VF_V3F);
+                    auto pc = std::make_unique<graph::GeometryCreater>(device, quad_gvf);
                     pc->Init(AnsiString(("DomainQuad_" + dr.domain_tag).c_str()), 4, 6, graph::IndexType::U16);
 
                     static const float position_data[12] =

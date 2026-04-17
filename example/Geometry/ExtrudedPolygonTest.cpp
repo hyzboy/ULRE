@@ -44,7 +44,8 @@ private:
 private:
 
     bool InitMDP()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kExtrudedCfg {
             .id       = "extruded_polygon",
             .preset   = mtl::MaterialPreset::Gizmo3D,
@@ -61,7 +62,8 @@ private:
     }
 
     bool CreateRenderObjects()
-    {
+    {
+
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
@@ -69,7 +71,8 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material_instance->GetVIL());
+        const auto gvf = GeometryVertexFormat::FromVIL(material_instance->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
         // 测试1: 矩形挤压成立方体
         prim_rect_cube = CreateExtrudedRectangle(pc.get(), 2.0f, 1.5f, 1.0f, math::Vector3f(0, 0, 1));
@@ -132,7 +135,8 @@ private:
     bool CreateMeshEntity(const char *name, Geometry *geometry, const glm::vec3 &pos)
     {
         if(!ecs_context || !geometry || !material_instance)
-            return false;
+            return false;
+
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;

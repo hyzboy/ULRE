@@ -37,7 +37,8 @@ private:
 private:
 
     bool InitMDP()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kSkyCfg {
             .id       = "dome_sky_minimal",
             .preset   = mtl::MaterialPreset::SkyMinimal,
@@ -53,7 +54,8 @@ private:
     }
 
     bool CreateRenderObject()
-    {
+    {
+
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
@@ -62,7 +64,8 @@ private:
         using namespace inline_geometry;
 
         {
-            auto pc = std::make_unique<GeometryCreater>(device, mi_sky_sphere->GetVIL());
+            const auto gvf = GeometryVertexFormat::FromVIL(mi_sky_sphere->GetVIL());
+            auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
             DomeCreateInfo dci;
             dci.number_slices = 64;
@@ -79,7 +82,8 @@ private:
         }
 
         {
-            auto pc = std::make_unique<GeometryCreater>(device, mi_sky_sphere->GetVIL());
+            const auto gvf = GeometryVertexFormat::FromVIL(mi_sky_sphere->GetVIL());
+            auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
             prim_ground_plane = CreatePlaneSqaure(pc.get());
             if (!prim_ground_plane)
@@ -97,7 +101,8 @@ private:
             return false;
 
         if(!prim_sky_dome || !prim_ground_plane || !mi_sky_sphere)
-            return false;
+            return false;
+
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;

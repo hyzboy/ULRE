@@ -235,7 +235,8 @@ namespace hgl::graph
 
     TextGeometry *TextRender::Begin(const TextGeometryType &tpt,int limit)
     {
-        TextGeometry *tr=new TextGeometry(device,mi_fs->GetVIL(),limit);
+        const GeometryVertexFormat gvf = BuildTextGeometryVertexFormat();
+        TextGeometry *tr=new TextGeometry(device,gvf,limit);
 
         text_geometry_set.Add(tr);
 

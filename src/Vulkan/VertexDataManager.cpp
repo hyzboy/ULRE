@@ -9,42 +9,38 @@ DEFINE_LOGGER_MODULE(VertexDataManager)
 
 namespace hgl::graph
 {
-    VertexDataManager::VertexDataManager(VulkanDevice *dev,const VIL *_vil)
+    VertexDataManager::VertexDataManager(VulkanDevice *dev,const GeometryVertexFormat &gvf)
     {
         buffer_manager=nullptr;
         device=dev;
 
-        vil=_vil;
-        vi_count=_vil->GetVertexAttribCount();
-        vif_list=_vil->GetVIFList();     //来自于Material，不会被释放，所以指针有效
+        geometry_vertex_format = gvf;
 
         vab_max_size=0;
         vab_cur_size=0;
-        vab=zero_new<VAB *>(vi_count);
+        vab=zero_new<VAB *>(uint(VertexAttrib::RANGE_SIZE));
 
         ibo_cur_size=0;
         ibo=nullptr;
 
-        LogVerbose(OS_TEXT("VertexDataManager constructed: vi_count=") + OSString::numberOf(vi_count) + OS_TEXT(", vif_list=") + OSString::numberOf((uintptr_t)vif_list));
+        LogVerbose(OS_TEXT("VertexDataManager constructed: active_attrib_count=") + OSString::numberOf(geometry_vertex_format.GetActiveCount()));
     }
 
-    VertexDataManager::VertexDataManager(BufferManager *bm,const VIL *_vil)
+    VertexDataManager::VertexDataManager(BufferManager *bm,const GeometryVertexFormat &gvf)
     {
         buffer_manager=bm;
         device=bm?bm->GetDevice():nullptr;
 
-        vil=_vil;
-        vi_count=_vil->GetVertexAttribCount();
-        vif_list=_vil->GetVIFList();     //来自于Material，不会被释放，所以指针有效
+        geometry_vertex_format = gvf;
 
         vab_max_size=0;
         vab_cur_size=0;
-        vab=zero_new<VAB *>(vi_count);
+        vab=zero_new<VAB *>(uint(VertexAttrib::RANGE_SIZE));
 
         ibo_cur_size=0;
         ibo=nullptr;
 
-        LogVerbose(OS_TEXT("VertexDataManager constructed: vi_count=") + OSString::numberOf(vi_count) + OS_TEXT(", vif_list=") + OSString::numberOf((uintptr_t)vif_list));
+        LogVerbose(OS_TEXT("VertexDataManager constructed: active_attrib_count=") + OSString::numberOf(geometry_vertex_format.GetActiveCount()));
     }
 
     VertexDataManager::~VertexDataManager()
@@ -53,7 +49,7 @@ namespace hgl::graph
 
         if (buffer_manager)
         {
-            for (uint i=0;i<vi_count;i++)
+            for (uint i=0;i<uint(VertexAttrib::RANGE_SIZE);i++)
             {
                 if (vab[i])
                     buffer_manager->Release(vab[i]);
@@ -69,7 +65,7 @@ namespace hgl::graph
         }
         else
         {
-            SAFE_CLEAR_OBJECT_ARRAY_OBJECT(vab,vi_count);
+            SAFE_CLEAR_OBJECT_ARRAY_OBJECT(vab,uint(VertexAttrib::RANGE_SIZE));
             SAFE_CLEAR(ibo);
         }
 
@@ -104,20 +100,27 @@ namespace hgl::graph
         vab_cur_size=0;
         ibo_cur_size=0;
 
-        for(uint i=0;i<vi_count;i++)
+        for(uint i=0;i<uint(VertexAttrib::RANGE_SIZE);i++)
         {
-            LogVerbose(OS_TEXT("Creating VAB[") + OSString::numberOf(i) + OS_TEXT("] format=") + OSString::numberOf((int)vif_list[i].format) + OS_TEXT(", size=") + OSString::numberOf(vab_max_size));
+            const VertexAttrib attrib = VertexAttrib(i);
+
+            if (!geometry_vertex_format.Has(attrib))
+                continue;
+
+            const VkFormat fmt = geometry_vertex_format.GetFormat(attrib);
+
+            LogVerbose(OS_TEXT("Creating VAB[") + OSString::numberOf(i) + OS_TEXT("] format=") + OSString::numberOf((int)fmt) + OS_TEXT(", size=") + OSString::numberOf(vab_max_size));
 
             if (buffer_manager)
-                vab[i]=buffer_manager->CreateVAB(vif_list[i].format,vab_max_size);
+                vab[i]=buffer_manager->CreateVAB(fmt,vab_max_size);
             else
-                vab[i]=device->CreateVAB(vif_list[i].format,vab_max_size);
+                vab[i]=device->CreateVAB(fmt,vab_max_size);
             if(!vab[i])
             {
                 LogError(OS_TEXT("CreateVAB failed for index=") + OSString::numberOf(i));
 
                 // cleanup any created VABs
-                for(uint j=0;j<i;j++)
+                for(uint j=0;j<uint(VertexAttrib::RANGE_SIZE);j++)
                 {
                     if (vab[j])
                     {
@@ -148,8 +151,11 @@ namespace hgl::graph
                 LogError(OS_TEXT("CreateIBO failed: size=") + OSString::numberOf(ibo_size));
 
                 // cleanup VABs
-                for(uint i=0;i<vi_count;i++)
+                for(uint i=0;i<uint(VertexAttrib::RANGE_SIZE);i++)
                 {
+                    if(!vab[i])
+                        continue;
+
                     if (buffer_manager)
                         buffer_manager->Release(vab[i]);
                     else

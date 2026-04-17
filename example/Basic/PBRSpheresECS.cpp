@@ -348,7 +348,8 @@ private:
             return false;
         }
 
-        mesh_vdm = new VertexDataManager(buffer_manager, sphere_mi[0][0]->GetVIL());
+        const auto gvf = GeometryVertexFormat::FromVIL(sphere_mi[0][0]->GetVIL());
+        mesh_vdm = new VertexDataManager(buffer_manager, gvf);
         if (!mesh_vdm) {
             printf("[ERROR] InitVDM: Failed to create VertexDataManager\n");
             return false;

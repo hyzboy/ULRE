@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/geo/VKGeometry.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/type/OrderedSet.h>
 #include<hgl/graph/font/FontSource.h>
 
@@ -11,6 +12,17 @@ namespace hgl::ecs
 
 namespace hgl::graph
 {
+    inline constexpr VkFormat TEXT_GEOMETRY_POSITION_FORMAT = VF_V2I16;
+    inline constexpr VkFormat TEXT_GEOMETRY_TEXCOORD_FORMAT = VF_V2F;
+
+    inline GeometryVertexFormat BuildTextGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, TEXT_GEOMETRY_POSITION_FORMAT);
+        gvf.Set(VAN::TexCoord, TEXT_GEOMETRY_TEXCOORD_FORMAT);
+        return gvf;
+    }
+
     namespace layout
     {
         class TextLayout;
@@ -22,7 +34,7 @@ namespace hgl::graph
     class TextGeometry:public Geometry
     {
         VulkanDevice *  device;
-        const VIL *     vil;
+        GeometryVertexFormat geometry_vertex_format;
 
         uint        max_count=0;                                      ///<缓冲区最大容量
         uint        draw_char_count=0;
@@ -46,7 +58,7 @@ namespace hgl::graph
 
     public:
 
-        TextGeometry(VulkanDevice *dev,const VIL *_vil,const uint32_t mc);
+        TextGeometry(VulkanDevice *dev,const GeometryVertexFormat &gvf,const uint32_t mc);
 
         void SetCharCount   (const uint);
 

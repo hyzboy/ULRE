@@ -547,7 +547,8 @@ namespace hgl::ecs
             if (!geometry)
             {
                 const uint32_t estimate = input.total_chars;
-                geometry = new graph::TextGeometry(device, mi->GetVIL(), estimate);
+                const graph::GeometryVertexFormat gvf = graph::BuildTextGeometryVertexFormat();
+                geometry = new graph::TextGeometry(device, gvf, estimate);
                 resources->geometry = geometry;
             }
 

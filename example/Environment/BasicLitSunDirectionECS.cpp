@@ -124,7 +124,8 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, sky_material_instance->GetVIL());
+        const auto sky_gvf = GeometryVertexFormat::FromVIL(sky_material_instance->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, sky_gvf);
         if (!pc)
             return false;
 
@@ -180,7 +181,8 @@ private:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, material_instance->GetVIL());
+        const auto gvf = GeometryVertexFormat::FromVIL(material_instance->GetVIL());
+        mesh_vdm = new VertexDataManager(buffer_manager, gvf);
         if (!mesh_vdm)
             return false;
 

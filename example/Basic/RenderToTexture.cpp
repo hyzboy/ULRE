@@ -150,7 +150,8 @@ public:
         if (!mi)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, mi->GetVIL());
+        const auto gvf = GeometryVertexFormat::FromVIL(mi->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, gvf);
         geometry = inline_geometry::CreateSphere(pc.get(), 64);
         if (!geometry)
             return false;
@@ -326,7 +327,8 @@ private:
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
 
-        auto pc = std::make_unique<GeometryCreater>(device, cube_mi->GetVIL());
+        const auto gvf = GeometryVertexFormat::FromVIL(cube_mi->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, gvf);
         inline_geometry::CubeCreateInfo cci{};
         cci.tex_coord = true;
         cci.normal = true;

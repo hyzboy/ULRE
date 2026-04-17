@@ -42,7 +42,8 @@ private:
 private:
 
     bool InitMDP()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kPlaneGridCfg {
             .id       = "plane_grid",
             .preset   = mtl::MaterialPreset::VertexLuminance2D,
@@ -71,7 +72,8 @@ private:
     }
 
     bool CreateRenderObject()
-    {
+    {
+
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
@@ -87,7 +89,8 @@ private:
         pgci.lum=180;
         pgci.sub_lum=255;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material_instance[0]->GetVIL());
+        const auto gvf = GeometryVertexFormat::FromVIL(material_instance[0]->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
         geom_plane_grid=CreatePlaneGrid2D(pc.get(),&pgci);
         if (geom_plane_grid)
@@ -97,7 +100,8 @@ private:
     }
 
     bool Add(const char *name,MaterialInstance *mi,const glm::quat &rotation)
-    {
+    {
+
         auto* primitive_manager = GetPrimitiveManager();
         if (!primitive_manager)
             return false;

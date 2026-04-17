@@ -104,7 +104,8 @@ private:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, material_instance->GetVIL());
+        const auto gvf = GeometryVertexFormat::FromVIL(material_instance->GetVIL());
+        mesh_vdm = new VertexDataManager(buffer_manager, gvf);
         if (!mesh_vdm)
             return false;
 

@@ -124,7 +124,8 @@ private:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, solid.vil);
+        const auto gvf = GeometryVertexFormat::FromVIL(solid.vil);
+        mesh_vdm = new VertexDataManager(buffer_manager, gvf);
         if (!mesh_vdm)
             return false;
 

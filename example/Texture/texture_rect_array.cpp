@@ -76,7 +76,8 @@ private:
 private:
 
     bool InitTexture()
-    {
+    {
+
         auto* tex_manager = GetTextureManager();
         if (!tex_manager)
             return false;
@@ -103,7 +104,8 @@ private:
     }
 
     bool InitMaterial()
-    {
+    {
+
         auto* sampler_manager = GetSamplerManager();
         if (!sampler_manager)
             return false;
@@ -147,7 +149,8 @@ private:
     }
 
     bool InitVBOAndRenderList()
-    {
+    {
+
         auto* device = GetDevice();
         auto* buffer_manager = GetBufferManager();
         auto* geometry_manager = GetGeometryManager();
@@ -155,7 +158,7 @@ private:
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
-        GeometryCreater pc(device, render_obj[0].mi->GetVIL(), buffer_manager);
+        GeometryCreater pc(device, GeometryVertexFormat::FromVIL(render_obj[0].mi->GetVIL()), buffer_manager);
         pc.Init("TextureRect", 6);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
             !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))

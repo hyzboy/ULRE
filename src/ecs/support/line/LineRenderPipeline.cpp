@@ -124,7 +124,10 @@ namespace hgl::ecs
 
         // Create new geometry (2 verts per line)
         const graph::AnsiString name = graph::AnsiString("LineSlot_W") + graph::AnsiString::numberOf(width);
-        geometry = graph::CreateGeometry(dev, mi->GetVIL(), name, new_cap * 2, 0,
+        graph::GeometryVertexFormat gvf;
+        gvf.Set(graph::VAN::Position, VF_V3F);
+        gvf.Set(graph::VAN::Color, VF_V1U8);
+        geometry = graph::CreateGeometry(dev, gvf, name, new_cap * 2, 0,
                          graph::IndexType::AUTO, nullptr,
                          graph::BufferAllocPolicy::StagedUpload);
         if (!geometry)

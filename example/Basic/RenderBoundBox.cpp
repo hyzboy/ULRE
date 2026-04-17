@@ -185,7 +185,8 @@ private:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, solid.vil);
+        const auto gvf = GeometryVertexFormat::FromVIL(solid.vil);
+        mesh_vdm = new VertexDataManager(buffer_manager, gvf);
         if (!mesh_vdm)
             return false;
         if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))
@@ -496,7 +497,7 @@ private:
 
         GraphicsGeometryFactory geometry_factory(graphics_context);
 
-        auto pc = geometry_factory.CreateCreater(wire.material->GetDefaultVIL());
+        auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(wire.material->GetDefaultVIL()));
         if (!pc)
             return false;
 

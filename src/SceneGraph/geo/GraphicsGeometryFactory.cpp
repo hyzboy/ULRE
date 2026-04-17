@@ -13,9 +13,9 @@ GraphicsGeometryFactory::GraphicsGeometryFactory(GraphicsContext *gc)
 {
 }
 
-std::unique_ptr<GeometryCreater> GraphicsGeometryFactory::CreateCreater(const VIL *vil) const
+std::unique_ptr<GeometryCreater> GraphicsGeometryFactory::CreateCreater(const GeometryVertexFormat &gvf) const
 {
-    if(!graphics || !vil)
+    if(!graphics || gvf.GetActiveCount()==0)
         return nullptr;
 
     auto *device = graphics->GetDevice();
@@ -24,7 +24,7 @@ std::unique_ptr<GeometryCreater> GraphicsGeometryFactory::CreateCreater(const VI
     if(!device || !buffer_manager)
         return nullptr;
 
-    return std::make_unique<GeometryCreater>(device, vil, buffer_manager);
+    return std::make_unique<GeometryCreater>(device, gvf, buffer_manager);
 }
 
 std::unique_ptr<GeometryCreater> GraphicsGeometryFactory::CreateCreater(VertexDataManager *vdm) const
@@ -40,7 +40,7 @@ std::unique_ptr<GeometryCreater> GraphicsGeometryFactory::CreateCreater(Material
     if(!mi)
         return nullptr;
 
-    return CreateCreater(mi->GetVIL());
+    return CreateCreater(GeometryVertexFormat::FromVIL(mi->GetVIL()));
 }
 
 Geometry *GraphicsGeometryFactory::RegisterGeometry(Geometry *geometry) const

@@ -6,10 +6,10 @@
 
 namespace hgl::graph
 {
-    TextGeometry::TextGeometry(VulkanDevice *dev,const VIL *_vil,const uint32_t mc):Geometry("TextGeometry",nullptr)
+    TextGeometry::TextGeometry(VulkanDevice *dev,const GeometryVertexFormat &gvf,const uint32_t mc):Geometry("TextGeometry",nullptr)
     {
         device=dev;
-        vil=_vil;
+        geometry_vertex_format=gvf;
 
         max_count=0;
         draw_char_count=0;
@@ -34,7 +34,7 @@ namespace hgl::graph
         max_count=power_to_2(cc);
         draw_char_count=cc;
 
-        geometry_data=CreateGeometryData(device,vil,max_count);
+        geometry_data=CreateGeometryData(device,geometry_vertex_format,max_count);
 
         geometry_data->CreateAllVAB();
 

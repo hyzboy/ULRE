@@ -4,6 +4,7 @@
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/type/BlockAllocator.h>
 #include<hgl/log/Logger.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph{
 
@@ -20,9 +21,7 @@ class VertexDataManager
 
 protected:
 
-    const VIL *     vil;            ///<顶点输入格式列表
-          uint      vi_count;       ///<顶点输入流数量
-    const VIF *     vif_list;       ///<顶点输入格式列表
+    GeometryVertexFormat geometry_vertex_format;
 
     VkDeviceSize    vab_max_size;   ///<顶点缓冲区分配空间大小(顶点数)
     VkDeviceSize    vab_cur_size;   ///<顶点缓冲区当前使用大小
@@ -38,14 +37,14 @@ protected:
 
 public:
 
-    VertexDataManager(VulkanDevice *dev,const VIL *_vil);
-    VertexDataManager(BufferManager *bm,const VIL *_vil);
+    VertexDataManager(VulkanDevice *dev,const GeometryVertexFormat &gvf);
+    VertexDataManager(BufferManager *bm,const GeometryVertexFormat &gvf);
     ~VertexDataManager();
 
           VulkanDevice *GetDevice       ()const{return device;}                                     ///<取得GPU设备
           BufferManager *GetBufferManager()const{return buffer_manager;}                             ///<取得BufferManager
 
-    const VIL *         GetVIL          ()const{return vil;}                                         ///<取得顶点输入格式列表
+    const GeometryVertexFormat &GetGeometryVertexFormat() const { return geometry_vertex_format; }
 
     const VkDeviceSize  GetVABMaxCount  ()const{return vab_max_size;}                                ///<取得顶点属性缓冲区分配的空间最大数量
     const VkDeviceSize  GetVABCurCount  ()const{return vab_cur_size;}                                ///<取得顶点属性缓冲区当前数量
@@ -66,6 +65,7 @@ public:
 
     IndexBuffer *GetIBO(){return ibo;}
     VAB *GetVAB(const uint index){return vab[index];}
+    VAB *GetVAB(const VertexAttrib attrib){return vab[static_cast<uint>(attrib)];}
 };//class VertexDataManager
 
 using VDM=VertexDataManager;

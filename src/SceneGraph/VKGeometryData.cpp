@@ -8,14 +8,14 @@
 
 namespace hgl::graph{
 
-GeometryData::GeometryData(const VIL *_vil,const uint32_t vc)
+GeometryData::GeometryData(const GeometryVertexFormat &gvf,const uint32_t vc)
 {
-    vil=_vil;
+    geometry_vertex_format = gvf;
 
     vertex_count=vc;
     index_count=0;
 
-    vab_list=zero_new<VAB *>(_vil->GetVertexAttribCount());
+    vab_list=zero_new<VAB *>(static_cast<uint32_t>(VertexAttrib::RANGE_SIZE));
 
     ibo=nullptr;
 }
@@ -27,29 +27,31 @@ GeometryData::~GeometryData()
 
 const uint32_t GeometryData::GetVABCount()const
 {
-    return vil->GetVertexAttribCount();
+    return geometry_vertex_format.GetActiveCount();
 }
 
 const int GeometryData::GetVABIndex(const VertexAttrib attrib) const
 {
-    return vil->GetIndex(attrib);
+    if (!geometry_vertex_format.Has(attrib))
+        return -1;
+
+    return static_cast<int>(attrib);
 }
 
 bool GeometryData::CreateAllVAB(const AnsiString &geometry_name)
 {
-    const uint32_t count=vil->GetVertexAttribCount();
-
-    const VertexInputFormat *vif;
-
-    for(uint32_t i=0;i<count;i++)
+    for (int va = int(VertexAttrib::Position); va <= int(VertexAttrib::JointWeight); ++va)
     {
+        const VertexAttrib attrib = static_cast<VertexAttrib>(va);
+        if (!geometry_vertex_format.Has(attrib))
+            continue;
+
+        const int i = static_cast<int>(attrib);
         if(vab_list[i])continue;
 
-        vif=vil->GetConfig(i);
+        AnsiString vab_name = geometry_name + AnsiString(":") + GetVertexAttribName(attrib);
 
-        AnsiString vab_name = geometry_name + AnsiString(":") + GetVertexAttribName(vif->attrib);
-
-        vab_list[i]=CreateVAB(i,vif->format,nullptr,vab_name);
+        vab_list[i]=CreateVAB(i,geometry_vertex_format.GetFormat(attrib),nullptr,vab_name);
 
         if(!vab_list[i])
             return(false);
@@ -60,19 +62,19 @@ bool GeometryData::CreateAllVAB(const AnsiString &geometry_name)
 
 VAB *GeometryData::GetVABByIndex(const int index)const
 {
-    if(index<0||index>=vil->GetVertexAttribCount())return(nullptr);
+    if(index<0||index>=int(VertexAttrib::RANGE_SIZE))return(nullptr);
+
+    if(!geometry_vertex_format.Has(static_cast<VertexAttrib>(index)))
+        return(nullptr);
 
     return vab_list[index];
 }
 
 VAB *GeometryData::GetVABByAttrib(const VertexAttrib attrib)const
 {
-    const int index=vil->GetIndex(attrib);
+    const int index=GetVABIndex(attrib);
 
-    if(index<0||index>=vil->GetVertexAttribCount())
-        return(nullptr);
-
-    if(index<0||index>=vil->GetVertexAttribCount())
+    if(index<0||index>=int(VertexAttrib::RANGE_SIZE))
         return(nullptr);
 
     return vab_list[index];
@@ -80,18 +82,20 @@ VAB *GeometryData::GetVABByAttrib(const VertexAttrib attrib)const
 
 VAB *GeometryData::InitVAB(const int vab_index,const void *data,const AnsiString &name)
 {
-    if(!vil)return(nullptr);
-
-    if(vab_index<0||vab_index>=vil->GetVertexAttribCount())
+    if(vab_index<0||vab_index>=int(VertexAttrib::RANGE_SIZE))
         return(nullptr);
 
-    const VertexInputFormat *vif=vil->GetConfig(vab_index);
+    const VertexAttrib attrib = static_cast<VertexAttrib>(vab_index);
+    if(!geometry_vertex_format.Has(attrib))
+        return(nullptr);
 
-    if(!vif)return(nullptr);
+    const VkFormat format = geometry_vertex_format.GetFormat(attrib);
+    if(format==VK_FORMAT_UNDEFINED)
+        return(nullptr);
 
     if(!vab_list[vab_index])
     {
-        vab_list[vab_index]=CreateVAB(vab_index,vif->format,data,name);
+        vab_list[vab_index]=CreateVAB(vab_index,format,data,name);
 
         if(!vab_list[vab_index])
             return(nullptr);
@@ -142,7 +146,7 @@ namespace
 
     public:
 
-        GeometryDataPrivateBuffer(VulkanDevice *dev,const VIL *_vil,const uint32_t vc,BufferAllocPolicy p):GeometryData(_vil,vc)
+        GeometryDataPrivateBuffer(VulkanDevice *dev,const GeometryVertexFormat &gvf,const uint32_t vc,BufferAllocPolicy p):GeometryData(gvf,vc)
         {
             device=dev;
             policy=p;
@@ -152,7 +156,7 @@ namespace
         {
             VAB **vab=vab_list;
 
-            for(uint i=0;i<vil->GetVertexAttribCount();i++)
+            for(uint i=0;i<uint(VertexAttrib::RANGE_SIZE);i++)
             {
                 if(*vab)
                     delete *vab;
@@ -196,7 +200,7 @@ namespace
 
     public:
 
-        GeometryDataPrivateBufferBM(BufferManager *bm,const VIL *_vil,const uint32_t vc,BufferAllocPolicy p):GeometryData(_vil,vc)
+        GeometryDataPrivateBufferBM(BufferManager *bm,const GeometryVertexFormat &gvf,const uint32_t vc,BufferAllocPolicy p):GeometryData(gvf,vc)
         {
             buffer_manager=bm;
             policy=p;
@@ -206,7 +210,7 @@ namespace
         {
             VAB **vab=vab_list;
 
-            for(uint i=0;i<vil->GetVertexAttribCount();i++)
+            for(uint i=0;i<uint(VertexAttrib::RANGE_SIZE);i++)
             {
                 if(*vab && buffer_manager)
                     buffer_manager->Release(*vab);
@@ -251,7 +255,7 @@ namespace
 
     public:
 
-        GeometryDataVDM(VertexDataManager *_vdm,const uint32_t vc):GeometryData(_vdm->GetVIL(),vc)
+        GeometryDataVDM(VertexDataManager *_vdm,const uint32_t vc):GeometryData(_vdm->GetGeometryVertexFormat(),vc)
         {
             vdm=_vdm;
 
@@ -298,42 +302,42 @@ namespace
     };//class GeometryDataVDM:public GeometryData
 }//namespace
 
-GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc)
+GeometryData *CreateGeometryData(VulkanDevice *dev,const GeometryVertexFormat &gvf,const uint32_t vc)
 {
     if(!dev)return(nullptr);
-    if(!_vil)return(nullptr);
+    if(gvf.GetActiveCount()==0)return(nullptr);
     if(vc<=0)return(nullptr);
 
     // TODO: Route VAB/IBO creation through BufferManager while keeping GeometryData API stable.
-    return(new GeometryDataPrivateBuffer(dev,_vil,vc,BufferAllocPolicy::GPUOnly));
+    return(new GeometryDataPrivateBuffer(dev,gvf,vc,BufferAllocPolicy::GPUOnly));
 }
 
-GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc,BufferAllocPolicy policy)
+GeometryData *CreateGeometryData(VulkanDevice *dev,const GeometryVertexFormat &gvf,const uint32_t vc,BufferAllocPolicy policy)
 {
     if(!dev)return(nullptr);
-    if(!_vil)return(nullptr);
+    if(gvf.GetActiveCount()==0)return(nullptr);
     if(vc<=0)return(nullptr);
 
     // TODO: Route VAB/IBO creation through BufferManager while keeping GeometryData API stable.
-    return(new GeometryDataPrivateBuffer(dev,_vil,vc,policy));
+    return(new GeometryDataPrivateBuffer(dev,gvf,vc,policy));
 }
 
-GeometryData *CreateGeometryData(BufferManager *bm,const VIL *_vil,const uint32_t vc)
+GeometryData *CreateGeometryData(BufferManager *bm,const GeometryVertexFormat &gvf,const uint32_t vc)
 {
     if(!bm)return(nullptr);
-    if(!_vil)return(nullptr);
+    if(gvf.GetActiveCount()==0)return(nullptr);
     if(vc<=0)return(nullptr);
 
-    return(new GeometryDataPrivateBufferBM(bm,_vil,vc,BufferAllocPolicy::GPUOnly));
+    return(new GeometryDataPrivateBufferBM(bm,gvf,vc,BufferAllocPolicy::GPUOnly));
 }
 
-GeometryData *CreateGeometryData(BufferManager *bm,const VIL *_vil,const uint32_t vc,BufferAllocPolicy policy)
+GeometryData *CreateGeometryData(BufferManager *bm,const GeometryVertexFormat &gvf,const uint32_t vc,BufferAllocPolicy policy)
 {
     if(!bm)return(nullptr);
-    if(!_vil)return(nullptr);
+    if(gvf.GetActiveCount()==0)return(nullptr);
     if(vc<=0)return(nullptr);
 
-    return(new GeometryDataPrivateBufferBM(bm,_vil,vc,policy));
+    return(new GeometryDataPrivateBufferBM(bm,gvf,vc,policy));
 }
 
 GeometryData *CreateGeometryData(VertexDataManager *vdm,const uint32_t vc)

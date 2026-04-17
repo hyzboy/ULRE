@@ -71,7 +71,8 @@ private:
 private:
 
     bool InitMaterialAndPipeline()
-    {
+    {
+
         auto* device = GetDevice();
                 if (!device)
             return false;
@@ -112,7 +113,8 @@ private:
     }
 
     bool CreateGeometry()
-    {
+    {
+
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
@@ -122,7 +124,8 @@ private:
 
         // === 创建平面网格几何体 ===
         {
-            auto pc = std::make_unique<GeometryCreater>(device, mi_plane_grid->GetVIL());
+            const auto gvf = GeometryVertexFormat::FromVIL(mi_plane_grid->GetVIL());
+            auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
             struct PlaneGridCreateInfo pgci;
 
@@ -148,7 +151,7 @@ private:
             if (!device || !buffer_manager || !geometry_manager)
                 return false;
 
-            GeometryCreater pc(device, mi_line->GetVIL(), buffer_manager);
+            GeometryCreater pc(device, GeometryVertexFormat::FromVIL(mi_line->GetVIL()), buffer_manager);
             pc.Init("RayLine", 2);
             if (!pc.WriteVAB(VAN::Position, VF_V3F, position_data) ||
                 !pc.WriteVAB(VAN::Luminance, VF_V1UN8, lumiance_data))
@@ -164,7 +167,8 @@ private:
     }
 
     bool InitECS()
-    {
+    {
+
         // === 步骤1: 获取ECS世界 ===
         ecs_world = GetECSContext();
         if(!ecs_world)

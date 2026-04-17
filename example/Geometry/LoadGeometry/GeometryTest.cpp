@@ -162,7 +162,8 @@ private:
         if (!device || !geometry_manager)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, wire.material->GetDefaultVIL());
+        const auto gvf = GeometryVertexFormat::FromVIL(wire.material->GetDefaultVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
         inline_geometry::BoundingBoxCreateInfo bbci;
 
