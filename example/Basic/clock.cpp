@@ -11,15 +11,12 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/color/Color.h>
 #include<ctime>
 #include<chrono>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<cmath>
 
 // 引入ECS相关头文件
@@ -58,29 +55,31 @@ private:
     // ECS组件
     ECSContext* ecs_world = nullptr;
 
-    // 传统渲染资源
-    Material* material = nullptr;
     Geometry* geometry = nullptr;
+
+    inline static const mtl::MaterialAssetRecord kClockCfg {
+        .id       = "clock_pure_color",
+        .preset   = mtl::MaterialPreset::PureColor2D,
+        .dim      = mtl::MaterialAssetRecord::Dim::D2,
+        .pipeline = GraphicsPipelinePreset::Solid2D,
+    };
 
     // 刻度数据
     struct TickData
     {
         Entity* entity;
-        MaterialInstance* mi;
-        Primitive* primitive;
     };
 
     TickData ticks[TICK_COUNT];
 
-    MaterialInstance *mi_tick;
+    Color4f tick_color;
 
     // 指针数据
     struct HandData
     {
         Entity* entity;
-        MaterialInstance* mi;
-        Primitive* primitive;
         TransformComponent* transform;
+        Color4f color;
         float length_scale;  // 指针长度倍数
     };
 
@@ -89,53 +88,14 @@ private:
 
 private:
 
-    bool InitMaterial()
-    {
-        {
-            static const mtl::MaterialAssetRecord kClockCfg {
-                .id       = "clock_pure_color",
-                .preset   = mtl::MaterialPreset::PureColor2D,
-                .dim      = mtl::MaterialAssetRecord::Dim::D2,
-                .pipeline = GraphicsPipelinePreset::Solid2D,
-            };
-            // 刻度颜色（白色）
-            Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
-
-            mi_tick = AcquireMI(kClockCfg);
-            if(!mi_tick)
-                return false;
-
-            mi_tick->WriteMIData(tick_color);
-
-            std::cout << "[ClockApp::InitMaterial] Created material: " << (void*)material << std::endl;
-
-            // 指针颜色
-            Color4f hand_colors[3] = {
-                Color4f(1.0f, 0.0f, 0.0f, 1.0f),   // 时针 - 红色
-                Color4f(0.0f, 1.0f, 0.0f, 1.0f),   // 分针 - 绿色
-                Color4f(0.0f, 0.0f, 1.0f, 1.0f)    // 秒针 - 蓝色
-            };
-
-            for (uint i = 0; i < 3; i++)
-            {
-                hands[i].mi = AcquireMI(kClockCfg);
-                if (!hands[i].mi)
-                    return false;
-                hands[i].mi->WriteMIData(hand_colors[i]);
-            }
-        }
-
-        return true;
-    }
-
     bool InitGeometry()
     {
-
         auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(mi_tick->GetVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V2F);
 
         geometry = GraphicsGeometryFactory::CreateGeometry(graphics_context,
                                                            gvf,
@@ -156,27 +116,6 @@ private:
 
     bool InitECS()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-        {
-            std::cout << "[ClockApp::InitECS] ERROR: Missing RenderContext!" << std::endl;
-            return false;
-        }
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-        {
-            std::cout << "[ClockApp::InitECS] ERROR: Missing GraphicsContext!" << std::endl;
-            return false;
-        }
-
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-        {
-            std::cout << "[ClockApp::InitECS] ERROR: Missing PrimitiveManager!" << std::endl;
-            return false;
-        }
-
         // === 获取ECS世界 ===
         ecs_world = GetECSContext();
         if (!ecs_world)
@@ -190,14 +129,6 @@ private:
         // === 创建12个刻度（Static Transform） ===
         for (uint i = 0; i < TICK_COUNT; i++)
         {
-            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, mi_tick);
-
-            if (!ticks[i].primitive)
-            {
-                std::cout << "[ClockApp::InitECS] ERROR: Failed to create tick primitive " << i << std::endl;
-                return false;
-            }
-
             // 创建刻度实体
             ticks[i].entity = ecs_world->CreateEntity<Entity>("ClockTick_" + std::to_string(i));
 
@@ -224,7 +155,8 @@ private:
 
             // 添加PrimitiveComponent
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-            primitive_comp->SetPrimitive(ticks[i].primitive);
+            primitive_comp->SetUnresolvedGeometry(geometry);
+            primitive_comp->SetMaterialRecord(&kClockCfg, &tick_color, sizeof(tick_color));
             primitive_comp->SetVisible(true);
 
             std::cout << "[ClockApp::InitECS] Created static tick [" << i << "] at angle " << (30.0f * i) << " degrees" << std::endl;
@@ -237,14 +169,6 @@ private:
 
         for (uint i = 0; i < 3; i++)
         {
-            hands[i].primitive = primitive_manager->CreatePrimitive(geometry, hands[i].mi);
-
-            if (!hands[i].primitive)
-            {
-                std::cout << "[ClockApp::InitECS] ERROR: Failed to create hand primitive " << i << std::endl;
-                return false;
-            }
-
             // 创建指针实体
             hands[i].entity = ecs_world->CreateEntity<Entity>(hand_names[i]);
 
@@ -262,7 +186,8 @@ private:
 
             // 添加PrimitiveComponent
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-            primitive_comp->SetPrimitive(hands[i].primitive);
+            primitive_comp->SetUnresolvedGeometry(geometry);
+            primitive_comp->SetMaterialRecord(&kClockCfg, &hands[i].color, sizeof(hands[i].color));
             primitive_comp->SetVisible(true);
 
             std::cout << "[ClockApp::InitECS] Created movable hand [" << i << "] (" << hand_names[i] << ")" << std::endl;
@@ -282,11 +207,11 @@ public:
 
         std::cout << "[ClockApp::Init] === Initializing Clock Application ===" << std::endl;
 
-        if (!InitMaterial())
-        {
-            std::cout << "[ClockApp::Init] ERROR: InitMaterial failed!" << std::endl;
-            return false;
-        }
+        // 初始化颜色
+        tick_color = Color4f(1.0f, 1.0f, 1.0f, 1.0f);
+        hands[Hour].color   = Color4f(1.0f, 0.0f, 0.0f, 1.0f);   // 时针 - 红色
+        hands[Minute].color = Color4f(0.0f, 1.0f, 0.0f, 1.0f);   // 分针 - 绿色
+        hands[Second].color = Color4f(0.0f, 0.0f, 1.0f, 1.0f);   // 秒针 - 蓝色
 
         if (!InitGeometry())
         {

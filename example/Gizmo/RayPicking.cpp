@@ -16,13 +16,10 @@
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<memory>
 
 // 引入ECS相关头文件
@@ -57,58 +54,28 @@ private:
     Entity* plane_grid_entity = nullptr;
     Entity* ray_line_entity = nullptr;
 
-    // 传统渲染资源
-    MaterialInstance *  mi_plane_grid       =nullptr;
     Geometry *          geom_plane_grid     =nullptr;
-
-    MaterialInstance *  mi_line             =nullptr;
     Geometry *          geom_line           =nullptr;
-    Primitive *         prim_line           =nullptr;
     VAB *               prim_line_vab       =nullptr;
+
+    inline static const mtl::MaterialAssetRecord kPlaneGridCfg {
+        .id       = "ray_picking_plane_grid",
+        .domain_id = "plane_grid_domain",
+        .preset   = mtl::MaterialPreset::VertexLuminance2D,
+        .prim     = PrimitiveType::Lines,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
+    inline static const mtl::MaterialAssetRecord kLineCfg {
+        .id       = "ray_picking_line",
+        .domain_id = "line_3d_domain",
+        .preset   = mtl::MaterialPreset::VertexLuminance3D,
+        .prim     = PrimitiveType::Lines,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
 
     math::Ray           ray;
 
 private:
-
-    bool InitMaterialAndPipeline()
-    {
-
-        auto* device = GetDevice();
-                if (!device)
-            return false;
-
-        static const mtl::MaterialAssetRecord kPlaneGridCfg {
-            .id       = "ray_picking_plane_grid",
-            .domain_id = "plane_grid_domain",      // Separate domain for 2D Position layout
-            .preset   = mtl::MaterialPreset::VertexLuminance2D,
-            .prim     = PrimitiveType::Lines,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-        static const mtl::MaterialAssetRecord kLineCfg {
-            .id       = "ray_picking_line",
-            .domain_id = "line_3d_domain",         // Separate domain for 3D Position layout
-            .preset   = mtl::MaterialPreset::VertexLuminance3D,
-            .prim     = PrimitiveType::Lines,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-
-        GeometryVertexFormat gvf_lum;
-        gvf_lum.Set(VAN::Luminance, VF_V1UN8);
-
-        // Plane grid: 2D Position + Luminance
-        {
-            mi_plane_grid = AcquireMI(kPlaneGridCfg, gvf_lum, &white_color, sizeof(white_color));
-            if(!mi_plane_grid)return(false);
-        }
-
-        // Ray line: 3D Position + Luminance (separate Material)
-        {
-            mi_line = AcquireMI(kLineCfg, gvf_lum, &yellow_color, sizeof(yellow_color));
-            if(!mi_line)return(false);
-        }
-
-        return(true);
-    }
 
     bool CreateGeometry()
     {
@@ -122,7 +89,10 @@ private:
 
         // === 创建平面网格几何体 ===
         {
-            const auto gvf = GeometryVertexFormat::FromVIL(mi_plane_grid->GetVIL());
+            GeometryVertexFormat gvf;
+            gvf.Set(VAN::Position, VF_V2F);
+            gvf.Set(VAN::Luminance, VF_V1UN8);
+
             auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
             struct PlaneGridCreateInfo pgci;
@@ -143,13 +113,15 @@ private:
 
         // === 创建射线线段几何体 ===
         {
-            auto* device = GetDevice();
             auto* buffer_manager = GetBufferManager();
-            auto* geometry_manager = GetGeometryManager();
-            if (!device || !buffer_manager || !geometry_manager)
+            if (!buffer_manager)
                 return false;
 
-            GeometryCreater pc(device, GeometryVertexFormat::FromVIL(mi_line->GetVIL()), buffer_manager);
+            GeometryVertexFormat gvf;
+            gvf.Set(VAN::Position, VF_V3F);
+            gvf.Set(VAN::Luminance, VF_V1UN8);
+
+            GeometryCreater pc(device, gvf, buffer_manager);
             pc.Init("RayLine", 2);
             if (!pc.WriteVAB(VAN::Position, VF_V3F, position_data) ||
                 !pc.WriteVAB(VAN::Luminance, VF_V1UN8, lumiance_data))
@@ -159,6 +131,9 @@ private:
             if (!geom_line)
                 return false;
             geometry_manager->Add(geom_line);
+
+            // 获取VAB用于后续动态更新顶点数据
+            prim_line_vab = geom_line->GetVAB(VAN::Position);
         }
 
         return(true);
@@ -176,15 +151,6 @@ private:
         {
             plane_grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
 
-            // 创建Primitive
-            auto* primitive_manager = GetPrimitiveManager();
-            if (!primitive_manager)
-                return false;
-
-            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid);
-            if(!prim_plane)
-                return false;
-
             // 添加TransformComponent
             auto transform = plane_grid_entity->AddComponent<TransformComponent>(Mobility::Static);
             transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -193,25 +159,14 @@ private:
 
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-            primitive_comp->SetPrimitive(prim_plane);
+            primitive_comp->SetUnresolvedGeometry(geom_plane_grid);
+            primitive_comp->SetMaterialRecord(&kPlaneGridCfg, &white_color, sizeof(white_color));
             primitive_comp->SetVisible(true);
         }
 
         // === 步骤3: 创建射线线段实体 ===
         {
             ray_line_entity = ecs_world->CreateEntity<Entity>("RayLine");
-
-            // 创建Primitive
-            auto* primitive_manager = GetPrimitiveManager();
-            if (!primitive_manager)
-                return false;
-
-            prim_line = primitive_manager->CreatePrimitive(geom_line, mi_line);
-            if(!prim_line)
-                return false;
-
-            // 获取VAB用于后续动态更新顶点数据
-            prim_line_vab = prim_line->GetVAB(VAN::Position);
 
             // 添加TransformComponent
             auto transform = ray_line_entity->AddComponent<TransformComponent>(Mobility::Static);//线段虽然会动，但我们改的是VAB不是Transform
@@ -221,7 +176,8 @@ private:
 
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-            primitive_comp->SetPrimitive(prim_line);
+            primitive_comp->SetUnresolvedGeometry(geom_line);
+            primitive_comp->SetMaterialRecord(&kLineCfg, &yellow_color, sizeof(yellow_color));
             primitive_comp->SetVisible(true);
         }
 
@@ -272,9 +228,6 @@ public:
 
     bool Init() override
     {
-        if(!InitMaterialAndPipeline())
-            return(false);
-
         if(!CreateGeometry())
             return(false);
 

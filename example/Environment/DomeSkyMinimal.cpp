@@ -1,11 +1,8 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/UBOCommon.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<memory>
 
 #include<hgl/ecs/core/Context.h>
@@ -28,30 +25,18 @@ private:
     hgl::ecs::Entity *ground_entity = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    Material *          mtl_sky_sphere      = nullptr;
-
     Geometry *          prim_sky_dome       = nullptr;
     Geometry *          prim_ground_plane   = nullptr;
-    MaterialInstance *  mi_sky_sphere       = nullptr;
+
+    inline static const mtl::MaterialAssetRecord kSkyCfg {
+        .id       = "dome_sky_minimal",
+        .preset   = mtl::MaterialPreset::SkyMinimal,
+        .l2w      = false,
+        .sky      = true,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
 
 private:
-
-    bool InitMDP()
-    {
-
-        static const mtl::MaterialAssetRecord kSkyCfg {
-            .id       = "dome_sky_minimal",
-            .preset   = mtl::MaterialPreset::SkyMinimal,
-            .l2w      = false,
-            .sky      = true,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-        mi_sky_sphere = AcquireMI(kSkyCfg);
-        if (!mi_sky_sphere)
-            return false;
-
-        return true;
-    }
 
     bool CreateRenderObject()
     {
@@ -63,8 +48,10 @@ private:
 
         using namespace inline_geometry;
 
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+
         {
-            const auto gvf = GeometryVertexFormat::FromVIL(mi_sky_sphere->GetVIL());
             auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
             DomeCreateInfo dci;
@@ -82,7 +69,6 @@ private:
         }
 
         {
-            const auto gvf = GeometryVertexFormat::FromVIL(mi_sky_sphere->GetVIL());
             auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
             prim_ground_plane = CreatePlaneSqaure(pc.get());
@@ -100,15 +86,7 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!prim_sky_dome || !prim_ground_plane || !mi_sky_sphere)
-            return false;
-
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-            return false;
-
-        Primitive *sky_prim = primitive_manager->CreatePrimitive(prim_sky_dome, mi_sky_sphere);
-        if(!sky_prim)
+        if(!prim_sky_dome || !prim_ground_plane)
             return false;
 
         sky_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("SkyDome");
@@ -120,12 +98,9 @@ private:
         sky_transform->SetLocalScale(glm::vec3(256.0f, 256.0f, 256.0f));
         sky_transform->SetMovable(false);
 
-        sky_prim_comp->SetPrimitive(sky_prim);
+        sky_prim_comp->SetUnresolvedGeometry(prim_sky_dome);
+        sky_prim_comp->SetMaterialRecord(&kSkyCfg);
         sky_prim_comp->SetVisible(true);
-
-        Primitive *ground_prim = primitive_manager->CreatePrimitive(prim_ground_plane, mi_sky_sphere);
-        if(!ground_prim)
-            return false;
 
         ground_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("GroundPlane");
         auto ground_transform = ground_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
@@ -136,7 +111,8 @@ private:
         ground_transform->SetLocalScale(glm::vec3(256.0f, 256.0f, 1.0f));
         ground_transform->SetMovable(false);
 
-        ground_prim_comp->SetPrimitive(ground_prim);
+        ground_prim_comp->SetUnresolvedGeometry(prim_ground_plane);
+        ground_prim_comp->SetMaterialRecord(&kSkyCfg);
         ground_prim_comp->SetVisible(true);
 
         return true;
@@ -193,9 +169,6 @@ private:
 public:
     bool Init() override
     {
-        if(!InitMDP())
-            return false;
-
         if(!CreateRenderObject())
             return false;
 

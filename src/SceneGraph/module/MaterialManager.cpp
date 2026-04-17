@@ -486,6 +486,8 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     if(!cfg)
         return(nullptr);
 
+    cfg->preset_name=mtl::GetMaterialPresetName(mtl_id);
+
     mtl::MaterialVariantKey key = mtl::MapPresetToVariantKey(mtl_id);
     mtl::ApplyCreateConfigToVariantKey(key, cfg);
     return CreateMaterial(key, cfg);
@@ -638,6 +640,8 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
         return(nullptr);
     }
 
+    cfg->preset_name=mtl::GetMaterialPresetName(mtl_id);
+
     mtl::MaterialVariantKey key = mtl::MapPresetToVariantKey(mtl_id);
     mtl::ApplyCreateConfigToVariantKey(key, cfg);
     return CreateMaterial(key, cfg);
@@ -651,6 +655,12 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
         return(nullptr);
 
     AnsiString hash_name="variant";
+    if(cfg->preset_name)
+    {
+        hash_name+="(";
+        hash_name+=cfg->preset_name;
+        hash_name+=")";
+    }
     char key_hash[32] = {};
     std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
     std::printf("[DEBUG] CreateMaterial hash=%s ST=%d GM=%d tex=%u sampler=%u\n", key_hash, int(key.surface_type), int(key.geometry_mode), key.texture_source_bits, key.sampler_feature_bits);
@@ -695,6 +705,12 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     }
 
     AnsiString hash_name="variant";
+    if(cfg->preset_name)
+    {
+        hash_name+="(";
+        hash_name+=cfg->preset_name;
+        hash_name+=")";
+    }
     char key_hash[32] = {};
     std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
     hash_name+="#";

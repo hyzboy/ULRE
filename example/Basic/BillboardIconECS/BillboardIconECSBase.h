@@ -7,9 +7,7 @@
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/color/Color.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -55,10 +53,14 @@ protected:
     Entity* camera_entity = nullptr;
 
     // PlaneGrid resources
-    Material*         mtl_plane_grid      = nullptr;
-    MaterialInstance* mi_plane_grid       = nullptr;
     Geometry*         geom_plane_grid     = nullptr;
-    Primitive*        prim_plane_grid     = nullptr;
+
+    inline static const mtl::MaterialAssetRecord kPlaneGridCfg {
+        .id       = "billboard_icon_plane_grid",
+        .preset   = mtl::MaterialPreset::VertexLuminance2D,
+        .prim     = PrimitiveType::Lines,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
 
     // Derived class supplies the prefix used in billboard entity names,
     // e.g. "MaskedBillboard_", "DitherBillboard_".

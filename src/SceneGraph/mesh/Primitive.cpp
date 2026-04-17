@@ -94,6 +94,37 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPip
     if(geom->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
         GLogError("[FATAL ERROR] input buffer count of Primitive lesser than Material, Material name: "+mtl_name);
+        GLogError("  Geometry VAB count: "+AnsiString::numberOf(geom->GetVABCount())+", Material VIL attrib count: "+AnsiString::numberOf(input_count));
+
+        // 输出材质需求的所有顶点属性
+        {
+            const VertexInputFormat *vif_list=vil->GetVIFList();
+            GLogError("  Material requires vertex attribs:");
+            for(uint32_t i=0;i<input_count;i++)
+            {
+                const char *name=GetVertexAttribName(vif_list[i].attrib);
+                GLogError("    ["+AnsiString::numberOf(i)+"] "+AnsiString(name)
+                         +" format="+GetVulkanFormatName(vif_list[i].format)
+                         +" binding="+AnsiString::numberOf(vif_list[i].binding));
+            }
+        }
+
+        // 输出Geometry能提供的所有顶点属性
+        {
+            GLogError("  Geometry provides vertex attribs:");
+            uint32_t slot_index=0;
+            for(uint8_t va=static_cast<uint8_t>(VertexAttrib::BEGIN_RANGE);va<=static_cast<uint8_t>(VertexAttrib::END_RANGE);++va)
+            {
+                const VertexAttrib attrib=static_cast<VertexAttrib>(va);
+                if(geometry_vertex_format.Has(attrib))
+                {
+                    const char *name=GetVertexAttribName(attrib);
+                    GLogError("    ["+AnsiString::numberOf(slot_index)+"] "+AnsiString(name)
+                             +" format="+GetVulkanFormatName(geometry_vertex_format.GetFormat(attrib)));
+                    ++slot_index;
+                }
+            }
+        }
 
         return(nullptr);
     }

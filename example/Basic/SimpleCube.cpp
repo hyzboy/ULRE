@@ -11,10 +11,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 
 #include<hgl/color/Color.h>
 
@@ -42,32 +39,17 @@ private:
     Entity *      cube_entity    =nullptr;
     Entity *      camera_entity  =nullptr;
 
-    Material *          material        = nullptr;
-    MaterialInstance *  mi              = nullptr;
+    Geometry *          geometry        = nullptr;
 
-    Primitive *         primitive       = nullptr;
+    inline static const mtl::MaterialAssetRecord kCubeCfg {
+        .id       = "cube_main",
+        .preset   = mtl::MaterialPreset::Gizmo3D,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
 
 private:
 
-    bool InitMaterial()
-    {
-        static const mtl::MaterialAssetRecord kCubeCfg {
-            .id       = "cube_main",
-            .preset   = mtl::MaterialPreset::Gizmo3D,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-
-        Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-
-        mi = AcquireMI(kCubeCfg, &color, sizeof(color));
-
-        if(!mi)
-            return false;
-
-        return mi != nullptr;
-    }
-
-    bool CreateCubePrimitive()
+    bool CreateCubeGeometry()
     {
         using namespace inline_geometry;
 
@@ -80,16 +62,18 @@ private:
         cci.segments_y = 3;
         cci.segments_z = 4;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(mi->GetVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+        gvf.Set(VAN::Normal, VF_V3F);
 
-        primitive = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                             gvf,
-                                                             mi,
-                                                             [&](GeometryCreater *pc)
-                                                             {
-                                                                 return CreateCube(pc, &cci);
-                                                             });
-        return primitive != nullptr;
+        GraphicsGeometryFactory geometry_factory(graphics_context);
+        auto pc = geometry_factory.CreateCreater(gvf);
+        if (!pc) return false;
+
+        geometry = CreateCube(pc.get(), &cci);
+        if (!geometry) return false;
+
+        return geometry_factory.RegisterGeometry(geometry) != nullptr;
     }
 
     bool InitECS()
@@ -106,8 +90,11 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform->SetMovable(false);
 
+        Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+
         auto primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-        primitive_comp->SetPrimitive(primitive);
+        primitive_comp->SetUnresolvedGeometry(geometry);
+        primitive_comp->SetMaterialRecord(&kCubeCfg, &color, sizeof(color));
         primitive_comp->SetVisible(true);
 
         return true;
@@ -145,10 +132,7 @@ public:
     {
         SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));
 
-        if(!InitMaterial())
-            return false;
-
-        if(!CreateCubePrimitive())
+        if(!CreateCubeGeometry())
             return false;
 
         if(!InitECS())

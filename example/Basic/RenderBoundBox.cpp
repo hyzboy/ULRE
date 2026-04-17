@@ -13,10 +13,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 
 #include<hgl/color/Color.h>
 #include<hgl/math/geometry/AABB.h>
@@ -68,18 +65,9 @@ class TestApp:public WorkObject
 {
 private:
 
-    struct MaterialData
-    {
-        Material *          material          = nullptr;
-        const VIL *         vil               = nullptr;
-
-        MaterialInstance *  mi[COLOR_COUNT]{};
-    };
-
     struct RenderMesh
     {
         Geometry *geometry = nullptr;
-        Primitive *primitive = nullptr;
 
         Entity *entity = nullptr;
         std::shared_ptr<TransformComponent> transform;
@@ -99,83 +87,39 @@ private:
 
     ECSContext *  ecs_context      = nullptr;
 
-    MaterialData solid;
-    MaterialData wire;
+    Color4f entity_colors[COLOR_COUNT];
 
     VertexDataManager *mesh_vdm = nullptr;
 
-    RenderMesh *rm_floor = nullptr;           // floor
+    RenderMesh *rm_floor = nullptr;
     std::vector<std::unique_ptr<RenderMesh>> render_mesh;
     std::vector<std::unique_ptr<BoundingBoxMesh>> bounding_boxes;
 
     Geometry *bbox_geometry = nullptr;
-    Primitive *bbox_primitive = nullptr;
 
     Entity *camera_entity = nullptr;
 
+    inline static const mtl::MaterialAssetRecord kSolidCfg {
+        .id       = "bounds_solid",
+        .preset   = mtl::MaterialPreset::Gizmo3D,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
+
+    inline static const mtl::MaterialAssetRecord kWireCfg {
+        .id       = "bounds_wire",
+        .preset   = mtl::MaterialPreset::PureColor3D,
+        .prim     = PrimitiveType::Lines,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
+
 private:
 
-    bool InitMaterialInstance(MaterialData *md, const mtl::MaterialAssetRecord &cfg)
+    bool InitColors()
     {
-        if(!md)
-            return false;
+        for(size_t i = 0; i < COLOR_COUNT; i++)
+            entity_colors[i] = GetColor4f(TestColor[i], 1.0f);
 
-        Color4f color;
-
-        for(size_t i=0;i<COLOR_COUNT;i++)
-        {
-            color = GetColor4f(TestColor[i],1.0f);
-
-            md->mi[i] = AcquireMI(cfg, &color, sizeof(color));
-
-            if(!md->mi[i])
-                return false;
-
-            if (!md->material)
-                md->material = md->mi[i]->GetMaterial();
-        }
-
-        if (!md->material)
-            return false;
-
-        md->vil = md->material->GetDefaultVIL();
-
-        if(!md->vil)
-            return false;
-
-        auto* rc = GetRenderContext();
-        if (!rc)
-            return false;
-
-        auto* render_target = rc->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
-        if (!render_pass)
-            return false;
-
-        return md->vil != nullptr;
-    }
-
-    bool InitSolidMDP()
-    {
-        static const mtl::MaterialAssetRecord kSolidCfg {
-            .id       = "bounds_solid",
-            .preset   = mtl::MaterialPreset::Gizmo3D,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-
-        return InitMaterialInstance(&solid, kSolidCfg);
-    }
-
-    bool InitWireMDP()
-    {
-        static const mtl::MaterialAssetRecord kWireCfg {
-            .id       = "bounds_wire",
-            .preset   = mtl::MaterialPreset::PureColor3D,
-            .prim     = PrimitiveType::Lines,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-
-        return InitMaterialInstance(&wire, kWireCfg);
+        return true;
     }
 
     bool InitVDM()
@@ -185,7 +129,9 @@ private:
         if (!buffer_manager)
             return false;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(solid.vil);
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+        gvf.Set(VAN::Normal,   VF_V3F);
         mesh_vdm = new VertexDataManager(buffer_manager, gvf);
         if (!mesh_vdm)
             return false;
@@ -194,31 +140,13 @@ private:
         return mesh_vdm != nullptr;
     }
 
-    RenderMesh *CreateRenderMesh(Geometry *geometry,MaterialData *md,const int color)
+    RenderMesh *CreateRenderMesh(Geometry *geometry)
     {
         if(!geometry)
             return nullptr;
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return nullptr;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return nullptr;
-
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-            return nullptr;
-
-        Primitive *primitive = primitive_manager->CreatePrimitive(geometry,md->mi[color]);
-
-        if(!primitive)
-            return nullptr;
-
         auto rm = std::make_unique<RenderMesh>();
         rm->geometry = geometry;
-        rm->primitive = primitive;
 
         RenderMesh *result = rm.get();
         render_mesh.push_back(std::move(rm));
@@ -265,7 +193,7 @@ private:
             if (!geom)
                 return false;
 
-            rm_floor = CreateRenderMesh(geom, &solid, 0);
+            rm_floor = CreateRenderMesh(geom);
             if (!rm_floor)
                 return false;
         }
@@ -278,7 +206,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, &solid, 1))
+            if (!CreateRenderMesh(geom))
                 return false;
         }
 
@@ -292,7 +220,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, &solid, 2))
+            if (!CreateRenderMesh(geom))
                 return false;
         }
 
@@ -309,7 +237,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, &solid, 3))
+            if (!CreateRenderMesh(geom))
                 return false;
         }
 
@@ -325,7 +253,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, &solid, 4))
+            if (!CreateRenderMesh(geom))
                 return false;
         }
 
@@ -342,7 +270,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, &solid, 5))
+            if (!CreateRenderMesh(geom))
                 return false;
         }
 
@@ -361,7 +289,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, &solid, 6))
+            if (!CreateRenderMesh(geom))
                 return false;
         }
 
@@ -375,7 +303,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, &solid, 7))
+            if (!CreateRenderMesh(geom))
                 return false;
         }
 
@@ -388,7 +316,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, &solid, 8))
+            if (!CreateRenderMesh(geom))
                 return false;
         }
 
@@ -402,7 +330,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, &solid, 9))
+            if (!CreateRenderMesh(geom))
                 return false;
         }
 
@@ -418,7 +346,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, &solid, 10))
+            if (!CreateRenderMesh(geom))
                 return false;
         }
 
@@ -435,7 +363,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, &solid, 11))
+            if (!CreateRenderMesh(geom))
                 return false;
         }
 
@@ -454,7 +382,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, &solid, 12))
+            if (!CreateRenderMesh(geom))
                 return false;
         }
 
@@ -482,7 +410,7 @@ private:
             if (!geom)
                 return false;
 
-            if (!CreateRenderMesh(geom, &solid, 14))
+            if (!CreateRenderMesh(geom))
                 return false;
         }
         return true;
@@ -497,7 +425,9 @@ private:
 
         GraphicsGeometryFactory geometry_factory(graphics_context);
 
-        auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(wire.material->GetDefaultVIL()));
+        GeometryVertexFormat wire_gvf;
+        wire_gvf.Set(VAN::Position, VF_V3F);
+        auto pc = geometry_factory.CreateCreater(wire_gvf);
         if (!pc)
             return false;
 
@@ -512,12 +442,7 @@ private:
         if(!geometry_factory.RegisterGeometry(bbox_geometry))
             return false;
 
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-            return false;
-
-        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry, wire.mi[5]);
-        return bbox_primitive != nullptr;
+        return true;
     }
 
     bool InitECS()
@@ -559,7 +484,8 @@ private:
             rm_floor->transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             rm_floor->transform->SetMovable(false);
 
-            rm_floor->primitive_comp->SetPrimitive(rm_floor->primitive);
+            rm_floor->primitive_comp->SetUnresolvedGeometry(rm_floor->geometry);
+            rm_floor->primitive_comp->SetMaterialRecord(&kSolidCfg, &entity_colors[0], sizeof(Color4f));
             rm_floor->primitive_comp->SetVisible(true);
         }
 
@@ -586,8 +512,8 @@ private:
             rm->transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             rm->transform->SetMovable(false);
 
-            rm->primitive_comp->SetPrimitive(rm->primitive);
-            rm->primitive_comp->SetOverrideMaterial(solid.mi[index % COLOR_COUNT]);
+            rm->primitive_comp->SetUnresolvedGeometry(rm->geometry);
+            rm->primitive_comp->SetMaterialRecord(&kSolidCfg, &entity_colors[index % COLOR_COUNT], sizeof(Color4f));
             rm->primitive_comp->SetVisible(true);
 
             ++index;
@@ -598,7 +524,7 @@ private:
 
     bool InitBoundingBoxScene()
     {
-        if(!bbox_primitive)
+        if(!bbox_geometry)
             return false;
 
         for (size_t i = 0; i < render_mesh.size(); ++i)
@@ -626,8 +552,8 @@ private:
             bbox->transform->SetLocalScale(glm::vec3(size.x, size.y, size.z));
             bbox->transform->SetMovable(false);
 
-            bbox->primitive_comp->SetPrimitive(bbox_primitive);
-            bbox->primitive_comp->SetOverrideMaterial(wire.mi[i % COLOR_COUNT]);
+            bbox->primitive_comp->SetUnresolvedGeometry(bbox_geometry);
+            bbox->primitive_comp->SetMaterialRecord(&kWireCfg, &entity_colors[i % COLOR_COUNT], sizeof(Color4f));
             bbox->primitive_comp->SetVisible(true);
 
             bounding_boxes.push_back(std::move(bbox));
@@ -669,10 +595,7 @@ public:
     {
         SetClearColor(Color4f(0.2f,0.2f,0.2f,1.0f));
 
-        if(!InitSolidMDP())
-            return false;
-
-        if(!InitWireMDP())
+        if(!InitColors())
             return false;
 
         if(!InitVDM())

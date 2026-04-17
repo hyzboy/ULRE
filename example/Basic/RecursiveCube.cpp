@@ -8,10 +8,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/color/Color.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -39,11 +36,16 @@ private:
     ECSContext *ecs_context = nullptr;
     Entity *camera_entity = nullptr;
 
-    Material *material = nullptr;
-    MaterialInstance *mi = nullptr;
-
     Geometry *geometry = nullptr;
-    std::vector<Primitive *> primitives;
+
+    inline static const mtl::MaterialAssetRecord kRecursiveCubeCfg {
+        .id       = "recursive_cube_main",
+        .preset   = mtl::MaterialPreset::Gizmo3D,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
+
+    Color4f cube_color;
+
     struct CubeNode
     {
         TransformComponent *transform = nullptr;
@@ -54,8 +56,6 @@ private:
         int dir = 1;
     };
     std::vector<CubeNode> nodes;
-
-    PrimitiveManager *primitive_manager = nullptr;
 
     static constexpr int kMaxDepth = 20;
     static constexpr float kChildScale = 0.99f;
@@ -98,25 +98,6 @@ private:
     }
 
 private:
-    bool InitMaterial()
-    {
-        static const mtl::MaterialAssetRecord kRecursiveCubeCfg {
-            .id       = "recursive_cube_main",
-            .preset   = mtl::MaterialPreset::Gizmo3D,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-
-        Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-
-        mi = AcquireMI(kRecursiveCubeCfg, &color, sizeof(color));
-        if (!mi)
-            return false;
-
-        material = mi->GetMaterial();
-
-        return mi != nullptr;
-    }
-
     bool CreateCubeGeometry()
     {
         using namespace inline_geometry;
@@ -125,9 +106,13 @@ private:
         if (!graphics_context)
             return false;
 
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+        gvf.Set(VAN::Normal, VF_V3F);
+
         GraphicsGeometryFactory geometry_factory(graphics_context);
 
-        auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(mi->GetVIL()));
+        auto pc = geometry_factory.CreateCreater(gvf);
         if (!pc)
             return false;
 
@@ -149,7 +134,7 @@ private:
                              bool animate,
                              EntityID parent_id)
     {
-        if (!ecs_context || !primitive_manager || !geometry || !mi)
+        if (!ecs_context || !geometry)
             return nullptr;
 
         auto *entity = ecs_context->CreateEntity<Entity>(name);
@@ -161,14 +146,9 @@ private:
         transform->SetLocalScale(glm::vec3(scale, scale, scale));
         transform->SetMovable(animate);
 
-        auto prim = primitive_manager->CreatePrimitive(geometry, mi);
-        if (!prim)
-            return nullptr;
-
-        primitives.push_back(prim);
-
         auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-        primitive_comp->SetPrimitive(prim);
+        primitive_comp->SetUnresolvedGeometry(geometry);
+        primitive_comp->SetMaterialRecord(&kRecursiveCubeCfg, &cube_color, sizeof(cube_color));
         primitive_comp->SetVisible(true);
 
         if (animate)
@@ -208,10 +188,6 @@ private:
         ecs_context = GetECSContext();
 
         if (!ecs_context)
-            return false;
-
-        primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
             return false;
 
         // Base cube at origin
@@ -265,16 +241,13 @@ private:
 public:
     ~RecursiveCubeApp()
     {
-        for (auto *prim : primitives)
-            SAFE_CLEAR(prim)
     }
 
     bool Init() override
     {
         SetClearColor(Color4f(0.1f, 0.1f, 0.1f, 1.0f));
 
-        if (!InitMaterial())
-            return false;
+        cube_color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
         if (!CreateCubeGeometry())
             return false;

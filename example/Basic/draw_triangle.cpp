@@ -9,12 +9,9 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 
  // 引入ECS相关头文件
  #include<hgl/ecs/core/Context.h>
@@ -59,35 +56,22 @@ private:
     Entity* triangle_entity     =nullptr;
     uint64_t entity_id          =0;          // 对象追踪ID
 
-    // 传统渲染资源
-    MaterialInstance *  material_instance   =nullptr;
-    Primitive *         prim_triangle       =nullptr;
+    // 渲染资源
+    Geometry *          geometry            =nullptr;
+
+    inline static const mtl::MaterialAssetRecord kTriangleCfg {
+        .id         = "draw_triangle_vertex_color",
+        .preset     = mtl::MaterialPreset::VertexColor2D,
+        .dim        = mtl::MaterialAssetRecord::Dim::D2,
+        .l2w        = false,
+        .pos_format = POSITION_SHADER_FORMAT,   // VAT_IVEC2: shader中 ivec2 顶点输入
+        .coord_2d   = CoordinateSystem2D::Ortho,
+        .pipeline   = GraphicsPipelinePreset::Solid2D,
+    };
 
 private:
 
-    bool InitMaterial()
-    {
-
-        static const mtl::MaterialAssetRecord kTriangleCfg {
-            .id         = "draw_triangle_vertex_color",
-            .preset     = mtl::MaterialPreset::VertexColor2D,
-            .dim        = mtl::MaterialAssetRecord::Dim::D2,
-            .l2w        = false,
-            .pos_format = POSITION_SHADER_FORMAT,   // VAT_IVEC2: shader中 ivec2 顶点输入
-            .coord_2d   = CoordinateSystem2D::Ortho,
-            .pipeline   = GraphicsPipelinePreset::Solid2D,
-        };
-
-        GeometryVertexFormat gvf;
-        gvf.Set(VAN::Position, POSITION_DATA_FORMAT);
-        gvf.Set(VAN::Color, COLOR_DATA_FORMAT);
-
-        material_instance = AcquireMI(kTriangleCfg, gvf);
-
-        return material_instance != nullptr;
-    }
-
-    bool InitVBO()
+    bool CreateGeometry()
     {
         const auto ext=GetExtent();
 
@@ -101,20 +85,18 @@ private:
         if (!graphics_context)
             return false;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(material_instance->GetVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, POSITION_DATA_FORMAT);
+        gvf.Set(VAN::Color, COLOR_DATA_FORMAT);
 
-        prim_triangle = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                                 gvf,
-                                                                 material_instance,
-                                                                 "Triangle",
-                                                                 VERTEX_COUNT,
-                                                                 {{VAN::Position, POSITION_DATA_FORMAT, position_data},
-                                                                  {VAN::Color, COLOR_DATA_FORMAT, color_data}});
+        geometry = GraphicsGeometryFactory::CreateGeometry(graphics_context,
+                                                           gvf,
+                                                           "Triangle",
+                                                           VERTEX_COUNT,
+                                                           {{VAN::Position, POSITION_DATA_FORMAT, position_data},
+                                                            {VAN::Color, COLOR_DATA_FORMAT, color_data}});
 
-        if(!prim_triangle)
-            return(false);
-
-        return true;
+        return geometry != nullptr;
     }
 
     bool InitECS()
@@ -149,7 +131,8 @@ private:
         // 注意：需要明确使用hgl::ecs命名空间，因为有两个PrimitiveComponent
         HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
         auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-        ecs_primitive->SetPrimitive(prim_triangle);
+        ecs_primitive->SetUnresolvedGeometry(geometry);
+        ecs_primitive->SetMaterialRecord(&kTriangleCfg);
         ecs_primitive->SetVisible(true);
 
         return true;
@@ -161,10 +144,7 @@ public:
     {
         HGL_CAPTURE_SCOPE();  // 记录应用初始化的调用栈
 
-        if(!InitMaterial())
-            return(false);
-
-        if(!InitVBO())
+        if(!CreateGeometry())
             return(false);
 
         if(!InitECS())

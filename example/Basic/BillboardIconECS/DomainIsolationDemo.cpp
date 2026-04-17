@@ -7,12 +7,9 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/color/Color.h>
 
 // ECS headers
@@ -147,10 +144,15 @@ private:
     Entity* camera_entity = nullptr;
 
     // PlaneGrid resources
-    Material*         mtl_plane_grid  = nullptr;
-    MaterialInstance* mi_plane_grid   = nullptr;
     Geometry*         geom_plane_grid = nullptr;
-    Primitive*        prim_plane_grid = nullptr;
+
+    inline static const mtl::MaterialAssetRecord kPlaneGridCfg {
+        .id        = "domain_demo_plane_grid",
+        .domain_id = kGridDomainID,
+        .preset    = mtl::MaterialPreset::VertexLuminance2D,
+        .prim      = PrimitiveType::Lines,
+        .pipeline  = GraphicsPipelinePreset::Solid3D,
+    };
 
 private:
 
@@ -162,39 +164,15 @@ private:
         auto* graphics_context = render_context->GetGraphicsContext();
         if (!graphics_context) return false;
 
-        static const mtl::MaterialAssetRecord kPlaneGridCfg {
-            .id        = "domain_demo_plane_grid",
-            .domain_id = kGridDomainID,
-            .preset    = mtl::MaterialPreset::VertexLuminance2D,
-            .prim      = PrimitiveType::Lines,
-            .pipeline  = GraphicsPipelinePreset::Solid3D,
-        };
-
-        GeometryVertexFormat gvf_lum;
-        gvf_lum.Set(VAN::Luminance, VF_V1UN8);
-
-        mi_plane_grid = AcquireMI(kPlaneGridCfg, gvf_lum,
-                          &white_color, sizeof(white_color));
-        if (!mi_plane_grid) return false;
-
-        mtl_plane_grid = mi_plane_grid->GetMaterial();
-
-        return true;
-    }
-
-    bool CreateGeometryAndPrimitives()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context) return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context) return false;
-
         GraphicsGeometryFactory geometry_factory(graphics_context);
 
         using namespace inline_geometry;
 
-        auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(mi_plane_grid->GetVIL()));
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position,  VF_V2F);
+        gvf.Set(VAN::Luminance, VF_V1UN8);
+
+        auto pc = geometry_factory.CreateCreater(gvf);
         if (!pc) return false;
 
         PlaneGridCreateInfo pgci;
@@ -207,8 +185,6 @@ private:
         if (!geom_plane_grid) return false;
 
         if (!geometry_factory.RegisterGeometry(geom_plane_grid)) return false;
-        prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid);
-        if (!prim_plane_grid) return false;
 
         return true;
     }
@@ -319,7 +295,8 @@ private:
             transform->SetMovable(false);
 
             auto prim = grid_entity->AddComponent<PrimitiveComponent>();
-            prim->SetPrimitive(prim_plane_grid);
+            prim->SetUnresolvedGeometry(geom_plane_grid);
+            prim->SetMaterialRecord(&kPlaneGridCfg, &white_color, sizeof(white_color));
             prim->SetVisible(true);
         }
 
@@ -366,7 +343,6 @@ public:
         SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));
 
         if (!InitPlaneGridResources())      return false;
-        if (!CreateGeometryAndPrimitives()) return false;
         if (!InitializeECS())               return false;
         if (!InitializeCamera())            return false;
 

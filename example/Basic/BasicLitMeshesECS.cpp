@@ -3,12 +3,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
-#include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
@@ -37,7 +32,6 @@ private:
     struct RenderMesh
     {
         Geometry* geometry = nullptr;
-        Primitive* primitive = nullptr;
 
         ~RenderMesh()
         {
@@ -47,52 +41,45 @@ private:
     ECSContext* ecs_context = nullptr;
     Entity* camera_entity = nullptr;
 
-    Material* material = nullptr;
-    MaterialInstance* material_instance = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
 
-    Texture2D* base_texture = nullptr;
-    Texture2D* normal_texture = nullptr;
-    Sampler* sampler = nullptr;
-
     std::vector<std::unique_ptr<RenderMesh>> meshes;
 
-    MaterialInstance* mi_sky_sphere = nullptr;
     Entity* sky_entity = nullptr;
+
+    mtl::StandardMaterialInstance mi_data{};
+
+    inline static const mtl::MaterialAssetRecord kStandardCfg {
+        .id             = "basic_lit_standard",
+        .preset         = mtl::MaterialPreset::Standard,
+        .sky            = true,
+        .sky_ambient    = mtl::SkyLightAmbientModel::FakeAtmosphere,
+        .lighting       = mtl::LightingModel::BlinnPhong,
+        .pipeline       = GraphicsPipelinePreset::Solid3D,
+        .textures       = {
+            {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/Brickwall/Albedo.Tex2D"},
+            {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::None, "res/image/Brickwall/Normal.Tex2D"},
+        },
+    };
+
+    inline static const mtl::MaterialAssetRecord kSkyCfg {
+        .id       = "basic_lit_sky",
+        .preset   = mtl::MaterialPreset::SkyMinimal,
+        .l2w      = false,
+        .sky      = true,
+        .pipeline = GraphicsPipelinePreset::Sky,
+    };
 
 private:
 
     bool InitMaterial()
     {
-        static const mtl::MaterialAssetRecord kStandardCfg {
-            .id             = "basic_lit_standard",
-            .preset         = mtl::MaterialPreset::Standard,
-            .sky            = true,
-            .sky_ambient    = mtl::SkyLightAmbientModel::FakeAtmosphere,
-            .lighting       = mtl::LightingModel::BlinnPhong,
-            .pipeline       = GraphicsPipelinePreset::Solid3D,
-            .textures       = {
-                {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/Brickwall/Albedo.Tex2D"},
-                {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::None, "res/image/Brickwall/Normal.Tex2D"},
-            },
-        };
-        mtl::StandardMaterialInstance mi_data{};
         mi_data.base_color = 0xFFFFFFFFu;
         mi_data.metallic = 0.08f;
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
-
-        material_instance = AcquireMI(kStandardCfg, &mi_data, sizeof(mi_data));
-        if (!material_instance)
-        {
-            std::fprintf(stderr,
-                "[BasicLitMeshesECS] InitMaterial failed: AcquireMI(MaterialPreset::Standard) returned null\n");
-            return false;
-        }
-
-        material = material_instance->GetMaterial();
 
         return true;
     }
@@ -104,7 +91,11 @@ private:
         if (!buffer_manager)
             return false;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(material_instance->GetVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+        gvf.Set(VAN::Normal,   VF_V3F);
+        gvf.Set(VAN::TexCoord, VF_V2F);
+        gvf.Set(VAN::Tangent,  VF_V3F);
         mesh_vdm = new VertexDataManager(buffer_manager, gvf);
         if (!mesh_vdm)
             return false;
@@ -117,29 +108,11 @@ private:
 
     RenderMesh* CreateRenderMesh(Geometry* geometry)
     {
-        if (!geometry || !material_instance)
-            return nullptr;
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return nullptr;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return nullptr;
-
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-            return nullptr;
-
-        GraphicsGeometryFactory geometry_factory(graphics_context);
-        Primitive* primitive = geometry_factory.CreatePrimitive(geometry, material_instance);
-        if (!primitive)
+        if (!geometry)
             return nullptr;
 
         auto mesh = std::make_unique<RenderMesh>();
         mesh->geometry = geometry;
-        mesh->primitive = primitive;
 
         RenderMesh* result = mesh.get();
         meshes.push_back(std::move(mesh));
@@ -379,7 +352,8 @@ private:
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform->SetMovable(false);
 
-            primitive_comp->SetPrimitive(rm_floor->primitive);
+            primitive_comp->SetUnresolvedGeometry(rm_floor->geometry);
+            primitive_comp->SetMaterialRecord(&kStandardCfg, &mi_data, sizeof(mi_data));
             primitive_comp->SetVisible(true);
         }
 
@@ -406,7 +380,8 @@ private:
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform->SetMovable(false);
 
-            primitive_comp->SetPrimitive(rm->primitive);
+            primitive_comp->SetUnresolvedGeometry(rm->geometry);
+            primitive_comp->SetMaterialRecord(&kStandardCfg, &mi_data, sizeof(mi_data));
             primitive_comp->SetVisible(true);
 
             ++index;
@@ -433,36 +408,24 @@ private:
     bool InitSkySphere()
     {
 
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
+        auto* device = GetDevice();
+        auto* geometry_manager = GetGeometryManager();
+        if (!device || !geometry_manager)
             return false;
 
-        static const mtl::MaterialAssetRecord kSkyCfg {
-            .id       = "basic_lit_sky",
-            .preset   = mtl::MaterialPreset::SkyMinimal,
-            .l2w      = false,
-            .sky      = true,
-            .pipeline = GraphicsPipelinePreset::Sky,
-        };
-        mi_sky_sphere = AcquireMI(kSkyCfg);
-        if (!mi_sky_sphere)
+        GeometryVertexFormat sky_gvf;
+        sky_gvf.Set(VAN::Position, VF_V3F);
+        auto pc = std::make_unique<GeometryCreater>(device, sky_gvf);
+
+        using namespace inline_geometry;
+        HexSphereCreateInfo hsci;
+        hsci.subdivisions = 3;
+        hsci.radius = 256;
+        Geometry* sky_geom = CreateHexSphere(pc.get(), &hsci);
+        if (!sky_geom)
             return false;
 
-        const auto sky_gvf = GeometryVertexFormat::FromVIL(mi_sky_sphere->GetVIL());
-
-        Primitive* ri = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                                 sky_gvf,
-                                                                 mi_sky_sphere,
-                                                                 [](GeometryCreater* pc)
-                                                                 {
-                                                                     using namespace inline_geometry;
-                                                                     HexSphereCreateInfo hsci;
-                                                                     hsci.subdivisions = 3;
-                                                                     hsci.radius = 256;
-                                                                     return CreateHexSphere(pc, &hsci);
-                                                                 });
-        if (!ri)
-            return false;
+        geometry_manager->Add(sky_geom);
 
         sky_entity = ecs_context->CreateEntity<Entity>("SkySphere");
         auto transform = sky_entity->AddComponent<TransformComponent>(Mobility::Movable);
@@ -473,7 +436,8 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform->SetMovable(false);
 
-        prim_comp->SetPrimitive(ri);
+        prim_comp->SetUnresolvedGeometry(sky_geom);
+        prim_comp->SetMaterialRecord(&kSkyCfg);
         prim_comp->SetVisible(true);
 
         return true;

@@ -4,10 +4,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 
 #include<hgl/color/Color.h>
 
@@ -34,32 +31,17 @@ private:
     Entity *      cylinder_entity    =nullptr;
     Entity *      camera_entity  =nullptr;
 
-    Material *          material        = nullptr;
-    MaterialInstance *  mi              = nullptr;
+    Geometry *          geometry        = nullptr;
 
-    Primitive *         primitive       = nullptr;
+    inline static const mtl::MaterialAssetRecord kCylinderCfg {
+        .id       = "cylinder_main",
+        .preset   = mtl::MaterialPreset::Gizmo3D,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
 
 private:
 
-    bool InitMaterial()
-    {
-        static const mtl::MaterialAssetRecord kCylinderCfg {
-            .id       = "cylinder_main",
-            .preset   = mtl::MaterialPreset::Gizmo3D,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-
-        Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-
-        mi = AcquireMI(kCylinderCfg, &color, sizeof(color));
-
-        if(!mi)
-            return false;
-
-        return mi != nullptr;
-    }
-
-    bool CreateCylinderPrimitive()
+    bool CreateCylinderGeometry()
     {
         using namespace inline_geometry;
 
@@ -72,16 +54,18 @@ private:
         cci.radius       = 1.0f;
         cci.numberSlices = 6;      // very low tessellation (hexagonal prism look)
 
-        const auto gvf = GeometryVertexFormat::FromVIL(mi->GetVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+        gvf.Set(VAN::Normal, VF_V3F);
 
-        primitive = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                             gvf,
-                                                             mi,
-                                                             [&](GeometryCreater *pc)
-                                                             {
-                                                                 return CreateCylinder(pc, &cci);
-                                                             });
-        return primitive != nullptr;
+        GraphicsGeometryFactory geometry_factory(graphics_context);
+        auto pc = geometry_factory.CreateCreater(gvf);
+        if (!pc) return false;
+
+        geometry = CreateCylinder(pc.get(), &cci);
+        if (!geometry) return false;
+
+        return geometry_factory.RegisterGeometry(geometry) != nullptr;
     }
 
     bool InitECS()
@@ -98,8 +82,11 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform->SetMovable(false);
 
+        Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+
         auto primitive_comp = cylinder_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-        primitive_comp->SetPrimitive(primitive);
+        primitive_comp->SetUnresolvedGeometry(geometry);
+        primitive_comp->SetMaterialRecord(&kCylinderCfg, &color, sizeof(color));
         primitive_comp->SetVisible(true);
 
         return true;
@@ -137,10 +124,7 @@ public:
     {
         SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));
 
-        if(!InitMaterial())
-            return false;
-
-        if(!CreateCylinderPrimitive())
+        if(!CreateCylinderGeometry())
             return false;
 
         if(!InitECS())

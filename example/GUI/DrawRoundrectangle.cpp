@@ -2,7 +2,6 @@
 // 通过控制尺寸、每个角的半径，可绘制出正圆、矩形、圆角矩形
 
 #include<hgl/WorkManager.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/math/Math.h>
 
@@ -49,50 +48,21 @@ private:
     hgl::ecs::ECSContext *ecs_world = nullptr;
     hgl::ecs::Entity *rect_entity = nullptr;
 
-    Texture2D *         texture             =nullptr;
-    Sampler *           sampler             =nullptr;
-    Material *          material            =nullptr;
-    MaterialInstance *  material_instance   =nullptr;
+    Geometry *          rect_geometry       =nullptr;
+
+    inline static const mtl::MaterialAssetRecord kRoundRectCfg {
+        .id       = "roundrect_texture",
+        .preset   = mtl::MaterialPreset::PureTexture2D,
+        .dim      = mtl::MaterialAssetRecord::Dim::D2,
+        .l2w      = false,
+        .coord_2d = CoordinateSystem2D::ZeroToOne,
+        .pipeline = GraphicsPipelinePreset::Solid2D,
+        .textures = {
+            {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/lena.Tex2D"},
+        },
+    };
 
 private:
-
-    bool InitMaterial()
-    {
-
-        auto* texture_manager = GetTextureManager();
-        auto* sampler_manager = GetSamplerManager();
-        if (!texture_manager || !sampler_manager)
-            return false;
-
-        static const mtl::MaterialAssetRecord kRoundRectCfg {
-            .id       = "roundrect_texture",
-            .preset   = mtl::MaterialPreset::PureTexture2D,
-            .dim      = mtl::MaterialAssetRecord::Dim::D2,
-            .l2w      = false,
-            .coord_2d = CoordinateSystem2D::ZeroToOne,
-            .pipeline = GraphicsPipelinePreset::Solid2D,
-        };
-        material_instance = AcquireMI(kRoundRectCfg);
-
-        if(!material_instance)
-            return(false);
-
-        material = material_instance->GetMaterial();
-
-        texture=texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
-
-        if(!texture)return(false);
-
-        sampler=sampler_manager->CreateSampler();
-
-        if(!material->BindImageSampler( DescriptorSetType::Material,     ///<描述符合集
-           mtl::SamplerName::ToDescriptorName(SamplerName::SamplerSlot::BaseColor),        ///<采样器名称
-           texture,                            ///<纹理
-           sampler))                           ///<采样器
-            return(false);
-
-        return(material_instance!=nullptr);
-    }
 
     bool InitVBO()
     {
@@ -106,25 +76,23 @@ private:
         auto* device = GetDevice();
         auto* buffer_manager = GetBufferManager();
         auto* geometry_manager = GetGeometryManager();
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
+        if (!device || !buffer_manager || !geometry_manager)
             return false;
 
-        GeometryCreater pc(device, GeometryVertexFormat::FromVIL(material_instance->GetVIL()), buffer_manager);
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V2F);
+        gvf.Set(VAN::TexCoord, VF_V2F);
+
+        GeometryCreater pc(device, gvf, buffer_manager);
         pc.Init("TextureRect", 6);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
             !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))
             return false;
 
-        auto* geometry = pc.Create();
-        if (!geometry)
+        rect_geometry = pc.Create();
+        if (!rect_geometry)
             return false;
-        geometry_manager->Add(geometry);
-
-        Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
-
-        if(!primitive)
-            return false;
+        geometry_manager->Add(rect_geometry);
 
         rect_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("Rect2D");
         if(!rect_entity)
@@ -138,7 +106,8 @@ private:
         if(!prim_comp)
             return false;
 
-        prim_comp->SetPrimitive(primitive);
+        prim_comp->SetUnresolvedGeometry(rect_geometry);
+        prim_comp->SetMaterialRecord(&kRoundRectCfg);
         prim_comp->SetVisible(true);
 
         return true;
@@ -150,9 +119,6 @@ public:
         ecs_world = GetECSContext();
         if(!ecs_world)
             return false;
-
-        if(!InitMaterial())
-            return(false);
 
         if(!InitVBO())
             return(false);

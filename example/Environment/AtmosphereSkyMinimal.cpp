@@ -1,11 +1,8 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/UBOCommon.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<memory>
 
 // ECS headers
@@ -28,27 +25,17 @@ private:
     hgl::ecs::Entity *sky_entity = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    Material *          mtl_sky_sphere      =nullptr;
-
     Geometry *          prim_sky_sphere     =nullptr;
-    MaterialInstance *  mi_sky_sphere       =nullptr;
+
+    inline static const mtl::MaterialAssetRecord kSkyCfg {
+        .id       = "sky_minimal",
+        .preset   = mtl::MaterialPreset::SkyMinimal,
+        .l2w      = false,
+        .sky      = true,
+        .pipeline = GraphicsPipelinePreset::Sky,
+    };
 
 private:
-
-    bool InitMDP()
-    {
-
-        static const mtl::MaterialAssetRecord kSkyCfg {
-            .id       = "sky_minimal",
-            .preset   = mtl::MaterialPreset::SkyMinimal,
-            .l2w      = false,
-            .sky      = true,
-            .pipeline = GraphicsPipelinePreset::Sky,
-        };
-        mi_sky_sphere = AcquireMI(kSkyCfg);
-
-        return mi_sky_sphere != nullptr;
-    }
 
     bool CreateRenderObject()
     {
@@ -60,7 +47,9 @@ private:
 
         using namespace inline_geometry;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(mi_sky_sphere->GetVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+
         auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
         struct HexSphereCreateInfo hsci;
@@ -80,15 +69,7 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!prim_sky_sphere || !mi_sky_sphere)
-            return false;
-
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-            return false;
-
-        Primitive *ri=primitive_manager->CreatePrimitive(prim_sky_sphere,mi_sky_sphere);
-        if(!ri)
+        if(!prim_sky_sphere)
             return false;
 
         sky_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("SkySphere");
@@ -100,7 +81,8 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform->SetMovable(false);
 
-        prim_comp->SetPrimitive(ri);
+        prim_comp->SetUnresolvedGeometry(prim_sky_sphere);
+        prim_comp->SetMaterialRecord(&kSkyCfg);
         prim_comp->SetVisible(true);
 
         return true;
@@ -157,9 +139,6 @@ private:
 public:
     bool Init() override
     {
-        if(!InitMDP())
-            return(false);
-
         if(!CreateRenderObject())
             return(false);
 

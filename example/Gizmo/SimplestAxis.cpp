@@ -5,10 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
@@ -34,26 +31,16 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    Material *          material            =nullptr;
-
     Geometry *         prim_axis           =nullptr;
-    MaterialInstance *  material_instance   =nullptr;
+
+    inline static const mtl::MaterialAssetRecord kAxisCfg {
+        .id       = "axis_vertex_color",
+        .preset   = mtl::MaterialPreset::VertexColor3D,
+        .prim     = PrimitiveType::Lines,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
 
 private:
-
-    bool InitMDP()
-    {
-
-        static const mtl::MaterialAssetRecord kAxisCfg {
-            .id       = "axis_vertex_color",
-            .preset   = mtl::MaterialPreset::VertexColor3D,
-            .prim     = PrimitiveType::Lines,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-        material_instance = AcquireMI(kAxisCfg);
-
-        return material_instance != nullptr;
-    }
 
     bool CreateRenderObject()
     {
@@ -65,7 +52,9 @@ private:
 
         using namespace inline_geometry;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(material_instance->GetVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+        gvf.Set(VAN::Color, VF_V4F);
         auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
         inline_geometry::AxisCreateInfo aci;
@@ -82,14 +71,6 @@ private:
         if(!ecs_context)
             return false;
 
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-            return false;
-
-        Primitive *ri=primitive_manager->CreatePrimitive(prim_axis,material_instance);
-        if(!ri)
-            return false;
-
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Axis");
         auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -99,7 +80,8 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform->SetMovable(false);
 
-        prim_comp->SetPrimitive(ri);
+        prim_comp->SetUnresolvedGeometry(prim_axis);
+        prim_comp->SetMaterialRecord(&kAxisCfg);
         prim_comp->SetVisible(true);
 
         return true;
@@ -152,9 +134,6 @@ public:
 
     bool Init() override
     {
-        if(!InitMDP())
-            return(false);
-
         if(!CreateRenderObject())
             return(false);
 

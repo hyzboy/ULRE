@@ -1,6 +1,5 @@
 #include "BillboardIconECSBase.h"
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include <iostream>
 #include <memory>
 
@@ -24,23 +23,6 @@ void BillboardIconECSBase::ConfigureQuadPipelineMode()
 
 bool BillboardIconECSBase::InitPlaneGridResources()
 {
-    if (mi_plane_grid) return true;
-
-    static const mtl::MaterialAssetRecord kPlaneGridCfg {
-        .id       = "billboard_icon_plane_grid",
-        .preset   = mtl::MaterialPreset::VertexLuminance2D,
-        .prim     = PrimitiveType::Lines,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
-    };
-
-    GeometryVertexFormat gvf_lum;
-    gvf_lum.Set(VAN::Luminance, VF_V1UN8);
-
-    mi_plane_grid = AcquireMI(kPlaneGridCfg, gvf_lum, &white_color, sizeof(white_color));
-    if (!mi_plane_grid) return false;
-
-    mtl_plane_grid = mi_plane_grid->GetMaterial();
-
     return true;
 }
 
@@ -56,7 +38,11 @@ bool BillboardIconECSBase::CreateGeometryAndPrimitives()
 
     using namespace inline_geometry;
 
-    auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(mi_plane_grid->GetVIL()));
+    GeometryVertexFormat gvf;
+    gvf.Set(VAN::Position,  VF_V2F);
+    gvf.Set(VAN::Luminance, VF_V1UN8);
+
+    auto pc = geometry_factory.CreateCreater(gvf);
     if (!pc) return false;
 
     PlaneGridCreateInfo pgci;
@@ -69,9 +55,6 @@ bool BillboardIconECSBase::CreateGeometryAndPrimitives()
     if (!geom_plane_grid) return false;
 
     if (!geometry_factory.RegisterGeometry(geom_plane_grid)) return false;
-
-    prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid);
-    if (!prim_plane_grid) return false;
 
     return true;
 }
@@ -140,7 +123,8 @@ bool BillboardIconECSBase::InitializeECS()
         grid_transform->SetMovable(false);
 
         auto grid_primitive = grid_entity->AddComponent<PrimitiveComponent>();
-        grid_primitive->SetPrimitive(prim_plane_grid);
+        grid_primitive->SetUnresolvedGeometry(geom_plane_grid);
+        grid_primitive->SetMaterialRecord(&kPlaneGridCfg, &white_color, sizeof(white_color));
         grid_primitive->SetVisible(true);
     }
 

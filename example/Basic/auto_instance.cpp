@@ -10,12 +10,9 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
@@ -52,35 +49,24 @@ private:
     // ECS组件
     ECSContext *  ecs_world      =nullptr;   // 由默认 ECSContext 统一维护
 
-    // 传统渲染资源（共享）
-    MaterialInstance *  material_instance   =nullptr;
-    Primitive *         prim_triangle       =nullptr;
+    // 共享几何体
+    Geometry *          geom_triangle       =nullptr;
 
     // 存储所有创建的实体
     std::vector<Entity*> triangle_entities;
+
+    inline static const mtl::MaterialAssetRecord kAutoInstanceCfg {
+        .id       = "auto_instance_vertex_color",
+        .preset   = mtl::MaterialPreset::VertexColor2D,
+        .dim      = mtl::MaterialAssetRecord::Dim::D2,
+        .pipeline = GraphicsPipelinePreset::Solid2D,
+    };
 
 private:
 
     bool InitMaterial()
     {
-        {
-            static const mtl::MaterialAssetRecord kAutoInstanceCfg {
-                .id       = "auto_instance_vertex_color",
-                .preset   = mtl::MaterialPreset::VertexColor2D,
-                .dim      = mtl::MaterialAssetRecord::Dim::D2,
-                .pipeline = GraphicsPipelinePreset::Solid2D,
-            };
-
-            GeometryVertexFormat gvf;
-            gvf.Set(VAN::Color, VF_V4UN8);
-
-            material_instance = AcquireMI(kAutoInstanceCfg, gvf);
-        }
-
-        if(!material_instance)
-            return(false);
-
-        return material_instance != nullptr;
+        return true;
     }
 
     bool InitVBO()
@@ -89,17 +75,18 @@ private:
         if (!graphics_context)
             return false;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(material_instance->GetVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V2F);
+        gvf.Set(VAN::Color,    VF_V4UN8);
 
-        prim_triangle = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                                 gvf,
-                                                                 material_instance,
-                                                                 "Triangle",
-                                                                 VERTEX_COUNT,
-                                                                 {{VAN::Position,VF_V2F,position_data},
-                                                                  {VAN::Color,VF_V4UN8,color_data}});
+        geom_triangle = GraphicsGeometryFactory::CreateGeometry(graphics_context,
+                                                                gvf,
+                                                                "Triangle",
+                                                                VERTEX_COUNT,
+                                                                {{VAN::Position,VF_V2F,position_data},
+                                                                 {VAN::Color,VF_V4UN8,color_data}});
 
-        if(!prim_triangle)
+        if(!geom_triangle)
             return(false);
 
         return(true);
@@ -147,7 +134,8 @@ private:
             // 所有实体共享同一个Primitive
             // RenderCollector会检测到这一点并自动使用Instance渲染
             auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-            primitive_comp->SetPrimitive(prim_triangle);
+            primitive_comp->SetUnresolvedGeometry(geom_triangle);
+            primitive_comp->SetMaterialRecord(&kAutoInstanceCfg);
             primitive_comp->SetVisible(true);
 
             // 保存实体引用

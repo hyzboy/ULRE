@@ -240,6 +240,9 @@ static bool IsSemanticMaterialPreset(const MaterialPreset preset)
 
 static const PresetResolveEntry kPresetResolveTable[] =
 {
+    // Fallback/error visualization material (routes to Standard shader for now)
+    {MaterialPreset::Checkerboard3D,      "Checkerboard3D",      MaterialPreset::Standard,            MakeStandardKey},
+
     {MaterialPreset::VertexColor2D,       "VertexColor2D",       MaterialPreset::VertexColor2D,       MakeVertexColor2DKey},
     {MaterialPreset::PureColor2D,         "PureColor2D",         MaterialPreset::PureColor2D,         MakePureColor2DKey},
     {MaterialPreset::PureTexture2D,       "PureTexture2D",       MaterialPreset::PureTexture2D,       MakePureTexture2DKey},
@@ -266,8 +269,6 @@ static const PresetResolveEntry kPresetResolveTable[] =
     {MaterialPreset::Metal,               "Metal",               MaterialPreset::Standard,            MakeStandardKey},
     {MaterialPreset::BirdFeathers,        "BirdFeathers",        MaterialPreset::Standard,            MakeStandardKey},
     {MaterialPreset::Scales,              "Scales",              MaterialPreset::Standard,            MakeStandardKey},
-    // Fallback/error visualization material (routes to Standard shader for now)
-    {MaterialPreset::Checkerboard3D,      "Checkerboard3D",      MaterialPreset::Standard,            MakeStandardKey},
 };
 
 static const PresetResolveEntry *FindPresetResolveEntry(const MaterialPreset preset)
@@ -562,6 +563,9 @@ static MaterialCreateInfo *DispatchPBRColor3D(
 
 static const VariantFactoryDispatchEntry kVariantFactoryDispatchTable[] =
 {
+    // Fallback/error visualization (routes to Standard factory)
+    {MaterialPreset::Checkerboard3D,      "Checkerboard3D",      DispatchStandard},
+
     {MaterialPreset::VertexColor2D,       "VertexColor2D",       DispatchVertexColor2D},
     {MaterialPreset::PureColor2D,         "PureColor2D",         DispatchPureColor2D},
     {MaterialPreset::PureTexture2D,       "PureTexture2D",       DispatchPureTexture2D},
@@ -578,8 +582,6 @@ static const VariantFactoryDispatchEntry kVariantFactoryDispatchTable[] =
     {MaterialPreset::Billboard2DFixed,    "Billboard2DFixed",    DispatchBillboard2DFixed},
     {MaterialPreset::Standard,            "Standard",            DispatchStandard},
     {MaterialPreset::PBRColor3D,          "PBRColor3D",          DispatchPBRColor3D},
-    // Fallback/error visualization (routes to Standard factory)
-    {MaterialPreset::Checkerboard3D,      "Checkerboard3D",      DispatchStandard},
 };
 
 static const VariantFactoryDispatchEntry *FindVariantFactoryDispatchEntry(const MaterialPreset factory_type)

@@ -4,10 +4,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/Extruded.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/color/Color.h>
 #include<cmath>
 #include<memory>
@@ -39,26 +36,21 @@ private:
     Geometry *         prim_circle_cylinder = nullptr;
     Geometry *         prim_triangle       = nullptr;
     Geometry *         prim_pentagon       = nullptr;
-    MaterialInstance *  material_instance   = nullptr;
+
+    Color4f color_data;
+
+    inline static const mtl::MaterialAssetRecord kExtrudedCfg {
+        .id       = "extruded_polygon",
+        .preset   = mtl::MaterialPreset::Gizmo3D,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
 
 private:
 
     bool InitMDP()
     {
-
-        static const mtl::MaterialAssetRecord kExtrudedCfg {
-            .id       = "extruded_polygon",
-            .preset   = mtl::MaterialPreset::Gizmo3D,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-        Color4f color=GetColor4f(COLOR::BlenderAxisRed);
-
-        material_instance = AcquireMI(kExtrudedCfg, &color, sizeof(color));
-
-        if (material_instance)
-            material = material_instance->GetMaterial();
-
-        return material_instance != nullptr;
+        color_data = GetColor4f(COLOR::BlenderAxisRed);
+        return true;
     }
 
     bool CreateRenderObjects()
@@ -71,7 +63,9 @@ private:
 
         using namespace inline_geometry;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(material_instance->GetVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+        gvf.Set(VAN::Normal,   VF_V3F);
         auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
         // 测试1: 矩形挤压成立方体
@@ -134,15 +128,7 @@ private:
 
     bool CreateMeshEntity(const char *name, Geometry *geometry, const glm::vec3 &pos)
     {
-        if(!ecs_context || !geometry || !material_instance)
-            return false;
-
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-            return false;
-
-        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, material_instance);
-        if(!mesh)
+        if(!ecs_context || !geometry)
             return false;
 
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
@@ -154,7 +140,8 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform->SetMovable(false);
 
-        prim_comp->SetPrimitive(mesh);
+        prim_comp->SetUnresolvedGeometry(geometry);
+        prim_comp->SetMaterialRecord(&kExtrudedCfg, &color_data, sizeof(color_data));
         prim_comp->SetVisible(true);
 
         return true;

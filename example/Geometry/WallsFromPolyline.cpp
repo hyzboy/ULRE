@@ -2,13 +2,8 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/color/Color.h>
 
 // ECS headers
@@ -34,19 +29,23 @@ private:
 
     mtl::StandardMaterialInstance mi_data;
 
-    Material *material = nullptr;
-    MaterialInstance *material_instance = nullptr;
-    Sampler *sampler = nullptr;
-    Texture2D *base_color_texture = nullptr;
-
     VertexDataManager *mesh_vdm = nullptr;
 
-    std::vector<Primitive*> wall_meshes;
+    std::vector<Geometry*> wall_geometries;
+
+    inline static const mtl::MaterialAssetRecord kWallsCfg {
+        .id             = "walls_standard",
+        .preset         = mtl::MaterialPreset::Standard,
+        .sky      = true,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+        .textures = {
+            {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/Brickwall/Albedo.Tex2D"},
+        },
+    };
 
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(sampler)
         SAFE_CLEAR(mesh_vdm)
     }
 
@@ -78,10 +77,10 @@ public:
         if(!ecs_context)
             return false;
 
-        for(size_t i = 0; i < wall_meshes.size(); ++i)
+        for(size_t i = 0; i < wall_geometries.size(); ++i)
         {
-            Primitive *primitive = wall_meshes[i];
-            if(!primitive)
+            Geometry *geometry = wall_geometries[i];
+            if(!geometry)
                 continue;
 
             auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Wall_" + std::to_string(i));
@@ -93,7 +92,8 @@ public:
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform->SetMovable(false);
 
-            prim_comp->SetPrimitive(primitive);
+            prim_comp->SetUnresolvedGeometry(geometry);
+            prim_comp->SetMaterialRecord(&kWallsCfg, &mi_data, sizeof(mi_data));
             prim_comp->SetVisible(true);
         }
 
@@ -103,40 +103,25 @@ public:
     bool Init() override
     {
 
-        auto* texture_manager = GetTextureManager();
-        auto* sampler_manager = GetSamplerManager();
-                if (!texture_manager || !sampler_manager)
-            return false;
-
         auto* geometry_manager = GetGeometryManager();
         if (!geometry_manager)
             return false;
-
-        static const mtl::MaterialAssetRecord kWallsCfg {
-            .id             = "walls_standard",
-            .preset         = mtl::MaterialPreset::Standard,
-            .sky      = true,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-            .textures = {
-                {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/Brickwall/Albedo.Tex2D"},
-            },
-        };
 
         mi_data.base_color = GetRGBA(COLOR::FireBrick);
         mi_data.metallic=0;
         mi_data.roughness=0.95f;
         mi_data.normal_scale=0.35f;
-        material_instance = AcquireMI(kWallsCfg, &mi_data, sizeof(mi_data));
-        if(!material_instance) return false;
 
-        material = material_instance->GetMaterial();
-
-        const VIL *vil = material->GetDefaultVIL();
         auto* buffer_manager = GetBufferManager();
         if (!buffer_manager)
             return false;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(vil);
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+        gvf.Set(VAN::Normal,   VF_V3F);
+        gvf.Set(VAN::TexCoord, VF_V2F);
+        gvf.Set(VAN::Tangent,  VF_V3F);
+
         mesh_vdm = new VertexDataManager(buffer_manager, gvf);
         if (!mesh_vdm)
             return false;
@@ -178,12 +163,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = GetPrimitiveManager();
-                if (!primitive_manager)
-                    return false;
-
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
-                if(primitive) wall_meshes.push_back(primitive);
+                wall_geometries.push_back(geometry);
             }
         }
 
@@ -213,12 +193,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = GetPrimitiveManager();
-                if (!primitive_manager)
-                    return false;
-
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
-                if(primitive) wall_meshes.push_back(primitive);
+                wall_geometries.push_back(geometry);
             }
         }
 
@@ -247,12 +222,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = GetPrimitiveManager();
-                if (!primitive_manager)
-                    return false;
-
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
-                if(primitive) wall_meshes.push_back(primitive);
+                wall_geometries.push_back(geometry);
             }
         }
 
@@ -282,12 +252,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = GetPrimitiveManager();
-                if (!primitive_manager)
-                    return false;
-
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance);
-                if(primitive) wall_meshes.push_back(primitive);
+                wall_geometries.push_back(geometry);
             }
         }
 

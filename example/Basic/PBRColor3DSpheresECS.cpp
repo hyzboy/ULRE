@@ -8,10 +8,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/color/ColorPacking.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -45,22 +42,32 @@ private:
     ECSContext *ecs_world = nullptr;
     Entity *camera_entity = nullptr;
 
-    Material *material = nullptr;
-
     VertexDataManager *mesh_vdm = nullptr;
     Geometry *builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
-    Primitive *base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
     mtl::PBRColor3DMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
-    MaterialInstance *sphere_mi[GRID_SIZE][GRID_SIZE]{};
 
     Entity *sphere_entities[GRID_SIZE][GRID_SIZE]{};
     std::shared_ptr<TransformComponent> sphere_transforms[GRID_SIZE][GRID_SIZE]{};
 
     double elapsed_time = 0.0;
 
-    MaterialInstance* mi_sky_sphere = nullptr;
     Entity* sky_entity = nullptr;
+
+    inline static const mtl::MaterialAssetRecord kPBRColorCfg {
+        .id          = "pbr_color_spheres",
+        .preset      = mtl::MaterialPreset::PBRColor3D,
+        .sky         = true,
+        .pipeline    = GraphicsPipelinePreset::Solid3D,
+    };
+
+    inline static const mtl::MaterialAssetRecord kSkyCfg {
+        .id       = "pbr_color_sky",
+        .preset   = mtl::MaterialPreset::SkyMinimal,
+        .l2w      = false,
+        .sky      = true,
+        .pipeline = GraphicsPipelinePreset::Sky,
+    };
 
 private:
     static uint HashU32(uint row, uint col, uint salt)
@@ -92,13 +99,6 @@ private:
 
     bool CreatePBRColorMaterialInstances()
     {
-        static const mtl::MaterialAssetRecord kPBRColorMICfg {
-            .id          = "pbr_color_spheres",
-            .preset      = mtl::MaterialPreset::PBRColor3D,
-            .sky         = true,
-            .pipeline    = GraphicsPipelinePreset::Solid3D,
-        };
-
         for (uint row = 0; row < GRID_SIZE; ++row)
         {
             for (uint col = 0; col < GRID_SIZE; ++col)
@@ -106,24 +106,10 @@ private:
                 const float metallic = float(col) / float(GRID_SIZE - 1);
                 const float roughness = 0.05f + float(row) / float(GRID_SIZE - 1) * 0.95f;
 
-                mtl::PBRColor3DMaterialInstance d{};
-                d.base_color = PackRGBA8Float(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
-                d.metallic = metallic;
-                d.roughness = roughness;
-
                 auto &store = sphere_mi_data[row][col];
-                store.base_color = d.base_color;
-                store.metallic = d.metallic;
-                store.roughness = d.roughness;
-
-                sphere_mi[row][col] = AcquireMI(kPBRColorMICfg, &d, sizeof(d));
-                if (!sphere_mi[row][col])
-                {
-                    printf("[ERROR] CreatePBRColorMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
-                    return false;
-                }
-
-
+                store.base_color = PackRGBA8Float(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
+                store.metallic = metallic;
+                store.roughness = roughness;
             }
         }
 
@@ -153,8 +139,11 @@ private:
             return false;
         }
 
-        if (sphere_mi[0][0] == nullptr) return false;
-        const auto gvf = GeometryVertexFormat::FromVIL(sphere_mi[0][0]->GetVIL());
+        if (sphere_mi_data[0][0].base_color == 0) return false;
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+        gvf.Set(VAN::Normal,   VF_V3F);
+        gvf.Set(VAN::TexCoord, VF_V2F);
         mesh_vdm = new VertexDataManager(buffer_manager, gvf);
         if (!mesh_vdm)
         {
@@ -284,43 +273,6 @@ private:
         return true;
     }
 
-    bool CreateBasePrimitives()
-    {
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-        {
-            printf("[ERROR] CreateBasePrimitives: No render_context\n");
-            return false;
-        }
-
-        auto *graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-        {
-            printf("[ERROR] CreateBasePrimitives: No graphics_context\n");
-            return false;
-        }
-
-        auto *primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-        {
-            printf("[ERROR] CreateBasePrimitives: No primitive_manager\n");
-            return false;
-        }
-
-        for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
-        {
-            base_primitives[i] = primitive_manager->CreatePrimitive(builtin_geometries[i], sphere_mi[0][i]);
-
-            if (!base_primitives[i])
-            {
-                printf("[ERROR] CreateBasePrimitives: Failed to create primitive %u\n", i);
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     bool InitECS()
     {
         ecs_world = GetECSContext();
@@ -353,8 +305,8 @@ private:
                 transform->SetMovable(true);
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
-                prim_comp->SetPrimitive(base_primitives[col]);
-                prim_comp->SetOverrideMaterial(sphere_mi[row][col]);
+                prim_comp->SetUnresolvedGeometry(builtin_geometries[col]);
+                prim_comp->SetMaterialRecord(&kPBRColorCfg, &sphere_mi_data[row][col], sizeof(mtl::PBRColor3DMaterialInstance));
                 prim_comp->SetVisible(true);
             }
         }
@@ -365,35 +317,27 @@ private:
     bool InitSkySphere()
     {
 
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-        static const mtl::MaterialAssetRecord kSkyCfg {
-            .id       = "pbr_color_sky",
-            .preset   = mtl::MaterialPreset::SkyMinimal,
-            .l2w      = false,
-            .sky      = true,
-            .pipeline = GraphicsPipelinePreset::Sky,
-        };
-        mi_sky_sphere = AcquireMI(kSkyCfg);
-        if (!mi_sky_sphere)
+        auto* device = GetDevice();
+        auto* geometry_manager = GetGeometryManager();
+        if (!device || !geometry_manager)
             return false;
 
-        const auto sky_gvf = GeometryVertexFormat::FromVIL(mi_sky_sphere->GetVIL());
+        GeometryVertexFormat sky_gvf;
+        sky_gvf.Set(VAN::Position, VF_V3F);
 
-        Primitive* ri = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
-                                                                 sky_gvf,
-                                                                 mi_sky_sphere,
-                                                                 [](GeometryCreater* pc)
-                                                                 {
-                                                                     using namespace inline_geometry;
-                                                                     HexSphereCreateInfo hsci;
-                                                                     hsci.subdivisions = 3;
-                                                                     hsci.radius = 256;
-                                                                     return CreateHexSphere(pc, &hsci);
-                                                                 });
-        if (!ri)
+        auto pc = std::make_unique<GeometryCreater>(device, sky_gvf);
+        if (!pc)
             return false;
+
+        using namespace inline_geometry;
+        HexSphereCreateInfo hsci;
+        hsci.subdivisions = 3;
+        hsci.radius = 256;
+        Geometry* sky_geom = CreateHexSphere(pc.get(), &hsci);
+        if (!sky_geom)
+            return false;
+
+        geometry_manager->Add(sky_geom);
 
         sky_entity = ecs_world->CreateEntity<Entity>("SkySphere");
         auto transform = sky_entity->AddComponent<TransformComponent>(Mobility::Movable);
@@ -404,7 +348,8 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform->SetMovable(false);
 
-        prim_comp->SetPrimitive(ri);
+        prim_comp->SetUnresolvedGeometry(sky_geom);
+        prim_comp->SetMaterialRecord(&kSkyCfg);
         prim_comp->SetVisible(true);
 
         return true;
@@ -467,11 +412,6 @@ private:
 public:
     ~TestApp()
     {
-        for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
-        {
-            SAFE_CLEAR(base_primitives[i])
-        }
-
         SAFE_CLEAR(mesh_vdm)
     }
 
@@ -486,9 +426,6 @@ public:
             return false;
 
         if (!CreateBuiltinGeometries())
-            return false;
-
-        if (!CreateBasePrimitives())
             return false;
 
         if (!InitECS())

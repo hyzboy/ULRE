@@ -17,6 +17,8 @@ class MaterialCreateInfo;
  */
 struct MaterialCreateConfig
 {
+    const char *                preset_name=nullptr;        ///<原始材质预设名称(如"PBRColor3D")，用于日志输出
+
     bool                        material_instance;          ///<是否包含材质实例
 
     RenderTargetOutputConfig    rt_output;                  ///<渲染目标输出配置

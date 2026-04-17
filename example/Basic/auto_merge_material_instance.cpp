@@ -11,11 +11,8 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/color/Color.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 
 // 引入几何创建器
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -52,77 +49,34 @@ private:
     // ECS组件
     ECSContext* ecs_world = nullptr;   // 由默认 ECSContext 统一维护
 
-    // 传统渲染资源
-    Material* material = nullptr;
     Geometry* geometry = nullptr;
+
+    inline static const mtl::MaterialAssetRecord kMergeCfg {
+        .id       = "auto_merge_pure_color",
+        .preset   = mtl::MaterialPreset::PureColor2D,
+        .dim      = mtl::MaterialAssetRecord::Dim::D2,
+        .pipeline = GraphicsPipelinePreset::Solid2D,
+    };
 
     // 每个三角形的数据
     struct TriangleData
     {
         Entity* entity;
-        MaterialInstance* mi;
-        Primitive* primitive;
+        Color4f color;
     };
 
     TriangleData triangles[DRAW_OBJECT_COUNT];
 
 private:
 
-    bool InitMaterial()
-    {
-        {
-            static const mtl::MaterialAssetRecord kMergeCfg {
-                .id       = "auto_merge_pure_color",
-                .preset   = mtl::MaterialPreset::PureColor2D,
-                .dim      = mtl::MaterialAssetRecord::Dim::D2,
-                .pipeline = GraphicsPipelinePreset::Solid2D,
-            };
-            // 为每个三角形创建不同颜色的MaterialInstance
-            for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
-            {
-                triangles[i].mi = AcquireMI(kMergeCfg);
-
-                if (!triangles[i].mi)
-                    return false;
-
-                if (!material)
-                {
-                    material = triangles[i].mi->GetMaterial();
-                    std::cout << "[TestApp::InitMaterial] Created material: " << (void*)material << std::endl;
-                    std::cout << "[TestApp::InitMaterial] Material has MI: " << material->hasMI() << std::endl;
-                }
-
-                // 使用不同的颜色
-                Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
-
-                std::cout << "[TestApp::InitMaterial] Triangle[" << i << "] color: "
-                          << "R=" << color.r << ", G=" << color.g << ", B=" << color.b << ", A=" << color.a << std::endl;
-
-                triangles[i].mi->WriteMIData(color);       //设置MaterialInstance的数据
-            }
-        }
-
-        {
-            for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
-            {
-                Color4f *mi_color=(Color4f *)triangles[i].mi->GetMIData();
-
-                std::cout<<"[TestApp::InitMaterial] Triangle["<<i<<"] MI Data Address: "<<(void*)mi_color
-                    <<", Color: R="<<mi_color->r<<", G="<<mi_color->g<<", B="<<mi_color->b<<", A="<<mi_color->a<<std::endl;
-            }
-        }
-
-        return true;
-    }
-
     bool InitGeometry()
     {
-
         auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(triangles[0].mi->GetVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V2F);
 
         geometry = GraphicsGeometryFactory::CreateGeometry(graphics_context,
                                                            gvf,
@@ -154,25 +108,9 @@ private:
 
         std::cout << "[TestApp::InitECS] Got ECS context: " << (void*)ecs_world << std::endl;
 
-        // === 步骤2: 创建12个三角形实体，每个使用不同的MaterialInstance ===
+        // === 步骤2: 创建12个三角形实体，每个使用不同的颜色 ===
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
-            // 为每个三角形创建Primitive（共享Geometry，但使用不同的MaterialInstance）
-            auto* primitive_manager = GetPrimitiveManager();
-            if (!primitive_manager)
-                return false;
-
-            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, triangles[i].mi);
-
-            if (!triangles[i].primitive)
-            {
-                std::cout << "[TestApp::InitECS] ERROR: Failed to create primitive " << i << std::endl;
-                return false;
-            }
-
-            std::cout << "[TestApp::InitECS] Created primitive[" << i << "]: " << (void*)triangles[i].primitive
-                      << ", MI: " << (void*)triangles[i].mi << std::endl;
-
             // 创建实体
             triangles[i].entity = ecs_world->CreateEntity<Entity>("ColoredTriangle_" + std::to_string(i));
 
@@ -196,9 +134,10 @@ private:
             std::cout << "[TestApp::InitECS] Entity[" << i << "] rotation angle: " << (TRI_ROTATE_ANGLE * i) << " degrees" << std::endl;
 
             // === 步骤4: 添加PrimitiveComponent ===
-            // 每个实体使用不同的Primitive（不同的MaterialInstance）
+            // 每个实体使用不同的颜色
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-            primitive_comp->SetPrimitive(triangles[i].primitive);
+            primitive_comp->SetUnresolvedGeometry(geometry);
+            primitive_comp->SetMaterialRecord(&kMergeCfg, &triangles[i].color, sizeof(triangles[i].color));
             primitive_comp->SetVisible(true);
 
             std::cout << "[TestApp::InitECS] Entity[" << i << "] setup complete" << std::endl;
@@ -220,11 +159,9 @@ public:
 
         std::cout << "[TestApp::Init] === Initializing Application ===" << std::endl;
 
-        if (!InitMaterial())
-        {
-            std::cout << "[TestApp::Init] ERROR: InitMaterial failed!" << std::endl;
-            return false;
-        }
+        // 初始化每个三角形的颜色
+        for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
+            triangles[i].color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
 
         if (!InitGeometry())
         {

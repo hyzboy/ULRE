@@ -14,12 +14,9 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/color/Color.h>
 
 // ECS headers
@@ -59,10 +56,14 @@ private:
     Entity* camera_entity = nullptr;
 
     // PlaneGrid resources
-    Material* mtl_plane_grid = nullptr;
-    MaterialInstance* mi_plane_grid = nullptr;
     Geometry* geom_plane_grid = nullptr;
-    Primitive* prim_plane_grid = nullptr;
+
+    inline static const mtl::MaterialAssetRecord kPlaneGridCfg {
+        .id       = "billboard_ecs_plane_grid",
+        .preset   = mtl::MaterialPreset::VertexLuminance2D,
+        .prim     = PrimitiveType::Lines,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
 
     // Billboard resources are managed by BillboardRenderSystem
 
@@ -73,27 +74,6 @@ private:
      */
     bool InitPlaneGridResources()
     {
-        static const mtl::MaterialAssetRecord kPlaneGridCfg {
-            .id       = "billboard_ecs_plane_grid",
-            .preset   = mtl::MaterialPreset::VertexLuminance2D,
-            .prim     = PrimitiveType::Lines,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-
-        GeometryVertexFormat gvf_lum;
-        gvf_lum.Set(VAN::Luminance, VF_V1UN8);
-
-        // Create material instance
-        mi_plane_grid = AcquireMI(kPlaneGridCfg, gvf_lum, &white_color, sizeof(white_color));
-
-        if (!mi_plane_grid) return false;
-
-        mtl_plane_grid = mi_plane_grid->GetMaterial();
-
-        std::cout << "[BillboardECS] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;
-
-        std::cout << "[BillboardECS] PlaneGrid MI: " << (void*)mi_plane_grid << std::endl;
-
         return true;
     }
 
@@ -114,7 +94,11 @@ private:
 
         // Create plane grid geometry
         {
-            auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(mi_plane_grid->GetVIL()));
+            GeometryVertexFormat gvf;
+            gvf.Set(VAN::Position,  VF_V2F);
+            gvf.Set(VAN::Luminance, VF_V1UN8);
+
+            auto pc = geometry_factory.CreateCreater(gvf);
             if (!pc) return false;
 
             PlaneGridCreateInfo pgci;
@@ -127,11 +111,8 @@ private:
             if (!geom_plane_grid) return false;
 
             if (!geometry_factory.RegisterGeometry(geom_plane_grid)) return false;
-            prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid);
-            if (!prim_plane_grid) return false;
 
-            std::cout << "[BillboardECS] PlaneGrid geometry: " << (void*)geom_plane_grid
-                      << ", primitive: " << (void*)prim_plane_grid << std::endl;
+            std::cout << "[BillboardECS] PlaneGrid geometry: " << (void*)geom_plane_grid << std::endl;
         }
 
         return true;
@@ -233,10 +214,10 @@ private:
             std::cout << "  -> TransformComponent added" << std::endl;
 
             auto grid_primitive = grid_entity->AddComponent<PrimitiveComponent>();
-            grid_primitive->SetPrimitive(prim_plane_grid);
+            grid_primitive->SetUnresolvedGeometry(geom_plane_grid);
+            grid_primitive->SetMaterialRecord(&kPlaneGridCfg, &white_color, sizeof(white_color));
             grid_primitive->SetVisible(true);
             std::cout << "  -> PrimitiveComponent added, visible=" << grid_primitive->IsVisible() << std::endl;
-            std::cout << "  -> Primitive pointer: " << (void*)prim_plane_grid << std::endl;
         }
 
         std::cout << "\n[BillboardECS] Creating Billboard entity..." << std::endl;

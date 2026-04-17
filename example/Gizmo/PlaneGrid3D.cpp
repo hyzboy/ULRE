@@ -4,10 +4,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
-#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
@@ -33,8 +30,6 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    Material *          material            =nullptr;
-
     Geometry *         geom_plane_grid     =nullptr;
 
     inline static const mtl::MaterialAssetRecord kPlaneGridCfg {
@@ -46,21 +41,8 @@ private:
 
 private:
 
-    bool InitMDP()
-    {
-        auto *registry = GetMaterialAssetRegistry();
-        if (!registry)
-            return false;
-
-        auto handle = registry->Acquire(kPlaneGridCfg);
-        material = handle.material;
-
-        return material != nullptr;
-    }
-
     bool CreateRenderObject()
     {
-
         auto* device = GetDevice();
         auto* geometry_manager = GetGeometryManager();
         if (!device || !geometry_manager)
@@ -76,7 +58,8 @@ private:
         pgci.lum=180;
         pgci.sub_lum=255;
 
-        auto gvf = GeometryVertexFormat::FromVIL(material->GetDefaultVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V2F);
         gvf.Set(VAN::Luminance, VF_V1UN8);
         auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
@@ -174,9 +157,6 @@ public:
 
     bool Init() override
     {
-        if(!InitMDP())
-            return(false);
-
         if(!CreateRenderObject())
             return(false);
 

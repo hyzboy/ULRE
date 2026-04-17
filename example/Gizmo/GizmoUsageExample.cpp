@@ -11,11 +11,8 @@
 #include<hgl/math/VectorTypes.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
@@ -48,15 +45,24 @@ private:
 
     std::shared_ptr<TransformGizmoSystem> gizmo_system;
 
-    Material *grid_material = nullptr;
-    MaterialInstance *grid_mi = nullptr;
     Geometry *grid_geometry = nullptr;
-    Primitive *grid_primitive = nullptr;
-
-    Material *cube_material = nullptr;
-    MaterialInstance *cube_mi = nullptr;
     Geometry *cube_geometry = nullptr;
-    Primitive *cube_primitive = nullptr;
+
+    inline static const mtl::MaterialAssetRecord kGridCfg {
+        .id       = "gizmo_grid",
+        .preset   = mtl::MaterialPreset::VertexLuminance2D,
+        .prim     = PrimitiveType::Lines,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
+
+    inline static const mtl::MaterialAssetRecord kCubeCfg {
+        .id       = "gizmo_cube",
+        .preset   = mtl::MaterialPreset::Gizmo3D,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
+
+    Color4f grid_color;
+    Color4f cube_color;
 
     std::string debug_cache;
 
@@ -64,29 +70,14 @@ private:
     {
 
         auto *geometry_manager = GetGeometryManager();
-        auto *primitive_manager = GetPrimitiveManager();
         auto *device = GetDevice();
-        if(!geometry_manager || !primitive_manager || !device)
+        if(!geometry_manager || !device)
             return false;
         {
-            static const mtl::MaterialAssetRecord kGridCfg {
-                .id       = "gizmo_grid",
-                .preset   = mtl::MaterialPreset::VertexLuminance2D,
-                .prim     = PrimitiveType::Lines,
-                .pipeline = GraphicsPipelinePreset::Solid3D,
-            };
+            GeometryVertexFormat gvf;
+            gvf.Set(VAN::Position, VF_V2F);
+            gvf.Set(VAN::Luminance, VF_V1UN8);
 
-            GeometryVertexFormat gvf_lum;
-            gvf_lum.Set(VAN::Luminance, VF_V1UN8);
-
-            const Color4f white = GetColor4f(COLOR::White, 1.0f);
-            grid_mi = AcquireMI(kGridCfg, gvf_lum, &white, sizeof(white));
-            if(!grid_mi)
-                return false;
-
-            grid_material = grid_mi->GetMaterial();
-
-            const auto gvf = GeometryVertexFormat::FromVIL(grid_mi->GetVIL());
             auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
             inline_geometry::PlaneGridCreateInfo pgci;
@@ -100,27 +91,13 @@ private:
                 return false;
 
             geometry_manager->Add(grid_geometry);
-
-            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_mi);
-            if(!grid_primitive)
-                return false;
         }
 
         {
-            static const mtl::MaterialAssetRecord kCubeCfg {
-                .id       = "gizmo_cube",
-                .preset   = mtl::MaterialPreset::Gizmo3D,
-                .pipeline = GraphicsPipelinePreset::Solid3D,
-            };
+            GeometryVertexFormat gvf;
+            gvf.Set(VAN::Position, VF_V3F);
+            gvf.Set(VAN::Normal, VF_V3F);
 
-            const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            cube_mi = AcquireMI(kCubeCfg, &blue, sizeof(blue));
-            if(!cube_mi)
-                return false;
-
-            cube_material = cube_mi->GetMaterial();
-
-            const auto gvf = GeometryVertexFormat::FromVIL(cube_material->GetDefaultVIL());
             auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
             inline_geometry::CubeCreateInfo cci;
@@ -133,10 +110,6 @@ private:
                 return false;
 
             geometry_manager->Add(cube_geometry);
-
-            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_mi);
-            if(!cube_primitive)
-                return false;
         }
 
         return true;
@@ -144,7 +117,7 @@ private:
 
     bool InitSceneEntities()
     {
-        if(!ecs_context || !grid_primitive || !cube_primitive || !gizmo_system)
+        if(!ecs_context || !grid_geometry || !cube_geometry || !gizmo_system)
             return false;
 
         plane_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("PlaneGrid");
@@ -155,7 +128,8 @@ private:
         plane_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 
         auto plane_primitive_comp = plane_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-        plane_primitive_comp->SetPrimitive(grid_primitive);
+        plane_primitive_comp->SetUnresolvedGeometry(grid_geometry);
+        plane_primitive_comp->SetMaterialRecord(&kGridCfg, &grid_color, sizeof(grid_color));
         plane_primitive_comp->SetVisible(true);
 
         cube_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Cube");
@@ -166,7 +140,8 @@ private:
         cube_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(3.0f));
 
         auto cube_primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-        cube_primitive_comp->SetPrimitive(cube_primitive);
+        cube_primitive_comp->SetUnresolvedGeometry(cube_geometry);
+        cube_primitive_comp->SetMaterialRecord(&kCubeCfg, &cube_color, sizeof(cube_color));
         cube_primitive_comp->SetVisible(true);
 
         return true;
@@ -290,6 +265,9 @@ private:
 public:
     bool Init() override
     {
+        grid_color = GetColor4f(COLOR::White, 1.0f);
+        cube_color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+
         if(!InitECS())
             return false;
 

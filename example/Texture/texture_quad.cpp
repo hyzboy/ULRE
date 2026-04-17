@@ -1,12 +1,7 @@
 // 画一个带纹理的四边形 (ECS)
 #include<hgl/framework/WorkManager.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -52,33 +47,20 @@ private:
     ECSContext *        ecs_world           = nullptr;
     Entity *            quad_entity         = nullptr;
 
-    MaterialInstance *  material_instance   = nullptr;
-    Primitive *         prim_quad           = nullptr;
+    Geometry *          quad_geometry       = nullptr;
+
+    inline static const mtl::MaterialAssetRecord kTexQuadCfg {
+        .id             = "texture_quad",
+        .preset         = mtl::MaterialPreset::PureTexture2D,
+        .dim            = mtl::MaterialAssetRecord::Dim::D2,
+        .l2w            = false,
+        .pipeline  = GraphicsPipelinePreset::Solid2D,
+        .textures  = {
+            {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/lena.Tex2D"},
+        },
+    };
 
 private:
-
-    bool InitMaterial()
-    {
-
-        auto* sampler_manager = GetSamplerManager();
-        auto* tex_manager = GetTextureManager();
-        if (!sampler_manager || !tex_manager)
-            return false;
-
-        static const mtl::MaterialAssetRecord kTexQuadCfg {
-            .id             = "texture_quad",
-            .preset         = mtl::MaterialPreset::PureTexture2D,
-            .dim            = mtl::MaterialAssetRecord::Dim::D2,
-            .l2w            = false,
-            .pipeline  = GraphicsPipelinePreset::Solid2D,
-            .textures  = {
-                {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/lena.Tex2D"},
-            },
-        };
-        material_instance = AcquireMI(kTexQuadCfg);
-
-        return(material_instance!=nullptr);
-    }
 
     bool InitVBO()
     {
@@ -86,25 +68,23 @@ private:
         auto* device = GetDevice();
         auto* buffer_manager = GetBufferManager();
         auto* geometry_manager = GetGeometryManager();
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
+        if (!device || !buffer_manager || !geometry_manager)
             return false;
 
-        GeometryCreater pc(device, GeometryVertexFormat::FromVIL(material_instance->GetVIL()), buffer_manager);
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V2F);
+        gvf.Set(VAN::TexCoord, VF_V2F);
+
+        GeometryCreater pc(device, gvf, buffer_manager);
         pc.Init("TextureQuad", VERTEX_COUNT);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
             !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))
             return false;
 
-        auto* geometry = pc.Create();
-        if (!geometry)
+        quad_geometry = pc.Create();
+        if (!quad_geometry)
             return false;
-        geometry_manager->Add(geometry);
-
-        prim_quad = primitive_manager->CreatePrimitive(geometry, material_instance);
-
-        if(!prim_quad)
-            return(false);
+        geometry_manager->Add(quad_geometry);
 
         return(true);
     }
@@ -124,7 +104,8 @@ private:
         quad_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         quad_transform->SetMovable(false);
 
-        quad_primitive->SetPrimitive(prim_quad);
+        quad_primitive->SetUnresolvedGeometry(quad_geometry);
+        quad_primitive->SetMaterialRecord(&kTexQuadCfg);
         quad_primitive->SetVisible(true);
 
         return true;
@@ -133,9 +114,6 @@ private:
 public:
     bool Init() override
     {
-        if(!InitMaterial())
-            return(false);
-
         if(!InitVBO())
             return(false);
 

@@ -11,10 +11,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 
 #include<hgl/color/Color.h>
 
@@ -53,18 +50,10 @@ class FacingMeshBillboardZECSApp : public WorkObject
 {
 private:
 
-    struct MaterialData
-    {
-        Material* material = nullptr;
-        const VIL* vil = nullptr;
-
-        MaterialInstance* mi[DEMO_COLOR_COUNT]{};
-    };
-
     struct RenderMesh
     {
         Geometry* geometry = nullptr;
-        Primitive* primitive = nullptr;
+        int color_index = 0;
 
         Entity* entity = nullptr;
         std::shared_ptr<TransformComponent> transform;
@@ -78,41 +67,27 @@ private:
 
     ECSContext* ecs_context = nullptr;
 
-    MaterialData solid;
+    Color4f entity_colors[DEMO_COLOR_COUNT];
     VertexDataManager* mesh_vdm = nullptr;
 
     std::vector<std::unique_ptr<RenderMesh>> render_meshes;
 
     Entity* camera_entity = nullptr;
 
+    inline static const mtl::MaterialAssetRecord kSolidCfg {
+        .id       = "facing_billboard_z_solid",
+        .preset   = mtl::MaterialPreset::Gizmo3D,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
+
 private:
 
     bool InitMaterial()
     {
-        static const mtl::MaterialAssetRecord kSolidCfg {
-            .id       = "facing_billboard_z_solid",
-            .preset   = mtl::MaterialPreset::Gizmo3D,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
+        for (size_t i = 0; i < DEMO_COLOR_COUNT; ++i)
+            entity_colors[i] = GetColor4f(DemoColors[i], 1.0f);
 
-        Color4f color = GetColor4f(DemoColors[0], 1.0f);
-        solid.mi[0] = AcquireMI(kSolidCfg, &color, sizeof(color));
-        if (!solid.mi[0])
-            return false;
-
-        solid.vil = solid.mi[0]->GetVIL();
-        if (!solid.vil)
-            return false;
-
-        for (size_t i = 1; i < DEMO_COLOR_COUNT; ++i)
-        {
-            color = GetColor4f(DemoColors[i], 1.0f);
-            solid.mi[i] = AcquireMI(kSolidCfg, &color, sizeof(color));
-            if (!solid.mi[i])
-                return false;
-        }
-
-        return !solid.mi[0] ? false : true;
+        return true;
     }
 
     bool InitVDM()
@@ -122,7 +97,9 @@ private:
         if (!buffer_manager)
             return false;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(solid.vil);
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+        gvf.Set(VAN::Normal,   VF_V3F);
         mesh_vdm = new VertexDataManager(buffer_manager, gvf);
         if (!mesh_vdm)
             return false;
@@ -135,26 +112,9 @@ private:
         if (!geometry)
             return nullptr;
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return nullptr;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return nullptr;
-
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-            return nullptr;
-
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry,
-                                                                  solid.mi[color_index % DEMO_COLOR_COUNT]);
-        if (!primitive)
-            return nullptr;
-
         auto mesh = std::make_unique<RenderMesh>();
         mesh->geometry = geometry;
-        mesh->primitive = primitive;
+        mesh->color_index = color_index % DEMO_COLOR_COUNT;
 
         RenderMesh* result = mesh.get();
         render_meshes.push_back(std::move(mesh));
@@ -303,7 +263,8 @@ private:
             rm->transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             rm->transform->SetMovable(true);
 
-            rm->primitive_comp->SetPrimitive(rm->primitive);
+            rm->primitive_comp->SetUnresolvedGeometry(rm->geometry);
+            rm->primitive_comp->SetMaterialRecord(&kSolidCfg, &entity_colors[rm->color_index], sizeof(Color4f));
             rm->primitive_comp->SetVisible(true);
 
             rm->facing_comp->SetFacingMode(FacingMode::BillboardZ);
