@@ -47,7 +47,7 @@ use_cm_module(Core)
 use_cm_module(Util)
 use_cm_module(2D)
 #use_cm_module(GUI)
-use_cm_module(Script)
+#use_cm_module(Script)
 use_cm_module(AssetsManage)
 
 add_subdirectory(src)
