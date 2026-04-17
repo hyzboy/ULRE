@@ -122,8 +122,10 @@ private:
         if (!graphics_context)
             return false;
 
+        const auto gvf = GeometryVertexFormat::FromVIL(triangles[0].mi->GetVIL());
+
         geometry = GraphicsGeometryFactory::CreateGeometry(graphics_context,
-                                                           triangles[0].mi,
+                                                           gvf,
                                                            "Triangle",
                                                            VERTEX_COUNT,
                                                            {{VAN::Position, VF_V2F, position_data}});

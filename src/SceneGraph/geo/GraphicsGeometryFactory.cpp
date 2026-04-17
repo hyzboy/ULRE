@@ -93,17 +93,17 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, Ma
 }
 
 Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_context,
-                                                  MaterialInstance *material_instance,
+                                                  const GeometryVertexFormat &gvf,
                                                   const AnsiString &geometry_name,
                                                   uint32_t vertex_count,
                                                   std::initializer_list<VertexAttribWrite> vertex_writes)
 {
-    if(!graphics_context || !material_instance || geometry_name.IsEmpty() || vertex_count == 0)
+    if(!graphics_context || gvf.GetActiveCount()==0 || geometry_name.IsEmpty() || vertex_count == 0)
         return nullptr;
 
     GraphicsGeometryFactory geometry_factory(graphics_context);
 
-    auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(material_instance->GetVIL()));
+    auto pc = geometry_factory.CreateCreater(gvf);
     if(!pc)
         return nullptr;
 
@@ -123,16 +123,53 @@ Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_cont
 }
 
 Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_context,
+                                                    const GeometryVertexFormat &gvf,
                                                     MaterialInstance *material_instance,
                                                     const AnsiString &geometry_name,
                                                     uint32_t vertex_count,
                                                     std::initializer_list<VertexAttribWrite> vertex_writes)
 {
-    auto *geometry = CreateGeometry(graphics_context, material_instance, geometry_name, vertex_count, vertex_writes);
+    if(!graphics_context || !material_instance || gvf.GetActiveCount()==0)
+        return nullptr;
+
+    auto *geometry = CreateGeometry(graphics_context, gvf, geometry_name, vertex_count, vertex_writes);
     if(!geometry)
         return nullptr;
 
     GraphicsGeometryFactory geometry_factory(graphics_context);
     return geometry_factory.CreatePrimitive(geometry, material_instance);
+}
+
+Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_context,
+                                                  MaterialInstance *material_instance,
+                                                  const AnsiString &geometry_name,
+                                                  uint32_t vertex_count,
+                                                  std::initializer_list<VertexAttribWrite> vertex_writes)
+{
+    if(!material_instance)
+        return nullptr;
+
+    return CreateGeometry(graphics_context,
+                          GeometryVertexFormat::FromVIL(material_instance->GetVIL()),
+                          geometry_name,
+                          vertex_count,
+                          vertex_writes);
+}
+
+Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_context,
+                                                    MaterialInstance *material_instance,
+                                                    const AnsiString &geometry_name,
+                                                    uint32_t vertex_count,
+                                                    std::initializer_list<VertexAttribWrite> vertex_writes)
+{
+    if(!material_instance)
+        return nullptr;
+
+    return CreatePrimitive(graphics_context,
+                           GeometryVertexFormat::FromVIL(material_instance->GetVIL()),
+                           material_instance,
+                           geometry_name,
+                           vertex_count,
+                           vertex_writes);
 }
 }

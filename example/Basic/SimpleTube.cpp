@@ -75,7 +75,10 @@ private:
         tci.segments = 32;           // very low tessellation (hexagonal)
         tci.generate_caps = true;
 
+        const auto gvf = GeometryVertexFormat::FromVIL(mi->GetVIL());
+
         primitive = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
+                                                             gvf,
                                                              mi,
                                                              [&](GeometryCreater *pc)
                                                              {

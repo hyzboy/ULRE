@@ -135,8 +135,10 @@ private:
         if (!graphics_context)
             return false;
 
+        const auto gvf = GeometryVertexFormat::FromVIL(mi_tick->GetVIL());
+
         geometry = GraphicsGeometryFactory::CreateGeometry(graphics_context,
-                                                           mi_tick,
+                                                           gvf,
                                                            "TriangleForClock",
                                                            VERTEX_COUNT,
                                                            {{VAN::Position, VF_V2F, position_data}});

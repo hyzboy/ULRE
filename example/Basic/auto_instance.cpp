@@ -88,7 +88,10 @@ private:
         if (!graphics_context)
             return false;
 
+        const auto gvf = GeometryVertexFormat::FromVIL(material_instance->GetVIL());
+
         prim_triangle = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
+                                                                 gvf,
                                                                  material_instance,
                                                                  "Triangle",
                                                                  VERTEX_COUNT,

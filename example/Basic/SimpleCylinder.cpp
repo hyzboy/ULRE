@@ -72,7 +72,10 @@ private:
         cci.radius       = 1.0f;
         cci.numberSlices = 6;      // very low tessellation (hexagonal prism look)
 
+        const auto gvf = GeometryVertexFormat::FromVIL(mi->GetVIL());
+
         primitive = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
+                                                             gvf,
                                                              mi,
                                                              [&](GeometryCreater *pc)
                                                              {

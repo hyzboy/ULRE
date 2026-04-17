@@ -80,7 +80,10 @@ private:
         cci.segments_y = 3;
         cci.segments_z = 4;
 
+        const auto gvf = GeometryVertexFormat::FromVIL(mi->GetVIL());
+
         primitive = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
+                                                             gvf,
                                                              mi,
                                                              [&](GeometryCreater *pc)
                                                              {

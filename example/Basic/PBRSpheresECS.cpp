@@ -562,7 +562,10 @@ private:
         if (!mi_sky_sphere)
             return false;
 
+        const auto sky_gvf = GeometryVertexFormat::FromVIL(mi_sky_sphere->GetVIL());
+
         Primitive* ri = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
+                                                                 sky_gvf,
                                                                  mi_sky_sphere,
                                                                  [](GeometryCreater* pc)
                                                                  {
