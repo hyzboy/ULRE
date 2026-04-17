@@ -71,7 +71,7 @@ namespace hgl
             RenderSubmit,
             Physics,
             Animation,
-            Material,
+            ShaderMaterialProgram,
             // Add more as needed
         };
 

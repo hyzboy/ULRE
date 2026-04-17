@@ -6,7 +6,7 @@
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/ecs/components/TransformComponent.h>
@@ -166,11 +166,11 @@ namespace hgl::ecs
         all_instances.push_back(this);
     }
 
-    void TransformAssignmentBuffer::BindTransform(graph::Material* mtl)
+    void TransformAssignmentBuffer::BindTransform(graph::ShaderMaterialProgram* mtl)
     {
         if (!mtl)
         {
-            std::cout << "[TransformAssignmentBuffer::BindTransform] WARNING: Material is null" << std::endl;
+            std::cout << "[TransformAssignmentBuffer::BindTransform] WARNING: ShaderMaterialProgram is null" << std::endl;
             return;
         }
 
@@ -192,7 +192,7 @@ namespace hgl::ecs
         BindTransformID(mtl);
     }
 
-    void TransformAssignmentBuffer::BindTransformID(graph::Material* mtl)
+    void TransformAssignmentBuffer::BindTransformID(graph::ShaderMaterialProgram* mtl)
     {
         if (!mtl)
             return;

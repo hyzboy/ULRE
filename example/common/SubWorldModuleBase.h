@@ -18,7 +18,7 @@ namespace hgl::graph
     class GraphicsContext;
     class Geometry;
     class Primitive;
-    class Material;
+    class ShaderMaterialProgram;
     class MaterialInstance;
     class ResourceDomain;
 }
@@ -42,7 +42,7 @@ namespace example::modules
         hgl::ecs::Entity* anchor_entity = nullptr;
         std::shared_ptr<hgl::ecs::SubWorldComponent> subworld_component;
 
-        hgl::graph::Material*       material        = nullptr;
+        hgl::graph::ShaderMaterialProgram*       material        = nullptr;
         hgl::graph::ResourceDomain*  material_domain = nullptr;
 
         std::vector<hgl::graph::MaterialInstance*> material_instances;

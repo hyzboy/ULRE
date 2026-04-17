@@ -13,7 +13,7 @@ enum class ResourceType
     VkDevice,
 
     VertexInputLayout,
-    Material,
+    ShaderMaterialProgram,
     MaterialInstance,
 
     FrameBuffer,

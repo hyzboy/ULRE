@@ -5,7 +5,7 @@
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/mtl/UBOCommon.h>
@@ -15,7 +15,7 @@
 
 namespace hgl::ecs
 {
-    MaterialInstanceAssignmentBuffer::MaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::Material* mtl)
+    MaterialInstanceAssignmentBuffer::MaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::ShaderMaterialProgram* mtl)
         : buffer_manager(bm)
         , material(mtl)
         , material_instance_data_bytes(0)
@@ -34,7 +34,7 @@ namespace hgl::ecs
         }
     }
 
-    void MaterialInstanceAssignmentBuffer::BindMaterialInstanceID(graph::Material* mtl) const
+    void MaterialInstanceAssignmentBuffer::BindMaterialInstanceID(graph::ShaderMaterialProgram* mtl) const
     {
         if (!mtl || !material_instance_id_buffer)
             return;
@@ -47,7 +47,7 @@ namespace hgl::ecs
                       gpu);
     }
 
-    void MaterialInstanceAssignmentBuffer::BindMaterialInstanceTextureID(graph::Material* mtl) const
+    void MaterialInstanceAssignmentBuffer::BindMaterialInstanceTextureID(graph::ShaderMaterialProgram* mtl) const
     {
         if (!mtl || !mit_buffer)
             return;
@@ -60,11 +60,11 @@ namespace hgl::ecs
                       gpu);
     }
 
-    void MaterialInstanceAssignmentBuffer::BindMaterialInstance(graph::Material* mtl) const
+    void MaterialInstanceAssignmentBuffer::BindMaterialInstance(graph::ShaderMaterialProgram* mtl) const
     {
         if (!mtl)
         {
-            std::cout << "[MaterialInstanceAssignmentBuffer::BindMaterialInstance] WARNING: Material is null" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::BindMaterialInstance] WARNING: ShaderMaterialProgram is null" << std::endl;
             return;
         }
 

@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKResourceDomain.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/mtl/SamplerSlot.h>
@@ -19,7 +19,7 @@ class MaterialInstance
 {
 protected:
 
-    Material *material;
+    ShaderMaterialProgram *material;
 
     ResourceDomain *domain;     ///< 显式资源域（统一 MI 创建入口）
 
@@ -37,7 +37,7 @@ protected:
 
 public:
 
-            Material *      GetMaterial ()      { return material; }
+            ShaderMaterialProgram *      GetMaterial ()      { return material; }
             ResourceDomain *GetDomain   ()      { return domain; }
     const   uint32_t        GetDomainID ()const { return domain_id; }
 
@@ -45,12 +45,12 @@ public:
 
 private:
 
-    friend class Material;
+    friend class ShaderMaterialProgram;
     friend class ResourceDomain;
     friend class MaterialManager;
 
     /// 新路径构造（Phase 1，经由 ResourceDomain 分配槽位）
-    MaterialInstance(Material *, ResourceDomain *, const VIL *, const int);
+    MaterialInstance(ShaderMaterialProgram *, ResourceDomain *, const VIL *, const int);
 
 public:
 

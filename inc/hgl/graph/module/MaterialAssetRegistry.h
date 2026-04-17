@@ -3,7 +3,7 @@
 /// MaterialAssetRegistry.h — 从 MaterialAssetRecord 一站式创建材质层级
 ///
 /// 内部按层级自动缓存：
-///   Material       — AcquireMaterial 已缓存
+///   ShaderMaterialProgram       — AcquireMaterial 已缓存
 ///   ResourceDomain — 按 domain_id 缓存
 ///   DMB            — 按 (material_name, domain_id, texture_config_hash) 缓存
 ///   MI             — per-object slot，每次新建
@@ -62,7 +62,7 @@ public:
     ~MaterialAssetRegistry() = default;
 
     /// 核心 API：传入 record，返回三元组
-    /// Material 已缓存，Domain 按 domain_id 缓存，DMB 按纹理配置缓存
+    /// ShaderMaterialProgram 已缓存，Domain 按 domain_id 缓存，DMB 按纹理配置缓存
     MaterialDomainHandle Acquire(const mtl::MaterialAssetRecord &rec);
 
     /// 一站式：Acquire + CreateMI（推荐外部调用）
@@ -74,7 +74,7 @@ public:
                                 MaterialDomainHandle *out_handle = nullptr);
 
     /// 一站式：Acquire + 从 GVF 自动推算 VIL 覆写 + CreateMI
-    /// - 对比 Material DefaultVIL 与 Geometry 实际顶点格式，自动生成 VILConfig
+    /// - 对比 ShaderMaterialProgram DefaultVIL 与 Geometry 实际顶点格式，自动生成 VILConfig
     /// - 调用方无需手写 mi_vil_overrides
     MaterialInstance *AcquireMI(const mtl::MaterialAssetRecord &rec,
                                 const GeometryVertexFormat &gvf,

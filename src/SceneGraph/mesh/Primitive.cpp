@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialInstance.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
@@ -93,13 +93,13 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPip
 
     if(geom->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
-        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than Material, Material name: "+mtl_name);
-        GLogError("  Geometry VAB count: "+AnsiString::numberOf(geom->GetVABCount())+", Material VIL attrib count: "+AnsiString::numberOf(input_count));
+        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than ShaderMaterialProgram, ShaderMaterialProgram name: "+mtl_name);
+        GLogError("  Geometry VAB count: "+AnsiString::numberOf(geom->GetVABCount())+", ShaderMaterialProgram VIL attrib count: "+AnsiString::numberOf(input_count));
 
         // 输出材质需求的所有顶点属性
         {
             const VertexInputFormat *vif_list=vil->GetVIFList();
-            GLogError("  Material requires vertex attribs:");
+            GLogError("  ShaderMaterialProgram requires vertex attribs:");
             for(uint32_t i=0;i<input_count;i++)
             {
                 const char *name=GetVertexAttribName(vif_list[i].attrib);
@@ -152,14 +152,14 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPip
         if(!geometry_vertex_format.Has(vif->attrib))
         {
             GLogError("[FATAL ERROR] Geometry missing attrib \""+AnsiString(vab_name)+
-                      AnsiString("\" required by Material: ")+mtl_name);
+                      AnsiString("\" required by ShaderMaterialProgram: ")+mtl_name);
             return(nullptr);
         }
 
         if(geometry_vertex_format.GetFormat(vif->attrib)!=vif->format)
         {
             GLogError(  "[FATAL ERROR] Geometry attrib format mismatch for \""+AnsiString(vab_name)+
-                        AnsiString("\", Material(")+mtl_name+
+                        AnsiString("\", ShaderMaterialProgram(")+mtl_name+
                         AnsiString(") Format(")+GetVulkanFormatName(vif->format)+
                         AnsiString(") , Geometry Format(")+GetVulkanFormatName(geometry_vertex_format.GetFormat(vif->attrib))+
                         ")");
@@ -170,14 +170,14 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPip
 
         if(!vab)
         {
-            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(vab_name)+"\" in Material: "+mtl_name);
+            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(vab_name)+"\" in ShaderMaterialProgram: "+mtl_name);
             return(nullptr);
         }
 
         if(vab->GetFormat()!=vif->format)
         {
             GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vab_name)+
-                        AnsiString("\" format can't match Primitive, Material(")+mtl_name+
+                        AnsiString("\" format can't match Primitive, ShaderMaterialProgram(")+mtl_name+
                         AnsiString(") Format(")+GetVulkanFormatName(vif->format)+
                         AnsiString(") , VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
                         ")");
@@ -187,7 +187,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPip
         if(vab->GetStride()!=vif->stride)
         {
             GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vab_name)+
-                        AnsiString("\" stride can't match Primitive, Material(")+mtl_name+
+                        AnsiString("\" stride can't match Primitive, ShaderMaterialProgram(")+mtl_name+
                         AnsiString(") stride(")+AnsiString::numberOf(vif->stride)+
                         AnsiString(") , VAB stride(")+AnsiString::numberOf(vab->GetStride())+
                         ")");

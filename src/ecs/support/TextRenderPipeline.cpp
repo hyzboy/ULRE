@@ -12,7 +12,7 @@
 #include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
@@ -94,7 +94,7 @@ namespace hgl::ecs
         }
 
         graph::ResourceDomain *ResolveDomainForMaterial(graph::MaterialManager *material_manager,
-                                                        graph::Material *material,
+                                                        graph::ShaderMaterialProgram *material,
                                                         uint32_t domain_id)
         {
             if (!material)
@@ -275,7 +275,7 @@ namespace hgl::ecs
         {
             graph::MaterialManager* material_manager = nullptr;
             graph::SamplerManager* sampler_manager = nullptr;
-            graph::Material* material = nullptr;
+            graph::ShaderMaterialProgram* material = nullptr;
             graph::Sampler* sampler = nullptr;
             graph::BufferManager* buffer_manager = nullptr;
             graph::DeviceBuffer* material_instance_buffer = nullptr;

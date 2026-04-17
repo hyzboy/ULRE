@@ -5,7 +5,7 @@
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/graph/mesh/Primitive.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 
 namespace hgl::ecs
@@ -51,7 +51,7 @@ namespace hgl::ecs
         return primitiveComp ? primitiveComp->GetMaterialInstance() : nullptr;
     }
 
-    hgl::graph::Material* PrimitiveRenderItem::GetMaterial() const
+    hgl::graph::ShaderMaterialProgram* PrimitiveRenderItem::GetMaterial() const
     {
         return primitiveComp ? primitiveComp->GetMaterial() : nullptr;
     }

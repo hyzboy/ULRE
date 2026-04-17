@@ -13,7 +13,7 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderMaterialProgram.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>

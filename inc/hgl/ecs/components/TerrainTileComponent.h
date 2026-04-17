@@ -5,7 +5,7 @@
 
 namespace hgl::graph
 {
-    class Material;
+    class ShaderMaterialProgram;
     class MaterialInstance;
     class GraphicsPipeline;
 }
@@ -33,7 +33,7 @@ namespace hgl::ecs
         uint32_t grid_width  = 32;  ///< 单 Tile X 方向 Quad 数量
         uint32_t grid_height = 32;  ///< 单 Tile Y 方向 Quad 数量
 
-        hgl::graph::Material*         material  = nullptr;  ///< Vulkan 材质（含高度图绑定，不持有）
+        hgl::graph::ShaderMaterialProgram*         material  = nullptr;  ///< Vulkan 材质（含高度图绑定，不持有）
         hgl::graph::MaterialInstance* mat_inst  = nullptr;  ///< 材质实例（不持有）
         hgl::graph::GraphicsPipeline*         pipeline  = nullptr;  ///< Vulkan 管线（不持有；全体 Tile 共享）
 

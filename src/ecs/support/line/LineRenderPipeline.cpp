@@ -18,7 +18,7 @@
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/vk/VKDevice.h>
-#include <hgl/vk/VKMaterial.h>
+#include <hgl/vk/VKShaderMaterialProgram.h>
 #include <hgl/vk/VKBuffer.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>
@@ -41,7 +41,7 @@ namespace hgl::ecs
         PipelineHotpathCounters g_line_render_hotpath_counters;
 
         graph::ResourceDomain *ResolveDomainForMaterial(graph::GraphicsContext *graphics_context,
-                                                        graph::Material *material,
+                                                        graph::ShaderMaterialProgram *material,
                                                         uint32_t domain_id)
         {
             if (!material)

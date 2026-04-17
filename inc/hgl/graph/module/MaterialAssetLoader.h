@@ -27,10 +27,10 @@
 namespace hgl::graph
 {
 
-// ── Material 创建（不含纹理绑定）──────────────────────────────────────────────
+// ── ShaderMaterialProgram 创建（不含纹理绑定）──────────────────────────────────────────────
 
-/// 从 MaterialAssetRecord 创建/获取 Material（仅 AcquireMaterial，不绑纹理）。
-inline Material *CreateMaterialFromRecord(
+/// 从 MaterialAssetRecord 创建/获取 ShaderMaterialProgram（仅 AcquireMaterial，不绑纹理）。
+inline ShaderMaterialProgram *CreateMaterialFromRecord(
     MaterialManager *mm,
     const mtl::MaterialAssetRecord &rec)
 {

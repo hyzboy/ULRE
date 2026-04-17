@@ -30,7 +30,7 @@ private:
 
     friend class ResourceDomainManager;
     friend class MaterialManager;
-    friend class Material;          ///< Phase 5: Material::CreateMI 需创建默认域
+    friend class ShaderMaterialProgram;          ///< Phase 5: ShaderMaterialProgram::CreateMI 需创建默认域
 
     ResourceDomain(mtl::ShaderDataSchema schema, uint32_t domain_id, uint32_t initial_capacity = 256);
 

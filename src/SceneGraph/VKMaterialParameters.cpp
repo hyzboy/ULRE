@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKBuffer.h>
 
@@ -103,7 +103,7 @@ bool MaterialParameters::BindTexture(const mtl::SamplerSlot slot,Texture *tex)
 
 bool MaterialParameters::BindTextureSampler(const int &index,Texture *tex,Sampler *sampler)
 {
-        LogInfo(u8"[VKMaterialParameters] BindTextureSampler index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
+        LogInfo(u8"[VKShaderMaterialProgramParameters] BindTextureSampler index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
             index,
             (uint)set_type,
             (void*)tex,
@@ -126,7 +126,7 @@ bool MaterialParameters::BindTextureSampler(const mtl::SamplerSlot slot,Texture 
 
     const int index=desc_manager->GetTextureSampler(set_type,slot);
 
-    LogInfo(u8"[VKMaterialParameters] BindTextureSampler slot=%u index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
+    LogInfo(u8"[VKShaderMaterialProgramParameters] BindTextureSampler slot=%u index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
             (uint)slot,
             index,
             (uint)set_type,

@@ -1,6 +1,6 @@
 ﻿#include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/RenderItem.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/graph/module/BufferManager.h>

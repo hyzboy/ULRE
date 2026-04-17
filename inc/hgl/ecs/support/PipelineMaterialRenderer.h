@@ -18,7 +18,7 @@ namespace hgl
 {
     namespace graph
     {
-        class Material;
+        class ShaderMaterialProgram;
         class GraphicsPipeline;
         class RenderCmdBuffer;
         class VABList;
@@ -66,7 +66,7 @@ namespace hgl::ecs
     {
     private:
         // === 核心标识 ===
-        graph::Material* material;                          ///<材质
+        graph::ShaderMaterialProgram* material;                          ///<材质
         graph::GraphicsPipeline* pipeline;                          ///<管线
 
         // === 渲染状态缓存 ===
@@ -116,7 +116,7 @@ namespace hgl::ecs
                   graph::IndirectDrawIndexedBuffer* icb_draw_indexed);
 
     public:
-        PipelineMaterialRenderer(graph::Material* m, graph::GraphicsPipeline* p);
+        PipelineMaterialRenderer(graph::ShaderMaterialProgram* m, graph::GraphicsPipeline* p);
         ~PipelineMaterialRenderer();
 
         /**

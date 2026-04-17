@@ -7,7 +7,7 @@ namespace hgl
     namespace graph
     {
         class Primitive;
-        class Material;
+        class ShaderMaterialProgram;
         class MaterialInstance;
     }
 }
@@ -52,10 +52,10 @@ namespace hgl::ecs
         // PrimitiveComponent-specific accessors
         std::shared_ptr<PrimitiveComponent> GetPrimitiveComponent() const { return primitiveComp; }
 
-        // Material batching interface
+        // ShaderMaterialProgram batching interface
         hgl::graph::Primitive* GetPrimitive() const override;
         hgl::graph::MaterialInstance* GetMaterialInstance() const override;
-        hgl::graph::Material* GetMaterial() const override;
+        hgl::graph::ShaderMaterialProgram* GetMaterial() const override;
 
         // Update world matrix from transform
         void UpdateWorldMatrix();

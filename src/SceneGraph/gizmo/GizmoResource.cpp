@@ -30,7 +30,7 @@ namespace hgl::graph
 
         struct GizmoResource
         {
-            Material *          mtl;
+            ShaderMaterialProgram *          mtl;
             MaterialInstance *  mi[size_t(GizmoColor::RANGE_SIZE)];
             VertexDataManager * vdm;
 

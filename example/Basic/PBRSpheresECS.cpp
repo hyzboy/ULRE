@@ -71,7 +71,7 @@ private:
     ECSContext *  ecs_world     = nullptr;
     Entity *      camera_entity = nullptr;
 
-    Material *          material  = nullptr;
+    ShaderMaterialProgram *          material  = nullptr;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -81,7 +81,6 @@ private:
     Primitive *         base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
     // One MI per cell: col controls metallic, row controls roughness
-    mtl::StandardMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
     MaterialInstance *               sphere_mi[GRID_SIZE][GRID_SIZE]{};
 
     // 100 entities, one per sphere
@@ -298,12 +297,6 @@ private:
                 d.metallic   = metallic;
                 d.roughness  = roughness;
                 d.normal_scale = 0.35f;
-
-                auto &store = sphere_mi_data[row][col];
-                store.base_color = d.base_color;
-                store.metallic = d.metallic;
-                store.roughness = d.roughness;
-                store.normal_scale = d.normal_scale;
 
                 sphere_mi[row][col] = AcquireMI(
                     mtl::MaterialAssetRecord{

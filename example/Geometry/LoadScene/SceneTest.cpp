@@ -55,7 +55,7 @@ private:
 
     struct MaterialData
     {
-        Material *material = nullptr;
+        ShaderMaterialProgram *material = nullptr;
         GeometryVertexFormat gvf;
 
         MaterialInstance *mi[COLOR_COUNT]{};

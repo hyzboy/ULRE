@@ -3,7 +3,7 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/TransformComponent.h>
 #include <hgl/graph/mesh/Primitive.h>
-#include <hgl/vk/VKMaterial.h>
+#include <hgl/vk/VKShaderMaterialProgram.h>
 #include <hgl/vk/VKMaterialInstance.h>
 
 namespace hgl::ecs
@@ -40,7 +40,7 @@ namespace hgl::ecs
         return primitive ? primitive->GetMaterialInstance() : nullptr;
     }
 
-    graph::Material* AssetPrimitiveRenderItem::GetMaterial() const
+    graph::ShaderMaterialProgram* AssetPrimitiveRenderItem::GetMaterial() const
     {
         return primitive ? primitive->GetMaterial() : nullptr;
     }

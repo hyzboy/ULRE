@@ -43,7 +43,7 @@ class IndirectDispatchBuffer;
 class StagedBuffer;
 class IGPUBuffer;
 class ComputePipeline;
-class Material;
+class ShaderMaterialProgram;
 class Texture;
 class Fence;
 class DeviceQueue;

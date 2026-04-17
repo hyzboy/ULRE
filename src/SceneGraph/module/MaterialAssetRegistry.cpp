@@ -5,7 +5,7 @@
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
-#include <hgl/vk/VKMaterial.h>
+#include <hgl/vk/VKShaderMaterialProgram.h>
 #include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/vk/VKResourceDomain.h>
 #include <hgl/vk/VKDomainMaterialBinding.h>
@@ -42,10 +42,10 @@ static bool BindDomainTexturesFromRecord(
 }
 
 // Legacy compatibility: many render paths still bind per-material descriptors
-// from Material directly (without domain binding registration).
+// from ShaderMaterialProgram directly (without domain binding registration).
 // Keep this best-effort fallback to avoid unbound sampler validation errors.
 static void BindMaterialTexturesCompat(
-    Material *material,
+    ShaderMaterialProgram *material,
     TextureManager *tm,
     SamplerManager *sm,
     const mtl::MaterialAssetRecord &rec)
@@ -159,7 +159,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
 {
     MaterialDomainHandle handle;
 
-    // 1. Material (AcquireMaterial 内部已缓存)
+    // 1. ShaderMaterialProgram (AcquireMaterial 内部已缓存)
     handle.material = CreateMaterialFromRecord(mm, rec);
     if (!handle.material)
         return {};
@@ -249,7 +249,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialAssetReco
             if (!BindDomainTexturesFromRecord(handle.binding, tm, sm, rec))
                 return {};
 
-            // Compatibility fallback for code paths that still use Material MP
+            // Compatibility fallback for code paths that still use ShaderMaterialProgram MP
             // instead of DomainMaterialBinding MP during draw binding.
             BindMaterialTexturesCompat(handle.material, tm, sm, rec);
         }
@@ -304,7 +304,7 @@ MaterialInstance *MaterialAssetRegistry::AcquireMI(
     if (out_handle)
         *out_handle = handle;
 
-    // 从 Material DefaultVIL 与 GVF 的差异自动推算 VILConfig
+    // 从 ShaderMaterialProgram DefaultVIL 与 GVF 的差异自动推算 VILConfig
     const VIL *default_vil = handle.material->GetDefaultVIL();
     if (!default_vil)
         return nullptr;

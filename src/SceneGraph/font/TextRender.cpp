@@ -13,7 +13,7 @@
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/type/AlignUtil.h>
 #include<hgl/vk/VKFormat.h>
@@ -26,7 +26,7 @@ namespace hgl::graph
     namespace
     {
         ResourceDomain *ResolveDomainForMaterial(MaterialManager *material_manager,
-                                                 Material *material,
+                                                 ShaderMaterialProgram *material,
                                                  uint32_t domain_id)
         {
             if (!material)

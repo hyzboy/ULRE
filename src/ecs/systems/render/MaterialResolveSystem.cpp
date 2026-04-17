@@ -12,7 +12,7 @@ namespace hgl::ecs
     MaterialResolveSystem::MaterialResolveSystem(const std::string &name)
         : System(name)
     {
-        SetSystemType(SystemType::Material);
+        SetSystemType(SystemType::ShaderMaterialProgram);
         SetExecutionOrder(ExecutionPhase::RenderMaterialBind);
         SetRenderElementType("Primitive");
     }

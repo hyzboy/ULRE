@@ -3,7 +3,7 @@
 #include<hgl/ecs/core/ComponentRecords.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/geo/VKGeometry.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
@@ -113,7 +113,7 @@ namespace hgl::ecs
         return primitive->GetMaterialInstance();
     }
 
-    hgl::graph::Material* PrimitiveComponent::GetMaterial() const
+    hgl::graph::ShaderMaterialProgram* PrimitiveComponent::GetMaterial() const
     {
         // Return override material's base if set
         if (overrideMaterial)

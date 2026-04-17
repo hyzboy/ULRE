@@ -227,7 +227,7 @@ class ShaderModule;
 class ShaderModuleMap;
 class MaterialDescriptorManager;
 
-class Material;
+class ShaderMaterialProgram;
 class MaterialParameters;
 class MaterialInstance;
 struct GraphicsPipelineData;

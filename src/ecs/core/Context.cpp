@@ -22,7 +22,7 @@
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include<hgl/ecs/systems/render/SwapchainSubmitSystem.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKDevice.h>

@@ -5,7 +5,7 @@
 #include<hgl/vk/pipeline/VKGplPipelineKey.h>
 
 namespace hgl::graph{
-class Material;
+class ShaderMaterialProgram;
 class RenderTargetFormat;
 class VertexInputLayout;
 struct GraphicsPipelineData;
@@ -13,7 +13,7 @@ struct GraphicsRenderState;
 
 struct GraphicsPipelineBuildRequest
 {
-    const Material *material = nullptr;
+    const ShaderMaterialProgram *material = nullptr;
     const VertexInputLayout *vil = nullptr;
     const RenderTargetFormat *render_format = nullptr;
     const GraphicsPipelineData *pipeline_data = nullptr;
