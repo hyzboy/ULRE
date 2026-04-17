@@ -39,8 +39,6 @@ public:
 public:
     std::unique_ptr<GeometryCreater> CreateCreater(const GeometryVertexFormat &gvf) const;
     std::unique_ptr<GeometryCreater> CreateCreater(VertexDataManager *vdm) const;
-    [[deprecated("Use CreateCreater(const GeometryVertexFormat&) to decouple geometry input from VIL.")]]
-    std::unique_ptr<GeometryCreater> CreateCreater(MaterialInstance *mi) const;
 
 public:
     Geometry *RegisterGeometry(Geometry *geometry) const;
@@ -76,43 +74,14 @@ public:
         return geometry_factory.CreatePrimitive(geometry, material_instance);
     }
 
-    template<typename GeometryBuilder>
-    [[deprecated("Use CreatePrimitive(GraphicsContext*, const GeometryVertexFormat&, MaterialInstance*, GeometryBuilder&&).")]]
-    static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
-                                      MaterialInstance *material_instance,
-                                      GeometryBuilder &&builder)
-    {
-        if(!graphics_context || !material_instance)
-            return nullptr;
-
-        return CreatePrimitive(graphics_context,
-                               GeometryVertexFormat::FromVIL(material_instance->GetVIL()),
-                               material_instance,
-                               std::forward<GeometryBuilder>(builder));
-    }
-
     static Geometry *CreateGeometry(GraphicsContext *graphics_context,
                                     const GeometryVertexFormat &gvf,
                                     const AnsiString &geometry_name,
                                     uint32_t vertex_count,
                                     std::initializer_list<VertexAttribWrite> vertex_writes);
 
-    [[deprecated("Use CreateGeometry(GraphicsContext*, const GeometryVertexFormat&, ...) to decouple geometry input from VIL.")]]
-    static Geometry *CreateGeometry(GraphicsContext *graphics_context,
-                                    MaterialInstance *material_instance,
-                                    const AnsiString &geometry_name,
-                                    uint32_t vertex_count,
-                                    std::initializer_list<VertexAttribWrite> vertex_writes);
-
     static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
                                       const GeometryVertexFormat &gvf,
-                                      MaterialInstance *material_instance,
-                                      const AnsiString &geometry_name,
-                                      uint32_t vertex_count,
-                                      std::initializer_list<VertexAttribWrite> vertex_writes);
-
-    [[deprecated("Use CreatePrimitive(GraphicsContext*, const GeometryVertexFormat&, MaterialInstance*, ...) to decouple geometry input from VIL.")]]
-    static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
                                       MaterialInstance *material_instance,
                                       const AnsiString &geometry_name,
                                       uint32_t vertex_count,

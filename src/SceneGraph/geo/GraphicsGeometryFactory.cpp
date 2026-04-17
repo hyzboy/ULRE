@@ -35,14 +35,6 @@ std::unique_ptr<GeometryCreater> GraphicsGeometryFactory::CreateCreater(VertexDa
     return std::make_unique<GeometryCreater>(vdm);
 }
 
-std::unique_ptr<GeometryCreater> GraphicsGeometryFactory::CreateCreater(MaterialInstance *mi) const
-{
-    if(!mi)
-        return nullptr;
-
-    return CreateCreater(GeometryVertexFormat::FromVIL(mi->GetVIL()));
-}
-
 Geometry *GraphicsGeometryFactory::RegisterGeometry(Geometry *geometry) const
 {
     if(!graphics || !geometry)
@@ -138,38 +130,5 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_co
 
     GraphicsGeometryFactory geometry_factory(graphics_context);
     return geometry_factory.CreatePrimitive(geometry, material_instance);
-}
-
-Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_context,
-                                                  MaterialInstance *material_instance,
-                                                  const AnsiString &geometry_name,
-                                                  uint32_t vertex_count,
-                                                  std::initializer_list<VertexAttribWrite> vertex_writes)
-{
-    if(!material_instance)
-        return nullptr;
-
-    return CreateGeometry(graphics_context,
-                          GeometryVertexFormat::FromVIL(material_instance->GetVIL()),
-                          geometry_name,
-                          vertex_count,
-                          vertex_writes);
-}
-
-Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_context,
-                                                    MaterialInstance *material_instance,
-                                                    const AnsiString &geometry_name,
-                                                    uint32_t vertex_count,
-                                                    std::initializer_list<VertexAttribWrite> vertex_writes)
-{
-    if(!material_instance)
-        return nullptr;
-
-    return CreatePrimitive(graphics_context,
-                           GeometryVertexFormat::FromVIL(material_instance->GetVIL()),
-                           material_instance,
-                           geometry_name,
-                           vertex_count,
-                           vertex_writes);
 }
 }
