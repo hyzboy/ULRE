@@ -777,30 +777,23 @@ MaterialInstance *MaterialManager::AcquireMaterialInstance(const MaterialInstanc
             return nullptr;
         }
 
-        if(spec.vil_cfg)
-        {
-            mi = mtl->CreateMI(spec.vil_cfg);
-            if(mi)
-            {
-                Add(mi);
-                if(spec.instance_data && spec.instance_data_size > 0)
-                    mi->WriteMIData(spec.instance_data, spec.instance_data_size);
-            }
-        }
+        const VIL *vil = nullptr;
+        if (spec.vil_cfg)
+            vil = mtl->CreateVIL(spec.vil_cfg);
         else
-        {
-            mi = mtl->CreateMI(spec.vil);
-            if(mi)
-            {
-                Add(mi);
-                VulkanDevice *device = GetDevice();
-                if(device)
-                    device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
-                                      ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
-                if(spec.instance_data && spec.instance_data_size > 0)
-                    mi->WriteMIData(spec.instance_data, spec.instance_data_size);
-            }
-        }
+            vil = spec.vil ? spec.vil : mtl->GetDefaultVIL();
+
+        mi = new MaterialInstance(mtl, vil, -1);
+        mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
+        Add(mi);
+
+        VulkanDevice *device = GetDevice();
+        if(device)
+            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
+                                ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
+
+        if(spec.instance_data && spec.instance_data_size > 0)
+            mi->WriteMIData(spec.instance_data, spec.instance_data_size);
     }
 
     if(!mi)

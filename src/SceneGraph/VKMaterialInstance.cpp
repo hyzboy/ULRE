@@ -1,35 +1,9 @@
 ﻿#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKResourceDomain.h>
-#include<cstdio>
 #include<cstring>
 
 namespace hgl::graph{
-
-// ---------------------------------------------------------------------------
-// Material::CreateMI — 旧路径（不涉及 ResourceDomain）
-// ---------------------------------------------------------------------------
-
-MaterialInstance *Material::CreateMI(const VIL *vil)
-{
-    // 新架构：有 MI 数据的材质必须显式经 ResourceDomainManager + MaterialManager 路径创建。
-    if(hasMI())
-    {
-        std::fprintf(stderr,
-            "[Material] CreateMI rejected for '%s': material has MI data and requires explicit ResourceDomain\n",
-            GetName().c_str());
-        return nullptr;
-    }
-
-    auto *mi = new MaterialInstance(this, vil ? vil : GetDefaultVIL(), -1);
-    mi->InitMITLayout(texture_array_slot_flags);
-    return mi;
-}
-
-MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
-{
-    return CreateMI(CreateVIL(vil_cfg));
-}
 
 // ---------------------------------------------------------------------------
 // MaterialInstanceData — constructors / destructor

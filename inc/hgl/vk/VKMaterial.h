@@ -138,9 +138,6 @@ public:
 
     const bool      hasMI           ()const{return mi_schema!=mtl::ShaderDataSchema::None;}
     const mtl::ShaderDataSchema GetShaderDataSchema() const { return mi_schema; }
-
-    MaterialInstance *CreateMI(const VIL *);
-    MaterialInstance *CreateMI(const VILConfig *vil_cfg=nullptr);
 };//class Material
 
 using MaterialSet=std::unordered_set<Material *>;
