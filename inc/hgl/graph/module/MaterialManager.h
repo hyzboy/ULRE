@@ -325,12 +325,6 @@ public: // ResourceDomain — Phase 1 / Phase 3
      */
     void ReleaseDomainMaterialBinding(DomainMaterialBinding *binding);
 
-    /**
-     * 释放一个 ResourceDomain 及其所有 DomainMaterialBinding。
-     * 调用前请确保该域不再有存活的 MaterialInstance（否则 FreeMISlot 会访问已释放对象）。
-     */
-    void ReleaseResourceDomain(ResourceDomain *domain);
-
 public: // ResourceDomain MaterialInstanceData creation (Phase 1)
 
     /// 从资源域分配 MI，走域独立的数据池（旧 Material 池不变）。

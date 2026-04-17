@@ -879,33 +879,6 @@ void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *bindin
     delete binding;
 }
 
-void MaterialManager::ReleaseResourceDomain(ResourceDomain *domain)
-{
-    if (!domain)
-        return;
-
-    auto it = domain_bindings_map.find(domain);
-    if (it != domain_bindings_map.end())
-    {
-        for (auto *b : it->second)
-            delete b;
-        domain_bindings_map.erase(it);
-    }
-
-    GraphicsContext *gc = GetGraphicsContext();
-    if (gc)
-    {
-        auto *domain_manager = gc->GetResourceDomainManager();
-        if (domain_manager)
-        {
-            domain_manager->Destroy(domain);
-            return;
-        }
-    }
-
-    delete domain;
-}
-
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl, ResourceDomain *domain, const VIL *vil)
 {
     if (!domain || !mtl)
