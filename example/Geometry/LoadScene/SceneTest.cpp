@@ -56,7 +56,7 @@ private:
     struct MaterialData
     {
         Material *material = nullptr;
-        const VIL *vil = nullptr;
+        GeometryVertexFormat gvf;
 
         MaterialInstance *mi[COLOR_COUNT]{};
     };
@@ -78,7 +78,8 @@ private:
     bool InitMaterialInstance(MaterialData *md, const mtl::MaterialAssetRecord &cfg)
     {
         if(!md)
-            return(false);
+            return(false);
+
         Color4f color;
 
         for(size_t i = 0;i < COLOR_COUNT;i++)
@@ -97,16 +98,17 @@ private:
         if (!md->material)
             return false;
 
-        md->vil = md->material->GetDefaultVIL();
+        md->gvf = GeometryVertexFormat::FromVIL(md->material->GetDefaultVIL());
 
-        if(!md->vil)
+        if(md->gvf.GetActiveCount() == 0)
             return(false);
 
-        return md->vil != nullptr;
+        return true;
     }
 
     bool InitSolidMDP()
-    {
+    {
+
         static const mtl::MaterialAssetRecord kSolidCfg {
             .id       = "scene_gizmo3d",
             .preset   = mtl::MaterialPreset::Gizmo3D,
@@ -139,7 +141,7 @@ private:
 
         scene_mesh_ = LoadStaticMeshScene(
             device, geo_mgr,
-            solid.vil, solid.mi, (int)COLOR_COUNT,
+            solid.gvf, solid.mi, (int)COLOR_COUNT,
             pack_path, base_dir);
 
         return scene_mesh_ != nullptr;

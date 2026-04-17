@@ -160,23 +160,22 @@ namespace
     // Read attributes/VBOs using AttributeMeta views
     bool ReadAttributesVBO(hgl::io::minipack::MiniPackReader *mpr,
                            GeometryData *geo_data,
-                           const VIL *vil,
+                           const GeometryVertexFormat &gvf,
                            const GeometryHeader &header,
                            const uint8_t *attribute_format,
                            const uint8_t *attribute_name_length,
                            const char *names_ptr,
                            const OSString &filename)
     {
-        if(!vil)
+        if(gvf.GetActiveCount() == 0)
         {
-            MLogError(LoadGeometry,OS_TEXT("VIL is null for file ") + filename);
+            MLogError(LoadGeometry,OS_TEXT("GeometryVertexFormat has no active attributes for file ") + filename);
             return false;
         }
 
-        const uint32_t vil_attr_count = vil->GetVertexAttribCount();
-        if(header.attributeCount < vil_attr_count)
+        if(header.attributeCount < gvf.GetActiveCount())
         {
-            MLogNotice(LoadGeometry,OS_TEXT("File has fewer attributes(") + OSString::numberOf(header.attributeCount) + OS_TEXT(") than VIL(") + OSString::numberOf(vil_attr_count) + OS_TEXT(") in ") + filename);
+            MLogNotice(LoadGeometry,OS_TEXT("File has fewer attributes(") + OSString::numberOf(header.attributeCount) + OS_TEXT(") than GVF(") + OSString::numberOf(gvf.GetActiveCount()) + OS_TEXT(") in ") + filename);
         }
 
         // helper to find meta index by name
@@ -200,37 +199,35 @@ namespace
             return -1;
         };
 
-        for(uint32_t vab_index = 0; vab_index < vil_attr_count; ++vab_index)
+        for(int va = int(VertexAttrib::BEGIN_RANGE); va <= int(VertexAttrib::END_RANGE); ++va)
         {
-            const VIF *vif = vil->GetConfig(vab_index);
-            if(!vif)
-            {
-                MLogError(LoadGeometry,OS_TEXT("Invalid VIF at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
-                return false;
-            }
+            const VertexAttrib attrib = static_cast<VertexAttrib>(va);
+            if(!gvf.Has(attrib))
+                continue;
 
-            const char *attr_name = GetVertexAttribName(vif->attrib);
+            const VkFormat fmt = gvf.GetFormat(attrib);
+            const char *attr_name = GetVertexAttribName(attrib);
 
             // find this attribute in meta by name
             uint8_t meta_name_len = 0;
             int meta_index = find_meta_index_by_name(attr_name, meta_name_len);
             if(meta_index < 0)
             {
-                // attribute expected by VIL but not present in file meta
+                // attribute expected by GVF but not present in file meta
                 MLogNotice(LoadGeometry,OS_TEXT("Attribute name '") + ToOSString(attr_name) + OS_TEXT("' not found in AttributeMeta, file ") + filename);
                 // try to read by name anyway; if missing, we'll error below
             }
             else
             {
                 // verify format match if meta has it
-                if(vif->format != static_cast<VkFormat>(attribute_format[meta_index]))
+                if(fmt != static_cast<VkFormat>(attribute_format[meta_index]))
                 {
                     MLogError(LoadGeometry,OS_TEXT("Attribute format mismatch for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
                     return false;
                 }
             }
 
-            // locate entry in minipack by this VIL-provided name
+            // locate entry in minipack by this GVF-provided name
             const int32 attr_entry_index = mpr->FindFile(AnsiStringView(attr_name));
             if(attr_entry_index < 0)
             {
@@ -238,7 +235,7 @@ namespace
                 return false;
             }
 
-            VAB *vab = geo_data->GetVABByIndex(vab_index);
+            VAB *vab = geo_data->GetVABByAttrib(attrib);
             if(!vab)
             {
                 MLogError(LoadGeometry,OS_TEXT("Cannot get VAB for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
@@ -252,7 +249,7 @@ namespace
                 return false;
             }
 
-            const size_t attribute_size = size_t(header.vertexCount) * GetStrideByFormat(vif->format);
+            const size_t attribute_size = size_t(header.vertexCount) * GetStrideByFormat(fmt);
             if(mpr->ReadFile(attr_entry_index, vab_ptr, 0, static_cast<uint32>(attribute_size)) != attribute_size)
             {
                 MLogError(LoadGeometry,OS_TEXT("Cannot read attribute data for attribute '") + ToOSString(attr_name) + OS_TEXT("' from file ") + filename);
@@ -323,7 +320,7 @@ namespace
     // Orchestrate reading attributes and indices into GeometryData
     bool ReadGeometryData(hgl::io::minipack::MiniPackReader *mpr,
                           GeometryData *geo_data,
-                          const VIL *vil,
+                          const GeometryVertexFormat &gvf,
                           const GeometryHeader &header,
                           const OSString &filename)
     {
@@ -343,7 +340,7 @@ namespace
             if(!ReadAttributeMeta(mpr, header, filename, attrmeta, attribute_format, attribute_name_length, names_ptr))
                 return false;
 
-            if(!ReadAttributesVBO(mpr, geo_data, vil, header, attribute_format, attribute_name_length, names_ptr, filename))
+            if(!ReadAttributesVBO(mpr, geo_data, gvf, header, attribute_format, attribute_name_length, names_ptr, filename))
                 return false;
         }
 
@@ -357,7 +354,7 @@ namespace
     }
 }
 
-static Geometry *LoadGeometryFromReader(VulkanDevice *device,const VIL *vil,hgl::io::minipack::MiniPackReader *mpr,const OSString &debug_name)
+static Geometry *LoadGeometryFromReader(VulkanDevice *device,const GeometryVertexFormat &gvf,hgl::io::minipack::MiniPackReader *mpr,const OSString &debug_name)
 {
     // 1) Read GeometryHeader
     GeometryHeader header{};
@@ -371,7 +368,7 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const VIL *vil,hgl:
         return nullptr;
 
     // 3) Create GeometryData and VABs
-    GeometryData *geo_data=CreateGeometryData(device,GeometryVertexFormat::FromVIL(vil),header.vertexCount);
+    GeometryData *geo_data=CreateGeometryData(device,gvf,header.vertexCount);
 
     if(!geo_data)
     {
@@ -387,7 +384,7 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const VIL *vil,hgl:
     }
 
     // 4) Read attributes and indices into GeometryData
-    if(!ReadGeometryData(mpr, geo_data, vil, header, debug_name))
+    if(!ReadGeometryData(mpr, geo_data, gvf, header, debug_name))
     {
         delete geo_data;
         return nullptr;
@@ -408,7 +405,7 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const VIL *vil,hgl:
     return geometry;
 }
 
-Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filename)
+Geometry *LoadGeometry(VulkanDevice *device,const GeometryVertexFormat &gvf,const OSString &filename)
 {
     using namespace hgl::io::minipack;
 
@@ -420,13 +417,13 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
         return(nullptr);
     }
 
-    Geometry *geometry = LoadGeometryFromReader(device,vil,mpr,filename);
+    Geometry *geometry = LoadGeometryFromReader(device,gvf,mpr,filename);
 
     delete mpr;
     return geometry;
 }
 
-Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device,const VIL *vil,const void *bytes,const uint32 size,const OSString &debug_name)
+Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device,const GeometryVertexFormat &gvf,const void *bytes,const uint32 size,const OSString &debug_name)
 {
     using namespace hgl::io;
     using namespace hgl::io::minipack;
@@ -453,7 +450,7 @@ Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device,const VIL *vil,cons
         return nullptr;
     }
 
-    Geometry *geometry = LoadGeometryFromReader(device,vil,mpr,debug_name);
+    Geometry *geometry = LoadGeometryFromReader(device,gvf,mpr,debug_name);
 
     delete mpr;
     return geometry;

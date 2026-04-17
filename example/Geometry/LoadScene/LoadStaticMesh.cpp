@@ -23,8 +23,8 @@ namespace hgl::graph
 {
 
 // LoadGeometry 在同一可执行文件的 LoadGeometry.cpp 中定义
-Geometry *LoadGeometry(VulkanDevice *device, const VIL *vil, const OSString &filename);
-Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device, const VIL *vil, const void *bytes, const uint32 size, const OSString &debug_name);
+Geometry *LoadGeometry(VulkanDevice *device, const GeometryVertexFormat &gvf, const OSString &filename);
+Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device, const GeometryVertexFormat &gvf, const void *bytes, const uint32 size, const OSString &debug_name);
 
 namespace
 {
@@ -151,7 +151,7 @@ static bool TryLoadScene(
     hgl::io::minipack::MiniPackMemory *mpm,
     VulkanDevice             *device,
     GeometryManager          *geo_mgr,
-    const VIL                *vil,
+    const GeometryVertexFormat &gvf,
     MaterialInstance * const *mi_array,
     int                       mi_count,
     const OSString           &pack_path,
@@ -328,7 +328,7 @@ static bool TryLoadScene(
             const OSString geo_debug_name =
                 pack_path + OS_TEXT("#GeometryBlob[") + OSString::numberOf(i) + OS_TEXT("]");
 
-            Geometry *geo = LoadGeometryFromMiniPackBytes(device, vil, geo_blob, gv[i].blob_size, geo_debug_name);
+            Geometry *geo = LoadGeometryFromMiniPackBytes(device, gvf, geo_blob, gv[i].blob_size, geo_debug_name);
             if (!geo)
             {
                 MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: failed to load inlined geometry #") + OSString::numberOf(i) + OS_TEXT(" from ") + pack_path);
@@ -404,7 +404,7 @@ static bool TryLoadScene(
 
                         const OSString geo_path = base_dir + OS_TEXT("/") + hgl::ToOSString(geo_file);
 
-                        geo = LoadGeometry(device, vil, geo_path);
+                        geo = LoadGeometry(device, gvf, geo_path);
                         if (!geo)
                         {
                             MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: failed to load geometry: ") + geo_path);
@@ -690,7 +690,7 @@ std::vector<StaticMeshNode> ParseNodeList(
 StaticMesh *LoadStaticMeshScene(
     VulkanDevice             *device,
     GeometryManager          *geo_mgr,
-    const VIL                *vil,
+    const GeometryVertexFormat &gvf,
     MaterialInstance * const *mi_array,
     int                       mi_count,
     const OSString           &pack_path,
@@ -699,7 +699,7 @@ StaticMesh *LoadStaticMeshScene(
     using namespace hgl::io::minipack;
     using namespace hgl::math;
 
-    if (!device || !geo_mgr || !vil || !mi_array || mi_count <= 0)
+    if (!device || !geo_mgr || gvf.GetActiveCount() == 0 || !mi_array || mi_count <= 0)
     {
         MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: null argument"));
         return nullptr;
@@ -722,7 +722,7 @@ StaticMesh *LoadStaticMeshScene(
                 mpm,
                 device,
                 geo_mgr,
-                vil,
+                gvf,
                 mi_array,
                 mi_count,
                 pack_path,
@@ -849,7 +849,7 @@ StaticMesh *LoadStaticMeshScene(
 
                 const OSString geo_path = base_dir + OS_TEXT("/") + hgl::ToOSString(geo_file);
 
-                Geometry *geo = LoadGeometry(device, vil, geo_path);
+                Geometry *geo = LoadGeometry(device, gvf, geo_path);
                 if (!geo)
                 {
                     MLogError(LoadStaticMesh,

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/type/String.h>
+#include <hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph
 {
@@ -8,15 +9,13 @@ namespace hgl::graph
     class VulkanDevice;
     class GeometryManager;
     class MaterialInstance;
-    class VertexInputLayout;
-    using VIL = VertexInputLayout;
 
     /**
      * LoadStaticMeshScene - 从 .scene minipack 文件加载场景树到 StaticMesh
      *
      * @param device          Vulkan 设备，用于加载 Geometry
      * @param geo_mgr         GeometryManager，加载的 Geometry 注册到此（接管生命周期）
-     * @param vil             顶点输入布局，必须与 default_mi 的材质匹配
+     * @param gvf             顶点格式描述，必须与 default_mi 的材质匹配
      * @param mi_array        材质实例数组，按 material_index % mi_count 路由颜色
      * @param mi_count        数组长度
      * @param pack_path       .scene minipack 文件的完整路径
@@ -29,7 +28,7 @@ namespace hgl::graph
     StaticMesh *LoadStaticMeshScene(
         VulkanDevice             *device,
         GeometryManager          *geo_mgr,
-        const VIL                *vil,
+        const GeometryVertexFormat &gvf,
         MaterialInstance * const *mi_array,
         int                       mi_count,
         const OSString           &pack_path,

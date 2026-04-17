@@ -30,7 +30,7 @@ using namespace hgl;
 using namespace hgl::graph;
 
 namespace hgl::graph{
-Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filename);
+Geometry *LoadGeometry(VulkanDevice *device,const GeometryVertexFormat &gvf,const OSString &filename);
 }//namespace hgl::graph
 
 constexpr const COLOR TestColor[] =
@@ -60,7 +60,7 @@ private:
     struct MaterialData
     {
         Material *material = nullptr;
-        const VIL *vil = nullptr;
+        GeometryVertexFormat gvf;
 
         MaterialInstance *mi[COLOR_COUNT]{};
     };
@@ -122,9 +122,9 @@ private:
         if (!md->material)
             return false;
 
-        md->vil = md->material->GetDefaultVIL();
+        md->gvf = GeometryVertexFormat::FromVIL(md->material->GetDefaultVIL());
 
-        if(!md->vil)
+        if(md->gvf.GetActiveCount() == 0)
             return(false);
 
         return true;
@@ -219,7 +219,7 @@ private:
         {
             OSString fn = OSString(OS_TEXT("res/model/Chess/ABeautifulGame.")) + OSString::numberOf(i) + OS_TEXT(".geometry");
 
-            Geometry *geo = LoadGeometry(GetDevice(),solid.vil,fn);
+            Geometry *geo = LoadGeometry(GetDevice(),solid.gvf,fn);
 
             if(!geo)
                 continue;
