@@ -3,7 +3,7 @@
 
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/graph/module/MaterialRecipeRegistry.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/color/Color.h>

@@ -1,6 +1,6 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/graph/module/MaterialRecipeRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ShaderMaterialProgramManager.h>
 #include<hgl/graph/mesh/StaticMesh.h>

@@ -10,7 +10,7 @@
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
-#include <hgl/graph/module/MaterialAssetRegistry.h>
+#include <hgl/graph/module/MaterialRecipeRegistry.h>
 
 namespace hgl::graph
 {
@@ -63,7 +63,7 @@ namespace hgl::graph
         if (!buffer_manager)
             return false;
 
-        material_asset_registry = new MaterialAssetRegistry(material_manager, tex_manager, sampler_manager);
+        material_asset_registry = new MaterialRecipeRegistry(material_manager, tex_manager, sampler_manager);
         if (!material_asset_registry)
             return false;
 

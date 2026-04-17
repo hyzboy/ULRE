@@ -1,4 +1,4 @@
-#include <hgl/graph/module/MaterialAssetRegistry.h>
+#include <hgl/graph/module/MaterialRecipeRegistry.h>
 #include <hgl/graph/module/MaterialAssetLoader.h>
 #include <hgl/graph/module/ShaderMaterialProgramManager.h>
 #include <hgl/graph/module/ResourceDomainManager.h>
@@ -130,7 +130,7 @@ static bool TryParseDomainID(const std::string &did, uint32_t &out_id)
 
 // ── DMBKeyHash ───────────────────────────────────────────────────────────────
 
-size_t MaterialAssetRegistry::DMBKeyHash::operator()(const DMBKey &k) const
+size_t MaterialRecipeRegistry::DMBKeyHash::operator()(const DMBKey &k) const
 {
     // Combine the three fields with FNV-1a
     size_t h = 14695981039346656037ULL;
@@ -146,7 +146,7 @@ size_t MaterialAssetRegistry::DMBKeyHash::operator()(const DMBKey &k) const
 
 // ── Constructor ──────────────────────────────────────────────────────────────
 
-MaterialAssetRegistry::MaterialAssetRegistry(
+MaterialRecipeRegistry::MaterialRecipeRegistry(
     ShaderMaterialProgramManager *mm_,
     TextureManager  *tm_,
     SamplerManager  *sm_)
@@ -155,7 +155,7 @@ MaterialAssetRegistry::MaterialAssetRegistry(
 
 // ── Acquire ──────────────────────────────────────────────────────────────────
 
-MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialRecipe &rec)
+MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &rec)
 {
     MaterialDomainHandle handle;
 
@@ -194,7 +194,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialRecipe &r
         if (!rdm)
         {
             std::fprintf(stderr,
-                "[MaterialAssetRegistry] Acquire failed: ResourceDomainManager unavailable for material='%s' schema=%u domain_id=%u\n",
+                "[MaterialRecipeRegistry] Acquire failed: ResourceDomainManager unavailable for material='%s' schema=%u domain_id=%u\n",
                 mat_name.c_str(),
                 static_cast<unsigned>(schema),
                 static_cast<unsigned>(numeric_domain_id));
@@ -260,7 +260,7 @@ MaterialDomainHandle MaterialAssetRegistry::Acquire(const mtl::MaterialRecipe &r
     return handle;
 }
 
-MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialRecipe &rec,
+MaterialInstance *MaterialRecipeRegistry::AcquireMI(const mtl::MaterialRecipe &rec,
                                                    const void *instance_data,
                                                    uint32_t instance_data_size,
                                                    MaterialDomainHandle *out_handle)
@@ -284,7 +284,7 @@ MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialRecipe &re
 
 // ── AcquireMI (GVF auto-derive) ─────────────────────────────────────────────
 
-MaterialInstance *MaterialAssetRegistry::AcquireMI(
+MaterialInstance *MaterialRecipeRegistry::AcquireMI(
     const mtl::MaterialRecipe &rec,
     const GeometryVertexFormat &gvf,
     const void *instance_data,
@@ -348,7 +348,7 @@ MaterialInstance *MaterialAssetRegistry::AcquireMI(
 
 // ── CreateMI ─────────────────────────────────────────────────────────────────
 
-MaterialInstance *MaterialAssetRegistry::CreateMI(
+MaterialInstance *MaterialRecipeRegistry::CreateMI(
     const MaterialDomainHandle &handle,
     const mtl::MaterialRecipe &rec,
     const void *instance_data,

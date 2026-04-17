@@ -1,6 +1,6 @@
 #pragma once
 
-/// MaterialAssetRegistry.h — 从 MaterialRecipe 一站式创建材质层级
+/// MaterialRecipeRegistry.h — 从 MaterialRecipe 一站式创建材质层级
 ///
 /// 内部按层级自动缓存：
 ///   ShaderMaterialProgram       — AcquireMaterial 已缓存
@@ -25,7 +25,7 @@ class TextureManager;
 class SamplerManager;
 class MaterialInstance;
 
-class MaterialAssetRegistry
+class MaterialRecipeRegistry
 {
     ShaderMaterialProgramManager *mm;
     TextureManager  *tm;
@@ -58,8 +58,8 @@ class MaterialAssetRegistry
 
 public:
 
-    MaterialAssetRegistry(ShaderMaterialProgramManager *mm, TextureManager *tm, SamplerManager *sm);
-    ~MaterialAssetRegistry() = default;
+    MaterialRecipeRegistry(ShaderMaterialProgramManager *mm, TextureManager *tm, SamplerManager *sm);
+    ~MaterialRecipeRegistry() = default;
 
     /// 核心 API：传入 record，返回三元组
     /// ShaderMaterialProgram 已缓存，Domain 按 domain_id 缓存，DMB 按纹理配置缓存

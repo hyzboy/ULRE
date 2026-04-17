@@ -4,7 +4,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/graph/module/MaterialRecipeRegistry.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include <memory>
@@ -124,7 +124,7 @@ namespace hgl
                 return gc->GetPrimitiveManager();
             return nullptr;
         }
-        graph::MaterialAssetRegistry *GetMaterialAssetRegistry()
+        graph::MaterialRecipeRegistry *GetMaterialAssetRegistry()
         {
             if (auto *gc = GetGraphicsContext())
                 return gc->GetMaterialAssetRegistry();

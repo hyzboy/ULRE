@@ -11,7 +11,7 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderMaterialProgramManager.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/graph/module/MaterialRecipeRegistry.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -459,7 +459,7 @@ namespace hgl::ecs
             if (!dr.sampler)
                 dr.sampler = sampler_manager->CreateSampler();
 
-            // ── ShaderMaterialProgram + DMB via MaterialAssetRegistry ──────────
+            // ── ShaderMaterialProgram + DMB via MaterialRecipeRegistry ──────────
             if (!dr.material || !dr.dmb)
             {
                 const bool domain_fixed = IsFixedSizeForWorld(world);
@@ -484,7 +484,7 @@ namespace hgl::ecs
                         uint8_t(1u << uint8_t(graph::mtl::SamplerSlot::BaseColor)));
 
                     // Create DMB via registry
-                    graph::MaterialAssetRegistry registry(material_manager, texture_manager, sampler_manager);
+                    graph::MaterialRecipeRegistry registry(material_manager, texture_manager, sampler_manager);
 
                     graph::mtl::MaterialRecipe rec;
                     rec.id        = "billboard_domain_" + dr.domain_tag;

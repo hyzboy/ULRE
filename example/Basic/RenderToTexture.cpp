@@ -1,5 +1,5 @@
 #include<hgl/framework/WorkManager.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/graph/module/MaterialRecipeRegistry.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>

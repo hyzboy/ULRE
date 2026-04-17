@@ -125,7 +125,7 @@ static const os_char* kGradientIcons[] =
 static constexpr int kGradientCount = 23;
 
 // Explicit ResourceDomain IDs used by this demo.
-// Numeric strings are parsed directly as domain_id by MaterialAssetRegistry.
+// Numeric strings are parsed directly as domain_id by MaterialRecipeRegistry.
 static constexpr const char *kFreepikDomainID  = "1001";
 static constexpr const char *kGradientDomainID = "1002";
 static constexpr const char *kGridDomainID     = "2001";

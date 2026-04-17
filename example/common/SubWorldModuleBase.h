@@ -5,7 +5,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/graph/module/MaterialRecipeRegistry.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/vk/VK.h>
 

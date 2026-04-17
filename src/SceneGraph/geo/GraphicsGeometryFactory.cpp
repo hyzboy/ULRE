@@ -3,7 +3,7 @@
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
-#include <hgl/graph/module/MaterialAssetRegistry.h>
+#include <hgl/graph/module/MaterialRecipeRegistry.h>
 #include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/vk/VertexDataManager.h>
 

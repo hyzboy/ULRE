@@ -2,7 +2,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/graph/module/MaterialRecipeRegistry.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/graph/mesh/Primitive.h>

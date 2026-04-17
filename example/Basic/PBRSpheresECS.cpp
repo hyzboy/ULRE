@@ -10,7 +10,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
-#include<hgl/graph/module/MaterialAssetRegistry.h>
+#include<hgl/graph/module/MaterialRecipeRegistry.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
