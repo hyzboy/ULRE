@@ -88,7 +88,8 @@ namespace
             {
                 auto* seed_mi = AcquireMI(kAnimGeomCfg, &colors[0], sizeof(colors[0]));
                 if (!seed_mi) return false;
-                material = seed_mi->GetMaterial();
+                material        = seed_mi->GetMaterial();
+                material_domain = seed_mi->GetDomain();
             }
 
             return BuildMaterialInstances(colors, sizeof(colors) / sizeof(colors[0]));

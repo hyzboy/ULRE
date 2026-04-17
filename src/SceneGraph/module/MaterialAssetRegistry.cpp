@@ -268,8 +268,11 @@ MaterialInstance *MaterialAssetRegistry::AcquireMI(const mtl::MaterialAssetRecor
     if (!handle.material)
         return nullptr;
 
+    if (!handle.domain)
+        return nullptr;
+
     // 有 MI 数据的材质必须具备 domain + binding。
-    if (handle.material->hasMI() && (!handle.domain || !handle.binding))
+    if (handle.material->hasMI() && !handle.binding)
         return nullptr;
 
     if (out_handle)
@@ -286,11 +289,7 @@ MaterialInstance *MaterialAssetRegistry::CreateMI(
     const void *instance_data,
     uint32_t instance_data_size)
 {
-    if (!handle.material)
-        return nullptr;
-
-    // 有 MI 数据的材质必须具备 domain。
-    if (handle.material->hasMI() && !handle.domain)
+    if (!handle.material || !handle.domain)
         return nullptr;
 
     MaterialInstanceSpec spec;

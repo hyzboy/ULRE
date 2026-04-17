@@ -50,6 +50,7 @@ namespace example::modules
         {
             graph::MaterialInstanceSpec spec;
             spec.material = material;
+            spec.domain   = material_domain;
             spec.instance_data = &colors[i];
             spec.instance_data_size = sizeof(colors[i]);
             spec.preset = GraphicsPipelinePreset::Solid3D;
