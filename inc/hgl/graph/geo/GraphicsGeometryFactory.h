@@ -4,7 +4,9 @@
 #include <initializer_list>
 #include <utility>
 #include <hgl/vk/VKFormat.h>
+#include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/type/String.h>
+#include <hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph
 {
@@ -37,6 +39,7 @@ public:
 public:
     std::unique_ptr<GeometryCreater> CreateCreater(const GeometryVertexFormat &gvf) const;
     std::unique_ptr<GeometryCreater> CreateCreater(VertexDataManager *vdm) const;
+    [[deprecated("Use CreateCreater(const GeometryVertexFormat&) to decouple geometry input from VIL.")]]
     std::unique_ptr<GeometryCreater> CreateCreater(MaterialInstance *mi) const;
 
 public:
@@ -58,7 +61,7 @@ public:
 
         GraphicsGeometryFactory geometry_factory(graphics_context);
 
-        auto pc = geometry_factory.CreateCreater(material_instance);
+        auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(material_instance->GetVIL()));
         if(!pc)
             return nullptr;
 

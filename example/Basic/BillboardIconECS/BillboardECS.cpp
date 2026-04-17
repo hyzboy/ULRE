@@ -113,7 +113,7 @@ private:
 
         // Create plane grid geometry
         {
-            auto pc = geometry_factory.CreateCreater(mi_plane_grid);
+            auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(mi_plane_grid->GetVIL()));
             if (!pc) return false;
 
             PlaneGridCreateInfo pgci;

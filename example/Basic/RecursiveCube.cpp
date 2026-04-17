@@ -127,7 +127,7 @@ private:
 
         GraphicsGeometryFactory geometry_factory(graphics_context);
 
-        auto pc = geometry_factory.CreateCreater(mi);
+        auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(mi->GetVIL()));
         if (!pc)
             return false;
 

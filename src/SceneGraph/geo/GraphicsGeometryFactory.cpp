@@ -103,7 +103,7 @@ Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_cont
 
     GraphicsGeometryFactory geometry_factory(graphics_context);
 
-    auto pc = geometry_factory.CreateCreater(material_instance);
+    auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(material_instance->GetVIL()));
     if(!pc)
         return nullptr;
 
