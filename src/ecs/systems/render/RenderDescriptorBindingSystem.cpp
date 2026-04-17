@@ -641,12 +641,24 @@ namespace hgl::ecs
 
         if (frame_stats != last_contract_stats)
         {
-            LogInfo("[DescriptorContract] frame stats: checked=%u unresolved=%u required_missing=%u optional_missing=%u fallback_hits=%u",
-                    frame_stats.materials_checked,
-                    frame_stats.materials_unresolved,
-                    frame_stats.required_missing,
-                    frame_stats.optional_missing,
-                    frame_stats.fallback_hits);
+            if (frame_stats.materials_unresolved > 0 || frame_stats.required_missing > 0)
+            {
+                LogWarning("[DescriptorContract] frame stats: checked=%u unresolved=%u required_missing=%u optional_missing=%u fallback_hits=%u",
+                           frame_stats.materials_checked,
+                           frame_stats.materials_unresolved,
+                           frame_stats.required_missing,
+                           frame_stats.optional_missing,
+                           frame_stats.fallback_hits);
+            }
+            else
+            {
+                LogDebug("[DescriptorContract] frame stats: checked=%u unresolved=%u required_missing=%u optional_missing=%u fallback_hits=%u",
+                         frame_stats.materials_checked,
+                         frame_stats.materials_unresolved,
+                         frame_stats.required_missing,
+                         frame_stats.optional_missing,
+                         frame_stats.fallback_hits);
+            }
 
             last_contract_stats = frame_stats;
         }

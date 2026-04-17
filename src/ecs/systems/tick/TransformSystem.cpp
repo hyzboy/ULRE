@@ -89,12 +89,12 @@ namespace hgl::ecs
         ++s_update_log_tick;
         if ((s_update_log_tick % 60u) == 1u)
         {
-            GLogInfo("[TransformSystem] Update: movable_total=%u dirty=%u updated=%u skip_mask=%u skip_ver=%u",
-                     total_movable,
-                     dirty_movable,
-                     updated_movable,
-                     skipped_by_mask,
-                     skipped_by_version);
+            GLogDebug("[TransformSystem] Update: movable_total=%u dirty=%u updated=%u skip_mask=%u skip_ver=%u",
+                      total_movable,
+                      dirty_movable,
+                      updated_movable,
+                      skipped_by_mask,
+                      skipped_by_version);
         }
     }
 
@@ -349,21 +349,21 @@ namespace hgl::ecs
                 const glm::mat4 world = storage->GetWorldMatrix(handle);
                 const glm::vec3 pos(world[3]);
 
-                GLogInfo("[TransformSystem] SubmitTransformUpdates: static=%u dynamic=%u dynamic_base=%u first_dynamic_handle=%u world_pos=(%.3f, %.3f, %.3f)",
-                         static_count,
-                         dynamic_count,
-                         dynamic_base,
-                         static_cast<uint32_t>(handle),
-                         pos.x,
-                         pos.y,
-                         pos.z);
+                GLogDebug("[TransformSystem] SubmitTransformUpdates: static=%u dynamic=%u dynamic_base=%u first_dynamic_handle=%u world_pos=(%.3f, %.3f, %.3f)",
+                          static_count,
+                          dynamic_count,
+                          dynamic_base,
+                          static_cast<uint32_t>(handle),
+                          pos.x,
+                          pos.y,
+                          pos.z);
             }
             else
             {
-                GLogInfo("[TransformSystem] SubmitTransformUpdates: static=%u dynamic=%u dynamic_base=%u (no dynamic sample)",
-                         static_count,
-                         dynamic_count,
-                         dynamic_base);
+                GLogDebug("[TransformSystem] SubmitTransformUpdates: static=%u dynamic=%u dynamic_base=%u (no dynamic sample)",
+                          static_count,
+                          dynamic_count,
+                          dynamic_base);
             }
         }
     }

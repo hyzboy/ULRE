@@ -183,7 +183,6 @@ namespace hgl::ecs
 //        LogDeviceBufferSnapshot("[TransformAssignmentBuffer::BindTransform] before bind", transform_buffer);
 
         const bool l2w_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::TransformData,transform_buffer->GetGPUBuffer());
-        GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO ");
 
         if (!l2w_bind_ok)
         {
@@ -680,13 +679,6 @@ namespace hgl::ecs
                      static_cast<unsigned long long>(transform_buffer->GetSize()),
                      static_cast<int>(policy));
 
-            std::fprintf(stderr,
-                         "[TransformAssignmentBuffer] TransformData buffer ready: required=%u capacity=%u bytes=%llu policy=%d\n",
-                         static_cast<uint32_t>(required_count),
-                         transform_buffer_max_count,
-                         static_cast<unsigned long long>(transform_buffer->GetSize()),
-                         static_cast<int>(policy));
-
             LogDeviceBufferSnapshot("[TransformAssignmentBuffer] L2W recreated", transform_buffer);
         }
         else if (ShouldEmitPeriodicLog())
@@ -902,20 +894,12 @@ namespace hgl::ecs
         if (wbuf)
             wbuf->Unmap();
 
-        GLogInfo("[TransformAssignmentBuffer::WriteItems] L2W full write: static=%u dynamic=%u total=%u bytes=%llu dirty=%d",
-                  static_count,
-                  dynamic_count,
-                  total_count,
-                  static_cast<unsigned long long>(wbuf->GetSize()),
-                  wbuf->IsDirty() ? 1 : 0);
-
-        std::fprintf(stderr,
-                     "[TransformAssignmentBuffer::WriteItems] L2W full write: static=%u dynamic=%u total=%u bytes=%llu dirty=%d\n",
-                     static_count,
-                     dynamic_count,
-                     total_count,
-                     static_cast<unsigned long long>(wbuf->GetSize()),
-                     wbuf->IsDirty() ? 1 : 0);
+        GLogDebug("[TransformAssignmentBuffer::WriteItems] L2W full write: static=%u dynamic=%u total=%u bytes=%llu dirty=%d",
+              static_count,
+              dynamic_count,
+              total_count,
+              static_cast<unsigned long long>(wbuf->GetSize()),
+              wbuf->IsDirty() ? 1 : 0);
 
         if (ShouldEmitPeriodicLog(90))
         {
@@ -981,12 +965,12 @@ namespace hgl::ecs
 
         transform_gpu->Unmap();
 
-        GLogInfo("[TransformAssignmentBuffer::WriteItems] TransformID descriptor write complete: items=%u capacity=%u dirty=%d vkbuf=0x%llX frame=%u",
-                 static_cast<uint32_t>(item_count),
-                 transform_id_buffer_max_count,
-                 transform_gpu->IsDirty() ? 1 : 0,
-                 static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_id_vk_buffer)),
-                 ring_writer.GetFrameIndex());
+        GLogDebug("[TransformAssignmentBuffer::WriteItems] TransformID descriptor write complete: items=%u capacity=%u dirty=%d vkbuf=0x%llX frame=%u",
+              static_cast<uint32_t>(item_count),
+              transform_id_buffer_max_count,
+              transform_gpu->IsDirty() ? 1 : 0,
+              static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_id_vk_buffer)),
+              ring_writer.GetFrameIndex());
 
         return true;
     }
@@ -996,10 +980,7 @@ namespace hgl::ecs
         const size_t item_count = items.size();
 
         if (item_count == 0)
-        {
-            std::cout << "[TransformAssignmentBuffer::WriteItems] WARNING: No items to write" << std::endl;
             return;
-        }
 
         last_items = &items;
 
@@ -1019,14 +1000,14 @@ namespace hgl::ecs
 
         if (ShouldEmitPeriodicLog(60) || (dynamic_count > 0 && static_count == 0))
         {
-            GLogInfo("[TransformAssignmentBuffer::WriteItems] Begin: items=%u static=%u dynamic=%u ring_base=%u total=%u frame=%u mode=%d",
-                     static_cast<uint32_t>(item_count),
-                     static_count,
-                     dynamic_count,
-                     ring_base,
-                     total_count,
-                     ring_writer.GetFrameIndex(),
-                     static_cast<int>(mode));
+            GLogDebug("[TransformAssignmentBuffer::WriteItems] Begin: items=%u static=%u dynamic=%u ring_base=%u total=%u frame=%u mode=%d",
+                      static_cast<uint32_t>(item_count),
+                      static_count,
+                      dynamic_count,
+                      ring_base,
+                      total_count,
+                      ring_writer.GetFrameIndex(),
+                      static_cast<int>(mode));
         }
 
         if (sizeof(uint32_t) == sizeof(uint16_t)
