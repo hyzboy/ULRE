@@ -10,9 +10,26 @@
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/log/Log.h>
 #include<glm/glm.hpp>
+#include<cstdio>
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        constexpr const char *kTrackedWireMaterialId = "bounds_wire";
+
+        static bool IsTrackedWire(const PrimitiveComponent *comp)
+        {
+            if (!comp)
+                return false;
+
+            const auto &slot = comp->GetMaterialSlot();
+            return slot.record
+                && !slot.record->id.empty()
+                && slot.record->id == kTrackedWireMaterialId;
+        }
+    }
+
     RenderPrimitiveCollectSystem::RenderPrimitiveCollectSystem(const std::string& name)
         : System(name)
     {
@@ -69,11 +86,24 @@ namespace hgl::ecs
             if (!primitiveComp)
                 continue;
 
+            const bool tracked_wire = IsTrackedWire(primitiveComp.get());
+
             if (!primitiveComp->IsVisible() || !primitiveComp->CanRender())
             {
                 if (!primitiveComp->IsVisible())
                 {
                     ++skipped_invisible;
+                }
+
+                if (tracked_wire)
+                {
+                    auto *owner = primitiveComp->GetOwner();
+                    std::fprintf(stderr,
+                        "[WireTrace] Collect skip owner='%s': visible=%d can_render=%d has_primitive=%d\n",
+                        owner ? owner->GetName().c_str() : "<null>",
+                        primitiveComp->IsVisible() ? 1 : 0,
+                        primitiveComp->CanRender() ? 1 : 0,
+                        primitiveComp->GetPrimitive() ? 1 : 0);
                 }
                 continue;
             }
@@ -84,6 +114,13 @@ namespace hgl::ecs
             if (visibility_storage && visibility_storage->IsInvisible(entity_id))
             {
                 ++skipped_invisible;
+                if (tracked_wire)
+                {
+                    auto *owner = primitiveComp->GetOwner();
+                    std::fprintf(stderr,
+                        "[WireTrace] Collect culled by VisibilitySystem owner='%s'\n",
+                        owner ? owner->GetName().c_str() : "<null>");
+                }
                 continue;
             }
 
@@ -91,16 +128,32 @@ namespace hgl::ecs
             if (!entity)
             {
                 ++skipped_no_owner;
+                if (tracked_wire)
+                    std::fprintf(stderr, "[WireTrace] Collect skip: owner entity is null\n");
                 continue;
             }
 
             if (!world->IsEntityRenderEnabled(entity))
+            {
+                if (tracked_wire)
+                {
+                    std::fprintf(stderr,
+                        "[WireTrace] Collect skip owner='%s': entity render disabled\n",
+                        entity->GetName().c_str());
+                }
                 continue;
+            }
 
             auto transform = entity->GetComponent<TransformComponent>();
             if (!transform)
             {
                 ++skipped_no_transform;
+                if (tracked_wire)
+                {
+                    std::fprintf(stderr,
+                        "[WireTrace] Collect skip owner='%s': missing TransformComponent\n",
+                        entity->GetName().c_str());
+                }
                 continue;
             }
 
@@ -109,13 +162,27 @@ namespace hgl::ecs
             glm::vec3 worldPos = transform->GetWorldPosition();
             item->worldPosition = worldPos;
             glm::vec3 toCamera = worldPos - camera_pos;
-            item->distanceToCamera = glm::length(toCamera);
+            const float distance_to_camera = glm::length(toCamera);
+            item->distanceToCamera = distance_to_camera;
 
             item->UpdateWorldMatrix();
 
             cache.renderItems.push_back(std::unique_ptr<RenderItem>(std::move(item)));
             cache.renderableCount++;
             ++added;
+
+            if (tracked_wire)
+            {
+                const auto &slot = primitiveComp->GetMaterialSlot();
+                std::fprintf(stderr,
+                    "[WireTrace] Collect add owner='%s' rec.id=%s dist=%.3f worldPos=(%.3f,%.3f,%.3f)\n",
+                    entity->GetName().c_str(),
+                    slot.record ? slot.record->id.c_str() : "<null>",
+                    distance_to_camera,
+                    worldPos.x,
+                    worldPos.y,
+                    worldPos.z);
+            }
         }
 
         //if (cache.renderableCount == 0)
