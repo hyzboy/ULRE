@@ -13,6 +13,7 @@
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
+#include <hgl/ecs/systems/render/MaterialResolveSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
 #include <hgl/ecs/support/terrain/TerrainRenderPipelineGroup.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
@@ -61,6 +62,11 @@ namespace
         const hgl::graph::CameraInfo *camera_info = nullptr;
         if (auto camera_system = ctx->GetSystem<hgl::ecs::CameraSystem>())
             camera_info = camera_system->GetCameraInfo();
+
+        // MaterialResolveSystem: resolve deferred MaterialSlots before collection
+        auto material_resolve_system = EnsureRenderSystem<hgl::ecs::MaterialResolveSystem>(ctx);
+        if (material_resolve_system)
+            material_resolve_system->SetWorld(ctx);
 
         // Collect system stays: gathers PrimitiveComponents into RenderFrameCache
         auto render_collect_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveCollectSystem>(ctx);

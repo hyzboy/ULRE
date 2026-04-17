@@ -2,6 +2,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/ComponentRecords.h>
 #include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
@@ -87,9 +88,22 @@ namespace hgl::ecs
         overrideMaterial = mi;
     }
 
+    void PrimitiveComponent::SetMaterialRecord(const hgl::graph::mtl::MaterialAssetRecord *rec,
+                                               const void *instance_data,
+                                               uint32_t instance_data_size)
+    {
+        material_slot.SetRecord(rec);
+        if (instance_data && instance_data_size > 0)
+            material_slot.SetInstanceData(instance_data, instance_data_size);
+    }
+
     hgl::graph::MaterialInstance* PrimitiveComponent::GetMaterialInstance() const
     {
-        // Return override material if set, otherwise primitive's material
+        // Phase B: resolved MI from MaterialSlot takes priority
+        if (material_slot.resolved_mi)
+            return material_slot.resolved_mi;
+
+        // Override material is second priority
         if (overrideMaterial)
             return overrideMaterial;
 

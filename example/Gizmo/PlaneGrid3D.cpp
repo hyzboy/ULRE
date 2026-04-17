@@ -7,7 +7,6 @@
 #include<hgl/graph/module/MaterialAssetRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
@@ -37,39 +36,26 @@ private:
     Material *          material            =nullptr;
 
     Geometry *         geom_plane_grid     =nullptr;
-    MaterialInstance *  material_instance[3]{};
+
+    inline static const mtl::MaterialAssetRecord kPlaneGridCfg {
+        .id       = "plane_grid",
+        .preset   = mtl::MaterialPreset::VertexLuminance2D,
+        .prim     = PrimitiveType::Lines,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
 
 private:
 
     bool InitMDP()
     {
+        auto *registry = GetMaterialAssetRegistry();
+        if (!registry)
+            return false;
 
-        static const mtl::MaterialAssetRecord kPlaneGridCfg {
-            .id       = "plane_grid",
-            .preset   = mtl::MaterialPreset::VertexLuminance2D,
-            .prim     = PrimitiveType::Lines,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
+        auto handle = registry->Acquire(kPlaneGridCfg);
+        material = handle.material;
 
-        GeometryVertexFormat gvf;
-        gvf.Set(VAN::Luminance, VF_V1UN8);
-
-        Color4f GridColor;
-        COLOR ce=COLOR::BlenderAxisRed;
-
-        for(uint i=0;i<3;i++)
-        {
-            GridColor=GetColor4f(ce,1.0);
-
-            material_instance[i] = AcquireMI(kPlaneGridCfg, gvf, &GridColor, sizeof(GridColor));
-
-            if(i == 0 && material_instance[i])
-                material = material_instance[i]->GetMaterial();
-
-            ce=COLOR((int)ce+1);
-        }
-
-        return material_instance[0] && material_instance[1] && material_instance[2];
+        return material != nullptr;
     }
 
     bool CreateRenderObject()
@@ -90,7 +76,8 @@ private:
         pgci.lum=180;
         pgci.sub_lum=255;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(material_instance[0]->GetVIL());
+        auto gvf = GeometryVertexFormat::FromVIL(material->GetDefaultVIL());
+        gvf.Set(VAN::Luminance, VF_V1UN8);
         auto pc = std::make_unique<GeometryCreater>(device, gvf);
 
         geom_plane_grid=CreatePlaneGrid2D(pc.get(),&pgci);
@@ -100,18 +87,8 @@ private:
         return geom_plane_grid;
     }
 
-    bool Add(const char *name,MaterialInstance *mi,const glm::quat &rotation)
+    bool Add(const char *name, const Color4f &color, const glm::quat &rotation)
     {
-
-        auto* primitive_manager = GetPrimitiveManager();
-        if (!primitive_manager)
-            return false;
-
-        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,mi);
-
-        if(!ri)
-            return false;
-
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
         auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -121,7 +98,8 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform->SetMovable(false);
 
-        prim_comp->SetPrimitive(ri);
+        prim_comp->SetUnresolvedGeometry(geom_plane_grid);
+        prim_comp->SetMaterialRecord(&kPlaneGridCfg, &color, sizeof(color));
         prim_comp->SetVisible(true);
 
         return true;
@@ -132,13 +110,18 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!Add("PlaneXY", material_instance[0], glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
+        COLOR ce=COLOR::BlenderAxisRed;
+
+        if(!Add("PlaneXY", GetColor4f(ce,1.0), glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
             return false;
 
+        ce=COLOR((int)ce+1);
         const float rot90 = glm::radians(90.0f);
-        if(!Add("PlaneYZ", material_instance[1], glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
+        if(!Add("PlaneYZ", GetColor4f(ce,1.0), glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
             return false;
-        if(!Add("PlaneXZ", material_instance[2], glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
+
+        ce=COLOR((int)ce+1);
+        if(!Add("PlaneXZ", GetColor4f(ce,1.0), glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
             return false;
 
         return true;

@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/components/RenderableComponent.h>
+#include<hgl/mtl/MaterialSlot.h>
 #include<glm/glm.hpp>
 
 // Forward declarations to avoid heavy includes
@@ -16,6 +17,7 @@ namespace hgl
         class Primitive;
         class Material;
         class MaterialInstance;
+        class Geometry;
     }
 }
 
@@ -40,6 +42,9 @@ namespace hgl::ecs
         hgl::graph::Primitive* primitive;              // The primitive to render (not owned)
         hgl::graph::MaterialInstance* overrideMaterial; // Optional material override (not owned)
 
+        hgl::graph::MaterialSlot material_slot;        // Deferred MI resolution slot (Phase B)
+        hgl::graph::Geometry* unresolved_geometry = nullptr; // Geometry awaiting MI (not owned)
+
     public:
 
         explicit PrimitiveComponent(const std::string& name = "Primitive")
@@ -63,6 +68,16 @@ namespace hgl::ecs
         void SetOverrideMaterial(hgl::graph::MaterialInstance* mi);
         hgl::graph::MaterialInstance* GetOverrideMaterial() const { return overrideMaterial; }
         void ClearOverrideMaterial() { overrideMaterial = nullptr; }
+
+        // Deferred material resolution (Phase B)
+        void SetMaterialRecord(const hgl::graph::mtl::MaterialAssetRecord *rec,
+                               const void *instance_data = nullptr,
+                               uint32_t instance_data_size = 0);
+        void SetUnresolvedGeometry(hgl::graph::Geometry* geom) { unresolved_geometry = geom; }
+        hgl::graph::Geometry* GetUnresolvedGeometry() const { return unresolved_geometry; }
+        hgl::graph::MaterialSlot& GetMaterialSlot() { return material_slot; }
+        const hgl::graph::MaterialSlot& GetMaterialSlot() const { return material_slot; }
+        bool NeedsMaterialResolve() const { return material_slot.NeedsResolve(); }
 
         // Material access (returns override if set, otherwise primitive's material)
         hgl::graph::MaterialInstance* GetMaterialInstance() const;
