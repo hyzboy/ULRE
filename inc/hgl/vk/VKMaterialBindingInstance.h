@@ -37,11 +37,11 @@ protected:
 
 public:
 
-            ShaderMaterialProgram *      GetShaderMaterialProgram()      { return material; }
-            ResourceDomain *GetDomain   ()      { return domain; }
+                ShaderMaterialProgram *      GetShaderMaterialProgram()      { return material; }
+                ResourceDomain *GetDomain   ()      { return domain; }
     const   uint32_t        GetDomainID ()const { return domain_id; }
 
-    const   VIL *           GetVIL      ()const { return vil; }
+            const   VIL *           GetVIL      ()const { return vil; }
 
 private:
 

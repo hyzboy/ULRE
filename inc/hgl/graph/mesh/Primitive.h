@@ -10,6 +10,10 @@
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
 
+#ifndef ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
+#define ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER 1
+#endif
+
 namespace hgl::graph{
 /**
 * 图元(渲染中的最小渲染单位，一个几何体配一个材质)
@@ -19,10 +23,28 @@ class Primitive
     MaterialBindingInstance *  mat_inst;
     Geometry *          geometry;
 
+    mutable ShaderMaterialProgram *resolved_material = nullptr;
+    mutable const VIL *resolved_vil = nullptr;
+
     GeometryDataBuffer *data_buffer;
     GeometryDrawRange   draw_range;
 
 private:
+
+            void                SyncResolvedStateFromBindingInstance()const
+            {
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
+                if(!mat_inst)
+                {
+                    resolved_material=nullptr;
+                    resolved_vil=nullptr;
+                    return;
+                }
+
+                resolved_material=mat_inst->GetShaderMaterialProgram();
+                resolved_vil=mat_inst->GetVIL();
+#endif
+            }
 
     friend Primitive *DirectCreatePrimitive(Geometry *,MaterialBindingInstance *,GraphicsPipelinePreRaster *);
 
@@ -32,8 +54,16 @@ public:
 
     virtual ~Primitive();
 
-            VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetShaderMaterialProgram()->GetPipelineLayout();}
-            ShaderMaterialProgram *          GetShaderMaterialProgram         (){return mat_inst->GetShaderMaterialProgram();}
+            VkPipelineLayout    GetPipelineLayout   ()
+            {
+                SyncResolvedStateFromBindingInstance();
+                return resolved_material?resolved_material->GetPipelineLayout():VK_NULL_HANDLE;
+            }
+            ShaderMaterialProgram *          GetShaderMaterialProgram         ()
+            {
+                SyncResolvedStateFromBindingInstance();
+                return resolved_material;
+            }
             MaterialBindingInstance *  GetResolvedBindingInstance(){return mat_inst;}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
@@ -55,10 +85,15 @@ public:
                 if(!mi)
                     return(false);
 
-                if(mi->GetShaderMaterialProgram()!=mat_inst->GetShaderMaterialProgram())      //不能换母材质
+                SyncResolvedStateFromBindingInstance();
+
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
+                if(resolved_material&&mi->GetShaderMaterialProgram()!=resolved_material)      //不能换母材质
                     return(false);
+#endif
 
                 mat_inst=mi;
+                SyncResolvedStateFromBindingInstance();
                 return(true);
             }
 
