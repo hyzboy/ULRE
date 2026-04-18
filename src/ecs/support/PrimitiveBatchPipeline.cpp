@@ -604,6 +604,56 @@ namespace hgl::ecs
             auto* mi     = item->GetResolvedBindingInstance();
 
 #ifdef _DEBUG
+            if (auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item))
+            {
+                auto primitive_comp = prim_item->GetPrimitiveComponent();
+                if (primitive_comp)
+                {
+                    const auto state = primitive_comp->ResolveEffectiveMaterialState();
+
+                    if (state.material && material && state.material != material)
+                    {
+                        LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.material=%p item.material=%p",
+                                   static_cast<void*>(state.material),
+                                   static_cast<void*>(material));
+                    }
+
+                    if (mi)
+                    {
+                        if (state.binding_instance && state.binding_instance != mi)
+                        {
+                            LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.mi=%p item.mi=%p",
+                                       static_cast<void*>(state.binding_instance),
+                                       static_cast<void*>(mi));
+                        }
+
+                        if (state.domain && state.domain != mi->GetDomain())
+                        {
+                            LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain=%p mi.domain=%p",
+                                       static_cast<void*>(state.domain),
+                                       static_cast<void*>(mi->GetDomain()));
+                        }
+
+                        const auto* mi_vil = mi->GetVIL();
+                        if (state.vil && mi_vil && state.vil != mi_vil)
+                        {
+                            LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.vil=%p mi.vil=%p",
+                                       static_cast<const void*>(state.vil),
+                                       static_cast<const void*>(mi_vil));
+                        }
+
+                        if (state.preset != mi->GetRenderPreset())
+                        {
+                            LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.preset=%d mi.preset=%d",
+                                       int(state.preset),
+                                       int(mi->GetRenderPreset()));
+                        }
+                    }
+                }
+            }
+#endif
+
+#ifdef _DEBUG
             if (mi)
             {
                 auto *mi_material = mi->GetShaderMaterialProgram();
