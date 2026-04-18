@@ -34,7 +34,7 @@ public:
 
             VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetShaderMaterialProgram()->GetPipelineLayout();}
             ShaderMaterialProgram *          GetShaderMaterialProgram         (){return mat_inst->GetShaderMaterialProgram();}
-            MaterialBindingInstance *  GetMaterialInstance (){return mat_inst;}
+            MaterialBindingInstance *  GetResolvedBindingInstance(){return mat_inst;}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
     const   BoundingVolumes &   GetBoundingVolumes  ()const{return geometry->GetBoundingVolumes();}

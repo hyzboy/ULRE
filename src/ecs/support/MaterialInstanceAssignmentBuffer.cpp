@@ -122,7 +122,7 @@ namespace hgl::ecs
             if (!item)
                 continue;
 
-            graph::MaterialBindingInstance *mi = item->GetMaterialInstance();
+            graph::MaterialBindingInstance *mi = item->GetResolvedBindingInstance();
 
             if (mi)
             {
@@ -268,7 +268,7 @@ namespace hgl::ecs
         if (!mip)
             return;
 
-        graph::MaterialBindingInstance* mi = item->GetMaterialInstance();
+        graph::MaterialBindingInstance* mi = item->GetResolvedBindingInstance();
         *mip = static_cast<uint32_t>(mi_set.Find(mi));
 
         gpu->Unmap();
@@ -369,7 +369,7 @@ namespace hgl::ecs
                     continue;
                 }
 
-                graph::MaterialBindingInstance* mi = item->GetMaterialInstance();
+                graph::MaterialBindingInstance* mi = item->GetResolvedBindingInstance();
                 uint16 mi_index = mi ? mi_set.Find(mi) : 0;
                 *mid_ptr++ = static_cast<uint32_t>(mi_index);
 

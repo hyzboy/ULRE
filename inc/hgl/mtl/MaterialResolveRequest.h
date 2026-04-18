@@ -17,7 +17,7 @@ namespace hgl::graph
     {
         const mtl::MaterialRecipe *record = nullptr;
         std::vector<uint8_t> instance_data;             ///< MI uniform 初始数据（拷贝）
-        MaterialBindingInstance *resolved_mi = nullptr;        ///< 已解析的 MI（由 MaterialResolveSystem 写入）
+        MaterialBindingInstance *resolved_binding_instance = nullptr;        ///< 已解析的 MI（由 MaterialResolveSystem 写入）
         bool dirty = true;
 
         void SetRecord(const mtl::MaterialRecipe *rec)
@@ -40,7 +40,7 @@ namespace hgl::graph
         void Invalidate()
         {
             dirty = true;
-            resolved_mi = nullptr;
+            resolved_binding_instance = nullptr;
         }
 
         bool NeedsResolve() const { return dirty && record != nullptr; }

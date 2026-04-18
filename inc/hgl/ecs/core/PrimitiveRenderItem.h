@@ -54,7 +54,7 @@ namespace hgl::ecs
 
         // ShaderMaterialProgram batching interface
         hgl::graph::Primitive* GetPrimitive() const override;
-        hgl::graph::MaterialBindingInstance* GetMaterialInstance() const override;
+        hgl::graph::MaterialBindingInstance* GetResolvedBindingInstance() const override;
         hgl::graph::ShaderMaterialProgram* GetShaderMaterialProgram() const override;
 
         // Update world matrix from transform

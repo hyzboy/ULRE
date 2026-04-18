@@ -46,9 +46,9 @@ namespace hgl::ecs
         return primitiveComp ? primitiveComp->GetPrimitive() : nullptr;
     }
 
-    hgl::graph::MaterialBindingInstance* PrimitiveRenderItem::GetMaterialInstance() const
+    hgl::graph::MaterialBindingInstance* PrimitiveRenderItem::GetResolvedBindingInstance() const
     {
-        return primitiveComp ? primitiveComp->GetMaterialInstance() : nullptr;
+        return primitiveComp ? primitiveComp->GetResolvedBindingInstance() : nullptr;
     }
 
     hgl::graph::ShaderMaterialProgram* PrimitiveRenderItem::GetShaderMaterialProgram() const

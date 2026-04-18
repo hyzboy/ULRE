@@ -63,7 +63,7 @@ namespace hgl::ecs
         glm::mat4                           GetWorldMatrix() const override { return world_matrix; }
 
         graph::Primitive*        GetPrimitive()        const override { return primitive; }
-        graph::MaterialBindingInstance* GetMaterialInstance() const override;
+        graph::MaterialBindingInstance* GetResolvedBindingInstance() const override;
         graph::ShaderMaterialProgram*         GetShaderMaterialProgram()         const override;
 
         // ---- Asset-specific ----

@@ -35,9 +35,9 @@ namespace hgl::ecs
         return context->GetEntity(entity_id);
     }
 
-    graph::MaterialBindingInstance* AssetPrimitiveRenderItem::GetMaterialInstance() const
+    graph::MaterialBindingInstance* AssetPrimitiveRenderItem::GetResolvedBindingInstance() const
     {
-        return primitive ? primitive->GetMaterialInstance() : nullptr;
+        return primitive ? primitive->GetResolvedBindingInstance() : nullptr;
     }
 
     graph::ShaderMaterialProgram* AssetPrimitiveRenderItem::GetShaderMaterialProgram() const

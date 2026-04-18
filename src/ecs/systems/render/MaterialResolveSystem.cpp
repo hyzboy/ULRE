@@ -36,7 +36,7 @@ namespace hgl::ecs
 
         for (auto &comp : primitives)
         {
-            if (!comp || !comp->NeedsMaterialResolve())
+            if (!comp || !comp->NeedsMaterialBindingResolve())
                 continue;
 
             auto &slot = comp->GetMaterialResolveRequest();
@@ -59,7 +59,7 @@ namespace hgl::ecs
             if (!mi)
                 continue;
 
-            slot.resolved_mi = mi;
+            slot.resolved_binding_instance = mi;
             slot.dirty = false;
 
             // If we have unresolved geometry (no Primitive yet), create the full Primitive

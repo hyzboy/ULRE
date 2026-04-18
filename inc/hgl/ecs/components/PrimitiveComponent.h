@@ -77,10 +77,10 @@ namespace hgl::ecs
         hgl::graph::Geometry* GetUnresolvedGeometry() const { return unresolved_geometry; }
         hgl::graph::MaterialResolveRequest& GetMaterialResolveRequest() { return material_slot; }
         const hgl::graph::MaterialResolveRequest& GetMaterialResolveRequest() const { return material_slot; }
-        bool NeedsMaterialResolve() const { return material_slot.NeedsResolve(); }
+        bool NeedsMaterialBindingResolve() const { return material_slot.NeedsResolve(); }
 
         // ShaderMaterialProgram access (returns override if set, otherwise primitive's material)
-        hgl::graph::MaterialBindingInstance* GetMaterialInstance() const;
+        hgl::graph::MaterialBindingInstance* GetResolvedBindingInstance() const;
         hgl::graph::ShaderMaterialProgram* GetShaderMaterialProgram() const;
 
         // Bounding volume

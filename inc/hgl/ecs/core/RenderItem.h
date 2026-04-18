@@ -51,7 +51,7 @@ namespace hgl::ecs
 
         // For material batching support
         virtual hgl::graph::Primitive* GetPrimitive() const = 0;
-        virtual hgl::graph::MaterialBindingInstance* GetMaterialInstance() const = 0;
+        virtual hgl::graph::MaterialBindingInstance* GetResolvedBindingInstance() const = 0;
         virtual hgl::graph::ShaderMaterialProgram* GetShaderMaterialProgram() const = 0;
 
         // Comparison for sorting

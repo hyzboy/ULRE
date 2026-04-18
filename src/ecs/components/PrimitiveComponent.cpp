@@ -97,11 +97,11 @@ namespace hgl::ecs
             material_slot.SetInstanceData(instance_data, instance_data_size);
     }
 
-    hgl::graph::MaterialBindingInstance* PrimitiveComponent::GetMaterialInstance() const
+    hgl::graph::MaterialBindingInstance* PrimitiveComponent::GetResolvedBindingInstance() const
     {
         // Phase B: resolved MI from MaterialResolveRequest takes priority
-        if (material_slot.resolved_mi)
-            return material_slot.resolved_mi;
+        if (material_slot.resolved_binding_instance)
+            return material_slot.resolved_binding_instance;
 
         // Override material is second priority
         if (overrideMaterial)
@@ -110,7 +110,7 @@ namespace hgl::ecs
         if (!primitive)
             return nullptr;
 
-        return primitive->GetMaterialInstance();
+        return primitive->GetResolvedBindingInstance();
     }
 
     hgl::graph::ShaderMaterialProgram* PrimitiveComponent::GetShaderMaterialProgram() const

@@ -163,7 +163,7 @@ public: //Add
 public: //Get
 
     ShaderMaterialProgram *          GetShaderMaterialProgram         (const MaterialID           &id){return rm_material.Get(id);}
-    MaterialBindingInstance *  GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
+    MaterialBindingInstance *  GetResolvedBindingInstance(const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
 
 public: //Release
 

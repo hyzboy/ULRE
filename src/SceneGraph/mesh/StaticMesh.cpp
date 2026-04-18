@@ -45,7 +45,7 @@ bool StaticMesh::AddPrimitive(Primitive *sm)
 
     // 跟踪资源
     geometry_set.Add(sm->GetGeometry());
-    if (auto mi = sm->GetMaterialInstance()) mat_inst_set.Add(mi);
+    if (auto mi = sm->GetResolvedBindingInstance()) mat_inst_set.Add(mi);
 
     // 处理 Pipeline 缓存：
     // 外部导入的 Primitive 可能没有 pipeline 信息（已完全解耦），
@@ -144,7 +144,7 @@ void StaticMesh::RebuildResourceSets()
             continue;
 
         if (auto geom = sm->GetGeometry())          geometry_set.Add(geom);
-        if (auto mi   = sm->GetMaterialInstance())  mat_inst_set.Add(mi);
+        if (auto mi   = sm->GetResolvedBindingInstance())  mat_inst_set.Add(mi);
 
         // 从缓存中获取 Pipeline，而不是调用 GetPipeline()
         auto it = _primitive_pipeline_cache.find(sm);

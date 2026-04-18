@@ -529,7 +529,7 @@ namespace hgl::ecs
                 bool prim_restart = false;
                 graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid3D;
 
-                auto* mi = item->GetMaterialInstance();
+                auto* mi = item->GetResolvedBindingInstance();
                 if (mi)
                 {
                     vil = mi->GetVIL();
@@ -601,7 +601,7 @@ namespace hgl::ecs
 
             // Phase 4: include ResourceDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
-            auto* mi     = item->GetMaterialInstance();
+            auto* mi     = item->GetResolvedBindingInstance();
             auto* domain = mi ? mi->GetDomain() : nullptr;
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 
