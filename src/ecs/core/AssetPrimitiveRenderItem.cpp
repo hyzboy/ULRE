@@ -5,6 +5,8 @@
 #include <hgl/graph/mesh/Primitive.h>
 #include <hgl/vk/VKShaderMaterialProgram.h>
 #include <hgl/vk/VKMaterialBindingInstance.h>
+#include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
+#include <cassert>
 
 namespace hgl::ecs
 {
@@ -37,12 +39,48 @@ namespace hgl::ecs
 
     graph::MaterialBindingInstance* AssetPrimitiveRenderItem::GetResolvedBindingInstance() const
     {
-        return primitive ? primitive->GetResolvedBindingInstance() : nullptr;
+        return GetResolvedMaterialState().binding_instance;
     }
 
     graph::ShaderMaterialProgram* AssetPrimitiveRenderItem::GetShaderMaterialProgram() const
     {
-        return primitive ? primitive->GetShaderMaterialProgram() : nullptr;
+        return GetResolvedMaterialState().material;
+    }
+
+    RenderItem::ResolvedMaterialState AssetPrimitiveRenderItem::GetResolvedMaterialState() const
+    {
+        ResolvedMaterialState state{};
+        state.preset = hgl::graph::GraphicsPipelinePreset::Solid3D;
+
+        if (!primitive)
+            return state;
+
+        state.binding_instance = primitive->GetResolvedBindingInstance();
+
+        if (state.binding_instance)
+        {
+            state.material = state.binding_instance->GetShaderMaterialProgram();
+            state.domain = state.binding_instance->GetDomain();
+            state.domain_id = state.binding_instance->GetDomainID();
+            state.vil = state.binding_instance->GetVIL();
+            state.mi_id = state.binding_instance->GetMIID();
+            state.preset = state.binding_instance->GetRenderPreset();
+
+#ifdef _DEBUG
+            assert(state.domain == state.binding_instance->GetDomain());
+            assert(state.domain_id == state.binding_instance->GetDomainID());
+            assert(state.vil == state.binding_instance->GetVIL());
+            assert(state.mi_id == state.binding_instance->GetMIID());
+            assert(state.preset == state.binding_instance->GetRenderPreset());
+            assert(state.material == state.binding_instance->GetShaderMaterialProgram());
+#endif
+        }
+        else
+        {
+            state.material = primitive->GetShaderMaterialProgram();
+        }
+
+        return state;
     }
 
     void AssetPrimitiveRenderItem::UpdateWorldMatrix()
