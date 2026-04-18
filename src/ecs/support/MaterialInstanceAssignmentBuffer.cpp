@@ -15,6 +15,40 @@
 
 namespace hgl::ecs
 {
+    namespace
+    {
+#ifdef _DEBUG
+        graph::MaterialBindingInstance *ResolveMIStateOnly(const RenderItem *item)
+        {
+            if (!item)
+                return nullptr;
+
+            const auto state = item->GetResolvedMaterialState();
+            auto *mi = state.binding_instance;
+
+            auto *legacy_mi = item->GetResolvedBindingInstance();
+            if (!mi && legacy_mi)
+            {
+                std::cout << "[MaterialInstanceAssignmentBuffer] DEBUG: state.binding_instance is null but legacy accessor returned non-null" << std::endl;
+            }
+            else if (mi && legacy_mi && mi != legacy_mi)
+            {
+                std::cout << "[MaterialInstanceAssignmentBuffer] DEBUG: state.binding_instance and legacy accessor mismatch" << std::endl;
+            }
+
+            return mi;
+        }
+#else
+        graph::MaterialBindingInstance *ResolveMIStateOnly(const RenderItem *item)
+        {
+            if (!item)
+                return nullptr;
+
+            return item->GetResolvedMaterialState().binding_instance;
+        }
+#endif
+    }
+
     MaterialInstanceAssignmentBuffer::MaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::ShaderMaterialProgram* mtl)
         : buffer_manager(bm)
         , material(mtl)
@@ -122,10 +156,7 @@ namespace hgl::ecs
             if (!item)
                 continue;
 
-            const auto state = item->GetResolvedMaterialState();
-            graph::MaterialBindingInstance *mi = state.binding_instance;
-            if (!mi)
-                mi = item->GetResolvedBindingInstance();
+            graph::MaterialBindingInstance *mi = ResolveMIStateOnly(item);
 
             if (mi)
             {
@@ -271,10 +302,7 @@ namespace hgl::ecs
         if (!mip)
             return;
 
-        const auto state = item->GetResolvedMaterialState();
-        graph::MaterialBindingInstance* mi = state.binding_instance;
-        if (!mi)
-            mi = item->GetResolvedBindingInstance();
+        graph::MaterialBindingInstance* mi = ResolveMIStateOnly(item);
         *mip = static_cast<uint32_t>(mi_set.Find(mi));
 
         gpu->Unmap();
@@ -375,10 +403,7 @@ namespace hgl::ecs
                     continue;
                 }
 
-                const auto state = item->GetResolvedMaterialState();
-                graph::MaterialBindingInstance* mi = state.binding_instance;
-                if (!mi)
-                    mi = item->GetResolvedBindingInstance();
+                graph::MaterialBindingInstance* mi = ResolveMIStateOnly(item);
                 uint16 mi_index = mi ? mi_set.Find(mi) : 0;
                 *mid_ptr++ = static_cast<uint32_t>(mi_index);
 
