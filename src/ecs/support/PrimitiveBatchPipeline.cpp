@@ -507,7 +507,12 @@ namespace hgl::ecs
             if (!item || !item->isVisible)
                 continue;
 
+            const auto state = item->GetResolvedMaterialState();
+
             auto* material = item->GetShaderMaterialProgram();
+            if (!material)
+                material = state.material;
+
             auto* primitive = item->GetPrimitive();
             graph::GraphicsPipeline* pipeline = nullptr;
 
@@ -525,15 +530,21 @@ namespace hgl::ecs
             if (material && render_format)
             {
                 const graph::GraphicsPipelineData* pipeline_data = nullptr;
-                const graph::VIL* vil = nullptr;
+                const graph::VIL* vil = state.vil;
                 bool prim_restart = false;
-                graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid3D;
+                graph::GraphicsPipelinePreset preset = state.preset;
 
                 auto* mi = item->GetResolvedBindingInstance();
+                if (!mi)
+                    mi = state.binding_instance;
+
                 if (mi)
                 {
-                    vil = mi->GetVIL();
-                    preset = mi->GetRenderPreset();
+                    if (!vil)
+                        vil = mi->GetVIL();
+
+                    if (!state.HasBindingInstance())
+                        preset = mi->GetRenderPreset();
                 }
 
                 if (!vil)
@@ -602,10 +613,10 @@ namespace hgl::ecs
             // Phase 4: include ResourceDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
             auto* mi     = item->GetResolvedBindingInstance();
+            if (!mi)
+                mi = state.binding_instance;
 
 #ifdef _DEBUG
-            const auto state = item->GetResolvedMaterialState();
-
             if (state.material && material && state.material != material)
             {
                 LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.material=%p item.material=%p",
@@ -659,7 +670,9 @@ namespace hgl::ecs
             }
 #endif
 
-            auto* domain = mi ? mi->GetDomain() : nullptr;
+            auto* domain = state.domain;
+            if (!domain && mi)
+                domain = mi->GetDomain();
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 
             MaterialPipelineKey key(material, pipeline, domain, queue);
