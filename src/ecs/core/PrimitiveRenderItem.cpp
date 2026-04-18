@@ -56,10 +56,22 @@ namespace hgl::ecs
         return GetResolvedMaterialState().material;
     }
 
-    PrimitiveComponent::ResolvedMaterialState PrimitiveRenderItem::GetResolvedMaterialState() const
+    RenderItem::ResolvedMaterialState PrimitiveRenderItem::GetResolvedMaterialState() const
     {
-        return primitiveComp ? primitiveComp->ResolveEffectiveMaterialState()
-                             : PrimitiveComponent::ResolvedMaterialState{};
+        if (!primitiveComp)
+            return RenderItem::ResolvedMaterialState{};
+
+        const auto comp_state = primitiveComp->ResolveEffectiveMaterialState();
+
+        RenderItem::ResolvedMaterialState state{};
+        state.binding_instance = comp_state.binding_instance;
+        state.material = comp_state.material;
+        state.domain = comp_state.domain;
+        state.domain_id = comp_state.domain_id;
+        state.vil = comp_state.vil;
+        state.mi_id = comp_state.mi_id;
+        state.preset = comp_state.preset;
+        return state;
     }
 
     void PrimitiveRenderItem::UpdateWorldMatrix()

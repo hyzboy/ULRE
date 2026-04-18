@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/EntityHandle.h>
 #include<hgl/ecs/components/TransformComponent.h>
+#include<cstdint>
 #include<memory>
 
 namespace hgl
@@ -11,6 +12,9 @@ namespace hgl
         class Primitive;
         class ShaderMaterialProgram;
         class MaterialBindingInstance;
+        class ResourceDomain;
+        class VertexInputLayout;
+        enum class GraphicsPipelinePreset;
     }
 
     namespace ecs
@@ -32,6 +36,20 @@ namespace hgl::ecs
     class RenderItem
     {
     public:
+        struct ResolvedMaterialState
+        {
+            hgl::graph::MaterialBindingInstance* binding_instance = nullptr;
+            hgl::graph::ShaderMaterialProgram* material = nullptr;
+            hgl::graph::ResourceDomain* domain = nullptr;
+            uint32_t domain_id = 0xFFFFFFFFu;
+            const hgl::graph::VertexInputLayout* vil = nullptr;
+            int mi_id = -1;
+            hgl::graph::GraphicsPipelinePreset preset{};
+
+            bool HasBindingInstance() const { return binding_instance != nullptr; }
+            bool HasMaterial() const { return material != nullptr; }
+        };
+
         uint32_t index = 0;                      // Index in batch
         uint32_t transform_version = 0;          // Transform version for dirty tracking
         uint32_t transform_index = 0;            // Transform index in buffer
@@ -53,6 +71,7 @@ namespace hgl::ecs
         virtual hgl::graph::Primitive* GetPrimitive() const = 0;
         virtual hgl::graph::MaterialBindingInstance* GetResolvedBindingInstance() const = 0;
         virtual hgl::graph::ShaderMaterialProgram* GetShaderMaterialProgram() const = 0;
+        virtual ResolvedMaterialState GetResolvedMaterialState() const;
 
         // Comparison for sorting
         virtual int Compare(const RenderItem& other) const;

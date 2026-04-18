@@ -56,7 +56,7 @@ namespace hgl::ecs
         hgl::graph::Primitive* GetPrimitive() const override;
         hgl::graph::MaterialBindingInstance* GetResolvedBindingInstance() const override;
         hgl::graph::ShaderMaterialProgram* GetShaderMaterialProgram() const override;
-        PrimitiveComponent::ResolvedMaterialState GetResolvedMaterialState() const;
+        ResolvedMaterialState GetResolvedMaterialState() const override;
 
         // Update world matrix from transform
         void UpdateWorldMatrix();
