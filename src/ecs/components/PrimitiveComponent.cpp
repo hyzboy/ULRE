@@ -151,8 +151,10 @@ namespace hgl::ecs
 #ifdef _DEBUG
             assert(state.material == state.binding_instance->GetShaderMaterialProgram());
             assert(state.domain == state.binding_instance->GetDomain());
+        assert(state.domain_id == state.binding_instance->GetDomainID());
             assert(state.vil == state.binding_instance->GetVIL());
             assert(state.mi_id == state.binding_instance->GetMIID());
+        assert(state.preset == state.binding_instance->GetRenderPreset());
 #endif
         }
 

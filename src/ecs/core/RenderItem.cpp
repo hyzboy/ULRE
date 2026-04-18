@@ -2,6 +2,7 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
+#include<cassert>
 
 namespace hgl::ecs
 {
@@ -23,6 +24,16 @@ namespace hgl::ecs
 
             if (!state.material)
                 state.material = state.binding_instance->GetShaderMaterialProgram();
+
+#ifdef _DEBUG
+            assert(state.domain == state.binding_instance->GetDomain());
+            assert(state.domain_id == state.binding_instance->GetDomainID());
+            assert(state.vil == state.binding_instance->GetVIL());
+            assert(state.mi_id == state.binding_instance->GetMIID());
+            assert(state.preset == state.binding_instance->GetRenderPreset());
+            if (state.material)
+                assert(state.material == state.binding_instance->GetShaderMaterialProgram());
+#endif
         }
 
         return state;
