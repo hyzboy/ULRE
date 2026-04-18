@@ -186,12 +186,11 @@ private:
         for(size_t i = 0; i < render_mesh.size(); ++i)
         {
             auto *rm = render_mesh[i].get();
-            if(!rm || !rm->entity || !rm->primitive_comp)
+            if(!rm || !rm->entity || !rm->geometry)
                 continue;
 
             hgl::math::AABB local_aabb;
-            if(!rm->primitive_comp->GetLocalAABB(local_aabb))
-                continue;
+            local_aabb = rm->geometry->GetBoundingVolumes().aabb;
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
             bbox->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("BBox_" + std::to_string(i));
