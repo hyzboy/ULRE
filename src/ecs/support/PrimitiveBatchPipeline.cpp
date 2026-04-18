@@ -590,45 +590,10 @@ namespace hgl::ecs
                 bool prim_restart = false;
                 graph::GraphicsPipelinePreset preset = state.preset;
 
-                auto* mi = state.binding_instance;
-                const graph::VIL* mi_vil = mi ? mi->GetVIL() : nullptr;
                 const graph::VIL* default_vil = material->GetDefaultVIL();
-
-#ifdef _DEBUG
-                if (!state.vil)
-                {
-                    GLogDebug("[ECS::PrimitiveBatchPipeline] VIL source: state.vil=null mi.vil=%p default.vil=%p material=%s",
-                              static_cast<const void *>(mi_vil),
-                              static_cast<const void *>(default_vil),
-                              material->GetName().c_str());
-                }
-
-                if (state.vil && mi_vil && state.vil != mi_vil)
-                {
-                    GLogWarning("[ECS::PrimitiveBatchPipeline] VIL mismatch: state.vil=%p mi.vil=%p material=%s",
-                                static_cast<const void *>(state.vil),
-                                static_cast<const void *>(mi_vil),
-                                material->GetName().c_str());
-                }
-#endif
-
-                // Macro=0 may intentionally leave state.vil empty; in that case
-                // prefer MI VIL first, then fallback to material default VIL.
-                if (!vil && mi_vil)
-                    vil = mi_vil;
 
                 if (!vil)
                     vil = default_vil;
-
-#ifdef _DEBUG
-                if (vil == default_vil && mi_vil && default_vil != mi_vil)
-                {
-                    GLogWarning("[ECS::PrimitiveBatchPipeline] VIL fallback changed source: using default.vil=%p instead of mi.vil=%p material=%s",
-                                static_cast<const void *>(default_vil),
-                                static_cast<const void *>(mi_vil),
-                                material->GetName().c_str());
-                }
-#endif
 
                 pipeline_data = graph::GetGraphicsPipelineData(preset);
                 if (pipeline_data)

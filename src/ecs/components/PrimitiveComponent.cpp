@@ -147,6 +147,7 @@ namespace hgl::ecs
             if (primitive && state.binding_instance == primitive_binding_instance)
                 state.material = primitive->GetShaderMaterialProgram();
 
+            state.vil = state.binding_instance->GetVIL();
             state.domain = state.binding_instance->GetDomain();
             state.domain_id = state.binding_instance->GetDomainID();
             state.mi_id = state.binding_instance->GetMIID();
