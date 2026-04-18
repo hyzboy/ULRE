@@ -15,9 +15,29 @@
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/type/StdString.h>
+#include<iostream>
 
 namespace hgl::ecs
 {
+    static graph::ShaderMaterialProgram *ResolvePrimitiveMaterialStateFirst(graph::Primitive *prim)
+    {
+        if (!prim)
+            return nullptr;
+
+        auto *resolved_mi = prim->GetResolvedBindingInstance();
+        auto *state_material = resolved_mi ? resolved_mi->GetShaderMaterialProgram() : nullptr;
+
+#ifdef _DEBUG
+        auto *legacy_material = prim->GetShaderMaterialProgram();
+        if (state_material && legacy_material && state_material != legacy_material)
+        {
+            std::cout << "[QuadMaterialBindingSystem] DEBUG: primitive material mismatch between resolved MI and legacy accessor" << std::endl;
+        }
+#endif
+
+        return state_material ? state_material : prim->GetShaderMaterialProgram();
+    }
+
     static graph::ResourceDomain *ResolveDomainForMaterial(graph::GraphicsContext *gc,
                                                            graph::ShaderMaterialProgram *material,
                                                            uint32_t domain_id)
@@ -159,7 +179,7 @@ namespace hgl::ecs
         {
             auto *current_prim = quad->GetPrimitive();
             if (current_prim && current_prim != QuadResourcePrepareSystem::GetSharedPrimitive())
-                previous_material = current_prim->GetShaderMaterialProgram();
+                previous_material = ResolvePrimitiveMaterialStateFirst(current_prim);
         }
 
         mi->SetRenderPreset(QuadResourcePrepareSystem::GetPresetForWorld(world));
@@ -180,7 +200,7 @@ namespace hgl::ecs
 
         if (current_primitive
          && current_primitive != shared_primitive
-         && current_primitive->GetShaderMaterialProgram() == mi->GetShaderMaterialProgram())
+         && ResolvePrimitiveMaterialStateFirst(current_primitive) == mi->GetShaderMaterialProgram())
         {
             if (!current_primitive->ChangeMaterialInstance(mi))
                 return false;
@@ -287,7 +307,7 @@ namespace hgl::ecs
 
         if (current_primitive
          && current_primitive != dr->primitive
-         && current_primitive->GetShaderMaterialProgram() == mi->GetShaderMaterialProgram())
+         && ResolvePrimitiveMaterialStateFirst(current_primitive) == mi->GetShaderMaterialProgram())
         {
             if (!current_primitive->ChangeMaterialInstance(mi))
                 return false;
