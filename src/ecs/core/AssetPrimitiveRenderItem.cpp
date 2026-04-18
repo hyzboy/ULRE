@@ -59,20 +59,37 @@ namespace hgl::ecs
 
         if (state.binding_instance)
         {
-            state.material = state.binding_instance->GetShaderMaterialProgram();
+            state.material = primitive->GetShaderMaterialProgram();
+
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
+            if (!state.material)
+                state.material = state.binding_instance->GetShaderMaterialProgram();
+#endif
+
             state.domain = state.binding_instance->GetDomain();
             state.domain_id = state.binding_instance->GetDomainID();
+
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
             state.vil = state.binding_instance->GetVIL();
+#endif
+
             state.mi_id = state.binding_instance->GetMIID();
             state.preset = state.binding_instance->GetRenderPreset();
 
 #ifdef _DEBUG
             assert(state.domain == state.binding_instance->GetDomain());
             assert(state.domain_id == state.binding_instance->GetDomainID());
+
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
             assert(state.vil == state.binding_instance->GetVIL());
+#endif
+
             assert(state.mi_id == state.binding_instance->GetMIID());
             assert(state.preset == state.binding_instance->GetRenderPreset());
+
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
             assert(state.material == state.binding_instance->GetShaderMaterialProgram());
+#endif
 #endif
         }
 

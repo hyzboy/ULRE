@@ -46,21 +46,35 @@ namespace hgl::ecs
             graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid2D;
         };
 
-        TextResolvedMaterialState ResolveTextMaterialState(graph::MaterialBindingInstance *mi)
+        graph::VILConfig BuildTextSpecialVILConfig()
+        {
+            graph::VILConfig vil_config;
+            vil_config.Add(graph::VAN::Position, graph::TEXT_GEOMETRY_POSITION_FORMAT);
+            vil_config.Add(graph::VAN::TexCoord, graph::TEXT_GEOMETRY_TEXCOORD_FORMAT);
+            return vil_config;
+        }
+
+        TextResolvedMaterialState ResolveTextMaterialState(graph::MaterialBindingInstance *mi,
+                                                           graph::ShaderMaterialProgram *expected_material = nullptr,
+                                                           const graph::VIL *expected_vil = nullptr)
         {
             TextResolvedMaterialState state{};
             state.binding_instance = mi;
+            state.material = expected_material;
+            state.vil = expected_vil;
 
             if (!mi)
                 return state;
 
-            state.vil = mi->GetVIL();
             state.preset = mi->GetRenderPreset();
 
-            if (auto *mi_material = mi->GetShaderMaterialProgram())
-            {
-                state.material = mi_material;
-            }
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
+            if (!state.vil)
+                state.vil = mi->GetVIL();
+
+            if (!state.material)
+                state.material = mi->GetShaderMaterialProgram();
+#endif
 
             return state;
         }
@@ -176,6 +190,12 @@ namespace hgl::ecs
             {
                 material_manager->Release(res.material_instance);
                 res.material_instance = nullptr;
+            }
+
+            if (res.fixed_vil && res.material)
+            {
+                res.material->Release(const_cast<graph::VIL *>(res.fixed_vil));
+                res.fixed_vil = nullptr;
             }
 
             if (res.material && material_manager)
@@ -401,6 +421,14 @@ namespace hgl::ecs
         resources.tile_font = guard.tile_font.release();
         resources.material = guard.material;
         resources.sampler = guard.sampler;
+
+        {
+            const graph::VILConfig text_vil_config = BuildTextSpecialVILConfig();
+            resources.fixed_vil = guard.material->CreateVIL(&text_vil_config);
+        }
+        if (!resources.fixed_vil)
+            return nullptr;
+
         guard.committed = true;
 
         resources_by_font.Add(font_source, resources);
@@ -414,7 +442,7 @@ namespace hgl::ecs
         if (!device || !render_target || !resources.material || !resources.material_instance)
             return false;
 
-        const auto state = ResolveTextMaterialState(resources.material_instance);
+        const auto state = ResolveTextMaterialState(resources.material_instance, resources.material, resources.fixed_vil);
         if (!state.material || !state.vil)
             return false;
 
@@ -543,8 +571,7 @@ namespace hgl::ecs
             graph::MaterialBindingInstance* mi = resources->material_instance;
             if (!mi)
             {
-                graph::VILConfig vil_config;
-                vil_config.Add(graph::VAN::Position, VF_V2I16);
+                const graph::VILConfig vil_config = BuildTextSpecialVILConfig();
 
                 graph::MaterialInstanceSpec mi_spec;
                 mi_spec.material = resources->material;

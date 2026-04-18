@@ -25,18 +25,20 @@ namespace hgl::ecs
         graph::ShaderMaterialProgram *material = nullptr;
     };
 
-    static QuadResolvedMaterialState ResolveMaterialInstanceState(graph::MaterialBindingInstance *mi)
+    static QuadResolvedMaterialState ResolveMaterialInstanceState(graph::MaterialBindingInstance *mi,
+                                                                  graph::ShaderMaterialProgram *expected_material = nullptr)
     {
         QuadResolvedMaterialState state{};
         state.binding_instance = mi;
+        state.material = expected_material;
 
         if (!mi)
             return state;
 
-        if (auto *mi_material = mi->GetShaderMaterialProgram())
-        {
-            state.material = mi_material;
-        }
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
+        if (!state.material)
+            state.material = mi->GetShaderMaterialProgram();
+#endif
 
         return state;
     }
@@ -196,7 +198,7 @@ namespace hgl::ecs
         if (!mi)
             return false;
 
-        const auto mi_state = ResolveMaterialInstanceState(mi);
+        const auto mi_state = ResolveMaterialInstanceState(mi, quad_material);
         if (!mi_state.material)
             return false;
 
@@ -314,7 +316,7 @@ namespace hgl::ecs
         if (!mi)
             return false;
 
-        const auto mi_state = ResolveMaterialInstanceState(mi);
+        const auto mi_state = ResolveMaterialInstanceState(mi, dr->material);
         if (!mi_state.material)
             return false;
 

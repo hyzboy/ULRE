@@ -108,6 +108,7 @@ namespace hgl::ecs
                             static_cast<void *>(mi->GetDomain()));
             }
 
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
             const auto *mi_vil = mi->GetVIL();
             if (state.vil && mi_vil && state.vil != mi_vil)
             {
@@ -115,6 +116,7 @@ namespace hgl::ecs
                             static_cast<const void *>(state.vil),
                             static_cast<const void *>(mi_vil));
             }
+#endif
 
             if (state.preset != mi->GetRenderPreset())
             {
@@ -129,6 +131,7 @@ namespace hgl::ecs
                             static_cast<void *>(mi->GetDomain()));
             }
 
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
             // Blocker-2: material pointer three-source consistency check.
             // state.material must equal mi->GetShaderMaterialProgram() since
             // state is assembled from MI. If these diverge the MI has returned
@@ -142,6 +145,7 @@ namespace hgl::ecs
                                 static_cast<const void *>(mi_material));
                 }
             }
+#endif
         }
 #endif
     }
@@ -615,11 +619,13 @@ namespace hgl::ecs
                 auto* mi = state.binding_instance;
 
 #ifdef _DEBUG
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
                 if (!vil && mi && mi->GetVIL())
                 {
                     GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.vil is null but mi.vil=%p",
                                 static_cast<const void *>(mi->GetVIL()));
                 }
+#endif
 #endif
 
                 if (!vil)

@@ -48,21 +48,35 @@ namespace hgl::ecs
             graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid3D;
         };
 
-        LineResolvedMaterialState ResolveLineMaterialState(graph::MaterialBindingInstance *mi)
+        graph::VILConfig BuildLineSpecialVILConfig()
+        {
+            graph::VILConfig vil;
+            vil.Add(graph::VAN::Position, VF_V3F);
+            vil.Add(graph::VAN::Color, VF_V1U8);
+            return vil;
+        }
+
+        LineResolvedMaterialState ResolveLineMaterialState(graph::MaterialBindingInstance *mi,
+                                                           graph::ShaderMaterialProgram *expected_material = nullptr,
+                                                           const graph::VIL *expected_vil = nullptr)
         {
             LineResolvedMaterialState state{};
             state.binding_instance = mi;
+            state.material = expected_material;
+            state.vil = expected_vil;
 
             if (!mi)
                 return state;
 
-            state.vil = mi->GetVIL();
             state.preset = mi->GetRenderPreset();
 
-            if (auto *mi_material = mi->GetShaderMaterialProgram())
-            {
-                state.material = mi_material;
-            }
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
+            if (!state.vil)
+                state.vil = mi->GetVIL();
+
+            if (!state.material)
+                state.material = mi->GetShaderMaterialProgram();
+#endif
 
             return state;
         }
@@ -307,11 +321,14 @@ namespace hgl::ecs
             rdbs->RegisterPipelineMaterial(material_);
 
         // ------- Create material instance -------
-        graph::VILConfig vil;
-        vil.Add(graph::VAN::Color, VF_V1U8);
+        const graph::VILConfig vil = BuildLineSpecialVILConfig();
         const auto preset = support_wide_lines_
             ? graph::GraphicsPipelinePreset::DynamicLineWidth3D
             : graph::GraphicsPipelinePreset::Solid3D;
+
+        fixed_vil_ = material_->CreateVIL(&vil);
+        if (!fixed_vil_)
+            return false;
 
         graph::MaterialInstanceSpec spec;
         spec.material = material_;
@@ -353,7 +370,7 @@ namespace hgl::ecs
         if (!context_ || !device_ || !material_ || !mi_)
             return false;
 
-        const auto state = ResolveLineMaterialState(mi_);
+        const auto state = ResolveLineMaterialState(mi_, material_, fixed_vil_);
         if (!state.material || !state.vil)
             return false;
 
@@ -721,7 +738,7 @@ namespace hgl::ecs
 
         const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
 
-        const auto state = ResolveLineMaterialState(mi_);
+        const auto state = ResolveLineMaterialState(mi_, material_, fixed_vil_);
         auto* mat = state.material;
         if (mat)
             cmd->BindDescriptorSets(mat);
@@ -773,6 +790,11 @@ namespace hgl::ecs
             if (mat_mgr)
             {
                 if (mi_)       { mat_mgr->Destroy(mi_); mi_ = nullptr; }
+                if (fixed_vil_ && material_)
+                {
+                    material_->Release(const_cast<graph::VIL *>(fixed_vil_));
+                    fixed_vil_ = nullptr;
+                }
                 if (material_)
                 {
                     if (auto rdbs = context_->GetSystem<RenderDescriptorBindingSystem>())
