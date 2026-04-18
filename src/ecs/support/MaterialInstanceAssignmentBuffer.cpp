@@ -24,19 +24,12 @@ namespace hgl::ecs
                 return nullptr;
 
             const auto state = item->GetResolvedMaterialState();
-            auto *mi = state.binding_instance;
-
-            auto *legacy_mi = item->GetResolvedBindingInstance();
-            if (!mi && legacy_mi)
+            if (!state.binding_instance)
             {
-                std::cout << "[MaterialInstanceAssignmentBuffer] DEBUG: state.binding_instance is null but legacy accessor returned non-null" << std::endl;
-            }
-            else if (mi && legacy_mi && mi != legacy_mi)
-            {
-                std::cout << "[MaterialInstanceAssignmentBuffer] DEBUG: state.binding_instance and legacy accessor mismatch" << std::endl;
+                std::cout << "[MaterialInstanceAssignmentBuffer] DEBUG: state.binding_instance is null" << std::endl;
             }
 
-            return mi;
+            return state.binding_instance;
         }
 #else
         graph::MaterialBindingInstance *ResolveMIStateOnly(const RenderItem *item)

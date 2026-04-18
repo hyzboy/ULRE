@@ -95,30 +95,6 @@ namespace hgl::ecs
         }
 
 #ifdef _DEBUG
-        void LogLegacyAccessorMismatch(const RenderItem *item,
-                                       graph::ShaderMaterialProgram *state_material,
-                                       graph::MaterialBindingInstance *state_mi)
-        {
-            if (!item)
-                return;
-
-            auto *legacy_material = item->GetShaderMaterialProgram();
-            if (legacy_material && state_material && legacy_material != state_material)
-            {
-                GLogWarning("[ECS::PrimitiveBatchPipeline] Material source mismatch detected: state.material=%p legacy.item.material=%p",
-                            static_cast<void *>(state_material),
-                            static_cast<void *>(legacy_material));
-            }
-
-            auto *legacy_mi = item->GetResolvedBindingInstance();
-            if (legacy_mi && state_mi && legacy_mi != state_mi)
-            {
-                GLogWarning("[ECS::PrimitiveBatchPipeline] MI source mismatch detected: state.mi=%p legacy.item.mi=%p",
-                            static_cast<void *>(state_mi),
-                            static_cast<void *>(legacy_mi));
-            }
-        }
-
         void LogUnifiedStateMismatch(const RenderItem::ResolvedMaterialState &state,
                                      graph::MaterialBindingInstance *mi)
         {
@@ -580,7 +556,10 @@ namespace hgl::ecs
             graph::GraphicsPipeline* pipeline = nullptr;
 
 #ifdef _DEBUG
-            LogLegacyAccessorMismatch(item, material, state.binding_instance);
+            if (!material)
+            {
+                GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state warning: state.material is null for visible item");
+            }
 #endif
 
             if (primitive)
