@@ -528,8 +528,11 @@ private:
                 transform->SetMovable(true);
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
+                // INTENTIONAL: PBR sphere grid — all entities in the same column share
+                // base geometry, but each row/col pair has distinct metallic/roughness MI.
+                // Using the explicit override path here is correct.
                 prim_comp->SetPrimitive(base_primitives[col]);
-                prim_comp->SetOverrideBindingInstance(sphere_mi[row][col]);
+                prim_comp->SetOverrideBindingInstance(sphere_mi[row][col]); // NOLINT(deprecated)
                 prim_comp->SetVisible(true);
             }
         }

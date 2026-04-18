@@ -198,8 +198,11 @@ private:
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform->SetMovable(false);
 
+            // INTENTIONAL: all entities share a single geometry (mesh_rect) but each
+            // needs a distinct per-texture MI.  The deferred recipe path would require
+            // per-entity recipes; using the explicit override path here is correct.
             primitive->SetPrimitive(mesh_rect);
-            primitive->SetOverrideBindingInstance(render_obj[i].mi);
+            primitive->SetOverrideBindingInstance(render_obj[i].mi); // NOLINT(deprecated)
             primitive->SetVisible(true);
         }
 
