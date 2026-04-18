@@ -46,12 +46,10 @@ namespace hgl::ecs
             graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid2D;
         };
 
-        TextResolvedMaterialState ResolveTextMaterialState(graph::ShaderMaterialProgram *fallback_material,
-                                                           graph::MaterialBindingInstance *mi)
+        TextResolvedMaterialState ResolveTextMaterialState(graph::MaterialBindingInstance *mi)
         {
             TextResolvedMaterialState state{};
             state.binding_instance = mi;
-            state.material = fallback_material;
 
             if (!mi)
                 return state;
@@ -61,14 +59,6 @@ namespace hgl::ecs
 
             if (auto *mi_material = mi->GetShaderMaterialProgram())
             {
-#ifdef _DEBUG
-                if (state.material && state.material != mi_material)
-                {
-                    GLogWarning("[TextRenderPipeline] Unified-state mismatch: fallback material=%p mi.material=%p",
-                                static_cast<void *>(state.material),
-                                static_cast<void *>(mi_material));
-                }
-#endif
                 state.material = mi_material;
             }
 
@@ -424,7 +414,7 @@ namespace hgl::ecs
         if (!device || !render_target || !resources.material || !resources.material_instance)
             return false;
 
-        const auto state = ResolveTextMaterialState(resources.material, resources.material_instance);
+        const auto state = ResolveTextMaterialState(resources.material_instance);
         if (!state.material || !state.vil)
             return false;
 

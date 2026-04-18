@@ -34,11 +34,6 @@ namespace hgl::ecs
                 assert(state.material == state.binding_instance->GetShaderMaterialProgram());
 #endif
         }
-        else
-        {
-            state.material = GetShaderMaterialProgram();
-        }
-
         return state;
     }
 

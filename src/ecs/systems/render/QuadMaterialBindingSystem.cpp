@@ -25,24 +25,16 @@ namespace hgl::ecs
         graph::ShaderMaterialProgram *material = nullptr;
     };
 
-    static QuadResolvedMaterialState ResolveMaterialInstanceState(graph::ShaderMaterialProgram *fallback_material,
-                                                                 graph::MaterialBindingInstance *mi)
+    static QuadResolvedMaterialState ResolveMaterialInstanceState(graph::MaterialBindingInstance *mi)
     {
         QuadResolvedMaterialState state{};
         state.binding_instance = mi;
-        state.material = fallback_material;
 
         if (!mi)
             return state;
 
         if (auto *mi_material = mi->GetShaderMaterialProgram())
         {
-#ifdef _DEBUG
-            if (state.material && state.material != mi_material)
-            {
-                std::cout << "[QuadMaterialBindingSystem] DEBUG: fallback material and MI material mismatch" << std::endl;
-            }
-#endif
             state.material = mi_material;
         }
 
@@ -55,21 +47,16 @@ namespace hgl::ecs
             return nullptr;
 
         auto *resolved_mi = prim->GetResolvedBindingInstance();
-        auto *state_material = resolved_mi ? resolved_mi->GetShaderMaterialProgram() : nullptr;
+        const auto state = ResolveMaterialInstanceState(resolved_mi);
 
 #ifdef _DEBUG
-        auto *legacy_material = prim->GetShaderMaterialProgram();
-        if (state_material && legacy_material && state_material != legacy_material)
+        if (!resolved_mi)
         {
-            std::cout << "[QuadMaterialBindingSystem] DEBUG: primitive material mismatch between resolved MI and legacy accessor" << std::endl;
-        }
-        else if (!state_material && legacy_material)
-        {
-            std::cout << "[QuadMaterialBindingSystem] DEBUG: primitive resolved MI material is null while legacy accessor is non-null" << std::endl;
+            std::cout << "[QuadMaterialBindingSystem] DEBUG: primitive resolved binding instance is null" << std::endl;
         }
 #endif
 
-        return state_material;
+        return state.material;
     }
 
     static graph::ResourceDomain *ResolveDomainForMaterial(graph::GraphicsContext *gc,
@@ -209,7 +196,7 @@ namespace hgl::ecs
         if (!mi)
             return false;
 
-        const auto mi_state = ResolveMaterialInstanceState(quad_material, mi);
+        const auto mi_state = ResolveMaterialInstanceState(mi);
         if (!mi_state.material)
             return false;
 
@@ -327,7 +314,7 @@ namespace hgl::ecs
         if (!mi)
             return false;
 
-        const auto mi_state = ResolveMaterialInstanceState(dr->material, mi);
+        const auto mi_state = ResolveMaterialInstanceState(mi);
         if (!mi_state.material)
             return false;
 

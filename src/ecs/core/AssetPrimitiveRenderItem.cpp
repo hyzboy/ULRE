@@ -7,7 +7,6 @@
 #include <hgl/vk/VKMaterialBindingInstance.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include <cassert>
-#include <iostream>
 
 namespace hgl::ecs
 {
@@ -76,12 +75,6 @@ namespace hgl::ecs
             assert(state.material == state.binding_instance->GetShaderMaterialProgram());
 #endif
         }
-#ifdef _DEBUG
-        else if (primitive->GetShaderMaterialProgram())
-        {
-            std::cout << "[AssetPrimitiveRenderItem] DEBUG: state.binding_instance is null while primitive legacy material is non-null" << std::endl;
-        }
-#endif
 
         return state;
     }

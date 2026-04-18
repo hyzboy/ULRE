@@ -48,12 +48,10 @@ namespace hgl::ecs
             graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid3D;
         };
 
-        LineResolvedMaterialState ResolveLineMaterialState(graph::ShaderMaterialProgram *fallback_material,
-                                                           graph::MaterialBindingInstance *mi)
+        LineResolvedMaterialState ResolveLineMaterialState(graph::MaterialBindingInstance *mi)
         {
             LineResolvedMaterialState state{};
             state.binding_instance = mi;
-            state.material = fallback_material;
 
             if (!mi)
                 return state;
@@ -63,14 +61,6 @@ namespace hgl::ecs
 
             if (auto *mi_material = mi->GetShaderMaterialProgram())
             {
-#ifdef _DEBUG
-                if (state.material && state.material != mi_material)
-                {
-                    GLogWarning("[LineRenderPipeline] Unified-state mismatch: fallback material=%p mi.material=%p",
-                                static_cast<void *>(state.material),
-                                static_cast<void *>(mi_material));
-                }
-#endif
                 state.material = mi_material;
             }
 
@@ -363,7 +353,7 @@ namespace hgl::ecs
         if (!context_ || !device_ || !material_ || !mi_)
             return false;
 
-        const auto state = ResolveLineMaterialState(material_, mi_);
+        const auto state = ResolveLineMaterialState(mi_);
         if (!state.material || !state.vil)
             return false;
 
@@ -731,7 +721,7 @@ namespace hgl::ecs
 
         const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
 
-        const auto state = ResolveLineMaterialState(material_, mi_);
+        const auto state = ResolveLineMaterialState(mi_);
         auto* mat = state.material;
         if (mat)
             cmd->BindDescriptorSets(mat);
