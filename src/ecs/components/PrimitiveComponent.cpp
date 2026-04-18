@@ -142,11 +142,7 @@ namespace hgl::ecs
 
         if (state.binding_instance)
         {
-            const auto *primitive_binding_instance = primitive ? primitive->GetResolvedBindingInstance() : nullptr;
-
-            if (primitive && state.binding_instance == primitive_binding_instance)
-                state.material = primitive->GetShaderMaterialProgram();
-
+            state.material = state.binding_instance->GetShaderMaterialProgram();
             state.vil = state.binding_instance->GetVIL();
             state.domain = state.binding_instance->GetDomain();
             state.domain_id = state.binding_instance->GetDomainID();
