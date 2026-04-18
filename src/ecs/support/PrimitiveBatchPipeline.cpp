@@ -508,13 +508,20 @@ namespace hgl::ecs
                 continue;
 
             const auto state = item->GetResolvedMaterialState();
-
-            auto* material = item->GetShaderMaterialProgram();
-            if (!material)
-                material = state.material;
+            auto* material = state.material;
 
             auto* primitive = item->GetPrimitive();
             graph::GraphicsPipeline* pipeline = nullptr;
+
+#ifdef _DEBUG
+            auto* legacy_material = item->GetShaderMaterialProgram();
+            if (legacy_material && material && legacy_material != material)
+            {
+                LogWarning("[ECS::PrimitiveBatchPipeline] Material source mismatch detected: state.material=%p legacy.item.material=%p",
+                           static_cast<void*>(material),
+                           static_cast<void*>(legacy_material));
+            }
+#endif
 
             if (primitive)
             {
@@ -617,13 +624,6 @@ namespace hgl::ecs
                 mi = state.binding_instance;
 
 #ifdef _DEBUG
-            if (state.material && material && state.material != material)
-            {
-                LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.material=%p item.material=%p",
-                           static_cast<void*>(state.material),
-                           static_cast<void*>(material));
-            }
-
             if (mi)
             {
                 if (state.binding_instance && state.binding_instance != mi)
@@ -657,18 +657,6 @@ namespace hgl::ecs
             }
 #endif
 
-#ifdef _DEBUG
-            if (mi)
-            {
-                auto *mi_material = mi->GetShaderMaterialProgram();
-                if (mi_material && material != mi_material)
-                {
-                    LogWarning("[ECS::PrimitiveBatchPipeline] Material source mismatch detected: item_material=%p mi_material=%p",
-                               static_cast<void*>(material),
-                               static_cast<void*>(mi_material));
-                }
-            }
-#endif
 
             auto* domain = state.domain;
             if (!domain && mi)
