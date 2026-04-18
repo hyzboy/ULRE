@@ -562,9 +562,6 @@ namespace hgl::ecs
                 {
                     if (!vil)
                         vil = mi->GetVIL();
-
-                    if (!state.HasBindingInstance())
-                        preset = mi->GetRenderPreset();
                 }
 
                 if (!vil)
@@ -637,13 +634,6 @@ namespace hgl::ecs
 #ifdef _DEBUG
             if (mi)
             {
-                if (state.binding_instance && state.binding_instance != mi)
-                {
-                    LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.mi=%p item.mi=%p",
-                               static_cast<void*>(state.binding_instance),
-                               static_cast<void*>(mi));
-                }
-
                 if (state.domain && state.domain != mi->GetDomain())
                 {
                     LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain=%p mi.domain=%p",
@@ -672,8 +662,11 @@ namespace hgl::ecs
             auto* domain = state.domain;
 
 #ifdef _DEBUG
-            if (!domain && mi)
-                domain = mi->GetDomain();
+            if (!domain && mi && mi->GetDomain())
+            {
+                LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain is null but mi.domain=%p",
+                           static_cast<void*>(mi->GetDomain()));
+            }
 #endif
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 
