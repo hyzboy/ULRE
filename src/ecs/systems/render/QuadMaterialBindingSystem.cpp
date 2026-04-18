@@ -19,6 +19,36 @@
 
 namespace hgl::ecs
 {
+    struct QuadResolvedMaterialState
+    {
+        graph::MaterialBindingInstance *binding_instance = nullptr;
+        graph::ShaderMaterialProgram *material = nullptr;
+    };
+
+    static QuadResolvedMaterialState ResolveMaterialInstanceState(graph::ShaderMaterialProgram *fallback_material,
+                                                                 graph::MaterialBindingInstance *mi)
+    {
+        QuadResolvedMaterialState state{};
+        state.binding_instance = mi;
+        state.material = fallback_material;
+
+        if (!mi)
+            return state;
+
+        if (auto *mi_material = mi->GetShaderMaterialProgram())
+        {
+#ifdef _DEBUG
+            if (state.material && state.material != mi_material)
+            {
+                std::cout << "[QuadMaterialBindingSystem] DEBUG: fallback material and MI material mismatch" << std::endl;
+            }
+#endif
+            state.material = mi_material;
+        }
+
+        return state;
+    }
+
     static graph::ShaderMaterialProgram *ResolvePrimitiveMaterialStateFirst(graph::Primitive *prim)
     {
         if (!prim)
@@ -175,6 +205,10 @@ namespace hgl::ecs
         if (!mi)
             return false;
 
+        const auto mi_state = ResolveMaterialInstanceState(quad_material, mi);
+        if (!mi_state.material)
+            return false;
+
         graph::ShaderMaterialProgram *previous_material = nullptr;
         {
             auto *current_prim = quad->GetPrimitive();
@@ -200,7 +234,7 @@ namespace hgl::ecs
 
         if (current_primitive
          && current_primitive != shared_primitive
-         && ResolvePrimitiveMaterialStateFirst(current_primitive) == mi->GetShaderMaterialProgram())
+         && ResolvePrimitiveMaterialStateFirst(current_primitive) == mi_state.material)
         {
             if (!current_primitive->ChangeMaterialInstance(mi))
                 return false;
@@ -217,7 +251,7 @@ namespace hgl::ecs
                 primitive_manager->Release(current_primitive);
         }
 
-        graph::ShaderMaterialProgram *material = mi->GetShaderMaterialProgram();
+        graph::ShaderMaterialProgram *material = mi_state.material;
         if (!material)
         {
             return false;
@@ -289,6 +323,10 @@ namespace hgl::ecs
         if (!mi)
             return false;
 
+        const auto mi_state = ResolveMaterialInstanceState(dr->material, mi);
+        if (!mi_state.material)
+            return false;
+
         mi->SetRenderPreset(QuadResourcePrepareSystem::GetPresetForWorld(world));
 
         // Set the texture array layer for this quad's texture
@@ -307,7 +345,7 @@ namespace hgl::ecs
 
         if (current_primitive
          && current_primitive != dr->primitive
-         && ResolvePrimitiveMaterialStateFirst(current_primitive) == mi->GetShaderMaterialProgram())
+         && ResolvePrimitiveMaterialStateFirst(current_primitive) == mi_state.material)
         {
             if (!current_primitive->ChangeMaterialInstance(mi))
                 return false;
