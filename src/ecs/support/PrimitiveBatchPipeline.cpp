@@ -128,6 +128,20 @@ namespace hgl::ecs
                 GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain is null but mi.domain=%p",
                             static_cast<void *>(mi->GetDomain()));
             }
+
+            // Blocker-2: material pointer three-source consistency check.
+            // state.material must equal mi->GetShaderMaterialProgram() since
+            // state is assembled from MI. If these diverge the MI has returned
+            // different ShaderMaterialProgram pointers across calls — an MI bug.
+            {
+                auto *mi_material = mi->GetShaderMaterialProgram();
+                if (state.material && mi_material && state.material != mi_material)
+                {
+                    GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch (material): state.material=%p mi.material=%p",
+                                static_cast<const void *>(state.material),
+                                static_cast<const void *>(mi_material));
+                }
+            }
         }
 #endif
     }
@@ -510,6 +524,24 @@ namespace hgl::ecs
     {
         if (!batch.key.material || !batch.key.material->hasMI())
             return;
+
+#ifdef _DEBUG
+        // Three-source consistency: every item's resolved state.material must equal
+        // batch.key.material. The batch is keyed on state.material (via ResolveMaterialFromState),
+        // so any divergence means an item was inserted into the wrong batch.
+        for (auto* item : batch.items)
+        {
+            if (!item) continue;
+            const auto item_state = item->GetResolvedMaterialState();
+            if (item_state.material && item_state.material != batch.key.material)
+            {
+                GLogWarning("[ECS::PrimitiveBatchPipeline] Three-source consistency violation: "
+                            "item state.material=%p != batch.key.material=%p — item placed in wrong batch",
+                            static_cast<const void *>(item_state.material),
+                            static_cast<const void *>(batch.key.material));
+            }
+        }
+#endif
 
         if (!batch.mi_buffer && !batch.items.empty())
             batch.mi_buffer = new MaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
