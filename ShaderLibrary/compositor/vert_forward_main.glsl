@@ -54,7 +54,7 @@
 void main()
 {
     fragMaterialInstanceID = GetMaterialInstanceID();
-    mat4 l2w_mat = GetTransform();
+    mat4 transform_mat = GetTransform();
 
     // Position
 #if GEOMETRY_FETCH_SSBO
@@ -65,7 +65,7 @@ void main()
     vec3 pos3 = inPosition;
 #endif
 
-    vec4 worldPos = l2w_mat * vec4(pos3, 1.0);
+    vec4 worldPos = transform_mat * vec4(pos3, 1.0);
 
 #ifdef HAS_WORLD_POS
     fragWorldPos = worldPos.xyz;
@@ -78,7 +78,7 @@ void main()
   #else
     vec3 rawNormal = inNormal;
   #endif
-    fragWorldNormal = normalize(mat3(l2w_mat) * rawNormal);
+    fragWorldNormal = normalize(mat3(transform_mat) * rawNormal);
 #endif
 
     // UV0

@@ -13,8 +13,8 @@ layout(location=COLOR_LOCATION) in uint  ColorIndex;
 void main()
 {
     fragMaterialInstanceID = GetMaterialInstanceID();
-    mat4 l2w_mat = GetTransform();
-    vec4 worldPos = l2w_mat * vec4(Position, 1.0);
+    mat4 transform_mat = GetTransform();
+    vec4 worldPos = transform_mat * vec4(Position, 1.0);
 
     fragVertexColor = unpackUnorm4x8(color_pattle.color[ColorIndex]);
 

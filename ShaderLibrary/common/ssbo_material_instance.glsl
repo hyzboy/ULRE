@@ -3,7 +3,7 @@
 
 // @require SSBO(MaterialBindingInstanceID)
 
-layout(std430, set=PERMATERIAL_SET, binding=MID_BINDING) readonly buffer MaterialInstanceIDData {
+layout(std430, set=PERMATERIAL_SET, binding=MBI_ID_BINDING) readonly buffer MaterialInstanceIDData {
     uint ids[];
 } mid;
 
@@ -20,7 +20,7 @@ uint GetMaterialInstanceID()
 
 // @require SSBO(MaterialBindingInstance)
 
-layout(scalar, set=PERMATERIAL_SET, binding=MI_BINDING) readonly buffer MaterialBindingInstanceData {
+layout(scalar, set=PERMATERIAL_SET, binding=MBI_DATA_BINDING) readonly buffer MaterialBindingInstanceData {
     MaterialBindingInstance mi[];
 } mtl;
 

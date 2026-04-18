@@ -61,12 +61,12 @@ namespace hgl::graph::mtl
 
     constexpr DescriptorSemanticMeta SSBODescriptorSemanticMetaList[] =
     {
-        {DescriptorSetType::Unknow, nullptr,        nullptr,                nullptr,                     BufferUpdateClass::Default       }, // Unknown
-        {SET_TYPE_TRANSFORM,        "tid",          "TID_BINDING",          "TransformID",               BufferUpdateClass::TransformData }, // TransformID
-        {SET_TYPE_TRANSFORM,        "l2w",          "L2W_BINDING",          "TransformData",             BufferUpdateClass::TransformData }, // TransformData
-        {SET_TYPE_MATERIAL,         "mid",          "MID_BINDING",          "MaterialBindingInstanceID",        BufferUpdateClass::Default       }, // MaterialBindingInstanceID
-        {SET_TYPE_MATERIAL,         "mtl",          "MI_BINDING",           "MaterialBindingInstanceData",      BufferUpdateClass::Default       }, // MaterialBindingInstanceData
-        {SET_TYPE_MATERIAL,         "mit",          "MIT_BINDING",          "MaterialBindingInstanceTexture", BufferUpdateClass::Default       }, // MaterialBindingInstanceTexture, 这里存的是每个实例对应的纹理ID（layer index），配合TextureArray使用。所以它是SSBO不是TextureSampler
+        {DescriptorSetType::Unknow, nullptr,            nullptr,                    nullptr,                     BufferUpdateClass::Default       }, // Unknown
+        {SET_TYPE_TRANSFORM,        "transform_id",     "TRANSFORM_ID_BINDING",     "TransformID",               BufferUpdateClass::TransformData }, // TransformID
+        {SET_TYPE_TRANSFORM,        "transform_data",   "TRANSFORM_DATA_BINDING",   "TransformData",             BufferUpdateClass::TransformData }, // TransformData
+        {SET_TYPE_MATERIAL,         "mid",          "MBI_ID_BINDING",       "MaterialBindingInstanceID",        BufferUpdateClass::Default       }, // MaterialBindingInstanceID
+        {SET_TYPE_MATERIAL,         "mtl",          "MBI_DATA_BINDING",     "MaterialBindingInstanceData",      BufferUpdateClass::Default       }, // MaterialBindingInstanceData
+        {SET_TYPE_MATERIAL,         "mit",          "MBI_TEXTURE_BINDING",  "MaterialBindingInstanceTexture",   BufferUpdateClass::Default       }, // MaterialBindingInstanceTexture, 这里存的是每个实例对应的纹理ID（layer index），配合TextureArray使用。所以它是SSBO不是TextureSampler
         {SET_TYPE_TRANSFORM,        "joint",        "JOINT_BINDING",        "JointInfo",                 BufferUpdateClass::TransformData }, // BoneJoint
         {SET_TYPE_TRANSFORM,        "joint_weight", "JOINT_WEIGHT_BINDING", "JointWeightInfo",           BufferUpdateClass::TransformData }, // BoneJointWeight
         {DescriptorSetType::Unknow, nullptr,        nullptr,                nullptr,                     BufferUpdateClass::Default       }, // Custom

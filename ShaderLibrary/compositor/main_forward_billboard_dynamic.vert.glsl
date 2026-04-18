@@ -8,8 +8,8 @@ layout(location=POSITION_LOCATION) in vec3 Position;
 void main()
 {
     fragMaterialInstanceID = GetMaterialInstanceID();
-    mat4 l2w_mat = GetTransform();
-    vec3 center = (l2w_mat * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+    mat4 transform_mat = GetTransform();
+    vec3 center = (transform_mat * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
     vec3 world_pos = center
                    + Position.x * camera.billboard_right
                    + Position.y * camera.billboard_up;

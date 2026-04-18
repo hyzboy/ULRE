@@ -8,7 +8,7 @@
 #include "common/ubo_camera.glsl"
 #include "common/ssbo_transform.glsl"
 
-#if defined(PERMATERIAL_SET) && defined(MID_BINDING)
+#if defined(PERMATERIAL_SET) && defined(MBI_ID_BINDING)
 #define MATERIAL_INSTANCE_ID_ONLY
 #include "common/ssbo_material_instance.glsl"
 #else

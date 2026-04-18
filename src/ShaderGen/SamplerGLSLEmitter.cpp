@@ -211,8 +211,8 @@ std::string EmitMaterialInstanceTextureGLSL(const MaterialDescriptorDB &mdi, Sha
         writer.EmitLine(std::string("uint ") + mtl::SamplerSlotNameList[uint8(slot)] + ";");
     writer.EndBlock(";").NewLine();
 
-    // 2. SSBO layout (uses PERMATERIAL_SET / MIT_BINDING from layout defines).
-    writer.EmitLine("layout(std430, set=PERMATERIAL_SET, binding=MIT_BINDING) readonly buffer MaterialBindingInstanceTexture").BeginBlock();
+    // 2. SSBO layout (uses PERMATERIAL_SET / MBI_TEXTURE_BINDING from layout defines).
+    writer.EmitLine("layout(std430, set=PERMATERIAL_SET, binding=MBI_TEXTURE_BINDING) readonly buffer MaterialBindingInstanceTexture").BeginBlock();
     writer.EmitLine("MaterialInstanceTexture tex_id[];");
     writer.EndBlock("mit;").NewLine();
 

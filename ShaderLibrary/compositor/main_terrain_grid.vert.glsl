@@ -19,10 +19,10 @@ void main()
 
     vec3 pos = vec3(float(coord.x), float(coord.y), h);
 
-    mat4 l2w_mat = GetTransform();
-    vec4 wp = l2w_mat * vec4(pos, 1.0);
+    mat4 transform_mat = GetTransform();
+    vec4 wp = transform_mat * vec4(pos, 1.0);
 
-    vec3 wn = normalize(mat3(l2w_mat) * nrm);
+    vec3 wn = normalize(mat3(transform_mat) * nrm);
 
     fragWorldNormal = wn;
     fragClipPos = camera.vp * wp;
