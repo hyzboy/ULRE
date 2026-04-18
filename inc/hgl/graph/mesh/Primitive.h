@@ -11,7 +11,7 @@
 #include<hgl/graph/mesh/GeometryDrawRange.h>
 
 #ifndef ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
-#define ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER 1
+#define ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER 0
 #endif
 
 namespace hgl::graph{
@@ -33,7 +33,6 @@ private:
 
             void                SyncResolvedStateFromBindingInstance()const
             {
-#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
                 if(!mat_inst)
                 {
                     resolved_material=nullptr;
@@ -42,6 +41,8 @@ private:
                 }
 
                 resolved_material=mat_inst->GetShaderMaterialProgram();
+
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
                 resolved_vil=mat_inst->GetVIL();
 #endif
             }
@@ -87,10 +88,8 @@ public:
 
                 SyncResolvedStateFromBindingInstance();
 
-#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
                 if(resolved_material&&mi->GetShaderMaterialProgram()!=resolved_material)      //不能换母材质
                     return(false);
-#endif
 
                 mat_inst=mi;
                 SyncResolvedStateFromBindingInstance();

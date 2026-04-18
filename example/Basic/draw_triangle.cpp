@@ -1,4 +1,4 @@
-// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
+﻿// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
 // This example demonstrates managing and drawing a gradient colored triangle using the new ECS architecture
 //
 // 本范例展示了：
@@ -12,6 +12,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/GeometryManager.h>
+#include<cstdio>
 
  // 引入ECS相关头文件
  #include<hgl/ecs/core/Context.h>
@@ -71,15 +72,110 @@ private:
 
 private:
 
-    bool CreateGeometry()
+    void LogPositionData(const char *stage) const
     {
-        const auto ext=GetExtent();
+        std::printf("[draw_triangle][%s] pos[0]=(%d,%d) pos[1]=(%d,%d) pos[2]=(%d,%d)\n",
+                    stage,
+                    int(position_data[0][0]), int(position_data[0][1]),
+                    int(position_data[1][0]), int(position_data[1][1]),
+                    int(position_data[2][0]), int(position_data[2][1]));
+    }
+
+    void LogVABState(const char *stage) const
+    {
+        if(!geometry)
+        {
+            std::printf("[draw_triangle][%s] geometry is null\n", stage);
+            return;
+        }
+
+        const VAB *position_vab = geometry->GetVAB(VAN::Position);
+        const VAB *color_vab = geometry->GetVAB(VAN::Color);
+
+        std::printf("[draw_triangle][%s] PositionVAB=%p vkBuf=%p stride=%u count=%u format=%d\n",
+                    stage,
+                    (void *)position_vab,
+                    position_vab ? (void *)position_vab->GetVkBuffer() : nullptr,
+                    position_vab ? position_vab->GetStride() : 0,
+                    position_vab ? position_vab->GetCount() : 0,
+                    position_vab ? int(position_vab->GetFormat()) : int(VK_FORMAT_UNDEFINED));
+
+        std::printf("[draw_triangle][%s] ColorVAB=%p vkBuf=%p stride=%u count=%u format=%d\n",
+                    stage,
+                    (void *)color_vab,
+                    color_vab ? (void *)color_vab->GetVkBuffer() : nullptr,
+                    color_vab ? color_vab->GetStride() : 0,
+                    color_vab ? color_vab->GetCount() : 0,
+                    color_vab ? int(color_vab->GetFormat()) : int(VK_FORMAT_UNDEFINED));
+    }
+
+    bool UpdateTrianglePositionData(const VkExtent2D &extent)
+    {
+        if(extent.width == 0 || extent.height == 0)
+        {
+            std::printf("[draw_triangle][UpdateTrianglePositionData] invalid extent: %ux%u\n",
+                        extent.width,
+                        extent.height);
+            return false;
+        }
 
         for(uint i=0;i<VERTEX_COUNT;i++)
         {
-            position_data[i][0]=position_data_float[i][0]*ext->width;
-            position_data[i][1]=position_data_float[i][1]*ext->height;
+            position_data[i][0]=position_data_float[i][0]*extent.width;
+            position_data[i][1]=position_data_float[i][1]*extent.height;
         }
+
+        std::printf("[draw_triangle][UpdateTrianglePositionData] extent=%ux%u\n",
+                    extent.width,
+                    extent.height);
+        LogPositionData("UpdateTrianglePositionData");
+
+        return true;
+    }
+
+    bool RefreshGeometryPositionBuffer()
+    {
+        if(!geometry)
+        {
+            std::printf("[draw_triangle][RefreshGeometryPositionBuffer] geometry is null\n");
+            return false;
+        }
+
+        VAB *position_vab = geometry->GetVAB(VAN::Position);
+        if(!position_vab)
+        {
+            std::printf("[draw_triangle][RefreshGeometryPositionBuffer] position VAB is null\n");
+            return false;
+        }
+
+        const bool write_ok = position_vab->Write(position_data, VERTEX_COUNT);
+        std::printf("[draw_triangle][RefreshGeometryPositionBuffer] write=%s vkBuf=%p stride=%u count=%u\n",
+                    write_ok ? "OK" : "FAIL",
+                    (void *)position_vab->GetVkBuffer(),
+                    position_vab->GetStride(),
+                    position_vab->GetCount());
+        LogPositionData("RefreshGeometryPositionBuffer");
+        return write_ok;
+    }
+
+    bool CreateGeometry()
+    {
+        VkExtent2D init_extent{};
+        if(const auto *ext = GetExtent(); ext && ext->width > 0 && ext->height > 0)
+        {
+            init_extent = *ext;
+            std::printf("[draw_triangle][CreateGeometry] using current extent: %ux%u\n", init_extent.width, init_extent.height);
+        }
+        else
+        {
+            // Keep sample robust even if swapchain extent is not ready at Init().
+            init_extent.width = 1280;
+            init_extent.height = 720;
+            std::printf("[draw_triangle][CreateGeometry] extent not ready, fallback to: %ux%u\n", init_extent.width, init_extent.height);
+        }
+
+        if(!UpdateTrianglePositionData(init_extent))
+            return false;
 
         auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
@@ -95,6 +191,11 @@ private:
                                                            VERTEX_COUNT,
                                                            {{VAN::Position, POSITION_DATA_FORMAT, position_data},
                                                             {VAN::Color, COLOR_DATA_FORMAT, color_data}});
+
+        if(geometry)
+            LogVABState("CreateGeometry");
+        else
+            std::printf("[draw_triangle][CreateGeometry] geometry creation failed\n");
 
         return geometry != nullptr;
     }
@@ -155,6 +256,17 @@ public:
          return(true);
      }
 
+     void OnResize(const VkExtent2D &new_extent) override
+     {
+         std::printf("[draw_triangle][OnResize] new extent=%ux%u\n", new_extent.width, new_extent.height);
+
+         if(!UpdateTrianglePositionData(new_extent))
+             return;
+
+         const bool refresh_ok = RefreshGeometryPositionBuffer();
+         std::printf("[draw_triangle][OnResize] refresh position VAB: %s\n", refresh_ok ? "OK" : "FAIL");
+     }
+
      void Tick(double delta_time) override
      {
          // 更新ECS世界 - 这会更新所有Entity和Component
@@ -169,5 +281,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw triangle use ECS"),argc,argv);
 }
-
-

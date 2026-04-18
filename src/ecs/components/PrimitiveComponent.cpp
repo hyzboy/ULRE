@@ -8,6 +8,7 @@
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
+#include<hgl/log/Log.h>
 #include<cassert>
 
 namespace hgl::ecs
@@ -132,6 +133,16 @@ namespace hgl::ecs
         EffectiveMaterialState state{};
         state.preset = hgl::graph::GraphicsPipelinePreset::Solid3D;
 
+#ifdef _DEBUG
+        static bool logged_legacy_mode = false;
+        if (!logged_legacy_mode)
+        {
+            GLogDebug("[PrimitiveComponent] ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER=%d",
+                      int(ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER));
+            logged_legacy_mode = true;
+        }
+#endif
+
         // Priority 1: deferred resolve result (latest requested binding instance)
         if (material_slot.resolved_binding_instance)
             state.binding_instance = material_slot.resolved_binding_instance;
@@ -146,10 +157,8 @@ namespace hgl::ecs
             if (primitive && state.binding_instance == primitive_binding_instance)
                 state.material = primitive->GetShaderMaterialProgram();
 
-#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
             if (!state.material)
                 state.material = state.binding_instance->GetShaderMaterialProgram();
-#endif
 
             state.domain = state.binding_instance->GetDomain();
             state.domain_id = state.binding_instance->GetDomainID();
@@ -161,11 +170,25 @@ namespace hgl::ecs
             state.preset = state.binding_instance->GetRenderPreset();
 
 #ifdef _DEBUG
+#if !ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
+            if (!state.vil)
+            {
+                auto *mi_vil = state.binding_instance->GetVIL();
+                GLogDebug("[PrimitiveComponent] legacy-getter=0: state.vil is null by design. mi=%p mi.vil=%p material=%p primitive=%p",
+                          static_cast<void *>(state.binding_instance),
+                          static_cast<const void *>(mi_vil),
+                          static_cast<void *>(state.material),
+                          static_cast<void *>(primitive));
+            }
+#endif
+#endif
+
+#ifdef _DEBUG
             assert(state.domain == state.binding_instance->GetDomain());
             assert(state.domain_id == state.binding_instance->GetDomainID());
-#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
             if (state.material)
                 assert(state.material == state.binding_instance->GetShaderMaterialProgram());
+#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
             assert(state.vil == state.binding_instance->GetVIL());
 #endif
             assert(state.mi_id == state.binding_instance->GetMIID());

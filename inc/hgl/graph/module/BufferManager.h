@@ -92,11 +92,21 @@ public: // Buffer creation methods
         if (!name || !*name)
             return nullptr;
 
-        DeviceBuffer *buf = CreateUBO(name, static_cast<VkDeviceSize>(UBOAccessorType::GetSize()), sm, loc);
+        constexpr BufferUpdateClass update_class = UBOAccessorType::GetDefaultUpdateClass();
+        constexpr BufferAllocPolicy alloc_policy =
+            update_class == BufferUpdateClass::CriticalPerFrame
+                ? BufferAllocPolicy::CPUVisible
+                : BufferAllocPolicy::Auto;
+
+        DeviceBuffer *buf = GetDevice()->CreateUBO(name,
+                                                   static_cast<VkDeviceSize>(UBOAccessorType::GetSize()),
+                                                   nullptr,
+                                                   alloc_policy,
+                                                   sm,
+                                                   update_class,
+                                                   loc);
         if (!buf)
             return nullptr;
-
-        buf->SetUpdateClass(UBOAccessorType::GetDefaultUpdateClass());
 
         UBOAccessorType *accessor = UBOAccessorType::Create(buf, false);
         if (!accessor)

@@ -617,6 +617,28 @@ namespace hgl::ecs
                 graph::GraphicsPipelinePreset preset = state.preset;
 
                 auto* mi = state.binding_instance;
+                const graph::VIL* mi_vil = mi ? mi->GetVIL() : nullptr;
+                const graph::VIL* default_vil = material->GetDefaultVIL();
+
+#ifdef _DEBUG
+                if (!state.vil)
+                {
+                    GLogDebug("[ECS::PrimitiveBatchPipeline] VIL source: state.vil=null (legacy=%d) mi.vil=%p default.vil=%p material=%s",
+                              int(ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER),
+                              static_cast<const void *>(mi_vil),
+                              static_cast<const void *>(default_vil),
+                              material->GetName().c_str());
+                }
+
+                if (state.vil && mi_vil && state.vil != mi_vil)
+                {
+                    GLogWarning("[ECS::PrimitiveBatchPipeline] VIL mismatch: state.vil=%p mi.vil=%p material=%s legacy=%d",
+                                static_cast<const void *>(state.vil),
+                                static_cast<const void *>(mi_vil),
+                                material->GetName().c_str(),
+                                int(ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER));
+                }
+#endif
 
 #ifdef _DEBUG
 #if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
@@ -628,8 +650,24 @@ namespace hgl::ecs
 #endif
 #endif
 
+                // Macro=0 may intentionally leave state.vil empty; in that case
+                // prefer MI VIL first, then fallback to material default VIL.
+                if (!vil && mi_vil)
+                    vil = mi_vil;
+
                 if (!vil)
-                    vil = material->GetDefaultVIL();
+                    vil = default_vil;
+
+#ifdef _DEBUG
+                if (vil == default_vil && mi_vil && default_vil != mi_vil)
+                {
+                    GLogWarning("[ECS::PrimitiveBatchPipeline] VIL fallback changed source: using default.vil=%p instead of mi.vil=%p material=%s legacy=%d",
+                                static_cast<const void *>(default_vil),
+                                static_cast<const void *>(mi_vil),
+                                material->GetName().c_str(),
+                                int(ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER));
+                }
+#endif
 
                 pipeline_data = graph::GetGraphicsPipelineData(preset);
                 if (pipeline_data)
