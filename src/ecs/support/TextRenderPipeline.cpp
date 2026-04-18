@@ -38,6 +38,43 @@ namespace hgl::ecs
 {
     namespace
     {
+        struct TextResolvedMaterialState
+        {
+            graph::MaterialBindingInstance *binding_instance = nullptr;
+            graph::ShaderMaterialProgram *material = nullptr;
+            const graph::VIL *vil = nullptr;
+            graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid2D;
+        };
+
+        TextResolvedMaterialState ResolveTextMaterialState(graph::ShaderMaterialProgram *fallback_material,
+                                                           graph::MaterialBindingInstance *mi)
+        {
+            TextResolvedMaterialState state{};
+            state.binding_instance = mi;
+            state.material = fallback_material;
+
+            if (!mi)
+                return state;
+
+            state.vil = mi->GetVIL();
+            state.preset = mi->GetRenderPreset();
+
+            if (auto *mi_material = mi->GetShaderMaterialProgram())
+            {
+#ifdef _DEBUG
+                if (state.material && state.material != mi_material)
+                {
+                    GLogWarning("[TextRenderPipeline] Unified-state mismatch: fallback material=%p mi.material=%p",
+                                static_cast<void *>(state.material),
+                                static_cast<void *>(mi_material));
+                }
+#endif
+                state.material = mi_material;
+            }
+
+            return state;
+        }
+
         graph::TileFont* CreateTileFont(graph::RenderContext* rc,
                                         graph::FontSource* fs,
                                         int limit_count,
@@ -387,6 +424,10 @@ namespace hgl::ecs
         if (!device || !render_target || !resources.material || !resources.material_instance)
             return false;
 
+        const auto state = ResolveTextMaterialState(resources.material, resources.material_instance);
+        if (!state.material || !state.vil)
+            return false;
+
         auto* render_format = render_target->GetRenderFormat();
         if (!render_format)
             return false;
@@ -394,17 +435,17 @@ namespace hgl::ecs
         if (resources.pipeline && resources.render_format == render_format)
             return true;
 
-        const graph::GraphicsPipelinePreset preset = resources.material_instance->GetRenderPreset();
+        const graph::GraphicsPipelinePreset preset = state.preset;
         const graph::GraphicsPipelineData* pipeline_data = graph::GetGraphicsPipelineData(preset);
         if (!pipeline_data)
             return false;
 
         graph::GraphicsPipelineBuildRequest req;
-        req.material = resources.material;
-        req.vil = resources.material_instance->GetVIL();
+        req.material = state.material;
+        req.vil = state.vil;
         req.render_format = render_format;
         req.pipeline_data = pipeline_data;
-        req.primitive = resources.material->GetPrimitiveType();
+        req.primitive = state.material->GetPrimitiveType();
         req.primitive_restart = (pipeline_data->input_assembly.primitiveRestartEnable == VK_TRUE);
 
         auto* resolved = device->AcquireGraphicsPipeline(req);
