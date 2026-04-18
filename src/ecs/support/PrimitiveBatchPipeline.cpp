@@ -582,11 +582,13 @@ namespace hgl::ecs
 
                 auto* mi = state.binding_instance;
 
-                if (mi)
+#ifdef _DEBUG
+                if (!vil && mi && mi->GetVIL())
                 {
-                    if (!vil)
-                        vil = mi->GetVIL();
+                    GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.vil is null but mi.vil=%p",
+                                static_cast<const void *>(mi->GetVIL()));
                 }
+#endif
 
                 if (!vil)
                     vil = material->GetDefaultVIL();
