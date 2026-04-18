@@ -40,6 +40,43 @@ namespace hgl::ecs
         PipelineResolveCounters g_line_pipeline_resolve_counters;
         PipelineHotpathCounters g_line_render_hotpath_counters;
 
+        struct LineResolvedMaterialState
+        {
+            graph::MaterialBindingInstance *binding_instance = nullptr;
+            graph::ShaderMaterialProgram *material = nullptr;
+            const graph::VIL *vil = nullptr;
+            graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid3D;
+        };
+
+        LineResolvedMaterialState ResolveLineMaterialState(graph::ShaderMaterialProgram *fallback_material,
+                                                           graph::MaterialBindingInstance *mi)
+        {
+            LineResolvedMaterialState state{};
+            state.binding_instance = mi;
+            state.material = fallback_material;
+
+            if (!mi)
+                return state;
+
+            state.vil = mi->GetVIL();
+            state.preset = mi->GetRenderPreset();
+
+            if (auto *mi_material = mi->GetShaderMaterialProgram())
+            {
+#ifdef _DEBUG
+                if (state.material && state.material != mi_material)
+                {
+                    GLogWarning("[LineRenderPipeline] Unified-state mismatch: fallback material=%p mi.material=%p",
+                                static_cast<void *>(state.material),
+                                static_cast<void *>(mi_material));
+                }
+#endif
+                state.material = mi_material;
+            }
+
+            return state;
+        }
+
         graph::ResourceDomain *ResolveDomainForMaterial(graph::GraphicsContext *graphics_context,
                                                         graph::ShaderMaterialProgram *material,
                                                         uint32_t domain_id)
@@ -326,6 +363,10 @@ namespace hgl::ecs
         if (!context_ || !device_ || !material_ || !mi_)
             return false;
 
+        const auto state = ResolveLineMaterialState(material_, mi_);
+        if (!state.material || !state.vil)
+            return false;
+
         auto* render_target = context_->GetRenderTarget();
         if (!render_target)
         {
@@ -343,7 +384,7 @@ namespace hgl::ecs
         RecordPipelineResolveAttempt(g_line_pipeline_resolve_counters);
         const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
 
-        const graph::GraphicsPipelinePreset preset = mi_->GetRenderPreset();
+        const graph::GraphicsPipelinePreset preset = state.preset;
         const graph::GraphicsPipelineData* pipeline_data = graph::GetGraphicsPipelineData(preset);
         if (!pipeline_data)
         {
@@ -358,11 +399,11 @@ namespace hgl::ecs
         }
 
         graph::GraphicsPipelineBuildRequest req;
-        req.material = material_;
-        req.vil = mi_->GetVIL();
+    req.material = state.material;
+    req.vil = state.vil;
         req.render_format = render_format;
         req.pipeline_data = pipeline_data;
-        req.primitive = material_->GetPrimitiveType();
+    req.primitive = state.material->GetPrimitiveType();
         req.primitive_restart = (pipeline_data->input_assembly.primitiveRestartEnable == VK_TRUE);
 
         graph::GraphicsPipeline* resolved = device_->AcquireGraphicsPipeline(req);
@@ -690,7 +731,8 @@ namespace hgl::ecs
 
         const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
 
-        auto* mat = mi_->GetShaderMaterialProgram();
+        const auto state = ResolveLineMaterialState(material_, mi_);
+        auto* mat = state.material;
         if (mat)
             cmd->BindDescriptorSets(mat);
 
