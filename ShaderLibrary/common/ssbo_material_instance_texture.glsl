@@ -40,11 +40,11 @@ struct MaterialInstanceTexture
 layout(std430, set=PERMATERIAL_SET, binding=MBI_TEXTURE_BINDING) readonly buffer MaterialBindingInstanceTexture
 {
     MaterialInstanceTexture tex_id[];
-} mit;
+} mbi_texture;
 
 MaterialInstanceTexture GetMaterialInstanceTexture()
 {
-    return mit.tex_id[MATERIAL_INSTANCE_ID_OVERRIDE];
+    return mbi_texture.tex_id[MATERIAL_INSTANCE_ID_OVERRIDE];
 }
 
 // Call once at the start of main() to populate all _tex_layer_X globals.

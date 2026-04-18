@@ -5,14 +5,14 @@
 
 layout(std430, set=PERMATERIAL_SET, binding=MBI_ID_BINDING) readonly buffer MaterialInstanceIDData {
     uint ids[];
-} mid;
+} mbi_id;
 
 uint GetMaterialInstanceID()
 {
 #ifdef MATERIAL_INSTANCE_ID_OVERRIDE
     return MATERIAL_INSTANCE_ID_OVERRIDE;
 #else
-    return mid.ids[gl_InstanceIndex];
+    return mbi_id.ids[gl_InstanceIndex];
 #endif
 }
 
@@ -21,12 +21,12 @@ uint GetMaterialInstanceID()
 // @require SSBO(MaterialBindingInstance)
 
 layout(scalar, set=PERMATERIAL_SET, binding=MBI_DATA_BINDING) readonly buffer MaterialBindingInstanceData {
-    MaterialBindingInstance mi[];
-} mtl;
+    MaterialBindingInstance datas[];
+} mbi_data;
 
-MaterialBindingInstance GetMaterialBindingInstance(uint miID)
+MaterialBindingInstance GetMaterialBindingInstance(uint id)
 {
-    return mtl.mi[miID];
+    return mbi_data.datas[id];
 }
 
 #ifndef MATERIAL_INSTANCE_CURRENT_ID
@@ -38,5 +38,5 @@ MaterialBindingInstance GetMaterialBindingInstance()
     return GetMaterialBindingInstance(MATERIAL_INSTANCE_CURRENT_ID);
 }
 
-#endif 
-#endif 
+#endif
+#endif
