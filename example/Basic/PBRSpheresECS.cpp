@@ -81,7 +81,7 @@ private:
     Primitive *         base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
     // One MI per cell: col controls metallic, row controls roughness
-    MaterialInstance *               sphere_mi[GRID_SIZE][GRID_SIZE]{};
+    MaterialBindingInstance *               sphere_mi[GRID_SIZE][GRID_SIZE]{};
 
     // 100 entities, one per sphere
     Entity *sphere_entities[GRID_SIZE][GRID_SIZE]{};
@@ -89,7 +89,7 @@ private:
 
     double elapsed_time = 0.0;
 
-    MaterialInstance* mi_sky_sphere = nullptr;
+    MaterialBindingInstance* mi_sky_sphere = nullptr;
     Entity* sky_entity = nullptr;
 
 private:

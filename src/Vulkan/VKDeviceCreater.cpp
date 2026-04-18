@@ -259,7 +259,7 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     }
 
     // Vulkan 1.3 baseline in this project: force Vulkan 1.2 scalarBlockLayout so
-    // all MaterialInstance SSBOs can use layout(scalar) consistently.
+    // all MaterialBindingInstance SSBOs can use layout(scalar) consistently.
     // 启用 descriptorBindingPartiallyBound (promoted to Vulkan 1.2 core; must not use VkPhysicalDeviceDescriptorIndexingFeatures alongside VkPhysicalDeviceVulkan12Features)
     features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     features12.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));

@@ -31,7 +31,7 @@ struct StaticMeshNode
 };//struct StaticMeshNode
 
 using GeometryPtrSet        =OrderedSet<Geometry *>;
-using MaterialInstanceSet   =OrderedSet<MaterialInstance *>;
+using MaterialInstanceSet   =OrderedSet<MaterialBindingInstance *>;
 using PipelinePtrSet        =OrderedSet<GraphicsPipeline *>;
 using PrimitiveList         =ManagedArray<Primitive>;
 
@@ -76,7 +76,7 @@ public: // Primitive 管理
     const int                   GetPrimitiveCount   ()const{ return primitive_list.GetCount(); }
     const PrimitiveList &       GetPrimitiveList    ()const{ return primitive_list; }
 
-    Primitive *                 CreatePrimitive     (Geometry *geometry, MaterialInstance *mi, GraphicsPipeline *p);            ///< 创建并添加一个 Primitive(为该 Primitive 指定 Geometry / MaterialInstance / GraphicsPipeline)
+    Primitive *                 CreatePrimitive     (Geometry *geometry, MaterialBindingInstance *mi, GraphicsPipeline *p);            ///< 创建并添加一个 Primitive(为该 Primitive 指定 Geometry / MaterialBindingInstance / GraphicsPipeline)
 
     bool                        AddPrimitive        (Primitive *sm);                                                    ///< 添加一个已有的 Primitive(StaticMesh 将接管其生命周期)
 

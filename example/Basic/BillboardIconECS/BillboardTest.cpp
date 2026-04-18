@@ -91,11 +91,11 @@ private:
     Entity *      camera_entity  = nullptr;
 
     ShaderMaterialProgram *          mtl_plane_grid      = nullptr;
-    MaterialInstance *  mi_plane_grid       = nullptr;
+    MaterialBindingInstance *  mi_plane_grid       = nullptr;
     Geometry *          geom_plane_grid     = nullptr;
     Primitive *         prim_plane_grid     = nullptr;
 
-    MaterialInstance *  mi_billboard        = nullptr;
+    MaterialBindingInstance *  mi_billboard        = nullptr;
     Primitive *         prim_billboard      = nullptr;
 
     Texture2D *         texture             = nullptr;

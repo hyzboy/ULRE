@@ -104,7 +104,7 @@ namespace hgl::ecs
     bool LineRenderPipeline::LineWidthSlot::EnsureCapacity(
         uint32_t needed,
         graph::VulkanDevice*     dev,
-        graph::MaterialInstance* mi,
+        graph::MaterialBindingInstance* mi,
         graph::GraphicsPipeline*         p,
         uint32_t                 width)
     {

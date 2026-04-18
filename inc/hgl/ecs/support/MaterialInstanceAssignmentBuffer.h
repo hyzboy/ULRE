@@ -9,7 +9,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKRingBufferWrapper.h>
 #include<hgl/ecs/core/RenderItem.h>
-#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialBindingInstance.h>
 #include<vector>
 #include <hgl/type/UnorderedMap.h>
 #include<hgl/common/RenderOptions.h>
@@ -27,8 +27,8 @@ namespace hgl::ecs
     class MaterialInstanceSet
     {
     private:
-        std::vector<graph::MaterialInstance*> instances;
-        hgl::UnorderedMap<graph::MaterialInstance*, uint16> index_map;
+        std::vector<graph::MaterialBindingInstance*> instances;
+        hgl::UnorderedMap<graph::MaterialBindingInstance*, uint16> index_map;
 
     public:
         void Clear()
@@ -43,7 +43,7 @@ namespace hgl::ecs
             index_map.Reserve(count);
         }
 
-        void Add(graph::MaterialInstance* mi)
+        void Add(graph::MaterialBindingInstance* mi)
         {
             if (!mi)
                 return;
@@ -56,7 +56,7 @@ namespace hgl::ecs
             }
         }
 
-        uint16 Find(graph::MaterialInstance* mi) const
+        uint16 Find(graph::MaterialBindingInstance* mi) const
         {
             auto index = index_map.GetValuePointer(mi);
             return index ? *index : 0;
@@ -65,7 +65,7 @@ namespace hgl::ecs
         size_t GetCount() const { return instances.size(); }
         size_t GetAllocCount() const { return instances.capacity(); }
 
-        const std::vector<graph::MaterialInstance*>& GetInstances() const { return instances; }
+        const std::vector<graph::MaterialBindingInstance*>& GetInstances() const { return instances; }
 
         // 迭代器支持
         auto begin() { return instances.begin(); }

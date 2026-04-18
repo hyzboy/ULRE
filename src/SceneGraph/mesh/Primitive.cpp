@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/mesh/Primitive.h>
-#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
@@ -49,7 +49,7 @@ void GeometryDrawRange::Set(const Geometry *geometry)
     first_index     = geometry->GetFirstIndex();
 }
 
-Primitive::Primitive(Geometry *r,MaterialInstance *mi,GraphicsPipelinePreRaster *p,GeometryDataBuffer *gdb)
+Primitive::Primitive(Geometry *r,MaterialBindingInstance *mi,GraphicsPipelinePreRaster *p,GeometryDataBuffer *gdb)
 {
     geometry=r;
     mat_inst=mi;
@@ -77,7 +77,7 @@ bool Primitive::UpdateGeometry()
     return data_buffer->Update(geometry,mat_inst->GetVIL());
 }
 
-Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPipelinePreRaster *p)
+Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,GraphicsPipelinePreRaster *p)
 //用Direct这个前缀是为了区别于MeshManager/WorkObject等路径上的CreateMesh()
 {
     if(!geom||!mi)return(nullptr);

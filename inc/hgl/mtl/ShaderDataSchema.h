@@ -17,12 +17,12 @@ enum class ShaderDataSchema : uint32_t
 {
     None = 0,           ///< No per-instance data.
 
-    Color4f,            ///< struct MaterialInstance { vec4 Color; }          — 16 bytes
-    TextColor,          ///< struct MaterialInstance { uint TextColor; }       —  4 bytes
-    BillboardSizeUVec2, ///< struct MaterialInstance { uvec2 BillboardSize; }  —  8 bytes
-    PBRColorParams,     ///< struct MaterialInstance { uint base_color; float metallic; float roughness; }   — 12 bytes
-    StandardParams,     ///< struct MaterialInstance { uint base_color; float metallic; float roughness; float normal_scale; } — 16 bytes
-    TextureArrayID,     ///< struct MaterialInstance { uvec4 id; }             — 16 bytes
+    Color4f,            ///< struct MaterialBindingInstance { vec4 Color; }          — 16 bytes
+    TextColor,          ///< struct MaterialBindingInstance { uint TextColor; }       —  4 bytes
+    BillboardSizeUVec2, ///< struct MaterialBindingInstance { uvec2 BillboardSize; }  —  8 bytes
+    PBRColorParams,     ///< struct MaterialBindingInstance { uint base_color; float metallic; float roughness; }   — 12 bytes
+    StandardParams,     ///< struct MaterialBindingInstance { uint base_color; float metallic; float roughness; float normal_scale; } — 16 bytes
+    TextureArrayID,     ///< struct MaterialBindingInstance { uvec4 id; }             — 16 bytes
 
     COUNT
 };
@@ -30,7 +30,7 @@ enum class ShaderDataSchema : uint32_t
 /// Metadata associated with a ShaderDataSchema entry.
 struct ShaderDataSchemaInfo
 {
-    /// Path of the GLSL file that defines the MaterialInstance struct,
+    /// Path of the GLSL file that defines the MaterialBindingInstance struct,
     /// relative to ShaderLibrary/common/schema/.
     /// Null for ShaderDataSchema::None.
     const char *  glsl_schema_file;

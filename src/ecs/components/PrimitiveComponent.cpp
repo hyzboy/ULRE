@@ -4,7 +4,7 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
-#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 
@@ -83,7 +83,7 @@ namespace hgl::ecs
         }
     }
 
-    void PrimitiveComponent::SetOverrideMaterial(hgl::graph::MaterialInstance* mi)
+    void PrimitiveComponent::SetOverrideMaterial(hgl::graph::MaterialBindingInstance* mi)
     {
         overrideMaterial = mi;
     }
@@ -97,7 +97,7 @@ namespace hgl::ecs
             material_slot.SetInstanceData(instance_data, instance_data_size);
     }
 
-    hgl::graph::MaterialInstance* PrimitiveComponent::GetMaterialInstance() const
+    hgl::graph::MaterialBindingInstance* PrimitiveComponent::GetMaterialInstance() const
     {
         // Phase B: resolved MI from MaterialResolveRequest takes priority
         if (material_slot.resolved_mi)

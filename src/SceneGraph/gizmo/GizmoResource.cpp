@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKMaterialInstance.h>
+﻿#include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VertexDataManager.h>
@@ -31,7 +31,7 @@ namespace hgl::graph
         struct GizmoResource
         {
             ShaderMaterialProgram *          mtl;
-            MaterialInstance *  mi[size_t(GizmoColor::RANGE_SIZE)];
+            MaterialBindingInstance *  mi[size_t(GizmoColor::RANGE_SIZE)];
             VertexDataManager * vdm;
 
             GeometryCreater *  prim_creater;
@@ -289,7 +289,7 @@ namespace hgl::graph
         graphics_context = nullptr;
     }
 
-    MaterialInstance *GetGizmoMI3D(const GizmoColor &color)
+    MaterialBindingInstance *GetGizmoMI3D(const GizmoColor &color)
     {
         RANGE_CHECK_RETURN_NULLPTR(color)
 

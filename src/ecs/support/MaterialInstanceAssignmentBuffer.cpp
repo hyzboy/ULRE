@@ -6,7 +6,7 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
-#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
@@ -122,7 +122,7 @@ namespace hgl::ecs
             if (!item)
                 continue;
 
-            graph::MaterialInstance *mi = item->GetMaterialInstance();
+            graph::MaterialBindingInstance *mi = item->GetMaterialInstance();
 
             if (mi)
             {
@@ -166,7 +166,7 @@ namespace hgl::ecs
 
                 if (mip)
                 {
-                    for (graph::MaterialInstance* mi : mi_set)
+                    for (graph::MaterialBindingInstance* mi : mi_set)
                     {
                         const void *mi_data = mi ? mi->GetMIData() : nullptr;
 
@@ -188,7 +188,7 @@ namespace hgl::ecs
             // Detect MIT entry size from the first MI that has MIT data
             if (mit_data_bytes == 0)
             {
-                for (graph::MaterialInstance* mi : mi_set)
+                for (graph::MaterialBindingInstance* mi : mi_set)
                 {
                     if (mi && mi->GetMITDataBytes() > 0)
                     {
@@ -228,7 +228,7 @@ namespace hgl::ecs
 
                     if (mitp)
                     {
-                        for (graph::MaterialInstance* mi : mi_set)
+                        for (graph::MaterialBindingInstance* mi : mi_set)
                         {
                             const void* mit_data = mi ? mi->GetMITData() : nullptr;
                             if (mit_data)
@@ -268,7 +268,7 @@ namespace hgl::ecs
         if (!mip)
             return;
 
-        graph::MaterialInstance* mi = item->GetMaterialInstance();
+        graph::MaterialBindingInstance* mi = item->GetMaterialInstance();
         *mip = static_cast<uint32_t>(mi_set.Find(mi));
 
         gpu->Unmap();
@@ -369,7 +369,7 @@ namespace hgl::ecs
                     continue;
                 }
 
-                graph::MaterialInstance* mi = item->GetMaterialInstance();
+                graph::MaterialBindingInstance* mi = item->GetMaterialInstance();
                 uint16 mi_index = mi ? mi_set.Find(mi) : 0;
                 *mid_ptr++ = static_cast<uint32_t>(mi_index);
 

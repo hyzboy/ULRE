@@ -63,7 +63,7 @@ private:
     RenderContext *render_context = nullptr;
 
     ShaderMaterialProgram *mtl = nullptr;
-    MaterialInstance *mi = nullptr;
+    MaterialBindingInstance *mi = nullptr;
     Geometry *geometry = nullptr;
     Primitive *primitive = nullptr;
 
@@ -209,7 +209,7 @@ private:
     Entity *cube_entity = nullptr;
 
     ShaderMaterialProgram *cube_mtl = nullptr;
-    MaterialInstance *cube_mi = nullptr;
+    MaterialBindingInstance *cube_mi = nullptr;
     Sampler *cube_sampler = nullptr;
     Primitive *cube_primitive = nullptr;
 

@@ -4,7 +4,7 @@
 #include <hgl/ecs/components/TransformComponent.h>
 #include <hgl/graph/mesh/Primitive.h>
 #include <hgl/vk/VKShaderMaterialProgram.h>
-#include <hgl/vk/VKMaterialInstance.h>
+#include <hgl/vk/VKMaterialBindingInstance.h>
 
 namespace hgl::ecs
 {
@@ -35,7 +35,7 @@ namespace hgl::ecs
         return context->GetEntity(entity_id);
     }
 
-    graph::MaterialInstance* AssetPrimitiveRenderItem::GetMaterialInstance() const
+    graph::MaterialBindingInstance* AssetPrimitiveRenderItem::GetMaterialInstance() const
     {
         return primitive ? primitive->GetMaterialInstance() : nullptr;
     }

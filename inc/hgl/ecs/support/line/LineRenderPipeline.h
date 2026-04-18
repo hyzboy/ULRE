@@ -15,7 +15,7 @@ namespace hgl
         class VulkanDevice;
         class DeviceBuffer;
         class ShaderMaterialProgram;
-        class MaterialInstance;
+        class MaterialBindingInstance;
         class GraphicsPipeline;
         class RenderTargetFormat;
         class Geometry;
@@ -74,7 +74,7 @@ namespace hgl::ecs
         // ------- GPU resources (created in Initialize()) -------
         graph::VulkanDevice*    device_         = nullptr;
         graph::ShaderMaterialProgram*        material_       = nullptr;
-        graph::MaterialInstance* mi_            = nullptr;
+        graph::MaterialBindingInstance* mi_            = nullptr;
         graph::GraphicsPipeline*        pipeline_       = nullptr;
         graph::RenderTargetFormat*     render_format_  = nullptr;
 
@@ -102,7 +102,7 @@ namespace hgl::ecs
             void Clear();
             bool EnsureCapacity(uint32_t needed,
                                 graph::VulkanDevice*     dev,
-                                graph::MaterialInstance* mi,
+                                graph::MaterialBindingInstance* mi,
                                 graph::GraphicsPipeline*         p,
                                 uint32_t                 width);
             bool AddSegment(const hgl::math::Vector3f& from,

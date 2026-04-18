@@ -4,7 +4,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
-#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKResourceDomain.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
@@ -761,7 +761,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     return mat;
 }
 
-MaterialInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)
+MaterialBindingInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)
 {
     acquire_mi_requests.fetch_add(1);
 
@@ -772,7 +772,7 @@ MaterialInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(const Ma
     if(!mtl)
         return nullptr;
 
-    MaterialInstance *mi = nullptr;
+    MaterialBindingInstance *mi = nullptr;
     if(spec.vil_cfg)
         mi = CreateMaterialInstance(mtl, spec.domain, spec.vil_cfg, spec.instance_data, spec.instance_data_size);
     else
@@ -796,7 +796,7 @@ MaterialInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(const Ma
     return mi;
 }
 
-bool ShaderMaterialProgramManager::UpdateInstanceData(MaterialInstance *mi, const void *data, const uint32 data_size)
+bool ShaderMaterialProgramManager::UpdateInstanceData(MaterialBindingInstance *mi, const void *data, const uint32 data_size)
 {
     if(!mi || !data || data_size == 0)
         return false;
@@ -861,7 +861,7 @@ void ShaderMaterialProgramManager::ReleaseDomainMaterialBinding(DomainMaterialBi
     delete binding;
 }
 
-MaterialInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VIL *vil)
+MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VIL *vil)
 {
     if (!domain || !mtl)
         return nullptr;
@@ -871,13 +871,13 @@ MaterialInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMat
 
     const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
-    MaterialInstance *mi = new MaterialInstance(mtl, domain, use_vil, mi_id);
+    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, use_vil, mi_id);
     mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
     Add(mi);
     return mi;
 }
 
-MaterialInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VILConfig *vil_cfg)
+MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VILConfig *vil_cfg)
 {
     if(!domain || !mtl) return nullptr;
 
@@ -886,13 +886,13 @@ MaterialInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMat
 
     const VIL *vil = vil_cfg ? mtl->CreateVIL(vil_cfg) : mtl->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
-    MaterialInstance *mi = new MaterialInstance(mtl, domain, vil, mi_id);
+    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, vil, mi_id);
     mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
     Add(mi);
     return mi;
 }
 
-MaterialInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size)
+MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size)
 {
     if(!domain || !mtl) return nullptr;
 
@@ -901,7 +901,7 @@ MaterialInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMat
 
     const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
-    MaterialInstance *mi = new MaterialInstance(mtl, domain, use_vil, mi_id);
+    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, use_vil, mi_id);
     mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
     Add(mi);
 
@@ -911,7 +911,7 @@ MaterialInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMat
     return mi;
 }
 
-MaterialInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size)
+MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size)
 {
     if(!domain || !mtl) return nullptr;
 
@@ -920,7 +920,7 @@ MaterialInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMat
 
     const VIL *vil = vil_cfg ? mtl->CreateVIL(vil_cfg) : mtl->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
-    MaterialInstance *mi = new MaterialInstance(mtl, domain, vil, mi_id);
+    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, vil, mi_id);
     mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
     Add(mi);
 

@@ -8,7 +8,7 @@ namespace hgl
     {
         class Primitive;
         class ShaderMaterialProgram;
-        class MaterialInstance;
+        class MaterialBindingInstance;
     }
 }
 
@@ -54,7 +54,7 @@ namespace hgl::ecs
 
         // ShaderMaterialProgram batching interface
         hgl::graph::Primitive* GetPrimitive() const override;
-        hgl::graph::MaterialInstance* GetMaterialInstance() const override;
+        hgl::graph::MaterialBindingInstance* GetMaterialInstance() const override;
         hgl::graph::ShaderMaterialProgram* GetShaderMaterialProgram() const override;
 
         // Update world matrix from transform

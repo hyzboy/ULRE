@@ -69,10 +69,10 @@ struct MaterialRecipe
     SkyLightAmbientModel sky_ambient = SkyLightAmbientModel::Simple;    ///< 天光模型
     LightingModel        lighting    = LightingModel::Lambert;          ///< 光照模型
 
-    // ── MaterialInstance 管线预设 ──────────────────────────────────────────────
+    // ── MaterialBindingInstance 管线预设 ──────────────────────────────────────────────
     GraphicsPipelinePreset pipeline = GraphicsPipelinePreset::Solid3D;
 
-    // ── MaterialInstance 顶点输入覆写（可选）─────────────────────────────────────
+    // ── MaterialBindingInstance 顶点输入覆写（可选）─────────────────────────────────────
     // 空列表 = 使用 ShaderMaterialProgram 默认 VIL。
     // 非空 = 在 CreateMI 时构建 VILConfig 覆写指定 attrib 的格式。
     struct VILOverride

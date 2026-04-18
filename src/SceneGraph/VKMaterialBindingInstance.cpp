@@ -1,5 +1,5 @@
 ﻿#include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKResourceDomain.h>
 #include<cstring>
 
@@ -10,13 +10,13 @@ namespace hgl::graph{
 // ---------------------------------------------------------------------------
 
 /// Phase 1 新路径：经由 ResourceDomain 分配
-MaterialInstance::MaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *d, const VIL *v, const int id)
+MaterialBindingInstance::MaterialBindingInstance(ShaderMaterialProgram *mtl, ResourceDomain *d, const VIL *v, const int id)
     : material(mtl), domain(d), domain_id(d ? d->GetDomainID() : 0xFFFFFFFFu), vil(v), mi_id(id)
 {
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }
 
-MaterialInstance::~MaterialInstance()
+MaterialBindingInstance::~MaterialBindingInstance()
 {
     if(domain)
         domain->FreeMISlot(mi_id);
@@ -28,7 +28,7 @@ MaterialInstance::~MaterialInstance()
 // MaterialInstanceData — data access
 // ---------------------------------------------------------------------------
 
-void *MaterialInstance::GetMIData()
+void *MaterialBindingInstance::GetMIData()
 {
     if(domain)
         return domain->GetMIData(mi_id);
@@ -36,7 +36,7 @@ void *MaterialInstance::GetMIData()
     return nullptr;
 }
 
-void MaterialInstance::WriteMIData(const void *data,const uint32 size)
+void MaterialBindingInstance::WriteMIData(const void *data,const uint32 size)
 {
     if(!data||!size) return;
     const uint32_t limit = domain ? domain->GetMIDataBytes() : 0;
@@ -49,7 +49,7 @@ void MaterialInstance::WriteMIData(const void *data,const uint32 size)
         memcpy(tp,data,size);
 }
 
-void MaterialInstance::InitMITLayout(uint8_t slot_flags)
+void MaterialBindingInstance::InitMITLayout(uint8_t slot_flags)
 {
     delete[] mit_packed;
     mit_packed = nullptr;
@@ -72,14 +72,14 @@ void MaterialInstance::InitMITLayout(uint8_t slot_flags)
     std::memset(mit_packed, 0, mit_packed_count * sizeof(uint32_t));
 }
 
-void MaterialInstance::SetTextureArrayLayer(mtl::SamplerSlot slot, uint32_t layer)
+void MaterialBindingInstance::SetTextureArrayLayer(mtl::SamplerSlot slot, uint32_t layer)
 {
     const int8_t off = mit_slot_offset[uint8_t(slot)];
     if (off < 0) return;
     mit_packed[off] = layer;
 }
 
-uint32_t MaterialInstance::GetTextureArrayLayer(mtl::SamplerSlot slot) const
+uint32_t MaterialBindingInstance::GetTextureArrayLayer(mtl::SamplerSlot slot) const
 {
     const int8_t off = mit_slot_offset[uint8_t(slot)];
     if (off < 0) return 0;

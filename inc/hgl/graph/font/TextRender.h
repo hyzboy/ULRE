@@ -60,7 +60,7 @@ namespace hgl::graph
         layout::CharStyle   fixed_style;                    ///<固定字符风格
 
         ShaderMaterialProgram *          mtl_fs;                         ///<固定风格材质
-        MaterialInstance *  mi_fs;                          ///<固定风格材质实例
+        MaterialBindingInstance *  mi_fs;                          ///<固定风格材质实例
 
     private:
 

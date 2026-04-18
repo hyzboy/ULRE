@@ -8,7 +8,7 @@ namespace hgl::graph
     class StaticMesh;
     class VulkanDevice;
     class GeometryManager;
-    class MaterialInstance;
+    class MaterialBindingInstance;
 
     /**
      * LoadStaticMeshScene - 从 .scene minipack 文件加载场景树到 StaticMesh
@@ -29,7 +29,7 @@ namespace hgl::graph
         VulkanDevice             *device,
         GeometryManager          *geo_mgr,
         const GeometryVertexFormat &gvf,
-        MaterialInstance * const *mi_array,
+        MaterialBindingInstance * const *mi_array,
         int                       mi_count,
         const OSString           &pack_path,
         const OSString           &base_dir);

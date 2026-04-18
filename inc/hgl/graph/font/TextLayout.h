@@ -90,7 +90,7 @@ namespace hgl::graph
             // CharDrawStyle与TextLayoutAttribute的区别在于：
 
             // CharStyle    是针对单个字符的绘制风格，其所有的属性都将储存于UBO，在Shader中使用。
-            //                  所以每个CharDrawStyle其实都对应了一个TextRender的材质实例(MaterialInstance)。
+            //                  所以每个CharDrawStyle其实都对应了一个TextRender的材质实例(MaterialBindingInstance)。
             //                  也因此CharDrawStyle的数量是有限制的，因为所有的材质实例属性加起来不能超过一个UBO大小。
             //                  但其实这个值也还很大的，100来个还是可以支撑的。
 

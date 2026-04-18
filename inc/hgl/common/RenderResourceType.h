@@ -14,7 +14,7 @@ enum class ResourceType
 
     VertexInputLayout,
     ShaderMaterialProgram,
-    MaterialInstance,
+    MaterialBindingInstance,
 
     FrameBuffer,
 

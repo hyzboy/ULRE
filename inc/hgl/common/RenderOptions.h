@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-// All render data (LocalToWorld, TransformID, MaterialInstance, MaterialInstanceID)
+// All render data (LocalToWorld, TransformID, MaterialBindingInstance, MaterialInstanceID)
 // are descriptor-backed SSBO only. No conditional compilation branches.
 
 #ifndef HGL_L2W_RING_FRAMES

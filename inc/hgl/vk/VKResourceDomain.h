@@ -14,7 +14,7 @@ namespace hgl::graph
 /**
  * 资源域 (ResourceDomain)
  *
- * 持有一份按 ShaderDataSchema 组织的 MaterialInstance 数据池。
+ * 持有一份按 ShaderDataSchema 组织的 MaterialBindingInstance 数据池。
  */
 class ResourceDomain
 {

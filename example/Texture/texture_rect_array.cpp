@@ -70,7 +70,7 @@ private:
     struct
     {
         Entity *            entity;
-        MaterialInstance *  mi;
+        MaterialBindingInstance *  mi;
     }render_obj[TexCount]{};
 
 private:

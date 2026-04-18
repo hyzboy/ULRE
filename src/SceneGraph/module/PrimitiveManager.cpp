@@ -7,7 +7,7 @@ GRAPH_MODULE_CONSTRUCT(PrimitiveManager)
 {
 }
 
-Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialInstance *mi, GraphicsPipelinePreRaster *p)
+Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialBindingInstance *mi, GraphicsPipelinePreRaster *p)
 {
     if(!p||!mi||!r)
         return(nullptr);
@@ -20,7 +20,7 @@ Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialInstance *mi, 
     return ri;
 }
 
-Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, GraphicsPipelinePreRaster *p)
+Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialBindingInstance *mi, GraphicsPipelinePreRaster *p)
 {
     if(!p||!mi||!pc)
         return(nullptr);
@@ -43,7 +43,7 @@ Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialInstan
     return(nullptr);
 }
 
-Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialInstance *mi)
+Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialBindingInstance *mi)
 {
     if(!mi||!r)
         return(nullptr);
@@ -56,7 +56,7 @@ Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialInstance *mi)
     return ri;
 }
 
-Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi)
+Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialBindingInstance *mi)
 {
     if(!mi||!pc)
         return(nullptr);

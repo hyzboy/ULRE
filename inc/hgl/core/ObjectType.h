@@ -41,7 +41,7 @@ enum class ObjectTypeTag : uint8_t
     RenderTarget,
     Texture,
     ShaderMaterialProgram,
-    MaterialInstance,
+    MaterialBindingInstance,
     Mesh,
 
     // ECS and system types
@@ -92,7 +92,7 @@ inline const char* GetTagString(ObjectTypeTag tag)
         case ObjectTypeTag::RenderTarget:           return "RT";
         case ObjectTypeTag::Texture:                return "Texture";
         case ObjectTypeTag::ShaderMaterialProgram:               return "ShaderMaterialProgram";
-        case ObjectTypeTag::MaterialInstance:       return "MaterialInstance";
+        case ObjectTypeTag::MaterialBindingInstance:       return "MaterialInstance";
         case ObjectTypeTag::Mesh:                   return "Mesh";
         case ObjectTypeTag::IndirectDrawBuffer:     return "IndirectDrawBuf";
         case ObjectTypeTag::IndirectDrawIndexedBuffer: return "IndirectDrawIdxBuf";

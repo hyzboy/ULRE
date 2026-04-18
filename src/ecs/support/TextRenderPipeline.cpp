@@ -13,7 +13,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
-#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
@@ -509,7 +509,7 @@ namespace hgl::ecs
                 input.dirty = true;
             }
 
-            graph::MaterialInstance* mi = resources->material_instance;
+            graph::MaterialBindingInstance* mi = resources->material_instance;
             if (!mi)
             {
                 graph::VILConfig vil_config;

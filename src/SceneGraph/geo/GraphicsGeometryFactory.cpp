@@ -4,7 +4,7 @@
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/module/MaterialRecipeRegistry.h>
-#include <hgl/vk/VKMaterialInstance.h>
+#include <hgl/vk/VKMaterialBindingInstance.h>
 #include <hgl/vk/VertexDataManager.h>
 
 namespace hgl::graph
@@ -57,7 +57,7 @@ Geometry *GraphicsGeometryFactory::CreateManagedGeometry(GeometryCreater *create
     return RegisterGeometry(creater->Create());
 }
 
-Primitive *GraphicsGeometryFactory::CreatePrimitive(Geometry *geometry, MaterialInstance *mi) const
+Primitive *GraphicsGeometryFactory::CreatePrimitive(Geometry *geometry, MaterialBindingInstance *mi) const
 {
     if(!graphics || !geometry || !mi)
         return nullptr;
@@ -69,7 +69,7 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(Geometry *geometry, Material
     return primitive_manager->CreatePrimitive(geometry, mi);
 }
 
-Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, MaterialInstance *mi) const
+Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, MaterialBindingInstance *mi) const
 {
     if(!graphics || !creater || !mi)
         return nullptr;
@@ -117,7 +117,7 @@ Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_cont
 
 Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_context,
                                                     const GeometryVertexFormat &gvf,
-                                                    MaterialInstance *material_instance,
+                                                    MaterialBindingInstance *material_instance,
                                                     const AnsiString &geometry_name,
                                                     uint32_t vertex_count,
                                                     std::initializer_list<VertexAttribWrite> vertex_writes)

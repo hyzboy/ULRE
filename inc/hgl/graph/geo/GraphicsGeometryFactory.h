@@ -4,7 +4,7 @@
 #include <initializer_list>
 #include <utility>
 #include <hgl/vk/VKFormat.h>
-#include <hgl/vk/VKMaterialInstance.h>
+#include <hgl/vk/VKMaterialBindingInstance.h>
 #include <hgl/type/String.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/MaterialRecipe.h>
@@ -15,7 +15,7 @@ class GraphicsContext;
 class GeometryCreater;
 class Geometry;
 class Primitive;
-class MaterialInstance;
+class MaterialBindingInstance;
 class VertexDataManager;
 class GeometryVertexFormat;
 
@@ -46,14 +46,14 @@ public:
     Geometry *CreateManagedGeometry(GeometryCreater *creater) const;
 
 public:
-    Primitive *CreatePrimitive(Geometry *geometry, MaterialInstance *mi) const;
-    Primitive *CreatePrimitive(GeometryCreater *creater, MaterialInstance *mi) const;
+    Primitive *CreatePrimitive(Geometry *geometry, MaterialBindingInstance *mi) const;
+    Primitive *CreatePrimitive(GeometryCreater *creater, MaterialBindingInstance *mi) const;
 
 public:
     template<typename GeometryBuilder>
     static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
                                       const GeometryVertexFormat &gvf,
-                                      MaterialInstance *material_instance,
+                                      MaterialBindingInstance *material_instance,
                                       GeometryBuilder &&builder)
     {
         if(!graphics_context || !material_instance || gvf.GetActiveCount()==0)
@@ -83,7 +83,7 @@ public:
 
     static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
                                       const GeometryVertexFormat &gvf,
-                                      MaterialInstance *material_instance,
+                                      MaterialBindingInstance *material_instance,
                                       const AnsiString &geometry_name,
                                       uint32_t vertex_count,
                                       std::initializer_list<VertexAttribWrite> vertex_writes);

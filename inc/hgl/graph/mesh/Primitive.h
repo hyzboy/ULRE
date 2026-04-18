@@ -5,7 +5,7 @@
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
-#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
@@ -16,7 +16,7 @@ namespace hgl::graph{
 */
 class Primitive
 {
-    MaterialInstance *  mat_inst;
+    MaterialBindingInstance *  mat_inst;
     Geometry *          geometry;
 
     GeometryDataBuffer *data_buffer;
@@ -24,9 +24,9 @@ class Primitive
 
 private:
 
-    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,GraphicsPipelinePreRaster *);
+    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialBindingInstance *,GraphicsPipelinePreRaster *);
 
-    Primitive(Geometry *,MaterialInstance *,GraphicsPipelinePreRaster *,GeometryDataBuffer *);
+    Primitive(Geometry *,MaterialBindingInstance *,GraphicsPipelinePreRaster *,GeometryDataBuffer *);
 
 public:
 
@@ -34,7 +34,7 @@ public:
 
             VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetShaderMaterialProgram()->GetPipelineLayout();}
             ShaderMaterialProgram *          GetShaderMaterialProgram         (){return mat_inst->GetShaderMaterialProgram();}
-            MaterialInstance *  GetMaterialInstance (){return mat_inst;}
+            MaterialBindingInstance *  GetMaterialInstance (){return mat_inst;}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
     const   BoundingVolumes &   GetBoundingVolumes  ()const{return geometry->GetBoundingVolumes();}
@@ -50,7 +50,7 @@ public:
 
 public:
 
-            bool                ChangeMaterialInstance(MaterialInstance *mi)
+            bool                ChangeMaterialInstance(MaterialBindingInstance *mi)
             {
                 if(!mi)
                     return(false);
@@ -73,5 +73,5 @@ public:
             uint32_t            GetDataIndexCount()const{return draw_range.data_index_count;}
 };//class Primitive
 
-Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,GraphicsPipelinePreRaster * = nullptr);
+Primitive *DirectCreatePrimitive(Geometry *,MaterialBindingInstance *,GraphicsPipelinePreRaster * = nullptr);
 }//namespace hgl::graph

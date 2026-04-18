@@ -16,7 +16,7 @@ namespace hgl
     {
         class Primitive;
         class ShaderMaterialProgram;
-        class MaterialInstance;
+        class MaterialBindingInstance;
         class Geometry;
     }
 }
@@ -40,7 +40,7 @@ namespace hgl::ecs
     private:
 
         hgl::graph::Primitive* primitive;              // The primitive to render (not owned)
-        hgl::graph::MaterialInstance* overrideMaterial; // Optional material override (not owned)
+        hgl::graph::MaterialBindingInstance* overrideMaterial; // Optional material override (not owned)
 
         hgl::graph::MaterialResolveRequest material_slot;        // Deferred MI resolution slot (Phase B)
         hgl::graph::Geometry* unresolved_geometry = nullptr; // Geometry awaiting MI (not owned)
@@ -65,8 +65,8 @@ namespace hgl::ecs
         hgl::graph::Primitive* GetPrimitive() const { return primitive; }
 
         // ShaderMaterialProgram override
-        void SetOverrideMaterial(hgl::graph::MaterialInstance* mi);
-        hgl::graph::MaterialInstance* GetOverrideMaterial() const { return overrideMaterial; }
+        void SetOverrideMaterial(hgl::graph::MaterialBindingInstance* mi);
+        hgl::graph::MaterialBindingInstance* GetOverrideMaterial() const { return overrideMaterial; }
         void ClearOverrideMaterial() { overrideMaterial = nullptr; }
 
         // Deferred material resolution (Phase B)
@@ -80,7 +80,7 @@ namespace hgl::ecs
         bool NeedsMaterialResolve() const { return material_slot.NeedsResolve(); }
 
         // ShaderMaterialProgram access (returns override if set, otherwise primitive's material)
-        hgl::graph::MaterialInstance* GetMaterialInstance() const;
+        hgl::graph::MaterialBindingInstance* GetMaterialInstance() const;
         hgl::graph::ShaderMaterialProgram* GetShaderMaterialProgram() const;
 
         // Bounding volume

@@ -11,7 +11,7 @@ namespace hgl
     {
         class Primitive;
         class ShaderMaterialProgram;
-        class MaterialInstance;
+        class MaterialBindingInstance;
     }
 }
 
@@ -63,7 +63,7 @@ namespace hgl::ecs
         glm::mat4                           GetWorldMatrix() const override { return world_matrix; }
 
         graph::Primitive*        GetPrimitive()        const override { return primitive; }
-        graph::MaterialInstance* GetMaterialInstance() const override;
+        graph::MaterialBindingInstance* GetMaterialInstance() const override;
         graph::ShaderMaterialProgram*         GetShaderMaterialProgram()         const override;
 
         // ---- Asset-specific ----

@@ -58,7 +58,7 @@ private:
         ShaderMaterialProgram *material = nullptr;
         GeometryVertexFormat gvf;
 
-        MaterialInstance *mi[COLOR_COUNT]{};
+        MaterialBindingInstance *mi[COLOR_COUNT]{};
     };
 
     MaterialData solid;

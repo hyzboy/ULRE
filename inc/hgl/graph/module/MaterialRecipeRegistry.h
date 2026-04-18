@@ -23,7 +23,7 @@ namespace hgl::graph
 class ShaderMaterialProgramManager;
 class TextureManager;
 class SamplerManager;
-class MaterialInstance;
+class MaterialBindingInstance;
 
 class MaterialRecipeRegistry
 {
@@ -68,7 +68,7 @@ public:
     /// 一站式：Acquire + CreateMI（推荐外部调用）
     /// - 大多数调用方只需要 MI，不需要直接接触 MaterialDomainHandle。
     /// - 若需要后续访问 DMB，可传 out_handle 取回完整句柄。
-    MaterialInstance *AcquireMI(const mtl::MaterialRecipe &rec,
+    MaterialBindingInstance *AcquireMI(const mtl::MaterialRecipe &rec,
                                 const void *instance_data = nullptr,
                                 uint32_t instance_data_size = 0,
                                 MaterialDomainHandle *out_handle = nullptr);
@@ -76,14 +76,14 @@ public:
     /// 一站式：Acquire + 从 GVF 自动推算 VIL 覆写 + CreateMI
     /// - 对比 ShaderMaterialProgram DefaultVIL 与 Geometry 实际顶点格式，自动生成 VILConfig
     /// - 调用方无需手写 mi_vil_overrides
-    MaterialInstance *AcquireMI(const mtl::MaterialRecipe &rec,
+    MaterialBindingInstance *AcquireMI(const mtl::MaterialRecipe &rec,
                                 const GeometryVertexFormat &gvf,
                                 const void *instance_data = nullptr,
                                 uint32_t instance_data_size = 0,
                                 MaterialDomainHandle *out_handle = nullptr);
 
     /// Record 驱动重载：pipeline 与可选 VIL 覆写均来自 rec
-    MaterialInstance *CreateMI(const MaterialDomainHandle &handle,
+    MaterialBindingInstance *CreateMI(const MaterialDomainHandle &handle,
                                const mtl::MaterialRecipe &rec,
                                const void *instance_data = nullptr,
                                uint32_t instance_data_size = 0);

@@ -15,7 +15,7 @@ namespace hgl::graph{
 *   - MI 数据统一由指定 ResourceDomain 管理。
 *   - 无 MI schema 的材质也会绑定一个 schema=None 的 domain，用于统一创建入口。
 */
-class MaterialInstance
+class MaterialBindingInstance
 {
 protected:
 
@@ -50,11 +50,11 @@ private:
     friend class ShaderMaterialProgramManager;
 
     /// 新路径构造（Phase 1，经由 ResourceDomain 分配槽位）
-    MaterialInstance(ShaderMaterialProgram *, ResourceDomain *, const VIL *, const int);
+    MaterialBindingInstance(ShaderMaterialProgram *, ResourceDomain *, const VIL *, const int);
 
 public:
 
-    virtual ~MaterialInstance();
+    virtual ~MaterialBindingInstance();
 
     const   int     GetMIID     ()const{return mi_id;}
 

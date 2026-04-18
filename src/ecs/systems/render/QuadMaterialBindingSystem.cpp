@@ -13,7 +13,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
-#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/type/StdString.h>
 
 namespace hgl::ecs
@@ -258,7 +258,7 @@ namespace hgl::ecs
         if (!material_manager || !primitive_manager)
             return false;
 
-        // Create a MaterialInstance from the domain's shared ShaderMaterialProgram
+        // Create a MaterialBindingInstance from the domain's shared ShaderMaterialProgram
         graph::MaterialInstanceSpec spec;
         spec.material = dr->material;
         spec.domain   = dr->dmb ? dr->dmb->GetDomain() : nullptr;

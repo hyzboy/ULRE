@@ -64,7 +64,7 @@ namespace example::modules
         return true;
     }
 
-    graph::MaterialInstance *SubWorldModuleBase::AcquireMI(const graph::mtl::MaterialRecipe &rec,
+    graph::MaterialBindingInstance *SubWorldModuleBase::AcquireMI(const graph::mtl::MaterialRecipe &rec,
                                                            const void *instance_data,
                                                            uint32_t instance_data_size,
                                                            graph::MaterialDomainHandle *out_handle)
@@ -80,7 +80,7 @@ namespace example::modules
     }
 
     SubWorldModuleBase::MeshResource*
-    SubWorldModuleBase::CreatePrimitiveMesh(Geometry* geometry, MaterialInstance* mi)
+    SubWorldModuleBase::CreatePrimitiveMesh(Geometry* geometry, MaterialBindingInstance* mi)
     {
         if (!render_context || !graphics_context || !geometry || !mi)
             return nullptr;

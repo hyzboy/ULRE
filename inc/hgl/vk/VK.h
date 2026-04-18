@@ -229,7 +229,7 @@ class MaterialDescriptorManager;
 
 class ShaderMaterialProgram;
 class MaterialParameters;
-class MaterialInstance;
+class MaterialBindingInstance;
 struct GraphicsPipelineData;
 enum class GraphicsPipelinePreset;
 class GraphicsPipeline;

@@ -2,7 +2,7 @@
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
-#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKResourceDomain.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
@@ -111,7 +111,7 @@ private:
     UnorderedMap<AnsiString,ShaderMaterialProgram *> material_by_name;
 
     AutoIdObjectManager<MaterialID,             ShaderMaterialProgram>           rm_material;                ///<材质合集
-    AutoIdObjectManager<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
+    AutoIdObjectManager<MaterialInstanceID,     MaterialBindingInstance>   rm_material_instance;       ///<材质实例合集
 
     // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding
     std::unordered_map<ResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
@@ -158,17 +158,17 @@ private: // Helper methods with integrated DebugUtils
 public: //Add
 
     MaterialID              Add(ShaderMaterialProgram *          mtl ){return rm_material.Add(mtl);}
-    MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
+    MaterialInstanceID      Add(MaterialBindingInstance *  mi  ){return rm_material_instance.Add(mi);}
 
 public: //Get
 
     ShaderMaterialProgram *          GetShaderMaterialProgram         (const MaterialID           &id){return rm_material.Get(id);}
-    MaterialInstance *  GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
+    MaterialBindingInstance *  GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
 
 public: //Release
 
     void Release(ShaderMaterialProgram *         mtl ){rm_material.Release(mtl);}
-    void Release(MaterialInstance * mi  ){rm_material_instance.Release(mi);}
+    void Release(MaterialBindingInstance * mi  ){rm_material_instance.Release(mi);}
 
     void Destroy(ShaderMaterialProgram *mtl)
     {
@@ -182,7 +182,7 @@ public: //Release
         rm_material.Release(mtl, true);
     }
 
-    void Destroy(MaterialInstance *mi)
+    void Destroy(MaterialBindingInstance *mi)
     {
         if (!mi)
             return;
@@ -306,8 +306,8 @@ public: //ShaderMaterialProgram
 
 public: //MaterialInstanceData
 
-    MaterialInstance *  AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key = nullptr);
-    bool                UpdateInstanceData(MaterialInstance *mi, const void *data, const uint32 data_size);
+    MaterialBindingInstance *  AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key = nullptr);
+    bool                UpdateInstanceData(MaterialBindingInstance *mi, const void *data, const uint32 data_size);
 
 public: // ResourceDomain — Phase 1 / Phase 3
 
@@ -328,19 +328,19 @@ public: // ResourceDomain — Phase 1 / Phase 3
 public: // ResourceDomain MaterialInstanceData creation (Phase 1)
 
     /// 从资源域分配 MI，走域独立的数据池（旧 ShaderMaterialProgram 池不变）。
-    MaterialInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VIL *vil = nullptr);
-    MaterialInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VILConfig *vil_cfg);
-    MaterialInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size);
+    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VIL *vil = nullptr);
+    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VILConfig *vil_cfg);
+    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size);
+    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size);
 
     template<typename T>
-    MaterialInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VIL *vil, const T *data)
+    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VIL *vil, const T *data)
     {
         return CreateMaterialInstance(material, domain, vil, data, sizeof(T));
     }
 
     template<typename T>
-    MaterialInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VILConfig *vil_cfg, const T *data)
+    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VILConfig *vil_cfg, const T *data)
     {
         return CreateMaterialInstance(material, domain, vil_cfg, data, sizeof(T));
     }
@@ -350,7 +350,7 @@ public: // Phase 0 Stats — 帧级资源量观测
     /// 当前存活 ShaderMaterialProgram 数量
     uint32_t GetMaterialCount()         const { return (uint32_t)rm_material.GetCount(); }
 
-    /// 当前存活 MaterialInstance 数量
+    /// 当前存活 MaterialBindingInstance 数量
     uint32_t GetMaterialInstanceCount() const { return (uint32_t)rm_material_instance.GetCount(); }
 
     /// 当前存活 ResourceDomain 数量（Phase 3）

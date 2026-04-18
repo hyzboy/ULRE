@@ -17,7 +17,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
-#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VertexAttrib.h>
@@ -52,7 +52,7 @@ namespace hgl::ecs
 
     // Static member initialization
     graph::Primitive* QuadResourcePrepareSystem::shared_primitive = nullptr;
-    graph::MaterialInstance* QuadResourcePrepareSystem::shared_material_instance = nullptr;
+    graph::MaterialBindingInstance* QuadResourcePrepareSystem::shared_material_instance = nullptr;
     graph::RenderTargetFormat* QuadResourcePrepareSystem::shared_render_pass = nullptr;
     graph::Sampler* QuadResourcePrepareSystem::shared_sampler = nullptr;
 

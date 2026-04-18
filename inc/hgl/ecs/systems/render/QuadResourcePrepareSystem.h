@@ -15,7 +15,7 @@ namespace hgl
     namespace graph
     {
         class Primitive;
-        class MaterialInstance;
+        class MaterialBindingInstance;
         class ShaderMaterialProgram;
         class RenderTargetFormat;
         class Sampler;
@@ -67,7 +67,7 @@ namespace hgl::ecs
 
         // Shared resources used by all quads (legacy single-texture path)
         static graph::Primitive* shared_primitive;
-        static graph::MaterialInstance* shared_material_instance;
+        static graph::MaterialBindingInstance* shared_material_instance;
         static graph::RenderTargetFormat* shared_render_pass;
         static graph::Sampler* shared_sampler;
 
@@ -85,7 +85,7 @@ namespace hgl::ecs
 
         // Accessors for shared resources (legacy path)
         static graph::Primitive* GetSharedPrimitive() { return shared_primitive; }
-        static graph::MaterialInstance* GetSharedMaterialInstance() { return shared_material_instance; }
+        static graph::MaterialBindingInstance* GetSharedMaterialInstance() { return shared_material_instance; }
         static graph::Sampler* GetSharedSampler() { return shared_sampler; }
 
         // Domain texture array management

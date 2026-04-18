@@ -152,7 +152,7 @@ static bool TryLoadScene(
     VulkanDevice             *device,
     GeometryManager          *geo_mgr,
     const GeometryVertexFormat &gvf,
-    MaterialInstance * const *mi_array,
+    MaterialBindingInstance * const *mi_array,
     int                       mi_count,
     const OSString           &pack_path,
     const OSString           &base_dir,
@@ -425,7 +425,7 @@ static bool TryLoadScene(
                 continue;
             }
 
-            MaterialInstance *mi = mi_array[(pp[i].material_index >= 0 ? pp[i].material_index : 0) % mi_count];
+            MaterialBindingInstance *mi = mi_array[(pp[i].material_index >= 0 ? pp[i].material_index : 0) % mi_count];
             Primitive *prim = DirectCreatePrimitive(geo, mi);
             if (!prim)
             {
@@ -691,7 +691,7 @@ StaticMesh *LoadStaticMeshScene(
     VulkanDevice             *device,
     GeometryManager          *geo_mgr,
     const GeometryVertexFormat &gvf,
-    MaterialInstance * const *mi_array,
+    MaterialBindingInstance * const *mi_array,
     int                       mi_count,
     const OSString           &pack_path,
     const OSString           &base_dir)
@@ -860,7 +860,7 @@ StaticMesh *LoadStaticMeshScene(
 
                 geo_mgr->Add(geo);
 
-                MaterialInstance *mi = mi_array[(matIndex >= 0 ? matIndex : 0) % mi_count];
+                MaterialBindingInstance *mi = mi_array[(matIndex >= 0 ? matIndex : 0) % mi_count];
                 Primitive *prim = DirectCreatePrimitive(geo, mi);
                 if (!prim)
                 {

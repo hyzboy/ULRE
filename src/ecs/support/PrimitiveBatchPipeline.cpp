@@ -17,7 +17,7 @@
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/vk/VKMaterialInstance.h>   // Phase 4: GetDomain()
+#include<hgl/vk/VKMaterialBindingInstance.h>   // Phase 4: GetDomain()
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -521,7 +521,7 @@ namespace hgl::ecs
             }
 
             // Stage-4 prework: resolve pipeline before renderer hot path.
-            // Resolve from MaterialInstance preset instead of depending on an existing pipeline.
+            // Resolve from MaterialBindingInstance preset instead of depending on an existing pipeline.
             if (material && render_format)
             {
                 const graph::GraphicsPipelineData* pipeline_data = nullptr;

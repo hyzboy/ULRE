@@ -131,7 +131,7 @@ namespace hgl
 
             return nullptr;
         }
-        graph::MaterialInstance *AcquireMI(const graph::mtl::MaterialRecipe &rec,
+        graph::MaterialBindingInstance *AcquireMI(const graph::mtl::MaterialRecipe &rec,
                                            const void *instance_data = nullptr,
                                            uint32 instance_data_size = 0,
                                            graph::MaterialDomainHandle *out_handle = nullptr)
@@ -143,7 +143,7 @@ namespace hgl
             return registry->AcquireMI(rec, instance_data, instance_data_size, out_handle);
         }
 
-        graph::MaterialInstance *AcquireMI(const graph::mtl::MaterialRecipe &rec,
+        graph::MaterialBindingInstance *AcquireMI(const graph::mtl::MaterialRecipe &rec,
                                            const graph::GeometryVertexFormat &gvf,
                                            const void *instance_data = nullptr,
                                            uint32 instance_data_size = 0,

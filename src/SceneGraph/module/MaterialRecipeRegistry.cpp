@@ -6,7 +6,7 @@
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/vk/VKShaderMaterialProgram.h>
-#include <hgl/vk/VKMaterialInstance.h>
+#include <hgl/vk/VKMaterialBindingInstance.h>
 #include <hgl/vk/VKResourceDomain.h>
 #include <hgl/vk/VKDomainMaterialBinding.h>
 #include <hgl/vk/VKVertexInputConfig.h>
@@ -260,7 +260,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &
     return handle;
 }
 
-MaterialInstance *MaterialRecipeRegistry::AcquireMI(const mtl::MaterialRecipe &rec,
+MaterialBindingInstance *MaterialRecipeRegistry::AcquireMI(const mtl::MaterialRecipe &rec,
                                                    const void *instance_data,
                                                    uint32_t instance_data_size,
                                                    MaterialDomainHandle *out_handle)
@@ -284,7 +284,7 @@ MaterialInstance *MaterialRecipeRegistry::AcquireMI(const mtl::MaterialRecipe &r
 
 // ── AcquireMI (GVF auto-derive) ─────────────────────────────────────────────
 
-MaterialInstance *MaterialRecipeRegistry::AcquireMI(
+MaterialBindingInstance *MaterialRecipeRegistry::AcquireMI(
     const mtl::MaterialRecipe &rec,
     const GeometryVertexFormat &gvf,
     const void *instance_data,
@@ -348,7 +348,7 @@ MaterialInstance *MaterialRecipeRegistry::AcquireMI(
 
 // ── CreateMI ─────────────────────────────────────────────────────────────────
 
-MaterialInstance *MaterialRecipeRegistry::CreateMI(
+MaterialBindingInstance *MaterialRecipeRegistry::CreateMI(
     const MaterialDomainHandle &handle,
     const mtl::MaterialRecipe &rec,
     const void *instance_data,

@@ -7,7 +7,7 @@ namespace hgl::graph
 /**
  * Ring buffer 写入封装
  *
- * 使用场景：每帧高频更新的动态数据（Transform 矩阵、MaterialInstance 参数等）。
+ * 使用场景：每帧高频更新的动态数据（Transform 矩阵、MaterialBindingInstance 参数等）。
  * 底层是 CPU-visible buffer（CPUOnly 或 ReBAR），写入立即可见，无需 staging copy。
  *
  * 与 StagedBuffer/ReBarBuffer 的关键区别：

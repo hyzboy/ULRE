@@ -37,7 +37,7 @@ namespace hgl::graph
             uint32_t material_instance_stride;                      ///<MaterialInstance数据长度
             uint32_t material_instance_stage_bits;                  ///<MaterialInstance着色器阶段
             uint32_t material_instance_max_count;
-            ShaderDataSchema material_instance_schema;              ///<MaterialInstance schema枚举
+            ShaderDataSchema material_instance_schema;              ///<MaterialBindingInstance schema枚举
             std::string material_instance_schema_file;              ///<schema GLSL文件名
             std::string material_instance_struct_name;              ///<schema 结构体名
             SSBODescriptor *material_instance_ssbo;
