@@ -18,13 +18,13 @@ uint GetMaterialInstanceID()
 
 #ifndef MATERIAL_INSTANCE_ID_ONLY
 
-// @require SSBO(MaterialInstance)
+// @require SSBO(MaterialBindingInstance)
 
 layout(scalar, set=PERMATERIAL_SET, binding=MI_BINDING) readonly buffer MaterialInstanceData {
-    MaterialInstance mi[];
+    MaterialBindingInstance mi[];
 } mtl;
 
-MaterialInstance GetMaterialInstance(uint miID)
+MaterialBindingInstance GetMaterialBindingInstance(uint miID)
 {
     return mtl.mi[miID];
 }
@@ -33,9 +33,9 @@ MaterialInstance GetMaterialInstance(uint miID)
 #define MATERIAL_INSTANCE_CURRENT_ID GetMaterialInstanceID()
 #endif
 
-MaterialInstance GetMaterialInstance()
+MaterialBindingInstance GetMaterialBindingInstance()
 {
-    return GetMaterialInstance(MATERIAL_INSTANCE_CURRENT_ID);
+    return GetMaterialBindingInstance(MATERIAL_INSTANCE_CURRENT_ID);
 }
 
 #endif 

@@ -4,6 +4,6 @@ layout(location=0) out vec4 fragColor;
 
 void main()
 {
-    fragColor = GetMaterialInstance().Color;
+    fragColor = GetMaterialBindingInstance().Color;
     gl_Position = GetPosition2D();
 }

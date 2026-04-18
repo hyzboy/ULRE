@@ -4,7 +4,7 @@
 #include "common/ssbo_material_instance.glsl"
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    MaterialInstance mi = GetMaterialInstance();
+    MaterialBindingInstance mi = GetMaterialBindingInstance();
 
     SurfaceOutput so;
     so.baseColor = mi.Color.rgb;
@@ -19,5 +19,5 @@ SurfaceOutput EvalSurface(SurfaceInput si)
 
 float EvalAlpha(SurfaceInput si)
 {
-    return GetMaterialInstance().Color.a;
+    return GetMaterialBindingInstance().Color.a;
 }

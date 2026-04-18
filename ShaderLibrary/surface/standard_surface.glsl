@@ -26,7 +26,7 @@ vec3 F_Schlick(float VdotH, vec3 F0)
 
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    MaterialInstance mi = GetMaterialInstance();
+    MaterialBindingInstance mi = GetMaterialBindingInstance();
 
     vec3 N = normalize(si.worldNormal);
     vec3 V = si.viewDir;

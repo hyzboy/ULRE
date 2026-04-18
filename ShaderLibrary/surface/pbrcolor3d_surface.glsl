@@ -47,7 +47,7 @@ vec3 PBR_ApplyNormalMap(vec3 worldPos, vec2 uv, vec3 n_geom, vec3 normal_ts)
 
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    MaterialInstance mi = GetMaterialInstance();
+    MaterialBindingInstance mi = GetMaterialBindingInstance();
 
     vec4 albedo     = unpackUnorm4x8(mi.base_color);
     float metallic  = clamp(mi.metallic,  0.0,  1.0);

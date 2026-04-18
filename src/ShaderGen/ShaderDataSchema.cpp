@@ -17,17 +17,17 @@ namespace
         // None
         { nullptr,                        nullptr,            0 },
         // Color4f
-        { "schema_color4f.glsl",          "MaterialInstance", 0 },
+        { "schema_color4f.glsl",          "MaterialBindingInstance", 0 },
         // TextColor
-        { "schema_text_color.glsl",       "MaterialInstance", 0 },
+        { "schema_text_color.glsl",       "MaterialBindingInstance", 0 },
         // BillboardSizeUVec2
-        { "schema_billboard_size.glsl",   "MaterialInstance", 0 },
+        { "schema_billboard_size.glsl",   "MaterialBindingInstance", 0 },
         // PBRColorParams
-        { "schema_pbr_color_params.glsl", "MaterialInstance", 0 },
+        { "schema_pbr_color_params.glsl", "MaterialBindingInstance", 0 },
         // StandardParams
-        { "schema_standard_params.glsl",  "MaterialInstance", 0 },
+        { "schema_standard_params.glsl",  "MaterialBindingInstance", 0 },
         // TextureArrayID
-        { "schema_texture_array_id.glsl", "MaterialInstance", 0 },
+        { "schema_texture_array_id.glsl", "MaterialBindingInstance", 0 },
     };
 
     static bool g_schema_sizes_initialized = false;

@@ -10,12 +10,12 @@ layout(location=POSITION_LOCATION) in vec3 Position;
 #define HAS_TEXCOORD
 #include "common/varying_interface.glsl"
 
-MaterialInstance GetMI() { return GetMaterialInstance(); }
+MaterialBindingInstance GetMI() { return GetMaterialBindingInstance(); }
 
 void main()
 {
     fragMaterialInstanceID = GetMaterialInstanceID();
-    MaterialInstance mi = GetMI();
+    MaterialBindingInstance mi = GetMI();
 
     vec2 psize = vec2(mi.BillboardSize) / vec2(viewport.canvas_resolution);
     vec4 center_clip = camera.vp * GetTransform() * vec4(0.0, 0.0, 0.0, 1.0);

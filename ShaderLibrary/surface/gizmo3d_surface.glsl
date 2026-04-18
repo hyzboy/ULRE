@@ -4,7 +4,7 @@
 #include "common/ssbo_material_instance.glsl"
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    MaterialInstance mi = GetMaterialInstance();
+    MaterialBindingInstance mi = GetMaterialBindingInstance();
 
     const vec3 SUN_DIRECTION = vec3(0.655386, 0.491539, 0.573462);
     const vec3 SUN_COLOR     = vec3(1.0, 1.0, 1.0);

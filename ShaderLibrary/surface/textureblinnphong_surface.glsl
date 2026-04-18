@@ -34,7 +34,7 @@ vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv, float normal_scale)
 
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    MaterialInstance mi = GetMaterialInstance();
+    MaterialBindingInstance mi = GetMaterialBindingInstance();
 
     vec2 uv = ResolveSurfaceUV(si.uv0);
     vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
