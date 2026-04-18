@@ -12,7 +12,6 @@ namespace hgl::ecs
         state.preset = hgl::graph::GraphicsPipelinePreset::Solid3D;
 
         state.binding_instance = GetResolvedBindingInstance();
-        state.material = GetShaderMaterialProgram();
 
         if (state.binding_instance)
         {
@@ -34,6 +33,10 @@ namespace hgl::ecs
             if (state.material)
                 assert(state.material == state.binding_instance->GetShaderMaterialProgram());
 #endif
+        }
+        else
+        {
+            state.material = GetShaderMaterialProgram();
         }
 
         return state;
