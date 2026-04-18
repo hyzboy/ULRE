@@ -147,9 +147,6 @@ namespace hgl::ecs
             if (primitive && state.binding_instance == primitive_binding_instance)
                 state.material = primitive->GetShaderMaterialProgram();
 
-            if (!state.material)
-                state.material = state.binding_instance->GetShaderMaterialProgram();
-
             state.domain = state.binding_instance->GetDomain();
             state.domain_id = state.binding_instance->GetDomainID();
             state.mi_id = state.binding_instance->GetMIID();
@@ -158,8 +155,6 @@ namespace hgl::ecs
 #ifdef _DEBUG
             assert(state.domain == state.binding_instance->GetDomain());
             assert(state.domain_id == state.binding_instance->GetDomainID());
-            if (state.material)
-                assert(state.material == state.binding_instance->GetShaderMaterialProgram());
             assert(state.mi_id == state.binding_instance->GetMIID());
             assert(state.preset == state.binding_instance->GetRenderPreset());
 #endif
