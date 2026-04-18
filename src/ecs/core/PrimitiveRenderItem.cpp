@@ -51,9 +51,9 @@ namespace hgl::ecs
         return primitiveComp ? primitiveComp->GetMaterialInstance() : nullptr;
     }
 
-    hgl::graph::ShaderMaterialProgram* PrimitiveRenderItem::GetMaterial() const
+    hgl::graph::ShaderMaterialProgram* PrimitiveRenderItem::GetShaderMaterialProgram() const
     {
-        return primitiveComp ? primitiveComp->GetMaterial() : nullptr;
+        return primitiveComp ? primitiveComp->GetShaderMaterialProgram() : nullptr;
     }
 
     void PrimitiveRenderItem::UpdateWorldMatrix()

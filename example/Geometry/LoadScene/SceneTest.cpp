@@ -92,7 +92,7 @@ private:
                 return(false);
 
             if (!md->material)
-                md->material = md->mi[i]->GetMaterial();
+                md->material = md->mi[i]->GetShaderMaterialProgram();
         }
 
         if (!md->material)

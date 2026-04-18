@@ -64,7 +64,7 @@ namespace hgl::ecs
 
         graph::Primitive*        GetPrimitive()        const override { return primitive; }
         graph::MaterialInstance* GetMaterialInstance() const override;
-        graph::ShaderMaterialProgram*         GetMaterial()         const override;
+        graph::ShaderMaterialProgram*         GetShaderMaterialProgram()         const override;
 
         // ---- Asset-specific ----
 

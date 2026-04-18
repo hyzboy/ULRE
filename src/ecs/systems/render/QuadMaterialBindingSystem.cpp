@@ -157,7 +157,7 @@ namespace hgl::ecs
 
         graph::ShaderMaterialProgram *previous_material = nullptr;
         if (auto *previous_mi = quad->GetOverrideMaterial())
-            previous_material = previous_mi->GetMaterial();
+            previous_material = previous_mi->GetShaderMaterialProgram();
 
         mi->SetRenderPreset(QuadResourcePrepareSystem::GetPresetForWorld(world));
 
@@ -177,7 +177,7 @@ namespace hgl::ecs
 
         if (current_primitive
          && current_primitive != shared_primitive
-         && current_primitive->GetMaterial() == mi->GetMaterial())
+         && current_primitive->GetShaderMaterialProgram() == mi->GetShaderMaterialProgram())
         {
             if (!current_primitive->ChangeMaterialInstance(mi))
                 return false;
@@ -194,7 +194,7 @@ namespace hgl::ecs
                 primitive_manager->Release(current_primitive);
         }
 
-        graph::ShaderMaterialProgram *material = mi->GetMaterial();
+        graph::ShaderMaterialProgram *material = mi->GetShaderMaterialProgram();
         if (!material)
         {
             return false;
@@ -285,7 +285,7 @@ namespace hgl::ecs
 
         if (current_primitive
          && current_primitive != dr->primitive
-         && current_primitive->GetMaterial() == mi->GetMaterial())
+         && current_primitive->GetShaderMaterialProgram() == mi->GetShaderMaterialProgram())
         {
             if (!current_primitive->ChangeMaterialInstance(mi))
                 return false;

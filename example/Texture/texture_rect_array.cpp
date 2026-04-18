@@ -124,7 +124,7 @@ private:
         if(!render_obj[0].mi)
             return(false);
 
-        material = render_obj[0].mi->GetMaterial();
+        material = render_obj[0].mi->GetShaderMaterialProgram();
 
         sampler=sampler_manager->CreateSampler();
 

@@ -162,7 +162,7 @@ public: //Add
 
 public: //Get
 
-    ShaderMaterialProgram *          GetMaterial         (const MaterialID           &id){return rm_material.Get(id);}
+    ShaderMaterialProgram *          GetShaderMaterialProgram         (const MaterialID           &id){return rm_material.Get(id);}
     MaterialInstance *  GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
 
 public: //Release

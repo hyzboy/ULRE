@@ -37,7 +37,7 @@ protected:
 
 public:
 
-            ShaderMaterialProgram *      GetMaterial ()      { return material; }
+            ShaderMaterialProgram *      GetShaderMaterialProgram()      { return material; }
             ResourceDomain *GetDomain   ()      { return domain; }
     const   uint32_t        GetDomainID ()const { return domain_id; }
 

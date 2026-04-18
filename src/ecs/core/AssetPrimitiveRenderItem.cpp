@@ -40,9 +40,9 @@ namespace hgl::ecs
         return primitive ? primitive->GetMaterialInstance() : nullptr;
     }
 
-    graph::ShaderMaterialProgram* AssetPrimitiveRenderItem::GetMaterial() const
+    graph::ShaderMaterialProgram* AssetPrimitiveRenderItem::GetShaderMaterialProgram() const
     {
-        return primitive ? primitive->GetMaterial() : nullptr;
+        return primitive ? primitive->GetShaderMaterialProgram() : nullptr;
     }
 
     void AssetPrimitiveRenderItem::UpdateWorldMatrix()

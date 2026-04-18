@@ -32,8 +32,8 @@ public:
 
     virtual ~Primitive();
 
-            VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
-            ShaderMaterialProgram *          GetMaterial         (){return mat_inst->GetMaterial();}
+            VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetShaderMaterialProgram()->GetPipelineLayout();}
+            ShaderMaterialProgram *          GetShaderMaterialProgram         (){return mat_inst->GetShaderMaterialProgram();}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
@@ -55,7 +55,7 @@ public:
                 if(!mi)
                     return(false);
 
-                if(mi->GetMaterial()!=mat_inst->GetMaterial())      //不能换母材质
+                if(mi->GetShaderMaterialProgram()!=mat_inst->GetShaderMaterialProgram())      //不能换母材质
                     return(false);
 
                 mat_inst=mi;

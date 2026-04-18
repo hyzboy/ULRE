@@ -88,7 +88,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,GraphicsPip
         return(nullptr);
 
     const uint32_t input_count=vil->GetVertexAttribCount();
-    const AnsiString &mtl_name=mi->GetMaterial()->GetName();
+    const AnsiString &mtl_name=mi->GetShaderMaterialProgram()->GetName();
     const GeometryVertexFormat &geometry_vertex_format = geom->GetGeometryVertexFormat();
 
     if(geom->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的

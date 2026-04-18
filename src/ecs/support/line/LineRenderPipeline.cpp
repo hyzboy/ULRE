@@ -690,7 +690,7 @@ namespace hgl::ecs
 
         const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
 
-        auto* mat = mi_->GetMaterial();
+        auto* mat = mi_->GetShaderMaterialProgram();
         if (mat)
             cmd->BindDescriptorSets(mat);
 

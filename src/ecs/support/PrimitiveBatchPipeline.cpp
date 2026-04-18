@@ -507,7 +507,7 @@ namespace hgl::ecs
             if (!item || !item->isVisible)
                 continue;
 
-            auto* material = item->GetMaterial();
+            auto* material = item->GetShaderMaterialProgram();
             auto* primitive = item->GetPrimitive();
             graph::GraphicsPipeline* pipeline = nullptr;
 

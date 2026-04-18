@@ -81,7 +81,7 @@ namespace hgl::ecs
 
         // ShaderMaterialProgram access (returns override if set, otherwise primitive's material)
         hgl::graph::MaterialInstance* GetMaterialInstance() const;
-        hgl::graph::ShaderMaterialProgram* GetMaterial() const;
+        hgl::graph::ShaderMaterialProgram* GetShaderMaterialProgram() const;
 
         // Bounding volume
         bool GetLocalAABB(hgl::math::AABB& outAABB) const;

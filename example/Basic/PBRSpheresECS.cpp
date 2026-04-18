@@ -166,7 +166,7 @@ private:
             return false;
         }
 
-        material = seed_mi->GetMaterial();
+        material = seed_mi->GetShaderMaterialProgram();
 
         sampler = sampler_manager->CreateSampler();
         if (!sampler) {

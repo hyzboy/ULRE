@@ -45,7 +45,7 @@ public:
     // ----------------------------------------------------------------
 
     ResourceDomain     *GetDomain        () const { return domain; }
-    ShaderMaterialProgram           *GetMaterial      () const { return material; }
+    ShaderMaterialProgram           *GetShaderMaterialProgram      () const { return material; }
     MaterialParameters *GetPerMaterialMP () const { return mp_per_material; }
 
     const VkPipelineLayout GetPipelineLayout() const { return material->GetPipelineLayout(); }

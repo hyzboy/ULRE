@@ -123,7 +123,7 @@ private:
         if(!mi_plane_grid)
             return false;
 
-        mtl_plane_grid = mi_plane_grid->GetMaterial();
+        mtl_plane_grid = mi_plane_grid->GetShaderMaterialProgram();
 
         std::cout << "[BillboardECS] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;
 
@@ -146,7 +146,7 @@ private:
             return false;
 
         std::cout << "[BillboardECS] Billboard MI: " << (void*)mi_billboard
-                  << ", ShaderMaterialProgram: " << (void*)mi_billboard->GetMaterial() << std::endl;
+                  << ", ShaderMaterialProgram: " << (void*)mi_billboard->GetShaderMaterialProgram() << std::endl;
 
         return true;
     }
@@ -173,7 +173,7 @@ private:
 
         std::cout << "[BillboardECS] Sampler created: " << (void*)sampler << std::endl;
 
-        const bool bind_ok = mi_billboard->GetMaterial()->BindTextureSampler(mtl::SamplerSlot::BaseColor,
+        const bool bind_ok = mi_billboard->GetShaderMaterialProgram()->BindTextureSampler(mtl::SamplerSlot::BaseColor,
                                               texture,
                                               sampler);
         std::cout << "[BillboardECS] BindTextureSampler(BaseColor): " << (bind_ok ? "OK" : "FAILED")

@@ -113,16 +113,16 @@ namespace hgl::ecs
         return primitive->GetMaterialInstance();
     }
 
-    hgl::graph::ShaderMaterialProgram* PrimitiveComponent::GetMaterial() const
+    hgl::graph::ShaderMaterialProgram* PrimitiveComponent::GetShaderMaterialProgram() const
     {
         // Return override material's base if set
         if (overrideMaterial)
-            return overrideMaterial->GetMaterial();
+            return overrideMaterial->GetShaderMaterialProgram();
 
         if (!primitive)
             return nullptr;
 
-        return primitive->GetMaterial();
+        return primitive->GetShaderMaterialProgram();
     }
 
     bool PrimitiveComponent::GetLocalAABB(hgl::math::AABB& outAABB) const

@@ -787,7 +787,7 @@ MaterialInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(const Ma
 
     if(out_key)
     {
-        out_key->material = mi->GetMaterial();
+        out_key->material = mi->GetShaderMaterialProgram();
         out_key->vil = mi->GetVIL();
         out_key->preset = mi->GetRenderPreset();
         out_key->domain = mi->GetDomain();
