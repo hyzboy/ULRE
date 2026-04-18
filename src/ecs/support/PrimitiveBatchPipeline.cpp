@@ -108,16 +108,6 @@ namespace hgl::ecs
                             static_cast<void *>(mi->GetDomain()));
             }
 
-#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
-            const auto *mi_vil = mi->GetVIL();
-            if (state.vil && mi_vil && state.vil != mi_vil)
-            {
-                GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.vil=%p mi.vil=%p",
-                            static_cast<const void *>(state.vil),
-                            static_cast<const void *>(mi_vil));
-            }
-#endif
-
             if (state.preset != mi->GetRenderPreset())
             {
                 GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.preset=%d mi.preset=%d",
@@ -130,22 +120,6 @@ namespace hgl::ecs
                 GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain is null but mi.domain=%p",
                             static_cast<void *>(mi->GetDomain()));
             }
-
-#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
-            // Blocker-2: material pointer three-source consistency check.
-            // state.material must equal mi->GetShaderMaterialProgram() since
-            // state is assembled from MI. If these diverge the MI has returned
-            // different ShaderMaterialProgram pointers across calls — an MI bug.
-            {
-                auto *mi_material = mi->GetShaderMaterialProgram();
-                if (state.material && mi_material && state.material != mi_material)
-                {
-                    GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch (material): state.material=%p mi.material=%p",
-                                static_cast<const void *>(state.material),
-                                static_cast<const void *>(mi_material));
-                }
-            }
-#endif
         }
 #endif
     }
@@ -623,8 +597,7 @@ namespace hgl::ecs
 #ifdef _DEBUG
                 if (!state.vil)
                 {
-                    GLogDebug("[ECS::PrimitiveBatchPipeline] VIL source: state.vil=null (legacy=%d) mi.vil=%p default.vil=%p material=%s",
-                              int(ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER),
+                    GLogDebug("[ECS::PrimitiveBatchPipeline] VIL source: state.vil=null mi.vil=%p default.vil=%p material=%s",
                               static_cast<const void *>(mi_vil),
                               static_cast<const void *>(default_vil),
                               material->GetName().c_str());
@@ -632,22 +605,11 @@ namespace hgl::ecs
 
                 if (state.vil && mi_vil && state.vil != mi_vil)
                 {
-                    GLogWarning("[ECS::PrimitiveBatchPipeline] VIL mismatch: state.vil=%p mi.vil=%p material=%s legacy=%d",
+                    GLogWarning("[ECS::PrimitiveBatchPipeline] VIL mismatch: state.vil=%p mi.vil=%p material=%s",
                                 static_cast<const void *>(state.vil),
                                 static_cast<const void *>(mi_vil),
-                                material->GetName().c_str(),
-                                int(ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER));
+                                material->GetName().c_str());
                 }
-#endif
-
-#ifdef _DEBUG
-#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
-                if (!vil && mi && mi->GetVIL())
-                {
-                    GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.vil is null but mi.vil=%p",
-                                static_cast<const void *>(mi->GetVIL()));
-                }
-#endif
 #endif
 
                 // Macro=0 may intentionally leave state.vil empty; in that case
@@ -661,11 +623,10 @@ namespace hgl::ecs
 #ifdef _DEBUG
                 if (vil == default_vil && mi_vil && default_vil != mi_vil)
                 {
-                    GLogWarning("[ECS::PrimitiveBatchPipeline] VIL fallback changed source: using default.vil=%p instead of mi.vil=%p material=%s legacy=%d",
+                    GLogWarning("[ECS::PrimitiveBatchPipeline] VIL fallback changed source: using default.vil=%p instead of mi.vil=%p material=%s",
                                 static_cast<const void *>(default_vil),
                                 static_cast<const void *>(mi_vil),
-                                material->GetName().c_str(),
-                                int(ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER));
+                                material->GetName().c_str());
                 }
 #endif
 

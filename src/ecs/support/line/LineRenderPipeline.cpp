@@ -70,14 +70,6 @@ namespace hgl::ecs
 
             state.preset = mi->GetRenderPreset();
 
-#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
-            if (!state.vil)
-                state.vil = mi->GetVIL();
-
-            if (!state.material)
-                state.material = mi->GetShaderMaterialProgram();
-#endif
-
             return state;
         }
 

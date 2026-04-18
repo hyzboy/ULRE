@@ -35,11 +35,6 @@ namespace hgl::ecs
         if (!mi)
             return state;
 
-#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
-        if (!state.material)
-            state.material = mi->GetShaderMaterialProgram();
-#endif
-
         return state;
     }
 

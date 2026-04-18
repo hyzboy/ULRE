@@ -324,8 +324,8 @@ private:
             billboard->SetFixedPixelSize(true);
             std::cout << "  -> SetFixedPixelSize(true)" << std::endl;
 
-            billboard->SetPixelSize(256, 256);
-            std::cout << "  -> SetPixelSize(256, 256)" << std::endl;
+            billboard->SetPixelSize(512, 512);
+            std::cout << "  -> SetPixelSize(512, 512)" << std::endl;
 
             billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
             std::cout << "  -> SetFrontFace(CLOCKWISE)" << std::endl;

@@ -10,10 +10,6 @@
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
 
-#ifndef ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
-#define ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER 0
-#endif
-
 namespace hgl::graph{
 /**
 * 图元(渲染中的最小渲染单位，一个几何体配一个材质)
@@ -24,7 +20,6 @@ class Primitive
     Geometry *          geometry;
 
     mutable ShaderMaterialProgram *resolved_material = nullptr;
-    mutable const VIL *resolved_vil = nullptr;
 
     GeometryDataBuffer *data_buffer;
     GeometryDrawRange   draw_range;
@@ -36,15 +31,10 @@ private:
                 if(!mat_inst)
                 {
                     resolved_material=nullptr;
-                    resolved_vil=nullptr;
                     return;
                 }
 
                 resolved_material=mat_inst->GetShaderMaterialProgram();
-
-#if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
-                resolved_vil=mat_inst->GetVIL();
-#endif
             }
 
     friend Primitive *DirectCreatePrimitive(Geometry *,MaterialBindingInstance *,GraphicsPipelinePreRaster *);

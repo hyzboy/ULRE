@@ -79,17 +79,8 @@ namespace hgl::ecs
             assert(state.domain == state.binding_instance->GetDomain());
             assert(state.domain_id == state.binding_instance->GetDomainID());
 
-        #if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
-            assert(state.vil == state.binding_instance->GetVIL());
-        #endif
-
             assert(state.mi_id == state.binding_instance->GetMIID());
             assert(state.preset == state.binding_instance->GetRenderPreset());
-
-        #if ULRE_PRIMITIVE_USE_LEGACY_MI_GETTER
-            if (state.material)
-                assert(state.material == state.binding_instance->GetShaderMaterialProgram());
-        #endif
         }
     #endif
 
