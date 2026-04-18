@@ -20,7 +20,6 @@ namespace hgl::ecs
 
             state.mi_id     = state.binding_instance->GetMIID();
             state.preset    = state.binding_instance->GetRenderPreset();
-            state.material  = GetShaderMaterialProgram();
 
 #ifdef _DEBUG
             // Consistency: re-query each field and confirm it matches what we just wrote.
