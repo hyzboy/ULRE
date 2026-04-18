@@ -54,8 +54,10 @@ namespace hgl::ecs
 
         // ShaderMaterialProgram batching interface
         hgl::graph::Primitive* GetPrimitive() const override;
+        // Compatibility overrides; runtime call sites should consume GetResolvedMaterialState().
         hgl::graph::MaterialBindingInstance* GetResolvedBindingInstance() const override;
         hgl::graph::ShaderMaterialProgram* GetShaderMaterialProgram() const override;
+        // Unified runtime source of truth for material-related state.
         ResolvedMaterialState GetResolvedMaterialState() const override;
 
         // Update world matrix from transform

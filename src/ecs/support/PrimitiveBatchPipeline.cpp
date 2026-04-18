@@ -89,22 +89,9 @@ namespace hgl::ecs
             return RenderQueue::Opaque;
         }
 
-        graph::ShaderMaterialProgram *ResolveMaterialFromState(const RenderItem *item,
-                                                               const RenderItem::ResolvedMaterialState &state)
+        graph::ShaderMaterialProgram *ResolveMaterialFromState(const RenderItem::ResolvedMaterialState &state)
         {
-            if (state.material)
-                return state.material;
-
-            return item ? item->GetShaderMaterialProgram() : nullptr;
-        }
-
-        graph::MaterialBindingInstance *ResolveMIFromState(const RenderItem *item,
-                                                           const RenderItem::ResolvedMaterialState &state)
-        {
-            if (state.binding_instance)
-                return state.binding_instance;
-
-            return item ? item->GetResolvedBindingInstance() : nullptr;
+            return state.material;
         }
     }
 
@@ -526,7 +513,7 @@ namespace hgl::ecs
                 continue;
 
             const auto state = item->GetResolvedMaterialState();
-            auto* material = ResolveMaterialFromState(item, state);
+            auto* material = ResolveMaterialFromState(state);
 
             auto* primitive = item->GetPrimitive();
             graph::GraphicsPipeline* pipeline = nullptr;
@@ -559,7 +546,7 @@ namespace hgl::ecs
                 bool prim_restart = false;
                 graph::GraphicsPipelinePreset preset = state.preset;
 
-                auto* mi = ResolveMIFromState(item, state);
+                auto* mi = state.binding_instance;
 
 #ifdef _DEBUG
                 auto* legacy_mi = item->GetResolvedBindingInstance();
@@ -645,7 +632,7 @@ namespace hgl::ecs
 
             // Phase 4: include ResourceDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
-            auto* mi = ResolveMIFromState(item, state);
+            auto* mi = state.binding_instance;
 
 #ifdef _DEBUG
             if (mi)
@@ -683,8 +670,11 @@ namespace hgl::ecs
 
 
             auto* domain = state.domain;
+
+#ifdef _DEBUG
             if (!domain && mi)
                 domain = mi->GetDomain();
+#endif
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 
             MaterialPipelineKey key(material, pipeline, domain, queue);

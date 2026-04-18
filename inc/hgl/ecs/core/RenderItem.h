@@ -69,8 +69,11 @@ namespace hgl::ecs
 
         // For material batching support
         virtual hgl::graph::Primitive* GetPrimitive() const = 0;
+        // Compatibility accessor: prefer GetResolvedMaterialState().binding_instance in runtime paths.
         virtual hgl::graph::MaterialBindingInstance* GetResolvedBindingInstance() const = 0;
+        // Compatibility accessor: prefer GetResolvedMaterialState().material in runtime paths.
         virtual hgl::graph::ShaderMaterialProgram* GetShaderMaterialProgram() const = 0;
+        // Unified runtime source of truth for material-related state.
         virtual ResolvedMaterialState GetResolvedMaterialState() const;
 
         // Comparison for sorting
