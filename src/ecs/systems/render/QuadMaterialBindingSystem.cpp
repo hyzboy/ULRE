@@ -63,9 +63,13 @@ namespace hgl::ecs
         {
             std::cout << "[QuadMaterialBindingSystem] DEBUG: primitive material mismatch between resolved MI and legacy accessor" << std::endl;
         }
+        else if (!state_material && legacy_material)
+        {
+            std::cout << "[QuadMaterialBindingSystem] DEBUG: primitive resolved MI material is null while legacy accessor is non-null" << std::endl;
+        }
 #endif
 
-        return state_material ? state_material : prim->GetShaderMaterialProgram();
+        return state_material;
     }
 
     static graph::ResourceDomain *ResolveDomainForMaterial(graph::GraphicsContext *gc,
