@@ -5,8 +5,10 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
+#include<cassert>
 
 namespace hgl::ecs
 {
@@ -105,9 +107,30 @@ namespace hgl::ecs
         return ResolveEffectiveMaterialState().domain;
     }
 
+    uint32_t PrimitiveComponent::GetResolvedDomainID() const
+    {
+        return ResolveEffectiveMaterialState().domain_id;
+    }
+
+    const hgl::graph::VertexInputLayout* PrimitiveComponent::GetResolvedVIL() const
+    {
+        return ResolveEffectiveMaterialState().vil;
+    }
+
+    int PrimitiveComponent::GetResolvedMIID() const
+    {
+        return ResolveEffectiveMaterialState().mi_id;
+    }
+
+    hgl::graph::GraphicsPipelinePreset PrimitiveComponent::GetResolvedRenderPreset() const
+    {
+        return ResolveEffectiveMaterialState().preset;
+    }
+
     PrimitiveComponent::EffectiveMaterialState PrimitiveComponent::ResolveEffectiveMaterialState() const
     {
         EffectiveMaterialState state{};
+        state.preset = hgl::graph::GraphicsPipelinePreset::Solid3D;
 
         // Priority 1: deferred resolve result (latest requested binding instance)
         if (material_slot.resolved_binding_instance)
@@ -120,6 +143,17 @@ namespace hgl::ecs
         {
             state.material = state.binding_instance->GetShaderMaterialProgram();
             state.domain = state.binding_instance->GetDomain();
+            state.domain_id = state.binding_instance->GetDomainID();
+            state.vil = state.binding_instance->GetVIL();
+            state.mi_id = state.binding_instance->GetMIID();
+            state.preset = state.binding_instance->GetRenderPreset();
+
+#ifdef _DEBUG
+            assert(state.material == state.binding_instance->GetShaderMaterialProgram());
+            assert(state.domain == state.binding_instance->GetDomain());
+            assert(state.vil == state.binding_instance->GetVIL());
+            assert(state.mi_id == state.binding_instance->GetMIID());
+#endif
         }
 
         return state;

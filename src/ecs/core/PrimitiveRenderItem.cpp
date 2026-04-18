@@ -48,12 +48,18 @@ namespace hgl::ecs
 
     hgl::graph::MaterialBindingInstance* PrimitiveRenderItem::GetResolvedBindingInstance() const
     {
-        return primitiveComp ? primitiveComp->GetResolvedBindingInstance() : nullptr;
+        return GetResolvedMaterialState().binding_instance;
     }
 
     hgl::graph::ShaderMaterialProgram* PrimitiveRenderItem::GetShaderMaterialProgram() const
     {
-        return primitiveComp ? primitiveComp->GetShaderMaterialProgram() : nullptr;
+        return GetResolvedMaterialState().material;
+    }
+
+    PrimitiveComponent::ResolvedMaterialState PrimitiveRenderItem::GetResolvedMaterialState() const
+    {
+        return primitiveComp ? primitiveComp->ResolveEffectiveMaterialState()
+                             : PrimitiveComponent::ResolvedMaterialState{};
     }
 
     void PrimitiveRenderItem::UpdateWorldMatrix()

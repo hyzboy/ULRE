@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/RenderItem.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
 
 namespace hgl
 {
@@ -18,7 +19,6 @@ namespace hgl::ecs
     class Entity;
     class ECSContext;
     class TransformComponent;
-    class PrimitiveComponent;
 
     /**
      * PrimitiveRenderItem - specialized RenderItem for PrimitiveComponent
@@ -56,6 +56,7 @@ namespace hgl::ecs
         hgl::graph::Primitive* GetPrimitive() const override;
         hgl::graph::MaterialBindingInstance* GetResolvedBindingInstance() const override;
         hgl::graph::ShaderMaterialProgram* GetShaderMaterialProgram() const override;
+        PrimitiveComponent::ResolvedMaterialState GetResolvedMaterialState() const;
 
         // Update world matrix from transform
         void UpdateWorldMatrix();

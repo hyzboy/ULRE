@@ -18,6 +18,8 @@ namespace hgl
         class ShaderMaterialProgram;
         class MaterialBindingInstance;
         class ResourceDomain;
+        class VertexInputLayout;
+        enum class GraphicsPipelinePreset;
         class Geometry;
     }
 }
@@ -38,14 +40,25 @@ namespace hgl::ecs
      */
     class PrimitiveComponent : public RenderableComponent
     {
-    private:
+    public:
 
-        struct EffectiveMaterialState
+        struct ResolvedMaterialState
         {
             hgl::graph::MaterialBindingInstance* binding_instance = nullptr;
             hgl::graph::ShaderMaterialProgram* material = nullptr;
             hgl::graph::ResourceDomain* domain = nullptr;
+            uint32_t domain_id = 0xFFFFFFFFu;
+            const hgl::graph::VertexInputLayout* vil = nullptr;
+            int mi_id = -1;
+            hgl::graph::GraphicsPipelinePreset preset{};
+
+            bool HasBindingInstance() const { return binding_instance != nullptr; }
+            bool HasMaterial() const { return material != nullptr; }
         };
+
+        using EffectiveMaterialState = ResolvedMaterialState;
+
+    private:
 
         hgl::graph::Primitive* primitive;              // The primitive to render (not owned)
 
@@ -84,6 +97,10 @@ namespace hgl::ecs
         hgl::graph::MaterialBindingInstance* GetResolvedBindingInstance() const;
         hgl::graph::ShaderMaterialProgram* GetShaderMaterialProgram() const;
         hgl::graph::ResourceDomain* GetResolvedDomain() const;
+        uint32_t GetResolvedDomainID() const;
+        const hgl::graph::VertexInputLayout* GetResolvedVIL() const;
+        int GetResolvedMIID() const;
+        hgl::graph::GraphicsPipelinePreset GetResolvedRenderPreset() const;
         EffectiveMaterialState ResolveEffectiveMaterialState() const;
 
         // Bounding volume
