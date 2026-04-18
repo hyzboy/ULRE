@@ -541,9 +541,20 @@ namespace hgl::ecs
                 bool prim_restart = false;
                 graph::GraphicsPipelinePreset preset = state.preset;
 
-                auto* mi = item->GetResolvedBindingInstance();
+                auto* mi = state.binding_instance;
+
+#ifdef _DEBUG
+                auto* legacy_mi = item->GetResolvedBindingInstance();
+                if (legacy_mi && mi && legacy_mi != mi)
+                {
+                    LogWarning("[ECS::PrimitiveBatchPipeline] MI source mismatch detected: state.mi=%p legacy.item.mi=%p",
+                               static_cast<void*>(mi),
+                               static_cast<void*>(legacy_mi));
+                }
+#endif
+
                 if (!mi)
-                    mi = state.binding_instance;
+                    mi = item->GetResolvedBindingInstance();
 
                 if (mi)
                 {
@@ -619,9 +630,9 @@ namespace hgl::ecs
 
             // Phase 4: include ResourceDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
-            auto* mi     = item->GetResolvedBindingInstance();
+            auto* mi     = state.binding_instance;
             if (!mi)
-                mi = state.binding_instance;
+                mi = item->GetResolvedBindingInstance();
 
 #ifdef _DEBUG
             if (mi)
