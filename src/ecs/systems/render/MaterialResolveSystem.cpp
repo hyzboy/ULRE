@@ -7,6 +7,7 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/mesh/Primitive.h>
+#include<hgl/log/Log.h>
 
 #include <cstdint>
 #include <unordered_map>
@@ -152,6 +153,14 @@ namespace hgl::ecs
 		std::unordered_map<PrototypeKey, std::vector<size_t>, PrototypeKeyHash> prototype_buckets;
 		prototype_buckets.reserve(primitives.size());
 
+		uint32_t resolve_input_count = 0;
+		uint32_t resolved_count = 0;
+		uint32_t resolve_fail_count = 0;
+		uint32_t primitive_created_count = 0;
+		uint32_t primitive_updated_count = 0;
+		uint32_t fallback_override_count = 0;
+		uint32_t mi_bucket_count = 0;
+
 		for (auto &comp : primitives)
 		{
 			if (!comp || !comp->NeedsMaterialBindingResolve())
@@ -179,6 +188,7 @@ namespace hgl::ecs
 
 			const size_t index = tasks.size();
 			tasks.push_back(task);
+			++resolve_input_count;
 
 			PrototypeKey pkey;
 			pkey.recipe = task.recipe;
@@ -208,6 +218,8 @@ namespace hgl::ecs
 
 			for (const auto &[mikey, mi_indices] : mi_buckets)
 			{
+				++mi_bucket_count;
+
 				if (mi_indices.empty())
 					continue;
 
@@ -220,7 +232,10 @@ namespace hgl::ecs
 															 seed.slot->GetInstanceDataPtr(),
 															 seed.slot->GetInstanceDataSize());
 				if (!mi)
+				{
+					resolve_fail_count += static_cast<uint32_t>(mi_indices.size());
 					continue;
+				}
 
 				for (const size_t idx : mi_indices)
 				{
@@ -228,6 +243,7 @@ namespace hgl::ecs
 
 					task.slot->resolved_binding_instance = mi;
 					task.slot->dirty = false;
+					++resolved_count;
 
 					// Stage-2: unresolved geometry still creates Primitive in-place.
 					if (task.comp->GetUnresolvedGeometry())
@@ -236,18 +252,38 @@ namespace hgl::ecs
 						{
 							task.comp->SetPrimitive(prim);
 							task.comp->SetUnresolvedGeometry(nullptr);
+							++primitive_created_count;
 						}
 					}
 					else if (auto *existing_prim = task.comp->GetPrimitive())
 					{
 						// Stage-2 consistency: keep primitive-side binding instance aligned with resolve result.
 						if (!existing_prim->ChangeMaterialInstance(mi))
+						{
 							task.comp->SetOverrideBindingInstance(mi);
+							++fallback_override_count;
+						}
 						else
+						{
 							task.comp->ClearOverrideMaterial();
+							++primitive_updated_count;
+						}
 					}
 				}
 			}
+		}
+
+		if (resolve_input_count > 0)
+		{
+			LogDebug("[ECS::MaterialResolveSystem] Stage2 summary: inputs=%u prototype_buckets=%zu mi_buckets=%u resolved=%u fail=%u created=%u updated=%u fallback_override=%u",
+				resolve_input_count,
+				prototype_buckets.size(),
+				mi_bucket_count,
+				resolved_count,
+				resolve_fail_count,
+				primitive_created_count,
+				primitive_updated_count,
+				fallback_override_count);
 		}
 	}
 }//namespace hgl::ecs
