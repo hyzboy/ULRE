@@ -22,7 +22,6 @@ namespace hgl::ecs
         {
             RenderableRecord renderable;
             bool hasPrimitive = false;
-            bool hasOverrideMaterial = false;
         };
     }
 
@@ -43,7 +42,6 @@ namespace hgl::ecs
         data.renderable.visible = primitive->IsVisible();
         data.renderable.boundingRadius = primitive->GetBoundingRadius();
         data.hasPrimitive = primitive->GetPrimitive() != nullptr;
-        data.hasOverrideMaterial = primitive->GetOverrideMaterial() != nullptr;
 
         out_record.type = GetSerializationType();
         out_record.payload = data;
@@ -83,11 +81,6 @@ namespace hgl::ecs
         }
     }
 
-    void PrimitiveComponent::SetOverrideBindingInstance(hgl::graph::MaterialBindingInstance* mi)
-    {
-        overrideMaterial = mi;
-    }
-
     void PrimitiveComponent::SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe *rec,
                                                const void *instance_data,
                                                uint32_t instance_data_size)
@@ -119,10 +112,7 @@ namespace hgl::ecs
         // Priority 1: deferred resolve result (latest requested binding instance)
         if (material_slot.resolved_binding_instance)
             state.binding_instance = material_slot.resolved_binding_instance;
-        // Priority 2: explicit override binding instance
-        else if (overrideMaterial)
-            state.binding_instance = overrideMaterial;
-        // Priority 3: primitive-owned binding instance
+        // Priority 2: primitive-owned binding instance
         else if (primitive)
             state.binding_instance = primitive->GetResolvedBindingInstance();
 
@@ -179,10 +169,9 @@ namespace hgl::ecs
     {
         RenderableComponent::OnDetach();
 
-        // Don't delete primitive or material - they're managed externally
-        // Just clear our references
+        // Don't delete primitive - it's managed externally
+        // Just clear our reference
         primitive = nullptr;
-        overrideMaterial = nullptr;
     }
 }//namespace hgl::ecs
 

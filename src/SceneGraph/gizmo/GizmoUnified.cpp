@@ -28,6 +28,7 @@
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/render/RenderContext.h>
+#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/io/event/KeyboardEvent.h>
 #include<glm/gtc/quaternion.hpp>

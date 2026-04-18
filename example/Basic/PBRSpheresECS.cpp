@@ -502,6 +502,12 @@ private:
             return false;
         }
 
+        auto* primitive_manager = GetPrimitiveManager();
+        if (!primitive_manager) {
+            printf("[ERROR] InitECS: No primitive_manager\n");
+            return false;
+        }
+
         // 计算网格原点，使整体居中于世界原点
         const float offset = (GRID_SIZE - 1) * SPHERE_SPACING * 0.5f;
 
@@ -528,11 +534,10 @@ private:
                 transform->SetMovable(true);
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
-                // INTENTIONAL: PBR sphere grid — all entities in the same column share
-                // base geometry, but each row/col pair has distinct metallic/roughness MI.
-                // Using the explicit override path here is correct.
-                prim_comp->SetPrimitive(base_primitives[col]);
-                prim_comp->SetOverrideBindingInstance(sphere_mi[row][col]); // NOLINT(deprecated)
+                // Each sphere entity gets its own Primitive combining column geometry with per-sphere MI.
+                auto* sphere_prim = primitive_manager->CreatePrimitive(
+                    base_primitives[col]->GetGeometry(), sphere_mi[row][col]);
+                prim_comp->SetPrimitive(sphere_prim);
                 prim_comp->SetVisible(true);
             }
         }

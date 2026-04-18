@@ -260,12 +260,11 @@ namespace hgl::ecs
 						// Stage-2 consistency: keep primitive-side binding instance aligned with resolve result.
 						if (!existing_prim->ChangeMaterialInstance(mi))
 						{
-							task.comp->SetOverrideBindingInstance(mi);
+							LogWarning("[ECS::MaterialResolveSystem] ChangeMaterialInstance failed (material mismatch); resolve result discarded for this component.");
 							++fallback_override_count;
 						}
 						else
 						{
-							task.comp->ClearOverrideMaterial();
 							++primitive_updated_count;
 						}
 					}

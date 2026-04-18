@@ -81,12 +81,11 @@ namespace hgl::ecs
         {
             RenderableRecord renderable;
             bool hasPrimitive = false;
-            bool hasOverrideMaterial = false;
 
             template<class Archive>
             void serialize(Archive& ar)
             {
-                ar(CEREAL_NVP(renderable), CEREAL_NVP(hasPrimitive), CEREAL_NVP(hasOverrideMaterial));
+                ar(CEREAL_NVP(renderable), CEREAL_NVP(hasPrimitive));
             }
         };
 

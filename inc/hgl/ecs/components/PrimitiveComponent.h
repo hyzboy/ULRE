@@ -48,7 +48,6 @@ namespace hgl::ecs
         };
 
         hgl::graph::Primitive* primitive;              // The primitive to render (not owned)
-        hgl::graph::MaterialBindingInstance* overrideMaterial; // Optional material override (not owned)
 
         hgl::graph::MaterialResolveRequest material_slot;        // Deferred MI resolution slot (Phase B)
         hgl::graph::Geometry* unresolved_geometry = nullptr; // Geometry awaiting MI (not owned)
@@ -58,7 +57,6 @@ namespace hgl::ecs
         explicit PrimitiveComponent(const std::string& name = "Primitive")
             : RenderableComponent(name)
             , primitive(nullptr)
-            , overrideMaterial(nullptr)
         {
         }
 
@@ -71,13 +69,6 @@ namespace hgl::ecs
 
         void SetPrimitive(hgl::graph::Primitive* prim);
         hgl::graph::Primitive* GetPrimitive() const { return primitive; }
-
-        // ShaderMaterialProgram override
-        [[deprecated("legacy manual override path; prefer SetMaterialRecipe + SetUnresolvedGeometry")]]
-        void SetOverrideBindingInstance(hgl::graph::MaterialBindingInstance* mi);
-        [[deprecated("legacy manual override path; use GetResolvedBindingInstance for effective state")]]
-        hgl::graph::MaterialBindingInstance* GetOverrideMaterial() const { return overrideMaterial; }
-        void ClearOverrideMaterial() { overrideMaterial = nullptr; }
 
         // Deferred material resolution (Phase B)
         void SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe *rec,

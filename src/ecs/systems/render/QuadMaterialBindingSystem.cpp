@@ -106,8 +106,8 @@ namespace hgl::ecs
 
         // ── Legacy single-texture path ────────────────────────────
 
-        // If texture hasn't changed and material already exists, skip
-        if (!quad->IsTextureDirty() && quad->GetOverrideMaterial())
+        // If texture hasn't changed and a quad-specific primitive is already bound, skip
+        if (!quad->IsTextureDirty() && quad->GetPrimitive() != QuadResourcePrepareSystem::GetSharedPrimitive())
             return true;
 
         auto* graphics_context = world->GetGraphicsContext();
@@ -156,8 +156,11 @@ namespace hgl::ecs
             return false;
 
         graph::ShaderMaterialProgram *previous_material = nullptr;
-        if (auto *previous_mi = quad->GetOverrideMaterial())
-            previous_material = previous_mi->GetShaderMaterialProgram();
+        {
+            auto *current_prim = quad->GetPrimitive();
+            if (current_prim && current_prim != QuadResourcePrepareSystem::GetSharedPrimitive())
+                previous_material = current_prim->GetShaderMaterialProgram();
+        }
 
         mi->SetRenderPreset(QuadResourcePrepareSystem::GetPresetForWorld(world));
 
@@ -224,7 +227,6 @@ namespace hgl::ecs
 
         // Update quad component
         quad->SetPrimitive(quad_primitive);
-        quad->SetOverrideBindingInstance(mi);
         quad->SetTextureObjects(texture, shared_sampler);
         quad->SetAppliedTexturePath(texture_path);
         return true;
@@ -245,8 +247,8 @@ namespace hgl::ecs
         if (!dr || !dr->material || !dr->primitive)
             return false; // will be ready next frame after EnsureDomainResources()
 
-        // If texture hasn't changed and material already exists, skip
-        if (!quad->IsTextureDirty() && quad->GetOverrideMaterial())
+        // If texture hasn't changed and a quad-specific primitive is already bound, skip
+        if (!quad->IsTextureDirty() && quad->GetPrimitive() != dr->primitive)
             return true;
 
         auto* graphics_context = world->GetGraphicsContext();
@@ -308,7 +310,6 @@ namespace hgl::ecs
 
         // Update quad component
         quad->SetPrimitive(quad_primitive);
-        quad->SetOverrideBindingInstance(mi);
         quad->SetTextureObjects(nullptr, dr->sampler); // texture lives in the domain array
         quad->SetAppliedTexturePath(texture_path);
         return true;

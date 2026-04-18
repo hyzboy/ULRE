@@ -183,6 +183,10 @@ private:
         if(!ecs_world)
             return false;
 
+        auto* primitive_manager = GetPrimitiveManager();
+        if (!primitive_manager)
+            return false;
+
         math::Vector3f offset(1.0f/float(TexCount),0,0);
 
         for(uint32_t i=0;i<TexCount;i++)
@@ -198,11 +202,11 @@ private:
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform->SetMovable(false);
 
-            // INTENTIONAL: all entities share a single geometry (mesh_rect) but each
-            // needs a distinct per-texture MI.  The deferred recipe path would require
-            // per-entity recipes; using the explicit override path here is correct.
-            primitive->SetPrimitive(mesh_rect);
-            primitive->SetOverrideBindingInstance(render_obj[i].mi); // NOLINT(deprecated)
+            // Each entity gets its own Primitive with its own per-texture MI.
+            auto* prim_for_entity = (i == 0)
+                ? mesh_rect
+                : primitive_manager->CreatePrimitive(mesh_rect->GetGeometry(), render_obj[i].mi);
+            primitive->SetPrimitive(prim_for_entity);
             primitive->SetVisible(true);
         }
 

@@ -33,13 +33,14 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
                                      hgl::ecs::Entity *entity,
                                      const GizmoShape shape,
                                      const GizmoColor color,
+                                     hgl::graph::PrimitiveManager *primitive_manager,
                                      const int group_id = -1)
 {
-    if (!entity)
+    if (!entity || !primitive_manager)
         return false;
 
-    auto primitive = GetGizmoMeshPrimitive(shape);
-    if (!primitive)
+    auto shared_prim = GetGizmoMeshPrimitive(shape);
+    if (!shared_prim)
         return false;
 
     auto *base_material = GetGizmoMI3D(color);
@@ -50,8 +51,11 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
     if (!prim_comp)
         return false;
 
-    prim_comp->SetPrimitive(primitive);
-    prim_comp->SetOverrideBindingInstance(base_material);
+    // Each gizmo entity owns its own Primitive so highlight can use ChangeMaterialInstance.
+    auto *own_prim = primitive_manager->CreatePrimitive(shared_prim->GetGeometry(), base_material);
+    if (!own_prim)
+        return false;
+    prim_comp->SetPrimitive(own_prim);
     prim_comp->SetVisible(false);
 
     GizmoVisualPrimitive item;
@@ -75,7 +79,9 @@ static bool MakeAndAttachPrimitive(std::vector<GizmoVisualPrimitive> &primitives
     auto *entity = world->CreateChildEntity(parent, d, &entity_ids, desc.out_transform);
     if (!entity)
         return false;
-    return AttachAssetModePrimitive(primitives, entity, desc.shape, desc.color, desc.group_id);
+    auto *gc = world->GetGraphicsContext();
+    auto *pm = gc ? gc->GetPrimitiveManager() : nullptr;
+    return AttachAssetModePrimitive(primitives, entity, desc.shape, desc.color, pm, desc.group_id);
 }
 
 static void SetPrimitivesVisible(std::vector<GizmoVisualPrimitive> &primitives, bool visible)
@@ -111,8 +117,8 @@ static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
             if (!entry.primitive)
                 continue;
 
-            entry.primitive->SetOverrideBindingInstance(highlighted ? GetGizmoMI3D(GizmoColor::Yellow)
-                                                             : entry.base_material);
+            entry.primitive->GetPrimitive()->ChangeMaterialInstance(highlighted ? GetGizmoMI3D(GizmoColor::Yellow)
+                                                                                 : entry.base_material);
         }
     };
 
