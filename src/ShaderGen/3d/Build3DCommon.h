@@ -39,8 +39,8 @@ inline SSBOSemanticSet MakeTransformSSBOs(const bool with_material_instance)
 
     if(with_material_instance)
     {
-        descriptors.insert(SSBODescriptorSemantic::MaterialInstanceID);
-        descriptors.insert(SSBODescriptorSemantic::MaterialInstanceData);
+        descriptors.insert(SSBODescriptorSemantic::MaterialBindingInstanceID);
+        descriptors.insert(SSBODescriptorSemantic::MaterialBindingInstanceData);
     }
 
     return descriptors;

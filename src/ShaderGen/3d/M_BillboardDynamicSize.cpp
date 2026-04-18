@@ -23,8 +23,8 @@ namespace
     const SSBOSemanticSet BILLBOARD_DYNAMIC_BASE_SSBOS = {
         SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
-        SSBODescriptorSemantic::MaterialInstanceID,
-        SSBODescriptorSemantic::MaterialInstanceData,
+        SSBODescriptorSemantic::MaterialBindingInstanceID,
+        SSBODescriptorSemantic::MaterialBindingInstanceData,
     };
 
     constexpr SamplerSlot BILLBOARD_DYNAMIC_TEX_SLOTS[] = {
@@ -64,7 +64,7 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
     // When using texture arrays, the MIT SSBO carries per-instance layer indices.
     SSBOSemanticSet dynamic_ssbos = BILLBOARD_DYNAMIC_BASE_SSBOS;
     if (use_array)
-        AddSSBODescriptor(dynamic_ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID);
+        AddSSBODescriptor(dynamic_ssbos, SSBODescriptorSemantic::MaterialBindingInstanceTexture);
 
     StaticMaterialDef dynamic_def = BILLBOARD_DYNAMIC_DEF_TEMPLATE;
     dynamic_def.texture_samplers  = &dynamic_samplers;

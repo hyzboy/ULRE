@@ -28,9 +28,9 @@ namespace hgl::graph::mtl
         Unknown = 0,
         TransformID,
         TransformData,
-        MaterialInstanceID,
-        MaterialInstanceData,
-        MaterialInstanceTextureID,
+        MaterialBindingInstanceID,
+        MaterialBindingInstanceData,
+        MaterialBindingInstanceTexture,
         BoneJoint,
         BoneJointWeight,
 

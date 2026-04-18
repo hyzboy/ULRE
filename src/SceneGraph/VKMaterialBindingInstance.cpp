@@ -6,7 +6,7 @@
 namespace hgl::graph{
 
 // ---------------------------------------------------------------------------
-// MaterialInstanceData — constructors / destructor
+// MaterialBindingInstanceData — constructors / destructor
 // ---------------------------------------------------------------------------
 
 /// Phase 1 新路径：经由 ResourceDomain 分配
@@ -25,7 +25,7 @@ MaterialBindingInstance::~MaterialBindingInstance()
 }
 
 // ---------------------------------------------------------------------------
-// MaterialInstanceData — data access
+// MaterialBindingInstanceData — data access
 // ---------------------------------------------------------------------------
 
 void *MaterialBindingInstance::GetMIData()

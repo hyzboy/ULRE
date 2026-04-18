@@ -7,7 +7,7 @@ namespace hgl::graph::mtl {
 /// Per-instance shader data schema selector.
 ///
 /// Each enumerator identifies a fixed GLSL struct layout that the shader reads
-/// as the "MaterialInstance" block via the MaterialInstanceData SSBO.
+/// as the "MaterialInstance" block via the MaterialBindingInstanceData SSBO.
 ///
 /// Lifecycle: Replace the old (mi_glsl_codes, mi_struct_bytes) pair in
 /// StaticMaterialDef with a single ShaderDataSchema value.  The registry

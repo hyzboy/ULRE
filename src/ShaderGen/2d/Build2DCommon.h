@@ -100,7 +100,7 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
     // Position
     v.push_back({cfg->position_format, VAN::Position});
 
-    // MaterialInstanceID is descriptor-backed in SSBO-only mode.
+    // MaterialBindingInstanceID is descriptor-backed in SSBO-only mode.
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -123,8 +123,8 @@ inline void PushBaseSSBODescriptors(SSBOSemanticSet &descriptors, const Material
 
     if(cfg->material_instance)
     {
-        AddSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstanceID);
-        AddSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstanceData);
+        AddSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialBindingInstanceID);
+        AddSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialBindingInstanceData);
     }
 }
 

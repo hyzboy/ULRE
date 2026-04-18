@@ -534,7 +534,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     }
 
     // ------------------------------------------------------------------
-    // PBRColor3D (Standard surface, color-only via MaterialInstanceData)
+    // PBRColor3D (Standard surface, color-only via MaterialBindingInstanceData)
     // ------------------------------------------------------------------
     RegisterVariant(
         K(ST::Standard, GM::Mesh3D),

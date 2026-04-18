@@ -31,7 +31,7 @@ namespace mtl
 }//namespace mtl
 
 using MaterialID            = int;
-using MaterialInstanceID    = int;
+using MaterialBindingInstanceID    = int;
 using ShaderModuleMapByName = UnorderedMap<AnsiString,ShaderModule *>;
 
 struct MaterialSpecKey
@@ -111,7 +111,7 @@ private:
     UnorderedMap<AnsiString,ShaderMaterialProgram *> material_by_name;
 
     AutoIdObjectManager<MaterialID,             ShaderMaterialProgram>           rm_material;                ///<材质合集
-    AutoIdObjectManager<MaterialInstanceID,     MaterialBindingInstance>   rm_material_instance;       ///<材质实例合集
+    AutoIdObjectManager<MaterialBindingInstanceID,     MaterialBindingInstance>   rm_material_instance;       ///<材质实例合集
 
     // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainResourceBinding
     std::unordered_map<ResourceDomain *, std::vector<DomainResourceBinding *>> domain_bindings_map;
@@ -158,12 +158,12 @@ private: // Helper methods with integrated DebugUtils
 public: //Add
 
     MaterialID              Add(ShaderMaterialProgram *          mtl ){return rm_material.Add(mtl);}
-    MaterialInstanceID      Add(MaterialBindingInstance *  mi  ){return rm_material_instance.Add(mi);}
+    MaterialBindingInstanceID      Add(MaterialBindingInstance *  mi  ){return rm_material_instance.Add(mi);}
 
 public: //Get
 
     ShaderMaterialProgram *          GetShaderMaterialProgram         (const MaterialID           &id){return rm_material.Get(id);}
-    MaterialBindingInstance *  GetResolvedBindingInstance(const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
+    MaterialBindingInstance *  GetResolvedBindingInstance(const MaterialBindingInstanceID   &id){return rm_material_instance.Get(id);}
 
 public: //Release
 
@@ -304,7 +304,7 @@ public: //ShaderMaterialProgram
     ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
     ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
 
-public: //MaterialInstanceData
+public: //MaterialBindingInstanceData
 
     MaterialBindingInstance *  AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key = nullptr);
     bool                UpdateInstanceData(MaterialBindingInstance *mi, const void *data, const uint32 data_size);
@@ -325,7 +325,7 @@ public: // ResourceDomain — Phase 1 / Phase 3
      */
     void ReleaseDomainMaterialBinding(DomainResourceBinding *binding);
 
-public: // ResourceDomain MaterialInstanceData creation (Phase 1)
+public: // ResourceDomain MaterialBindingInstanceData creation (Phase 1)
 
     /// 从资源域分配 MI，走域独立的数据池（旧 ShaderMaterialProgram 池不变）。
     MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VIL *vil = nullptr);

@@ -43,7 +43,7 @@ namespace hgl::ecs
         if (!gpu)
             return;
 
-        mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialInstanceID,
+        mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceID,
                       gpu);
     }
 
@@ -56,7 +56,7 @@ namespace hgl::ecs
         if (!gpu)
             return;
 
-        mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID,
+        mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceTexture,
                       gpu);
     }
 
@@ -74,7 +74,7 @@ namespace hgl::ecs
             return;
         }
 
-        mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialInstanceData,
+        mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceData,
                   material_instance_buffer->GetGPUBuffer());
 
         BindMaterialInstanceID(mtl);
@@ -144,7 +144,7 @@ namespace hgl::ecs
                     if (material_instance_buffer)
                         buffer_manager->Release(material_instance_buffer);
 
-                    material_instance_buffer = buffer_manager->CreateSSBO("ECS:MaterialInstanceData",
+                    material_instance_buffer = buffer_manager->CreateSSBO("ECS:MaterialBindingInstanceData",
                                                                           material_instance_data_bytes * power_to_2(needed),
                                                                           nullptr,
                                                                           graph::SharingMode::Exclusive);
@@ -289,11 +289,11 @@ namespace hgl::ecs
 
         if (mi_set.GetCount() == 0)
         {
-            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: No MaterialInstanceData collected" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: No MaterialBindingInstanceData collected" << std::endl;
             return;
         }
 
-        // 2. Create or reuse MaterialInstanceID SSBO
+        // 2. Create or reuse MaterialBindingInstanceID SSBO
         {
             if (!material_instance_id_buffer)
             {
@@ -335,7 +335,7 @@ namespace hgl::ecs
                     graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
                     if (du && material_instance_id_buffer)
                     {
-                        du->SetBuffer(material_instance_id_vk_buffer, "ECS:SSBO:Buffer:MaterialInstanceID");
+                        du->SetBuffer(material_instance_id_vk_buffer, "ECS:SSBO:Buffer:MaterialBindingInstanceID");
                     }
                 #endif//_DEBUG
                 }

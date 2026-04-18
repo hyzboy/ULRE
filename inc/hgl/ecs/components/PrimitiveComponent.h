@@ -31,7 +31,7 @@ namespace hgl::ecs
      *
      * Features:
      * - Holds reference to hgl::graph::Primitive
-     * - Supports MaterialInstanceData override
+     * - Supports MaterialBindingInstanceData override
      * - Provides access to ShaderMaterialProgram, GraphicsPipeline, and AABB data
      * - Compatible with RenderCollector for batched rendering
      */

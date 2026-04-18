@@ -441,13 +441,13 @@ namespace hgl::ecs
                         batch->transform_buffer->BindTransformID(material);
                     break;
                 }
-                case graph::mtl::SSBODescriptorSemantic::MaterialInstanceID:
+                case graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceID:
                 {
                     if (batch && batch->mi_buffer)
                         batch->mi_buffer->BindMaterialInstanceID(material);
                     break;
                 }
-                case graph::mtl::SSBODescriptorSemantic::MaterialInstanceData:
+                case graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceData:
                 {
                     if (batch
                      && batch->mi_buffer
@@ -459,7 +459,7 @@ namespace hgl::ecs
                     }
                     break;
                 }
-                case graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID:
+                case graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceTexture:
                 {
                     if (batch && batch->mi_buffer)
                         batch->mi_buffer->BindMaterialInstanceTextureID(material);
@@ -493,7 +493,7 @@ namespace hgl::ecs
 
                 switch (graph::mtl::SSBODescriptorSemantic(i))
                 {
-                case graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID:
+                case graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceTexture:
                 {
                     // GraphicsPipeline materials manage their own MIT SSBO via RegisterSceneUBOResolver
                     // or a dedicated registration path — no mi_buffer available here.
@@ -674,7 +674,7 @@ namespace hgl::ecs
             if (!binding)
                 continue;
 
-            // MaterialInstanceTextureID for domain bindings requires a domain-level
+            // MaterialBindingInstanceTexture for domain bindings requires a domain-level
             // MIT buffer — not yet implemented for the domain path.
 
             binding->Update();

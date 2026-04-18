@@ -41,8 +41,8 @@ namespace
     const SSBOSemanticSet PBR_COLOR_3D_SSBOS = {
         SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
-        SSBODescriptorSemantic::MaterialInstanceID,
-        SSBODescriptorSemantic::MaterialInstanceData,
+        SSBODescriptorSemantic::MaterialBindingInstanceID,
+        SSBODescriptorSemantic::MaterialBindingInstanceData,
     };
 
     const StaticMaterialDef PBR_COLOR_3D_DEF {

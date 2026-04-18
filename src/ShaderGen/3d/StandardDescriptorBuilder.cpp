@@ -42,7 +42,7 @@ void BuildStandardDescriptorState(
     }
 
     if (any_array)
-        AddSSBODescriptor(dynamic_ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID);
+        AddSSBODescriptor(dynamic_ssbos, SSBODescriptorSemantic::MaterialBindingInstanceTexture);
 
     unused_resources.clear();
     ApplySkyLightResourceInjection(

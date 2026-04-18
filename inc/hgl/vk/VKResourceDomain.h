@@ -49,7 +49,7 @@ public:
     mtl::ShaderDataSchema GetShaderDataSchema() const { return schema; }
 
     // ----------------------------------------------------------------
-    // MI 槽位管理 — 仅被 MaterialInstanceData 析构路径和 CreateMI 使用
+    // MI 槽位管理 — 仅被 MaterialBindingInstanceData 析构路径和 CreateMI 使用
     // ----------------------------------------------------------------
 
     /**

@@ -62,7 +62,7 @@ public:
     StaticMesh();
     virtual ~StaticMesh();
 
-public: // Geometry / MaterialInstanceData / GraphicsPipeline(仅保存引用,便于统计/查询)
+public: // Geometry / MaterialBindingInstanceData / GraphicsPipeline(仅保存引用,便于统计/查询)
 
     bool                        AttachGeometry      (Geometry *geometry);
     void                        DetachGeometry      (Geometry *geometry);

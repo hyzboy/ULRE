@@ -37,7 +37,7 @@ struct MaterialInstanceTexture
 #endif
 };
 
-layout(std430, set=PERMATERIAL_SET, binding=MIT_BINDING) readonly buffer MaterialInstanceTextureID
+layout(std430, set=PERMATERIAL_SET, binding=MIT_BINDING) readonly buffer MaterialBindingInstanceTexture
 {
     MaterialInstanceTexture tex_id[];
 } mit;

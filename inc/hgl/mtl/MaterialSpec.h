@@ -30,9 +30,9 @@ struct MaterialResolveRequestPolicy
         None = 0,
         Constant,
         MaterialInstanceField,
-        MaterialInstanceTextureID,
+        MaterialBindingInstanceTexture,
 
-        ENUM_CLASS_RANGE(None, MaterialInstanceTextureID)
+        ENUM_CLASS_RANGE(None, MaterialBindingInstanceTexture)
     };
 
     SamplerSlot slot = SamplerSlot::BaseColor;

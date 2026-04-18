@@ -100,14 +100,14 @@ namespace hgl::ecs
 
     private:    // 分发数据（SSBO descriptor path）
         uint32_t node_count;                        ///<节点数量
-        uint32_t material_instance_id_buffer_max_count; ///<MaterialInstanceID SSBO capacity (elements)
-        graph::DeviceBuffer* material_instance_id_buffer;   ///<MaterialInstanceID data (SSBO, uint[])
-        VkBuffer material_instance_id_vk_buffer;            ///<MaterialInstanceID VkBuffer cache
+        uint32_t material_instance_id_buffer_max_count; ///<MaterialBindingInstanceID SSBO capacity (elements)
+        graph::DeviceBuffer* material_instance_id_buffer;   ///<MaterialBindingInstanceID data (SSBO, uint[])
+        VkBuffer material_instance_id_vk_buffer;            ///<MaterialBindingInstanceID VkBuffer cache
 
     private:    // MIT SSBO（TextureArray用：per-instance纹理层索引）
         uint32_t mit_data_bytes;                ///< per-entry MIT struct size; 0 = no TextureArray slots
         uint32_t mit_buffer_max_count;          ///< MIT SSBO capacity (elements)
-        graph::DeviceBuffer* mit_buffer;        ///< MaterialInstanceTextureID SSBO
+        graph::DeviceBuffer* mit_buffer;        ///< MaterialBindingInstanceTexture SSBO
 
     private:
         void Clear();

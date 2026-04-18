@@ -365,15 +365,15 @@ bool MaterialCreateInfo::SetMaterialInstance(const uint32_t data_bytes,const uin
 
     material_instance_stride=data_bytes;
 
-    if(!descriptor_db.AddSSBOStruct(SSBODescriptorSemantic::MaterialInstanceData))
+    if(!descriptor_db.AddSSBOStruct(SSBODescriptorSemantic::MaterialBindingInstanceData))
         return false;
 
     material_instance_max_count=std::min<uint32_t>(ssbo_range/data_bytes,HGL_U16_MAX);
 
-    material_instance_ssbo=CreateSSBODescriptor(SSBODescriptorSemantic::MaterialInstanceData,shader_stage_flag_bits);
+    material_instance_ssbo=CreateSSBODescriptor(SSBODescriptorSemantic::MaterialBindingInstanceData,shader_stage_flag_bits);
 
     descriptor_db.AddSSBO(shader_stage_flag_bits,
-                          GetDescriptorSemanticMeta(SSBODescriptorSemantic::MaterialInstanceData).set_type,
+                          GetDescriptorSemanticMeta(SSBODescriptorSemantic::MaterialBindingInstanceData).set_type,
                           material_instance_ssbo);
 
     material_instance_stage_bits=shader_stage_flag_bits;

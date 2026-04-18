@@ -44,7 +44,7 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
     AddTextureSampler(samplers, SamplerSlot::BaseColor, use_array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D);
 
     if(use_array)
-        AddSSBODescriptor(ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID);
+        AddSSBODescriptor(ssbos, SSBODescriptorSemantic::MaterialBindingInstanceTexture);
 
     StaticMaterialDef def{};
     build2d::BuildBase2DFixedDef(def,
