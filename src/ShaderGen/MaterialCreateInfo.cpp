@@ -213,7 +213,6 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
         material_instance_max_count=0;
         material_instance_schema=ShaderDataSchema::None;
         material_instance_schema_file.clear();
-        material_instance_struct_name.clear();
         material_instance_ssbo=nullptr;
     }
 
@@ -397,7 +396,6 @@ bool MaterialCreateInfo::SetMaterialInstance(const ShaderDataSchema schema,
 
     material_instance_schema=schema;
     material_instance_schema_file=schema_info.glsl_schema_file ? schema_info.glsl_schema_file : "";
-    material_instance_struct_name=schema_info.struct_name ? schema_info.struct_name : "";
 
     return true;
 }

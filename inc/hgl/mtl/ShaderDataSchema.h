@@ -35,9 +35,6 @@ struct ShaderDataSchemaInfo
     /// Null for ShaderDataSchema::None.
     const char *  glsl_schema_file;
 
-    /// GLSL struct name — always "MaterialInstance" for all current schemas.
-    const char *  struct_name;
-
     /// Size of the struct in bytes as seen by the GPU (std430 layout).
     uint32_t      byte_size;
 };

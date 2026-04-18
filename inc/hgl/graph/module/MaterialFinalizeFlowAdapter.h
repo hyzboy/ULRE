@@ -22,7 +22,6 @@ namespace hgl::graph
         uint32_t mi_max_count = 0;
         mtl::ShaderDataSchema mi_schema = mtl::ShaderDataSchema::None;
         std::string mi_schema_file;
-        std::string mi_struct_name;
     };
 
     void BuildMaterialFinalizePlan(const MaterialDescriptorManager *desc_manager,

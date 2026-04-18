@@ -306,13 +306,12 @@ void ShaderMaterialProgramManager::ApplyMaterialFinalizePlan(ShaderMaterialProgr
     mtl->mi_schema     = finalize_plan.mi_schema;
 
     std::fprintf(stderr,
-        "[ShaderMaterialProgramManager] Finalize material='%s' mi_bytes=%u mi_max=%u schema=%u schema_file=%s struct=%s descriptor_sets=%zu\n",
+        "[ShaderMaterialProgramManager] Finalize material='%s' mi_bytes=%u mi_max=%u schema=%u schema_file=%s descriptor_sets=%zu\n",
         mtl_name.c_str(),
         finalize_plan.mi_data_bytes,
         finalize_plan.mi_max_count,
         static_cast<unsigned>(finalize_plan.mi_schema),
         finalize_plan.mi_schema_file.empty() ? "<none>" : finalize_plan.mi_schema_file.c_str(),
-        finalize_plan.mi_struct_name.empty() ? "<none>" : finalize_plan.mi_struct_name.c_str(),
         finalize_plan.mp_set_types.size());
 }
 

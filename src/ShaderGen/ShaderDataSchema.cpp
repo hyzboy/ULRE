@@ -15,19 +15,19 @@ namespace
 {
     static ShaderDataSchemaInfo kSchemaTable[] = {
         // None
-        { nullptr,                        nullptr,            0 },
+        { nullptr,                        0 },
         // Color4f
-        { "schema_color4f.glsl",          "MaterialBindingInstance", 0 },
+        { "schema_color4f.glsl",          0 },
         // TextColor
-        { "schema_text_color.glsl",       "MaterialBindingInstance", 0 },
+        { "schema_text_color.glsl",       0 },
         // BillboardSizeUVec2
-        { "schema_billboard_size.glsl",   "MaterialBindingInstance", 0 },
+        { "schema_billboard_size.glsl",   0 },
         // PBRColorParams
-        { "schema_pbr_color_params.glsl", "MaterialBindingInstance", 0 },
+        { "schema_pbr_color_params.glsl", 0 },
         // StandardParams
-        { "schema_standard_params.glsl",  "MaterialBindingInstance", 0 },
+        { "schema_standard_params.glsl",  0 },
         // TextureArrayID
-        { "schema_texture_array_id.glsl", "MaterialBindingInstance", 0 },
+        { "schema_texture_array_id.glsl", 0 },
     };
 
     static bool g_schema_sizes_initialized = false;
@@ -58,15 +58,6 @@ namespace
         return static_cast<uint32_t>(size);
     }
 
-    static bool SchemaFileContainsStructName(const std::string &glsl,const char *struct_name)
-    {
-        if (!struct_name || !*struct_name)
-            return false;
-
-        const std::string marker = std::string("struct ") + struct_name;
-        return glsl.find(marker) != std::string::npos;
-    }
-
     static void EnsureSchemaByteSizes()
     {
         if (g_schema_sizes_initialized)
@@ -88,25 +79,13 @@ namespace
                 continue;
             }
 
-            if (!SchemaFileContainsStructName(glsl, info.struct_name))
-            {
-                std::fprintf(stderr,
-                    "[ShaderDataSchema] struct name mismatch: schema=%u file=%s expected_struct=%s\n",
-                    i,
-                    info.glsl_schema_file ? info.glsl_schema_file : "<null>",
-                    info.struct_name ? info.struct_name : "<null>");
-                info.byte_size = 0;
-                continue;
-            }
-
             info.byte_size = static_cast<uint32_t>(CalculateGLSLStructSize(glsl));
             if (info.byte_size == 0)
             {
                 std::fprintf(stderr,
-                    "[ShaderDataSchema] failed to compute schema byte size: schema=%u file=%s struct=%s\n",
+                    "[ShaderDataSchema] failed to compute schema byte size: schema=%u file=%s\n",
                     i,
-                    info.glsl_schema_file ? info.glsl_schema_file : "<null>",
-                    info.struct_name ? info.struct_name : "<null>");
+                    info.glsl_schema_file ? info.glsl_schema_file : "<null>");
             }
         }
 

@@ -40,8 +40,6 @@ namespace
         text += std::to_string(static_cast<uint32_t>(def.shader_data_schema));
         text += " file=";
         text += schema_info.glsl_schema_file ? schema_info.glsl_schema_file : "<null>";
-        text += " struct=";
-        text += schema_info.struct_name ? schema_info.struct_name : "<null>";
         text += " bytes=";
         text += std::to_string(schema_info.byte_size);
         return text;

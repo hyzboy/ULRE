@@ -39,7 +39,6 @@ namespace hgl::graph
             uint32_t material_instance_max_count;
             ShaderDataSchema material_instance_schema;              ///<MaterialBindingInstance schema枚举
             std::string material_instance_schema_file;              ///<schema GLSL文件名
-            std::string material_instance_struct_name;              ///<schema 结构体名
             SSBODescriptor *material_instance_ssbo;
 
             uint32_t local_to_world_max_count;
@@ -110,7 +109,6 @@ namespace hgl::graph
             const uint32_t GetMaterialInstanceMaxCount  ()const{return material_instance_max_count;}
             const ShaderDataSchema GetMaterialInstanceSchema()const{return material_instance_schema;}
             const std::string &GetMaterialInstanceSchemaFile()const{return material_instance_schema_file;}
-            const std::string &GetMaterialInstanceStructName()const{return material_instance_struct_name;}
 
             const bool HasLocalToWorld                  ()const{return has_local_to_world;}
 
