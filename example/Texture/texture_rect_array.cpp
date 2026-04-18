@@ -120,7 +120,7 @@ private:
                 {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
             },
         };
-        render_obj[0].mi = AcquireMI(kTexArrayCfg);
+        render_obj[0].mi = ResolveOrCreateBindingInstance(kTexArrayCfg);
         if(!render_obj[0].mi)
             return(false);
 
@@ -128,7 +128,7 @@ private:
 
         sampler=sampler_manager->CreateSampler();
 
-        if(!material->BindTextureSampler( mtl::SamplerSlot::BaseColor,
+        if(!material->BindResourceSampler( mtl::SamplerSlot::BaseColor,
                           texture,
                           sampler))
             return(false);
@@ -136,7 +136,7 @@ private:
         for(uint32_t i=0;i<TexCount;i++)
         {
             if(i > 0)
-                render_obj[i].mi = AcquireMI(kTexArrayCfg);
+                render_obj[i].mi = ResolveOrCreateBindingInstance(kTexArrayCfg);
 
             if(!render_obj[i].mi)
                 return(false);
@@ -199,7 +199,7 @@ private:
             transform->SetMovable(false);
 
             primitive->SetPrimitive(mesh_rect);
-            primitive->SetOverrideMaterial(render_obj[i].mi);
+            primitive->SetOverrideBindingInstance(render_obj[i].mi);
             primitive->SetVisible(true);
         }
 

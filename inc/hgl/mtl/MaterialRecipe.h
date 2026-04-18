@@ -81,7 +81,7 @@ struct MaterialRecipe
         VkFormat     format = PF_UNDEFINED;
     };
 
-    [[deprecated("use GeometryVertexFormat-based auto derivation via AcquireMI(rec, gvf, ...)")]]
+    [[deprecated("use GeometryVertexFormat-based auto derivation via ResolveOrCreateBindingInstance(rec, gvf, ...)")]]
     std::vector<VILOverride> mi_vil_overrides;
 
     // ── 纹理配置列表（以 SamplerSlot 为显式 key）────────────────────────────────

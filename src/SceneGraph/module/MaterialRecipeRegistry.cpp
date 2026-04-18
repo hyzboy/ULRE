@@ -35,7 +35,7 @@ static bool BindDomainTexturesFromRecord(
         if (!tex) return false;
         auto *smp = sm->CreateSampler();
         if (!smp) return false;
-        if (!dmb->BindTextureSampler(tc.slot, tex, smp))
+        if (!dmb->BindResourceSampler(tc.slot, tex, smp))
             return false;
     }
     return true;
@@ -67,7 +67,7 @@ static void BindMaterialTexturesCompat(
             continue;
 
         // Non-fatal by design: may already be bound in cached material path.
-        material->BindTextureSampler(tc.slot, tex, smp);
+        material->BindResourceSampler(tc.slot, tex, smp);
     }
 }
 
@@ -159,7 +159,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &
 {
     MaterialDomainHandle handle;
 
-    // 1. ShaderMaterialProgram (AcquireMaterial 内部已缓存)
+    // 1. ShaderMaterialProgram (ResolveOrCreateProgram 内部已缓存)
     handle.material = CreateMaterialFromRecord(mm, rec);
     if (!handle.material)
         return {};
@@ -260,7 +260,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &
     return handle;
 }
 
-MaterialBindingInstance *MaterialRecipeRegistry::AcquireMI(const mtl::MaterialRecipe &rec,
+MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(const mtl::MaterialRecipe &rec,
                                                    const void *instance_data,
                                                    uint32_t instance_data_size,
                                                    MaterialDomainHandle *out_handle)
@@ -282,9 +282,9 @@ MaterialBindingInstance *MaterialRecipeRegistry::AcquireMI(const mtl::MaterialRe
     return CreateMI(handle, rec, instance_data, instance_data_size);
 }
 
-// ── AcquireMI (GVF auto-derive) ─────────────────────────────────────────────
+// ── ResolveOrCreateBindingInstance (GVF auto-derive) ─────────────────────────────────────────────
 
-MaterialBindingInstance *MaterialRecipeRegistry::AcquireMI(
+MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     const mtl::MaterialRecipe &rec,
     const GeometryVertexFormat &gvf,
     const void *instance_data,

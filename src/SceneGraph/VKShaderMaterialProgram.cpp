@@ -122,14 +122,14 @@ bool ShaderMaterialProgram::BindTexture(const DescriptorSetType &type,mtl::Sampl
     return mp->BindTexture(slot,tex);
 }
 
-bool ShaderMaterialProgram::BindTextureSampler(const DescriptorSetType &type,mtl::SamplerSlot slot,Texture *tex,Sampler *sampler)
+bool ShaderMaterialProgram::BindResourceSampler(const DescriptorSetType &type,mtl::SamplerSlot slot,Texture *tex,Sampler *sampler)
 {
     MaterialParameters *mp=GetMP(type);
 
     if(!mp)
         return(false);
 
-    return mp->BindTextureSampler(slot,tex,sampler);
+    return mp->BindResourceSampler(slot,tex,sampler);
 }
 
 void ShaderMaterialProgram::Update()

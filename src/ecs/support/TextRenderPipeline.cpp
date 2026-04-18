@@ -319,7 +319,7 @@ namespace hgl::ecs
 
         guard.material_manager = material_manager;
 
-        guard.material = material_manager->AcquireMaterial(graph::mtl::MaterialPreset::Text2D, &mtl_cfg);
+        guard.material = material_manager->ResolveOrCreateProgram(graph::mtl::MaterialPreset::Text2D, &mtl_cfg);
         if (!guard.material)
             return nullptr;
 
@@ -354,7 +354,7 @@ namespace hgl::ecs
             guard.material_instance_buffer = nullptr;
         }
 
-        if (!guard.material->BindTextureSampler(graph::mtl::SamplerSlot::Text,
+        if (!guard.material->BindResourceSampler(graph::mtl::SamplerSlot::Text,
                             guard.tile_font->GetTexture(),
                             guard.sampler))
             return nullptr;

@@ -227,7 +227,7 @@ bool DescriptorSet::BindTexture(const int binding,Texture *tex)
     return(true);
 }
 
-bool DescriptorSet::BindTextureSampler(const int binding,Texture *tex,Sampler *sampler)
+bool DescriptorSet::BindResourceSampler(const int binding,Texture *tex,Sampler *sampler)
 {
     if(binding<0||!tex||!sampler)
         return(false);

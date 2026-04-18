@@ -160,7 +160,7 @@ private:
         seed_mi_data.roughness = 1.0f;
         seed_mi_data.normal_scale = 0.35f;
 
-        auto* seed_mi = AcquireMI(kPBRArrayAcquireCfg, &seed_mi_data, sizeof(seed_mi_data));
+        auto* seed_mi = ResolveOrCreateBindingInstance(kPBRArrayAcquireCfg, &seed_mi_data, sizeof(seed_mi_data));
         if (!seed_mi) {
             printf("[ERROR] InitMaterial: Failed to create seed MI for Standard+Array material\n");
             return false;
@@ -174,14 +174,14 @@ private:
             return false;
         }
 
-        if (!material->BindTextureSampler(hgl::graph::mtl::SamplerSlot::BaseColor,
+        if (!material->BindResourceSampler(hgl::graph::mtl::SamplerSlot::BaseColor,
                                           base_color_texture,
                                           sampler)) {
             printf("[ERROR] InitMaterial: Failed to bind BaseColor texture sampler\n");
             return false;
         }
 
-        if (!material->BindTextureSampler(hgl::graph::mtl::SamplerSlot::Normal,
+        if (!material->BindResourceSampler(hgl::graph::mtl::SamplerSlot::Normal,
                                           normal_texture,
                                           sampler)) {
             printf("[ERROR] InitMaterial: Failed to bind TextureNormal sampler\n");
@@ -298,7 +298,7 @@ private:
                 d.roughness  = roughness;
                 d.normal_scale = 0.35f;
 
-                sphere_mi[row][col] = AcquireMI(
+                sphere_mi[row][col] = ResolveOrCreateBindingInstance(
                     mtl::MaterialRecipe{
                         .id          = "pbr_spheres_standard",
                         .preset      = mtl::MaterialPreset::Standard,
@@ -529,7 +529,7 @@ private:
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
                 prim_comp->SetPrimitive(base_primitives[col]);
-                prim_comp->SetOverrideMaterial(sphere_mi[row][col]);
+                prim_comp->SetOverrideBindingInstance(sphere_mi[row][col]);
                 prim_comp->SetVisible(true);
             }
         }
@@ -551,7 +551,7 @@ private:
             .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
-        mi_sky_sphere = AcquireMI(kSkyCfg);
+        mi_sky_sphere = ResolveOrCreateBindingInstance(kSkyCfg);
         if (!mi_sky_sphere)
             return false;
 

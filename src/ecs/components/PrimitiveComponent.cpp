@@ -83,7 +83,7 @@ namespace hgl::ecs
         }
     }
 
-    void PrimitiveComponent::SetOverrideMaterial(hgl::graph::MaterialBindingInstance* mi)
+    void PrimitiveComponent::SetOverrideBindingInstance(hgl::graph::MaterialBindingInstance* mi)
     {
         overrideMaterial = mi;
     }

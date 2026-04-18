@@ -59,7 +59,7 @@ namespace example::modules
 
         bool BuildMaterialInstances(const hgl::Color4f* colors, size_t count);
 
-        hgl::graph::MaterialBindingInstance *AcquireMI(const hgl::graph::mtl::MaterialRecipe &rec,
+        hgl::graph::MaterialBindingInstance *ResolveOrCreateBindingInstance(const hgl::graph::mtl::MaterialRecipe &rec,
                             const void *instance_data = nullptr,
                             uint32_t instance_data_size = 0,
                             hgl::graph::MaterialDomainHandle *out_handle = nullptr);

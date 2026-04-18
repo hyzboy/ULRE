@@ -65,7 +65,7 @@ namespace hgl::ecs
         hgl::graph::Primitive* GetPrimitive() const { return primitive; }
 
         // ShaderMaterialProgram override
-        void SetOverrideMaterial(hgl::graph::MaterialBindingInstance* mi);
+        void SetOverrideBindingInstance(hgl::graph::MaterialBindingInstance* mi);
         hgl::graph::MaterialBindingInstance* GetOverrideMaterial() const { return overrideMaterial; }
         void ClearOverrideMaterial() { overrideMaterial = nullptr; }
 

@@ -143,7 +143,7 @@ namespace hgl::ecs
             ? graph::mtl::MaterialPreset::Billboard2DFixed
             : graph::mtl::MaterialPreset::Billboard2DDynamic;
 
-        auto* quad_material = material_manager->AcquireMaterial(preset, &cfg);
+        auto* quad_material = material_manager->ResolveOrCreateProgram(preset, &cfg);
         if (!quad_material)
             return false;
 
@@ -200,7 +200,7 @@ namespace hgl::ecs
             return false;
         }
 
-        if (!material->BindTextureSampler(graph::mtl::SamplerSlot::BaseColor,
+        if (!material->BindResourceSampler(graph::mtl::SamplerSlot::BaseColor,
                                           texture,
                                           shared_sampler))
         {
@@ -224,7 +224,7 @@ namespace hgl::ecs
 
         // Update quad component
         quad->SetPrimitive(quad_primitive);
-        quad->SetOverrideMaterial(mi);
+        quad->SetOverrideBindingInstance(mi);
         quad->SetTextureObjects(texture, shared_sampler);
         quad->SetAppliedTexturePath(texture_path);
         return true;
@@ -308,7 +308,7 @@ namespace hgl::ecs
 
         // Update quad component
         quad->SetPrimitive(quad_primitive);
-        quad->SetOverrideMaterial(mi);
+        quad->SetOverrideBindingInstance(mi);
         quad->SetTextureObjects(nullptr, dr->sampler); // texture lives in the domain array
         quad->SetAppliedTexturePath(texture_path);
         return true;

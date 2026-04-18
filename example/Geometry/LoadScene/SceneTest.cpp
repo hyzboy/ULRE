@@ -86,7 +86,7 @@ private:
         {
             color = GetColor4f(TestColor[i],1.0);
 
-            md->mi[i] = AcquireMI(cfg, &color, sizeof(color));
+            md->mi[i] = ResolveOrCreateBindingInstance(cfg, &color, sizeof(color));
 
             if(!md->mi[i])
                 return(false);

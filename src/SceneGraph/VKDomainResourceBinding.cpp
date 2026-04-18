@@ -20,11 +20,11 @@ bool DomainResourceBinding::BindTexture(const mtl::SamplerSlot slot, Texture *te
     return mp_per_material->BindTexture(slot, tex);
 }
 
-bool DomainResourceBinding::BindTextureSampler(const mtl::SamplerSlot slot,
+bool DomainResourceBinding::BindResourceSampler(const mtl::SamplerSlot slot,
                                                Texture *tex, Sampler *sampler)
 {
     if (!mp_per_material) return false;
-    return mp_per_material->BindTextureSampler(slot, tex, sampler);
+    return mp_per_material->BindResourceSampler(slot, tex, sampler);
 }
 
 void DomainResourceBinding::Update()

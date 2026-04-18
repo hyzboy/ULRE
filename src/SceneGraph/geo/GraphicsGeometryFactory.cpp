@@ -165,7 +165,7 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_co
     if(!registry)
         return nullptr;
 
-    auto *mi = registry->AcquireMI(rec, gvf, instance_data, instance_data_size);
+    auto *mi = registry->ResolveOrCreateBindingInstance(rec, gvf, instance_data, instance_data_size);
     if(!mi)
         return nullptr;
 

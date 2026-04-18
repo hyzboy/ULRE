@@ -493,7 +493,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     return CreateMaterial(key, cfg);
 }
 
-ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const MaterialSpec &spec, MaterialSpecKey *out_key)
+ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(const MaterialSpec &spec, MaterialSpecKey *out_key)
 {
     if(!spec.IsValid())
         return nullptr;
@@ -503,16 +503,16 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const Mater
     switch(spec.family)
     {
         case MaterialSpec::Family::Preset2D:
-            result = AcquireMaterial(spec.preset, spec.cfg2d, out_key);
+            result = ResolveOrCreateProgram(spec.preset, spec.cfg2d, out_key);
             break;
         case MaterialSpec::Family::Preset3D:
-            result = AcquireMaterial(spec.preset, spec.cfg3d, out_key);
+            result = ResolveOrCreateProgram(spec.preset, spec.cfg3d, out_key);
             break;
         case MaterialSpec::Family::Variant2D:
-            result = AcquireMaterial(*spec.variant_key, spec.cfg2d, out_key);
+            result = ResolveOrCreateProgram(*spec.variant_key, spec.cfg2d, out_key);
             break;
         case MaterialSpec::Family::Variant3D:
-            result = AcquireMaterial(*spec.variant_key, spec.cfg3d, out_key);
+            result = ResolveOrCreateProgram(*spec.variant_key, spec.cfg3d, out_key);
             break;
         default:
             result = nullptr;
@@ -522,7 +522,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const Mater
     return result;
 }
 
-ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
+ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(const mtl::MaterialPreset mtl_id, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
     acquire_material_requests.fetch_add(1);
 
@@ -541,7 +541,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const mtl::
     return mtl;
 }
 
-ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const mtl::MaterialPreset mtl_id, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
+ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(const mtl::MaterialPreset mtl_id, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
     acquire_material_requests.fetch_add(1);
 
@@ -560,7 +560,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const mtl::
     return mtl;
 }
 
-ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
+ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(const mtl::MaterialVariantKey &key, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
     acquire_material_requests.fetch_add(1);
 
@@ -579,7 +579,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const mtl::
     return mtl;
 }
 
-ShaderMaterialProgram *ShaderMaterialProgramManager::AcquireMaterial(const mtl::MaterialVariantKey &key, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
+ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(const mtl::MaterialVariantKey &key, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
     acquire_material_requests.fetch_add(1);
 

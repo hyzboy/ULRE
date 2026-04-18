@@ -4,7 +4,7 @@
 ///
 /// 将 MaterialRecipe 中的平铺字段还原为对应的
 /// Material2DCreateConfig / Material3DCreateConfig / BillboardMaterialCreateConfig，
-/// 调用 ShaderMaterialProgramManager::AcquireMaterial，并可选地加载纹理并绑定到材质。
+/// 调用 ShaderMaterialProgramManager::ResolveOrCreateProgram，并可选地加载纹理并绑定到材质。
 ///
 /// 用法示例（示例程序顶部的静态配置表）：
 ///   static const mtl::MaterialRecipe kMeshMtl {
@@ -29,7 +29,7 @@ namespace hgl::graph
 
 // ── ShaderMaterialProgram 创建（不含纹理绑定）──────────────────────────────────────────────
 
-/// 从 MaterialRecipe 创建/获取 ShaderMaterialProgram（仅 AcquireMaterial，不绑纹理）。
+/// 从 MaterialRecipe 创建/获取 ShaderMaterialProgram（仅 ResolveOrCreateProgram，不绑纹理）。
 inline ShaderMaterialProgram *CreateMaterialFromRecord(
     ShaderMaterialProgramManager *mm,
     const mtl::MaterialRecipe &rec)
@@ -62,7 +62,7 @@ inline ShaderMaterialProgram *CreateMaterialFromRecord(
         std::fprintf(stderr, "[CreateMaterialFromRecord] Billboard preset=%d  use_texture_array=%d  blend=%d\n",
             (int)rec.preset, (int)cfg.use_texture_array, (int)cfg.blend_mode);
 
-        return mm->AcquireMaterial(rec.preset, &cfg);
+        return mm->ResolveOrCreateProgram(rec.preset, &cfg);
     }
     // ── 2D ──────────────────────────────────────────────────────────────────
     else if (rec.dim == MaterialRecipe::Dim::D2)
@@ -76,7 +76,7 @@ inline ShaderMaterialProgram *CreateMaterialFromRecord(
         for (const auto &tc : rec.textures)
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
-        return mm->AcquireMaterial(rec.preset, &cfg);
+        return mm->ResolveOrCreateProgram(rec.preset, &cfg);
     }
     // ── 3D (含 SkyMinimal / TerrainGrid / Standard / PBR 等) ─────────────────
     else
@@ -93,7 +93,7 @@ inline ShaderMaterialProgram *CreateMaterialFromRecord(
         for (const auto &tc : rec.textures)
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
-        return mm->AcquireMaterial(rec.preset, &cfg);
+        return mm->ResolveOrCreateProgram(rec.preset, &cfg);
     }
 } // namespace hgl::graph
 }

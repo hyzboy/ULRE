@@ -118,7 +118,7 @@ private:
         GeometryVertexFormat gvf_lum;
         gvf_lum.Set(VAN::Luminance, VF_V1UN8);
 
-        mi_plane_grid = AcquireMI(kPlaneGridCfg, gvf_lum,
+        mi_plane_grid = ResolveOrCreateBindingInstance(kPlaneGridCfg, gvf_lum,
                           &white_color, sizeof(white_color));
         if(!mi_plane_grid)
             return false;
@@ -141,7 +141,7 @@ private:
             .prim      = PrimitiveType::Billboard,
             .billboard = { .fixed_size = true },
         };
-        mi_billboard = AcquireMI(kBillboardCfg);
+        mi_billboard = ResolveOrCreateBindingInstance(kBillboardCfg);
         if(!mi_billboard)
             return false;
 
@@ -173,10 +173,10 @@ private:
 
         std::cout << "[BillboardECS] Sampler created: " << (void*)sampler << std::endl;
 
-        const bool bind_ok = mi_billboard->GetShaderMaterialProgram()->BindTextureSampler(mtl::SamplerSlot::BaseColor,
+        const bool bind_ok = mi_billboard->GetShaderMaterialProgram()->BindResourceSampler(mtl::SamplerSlot::BaseColor,
                                               texture,
                                               sampler);
-        std::cout << "[BillboardECS] BindTextureSampler(BaseColor): " << (bind_ok ? "OK" : "FAILED")
+        std::cout << "[BillboardECS] BindResourceSampler(BaseColor): " << (bind_ok ? "OK" : "FAILED")
                   << std::endl;
         if(!bind_ok)
             return false;

@@ -298,11 +298,11 @@ public: // Acquire stats
 
 public: //ShaderMaterialProgram
 
-    ShaderMaterialProgram *          AcquireMaterial (const MaterialSpec &spec, MaterialSpecKey *out_key = nullptr);
-    ShaderMaterialProgram *          AcquireMaterial (const mtl::MaterialPreset, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
-    ShaderMaterialProgram *          AcquireMaterial (const mtl::MaterialPreset, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
-    ShaderMaterialProgram *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
-    ShaderMaterialProgram *          AcquireMaterial (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    ShaderMaterialProgram *          ResolveOrCreateProgram (const MaterialSpec &spec, MaterialSpecKey *out_key = nullptr);
+    ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialPreset, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialPreset, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
 
 public: //MaterialInstanceData
 

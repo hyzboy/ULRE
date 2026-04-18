@@ -23,7 +23,7 @@ protected:
 protected:
 
     bool BindTexture(const int &index,Texture *tex);
-    bool BindTextureSampler(const int &index,Texture *tex,Sampler *sampler);
+    bool BindResourceSampler(const int &index,Texture *tex,Sampler *sampler);
     bool BindInputAttachment(const int &index,ImageView *);
 
     bool BindUBO(const int &index,const IGPUBuffer *gpu,bool dynamic=false);
@@ -57,7 +57,7 @@ public:
     bool BindUBO(const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindTexture(const mtl::SamplerSlot slot,Texture *tex);
-    bool BindTextureSampler(const mtl::SamplerSlot slot,Texture *tex,Sampler *sampler);
+    bool BindResourceSampler(const mtl::SamplerSlot slot,Texture *tex,Sampler *sampler);
 
     void Update();
 };//class MaterialParameters

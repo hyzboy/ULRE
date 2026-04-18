@@ -53,7 +53,7 @@ namespace hgl::ecs
 
             const auto &gvf = geom->GetGeometryVertexFormat();
 
-            auto *mi = registry->AcquireMI(*slot.record, gvf,
+            auto *mi = registry->ResolveOrCreateBindingInstance(*slot.record, gvf,
                                            slot.GetInstanceDataPtr(),
                                            slot.GetInstanceDataSize());
             if (!mi)

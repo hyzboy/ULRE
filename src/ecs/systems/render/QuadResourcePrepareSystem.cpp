@@ -294,7 +294,7 @@ namespace hgl::ecs
         cfg.blend_mode  = GetBlendModeForWorld(world);
         cfg.base_color_channel = GetChannelHintForWorld(world);
 
-        auto* shared_material = material_manager->AcquireMaterial(billboard_preset, &cfg);
+        auto* shared_material = material_manager->ResolveOrCreateProgram(billboard_preset, &cfg);
         if (!shared_material)
             return false;
 
@@ -475,7 +475,7 @@ namespace hgl::ecs
                 std::fprintf(stderr, "[QuadResPrepare] EnsureDomainResources domain='%s'  use_texture_array=%d  blend=%d  fixed=%d  preset=%d\n",
                     dr.domain_tag.c_str(), (int)cfg.use_texture_array, (int)cfg.blend_mode, (int)domain_fixed, (int)domain_preset);
 
-                dr.material = material_manager->AcquireMaterial(domain_preset, &cfg);
+                dr.material = material_manager->ResolveOrCreateProgram(domain_preset, &cfg);
 
                 if (dr.material)
                 {
@@ -525,14 +525,14 @@ namespace hgl::ecs
             }
 
             // Bind texture array to the domain's PerMaterial descriptor set
-            dr.dmb->BindTextureSampler(graph::mtl::SamplerSlot::BaseColor,
+            dr.dmb->BindResourceSampler(graph::mtl::SamplerSlot::BaseColor,
                                        dr.texture_array,
                                        dr.sampler);
             dr.dmb->Update();
 
             // Also bind to the ShaderMaterialProgram's own descriptor set — this is what
             // the command buffer actually binds at draw time.
-            dr.material->BindTextureSampler(graph::mtl::SamplerSlot::BaseColor,
+            dr.material->BindResourceSampler(graph::mtl::SamplerSlot::BaseColor,
                                             dr.texture_array,
                                             dr.sampler);
             dr.material->Update();

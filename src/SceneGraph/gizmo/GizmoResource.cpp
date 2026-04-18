@@ -144,7 +144,7 @@ namespace hgl::graph
                 cfg.local_to_world=true;
                 cfg.material_instance=true;
 
-                gizmo_triangle.mtl=gizmo_mtl_manager->AcquireMaterial(mtl::MaterialPreset::PureColor3D,&cfg);
+                gizmo_triangle.mtl=gizmo_mtl_manager->ResolveOrCreateProgram(mtl::MaterialPreset::PureColor3D,&cfg);
                 if(!gizmo_triangle.mtl)
                     return(false);
 

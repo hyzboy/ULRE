@@ -27,7 +27,7 @@ namespace example::modules
         if (!material_manager)
             return false;
 
-        material = material_manager->AcquireMaterial(preset, &cfg);
+        material = material_manager->ResolveOrCreateProgram(preset, &cfg);
         if (!material)
             return false;
 
@@ -64,7 +64,7 @@ namespace example::modules
         return true;
     }
 
-    graph::MaterialBindingInstance *SubWorldModuleBase::AcquireMI(const graph::mtl::MaterialRecipe &rec,
+    graph::MaterialBindingInstance *SubWorldModuleBase::ResolveOrCreateBindingInstance(const graph::mtl::MaterialRecipe &rec,
                                                            const void *instance_data,
                                                            uint32_t instance_data_size,
                                                            graph::MaterialDomainHandle *out_handle)
@@ -76,7 +76,7 @@ namespace example::modules
         if (!registry)
             return nullptr;
 
-        return registry->AcquireMI(rec, instance_data, instance_data_size, out_handle);
+        return registry->ResolveOrCreateBindingInstance(rec, instance_data, instance_data_size, out_handle);
     }
 
     SubWorldModuleBase::MeshResource*

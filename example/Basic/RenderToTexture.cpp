@@ -146,7 +146,7 @@ public:
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        mi = owner->AcquireMI(kSphereCfg, &sphere_color, sizeof(sphere_color));
+        mi = owner->ResolveOrCreateBindingInstance(kSphereCfg, &sphere_color, sizeof(sphere_color));
         if (!mi)
             return false;
 
@@ -292,7 +292,7 @@ private:
         cube_mi_data.roughness = 0.92f;
         cube_mi_data.normal_scale = 0.35f;
 
-        cube_mi = AcquireMI(kCubeCfg,
+        cube_mi = ResolveOrCreateBindingInstance(kCubeCfg,
              &cube_mi_data, sizeof(cube_mi_data));
         if (!cube_mi)
             return false;
@@ -315,12 +315,12 @@ private:
         if (!base_tex || !normal_tex)
             return false;
 
-        if (!cube_mtl->BindTextureSampler(mtl::SamplerSlot::BaseColor,
+        if (!cube_mtl->BindResourceSampler(mtl::SamplerSlot::BaseColor,
                                           base_tex,
                                           cube_sampler))
             return false;
 
-        if (!cube_mtl->BindTextureSampler(mtl::SamplerSlot::Normal,
+        if (!cube_mtl->BindResourceSampler(mtl::SamplerSlot::Normal,
                                           normal_tex,
                                           cube_sampler))
             return false;

@@ -101,9 +101,9 @@ bool MaterialParameters::BindTexture(const mtl::SamplerSlot slot,Texture *tex)
 }
 
 
-bool MaterialParameters::BindTextureSampler(const int &index,Texture *tex,Sampler *sampler)
+bool MaterialParameters::BindResourceSampler(const int &index,Texture *tex,Sampler *sampler)
 {
-        LogInfo(u8"[VKShaderMaterialProgramParameters] BindTextureSampler index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
+        LogInfo(u8"[VKShaderMaterialProgramParameters] BindResourceSampler index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
             index,
             (uint)set_type,
             (void*)tex,
@@ -113,20 +113,20 @@ bool MaterialParameters::BindTextureSampler(const int &index,Texture *tex,Sample
     if(index<0||!tex||!sampler)
         return(false);
 
-    if(!descriptor_set->BindTextureSampler(index,tex,sampler))
+    if(!descriptor_set->BindResourceSampler(index,tex,sampler))
         return(false);
 
     return(true);
 }
 
-bool MaterialParameters::BindTextureSampler(const mtl::SamplerSlot slot,Texture *tex,Sampler *sampler)
+bool MaterialParameters::BindResourceSampler(const mtl::SamplerSlot slot,Texture *tex,Sampler *sampler)
 {
     if(!tex||!sampler)
         return(false);
 
     const int index=desc_manager->GetTextureSampler(set_type,slot);
 
-    LogInfo(u8"[VKShaderMaterialProgramParameters] BindTextureSampler slot=%u index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
+    LogInfo(u8"[VKShaderMaterialProgramParameters] BindResourceSampler slot=%u index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
             (uint)slot,
             index,
             (uint)set_type,
@@ -137,7 +137,7 @@ bool MaterialParameters::BindTextureSampler(const mtl::SamplerSlot slot,Texture 
     if(index<0)
         return(false);
 
-    if(!descriptor_set->BindTextureSampler(index,tex,sampler))
+    if(!descriptor_set->BindResourceSampler(index,tex,sampler))
         return(false);
 
     return(true);

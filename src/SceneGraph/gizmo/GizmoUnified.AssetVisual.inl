@@ -51,7 +51,7 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
         return false;
 
     prim_comp->SetPrimitive(primitive);
-    prim_comp->SetOverrideMaterial(base_material);
+    prim_comp->SetOverrideBindingInstance(base_material);
     prim_comp->SetVisible(false);
 
     GizmoVisualPrimitive item;
@@ -111,7 +111,7 @@ static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
             if (!entry.primitive)
                 continue;
 
-            entry.primitive->SetOverrideMaterial(highlighted ? GetGizmoMI3D(GizmoColor::Yellow)
+            entry.primitive->SetOverrideBindingInstance(highlighted ? GetGizmoMI3D(GizmoColor::Yellow)
                                                              : entry.base_material);
         }
     };

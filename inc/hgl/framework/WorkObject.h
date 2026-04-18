@@ -131,7 +131,7 @@ namespace hgl
 
             return nullptr;
         }
-        graph::MaterialBindingInstance *AcquireMI(const graph::mtl::MaterialRecipe &rec,
+        graph::MaterialBindingInstance *ResolveOrCreateBindingInstance(const graph::mtl::MaterialRecipe &rec,
                                            const void *instance_data = nullptr,
                                            uint32 instance_data_size = 0,
                                            graph::MaterialDomainHandle *out_handle = nullptr)
@@ -140,10 +140,10 @@ namespace hgl
             if (!registry)
                 return nullptr;
 
-            return registry->AcquireMI(rec, instance_data, instance_data_size, out_handle);
+            return registry->ResolveOrCreateBindingInstance(rec, instance_data, instance_data_size, out_handle);
         }
 
-        graph::MaterialBindingInstance *AcquireMI(const graph::mtl::MaterialRecipe &rec,
+        graph::MaterialBindingInstance *ResolveOrCreateBindingInstance(const graph::mtl::MaterialRecipe &rec,
                                            const graph::GeometryVertexFormat &gvf,
                                            const void *instance_data = nullptr,
                                            uint32 instance_data_size = 0,
@@ -153,7 +153,7 @@ namespace hgl
             if (!registry)
                 return nullptr;
 
-            return registry->AcquireMI(rec, gvf, instance_data, instance_data_size, out_handle);
+            return registry->ResolveOrCreateBindingInstance(rec, gvf, instance_data, instance_data_size, out_handle);
         }
 
         const VkExtent2D *          GetExtent           ();

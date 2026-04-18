@@ -55,7 +55,7 @@ public:
     // ----------------------------------------------------------------
 
     bool BindTexture       (const mtl::SamplerSlot slot, Texture *tex);
-    bool BindTextureSampler(const mtl::SamplerSlot slot, Texture *tex, Sampler *sampler);
+    bool BindResourceSampler(const mtl::SamplerSlot slot, Texture *tex, Sampler *sampler);
 
     /// 将已绑定描述符写入 Vulkan 驱动
     void Update();
