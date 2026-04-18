@@ -253,6 +253,34 @@ private:
         if(!ecs_context)
             return false;
 
+        static const mtl::MaterialRecipe kPlaneGridCfg {
+            .id       = "billboard_test_plane_grid",
+            .preset   = mtl::MaterialPreset::VertexLuminance2D,
+            .prim     = PrimitiveType::Lines,
+            .pipeline = GraphicsPipelinePreset::Solid3D,
+        };
+
+        static const mtl::MaterialRecipe kBillboardCfg {
+            .id       = "billboard_test_fixed",
+            .preset   = mtl::MaterialPreset::Billboard2DFixed,
+            .prim     = PrimitiveType::Billboard,
+            .pipeline = GraphicsPipelinePreset::Alpha3D,
+            .textures = {
+                {
+                    .slot = mtl::SamplerSlot::BaseColor,
+                    .source_mode = mtl::TextureSourceMode::Simple,
+                    .path = "res/image/lena.Tex2D"
+                }
+            },
+            .billboard = {
+                .fixed_size = true,
+                .pixel_w = 512,
+                .pixel_h = 512,
+                .blend_mode = RenderAlphaMode::Transparent,
+                .texture_id = "billboard_test_lena"
+            }
+        };
+
         grid_entity = ecs_context->CreateEntity<Entity>("PlaneGrid");
         auto grid_transform = grid_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto grid_primitive = grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -262,7 +290,8 @@ private:
         grid_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         grid_transform->SetMovable(false);
 
-        grid_primitive->SetPrimitive(prim_plane_grid);
+        grid_primitive->SetUnresolvedGeometry(geom_plane_grid);
+        grid_primitive->SetMaterialRecipe(&kPlaneGridCfg, &white_color, sizeof(white_color));
         grid_primitive->SetVisible(true);
 
         billboard_entity = ecs_context->CreateEntity<Entity>("Billboard");
@@ -274,7 +303,12 @@ private:
         billboard_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         billboard_transform->SetMovable(false);
 
-        billboard_primitive->SetPrimitive(prim_billboard);
+        // Deferred path creates a new MI; keep SSBO size in sync with recipe config.
+        const math::Vector2u billboard_size(
+            kBillboardCfg.billboard.pixel_w,
+            kBillboardCfg.billboard.pixel_h);
+        billboard_primitive->SetUnresolvedGeometry(prim_billboard ? prim_billboard->GetGeometry() : nullptr);
+        billboard_primitive->SetMaterialRecipe(&kBillboardCfg, &billboard_size, sizeof(billboard_size));
         billboard_primitive->SetVisible(true);
 
         return true;

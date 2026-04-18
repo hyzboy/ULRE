@@ -73,7 +73,9 @@ namespace hgl::ecs
         hgl::graph::Primitive* GetPrimitive() const { return primitive; }
 
         // ShaderMaterialProgram override
+        [[deprecated("legacy manual override path; prefer SetMaterialRecipe + SetUnresolvedGeometry")]]
         void SetOverrideBindingInstance(hgl::graph::MaterialBindingInstance* mi);
+        [[deprecated("legacy manual override path; use GetResolvedBindingInstance for effective state")]]
         hgl::graph::MaterialBindingInstance* GetOverrideMaterial() const { return overrideMaterial; }
         void ClearOverrideMaterial() { overrideMaterial = nullptr; }
 
