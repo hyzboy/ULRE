@@ -99,30 +99,40 @@ namespace hgl::ecs
 
     hgl::graph::MaterialBindingInstance* PrimitiveComponent::GetResolvedBindingInstance() const
     {
-        // Phase B: resolved MI from MaterialResolveRequest takes priority
-        if (material_slot.resolved_binding_instance)
-            return material_slot.resolved_binding_instance;
-
-        // Override material is second priority
-        if (overrideMaterial)
-            return overrideMaterial;
-
-        if (!primitive)
-            return nullptr;
-
-        return primitive->GetResolvedBindingInstance();
+        return ResolveEffectiveMaterialState().binding_instance;
     }
 
     hgl::graph::ShaderMaterialProgram* PrimitiveComponent::GetShaderMaterialProgram() const
     {
-        // Return override material's base if set
-        if (overrideMaterial)
-            return overrideMaterial->GetShaderMaterialProgram();
+        return ResolveEffectiveMaterialState().material;
+    }
 
-        if (!primitive)
-            return nullptr;
+    hgl::graph::ResourceDomain* PrimitiveComponent::GetResolvedDomain() const
+    {
+        return ResolveEffectiveMaterialState().domain;
+    }
 
-        return primitive->GetShaderMaterialProgram();
+    PrimitiveComponent::EffectiveMaterialState PrimitiveComponent::ResolveEffectiveMaterialState() const
+    {
+        EffectiveMaterialState state{};
+
+        // Priority 1: deferred resolve result (latest requested binding instance)
+        if (material_slot.resolved_binding_instance)
+            state.binding_instance = material_slot.resolved_binding_instance;
+        // Priority 2: explicit override binding instance
+        else if (overrideMaterial)
+            state.binding_instance = overrideMaterial;
+        // Priority 3: primitive-owned binding instance
+        else if (primitive)
+            state.binding_instance = primitive->GetResolvedBindingInstance();
+
+        if (state.binding_instance)
+        {
+            state.material = state.binding_instance->GetShaderMaterialProgram();
+            state.domain = state.binding_instance->GetDomain();
+        }
+
+        return state;
     }
 
     bool PrimitiveComponent::GetLocalAABB(hgl::math::AABB& outAABB) const

@@ -602,6 +602,20 @@ namespace hgl::ecs
             // Phase 4: include ResourceDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
             auto* mi     = item->GetResolvedBindingInstance();
+
+#ifdef _DEBUG
+            if (mi)
+            {
+                auto *mi_material = mi->GetShaderMaterialProgram();
+                if (mi_material && material != mi_material)
+                {
+                    LogWarning("[ECS::PrimitiveBatchPipeline] Material source mismatch detected: item_material=%p mi_material=%p",
+                               static_cast<void*>(material),
+                               static_cast<void*>(mi_material));
+                }
+            }
+#endif
+
             auto* domain = mi ? mi->GetDomain() : nullptr;
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 

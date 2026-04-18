@@ -16,7 +16,6 @@ namespace hgl::graph::mtl
         std::optional<MaterialPreset> factory_type;
 
         // 材质实例布局
-        std::string mi_struct_name;         // MI 结构体名（如 StandardMaterialInstance）
         uint32 mi_struct_size;              // MI 结构体大小（字节）
 
         // 着色器模板路径

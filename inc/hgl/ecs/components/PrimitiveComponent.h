@@ -17,6 +17,7 @@ namespace hgl
         class Primitive;
         class ShaderMaterialProgram;
         class MaterialBindingInstance;
+        class ResourceDomain;
         class Geometry;
     }
 }
@@ -38,6 +39,13 @@ namespace hgl::ecs
     class PrimitiveComponent : public RenderableComponent
     {
     private:
+
+        struct EffectiveMaterialState
+        {
+            hgl::graph::MaterialBindingInstance* binding_instance = nullptr;
+            hgl::graph::ShaderMaterialProgram* material = nullptr;
+            hgl::graph::ResourceDomain* domain = nullptr;
+        };
 
         hgl::graph::Primitive* primitive;              // The primitive to render (not owned)
         hgl::graph::MaterialBindingInstance* overrideMaterial; // Optional material override (not owned)
@@ -82,6 +90,8 @@ namespace hgl::ecs
         // ShaderMaterialProgram access (returns override if set, otherwise primitive's material)
         hgl::graph::MaterialBindingInstance* GetResolvedBindingInstance() const;
         hgl::graph::ShaderMaterialProgram* GetShaderMaterialProgram() const;
+        hgl::graph::ResourceDomain* GetResolvedDomain() const;
+        EffectiveMaterialState ResolveEffectiveMaterialState() const;
 
         // Bounding volume
         bool GetLocalAABB(hgl::math::AABB& outAABB) const;
