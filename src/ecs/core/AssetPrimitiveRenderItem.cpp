@@ -59,8 +59,6 @@ namespace hgl::ecs
 
         if (state.binding_instance)
         {
-            state.material = primitive->GetShaderMaterialProgram();
-
             state.domain = state.binding_instance->GetDomain();
             state.domain_id = state.binding_instance->GetDomainID();
 
