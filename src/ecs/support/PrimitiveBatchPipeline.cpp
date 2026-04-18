@@ -93,6 +93,67 @@ namespace hgl::ecs
         {
             return state.material;
         }
+
+#ifdef _DEBUG
+        void LogLegacyAccessorMismatch(const RenderItem *item,
+                                       graph::ShaderMaterialProgram *state_material,
+                                       graph::MaterialBindingInstance *state_mi)
+        {
+            if (!item)
+                return;
+
+            auto *legacy_material = item->GetShaderMaterialProgram();
+            if (legacy_material && state_material && legacy_material != state_material)
+            {
+                GLogWarning("[ECS::PrimitiveBatchPipeline] Material source mismatch detected: state.material=%p legacy.item.material=%p",
+                            static_cast<void *>(state_material),
+                            static_cast<void *>(legacy_material));
+            }
+
+            auto *legacy_mi = item->GetResolvedBindingInstance();
+            if (legacy_mi && state_mi && legacy_mi != state_mi)
+            {
+                GLogWarning("[ECS::PrimitiveBatchPipeline] MI source mismatch detected: state.mi=%p legacy.item.mi=%p",
+                            static_cast<void *>(state_mi),
+                            static_cast<void *>(legacy_mi));
+            }
+        }
+
+        void LogUnifiedStateMismatch(const RenderItem::ResolvedMaterialState &state,
+                                     graph::MaterialBindingInstance *mi)
+        {
+            if (!mi)
+                return;
+
+            if (state.domain && state.domain != mi->GetDomain())
+            {
+                GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain=%p mi.domain=%p",
+                            static_cast<void *>(state.domain),
+                            static_cast<void *>(mi->GetDomain()));
+            }
+
+            const auto *mi_vil = mi->GetVIL();
+            if (state.vil && mi_vil && state.vil != mi_vil)
+            {
+                GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.vil=%p mi.vil=%p",
+                            static_cast<const void *>(state.vil),
+                            static_cast<const void *>(mi_vil));
+            }
+
+            if (state.preset != mi->GetRenderPreset())
+            {
+                GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.preset=%d mi.preset=%d",
+                            int(state.preset),
+                            int(mi->GetRenderPreset()));
+            }
+
+            if (!state.domain && mi->GetDomain())
+            {
+                GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain is null but mi.domain=%p",
+                            static_cast<void *>(mi->GetDomain()));
+            }
+        }
+#endif
     }
 
     bool PrimitiveBatchPipeline::PrepareFrame(ECSContext* ctx)
@@ -519,13 +580,7 @@ namespace hgl::ecs
             graph::GraphicsPipeline* pipeline = nullptr;
 
 #ifdef _DEBUG
-            auto* legacy_material = item->GetShaderMaterialProgram();
-            if (legacy_material && material && legacy_material != material)
-            {
-                LogWarning("[ECS::PrimitiveBatchPipeline] Material source mismatch detected: state.material=%p legacy.item.material=%p",
-                           static_cast<void*>(material),
-                           static_cast<void*>(legacy_material));
-            }
+            LogLegacyAccessorMismatch(item, material, state.binding_instance);
 #endif
 
             if (primitive)
@@ -547,16 +602,6 @@ namespace hgl::ecs
                 graph::GraphicsPipelinePreset preset = state.preset;
 
                 auto* mi = state.binding_instance;
-
-#ifdef _DEBUG
-                auto* legacy_mi = item->GetResolvedBindingInstance();
-                if (legacy_mi && mi && legacy_mi != mi)
-                {
-                    LogWarning("[ECS::PrimitiveBatchPipeline] MI source mismatch detected: state.mi=%p legacy.item.mi=%p",
-                               static_cast<void*>(mi),
-                               static_cast<void*>(legacy_mi));
-                }
-#endif
 
                 if (mi)
                 {
@@ -632,42 +677,10 @@ namespace hgl::ecs
             auto* mi = state.binding_instance;
 
 #ifdef _DEBUG
-            if (mi)
-            {
-                if (state.domain && state.domain != mi->GetDomain())
-                {
-                    LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain=%p mi.domain=%p",
-                               static_cast<void*>(state.domain),
-                               static_cast<void*>(mi->GetDomain()));
-                }
-
-                const auto* mi_vil = mi->GetVIL();
-                if (state.vil && mi_vil && state.vil != mi_vil)
-                {
-                    LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.vil=%p mi.vil=%p",
-                               static_cast<const void*>(state.vil),
-                               static_cast<const void*>(mi_vil));
-                }
-
-                if (state.preset != mi->GetRenderPreset())
-                {
-                    LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.preset=%d mi.preset=%d",
-                               int(state.preset),
-                               int(mi->GetRenderPreset()));
-                }
-            }
+            LogUnifiedStateMismatch(state, mi);
 #endif
-
 
             auto* domain = state.domain;
-
-#ifdef _DEBUG
-            if (!domain && mi && mi->GetDomain())
-            {
-                LogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain is null but mi.domain=%p",
-                           static_cast<void*>(mi->GetDomain()));
-            }
-#endif
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 
             MaterialPipelineKey key(material, pipeline, domain, queue);
