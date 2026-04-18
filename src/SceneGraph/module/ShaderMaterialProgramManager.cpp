@@ -7,7 +7,7 @@
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKResourceDomain.h>
-#include<hgl/vk/VKDomainMaterialBinding.h>
+#include<hgl/vk/VKDomainResourceBinding.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
@@ -809,7 +809,7 @@ bool ShaderMaterialProgramManager::UpdateInstanceData(MaterialBindingInstance *m
 // ResourceDomain — Phase 1
 // ============================================================================
 
-DomainMaterialBinding *ShaderMaterialProgramManager::CreateDomainMaterialBinding(ResourceDomain *domain, ShaderMaterialProgram *mtl)
+DomainResourceBinding *ShaderMaterialProgramManager::CreateDomainMaterialBinding(ResourceDomain *domain, ShaderMaterialProgram *mtl)
 {
     if (!domain || !mtl)
         return nullptr;
@@ -833,7 +833,7 @@ DomainMaterialBinding *ShaderMaterialProgramManager::CreateDomainMaterialBinding
         mp_per_material = CreateMaterialMP(mtl->GetName(), mtl->desc_manager,
                                            mtl->pipeline_layout_data, DescriptorSetType::PerMaterial);
 
-    DomainMaterialBinding *binding = new DomainMaterialBinding(domain, mtl, mp_per_material);
+    DomainResourceBinding *binding = new DomainResourceBinding(domain, mtl, mp_per_material);
 
     // Phase 3: register binding for lifecycle tracking
     domain_bindings_map[domain].push_back(binding);
@@ -843,7 +843,7 @@ DomainMaterialBinding *ShaderMaterialProgramManager::CreateDomainMaterialBinding
 
 // Phase 3 -- domain lifecycle management
 
-void ShaderMaterialProgramManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *binding)
+void ShaderMaterialProgramManager::ReleaseDomainMaterialBinding(DomainResourceBinding *binding)
 {
     if (!binding)
         return;

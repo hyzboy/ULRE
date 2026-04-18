@@ -13,7 +13,7 @@ class Texture;
 class Sampler;
 
 /**
- * 域-材质绑定视图 (DomainMaterialBinding)
+ * 域-材质绑定视图 (DomainResourceBinding)
  *
  * 将一个 ResourceDomain 与一个 ShaderMaterialProgram (Shader/GraphicsPipeline 模板) 绑定。
  * 仅持有 PerMaterial 描述符集——这是唯一域私有的集合；
@@ -23,7 +23,7 @@ class Sampler;
  *   - 同一 billboard shader 绑定两个不同 Texture2DArray (UI 图标 vs 玩家头像)
  *   - 同一资源域绑定 Opaque + Masked 两个 ShaderMaterialProgram (Phase 3)
  */
-class DomainMaterialBinding
+class DomainResourceBinding
 {
     ResourceDomain     *domain          = nullptr;
     ShaderMaterialProgram           *material        = nullptr;
@@ -34,11 +34,11 @@ private:
     friend class ShaderMaterialProgramManager;
 
     /// ShaderMaterialProgramManager 独占构造。mp_per_material 由 ShaderMaterialProgramManager 分配后传入。
-    DomainMaterialBinding(ResourceDomain *d, ShaderMaterialProgram *m, MaterialParameters *mp);
+    DomainResourceBinding(ResourceDomain *d, ShaderMaterialProgram *m, MaterialParameters *mp);
 
 public:
 
-    virtual ~DomainMaterialBinding();
+    virtual ~DomainResourceBinding();
 
     // ----------------------------------------------------------------
     // 基础属性
@@ -60,7 +60,7 @@ public:
     /// 将已绑定描述符写入 Vulkan 驱动
     void Update();
 
-}; // class DomainMaterialBinding
+}; // class DomainResourceBinding
 
 } // namespace hgl::graph
 

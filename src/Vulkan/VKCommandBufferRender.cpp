@@ -1,5 +1,5 @@
 ﻿#include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/VKDomainMaterialBinding.h>
+#include<hgl/vk/VKDomainResourceBinding.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
 #include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/graph/mesh/Primitive.h>
@@ -128,7 +128,7 @@ bool RenderCmdBuffer::BindDescriptorSets(ShaderMaterialProgram *mtl)
     return(true);
 }
 
-bool RenderCmdBuffer::BindDescriptorSets(DomainMaterialBinding *binding)
+bool RenderCmdBuffer::BindDescriptorSets(DomainResourceBinding *binding)
 {
     if(!binding) return false;
 

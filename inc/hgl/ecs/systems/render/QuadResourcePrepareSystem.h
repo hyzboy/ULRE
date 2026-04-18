@@ -20,7 +20,7 @@ namespace hgl
         class RenderTargetFormat;
         class Sampler;
         class Texture2DArray;
-        class DomainMaterialBinding;
+        class DomainResourceBinding;
     }
 }
 
@@ -35,7 +35,7 @@ namespace hgl::ecs
      * - Create and cache shared quad geometry (single point billboard)
      * - Create shared material instance and pipeline
      * - Create shared sampler for texture sampling
-     * - Manage per-domain Texture2DArray + DomainMaterialBinding for batched rendering
+     * - Manage per-domain Texture2DArray + DomainResourceBinding for batched rendering
      *
      * This system runs early in the render phase to ensure resources
      * are ready before QuadMaterialBindingSystem needs them.
@@ -52,7 +52,7 @@ namespace hgl::ecs
             std::string                             domain_tag;
             graph::Texture2DArray*                  texture_array   = nullptr;
             graph::ShaderMaterialProgram*                        material        = nullptr;
-            graph::DomainMaterialBinding*           dmb             = nullptr;
+            graph::DomainResourceBinding*           dmb             = nullptr;
             graph::Sampler*                         sampler         = nullptr;
             graph::Primitive*                       primitive       = nullptr;
             uint32_t                                max_layers      = 0;        ///< allocated capacity

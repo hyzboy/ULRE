@@ -242,13 +242,13 @@ SET(VK_SCENEGRAPH_MATERIAL_FILES    ${ROOT_INCLUDE_PATH}/hgl/vk/VKShaderMaterial
                                     ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterialBindingInstance.h
                                     ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterialDescriptorManager.h
                                     ${ROOT_INCLUDE_PATH}/hgl/vk/VKResourceDomain.h
-                                    ${ROOT_INCLUDE_PATH}/hgl/vk/VKDomainMaterialBinding.h
+                                    ${ROOT_INCLUDE_PATH}/hgl/vk/VKDomainResourceBinding.h
                                     VKShaderMaterialProgram.cpp
                                     VKMaterialParameters.cpp
                                     VKMaterialBindingInstance.cpp
                                     VKMaterialDescriptorManager.cpp
                                     VKResourceDomain.cpp
-                                    VKDomainMaterialBinding.cpp)
+                                    VKDomainResourceBinding.cpp)
 
 SOURCE_GROUP("9.Vulkan\\Material" FILES ${VK_SCENEGRAPH_MATERIAL_FILES})
 

@@ -18,7 +18,7 @@
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
-#include<hgl/vk/VKDomainMaterialBinding.h>
+#include<hgl/vk/VKDomainResourceBinding.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKFormat.h>

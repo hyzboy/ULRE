@@ -54,7 +54,7 @@ class MaterialRecipeRegistry
         size_t operator()(const DMBKey &k) const;
     };
 
-    std::unordered_map<DMBKey, DomainMaterialBinding*, DMBKeyHash> dmb_cache;
+    std::unordered_map<DMBKey, DomainResourceBinding*, DMBKeyHash> dmb_cache;
 
 public:
 

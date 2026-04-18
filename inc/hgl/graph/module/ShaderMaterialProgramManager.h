@@ -5,7 +5,7 @@
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKResourceDomain.h>
-#include<hgl/vk/VKDomainMaterialBinding.h>
+#include<hgl/vk/VKDomainResourceBinding.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
 #include<hgl/graph/module/ShaderGenValidationTypes.h>
@@ -113,8 +113,8 @@ private:
     AutoIdObjectManager<MaterialID,             ShaderMaterialProgram>           rm_material;                ///<材质合集
     AutoIdObjectManager<MaterialInstanceID,     MaterialBindingInstance>   rm_material_instance;       ///<材质实例合集
 
-    // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding
-    std::unordered_map<ResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
+    // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainResourceBinding
+    std::unordered_map<ResourceDomain *, std::vector<DomainResourceBinding *>> domain_bindings_map;
 
     std::atomic<uint64_t> acquire_material_requests {0};
     std::atomic<uint64_t> acquire_material_cache_lookups {0};
@@ -317,13 +317,13 @@ public: // ResourceDomain — Phase 1 / Phase 3
      * Phase 3: 同一 domain 可绑定多个 Material（Opaque + Masked 等），各 binding 独立管理。
      * 关系检查：MI stride 必须兼容；描述符集类型差异以 Warning 形式打印。
      */
-    DomainMaterialBinding * CreateDomainMaterialBinding (ResourceDomain *domain, ShaderMaterialProgram *mtl);
+    DomainResourceBinding * CreateDomainMaterialBinding (ResourceDomain *domain, ShaderMaterialProgram *mtl);
 
     /**
-     * 释放一个 DomainMaterialBinding，并将其从所属域的追踪列表中移除。
+     * 释放一个 DomainResourceBinding，并将其从所属域的追踪列表中移除。
      * 注意：不释放关联的 ResourceDomain。
      */
-    void ReleaseDomainMaterialBinding(DomainMaterialBinding *binding);
+    void ReleaseDomainMaterialBinding(DomainResourceBinding *binding);
 
 public: // ResourceDomain MaterialInstanceData creation (Phase 1)
 
@@ -356,7 +356,7 @@ public: // Phase 0 Stats — 帧级资源量观测
     /// 当前存活 ResourceDomain 数量（Phase 3）
     uint32_t GetDomainCount()           const { return (uint32_t)domain_bindings_map.size(); }
 
-    /// 当前总 DomainMaterialBinding 数量（Phase 3）
+    /// 当前总 DomainResourceBinding 数量（Phase 3）
     uint32_t GetDomainBindingCount()    const
     {
         uint32_t n = 0;

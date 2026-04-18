@@ -8,7 +8,7 @@
 #include <hgl/vk/VKShaderMaterialProgram.h>
 #include <hgl/vk/VKMaterialBindingInstance.h>
 #include <hgl/vk/VKResourceDomain.h>
-#include <hgl/vk/VKDomainMaterialBinding.h>
+#include <hgl/vk/VKDomainResourceBinding.h>
 #include <hgl/vk/VKVertexInputConfig.h>
 #include <hgl/vk/VKVertexInputLayout.h>
 
@@ -18,10 +18,10 @@
 namespace hgl::graph
 {
 
-// ── 将 record 中的纹理加载并绑定到 DomainMaterialBinding ─────────────────────
+// ── 将 record 中的纹理加载并绑定到 DomainResourceBinding ─────────────────────
 
 static bool BindDomainTexturesFromRecord(
-    DomainMaterialBinding *dmb,
+    DomainResourceBinding *dmb,
     TextureManager *tm,
     SamplerManager *sm,
     const mtl::MaterialRecipe &rec)
@@ -218,7 +218,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &
         domain_cache[domain_cache_key] = handle.domain;
     }
 
-    // 无 MI 数据的材质不需要 DomainMaterialBinding。
+    // 无 MI 数据的材质不需要 DomainResourceBinding。
     // 但仍显式携带 domain，以统一 MI 创建入口的约束。
     if (!handle.material->hasMI())
     {
@@ -228,7 +228,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &
         return handle;
     }
 
-    // 3. DomainMaterialBinding (按 material_name + domain_id + texture_hash 缓存)
+    // 3. DomainResourceBinding (按 material_name + domain_id + texture_hash 缓存)
     uint64_t tex_hash = ComputeTextureConfigHash(rec.textures);
     DMBKey key { std::move(mat_name_str), normalized_domain_id, tex_hash };
 
@@ -250,7 +250,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &
                 return {};
 
             // Compatibility fallback for code paths that still use ShaderMaterialProgram MP
-            // instead of DomainMaterialBinding MP during draw binding.
+            // instead of DomainResourceBinding MP during draw binding.
             BindMaterialTexturesCompat(handle.material, tm, sm, rec);
         }
 

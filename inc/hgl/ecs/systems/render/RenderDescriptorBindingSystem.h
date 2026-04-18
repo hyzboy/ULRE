@@ -19,7 +19,7 @@ namespace hgl::graph
     class UBOAccessorBase;
     class RenderCmdBuffer;
     class ShaderMaterialProgram;
-    class DomainMaterialBinding;
+    class DomainResourceBinding;
     class IRenderTarget;
     class IGPUBuffer;
     class Texture;
@@ -83,9 +83,9 @@ namespace hgl::ecs
         ContractDiagStats last_contract_stats{};
         std::unordered_set<graph::ShaderMaterialProgram *> pipeline_materials;
 
-        // Phase 2 — DomainMaterialBinding texture/sampler bindings
-        std::unordered_map<const graph::DomainMaterialBinding *, std::unordered_map<TextureBindingSlot, MaterialResourceBinding>> domain_resource_bindings;
-        std::unordered_set<graph::DomainMaterialBinding *> registered_domain_bindings;
+        // Phase 2 — DomainResourceBinding texture/sampler bindings
+        std::unordered_map<const graph::DomainResourceBinding *, std::unordered_map<TextureBindingSlot, MaterialResourceBinding>> domain_resource_bindings;
+        std::unordered_set<graph::DomainResourceBinding *> registered_domain_bindings;
 
         std::array<graph::UBOAccessorBase *, graph::mtl::UBODescriptorSemanticCount> scene_ubo_resolvers{};
         CameraSystem *camera_system = nullptr;
@@ -129,18 +129,18 @@ namespace hgl::ecs
          * 注册域绑定，使其参与每帧的 contract UBO 同步。
          * 相同 domain 可绑多个 ShaderMaterialProgram（Opaque + Masked，Phase 3）。
          */
-        void RegisterDomainBinding(graph::DomainMaterialBinding *binding);
-        void UnregisterDomainBinding(graph::DomainMaterialBinding *binding);
+        void RegisterDomainBinding(graph::DomainResourceBinding *binding);
+        void UnregisterDomainBinding(graph::DomainResourceBinding *binding);
 
         /**
          * 为指定域绑定注册 Texture/Sampler，用于 MaterialTexture 语义。
          */
-        bool RegisterDomainTexture(graph::DomainMaterialBinding *binding,
+        bool RegisterDomainTexture(graph::DomainResourceBinding *binding,
                         graph::mtl::SamplerSlot slot, graph::Texture *tex);
-        bool RegisterDomainTextureSampler(graph::DomainMaterialBinding *binding,
+        bool RegisterDomainTextureSampler(graph::DomainResourceBinding *binding,
                             graph::mtl::SamplerSlot slot,
                                           graph::Texture *tex, graph::Sampler *sampler);
-        void ClearDomainBindings(graph::DomainMaterialBinding *binding);
+        void ClearDomainBindings(graph::DomainResourceBinding *binding);
 
     private:
 
@@ -156,7 +156,7 @@ namespace hgl::ecs
         void PurgeStaleBindings(const std::unordered_set<const graph::ShaderMaterialProgram *> &active);
 
         const MaterialResourceBinding *FindMaterialResourceBinding(const graph::ShaderMaterialProgram *material, graph::mtl::SamplerSlot slot) const;
-        const MaterialResourceBinding *FindDomainResourceBinding(const graph::DomainMaterialBinding *binding, graph::mtl::SamplerSlot slot) const;
+        const MaterialResourceBinding *FindDomainResourceBinding(const graph::DomainResourceBinding *binding, graph::mtl::SamplerSlot slot) const;
         void ValidateContractsSideChannel();
         bool IsUBOSemanticResolvable(graph::mtl::UBODescriptorSemantic semantic) const;
         bool IsSSBOSemanticResolvable(graph::mtl::SSBODescriptorSemantic semantic) const;

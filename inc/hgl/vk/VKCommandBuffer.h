@@ -10,7 +10,7 @@
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
-class DomainMaterialBinding;
+class DomainResourceBinding;
 struct RenderTargetData; // Forward declaration for BeginRenderingDynamic/EndRenderingDynamic
 class VulkanCmdBuffer
 {
@@ -170,7 +170,7 @@ public:
 
     bool BindDescriptorSets(ShaderMaterialProgram *);
 
-    bool BindDescriptorSets(DomainMaterialBinding *);
+    bool BindDescriptorSets(DomainResourceBinding *);
 
     bool PushDescriptorSet(VkPipelineLayout pipeline_layout,uint32_t set,uint32_t count,const VkWriteDescriptorSet *write_desc_set)
     {

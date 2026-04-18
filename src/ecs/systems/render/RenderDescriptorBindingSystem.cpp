@@ -17,7 +17,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/UBOCommon.h>
-#include<hgl/vk/VKDomainMaterialBinding.h>
+#include<hgl/vk/VKDomainResourceBinding.h>
 #include<unordered_set>
 #include<cstdlib>
 #include<string>
@@ -286,15 +286,15 @@ namespace hgl::ecs
             pipeline_materials.erase(material);
     }
 
-    // Phase 2 — DomainMaterialBinding registration
+    // Phase 2 — DomainResourceBinding registration
 
-    void RenderDescriptorBindingSystem::RegisterDomainBinding(graph::DomainMaterialBinding *binding)
+    void RenderDescriptorBindingSystem::RegisterDomainBinding(graph::DomainResourceBinding *binding)
     {
         if (binding)
             registered_domain_bindings.insert(binding);
     }
 
-    void RenderDescriptorBindingSystem::UnregisterDomainBinding(graph::DomainMaterialBinding *binding)
+    void RenderDescriptorBindingSystem::UnregisterDomainBinding(graph::DomainResourceBinding *binding)
     {
         if (!binding)
             return;
@@ -302,7 +302,7 @@ namespace hgl::ecs
         domain_resource_bindings.erase(binding);
     }
 
-    bool RenderDescriptorBindingSystem::RegisterDomainTexture(graph::DomainMaterialBinding *binding,
+    bool RenderDescriptorBindingSystem::RegisterDomainTexture(graph::DomainResourceBinding *binding,
                                                               graph::mtl::SamplerSlot slot,
                                                               graph::Texture *tex)
     {
@@ -313,7 +313,7 @@ namespace hgl::ecs
         return true;
     }
 
-    bool RenderDescriptorBindingSystem::RegisterDomainTextureSampler(graph::DomainMaterialBinding *binding,
+    bool RenderDescriptorBindingSystem::RegisterDomainTextureSampler(graph::DomainResourceBinding *binding,
                                                                      graph::mtl::SamplerSlot slot,
                                                                      graph::Texture *tex,
                                                                      graph::Sampler *sampler)
@@ -327,7 +327,7 @@ namespace hgl::ecs
         return true;
     }
 
-    void RenderDescriptorBindingSystem::ClearDomainBindings(graph::DomainMaterialBinding *binding)
+    void RenderDescriptorBindingSystem::ClearDomainBindings(graph::DomainResourceBinding *binding)
     {
         if (binding)
             domain_resource_bindings.erase(binding);
@@ -351,7 +351,7 @@ namespace hgl::ecs
     }
 
     const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindDomainResourceBinding(
-        const graph::DomainMaterialBinding *binding, graph::mtl::SamplerSlot slot) const
+        const graph::DomainResourceBinding *binding, graph::mtl::SamplerSlot slot) const
     {
         if (!binding)
             return nullptr;
@@ -669,7 +669,7 @@ namespace hgl::ecs
         if (registered_domain_bindings.empty())
             return;
 
-        for (graph::DomainMaterialBinding *binding : registered_domain_bindings)
+        for (graph::DomainResourceBinding *binding : registered_domain_bindings)
         {
             if (!binding)
                 continue;
