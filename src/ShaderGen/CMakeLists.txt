@@ -2,9 +2,6 @@ set(SHADERGEN_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/shadergen)
 set(STD_MTL_HEADER_PATH     ${ROOT_INCLUDE_PATH}/hgl/mtl)
 set(MTL_TYPE_INCLUDE_PATH   ${ROOT_INCLUDE_PATH}/hgl/mtl)
 
-# Add inja include path
-include_directories(${ULRE_3RDPTY_ROOT_PATH}/inja/single_include)
-include_directories(${ULRE_3RDPTY_ROOT_PATH}/inja/third_party/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # Shader Create Info
