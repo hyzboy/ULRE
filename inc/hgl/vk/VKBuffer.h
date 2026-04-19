@@ -36,19 +36,16 @@ public:
     // TODO(Phase3c): Remove once VKMemoryAllocator is migrated or isolated.
     // NOTE: [[deprecated]] intentionally NOT on virtual overloads — MSVC changes
     // symbol mangling for deprecated virtuals which breaks linking.
-    [[deprecated("Use GetGPUBuffer()->Map(0,GetSize()) instead.")]]
-            void *  Map     ();
+    void *  Map     ();
     virtual void *  Map     (VkDeviceSize start,VkDeviceSize size);
-    [[deprecated("Use GetGPUBuffer()->Unmap() instead.")]]
-            void    Unmap   ();
+    void    Unmap   ();
     virtual void    Flush   (VkDeviceSize start,VkDeviceSize size);
     virtual void    Flush   (VkDeviceSize size);
         virtual void    FlushRanges(const IGPUBuffer::DirtyRange *ranges,size_t count);
 
     virtual bool    Write   (const void *ptr,uint32_t start,uint32_t size);
     virtual bool    Write   (const void *ptr,uint32_t size);
-    [[deprecated("Use GetGPUBuffer()->Write(ptr,0,GetSize()) instead.")]]
-            bool    Write   (const void *ptr);
+    bool    Write   (const void *ptr);
 
 };//class DeviceBuffer
 

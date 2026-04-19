@@ -377,25 +377,6 @@ MaterialBindingInstance *MaterialRecipeRegistry::CreateMI(
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
 
-    VILConfig vil_cfg;
-
-#pragma warning(push)
-#pragma warning(disable : 4996)  // suppress deprecated mi_vil_overrides — backward compat
-    if (!rec.mi_vil_overrides.empty())
-    {
-        for (const auto &ov : rec.mi_vil_overrides)
-        {
-            VAConfig vac;
-            vac.format = ov.format;
-
-            if (!vil_cfg.Add(ov.attrib, vac))
-                return nullptr;
-        }
-
-        spec.vil_cfg = &vil_cfg;
-    }
-#pragma warning(pop)
-
     MaterialBindingInstance *mi = mm->AcquireMaterialInstance(spec);
     if (mi)
         MaterialBindingInstanceInternalAccess::SetDomainBinding(mi, handle.binding);

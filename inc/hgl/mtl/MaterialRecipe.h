@@ -72,18 +72,6 @@ struct MaterialRecipe
     // ── MaterialBindingInstance 管线预设 ──────────────────────────────────────────────
     GraphicsPipelinePreset pipeline = GraphicsPipelinePreset::Solid3D;
 
-    // ── MaterialBindingInstance 顶点输入覆写（可选）─────────────────────────────────────
-    // 空列表 = 使用 ShaderMaterialProgram 默认 VIL。
-    // 非空 = 在 CreateMI 时构建 VILConfig 覆写指定 attrib 的格式。
-    struct VILOverride
-    {
-        VertexAttrib attrib = VAN::Position;
-        VkFormat     format = PF_UNDEFINED;
-    };
-
-    [[deprecated("use GeometryVertexFormat-based auto derivation via ResolveOrCreateBindingInstance(rec, gvf, ...)")]]
-    std::vector<VILOverride> mi_vil_overrides;
-
     // ── 纹理配置列表（以 SamplerSlot 为显式 key）────────────────────────────────
     struct TextureSlotConfig
     {

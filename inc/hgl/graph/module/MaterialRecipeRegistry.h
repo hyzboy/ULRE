@@ -76,7 +76,7 @@ public:
 
     /// 一站式：Acquire + 从 GVF 自动推算 VIL 覆写 + CreateMI
     /// - 对比 ShaderMaterialProgram DefaultVIL 与 Geometry 实际顶点格式，自动生成 VILConfig
-    /// - 调用方无需手写 mi_vil_overrides
+    /// - 调用方无需在 MaterialRecipe 中维护手写 VIL 覆写字段
     /// - out_vil（可选）：接收实际使用的 VIL 指针，可用于 Primitive 创建等场景
     MaterialBindingInstance *ResolveOrCreateBindingInstance(const mtl::MaterialRecipe &rec,
                                 const GeometryVertexFormat &gvf,
