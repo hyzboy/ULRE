@@ -248,7 +248,8 @@ public:
         if(!pipeline)return;
 
         BindPipeline(pipeline);
-        BindDescriptorSets(ri->GetShaderMaterialProgram());
+        if (auto *binding = ri->GetResolvedBindingInstance())
+            BindDescriptorSets(binding->GetShaderMaterialProgram());
         BindDataBuffer(ri->GetDataBuffer());
 
         Draw(ri->GetDataBuffer(),ri->GetRenderData());

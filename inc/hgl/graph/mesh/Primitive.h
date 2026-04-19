@@ -50,11 +50,6 @@ public:
                 SyncResolvedStateFromBindingInstance();
                 return resolved_material?resolved_material->GetPipelineLayout():VK_NULL_HANDLE;
             }
-            ShaderMaterialProgram *          GetShaderMaterialProgram         ()
-            {
-                SyncResolvedStateFromBindingInstance();
-                return resolved_material;
-            }
             MaterialBindingInstance *  GetResolvedBindingInstance(){return mat_inst;}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
