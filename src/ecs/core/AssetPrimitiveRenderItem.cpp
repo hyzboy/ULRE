@@ -59,8 +59,10 @@ namespace hgl::ecs
 
         if (state.binding_instance)
         {
+            // Stage-5: VIL is now sourced from Primitive (stored at construction in Stage-4).
+            // material still comes from MI until MI.material field is removed in a later pass.
             state.material  = state.binding_instance->GetShaderMaterialProgram();
-            state.vil       = state.binding_instance->GetVIL();
+            state.vil       = primitive->GetVIL();
             state.domain    = state.binding_instance->GetDomain();
             state.domain_id = state.binding_instance->GetDomainID();
 
@@ -69,7 +71,6 @@ namespace hgl::ecs
 
 #ifdef _DEBUG
             assert(state.material  == state.binding_instance->GetShaderMaterialProgram());
-            assert(state.vil       == state.binding_instance->GetVIL());
             assert(state.domain    == state.binding_instance->GetDomain());
             assert(state.domain_id == state.binding_instance->GetDomainID());
 

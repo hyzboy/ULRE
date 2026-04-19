@@ -15,8 +15,10 @@ namespace hgl::ecs
 
         if (state.binding_instance)
         {
-            state.material  = state.binding_instance->GetShaderMaterialProgram();
-            state.vil       = state.binding_instance->GetVIL();
+            // Stage-5: material/vil are no longer sourced from MI fields.
+            // Subclasses that override GetResolvedMaterialState() populate them
+            // via the resolver cache (PrimitiveRenderItem) or primitive storage
+            // (AssetPrimitiveRenderItem). The base-class fallback leaves them null.
             state.domain    = state.binding_instance->GetDomain();
             state.domain_id = state.binding_instance->GetDomainID();
 
@@ -24,11 +26,6 @@ namespace hgl::ecs
             state.preset    = state.binding_instance->GetRenderPreset();
 
 #ifdef _DEBUG
-            // Consistency: re-query each field and confirm it matches what we just wrote.
-            // If any assert fires it means the MI returned different values in a second call —
-            // that would be a MI-internal bug, not a pipeline bug.
-            assert(state.material  == state.binding_instance->GetShaderMaterialProgram());
-            assert(state.vil       == state.binding_instance->GetVIL());
             assert(state.domain    == state.binding_instance->GetDomain());
             assert(state.domain_id == state.binding_instance->GetDomainID());
 
