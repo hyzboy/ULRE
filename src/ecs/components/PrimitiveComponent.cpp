@@ -136,7 +136,7 @@ namespace hgl::ecs
         // Priority 1: deferred resolve result (latest requested binding instance)
         if (material_slot.resolved_binding_instance)
             state.binding_instance = material_slot.resolved_binding_instance;
-        // Priority 2: primitive-owned binding instance
+        // Priority 2: primitive-owned binding instance (compatibility fallback)
         else if (primitive)
             state.binding_instance = primitive->GetResolvedBindingInstance();
 

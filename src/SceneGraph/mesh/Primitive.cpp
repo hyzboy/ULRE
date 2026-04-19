@@ -53,6 +53,7 @@ Primitive::Primitive(Geometry *r,MaterialBindingInstance *mi,GraphicsPipelinePre
 {
     geometry=r;
     mat_inst=mi;
+    vil=mi?mi->GetVIL():nullptr;
 
     data_buffer=gdb;
     draw_range.Set(geometry);
@@ -74,7 +75,7 @@ bool Primitive::UpdateGeometry()
     if(draw_range.index_count>draw_range.data_index_count)
         draw_range.index_count = draw_range.data_index_count;
 
-    return data_buffer->Update(geometry,mat_inst->GetVIL());
+    return data_buffer->Update(geometry,vil);
 }
 
 Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,GraphicsPipelinePreRaster *p)

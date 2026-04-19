@@ -7,6 +7,7 @@
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VertexAttrib.h>
+#include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
 
@@ -19,23 +20,12 @@ class Primitive
     MaterialBindingInstance *  mat_inst;
     Geometry *          geometry;
 
-    mutable ShaderMaterialProgram *resolved_material = nullptr;
-
     GeometryDataBuffer *data_buffer;
     GeometryDrawRange   draw_range;
 
+    const VIL *         vil         = nullptr;    ///< VIL captured at construction; geometry sharing key
+
 private:
-
-            void                SyncResolvedStateFromBindingInstance()const
-            {
-                if(!mat_inst)
-                {
-                    resolved_material=nullptr;
-                    return;
-                }
-
-                resolved_material=mat_inst->GetShaderMaterialProgram();
-            }
 
     friend Primitive *DirectCreatePrimitive(Geometry *,MaterialBindingInstance *,GraphicsPipelinePreRaster *);
 
@@ -45,12 +35,8 @@ public:
 
     virtual ~Primitive();
 
-            VkPipelineLayout    GetPipelineLayout   ()
-            {
-                SyncResolvedStateFromBindingInstance();
-                return resolved_material?resolved_material->GetPipelineLayout():VK_NULL_HANDLE;
-            }
             MaterialBindingInstance *  GetResolvedBindingInstance(){return mat_inst;}
+    const   VIL *               GetVIL              ()const{return vil;}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
     const   BoundingVolumes &   GetBoundingVolumes  ()const{return geometry->GetBoundingVolumes();}
@@ -71,13 +57,10 @@ public:
                 if(!mi)
                     return(false);
 
-                SyncResolvedStateFromBindingInstance();
-
-                if(resolved_material&&mi->GetShaderMaterialProgram()!=resolved_material)      //不能换母材质
+                if(mat_inst&&mi->GetShaderMaterialProgram()!=mat_inst->GetShaderMaterialProgram())  //不能换母材质
                     return(false);
 
                 mat_inst=mi;
-                SyncResolvedStateFromBindingInstance();
                 return(true);
             }
 

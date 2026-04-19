@@ -158,7 +158,7 @@ namespace hgl::ecs
 		uint32_t resolve_fail_count = 0;
 		uint32_t primitive_created_count = 0;
 		uint32_t primitive_updated_count = 0;
-		uint32_t fallback_override_count = 0;
+		uint32_t primitive_recreated_count = 0;
 		uint32_t mi_bucket_count = 0;
 
 		for (auto &comp : primitives)
@@ -257,15 +257,23 @@ namespace hgl::ecs
 					}
 					else if (auto *existing_prim = task.comp->GetPrimitive())
 					{
-						// Stage-2 consistency: keep primitive-side binding instance aligned with resolve result.
-						if (!existing_prim->ChangeMaterialInstance(mi))
+						if (existing_prim->ChangeMaterialInstance(mi))
 						{
-							LogWarning("[ECS::MaterialResolveSystem] ChangeMaterialInstance failed (material mismatch); resolve result discarded for this component.");
-							++fallback_override_count;
+							++primitive_updated_count;
 						}
 						else
 						{
-							++primitive_updated_count;
+							auto *replacement = prim_mgr->CreatePrimitive(task.geometry, mi);
+							if (replacement)
+							{
+								task.comp->SetPrimitive(replacement);
+								prim_mgr->Release(existing_prim);
+								++primitive_recreated_count;
+							}
+							else
+							{
+								++resolve_fail_count;
+							}
 						}
 					}
 				}
@@ -274,7 +282,7 @@ namespace hgl::ecs
 
 		if (resolve_input_count > 0)
 		{
-			LogDebug("[ECS::MaterialResolveSystem] Stage2 summary: inputs=%u prototype_buckets=%zu mi_buckets=%u resolved=%u fail=%u created=%u updated=%u fallback_override=%u",
+			LogDebug("[ECS::MaterialResolveSystem] Stage2 summary: inputs=%u prototype_buckets=%zu mi_buckets=%u resolved=%u fail=%u created=%u updated=%u recreated=%u",
 				resolve_input_count,
 				prototype_buckets.size(),
 				mi_bucket_count,
@@ -282,7 +290,7 @@ namespace hgl::ecs
 				resolve_fail_count,
 				primitive_created_count,
 				primitive_updated_count,
-				fallback_override_count);
+				primitive_recreated_count);
 		}
 	}
 }//namespace hgl::ecs
