@@ -51,6 +51,34 @@ class TestApp:public WorkObject
 {
 private:
 
+    inline static const mtl::MaterialRecipe kPlaneGridCfg {
+        .id       = "billboard_test_plane_grid",
+        .preset   = mtl::MaterialPreset::VertexLuminance2D,
+        .prim     = PrimitiveType::Lines,
+        .pipeline = GraphicsPipelinePreset::Solid3D,
+    };
+
+    inline static const mtl::MaterialRecipe kBillboardCfg {
+        .id       = "billboard_test_fixed",
+        .preset   = mtl::MaterialPreset::Billboard2DFixed,
+        .prim     = PrimitiveType::Billboard,
+        .pipeline = GraphicsPipelinePreset::Alpha3D,
+        .textures = {
+            {
+                .slot = mtl::SamplerSlot::BaseColor,
+                .source_mode = mtl::TextureSourceMode::Simple,
+                .path = "res/image/lena.Tex2D"
+            }
+        },
+        .billboard = {
+            .fixed_size = true,
+            .pixel_w = 512,
+            .pixel_h = 512,
+            .blend_mode = RenderAlphaMode::Transparent,
+            .texture_id = "billboard_test_lena"
+        }
+    };
+
     void DumpShaderGenValidationSample()
     {
         if(shadergen_report_dumped)
@@ -90,104 +118,12 @@ private:
     Entity *      billboard_entity = nullptr;
     Entity *      camera_entity  = nullptr;
 
-    ShaderMaterialProgram *          mtl_plane_grid      = nullptr;
-    MaterialBindingInstance *  mi_plane_grid       = nullptr;
     Geometry *          geom_plane_grid     = nullptr;
-    Primitive *         prim_plane_grid     = nullptr;
-
-    MaterialBindingInstance *  mi_billboard        = nullptr;
-    Primitive *         prim_billboard      = nullptr;
-
-    Texture2D *         texture             = nullptr;
-    Sampler *           sampler             = nullptr;
+    Geometry *          geom_billboard      = nullptr;
 
     bool                shadergen_report_dumped = false;
 
 private:
-
-    bool InitPlaneGridMP()
-    {
-
-        static const mtl::MaterialRecipe kPlaneGridCfg {
-            .id       = "billboard_test_plane_grid",
-            .preset   = mtl::MaterialPreset::VertexLuminance2D,
-            .prim     = PrimitiveType::Lines,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-
-        GeometryVertexFormat gvf_lum;
-        gvf_lum.Set(VAN::Luminance, VF_V1UN8);
-
-        mi_plane_grid = ResolveOrCreateBindingInstance(kPlaneGridCfg, gvf_lum,
-                          &white_color, sizeof(white_color));
-        if(!mi_plane_grid)
-            return false;
-
-        mtl_plane_grid = mi_plane_grid->GetShaderMaterialProgram();
-
-        std::cout << "[BillboardECS] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;
-
-        std::cout << "[BillboardECS] PlaneGrid MI: " << (void*)mi_plane_grid << std::endl;
-
-        return true;
-    }
-
-    bool InitBillboardMP()
-    {
-
-        static const mtl::MaterialRecipe kBillboardCfg {
-            .id        = "billboard_test_fixed",
-            .preset    = mtl::MaterialPreset::Billboard2DFixed,
-            .prim      = PrimitiveType::Billboard,
-            .billboard = { .fixed_size = true },
-        };
-        mi_billboard = ResolveOrCreateBindingInstance(kBillboardCfg);
-        if(!mi_billboard)
-            return false;
-
-        std::cout << "[BillboardECS] Billboard MI: " << (void*)mi_billboard
-                  << ", ShaderMaterialProgram: " << (void*)mi_billboard->GetShaderMaterialProgram() << std::endl;
-
-        return true;
-    }
-
-    bool InitTexture()
-    {
-
-        TextureManager *tex_manager = GetTextureManager();
-        if (!tex_manager)
-            return false;
-
-        texture = tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"), true);
-        if(!texture)
-            return false;
-
-        std::cout << "[BillboardECS] Texture loaded: " << (void*)texture
-                  << " (" << texture->GetWidth() << "x" << texture->GetHeight() << ")" << std::endl;
-
-        auto* sampler_manager = GetSamplerManager();
-        if (!sampler_manager)
-            return false;
-
-        sampler = sampler_manager->CreateSampler();
-
-        std::cout << "[BillboardECS] Sampler created: " << (void*)sampler << std::endl;
-
-        const bool bind_ok = mi_billboard->GetShaderMaterialProgram()->BindResourceSampler(mtl::SamplerSlot::BaseColor,
-                                              texture,
-                                              sampler);
-        std::cout << "[BillboardECS] BindResourceSampler(BaseColor): " << (bind_ok ? "OK" : "FAILED")
-                  << std::endl;
-        if(!bind_ok)
-            return false;
-
-        math::Vector2u texture_size(texture->GetWidth(), texture->GetHeight());
-        mi_billboard->WriteMIData(texture_size);
-        std::cout << "[BillboardECS] Billboard MI data written (texture size)." << std::endl;
-
-        return true;
-    }
-
     bool CreateRenderObject()
     {
 
@@ -219,29 +155,21 @@ private:
 
             if(!geometry_factory.RegisterGeometry(geom_plane_grid))
                 return false;
-            prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid);     //这里失败原因是材质要R32F的Luminance,但Geometry提供的是R8UM
-            if(!prim_plane_grid)
-                return false;
 
-            std::cout << "[BillboardECS] PlaneGrid geometry: " << (void*)geom_plane_grid
-                      << ", primitive: " << (void*)prim_plane_grid << std::endl;
+            std::cout << "[BillboardECS] PlaneGrid geometry: " << (void*)geom_plane_grid << std::endl;
         }
 
         {
-            auto *billboard_geometry = WorkObject::CreateGeometry("Billboard",
-                                                                   4,
-                                                                   6,
-                                                                   IndexType::U16,
-                                                                   {{VAN::Position, VF_V3F, billboard_position_data}},
-                                                                   billboard_index_data);
-            if(!billboard_geometry)
+            geom_billboard = WorkObject::CreateGeometry("Billboard",
+                                                        4,
+                                                        6,
+                                                        IndexType::U16,
+                                                        {{VAN::Position, VF_V3F, billboard_position_data}},
+                                                        billboard_index_data);
+            if(!geom_billboard)
                 return false;
 
-            prim_billboard = geometry_factory.CreatePrimitive(billboard_geometry, mi_billboard);
-            if(!prim_billboard)
-                return false;
-
-            std::cout << "[BillboardECS] Billboard primitive: " << (void*)prim_billboard << std::endl;
+            std::cout << "[BillboardECS] Billboard geometry: " << (void*)geom_billboard << std::endl;
         }
 
         return true;
@@ -252,34 +180,6 @@ private:
         ecs_context = GetECSContext();
         if(!ecs_context)
             return false;
-
-        static const mtl::MaterialRecipe kPlaneGridCfg {
-            .id       = "billboard_test_plane_grid",
-            .preset   = mtl::MaterialPreset::VertexLuminance2D,
-            .prim     = PrimitiveType::Lines,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
-        };
-
-        static const mtl::MaterialRecipe kBillboardCfg {
-            .id       = "billboard_test_fixed",
-            .preset   = mtl::MaterialPreset::Billboard2DFixed,
-            .prim     = PrimitiveType::Billboard,
-            .pipeline = GraphicsPipelinePreset::Alpha3D,
-            .textures = {
-                {
-                    .slot = mtl::SamplerSlot::BaseColor,
-                    .source_mode = mtl::TextureSourceMode::Simple,
-                    .path = "res/image/lena.Tex2D"
-                }
-            },
-            .billboard = {
-                .fixed_size = true,
-                .pixel_w = 512,
-                .pixel_h = 512,
-                .blend_mode = RenderAlphaMode::Transparent,
-                .texture_id = "billboard_test_lena"
-            }
-        };
 
         grid_entity = ecs_context->CreateEntity<Entity>("PlaneGrid");
         auto grid_transform = grid_entity->AddComponent<TransformComponent>(Mobility::Static);
@@ -307,7 +207,7 @@ private:
         const math::Vector2u billboard_size(
             kBillboardCfg.billboard.pixel_w,
             kBillboardCfg.billboard.pixel_h);
-        billboard_primitive->SetUnresolvedGeometry(prim_billboard ? prim_billboard->GetGeometry() : nullptr);
+        billboard_primitive->SetUnresolvedGeometry(geom_billboard);
         billboard_primitive->SetMaterialRecipe(&kBillboardCfg, &billboard_size, sizeof(billboard_size));
         billboard_primitive->SetVisible(true);
 
@@ -345,15 +245,6 @@ public:
     bool Init() override
     {
         SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));
-
-        if(!InitPlaneGridMP())
-            return false;
-
-        if(!InitBillboardMP())
-            return false;
-
-        if(!InitTexture())
-            return false;
 
         if(!CreateRenderObject())
             return false;
