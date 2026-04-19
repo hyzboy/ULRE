@@ -201,6 +201,7 @@ private:
 
         {
             GeometryVertexFormat gvf_lum;
+            gvf_lum.Set(VAN::Position, VF_V2F);
             gvf_lum.Set(VAN::Luminance, VF_V1UN8);
             auto pc = geometry_factory.CreateCreater(gvf_lum);
             if (!pc)
