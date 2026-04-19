@@ -136,7 +136,7 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
         DeviceBufferData buf;
         buf.buffer=staged->GetVkDeviceBuffer();
         buf.allocation=VK_NULL_HANDLE;
-        buf.vk_memory=static_cast<VkDeviceMemory>(*staged->GetDeviceMemory());
+        buf.vk_memory=staged->GetVkDeviceMemory();
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=size;
@@ -223,7 +223,7 @@ IndexBuffer *VulkanDevice::CreateIBO(const ObjectNameBuilder &name, IndexType in
         DeviceBufferData buf;
         buf.buffer=staged->GetVkDeviceBuffer();
         buf.allocation=VK_NULL_HANDLE;
-        buf.vk_memory=static_cast<VkDeviceMemory>(*staged->GetDeviceMemory());
+        buf.vk_memory=staged->GetVkDeviceMemory();
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=size;
@@ -295,7 +295,7 @@ VkBufferOwner *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceS
         DeviceBufferData buf;
         buf.buffer=staged->GetVkDeviceBuffer();
         buf.allocation=VK_NULL_HANDLE;
-        buf.vk_memory=static_cast<VkDeviceMemory>(*staged->GetDeviceMemory());
+        buf.vk_memory=staged->GetVkDeviceMemory();
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=range;
@@ -360,7 +360,7 @@ VkBufferOwner *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
         DeviceBufferData buf;
         buf.buffer=staged->GetVkDeviceBuffer();
         buf.allocation=VK_NULL_HANDLE;
-        buf.vk_memory=static_cast<VkDeviceMemory>(*staged->GetDeviceMemory());
+        buf.vk_memory=staged->GetVkDeviceMemory();
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=range;
@@ -429,7 +429,7 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
         DeviceBufferData buf;
         buf.buffer=staged->GetVkDeviceBuffer();
         buf.allocation=VK_NULL_HANDLE;
-        buf.vk_memory=static_cast<VkDeviceMemory>(*staged->GetDeviceMemory());
+        buf.vk_memory=staged->GetVkDeviceMemory();
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=size;

@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKIndirectCommandBuffer.h>
+#include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKStagedBuffer.h>
 #include<hgl/vk/VKReBarBuffer.h>
@@ -35,7 +35,7 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
 
         buf->buffer=staged->GetVkDeviceBuffer();
         buf->allocation=VK_NULL_HANDLE;
-        buf->vk_memory=static_cast<VkDeviceMemory>(*staged->GetDeviceMemory());
+        buf->vk_memory=staged->GetVkDeviceMemory();
         buf->info.buffer=buf->buffer;
         buf->info.offset=0;
         buf->info.range=size;

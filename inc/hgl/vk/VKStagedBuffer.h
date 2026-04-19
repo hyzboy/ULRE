@@ -2,13 +2,11 @@
 #define HGL_GRAPH_VULKAN_STAGED_BUFFER_INCLUDE
 
 #include<hgl/vk/VK.h>
-#include<hgl/vk/VKMemory.h>
 #include<hgl/vk/IGPUBuffer.h>
+#include<vk_mem_alloc.h>
 #include<vector>
 
 namespace hgl::graph{
-
-class DeviceMemory;
 
 /**
  * Staged buffer with CPU-visible staging buffer and GPU-local device buffer
@@ -17,28 +15,41 @@ class DeviceMemory;
 class StagedBuffer : public IGPUBuffer
 {
     VkDevice            device;
+    VmaAllocator        allocator = VK_NULL_HANDLE;
 
     // Staging buffer (CPU accessible)
-    VkBuffer            staging_buffer;
-    DeviceMemory *      staging_memory;
+    VkBuffer            staging_buffer = VK_NULL_HANDLE;
+    VmaAllocation       staging_allocation = VK_NULL_HANDLE;
+    VkDeviceMemory      staging_vk_memory = VK_NULL_HANDLE;
 
     // Device buffer (GPU optimal)
-    VkBuffer            device_buffer;
-    DeviceMemory *      device_memory;
+    VkBuffer            device_buffer = VK_NULL_HANDLE;
+    VmaAllocation       device_allocation = VK_NULL_HANDLE;
+    VkDeviceMemory      device_vk_memory = VK_NULL_HANDLE;
 
-    VkDeviceSize        buffer_size;
-    VkBufferUsageFlags  usage;
+    VkDeviceSize        buffer_size = 0;
+    VkBufferUsageFlags  usage = 0;
 
     // Tracks the last Map() range so Unmap() can dirty only what was actually mapped
     VkDeviceSize        mapped_offset = 0;
     VkDeviceSize        mapped_size   = 0;
+    void               *mapped_ptr    = nullptr;
 
 private:
 
     friend class VulkanDevice;
 
-    StagedBuffer(const std::string &name, VkDevice dev, VkBuffer staging_buf, DeviceMemory *staging_mem,
-                 VkBuffer device_buf, DeviceMemory *device_mem, VkDeviceSize size, VkBufferUsageFlags usage_flags);
+    StagedBuffer(const std::string &name,
+                 VkDevice dev,
+                 VmaAllocator alloc,
+                 VkBuffer staging_buf,
+                 VmaAllocation staging_alloc,
+                 VkDeviceMemory staging_mem,
+                 VkBuffer device_buf,
+                 VmaAllocation device_alloc,
+                 VkDeviceMemory device_mem,
+                 VkDeviceSize size,
+                 VkBufferUsageFlags usage_flags);
 
 public:
 
@@ -64,7 +75,7 @@ public:
     VkDeviceSize GetSize()            const override { return buffer_size; }
     VkBuffer     GetVkDeviceBuffer()  const override { return device_buffer; }
     VkBuffer     GetStagingBuffer()   const          { return staging_buffer; }
-    DeviceMemory *GetDeviceMemory()   const          { return device_memory; }
+    VkDeviceMemory GetVkDeviceMemory() const         { return device_vk_memory; }
 
     VkDescriptorBufferInfo GetDescriptorBufferInfo() const override
     {

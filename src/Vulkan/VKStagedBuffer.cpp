@@ -1,6 +1,5 @@
 ﻿#include<hgl/vk/VKStagedBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKMemory.h>
 #include<hgl/log/Log.h>
 #include<string.h>
 
@@ -8,20 +7,28 @@ namespace hgl::graph{
 
 StagedBuffer::StagedBuffer(const std::string &name,
                            VkDevice dev,
-                           VkBuffer staging_buf, DeviceMemory *staging_mem,
-                           VkBuffer device_buf, DeviceMemory *device_mem,
-                           VkDeviceSize size, VkBufferUsageFlags usage_flags)
+                           VmaAllocator alloc,
+                           VkBuffer staging_buf,
+                           VmaAllocation staging_alloc,
+                           VkDeviceMemory staging_mem,
+                           VkBuffer device_buf,
+                           VmaAllocation device_alloc,
+                           VkDeviceMemory device_mem,
+                           VkDeviceSize size,
+                           VkBufferUsageFlags usage_flags)
     : IGPUBuffer(name)
 {
     device = dev;
+    allocator = alloc;
     staging_buffer = staging_buf;
-    staging_memory = staging_mem;
+    staging_allocation = staging_alloc;
+    staging_vk_memory = staging_mem;
     device_buffer = device_buf;
-    device_memory = device_mem;
+    device_allocation = device_alloc;
+    device_vk_memory = device_mem;
     buffer_size = size;
     usage = usage_flags;
 
-    // Register with the device's IGPUBuffer registry
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
     if (owner)
         owner->RegisterGPUBuffer(this);
@@ -35,33 +42,45 @@ StagedBuffer::~StagedBuffer()
         owner->UnregisterGPUBuffer(this);
         if (staging_buffer)
             owner->UntrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)staging_buffer);
-        if (staging_memory)
-            owner->UntrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)static_cast<VkDeviceMemory>(*staging_memory));
+        if (staging_vk_memory)
+            owner->UntrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)staging_vk_memory);
     }
 
-    if (staging_buffer)
-        vkDestroyBuffer(device, staging_buffer, nullptr);
+    if(mapped_ptr)
+    {
+        vmaUnmapMemory(allocator, staging_allocation);
+        mapped_ptr = nullptr;
+    }
 
-    if (device_buffer)
-        vkDestroyBuffer(device, device_buffer, nullptr);
+    if (staging_buffer && staging_allocation)
+        vmaDestroyBuffer(allocator, staging_buffer, staging_allocation);
 
-    delete staging_memory;
-    delete device_memory;
+    if (device_buffer && device_allocation)
+        vmaDestroyBuffer(allocator, device_buffer, device_allocation);
 }
 
 bool StagedBuffer::Write(const void *data, VkDeviceSize offset, VkDeviceSize size)
 {
-    if (!data || !staging_memory)
+    if (!data || !staging_allocation)
         return false;
 
     if (offset + size > buffer_size)
         return false;
 
-    // Write to staging buffer
-    if (!staging_memory->Write(data, offset, size))
-        return false;
+    if(mapped_ptr)
+    {
+        memcpy(static_cast<char *>(mapped_ptr) + offset, data, static_cast<size_t>(size));
+    }
+    else
+    {
+        void *ptr = nullptr;
+        if(vmaMapMemory(allocator, staging_allocation, &ptr) != VK_SUCCESS || !ptr)
+            return false;
 
-    // Mark as dirty (no queue notification needed — ECS System polls IsDirty)
+        memcpy(static_cast<char *>(ptr) + offset, data, static_cast<size_t>(size));
+        vmaUnmapMemory(allocator, staging_allocation);
+    }
+
     MarkDirty(offset, size);
 
     return true;
@@ -69,29 +88,53 @@ bool StagedBuffer::Write(const void *data, VkDeviceSize offset, VkDeviceSize siz
 
 void * StagedBuffer::Map()
 {
-    if (!staging_memory)
-        return nullptr;
-
     mapped_offset = 0;
     mapped_size   = buffer_size;
-    return staging_memory->Map();
+
+    if(mapped_ptr)
+        return mapped_ptr;
+
+    if(vmaMapMemory(allocator, staging_allocation, &mapped_ptr) != VK_SUCCESS)
+    {
+        mapped_ptr = nullptr;
+        return nullptr;
+    }
+
+    return mapped_ptr;
 }
 
 void * StagedBuffer::Map(VkDeviceSize offset, VkDeviceSize size)
 {
-    if (!staging_memory)
+    if(offset >= buffer_size)
+        return nullptr;
+
+    if(size == VK_WHOLE_SIZE || offset + size > buffer_size)
+        size = buffer_size - offset;
+
+    if(size == 0)
         return nullptr;
 
     mapped_offset = offset;
     mapped_size   = size;
-    return staging_memory->Map(offset, size);
+
+    if(!mapped_ptr)
+    {
+        if(vmaMapMemory(allocator, staging_allocation, &mapped_ptr) != VK_SUCCESS)
+        {
+            mapped_ptr = nullptr;
+            return nullptr;
+        }
+    }
+
+    return static_cast<char *>(mapped_ptr) + offset;
 }
 
 void StagedBuffer::Unmap()
 {
-    if (staging_memory)
+    if (mapped_ptr)
     {
-        staging_memory->Unmap();
+        vmaUnmapMemory(allocator, staging_allocation);
+        mapped_ptr = nullptr;
         MarkDirty(mapped_offset, mapped_size);
         mapped_offset = 0;
         mapped_size   = 0;
@@ -144,11 +187,6 @@ void StagedBuffer::CopyToDevice(VkCommandBuffer cmd)
     }
 
     ClearDirty();
-
-    //GLogInfo("[StagedBuffer] CopyToDevice buffer=%p offset=%llu size=%llu",
-    //         (void *)this,
-    //         static_cast<unsigned long long>(copy_region.srcOffset),
-    //         static_cast<unsigned long long>(copy_region.size));
 }
 
 void StagedBuffer::ClearDirty()

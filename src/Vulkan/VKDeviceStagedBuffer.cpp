@@ -23,20 +23,16 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
 
     case MemoryUsage::CPUToGPU:
     {
-        // Try HOST_VISIBLE + DEVICE_LOCAL first (ideal for integrated GPU)
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                    | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                    | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-        // Try to find memory type with all flags
         int index = attr->physical_device->GetMemoryType(req.memoryTypeBits, properties);
         if (index >= 0)
         {
-            // Found ideal memory type, use existing CreateMemory
             return CreateMemory(req, properties, name, loc);
         }
 
-        // Fallback to just HOST_VISIBLE + HOST_COHERENT for discrete GPU
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
         break;
     }
@@ -46,24 +42,18 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
         break;
 
     case MemoryUsage::ReBAR:
-        // Resizable BAR: HOST_VISIBLE + HOST_COHERENT + DEVICE_LOCAL
-        // This provides optimal performance when ReBAR is available
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                    | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                    | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-        // Try to find memory type with all flags
         {
             int index = attr->physical_device->GetMemoryType(req.memoryTypeBits, properties);
             if (index >= 0)
             {
-                // ReBAR is available, use it
                 return CreateMemory(req, properties, name, loc);
             }
         }
 
-        // ReBAR not available, fallback to staging pattern (CPUToGPU)
-        // This ensures the code still works on systems without ReBAR
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
         break;
 
@@ -94,7 +84,6 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(const ObjectNameBuilder &name, Vk
         return ObjectNameBuilder(full);
     };
 
-    // Create staging buffer (CPU accessible)
     BufferCreateInfo staging_info;
     staging_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     staging_info.size = size;
@@ -102,79 +91,81 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(const ObjectNameBuilder &name, Vk
     staging_info.pQueueFamilyIndices = nullptr;
     staging_info.sharingMode = VkSharingMode(sharing_mode);
 
-    VkBuffer staging_buffer;
-    if (vkCreateBuffer(attr->device, &staging_info, nullptr, &staging_buffer) != VK_SUCCESS)
-        return nullptr;
+    VmaAllocationCreateInfo staging_alloc_info{};
+    staging_alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
+    staging_alloc_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-    VkMemoryRequirements staging_mem_reqs;
-    vkGetBufferMemoryRequirements(attr->device, staging_buffer, &staging_mem_reqs);
-
-    ObjectNameBuilder staging_memory_name = make_child_name(name, "StagingMemory");
-    DeviceMemory *staging_memory = CreateMemory(staging_mem_reqs, MemoryUsage::CPUToGPU, staging_memory_name);
-    if (!staging_memory || !staging_memory->BindBuffer(staging_buffer))
+    VkBuffer staging_buffer = VK_NULL_HANDLE;
+    VmaAllocation staging_allocation = VK_NULL_HANDLE;
+    if (vmaCreateBuffer(vma_allocator,
+                        static_cast<const VkBufferCreateInfo *>(&staging_info),
+                        &staging_alloc_info,
+                        &staging_buffer,
+                        &staging_allocation,
+                        nullptr) != VK_SUCCESS)
     {
-        delete staging_memory;
-        vkDestroyBuffer(attr->device, staging_buffer, nullptr);
         return nullptr;
     }
 
-
-    // Create device buffer (GPU optimal)
     BufferCreateInfo device_info;
-    device_info.usage = usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT; // Add transfer dst bit
+    device_info.usage = usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     device_info.size = size;
     device_info.queueFamilyIndexCount = 0;
     device_info.pQueueFamilyIndices = nullptr;
     device_info.sharingMode = VkSharingMode(sharing_mode);
 
-    VkBuffer device_buffer;
-    if (vkCreateBuffer(attr->device, &device_info, nullptr, &device_buffer) != VK_SUCCESS)
+    VmaAllocationCreateInfo device_alloc_info{};
+    device_alloc_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+    VkBuffer device_buffer = VK_NULL_HANDLE;
+    VmaAllocation device_allocation = VK_NULL_HANDLE;
+    if (vmaCreateBuffer(vma_allocator,
+                        static_cast<const VkBufferCreateInfo *>(&device_info),
+                        &device_alloc_info,
+                        &device_buffer,
+                        &device_allocation,
+                        nullptr) != VK_SUCCESS)
     {
-        delete staging_memory;
-        vkDestroyBuffer(attr->device, staging_buffer, nullptr);
+        vmaDestroyBuffer(vma_allocator, staging_buffer, staging_allocation);
         return nullptr;
     }
 
-    VkMemoryRequirements device_mem_reqs;
-    vkGetBufferMemoryRequirements(attr->device, device_buffer, &device_mem_reqs);
+    VmaAllocationInfo staging_ai{};
+    VmaAllocationInfo device_ai{};
+    vmaGetAllocationInfo(vma_allocator, staging_allocation, &staging_ai);
+    vmaGetAllocationInfo(vma_allocator, device_allocation, &device_ai);
 
-    ObjectNameBuilder device_memory_name = make_child_name(name, "DeviceMemory");
-    DeviceMemory *device_memory = CreateMemory(device_mem_reqs, MemoryUsage::GPUOnly, device_memory_name);
-    if (!device_memory || !device_memory->BindBuffer(device_buffer))
-    {
-        delete device_memory;
-        delete staging_memory;
-        vkDestroyBuffer(attr->device, device_buffer, nullptr);
-        vkDestroyBuffer(attr->device, staging_buffer, nullptr);
-        return nullptr;
-    }
-
+    ObjectNameBuilder staging_memory_name = make_child_name(name, "StagingMemory");
     ObjectNameBuilder staging_buffer_name = make_child_name(name, "StagingBuffer");
+    ObjectNameBuilder device_memory_name = make_child_name(name, "DeviceMemory");
+    ObjectNameBuilder device_buffer_name = make_child_name(name, "VkBufferOwner");
+
     TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)staging_buffer,
                 staging_buffer_name, loc);
+    if (staging_ai.deviceMemory)
+        TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)staging_ai.deviceMemory,
+                    staging_memory_name, loc);
 
-    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)static_cast<VkDeviceMemory>(*staging_memory),
-                staging_memory_name, loc);
-    ObjectNameBuilder device_buffer_name = make_child_name(name, "VkBufferOwner");
     TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)device_buffer,
                 device_buffer_name, loc);
+    if (device_ai.deviceMemory)
+        TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)device_ai.deviceMemory,
+                    device_memory_name, loc);
 
-    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)static_cast<VkDeviceMemory>(*device_memory),
-                device_memory_name, loc);
-
-    // Create StagedBuffer wrapper
     StagedBuffer *staged_buffer = new StagedBuffer(
         std::string(name.base_name),
         attr->device,
+        vma_allocator,
         staging_buffer,
-        staging_memory,
+        staging_allocation,
+        staging_ai.deviceMemory,
         device_buffer,
-        device_memory,
+        device_allocation,
+        device_ai.deviceMemory,
         size,
         usage
     );
 
-    // If initial data provided, write it
     if (data)
     {
         staged_buffer->Write(data, 0, size);
