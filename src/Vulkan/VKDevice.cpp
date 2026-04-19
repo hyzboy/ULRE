@@ -118,6 +118,12 @@ VulkanDevice::~VulkanDevice()
         delete kv.second;
     render_format_cache.Clear();
 
+    if(vma_allocator)
+    {
+        vmaDestroyAllocator(vma_allocator);
+        vma_allocator = VK_NULL_HANDLE;
+    }
+
     delete attr;
 }
 

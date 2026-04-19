@@ -30,6 +30,7 @@
 #include<vector>
 #include<hgl/vk/pipeline/VKGplPipelineKey.h>
 #include<hgl/vk/pipeline/VKGplLibraryStatsTracker.h>
+#include<vk_mem_alloc.h>
 
 namespace hgl::graph{
 class RenderTargetFormat;
@@ -59,6 +60,7 @@ class VulkanDevice
     OBJECT_LOGGER
 
     VulkanDevAttr *attr;
+    VmaAllocator vma_allocator = VK_NULL_HANDLE;
     bool draw_phase_active = false;
     std::vector<IGPUBuffer*> gpu_buffer_registry;  // All Layer2 buffers, iterated by ECS UploadSystem
     UnorderedMap<AnsiString, RenderTargetFormat *> render_format_cache;
@@ -123,6 +125,7 @@ public:
 
     operator    VkDevice                                ()      {return attr->device;}
                 VulkanDevAttr *     GetDevAttr          ()      {return attr;}
+                VmaAllocator        GetVmaAllocator     ()const {return vma_allocator;}
 
     const       VulkanSurface *     GetSurface          ()const {return attr->surface;}
                 VkDevice            GetDevice           ()const {return attr->device;}

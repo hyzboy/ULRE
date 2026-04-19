@@ -8,6 +8,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSurface.h>
 #include<hgl/shadergen/GLSLCompilerConfig.h>
+#include<vk_mem_alloc.h>
 
 #include<hgl/log/Log.h>
 
@@ -415,7 +416,21 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
         }
     #endif//_DEBUG
 
-    return(new VulkanDevice(device_attr));
+    VulkanDevice *device = new VulkanDevice(device_attr);
+
+    VmaAllocatorCreateInfo allocator_ci{};
+    allocator_ci.physicalDevice  = physical_device->GetVulkanDevice();
+    allocator_ci.device          = device_attr->device;
+    allocator_ci.instance        = instance->GetVulkanInstance();
+    allocator_ci.vulkanApiVersion= VK_API_VERSION_1_3;
+
+    if(vmaCreateAllocator(&allocator_ci, &device->vma_allocator) != VK_SUCCESS)
+    {
+        delete device;
+        return(nullptr);
+    }
+
+    return device;
 }
 
 VulkanDeviceCreater::VulkanDeviceCreater(   VulkanInstance *vi,

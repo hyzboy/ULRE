@@ -108,6 +108,7 @@ SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
                                 ${VK_INCLUDE_PATH}/UBOAccessor.h
                                 ${VK_INCLUDE_PATH}/AlignedStructureBuffer.h
                                 VKMemory.cpp
+                                VKVmaImpl.cpp
                                 VKBufferOwner.cpp
                                 VKRingBufferWrapper.cpp
                                 VKStagedBuffer.cpp
@@ -315,6 +316,10 @@ add_cm_library(ULRE.Vulkan "ULRE"   ${VK_INCLUDE_PATH}
                                     ${VULKAN_ALL_FILES}
                                     ${VK_DEVICE_PLATFORM_FILES}
 )
+
+# ============================================================================
+# Link Vulkan and VMA
+# ============================================================================
 
 if(TARGET Vulkan::Vulkan)
     target_link_libraries(ULRE.Vulkan PUBLIC Vulkan::Vulkan)
