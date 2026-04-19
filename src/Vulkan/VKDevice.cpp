@@ -120,7 +120,29 @@ VulkanDevice::~VulkanDevice()
 
     if(vma_allocator)
     {
-        vmaDestroyAllocator(vma_allocator);
+        bool has_live_vma_related_objects = false;
+        for(const auto &entry : tracked_objects)
+        {
+            const VkObjectType t = entry.first.type;
+            if(t == VK_OBJECT_TYPE_BUFFER ||
+               t == VK_OBJECT_TYPE_IMAGE ||
+               t == VK_OBJECT_TYPE_DEVICE_MEMORY)
+            {
+                has_live_vma_related_objects = true;
+                break;
+            }
+        }
+
+        if(has_live_vma_related_objects)
+        {
+            LogWarning("[VulkanDevice] Skip vmaDestroyAllocator due to live Vulkan objects. "
+                       "Resource owners outlived device shutdown order.");
+        }
+        else
+        {
+            vmaDestroyAllocator(vma_allocator);
+        }
+
         vma_allocator = VK_NULL_HANDLE;
     }
 
@@ -518,7 +540,9 @@ void VulkanDevice::TrackBuffer(VkBufferOwner *buf, const ObjectNameBuilder &name
         return;
 
     TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)buf->GetBuffer(), name.Append(ObjectTypeTag::VKBuffer), loc);
-    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)buf->GetVkMemory(), name.Append(ObjectTypeTag::VKMemory), loc);
+
+    if (buf->GetVkMemory())
+        TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)buf->GetVkMemory(), name.Append(ObjectTypeTag::VKMemory), loc);
 }
 
 void VulkanDevice::TrackTexture(Texture *tex, const ObjectNameBuilder &name, const std::source_location &loc)

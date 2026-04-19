@@ -1,89 +1,90 @@
 ﻿#pragma once
 
 #include<hgl/vk/IGPUBuffer.h>
-#include<hgl/vk/VKMemory.h>
+#include<vk_mem_alloc.h>
+#include<cstring>
 
 namespace hgl::graph{
 
-/**
- * ReBarBuffer — IGPUBuffer implementation for ReBAR / CPUVisible memory.
- *
- * Wraps a single VkBuffer backed by HOST_VISIBLE + DEVICE_LOCAL memory
- * (Resizable BAR / CPU-visible VRAM).  Writes are directly visible to the GPU
- * without any staging copy.  CopyToDevice() is therefore a no-op.
- *
- * Ownership: ReBarBuffer owns both the VkBuffer and the DeviceMemory*.
- * VkBufferOwner holds aliases (buf.buffer / buf.memory) that are valid for
- * the lifetime of the owning ReBarBuffer.
- *
- * Lifecycle: created by VulkanDevice factory functions (VKDeviceBuffer.cpp)
- * and installed via VkBufferOwner::SetStagedSource().  VkBufferOwner destructor
- * deletes the staged_source (this object) which in turn frees the VkBuffer
- * and DeviceMemory — the same pattern as StagedBuffer.
- */
 class ReBarBuffer : public IGPUBuffer
 {
-    VkDevice     device;
-    VkBuffer     buffer;
-    DeviceMemory *memory;
-    VkDeviceSize buf_size;
+    VmaAllocator  allocator  = VK_NULL_HANDLE;
+    VkBuffer      buffer     = VK_NULL_HANDLE;
+    VmaAllocation allocation = VK_NULL_HANDLE;
+    VkDeviceSize  buf_size   = 0;
+    void         *mapped_ptr = nullptr;
 
 private:
     friend class VulkanDevice;
 
     ReBarBuffer(const std::string &name,
-                VkDevice          dev,
-                VkBuffer          buf,
-                DeviceMemory     *mem,
-                VkDeviceSize      size)
+                VmaAllocator       alloc,
+                VkBuffer           buf,
+                VmaAllocation      alloc_handle,
+                VkDeviceSize       size)
         : IGPUBuffer(name)
-        , device(dev)
+        , allocator(alloc)
         , buffer(buf)
-        , memory(mem)
+        , allocation(alloc_handle)
         , buf_size(size)
     {}
 
 public:
     virtual ~ReBarBuffer() override
     {
-        // ReBarBuffer owns both the VkBuffer and DeviceMemory
-        delete memory;
-        if(buffer)
-            vkDestroyBuffer(device, buffer, nullptr);
-    }
+        if(mapped_ptr)
+            vmaUnmapMemory(allocator, allocation);
 
-    // ---- IGPUBuffer interface ----
+        if(buffer && allocation)
+            vmaDestroyBuffer(allocator, buffer, allocation);
+    }
 
     bool Write(const void *data, VkDeviceSize offset, VkDeviceSize size) override
     {
-        return memory ? memory->Write(data, offset, size) : false;
+        if(!data || !allocation || offset + size > buf_size)
+            return false;
+
+        void *ptr = nullptr;
+        if(vmaMapMemory(allocator, allocation, &ptr) != VK_SUCCESS || !ptr)
+            return false;
+
+        std::memcpy(static_cast<char *>(ptr) + offset, data, static_cast<size_t>(size));
+        vmaUnmapMemory(allocator, allocation);
+        return true;
     }
 
     void *Map(VkDeviceSize offset, VkDeviceSize size) override
     {
-        return memory ? memory->Map(offset, size) : nullptr;
+        if(!allocation || offset + size > buf_size)
+            return nullptr;
+
+        if(mapped_ptr)
+            return static_cast<char *>(mapped_ptr) + offset;
+
+        if(vmaMapMemory(allocator, allocation, &mapped_ptr) != VK_SUCCESS || !mapped_ptr)
+            return nullptr;
+
+        return static_cast<char *>(mapped_ptr) + offset;
     }
 
     void Unmap() override
     {
-        if(memory) memory->Unmap();
+        if(mapped_ptr)
+        {
+            vmaUnmapMemory(allocator, allocation);
+            mapped_ptr = nullptr;
+        }
     }
 
-    // ReBAR memory is HOST_COHERENT: writes are always GPU-visible.
-    // Dirty tracking is a no-op — CopyToDevice() never needs to be called.
     void MarkDirty (VkDeviceSize = 0, VkDeviceSize = VK_WHOLE_SIZE) override {}
     void MarkDirtyRanges(const DirtyRange *, size_t) override {}
     bool IsDirty   () const override { return false; }
     void ClearDirty() override {}
 
-    /** No-op: CPU-visible memory IS device memory — no copy needed. */
     void CopyToDevice(VkCommandBuffer /*cmd*/) override {}
 
     VkDeviceSize GetSize()           const override { return buf_size; }
     VkBuffer     GetVkDeviceBuffer() const override { return buffer; }
-
-    /** Returns the DeviceMemory owned by this buffer (alias for VkBufferOwner). */
-    DeviceMemory *GetDeviceMemory() const { return memory; }
 
     VkDescriptorBufferInfo GetDescriptorBufferInfo() const override
     {

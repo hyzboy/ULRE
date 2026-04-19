@@ -1,6 +1,7 @@
 #include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/VKStagedBuffer.h>   // complete type for ~StagedBuffer via IGPUBuffer*
 #include<hgl/vk/VKReBarBuffer.h>    // complete type for ~ReBarBuffer via IGPUBuffer*
+#include<hgl/vk/VKDevice.h>
 
 namespace hgl::graph{
 
@@ -8,15 +9,19 @@ VkBufferOwner::~VkBufferOwner()
 {
     if(staged_source)
     {
-        // StagedBuffer or ReBarBuffer owns device_buffer and device_memory — it cleans them up.
         delete staged_source;
         staged_source = nullptr;
-        // buf.memory and buf.buffer are aliases into staged_source — already freed.
     }
     else
     {
-        if(buf.memory) delete buf.memory;
-        if(buf.buffer) vkDestroyBuffer(device, buf.buffer, nullptr);
+        if(buf.buffer)
+        {
+            VulkanDevice *owner = VulkanDevice::FromDevice(device);
+            if(owner && buf.allocation)
+                vmaDestroyBuffer(owner->GetVmaAllocator(), buf.buffer, buf.allocation);
+            else
+                vkDestroyBuffer(device, buf.buffer, nullptr);
+        }
     }
 }
 

@@ -298,12 +298,12 @@ public: //Buffer相关
     static void LogCreateBufferEnd(const char *name,VkBufferOwner *buf)
     {
 #ifdef _DEBUG
-        GLogWarning("[Create%s] type=%s buffer=%p mem=%p memSize=%llu bufRange=%llu",
+        GLogWarning("[Create%s] type=%s buffer=%p mem=%p alloc=%p bufRange=%llu",
                     name,
                     typeid(T).name(),
                     (void *)buf,
                     buf ? (void *)static_cast<VkDeviceMemory>(buf->GetVkMemory()) : nullptr,
-                    buf && buf->GetMemory() ? static_cast<unsigned long long>(buf->GetMemory()->GetSize()) : 0ULL,
+                    buf ? (void *)buf->GetAllocation() : nullptr,
                     buf ? static_cast<unsigned long long>(buf->GetSize()) : 0ULL);
 #endif//_DEBUG
     }

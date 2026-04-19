@@ -4,30 +4,21 @@
 #include<hgl/vk/BufferPolicy.h>
 #include<hgl/vk/IGPUBuffer.h>
 #include<hgl/vk/VK.h>
+#include<vk_mem_alloc.h>
 
 namespace hgl::graph{
 
 /**
- * Aggregate holding the three Vulkan handles owned by any GPU buffer.
- * Formerly defined inside VKBufferOwner.h; moved here so VkBufferOwner can use it
- * without creating a circular dependency.
+ * Aggregate holding Vulkan handles owned by any GPU buffer.
  */
 struct DeviceBufferData
 {
-    VkBuffer                buffer  = nullptr;
-    DeviceMemory           *memory  = nullptr;
+    VkBuffer                buffer      = nullptr;
+    VmaAllocation           allocation  = VK_NULL_HANDLE;
+    VkDeviceMemory          vk_memory   = VK_NULL_HANDLE; // alias for tracking/logging only
     VkDescriptorBufferInfo  info;
 };//struct DeviceBufferData
 
-/**
- * VkBufferOwner — thin base class for all GPU buffer types.
- *
- * Owns: VkBuffer + DeviceMemory + IGPUBuffer (upload path).
- * Shared by all GPU buffer types: UBO/SSBO buffers, VertexAttribBuffer, IndexBuffer, IndirectCommandBuffer<T>.
- *
- * Destructor: if staged_source is set, delegates cleanup to it (it owns the allocations).
- *             Otherwise destroys buf.buffer via vkDestroyBuffer and deletes buf.memory.
- */
 class VkBufferOwner
 {
 protected:
@@ -35,11 +26,8 @@ protected:
     VkDevice         device        = VK_NULL_HANDLE;
     DeviceBufferData buf;
 
-    // Owns the IGPUBuffer implementation for write routing + lifecycle.
-    // Set by factory via SetStagedSource(). nullptr only for pure device-local buffers.
     IGPUBuffer      *staged_source = nullptr;
 
-    // ECS routing hint — set by factory via SetUpdateClass.
     BufferUpdateClass update_class = BufferUpdateClass::Default;
 
     friend class VulkanDevice;
@@ -53,8 +41,8 @@ public:
     virtual ~VkBufferOwner();
 
             VkBuffer                    GetBuffer    () const { return buf.buffer; }
-            DeviceMemory               *GetMemory    () const { return buf.memory; }
-            VkDeviceMemory              GetVkMemory  () const { return buf.memory->operator VkDeviceMemory(); }
+            VmaAllocation               GetAllocation() const { return buf.allocation; }
+            VkDeviceMemory              GetVkMemory  () const { return buf.vk_memory; }
     const   VkDescriptorBufferInfo     *GetBufferInfo() const { return &buf.info; }
             VkDeviceSize                GetSize      () const { return buf.info.range; }
 

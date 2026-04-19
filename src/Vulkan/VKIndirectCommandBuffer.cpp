@@ -27,14 +27,6 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
     const uint32_t size=cmd_count*cmd_size;
     if(size<=0)return(false);
 
-    if(policy==BufferAllocPolicy::Auto)
-    {
-        if(attr->physical_device->HasReBAR())
-            policy=BufferAllocPolicy::CPUVisible;
-        else
-            policy=BufferAllocPolicy::StagedUpload;
-    }
-
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
         StagedBuffer *staged=CreateStagedBuffer(name, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, size, nullptr, sharing_mode);
@@ -42,7 +34,8 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
             return(false);
 
         buf->buffer=staged->GetVkDeviceBuffer();
-        buf->memory=staged->GetDeviceMemory();
+        buf->allocation=VK_NULL_HANDLE;
+        buf->vk_memory=static_cast<VkDeviceMemory>(*staged->GetDeviceMemory());
         buf->info.buffer=buf->buffer;
         buf->info.offset=0;
         buf->info.range=size;
@@ -62,11 +55,10 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
     if(!CreateBuffer(buf,VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,size,size,nullptr,sharing_mode,mem_usage,name))
         return(false);
 
-    // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
     if(staged_out)
     {
         const std::string buf_name = name.base_name[0] ? std::string(name.base_name) : std::string("IndirectBuffer");
-        *staged_out = new ReBarBuffer(buf_name, attr->device, buf->buffer, buf->memory, size);
+        *staged_out = new ReBarBuffer(buf_name, vma_allocator, buf->buffer, buf->allocation, size);
     }
 
     return(true);

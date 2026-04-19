@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKBufferAccessBase.h>
@@ -7,18 +7,41 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/log/Log.h>
 #include<iostream>
+#include<cstring>
 
 namespace hgl::graph{
 
-static BufferAllocPolicy ResolvePolicy(VulkanDevice *device, BufferAllocPolicy policy)
+static BufferAllocPolicy ResolvePolicy(VulkanDevice *, BufferAllocPolicy policy)
 {
-    if(policy!=BufferAllocPolicy::Auto)
-        return policy;
+    return policy;
+}
 
-    if(device->GetPhyDevice()->HasReBAR())
-        return BufferAllocPolicy::CPUVisible;
+static VmaMemoryUsage ToVmaMemoryUsage(const MemoryUsage mem_usage)
+{
+    switch(mem_usage)
+    {
+    case MemoryUsage::GPUOnly:    return VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    case MemoryUsage::ReBAR:      return VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    default:                      return VMA_MEMORY_USAGE_AUTO;
+    }
+}
 
-    return BufferAllocPolicy::StagedUpload;
+static VmaAllocationCreateFlags ToVmaAllocationFlags(const MemoryUsage mem_usage)
+{
+    switch(mem_usage)
+    {
+    case MemoryUsage::GPUOnly:
+        return 0;
+
+    case MemoryUsage::GPUToCPU:
+        return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+
+    case MemoryUsage::CPUOnly:
+    case MemoryUsage::CPUToGPU:
+    case MemoryUsage::ReBAR:
+    default:
+        return VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    }
 }
 
 const VkDeviceSize VulkanDevice::GetUBOAlign   (){return attr->physical_device->GetUBOAlign();}
@@ -44,59 +67,48 @@ bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usa
     buf_info.pQueueFamilyIndices    = nullptr;
     buf_info.sharingMode            = VkSharingMode(sharing_mode);
 
-    if(vkCreateBuffer(attr->device,&buf_info,nullptr,&buf->buffer)!=VK_SUCCESS)
+    VmaAllocationCreateInfo alloc_info{};
+    alloc_info.usage = ToVmaMemoryUsage(mem_usage);
+    alloc_info.flags = ToVmaAllocationFlags(mem_usage);
+
+    if(vmaCreateBuffer(vma_allocator,
+                       static_cast<const VkBufferCreateInfo *>(&buf_info),
+                       &alloc_info,
+                       &buf->buffer,
+                       &buf->allocation,
+                       nullptr)!=VK_SUCCESS)
+    {
         return(false);
+    }
+
+    VmaAllocationInfo allocation_info{};
+    vmaGetAllocationInfo(vma_allocator, buf->allocation, &allocation_info);
+    buf->vk_memory = allocation_info.deviceMemory;
 
     TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)buf->buffer, name, loc);
+    if(buf->vk_memory)
+        TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)buf->vk_memory, name.Append(ObjectTypeTag::VKMemory), loc);
 
-    VkMemoryRequirements mem_reqs;
+    buf->info.buffer  =buf->buffer;
+    buf->info.offset  =0;
+    buf->info.range   =range;
 
-    vkGetBufferMemoryRequirements(attr->device,buf->buffer,&mem_reqs);
-
-#ifdef _DEBUG
-    if(buf_usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
-    {
-        GLogWarning("[CreateBuffer] UBO size=%llu range=%llu memReqSize=%llu memReqAlign=%llu uboAlign=%llu uboRange=%llu",
-                    static_cast<unsigned long long>(size),
-                    static_cast<unsigned long long>(range),
-                    static_cast<unsigned long long>(mem_reqs.size),
-                    static_cast<unsigned long long>(mem_reqs.alignment),
-                    static_cast<unsigned long long>(GetUBOAlign()),
-                    static_cast<unsigned long long>(GetUBORange()));
-    }
-    if(buf_usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
-    {
-        GLogWarning("[CreateBuffer] SSBO size=%llu range=%llu memReqSize=%llu memReqAlign=%llu ssboAlign=%llu ssboRange=%llu",
-                    static_cast<unsigned long long>(size),
-                    static_cast<unsigned long long>(range),
-                    static_cast<unsigned long long>(mem_reqs.size),
-                    static_cast<unsigned long long>(mem_reqs.alignment),
-                    static_cast<unsigned long long>(GetSSBOAlign()),
-                    static_cast<unsigned long long>(GetSSBORange()));
-    }
-#endif//_DEBUG
-
-    DeviceMemory *dm=CreateMemory(mem_reqs,mem_usage,name,loc);
-
-    if(dm&&dm->BindBuffer(buf->buffer))
-    {
-        buf->info.buffer  =buf->buffer;
-        buf->info.offset  =0;
-        buf->info.range   =range;
-
-        buf->memory       =dm;
-
-        if(!data)
-            return(true);
-
-        dm->Write(data,0,size);
+    if(!data)
         return(true);
+
+    void *mapped=nullptr;
+    if(vmaMapMemory(vma_allocator,buf->allocation,&mapped)!=VK_SUCCESS||!mapped)
+    {
+        vmaDestroyBuffer(vma_allocator, buf->buffer, buf->allocation);
+        buf->buffer = VK_NULL_HANDLE;
+        buf->allocation = VK_NULL_HANDLE;
+        buf->vk_memory = VK_NULL_HANDLE;
+        return(false);
     }
 
-    delete dm;
-
-    vkDestroyBuffer(attr->device,buf->buffer,nullptr);
-    return(false);
+    std::memcpy(mapped,data,static_cast<size_t>(size));
+    vmaUnmapMemory(vma_allocator,buf->allocation);
+    return(true);
 }
 
 VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class, const std::source_location &loc)
@@ -123,7 +135,8 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
 
         DeviceBufferData buf;
         buf.buffer=staged->GetVkDeviceBuffer();
-        buf.memory=staged->GetDeviceMemory();
+        buf.allocation=VK_NULL_HANDLE;
+        buf.vk_memory=static_cast<VkDeviceMemory>(*staged->GetDeviceMemory());
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=size;
@@ -146,7 +159,7 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
         return(nullptr);
 
     // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
-    ReBarBuffer *rebar = new ReBarBuffer("VAB", attr->device, buf.buffer, buf.memory, size);
+    ReBarBuffer *rebar = new ReBarBuffer("VAB", vma_allocator, buf.buffer, buf.allocation, size);
     VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
     vab->SetStagedSource(rebar);
     vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
@@ -209,7 +222,8 @@ IndexBuffer *VulkanDevice::CreateIBO(const ObjectNameBuilder &name, IndexType in
 
         DeviceBufferData buf;
         buf.buffer=staged->GetVkDeviceBuffer();
-        buf.memory=staged->GetDeviceMemory();
+        buf.allocation=VK_NULL_HANDLE;
+        buf.vk_memory=static_cast<VkDeviceMemory>(*staged->GetDeviceMemory());
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=size;
@@ -238,7 +252,7 @@ IndexBuffer *VulkanDevice::CreateIBO(const ObjectNameBuilder &name, IndexType in
     // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
     ReBarBuffer *rebar = new ReBarBuffer(
         name.base_name[0] ? std::string(name.base_name) : std::string("IBO"),
-        attr->device, buf.buffer, buf.memory, size);
+        vma_allocator, buf.buffer, buf.allocation, size);
     IndexBuffer *ibo = new IndexBuffer(attr->device,buf,index_type,count);
     ibo->SetStagedSource(rebar);
     ibo->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
@@ -280,7 +294,8 @@ VkBufferOwner *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceS
 
         DeviceBufferData buf;
         buf.buffer=staged->GetVkDeviceBuffer();
-        buf.memory=staged->GetDeviceMemory();
+        buf.allocation=VK_NULL_HANDLE;
+        buf.vk_memory=static_cast<VkDeviceMemory>(*staged->GetDeviceMemory());
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=range;
@@ -315,7 +330,7 @@ VkBufferOwner *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceS
         return(nullptr);
 
     // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
-    ReBarBuffer *rebar = new ReBarBuffer(std::string(buffer_type), attr->device, buf.buffer, buf.memory, size);
+    ReBarBuffer *rebar = new ReBarBuffer(std::string(buffer_type), vma_allocator, buf.buffer, buf.allocation, size);
     VkBufferOwner *dev_buf = new VkBufferOwner(attr->device,buf);
     dev_buf->SetStagedSource(rebar);
     TrackBuffer(dev_buf, ObjectNameBuilder(buffer_type), loc);
@@ -344,7 +359,8 @@ VkBufferOwner *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
 
         DeviceBufferData buf;
         buf.buffer=staged->GetVkDeviceBuffer();
-        buf.memory=staged->GetDeviceMemory();
+        buf.allocation=VK_NULL_HANDLE;
+        buf.vk_memory=static_cast<VkDeviceMemory>(*staged->GetDeviceMemory());
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=range;
@@ -373,7 +389,7 @@ VkBufferOwner *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
     // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
     ReBarBuffer *rebar = new ReBarBuffer(
         name.base_name[0] ? std::string(name.base_name) : std::string("Buffer"),
-        attr->device, buf.buffer, buf.memory, size);
+        vma_allocator, buf.buffer, buf.allocation, size);
     VkBufferOwner *dev_buf = new VkBufferOwner(attr->device,buf);
     dev_buf->SetStagedSource(rebar);
     dev_buf->SetUpdateClass(update_class);
@@ -412,7 +428,8 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
 
         DeviceBufferData buf;
         buf.buffer=staged->GetVkDeviceBuffer();
-        buf.memory=staged->GetDeviceMemory();
+        buf.allocation=VK_NULL_HANDLE;
+        buf.vk_memory=static_cast<VkDeviceMemory>(*staged->GetDeviceMemory());
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=size;
@@ -441,7 +458,7 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
     // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
     ReBarBuffer *rebar = new ReBarBuffer(
         name.base_name[0] ? std::string(name.base_name) : std::string("VAB"),
-        attr->device, buf.buffer, buf.memory, size);
+        vma_allocator, buf.buffer, buf.allocation, size);
     VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
     vab->SetStagedSource(rebar);
     vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
