@@ -23,8 +23,8 @@ namespace hgl::graph
             RectScope2f scope;
             uint segments_x = 1;    ///< X方向细分数量
             uint segments_y = 1;    ///< Y方向细分数量
-            bool normal = false;    ///< 是否生成法线
-            bool tex_coord = true;  ///< 是否生成纹理坐标
+            VkFormat normal = VK_FORMAT_UNDEFINED;             ///< 法线输出格式，UNDEFINED表示不输出
+            VkFormat tex_coord = VK_FORMAT_TEXCOORD;           ///< 纹理坐标输出格式，UNDEFINED表示不输出
 
             RectangleCreateInfo() = default;
 
@@ -107,9 +107,9 @@ namespace hgl::graph
             uint segments_y = 1;    ///< Y方向细分数量
             uint segments_z = 1;    ///< Z方向细分数量
 
-            bool normal = true;
-            bool tangent = false;
-            bool tex_coord = true;
+            VkFormat normal = VK_FORMAT_NORMAL;                ///< 法线输出格式，UNDEFINED表示不输出
+            VkFormat tangent = VK_FORMAT_UNDEFINED;             ///< 切线输出格式，UNDEFINED表示不输出
+            VkFormat tex_coord = VK_FORMAT_TEXCOORD;           ///< 纹理坐标输出格式，UNDEFINED表示不输出
 
             enum class ColorType
             {
@@ -138,7 +138,7 @@ namespace hgl::graph
 
         struct BoundingBoxCreateInfo
         {
-            bool normal;
+            VkFormat normal;
 
             enum class ColorType
             {
@@ -154,7 +154,7 @@ namespace hgl::graph
 
         public:
 
-            BoundingBoxCreateInfo(bool n=false,ColorType ct=ColorType::NoColor)
+            BoundingBoxCreateInfo(VkFormat n=VK_FORMAT_UNDEFINED,ColorType ct=ColorType::NoColor)
             {
                 normal=n;
 
@@ -177,9 +177,9 @@ namespace hgl::graph
             uint number_slices = 32;   ///< 穹顶细分精度（用于推导 ico sphere 细分等级）
             bool inside_out = false;   ///< 是否调转三角形顺序（从内部可见）
 
-            bool normal = true;        ///< 是否写入法线
-            bool tangent = false;      ///< 是否写入切线
-            bool tex_coord = true;     ///< 是否写入纹理坐标
+            VkFormat normal = VK_FORMAT_NORMAL;                ///< 法线输出格式，UNDEFINED表示不输出
+            VkFormat tangent = VK_FORMAT_UNDEFINED;             ///< 切线输出格式，UNDEFINED表示不输出
+            VkFormat tex_coord = VK_FORMAT_TEXCOORD;           ///< 纹理坐标输出格式，UNDEFINED表示不输出
         };
 
         /**
