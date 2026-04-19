@@ -59,17 +59,21 @@ namespace hgl::ecs
 
         if (state.binding_instance)
         {
-            state.domain = state.binding_instance->GetDomain();
+            state.material  = state.binding_instance->GetShaderMaterialProgram();
+            state.vil       = state.binding_instance->GetVIL();
+            state.domain    = state.binding_instance->GetDomain();
             state.domain_id = state.binding_instance->GetDomainID();
 
-            state.mi_id = state.binding_instance->GetMIID();
+            state.mi_id  = state.binding_instance->GetMIID();
             state.preset = state.binding_instance->GetRenderPreset();
 
 #ifdef _DEBUG
-            assert(state.domain == state.binding_instance->GetDomain());
+            assert(state.material  == state.binding_instance->GetShaderMaterialProgram());
+            assert(state.vil       == state.binding_instance->GetVIL());
+            assert(state.domain    == state.binding_instance->GetDomain());
             assert(state.domain_id == state.binding_instance->GetDomainID());
 
-            assert(state.mi_id == state.binding_instance->GetMIID());
+            assert(state.mi_id  == state.binding_instance->GetMIID());
             assert(state.preset == state.binding_instance->GetRenderPreset());
 #endif
         }
