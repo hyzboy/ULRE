@@ -141,6 +141,16 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("Cube", vertex_count, index_count))
             return nullptr;
 
+        // 3.1 校验请求格式与 GeometryVertexFormat 一致
+        if(!ValidateRequestedAttribFormat(pc, VAN::Normal, cci->normal))
+            return nullptr;
+
+        if(!ValidateRequestedAttribFormat(pc, VAN::Tangent, cci->tangent))
+            return nullptr;
+
+        if(!ValidateRequestedAttribFormat(pc, VAN::TexCoord, cci->tex_coord))
+            return nullptr;
+
         // 4. 初始化 GeometryBuilder 获取VAB映射
         GeometryBuilder builder(pc);
         if(!builder.IsValid())

@@ -22,6 +22,13 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("Rectangle", vertex_count, index_count))
             return nullptr;
 
+        // 3.1 校验请求格式与 GeometryVertexFormat 一致
+        if(!ValidateRequestedAttribFormat(pc, VAN::Normal, rci->normal))
+            return nullptr;
+
+        if(!ValidateRequestedAttribFormat(pc, VAN::TexCoord, rci->tex_coord))
+            return nullptr;
+
         // 4. 初始化 GeometryBuilder
         GeometryBuilder builder(pc);
         if(!builder.IsValid())

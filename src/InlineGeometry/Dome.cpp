@@ -171,6 +171,16 @@ namespace hgl::graph::inline_geometry
         if (!pc->Init("Dome", numberVertices, numberIndices))
             return nullptr;
 
+        // 校验请求格式与 GeometryVertexFormat 一致
+        if(!ValidateRequestedAttribFormat(pc, VAN::Normal, dci->normal))
+            return nullptr;
+
+        if(!ValidateRequestedAttribFormat(pc, VAN::Tangent, dci->tangent))
+            return nullptr;
+
+        if(!ValidateRequestedAttribFormat(pc, VAN::TexCoord, dci->tex_coord))
+            return nullptr;
+
         GeometryBuilder builder(pc);
         if (!builder.IsValid())
             return nullptr;
