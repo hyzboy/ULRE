@@ -20,7 +20,6 @@ struct TextureCreateInfo
     VkImageLayout       image_layout;
 
     VkImage             image;          // If no IMAGE, create one; otherwise directly provide image (can be from external source)
-    DeviceMemory *      memory;         // Legacy bind path (to be removed in later phases)
     VmaAllocation       allocation;     // VMA-owned image allocation handle
     VkDeviceMemory      vk_memory;      // Alias used for debug/object tracking
 
@@ -338,7 +337,6 @@ struct SwapchainDepthTextureCreateInfo:public TextureCreateInfo
 
 struct TextureData
 {
-    DeviceMemory *      memory;
     VmaAllocation       allocation;
     VkDeviceMemory      vk_memory;
     VkImage             image;
@@ -356,7 +354,6 @@ public:
 
     TextureData(const TextureCreateInfo *tci)
     {
-        memory      =tci->memory;
         allocation  =tci->allocation;
         vk_memory   =tci->vk_memory;
         image       =tci->image;

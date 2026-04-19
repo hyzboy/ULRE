@@ -36,12 +36,5 @@ Texture::~Texture()
         else
             vkDestroyImage(manager->GetVkDevice(),data->image,nullptr);
     }
-    else if(data->memory)        // legacy path (pre-VMA / external image ownership)
-    {
-        delete data->memory;
-
-        if(data->image)
-            vkDestroyImage(manager->GetVkDevice(),data->image,nullptr);
-    }
 }
 }//namespace hgl::graph

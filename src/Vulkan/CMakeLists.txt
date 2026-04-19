@@ -255,8 +255,7 @@ SET(VK_SYNC_FILES               ${VK_INCLUDE_PATH}/VKSemaphore.h
 SOURCE_GROUP("Synchronization" FILES ${VK_SYNC_FILES})
 
 # --- 13. Buffer Operations (Device Level) ---
-SET(VK_BUFFER_OPS_FILES         VKDeviceMemory.cpp
-                                VKDeviceBuffer.cpp
+SET(VK_BUFFER_OPS_FILES         VKDeviceBuffer.cpp
                                 VKBufferAccessBase.cpp
                                 VKDeviceStagedBuffer.cpp
                                 VKDeviceImage.cpp

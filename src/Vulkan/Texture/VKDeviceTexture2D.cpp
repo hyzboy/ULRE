@@ -90,7 +90,6 @@ void TextureManager::Clear(TextureCreateInfo *tci)
     }
 
     if(tci->image_view)delete tci->image_view;
-    if(tci->memory)delete tci->memory;
 
     delete tci;
 }
