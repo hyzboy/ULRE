@@ -197,9 +197,9 @@ namespace hgl::graph
                 {
                     CubeCreateInfo cci;
 
-                    cci.normal=VK_FORMAT_NORMAL;
-                    cci.tangent=VK_FORMAT_UNDEFINED;
-                    cci.tex_coord=VK_FORMAT_UNDEFINED;
+                    cci.normal=true;
+                    cci.tangent=false;
+                    cci.tex_coord=false;
 
                     InitGizmoMesh(GizmoShape::Cube,CreateCube(gizmo_triangle.prim_creater,&cci));
                 }

@@ -171,25 +171,13 @@ namespace hgl::graph::inline_geometry
         if (!pc->Init("Dome", numberVertices, numberIndices))
             return nullptr;
 
-        // 校验请求格式与 GeometryVertexFormat 一致
-        if(!ValidateRequestedAttribFormat(pc, VAN::Normal, dci->normal))
-            return nullptr;
-
-        if(!ValidateRequestedAttribFormat(pc, VAN::Tangent, dci->tangent))
-            return nullptr;
-
-        if(!ValidateRequestedAttribFormat(pc, VAN::TexCoord, dci->tex_coord))
-            return nullptr;
-
         GeometryBuilder builder(pc);
         if (!builder.IsValid())
             return nullptr;
 
-        const bool write_normal = (dci->normal != VK_FORMAT_UNDEFINED) && builder.HasNormals();
-        const bool write_tangent = (dci->normal != VK_FORMAT_UNDEFINED)
-                    && (dci->tangent != VK_FORMAT_UNDEFINED)
-                    && builder.HasTangents();
-        const bool write_tex_coord = (dci->tex_coord != VK_FORMAT_UNDEFINED) && builder.HasTexCoords();
+        const bool write_normal = dci->normal && builder.HasNormals();
+        const bool write_tangent = dci->normal && dci->tangent && builder.HasTangents();
+        const bool write_tex_coord = dci->tex_coord && builder.HasTexCoords();
 
         const float half_pi = std::numbers::pi_v<float> * 0.5f;
 

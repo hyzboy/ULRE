@@ -62,13 +62,13 @@ namespace hgl::graph::inline_geometry
 
                     builder.WriteVertex(pos.x, pos.y, pos.z);
 
-                    if(cci->normal != VK_FORMAT_UNDEFINED)
+                    if(cci->normal)
                         builder.WriteNormal(normal.x, normal.y, normal.z);
 
-                    if(cci->tangent != VK_FORMAT_UNDEFINED)
+                    if(cci->tangent)
                         builder.WriteTangent(tangent.x, tangent.y, tangent.z);
 
-                    if(cci->tex_coord != VK_FORMAT_UNDEFINED)
+                    if(cci->tex_coord)
                         builder.WriteTexCoord(tu, tv);
                 }
             }
@@ -139,16 +139,6 @@ namespace hgl::graph::inline_geometry
 
         // 3. 初始化 GeometryCreater
         if(!pc->Init("Cube", vertex_count, index_count))
-            return nullptr;
-
-        // 3.1 校验请求格式与 GeometryVertexFormat 一致
-        if(!ValidateRequestedAttribFormat(pc, VAN::Normal, cci->normal))
-            return nullptr;
-
-        if(!ValidateRequestedAttribFormat(pc, VAN::Tangent, cci->tangent))
-            return nullptr;
-
-        if(!ValidateRequestedAttribFormat(pc, VAN::TexCoord, cci->tex_coord))
             return nullptr;
 
         // 4. 初始化 GeometryBuilder 获取VAB映射
