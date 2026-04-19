@@ -38,15 +38,6 @@ protected:
     uint32_t mit_packed_count = 0;              ///< number of active Array slots
     uint32_t *mit_packed      = nullptr;        ///< packed layer indices (one uint32 per active slot)
 
-public:
-
-                [[deprecated("Runtime material access is engine-internal; prefer resolved material state or MaterialBindingInstanceInternalAccess.")]]
-                ShaderMaterialProgram *      GetShaderMaterialProgram()      { return material; }
-                [[deprecated("Runtime domain access is engine-internal; prefer resolved material state or MaterialBindingInstanceInternalAccess.")]]
-                ResourceDomain *GetDomain   ()      { return domain; }
-    [[deprecated("Runtime domain-id access is engine-internal; prefer resolved material state or MaterialBindingInstanceInternalAccess.")]]
-    const   uint32_t        GetDomainID ()const { return domain_id; }
-
 private:
 
     friend class ShaderMaterialProgram;
