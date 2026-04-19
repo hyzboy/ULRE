@@ -67,7 +67,17 @@ if(Python3_Interpreter_FOUND)
         add_test(
             NAME check_shadergen_boundary
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_shadergen_boundary.py --repo-root ${CMAKE_CURRENT_SOURCE_DIR} --allowlist-file ${CMAKE_CURRENT_SOURCE_DIR}/tools/shadergen_boundary_allowlist.txt)
+
+        add_test(
+            NAME check_vkbuffer_deprecated_calls
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/ci_check_deprecated_vkbuffer.py)
     endif()
+
+    add_custom_target(check_vkbuffer_deprecated_calls
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/ci_check_deprecated_vkbuffer.py
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Running VKBuffer deprecated-call regression check"
+        VERBATIM)
 else()
-    message(WARNING "Python3 interpreter not found; check_shadergen_boundary target is disabled")
+    message(WARNING "Python3 interpreter not found; check_shadergen_boundary/check_vkbuffer_deprecated_calls targets are disabled")
 endif()

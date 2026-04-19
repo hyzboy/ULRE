@@ -88,8 +88,12 @@ namespace hgl::graph
             if (!buffer || element_size == 0 || dynamic_count == 0)
                 return nullptr;
 
-            return buffer->Map(GetBaseOffsetBytes(static_count, dynamic_count),
-                               GetDynamicSizeBytes(dynamic_count));
+            auto *gpu = buffer->GetGPUBuffer();
+            if (!gpu)
+                return nullptr;
+
+            return gpu->Map(GetBaseOffsetBytes(static_count, dynamic_count),
+                            GetDynamicSizeBytes(dynamic_count));
         }
 
         void Unmap()
@@ -107,9 +111,13 @@ namespace hgl::graph
             if (!buffer || element_size == 0 || dynamic_count == 0)
                 return false;
 
+            auto *gpu = buffer->GetGPUBuffer();
+            if (!gpu)
+                return false;
+
             const VkDeviceSize offset = GetBaseOffsetBytes(static_count, dynamic_count);
             const VkDeviceSize size = GetDynamicSizeBytes(dynamic_count);
-            return buffer->Write(data, static_cast<uint32_t>(offset), static_cast<uint32_t>(size));
+            return gpu->Write(data, offset, size);
         }
     };
 }
