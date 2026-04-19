@@ -16,7 +16,7 @@
 namespace hgl::graph
 {
     class BufferManager;
-    class VKDescriptorBuffer;
+    class VkBufferOwner;
 }
 
 namespace hgl::ecs
@@ -46,7 +46,7 @@ namespace hgl::ecs
 
     private:    // LocalToWorld矩阵数据
         uint32_t transform_buffer_max_count;    ///<LocalToWorld矩阵最大数量
-        graph::VKDescriptorBuffer* transform_buffer;  ///<LocalToWorld矩阵数据(UBO/SSBO)
+        graph::VkBufferOwner* transform_buffer;  ///<LocalToWorld矩阵数据(UBO/SSBO)
         graph::BufferAllocPolicy transform_policy;     ///<Transform buffer allocation policy
         bool static_only;                       ///<Only static transforms in this batch
 
@@ -88,7 +88,7 @@ namespace hgl::ecs
 
     private:    // 分发数据（TransformID）
         uint32_t transform_id_buffer_max_count; ///<TransformID descriptor buffer capacity
-        graph::VKDescriptorBuffer* transform_id_buffer; ///<TransformID data(UBO/SSBO)
+        graph::VkBufferOwner* transform_id_buffer; ///<TransformID data(UBO/SSBO)
         VkBuffer transform_id_vk_buffer;         ///<TransformID descriptor-backed VkBuffer
 
     private:
@@ -98,8 +98,8 @@ namespace hgl::ecs
         TransformAssignmentBuffer(graph::BufferManager* bm, const Mode m = Mode::MovableOnly, uint32_t ring_frames = HGL_L2W_RING_FRAMES);
         ~TransformAssignmentBuffer() { Clear(); }
 
-        graph::VKDescriptorBuffer* GetTransformDataBuffer() const { return transform_buffer; }
-        graph::VKDescriptorBuffer* GetTransformIDDataBuffer() const { return transform_id_buffer; }
+        graph::VkBufferOwner* GetTransformDataBuffer() const { return transform_buffer; }
+        graph::VkBufferOwner* GetTransformIDDataBuffer() const { return transform_id_buffer; }
         const VkBuffer GetTransformIDVkBuffer() const { return transform_id_vk_buffer; }
 
         /**

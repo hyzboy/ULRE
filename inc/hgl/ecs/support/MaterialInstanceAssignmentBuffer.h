@@ -93,7 +93,7 @@ namespace hgl::ecs
         MaterialInstanceSet mi_set;         ///<材质实例集合（去重）
 
         uint32_t material_instance_data_bytes;      ///<单个材质实例数据字节数
-        graph::VKDescriptorBuffer* material_instance_buffer;  ///<材质实例数据(UBO/SSBO)
+        graph::VkBufferOwner* material_instance_buffer;  ///<材质实例数据(UBO/SSBO)
         graph::RingBufferWrapper material_instance_ring_writer;
 
         void StatMaterialInstance(const std::vector<RenderItem*>& items);
@@ -101,13 +101,13 @@ namespace hgl::ecs
     private:    // 分发数据（SSBO descriptor path）
         uint32_t node_count;                        ///<节点数量
         uint32_t material_instance_id_buffer_max_count; ///<MaterialBindingInstanceID SSBO capacity (elements)
-        graph::VKDescriptorBuffer* material_instance_id_buffer;   ///<MaterialBindingInstanceID data (SSBO, uint[])
+        graph::VkBufferOwner* material_instance_id_buffer;   ///<MaterialBindingInstanceID data (SSBO, uint[])
         VkBuffer material_instance_id_vk_buffer;            ///<MaterialBindingInstanceID VkBuffer cache
 
     private:    // MIT SSBO（TextureArray用：per-instance纹理层索引）
         uint32_t mit_data_bytes;                ///< per-entry MIT struct size; 0 = no TextureArray slots
         uint32_t mit_buffer_max_count;          ///< MIT SSBO capacity (elements)
-        graph::VKDescriptorBuffer* mit_buffer;        ///< MaterialBindingInstanceTexture SSBO
+        graph::VkBufferOwner* mit_buffer;        ///< MaterialBindingInstanceTexture SSBO
 
     private:
         void Clear();
@@ -120,9 +120,9 @@ namespace hgl::ecs
          * 获取MaterialInstanceID SSBO VkBuffer（用于绑定到管线）
          */
         const VkBuffer GetMaterialInstanceIDVkBuffer() const { return material_instance_id_vk_buffer; }
-        graph::VKDescriptorBuffer* GetMaterialInstanceBuffer() const { return material_instance_buffer; }
-        graph::VKDescriptorBuffer* GetMaterialInstanceIDBuffer() const { return material_instance_id_buffer; }
-        graph::VKDescriptorBuffer* GetMaterialInstanceTextureIDBuffer() const { return mit_buffer; }
+        graph::VkBufferOwner* GetMaterialInstanceBuffer() const { return material_instance_buffer; }
+        graph::VkBufferOwner* GetMaterialInstanceIDBuffer() const { return material_instance_id_buffer; }
+        graph::VkBufferOwner* GetMaterialInstanceTextureIDBuffer() const { return mit_buffer; }
 
         /**
          * 绑定MaterialInstanceID SSBO到材质

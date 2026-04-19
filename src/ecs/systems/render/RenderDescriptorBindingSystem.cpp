@@ -11,7 +11,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/core/GraphicsContext.h>

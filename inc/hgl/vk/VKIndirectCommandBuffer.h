@@ -46,7 +46,7 @@ public:
 
     /**
      * Returns the underlying VkBuffer handle for vkCmdDrawIndirect / vkCmdDispatchIndirect.
-     * Prefer this over GetBuffer() — does not require VKDescriptorBuffer inheritance.
+     * Prefer this over GetBuffer() — does not require VkBufferOwner inheritance.
      */
     VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
 };//class IndirectCommandBuffer:public VkBufferOwner

@@ -251,12 +251,12 @@ IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const v
     return CreateIBO(ObjectNameBuilder("IBO"), index_type, count, data, policy, sharing_mode, update_class, loc);
 }
 
-VKDescriptorBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode, const std::source_location &loc)
+VkBufferOwner *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode, const std::source_location &loc)
 {
     return CreateBuffer(buf_usage,range,size,data,BufferAllocPolicy::Auto,sharing_mode,loc);
 }
 
-VKDescriptorBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode, const std::source_location &loc)
+VkBufferOwner *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode, const std::source_location &loc)
 {
     if(size<=0)return(nullptr);
 
@@ -285,7 +285,7 @@ VKDescriptorBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDe
         buf.info.offset=0;
         buf.info.range=range;
 
-        VKDescriptorBuffer *dev_buf = new VKDescriptorBuffer(attr->device,buf);
+        VkBufferOwner *dev_buf = new VkBufferOwner(attr->device,buf);
         dev_buf->SetStagedSource(staged);
         TrackBuffer(dev_buf, ObjectNameBuilder(buffer_type), loc);
         return dev_buf;
@@ -316,13 +316,13 @@ VKDescriptorBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDe
 
     // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
     ReBarBuffer *rebar = new ReBarBuffer(std::string(buffer_type), attr->device, buf.buffer, buf.memory, size);
-    VKDescriptorBuffer *dev_buf = new VKDescriptorBuffer(attr->device,buf);
+    VkBufferOwner *dev_buf = new VkBufferOwner(attr->device,buf);
     dev_buf->SetStagedSource(rebar);
     TrackBuffer(dev_buf, ObjectNameBuilder(buffer_type), loc);
     return dev_buf;
 }
 
-VKDescriptorBuffer *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
+VkBufferOwner *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
                                          VkBufferUsageFlags buf_usage,
                                          VkDeviceSize range,
                                          VkDeviceSize size,
@@ -349,7 +349,7 @@ VKDescriptorBuffer *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
         buf.info.offset=0;
         buf.info.range=range;
 
-        VKDescriptorBuffer *dev_buf = new VKDescriptorBuffer(attr->device,buf);
+        VkBufferOwner *dev_buf = new VkBufferOwner(attr->device,buf);
         dev_buf->SetStagedSource(staged);
         dev_buf->SetUpdateClass(update_class);
         TrackBuffer(dev_buf, name, loc);
@@ -374,7 +374,7 @@ VKDescriptorBuffer *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
     ReBarBuffer *rebar = new ReBarBuffer(
         name.base_name[0] ? std::string(name.base_name) : std::string("Buffer"),
         attr->device, buf.buffer, buf.memory, size);
-    VKDescriptorBuffer *dev_buf = new VKDescriptorBuffer(attr->device,buf);
+    VkBufferOwner *dev_buf = new VkBufferOwner(attr->device,buf);
     dev_buf->SetStagedSource(rebar);
     dev_buf->SetUpdateClass(update_class);
     TrackBuffer(dev_buf, name, loc);
@@ -449,14 +449,14 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
     return vab;
 }
 
-VKDescriptorBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class, const std::source_location &loc)
+VkBufferOwner *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class, const std::source_location &loc)
 {
-    VKDescriptorBuffer *buf = CreateBuffer(buf_usage,range,size,data,policy,sharing_mode,loc);
+    VkBufferOwner *buf = CreateBuffer(buf_usage,range,size,data,policy,sharing_mode,loc);
     if(buf) buf->SetUpdateClass(update_class);
     return buf;
 }
 
-VKDescriptorBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode,BufferUpdateClass update_class, const std::source_location &loc)
+VkBufferOwner *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode,BufferUpdateClass update_class, const std::source_location &loc)
 {
     return CreateBuffer(buf_usage,range,size,data,BufferAllocPolicy::Auto,sharing_mode,update_class,loc);
 }

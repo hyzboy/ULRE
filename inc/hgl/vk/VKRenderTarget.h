@@ -4,7 +4,7 @@
 #include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKQueue.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/graph/camera/ViewportInfo.h>
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/vk/VKCommandBuffer.h>

@@ -19,7 +19,7 @@
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKShaderMaterialProgram.h>
-#include <hgl/vk/VKBuffer.h>
+#include <hgl/vk/VKBufferOwner.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/vk/VKVertexInputConfig.h>

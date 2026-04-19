@@ -1,5 +1,5 @@
-#include<hgl/vk/VKRingBufferWrapper.h>
-#include<hgl/vk/VKBuffer.h>
+﻿#include<hgl/vk/VKRingBufferWrapper.h>
+#include<hgl/vk/VKBufferOwner.h>
 
 namespace hgl::graph
 {
@@ -40,12 +40,12 @@ bool RingBufferWrapper::CommitInternal()
     return true;
 }
 
-VKDescriptorBuffer* RingBufferWrapper::GetBuffer()
+VkBufferOwner* RingBufferWrapper::GetBuffer()
 {
     return writer.GetBuffer();
 }
 
-const VKDescriptorBuffer* RingBufferWrapper::GetBuffer() const
+const VkBufferOwner* RingBufferWrapper::GetBuffer() const
 {
     return writer.GetBuffer();
 }

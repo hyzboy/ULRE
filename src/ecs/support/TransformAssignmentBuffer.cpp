@@ -31,7 +31,7 @@ namespace hgl::ecs
             return (tick % period) == 1;
         }
 
-        static void LogDeviceBufferSnapshot(const char *tag, const graph::VKDescriptorBuffer *buffer)
+        static void LogDeviceBufferSnapshot(const char *tag, const graph::VkBufferOwner *buffer)
         {
             if (!tag)
                 tag = "[TransformAssignmentBuffer]";
@@ -52,7 +52,7 @@ namespace hgl::ecs
                      gpu ? (gpu->IsDirty() ? 1 : 0) : -1);
         }
 
-        static bool WriteIdentityToL2WSlot0(graph::VKDescriptorBuffer *buffer)
+        static bool WriteIdentityToL2WSlot0(graph::VkBufferOwner *buffer)
         {
             if (!buffer)
                 return false;
@@ -69,7 +69,7 @@ namespace hgl::ecs
                 return false;
 
             graph::IGPUBuffer::DirtyRange range{ byte_offset, byte_size };
-            buffer->FlushRanges(&range, 1);
+            gpu->MarkDirtyRanges(&range, 1);
             return true;
         }
 
@@ -1100,7 +1100,7 @@ namespace hgl::ecs
 
         if (!dirty_ranges.empty())
         {
-            transform_buffer->FlushRanges(dirty_ranges.data(), dirty_ranges.size());
+            transform_buffer->GetGPUBuffer()->MarkDirtyRanges(dirty_ranges.data(), dirty_ranges.size());
 
             auto *gpu = transform_buffer->GetGPUBuffer();
             GLogInfo("[TransformAssignmentBuffer] FlushPendingUpdates: ranges=%u buffer_dirty=%d",

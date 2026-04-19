@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/tile/TileData.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/graph/module/TextureManager.h>
 
 namespace hgl::graph

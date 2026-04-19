@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKImageCreateInfo.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/VKDevice.h>
 #include"BufferImageCopy2D.h"
 namespace hgl::graph{
@@ -148,7 +148,7 @@ bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,VkBuffer buf,cons
     return CopyBufferToImageCube(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
-//bool VulkanDevice::ChangeTexture2D(Texture2D *tex,VKDescriptorBuffer *buf,const ValueArray<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
+//bool VulkanDevice::ChangeTexture2D(Texture2D *tex,VkBufferOwner *buf,const ValueArray<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!buf||ir_list.GetCount()<=0)
 //        return(false);
@@ -188,7 +188,7 @@ bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,VkBuffer buf,cons
 //    return result;
 //}
 //
-//bool VulkanDevice::ChangeTexture2D(Texture2D *tex,VKDescriptorBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,VkPipelineStageFlags destinationStage)
+//bool VulkanDevice::ChangeTexture2D(Texture2D *tex,VkBufferOwner *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!buf
 //        ||left<0||left+width>tex->GetWidth()
@@ -214,7 +214,7 @@ bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,VkBuffer buf,cons
 //        ||size<=0)
 //        return(false);
 //
-//    VKDescriptorBuffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
+//    VkBufferOwner *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
 //
 //    bool result=ChangeTexture2D(tex,buf,left,top,width,height,destinationStage);
 //

@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/graph/texture/TextureLoader.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKTextureCreateInfo.h>
@@ -12,7 +12,7 @@ template<typename T,typename TL> class VkTextureLoader:public TL
 protected:
 
     TextureManager *tex_manager;
-    VKDescriptorBuffer *buf;
+    VkBufferOwner *buf;
     T *tex;
 
     bool auto_mipmaps;
@@ -68,7 +68,7 @@ public:
         return(true);
     }
 
-    VKDescriptorBuffer *GetBuffer(){return buf;}
+    VkBufferOwner *GetBuffer(){return buf;}
 
     T *CreateTexture(const TextureFileHeader &tex_file_header,const VkFormat &tex_format,const uint32 top_mipmap_bytes)
     {

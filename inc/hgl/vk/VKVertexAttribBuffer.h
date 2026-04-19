@@ -42,7 +42,7 @@ public:
 
     /**
      * Returns the underlying VkBuffer handle for draw/bind calls.
-     * Prefer this over GetBuffer() for VkCmdBindVertexBuffers — does not require VKDescriptorBuffer inheritance.
+     * Prefer this over GetBuffer() for VkCmdBindVertexBuffers — does not require VkBufferOwner inheritance.
      */
     VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
 };//class VertexAttribBuffer:public VkBufferOwner

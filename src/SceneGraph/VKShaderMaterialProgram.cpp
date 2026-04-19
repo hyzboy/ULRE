@@ -4,7 +4,7 @@
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/UBOAccessor.h>
 
 namespace hgl::graph{

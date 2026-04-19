@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/ecs/support/RenderPipelineBase.h>
 #include <hgl/vk/VKVertexInputLayout.h>
@@ -14,7 +14,7 @@ namespace hgl
     namespace graph
     {
         class VulkanDevice;
-        class VKDescriptorBuffer;
+        class VkBufferOwner;
         class ShaderMaterialProgram;
         class MaterialBindingInstance;
         class GraphicsPipeline;
@@ -120,7 +120,7 @@ namespace hgl::ecs
         LineCollectStats stats_;
         uint32_t total_line_count_ = 0;
         TransformAssignmentBuffer* bound_transform_buffer_ = nullptr;
-        graph::VKDescriptorBuffer* bound_transform_data_buffer_ = nullptr;
+        graph::VkBufferOwner* bound_transform_data_buffer_ = nullptr;
 
     public:
         static const std::string kName;  ///< "Line"

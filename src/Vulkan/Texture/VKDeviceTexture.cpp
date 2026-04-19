@@ -2,11 +2,11 @@
 #include<hgl/vk/VKQueue.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include"CopyBufferToImage.h"
 
 namespace hgl::graph{
-VKDescriptorBuffer *TextureManager::CreateTransferSourceBuffer(const VkDeviceSize size,const void *data)
+VkBufferOwner *TextureManager::CreateTransferSourceBuffer(const VkDeviceSize size,const void *data)
 {
     if(size<=0)
         return(nullptr);

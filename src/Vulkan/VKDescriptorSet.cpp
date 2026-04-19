@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKSampler.h>
 

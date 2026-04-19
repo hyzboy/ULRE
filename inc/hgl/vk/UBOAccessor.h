@@ -87,7 +87,7 @@ private:
      */
     void MapInternal()
     {
-        // gpu_buf cached in BufferAccessBase::SetBuffer(); no VKDescriptorBuffer chain.
+        // gpu_buf cached in BufferAccessBase::SetBuffer(); no VkBufferOwner chain.
         if(!gpu_buf || mapped_data)
             return;
 
@@ -361,8 +361,8 @@ private:
     }
 
     /**
-     * CN: 代理 VKDescriptorBuffer::Write 方法 - 用于部分数据更新
-     * EN: Proxy VKDescriptorBuffer::Write method - for partial data update
+     * CN: 代理 VkBufferOwner::Write 方法 - 用于部分数据更新
+     * EN: Proxy VkBufferOwner::Write method - for partial data update
      * 用于更新结构体中的某个字段而不是整个结构体
      */
 public:

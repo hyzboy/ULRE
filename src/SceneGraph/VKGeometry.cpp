@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/graph/geo/VKGeometry.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>

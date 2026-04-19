@@ -6,7 +6,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/vk/UBOAccessor.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/VKMemory.h>
 #include<hgl/graph/camera/ViewportInfo.h>
 #include<hgl/mtl/UBOCommon.h>

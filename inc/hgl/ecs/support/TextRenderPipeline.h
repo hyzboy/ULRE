@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/font/TextLayout.h>
@@ -28,7 +28,7 @@ namespace hgl
         class TextGeometry;
         class MaterialBindingInstance;
         class Sampler;
-        class VKDescriptorBuffer;
+        class VkBufferOwner;
         class ShaderMaterialProgramManager;
         class PrimitiveManager;
     }
@@ -53,7 +53,7 @@ namespace hgl
                 graph::GraphicsPipeline* pipeline = nullptr;
                 graph::RenderTargetFormat* render_format = nullptr;
                 graph::Sampler* sampler = nullptr;
-                graph::VKDescriptorBuffer* material_instance_buffer = nullptr;
+                graph::VkBufferOwner* material_instance_buffer = nullptr;
 
                 graph::layout::CharStyle char_style{};
                 graph::TextGeometry* geometry = nullptr;

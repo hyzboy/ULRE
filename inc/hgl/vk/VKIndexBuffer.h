@@ -44,7 +44,7 @@ public:
 
     /**
      * Returns the underlying VkBuffer handle for vkCmdBindIndexBuffer.
-     * Prefer this over GetBuffer() — does not require VKDescriptorBuffer inheritance.
+     * Prefer this over GetBuffer() — does not require VkBufferOwner inheritance.
      */
     VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
 };//class IndexBuffer:public VkBufferOwner

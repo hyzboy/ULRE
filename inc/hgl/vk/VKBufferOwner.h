@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/vk/VKMemory.h>
 #include<hgl/vk/BufferPolicy.h>
@@ -9,7 +9,7 @@ namespace hgl::graph{
 
 /**
  * Aggregate holding the three Vulkan handles owned by any GPU buffer.
- * Formerly defined inside VKBuffer.h; moved here so VkBufferOwner can use it
+ * Formerly defined inside VKBufferOwner.h; moved here so VkBufferOwner can use it
  * without creating a circular dependency.
  */
 struct DeviceBufferData
@@ -23,7 +23,7 @@ struct DeviceBufferData
  * VkBufferOwner — thin base class for all GPU buffer types.
  *
  * Owns: VkBuffer + DeviceMemory + IGPUBuffer (upload path).
- * Shared by VKDescriptorBuffer (UBO/SSBO), VertexAttribBuffer, IndexBuffer, IndirectCommandBuffer<T>.
+ * Shared by all GPU buffer types: UBO/SSBO buffers, VertexAttribBuffer, IndexBuffer, IndirectCommandBuffer<T>.
  *
  * Destructor: if staged_source is set, delegates cleanup to it (it owns the allocations).
  *             Otherwise destroys buf.buffer via vkDestroyBuffer and deletes buf.memory.
@@ -41,6 +41,8 @@ protected:
 
     // ECS routing hint — set by factory via SetUpdateClass.
     BufferUpdateClass update_class = BufferUpdateClass::Default;
+
+    friend class VulkanDevice;
 
     VkBufferOwner() = default;
 

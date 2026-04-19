@@ -1,19 +1,19 @@
 ﻿#pragma once
 
 #include<hgl/common/RenderOptions.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 
 namespace hgl::graph
 {
     class DeviceBufferRingWriter
     {
-        VKDescriptorBuffer *buffer;
+        VkBufferOwner *buffer;
         uint32_t ring_frames;
         uint32_t frame_index;
         VkDeviceSize element_size;
 
     public:
-        DeviceBufferRingWriter(VKDescriptorBuffer *buf = nullptr,
+        DeviceBufferRingWriter(VkBufferOwner *buf = nullptr,
                                const VkDeviceSize elem_size = 0,
                                const uint32_t frames = HGL_L2W_RING_FRAMES)
             : buffer(buf)
@@ -23,12 +23,12 @@ namespace hgl::graph
         {
         }
 
-        void SetBuffer(VKDescriptorBuffer *buf)
+        void SetBuffer(VkBufferOwner *buf)
         {
             buffer = buf;
         }
 
-        VKDescriptorBuffer* GetBuffer() const
+        VkBufferOwner* GetBuffer() const
         {
             return buffer;
         }

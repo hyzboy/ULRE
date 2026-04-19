@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKImageCreateInfo.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKDevice.h>
 #include"CopyBufferToImage.h"
@@ -114,7 +114,7 @@ Texture2DArray *TextureManager::CreateTexture2DArray(const uint32_t w,const uint
 }
 
 //
-//bool VulkanDevice::CommitTexture2DArray(Texture2DArray *tex,VKDescriptorBuffer *buf,VkPipelineStageFlags destinationStage)
+//bool VulkanDevice::CommitTexture2DArray(Texture2DArray *tex,VkBufferOwner *buf,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!buf)return(false);
 //
@@ -123,7 +123,7 @@ Texture2DArray *TextureManager::CreateTexture2DArray(const uint32_t w,const uint
 //    return CopyBufferToImageArray(tex,buf,&buffer_image_copy,destinationStage);
 //}
 //
-//bool VulkanDevice::CommitTexture2DArrayMipmaps(Texture2DArray *tex,VKDescriptorBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
+//bool VulkanDevice::CommitTexture2DArrayMipmaps(Texture2DArray *tex,VkBufferOwner *buf,const VkExtent3D &extent,uint32_t total_bytes)
 //{
 //    if(!tex||!buf
 //      ||extent.width*extent.height<=0)
@@ -169,7 +169,7 @@ Texture2DArray *TextureManager::CreateTexture2DArray(const uint32_t w,const uint
 //    return CopyBufferToImageArray(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 //}
 //
-//bool VulkanDevice::ChangeTexture2DArray(Texture2DArray *tex,VKDescriptorBuffer *buf,const ValueArray<Image2DRegion> &ir_list,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+//bool VulkanDevice::ChangeTexture2DArray(Texture2DArray *tex,VkBufferOwner *buf,const ValueArray<Image2DRegion> &ir_list,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!buf||ir_list.GetCount()<=0)
 //        return(false);
@@ -209,7 +209,7 @@ Texture2DArray *TextureManager::CreateTexture2DArray(const uint32_t w,const uint
 //    return result;
 //}
 
-bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,VKDescriptorBuffer *buf_dev,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,VkBufferOwner *buf_dev,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf_dev
         ||base_layer<0
@@ -243,7 +243,7 @@ bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,const void *data,c
         ||scope.GetBottom()>tex->GetHeight())
         return(false);
 
-    VKDescriptorBuffer *buf=CreateTransferSourceBuffer(size,data);
+    VkBufferOwner *buf=CreateTransferSourceBuffer(size,data);
 
     bool result=ChangeTexture2DArray(tex,buf,scope,base_layer,layer_count,destinationStage);
 

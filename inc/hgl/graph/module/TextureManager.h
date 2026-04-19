@@ -43,7 +43,7 @@ public:
 
 public:     //Buffer
 
-    VKDescriptorBuffer *CreateTransferSourceBuffer(const VkDeviceSize,const void *data_ptr=nullptr);
+    VkBufferOwner *CreateTransferSourceBuffer(const VkDeviceSize,const void *data_ptr=nullptr);
 
 protected:
 
@@ -101,12 +101,12 @@ public: //Create/Chagne
 
     void Clear(TextureCreateInfo *);
 
-    bool ChangeTexture2D(Texture2D *,VKDescriptorBuffer *buf,                         const std::vector<Image2DRegion> &,   VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    bool ChangeTexture2D(Texture2D *,VKDescriptorBuffer *buf,                         const RectScope2ui &,               VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2D(Texture2D *,VkBufferOwner *buf,                         const std::vector<Image2DRegion> &,   VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2D(Texture2D *,VkBufferOwner *buf,                         const RectScope2ui &,               VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     bool ChangeTexture2D(Texture2D *,const void *data,const VkDeviceSize size,  const RectScope2ui &,               VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
-//    bool ChangeTexture2DArray(Texture2DArray *,VKDescriptorBuffer *buf,             const ValueArray<Image2DRegion> &,  const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    bool ChangeTexture2DArray(Texture2DArray *,VKDescriptorBuffer *buf,                       const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+//    bool ChangeTexture2DArray(Texture2DArray *,VkBufferOwner *buf,             const ValueArray<Image2DRegion> &,  const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2DArray(Texture2DArray *,VkBufferOwner *buf,                       const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     bool ChangeTexture2DArray(Texture2DArray *,const void *data,const VkDeviceSize size,const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
 public:

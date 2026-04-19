@@ -1,4 +1,4 @@
-#include<hgl/ecs/support/TextRenderPipeline.h>
+﻿#include<hgl/ecs/support/TextRenderPipeline.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
@@ -26,7 +26,7 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/tile/TileData.h>
 #include<hgl/vk/VKFormat.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/common/RenderOptions.h>
 #include<hgl/type/String.h>
@@ -317,7 +317,7 @@ namespace hgl::ecs
             graph::ShaderMaterialProgram* material = nullptr;
             graph::Sampler* sampler = nullptr;
             graph::BufferManager* buffer_manager = nullptr;
-            graph::VKDescriptorBuffer* material_instance_buffer = nullptr;
+            graph::VkBufferOwner* material_instance_buffer = nullptr;
             std::unique_ptr<graph::TileFont> tile_font;
             bool committed = false;
 

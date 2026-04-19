@@ -4,7 +4,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/UBOAccessor.h>
 
 namespace hgl::ecs

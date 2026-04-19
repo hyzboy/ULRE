@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKImageCreateInfo.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKDevice.h>
 #include"CopyBufferToImage.h"
@@ -219,7 +219,7 @@ bool TextureManager::CommitTexture2DMipmaps(Texture2D *tex,VkBuffer buf,const Vk
     return CopyBufferToImage2D(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
-bool TextureManager::ChangeTexture2D(Texture2D *tex,VKDescriptorBuffer *buf_dev,const std::vector<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,VkBufferOwner *buf_dev,const std::vector<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf_dev||ir_list.size()<=0)
         return(false);
@@ -261,7 +261,7 @@ bool TextureManager::ChangeTexture2D(Texture2D *tex,VKDescriptorBuffer *buf_dev,
     return result;
 }
 
-bool TextureManager::ChangeTexture2D(Texture2D *tex,VKDescriptorBuffer *buf,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,VkBufferOwner *buf,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf
         ||scope.GetWidth()<=0
@@ -290,7 +290,7 @@ bool TextureManager::ChangeTexture2D(Texture2D *tex,const void *data,const VkDev
         ||scope.GetBottom()>tex->GetHeight())
         return(false);
 
-    VKDescriptorBuffer *buf=CreateTransferSourceBuffer(size,data);
+    VkBufferOwner *buf=CreateTransferSourceBuffer(size,data);
 
     bool result=ChangeTexture2D(tex,buf,scope,destinationStage);
 

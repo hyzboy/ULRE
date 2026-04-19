@@ -10,8 +10,8 @@ class VulkanDevice;
 /**
  * Buffer access base class (Layer 3)
  *
- * 持有 VKDescriptorBuffer* 和独立缓存的 IGPUBuffer* 两个指针。
- * VKDescriptorBuffer* 用于 GetBuffer()/GetBufferInfo()/descriptor binding / static_cast<VAB*>。
+ * 持有 VkBufferOwner* 和独立缓存的 IGPUBuffer* 两个指针。
+ * VkBufferOwner* 用于 GetBuffer()/GetBufferInfo()/descriptor binding / static_cast<VAB*>。
  * IGPUBuffer*  用于所有 CPU 写操作（Map/Write/MarkDirty），直接访问，不经 DeviceBuffer 转发器。
  *
  * 不含任何提交逻辑 —— flush/submit 完全由 ECS RenderBufferUploadSystem 负责。

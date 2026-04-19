@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/vk/DeviceBufferRingWriter.h>
 
@@ -23,14 +23,14 @@ private:
     bool dirty = false;
 
 public:
-    RingBufferWrapper(VKDescriptorBuffer *buf = nullptr,
+    RingBufferWrapper(VkBufferOwner *buf = nullptr,
                       VkDeviceSize element_size = 0,
                       uint32_t ring_frames = HGL_L2W_RING_FRAMES)
         : writer(buf, element_size, ring_frames)
     {
     }
 
-    void SetBuffer(VKDescriptorBuffer *buf) { writer.SetBuffer(buf); }
+    void SetBuffer(VkBufferOwner *buf) { writer.SetBuffer(buf); }
     void SetElementSize(VkDeviceSize size) { writer.SetElementSize(size); }
     void SetFrameIndex(uint32_t frame_index) { writer.SetFrameIndex(frame_index); }
     void AdvanceFrame() { writer.AdvanceFrame(); }
@@ -88,8 +88,8 @@ public:
     bool HasPendingUpload() const;
     void MarkDirty();
     bool CommitInternal();
-    VKDescriptorBuffer* GetBuffer();
-    const VKDescriptorBuffer* GetBuffer() const;
+    VkBufferOwner* GetBuffer();
+    const VkBufferOwner* GetBuffer() const;
 };
 }
 

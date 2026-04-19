@@ -2,7 +2,7 @@
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKDescriptorSet.h>
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 
 namespace hgl::graph{
 MaterialParameters::MaterialParameters(const MaterialDescriptorManager *mdm,const DescriptorSetType &type,DescriptorSet *ds)
