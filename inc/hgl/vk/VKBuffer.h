@@ -3,8 +3,8 @@
 #include<hgl/vk/VKBufferOwner.h>          // defines VkBufferOwner + DeviceBufferData
 #include<string>
 
-namespace hgl::graph{
-
+namespace hgl::graph
+{
 /**
  * Layer1: Pure GPU buffer container for UBO / SSBO / plain device buffers.
  *
@@ -30,23 +30,15 @@ public:
 
     // Destructor declared out-of-line so old stale OBJ files that reference
     // the virtual ~DeviceBuffer() symbol can still link against VKBuffer.obj.
-    virtual ~DeviceBuffer();
+    virtual ~DeviceBuffer()=default;
 
-    // Transitional forwarders — route through staged_source when present.
-    // TODO(Phase3c): Remove once VKMemoryAllocator is migrated or isolated.
-    // NOTE: [[deprecated]] intentionally NOT on virtual overloads — MSVC changes
-    // symbol mangling for deprecated virtuals which breaks linking.
-    void *  Map     ();
     virtual void *  Map     (VkDeviceSize start,VkDeviceSize size);
-    void    Unmap   ();
     virtual void    Flush   (VkDeviceSize start,VkDeviceSize size);
     virtual void    Flush   (VkDeviceSize size);
-        virtual void    FlushRanges(const IGPUBuffer::DirtyRange *ranges,size_t count);
+    virtual void    FlushRanges(const IGPUBuffer::DirtyRange *ranges,size_t count);
 
     virtual bool    Write   (const void *ptr,uint32_t start,uint32_t size);
     virtual bool    Write   (const void *ptr,uint32_t size);
-    bool    Write   (const void *ptr);
-
 };//class DeviceBuffer
 
 }//namespace hgl::graph

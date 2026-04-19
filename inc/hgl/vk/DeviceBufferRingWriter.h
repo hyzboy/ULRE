@@ -94,8 +94,12 @@ namespace hgl::graph
 
         void Unmap()
         {
-            if (buffer)
-                buffer->Unmap();
+            if (!buffer)
+                return;
+
+            IGPUBuffer *gpu = buffer->GetGPUBuffer();
+            if (gpu)
+                gpu->Unmap();
         }
 
         bool WriteDynamicRange(const void *data, const uint32_t static_count, const uint32_t dynamic_count)
