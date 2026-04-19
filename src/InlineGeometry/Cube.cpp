@@ -62,13 +62,13 @@ namespace hgl::graph::inline_geometry
 
                     builder.WriteVertex(pos.x, pos.y, pos.z);
 
-                    if(cci->normal)
+                    if(builder.HasNormals())
                         builder.WriteNormal(normal.x, normal.y, normal.z);
 
-                    if(cci->tangent)
+                    if(builder.HasTangents())
                         builder.WriteTangent(tangent.x, tangent.y, tangent.z);
 
-                    if(cci->tex_coord)
+                    if(builder.HasTexCoords())
                         builder.WriteTexCoord(tu, tv);
                 }
             }

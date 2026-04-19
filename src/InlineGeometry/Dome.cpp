@@ -175,9 +175,9 @@ namespace hgl::graph::inline_geometry
         if (!builder.IsValid())
             return nullptr;
 
-        const bool write_normal = dci->normal && builder.HasNormals();
-        const bool write_tangent = dci->normal && dci->tangent && builder.HasTangents();
-        const bool write_tex_coord = dci->tex_coord && builder.HasTexCoords();
+        const bool write_normal = builder.HasNormals();
+        const bool write_tangent = builder.HasTangents();
+        const bool write_tex_coord = builder.HasTexCoords();
 
         const float half_pi = std::numbers::pi_v<float> * 0.5f;
 

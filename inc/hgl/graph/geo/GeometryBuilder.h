@@ -14,10 +14,68 @@ namespace hgl::graph::inline_geometry
     protected:
         GeometryCreater *creater;
 
+        VkFormat normal_format = VK_FORMAT_UNDEFINED;
+        VkFormat tangent_format = VK_FORMAT_UNDEFINED;
+        VkFormat texcoord_format = VK_FORMAT_UNDEFINED;
+        VkFormat color_format = VK_FORMAT_UNDEFINED;
+        VkFormat luminance_format = VK_FORMAT_UNDEFINED;
+
+        bool has_normals = false;
+        bool has_tangents = false;
+        bool has_texcoords = false;
+        bool has_colors = false;
+        bool has_luminance = false;
+
         BufferAccessor3f accessor_position;
         BufferAccessor3f accessor_normal;
         BufferAccessor3f accessor_tangent;
         BufferAccessor2f accessor_texcoord;
+        BufferAccessor4f accessor_color;
+        BufferAccessor<VB1f> accessor_luminance;
+
+        BufferAccessor<VB2hf>  accessor_normal_rg16f;
+        BufferAccessor<VB2uf8> accessor_normal_rg8un;
+        BufferAccessor<VB2sf8> accessor_normal_rg8sn;
+        RawAccessorU32         accessor_normal_a2rgb10un;
+        RawAccessorU32         accessor_normal_a2bgr10un;
+
+        BufferAccessor<VB2hf>  accessor_tangent_rg16f;
+        BufferAccessor<VB2uf8> accessor_tangent_rg8un;
+        BufferAccessor<VB2sf8> accessor_tangent_rg8sn;
+        RawAccessorU32         accessor_tangent_a2rgb10un;
+        RawAccessorU32         accessor_tangent_a2bgr10un;
+
+        BufferAccessor<VB2hf>   accessor_texcoord_rg16f;
+        BufferAccessor<VB2uf16> accessor_texcoord_rg16un;
+        BufferAccessor<VB2uf8>  accessor_texcoord_rg8un;
+
+        BufferAccessor<VB4hf>   accessor_color_rgba16f;
+        BufferAccessor<VB4uf16> accessor_color_rgba16un;
+        BufferAccessor<VB4uf8>  accessor_color_rgba8un;
+        RawAccessorU32          accessor_color_a2rgb10un;
+        RawAccessorU32          accessor_color_a2bgr10un;
+
+        BufferAccessor<VB1hf>   accessor_luminance_r16f;
+        BufferAccessor<VB1uf16> accessor_luminance_r16un;
+        BufferAccessor<VB1uf8>  accessor_luminance_r8un;
+
+    private:
+        static float Clamp01(float v);
+        static float ClampN1P1(float v);
+        static int8 ToSnorm8(float v);
+        static uint8 ToUnorm8(float v);
+        static uint16 ToUnorm16(float v);
+        static uint32 ToUnorm10(float v);
+
+        static void EncodeOct2(float x, float y, float z, float &ox, float &oy);
+        static uint32 PackA2R10G10B10_UNORM(uint32 r, uint32 g, uint32 b, uint32 a);
+        static uint32 PackA2B10G10R10_UNORM(uint32 r, uint32 g, uint32 b, uint32 a);
+
+        void WriteNormalByFormat(float x, float y, float z);
+        void WriteTangentByFormat(float x, float y, float z);
+        void WriteTexCoordByFormat(float u, float v);
+        void WriteColorByFormat(float r, float g, float b, float a);
+        void WriteLuminanceByFormat(float l);
 
     public:
         GeometryBuilder(GeometryCreater *pc);
@@ -45,8 +103,7 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteNormal(float x, float y, float z)
         {
-            if(accessor_normal.IsValid())
-                accessor_normal->Write(x, y, z);
+            WriteNormalByFormat(x, y, z);
         }
 
         /**
@@ -55,8 +112,7 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteTangent(float x, float y, float z)
         {
-            if(accessor_tangent.IsValid())
-                accessor_tangent->Write(x, y, z);
+            WriteTangentByFormat(x, y, z);
         }
 
         /**
@@ -65,8 +121,25 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteTexCoord(float u, float v)
         {
-            if(accessor_texcoord.IsValid())
-                accessor_texcoord->Write(u, v);
+            WriteTexCoordByFormat(u, v);
+        }
+
+        /**
+         * 写入颜色
+         * @param r, g, b, a 颜色分量
+         */
+        inline void WriteColor(float r, float g, float b, float a)
+        {
+            WriteColorByFormat(r, g, b, a);
+        }
+
+        /**
+         * 写入亮度
+         * @param l 亮度值
+         */
+        inline void WriteLuminance(float l)
+        {
+            WriteLuminanceByFormat(l);
         }
 
         /**
@@ -90,16 +163,26 @@ namespace hgl::graph::inline_geometry
         /**
          * 检查是否有法线缓冲
          */
-        bool HasNormals() const { return accessor_normal.IsValid(); }
+        bool HasNormals() const { return has_normals; }
 
         /**
          * 检查是否有切线缓冲
          */
-        bool HasTangents() const { return accessor_tangent.IsValid(); }
+        bool HasTangents() const { return has_tangents; }
 
         /**
          * 检查是否有纹理坐标缓冲
          */
-        bool HasTexCoords() const { return accessor_texcoord.IsValid(); }
+        bool HasTexCoords() const { return has_texcoords; }
+
+        /**
+         * 检查是否有颜色缓冲
+         */
+        bool HasColors() const { return has_colors; }
+
+        /**
+         * 检查是否有亮度缓冲
+         */
+        bool HasLuminance() const { return has_luminance; }
     };
 }
