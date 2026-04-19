@@ -12,6 +12,7 @@
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
+#include<hgl/vk/VKDomainResourceBinding.h>
 #include<iostream>
 
 namespace hgl::ecs
@@ -173,7 +174,8 @@ namespace hgl::ecs
                                               TransformAssignmentBuffer* transform_buffer,
                                               MaterialInstanceAssignmentBuffer* mi_buffer,
                                               graph::IndirectDrawBuffer* icb_draw,
-                                              graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
+                                              graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
+                                              graph::DomainResourceBinding* domain_binding)
     {
         // 前置条件检查
         if (!rcb)
@@ -207,8 +209,11 @@ namespace hgl::ecs
             transform_buffer=nullptr;
         }
 
-        // 绑定材质描述符集
-        cmd_buf->BindDescriptorSets(material);
+        // 绑定材质描述符集（优先 domain+material 绑定，回退旧 material 绑定）
+        if (domain_binding)
+            cmd_buf->BindDescriptorSets(domain_binding);
+        else
+            cmd_buf->BindDescriptorSets(material);
 
         // 遍历绘制批次
         DrawBatch* batch = const_cast<DrawBatch*>(batches.data());

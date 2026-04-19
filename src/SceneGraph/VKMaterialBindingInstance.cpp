@@ -31,6 +31,22 @@ uint32_t MaterialBindingInstanceInternalAccess::GetDomainID(const MaterialBindin
     return mi ? mi->domain_id : 0xFFFFFFFFu;
 }
 
+DomainResourceBinding *MaterialBindingInstanceInternalAccess::GetDomainBinding(MaterialBindingInstance *mi)
+{
+    return mi ? mi->domain_binding : nullptr;
+}
+
+const DomainResourceBinding *MaterialBindingInstanceInternalAccess::GetDomainBinding(const MaterialBindingInstance *mi)
+{
+    return mi ? mi->domain_binding : nullptr;
+}
+
+void MaterialBindingInstanceInternalAccess::SetDomainBinding(MaterialBindingInstance *mi, DomainResourceBinding *binding)
+{
+    if (mi)
+        mi->domain_binding = binding;
+}
+
 // ---------------------------------------------------------------------------
 // MaterialBindingInstanceData — constructors / destructor
 // ---------------------------------------------------------------------------

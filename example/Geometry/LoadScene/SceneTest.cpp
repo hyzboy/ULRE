@@ -86,13 +86,14 @@ private:
         {
             color = GetColor4f(TestColor[i],1.0);
 
-            md->mi[i] = ResolveOrCreateBindingInstance(cfg, &color, sizeof(color));
+            MaterialDomainHandle handle;
+            md->mi[i] = ResolveOrCreateBindingInstance(cfg, &color, sizeof(color), &handle);
 
             if(!md->mi[i])
                 return(false);
 
             if (!md->material)
-                md->material = md->mi[i]->GetShaderMaterialProgram();
+                md->material = handle.material;
         }
 
         if (!md->material)

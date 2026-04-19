@@ -210,7 +210,6 @@ private:
     Entity *camera_entity = nullptr;
     Entity *cube_entity = nullptr;
 
-    ShaderMaterialProgram *cube_mtl = nullptr;
     MaterialBindingInstance *cube_mi = nullptr;
     Sampler *cube_sampler = nullptr;
     Primitive *cube_primitive = nullptr;
@@ -294,12 +293,15 @@ private:
         cube_mi_data.roughness = 0.92f;
         cube_mi_data.normal_scale = 0.35f;
 
+        MaterialDomainHandle cube_handle;
         cube_mi = ResolveOrCreateBindingInstance(kCubeCfg,
-             &cube_mi_data, sizeof(cube_mi_data));
+             &cube_mi_data, sizeof(cube_mi_data), &cube_handle);
         if (!cube_mi)
             return false;
 
-        cube_mtl=cube_mi->GetShaderMaterialProgram();
+        auto *cube_binding = cube_handle.binding;
+        if (!cube_binding)
+            return false;
 
         cube_sampler = sm->CreateSampler();
         if (!cube_sampler)
@@ -317,14 +319,14 @@ private:
         if (!base_tex || !normal_tex)
             return false;
 
-        if (!cube_mtl->BindResourceSampler(mtl::SamplerSlot::BaseColor,
-                                          base_tex,
-                                          cube_sampler))
+        if (!cube_binding->BindResourceSampler(mtl::SamplerSlot::BaseColor,
+                                               base_tex,
+                                               cube_sampler))
             return false;
 
-        if (!cube_mtl->BindResourceSampler(mtl::SamplerSlot::Normal,
-                                          normal_tex,
-                                          cube_sampler))
+        if (!cube_binding->BindResourceSampler(mtl::SamplerSlot::Normal,
+                                               normal_tex,
+                                               cube_sampler))
             return false;
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
@@ -387,7 +389,6 @@ public:
 
         cube_primitive = nullptr;
         cube_mi = nullptr;
-        cube_mtl = nullptr;
         cube_sampler = nullptr;
         fallback_albedo = nullptr;
         normal_tex = nullptr;

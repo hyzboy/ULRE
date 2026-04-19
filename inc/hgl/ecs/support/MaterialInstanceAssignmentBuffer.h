@@ -120,6 +120,9 @@ namespace hgl::ecs
          * 获取MaterialInstanceID SSBO VkBuffer（用于绑定到管线）
          */
         const VkBuffer GetMaterialInstanceIDVkBuffer() const { return material_instance_id_vk_buffer; }
+        graph::DeviceBuffer* GetMaterialInstanceBuffer() const { return material_instance_buffer; }
+        graph::DeviceBuffer* GetMaterialInstanceIDBuffer() const { return material_instance_id_buffer; }
+        graph::DeviceBuffer* GetMaterialInstanceTextureIDBuffer() const { return mit_buffer; }
 
         /**
          * 绑定MaterialInstanceID SSBO到材质

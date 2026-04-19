@@ -63,8 +63,6 @@ private:
 
     Texture2DArray *    texture             = nullptr;
     Sampler *           sampler             = nullptr;
-    ShaderMaterialProgram *          material            = nullptr;
-
     Primitive *         mesh_rect           = nullptr;
 
     struct
@@ -120,17 +118,19 @@ private:
                 {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
             },
         };
-        render_obj[0].mi = ResolveOrCreateBindingInstance(kTexArrayCfg);
+        MaterialDomainHandle handle;
+        render_obj[0].mi = ResolveOrCreateBindingInstance(kTexArrayCfg, nullptr, 0, &handle);
         if(!render_obj[0].mi)
             return(false);
 
-        material = render_obj[0].mi->GetShaderMaterialProgram();
+        if(!handle.binding)
+            return(false);
 
         sampler=sampler_manager->CreateSampler();
 
-        if(!material->BindResourceSampler( mtl::SamplerSlot::BaseColor,
-                          texture,
-                          sampler))
+        if(!handle.binding->BindResourceSampler(mtl::SamplerSlot::BaseColor,
+                                                texture,
+                                                sampler))
             return(false);
 
         for(uint32_t i=0;i<TexCount;i++)

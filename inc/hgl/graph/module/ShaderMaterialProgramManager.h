@@ -325,6 +325,9 @@ public: // ResourceDomain — Phase 1 / Phase 3
      */
     void ReleaseDomainMaterialBinding(DomainResourceBinding *binding);
 
+    /// 查找已有 (domain, material) 绑定，不存在则返回 nullptr。
+    DomainResourceBinding *FindDomainMaterialBinding(ResourceDomain *domain, ShaderMaterialProgram *mtl) const;
+
 public: // ResourceDomain MaterialBindingInstanceData creation (Phase 1)
 
     /// 从资源域分配 MI，走域独立的数据池（旧 ShaderMaterialProgram 池不变）。

@@ -71,7 +71,6 @@ private:
     ECSContext *  ecs_world     = nullptr;
     Entity *      camera_entity = nullptr;
 
-    ShaderMaterialProgram *          material  = nullptr;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -160,13 +159,21 @@ private:
         seed_mi_data.roughness = 1.0f;
         seed_mi_data.normal_scale = 0.35f;
 
-        auto* seed_mi = ResolveOrCreateBindingInstance(kPBRArrayAcquireCfg, &seed_mi_data, sizeof(seed_mi_data));
+        MaterialDomainHandle seed_handle;
+        auto* seed_mi = ResolveOrCreateBindingInstance(kPBRArrayAcquireCfg,
+                                                       &seed_mi_data,
+                                                       sizeof(seed_mi_data),
+                                                       &seed_handle);
         if (!seed_mi) {
             printf("[ERROR] InitMaterial: Failed to create seed MI for Standard+Array material\n");
             return false;
         }
 
-        material = seed_mi->GetShaderMaterialProgram();
+        auto *binding = seed_handle.binding;
+        if (!binding) {
+            printf("[ERROR] InitMaterial: Failed to acquire domain binding for Standard+Array material\n");
+            return false;
+        }
 
         sampler = sampler_manager->CreateSampler();
         if (!sampler) {
@@ -174,16 +181,16 @@ private:
             return false;
         }
 
-        if (!material->BindResourceSampler(hgl::graph::mtl::SamplerSlot::BaseColor,
-                                          base_color_texture,
-                                          sampler)) {
+        if (!binding->BindResourceSampler(hgl::graph::mtl::SamplerSlot::BaseColor,
+                                         base_color_texture,
+                                         sampler)) {
             printf("[ERROR] InitMaterial: Failed to bind BaseColor texture sampler\n");
             return false;
         }
 
-        if (!material->BindResourceSampler(hgl::graph::mtl::SamplerSlot::Normal,
-                                          normal_texture,
-                                          sampler)) {
+        if (!binding->BindResourceSampler(hgl::graph::mtl::SamplerSlot::Normal,
+                                         normal_texture,
+                                         sampler)) {
             printf("[ERROR] InitMaterial: Failed to bind TextureNormal sampler\n");
             return false;
         }

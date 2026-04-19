@@ -4,6 +4,8 @@
 #include <hgl/ecs/core/MaterialBatch.h>
 #include <hgl/ecs/support/PipelineMaterialRenderer.h>
 #include <hgl/vk/VKCommandBuffer.h>
+#include <hgl/graph/core/GraphicsContext.h>
+#include <hgl/graph/module/ShaderMaterialProgramManager.h>
 
 namespace hgl::ecs
 {
@@ -49,13 +51,23 @@ namespace hgl::ecs
             if (!renderer)
                 continue;
 
+            graph::DomainResourceBinding *domain_binding = nullptr;
+            if (key.domain)
+            {
+                auto *graphics_context = context->GetGraphicsContext();
+                auto *material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
+                if (material_manager)
+                    domain_binding = material_manager->FindDomainMaterialBinding(key.domain, key.material);
+            }
+
             renderer->Render(cmdBuffer,
                              batch->draw_batches,
                              batch->draw_batches_count,
                              batch->transform_buffer,
                              batch->mi_buffer,
                              batch->icb_draw,
-                             batch->icb_draw_indexed);
+                             batch->icb_draw_indexed,
+                             domain_binding);
         }
     }
 }

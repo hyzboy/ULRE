@@ -132,6 +132,9 @@ bool RenderCmdBuffer::BindDescriptorSets(DomainResourceBinding *binding)
 {
     if(!binding) return false;
 
+    // Keep non-PerMaterial sets (e.g. set0 PerObject) from material path bound first.
+    BindDescriptorSets(binding->GetShaderMaterialProgram());
+
     MaterialParameters *mp = binding->GetPerMaterialMP();
     if(!mp) return false;
 
@@ -142,6 +145,13 @@ bool RenderCmdBuffer::BindDescriptorSets(DomainResourceBinding *binding)
     const uint32_t first_set = pld ? (uint32_t)pld->GetVulkanSetIndex(DescriptorSetType::PerMaterial) : 0;
 
     pipeline_layout = binding->GetPipelineLayout();
+
+        LogInfo("[RenderCmdBuffer] BindDescriptorSets(domain) material=%s domain=%p set=%u ds=%p",
+            binding->GetShaderMaterialProgram() ? binding->GetShaderMaterialProgram()->GetName().c_str() : "<null>",
+            static_cast<void *>(binding->GetDomain()),
+            first_set,
+                (void *)ds);
+
     vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             pipeline_layout, first_set, 1, &ds, 0, nullptr);
 

@@ -86,10 +86,11 @@ namespace
             };
 
             {
-                auto* seed_mi = ResolveOrCreateBindingInstance(kAnimGeomCfg, &colors[0], sizeof(colors[0]));
+                MaterialDomainHandle handle;
+                auto* seed_mi = ResolveOrCreateBindingInstance(kAnimGeomCfg, &colors[0], sizeof(colors[0]), &handle);
                 if (!seed_mi) return false;
-                material        = seed_mi->GetShaderMaterialProgram();
-                material_domain = seed_mi->GetDomain();
+                material        = handle.material;
+                material_domain = handle.domain;
             }
 
             return BuildMaterialInstances(colors, sizeof(colors) / sizeof(colors[0]));

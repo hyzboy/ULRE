@@ -20,6 +20,7 @@ namespace hgl
     {
         class ShaderMaterialProgram;
         class GraphicsPipeline;
+        class DomainResourceBinding;
         class RenderCmdBuffer;
         class VABList;
         class IndirectDrawBuffer;
@@ -135,6 +136,7 @@ namespace hgl::ecs
                     TransformAssignmentBuffer* transform_buffer,
                     MaterialInstanceAssignmentBuffer* mi_buffer,
                     graph::IndirectDrawBuffer* icb_draw,
-                    graph::IndirectDrawIndexedBuffer* icb_draw_indexed);
+                    graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
+                    graph::DomainResourceBinding* domain_binding = nullptr);
     };
 }//namespace hgl::ecs

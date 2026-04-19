@@ -863,6 +863,25 @@ void ShaderMaterialProgramManager::ReleaseDomainMaterialBinding(DomainResourceBi
     delete binding;
 }
 
+DomainResourceBinding *ShaderMaterialProgramManager::FindDomainMaterialBinding(ResourceDomain *domain, ShaderMaterialProgram *mtl) const
+{
+    if (!domain || !mtl)
+        return nullptr;
+
+    auto it = domain_bindings_map.find(domain);
+    if (it == domain_bindings_map.end())
+        return nullptr;
+
+    const auto &vec = it->second;
+    for (DomainResourceBinding *binding : vec)
+    {
+        if (binding && binding->GetShaderMaterialProgram() == mtl)
+            return binding;
+    }
+
+    return nullptr;
+}
+
 MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VIL *vil)
 {
     if (!domain || !mtl)

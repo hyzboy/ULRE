@@ -15,6 +15,7 @@
 #include<hgl/log/Log.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/ShaderMaterialProgramManager.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/vk/VKDomainResourceBinding.h>
@@ -26,6 +27,18 @@ namespace hgl::ecs
 {
     namespace
     {
+        graph::DomainResourceBinding *ResolveDomainBinding(hgl::ecs::ECSContext *context,
+                                                           graph::ResourceDomain *domain,
+                                                           graph::ShaderMaterialProgram *material)
+        {
+            if (!context || !domain || !material)
+                return nullptr;
+
+            auto *graphics_context = context->GetGraphicsContext();
+            auto *material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
+            return material_manager ? material_manager->FindDomainMaterialBinding(domain, material) : nullptr;
+        }
+
         void ApplySceneUBOBindings(graph::ShaderMaterialProgram *material,
                                    const graph::mtl::DescriptorBindingSlots &contract,
                                    const std::array<graph::UBOAccessorBase *, graph::mtl::UBODescriptorSemanticCount> &scene_ubo_resolvers)
@@ -403,7 +416,7 @@ namespace hgl::ecs
             return;
 
         const auto &cache = context->GetRenderFrameCache();
-        std::unordered_set<graph::ShaderMaterialProgram *> mi_bound_materials;
+        std::unordered_set<const void *> mi_bound_targets;
 
         for (const auto &pair : cache.materialBatches)
         {
@@ -414,6 +427,8 @@ namespace hgl::ecs
             out_active.insert(material);
 
             const MaterialBatch *batch = pair.second.get();
+            graph::DomainResourceBinding *domain_binding = ResolveDomainBinding(context, pair.first.domain, material);
+            graph::MaterialParameters *domain_mp = domain_binding ? domain_binding->GetPerMaterialMP() : nullptr;
 
             const auto &contract = material->GetBindingContract();
             ApplySceneUBOBindings(material, contract, scene_ubo_resolvers);
@@ -444,25 +459,70 @@ namespace hgl::ecs
                 case graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceID:
                 {
                     if (batch && batch->mi_buffer)
-                        batch->mi_buffer->BindMaterialInstanceID(material);
+                    {
+                        if (domain_mp)
+                        {
+                            auto *id_buf = batch->mi_buffer->GetMaterialInstanceIDBuffer();
+                            auto *id_gpu = id_buf ? id_buf->GetGPUBuffer() : nullptr;
+                            if (id_gpu)
+                                domain_mp->BindSSBO(graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceID, id_gpu);
+                        }
+                        else
+                        {
+                            batch->mi_buffer->BindMaterialInstanceID(material);
+                        }
+                    }
                     break;
                 }
                 case graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceData:
                 {
+                    const void *mi_bind_target = domain_mp
+                        ? static_cast<const void *>(domain_mp)
+                        : static_cast<const void *>(material);
+
                     if (batch
                      && batch->mi_buffer
                      && material->hasMI()
-                     && !mi_bound_materials.contains(material))
+                     && !mi_bound_targets.contains(mi_bind_target))
                     {
-                        batch->mi_buffer->BindMaterialInstance(material);
-                        mi_bound_materials.insert(material);
+                        if (domain_mp)
+                        {
+                            auto *mi_buf = batch->mi_buffer->GetMaterialInstanceBuffer();
+                            auto *mi_gpu = mi_buf ? mi_buf->GetGPUBuffer() : nullptr;
+                            if (mi_gpu)
+                                domain_mp->BindSSBO(graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceData, mi_gpu);
+                        }
+                        else
+                        {
+                            batch->mi_buffer->BindMaterialInstance(material);
+                        }
+
+                        mi_bound_targets.insert(mi_bind_target);
                     }
                     break;
                 }
                 case graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceTexture:
                 {
                     if (batch && batch->mi_buffer)
-                        batch->mi_buffer->BindMaterialInstanceTextureID(material);
+                    {
+                        if (domain_mp)
+                        {
+                            auto *mit_buf = batch->mi_buffer->GetMaterialInstanceTextureIDBuffer();
+                            auto *mit_gpu = mit_buf ? mit_buf->GetGPUBuffer() : nullptr;
+                            if (mit_gpu)
+                            {
+                                domain_mp->BindSSBO(graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceTexture, mit_gpu);
+                                LogInfo("[RenderDescriptorBindingSystem] domain MI texture bind material=%s domain=%p gpu=%p",
+                                        material->GetName().c_str(),
+                                        static_cast<void *>(pair.first.domain),
+                                        static_cast<void *>(mit_gpu));
+                            }
+                        }
+                        else
+                        {
+                            batch->mi_buffer->BindMaterialInstanceTextureID(material);
+                        }
+                    }
                     break;
                 }
                 default:

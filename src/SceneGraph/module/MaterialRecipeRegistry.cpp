@@ -1,5 +1,6 @@
 #include <hgl/graph/module/MaterialRecipeRegistry.h>
 #include <hgl/graph/module/MaterialAssetLoader.h>
+#include <hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include <hgl/graph/module/ShaderMaterialProgramManager.h>
 #include <hgl/graph/module/ResourceDomainManager.h>
 #include <hgl/graph/module/TextureManager.h>
@@ -351,7 +352,11 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
                        ? handle.material->CreateVIL(&vil_cfg)   // cached by ShaderMaterialProgram
                        : default_vil;
 
-    return mm->AcquireMaterialInstance(spec);
+    MaterialBindingInstance *mi = mm->AcquireMaterialInstance(spec);
+    if (mi)
+        MaterialBindingInstanceInternalAccess::SetDomainBinding(mi, handle.binding);
+
+    return mi;
 }
 
 // ── CreateMI ─────────────────────────────────────────────────────────────────
@@ -391,7 +396,11 @@ MaterialBindingInstance *MaterialRecipeRegistry::CreateMI(
     }
 #pragma warning(pop)
 
-    return mm->AcquireMaterialInstance(spec);
+    MaterialBindingInstance *mi = mm->AcquireMaterialInstance(spec);
+    if (mi)
+        MaterialBindingInstanceInternalAccess::SetDomainBinding(mi, handle.binding);
+
+    return mi;
 }
 
 } // namespace hgl::graph

@@ -8,6 +8,7 @@
 namespace hgl::graph{
 
 class MaterialBindingInstanceInternalAccess;
+class DomainResourceBinding;
 
 /**
 * 材质实例类<br>
@@ -24,6 +25,8 @@ protected:
     ShaderMaterialProgram *material;
 
     ResourceDomain *domain;     ///< 显式资源域（统一 MI 创建入口）
+
+    DomainResourceBinding *domain_binding = nullptr;   ///< optional per-material descriptor binding for domain-backed MI
 
     uint32_t domain_id = 0xFFFFFFFFu;
 
