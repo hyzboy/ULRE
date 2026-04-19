@@ -151,23 +151,17 @@ private:
     bool InitVBOAndRenderList()
     {
 
-        auto* device = GetDevice();
-        auto* buffer_manager = GetBufferManager();
         auto* geometry_manager = GetGeometryManager();
         auto* primitive_manager = GetPrimitiveManager();
-        if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
+        if (!geometry_manager || !primitive_manager)
             return false;
 
-        GeometryCreater pc(device, GeometryVertexFormat::FromVIL(render_obj[0].mi->GetShaderMaterialProgram()->GetDefaultVIL()), buffer_manager);
-        pc.Init("TextureRect", 6);
-        if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
-            !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))
-            return false;
-
-        auto* geometry = pc.Create();
+        auto* geometry = WorkObject::CreateGeometry("TextureRect",
+                                                    6,
+                                                    {{VAN::Position, VF_V2F, position_data},
+                                                     {VAN::TexCoord, VF_V2F, tex_coord_data}});
         if (!geometry)
             return false;
-        geometry_manager->Add(geometry);
 
         mesh_rect = primitive_manager->CreatePrimitive(geometry, render_obj[0].mi);
 

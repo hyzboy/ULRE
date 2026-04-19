@@ -88,6 +88,56 @@ namespace hgl
         return input_system ? &input_system->GetMouseCoord() : nullptr;
     }
 
+    graph::Geometry *WorkObject::CreateGeometry(const graph::GeometryVertexFormat &gvf,
+                                                const AnsiString &geometry_name,
+                                                uint32_t vertex_count,
+                                                std::initializer_list<graph::GraphicsGeometryFactory::VertexAttribWrite> vertex_writes)
+    {
+        auto *graphics_context = GetGraphicsContext();
+        if(!graphics_context)
+            return nullptr;
+
+        return graph::GraphicsGeometryFactory::CreateGeometry(graphics_context,
+                                                              gvf,
+                                                              geometry_name,
+                                                              vertex_count,
+                                                              vertex_writes);
+    }
+
+    graph::Geometry *WorkObject::CreateGeometry(const AnsiString &geometry_name,
+                                                uint32_t vertex_count,
+                                                std::initializer_list<graph::GraphicsGeometryFactory::VertexAttribWrite> vertex_writes)
+    {
+        auto *graphics_context = GetGraphicsContext();
+        if(!graphics_context)
+            return nullptr;
+
+        return graph::GraphicsGeometryFactory::CreateGeometry(graphics_context,
+                                                              geometry_name,
+                                                              vertex_count,
+                                                              vertex_writes);
+    }
+
+    graph::Geometry *WorkObject::CreateGeometry(const AnsiString &geometry_name,
+                                                uint32_t vertex_count,
+                                                uint32_t index_count,
+                                                graph::IndexType index_type,
+                                                std::initializer_list<graph::GraphicsGeometryFactory::VertexAttribWrite> vertex_writes,
+                                                const void *index_data)
+    {
+        auto *graphics_context = GetGraphicsContext();
+        if(!graphics_context)
+            return nullptr;
+
+        return graph::GraphicsGeometryFactory::CreateGeometry(graphics_context,
+                                                              geometry_name,
+                                                              vertex_count,
+                                                              index_count,
+                                                              index_type,
+                                                              vertex_writes,
+                                                              index_data);
+    }
+
     void WorkObject::Tick(double delta)
     {
         if (world)
@@ -104,5 +154,5 @@ namespace hgl
             return;
     }
 
-    // Resource helpers removed. Use RenderContext/GraphicsContext directly.
+    // Keep helper surface small and sample-oriented.
 }//namespcae hgl

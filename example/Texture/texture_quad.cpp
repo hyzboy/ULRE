@@ -1,6 +1,5 @@
 // 画一个带纹理的四边形 (ECS)
 #include<hgl/framework/WorkManager.h>
-#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 
 // ECS headers
@@ -65,26 +64,12 @@ private:
     bool InitVBO()
     {
 
-        auto* device = GetDevice();
-        auto* buffer_manager = GetBufferManager();
-        auto* geometry_manager = GetGeometryManager();
-        if (!device || !buffer_manager || !geometry_manager)
-            return false;
-
-        GeometryVertexFormat gvf;
-        gvf.Set(VAN::Position, VF_V2F);
-        gvf.Set(VAN::TexCoord, VF_V2F);
-
-        GeometryCreater pc(device, gvf, buffer_manager);
-        pc.Init("TextureQuad", VERTEX_COUNT);
-        if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
-            !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))
-            return false;
-
-        quad_geometry = pc.Create();
+        quad_geometry = WorkObject::CreateGeometry("TextureQuad",
+                                                   VERTEX_COUNT,
+                                                   {{VAN::Position, VF_V2F, position_data},
+                                                    {VAN::TexCoord, VF_V2F, tex_coord_data}});
         if (!quad_geometry)
             return false;
-        geometry_manager->Add(quad_geometry);
 
         return(true);
     }

@@ -4,6 +4,7 @@
 #include <initializer_list>
 #include <utility>
 #include <hgl/vk/VKFormat.h>
+#include <hgl/vk/VKIndexBuffer.h>
 #include <hgl/vk/VKMaterialBindingInstance.h>
 #include <hgl/vk/VKVertexInputLayout.h>
 #include <hgl/type/String.h>
@@ -81,6 +82,19 @@ public:
                                     const AnsiString &geometry_name,
                                     uint32_t vertex_count,
                                     std::initializer_list<VertexAttribWrite> vertex_writes);
+
+    static Geometry *CreateGeometry(GraphicsContext *graphics_context,
+                                    const AnsiString &geometry_name,
+                                    uint32_t vertex_count,
+                                    std::initializer_list<VertexAttribWrite> vertex_writes);
+
+    static Geometry *CreateGeometry(GraphicsContext *graphics_context,
+                                    const AnsiString &geometry_name,
+                                    uint32_t vertex_count,
+                                    uint32_t index_count,
+                                    IndexType index_type,
+                                    std::initializer_list<VertexAttribWrite> vertex_writes,
+                                    const void *index_data);
 
     static Primitive *CreatePrimitive(GraphicsContext *graphics_context,
                                       const GeometryVertexFormat &gvf,

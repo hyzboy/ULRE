@@ -113,7 +113,9 @@ namespace
                 return false;
 
             using namespace inline_geometry;
-            const auto gvf = GeometryVertexFormat::FromVIL(material->GetDefaultVIL());
+            GeometryVertexFormat gvf;
+            gvf.Set(VAN::Position, VF_V3F);
+            gvf.Set(VAN::Normal,   VF_V3F);
             auto pc = std::make_unique<GeometryCreater>(device, gvf);
             if (!pc)
                 return false;

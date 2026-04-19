@@ -90,18 +90,9 @@ private:
 
     bool InitGeometry()
     {
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        GeometryVertexFormat gvf;
-        gvf.Set(VAN::Position, VF_V2F);
-
-        geometry = GraphicsGeometryFactory::CreateGeometry(graphics_context,
-                                                           gvf,
-                                                           "TriangleForClock",
-                                                           VERTEX_COUNT,
-                                                           {{VAN::Position, VF_V2F, position_data}});
+        geometry = WorkObject::CreateGeometry("TriangleForClock",
+                                              VERTEX_COUNT,
+                                              {{VAN::Position, VF_V2F, position_data}});
 
         if (!geometry)
         {

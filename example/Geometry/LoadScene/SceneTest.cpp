@@ -98,7 +98,9 @@ private:
         if (!md->material)
             return false;
 
-        md->gvf = GeometryVertexFormat::FromVIL(md->material->GetDefaultVIL());
+        md->gvf = GeometryVertexFormat{};
+        md->gvf.Set(VAN::Position, VF_V3F);
+        md->gvf.Set(VAN::Normal,   VF_V3F);
 
         if(md->gvf.GetActiveCount() == 0)
             return(false);

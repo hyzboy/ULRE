@@ -177,20 +177,10 @@ private:
         if(!UpdateTrianglePositionData(init_extent))
             return false;
 
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        GeometryVertexFormat gvf;
-        gvf.Set(VAN::Position, POSITION_DATA_FORMAT);
-        gvf.Set(VAN::Color, COLOR_DATA_FORMAT);
-
-        geometry = GraphicsGeometryFactory::CreateGeometry(graphics_context,
-                                                           gvf,
-                                                           "Triangle",
-                                                           VERTEX_COUNT,
-                                                           {{VAN::Position, POSITION_DATA_FORMAT, position_data},
-                                                            {VAN::Color, COLOR_DATA_FORMAT, color_data}});
+        geometry = WorkObject::CreateGeometry("Triangle",
+                                              VERTEX_COUNT,
+                                              {{VAN::Position, POSITION_DATA_FORMAT, position_data},
+                                               {VAN::Color, COLOR_DATA_FORMAT, color_data}});
 
         if(geometry)
             LogVABState("CreateGeometry");

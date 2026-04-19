@@ -113,24 +113,12 @@ private:
 
         // === 创建射线线段几何体 ===
         {
-            auto* buffer_manager = GetBufferManager();
-            if (!buffer_manager)
-                return false;
-
-            GeometryVertexFormat gvf;
-            gvf.Set(VAN::Position, VF_V3F);
-            gvf.Set(VAN::Luminance, VF_V1UN8);
-
-            GeometryCreater pc(device, gvf, buffer_manager);
-            pc.Init("RayLine", 2);
-            if (!pc.WriteVAB(VAN::Position, VF_V3F, position_data) ||
-                !pc.WriteVAB(VAN::Luminance, VF_V1UN8, lumiance_data))
-                return false;
-
-            geom_line = pc.Create();
+            geom_line = WorkObject::CreateGeometry("RayLine",
+                                                   2,
+                                                   {{VAN::Position, VF_V3F, position_data},
+                                                    {VAN::Luminance, VF_V1UN8, lumiance_data}});
             if (!geom_line)
                 return false;
-            geometry_manager->Add(geom_line);
 
             // 获取VAB用于后续动态更新顶点数据
             prim_line_vab = geom_line->GetVAB(VAN::Position);

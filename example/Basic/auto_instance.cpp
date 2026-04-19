@@ -71,20 +71,10 @@ private:
 
     bool InitVBO()
     {
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        GeometryVertexFormat gvf;
-        gvf.Set(VAN::Position, VF_V2F);
-        gvf.Set(VAN::Color,    VF_V4UN8);
-
-        geom_triangle = GraphicsGeometryFactory::CreateGeometry(graphics_context,
-                                                                gvf,
-                                                                "Triangle",
-                                                                VERTEX_COUNT,
-                                                                {{VAN::Position,VF_V2F,position_data},
-                                                                 {VAN::Color,VF_V4UN8,color_data}});
+        geom_triangle = WorkObject::CreateGeometry("Triangle",
+                                                   VERTEX_COUNT,
+                                                   {{VAN::Position,VF_V2F,position_data},
+                                                    {VAN::Color,VF_V4UN8,color_data}});
 
         if(!geom_triangle)
             return(false);

@@ -5,6 +5,7 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialRecipeRegistry.h>
+#include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include <memory>
@@ -156,6 +157,22 @@ namespace hgl
             return registry->ResolveOrCreateBindingInstance(rec, gvf, instance_data, instance_data_size, out_handle);
         }
 
+        graph::Geometry *CreateGeometry(const graph::GeometryVertexFormat &gvf,
+                                        const AnsiString &geometry_name,
+                                        uint32_t vertex_count,
+                                        std::initializer_list<graph::GraphicsGeometryFactory::VertexAttribWrite> vertex_writes);
+
+        graph::Geometry *CreateGeometry(const AnsiString &geometry_name,
+                                        uint32_t vertex_count,
+                                        std::initializer_list<graph::GraphicsGeometryFactory::VertexAttribWrite> vertex_writes);
+
+        graph::Geometry *CreateGeometry(const AnsiString &geometry_name,
+                        uint32_t vertex_count,
+                        uint32_t index_count,
+                        graph::IndexType index_type,
+                        std::initializer_list<graph::GraphicsGeometryFactory::VertexAttribWrite> vertex_writes,
+                        const void *index_data);
+
         const VkExtent2D *          GetExtent           ();
         const graph::ViewportInfo * GetViewportInfo     ()const;
         graph::Camera *             GetCamera           ();
@@ -200,6 +217,6 @@ namespace hgl
 
     public:
 
-        // Use RenderContext/GraphicsContext directly for resource creation.
+        // Lightweight resource helpers for example/sample code.
     };//class WorkObject
 }//namespcae hgl

@@ -150,7 +150,9 @@ public:
         if (!mi)
             return false;
 
-        const auto gvf = GeometryVertexFormat::FromVIL(mi->GetShaderMaterialProgram()->GetDefaultVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+        gvf.Set(VAN::Normal,   VF_V3F);
         auto pc = std::make_unique<GeometryCreater>(device, gvf);
         geometry = inline_geometry::CreateSphere(pc.get(), 64);
         if (!geometry)
@@ -327,7 +329,11 @@ private:
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
 
-        const auto gvf = GeometryVertexFormat::FromVIL(cube_mi->GetShaderMaterialProgram()->GetDefaultVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+        gvf.Set(VAN::Normal,   VF_V3F);
+        gvf.Set(VAN::TexCoord, VF_V2F);
+        gvf.Set(VAN::Tangent,  VF_V3F);
         auto pc = std::make_unique<GeometryCreater>(device, gvf);
         inline_geometry::CubeCreateInfo cci{};
         cci.tex_coord = true;

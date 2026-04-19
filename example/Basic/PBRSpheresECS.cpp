@@ -341,7 +341,11 @@ private:
             return false;
         }
 
-        const auto gvf = GeometryVertexFormat::FromVIL(sphere_mi[0][0]->GetShaderMaterialProgram()->GetDefaultVIL());
+        GeometryVertexFormat gvf;
+        gvf.Set(VAN::Position, VF_V3F);
+        gvf.Set(VAN::Normal,   VF_V3F);
+        gvf.Set(VAN::TexCoord, VF_V2F);
+        gvf.Set(VAN::Tangent,  VF_V3F);
         mesh_vdm = new VertexDataManager(buffer_manager, gvf);
         if (!mesh_vdm) {
             printf("[ERROR] InitVDM: Failed to create VertexDataManager\n");
@@ -563,7 +567,8 @@ private:
         if (!mi_sky_sphere)
             return false;
 
-        const auto sky_gvf = GeometryVertexFormat::FromVIL(mi_sky_sphere->GetShaderMaterialProgram()->GetDefaultVIL());
+        GeometryVertexFormat sky_gvf;
+        sky_gvf.Set(VAN::Position, VF_V3F);
 
         Primitive* ri = GraphicsGeometryFactory::CreatePrimitive(graphics_context,
                                                                  sky_gvf,

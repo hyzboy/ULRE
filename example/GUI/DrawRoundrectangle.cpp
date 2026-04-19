@@ -2,7 +2,6 @@
 // 通过控制尺寸、每个角的半径，可绘制出正圆、矩形、圆角矩形
 
 #include<hgl/WorkManager.h>
-#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/math/Math.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -73,26 +72,12 @@ private:
                 return false;
         }
 
-        auto* device = GetDevice();
-        auto* buffer_manager = GetBufferManager();
-        auto* geometry_manager = GetGeometryManager();
-        if (!device || !buffer_manager || !geometry_manager)
-            return false;
-
-        GeometryVertexFormat gvf;
-        gvf.Set(VAN::Position, VF_V2F);
-        gvf.Set(VAN::TexCoord, VF_V2F);
-
-        GeometryCreater pc(device, gvf, buffer_manager);
-        pc.Init("TextureRect", 6);
-        if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
-            !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))
-            return false;
-
-        rect_geometry = pc.Create();
+        rect_geometry = WorkObject::CreateGeometry("TextureRect",
+                                                   6,
+                                                   {{VAN::Position, VF_V2F, position_data},
+                                                    {VAN::TexCoord, VF_V2F, tex_coord_data}});
         if (!rect_geometry)
             return false;
-        geometry_manager->Add(rect_geometry);
 
         rect_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("Rect2D");
         if(!rect_entity)

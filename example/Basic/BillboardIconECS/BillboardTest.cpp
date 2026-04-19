@@ -219,7 +219,7 @@ private:
 
             if(!geometry_factory.RegisterGeometry(geom_plane_grid))
                 return false;
-            prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid);
+            prim_plane_grid = geometry_factory.CreatePrimitive(geom_plane_grid, mi_plane_grid);     //这里失败原因是材质要R32F的Luminance,但Geometry提供的是R8UM
             if(!prim_plane_grid)
                 return false;
 
@@ -228,19 +228,16 @@ private:
         }
 
         {
-            auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(mi_billboard->GetShaderMaterialProgram()->GetDefaultVIL()));
-            if (!pc)
+            auto *billboard_geometry = WorkObject::CreateGeometry("Billboard",
+                                                                   4,
+                                                                   6,
+                                                                   IndexType::U16,
+                                                                   {{VAN::Position, VF_V3F, billboard_position_data}},
+                                                                   billboard_index_data);
+            if(!billboard_geometry)
                 return false;
 
-            pc->Init("Billboard", 4, 6, IndexType::U16);
-
-            if(!pc->WriteVAB(VAN::Position, VF_V3F, billboard_position_data))
-                return false;
-
-            if(!pc->WriteIBO(billboard_index_data))
-                return false;
-
-            prim_billboard = geometry_factory.CreatePrimitive(pc.get(), mi_billboard);
+            prim_billboard = geometry_factory.CreatePrimitive(billboard_geometry, mi_billboard);
             if(!prim_billboard)
                 return false;
 

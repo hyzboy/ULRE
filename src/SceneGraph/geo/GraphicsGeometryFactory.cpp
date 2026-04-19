@@ -9,6 +9,21 @@
 
 namespace hgl::graph
 {
+static bool BuildGVFFromVertexWrites(GeometryVertexFormat &gvf,
+                                     std::initializer_list<GraphicsGeometryFactory::VertexAttribWrite> vertex_writes)
+{
+    for(const auto &write : vertex_writes)
+    {
+        if(!write.data)
+            return false;
+
+        if(!gvf.Set(write.attrib, write.format))
+            return false;
+    }
+
+    return gvf.GetActiveCount() > 0;
+}
+
 GraphicsGeometryFactory::GraphicsGeometryFactory(GraphicsContext *gc)
     : graphics(gc)
 {
@@ -115,6 +130,60 @@ Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_cont
     return geometry_factory.CreateManagedGeometry(pc.get());
 }
 
+Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_context,
+                                                  const AnsiString &geometry_name,
+                                                  uint32_t vertex_count,
+                                                  std::initializer_list<VertexAttribWrite> vertex_writes)
+{
+    GeometryVertexFormat gvf;
+    if(!BuildGVFFromVertexWrites(gvf, vertex_writes))
+        return nullptr;
+
+    return CreateGeometry(graphics_context, gvf, geometry_name, vertex_count, vertex_writes);
+}
+
+Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_context,
+                                                  const AnsiString &geometry_name,
+                                                  uint32_t vertex_count,
+                                                  uint32_t index_count,
+                                                  IndexType index_type,
+                                                  std::initializer_list<VertexAttribWrite> vertex_writes,
+                                                  const void *index_data)
+{
+    if(!graphics_context || geometry_name.IsEmpty() || vertex_count == 0)
+        return nullptr;
+
+    if(index_count > 0 && (!index_data || index_type == IndexType::AUTO))
+        return nullptr;
+
+    GeometryVertexFormat gvf;
+    if(!BuildGVFFromVertexWrites(gvf, vertex_writes))
+        return nullptr;
+
+    GraphicsGeometryFactory geometry_factory(graphics_context);
+
+    auto pc = geometry_factory.CreateCreater(gvf);
+    if(!pc)
+        return nullptr;
+
+    if(!pc->Init(geometry_name, vertex_count, index_count, index_type))
+        return nullptr;
+
+    for(const auto &write : vertex_writes)
+    {
+        if(!pc->WriteVAB(write.attrib, write.format, write.data))
+            return nullptr;
+    }
+
+    if(index_count > 0)
+    {
+        if(!pc->WriteIBO(index_data, index_count))
+            return nullptr;
+    }
+
+    return geometry_factory.CreateManagedGeometry(pc.get());
+}
+
 Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_context,
                                                     const GeometryVertexFormat &gvf,
                                                     MaterialBindingInstance *material_instance,
@@ -144,19 +213,12 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GraphicsContext *graphics_co
     if(!graphics_context || geometry_name.IsEmpty() || vertex_count == 0)
         return nullptr;
 
-    // 从 vertex_writes 推算 GVF
     GeometryVertexFormat gvf;
-    for(const auto &w : vertex_writes)
-    {
-        if(!gvf.Set(w.attrib, w.format))
-            return nullptr;
-    }
-
-    if(gvf.GetActiveCount() == 0)
+    if(!BuildGVFFromVertexWrites(gvf, vertex_writes))
         return nullptr;
 
     // 创建 Geometry
-    auto *geometry = CreateGeometry(graphics_context, gvf, geometry_name, vertex_count, vertex_writes);
+    auto *geometry = CreateGeometry(graphics_context, geometry_name, vertex_count, vertex_writes);
     if(!geometry)
         return nullptr;
 
