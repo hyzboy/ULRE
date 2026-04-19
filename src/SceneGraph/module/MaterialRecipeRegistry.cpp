@@ -289,7 +289,8 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     const GeometryVertexFormat &gvf,
     const void *instance_data,
     uint32_t instance_data_size,
-    MaterialDomainHandle *out_handle)
+    MaterialDomainHandle *out_handle,
+    const VIL **out_vil)
 {
     MaterialDomainHandle handle = Acquire(rec);
     if (!handle.material)
@@ -342,6 +343,13 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
 
     if (vil_cfg.GetCount() > 0)
         spec.vil_cfg = &vil_cfg;
+
+    // Stage-5: expose the actual VIL that will be used so callers can avoid
+    // storing it in MaterialBindingInstance.
+    if (out_vil)
+        *out_vil = (vil_cfg.GetCount() > 0)
+                       ? handle.material->CreateVIL(&vil_cfg)   // cached by ShaderMaterialProgram
+                       : default_vil;
 
     return mm->AcquireMaterialInstance(spec);
 }

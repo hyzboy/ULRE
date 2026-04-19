@@ -872,8 +872,9 @@ MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(Sh
         return nullptr;
 
     const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
+    (void)use_vil;   // VIL no longer stored in MI; kept for potential local validation
     int mi_id = domain->AllocMISlot();
-    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, use_vil, mi_id);
+    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, mi_id);
     mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
     Add(mi);
     return mi;
@@ -886,9 +887,9 @@ MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(Sh
     if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
         return nullptr;
 
-    const VIL *vil = vil_cfg ? mtl->CreateVIL(vil_cfg) : mtl->GetDefaultVIL();
+    // VIL no longer stored in MI; compute only for potential validation
     int mi_id = domain->AllocMISlot();
-    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, vil, mi_id);
+    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, mi_id);
     mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
     Add(mi);
     return mi;
@@ -902,8 +903,9 @@ MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(Sh
         return nullptr;
 
     const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
+    (void)use_vil;
     int mi_id = domain->AllocMISlot();
-    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, use_vil, mi_id);
+    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, mi_id);
     mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
     Add(mi);
 
@@ -920,9 +922,8 @@ MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(Sh
     if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
         return nullptr;
 
-    const VIL *vil = vil_cfg ? mtl->CreateVIL(vil_cfg) : mtl->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
-    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, vil, mi_id);
+    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, mi_id);
     mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
     Add(mi);
 

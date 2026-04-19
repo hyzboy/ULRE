@@ -5,6 +5,7 @@
 #include <utility>
 #include <hgl/vk/VKFormat.h>
 #include <hgl/vk/VKMaterialBindingInstance.h>
+#include <hgl/vk/VKVertexInputLayout.h>
 #include <hgl/type/String.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/MaterialRecipe.h>
@@ -46,8 +47,8 @@ public:
     Geometry *CreateManagedGeometry(GeometryCreater *creater) const;
 
 public:
-    Primitive *CreatePrimitive(Geometry *geometry, MaterialBindingInstance *mi) const;
-    Primitive *CreatePrimitive(GeometryCreater *creater, MaterialBindingInstance *mi) const;
+    Primitive *CreatePrimitive(Geometry *geometry, MaterialBindingInstance *mi, const VIL *vil = nullptr) const;
+    Primitive *CreatePrimitive(GeometryCreater *creater, MaterialBindingInstance *mi, const VIL *vil = nullptr) const;
 
 public:
     template<typename GeometryBuilder>

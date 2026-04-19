@@ -7,6 +7,7 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/mesh/Primitive.h>
+#include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/log/Log.h>
 
 #include <cstdint>
@@ -226,11 +227,14 @@ namespace hgl::ecs
 				const ResolveTask &seed = tasks[mi_indices.front()];
 				const auto &seed_gvf = seed.geometry->GetGeometryVertexFormat();
 
+				const graph::VIL *resolve_vil = nullptr;
 				graph::MaterialBindingInstance *mi =
 					registry->ResolveOrCreateBindingInstance(*seed.recipe,
 															 seed_gvf,
 															 seed.slot->GetInstanceDataPtr(),
-															 seed.slot->GetInstanceDataSize());
+															 seed.slot->GetInstanceDataSize(),
+															 nullptr,
+															 &resolve_vil);
 				if (!mi)
 				{
 					resolve_fail_count += static_cast<uint32_t>(mi_indices.size());
@@ -245,7 +249,7 @@ namespace hgl::ecs
 					task.slot->resolved_material = mi->GetShaderMaterialProgram();
 					task.slot->resolved_domain = mi->GetDomain();
 					task.slot->resolved_domain_id = mi->GetDomainID();
-					task.slot->resolved_vil = mi->GetVIL();
+					task.slot->resolved_vil = resolve_vil;
 					task.slot->resolved_mi_id = mi->GetMIID();
 					task.slot->resolved_preset = mi->GetRenderPreset();
 					task.slot->dirty = false;
@@ -254,7 +258,7 @@ namespace hgl::ecs
 					// Stage-2: unresolved geometry still creates Primitive in-place.
 					if (task.comp->GetUnresolvedGeometry())
 					{
-						if (auto *prim = prim_mgr->CreatePrimitive(task.geometry, mi))
+						if (auto *prim = prim_mgr->CreatePrimitive(task.geometry, mi, resolve_vil))
 						{
 							task.comp->SetPrimitive(prim);
 							task.comp->SetUnresolvedGeometry(nullptr);
@@ -269,7 +273,7 @@ namespace hgl::ecs
 						}
 						else
 						{
-							auto *replacement = prim_mgr->CreatePrimitive(task.geometry, mi);
+							auto *replacement = prim_mgr->CreatePrimitive(task.geometry, mi, resolve_vil);
 							if (replacement)
 							{
 								task.comp->SetPrimitive(replacement);

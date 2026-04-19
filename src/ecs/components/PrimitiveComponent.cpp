@@ -156,7 +156,7 @@ namespace hgl::ecs
                 state.material = state.binding_instance->GetShaderMaterialProgram();
 
             if (!state.vil)
-                state.vil = state.binding_instance->GetVIL();
+                if (primitive) state.vil = primitive->GetVIL();
 
             if (!state.domain)
                 state.domain = state.binding_instance->GetDomain();

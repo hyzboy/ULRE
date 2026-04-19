@@ -43,12 +43,12 @@ Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialBindin
     return(nullptr);
 }
 
-Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialBindingInstance *mi)
+Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialBindingInstance *mi, const VIL *vil)
 {
     if(!mi||!r)
         return(nullptr);
 
-    Primitive *ri=hgl::graph::DirectCreatePrimitive(r,mi,nullptr);
+    Primitive *ri=hgl::graph::DirectCreatePrimitive(r,mi,nullptr,vil);
 
     if(ri)
         Add(ri);
@@ -56,7 +56,7 @@ Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialBindingInstanc
     return ri;
 }
 
-Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialBindingInstance *mi)
+Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialBindingInstance *mi, const VIL *vil)
 {
     if(!mi||!pc)
         return(nullptr);
@@ -66,7 +66,7 @@ Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialBindin
     if(!geometry)
         return(nullptr);
 
-    Primitive *ri=hgl::graph::DirectCreatePrimitive(geometry,mi,nullptr);
+    Primitive *ri=hgl::graph::DirectCreatePrimitive(geometry,mi,nullptr,vil);
 
     if(ri)
     {

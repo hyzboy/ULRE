@@ -200,7 +200,9 @@ private:
         using namespace inline_geometry;
 
         {
-            auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(mi_plane_grid->GetVIL()));
+            GeometryVertexFormat gvf_lum;
+            gvf_lum.Set(VAN::Luminance, VF_V1UN8);
+            auto pc = geometry_factory.CreateCreater(gvf_lum);
             if (!pc)
                 return false;
 
@@ -225,7 +227,7 @@ private:
         }
 
         {
-            auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(mi_billboard->GetVIL()));
+            auto pc = geometry_factory.CreateCreater(GeometryVertexFormat::FromVIL(mi_billboard->GetShaderMaterialProgram()->GetDefaultVIL()));
             if (!pc)
                 return false;
 

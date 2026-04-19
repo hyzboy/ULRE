@@ -49,11 +49,11 @@ void GeometryDrawRange::Set(const Geometry *geometry)
     first_index     = geometry->GetFirstIndex();
 }
 
-Primitive::Primitive(Geometry *r,MaterialBindingInstance *mi,GraphicsPipelinePreRaster *p,GeometryDataBuffer *gdb)
+Primitive::Primitive(Geometry *r,MaterialBindingInstance *mi,GraphicsPipelinePreRaster *p,GeometryDataBuffer *gdb,const VIL *v)
 {
     geometry=r;
     mat_inst=mi;
-    vil=mi?mi->GetVIL():nullptr;
+    vil=v;
 
     data_buffer=gdb;
     draw_range.Set(geometry);
@@ -78,14 +78,21 @@ bool Primitive::UpdateGeometry()
     return data_buffer->Update(geometry,vil);
 }
 
-Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,GraphicsPipelinePreRaster *p)
+Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,GraphicsPipelinePreRaster *p,const VIL *explicit_vil)
 //用Direct这个前缀是为了区别于MeshManager/WorkObject等路径上的CreateMesh()
 {
     if(!geom||!mi)return(nullptr);
 
-    const VIL *vil=mi->GetVIL();
+    const VIL *vil = explicit_vil
+                   ? explicit_vil
+                   : (p ? p->GetVIL() : mi->GetShaderMaterialProgram()->GetDefaultVIL());
 
-    if(p && *vil!=*p->GetVIL())
+    if (!vil) return(nullptr);
+
+    if(p && explicit_vil && *explicit_vil!=*p->GetVIL())
+        return(nullptr);
+
+    if(p && !explicit_vil && *vil!=*p->GetVIL())
         return(nullptr);
 
     const uint32_t input_count=vil->GetVertexAttribCount();
@@ -201,7 +208,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,Grap
         ++vif;
     }
 
-    return(new Primitive(geom,mi,p,geom_data_buffer));
+    return(new Primitive(geom,mi,p,geom_data_buffer,vil));
 }
 
 bool GeometryDataBuffer::Update(const Geometry *geom,const VIL *vil)

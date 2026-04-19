@@ -25,8 +25,6 @@ protected:
 
     uint32_t domain_id = 0xFFFFFFFFu;
 
-    const VIL *vil;
-
     int mi_id;
 
     GraphicsPipelinePreset render_preset = GraphicsPipelinePreset::Solid3D;  ///< PreRaster 配置（Phase 0: batch 阶段自动解析用）
@@ -41,8 +39,6 @@ public:
                 ResourceDomain *GetDomain   ()      { return domain; }
     const   uint32_t        GetDomainID ()const { return domain_id; }
 
-            const   VIL *           GetVIL      ()const { return vil; }
-
 private:
 
     friend class ShaderMaterialProgram;
@@ -50,7 +46,7 @@ private:
     friend class ShaderMaterialProgramManager;
 
     /// 新路径构造（Phase 1，经由 ResourceDomain 分配槽位）
-    MaterialBindingInstance(ShaderMaterialProgram *, ResourceDomain *, const VIL *, const int);
+    MaterialBindingInstance(ShaderMaterialProgram *, ResourceDomain *, const int);
 
 public:
 

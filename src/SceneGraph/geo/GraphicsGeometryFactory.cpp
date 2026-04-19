@@ -57,7 +57,7 @@ Geometry *GraphicsGeometryFactory::CreateManagedGeometry(GeometryCreater *create
     return RegisterGeometry(creater->Create());
 }
 
-Primitive *GraphicsGeometryFactory::CreatePrimitive(Geometry *geometry, MaterialBindingInstance *mi) const
+Primitive *GraphicsGeometryFactory::CreatePrimitive(Geometry *geometry, MaterialBindingInstance *mi, const VIL *vil) const
 {
     if(!graphics || !geometry || !mi)
         return nullptr;
@@ -66,10 +66,10 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(Geometry *geometry, Material
     if(!primitive_manager)
         return nullptr;
 
-    return primitive_manager->CreatePrimitive(geometry, mi);
+    return primitive_manager->CreatePrimitive(geometry, mi, vil);
 }
 
-Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, MaterialBindingInstance *mi) const
+Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, MaterialBindingInstance *mi, const VIL *vil) const
 {
     if(!graphics || !creater || !mi)
         return nullptr;
@@ -82,7 +82,7 @@ Primitive *GraphicsGeometryFactory::CreatePrimitive(GeometryCreater *creater, Ma
     if(!primitive_manager)
         return nullptr;
 
-    return primitive_manager->CreatePrimitive(geometry, mi);
+    return primitive_manager->CreatePrimitive(geometry, mi, vil);
 }
 
 Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_context,

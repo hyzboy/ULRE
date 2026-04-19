@@ -41,8 +41,8 @@ public: // Create
     Primitive *CreatePrimitive(Geometry *r, MaterialBindingInstance *mi, GraphicsPipelinePreRaster *p);
     Primitive *CreatePrimitive(GeometryCreater *pc, MaterialBindingInstance *mi, GraphicsPipelinePreRaster *p);
 
-    Primitive *CreatePrimitive(Geometry *r, MaterialBindingInstance *mi);
-    Primitive *CreatePrimitive(GeometryCreater *pc, MaterialBindingInstance *mi);
+    Primitive *CreatePrimitive(Geometry *r, MaterialBindingInstance *mi, const VIL *vil = nullptr);
+    Primitive *CreatePrimitive(GeometryCreater *pc, MaterialBindingInstance *mi, const VIL *vil = nullptr);
 };
 
 }//namespace hgl::graph

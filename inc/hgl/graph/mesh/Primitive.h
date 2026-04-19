@@ -27,9 +27,9 @@ class Primitive
 
 private:
 
-    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialBindingInstance *,GraphicsPipelinePreRaster *);
+    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialBindingInstance *,GraphicsPipelinePreRaster *,const VIL *);
 
-    Primitive(Geometry *,MaterialBindingInstance *,GraphicsPipelinePreRaster *,GeometryDataBuffer *);
+    Primitive(Geometry *,MaterialBindingInstance *,GraphicsPipelinePreRaster *,GeometryDataBuffer *,const VIL *);
 
 public:
 
@@ -75,5 +75,5 @@ public:
             uint32_t            GetDataIndexCount()const{return draw_range.data_index_count;}
 };//class Primitive
 
-Primitive *DirectCreatePrimitive(Geometry *,MaterialBindingInstance *,GraphicsPipelinePreRaster * = nullptr);
+Primitive *DirectCreatePrimitive(Geometry *,MaterialBindingInstance *,GraphicsPipelinePreRaster * = nullptr,const VIL * = nullptr);
 }//namespace hgl::graph

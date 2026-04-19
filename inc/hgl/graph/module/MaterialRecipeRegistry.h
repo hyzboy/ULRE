@@ -12,6 +12,7 @@
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
+#include <hgl/vk/VKVertexInputLayout.h>
 
 #include <string>
 #include <unordered_map>
@@ -76,11 +77,13 @@ public:
     /// 一站式：Acquire + 从 GVF 自动推算 VIL 覆写 + CreateMI
     /// - 对比 ShaderMaterialProgram DefaultVIL 与 Geometry 实际顶点格式，自动生成 VILConfig
     /// - 调用方无需手写 mi_vil_overrides
+    /// - out_vil（可选）：接收实际使用的 VIL 指针，可用于 Primitive 创建等场景
     MaterialBindingInstance *ResolveOrCreateBindingInstance(const mtl::MaterialRecipe &rec,
                                 const GeometryVertexFormat &gvf,
                                 const void *instance_data = nullptr,
                                 uint32_t instance_data_size = 0,
-                                MaterialDomainHandle *out_handle = nullptr);
+                                MaterialDomainHandle *out_handle = nullptr,
+                                const VIL **out_vil = nullptr);
 
     /// Record 驱动重载：pipeline 与可选 VIL 覆写均来自 rec
     MaterialBindingInstance *CreateMI(const MaterialDomainHandle &handle,

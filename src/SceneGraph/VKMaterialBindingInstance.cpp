@@ -10,8 +10,8 @@ namespace hgl::graph{
 // ---------------------------------------------------------------------------
 
 /// Phase 1 新路径：经由 ResourceDomain 分配
-MaterialBindingInstance::MaterialBindingInstance(ShaderMaterialProgram *mtl, ResourceDomain *d, const VIL *v, const int id)
-    : material(mtl), domain(d), domain_id(d ? d->GetDomainID() : 0xFFFFFFFFu), vil(v), mi_id(id)
+MaterialBindingInstance::MaterialBindingInstance(ShaderMaterialProgram *mtl, ResourceDomain *d, const int id)
+    : material(mtl), domain(d), domain_id(d ? d->GetDomainID() : 0xFFFFFFFFu), mi_id(id)
 {
     std::memset(mit_slot_offset, -1, sizeof(mit_slot_offset));
 }
