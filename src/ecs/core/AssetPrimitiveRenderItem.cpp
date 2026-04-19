@@ -3,6 +3,7 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/TransformComponent.h>
 #include <hgl/graph/mesh/Primitive.h>
+#include <hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include <hgl/vk/VKShaderMaterialProgram.h>
 #include <hgl/vk/VKMaterialBindingInstance.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
@@ -61,18 +62,18 @@ namespace hgl::ecs
         {
             // Stage-5: VIL is now sourced from Primitive (stored at construction in Stage-4).
             // material still comes from MI until MI.material field is removed in a later pass.
-            state.material  = state.binding_instance->GetShaderMaterialProgram();
+            state.material  = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(state.binding_instance);
             state.vil       = primitive->GetVIL();
-            state.domain    = state.binding_instance->GetDomain();
-            state.domain_id = state.binding_instance->GetDomainID();
+            state.domain    = graph::MaterialBindingInstanceInternalAccess::GetDomain(state.binding_instance);
+            state.domain_id = graph::MaterialBindingInstanceInternalAccess::GetDomainID(state.binding_instance);
 
             state.mi_id  = state.binding_instance->GetMIID();
             state.preset = state.binding_instance->GetRenderPreset();
 
 #ifdef _DEBUG
-            assert(state.material  == state.binding_instance->GetShaderMaterialProgram());
-            assert(state.domain    == state.binding_instance->GetDomain());
-            assert(state.domain_id == state.binding_instance->GetDomainID());
+            assert(state.material  == graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(state.binding_instance));
+            assert(state.domain    == graph::MaterialBindingInstanceInternalAccess::GetDomain(state.binding_instance));
+            assert(state.domain_id == graph::MaterialBindingInstanceInternalAccess::GetDomainID(state.binding_instance));
 
             assert(state.mi_id  == state.binding_instance->GetMIID());
             assert(state.preset == state.binding_instance->GetRenderPreset());

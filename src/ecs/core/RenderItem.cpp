@@ -1,5 +1,6 @@
 ﻿#include<hgl/ecs/core/RenderItem.h>
 #include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<cassert>
@@ -19,15 +20,15 @@ namespace hgl::ecs
             // Subclasses that override GetResolvedMaterialState() populate them
             // via the resolver cache (PrimitiveRenderItem) or primitive storage
             // (AssetPrimitiveRenderItem). The base-class fallback leaves them null.
-            state.domain    = state.binding_instance->GetDomain();
-            state.domain_id = state.binding_instance->GetDomainID();
+            state.domain    = hgl::graph::MaterialBindingInstanceInternalAccess::GetDomain(state.binding_instance);
+            state.domain_id = hgl::graph::MaterialBindingInstanceInternalAccess::GetDomainID(state.binding_instance);
 
             state.mi_id     = state.binding_instance->GetMIID();
             state.preset    = state.binding_instance->GetRenderPreset();
 
 #ifdef _DEBUG
-            assert(state.domain    == state.binding_instance->GetDomain());
-            assert(state.domain_id == state.binding_instance->GetDomainID());
+            assert(state.domain    == hgl::graph::MaterialBindingInstanceInternalAccess::GetDomain(state.binding_instance));
+            assert(state.domain_id == hgl::graph::MaterialBindingInstanceInternalAccess::GetDomainID(state.binding_instance));
 
             assert(state.mi_id     == state.binding_instance->GetMIID());
             assert(state.preset    == state.binding_instance->GetRenderPreset());

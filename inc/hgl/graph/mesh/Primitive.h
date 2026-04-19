@@ -8,6 +8,7 @@
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKVertexInputLayout.h>
+#include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
 
@@ -57,7 +58,7 @@ public:
                 if(!mi)
                     return(false);
 
-                if(mat_inst&&mi->GetShaderMaterialProgram()!=mat_inst->GetShaderMaterialProgram())  //不能换母材质
+                if(mat_inst&&MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi)!=MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mat_inst))  //不能换母材质
                     return(false);
 
                 mat_inst=mi;

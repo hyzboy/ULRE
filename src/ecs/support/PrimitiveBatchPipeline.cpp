@@ -12,6 +12,7 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
@@ -101,11 +102,13 @@ namespace hgl::ecs
             if (!mi)
                 return;
 
-            if (state.domain && state.domain != mi->GetDomain())
+            auto *mi_domain = graph::MaterialBindingInstanceInternalAccess::GetDomain(mi);
+
+            if (state.domain && state.domain != mi_domain)
             {
                 GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain=%p mi.domain=%p",
                             static_cast<void *>(state.domain),
-                            static_cast<void *>(mi->GetDomain()));
+                            static_cast<void *>(mi_domain));
             }
 
             if (state.preset != mi->GetRenderPreset())
@@ -115,10 +118,10 @@ namespace hgl::ecs
                             int(mi->GetRenderPreset()));
             }
 
-            if (!state.domain && mi->GetDomain())
+            if (!state.domain && mi_domain)
             {
                 GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain is null but mi.domain=%p",
-                            static_cast<void *>(mi->GetDomain()));
+                            static_cast<void *>(mi_domain));
             }
         }
 #endif

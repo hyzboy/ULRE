@@ -3,6 +3,7 @@
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
+#include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph{
@@ -83,9 +84,12 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,Grap
 {
     if(!geom||!mi)return(nullptr);
 
+    auto *material = MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
+    if(!material)return(nullptr);
+
     const VIL *vil = explicit_vil
                    ? explicit_vil
-                   : (p ? p->GetVIL() : mi->GetShaderMaterialProgram()->GetDefaultVIL());
+                   : (p ? p->GetVIL() : material->GetDefaultVIL());
 
     if (!vil) return(nullptr);
 
@@ -96,7 +100,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,Grap
         return(nullptr);
 
     const uint32_t input_count=vil->GetVertexAttribCount();
-    const AnsiString &mtl_name=mi->GetShaderMaterialProgram()->GetName();
+    const AnsiString &mtl_name=material->GetName();
     const GeometryVertexFormat &geometry_vertex_format = geom->GetGeometryVertexFormat();
 
     if(geom->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的

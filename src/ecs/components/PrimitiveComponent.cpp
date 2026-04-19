@@ -2,6 +2,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/ComponentRecords.h>
 #include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
@@ -153,16 +154,16 @@ namespace hgl::ecs
         if (state.binding_instance)
         {
             if (!state.material)
-                state.material = state.binding_instance->GetShaderMaterialProgram();
+                state.material = hgl::graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(state.binding_instance);
 
             if (!state.vil)
                 if (primitive) state.vil = primitive->GetVIL();
 
             if (!state.domain)
-                state.domain = state.binding_instance->GetDomain();
+                state.domain = hgl::graph::MaterialBindingInstanceInternalAccess::GetDomain(state.binding_instance);
 
             if (state.domain_id == 0xFFFFFFFFu)
-                state.domain_id = state.binding_instance->GetDomainID();
+                state.domain_id = hgl::graph::MaterialBindingInstanceInternalAccess::GetDomainID(state.binding_instance);
 
             if (state.mi_id < 0)
                 state.mi_id = state.binding_instance->GetMIID();
@@ -171,8 +172,8 @@ namespace hgl::ecs
                 state.preset = state.binding_instance->GetRenderPreset();
 
 #ifdef _DEBUG
-            assert(state.domain == state.binding_instance->GetDomain());
-            assert(state.domain_id == state.binding_instance->GetDomainID());
+        assert(state.domain == hgl::graph::MaterialBindingInstanceInternalAccess::GetDomain(state.binding_instance));
+        assert(state.domain_id == hgl::graph::MaterialBindingInstanceInternalAccess::GetDomainID(state.binding_instance));
             assert(state.mi_id == state.binding_instance->GetMIID());
             assert(state.preset == state.binding_instance->GetRenderPreset());
 #endif

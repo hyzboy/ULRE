@@ -124,9 +124,9 @@ private:
     bool                shadergen_report_dumped = false;
 
 private:
+
     bool CreateRenderObject()
     {
-
         auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
@@ -238,10 +238,6 @@ private:
     }
 
 public:
-    ~TestApp()
-    {
-    }
-
     bool Init() override
     {
         SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));
@@ -258,13 +254,6 @@ public:
         DumpShaderGenValidationSample();
 
         return true;
-    }
-
-    void Tick(double delta_time) override
-    {
-        WorkObject::Tick(delta_time);
-
-        DumpShaderGenValidationSample();
     }
 };//class TestApp:public WorkObject
 

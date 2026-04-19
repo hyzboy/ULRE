@@ -7,6 +7,8 @@
 
 namespace hgl::graph{
 
+class MaterialBindingInstanceInternalAccess;
+
 /**
 * 材质实例类<br>
 * 材质实例类本质只是提供一个数据区，供RenderCollector合并成一个大UBO。
@@ -35,6 +37,7 @@ protected:
 
 public:
 
+                [[deprecated("Runtime material access is engine-internal; prefer resolved material state or MaterialBindingInstanceInternalAccess.")]]
                 ShaderMaterialProgram *      GetShaderMaterialProgram()      { return material; }
                 ResourceDomain *GetDomain   ()      { return domain; }
     const   uint32_t        GetDomainID ()const { return domain_id; }
@@ -44,6 +47,7 @@ private:
     friend class ShaderMaterialProgram;
     friend class ResourceDomain;
     friend class ShaderMaterialProgramManager;
+    friend class MaterialBindingInstanceInternalAccess;
 
     /// 新路径构造（Phase 1，经由 ResourceDomain 分配槽位）
     MaterialBindingInstance(ShaderMaterialProgram *, ResourceDomain *, const int);

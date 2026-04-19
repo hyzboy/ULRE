@@ -5,6 +5,7 @@
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<cassert>
@@ -76,8 +77,8 @@ namespace hgl::ecs
     #ifdef _DEBUG
         if (state.binding_instance)
         {
-            assert(state.domain == state.binding_instance->GetDomain());
-            assert(state.domain_id == state.binding_instance->GetDomainID());
+            assert(state.domain == hgl::graph::MaterialBindingInstanceInternalAccess::GetDomain(state.binding_instance));
+            assert(state.domain_id == hgl::graph::MaterialBindingInstanceInternalAccess::GetDomainID(state.binding_instance));
 
             assert(state.mi_id == state.binding_instance->GetMIID());
             assert(state.preset == state.binding_instance->GetRenderPreset());

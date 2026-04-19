@@ -1,9 +1,35 @@
 ﻿#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKResourceDomain.h>
+#include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<cstring>
 
 namespace hgl::graph{
+
+ShaderMaterialProgram *MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(MaterialBindingInstance *mi)
+{
+    return mi ? mi->material : nullptr;
+}
+
+const ShaderMaterialProgram *MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(const MaterialBindingInstance *mi)
+{
+    return mi ? mi->material : nullptr;
+}
+
+ResourceDomain *MaterialBindingInstanceInternalAccess::GetDomain(MaterialBindingInstance *mi)
+{
+    return mi ? mi->domain : nullptr;
+}
+
+const ResourceDomain *MaterialBindingInstanceInternalAccess::GetDomain(const MaterialBindingInstance *mi)
+{
+    return mi ? mi->domain : nullptr;
+}
+
+uint32_t MaterialBindingInstanceInternalAccess::GetDomainID(const MaterialBindingInstance *mi)
+{
+    return mi ? mi->domain_id : 0xFFFFFFFFu;
+}
 
 // ---------------------------------------------------------------------------
 // MaterialBindingInstanceData — constructors / destructor
