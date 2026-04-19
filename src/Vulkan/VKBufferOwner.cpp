@@ -7,6 +7,8 @@ namespace hgl::graph{
 
 VkBufferOwner::~VkBufferOwner()
 {
+    VulkanDevice *owner = VulkanDevice::FromDevice(device);
+
     if(staged_source)
     {
         delete staged_source;
@@ -16,12 +18,20 @@ VkBufferOwner::~VkBufferOwner()
     {
         if(buf.buffer)
         {
-            VulkanDevice *owner = VulkanDevice::FromDevice(device);
             if(owner && buf.allocation)
                 vmaDestroyBuffer(owner->GetVmaAllocator(), buf.buffer, buf.allocation);
             else
                 vkDestroyBuffer(device, buf.buffer, nullptr);
         }
+    }
+
+    if(owner)
+    {
+        if(buf.buffer)
+            owner->UntrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)buf.buffer);
+
+        if(buf.vk_memory)
+            owner->UntrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)buf.vk_memory);
     }
 }
 

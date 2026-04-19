@@ -40,10 +40,6 @@ void DebugUtils::SetName(VkObjectType type,uint64_t handle,const char *name)
     name_info.pObjectName   =name;
 
     duf.SetName(device,&name_info);
-
-    VulkanDevice *owner = VulkanDevice::FromDevice(device);
-    if (owner)
-        owner->TrackObjectWithoutLocation(type, handle, name);
 }
 
 struct DebugUtilsLabel:public VkDebugUtilsLabelEXT

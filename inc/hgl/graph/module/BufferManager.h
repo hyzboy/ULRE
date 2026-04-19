@@ -99,14 +99,16 @@ public: // Buffer creation methods
                 : BufferAllocPolicy::Auto;
 
         VkBufferOwner *buf = GetDevice()->CreateUBO(name,
-                                                   static_cast<VkDeviceSize>(UBOAccessorType::GetSize()),
-                                                   nullptr,
-                                                   alloc_policy,
-                                                   sm,
-                                                   update_class,
-                                                   loc);
+                                                    static_cast<VkDeviceSize>(UBOAccessorType::GetSize()),
+                                                    nullptr,
+                                                    alloc_policy,
+                                                    sm,
+                                                    update_class,
+                                                    loc);
         if (!buf)
             return nullptr;
+
+        AddBuffer(AnsiString("UBO:") + name, buf, loc);
 
         UBOAccessorType *accessor = UBOAccessorType::Create(buf, false);
         if (!accessor)

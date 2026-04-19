@@ -64,6 +64,16 @@ namespace hgl
             default_ecs_context->Shutdown();
         GLogDebug("Step 1 complete");
 
+        // 1.5 Destroy ECS context while GraphicsContext/BufferManager are still alive.
+        // This allows system destructors to release UBO/VBO resources through managers.
+        GLogDebug("Step 1.5: Deleting ECSContext");
+        if (default_ecs_context)
+        {
+            delete default_ecs_context;
+            default_ecs_context = nullptr;
+        }
+        GLogDebug("Step 1.5 complete");
+
         // 2. GraphicsContext shutdown - calls Release() on all modules (including sc_module)
         // GraphicsContext owns all modules through GraphModuleManager
         GLogDebug("Step 2: Calling GraphicsContext::Shutdown()");
@@ -81,15 +91,6 @@ namespace hgl
         SAFE_CLEAR(graphics_context);
         GLogDebug("Step 4 complete");
         sc_module = nullptr;  // sc_module was deleted by GraphModuleManager, just null the pointer
-
-        // 5. Destroy ECS context after graphics resources are cleaned up
-        GLogDebug("Step 5: Deleting ECSContext");
-        if (default_ecs_context)
-        {
-            delete default_ecs_context;
-            default_ecs_context = nullptr;
-        }
-        GLogDebug("Step 5 complete");
 
         // 6. Wait for GPU to complete all operations before destroying device/window
         if (device)
