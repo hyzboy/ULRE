@@ -2,7 +2,6 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/module/MaterialRecipeRegistry.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/ShaderMaterialProgramManager.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
 #include<hgl/color/Color.h>
@@ -55,7 +54,6 @@ private:
 
     struct MaterialData
     {
-        ShaderMaterialProgram *material = nullptr;
         GeometryVertexFormat gvf;
 
         MaterialBindingInstance *mi[COLOR_COUNT]{};
@@ -86,18 +84,11 @@ private:
         {
             color = GetColor4f(TestColor[i],1.0);
 
-            MaterialDomainHandle handle;
-            md->mi[i] = ResolveOrCreateBindingInstance(cfg, &color, sizeof(color), &handle);
+            md->mi[i] = ResolveOrCreateBindingInstance(cfg, &color, sizeof(color));
 
             if(!md->mi[i])
                 return(false);
-
-            if (!md->material)
-                md->material = handle.material;
         }
-
-        if (!md->material)
-            return false;
 
         md->gvf = GeometryVertexFormat{};
         md->gvf.Set(VAN::Position, VF_V3F);
