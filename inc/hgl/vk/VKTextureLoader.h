@@ -52,12 +52,15 @@ public:
         if(!buf)
             return(nullptr);
 
-        return buf->Map();
+        auto *gpu = buf->GetGPUBuffer();
+        return gpu ? gpu->Map(0, gpu->GetSize()) : nullptr;
     }
 
     void OnEnd() override
     {
-        buf->Unmap();
+        auto *gpu = buf->GetGPUBuffer();
+        if(gpu)
+            gpu->Unmap();
 
         TextureCreateInfo *tci=new TextureCreateInfo(format);
 
