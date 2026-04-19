@@ -31,15 +31,33 @@ TextureCube *TextureManager::CreateTextureCube(TextureCreateInfo *tci)
     if(!tci->image)
     {
         ImageCubeCreateInfo ici(tci->usage,tci->tiling,tci->format,tci->extent,tci->target_mipmaps);
-        tci->image=CreateImage(&ici);
 
-        if(!tci->image)
+        VmaAllocationCreateInfo alloc_ci{};
+        alloc_ci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+        VulkanDevice *owner = GetDevice();
+        if(vmaCreateImage(owner->GetVmaAllocator(),
+                          static_cast<const VkImageCreateInfo *>(&ici),
+                          &alloc_ci,
+                          &tci->image,
+                          &tci->allocation,
+                          nullptr)!=VK_SUCCESS)
         {
             Clear(tci);
             return(nullptr);
         }
 
-        tci->memory=GetDevice()->CreateMemory(tci->image, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, ObjectNameBuilder(tci->name.IsEmpty() ? "TextureCubeMemory" : (const char*)tci->name.c_str()));
+        VmaAllocationInfo ai{};
+        vmaGetAllocationInfo(owner->GetVmaAllocator(), tci->allocation, &ai);
+        tci->vk_memory = ai.deviceMemory;
+
+        owner->TrackObject(VK_OBJECT_TYPE_IMAGE,
+                           (uint64_t)(uintptr_t)tci->image,
+                           ObjectNameBuilder(tci->name.IsEmpty() ? "TextureCube" : (const char*)tci->name.c_str()));
+        if(tci->vk_memory)
+            owner->TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY,
+                               (uint64_t)(uintptr_t)tci->vk_memory,
+                               ObjectNameBuilder(tci->name.IsEmpty() ? "TextureCubeMemory" : (const char*)tci->name.c_str()));
     }
 
     if(!tci->image_view)
@@ -63,17 +81,17 @@ TextureCube *TextureManager::CreateTextureCube(TextureCreateInfo *tci)
         texture_cmd_buf->Begin();
         if(tci->target_mipmaps==tci->origin_mipmaps)
         {
-            if(tci->target_mipmaps<=1)      //???????mipmaps????????mipmaps
+            if(tci->target_mipmaps<=1)
             {
                 CommitTextureCube(tex,tci->buffer->GetBuffer(),tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
             }
-            else //??????mipmaps????
+            else
             {
                 CommitTextureCubeMipmaps(tex,tci->buffer->GetBuffer(),tci->extent,tci->mipmap_zero_total_bytes);
             }
         }
         else
-            if(tci->origin_mipmaps<=1)          //???????mipmaps????,?????mipmaps
+            if(tci->origin_mipmaps<=1)
             {
                 CommitTextureCube(tex,tci->buffer->GetBuffer(),tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_TRANSFER_BIT);
                 GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel,6);
@@ -85,7 +103,7 @@ TextureCube *TextureManager::CreateTextureCube(TextureCreateInfo *tci)
         delete tci->buffer;
     }
 
-    delete tci;     //"delete tci" is correct,please don't use "Clear(tci)"
+    delete tci;
     return tex;
 }
 

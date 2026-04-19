@@ -30,12 +30,13 @@ public:
 
     TextureData *               GetData             ()      {return data;}
 
-    VkDeviceMemory              GetDeviceMemory     ()      {return data?(data->memory?data->memory->operator VkDeviceMemory():VK_NULL_HANDLE):VK_NULL_HANDLE;}
+    VkDeviceMemory              GetDeviceMemory     ()      {return data?(data->memory?data->memory->operator VkDeviceMemory():data->vk_memory):VK_NULL_HANDLE;}
     VkImage                     GetImage            ()      {return data?data->image:VK_NULL_HANDLE;}
     VkImageLayout               GetImageLayout      ()      {return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
     VkImageView                 GetVulkanImageView  ()      {return data?data->image_view->GetImageView():VK_NULL_HANDLE;}
 
     DeviceMemory *              GetMemory           ()      {return data?data->memory:nullptr;}
+    VmaAllocation               GetAllocation       ()      {return data?data->allocation:VK_NULL_HANDLE;}
     ImageView *                 GetImageView        ()      {return data?data->image_view:nullptr;}
 
     const uint32                GetMipLevel         ()const {return data?data->miplevel:0;}

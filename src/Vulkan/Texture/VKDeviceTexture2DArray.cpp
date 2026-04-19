@@ -36,15 +36,33 @@ Texture2DArray *TextureManager::CreateTexture2DArray(TextureCreateInfo *tci)
     if(!tci->image)
     {
         Image2DArrayCreateInfo ici(tci->usage,tci->tiling,tci->format,tci->extent,tci->target_mipmaps);
-        tci->image=CreateImage(&ici);
 
-        if(!tci->image)
+        VmaAllocationCreateInfo alloc_ci{};
+        alloc_ci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+        VulkanDevice *owner = GetDevice();
+        if(vmaCreateImage(owner->GetVmaAllocator(),
+                          static_cast<const VkImageCreateInfo *>(&ici),
+                          &alloc_ci,
+                          &tci->image,
+                          &tci->allocation,
+                          nullptr)!=VK_SUCCESS)
         {
             Clear(tci);
             return(nullptr);
         }
 
-        tci->memory=GetDevice()->CreateMemory(tci->image, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, ObjectNameBuilder(tci->name.IsEmpty() ? "Texture2DArrayMemory" : (const char*)tci->name.c_str()));
+        VmaAllocationInfo ai{};
+        vmaGetAllocationInfo(owner->GetVmaAllocator(), tci->allocation, &ai);
+        tci->vk_memory = ai.deviceMemory;
+
+        owner->TrackObject(VK_OBJECT_TYPE_IMAGE,
+                           (uint64_t)(uintptr_t)tci->image,
+                           ObjectNameBuilder(tci->name.IsEmpty() ? "Texture2DArray" : (const char*)tci->name.c_str()));
+        if(tci->vk_memory)
+            owner->TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY,
+                               (uint64_t)(uintptr_t)tci->vk_memory,
+                               ObjectNameBuilder(tci->name.IsEmpty() ? "Texture2DArrayMemory" : (const char*)tci->name.c_str()));
     }
 
     if(!tci->image_view)
@@ -60,39 +78,7 @@ Texture2DArray *TextureManager::CreateTexture2DArray(TextureCreateInfo *tci)
         return(nullptr);
     }
 
-    //我们暂不，也不准备支持从文件加载整个texture 2d array，所以这里的代码暂时注释掉。仅支持创建空的Texture2d array后，一张张2D纹理单独提交
-//
-    //if((!tci->buffer)&&tci->pixels&&tci->total_bytes>0)
-    //    tci->buffer=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,tci->total_bytes,tci->pixels);
-
-    //if(tci->buffer)
-    //{
-    //    texture_cmd_buf->Begin();
-    //    if(tci->target_mipmaps==tci->origin_mipmaps)
-    //    {
-    //        if(tci->target_mipmaps<=1)      //本身不含mipmaps，但也不要mipmaps
-    //        {
-    //            CommitTexture2DArray(tex,tci->buffer,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    //        }
-    //        else //本身有mipmaps数据
-    //        {
-    //            CommitTexture2DMipmapsArray(tex,tci->buffer,tci->extent,tci->mipmap_zero_total_bytes);
-    //        }
-    //    }
-    //    else
-    //        if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
-    //        {
-    //            CommitTexture2DArray(tex,tci->buffer,VK_PIPELINE_STAGE_TRANSFER_BIT);
-    //            GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel,1);
-    //        }
-    //    texture_cmd_buf->End();
-
-    //    SubmitTexture(*texture_cmd_buf);
-
-    //    delete tci->buffer;
-    //}
-
-    delete tci;     //"delete tci" is correct,please don't use "Clear(tci)"
+    delete tci;
     return tex;
 }
 

@@ -12,17 +12,31 @@ Texture::~Texture()
 
     if(!data)return;
 
+    VulkanDevice *owner = manager ? VulkanDevice::FromDevice(manager->GetVkDevice()) : nullptr;
+
     if(data->image)
     {
-        VulkanDevice *owner = VulkanDevice::FromDevice(manager->GetVkDevice());
         if (owner)
             owner->UntrackObject(VK_OBJECT_TYPE_IMAGE, (uint64_t)(uintptr_t)data->image);
+    }
+
+    if(data->vk_memory)
+    {
+        if (owner)
+            owner->UntrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)data->vk_memory);
     }
 
     if(data->image_view)
         delete data->image_view;
 
-    if(data->memory)        //没有memory的纹理都是从其它地方借来的，所以就不存在删除
+    if(data->allocation && data->image)
+    {
+        if (owner)
+            vmaDestroyImage(owner->GetVmaAllocator(), data->image, data->allocation);
+        else
+            vkDestroyImage(manager->GetVkDevice(),data->image,nullptr);
+    }
+    else if(data->memory)        // legacy path (pre-VMA / external image ownership)
     {
         delete data->memory;
 

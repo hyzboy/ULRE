@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/vk/VK.h>
+#include<vk_mem_alloc.h>
 namespace hgl::graph{
 struct TextureCreateInfo
 {
@@ -19,7 +20,9 @@ struct TextureCreateInfo
     VkImageLayout       image_layout;
 
     VkImage             image;          // If no IMAGE, create one; otherwise directly provide image (can be from external source)
-    DeviceMemory *      memory;         // Bind memory at the same time
+    DeviceMemory *      memory;         // Legacy bind path (to be removed in later phases)
+    VmaAllocation       allocation;     // VMA-owned image allocation handle
+    VkDeviceMemory      vk_memory;      // Alias used for debug/object tracking
 
     ImageView *         image_view;     // If no imageview, create one
 
@@ -336,6 +339,8 @@ struct SwapchainDepthTextureCreateInfo:public TextureCreateInfo
 struct TextureData
 {
     DeviceMemory *      memory;
+    VmaAllocation       allocation;
+    VkDeviceMemory      vk_memory;
     VkImage             image;
     VkImageLayout       image_layout;
     ImageView *         image_view;
@@ -352,6 +357,8 @@ public:
     TextureData(const TextureCreateInfo *tci)
     {
         memory      =tci->memory;
+        allocation  =tci->allocation;
+        vk_memory   =tci->vk_memory;
         image       =tci->image;
         image_view  =tci->image_view;
         miplevel    =tci->target_mipmaps;

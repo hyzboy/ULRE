@@ -68,7 +68,27 @@ void TextureManager::Clear(TextureCreateInfo *tci)
 {
     if(!tci)return;
 
-    if(tci->image)DestroyImage(tci->image);
+    VulkanDevice *owner = GetDevice();
+
+    if(tci->allocation && tci->image)
+    {
+        if(owner)
+        {
+            owner->UntrackObject(VK_OBJECT_TYPE_IMAGE, (uint64_t)(uintptr_t)tci->image);
+            if(tci->vk_memory)
+                owner->UntrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)tci->vk_memory);
+            vmaDestroyImage(owner->GetVmaAllocator(), tci->image, tci->allocation);
+        }
+        else
+        {
+            DestroyImage(tci->image);
+        }
+    }
+    else if(tci->image)
+    {
+        DestroyImage(tci->image);
+    }
+
     if(tci->image_view)delete tci->image_view;
     if(tci->memory)delete tci->memory;
 
@@ -91,15 +111,33 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
     if(!tci->image)
     {
         Image2DCreateInfo ici(tci->usage,tci->tiling,tci->format,tci->extent,tci->target_mipmaps);
-        tci->image=CreateImage(&ici);
 
-        if(!tci->image)
+        VmaAllocationCreateInfo alloc_ci{};
+        alloc_ci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+        VulkanDevice *owner = GetDevice();
+        if(vmaCreateImage(owner->GetVmaAllocator(),
+                          static_cast<const VkImageCreateInfo *>(&ici),
+                          &alloc_ci,
+                          &tci->image,
+                          &tci->allocation,
+                          nullptr)!=VK_SUCCESS)
         {
             Clear(tci);
             return(nullptr);
         }
 
-        tci->memory=GetDevice()->CreateMemory(tci->image, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, ObjectNameBuilder(tci->name.IsEmpty() ? "Texture2DMemory" : (const char*)tci->name.c_str()));
+        VmaAllocationInfo ai{};
+        vmaGetAllocationInfo(owner->GetVmaAllocator(), tci->allocation, &ai);
+        tci->vk_memory = ai.deviceMemory;
+
+        owner->TrackObject(VK_OBJECT_TYPE_IMAGE,
+                           (uint64_t)(uintptr_t)tci->image,
+                           ObjectNameBuilder(tci->name.IsEmpty() ? "Texture2D" : (const char*)tci->name.c_str()));
+        if(tci->vk_memory)
+            owner->TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY,
+                               (uint64_t)(uintptr_t)tci->vk_memory,
+                               ObjectNameBuilder(tci->name.IsEmpty() ? "Texture2DMemory" : (const char*)tci->name.c_str()));
     }
 
     if(!tci->image_view)
@@ -122,17 +160,17 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
 
         if(tci->target_mipmaps==tci->origin_mipmaps)
         {
-            if(tci->target_mipmaps<=1)      //本身不含mipmaps，但也不要mipmaps
+            if(tci->target_mipmaps<=1)
             {
                 CommitTexture2D(tex,tci->buffer->GetBuffer(),VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
             }
-            else //本身有mipmaps数据
+            else
             {
                 CommitTexture2DMipmaps(tex,tci->buffer->GetBuffer(),tci->extent,tci->mipmap_zero_total_bytes);
             }
         }
         else
-        if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
+        if(tci->origin_mipmaps<=1)
         {
             CommitTexture2D(tex,tci->buffer->GetBuffer(),VK_PIPELINE_STAGE_TRANSFER_BIT);
             GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tci->target_mipmaps,1);
@@ -145,7 +183,7 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
         delete tci->buffer;
     }
 
-    delete tci;     //"delete tci" is correct,please don't use "Clear(tci)"
+    delete tci;
     return tex;
 }
 
