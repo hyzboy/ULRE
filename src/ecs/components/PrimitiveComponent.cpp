@@ -135,19 +135,40 @@ namespace hgl::ecs
 
         // Priority 1: deferred resolve result (latest requested binding instance)
         if (material_slot.resolved_binding_instance)
+        {
             state.binding_instance = material_slot.resolved_binding_instance;
+
+            // Stage-5: runtime state prefers resolver cache over MI live getter.
+            state.material = material_slot.resolved_material;
+            state.domain = material_slot.resolved_domain;
+            state.domain_id = material_slot.resolved_domain_id;
+            state.vil = material_slot.resolved_vil;
+            state.mi_id = material_slot.resolved_mi_id;
+            state.preset = material_slot.resolved_preset;
+        }
         // Priority 2: primitive-owned binding instance (compatibility fallback)
         else if (primitive)
             state.binding_instance = primitive->GetResolvedBindingInstance();
 
         if (state.binding_instance)
         {
-            state.material = state.binding_instance->GetShaderMaterialProgram();
-            state.vil = state.binding_instance->GetVIL();
-            state.domain = state.binding_instance->GetDomain();
-            state.domain_id = state.binding_instance->GetDomainID();
-            state.mi_id = state.binding_instance->GetMIID();
-            state.preset = state.binding_instance->GetRenderPreset();
+            if (!state.material)
+                state.material = state.binding_instance->GetShaderMaterialProgram();
+
+            if (!state.vil)
+                state.vil = state.binding_instance->GetVIL();
+
+            if (!state.domain)
+                state.domain = state.binding_instance->GetDomain();
+
+            if (state.domain_id == 0xFFFFFFFFu)
+                state.domain_id = state.binding_instance->GetDomainID();
+
+            if (state.mi_id < 0)
+                state.mi_id = state.binding_instance->GetMIID();
+
+            if (state.preset == hgl::graph::GraphicsPipelinePreset::Solid3D)
+                state.preset = state.binding_instance->GetRenderPreset();
 
 #ifdef _DEBUG
             assert(state.domain == state.binding_instance->GetDomain());

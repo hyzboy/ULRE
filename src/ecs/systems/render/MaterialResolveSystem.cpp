@@ -242,6 +242,12 @@ namespace hgl::ecs
 					ResolveTask &task = tasks[idx];
 
 					task.slot->resolved_binding_instance = mi;
+					task.slot->resolved_material = mi->GetShaderMaterialProgram();
+					task.slot->resolved_domain = mi->GetDomain();
+					task.slot->resolved_domain_id = mi->GetDomainID();
+					task.slot->resolved_vil = mi->GetVIL();
+					task.slot->resolved_mi_id = mi->GetMIID();
+					task.slot->resolved_preset = mi->GetRenderPreset();
 					task.slot->dirty = false;
 					++resolved_count;
 
