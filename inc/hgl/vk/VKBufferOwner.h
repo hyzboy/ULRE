@@ -23,7 +23,7 @@ struct DeviceBufferData
  * VkBufferOwner — thin base class for all GPU buffer types.
  *
  * Owns: VkBuffer + DeviceMemory + IGPUBuffer (upload path).
- * Shared by DeviceBuffer (UBO/SSBO), VertexAttribBuffer, IndexBuffer, IndirectCommandBuffer<T>.
+ * Shared by VKDescriptorBuffer (UBO/SSBO), VertexAttribBuffer, IndexBuffer, IndirectCommandBuffer<T>.
  *
  * Destructor: if staged_source is set, delegates cleanup to it (it owns the allocations).
  *             Otherwise destroys buf.buffer via vkDestroyBuffer and deletes buf.memory.

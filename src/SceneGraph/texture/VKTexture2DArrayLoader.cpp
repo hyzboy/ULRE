@@ -27,7 +27,7 @@ bool LoadTexture2DLayerFromFile(TextureManager *tm,Texture2DArray *ta,const uint
     if(!loader.Load(filename))
         return(false);
 
-    DeviceBuffer *buf=loader.GetBuffer();
+    VKDescriptorBuffer *buf=loader.GetBuffer();
 
     if(!buf)
         return(false);

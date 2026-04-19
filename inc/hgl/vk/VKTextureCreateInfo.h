@@ -25,7 +25,7 @@ struct TextureCreateInfo
 
     void *              pixels;         // If buffer or pixels data exists, use pixels data; otherwise read from buffer
     VkDeviceSize        total_bytes;
-    DeviceBuffer *      buffer;         // If pixels is also missing, write image data from this buffer
+    VKDescriptorBuffer *      buffer;         // If pixels is also missing, write image data from this buffer
 
     U8String            name;           // Texture name for debugging/tracing
 
@@ -156,7 +156,7 @@ public:
         return(true);
     }
 
-    bool SetData(DeviceBuffer *buf,const VkExtent3D &ext)
+    bool SetData(VKDescriptorBuffer *buf,const VkExtent3D &ext)
     {
         if(!buf)return(false);
         if(ext.width<=0||ext.height<=0||ext.depth<=0)return(false);

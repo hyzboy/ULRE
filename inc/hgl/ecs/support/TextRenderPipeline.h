@@ -28,7 +28,7 @@ namespace hgl
         class TextGeometry;
         class MaterialBindingInstance;
         class Sampler;
-        class DeviceBuffer;
+        class VKDescriptorBuffer;
         class ShaderMaterialProgramManager;
         class PrimitiveManager;
     }
@@ -53,7 +53,7 @@ namespace hgl
                 graph::GraphicsPipeline* pipeline = nullptr;
                 graph::RenderTargetFormat* render_format = nullptr;
                 graph::Sampler* sampler = nullptr;
-                graph::DeviceBuffer* material_instance_buffer = nullptr;
+                graph::VKDescriptorBuffer* material_instance_buffer = nullptr;
 
                 graph::layout::CharStyle char_style{};
                 graph::TextGeometry* geometry = nullptr;

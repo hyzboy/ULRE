@@ -7,13 +7,13 @@ namespace hgl::graph
 {
     class DeviceBufferRingWriter
     {
-        DeviceBuffer *buffer;
+        VKDescriptorBuffer *buffer;
         uint32_t ring_frames;
         uint32_t frame_index;
         VkDeviceSize element_size;
 
     public:
-        DeviceBufferRingWriter(DeviceBuffer *buf = nullptr,
+        DeviceBufferRingWriter(VKDescriptorBuffer *buf = nullptr,
                                const VkDeviceSize elem_size = 0,
                                const uint32_t frames = HGL_L2W_RING_FRAMES)
             : buffer(buf)
@@ -23,12 +23,12 @@ namespace hgl::graph
         {
         }
 
-        void SetBuffer(DeviceBuffer *buf)
+        void SetBuffer(VKDescriptorBuffer *buf)
         {
             buffer = buf;
         }
 
-        DeviceBuffer* GetBuffer() const
+        VKDescriptorBuffer* GetBuffer() const
         {
             return buffer;
         }

@@ -155,7 +155,7 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(const ObjectNameBuilder &name, Vk
 
     TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)static_cast<VkDeviceMemory>(*staging_memory),
                 staging_memory_name, loc);
-    ObjectNameBuilder device_buffer_name = make_child_name(name, "DeviceBuffer");
+    ObjectNameBuilder device_buffer_name = make_child_name(name, "VKDescriptorBuffer");
     TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)device_buffer,
                 device_buffer_name, loc);
 

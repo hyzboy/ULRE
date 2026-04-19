@@ -12,7 +12,7 @@ template<typename T,typename TL> class VkTextureLoader:public TL
 protected:
 
     TextureManager *tex_manager;
-    DeviceBuffer *buf;
+    VKDescriptorBuffer *buf;
     T *tex;
 
     bool auto_mipmaps;
@@ -68,7 +68,7 @@ public:
         return(true);
     }
 
-    DeviceBuffer *GetBuffer(){return buf;}
+    VKDescriptorBuffer *GetBuffer(){return buf;}
 
     T *CreateTexture(const TextureFileHeader &tex_file_header,const VkFormat &tex_format,const uint32 top_mipmap_bytes)
     {

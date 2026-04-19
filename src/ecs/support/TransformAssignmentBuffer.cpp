@@ -31,7 +31,7 @@ namespace hgl::ecs
             return (tick % period) == 1;
         }
 
-        static void LogDeviceBufferSnapshot(const char *tag, const graph::DeviceBuffer *buffer)
+        static void LogDeviceBufferSnapshot(const char *tag, const graph::VKDescriptorBuffer *buffer)
         {
             if (!tag)
                 tag = "[TransformAssignmentBuffer]";
@@ -52,7 +52,7 @@ namespace hgl::ecs
                      gpu ? (gpu->IsDirty() ? 1 : 0) : -1);
         }
 
-        static bool WriteIdentityToL2WSlot0(graph::DeviceBuffer *buffer)
+        static bool WriteIdentityToL2WSlot0(graph::VKDescriptorBuffer *buffer)
         {
             if (!buffer)
                 return false;

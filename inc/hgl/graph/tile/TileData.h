@@ -31,7 +31,7 @@ namespace hgl::graph
 
     protected:
 
-        DeviceBuffer *tile_buffer;                                                                                     ///<Tile暂存缓冲区
+        VKDescriptorBuffer *tile_buffer;                                                                                     ///<Tile暂存缓冲区
 
         ValueArray<Image2DRegion> commit_list;
         uint8 *commit_ptr;

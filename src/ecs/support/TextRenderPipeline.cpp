@@ -317,7 +317,7 @@ namespace hgl::ecs
             graph::ShaderMaterialProgram* material = nullptr;
             graph::Sampler* sampler = nullptr;
             graph::BufferManager* buffer_manager = nullptr;
-            graph::DeviceBuffer* material_instance_buffer = nullptr;
+            graph::VKDescriptorBuffer* material_instance_buffer = nullptr;
             std::unique_ptr<graph::TileFont> tile_font;
             bool committed = false;
 

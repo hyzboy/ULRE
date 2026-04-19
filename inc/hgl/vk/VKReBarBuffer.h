@@ -13,11 +13,11 @@ namespace hgl::graph{
  * without any staging copy.  CopyToDevice() is therefore a no-op.
  *
  * Ownership: ReBarBuffer owns both the VkBuffer and the DeviceMemory*.
- * DeviceBuffer holds aliases (buf.buffer / buf.memory) that are valid for
+ * VKDescriptorBuffer holds aliases (buf.buffer / buf.memory) that are valid for
  * the lifetime of the owning ReBarBuffer.
  *
  * Lifecycle: created by VulkanDevice factory functions (VKDeviceBuffer.cpp)
- * and installed via DeviceBuffer::SetStagedSource().  DeviceBuffer destructor
+ * and installed via VKDescriptorBuffer::SetStagedSource().  VKDescriptorBuffer destructor
  * deletes the staged_source (this object) which in turn frees the VkBuffer
  * and DeviceMemory — the same pattern as StagedBuffer.
  */
@@ -82,7 +82,7 @@ public:
     VkDeviceSize GetSize()           const override { return buf_size; }
     VkBuffer     GetVkDeviceBuffer() const override { return buffer; }
 
-    /** Returns the DeviceMemory owned by this buffer (alias for DeviceBuffer). */
+    /** Returns the DeviceMemory owned by this buffer (alias for VKDescriptorBuffer). */
     DeviceMemory *GetDeviceMemory() const { return memory; }
 
     VkDescriptorBufferInfo GetDescriptorBufferInfo() const override

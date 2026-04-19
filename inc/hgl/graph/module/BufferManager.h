@@ -76,8 +76,8 @@ public: // VAB/VAO
 
 public: // Buffer creation methods
 
-    #define BUFFER_MANAGER_CREATE_FUNC(name)  DeviceBuffer *Create##name(const AnsiString &buf_name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());   \
-                                              DeviceBuffer *Create##name(const AnsiString &buf_name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return Create##name(buf_name, size, nullptr, sm, loc); }
+    #define BUFFER_MANAGER_CREATE_FUNC(name)  VKDescriptorBuffer *Create##name(const AnsiString &buf_name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());   \
+                                              VKDescriptorBuffer *Create##name(const AnsiString &buf_name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return Create##name(buf_name, size, nullptr, sm, loc); }
 
     BUFFER_MANAGER_CREATE_FUNC(UBO)
     BUFFER_MANAGER_CREATE_FUNC(SSBO)
@@ -98,7 +98,7 @@ public: // Buffer creation methods
                 ? BufferAllocPolicy::CPUVisible
                 : BufferAllocPolicy::Auto;
 
-        DeviceBuffer *buf = GetDevice()->CreateUBO(name,
+        VKDescriptorBuffer *buf = GetDevice()->CreateUBO(name,
                                                    static_cast<VkDeviceSize>(UBOAccessorType::GetSize()),
                                                    nullptr,
                                                    alloc_policy,

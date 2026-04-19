@@ -40,12 +40,12 @@ bool RingBufferWrapper::CommitInternal()
     return true;
 }
 
-DeviceBuffer* RingBufferWrapper::GetBuffer()
+VKDescriptorBuffer* RingBufferWrapper::GetBuffer()
 {
     return writer.GetBuffer();
 }
 
-const DeviceBuffer* RingBufferWrapper::GetBuffer() const
+const VKDescriptorBuffer* RingBufferWrapper::GetBuffer() const
 {
     return writer.GetBuffer();
 }

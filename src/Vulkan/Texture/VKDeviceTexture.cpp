@@ -6,7 +6,7 @@
 #include"CopyBufferToImage.h"
 
 namespace hgl::graph{
-DeviceBuffer *TextureManager::CreateTransferSourceBuffer(const VkDeviceSize size,const void *data)
+VKDescriptorBuffer *TextureManager::CreateTransferSourceBuffer(const VkDeviceSize size,const void *data)
 {
     if(size<=0)
         return(nullptr);

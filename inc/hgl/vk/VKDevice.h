@@ -226,21 +226,21 @@ private: //Buffer相关
 
 public: //Buffer相关
 
-    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,   SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
-    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,                    SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf_usage,range,size,nullptr,sm,loc);}
+    VKDescriptorBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,   SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
+    VKDescriptorBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,                    SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf_usage,range,size,nullptr,sm,loc);}
 
-    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,const void *data,   SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf_usage,size,size,data,sm,loc);}
-    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,                    SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf_usage,size,size,nullptr,sm,loc);}
+    VKDescriptorBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,const void *data,   SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf_usage,size,size,data,sm,loc);}
+    VKDescriptorBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,                    SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf_usage,size,size,nullptr,sm,loc);}
 
-    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
-    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sm,BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current());
-    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sm,BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current());
-    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf_usage,range,size,nullptr,policy,sm,loc);}
+    VKDescriptorBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
+    VKDescriptorBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sm,BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current());
+    VKDescriptorBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sm,BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current());
+    VKDescriptorBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf_usage,range,size,nullptr,policy,sm,loc);}
 
-    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf_usage,size,size,data,policy,sm,loc);}
-    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf_usage,size,size,nullptr,policy,sm,loc);}
+    VKDescriptorBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf_usage,size,size,data,policy,sm,loc);}
+    VKDescriptorBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf_usage,size,size,nullptr,policy,sm,loc);}
 
-    DeviceBuffer *  CreateBuffer(const ObjectNameBuilder &name,
+    VKDescriptorBuffer *  CreateBuffer(const ObjectNameBuilder &name,
                                  VkBufferUsageFlags buf_usage,
                                  VkDeviceSize range,
                                  VkDeviceSize size,
@@ -292,7 +292,7 @@ public: //Buffer相关
     }
 
     template<typename T>
-    static void LogCreateBufferEnd(const char *name,DeviceBuffer *buf)
+    static void LogCreateBufferEnd(const char *name,VKDescriptorBuffer *buf)
     {
 #ifdef _DEBUG
         GLogWarning("[Create%s] type=%s buffer=%p mem=%p memSize=%llu bufRange=%llu",
@@ -319,21 +319,21 @@ public: //Buffer相关
         return new T(std::forward<Args>(args)...);
     }
 
-#define CREATE_BUFFER_OBJECT(LargeName,type)    DeviceBuffer *Create##LargeName(                   VkDeviceSize size,void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,data,      policy,sm,loc);} \
-                                                DeviceBuffer *Create##LargeName(                   VkDeviceSize size,             SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,nullptr,   BufferAllocPolicy::Auto,sm,loc);} \
-                                                DeviceBuffer *Create##LargeName(                   VkDeviceSize size,void *data,  SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,data,      BufferAllocPolicy::Auto,sm,loc);} \
-                                                DeviceBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,data,      policy,sm,loc);} \
-                                                DeviceBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,             SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,nullptr,   BufferAllocPolicy::Auto,sm,loc);} \
-                                                DeviceBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,void *data,  SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,data,      BufferAllocPolicy::Auto,sm,loc);} \
+#define CREATE_BUFFER_OBJECT(LargeName,type)    VKDescriptorBuffer *Create##LargeName(                   VkDeviceSize size,void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,data,      policy,sm,loc);} \
+                                                VKDescriptorBuffer *Create##LargeName(                   VkDeviceSize size,             SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,nullptr,   BufferAllocPolicy::Auto,sm,loc);} \
+                                                VKDescriptorBuffer *Create##LargeName(                   VkDeviceSize size,void *data,  SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,data,      BufferAllocPolicy::Auto,sm,loc);} \
+                                                VKDescriptorBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,data,      policy,sm,loc);} \
+                                                VKDescriptorBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,             SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,nullptr,   BufferAllocPolicy::Auto,sm,loc);} \
+                                                VKDescriptorBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,void *data,  SharingMode sm=SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,data,      BufferAllocPolicy::Auto,sm,loc);} \
 \
-    DeviceBuffer *Create##LargeName(                   VkDeviceSize size,void *data,BufferAllocPolicy policy,SharingMode sm,BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,data,      policy,sm,update_class,loc);} \
-    DeviceBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,void *data,BufferAllocPolicy policy,SharingMode sm,BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,data,      policy,sm,update_class,loc);} \
+    VKDescriptorBuffer *Create##LargeName(                   VkDeviceSize size,void *data,BufferAllocPolicy policy,SharingMode sm,BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,data,      policy,sm,update_class,loc);} \
+    VKDescriptorBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,void *data,BufferAllocPolicy policy,SharingMode sm,BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,data,      policy,sm,update_class,loc);} \
 \
     template<typename T> T *Create##LargeName(const DescriptorSetType &set_type,const AnsiString &name, const std::source_location &loc = std::source_location::current())  \
     {   \
         const VkDeviceSize range_size = T::GetSize();    \
         const VkDeviceSize alloc_size = AlignStructuredBufferSize(range_size, VK_BUFFER_USAGE_##type##_BUFFER_BIT);    \
-        DeviceBuffer *buf=Create##LargeName(range_size, alloc_size, nullptr, BufferAllocPolicy::Auto, SharingMode::Exclusive, BufferUpdateClass::Default, loc);    \
+        VKDescriptorBuffer *buf=Create##LargeName(range_size, alloc_size, nullptr, BufferAllocPolicy::Auto, SharingMode::Exclusive, BufferUpdateClass::Default, loc);    \
         return(buf?CreateBufferObjectWithAligned<T>(alloc_size, buf, set_type, name, true):nullptr);  \
     }   \
 \
@@ -341,7 +341,7 @@ public: //Buffer相关
     {   \
         const VkDeviceSize range_size = T::GetSize();    \
         const VkDeviceSize alloc_size = AlignStructuredBufferSize(range_size, VK_BUFFER_USAGE_##type##_BUFFER_BIT);    \
-        DeviceBuffer *buf=CreateBuffer(name, VK_BUFFER_USAGE_##type##_BUFFER_BIT, range_size, alloc_size, nullptr, BufferAllocPolicy::Auto, SharingMode::Exclusive, BufferUpdateClass::Default, loc);    \
+        VKDescriptorBuffer *buf=CreateBuffer(name, VK_BUFFER_USAGE_##type##_BUFFER_BIT, range_size, alloc_size, nullptr, BufferAllocPolicy::Auto, SharingMode::Exclusive, BufferUpdateClass::Default, loc);    \
         return(buf?CreateBufferObjectWithAligned<T>(alloc_size, buf, true):nullptr);  \
     }
 
@@ -351,53 +351,53 @@ public: //Buffer相关
 
 #undef CREATE_BUFFER_OBJECT
 
-    DeviceBuffer *CreateUBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
+    VKDescriptorBuffer *CreateUBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
     {
-        DeviceBuffer *buf = CreateUBO(size, data, policy, sm, update_class);
+        VKDescriptorBuffer *buf = CreateUBO(size, data, policy, sm, update_class);
         TrackBuffer(buf, name, loc);
         return buf;
     }
 
-    DeviceBuffer *CreateUBO(const AnsiString &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    VKDescriptorBuffer *CreateUBO(const AnsiString &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
     {
         return CreateUBO(name, size, data, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
 
-    DeviceBuffer *CreateUBO(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    VKDescriptorBuffer *CreateUBO(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
     {
         return CreateUBO(name, size, nullptr, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
 
-    DeviceBuffer *CreateSSBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
+    VKDescriptorBuffer *CreateSSBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
     {
-        DeviceBuffer *buf = CreateSSBO(size, data, policy, sm, update_class);
+        VKDescriptorBuffer *buf = CreateSSBO(size, data, policy, sm, update_class);
         TrackBuffer(buf, name, loc);
         return buf;
     }
 
-    DeviceBuffer *CreateSSBO(const AnsiString &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    VKDescriptorBuffer *CreateSSBO(const AnsiString &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
     {
         return CreateSSBO(name, size, data, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
 
-    DeviceBuffer *CreateSSBO(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    VKDescriptorBuffer *CreateSSBO(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
     {
         return CreateSSBO(name, size, nullptr, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
 
-    DeviceBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
+    VKDescriptorBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
     {
-        DeviceBuffer *buf = CreateINBO(size, data, policy, sm, update_class);
+        VKDescriptorBuffer *buf = CreateINBO(size, data, policy, sm, update_class);
         TrackBuffer(buf, name, loc);
         return buf;
     }
 
-    DeviceBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    VKDescriptorBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
     {
         return CreateINBO(name, size, data, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
 
-    DeviceBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    VKDescriptorBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
     {
         return CreateINBO(name, size, nullptr, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }

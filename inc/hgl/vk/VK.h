@@ -106,7 +106,7 @@ class TextureCubeArray;
 class Sampler;
 
 class DeviceMemory;
-class DeviceBuffer;
+class VKDescriptorBuffer;
 struct DeviceBufferData;
 
 struct GeometryDataBuffer;

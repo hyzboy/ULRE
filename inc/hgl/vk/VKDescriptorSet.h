@@ -34,7 +34,7 @@ inline bool operator==(const VkWriteDescriptorSet& lhs, const VkWriteDescriptorS
 }
 
 namespace hgl::graph{
-class DeviceBuffer;
+class VKDescriptorBuffer;
 class IGPUBuffer;
 
 class DescriptorSet

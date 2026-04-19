@@ -52,10 +52,10 @@ VAB *BufferManager::CreateVAB(const ObjectNameBuilder &name, VkFormat format, ui
     return vb;
 }
 
-#define BUFFER_MANAGER_CREATE_BUFFER(name)    DeviceBuffer *BufferManager::Create##name(const AnsiString &buf_name, VkDeviceSize size, void *data, SharingMode sharing_mode, const std::source_location &loc) \
+#define BUFFER_MANAGER_CREATE_BUFFER(name)    VKDescriptorBuffer *BufferManager::Create##name(const AnsiString &buf_name, VkDeviceSize size, void *data, SharingMode sharing_mode, const std::source_location &loc) \
                                               {   \
                                                   VulkanDevice *device = GetDevice(); \
-                                                  DeviceBuffer *buf = device->Create##name(buf_name, size, data, BufferAllocPolicy::Auto, sharing_mode, BufferUpdateClass::Default, loc);   \
+                                                  VKDescriptorBuffer *buf = device->Create##name(buf_name, size, data, BufferAllocPolicy::Auto, sharing_mode, BufferUpdateClass::Default, loc);   \
                                                   \
                                                   if (!buf) return(nullptr);    \
                                                   AddBuffer(#name ":" + buf_name, buf, loc);    \

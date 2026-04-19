@@ -151,7 +151,7 @@ private:
      */
     void MapInternal()
     {
-        // gpu_buf is cached in BufferAccessBase::SetBuffer(); no DeviceBuffer chain needed.
+        // gpu_buf is cached in BufferAccessBase::SetBuffer(); no VKDescriptorBuffer chain needed.
         if(!gpu_buf || mapped_pointer)
             return;
 

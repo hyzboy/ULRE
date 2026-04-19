@@ -15,30 +15,27 @@ namespace hgl::graph
  * directly — they are no longer subclasses of DeviceBuffer.
  *
  * Migration path (Phase 3):
- *   - Prefer GetGPUBuffer()->Write/Map/Unmap over DeviceBuffer::Write/Map/Flush.
- *   - DeviceBuffer::Write/Map/Flush are transitional forwarders; will be removed.
+ *   - Prefer GetGPUBuffer()->Write/Map/Unmap over VKDescriptorBuffer::Write/Map/Flush.
+ *   - VKDescriptorBuffer::Write/Map/Flush are transitional forwarders; will be removed.
  */
-class DeviceBuffer : public VkBufferOwner
+class VKDescriptorBuffer : public VkBufferOwner
 {
 private:
 
     friend class VulkanDevice;
 
-    DeviceBuffer(VkDevice d, const DeviceBufferData &b) : VkBufferOwner(d, b) {}
+    VKDescriptorBuffer(VkDevice d, const DeviceBufferData &b) : VkBufferOwner(d, b) {}
 
 public:
 
     // Destructor declared out-of-line so old stale OBJ files that reference
-    // the virtual ~DeviceBuffer() symbol can still link against VKBuffer.obj.
-    virtual ~DeviceBuffer()=default;
+    // the virtual ~VKDescriptorBuffer() symbol can still link against VKBuffer.obj.
+    virtual ~VKDescriptorBuffer()=default;
 
-    virtual void *  Map     (VkDeviceSize start,VkDeviceSize size);
-    virtual void    Flush   (VkDeviceSize start,VkDeviceSize size);
-    virtual void    Flush   (VkDeviceSize size);
+    //// Phase 2 decision (2026-04-19): keep FlushRanges on VKDescriptorBuffer.
+    //// Rationale: IGPUBuffer currently exposes MarkDirty/MarkDirtyRanges, not FlushRanges.
+    //// Future migration to IGPUBuffer requires interface extension first, then caller migration.
     virtual void    FlushRanges(const IGPUBuffer::DirtyRange *ranges,size_t count);
-
-    virtual bool    Write   (const void *ptr,uint32_t start,uint32_t size);
-    virtual bool    Write   (const void *ptr,uint32_t size);
-};//class DeviceBuffer
+};//class VKDescriptorBuffer
 
 }//namespace hgl::graph
