@@ -47,7 +47,8 @@ public:
         if(!buf)
             return(nullptr);
 
-        return buf->Map();
+        auto *gpu = buf->GetGPUBuffer();
+        return gpu ? gpu->Map(0, gpu->GetSize()) : nullptr;
     }
 
     void OnExtent(VkExtent3D &extent);
@@ -57,7 +58,12 @@ public:
     bool OnEnd() override
     {
         if(!buf)return(false);
-        buf->Unmap();
+
+        auto *gpu = buf->GetGPUBuffer();
+        if(!gpu)
+            return false;
+
+        gpu->Unmap();
 
         return(true);
     }
