@@ -42,7 +42,9 @@ public:
 
                 [[deprecated("Runtime material access is engine-internal; prefer resolved material state or MaterialBindingInstanceInternalAccess.")]]
                 ShaderMaterialProgram *      GetShaderMaterialProgram()      { return material; }
+                [[deprecated("Runtime domain access is engine-internal; prefer resolved material state or MaterialBindingInstanceInternalAccess.")]]
                 ResourceDomain *GetDomain   ()      { return domain; }
+    [[deprecated("Runtime domain-id access is engine-internal; prefer resolved material state or MaterialBindingInstanceInternalAccess.")]]
     const   uint32_t        GetDomainID ()const { return domain_id; }
 
 private:
