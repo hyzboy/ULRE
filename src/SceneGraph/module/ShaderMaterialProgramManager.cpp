@@ -771,11 +771,14 @@ MaterialBindingInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(c
     if(!mtl)
         return nullptr;
 
-    MaterialBindingInstance *mi = nullptr;
-    if(spec.vil_cfg)
-        mi = CreateMaterialInstance(mtl, spec.domain, spec.vil_cfg, spec.instance_data, spec.instance_data_size);
-    else
-        mi = CreateMaterialInstance(mtl, spec.domain, spec.vil, spec.instance_data, spec.instance_data_size);
+    const VIL *resolved_vil = spec.vil_cfg ? mtl->CreateVIL(spec.vil_cfg)
+                                           : (spec.vil ? spec.vil : mtl->GetDefaultVIL());
+
+    MaterialBindingInstance *mi = CreateMaterialInstance(mtl,
+                                                         spec.domain,
+                                                         resolved_vil,
+                                                         spec.instance_data,
+                                                         spec.instance_data_size);
 
     if(!mi)
         return nullptr;
@@ -786,10 +789,10 @@ MaterialBindingInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(c
 
     if(out_key)
     {
-        out_key->material = mi->GetShaderMaterialProgram();
-        out_key->vil = mi->GetVIL();
-        out_key->preset = mi->GetRenderPreset();
-        out_key->domain = mi->GetDomain();
+        out_key->material = spec.material;
+        out_key->vil = resolved_vil;
+        out_key->preset = spec.preset;
+        out_key->domain = spec.domain;
     }
 
     return mi;
