@@ -99,6 +99,13 @@ namespace
                                                     std::vector<SurfaceRequirementPlan> &out_plans,
                                                     std::string &error)
     {
+        const auto AppendError = [](std::vector<std::string> &errors,
+                                    const std::string &path,
+                                    const std::string &msg)
+        {
+            errors.push_back(path + ": " + msg);
+        };
+
         std::ifstream ifs(json_file, std::ios::in);
         if (!ifs.is_open())
         {
@@ -117,48 +124,132 @@ namespace
             return false;
         }
 
-        if (!root.contains("surfaces") || !root["surfaces"].is_array())
+        std::vector<std::string> schema_errors;
+
+        if (!root.is_object())
         {
-            error = "missing or invalid 'surfaces' array";
+            error = "schema validation failed: root must be an object";
+            return false;
+        }
+
+        if (!root.contains("surfaces"))
+        {
+            error = "schema validation failed: missing required field 'surfaces'";
+            return false;
+        }
+
+        if (!root["surfaces"].is_array())
+        {
+            error = "schema validation failed: 'surfaces' must be an array";
             return false;
         }
 
         std::vector<SurfaceRequirementPlan> parsed;
-        for (const auto &m : root["surfaces"])
+        for (size_t i = 0; i < root["surfaces"].size(); ++i)
         {
-            if (!m.is_object())
-                continue;
+            const auto &m = root["surfaces"][i];
+            const std::string base_path = "surfaces[" + std::to_string(i) + "]";
 
-            if (!m.contains("surface") || !m["surface"].is_string())
+            if (!m.is_object())
+            {
+                AppendError(schema_errors, base_path, "must be an object");
                 continue;
+            }
+
+            if (!m.contains("surface"))
+            {
+                AppendError(schema_errors, base_path + ".surface", "missing required field");
+                continue;
+            }
+
+            if (!m["surface"].is_string())
+            {
+                AppendError(schema_errors, base_path + ".surface", "must be a string");
+                continue;
+            }
 
             hgl::graph::SurfaceType st = hgl::graph::SurfaceType::Unlit;
             if (!TryParseSurfaceType(m["surface"].get<std::string>(), st))
+            {
+                AppendError(schema_errors,
+                            base_path + ".surface",
+                            "unknown surface name '" + m["surface"].get<std::string>() + "'");
                 continue;
+            }
 
             SurfaceRequirementPlan plan{};
             plan.surface = st;
-            plan.diagnostic_surface = m.value("diagnostic_surface", std::string("diagnostic/missing.surface.glsl"));
 
-            if (m.contains("required_attribs") && m["required_attribs"].is_array())
+            if (!m.contains("required_attribs"))
             {
-                for (const auto &a : m["required_attribs"])
-                {
-                    if (!a.is_string())
-                        continue;
+                AppendError(schema_errors, base_path + ".required_attribs", "missing required field");
+                continue;
+            }
 
-                    hgl::graph::VertexAttrib attrib = hgl::graph::VertexAttrib::RANGE_SIZE;
-                    if (TryParseVertexAttrib(a.get<std::string>(), attrib))
-                        plan.required_attribs.push_back(attrib);
+            if (!m["required_attribs"].is_array())
+            {
+                AppendError(schema_errors, base_path + ".required_attribs", "must be an array");
+                continue;
+            }
+
+            if (!m.contains("diagnostic_surface"))
+            {
+                AppendError(schema_errors, base_path + ".diagnostic_surface", "missing required field");
+                continue;
+            }
+
+            if (!m["diagnostic_surface"].is_string())
+            {
+                AppendError(schema_errors, base_path + ".diagnostic_surface", "must be a string");
+                continue;
+            }
+
+            plan.diagnostic_surface = m["diagnostic_surface"].get<std::string>();
+
+            for (size_t j = 0; j < m["required_attribs"].size(); ++j)
+            {
+                const auto &a = m["required_attribs"][j];
+                const std::string attr_path = base_path + ".required_attribs[" + std::to_string(j) + "]";
+
+                if (!a.is_string())
+                {
+                    AppendError(schema_errors, attr_path, "must be a string");
+                    continue;
                 }
+
+                hgl::graph::VertexAttrib attrib = hgl::graph::VertexAttrib::RANGE_SIZE;
+                const std::string attrib_name = a.get<std::string>();
+                if (!TryParseVertexAttrib(attrib_name, attrib))
+                {
+                    AppendError(schema_errors, attr_path, "unknown vertex attrib '" + attrib_name + "'");
+                    continue;
+                }
+
+                plan.required_attribs.push_back(attrib);
+            }
+
+            if (plan.required_attribs.empty())
+            {
+                AppendError(schema_errors, base_path + ".required_attribs", "must contain at least one valid attribute");
+                continue;
             }
 
             parsed.push_back(std::move(plan));
         }
 
+        if (!schema_errors.empty())
+        {
+            std::ostringstream oss;
+            oss << "schema validation failed:";
+            for (const auto &item : schema_errors)
+                oss << "\n  - " << item;
+            error = oss.str();
+            return false;
+        }
+
         if (parsed.empty())
         {
-            error = "surfaces parsed as empty";
+            error = "schema validation failed: surfaces parsed as empty";
             return false;
         }
 

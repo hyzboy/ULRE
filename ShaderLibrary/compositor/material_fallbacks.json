@@ -1,0 +1,9 @@
+{
+  "surfaces": [
+    {
+      "surface": "Standard",
+      "required_attribs": ["Position", "Normal"],
+      "diagnostic_surface": "diagnostic/missing.surface.glsl"
+    }
+  ]
+}
