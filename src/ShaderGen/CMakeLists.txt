@@ -58,6 +58,14 @@ SET(SHADERGEN_COMMON_VARIANT_POLICY_FILES common/DefaultVariantRouter.h
 SOURCE_GROUP("Common\\Variant Policy" FILES ${SHADERGEN_COMMON_VARIANT_POLICY_FILES})
 
 # Fixed Material Config
+
+# VertexAttrib Macro Map
+SET(SHADERGEN_VERTEX_ATTRIB_MACRO_MAP_FILES
+    ${SHADERGEN_INCLUDE_PATH}/VertexAttribMacroMap.h
+    VertexAttribMacroMap.cpp)
+SOURCE_GROUP("VertexAttrib Macro Map" FILES ${SHADERGEN_VERTEX_ATTRIB_MACRO_MAP_FILES})
+
+list(APPEND SHADERGEN_COMMON_FILES ${SHADERGEN_VERTEX_ATTRIB_MACRO_MAP_FILES})
 SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/GLSLCompilerConfig.h
                     ${SHADERGEN_INCLUDE_PATH}/device/DeviceProfile.h
                     ${SHADERGEN_INCLUDE_PATH}/device/DeviceProfileAdapter.h

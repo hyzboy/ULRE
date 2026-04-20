@@ -4,12 +4,12 @@
 // Control defines (set before #including this file):
 //
 //   Varying flags (must match the vertex shader's HAS_* defines):
-//     HAS_WORLD_POS      fragWorldPos (vec3)      — also drives si.viewDir
-//     HAS_WORLD_NORMAL   fragWorldNormal (vec3)
-//     HAS_WORLD_TANGENT  fragWorldTangent (vec4)  — world tangent xyz + handedness w
-//     HAS_UV0            fragUV0 (vec2)
-//     HAS_VERTEX_COLOR   fragVertexColor (vec4)
-//     HAS_TEXCOORD       fragTexCoord (vec2)       — maps to si.uv0
+//     HAS_POSITION            fragWorldPos (vec3)      — also drives si.viewDir
+//     HAS_NORMAL              fragWorldNormal (vec3)
+//     HAS_TANGENT             fragWorldTangent (vec4)  — world tangent xyz + handedness w
+//     HAS_TEXCOORD            fragUV0 (vec2)
+//     HAS_COLOR               fragVertexColor (vec4)
+//     HAS_BILLBOARD_TEXCOORD  fragTexCoord (vec2)      — maps to si.uv0
 //     HAS_DIRECTION      fragDirection (vec3)      — maps to si.worldPos+viewDir; pulls ubo_sky
 //     HAS_LUMINANCE      fragLuminance (float)
 //     HAS_CLIP_POS       fragClipPos (vec4)        — maps to si.worldPos; pulls ubo_camera
@@ -66,7 +66,7 @@ void main()
     SurfaceInput si;
 
     // worldPos
-#if defined(HAS_WORLD_POS)
+#if defined(HAS_POSITION)
     si.worldPos    = fragWorldPos;
 #elif defined(HAS_CLIP_POS)
     si.worldPos    = fragClipPos.xyz;
@@ -77,23 +77,23 @@ void main()
 #endif
 
     // worldNormal
-#ifdef HAS_WORLD_NORMAL
+#ifdef HAS_NORMAL
     si.worldNormal = normalize(fragWorldNormal);
 #else
     si.worldNormal = vec3(0.0, 0.0, 1.0);
 #endif
 
     // worldTangent (xyz + handedness sign in w)
-#ifdef HAS_WORLD_TANGENT
+#ifdef HAS_TANGENT
     si.worldTangent = vec4(normalize(fragWorldTangent.xyz), fragWorldTangent.w);
 #else
     si.worldTangent = vec4(1.0, 0.0, 0.0, 1.0);
 #endif
 
     // uv0
-#if defined(HAS_UV0)
+#if defined(HAS_TEXCOORD)
     si.uv0         = fragUV0;
-#elif defined(HAS_TEXCOORD)
+#elif defined(HAS_BILLBOARD_TEXCOORD)
     si.uv0         = fragTexCoord;
 #else
     si.uv0         = vec2(0.0);
@@ -102,7 +102,7 @@ void main()
     si.uv1         = vec2(0.0);
 
     // vertexColor + luminance base
-#ifdef HAS_VERTEX_COLOR
+#ifdef HAS_COLOR
     si.vertexColor = fragVertexColor;
     si.luminance   = 1.0;
 #else
@@ -118,7 +118,7 @@ void main()
     // viewDir
 #ifdef ENABLE_LIGHTING
     si.viewDir     = normalize(camera.pos - fragWorldPos);
-#elif defined(HAS_WORLD_POS)
+#elif defined(HAS_POSITION)
     si.viewDir     = normalize(-fragWorldPos);
 #elif defined(HAS_DIRECTION)
     si.viewDir     = fragDirection;

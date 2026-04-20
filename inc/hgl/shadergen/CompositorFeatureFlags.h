@@ -15,6 +15,7 @@ struct CompositorFeatureFlags
     bool has_world_normal = false;
     bool has_luminance    = false;
     bool has_direction    = false;
+    bool has_world_tangent = false;
 
     // Fragment stage flags
     bool enable_lighting  = false;

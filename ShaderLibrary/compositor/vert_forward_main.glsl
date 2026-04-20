@@ -4,11 +4,11 @@
 // Control defines (set before #including this file):
 //
 //   Varying flags (must match the fragment shader's HAS_* defines):
-//     HAS_WORLD_POS      output fragWorldPos (vec3)
-//     HAS_WORLD_NORMAL   input  inNormal  → output fragWorldNormal (vec3)
-//     HAS_WORLD_TANGENT  input  inTangent → output fragWorldTangent (vec4, xyz world tangent + w handedness)
-//     HAS_UV0            input  inUV0     → output fragUV0 (vec2)
-//     HAS_VERTEX_COLOR   input  inColor   → output fragVertexColor (vec4)
+//     HAS_POSITION      output fragWorldPos (vec3)
+//     HAS_NORMAL   input  inNormal  → output fragWorldNormal (vec3)
+//     HAS_TANGENT  input  inTangent → output fragWorldTangent (vec4, xyz world tangent + w handedness)
+//     HAS_TEXCOORD            input  inUV0     → output fragUV0 (vec2)
+//     HAS_COLOR   input  inColor   → output fragVertexColor (vec4)
 //     HAS_LUMINANCE      input  inLuminance → output fragLuminance (float)
 //     HAS_DIRECTION      output fragDirection = normalize(position) (sky)
 //
@@ -31,19 +31,19 @@
         layout(location=POSITION_LOCATION) in vec3 inPosition;
     #endif
 
-    #ifdef HAS_WORLD_NORMAL
+    #ifdef HAS_NORMAL
         layout(location=NORMAL_LOCATION) in vec3 inNormal;
     #endif
 
-    #if defined(HAS_WORLD_TANGENT) && defined(TANGENT_LOCATION)
+    #if defined(HAS_TANGENT) && defined(TANGENT_LOCATION)
         layout(location=TANGENT_LOCATION) in vec4 inTangent;
     #endif
 
-    #ifdef HAS_UV0
+    #ifdef HAS_TEXCOORD
         layout(location=TEXCOORD_LOCATION) in vec2 inUV0;
     #endif
 
-    #ifdef HAS_VERTEX_COLOR
+    #ifdef HAS_COLOR
         layout(location=COLOR_LOCATION) in vec4 inColor;
     #endif
 
@@ -72,12 +72,12 @@ void main()
 
     vec4 worldPos = transform_mat * vec4(pos3, 1.0);
 
-#ifdef HAS_WORLD_POS
+#ifdef HAS_POSITION
     fragWorldPos = worldPos.xyz;
 #endif
 
     // Normal
-#ifdef HAS_WORLD_NORMAL
+#ifdef HAS_NORMAL
   #if GEOMETRY_FETCH_SSBO
     vec3 rawNormal = FetchNormal(gl_VertexIndex);
   #else
@@ -87,7 +87,7 @@ void main()
 #endif
 
         // Tangent (xyz transformed to world, w keeps handedness sign)
-#ifdef HAS_WORLD_TANGENT
+#ifdef HAS_TANGENT
     #if GEOMETRY_FETCH_SSBO
         vec3 rawTangent = vec3(1.0, 0.0, 0.0);
         float tangentW = 1.0;
@@ -102,7 +102,7 @@ void main()
 #endif
 
     // UV0
-#ifdef HAS_UV0
+#ifdef HAS_TEXCOORD
   #if GEOMETRY_FETCH_SSBO
     fragUV0 = FetchUV0(gl_VertexIndex);
   #else
@@ -111,7 +111,7 @@ void main()
 #endif
 
     // Vertex color
-#ifdef HAS_VERTEX_COLOR
+#ifdef HAS_COLOR
     fragVertexColor = inColor;
 #endif
 

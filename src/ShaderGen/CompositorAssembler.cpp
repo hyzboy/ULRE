@@ -2,6 +2,7 @@
 #include <hgl/shadergen/CompositorFeatureFlags.h>
 #include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
+#include <hgl/shadergen/VertexAttribMacroMap.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/SkyLight.h>
@@ -40,12 +41,13 @@ namespace
         hgl::graph::ShaderWriter writer(out);
 
         if (f.vert_input_2d)    writer.EmitDefine("VERT_INPUT_2D");
-        if (f.has_uv0)          writer.EmitDefine("HAS_UV0");
-        if (f.has_vertex_color) writer.EmitDefine("HAS_VERTEX_COLOR");
-        if (f.has_world_pos)    writer.EmitDefine("HAS_WORLD_POS");
-        if (f.has_world_normal) writer.EmitDefine("HAS_WORLD_NORMAL");
-        if (f.has_luminance)    writer.EmitDefine("HAS_LUMINANCE");
+        if (f.has_uv0)          hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::TexCoord);
+        if (f.has_vertex_color) hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Color);
+        if (f.has_world_pos)    hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Position);
+        if (f.has_world_normal) hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Normal);
+        if (f.has_luminance)    hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Luminance);
         if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
+        if (f.has_world_tangent) hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Tangent);
 
         writer.EmitInclude("compositor/vert_forward_ubo.glsl")
               .EmitInclude("compositor/vert_forward_main.glsl");
@@ -58,17 +60,18 @@ namespace
         hgl::graph::ShaderWriter writer(out);
 
         if (f.enable_lighting)  writer.EmitDefine("ENABLE_LIGHTING");
+        if (f.has_world_tangent) hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Tangent);
         if (f.needs_camera)     writer.EmitDefine("NEEDS_CAMERA");
         if (f.needs_sky)        writer.EmitDefine("NEEDS_SKY");
         if (f.alpha_masked)     writer.EmitDefine("ALPHA_MODE_MASKED");
         if (f.alpha_dither)     writer.EmitDefine("ALPHA_MODE_DITHER");
-        if (f.has_world_pos)    writer.EmitDefine("HAS_WORLD_POS");
-        if (f.has_world_normal) writer.EmitDefine("HAS_WORLD_NORMAL");
-        if (f.has_uv0)          writer.EmitDefine("HAS_UV0");
-        if (f.has_vertex_color) writer.EmitDefine("HAS_VERTEX_COLOR");
-        if (f.has_texcoord)     writer.EmitDefine("HAS_TEXCOORD");
+        if (f.has_world_pos)    hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Position);
+        if (f.has_world_normal) hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Normal);
+        if (f.has_uv0)          hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::TexCoord);
+        if (f.has_vertex_color) hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Color);
+        if (f.has_texcoord)     writer.EmitDefine("HAS_BILLBOARD_TEXCOORD");
         if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
-        if (f.has_luminance)    writer.EmitDefine("HAS_LUMINANCE");
+        if (f.has_luminance)    hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Luminance);
         if (f.has_clip_pos)     writer.EmitDefine("HAS_CLIP_POS");
 
         writer.EmitInclude("compositor/frag_forward_ubo.glsl");
@@ -134,7 +137,8 @@ namespace
     {
         const bool uv0    = key.HasVertexAttrib(hgl::graph::VertexAttrib::TexCoord);
         const bool normal = key.HasVertexAttrib(hgl::graph::VertexAttrib::Normal);
-        return BuildForwardVertexEntry({.has_uv0 = uv0, .has_world_pos = true, .has_world_normal = normal});
+        const bool tangent = key.HasVertexAttrib(hgl::graph::VertexAttrib::Tangent);
+        return BuildForwardVertexEntry({.has_uv0 = uv0, .has_world_pos = true, .has_world_normal = normal, .has_world_tangent = tangent});
     }
 
     std::string BuildForwardUnlitVertexColorFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
@@ -173,7 +177,8 @@ namespace
     {
         const bool uv0    = key.HasVertexAttrib(hgl::graph::VertexAttrib::TexCoord);
         const bool normal = key.HasVertexAttrib(hgl::graph::VertexAttrib::Normal);
-        return BuildForwardFragmentEntry({.has_uv0 = uv0, .has_world_pos = true, .has_world_normal = normal, .enable_lighting = true, .needs_camera = true, .needs_sky = true, .surface_path = surface_path});
+        const bool tangent = key.HasVertexAttrib(hgl::graph::VertexAttrib::Tangent);
+        return BuildForwardFragmentEntry({.has_uv0 = uv0, .has_world_pos = true, .has_world_normal = normal, .has_world_tangent = tangent, .enable_lighting = true, .needs_camera = true, .needs_sky = true, .surface_path = surface_path});
     }
 
     static const GeneratedVSTemplateRoute kGeneratedVSTemplateRoutes[] = {

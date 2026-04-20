@@ -2,7 +2,7 @@
 
 #define VARYING_STAGE_VERT
 #define HAS_CLIP_POS
-#define HAS_WORLD_NORMAL
+#define HAS_NORMAL
 #include "common/varying_interface.glsl"
 
 void main()

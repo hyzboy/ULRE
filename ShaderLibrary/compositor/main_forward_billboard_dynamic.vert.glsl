@@ -2,7 +2,7 @@
 layout(location=POSITION_LOCATION) in vec3 Position;
 
 #define VARYING_STAGE_VERT
-#define HAS_TEXCOORD
+#define HAS_BILLBOARD_TEXCOORD
 #include "common/varying_interface.glsl"
 
 void main()

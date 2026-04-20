@@ -5,15 +5,15 @@
 //
 // Usage (vertex shader):
 //   #define VARYING_STAGE_VERT
-//   #define HAS_WORLD_POS
-//   #define HAS_WORLD_NORMAL
-//   #define HAS_UV0
+//   #define HAS_POSITION
+//   #define HAS_NORMAL
+//   #define HAS_TEXCOORD
 //   #include "common/varying_interface.glsl"
 //
 // Usage (fragment shader):
-//   #define HAS_WORLD_POS
-//   #define HAS_WORLD_NORMAL
-//   #define HAS_UV0
+//   #define HAS_POSITION
+//   #define HAS_NORMAL
+//   #define HAS_TEXCOORD
 //   #include "common/varying_interface.glsl"
 //   // MATERIAL_INSTANCE_ID_OVERRIDE is auto-defined in fragment stage
 
@@ -27,27 +27,27 @@
 layout(location=0) flat _VARYING_DIR uint fragMaterialInstanceID;
 
 // --- location 1: World Position ---
-#ifdef HAS_WORLD_POS
+#ifdef HAS_POSITION
 layout(location=1) _VARYING_DIR vec3 fragWorldPos;
 #endif
 
 // --- location 2: World Normal ---
-#ifdef HAS_WORLD_NORMAL
+#ifdef HAS_NORMAL
 layout(location=2) _VARYING_DIR vec3 fragWorldNormal;
 #endif
 
 // --- location 3: UV0 ---
-#ifdef HAS_UV0
+#ifdef HAS_TEXCOORD
 layout(location=3) _VARYING_DIR vec2 fragUV0;
 #endif
 
 // --- location 4: Vertex Color ---
-#ifdef HAS_VERTEX_COLOR
+#ifdef HAS_COLOR
 layout(location=4) _VARYING_DIR vec4 fragVertexColor;
 #endif
 
-// --- location 5: Tex Coord (billboard etc.) ---
-#ifdef HAS_TEXCOORD
+// --- location 5: Billboard Tex Coord ---
+#ifdef HAS_BILLBOARD_TEXCOORD
 layout(location=5) _VARYING_DIR vec2 fragTexCoord;
 #endif
 
@@ -67,7 +67,7 @@ layout(location=8) _VARYING_DIR vec4 fragClipPos;
 #endif
 
 // --- location 9: World Tangent (xyz + handedness w) ---
-#ifdef HAS_WORLD_TANGENT
+#ifdef HAS_TANGENT
 layout(location=9) _VARYING_DIR vec4 fragWorldTangent;
 #endif
 

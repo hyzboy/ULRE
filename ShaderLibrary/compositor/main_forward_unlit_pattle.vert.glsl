@@ -7,7 +7,7 @@ layout(location=POSITION_LOCATION) in vec3  Position;
 layout(location=COLOR_LOCATION) in uint  ColorIndex;
 
 #define VARYING_STAGE_VERT
-#define HAS_VERTEX_COLOR
+#define HAS_COLOR
 #include "common/varying_interface.glsl"
 
 void main()
