@@ -338,6 +338,18 @@ namespace hgl::graph::inline_geometry
                 if(accessor_luminance_r8un.IsValid()) accessor_luminance_r8un->Write(ToUnorm8(l));
             break;
 
+            case PF_R32U:
+                if(accessor_luminance_r32u.IsValid()) accessor_luminance_r32u->Write(uint32(std::round(l)));
+            break;
+
+            case PF_R16U:
+                if(accessor_luminance_r16u.IsValid()) accessor_luminance_r16u->Write(uint16(std::round(l)));
+            break;
+
+            case PF_R8U:
+                if(accessor_luminance_r8u.IsValid()) accessor_luminance_r8u->Write(uint8(std::round(l)));
+            break;
+
             default:
             break;
         }
@@ -356,7 +368,18 @@ namespace hgl::graph::inline_geometry
 
         vab = pc->GetVAB(VAN::Position);
         if(vab)
-            accessor_position.Bind(vab, vertex_offset, vertex_count);
+        {
+            position_format = vab->GetFormat();
+
+            switch(position_format)
+            {
+                case PF_RGB32F: accessor_position.Bind(vab, vertex_offset, vertex_count); break;
+                case PF_RG32F: accessor_position2.Bind(vab, vertex_offset, vertex_count); break;
+                default: break;
+            }
+
+            has_position = accessor_position.IsValid() || accessor_position2.IsValid();
+        }
 
         vab = pc->GetVAB(VAN::Normal);
         if(vab)
@@ -461,13 +484,19 @@ namespace hgl::graph::inline_geometry
                 case PF_R16F: accessor_luminance_r16f.Bind(vab, vertex_offset, vertex_count); break;
                 case PF_R16UN: accessor_luminance_r16un.Bind(vab, vertex_offset, vertex_count); break;
                 case PF_R8UN: accessor_luminance_r8un.Bind(vab, vertex_offset, vertex_count); break;
+                case PF_R32U: accessor_luminance_r32u.Bind(vab, vertex_offset, vertex_count); break;
+                case PF_R16U: accessor_luminance_r16u.Bind(vab, vertex_offset, vertex_count); break;
+                case PF_R8U: accessor_luminance_r8u.Bind(vab, vertex_offset, vertex_count); break;
                 default: break;
             }
 
             has_luminance = accessor_luminance.IsValid()
                          || accessor_luminance_r16f.IsValid()
                          || accessor_luminance_r16un.IsValid()
-                         || accessor_luminance_r8un.IsValid();
+                         || accessor_luminance_r8un.IsValid()
+                         || accessor_luminance_r32u.IsValid()
+                         || accessor_luminance_r16u.IsValid()
+                         || accessor_luminance_r8u.IsValid();
         }
     }
 

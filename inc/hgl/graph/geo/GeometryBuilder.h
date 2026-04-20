@@ -14,18 +14,21 @@ namespace hgl::graph::inline_geometry
     protected:
         GeometryCreater *creater;
 
+        VkFormat position_format = VK_FORMAT_UNDEFINED;
         VkFormat normal_format = VK_FORMAT_UNDEFINED;
         VkFormat tangent_format = VK_FORMAT_UNDEFINED;
         VkFormat texcoord_format = VK_FORMAT_UNDEFINED;
         VkFormat color_format = VK_FORMAT_UNDEFINED;
         VkFormat luminance_format = VK_FORMAT_UNDEFINED;
 
+        bool has_position = false;
         bool has_normals = false;
         bool has_tangents = false;
         bool has_texcoords = false;
         bool has_colors = false;
         bool has_luminance = false;
 
+        BufferAccessor2f accessor_position2;
         BufferAccessor3f accessor_position;
         BufferAccessor3f accessor_normal;
         BufferAccessor3f accessor_tangent;
@@ -58,6 +61,9 @@ namespace hgl::graph::inline_geometry
         BufferAccessor<VB1hf>   accessor_luminance_r16f;
         BufferAccessor<VB1uf16> accessor_luminance_r16un;
         BufferAccessor<VB1uf8>  accessor_luminance_r8un;
+        BufferAccessor<VB1u32>  accessor_luminance_r32u;
+        BufferAccessor<VB1u16>  accessor_luminance_r16u;
+        BufferAccessor<VB1u8>   accessor_luminance_r8u;
 
     private:
         static float Clamp01(float v);
@@ -85,7 +91,7 @@ namespace hgl::graph::inline_geometry
          * 检查构建器是否有效
          * @return 如果顶点位置访问器有效返回true
          */
-        bool IsValid() const { return accessor_position.IsValid(); }
+        bool IsValid() const { return has_position; }
 
         /**
          * 写入顶点位置
@@ -95,6 +101,18 @@ namespace hgl::graph::inline_geometry
         {
             if(accessor_position.IsValid())
                 accessor_position->Write(x, y, z);
+            else
+            if(accessor_position2.IsValid())
+                accessor_position2->Write(x, y);
+        }
+
+        inline void WriteVertex(float x, float y)
+        {
+            if(accessor_position2.IsValid())
+                accessor_position2->Write(x, y);
+            else
+            if(accessor_position.IsValid())
+                accessor_position->Write(x, y, 0.0f);
         }
 
         /**

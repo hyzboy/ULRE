@@ -27,18 +27,17 @@ namespace hgl::graph::inline_geometry
 
         if(!pc->Init("Circle",vertex_count,0))return(nullptr);
 
-        auto vertex = pc->GetBufferAccessor<BufferAccessor2f>(VAN::Position);
-        auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
+        GeometryBuilder builder(pc);
 
-        if(!vertex.IsValid())
+        if(!builder.IsValid())
             return(nullptr);
 
         if(cci->has_center)
         {
-            vertex->Write(cci->center);
+            builder.WriteVertex(cci->center.x, cci->center.y);
 
-            if(color.IsValid())
-                color->Write(cci->center_color);
+            if(builder.HasColors())
+                builder.WriteColor(cci->center_color.x, cci->center_color.y, cci->center_color.z, cci->center_color.w);
         }
 
         for(uint i = 0;i < edge;i++)
@@ -48,10 +47,10 @@ namespace hgl::graph::inline_geometry
             float x = cci->center.x + sin(deg2rad(ang)) * cci->radius.x;
             float y = cci->center.y + cos(deg2rad(ang)) * cci->radius.y;
 
-            vertex->Write(x,y);
+            builder.WriteVertex(x, y);
 
-            if(color.IsValid())
-                color->Write(cci->border_color);
+            if(builder.HasColors())
+                builder.WriteColor(cci->border_color.x, cci->border_color.y, cci->border_color.z, cci->border_color.w);
         }
 
         // Set bounding box for 2D circle
@@ -88,22 +87,20 @@ namespace hgl::graph::inline_geometry
 
         if(!pc->Init("Circle",vertex_count,has_index ? vertex_count : 0))return(nullptr);
 
-        auto vertex = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
-        auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
-        auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
+        GeometryBuilder builder(pc);
 
-        if(!vertex.IsValid())
+        if(!builder.IsValid())
             return(nullptr);
 
         if(cci->has_center)
         {
-            vertex->Write(cci->center.x,cci->center.y,0);
+            builder.WriteVertex(cci->center.x, cci->center.y, 0.0f);
 
-            if(color.IsValid())
-                color->Write(cci->center_color);
+            if(builder.HasColors())
+                builder.WriteColor(cci->center_color.x, cci->center_color.y, cci->center_color.z, cci->center_color.w);
 
-            if(normal.IsValid())
-                normal->Write(math::AxisVector::Z);
+            if(builder.HasNormals())
+                builder.WriteNormal(math::AxisVector::Z.x, math::AxisVector::Z.y, math::AxisVector::Z.z);
         }
 
         for(uint i = 0;i < edge;i++)
@@ -113,13 +110,13 @@ namespace hgl::graph::inline_geometry
             float x = cci->center.x + sin(deg2rad(ang)) * cci->radius.x;
             float y = cci->center.y + cos(deg2rad(ang)) * cci->radius.y;
 
-            vertex->Write(x,y,0);
+            builder.WriteVertex(x, y, 0.0f);
 
-            if(color.IsValid())
-                color->Write(cci->border_color);
+            if(builder.HasColors())
+                builder.WriteColor(cci->border_color.x, cci->border_color.y, cci->border_color.z, cci->border_color.w);
 
-            if(normal.IsValid())
-                normal->Write(math::AxisVector::Z);
+            if(builder.HasNormals())
+                builder.WriteNormal(math::AxisVector::Z.x, math::AxisVector::Z.y, math::AxisVector::Z.z);
         }
 
         if(has_index)
@@ -169,11 +166,9 @@ namespace hgl::graph::inline_geometry
 
         if(!pc->Init("Circle",vertex_count,index_count))return(nullptr);
 
-        auto vertex = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
-        auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
-        auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
+        GeometryBuilder builder(pc);
 
-        if(!vertex.IsValid())
+        if(!builder.IsValid())
             return(nullptr);
 
         // write exactly vertex_count vertices (no duplicate)
@@ -184,13 +179,13 @@ namespace hgl::graph::inline_geometry
             float x = cci->center.x + sin(deg2rad(ang)) * cci->radius.x;
             float y = cci->center.y + cos(deg2rad(ang)) * cci->radius.y;
 
-            vertex->Write(x,y,0);
+            builder.WriteVertex(x, y, 0.0f);
 
-            if(color.IsValid())
-                color->Write(cci->border_color);
+            if(builder.HasColors())
+                builder.WriteColor(cci->border_color.x, cci->border_color.y, cci->border_color.z, cci->border_color.w);
 
-            if(normal.IsValid())
-                normal->Write(math::AxisVector::Z);
+            if(builder.HasNormals())
+                builder.WriteNormal(math::AxisVector::Z.x, math::AxisVector::Z.y, math::AxisVector::Z.z);
         }
 
         {

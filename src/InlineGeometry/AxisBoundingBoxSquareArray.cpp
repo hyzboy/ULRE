@@ -13,20 +13,19 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("Axis",6,0))
             return(nullptr);
 
-        auto vertex = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
-        auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
+        GeometryBuilder builder(pc);
 
-        if(!vertex.IsValid()||!color.IsValid())
+        if(!builder.IsValid() || !builder.HasColors())
             return(nullptr);
 
         const float s=aci->size;
 
-        vertex->Write(0,0,0);color->Write(aci->color[0]);
-        vertex->Write(s,0,0);color->Write(aci->color[0]);
-        vertex->Write(0,0,0);color->Write(aci->color[1]);
-        vertex->Write(0,s,0);color->Write(aci->color[1]);
-        vertex->Write(0,0,0);color->Write(aci->color[2]);
-        vertex->Write(0,0,s);color->Write(aci->color[2]);
+        builder.WriteVertex(0,0,0);builder.WriteColor(aci->color[0].x, aci->color[0].y, aci->color[0].z, aci->color[0].w);
+        builder.WriteVertex(s,0,0);builder.WriteColor(aci->color[0].x, aci->color[0].y, aci->color[0].z, aci->color[0].w);
+        builder.WriteVertex(0,0,0);builder.WriteColor(aci->color[1].x, aci->color[1].y, aci->color[1].z, aci->color[1].w);
+        builder.WriteVertex(0,s,0);builder.WriteColor(aci->color[1].x, aci->color[1].y, aci->color[1].z, aci->color[1].w);
+        builder.WriteVertex(0,0,0);builder.WriteColor(aci->color[2].x, aci->color[2].y, aci->color[2].z, aci->color[2].w);
+        builder.WriteVertex(0,0,s);builder.WriteColor(aci->color[2].x, aci->color[2].y, aci->color[2].z, aci->color[2].w);
 
         return pc->CreateWithAABB(
             math::Vector3f(0,0,0),
@@ -56,15 +55,17 @@ namespace hgl::graph::inline_geometry
         {
             RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
 
-            auto color = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
+            GeometryBuilder builder(pc);
 
-            if(color.IsValid())
+            if(builder.HasColors())
             {
                 if(cci->color_type==BoundingBoxCreateInfo::ColorType::SameColor)
-                    color->RepeatWrite(cci->color[0],8);
+                    for(int i=0;i<8;i++)
+                        builder.WriteColor(cci->color[0].x, cci->color[0].y, cci->color[0].z, cci->color[0].w);
                 else
                 if(cci->color_type==BoundingBoxCreateInfo::ColorType::VertexColor)
-                    color->Write(cci->color,8);
+                    for(int i=0;i<8;i++)
+                        builder.WriteColor(cci->color[i].x, cci->color[i].y, cci->color[i].z, cci->color[i].w);
             }
         }
 
