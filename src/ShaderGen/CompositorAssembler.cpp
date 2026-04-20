@@ -28,24 +28,33 @@ namespace
     struct AttribDefineMapping
     {
         hgl::graph::VertexAttrib attrib;
-        const char              *define_name;
+        std::string              define_name;
     };
 
     /// Declarative description of a generated VS or FS preamble.
     /// Replaces the per-entry builder functions that used to live here.
     struct StageManifest
     {
-        const char                       *template_path         = nullptr;
-        std::vector<const char*>          always_defines;          ///< Emitted unconditionally
+        std::string                       template_path;
+        std::vector<std::string>          always_defines;          ///< Emitted unconditionally
         std::vector<AttribDefineMapping>  attrib_defines;          ///< Emitted when mesh supplies the attrib
         bool                              emit_alpha_mode        = false; ///< FS: emits ALPHA_MODE_MASKED/DITHER
-        std::vector<const char*>          pre_special_includes;   ///< Includes before sky/lighting/surface
+        std::vector<std::string>          pre_special_includes;   ///< Includes before sky/lighting/surface
         bool                              uses_vert_forward_main = false;  ///< VS: emit ULRE_Decode* helpers for Normal/Tangent/Color
         bool                              needs_sky              = false; ///< FS: #include SKYLIGHT_FUNCTION_FILE
         bool                              needs_lighting         = false; ///< FS: #include LIGHTING_FUNCTION_FILE
         bool                              needs_surface          = false; ///< FS: #include surface_path
-        std::vector<const char*>          post_special_includes; ///< Includes after sky/lighting/surface
+        std::vector<std::string>          post_special_includes; ///< Includes after sky/lighting/surface
     };
+
+    struct StageManifestTables
+    {
+        std::vector<StageManifest> vs;
+        std::vector<StageManifest> fs;
+    };
+
+    static bool TryParseSurfaceType(const std::string &name, hgl::graph::SurfaceType &out);
+    static bool TryParseVertexAttrib(const std::string &name, hgl::graph::VertexAttrib &out);
 
     // -----------------------------------------------------------------------
     // Surface requirement routing (no fallback chain / no ultimate fallback)
@@ -69,6 +78,464 @@ namespace
             "diagnostic/missing.surface.glsl",
         },
     };
+
+    static StageManifest MakeStageManifest(
+        const std::string &template_path,
+        std::vector<std::string> always_defines = {},
+        std::vector<AttribDefineMapping> attrib_defines = {},
+        bool emit_alpha_mode = false,
+        std::vector<std::string> pre_special_includes = {},
+        bool uses_vert_forward_main = false,
+        bool needs_sky = false,
+        bool needs_lighting = false,
+        bool needs_surface = false,
+        std::vector<std::string> post_special_includes = {})
+    {
+        StageManifest m;
+        m.template_path = template_path;
+        m.always_defines = std::move(always_defines);
+        m.attrib_defines = std::move(attrib_defines);
+        m.emit_alpha_mode = emit_alpha_mode;
+        m.pre_special_includes = std::move(pre_special_includes);
+        m.uses_vert_forward_main = uses_vert_forward_main;
+        m.needs_sky = needs_sky;
+        m.needs_lighting = needs_lighting;
+        m.needs_surface = needs_surface;
+        m.post_special_includes = std::move(post_special_includes);
+        return m;
+    }
+
+    static const std::vector<StageManifest> kBuiltinVSManifests =
+    {
+        MakeStageManifest(
+            "compositor/main_forward_unlit_vertexcolor.vert.glsl",
+            {"HAS_VERTEX_COLOR"},
+            {},
+            false,
+            {"compositor/vert_forward_ubo.glsl", "compositor/vert_forward_main.glsl"},
+            true),
+        MakeStageManifest(
+            "compositor/main_forward_unlit_luminance.vert.glsl",
+            {"HAS_LUMINANCE"},
+            {},
+            false,
+            {"compositor/vert_forward_ubo.glsl", "compositor/vert_forward_main.glsl"},
+            true),
+        MakeStageManifest(
+            "compositor/main_forward_unlit_luminance_2d.vert.glsl",
+            {"VERT_INPUT_2D", "HAS_LUMINANCE"},
+            {},
+            false,
+            {"compositor/vert_forward_ubo.glsl", "compositor/vert_forward_main.glsl"},
+            true),
+        MakeStageManifest(
+            "compositor/main_forward_unlit_normal.vert.glsl",
+            {"HAS_WORLD_POS", "HAS_WORLD_NORMAL"},
+            {},
+            false,
+            {"compositor/vert_forward_ubo.glsl", "compositor/vert_forward_main.glsl"},
+            true),
+        MakeStageManifest(
+            "compositor/main_forward_sky.vert.glsl",
+            {"HAS_DIRECTION"},
+            {},
+            false,
+            {"compositor/vert_forward_ubo.glsl", "compositor/vert_forward_main.glsl"},
+            true),
+        MakeStageManifest(
+            "compositor/main_forward_billboard_dynamic.vert.glsl",
+            {},
+            {},
+            false,
+            {"compositor/main_forward_billboard_dynamic.vert.glsl"}),
+        MakeStageManifest(
+            "compositor/main_forward_billboard_fixed.vert.glsl",
+            {},
+            {},
+            false,
+            {"compositor/main_forward_billboard_fixed.vert.glsl"}),
+        MakeStageManifest(
+            "compositor/main_terrain_grid.vert.glsl",
+            {},
+            {},
+            false,
+            {"compositor/main_terrain_grid.vert.glsl"}),
+        MakeStageManifest(
+            "compositor/main_forward_lit.vert.glsl",
+            {"HAS_WORLD_POS"},
+            {{hgl::graph::VertexAttrib::TexCoord, "HAS_UV0"},
+             {hgl::graph::VertexAttrib::Normal, "HAS_WORLD_NORMAL"},
+             {hgl::graph::VertexAttrib::Tangent, "HAS_WORLD_TANGENT"}},
+            false,
+            {"compositor/vert_forward_ubo.glsl", "compositor/vert_forward_main.glsl"},
+            true),
+    };
+
+    static const std::vector<StageManifest> kBuiltinFSManifests =
+    {
+        MakeStageManifest(
+            "compositor/main_forward_unlit_vertexcolor.frag.glsl",
+            {"HAS_VERTEX_COLOR"},
+            {},
+            false,
+            {"compositor/frag_forward_ubo.glsl"},
+            false,
+            false,
+            false,
+            true,
+            {"compositor/frag_forward_main.glsl"}),
+        MakeStageManifest(
+            "compositor/main_forward_unlit_luminance.frag.glsl",
+            {"HAS_LUMINANCE"},
+            {},
+            false,
+            {"compositor/frag_forward_ubo.glsl"},
+            false,
+            false,
+            false,
+            true,
+            {"compositor/frag_forward_main.glsl"}),
+        MakeStageManifest(
+            "compositor/main_forward_unlit_normal.frag.glsl",
+            {"HAS_WORLD_POS", "HAS_WORLD_NORMAL", "NEEDS_CAMERA"},
+            {},
+            false,
+            {"compositor/frag_forward_ubo.glsl"},
+            false,
+            false,
+            false,
+            true,
+            {"compositor/frag_forward_main.glsl"}),
+        MakeStageManifest(
+            "compositor/main_forward_billboard.frag.glsl",
+            {"HAS_TEXCOORD"},
+            {},
+            true,
+            {"compositor/frag_forward_ubo.glsl"},
+            false,
+            false,
+            false,
+            true,
+            {"compositor/frag_forward_main.glsl"}),
+        MakeStageManifest(
+            "compositor/main_forward_sky.frag.glsl",
+            {"HAS_DIRECTION"},
+            {},
+            false,
+            {"compositor/frag_forward_ubo.glsl"},
+            false,
+            false,
+            false,
+            true,
+            {"compositor/frag_forward_main.glsl"}),
+        MakeStageManifest(
+            "compositor/main_terrain_grid.frag.glsl",
+            {"HAS_WORLD_NORMAL", "HAS_CLIP_POS"},
+            {},
+            false,
+            {"compositor/frag_forward_ubo.glsl"},
+            false,
+            false,
+            false,
+            true,
+            {"compositor/frag_forward_main.glsl"}),
+        MakeStageManifest(
+            "compositor/main_forward_lit.frag.glsl",
+            {"ENABLE_LIGHTING", "NEEDS_CAMERA", "NEEDS_SKY", "HAS_WORLD_POS"},
+            {{hgl::graph::VertexAttrib::Normal, "HAS_WORLD_NORMAL"},
+             {hgl::graph::VertexAttrib::TexCoord, "HAS_UV0"}},
+            false,
+            {"compositor/frag_forward_ubo.glsl"},
+            false,
+            true,
+            true,
+            true,
+            {"compositor/frag_forward_main.glsl"}),
+    };
+
+    static bool ParseJsonStringArrayField(const nlohmann::json &obj,
+                                          const char *field_name,
+                                          const std::string &base_path,
+                                          bool required,
+                                          std::vector<std::string> &out_values,
+                                          std::vector<std::string> &errors)
+    {
+        const auto append_error = [&errors](const std::string &path, const std::string &msg)
+        {
+            errors.push_back(path + ": " + msg);
+        };
+
+        if (!obj.contains(field_name))
+        {
+            if (required)
+                append_error(base_path + "." + field_name, "missing required field");
+            return !required;
+        }
+
+        const auto &arr = obj[field_name];
+        if (!arr.is_array())
+        {
+            append_error(base_path + "." + field_name, "must be an array");
+            return false;
+        }
+
+        for (size_t i = 0; i < arr.size(); ++i)
+        {
+            const auto &item = arr[i];
+            const std::string item_path = base_path + "." + field_name + "[" + std::to_string(i) + "]";
+            if (!item.is_string())
+            {
+                append_error(item_path, "must be a string");
+                continue;
+            }
+
+            out_values.push_back(item.get<std::string>());
+        }
+
+        return true;
+    }
+
+    static bool ParseStageManifestEntry(const nlohmann::json &obj,
+                                        const std::string &path,
+                                        StageManifest &out_manifest,
+                                        std::vector<std::string> &errors)
+    {
+        const auto append_error = [&errors](const std::string &err_path, const std::string &msg)
+        {
+            errors.push_back(err_path + ": " + msg);
+        };
+
+        if (!obj.is_object())
+        {
+            append_error(path, "must be an object");
+            return false;
+        }
+
+        if (!obj.contains("template_path"))
+        {
+            append_error(path + ".template_path", "missing required field");
+            return false;
+        }
+
+        if (!obj["template_path"].is_string())
+        {
+            append_error(path + ".template_path", "must be a string");
+            return false;
+        }
+
+        out_manifest.template_path = obj["template_path"].get<std::string>();
+        if (out_manifest.template_path.empty())
+            append_error(path + ".template_path", "must not be empty");
+
+        ParseJsonStringArrayField(obj, "always_defines", path, false, out_manifest.always_defines, errors);
+        ParseJsonStringArrayField(obj, "pre_special_includes", path, false, out_manifest.pre_special_includes, errors);
+        ParseJsonStringArrayField(obj, "post_special_includes", path, false, out_manifest.post_special_includes, errors);
+
+        const auto parse_bool = [&obj, &append_error, &path](const char *name, bool &out_value)
+        {
+            if (!obj.contains(name))
+                return;
+
+            if (!obj[name].is_boolean())
+            {
+                append_error(path + "." + name, "must be a boolean");
+                return;
+            }
+
+            out_value = obj[name].get<bool>();
+        };
+
+        parse_bool("emit_alpha_mode", out_manifest.emit_alpha_mode);
+        parse_bool("uses_vert_forward_main", out_manifest.uses_vert_forward_main);
+        parse_bool("needs_sky", out_manifest.needs_sky);
+        parse_bool("needs_lighting", out_manifest.needs_lighting);
+        parse_bool("needs_surface", out_manifest.needs_surface);
+
+        if (obj.contains("attrib_defines"))
+        {
+            const auto &arr = obj["attrib_defines"];
+            if (!arr.is_array())
+            {
+                append_error(path + ".attrib_defines", "must be an array");
+            }
+            else
+            {
+                for (size_t i = 0; i < arr.size(); ++i)
+                {
+                    const std::string item_path = path + ".attrib_defines[" + std::to_string(i) + "]";
+                    const auto &item = arr[i];
+
+                    if (!item.is_object())
+                    {
+                        append_error(item_path, "must be an object");
+                        continue;
+                    }
+
+                    if (!item.contains("attrib"))
+                    {
+                        append_error(item_path + ".attrib", "missing required field");
+                        continue;
+                    }
+
+                    if (!item["attrib"].is_string())
+                    {
+                        append_error(item_path + ".attrib", "must be a string");
+                        continue;
+                    }
+
+                    if (!item.contains("define"))
+                    {
+                        append_error(item_path + ".define", "missing required field");
+                        continue;
+                    }
+
+                    if (!item["define"].is_string())
+                    {
+                        append_error(item_path + ".define", "must be a string");
+                        continue;
+                    }
+
+                    hgl::graph::VertexAttrib attrib = hgl::graph::VertexAttrib::RANGE_SIZE;
+                    const std::string attrib_name = item["attrib"].get<std::string>();
+                    if (!TryParseVertexAttrib(attrib_name, attrib))
+                    {
+                        append_error(item_path + ".attrib", "unknown vertex attrib '" + attrib_name + "'");
+                        continue;
+                    }
+
+                    out_manifest.attrib_defines.push_back({attrib, item["define"].get<std::string>()});
+                }
+            }
+        }
+
+        return true;
+    }
+
+    static bool ParseStageManifestArray(const nlohmann::json &root,
+                                        const char *field_name,
+                                        std::vector<StageManifest> &out_manifests,
+                                        std::vector<std::string> &errors)
+    {
+        if (!root.contains(field_name))
+        {
+            errors.push_back(std::string(field_name) + ": missing required field");
+            return false;
+        }
+
+        const auto &arr = root[field_name];
+        if (!arr.is_array())
+        {
+            errors.push_back(std::string(field_name) + ": must be an array");
+            return false;
+        }
+
+        for (size_t i = 0; i < arr.size(); ++i)
+        {
+            StageManifest manifest;
+            const std::string base_path = std::string(field_name) + "[" + std::to_string(i) + "]";
+            ParseStageManifestEntry(arr[i], base_path, manifest, errors);
+            if (!manifest.template_path.empty())
+                out_manifests.push_back(std::move(manifest));
+        }
+
+        return true;
+    }
+
+    static bool LoadStageManifestTablesFromJson(const std::string &json_file,
+                                                StageManifestTables &out_tables,
+                                                std::string &error)
+    {
+        std::ifstream ifs(json_file, std::ios::in);
+        if (!ifs.is_open())
+        {
+            error = "cannot open json: " + json_file;
+            return false;
+        }
+
+        nlohmann::json root;
+        try
+        {
+            ifs >> root;
+        }
+        catch (const std::exception &e)
+        {
+            error = std::string("json parse failed: ") + e.what();
+            return false;
+        }
+
+        if (!root.is_object())
+        {
+            error = "schema validation failed: root must be an object";
+            return false;
+        }
+
+        std::vector<std::string> schema_errors;
+        ParseStageManifestArray(root, "vs_manifests", out_tables.vs, schema_errors);
+        ParseStageManifestArray(root, "fs_manifests", out_tables.fs, schema_errors);
+
+        if (out_tables.vs.empty())
+            schema_errors.push_back("vs_manifests: parsed as empty");
+        if (out_tables.fs.empty())
+            schema_errors.push_back("fs_manifests: parsed as empty");
+
+        if (!schema_errors.empty())
+        {
+            std::ostringstream oss;
+            oss << "schema validation failed:";
+            for (const auto &item : schema_errors)
+                oss << "\n  - " << item;
+            error = oss.str();
+            return false;
+        }
+
+        return true;
+    }
+
+    static const StageManifestTables &GetStageManifestTables(const std::string &shader_lib_path)
+    {
+        static std::string cached_shader_lib_path;
+        static StageManifestTables cached_tables;
+
+        if (cached_shader_lib_path == shader_lib_path
+            && !cached_tables.vs.empty()
+            && !cached_tables.fs.empty())
+        {
+            return cached_tables;
+        }
+
+        const std::string json_file = shader_lib_path + "/compositor/stage_manifests.json";
+        StageManifestTables loaded;
+        std::string error;
+
+        if (LoadStageManifestTablesFromJson(json_file, loaded, error))
+        {
+            std::fprintf(stdout,
+                         "[CompositorAssembler][INFO] loaded stage manifests from %s\n",
+                         json_file.c_str());
+            cached_tables = std::move(loaded);
+            cached_shader_lib_path = shader_lib_path;
+            return cached_tables;
+        }
+
+        std::fprintf(stderr,
+                     "[CompositorAssembler][WARN] stage manifests json unavailable (%s), using built-in manifests\n",
+                     error.c_str());
+
+        cached_tables.vs = kBuiltinVSManifests;
+        cached_tables.fs = kBuiltinFSManifests;
+        cached_shader_lib_path = shader_lib_path;
+        return cached_tables;
+    }
+
+    static const std::vector<StageManifest> &GetVSManifests(const std::string &shader_lib_path)
+    {
+        return GetStageManifestTables(shader_lib_path).vs;
+    }
+
+    static const std::vector<StageManifest> &GetFSManifests(const std::string &shader_lib_path)
+    {
+        return GetStageManifestTables(shader_lib_path).fs;
+    }
 
     static bool TryParseSurfaceType(const std::string &name, hgl::graph::SurfaceType &out)
     {
@@ -526,12 +993,12 @@ namespace
         std::string out = "#version 450\n\n";
         hgl::graph::ShaderWriter writer(out);
 
-        for (const char *define : m.always_defines)
-            writer.EmitDefine(define);
+        for (const std::string &define : m.always_defines)
+            writer.EmitDefine(define.c_str());
 
         for (const auto &[attrib, define] : m.attrib_defines)
             if (key.HasVertexAttrib(attrib))
-                writer.EmitDefine(define);
+            writer.EmitDefine(define.c_str());
 
         if (m.emit_alpha_mode)
         {
@@ -546,7 +1013,7 @@ namespace
             EmitAttribDecodeHelpers(out, writer, key);
         }
 
-        for (const char *inc : m.pre_special_includes)
+        for (const std::string &inc : m.pre_special_includes)
             writer.EmitInclude(inc);
 
         if (m.needs_sky)
@@ -558,137 +1025,11 @@ namespace
         if (m.needs_surface)
             writer.EmitInclude(surface_path);
 
-        for (const char *inc : m.post_special_includes)
+        for (const std::string &inc : m.post_special_includes)
             writer.EmitInclude(inc);
 
         return out;
     }
-
-    // VS manifest table — one entry per generated vertex-shader template.
-    static const StageManifest kVSManifests[] =
-    {
-        {
-            .template_path        = "compositor/main_forward_unlit_vertexcolor.vert.glsl",
-            .always_defines       = {"HAS_VERTEX_COLOR"},
-            .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
-                                     "compositor/vert_forward_main.glsl"},
-            .uses_vert_forward_main = true,
-        },
-        {
-            .template_path        = "compositor/main_forward_unlit_luminance.vert.glsl",
-            .always_defines       = {"HAS_LUMINANCE"},
-            .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
-                                     "compositor/vert_forward_main.glsl"},
-            .uses_vert_forward_main = true,
-        },
-        {
-            .template_path        = "compositor/main_forward_unlit_luminance_2d.vert.glsl",
-            .always_defines       = {"VERT_INPUT_2D", "HAS_LUMINANCE"},
-            .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
-                                     "compositor/vert_forward_main.glsl"},
-            .uses_vert_forward_main = true,
-        },
-        {
-            .template_path        = "compositor/main_forward_unlit_normal.vert.glsl",
-            .always_defines       = {"HAS_WORLD_POS", "HAS_WORLD_NORMAL"},
-            .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
-                                     "compositor/vert_forward_main.glsl"},
-            .uses_vert_forward_main = true,
-        },
-        {
-            .template_path        = "compositor/main_forward_sky.vert.glsl",
-            .always_defines       = {"HAS_DIRECTION"},
-            .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
-                                     "compositor/vert_forward_main.glsl"},
-            .uses_vert_forward_main = true,
-        },
-        {
-            // Billboard: #version 450 + self-include (no defines needed).
-            .template_path        = "compositor/main_forward_billboard_dynamic.vert.glsl",
-            .pre_special_includes = {"compositor/main_forward_billboard_dynamic.vert.glsl"},
-        },
-        {
-            .template_path        = "compositor/main_forward_billboard_fixed.vert.glsl",
-            .pre_special_includes = {"compositor/main_forward_billboard_fixed.vert.glsl"},
-        },
-        {
-            .template_path        = "compositor/main_terrain_grid.vert.glsl",
-            .pre_special_includes = {"compositor/main_terrain_grid.vert.glsl"},
-        },
-        {
-            // Forward-lit VS: HAS_UV0 and HAS_WORLD_NORMAL are mesh-conditional.
-            .template_path        = "compositor/main_forward_lit.vert.glsl",
-            .always_defines       = {"HAS_WORLD_POS"},
-            .attrib_defines       = {{hgl::graph::VertexAttrib::TexCoord, "HAS_UV0"},
-                                     {hgl::graph::VertexAttrib::Normal,   "HAS_WORLD_NORMAL"},
-                                     {hgl::graph::VertexAttrib::Tangent,  "HAS_WORLD_TANGENT"}},
-            .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
-                                     "compositor/vert_forward_main.glsl"},
-            .uses_vert_forward_main = true,
-        },
-    };
-
-    // FS manifest table — one entry per generated fragment-shader template.
-    static const StageManifest kFSManifests[] =
-    {
-        {
-            .template_path         = "compositor/main_forward_unlit_vertexcolor.frag.glsl",
-            .always_defines        = {"HAS_VERTEX_COLOR"},
-            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
-            .needs_surface         = true,
-            .post_special_includes = {"compositor/frag_forward_main.glsl"},
-        },
-        {
-            .template_path         = "compositor/main_forward_unlit_luminance.frag.glsl",
-            .always_defines        = {"HAS_LUMINANCE"},
-            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
-            .needs_surface         = true,
-            .post_special_includes = {"compositor/frag_forward_main.glsl"},
-        },
-        {
-            .template_path         = "compositor/main_forward_unlit_normal.frag.glsl",
-            .always_defines        = {"HAS_WORLD_POS", "HAS_WORLD_NORMAL", "NEEDS_CAMERA"},
-            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
-            .needs_surface         = true,
-            .post_special_includes = {"compositor/frag_forward_main.glsl"},
-        },
-        {
-            // Billboard FS: alpha mode defines driven by blend_mode at emit time.
-            .template_path         = "compositor/main_forward_billboard.frag.glsl",
-            .always_defines        = {"HAS_TEXCOORD"},
-            .emit_alpha_mode       = true,
-            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
-            .needs_surface         = true,
-            .post_special_includes = {"compositor/frag_forward_main.glsl"},
-        },
-        {
-            .template_path         = "compositor/main_forward_sky.frag.glsl",
-            .always_defines        = {"HAS_DIRECTION"},
-            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
-            .needs_surface         = true,
-            .post_special_includes = {"compositor/frag_forward_main.glsl"},
-        },
-        {
-            .template_path         = "compositor/main_terrain_grid.frag.glsl",
-            .always_defines        = {"HAS_WORLD_NORMAL", "HAS_CLIP_POS"},
-            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
-            .needs_surface         = true,
-            .post_special_includes = {"compositor/frag_forward_main.glsl"},
-        },
-        {
-            // Forward-lit FS: HAS_WORLD_NORMAL and HAS_UV0 are mesh-conditional.
-            .template_path         = "compositor/main_forward_lit.frag.glsl",
-            .always_defines        = {"ENABLE_LIGHTING", "NEEDS_CAMERA", "NEEDS_SKY",
-                                      "HAS_WORLD_POS"},
-            .attrib_defines        = {{hgl::graph::VertexAttrib::Normal,   "HAS_WORLD_NORMAL"},
-                                      {hgl::graph::VertexAttrib::TexCoord, "HAS_UV0"}},
-            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
-            .needs_sky             = true,
-            .needs_lighting        = true,
-            .needs_surface         = true,
-            .post_special_includes = {"compositor/frag_forward_main.glsl"},
-        },
-    };
 
     static const SurfaceFunctionRoute kSurfaceFunctionRoutes[] = {
         {hgl::graph::SurfaceType::PureColor2D,  "surface/unlit_color3d_surface.glsl"},
@@ -708,12 +1049,12 @@ namespace
         {hgl::graph::SurfaceType::Sky,          "surface/sky_surface.glsl"},
     };
 
-    template<typename Route, size_t N>
-    const Route *FindRouteByTemplatePath(const Route (&routes)[N], const std::string &template_path)
+    template<typename Routes>
+    const StageManifest *FindStageManifestByTemplatePath(const Routes &routes, const std::string &template_path)
     {
-        for(const auto &route : routes)
+        for (const auto &route : routes)
         {
-            if(template_path == route.template_path)
+            if (template_path == route.template_path)
                 return &route;
         }
 
@@ -876,7 +1217,7 @@ namespace hgl::graph
 
     bool CompositorAssembler::TryBuildGeneratedVSTemplatePath(const std::string &template_path, const mtl::MaterialVariantKey &key, std::string &out_source) const
     {
-        if (const StageManifest *m = FindRouteByTemplatePath(kVSManifests, template_path))
+        if (const StageManifest *m = FindStageManifestByTemplatePath(GetVSManifests(shader_lib_path_), template_path))
         {
             out_source = EmitStageSource(*m, key, RenderAlphaMode::Opaque, std::string());
             return true;
@@ -887,7 +1228,7 @@ namespace hgl::graph
 
     bool CompositorAssembler::TryBuildGeneratedFSTemplatePath(const std::string &template_path, const mtl::MaterialVariantKey &key, RenderAlphaMode blend, const std::string &surface_path, std::string &out_source) const
     {
-        if (const StageManifest *m = FindRouteByTemplatePath(kFSManifests, template_path))
+        if (const StageManifest *m = FindStageManifestByTemplatePath(GetFSManifests(shader_lib_path_), template_path))
         {
             out_source = EmitStageSource(*m, key, blend, surface_path);
             return true;

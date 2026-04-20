@@ -1,0 +1,133 @@
+{
+  "vs_manifests": [
+    {
+      "template_path": "compositor/main_forward_unlit_vertexcolor.vert.glsl",
+      "always_defines": ["HAS_VERTEX_COLOR"],
+      "pre_special_includes": [
+        "compositor/vert_forward_ubo.glsl",
+        "compositor/vert_forward_main.glsl"
+      ],
+      "uses_vert_forward_main": true
+    },
+    {
+      "template_path": "compositor/main_forward_unlit_luminance.vert.glsl",
+      "always_defines": ["HAS_LUMINANCE"],
+      "pre_special_includes": [
+        "compositor/vert_forward_ubo.glsl",
+        "compositor/vert_forward_main.glsl"
+      ],
+      "uses_vert_forward_main": true
+    },
+    {
+      "template_path": "compositor/main_forward_unlit_luminance_2d.vert.glsl",
+      "always_defines": ["VERT_INPUT_2D", "HAS_LUMINANCE"],
+      "pre_special_includes": [
+        "compositor/vert_forward_ubo.glsl",
+        "compositor/vert_forward_main.glsl"
+      ],
+      "uses_vert_forward_main": true
+    },
+    {
+      "template_path": "compositor/main_forward_unlit_normal.vert.glsl",
+      "always_defines": ["HAS_WORLD_POS", "HAS_WORLD_NORMAL"],
+      "pre_special_includes": [
+        "compositor/vert_forward_ubo.glsl",
+        "compositor/vert_forward_main.glsl"
+      ],
+      "uses_vert_forward_main": true
+    },
+    {
+      "template_path": "compositor/main_forward_sky.vert.glsl",
+      "always_defines": ["HAS_DIRECTION"],
+      "pre_special_includes": [
+        "compositor/vert_forward_ubo.glsl",
+        "compositor/vert_forward_main.glsl"
+      ],
+      "uses_vert_forward_main": true
+    },
+    {
+      "template_path": "compositor/main_forward_billboard_dynamic.vert.glsl",
+      "pre_special_includes": ["compositor/main_forward_billboard_dynamic.vert.glsl"]
+    },
+    {
+      "template_path": "compositor/main_forward_billboard_fixed.vert.glsl",
+      "pre_special_includes": ["compositor/main_forward_billboard_fixed.vert.glsl"]
+    },
+    {
+      "template_path": "compositor/main_terrain_grid.vert.glsl",
+      "pre_special_includes": ["compositor/main_terrain_grid.vert.glsl"]
+    },
+    {
+      "template_path": "compositor/main_forward_lit.vert.glsl",
+      "always_defines": ["HAS_WORLD_POS"],
+      "attrib_defines": [
+        { "attrib": "TexCoord", "define": "HAS_UV0" },
+        { "attrib": "Normal", "define": "HAS_WORLD_NORMAL" },
+        { "attrib": "Tangent", "define": "HAS_WORLD_TANGENT" }
+      ],
+      "pre_special_includes": [
+        "compositor/vert_forward_ubo.glsl",
+        "compositor/vert_forward_main.glsl"
+      ],
+      "uses_vert_forward_main": true
+    }
+  ],
+  "fs_manifests": [
+    {
+      "template_path": "compositor/main_forward_unlit_vertexcolor.frag.glsl",
+      "always_defines": ["HAS_VERTEX_COLOR"],
+      "pre_special_includes": ["compositor/frag_forward_ubo.glsl"],
+      "needs_surface": true,
+      "post_special_includes": ["compositor/frag_forward_main.glsl"]
+    },
+    {
+      "template_path": "compositor/main_forward_unlit_luminance.frag.glsl",
+      "always_defines": ["HAS_LUMINANCE"],
+      "pre_special_includes": ["compositor/frag_forward_ubo.glsl"],
+      "needs_surface": true,
+      "post_special_includes": ["compositor/frag_forward_main.glsl"]
+    },
+    {
+      "template_path": "compositor/main_forward_unlit_normal.frag.glsl",
+      "always_defines": ["HAS_WORLD_POS", "HAS_WORLD_NORMAL", "NEEDS_CAMERA"],
+      "pre_special_includes": ["compositor/frag_forward_ubo.glsl"],
+      "needs_surface": true,
+      "post_special_includes": ["compositor/frag_forward_main.glsl"]
+    },
+    {
+      "template_path": "compositor/main_forward_billboard.frag.glsl",
+      "always_defines": ["HAS_TEXCOORD"],
+      "emit_alpha_mode": true,
+      "pre_special_includes": ["compositor/frag_forward_ubo.glsl"],
+      "needs_surface": true,
+      "post_special_includes": ["compositor/frag_forward_main.glsl"]
+    },
+    {
+      "template_path": "compositor/main_forward_sky.frag.glsl",
+      "always_defines": ["HAS_DIRECTION"],
+      "pre_special_includes": ["compositor/frag_forward_ubo.glsl"],
+      "needs_surface": true,
+      "post_special_includes": ["compositor/frag_forward_main.glsl"]
+    },
+    {
+      "template_path": "compositor/main_terrain_grid.frag.glsl",
+      "always_defines": ["HAS_WORLD_NORMAL", "HAS_CLIP_POS"],
+      "pre_special_includes": ["compositor/frag_forward_ubo.glsl"],
+      "needs_surface": true,
+      "post_special_includes": ["compositor/frag_forward_main.glsl"]
+    },
+    {
+      "template_path": "compositor/main_forward_lit.frag.glsl",
+      "always_defines": ["ENABLE_LIGHTING", "NEEDS_CAMERA", "NEEDS_SKY", "HAS_WORLD_POS"],
+      "attrib_defines": [
+        { "attrib": "Normal", "define": "HAS_WORLD_NORMAL" },
+        { "attrib": "TexCoord", "define": "HAS_UV0" }
+      ],
+      "pre_special_includes": ["compositor/frag_forward_ubo.glsl"],
+      "needs_sky": true,
+      "needs_lighting": true,
+      "needs_surface": true,
+      "post_special_includes": ["compositor/frag_forward_main.glsl"]
+    }
+  ]
+}
