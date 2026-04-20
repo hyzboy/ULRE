@@ -142,7 +142,7 @@ namespace hgl::graph
             };
 
             ColorType color_type;
-           Vector4f color[8];
+            Vector4f color[8];
 
         public:
 
