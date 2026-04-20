@@ -355,6 +355,48 @@ namespace hgl::graph::inline_geometry
         }
     }
 
+    void GeometryBuilder::WriteLuminanceByteByFormat(uint8 l)
+    {
+        if(!has_luminance)
+            return;
+
+        switch(luminance_format)
+        {
+            case PF_R32F:
+                if(accessor_luminance.IsValid()) accessor_luminance->Write(float(l) / 255.0f);
+            break;
+
+            case PF_R16F:
+                if(accessor_luminance_r16f.IsValid()) accessor_luminance_r16f->Write(float(l) / 255.0f);
+            break;
+
+            case PF_R16UN:
+                if(accessor_luminance_r16un.IsValid())
+                    accessor_luminance_r16un->Write(uint16((uint32(l) * 65535u + 127u) / 255u));
+            break;
+
+            case PF_R8UN:
+                if(accessor_luminance_r8un.IsValid()) accessor_luminance_r8un->Write(l);
+            break;
+
+            case PF_R32U:
+                if(accessor_luminance_r32u.IsValid()) accessor_luminance_r32u->Write(uint32(l));
+            break;
+
+            case PF_R16U:
+                if(accessor_luminance_r16u.IsValid()) accessor_luminance_r16u->Write(uint16(l));
+            break;
+
+            case PF_R8U:
+                if(accessor_luminance_r8u.IsValid()) accessor_luminance_r8u->Write(l);
+            break;
+
+            default:
+                WriteLuminanceByFormat(float(l) / 255.0f);
+            break;
+        }
+    }
+
     GeometryBuilder::GeometryBuilder(GeometryCreater *pc)
         : creater(pc)
     {

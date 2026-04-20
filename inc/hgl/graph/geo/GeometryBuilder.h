@@ -82,6 +82,7 @@ namespace hgl::graph::inline_geometry
         void WriteTexCoordByFormat(float u, float v);
         void WriteColorByFormat(float r, float g, float b, float a);
         void WriteLuminanceByFormat(float l);
+        void WriteLuminanceByteByFormat(uint8 l);
 
     public:
         GeometryBuilder(GeometryCreater *pc);
@@ -158,6 +159,11 @@ namespace hgl::graph::inline_geometry
         inline void WriteLuminance(float l)
         {
             WriteLuminanceByFormat(l);
+        }
+
+        inline void WriteLuminance(uint8 l)
+        {
+            WriteLuminanceByteByFormat(l);
         }
 
         /**
