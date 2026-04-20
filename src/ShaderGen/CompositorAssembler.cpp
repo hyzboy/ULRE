@@ -1,4 +1,5 @@
 ﻿#include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/PassManifest.h>
 #include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
@@ -45,6 +46,137 @@ namespace
         bool                              needs_surface          = false; ///< FS: #include surface_path
         std::vector<const char*>          post_special_includes; ///< Includes after sky/lighting/surface
     };
+
+    // -----------------------------------------------------------------------
+    // Material fallback chain plan (Step 4.1 scaffold; not wired yet)
+    // -----------------------------------------------------------------------
+
+    [[maybe_unused]] static const hgl::graph::MaterialFallbackPlan kMaterialFallbackPlans[] =
+    {
+        {
+            hgl::graph::SurfaceType::Standard,
+            {
+                "Standard.PBR",
+                "surface/standard_surface.glsl",
+                {
+                    {
+                        { hgl::graph::VertexAttrib::Normal },
+                        "diagnostic/missing.surface.glsl",
+                        hgl::graph::FallbackLogLevel::Error,
+                    },
+                    {
+                        { hgl::graph::VertexAttrib::Tangent },
+                        "surface/standard_no_tangent_surface.glsl",
+                        hgl::graph::FallbackLogLevel::Info,
+                    },
+                },
+                "diagnostic/missing.surface.glsl",
+            },
+        },
+    };
+
+    static const hgl::graph::MaterialFallbackPlan *FindMaterialFallbackPlan(const hgl::graph::SurfaceType surface)
+    {
+        for (const auto &plan : kMaterialFallbackPlans)
+            if (plan.surface == surface)
+                return &plan;
+        return nullptr;
+    }
+
+    static bool AreAllAttribsMissing(const hgl::graph::mtl::MaterialVariantKey &key,
+                                     const std::vector<hgl::graph::VertexAttrib> &attribs)
+    {
+        if (attribs.empty())
+            return false;
+
+        for (const hgl::graph::VertexAttrib attrib : attribs)
+            if (key.HasVertexAttrib(attrib))
+                return false;
+
+        return true;
+    }
+
+    static std::vector<hgl::graph::VertexAttrib> GetRequiredAttribsForSurface(const hgl::graph::SurfaceType surface)
+    {
+        switch (surface)
+        {
+            case hgl::graph::SurfaceType::Standard:
+                return {
+                    hgl::graph::VertexAttrib::Position,
+                    hgl::graph::VertexAttrib::Normal,
+                };
+            default:
+                return {};
+        }
+    }
+
+    static bool IsAnyRequiredAttribMissing(const hgl::graph::mtl::MaterialVariantKey &key,
+                                           const std::vector<hgl::graph::VertexAttrib> &required_attribs)
+    {
+        for (const hgl::graph::VertexAttrib attrib : required_attribs)
+            if (!key.HasVertexAttrib(attrib))
+                return true;
+
+        return false;
+    }
+
+    static void LogFallbackMatch(const hgl::graph::MaterialManifest &manifest,
+                                 const hgl::graph::FallbackRule &rule)
+    {
+        const char *level = "INFO";
+        FILE *stream = stdout;
+
+        if (rule.log_level == hgl::graph::FallbackLogLevel::Warning)
+        {
+            level = "WARN";
+            stream = stderr;
+        }
+        else if (rule.log_level == hgl::graph::FallbackLogLevel::Error)
+        {
+            level = "ERROR";
+            stream = stderr;
+        }
+
+        std::fprintf(stream,
+                     "[CompositorAssembler][%s] material=%s fallback_surface=%s\n",
+                     level,
+                     manifest.name.c_str(),
+                     rule.use_surface.c_str());
+    }
+
+    static std::string ResolveSurfacePathByFallbackPlan(const hgl::graph::SurfaceType surface,
+                                                        const hgl::graph::mtl::MaterialVariantKey &key,
+                                                        const std::string &default_surface_path)
+    {
+        const hgl::graph::MaterialFallbackPlan *plan = FindMaterialFallbackPlan(surface);
+        if (!plan)
+            return default_surface_path;
+
+        const hgl::graph::MaterialManifest &manifest = plan->manifest;
+
+        for (const auto &rule : manifest.fallback_chain)
+        {
+            if (!AreAllAttribsMissing(key, rule.when_missing))
+                continue;
+
+            LogFallbackMatch(manifest, rule);
+            return rule.use_surface.empty() ? default_surface_path : rule.use_surface;
+        }
+
+        const std::vector<hgl::graph::VertexAttrib> required_attribs = GetRequiredAttribsForSurface(surface);
+        if (IsAnyRequiredAttribMissing(key, required_attribs))
+        {
+            std::fprintf(stderr,
+                         "[CompositorAssembler][ERROR] material=%s required_attrib_missing -> fallback_surface=%s\n",
+                         manifest.name.c_str(),
+                         manifest.ultimate_fallback.c_str());
+
+            if (!manifest.ultimate_fallback.empty())
+                return manifest.ultimate_fallback;
+        }
+
+        return manifest.primary_surface.empty() ? default_surface_path : manifest.primary_surface;
+    }
 
     // -----------------------------------------------------------------------
     // Attribute semantic registry + decode-helper emission (Step 3)
@@ -1004,7 +1136,9 @@ namespace hgl::graph
             ? GetCompositorFSPath(key.surface_type, key.blend_mode, key.pass_hint)
             : shader_lib_path_ + "/" + desc.fs_template_path;
         std::string surface_rel = desc.surface_function_path.empty()
-            ? GetSurfaceFunctionPath(key.surface_type)
+            ? ResolveSurfacePathByFallbackPlan(key.surface_type,
+                                               key,
+                                               GetSurfaceFunctionPath(key.surface_type))
             : desc.surface_function_path;
 
         std::string vs_source;

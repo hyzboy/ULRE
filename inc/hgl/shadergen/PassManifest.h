@@ -44,6 +44,14 @@ namespace hgl::graph
     // Material degradation chain (Step 4)
     // -----------------------------------------------------------------------
 
+    /// Log severity when a fallback rule is matched.
+    enum class FallbackLogLevel : uint8_t
+    {
+        Info,
+        Warning,
+        Error,
+    };
+
     /// One entry in a material's attribute-supply degradation chain.
     /// When ALL listed attribs are absent from the mesh, the material switches
     /// to the specified surface variant.
@@ -51,7 +59,7 @@ namespace hgl::graph
     {
         std::vector<VertexAttrib> when_missing;   ///< Trigger: ALL of these attribs absent
         std::string               use_surface;    ///< Surface variant to switch to
-        bool                      log_warning = true;
+        FallbackLogLevel          log_level = FallbackLogLevel::Warning;
     };
 
     /// High-level description of a material variant: which surface function it
@@ -63,6 +71,16 @@ namespace hgl::graph
         std::string               primary_surface;     ///< Default surface path (rel. ShaderLibrary/)
         std::vector<FallbackRule> fallback_chain;      ///< Tried in order; first match wins
         std::string               ultimate_fallback;   ///< Diagnostic material used when no rule matches
+    };
+
+    /// Runtime fallback plan bound to a SurfaceType.
+    ///
+    /// Step 4.1 only defines the data model and static plans. Resolver wiring
+    /// is introduced in Step 4.2.
+    struct MaterialFallbackPlan
+    {
+        SurfaceType               surface;
+        MaterialManifest          manifest;
     };
 
 } // namespace hgl::graph

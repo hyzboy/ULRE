@@ -3,6 +3,8 @@
 
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/GLSLCompilerConfig.h>
+#include <hgl/mtl/MaterialVariantDesc.h>
+#include <hgl/mtl/MaterialVariantKey.h>
 #include <iostream>
 #include <cstdio>
 
@@ -169,6 +171,66 @@ static bool TestCompileSPV(CompositorAssembler &assembler, const std::string &sh
     return true;
 }
 
+static bool TestFallbackRouting(CompositorAssembler &assembler)
+{
+    PrintSeparator("Step 3: Fallback Routing (Step 4.2/4.3)");
+
+    mtl::MaterialVariantDesc desc{};
+
+    // Case A: Standard with Position+Normal but no Tangent -> no_tangent surface.
+    {
+        mtl::MaterialVariantKey key{};
+        key.surface_type = SurfaceType::Standard;
+        key.blend_mode = RenderAlphaMode::Opaque;
+        key.pass_hint = PassType::ForwardOpaque;
+        key.SetVertexAttribEnabled(VertexAttrib::Position);
+        key.SetVertexAttribEnabled(VertexAttrib::Normal);
+
+        auto result = assembler.Assemble(key, desc);
+        if (!result.success)
+        {
+            std::fprintf(stderr, "FAIL: Fallback Case A Assemble failed: %s\n", result.error_message.c_str());
+            return false;
+        }
+
+        const bool hit_no_tangent = result.fragment_glsl.find("surface/standard_no_tangent_surface.glsl") != std::string::npos;
+        if (!hit_no_tangent)
+        {
+            std::fprintf(stderr, "FAIL: Fallback Case A expected no-tangent surface include.\n");
+            return false;
+        }
+
+        std::printf("OK: Fallback Case A hit no-tangent surface.\n");
+    }
+
+    // Case B: Standard with Position only (missing Normal) -> diagnostic fallback.
+    {
+        mtl::MaterialVariantKey key{};
+        key.surface_type = SurfaceType::Standard;
+        key.blend_mode = RenderAlphaMode::Opaque;
+        key.pass_hint = PassType::ForwardOpaque;
+        key.SetVertexAttribEnabled(VertexAttrib::Position);
+
+        auto result = assembler.Assemble(key, desc);
+        if (!result.success)
+        {
+            std::fprintf(stderr, "FAIL: Fallback Case B Assemble failed: %s\n", result.error_message.c_str());
+            return false;
+        }
+
+        const bool hit_diagnostic = result.fragment_glsl.find("diagnostic/missing.surface.glsl") != std::string::npos;
+        if (!hit_diagnostic)
+        {
+            std::fprintf(stderr, "FAIL: Fallback Case B expected diagnostic fallback include.\n");
+            return false;
+        }
+
+        std::printf("OK: Fallback Case B hit diagnostic fallback surface.\n");
+    }
+
+    return true;
+}
+
 int main(int argc, char *argv[])
 {
     // ShaderLibrary 路径：默认从工作目录出发
@@ -186,6 +248,9 @@ int main(int argc, char *argv[])
         ++failures;
 
     if (!TestCompileSPV(assembler, shader_lib))
+        ++failures;
+
+    if (!TestFallbackRouting(assembler))
         ++failures;
 
     PrintSeparator("Summary");
