@@ -1,5 +1,6 @@
 
 #include "common/schema/schema_standard_params.glsl"
+#include "common/surface_normal.glsl"
 
 #include "common/ssbo_material_instance.glsl"
 
@@ -24,11 +25,12 @@ vec3 ResolveAlbedoColor(vec2 uv)
     return rgb;
 }
 
-vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv, float normal_scale)
+vec3 ResolveSurfaceNormal(vec3 world_pos, vec3 input_normal, vec4 input_tangent, vec2 uv, float normal_scale)
 {
     vec3 sampled_normal = GetSamplerNormal(uv).xyz * 2.0 - 1.0;
     sampled_normal.y = -sampled_normal.y;
-    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * normal_scale);
+    sampled_normal.xy *= normal_scale;
+    return ULRE_ApplyNormalMap(world_pos, uv, input_normal, input_tangent, normalize(sampled_normal));
 }
 
 
@@ -43,7 +45,7 @@ SurfaceOutput EvalSurface(SurfaceInput si)
     float metallic = clamp(mi.metallic, 0.0, 1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
     float normal_scale = mi.normal_scale > 0.0001 ? mi.normal_scale : 0.35;
-    vec3 N = ResolveSurfaceNormal(si.worldNormal, uv, normal_scale);
+    vec3 N = ResolveSurfaceNormal(si.worldPos, si.worldNormal, si.worldTangent, uv, normal_scale);
 
     SurfaceOutput so;
     so.baseColor = albedo;

@@ -1,5 +1,4 @@
 ﻿#include <hgl/shadergen/CompositorAssembler.h>
-#include <hgl/shadergen/CompositorFeatureFlags.h>
 #include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
@@ -10,192 +9,202 @@
 #include <sstream>
 #include <algorithm>
 #include <cstdio>
+#include <vector>
 
 namespace
 {
-    using GeneratedVSBuilder = std::string (*)(const hgl::graph::mtl::MaterialVariantKey &key);
-    using GeneratedFSBuilder = std::string (*)(const hgl::graph::mtl::MaterialVariantKey &key, hgl::graph::RenderAlphaMode blend, const std::string &surface_path);
-
-    struct GeneratedVSTemplateRoute
-    {
-        const char *template_path;
-        GeneratedVSBuilder builder;
-    };
-
-    struct GeneratedFSTemplateRoute
-    {
-        const char *template_path;
-        GeneratedFSBuilder builder;
-    };
+    // -----------------------------------------------------------------------
+    // StageManifest: data-driven replacement for 16 hand-written builder fns
+    // -----------------------------------------------------------------------
 
     struct SurfaceFunctionRoute
     {
         hgl::graph::SurfaceType surface;
-        const char *path;
+        const char             *path;
     };
 
-    std::string BuildForwardVertexEntry(const hgl::graph::CompositorFeatureFlags &f)
+    /// Describes a (vertex attrib → #define) conditional mapping.
+    struct AttribDefineMapping
+    {
+        hgl::graph::VertexAttrib attrib;
+        const char              *define_name;
+    };
+
+    /// Declarative description of a generated VS or FS preamble.
+    /// Replaces the per-entry builder functions that used to live here.
+    struct StageManifest
+    {
+        const char                       *template_path         = nullptr;
+        std::vector<const char*>          always_defines;          ///< Emitted unconditionally
+        std::vector<AttribDefineMapping>  attrib_defines;          ///< Emitted when mesh supplies the attrib
+        bool                              emit_alpha_mode        = false; ///< FS: emits ALPHA_MODE_MASKED/DITHER
+        std::vector<const char*>          pre_special_includes;   ///< Includes before sky/lighting/surface
+        bool                              needs_sky              = false; ///< FS: #include SKYLIGHT_FUNCTION_FILE
+        bool                              needs_lighting         = false; ///< FS: #include LIGHTING_FUNCTION_FILE
+        bool                              needs_surface          = false; ///< FS: #include surface_path
+        std::vector<const char*>          post_special_includes; ///< Includes after sky/lighting/surface
+    };
+
+    /// Generic emit function: builds the GLSL preamble from a StageManifest.
+    static std::string EmitStageSource(
+        const StageManifest                          &m,
+        const hgl::graph::mtl::MaterialVariantKey    &key,
+        hgl::graph::RenderAlphaMode                   blend,
+        const std::string                            &surface_path)
     {
         std::string out = "#version 450\n\n";
         hgl::graph::ShaderWriter writer(out);
 
-        if (f.vert_input_2d)    writer.EmitDefine("VERT_INPUT_2D");
-        if (f.has_uv0)          writer.EmitDefine("HAS_UV0");
-        if (f.has_vertex_color) writer.EmitDefine("HAS_VERTEX_COLOR");
-        if (f.has_world_pos)    writer.EmitDefine("HAS_WORLD_POS");
-        if (f.has_world_normal) writer.EmitDefine("HAS_WORLD_NORMAL");
-        if (f.has_luminance)    writer.EmitDefine("HAS_LUMINANCE");
-        if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
+        for (const char *define : m.always_defines)
+            writer.EmitDefine(define);
 
-        writer.EmitInclude("compositor/vert_forward_ubo.glsl")
-              .EmitInclude("compositor/vert_forward_main.glsl");
-        return out;
-    }
+        for (const auto &[attrib, define] : m.attrib_defines)
+            if (key.HasVertexAttrib(attrib))
+                writer.EmitDefine(define);
 
-    std::string BuildForwardFragmentEntry(const hgl::graph::CompositorFeatureFlags &f)
-    {
-        std::string out = "#version 450\n\n";
-        hgl::graph::ShaderWriter writer(out);
+        if (m.emit_alpha_mode)
+        {
+            if (blend == hgl::graph::RenderAlphaMode::Masked)
+                writer.EmitDefine("ALPHA_MODE_MASKED");
+            else if (blend == hgl::graph::RenderAlphaMode::Dither)
+                writer.EmitDefine("ALPHA_MODE_DITHER");
+        }
 
-        if (f.enable_lighting)  writer.EmitDefine("ENABLE_LIGHTING");
-        if (f.needs_camera)     writer.EmitDefine("NEEDS_CAMERA");
-        if (f.needs_sky)        writer.EmitDefine("NEEDS_SKY");
-        if (f.alpha_masked)     writer.EmitDefine("ALPHA_MODE_MASKED");
-        if (f.alpha_dither)     writer.EmitDefine("ALPHA_MODE_DITHER");
-        if (f.has_world_pos)    writer.EmitDefine("HAS_WORLD_POS");
-        if (f.has_world_normal) writer.EmitDefine("HAS_WORLD_NORMAL");
-        if (f.has_uv0)          writer.EmitDefine("HAS_UV0");
-        if (f.has_vertex_color) writer.EmitDefine("HAS_VERTEX_COLOR");
-        if (f.has_texcoord)     writer.EmitDefine("HAS_TEXCOORD");
-        if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
-        if (f.has_luminance)    writer.EmitDefine("HAS_LUMINANCE");
-        if (f.has_clip_pos)     writer.EmitDefine("HAS_CLIP_POS");
+        for (const char *inc : m.pre_special_includes)
+            writer.EmitInclude(inc);
 
-        writer.EmitInclude("compositor/frag_forward_ubo.glsl");
-
-        if (f.needs_sky)
+        if (m.needs_sky)
             out += "#include SKYLIGHT_FUNCTION_FILE\n";
 
-        if (f.enable_lighting)
+        if (m.needs_lighting)
             out += "#include LIGHTING_FUNCTION_FILE\n";
 
-        writer.EmitInclude(f.surface_path)
-              .EmitInclude("compositor/frag_forward_main.glsl");
+        if (m.needs_surface)
+            writer.EmitInclude(surface_path);
+
+        for (const char *inc : m.post_special_includes)
+            writer.EmitInclude(inc);
+
         return out;
     }
 
-    std::string BuildBillboardDynamicVertexEntry(const hgl::graph::mtl::MaterialVariantKey &)
+    // VS manifest table — one entry per generated vertex-shader template.
+    static const StageManifest kVSManifests[] =
     {
-        std::string out = "#version 450\n\n";
-        hgl::graph::ShaderWriter(out).EmitInclude("compositor/main_forward_billboard_dynamic.vert.glsl");
-        return out;
-    }
-
-    std::string BuildBillboardFixedVertexEntry(const hgl::graph::mtl::MaterialVariantKey &)
-    {
-        std::string out = "#version 450\n\n";
-        hgl::graph::ShaderWriter(out).EmitInclude("compositor/main_forward_billboard_fixed.vert.glsl");
-        return out;
-    }
-
-    std::string BuildTerrainGridVertexEntry(const hgl::graph::mtl::MaterialVariantKey &)
-    {
-        std::string out = "#version 450\n\n";
-        hgl::graph::ShaderWriter(out).EmitInclude("compositor/main_terrain_grid.vert.glsl");
-        return out;
-    }
-
-    std::string BuildForwardUnlitVertexColorVS(const hgl::graph::mtl::MaterialVariantKey &)
-    {
-        return BuildForwardVertexEntry({.has_vertex_color = true});
-    }
-
-    std::string BuildForwardUnlitLuminanceVS(const hgl::graph::mtl::MaterialVariantKey &)
-    {
-        return BuildForwardVertexEntry({.has_luminance = true});
-    }
-
-    std::string BuildForwardUnlitLuminance2DVS(const hgl::graph::mtl::MaterialVariantKey &)
-    {
-        return BuildForwardVertexEntry({.vert_input_2d = true, .has_luminance = true});
-    }
-
-    std::string BuildForwardUnlitNormalVS(const hgl::graph::mtl::MaterialVariantKey &)
-    {
-        return BuildForwardVertexEntry({.has_world_pos = true, .has_world_normal = true});
-    }
-
-    std::string BuildForwardSkyVS(const hgl::graph::mtl::MaterialVariantKey &)
-    {
-        return BuildForwardVertexEntry({.has_direction = true});
-    }
-
-    std::string BuildForwardLitVS(const hgl::graph::mtl::MaterialVariantKey &key)
-    {
-        const bool uv0    = key.HasVertexAttrib(hgl::graph::VertexAttrib::TexCoord);
-        const bool normal = key.HasVertexAttrib(hgl::graph::VertexAttrib::Normal);
-        return BuildForwardVertexEntry({.has_uv0 = uv0, .has_world_pos = true, .has_world_normal = normal});
-    }
-
-    std::string BuildForwardUnlitVertexColorFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
-    {
-        return BuildForwardFragmentEntry({.has_vertex_color = true, .surface_path = surface_path});
-    }
-
-    std::string BuildForwardUnlitLuminanceFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
-    {
-        return BuildForwardFragmentEntry({.has_luminance = true, .surface_path = surface_path});
-    }
-
-    std::string BuildForwardUnlitNormalFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
-    {
-        return BuildForwardFragmentEntry({.has_world_pos = true, .has_world_normal = true, .needs_camera = true, .surface_path = surface_path});
-    }
-
-    std::string BuildForwardBillboardFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode blend, const std::string &surface_path)
-    {
-        const bool alpha_masked = (blend == hgl::graph::RenderAlphaMode::Masked);
-        const bool alpha_dither = (blend == hgl::graph::RenderAlphaMode::Dither);
-        return BuildForwardFragmentEntry({.alpha_masked = alpha_masked, .alpha_dither = alpha_dither, .has_texcoord = true, .surface_path = surface_path});
-    }
-
-    std::string BuildForwardSkyFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
-    {
-        return BuildForwardFragmentEntry({.has_direction = true, .surface_path = surface_path});
-    }
-
-    std::string BuildTerrainGridFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
-    {
-        return BuildForwardFragmentEntry({.has_world_normal = true, .has_clip_pos = true, .surface_path = surface_path});
-    }
-
-    std::string BuildForwardLitFS(const hgl::graph::mtl::MaterialVariantKey &key, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
-    {
-        const bool uv0    = key.HasVertexAttrib(hgl::graph::VertexAttrib::TexCoord);
-        const bool normal = key.HasVertexAttrib(hgl::graph::VertexAttrib::Normal);
-        return BuildForwardFragmentEntry({.has_uv0 = uv0, .has_world_pos = true, .has_world_normal = normal, .enable_lighting = true, .needs_camera = true, .needs_sky = true, .surface_path = surface_path});
-    }
-
-    static const GeneratedVSTemplateRoute kGeneratedVSTemplateRoutes[] = {
-        {"compositor/main_forward_unlit_vertexcolor.vert.glsl", &BuildForwardUnlitVertexColorVS},
-        {"compositor/main_forward_unlit_luminance.vert.glsl",   &BuildForwardUnlitLuminanceVS},
-        {"compositor/main_forward_unlit_luminance_2d.vert.glsl", &BuildForwardUnlitLuminance2DVS},
-        {"compositor/main_forward_unlit_normal.vert.glsl",      &BuildForwardUnlitNormalVS},
-        {"compositor/main_forward_sky.vert.glsl",               &BuildForwardSkyVS},
-        {"compositor/main_forward_billboard_dynamic.vert.glsl", &BuildBillboardDynamicVertexEntry},
-        {"compositor/main_forward_billboard_fixed.vert.glsl",   &BuildBillboardFixedVertexEntry},
-        {"compositor/main_terrain_grid.vert.glsl",              &BuildTerrainGridVertexEntry},
-        {"compositor/main_forward_lit.vert.glsl",               &BuildForwardLitVS},
+        {
+            .template_path        = "compositor/main_forward_unlit_vertexcolor.vert.glsl",
+            .always_defines       = {"HAS_VERTEX_COLOR"},
+            .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
+                                     "compositor/vert_forward_main.glsl"},
+        },
+        {
+            .template_path        = "compositor/main_forward_unlit_luminance.vert.glsl",
+            .always_defines       = {"HAS_LUMINANCE"},
+            .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
+                                     "compositor/vert_forward_main.glsl"},
+        },
+        {
+            .template_path        = "compositor/main_forward_unlit_luminance_2d.vert.glsl",
+            .always_defines       = {"VERT_INPUT_2D", "HAS_LUMINANCE"},
+            .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
+                                     "compositor/vert_forward_main.glsl"},
+        },
+        {
+            .template_path        = "compositor/main_forward_unlit_normal.vert.glsl",
+            .always_defines       = {"HAS_WORLD_POS", "HAS_WORLD_NORMAL"},
+            .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
+                                     "compositor/vert_forward_main.glsl"},
+        },
+        {
+            .template_path        = "compositor/main_forward_sky.vert.glsl",
+            .always_defines       = {"HAS_DIRECTION"},
+            .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
+                                     "compositor/vert_forward_main.glsl"},
+        },
+        {
+            // Billboard: #version 450 + self-include (no defines needed).
+            .template_path        = "compositor/main_forward_billboard_dynamic.vert.glsl",
+            .pre_special_includes = {"compositor/main_forward_billboard_dynamic.vert.glsl"},
+        },
+        {
+            .template_path        = "compositor/main_forward_billboard_fixed.vert.glsl",
+            .pre_special_includes = {"compositor/main_forward_billboard_fixed.vert.glsl"},
+        },
+        {
+            .template_path        = "compositor/main_terrain_grid.vert.glsl",
+            .pre_special_includes = {"compositor/main_terrain_grid.vert.glsl"},
+        },
+        {
+            // Forward-lit VS: HAS_UV0 and HAS_WORLD_NORMAL are mesh-conditional.
+            .template_path        = "compositor/main_forward_lit.vert.glsl",
+            .always_defines       = {"HAS_WORLD_POS"},
+            .attrib_defines       = {{hgl::graph::VertexAttrib::TexCoord, "HAS_UV0"},
+                                     {hgl::graph::VertexAttrib::Normal,   "HAS_WORLD_NORMAL"}},
+            .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
+                                     "compositor/vert_forward_main.glsl"},
+        },
     };
 
-    static const GeneratedFSTemplateRoute kGeneratedFSTemplateRoutes[] = {
-        {"compositor/main_forward_unlit_vertexcolor.frag.glsl", &BuildForwardUnlitVertexColorFS},
-        {"compositor/main_forward_unlit_luminance.frag.glsl",   &BuildForwardUnlitLuminanceFS},
-        {"compositor/main_forward_unlit_normal.frag.glsl",      &BuildForwardUnlitNormalFS},
-        {"compositor/main_forward_billboard.frag.glsl",         &BuildForwardBillboardFS},
-        {"compositor/main_forward_sky.frag.glsl",               &BuildForwardSkyFS},
-        {"compositor/main_terrain_grid.frag.glsl",              &BuildTerrainGridFS},
-        {"compositor/main_forward_lit.frag.glsl",               &BuildForwardLitFS},
+    // FS manifest table — one entry per generated fragment-shader template.
+    static const StageManifest kFSManifests[] =
+    {
+        {
+            .template_path         = "compositor/main_forward_unlit_vertexcolor.frag.glsl",
+            .always_defines        = {"HAS_VERTEX_COLOR"},
+            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
+            .needs_surface         = true,
+            .post_special_includes = {"compositor/frag_forward_main.glsl"},
+        },
+        {
+            .template_path         = "compositor/main_forward_unlit_luminance.frag.glsl",
+            .always_defines        = {"HAS_LUMINANCE"},
+            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
+            .needs_surface         = true,
+            .post_special_includes = {"compositor/frag_forward_main.glsl"},
+        },
+        {
+            .template_path         = "compositor/main_forward_unlit_normal.frag.glsl",
+            .always_defines        = {"HAS_WORLD_POS", "HAS_WORLD_NORMAL", "NEEDS_CAMERA"},
+            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
+            .needs_surface         = true,
+            .post_special_includes = {"compositor/frag_forward_main.glsl"},
+        },
+        {
+            // Billboard FS: alpha mode defines driven by blend_mode at emit time.
+            .template_path         = "compositor/main_forward_billboard.frag.glsl",
+            .always_defines        = {"HAS_TEXCOORD"},
+            .emit_alpha_mode       = true,
+            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
+            .needs_surface         = true,
+            .post_special_includes = {"compositor/frag_forward_main.glsl"},
+        },
+        {
+            .template_path         = "compositor/main_forward_sky.frag.glsl",
+            .always_defines        = {"HAS_DIRECTION"},
+            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
+            .needs_surface         = true,
+            .post_special_includes = {"compositor/frag_forward_main.glsl"},
+        },
+        {
+            .template_path         = "compositor/main_terrain_grid.frag.glsl",
+            .always_defines        = {"HAS_WORLD_NORMAL", "HAS_CLIP_POS"},
+            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
+            .needs_surface         = true,
+            .post_special_includes = {"compositor/frag_forward_main.glsl"},
+        },
+        {
+            // Forward-lit FS: HAS_WORLD_NORMAL and HAS_UV0 are mesh-conditional.
+            .template_path         = "compositor/main_forward_lit.frag.glsl",
+            .always_defines        = {"ENABLE_LIGHTING", "NEEDS_CAMERA", "NEEDS_SKY",
+                                      "HAS_WORLD_POS"},
+            .attrib_defines        = {{hgl::graph::VertexAttrib::Normal,   "HAS_WORLD_NORMAL"},
+                                      {hgl::graph::VertexAttrib::TexCoord, "HAS_UV0"}},
+            .pre_special_includes  = {"compositor/frag_forward_ubo.glsl"},
+            .needs_sky             = true,
+            .needs_lighting        = true,
+            .needs_surface         = true,
+            .post_special_includes = {"compositor/frag_forward_main.glsl"},
+        },
     };
 
     static const SurfaceFunctionRoute kSurfaceFunctionRoutes[] = {
@@ -366,9 +375,9 @@ namespace hgl::graph
 
     bool CompositorAssembler::TryBuildGeneratedVSTemplatePath(const std::string &template_path, const mtl::MaterialVariantKey &key, std::string &out_source) const
     {
-        if(const GeneratedVSTemplateRoute *route = FindRouteByTemplatePath(kGeneratedVSTemplateRoutes, template_path))
+        if (const StageManifest *m = FindRouteByTemplatePath(kVSManifests, template_path))
         {
-            out_source = route->builder(key);
+            out_source = EmitStageSource(*m, key, RenderAlphaMode::Opaque, std::string());
             return true;
         }
 
@@ -377,9 +386,9 @@ namespace hgl::graph
 
     bool CompositorAssembler::TryBuildGeneratedFSTemplatePath(const std::string &template_path, const mtl::MaterialVariantKey &key, RenderAlphaMode blend, const std::string &surface_path, std::string &out_source) const
     {
-        if(const GeneratedFSTemplateRoute *route = FindRouteByTemplatePath(kGeneratedFSTemplateRoutes, template_path))
+        if (const StageManifest *m = FindRouteByTemplatePath(kFSManifests, template_path))
         {
-            out_source = route->builder(key, blend, surface_path);
+            out_source = EmitStageSource(*m, key, blend, surface_path);
             return true;
         }
 

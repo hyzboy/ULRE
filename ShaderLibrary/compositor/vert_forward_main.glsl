@@ -86,19 +86,13 @@ void main()
     fragWorldNormal = normalize(mat3(transform_mat) * rawNormal);
 #endif
 
-        // Tangent (xyz transformed to world, w keeps handedness sign)
+    // Tangent (xyz transformed to world, w keeps handedness sign)
 #ifdef HAS_WORLD_TANGENT
-    #if GEOMETRY_FETCH_SSBO
-        vec3 rawTangent = vec3(1.0, 0.0, 0.0);
-        float tangentW = 1.0;
-    #elif defined(TANGENT_LOCATION)
+    #if defined(TANGENT_LOCATION) && !GEOMETRY_FETCH_SSBO
         vec3 rawTangent = inTangent.xyz;
         float tangentW = inTangent.w;
-    #else
-        vec3 rawTangent = vec3(1.0, 0.0, 0.0);
-        float tangentW = 1.0;
     #endif
-        fragWorldTangent = vec4(normalize(mat3(transform_mat) * rawTangent), tangentW);
+    fragWorldTangent = vec4(normalize(mat3(transform_mat) * rawTangent), tangentW);
 #endif
 
     // UV0

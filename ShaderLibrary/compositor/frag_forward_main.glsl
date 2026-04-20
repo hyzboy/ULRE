@@ -87,7 +87,7 @@ void main()
 #ifdef HAS_WORLD_TANGENT
     si.worldTangent = vec4(normalize(fragWorldTangent.xyz), fragWorldTangent.w);
 #else
-    si.worldTangent = vec4(1.0, 0.0, 0.0, 1.0);
+    si.worldTangent = vec4(0.0);
 #endif
 
     // uv0

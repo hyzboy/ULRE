@@ -1,5 +1,6 @@
 
 #include "common/surface_interface.glsl"
+#include "common/surface_normal.glsl"
 
 #include "common/ssbo_material_instance.glsl"
 
@@ -23,7 +24,6 @@ vec3 F_Schlick(float VdotH, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
 }
 
-
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
     MaterialBindingInstance mi = GetMaterialBindingInstance();
@@ -43,7 +43,8 @@ SurfaceOutput EvalSurface(SurfaceInput si)
 
     vec3 nm = GetSamplerNormal(si.uv0).xyz * 2.0 - 1.0;
     nm.y = -nm.y;
-    N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
+    nm.xy *= mi.normal_scale;
+    N = ULRE_ApplyNormalMap(si.worldPos, si.uv0, si.worldNormal, si.worldTangent, normalize(nm));
 
     vec2 mr    = vec2(1.0,1.0);//GetSamplerRoughness(si.uv0).rg;
     metallic   = clamp(metallic  * mr.r, 0.0, 1.0);

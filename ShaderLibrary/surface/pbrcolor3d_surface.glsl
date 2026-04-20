@@ -40,7 +40,6 @@ vec3 PBR_ApplyNormalMap(vec3 worldPos, vec2 uv, vec3 n_geom, vec4 tangent_ws, ve
     return normalize(tbn * normal_ts);
 }
 
-
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
     MaterialBindingInstance mi = GetMaterialBindingInstance();
