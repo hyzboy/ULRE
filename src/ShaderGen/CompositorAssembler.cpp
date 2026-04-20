@@ -109,6 +109,67 @@ namespace
         },
     };
 
+    // -----------------------------------------------------------------------
+    // VkFormat → encoding index map (Step 4)
+    // Each row corresponds to a kAttribSemanticRegistry entry (same order).
+    // Each column is an encoding index (matching Encoding[] in that entry).
+    // VkFormat values that map to an encoding index are listed explicitly;
+    // anything unrecognised falls back to index 0 (highest quality / raw float).
+    // -----------------------------------------------------------------------
+
+    struct AttribFormatEntry
+    {
+        uint32_t vk_format;   ///< VkFormat cast to uint32_t (avoids Vulkan header in .h)
+        uint32_t encoding;    ///< index into kAttribSemanticRegistry[i].encodings
+    };
+
+    // Normal attrib VkFormat → encoding index
+    static constexpr AttribFormatEntry kNormalFormatMap[] =
+    {
+        { 106, 0 },  // VK_FORMAT_R32G32B32_SFLOAT        (= 106) → 0 (raw vec3)
+        {  65, 1 },  // VK_FORMAT_A2B10G10R10_SNORM_PACK32 (=  65) → 1 (normalize xyz)
+        { 122, 2 },  // VK_FORMAT_B10G11R11_UFLOAT_PACK32  (= 122) → 2 (unorm remap)
+        {  83, 3 },  // VK_FORMAT_R16G16_SFLOAT             (=  83) → 3 (oct sfloat)
+        {  16, 4 },  // VK_FORMAT_R8G8_UNORM                (=  16) → 4 (oct unorm)
+    };
+
+    // Tangent attrib VkFormat → encoding index
+    static constexpr AttribFormatEntry kTangentFormatMap[] =
+    {
+        { 109, 0 },  // VK_FORMAT_R32G32B32A32_SFLOAT      (= 109) → 0 (raw vec4)
+        {  65, 1 },  // VK_FORMAT_A2B10G10R10_SNORM_PACK32 (=  65) → 1 (normalize xyz + sign w)
+        {  90, 2 },  // VK_FORMAT_R16G16B16_SFLOAT          (=  90) → 2 (vec3, no handedness)
+    };
+
+    // Color attrib VkFormat → encoding index
+    static constexpr AttribFormatEntry kColorFormatMap[] =
+    {
+        { 109, 0 },  // VK_FORMAT_R32G32B32A32_SFLOAT → 0 (raw vec4)
+        {  37, 0 },  // VK_FORMAT_R8G8B8A8_UNORM      → 0 (raw vec4, driver converts)
+        { 122, 1 },  // VK_FORMAT_B10G11R11_UFLOAT_PACK32 → 1 (vec3 → vec4)
+    };
+
+    /// Per-attrib format map descriptor (parallel to kAttribSemanticRegistry).
+    struct AttribFormatMapDesc
+    {
+        hgl::graph::VertexAttrib   attrib;
+        const AttribFormatEntry   *entries;
+        uint32_t                   count;
+    };
+
+    static constexpr AttribFormatMapDesc kAttribFormatMaps[] =
+    {
+        { hgl::graph::VertexAttrib::Normal,
+          kNormalFormatMap,
+          static_cast<uint32_t>(std::size(kNormalFormatMap)) },
+        { hgl::graph::VertexAttrib::Tangent,
+          kTangentFormatMap,
+          static_cast<uint32_t>(std::size(kTangentFormatMap)) },
+        { hgl::graph::VertexAttrib::Color,
+          kColorFormatMap,
+          static_cast<uint32_t>(std::size(kColorFormatMap)) },
+    };
+
     /// Replaces every '$' in expr_template with var_name.
     static std::string ResolveDecode(const char *expr_template, const char *var_name)
     {
@@ -490,6 +551,24 @@ namespace
 
 namespace hgl::graph
 {
+    // -----------------------------------------------------------------------
+    // VkFormatToAttribEncoding — Step 4 public utility
+    // -----------------------------------------------------------------------
+
+    uint32_t VkFormatToAttribEncoding(VertexAttrib attrib, uint32_t vk_format) noexcept
+    {
+        for (const auto &desc : kAttribFormatMaps)
+        {
+            if (desc.attrib != attrib)
+                continue;
+            for (uint32_t i = 0; i < desc.count; ++i)
+                if (desc.entries[i].vk_format == vk_format)
+                    return desc.entries[i].encoding;
+            return 0u; // attrib found but format unknown → default encoding
+        }
+        return 0u; // attrib not in registry
+    }
+
     CompositorAssembler::CompositorAssembler()
         : CompositorAssembler(GetShaderLibraryPath())
     {}

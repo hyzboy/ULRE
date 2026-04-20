@@ -5,6 +5,8 @@
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
+#include <hgl/common/VertexAttribDef.h>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -17,6 +19,18 @@ namespace hgl::graph::mtl
 
 namespace hgl::graph
 {
+    /**
+     * VkFormatToAttribEncoding — Step 4 utility
+     *
+     * Given a vertex attribute semantic and a VkFormat (passed as uint32_t to
+     * avoid a Vulkan-header dependency in this header), returns the encoding
+     * index into kAttribSemanticRegistry for that (attrib, format) pair.
+     *
+     * The returned index is suitable for MaterialVariantKey::SetAttribEncoding().
+     * Returns 0 (raw float / best quality) for any unrecognised format.
+     */
+    uint32_t VkFormatToAttribEncoding(VertexAttrib attrib, uint32_t vk_format) noexcept;
+
     /**
      * CompositorAssembler — 组合 Compositor Template + Surface Function 生成完整 GLSL
      *
