@@ -48,14 +48,17 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("BoundingBox",8,24,IndexType::U16))
             return(nullptr);
 
-        if(!pc->WriteVAB(VAN::Position,VF_V3F,points))
+        GeometryBuilder builder(pc);
+
+        if(!builder.IsValid())
             return(nullptr);
+
+        for(int i=0;i<8;i++)
+            builder.WriteVertex(points[i*3], points[i*3+1], points[i*3+2]);
 
         if(cci->color_type!=BoundingBoxCreateInfo::ColorType::NoColor)
         {
             RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
-
-            GeometryBuilder builder(pc);
 
             if(builder.HasColors())
             {

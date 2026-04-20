@@ -5,6 +5,7 @@
 #include <hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryBuilder.h>
 #include <hgl/graph/geo/VKGeometry.h>
 #include <hgl/type/UnorderedMap.h>
 #include <algorithm>
@@ -19,7 +20,7 @@ namespace hgl::graph::inline_geometry
     {
         if(!pc||!hsci) return nullptr;
 
-        // çæåºç¡äºåé¢ä½
+        // Generate base icosahedron
         struct Tri { uint a,b,c; };
         std::vector<math::Vector3f> verts;
         std::vector<Tri> tris;
@@ -41,7 +42,7 @@ namespace hgl::graph::inline_geometry
         push(3,9,4); push(3,4,2); push(3,2,6); push(3,6,8); push(3,8,9);
         push(4,9,5); push(2,4,11); push(6,2,10); push(8,6,7); push(9,8,1);
 
-        // ç´¢å¼ç¼å­ä¸­é´ç?
+        // Cache midpoint vertex indices
         struct EdgeKey { uint a,b; bool operator==(const EdgeKey& o)const{return a==o.a&&b==o.b;} };
         struct EdgeHash { size_t operator()(const EdgeKey& k)const { return (size_t(k.a)<<32) ^ k.b; } };
         hgl::UnorderedMap<EdgeKey,uint,EdgeHash> midpoint;
@@ -54,7 +55,7 @@ namespace hgl::graph::inline_geometry
             uint id = (uint)verts.size(); verts.push_back(m); midpoint.Add(key,id); return id;
             };
 
-        // ç»å
+        // Subdivide
         for(uint s=0;s<hsci->subdivisions;s++)
         {
             std::vector<Tri> ntris; ntris.reserve(tris.size()*4);
@@ -63,7 +64,7 @@ namespace hgl::graph::inline_geometry
                 uint ab = get_mid(t.a,t.b);
                 uint bc = get_mid(t.b,t.c);
                 uint ca = get_mid(t.c,t.a);
-                // ä¿æé¡ºæ¶éæ­£é¢ï¼a,b,c ä¸ºå¤è§æ¶é¡ºæ¶éï¼ï¼ååä¸è§å½¢
+                // Maintain clockwise front face (a,b,c clockwise from outside); split into 4 triangles
                 ntris.push_back({t.a, ab, ca});
                 ntris.push_back({t.b, bc, ab});
                 ntris.push_back({t.c, ca, bc});
@@ -72,7 +73,7 @@ namespace hgl::graph::inline_geometry
             tris.swap(ntris);
         }
 
-        // å½ä¸åå°åå¾
+        // Scale vertices to sphere radius
         const float R = hsci->radius;
         for(auto &v:verts) v *= R;
 
@@ -82,47 +83,44 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("HexSphere", vertex_count, index_count))
             return nullptr;
 
-        auto pos = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
-        auto nrm = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
-        auto tan = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Tangent);
-        auto uv  = pc->GetBufferAccessor<BufferAccessor2f>(VAN::TexCoord);
+        GeometryBuilder builder(pc);
 
-        if(!pos.IsValid())
+        if(!builder.IsValid())
             return nullptr;
 
-        // åé¡¶ç¹å±æ§ï¼æ³çº¿=åä½æ¹åï¼åçº¿åç»åæ¹åï¼å¨æç¹éåæ¶ç»åºå®å¼ï¼
+        // Write vertex attributes: normal = unit direction, tangent = perpendicular, fixed per vertex
         for(const auto &v:verts)
         {
-            pos->Write(v);
+            builder.WriteVertex(v.x, v.y, v.z);
 
-            if(nrm.IsValid())
+            if(builder.HasNormals())
             {
                 Vector3f n = glm::normalize(v);
-                nrm->Write(n);
+                builder.WriteNormal(n.x, n.y, n.z);
             }
 
-            if(uv.IsValid())
+            if(builder.HasTexCoords())
             {
                 Vector3f n = glm::normalize(v);
-                // çé¢ UVï¼ç»åº¦[-pi,pi] -> u in [0,1]ï¼çº¬åº¦[-pi/2,pi/2] -> v in [0,1]
+                // Spherical UV: longitude[-pi,pi]->u in [0,1], latitude[-pi/2,pi/2]->v in [0,1]
                 float u = (atan2f(n.y, n.x) / (2.0f*std::numbers::pi_v<float>)) + 0.5f;
                 float vtex = (asinf(std::clamp(n.z, -1.0f, 1.0f))/std::numbers::pi_v<float>) + 0.5f;
-                uv->Write(Vector2f(u * hsci->uv_scale.x, vtex * hsci->uv_scale.y));
+                builder.WriteTexCoord(u * hsci->uv_scale.x, vtex * hsci->uv_scale.y);
             }
 
-            if(tan.IsValid())
+            if(builder.HasTangents())
             {
                 Vector3f n = glm::normalize(v);
-                // ç»ååçº¿ï¼æ²¿ +thetaï¼ç»Zï¼æ¹åè¿ä¼¼ï¼(-y, x, 0) å¹¶å»æä¸ n çæå½?
+                // Compute tangent along +theta (around Z): approximate as (-y,x,0) orthogonalized against n
                 Vector3f tdir(-n.y, n.x, 0.0f);
-                if(glm::length(tdir)<1e-6f) tdir = Vector3f(1,0,0); // æç¹å¤é?
+                if(glm::length(tdir)<1e-6f) tdir = Vector3f(1,0,0); // pole singularity fallback
                 tdir = (tdir - n * Dot(n, tdir));
                 tdir = glm::normalize(tdir);
-                tan->Write(tdir);
+                builder.WriteTangent(tdir.x, tdir.y, tdir.z);
             }
         }
 
-        // ç´¢å¼ï¼é¡ºæ¶éä¸ºæ­£é¢ï¼ç´æ¥æ?tris ä¸­ç (a,b,c) é¡ºåºå?
+        // Write indices: clockwise = front face, use (a,b,c) order directly from tris
         {
             const IndexType it = pc->GetIndexType();
             if(it==IndexType::U16)
