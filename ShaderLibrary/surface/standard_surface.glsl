@@ -1,6 +1,6 @@
 
 #include "common/surface_interface.glsl"
-#include "common/surface_normal.glsl"
+#include "common/get_norm_tangent.glsl"
 
 #include "common/ssbo_material_instance.glsl"
 
@@ -28,7 +28,7 @@ SurfaceOutput EvalSurface(SurfaceInput si)
 {
     MaterialBindingInstance mi = GetMaterialBindingInstance();
 
-    vec3 N = normalize(si.worldNormal);
+    vec3 N = ULRE_GetGeometryNormal(si);
     vec3 V = si.viewDir;
     vec3 L = normalize(ULRE_GetSkyLightDir());
 
@@ -44,7 +44,7 @@ SurfaceOutput EvalSurface(SurfaceInput si)
     vec3 nm = GetSamplerNormal(si.uv0).xyz * 2.0 - 1.0;
     nm.y = -nm.y;
     nm.xy *= mi.normal_scale;
-    N = ULRE_ApplyNormalMap(si.worldPos, si.uv0, si.worldNormal, si.worldTangent, normalize(nm));
+    N = ULRE_GetNormalFromTS(si, normalize(nm));
 
     vec2 mr    = vec2(1.0,1.0);//GetSamplerRoughness(si.uv0).rg;
     metallic   = clamp(metallic  * mr.r, 0.0, 1.0);

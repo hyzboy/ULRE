@@ -177,7 +177,7 @@ static bool TestFallbackRouting(CompositorAssembler &assembler)
 
     mtl::MaterialVariantDesc desc{};
 
-    // Case A: Standard with Position+Normal but no Tangent -> no_tangent surface.
+    // Case A: Standard with Position+Normal but no Tangent -> keep standard surface.
     {
         mtl::MaterialVariantKey key{};
         key.surface_type = SurfaceType::Standard;
@@ -193,14 +193,15 @@ static bool TestFallbackRouting(CompositorAssembler &assembler)
             return false;
         }
 
-        const bool hit_no_tangent = result.fragment_glsl.find("surface/standard_no_tangent_surface.glsl") != std::string::npos;
-        if (!hit_no_tangent)
+        const bool hit_standard_surface = result.fragment_glsl.find("surface/standard_surface.glsl") != std::string::npos;
+        const bool hit_diagnostic = result.fragment_glsl.find("diagnostic/missing.surface.glsl") != std::string::npos;
+        if (!hit_standard_surface || hit_diagnostic)
         {
-            std::fprintf(stderr, "FAIL: Fallback Case A expected no-tangent surface include.\n");
+            std::fprintf(stderr, "FAIL: Fallback Case A expected unified standard surface include.\n");
             return false;
         }
 
-        std::printf("OK: Fallback Case A hit no-tangent surface.\n");
+        std::printf("OK: Fallback Case A kept unified standard surface.\n");
     }
 
     // Case B: Standard with Position only (missing Normal) -> diagnostic fallback.

@@ -4,10 +4,9 @@
 /// @brief Data-driven manifest types for the ShaderGen refactor.
 ///
 /// These types form the declarative data model that replaces hand-written
-/// builder functions.  Step 2 of the refactor populates StageManifest tables
-/// inside CompositorAssembler.cpp.  Steps 3-5 will use AttributeSemantic,
-/// MaterialManifest, and FallbackRule to drive attribute-format selection and
-/// degradation chains.
+/// builder functions. Step 2 of the refactor populates StageManifest tables
+/// inside CompositorAssembler.cpp. Step 3 uses AttributeSemantic to drive
+/// attribute-format decoding helpers.
 
 #include <hgl/common/VertexAttribDef.h>
 #include <string>
@@ -38,49 +37,6 @@ namespace hgl::graph
         VertexAttrib                    attrib;        ///< Which VertexAttrib this semantic maps to
         const char*                     logical_type;  ///< GLSL type after decode (e.g. "vec3")
         std::vector<AttributeEncoding>  encodings;     ///< Ordered by preference (best first)
-    };
-
-    // -----------------------------------------------------------------------
-    // Material degradation chain (Step 4)
-    // -----------------------------------------------------------------------
-
-    /// Log severity when a fallback rule is matched.
-    enum class FallbackLogLevel : uint8_t
-    {
-        Info,
-        Warning,
-        Error,
-    };
-
-    /// One entry in a material's attribute-supply degradation chain.
-    /// When ALL listed attribs are absent from the mesh, the material switches
-    /// to the specified surface variant.
-    struct FallbackRule
-    {
-        std::vector<VertexAttrib> when_missing;   ///< Trigger: ALL of these attribs absent
-        std::string               use_surface;    ///< Surface variant to switch to
-        FallbackLogLevel          log_level = FallbackLogLevel::Warning;
-    };
-
-    /// High-level description of a material variant: which surface function it
-    /// uses by default, and the ordered fallback chain applied when required
-    /// attributes are absent from the mesh.
-    struct MaterialManifest
-    {
-        std::string               name;
-        std::string               primary_surface;     ///< Default surface path (rel. ShaderLibrary/)
-        std::vector<FallbackRule> fallback_chain;      ///< Tried in order; first match wins
-        std::string               ultimate_fallback;   ///< Diagnostic material used when no rule matches
-    };
-
-    /// Runtime fallback plan bound to a SurfaceType.
-    ///
-    /// Step 4.1 only defines the data model and static plans. Resolver wiring
-    /// is introduced in Step 4.2.
-    struct MaterialFallbackPlan
-    {
-        SurfaceType               surface;
-        MaterialManifest          manifest;
     };
 
 } // namespace hgl::graph

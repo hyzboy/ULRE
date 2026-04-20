@@ -1,11 +1,11 @@
 ﻿#include <hgl/shadergen/CompositorAssembler.h>
-#include <hgl/shadergen/PassManifest.h>
 #include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
+#include <nlohmann/json.hpp>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -48,66 +48,162 @@ namespace
     };
 
     // -----------------------------------------------------------------------
-    // Material fallback chain plan (Step 4.1 scaffold; not wired yet)
+    // Surface requirement routing (no fallback chain / no ultimate fallback)
     // -----------------------------------------------------------------------
 
-    [[maybe_unused]] static const hgl::graph::MaterialFallbackPlan kMaterialFallbackPlans[] =
+    struct SurfaceRequirementPlan
+    {
+        hgl::graph::SurfaceType               surface;
+        std::vector<hgl::graph::VertexAttrib> required_attribs;
+        std::string                           diagnostic_surface;
+    };
+
+    static const SurfaceRequirementPlan kSurfaceRequirementPlans[] =
     {
         {
             hgl::graph::SurfaceType::Standard,
             {
-                "Standard.PBR",
-                "surface/standard_surface.glsl",
-                {
-                    {
-                        { hgl::graph::VertexAttrib::Normal },
-                        "diagnostic/missing.surface.glsl",
-                        hgl::graph::FallbackLogLevel::Error,
-                    },
-                    {
-                        { hgl::graph::VertexAttrib::Tangent },
-                        "surface/standard_no_tangent_surface.glsl",
-                        hgl::graph::FallbackLogLevel::Info,
-                    },
-                },
-                "diagnostic/missing.surface.glsl",
+                hgl::graph::VertexAttrib::Position,
+                hgl::graph::VertexAttrib::Normal,
             },
+            "diagnostic/missing.surface.glsl",
         },
     };
 
-    static const hgl::graph::MaterialFallbackPlan *FindMaterialFallbackPlan(const hgl::graph::SurfaceType surface)
+    static bool TryParseSurfaceType(const std::string &name, hgl::graph::SurfaceType &out)
     {
-        for (const auto &plan : kMaterialFallbackPlans)
-            if (plan.surface == surface)
-                return &plan;
-        return nullptr;
+        for (uint8_t i = 0; i < static_cast<uint8_t>(hgl::graph::SurfaceType::RANGE_SIZE); ++i)
+        {
+            const auto st = static_cast<hgl::graph::SurfaceType>(i);
+            const char *st_name = hgl::graph::GetSurfaceTypeName(st);
+            if (st_name && name == st_name)
+            {
+                out = st;
+                return true;
+            }
+        }
+        return false;
     }
 
-    static bool AreAllAttribsMissing(const hgl::graph::mtl::MaterialVariantKey &key,
-                                     const std::vector<hgl::graph::VertexAttrib> &attribs)
+    static bool TryParseVertexAttrib(const std::string &name, hgl::graph::VertexAttrib &out)
     {
-        if (attribs.empty())
+        const hgl::graph::VertexAttrib attrib = hgl::graph::GetVertexAttribByName(name.c_str());
+        if (attrib == hgl::graph::VertexAttrib::RANGE_SIZE)
             return false;
 
-        for (const hgl::graph::VertexAttrib attrib : attribs)
-            if (key.HasVertexAttrib(attrib))
-                return false;
-
+        out = attrib;
         return true;
     }
 
-    static std::vector<hgl::graph::VertexAttrib> GetRequiredAttribsForSurface(const hgl::graph::SurfaceType surface)
+    static bool LoadSurfaceRequirementPlansFromJson(const std::string &json_file,
+                                                    std::vector<SurfaceRequirementPlan> &out_plans,
+                                                    std::string &error)
     {
-        switch (surface)
+        std::ifstream ifs(json_file, std::ios::in);
+        if (!ifs.is_open())
         {
-            case hgl::graph::SurfaceType::Standard:
-                return {
-                    hgl::graph::VertexAttrib::Position,
-                    hgl::graph::VertexAttrib::Normal,
-                };
-            default:
-                return {};
+            error = "cannot open json: " + json_file;
+            return false;
         }
+
+        nlohmann::json root;
+        try
+        {
+            ifs >> root;
+        }
+        catch (const std::exception &e)
+        {
+            error = std::string("json parse failed: ") + e.what();
+            return false;
+        }
+
+        if (!root.contains("surfaces") || !root["surfaces"].is_array())
+        {
+            error = "missing or invalid 'surfaces' array";
+            return false;
+        }
+
+        std::vector<SurfaceRequirementPlan> parsed;
+        for (const auto &m : root["surfaces"])
+        {
+            if (!m.is_object())
+                continue;
+
+            if (!m.contains("surface") || !m["surface"].is_string())
+                continue;
+
+            hgl::graph::SurfaceType st = hgl::graph::SurfaceType::Unlit;
+            if (!TryParseSurfaceType(m["surface"].get<std::string>(), st))
+                continue;
+
+            SurfaceRequirementPlan plan{};
+            plan.surface = st;
+            plan.diagnostic_surface = m.value("diagnostic_surface", std::string("diagnostic/missing.surface.glsl"));
+
+            if (m.contains("required_attribs") && m["required_attribs"].is_array())
+            {
+                for (const auto &a : m["required_attribs"])
+                {
+                    if (!a.is_string())
+                        continue;
+
+                    hgl::graph::VertexAttrib attrib = hgl::graph::VertexAttrib::RANGE_SIZE;
+                    if (TryParseVertexAttrib(a.get<std::string>(), attrib))
+                        plan.required_attribs.push_back(attrib);
+                }
+            }
+
+            parsed.push_back(std::move(plan));
+        }
+
+        if (parsed.empty())
+        {
+            error = "surfaces parsed as empty";
+            return false;
+        }
+
+        out_plans = std::move(parsed);
+        return true;
+    }
+
+    static const std::vector<SurfaceRequirementPlan> &GetSurfaceRequirementPlans(const std::string &shader_lib_path)
+    {
+        static std::string cached_shader_lib_path;
+        static std::vector<SurfaceRequirementPlan> cached_plans;
+
+        if (cached_shader_lib_path == shader_lib_path && !cached_plans.empty())
+            return cached_plans;
+
+        const std::string json_file = shader_lib_path + "/compositor/material_fallbacks.json";
+        std::vector<SurfaceRequirementPlan> loaded;
+        std::string error;
+
+        if (LoadSurfaceRequirementPlansFromJson(json_file, loaded, error))
+        {
+            std::fprintf(stdout,
+                         "[CompositorAssembler][INFO] loaded surface requirement plans from %s\n",
+                         json_file.c_str());
+            cached_plans = std::move(loaded);
+            cached_shader_lib_path = shader_lib_path;
+            return cached_plans;
+        }
+
+        std::fprintf(stderr,
+                     "[CompositorAssembler][WARN] requirement json unavailable (%s), using built-in plans\n",
+                     error.c_str());
+
+        cached_plans.assign(std::begin(kSurfaceRequirementPlans), std::end(kSurfaceRequirementPlans));
+        cached_shader_lib_path = shader_lib_path;
+        return cached_plans;
+    }
+
+    static const SurfaceRequirementPlan *FindSurfaceRequirementPlan(const hgl::graph::SurfaceType surface,
+                                                                    const std::vector<SurfaceRequirementPlan> &plans)
+    {
+        for (const auto &plan : plans)
+            if (plan.surface == surface)
+                return &plan;
+        return nullptr;
     }
 
     static bool IsAnyRequiredAttribMissing(const hgl::graph::mtl::MaterialVariantKey &key,
@@ -120,62 +216,26 @@ namespace
         return false;
     }
 
-    static void LogFallbackMatch(const hgl::graph::MaterialManifest &manifest,
-                                 const hgl::graph::FallbackRule &rule)
-    {
-        const char *level = "INFO";
-        FILE *stream = stdout;
-
-        if (rule.log_level == hgl::graph::FallbackLogLevel::Warning)
-        {
-            level = "WARN";
-            stream = stderr;
-        }
-        else if (rule.log_level == hgl::graph::FallbackLogLevel::Error)
-        {
-            level = "ERROR";
-            stream = stderr;
-        }
-
-        std::fprintf(stream,
-                     "[CompositorAssembler][%s] material=%s fallback_surface=%s\n",
-                     level,
-                     manifest.name.c_str(),
-                     rule.use_surface.c_str());
-    }
-
-    static std::string ResolveSurfacePathByFallbackPlan(const hgl::graph::SurfaceType surface,
+    static std::string ResolveSurfacePathByRequirements(const hgl::graph::SurfaceType surface,
+                                                        const std::string &shader_lib_path,
                                                         const hgl::graph::mtl::MaterialVariantKey &key,
                                                         const std::string &default_surface_path)
     {
-        const hgl::graph::MaterialFallbackPlan *plan = FindMaterialFallbackPlan(surface);
+        const auto &plans = GetSurfaceRequirementPlans(shader_lib_path);
+        const SurfaceRequirementPlan *plan = FindSurfaceRequirementPlan(surface, plans);
         if (!plan)
             return default_surface_path;
 
-        const hgl::graph::MaterialManifest &manifest = plan->manifest;
-
-        for (const auto &rule : manifest.fallback_chain)
-        {
-            if (!AreAllAttribsMissing(key, rule.when_missing))
-                continue;
-
-            LogFallbackMatch(manifest, rule);
-            return rule.use_surface.empty() ? default_surface_path : rule.use_surface;
-        }
-
-        const std::vector<hgl::graph::VertexAttrib> required_attribs = GetRequiredAttribsForSurface(surface);
-        if (IsAnyRequiredAttribMissing(key, required_attribs))
+        if (IsAnyRequiredAttribMissing(key, plan->required_attribs))
         {
             std::fprintf(stderr,
-                         "[CompositorAssembler][ERROR] material=%s required_attrib_missing -> fallback_surface=%s\n",
-                         manifest.name.c_str(),
-                         manifest.ultimate_fallback.c_str());
-
-            if (!manifest.ultimate_fallback.empty())
-                return manifest.ultimate_fallback;
+                         "[CompositorAssembler][ERROR] surface=%s required_attrib_missing -> diagnostic_surface=%s\n",
+                         hgl::graph::GetSurfaceTypeName(surface),
+                         plan->diagnostic_surface.c_str());
+            return plan->diagnostic_surface;
         }
 
-        return manifest.primary_surface.empty() ? default_surface_path : manifest.primary_surface;
+        return default_surface_path;
     }
 
     // -----------------------------------------------------------------------
@@ -1136,7 +1196,8 @@ namespace hgl::graph
             ? GetCompositorFSPath(key.surface_type, key.blend_mode, key.pass_hint)
             : shader_lib_path_ + "/" + desc.fs_template_path;
         std::string surface_rel = desc.surface_function_path.empty()
-            ? ResolveSurfacePathByFallbackPlan(key.surface_type,
+            ? ResolveSurfacePathByRequirements(key.surface_type,
+                                               shader_lib_path_,
                                                key,
                                                GetSurfaceFunctionPath(key.surface_type))
             : desc.surface_function_path;
