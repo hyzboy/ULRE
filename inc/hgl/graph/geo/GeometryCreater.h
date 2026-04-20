@@ -76,19 +76,6 @@ public: //顶点缓冲区
 
             bool                    WriteVAB        (const VertexAttrib attrib,const VkFormat format,const void *data);                    ///<直接写入顶点属性数据
 
-            /**
-             * 创建带偏移的 BufferAccessor（自动使用VDM子分配的正确范围）
-             * @tparam BufferAccessorType BufferAccessor类型（如 BufferAccessor3f）
-             * @param attrib 顶点属性
-             * @return 已绑定到正确偏移/数量的 BufferAccessor
-             */
-            template<typename BufferAccessorType>
-            BufferAccessorType GetBufferAccessor(const VertexAttrib attrib)
-            {
-                VAB *vab = GetVAB(attrib);
-                return BufferAccessorType(vab, GetVertexOffset(), GetVertexCount());
-            }
-
 public: //索引缓冲区
 
     const   bool            hasIndex()const{return vdm?has_index:index_number>0;}

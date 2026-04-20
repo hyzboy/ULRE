@@ -57,9 +57,6 @@ private:
             DomeCreateInfo dci;
             dci.number_slices = 64;
             dci.inside_out = true;
-            dci.normal = false;
-            dci.tangent = false;
-            dci.tex_coord = false;
 
             prim_sky_dome = CreateDome(pc.get(), &dci);
             if (!prim_sky_dome)

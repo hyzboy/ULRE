@@ -338,8 +338,6 @@ private:
         gvf.Set(VAN::Tangent,  VF_V3F);
         auto pc = std::make_unique<GeometryCreater>(device, gvf);
         inline_geometry::CubeCreateInfo cci{};
-        cci.tex_coord = true;
-        cci.normal = true;
 
         Geometry *cube_geometry = inline_geometry::CreateCube(pc.get(), &cci);
         if (!cube_geometry)
