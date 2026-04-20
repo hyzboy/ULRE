@@ -29,6 +29,7 @@ namespace hgl::graph::inline_geometry
         bool has_luminance = false;
 
         BufferAccessor2f accessor_position2;
+        BufferAccessor<VB2u8> accessor_position2u8;
         BufferAccessor3f accessor_position;
         BufferAccessor3f accessor_normal;
         BufferAccessor3f accessor_tangent;
@@ -105,6 +106,9 @@ namespace hgl::graph::inline_geometry
             else
             if(accessor_position2.IsValid())
                 accessor_position2->Write(x, y);
+            else
+            if(accessor_position2u8.IsValid())
+                accessor_position2u8->Write(uint8(x), uint8(y));
         }
 
         inline void WriteVertex(float x, float y)
@@ -112,8 +116,27 @@ namespace hgl::graph::inline_geometry
             if(accessor_position2.IsValid())
                 accessor_position2->Write(x, y);
             else
+            if(accessor_position2u8.IsValid())
+                accessor_position2u8->Write(uint8(x), uint8(y));
+            else
             if(accessor_position.IsValid())
                 accessor_position->Write(x, y, 0.0f);
+        }
+
+        /**
+         * 写入uint8位置
+         * @param x, y uint8坐标
+         */
+        inline void WriteVertexU8(uint8 x, uint8 y)
+        {
+            if(accessor_position2u8.IsValid())
+                accessor_position2u8->Write(x, y);
+            else
+            if(accessor_position2.IsValid())
+                accessor_position2->Write(float(x), float(y));
+            else
+            if(accessor_position.IsValid())
+                accessor_position->Write(float(x), float(y), 0.0f);
         }
 
         /**

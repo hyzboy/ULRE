@@ -417,10 +417,11 @@ namespace hgl::graph::inline_geometry
             {
                 case PF_RGB32F: accessor_position.Bind(vab, vertex_offset, vertex_count); break;
                 case PF_RG32F: accessor_position2.Bind(vab, vertex_offset, vertex_count); break;
+                case PF_RG8UN: accessor_position2u8.Bind(vab, vertex_offset, vertex_count); break;
                 default: break;
             }
 
-            has_position = accessor_position.IsValid() || accessor_position2.IsValid();
+            has_position = accessor_position.IsValid() || accessor_position2.IsValid() || accessor_position2u8.IsValid();
         }
 
         vab = pc->GetVAB(VAN::Normal);

@@ -91,16 +91,14 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("SquareArray",numberVertices,numberIndices,IndexType::U16))
             return(nullptr);
 
-        {
-            auto vertex = pc->GetBufferAccessor<BufferAccessor2u8>(VAN::Position);  //顶点坐标使用 uint8
+        GeometryBuilder builder(pc);
 
-            if(!vertex.IsValid())
-                return(nullptr);
+        if(!builder.IsValid())
+            return(nullptr);
 
-            for(uint i=0;i<=row;i++)
-                for(uint j=0;j<=col;j++)
-                    vertex->Write(j,i);
-        }
+        for(uint i=0;i<=row;i++)
+            for(uint j=0;j<=col;j++)
+                builder.WriteVertexU8(j,i);
 
         {
             auto ib_map = pc->GetIndexAccessor<uint16>();
