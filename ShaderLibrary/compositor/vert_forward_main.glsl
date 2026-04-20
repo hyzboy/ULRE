@@ -6,6 +6,7 @@
 //   Varying flags (must match the fragment shader's HAS_* defines):
 //     HAS_WORLD_POS      output fragWorldPos (vec3)
 //     HAS_WORLD_NORMAL   input  inNormal  → output fragWorldNormal (vec3)
+//     HAS_WORLD_TANGENT  input  inTangent → output fragWorldTangent (vec4, xyz world tangent + w handedness)
 //     HAS_UV0            input  inUV0     → output fragUV0 (vec2)
 //     HAS_VERTEX_COLOR   input  inColor   → output fragVertexColor (vec4)
 //     HAS_LUMINANCE      input  inLuminance → output fragLuminance (float)
@@ -32,6 +33,10 @@
 
     #ifdef HAS_WORLD_NORMAL
         layout(location=NORMAL_LOCATION) in vec3 inNormal;
+    #endif
+
+    #if defined(HAS_WORLD_TANGENT) && defined(TANGENT_LOCATION)
+        layout(location=TANGENT_LOCATION) in vec4 inTangent;
     #endif
 
     #ifdef HAS_UV0
@@ -79,6 +84,21 @@ void main()
     vec3 rawNormal = inNormal;
   #endif
     fragWorldNormal = normalize(mat3(transform_mat) * rawNormal);
+#endif
+
+        // Tangent (xyz transformed to world, w keeps handedness sign)
+#ifdef HAS_WORLD_TANGENT
+    #if GEOMETRY_FETCH_SSBO
+        vec3 rawTangent = vec3(1.0, 0.0, 0.0);
+        float tangentW = 1.0;
+    #elif defined(TANGENT_LOCATION)
+        vec3 rawTangent = inTangent.xyz;
+        float tangentW = inTangent.w;
+    #else
+        vec3 rawTangent = vec3(1.0, 0.0, 0.0);
+        float tangentW = 1.0;
+    #endif
+        fragWorldTangent = vec4(normalize(mat3(transform_mat) * rawTangent), tangentW);
 #endif
 
     // UV0

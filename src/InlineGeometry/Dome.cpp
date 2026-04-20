@@ -205,7 +205,7 @@ namespace hgl::graph::inline_geometry
                     tdir = Vector3f(1.0f, 0.0f, 0.0f);
 
                 tdir = glm::normalize(tdir - n * Dot(n, tdir));
-                builder.WriteTangent(tdir.x, tdir.y, tdir.z);
+                builder.WriteTangent(tdir.x, tdir.y, tdir.z, 1.0f); // default tangent.w = +1; TODO: compute handedness when tangent basis data is available
             }
 
             if (write_tex_coord)

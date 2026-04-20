@@ -66,7 +66,7 @@ namespace hgl::graph::inline_geometry
                         builder.WriteNormal(normal.x, normal.y, normal.z);
 
                     if(builder.HasTangents())
-                        builder.WriteTangent(tangent.x, tangent.y, tangent.z);
+                        builder.WriteTangent(tangent.x, tangent.y, tangent.z, 1.0f); // default tangent.w = +1; TODO: compute handedness when tangent basis data is available
 
                     if(builder.HasTexCoords())
                         builder.WriteTexCoord(tu, tv);

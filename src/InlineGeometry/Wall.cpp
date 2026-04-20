@@ -776,7 +776,7 @@ namespace hgl::graph::inline_geometry
                 builder.WriteNormal(vertNormals[i].x, vertNormals[i].y, vertNormals[i].z);
 
             if(builder.HasTangents())
-                builder.WriteTangent(1.0f, 0.0f, 0.0f);
+                builder.WriteTangent(1.0f, 0.0f, 0.0f, 1.0f); // default tangent.w = +1; TODO: compute handedness when tangent basis data is available
 
             if(builder.HasTexCoords())
                 builder.WriteTexCoord(finalUV[i].x, finalUV[i].y);

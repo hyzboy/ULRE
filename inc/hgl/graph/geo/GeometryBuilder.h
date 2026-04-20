@@ -33,6 +33,7 @@ namespace hgl::graph::inline_geometry
         BufferAccessor3f accessor_position;
         BufferAccessor3f accessor_normal;
         BufferAccessor3f accessor_tangent;
+        BufferAccessor4f accessor_tangent4;
         BufferAccessor2f accessor_texcoord;
         BufferAccessor4f accessor_color;
         BufferAccessor<VB1f> accessor_luminance;
@@ -80,6 +81,7 @@ namespace hgl::graph::inline_geometry
 
         void WriteNormalByFormat(float x, float y, float z);
         void WriteTangentByFormat(float x, float y, float z);
+        void WriteTangentByFormat(float x, float y, float z, float w);
         void WriteTexCoordByFormat(float u, float v);
         void WriteColorByFormat(float r, float g, float b, float a);
         void WriteLuminanceByFormat(float l);
@@ -154,7 +156,13 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteTangent(float x, float y, float z)
         {
-            WriteTangentByFormat(x, y, z);
+            // default tangent.w = +1; TODO: compute handedness when tangent basis data is available
+            WriteTangentByFormat(x, y, z, 1.0f);
+        }
+
+        inline void WriteTangent(float x, float y, float z, float w)
+        {
+            WriteTangentByFormat(x, y, z, w);
         }
 
         /**
@@ -199,12 +207,22 @@ namespace hgl::graph::inline_geometry
         inline void WriteFullVertex(float px, float py, float pz,
                                    float nx, float ny, float nz,
                                    float tx, float ty, float tz,
+                                   float tw,
                                    float u, float v)
         {
             WriteVertex(px, py, pz);
             WriteNormal(nx, ny, nz);
-            WriteTangent(tx, ty, tz);
+            WriteTangent(tx, ty, tz, tw);
             WriteTexCoord(u, v);
+        }
+
+        inline void WriteFullVertex(float px, float py, float pz,
+                                   float nx, float ny, float nz,
+                                   float tx, float ty, float tz,
+                                   float u, float v)
+        {
+            // default tangent.w = +1; TODO: compute handedness when tangent basis data is available
+            WriteFullVertex(px, py, pz, nx, ny, nz, tx, ty, tz, 1.0f, u, v);
         }
 
         /**

@@ -154,7 +154,7 @@ namespace hgl::graph::inline_geometry
         if(builder.HasNormals())
             builder.WriteNormal(xy_normal.x, xy_normal.y, xy_normal.z);
         if(builder.HasTangents())
-            builder.WriteTangent(xy_tangent.x, xy_tangent.y, xy_tangent.z);
+            builder.WriteTangent(xy_tangent.x, xy_tangent.y, xy_tangent.z, 1.0f); // default tangent.w = +1; TODO: compute handedness when tangent basis data is available
         if(builder.HasTexCoords())
             builder.WriteTexCoord(0.0f, 0.0f);
 
@@ -162,7 +162,7 @@ namespace hgl::graph::inline_geometry
         if(builder.HasNormals())
             builder.WriteNormal(xy_normal.x, xy_normal.y, xy_normal.z);
         if(builder.HasTangents())
-            builder.WriteTangent(xy_tangent.x, xy_tangent.y, xy_tangent.z);
+            builder.WriteTangent(xy_tangent.x, xy_tangent.y, xy_tangent.z, 1.0f); // default tangent.w = +1; TODO: compute handedness when tangent basis data is available
         if(builder.HasTexCoords())
             builder.WriteTexCoord(1.0f, 0.0f);
 
@@ -170,7 +170,7 @@ namespace hgl::graph::inline_geometry
         if(builder.HasNormals())
             builder.WriteNormal(xy_normal.x, xy_normal.y, xy_normal.z);
         if(builder.HasTangents())
-            builder.WriteTangent(xy_tangent.x, xy_tangent.y, xy_tangent.z);
+            builder.WriteTangent(xy_tangent.x, xy_tangent.y, xy_tangent.z, 1.0f); // default tangent.w = +1; TODO: compute handedness when tangent basis data is available
         if(builder.HasTexCoords())
             builder.WriteTexCoord(1.0f, 1.0f);
 
@@ -178,7 +178,7 @@ namespace hgl::graph::inline_geometry
         if(builder.HasNormals())
             builder.WriteNormal(xy_normal.x, xy_normal.y, xy_normal.z);
         if(builder.HasTangents())
-            builder.WriteTangent(xy_tangent.x, xy_tangent.y, xy_tangent.z);
+            builder.WriteTangent(xy_tangent.x, xy_tangent.y, xy_tangent.z, 1.0f); // default tangent.w = +1; TODO: compute handedness when tangent basis data is available
         if(builder.HasTexCoords())
             builder.WriteTexCoord(0.0f, 1.0f);
 

@@ -116,7 +116,7 @@ namespace hgl::graph::inline_geometry
                 if(glm::length(tdir)<1e-6f) tdir = Vector3f(1,0,0); // pole singularity fallback
                 tdir = (tdir - n * Dot(n, tdir));
                 tdir = glm::normalize(tdir);
-                builder.WriteTangent(tdir.x, tdir.y, tdir.z);
+                builder.WriteTangent(tdir.x, tdir.y, tdir.z, 1.0f); // default tangent.w = +1; TODO: compute handedness when tangent basis data is available
             }
         }
 

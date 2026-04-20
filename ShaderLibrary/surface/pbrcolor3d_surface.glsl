@@ -29,18 +29,14 @@ vec3 PBR_F(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-vec3 PBR_ApplyNormalMap(vec3 worldPos, vec2 uv, vec3 n_geom, vec3 normal_ts)
+vec3 PBR_ApplyNormalMap(vec3 worldPos, vec2 uv, vec3 n_geom, vec4 tangent_ws, vec3 normal_ts)
 {
-    vec3 dp1 = dFdx(worldPos);
-    vec3 dp2 = dFdy(worldPos);
-    vec2 duv1 = dFdx(uv);
-    vec2 duv2 = dFdy(uv);
+    vec3 n = normalize(n_geom);
+    vec3 t = normalize(tangent_ws.xyz - n * dot(n, tangent_ws.xyz));
+    float handedness = (tangent_ws.w >= 0.0) ? 1.0 : -1.0;
+    vec3 b = normalize(cross(n, t)) * handedness;
 
-    float inv_det = 1.0 / max(duv1.x * duv2.y - duv1.y * duv2.x, 1e-8);
-    vec3 t = normalize((dp1 * duv2.y - dp2 * duv1.y) * inv_det);
-    vec3 b = normalize((dp2 * duv1.x - dp1 * duv2.x) * inv_det);
-
-    mat3 tbn = mat3(t, b, normalize(n_geom));
+    mat3 tbn = mat3(t, b, n);
     return normalize(tbn * normal_ts);
 }
 

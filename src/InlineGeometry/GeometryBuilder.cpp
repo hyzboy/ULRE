@@ -167,6 +167,12 @@ namespace hgl::graph::inline_geometry
 
     void GeometryBuilder::WriteTangentByFormat(float x, float y, float z)
     {
+        // default tangent.w = +1; TODO: compute handedness when tangent basis data is available
+        WriteTangentByFormat(x, y, z, 1.0f);
+    }
+
+    void GeometryBuilder::WriteTangentByFormat(float x, float y, float z, float w)
+    {
         if(!has_tangents)
             return;
 
@@ -174,6 +180,10 @@ namespace hgl::graph::inline_geometry
         {
             case PF_RGB32F:
                 if(accessor_tangent.IsValid()) accessor_tangent->Write(x, y, z);
+            break;
+
+            case PF_RGBA32F:
+                if(accessor_tangent4.IsValid()) accessor_tangent4->Write(x, y, z, w);
             break;
 
             case PF_RG16F:
@@ -212,7 +222,8 @@ namespace hgl::graph::inline_geometry
                     const uint32 r = ToUnorm10(ox * 0.5f + 0.5f);
                     const uint32 g = ToUnorm10(oy * 0.5f + 0.5f);
                     const uint32 b = ToUnorm10(0.5f);
-                    accessor_tangent_a2rgb10un->Write(PackA2R10G10B10_UNORM(r, g, b, 3u));
+                    const uint32 a = (ClampN1P1(w) >= 0.0f) ? 3u : 0u;
+                    accessor_tangent_a2rgb10un->Write(PackA2R10G10B10_UNORM(r, g, b, a));
                 }
             break;
 
@@ -224,7 +235,8 @@ namespace hgl::graph::inline_geometry
                     const uint32 r = ToUnorm10(ox * 0.5f + 0.5f);
                     const uint32 g = ToUnorm10(oy * 0.5f + 0.5f);
                     const uint32 b = ToUnorm10(0.5f);
-                    accessor_tangent_a2bgr10un->Write(PackA2B10G10R10_UNORM(r, g, b, 3u));
+                    const uint32 a = (ClampN1P1(w) >= 0.0f) ? 3u : 0u;
+                    accessor_tangent_a2bgr10un->Write(PackA2B10G10R10_UNORM(r, g, b, a));
                 }
             break;
 
@@ -456,6 +468,7 @@ namespace hgl::graph::inline_geometry
             switch(tangent_format)
             {
                 case PF_RGB32F: accessor_tangent.Bind(vab, vertex_offset, vertex_count); break;
+                case PF_RGBA32F: accessor_tangent4.Bind(vab, vertex_offset, vertex_count); break;
                 case PF_RG16F: accessor_tangent_rg16f.Bind(vab, vertex_offset, vertex_count); break;
                 case PF_RG8UN: accessor_tangent_rg8un.Bind(vab, vertex_offset, vertex_count); break;
                 case PF_RG8SN: accessor_tangent_rg8sn.Bind(vab, vertex_offset, vertex_count); break;
@@ -465,6 +478,7 @@ namespace hgl::graph::inline_geometry
             }
 
             has_tangents = accessor_tangent.IsValid()
+                        || accessor_tangent4.IsValid()
                         || accessor_tangent_rg16f.IsValid()
                         || accessor_tangent_rg8un.IsValid()
                         || accessor_tangent_rg8sn.IsValid()

@@ -4,6 +4,7 @@
 #define NEEDS_SKY
 #define HAS_WORLD_POS
 #define HAS_WORLD_NORMAL
+#define HAS_WORLD_TANGENT
 #define HAS_UV0
 #include "compositor/frag_forward_ubo.glsl"
 #include SKYLIGHT_FUNCTION_FILE

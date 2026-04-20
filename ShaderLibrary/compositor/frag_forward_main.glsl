@@ -6,6 +6,7 @@
 //   Varying flags (must match the vertex shader's HAS_* defines):
 //     HAS_WORLD_POS      fragWorldPos (vec3)      — also drives si.viewDir
 //     HAS_WORLD_NORMAL   fragWorldNormal (vec3)
+//     HAS_WORLD_TANGENT  fragWorldTangent (vec4)  — world tangent xyz + handedness w
 //     HAS_UV0            fragUV0 (vec2)
 //     HAS_VERTEX_COLOR   fragVertexColor (vec4)
 //     HAS_TEXCOORD       fragTexCoord (vec2)       — maps to si.uv0
@@ -80,6 +81,13 @@ void main()
     si.worldNormal = normalize(fragWorldNormal);
 #else
     si.worldNormal = vec3(0.0, 0.0, 1.0);
+#endif
+
+    // worldTangent (xyz + handedness sign in w)
+#ifdef HAS_WORLD_TANGENT
+    si.worldTangent = vec4(normalize(fragWorldTangent.xyz), fragWorldTangent.w);
+#else
+    si.worldTangent = vec4(1.0, 0.0, 0.0, 1.0);
 #endif
 
     // uv0

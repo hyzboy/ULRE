@@ -475,6 +475,7 @@ inline const bool CheckVulkanFormat(const VkFormat format)
 
 // Tangent (default + compact candidates)
 #define VK_FORMAT_TANGENT              VK_FORMAT_R32G32B32_SFLOAT
+#define VK_FORMAT_TANGENT4             VK_FORMAT_R32G32B32A32_SFLOAT
 #define VK_FORMAT_TANGENT_OCT16        VK_FORMAT_R16G16_SFLOAT
 #define VK_FORMAT_TANGENT_OCT8_UNORM   VK_FORMAT_R8G8_UNORM
 #define VK_FORMAT_TANGENT_OCT8_SNORM   VK_FORMAT_R8G8_SNORM
