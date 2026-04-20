@@ -1,6 +1,8 @@
 #pragma once
 
+#include <hgl/common/VertexAttribDef.h>
 #include <hgl/mtl/LightingModel.h>
+#include <cstddef>
 #include <string>
 
 namespace hgl::graph {
@@ -9,13 +11,24 @@ struct CompositorFeatureFlags
 {
     // Vertex stage flags
     bool vert_input_2d    = false;
-    bool has_uv0          = false;
-    bool has_vertex_color = false;
-    bool has_world_pos    = false;
-    bool has_world_normal = false;
-    bool has_luminance    = false;
+    bool vertex_attrib[static_cast<size_t>(VertexAttrib::RANGE_SIZE)] = {};
     bool has_direction    = false;
-    bool has_world_tangent = false;
+
+    bool HasVertexAttrib(const VertexAttrib attrib)const
+    {
+        if(attrib < VertexAttrib::Position || attrib >= VertexAttrib::RANGE_SIZE)
+            return false;
+
+        return vertex_attrib[static_cast<size_t>(attrib)];
+    }
+
+    void SetVertexAttrib(const VertexAttrib attrib, const bool enabled = true)
+    {
+        if(attrib < VertexAttrib::Position || attrib >= VertexAttrib::RANGE_SIZE)
+            return;
+
+        vertex_attrib[static_cast<size_t>(attrib)] = enabled;
+    }
 
     // Fragment stage flags
     bool enable_lighting  = false;

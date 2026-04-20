@@ -35,19 +35,26 @@ namespace
         const char *path;
     };
 
+    void EmitEnabledVertexAttribDefines(hgl::graph::ShaderWriter &writer, const hgl::graph::CompositorFeatureFlags &flags)
+    {
+        for(size_t i = 0; i < static_cast<size_t>(hgl::graph::VertexAttrib::RANGE_SIZE); ++i)
+        {
+            const auto attrib = static_cast<hgl::graph::VertexAttrib>(i);
+
+            if(flags.HasVertexAttrib(attrib))
+                hgl::graph::EmitVertexAttribDefine(writer, attrib);
+        }
+    }
+
     std::string BuildForwardVertexEntry(const hgl::graph::CompositorFeatureFlags &f)
     {
         std::string out = "#version 450\n\n";
         hgl::graph::ShaderWriter writer(out);
 
+        EmitEnabledVertexAttribDefines(writer, f);
+
         if (f.vert_input_2d)    writer.EmitDefine("VERT_INPUT_2D");
-        if (f.has_uv0)          hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::TexCoord);
-        if (f.has_vertex_color) hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Color);
-        if (f.has_world_pos)    hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Position);
-        if (f.has_world_normal) hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Normal);
-        if (f.has_luminance)    hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Luminance);
         if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
-        if (f.has_world_tangent) hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Tangent);
 
         writer.EmitInclude("compositor/vert_forward_ubo.glsl")
               .EmitInclude("compositor/vert_forward_main.glsl");
@@ -59,19 +66,15 @@ namespace
         std::string out = "#version 450\n\n";
         hgl::graph::ShaderWriter writer(out);
 
+        EmitEnabledVertexAttribDefines(writer, f);
+
         if (f.enable_lighting)  writer.EmitDefine("ENABLE_LIGHTING");
-        if (f.has_world_tangent) hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Tangent);
         if (f.needs_camera)     writer.EmitDefine("NEEDS_CAMERA");
         if (f.needs_sky)        writer.EmitDefine("NEEDS_SKY");
         if (f.alpha_masked)     writer.EmitDefine("ALPHA_MODE_MASKED");
         if (f.alpha_dither)     writer.EmitDefine("ALPHA_MODE_DITHER");
-        if (f.has_world_pos)    hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Position);
-        if (f.has_world_normal) hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Normal);
-        if (f.has_uv0)          hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::TexCoord);
-        if (f.has_vertex_color) hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Color);
         if (f.has_texcoord)     writer.EmitDefine("HAS_BILLBOARD_TEXCOORD");
         if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
-        if (f.has_luminance)    hgl::graph::EmitVertexAttribDefine(writer, hgl::graph::VertexAttrib::Luminance);
         if (f.has_clip_pos)     writer.EmitDefine("HAS_CLIP_POS");
 
         writer.EmitInclude("compositor/frag_forward_ubo.glsl");
@@ -110,27 +113,39 @@ namespace
 
     std::string BuildForwardUnlitVertexColorVS(const hgl::graph::mtl::MaterialVariantKey &)
     {
-        return BuildForwardVertexEntry({.has_vertex_color = true});
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Color);
+        return BuildForwardVertexEntry(flags);
     }
 
     std::string BuildForwardUnlitLuminanceVS(const hgl::graph::mtl::MaterialVariantKey &)
     {
-        return BuildForwardVertexEntry({.has_luminance = true});
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Luminance);
+        return BuildForwardVertexEntry(flags);
     }
 
     std::string BuildForwardUnlitLuminance2DVS(const hgl::graph::mtl::MaterialVariantKey &)
     {
-        return BuildForwardVertexEntry({.vert_input_2d = true, .has_luminance = true});
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.vert_input_2d = true;
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Luminance);
+        return BuildForwardVertexEntry(flags);
     }
 
     std::string BuildForwardUnlitNormalVS(const hgl::graph::mtl::MaterialVariantKey &)
     {
-        return BuildForwardVertexEntry({.has_world_pos = true, .has_world_normal = true});
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Position);
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Normal);
+        return BuildForwardVertexEntry(flags);
     }
 
     std::string BuildForwardSkyVS(const hgl::graph::mtl::MaterialVariantKey &)
     {
-        return BuildForwardVertexEntry({.has_direction = true});
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.has_direction = true;
+        return BuildForwardVertexEntry(flags);
     }
 
     std::string BuildForwardLitVS(const hgl::graph::mtl::MaterialVariantKey &key)
@@ -138,39 +153,67 @@ namespace
         const bool uv0    = key.HasVertexAttrib(hgl::graph::VertexAttrib::TexCoord);
         const bool normal = key.HasVertexAttrib(hgl::graph::VertexAttrib::Normal);
         const bool tangent = key.HasVertexAttrib(hgl::graph::VertexAttrib::Tangent);
-        return BuildForwardVertexEntry({.has_uv0 = uv0, .has_world_pos = true, .has_world_normal = normal, .has_world_tangent = tangent});
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::TexCoord, uv0);
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Position);
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Normal, normal);
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Tangent, tangent);
+        return BuildForwardVertexEntry(flags);
     }
 
     std::string BuildForwardUnlitVertexColorFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
-        return BuildForwardFragmentEntry({.has_vertex_color = true, .surface_path = surface_path});
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Color);
+        flags.surface_path = surface_path;
+        return BuildForwardFragmentEntry(flags);
     }
 
     std::string BuildForwardUnlitLuminanceFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
-        return BuildForwardFragmentEntry({.has_luminance = true, .surface_path = surface_path});
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Luminance);
+        flags.surface_path = surface_path;
+        return BuildForwardFragmentEntry(flags);
     }
 
     std::string BuildForwardUnlitNormalFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
-        return BuildForwardFragmentEntry({.has_world_pos = true, .has_world_normal = true, .needs_camera = true, .surface_path = surface_path});
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Position);
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Normal);
+        flags.needs_camera = true;
+        flags.surface_path = surface_path;
+        return BuildForwardFragmentEntry(flags);
     }
 
     std::string BuildForwardBillboardFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode blend, const std::string &surface_path)
     {
         const bool alpha_masked = (blend == hgl::graph::RenderAlphaMode::Masked);
         const bool alpha_dither = (blend == hgl::graph::RenderAlphaMode::Dither);
-        return BuildForwardFragmentEntry({.alpha_masked = alpha_masked, .alpha_dither = alpha_dither, .has_texcoord = true, .surface_path = surface_path});
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.alpha_masked = alpha_masked;
+        flags.alpha_dither = alpha_dither;
+        flags.has_texcoord = true;
+        flags.surface_path = surface_path;
+        return BuildForwardFragmentEntry(flags);
     }
 
     std::string BuildForwardSkyFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
-        return BuildForwardFragmentEntry({.has_direction = true, .surface_path = surface_path});
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.has_direction = true;
+        flags.surface_path = surface_path;
+        return BuildForwardFragmentEntry(flags);
     }
 
     std::string BuildTerrainGridFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
-        return BuildForwardFragmentEntry({.has_world_normal = true, .has_clip_pos = true, .surface_path = surface_path});
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Normal);
+        flags.has_clip_pos = true;
+        flags.surface_path = surface_path;
+        return BuildForwardFragmentEntry(flags);
     }
 
     std::string BuildForwardLitFS(const hgl::graph::mtl::MaterialVariantKey &key, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
@@ -178,7 +221,16 @@ namespace
         const bool uv0    = key.HasVertexAttrib(hgl::graph::VertexAttrib::TexCoord);
         const bool normal = key.HasVertexAttrib(hgl::graph::VertexAttrib::Normal);
         const bool tangent = key.HasVertexAttrib(hgl::graph::VertexAttrib::Tangent);
-        return BuildForwardFragmentEntry({.has_uv0 = uv0, .has_world_pos = true, .has_world_normal = normal, .has_world_tangent = tangent, .enable_lighting = true, .needs_camera = true, .needs_sky = true, .surface_path = surface_path});
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::TexCoord, uv0);
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Position);
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Normal, normal);
+        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Tangent, tangent);
+        flags.enable_lighting = true;
+        flags.needs_camera = true;
+        flags.needs_sky = true;
+        flags.surface_path = surface_path;
+        return BuildForwardFragmentEntry(flags);
     }
 
     static const GeneratedVSTemplateRoute kGeneratedVSTemplateRoutes[] = {
@@ -649,7 +701,7 @@ namespace hgl::graph
 
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         SurfaceType     surface,
-        RenderAlphaMode       blend,
+        RenderAlphaMode blend,
         PassType        pass,
         const char     *vs_template_override,
         const char     *fs_template_override,
