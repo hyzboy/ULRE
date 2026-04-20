@@ -9,9 +9,9 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
             return(nullptr);
 
-        auto vertex = pc->GetBufferAccessor<BufferAccessor2f>(VAN::Position);
+        GeometryBuilder builder(pc);
 
-        if(!vertex.IsValid())
+        if(!builder.IsValid())
             return(nullptr);
 
         const float right=float(pgci->grid_size.Width())/2.0f;
@@ -22,31 +22,29 @@ namespace hgl::graph::inline_geometry
 
         for(uint row=0;row<=pgci->grid_size.Height();row++)
         {
-            vertex->WriteLine(  Vector2f(left ,top+row),
-                                Vector2f(right,top+row));
+            builder.WriteVertex(left,  top + row);
+            builder.WriteVertex(right, top + row);
         }
 
         for(uint col=0;col<=pgci->grid_size.Width();col++)
         {
-            vertex->WriteLine(  Vector2f(left+col,top   ),
-                                Vector2f(left+col,bottom));
+            builder.WriteVertex(left + col, top);
+            builder.WriteVertex(left + col, bottom);
         }
 
-        auto lum = pc->GetBufferAccessor<BufferAccessor1u8>(VAN::Luminance);
-
-        if(lum.IsValid())
+        if(builder.HasLuminance())
         {
             for(uint row=0;row<=pgci->grid_size.Height();row++)
             {
                 if((row%pgci->sub_count.Height())==0)
                 {
-                    lum->Write(pgci->sub_lum);
-                    lum->Write(pgci->sub_lum);
+                    builder.WriteLuminance(pgci->sub_lum);
+                    builder.WriteLuminance(pgci->sub_lum);
                 }
                 else
                 {
-                    lum->Write(pgci->lum);
-                    lum->Write(pgci->lum);
+                    builder.WriteLuminance(pgci->lum);
+                    builder.WriteLuminance(pgci->lum);
                 }
             }
 
@@ -54,13 +52,13 @@ namespace hgl::graph::inline_geometry
             {
                 if((col%pgci->sub_count.Width())==0)
                 {
-                    lum->Write(pgci->sub_lum);
-                    lum->Write(pgci->sub_lum);
+                    builder.WriteLuminance(pgci->sub_lum);
+                    builder.WriteLuminance(pgci->sub_lum);
                 }
                 else
                 {
-                    lum->Write(pgci->lum);
-                    lum->Write(pgci->lum);
+                    builder.WriteLuminance(pgci->lum);
+                    builder.WriteLuminance(pgci->lum);
                 }
             }
         }
@@ -76,9 +74,9 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
             return(nullptr);
 
-        auto vertex = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
+        GeometryBuilder builder(pc);
 
-        if(!vertex.IsValid())
+        if(!builder.IsValid())
             return(nullptr);
 
         const float right=float(pgci->grid_size.Width())/2.0f;
@@ -89,31 +87,29 @@ namespace hgl::graph::inline_geometry
 
         for(uint row=0;row<=pgci->grid_size.Height();row++)
         {
-            vertex->WriteLine(  Vector3f(left ,top+row,0),
-                                Vector3f(right,top+row,0));
+            builder.WriteVertex(left,  top + row, 0.0f);
+            builder.WriteVertex(right, top + row, 0.0f);
         }
 
         for(uint col=0;col<=pgci->grid_size.Width();col++)
         {
-            vertex->WriteLine(  Vector3f(left+col,top   ,0),
-                                Vector3f(left+col,bottom,0));
+            builder.WriteVertex(left + col, top, 0.0f);
+            builder.WriteVertex(left + col, bottom, 0.0f);
         }
 
-        auto lum = pc->GetBufferAccessor<BufferAccessor1u8>(VAN::Luminance);
-
-        if(lum.IsValid())
+        if(builder.HasLuminance())
         {
             for(uint row=0;row<=pgci->grid_size.Height();row++)
             {
                 if((row%pgci->sub_count.Height())==0)
                 {
-                    lum->Write(pgci->sub_lum);
-                    lum->Write(pgci->sub_lum);
+                    builder.WriteLuminance(pgci->sub_lum);
+                    builder.WriteLuminance(pgci->sub_lum);
                 }
                 else
                 {
-                    lum->Write(pgci->lum);
-                    lum->Write(pgci->lum);
+                    builder.WriteLuminance(pgci->lum);
+                    builder.WriteLuminance(pgci->lum);
                 }
             }
 
@@ -121,13 +117,13 @@ namespace hgl::graph::inline_geometry
             {
                 if((col%pgci->sub_count.Width())==0)
                 {
-                    lum->Write(pgci->sub_lum);
-                    lum->Write(pgci->sub_lum);
+                    builder.WriteLuminance(pgci->sub_lum);
+                    builder.WriteLuminance(pgci->sub_lum);
                 }
                 else
                 {
-                    lum->Write(pgci->lum);
-                    lum->Write(pgci->lum);
+                    builder.WriteLuminance(pgci->lum);
+                    builder.WriteLuminance(pgci->lum);
                 }
             }
         }
