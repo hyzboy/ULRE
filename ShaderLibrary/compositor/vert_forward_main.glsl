@@ -32,11 +32,15 @@
     #endif
 
     #ifdef HAS_WORLD_NORMAL
-        layout(location=NORMAL_LOCATION) in vec3 inNormal;
+        #ifndef ULRE_CUSTOM_NORMAL_ATTRIB
+            layout(location=NORMAL_LOCATION) in vec3 inNormal;
+        #endif
     #endif
 
     #if defined(HAS_WORLD_TANGENT) && defined(TANGENT_LOCATION)
-        layout(location=TANGENT_LOCATION) in vec4 inTangent;
+        #ifndef ULRE_CUSTOM_TANGENT_ATTRIB
+            layout(location=TANGENT_LOCATION) in vec4 inTangent;
+        #endif
     #endif
 
     #ifdef HAS_UV0
@@ -44,7 +48,9 @@
     #endif
 
     #ifdef HAS_VERTEX_COLOR
-        layout(location=COLOR_LOCATION) in vec4 inColor;
+        #ifndef ULRE_CUSTOM_COLOR_ATTRIB
+            layout(location=COLOR_LOCATION) in vec4 inColor;
+        #endif
     #endif
 
     #ifdef HAS_LUMINANCE
@@ -80,6 +86,8 @@ void main()
 #ifdef HAS_WORLD_NORMAL
   #if GEOMETRY_FETCH_SSBO
     vec3 rawNormal = FetchNormal(gl_VertexIndex);
+  #elif defined(ULRE_CUSTOM_NORMAL_ATTRIB)
+    vec3 rawNormal = ULRE_DecodeNormal();
   #else
     vec3 rawNormal = inNormal;
   #endif
@@ -89,8 +97,14 @@ void main()
     // Tangent (xyz transformed to world, w keeps handedness sign)
 #ifdef HAS_WORLD_TANGENT
     #if defined(TANGENT_LOCATION) && !GEOMETRY_FETCH_SSBO
-        vec3 rawTangent = inTangent.xyz;
-        float tangentW = inTangent.w;
+        #ifdef ULRE_CUSTOM_TANGENT_ATTRIB
+            vec4 decodedTangent_ = ULRE_DecodeTangent();
+            vec3 rawTangent = decodedTangent_.xyz;
+            float tangentW  = decodedTangent_.w;
+        #else
+            vec3 rawTangent = inTangent.xyz;
+            float tangentW  = inTangent.w;
+        #endif
     #endif
     fragWorldTangent = vec4(normalize(mat3(transform_mat) * rawTangent), tangentW);
 #endif
@@ -106,7 +120,11 @@ void main()
 
     // Vertex color
 #ifdef HAS_VERTEX_COLOR
-    fragVertexColor = inColor;
+    #ifdef ULRE_CUSTOM_COLOR_ATTRIB
+        fragVertexColor = ULRE_DecodeColor();
+    #else
+        fragVertexColor = inColor;
+    #endif
 #endif
 
     // Luminance

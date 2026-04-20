@@ -39,11 +39,138 @@ namespace
         std::vector<AttribDefineMapping>  attrib_defines;          ///< Emitted when mesh supplies the attrib
         bool                              emit_alpha_mode        = false; ///< FS: emits ALPHA_MODE_MASKED/DITHER
         std::vector<const char*>          pre_special_includes;   ///< Includes before sky/lighting/surface
+        bool                              uses_vert_forward_main = false;  ///< VS: emit ULRE_Decode* helpers for Normal/Tangent/Color
         bool                              needs_sky              = false; ///< FS: #include SKYLIGHT_FUNCTION_FILE
         bool                              needs_lighting         = false; ///< FS: #include LIGHTING_FUNCTION_FILE
         bool                              needs_surface          = false; ///< FS: #include surface_path
         std::vector<const char*>          post_special_includes; ///< Includes after sky/lighting/surface
     };
+
+    // -----------------------------------------------------------------------
+    // Attribute semantic registry + decode-helper emission (Step 3)
+    // -----------------------------------------------------------------------
+
+    struct AttribSemanticDef
+    {
+        hgl::graph::VertexAttrib attrib;
+        const char *location_macro;     ///< e.g. "NORMAL_LOCATION"
+        const char *input_var_name;     ///< e.g. "inNormal"
+        const char *logical_type;       ///< return type of decode fn, e.g. "vec3"
+        const char *custom_define;      ///< e.g. "ULRE_CUSTOM_NORMAL_ATTRIB"
+        const char *decode_fn_sig;      ///< e.g. "vec3 ULRE_DecodeNormal()"
+
+        struct Encoding
+        {
+            const char *input_glsl;     ///< GLSL input type ("vec3", "vec4", ...)
+            const char *decode_expr;    ///< decode expression; '$' = input variable
+            bool        needs_oct;      ///< true when OctDecode() is required
+        };
+        Encoding encodings[6];          ///< index 0 = best/default; {nullptr,...} terminates
+    };
+
+    static const AttribSemanticDef kAttribSemanticRegistry[] =
+    {
+        // ----- Normal (logical vec3) -----
+        {
+            hgl::graph::VertexAttrib::Normal,
+            "NORMAL_LOCATION", "inNormal", "vec3",
+            "ULRE_CUSTOM_NORMAL_ATTRIB", "vec3 ULRE_DecodeNormal()",
+            {
+                { "vec3", "$",                           false },  // 0: R32G32B32_SFLOAT (default)
+                { "vec4", "normalize($.xyz)",            false },  // 1: A2B10G10R10_SNORM_PACK32
+                { "vec3", "normalize($ * 2.0 - 1.0)",   false },  // 2: B10G11R11_UFLOAT_PACK32
+                { "vec2", "OctDecode($)",                true  },  // 3: R16G16_SFLOAT oct
+                { "vec2", "OctDecode($ * 2.0 - 1.0)",   true  },  // 4: R8G8_UNORM oct
+                { nullptr, nullptr, false }
+            },
+        },
+        // ----- Tangent (logical vec4: xyz=direction, w=handedness) -----
+        {
+            hgl::graph::VertexAttrib::Tangent,
+            "TANGENT_LOCATION", "inTangent", "vec4",
+            "ULRE_CUSTOM_TANGENT_ATTRIB", "vec4 ULRE_DecodeTangent()",
+            {
+                { "vec4", "$",                                        false },  // 0: R32G32B32A32_SFLOAT (default)
+                { "vec4", "vec4(normalize($.xyz), sign($.w))",        false },  // 1: A2B10G10R10_SNORM_PACK32
+                { "vec3", "vec4(normalize($), 1.0)",                  false },  // 2: R16G16B16_SFLOAT (no handedness)
+                { nullptr, nullptr, false }
+            },
+        },
+        // ----- Color (logical vec4) -----
+        {
+            hgl::graph::VertexAttrib::Color,
+            "COLOR_LOCATION", "inColor", "vec4",
+            "ULRE_CUSTOM_COLOR_ATTRIB", "vec4 ULRE_DecodeColor()",
+            {
+                { "vec4", "$",             false },  // 0: R32G32B32A32_SFLOAT or R8G8B8A8_UNORM (default)
+                { "vec3", "vec4($, 1.0)",  false },  // 1: B10G11R11_UFLOAT_PACK32
+                { nullptr, nullptr, false }
+            },
+        },
+    };
+
+    /// Replaces every '$' in expr_template with var_name.
+    static std::string ResolveDecode(const char *expr_template, const char *var_name)
+    {
+        std::string out;
+        for (const char *p = expr_template; *p; ++p)
+            if (*p == '$') out += var_name;
+            else           out.push_back(*p);
+        return out;
+    }
+
+    /// Emits layout declarations + ULRE_Decode*() helper functions into out/writer
+    /// for every vertex attribute that (a) is present in the key AND (b) has a registry entry.
+    static void EmitAttribDecodeHelpers(
+        std::string                                       &out,
+        hgl::graph::ShaderWriter                          &writer,
+        const hgl::graph::mtl::MaterialVariantKey         &key)
+    {
+        // First pass: check whether OctDecode() will be needed.
+        bool need_oct = false;
+        for (const auto &sem : kAttribSemanticRegistry)
+        {
+            if (!key.HasVertexAttrib(sem.attrib)) continue;
+            const uint32_t req_idx = key.GetAttribEncoding(sem.attrib);
+            uint32_t actual = 0;
+            for (uint32_t i = 0; i <= req_idx && sem.encodings[i].input_glsl; ++i)
+                actual = i;
+            if (sem.encodings[actual].needs_oct) { need_oct = true; break; }
+        }
+        if (need_oct)
+            writer.EmitInclude("common/oct_decode.glsl");
+
+        // Second pass: emit per-attrib declarations + decode functions.
+        for (const auto &sem : kAttribSemanticRegistry)
+        {
+            if (!key.HasVertexAttrib(sem.attrib)) continue;
+
+            // Clamp the requested encoding index to the last valid entry.
+            const uint32_t req_idx = key.GetAttribEncoding(sem.attrib);
+            uint32_t actual = 0;
+            for (uint32_t i = 0; i <= req_idx && sem.encodings[i].input_glsl; ++i)
+                actual = i;
+            const auto &enc = sem.encodings[actual];
+
+            // Tell the template to skip its default declaration.
+            writer.EmitDefine(sem.custom_define);
+
+            // Raw input attribute declaration.
+            out += "layout(location=";
+            out += sem.location_macro;
+            out += ") in ";
+            out += enc.input_glsl;
+            out += ' ';
+            out += sem.input_var_name;
+            out += ";\n";
+
+            // Decode helper function.
+            out += sem.decode_fn_sig;
+            out += " { return ";
+            out += ResolveDecode(enc.decode_expr, sem.input_var_name);
+            out += "; }\n\n";
+        }
+    }
 
     /// Generic emit function: builds the GLSL preamble from a StageManifest.
     static std::string EmitStageSource(
@@ -68,6 +195,11 @@ namespace
                 writer.EmitDefine("ALPHA_MODE_MASKED");
             else if (blend == hgl::graph::RenderAlphaMode::Dither)
                 writer.EmitDefine("ALPHA_MODE_DITHER");
+        }
+
+        if (m.uses_vert_forward_main)
+        {
+            EmitAttribDecodeHelpers(out, writer, key);
         }
 
         for (const char *inc : m.pre_special_includes)
@@ -96,30 +228,35 @@ namespace
             .always_defines       = {"HAS_VERTEX_COLOR"},
             .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
                                      "compositor/vert_forward_main.glsl"},
+            .uses_vert_forward_main = true,
         },
         {
             .template_path        = "compositor/main_forward_unlit_luminance.vert.glsl",
             .always_defines       = {"HAS_LUMINANCE"},
             .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
                                      "compositor/vert_forward_main.glsl"},
+            .uses_vert_forward_main = true,
         },
         {
             .template_path        = "compositor/main_forward_unlit_luminance_2d.vert.glsl",
             .always_defines       = {"VERT_INPUT_2D", "HAS_LUMINANCE"},
             .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
                                      "compositor/vert_forward_main.glsl"},
+            .uses_vert_forward_main = true,
         },
         {
             .template_path        = "compositor/main_forward_unlit_normal.vert.glsl",
             .always_defines       = {"HAS_WORLD_POS", "HAS_WORLD_NORMAL"},
             .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
                                      "compositor/vert_forward_main.glsl"},
+            .uses_vert_forward_main = true,
         },
         {
             .template_path        = "compositor/main_forward_sky.vert.glsl",
             .always_defines       = {"HAS_DIRECTION"},
             .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
                                      "compositor/vert_forward_main.glsl"},
+            .uses_vert_forward_main = true,
         },
         {
             // Billboard: #version 450 + self-include (no defines needed).
@@ -139,9 +276,11 @@ namespace
             .template_path        = "compositor/main_forward_lit.vert.glsl",
             .always_defines       = {"HAS_WORLD_POS"},
             .attrib_defines       = {{hgl::graph::VertexAttrib::TexCoord, "HAS_UV0"},
-                                     {hgl::graph::VertexAttrib::Normal,   "HAS_WORLD_NORMAL"}},
+                                     {hgl::graph::VertexAttrib::Normal,   "HAS_WORLD_NORMAL"},
+                                     {hgl::graph::VertexAttrib::Tangent,  "HAS_WORLD_TANGENT"}},
             .pre_special_includes = {"compositor/vert_forward_ubo.glsl",
                                      "compositor/vert_forward_main.glsl"},
+            .uses_vert_forward_main = true,
         },
     };
 

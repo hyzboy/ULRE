@@ -51,6 +51,7 @@ namespace hgl::graph::mtl
         uint32            texture_source_bits           = 0;
         uint32            sampler_feature_bits          = 0;
         uint32            vertex_attribute_feature_bits = 0;
+        uint32            vertex_encoding_bits          = 0;   ///< 3 bits per attrib: Normal[2:0], Tangent[5:3], Color[8:6]
         uint32            extra_feature_bits            = static_cast<uint32>(ExtraFeature::None);
         RenderAlphaMode         blend_mode          = RenderAlphaMode::Opaque;
         PassType          pass_hint           = PassType::ForwardOpaque;
@@ -60,6 +61,36 @@ namespace hgl::graph::mtl
         static constexpr uint32 TextureSourceBitsPerSlot = 2;
         static constexpr uint32 TextureSourceSlotCount   = uint32(SamplerSlot::RANGE_SIZE);
         static constexpr uint32 TextureSourceMask        = (1u << TextureSourceBitsPerSlot) - 1u;
+
+        // --- Attribute encoding index packing (3 bits per attrib) ---
+        static constexpr uint32 AttribEncodingBitsPerAttrib = 3;
+        static constexpr uint32 AttribEncodingMask = (1u << AttribEncodingBitsPerAttrib) - 1u;
+
+        static constexpr int GetAttribEncodingShift(const VertexAttrib attrib) noexcept
+        {
+            switch (attrib)
+            {
+            case VertexAttrib::Normal:  return 0;
+            case VertexAttrib::Tangent: return 3;
+            case VertexAttrib::Color:   return 6;
+            default:                    return -1;
+            }
+        }
+
+        void SetAttribEncoding(const VertexAttrib attrib, const uint32 index) noexcept
+        {
+            const int shift = GetAttribEncodingShift(attrib);
+            if (shift < 0) return;
+            vertex_encoding_bits &= ~(AttribEncodingMask << static_cast<uint32>(shift));
+            vertex_encoding_bits |= (index & AttribEncodingMask) << static_cast<uint32>(shift);
+        }
+
+        uint32 GetAttribEncoding(const VertexAttrib attrib) const noexcept
+        {
+            const int shift = GetAttribEncodingShift(attrib);
+            if (shift < 0) return 0u;
+            return (vertex_encoding_bits >> static_cast<uint32>(shift)) & AttribEncodingMask;
+        }
 
         void SetTextureSourceMode(const SamplerSlot slot, const TextureSourceMode mode) noexcept
         {
@@ -122,6 +153,7 @@ namespace hgl::graph::mtl
             h = hgl::hash::FNV1aAppend(h, texture_source_bits);
             h = hgl::hash::FNV1aAppend(h, sampler_feature_bits);
             h = hgl::hash::FNV1aAppend(h, vertex_attribute_feature_bits);
+            h = hgl::hash::FNV1aAppend(h, vertex_encoding_bits);
             h = hgl::hash::FNV1aAppend(h, extra_feature_bits);
             h = hgl::hash::FNV1aAppend(h, blend_mode);
             h = hgl::hash::FNV1aAppend(h, pass_hint);
@@ -138,6 +170,7 @@ namespace hgl::graph::mtl
                 && texture_source_bits == rhs.texture_source_bits
                 && sampler_feature_bits == rhs.sampler_feature_bits
                 && vertex_attribute_feature_bits == rhs.vertex_attribute_feature_bits
+                && vertex_encoding_bits == rhs.vertex_encoding_bits
                 && extra_feature_bits == rhs.extra_feature_bits
                 && blend_mode == rhs.blend_mode
                 && pass_hint == rhs.pass_hint
