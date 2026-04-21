@@ -179,6 +179,35 @@ namespace
         return BuildForwardVertexEntry(flags);
     }
 
+    std::string BuildForwardUnlitPattleVS(const hgl::graph::mtl::MaterialVariantKey &)
+    {
+        std::string out = "#version 450\n\n";
+        hgl::graph::ShaderWriter writer(out);
+        writer.EmitCommentLine("BuildForwardUnlitPattleVS.Begin");
+        writer.EmitInclude("compositor/vert_forward_ubo.glsl")
+              .EmitInclude("common/ubo_color_pattle.glsl")
+              .NewLine()
+              .EmitLine("layout(location=POSITION_LOCATION) in vec3 Position;")
+              .EmitLine("layout(location=COLOR_LOCATION) in uint ColorIndex;")
+              .NewLine()
+              .EmitDefine("VARYING_STAGE_VERT")
+              .EmitDefine("HAS_COLOR")
+              .EmitInclude("common/varying_interface.glsl")
+              .NewLine()
+              .EmitLine("void main()")
+              .BeginBlock()
+                  .EmitLine("fragMaterialInstanceID = GetMaterialInstanceID();")
+                  .EmitLine("mat4 transform_mat = GetTransform();")
+                  .EmitLine("vec4 worldPos = transform_mat * vec4(Position, 1.0);")
+                  .NewLine()
+                  .EmitLine("fragVertexColor = unpackUnorm4x8(color_pattle.color[ColorIndex]);")
+                  .NewLine()
+                  .EmitLine("gl_Position = camera.vp * worldPos;")
+              .EndBlock();
+        writer.EmitCommentLine("BuildForwardUnlitPattleVS.End");
+        return out;
+    }
+
     std::string BuildForwardLitVS(const hgl::graph::mtl::MaterialVariantKey &key)
     {
         const bool uv0    = key.HasVertexAttrib(hgl::graph::VertexAttrib::TexCoord);
@@ -341,6 +370,7 @@ namespace
         {"compositor/main_forward_billboard_fixed.vert.glsl",   &BuildBillboardFixedVertexEntry},
         {"compositor/main_terrain_grid.vert.glsl",              &BuildTerrainGridVertexEntry},
         {"compositor/main_forward_lit.vert.glsl",               &BuildForwardLitVS},
+        {"compositor/main_forward_unlit_pattle.vert.glsl",      &BuildForwardUnlitPattleVS},
     };
 
     static const GeneratedFSTemplateRoute kGeneratedFSTemplateRoutes[] = {
@@ -391,6 +421,11 @@ namespace
         }
 
         return nullptr;
+    }
+
+    bool IsCompositorTemplatePath(const std::string &template_path)
+    {
+        return template_path.rfind("compositor/", 0) == 0;
     }
 
     template<size_t N>
@@ -764,10 +799,21 @@ namespace hgl::graph
         {
             if (!TryBuildGeneratedVSTemplatePath(desc.vs_template_path, key, vs_source))
             {
-                result.error_message = "No generated VS template route for template='"
-                    + desc.vs_template_path + "'";
-                result.success = false;
-                return result;
+                if (IsCompositorTemplatePath(desc.vs_template_path))
+                {
+                    result.error_message = "No generated VS template route for template='"
+                        + desc.vs_template_path + "'";
+                    result.success = false;
+                    return result;
+                }
+
+                std::string read_error;
+                if(!ReadFile(vs_path, vs_source, read_error))
+                {
+                    result.error_message = BuildAssembleReadFailureMessage("VS", desc.vs_template_path, vs_path, read_error);
+                    result.success = false;
+                    return result;
+                }
             }
         }
         else
@@ -786,10 +832,21 @@ namespace hgl::graph
         {
             if (!TryBuildGeneratedFSTemplatePath(desc.fs_template_path, key, key.blend_mode, surface_rel, fs_source))
             {
-                result.error_message = "No generated FS template route for template='"
-                    + desc.fs_template_path + "'";
-                result.success = false;
-                return result;
+                if (IsCompositorTemplatePath(desc.fs_template_path))
+                {
+                    result.error_message = "No generated FS template route for template='"
+                        + desc.fs_template_path + "'";
+                    result.success = false;
+                    return result;
+                }
+
+                std::string read_error;
+                if(!ReadFile(fs_path, fs_source, read_error))
+                {
+                    result.error_message = BuildAssembleReadFailureMessage("FS", desc.fs_template_path, fs_path, read_error);
+                    result.success = false;
+                    return result;
+                }
             }
         }
         else

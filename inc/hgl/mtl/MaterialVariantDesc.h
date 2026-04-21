@@ -15,20 +15,20 @@ namespace hgl::graph::mtl
         std::string variant_name;           // 变体名称，用于日志和调试
         std::optional<MaterialPreset> factory_type;
 
-        // 材质实例布局
-        uint32 mi_struct_size;              // 兼容字段：当前运行期未读取（保留用于迁移窗口）
+                // 材质实例布局
+                uint32 mi_struct_size;              // 兼容字段：当前运行期未读取（保留用于迁移窗口）
 
         // 着色器模板路径
         std::string vs_template_path;       // 顶点着色器模板路径（相对 ShaderLibrary）
         std::string fs_template_path;       // 片段着色器模板路径（相对 ShaderLibrary）
         std::string surface_function_path;  // Surface include 路径（相对 ShaderLibrary）
 
-        // 描述符配置
-        uint32 descriptor_binding_count;    // 兼容字段：当前运行期未读取（保留用于迁移窗口）
+                // 描述符配置
+                uint32 descriptor_binding_count;    // 兼容字段：当前运行期未读取（保留用于迁移窗口）
 
         MaterialVariantDesc()
-            : mi_struct_size(0),
-              descriptor_binding_count(0)
+                        : mi_struct_size(0),
+                            descriptor_binding_count(0)
         {
                         factory_type.reset();
         }
@@ -36,18 +36,18 @@ namespace hgl::graph::mtl
         MaterialVariantDesc(
             const std::string& name,
                         MaterialPreset type,
-            uint32 mi_size,
+                        uint32 mi_size,
             const std::string& vs_path,
             const std::string& fs_path,
-            const std::string& surface_path,
-            uint32 desc_count = 3)
+                        const std::string& surface_path,
+                        uint32 desc_count = 3)
             : variant_name(name),
                             factory_type(type),
-              mi_struct_size(mi_size),
+                            mi_struct_size(mi_size),
               vs_template_path(vs_path),
               fs_template_path(fs_path),
-              surface_function_path(surface_path),
-              descriptor_binding_count(desc_count)
+                            surface_function_path(surface_path),
+                            descriptor_binding_count(desc_count)
         {
         }
     };
