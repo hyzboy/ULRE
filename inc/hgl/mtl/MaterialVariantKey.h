@@ -131,6 +131,10 @@ namespace hgl::graph::mtl
             h = hgl::hash::FNV1aAppend(h, pass_hint);
             h = hgl::hash::FNV1aAppend(h, sky_ambient_model);
             h = hgl::hash::FNV1aAppend(h, lighting_model);
+            
+            // Phase 3: Include effective_feature_mask in cache key computation
+            if (effective_feature_mask != 0)
+                h = hgl::hash::FNV1aAppend(h, effective_feature_mask);
 
             return h;
         }
@@ -146,7 +150,8 @@ namespace hgl::graph::mtl
                 && blend_mode == rhs.blend_mode
                 && pass_hint == rhs.pass_hint
                 && sky_ambient_model == rhs.sky_ambient_model
-                && lighting_model == rhs.lighting_model;
+                && lighting_model == rhs.lighting_model
+                && effective_feature_mask == rhs.effective_feature_mask;  // Phase 3: Include effective_feature_mask in equality
         }
     };
 }

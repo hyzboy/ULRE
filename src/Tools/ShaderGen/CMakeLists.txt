@@ -68,3 +68,17 @@ target_link_libraries(MaterialVariantKeyEquivalenceTest
             CMCoreType)
 
 CreateProject(MaterialVariantKeyEquivalenceTest)
+
+####################################################################################################
+
+add_executable(MaterialVariantKeyCacheKeyTest
+    MaterialVariantKeyCacheKeyTest.cpp)
+
+target_link_libraries(MaterialVariantKeyCacheKeyTest
+    PRIVATE ULRE.Vulkan
+            ULRE.ShaderGen
+            CMCore
+            CMMath
+            CMCoreType)
+
+CreateProject(MaterialVariantKeyCacheKeyTest)
