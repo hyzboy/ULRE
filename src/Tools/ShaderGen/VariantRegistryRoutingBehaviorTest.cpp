@@ -2,6 +2,8 @@
 #include <hgl/mtl/MaterialVariantKey.h>
 
 #include <cstdio>
+#include <utility>
+#include <vector>
 
 using namespace hgl::graph::mtl;
 
@@ -37,8 +39,12 @@ int main()
     const MaterialVariantKey lambert = MakeStandardKey(LightingModel::Lambert);
     const MaterialVariantKey pbr = MakeStandardKey(LightingModel::PBR);
 
-    registry.RegisterVariant(lambert, MakeDesc("StandardLambert"));
-    registry.RegisterVariant(pbr, MakeDesc("StandardPBR"));
+    std::vector<std::pair<MaterialVariantKey, MaterialVariantDesc>> entries;
+    entries.emplace_back(lambert, MakeDesc("StandardLambert"));
+    entries.emplace_back(pbr, MakeDesc("StandardPBR"));
+
+    for (const auto &entry : entries)
+        registry.RegisterVariant(entry.first, entry.second);
 
     // Case 1: lighting model exact match should resolve to PBR variant.
     {

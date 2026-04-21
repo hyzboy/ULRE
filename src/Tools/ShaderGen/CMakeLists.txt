@@ -153,3 +153,17 @@ target_link_libraries(CompositorTemplatePathGuardTest
             CMCoreType)
 
 CreateProject(CompositorTemplatePathGuardTest)
+
+####################################################################################################
+
+add_executable(VariantRegistryDescAgnosticRoutingTest
+    VariantRegistryDescAgnosticRoutingTest.cpp)
+
+target_link_libraries(VariantRegistryDescAgnosticRoutingTest
+    PRIVATE ULRE.Vulkan
+            ULRE.ShaderGen
+            CMCore
+            CMMath
+            CMCoreType)
+
+CreateProject(VariantRegistryDescAgnosticRoutingTest)
