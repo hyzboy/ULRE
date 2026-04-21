@@ -100,12 +100,15 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
         return exact;
     }
 
-    // Fallback step 0: ignore sky ambient model differences.
-    // Sky ambient selects injected helper code during assembly, but most registry
-    // entries are keyed only by surface/geometry/texture routing. Keep the
-    // original request key for downstream factory dispatch and shader assembly.
+    // Fallback step 0: ignore sky ambient model and lighting model differences.
+    // Both sky_ambient_model and lighting_model are compositor assembly parameters
+    // that drive GLSL code generation; they are NOT registry routing keys.
+    // The K() helper never sets either field, so all registered variants have them
+    // at their default (0). Keep the original request key for downstream factory
+    // dispatch and shader assembly.
     MaterialVariantKey sky_canon = key;
     sky_canon.sky_ambient_model = SkyLightAmbientModel::Simple;
+    sky_canon.lighting_model    = LightingModel::Lambert;
 
     if(const MaterialVariantDesc *fallback=QueryVariant(sky_canon))
     {

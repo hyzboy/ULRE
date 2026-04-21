@@ -32,7 +32,6 @@ private:
         .id       = "dome_sky_minimal",
         .preset   = mtl::MaterialPreset::SkyMinimal,
         .l2w      = false,
-        .sky      = true,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 

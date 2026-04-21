@@ -144,9 +144,7 @@ private:
         static const mtl::MaterialRecipe kPBRArrayAcquireCfg {
             .id              = "pbr_spheres_standard",
             .preset          = mtl::MaterialPreset::Standard,
-            .sky             = true,
             .sky_ambient     = mtl::SkyLightAmbientModel::FakeAtmosphere,
-            .lighting  = mtl::LightingModel::PBR,
             .pipeline  = GraphicsPipelinePreset::Solid3D,
             .textures  = {
                 {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
@@ -309,9 +307,7 @@ private:
                     mtl::MaterialRecipe{
                         .id          = "pbr_spheres_standard",
                         .preset      = mtl::MaterialPreset::Standard,
-                        .sky         = true,
                         .sky_ambient = mtl::SkyLightAmbientModel::FakeAtmosphere,
-                        .lighting    = mtl::LightingModel::PBR,
                         .pipeline    = GraphicsPipelinePreset::Solid3D,
                         .textures    = {
                             {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
@@ -567,7 +563,6 @@ private:
             .id       = "pbr_spheres_sky",
             .preset   = mtl::MaterialPreset::SkyMinimal,
             .l2w      = false,
-            .sky      = true,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
         mi_sky_sphere = ResolveOrCreateBindingInstance(kSkyCfg);

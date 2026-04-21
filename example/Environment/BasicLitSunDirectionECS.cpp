@@ -62,15 +62,12 @@ private:
         .id       = "basic_lit_sky",
         .preset   = mtl::MaterialPreset::SkyMinimal,
         .l2w      = false,
-        .sky      = true,
         .pipeline = GraphicsPipelinePreset::Sky,
     };
     inline static const mtl::MaterialRecipe kStandardCfg {
         .id             = "basic_lit_standard",
         .preset         = mtl::MaterialPreset::Standard,
-        .sky            = true,
         .sky_ambient    = mtl::SkyLightAmbientModel::FakeAtmosphere,
-        .lighting       = mtl::LightingModel::PBR,
         .pipeline  = GraphicsPipelinePreset::Solid3D,
         .textures  = {
             {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/Brickwall/Albedo.Tex2D"},

@@ -41,7 +41,6 @@ private:
         .id       = "sky_sun_gizmo",
         .preset   = mtl::MaterialPreset::SkyMinimal,
         .l2w      = false,
-        .sky      = true,
         .pipeline = GraphicsPipelinePreset::Sky,
     };
 

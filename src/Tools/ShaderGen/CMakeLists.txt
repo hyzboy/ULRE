@@ -125,17 +125,3 @@ target_link_libraries(CompositorInferenceDiagnosticsTest
             CMCoreType)
 
 CreateProject(CompositorInferenceDiagnosticsTest)
-
-####################################################################################################
-
-add_executable(LegacyRecipeFieldDeprecationTest
-    LegacyRecipeFieldDeprecationTest.cpp)
-
-target_link_libraries(LegacyRecipeFieldDeprecationTest
-    PRIVATE ULRE.Vulkan
-            ULRE.ShaderGen
-            CMCore
-            CMMath
-            CMCoreType)
-
-CreateProject(LegacyRecipeFieldDeprecationTest)

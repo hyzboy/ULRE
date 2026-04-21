@@ -19,7 +19,6 @@
 
 #include <hgl/mtl/MaterialPreset.h>
 #include <hgl/mtl/MaterialFeature.h>
-#include <hgl/mtl/LightingModel.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include <hgl/mtl/RenderAlphaMode.h>
@@ -75,26 +74,7 @@ struct MaterialRecipe
     CoordinateSystem2D coord_2d = CoordinateSystem2D::NDC;  ///< 2D 坐标系
 
     // ── 3D 专用（dim == D3 时有效）────────────────────────────────────────────
-
-    /// [DEPRECATED — Phase 8 迁移窗口]
-    /// 请改用 intent_features（MaterialFeatureMask 位掩码）驱动摄像机依赖。
-    /// 迁移示例：rec.intent_features = mtl::ToFeatureMask(mtl::MaterialFeature::NeedsCamera);
-    /// 若 intent_features != 0，此字段将被忽略。
-    bool                camera      = true;                 ///< 包含摄像机矩阵 (IncludeCamera)
-
-    /// [DEPRECATED — Phase 8 迁移窗口]
-    /// 请改用 intent_features（MaterialFeatureMask 位掩码）驱动天空依赖。
-    /// 迁移示例：rec.intent_features |= mtl::ToFeatureMask(mtl::MaterialFeature::NeedsSky);
-    /// 若 intent_features != 0，此字段将被忽略。
-    bool                sky         = false;                ///< 包含天空信息   (IncludeSky)
-
     SkyLightAmbientModel sky_ambient = SkyLightAmbientModel::Simple;    ///< 天光模型
-
-    /// [DEPRECATED — Phase 8 迁移窗口]
-    /// 请改用 intent_features（MaterialFeatureMask 位掩码）驱动光照实现选择。
-    /// 迁移示例：rec.intent_features |= mtl::ToFeatureMask(mtl::MaterialFeature::LightingPBR);
-    /// 若 intent_features != 0，此字段将被忽略（lighting 作为降级补充仍可读）。
-    LightingModel        lighting    = LightingModel::Lambert;          ///< 光照模型
 
     // ── MaterialBindingInstance 管线预设 ──────────────────────────────────────────────
     GraphicsPipelinePreset pipeline = GraphicsPipelinePreset::Solid3D;

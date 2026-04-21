@@ -57,7 +57,6 @@ private:
     inline static const mtl::MaterialRecipe kPBRColorCfg {
         .id          = "pbr_color_spheres",
         .preset      = mtl::MaterialPreset::PBRColor3D,
-        .sky         = true,
         .pipeline    = GraphicsPipelinePreset::Solid3D,
     };
 
@@ -65,7 +64,6 @@ private:
         .id       = "pbr_color_sky",
         .preset   = mtl::MaterialPreset::SkyMinimal,
         .l2w      = false,
-        .sky      = true,
         .pipeline = GraphicsPipelinePreset::Sky,
     };
 

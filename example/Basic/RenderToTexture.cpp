@@ -284,7 +284,6 @@ private:
         static const mtl::MaterialRecipe kCubeCfg {
             .id       = "rtt_cube_standard",
             .preset   = mtl::MaterialPreset::Standard,
-            .sky      = true,
             .pipeline = GraphicsPipelinePreset::Solid3D,
         };
         mtl::StandardMaterialInstance cube_mi_data{};

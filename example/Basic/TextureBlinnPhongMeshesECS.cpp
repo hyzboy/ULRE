@@ -54,9 +54,12 @@ private:
     inline static const mtl::MaterialRecipe kStandardCfg {
         .id             = "blinnphong_standard",
         .preset         = mtl::MaterialPreset::Standard,
-        .sky            = true,
+        .intent_features = mtl::AddFeature(
+            mtl::RemoveFeature(
+                mtl::GetDefaultIntentFeatureMask(mtl::MaterialPreset::Standard),
+                mtl::MaterialFeature::LightingPBR),
+            mtl::MaterialFeature::LightingBlinnPhong),
         .sky_ambient    = mtl::SkyLightAmbientModel::FakeAtmosphere,
-        .lighting       = mtl::LightingModel::BlinnPhong,
         .pipeline       = GraphicsPipelinePreset::Solid3D,
         .textures       = {
             {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/Brickwall/Albedo.Tex2D"},
@@ -68,7 +71,6 @@ private:
         .id       = "blinnphong_sky",
         .preset   = mtl::MaterialPreset::SkyMinimal,
         .l2w      = false,
-        .sky      = true,
         .pipeline = GraphicsPipelinePreset::Sky,
     };
 

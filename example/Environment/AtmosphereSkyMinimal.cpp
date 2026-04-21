@@ -31,7 +31,6 @@ private:
         .id       = "sky_minimal",
         .preset   = mtl::MaterialPreset::SkyMinimal,
         .l2w      = false,
-        .sky      = true,
         .pipeline = GraphicsPipelinePreset::Sky,
     };
 

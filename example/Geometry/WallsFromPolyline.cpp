@@ -36,7 +36,6 @@ private:
     inline static const mtl::MaterialRecipe kWallsCfg {
         .id             = "walls_standard",
         .preset         = mtl::MaterialPreset::Standard,
-        .sky      = true,
         .pipeline = GraphicsPipelinePreset::Solid3D,
         .textures = {
             {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/Brickwall/Albedo.Tex2D"},
