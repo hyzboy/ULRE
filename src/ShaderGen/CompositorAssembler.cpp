@@ -100,10 +100,10 @@ namespace
         writer.EmitInclude("compositor/frag_forward_ubo.glsl");
 
         if (f.needs_sky)
-            out += "#include \"" + std::string(GetSkyLightGLSLPath(f.sky_ambient_model)) + "\"\n";
+            writer.EmitInclude(GetSkyLightGLSLPath(f.sky_ambient_model));
 
         if (f.enable_lighting)
-            out += "#include \"" + std::string(hgl::graph::mtl::GetLightingModelGLSLPath(f.lighting_model)) + "\"\n";
+            writer.EmitInclude(hgl::graph::mtl::GetLightingModelGLSLPath(f.lighting_model));
 
         writer.EmitInclude(f.surface_path)
               .EmitInclude("compositor/frag_forward_main.glsl");
