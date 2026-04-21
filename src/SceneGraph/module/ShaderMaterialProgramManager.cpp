@@ -48,14 +48,6 @@ bool MaterialSpec::IsValid() const
 
 namespace
 {
-    enum class FallbackFeatureClass : uint8_t
-    {
-        Generic = 0,
-        Sky,
-        Lit,
-        Unlit,
-    };
-
     static mtl::MaterialFeatureMask ResolveFallbackFeatureMask(const mtl::Material3DCreateConfig *cfg)
     {
         if (!cfg)
@@ -112,36 +104,6 @@ namespace
         }
 
         return mask;
-    }
-
-    static FallbackFeatureClass ClassifyFallbackByFeatureMask(const mtl::MaterialFeatureMask mask)
-    {
-        if (mask == 0)
-            return FallbackFeatureClass::Generic;
-
-        if (mtl::HasFeature(mask, mtl::MaterialFeature::SurfaceSky)
-         || mtl::HasFeature(mask, mtl::MaterialFeature::NeedsSky))
-            return FallbackFeatureClass::Sky;
-
-        if (mtl::HasFeature(mask, mtl::MaterialFeature::EnableLighting)
-         || mtl::HasAnyFeature(mask, mtl::LightingImplFeatureMask)
-         || mtl::HasFeature(mask, mtl::MaterialFeature::SurfaceStandard)
-         || mtl::HasFeature(mask, mtl::MaterialFeature::SurfaceTerrain))
-            return FallbackFeatureClass::Lit;
-
-        return FallbackFeatureClass::Unlit;
-    }
-
-    static const char *GetFallbackClassName(const FallbackFeatureClass fc)
-    {
-        switch (fc)
-        {
-            case FallbackFeatureClass::Sky:     return "sky";
-            case FallbackFeatureClass::Lit:     return "lit";
-            case FallbackFeatureClass::Unlit:   return "unlit";
-            case FallbackFeatureClass::Generic:
-            default:                            return "generic";
-        }
     }
 
     void CreateShaderStageList(ShaderStageCreateInfoList &shader_stage_list,ShaderModuleMap *shader_maps)
@@ -436,34 +398,26 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::TryInitializeFallbackMateri
 ShaderMaterialProgram *ShaderMaterialProgramManager::TryInitializeFallbackMaterial(const uint64_t requested_feature_mask)
 {
     const mtl::MaterialFeatureMask feature_mask = static_cast<mtl::MaterialFeatureMask>(requested_feature_mask);
-    const FallbackFeatureClass fc = ClassifyFallbackByFeatureMask(feature_mask);
+    const mtl::FeatureAwareFallbackClass fc = mtl::ClassifyFallbackFeatureMask(feature_mask);
 
     ShaderMaterialProgram **cached_ptr = &fallback_material;
-    mtl::MaterialPreset primary_preset = mtl::MaterialPreset::Checkerboard3D;
-    mtl::MaterialPreset secondary_preset = mtl::MaterialPreset::Standard;
+    mtl::MaterialPreset primary_preset = mtl::GetPrimaryFallbackPreset(fc);
+    mtl::MaterialPreset secondary_preset = mtl::GetSecondaryFallbackPreset(fc);
 
     switch (fc)
     {
-        case FallbackFeatureClass::Sky:
+        case mtl::FeatureAwareFallbackClass::Sky:
             cached_ptr = &fallback_material_sky;
-            primary_preset = mtl::MaterialPreset::SkyMinimal;
-            secondary_preset = mtl::MaterialPreset::Standard;
             break;
-        case FallbackFeatureClass::Lit:
+        case mtl::FeatureAwareFallbackClass::Lit:
             cached_ptr = &fallback_material_lit;
-            primary_preset = mtl::MaterialPreset::Standard;
-            secondary_preset = mtl::MaterialPreset::Checkerboard3D;
             break;
-        case FallbackFeatureClass::Unlit:
+        case mtl::FeatureAwareFallbackClass::Unlit:
             cached_ptr = &fallback_material_unlit;
-            primary_preset = mtl::MaterialPreset::PureColor3D;
-            secondary_preset = mtl::MaterialPreset::Checkerboard3D;
             break;
-        case FallbackFeatureClass::Generic:
+        case mtl::FeatureAwareFallbackClass::Generic:
         default:
             cached_ptr = &fallback_material;
-            primary_preset = mtl::MaterialPreset::Checkerboard3D;
-            secondary_preset = mtl::MaterialPreset::Standard;
             break;
     }
 
@@ -481,7 +435,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::TryInitializeFallbackMateri
     {
         std::fprintf(stderr,
             "[ShaderMaterialProgramManager] feature-aware fallback create failed: class=%s mask=0x%016llx primary=%s, trying secondary=%s\n",
-            GetFallbackClassName(fc),
+            mtl::GetFeatureAwareFallbackClassName(fc),
             static_cast<unsigned long long>(feature_mask),
             mtl::GetMaterialPresetName(primary_preset),
             mtl::GetMaterialPresetName(secondary_preset));
@@ -493,7 +447,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::TryInitializeFallbackMateri
     {
         std::fprintf(stderr,
             "[ShaderMaterialProgramManager] TryInitializeFallbackMaterial failed: class=%s mask=0x%016llx could not create fallback material\n",
-            GetFallbackClassName(fc),
+            mtl::GetFeatureAwareFallbackClassName(fc),
             static_cast<unsigned long long>(feature_mask));
         return nullptr;
     }
@@ -503,7 +457,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::TryInitializeFallbackMateri
 
     std::fprintf(stdout,
         "[ShaderMaterialProgramManager] Fallback material initialized: class=%s mask=0x%016llx name=%s\n",
-        GetFallbackClassName(fc),
+        mtl::GetFeatureAwareFallbackClassName(fc),
         static_cast<unsigned long long>(feature_mask),
         chosen->GetName().c_str());
 
