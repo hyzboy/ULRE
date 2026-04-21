@@ -54,20 +54,6 @@ namespace hgl::graph
         /// AlphaToCoverage→[ForwardA2C,ShadowMasked]
         static std::vector<PassType> GetPassTypesForBlendMode(RenderAlphaMode blend);
 
-        /// vs_template_override: 非空时覆盖默认 VS 模板路径（相对于 ShaderLibrary 根目录）
-        /// fs_template_override: 非空时覆盖默认 FS 模板路径（相对于 ShaderLibrary 根目录）
-        /// surface_function_override: 非空时覆盖默认 Surface Function 路径
-        AssembleResult Assemble(
-            SurfaceType     surface,
-            RenderAlphaMode       blend,
-            PassType        pass,
-            const char     *vs_template_override      = nullptr,
-            const char     *fs_template_override      = nullptr,
-            const char     *surface_function_override  = nullptr,
-            mtl::SkyLightAmbientModel sky_model        = mtl::SkyLightAmbientModel::Simple,
-            mtl::LightingModel        lighting_model   = mtl::LightingModel::Lambert
-        ) const;
-
         /// VariantDesc overload — derives SurfaceType/RenderAlphaMode/PassType/QualityTier from key,
         /// uses desc's shader template paths (empty path → auto-routing fallback).
         AssembleResult Assemble(
