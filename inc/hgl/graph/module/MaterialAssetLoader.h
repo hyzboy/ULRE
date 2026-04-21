@@ -27,6 +27,11 @@
 namespace hgl::graph
 {
 
+inline mtl::MaterialFeatureMask ResolveRecipeIntentFeatureMask(const mtl::MaterialRecipe &rec)
+{
+    return mtl::ResolveIntentFeatureMask(rec.preset, rec.intent_features);
+}
+
 // ── ShaderMaterialProgram 创建（不含纹理绑定）──────────────────────────────────────────────
 
 /// 从 MaterialRecipe 创建/获取 ShaderMaterialProgram（仅 ResolveOrCreateProgram，不绑纹理）。
@@ -81,13 +86,47 @@ inline ShaderMaterialProgram *CreateMaterialFromRecord(
     // ── 3D (含 SkyMinimal / TerrainGrid / Standard / PBR 等) ─────────────────
     else
     {
+        const mtl::MaterialFeatureMask feature_mask = ResolveRecipeIntentFeatureMask(rec);
+        const auto feature_validation = mtl::ValidateFeatureMask(feature_mask);
+
+        if (rec.intent_features != 0 && !feature_validation.well_formed)
+        {
+            const std::string warning = mtl::BuildMalformedIntentFeatureWarningMessage(feature_mask,
+                                                                                       rec.preset,
+                                                                                       feature_validation);
+            std::fprintf(stderr, "%s\n", warning.c_str());
+        }
+
+        const bool use_feature_overrides = (rec.intent_features != 0);
+
+        const bool include_camera = use_feature_overrides
+            ? mtl::HasFeature(feature_mask, mtl::MaterialFeature::NeedsCamera)
+            : rec.camera;
+
+        const bool include_sky = use_feature_overrides
+            ? mtl::HasFeature(feature_mask, mtl::MaterialFeature::NeedsSky)
+            : rec.sky;
+
         Material3DCreateConfig cfg(
             rec.prim,
-            rec.camera ? IncludeCamera::With : IncludeCamera::Without,
+            include_camera ? IncludeCamera::With : IncludeCamera::Without,
             rec.l2w    ? IncludeL2W::With    : IncludeL2W::Without,
-            rec.sky    ? IncludeSky::With     : IncludeSky::Without);
+            include_sky ? IncludeSky::With : IncludeSky::Without);
         cfg.sky_ambient_model = rec.sky_ambient;
-        cfg.lighting_model    = rec.lighting;
+
+        if (use_feature_overrides)
+        {
+            cfg.lighting_model = mtl::ResolveLightingModelFromFeatures(feature_mask, rec.lighting);
+
+            // If the recipe explicitly disables lighting, force a non-lighting path default.
+            if (!mtl::HasFeature(feature_mask, mtl::MaterialFeature::EnableLighting))
+                cfg.lighting_model = mtl::LightingModel::Lambert;
+        }
+        else
+        {
+            cfg.lighting_model = rec.lighting;
+        }
+
         if (rec.pos_format.Check())
             cfg.position_format = rec.pos_format;
         for (const auto &tc : rec.textures)

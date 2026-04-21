@@ -41,3 +41,16 @@ target_link_libraries(MaterialPresetExhaustiveCompile
             CMCoreType)
 
 CreateProject(MaterialPresetExhaustiveCompile)
+
+####################################################################################################
+
+add_executable(MaterialFeatureWarningSmoke
+    MaterialFeatureWarningSmoke.cpp)
+
+target_link_libraries(MaterialFeatureWarningSmoke
+    PRIVATE ULRE.ShaderGen
+            CMCore
+            CMMath
+            CMCoreType)
+
+CreateProject(MaterialFeatureWarningSmoke)

@@ -18,6 +18,7 @@
 /// 通过 dim 字段区分 2D / 3D，通过 preset 字段决定子类型处理逻辑。
 
 #include <hgl/mtl/MaterialPreset.h>
+#include <hgl/mtl/MaterialFeature.h>
 #include <hgl/mtl/LightingModel.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/SamplerSlot.h>
@@ -48,6 +49,16 @@ struct MaterialRecipe
     std::string     id;                                     ///< 逻辑资产名（缓存键 / 文件名干）
     std::string     domain_id;                              ///< 资源域标识（同 ShaderMaterialProgram 不同域 = 不同渲染批次）
     MaterialPreset  preset  = MaterialPreset::Standard;     ///< 材质预设
+
+    /// 作者意图特性集合（位掩码）
+    /// - 0 表示使用 preset 默认映射
+    /// - 非 0 表示覆盖默认映射（由上层显式声明需求）
+    MaterialFeatureMask intent_features = 0;
+
+    /// 是否严格要求 intent_features 与最终程序特征一致。
+    /// - false: 允许运行时降级/回退重写（推荐默认）
+    /// - true:  供调试/验证链路使用，后续可在验证阶段输出告警或错误
+    bool strict_intent_features = false;
 
     // ── 维度选择 ──────────────────────────────────────────────────────────────
     enum class Dim : uint8 { D2, D3 } dim = Dim::D3;
