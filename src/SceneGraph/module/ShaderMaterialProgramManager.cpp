@@ -19,7 +19,6 @@
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<hgl/mtl/MaterialFeature.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdio>
@@ -48,64 +47,6 @@ bool MaterialSpec::IsValid() const
 
 namespace
 {
-    static mtl::MaterialFeatureMask ResolveFallbackFeatureMask(const mtl::Material3DCreateConfig *cfg)
-    {
-        if (!cfg)
-            return 0;
-
-        if (cfg->effective_feature_mask != 0)
-            return cfg->effective_feature_mask;
-
-        mtl::MaterialFeatureMask mask = 0;
-
-        if (cfg->camera)
-            mask = mtl::AddFeature(mask, mtl::MaterialFeature::NeedsCamera);
-
-        if (cfg->sky)
-        {
-            mask = mtl::AddFeature(mask, mtl::MaterialFeature::NeedsSky);
-            mask = mtl::AddFeature(mask, mtl::MaterialFeature::SurfaceSky);
-        }
-
-        if (cfg->local_to_world)
-            mask = mtl::AddFeature(mask, mtl::MaterialFeature::NeedsLocalToWorld);
-
-        if (cfg->material_instance)
-            mask = mtl::AddFeature(mask, mtl::MaterialFeature::NeedsMaterialInst);
-
-        switch (cfg->lighting_model)
-        {
-            case mtl::LightingModel::PBR:
-                mask = mtl::AddFeature(mask, mtl::MaterialFeature::EnableLighting);
-                mask = mtl::AddFeature(mask, mtl::MaterialFeature::LightingPBR);
-                break;
-            case mtl::LightingModel::BlinnPhong:
-                mask = mtl::AddFeature(mask, mtl::MaterialFeature::EnableLighting);
-                mask = mtl::AddFeature(mask, mtl::MaterialFeature::LightingBlinnPhong);
-                break;
-            case mtl::LightingModel::Lambert:
-                mask = mtl::AddFeature(mask, mtl::MaterialFeature::EnableLighting);
-                mask = mtl::AddFeature(mask, mtl::MaterialFeature::LightingLambert);
-                break;
-            default:
-                break;
-        }
-
-        if (mask != 0
-            && !mtl::HasFeature(mask, mtl::MaterialFeature::SurfaceSky)
-            && !mtl::HasFeature(mask, mtl::MaterialFeature::SurfaceStandard)
-            && !mtl::HasFeature(mask, mtl::MaterialFeature::SurfaceTerrain)
-            && !mtl::HasFeature(mask, mtl::MaterialFeature::SurfaceUnlit))
-        {
-            if (mtl::HasFeature(mask, mtl::MaterialFeature::EnableLighting))
-                mask = mtl::AddFeature(mask, mtl::MaterialFeature::SurfaceStandard);
-            else
-                mask = mtl::AddFeature(mask, mtl::MaterialFeature::SurfaceUnlit);
-        }
-
-        return mask;
-    }
-
     void CreateShaderStageList(ShaderStageCreateInfoList &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
@@ -392,94 +333,32 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::TryGetCachedMaterial(const 
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::TryInitializeFallbackMaterial()
 {
-    return TryInitializeFallbackMaterial(0);
-}
-
-ShaderMaterialProgram *ShaderMaterialProgramManager::TryInitializeFallbackMaterial(const uint64_t requested_feature_mask)
-{
-    const mtl::MaterialFeatureMask feature_mask = static_cast<mtl::MaterialFeatureMask>(requested_feature_mask);
-    const mtl::FeatureAwareFallbackClass fc = mtl::ClassifyFallbackFeatureMask(feature_mask);
-
-    ShaderMaterialProgram **cached_ptr = &fallback_material;
-    mtl::MaterialPreset primary_preset = mtl::GetPrimaryFallbackPreset(fc);
-    mtl::MaterialPreset secondary_preset = mtl::GetSecondaryFallbackPreset(fc);
-
-    switch (fc)
-    {
-        case mtl::FeatureAwareFallbackClass::Sky:
-            cached_ptr = &fallback_material_sky;
-            break;
-        case mtl::FeatureAwareFallbackClass::Lit:
-            cached_ptr = &fallback_material_lit;
-            break;
-        case mtl::FeatureAwareFallbackClass::Unlit:
-            cached_ptr = &fallback_material_unlit;
-            break;
-        case mtl::FeatureAwareFallbackClass::Generic:
-        default:
-            cached_ptr = &fallback_material;
-            break;
-    }
-
-    if (cached_ptr && *cached_ptr)
-        return *cached_ptr;
-
-    ShaderMaterialProgram *chosen = nullptr;
+    if(fallback_material)
+        return fallback_material;
 
     mtl::Material3DCreateConfig cfg;
-    cfg.effective_feature_mask = feature_mask;
+    fallback_material = CreateMaterial(mtl::MaterialPreset::Checkerboard3D, &cfg);
 
-    chosen = CreateMaterial(primary_preset, &cfg);
-
-    if (!chosen)
+    if(!fallback_material)
     {
         std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] feature-aware fallback create failed: class=%s mask=0x%016llx primary=%s, trying secondary=%s\n",
-            mtl::GetFeatureAwareFallbackClassName(fc),
-            static_cast<unsigned long long>(feature_mask),
-            mtl::GetMaterialPresetName(primary_preset),
-            mtl::GetMaterialPresetName(secondary_preset));
-
-        chosen = CreateMaterial(secondary_preset, &cfg);
-    }
-
-    if (!chosen)
-    {
-        std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] TryInitializeFallbackMaterial failed: class=%s mask=0x%016llx could not create fallback material\n",
-            mtl::GetFeatureAwareFallbackClassName(fc),
-            static_cast<unsigned long long>(feature_mask));
+            "[ShaderMaterialProgramManager] TryInitializeFallbackMaterial failed: Checkerboard3D creation failed\n");
         return nullptr;
     }
 
-    if (cached_ptr)
-        *cached_ptr = chosen;
-
     std::fprintf(stdout,
-        "[ShaderMaterialProgramManager] Fallback material initialized: class=%s mask=0x%016llx name=%s\n",
-        mtl::GetFeatureAwareFallbackClassName(fc),
-        static_cast<unsigned long long>(feature_mask),
-        chosen->GetName().c_str());
+        "[ShaderMaterialProgramManager] Fallback material initialized: default checkerboard name=%s\n",
+        fallback_material->GetName().c_str());
 
-    return chosen;
+    return fallback_material;
 }
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::GetFallbackMaterial()
 {
-    return GetFallbackMaterial(0);
-}
+    if(!fallback_material)
+        TryInitializeFallbackMaterial();
 
-ShaderMaterialProgram *ShaderMaterialProgramManager::GetFallbackMaterial(const uint64_t requested_feature_mask)
-{
-    if(requested_feature_mask == 0)
-    {
-        if(!fallback_material)
-            TryInitializeFallbackMaterial(0);
-
-        return fallback_material;
-    }
-
-    return TryInitializeFallbackMaterial(requested_feature_mask);
+    return fallback_material;
 }
 
 bool ShaderMaterialProgramManager::ExecuteMaterialBuildPipeline(ShaderMaterialProgram *mtl,
@@ -648,7 +527,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 
     if(!mtl)
     {
-        mtl = GetFallbackMaterial(ResolveFallbackFeatureMask(cfg));
+        mtl = GetFallbackMaterial();
         if(mtl)
             acquire_fallback_used.fetch_add(1);
     }
@@ -686,10 +565,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 
     if(!mtl)
     {
-        const uint64_t feature_mask = key.effective_feature_mask != 0
-                                    ? key.effective_feature_mask
-                                    : ResolveFallbackFeatureMask(cfg);
-        mtl = GetFallbackMaterial(feature_mask);
+        mtl = GetFallbackMaterial();
         if(mtl)
             acquire_fallback_used.fetch_add(1);
     }

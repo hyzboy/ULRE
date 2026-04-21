@@ -418,6 +418,8 @@ MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLit
 MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,
                                  const Text2DMaterialCreateConfig *cfg,
                                  const MaterialVariantKey &key);
+MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLite *profile,
+                                         Material3DCreateConfig *cfg);
 
 namespace {
 
@@ -561,10 +563,18 @@ static MaterialCreateInfo *DispatchPBRColor3D(
     return CreatePBRColor3D(profile,(PBRColor3DMaterialCreateConfig *)cfg);
 }
 
+static MaterialCreateInfo *DispatchCheckerboard3D(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &,
+    MaterialCreateConfig *cfg)
+{
+    return CreateCheckerboard3D(profile,(Material3DCreateConfig *)cfg);
+}
+
 static const VariantFactoryDispatchEntry kVariantFactoryDispatchTable[] =
 {
-    // Fallback/error visualization (routes to Standard factory)
-    {MaterialPreset::Checkerboard3D,      "Checkerboard3D",      DispatchStandard},
+    // Fallback/error visualization (dedicated position-only checkerboard)
+    {MaterialPreset::Checkerboard3D,      "Checkerboard3D",      DispatchCheckerboard3D},
 
     {MaterialPreset::VertexColor2D,       "VertexColor2D",       DispatchVertexColor2D},
     {MaterialPreset::PureColor2D,         "PureColor2D",         DispatchPureColor2D},
@@ -636,6 +646,20 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     {
         std::fprintf(stderr, "[MaterialLibrary] CreateMaterialCreateInfo failed: cfg is null\n");
         return nullptr;
+    }
+
+    if(cfg->preset_name
+    && std::strcmp(cfg->preset_name, GetMaterialPresetName(MaterialPreset::Checkerboard3D)) == 0)
+    {
+        Material3DCreateConfig *cfg3d = dynamic_cast<Material3DCreateConfig *>(cfg);
+        if(!cfg3d)
+        {
+            std::fprintf(stderr,
+                "[MaterialLibrary] CreateMaterialCreateInfo failed: Checkerboard3D requires Material3DCreateConfig\n");
+            return nullptr;
+        }
+
+        return CreateCheckerboard3D(profile, cfg3d);
     }
 
     if(!profile)

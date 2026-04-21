@@ -125,16 +125,3 @@ target_link_libraries(CompositorInferenceDiagnosticsTest
             CMCoreType)
 
 CreateProject(CompositorInferenceDiagnosticsTest)
-
-####################################################################################################
-
-add_executable(FeatureAwareFallbackRoutingTest
-    FeatureAwareFallbackRoutingTest.cpp)
-
-target_link_libraries(FeatureAwareFallbackRoutingTest
-    PRIVATE ULRE.ShaderGen
-            CMCore
-            CMMath
-            CMCoreType)
-
-CreateProject(FeatureAwareFallbackRoutingTest)
