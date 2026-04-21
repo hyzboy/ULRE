@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <source_location>
 #include <string>
 
 namespace hgl::graph
@@ -26,6 +27,8 @@ public:
     ShaderWriter &EmitDefine(const std::string &macro, const char *value = nullptr);
     ShaderWriter &EmitIfndefDef(const std::string &macro, const char *value);
     ShaderWriter &EmitInclude(const std::string &path);
+    ShaderWriter &EmitCommentLine(const std::string &name,
+                                  const std::source_location &location = std::source_location::current());
 
     ShaderWriter &EmitLine(const std::string &line);
     ShaderWriter &BeginBlock();

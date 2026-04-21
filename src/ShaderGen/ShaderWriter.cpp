@@ -1,7 +1,20 @@
 #include <hgl/shadergen/ShaderWriter.h>
 
+#include <string_view>
+
 namespace hgl::graph
 {
+namespace
+{
+constexpr size_t kDebugCommentColumn = 100;
+
+std::string_view GetFileNameOnly(const std::string_view path)
+{
+    const size_t slash = path.find_last_of("/\\");
+    return slash == std::string_view::npos ? path : path.substr(slash + 1);
+}
+}
+
 ShaderWriter::ShaderWriter(std::string &output)
     : out(output), indent_level(0)
 {
@@ -104,6 +117,35 @@ ShaderWriter &ShaderWriter::EmitInclude(const std::string &path)
     out += "#include \"";
     out += path;
     out += "\"\n";
+    return *this;
+}
+
+ShaderWriter &ShaderWriter::EmitCommentLine(const std::string &name, const std::source_location &location)
+{
+    FlushLayoutPrefix();
+
+    if (indent_level > 0)
+        out.append(static_cast<size_t>(indent_level) * 4, ' ');
+
+    out += "// ";
+    out += name;
+    out += ' ';
+
+    std::string suffix;
+    suffix.reserve(192);
+    suffix += ' ';
+    suffix += std::string(GetFileNameOnly(location.file_name()));
+    suffix += " | line ";
+    suffix += std::to_string(location.line());
+
+    const size_t current_width = name.size() + 3;
+    const size_t dash_count = current_width < kDebugCommentColumn
+                            ? (kDebugCommentColumn - current_width)
+                            : 1;
+
+    out.append(dash_count, '-');
+    out += suffix;
+    out += '\n';
     return *this;
 }
 

@@ -37,13 +37,13 @@ std::string EmitShaderLayoutDefines(const ShaderLayoutContract &contract)
     ShaderWriter writer(out);
     out.reserve(512);
 
-    writer.EmitLine("// ---- Auto-generated layout defines ----");
+    writer.EmitCommentLine("EmitShaderLayoutDefines.Begin");
 
     AppendSection(out, "Vertex input locations", contract.vertex_locations);
     AppendSection(out, "Descriptor sets",        contract.descriptor_sets);
     AppendSection(out, "Descriptor bindings",    contract.descriptor_bindings);
 
-    writer.EmitLine("// ----------------------------------------").NewLine();
+    writer.EmitCommentLine("EmitShaderLayoutDefines.End");
     return out;
 }
 

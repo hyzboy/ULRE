@@ -51,6 +51,8 @@ namespace
         std::string out = "#version 450\n\n";
         hgl::graph::ShaderWriter writer(out);
 
+        writer.EmitCommentLine("BuildForwardVertexEntry.Begin");
+
         EmitEnabledVertexAttribDefines(writer, f);
 
         if (f.vert_input_2d)    writer.EmitDefine("VERT_INPUT_2D");
@@ -58,6 +60,8 @@ namespace
 
         writer.EmitInclude("compositor/vert_forward_ubo.glsl")
               .EmitInclude("compositor/vert_forward_main.glsl");
+
+        writer.EmitCommentLine("BuildForwardVertexEntry.End");
         return out;
     }
 
@@ -65,6 +69,8 @@ namespace
     {
         std::string out = "#version 450\n\n";
         hgl::graph::ShaderWriter writer(out);
+
+        writer.EmitCommentLine("BuildForwardFragmentEntry.Begin");
 
         EmitEnabledVertexAttribDefines(writer, f);
 
@@ -87,27 +93,38 @@ namespace
 
         writer.EmitInclude(f.surface_path)
               .EmitInclude("compositor/frag_forward_main.glsl");
+
+        writer.EmitCommentLine("BuildForwardFragmentEntry.End");
         return out;
     }
 
     std::string BuildBillboardDynamicVertexEntry(const hgl::graph::mtl::MaterialVariantKey &)
     {
         std::string out = "#version 450\n\n";
-        hgl::graph::ShaderWriter(out).EmitInclude("compositor/main_forward_billboard_dynamic.vert.glsl");
+        hgl::graph::ShaderWriter writer(out);
+        writer.EmitCommentLine("BuildBillboardDynamicVertexEntry.Begin");
+        writer.EmitInclude("compositor/main_forward_billboard_dynamic.vert.glsl");
+        writer.EmitCommentLine("BuildBillboardDynamicVertexEntry.End");
         return out;
     }
 
     std::string BuildBillboardFixedVertexEntry(const hgl::graph::mtl::MaterialVariantKey &)
     {
         std::string out = "#version 450\n\n";
-        hgl::graph::ShaderWriter(out).EmitInclude("compositor/main_forward_billboard_fixed.vert.glsl");
+        hgl::graph::ShaderWriter writer(out);
+        writer.EmitCommentLine("BuildBillboardFixedVertexEntry.Begin");
+        writer.EmitInclude("compositor/main_forward_billboard_fixed.vert.glsl");
+        writer.EmitCommentLine("BuildBillboardFixedVertexEntry.End");
         return out;
     }
 
     std::string BuildTerrainGridVertexEntry(const hgl::graph::mtl::MaterialVariantKey &)
     {
         std::string out = "#version 450\n\n";
-        hgl::graph::ShaderWriter(out).EmitInclude("compositor/main_terrain_grid.vert.glsl");
+        hgl::graph::ShaderWriter writer(out);
+        writer.EmitCommentLine("BuildTerrainGridVertexEntry.Begin");
+        writer.EmitInclude("compositor/main_terrain_grid.vert.glsl");
+        writer.EmitCommentLine("BuildTerrainGridVertexEntry.End");
         return out;
     }
 
