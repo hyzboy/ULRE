@@ -31,7 +31,7 @@ namespace hgl::graph::mtl
         "ViewportInfo",
         "CameraInfo",
         "SkyInfo",
-        "ColorPattle"
+        "ColorPalette"
     };
 
     constexpr const char *SSBODescriptorSemanticNameList[] =
@@ -55,7 +55,7 @@ namespace hgl::graph::mtl
         {SET_TYPE_VIEWPORT,         "viewport",     "VIEWPORT_BINDING",     "ViewportInfo", BufferUpdateClass::CriticalPerFrame }, // ViewportInfo
         {SET_TYPE_CAMERA,           "camera",       "CAMERA_BINDING",       "CameraInfo",   BufferUpdateClass::CriticalPerFrame }, // CameraInfo
         {SET_TYPE_SKY,              "sky",          "SKY_BINDING",          "SkyInfo",      BufferUpdateClass::Deferred         }, // SkyInfo
-        {SET_TYPE_MATERIAL,         "color_pattle", "COLOR_PATTLE_BINDING", "ColorPattle",  BufferUpdateClass::Default          }, // ColorPattle
+        {SET_TYPE_MATERIAL,         "color_palette", "COLOR_PALETTE_BINDING", "ColorPalette",  BufferUpdateClass::Default          }, // ColorPalette
         {DescriptorSetType::Unknow, nullptr,        nullptr,                nullptr,        BufferUpdateClass::Default          }, // Custom
     };
 

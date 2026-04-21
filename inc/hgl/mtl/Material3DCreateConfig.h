@@ -85,7 +85,7 @@ DECLARE_MATERIAL_CREATOR(PureColor3D,       Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(VertexColor3D,     const Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(VertexLuminance3D, Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(VertexLuminance2D, Material3DCreateConfig)
-DECLARE_MATERIAL_CREATOR(VertexPattleColor3D,const Material3DCreateConfig)
+DECLARE_MATERIAL_CREATOR(VertexPaletteColor3D,const Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(Gizmo3D,           Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(Standard,          const Material3DCreateConfig)
 

@@ -114,7 +114,7 @@ SET(STD_MTL_3D_SOURCE_FILES ${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/StandardDescriptorBuilder.cpp
                             3d/M_Standard.cpp
                             3d/M_PBRColor3D.cpp
-                            3d/M_VertexPattleColor3D.cpp
+                            3d/M_VertexPaletteColor3D.cpp
                             3d/M_TerrainGrid.cpp)
 SOURCE_GROUP("Standard Material\\3D" FILES ${STD_MTL_3D_SOURCE_FILES})
 

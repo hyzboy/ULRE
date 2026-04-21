@@ -100,7 +100,7 @@ namespace hgl::ecs
     // Type aliases (local to this TU)
     // -------------------------------------------------------------------------
     using LineColorPalette    = uint32_t[LineRenderPipeline::PALETTE_SIZE];
-    using UBOLineColorPalette = graph::UBOAccessor<LineColorPalette,graph::mtl::UBODescriptorSemantic::ColorPattle>;
+    using UBOLineColorPalette = graph::UBOAccessor<LineColorPalette,graph::mtl::UBODescriptorSemantic::ColorPalette>;
 
     // -------------------------------------------------------------------------
     const std::string LineRenderPipeline::kName{ "Line" };
@@ -305,7 +305,7 @@ namespace hgl::ecs
         if (!mat_mgr)
             return false;
 
-        material_ = mat_mgr->ResolveOrCreateProgram(graph::mtl::MaterialPreset::VertexPattleColor3D, &cfg);
+        material_ = mat_mgr->ResolveOrCreateProgram(graph::mtl::MaterialPreset::VertexPaletteColor3D, &cfg);
         if (!material_)
             return false;
 

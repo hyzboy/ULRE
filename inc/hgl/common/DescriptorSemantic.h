@@ -18,9 +18,9 @@ namespace hgl::graph::mtl
         ViewportInfo,
         CameraInfo,
         SkyInfo,
-        ColorPattle,
+        ColorPalette,
 
-        ENUM_CLASS_RANGE(Unknown, ColorPattle)
+        ENUM_CLASS_RANGE(Unknown, ColorPalette)
     };
 
     enum class SSBODescriptorSemantic : uint8

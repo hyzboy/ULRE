@@ -188,7 +188,7 @@ namespace hgl::graph::mtl
             case MaterialPreset::VertexColor3D:
             case MaterialPreset::VertexLuminance3D:
             case MaterialPreset::VertexLuminance2D:
-            case MaterialPreset::VertexPattleColor3D:
+            case MaterialPreset::VertexPaletteColor3D:
             case MaterialPreset::Gizmo3D:
             case MaterialPreset::Checkerboard3D:
             case MaterialPreset::Billboard2DDynamic:

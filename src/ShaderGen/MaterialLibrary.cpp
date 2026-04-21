@@ -143,7 +143,7 @@ static MaterialVariantKey MakeVertexLuminance2DKey()
     return key;
 }
 
-static MaterialVariantKey MakeVertexPattleColor3DKey()
+static MaterialVariantKey MakeVertexPaletteColor3DKey()
 {
     MaterialVariantKey key{};
     key.surface_type = SurfaceType::Unlit;
@@ -252,7 +252,7 @@ static const PresetResolveEntry kPresetResolveTable[] =
     {MaterialPreset::VertexColor3D,       "VertexColor3D",       MaterialPreset::VertexColor3D,       MakeVertexColor3DKey},
     {MaterialPreset::VertexLuminance3D,   "VertexLuminance3D",   MaterialPreset::VertexLuminance3D,   MakeVertexLuminance3DKey},
     {MaterialPreset::VertexLuminance2D,   "VertexLuminance2D",   MaterialPreset::VertexLuminance2D,   MakeVertexLuminance2DKey},
-    {MaterialPreset::VertexPattleColor3D, "VertexPattleColor3D", MaterialPreset::VertexPattleColor3D, MakeVertexPattleColor3DKey},
+    {MaterialPreset::VertexPaletteColor3D, "VertexPaletteColor3D", MaterialPreset::VertexPaletteColor3D, MakeVertexPaletteColor3DKey},
     {MaterialPreset::Gizmo3D,             "Gizmo3D",             MaterialPreset::Gizmo3D,             MakeGizmo3DKey},
     {MaterialPreset::TerrainGrid,         "TerrainGrid",         MaterialPreset::TerrainGrid,         MakeTerrainGridKey},
     {MaterialPreset::SkyMinimal,          "SkyMinimal",          MaterialPreset::SkyMinimal,          MakeSkyMinimalKey},
@@ -500,12 +500,12 @@ static MaterialCreateInfo *DispatchVertexLuminance2D(
     return CreateVertexLuminance2D(profile,(Material3DCreateConfig *)cfg);
 }
 
-static MaterialCreateInfo *DispatchVertexPattleColor3D(
+static MaterialCreateInfo *DispatchVertexPaletteColor3D(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantKey &,
     MaterialCreateConfig *cfg)
 {
-    return CreateVertexPattleColor3D(profile,(const Material3DCreateConfig *)cfg);
+    return CreateVertexPaletteColor3D(profile,(const Material3DCreateConfig *)cfg);
 }
 
 static MaterialCreateInfo *DispatchGizmo3D(
@@ -585,7 +585,7 @@ static const VariantFactoryDispatchEntry kVariantFactoryDispatchTable[] =
     {MaterialPreset::VertexColor3D,       "VertexColor3D",       DispatchVertexColor3D},
     {MaterialPreset::VertexLuminance3D,   "VertexLuminance3D",   DispatchVertexLuminance3D},
     {MaterialPreset::VertexLuminance2D,   "VertexLuminance2D",   DispatchVertexLuminance2D},
-    {MaterialPreset::VertexPattleColor3D, "VertexPattleColor3D", DispatchVertexPattleColor3D},
+    {MaterialPreset::VertexPaletteColor3D, "VertexPaletteColor3D", DispatchVertexPaletteColor3D},
     {MaterialPreset::Gizmo3D,             "Gizmo3D",             DispatchGizmo3D},
     {MaterialPreset::TerrainGrid,         "TerrainGrid",         DispatchTerrainGrid},
     {MaterialPreset::SkyMinimal,          "SkyMinimal",          DispatchSkyMinimal},

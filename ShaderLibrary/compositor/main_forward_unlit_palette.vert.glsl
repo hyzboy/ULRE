@@ -1,7 +1,7 @@
 #version 450
 
 #include "compositor/vert_forward_ubo.glsl"
-#include "common/ubo_color_pattle.glsl"
+#include "common/ubo_color_palette.glsl"
 
 layout(location=POSITION_LOCATION) in vec3  Position;
 layout(location=COLOR_LOCATION) in uint  ColorIndex;
@@ -16,7 +16,7 @@ void main()
     mat4 transform_mat = GetTransform();
     vec4 worldPos = transform_mat * vec4(Position, 1.0);
 
-    fragVertexColor = unpackUnorm4x8(color_pattle.color[ColorIndex]);
+    fragVertexColor = unpackUnorm4x8(color_palette.color[ColorIndex]);
 
     gl_Position = camera.vp * worldPos;
 }

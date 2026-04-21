@@ -50,7 +50,7 @@ namespace hgl::graph::mtl
         PureColor3D,
         VertexColor3D,
         VertexLuminance3D,
-        VertexPattleColor3D,
+        VertexPaletteColor3D,
         Gizmo3D,
         TerrainGrid,
         SkyMinimal,

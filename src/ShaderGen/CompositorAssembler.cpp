@@ -179,13 +179,13 @@ namespace
         return BuildForwardVertexEntry(flags);
     }
 
-    std::string BuildForwardUnlitPattleVS(const hgl::graph::mtl::MaterialVariantKey &)
+    std::string BuildForwardUnlitPaletteVS(const hgl::graph::mtl::MaterialVariantKey &)
     {
         std::string out = "#version 450\n\n";
         hgl::graph::ShaderWriter writer(out);
-        writer.EmitCommentLine("BuildForwardUnlitPattleVS.Begin");
+        writer.EmitCommentLine("BuildForwardUnlitPaletteVS.Begin");
         writer.EmitInclude("compositor/vert_forward_ubo.glsl")
-              .EmitInclude("common/ubo_color_pattle.glsl")
+              .EmitInclude("common/ubo_color_palette.glsl")
               .NewLine()
               .EmitLine("layout(location=POSITION_LOCATION) in vec3 Position;")
               .EmitLine("layout(location=COLOR_LOCATION) in uint ColorIndex;")
@@ -200,11 +200,11 @@ namespace
                   .EmitLine("mat4 transform_mat = GetTransform();")
                   .EmitLine("vec4 worldPos = transform_mat * vec4(Position, 1.0);")
                   .NewLine()
-                  .EmitLine("fragVertexColor = unpackUnorm4x8(color_pattle.color[ColorIndex]);")
+                  .EmitLine("fragVertexColor = unpackUnorm4x8(color_palette.color[ColorIndex]);")
                   .NewLine()
                   .EmitLine("gl_Position = camera.vp * worldPos;")
               .EndBlock();
-        writer.EmitCommentLine("BuildForwardUnlitPattleVS.End");
+        writer.EmitCommentLine("BuildForwardUnlitPaletteVS.End");
         return out;
     }
 
@@ -370,7 +370,7 @@ namespace
         {"compositor/main_forward_billboard_fixed.vert.glsl",   &BuildBillboardFixedVertexEntry},
         {"compositor/main_terrain_grid.vert.glsl",              &BuildTerrainGridVertexEntry},
         {"compositor/main_forward_lit.vert.glsl",               &BuildForwardLitVS},
-        {"compositor/main_forward_unlit_pattle.vert.glsl",      &BuildForwardUnlitPattleVS},
+        {"compositor/main_forward_unlit_palette.vert.glsl",      &BuildForwardUnlitPaletteVS},
     };
 
     static const GeneratedFSTemplateRoute kGeneratedFSTemplateRoutes[] = {

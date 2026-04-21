@@ -464,16 +464,16 @@ void VariantRegistry::InitializeBuiltinVariants()
                  "surface/unlit_luminance_surface.glsl"));
 
     // ------------------------------------------------------------------
-    // 3D Unlit: VertexPattleColor
+    // 3D Unlit: VertexPaletteColor
     // ------------------------------------------------------------------
     RegisterVariant(
         K(ST::Unlit, GM::Mesh3D, {},
             VertexAttribFeatureBit(VertexAttrib::Color),
             0,
             static_cast<uint32>(ExtraFeature::DebugShading)),
-        MakeDesc("VertexPattleColor3D",
-                 MaterialPreset::VertexPattleColor3D,
-                 "compositor/main_forward_unlit_pattle.vert.glsl",
+        MakeDesc("VertexPaletteColor3D",
+                 MaterialPreset::VertexPaletteColor3D,
+                 "compositor/main_forward_unlit_palette.vert.glsl",
                  "compositor/main_forward_unlit_vertexcolor.frag.glsl",
                  "surface/unlit_vertexcolor_surface.glsl"));
 
