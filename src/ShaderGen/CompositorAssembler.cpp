@@ -7,6 +7,7 @@
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
+#include <atomic>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -14,6 +15,12 @@
 
 namespace
 {
+#if defined(ULRE_SHADERGEN_STRICT_GENERATED_TEMPLATES)
+    constexpr bool kStrictGeneratedTemplateRoutes = true;
+#else
+    constexpr bool kStrictGeneratedTemplateRoutes = false;
+#endif
+
     using GeneratedVSBuilder = std::string (*)(const hgl::graph::mtl::MaterialVariantKey &key);
     using GeneratedFSBuilder = std::string (*)(const hgl::graph::mtl::MaterialVariantKey &key, hgl::graph::RenderAlphaMode blend, const std::string &surface_path);
 
@@ -364,6 +371,27 @@ namespace
         }
 
         return nullptr;
+    }
+
+    static void WarnLegacyTemplateDiskRead(const char *stage, const std::string &template_path, const std::string &absolute_path)
+    {
+        static std::atomic_bool s_warned_vs{false};
+        static std::atomic_bool s_warned_fs{false};
+
+        std::atomic_bool *flag = &s_warned_fs;
+        if (stage && stage[0] == 'V')
+            flag = &s_warned_vs;
+
+        bool expected = false;
+        if (!flag->compare_exchange_strong(expected, true, std::memory_order_relaxed))
+            return;
+
+        std::fprintf(stderr,
+            "[CompositorAssembler] warning: falling back to disk template read (%s). "
+            "template='%s' path='%s'. This path is compatibility-only; prefer generated template routes.\n",
+            stage ? stage : "Unknown",
+            template_path.c_str(),
+            absolute_path.c_str());
     }
 
     template<size_t N>
@@ -736,13 +764,25 @@ namespace hgl::graph
         if (!desc.vs_template_path.empty())
         {
             std::string read_error;
-            if (!TryBuildGeneratedVSTemplatePath(desc.vs_template_path, key, vs_source)
-             && !ReadFile(vs_path, vs_source, read_error))
+            const bool built_generated = TryBuildGeneratedVSTemplatePath(desc.vs_template_path, key, vs_source);
+
+            if (!built_generated && kStrictGeneratedTemplateRoutes)
+            {
+                result.error_message = "Strict generated-template mode rejects VS disk fallback for template='"
+                    + desc.vs_template_path + "'";
+                result.success = false;
+                return result;
+            }
+
+            if (!built_generated && !ReadFile(vs_path, vs_source, read_error))
             {
                 result.error_message = BuildAssembleReadFailureMessage("VS", desc.vs_template_path, vs_path, read_error);
                 result.success = false;
                 return result;
             }
+
+            if (!built_generated)
+                WarnLegacyTemplateDiskRead("VS", desc.vs_template_path, vs_path);
         }
         else
         {
@@ -759,13 +799,25 @@ namespace hgl::graph
         if (!desc.fs_template_path.empty())
         {
             std::string read_error;
-            if (!TryBuildGeneratedFSTemplatePath(desc.fs_template_path, key, key.blend_mode, surface_rel, fs_source)
-             && !ReadFile(fs_path, fs_source, read_error))
+            const bool built_generated = TryBuildGeneratedFSTemplatePath(desc.fs_template_path, key, key.blend_mode, surface_rel, fs_source);
+
+            if (!built_generated && kStrictGeneratedTemplateRoutes)
+            {
+                result.error_message = "Strict generated-template mode rejects FS disk fallback for template='"
+                    + desc.fs_template_path + "'";
+                result.success = false;
+                return result;
+            }
+
+            if (!built_generated && !ReadFile(fs_path, fs_source, read_error))
             {
                 result.error_message = BuildAssembleReadFailureMessage("FS", desc.fs_template_path, fs_path, read_error);
                 result.success = false;
                 return result;
             }
+
+            if (!built_generated)
+                WarnLegacyTemplateDiskRead("FS", desc.fs_template_path, fs_path);
         }
         else
         {

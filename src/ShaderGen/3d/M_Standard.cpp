@@ -15,8 +15,17 @@
 namespace hgl::graph::mtl{
 namespace
 {
+#if defined(ULRE_SHADERGEN_VERBOSE)
+    constexpr bool kStandardVerbose = true;
+#else
+    constexpr bool kStandardVerbose = false;
+#endif
+
     static void PrintStandardRouteKey(const char *label, const MaterialVariantKey &key, const bool any_array)
     {
+        if (!kStandardVerbose)
+            return;
+
         std::fprintf(stderr,
             "[Standard] %s hash=%llu surface=%u geom=%u sky=%u light=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X any_array=%d\n",
             label ? label : "route",
@@ -143,9 +152,12 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     PrintStandardRouteKey("VariantRegistry resolved route-request", route_key, any_array);
     PrintStandardRouteKey("VariantRegistry resolved route-final", resolved_route_key, any_array);
-    std::fprintf(stderr,
-        "[Standard] VariantRegistry resolved variant=%s\n",
-        var_desc->variant_name.c_str());
+    if (kStandardVerbose)
+    {
+        std::fprintf(stderr,
+            "[Standard] VariantRegistry resolved variant=%s\n",
+            var_desc->variant_name.c_str());
+    }
 
     // Populate vertex attribute feature bits from the actual vertex layout.
     // policy is const, so take a mutable copy of assemble_key.
