@@ -19,12 +19,8 @@
 
 namespace hgl::graph
 {
-
 namespace
 {
-constexpr int RESERVED_VERTEX_DATA_SET = int(DESCRIPTOR_SET_TYPE_COUNT);
-constexpr int RESERVED_VTX_DATA_BINDING = 18;
-constexpr int RESERVED_IDX_DATA_BINDING = 19;
 
 void AddLayoutEntryIfMissing(std::vector<ShaderLayoutEntry> &entries, const char *macro_name, const int value)
 {
@@ -187,12 +183,6 @@ ShaderLayoutContract BuildShaderLayoutContract(const mtl::MaterialCreateInfo &mc
             AppendDescriptorBindingMacros(contract, sd);
         }
     }
-
-    // Vertex fetch SSBO uses a reserved descriptor set/binding range outside the
-    // material descriptor list; emit these here so GLSL no longer carries numbers.
-    AddLayoutEntryIfMissing(contract.descriptor_sets, "VERTEX_DATA_SET", RESERVED_VERTEX_DATA_SET);
-    AddLayoutEntryIfMissing(contract.descriptor_bindings, "VTX_DATA_BINDING", RESERVED_VTX_DATA_BINDING);
-    AddLayoutEntryIfMissing(contract.descriptor_bindings, "IDX_DATA_BINDING", RESERVED_IDX_DATA_BINDING);
 
     // ── Sort each bucket in ascending value order ─────────────────────────────
     auto by_value = [](const ShaderLayoutEntry &a, const ShaderLayoutEntry &b)
