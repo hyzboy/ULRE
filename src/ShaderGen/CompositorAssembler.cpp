@@ -266,6 +266,54 @@ namespace
         return BuildForwardFragmentEntry(flags);
     }
 
+    bool TryBuildAutoForwardFS(const hgl::graph::mtl::MaterialVariantKey &key,
+                               const hgl::graph::RenderAlphaMode blend,
+                               const hgl::graph::PassType pass,
+                               const std::string &surface_path,
+                               std::string &out_source)
+    {
+        using hgl::graph::PassType;
+        using hgl::graph::RenderAlphaMode;
+        using hgl::graph::SurfaceType;
+
+        // Only forward passes are generated in this path.
+        switch (pass)
+        {
+            case PassType::ForwardOpaque:
+            case PassType::ForwardMasked:
+            case PassType::ForwardTransparent:
+            case PassType::ForwardDither:
+            case PassType::ForwardA2C:
+                break;
+            default:
+                return false;
+        }
+
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.surface_path = surface_path;
+        flags.vertex_attrib_bits = key.vertex_attribute_feature_bits;
+
+        if (blend == RenderAlphaMode::Masked)
+            flags.alpha_masked = true;
+        if (blend == RenderAlphaMode::Dither)
+            flags.alpha_dither = true;
+
+        if (key.surface_type == SurfaceType::Sky)
+            flags.has_direction = true;
+
+        if (key.surface_type != SurfaceType::Unlit && !hgl::graph::Is2DSurfaceType(key.surface_type) && key.surface_type != SurfaceType::Sky)
+        {
+            flags.enable_lighting = true;
+            flags.lighting_model = key.lighting_model;
+            flags.needs_camera = true;
+            flags.needs_sky = true;
+            flags.sky_ambient_model = key.sky_ambient_model;
+        }
+
+        out_source = BuildForwardFragmentEntry(flags);
+        return true;
+    }
+
     static const GeneratedVSTemplateRoute kGeneratedVSTemplateRoutes[] = {
         {"compositor/main_forward_unlit_vertexcolor.vert.glsl", &BuildForwardUnlitVertexColorVS},
         {"compositor/main_forward_unlit_luminance.vert.glsl",   &BuildForwardUnlitLuminanceVS},
@@ -667,23 +715,6 @@ namespace hgl::graph
         return defines + "\n" + source;
     }
 
-    std::string CompositorAssembler::ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const
-    {
-        const std::string marker = "#include SURFACE_FUNCTION_FILE";
-        auto pos = source.find(marker);
-        if (pos == std::string::npos)
-            return source;
-
-        std::string replacement = "#include \"" + surface_path + "\"";
-
-        std::string result;
-        result.reserve(source.size() + replacement.size());
-        result.append(source, 0, pos);
-        result.append(replacement);
-        result.append(source, pos + marker.size(), std::string::npos);
-        return result;
-    }
-
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         const mtl::MaterialVariantKey  &key,
         const mtl::MaterialVariantDesc &desc
@@ -739,7 +770,8 @@ namespace hgl::graph
         else
         {
             std::string read_error;
-            if(!ReadFile(fs_path, fs_source, read_error))
+            if(!TryBuildAutoForwardFS(key, key.blend_mode, key.pass_hint, surface_rel, fs_source)
+            && !ReadFile(fs_path, fs_source, read_error))
             {
                 result.error_message = BuildAssembleReadFailureMessage("FS", std::string(), fs_path, read_error);
                 result.success = false;
@@ -769,8 +801,6 @@ namespace hgl::graph
             result.success = false;
             return result;
         }
-
-        fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
 
         result.vertex_glsl   = std::move(vs_source);
         result.fragment_glsl = std::move(fs_source);

@@ -12,7 +12,7 @@ struct CompositorFeatureFlags
 {
     // Vertex stage flags
     bool vert_input_2d    = false;
-    bool vertex_attrib[static_cast<size_t>(VertexAttrib::RANGE_SIZE)] = {};
+    uint32 vertex_attrib_bits = 0;
     bool has_direction    = false;
 
     bool HasVertexAttrib(const VertexAttrib attrib)const
@@ -20,7 +20,7 @@ struct CompositorFeatureFlags
         if(attrib < VertexAttrib::Position || attrib >= VertexAttrib::RANGE_SIZE)
             return false;
 
-        return vertex_attrib[static_cast<size_t>(attrib)];
+        return (vertex_attrib_bits & (1u << static_cast<uint32>(attrib))) != 0;
     }
 
     void SetVertexAttrib(const VertexAttrib attrib, const bool enabled = true)
@@ -28,7 +28,11 @@ struct CompositorFeatureFlags
         if(attrib < VertexAttrib::Position || attrib >= VertexAttrib::RANGE_SIZE)
             return;
 
-        vertex_attrib[static_cast<size_t>(attrib)] = enabled;
+        const uint32 bit = 1u << static_cast<uint32>(attrib);
+        if(enabled)
+            vertex_attrib_bits |= bit;
+        else
+            vertex_attrib_bits &= ~bit;
     }
 
     // Fragment stage flags
