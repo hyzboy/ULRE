@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/common/VertexAttribDef.h>
+#include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
 #include <cstddef>
 #include <string>
@@ -38,6 +39,9 @@ struct CompositorFeatureFlags
     bool alpha_dither     = false;
     bool has_texcoord     = false;
     bool has_clip_pos     = false;
+
+    // Sky ambient model (only used when needs_sky == true)
+    mtl::SkyLightAmbientModel sky_ambient_model = mtl::SkyLightAmbientModel::Simple;
 
     // Lighting model (only used when enable_lighting == true)
     mtl::LightingModel lighting_model = mtl::LightingModel::Lambert;

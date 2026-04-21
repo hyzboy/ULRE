@@ -35,6 +35,20 @@ namespace
         const char *path;
     };
 
+    static const char *GetSkyLightGLSLPath(const hgl::graph::mtl::SkyLightAmbientModel model)
+    {
+        using hgl::graph::mtl::SkyLightAmbientModel;
+        switch (model)
+        {
+            case SkyLightAmbientModel::Simple:              return "common/skylight_simple.glsl";
+            case SkyLightAmbientModel::FakeAtmosphere:      return "common/skylight_fake_atm.glsl";
+            case SkyLightAmbientModel::CubeMap:             return "common/skylight_cubemap.glsl";
+            case SkyLightAmbientModel::SphericalHarmonics:  return "common/skylight_sh.glsl";
+            case SkyLightAmbientModel::IBL:                 return "common/skylight_ibl.glsl";
+            default:                                        return "common/skylight_simple.glsl";
+        }
+    }
+
     void EmitEnabledVertexAttribDefines(hgl::graph::ShaderWriter &writer, const hgl::graph::CompositorFeatureFlags &flags)
     {
         for(size_t i = 0; i < static_cast<size_t>(hgl::graph::VertexAttrib::RANGE_SIZE); ++i)
@@ -86,7 +100,7 @@ namespace
         writer.EmitInclude("compositor/frag_forward_ubo.glsl");
 
         if (f.needs_sky)
-            out += "#include SKYLIGHT_FUNCTION_FILE\n";
+            out += "#include \"" + std::string(GetSkyLightGLSLPath(f.sky_ambient_model)) + "\"\n";
 
         if (f.enable_lighting)
             out += "#include \"" + std::string(hgl::graph::mtl::GetLightingModelGLSLPath(f.lighting_model)) + "\"\n";
@@ -247,6 +261,7 @@ namespace
         flags.lighting_model = key.lighting_model;
         flags.needs_camera = true;
         flags.needs_sky = true;
+        flags.sky_ambient_model = key.sky_ambient_model;
         flags.surface_path = surface_path;
         return BuildForwardFragmentEntry(flags);
     }
@@ -669,37 +684,6 @@ namespace hgl::graph
         return result;
     }
 
-    static const char *GetSkyLightGLSLPath(mtl::SkyLightAmbientModel model)
-    {
-        using mtl::SkyLightAmbientModel;
-        switch (model)
-        {
-            case SkyLightAmbientModel::Simple:              return "common/skylight_simple.glsl";
-            case SkyLightAmbientModel::FakeAtmosphere:      return "common/skylight_fake_atm.glsl";
-            case SkyLightAmbientModel::CubeMap:             return "common/skylight_cubemap.glsl";
-            case SkyLightAmbientModel::SphericalHarmonics:  return "common/skylight_sh.glsl";
-            case SkyLightAmbientModel::IBL:                 return "common/skylight_ibl.glsl";
-            default:                                        return "common/skylight_simple.glsl";
-        }
-    }
-
-    std::string CompositorAssembler::ReplaceSkyLightInclude(const std::string &source, mtl::SkyLightAmbientModel sky_model) const
-    {
-        const std::string marker = "#include SKYLIGHT_FUNCTION_FILE";
-        auto pos = source.find(marker);
-        if (pos == std::string::npos)
-            return source;
-
-        std::string replacement = "#include \"" + std::string(GetSkyLightGLSLPath(sky_model)) + "\"";
-
-        std::string result;
-        result.reserve(source.size() + replacement.size());
-        result.append(source, 0, pos);
-        result.append(replacement);
-        result.append(source, pos + marker.size(), std::string::npos);
-        return result;
-    }
-
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         const mtl::MaterialVariantKey  &key,
         const mtl::MaterialVariantDesc &desc
@@ -787,8 +771,6 @@ namespace hgl::graph
         }
 
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
-
-        fs_source = ReplaceSkyLightInclude(fs_source, key.sky_ambient_model);
 
         result.vertex_glsl   = std::move(vs_source);
         result.fragment_glsl = std::move(fs_source);
