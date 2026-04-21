@@ -216,6 +216,7 @@ static MaterialVariantKey MakePBRColor3DKey()
     MaterialVariantKey key{};
     key.surface_type = SurfaceType::Standard;
     key.geometry_mode = GeometryMode::Mesh3D;
+    key.lighting_model = LightingModel::PBR;
     return key;
 }
 
@@ -676,8 +677,18 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             key.extra_feature_bits);
     }
 
+    MaterialVariantKey registry_lookup_key = key;
+    if (registry_lookup_key.surface_type == SurfaceType::Standard
+     && registry_lookup_key.geometry_mode == GeometryMode::Mesh3D)
+    {
+        // Standard Mesh3D descriptor selection is not split by sky model.
+        // Keep runtime-requested sky model on the original key for downstream
+        // assembly/diagnostics, but use canonical sky for registry descriptor lookup.
+        registry_lookup_key.sky_ambient_model = SkyLightAmbientModel::Simple;
+    }
+
     MaterialVariantKey resolved_key{};
-    const MaterialVariantDesc *variant_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(key,&resolved_key);
+    const MaterialVariantDesc *variant_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(registry_lookup_key,&resolved_key);
     if(!variant_desc)
     {
         std::fprintf(stderr,
@@ -694,9 +705,10 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     }
 
     std::fprintf(stderr,
-        "[MaterialLibrary] resolved variant=%s request={%s} resolved={%s}\n",
+        "[MaterialLibrary] resolved variant=%s request={%s} lookup={%s} resolved={%s}\n",
         variant_desc->variant_name.c_str(),
         FormatVariantKeyForLog(key).c_str(),
+        FormatVariantKeyForLog(registry_lookup_key).c_str(),
         FormatVariantKeyForLog(resolved_key).c_str());
 
     if(!variant_desc->factory_type)
@@ -787,6 +799,14 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     MaterialVariantKey key = MapPresetToVariantKey(resolved_preset);
 
     ApplyCreateConfigToVariantKey(key, cfg);
+
+    if (resolved_preset == MaterialPreset::PBRColor3D)
+    {
+        key.lighting_model = LightingModel::PBR;
+
+        if (auto *cfg3d = dynamic_cast<Material3DCreateConfig *>(cfg))
+            cfg3d->lighting_model = LightingModel::PBR;
+    }
 
     std::fprintf(stderr,
         "[MaterialLibrary] request preset=%u resolved_preset=%u key={%s}\n",

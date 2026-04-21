@@ -26,7 +26,6 @@ constexpr bool kRegistryMatchEffectiveFeatureMask = false;
 struct VariantRegistryFallbackStats
 {
     std::atomic<unsigned long long> exact{0};
-    std::atomic<unsigned long long> step0{0};
     std::atomic<unsigned long long> miss{0};
 };
 
@@ -58,9 +57,8 @@ static unsigned long long RecordAndGetTotalQueries(std::atomic<unsigned long lon
     bucket.fetch_add(1, std::memory_order_relaxed);
 
     const auto exact = g_variant_registry_stats.exact.load(std::memory_order_relaxed);
-    const auto step0 = g_variant_registry_stats.step0.load(std::memory_order_relaxed);
     const auto miss = g_variant_registry_stats.miss.load(std::memory_order_relaxed);
-    return exact + step0 + miss;
+    return exact + miss;
 }
 
 static void MaybePrintStatsSummary(const char *reason, const unsigned long long total)
@@ -75,11 +73,10 @@ static void MaybePrintStatsSummary(const char *reason, const unsigned long long 
         return;
 
     std::fprintf(stderr,
-        "[VariantRegistry] stats reason=%s total=%llu exact=%llu step0=%llu miss=%llu\n",
+        "[VariantRegistry] stats reason=%s total=%llu exact=%llu miss=%llu\n",
         reason ? reason : "unknown",
         total,
         g_variant_registry_stats.exact.load(std::memory_order_relaxed),
-        g_variant_registry_stats.step0.load(std::memory_order_relaxed),
         g_variant_registry_stats.miss.load(std::memory_order_relaxed));
 }
 
@@ -186,31 +183,6 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
         if(resolved_key)
             *resolved_key=request_key;
         return exact;
-    }
-
-    // Fallback step 0: canonicalize sky ambient model and lighting model.
-    // Legacy callers may not populate either field in route_key, while newer callers
-    // (for example Standard variants) can use lighting_model as a routing dimension.
-    // Keep this step as compatibility fallback, not the primary matching path.
-    MaterialVariantKey sky_canon = request_key;
-    sky_canon.sky_ambient_model = SkyLightAmbientModel::Simple;
-    sky_canon.lighting_model    = LightingModel::Lambert;
-
-    if(const MaterialVariantDesc *fallback=QueryVariant(sky_canon))
-    {
-        const auto total = RecordAndGetTotalQueries(g_variant_registry_stats.step0);
-        if (kVariantRegistryVerbose)
-        {
-            std::fprintf(stderr,
-                "[VariantRegistry] fallback-step0-sky variant=%s request={%s} resolved={%s}\n",
-                fallback->variant_name.empty() ? "<unnamed>" : fallback->variant_name.c_str(),
-                FormatVariantKeyForLog(request_key).c_str(),
-                FormatVariantKeyForLog(sky_canon).c_str());
-        }
-        MaybePrintStatsSummary("step0", total);
-        if(resolved_key)
-            *resolved_key=sky_canon;
-        return fallback;
     }
 
     const auto total = RecordAndGetTotalQueries(g_variant_registry_stats.miss);
@@ -603,13 +575,18 @@ void VariantRegistry::InitializeBuiltinVariants()
     // ------------------------------------------------------------------
     // PBRColor3D (Standard surface, color-only via MaterialBindingInstanceData)
     // ------------------------------------------------------------------
-    RegisterVariant(
-        K(ST::Standard, GM::Mesh3D),
-        MakeDesc("PBRColor3D",
-                 MaterialPreset::PBRColor3D,
-                 "compositor/main_forward_lit.vert.glsl",
-                 "compositor/main_forward_lit.frag.glsl",
-                 "surface/pbrcolor3d_surface.glsl"));
+    {
+        MaterialVariantKey key = K(ST::Standard, GM::Mesh3D);
+        key.lighting_model = LightingModel::PBR;
+
+        RegisterVariant(
+            key,
+            MakeDesc("PBRColor3D",
+                     MaterialPreset::PBRColor3D,
+                     "compositor/main_forward_lit.vert.glsl",
+                     "compositor/main_forward_lit.frag.glsl",
+                     "surface/pbrcolor3d_surface.glsl"));
+    }
 }
 
 // ---------------------------------------------------------------------------

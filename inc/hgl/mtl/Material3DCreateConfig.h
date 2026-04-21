@@ -167,7 +167,9 @@ public:
                                 IncludeCamera::With,
                                 IncludeL2W::With,
                                 IncludeSky::With)
-    {}
+    {
+        lighting_model = LightingModel::PBR;
+    }
 };
 
 DECLARE_MATERIAL_CREATOR(PBRColor3D, PBRColor3DMaterialCreateConfig)

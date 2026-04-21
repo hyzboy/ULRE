@@ -99,36 +99,45 @@ int main()
         std::fprintf(stdout, "  Case2 OK: effective_feature_mask ignored by default routing\n");
     }
 
-    // Case 3: fallback step0 still works for legacy requests where PBR variant is absent.
+    // Case 3: removing step0 means unsupported lighting requests now miss.
     {
-        VariantRegistry legacy_registry;
-        legacy_registry.RegisterVariant(lambert, MakeDesc("StandardLambertOnly"));
+        VariantRegistry no_step0_registry;
+        no_step0_registry.RegisterVariant(lambert, MakeDesc("StandardLambertOnly"));
 
         MaterialVariantKey request = pbr;
         MaterialVariantKey resolved{};
-        const MaterialVariantDesc *desc = legacy_registry.QueryVariantWithCanonicalFallback(request, &resolved);
-        if (!desc)
-        {
-            std::fprintf(stderr, "[VariantRegistryRoutingBehaviorTest] FAIL: fallback query returned null\n");
-            return 1;
-        }
-        if (desc->variant_name != "StandardLambertOnly")
+        const MaterialVariantDesc *desc = no_step0_registry.QueryVariantWithCanonicalFallback(request, &resolved);
+        if (desc)
         {
             std::fprintf(stderr,
-                "[VariantRegistryRoutingBehaviorTest] FAIL: expected fallback to StandardLambertOnly, got %s\n",
+                "[VariantRegistryRoutingBehaviorTest] FAIL: expected miss without step0, got %s\n",
                 desc->variant_name.c_str());
             return 1;
         }
-        if (resolved.lighting_model != LightingModel::Lambert)
-        {
-            std::fprintf(stderr,
-                "[VariantRegistryRoutingBehaviorTest] FAIL: fallback resolved key should canonicalize to Lambert\n");
-            return 1;
-        }
-        std::fprintf(stdout, "  Case3 OK: step0 fallback remains functional\n");
+        std::fprintf(stdout, "  Case3 OK: unsupported lighting request no longer falls through step0\n");
     }
 
-    // Case 4: removed step2 means sampler-bit-only mismatches should now miss.
+    // Case 4: unsupported sky model should also miss instead of silently downgrading.
+    {
+        VariantRegistry no_step0_registry;
+        no_step0_registry.RegisterVariant(pbr, MakeDesc("StandardPBR"));
+
+        MaterialVariantKey request = pbr;
+        request.sky_ambient_model = SkyLightAmbientModel::FakeAtmosphere;
+
+        MaterialVariantKey resolved{};
+        const MaterialVariantDesc *desc = no_step0_registry.QueryVariantWithCanonicalFallback(request, &resolved);
+        if (desc)
+        {
+            std::fprintf(stderr,
+                "[VariantRegistryRoutingBehaviorTest] FAIL: expected sky mismatch miss without step0, got %s\n",
+                desc->variant_name.c_str());
+            return 1;
+        }
+        std::fprintf(stdout, "  Case4 OK: unsupported sky request no longer falls through step0\n");
+    }
+
+    // Case 5: removed step2 means sampler-bit-only mismatches should now miss.
     {
         VariantRegistry no_step2_registry;
 
@@ -149,10 +158,10 @@ int main()
                 desc->variant_name.c_str());
             return 1;
         }
-        std::fprintf(stdout, "  Case4 OK: sampler-bit mismatch no longer falls through step2\n");
+        std::fprintf(stdout, "  Case5 OK: sampler-bit mismatch no longer falls through step2\n");
     }
 
-    // Case 5: removed step1 means texture-source mismatch should now miss.
+    // Case 6: removed step1 means texture-source mismatch should now miss.
     {
         VariantRegistry no_step1_registry;
 
@@ -172,7 +181,7 @@ int main()
                 desc->variant_name.c_str());
             return 1;
         }
-        std::fprintf(stdout, "  Case5 OK: texture-source mismatch no longer falls through step1\n");
+        std::fprintf(stdout, "  Case6 OK: texture-source mismatch no longer falls through step1\n");
     }
 
     std::fprintf(stdout, "[VariantRegistryRoutingBehaviorTest] PASS\n");

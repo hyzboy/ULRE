@@ -141,7 +141,8 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     MaterialVariantKey route_key = policy.route_key;
     route_key.lighting_model = lighting;
-    route_key.sky_ambient_model = ambient;
+    // Registry descriptors are not split by sky model; keep lookup key on canonical sky.
+    route_key.sky_ambient_model = SkyLightAmbientModel::Simple;
 
     MaterialVariantKey resolved_route_key{};
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(route_key, &resolved_route_key);
