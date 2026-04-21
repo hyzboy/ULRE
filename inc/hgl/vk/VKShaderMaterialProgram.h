@@ -56,6 +56,8 @@ class ShaderMaterialProgram
 
     uint8_t texture_array_slot_flags = 0; ///< bit N = SamplerSlot(N) uses TextureArray mode
 
+    uint64_t effective_feature_mask = 0; ///< Effective feature mask from Phase 3 cache key resolution
+
 private:
 
     friend class ShaderMaterialProgramManager;
@@ -135,6 +137,8 @@ public:
 
             void    SetTextureArraySlotFlags(uint8_t f){texture_array_slot_flags=f;}
     const uint8_t   GetTextureArraySlotFlags()const{return texture_array_slot_flags;}
+
+    const uint64_t  GetEffectiveFeatureMask()const{return effective_feature_mask;}
 
     const bool      hasMI           ()const{return mi_schema!=mtl::ShaderDataSchema::None;}
     const mtl::ShaderDataSchema GetShaderDataSchema() const { return mi_schema; }

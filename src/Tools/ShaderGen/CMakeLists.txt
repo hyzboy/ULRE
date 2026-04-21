@@ -82,3 +82,17 @@ target_link_libraries(MaterialVariantKeyCacheKeyTest
             CMCoreType)
 
 CreateProject(MaterialVariantKeyCacheKeyTest)
+
+####################################################################################################
+
+add_executable(ProgramFeatureMaskIntegrationTest
+    ProgramFeatureMaskIntegrationTest.cpp)
+
+target_link_libraries(ProgramFeatureMaskIntegrationTest
+    PRIVATE ULRE.Vulkan
+            ULRE.ShaderGen
+            CMCore
+            CMMath
+            CMCoreType)
+
+CreateProject(ProgramFeatureMaskIntegrationTest)
