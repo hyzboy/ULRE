@@ -96,3 +96,18 @@ target_link_libraries(ProgramFeatureMaskIntegrationTest
             CMCoreType)
 
 CreateProject(ProgramFeatureMaskIntegrationTest)
+
+####################################################################################################
+
+add_executable(FeatureIntentValidationTest
+    FeatureIntentValidation.cpp
+    FeatureIntentValidationTest.cpp)
+
+target_link_libraries(FeatureIntentValidationTest
+    PRIVATE ULRE.Vulkan
+            ULRE.ShaderGen
+            CMCore
+            CMMath
+            CMCoreType)
+
+CreateProject(FeatureIntentValidationTest)
