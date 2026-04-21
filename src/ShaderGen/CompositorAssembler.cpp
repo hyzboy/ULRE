@@ -89,7 +89,7 @@ namespace
             out += "#include SKYLIGHT_FUNCTION_FILE\n";
 
         if (f.enable_lighting)
-            out += "#include LIGHTING_FUNCTION_FILE\n";
+            out += "#include \"" + std::string(hgl::graph::mtl::GetLightingModelGLSLPath(f.lighting_model)) + "\"\n";
 
         writer.EmitInclude(f.surface_path)
               .EmitInclude("compositor/frag_forward_main.glsl");
@@ -244,6 +244,7 @@ namespace
         flags.SetVertexAttrib(hgl::graph::VertexAttrib::Normal, normal);
         flags.SetVertexAttrib(hgl::graph::VertexAttrib::Tangent, tangent);
         flags.enable_lighting = true;
+        flags.lighting_model = key.lighting_model;
         flags.needs_camera = true;
         flags.needs_sky = true;
         flags.surface_path = surface_path;
@@ -699,23 +700,6 @@ namespace hgl::graph
         return result;
     }
 
-    std::string CompositorAssembler::ReplaceLightingInclude(const std::string &source, mtl::LightingModel lighting_model) const
-    {
-        const std::string marker = "#include LIGHTING_FUNCTION_FILE";
-        auto pos = source.find(marker);
-        if (pos == std::string::npos)
-            return source;
-
-        std::string replacement = "#include \"" + std::string(mtl::GetLightingModelGLSLPath(lighting_model)) + "\"";
-
-        std::string result;
-        result.reserve(source.size() + replacement.size());
-        result.append(source, 0, pos);
-        result.append(replacement);
-        result.append(source, pos + marker.size(), std::string::npos);
-        return result;
-    }
-
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         const mtl::MaterialVariantKey  &key,
         const mtl::MaterialVariantDesc &desc
@@ -805,9 +789,6 @@ namespace hgl::graph
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
 
         fs_source = ReplaceSkyLightInclude(fs_source, key.sky_ambient_model);
-
-        // 替换 FS 中的 LIGHTING_FUNCTION_FILE（按光照模型选择实现文件）
-        fs_source = ReplaceLightingInclude(fs_source, key.lighting_model);
 
         result.vertex_glsl   = std::move(vs_source);
         result.fragment_glsl = std::move(fs_source);

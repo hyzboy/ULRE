@@ -71,7 +71,6 @@ namespace hgl::graph
         std::string InjectDefines(const std::string &source, const mtl::MaterialVariantKey &key) const;
         std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;
         std::string ReplaceSkyLightInclude(const std::string &source, mtl::SkyLightAmbientModel sky_model) const;
-        std::string ReplaceLightingInclude(const std::string &source, mtl::LightingModel lighting_model) const;
         bool        ReadFile(const std::string &path, std::string &out_content, std::string &out_error) const;
 
         std::string shader_lib_path_;
