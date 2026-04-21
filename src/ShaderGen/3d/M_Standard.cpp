@@ -129,15 +129,19 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         ShaderDataSchema::StandardParams,
         any_array);
 
+    MaterialVariantKey route_key = policy.route_key;
+    route_key.lighting_model = lighting;
+    route_key.sky_ambient_model = ambient;
+
     MaterialVariantKey resolved_route_key{};
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(policy.route_key, &resolved_route_key);
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(route_key, &resolved_route_key);
     if (!var_desc)
     {
-        PrintStandardRouteKey("VariantRegistry lookup failed route", policy.route_key, any_array);
+        PrintStandardRouteKey("VariantRegistry lookup failed route", route_key, any_array);
         return nullptr;
     }
 
-    PrintStandardRouteKey("VariantRegistry resolved route-request", policy.route_key, any_array);
+    PrintStandardRouteKey("VariantRegistry resolved route-request", route_key, any_array);
     PrintStandardRouteKey("VariantRegistry resolved route-final", resolved_route_key, any_array);
     std::fprintf(stderr,
         "[Standard] VariantRegistry resolved variant=%s\n",
@@ -146,6 +150,8 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     // Populate vertex attribute feature bits from the actual vertex layout.
     // policy is const, so take a mutable copy of assemble_key.
     MaterialVariantKey assemble_key = policy.assemble_key;
+    assemble_key.lighting_model = lighting;
+    assemble_key.sky_ambient_model = ambient;
     for (uint32_t i = 0; i < dynamic_def.vertex_entry_count; ++i)
         assemble_key.SetVertexAttribEnabled(dynamic_def.vertex_entries[i].attrib);
 

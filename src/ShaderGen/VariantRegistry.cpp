@@ -100,12 +100,10 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
         return exact;
     }
 
-    // Fallback step 0: ignore sky ambient model and lighting model differences.
-    // Both sky_ambient_model and lighting_model are compositor assembly parameters
-    // that drive GLSL code generation; they are NOT registry routing keys.
-    // The K() helper never sets either field, so all registered variants have them
-    // at their default (0). Keep the original request key for downstream factory
-    // dispatch and shader assembly.
+    // Fallback step 0: canonicalize sky ambient model and lighting model.
+    // Legacy callers may not populate either field in route_key, while newer callers
+    // (for example Standard variants) can use lighting_model as a routing dimension.
+    // Keep this step as compatibility fallback, not the primary matching path.
     MaterialVariantKey sky_canon = key;
     sky_canon.sky_ambient_model = SkyLightAmbientModel::Simple;
     sky_canon.lighting_model    = LightingModel::Lambert;

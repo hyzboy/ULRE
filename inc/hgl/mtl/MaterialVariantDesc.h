@@ -8,7 +8,7 @@
 namespace hgl::graph::mtl
 {
     /// MaterialVariantDesc - 材质变体的完整描述
-    /// 包含着色器模板、MI 布局、描述符类型等实现细节
+    /// 包含着色器组装所需路径、MI 布局与调试标识等信息
     struct MaterialVariantDesc
     {
         // 标识
@@ -21,7 +21,7 @@ namespace hgl::graph::mtl
         // 着色器模板路径
         std::string vs_template_path;       // 顶点着色器模板路径（相对 ShaderLibrary）
         std::string fs_template_path;       // 片段着色器模板路径（相对 ShaderLibrary）
-        std::string surface_function_path;  // Surface 函数路径（相对 ShaderLibrary）
+        std::string surface_function_path;  // Surface include 路径（相对 ShaderLibrary）
 
         // 描述符配置
         uint32 descriptor_binding_count;    // 总描述符 binding 数量

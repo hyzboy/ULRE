@@ -10,7 +10,7 @@
 ///   BlinnPhong       = 1  →    common/lighting_blinn_phong.glsl
 ///   PBR              = 2  →    common/lighting_pbr.glsl
 ///
-/// 由 CompositorAssembler 通过 LIGHTING_FUNCTION_FILE 标记注入。
+/// 由 CompositorAssembler 通过 GetLightingModelGLSLPath + ShaderWriter.EmitInclude 选择并拼接。
 
 #include<hgl/CoreType.h>
 #include<hgl/type/EnumUtil.h>

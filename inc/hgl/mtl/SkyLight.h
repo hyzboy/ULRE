@@ -7,7 +7,8 @@
 ///
 /// 文件用途：
 ///   - 公共头文件（inc/），C++ 侧均通过 #include<hgl/mtl/SkyLight.h> 引用
-///   - GLSL 侧天光函数实现位于 ShaderLibrary/common/skylight_*.glsl，由 CompositorAssembler 通过 SKYLIGHT_FUNCTION_FILE 标记注入
+///   - GLSL 侧天光函数实现位于 ShaderLibrary/common/skylight_*.glsl，
+///     由 CompositorAssembler 通过 GetSkyLightGLSLPath + ShaderWriter.EmitInclude 选择并拼接
 ///
 /// GLSL 数值与 C++ 枚举的对应关系（保持两侧同步）：
 ///
