@@ -128,6 +128,9 @@ private:
 
     // Fallback material for error handling (initialized on first use)
     ShaderMaterialProgram *fallback_material = nullptr;
+    ShaderMaterialProgram *fallback_material_sky = nullptr;
+    ShaderMaterialProgram *fallback_material_lit = nullptr;
+    ShaderMaterialProgram *fallback_material_unlit = nullptr;
 
 private:
 
@@ -154,6 +157,8 @@ private: // Helper methods with integrated DebugUtils
 
      ShaderMaterialProgram *TryInitializeFallbackMaterial();
      ShaderMaterialProgram *GetFallbackMaterial();
+    ShaderMaterialProgram *TryInitializeFallbackMaterial(const uint64_t requested_feature_mask);
+    ShaderMaterialProgram *GetFallbackMaterial(const uint64_t requested_feature_mask);
 
 public: //Add
 
@@ -238,6 +243,11 @@ public: // Override Release from GraphModule - cleanup all resources
             }
             stage_map.Clear();
         }
+
+        fallback_material = nullptr;
+        fallback_material_sky = nullptr;
+        fallback_material_lit = nullptr;
+        fallback_material_unlit = nullptr;
 
         ResetAcquireStats();
     }
