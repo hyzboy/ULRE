@@ -197,37 +197,38 @@ std::string EmitMaterialInstanceTextureGLSL(const MaterialDescriptorDB &mdi, Sha
     if (array_slots.empty())
         return {};
 
-    // Sort by slot ordinal to keep struct field order deterministic.
+    // Sort and deduplicate by slot ordinal to keep emitted indices deterministic.
     std::sort(array_slots.begin(), array_slots.end());
+    array_slots.erase(std::unique(array_slots.begin(), array_slots.end()), array_slots.end());
 
     std::string out;
     ShaderWriter writer(out);
     out.reserve(512);
     writer.EmitLine("// ---- Auto-generated MaterialInstanceTexture SSBO ----");
 
-    // 1. struct MaterialInstanceTexture { uint SlotName; ... };
-    writer.EmitLine("struct MaterialInstanceTexture").BeginBlock();
-    for (const mtl::SamplerSlot slot : array_slots)
-        writer.EmitLine(std::string("uint ") + mtl::SamplerSlotNameList[uint8(slot)] + ";");
-    writer.EndBlock(";").NewLine();
+    // 1. Emit compact per-instance stride and per-slot index defines.
+    writer.EmitDefine("MIT_TEXTURE_COUNT", std::to_string(array_slots.size()).c_str());
+    for (size_t i = 0; i < array_slots.size(); ++i)
+    {
+        const mtl::SamplerSlot slot = array_slots[i];
+        const std::string upper_name = mtl::ToUpperASCII(mtl::SamplerSlotNameList[uint8(slot)]);
+        writer.EmitDefine("MIT_" + upper_name + "_IDX", std::to_string(i).c_str());
+    }
+    writer.NewLine();
 
     // 2. SSBO layout (uses PERMATERIAL_SET / MBI_TEXTURE_BINDING from layout defines).
     writer.EmitLine("layout(std430, set=PERMATERIAL_SET, binding=MBI_TEXTURE_BINDING) readonly buffer MaterialBindingInstanceTexture").BeginBlock();
-    writer.EmitLine("MaterialInstanceTexture tex_id[];");
+    writer.EmitLine("uint tex_id[];");
     writer.EndBlock("mit;").NewLine();
 
-    // 3. GetMaterialInstanceTexture(uint instance_id)
-    writer.EmitLine("MaterialInstanceTexture GetMaterialInstanceTexture(uint instance_id)").BeginBlock();
-    writer.EmitLine("return mit.tex_id[instance_id];");
-    writer.EndBlock().NewLine();
-
-    // 4. _ULRE_InitTextureLayerIndices(uint instance_id)
+    // 3. _ULRE_InitTextureLayerIndices(uint instance_id)
     writer.EmitLine("void _ULRE_InitTextureLayerIndices(uint instance_id)").BeginBlock();
-    writer.EmitLine("MaterialInstanceTexture _m = GetMaterialInstanceTexture(instance_id);");
+    writer.EmitLine("uint offset = instance_id * MIT_TEXTURE_COUNT;");
     for (const mtl::SamplerSlot slot : array_slots)
     {
         const char *name = mtl::SamplerSlotNameList[uint8(slot)];
-        writer.EmitLine(std::string("_tex_layer_") + name + " = _m." + name + ";");
+        const std::string upper_name = mtl::ToUpperASCII(name);
+        writer.EmitLine(std::string("_tex_layer_") + name + " = mit.tex_id[offset + MIT_" + upper_name + "_IDX];");
     }
     writer.EndBlock();
 
