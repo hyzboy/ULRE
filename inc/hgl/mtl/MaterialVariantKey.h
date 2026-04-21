@@ -56,6 +56,10 @@ namespace hgl::graph::mtl
         PassType          pass_hint           = PassType::ForwardOpaque;
         SkyLightAmbientModel sky_ambient_model = SkyLightAmbientModel::Simple;
         LightingModel lighting_model = LightingModel::Lambert;
+        
+        // Phase 2: Effective feature mask (resolved from intent_features via MaterialRecipe)
+        // When non-zero, represents the authoritative feature set for this variant routing decision.
+        uint64            effective_feature_mask = 0;
 
         static constexpr uint32 TextureSourceBitsPerSlot = 2;
         static constexpr uint32 TextureSourceSlotCount   = uint32(SamplerSlot::RANGE_SIZE);

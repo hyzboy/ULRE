@@ -707,6 +707,10 @@ void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreate
     {
         key.sky_ambient_model = cfg3d->sky_ambient_model;
         key.lighting_model = cfg3d->lighting_model;
+        
+        // Phase 2: Copy effective feature mask (resolved from intent_features)
+        // If non-zero, this is the authoritative feature decision.
+        key.effective_feature_mask = cfg3d->effective_feature_mask;
     }
 
     if (cfg->override_geometry_mode)

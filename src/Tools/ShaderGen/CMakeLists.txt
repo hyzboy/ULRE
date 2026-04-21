@@ -54,3 +54,17 @@ target_link_libraries(MaterialFeatureWarningSmoke
             CMCoreType)
 
 CreateProject(MaterialFeatureWarningSmoke)
+
+####################################################################################################
+
+add_executable(MaterialVariantKeyEquivalenceTest
+    MaterialVariantKeyEquivalenceTest.cpp)
+
+target_link_libraries(MaterialVariantKeyEquivalenceTest
+    PRIVATE ULRE.Vulkan
+            ULRE.ShaderGen
+            CMCore
+            CMMath
+            CMCoreType)
+
+CreateProject(MaterialVariantKeyEquivalenceTest)

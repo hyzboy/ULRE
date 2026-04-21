@@ -22,6 +22,11 @@ struct Material3DCreateConfig:public MaterialCreateConfig
     SkyLightAmbientModel sky_ambient_model;     ///<天空环境光实现方式（按材质配置）
 
     LightingModel       lighting_model;          ///<光照模型（Lambert/BlinnPhong/PBR）
+    
+    // Phase 2: Effective feature mask (resolved from intent_features in MaterialRecipe)
+    // Populated by MaterialAssetLoader via ResolveRecipeIntentFeatureMask before calling ApplyCreateConfigToVariantKey.
+    // 0 means no intent_features override (use defaults derived from camera/sky/lighting_model).
+    uint64              effective_feature_mask = 0;
 
 //    bool                reverse_depth;          ///<使用反向深度
 
@@ -67,7 +72,10 @@ public:
         if(auto cmp=lighting_model<=>cfg.lighting_model; cmp!=0)
             return cmp;
 
-        return position_format <=> cfg.position_format;
+        if(auto cmp=position_format<=>cfg.position_format; cmp!=0)
+            return cmp;
+
+        return effective_feature_mask <=> cfg.effective_feature_mask;
     }
 
     std::string ToHashStdString() override;
