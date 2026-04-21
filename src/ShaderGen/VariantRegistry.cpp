@@ -27,7 +27,6 @@ struct VariantRegistryFallbackStats
 {
     std::atomic<unsigned long long> exact{0};
     std::atomic<unsigned long long> step0{0};
-    std::atomic<unsigned long long> step1{0};
     std::atomic<unsigned long long> miss{0};
 };
 
@@ -60,9 +59,8 @@ static unsigned long long RecordAndGetTotalQueries(std::atomic<unsigned long lon
 
     const auto exact = g_variant_registry_stats.exact.load(std::memory_order_relaxed);
     const auto step0 = g_variant_registry_stats.step0.load(std::memory_order_relaxed);
-    const auto step1 = g_variant_registry_stats.step1.load(std::memory_order_relaxed);
     const auto miss = g_variant_registry_stats.miss.load(std::memory_order_relaxed);
-    return exact + step0 + step1 + miss;
+    return exact + step0 + miss;
 }
 
 static void MaybePrintStatsSummary(const char *reason, const unsigned long long total)
@@ -77,12 +75,11 @@ static void MaybePrintStatsSummary(const char *reason, const unsigned long long 
         return;
 
     std::fprintf(stderr,
-        "[VariantRegistry] stats reason=%s total=%llu exact=%llu step0=%llu step1=%llu miss=%llu\n",
+        "[VariantRegistry] stats reason=%s total=%llu exact=%llu step0=%llu miss=%llu\n",
         reason ? reason : "unknown",
         total,
         g_variant_registry_stats.exact.load(std::memory_order_relaxed),
         g_variant_registry_stats.step0.load(std::memory_order_relaxed),
-        g_variant_registry_stats.step1.load(std::memory_order_relaxed),
         g_variant_registry_stats.miss.load(std::memory_order_relaxed));
 }
 
@@ -213,28 +210,6 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
         MaybePrintStatsSummary("step0", total);
         if(resolved_key)
             *resolved_key=sky_canon;
-        return fallback;
-    }
-
-    // Fallback step 1: ignore per-slot source bits but preserve sampler feature bits.
-    // This matches legacy registry keys that encode coarse mode + sampler mask only.
-    MaterialVariantKey canon=sky_canon;
-    canon.texture_source_bits=0;
-
-    if(const MaterialVariantDesc *fallback=QueryVariant(canon))
-    {
-        const auto total = RecordAndGetTotalQueries(g_variant_registry_stats.step1);
-        if (kVariantRegistryVerbose)
-        {
-            std::fprintf(stderr,
-                "[VariantRegistry] fallback-step1 variant=%s request={%s} resolved={%s}\n",
-                fallback->variant_name.empty() ? "<unnamed>" : fallback->variant_name.c_str(),
-                FormatVariantKeyForLog(request_key).c_str(),
-                FormatVariantKeyForLog(canon).c_str());
-        }
-        MaybePrintStatsSummary("step1", total);
-        if(resolved_key)
-            *resolved_key=canon;
         return fallback;
     }
 

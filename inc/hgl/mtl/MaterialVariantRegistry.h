@@ -27,7 +27,6 @@ namespace hgl::graph::mtl
         // 查询变体描述（带 canonical fallback）。
         // fallback 规则：
         //   step0: canonicalize sky/light 到 Simple/Lambert
-        //   step1: 清除 texture_source_bits 后重试
         const MaterialVariantDesc *QueryVariantWithCanonicalFallback(
             const MaterialVariantKey &key,
             MaterialVariantKey *resolved_key = nullptr) const;

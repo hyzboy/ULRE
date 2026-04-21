@@ -146,6 +146,29 @@ int main()
         std::fprintf(stdout, "  Case4 OK: sampler-bit mismatch no longer falls through step2\n");
     }
 
+    // Case 5: removed step1 means texture-source mismatch should now miss.
+    {
+        VariantRegistry no_step1_registry;
+
+        MaterialVariantKey simple = lambert;
+        simple.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
+        no_step1_registry.RegisterVariant(simple, MakeDesc("SimpleLambert"));
+
+        MaterialVariantKey request = lambert;
+        request.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Array);
+
+        MaterialVariantKey resolved{};
+        const MaterialVariantDesc *desc = no_step1_registry.QueryVariantWithCanonicalFallback(request, &resolved);
+        if (desc)
+        {
+            std::fprintf(stderr,
+                "[VariantRegistryRoutingBehaviorTest] FAIL: expected miss without step1, got %s\n",
+                desc->variant_name.c_str());
+            return 1;
+        }
+        std::fprintf(stdout, "  Case5 OK: texture-source mismatch no longer falls through step1\n");
+    }
+
     std::fprintf(stdout, "[VariantRegistryRoutingBehaviorTest] PASS\n");
     return 0;
 }
