@@ -20,11 +20,11 @@ namespace hgl::graph
     /**
      * CompositorAssembler — 组合 Compositor Template + Surface Function 生成完整 GLSL
      *
-      * 当前实现（生成路径优先）：
-      *   1. 输入：MaterialVariantKey + MaterialVariantDesc
-      *   2. 基于模板路由与 Key 派生特性构建 VS/FS 源码
-      *   3. 通过 ShaderWriter.EmitInclude 直接拼接 compositor/surface/common include
-      *   4. 返回完整 GLSL 字符串
+     * 当前实现（生成路径优先）：
+     *   1. 输入：MaterialVariantKey + MaterialVariantDesc
+     *   2. 基于模板路由与 Key 派生特性构建 VS/FS 源码
+     *   3. 通过 ShaderWriter.EmitInclude 直接拼接 compositor/surface/common include
+     *   4. 返回完整 GLSL 字符串
      */
     class CompositorAssembler
     {

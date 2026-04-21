@@ -31,8 +31,8 @@ namespace hgl::graph
             uint32_t ubo_range;
             uint32_t ssbo_range;
 
-            MaterialDescriptorDB descriptor_db;                    ///<材质描述符管理器
-            DescriptorBindingSlots binding_contract;                       ///<descriptor semantic contract (phase 2)
+            MaterialDescriptorDB descriptor_db;                     ///<材质描述符管理器
+            DescriptorBindingSlots binding_contract;                ///<descriptor semantic contract (phase 2)
 
             uint32_t material_instance_stride;                      ///<MaterialInstance数据长度
             uint32_t material_instance_stage_bits;                  ///<MaterialInstance着色器阶段
@@ -66,8 +66,6 @@ namespace hgl::graph
                     bool        hasShader       (const ShaderStage ss)const{return config.shader_stage_flag_bit&(uint32)ss;}
 
                     bool        hasVertex       ()const{return hasShader(ShaderStage::Vertex);}
-        //          bool        hasTessCtrl     ()const{return hasShader(ShaderStage::TessControl);}
-        //          bool        hasTessEval     ()const{return hasShader(ShaderStage::TessEval);}
                     bool        hasFragment     ()const{return hasShader(ShaderStage::Fragment);}
         //          bool        hasCompute      ()const{return hasShader(ShaderStage::Compute);}
 

@@ -6,7 +6,7 @@
 
 namespace hgl{namespace graph{
 /**
-* 材质描述符管理</p>
+* 材质描述符管理
 * 该类使用于SHADER生成前，用于统计编号set/binding
 */
 class MaterialDescriptorDB

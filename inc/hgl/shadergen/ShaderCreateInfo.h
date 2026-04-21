@@ -26,7 +26,7 @@ protected:
 
     ShaderStage shader_stage;                      ///<着色器阶段
 
-    ShaderStageIO *sdi;                      ///<着色器描述符信息(owned)
+    ShaderStageIO *stage_io;                      ///<着色器描述符信息(owned)
     MaterialDescriptorDB *descriptor_db;
 
     std::string final_shader;
@@ -39,13 +39,13 @@ protected:
 
 public:
 
-    ShaderStageIO *GetShaderDescriptorInfo(){return sdi;}
-    const ShaderStageIO *GetShaderDescriptorInfo()const{return sdi;}
+    ShaderStageIO *GetShaderStageIO(){return stage_io;}
+    const ShaderStageIO *GetShaderStageIO()const{return stage_io;}
     const ShaderStage GetShaderStage()const{return shader_stage;}
 
 public:
 
-    ShaderCreateInfo(ShaderStageIO *sdi,MaterialDescriptorDB *m);
+    ShaderCreateInfo(ShaderStageIO *stage_io,MaterialDescriptorDB *m);
     virtual ~ShaderCreateInfo();
 
     const std::string &GetFinalGLSL()const{return final_shader;}

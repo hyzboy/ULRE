@@ -48,7 +48,7 @@ namespace
         { VAT_VEC3, VAN::Normal },
     };
 
-    // Non-texture descriptors only �?texture entries are built dynamically in CreateStandardVariant().
+    // Non-texture descriptors only texture entries are built dynamically in CreateStandardVariant().
     const UBOSemanticSet STANDARD_BASE_UBOS = {
         UBODescriptorSemantic::ViewportInfo,
         UBODescriptorSemantic::CameraInfo,

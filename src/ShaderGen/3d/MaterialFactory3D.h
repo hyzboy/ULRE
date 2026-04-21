@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-/// FixedDefFactory3D.h — 通用 3D 工厂函数
-///
 /// 将 StaticMaterialDef + MaterialVariantKey → MaterialCreateInfo* 的公共流程提取为单一入口，
 /// 消除各 M_*.cpp 中重复的 registry-lookup → assemble → compile 样板代码。
 

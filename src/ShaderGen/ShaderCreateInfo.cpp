@@ -24,7 +24,7 @@ static const char *GetShaderStageNameByStage(const ShaderStage stage)
 
 ShaderCreateInfo::ShaderCreateInfo(ShaderStageIO *s,MaterialDescriptorDB *m)
 {
-    sdi=s;
+    stage_io=s;
     descriptor_db=m;
     shader_stage=s->GetShaderStage();
     spv_data=nullptr;
@@ -32,7 +32,7 @@ ShaderCreateInfo::ShaderCreateInfo(ShaderStageIO *s,MaterialDescriptorDB *m)
 
 ShaderCreateInfo::~ShaderCreateInfo()
 {
-    delete sdi;
+    delete stage_io;
 
     if(spv_data)
         FreeSPVData(spv_data);
