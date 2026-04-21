@@ -6,6 +6,7 @@
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
 #include <hgl/shadergen/CompositorCompiler.h>
+#include <hgl/mtl/MaterialFeature.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
 #include <hgl/mtl/ShaderDataSchema.h>
@@ -26,6 +27,80 @@ static bool HasPerMaterialDescriptor(const StaticMaterialDef &def);
 namespace
 {
     static constexpr uint32_t kDefaultDescriptorStageBits = uint32_t(ShaderStage::VertexFragment);
+
+    static bool ResolveConfiguredCameraRequirement(const Material3DCreateConfig &cfg)
+    {
+        if (cfg.effective_feature_mask != 0)
+            return HasFeature(cfg.effective_feature_mask, MaterialFeature::NeedsCamera);
+
+        return cfg.camera;
+    }
+
+    static bool ResolveConfiguredSkyRequirement(const Material3DCreateConfig &cfg)
+    {
+        if (cfg.effective_feature_mask != 0)
+            return HasFeature(cfg.effective_feature_mask, MaterialFeature::NeedsSky);
+
+        return cfg.sky;
+    }
+
+    static void AppendDiagnosticLine(std::string *diagnostics, const std::string &line)
+    {
+        if (!diagnostics || line.empty())
+            return;
+
+        if (!diagnostics->empty())
+            *diagnostics += '\n';
+
+        *diagnostics += line;
+    }
+
+    static void EmitInferenceMismatchDiagnostics(
+        const StaticMaterialDef &def,
+        const Material3DCreateConfig &cfg,
+        const bool infer_has_camera,
+        const bool infer_has_sky,
+        std::string *diagnostics)
+    {
+        const bool configured_camera = ResolveConfiguredCameraRequirement(cfg);
+        const bool configured_sky = ResolveConfiguredSkyRequirement(cfg);
+
+        auto emit_one = [&](const char *label, const bool configured, const bool inferred)
+        {
+            if (configured == inferred)
+                return;
+
+            std::string message;
+            message.reserve(256);
+            message += "[CompositorCompiler] inferred ";
+            message += label;
+            message += "=";
+            message += inferred ? "true" : "false";
+            message += " differs from configured/effective=";
+            message += configured ? "true" : "false";
+            message += " for material='";
+            message += def.name ? def.name : "<unnamed>";
+            message += "'";
+
+            if (cfg.effective_feature_mask != 0)
+            {
+                char buf[96]{};
+                std::snprintf(buf,
+                              sizeof(buf),
+                              " effective_feature_mask=0x%016llx",
+                              static_cast<unsigned long long>(cfg.effective_feature_mask));
+                message += buf;
+            }
+
+            message += "; compiler inference is diagnostics-only";
+
+            std::fprintf(stderr, "%s\n", message.c_str());
+            AppendDiagnosticLine(diagnostics, message);
+        };
+
+        emit_one("camera", configured_camera, infer_has_camera);
+        emit_one("sky", configured_sky, infer_has_sky);
+    }
 
     static std::string BuildShaderDataSchemaDebugText(const StaticMaterialDef &def)
     {
@@ -87,10 +162,14 @@ namespace
                                    || HasPerMaterialDescriptor(def)
                                    || (def.shader_data_schema != ShaderDataSchema::None);
 
-        cfg.camera            = cfg.camera            || infer_has_camera;
-        cfg.sky               = cfg.sky               || infer_has_sky;
         cfg.local_to_world    = cfg.local_to_world    || infer_has_l2w;
         cfg.material_instance = cfg.material_instance || infer_has_mi;
+
+        EmitInferenceMismatchDiagnostics(def,
+                         cfg,
+                         infer_has_camera,
+                         infer_has_sky,
+                         diagnostics);
 
         MaterialCreateInfo *mci = new MaterialCreateInfo(&cfg);
         if (profile)
@@ -310,6 +389,14 @@ MaterialCreateInfo *CompileCompositorMaterial(
             BuildShaderDataSchemaDebugText(def).c_str());
         delete mci;
         return nullptr;
+    }
+
+    if (!diagnostics.empty())
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s diagnostics: %s\n",
+            def.name ? def.name : "<unnamed>",
+            diagnostics.c_str());
     }
 
     return mci;

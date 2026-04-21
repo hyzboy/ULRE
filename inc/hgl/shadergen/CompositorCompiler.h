@@ -75,4 +75,6 @@ bool PrepareCompositorGLSLForReflection(
     std::string &out_fs_glsl,
     std::string *diagnostics = nullptr);
 
+// diagnostics may also contain non-fatal inference mismatch warnings on success.
+
 }//namespace hgl::graph::mtl

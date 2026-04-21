@@ -111,3 +111,17 @@ target_link_libraries(FeatureIntentValidationTest
             CMCoreType)
 
 CreateProject(FeatureIntentValidationTest)
+
+####################################################################################################
+
+add_executable(CompositorInferenceDiagnosticsTest
+    CompositorInferenceDiagnosticsTest.cpp)
+
+target_link_libraries(CompositorInferenceDiagnosticsTest
+    PRIVATE ULRE.Vulkan
+            ULRE.ShaderGen
+            CMCore
+            CMMath
+            CMCoreType)
+
+CreateProject(CompositorInferenceDiagnosticsTest)
