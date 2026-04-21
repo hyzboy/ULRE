@@ -1,7 +1,7 @@
 // ──────────────────────────────────────────────────────────────────────────
 // frag_forward_ubo.glsl — Conditional UBO includes for forward fragment shaders.
 //
-// Include this BEFORE #include SURFACE_FUNCTION_FILE so that surface
+// Include this before the surface include so that surface
 // functions referencing sky.* / camera.* can find the struct definitions.
 // All UBO headers have include guards; re-including from frag_forward_main.glsl is safe.
 // ──────────────────────────────────────────────────────────────────────────

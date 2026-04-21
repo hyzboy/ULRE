@@ -125,3 +125,17 @@ target_link_libraries(CompositorInferenceDiagnosticsTest
             CMCoreType)
 
 CreateProject(CompositorInferenceDiagnosticsTest)
+
+####################################################################################################
+
+add_executable(VariantRegistryRoutingBehaviorTest
+    VariantRegistryRoutingBehaviorTest.cpp)
+
+target_link_libraries(VariantRegistryRoutingBehaviorTest
+    PRIVATE ULRE.Vulkan
+            ULRE.ShaderGen
+            CMCore
+            CMMath
+            CMCoreType)
+
+CreateProject(VariantRegistryRoutingBehaviorTest)

@@ -17,16 +17,42 @@ constexpr bool kVariantRegistryVerbose = true;
 constexpr bool kVariantRegistryVerbose = false;
 #endif
 
+#if defined(ULRE_SHADERGEN_REGISTRY_MATCH_EFFECTIVE_MASK)
+constexpr bool kRegistryMatchEffectiveFeatureMask = true;
+#else
+constexpr bool kRegistryMatchEffectiveFeatureMask = false;
+#endif
+
 struct VariantRegistryFallbackStats
 {
     std::atomic<unsigned long long> exact{0};
     std::atomic<unsigned long long> step0{0};
     std::atomic<unsigned long long> step1{0};
-    std::atomic<unsigned long long> step2{0};
     std::atomic<unsigned long long> miss{0};
 };
 
 static VariantRegistryFallbackStats g_variant_registry_stats;
+
+static MaterialVariantKey CanonicalizeRegistryLookupKey(const MaterialVariantKey &key)
+{
+    MaterialVariantKey canon = key;
+
+    if (!kRegistryMatchEffectiveFeatureMask && canon.effective_feature_mask != 0)
+    {
+        static std::atomic_bool s_warned_effective_mask_ignored{false};
+        bool expected = false;
+        if (s_warned_effective_mask_ignored.compare_exchange_strong(expected, true, std::memory_order_relaxed))
+        {
+            std::fprintf(stderr,
+                "[VariantRegistry] warning: effective_feature_mask is ignored for variant routing by default; "
+                "define ULRE_SHADERGEN_REGISTRY_MATCH_EFFECTIVE_MASK to include it in registry lookup.\n");
+        }
+
+        canon.effective_feature_mask = 0;
+    }
+
+    return canon;
+}
 
 static unsigned long long RecordAndGetTotalQueries(std::atomic<unsigned long long> &bucket)
 {
@@ -35,9 +61,8 @@ static unsigned long long RecordAndGetTotalQueries(std::atomic<unsigned long lon
     const auto exact = g_variant_registry_stats.exact.load(std::memory_order_relaxed);
     const auto step0 = g_variant_registry_stats.step0.load(std::memory_order_relaxed);
     const auto step1 = g_variant_registry_stats.step1.load(std::memory_order_relaxed);
-    const auto step2 = g_variant_registry_stats.step2.load(std::memory_order_relaxed);
     const auto miss = g_variant_registry_stats.miss.load(std::memory_order_relaxed);
-    return exact + step0 + step1 + step2 + miss;
+    return exact + step0 + step1 + miss;
 }
 
 static void MaybePrintStatsSummary(const char *reason, const unsigned long long total)
@@ -52,13 +77,12 @@ static void MaybePrintStatsSummary(const char *reason, const unsigned long long 
         return;
 
     std::fprintf(stderr,
-        "[VariantRegistry] stats reason=%s total=%llu exact=%llu step0=%llu step1=%llu step2=%llu miss=%llu\n",
+        "[VariantRegistry] stats reason=%s total=%llu exact=%llu step0=%llu step1=%llu miss=%llu\n",
         reason ? reason : "unknown",
         total,
         g_variant_registry_stats.exact.load(std::memory_order_relaxed),
         g_variant_registry_stats.step0.load(std::memory_order_relaxed),
         g_variant_registry_stats.step1.load(std::memory_order_relaxed),
-        g_variant_registry_stats.step2.load(std::memory_order_relaxed),
         g_variant_registry_stats.miss.load(std::memory_order_relaxed));
 }
 
@@ -81,6 +105,12 @@ static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
     text += std::to_string(static_cast<unsigned>(key.sky_ambient_model));
     text += " light=";
     text += std::to_string(static_cast<unsigned>(key.lighting_model));
+    text += " eff=0x";
+
+    char hex64[24] = {};
+    std::snprintf(hex64, sizeof(hex64), "%016llX",
+        static_cast<unsigned long long>(key.effective_feature_mask));
+    text += hex64;
     text += " tex_bits=0x";
 
     char hex[16] = {};
@@ -129,10 +159,12 @@ void VariantRegistry::RegisterVariant(const MaterialVariantKey &key, const Mater
 
 const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKey &key) const
 {
-    auto it = variant_map.find(key.Hash());
+    const MaterialVariantKey query_key = CanonicalizeRegistryLookupKey(key);
+
+    auto it = variant_map.find(query_key.Hash());
     if (it == variant_map.end())
         return nullptr;
-    if (!(it->second.key == key))
+    if (!(it->second.key == query_key))
         return nullptr;
     return &it->second.desc;
 }
@@ -141,7 +173,9 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
     const MaterialVariantKey &key,
     MaterialVariantKey *resolved_key) const
 {
-    if(const MaterialVariantDesc *exact=QueryVariant(key))
+    const MaterialVariantKey request_key = CanonicalizeRegistryLookupKey(key);
+
+    if(const MaterialVariantDesc *exact=QueryVariant(request_key))
     {
         const auto total = RecordAndGetTotalQueries(g_variant_registry_stats.exact);
         if (kVariantRegistryVerbose)
@@ -149,11 +183,11 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
             std::fprintf(stderr,
                 "[VariantRegistry] exact-match variant=%s %s\n",
                 exact->variant_name.empty() ? "<unnamed>" : exact->variant_name.c_str(),
-                FormatVariantKeyForLog(key).c_str());
+                FormatVariantKeyForLog(request_key).c_str());
         }
         MaybePrintStatsSummary("exact", total);
         if(resolved_key)
-            *resolved_key=key;
+            *resolved_key=request_key;
         return exact;
     }
 
@@ -161,7 +195,7 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
     // Legacy callers may not populate either field in route_key, while newer callers
     // (for example Standard variants) can use lighting_model as a routing dimension.
     // Keep this step as compatibility fallback, not the primary matching path.
-    MaterialVariantKey sky_canon = key;
+    MaterialVariantKey sky_canon = request_key;
     sky_canon.sky_ambient_model = SkyLightAmbientModel::Simple;
     sky_canon.lighting_model    = LightingModel::Lambert;
 
@@ -173,7 +207,7 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
             std::fprintf(stderr,
                 "[VariantRegistry] fallback-step0-sky variant=%s request={%s} resolved={%s}\n",
                 fallback->variant_name.empty() ? "<unnamed>" : fallback->variant_name.c_str(),
-                FormatVariantKeyForLog(key).c_str(),
+                FormatVariantKeyForLog(request_key).c_str(),
                 FormatVariantKeyForLog(sky_canon).c_str());
         }
         MaybePrintStatsSummary("step0", total);
@@ -195,30 +229,10 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
             std::fprintf(stderr,
                 "[VariantRegistry] fallback-step1 variant=%s request={%s} resolved={%s}\n",
                 fallback->variant_name.empty() ? "<unnamed>" : fallback->variant_name.c_str(),
-                FormatVariantKeyForLog(key).c_str(),
+                FormatVariantKeyForLog(request_key).c_str(),
                 FormatVariantKeyForLog(canon).c_str());
         }
         MaybePrintStatsSummary("step1", total);
-        if(resolved_key)
-            *resolved_key=canon;
-        return fallback;
-    }
-
-    // Fallback step 2: fully canonicalized (legacy coarse key).
-    canon.sampler_feature_bits=0;
-
-    if(const MaterialVariantDesc *fallback=QueryVariant(canon))
-    {
-        const auto total = RecordAndGetTotalQueries(g_variant_registry_stats.step2);
-        if (kVariantRegistryVerbose)
-        {
-            std::fprintf(stderr,
-                "[VariantRegistry] fallback-step2 variant=%s request={%s} resolved={%s}\n",
-                fallback->variant_name.empty() ? "<unnamed>" : fallback->variant_name.c_str(),
-                FormatVariantKeyForLog(key).c_str(),
-                FormatVariantKeyForLog(canon).c_str());
-        }
-        MaybePrintStatsSummary("step2", total);
         if(resolved_key)
             *resolved_key=canon;
         return fallback;
@@ -229,7 +243,7 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
     {
         std::fprintf(stderr,
             "[VariantRegistry] miss request={%s}\n",
-            FormatVariantKeyForLog(key).c_str());
+            FormatVariantKeyForLog(request_key).c_str());
     }
     MaybePrintStatsSummary("miss", total);
 

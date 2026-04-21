@@ -15,8 +15,8 @@
 //     HAS_CLIP_POS       fragClipPos (vec4)        — maps to si.worldPos; pulls ubo_camera
 //
 //   UBO flags:
-//     NEEDS_SKY          include ubo_sky.glsl before SURFACE_FUNCTION_FILE
-//     NEEDS_CAMERA       include ubo_camera.glsl before SURFACE_FUNCTION_FILE
+//     NEEDS_SKY          include ubo_sky.glsl before surface include
+//     NEEDS_CAMERA       include ubo_camera.glsl before surface include
 //
 //   Feature flags:
 //     ENABLE_LIGHTING    EvalLighting path (pulls camera+sky+viewport UBOs);
@@ -25,15 +25,14 @@
 //     ALPHA_MODE_DITHER  Bayer 4x4 ordered dither discard
 //     (default)          transparent passthrough: output so.baseColor + so.alpha
 //
-//   Injected macro (replaced by C++ assembler before compilation):
-//     SURFACE_FUNCTION_FILE  path to the surface .glsl file
+//   Surface include is emitted by C++ assembler before this file:
+//     e.g. "surface/xxx_surface.glsl"
 // ──────────────────────────────────────────────────────────────────────────
 
 // Fragment output
 layout(location=0) out vec4 outColor;
 
-// 4. Lighting helper — injected via LIGHTING_FUNCTION_FILE by C++ assembler
-//    (replaces old #include "common/lighting.glsl")
+// 4. Lighting helper is emitted by C++ assembler before this file.
 
 // 7. Bayer 4x4 ordered dither helper
 #ifdef ALPHA_MODE_DITHER

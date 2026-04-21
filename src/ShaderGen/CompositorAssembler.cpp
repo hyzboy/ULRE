@@ -254,6 +254,12 @@ namespace
         return BuildForwardFragmentEntry(flags);
     }
 
+    bool TryBuildAutoForwardFS(const hgl::graph::mtl::MaterialVariantKey &key,
+                               const hgl::graph::RenderAlphaMode blend,
+                               const hgl::graph::PassType pass,
+                               const std::string &surface_path,
+                               std::string &out_source);
+
     std::string BuildForwardLitFS(const hgl::graph::mtl::MaterialVariantKey &key, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
     {
         const bool uv0    = key.HasVertexAttrib(hgl::graph::VertexAttrib::TexCoord);
@@ -271,6 +277,17 @@ namespace
         flags.sky_ambient_model = key.sky_ambient_model;
         flags.surface_path = surface_path;
         return BuildForwardFragmentEntry(flags);
+    }
+
+    std::string BuildForwardAutoFSFromKey(const hgl::graph::mtl::MaterialVariantKey &key,
+                                          const hgl::graph::RenderAlphaMode blend,
+                                          const std::string &surface_path)
+    {
+        std::string out_source;
+        if (TryBuildAutoForwardFS(key, blend, key.pass_hint, surface_path, out_source))
+            return out_source;
+
+        return std::string();
     }
 
     bool TryBuildAutoForwardFS(const hgl::graph::mtl::MaterialVariantKey &key,
@@ -341,6 +358,16 @@ namespace
         {"compositor/main_forward_sky.frag.glsl",               &BuildForwardSkyFS},
         {"compositor/main_terrain_grid.frag.glsl",              &BuildTerrainGridFS},
         {"compositor/main_forward_lit.frag.glsl",               &BuildForwardLitFS},
+        {"compositor/main_forward_opaque.frag.glsl",            &BuildForwardAutoFSFromKey},
+        {"compositor/main_forward_transparent.frag.glsl",       &BuildForwardAutoFSFromKey},
+        {"compositor/main_forward_masked.frag.glsl",            &BuildForwardAutoFSFromKey},
+        {"compositor/main_forward_dither.frag.glsl",            &BuildForwardAutoFSFromKey},
+        {"compositor/main_forward_a2c.frag.glsl",               &BuildForwardAutoFSFromKey},
+        {"compositor/main_forward_unlit.frag.glsl",             &BuildForwardAutoFSFromKey},
+        {"compositor/main_forward_2d_opaque.frag.glsl",         &BuildForwardAutoFSFromKey},
+        {"compositor/main_forward_2d_transparent.frag.glsl",    &BuildForwardAutoFSFromKey},
+        {"compositor/main_forward_2d_masked.frag.glsl",         &BuildForwardAutoFSFromKey},
+        {"compositor/main_forward_2d_dither.frag.glsl",         &BuildForwardAutoFSFromKey},
     };
 
     static const SurfaceFunctionRoute kSurfaceFunctionRoutes[] = {

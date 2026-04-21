@@ -9,6 +9,7 @@
 #include <hgl/mtl/MaterialVariantRegistry.h>
 #include <hgl/mtl/SamplerSlot.h>
 
+#include "MaterialFactory3D.h"
 #include "StandardDescriptorBuilder.h"
 #include "StandardVariantRouter.h"
 
@@ -164,8 +165,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     MaterialVariantKey assemble_key = policy.assemble_key;
     assemble_key.lighting_model = lighting;
     assemble_key.sky_ambient_model = ambient;
-    for (uint32_t i = 0; i < dynamic_def.vertex_entry_count; ++i)
-        assemble_key.SetVertexAttribEnabled(dynamic_def.vertex_entries[i].attrib);
+    PopulateVariantKeyVertexAttribBits(assemble_key, dynamic_def);
 
     CompositorAssembler assembler;
 

@@ -16,7 +16,7 @@ namespace hgl::graph::mtl
         std::optional<MaterialPreset> factory_type;
 
         // 材质实例布局
-        uint32 mi_struct_size;              // MI 结构体大小（字节）
+        uint32 mi_struct_size;              // 兼容字段：当前运行期未读取（保留用于迁移窗口）
 
         // 着色器模板路径
         std::string vs_template_path;       // 顶点着色器模板路径（相对 ShaderLibrary）
@@ -24,7 +24,7 @@ namespace hgl::graph::mtl
         std::string surface_function_path;  // Surface include 路径（相对 ShaderLibrary）
 
         // 描述符配置
-        uint32 descriptor_binding_count;    // 总描述符 binding 数量
+        uint32 descriptor_binding_count;    // 兼容字段：当前运行期未读取（保留用于迁移窗口）
 
         MaterialVariantDesc()
             : mi_struct_size(0),

@@ -10,6 +10,12 @@
 
 namespace hgl::graph::mtl{
 
+inline void PopulateVariantKeyVertexAttribBits(MaterialVariantKey &key, const StaticMaterialDef &def)
+{
+    for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+        key.SetVertexAttribEnabled(def.vertex_entries[i].attrib);
+}
+
 namespace contract{struct PhysicalDeviceProfileLite;}
 struct Material3DCreateConfig;
 class MaterialCreateInfo;
