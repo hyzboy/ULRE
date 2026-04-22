@@ -110,6 +110,9 @@ private:
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
     UnorderedMap<AnsiString,ShaderMaterialProgram *> material_by_name;
 
+    // Step 3: MaterialKey → Program* (alias map; ownership stays in rm_material)
+    std::unordered_map<mtl::MaterialKey, ShaderMaterialProgram *> material_by_key;
+
     AutoIdObjectManager<MaterialID,             ShaderMaterialProgram>           rm_material;                ///<材质合集
     AutoIdObjectManager<MaterialBindingInstanceID,     MaterialBindingInstance>   rm_material_instance;       ///<材质实例合集
 
@@ -125,6 +128,10 @@ private:
 
     std::atomic<uint64_t> acquire_mi_requests {0};
     std::atomic<uint64_t> acquire_mi_created {0};
+
+    // Step 3: material_by_key diagnostics
+    std::atomic<uint64_t> by_key_hits             {0};
+    std::atomic<uint64_t> by_key_misses_name_hits {0}; ///< Should be 0 after warm-up; non-zero = MaterialKey algorithm bug
 
     // Fallback material for error handling (initialized on first use)
     ShaderMaterialProgram *fallback_material = nullptr;
@@ -174,6 +181,9 @@ public: //Release
     {
         if (!mtl)
             return;
+
+        if (mtl->HasMaterialKey())
+            material_by_key.erase(mtl->GetMaterialKey());
 
         const AnsiString &name = mtl->GetName();
         if (!name.IsEmpty())
@@ -229,6 +239,8 @@ public: // Override Release from GraphModule - cleanup all resources
 
         if (material_by_name.GetCount() > 0)
             material_by_name.Clear();
+
+        material_by_key.clear();
 
         for (auto &stage_map : shader_module_by_name)
         {
@@ -296,7 +308,11 @@ public: // Acquire stats
             acquire_fallback_used.store(0);
         acquire_mi_requests.store(0);
         acquire_mi_created.store(0);
+        by_key_hits.store(0);
+        by_key_misses_name_hits.store(0);
     }
+
+    void DumpKeyMapDiagnostics() const;
 
 public: //ShaderMaterialProgram
 

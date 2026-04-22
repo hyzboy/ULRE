@@ -101,6 +101,39 @@ namespace hgl::ecs
         std::vector<Entity*> entities;
         world->GetAllEntities(entities);
 
+        // Pre-registration pass: register all domain textures before binding.
+        // QuadResourcePrepareSystem::Update() runs earlier (RenderResourceSetup phase)
+        // when s_domain_resources is still empty on the first frame, so EnsureDomainResources()
+        // produces no domain materials.  By registering every domain-tagged quad's texture
+        // here first and then calling EnsureDomainResources(), we guarantee that the
+        // Texture2DArray and sampler2DArray ShaderMaterialProgram are ready within the
+        // same frame — avoiding a one-frame fallback to the wrong sampler2D shared material.
+        bool needs_domain_rebuild = false;
+        for (Entity* entity : entities)
+        {
+            if (!entity) continue;
+            auto quad = entity->GetComponent<QuadComponent>();
+            if (!quad || !quad->IsVisible() || !quad->HasDomainTag()) continue;
+
+            const auto& texture_path = quad->GetTexturePath();
+            if (texture_path.IsEmpty()) continue;
+
+            const int layer = QuadResourcePrepareSystem::RegisterDomainTexture(
+                quad->GetDomainTag(), texture_path);
+            if (layer >= 0)
+            {
+                auto* dr = QuadResourcePrepareSystem::GetDomainResources(quad->GetDomainTag());
+                if (!dr || !dr->material)
+                    needs_domain_rebuild = true;
+            }
+        }
+
+        if (needs_domain_rebuild)
+        {
+            if (auto prep_sys = world->GetSystem<QuadResourcePrepareSystem>())
+                prep_sys->EnsureDomainResources();
+        }
+
         for (Entity* entity : entities)
         {
             if (!entity)
@@ -289,8 +322,8 @@ namespace hgl::ecs
         if (!dr || !dr->material || !dr->primitive)
             return false; // will be ready next frame after EnsureDomainResources()
 
-        // If texture hasn't changed and a quad-specific primitive is already bound, skip
-        if (!quad->IsTextureDirty() && quad->GetPrimitive() != dr->primitive)
+        // If texture hasn't changed and this quad is already using the domain primitive, skip
+        if (!quad->IsTextureDirty() && quad->GetPrimitive() == dr->primitive)
             return true;
 
         auto* graphics_context = world->GetGraphicsContext();

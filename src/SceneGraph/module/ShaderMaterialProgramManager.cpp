@@ -117,6 +117,15 @@ namespace
         return true;
     }
 
+    static mtl::MaterialKey MakeMaterialKeyFromVariantKey(const mtl::MaterialVariantKey &vk)
+    {
+        mtl::MaterialKey k{};
+        k.variant = vk;
+        k.pass    = vk.pass_hint;
+        // schema / def_id / version fields: placeholder zeros (Step 6 will fill)
+        return k;
+    }
+
 }//namespace
 
 GRAPH_MODULE_CONSTRUCT(ShaderMaterialProgramManager)
@@ -647,10 +656,28 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
 
+    const mtl::MaterialKey mkey = MakeMaterialKeyFromVariantKey(key);
+
+    // Fast path: material_by_key
+    {
+        auto it = material_by_key.find(mkey);
+        if (it != material_by_key.end())
+        {
+            by_key_hits.fetch_add(1);
+            return it->second;
+        }
+    }
+
+    // Fallback: legacy name cache
     {
         ShaderMaterialProgram *cached = TryGetCachedMaterial(hash_name);
         if (cached)
+        {
+            by_key_misses_name_hits.fetch_add(1);
+            cached->SetMaterialKey(mkey);
+            material_by_key[mkey] = cached;
             return cached;
+        }
     }
 
     const auto *profile=GetPhysicalDeviceProfile();
@@ -668,6 +695,9 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
             if (key.GetTextureSourceMode(mtl::SamplerSlot(s)) == mtl::TextureSourceMode::Array)
                 flags |= (1u << s);
         mat->SetTextureArraySlotFlags(flags);
+        // Dual-write to key map
+        mat->SetMaterialKey(mkey);
+        material_by_key[mkey] = mat;
     }
     return mat;
 }
@@ -696,10 +726,43 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
 
+    // For Billboard materials, the variant registry key is shared between sampler2D and
+    // sampler2DArray variants (differentiated inside the factory via cfg->use_texture_array).
+    // Use a separate cache_key that encodes the array flag to avoid collisions in material_by_key.
+    mtl::MaterialVariantKey cache_key = key;
+    if (const auto *billboard_cfg = dynamic_cast<const mtl::BillboardMaterialCreateConfig *>(cfg))
+    {
+        if (billboard_cfg->use_texture_array)
+        {
+            cache_key.SetTextureSourceMode(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
+            std::fprintf(stderr,
+                "[ShaderMaterialProgramManager] Billboard domain: use_texture_array=true cache_key_hash=%llu\n",
+                static_cast<unsigned long long>(cache_key.Hash()));
+        }
+    }
+
+    const mtl::MaterialKey mkey = MakeMaterialKeyFromVariantKey(cache_key);
+
+    // Fast path: material_by_key
+    {
+        auto it = material_by_key.find(mkey);
+        if (it != material_by_key.end())
+        {
+            by_key_hits.fetch_add(1);
+            return it->second;
+        }
+    }
+
+    // Fallback: legacy name cache
     {
         ShaderMaterialProgram *cached = TryGetCachedMaterial(hash_name);
         if (cached)
+        {
+            by_key_misses_name_hits.fetch_add(1);
+            cached->SetMaterialKey(mkey);
+            material_by_key[mkey] = cached;
             return cached;
+        }
     }
 
     const auto *profile=GetPhysicalDeviceProfile();
@@ -710,6 +773,8 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
             static_cast<unsigned long long>(key.Hash()));
     }
 
+    // Pass original key (not cache_key) to CreateMaterialCreateInfo — the registry lookup
+    // must use the clean key without the array bit injected for caching purposes.
     AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
 
     if(!mci)
@@ -732,11 +797,25 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     {
         uint8_t flags = 0;
         for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
-            if (key.GetTextureSourceMode(mtl::SamplerSlot(s)) == mtl::TextureSourceMode::Array)
+            if (cache_key.GetTextureSourceMode(mtl::SamplerSlot(s)) == mtl::TextureSourceMode::Array)
                 flags |= (1u << s);
         mat->SetTextureArraySlotFlags(flags);
+        // Dual-write to key map using cache_key-derived mkey for correct differentiation
+        mat->SetMaterialKey(mkey);
+        material_by_key[mkey] = mat;
     }
     return mat;
+}
+
+void ShaderMaterialProgramManager::DumpKeyMapDiagnostics() const
+{
+    std::fprintf(stderr,
+        "[ShaderMaterialProgramManager] KeyMap: by_key=%zu by_name=%d "
+        "hits=%llu inconsistencies=%llu\n",
+        material_by_key.size(),
+        material_by_name.GetCount(),
+        static_cast<unsigned long long>(by_key_hits.load()),
+        static_cast<unsigned long long>(by_key_misses_name_hits.load()));
 }
 
 MaterialBindingInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)

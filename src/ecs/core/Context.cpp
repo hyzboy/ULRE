@@ -597,14 +597,19 @@ namespace hgl
             // handled by PrepareRenderPassSetup() before BeginRenderPass().
             // DrawSubmit systems (RenderPrimitiveSubmitSystem etc.) only override
             // Render(), not Update(), so they are covered by the Render() loop below.
-            RunRenderUpdatesRange(ExecutionPhase::RenderCollect,
-                                  ExecutionPhase::RenderBatch,
-                                  deltaTime);
 
+            // SubmitTransformUpdates() MUST run before RenderBatch phase (PrimitiveBuildSystem),
+            // because WriteItems() reads world matrices from TransformDataStorage. If batching
+            // runs first, static transform world matrices are still identity (never computed),
+            // causing a first-frame bug where all static entities render at world origin.
             if (auto transform_system = GetSystem<TransformSystem>())
             {
                 transform_system->SubmitTransformUpdates();
             }
+
+            RunRenderUpdatesRange(ExecutionPhase::RenderCollect,
+                                  ExecutionPhase::RenderBatch,
+                                  deltaTime);
 
             for (auto& entry : render_system_order)
             {
@@ -1015,6 +1020,10 @@ namespace hgl
             SetFrameIndex(frameIndex);
             RenderBeginFrame(deltaTime);                                         // open cmd buffer, record frame UBOs
             RunRenderPhaseUpdates(ExecutionPhase::RenderCollect,     deltaTime); // collect / cull visible components
+            // SubmitTransformUpdates() MUST precede RenderBatch so WriteItems() reads correct
+            // world matrices from TransformDataStorage (not uninitialized identity values).
+            if (auto transform_system = GetSystem<TransformSystem>())
+                transform_system->SubmitTransformUpdates();
             RunRenderPhaseUpdates(ExecutionPhase::RenderBatch,       deltaTime); // write VABs (StagedBuffer → marks dirty)
             RenderBufferCommit(deltaTime);                                       // finalize staged CPU writes
             RenderBufferUpload(deltaTime);                                       // GPU transfer (dirty → uploaded)

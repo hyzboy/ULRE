@@ -5,6 +5,7 @@
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<hgl/mtl/ShaderDataSchema.h>
+#include<hgl/mtl/MaterialKey.h>
 #include<hgl/log/Log.h>
 #include<unordered_set>
 
@@ -57,6 +58,8 @@ class ShaderMaterialProgram
     uint8_t texture_array_slot_flags = 0; ///< bit N = SamplerSlot(N) uses TextureArray mode
 
     uint64_t effective_feature_mask = 0; ///< Effective feature mask from Phase 3 cache key resolution
+
+    mtl::MaterialKey material_key_{}; ///< Step 3: MaterialKey — set after creation for fast keyed lookup
 
 private:
 
@@ -142,6 +145,13 @@ public:
 
     const bool      hasMI           ()const{return mi_schema!=mtl::ShaderDataSchema::None;}
     const mtl::ShaderDataSchema GetShaderDataSchema() const { return mi_schema; }
+
+public: // Step 3: MaterialKey cache support
+
+    void SetMaterialKey(const mtl::MaterialKey &k) noexcept { material_key_ = k; }
+    const mtl::MaterialKey &GetMaterialKey() const noexcept { return material_key_; }
+    bool HasMaterialKey() const noexcept { return material_key_.Hash() != 0; }
+
 };//class ShaderMaterialProgram
 
 using MaterialSet=std::unordered_set<ShaderMaterialProgram *>;

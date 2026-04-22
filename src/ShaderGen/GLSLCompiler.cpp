@@ -395,6 +395,10 @@ namespace hgl
                 FreeSPVData(spv);
                 return(nullptr);
             }
+            else
+            {
+                GLogInfo("[GLSLCompiler] Compile shader success, shader:\n %s", source);
+            }
 
             if(gsi->ParseSPV && gsi->FreeParseSPVData)
             {

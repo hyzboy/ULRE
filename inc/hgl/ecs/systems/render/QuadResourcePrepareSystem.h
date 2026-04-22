@@ -123,10 +123,15 @@ namespace hgl::ecs
         void Update(float deltaTime) override;
         void Shutdown() override;
 
+        /// Build (or rebuild) all domain texture arrays and ShaderMaterialPrograms.
+        /// Called automatically from Update(), but may also be called explicitly by
+        /// QuadMaterialBindingSystem after registering domain textures so that
+        /// domain materials are ready on the very first frame.
+        bool EnsureDomainResources();
+
     private:
 
         bool EnsureSharedResources();
-        bool EnsureDomainResources();
         void ReleaseSharedResources();
         void ReleaseDomainResources();
     };
