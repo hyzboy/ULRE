@@ -28,8 +28,9 @@ namespace hgl::graph::mtl
     {
         None         = 0,
         DebugShading = 1u << 0,
+        Vec2Position = 1u << 1,     ///< Position vertex attrib is vec2 (not vec3)
 
-        ENUM_CLASS_RANGE(None, DebugShading)
+        ENUM_CLASS_RANGE(None, Vec2Position)
     };
 
     enum class GeometryMode : uint8
@@ -115,6 +116,20 @@ namespace hgl::graph::mtl
         bool IsDebugShading() const noexcept
         {
             return (extra_feature_bits & static_cast<uint32>(ExtraFeature::DebugShading)) != 0;
+        }
+
+        void SetVec2Position(const bool enabled = true) noexcept
+        {
+            constexpr uint32 vec2_pos_bit = static_cast<uint32>(ExtraFeature::Vec2Position);
+            if (enabled)
+                extra_feature_bits |= vec2_pos_bit;
+            else
+                extra_feature_bits &= ~vec2_pos_bit;
+        }
+
+        bool IsVec2Position() const noexcept
+        {
+            return (extra_feature_bits & static_cast<uint32>(ExtraFeature::Vec2Position)) != 0;
         }
 
         uint64 Hash() const noexcept

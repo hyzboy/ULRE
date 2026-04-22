@@ -213,12 +213,9 @@ namespace
             flags.has_direction      = true;
             flags.vertex_attrib_bits = 0;
         }
-        // VertexLuminance2D: 3D-space mesh with vec2 position.
-        // Detected by Luminance + Position attribs without Normal.
-        // TODO (improvement-plan §5.4): replace with ExtraFeature::Vec2Position or GeometryMode::Mesh2DInWorld.
-        else if (key.HasVertexAttrib(hgl::graph::VertexAttrib::Luminance)
-              && key.HasVertexAttrib(hgl::graph::VertexAttrib::Position)
-              && !key.HasVertexAttrib(hgl::graph::VertexAttrib::Normal))
+        // Vec2 position: 3D-space mesh whose Position vertex attrib is vec2 (e.g. VertexLuminance2D).
+        // Set by PopulateVariantKeyVertexAttribBits when it detects a VAT_VEC2 Position entry.
+        else if (key.IsVec2Position())
         {
             flags.vert_input_2d = true;
         }

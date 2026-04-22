@@ -11,7 +11,14 @@ namespace hgl::graph::mtl{
 inline void PopulateVariantKeyVertexAttribBits(MaterialVariantKey &key, const StaticMaterialDef &def)
 {
     for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
-        key.SetVertexAttribEnabled(def.vertex_entries[i].attrib);
+    {
+        const FixedVertexEntry &entry = def.vertex_entries[i];
+        key.SetVertexAttribEnabled(entry.attrib);
+
+        // Detect vec2 Position to distinguish VertexLuminance2D (vec2) from VertexLuminance3D (vec3).
+        if (entry.attrib == hgl::graph::VertexAttrib::Position && entry.type == hgl::graph::VAT_VEC2)
+            key.SetVec2Position(true);
+    }
 }
 
 namespace contract{struct PhysicalDeviceProfileLite;}
