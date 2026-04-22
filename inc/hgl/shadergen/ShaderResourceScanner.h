@@ -1,31 +1,21 @@
 ﻿#pragma once
 
 #include <hgl/mtl/StaticMaterialDef.h>
+#include <hgl/mtl/MaterialResourceManifest.h>
 #include <string>
 
 namespace hgl::graph::mtl
 {
-    struct ShaderResourceDependencies
-    {
-        UBOSemanticSet ubos;
-        SSBOSemanticSet ssbos;
-        StaticTextureSamplerDescriptors samplers;
-    };
-
     bool CollectShaderAutoRequirements(const StaticMaterialDef &base_def,
                                        const std::string &shader_library_path,
                                        const std::string &vertex_glsl,
                                        const std::string &fragment_glsl,
-                                       ShaderResourceDependencies &out_requirements,
+                                       MaterialResourceManifest &out_requirements,
                                        std::string *diagnostics = nullptr);
 
-    // Lifetime contract:
-    // out_def borrows ubo_storage/ssbo_storage/sampler_storage via pointer fields.
-    // Callers must guarantee those storages outlive every use of out_def.
-    void MergeShaderAutoRequirements(const StaticMaterialDef &base_def,
-                                     const ShaderResourceDependencies &auto_requirements,
-                                     StaticMaterialDef &out_def,
-                                     UBOSemanticSet &ubo_storage,
-                                     SSBOSemanticSet &ssbo_storage,
-                                     StaticTextureSamplerDescriptors &sampler_storage);
+    /// Builds a merged manifest from base_def and auto-scanned requirements.
+    /// Equivalent to FromStaticDef(base_def).MergeKeepFirst(auto_requirements).
+    MaterialResourceManifest MergeManifestWithAutoRequirements(
+        const StaticMaterialDef &base_def,
+        const MaterialResourceManifest &auto_requirements);
 }

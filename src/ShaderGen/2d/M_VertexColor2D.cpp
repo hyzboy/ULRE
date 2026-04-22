@@ -19,15 +19,13 @@ MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLit
     build2d::PushBaseVertexEntries(vertices, cfg);
     vertices.push_back({VAT_VEC4, VAN::Color});
 
+    MaterialResourceManifest manifest;
     StaticMaterialDef def{};
-    UBOSemanticSet ubos;
-    SSBOSemanticSet ssbos;
     build2d::BuildBase2DFixedDef(def,
                                  "VertexColor2D",
                                  cfg,
                                  vertices,
-                                 ubos,
-                                 ssbos);
+                                 manifest);
 
     return CreateFromFixedDef2D("VertexColor2D", profile, def, key, vs_preamble, fs_preamble, cfg);
 }

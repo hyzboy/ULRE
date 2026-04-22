@@ -54,7 +54,7 @@ namespace
         }
     }
 
-    static void DumpCollectedRequirements(const ShaderResourceDependencies &requirements)
+    static void DumpCollectedRequirements(const MaterialResourceManifest &requirements)
     {
         if (requirements.ubos.empty())
         {
@@ -254,7 +254,7 @@ namespace
 
     static bool BuildReflectedRequirements(const StaticMaterialDef &base_def,
                                            const std::vector<ReflectedResource> &resources,
-                                           ShaderResourceDependencies &out_requirements,
+                                           MaterialResourceManifest &out_requirements,
                                            std::string *diagnostics)
     {
         for (const ReflectedResource &resource : resources)
@@ -329,12 +329,10 @@ bool CollectShaderAutoRequirements(const StaticMaterialDef &base_def,
                                    const std::string &shader_library_path,
                                    const std::string &vertex_glsl,
                                    const std::string &fragment_glsl,
-                                   ShaderResourceDependencies &out_requirements,
+                                   MaterialResourceManifest &out_requirements,
                                    std::string *diagnostics)
 {
-    out_requirements.ubos.clear();
-    out_requirements.ssbos.clear();
-    out_requirements.samplers.clear();
+    out_requirements.clear();
 
     if (diagnostics)
         diagnostics->clear();
@@ -384,38 +382,12 @@ bool CollectShaderAutoRequirements(const StaticMaterialDef &base_def,
     return true;
 }
 
-void MergeShaderAutoRequirements(const StaticMaterialDef &base_def,
-                                 const ShaderResourceDependencies &auto_requirements,
-                                 StaticMaterialDef &out_def,
-                                 UBOSemanticSet &ubo_storage,
-                                 SSBOSemanticSet &ssbo_storage,
-                                 StaticTextureSamplerDescriptors &sampler_storage)
+MaterialResourceManifest MergeManifestWithAutoRequirements(
+    const StaticMaterialDef &base_def,
+    const MaterialResourceManifest &auto_requirements)
 {
-    ubo_storage.clear();
-    ssbo_storage.clear();
-    sampler_storage.clear();
-
-    if (base_def.ubo_descriptors)
-        ubo_storage = *base_def.ubo_descriptors;
-
-    if (base_def.ssbo_descriptors)
-        ssbo_storage = *base_def.ssbo_descriptors;
-
-    if (base_def.texture_samplers)
-        sampler_storage = *base_def.texture_samplers;
-
-    for (const auto semantic : auto_requirements.ubos)
-        AddUBODescriptor(ubo_storage, semantic);
-
-    for (const auto semantic : auto_requirements.ssbos)
-        AddSSBODescriptor(ssbo_storage, semantic);
-
-    for (const auto &[slot, sampler] : auto_requirements.samplers)
-        sampler_storage.try_emplace(slot, sampler);
-
-    out_def = base_def;
-    out_def.ubo_descriptors = ubo_storage.empty() ? nullptr : &ubo_storage;
-    out_def.ssbo_descriptors = ssbo_storage.empty() ? nullptr : &ssbo_storage;
-    out_def.texture_samplers = sampler_storage.empty() ? nullptr : &sampler_storage;
+    MaterialResourceManifest result = MaterialResourceManifest::FromStaticDef(base_def);
+    result.MergeKeepFirst(auto_requirements);
+    return result;
 }
 }

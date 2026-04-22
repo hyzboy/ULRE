@@ -8,6 +8,7 @@
 
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/StaticMaterialDef.h>
+#include<hgl/mtl/MaterialResourceManifest.h>
 #include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<hgl/mtl/SamplerSlot.h>
@@ -128,25 +129,28 @@ inline void PushBaseSSBODescriptors(SSBOSemanticSet &descriptors, const Material
     }
 }
 
+inline void PushBaseDescriptors(MaterialResourceManifest &manifest, const Material2DCreateConfig *cfg)
+{
+    PushBaseUBODescriptors(manifest.ubos, cfg);
+    PushBaseSSBODescriptors(manifest.ssbos, cfg);
+}
+
 inline void BuildBase2DFixedDef(StaticMaterialDef &def,
                                 const char *debug_tag,
                                 const Material2DCreateConfig *cfg,
                                 std::vector<FixedVertexEntry> &vertices,
-                                UBOSemanticSet &ubos,
-                                SSBOSemanticSet &ssbos,
-                                StaticTextureSamplerDescriptors *samplers = nullptr,
+                                MaterialResourceManifest &manifest,
                                 ShaderDataSchema schema = ShaderDataSchema::None)
 {
-    PushBaseUBODescriptors(ubos, cfg);
-    PushBaseSSBODescriptors(ssbos, cfg);
+    PushBaseDescriptors(manifest, cfg);
 
     def = {
         debug_tag,
         cfg->prim,
         vertices.data(), uint32_t(vertices.size()),
-        &ubos,
-        &ssbos,
-        samplers,
+        manifest.ubos.empty()     ? nullptr : &manifest.ubos,
+        manifest.ssbos.empty()    ? nullptr : &manifest.ssbos,
+        manifest.samplers.empty() ? nullptr : &manifest.samplers,
         schema,
     };
 }

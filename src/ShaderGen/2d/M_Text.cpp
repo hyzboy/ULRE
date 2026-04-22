@@ -44,18 +44,14 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     build2d::PushBaseVertexEntries(vertices, &new_cfg);
     vertices.push_back({VAT_VEC2, VAN::TexCoord});
 
+    MaterialResourceManifest manifest;
+    AddTextureSampler(manifest.samplers, SamplerSlot::Text, SamplerType::Sampler2D);
     StaticMaterialDef def{};
-    UBOSemanticSet ubos;
-    SSBOSemanticSet ssbos;
-    StaticTextureSamplerDescriptors samplers;
-    AddTextureSampler(samplers, SamplerSlot::Text, SamplerType::Sampler2D);
     build2d::BuildBase2DFixedDef(def,
                                  "Text2D",
                                  &new_cfg,
                                  vertices,
-                                 ubos,
-                                 ssbos,
-                                 &samplers,
+                                 manifest,
                                  ShaderDataSchema::TextColor);
 
     std::string vs = vs_preamble + result.vertex_glsl;

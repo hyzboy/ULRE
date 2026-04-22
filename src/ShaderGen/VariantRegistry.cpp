@@ -17,25 +17,12 @@ constexpr bool kVariantRegistryVerbose = true;
 constexpr bool kVariantRegistryVerbose = false;
 #endif
 
-#if defined(ULRE_SHADERGEN_REGISTRY_MATCH_EFFECTIVE_MASK)
-constexpr bool kRegistryMatchEffectiveFeatureMask = true;
-#else
-constexpr bool kRegistryMatchEffectiveFeatureMask = false;
-#endif
-
-struct VariantRegistryFallbackStats
-{
-    std::atomic<unsigned long long> exact{0};
-    std::atomic<unsigned long long> miss{0};
-};
-
-static VariantRegistryFallbackStats g_variant_registry_stats;
-
-static MaterialVariantKey CanonicalizeRegistryLookupKey(const MaterialVariantKey &key)
+static MaterialVariantKey CanonicalizeRegistryLookupKey(const MaterialVariantKey &key,
+                                                        const RegistryLookupOptions &options)
 {
     MaterialVariantKey canon = key;
 
-    if (!kRegistryMatchEffectiveFeatureMask && canon.effective_feature_mask != 0)
+    if (!options.match_effective_feature_mask && canon.effective_feature_mask != 0)
     {
         static std::atomic_bool s_warned_effective_mask_ignored{false};
         bool expected = false;
@@ -43,41 +30,13 @@ static MaterialVariantKey CanonicalizeRegistryLookupKey(const MaterialVariantKey
         {
             std::fprintf(stderr,
                 "[VariantRegistry] warning: effective_feature_mask is ignored for variant routing by default; "
-                "define ULRE_SHADERGEN_REGISTRY_MATCH_EFFECTIVE_MASK to include it in registry lookup.\n");
+                "set RegistryLookupOptions::match_effective_feature_mask = true to include it in registry lookup.\n");
         }
 
         canon.effective_feature_mask = 0;
     }
 
     return canon;
-}
-
-static unsigned long long RecordAndGetTotalQueries(std::atomic<unsigned long long> &bucket)
-{
-    bucket.fetch_add(1, std::memory_order_relaxed);
-
-    const auto exact = g_variant_registry_stats.exact.load(std::memory_order_relaxed);
-    const auto miss = g_variant_registry_stats.miss.load(std::memory_order_relaxed);
-    return exact + miss;
-}
-
-static void MaybePrintStatsSummary(const char *reason, const unsigned long long total)
-{
-    if (!kVariantRegistryVerbose)
-        return;
-
-    if (total < 64)
-        return;
-
-    if ((total % 128) != 0 && std::string(reason) != "miss")
-        return;
-
-    std::fprintf(stderr,
-        "[VariantRegistry] stats reason=%s total=%llu exact=%llu miss=%llu\n",
-        reason ? reason : "unknown",
-        total,
-        g_variant_registry_stats.exact.load(std::memory_order_relaxed),
-        g_variant_registry_stats.miss.load(std::memory_order_relaxed));
 }
 
 static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
@@ -151,9 +110,10 @@ void VariantRegistry::RegisterVariant(const MaterialVariantKey &key, const Mater
     variant_map[hash] = VariantEntry{key, desc};
 }
 
-const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKey &key) const
+const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKey &key,
+                                                         const RegistryLookupOptions &options) const
 {
-    const MaterialVariantKey query_key = CanonicalizeRegistryLookupKey(key);
+    const MaterialVariantKey query_key = CanonicalizeRegistryLookupKey(key, options);
 
     auto it = variant_map.find(query_key.Hash());
     if (it == variant_map.end())
@@ -165,13 +125,15 @@ const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKe
 
 const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
     const MaterialVariantKey &key,
-    MaterialVariantKey *resolved_key) const
+    MaterialVariantKey *resolved_key,
+    const RegistryLookupOptions &options) const
 {
-    const MaterialVariantKey request_key = CanonicalizeRegistryLookupKey(key);
+    const MaterialVariantKey request_key = CanonicalizeRegistryLookupKey(key, options);
 
-    if(const MaterialVariantDesc *exact=QueryVariant(request_key))
+    if(const MaterialVariantDesc *exact=QueryVariant(request_key, options))
     {
-        const auto total = RecordAndGetTotalQueries(g_variant_registry_stats.exact);
+        if (auto *s = GetGlobalVariantRegistryStatsSink())
+            s->OnExactMatch(request_key, *exact);
         if (kVariantRegistryVerbose)
         {
             std::fprintf(stderr,
@@ -179,20 +141,19 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
                 exact->variant_name.empty() ? "<unnamed>" : exact->variant_name.c_str(),
                 FormatVariantKeyForLog(request_key).c_str());
         }
-        MaybePrintStatsSummary("exact", total);
         if(resolved_key)
             *resolved_key=request_key;
         return exact;
     }
 
-    const auto total = RecordAndGetTotalQueries(g_variant_registry_stats.miss);
+    if (auto *s = GetGlobalVariantRegistryStatsSink())
+        s->OnMiss(request_key);
     if (kVariantRegistryVerbose)
     {
         std::fprintf(stderr,
             "[VariantRegistry] miss request={%s}\n",
             FormatVariantKeyForLog(request_key).c_str());
     }
-    MaybePrintStatsSummary("miss", total);
 
     return nullptr;
 }

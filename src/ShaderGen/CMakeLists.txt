@@ -78,6 +78,7 @@ SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h
                     ${STD_MTL_HEADER_PATH}/MaterialBuildFlags.h
                     ${STD_MTL_HEADER_PATH}/ShaderDataSchema.h
                     ${STD_MTL_HEADER_PATH}/StaticMaterialDef.h
+                    ${STD_MTL_HEADER_PATH}/MaterialResourceManifest.h
                     MaterialCreateConfig.cpp
                     ShaderDataSchema.cpp
                     GLSLStructSize.cpp)
@@ -124,6 +125,7 @@ SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             MaterialFactory3DRegistration.h
                             MaterialSpecValidator.cpp
                             VariantRegistry.cpp
+                            VariantRegistryStatsSink.cpp
                             ${STD_MTL_HEADER_PATH}/MaterialLibrary.h
                             ${STD_MTL_HEADER_PATH}/MaterialSpec.h
                             ${STD_MTL_HEADER_PATH}/MaterialPreset.h
@@ -142,7 +144,8 @@ SOURCE_GROUP("Material Compiler" FILES ${MATERIAL_COMPILER_FILES})
 
 # Material Compiler / Requirements
 SET(SHADER_REQUIRE_SCANNER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderResourceScanner.h
-                                 ShaderResourceScanner.cpp)
+                                 ShaderResourceScanner.cpp
+                                 MaterialResourceManifest.cpp)
 SOURCE_GROUP("Material Compiler\\Requirements" FILES ${SHADER_REQUIRE_SCANNER_FILES})
 
 # Material Compiler / Sampler

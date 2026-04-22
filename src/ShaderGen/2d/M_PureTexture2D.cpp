@@ -38,22 +38,18 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
     build2d::PushBaseVertexEntries(vertices, &inner);
     vertices.push_back({VAT_VEC2, VAN::TexCoord});
 
-    UBOSemanticSet ubos;
-    SSBOSemanticSet ssbos;
-    StaticTextureSamplerDescriptors samplers;
-    AddTextureSampler(samplers, SamplerSlot::BaseColor, use_array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D);
+    MaterialResourceManifest manifest;
+    AddTextureSampler(manifest.samplers, SamplerSlot::BaseColor, use_array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D);
 
     if(use_array)
-        AddSSBODescriptor(ssbos, SSBODescriptorSemantic::MaterialBindingInstanceTexture);
+        AddSSBODescriptor(manifest.ssbos, SSBODescriptorSemantic::MaterialBindingInstanceTexture);
 
     StaticMaterialDef def{};
     build2d::BuildBase2DFixedDef(def,
                                  "PureTexture2D",
                                  &inner,
                                  vertices,
-                                 ubos,
-                                 ssbos,
-                                 &samplers,
+                                 manifest,
                                  use_array ? ShaderDataSchema::TextureArrayID : ShaderDataSchema::None);
 
     return CreateFromFixedDef2D("PureTexture2D", profile, def, key, vs_preamble, fs_preamble, &inner, true);

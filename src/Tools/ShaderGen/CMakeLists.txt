@@ -48,7 +48,8 @@ add_executable(MaterialFeatureWarningSmoke
     MaterialFeatureWarningSmoke.cpp)
 
 target_link_libraries(MaterialFeatureWarningSmoke
-    PRIVATE ULRE.ShaderGen
+    PRIVATE ULRE.Vulkan
+            ULRE.ShaderGen
             CMCore
             CMMath
             CMCoreType)
