@@ -5,6 +5,7 @@
 #include<hgl/mtl/MaterialVariantRegistry.h>
 #include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
+#include<hgl/shadergen/MaterialFactory3D.h>
 #include<cstdio>
 
 namespace hgl::graph::mtl{
@@ -400,221 +401,10 @@ const char *GetMaterialPresetName(const MaterialPreset mtl_id)
     return entry?entry->name:nullptr;
 }
 
-MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileLite *profile,
-                                          const MaterialVariantKey &key,
-                                          const Material3DCreateConfig *cfg);
-MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfileLite *profile,
-                                             const MaterialVariantKey &key,
-                                             const Material2DCreateConfig *cfg);
-// Forward declarations for 2D factory functions (refactored to accept MaterialVariantKey)
-MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLite *profile,
-                                        const Material2DCreateConfig *cfg,
-                                        const MaterialVariantKey &key);
-MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite *profile,
-                                      Material2DCreateConfig *cfg,
-                                      const MaterialVariantKey &key);
-MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,
-                                        const Material2DCreateConfig *cfg,
-                                        MaterialVariantKey key);
-MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,
-                                 const Text2DMaterialCreateConfig *cfg,
-                                 const MaterialVariantKey &key);
 MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLite *profile,
                                          Material3DCreateConfig *cfg);
 
-namespace {
 
-using DispatchVariantFactoryProc = MaterialCreateInfo *(*)(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &key,
-    MaterialCreateConfig *cfg);
-
-struct VariantFactoryDispatchEntry
-{
-    MaterialPreset factory_type;
-    const char *name;
-    DispatchVariantFactoryProc dispatch;
-};
-
-static MaterialCreateInfo *DispatchVertexColor2D(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &key,
-    MaterialCreateConfig *cfg)
-{
-    return CreateVertexColor2D(profile,(const Material2DCreateConfig *)cfg,key);
-}
-
-static MaterialCreateInfo *DispatchPureColor2D(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &key,
-    MaterialCreateConfig *cfg)
-{
-    return CreatePureColor2D(profile,(Material2DCreateConfig *)cfg,key);
-}
-
-static MaterialCreateInfo *DispatchPureTexture2D(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &key,
-    MaterialCreateConfig *cfg)
-{
-    return CreatePureTexture2D(profile,(const Material2DCreateConfig *)cfg,key);
-}
-
-static MaterialCreateInfo *DispatchText2D(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &key,
-    MaterialCreateConfig *cfg)
-{
-    return CreateText2D(profile,(const Text2DMaterialCreateConfig *)cfg,key);
-}
-
-static MaterialCreateInfo *DispatchPureColor3D(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
-    MaterialCreateConfig *cfg)
-{
-    return CreatePureColor3D(profile,(Material3DCreateConfig *)cfg);
-}
-
-static MaterialCreateInfo *DispatchVertexColor3D(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
-    MaterialCreateConfig *cfg)
-{
-    return CreateVertexColor3D(profile,(const Material3DCreateConfig *)cfg);
-}
-
-static MaterialCreateInfo *DispatchVertexLuminance3D(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
-    MaterialCreateConfig *cfg)
-{
-    return CreateVertexLuminance3D(profile,(Material3DCreateConfig *)cfg);
-}
-
-static MaterialCreateInfo *DispatchVertexLuminance2D(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
-    MaterialCreateConfig *cfg)
-{
-    return CreateVertexLuminance2D(profile,(Material3DCreateConfig *)cfg);
-}
-
-static MaterialCreateInfo *DispatchVertexPaletteColor3D(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
-    MaterialCreateConfig *cfg)
-{
-    return CreateVertexPaletteColor3D(profile,(const Material3DCreateConfig *)cfg);
-}
-
-static MaterialCreateInfo *DispatchGizmo3D(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
-    MaterialCreateConfig *cfg)
-{
-    return CreateGizmo3D(profile,(Material3DCreateConfig *)cfg);
-}
-
-static MaterialCreateInfo *DispatchTerrainGrid(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
-    MaterialCreateConfig *cfg)
-{
-    return CreateTerrainGrid(profile,(const TerrainGridCreateConfig *)cfg);
-}
-
-static MaterialCreateInfo *DispatchSkyMinimal(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
-    MaterialCreateConfig *cfg)
-{
-    return CreateSkyMinimal(profile,(const SkyMinimalCreateConfig *)cfg);
-}
-
-static MaterialCreateInfo *DispatchBillboard2DDynamic(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
-    MaterialCreateConfig *cfg)
-{
-    return CreateBillboard2DDynamic(profile,(BillboardMaterialCreateConfig *)cfg);
-}
-
-static MaterialCreateInfo *DispatchBillboard2DFixed(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
-    MaterialCreateConfig *cfg)
-{
-    return CreateBillboard2DFixed(profile,(BillboardMaterialCreateConfig *)cfg);
-}
-
-static MaterialCreateInfo *DispatchStandard(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &key,
-    MaterialCreateConfig *cfg)
-{
-    return CreateStandardVariant(profile,key,(const Material3DCreateConfig *)cfg);
-}
-
-static MaterialCreateInfo *DispatchPBRColor3D(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
-    MaterialCreateConfig *cfg)
-{
-    return CreatePBRColor3D(profile,(PBRColor3DMaterialCreateConfig *)cfg);
-}
-
-static MaterialCreateInfo *DispatchCheckerboard3D(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
-    MaterialCreateConfig *cfg)
-{
-    return CreateCheckerboard3D(profile,(Material3DCreateConfig *)cfg);
-}
-
-static const VariantFactoryDispatchEntry kVariantFactoryDispatchTable[] =
-{
-    // Fallback/error visualization (dedicated position-only checkerboard)
-    {MaterialPreset::Checkerboard3D,      "Checkerboard3D",      DispatchCheckerboard3D},
-
-    {MaterialPreset::VertexColor2D,       "VertexColor2D",       DispatchVertexColor2D},
-    {MaterialPreset::PureColor2D,         "PureColor2D",         DispatchPureColor2D},
-    {MaterialPreset::PureTexture2D,       "PureTexture2D",       DispatchPureTexture2D},
-    {MaterialPreset::Text2D,              "Text2D",              DispatchText2D},
-    {MaterialPreset::PureColor3D,         "PureColor3D",         DispatchPureColor3D},
-    {MaterialPreset::VertexColor3D,       "VertexColor3D",       DispatchVertexColor3D},
-    {MaterialPreset::VertexLuminance3D,   "VertexLuminance3D",   DispatchVertexLuminance3D},
-    {MaterialPreset::VertexLuminance2D,   "VertexLuminance2D",   DispatchVertexLuminance2D},
-    {MaterialPreset::VertexPaletteColor3D, "VertexPaletteColor3D", DispatchVertexPaletteColor3D},
-    {MaterialPreset::Gizmo3D,             "Gizmo3D",             DispatchGizmo3D},
-    {MaterialPreset::TerrainGrid,         "TerrainGrid",         DispatchTerrainGrid},
-    {MaterialPreset::SkyMinimal,          "SkyMinimal",          DispatchSkyMinimal},
-    {MaterialPreset::Billboard2DDynamic,  "Billboard2DDynamic",  DispatchBillboard2DDynamic},
-    {MaterialPreset::Billboard2DFixed,    "Billboard2DFixed",    DispatchBillboard2DFixed},
-    {MaterialPreset::Standard,            "Standard",            DispatchStandard},
-    {MaterialPreset::PBRColor3D,          "PBRColor3D",          DispatchPBRColor3D},
-};
-
-static const VariantFactoryDispatchEntry *FindVariantFactoryDispatchEntry(const MaterialPreset factory_type)
-{
-    for(const auto &entry:kVariantFactoryDispatchTable)
-        if(entry.factory_type==factory_type)
-            return &entry;
-
-    return nullptr;
-}
-
-static MaterialCreateInfo *DispatchVariantFactory(
-    const MaterialPreset factory_type,
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &key,
-    MaterialCreateConfig *cfg)
-{
-    const VariantFactoryDispatchEntry *entry=FindVariantFactoryDispatchEntry(factory_type);
-    return entry&&entry->dispatch?entry->dispatch(profile,key,cfg):nullptr;
-}
-
-} // anonymous namespace
 
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialVariantKey &key,
@@ -722,7 +512,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
 
     const MaterialPreset factory_type = *variant_desc->factory_type;
 
-    if(MaterialCreateInfo *mci=DispatchVariantFactory(factory_type,profile,key,cfg))
+    if(MaterialCreateInfo *mci=MaterialFactory3D::Create(factory_type,profile,key,cfg))
         return mci;
 
     std::fprintf(stderr,

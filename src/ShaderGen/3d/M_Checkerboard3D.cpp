@@ -67,4 +67,13 @@ MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLi
                                      &local_cfg);
 }
 
+static MaterialCreateInfo *Checkerboard3D_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &,
+    MaterialCreateConfig *cfg)
+{ return CreateCheckerboard3D(profile, static_cast<Material3DCreateConfig *>(cfg)); }
+
 } // namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(Checkerboard3D, "Checkerboard3D", hgl::graph::mtl::Checkerboard3D_Adapter)

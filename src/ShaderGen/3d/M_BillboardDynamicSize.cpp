@@ -124,5 +124,14 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
         std::fprintf(stderr, "[BillboardDynamic] material created OK\n");
     return mci;
 }
+
+static MaterialCreateInfo *Billboard2DDynamic_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &,
+    MaterialCreateConfig *cfg)
+{ return CreateBillboard2DDynamic(profile, static_cast<BillboardMaterialCreateConfig *>(cfg)); }
 }//namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(Billboard2DDynamic, "Billboard2DDynamic", hgl::graph::mtl::Billboard2DDynamic_Adapter)
 

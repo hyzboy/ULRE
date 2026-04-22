@@ -219,7 +219,7 @@ std::string EmitMaterialInstanceTextureGLSL(const MaterialDescriptorDB &mdi, Sha
     // 2. SSBO layout (uses PERMATERIAL_SET / MBI_TEXTURE_BINDING from layout defines).
     writer.EmitLine("layout(std430, set=PERMATERIAL_SET, binding=MBI_TEXTURE_BINDING) readonly buffer MaterialBindingInstanceTexture").BeginBlock();
     writer.EmitLine("uint tex_id[];");
-    writer.EndBlock("mit;").NewLine();
+    writer.EndBlock(hgl::graph::ShaderWriter::EndBlockMode::NamedInstance, "mit").NewLine();
 
     // 3. _ULRE_InitTextureLayerIndices(uint instance_id)
     writer.EmitLine("void _ULRE_InitTextureLayerIndices(uint instance_id)").BeginBlock();
@@ -230,7 +230,7 @@ std::string EmitMaterialInstanceTextureGLSL(const MaterialDescriptorDB &mdi, Sha
         const std::string upper_name = mtl::ToUpperASCII(name);
         writer.EmitLine(std::string("_tex_layer_") + name + " = mit.tex_id[offset + MIT_" + upper_name + "_IDX];");
     }
-    writer.EndBlock();
+    writer.EndBlock(hgl::graph::ShaderWriter::EndBlockMode::Plain);
 
     writer.EmitLine("// ------------------------------------------------------").NewLine();
     return out;

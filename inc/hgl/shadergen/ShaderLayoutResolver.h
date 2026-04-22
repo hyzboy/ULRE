@@ -24,7 +24,7 @@ namespace hgl::graph
     /// e.g. DescriptorSetType::Static      → "STATIC_SET"
     ///      DescriptorSetType::PerObject   → "PEROBJECT_SET"
     ///      DescriptorSetType::PerMaterial → "PERMATERIAL_SET"
-    /// Returns nullptr for Unknow / out-of-range.
+    /// Returns nullptr for Unknown / out-of-range.
     const char *GetDescriptorSetMacroName(DescriptorSetType set_type);
 
     /// Returns the layout-macro name for a descriptor binding.

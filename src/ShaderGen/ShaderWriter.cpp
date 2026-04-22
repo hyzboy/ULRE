@@ -1,5 +1,7 @@
 #include <hgl/shadergen/ShaderWriter.h>
 
+#include <hgl/shadergen/ShaderWriter.h>
+#include <cassert>
 #include <string_view>
 
 namespace hgl::graph
@@ -169,14 +171,41 @@ ShaderWriter &ShaderWriter::BeginBlock()
     return *this;
 }
 
-ShaderWriter &ShaderWriter::EndBlock(const char *trailing)
+static void WriteEndBlockBrace(std::string &out, int &indent_level)
 {
-    FlushLayoutPrefix();
     if (indent_level > 0)
         --indent_level;
     if (indent_level > 0)
         out.append(static_cast<size_t>(indent_level) * 4, ' ');
     out += '}';
+}
+
+ShaderWriter &ShaderWriter::EndBlock(EndBlockMode mode)
+{
+    FlushLayoutPrefix();
+    WriteEndBlockBrace(out, indent_level);
+    if (mode == EndBlockMode::Statement)
+        out += ';';
+    out += '\n';
+    return *this;
+}
+
+ShaderWriter &ShaderWriter::EndBlock(EndBlockMode mode, const std::string &instance_name)
+{
+    assert(mode == EndBlockMode::NamedInstance);
+    FlushLayoutPrefix();
+    WriteEndBlockBrace(out, indent_level);
+    out += ' ';
+    out += instance_name;
+    out += ';';
+    out += '\n';
+    return *this;
+}
+
+ShaderWriter &ShaderWriter::EndBlock(const char *trailing)
+{
+    FlushLayoutPrefix();
+    WriteEndBlockBrace(out, indent_level);
     if (trailing && trailing[0])
     {
         if (trailing[0] != ';')

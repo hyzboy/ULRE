@@ -32,8 +32,21 @@ public:
 
     ShaderWriter &EmitLine(const std::string &line);
     ShaderWriter &BeginBlock();
-    // trailing=nullptr → "}", trailing=";" → "};", trailing="mit;" → "} mit;"
-    ShaderWriter &EndBlock(const char *trailing = nullptr);
+
+    enum class EndBlockMode : uint8_t
+    {
+        Plain         = 0,  ///< 仅 '}'
+        Statement     = 1,  ///< '};'，结构体/匿名块结尾
+        NamedInstance = 2,  ///< '} <name>;'，需要传 instance_name
+    };
+
+    ShaderWriter &EndBlock(EndBlockMode mode = EndBlockMode::Plain);
+    ShaderWriter &EndBlock(EndBlockMode mode, const std::string &instance_name);
+
+    // 兼容旧调用，过渡期保留
+    [[deprecated("Use EndBlock(EndBlockMode) or EndBlock(EndBlockMode, instance_name)")]]
+    ShaderWriter &EndBlock(const char *trailing);
+
     ShaderWriter &NewLine();
 };
 }

@@ -32,4 +32,13 @@ MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLit
     return CreateFromFixedDef2D("VertexColor2D", profile, def, key, vs_preamble, fs_preamble, cfg);
 }
 
+static MaterialCreateInfo *VertexColor2D_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &key,
+    MaterialCreateConfig *cfg)
+{ return CreateVertexColor2D(profile, static_cast<const Material2DCreateConfig *>(cfg), key); }
+
 }//namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(VertexColor2D, "VertexColor2D", hgl::graph::mtl::VertexColor2D_Adapter)

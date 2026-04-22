@@ -95,17 +95,11 @@ namespace hgl::graph
 
             ShaderCreateInfo *GetStageShader(const ShaderStage ss)
             {
-                if(!shader_map.ContainsKey(ss))
-                    return nullptr;
-
-                return shader_map[ss];
+                return shader_map.Find(ss);
             }
             const ShaderCreateInfo *GetStageShader(const ShaderStage ss)const
             {
-                if(!shader_map.ContainsKey(ss))
-                    return nullptr;
-
-                return shader_map[ss];
+                return shader_map.Find(ss);
             }
 
             ShaderCreateInfoVertex *           GetVertexShader(){auto *s=GetStageShader(ShaderStage::Vertex);assert(!s||HasVertex());return static_cast<ShaderCreateInfoVertex *>(s);}

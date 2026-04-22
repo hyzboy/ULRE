@@ -35,4 +35,13 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
 
     return CreateFromFixedDef2D("PureColor2D", profile, def, key, vs_preamble, fs_preamble, cfg);
 }
+
+static MaterialCreateInfo *PureColor2D_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &key,
+    MaterialCreateConfig *cfg)
+{ return CreatePureColor2D(profile, static_cast<Material2DCreateConfig *>(cfg), key); }
 }//namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(PureColor2D, "PureColor2D", hgl::graph::mtl::PureColor2D_Adapter)

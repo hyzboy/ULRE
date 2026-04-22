@@ -1,4 +1,4 @@
-﻿#include"MaterialFactory3D.h"
+#include"MaterialFactory3DCommon.h"
 #include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 
@@ -30,4 +30,13 @@ MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *
     const MaterialVariantKey var_key = build3d::MakeVariantKeyWithSurface(SurfaceType::Sky);
     return CreateFromFixedDef3D("SkyMinimal", profile, SKY_MINIMAL_DEF, var_key, cfg);
 }
+
+static MaterialCreateInfo *SkyMinimal_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &,
+    MaterialCreateConfig *cfg)
+{ return CreateSkyMinimal(profile, static_cast<const SkyMinimalCreateConfig *>(cfg)); }
 }//namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(SkyMinimal, "SkyMinimal", hgl::graph::mtl::SkyMinimal_Adapter)

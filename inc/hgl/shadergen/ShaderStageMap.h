@@ -43,6 +43,29 @@ public:
 
     bool Add(ShaderCreateInfo *sc);
 
+    /// 命中返回 ShaderCreateInfo*，未命中返回 nullptr。
+    /// 与 std::unordered_map::operator[] 不同，不会插入新元素。
+    ShaderCreateInfo *Find(const ShaderStage key)
+    {
+        auto it = map.find(key);
+        return it != map.end() ? it->second : nullptr;
+    }
+    const ShaderCreateInfo *Find(const ShaderStage key) const
+    {
+        auto it = map.find(key);
+        return it != map.end() ? it->second : nullptr;
+    }
+
+    /// 带 out 参数的版本，命中返回 true。
+    bool TryGet(const ShaderStage key, ShaderCreateInfo *&out)
+    {
+        auto it = map.find(key);
+        if (it == map.end()) return false;
+        out = it->second;
+        return true;
+    }
+
+    [[deprecated("Use Find(key); operator[] does NOT match std::map semantics (returns nullptr, not default-insert)")]]
     // operator[] for accessing elements by key
     ShaderCreateInfo* operator[](const ShaderStage& key)
     {
@@ -50,6 +73,7 @@ public:
         return iter!=map.end()?iter->second:nullptr;
     }
 
+    [[deprecated("Use Find(key); operator[] does NOT match std::map semantics (returns nullptr, not default-insert)")]]
     const ShaderCreateInfo* operator[](const ShaderStage& key) const
     {
         auto iter=map.find(key);

@@ -11,7 +11,7 @@ namespace hgl{namespace graph{
 */
 class MaterialDescriptorDB
 {
-    uint descriptor_count;
+    uint32_t descriptor_count;
     ShaderDescriptorSetArray desc_set_array;
 
     bool ubo_struct_by_semantic [mtl::UBODescriptorSemanticCount] = {};

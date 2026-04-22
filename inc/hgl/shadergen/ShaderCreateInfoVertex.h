@@ -7,12 +7,12 @@ namespace hgl::graph
 {
     class ShaderCreateInfoVertex:public ShaderCreateInfo
     {
-        VertexShaderStageIO *vsdi;
+        VertexShaderStageIO *vertex_stage_io;
 
     public:
 
-        VIAArray &GetInput(){return vsdi->GetInput();}
-        const VIAArray &GetInput()const{return vsdi->GetInput();}
+        VIAArray &GetInput(){return vertex_stage_io->GetInput();}
+        const VIAArray &GetInput()const{return vertex_stage_io->GetInput();}
 
     public:
 

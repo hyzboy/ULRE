@@ -129,5 +129,14 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     return mci;
 }
 
+static MaterialCreateInfo *PBRColor3D_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &,
+    MaterialCreateConfig *cfg)
+{ return CreatePBRColor3D(profile, static_cast<PBRColor3DMaterialCreateConfig *>(cfg)); }
+
 }//namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(PBRColor3D, "PBRColor3D", hgl::graph::mtl::PBRColor3D_Adapter)
 

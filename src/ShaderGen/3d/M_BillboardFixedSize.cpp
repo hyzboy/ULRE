@@ -125,5 +125,14 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
         std::fprintf(stderr, "[BillboardFixed] material created OK\n");
     return mci;
 }
+
+static MaterialCreateInfo *Billboard2DFixed_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &,
+    MaterialCreateConfig *cfg)
+{ return CreateBillboard2DFixed(profile, static_cast<BillboardMaterialCreateConfig *>(cfg)); }
 }//namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(Billboard2DFixed, "Billboard2DFixed", hgl::graph::mtl::Billboard2DFixed_Adapter)
 

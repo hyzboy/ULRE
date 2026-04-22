@@ -1,4 +1,4 @@
-﻿#include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
@@ -9,7 +9,7 @@
 #include <hgl/mtl/MaterialVariantRegistry.h>
 #include <hgl/mtl/SamplerSlot.h>
 
-#include "MaterialFactory3D.h"
+#include "MaterialFactory3DCommon.h"
 #include "StandardDescriptorBuilder.h"
 #include "StandardVariantRouter.h"
 
@@ -212,5 +212,14 @@ MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *pr
     return CreateStandard(profile, cfg, TextureSourceMode::Simple);
 }
 
+static MaterialCreateInfo *Standard_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &key,
+    MaterialCreateConfig *cfg)
+{ return CreateStandardVariant(profile, key, static_cast<const Material3DCreateConfig *>(cfg)); }
+
 }//namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(Standard, "Standard", hgl::graph::mtl::Standard_Adapter)
 

@@ -79,5 +79,14 @@ MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLit
 
     return CreatePureTextureVariant(profile, key, cfg);
 }
+
+static MaterialCreateInfo *PureTexture2D_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &key,
+    MaterialCreateConfig *cfg)
+{ return CreatePureTexture2D(profile, static_cast<const Material2DCreateConfig *>(cfg), key); }
 }//namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(PureTexture2D, "PureTexture2D", hgl::graph::mtl::PureTexture2D_Adapter)
 

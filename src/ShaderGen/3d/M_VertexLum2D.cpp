@@ -1,4 +1,4 @@
-﻿#include"MaterialFactory3D.h"
+#include"MaterialFactory3DCommon.h"
 #include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/math/Vector.h>
@@ -35,4 +35,13 @@ MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfil
     var_key.SetVertexAttribEnabled(VertexAttrib::Position);
     return CreateFromFixedDef3D("VertexLuminance2D", profile, VERTEX_LUMINANCE_2D_DEF, var_key, cfg);
 }
+
+static MaterialCreateInfo *VertexLuminance2D_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &,
+    MaterialCreateConfig *cfg)
+{ return CreateVertexLuminance2D(profile, static_cast<Material3DCreateConfig *>(cfg)); }
 }//namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(VertexLuminance2D, "VertexLuminance2D", hgl::graph::mtl::VertexLuminance2D_Adapter)

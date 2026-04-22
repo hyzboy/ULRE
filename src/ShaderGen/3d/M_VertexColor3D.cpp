@@ -1,4 +1,4 @@
-﻿#include"MaterialFactory3D.h"
+#include"MaterialFactory3DCommon.h"
 #include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 
@@ -31,4 +31,13 @@ MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLit
     const MaterialVariantKey var_key = build3d::MakeVariantKeyWithAttrib(VertexAttrib::Color);
     return CreateFromFixedDef3D("VertexColor3D", profile, VERTEX_COLOR_3D_DEF, var_key, cfg);
 }
+
+static MaterialCreateInfo *VertexColor3D_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &,
+    MaterialCreateConfig *cfg)
+{ return CreateVertexColor3D(profile, static_cast<const Material3DCreateConfig *>(cfg)); }
 }//namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(VertexColor3D, "VertexColor3D", hgl::graph::mtl::VertexColor3D_Adapter)

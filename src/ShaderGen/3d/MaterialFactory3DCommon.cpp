@@ -1,6 +1,6 @@
-﻿/// MaterialFactory3D.cpp — 通用 3D 工厂函数实现
+/// MaterialFactory3D.cpp — 通用 3D 工厂函数实现
 
-#include"MaterialFactory3D.h"
+#include"MaterialFactory3DCommon.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>

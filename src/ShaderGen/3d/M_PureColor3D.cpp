@@ -1,4 +1,4 @@
-﻿#include"MaterialFactory3D.h"
+#include"MaterialFactory3DCommon.h"
 #include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 
@@ -30,4 +30,13 @@ MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite 
     const MaterialVariantKey var_key = build3d::MakeVariantKey();
     return CreateFromFixedDef3D("PureColor3D", profile, PURE_COLOR_3D_DEF, var_key, cfg);
 }
+
+static MaterialCreateInfo *PureColor3D_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &,
+    MaterialCreateConfig *cfg)
+{ return CreatePureColor3D(profile, static_cast<Material3DCreateConfig *>(cfg)); }
 }//namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(PureColor3D, "PureColor3D", hgl::graph::mtl::PureColor3D_Adapter)

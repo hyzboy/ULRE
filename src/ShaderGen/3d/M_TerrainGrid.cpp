@@ -1,4 +1,4 @@
-﻿#include"MaterialFactory3D.h"
+#include"MaterialFactory3DCommon.h"
 #include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/UBOCommon.h>
@@ -43,4 +43,13 @@ MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite 
     const MaterialVariantKey var_key = build3d::MakeVariantKeyWithSurface(SurfaceType::Terrain);
     return CreateFromFixedDef3D("TerrainGrid", profile, TERRAIN_GRID_DEF, var_key, cfg);
 }
+
+static MaterialCreateInfo *TerrainGrid_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &,
+    MaterialCreateConfig *cfg)
+{ return CreateTerrainGrid(profile, static_cast<const TerrainGridCreateConfig *>(cfg)); }
 }//namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(TerrainGrid, "TerrainGrid", hgl::graph::mtl::TerrainGrid_Adapter)

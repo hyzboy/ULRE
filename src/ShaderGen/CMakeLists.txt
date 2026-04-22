@@ -97,8 +97,8 @@ SOURCE_GROUP("Standard Material\\2D" FILES ${STD_MTL_2D_SOURCE_FILES})
 # Standard Material / 3D
 SET(STD_MTL_3D_SOURCE_FILES ${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             ${STD_MTL_HEADER_PATH}/SkyLight.h
-                            3d/MaterialFactory3D.h
-                            3d/MaterialFactory3D.cpp
+                            3d/MaterialFactory3DCommon.h
+                            3d/MaterialFactory3DCommon.cpp
                             3d/M_Checkerboard3D.cpp
                             3d/M_PureColor3D.cpp
                             3d/M_VertexColor3D.cpp
@@ -120,6 +120,8 @@ SOURCE_GROUP("Standard Material\\3D" FILES ${STD_MTL_3D_SOURCE_FILES})
 
 # Shader Library
 SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
+                            MaterialFactory3D.cpp
+                            MaterialFactory3DRegistration.h
                             MaterialSpecValidator.cpp
                             VariantRegistry.cpp
                             ${STD_MTL_HEADER_PATH}/MaterialLibrary.h
@@ -201,3 +203,13 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${COMPOSITOR_INTERNAL_HEADER_FILES}
     ${COMPOSITOR_INTERNAL_SOURCE_FILES}
 )
+
+# On MSVC, ULRE.ShaderGen is a static library. The self-registering preset
+# factories in the M_*.cpp translation units have no externally-referenced
+# symbols, so the linker would otherwise dead-strip them before their static
+# initializers run.  /WHOLEARCHIVE forces the linker to include every .obj
+# from this lib, ensuring all AutoReg_* constructors execute at startup.
+if(MSVC)
+    target_link_options(ULRE.ShaderGen INTERFACE
+        /WHOLEARCHIVE:$<TARGET_FILE:ULRE.ShaderGen>)
+endif()

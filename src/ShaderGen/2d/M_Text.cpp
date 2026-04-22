@@ -66,5 +66,14 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
         std::fprintf(stderr, "[Text2D] CompileCompositorMaterial failed\n");
     return mci;
 }
+
+static MaterialCreateInfo *Text2D_Adapter(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &key,
+    MaterialCreateConfig *cfg)
+{ return CreateText2D(profile, static_cast<const Text2DMaterialCreateConfig *>(cfg), key); }
 }//namespace hgl::graph::mtl
+
+#include "../MaterialFactory3DRegistration.h"
+ULRE_REGISTER_PRESET_FACTORY(Text2D, "Text2D", hgl::graph::mtl::Text2D_Adapter)
 

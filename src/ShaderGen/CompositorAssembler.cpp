@@ -114,8 +114,8 @@ namespace
                   .NewLine()
                   .EmitLine("fragVertexColor = unpackUnorm4x8(color_palette.color[ColorIndex]);")
                   .NewLine()
-                  .EmitLine("gl_Position = camera.vp * worldPos;")
-              .EndBlock();
+                      .EmitLine("gl_Position = camera.vp * worldPos;")
+                  .EndBlock(hgl::graph::ShaderWriter::EndBlockMode::Plain);
         writer.EmitCommentLine("BuildForwardUnlitPaletteVS.End");
         return out;
     }

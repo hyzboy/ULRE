@@ -85,7 +85,7 @@ inline PassType BlendModeToPassHint(const RenderAlphaMode blend_mode)
     case RenderAlphaMode::Dither:          return PassType::ForwardDither;
     case RenderAlphaMode::Opaque:          return PassType::ForwardOpaque;
     case RenderAlphaMode::AlphaToCoverage: return PassType::ForwardA2C;
-    default:                         return PassType::ForwardTransparent;
+    default:                               return PassType::ForwardTransparent;
     }
 }
 
