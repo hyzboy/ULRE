@@ -84,6 +84,11 @@ SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h
                     GLSLStructSize.cpp)
 SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
 
+# Material Key
+SET(MATERIAL_KEY_FILES  ${MTL_TYPE_INCLUDE_PATH}/MaterialKey.h
+                        MaterialKey.cpp)
+SOURCE_GROUP("Material Key" FILES ${MATERIAL_KEY_FILES})
+
 # Standard Material / 2D
 SET(STD_MTL_2D_SOURCE_FILES ${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
                             2d/Build2DCommon.h
@@ -193,6 +198,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${SHADERGEN_COMMON_VARIANT_POLICY_FILES}
     ${SHADER_LIBRARY_FILES}
     ${STD_MTL_SOURCE}
+    ${MATERIAL_KEY_FILES}
     ${STD_MTL_2D_SOURCE_FILES}
     ${STD_MTL_3D_SOURCE_FILES}
     ${FIXED_MTL_FILES}
@@ -215,4 +221,8 @@ add_cm_library(ULRE.ShaderGen "ULRE"
 if(MSVC)
     target_link_options(ULRE.ShaderGen INTERFACE
         /WHOLEARCHIVE:$<TARGET_FILE:ULRE.ShaderGen>)
+endif()
+
+if(BUILD_TESTING)
+    add_subdirectory(tests)
 endif()
