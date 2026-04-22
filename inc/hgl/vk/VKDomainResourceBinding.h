@@ -22,19 +22,25 @@ class Sampler;
  * 典型用法:
  *   - 同一 billboard shader 绑定两个不同 Texture2DArray (UI 图标 vs 玩家头像)
  *   - 同一资源域绑定 Opaque + Masked 两个 ShaderMaterialProgram (Phase 3)
+ *
+ * 注意: PerObject 集通常由 ShaderMaterialProgram 统一持有，但当多个域共享同一
+ *       ShaderMaterialProgram 时（例如共享 billboard shader），需要各域持有独立的
+ *       PerObject MP，以隔离各域的 TransformData/TransformID 绑定。
  */
 class DomainResourceBinding
 {
     ResourceDomain     *domain          = nullptr;
     ShaderMaterialProgram           *material        = nullptr;
     MaterialParameters *mp_per_material = nullptr;
+    MaterialParameters *mp_per_object   = nullptr;  // 域私有 PerObject MP，用于隔离 TransformData/TransformID
 
 private:
 
     friend class ShaderMaterialProgramManager;
 
-    /// ShaderMaterialProgramManager 独占构造。mp_per_material 由 ShaderMaterialProgramManager 分配后传入。
-    DomainResourceBinding(ResourceDomain *d, ShaderMaterialProgram *m, MaterialParameters *mp);
+    /// ShaderMaterialProgramManager 独占构造。两个 MP 均由 ShaderMaterialProgramManager 分配后传入。
+    DomainResourceBinding(ResourceDomain *d, ShaderMaterialProgram *m,
+                          MaterialParameters *mp_material, MaterialParameters *mp_object = nullptr);
 
 public:
 
@@ -47,6 +53,7 @@ public:
     ResourceDomain     *GetDomain        () const { return domain; }
     ShaderMaterialProgram           *GetShaderMaterialProgram      () const { return material; }
     MaterialParameters *GetPerMaterialMP () const { return mp_per_material; }
+    MaterialParameters *GetPerObjectMP   () const { return mp_per_object; }
 
     const VkPipelineLayout GetPipelineLayout() const { return material->GetPipelineLayout(); }
 

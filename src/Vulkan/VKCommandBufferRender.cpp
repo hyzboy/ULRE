@@ -135,16 +135,27 @@ bool RenderCmdBuffer::BindDescriptorSets(DomainResourceBinding *binding)
     // Keep non-PerMaterial sets (e.g. set0 PerObject) from material path bound first.
     BindDescriptorSets(binding->GetShaderMaterialProgram());
 
+    const auto *pld = binding->GetShaderMaterialProgram()->GetGraphicsPipelineLayoutData();
+    pipeline_layout = binding->GetPipelineLayout();
+
+    // Override PerObject set with domain's own MP (isolates TransformData/TransformID per domain)
+    MaterialParameters *po_mp = binding->GetPerObjectMP();
+    if (po_mp)
+    {
+        po_mp->Update();
+        const VkDescriptorSet po_ds = po_mp->GetVkDescriptorSet();
+        const uint32_t first_set_po = pld ? (uint32_t)pld->GetVulkanSetIndex(DescriptorSetType::PerObject) : 2;
+        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                pipeline_layout, first_set_po, 1, &po_ds, 0, nullptr);
+    }
+
     MaterialParameters *mp = binding->GetPerMaterialMP();
     if(!mp) return false;
 
     mp->Update();
     const VkDescriptorSet ds = mp->GetVkDescriptorSet();
 
-    const auto *pld = binding->GetShaderMaterialProgram()->GetGraphicsPipelineLayoutData();
     const uint32_t first_set = pld ? (uint32_t)pld->GetVulkanSetIndex(DescriptorSetType::PerMaterial) : 0;
-
-    pipeline_layout = binding->GetPipelineLayout();
 
         LogInfo("[RenderCmdBuffer] BindDescriptorSets(domain) material=%s domain=%p set=%u ds=%p",
             binding->GetShaderMaterialProgram() ? binding->GetShaderMaterialProgram()->GetName().c_str() : "<null>",

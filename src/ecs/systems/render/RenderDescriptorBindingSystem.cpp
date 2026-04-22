@@ -429,6 +429,7 @@ namespace hgl::ecs
             const MaterialBatch *batch = pair.second.get();
             graph::DomainResourceBinding *domain_binding = ResolveDomainBinding(context, pair.first.domain, material);
             graph::MaterialParameters *domain_mp = domain_binding ? domain_binding->GetPerMaterialMP() : nullptr;
+            graph::MaterialParameters *domain_po = domain_binding ? domain_binding->GetPerObjectMP()   : nullptr;
 
             const auto &contract = material->GetBindingContract();
             ApplySceneUBOBindings(material, contract, scene_ubo_resolvers);
@@ -446,14 +447,36 @@ namespace hgl::ecs
                      && batch->transform_buffer
                      && material->hasLocalToWorld())
                     {
-                        batch->transform_buffer->BindTransform(material);
+                        if (domain_po)
+                        {
+                            auto *tab_buf = batch->transform_buffer->GetTransformDataBuffer();
+                            auto *tab_gpu = tab_buf ? tab_buf->GetGPUBuffer() : nullptr;
+                            if (tab_gpu)
+                                domain_po->BindSSBO(graph::mtl::SSBODescriptorSemantic::TransformData, tab_gpu);
+                        }
+                        else
+                        {
+                            batch->transform_buffer->BindTransform(material);
+                        }
                     }
                     break;
                 }
                 case graph::mtl::SSBODescriptorSemantic::TransformID:
                 {
                     if (batch && batch->transform_buffer)
-                        batch->transform_buffer->BindTransformID(material);
+                    {
+                        if (domain_po)
+                        {
+                            auto *tid_buf = batch->transform_buffer->GetTransformIDDataBuffer();
+                            auto *tid_gpu = tid_buf ? tid_buf->GetGPUBuffer() : nullptr;
+                            if (tid_gpu)
+                                domain_po->BindSSBO(graph::mtl::SSBODescriptorSemantic::TransformID, tid_gpu);
+                        }
+                        else
+                        {
+                            batch->transform_buffer->BindTransformID(material);
+                        }
+                    }
                     break;
                 }
                 case graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceID:

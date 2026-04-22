@@ -4,14 +4,18 @@
 namespace hgl::graph
 {
 
-DomainResourceBinding::DomainResourceBinding(ResourceDomain *d, ShaderMaterialProgram *m, MaterialParameters *mp)
-    : domain(d), material(m), mp_per_material(mp)
+DomainResourceBinding::DomainResourceBinding(ResourceDomain *d, ShaderMaterialProgram *m,
+                                             MaterialParameters *mp_mat, MaterialParameters *mp_obj)
+    : domain(d), material(m), mp_per_material(mp_mat), mp_per_object(mp_obj)
 {}
 
 DomainResourceBinding::~DomainResourceBinding()
 {
     delete mp_per_material;
     mp_per_material = nullptr;
+
+    delete mp_per_object;
+    mp_per_object = nullptr;
 }
 
 bool DomainResourceBinding::BindTexture(const mtl::SamplerSlot slot, Texture *tex)

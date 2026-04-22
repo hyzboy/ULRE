@@ -893,7 +893,12 @@ DomainResourceBinding *ShaderMaterialProgramManager::CreateDomainMaterialBinding
         mp_per_material = CreateMaterialMP(mtl->GetName(), mtl->desc_manager,
                                            mtl->pipeline_layout_data, DescriptorSetType::PerMaterial);
 
-    DomainResourceBinding *binding = new DomainResourceBinding(domain, mtl, mp_per_material);
+    MaterialParameters *mp_per_object = nullptr;
+    if (mtl->hasSet(DescriptorSetType::PerObject))
+        mp_per_object = CreateMaterialMP(mtl->GetName(), mtl->desc_manager,
+                                         mtl->pipeline_layout_data, DescriptorSetType::PerObject);
+
+    DomainResourceBinding *binding = new DomainResourceBinding(domain, mtl, mp_per_material, mp_per_object);
 
     // Phase 3: register binding for lifecycle tracking
     domain_bindings_map[domain].push_back(binding);
