@@ -15,3 +15,15 @@ target_link_libraries(MaterialKeyTest PRIVATE CMCore)
 set_property(TARGET MaterialKeyTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 
 add_test(NAME MaterialKeyTest COMMAND MaterialKeyTest)
+
+# RecipeToKeyTest links ULRE.ShaderGen because ResolveRecipePrimaryKey()
+# depends on MapPresetToVariantKey() implemented in MaterialLibrary.cpp.
+add_executable(RecipeToKeyTest
+    RecipeToKeyTests.cpp
+)
+
+target_link_libraries(RecipeToKeyTest PRIVATE ${ULRE})
+
+set_property(TARGET RecipeToKeyTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME RecipeToKeyTest COMMAND RecipeToKeyTest)
