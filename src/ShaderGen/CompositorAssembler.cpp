@@ -14,21 +14,6 @@
 
 namespace
 {
-    using GeneratedVSBuilder = std::string (*)(const hgl::graph::mtl::MaterialVariantKey &key);
-    using GeneratedFSBuilder = std::string (*)(const hgl::graph::mtl::MaterialVariantKey &key, hgl::graph::RenderAlphaMode blend, const std::string &surface_path);
-
-    struct GeneratedVSTemplateRoute
-    {
-        const char *template_path;
-        GeneratedVSBuilder builder;
-    };
-
-    struct GeneratedFSTemplateRoute
-    {
-        const char *template_path;
-        GeneratedFSBuilder builder;
-    };
-
     struct SurfaceFunctionRoute
     {
         hgl::graph::SurfaceType surface;
@@ -208,190 +193,140 @@ namespace
         return out;
     }
 
-    std::string BuildForwardLitVS(const hgl::graph::mtl::MaterialVariantKey &key)
-    {
-        const bool uv0    = key.HasVertexAttrib(hgl::graph::VertexAttrib::TexCoord);
-        const bool normal = key.HasVertexAttrib(hgl::graph::VertexAttrib::Normal);
-        const bool tangent = key.HasVertexAttrib(hgl::graph::VertexAttrib::Tangent);
-        hgl::graph::CompositorFeatureFlags flags;
-        flags.SetVertexAttrib(hgl::graph::VertexAttrib::TexCoord, uv0);
-        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Position);
-        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Normal, normal);
-        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Tangent, tangent);
-        return BuildForwardVertexEntry(flags);
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // Unified key-based VS/FS generators (replaces the old route-table system)
+    // ─────────────────────────────────────────────────────────────────────────
 
-    std::string BuildForwardUnlitVertexColorFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
+    /// Derive VS CompositorFeatureFlags from MaterialVariantKey fields.
+    /// Does NOT cover Billboard / Terrain / Palette (handled as special cases in BuildVSFromKey).
+    hgl::graph::CompositorFeatureFlags VSFeatureFlagsFromKey(const hgl::graph::mtl::MaterialVariantKey &key)
     {
         hgl::graph::CompositorFeatureFlags flags;
-        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Color);
-        flags.surface_path = surface_path;
-        return BuildForwardFragmentEntry(flags);
-    }
-
-    std::string BuildForwardUnlitLuminanceFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
-    {
-        hgl::graph::CompositorFeatureFlags flags;
-        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Luminance);
-        flags.surface_path = surface_path;
-        return BuildForwardFragmentEntry(flags);
-    }
-
-    std::string BuildForwardUnlitNormalFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
-    {
-        hgl::graph::CompositorFeatureFlags flags;
-        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Position);
-        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Normal);
-        flags.needs_camera = true;
-        flags.surface_path = surface_path;
-        return BuildForwardFragmentEntry(flags);
-    }
-
-    std::string BuildForwardBillboardFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode blend, const std::string &surface_path)
-    {
-        const bool alpha_masked = (blend == hgl::graph::RenderAlphaMode::Masked);
-        const bool alpha_dither = (blend == hgl::graph::RenderAlphaMode::Dither);
-        hgl::graph::CompositorFeatureFlags flags;
-        flags.alpha_masked = alpha_masked;
-        flags.alpha_dither = alpha_dither;
-        flags.has_texcoord = true;
-        flags.surface_path = surface_path;
-        return BuildForwardFragmentEntry(flags);
-    }
-
-    std::string BuildForwardSkyFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
-    {
-        hgl::graph::CompositorFeatureFlags flags;
-        flags.has_direction = true;
-        flags.surface_path = surface_path;
-        return BuildForwardFragmentEntry(flags);
-    }
-
-    std::string BuildTerrainGridFS(const hgl::graph::mtl::MaterialVariantKey &, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
-    {
-        hgl::graph::CompositorFeatureFlags flags;
-        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Normal);
-        flags.has_clip_pos = true;
-        flags.surface_path = surface_path;
-        return BuildForwardFragmentEntry(flags);
-    }
-
-    bool TryBuildAutoForwardFS(const hgl::graph::mtl::MaterialVariantKey &key,
-                               const hgl::graph::RenderAlphaMode blend,
-                               const hgl::graph::PassType pass,
-                               const std::string &surface_path,
-                               std::string &out_source);
-
-    std::string BuildForwardLitFS(const hgl::graph::mtl::MaterialVariantKey &key, const hgl::graph::RenderAlphaMode, const std::string &surface_path)
-    {
-        const bool uv0    = key.HasVertexAttrib(hgl::graph::VertexAttrib::TexCoord);
-        const bool normal = key.HasVertexAttrib(hgl::graph::VertexAttrib::Normal);
-        const bool tangent = key.HasVertexAttrib(hgl::graph::VertexAttrib::Tangent);
-        hgl::graph::CompositorFeatureFlags flags;
-        flags.SetVertexAttrib(hgl::graph::VertexAttrib::TexCoord, uv0);
-        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Position);
-        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Normal, normal);
-        flags.SetVertexAttrib(hgl::graph::VertexAttrib::Tangent, tangent);
-        flags.enable_lighting = true;
-        flags.lighting_model = key.lighting_model;
-        flags.needs_camera = true;
-        flags.needs_sky = true;
-        flags.sky_ambient_model = key.sky_ambient_model;
-        flags.surface_path = surface_path;
-        return BuildForwardFragmentEntry(flags);
-    }
-
-    std::string BuildForwardAutoFSFromKey(const hgl::graph::mtl::MaterialVariantKey &key,
-                                          const hgl::graph::RenderAlphaMode blend,
-                                          const std::string &surface_path)
-    {
-        std::string out_source;
-        if (TryBuildAutoForwardFS(key, blend, key.pass_hint, surface_path, out_source))
-            return out_source;
-
-        return std::string();
-    }
-
-    bool TryBuildAutoForwardFS(const hgl::graph::mtl::MaterialVariantKey &key,
-                               const hgl::graph::RenderAlphaMode blend,
-                               const hgl::graph::PassType pass,
-                               const std::string &surface_path,
-                               std::string &out_source)
-    {
-        using hgl::graph::PassType;
-        using hgl::graph::RenderAlphaMode;
-        using hgl::graph::SurfaceType;
-
-        // Only forward passes are generated in this path.
-        switch (pass)
-        {
-            case PassType::ForwardOpaque:
-            case PassType::ForwardMasked:
-            case PassType::ForwardTransparent:
-            case PassType::ForwardDither:
-            case PassType::ForwardA2C:
-                break;
-            default:
-                return false;
-        }
-
-        hgl::graph::CompositorFeatureFlags flags;
-        flags.surface_path = surface_path;
         flags.vertex_attrib_bits = key.vertex_attribute_feature_bits;
 
-        if (blend == RenderAlphaMode::Masked)
-            flags.alpha_masked = true;
-        if (blend == RenderAlphaMode::Dither)
-            flags.alpha_dither = true;
-
-        if (key.surface_type == SurfaceType::Sky)
-            flags.has_direction = true;
-
-        if (key.surface_type != SurfaceType::Unlit && !hgl::graph::Is2DSurfaceType(key.surface_type) && key.surface_type != SurfaceType::Sky)
+        if (hgl::graph::Is2DSurfaceType(key.surface_type))
         {
-            flags.enable_lighting = true;
-            flags.lighting_model = key.lighting_model;
+            flags.vert_input_2d = true;
+        }
+        else if (key.surface_type == hgl::graph::SurfaceType::Sky)
+        {
+            flags.has_direction      = true;
+            flags.vertex_attrib_bits = 0;
+        }
+        // VertexLuminance2D: 3D-space mesh with vec2 position.
+        // Detected by Luminance + Position attribs without Normal.
+        // TODO (improvement-plan §5.4): replace with ExtraFeature::Vec2Position or GeometryMode::Mesh2DInWorld.
+        else if (key.HasVertexAttrib(hgl::graph::VertexAttrib::Luminance)
+              && key.HasVertexAttrib(hgl::graph::VertexAttrib::Position)
+              && !key.HasVertexAttrib(hgl::graph::VertexAttrib::Normal))
+        {
+            flags.vert_input_2d = true;
+        }
+
+        return flags;
+    }
+
+    /// Build a single-include VS wrapper: for geometry modes whose VS logic lives in a .glsl file.
+    std::string BuildIncludeOnlyVS(const char *include_path)
+    {
+        std::string out = "#version 450\n\n";
+        hgl::graph::ShaderWriter(out).EmitInclude(include_path);
+        return out;
+    }
+
+    /// Unified VS generator: derives complete GLSL from MaterialVariantKey fields alone.
+    std::string BuildVSFromKey(const hgl::graph::mtl::MaterialVariantKey &key)
+    {
+        using GM = hgl::graph::mtl::GeometryMode;
+
+        // 1. Billboard geometry modes: delegate to pre-built VS files.
+        if (key.geometry_mode == GM::BillboardCameraFacing)
+            return BuildIncludeOnlyVS("compositor/main_forward_billboard_dynamic.vert.glsl");
+        if (key.geometry_mode == GM::BillboardAxisLocked)
+            return BuildIncludeOnlyVS("compositor/main_forward_billboard_fixed.vert.glsl");
+
+        // 2. Terrain: delegate to terrain VS file.
+        if (key.surface_type == hgl::graph::SurfaceType::Terrain)
+            return BuildIncludeOnlyVS("compositor/main_terrain_grid.vert.glsl");
+
+        // 3. VertexPaletteColor: Color vertex attrib + DebugShading.
+        //    TODO (improvement item 6): move inline GLSL to a .glsl file and remove this special case.
+        if (key.IsDebugShading() && key.HasVertexAttrib(hgl::graph::VertexAttrib::Color))
+            return BuildForwardUnlitPaletteVS(key);
+
+        // 4. All other materials: derive flags from key and generate via template.
+        return BuildForwardVertexEntry(VSFeatureFlagsFromKey(key));
+    }
+
+    /// Derive FS CompositorFeatureFlags from MaterialVariantKey fields.
+    hgl::graph::CompositorFeatureFlags FSFeatureFlagsFromKey(const hgl::graph::mtl::MaterialVariantKey &key,
+                                                              hgl::graph::RenderAlphaMode blend,
+                                                              const std::string &surface_path)
+    {
+        using ST = hgl::graph::SurfaceType;
+        using GM = hgl::graph::mtl::GeometryMode;
+        using RM = hgl::graph::RenderAlphaMode;
+        using VA = hgl::graph::VertexAttrib;
+
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.surface_path       = surface_path;
+        flags.vertex_attrib_bits = key.vertex_attribute_feature_bits;
+
+        if (blend == RM::Masked) flags.alpha_masked = true;
+        if (blend == RM::Dither) flags.alpha_dither = true;
+
+        // 1. Billboard: texcoord-based, no standard per-vertex varyings.
+        if (key.geometry_mode == GM::BillboardCameraFacing
+         || key.geometry_mode == GM::BillboardAxisLocked)
+        {
+            flags.has_texcoord       = true;
+            flags.vertex_attrib_bits = 0;
+            return flags;
+        }
+
+        // 2. Terrain: normal varying + clip-pos for grid edge fade.
+        if (key.surface_type == ST::Terrain)
+        {
+            flags.SetVertexAttrib(VA::Normal);
+            flags.has_clip_pos = true;
+            return flags;
+        }
+
+        // 3. Sky: direction-based shading, no standard per-vertex varyings.
+        if (key.surface_type == ST::Sky)
+        {
+            flags.has_direction      = true;
+            flags.vertex_attrib_bits = 0;
+            return flags;
+        }
+
+        // 4. Gizmo (DebugShading + no Color attrib): normal-based debug shading, needs camera UBO.
+        if (key.IsDebugShading() && !key.HasVertexAttrib(VA::Color))
+        {
             flags.needs_camera = true;
-            flags.needs_sky = true;
+            return flags;
+        }
+
+        // 5. Lit 3D (not Unlit, not a 2D surface type).
+        if (key.surface_type != ST::Unlit && !hgl::graph::Is2DSurfaceType(key.surface_type))
+        {
+            flags.enable_lighting   = true;
+            flags.lighting_model    = key.lighting_model;
+            flags.needs_camera      = true;
+            flags.needs_sky         = true;
             flags.sky_ambient_model = key.sky_ambient_model;
         }
 
-        out_source = BuildForwardFragmentEntry(flags);
-        return true;
+        return flags;
     }
 
-    static const GeneratedVSTemplateRoute kGeneratedVSTemplateRoutes[] = {
-        {"compositor/main_forward_unlit_vertexcolor.vert.glsl", &BuildForwardUnlitVertexColorVS},
-        {"compositor/main_forward_unlit_luminance.vert.glsl",   &BuildForwardUnlitLuminanceVS},
-        {"compositor/main_forward_unlit_luminance_2d.vert.glsl", &BuildForwardUnlitLuminance2DVS},
-        {"compositor/main_forward_unlit_normal.vert.glsl",      &BuildForwardUnlitNormalVS},
-        {"compositor/main_forward_sky.vert.glsl",               &BuildForwardSkyVS},
-        {"compositor/main_forward_billboard_dynamic.vert.glsl", &BuildBillboardDynamicVertexEntry},
-        {"compositor/main_forward_billboard_fixed.vert.glsl",   &BuildBillboardFixedVertexEntry},
-        {"compositor/main_terrain_grid.vert.glsl",              &BuildTerrainGridVertexEntry},
-        {"compositor/main_forward_lit.vert.glsl",               &BuildForwardLitVS},
-        {"compositor/main_forward_unlit_palette.vert.glsl",      &BuildForwardUnlitPaletteVS},
-    };
-
-    static const GeneratedFSTemplateRoute kGeneratedFSTemplateRoutes[] = {
-        {"compositor/main_forward_unlit_vertexcolor.frag.glsl", &BuildForwardUnlitVertexColorFS},
-        {"compositor/main_forward_unlit_luminance.frag.glsl",   &BuildForwardUnlitLuminanceFS},
-        {"compositor/main_forward_unlit_normal.frag.glsl",      &BuildForwardUnlitNormalFS},
-        {"compositor/main_forward_billboard.frag.glsl",         &BuildForwardBillboardFS},
-        {"compositor/main_forward_sky.frag.glsl",               &BuildForwardSkyFS},
-        {"compositor/main_terrain_grid.frag.glsl",              &BuildTerrainGridFS},
-        {"compositor/main_forward_lit.frag.glsl",               &BuildForwardLitFS},
-        {"compositor/main_forward_opaque.frag.glsl",            &BuildForwardAutoFSFromKey},
-        {"compositor/main_forward_transparent.frag.glsl",       &BuildForwardAutoFSFromKey},
-        {"compositor/main_forward_masked.frag.glsl",            &BuildForwardAutoFSFromKey},
-        {"compositor/main_forward_dither.frag.glsl",            &BuildForwardAutoFSFromKey},
-        {"compositor/main_forward_a2c.frag.glsl",               &BuildForwardAutoFSFromKey},
-        {"compositor/main_forward_unlit.frag.glsl",             &BuildForwardAutoFSFromKey},
-        {"compositor/main_forward_2d_opaque.frag.glsl",         &BuildForwardAutoFSFromKey},
-        {"compositor/main_forward_2d_transparent.frag.glsl",    &BuildForwardAutoFSFromKey},
-        {"compositor/main_forward_2d_masked.frag.glsl",         &BuildForwardAutoFSFromKey},
-        {"compositor/main_forward_2d_dither.frag.glsl",         &BuildForwardAutoFSFromKey},
-    };
+    /// Unified FS generator: derives complete GLSL from MaterialVariantKey fields alone.
+    std::string BuildFSFromKey(const hgl::graph::mtl::MaterialVariantKey &key,
+                               hgl::graph::RenderAlphaMode blend,
+                               const std::string &surface_path)
+    {
+        return BuildForwardFragmentEntry(FSFeatureFlagsFromKey(key, blend, surface_path));
+    }
 
     static const SurfaceFunctionRoute kSurfaceFunctionRoutes[] = {
         {hgl::graph::SurfaceType::PureColor2D,  "surface/unlit_color3d_surface.glsl"},
@@ -410,18 +345,6 @@ namespace
         {hgl::graph::SurfaceType::Terrain,      "surface/terrain_surface.glsl"},
         {hgl::graph::SurfaceType::Sky,          "surface/sky_surface.glsl"},
     };
-
-    template<typename Route, size_t N>
-    const Route *FindRouteByTemplatePath(const Route (&routes)[N], const std::string &template_path)
-    {
-        for(const auto &route : routes)
-        {
-            if(template_path == route.template_path)
-                return &route;
-        }
-
-        return nullptr;
-    }
 
     bool IsCompositorTemplatePath(const std::string &template_path)
     {
@@ -564,166 +487,6 @@ namespace hgl::graph
         return true;
     }
 
-    bool CompositorAssembler::TryBuildGeneratedVSTemplatePath(const std::string &template_path, const mtl::MaterialVariantKey &key, std::string &out_source) const
-    {
-        if(const GeneratedVSTemplateRoute *route = FindRouteByTemplatePath(kGeneratedVSTemplateRoutes, template_path))
-        {
-            out_source = route->builder(key);
-            return true;
-        }
-
-        return false;
-    }
-
-    bool CompositorAssembler::TryBuildGeneratedFSTemplatePath(const std::string &template_path, const mtl::MaterialVariantKey &key, RenderAlphaMode blend, const std::string &surface_path, std::string &out_source) const
-    {
-        if(const GeneratedFSTemplateRoute *route = FindRouteByTemplatePath(kGeneratedFSTemplateRoutes, template_path))
-        {
-            out_source = route->builder(key, blend, surface_path);
-            return true;
-        }
-
-        return false;
-    }
-
-    std::string CompositorAssembler::GetCompositorVSPath(SurfaceType surface, PassType pass) const
-    {
-        // 2D Materials — reuse vert_forward_main.glsl via VERT_INPUT_2D
-        if (Is2DSurfaceType(surface))
-        {
-            switch (surface)
-            {
-            case SurfaceType::PureColor2D:
-                // No texture, no vertex color — minimal VS
-                return shader_lib_path_ + "/compositor/main_forward_2d_common.vert.glsl";
-
-            case SurfaceType::PureTexture2D:
-            case SurfaceType::Text2D:
-                // Needs UV0 for texture sampling
-                return shader_lib_path_ + "/compositor/main_forward_2d_texcoord.vert.glsl";
-
-            case SurfaceType::VertexColor2D:
-                // Needs vertex color varying
-                return shader_lib_path_ + "/compositor/main_forward_2d_vertexcolor.vert.glsl";
-
-            default:
-                break;
-            }
-        }
-
-        // Unlit 表面使用精简 VS（仅 Position + 双 ID，无 Normal/UV）
-        if (surface == SurfaceType::Unlit)
-        {
-            switch (pass)
-            {
-            case PassType::ForwardOpaque:
-            case PassType::ForwardMasked:
-            case PassType::ForwardTransparent:
-                return shader_lib_path_ + "/compositor/main_forward_unlit.vert.glsl";
-            default:
-                return shader_lib_path_ + "/compositor/main_forward_unlit.vert.glsl";
-            }
-        }
-
-        // Lit 表面走完整 VS（Position + Normal + UV + 双 ID）
-        switch (pass)
-        {
-        case PassType::ForwardOpaque:
-        case PassType::ForwardMasked:
-        case PassType::ForwardTransparent:
-        case PassType::ForwardDither:
-        case PassType::ForwardA2C:
-            return shader_lib_path_ + "/compositor/main_forward_opaque.vert.glsl";
-
-        case PassType::ShadowOpaque:
-        case PassType::ShadowMasked:
-            return shader_lib_path_ + "/compositor/main_shadow.vert.glsl"; // 后续实现
-
-        case PassType::EarlyZSolid:
-        case PassType::EarlyZMasked:
-            return shader_lib_path_ + "/compositor/main_earlyz.vert.glsl"; // 后续实现
-
-        default:
-            return shader_lib_path_ + "/compositor/main_forward_opaque.vert.glsl";
-        }
-    }
-
-    std::string CompositorAssembler::GetCompositorFSPath(SurfaceType surface, RenderAlphaMode blend, PassType pass) const
-    {
-        // 2D Materials — reuse frag_forward_main.glsl, routed by pass type
-        if (Is2DSurfaceType(surface))
-        {
-            switch (pass)
-            {
-            case PassType::ForwardOpaque:
-                return shader_lib_path_ + "/compositor/main_forward_2d_opaque.frag.glsl";
-
-            case PassType::ForwardMasked:
-                return shader_lib_path_ + "/compositor/main_forward_2d_masked.frag.glsl";
-
-            case PassType::ForwardDither:
-                return shader_lib_path_ + "/compositor/main_forward_2d_dither.frag.glsl";
-
-            case PassType::ForwardTransparent:
-            default:
-                return shader_lib_path_ + "/compositor/main_forward_2d_transparent.frag.glsl";
-            }
-        }
-
-        // Unlit 表面类型使用专用 FS 模板（无光照）
-        if (surface == SurfaceType::Unlit)
-        {
-            switch (pass)
-            {
-            case PassType::ForwardOpaque:
-            case PassType::ForwardMasked:
-            case PassType::ForwardTransparent:
-                return shader_lib_path_ + "/compositor/main_forward_unlit.frag.glsl";
-
-            case PassType::ShadowOpaque:
-            case PassType::ShadowMasked:
-                return shader_lib_path_ + "/compositor/main_shadow.frag.glsl"; // 后续实现
-
-            case PassType::EarlyZSolid:
-            case PassType::EarlyZMasked:
-                return shader_lib_path_ + "/compositor/main_earlyz.frag.glsl"; // 后续实现
-
-            default:
-                return shader_lib_path_ + "/compositor/main_forward_unlit.frag.glsl";
-            }
-        }
-
-        // 非 Unlit 走 Lit 路径
-        switch (pass)
-        {
-        case PassType::ForwardOpaque:
-            return shader_lib_path_ + "/compositor/main_forward_opaque.frag.glsl";
-
-        case PassType::ForwardMasked:
-            return shader_lib_path_ + "/compositor/main_forward_masked.frag.glsl";
-
-        case PassType::ForwardTransparent:
-            return shader_lib_path_ + "/compositor/main_forward_transparent.frag.glsl";
-
-        case PassType::ForwardDither:
-            return shader_lib_path_ + "/compositor/main_forward_dither.frag.glsl";
-
-        case PassType::ForwardA2C:
-            return shader_lib_path_ + "/compositor/main_forward_a2c.frag.glsl";
-
-        case PassType::ShadowOpaque:
-        case PassType::ShadowMasked:
-            return shader_lib_path_ + "/compositor/main_shadow.frag.glsl"; // 后续实现
-
-        case PassType::EarlyZSolid:
-        case PassType::EarlyZMasked:
-            return shader_lib_path_ + "/compositor/main_earlyz.frag.glsl"; // 后续实现
-
-        default:
-            return shader_lib_path_ + "/compositor/main_forward_opaque.frag.glsl";
-        }
-    }
-
     std::string CompositorAssembler::GetSurfaceFunctionPath(SurfaceType surface) const
     {
         if(const SurfaceFunctionRoute *route = FindSurfaceFunctionRoute(kSurfaceFunctionRoutes, surface))
@@ -784,105 +547,67 @@ namespace hgl::graph
     {
         AssembleResult result{};
 
-        std::string vs_path = desc.vs_template_path.empty()
-            ? GetCompositorVSPath(key.surface_type, key.pass_hint)
-            : shader_lib_path_ + "/" + desc.vs_template_path;
-        std::string fs_path = desc.fs_template_path.empty()
-            ? GetCompositorFSPath(key.surface_type, key.blend_mode, key.pass_hint)
-            : shader_lib_path_ + "/" + desc.fs_template_path;
-        std::string surface_rel = desc.surface_function_path.empty()
+        const std::string surface_rel = desc.surface_function_path.empty()
             ? GetSurfaceFunctionPath(key.surface_type)
             : desc.surface_function_path;
 
+        // VS: non-compositor custom path (e.g. 2D shader files) → ReadFile;
+        //     empty or compositor/ prefix → key-derived generation.
         std::string vs_source;
-        if (!desc.vs_template_path.empty())
+        if (!desc.vs_template_path.empty() && !IsCompositorTemplatePath(desc.vs_template_path))
         {
-            if (!TryBuildGeneratedVSTemplatePath(desc.vs_template_path, key, vs_source))
-            {
-                if (IsCompositorTemplatePath(desc.vs_template_path))
-                {
-                    result.error_message = "No generated VS template route for template='"
-                        + desc.vs_template_path + "'";
-                    result.success = false;
-                    return result;
-                }
-
-                std::string read_error;
-                if(!ReadFile(vs_path, vs_source, read_error))
-                {
-                    result.error_message = BuildAssembleReadFailureMessage("VS", desc.vs_template_path, vs_path, read_error);
-                    result.success = false;
-                    return result;
-                }
-            }
-        }
-        else
-        {
+            const std::string full_path = shader_lib_path_ + "/" + desc.vs_template_path;
             std::string read_error;
-            if(!ReadFile(vs_path, vs_source, read_error))
+            if (!ReadFile(full_path, vs_source, read_error))
             {
-                result.error_message = BuildAssembleReadFailureMessage("VS", std::string(), vs_path, read_error);
+                result.error_message = BuildAssembleReadFailureMessage(
+                    "VS", desc.vs_template_path, full_path, read_error);
                 result.success = false;
                 return result;
             }
         }
+        else
+        {
+            vs_source = BuildVSFromKey(key);
+        }
 
+        // FS: same routing logic.
         std::string fs_source;
-        if (!desc.fs_template_path.empty())
+        if (!desc.fs_template_path.empty() && !IsCompositorTemplatePath(desc.fs_template_path))
         {
-            if (!TryBuildGeneratedFSTemplatePath(desc.fs_template_path, key, key.blend_mode, surface_rel, fs_source))
+            const std::string full_path = shader_lib_path_ + "/" + desc.fs_template_path;
+            std::string read_error;
+            if (!ReadFile(full_path, fs_source, read_error))
             {
-                if (IsCompositorTemplatePath(desc.fs_template_path))
-                {
-                    result.error_message = "No generated FS template route for template='"
-                        + desc.fs_template_path + "'";
-                    result.success = false;
-                    return result;
-                }
-
-                std::string read_error;
-                if(!ReadFile(fs_path, fs_source, read_error))
-                {
-                    result.error_message = BuildAssembleReadFailureMessage("FS", desc.fs_template_path, fs_path, read_error);
-                    result.success = false;
-                    return result;
-                }
+                result.error_message = BuildAssembleReadFailureMessage(
+                    "FS", desc.fs_template_path, full_path, read_error);
+                result.success = false;
+                return result;
             }
         }
         else
         {
-            std::string read_error;
-            if(!TryBuildAutoForwardFS(key, key.blend_mode, key.pass_hint, surface_rel, fs_source)
-            && !ReadFile(fs_path, fs_source, read_error))
-            {
-                result.error_message = BuildAssembleReadFailureMessage("FS", std::string(), fs_path, read_error);
-                result.success = false;
-                return result;
-            }
+            fs_source = BuildFSFromKey(key, key.blend_mode, surface_rel);
+        }
+
+        if (vs_source.empty())
+        {
+            result.error_message = BuildAssemblePreprocessFailureMessage(
+                "VS", desc.vs_template_path, "BuildVSFromKey produced empty source", vs_source);
+            result.success = false;
+            return result;
+        }
+
+        if (fs_source.empty())
+        {
+            result.error_message = BuildAssemblePreprocessFailureMessage(
+                "FS", desc.fs_template_path, "BuildFSFromKey produced empty source", fs_source);
+            result.success = false;
+            return result;
         }
 
         vs_source = InjectDefines(vs_source, key);
         fs_source = InjectDefines(fs_source, key);
-
-        if(vs_source.empty())
-        {
-            result.error_message = BuildAssemblePreprocessFailureMessage("VS",
-                                                                          desc.vs_template_path,
-                                                                          "InjectDefines produced empty source",
-                                                                          vs_source);
-            result.success = false;
-            return result;
-        }
-
-        if(fs_source.empty())
-        {
-            result.error_message = BuildAssemblePreprocessFailureMessage("FS",
-                                                                          desc.fs_template_path,
-                                                                          "InjectDefines produced empty source",
-                                                                          fs_source);
-            result.success = false;
-            return result;
-        }
 
         result.vertex_glsl   = std::move(vs_source);
         result.fragment_glsl = std::move(fs_source);

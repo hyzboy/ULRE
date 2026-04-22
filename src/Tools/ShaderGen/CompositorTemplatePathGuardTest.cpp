@@ -76,30 +76,31 @@ int main()
         std::fprintf(stdout, "  Case1 OK: non-compositor explicit templates still load\n");
     }
 
-    // Case 2: compositor explicit templates without generated route must fail fast.
+    // Case 2: compositor/ prefixed template paths are now key-derived;
+    //         the path string is ignored and assembly must succeed via key-derived generation.
     {
         MaterialVariantDesc desc;
-        desc.variant_name = "BadCompositorPath";
-        desc.vs_template_path = "compositor/not_existing_template.vert.glsl";
+        desc.variant_name     = "CompositorAliasIgnored";
+        desc.vs_template_path = "compositor/not_a_real_file.vert.glsl";
         desc.fs_template_path = "2d/vertexcolor2d.frag.glsl";
 
         const auto result = assembler.Assemble(key, desc);
-        if (result.success)
+        if (!result.success)
         {
             std::fprintf(stderr,
-                         "[CompositorTemplatePathGuardTest] FAIL: invalid compositor template path should fail\n");
-            return 1;
-        }
-
-        if (result.error_message.find("No generated VS template route") == std::string::npos)
-        {
-            std::fprintf(stderr,
-                         "[CompositorTemplatePathGuardTest] FAIL: unexpected error message: %s\n",
+                         "[CompositorTemplatePathGuardTest] FAIL: compositor/ prefix path should route to key-derived generation, error=%s\n",
                          result.error_message.c_str());
             return 1;
         }
 
-        std::fprintf(stdout, "  Case2 OK: compositor strict route guard still enforced\n");
+        if (result.vertex_glsl.find("#version") == std::string::npos)
+        {
+            std::fprintf(stderr,
+                         "[CompositorTemplatePathGuardTest] FAIL: key-derived VS should contain #version directive\n");
+            return 1;
+        }
+
+        std::fprintf(stdout, "  Case2 OK: compositor/ prefix routes to key-derived generation\n");
     }
 
     std::fprintf(stdout, "[CompositorTemplatePathGuardTest] PASS\n");
