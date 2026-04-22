@@ -8,6 +8,7 @@
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/mtl/MaterialRecipeStore.h>
+#include<hgl/mtl/RecipeToKey.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/log/Log.h>
 
@@ -25,27 +26,28 @@ namespace hgl::ecs
 			graph::MaterialResolveRequest *slot = nullptr;
 			graph::Geometry *geometry = nullptr;
 			const graph::mtl::MaterialRecipe *recipe = nullptr;
+			graph::mtl::MaterialKey material_key{};   // computed once at loop entry
 			uint64_t gvf_hash = 0;
 			uint64_t instance_hash = 0;
 		};
 
 		struct PrototypeKey
 		{
-			const graph::mtl::MaterialRecipe *recipe = nullptr;
+			graph::mtl::MaterialKey material_key{};
 			uint64_t gvf_hash = 0;
 
-			bool operator==(const PrototypeKey &o) const
+			bool operator==(const PrototypeKey &o) const noexcept
 			{
-				return recipe == o.recipe && gvf_hash == o.gvf_hash;
+				return material_key == o.material_key && gvf_hash == o.gvf_hash;
 			}
 		};
 
 		struct PrototypeKeyHash
 		{
-			size_t operator()(const PrototypeKey &k) const
+			size_t operator()(const PrototypeKey &k) const noexcept
 			{
-				const size_t h1 = std::hash<const void *>{}(static_cast<const void *>(k.recipe));
-				const size_t h2 = std::hash<uint64_t>{}(k.gvf_hash);
+				const size_t h1 = static_cast<size_t>(k.material_key.Hash());
+				const size_t h2 = static_cast<size_t>(k.gvf_hash + 0x9e3779b97f4a7c15ull);
 				return h1 ^ (h2 + 0x9e3779b9u + (h1 << 6) + (h1 >> 2));
 			}
 		};
@@ -117,10 +119,10 @@ namespace hgl::ecs
 			return h;
 		}
 
-		static inline uint64_t HashPrototypeKey(const PrototypeKey &k)
+		static inline uint64_t HashPrototypeKey(const PrototypeKey &k) noexcept
 		{
-			const uint64_t p = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(k.recipe));
-			return (p * 1099511628211ull) ^ (k.gvf_hash + 0x9e3779b97f4a7c15ull + (p << 6) + (p >> 2));
+			const uint64_t mk = k.material_key.Hash();
+			return (mk * 1099511628211ull) ^ (k.gvf_hash + 0x9e3779b97f4a7c15ull + (mk << 6) + (mk >> 2));
 		}
 	}
 
@@ -197,6 +199,7 @@ namespace hgl::ecs
 			task.slot = &slot;
 			task.geometry = geom;
 			task.recipe = slot.record;
+			task.material_key = graph::mtl::ResolveRecipePrimaryKey(*slot.record);
 			task.gvf_hash = HashGeometryVertexFormat(gvf);
 			task.instance_hash = HashBytes(slot.GetInstanceDataPtr(), slot.GetInstanceDataSize());
 
@@ -205,7 +208,7 @@ namespace hgl::ecs
 			++resolve_input_count;
 
 			PrototypeKey pkey;
-			pkey.recipe = task.recipe;
+			pkey.material_key = task.material_key;
 			pkey.gvf_hash = task.gvf_hash;
 			prototype_buckets[pkey].push_back(index);
 		}
@@ -242,7 +245,8 @@ namespace hgl::ecs
 
 				const graph::VIL *resolve_vil = nullptr;
 				graph::MaterialBindingInstance *mi =
-					registry->ResolveOrCreateBindingInstance(*seed.recipe,
+					registry->ResolveOrCreateBindingInstance(seed.material_key,
+														 *seed.recipe,
 															 seed_gvf,
 															 seed.slot->GetInstanceDataPtr(),
 															 seed.slot->GetInstanceDataSize(),

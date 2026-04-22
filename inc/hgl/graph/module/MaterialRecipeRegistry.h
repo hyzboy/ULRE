@@ -10,6 +10,7 @@
 
 #include <hgl/graph/module/MaterialDomainHandle.h>
 #include <hgl/mtl/MaterialRecipe.h>
+#include <hgl/mtl/MaterialKey.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include <hgl/vk/VKVertexInputLayout.h>
@@ -66,6 +67,9 @@ public:
     /// ShaderMaterialProgram 已缓存，Domain 按 domain_id 缓存，DMB 按纹理配置缓存
     MaterialDomainHandle Acquire(const mtl::MaterialRecipe &rec);
 
+    /// Key 透传版本：调用方已算好 MaterialKey，跳过内部 ResolveRecipePrimaryKey
+    MaterialDomainHandle Acquire(const mtl::MaterialKey &key, const mtl::MaterialRecipe &rec);
+
     /// 一站式：Acquire + CreateMI（推荐外部调用）
     /// - 大多数调用方只需要 MI，不需要直接接触 MaterialDomainHandle。
     /// - 若需要后续访问 DMB，可传 out_handle 取回完整句柄。
@@ -79,6 +83,15 @@ public:
     /// - 调用方无需在 MaterialRecipe 中维护手写 VIL 覆写字段
     /// - out_vil（可选）：接收实际使用的 VIL 指针，可用于 Primitive 创建等场景
     MaterialBindingInstance *ResolveOrCreateBindingInstance(const mtl::MaterialRecipe &rec,
+                                const GeometryVertexFormat &gvf,
+                                const void *instance_data = nullptr,
+                                uint32_t instance_data_size = 0,
+                                MaterialDomainHandle *out_handle = nullptr,
+                                const VIL **out_vil = nullptr);
+
+    /// Key 透传版本：ECS 已在循环入口算好 MaterialKey，跳过内部 Acquire 的重复计算
+    MaterialBindingInstance *ResolveOrCreateBindingInstance(const mtl::MaterialKey &key,
+                                const mtl::MaterialRecipe &rec,
                                 const GeometryVertexFormat &gvf,
                                 const void *instance_data = nullptr,
                                 uint32_t instance_data_size = 0,

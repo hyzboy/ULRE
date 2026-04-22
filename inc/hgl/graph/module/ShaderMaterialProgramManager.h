@@ -28,6 +28,7 @@ namespace mtl
     struct Material2DCreateConfig;
     struct Material3DCreateConfig;
     class MaterialCreateInfo;
+    struct MaterialRecipe;
 }//namespace mtl
 
 using MaterialID            = int;
@@ -315,6 +316,11 @@ public: // Acquire stats
     void DumpKeyMapDiagnostics() const;
 
 public: //ShaderMaterialProgram
+
+    /// Step 5: MaterialKey direct-path lookup; falls back to recipe-based creation on miss.
+    /// Checks material_by_key first; on miss calls CreateMaterialFromRecord which populates the cache.
+    ShaderMaterialProgram *GetOrCreateProgramByKey(const mtl::MaterialKey &key,
+                                                   const mtl::MaterialRecipe &recipe);
 
     ShaderMaterialProgram *          ResolveOrCreateProgram (const MaterialSpec &spec, MaterialSpecKey *out_key = nullptr);
     ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialPreset, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);

@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/module/ShaderMaterialProgramManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
@@ -478,6 +479,40 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     mtl::MaterialVariantKey key = mtl::MapPresetToVariantKey(mtl_id);
     mtl::ApplyCreateConfigToVariantKey(key, cfg);
     return CreateMaterial(key, cfg);
+}
+
+ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
+    const mtl::MaterialKey &key,
+    const mtl::MaterialRecipe &recipe)
+{
+    // Fast path: key already in cache (populated by ResolveOrCreateProgram on first call)
+    auto it = material_by_key.find(key);
+    if (it != material_by_key.end())
+    {
+        by_key_hits.fetch_add(1, std::memory_order_relaxed);
+        return it->second;
+    }
+
+    // Miss — fall back to recipe-based creation.  CreateMaterialFromRecord calls
+    // ResolveOrCreateProgram which populates material_by_key as a side-effect (Step 3).
+    ShaderMaterialProgram *prog = CreateMaterialFromRecord(this, recipe);
+
+#ifndef NDEBUG
+    if (prog)
+    {
+        auto it2 = material_by_key.find(key);
+        if (it2 == material_by_key.end() || it2->second != prog)
+        {
+            std::fprintf(stderr,
+                "[ShaderMaterialProgramManager] WARN GetOrCreateProgramByKey: "
+                "key.Hash=0x%llx not in material_by_key after creation — "
+                "MaterialKey derivation may be inconsistent.\n",
+                static_cast<unsigned long long>(key.Hash()));
+        }
+    }
+#endif
+
+    return prog;
 }
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(const MaterialSpec &spec, MaterialSpecKey *out_key)

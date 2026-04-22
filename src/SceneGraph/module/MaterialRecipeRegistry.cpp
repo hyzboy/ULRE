@@ -6,6 +6,7 @@
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
+#include <hgl/mtl/RecipeToKey.h>
 #include <hgl/vk/VKShaderMaterialProgram.h>
 #include <hgl/vk/VKMaterialBindingInstance.h>
 #include <hgl/vk/VKResourceDomain.h>
@@ -158,10 +159,15 @@ MaterialRecipeRegistry::MaterialRecipeRegistry(
 
 MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &rec)
 {
+    return Acquire(mtl::ResolveRecipePrimaryKey(rec), rec);
+}
+
+MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key, const mtl::MaterialRecipe &rec)
+{
     MaterialDomainHandle handle;
 
-    // 1. ShaderMaterialProgram (ResolveOrCreateProgram 内部已缓存)
-    handle.material = CreateMaterialFromRecord(mm, rec);
+    // 1. ShaderMaterialProgram — key-transparent fast path (checks material_by_key first)
+    handle.material = mm->GetOrCreateProgramByKey(key, rec);
     if (!handle.material)
         return {};
 
@@ -231,9 +237,9 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &
 
     // 3. DomainResourceBinding (按 material_name + domain_id + texture_hash 缓存)
     uint64_t tex_hash = ComputeTextureConfigHash(rec.textures);
-    DMBKey key { std::move(mat_name_str), normalized_domain_id, tex_hash };
+    DMBKey dmb_key { std::move(mat_name_str), normalized_domain_id, tex_hash };
 
-    auto it_dmb = dmb_cache.find(key);
+    auto it_dmb = dmb_cache.find(dmb_key);
     if (it_dmb != dmb_cache.end())
     {
         handle.binding = it_dmb->second;
@@ -255,7 +261,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &
             BindMaterialTexturesCompat(handle.material, tm, sm, rec);
         }
 
-        dmb_cache[key] = handle.binding;
+        dmb_cache[dmb_key] = handle.binding;
     }
 
     return handle;
@@ -350,6 +356,80 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     if (out_vil)
         *out_vil = (vil_cfg.GetCount() > 0)
                        ? handle.material->CreateVIL(&vil_cfg)   // cached by ShaderMaterialProgram
+                       : default_vil;
+
+    MaterialBindingInstance *mi = mm->AcquireMaterialInstance(spec);
+    if (mi)
+        MaterialBindingInstanceInternalAccess::SetDomainBinding(mi, handle.binding);
+
+    return mi;
+}
+
+// ── ResolveOrCreateBindingInstance (key + GVF, key-transparent path) ─────────
+
+MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
+    const mtl::MaterialKey &key,
+    const mtl::MaterialRecipe &rec,
+    const GeometryVertexFormat &gvf,
+    const void *instance_data,
+    uint32_t instance_data_size,
+    MaterialDomainHandle *out_handle,
+    const VIL **out_vil)
+{
+    MaterialDomainHandle handle = Acquire(key, rec);
+    if (!handle.material)
+        return nullptr;
+
+    if (!handle.domain)
+        return nullptr;
+
+    if (handle.material->hasMI() && !handle.binding)
+        return nullptr;
+
+    if (out_handle)
+        *out_handle = handle;
+
+    const VIL *default_vil = handle.material->GetDefaultVIL();
+    if (!default_vil)
+        return nullptr;
+
+    MaterialInstanceSpec spec;
+    spec.material = handle.material;
+    spec.domain   = handle.domain;
+    spec.preset   = rec.pipeline;
+    spec.instance_data      = instance_data;
+    spec.instance_data_size = instance_data_size;
+
+    VILConfig vil_cfg;
+    const uint32_t attrib_count = default_vil->GetVertexAttribCount();
+
+    for (uint32_t i = 0; i < attrib_count; ++i)
+    {
+        const auto *vif = default_vil->GetConfig(i);
+        if (!vif)
+            continue;
+
+        const VkFormat gvf_format = gvf.GetFormat(vif->attrib);
+
+        if (gvf_format == VK_FORMAT_UNDEFINED)
+            continue;
+
+        if (gvf_format != vif->format)
+        {
+            VAConfig vac;
+            vac.format = gvf_format;
+
+            if (!vil_cfg.Add(vif->attrib, vac))
+                return nullptr;
+        }
+    }
+
+    if (vil_cfg.GetCount() > 0)
+        spec.vil_cfg = &vil_cfg;
+
+    if (out_vil)
+        *out_vil = (vil_cfg.GetCount() > 0)
+                       ? handle.material->CreateVIL(&vil_cfg)
                        : default_vil;
 
     MaterialBindingInstance *mi = mm->AcquireMaterialInstance(spec);
