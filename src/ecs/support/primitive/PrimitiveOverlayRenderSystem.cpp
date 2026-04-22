@@ -31,6 +31,8 @@ namespace hgl::ecs
         if (cache.renderableCount == 0)
             return;
 
+        graph::GraphicsPipeline* last_pipeline = nullptr;
+
         for (auto& pair : cache.materialBatches)
         {
             MaterialBatch* batch = pair.second.get();
@@ -60,6 +62,9 @@ namespace hgl::ecs
                     domain_binding = material_manager->FindDomainMaterialBinding(key.domain, key.material);
             }
 
+            const bool skip_pipeline_bind = (key.pipeline == last_pipeline);
+            last_pipeline = key.pipeline;
+
             renderer->Render(cmdBuffer,
                              batch->draw_batches,
                              batch->draw_batches_count,
@@ -67,7 +72,8 @@ namespace hgl::ecs
                              batch->mi_buffer,
                              batch->icb_draw,
                              batch->icb_draw_indexed,
-                             domain_binding);
+                             domain_binding,
+                             skip_pipeline_bind);
         }
     }
 }

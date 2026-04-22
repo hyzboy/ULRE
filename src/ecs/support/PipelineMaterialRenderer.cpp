@@ -175,7 +175,8 @@ namespace hgl::ecs
                                               MaterialInstanceAssignmentBuffer* mi_buffer,
                                               graph::IndirectDrawBuffer* icb_draw,
                                               graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
-                                              graph::DomainResourceBinding* domain_binding)
+                                              graph::DomainResourceBinding* domain_binding,
+                                              bool skip_pipeline_bind)
     {
         // 前置条件检查
         if (!rcb)
@@ -192,8 +193,9 @@ namespace hgl::ecs
 
         cmd_buf = rcb;
 
-        // 绑定管线
-        cmd_buf->BindPipeline(pipeline);
+        // 绑定管线（排序后相邻同 pipeline 的批次可跳过）
+        if (!skip_pipeline_bind)
+            cmd_buf->BindPipeline(pipeline);
 
         // 重置渲染状态缓存
         last_data_buffer = nullptr;

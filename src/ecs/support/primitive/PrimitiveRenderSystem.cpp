@@ -84,6 +84,8 @@ namespace hgl::ecs
                       return lhs->key.domain < rhs->key.domain;
                   });
 
+        graph::GraphicsPipeline* last_pipeline = nullptr;
+
         for (MaterialBatch* batch : ordered_batches)
         {
             if (!batch || batch->items.empty())
@@ -112,6 +114,9 @@ namespace hgl::ecs
                     domain_binding = material_manager->FindDomainMaterialBinding(key.domain, key.material);
             }
 
+            const bool skip_pipeline_bind = (key.pipeline == last_pipeline);
+            last_pipeline = key.pipeline;
+
             renderer->Render(cmdBuffer,
                              batch->draw_batches,
                              batch->draw_batches_count,
@@ -119,7 +124,8 @@ namespace hgl::ecs
                              batch->mi_buffer,
                              batch->icb_draw,
                              batch->icb_draw_indexed,
-                             domain_binding);
+                             domain_binding,
+                             skip_pipeline_bind);
         }
     }
 }

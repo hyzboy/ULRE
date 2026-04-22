@@ -137,6 +137,7 @@ namespace hgl::ecs
                     MaterialInstanceAssignmentBuffer* mi_buffer,
                     graph::IndirectDrawBuffer* icb_draw,
                     graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
-                    graph::DomainResourceBinding* domain_binding = nullptr);
+                    graph::DomainResourceBinding* domain_binding = nullptr,
+                    bool skip_pipeline_bind = false);
     };
 }//namespace hgl::ecs
