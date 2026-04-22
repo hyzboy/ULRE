@@ -59,14 +59,6 @@ MaterialCreateInfo *CompileCompositorMaterial(
  */
 bool InjectLayoutDefines(MaterialCreateInfo &mci);
 
-/**
- * Insert @p layout_defs after the #version line (if present) in @p source.
- * If no #version line, prepends the defines.
- */
-std::string InjectLayoutDefinesPreserveVersion(
-    const std::string &source,
-    const std::string &layout_defs);
-
 bool PrepareCompositorGLSLForReflection(
     const StaticMaterialDef &def,
     const std::string &vs_glsl,

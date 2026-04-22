@@ -61,9 +61,7 @@ namespace hgl::graph
 
     private:
 
-        std::string GetSurfaceFunctionPath(SurfaceType surface) const;
         std::string InjectDefines(const std::string &source, const mtl::MaterialVariantKey &key) const;
-        bool        ReadFile(const std::string &path, std::string &out_content, std::string &out_error) const;
 
         std::string shader_lib_path_;
     };

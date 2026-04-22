@@ -142,6 +142,19 @@ CreateProject(VariantRegistryRoutingBehaviorTest)
 
 ####################################################################################################
 
+add_executable(GLSLSourceUtilsTest
+    GLSLSourceUtilsTest.cpp)
+
+target_link_libraries(GLSLSourceUtilsTest
+    PRIVATE ULRE.ShaderGen
+            CMCore
+            CMMath
+            CMCoreType)
+
+CreateProject(GLSLSourceUtilsTest)
+
+####################################################################################################
+
 add_executable(CompositorTemplatePathGuardTest
     CompositorTemplatePathGuardTest.cpp)
 

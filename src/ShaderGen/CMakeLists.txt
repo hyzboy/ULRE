@@ -159,10 +159,18 @@ SOURCE_GROUP("Material Compiler\\Layout" FILES  ${SHADER_LAYOUT_HEADER_FILES}
 
 # Compositor
 SET(COMPOSITOR_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/CompositorAssembler.h
-                             ${SHADERGEN_INCLUDE_PATH}/CompositorFeatureFlags.h)
-SET(COMPOSITOR_SOURCE_FILES  CompositorAssembler.cpp)
+                             ${SHADERGEN_INCLUDE_PATH}/CompositorFeatureFlags.h
+                             ${SHADERGEN_INCLUDE_PATH}/CompositorTemplateRouter.h)
+SET(COMPOSITOR_SOURCE_FILES  CompositorAssembler.cpp
+                             CompositorTemplateRouter.cpp)
 SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
                                 ${COMPOSITOR_SOURCE_FILES})
+
+# Compositor / Internal
+SET(COMPOSITOR_INTERNAL_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/internal/GLSLSourceUtils.h)
+SET(COMPOSITOR_INTERNAL_SOURCE_FILES internal/GLSLSourceUtils.cpp)
+SOURCE_GROUP("Compositor\\Internal" FILES ${COMPOSITOR_INTERNAL_HEADER_FILES}
+                                          ${COMPOSITOR_INTERNAL_SOURCE_FILES})
 
 add_cm_library(ULRE.ShaderGen "ULRE"    
     ${SHADERGEN_INCLUDE_PATH}
@@ -188,4 +196,6 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${SHADER_LAYOUT_SOURCE_FILES}
     ${COMPOSITOR_HEADER_FILES}
     ${COMPOSITOR_SOURCE_FILES}
+    ${COMPOSITOR_INTERNAL_HEADER_FILES}
+    ${COMPOSITOR_INTERNAL_SOURCE_FILES}
 )

@@ -6,6 +6,7 @@
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
 #include <hgl/shadergen/CompositorCompiler.h>
+#include <hgl/shadergen/internal/GLSLSourceUtils.h>
 #include <hgl/mtl/MaterialFeature.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
@@ -272,8 +273,8 @@ namespace
             if (schema_include.empty())
                 return FailAfterMci("shader data schema has no GLSL include path");
 
-            final_vs_glsl = InjectLayoutDefinesPreserveVersion(final_vs_glsl, schema_include);
-            final_fs_glsl = InjectLayoutDefinesPreserveVersion(final_fs_glsl, schema_include);
+            final_vs_glsl = hgl::graph::internal::InjectAfterVersion(final_vs_glsl, schema_include);
+            final_fs_glsl = hgl::graph::internal::InjectAfterVersion(final_fs_glsl, schema_include);
         }
 
         if (vert)
@@ -334,28 +335,6 @@ static bool HasPerMaterialDescriptor(const StaticMaterialDef &def)
     }
 
     return false;
-}
-
-std::string InjectLayoutDefinesPreserveVersion(const std::string &source,const std::string &layout_defs)
-{
-    if(layout_defs.empty())
-        return source;
-
-    if(source.rfind("#version",0)==0)
-    {
-        const size_t pos=source.find('\n');
-        if(pos==std::string::npos)
-            return source+"\n"+layout_defs;
-
-        std::string out;
-        out.reserve(source.size()+layout_defs.size()+1);
-        out.append(source,0,pos+1);
-        out.append(layout_defs);
-        out.append(source,pos+1,std::string::npos);
-        return out;
-    }
-
-    return layout_defs+source;
 }
 
 MaterialCreateInfo *CompileCompositorMaterial(
@@ -467,8 +446,8 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
 
     if (!layout_defs.empty() || !vert_sampler_defs.empty() || !frag_sampler_defs.empty() || !frag_mit_defs.empty())
     {
-        if (vert) vert->SetFinalGLSL(InjectLayoutDefinesPreserveVersion(vert->GetFinalGLSL(), layout_defs + vert_sampler_defs));
-        if (frag) frag->SetFinalGLSL(InjectLayoutDefinesPreserveVersion(frag->GetFinalGLSL(), layout_defs + frag_sampler_defs + frag_mit_defs));
+        if (vert) vert->SetFinalGLSL(hgl::graph::internal::InjectAfterVersion(vert->GetFinalGLSL(), layout_defs + vert_sampler_defs));
+        if (frag) frag->SetFinalGLSL(hgl::graph::internal::InjectAfterVersion(frag->GetFinalGLSL(), layout_defs + frag_sampler_defs + frag_mit_defs));
     }
 
     return true;
