@@ -1,5 +1,3 @@
-#version 450
-
 #include "compositor/vert_forward_ubo.glsl"
 #include "common/ubo_color_palette.glsl"
 

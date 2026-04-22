@@ -14,6 +14,10 @@
 
 namespace
 {
+
+    // Thread-local shader version for #version directive (default 450)
+    thread_local int g_shader_version = 450;
+
     static const char *GetSkyLightGLSLPath(const hgl::graph::mtl::SkyLightAmbientModel model)
     {
         using hgl::graph::mtl::SkyLightAmbientModel;
@@ -41,7 +45,7 @@ namespace
 
     std::string BuildForwardVertexEntry(const hgl::graph::CompositorFeatureFlags &f)
     {
-        std::string out = "#version 450\n\n";
+        std::string out = "#version " + std::to_string(g_shader_version) + "\n\n";
         hgl::graph::ShaderWriter writer(out);
 
         writer.EmitCommentLine("BuildForwardVertexEntry.Begin");
@@ -60,7 +64,7 @@ namespace
 
     std::string BuildForwardFragmentEntry(const hgl::graph::CompositorFeatureFlags &f)
     {
-        std::string out = "#version 450\n\n";
+        std::string out = "#version " + std::to_string(g_shader_version) + "\n\n";
         hgl::graph::ShaderWriter writer(out);
 
         writer.EmitCommentLine("BuildForwardFragmentEntry.Begin");
@@ -88,35 +92,6 @@ namespace
               .EmitInclude("compositor/frag_forward_main.glsl");
 
         writer.EmitCommentLine("BuildForwardFragmentEntry.End");
-        return out;
-    }
-
-    std::string BuildForwardUnlitPaletteVS(const hgl::graph::mtl::MaterialVariantKey &)
-    {
-        std::string out = "#version 450\n\n";
-        hgl::graph::ShaderWriter writer(out);
-        writer.EmitCommentLine("BuildForwardUnlitPaletteVS.Begin");
-        writer.EmitInclude("compositor/vert_forward_ubo.glsl")
-              .EmitInclude("common/ubo_color_palette.glsl")
-              .NewLine()
-              .EmitLine("layout(location=POSITION_LOCATION) in vec3 Position;")
-              .EmitLine("layout(location=COLOR_LOCATION) in uint ColorIndex;")
-              .NewLine()
-              .EmitDefine("VARYING_STAGE_VERT")
-              .EmitDefine("HAS_COLOR")
-              .EmitInclude("common/varying_interface.glsl")
-              .NewLine()
-              .EmitLine("void main()")
-              .BeginBlock()
-                  .EmitLine("fragMaterialInstanceID = GetMaterialInstanceID();")
-                  .EmitLine("mat4 transform_mat = GetTransform();")
-                  .EmitLine("vec4 worldPos = transform_mat * vec4(Position, 1.0);")
-                  .NewLine()
-                  .EmitLine("fragVertexColor = unpackUnorm4x8(color_palette.color[ColorIndex]);")
-                  .NewLine()
-                      .EmitLine("gl_Position = camera.vp * worldPos;")
-                  .EndBlock(hgl::graph::ShaderWriter::EndBlockMode::Plain);
-        writer.EmitCommentLine("BuildForwardUnlitPaletteVS.End");
         return out;
     }
 
@@ -153,9 +128,14 @@ namespace
     /// Build a single-include VS wrapper: for geometry modes whose VS logic lives in a .glsl file.
     std::string BuildIncludeOnlyVS(const char *include_path)
     {
-        std::string out = "#version 450\n\n";
+        std::string out = "#version " + std::to_string(g_shader_version) + "\n\n";
         hgl::graph::ShaderWriter(out).EmitInclude(include_path);
         return out;
+    }
+
+    std::string BuildForwardUnlitPaletteVS(const hgl::graph::mtl::MaterialVariantKey &)
+    {
+        return BuildIncludeOnlyVS("compositor/main_forward_unlit_palette.vert.glsl");
     }
 
     /// Unified VS generator: derives complete GLSL from MaterialVariantKey fields alone.
@@ -289,6 +269,14 @@ namespace
         msg += hgl::graph::internal::BuildGLSLPreviewFirstLines(glsl_source, 80);
         return msg;
     }
+
+    hgl::graph::CompositorAssembler::AssembleResult MakeError(std::string message)
+    {
+        hgl::graph::CompositorAssembler::AssembleResult result;
+        result.error_message = std::move(message);
+        // success is already false by default
+        return result;
+    }
 }
 
 namespace hgl::graph
@@ -300,6 +288,30 @@ namespace hgl::graph
     CompositorAssembler::CompositorAssembler(const std::string &shader_library_path)
         : shader_lib_path_(shader_library_path)
     {}
+
+    bool CompositorAssembler::ReadFileCached(const std::string &rel_path,
+                                             std::string       &out_source,
+                                             std::string       &out_error) const
+    {
+        const std::string full_path = shader_lib_path_ + "/" + rel_path;
+        {
+            std::lock_guard<std::mutex> lock(file_cache_mutex_);
+            auto it = file_cache_.find(full_path);
+            if (it != file_cache_.end())
+            {
+                out_source = it->second;
+                return true;
+            }
+        }
+        std::string source;
+        if (!hgl::graph::internal::ReadTextFile(full_path, source, out_error))
+            return false;
+
+        std::lock_guard<std::mutex> lock(file_cache_mutex_);
+        file_cache_.emplace(full_path, source);
+        out_source = std::move(source);
+        return true;
+    }
 
     std::string CompositorAssembler::InjectDefines(const std::string &source, const mtl::MaterialVariantKey &key) const
     {
@@ -316,14 +328,9 @@ namespace hgl::graph
             defines += buf;
         }
 
-        for (uint8 i = 0; i < uint8(mtl::SamplerSlotCount); ++i)
+        if (key.HasAnyTextureMode(mtl::TextureSourceMode::Array))
         {
-            const mtl::SamplerSlot slot = static_cast<mtl::SamplerSlot>(i);
-            if (key.GetTextureSourceMode(slot) == mtl::TextureSourceMode::Array)
-            {
-                defines += "#define TEXTURE_ARRAY_MODE\n";
-                break;
-            }
+            defines += "#define TEXTURE_ARRAY_MODE\n";
         }
 
         if(defines.empty())
@@ -343,19 +350,16 @@ namespace hgl::graph
             ? hgl::graph::GetSurfaceFunctionPath(key.surface_type)
             : desc.surface_function_path;
 
-        // VS: non-compositor custom path (e.g. 2D shader files) → ReadTextFile;
+        // VS: non-compositor custom path (e.g. 2D shader files) → ReadFileCached;
         //     empty or compositor/ prefix → key-derived generation.
         std::string vs_source;
         if (!desc.vs_template_path.empty() && !hgl::graph::IsCompositorTemplatePath(desc.vs_template_path))
         {
-            const std::string full_path = shader_lib_path_ + "/" + desc.vs_template_path;
             std::string read_error;
-            if (!hgl::graph::internal::ReadTextFile(full_path, vs_source, read_error))
+            if (!ReadFileCached(desc.vs_template_path, vs_source, read_error))
             {
-                result.error_message = BuildReadFailureMessage(
-                    "VS", desc.vs_template_path, full_path, read_error);
-                result.success = false;
-                return result;
+                return MakeError(BuildReadFailureMessage(
+                    "VS", desc.vs_template_path, shader_lib_path_ + "/" + desc.vs_template_path, read_error));
             }
         }
         else
@@ -367,14 +371,11 @@ namespace hgl::graph
         std::string fs_source;
         if (!desc.fs_template_path.empty() && !hgl::graph::IsCompositorTemplatePath(desc.fs_template_path))
         {
-            const std::string full_path = shader_lib_path_ + "/" + desc.fs_template_path;
             std::string read_error;
-            if (!hgl::graph::internal::ReadTextFile(full_path, fs_source, read_error))
+            if (!ReadFileCached(desc.fs_template_path, fs_source, read_error))
             {
-                result.error_message = BuildReadFailureMessage(
-                    "FS", desc.fs_template_path, full_path, read_error);
-                result.success = false;
-                return result;
+                return MakeError(BuildReadFailureMessage(
+                    "FS", desc.fs_template_path, shader_lib_path_ + "/" + desc.fs_template_path, read_error));
             }
         }
         else
@@ -383,20 +384,12 @@ namespace hgl::graph
         }
 
         if (vs_source.empty())
-        {
-            result.error_message = BuildPreprocessFailureMessage(
-                "VS", desc.vs_template_path, "BuildVSFromKey produced empty source", vs_source);
-            result.success = false;
-            return result;
-        }
+            return MakeError(BuildPreprocessFailureMessage(
+                "VS", desc.vs_template_path, "BuildVSFromKey produced empty source", vs_source));
 
         if (fs_source.empty())
-        {
-            result.error_message = BuildPreprocessFailureMessage(
-                "FS", desc.fs_template_path, "BuildFSFromKey produced empty source", fs_source);
-            result.success = false;
-            return result;
-        }
+            return MakeError(BuildPreprocessFailureMessage(
+                "FS", desc.fs_template_path, "BuildFSFromKey produced empty source", fs_source));
 
         vs_source = InjectDefines(vs_source, key);
         fs_source = InjectDefines(fs_source, key);
@@ -407,30 +400,29 @@ namespace hgl::graph
         return result;
     }
 
-    std::vector<PassType> CompositorAssembler::GetPassTypesForBlendMode(RenderAlphaMode blend)
+    std::span<const PassType> CompositorAssembler::GetPassTypesForBlendMode(RenderAlphaMode blend)
     {
+        using PT = PassType;
+        static constexpr PassType kOpaque[]          = { PT::ForwardOpaque, PT::ShadowOpaque, PT::EarlyZSolid };
+        static constexpr PassType kMasked[]          = { PT::ForwardMasked, PT::ShadowMasked, PT::EarlyZMasked };
+        static constexpr PassType kTransparent[]     = { PT::ForwardTransparent };
+        static constexpr PassType kDither[]          = { PT::ForwardDither, PT::ShadowOpaque };
+        static constexpr PassType kAlphaToCoverage[] = { PT::ForwardA2C, PT::ShadowMasked };
+
         switch (blend)
         {
-        case RenderAlphaMode::Opaque:
-            return { PassType::ForwardOpaque, PassType::ShadowOpaque, PassType::EarlyZSolid };
-
-        case RenderAlphaMode::Masked:
-            return { PassType::ForwardMasked, PassType::ShadowMasked, PassType::EarlyZMasked };
-
+        case RenderAlphaMode::Opaque:          return kOpaque;
+        case RenderAlphaMode::Masked:          return kMasked;
         case RenderAlphaMode::Transparent:
             // 透明物体无阴影、无 EarlyZ（从后往前排序第 8 Pass 渲染）
-            return { PassType::ForwardTransparent };
-
+            return kTransparent;
         case RenderAlphaMode::Dither:
             // Dither 小批目使用 ShadowOpaque（不需要 alpha 阴影）
-            return { PassType::ForwardDither, PassType::ShadowOpaque };
-
+            return kDither;
         case RenderAlphaMode::AlphaToCoverage:
             // A2C 阴影和 Masked 相同——需要 alpha discard 避免阴影漏光
-            return { PassType::ForwardA2C, PassType::ShadowMasked };
-
-        default:
-            return { PassType::ForwardOpaque };
+            return kAlphaToCoverage;
+        default:                               return kOpaque;
         }
     }
 }

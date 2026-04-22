@@ -85,6 +85,18 @@ namespace hgl::graph::mtl
             return TextureSourceMode((texture_source_bits >> shift) & TextureSourceMask);
         }
 
+        /// Check if any texture slot uses the given SourceMode (bitmask-based check).
+        bool HasAnyTextureMode(const TextureSourceMode mode) const noexcept
+        {
+            const uint32 mode_bits = uint32(mode) & TextureSourceMask;
+            for (uint32 shift = 0; shift < 32; shift += TextureSourceBitsPerSlot)
+            {
+                if (((texture_source_bits >> shift) & TextureSourceMask) == mode_bits)
+                    return true;
+            }
+            return false;
+        }
+
         bool HasTexture(const SamplerSlot slot) const noexcept
         {
             return (sampler_feature_bits & SamplerFeatureBit(slot)) != 0;

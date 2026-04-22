@@ -31,7 +31,7 @@ namespace
 MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
     if(cfg)
-        cfg->material_instance=true;
+        cfg->material_instance=true;    // Gizmo requires per-instance data
 
     MaterialVariantKey var_key = build3d::MakeVariantKey();
     var_key.SetDebugShading(true);
