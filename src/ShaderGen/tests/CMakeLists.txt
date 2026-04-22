@@ -27,3 +27,15 @@ target_link_libraries(RecipeToKeyTest PRIVATE ${ULRE})
 set_property(TARGET RecipeToKeyTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 
 add_test(NAME RecipeToKeyTest COMMAND RecipeToKeyTest)
+
+# MaterialRecipeStoreTests links ULRE because MaterialRecipe depends on Vulkan
+# types (VKFormat, VKGraphicsPipelinePreset) pulled in transitively.
+add_executable(MaterialRecipeStoreTests
+    MaterialRecipeStoreTests.cpp
+)
+
+target_link_libraries(MaterialRecipeStoreTests PRIVATE ${ULRE})
+
+set_property(TARGET MaterialRecipeStoreTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME MaterialRecipeStoreTests COMMAND MaterialRecipeStoreTests)

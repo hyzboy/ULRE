@@ -11,6 +11,7 @@
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/module/MaterialRecipeRegistry.h>
+#include <hgl/mtl/MaterialRecipeStore.h>
 
 namespace hgl::graph
 {
@@ -67,6 +68,10 @@ namespace hgl::graph
         if (!material_asset_registry)
             return false;
 
+        recipe_store = new mtl::MaterialRecipeStore();
+        if (!recipe_store)
+            return false;
+
         // Set graphics context for module manager
         module_manager->SetGraphicsContext(this);
 
@@ -85,6 +90,7 @@ namespace hgl::graph
         std::cout << "[DEBUG] GraphicsContext::Shutdown() - GraphModuleManager deleted" << std::endl;
 
         SAFE_CLEAR(material_asset_registry)
+        SAFE_CLEAR(recipe_store)
 
         // Clear all manager pointers (they're owned by module_manager)
         tex_manager = nullptr;

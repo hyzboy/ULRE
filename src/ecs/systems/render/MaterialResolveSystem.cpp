@@ -7,6 +7,7 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/mesh/Primitive.h>
+#include<hgl/mtl/MaterialRecipeStore.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/log/Log.h>
 
@@ -142,6 +143,7 @@ namespace hgl::ecs
 
 		auto *registry = gc->GetMaterialAssetRegistry();
 		auto *prim_mgr = gc->GetPrimitiveManager();
+		auto *recipe_store = gc->GetRecipeStore();
 		if (!registry || !prim_mgr)
 			return;
 
@@ -168,6 +170,17 @@ namespace hgl::ecs
 				continue;
 
 			auto &slot = comp->GetMaterialResolveRequest();
+
+			// ID 路径优先：从 recipe_store 查 record
+			if (slot.recipe_id != graph::mtl::kInvalidMaterialRecipeID && slot.record == nullptr)
+			{
+				if (recipe_store)
+					slot.record = recipe_store->GetRecipe(slot.recipe_id);
+				// 若 store 未提供，跳过（避免空指针继续）
+				if (!slot.record)
+					continue;
+			}
+
 			if (!slot.record)
 				continue;
 

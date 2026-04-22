@@ -39,6 +39,7 @@ namespace hgl::graph
     class GeometryManager;
     class PrimitiveManager;
     class MaterialRecipeRegistry;
+    namespace mtl { class MaterialRecipeStore; }
 
     /**
      * GraphicsContext - Vulkan图形资源管理器聚合类
@@ -71,6 +72,7 @@ namespace hgl::graph
         GeometryManager *geometry_manager = nullptr;
         PrimitiveManager *primitive_manager = nullptr;
         MaterialRecipeRegistry *material_asset_registry = nullptr;
+        mtl::MaterialRecipeStore *recipe_store = nullptr;
 
     public:
         explicit GraphicsContext(VulkanDevice *dev);
@@ -117,6 +119,7 @@ namespace hgl::graph
         GeometryManager *GetGeometryManager() { return geometry_manager; }
         PrimitiveManager *GetPrimitiveManager() { return primitive_manager; }
         MaterialRecipeRegistry *GetMaterialAssetRegistry() { return material_asset_registry; }
+        mtl::MaterialRecipeStore *GetRecipeStore() { return recipe_store; }
 
         // 扩展访问（不常用）
         GraphModuleManager *GetModuleManager() { return module_manager; }
