@@ -6,6 +6,7 @@
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
 #include <hgl/shadergen/CompositorCompiler.h>
+#include <hgl/shadergen/MaterialBuilder.h>
 #include <hgl/shadergen/internal/GLSLSourceUtils.h>
 #include <hgl/mtl/MaterialFeature.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
@@ -172,11 +173,11 @@ namespace
                          infer_has_sky,
                          diagnostics);
 
-        MaterialCreateInfo *mci = new MaterialCreateInfo(&cfg);
+        MaterialBuilder builder(&cfg);
         if (profile)
-            mci->SetDevice(profile);
+            builder.SetDevice(profile);
 
-        auto FailAfterMci = [&](const char *reason) -> MaterialCreateInfo *
+        auto FailWithBuilder = [&](const char *reason) -> MaterialCreateInfo *
         {
             if (diagnostics)
             {
@@ -185,7 +186,6 @@ namespace
                 *diagnostics += BuildShaderDataSchemaDebugText(def);
                 *diagnostics += ")";
             }
-            delete mci;
             return nullptr;
         };
 
@@ -195,8 +195,8 @@ namespace
         {
             for (const auto semantic : *def.ubo_descriptors)
             {
-                if (!mci->AddUBOStruct(kDefaultDescriptorStageBits, semantic))
-                    return FailAfterMci("AddUBO() failed");
+                if (!builder.AddUBOStruct(kDefaultDescriptorStageBits, semantic))
+                    return FailWithBuilder("AddUBO() failed");
             }
         }
 
@@ -206,7 +206,7 @@ namespace
             {
                 if (semantic == SSBODescriptorSemantic::TransformData)
                 {
-                    mci->SetLocalToWorld(kDefaultDescriptorStageBits);
+                    builder.SetLocalToWorld(kDefaultDescriptorStageBits);
                     continue;
                 }
 
@@ -216,8 +216,8 @@ namespace
                     continue;
                 }
 
-                if (!mci->AddSSBOStruct(kDefaultDescriptorStageBits, semantic))
-                    return FailAfterMci("AddSSBO() failed");
+                if (!builder.AddSSBOStruct(kDefaultDescriptorStageBits, semantic))
+                    return FailWithBuilder("AddSSBO() failed");
             }
         }
 
@@ -226,19 +226,20 @@ namespace
             for (const auto &[slot, descriptor] : *def.texture_samplers)
             {
                 if (!RangeCheck(descriptor.sampler_type))
-                    return FailAfterMci("texture sampler slot has invalid SamplerType");
+                    return FailWithBuilder("texture sampler slot has invalid SamplerType");
 
-                if (!mci->AddTextureSampler(mci->GetShaderStage(),
+                // Use default descriptor stage bits for texture samplers
+                if (!builder.AddTextureSampler(kDefaultDescriptorStageBits,
                                             descriptor.sampler_type,
                                             slot,
                                             descriptor.channel_hint))
                 {
-                    return FailAfterMci("AddTextureSampler(slot) failed");
+                    return FailWithBuilder("AddTextureSampler(slot) failed");
                 }
             }
         }
 
-        ShaderCreateInfoVertex *vsc = mci->GetVertexShader();
+        ShaderCreateInfoVertex *vsc = builder.GetVertexShader();
         if (vsc)
         {
             for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
@@ -253,14 +254,14 @@ namespace
             const ShaderDataSchemaInfo &schema_info = GetShaderDataSchemaInfo(def.shader_data_schema);
 
             if (schema_info.byte_size == 0)
-                return FailAfterMci("shader data schema has zero byte size");
+                return FailWithBuilder("shader data schema has zero byte size");
 
-            if (!mci->SetMaterialInstance(def.shader_data_schema, schema_info, mi_stage_bits))
-                return FailAfterMci("SetMaterialInstance() failed");
+            if (!builder.SetMaterialInstance(def.shader_data_schema, schema_info, mi_stage_bits))
+                return FailWithBuilder("SetMaterialInstance() failed");
         }
 
-        ShaderCreateInfoVertex *vert = mci->GetVertexShader();
-        ShaderCreateInfo *frag = mci->GetStageShader(ShaderStage::Fragment);
+        ShaderCreateInfoVertex *vert = builder.GetVertexShader();
+        ShaderCreateInfo *frag = builder.GetStageShader(ShaderStage::Fragment);
 
         std::string final_vs_glsl = vs_glsl;
         std::string final_fs_glsl = fs_glsl;
@@ -271,7 +272,7 @@ namespace
             const std::string schema_include = BuildShaderDataSchemaIncludeText(schema_info);
 
             if (schema_include.empty())
-                return FailAfterMci("shader data schema has no GLSL include path");
+                return FailWithBuilder("shader data schema has no GLSL include path");
 
             final_vs_glsl = hgl::graph::internal::InjectAfterVersion(final_vs_glsl, schema_include);
             final_fs_glsl = hgl::graph::internal::InjectAfterVersion(final_fs_glsl, schema_include);
@@ -283,10 +284,15 @@ namespace
         if (frag)
             frag->SetFinalGLSL(final_fs_glsl);
 
-        mci->BuildBindingContract();
+        MaterialCreateInfo *mci = builder.BuildSnapshotOnly();
+        if (!mci)
+            return FailWithBuilder("MaterialBuilder::BuildSnapshotOnly() failed");
 
         if (!InjectLayoutDefines(*mci))
-            return FailAfterMci("InjectLayoutDefines() failed");
+        {
+            delete mci;
+            return FailWithBuilder("InjectLayoutDefines() failed");
+        }
 
         return mci;
     }
@@ -360,10 +366,10 @@ MaterialCreateInfo *CompileCompositorMaterial(
         return nullptr;
     }
 
-    if (!mci->CreateShaderDirect())
+    if (!mci->CompileSPV())
     {
         std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s failed: CreateShaderDirect() failed (check GLSLCompiler log) (%s)\n",
+            "[CompileCompositorMaterial] material=%s failed: CompileSPV() failed (check GLSLCompiler log) (%s)\n",
             def.name ? def.name : "<unnamed>",
             BuildShaderDataSchemaDebugText(def).c_str());
         delete mci;

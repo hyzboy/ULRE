@@ -160,9 +160,11 @@ SOURCE_GROUP("Material Compiler\\Layout" FILES  ${SHADER_LAYOUT_HEADER_FILES}
 # Compositor
 SET(COMPOSITOR_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/CompositorAssembler.h
                              ${SHADERGEN_INCLUDE_PATH}/CompositorFeatureFlags.h
-                             ${SHADERGEN_INCLUDE_PATH}/CompositorTemplateRouter.h)
+                             ${SHADERGEN_INCLUDE_PATH}/CompositorTemplateRouter.h
+                             ${SHADERGEN_INCLUDE_PATH}/MaterialBuilder.h)
 SET(COMPOSITOR_SOURCE_FILES  CompositorAssembler.cpp
-                             CompositorTemplateRouter.cpp)
+                             CompositorTemplateRouter.cpp
+                             MaterialBuilder.cpp)
 SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
                                 ${COMPOSITOR_SOURCE_FILES})
 

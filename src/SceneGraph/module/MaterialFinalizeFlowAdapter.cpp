@@ -9,10 +9,10 @@ namespace hgl::graph
                                    MaterialFinalizePlan &out_plan)
     {
         out_plan.mp_set_types.clear();
-        out_plan.mi_data_bytes = mci.GetMaterialInstanceStride();
-        out_plan.mi_max_count = mci.GetMaterialInstanceMaxCount();
-        out_plan.mi_schema = mci.GetMaterialInstanceSchema();
-        out_plan.mi_schema_file = mci.GetMaterialInstanceSchemaFile();
+        out_plan.mi_data_bytes = mci.GetMaterialInstance().stride;
+        out_plan.mi_max_count = mci.GetMaterialInstance().max_count;
+        out_plan.mi_schema = mci.GetMaterialInstance().schema;
+        out_plan.mi_schema_file = mci.GetMaterialInstance().schema_file;
 
         if (!desc_manager)
             return;
