@@ -1,3 +1,5 @@
+#ifndef ULRE_SURFACE_UNLIT_LUMINANCE_SURFACE_GLSL
+#define ULRE_SURFACE_UNLIT_LUMINANCE_SURFACE_GLSL
 
 #include "common/surface_interface.glsl"
 
@@ -21,3 +23,5 @@ float EvalAlpha(SurfaceInput si)
 {
     return GetMaterialBindingInstance().Color.a;
 }
+
+#endif // ULRE_SURFACE_UNLIT_LUMINANCE_SURFACE_GLSL

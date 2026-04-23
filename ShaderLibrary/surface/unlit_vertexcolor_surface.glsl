@@ -1,3 +1,5 @@
+#ifndef ULRE_SURFACE_UNLIT_VERTEXCOLOR_SURFACE_GLSL
+#define ULRE_SURFACE_UNLIT_VERTEXCOLOR_SURFACE_GLSL
 
 #include "common/surface_interface.glsl"
 
@@ -18,3 +20,5 @@ float EvalAlpha(SurfaceInput si)
 {
     return si.vertexColor.a;
 }
+
+#endif // ULRE_SURFACE_UNLIT_VERTEXCOLOR_SURFACE_GLSL

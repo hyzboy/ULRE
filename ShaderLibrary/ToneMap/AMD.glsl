@@ -1,3 +1,6 @@
+#ifndef ULRE_TONEMAP_AMD_GLSL
+#define ULRE_TONEMAP_AMD_GLSL
+
 //--------------------------------------------------------------------------------------
 // AMD Tonemapper
 //--------------------------------------------------------------------------------------
@@ -60,3 +63,5 @@ vec3 ToneMapping(vec3 color)
     color = peak * ratio;
     return color;
 }
+
+#endif // ULRE_TONEMAP_AMD_GLSL

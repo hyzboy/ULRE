@@ -1,3 +1,6 @@
+#ifndef ULRE_COMMON_SAMPLER_GETTERS_GLSL
+#define ULRE_COMMON_SAMPLER_GETTERS_GLSL
+
 // ---- sampler_getters.glsl ----
 // Auto-generated sampler getter functions.
 // Controlled by HAS_SAMPLER_xxx / SAMPLER_xxx_ARRAY / SAMPLER_xxx_GRAYSCALE defines.
@@ -169,3 +172,5 @@ vec4 GetSamplerText(vec2 uv)
 #endif
 }
 #endif
+
+#endif // ULRE_COMMON_SAMPLER_GETTERS_GLSL

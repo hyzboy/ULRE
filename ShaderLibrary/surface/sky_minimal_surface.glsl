@@ -1,3 +1,5 @@
+#ifndef ULRE_SURFACE_SKY_MINIMAL_SURFACE_GLSL
+#define ULRE_SURFACE_SKY_MINIMAL_SURFACE_GLSL
 
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
@@ -33,3 +35,5 @@ SurfaceOutput EvalSurface(SurfaceInput si)
     so.alpha     = 1.0;
     return so;
 }
+
+#endif // ULRE_SURFACE_SKY_MINIMAL_SURFACE_GLSL

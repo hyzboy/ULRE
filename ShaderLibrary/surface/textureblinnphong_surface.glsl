@@ -1,3 +1,5 @@
+#ifndef ULRE_SURFACE_TEXTUREBLINNPHONG_SURFACE_GLSL
+#define ULRE_SURFACE_TEXTUREBLINNPHONG_SURFACE_GLSL
 
 #include "common/schema/schema_standard_params.glsl"
 
@@ -55,3 +57,5 @@ SurfaceOutput EvalSurface(SurfaceInput si)
     so.alpha     = 1.0;
     return so;
 }
+
+#endif // ULRE_SURFACE_TEXTUREBLINNPHONG_SURFACE_GLSL

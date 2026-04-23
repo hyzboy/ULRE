@@ -1,25 +1,18 @@
-// ──────────────────────────────────────────────────────────────────────────
-// vert_forward_main.glsl — Unified forward vertex main template.
+#ifndef ULRE_COMPOSITOR_VERT_FORWARD_MAIN_GLSL
+#define ULRE_COMPOSITOR_VERT_FORWARD_MAIN_GLSL
+
+// vert_forward_main.glsl -- Unified forward vertex entry point.
 //
-// Control defines (set before #including this file):
+// Injected by C++ CompositorAssembler after:
+//   vert_forward_ubo.glsl  (camera, transform, MI id)
+//   [vertex_fetch_ssbo.glsl or vertex attribute declarations]
+//   common/varying_interface.glsl (VARYING_STAGE_VERT must be defined first)
 //
-//   Varying flags (must match the fragment shader's HAS_* defines):
-//     HAS_POSITION      output fragWorldPos (vec3)
-//     HAS_NORMAL   input  inNormal  → output fragWorldNormal (vec3)
-//     HAS_TANGENT  input  inTangent → output fragWorldTangent (vec4, xyz world tangent + w handedness)
-//     HAS_TEXCOORD            input  inUV0     → output fragUV0 (vec2)
-//     HAS_COLOR   input  inColor   → output fragVertexColor (vec4)
-//     HAS_LUMINANCE      input  inLuminance → output fragLuminance (float)
-//     HAS_DIRECTION      output fragDirection = normalize(position) (sky)
-//
-//   Geometry source:
-//     GEOMETRY_FETCH_SSBO  (injected by C++)  use vertex_fetch_ssbo.glsl
-//                          instead of vertex attributes
-//
-//   Position mode:
-//     VERT_INPUT_2D      position attribute is vec2 (padded to vec3 with z=0)
-//     (default)          position attribute is vec3
-// ──────────────────────────────────────────────────────────────────────────
+// Control defines (set by CompositorAssembler):
+//   HAS_POSITION / HAS_NORMAL / HAS_TANGENT / HAS_TEXCOORD
+//   HAS_COLOR / HAS_LUMINANCE / HAS_DIRECTION
+//   VERT_INPUT_2D    -- position attribute is vec2 (padded to vec3 with z=0)
+//   GEOMETRY_FETCH_SSBO -- read geometry from SSBO instead of vertex attribs
 
 // --- Vertex inputs ---
 #if GEOMETRY_FETCH_SSBO
@@ -53,77 +46,15 @@
 #endif
 
 // --- Varying interface ---
-#define VARYING_STAGE_VERT
-#include "common/varying_interface.glsl"
+#include "common/varying_vs.glsl"
 
 void main()
 {
     fragMaterialInstanceID = GetMaterialInstanceID();
-    mat4 transform_mat = GetTransform();
 
-    // Position
-#if GEOMETRY_FETCH_SSBO
-    vec3 pos3 = FetchPosition(gl_VertexIndex);
-#elif defined(VERT_INPUT_2D)
-    vec3 pos3 = vec3(inPosition, 0.0);
-#else
-    vec3 pos3 = inPosition;
-#endif
-
-    vec4 worldPos = transform_mat * vec4(pos3, 1.0);
-
-#ifdef HAS_POSITION
-    fragWorldPos = worldPos.xyz;
-#endif
-
-    // Normal
-#ifdef HAS_NORMAL
-  #if GEOMETRY_FETCH_SSBO
-    vec3 rawNormal = FetchNormal(gl_VertexIndex);
-  #else
-    vec3 rawNormal = inNormal;
-  #endif
-    fragWorldNormal = normalize(mat3(transform_mat) * rawNormal);
-#endif
-
-        // Tangent (xyz transformed to world, w keeps handedness sign)
-#ifdef HAS_TANGENT
-    #if GEOMETRY_FETCH_SSBO
-        vec3 rawTangent = vec3(1.0, 0.0, 0.0);
-        float tangentW = 1.0;
-    #elif defined(TANGENT_LOCATION)
-        vec3 rawTangent = inTangent.xyz;
-        float tangentW = inTangent.w;
-    #else
-        vec3 rawTangent = vec3(1.0, 0.0, 0.0);
-        float tangentW = 1.0;
-    #endif
-        fragWorldTangent = vec4(normalize(mat3(transform_mat) * rawTangent), tangentW);
-#endif
-
-    // UV0
-#ifdef HAS_TEXCOORD
-  #if GEOMETRY_FETCH_SSBO
-    fragUV0 = FetchUV0(gl_VertexIndex);
-  #else
-    fragUV0 = inUV0;
-  #endif
-#endif
-
-    // Vertex color
-#ifdef HAS_COLOR
-    fragVertexColor = inColor;
-#endif
-
-    // Luminance
-#ifdef HAS_LUMINANCE
-    fragLuminance = inLuminance;
-#endif
-
-    // Direction (sky)
-#ifdef HAS_DIRECTION
-    fragDirection = normalize(pos3);
-#endif
+#include "compositor/vert_input_resolve.glsl"
 
     gl_Position = camera.vp * worldPos;
 }
+
+#endif // ULRE_COMPOSITOR_VERT_FORWARD_MAIN_GLSL

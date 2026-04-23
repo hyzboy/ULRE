@@ -2,25 +2,7 @@
 #define LIGHTING_PBR_GLSL
 
 #include "common/surface_interface.glsl"
-
-float EL_D_GGX(float NdotH, float alpha2)
-{
-    float d = NdotH * NdotH * (alpha2 - 1.0) + 1.0;
-    return alpha2 / (3.14159265 * d * d + 1e-7);
-}
-
-float EL_G_Smith(float NdotV, float NdotL, float roughness)
-{
-    float k  = (roughness + 1.0) * (roughness + 1.0) / 8.0;
-    float gv = NdotV / (NdotV * (1.0 - k) + k + 1e-7);
-    float gl = NdotL / (NdotL * (1.0 - k) + k + 1e-7);
-    return gv * gl;
-}
-
-vec3 EL_F_Schlick(float VdotH, vec3 F0)
-{
-    return F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
-}
+#include "util/pbr_brdf.glsl"
 
 vec3 EvalLighting(SurfaceOutput surface, vec3 viewDir, vec3 lightDir, vec3 lightColor)
 {
@@ -35,10 +17,10 @@ vec3 EvalLighting(SurfaceOutput surface, vec3 viewDir, vec3 lightDir, vec3 light
     float VdotH  = max(dot(V, H), 0.0);
 
     float alpha2 = surface.roughness * surface.roughness * surface.roughness * surface.roughness;
-    float D      = EL_D_GGX(NdotH, alpha2);
-    float G      = EL_G_Smith(NdotV, NdotL, surface.roughness);
+    float D      = PBR_D_GGX(NdotH, alpha2);
+    float G      = PBR_G_Smith(NdotV, NdotL, surface.roughness);
     vec3  F0     = mix(vec3(0.04), surface.baseColor, surface.metallic);
-    vec3  F      = EL_F_Schlick(VdotH, F0);
+    vec3  F      = PBR_F_Schlick(VdotH, F0);
 
     vec3 kd       = (1.0 - F) * (1.0 - surface.metallic);
     vec3 diffuse  = kd * surface.baseColor / 3.14159265 * NdotL;

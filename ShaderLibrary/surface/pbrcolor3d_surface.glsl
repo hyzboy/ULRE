@@ -1,44 +1,10 @@
+#ifndef ULRE_SURFACE_PBRCOLOR3D_SURFACE_GLSL
+#define ULRE_SURFACE_PBRCOLOR3D_SURFACE_GLSL
 
+#include "common/surface_interface.glsl"
 #include "common/ssbo_material_instance.glsl"
-
-
-const float PBR_PI = 3.14159265359;
-
-float PBR_NDF(float NdotH, float roughness)
-{
-    float a  = roughness * roughness;
-    float a2 = a * a;
-    float d  = NdotH * NdotH * (a2 - 1.0) + 1.0;
-    return a2 / max(PBR_PI * d * d, 0.0001);
-}
-
-float PBR_G1(float NdotX, float roughness)
-{
-    float r = roughness + 1.0;
-    float k = (r * r) / 8.0;
-    return NdotX / max(NdotX * (1.0 - k) + k, 0.0001);
-}
-
-float PBR_G(float NdotV, float NdotL, float roughness)
-{
-    return PBR_G1(NdotV, roughness) * PBR_G1(NdotL, roughness);
-}
-
-vec3 PBR_F(float cosTheta, vec3 F0)
-{
-    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}
-
-vec3 PBR_ApplyNormalMap(vec3 worldPos, vec2 uv, vec3 n_geom, vec4 tangent_ws, vec3 normal_ts)
-{
-    vec3 n = normalize(n_geom);
-    vec3 t = normalize(tangent_ws.xyz - n * dot(n, tangent_ws.xyz));
-    float handedness = (tangent_ws.w >= 0.0) ? 1.0 : -1.0;
-    vec3 b = normalize(cross(n, t)) * handedness;
-
-    mat3 tbn = mat3(t, b, n);
-    return normalize(tbn * normal_ts);
-}
+#include "util/pbr_brdf.glsl"
+#include "util/normal_mapping.glsl"
 
 
 SurfaceOutput EvalSurface(SurfaceInput si)
@@ -60,10 +26,11 @@ SurfaceOutput EvalSurface(SurfaceInput si)
     float VdotH = max(dot(V, H), 0.0);
 
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
+    float alpha2 = roughness * roughness * roughness * roughness;  // r^4 (GGX convention)
 
-    vec3  F = PBR_F(VdotH, F0);
-    float D = PBR_NDF(NdotH, roughness);
-    float G = PBR_G(NdotV, NdotL, roughness);
+    vec3  F = PBR_F_Schlick(VdotH, F0);
+    float D = PBR_D_GGX(NdotH, alpha2);
+    float G = PBR_G_Smith(NdotV, NdotL, roughness);
 
     vec3 specular = (D * G * F) / max(4.0 * NdotV * NdotL, 0.0001);
 
@@ -91,3 +58,5 @@ SurfaceOutput EvalSurface(SurfaceInput si)
     so.alpha     = 1.0;
     return so;
 }
+
+#endif // ULRE_SURFACE_PBRCOLOR3D_SURFACE_GLSL

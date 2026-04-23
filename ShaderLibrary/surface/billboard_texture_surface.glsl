@@ -1,3 +1,5 @@
+#ifndef ULRE_SURFACE_BILLBOARD_TEXTURE_SURFACE_GLSL
+#define ULRE_SURFACE_BILLBOARD_TEXTURE_SURFACE_GLSL
 
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
@@ -18,3 +20,5 @@ float EvalAlpha(SurfaceInput si)
 {
     return GetSamplerBaseColor(si.uv0).a;
 }
+
+#endif // ULRE_SURFACE_BILLBOARD_TEXTURE_SURFACE_GLSL

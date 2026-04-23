@@ -1,4 +1,8 @@
-﻿// ACES tone map
+#ifndef ULRE_TONEMAP_ACES_GLSL
+#define ULRE_TONEMAP_ACES_GLSL
+
+#include "util/color_space.glsl"
+// ACES tone map
 // see: https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
 // - ACES Filmic Tone Mapping Curve
 //   https://web.archive.org/web/20191027010704/https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
@@ -11,3 +15,5 @@ vec3 ToneMapping(vec3 color)
     const float E = 0.14;
     return linearTosRGB(clamp((color * (A * color + B)) / (color * (C * color + D) + E), 0.0, 1.0));
 }
+
+#endif // ULRE_TONEMAP_ACES_GLSL

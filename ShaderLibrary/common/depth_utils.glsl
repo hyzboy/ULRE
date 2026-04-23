@@ -1,3 +1,5 @@
+#ifndef ULRE_COMMON_DEPTH_UTILS_GLSL
+#define ULRE_COMMON_DEPTH_UTILS_GLSL
 
 /* Comment normalized for ASCII safety. */
 float LinearizeDepth(float d, float near_z)
@@ -11,3 +13,5 @@ vec3 ReconstructWorldPos(vec2 ndc, float depth, mat4 inv_view_proj)
     vec4 world = inv_view_proj * clip;
     return world.xyz / world.w;
 }
+
+#endif // ULRE_COMMON_DEPTH_UTILS_GLSL

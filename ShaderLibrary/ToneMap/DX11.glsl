@@ -1,3 +1,6 @@
+#ifndef ULRE_TONEMAP_DX11_GLSL
+#define ULRE_TONEMAP_DX11_GLSL
+
 //--------------------------------------------------------------------------------------
 // The tone mapper used in HDRToneMappingCS11
 //--------------------------------------------------------------------------------------
@@ -13,3 +16,5 @@ vec3 ToneMapping(vec3 color)
     
     return color;
 }
+
+#endif // ULRE_TONEMAP_DX11_GLSL

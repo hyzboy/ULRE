@@ -1,3 +1,6 @@
+#ifndef ULRE_COMPOSITOR_VERT_FORWARD_UBO_GLSL
+#define ULRE_COMPOSITOR_VERT_FORWARD_UBO_GLSL
+
 // ──────────────────────────────────────────────────────────────────────────
 // vert_forward_ubo.glsl — Shared vertex shader prologue.
 //
@@ -17,3 +20,5 @@ uint GetMaterialInstanceID()
 	return gl_InstanceIndex;
 }
 #endif
+
+#endif // ULRE_COMPOSITOR_VERT_FORWARD_UBO_GLSL

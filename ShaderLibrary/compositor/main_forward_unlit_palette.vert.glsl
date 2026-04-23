@@ -1,3 +1,6 @@
+#ifndef ULRE_COMPOSITOR_MAIN_FORWARD_UNLIT_PALETTE_VERT_GLSL
+#define ULRE_COMPOSITOR_MAIN_FORWARD_UNLIT_PALETTE_VERT_GLSL
+
 #include "compositor/vert_forward_ubo.glsl"
 #include "common/ubo_color_palette.glsl"
 
@@ -18,3 +21,5 @@ void main()
 
     gl_Position = camera.vp * worldPos;
 }
+
+#endif // ULRE_COMPOSITOR_MAIN_FORWARD_UNLIT_PALETTE_VERT_GLSL

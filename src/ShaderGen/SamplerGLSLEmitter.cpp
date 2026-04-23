@@ -30,44 +30,62 @@ namespace
     static void AppendKnownSlotSampler(std::string &out, const ShaderDescriptor *descriptor, const mtl::SamplerSlot slot, const TextureChannelHint channel_hint)
     {
         const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(slot);
-        const char *legacy_name = mtl::ToDescriptorName(slot);
+        const char *slot_name      = mtl::SamplerSlotNameList[uint8(slot)];
         const std::string upper_name = mtl::ToUpperASCII(mtl::SamplerSlotNameList[uint8(slot)]);
         ShaderWriter writer(out);
 
         writer.EmitLayoutBinding(descriptor->set, descriptor->binding)
               .EmitUniform("sampler2D", sampler_symbol)
-              .EmitIfndefDef(legacy_name, sampler_symbol)
               .EmitDefine("HAS_SAMPLER_" + upper_name);
 
+        // Inline getter — no longer needs sampler_getters.glsl
         if (channel_hint == TextureChannelHint::Grayscale)
         {
-            writer.EmitDefine("SAMPLER_" + upper_name + "_GRAYSCALE");
+            out += "vec4 GetSampler"; out += slot_name;
+            out += "(vec2 uv) { float r = texture("; out += sampler_symbol;
+            out += ", uv).r; return vec4(r,r,r,r); }\n";
+        }
+        else
+        {
+            out += "vec4 GetSampler"; out += slot_name;
+            out += "(vec2 uv) { return texture("; out += sampler_symbol;
+            out += ", uv); }\n";
         }
 
         writer.NewLine();
     }
 
-    // Generates sampler2DArray binding + layer index global + getter — no #ifdef guards.
-    // The emitter preamble is injected before AppendGLSLDefines, so ifdefs cannot be used here.
     static void AppendKnownSlotArraySampler(std::string &out, const ShaderDescriptor *descriptor, const mtl::SamplerSlot slot, const TextureChannelHint channel_hint)
     {
         const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(slot);
         const char *slot_name      = mtl::SamplerSlotNameList[uint8(slot)];
         const std::string upper_name = mtl::ToUpperASCII(slot_name);
+        const std::string layer_var  = std::string("_tex_layer_") + slot_name;
         ShaderWriter writer(out);
 
         writer.EmitLayoutBinding(descriptor->set, descriptor->binding)
               .EmitUniform("sampler2DArray", sampler_symbol);
 
-        // Per-slot layer index — written by _ULRE_InitTextureLayerIndices() at frame start.
-        writer.EmitVariable("uint", std::string("_tex_layer_") + slot_name);
+        writer.EmitVariable("uint", layer_var);
 
         writer.EmitDefine("HAS_SAMPLER_" + upper_name)
               .EmitDefine("SAMPLER_" + upper_name + "_ARRAY");
 
         if (channel_hint == TextureChannelHint::Grayscale)
-        {
             writer.EmitDefine("SAMPLER_" + upper_name + "_GRAYSCALE");
+
+        // Inline getter — array variant
+        if (channel_hint == TextureChannelHint::Grayscale)
+        {
+            out += "vec4 GetSampler"; out += slot_name;
+            out += "(vec2 uv) { float r = texture("; out += sampler_symbol;
+            out += ", vec3(uv, float("; out += layer_var; out += "))).r; return vec4(r,r,r,r); }\n";
+        }
+        else
+        {
+            out += "vec4 GetSampler"; out += slot_name;
+            out += "(vec2 uv) { return texture("; out += sampler_symbol;
+            out += ", vec3(uv, float("; out += layer_var; out += "))); }\n";
         }
 
         writer.NewLine();
@@ -160,7 +178,9 @@ std::string EmitSimpleSamplerGLSL(const MaterialDescriptorDB &mdi, ShaderStage s
     }
 
     if (has_known_slot)
-        out += "#include \"common/sampler_getters.glsl\"\n";
+        // Pre-apply the file's include guard so a stray #include "common/sampler_getters.glsl"
+        // in any surface file will be a no-op (getters are already generated inline above).
+        out += "#define ULRE_COMMON_SAMPLER_GETTERS_GLSL\n";
 
     out += "// ----------------------------------------------------\n\n";
     return out;

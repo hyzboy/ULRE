@@ -1,4 +1,8 @@
-﻿// Uncharted 2 tone map
+#ifndef ULRE_TONEMAP_UNCHARTED2_GLSL
+#define ULRE_TONEMAP_UNCHARTED2_GLSL
+
+#include "util/color_space.glsl"
+// Uncharted 2 tone map
 // see: http://filmicworlds.com/blog/filmic-tonemapping-operators/
 vec3 toneMapUncharted2Impl(vec3 color)
 {
@@ -18,3 +22,5 @@ vec3 ToneMapping(vec3 color)
     vec3 whiteScale = 1.0 / toneMapUncharted2Impl(vec3(W));
     return linearTosRGB(color * whiteScale);
 }
+
+#endif // ULRE_TONEMAP_UNCHARTED2_GLSL

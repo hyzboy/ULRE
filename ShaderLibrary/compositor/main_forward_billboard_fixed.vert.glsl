@@ -1,3 +1,6 @@
+#ifndef ULRE_COMPOSITOR_MAIN_FORWARD_BILLBOARD_FIXED_VERT_GLSL
+#define ULRE_COMPOSITOR_MAIN_FORWARD_BILLBOARD_FIXED_VERT_GLSL
+
 #include "common/ubo_camera.glsl"
 #include "common/ubo_viewport.glsl"
 #include "common/ssbo_transform.glsl"
@@ -26,3 +29,5 @@ void main()
 
     gl_Position = vec4(ndc * center_clip.w, center_clip.z, center_clip.w);
 }
+
+#endif // ULRE_COMPOSITOR_MAIN_FORWARD_BILLBOARD_FIXED_VERT_GLSL

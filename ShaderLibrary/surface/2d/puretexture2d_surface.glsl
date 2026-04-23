@@ -1,3 +1,6 @@
+#ifndef ULRE_SURFACE_2D_PURETEXTURE2D_SURFACE_GLSL
+#define ULRE_SURFACE_2D_PURETEXTURE2D_SURFACE_GLSL
+
 // ──────────────────────────────────────────────────────────────────────────
 // puretexture2d_surface.glsl — Pure texture 2D surface function.
 //
@@ -27,3 +30,5 @@ float EvalAlpha(SurfaceInput si)
 {
     return GetSamplerBaseColor(si.uv0).a;
 }
+
+#endif // ULRE_SURFACE_2D_PURETEXTURE2D_SURFACE_GLSL

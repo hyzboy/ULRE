@@ -1,3 +1,6 @@
+#ifndef ULRE_COMPOSITOR_FRAG_FORWARD_UBO_GLSL
+#define ULRE_COMPOSITOR_FRAG_FORWARD_UBO_GLSL
+
 // ──────────────────────────────────────────────────────────────────────────
 // frag_forward_ubo.glsl — Conditional UBO includes for forward fragment shaders.
 //
@@ -22,5 +25,7 @@
 // Shared struct definitions (SurfaceInput, SurfaceOutput, SurfaceOutputExt)
 #include "common/surface_interface.glsl"
 
-// Varying declarations + auto-defines MATERIAL_INSTANCE_ID_OVERRIDE
-#include "common/varying_interface.glsl"
+// Varying declarations
+#include "common/varying_fs.glsl"
+
+#endif // ULRE_COMPOSITOR_FRAG_FORWARD_UBO_GLSL

@@ -1,3 +1,6 @@
+#ifndef ULRE_TONEMAP_PBRNETRAL_GLSL
+#define ULRE_TONEMAP_PBRNETRAL_GLSL
+
 vec3 ToneMapping(vec3 color)
 {
     const float startCompression = 0.8 - 0.04;
@@ -17,3 +20,5 @@ vec3 ToneMapping(vec3 color)
     float g = 1. - 1. / (desaturation * (peak - newPeak) + 1.);
     return mix(color, newPeak * vec3(1, 1, 1), g);
 }
+
+#endif // ULRE_TONEMAP_PBRNETRAL_GLSL

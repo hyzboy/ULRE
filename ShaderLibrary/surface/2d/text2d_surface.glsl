@@ -1,3 +1,6 @@
+#ifndef ULRE_SURFACE_2D_TEXT2D_SURFACE_GLSL
+#define ULRE_SURFACE_2D_TEXT2D_SURFACE_GLSL
+
 // ──────────────────────────────────────────────────────────────────────────
 // text2d_surface.glsl — Text 2D surface function.
 //
@@ -33,3 +36,5 @@ float EvalAlpha(SurfaceInput si)
     MaterialBindingInstance mi = GetMaterialBindingInstance();
     return unpackUnorm4x8(mi.TextColor).a;
 }
+
+#endif // ULRE_SURFACE_2D_TEXT2D_SURFACE_GLSL

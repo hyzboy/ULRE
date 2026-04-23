@@ -1,3 +1,6 @@
+#ifndef ULRE_2D_GET_POSITION_2D_GLSL
+#define ULRE_2D_GET_POSITION_2D_GLSL
+
 /// get_position_2d.glsl — 2D 顶点位置计算
 ///
 /// 由 Build2DVertexPreamble 注入以下 #define 控制变体：
@@ -33,3 +36,5 @@ vec4 GetPosition2D()
     return vec4(vec2(Position), 0, 1);
 #endif
 }
+
+#endif // ULRE_2D_GET_POSITION_2D_GLSL

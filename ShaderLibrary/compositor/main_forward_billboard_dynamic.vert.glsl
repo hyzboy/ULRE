@@ -1,3 +1,6 @@
+#ifndef ULRE_COMPOSITOR_MAIN_FORWARD_BILLBOARD_DYNAMIC_VERT_GLSL
+#define ULRE_COMPOSITOR_MAIN_FORWARD_BILLBOARD_DYNAMIC_VERT_GLSL
+
 #include "compositor/vert_forward_ubo.glsl"
 layout(location=POSITION_LOCATION) in vec3 Position;
 
@@ -18,3 +21,5 @@ void main()
 
     gl_Position = camera.vp * vec4(world_pos, 1.0);
 }
+
+#endif // ULRE_COMPOSITOR_MAIN_FORWARD_BILLBOARD_DYNAMIC_VERT_GLSL

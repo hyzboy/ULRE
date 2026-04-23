@@ -1,60 +1,31 @@
-// ──────────────────────────────────────────────────────────────────────────
-// frag_forward_main.glsl — Unified forward fragment main template.
-//
-// Control defines (set before #including this file):
-//
-//   Varying flags (must match the vertex shader's HAS_* defines):
-//     HAS_POSITION            fragWorldPos (vec3)      — also drives si.viewDir
-//     HAS_NORMAL              fragWorldNormal (vec3)
-//     HAS_TANGENT             fragWorldTangent (vec4)  — world tangent xyz + handedness w
-//     HAS_TEXCOORD            fragUV0 (vec2)
-//     HAS_COLOR               fragVertexColor (vec4)
-//     HAS_BILLBOARD_TEXCOORD  fragTexCoord (vec2)      — maps to si.uv0
-//     HAS_DIRECTION      fragDirection (vec3)      — maps to si.worldPos+viewDir; pulls ubo_sky
-//     HAS_LUMINANCE      fragLuminance (float)
-//     HAS_CLIP_POS       fragClipPos (vec4)        — maps to si.worldPos; pulls ubo_camera
-//
-//   UBO flags:
-//     NEEDS_SKY          include ubo_sky.glsl before surface include
-//     NEEDS_CAMERA       include ubo_camera.glsl before surface include
-//
-//   Feature flags:
-//     ENABLE_LIGHTING    EvalLighting path (pulls camera+sky+viewport UBOs);
-//                        si.viewDir = normalize(camera.pos - fragWorldPos)
-//     ALPHA_MODE_MASKED  alpha-test discard at ALPHA_THRESHOLD (default 0.5)
-//     ALPHA_MODE_DITHER  Bayer 4x4 ordered dither discard
-//     (default)          transparent passthrough: output so.baseColor + so.alpha
-//
-//   Surface include is emitted by C++ assembler before this file:
-//     e.g. "surface/xxx_surface.glsl"
-// ──────────────────────────────────────────────────────────────────────────
+#ifndef ULRE_COMPOSITOR_FRAG_FORWARD_MAIN_GLSL
+#define ULRE_COMPOSITOR_FRAG_FORWARD_MAIN_GLSL
 
-// Fragment output
+// ──────────────────────────────────────────────────────────────────────────
+// frag_forward_main.glsl -- Unified forward fragment entry point.
+//
+// Injected by C++ CompositorAssembler after:
+//   frag_forward_ubo.glsl  (UBO declarations, surface_interface, varyings)
+//   [skylight_*.glsl]      (if NEEDS_SKY / ENABLE_LIGHTING)
+//   [lighting_*.glsl]      (if ENABLE_LIGHTING)
+//   [surface/*.glsl]       (EvalSurface implementation)
+//
+// Control defines (set by CompositorAssembler before this chain):
+//   HAS_POSITION / HAS_NORMAL / HAS_TANGENT / HAS_TEXCOORD
+//   HAS_COLOR / HAS_BILLBOARD_TEXCOORD / HAS_DIRECTION / HAS_LUMINANCE / HAS_CLIP_POS
+//   ENABLE_LIGHTING   -- EvalLighting path
+//   ALPHA_MODE_MASKED -- hard clip at ALPHA_THRESHOLD (default 0.5)
+//   ALPHA_MODE_DITHER -- Bayer 4x4 ordered dither discard
+//   TEXTURE_ARRAY_MODE
+
 layout(location=0) out vec4 outColor;
 
-// 4. Lighting helper is emitted by C++ assembler before this file.
-
-// 7. Bayer 4x4 ordered dither helper
-#ifdef ALPHA_MODE_DITHER
-float BayerDither4x4(ivec2 p)
-{
-    const float bayer[16] = float[16](
-         0.0 / 16.0,  8.0 / 16.0,  2.0 / 16.0, 10.0 / 16.0,
-        12.0 / 16.0,  4.0 / 16.0, 14.0 / 16.0,  6.0 / 16.0,
-         3.0 / 16.0, 11.0 / 16.0,  1.0 / 16.0,  9.0 / 16.0,
-        15.0 / 16.0,  7.0 / 16.0, 13.0 / 16.0,  5.0 / 16.0
-    );
-    int idx = (p.y % 4) * 4 + (p.x % 4);
-    return bayer[idx];
-}
+#if defined(ALPHA_MODE_MASKED) || defined(ALPHA_MODE_DITHER)
+#include "util/alpha_test.glsl"
 #endif
 
-// 8. Alpha threshold default for ALPHA_MODE_MASKED
-#ifdef ALPHA_MODE_MASKED
-#  ifndef ALPHA_THRESHOLD
-#    define ALPHA_THRESHOLD 0.5
-#  endif
-#endif
+#include "compositor/frag_input_resolve.glsl"
+#include "compositor/frag_output_compose.glsl"
 
 void main()
 {
@@ -62,87 +33,9 @@ void main()
     _ULRE_InitTextureLayerIndices(MATERIAL_INSTANCE_ID_OVERRIDE);
 #endif
 
-    SurfaceInput si;
-
-    // worldPos
-#if defined(HAS_POSITION)
-    si.worldPos    = fragWorldPos;
-#elif defined(HAS_CLIP_POS)
-    si.worldPos    = fragClipPos.xyz;
-#elif defined(HAS_DIRECTION)
-    si.worldPos    = fragDirection;
-#else
-    si.worldPos    = vec3(0.0);
-#endif
-
-    // worldNormal
-#ifdef HAS_NORMAL
-    si.worldNormal = normalize(fragWorldNormal);
-#else
-    si.worldNormal = vec3(0.0, 0.0, 1.0);
-#endif
-
-    // worldTangent (xyz + handedness sign in w)
-#ifdef HAS_TANGENT
-    si.worldTangent = vec4(normalize(fragWorldTangent.xyz), fragWorldTangent.w);
-#else
-    si.worldTangent = vec4(1.0, 0.0, 0.0, 1.0);
-#endif
-
-    // uv0
-#if defined(HAS_TEXCOORD)
-    si.uv0         = fragUV0;
-#elif defined(HAS_BILLBOARD_TEXCOORD)
-    si.uv0         = fragTexCoord;
-#else
-    si.uv0         = vec2(0.0);
-#endif
-
-    si.uv1         = vec2(0.0);
-
-    // vertexColor + luminance base
-#ifdef HAS_COLOR
-    si.vertexColor = fragVertexColor;
-    si.luminance   = 1.0;
-#else
-    si.vertexColor = vec4(1.0);
-    si.luminance   = 0.0;
-#endif
-
-    // luminance override from varying
-#ifdef HAS_LUMINANCE
-    si.luminance   = fragLuminance;
-#endif
-
-    // viewDir
-#ifdef ENABLE_LIGHTING
-    si.viewDir     = normalize(camera.pos - fragWorldPos);
-#elif defined(HAS_POSITION)
-    si.viewDir     = normalize(-fragWorldPos);
-#elif defined(HAS_DIRECTION)
-    si.viewDir     = fragDirection;
-#else
-    si.viewDir     = vec3(0.0, 0.0, 1.0);
-#endif
-
-    si.screenPos   = gl_FragCoord.xy;
-
+    SurfaceInput  si = ResolveSurfaceInput();
     SurfaceOutput so = EvalSurface(si);
-
-    // Output based on alpha mode
-#ifdef ENABLE_LIGHTING
-    vec3 litColor = EvalLighting(so, si.viewDir, ULRE_GetSkyLightDir(), ULRE_GetSkyLightColor());
-    litColor += so.baseColor * ULRE_GetSkyAmbientColor() * so.ao;
-    litColor += so.emissive;
-    outColor = vec4(litColor, so.alpha);
-#elif defined(ALPHA_MODE_MASKED)
-    if (so.alpha < ALPHA_THRESHOLD) discard;
-    outColor = vec4(so.baseColor, 1.0);
-#elif defined(ALPHA_MODE_DITHER)
-    float threshold = BayerDither4x4(ivec2(gl_FragCoord.xy));
-    if (so.alpha < threshold) discard;
-    outColor = vec4(so.baseColor, 1.0);
-#else
-    outColor = vec4(so.baseColor, so.alpha);
-#endif
+    ComposeOutput(so, si);
 }
+
+#endif // ULRE_COMPOSITOR_FRAG_FORWARD_MAIN_GLSL

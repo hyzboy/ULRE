@@ -1,3 +1,6 @@
+#ifndef ULRE_COMPOSITOR_MAIN_TERRAIN_GRID_VERT_GLSL
+#define ULRE_COMPOSITOR_MAIN_TERRAIN_GRID_VERT_GLSL
+
 #include "compositor/vert_forward_ubo.glsl"
 
 #define VARYING_STAGE_VERT
@@ -29,3 +32,5 @@ void main()
 
     gl_Position = fragClipPos;
 }
+
+#endif // ULRE_COMPOSITOR_MAIN_TERRAIN_GRID_VERT_GLSL
