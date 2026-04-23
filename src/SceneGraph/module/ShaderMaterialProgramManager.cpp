@@ -29,22 +29,6 @@
 
 namespace hgl::graph{
 
-bool MaterialSpec::IsValid() const
-{
-    switch (family)
-    {
-        case Family::Preset2D:
-            return cfg2d != nullptr;
-        case Family::Preset3D:
-            return cfg3d != nullptr;
-        case Family::Variant2D:
-            return variant_key != nullptr && cfg2d != nullptr;
-        case Family::Variant3D:
-            return variant_key != nullptr && cfg3d != nullptr;
-        default:
-            return false;
-    }
-}
 
 namespace
 {
@@ -325,22 +309,6 @@ void ShaderMaterialProgramManager::ApplyMaterialFinalizePlan(ShaderMaterialProgr
         finalize_plan.mp_set_types.size());
 }
 
-ShaderMaterialProgram *ShaderMaterialProgramManager::TryGetCachedMaterial(const AnsiString &name)
-{
-    acquire_material_cache_lookups.fetch_add(1);
-
-    ShaderMaterialProgram *cached = nullptr;
-    if(material_by_name.Get(name, cached))
-    {
-        acquire_material_cache_hits.fetch_add(1);
-        return cached;
-    }
-
-    acquire_material_cache_misses.fetch_add(1);
-
-    return nullptr;
-}
-
 ShaderMaterialProgram *ShaderMaterialProgramManager::TryInitializeFallbackMaterial()
 {
     if(fallback_material)
@@ -429,7 +397,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const AnsiSt
     const MaterialCreatePrecheckDecision precheck_decision = RunMaterialCreatePrecheck(
         mci,
         mtl_name,
-        [&](const AnsiString &name)->ShaderMaterialProgram * { return TryGetCachedMaterial(name); },
+        [](const AnsiString &) -> ShaderMaterialProgram * { return nullptr; },
         precheck_result);
 
     if(precheck_decision == MaterialCreatePrecheckDecision::UseCached)
@@ -461,7 +429,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const AnsiSt
     Add(mtl);
     acquire_material_created.fetch_add(1);
 
-    material_by_name.Add(mtl_name,mtl);
     // ShaderMaterialProgram is a C++ object managed by ShaderMaterialProgramManager, not a Vulkan object
     // No need to track with ObjectTracker
     return mtl.Finish();
@@ -479,6 +446,93 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     mtl::MaterialVariantKey key = mtl::MapPresetToVariantKey(mtl_id);
     mtl::ApplyCreateConfigToVariantKey(key, cfg);
     return CreateMaterial(key, cfg);
+}
+
+// file-static: moved from MaterialAssetLoader.h (was inline)
+static ShaderMaterialProgram *CreateMaterialFromRecord(
+    ShaderMaterialProgramManager *mm,
+    const mtl::MaterialRecipe &rec)
+{
+    if (!mm) return nullptr;
+
+    using namespace mtl;
+
+    // ── Billboard2DFixed / Billboard2DDynamic ────────────────────────────────
+    if (rec.preset == MaterialPreset::Billboard2DFixed ||
+        rec.preset == MaterialPreset::Billboard2DDynamic)
+    {
+        BillboardMaterialCreateConfig cfg(rec.prim);
+        cfg.local_to_world  = rec.l2w;
+        cfg.fixed_size      = rec.billboard.fixed_size;
+        cfg.pixel_size      = { rec.billboard.pixel_w, rec.billboard.pixel_h };
+        cfg.blend_mode      = rec.billboard.blend_mode;
+        cfg.base_color_channel = rec.billboard.base_color_channel;
+        cfg.front_face      = rec.billboard.front_face_ccw
+                              ? VK_FRONT_FACE_COUNTER_CLOCKWISE
+                              : VK_FRONT_FACE_CLOCKWISE;
+        if (!rec.billboard.texture_id.empty())
+            cfg.texture_id = rec.billboard.texture_id;
+        if (rec.pos_format.Check())
+            cfg.position_format = rec.pos_format;
+        for (const auto &tc : rec.textures)
+            if (tc.source_mode == TextureSourceMode::Array)
+            { cfg.use_texture_array = true; break; }
+
+        std::fprintf(stderr, "[CreateMaterialFromRecord] Billboard preset=%d  use_texture_array=%d  blend=%d\n",
+            (int)rec.preset, (int)cfg.use_texture_array, (int)cfg.blend_mode);
+
+        return mm->ResolveOrCreateProgram(rec.preset, &cfg);
+    }
+    // ── 2D ──────────────────────────────────────────────────────────────────
+    else if (rec.dim == MaterialRecipe::Dim::D2)
+    {
+        Material2DCreateConfig cfg(
+            rec.prim,
+            rec.coord_2d,
+            rec.l2w ? IncludeL2W::With : IncludeL2W::Without);
+        if (rec.pos_format.Check())
+            cfg.position_format = rec.pos_format;
+        for (const auto &tc : rec.textures)
+            if (tc.source_mode != TextureSourceMode::None)
+                cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
+        return mm->ResolveOrCreateProgram(rec.preset, &cfg);
+    }
+    // ── 3D ─────────────────────────────────────────────────────────────────
+    else
+    {
+        const mtl::MaterialFeatureMask feature_mask = hgl::graph::ResolveRecipeIntentFeatureMask(rec);
+        const auto feature_validation = mtl::ValidateFeatureMask(feature_mask);
+
+        if (rec.intent_features != 0 && !feature_validation.well_formed)
+        {
+            const std::string warning = mtl::BuildMalformedIntentFeatureWarningMessage(feature_mask,
+                                                                                       rec.preset,
+                                                                                       feature_validation);
+            std::fprintf(stderr, "%s\n", warning.c_str());
+        }
+
+        const bool include_camera = mtl::HasFeature(feature_mask, mtl::MaterialFeature::NeedsCamera);
+        const bool include_sky = mtl::HasFeature(feature_mask, mtl::MaterialFeature::NeedsSky);
+
+        Material3DCreateConfig cfg(
+            rec.prim,
+            include_camera ? IncludeCamera::With : IncludeCamera::Without,
+            rec.l2w    ? IncludeL2W::With    : IncludeL2W::Without,
+            include_sky ? IncludeSky::With : IncludeSky::Without);
+        cfg.sky_ambient_model = rec.sky_ambient;
+
+        cfg.lighting_model = mtl::ResolveLightingModelFromFeatures(feature_mask, mtl::LightingModel::Lambert);
+
+        if (!mtl::HasFeature(feature_mask, mtl::MaterialFeature::EnableLighting))
+            cfg.lighting_model = mtl::LightingModel::Lambert;
+
+        if (rec.pos_format.Check())
+            cfg.position_format = rec.pos_format;
+        for (const auto &tc : rec.textures)
+            if (tc.source_mode != TextureSourceMode::None)
+                cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
+        return mm->ResolveOrCreateProgram(rec.preset, &cfg);
+    }
 }
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
@@ -515,34 +569,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     return prog;
 }
 
-ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(const MaterialSpec &spec, MaterialSpecKey *out_key)
-{
-    if(!spec.IsValid())
-        return nullptr;
-
-    ShaderMaterialProgram *result = nullptr;
-
-    switch(spec.family)
-    {
-        case MaterialSpec::Family::Preset2D:
-            result = ResolveOrCreateProgram(spec.preset, spec.cfg2d, out_key);
-            break;
-        case MaterialSpec::Family::Preset3D:
-            result = ResolveOrCreateProgram(spec.preset, spec.cfg3d, out_key);
-            break;
-        case MaterialSpec::Family::Variant2D:
-            result = ResolveOrCreateProgram(*spec.variant_key, spec.cfg2d, out_key);
-            break;
-        case MaterialSpec::Family::Variant3D:
-            result = ResolveOrCreateProgram(*spec.variant_key, spec.cfg3d, out_key);
-            break;
-        default:
-            result = nullptr;
-            break;
-    }
-
-    return result;
-}
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(const mtl::MaterialPreset mtl_id, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
@@ -676,20 +702,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     if(!cfg)
         return(nullptr);
 
-    AnsiString hash_name="variant";
-    if(cfg->preset_name)
-    {
-        hash_name+="(";
-        hash_name+=cfg->preset_name;
-        hash_name+=")";
-    }
     char key_hash[32] = {};
     std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
-    std::printf("[DEBUG] CreateMaterial hash=%s ST=%d GM=%d tex=%u sampler=%u\n", key_hash, int(key.surface_type), int(key.geometry_mode), key.texture_source_bits, key.sampler_feature_bits);
-    hash_name+="#";
-    hash_name+=key_hash;
-    hash_name+="?";
-    hash_name+=cfg->ToHashStdString().c_str();
+    AnsiString mtl_debug_name = cfg->preset_name
+        ? AnsiString(cfg->preset_name) + "#" + key_hash
+        : AnsiString("variant#") + key_hash;
 
     const mtl::MaterialKey mkey = MakeMaterialKeyFromVariantKey(key);
 
@@ -703,18 +720,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         }
     }
 
-    // Fallback: legacy name cache
-    {
-        ShaderMaterialProgram *cached = TryGetCachedMaterial(hash_name);
-        if (cached)
-        {
-            by_key_misses_name_hits.fetch_add(1);
-            cached->SetMaterialKey(mkey);
-            material_by_key[mkey] = cached;
-            return cached;
-        }
-    }
-
     const auto *profile=GetPhysicalDeviceProfile();
 
     AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
@@ -722,7 +727,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     if(!mci)
         return(nullptr);
 
-    ShaderMaterialProgram *mat = this->CreateMaterial(hash_name,mci);
+    ShaderMaterialProgram *mat = this->CreateMaterial(mtl_debug_name,mci);
     if (mat)
     {
         uint8_t flags = 0;
@@ -747,20 +752,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         return(nullptr);
     }
 
-    AnsiString hash_name="variant";
-    if(cfg->preset_name)
-    {
-        hash_name+="(";
-        hash_name+=cfg->preset_name;
-        hash_name+=")";
-    }
-    char key_hash[32] = {};
-    std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
-    hash_name+="#";
-    hash_name+=key_hash;
-    hash_name+="?";
-    hash_name+=cfg->ToHashStdString().c_str();
-
     // For Billboard materials, the variant registry key is shared between sampler2D and
     // sampler2DArray variants (differentiated inside the factory via cfg->use_texture_array).
     // Use a separate cache_key that encodes the array flag to avoid collisions in material_by_key.
@@ -776,6 +767,15 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         }
     }
 
+    // Compute debug name using cache_key (not key) so that billboard array/non-array variants
+    // get distinct names — prevents VirtualLibraryCache from returning the wrong shader module
+    // when both variants share the same preset key.
+    char key_hash[32] = {};
+    std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(cache_key.Hash()));
+    AnsiString mtl_debug_name = cfg->preset_name
+        ? AnsiString(cfg->preset_name) + "#" + key_hash
+        : AnsiString("variant#") + key_hash;
+
     const mtl::MaterialKey mkey = MakeMaterialKeyFromVariantKey(cache_key);
 
     // Fast path: material_by_key
@@ -785,18 +785,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         {
             by_key_hits.fetch_add(1);
             return it->second;
-        }
-    }
-
-    // Fallback: legacy name cache
-    {
-        ShaderMaterialProgram *cached = TryGetCachedMaterial(hash_name);
-        if (cached)
-        {
-            by_key_misses_name_hits.fetch_add(1);
-            cached->SetMaterialKey(mkey);
-            material_by_key[mkey] = cached;
-            return cached;
         }
     }
 
@@ -827,7 +815,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         return(nullptr);
     }
 
-    ShaderMaterialProgram *mat = this->CreateMaterial(hash_name,mci);
+    ShaderMaterialProgram *mat = this->CreateMaterial(mtl_debug_name,mci);
     if (mat)
     {
         uint8_t flags = 0;
@@ -845,12 +833,9 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 void ShaderMaterialProgramManager::DumpKeyMapDiagnostics() const
 {
     std::fprintf(stderr,
-        "[ShaderMaterialProgramManager] KeyMap: by_key=%zu by_name=%d "
-        "hits=%llu inconsistencies=%llu\n",
+        "[ShaderMaterialProgramManager] KeyMap: by_key=%zu hits=%llu\n",
         material_by_key.size(),
-        material_by_name.GetCount(),
-        static_cast<unsigned long long>(by_key_hits.load()),
-        static_cast<unsigned long long>(by_key_misses_name_hits.load()));
+        static_cast<unsigned long long>(by_key_hits.load()));
 }
 
 MaterialBindingInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)

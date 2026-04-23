@@ -48,28 +48,6 @@ struct MaterialInstanceSpecKey
     ResourceDomain *domain = nullptr;
 };
 
-struct MaterialSpec
-{
-    enum class Family : uint8_t
-    {
-        Invalid = 0,
-        Preset2D,
-        Preset3D,
-        Variant2D,
-        Variant3D,
-    };
-
-    Family family = Family::Invalid;
-
-    mtl::MaterialPreset preset{};
-    const mtl::MaterialVariantKey *variant_key = nullptr;
-
-    mtl::Material2DCreateConfig *cfg2d = nullptr;
-    mtl::Material3DCreateConfig *cfg3d = nullptr;
-
-    bool IsValid() const;
-};
-
 struct MaterialInstanceSpec
 {
     ShaderMaterialProgram *material = nullptr;
@@ -109,7 +87,6 @@ GRAPH_MODULE_CLASS(ShaderMaterialProgramManager)
 private:
 
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
-    UnorderedMap<AnsiString,ShaderMaterialProgram *> material_by_name;
 
     // Step 3: MaterialKey → Program* (alias map; ownership stays in rm_material)
     std::unordered_map<mtl::MaterialKey, ShaderMaterialProgram *> material_by_key;
@@ -132,7 +109,6 @@ private:
 
     // Step 3: material_by_key diagnostics
     std::atomic<uint64_t> by_key_hits             {0};
-    std::atomic<uint64_t> by_key_misses_name_hits {0}; ///< Should be 0 after warm-up; non-zero = MaterialKey algorithm bug
 
     // Fallback material for error handling (initialized on first use)
     ShaderMaterialProgram *fallback_material = nullptr;
@@ -154,7 +130,6 @@ private: // Helper methods with integrated DebugUtils
     class GraphicsPipelineLayoutData *CreateMaterialGraphicsPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class GraphicsPipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
     void ApplyMaterialFinalizePlan(ShaderMaterialProgram *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci);
-    ShaderMaterialProgram *TryGetCachedMaterial(const AnsiString &name);
     bool ExecuteMaterialBuildPipeline(ShaderMaterialProgram *mtl,
                                       const AnsiString &mtl_name,
                                       const mtl::MaterialCreateInfo *mci,
@@ -185,10 +160,6 @@ public: //Release
 
         if (mtl->HasMaterialKey())
             material_by_key.erase(mtl->GetMaterialKey());
-
-        const AnsiString &name = mtl->GetName();
-        if (!name.IsEmpty())
-            material_by_name.DeleteByKey(name);
 
         rm_material.Release(mtl, true);
     }
@@ -237,9 +208,6 @@ public: // Override Release from GraphModule - cleanup all resources
         // 清理所有材质
         if (rm_material.GetCount() > 0)
             rm_material.Clear();
-
-        if (material_by_name.GetCount() > 0)
-            material_by_name.Clear();
 
         material_by_key.clear();
 
@@ -310,7 +278,6 @@ public: // Acquire stats
         acquire_mi_requests.store(0);
         acquire_mi_created.store(0);
         by_key_hits.store(0);
-        by_key_misses_name_hits.store(0);
     }
 
     void DumpKeyMapDiagnostics() const;
@@ -322,7 +289,6 @@ public: //ShaderMaterialProgram
     ShaderMaterialProgram *GetOrCreateProgramByKey(const mtl::MaterialKey &key,
                                                    const mtl::MaterialRecipe &recipe);
 
-    ShaderMaterialProgram *          ResolveOrCreateProgram (const MaterialSpec &spec, MaterialSpecKey *out_key = nullptr);
     ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialPreset, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
     ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialPreset, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
     ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
