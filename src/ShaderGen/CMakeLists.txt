@@ -94,6 +94,16 @@ SET(RECIPE_TO_KEY_FILES ${MTL_TYPE_INCLUDE_PATH}/RecipeToKey.h
                         RecipeToKey.cpp)
 SOURCE_GROUP("Material Key" FILES ${RECIPE_TO_KEY_FILES})
 
+# Pass Expansion
+SET(PASS_EXPANSION_FILES ${MTL_TYPE_INCLUDE_PATH}/PassExpansion.h
+                         PassExpansion.cpp)
+SOURCE_GROUP("Material Key" FILES ${PASS_EXPANSION_FILES})
+
+# Static Material Def Registry
+SET(STATIC_DEF_REGISTRY_FILES ${MTL_TYPE_INCLUDE_PATH}/StaticMaterialDefRegistry.h
+                               StaticMaterialDefRegistry.cpp)
+SOURCE_GROUP("Standard Material" FILES ${STATIC_DEF_REGISTRY_FILES})
+
 # Standard Material / 2D
 SET(STD_MTL_2D_SOURCE_FILES ${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
                             2d/Build2DCommon.h
@@ -205,6 +215,8 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${STD_MTL_SOURCE}
     ${MATERIAL_KEY_FILES}
     ${RECIPE_TO_KEY_FILES}
+    ${PASS_EXPANSION_FILES}
+    ${STATIC_DEF_REGISTRY_FILES}
     ${STD_MTL_2D_SOURCE_FILES}
     ${STD_MTL_3D_SOURCE_FILES}
     ${FIXED_MTL_FILES}

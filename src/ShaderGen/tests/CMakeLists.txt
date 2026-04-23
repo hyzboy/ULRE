@@ -39,3 +39,26 @@ target_link_libraries(MaterialRecipeStoreTests PRIVATE ${ULRE})
 set_property(TARGET MaterialRecipeStoreTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 
 add_test(NAME MaterialRecipeStoreTests COMMAND MaterialRecipeStoreTests)
+
+# EnumerateRecipeKeysTests exercises EnumerateRecipeKeys() and the new
+# PassExpansion / StaticMaterialDefRegistry / toolchain-version code.
+add_executable(EnumerateRecipeKeysTests
+    EnumerateRecipeKeysTests.cpp
+)
+
+target_link_libraries(EnumerateRecipeKeysTests PRIVATE ${ULRE})
+
+set_property(TARGET EnumerateRecipeKeysTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME EnumerateRecipeKeysTests COMMAND EnumerateRecipeKeysTests)
+
+# MaterialKeyAbiSnapshot guards sizeof/alignof, constants, and hash stability.
+add_executable(MaterialKeyAbiSnapshot
+    MaterialKeyAbiSnapshot.cpp
+)
+
+target_link_libraries(MaterialKeyAbiSnapshot PRIVATE ${ULRE})
+
+set_property(TARGET MaterialKeyAbiSnapshot PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME MaterialKeyAbiSnapshot COMMAND MaterialKeyAbiSnapshot)

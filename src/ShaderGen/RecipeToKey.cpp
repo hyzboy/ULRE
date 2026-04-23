@@ -14,6 +14,11 @@
 #include <hgl/mtl/RecipeToKey.h>
 #include <hgl/mtl/MaterialLibrary.h>   // MapPresetToVariantKey
 #include <hgl/mtl/MaterialFeature.h>   // ResolveIntentFeatureMask, ResolveLightingModelFromFeatures
+#include <hgl/mtl/PassExpansion.h>
+#include <hgl/mtl/MaterialKeyToolchainVersion.h>
+#include <hgl/mtl/StaticMaterialDefRegistry.h>
+#include <hgl/mtl/SamplerSlot.h>
+#include <hgl/mtl/UBOCommon.h>
 
 namespace hgl::graph::mtl
 {
@@ -27,6 +32,119 @@ namespace hgl::graph::mtl
 static bool IsVec2Position(const VAType pos) noexcept
 {
     return pos.vec_size == 2;
+}
+
+/// Returns true if any texture channel in the recipe uses Array source mode.
+static bool HasAnyArrayTexture(const MaterialRecipe &r) noexcept
+{
+    for (const auto &tc : r.textures)
+        if (tc.source_mode == TextureSourceMode::Array)
+            return true;
+    return false;
+}
+
+/// Lazy-init helper: acquire (and cache) the def ID for the Standard material.
+/// @param any_array  true → Sampler2DArray variant; false → Sampler2D variant.
+static StaticMaterialDefId GetStandardDefId(bool any_array) noexcept
+{
+    // Static vertices and non-sampler descriptors match M_Standard.cpp exactly.
+    static const FixedVertexEntry kStdVertex[] = {
+        { VAT_VEC3, VAN::Position },
+        { VAT_VEC2, VAN::TexCoord },
+        { VAT_VEC3, VAN::Normal   },
+    };
+    static const UBOSemanticSet kStdBaseUBOs = {
+        UBODescriptorSemantic::ViewportInfo,
+        UBODescriptorSemantic::CameraInfo,
+        UBODescriptorSemantic::SkyInfo,
+    };
+    // Base SSBOs (without MaterialBindingInstanceTexture — added when any_array)
+    static const SSBOSemanticSet kStdBaseSSBOs = {
+        SSBODescriptorSemantic::TransformData,
+        SSBODescriptorSemantic::TransformID,
+        SSBODescriptorSemantic::MaterialBindingInstanceID,
+        SSBODescriptorSemantic::MaterialBindingInstanceData,
+    };
+    static const SSBOSemanticSet kStdArraySSBOs = {
+        SSBODescriptorSemantic::TransformData,
+        SSBODescriptorSemantic::TransformID,
+        SSBODescriptorSemantic::MaterialBindingInstanceID,
+        SSBODescriptorSemantic::MaterialBindingInstanceData,
+        SSBODescriptorSemantic::MaterialBindingInstanceTexture,
+    };
+    // Sampler2D variant
+    static const StaticTextureSamplerDescriptors kStdSamplers2D = {
+        { SamplerSlot::BaseColor, { SamplerType::Sampler2D, 0, 0, TextureChannelHint::RGBA } },
+        { SamplerSlot::Normal,    { SamplerType::Sampler2D, 0, 0, TextureChannelHint::RGBA } },
+    };
+    // Sampler2DArray variant
+    static const StaticTextureSamplerDescriptors kStdSamplers2DArray = {
+        { SamplerSlot::BaseColor, { SamplerType::Sampler2DArray, 0, 0, TextureChannelHint::RGBA } },
+        { SamplerSlot::Normal,    { SamplerType::Sampler2DArray, 0, 0, TextureChannelHint::RGBA } },
+    };
+
+    static StaticMaterialDefId s_id_2d    = kInvalidStaticMaterialDefId;
+    static StaticMaterialDefId s_id_array = kInvalidStaticMaterialDefId;
+
+    if (!any_array)
+    {
+        if (s_id_2d == kInvalidStaticMaterialDefId)
+        {
+            const StaticMaterialDef def {
+                "Standard_v1",
+                PrimitiveType::Triangles,
+                kStdVertex,
+                uint32_t(sizeof(kStdVertex) / sizeof(kStdVertex[0])),
+                &kStdBaseUBOs,
+                &kStdBaseSSBOs,
+                &kStdSamplers2D,
+                ShaderDataSchema::StandardParams,
+            };
+            s_id_2d = AcquireStaticMaterialDefId(def);
+        }
+        return s_id_2d;
+    }
+    else
+    {
+        if (s_id_array == kInvalidStaticMaterialDefId)
+        {
+            const StaticMaterialDef def {
+                "StandardTextureArray_v1",
+                PrimitiveType::Triangles,
+                kStdVertex,
+                uint32_t(sizeof(kStdVertex) / sizeof(kStdVertex[0])),
+                &kStdBaseUBOs,
+                &kStdArraySSBOs,
+                &kStdSamplers2DArray,
+                ShaderDataSchema::StandardParams,
+            };
+            s_id_array = AcquireStaticMaterialDefId(def);
+        }
+        return s_id_array;
+    }
+}
+
+/// Resolve the StaticMaterialDefId for the given recipe.
+/// Returns kInvalidStaticMaterialDefId for presets that have no registered def.
+static StaticMaterialDefId ResolveDefIdForRecipe(const MaterialRecipe &r) noexcept
+{
+    switch (r.preset)
+    {
+    case MaterialPreset::Standard:
+    case MaterialPreset::HumanSkin:
+    case MaterialPreset::AmphibiansSkin:
+    case MaterialPreset::Wood:
+    case MaterialPreset::TreeBark:
+    case MaterialPreset::Stone:
+    case MaterialPreset::Leaf:
+    case MaterialPreset::Metal:
+    case MaterialPreset::BirdFeathers:
+    case MaterialPreset::Scales:
+        return GetStandardDefId(HasAnyArrayTexture(r));
+
+    default:
+        return kInvalidStaticMaterialDefId;
+    }
 }
 
 /// Map a preset to its default ShaderDataSchema.
@@ -195,19 +313,34 @@ MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &r) noexcept
     // Phase C: primary pass
     k.pass = detail::GetPrimaryPassForBlendMode(vk.blend_mode);
 
-    // Phase D: schema (fixed preset → schema table until Step 6)
-    // TODO(Step-6): replace with StaticMaterialDef lookup via def_id.
+    // Phase D: schema
     k.schema = GetDefaultSchemaForPreset(r.preset);
 
-    // Phase E: def_id — placeholder zero until Step 6 wires up StaticMaterialDef
-    k.def_id = kInvalidStaticMaterialDefId;
+    // Phase E: def_id
+    k.def_id = ResolveDefIdForRecipe(r);
 
-    // Phase F: tool-chain versions — placeholder zero until Step 6
-    k.glsl_version = 0;
-    k.vk_version   = 0;
-    k.spv_version  = 0;
+    // Phase F: toolchain versions
+    k.glsl_version = kMaterialKeyGLSLVersion;
+    k.vk_version   = kMaterialKeyVulkanVersion;
+    k.spv_version  = kMaterialKeySpvVersion;
 
     return k;
+}
+
+std::vector<MaterialKey> EnumerateRecipeKeys(const MaterialRecipe &r)
+{
+    MaterialKey base = ResolveRecipePrimaryKey(r);
+    auto passes = GetPassTypesForBlendMode(base.variant.blend_mode);
+
+    std::vector<MaterialKey> out;
+    out.reserve(passes.size());
+    for (PassType pass : passes)
+    {
+        MaterialKey k = base;
+        k.pass = pass;
+        out.push_back(k);
+    }
+    return out;
 }
 
 } // namespace hgl::graph::mtl

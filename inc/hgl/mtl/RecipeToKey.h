@@ -8,23 +8,21 @@
 ///
 /// Usage (bakers and runtime alike):
 ///   MaterialKey key = hgl::graph::mtl::ResolveRecipePrimaryKey(recipe);
-///
-/// Note (Step-6 TODO): returns the *primary* key only.  When a Recipe expands
-/// to multiple PassTypes via blend_mode, pass = GetPrimaryPassForBlendMode().
-/// Full enumeration will be introduced in Step 6 (EnumerateRecipeKeys).
 
 #include <hgl/mtl/MaterialKey.h>
 #include <hgl/mtl/MaterialRecipe.h>
+#include <vector>
 
 namespace hgl::graph::mtl
 {
     /// Convert a MaterialRecipe to its canonical MaterialKey (primary pass only).
     /// Pure function — no side effects, no global state, no I/O, no glslang dependency.
-    ///
-    /// Fields left as placeholder zeros until Step 6:
-    ///   def_id       — kInvalidStaticMaterialDefId (0)
-    ///   glsl_version / vk_version / spv_version — 0
     MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &recipe) noexcept;
+
+    /// Expand a recipe to all MaterialKeys it requires (one per pass type).
+    /// The pass field of each key differs; all other fields are identical.
+    /// The vector is ordered by the pass tables in PassExpansion.cpp.
+    std::vector<MaterialKey> EnumerateRecipeKeys(const MaterialRecipe &recipe);
 
     /// Unit-test helpers that expose the intermediate canonicalize steps.
     namespace detail

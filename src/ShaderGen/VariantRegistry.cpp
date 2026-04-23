@@ -270,6 +270,13 @@ MaterialVariantKey VariantRegistry::MapPresetToVariantKey(MaterialPreset preset)
     return hgl::graph::mtl::MapPresetToVariantKey(preset);
 }
 
+void VariantRegistry::ForEach(
+    std::function<void(const MaterialVariantKey &, const MaterialVariantDesc &)> cb) const
+{
+    for (const auto &[hash, entry] : variant_map)
+        cb(entry.key, entry.desc);
+}
+
 // ---------------------------------------------------------------------------
 // Built-in variant registrations
 // Each entry mirrors the shader paths used in the corresponding M_*.cpp file.

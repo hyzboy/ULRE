@@ -4,6 +4,7 @@
 #include <hgl/mtl/MaterialPreset.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
+#include <functional>
 #include <string>
 #include <vector>
 #include <ankerl/unordered_dense.h>
@@ -53,6 +54,12 @@ namespace hgl::graph::mtl
 
         // 初始化内置变体
         void InitializeBuiltinVariants();
+
+        // 遍历所有注册变体
+        void ForEach(std::function<void(const MaterialVariantKey &, const MaterialVariantDesc &)> cb) const;
+
+        // 返回已注册变体数量
+        size_t Size() const noexcept { return variant_map.size(); }
 
     private:
         struct VariantEntry
