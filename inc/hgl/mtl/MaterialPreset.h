@@ -71,6 +71,9 @@ namespace hgl::graph::mtl
         BirdFeathers,
         Scales,
 
-        ENUM_CLASS_RANGE(Checkerboard3D,Scales)
+        Sprite2DCameraFacing,  ///< Sprite2D, world-space size, camera-facing
+        Sprite2DAxisLocked,    ///< Sprite2D, fixed pixel size, axis-locked
+
+        ENUM_CLASS_RANGE(Checkerboard3D,Sprite2DAxisLocked)
     };
 }

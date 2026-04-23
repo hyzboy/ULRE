@@ -40,8 +40,10 @@ namespace hgl::graph::mtl
         ScreenRect,
         BillboardCameraFacing,
         BillboardAxisLocked,
+        Sprite2DCameraFacing,    // new — camera-facing, world-space size
+        Sprite2DAxisLocked,      // new — fixed pixel size (axis-locked)
 
-        ENUM_CLASS_RANGE(Mesh3D, BillboardAxisLocked)
+        ENUM_CLASS_RANGE(Mesh3D, Sprite2DAxisLocked)
     };
 
     struct MaterialVariantKey
@@ -181,4 +183,13 @@ namespace hgl::graph::mtl
                 && effective_feature_mask == rhs.effective_feature_mask;  // Phase 3: Include effective_feature_mask in equality
         }
     };
-}
+
+    /// Returns the name of a GeometryMode value as a C string, or nullptr for unknown values.
+    const char *ToString(const GeometryMode mode) noexcept;
+
+    /// Reverse-lookup: returns the GeometryMode whose name matches str (case-insensitive),
+    /// or default_value if no match is found.
+    GeometryMode GeometryModeFromString(const char *str,
+                                        const GeometryMode default_value = GeometryMode::Mesh3D) noexcept;
+
+} // namespace hgl::graph::mtl

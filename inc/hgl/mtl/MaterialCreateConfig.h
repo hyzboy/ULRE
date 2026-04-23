@@ -20,6 +20,7 @@ enum class ConfigKind : uint8_t
     D2        = 1,   ///< Material2DCreateConfig
     Text2D    = 2,   ///< Text2DMaterialCreateConfig
     Billboard = 3,   ///< BillboardMaterialCreateConfig
+    Sprite2D  = 4,   ///< Sprite2DMaterialCreateConfig
 };
 
 /**

@@ -127,6 +127,7 @@ SET(STD_MTL_3D_SOURCE_FILES ${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/M_VertexLum2D.cpp
                             3d/M_BillboardDynamicSize.cpp
                             3d/M_BillboardFixedSize.cpp
+                            3d/M_Sprite2D.cpp
                             3d/M_Gizmo3D.cpp
                             3d/M_SkyMinimal.cpp
                             3d/StandardVariantRouter.h

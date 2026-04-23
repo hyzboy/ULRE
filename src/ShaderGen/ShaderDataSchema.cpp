@@ -28,6 +28,8 @@ namespace
         { "schema_standard_params.glsl",  0 },
         // TextureArrayID
         { "schema_texture_array_id.glsl", 0 },
+        // Sprite2DTransform
+        { "schema_sprite2d_transform.glsl", 0 },
     };
 
     static bool g_schema_sizes_initialized = false;

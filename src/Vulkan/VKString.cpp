@@ -393,3 +393,38 @@ const VkCullModeFlags String2VkCullMode(const char *str)
 }
 
 }//namespace hgl::graph
+
+// ── GeometryMode string helpers ───────────────────────────────────────────────────────────────────
+#include<hgl/mtl/MaterialVariantKey.h>
+
+namespace hgl::graph::mtl
+{
+
+const char *ToString(const GeometryMode mode) noexcept
+{
+    switch (mode) {
+    case GeometryMode::Mesh3D:                return "Mesh3D";
+    case GeometryMode::Quad2D:               return "Quad2D";
+    case GeometryMode::ScreenRect:           return "ScreenRect";
+    case GeometryMode::BillboardCameraFacing: return "BillboardCameraFacing";
+    case GeometryMode::BillboardAxisLocked:  return "BillboardAxisLocked";
+    case GeometryMode::Sprite2DCameraFacing: return "Sprite2DCameraFacing";
+    case GeometryMode::Sprite2DAxisLocked:   return "Sprite2DAxisLocked";
+    default:                                 return nullptr;
+    }
+}
+
+GeometryMode GeometryModeFromString(const char *str, const GeometryMode default_value) noexcept
+{
+    if (!str) return default_value;
+    if (hgl::stricmp(str, "Mesh3D")                == 0) return GeometryMode::Mesh3D;
+    if (hgl::stricmp(str, "Quad2D")               == 0) return GeometryMode::Quad2D;
+    if (hgl::stricmp(str, "ScreenRect")           == 0) return GeometryMode::ScreenRect;
+    if (hgl::stricmp(str, "BillboardCameraFacing") == 0) return GeometryMode::BillboardCameraFacing;
+    if (hgl::stricmp(str, "BillboardAxisLocked")  == 0) return GeometryMode::BillboardAxisLocked;
+    if (hgl::stricmp(str, "Sprite2DCameraFacing") == 0) return GeometryMode::Sprite2DCameraFacing;
+    if (hgl::stricmp(str, "Sprite2DAxisLocked")   == 0) return GeometryMode::Sprite2DAxisLocked;
+    return default_value;
+}
+
+} // namespace hgl::graph::mtl

@@ -23,6 +23,7 @@ enum class ShaderDataSchema : uint32_t
     PBRColorParams,     ///< struct MaterialBindingInstance { uint base_color; float metallic; float roughness; }   — 12 bytes
     StandardParams,     ///< struct MaterialBindingInstance { uint base_color; float metallic; float roughness; float normal_scale; } — 16 bytes
     TextureArrayID,     ///< struct MaterialBindingInstance { uvec4 id; }             — 16 bytes
+    Sprite2DTransform,  ///< struct MaterialBindingInstance { vec2 Size; vec2 Pivot; }  — 16 bytes
 
     COUNT
 };
