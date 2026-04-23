@@ -442,7 +442,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     if(cfg->preset_name
     && std::strcmp(cfg->preset_name, GetMaterialPresetName(MaterialPreset::Checkerboard3D)) == 0)
     {
-        Material3DCreateConfig *cfg3d = dynamic_cast<Material3DCreateConfig *>(cfg);
+        Material3DCreateConfig *cfg3d = As3D(cfg);
         if(!cfg3d)
         {
             std::fprintf(stderr,
@@ -529,7 +529,7 @@ void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreate
     if (!cfg)
         return;
 
-    if (const auto *cfg3d = dynamic_cast<const Material3DCreateConfig *>(cfg))
+    if (const auto *cfg3d = As3D(cfg))
     {
         key.sky_ambient_model = cfg3d->sky_ambient_model;
         key.lighting_model = cfg3d->lighting_model;
@@ -594,7 +594,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     {
         key.lighting_model = LightingModel::PBR;
 
-        if (auto *cfg3d = dynamic_cast<Material3DCreateConfig *>(cfg))
+        if (auto *cfg3d = As3D(cfg))
             cfg3d->lighting_model = LightingModel::PBR;
     }
 

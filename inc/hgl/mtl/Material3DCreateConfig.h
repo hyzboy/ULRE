@@ -38,6 +38,8 @@ public:
                            const IncludeSky &          s   =IncludeSky::Without)
         :MaterialCreateConfig(p,l2w==IncludeL2W::With)
     {
+        kind = ConfigKind::D3;
+
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=true;       //输出深度
         rt_output.stencil=false;    //不输出stencil
@@ -132,7 +134,13 @@ struct BillboardMaterialCreateConfig:public Material3DCreateConfig
 
 public:
 
-    using Material3DCreateConfig::Material3DCreateConfig;
+    BillboardMaterialCreateConfig(const PrimitiveType &p = PrimitiveType::Triangles,
+                                  const IncludeL2W &l2w = IncludeL2W::With,
+                                  const IncludeSky &s = IncludeSky::Without)
+        : Material3DCreateConfig(p, IncludeCamera::With, l2w, s)
+    {
+        kind = ConfigKind::Billboard;
+    }
 
     std::string ToHashStdString() override;
 };
@@ -173,5 +181,41 @@ public:
 };
 
 DECLARE_MATERIAL_CREATOR(PBRColor3D, PBRColor3DMaterialCreateConfig)
+
+// ---------------------------------------------------------------------------
+// Type-safe downcast helpers — replaces dynamic_cast<> throughout the codebase.
+// Defined here (not in MaterialCreateConfig.h) so that the complete inheritance
+// relationships are visible and static_cast can be validated by the compiler.
+// ---------------------------------------------------------------------------
+
+/// Cast to Material3DCreateConfig* if kind is D3 or Billboard; else nullptr.
+inline Material3DCreateConfig *As3D(MaterialCreateConfig *cfg) noexcept
+{
+    if (!cfg) return nullptr;
+    return (cfg->kind == ConfigKind::D3 || cfg->kind == ConfigKind::Billboard)
+        ? static_cast<Material3DCreateConfig *>(cfg) : nullptr;
+}
+
+inline const Material3DCreateConfig *As3D(const MaterialCreateConfig *cfg) noexcept
+{
+    if (!cfg) return nullptr;
+    return (cfg->kind == ConfigKind::D3 || cfg->kind == ConfigKind::Billboard)
+        ? static_cast<const Material3DCreateConfig *>(cfg) : nullptr;
+}
+
+/// Cast to BillboardMaterialCreateConfig* only if kind is Billboard; else nullptr.
+inline BillboardMaterialCreateConfig *AsBillboard(MaterialCreateConfig *cfg) noexcept
+{
+    if (!cfg) return nullptr;
+    return cfg->kind == ConfigKind::Billboard
+        ? static_cast<BillboardMaterialCreateConfig *>(cfg) : nullptr;
+}
+
+inline const BillboardMaterialCreateConfig *AsBillboard(const MaterialCreateConfig *cfg) noexcept
+{
+    if (!cfg) return nullptr;
+    return cfg->kind == ConfigKind::Billboard
+        ? static_cast<const BillboardMaterialCreateConfig *>(cfg) : nullptr;
+}
 
 }//namespace hgl::graph::mtl

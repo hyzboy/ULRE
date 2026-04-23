@@ -756,7 +756,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     // sampler2DArray variants (differentiated inside the factory via cfg->use_texture_array).
     // Use a separate cache_key that encodes the array flag to avoid collisions in material_by_key.
     mtl::MaterialVariantKey cache_key = key;
-    if (const auto *billboard_cfg = dynamic_cast<const mtl::BillboardMaterialCreateConfig *>(cfg))
+    if (const auto *billboard_cfg = AsBillboard(cfg))
     {
         if (billboard_cfg->use_texture_array)
         {

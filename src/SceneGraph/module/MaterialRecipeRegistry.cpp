@@ -43,9 +43,28 @@ static bool BindDomainTexturesFromRecord(
     return true;
 }
 
-// Legacy compatibility: many render paths still bind per-material descriptors
-// from ShaderMaterialProgram directly (without domain binding registration).
-// Keep this best-effort fallback to avoid unbound sampler validation errors.
+// ── Legacy texture compatibility fallback ────────────────────────────────────
+//
+// TODO(MaterialKeyRefactor Step 7.7): Delete this function once ALL render draw
+// paths have been verified to use DomainResourceBinding MP instead of
+// ShaderMaterialProgram MP for texture access.
+//
+// How to validate before deleting:
+//   1. Define ULRE_FAIL_ON_LEGACY_MATERIAL_TEXTURE_BIND in CMake (dev only).
+//   2. Run all sample apps / editor scenes.
+//   3. If no assertion fires → safe to delete both this function and its 2 call sites.
+//
+// Current call sites (must both be removed together with the function):
+//   MaterialRecipeRegistry.cpp:~233  (!hasMI() branch)
+//   MaterialRecipeRegistry.cpp:~261  (new DMB branch, compat fallback)
+#ifdef ULRE_FAIL_ON_LEGACY_MATERIAL_TEXTURE_BIND
+static void BindMaterialTexturesCompat(ShaderMaterialProgram *, TextureManager *,
+                                       SamplerManager *, const mtl::MaterialRecipe &)
+{
+    assert(false && "BindMaterialTexturesCompat: legacy path hit — "
+                    "migrate this render path to DomainResourceBinding before deleting");
+}
+#else
 static void BindMaterialTexturesCompat(
     ShaderMaterialProgram *material,
     TextureManager *tm,
@@ -72,6 +91,7 @@ static void BindMaterialTexturesCompat(
         material->BindResourceSampler(tc.slot, tex, smp);
     }
 }
+#endif // ULRE_FAIL_ON_LEGACY_MATERIAL_TEXTURE_BIND
 
 // ── FNV-1a 64-bit texture config hash ────────────────────────────────────────
 

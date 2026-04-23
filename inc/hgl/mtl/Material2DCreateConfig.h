@@ -19,6 +19,8 @@ public:
                            const IncludeL2W &l2w=IncludeL2W::Without)
         :MaterialCreateConfig(p,l2w==IncludeL2W::With)
     {
+        kind = ConfigKind::D2;
+
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=false;      //不输出深度
         rt_output.stencil=false;    //不输出stencil
@@ -53,6 +55,8 @@ public:
 
     Text2DMaterialCreateConfig():Material2DCreateConfig(PrimitiveType::Triangles,CoordinateSystem2D::Ortho,IncludeL2W::Without)
     {
+        kind = ConfigKind::Text2D;
+
         material_instance=true;        //包含材质实例
 
         position_format=VAT_IVEC2;
