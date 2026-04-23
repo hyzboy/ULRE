@@ -9,6 +9,7 @@
 #include <hgl/ecs/support/line/LineCollectSystem.h>
 #include <hgl/ecs/support/line/LineRenderSystem.h>
 #include <hgl/ecs/support/billboard/BillboardRenderPipelineGroup.h>
+#include <hgl/ecs/support/sprite2d/Sprite2DRenderPipelineGroup.h>
 #include <hgl/ecs/systems/render/LineStatsSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -115,6 +116,18 @@ namespace
         return true;
     }
 
+    bool InstallSprite2DGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
+    {
+        if (!ctx)
+            return false;
+
+        // New unified pipeline group for Sprite2D setup/binding systems
+        hgl::ecs::Sprite2DRenderPipelineGroup group;
+        group.Initialize(ctx);
+
+        return true;
+    }
+
     bool InstallTerrainGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
     {
         if (!ctx)
@@ -178,6 +191,7 @@ namespace
         registry.RegisterGroupInstaller("Billboard", InstallBillboardGroup);
         registry.RegisterGroupInstaller("Line", InstallLineGroup);
         registry.RegisterGroupInstaller("Terrain", InstallTerrainGroup);
+        registry.RegisterGroupInstaller("Sprite2D", InstallSprite2DGroup);
 
         registered = true;
     }
