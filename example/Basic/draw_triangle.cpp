@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
+// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
 // This example demonstrates managing and drawing a gradient colored triangle using the new ECS architecture
 //
 // 本范例展示了：
@@ -179,7 +179,7 @@ private:
         HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
         auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         ecs_primitive->SetUnresolvedGeometry(geometry);
-        ecs_primitive->SetMaterialRecipe(&kTriangleCfg);
+        ecs_primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTriangleCfg));
         ecs_primitive->SetVisible(true);
 
         return true;

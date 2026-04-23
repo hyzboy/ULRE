@@ -266,7 +266,7 @@ private:
             rm->transform->SetMovable(true);
 
             rm->primitive_comp->SetUnresolvedGeometry(rm->geometry);
-            rm->primitive_comp->SetMaterialRecipe(&kSolidCfg, &entity_colors[rm->color_index], sizeof(Color4f));
+            rm->primitive_comp->SetMaterialRecipe(RegisterMaterialRecipe(kSolidCfg), &entity_colors[rm->color_index], sizeof(Color4f));
             rm->primitive_comp->SetVisible(true);
 
             rm->facing_comp->SetFacingMode(FacingMode::LookAtCamera);

@@ -81,7 +81,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetUnresolvedGeometry(prim_sky_sphere);
-        prim_comp->SetMaterialRecipe(&kSkyCfg);
+        prim_comp->SetMaterialRecipe(RegisterMaterialRecipe(kSkyCfg));
         prim_comp->SetVisible(true);
 
         return true;

@@ -129,7 +129,7 @@ private:
 
         auto plane_primitive_comp = plane_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         plane_primitive_comp->SetUnresolvedGeometry(grid_geometry);
-        plane_primitive_comp->SetMaterialRecipe(&kGridCfg, &grid_color, sizeof(grid_color));
+        plane_primitive_comp->SetMaterialRecipe(RegisterMaterialRecipe(kGridCfg), &grid_color, sizeof(grid_color));
         plane_primitive_comp->SetVisible(true);
 
         cube_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Cube");
@@ -141,7 +141,7 @@ private:
 
         auto cube_primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         cube_primitive_comp->SetUnresolvedGeometry(cube_geometry);
-        cube_primitive_comp->SetMaterialRecipe(&kCubeCfg, &cube_color, sizeof(cube_color));
+        cube_primitive_comp->SetMaterialRecipe(RegisterMaterialRecipe(kCubeCfg), &cube_color, sizeof(cube_color));
         cube_primitive_comp->SetVisible(true);
 
         return true;

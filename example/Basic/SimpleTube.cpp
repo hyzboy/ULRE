@@ -89,7 +89,7 @@ private:
 
         auto primitive_comp = tube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->SetUnresolvedGeometry(geometry);
-        primitive_comp->SetMaterialRecipe(&kTubeCfg, &color, sizeof(color));
+        primitive_comp->SetMaterialRecipe(RegisterMaterialRecipe(kTubeCfg), &color, sizeof(color));
         primitive_comp->SetVisible(true);
 
         return true;

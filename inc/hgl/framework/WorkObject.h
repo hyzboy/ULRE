@@ -5,6 +5,7 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialRecipeRegistry.h>
+#include<hgl/mtl/MaterialRecipeStore.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -131,6 +132,17 @@ namespace hgl
                 return gc->GetMaterialAssetRegistry();
 
             return nullptr;
+        }
+
+        /// 注册（或复用）一个材质配方，返回稳定的 ID。
+        /// 相同内容的配方只注册一次，ID 可被任意数量的 PrimitiveComponent 共享。
+        /// 返回 kInvalidMaterialRecipeID 表示 GraphicsContext 尚未就绪。
+        graph::mtl::MaterialRecipeID RegisterMaterialRecipe(const graph::mtl::MaterialRecipe &recipe)
+        {
+            if (auto *gc = GetGraphicsContext())
+                if (auto *store = gc->GetRecipeStore())
+                    return store->RegisterRecipe(recipe);
+            return graph::mtl::kInvalidMaterialRecipeID;
         }
         graph::MaterialBindingInstance *ResolveOrCreateBindingInstance(const graph::mtl::MaterialRecipe &rec,
                                            const void *instance_data = nullptr,

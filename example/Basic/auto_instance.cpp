@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
+// 该范例主要演示使用ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
 // This example demonstrates drawing multiple triangles using ECS architecture with automatic instancing
 //
 // 本范例展示了：
@@ -125,7 +125,7 @@ private:
             // RenderCollector会检测到这一点并自动使用Instance渲染
             auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetUnresolvedGeometry(geom_triangle);
-            primitive_comp->SetMaterialRecipe(&kAutoInstanceCfg);
+            primitive_comp->SetMaterialRecipe(RegisterMaterialRecipe(kAutoInstanceCfg));
             primitive_comp->SetVisible(true);
 
             // 保存实体引用

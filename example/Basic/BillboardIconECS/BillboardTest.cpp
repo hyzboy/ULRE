@@ -191,7 +191,7 @@ private:
         grid_transform->SetMovable(false);
 
         grid_primitive->SetUnresolvedGeometry(geom_plane_grid);
-        grid_primitive->SetMaterialRecipe(&kPlaneGridCfg, &white_color, sizeof(white_color));
+        grid_primitive->SetMaterialRecipe(RegisterMaterialRecipe(kPlaneGridCfg), &white_color, sizeof(white_color));
         grid_primitive->SetVisible(true);
 
         billboard_entity = ecs_context->CreateEntity<Entity>("Billboard");
@@ -208,7 +208,7 @@ private:
             kBillboardCfg.billboard.pixel_w,
             kBillboardCfg.billboard.pixel_h);
         billboard_primitive->SetUnresolvedGeometry(geom_billboard);
-        billboard_primitive->SetMaterialRecipe(&kBillboardCfg, &billboard_size, sizeof(billboard_size));
+        billboard_primitive->SetMaterialRecipe(RegisterMaterialRecipe(kBillboardCfg), &billboard_size, sizeof(billboard_size));
         billboard_primitive->SetVisible(true);
 
         return true;

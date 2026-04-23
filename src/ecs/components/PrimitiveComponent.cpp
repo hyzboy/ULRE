@@ -85,11 +85,11 @@ namespace hgl::ecs
         }
     }
 
-    void PrimitiveComponent::SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe *rec,
+    void PrimitiveComponent::SetMaterialRecipe(hgl::graph::mtl::MaterialRecipeID recipe_id,
                                                const void *instance_data,
                                                uint32_t instance_data_size)
     {
-        material_slot.SetRecord(rec);
+        material_slot.SetRecipeID(recipe_id);
         if (instance_data && instance_data_size > 0)
             material_slot.SetInstanceData(instance_data, instance_data_size);
     }

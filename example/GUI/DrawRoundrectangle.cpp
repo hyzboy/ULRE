@@ -92,7 +92,7 @@ private:
             return false;
 
         prim_comp->SetUnresolvedGeometry(rect_geometry);
-        prim_comp->SetMaterialRecipe(&kRoundRectCfg);
+        prim_comp->SetMaterialRecipe(RegisterMaterialRecipe(kRoundRectCfg));
         prim_comp->SetVisible(true);
 
         return true;

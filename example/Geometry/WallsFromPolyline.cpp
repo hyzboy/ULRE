@@ -92,7 +92,7 @@ public:
             transform->SetMovable(false);
 
             prim_comp->SetUnresolvedGeometry(geometry);
-            prim_comp->SetMaterialRecipe(&kWallsCfg, &mi_data, sizeof(mi_data));
+            prim_comp->SetMaterialRecipe(RegisterMaterialRecipe(kWallsCfg), &mi_data, sizeof(mi_data));
             prim_comp->SetVisible(true);
         }
 

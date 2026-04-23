@@ -173,17 +173,9 @@ namespace hgl::ecs
 
 			auto &slot = comp->GetMaterialResolveRequest();
 
-			// ID 路径优先：从 recipe_store 查 record
-			if (slot.recipe_id != graph::mtl::kInvalidMaterialRecipeID && slot.record == nullptr)
-			{
-				if (recipe_store)
-					slot.record = recipe_store->GetRecipe(slot.recipe_id);
-				// 若 store 未提供，跳过（避免空指针继续）
-				if (!slot.record)
-					continue;
-			}
-
-			if (!slot.record)
+			const graph::mtl::MaterialRecipe *recipe =
+				recipe_store ? recipe_store->GetRecipe(slot.recipe_id) : nullptr;
+			if (!recipe)
 				continue;
 
 			graph::Geometry *geom = comp->GetUnresolvedGeometry();
@@ -198,8 +190,8 @@ namespace hgl::ecs
 			task.comp = comp;
 			task.slot = &slot;
 			task.geometry = geom;
-			task.recipe = slot.record;
-			task.material_key = graph::mtl::ResolveRecipePrimaryKey(*slot.record);
+			task.recipe = recipe;
+			task.material_key = graph::mtl::ResolveRecipePrimaryKey(*recipe);
 			task.gvf_hash = HashGeometryVertexFormat(gvf);
 			task.instance_hash = HashBytes(slot.GetInstanceDataPtr(), slot.GetInstanceDataSize());
 

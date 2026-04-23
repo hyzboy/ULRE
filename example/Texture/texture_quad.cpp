@@ -90,7 +90,7 @@ private:
         quad_transform->SetMovable(false);
 
         quad_primitive->SetUnresolvedGeometry(quad_geometry);
-        quad_primitive->SetMaterialRecipe(&kTexQuadCfg);
+        quad_primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexQuadCfg));
         quad_primitive->SetVisible(true);
 
         return true;

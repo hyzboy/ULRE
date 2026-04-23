@@ -43,56 +43,6 @@ static bool BindDomainTexturesFromRecord(
     return true;
 }
 
-// ── Legacy texture compatibility fallback ────────────────────────────────────
-//
-// TODO(MaterialKeyRefactor Step 7.7): Delete this function once ALL render draw
-// paths have been verified to use DomainResourceBinding MP instead of
-// ShaderMaterialProgram MP for texture access.
-//
-// How to validate before deleting:
-//   1. Define ULRE_FAIL_ON_LEGACY_MATERIAL_TEXTURE_BIND in CMake (dev only).
-//   2. Run all sample apps / editor scenes.
-//   3. If no assertion fires → safe to delete both this function and its 2 call sites.
-//
-// Current call sites (must both be removed together with the function):
-//   MaterialRecipeRegistry.cpp:~233  (!hasMI() branch)
-//   MaterialRecipeRegistry.cpp:~261  (new DMB branch, compat fallback)
-#ifdef ULRE_FAIL_ON_LEGACY_MATERIAL_TEXTURE_BIND
-static void BindMaterialTexturesCompat(ShaderMaterialProgram *, TextureManager *,
-                                       SamplerManager *, const mtl::MaterialRecipe &)
-{
-    assert(false && "BindMaterialTexturesCompat: legacy path hit — "
-                    "migrate this render path to DomainResourceBinding before deleting");
-}
-#else
-static void BindMaterialTexturesCompat(
-    ShaderMaterialProgram *material,
-    TextureManager *tm,
-    SamplerManager *sm,
-    const mtl::MaterialRecipe &rec)
-{
-    if (!material || !tm || !sm)
-        return;
-
-    for (const auto &tc : rec.textures)
-    {
-        if (tc.path.empty())
-            continue;
-
-        auto *tex = tm->LoadTexture2D(hgl::ToOSString(tc.path), true);
-        if (!tex)
-            continue;
-
-        auto *smp = sm->CreateSampler();
-        if (!smp)
-            continue;
-
-        // Non-fatal by design: may already be bound in cached material path.
-        material->BindResourceSampler(tc.slot, tex, smp);
-    }
-}
-#endif // ULRE_FAIL_ON_LEGACY_MATERIAL_TEXTURE_BIND
-
 // ── FNV-1a 64-bit texture config hash ────────────────────────────────────────
 
 static uint64_t ComputeTextureConfigHash(
@@ -245,19 +195,33 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
         domain_cache[domain_cache_key] = handle.domain;
     }
 
-    // 无 MI 数据的材质不需要 DomainResourceBinding。
-    // 但仍显式携带 domain，以统一 MI 创建入口的约束。
+    // 3. DomainResourceBinding
+    // tex_hash is needed for both hasMI and !hasMI paths, compute once here.
+    const uint64_t tex_hash = ComputeTextureConfigHash(rec.textures);
+    DMBKey dmb_key { std::move(mat_name_str), normalized_domain_id, tex_hash };
+
+    // Materials without per-instance data still need DMB for texture bindings.
     if (!handle.material->hasMI())
     {
         if (tm && sm && !rec.textures.empty())
-            BindMaterialTexturesCompat(handle.material, tm, sm, rec);
-
+        {
+            auto it_dmb_nomi = dmb_cache.find(dmb_key);
+            if (it_dmb_nomi != dmb_cache.end())
+            {
+                handle.binding = it_dmb_nomi->second;
+            }
+            else
+            {
+                handle.binding = mm->CreateDomainMaterialBinding(handle.domain, handle.material);
+                if (!handle.binding)
+                    return {};
+                if (!BindDomainTexturesFromRecord(handle.binding, tm, sm, rec))
+                    return {};
+                dmb_cache[dmb_key] = handle.binding;
+            }
+        }
         return handle;
     }
-
-    // 3. DomainResourceBinding (按 material_name + domain_id + texture_hash 缓存)
-    uint64_t tex_hash = ComputeTextureConfigHash(rec.textures);
-    DMBKey dmb_key { std::move(mat_name_str), normalized_domain_id, tex_hash };
 
     auto it_dmb = dmb_cache.find(dmb_key);
     if (it_dmb != dmb_cache.end())
@@ -270,15 +234,10 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
         if (!handle.binding)
             return {};
 
-        // 绑定纹理到 DMB
         if (tm && sm && !rec.textures.empty())
         {
             if (!BindDomainTexturesFromRecord(handle.binding, tm, sm, rec))
                 return {};
-
-            // Compatibility fallback for code paths that still use ShaderMaterialProgram MP
-            // instead of DomainResourceBinding MP during draw binding.
-            BindMaterialTexturesCompat(handle.material, tm, sm, rec);
         }
 
         dmb_cache[dmb_key] = handle.binding;

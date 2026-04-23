@@ -84,7 +84,7 @@ namespace hgl::ecs
         hgl::graph::Primitive* GetPrimitive() const { return primitive; }
 
         // Deferred material resolution (Phase B)
-        void SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe *rec,
+        void SetMaterialRecipe(hgl::graph::mtl::MaterialRecipeID recipe_id,
                                const void *instance_data = nullptr,
                                uint32_t instance_data_size = 0);
         void SetUnresolvedGeometry(hgl::graph::Geometry* geom) { unresolved_geometry = geom; }

@@ -304,7 +304,7 @@ private:
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
                 prim_comp->SetUnresolvedGeometry(builtin_geometries[col]);
-                prim_comp->SetMaterialRecipe(&kPBRColorCfg, &sphere_mi_data[row][col], sizeof(mtl::PBRColor3DMaterialInstance));
+                prim_comp->SetMaterialRecipe(RegisterMaterialRecipe(kPBRColorCfg), &sphere_mi_data[row][col], sizeof(mtl::PBRColor3DMaterialInstance));
                 prim_comp->SetVisible(true);
             }
         }
@@ -347,7 +347,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetUnresolvedGeometry(sky_geom);
-        prim_comp->SetMaterialRecipe(&kSkyCfg);
+        prim_comp->SetMaterialRecipe(RegisterMaterialRecipe(kSkyCfg));
         prim_comp->SetVisible(true);
 
         return true;

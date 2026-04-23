@@ -82,7 +82,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetUnresolvedGeometry(geom_plane_grid);
-        prim_comp->SetMaterialRecipe(&kPlaneGridCfg, &color, sizeof(color));
+        prim_comp->SetMaterialRecipe(RegisterMaterialRecipe(kPlaneGridCfg), &color, sizeof(color));
         prim_comp->SetVisible(true);
 
         return true;

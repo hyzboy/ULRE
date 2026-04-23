@@ -148,7 +148,7 @@ private:
 
         auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->SetUnresolvedGeometry(geometry);
-        primitive_comp->SetMaterialRecipe(&kRecursiveCubeCfg, &cube_color, sizeof(cube_color));
+        primitive_comp->SetMaterialRecipe(RegisterMaterialRecipe(kRecursiveCubeCfg), &cube_color, sizeof(cube_color));
         primitive_comp->SetVisible(true);
 
         if (animate)

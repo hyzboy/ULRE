@@ -292,7 +292,7 @@ private:
 
             auto grid_primitive = grid_entity->AddComponent<PrimitiveComponent>();
             grid_primitive->SetUnresolvedGeometry(geom_plane_grid);
-            grid_primitive->SetMaterialRecipe(&kPlaneGridCfg, &white_color, sizeof(white_color));
+            grid_primitive->SetMaterialRecipe(RegisterMaterialRecipe(kPlaneGridCfg), &white_color, sizeof(white_color));
             grid_primitive->SetVisible(true);
             std::cout << "  -> PrimitiveComponent added, visible=" << grid_primitive->IsVisible() << std::endl;
         }
