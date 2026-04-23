@@ -278,279 +278,256 @@ void VariantRegistry::ForEach(
 }
 
 // ---------------------------------------------------------------------------
-// Built-in variant registrations
-// Each entry mirrors the shader paths used in the corresponding M_*.cpp file.
+// ---------------------------------------------------------------------------
+// Built-in variant table  (B' — C++20 designated-initializer flat table)
+//
+// Rules:
+//   • One row per variant; every field has a sane default so unneeded fields
+//     are simply omitted.
+//   • tex[]  entries with mode == None are skipped in BuildKey(); zero-init
+//     slots are automatically silent (None == 0).
+//   • vs_path / fs_path == "" → CompositorAssembler auto-routes via BuildVSFromKey
+//     / BuildFSFromKey (any "compositor/" prefix is also auto-routed the same way).
 // ---------------------------------------------------------------------------
 
 namespace {
 
-// Helper: build a desc with explicit shader paths
-MaterialVariantDesc MakeDesc(
-    const char *name,
-    const MaterialPreset factory_type,
-    const char *vs_path,
-    const char *fs_path,
-    const char *surface_path = nullptr)
+using ST   = SurfaceType;
+using GM   = GeometryMode;
+using TSM  = TextureSourceMode;
+using LM   = LightingModel;
+using RM   = RenderAlphaMode;
+using PT   = PassType;
+using Slot = SamplerSlot;
+
+constexpr uint32 VA(VertexAttrib a) { return VertexAttribFeatureBit(a); }
+constexpr uint32 EX(ExtraFeature f) { return static_cast<uint32>(f); }
+
+struct TexMode { SamplerSlot slot = Slot::BaseColor; TextureSourceMode mode = TSM::None; };
+
+struct BuiltinVariantEntry
+{
+    const char*          name;
+    MaterialPreset       preset;
+
+    SurfaceType          surface_type = ST::Unlit;
+    GeometryMode         geometry_mode = GM::Mesh3D;
+    LightingModel        lighting      = LM::Lambert;
+    SkyLightAmbientModel sky_model     = SkyLightAmbientModel::Simple;
+    RenderAlphaMode      blend         = RM::Opaque;
+    PassType             pass          = PT::ForwardOpaque;
+    uint32               vertex_bits   = 0;
+    uint32               extra_bits    = 0;
+    TexMode              tex[4]        = {};  // zero-init  →  {BaseColor, None}  →  skipped
+
+    const char*          vs_path       = "";
+    const char*          fs_path       = "";
+    const char*          surface_path  = "";
+};
+
+static MaterialVariantKey BuildKey(const BuiltinVariantEntry &e)
+{
+    MaterialVariantKey k;
+    k.surface_type                  = e.surface_type;
+    k.geometry_mode                 = e.geometry_mode;
+    k.vertex_attribute_feature_bits = e.vertex_bits;
+    k.extra_feature_bits            = e.extra_bits;
+    k.blend_mode                    = e.blend;
+    k.pass_hint                     = e.pass;
+    k.lighting_model                = e.lighting;
+    k.sky_ambient_model             = e.sky_model;
+    for (const auto &tm : e.tex)
+        if (tm.mode != TSM::None)          // skip zero-init sentinel slots
+            k.SetTextureSourceMode(tm.slot, tm.mode);
+    return k;
+}
+
+static MaterialVariantDesc BuildDesc(const BuiltinVariantEntry &e)
 {
     MaterialVariantDesc d;
-    d.variant_name          = name;
-    d.factory_type          = factory_type;
-    d.vs_template_path      = vs_path;
-    d.fs_template_path      = fs_path;
-    d.surface_function_path = surface_path ? surface_path : "";
+    d.variant_name          = e.name;
+    d.factory_type          = e.preset;
+    d.vs_template_path      = e.vs_path;
+    d.fs_template_path      = e.fs_path;
+    d.surface_function_path = e.surface_path;
     return d;
 }
 
-// Helper: build a key like MapPresetToVariantKey
-inline MaterialVariantKey K(SurfaceType st,
-                             GeometryMode gm,
-                             std::initializer_list<std::pair<SamplerSlot, TextureSourceMode>> tex_modes = {},
-                             uint32 vertex_bits = 0,
-                             uint32 sampler_bits = 0,
-                             uint32 extra_bits = static_cast<uint32>(ExtraFeature::None))
+// clang-format off
+static const BuiltinVariantEntry kBuiltinVariants[] =
 {
-    MaterialVariantKey k;
-    k.surface_type        = st;
-    k.geometry_mode       = gm;
-    k.sampler_feature_bits = sampler_bits;
-    for(const auto& pair : tex_modes)
-    {
-        k.SetTextureSourceMode(pair.first, pair.second);
-    }
-    k.vertex_attribute_feature_bits = vertex_bits;
-    k.extra_feature_bits = extra_bits;
-    return k;
-}
+    // ── 2D ──────────────────────────────────────────────────────────────────────────────────────
+    { .name = "VertexColor2D",      .preset = MaterialPreset::VertexColor2D,
+      .geometry_mode = GM::Quad2D,  .vertex_bits = VA(VertexAttrib::Color),
+      .vs_path = "2d/vertexcolor2d.vert.glsl",  .fs_path = "2d/vertexcolor2d.frag.glsl"  },
 
-// Helper: build a billboard key (BaseColor/Simple, has-texture, explicit blend+pass).
-inline MaterialVariantKey KB(GeometryMode gm, RenderAlphaMode blend, PassType pass)
-{
-    MaterialVariantKey k;
-    k.geometry_mode = gm;
-    k.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-    k.blend_mode = blend;
-    k.pass_hint  = pass;
-    return k;
-}
+    { .name = "PureColor2D",        .preset = MaterialPreset::PureColor2D,
+      .geometry_mode = GM::Quad2D,
+      .vs_path = "2d/purecolor2d.vert.glsl",    .fs_path = "2d/purecolor2d.frag.glsl"    },
+
+    { .name = "PureTexture2D",      .preset = MaterialPreset::PureTexture2D,
+      .geometry_mode = GM::Quad2D,  .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .vs_path = "2d/puretexture2d.vert.glsl",  .fs_path = "2d/puretexture2d.frag.glsl"  },
+
+    { .name = "PureTexture2DArray", .preset = MaterialPreset::PureTexture2D,
+      .geometry_mode = GM::Quad2D,  .tex = {{ Slot::BaseColor, TSM::Array }},
+      .vs_path = "2d/puretexture2d.vert.glsl",  .fs_path = "2d/puretexture2d.frag.glsl"  },
+
+    { .name = "Text2D",             .preset = MaterialPreset::Text2D,
+      .geometry_mode = GM::Quad2D,  .tex = {{ Slot::BaseColor, TSM::Atlas }},
+      .vs_path = "2d/text2d.vert.glsl",         .fs_path = "2d/text2d.frag.glsl"         },
+
+    // ── 3D Unlit ────────────────────────────────────────────────────────────────────────────────
+    { .name = "PureColor3D",        .preset = MaterialPreset::PureColor3D },
+
+    { .name = "VertexColor3D",      .preset = MaterialPreset::VertexColor3D,
+      .vertex_bits = VA(VertexAttrib::Color),
+      .surface_path = "surface/unlit_vertexcolor_surface.glsl" },
+
+    { .name = "VertexLuminance3D",  .preset = MaterialPreset::VertexLuminance3D,
+      .vertex_bits = VA(VertexAttrib::Luminance),
+      .surface_path = "surface/unlit_luminance_surface.glsl"   },
+
+    { .name = "VertexLuminance2D",  .preset = MaterialPreset::VertexLuminance2D,
+      .vertex_bits = VA(VertexAttrib::Luminance) | VA(VertexAttrib::Position),
+      .surface_path = "surface/unlit_luminance_surface.glsl"   },
+
+    { .name = "VertexPaletteColor3D", .preset = MaterialPreset::VertexPaletteColor3D,
+      .vertex_bits = VA(VertexAttrib::Color), .extra_bits = EX(ExtraFeature::DebugShading),
+      .vs_path = "compositor/main_forward_unlit_palette.vert.glsl",
+      .surface_path = "surface/unlit_vertexcolor_surface.glsl" },
+
+    { .name = "Gizmo3D",            .preset = MaterialPreset::Gizmo3D,
+      .extra_bits = EX(ExtraFeature::DebugShading),
+      .surface_path = "surface/gizmo3d_surface.glsl" },
+
+    // ── Billboard  (2 geometries × 5 blend modes) ───────────────────────────────────────────────
+    { .name = "Billboard2DDynamicOpaque",   .preset = MaterialPreset::Billboard2DDynamic,
+      .geometry_mode = GM::BillboardCameraFacing, .blend = RM::Opaque,          .pass = PT::ForwardOpaque,
+      .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
+      .fs_path = "compositor/main_forward_billboard.frag.glsl",
+      .surface_path = "surface/billboard_texture_surface.glsl" },
+
+    { .name = "Billboard2DDynamic",         .preset = MaterialPreset::Billboard2DDynamic,
+      .geometry_mode = GM::BillboardCameraFacing, .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
+      .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
+      .fs_path = "compositor/main_forward_billboard.frag.glsl",
+      .surface_path = "surface/billboard_texture_surface.glsl" },
+
+    { .name = "Billboard2DDynamicMasked",   .preset = MaterialPreset::Billboard2DDynamic,
+      .geometry_mode = GM::BillboardCameraFacing, .blend = RM::Masked,          .pass = PT::ForwardMasked,
+      .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
+      .fs_path = "compositor/main_forward_billboard.frag.glsl",
+      .surface_path = "surface/billboard_texture_surface.glsl" },
+
+    { .name = "Billboard2DDynamicDither",   .preset = MaterialPreset::Billboard2DDynamic,
+      .geometry_mode = GM::BillboardCameraFacing, .blend = RM::Dither,          .pass = PT::ForwardDither,
+      .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
+      .fs_path = "compositor/main_forward_billboard.frag.glsl",
+      .surface_path = "surface/billboard_texture_surface.glsl" },
+
+    { .name = "Billboard2DDynamicA2C",      .preset = MaterialPreset::Billboard2DDynamic,
+      .geometry_mode = GM::BillboardCameraFacing, .blend = RM::AlphaToCoverage, .pass = PT::ForwardA2C,
+      .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
+      .fs_path = "compositor/main_forward_billboard.frag.glsl",
+      .surface_path = "surface/billboard_texture_surface.glsl" },
+
+    { .name = "Billboard2DFixedOpaque",     .preset = MaterialPreset::Billboard2DFixed,
+      .geometry_mode = GM::BillboardAxisLocked,   .blend = RM::Opaque,          .pass = PT::ForwardOpaque,
+      .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
+      .fs_path = "compositor/main_forward_billboard.frag.glsl",
+      .surface_path = "surface/billboard_texture_surface.glsl" },
+
+    { .name = "Billboard2DFixed",           .preset = MaterialPreset::Billboard2DFixed,
+      .geometry_mode = GM::BillboardAxisLocked,   .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
+      .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
+      .fs_path = "compositor/main_forward_billboard.frag.glsl",
+      .surface_path = "surface/billboard_texture_surface.glsl" },
+
+    { .name = "Billboard2DFixedMasked",     .preset = MaterialPreset::Billboard2DFixed,
+      .geometry_mode = GM::BillboardAxisLocked,   .blend = RM::Masked,          .pass = PT::ForwardMasked,
+      .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
+      .fs_path = "compositor/main_forward_billboard.frag.glsl",
+      .surface_path = "surface/billboard_texture_surface.glsl" },
+
+    { .name = "Billboard2DFixedDither",     .preset = MaterialPreset::Billboard2DFixed,
+      .geometry_mode = GM::BillboardAxisLocked,   .blend = RM::Dither,          .pass = PT::ForwardDither,
+      .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
+      .fs_path = "compositor/main_forward_billboard.frag.glsl",
+      .surface_path = "surface/billboard_texture_surface.glsl" },
+
+    { .name = "Billboard2DFixedA2C",        .preset = MaterialPreset::Billboard2DFixed,
+      .geometry_mode = GM::BillboardAxisLocked,   .blend = RM::AlphaToCoverage, .pass = PT::ForwardA2C,
+      .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
+      .fs_path = "compositor/main_forward_billboard.frag.glsl",
+      .surface_path = "surface/billboard_texture_surface.glsl" },
+
+    // ── Terrain / Sky ────────────────────────────────────────────────────────────────────────────
+    { .name = "TerrainGrid",  .preset = MaterialPreset::TerrainGrid,
+      .surface_type = ST::Terrain,
+      .vs_path = "compositor/main_terrain_grid.vert.glsl",
+      .surface_path = "surface/terrain_grid_surface.glsl"  },
+
+    { .name = "SkyMinimal",   .preset = MaterialPreset::SkyMinimal,
+      .surface_type = ST::Sky,
+      .vs_path = "compositor/main_forward_sky.vert.glsl",
+      .fs_path = "compositor/main_forward_sky.frag.glsl",
+      .surface_path = "surface/sky_minimal_surface.glsl"   },
+
+    // ── Standard 3D Lit  (texture-based, BaseColor + Normal) ────────────────────────────────────
+    { .name = "Standard",              .preset = MaterialPreset::Standard,
+      .surface_type = ST::Standard, .lighting = LM::Lambert,
+      .tex = {{ Slot::BaseColor, TSM::Simple }, { Slot::Normal, TSM::Simple }},
+      .surface_path = "surface/standard_surface.glsl"           },
+
+    { .name = "StandardBlinnPhong",    .preset = MaterialPreset::Standard,
+      .surface_type = ST::Standard, .lighting = LM::BlinnPhong,
+      .tex = {{ Slot::BaseColor, TSM::Simple }, { Slot::Normal, TSM::Simple }},
+      .surface_path = "surface/textureblinnphong_surface.glsl"  },
+
+    { .name = "StandardPBR",           .preset = MaterialPreset::Standard,
+      .surface_type = ST::Standard, .lighting = LM::PBR,
+      .tex = {{ Slot::BaseColor, TSM::Simple }, { Slot::Normal, TSM::Simple }},
+      .surface_path = "surface/standard_surface.glsl"           },
+
+    { .name = "StandardTextureArray",  .preset = MaterialPreset::Standard,
+      .surface_type = ST::Standard, .lighting = LM::Lambert,
+      .tex = {{ Slot::BaseColor, TSM::Array },  { Slot::Normal, TSM::Array  }},
+      .surface_path = "surface/standard_surface.glsl"           },
+
+    { .name = "StandardBlinnPhongArray", .preset = MaterialPreset::Standard,
+      .surface_type = ST::Standard, .lighting = LM::BlinnPhong,
+      .tex = {{ Slot::BaseColor, TSM::Array },  { Slot::Normal, TSM::Array  }},
+      .surface_path = "surface/textureblinnphong_surface.glsl"  },
+
+    { .name = "StandardPBRArray",      .preset = MaterialPreset::Standard,
+      .surface_type = ST::Standard, .lighting = LM::PBR,
+      .tex = {{ Slot::BaseColor, TSM::Array },  { Slot::Normal, TSM::Array  }},
+      .surface_path = "surface/standard_surface.glsl"           },
+
+    // ── PBR color-only ───────────────────────────────────────────────────────────────────────────
+    { .name = "PBRColor3D",  .preset = MaterialPreset::PBRColor3D,
+      .surface_type = ST::Standard, .lighting = LM::PBR,
+      .surface_path = "surface/pbrcolor3d_surface.glsl" },
+};
+// clang-format on
 
 } // anonymous namespace
 
 void VariantRegistry::InitializeBuiltinVariants()
 {
-    using ST  = SurfaceType;
-    using GM  = GeometryMode;
-    using TSM = TextureSourceMode;
-
-    RegisterVariant(
-        K(ST::Unlit, GM::Quad2D, {},
-            VertexAttribFeatureBit(VertexAttrib::Color)),
-        MakeDesc("VertexColor2D",
-                 MaterialPreset::VertexColor2D,
-                 "2d/vertexcolor2d.vert.glsl",
-                 "2d/vertexcolor2d.frag.glsl",
-                 ""));
-
-    RegisterVariant(
-        K(ST::Unlit, GM::Quad2D),
-        MakeDesc("PureColor2D",
-                 MaterialPreset::PureColor2D,
-                 "2d/purecolor2d.vert.glsl",
-                 "2d/purecolor2d.frag.glsl",
-                 ""));
-
-    RegisterVariant(
-        K(ST::Unlit, GM::Quad2D, {{SamplerSlot::BaseColor, TSM::Simple}},
-            0,
-            SamplerFeatureBit(SamplerSlot::BaseColor)),
-        MakeDesc("PureTexture2D",
-                 MaterialPreset::PureTexture2D,
-                 "2d/puretexture2d.vert.glsl",
-                 "2d/puretexture2d.frag.glsl",
-                 ""));
-
-    RegisterVariant(
-        K(ST::Unlit, GM::Quad2D, {{SamplerSlot::BaseColor, TSM::Array}},
-            0,
-            SamplerFeatureBit(SamplerSlot::BaseColor)),
-        MakeDesc("PureTexture2DArray",
-                 MaterialPreset::PureTexture2D,
-                 "2d/puretexture2d.vert.glsl",
-                 "2d/puretexture2d.frag.glsl",
-                 ""));
-
-    RegisterVariant(
-        K(ST::Unlit, GM::Quad2D, {{SamplerSlot::BaseColor, TSM::Atlas}},
-            0,
-            SamplerFeatureBit(SamplerSlot::BaseColor)),
-        MakeDesc("Text2D",
-                 MaterialPreset::Text2D,
-                 "2d/text2d.vert.glsl",
-                 "2d/text2d.frag.glsl",
-                 ""));
-
-    // ------------------------------------------------------------------
-    // 3D Unlit: PureColor — uses CompositorAssembler auto-routing, no explicit paths
-    // ------------------------------------------------------------------
-    RegisterVariant(
-        K(ST::Unlit, GM::Mesh3D),
-        MakeDesc("PureColor3D", MaterialPreset::PureColor3D, "", "", ""));
-
-    // ------------------------------------------------------------------
-    // 3D Unlit: VertexColor
-    // ------------------------------------------------------------------
-    RegisterVariant(
-        K(ST::Unlit, GM::Mesh3D, {},
-            VertexAttribFeatureBit(VertexAttrib::Color)),
-        MakeDesc("VertexColor3D",
-                 MaterialPreset::VertexColor3D,
-                 "", "", // VS/FS generated by BuildVSFromKey / BuildFSFromKey
-                 "surface/unlit_vertexcolor_surface.glsl"));
-
-    // ------------------------------------------------------------------
-    // 3D Unlit: VertexLuminance3D (VEC3 position)
-    // ------------------------------------------------------------------
-    RegisterVariant(
-        K(ST::Unlit, GM::Mesh3D, {},
-            VertexAttribFeatureBit(VertexAttrib::Luminance)),
-        MakeDesc("VertexLuminance3D",
-                 MaterialPreset::VertexLuminance3D,
-                 "", "",
-                 "surface/unlit_luminance_surface.glsl"));
-
-    // ------------------------------------------------------------------
-    // 3D Unlit: VertexLuminance2D (VEC2 position)
-    // ------------------------------------------------------------------
-    RegisterVariant(
-        K(ST::Unlit, GM::Mesh3D, {},
-            VertexAttribFeatureBit(VertexAttrib::Luminance) | VertexAttribFeatureBit(VertexAttrib::Position)),
-        MakeDesc("VertexLuminance2D",
-                 MaterialPreset::VertexLuminance2D,
-                 "", "",
-                 "surface/unlit_luminance_surface.glsl"));
-
-    // ------------------------------------------------------------------
-    // 3D Unlit: VertexPaletteColor
-    // ------------------------------------------------------------------
-    RegisterVariant(
-        K(ST::Unlit, GM::Mesh3D, {},
-            VertexAttribFeatureBit(VertexAttrib::Color),
-            0,
-            static_cast<uint32>(ExtraFeature::DebugShading)),
-        MakeDesc("VertexPaletteColor3D",
-                 MaterialPreset::VertexPaletteColor3D,
-                 "compositor/main_forward_unlit_palette.vert.glsl",
-                 "",   // FS generated by BuildFSFromKey
-                 "surface/unlit_vertexcolor_surface.glsl"));
-
-    // ------------------------------------------------------------------
-    // 3D Unlit: Gizmo
-    // ------------------------------------------------------------------
-    RegisterVariant(
-        K(ST::Unlit, GM::Mesh3D, {}, 0, 0, static_cast<uint32>(ExtraFeature::DebugShading)),
-        MakeDesc("Gizmo3D",
-                 MaterialPreset::Gizmo3D,
-                 "", "",   // VS/FS generated by BuildVSFromKey / BuildFSFromKey
-                 "surface/gizmo3d_surface.glsl"));
-
-    // ------------------------------------------------------------------
-    // Billboard variants (2 geometries × 4 blend modes)
-    // ------------------------------------------------------------------
-    static const struct {
-        const char    *name;
-        MaterialPreset preset;
-        GeometryMode   gm;
-        RenderAlphaMode      blend;
-        PassType       pass;
-        const char    *vs_path;
-    } kBillboardVariants[] = {
-        {"Billboard2DDynamicOpaque", MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, RenderAlphaMode::Opaque,           PassType::ForwardOpaque,      "compositor/main_forward_billboard_dynamic.vert.glsl"},
-        {"Billboard2DDynamic",       MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, RenderAlphaMode::Transparent,      PassType::ForwardTransparent, "compositor/main_forward_billboard_dynamic.vert.glsl"},
-        {"Billboard2DDynamicMasked", MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, RenderAlphaMode::Masked,           PassType::ForwardMasked,      "compositor/main_forward_billboard_dynamic.vert.glsl"},
-        {"Billboard2DDynamicDither", MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, RenderAlphaMode::Dither,           PassType::ForwardDither,      "compositor/main_forward_billboard_dynamic.vert.glsl"},
-        {"Billboard2DDynamicA2C",    MaterialPreset::Billboard2DDynamic, GM::BillboardCameraFacing, RenderAlphaMode::AlphaToCoverage,  PassType::ForwardA2C,         "compositor/main_forward_billboard_dynamic.vert.glsl"},
-        {"Billboard2DFixedOpaque",   MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   RenderAlphaMode::Opaque,           PassType::ForwardOpaque,      "compositor/main_forward_billboard_fixed.vert.glsl"},
-        {"Billboard2DFixed",         MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   RenderAlphaMode::Transparent,      PassType::ForwardTransparent, "compositor/main_forward_billboard_fixed.vert.glsl"},
-        {"Billboard2DFixedMasked",   MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   RenderAlphaMode::Masked,           PassType::ForwardMasked,      "compositor/main_forward_billboard_fixed.vert.glsl"},
-        {"Billboard2DFixedDither",   MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   RenderAlphaMode::Dither,           PassType::ForwardDither,      "compositor/main_forward_billboard_fixed.vert.glsl"},
-        {"Billboard2DFixedA2C",      MaterialPreset::Billboard2DFixed,   GM::BillboardAxisLocked,   RenderAlphaMode::AlphaToCoverage,  PassType::ForwardA2C,         "compositor/main_forward_billboard_fixed.vert.glsl"},
-    };
-    for (const auto &e : kBillboardVariants)
-        RegisterVariant(KB(e.gm, e.blend, e.pass),
-            MakeDesc(e.name, e.preset,
-                     e.vs_path,
-                     "compositor/main_forward_billboard.frag.glsl",
-                     "surface/billboard_texture_surface.glsl"));
-
-    // ------------------------------------------------------------------
-    // Terrain
-    // ------------------------------------------------------------------
-    RegisterVariant(
-        K(ST::Terrain, GM::Mesh3D),
-        MakeDesc("TerrainGrid",
-                 MaterialPreset::TerrainGrid,
-                 "compositor/main_terrain_grid.vert.glsl",
-                 "",   // FS generated by BuildFSFromKey (compositor/ prefix bypasses file read)
-                 "surface/terrain_grid_surface.glsl"));
-
-    // ------------------------------------------------------------------
-    // Sky
-    // ------------------------------------------------------------------
-    RegisterVariant(
-        K(ST::Sky, GM::Mesh3D),
-        MakeDesc("SkyMinimal",
-                 MaterialPreset::SkyMinimal,
-                 "compositor/main_forward_sky.vert.glsl",
-                 "compositor/main_forward_sky.frag.glsl",
-                 "surface/sky_minimal_surface.glsl"));
-
-    // ------------------------------------------------------------------
-    // Standard 3D variants (texture-based, lit)
-    // ------------------------------------------------------------------
-    static const struct {
-        const char *name;
-        TSM tsm;
-        LightingModel lighting;
-        const char *surface_path;
-    } kStdVariants[] = {
-        {"Standard",                 TSM::Simple, LightingModel::Lambert,    "surface/standard_surface.glsl"},
-        {"StandardBlinnPhong",       TSM::Simple, LightingModel::BlinnPhong, "surface/textureblinnphong_surface.glsl"},
-        {"StandardPBR",              TSM::Simple, LightingModel::PBR,        "surface/standard_surface.glsl"},
-        {"StandardTextureArray",     TSM::Array,  LightingModel::Lambert,    "surface/standard_surface.glsl"},
-        {"StandardBlinnPhongArray",  TSM::Array,  LightingModel::BlinnPhong, "surface/textureblinnphong_surface.glsl"},
-        {"StandardPBRArray",         TSM::Array,  LightingModel::PBR,        "surface/standard_surface.glsl"},
-    };
-    for (const auto &e : kStdVariants)
-    {
-        MaterialVariantKey key = K(ST::Standard, GM::Mesh3D,
-            {{SamplerSlot::BaseColor, e.tsm}, {SamplerSlot::Normal, e.tsm}},
-            0,
-            SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal));
-        key.lighting_model = e.lighting;
-
-        RegisterVariant(
-            key,
-            MakeDesc(e.name,
-                     MaterialPreset::Standard,
-                     "compositor/main_forward_lit.vert.glsl",
-                     "compositor/main_forward_lit.frag.glsl",
-                     e.surface_path));
-    }
-
-    // ------------------------------------------------------------------
-    // PBRColor3D (Standard surface, color-only via MaterialBindingInstanceData)
-    // ------------------------------------------------------------------
-    {
-        MaterialVariantKey key = K(ST::Standard, GM::Mesh3D);
-        key.lighting_model = LightingModel::PBR;
-
-        RegisterVariant(
-            key,
-            MakeDesc("PBRColor3D",
-                     MaterialPreset::PBRColor3D,
-                     "compositor/main_forward_lit.vert.glsl",
-                     "compositor/main_forward_lit.frag.glsl",
-                     "surface/pbrcolor3d_surface.glsl"));
-    }
+    for (const auto &e : kBuiltinVariants)
+        RegisterVariant(BuildKey(e), BuildDesc(e));
 }
 
 // ---------------------------------------------------------------------------
