@@ -28,8 +28,6 @@ struct Material3DCreateConfig:public MaterialCreateConfig
     // 0 means no intent_features override (use defaults derived from camera/sky/lighting_model).
     uint64              effective_feature_mask = 0;
 
-//    bool                reverse_depth;          ///<使用反向深度
-
 public:
 
     Material3DCreateConfig(const PrimitiveType &    p   =PrimitiveType::Triangles,
@@ -53,8 +51,6 @@ public:
         sky_ambient_model=SkyLightAmbientModel::Simple;
 
         lighting_model=LightingModel::Lambert;
-
-//        reverse_depth=false;
     }
 
     std::strong_ordering operator<=>(const Material3DCreateConfig &cfg)const

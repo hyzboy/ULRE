@@ -50,6 +50,8 @@ use_cm_module(2D)
 #use_cm_module(Script)
 use_cm_module(AssetsManage)
 
+add_subdirectory(ShaderLibrary)
+
 add_subdirectory(src)
 
 add_subdirectory(example)
