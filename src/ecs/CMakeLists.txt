@@ -133,6 +133,13 @@ set(ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES
     components/QuadComponent.cpp
 )
 
+set(ECS_SYS_11C_RenderMaterialBind_Sprite2DMaterialBindingSystem_FILES
+    ${ECS_INCLUDE_PATH}/components/Sprite2DComponent.h
+    components/Sprite2DComponent.cpp
+    ${ECS_INCLUDE_PATH}/systems/render/Sprite2DMaterialBindingSystem.h
+    systems/render/Sprite2DMaterialBindingSystem.cpp
+)
+
 set(ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/MaterialResolveSystem.h
     systems/render/MaterialResolveSystem.cpp
@@ -344,6 +351,7 @@ set(ECS_SOURCE
     ${ECS_SYS_10_RenderResourceSetup_QuadResourcePrepareSystem_FILES}
     ${ECS_SYS_10B_RenderResourceSetup_Sprite2DResourcePrepareSystem_FILES}
     ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES}
+    ${ECS_SYS_11C_RenderMaterialBind_Sprite2DMaterialBindingSystem_FILES}
     ${ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES}
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
     ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES}
@@ -387,6 +395,7 @@ source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${EC
 source_group("ECS\\Systems\\10 RenderResourceSetup_QuadResourcePrepareSystem" FILES ${ECS_SYS_10_RenderResourceSetup_QuadResourcePrepareSystem_FILES})
 source_group("ECS\\Systems\\10B RenderResourceSetup_Sprite2DResourcePrepareSystem" FILES ${ECS_SYS_10B_RenderResourceSetup_Sprite2DResourcePrepareSystem_FILES})
 source_group("ECS\\Systems\\11 RenderMaterialBind_QuadMaterialBindingSystem" FILES ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES})
+source_group("ECS\\Systems\\11C RenderMaterialBind_Sprite2DMaterialBindingSystem" FILES ${ECS_SYS_11C_RenderMaterialBind_Sprite2DMaterialBindingSystem_FILES})
 source_group("ECS\\Systems\\11B RenderMaterialBind_MaterialResolveSystem" FILES ${ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES})
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
 source_group("ECS\\Systems\\15 RenderFrameSync_RenderFrameBusinessSyncSystem" FILES ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES})
