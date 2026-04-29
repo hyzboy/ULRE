@@ -258,6 +258,49 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
 
     (void)s_startup_variant_validation_done;
 
+    // [Step 3.5 T4] Routing self-test: every kBuiltinVariants entry must round-trip
+    // through the registry (BuildKey → QueryVariantWithCanonicalFallback → factory_type
+    // must equal entry.preset). Any mismatch is a programming error → abort immediately.
+    static const bool s_routing_consistency_ok = []() noexcept
+    {
+        bool all_ok = true;
+        for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
+        {
+            const auto &e = kBuiltinVariants[i];
+            const MaterialVariantKey k = BuildKey(e);
+            const MaterialVariantDesc *found =
+                GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(k, nullptr);
+            const bool entry_ok = found
+                                && found->factory_type.has_value()
+                                && *found->factory_type == e.preset;
+            if (!entry_ok)
+            {
+                std::fprintf(stderr,
+                    "[MaterialLibrary] FATAL: routing self-test FAILED for entry[%zu] \"%s\""
+                    " (preset=%u): registry returned %s\n",
+                    i,
+                    e.name,
+                    static_cast<unsigned>(e.preset),
+                    found ? (found->factory_type.has_value()
+                             ? "wrong factory_type"
+                             : "desc with no factory_type")
+                          : "nullptr");
+                all_ok = false;
+            }
+        }
+        if (!all_ok)
+        {
+            std::fprintf(stderr,
+                "[MaterialLibrary] FATAL: BuiltinVariantEntry routing self-test failed"
+                " — aborting to prevent undefined behaviour in main loop.\n");
+            std::abort();
+        }
+        std::printf("[MaterialLibrary] BuiltinVariantEntry routing self-test passed"
+                    " (%zu entries).\n", kBuiltinVariantsCount);
+        return true;
+    }();
+    (void)s_routing_consistency_ok;
+
     if(!cfg)
     {
         std::fprintf(stderr, "[MaterialLibrary] CreateMaterialCreateInfo failed: cfg is null\n");
