@@ -27,7 +27,8 @@ namespace
 
 MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
-    const MaterialVariantKey var_key = build3d::MakeVariantKey();
+    // [Step 3.5 T2] Single-entry routing via RouteKey().
+    const MaterialVariantKey var_key = RouteKey(MaterialPreset::PureColor3D);
     return CreateFromFixedDef3D("PureColor3D", profile, PURE_COLOR_3D_DEF, var_key, cfg);
 }
 

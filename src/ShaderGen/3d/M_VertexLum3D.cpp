@@ -31,7 +31,8 @@ MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfil
 {
     cfg->material_instance=true;
 
-    const MaterialVariantKey var_key = build3d::MakeVariantKeyWithAttrib(VertexAttrib::Luminance);
+    // [Step 3.5 T2] Single-entry routing via RouteKey().
+    const MaterialVariantKey var_key = RouteKey(MaterialPreset::VertexLuminance3D);
     return CreateFromFixedDef3D("VertexLuminance3D", profile, VERTEX_LUMINANCE_3D_DEF, var_key, cfg);
 }
 

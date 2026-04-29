@@ -28,7 +28,8 @@ namespace
 
 MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
 {
-    const MaterialVariantKey var_key = build3d::MakeVariantKeyWithAttrib(VertexAttrib::Color);
+    // [Step 3.5 T2] Single-entry routing via RouteKey().
+    const MaterialVariantKey var_key = RouteKey(MaterialPreset::VertexColor3D);
     return CreateFromFixedDef3D("VertexColor3D", profile, VERTEX_COLOR_3D_DEF, var_key, cfg);
 }
 

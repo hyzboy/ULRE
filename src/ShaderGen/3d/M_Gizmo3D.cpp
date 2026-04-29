@@ -33,8 +33,8 @@ MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *pro
     if(cfg)
         cfg->material_instance=true;    // Gizmo requires per-instance data
 
-    MaterialVariantKey var_key = build3d::MakeVariantKey();
-    var_key.SetDebugShading(true);
+    // [Step 3.5 T2] PresetResolveTable supplies debug_shading=true.
+    const MaterialVariantKey var_key = RouteKey(MaterialPreset::Gizmo3D);
     return CreateFromFixedDef3D("Gizmo3D", profile, GIZMO_3D_DEF, var_key, cfg);
 }
 

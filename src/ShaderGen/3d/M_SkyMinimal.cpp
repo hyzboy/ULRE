@@ -27,7 +27,8 @@ namespace
 
 MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg)
 {
-    const MaterialVariantKey var_key = build3d::MakeVariantKeyWithSurface(SurfaceType::Sky);
+    // [Step 3.5 T2] Single-entry routing via RouteKey().
+    const MaterialVariantKey var_key = RouteKey(MaterialPreset::SkyMinimal);
     return CreateFromFixedDef3D("SkyMinimal", profile, SKY_MINIMAL_DEF, var_key, cfg);
 }
 

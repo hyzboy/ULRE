@@ -36,7 +36,8 @@ MaterialCreateInfo *CreateVertexPaletteColor3D(const contract::PhysicalDevicePro
 {
     Material3DCreateConfig local_cfg = build3d::MakeLocalConfig(cfg);
 
-    const MaterialVariantKey var_key = build3d::MakeVariantKeyWithAttribAndDebug(VertexAttrib::Color);
+    // [Step 3.5 T2] PresetResolveTable supplies va_bits=Color + debug_shading=true.
+    const MaterialVariantKey var_key = RouteKey(MaterialPreset::VertexPaletteColor3D);
     return CreateFromFixedDef3D("VertexPaletteColor3D", profile, VERTEX_PALETTE_COLOR_3D_DEF, var_key, &local_cfg);
 }
 

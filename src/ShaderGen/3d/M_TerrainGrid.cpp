@@ -40,7 +40,8 @@ namespace
 
 MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite *profile, const TerrainGridCreateConfig *cfg)
 {
-    const MaterialVariantKey var_key = build3d::MakeVariantKeyWithSurface(SurfaceType::Terrain);
+    // [Step 3.5 T2] Single-entry routing via RouteKey().
+    const MaterialVariantKey var_key = RouteKey(MaterialPreset::TerrainGrid);
     return CreateFromFixedDef3D("TerrainGrid", profile, TERRAIN_GRID_DEF, var_key, cfg);
 }
 

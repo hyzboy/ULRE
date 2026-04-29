@@ -32,8 +32,8 @@ MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfil
 {
     cfg->material_instance=true;
 
-    MaterialVariantKey var_key = build3d::MakeVariantKeyWithAttrib(VertexAttrib::Luminance);
-    var_key.position_type = PositionType::Vec2;
+    // [Step 3.5 T2] PresetResolveTable supplies va_bits=Luminance + position_type=Vec2.
+    const MaterialVariantKey var_key = RouteKey(MaterialPreset::VertexLuminance2D);
 
     StaticMaterialDef def = VERTEX_LUMINANCE_2D_DEF;
     if (cfg)
