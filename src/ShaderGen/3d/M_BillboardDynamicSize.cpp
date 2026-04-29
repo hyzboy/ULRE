@@ -6,7 +6,7 @@
 #include<cstdio>
 #include<vector>
 #include<hgl/mtl/MaterialVariantRegistry.h>
-#include"Build3DCommon.h"
+#include<hgl/mtl/MaterialLibrary.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -70,8 +70,8 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
     dynamic_def.texture_samplers  = &dynamic_samplers;
     dynamic_def.ssbo_descriptors  = &dynamic_ssbos;
 
-    MaterialVariantKey lookup_key = build3d::MakeBillboardKeyBase(cfg->blend_mode);
-    lookup_key.geometry_mode = GeometryMode::BillboardCameraFacing;
+    MaterialVariantKey lookup_key = RouteKey(MaterialPreset::Billboard2DDynamic, 0,
+        RuntimeKeyOverrides{.blend_mode = cfg->blend_mode});
 
     MaterialVariantKey assemble_key = lookup_key;
     if (use_array)

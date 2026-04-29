@@ -101,6 +101,7 @@ inline PassType BlendModeToPassHint(const RenderAlphaMode blend_mode)
     }
 }
 
+[[deprecated("use RouteKey(preset, 0, RuntimeKeyOverrides{.blend_mode=...}) -- Step 3.5 T3")]]
 inline MaterialVariantKey MakeBillboardKeyBase(const RenderAlphaMode blend_mode)
 {
     MaterialVariantKey key;

@@ -7,6 +7,7 @@
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/shadergen/MaterialFactory3D.h>
 #include<cstdio>
+#include "BuiltinVariantEntry.h"
 
 namespace hgl::graph::mtl{
 
@@ -22,8 +23,6 @@ std::string GetBuiltinMaterialVariantSnapshot()
 }
 
 namespace {
-
-using MakeVariantKeyProc = MaterialVariantKey (*)();
 
 static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
 {
@@ -77,166 +76,13 @@ struct PresetResolveEntry
 {
     MaterialPreset preset;
     const char *name;
-    MaterialPreset canonical_preset;
-    MakeVariantKeyProc make_key;
 };
-
-static MaterialVariantKey MakeVertexColor2DKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::Quad2D;
-    key.position_type = PositionType::Vec2;
-    key.SetVertexAttribEnabled(VertexAttrib::Color);
-    return key;
-}
-
-static MaterialVariantKey MakePureColor2DKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::Quad2D;
-    key.position_type = PositionType::Vec2;
-    return key;
-}
-
-static MaterialVariantKey MakePureTexture2DKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::Quad2D;
-    key.position_type = PositionType::Vec2;
-    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-    return key;
-}
-
-static MaterialVariantKey MakeText2DKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::Quad2D;
-    key.position_type = PositionType::Vec2;
-    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Atlas);
-    return key;
-}
-
-static MaterialVariantKey MakePureColor3DKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::Mesh3D;
-    return key;
-}
-
-static MaterialVariantKey MakeVertexColor3DKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::Mesh3D;
-    key.SetVertexAttribEnabled(VertexAttrib::Color);
-    return key;
-}
-
-static MaterialVariantKey MakeVertexLuminance3DKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::Mesh3D;
-    key.SetVertexAttribEnabled(VertexAttrib::Luminance);
-    return key;
-}
-
-static MaterialVariantKey MakeVertexLuminance2DKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::Mesh3D;
-    key.position_type = PositionType::Vec2;
-    key.SetVertexAttribEnabled(VertexAttrib::Luminance);
-    return key;
-}
-
-static MaterialVariantKey MakeVertexPaletteColor3DKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::Mesh3D;
-    key.SetVertexAttribEnabled(VertexAttrib::Color);
-    key.SetDebugShading(true);
-    return key;
-}
-
-static MaterialVariantKey MakeGizmo3DKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::Mesh3D;
-    key.SetDebugShading(true);
-    return key;
-}
-
-static MaterialVariantKey MakeTerrainGridKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Terrain;
-    key.geometry_mode = GeometryMode::Mesh3D;
-    return key;
-}
-
-static MaterialVariantKey MakeSkyMinimalKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Sky;
-    key.geometry_mode = GeometryMode::Mesh3D;
-    return key;
-}
-
-static MaterialVariantKey MakeBillboard2DDynamicKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::BillboardCameraFacing;
-    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-    key.blend_mode = RenderAlphaMode::Transparent;
-    key.pass_hint = PassType::ForwardTransparent;
-    return key;
-}
-
-static MaterialVariantKey MakeBillboard2DFixedKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::BillboardAxisLocked;
-    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-    key.blend_mode = RenderAlphaMode::Transparent;
-    key.pass_hint = PassType::ForwardTransparent;
-    return key;
-}
-
-static MaterialVariantKey MakeStandardKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Standard;
-    key.geometry_mode = GeometryMode::Mesh3D;
-    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-    key.SetTextureSourceMode(SamplerSlot::Normal,    TextureSourceMode::Simple);
-    return key;
-}
-
-static MaterialVariantKey MakePBRColor3DKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Standard;
-    key.geometry_mode = GeometryMode::Mesh3D;
-    key.lighting_model = LightingModel::PBR;
-    return key;
-}
 
 static bool IsSemanticMaterialPreset(const MaterialPreset preset)
 {
     switch(preset)
     {
+        case MaterialPreset::Checkerboard3D:     // alias → Standard
         case MaterialPreset::HumanSkin:
         case MaterialPreset::AmphibiansSkin:
         case MaterialPreset::Wood:
@@ -254,35 +100,34 @@ static bool IsSemanticMaterialPreset(const MaterialPreset preset)
 
 static const PresetResolveEntry kPresetResolveTable[] =
 {
-    // Fallback/error visualization material (routes to Standard shader for now)
-    {MaterialPreset::Checkerboard3D,      "Checkerboard3D",      MaterialPreset::Standard,            MakeStandardKey},
-
-    {MaterialPreset::VertexColor2D,       "VertexColor2D",       MaterialPreset::VertexColor2D,       MakeVertexColor2DKey},
-    {MaterialPreset::PureColor2D,         "PureColor2D",         MaterialPreset::PureColor2D,         MakePureColor2DKey},
-    {MaterialPreset::PureTexture2D,       "PureTexture2D",       MaterialPreset::PureTexture2D,       MakePureTexture2DKey},
-    {MaterialPreset::Text2D,              "Text2D",              MaterialPreset::Text2D,              MakeText2DKey},
-    {MaterialPreset::PureColor3D,         "PureColor3D",         MaterialPreset::PureColor3D,         MakePureColor3DKey},
-    {MaterialPreset::VertexColor3D,       "VertexColor3D",       MaterialPreset::VertexColor3D,       MakeVertexColor3DKey},
-    {MaterialPreset::VertexLuminance3D,   "VertexLuminance3D",   MaterialPreset::VertexLuminance3D,   MakeVertexLuminance3DKey},
-    {MaterialPreset::VertexLuminance2D,   "VertexLuminance2D",   MaterialPreset::VertexLuminance2D,   MakeVertexLuminance2DKey},
-    {MaterialPreset::VertexPaletteColor3D, "VertexPaletteColor3D", MaterialPreset::VertexPaletteColor3D, MakeVertexPaletteColor3DKey},
-    {MaterialPreset::Gizmo3D,             "Gizmo3D",             MaterialPreset::Gizmo3D,             MakeGizmo3DKey},
-    {MaterialPreset::TerrainGrid,         "TerrainGrid",         MaterialPreset::TerrainGrid,         MakeTerrainGridKey},
-    {MaterialPreset::SkyMinimal,          "SkyMinimal",          MaterialPreset::SkyMinimal,          MakeSkyMinimalKey},
-    {MaterialPreset::Billboard2DDynamic,  "Billboard2DDynamic",  MaterialPreset::Billboard2DDynamic,  MakeBillboard2DDynamicKey},
-    {MaterialPreset::Billboard2DFixed,    "Billboard2DFixed",    MaterialPreset::Billboard2DFixed,    MakeBillboard2DFixedKey},
-    {MaterialPreset::Standard,            "Standard",            MaterialPreset::Standard,            MakeStandardKey},
-    {MaterialPreset::PBRColor3D,          "PBRColor3D",          MaterialPreset::PBRColor3D,          MakePBRColor3DKey},
+    // Canonical presets (one entry per kBuiltinVariants preset)
+    {MaterialPreset::Checkerboard3D,       "Checkerboard3D"},      // alias → Standard via IsSemanticMaterialPreset
+    {MaterialPreset::VertexColor2D,        "VertexColor2D"},
+    {MaterialPreset::PureColor2D,          "PureColor2D"},
+    {MaterialPreset::PureTexture2D,        "PureTexture2D"},
+    {MaterialPreset::Text2D,               "Text2D"},
+    {MaterialPreset::PureColor3D,          "PureColor3D"},
+    {MaterialPreset::VertexColor3D,        "VertexColor3D"},
+    {MaterialPreset::VertexLuminance3D,    "VertexLuminance3D"},
+    {MaterialPreset::VertexLuminance2D,    "VertexLuminance2D"},
+    {MaterialPreset::VertexPaletteColor3D, "VertexPaletteColor3D"},
+    {MaterialPreset::Gizmo3D,              "Gizmo3D"},
+    {MaterialPreset::TerrainGrid,          "TerrainGrid"},
+    {MaterialPreset::SkyMinimal,           "SkyMinimal"},
+    {MaterialPreset::Billboard2DDynamic,   "Billboard2DDynamic"},
+    {MaterialPreset::Billboard2DFixed,     "Billboard2DFixed"},
+    {MaterialPreset::Standard,             "Standard"},
+    {MaterialPreset::PBRColor3D,           "PBRColor3D"},
     // Semantic aliases (LOD reserved, current lod=0 target is Standard)
-    {MaterialPreset::HumanSkin,           "HumanSkin",           MaterialPreset::Standard,            MakeStandardKey},
-    {MaterialPreset::AmphibiansSkin,      "AmphibiansSkin",      MaterialPreset::Standard,            MakeStandardKey},
-    {MaterialPreset::Wood,                "Wood",                MaterialPreset::Standard,            MakeStandardKey},
-    {MaterialPreset::TreeBark,            "TreeBark",            MaterialPreset::Standard,            MakeStandardKey},
-    {MaterialPreset::Stone,               "Stone",               MaterialPreset::Standard,            MakeStandardKey},
-    {MaterialPreset::Leaf,                "Leaf",                MaterialPreset::Standard,            MakeStandardKey},
-    {MaterialPreset::Metal,               "Metal",               MaterialPreset::Standard,            MakeStandardKey},
-    {MaterialPreset::BirdFeathers,        "BirdFeathers",        MaterialPreset::Standard,            MakeStandardKey},
-    {MaterialPreset::Scales,              "Scales",              MaterialPreset::Standard,            MakeStandardKey},
+    {MaterialPreset::HumanSkin,            "HumanSkin"},
+    {MaterialPreset::AmphibiansSkin,       "AmphibiansSkin"},
+    {MaterialPreset::Wood,                 "Wood"},
+    {MaterialPreset::TreeBark,             "TreeBark"},
+    {MaterialPreset::Stone,                "Stone"},
+    {MaterialPreset::Leaf,                 "Leaf"},
+    {MaterialPreset::Metal,                "Metal"},
+    {MaterialPreset::BirdFeathers,         "BirdFeathers"},
+    {MaterialPreset::Scales,               "Scales"},
 };
 
 static const PresetResolveEntry *FindPresetResolveEntry(const MaterialPreset preset)
@@ -292,64 +137,6 @@ static const PresetResolveEntry *FindPresetResolveEntry(const MaterialPreset pre
             return &entry;
 
     return nullptr;
-}
-
-static bool ValidatePresetResolveTable()
-{
-    bool ok=true;
-
-    for(size_t i=0;i<sizeof(kPresetResolveTable)/sizeof(kPresetResolveTable[0]);++i)
-    {
-        const auto &entry=kPresetResolveTable[i];
-
-        // Check duplicate preset entries.
-        for(size_t j=i+1;j<sizeof(kPresetResolveTable)/sizeof(kPresetResolveTable[0]);++j)
-        {
-            if(entry.preset==kPresetResolveTable[j].preset)
-            {
-                std::fprintf(stderr,
-                    "[MaterialLibrary] PresetResolveTable duplicate preset=%u\n",
-                    static_cast<unsigned>(entry.preset));
-                ok=false;
-            }
-        }
-
-        if(!entry.make_key)
-        {
-            std::fprintf(stderr,
-                "[MaterialLibrary] PresetResolveTable missing make_key preset=%u (%s)\n",
-                static_cast<unsigned>(entry.preset),
-                entry.name?entry.name:"<null>");
-            ok=false;
-            continue;
-        }
-
-        // Canonical preset must be resolvable in current table.
-        const PresetResolveEntry *canonical=FindPresetResolveEntry(entry.canonical_preset);
-        if(!canonical)
-        {
-            std::fprintf(stderr,
-                "[MaterialLibrary] PresetResolveTable missing canonical preset=%u for preset=%u\n",
-                static_cast<unsigned>(entry.canonical_preset),
-                static_cast<unsigned>(entry.preset));
-            ok=false;
-            continue;
-        }
-
-        const MaterialVariantKey route_key=entry.make_key();
-        const MaterialVariantKey canonical_key=canonical->make_key();
-        if(route_key.Hash()!=canonical_key.Hash())
-        {
-            std::fprintf(stderr,
-                "[MaterialLibrary] PresetResolveTable route mismatch preset=%u route=%llu canonical=%llu\n",
-                static_cast<unsigned>(entry.preset),
-                static_cast<unsigned long long>(route_key.Hash()),
-                static_cast<unsigned long long>(canonical_key.Hash()));
-            ok=false;
-        }
-    }
-
-    return ok;
 }
 
 }
@@ -389,49 +176,46 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
                             uint32 extra_attrib_bits,
                             const RuntimeKeyOverrides &ov) noexcept
 {
-    // Validate the preset resolve table once at first call (preserves the
-    // original side effect of the deprecated MapPresetToVariantKey path).
-    static const bool s_preset_resolve_table_ok=[]()
-    {
-        const bool ok=ValidatePresetResolveTable();
-        if(ok)
-            std::printf("[MaterialLibrary] PresetResolveTable validation passed.\n");
-        else
-            std::fprintf(stderr,"[MaterialLibrary] PresetResolveTable validation failed.\n");
-        return ok;
-    }();
-    (void)s_preset_resolve_table_ok;
-
-    // Step 1: resolve preset family for current MaterialLOD (semantic alias collapse).
+    // Step 1: resolve semantic alias → canonical preset via LOD table.
     const MaterialPreset resolved_preset =
         ResolveMaterialPresetForLOD(preset, GetDefaultMaterialLOD());
 
-    // Step 2: build the preset-default key from the resolve table.
-    MaterialVariantKey key{};
-    if(const PresetResolveEntry *entry=FindPresetResolveEntry(resolved_preset);
-       entry && entry->make_key)
+    // Step 2: scan kBuiltinVariants for the best matching entry.
+    //   • If ov.blend_mode is set, select the entry whose blend field matches.
+    //   • If ov.lighting_model is set, additionally filter on lighting field.
+    //   • First match wins (table entries ordered from most common to rarest).
+    const BuiltinVariantEntry *found = nullptr;
+    for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
     {
-        key = entry->make_key();
+        const auto &e = kBuiltinVariants[i];
+        if (e.preset != resolved_preset)                           continue;
+        if (ov.blend_mode     && e.blend    != *ov.blend_mode)    continue;
+        if (ov.lighting_model && e.lighting != *ov.lighting_model) continue;
+        found = &e;
+        break;
     }
-    else
+
+    if (!found)
     {
         std::fprintf(stderr,
-            "[MaterialLibrary] ERROR: RouteKey unknown preset=%u\n",
+            "[MaterialLibrary] ERROR: RouteKey no builtin entry for preset=%u\n",
             static_cast<unsigned>(preset));
         return MaterialVariantKey{};
     }
 
-    // Step 3: OR-merge caller-supplied extra vertex attribute bits.
+    // Step 3: build the base key from the matched entry.
+    //   blend_mode and lighting_model are already correct from entry selection.
+    MaterialVariantKey key = BuildKey(*found);
+
+    // Step 4: OR-merge caller-supplied extra vertex attribute bits.
     key.vertex_attribute_feature_bits |= extra_attrib_bits;
     key.vertex_attribute_feature_bits |= ov.extra_vertex_attrib_bits;
 
-    // Step 4: apply runtime overrides only when explicitly provided.
-    if(ov.position_type)        key.position_type      = *ov.position_type;
-    if(ov.blend_mode)           key.blend_mode         = *ov.blend_mode;
-    if(ov.pass_hint)            key.pass_hint          = *ov.pass_hint;
-    if(ov.sky_ambient_model)    key.sky_ambient_model  = *ov.sky_ambient_model;
-    if(ov.lighting_model)       key.lighting_model     = *ov.lighting_model;
-    if(ov.debug_shading)        key.SetDebugShading(true);
+    // Step 5: apply remaining overrides (not covered by entry selection).
+    if (ov.position_type)     key.position_type     = *ov.position_type;
+    if (ov.pass_hint)         key.pass_hint         = *ov.pass_hint;
+    if (ov.sky_ambient_model) key.sky_ambient_model = *ov.sky_ambient_model;
+    if (ov.debug_shading)     key.SetDebugShading(true);
 
     return key;
 }

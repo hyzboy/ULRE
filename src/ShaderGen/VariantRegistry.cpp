@@ -1,6 +1,7 @@
 #include<hgl/mtl/MaterialVariantRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/shadergen/CompositorAssembler.h>
+#include "BuiltinVariantEntry.h"
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
@@ -293,85 +294,25 @@ void VariantRegistry::ForEach(
 }
 
 // ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
 // Built-in variant table  (B' — C++20 designated-initializer flat table)
-//
-// Rules:
-//   • One row per variant; every field has a sane default so unneeded fields
-//     are simply omitted.
-//   • tex[]  entries with mode == None are skipped in BuildKey(); zero-init
-//     slots are automatically silent (None == 0).
-//   • vs_path / fs_path == "" → CompositorAssembler auto-routes via BuildVSFromKey
-//     / BuildFSFromKey (any "compositor/" prefix is also auto-routed the same way).
+// Struct definition and BuildKey()/BuildDesc() live in BuiltinVariantEntry.h.
 // ---------------------------------------------------------------------------
 
+// Convenience aliases (TU-local; do not pollute hgl::graph::mtl public API).
 namespace {
-
-using ST   = SurfaceType;
-using GM   = GeometryMode;
-using TSM  = TextureSourceMode;
-using LM   = LightingModel;
-using RM   = RenderAlphaMode;
-using PT   = PassType;
-using Slot = SamplerSlot;
-
-constexpr uint32 VA(VertexAttrib a) { return VertexAttribFeatureBit(a); }
-constexpr uint32 EX(ExtraFeature f) { return static_cast<uint32>(f); }
-
-struct TexMode { SamplerSlot slot = Slot::BaseColor; TextureSourceMode mode = TSM::None; };
-
-struct BuiltinVariantEntry
-{
-    const char*          name;
-    MaterialPreset       preset;
-
-    SurfaceType          surface_type = ST::Unlit;
-    GeometryMode         geometry_mode = GM::Mesh3D;
-    PositionType         position_type = PositionType::Vec3;
-    LightingModel        lighting      = LM::Lambert;
-    SkyLightAmbientModel sky_model     = SkyLightAmbientModel::Simple;
-    RenderAlphaMode      blend         = RM::Opaque;
-    PassType             pass          = PT::ForwardOpaque;
-    uint32               vertex_bits   = 0;
-    uint32               extra_bits    = 0;
-    TexMode              tex[4]        = {};  // zero-init  →  {BaseColor, None}  →  skipped
-
-    const char*          vs_path       = "";
-    const char*          fs_path       = "";
-    const char*          surface_path  = "";
-};
-
-static MaterialVariantKey BuildKey(const BuiltinVariantEntry &e)
-{
-    MaterialVariantKey k;
-    k.surface_type                  = e.surface_type;
-    k.geometry_mode                 = e.geometry_mode;
-  k.position_type                 = e.position_type;
-    k.vertex_attribute_feature_bits = e.vertex_bits;
-    k.extra_feature_bits            = e.extra_bits;
-    k.blend_mode                    = e.blend;
-    k.pass_hint                     = e.pass;
-    k.lighting_model                = e.lighting;
-    k.sky_ambient_model             = e.sky_model;
-    for (const auto &tm : e.tex)
-        if (tm.mode != TSM::None)          // skip zero-init sentinel slots
-            k.SetTextureSourceMode(tm.slot, tm.mode);
-    return k;
-}
-
-static MaterialVariantDesc BuildDesc(const BuiltinVariantEntry &e)
-{
-    MaterialVariantDesc d;
-    d.variant_name          = e.name;
-    d.factory_type          = e.preset;
-    d.vs_template_path      = e.vs_path;
-    d.fs_template_path      = e.fs_path;
-    d.surface_function_path = e.surface_path;
-    return d;
-}
+using ST   = _BVE_ST;
+using GM   = _BVE_GM;
+using TSM  = _BVE_TSM;
+using LM   = _BVE_LM;
+using RM   = _BVE_RM;
+using PT   = _BVE_PT;
+using Slot = _BVE_Slot;
+constexpr auto VA = _BVE_VA;
+constexpr auto EX = _BVE_EX;
+} // anonymous (aliases only)
 
 // clang-format off
-static const BuiltinVariantEntry kBuiltinVariants[] =
+const BuiltinVariantEntry kBuiltinVariants[] =
 {
     // ── 2D ──────────────────────────────────────────────────────────────────────────────────────
     { .name = "VertexColor2D",      .preset = MaterialPreset::VertexColor2D,
@@ -540,7 +481,7 @@ static const BuiltinVariantEntry kBuiltinVariants[] =
 };
 // clang-format on
 
-} // anonymous namespace
+const size_t kBuiltinVariantsCount = std::size(kBuiltinVariants);
 
 void VariantRegistry::InitializeBuiltinVariants()
 {
