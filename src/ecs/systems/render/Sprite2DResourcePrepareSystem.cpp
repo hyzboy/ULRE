@@ -4,10 +4,12 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKFormat.h>
 #include<cstdint>
 #include<memory>
+#include<cstdio>
 
 namespace hgl::ecs
 {
@@ -54,13 +56,28 @@ namespace hgl::ecs
     {
         delete shared_unit_square_geometry;
         shared_unit_square_geometry = nullptr;
+
+        if (shared_sampler && world)
+        {
+            auto* gc = world->GetGraphicsContext();
+            auto* sampler_manager = gc ? gc->GetSamplerManager() : nullptr;
+            if (sampler_manager)
+                sampler_manager->Release(shared_sampler);
+        }
+        shared_sampler = nullptr;
+
         System::Shutdown();
     }
 
     bool Sprite2DResourcePrepareSystem::EnsureSharedResources()
     {
         if (shared_unit_square_geometry)
-            return true;
+        {
+            // Only log once (when sampler also missing)
+            if (!shared_sampler)
+                std::fprintf(stderr, "[Sprite2DResPrepare] geometry OK but sampler still null\n");
+            return shared_sampler != nullptr;
+        }
 
         auto* graphics_context = world->GetGraphicsContext();
         if (!graphics_context)
@@ -88,6 +105,30 @@ namespace hgl::ecs
             return false;
 
         shared_unit_square_geometry = pc->Create();
-        return shared_unit_square_geometry != nullptr;
+        if (!shared_unit_square_geometry)
+        {
+            std::fprintf(stderr, "[Sprite2DResPrepare] GeometryCreater::Create FAILED\n");
+            return false;
+        }
+        std::fprintf(stderr, "[Sprite2DResPrepare] shared_geometry created OK (%p)\n",
+                     (void*)shared_unit_square_geometry);
+
+        // Create shared sampler
+        auto* sampler_manager = graphics_context->GetSamplerManager();
+        if (!sampler_manager)
+        {
+            std::fprintf(stderr, "[Sprite2DResPrepare] SamplerManager is null\n");
+            return false;
+        }
+
+        if (!shared_sampler)
+            shared_sampler = sampler_manager->CreateSampler();
+
+        if (!shared_sampler)
+            std::fprintf(stderr, "[Sprite2DResPrepare] CreateSampler FAILED\n");
+        else
+            std::fprintf(stderr, "[Sprite2DResPrepare] sampler created OK (%p)\n", (void*)shared_sampler);
+
+        return shared_sampler != nullptr;
     }
 } // namespace hgl::ecs

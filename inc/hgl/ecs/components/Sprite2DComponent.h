@@ -124,6 +124,10 @@ namespace hgl::ecs
 
     public:
 
+        const char* GetSystemGroupName() const override { return "Sprite2D"; }
+
+    public:
+
         // Component lifecycle
         void OnAttach()  override;
         void OnUpdate(float deltaTime) override;

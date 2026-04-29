@@ -230,9 +230,20 @@ bool DescriptorSet::BindTexture(const int binding,Texture *tex)
 bool DescriptorSet::BindResourceSampler(const int binding,Texture *tex,Sampler *sampler)
 {
     if(binding<0||!tex||!sampler)
+    {
+        std::fprintf(stderr,
+            "[DescriptorSet] BindResourceSampler FAILED: binding=%d tex=%p sampler=%p (invalid args)\n",
+            binding, (void*)tex, (void*)sampler);
         return(false);
+    }
 
-    if(binded_sets.Contains(binding))return(false);
+    if(binded_sets.Contains(binding))
+    {
+        std::fprintf(stderr,
+            "[DescriptorSet] BindResourceSampler FAILED: binding=%d already bound (binded_sets conflict)\n",
+            binding);
+        return(false);
+    }
 
     DescriptorImageInfo image_info(tex,sampler);
 

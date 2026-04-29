@@ -5,6 +5,7 @@
 namespace hgl::graph
 {
     class Geometry;
+    class Sampler;
 }
 
 namespace hgl::ecs
@@ -25,6 +26,7 @@ namespace hgl::ecs
     private:
         class ECSContext* world = nullptr;
         graph::Geometry*  shared_unit_square_geometry = nullptr;
+        graph::Sampler*   shared_sampler = nullptr;
 
     public:
         explicit Sprite2DResourcePrepareSystem(const std::string& name = "Sprite2DResourcePrepareSystem");
@@ -34,6 +36,9 @@ namespace hgl::ecs
 
         /// Returns the shared unit-square geometry, or nullptr if not yet created.
         graph::Geometry* GetSharedGeometry() const { return shared_unit_square_geometry; }
+
+        /// Returns the shared sampler, or nullptr if not yet created.
+        graph::Sampler* GetSharedSampler() const { return shared_sampler; }
 
         void Update(float deltaTime) override;
         void Shutdown() override;

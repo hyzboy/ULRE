@@ -122,23 +122,39 @@ bool MaterialParameters::BindResourceSampler(const int &index,Texture *tex,Sampl
 bool MaterialParameters::BindResourceSampler(const mtl::SamplerSlot slot,Texture *tex,Sampler *sampler)
 {
     if(!tex||!sampler)
+    {
+        std::fprintf(stderr,
+            "[MaterialParameters] BindResourceSampler(slot=%u) FAILED: tex=%p sampler=%p (null pointer)\n",
+            (uint)slot, (void*)tex, (void*)sampler);
         return(false);
+    }
 
     const int index=desc_manager->GetTextureSampler(set_type,slot);
 
-    LogInfo(u8"[VKShaderMaterialProgramParameters] BindResourceSampler slot=%u index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
-            (uint)slot,
-            index,
-            (uint)set_type,
-            (void*)tex,
-            (void*)sampler,
-            (void*)descriptor_set);
+    std::fprintf(stderr,
+        "[MaterialParameters] BindResourceSampler slot=%u index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p\n",
+        (uint)slot,
+        index,
+        (uint)set_type,
+        (void*)tex,
+        (void*)sampler,
+        (void*)descriptor_set);
 
     if(index<0)
+    {
+        std::fprintf(stderr,
+            "[MaterialParameters] BindResourceSampler FAILED: slot=%u not found in set_type=%u (index=%d)\n",
+            (uint)slot, (uint)set_type, index);
         return(false);
+    }
 
     if(!descriptor_set->BindResourceSampler(index,tex,sampler))
+    {
+        std::fprintf(stderr,
+            "[MaterialParameters] BindResourceSampler FAILED: descriptor_set->BindResourceSampler index=%d returned false\n",
+            index);
         return(false);
+    }
 
     return(true);
 }

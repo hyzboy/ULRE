@@ -104,7 +104,6 @@ inline MaterialVariantKey MakeSprite2DKeyBase(const RenderAlphaMode blend_mode)
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     key.blend_mode = blend_mode;
     key.pass_hint = BlendModeToPassHint(blend_mode);
-    key.SetVertexAttribEnabled(VertexAttrib::TexCoord);
     key.SetVec2Position(true);
     return key;
 }

@@ -221,6 +221,30 @@ static MaterialVariantKey MakePBRColor3DKey()
     return key;
 }
 
+static MaterialVariantKey MakeSprite2DCameraFacingKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Sprite2DCameraFacing;
+    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
+    key.blend_mode = RenderAlphaMode::Transparent;
+    key.pass_hint = PassType::ForwardTransparent;
+    key.SetVec2Position();
+    return key;
+}
+
+static MaterialVariantKey MakeSprite2DAxisLockedKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Sprite2DAxisLocked;
+    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
+    key.blend_mode = RenderAlphaMode::Transparent;
+    key.pass_hint = PassType::ForwardTransparent;
+    key.SetVec2Position();
+    return key;
+}
+
 static bool IsSemanticMaterialPreset(const MaterialPreset preset)
 {
     switch(preset)
@@ -271,6 +295,8 @@ static const PresetResolveEntry kPresetResolveTable[] =
     {MaterialPreset::Metal,               "Metal",               MaterialPreset::Standard,            MakeStandardKey},
     {MaterialPreset::BirdFeathers,        "BirdFeathers",        MaterialPreset::Standard,            MakeStandardKey},
     {MaterialPreset::Scales,              "Scales",              MaterialPreset::Standard,            MakeStandardKey},
+    {MaterialPreset::Sprite2DCameraFacing, "Sprite2DCameraFacing", MaterialPreset::Sprite2DCameraFacing, MakeSprite2DCameraFacingKey},
+    {MaterialPreset::Sprite2DAxisLocked,  "Sprite2DAxisLocked",  MaterialPreset::Sprite2DAxisLocked,  MakeSprite2DAxisLockedKey},
 };
 
 static const PresetResolveEntry *FindPresetResolveEntry(const MaterialPreset preset)
