@@ -2,17 +2,10 @@
 
 #include<vulkan/vulkan.h>
 #include<hgl/vk/VertexAttrib.h>
+#include<hgl/common/PositionType.h>
 
 namespace hgl::graph
 {
-    enum class PositionType
-    {
-        None,
-        Vec2,
-        Vec3,
-        PCG
-    };
-
     struct VertexInputFormat
     {
         VkFormat    format;

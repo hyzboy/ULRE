@@ -7,6 +7,7 @@
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
 #include <hgl/common/VertexAttribDef.h>
+#include <hgl/common/PositionType.h>
 #include <hgl/type/FNV1a.h>
 
 namespace hgl::graph::mtl
@@ -28,9 +29,8 @@ namespace hgl::graph::mtl
     {
         None         = 0,
         DebugShading = 1u << 0,
-        Vec2Position = 1u << 1,     ///< Position vertex attrib is vec2 (not vec3)
 
-        ENUM_CLASS_RANGE(None, Vec2Position)
+        ENUM_CLASS_RANGE(None, DebugShading)
     };
 
     enum class GeometryMode : uint8
@@ -48,6 +48,8 @@ namespace hgl::graph::mtl
     {
         SurfaceType       surface_type        = SurfaceType::Unlit;
         GeometryMode      geometry_mode       = GeometryMode::Mesh3D;
+
+        PositionType      position_type                = PositionType::Vec3;
 
         uint32            texture_source_bits           = 0;
         uint32            sampler_feature_bits          = 0;
@@ -132,16 +134,17 @@ namespace hgl::graph::mtl
 
         void SetVec2Position(const bool enabled = true) noexcept
         {
-            constexpr uint32 vec2_pos_bit = static_cast<uint32>(ExtraFeature::Vec2Position);
-            if (enabled)
-                extra_feature_bits |= vec2_pos_bit;
-            else
-                extra_feature_bits &= ~vec2_pos_bit;
+            position_type = enabled ? PositionType::Vec2 : PositionType::Vec3;
         }
 
         bool IsVec2Position() const noexcept
         {
-            return (extra_feature_bits & static_cast<uint32>(ExtraFeature::Vec2Position)) != 0;
+            return position_type == PositionType::Vec2;
+        }
+
+        void SetPositionType(const PositionType pt) noexcept
+        {
+            position_type = pt;
         }
 
         uint64 Hash() const noexcept
@@ -154,6 +157,7 @@ namespace hgl::graph::mtl
             h = hgl::hash::FNV1aAppend(h, sampler_feature_bits);
             h = hgl::hash::FNV1aAppend(h, vertex_attribute_feature_bits);
             h = hgl::hash::FNV1aAppend(h, extra_feature_bits);
+            h = hgl::hash::FNV1aAppend(h, position_type);
             h = hgl::hash::FNV1aAppend(h, blend_mode);
             h = hgl::hash::FNV1aAppend(h, pass_hint);
             h = hgl::hash::FNV1aAppend(h, sky_ambient_model);
@@ -170,6 +174,7 @@ namespace hgl::graph::mtl
         {
             return surface_type == rhs.surface_type
                 && geometry_mode == rhs.geometry_mode
+                && position_type == rhs.position_type
                 && texture_source_bits == rhs.texture_source_bits
                 && sampler_feature_bits == rhs.sampler_feature_bits
                 && vertex_attribute_feature_bits == rhs.vertex_attribute_feature_bits
@@ -178,7 +183,7 @@ namespace hgl::graph::mtl
                 && pass_hint == rhs.pass_hint
                 && sky_ambient_model == rhs.sky_ambient_model
                 && lighting_model == rhs.lighting_model
-                && effective_feature_mask == rhs.effective_feature_mask;  // Phase 3: Include effective_feature_mask in equality
+                && effective_feature_mask == rhs.effective_feature_mask;
         }
     };
 }
