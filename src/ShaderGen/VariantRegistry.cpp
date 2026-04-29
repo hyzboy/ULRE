@@ -280,8 +280,9 @@ std::string VariantRegistry::DumpSnapshot() const
 
 MaterialVariantKey VariantRegistry::MapPresetToVariantKey(MaterialPreset preset) const
 {
-    // Delegate to the free function in MaterialLibrary.cpp
-    return hgl::graph::mtl::MapPresetToVariantKey(preset);
+    // [Step 3.5 T1] Delegate to RouteKey (single source of truth) instead of the
+    // deprecated free function MapPresetToVariantKey.
+    return hgl::graph::mtl::RouteKey(preset);
 }
 
 void VariantRegistry::ForEach(

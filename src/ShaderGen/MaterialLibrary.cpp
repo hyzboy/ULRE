@@ -379,6 +379,18 @@ MaterialPreset ResolveMaterialPresetForLOD(const MaterialPreset preset,
 
 MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
 {
+    // [Step 3.5 T1] Deprecated forwarder. RouteKey is the single source of truth
+    // for variant key construction; this remains only as a thin shim until all
+    // call sites in the factory layer (T2) and external callers are migrated.
+    return RouteKey(mtl_id, 0u, RuntimeKeyOverrides{});
+}
+
+MaterialVariantKey RouteKey(MaterialPreset preset,
+                            uint32 extra_attrib_bits,
+                            const RuntimeKeyOverrides &ov) noexcept
+{
+    // Validate the preset resolve table once at first call (preserves the
+    // original side effect of the deprecated MapPresetToVariantKey path).
     static const bool s_preset_resolve_table_ok=[]()
     {
         const bool ok=ValidatePresetResolveTable();
@@ -388,23 +400,40 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
             std::fprintf(stderr,"[MaterialLibrary] PresetResolveTable validation failed.\n");
         return ok;
     }();
-
     (void)s_preset_resolve_table_ok;
 
-    const MaterialPreset resolved_preset = ResolveMaterialPresetForLOD(mtl_id, GetDefaultMaterialLOD());
+    // Step 1: resolve preset family for current MaterialLOD (semantic alias collapse).
+    const MaterialPreset resolved_preset =
+        ResolveMaterialPresetForLOD(preset, GetDefaultMaterialLOD());
 
-    // Commit B: table-first mapping path.
-    const PresetResolveEntry *entry=FindPresetResolveEntry(resolved_preset);
-    if(entry&&entry->make_key)
+    // Step 2: build the preset-default key from the resolve table.
+    MaterialVariantKey key{};
+    if(const PresetResolveEntry *entry=FindPresetResolveEntry(resolved_preset);
+       entry && entry->make_key)
     {
-        return entry->make_key();
+        key = entry->make_key();
+    }
+    else
+    {
+        std::fprintf(stderr,
+            "[MaterialLibrary] ERROR: RouteKey unknown preset=%u\n",
+            static_cast<unsigned>(preset));
+        return MaterialVariantKey{};
     }
 
-    // Commit C: unknown preset defense only.
-    std::fprintf(stderr,
-        "[MaterialLibrary] ERROR: MapPresetToVariantKey unknown preset=%u\n",
-        static_cast<unsigned>(mtl_id));
-    return MaterialVariantKey{};
+    // Step 3: OR-merge caller-supplied extra vertex attribute bits.
+    key.vertex_attribute_feature_bits |= extra_attrib_bits;
+    key.vertex_attribute_feature_bits |= ov.extra_vertex_attrib_bits;
+
+    // Step 4: apply runtime overrides only when explicitly provided.
+    if(ov.position_type)        key.position_type      = *ov.position_type;
+    if(ov.blend_mode)           key.blend_mode         = *ov.blend_mode;
+    if(ov.pass_hint)            key.pass_hint          = *ov.pass_hint;
+    if(ov.sky_ambient_model)    key.sky_ambient_model  = *ov.sky_ambient_model;
+    if(ov.lighting_model)       key.lighting_model     = *ov.lighting_model;
+    if(ov.debug_shading)        key.SetDebugShading(true);
+
+    return key;
 }
 
 const char *GetMaterialPresetName(const MaterialPreset mtl_id)
@@ -600,7 +629,9 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             static_cast<unsigned>(lod));
     }
 
-    MaterialVariantKey key = MapPresetToVariantKey(resolved_preset);
+    // [Step 3.5 T1] Route through RouteKey() so this internal call site does not
+    // emit a [[deprecated]] warning and remains aligned with the single-track entry.
+    MaterialVariantKey key = RouteKey(resolved_preset);
 
     ApplyCreateConfigToVariantKey(key, cfg);
 

@@ -209,9 +209,11 @@ PassType GetPrimaryPassForBlendMode(RenderAlphaMode blend) noexcept
 MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexcept
 {
     // ── Step 1: preset → base variant key ────────────────────────────────────
-    // (Mirrors MaterialLibrary::MapPresetToVariantKey, including LOD resolution
-    //  and canonical preset aliasing for semantic presets.)
-    MaterialVariantKey k = MapPresetToVariantKey(r.preset);
+    // [Step 3.5 T1] Routes through the single RouteKey() entry instead of the
+    // deprecated free function MapPresetToVariantKey. Behaviour is identical
+    // (LOD resolution + canonical preset aliasing) because RouteKey() applies
+    // the same PresetResolveTable.
+    MaterialVariantKey k = RouteKey(r.preset);
 
     // ── Step 2: dimension ─────────────────────────────────────────────────────
     // D2 materials use a quad geometry, not a generic 3-D mesh.

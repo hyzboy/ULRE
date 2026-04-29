@@ -46,11 +46,21 @@ inline SSBOSemanticSet MakeTransformSSBOs(const bool with_material_instance)
     return descriptors;
 }
 
+// ---------------------------------------------------------------------------
+// [Step 3.5 T1] Variant key helpers below are DEPRECATED.
+// All factory call sites must migrate to hgl::graph::mtl::RouteKey() before
+// Step 4 can begin (see VertexInputFormat_plan.md, T2 row in the migration
+// table). MakeBillboardKeyBase() remains while billboard factories are
+// migrated; it will be subsumed into RouteKey()'s preset-default path in T3.
+// ---------------------------------------------------------------------------
+
+[[deprecated("[Step 3.5 T1] use hgl::graph::mtl::RouteKey(preset)")]]
 inline MaterialVariantKey MakeVariantKey()
 {
     return MaterialVariantKey{};
 }
 
+[[deprecated("[Step 3.5 T1] use hgl::graph::mtl::RouteKey(preset)")]]
 inline MaterialVariantKey MakeVariantKeyWithSurface(const SurfaceType surface_type)
 {
     MaterialVariantKey key{};
@@ -58,6 +68,7 @@ inline MaterialVariantKey MakeVariantKeyWithSurface(const SurfaceType surface_ty
     return key;
 }
 
+[[deprecated("[Step 3.5 T1] use RouteKey(preset, VertexAttribFeatureBit(attrib), {})")]]
 inline MaterialVariantKey MakeVariantKeyWithAttrib(const VertexAttrib attrib)
 {
     MaterialVariantKey key{};
@@ -65,6 +76,7 @@ inline MaterialVariantKey MakeVariantKeyWithAttrib(const VertexAttrib attrib)
     return key;
 }
 
+[[deprecated("[Step 3.5 T1] use RouteKey(preset, VertexAttribFeatureBit(attrib), {.debug_shading=true})")]]
 inline MaterialVariantKey MakeVariantKeyWithAttribAndDebug(const VertexAttrib attrib)
 {
     MaterialVariantKey key{};
