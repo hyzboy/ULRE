@@ -9,6 +9,11 @@ VertexInputLayout::VertexInputLayout(const uint32_t c)
     attr_list=zero_new<VkVertexInputAttributeDescription>(count);
 
     vif_list=zero_new<VertexInputFormat>(count);
+
+    for(uint32_t i=0; i<count; i++)
+    {
+        vif_list[i].position_type = PositionType::None; // Initialize position_type
+    }
 }
 
 VertexInputLayout::~VertexInputLayout()

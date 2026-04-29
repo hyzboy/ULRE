@@ -148,6 +148,9 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,Grap
     {
         if(vif[i].binding>max_binding)
             max_binding=vif[i].binding;
+
+        // Log position_type for debugging
+        GLogInfo("VertexInputFormat["+AnsiString::numberOf(i)+"] position_type="+AnsiString::numberOf(static_cast<int>(vif[i].position_type)));
     }
 
     GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(max_binding+1,geom->GetIBO(),geom->GetVDM());
