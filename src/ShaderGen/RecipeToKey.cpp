@@ -27,11 +27,9 @@ namespace hgl::graph::mtl
 // File-local helpers (not exposed in the header)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Returns true when a vertex-attribute type encodes a 2-component position
-/// (e.g. VAT_VEC2 = {Float, 2}).
-static bool IsVec2Position(const VAType pos) noexcept
+static PositionType PositionTypeFromVAType(const VAType pos) noexcept
 {
-    return pos.vec_size == 2;
+    return (pos.vec_size == 2) ? PositionType::Vec2 : PositionType::Vec3;
 }
 
 /// Returns true if any texture channel in the recipe uses Array source mode.
@@ -221,10 +219,9 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
         k.geometry_mode = GeometryMode::Quad2D;
 
     // ── Step 3: vertex position format ───────────────────────────────────────
-    // Mirrors Material2DCreateConfig::position_format → SetVec2Position path
-    // in ApplyCreateConfigToVariantKey.
-    if (r.pos_format.Check() && IsVec2Position(r.pos_format))
-        k.SetVec2Position(true);
+    // Mirrors Material2DCreateConfig::position_format in ApplyCreateConfigToVariantKey.
+    if (r.pos_format.Check())
+        k.position_type = PositionTypeFromVAType(r.pos_format);
 
     // ── Step 4: sky / lighting (3-D only) ────────────────────────────────────
     // Mirrors the Material3DCreateConfig block in ApplyCreateConfigToVariantKey

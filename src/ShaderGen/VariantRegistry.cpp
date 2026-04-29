@@ -42,7 +42,7 @@ static MaterialVariantKey CanonicalizeRegistryLookupKey(const MaterialVariantKey
 static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
 {
     std::string text;
-    text.reserve(256);
+  text.reserve(320);
 
     text += "hash=";
     text += std::to_string(static_cast<unsigned long long>(key.Hash()));
@@ -50,6 +50,8 @@ static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
     text += std::to_string(static_cast<unsigned>(key.surface_type));
     text += " GM=";
     text += std::to_string(static_cast<unsigned>(key.geometry_mode));
+    text += " PT=";
+    text += std::to_string(static_cast<unsigned>(key.position_type));
     text += " blend=";
     text += std::to_string(static_cast<unsigned>(key.blend_mode));
     text += " pass=";
@@ -86,6 +88,12 @@ static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
     }
 
     text += "]";
+    text += " va_bits=0x";
+    std::snprintf(hex, sizeof(hex), "%08X", key.vertex_attribute_feature_bits);
+    text += hex;
+    text += " extra_bits=0x";
+    std::snprintf(hex, sizeof(hex), "%08X", key.extra_feature_bits);
+    text += hex;
     return text;
 }
 
@@ -130,6 +138,14 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
 {
     const MaterialVariantKey request_key = CanonicalizeRegistryLookupKey(key, options);
 
+  if (kVariantRegistryVerbose && !(request_key == key))
+  {
+    std::fprintf(stderr,
+      "[VariantRegistry] canonicalized lookup request={%s} canonical={%s}\n",
+      FormatVariantKeyForLog(key).c_str(),
+      FormatVariantKeyForLog(request_key).c_str());
+  }
+
     if(const MaterialVariantDesc *exact=QueryVariant(request_key, options))
     {
         if (auto *s = GetGlobalVariantRegistryStatsSink())
@@ -148,12 +164,10 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
 
     if (auto *s = GetGlobalVariantRegistryStatsSink())
         s->OnMiss(request_key);
-    if (kVariantRegistryVerbose)
-    {
-        std::fprintf(stderr,
-            "[VariantRegistry] miss request={%s}\n",
-            FormatVariantKeyForLog(request_key).c_str());
-    }
+
+    std::fprintf(stderr,
+      "[VariantRegistry] miss request={%s}\n",
+      FormatVariantKeyForLog(request_key).c_str());
 
     return nullptr;
 }
@@ -312,6 +326,7 @@ struct BuiltinVariantEntry
 
     SurfaceType          surface_type = ST::Unlit;
     GeometryMode         geometry_mode = GM::Mesh3D;
+    PositionType         position_type = PositionType::Vec3;
     LightingModel        lighting      = LM::Lambert;
     SkyLightAmbientModel sky_model     = SkyLightAmbientModel::Simple;
     RenderAlphaMode      blend         = RM::Opaque;
@@ -330,6 +345,7 @@ static MaterialVariantKey BuildKey(const BuiltinVariantEntry &e)
     MaterialVariantKey k;
     k.surface_type                  = e.surface_type;
     k.geometry_mode                 = e.geometry_mode;
+  k.position_type                 = e.position_type;
     k.vertex_attribute_feature_bits = e.vertex_bits;
     k.extra_feature_bits            = e.extra_bits;
     k.blend_mode                    = e.blend;
@@ -358,23 +374,23 @@ static const BuiltinVariantEntry kBuiltinVariants[] =
 {
     // ── 2D ──────────────────────────────────────────────────────────────────────────────────────
     { .name = "VertexColor2D",      .preset = MaterialPreset::VertexColor2D,
-      .geometry_mode = GM::Quad2D,  .vertex_bits = VA(VertexAttrib::Color),
+      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2, .vertex_bits = VA(VertexAttrib::Color),
       .vs_path = "2d/vertexcolor2d.vert.glsl",  .fs_path = "2d/vertexcolor2d.frag.glsl"  },
 
     { .name = "PureColor2D",        .preset = MaterialPreset::PureColor2D,
-      .geometry_mode = GM::Quad2D,
+      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2,
       .vs_path = "2d/purecolor2d.vert.glsl",    .fs_path = "2d/purecolor2d.frag.glsl"    },
 
     { .name = "PureTexture2D",      .preset = MaterialPreset::PureTexture2D,
-      .geometry_mode = GM::Quad2D,  .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2, .tex = {{ Slot::BaseColor, TSM::Simple }},
       .vs_path = "2d/puretexture2d.vert.glsl",  .fs_path = "2d/puretexture2d.frag.glsl"  },
 
     { .name = "PureTexture2DArray", .preset = MaterialPreset::PureTexture2D,
-      .geometry_mode = GM::Quad2D,  .tex = {{ Slot::BaseColor, TSM::Array }},
+      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2, .tex = {{ Slot::BaseColor, TSM::Array }},
       .vs_path = "2d/puretexture2d.vert.glsl",  .fs_path = "2d/puretexture2d.frag.glsl"  },
 
     { .name = "Text2D",             .preset = MaterialPreset::Text2D,
-      .geometry_mode = GM::Quad2D,  .tex = {{ Slot::BaseColor, TSM::Atlas }},
+      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2, .tex = {{ Slot::BaseColor, TSM::Atlas }},
       .vs_path = "2d/text2d.vert.glsl",         .fs_path = "2d/text2d.frag.glsl"         },
 
     // ── 3D Unlit ────────────────────────────────────────────────────────────────────────────────
@@ -389,7 +405,8 @@ static const BuiltinVariantEntry kBuiltinVariants[] =
       .surface_path = "surface/unlit_luminance_surface.glsl"   },
 
     { .name = "VertexLuminance2D",  .preset = MaterialPreset::VertexLuminance2D,
-      .vertex_bits = VA(VertexAttrib::Luminance) | VA(VertexAttrib::Position),
+      .position_type = PositionType::Vec2,
+      .vertex_bits = VA(VertexAttrib::Luminance),
       .surface_path = "surface/unlit_luminance_surface.glsl"   },
 
     { .name = "VertexPaletteColor3D", .preset = MaterialPreset::VertexPaletteColor3D,

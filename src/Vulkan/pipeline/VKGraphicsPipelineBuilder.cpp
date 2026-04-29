@@ -5,9 +5,93 @@
 #include<hgl/vk/pipeline/VKGraphicsPipeline.h>
 #include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
+#include<hgl/vk/VKFormat.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
+
+namespace
+{
+static void LogVertexInputLayoutDetails(const char *tag, const VIL *vil)
+{
+    if (!vil)
+    {
+        GLogInfo("[%s] VIL=null", tag ? tag : "VertexInputDiag");
+        return;
+    }
+
+    const uint32_t count = vil->GetVertexAttribCount();
+    GLogInfo("[%s] VIL attr_count=%u", tag ? tag : "VertexInputDiag", count);
+
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        const VertexInputFormat *cfg = vil->GetConfig(i);
+        if (!cfg)
+            continue;
+
+        const char *fmt_name = GetVulkanFormatName(cfg->format);
+        GLogInfo("[%s]   [%u] attrib=%u binding=%d format=%d(%s) vec_size=%u stride=%u pos_type=%u input_rate=%u",
+                 tag ? tag : "VertexInputDiag",
+                 i,
+                 static_cast<unsigned>(cfg->attrib),
+                 cfg->binding,
+                 static_cast<int>(cfg->format),
+                 fmt_name ? fmt_name : "<unknown>",
+                 cfg->vec_size,
+                 cfg->stride,
+                 static_cast<unsigned>(cfg->position_type),
+                 static_cast<unsigned>(cfg->input_rate));
+    }
+}
+
+static void LogPipelineVertexInputComparison(const GraphicsPipelineBuildRequest &request)
+{
+    if (!request.material)
+        return;
+
+    const VIL *material_vil = request.material->GetDefaultVIL();
+    LogVertexInputLayoutDetails("PipelineBuild.GeometryVIL", request.vil);
+    LogVertexInputLayoutDetails("PipelineBuild.MaterialDefaultVIL", material_vil);
+
+    if (!request.vil || !material_vil)
+        return;
+
+    const uint32_t g_count = request.vil->GetVertexAttribCount();
+    const uint32_t m_count = material_vil->GetVertexAttribCount();
+    if (g_count != m_count)
+    {
+        GLogWarning("[PipelineBuild.VertexInputDiff] attr_count mismatch geometry=%u material=%u",
+                    g_count,
+                    m_count);
+    }
+
+    const uint32_t n = g_count < m_count ? g_count : m_count;
+    for (uint32_t i = 0; i < n; ++i)
+    {
+        const VertexInputFormat *g = request.vil->GetConfig(i);
+        const VertexInputFormat *m = material_vil->GetConfig(i);
+        if (!g || !m)
+            continue;
+
+        if (g->attrib != m->attrib
+         || g->format != m->format
+         || g->vec_size != m->vec_size
+         || g->position_type != m->position_type)
+        {
+            GLogWarning("[PipelineBuild.VertexInputDiff] index=%u geom(attrib=%u format=%d vec=%u pos_type=%u) material(attrib=%u format=%d vec=%u pos_type=%u)",
+                        i,
+                        static_cast<unsigned>(g->attrib),
+                        static_cast<int>(g->format),
+                        g->vec_size,
+                        static_cast<unsigned>(g->position_type),
+                        static_cast<unsigned>(m->attrib),
+                        static_cast<int>(m->format),
+                        m->vec_size,
+                        static_cast<unsigned>(m->position_type));
+        }
+    }
+}
+}
 
 GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
 {
@@ -32,6 +116,9 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
     pd->SetPrim(request.primitive, request.primitive_restart);
     pd->InitShaderStage(request.material->GetStageList());
     pd->InitVertexInputState(request.vil);
+
+    LogPipelineVertexInputComparison(request);
+
     pd->SetColorAttachments(request.render_format->GetColorCount());
     pd->pipeline_info.layout = request.material->GetPipelineLayout();
 

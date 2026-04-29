@@ -28,7 +28,7 @@ using MakeVariantKeyProc = MaterialVariantKey (*)();
 static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
 {
     std::string text;
-    text.reserve(256);
+    text.reserve(320);
 
     text += "hash=";
     text += std::to_string(static_cast<unsigned long long>(key.Hash()));
@@ -36,6 +36,8 @@ static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
     text += std::to_string(static_cast<unsigned>(key.surface_type));
     text += " GM=";
     text += std::to_string(static_cast<unsigned>(key.geometry_mode));
+    text += " PT=";
+    text += std::to_string(static_cast<unsigned>(key.position_type));
     text += " sky=";
     text += std::to_string(static_cast<unsigned>(key.sky_ambient_model));
     text += " light=";
@@ -62,6 +64,12 @@ static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
     }
 
     text += "]";
+    text += " va_bits=0x";
+    std::snprintf(hex, sizeof(hex), "%08X", key.vertex_attribute_feature_bits);
+    text += hex;
+    text += " extra_bits=0x";
+    std::snprintf(hex, sizeof(hex), "%08X", key.extra_feature_bits);
+    text += hex;
     return text;
 }
 
@@ -78,6 +86,7 @@ static MaterialVariantKey MakeVertexColor2DKey()
     MaterialVariantKey key{};
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::Quad2D;
+    key.position_type = PositionType::Vec2;
     key.SetVertexAttribEnabled(VertexAttrib::Color);
     return key;
 }
@@ -87,6 +96,7 @@ static MaterialVariantKey MakePureColor2DKey()
     MaterialVariantKey key{};
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::Quad2D;
+    key.position_type = PositionType::Vec2;
     return key;
 }
 
@@ -95,6 +105,7 @@ static MaterialVariantKey MakePureTexture2DKey()
     MaterialVariantKey key{};
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::Quad2D;
+    key.position_type = PositionType::Vec2;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     return key;
 }
@@ -104,6 +115,7 @@ static MaterialVariantKey MakeText2DKey()
     MaterialVariantKey key{};
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::Quad2D;
+    key.position_type = PositionType::Vec2;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Atlas);
     return key;
 }
@@ -139,8 +151,8 @@ static MaterialVariantKey MakeVertexLuminance2DKey()
     MaterialVariantKey key{};
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::Mesh3D;
+    key.position_type = PositionType::Vec2;
     key.SetVertexAttribEnabled(VertexAttrib::Luminance);
-    key.SetVertexAttribEnabled(VertexAttrib::Position);
     return key;
 }
 
@@ -456,10 +468,11 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     if(!profile)
     {
         std::fprintf(stderr,
-            "[MaterialLibrary] CreateMaterialCreateInfo warning: profile is null (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
+            "[MaterialLibrary] CreateMaterialCreateInfo warning: profile is null (key_hash=%llu surface=%u geom=%u pos_type=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
             static_cast<unsigned>(key.geometry_mode),
+            static_cast<unsigned>(key.position_type),
             static_cast<unsigned>(key.GetTextureSourceMode(SamplerSlot::BaseColor)),
             key.texture_source_bits,
             key.sampler_feature_bits,
@@ -482,10 +495,11 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     if(!variant_desc)
     {
         std::fprintf(stderr,
-            "[MaterialLibrary] CreateMaterialCreateInfo failed: no registered variant (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
+            "[MaterialLibrary] CreateMaterialCreateInfo failed: no registered variant (key_hash=%llu surface=%u geom=%u pos_type=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
             static_cast<unsigned>(key.geometry_mode),
+            static_cast<unsigned>(key.position_type),
             static_cast<unsigned>(key.GetTextureSourceMode(SamplerSlot::BaseColor)),
             key.texture_source_bits,
             key.sampler_feature_bits,

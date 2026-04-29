@@ -5,6 +5,7 @@
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/MaterialVariantRegistry.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
 #include<cstdio>
 
 namespace hgl::graph::mtl{
@@ -16,6 +17,15 @@ MaterialCreateInfo *CreateFromFixedDef3D(
     const MaterialVariantKey &var_key,
     const Material3DCreateConfig *cfg)
 {
+    if (cfg && cfg->prim != def.primitive_type)
+    {
+        std::fprintf(stderr,
+            "[%s] Primitive mismatch: cfg->prim=%u def.primitive_type=%u (using def value)\n",
+            debug_tag ? debug_tag : "3DFactory",
+            static_cast<unsigned>(cfg->prim),
+            static_cast<unsigned>(def.primitive_type));
+    }
+
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
     if (!var_desc)
     {

@@ -116,8 +116,8 @@ namespace
             flags.vertex_attrib_bits = 0;
         }
         // Vec2 position: 3D-space mesh whose Position vertex attrib is vec2 (e.g. VertexLuminance2D).
-        // Set by PopulateVariantKeyVertexAttribBits when it detects a VAT_VEC2 Position entry.
-        else if (key.IsVec2Position())
+        // Set directly from MaterialVariantKey::position_type.
+        else if (key.position_type == hgl::graph::PositionType::Vec2)
         {
             flags.vert_input_2d = true;
         }

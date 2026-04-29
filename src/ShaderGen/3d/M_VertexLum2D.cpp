@@ -2,6 +2,7 @@
 #include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/math/Vector.h>
+#include<cstdio>
 
 namespace hgl::graph::mtl{
 namespace
@@ -17,7 +18,7 @@ namespace
 
     const StaticMaterialDef VERTEX_LUMINANCE_2D_DEF {
         "VertexLuminance2D",
-        PrimitiveType::Triangles,
+        PrimitiveType::Lines,
         VERTEX_LUMINANCE_2D_VERTEX,
         uint32_t(sizeof(VERTEX_LUMINANCE_2D_VERTEX) / sizeof(VERTEX_LUMINANCE_2D_VERTEX[0])),
         &VERTEX_LUMINANCE_2D_UBOS,
@@ -32,8 +33,19 @@ MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfil
     cfg->material_instance=true;
 
     MaterialVariantKey var_key = build3d::MakeVariantKeyWithAttrib(VertexAttrib::Luminance);
-    var_key.SetVertexAttribEnabled(VertexAttrib::Position);
-    return CreateFromFixedDef3D("VertexLuminance2D", profile, VERTEX_LUMINANCE_2D_DEF, var_key, cfg);
+    var_key.position_type = PositionType::Vec2;
+
+    StaticMaterialDef def = VERTEX_LUMINANCE_2D_DEF;
+    if (cfg)
+        def.primitive_type = cfg->prim;
+
+    std::fprintf(stderr,
+                 "[VertexLuminance2D] route primitive=%u pos_type=%u va_bits=0x%08X\n",
+                 static_cast<unsigned>(def.primitive_type),
+                 static_cast<unsigned>(var_key.position_type),
+                 var_key.vertex_attribute_feature_bits);
+
+    return CreateFromFixedDef3D("VertexLuminance2D", profile, def, var_key, cfg);
 }
 
 static MaterialCreateInfo *VertexLuminance2D_Adapter(
