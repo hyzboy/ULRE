@@ -83,3 +83,17 @@ if(Python3_Interpreter_FOUND)
 else()
     message(WARNING "Python3 interpreter not found; check_shadergen_boundary/check_vkbuffer_deprecated_calls targets are disabled")
 endif()
+
+# PowerShell-based CI targets (log blacklist scanner — pass -DLogDir=... or -DLogFiles=... at build time)
+find_program(PowerShell_EXECUTABLE NAMES pwsh powershell)
+if(PowerShell_EXECUTABLE)
+    add_custom_target(check_blacklist_log
+        COMMAND ${PowerShell_EXECUTABLE} -NoProfile -ExecutionPolicy Bypass
+                -File ${CMAKE_CURRENT_SOURCE_DIR}/scripts/ci/check_blacklist.ps1
+                -RepoRoot ${CMAKE_CURRENT_SOURCE_DIR}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Scanning example run logs for routing/mismatch blacklist patterns"
+        VERBATIM)
+else()
+    message(WARNING "PowerShell not found; check_blacklist_log target is disabled")
+endif()
