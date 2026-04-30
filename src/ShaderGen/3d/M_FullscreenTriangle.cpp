@@ -43,7 +43,8 @@ namespace
         "\n"
         "void main()\n"
         "{\n"
-        "    outColor = vec4(0.2, 0.6, 1.0, 1.0);\n"
+        "    // Visualize window-space fragment coordinate directly.\n"
+        "    outColor = vec4(fract(gl_FragCoord.xyz * 0.01), 1.0);\n"
         "}\n";
 }
 

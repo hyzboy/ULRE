@@ -52,27 +52,32 @@ namespace hgl::ecs
 
         vab_list->Restart();
 
-        // 添加几何数据的VAB
-        if (!vab_list->Add(batch->geom_data_buffer))
+        // 添加几何数据的VAB。
+        // PCG类材质（如FullscreenTriangle）的VIL attr_count=0，vab_list容量为0，
+        // Restart()后IsFull()即为true，直接跳过Add，不需要也不应绑定任何顶点缓冲。
+        if (!vab_list->IsFull())
         {
-            std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add geometry data buffer to VABList!" << std::endl;
-            return false;
+            if (!vab_list->Add(batch->geom_data_buffer))
+            {
+                std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add geometry data buffer to VABList!" << std::endl;
+                return false;
+            }
+
+            if (!vab_list->IsFull())
+            {
+                std::cout << "[PipelineMaterialRenderer::BindVAB] WARNING: VABList not full ("
+                          << vab_list->GetWriteCount() << "/"
+                          << material->GetVertexInput()->GetCount()
+                          << "), padding with VK_NULL_HANDLE" << std::endl;
+
+                while (!vab_list->IsFull())
+                {
+                    vab_list->Add(VK_NULL_HANDLE, 0);
+                }
+            }
         }
 
         (void)mi_buffer;
-
-        if (!vab_list->IsFull())
-        {
-            std::cout << "[PipelineMaterialRenderer::BindVAB] WARNING: VABList not full ("
-                      << vab_list->GetWriteCount() << "/"
-                      << material->GetVertexInput()->GetCount()
-                      << "), padding with VK_NULL_HANDLE" << std::endl;
-
-            while (!vab_list->IsFull())
-            {
-                vab_list->Add(VK_NULL_HANDLE, 0);
-            }
-        }
 
         cmd_buf->BindVAB(vab_list);
 

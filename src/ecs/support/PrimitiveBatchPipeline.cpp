@@ -138,8 +138,8 @@ namespace hgl::ecs
             return false;
 
         camera_info = cache.cameraInfo;
-        if (!camera_info)
-            return false;
+        // camera_info may be null for PCG/fullscreen materials that don't need a camera.
+        // PerformFrustumCulling() already guards against null camera_info (skips culling).
 
         if (!device)
             device = world->GetGPUDevice();
