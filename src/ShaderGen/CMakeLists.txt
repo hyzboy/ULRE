@@ -121,6 +121,7 @@ SET(STD_MTL_3D_SOURCE_FILES ${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/MaterialFactory3DCommon.h
                             3d/MaterialFactory3DCommon.cpp
                             3d/M_Checkerboard3D.cpp
+                            3d/M_FullscreenTriangle.cpp
                             3d/M_PureColor3D.cpp
                             3d/M_VertexColor3D.cpp
                             3d/M_VertexLum3D.cpp

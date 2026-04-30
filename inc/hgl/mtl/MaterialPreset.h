@@ -71,6 +71,9 @@ namespace hgl::graph::mtl
         BirdFeathers,
         Scales,
 
-        ENUM_CLASS_RANGE(Checkerboard3D,Scales)
+        // PCG / procedural presets
+        FullscreenTriangle,
+
+        ENUM_CLASS_RANGE(Checkerboard3D,FullscreenTriangle)
     };
 }

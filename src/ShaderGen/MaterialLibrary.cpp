@@ -128,6 +128,8 @@ static const PresetResolveEntry kPresetResolveTable[] =
     {MaterialPreset::Metal,                "Metal"},
     {MaterialPreset::BirdFeathers,         "BirdFeathers"},
     {MaterialPreset::Scales,               "Scales"},
+    // PCG / procedural presets
+    {MaterialPreset::FullscreenTriangle,   "FullscreenTriangle"},
 };
 
 static const PresetResolveEntry *FindPresetResolveEntry(const MaterialPreset preset)

@@ -478,6 +478,10 @@ const BuiltinVariantEntry kBuiltinVariants[] =
     { .name = "PBRColor3D",  .preset = MaterialPreset::PBRColor3D,
       .surface_type = ST::Standard, .lighting = LM::PBR,
       .surface_path = "surface/pbrcolor3d_surface.glsl" },
+
+    // ── PCG / Fullscreen ─────────────────────────────────────────────────────────────────────────
+    { .name = "FullscreenTriangle", .preset = MaterialPreset::FullscreenTriangle,
+      .position_type = PositionType::None },
 };
 // clang-format on
 
