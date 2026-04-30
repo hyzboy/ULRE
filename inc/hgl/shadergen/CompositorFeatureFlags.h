@@ -1,5 +1,6 @@
 #pragma once
 
+#include <hgl/common/PositionType.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
@@ -11,7 +12,7 @@ namespace hgl::graph {
 struct CompositorFeatureFlags
 {
     // Vertex stage flags
-    bool vert_input_2d    = false;
+    PositionType position_type    = PositionType::Vec3;
     uint32 vertex_attrib_bits = 0;
     bool has_direction    = false;
 

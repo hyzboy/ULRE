@@ -1,9 +1,9 @@
 // compositor/vert_input_resolve.glsl — Fetch raw vertex data into local variables.
 //
 // Context requirements:
-//   - Vertex input declarations (inPosition, inNormal, etc.) already declared by caller.
+//   - common/vertex_input_position.glsl (GetPositionLocal()) already in scope.
 //   - common/ssbo_transform.glsl (GetTransform()) must be in scope.
-//   - GEOMETRY_FETCH_SSBO / VERT_INPUT_2D / HAS_* defines set by CompositorAssembler.
+//   - GEOMETRY_FETCH_SSBO / HAS_* defines set by CompositorAssembler.
 //
 // Provides after include:
 //   mat4  transform_mat   — LocalToWorld matrix
@@ -18,10 +18,8 @@
     // --- Position ---
 #if GEOMETRY_FETCH_SSBO
     vec3 pos3 = FetchPosition(gl_VertexIndex);
-#elif defined(VERT_INPUT_2D)
-    vec3 pos3 = vec3(inPosition, 0.0);
 #else
-    vec3 pos3 = inPosition;
+    vec3 pos3 = GetPositionLocal();
 #endif
 
     vec4 worldPos = transform_mat * vec4(pos3, 1.0);

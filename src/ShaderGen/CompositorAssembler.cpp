@@ -52,10 +52,11 @@ namespace
 
         EmitEnabledVertexAttribDefines(writer, f);
 
-        if (f.vert_input_2d)    writer.EmitDefine("VERT_INPUT_2D");
+        writer.EmitDefine("POSITION_KIND", std::to_string(static_cast<int>(f.position_type)).c_str());
         if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
 
-        writer.EmitInclude("compositor/vert_forward_ubo.glsl")
+        writer.EmitInclude("common/vertex_input_position.glsl")
+              .EmitInclude("compositor/vert_forward_ubo.glsl")
               .EmitInclude("compositor/vert_forward_main.glsl");
 
         writer.EmitCommentLine("BuildForwardVertexEntry.End");
@@ -108,18 +109,18 @@ namespace
 
         if (hgl::graph::Is2DSurfaceType(key.surface_type))
         {
-            flags.vert_input_2d = true;
+            // 2D surface types always use a vec2 position attribute.
+            flags.position_type = hgl::graph::PositionType::Vec2;
         }
         else if (key.surface_type == hgl::graph::SurfaceType::Sky)
         {
             flags.has_direction      = true;
             flags.vertex_attrib_bits = 0;
         }
-        // Vec2 position: 3D-space mesh whose Position vertex attrib is vec2 (e.g. VertexLuminance2D).
-        // Set directly from MaterialVariantKey::position_type.
-        else if (key.position_type == hgl::graph::PositionType::Vec2)
+        else
         {
-            flags.vert_input_2d = true;
+            // Propagate position_type directly (Vec2 / Vec3 / None).
+            flags.position_type = key.position_type;
         }
 
         return flags;
