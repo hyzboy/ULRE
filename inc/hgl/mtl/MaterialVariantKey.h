@@ -132,16 +132,6 @@ namespace hgl::graph::mtl
             return (extra_feature_bits & static_cast<uint32>(ExtraFeature::DebugShading)) != 0;
         }
 
-        void SetVec2Position(const bool enabled = true) noexcept
-        {
-            position_type = enabled ? PositionType::Vec2 : PositionType::Vec3;
-        }
-
-        bool IsVec2Position() const noexcept
-        {
-            return position_type == PositionType::Vec2;
-        }
-
         void SetPositionType(const PositionType pt) noexcept
         {
             position_type = pt;
