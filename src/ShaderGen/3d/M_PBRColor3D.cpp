@@ -6,8 +6,9 @@
 #include <cstdio>
 #include <vector>
 
+#include <hgl/mtl/MaterialVariantDesc.h>
+
 #include "../common/MFSkyLight.h"
-#include <hgl/mtl/MaterialVariantRegistry.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -57,7 +58,7 @@ namespace
     };
 }//namespace
 
-MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile, PBRColor3DMaterialCreateConfig *cfg)
+MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile, const MaterialVariantDesc &desc, PBRColor3DMaterialCreateConfig *cfg)
 {
     if (cfg)
         cfg->material_instance = true;
@@ -83,14 +84,6 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     var_key.sky_ambient_model = SkyLightAmbientModel::Simple;
     var_key.lighting_model = lighting;
 
-    MaterialVariantKey resolved_route_key{};
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(var_key, &resolved_route_key);
-    if (!var_desc)
-    {
-        PrintPBRColorRouteKey("VariantRegistry lookup failed route", var_key);
-        return nullptr;
-    }
-
     // Populate vertex attribute feature bits from the vertex layout AFTER registry lookup
     // (registry keys don't carry vertex attrib bits; they affect shader generation only)
     for (uint32_t i = 0; i < uint32_t(sizeof(PBR_COLOR_3D_VERTEX) / sizeof(PBR_COLOR_3D_VERTEX[0])); ++i)
@@ -100,14 +93,14 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     var_key.sky_ambient_model = ambient;
 
     PrintPBRColorRouteKey("VariantRegistry resolved route-request", var_key);
-    PrintPBRColorRouteKey("VariantRegistry resolved route-final", resolved_route_key);
+    PrintPBRColorRouteKey("VariantRegistry resolved route-final", var_key);
     std::fprintf(stderr,
         "[PBRColor3D] VariantRegistry resolved variant=%s\n",
-        var_desc->variant_name.c_str());
+        desc.variant_name.c_str());
 
     CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(var_key, *var_desc);
+    auto result = assembler.Assemble(var_key, desc);
 
     if (!result.success)
     {
@@ -131,9 +124,10 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
 
 static MaterialCreateInfo *PBRColor3D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
+    const MaterialVariantDesc                 *desc,
+    const MaterialVariantKey                  &,
     MaterialCreateConfig *cfg)
-{ return CreatePBRColor3D(profile, static_cast<PBRColor3DMaterialCreateConfig *>(cfg)); }
+{ return CreatePBRColor3D(profile, *desc, static_cast<PBRColor3DMaterialCreateConfig *>(cfg)); }
 
 }//namespace hgl::graph::mtl
 

@@ -38,18 +38,18 @@ namespace
     };
 }//namespace
 
-MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite *profile, const TerrainGridCreateConfig *cfg)
+MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite *profile, const TerrainGridCreateConfig *cfg,
+                                      const MaterialVariantDesc &desc, const MaterialVariantKey &key)
 {
-    // [Step 3.5 T2] Single-entry routing via RouteKey().
-    const MaterialVariantKey var_key = RouteKey(MaterialPreset::TerrainGrid);
-    return CreateFromFixedDef3D("TerrainGrid", profile, TERRAIN_GRID_DEF, var_key, cfg);
+    return CreateFromFixedDef3D("TerrainGrid", profile, TERRAIN_GRID_DEF, key, cfg, desc);
 }
 
 static MaterialCreateInfo *TerrainGrid_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
+    const MaterialVariantDesc                 *desc,
+    const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreateTerrainGrid(profile, static_cast<const TerrainGridCreateConfig *>(cfg)); }
+{ return CreateTerrainGrid(profile, static_cast<const TerrainGridCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

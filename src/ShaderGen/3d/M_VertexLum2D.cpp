@@ -28,12 +28,10 @@ namespace
     };
 }
 
-MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg,
+                                            const MaterialVariantDesc &desc, const MaterialVariantKey &key)
 {
     cfg->material_instance=true;
-
-    // [Step 3.5 T2] PresetResolveTable supplies va_bits=Luminance + position_type=Vec2.
-    const MaterialVariantKey var_key = RouteKey(MaterialPreset::VertexLuminance2D);
 
     StaticMaterialDef def = VERTEX_LUMINANCE_2D_DEF;
     if (cfg)
@@ -42,17 +40,18 @@ MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfil
     std::fprintf(stderr,
                  "[VertexLuminance2D] route primitive=%u pos_type=%u va_bits=0x%08X\n",
                  static_cast<unsigned>(def.primitive_type),
-                 static_cast<unsigned>(var_key.position_type),
-                 var_key.vertex_attribute_feature_bits);
+                 static_cast<unsigned>(key.position_type),
+                 key.vertex_attribute_feature_bits);
 
-    return CreateFromFixedDef3D("VertexLuminance2D", profile, def, var_key, cfg);
+    return CreateFromFixedDef3D("VertexLuminance2D", profile, def, key, cfg, desc);
 }
 
 static MaterialCreateInfo *VertexLuminance2D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
+    const MaterialVariantDesc                 *desc,
+    const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreateVertexLuminance2D(profile, static_cast<Material3DCreateConfig *>(cfg)); }
+{ return CreateVertexLuminance2D(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

@@ -2,6 +2,7 @@
 
 #include <hgl/mtl/StaticMaterialDef.h>
 #include <hgl/mtl/MaterialVariantKey.h>
+#include <hgl/mtl/MaterialVariantDesc.h>
 #include <string>
 
 namespace hgl::graph::contract
@@ -21,5 +22,5 @@ MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
                                          const std::string &vs_preamble,
                                          const std::string &fs_preamble,
                                          const Material2DCreateConfig *cfg,
-                                         const bool use_canonical_fallback = false);
+                                         const MaterialVariantDesc &var_desc);
 }

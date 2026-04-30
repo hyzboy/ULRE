@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <vector>
 
-#include <hgl/mtl/MaterialVariantRegistry.h>
+#include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/SamplerSlot.h>
 
 #include "MaterialFactory3DCommon.h"
@@ -86,6 +86,7 @@ namespace
 } // anonymous namespace
 
 MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileLite *profile,
+                                          const MaterialVariantDesc &desc,
                                           const MaterialVariantKey &input_key,
                                           const Material3DCreateConfig *cfg)
 {
@@ -144,16 +145,9 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     // Registry descriptors are not split by sky model; keep lookup key on canonical sky.
     route_key.sky_ambient_model = SkyLightAmbientModel::Simple;
 
-    MaterialVariantKey resolved_route_key{};
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(route_key, &resolved_route_key);
-    if (!var_desc)
-    {
-        PrintStandardRouteKey("VariantRegistry lookup failed route", route_key, any_array);
-        return nullptr;
-    }
-
+    const MaterialVariantDesc *var_desc = &desc;
     PrintStandardRouteKey("VariantRegistry resolved route-request", route_key, any_array);
-    PrintStandardRouteKey("VariantRegistry resolved route-final", resolved_route_key, any_array);
+    PrintStandardRouteKey("VariantRegistry resolved route-final", route_key, any_array);
     if (kStandardVerbose)
     {
         std::fprintf(stderr,
@@ -191,32 +185,12 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     return mci;
 }
 
-// Unified factory  TextureSourceMode::Simple  -> sampler2D  (classic single-texture Standard)
-//                  TextureSourceMode::Array   -> sampler2DArray (texture-atlas / array Standard)
-MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *profile,
-                                   const Material3DCreateConfig *cfg,
-                                   TextureSourceMode tex_source)
-{
-    MaterialVariantKey key;
-    key.surface_type = SurfaceType::Standard;
-    key.SetTextureSourceMode(SamplerSlot::BaseColor, tex_source);
-    key.SetTextureSourceMode(SamplerSlot::Normal, tex_source);
-    return CreateStandardVariant(profile, key, cfg);
-}
-
-// Compat wrappers keep the two named entry-points so MaterialLibrary.cpp
-// does not need to change its dispatch table.
-MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *profile,
-                                   const Material3DCreateConfig *cfg)
-{
-    return CreateStandard(profile, cfg, TextureSourceMode::Simple);
-}
-
 static MaterialCreateInfo *Standard_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &key,
+    const MaterialVariantDesc                 *desc,
+    const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreateStandardVariant(profile, key, static_cast<const Material3DCreateConfig *>(cfg)); }
+{ return CreateStandardVariant(profile, *desc, key, static_cast<const Material3DCreateConfig *>(cfg)); }
 
 }//namespace hgl::graph::mtl
 

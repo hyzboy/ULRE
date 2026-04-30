@@ -4,7 +4,6 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
-#include<hgl/mtl/MaterialVariantRegistry.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<cstdio>
 
@@ -15,7 +14,8 @@ MaterialCreateInfo *CreateFromFixedDef3D(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &def,
     const MaterialVariantKey &var_key,
-    const Material3DCreateConfig *cfg)
+    const Material3DCreateConfig *cfg,
+    const MaterialVariantDesc &var_desc)
 {
     if (cfg && cfg->prim != def.primitive_type)
     {
@@ -26,13 +26,6 @@ MaterialCreateInfo *CreateFromFixedDef3D(
             static_cast<unsigned>(def.primitive_type));
     }
 
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
-    if (!var_desc)
-    {
-        std::fprintf(stderr, "[%s] VariantRegistry lookup failed\n", debug_tag);
-        return nullptr;
-    }
-
     // Populate vertex attribute feature bits from the actual vertex layout.
     // Builder functions (e.g. BuildForwardLitVS) derive has_uv0 / has_normal etc. from these bits.
     MaterialVariantKey assemble_key = var_key;
@@ -40,7 +33,7 @@ MaterialCreateInfo *CreateFromFixedDef3D(
 
     CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(assemble_key, *var_desc);
+    auto result = assembler.Assemble(assemble_key, var_desc);
 
     if (!result.success)
     {

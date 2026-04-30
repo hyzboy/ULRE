@@ -1,12 +1,12 @@
 ﻿#include"Build2DCommon.h"
 #include"MaterialFactory2D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/mtl/MaterialLibrary.h>
 
 namespace hgl::graph::mtl{
 
 MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite *profile,
                                         Material2DCreateConfig *cfg,
+                                        const MaterialVariantDesc &desc,
                                         const MaterialVariantKey &key)
 {
     if(!profile||!cfg)
@@ -30,14 +30,15 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
                                  manifest,
                                  ShaderDataSchema::Color4f);
 
-    return CreateFromFixedDef2D("PureColor2D", profile, def, key, vs_preamble, fs_preamble, cfg);
+    return CreateFromFixedDef2D("PureColor2D", profile, def, key, vs_preamble, fs_preamble, cfg, desc);
 }
 
 static MaterialCreateInfo *PureColor2D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &key,
+    const MaterialVariantDesc                 *desc,
+    const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreatePureColor2D(profile, static_cast<Material2DCreateConfig *>(cfg), key); }
+{ return CreatePureColor2D(profile, static_cast<Material2DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

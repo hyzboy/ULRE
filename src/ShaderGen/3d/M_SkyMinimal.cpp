@@ -25,18 +25,18 @@ namespace
     };
 }//namespace
 
-MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg)
+MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg,
+                                     const MaterialVariantDesc &desc, const MaterialVariantKey &key)
 {
-    // [Step 3.5 T2] Single-entry routing via RouteKey().
-    const MaterialVariantKey var_key = RouteKey(MaterialPreset::SkyMinimal);
-    return CreateFromFixedDef3D("SkyMinimal", profile, SKY_MINIMAL_DEF, var_key, cfg);
+    return CreateFromFixedDef3D("SkyMinimal", profile, SKY_MINIMAL_DEF, key, cfg, desc);
 }
 
 static MaterialCreateInfo *SkyMinimal_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
+    const MaterialVariantDesc                 *desc,
+    const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreateSkyMinimal(profile, static_cast<const SkyMinimalCreateConfig *>(cfg)); }
+{ return CreateSkyMinimal(profile, static_cast<const SkyMinimalCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

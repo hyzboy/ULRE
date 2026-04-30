@@ -1,12 +1,12 @@
 ﻿#include"Build2DCommon.h"
 #include"MaterialFactory2D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/mtl/MaterialLibrary.h>
 
 namespace hgl::graph::mtl{
 
 MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLite *profile,
                                           const Material2DCreateConfig *cfg,
+                                          const MaterialVariantDesc &desc,
                                           const MaterialVariantKey &key)
 {
     if(!profile||!cfg)
@@ -27,14 +27,15 @@ MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLit
                                  vertices,
                                  manifest);
 
-    return CreateFromFixedDef2D("VertexColor2D", profile, def, key, vs_preamble, fs_preamble, cfg);
+    return CreateFromFixedDef2D("VertexColor2D", profile, def, key, vs_preamble, fs_preamble, cfg, desc);
 }
 
 static MaterialCreateInfo *VertexColor2D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &key,
+    const MaterialVariantDesc                 *desc,
+    const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreateVertexColor2D(profile, static_cast<const Material2DCreateConfig *>(cfg), key); }
+{ return CreateVertexColor2D(profile, static_cast<const Material2DCreateConfig *>(cfg), *desc, key); }
 
 }//namespace hgl::graph::mtl
 

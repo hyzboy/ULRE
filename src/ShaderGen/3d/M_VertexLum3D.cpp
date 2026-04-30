@@ -27,20 +27,20 @@ namespace
     };
 }
 
-MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg,
+                                            const MaterialVariantDesc &desc, const MaterialVariantKey &key)
 {
     cfg->material_instance=true;
 
-    // [Step 3.5 T2] Single-entry routing via RouteKey().
-    const MaterialVariantKey var_key = RouteKey(MaterialPreset::VertexLuminance3D);
-    return CreateFromFixedDef3D("VertexLuminance3D", profile, VERTEX_LUMINANCE_3D_DEF, var_key, cfg);
+    return CreateFromFixedDef3D("VertexLuminance3D", profile, VERTEX_LUMINANCE_3D_DEF, key, cfg, desc);
 }
 
 static MaterialCreateInfo *VertexLuminance3D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
+    const MaterialVariantDesc                 *desc,
+    const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreateVertexLuminance3D(profile, static_cast<Material3DCreateConfig *>(cfg)); }
+{ return CreateVertexLuminance3D(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

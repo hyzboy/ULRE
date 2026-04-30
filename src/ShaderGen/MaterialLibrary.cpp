@@ -382,7 +382,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
 
     const MaterialPreset factory_type = *variant_desc->factory_type;
 
-    if(MaterialCreateInfo *mci=MaterialFactory3D::Create(factory_type,profile,key,cfg))
+    if(MaterialCreateInfo *mci=MaterialFactory3D::Create(factory_type,profile,variant_desc,key,cfg))
         return mci;
 
     std::fprintf(stderr,

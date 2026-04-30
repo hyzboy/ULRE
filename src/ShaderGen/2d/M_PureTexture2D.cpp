@@ -2,14 +2,13 @@
 #include"MaterialFactory2D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/mtl/SamplerSlot.h>
-#include<hgl/math/Vector.h>
-#include<hgl/mtl/MaterialLibrary.h>
 
 namespace hgl::graph::mtl{
 
 MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialVariantKey &key,
-                                             const mtl::Material2DCreateConfig *cfg)
+                                             const mtl::Material2DCreateConfig *cfg,
+                                             const MaterialVariantDesc &desc)
 {
     if(!profile||!cfg)
         return(nullptr);
@@ -52,11 +51,12 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
                                  manifest,
                                  use_array ? ShaderDataSchema::TextureArrayID : ShaderDataSchema::None);
 
-    return CreateFromFixedDef2D("PureTexture2D", profile, def, key, vs_preamble, fs_preamble, &inner, true);
+    return CreateFromFixedDef2D("PureTexture2D", profile, def, key, vs_preamble, fs_preamble, &inner, desc);
 }
 
 MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,
                                          const mtl::Material2DCreateConfig *cfg,
+                                         const MaterialVariantDesc &desc,
                                          MaterialVariantKey key)
 {
     if(cfg && cfg->texture_source_bits_override != 0)
@@ -73,14 +73,15 @@ MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLit
         key.sampler_feature_bits = cfg->sampler_feature_bits_override;
     }
 
-    return CreatePureTextureVariant(profile, key, cfg);
+    return CreatePureTextureVariant(profile, key, cfg, desc);
 }
 
 static MaterialCreateInfo *PureTexture2D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &key,
+    const MaterialVariantDesc                 *desc,
+    const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreatePureTexture2D(profile, static_cast<const Material2DCreateConfig *>(cfg), key); }
+{ return CreatePureTexture2D(profile, static_cast<const Material2DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

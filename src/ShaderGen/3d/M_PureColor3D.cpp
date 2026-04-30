@@ -25,18 +25,18 @@ namespace
     };
 }
 
-MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg,
+                                      const MaterialVariantDesc &desc, const MaterialVariantKey &key)
 {
-    // [Step 3.5 T2] Single-entry routing via RouteKey().
-    const MaterialVariantKey var_key = RouteKey(MaterialPreset::PureColor3D);
-    return CreateFromFixedDef3D("PureColor3D", profile, PURE_COLOR_3D_DEF, var_key, cfg);
+    return CreateFromFixedDef3D("PureColor3D", profile, PURE_COLOR_3D_DEF, key, cfg, desc);
 }
 
 static MaterialCreateInfo *PureColor3D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
+    const MaterialVariantDesc                 *desc,
+    const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreatePureColor3D(profile, static_cast<Material3DCreateConfig *>(cfg)); }
+{ return CreatePureColor3D(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

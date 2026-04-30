@@ -1,6 +1,7 @@
 #include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/StaticMaterialDef.h>
+#include <hgl/mtl/MaterialVariantDesc.h>
 
 #include <string>
 
@@ -69,7 +70,8 @@ MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLi
 
 static MaterialCreateInfo *Checkerboard3D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
+    const MaterialVariantDesc                 *,
+    const MaterialVariantKey                  &,
     MaterialCreateConfig *cfg)
 { return CreateCheckerboard3D(profile, static_cast<Material3DCreateConfig *>(cfg)); }
 

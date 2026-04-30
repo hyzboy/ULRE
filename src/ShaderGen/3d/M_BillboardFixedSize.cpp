@@ -2,10 +2,10 @@
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialVariantDesc.h>
 #include<hgl/mtl/SamplerSlot.h>
 #include<cstdio>
 #include<vector>
-#include<hgl/mtl/MaterialVariantRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 
 namespace hgl::graph::mtl{
@@ -45,7 +45,8 @@ namespace
     };
 }//namespace
 
-MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfileLite *profile,mtl::BillboardMaterialCreateConfig *cfg)
+MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfileLite *profile,mtl::BillboardMaterialCreateConfig *cfg,
+                                           const MaterialVariantDesc &desc, const MaterialVariantKey &routing_key)
 {
     if(!cfg)
         return(nullptr);
@@ -71,10 +72,8 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
     dynamic_def.texture_samplers  = &dynamic_samplers;
     dynamic_def.ssbo_descriptors  = &dynamic_ssbos;
 
-    MaterialVariantKey lookup_key = RouteKey(MaterialPreset::Billboard2DFixed, 0,
-        RuntimeKeyOverrides{.blend_mode = cfg->blend_mode});
-
-    MaterialVariantKey assemble_key = lookup_key;
+    // assemble_key extends the routing key with array-mode texture source when needed
+    MaterialVariantKey assemble_key = routing_key;
     if (use_array)
         assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Array);
 
@@ -82,26 +81,15 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
         (int)use_array, (int)cfg->blend_mode,
         use_array ? "Sampler2DArray" : "Sampler2D");
 
-    // Registry normalizes billboard variants to the Simple lookup key. Array mode only
-    // affects final shader assembly (TEXTURE_ARRAY_MODE + sampler2DArray emission).
-    MaterialVariantKey resolved_lookup_key{};
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(lookup_key, &resolved_lookup_key);
-    if (!var_desc)
-    {
-        std::fprintf(stderr, "[BillboardFixed] VariantRegistry lookup failed\n");
-        return nullptr;
-    }
-
     std::fprintf(stderr,
-        "[BillboardFixed] variant found: %s, lookup_hash=%llu resolved_lookup_hash=%llu assemble_hash=%llu\n",
-        var_desc->variant_name.c_str(),
-        static_cast<unsigned long long>(lookup_key.Hash()),
-        static_cast<unsigned long long>(resolved_lookup_key.Hash()),
+        "[BillboardFixed] variant=%s routing_hash=%llu assemble_hash=%llu\n",
+        desc.variant_name.c_str(),
+        static_cast<unsigned long long>(routing_key.Hash()),
         static_cast<unsigned long long>(assemble_key.Hash()));
 
     CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(assemble_key, *var_desc);
+    auto result = assembler.Assemble(assemble_key, desc);
 
     if (!result.success)
     {
@@ -128,9 +116,10 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
 
 static MaterialCreateInfo *Billboard2DFixed_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantKey &,
+    const MaterialVariantDesc                 *desc,
+    const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreateBillboard2DFixed(profile, static_cast<BillboardMaterialCreateConfig *>(cfg)); }
+{ return CreateBillboard2DFixed(profile, static_cast<BillboardMaterialCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

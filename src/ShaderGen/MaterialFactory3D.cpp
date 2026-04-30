@@ -38,6 +38,7 @@ namespace hgl::graph::mtl
     MaterialCreateInfo *MaterialFactory3D::Create(
         MaterialPreset                             preset,
         const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialVariantDesc                 *desc,
         const MaterialVariantKey                  &key,
         MaterialCreateConfig                      *cfg)
     {
@@ -50,7 +51,7 @@ namespace hgl::graph::mtl
                 static_cast<unsigned>(preset));
             return nullptr;
         }
-        return it->second.fn(profile, key, cfg);
+        return it->second.fn(profile, desc, key, cfg);
     }
 
     size_t MaterialFactory3D::RegisteredCount()

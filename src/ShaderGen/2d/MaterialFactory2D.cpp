@@ -2,7 +2,6 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
-#include<hgl/mtl/MaterialVariantRegistry.h>
 #include<cstdio>
 
 namespace hgl::graph::mtl{
@@ -16,22 +15,10 @@ MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
                                          const std::string &vs_preamble,
                                          const std::string &fs_preamble,
                                          const Material2DCreateConfig *cfg,
-                                         const bool use_canonical_fallback)
+                                         const MaterialVariantDesc &var_desc)
 {
     if(!profile||!cfg)
         return(nullptr);
-
-    // Canonical fallback is useful when caller builds keys with runtime overrides
-    // (for example texture source mode overrides) and wants registry fallback behavior.
-    const MaterialVariantDesc *var_desc = use_canonical_fallback
-        ? GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(var_key,nullptr)
-        : GetBuiltinVariantRegistry().QueryVariant(var_key);
-
-    if(!var_desc)
-    {
-        std::fprintf(stderr, "[%s] VariantRegistry lookup failed\n", debug_tag ? debug_tag : "2DFactory");
-        return nullptr;
-    }
 
     // Populate vertex attribute feature bits from the actual vertex layout.
     MaterialVariantKey assemble_key = var_key;
@@ -39,7 +26,7 @@ MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
         assemble_key.SetVertexAttribEnabled(def.vertex_entries[i].attrib);
 
     CompositorAssembler assembler;
-    const auto result = assembler.Assemble(assemble_key, *var_desc);
+    const auto result = assembler.Assemble(assemble_key, var_desc);
     if(!result.success)
     {
         std::fprintf(stderr, "[%s] CompositorAssembler failed: %s\n",
