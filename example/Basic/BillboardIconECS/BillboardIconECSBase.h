@@ -32,6 +32,8 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
+//#define SHOW_PLANE_GRID
+
 /**
  * Shared base for all billboard-icon ECS examples.
  *
@@ -49,9 +51,10 @@ protected:
 
     ECSContext* ecs_context = nullptr;
 
-    Entity* grid_entity   = nullptr;
     Entity* camera_entity = nullptr;
 
+#ifdef SHOW_PLANE_GRID
+    Entity* grid_entity   = nullptr;
     // PlaneGrid resources
     Geometry*         geom_plane_grid     = nullptr;
 
@@ -61,6 +64,9 @@ protected:
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };
+
+    bool CreatePlaneGrid();
+#endif // SHOW_PLANE_GRID
 
     // Derived class supplies the prefix used in billboard entity names,
     // e.g. "MaskedBillboard_", "DitherBillboard_".
@@ -74,8 +80,7 @@ protected:
     // Default returns GetEntityPrefix(); override for a custom tag.
     virtual const char* GetDomainTag() const { return GetEntityPrefix(); }
 
-    bool InitPlaneGridResources();
-    bool CreateGeometryAndPrimitives();
+    bool CreatePrimitives();
     bool EnsureRenderSystems();
     bool InitializeECS();
     bool InitializeCamera();

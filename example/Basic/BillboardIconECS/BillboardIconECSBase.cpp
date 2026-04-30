@@ -21,12 +21,8 @@ void BillboardIconECSBase::ConfigureQuadPipelineMode()
     QuadResourcePrepareSystem::SetFixedSizeForWorld(ecs_context, false);    // dynamic world-space billboards
 }
 
-bool BillboardIconECSBase::InitPlaneGridResources()
-{
-    return true;
-}
-
-bool BillboardIconECSBase::CreateGeometryAndPrimitives()
+#ifdef SHOW_PLANE_GRID
+bool BillboardIconECSBase::CreatePlaneGrid()
 {
     auto* render_context = GetRenderContext();
     if (!render_context) return false;
@@ -55,6 +51,66 @@ bool BillboardIconECSBase::CreateGeometryAndPrimitives()
     if (!geom_plane_grid) return false;
 
     if (!geometry_factory.RegisterGeometry(geom_plane_grid)) return false;
+
+    return true;
+}
+#endif
+
+bool BillboardIconECSBase::CreatePrimitives()
+{
+#ifdef SHOW_PLANE_GRID
+    // Plane grid entity
+    grid_entity = ecs_context->CreateEntity<Entity>("PlaneGrid");
+
+    auto grid_transform = grid_entity->AddComponent<TransformComponent>(Mobility::Static);
+    grid_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+    grid_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+    grid_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+    grid_transform->SetMovable(false);
+
+    auto grid_primitive = grid_entity->AddComponent<PrimitiveComponent>();
+    grid_primitive->SetUnresolvedGeometry(geom_plane_grid);
+    grid_primitive->SetMaterialRecipe(RegisterMaterialRecipe(kPlaneGridCfg), &white_color, sizeof(white_color));
+    grid_primitive->SetVisible(true);
+#endif
+    // 100 spiral billboard entities — cycle through icon textures
+    {
+        constexpr int   kBillboardCount = 100;
+        constexpr float kAngleStep      = 0.45f;
+        constexpr float kRadiusStart    = 2.0f;
+        constexpr float kRadiusStep     = 0.6f;
+        constexpr float kCenterY        = 5.0f;
+
+        const char* prefix = GetEntityPrefix();
+
+        for (int i = 0; i < kBillboardCount; ++i)
+        {
+            const float angle  = kAngleStep * static_cast<float>(i);
+            const float radius = kRadiusStart + kRadiusStep * angle;
+
+            const float x = std::cos(angle) * radius;
+            const float y = kCenterY + std::sin(angle) * radius;
+            const float z = 0.0f;
+
+            const std::string name = std::string(prefix) + std::to_string(i);
+            Entity* billboard_entity = ecs_context->CreateEntity<Entity>(name.c_str());
+            if (!billboard_entity) return false;
+
+            auto transform = billboard_entity->AddComponent<TransformComponent>(Mobility::Static);
+            transform->SetLocalPosition(glm::vec3(x, y, z));
+            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform->SetMovable(false);
+
+            auto billboard = billboard_entity->AddComponent<BillboardComponent>();
+            billboard->SetVisible(true);
+            billboard->SetFixedPixelSize(false);
+            billboard->SetWorldSize(8.0f, 8.0f);
+            billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
+            billboard->SetTexture(GetIconTextures(i));
+            billboard->SetDomainTag(GetDomainTag());
+        }
+    }
 
     return true;
 }
@@ -112,60 +168,10 @@ bool BillboardIconECSBase::InitializeECS()
 
     if (!EnsureRenderSystems()) return false;
 
-    // Plane grid entity
-    {
-        grid_entity = ecs_context->CreateEntity<Entity>("PlaneGrid");
-
-        auto grid_transform = grid_entity->AddComponent<TransformComponent>(Mobility::Static);
-        grid_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        grid_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        grid_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        grid_transform->SetMovable(false);
-
-        auto grid_primitive = grid_entity->AddComponent<PrimitiveComponent>();
-        grid_primitive->SetUnresolvedGeometry(geom_plane_grid);
-        grid_primitive->SetMaterialRecipe(RegisterMaterialRecipe(kPlaneGridCfg), &white_color, sizeof(white_color));
-        grid_primitive->SetVisible(true);
-    }
-
-    // 100 spiral billboard entities — cycle through icon textures
-    {
-        constexpr int   kBillboardCount = 100;
-        constexpr float kAngleStep      = 0.45f;
-        constexpr float kRadiusStart    = 2.0f;
-        constexpr float kRadiusStep     = 0.6f;
-        constexpr float kCenterY        = 5.0f;
-
-        const char* prefix = GetEntityPrefix();
-
-        for (int i = 0; i < kBillboardCount; ++i)
-        {
-            const float angle  = kAngleStep * static_cast<float>(i);
-            const float radius = kRadiusStart + kRadiusStep * angle;
-
-            const float x = std::cos(angle) * radius;
-            const float y = kCenterY + std::sin(angle) * radius;
-            const float z = 0.0f;
-
-            const std::string name = std::string(prefix) + std::to_string(i);
-            Entity* billboard_entity = ecs_context->CreateEntity<Entity>(name.c_str());
-            if (!billboard_entity) return false;
-
-            auto transform = billboard_entity->AddComponent<TransformComponent>(Mobility::Static);
-            transform->SetLocalPosition(glm::vec3(x, y, z));
-            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            transform->SetMovable(false);
-
-            auto billboard = billboard_entity->AddComponent<BillboardComponent>();
-            billboard->SetVisible(true);
-            billboard->SetFixedPixelSize(false);
-            billboard->SetWorldSize(8.0f, 8.0f);
-            billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
-            billboard->SetTexture(GetIconTextures(i));
-            billboard->SetDomainTag(GetDomainTag());
-        }
-    }
+#ifdef SHOW_PLANE_GRID
+    if (!CreatePlaneGrid())    return false;
+#endif
+    if (!CreatePrimitives())   return false;
 
     return true;
 }
@@ -197,10 +203,8 @@ bool BillboardIconECSBase::Init()
 {
     SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));
 
-    if (!InitPlaneGridResources())    return false;
-    if (!CreateGeometryAndPrimitives()) return false;
-    if (!InitializeECS())             return false;
-    if (!InitializeCamera())          return false;
+    if (!InitializeECS())      return false;
+    if (!InitializeCamera())   return false;
 
     return true;
 }
