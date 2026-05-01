@@ -38,9 +38,8 @@ MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfil
         def.primitive_type = cfg->prim;
 
     std::fprintf(stderr,
-                 "[VertexLuminance2D] route primitive=%u pos_type=%u va_bits=0x%08X\n",
+                 "[VertexLuminance2D] route primitive=%u va_bits=0x%08X\n",
                  static_cast<unsigned>(def.primitive_type),
-                 static_cast<unsigned>(key.position_type),
                  key.vertex_attribute_feature_bits);
 
     MaterialVariantKey local_key = key;

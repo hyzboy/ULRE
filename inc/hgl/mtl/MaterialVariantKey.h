@@ -7,7 +7,6 @@
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
 #include <hgl/common/VertexAttribDef.h>
-#include <hgl/common/PositionType.h>
 #include <hgl/common/PositionProvider.h>
 #include <hgl/type/FNV1a.h>
 
@@ -50,8 +49,7 @@ namespace hgl::graph::mtl
         SurfaceType       surface_type        = SurfaceType::Unlit;
         GeometryMode      geometry_mode       = GeometryMode::Mesh3D;
 
-        PositionType      position_type                = PositionType::Vec3;
-        PositionProviderId position_provider              = PositionProviderId::DirectVec3;  // Step 11.B: new field; old path untouched
+        PositionProviderId position_provider              = PositionProviderId::DirectVec3;
 
         uint32            texture_source_bits           = 0;
         uint32            sampler_feature_bits          = 0;
@@ -134,11 +132,6 @@ namespace hgl::graph::mtl
             return (extra_feature_bits & static_cast<uint32>(ExtraFeature::DebugShading)) != 0;
         }
 
-        void SetPositionType(const PositionType pt) noexcept
-        {
-            position_type = pt;
-        }
-
         uint64 Hash() const noexcept
         {
             uint64 h = hgl::hash::FNV1aInit<uint64>();
@@ -149,7 +142,6 @@ namespace hgl::graph::mtl
             h = hgl::hash::FNV1aAppend(h, sampler_feature_bits);
             h = hgl::hash::FNV1aAppend(h, vertex_attribute_feature_bits);
             h = hgl::hash::FNV1aAppend(h, extra_feature_bits);
-            h = hgl::hash::FNV1aAppend(h, position_type);
             h = hgl::hash::FNV1aAppend(h, position_provider);
             h = hgl::hash::FNV1aAppend(h, blend_mode);
             h = hgl::hash::FNV1aAppend(h, pass_hint);
@@ -167,7 +159,6 @@ namespace hgl::graph::mtl
         {
             return surface_type == rhs.surface_type
                 && geometry_mode == rhs.geometry_mode
-                && position_type == rhs.position_type
                 && position_provider == rhs.position_provider
                 && texture_source_bits == rhs.texture_source_bits
                 && sampler_feature_bits == rhs.sampler_feature_bits

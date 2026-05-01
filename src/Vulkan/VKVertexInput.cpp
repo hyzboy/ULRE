@@ -44,8 +44,6 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
 
     for(uint i=0;i<via_array.count;i++)
     {
-        vif[i].position_type = PositionType::Vec3; // Default to Vec3 for now
-
         //binding对应的是第几个数据输入流
         //实际使用一个binding可以绑定多个attrib
         //比如在一个流中传递{pos,color}这样两个数据，就需要两个attrib

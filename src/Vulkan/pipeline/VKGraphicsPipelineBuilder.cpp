@@ -30,7 +30,7 @@ static void LogVertexInputLayoutDetails(const char *tag, const VIL *vil)
             continue;
 
         const char *fmt_name = GetVulkanFormatName(cfg->format);
-        GLogInfo("[%s]   [%u] attrib=%u binding=%d format=%d(%s) vec_size=%u stride=%u pos_type=%u input_rate=%u",
+        GLogInfo("[%s]   [%u] attrib=%u binding=%d format=%d(%s) vec_size=%u stride=%u input_rate=%u",
                  tag ? tag : "VertexInputDiag",
                  i,
                  static_cast<unsigned>(cfg->attrib),
@@ -39,7 +39,6 @@ static void LogVertexInputLayoutDetails(const char *tag, const VIL *vil)
                  fmt_name ? fmt_name : "<unknown>",
                  cfg->vec_size,
                  cfg->stride,
-                 static_cast<unsigned>(cfg->position_type),
                  static_cast<unsigned>(cfg->input_rate));
     }
 }
@@ -75,19 +74,16 @@ static void LogPipelineVertexInputComparison(const GraphicsPipelineBuildRequest 
 
         if (g->attrib != m->attrib
          || g->format != m->format
-         || g->vec_size != m->vec_size
-         || g->position_type != m->position_type)
+         || g->vec_size != m->vec_size)
         {
-            GLogWarning("[PipelineBuild.VertexInputDiff] index=%u geom(attrib=%u format=%d vec=%u pos_type=%u) material(attrib=%u format=%d vec=%u pos_type=%u)",
+            GLogWarning("[PipelineBuild.VertexInputDiff] index=%u geom(attrib=%u format=%d vec=%u) material(attrib=%u format=%d vec=%u)",
                         i,
                         static_cast<unsigned>(g->attrib),
                         static_cast<int>(g->format),
                         g->vec_size,
-                        static_cast<unsigned>(g->position_type),
                         static_cast<unsigned>(m->attrib),
                         static_cast<int>(m->format),
-                        m->vec_size,
-                        static_cast<unsigned>(m->position_type));
+                        m->vec_size);
         }
     }
 }

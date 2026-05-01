@@ -27,11 +27,6 @@ namespace hgl::graph::mtl
 // File-local helpers (not exposed in the header)
 // ─────────────────────────────────────────────────────────────────────────────
 
-static PositionType PositionTypeFromVAType(const VAType pos) noexcept
-{
-    return (pos.vec_size == 2) ? PositionType::Vec2 : PositionType::Vec3;
-}
-
 /// Returns true if any texture channel in the recipe uses Array source mode.
 static bool HasAnyArrayTexture(const MaterialRecipe &r) noexcept
 {
@@ -222,11 +217,8 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
 
     // ── Step 3: vertex position format ───────────────────────────────────────
     // Mirrors Material2DCreateConfig::position_format in ApplyCreateConfigToVariantKey.
-    // Step 11.D: also populate position_provider (new canonical field) via write-through;
-    // old position_type field is preserved for backward compatibility.
     if (r.pos_format.Check())
     {
-        k.position_type     = PositionTypeFromVAType(r.pos_format);
         k.position_provider = (r.pos_format.vec_size == 2)
             ? PositionProviderId::VAB_Vec2
             : PositionProviderId::DirectVec3;

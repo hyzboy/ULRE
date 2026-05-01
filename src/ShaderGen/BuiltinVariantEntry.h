@@ -19,7 +19,6 @@
 #include<hgl/mtl/MaterialVariantDesc.h>
 #include<hgl/mtl/SamplerSlot.h>
 #include<hgl/mtl/SurfaceType.h>
-#include<hgl/common/PositionType.h>
 #include<hgl/mtl/LightingModel.h>
 #include<hgl/mtl/RenderAlphaMode.h>
 #include<hgl/mtl/PassType.h>
@@ -57,8 +56,7 @@ struct BuiltinVariantEntry
 
     SurfaceType          surface_type     = _BVE_ST::Unlit;
     GeometryMode         geometry_mode    = _BVE_GM::Mesh3D;
-    PositionType         position_type    = PositionType::Vec3;
-    PositionProviderId   position_provider = PositionProviderId::DirectVec3;  // Step 11.D
+    PositionProviderId   position_provider = PositionProviderId::DirectVec3;
     LightingModel        lighting         = _BVE_LM::Lambert;
     SkyLightAmbientModel sky_model     = SkyLightAmbientModel::Simple;
     RenderAlphaMode      blend         = _BVE_RM::Opaque;
@@ -80,8 +78,7 @@ inline MaterialVariantKey BuildKey(const BuiltinVariantEntry &e)
     MaterialVariantKey k;
     k.surface_type                  = e.surface_type;
     k.geometry_mode                 = e.geometry_mode;
-    k.position_type                 = e.position_type;
-    k.position_provider             = e.position_provider;  // Step 11.D
+    k.position_provider             = e.position_provider;
     k.vertex_attribute_feature_bits = e.vertex_bits;
     k.extra_feature_bits            = e.extra_bits;
     k.blend_mode                    = e.blend;
