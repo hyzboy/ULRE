@@ -62,3 +62,16 @@ target_link_libraries(MaterialKeyAbiSnapshot PRIVATE ${ULRE})
 set_property(TARGET MaterialKeyAbiSnapshot PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 
 add_test(NAME MaterialKeyAbiSnapshot COMMAND MaterialKeyAbiSnapshot)
+
+# AttributeProviderRegistryTest compiles AttributeProviderRegistry.cpp directly
+# (same pattern as MaterialKeyTest) to avoid pulling in full ULRE.ShaderGen.
+add_executable(AttributeProviderRegistryTest
+    AttributeProviderRegistryTest.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../AttributeProviderRegistry.cpp
+)
+
+target_link_libraries(AttributeProviderRegistryTest PRIVATE CMCore)
+
+set_property(TARGET AttributeProviderRegistryTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME AttributeProviderRegistryTest COMMAND AttributeProviderRegistryTest)

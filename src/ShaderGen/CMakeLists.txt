@@ -146,6 +146,12 @@ SET(POSITION_PROVIDER_FILES ${ROOT_INCLUDE_PATH}/hgl/common/PositionProvider.h
                             PositionProviderRegistry.cpp)
 SOURCE_GROUP("Position Provider" FILES ${POSITION_PROVIDER_FILES})
 
+# Attribute Provider Registry
+SET(ATTRIBUTE_PROVIDER_FILES ${ROOT_INCLUDE_PATH}/hgl/common/AttributeProvider.h
+                             ${SHADERGEN_INCLUDE_PATH}/AttributeProviderRegistry.h
+                             AttributeProviderRegistry.cpp)
+SOURCE_GROUP("Attribute Provider" FILES ${ATTRIBUTE_PROVIDER_FILES})
+
 # Shader Library
 SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             MaterialFactory3D.cpp
@@ -219,6 +225,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${SHADERGEN_COMMON_MATFUNC_FILES}
     ${SHADERGEN_COMMON_VARIANT_POLICY_FILES}
     ${POSITION_PROVIDER_FILES}
+    ${ATTRIBUTE_PROVIDER_FILES}
     ${SHADER_LIBRARY_FILES}
     ${STD_MTL_SOURCE}
     ${MATERIAL_KEY_FILES}
