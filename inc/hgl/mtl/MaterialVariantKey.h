@@ -8,7 +8,9 @@
 #include <hgl/mtl/LightingModel.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/common/PositionProvider.h>
+#include <hgl/common/AttributeProvider.h>
 #include <hgl/type/FNV1a.h>
+#include <array>
 
 namespace hgl::graph::mtl
 {
@@ -63,6 +65,12 @@ namespace hgl::graph::mtl
         // Phase 2: Effective feature mask (resolved from intent_features via MaterialRecipe)
         // When non-zero, represents the authoritative feature set for this variant routing decision.
         uint64            effective_feature_mask = 0;
+
+        // Phase B: Per-semantic attribute-provider IDs. Index = AttributeSemantic ordinal.
+        // Default (all None=0) means no vertex-pulling; hash contribution is skipped when
+        // all entries are None, preserving backward hash compatibility.
+        std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)>
+            attribute_providers{};
 
         static constexpr uint32 TextureSourceBitsPerSlot = 2;
         static constexpr uint32 TextureSourceSlotCount   = uint32(SamplerSlot::RANGE_SIZE);
@@ -152,6 +160,17 @@ namespace hgl::graph::mtl
             if (effective_feature_mask != 0)
                 h = hgl::hash::FNV1aAppend(h, effective_feature_mask);
 
+            // Phase B: Include attribute_providers only when at least one is active.
+            // All-None arrays produce zero new bytes → preserves pre-B hash identity.
+            {
+                bool any = false;
+                for (auto p : attribute_providers)
+                    if (p != AttributeProviderId::None) { any = true; break; }
+                if (any)
+                    for (auto p : attribute_providers)
+                        h = hgl::hash::FNV1aAppend(h, p);
+            }
+
             return h;
         }
 
@@ -168,7 +187,8 @@ namespace hgl::graph::mtl
                 && pass_hint == rhs.pass_hint
                 && sky_ambient_model == rhs.sky_ambient_model
                 && lighting_model == rhs.lighting_model
-                && effective_feature_mask == rhs.effective_feature_mask;
+                && effective_feature_mask == rhs.effective_feature_mask
+                && attribute_providers == rhs.attribute_providers;
         }
     };
 }

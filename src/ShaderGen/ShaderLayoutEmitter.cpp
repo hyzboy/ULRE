@@ -5,6 +5,8 @@
 
 #include <hgl/shadergen/ShaderLayoutEmitter.h>
 #include <hgl/shadergen/ShaderWriter.h>
+#include <hgl/shadergen/AttributeProviderRegistry.h>
+#include <hgl/common/DescriptorSetTypeDef.h>
 #include <ostream>
 #include <string>
 
@@ -95,6 +97,53 @@ void EmitPositionInput(std::ostream &out,
             out << "#define POSITION_LOCATION " << position_location << "\n";
         out << "#include \"" << p.glsl_path << "\"\n";
     }
+}
+
+// Semantic name strings, indexed by AttributeSemantic ordinal.
+static constexpr const char *kAttribSemanticNames[] = {
+    "Normal",
+    "Tangent",
+    "Color",
+    "TexCoord0",
+    "TexCoord1",
+    "Joints",
+    "Weights",
+    "InstanceTransform",
+};
+static_assert(std::size(kAttribSemanticNames) == size_t(AttributeSemantic::BuiltinCount),
+              "kAttribSemanticNames must cover every built-in AttributeSemantic");
+
+void EmitAttribInput(std::ostream &out, const mtl::MaterialVariantKey &key)
+{
+    constexpr int kVertexStreamsSet = int(SET_TYPE_VERTEX_STREAMS);
+
+    for (uint32_t i = 0; i < uint32_t(AttributeSemantic::BuiltinCount); ++i)
+    {
+        const AttributeProviderId pid = key.attribute_providers[i];
+        if (pid == AttributeProviderId::None)
+            continue;
+
+        const AttributeProvider *p = FindBuiltinAttribProvider(pid);
+        if (!p)
+            continue;
+
+        out << "#define ATTRIB_TAG     " << kAttribSemanticNames[i] << "\n";
+        out << "#define ATTRIB_SET     " << kVertexStreamsSet        << "\n";
+        out << "#define ATTRIB_BINDING " << i                       << "\n";
+        out << "#include \"" << p->glsl_path                        << "\"\n";
+        out << "#undef ATTRIB_BINDING\n";
+        out << "#undef ATTRIB_SET\n";
+        out << "#undef ATTRIB_TAG\n";
+    }
+}
+
+void EmitVertexStageInputs(std::ostream &out,
+                           const mtl::MaterialVariantKey &key,
+                           const PositionProvider &p,
+                           int position_location)
+{
+    EmitPositionInput(out, p, position_location);
+    EmitAttribInput(out, key);
 }
 
 }  // namespace hgl::graph

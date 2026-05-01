@@ -63,6 +63,14 @@ namespace hgl::graph::mtl {
         if (auto c = variant.effective_feature_mask
                  <=> rhs.variant.effective_feature_mask; c != 0) return c;
 
+        // Phase B: attribute_providers comparison (lexicographic over the array).
+        for (size_t i = 0; i < variant.attribute_providers.size(); ++i)
+        {
+            if (auto c = static_cast<uint16>(variant.attribute_providers[i])
+                     <=> static_cast<uint16>(rhs.variant.attribute_providers[i]); c != 0)
+                return c;
+        }
+
         // --- MaterialKey-specific fields ---
         if (auto c = static_cast<uint8>(pass)
                  <=> static_cast<uint8>(rhs.pass); c != 0) return c;

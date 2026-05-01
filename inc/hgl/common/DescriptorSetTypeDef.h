@@ -14,8 +14,9 @@ namespace hgl::graph
         PerFrame,
         PerObject,
         PerMaterial,
+        VertexStreams,          ///< Per-vertex attribute SSBO streams (Phase B)
 
-        ENUM_CLASS_RANGE(Static,PerMaterial)
+        ENUM_CLASS_RANGE(Static,VertexStreams)
     };
 
     constexpr const size_t DESCRIPTOR_SET_TYPE_COUNT=size_t(DescriptorSetType::RANGE_SIZE);
@@ -25,7 +26,8 @@ namespace hgl::graph
         "Static",
         "PerFrame",
         "PerObject",
-        "PerMaterial"
+        "PerMaterial",
+        "VertexStreams"
     };
 
     inline const char *GetDescriptorSetTypeName(const enum class DescriptorSetType &type)
@@ -38,10 +40,11 @@ namespace hgl::graph
     }
 
     // Resource-level aliases for readability in use-sites.
-    constexpr DescriptorSetType SET_TYPE_VIEWPORT  = DescriptorSetType::Static;
-    constexpr DescriptorSetType SET_TYPE_SKY       = DescriptorSetType::Static;
-    constexpr DescriptorSetType SET_TYPE_CAMERA    = DescriptorSetType::PerFrame;
-    constexpr DescriptorSetType SET_TYPE_TRANSFORM = DescriptorSetType::PerObject;
-    constexpr DescriptorSetType SET_TYPE_MATERIAL  = DescriptorSetType::PerMaterial;
-    constexpr DescriptorSetType SET_TYPE_TEXTURE   = DescriptorSetType::PerMaterial;
+    constexpr DescriptorSetType SET_TYPE_VIEWPORT       = DescriptorSetType::Static;
+    constexpr DescriptorSetType SET_TYPE_SKY            = DescriptorSetType::Static;
+    constexpr DescriptorSetType SET_TYPE_CAMERA         = DescriptorSetType::PerFrame;
+    constexpr DescriptorSetType SET_TYPE_TRANSFORM      = DescriptorSetType::PerObject;
+    constexpr DescriptorSetType SET_TYPE_MATERIAL       = DescriptorSetType::PerMaterial;
+    constexpr DescriptorSetType SET_TYPE_TEXTURE        = DescriptorSetType::PerMaterial;
+    constexpr DescriptorSetType SET_TYPE_VERTEX_STREAMS = DescriptorSetType::VertexStreams;
 }

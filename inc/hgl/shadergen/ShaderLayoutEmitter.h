@@ -2,6 +2,7 @@
 
 #include <hgl/shadergen/ShaderLayoutContract.h>
 #include <hgl/common/PositionProvider.h>
+#include <hgl/mtl/MaterialVariantKey.h>
 #include <iosfwd>
 #include <string>
 
@@ -48,5 +49,30 @@ namespace hgl::graph
     void EmitPositionInput(std::ostream       &out,
                            const PositionProvider &p,
                            int                 position_location);
+
+    /**
+     * Emit attribute-input declarations for all active attribute_providers in `key`.
+     *
+     * For each entry where attribute_providers[i] != None, emits:
+     *   #define ATTRIB_TAG   <SemanticName>
+     *   #define ATTRIB_SET   <VertexStreams set index>
+     *   #define ATTRIB_BINDING <i>
+     *   #include "<provider.glsl_path>"
+     *   #undef ATTRIB_TAG / ATTRIB_SET / ATTRIB_BINDING
+     *
+     * When all providers are None (the Phase-B default), nothing is emitted,
+     * preserving byte-for-byte equivalence with pre-B shader output.
+     */
+    void EmitAttribInput(std::ostream                   &out,
+                         const mtl::MaterialVariantKey  &key);
+
+    /**
+     * Convenience: calls EmitPositionInput then EmitAttribInput.
+     * Produces the complete vertex-stage input block for a variant.
+     */
+    void EmitVertexStageInputs(std::ostream                   &out,
+                               const mtl::MaterialVariantKey  &key,
+                               const PositionProvider         &p,
+                               int                             position_location);
 
 }  // namespace hgl::graph

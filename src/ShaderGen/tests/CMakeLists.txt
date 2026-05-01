@@ -75,3 +75,20 @@ target_link_libraries(AttributeProviderRegistryTest PRIVATE CMCore)
 set_property(TARGET AttributeProviderRegistryTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 
 add_test(NAME AttributeProviderRegistryTest COMMAND AttributeProviderRegistryTest)
+
+# PhaseB_EmitterTest exercises EmitAttribInput / EmitVertexStageInputs and
+# MaterialVariantKey::attribute_providers hash behaviour.
+# Compiles ShaderLayoutEmitter.cpp, ShaderWriter.cpp, and
+# AttributeProviderRegistry.cpp directly to avoid pulling in full ULRE.ShaderGen.
+add_executable(PhaseB_EmitterTest
+    PhaseB_EmitterTest.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../ShaderLayoutEmitter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../ShaderWriter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../AttributeProviderRegistry.cpp
+)
+
+target_link_libraries(PhaseB_EmitterTest PRIVATE CMCore)
+
+set_property(TARGET PhaseB_EmitterTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME PhaseB_EmitterTest COMMAND PhaseB_EmitterTest)
