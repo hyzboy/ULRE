@@ -140,6 +140,12 @@ SET(STD_MTL_3D_SOURCE_FILES ${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/M_TerrainGrid.cpp)
 SOURCE_GROUP("Standard Material\\3D" FILES ${STD_MTL_3D_SOURCE_FILES})
 
+# Position Provider Registry
+SET(POSITION_PROVIDER_FILES ${ROOT_INCLUDE_PATH}/hgl/common/PositionProvider.h
+                            ${SHADERGEN_INCLUDE_PATH}/PositionProviderRegistry.h
+                            PositionProviderRegistry.cpp)
+SOURCE_GROUP("Position Provider" FILES ${POSITION_PROVIDER_FILES})
+
 # Shader Library
 SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             MaterialFactory3D.cpp
@@ -212,6 +218,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${SHADERGEN_COMMON_FILES}
     ${SHADERGEN_COMMON_MATFUNC_FILES}
     ${SHADERGEN_COMMON_VARIANT_POLICY_FILES}
+    ${POSITION_PROVIDER_FILES}
     ${SHADER_LIBRARY_FILES}
     ${STD_MTL_SOURCE}
     ${MATERIAL_KEY_FILES}
