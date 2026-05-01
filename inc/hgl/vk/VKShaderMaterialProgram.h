@@ -7,6 +7,7 @@
 #include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/mtl/MaterialKey.h>
 #include<hgl/log/Log.h>
+#include<hgl/common/AttributeProvider.h>
 #include<unordered_set>
 
 
@@ -115,6 +116,7 @@ public:
     bool BindUBO(const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindUBO(const UBOAccessorBase *ubo,bool dynamic=false);
     bool BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindAttribStream(const AttributeSemantic semantic,const IGPUBuffer *buffer,uint32_t byte_offset=0,uint32_t stride=0);
 
     template<typename T,mtl::UBODescriptorSemantic Semantic>
     bool BindUBO(const UBOAccessor<T,Semantic> *ubo,bool dynamic=false)

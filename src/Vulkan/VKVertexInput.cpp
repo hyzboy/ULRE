@@ -109,6 +109,9 @@ VertexInput::~VertexInput()
 
 VIL *VertexInput::CreateVIL(const VILConfig *cfg)
 {
+    if(pulling_enabled)
+        return(nullptr);       // Pulling 路径：管线不需要顶点绑定/属性描述
+
     if(!cfg)
         return(default_vil);
 

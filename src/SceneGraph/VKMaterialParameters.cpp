@@ -73,6 +73,11 @@ bool MaterialParameters::BindSSBO(const mtl::SSBODescriptorSemantic semantic,con
 }
 
 
+bool MaterialParameters::BindAttribSSBO(const AttributeSemantic semantic,const IGPUBuffer *gpu,bool dynamic)
+{
+    return BindSSBO(int(semantic),gpu,dynamic);
+}
+
 bool MaterialParameters::BindTexture(const int &index,Texture *tex)
 {
     if(index < 0 || !tex)

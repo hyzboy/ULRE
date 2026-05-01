@@ -112,6 +112,22 @@ bool ShaderMaterialProgram::BindSSBO(const mtl::SSBODescriptorSemantic semantic,
     return mp->BindSSBO(semantic,gpu,dynamic);
 }
 
+bool ShaderMaterialProgram::BindAttribStream(const AttributeSemantic semantic,const IGPUBuffer *buffer,uint32_t byte_offset,uint32_t stride)
+{
+    MaterialParameters *mp=GetMP(SET_TYPE_VERTEX_STREAMS);
+
+    if(!mp)
+        return(false);
+
+    if(!mp->BindAttribSSBO(semantic,buffer))
+        return(false);
+
+    if(vertex_input)
+        vertex_input->SetAttribStream(semantic,buffer,byte_offset,stride);
+
+    return(true);
+}
+
 bool ShaderMaterialProgram::BindTexture(const DescriptorSetType &type,mtl::SamplerSlot slot,Texture *tex)
 {
     MaterialParameters *mp = GetMP(type);

@@ -5,6 +5,7 @@
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
+#include<hgl/common/AttributeProvider.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
@@ -56,6 +57,7 @@ public:
 
     bool BindUBO(const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindAttribSSBO(const AttributeSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindTexture(const mtl::SamplerSlot slot,Texture *tex);
     bool BindResourceSampler(const mtl::SamplerSlot slot,Texture *tex,Sampler *sampler);
 
