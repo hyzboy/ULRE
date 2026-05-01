@@ -216,6 +216,7 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
 
     // Step 5: apply remaining overrides (not covered by entry selection).
     if (ov.position_type)     key.position_type     = *ov.position_type;
+    if (ov.position_provider) key.position_provider = *ov.position_provider;  // Step 11.D
     if (ov.pass_hint)         key.pass_hint         = *ov.pass_hint;
     if (ov.sky_ambient_model) key.sky_ambient_model = *ov.sky_ambient_model;
     if (ov.debug_shading)     key.SetDebugShading(true);

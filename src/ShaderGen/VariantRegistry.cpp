@@ -316,23 +316,23 @@ const BuiltinVariantEntry kBuiltinVariants[] =
 {
     // ── 2D ──────────────────────────────────────────────────────────────────────────────────────
     { .name = "VertexColor2D",      .preset = MaterialPreset::VertexColor2D,
-      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2, .vertex_bits = VA(VertexAttrib::Color),
+      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2, .position_provider = PositionProviderId::VAB_Vec2, .vertex_bits = VA(VertexAttrib::Color),
       .vs_path = "2d/vertexcolor2d.vert.glsl",  .fs_path = "2d/vertexcolor2d.frag.glsl"  },
 
     { .name = "PureColor2D",        .preset = MaterialPreset::PureColor2D,
-      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2,
+      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2, .position_provider = PositionProviderId::VAB_Vec2,
       .vs_path = "2d/purecolor2d.vert.glsl",    .fs_path = "2d/purecolor2d.frag.glsl"    },
 
     { .name = "PureTexture2D",      .preset = MaterialPreset::PureTexture2D,
-      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2, .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2, .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::BaseColor, TSM::Simple }},
       .vs_path = "2d/puretexture2d.vert.glsl",  .fs_path = "2d/puretexture2d.frag.glsl"  },
 
     { .name = "PureTexture2DArray", .preset = MaterialPreset::PureTexture2D,
-      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2, .tex = {{ Slot::BaseColor, TSM::Array }},
+      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2, .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::BaseColor, TSM::Array }},
       .vs_path = "2d/puretexture2d.vert.glsl",  .fs_path = "2d/puretexture2d.frag.glsl"  },
 
     { .name = "Text2D",             .preset = MaterialPreset::Text2D,
-      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2, .tex = {{ Slot::BaseColor, TSM::Atlas }},
+      .geometry_mode = GM::Quad2D,  .position_type = PositionType::Vec2, .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::BaseColor, TSM::Atlas }},
       .vs_path = "2d/text2d.vert.glsl",         .fs_path = "2d/text2d.frag.glsl"         },
 
     // ── 3D Unlit ────────────────────────────────────────────────────────────────────────────────
@@ -347,7 +347,7 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .surface_path = "surface/unlit_luminance_surface.glsl"   },
 
     { .name = "VertexLuminance2D",  .preset = MaterialPreset::VertexLuminance2D,
-      .position_type = PositionType::Vec2,
+      .position_type = PositionType::Vec2, .position_provider = PositionProviderId::VAB_Vec2,
       .vertex_bits = VA(VertexAttrib::Luminance),
       .surface_path = "surface/unlit_luminance_surface.glsl"   },
 
@@ -481,7 +481,7 @@ const BuiltinVariantEntry kBuiltinVariants[] =
 
     // ── PCG / Fullscreen ─────────────────────────────────────────────────────────────────────────
     { .name = "FullscreenTriangle", .preset = MaterialPreset::FullscreenTriangle,
-      .position_type = PositionType::None },
+      .position_type = PositionType::None, .position_provider = PositionProviderId::PCG_FullscreenTriangle },
 };
 // clang-format on
 

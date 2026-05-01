@@ -222,8 +222,15 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
 
     // ── Step 3: vertex position format ───────────────────────────────────────
     // Mirrors Material2DCreateConfig::position_format in ApplyCreateConfigToVariantKey.
+    // Step 11.D: also populate position_provider (new canonical field) via write-through;
+    // old position_type field is preserved for backward compatibility.
     if (r.pos_format.Check())
-        k.position_type = PositionTypeFromVAType(r.pos_format);
+    {
+        k.position_type     = PositionTypeFromVAType(r.pos_format);
+        k.position_provider = (r.pos_format.vec_size == 2)
+            ? PositionProviderId::VAB_Vec2
+            : PositionProviderId::DirectVec3;
+    }
 
     // ── Step 4: sky / lighting (3-D only) ────────────────────────────────────
     // Mirrors the Material3DCreateConfig block in ApplyCreateConfigToVariantKey

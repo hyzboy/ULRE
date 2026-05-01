@@ -68,6 +68,7 @@ std::string GetBuiltinMaterialVariantSnapshot();
 struct RuntimeKeyOverrides
 {
     std::optional<PositionType>      position_type;          // None=保留 preset 默认
+    std::optional<PositionProviderId> position_provider;     // Step 11.D: new canonical provider field
     std::optional<RenderAlphaMode>   blend_mode;             // 同上
     std::optional<PassType>          pass_hint;              // 同上
     std::optional<SkyLightAmbientModel> sky_ambient_model;   // 同上

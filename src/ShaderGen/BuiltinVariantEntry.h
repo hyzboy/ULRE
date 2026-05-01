@@ -55,10 +55,11 @@ struct BuiltinVariantEntry
     const char*          name;
     MaterialPreset       preset;
 
-    SurfaceType          surface_type  = _BVE_ST::Unlit;
-    GeometryMode         geometry_mode = _BVE_GM::Mesh3D;
-    PositionType         position_type = PositionType::Vec3;
-    LightingModel        lighting      = _BVE_LM::Lambert;
+    SurfaceType          surface_type     = _BVE_ST::Unlit;
+    GeometryMode         geometry_mode    = _BVE_GM::Mesh3D;
+    PositionType         position_type    = PositionType::Vec3;
+    PositionProviderId   position_provider = PositionProviderId::DirectVec3;  // Step 11.D
+    LightingModel        lighting         = _BVE_LM::Lambert;
     SkyLightAmbientModel sky_model     = SkyLightAmbientModel::Simple;
     RenderAlphaMode      blend         = _BVE_RM::Opaque;
     PassType             pass          = _BVE_PT::ForwardOpaque;
@@ -80,6 +81,7 @@ inline MaterialVariantKey BuildKey(const BuiltinVariantEntry &e)
     k.surface_type                  = e.surface_type;
     k.geometry_mode                 = e.geometry_mode;
     k.position_type                 = e.position_type;
+    k.position_provider             = e.position_provider;  // Step 11.D
     k.vertex_attribute_feature_bits = e.vertex_bits;
     k.extra_feature_bits            = e.extra_bits;
     k.blend_mode                    = e.blend;
