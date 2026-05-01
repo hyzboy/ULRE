@@ -52,7 +52,11 @@ namespace
 
         EmitEnabledVertexAttribDefines(writer, f);
 
-        writer.EmitDefine("POSITION_KIND", std::to_string(static_cast<int>(f.position_type)).c_str());
+        // Map PositionProviderId -> GLSL POSITION_KIND (0=None/procedural, 1=Vec2, 2=Vec3)
+        const int pos_kind = (f.position_provider == hgl::graph::PositionProviderId::VAB_Vec2) ? 1
+                           : (f.position_provider == hgl::graph::PositionProviderId::PCG_FullscreenTriangle) ? 0
+                           : 2; // DirectVec3, SSBO_PackedVec3, etc.
+        writer.EmitDefine("POSITION_KIND", std::to_string(pos_kind).c_str());
         if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
 
         writer.EmitInclude("common/vertex_input_position.glsl")
@@ -107,20 +111,12 @@ namespace
         hgl::graph::CompositorFeatureFlags flags;
         flags.vertex_attrib_bits = key.vertex_attribute_feature_bits;
 
-        if (hgl::graph::Is2DSurfaceType(key.surface_type))
-        {
-            // 2D surface types always use a vec2 position attribute.
-            flags.position_type = hgl::graph::PositionType::Vec2;
-        }
-        else if (key.surface_type == hgl::graph::SurfaceType::Sky)
+        // Propagate position_provider from key (already set correctly by routing layer).
+        flags.position_provider = key.position_provider;
+        if (key.surface_type == hgl::graph::SurfaceType::Sky)
         {
             flags.has_direction      = true;
             flags.vertex_attrib_bits = 0;
-        }
-        else
-        {
-            // Propagate position_type directly (Vec2 / Vec3 / None).
-            flags.position_type = key.position_type;
         }
 
         return flags;
