@@ -5,6 +5,7 @@
 
 #include <hgl/shadergen/ShaderLayoutEmitter.h>
 #include <hgl/shadergen/ShaderWriter.h>
+#include <ostream>
 #include <string>
 
 namespace hgl::graph
@@ -77,6 +78,23 @@ std::string DumpShaderLayoutContract(const ShaderLayoutContract &contract)
     dump_section("Descriptor bindings",    contract.descriptor_bindings);
 
     return out;
+}
+
+void EmitPositionInput(std::ostream &out,
+                       const PositionProvider &p,
+                       int position_location)
+{
+    if (p.id == PositionProviderId::DirectVec3)
+    {
+        out << "layout(location=" << position_location << ") in vec3 inPosition;\n";
+        out << "#define GetPositionLocal() (inPosition)\n";
+    }
+    else
+    {
+        if (p.vab_count > 0)
+            out << "#define POSITION_LOCATION " << position_location << "\n";
+        out << "#include \"" << p.glsl_path << "\"\n";
+    }
 }
 
 }  // namespace hgl::graph

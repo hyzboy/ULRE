@@ -8,6 +8,7 @@
 #include <hgl/mtl/LightingModel.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/common/PositionType.h>
+#include <hgl/common/PositionProvider.h>
 #include <hgl/type/FNV1a.h>
 
 namespace hgl::graph::mtl
@@ -50,6 +51,7 @@ namespace hgl::graph::mtl
         GeometryMode      geometry_mode       = GeometryMode::Mesh3D;
 
         PositionType      position_type                = PositionType::Vec3;
+        PositionProviderId position_provider              = PositionProviderId::DirectVec3;  // Step 11.B: new field; old path untouched
 
         uint32            texture_source_bits           = 0;
         uint32            sampler_feature_bits          = 0;
@@ -148,6 +150,7 @@ namespace hgl::graph::mtl
             h = hgl::hash::FNV1aAppend(h, vertex_attribute_feature_bits);
             h = hgl::hash::FNV1aAppend(h, extra_feature_bits);
             h = hgl::hash::FNV1aAppend(h, position_type);
+            h = hgl::hash::FNV1aAppend(h, position_provider);
             h = hgl::hash::FNV1aAppend(h, blend_mode);
             h = hgl::hash::FNV1aAppend(h, pass_hint);
             h = hgl::hash::FNV1aAppend(h, sky_ambient_model);
@@ -165,6 +168,7 @@ namespace hgl::graph::mtl
             return surface_type == rhs.surface_type
                 && geometry_mode == rhs.geometry_mode
                 && position_type == rhs.position_type
+                && position_provider == rhs.position_provider
                 && texture_source_bits == rhs.texture_source_bits
                 && sampler_feature_bits == rhs.sampler_feature_bits
                 && vertex_attribute_feature_bits == rhs.vertex_attribute_feature_bits

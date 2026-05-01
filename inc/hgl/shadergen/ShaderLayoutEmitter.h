@@ -1,6 +1,8 @@
 #pragma once
 
 #include <hgl/shadergen/ShaderLayoutContract.h>
+#include <hgl/common/PositionProvider.h>
+#include <iosfwd>
 #include <string>
 
 namespace hgl::graph
@@ -35,5 +37,16 @@ namespace hgl::graph
      * Format: one "  MACRO_NAME = N" per line, with section headers.
      */
     std::string DumpShaderLayoutContract(const ShaderLayoutContract &contract);
+
+    /**
+     * Emit position-input declarations for the given PositionProvider into `out`.
+     *
+     * - DirectVec3: inlines `layout(location=N) in vec3 inPosition;` + `#define GetPositionLocal()`
+     * - Others with vab_count > 0: emits `#define POSITION_LOCATION N` then `#include "<glsl_path>"`
+     * - Others without VAB: emits `#include "<glsl_path>"` only
+     */
+    void EmitPositionInput(std::ostream       &out,
+                           const PositionProvider &p,
+                           int                 position_location);
 
 }  // namespace hgl::graph
