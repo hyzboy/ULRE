@@ -3,8 +3,9 @@
 // Attribute source: storage buffer – reads a vec3 array by vertex index.
 // Typical uses: Normal, Tangent.
 //
-// NOTE: under std430 layout, vec3 elements are stride-padded to 16 bytes.
-// Upload data as { float x, y, z, _pad; } (16 bytes per vertex) on the CPU side.
+// Uses layout(scalar) (GL_EXT_scalar_block_layout, globally required by this project).
+// Under scalar layout, vec3 stride = 12 bytes – NO padding required on the CPU side.
+// Upload data as tightly-packed { float x, y, z; } (12 bytes per vertex).
 //
 // This file is designed for repeated inclusion, one per unique ATTRIB_TAG value.
 // The emitter must define the following macros before including this file:
@@ -18,7 +19,7 @@
 //
 // MANIFEST: {
 //   "attrib_provider": "SSBO_Vec3",
-//   "byte_stride": 16,
+//   "byte_stride": 12,
 //   "ssbo": [{
 //     "set":     "ATTRIB_SET",
 //     "binding": "ATTRIB_BINDING",
@@ -31,7 +32,7 @@
 #define _ATTRIB_V3_CAT2(a,b)  a##b
 #define _ATTRIB_V3_CAT(a,b)   _ATTRIB_V3_CAT2(a,b)
 
-layout(set=ATTRIB_SET, binding=ATTRIB_BINDING)
+layout(scalar, set=ATTRIB_SET, binding=ATTRIB_BINDING)
     readonly buffer _ATTRIB_V3_CAT(AttribVec3Block_, ATTRIB_TAG)
     { vec3 data[]; }
     _ATTRIB_V3_CAT(u_AttribVec3_, ATTRIB_TAG);
