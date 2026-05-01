@@ -1,4 +1,5 @@
 #include<hgl/vk/VKDevice.h>
+#include<hgl/common/SSBOOffsetHelper.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKBufferAccessBase.h>
@@ -111,7 +112,7 @@ bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usa
     return(true);
 }
 
-VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class, const std::source_location &loc)
+VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class, const std::source_location &loc,bool prefer_storage_usage)
 {
     if(count==0)return(nullptr);
 
@@ -127,9 +128,11 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
 
     policy = ResolvePolicy(this, policy);
 
+    const VkBufferUsageFlags vab_usage = static_cast<VkBufferUsageFlags>(ComputeVABUsageFlags(prefer_storage_usage));
+
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
-        StagedBuffer *staged=CreateStagedBuffer(ObjectNameBuilder("VAB"), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, size, data, sharing_mode, loc);
+        StagedBuffer *staged=CreateStagedBuffer(ObjectNameBuilder("VAB"), vab_usage, size, data, sharing_mode, loc);
         if(!staged)
             return(nullptr);
 
@@ -155,7 +158,7 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
         mem_usage=MemoryUsage::GPUToCPU;
 
     DeviceBufferData buf;
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,ObjectNameBuilder("VAB:Memory"),loc))
+    if(!CreateBuffer(&buf,vab_usage,size,size,data,sharing_mode,mem_usage,ObjectNameBuilder("VAB:Memory"),loc))
         return(nullptr);
 
     // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
@@ -404,7 +407,8 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
                              BufferAllocPolicy policy,
                              SharingMode sharing_mode,
                              BufferUpdateClass update_class,
-                             const std::source_location &loc)
+                             const std::source_location &loc,
+                             bool prefer_storage_usage)
 {
     if(count==0)return(nullptr);
 
@@ -420,9 +424,11 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
 
     policy = ResolvePolicy(this, policy);
 
+    const VkBufferUsageFlags vab_usage = static_cast<VkBufferUsageFlags>(ComputeVABUsageFlags(prefer_storage_usage));
+
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
-        StagedBuffer *staged=CreateStagedBuffer(name, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, size, data, sharing_mode, loc);
+        StagedBuffer *staged=CreateStagedBuffer(name, vab_usage, size, data, sharing_mode, loc);
         if(!staged)
             return(nullptr);
 
@@ -452,7 +458,7 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
         ? ObjectNameBuilder("Memory")
         : ObjectNameBuilder(AnsiString(name.base_name) + ".Memory");
 
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,memory_name,loc))
+    if(!CreateBuffer(&buf,vab_usage,size,size,data,sharing_mode,mem_usage,memory_name,loc))
         return(nullptr);
 
     // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*

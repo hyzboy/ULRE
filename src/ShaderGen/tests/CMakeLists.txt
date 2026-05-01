@@ -92,3 +92,16 @@ target_link_libraries(PhaseB_EmitterTest PRIVATE CMCore)
 set_property(TARGET PhaseB_EmitterTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 
 add_test(NAME PhaseB_EmitterTest COMMAND PhaseB_EmitterTest)
+
+# VKBufferTest exercises SSBOOffsetHelper.h (pure constexpr utilities):
+#   ComputeVABUsageFlags, AlignStorageBufferOffset, GetAttribProviderStride.
+# No Vulkan device or runtime required — links CMCore only.
+add_executable(VKBufferTest
+    VKBufferTest.cpp
+)
+
+target_link_libraries(VKBufferTest PRIVATE CMCore)
+
+set_property(TARGET VKBufferTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME VKBufferTest COMMAND VKBufferTest)
