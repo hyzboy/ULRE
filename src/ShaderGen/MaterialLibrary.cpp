@@ -3,6 +3,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialVariantRegistry.h>
+#include<hgl/mtl/RecipeToKey.h>
 #include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/shadergen/MaterialFactory3D.h>
@@ -400,6 +401,15 @@ void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreate
 {
     if (!cfg)
         return;
+
+    // Billboard: blend_mode is per-instance and was not part of the RouteKey call
+    // (RouteKey picks the first matching entry, which defaults to Opaque).
+    // Apply the caller-supplied blend_mode here so the correct variant is selected.
+    if (const auto *billboard_cfg = AsBillboard(cfg))
+    {
+        key.blend_mode = billboard_cfg->blend_mode;
+        key.pass_hint  = detail::GetPrimaryPassForBlendMode(billboard_cfg->blend_mode);
+    }
 
     if (const auto *cfg3d = As3D(cfg))
     {
