@@ -1,8 +1,11 @@
 #include <hgl/shadergen/CompositorCompiler.h>
+#include <hgl/shadergen/ShaderLayoutEmitter.h>
+#include <hgl/shadergen/PositionProviderRegistry.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/StaticMaterialDef.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 
+#include <sstream>
 #include <string>
 
 namespace hgl::graph::mtl
@@ -22,19 +25,7 @@ namespace
     };
 
     // PCG fullscreen triangle: (-1,-1), (3,-1), (-1,3) covers the entire NDC square.
-    static const std::string kFullscreenTriangleVS =
-        "#version 450\n"
-        "\n"
-        "const vec2 kPos[3] = vec2[3](\n"
-        "    vec2(-1.0, -1.0),\n"
-        "    vec2( 3.0, -1.0),\n"
-        "    vec2(-1.0,  3.0)\n"
-        ");\n"
-        "\n"
-        "void main()\n"
-        "{\n"
-        "    gl_Position = vec4(kPos[gl_VertexIndex], 0.0, 1.0);\n"
-        "}\n";
+    // VS is generated via EmitPositionInput(PCG_FullscreenTriangle) + trivial main.
 
     static const std::string kFullscreenTriangleFS =
         "#version 450\n"
@@ -60,9 +51,16 @@ MaterialCreateInfo *CreateFullscreenTriangle(const contract::PhysicalDeviceProfi
     local_cfg.material_instance   = false;
     local_cfg.effective_feature_mask = 0;
 
+    // Build VS via PCG_FullscreenTriangle provider: no VAB, GetPositionLocal() → NDC.
+    const PositionProvider *pp = FindBuiltinProvider(PositionProviderId::PCG_FullscreenTriangle);
+    std::ostringstream vs_out;
+    vs_out << "#version 450\n\n";
+    EmitPositionInput(vs_out, *pp, 0);
+    vs_out << "\nvoid main()\n{\n    gl_Position = vec4(GetPositionLocal(), 1.0);\n}\n";
+
     return CompileCompositorMaterial(profile,
                                      FULLSCREEN_TRIANGLE_DEF,
-                                     kFullscreenTriangleVS,
+                                     vs_out.str(),
                                      kFullscreenTriangleFS,
                                      &local_cfg);
 }
