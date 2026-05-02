@@ -11,16 +11,6 @@ using namespace hgl::ecs;
 
 constexpr uint32_t VERTEX_COUNT = 3;
 
-// Dummy position data is only needed to carry the vertex count (=3) through the Geometry API.
-// FullscreenTriangle generates clip-space positions procedurally from gl_VertexIndex;
-// no vertex buffers are consumed by the pipeline (VIL attr_count=0).
-static float dummy_position_data[VERTEX_COUNT][3] =
-{
-    {0.0f, 0.0f, 0.0f},
-    {0.0f, 0.0f, 0.0f},
-    {0.0f, 0.0f, 0.0f}
-};
-
 class TestApp : public WorkObject
 {
 private:
@@ -41,9 +31,14 @@ private:
 
     bool CreateGeometryObject()
     {
-        geometry = CreateGeometry("FullscreenTriangleDummy",
+        // FullscreenTriangle uses PCG_FullscreenTriangle position provider.
+        // Geometry only carries vertex_count (=3) and does not upload any VABs.
+        geometry = CreateGeometry("FullscreenTrianglePCG",
                                   VERTEX_COUNT,
-                                  {{VAN::Position, VF_V3F, dummy_position_data}});
+                                  0,
+                                  IndexType::AUTO,
+                                  {},
+                                  nullptr);
 
         return geometry != nullptr;
     }
