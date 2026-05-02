@@ -544,11 +544,11 @@ namespace hgl::ecs
         if (!context)
             return;
 
-        if (run_contract_diagnostics)
-            ValidateContractsSideChannel();
-
         EnsureViewportUBO();
         RefreshSceneUBOResolvers();
+
+        if (run_contract_diagnostics)
+            ValidateContractsSideChannel();
 
         std::unordered_set<const graph::ShaderMaterialProgram *> active_materials;
         ApplyBatchMaterialBindings(active_materials);

@@ -753,6 +753,9 @@ namespace hgl
 
         void ECSContext::Render(float deltaTime)
         {
+            if (!active)
+                return;
+
             if (use_adaptive_render_graph)
             {
                 // Gather scene statistics and check if we need to rebuild the adaptive graph
@@ -783,6 +786,9 @@ namespace hgl
 
         void ECSContext::Render(float deltaTime, const std::function<void(float)> &pre_render)
         {
+            if (!active)
+                return;
+
             if (use_adaptive_render_graph)
             {
                 // Gather scene statistics and check if we need to rebuild the adaptive graph

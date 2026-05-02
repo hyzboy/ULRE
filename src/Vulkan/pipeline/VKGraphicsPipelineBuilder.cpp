@@ -318,8 +318,6 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
     rendering_ci.colorAttachmentCount    = request.render_format->GetColorCount();
     rendering_ci.pColorAttachmentFormats = request.render_format->GetColorFormat().data();
     rendering_ci.depthAttachmentFormat   = request.render_format->GetDepthFormat();
-    if (IsDepthStencilFormat(rendering_ci.depthAttachmentFormat))
-        rendering_ci.stencilAttachmentFormat = rendering_ci.depthAttachmentFormat;
     pd->pipeline_info.pNext              = &rendering_ci;
     pd->pipeline_info.renderPass         = VK_NULL_HANDLE;
     pd->pipeline_info.subpass            = 0;
@@ -448,8 +446,6 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
     rendering_ci.colorAttachmentCount    = color_count;
     rendering_ci.pColorAttachmentFormats = request.render_format->GetColorFormat().data();
     rendering_ci.depthAttachmentFormat   = request.render_format->GetDepthFormat();
-    if (IsDepthStencilFormat(rendering_ci.depthAttachmentFormat))
-        rendering_ci.stencilAttachmentFormat = rendering_ci.depthAttachmentFormat;
     rendering_ci.pNext                   = &lib_ci;
 
     VkGraphicsPipelineCreateInfo link_ci{};

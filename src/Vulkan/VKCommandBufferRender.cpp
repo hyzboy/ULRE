@@ -589,30 +589,40 @@ bool RenderCmdBuffer::BeginRenderingDynamic(const RenderTargetData *rtd)
         ai.clearValue                     = clear_values[i];
     }
 
-    // Build depth attachment info
+    // Build depth/stencil attachment info
     VkRenderingAttachmentInfoKHR depth_attachment = {};
+    VkRenderingAttachmentInfoKHR stencil_attachment = {};
     const bool has_depth = (rtd->depth_texture != nullptr);
+    bool has_stencil = false;
+
     if(has_depth)
     {
         Texture2D *tex = rtd->depth_texture;
-        depth_attachment.sType            = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-        depth_attachment.imageView        = tex->GetVulkanImageView();
-        depth_attachment.imageLayout      = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        depth_attachment.resolveMode      = VK_RESOLVE_MODE_NONE;
-        depth_attachment.resolveImageView = VK_NULL_HANDLE;
-        depth_attachment.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        depth_attachment.loadOp           = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        depth_attachment.storeOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        depth_attachment.clearValue       = clear_values[cv_count - 1]; // last slot is depth
+        const VkFormat depth_format = tex->GetFormat();
+        has_stencil = (GetDepthAspectFlags(depth_format) & VK_IMAGE_ASPECT_STENCIL_BIT) != 0;
 
-        LogInfo("[RenderCmdBuffer::BeginRenderingDynamic] colorCount=%u depthView=0x%llx depthFormat=%d",
+        depth_attachment.sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+        depth_attachment.imageView          = tex->GetVulkanImageView();
+        depth_attachment.imageLayout        = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        depth_attachment.resolveMode        = VK_RESOLVE_MODE_NONE;
+        depth_attachment.resolveImageView   = VK_NULL_HANDLE;
+        depth_attachment.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        depth_attachment.loadOp             = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depth_attachment.storeOp            = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depth_attachment.clearValue         = clear_values[cv_count - 1]; // last slot is depth-stencil
+
+        if(has_stencil)
+            stencil_attachment = depth_attachment;
+
+        LogInfo("[RenderCmdBuffer::BeginRenderingDynamic] colorCount=%u depthView=0x%llx depthFormat=%d hasStencil=%d",
             rtd->color_count,
             (unsigned long long)(uintptr_t)depth_attachment.imageView,
-            (int)tex->GetFormat());
-        }
-        else
-        {
-        LogInfo("[RenderCmdBuffer::BeginRenderingDynamic] colorCount=%u depthView=<null> depthFormat=%d",
+            (int)depth_format,
+            has_stencil ? 1 : 0);
+    }
+    else
+    {
+        LogInfo("[RenderCmdBuffer::BeginRenderingDynamic] colorCount=%u depthView=<null> depthFormat=%d hasStencil=0",
             rtd->color_count,
             (int)VK_FORMAT_UNDEFINED);
     }
@@ -624,7 +634,7 @@ bool RenderCmdBuffer::BeginRenderingDynamic(const RenderTargetData *rtd)
     rendering_info.colorAttachmentCount  = rtd->color_count;
     rendering_info.pColorAttachments     = color_attachments;
     rendering_info.pDepthAttachment      = has_depth ? &depth_attachment : nullptr;
-    rendering_info.pStencilAttachment    = nullptr;
+    rendering_info.pStencilAttachment    = (has_depth && has_stencil) ? &stencil_attachment : nullptr;
 
     dev_attr->pfn_vkCmdBeginRenderingKHR(cmd_buf, &rendering_info);
 

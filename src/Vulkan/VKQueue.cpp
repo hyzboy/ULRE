@@ -5,6 +5,7 @@
 #include<hgl/log/Log.h>
 #include<cstdint>
 #include<chrono>
+#include<thread>
 
 namespace hgl::graph{
 namespace
@@ -22,6 +23,10 @@ DeviceQueue::DeviceQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
     has_last_submit=false;
     fence_list=fl;
     fence_count=fc;
+
+    last_submit_result=VK_SUCCESS;
+    last_present_result=VK_SUCCESS;
+    device_lost=false;
 
     submit_info.pWaitDstStageMask       = &pipe_stage_flags;
 }
@@ -62,6 +67,13 @@ bool DeviceQueue::WaitFence(const bool wait_all,uint64_t time_out)
 
 bool DeviceQueue::WaitLastSubmitFence(const bool wait_all,uint64_t time_out)
 {
+    if(device_lost)
+    {
+        has_last_submit=false;
+        LogWarning("[FENCE] WaitLastSubmit SKIP (device lost)");
+        return false;
+    }
+
     if(!has_last_submit)
         return(true);
 
@@ -69,19 +81,47 @@ bool DeviceQueue::WaitLastSubmitFence(const bool wait_all,uint64_t time_out)
     auto start = std::chrono::high_resolution_clock::now();
     LogInfo("[FENCE] WaitLastSubmit START fence=%p last_fence=%u", (void*)fence, last_submitted_fence);
 
-    VkResult result=vkWaitForFences(device,1,&fence,wait_all,time_out);
+    const auto timeout_ns = static_cast<uint64_t>(time_out);
+    const auto deadline = start + std::chrono::nanoseconds(timeout_ns);
+    VkResult result = VK_NOT_READY;
+
+    // Use polling instead of vkWaitForFences to avoid rare tool/driver deadlocks
+    // observed during RenderDoc frame capture.
+    do
+    {
+        result = vkGetFenceStatus(device, fence);
+
+        if (result == VK_SUCCESS)
+        {
+            has_last_submit = false;
+
+            auto after_wait = std::chrono::high_resolution_clock::now();
+            auto wait_duration = std::chrono::duration_cast<std::chrono::milliseconds>(after_wait - start).count();
+            LogInfo("[FENCE] WaitLastSubmit END result=%d time=%lldms", static_cast<int>(result), wait_duration);
+            return true;
+        }
+
+        if (result != VK_NOT_READY)
+        {
+            has_last_submit = false;
+
+            auto after_wait = std::chrono::high_resolution_clock::now();
+            auto wait_duration = std::chrono::duration_cast<std::chrono::milliseconds>(after_wait - start).count();
+            LogWarning("[FENCE] WaitLastSubmit FAILED res=%d fence=%p time=%lldms", static_cast<int>(result), (void*)fence, wait_duration);
+            return false;
+        }
+
+        if (std::chrono::high_resolution_clock::now() >= deadline)
+            break;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    while (true);
 
     auto after_wait = std::chrono::high_resolution_clock::now();
     auto wait_duration = std::chrono::duration_cast<std::chrono::milliseconds>(after_wait - start).count();
-    LogInfo("[FENCE] WaitLastSubmit END result=%d time=%lldms", static_cast<int>(result), wait_duration);
-
-    if(result!=VK_SUCCESS)
-    {
-        LogWarning("[FENCE] WaitLastSubmit FAILED res=%d fence=%p", static_cast<int>(result), (void*)fence);
-        return(false);
-    }
-
-    return(true);
+    LogWarning("[FENCE] WaitLastSubmit TIMEOUT fence=%p timeout_ns=%llu time=%lldms wait_all=%d", (void*)fence, static_cast<unsigned long long>(timeout_ns), wait_duration, wait_all ? 1 : 0);
+    return false;
 }
 
 bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,Semaphore *wait_sem,Semaphore *complete_sem)
@@ -137,6 +177,14 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
     }
 
     VkResult result=vkQueueSubmit(queue,1,&submit_info,fence);
+    last_submit_result=result;
+
+    if(result==VK_ERROR_DEVICE_LOST)
+    {
+        device_lost=true;
+        has_last_submit=false;
+    }
+
     auto submit_end = std::chrono::high_resolution_clock::now();
     auto submit_duration = std::chrono::duration_cast<std::chrono::milliseconds>(submit_end - submit_start).count();
     LogInfo("[FENCE] Submit END result=%d time=%lldms", static_cast<int>(result), submit_duration);

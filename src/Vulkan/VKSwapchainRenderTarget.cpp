@@ -3,9 +3,24 @@
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/log/Log.h>
 #include<chrono>
+#ifdef _WIN32
+#include<Windows.h>
+#endif
  //#include<iostream>
 
 namespace hgl::graph{
+namespace
+{
+    bool IsRenderDocAttached()
+    {
+#ifdef _WIN32
+        return GetModuleHandleA("renderdoc.dll") != nullptr;
+#else
+        return false;
+#endif
+    }
+}
+
 SwapchainRenderTarget::SwapchainRenderTarget(hgl::ecs::ECSContext *ctx,Swapchain *sc,Semaphore *pcs,RenderTargetData *rtl):MultiFrameRenderTarget(ctx,sc->image_count,rtl)
 {
     swapchain=sc;
@@ -54,6 +69,45 @@ bool SwapchainRenderTarget::NextFrame()
     return false;
 }
 
+bool SwapchainRenderTarget::WaitFence()
+{
+    // Each RTD currently has its own DeviceQueue wrapper but wrappers share the
+    // same VkQueue handle; waiting only current_frame can miss the last submit
+    // from another wrapper and cause cross-frame resource hazards.
+    for (uint32_t i = 0; i < frame_number; ++i)
+    {
+        auto *queue = rtd_list[i].queue;
+        if (!queue)
+            continue;
+
+        if (!queue->WaitLastSubmitFence())
+        {
+            LogWarning("[SWAPCHAIN] WaitFence FAILED frame=%u", i);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool SwapchainRenderTarget::WaitQueue()
+{
+    for (uint32_t i = 0; i < frame_number; ++i)
+    {
+        auto *queue = rtd_list[i].queue;
+        if (!queue)
+            continue;
+
+        if (!queue->WaitQueue())
+        {
+            LogWarning("[SWAPCHAIN] WaitQueue FAILED frame=%u", i);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool SwapchainRenderTarget::Submit()
 {
     auto submit_start = std::chrono::high_resolution_clock::now();
@@ -71,8 +125,27 @@ bool SwapchainRenderTarget::Submit()
 
     VkSemaphore wait_semaphores=*rtd->render_complete_semaphore;
 
-    present_info.waitSemaphoreCount =1;
-    present_info.pWaitSemaphores    =&wait_semaphores;
+    const bool renderdoc_attached = IsRenderDocAttached();
+    if (renderdoc_attached)
+    {
+        // RenderDoc compatibility path: fully serialize queue work and present
+        // without binary wait semaphore dependency to avoid tool-injected timing
+        // sensitivity around submit->present handoff.
+        if (!queue->WaitQueue())
+        {
+            LogWarning("[SWAPCHAIN] RenderDoc present workaround: WaitQueue FAILED before Present");
+            return false;
+        }
+
+        present_info.waitSemaphoreCount = 0;
+        present_info.pWaitSemaphores    = nullptr;
+    }
+    else
+    {
+        present_info.waitSemaphoreCount = 1;
+        present_info.pWaitSemaphores    = &wait_semaphores;
+    }
+
     present_info.pImageIndices      =&current_frame;
 
     auto present_start = std::chrono::high_resolution_clock::now();
@@ -91,6 +164,13 @@ bool SwapchainRenderTarget::Submit()
         if (result != VK_ERROR_OUT_OF_DATE_KHR)
         {
             LogWarning("[SWAPCHAIN] Submit FAILED result=%d", static_cast<int>(result));
+
+            if (result == VK_ERROR_DEVICE_LOST)
+            {
+                // On device-lost paths, waiting this queue fence in the next frame can hang.
+                // Clear pending wait state so upper layer can fail fast and recover/restart.
+                queue->ClearLastSubmitFenceState();
+            }
         }
 
         return false;

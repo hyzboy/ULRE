@@ -19,6 +19,9 @@
 #include <cstdint>
 #include <unordered_map>
 #include <string>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 namespace hgl::graph{
 namespace
@@ -84,6 +87,19 @@ VulkanDevice::VulkanDevice(VulkanDevAttr *da)
 
     gpl_supported = (attr && attr->physical_device) ? attr->physical_device->SupportGraphicsPipelineLibrary() : false;
     gpl_enabled = gpl_supported;
+
+#ifdef _WIN32
+    if (gpl_enabled)
+    {
+        const HMODULE renderdoc_module = GetModuleHandleA("renderdoc.dll");
+        if (renderdoc_module != nullptr)
+        {
+            gpl_enabled = false;
+            LogWarning("[VulkanDevice] RenderDoc detected; forcing monolithic graphics pipelines (GPL disabled) for compatibility.");
+        }
+    }
+#endif
+
     link_backend_mono = std::make_unique<MonolithicGraphicsPipelineBuilder>();
     link_backend_gpl = std::make_unique<GplGraphicsPipelineBuilder>();
 

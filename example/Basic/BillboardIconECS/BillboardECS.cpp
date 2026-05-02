@@ -446,6 +446,14 @@ public:
     void Tick(double delta_time) override
     {
         static int frame_count = 0;
+
+        if (ecs_context && !ecs_context->IsActive())
+        {
+            std::cout << "[BillboardECS] ECSContext deactivated (device lost). Exiting app loop." << std::endl;
+            MarkDestory();
+            return;
+        }
+
         frame_count++;
 
         if (frame_count <= 3)

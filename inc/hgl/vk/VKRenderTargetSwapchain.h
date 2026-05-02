@@ -34,6 +34,12 @@ public:
 
     bool Submit     ()override;                             ///<提交当前帧的渲染，交推送到前台
 
+    // Swapchain frames currently own independent DeviceQueue wrappers that point to
+    // the same Vulkan queue handle. Wait all frame queues to avoid reusing shared
+    // frame-global buffers while another wrapper still has in-flight submits.
+    bool WaitFence  ()override;
+    bool WaitQueue  ()override;
+
     /**
      * Release swapchain-owned resources (Swapchain and present_complete_semaphore)
      * Must be called by SwapchainModule before destroying this object

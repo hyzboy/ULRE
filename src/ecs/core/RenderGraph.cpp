@@ -110,22 +110,31 @@ namespace hgl
                 }
             }
 
-            // Standard frame setup (swapchain acquire, setup)
-            if (auto *rt = GetRenderTarget())
-            {
-                LogInfo("[ECS RENDER] Calling WaitFence");
-                if (!rt->WaitFence())
-                {
-                    LogWarning("[ECS RENDER] WaitFence FAILED");
-                    return;
-                }
-            }
-
             LogInfo("[ECS RENDER] Calling AcquireSwapchainImage");
             if (!AcquireSwapchainImage(0.0f))
             {
                 LogWarning("[ECS RENDER] AcquireSwapchainImage FAILED");
                 return;
+            }
+
+            // Wait after acquire so we wait the fence associated with the
+            // actual acquired swapchain image index (current_frame), not the
+            // previous frame index.
+            if (auto *rt = GetRenderTarget())
+            {
+                LogInfo("[ECS RENDER] Calling WaitFence (acquired image)");
+                if (!rt->WaitFence())
+                {
+                    auto *queue = rt->GetQueue();
+                    if (queue && queue->IsDeviceLost())
+                    {
+                        LogError("[ECS RENDER] WaitFence failed due to device lost; deactivating ECSContext. Restart required.");
+                        active = false;
+                    }
+
+                    LogWarning("[ECS RENDER] WaitFence FAILED");
+                    return;
+                }
             }
 
             LogInfo("[ECS RENDER] Calling RenderPreBeginFrame");
@@ -267,7 +276,19 @@ namespace hgl
 
             LogInfo("[ECS RENDER] Calling SubmitFrameToRenderTarget");
             if (!SubmitFrameToRenderTarget(0.0f))
+            {
                 LogError("[ECS RENDER] SubmitFrameToRenderTarget FAILED");
+
+                if (auto *rt = GetRenderTarget())
+                {
+                    auto *queue = rt->GetQueue();
+                    if (queue && queue->IsDeviceLost())
+                    {
+                        LogError("[ECS RENDER] Submit failed due to device lost; deactivating ECSContext. Restart required.");
+                        active = false;
+                    }
+                }
+            }
 
             if (wait_idle_enabled)
             {
@@ -283,6 +304,9 @@ namespace hgl
         {
             SceneStats stats;
             if (!context)
+                return stats;
+
+            if (!context->IsActive())
                 return stats;
 
             std::vector<const Entity*> entities;
