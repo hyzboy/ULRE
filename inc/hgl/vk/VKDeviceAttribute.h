@@ -39,11 +39,9 @@ struct VulkanDevAttr
     PFN_vkCmdBeginRenderingKHR          pfn_vkCmdBeginRenderingKHR = nullptr;
     PFN_vkCmdEndRenderingKHR            pfn_vkCmdEndRenderingKHR   = nullptr;
 
-#ifdef VK_EXT_mesh_shader
     PFN_vkCmdDrawMeshTasksEXT           pfn_vkCmdDrawMeshTasksEXT = nullptr;
     PFN_vkCmdDrawMeshTasksIndirectEXT   pfn_vkCmdDrawMeshTasksIndirectEXT = nullptr;
     PFN_vkCmdDrawMeshTasksIndirectCountEXT pfn_vkCmdDrawMeshTasksIndirectCountEXT = nullptr;
-#endif
 
 #ifdef _DEBUG
     DebugUtils *                        debug_utils     =nullptr;

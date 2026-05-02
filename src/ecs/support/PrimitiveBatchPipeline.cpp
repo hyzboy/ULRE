@@ -554,7 +554,7 @@ namespace hgl::ecs
         uint32_t frame_successes = 0;
         uint32_t frame_failures = 0;
         uint32_t frame_skips = 0;
-        std::unordered_set<graph::Primitive*> seen_primitives;
+        std::unordered_set<ResolvedPipelineCacheKey, ResolvedPipelineCacheKeyHash> seen_pipeline_keys;
 
         for (auto& itemPtr : cache.renderItems)
         {
@@ -567,6 +567,7 @@ namespace hgl::ecs
 
             auto* primitive = item->GetPrimitive();
             graph::GraphicsPipeline* pipeline = nullptr;
+            const ResolvedPipelineCacheKey cache_key{primitive, render_format};
 
 #ifdef _DEBUG
             if (!material)
@@ -575,11 +576,11 @@ namespace hgl::ecs
             }
 #endif
 
-            if (primitive)
+            if (primitive && render_format)
             {
-                seen_primitives.insert(primitive);
+                seen_pipeline_keys.insert(cache_key);
 
-                auto it = resolved_pipeline_cache.find(primitive);
+                auto it = resolved_pipeline_cache.find(cache_key);
                 if (it != resolved_pipeline_cache.end())
                     pipeline = it->second;
             }
@@ -618,8 +619,8 @@ namespace hgl::ecs
                     if (graph::GraphicsPipeline* acquired = device->AcquireGraphicsPipeline(req))
                     {
                         pipeline = acquired;
-                        if (primitive)
-                            resolved_pipeline_cache[primitive] = acquired;
+                        if (primitive && render_format)
+                            resolved_pipeline_cache[cache_key] = acquired;
                         ++frame_successes;
                         RecordPipelineResolveSuccess(g_pipeline_preresolve_counters);
                     }
@@ -690,7 +691,7 @@ namespace hgl::ecs
 
         for (auto it = resolved_pipeline_cache.begin(); it != resolved_pipeline_cache.end();)
         {
-            if (seen_primitives.find(it->first) == seen_primitives.end())
+            if (seen_pipeline_keys.find(it->first) == seen_pipeline_keys.end())
                 it = resolved_pipeline_cache.erase(it);
             else
                 ++it;

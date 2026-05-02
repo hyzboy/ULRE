@@ -10,11 +10,7 @@
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/log/Log.h>
 
-#ifdef VK_EXT_mesh_shader
 constexpr uint32_t kMeshTasksIndirectCommandStride = sizeof(VkDrawMeshTasksIndirectCommandEXT);
-#else
-constexpr uint32_t kMeshTasksIndirectCommandStride = sizeof(uint32_t) * 3;
-#endif
 
 namespace hgl::graph{
 class DomainResourceBinding;
@@ -76,6 +72,7 @@ private:
 
     VkPipelineLayout pipeline_layout;
     bool bound_mesh_pipeline;
+    VkPipeline last_bound_pipeline;
 
     uint32_t frame_vertex_draw_count;
     uint32_t frame_indexed_draw_count;
@@ -106,6 +103,7 @@ public:
         frame_indexed_draw_count = 0;
         frame_mesh_draw_count = 0;
         bound_mesh_pipeline = false;
+        last_bound_pipeline = VK_NULL_HANDLE;
         return true;
     }
 
@@ -161,7 +159,21 @@ public:
     {
         if(!p)return(false);
 
-        vkCmdBindPipeline(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,*p);
+        const VkPipeline vk_pipeline = *p;
+        vkCmdBindPipeline(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,vk_pipeline);
+
+        if(last_bound_pipeline != vk_pipeline)
+        {
+            LogInfo("[RenderCmdBuffer::BindPipeline] handle=0x%llx name=%s mesh=%s gpl=%s depthFormat=%d colorCount=%u",
+                    (unsigned long long)(uintptr_t)vk_pipeline,
+                    p->GetName().c_str(),
+                    p->IsMeshPipeline() ? "yes" : "no",
+                    p->IsDebugCreatedWithGpl() ? "yes" : "no",
+                    (int)p->GetDebugDepthAttachmentFormat(),
+                    p->GetDebugColorAttachmentCount());
+            last_bound_pipeline = vk_pipeline;
+        }
+
         bound_mesh_pipeline = p->IsMeshPipeline();
         return(true);
     }

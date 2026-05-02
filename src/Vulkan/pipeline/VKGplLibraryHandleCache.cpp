@@ -4,6 +4,7 @@
 #include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKVertexInputLayout.h>
+#include<hgl/vk/VKFormat.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
@@ -63,6 +64,15 @@ VkPipeline CreateVILibrary(VkDevice device, VkPipelineCache cache,
     {
         GLogError("[GplLibraryHandleCache] CreateVILibrary failed");
         lib = VK_NULL_HANDLE;
+    }
+    else
+    {
+        GLogInfo("[GplLibraryHandleCache] CreateVILibrary ok lib=0x%llx material=%s topology=%d restart=%s attribCount=%u",
+                 (unsigned long long)(uintptr_t)lib,
+                 req.material ? req.material->GetName().c_str() : "<null>",
+                 (int)ia_state.topology,
+                 ia_state.primitiveRestartEnable ? "yes" : "no",
+                 count);
     }
 
     delete[] bindings;
@@ -173,6 +183,8 @@ VkPipeline CreatePRLibrary(VkDevice device, VkPipelineCache cache,
     rendering_ci.colorAttachmentCount  = 0;
     rendering_ci.pColorAttachmentFormats = nullptr;
     rendering_ci.depthAttachmentFormat = req.render_format->GetDepthFormat();
+    if (IsDepthStencilFormat(rendering_ci.depthAttachmentFormat))
+        rendering_ci.stencilAttachmentFormat = rendering_ci.depthAttachmentFormat;
 
     VkGraphicsPipelineLibraryCreateInfoEXT lib_info{};
     lib_info.sType  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT;
@@ -203,6 +215,14 @@ VkPipeline CreatePRLibrary(VkDevice device, VkPipelineCache cache,
         GLogError("[GplLibraryHandleCache] CreatePRLibrary failed");
         return VK_NULL_HANDLE;
     }
+
+    GLogInfo("[GplLibraryHandleCache] CreatePRLibrary ok lib=0x%llx material=%s mesh=%s stageCount=%u depthFormat=%d",
+             (unsigned long long)(uintptr_t)lib,
+             req.material ? req.material->GetName().c_str() : "<null>",
+             mesh_pipeline ? "yes" : "no",
+             pr_stage_count,
+             (int)rendering_ci.depthAttachmentFormat);
+
     return lib;
 }
 
@@ -240,6 +260,8 @@ VkPipeline CreateFSLibrary(VkDevice device, VkPipelineCache cache,
     rendering_ci.colorAttachmentCount  = 0;
     rendering_ci.pColorAttachmentFormats = nullptr;
     rendering_ci.depthAttachmentFormat = req.render_format->GetDepthFormat();
+    if (IsDepthStencilFormat(rendering_ci.depthAttachmentFormat))
+        rendering_ci.stencilAttachmentFormat = rendering_ci.depthAttachmentFormat;
 
     VkGraphicsPipelineLibraryCreateInfoEXT lib_info{};
     lib_info.sType  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT;
@@ -262,6 +284,12 @@ VkPipeline CreateFSLibrary(VkDevice device, VkPipelineCache cache,
         GLogError("[GplLibraryHandleCache] CreateFSLibrary failed");
         return VK_NULL_HANDLE;
     }
+
+    GLogInfo("[GplLibraryHandleCache] CreateFSLibrary ok lib=0x%llx material=%s depthFormat=%d",
+             (unsigned long long)(uintptr_t)lib,
+             req.material ? req.material->GetName().c_str() : "<null>",
+             (int)rendering_ci.depthAttachmentFormat);
+
     return lib;
 }
 
@@ -305,6 +333,9 @@ VkPipeline CreateFOLibrary(VkDevice device, VkPipelineCache cache,
     rendering_ci.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
     rendering_ci.colorAttachmentCount    = n;
     rendering_ci.pColorAttachmentFormats = color_fmts;
+    rendering_ci.depthAttachmentFormat   = rf->GetDepthFormat();
+    if (IsDepthStencilFormat(rendering_ci.depthAttachmentFormat))
+        rendering_ci.stencilAttachmentFormat = rendering_ci.depthAttachmentFormat;
 
     VkGraphicsPipelineLibraryCreateInfoEXT lib_info{};
     lib_info.sType  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT;
@@ -324,6 +355,13 @@ VkPipeline CreateFOLibrary(VkDevice device, VkPipelineCache cache,
         GLogError("[GplLibraryHandleCache] CreateFOLibrary failed");
         return VK_NULL_HANDLE;
     }
+
+    GLogInfo("[GplLibraryHandleCache] CreateFOLibrary ok lib=0x%llx colorCount=%u depthFormat=%d stencilFormat=%d",
+             (unsigned long long)(uintptr_t)lib,
+             n,
+             (int)rendering_ci.depthAttachmentFormat,
+             (int)rendering_ci.stencilAttachmentFormat);
+
     return lib;
 }
 
@@ -333,13 +371,19 @@ template<typename TKey, typename TCreateFn>
 VkPipeline AcquireLibrary(std::unordered_map<TKey, VkPipeline> &map,
                            std::mutex &mtx,
                            const TKey &key,
+                           const char *stage_name,
                            TCreateFn create_fn)
 {
     {
         std::lock_guard<std::mutex> lock(mtx);
         auto it = map.find(key);
         if (it != map.end())
+        {
+            GLogInfo("[GplLibraryHandleCache] Acquire%s HIT lib=0x%llx",
+                     stage_name ? stage_name : "Library",
+                     (unsigned long long)(uintptr_t)it->second);
             return it->second;
+        }
     }
 
     // Create outside the lock — vkCreateGraphicsPipelines is thread-safe per Vulkan spec
@@ -355,8 +399,16 @@ VkPipeline AcquireLibrary(std::unordered_map<TKey, VkPipeline> &map,
             // Another thread won the race; discard ours
             // (lib we just created is abandoned; caller must not use it after this)
             // Return the winning handle instead
+            GLogInfo("[GplLibraryHandleCache] Acquire%s RACE-WON-BY-OTHER ours=0x%llx selected=0x%llx",
+                     stage_name ? stage_name : "Library",
+                     (unsigned long long)(uintptr_t)lib,
+                     (unsigned long long)(uintptr_t)it->second);
             return it->second;
         }
+
+        GLogInfo("[GplLibraryHandleCache] Acquire%s MISS->CREATE lib=0x%llx",
+                 stage_name ? stage_name : "Library",
+                 (unsigned long long)(uintptr_t)lib);
     }
     return lib;
 }
@@ -389,25 +441,25 @@ void GplLibraryHandleCache::Init(VkDevice device, VkPipelineCache pipeline_cache
 
 VkPipeline GplLibraryHandleCache::AcquireVertexInputLibrary(const GplVertexInputKey &key, const GraphicsPipelineBuildRequest &req)
 {
-    return AcquireLibrary(vi_lib_, lib_mutex_, key,
+    return AcquireLibrary(vi_lib_, lib_mutex_, key, "VILibrary",
         [&]{ return CreateVILibrary(device_, pipeline_cache_, req); });
 }
 
 VkPipeline GplLibraryHandleCache::AcquirePreRasterLibrary(const GplPreRasterKey &key, const GraphicsPipelineBuildRequest &req)
 {
-    return AcquireLibrary(pr_lib_, lib_mutex_, key,
+    return AcquireLibrary(pr_lib_, lib_mutex_, key, "PRLibrary",
         [&]{ return CreatePRLibrary(device_, pipeline_cache_, req); });
 }
 
 VkPipeline GplLibraryHandleCache::AcquireFragmentShaderLibrary(const GplFragmentShaderKey &key, const GraphicsPipelineBuildRequest &req)
 {
-    return AcquireLibrary(fs_lib_, lib_mutex_, key,
+    return AcquireLibrary(fs_lib_, lib_mutex_, key, "FSLibrary",
         [&]{ return CreateFSLibrary(device_, pipeline_cache_, req); });
 }
 
 VkPipeline GplLibraryHandleCache::AcquireFragmentOutputLibrary(const GplFragmentOutputKey &key, const GraphicsPipelineBuildRequest &req)
 {
-    return AcquireLibrary(fo_lib_, lib_mutex_, key,
+    return AcquireLibrary(fo_lib_, lib_mutex_, key, "FOLibrary",
         [&]{ return CreateFOLibrary(device_, pipeline_cache_, req); });
 }
 }//namespace hgl::graph

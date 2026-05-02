@@ -118,6 +118,10 @@ VulkanDevice::~VulkanDevice()
         delete kv.second;
     render_format_cache.Clear();
 
+    // Release GPL/monolithic link backends before vkDestroyDevice in VulkanDevAttr.
+    link_backend_gpl.reset();
+    link_backend_mono.reset();
+
     if(vma_allocator)
     {
         bool has_live_vma_related_objects = false;
@@ -191,6 +195,37 @@ GraphicsPipeline *VulkanDevice::AcquireGraphicsPipeline(const GraphicsPipelineBu
     const GplLinkedPipelineKey linked_key = BuildLinkedPipelineKey(req, state_profile);
     pipeline_library_cache.Touch(linked_key);
 
+    auto log_pipeline_signature = [&](const char *tag, GraphicsPipeline *pipeline)
+    {
+        if (!pipeline)
+            return;
+
+        const VkFormat req_depth = req.render_format ? req.render_format->GetDepthFormat() : VK_FORMAT_UNDEFINED;
+        const uint32_t req_color_count = req.render_format ? req.render_format->GetColorCount() : 0;
+
+        LogInfo("[VulkanDevice] %s handle=0x%llx name=%s mesh=%s gpl=%s depthFormat=%d(req=%d) colorCount=%u(req=%u)",
+                tag ? tag : "PipelineSignature",
+                (unsigned long long)(uintptr_t)(VkPipeline)(*pipeline),
+                pipeline->GetName().c_str(),
+                pipeline->IsMeshPipeline() ? "yes" : "no",
+                pipeline->IsDebugCreatedWithGpl() ? "yes" : "no",
+                (int)pipeline->GetDebugDepthAttachmentFormat(),
+                (int)req_depth,
+                pipeline->GetDebugColorAttachmentCount(),
+                req_color_count);
+
+        if (pipeline->GetDebugDepthAttachmentFormat() != req_depth
+         || pipeline->GetDebugColorAttachmentCount() != req_color_count)
+        {
+            LogWarning("[VulkanDevice] Pipeline signature mismatch on cache path: handle=0x%llx depthFormat=%d(req=%d) colorCount=%u(req=%u)",
+                       (unsigned long long)(uintptr_t)(VkPipeline)(*pipeline),
+                       (int)pipeline->GetDebugDepthAttachmentFormat(),
+                       (int)req_depth,
+                       pipeline->GetDebugColorAttachmentCount(),
+                       req_color_count);
+        }
+    };
+
     {
         const GplLibraryStatsTracker::Snapshot s = pipeline_library_cache.GetSnapshot();
         const uint64_t total_inserts = s.vertex_input_inserts + s.pre_raster_inserts + s.fragment_shader_inserts + s.fragment_output_inserts;
@@ -210,6 +245,8 @@ GraphicsPipeline *VulkanDevice::AcquireGraphicsPipeline(const GraphicsPipelineBu
         auto it = linked_pipeline_cache.find(linked_key);
         if (it != linked_pipeline_cache.end() && it->second)
         {
+            log_pipeline_signature("LinkedPipelineCache HIT", it->second);
+
             const uint64_t hits = ++linked_pipeline_cache_hits;
             if (should_log_counter(hits))
             {
@@ -288,6 +325,8 @@ GraphicsPipeline *VulkanDevice::AcquireGraphicsPipeline(const GraphicsPipelineBu
     {
         std::lock_guard<std::mutex> lock(linked_pipeline_cache_mutex);
         linked_pipeline_cache[linked_key] = result;
+        log_pipeline_signature("LinkedPipelineCache INSERT", result);
+
         const uint64_t inserts = ++linked_pipeline_cache_inserts;
         if (should_log_counter(inserts))
         {

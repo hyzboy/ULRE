@@ -46,6 +46,7 @@ public:
     VkPipelineViewportStateCreateInfo           viewport_state;
 
     void InitViewportState();
+    void InitInputAssemblyState();
 
     VkPipelineRasterizationStateCreateInfo *    rasterization;
 

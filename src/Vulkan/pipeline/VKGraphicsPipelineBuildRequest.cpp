@@ -241,6 +241,14 @@ GplPreRasterKey BuildPreRasterKey(const GraphicsPipelineBuildRequest &req)
     HashU32(h, static_cast<uint32_t>(req.request_mode));
     HashBool(h, IsVertexInputIgnored(req));
 
+    // PR library embeds VkPipelineRenderingCreateInfoKHR::depthAttachmentFormat.
+    // Include depth format so VK_FORMAT_UNDEFINED and depth-enabled variants
+    // do not alias to the same cached library handle.
+    const VkFormat depth_format = req.render_format
+                                ? req.render_format->GetDepthFormat()
+                                : VK_FORMAT_UNDEFINED;
+    HashU32(h, static_cast<uint32_t>(depth_format));
+
     const auto &stages = req.material->GetStageList();
     HashShaderStages(h, stages, false, true);
 
@@ -255,6 +263,12 @@ GplFragmentShaderKey BuildFragmentShaderKey(const GraphicsPipelineBuildRequest &
     uint64_t h = hgl::hash::FNV1aInit<uint64_t>();
 
     HashAnsiString(h, req.material->GetName());
+
+    // FS library also embeds VkPipelineRenderingCreateInfoKHR::depthAttachmentFormat.
+    const VkFormat depth_format = req.render_format
+                                ? req.render_format->GetDepthFormat()
+                                : VK_FORMAT_UNDEFINED;
+    HashU32(h, static_cast<uint32_t>(depth_format));
 
     const auto &stages = req.material->GetStageList();
     HashShaderStages(h, stages, true, false);

@@ -78,6 +78,7 @@ RenderCmdBuffer::RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):V
 
     pipeline_layout=VK_NULL_HANDLE;
     bound_mesh_pipeline=false;
+    last_bound_pipeline=VK_NULL_HANDLE;
     frame_vertex_draw_count=0;
     frame_indexed_draw_count=0;
     frame_mesh_draw_count=0;
@@ -329,7 +330,6 @@ bool RenderCmdBuffer::DrawMeshTasks(const uint32_t group_count_x,
                                     const uint32_t group_count_y,
                                     const uint32_t group_count_z)
 {
-#ifdef VK_EXT_mesh_shader
     if (!CanDrawMeshTasks(dev_attr,
                           "DrawMeshTasks",
                           reinterpret_cast<const void *>(dev_attr ? dev_attr->pfn_vkCmdDrawMeshTasksEXT : nullptr)))
@@ -343,12 +343,6 @@ bool RenderCmdBuffer::DrawMeshTasks(const uint32_t group_count_x,
                                         group_count_z);
     ++frame_mesh_draw_count;
     return true;
-#else
-    (void)group_count_x;
-    (void)group_count_y;
-    (void)group_count_z;
-    return CanDrawMeshTasksPlatform("DrawMeshTasks");
-#endif
 }
 
 bool RenderCmdBuffer::DrawMeshTasksIndirect(VkBuffer buffer,
@@ -356,7 +350,6 @@ bool RenderCmdBuffer::DrawMeshTasksIndirect(VkBuffer buffer,
                                             uint32_t draw_count,
                                             uint32_t stride)
 {
-#ifdef VK_EXT_mesh_shader
     if (!CanDrawMeshTasks(dev_attr,
                           "DrawMeshTasksIndirect",
                           reinterpret_cast<const void *>(dev_attr ? dev_attr->pfn_vkCmdDrawMeshTasksIndirectEXT : nullptr)))
@@ -371,13 +364,6 @@ bool RenderCmdBuffer::DrawMeshTasksIndirect(VkBuffer buffer,
                                                 stride);
     frame_mesh_draw_count += draw_count;
     return true;
-#else
-    (void)buffer;
-    (void)offset;
-    (void)draw_count;
-    (void)stride;
-    return CanDrawMeshTasksPlatform("DrawMeshTasksIndirect");
-#endif
 }
 
 bool RenderCmdBuffer::DrawMeshTasksIndirectCount(VkBuffer buffer,
@@ -387,7 +373,6 @@ bool RenderCmdBuffer::DrawMeshTasksIndirectCount(VkBuffer buffer,
                                                  uint32_t max_draw_count,
                                                  uint32_t stride)
 {
-#ifdef VK_EXT_mesh_shader
     if (!CanDrawMeshTasks(dev_attr,
                           "DrawMeshTasksIndirectCount",
                           reinterpret_cast<const void *>(dev_attr ? dev_attr->pfn_vkCmdDrawMeshTasksIndirectCountEXT : nullptr)))
@@ -404,15 +389,6 @@ bool RenderCmdBuffer::DrawMeshTasksIndirectCount(VkBuffer buffer,
                                                      stride);
     ++frame_mesh_draw_count;
     return true;
-#else
-    (void)buffer;
-    (void)offset;
-    (void)count_buffer;
-    (void)count_offset;
-    (void)max_draw_count;
-    (void)stride;
-    return CanDrawMeshTasksPlatform("DrawMeshTasksIndirectCount");
-#endif
 }
 
 void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const GeometryDrawRange *geom_draw_range,const uint32_t instance_count,const uint32_t first_instance)
@@ -628,6 +604,17 @@ bool RenderCmdBuffer::BeginRenderingDynamic(const RenderTargetData *rtd)
         depth_attachment.loadOp           = VK_ATTACHMENT_LOAD_OP_CLEAR;
         depth_attachment.storeOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         depth_attachment.clearValue       = clear_values[cv_count - 1]; // last slot is depth
+
+        LogInfo("[RenderCmdBuffer::BeginRenderingDynamic] colorCount=%u depthView=0x%llx depthFormat=%d",
+            rtd->color_count,
+            (unsigned long long)(uintptr_t)depth_attachment.imageView,
+            (int)tex->GetFormat());
+        }
+        else
+        {
+        LogInfo("[RenderCmdBuffer::BeginRenderingDynamic] colorCount=%u depthView=<null> depthFormat=%d",
+            rtd->color_count,
+            (int)VK_FORMAT_UNDEFINED);
     }
 
     VkRenderingInfoKHR rendering_info    = {};

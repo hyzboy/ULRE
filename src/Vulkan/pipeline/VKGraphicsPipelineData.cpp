@@ -37,6 +37,9 @@ GraphicsPipelineData::GraphicsPipelineData(const GraphicsPipelineData *pd)
 
     pipeline_info.pViewportState     = &viewport_state;
 
+    input_assembly = pd->input_assembly;
+    pipeline_info.pInputAssemblyState = &input_assembly;
+
 #define PIPELINE_STRUCT_NEW_COPY(pname,name)  pipeline_info.pname=name=new_copy(pd->name);
 
     PIPELINE_STRUCT_NEW_COPY(pTessellationState,tessellation);
@@ -86,6 +89,8 @@ GraphicsPipelineData::GraphicsPipelineData(const uint32_t color_attachment_count
     //mem_zero(dynamic_state);
 
     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+
+    InitInputAssemblyState();
 
     vertex_input_binding_description=nullptr;
     vertex_input_attribute_description=nullptr;
@@ -234,6 +239,8 @@ GraphicsPipelineData::GraphicsPipelineData()
     mem_zero(pipeline_info);
     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
+    InitInputAssemblyState();
+
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
     pipeline_info.basePipelineIndex = -1;
 
@@ -264,6 +271,17 @@ GraphicsPipelineData::GraphicsPipelineData()
 
     InitViewportState();
     InitDynamicState();
+}
+
+void GraphicsPipelineData::InitInputAssemblyState()
+{
+    input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    input_assembly.pNext = nullptr;
+    input_assembly.flags = 0;
+    input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    input_assembly.primitiveRestartEnable = VK_FALSE;
+
+    pipeline_info.pInputAssemblyState = &input_assembly;
 }
 
 void GraphicsPipelineData::InitShaderStage(const ShaderStageCreateInfoList &ssl)

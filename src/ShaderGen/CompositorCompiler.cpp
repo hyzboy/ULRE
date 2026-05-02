@@ -88,11 +88,7 @@ namespace
         const bool has_task = (bits & uint32_t(ShaderStage::Task)) != 0;
         const bool has_mesh = (bits & uint32_t(ShaderStage::Mesh)) != 0;
         const bool has_frag = (bits & uint32_t(ShaderStage::Fragment)) != 0;
-
-        // During migration we keep legacy non-mesh materials intact.
-        // Mesh path requests, however, must use canonical mesh-only combos.
-        if (!has_task && !has_mesh)
-            return true;
+        const bool is_billboard = (cfg.kind == ConfigKind::Billboard);
 
         auto fail = [&](const char *reason) -> bool
         {
@@ -113,6 +109,17 @@ namespace
             return false;
         };
 
+        // During migration we keep legacy non-mesh materials intact.
+        // Billboard path is excluded from this compatibility branch and must
+        // always request mesh stages explicitly.
+        if (!has_task && !has_mesh)
+        {
+            if (is_billboard)
+                return fail("billboard materials must enable mesh stage");
+
+            return true;
+        }
+
         if (!has_mesh)
             return fail("task stage requires mesh stage");
 
@@ -124,6 +131,9 @@ namespace
 
         const uint32_t kMeshFrag = uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
         const uint32_t kTaskMeshFrag = uint32_t(ShaderStage::Task) | uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
+
+        if (is_billboard && bits != kMeshFrag && bits != kTaskMeshFrag)
+            return fail("billboard materials must be Mesh|Fragment or Task|Mesh|Fragment");
 
         if (bits != kMeshFrag && bits != kTaskMeshFrag)
             return fail("mesh path must be Mesh|Fragment or Task|Mesh|Fragment");

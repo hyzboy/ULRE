@@ -54,18 +54,16 @@ namespace
         }
     }
 
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT
     bool ProbeMeshShaderFeaturesRobust(VkInstance instance,
                                        VkPhysicalDevice physical_device,
                                        VkPhysicalDeviceMeshShaderFeaturesEXT &mesh_features)
     {
-        mesh_features = {};
-        mesh_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+        VkPhysicalDeviceMeshShaderFeaturesEXT detected{};
+        detected.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
 
         if (!instance || !physical_device)
             return false;
 
-#ifdef VK_EXT_MESH_SHADER_EXTENSION_NAME
         {
             uint32_t extension_count = 0;
             if (vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, nullptr) != VK_SUCCESS || extension_count == 0)
@@ -88,7 +86,6 @@ namespace
             if (!has_mesh_extension)
                 return false;
         }
-#endif
 
         VkBool32 merged_mesh = VK_FALSE;
         VkBool32 merged_task = VK_FALSE;
@@ -110,7 +107,7 @@ namespace
             if (probe.taskShader == VK_TRUE)
                 merged_task = VK_TRUE;
 
-            mesh_features = probe;
+            detected = probe;
             queried = true;
         }
 
@@ -130,15 +127,18 @@ namespace
             if (probe.taskShader == VK_TRUE)
                 merged_task = VK_TRUE;
 
-            mesh_features = probe;
+            detected = probe;
             queried = true;
         }
 
-        mesh_features.meshShader = merged_mesh;
-        mesh_features.taskShader = merged_task;
-        return queried;
+        if (!queried)
+            return false;
+
+        detected.meshShader = merged_mesh;
+        detected.taskShader = merged_task;
+        mesh_features = detected;
+        return true;
     }
-#endif
 }
 
 VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
@@ -163,11 +163,9 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
         mem_zero(features13);
         mem_zero(features14);
 
-    #ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT
         mem_zero(mesh_shader_features);
-    #endif
 
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT
+#if defined(VK_EXT_graphics_pipeline_library)
         VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
 #endif
 
@@ -200,14 +198,12 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
                 ppNext=&features13.pNext;
             }
 
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT
             mesh_shader_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
             mesh_shader_features.pNext=nullptr;
             *ppNext=&mesh_shader_features;
             ppNext=&mesh_shader_features.pNext;
-#endif
 
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT
+#if defined(VK_EXT_graphics_pipeline_library)
             graphics_pipeline_library_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
             graphics_pipeline_library_features.pNext=nullptr;
             *ppNext=&graphics_pipeline_library_features;
@@ -237,13 +233,11 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
                 features2.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
                 features2.pNext=nullptr;
 
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT
                 mesh_shader_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
                 mesh_shader_features.pNext=features2.pNext;
                 features2.pNext=&mesh_shader_features;
-#endif
 
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT
+#if defined(VK_EXT_graphics_pipeline_library)
                 graphics_pipeline_library_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
                 graphics_pipeline_library_features.pNext=features2.pNext;
                 features2.pNext=&graphics_pipeline_library_features;
@@ -258,13 +252,13 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
             }
         }
 
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT
         // Dedicated mesh feature probe keeps mesh/task results stable even when
         // mixed core/extension feature chains behave inconsistently across layers.
-        ProbeMeshShaderFeaturesRobust(inst, physical_device, mesh_shader_features);
-#endif
+        VkPhysicalDeviceMeshShaderFeaturesEXT robust_mesh_features{};
+        if (ProbeMeshShaderFeaturesRobust(inst, physical_device, robust_mesh_features))
+            mesh_shader_features = robust_mesh_features;
 
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT
+#if defined(VK_EXT_graphics_pipeline_library)
         graphics_pipeline_library_feature = (graphics_pipeline_library_features.graphicsPipelineLibrary == VK_TRUE);
 #endif
     }
@@ -275,9 +269,7 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
         mem_zero(properties13);
         mem_zero(properties14);
 
-    #ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT
         mem_zero(mesh_shader_properties);
-    #endif
 
         if(version_major > 1 || version_minor >= 1)
         {
@@ -308,12 +300,10 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
                 ppNext=&properties13.pNext;
             }
 
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT
             mesh_shader_properties.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
             mesh_shader_properties.pNext=nullptr;
             *ppNext=&mesh_shader_properties;
             ppNext=&mesh_shader_properties.pNext;
-#endif
 
             if(version_major > 1 || version_minor >= 4)
             {
@@ -336,11 +326,9 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
                 properties2.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
                 properties2.pNext=nullptr;
 
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT
                 mesh_shader_properties.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
                 mesh_shader_properties.pNext=properties2.pNext;
                 properties2.pNext=&mesh_shader_properties;
-#endif
 
                 func(physical_device,&properties2);
                 mem_copy(properties,properties2.properties);
@@ -351,7 +339,6 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
             }
         }
 
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT
         if(version_major > 1 || version_minor >= 1)
         {
             VkPhysicalDeviceMeshShaderPropertiesEXT mesh_props_only{};
@@ -381,7 +368,6 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
                 mesh_shader_properties=mesh_props_only;
             }
         }
-#endif
     }
 
     vkGetPhysicalDeviceMemoryProperties(physical_device,&memory_properties);
@@ -435,11 +421,7 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
         extension_properties.resize(exten_count);
         vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,extension_properties.data());
 
-    #ifdef VK_EXT_MESH_SHADER_EXTENSION_NAME
         mesh_shader_extension = CheckExtensionSupport(VK_EXT_MESH_SHADER_EXTENSION_NAME);
-    #else
-        mesh_shader_extension = false;
-    #endif
 
         debug_out(debug_front.c_str(),extension_properties);
     }
@@ -480,15 +462,19 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
              graphics_pipeline_library_feature?"yes":"no",
              graphics_pipeline_library?"yes":"no");
 
-#ifdef VK_EXT_MESH_SHADER_EXTENSION_NAME
     const char *mesh_ext_support = mesh_shader_extension ? "yes" : "no";
-#else
-    const char *mesh_ext_support = "no-sdk";
-#endif
 
     GLogInfo("%s mesh shader support: extension=%s (runtime mesh/task enablement is validated during device creation)",
              debug_front.c_str(),
              mesh_ext_support);
+
+    GLogInfo("%s mesh shader feature bits: mesh=%s task=%s multiview=%s shadingRate=%s queries=%s",
+             debug_front.c_str(),
+             mesh_shader_features.meshShader == VK_TRUE ? "yes" : "no",
+             mesh_shader_features.taskShader == VK_TRUE ? "yes" : "no",
+             mesh_shader_features.multiviewMeshShader == VK_TRUE ? "yes" : "no",
+             mesh_shader_features.primitiveFragmentShadingRateMeshShader == VK_TRUE ? "yes" : "no",
+             mesh_shader_features.meshShaderQueries == VK_TRUE ? "yes" : "no");
 
     physical_device_profile = mtl::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*this);
 
