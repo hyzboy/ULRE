@@ -76,6 +76,26 @@ bool Primitive::UpdateGeometry()
     if(draw_range.index_count>draw_range.data_index_count)
         draw_range.index_count = draw_range.data_index_count;
 
+    // Pulling path does not depend on VAB compatibility checks.
+    if (mat_inst)
+    {
+        if (auto *material = MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mat_inst))
+        {
+            const bool pulling_enabled =
+                material->IsPullingEnabled() || material->hasSet(SET_TYPE_VERTEX_STREAMS);
+
+            if (pulling_enabled)
+            {
+                if (data_buffer)
+                {
+                    data_buffer->ibo = geometry ? geometry->GetIBO() : nullptr;
+                    data_buffer->vdm = geometry ? geometry->GetVDM() : nullptr;
+                }
+                return true;
+            }
+        }
+    }
+
     return data_buffer->Update(geometry,vil);
 }
 
@@ -91,15 +111,26 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,Grap
                    ? explicit_vil
                    : (p ? p->GetVIL() : material->GetDefaultVIL());
 
+    // Pulling materials still require a non-null VIL sentinel at many legacy
+    // call sites (pipeline pre-resolve / primitive keying). Use material
+    // default VIL fallback when available.
+    const bool pulling_enabled =
+        material->IsPullingEnabled() || material->hasSet(SET_TYPE_VERTEX_STREAMS);
+
+    if(!vil && pulling_enabled)
+        vil = material->GetDefaultVIL();
+
     if (!vil) return(nullptr);
 
-    if(p && explicit_vil && *explicit_vil!=*p->GetVIL())
+    const VIL *pipeline_vil = p ? p->GetVIL() : nullptr;
+
+    if(p && explicit_vil && pipeline_vil && *explicit_vil!=*pipeline_vil)
         return(nullptr);
 
-    if(p && !explicit_vil && *vil!=*p->GetVIL())
+    if(p && !explicit_vil && pipeline_vil && *vil!=*pipeline_vil)
         return(nullptr);
 
-    const uint32_t input_count=vil->GetVertexAttribCount();
+    const uint32_t input_count = pulling_enabled ? 0u : vil->GetVertexAttribCount();
     const AnsiString &mtl_name=material->GetName();
     const GeometryVertexFormat &geometry_vertex_format = geom->GetGeometryVertexFormat();
 
@@ -150,7 +181,8 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,Grap
             max_binding=vif[i].binding;
     }
 
-    GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(max_binding+1,geom->GetIBO(),geom->GetVDM());
+    const uint32_t bind_count = (input_count > 0) ? (max_binding + 1) : 0;
+    GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(bind_count,geom->GetIBO(),geom->GetVDM());
 
     VAB *vab;
 
@@ -224,6 +256,9 @@ bool GeometryDataBuffer::Update(const Geometry *geom,const VIL *vil)
 
     ibo=geom->GetIBO();
     vdm=geom->GetVDM();
+
+    if(vab_count==0)
+        return(true);
 
     for(uint i=0;i<vab_count;i++)
     {

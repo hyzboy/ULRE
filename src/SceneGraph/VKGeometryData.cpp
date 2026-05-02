@@ -305,7 +305,6 @@ namespace
 GeometryData *CreateGeometryData(VulkanDevice *dev,const GeometryVertexFormat &gvf,const uint32_t vc)
 {
     if(!dev)return(nullptr);
-    if(gvf.GetActiveCount()==0)return(nullptr);
     if(vc<=0)return(nullptr);
 
     // TODO: Route VAB/IBO creation through BufferManager while keeping GeometryData API stable.
@@ -315,7 +314,6 @@ GeometryData *CreateGeometryData(VulkanDevice *dev,const GeometryVertexFormat &g
 GeometryData *CreateGeometryData(VulkanDevice *dev,const GeometryVertexFormat &gvf,const uint32_t vc,BufferAllocPolicy policy)
 {
     if(!dev)return(nullptr);
-    if(gvf.GetActiveCount()==0)return(nullptr);
     if(vc<=0)return(nullptr);
 
     // TODO: Route VAB/IBO creation through BufferManager while keeping GeometryData API stable.
@@ -325,7 +323,6 @@ GeometryData *CreateGeometryData(VulkanDevice *dev,const GeometryVertexFormat &g
 GeometryData *CreateGeometryData(BufferManager *bm,const GeometryVertexFormat &gvf,const uint32_t vc)
 {
     if(!bm)return(nullptr);
-    if(gvf.GetActiveCount()==0)return(nullptr);
     if(vc<=0)return(nullptr);
 
     return(new GeometryDataPrivateBufferBM(bm,gvf,vc,BufferAllocPolicy::GPUOnly));
@@ -334,7 +331,6 @@ GeometryData *CreateGeometryData(BufferManager *bm,const GeometryVertexFormat &g
 GeometryData *CreateGeometryData(BufferManager *bm,const GeometryVertexFormat &gvf,const uint32_t vc,BufferAllocPolicy policy)
 {
     if(!bm)return(nullptr);
-    if(gvf.GetActiveCount()==0)return(nullptr);
     if(vc<=0)return(nullptr);
 
     return(new GeometryDataPrivateBufferBM(bm,gvf,vc,policy));

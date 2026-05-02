@@ -21,6 +21,7 @@ namespace hgl::graph
     namespace mtl
     {
         class MaterialBuilder;
+        struct MaterialVariantKey;  // forward declare; defined in MaterialVariantKey.h
 
         namespace contract
         {
@@ -123,6 +124,11 @@ namespace hgl::graph
             /// Compile shader stages from FinalGLSL to SPV.
             /// Call this after SetFinalGLSL() on shaders to build SPV binaries.
             bool CompileSPV();
+
+            /// Register SSBO descriptors for the VertexStreams descriptor set (set=4).
+            /// Call after BuildSnapshotOnly() and before InjectLayoutDefines().
+            /// Bindings are assigned by semantic index to match CompositorAssembler macros.
+            void AddVertexStreamSSBOs(const MaterialVariantKey &key);
         };//class MaterialCreateInfo
     }//namespace mtl
 }//namespace hgl::graph

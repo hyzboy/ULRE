@@ -162,6 +162,10 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     assemble_key.sky_ambient_model = ambient;
     PopulateVariantKeyVertexAttribBits(assemble_key, dynamic_def);
 
+    // If the assembled key uses any SSBO-backed vertex streams, register them
+    // in the VertexStreams descriptor set so the pipeline layout includes set=4.
+    dynamic_def.vertex_stream_key = &assemble_key;
+
     CompositorAssembler assembler;
 
     auto result = assembler.Assemble(assemble_key, *var_desc);

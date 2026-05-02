@@ -50,7 +50,12 @@ SSBODescriptor *ShaderDescriptorSet::AddSSBO(uint32_t ssb,SSBODescriptor *new_sd
         return nullptr;
 
     const size_t index=size_t(new_sd->semantic);
-    if(index>=mtl::SSBODescriptorSemanticCount)
+    const size_t max_index =
+        (set_type==DescriptorSetType::VertexStreams)
+            ? SHADER_DESCRIPTOR_SSBO_SLOT_COUNT
+            : mtl::SSBODescriptorSemanticCount;
+
+    if(index>=max_index)
     {
         delete new_sd;
         return nullptr;

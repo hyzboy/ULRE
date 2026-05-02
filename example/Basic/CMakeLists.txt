@@ -29,6 +29,7 @@ CreateProject(12_RenderToTexture                RenderToTexture.cpp)
 CreateProject(13_RecursiveCube                  RecursiveCube.cpp)
 CreateProject(14_PBRColor3DSpheresECS           PBRColor3DSpheresECS.cpp)
 CreateProject(15_FullscreenTriangleFragCoord    FullscreenTriangleFragCoord.cpp)
+CreateProject(16_VertexPulling_Cube             VertexPulling_Cube.cpp)
 
 add_subdirectory(BillboardIconECS)
 

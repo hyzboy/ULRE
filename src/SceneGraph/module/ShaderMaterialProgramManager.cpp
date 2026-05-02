@@ -21,6 +21,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/RecipeToKey.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdio>
 #include<cstdint>
@@ -533,7 +534,12 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
         for (const auto &tc : rec.textures)
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
-        return mm->ResolveOrCreateProgram(rec.preset, &cfg);
+        // Use the recipe-derived variant key so that attribute_providers and
+        // position_provider (vertex pulling) are propagated through to
+        // Standard_Adapter → AddVertexStreamSSBOs.  RouteKey(preset) drops them.
+        cfg.preset_name = mtl::GetMaterialPresetName(rec.preset);
+        mtl::MaterialVariantKey vk = mtl::ResolveRecipePrimaryKey(rec).variant;
+        return mm->ResolveOrCreateProgram(vk, &cfg);
     }
 }
 
@@ -553,20 +559,27 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     // ResolveOrCreateProgram which populates material_by_key as a side-effect (Step 3).
     ShaderMaterialProgram *prog = CreateMaterialFromRecord(this, recipe);
 
-#ifndef NDEBUG
     if (prog)
     {
+        // Step 5 key-path coherence: recipe callers use a full MaterialKey
+        // (schema/def/version included), while ResolveOrCreateProgram currently
+        // caches by a variant-derived key.  Alias the request key to the same
+        // program so subsequent GetOrCreateProgramByKey calls hit fast-path.
         auto it2 = material_by_key.find(key);
-        if (it2 == material_by_key.end() || it2->second != prog)
+        if (it2 == material_by_key.end())
+        {
+            material_by_key[key] = prog;
+        }
+        else if (it2->second != prog)
         {
             std::fprintf(stderr,
                 "[ShaderMaterialProgramManager] WARN GetOrCreateProgramByKey: "
-                "key.Hash=0x%llx not in material_by_key after creation — "
-                "MaterialKey derivation may be inconsistent.\n",
-                static_cast<unsigned long long>(key.Hash()));
+                "key.Hash=0x%llx maps to another program (existing=%p new=%p).\n",
+                static_cast<unsigned long long>(key.Hash()),
+                static_cast<void *>(it2->second),
+                static_cast<void *>(prog));
         }
     }
-#endif
 
     return prog;
 }

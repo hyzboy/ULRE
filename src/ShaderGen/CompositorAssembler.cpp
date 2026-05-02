@@ -43,6 +43,22 @@ namespace
         }
     }
 
+    // Per-semantic SSBO fetch macro name tags; index == AttributeSemantic ordinal.
+    static constexpr const char *kAttribFetchMacroTags[] = {
+        "NORMAL",            // 0
+        "TANGENT",           // 1
+        "COLOR",             // 2
+        "TEXCOORD0",         // 3
+        "TEXCOORD1",         // 4
+        "JOINTS",            // 5
+        "WEIGHTS",           // 6
+        "INSTANCETRANSFORM", // 7
+    };
+    static_assert(
+        sizeof(kAttribFetchMacroTags) / sizeof(*kAttribFetchMacroTags)
+            == size_t(hgl::graph::AttributeSemantic::BuiltinCount),
+        "kAttribFetchMacroTags size mismatch");
+
     std::string BuildForwardVertexEntry(const hgl::graph::CompositorFeatureFlags &f)
     {
         std::string out = "#version " + std::to_string(g_shader_version) + "\n\n";
@@ -53,11 +69,35 @@ namespace
         EmitEnabledVertexAttribDefines(writer, f);
 
         // Map PositionProviderId -> GLSL POSITION_KIND (0=None/procedural, 1=Vec2, 2=Vec3)
+        // SSBO_PackedVec3 uses kind 0: vertex_fetch_ssbo.glsl provides FetchPosition().
         const int pos_kind = (f.position_provider == hgl::graph::PositionProviderId::VAB_Vec2) ? 1
                            : (f.position_provider == hgl::graph::PositionProviderId::PCG_FullscreenTriangle) ? 0
-                           : 2; // DirectVec3, SSBO_PackedVec3, etc.
+                           : (f.position_provider == hgl::graph::PositionProviderId::SSBO_PackedVec3) ? 0
+                           : 2; // DirectVec3 and other VBO providers
         writer.EmitDefine("POSITION_KIND", std::to_string(pos_kind).c_str());
         if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
+
+        // Phase C: emit GEOMETRY_FETCH_SSBO + per-attribute SSBO binding macros.
+        bool any_ssbo = (f.position_provider == hgl::graph::PositionProviderId::SSBO_PackedVec3);
+        for (const auto &p : f.attribute_providers)
+            if (p != hgl::graph::AttributeProviderId::None) { any_ssbo = true; break; }
+
+        if (any_ssbo) {
+            writer.EmitDefine("GEOMETRY_FETCH_SSBO", "1");
+            if (f.position_provider == hgl::graph::PositionProviderId::SSBO_PackedVec3) {
+                writer.EmitDefine("POSITION_SSBO_SET",     "4");
+                writer.EmitDefine("POSITION_SSBO_BINDING",
+                    std::to_string(size_t(hgl::graph::AttributeSemantic::BuiltinCount)).c_str());
+            }
+            for (size_t i = 0; i < f.attribute_providers.size(); ++i) {
+                if (f.attribute_providers[i] != hgl::graph::AttributeProviderId::None) {
+                    std::string macro = "FETCH_";
+                    macro += kAttribFetchMacroTags[i];
+                    macro += "_SSBO_BINDING";
+                    writer.EmitDefine(macro.c_str(), std::to_string(i).c_str());
+                }
+            }
+        }
 
         writer.EmitInclude("common/vertex_input_position.glsl")
               .EmitInclude("compositor/vert_forward_ubo.glsl")
@@ -113,6 +153,10 @@ namespace
 
         // Propagate position_provider from key (already set correctly by routing layer).
         flags.position_provider = key.position_provider;
+
+        // Phase C: propagate per-semantic attribute providers for SSBO pulling.
+        flags.attribute_providers = key.attribute_providers;
+
         if (key.surface_type == hgl::graph::SurfaceType::Sky)
         {
             flags.has_direction      = true;

@@ -8,6 +8,11 @@
 #include<hgl/vk/UBOAccessor.h>
 
 namespace hgl::graph{
+void ShaderMaterialProgram::SetPullingEnabled(bool v){if(vertex_input)vertex_input->SetPullingEnabled(v);}
+bool ShaderMaterialProgram::IsPullingEnabled()const{return vertex_input?vertex_input->IsPullingEnabled():false;}
+}
+
+namespace hgl::graph{
 
 void ReleaseVertexInput(VertexInput *vi);
 

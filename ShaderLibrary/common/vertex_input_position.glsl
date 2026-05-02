@@ -23,8 +23,14 @@
     vec3 GetPositionLocal() { return vec3(inPosition, 0.0); }
 #elif POSITION_KIND == 0
     // No vertex buffer position attribute; caller provides position via other means.
-    #ifndef ULRE_POSITION_PROVIDED_BY_USER
-        vec3 GetPositionLocal() { return vec3(0.0); }
+    #if defined(POSITION_SSBO_BINDING)
+        // Position is supplied by position_provider/ssbo_packed.glsl.
+        // Do not emit a fallback GetPositionLocal() here to avoid duplicate
+        // function bodies when vertex pulling is enabled.
+    #else
+        #ifndef ULRE_POSITION_PROVIDED_BY_USER
+            vec3 GetPositionLocal() { return vec3(0.0); }
+        #endif
     #endif
 #else
     #error "POSITION_KIND must be defined as 0 (None), 1 (Vec2), or 2 (Vec3)"

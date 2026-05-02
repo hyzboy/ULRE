@@ -9,6 +9,8 @@
 
 namespace hgl::graph::mtl{
 
+struct MaterialVariantKey;  // forward declare; defined in MaterialVariantKey.h
+
 using UBOSemanticSet = std::set<UBODescriptorSemantic>;
 using SSBOSemanticSet = std::set<SSBODescriptorSemantic>;
 
@@ -75,6 +77,11 @@ struct StaticMaterialDef
     const StaticTextureSamplerDescriptors *texture_samplers = nullptr;
 
     ShaderDataSchema            shader_data_schema = ShaderDataSchema::None;
+
+    /// If non-null, vertex-pulling SSBO descriptors are registered for the
+    /// VertexStreams descriptor set (set=4).  Pointer must remain valid
+    /// throughout the CreatePreparedCompositorMaterial call chain.
+    const MaterialVariantKey *vertex_stream_key = nullptr;
 };
 
 }//namespace hgl::graph::mtl

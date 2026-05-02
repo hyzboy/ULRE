@@ -12,6 +12,7 @@
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
 #include <hgl/mtl/ShaderDataSchema.h>
+#include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/shadergen/ShaderLayoutResolver.h>
@@ -287,6 +288,11 @@ namespace
         MaterialCreateInfo *mci = builder.BuildSnapshotOnly();
         if (!mci)
             return FailWithBuilder("MaterialBuilder::BuildSnapshotOnly() failed");
+
+        // Register vertex-stream SSBO descriptors for the VertexStreams set (set=4)
+        // BEFORE InjectLayoutDefines calls Resort(), so the bindings are included.
+        if (def.vertex_stream_key)
+            mci->AddVertexStreamSSBOs(*def.vertex_stream_key);
 
         if (!InjectLayoutDefines(*mci))
         {

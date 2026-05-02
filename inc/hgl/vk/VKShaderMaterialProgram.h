@@ -73,17 +73,20 @@ public:
     virtual ~ShaderMaterialProgram();
 
     const   AnsiString &                        GetName                 ()const{return name;}
-    const   mtl::DescriptorBindingSlots &              GetBindingContract      ()const{return binding_contract;}
+    const   mtl::DescriptorBindingSlots &       GetBindingContract      ()const{return binding_contract;}
 
     const   PrimitiveType &                     GetPrimitiveType        ()const{return geometry;}
 
     const   VertexInput *                       GetVertexInput          ()const{return vertex_input;}
 
+            void                                SetPullingEnabled       (bool v);
+            bool                                IsPullingEnabled        ()const;
+
     const   ShaderStageCreateInfoList &         GetStageList            ()const{return shader_stage_list;}
 
 //    const   MaterialDescriptorManager *         GetDescriptorManager    ()const{return desc_manager;}
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
-    const   GraphicsPipelineLayoutData *                GetGraphicsPipelineLayoutData   ()const{return pipeline_layout_data;}
+    const   GraphicsPipelineLayoutData *        GetGraphicsPipelineLayoutData   ()const{return pipeline_layout_data;}
 
 public:
 

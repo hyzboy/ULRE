@@ -224,6 +224,15 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
             : PositionProviderId::DirectVec3;
     }
 
+    // ── Step 3.B: explicit position provider override (Phase C) ──────────────
+    if (r.position_provider.has_value())
+        k.position_provider = *r.position_provider;
+
+    // ── Step 3.C: attribute provider overrides (vertex pulling, Phase C) ──────
+    for (size_t i = 0; i < size_t(AttributeSemantic::BuiltinCount); ++i)
+        if (r.attribute_providers[i] != AttributeProviderId::None)
+            k.attribute_providers[i] = r.attribute_providers[i];
+
     // ── Step 4: sky / lighting (3-D only) ────────────────────────────────────
     // Mirrors the Material3DCreateConfig block in ApplyCreateConfigToVariantKey
     // and the CreateMaterialFromRecord 3D path in MaterialAssetLoader.

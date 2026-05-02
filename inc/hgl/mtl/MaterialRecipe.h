@@ -25,10 +25,14 @@
 #include <hgl/common/CoordinateSystem.h>
 #include <hgl/common/PrimitiveTypeDef.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
+#include <hgl/common/AttributeProvider.h>
+#include <hgl/common/PositionProvider.h>
 #include <hgl/vk/VertexAttrib.h>
 #include <hgl/vk/VKFormat.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 
+#include <array>
+#include <optional>
 #include <vector>
 #include <string>
 
@@ -100,6 +104,18 @@ struct MaterialRecipe
         bool               front_face_ccw      = false;                     ///< false = Clockwise
         std::string        texture_id;                                      ///< 纹理唯一标识
     } billboard;
+
+    // ── Phase C: per-semantic SSBO attribute providers (vertex pulling) ───────
+    // Index = AttributeSemantic ordinal; all None by default → standard VBO path.
+    // Set individual entries to SSBO_Vec3 / SSBO_Vec2 to enable per-attribute
+    // SSBO fetch for that semantic.
+    std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)>
+        attribute_providers{};
+
+    // ── Phase C: position SSBO override (vertex pulling) ─────────────────────
+    // std::nullopt → use default for this preset (usually DirectVec3 for 3D).
+    // Set to SSBO_PackedVec3 for full vertex pulling (no VAB for position).
+    std::optional<PositionProviderId> position_provider;
 };
 
 } // namespace hgl::graph::mtl

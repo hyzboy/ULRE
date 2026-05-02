@@ -99,6 +99,9 @@ const SSBODescriptor *MaterialDescriptorDB::AddSSBO(uint32_t ssb,DescriptorSetTy
 
     SSBODescriptor *obj=sds->AddSSBO(ssb,sd);
 
+    // VertexStreams SSBOs are addressed by binding index, not by semantic lookup;
+    // skip ssbo_by_semantic to avoid corrupting the per-semantic index map.
+    if (obj && set_type != DescriptorSetType::VertexStreams)
     {
         const auto sem = obj->semantic;
         if(RangeCheck(sem))
@@ -172,20 +175,34 @@ void MaterialDescriptorDB::Resort()
         descriptor_count+=p.count;
         p.set=set;
 
-        // Array indices are ascending enum order — exactly the desired binding order.
-        int binding=0;
+        if (p.set_type == DescriptorSetType::VertexStreams)
+        {
+            // Vertex stream SSBOs use the array index directly as the binding number
+            // to match the sparse ATTRIB_BINDING / POSITION_SSBO_BINDING macros that
+            // CompositorAssembler hard-codes into the GLSL source (e.g. Normal=0, TexCoord0=3, Position=8).
+            for (size_t idx = 0; idx < std::size(p.ssbo_descriptor_map); ++idx)
+            {
+                auto *d = p.ssbo_descriptor_map[idx];
+                if (d) { d->set = set; d->binding = (int)idx; }
+            }
+        }
+        else
+        {
+            // Array indices are ascending enum order — exactly the desired binding order.
+            int binding=0;
 
-        for(auto *d:p.ubo_descriptor_map)
-            if(d) { d->set=set; d->binding=binding++; }
+            for(auto *d:p.ubo_descriptor_map)
+                if(d) { d->set=set; d->binding=binding++; }
 
-        for(auto *d:p.ssbo_descriptor_map)
-            if(d) { d->set=set; d->binding=binding++; }
+            for(auto *d:p.ssbo_descriptor_map)
+                if(d) { d->set=set; d->binding=binding++; }
 
-        for(auto *d:p.texture_descriptor_map)
-            if(d) { d->set=set; d->binding=binding++; }
+            for(auto *d:p.texture_descriptor_map)
+                if(d) { d->set=set; d->binding=binding++; }
 
-        for(auto *d:p.texture_sampler_descriptor_map)
-            if(d) { d->set=set; d->binding=binding++; }
+            for(auto *d:p.texture_sampler_descriptor_map)
+                if(d) { d->set=set; d->binding=binding++; }
+        }
 
         ++set;
     }

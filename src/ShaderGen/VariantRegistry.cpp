@@ -37,6 +37,19 @@ static MaterialVariantKey CanonicalizeRegistryLookupKey(const MaterialVariantKey
         canon.effective_feature_mask = 0;
     }
 
+    // Strip vertex-pulling provider bits for registry lookup.
+    // The variant registry selects shader descriptor layouts and does NOT
+    // distinguish vertex-stream sources.  Registered variants always use
+    // DirectVec3 position and all-None attribute_providers.  SSBO-based
+    // providers only affect the VertexStreams descriptor set (set=4), which is
+    // configured post-lookup by AddVertexStreamSSBOs when MaterialFactory3D
+    // receives the *original* key.  Clearing them here allows vertex-pulling
+    // materials to resolve the same base variant entry as VAB counterparts.
+    for (auto &p : canon.attribute_providers)
+        p = AttributeProviderId::None;
+    if (canon.position_provider == PositionProviderId::SSBO_PackedVec3)
+        canon.position_provider = PositionProviderId::DirectVec3;
+
     return canon;
 }
 

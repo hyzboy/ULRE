@@ -31,7 +31,7 @@ GraphicsGeometryFactory::GraphicsGeometryFactory(GraphicsContext *gc)
 
 std::unique_ptr<GeometryCreater> GraphicsGeometryFactory::CreateCreater(const GeometryVertexFormat &gvf) const
 {
-    if(!graphics || gvf.GetActiveCount()==0)
+    if(!graphics)
         return nullptr;
 
     auto *device = graphics->GetDevice();
@@ -157,8 +157,12 @@ Geometry *GraphicsGeometryFactory::CreateGeometry(GraphicsContext *graphics_cont
         return nullptr;
 
     GeometryVertexFormat gvf;
-    if(!BuildGVFFromVertexWrites(gvf, vertex_writes))
-        return nullptr;
+    // vertex_writes may be empty for vertex-pulling mode (SSBO, no VABs)
+    for(const auto &write : vertex_writes)
+    {
+        if(!write.data) return nullptr;
+        if(!gvf.Set(write.attrib, write.format)) return nullptr;
+    }
 
     GraphicsGeometryFactory geometry_factory(graphics_context);
 

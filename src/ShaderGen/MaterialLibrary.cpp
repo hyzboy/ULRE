@@ -218,6 +218,11 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
     if (ov.sky_ambient_model) key.sky_ambient_model = *ov.sky_ambient_model;
     if (ov.debug_shading)     key.SetDebugShading(true);
 
+    // Phase C: apply per-semantic attribute provider overrides (vertex pulling).
+    for (size_t i = 0; i < ov.attribute_providers.size(); ++i)
+        if (ov.attribute_providers[i] != AttributeProviderId::None)
+            key.attribute_providers[i] = ov.attribute_providers[i];
+
     return key;
 }
 

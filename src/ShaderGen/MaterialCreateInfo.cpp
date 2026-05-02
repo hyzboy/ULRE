@@ -4,6 +4,9 @@
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/math/Matrix.h>
+#include<hgl/mtl/MaterialVariantKey.h>
+#include<hgl/shadergen/AttributeProviderRegistry.h>
+#include<hgl/shadergen/PositionProviderRegistry.h>
 #include<string>
 #include<limits>
 
@@ -465,5 +468,41 @@ bool MaterialCreateInfo::CompileSPV()
     }
 
     return(true);
+}
+
+void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
+{
+    constexpr uint32_t vertex_stage = uint32_t(ShaderStage::Vertex);
+
+    // Attribute streams: binding index = AttributeSemantic ordinal (sparse binding).
+    // CompositorAssembler emits "#define FETCH_<Tag>_SSBO_BINDING <i>" with the same index.
+    for (size_t i = 0; i < key.attribute_providers.size(); ++i)
+    {
+        const AttributeProviderId pid = key.attribute_providers[i];
+        if (pid == AttributeProviderId::None || pid == AttributeProviderId::Constant)
+            continue;
+
+        const AttributeProvider *ap = FindBuiltinAttribProvider(pid);
+        if (!ap || !ap->needs_ssbo)
+            continue;
+
+        auto *sd = new SSBODescriptor();
+        sd->semantic = SSBODescriptorSemantic(i);   // index → binding via Resort()
+        descriptor_db.AddSSBO(vertex_stage, DescriptorSetType::VertexStreams, sd);
+    }
+
+    // Position stream: binding = BuiltinCount (= 8).
+    // CompositorAssembler emits "#define POSITION_SSBO_BINDING 8".
+    if (key.position_provider != PositionProviderId::DirectVec3)
+    {
+        const PositionProvider *pp = FindBuiltinProvider(key.position_provider);
+        if (pp && pp->needs_ssbo)
+        {
+            auto *sd = new SSBODescriptor();
+            // semantic index 8 = BuiltinCount; Resort() maps index → binding = 8
+            sd->semantic = SSBODescriptorSemantic(size_t(AttributeSemantic::BuiltinCount));
+            descriptor_db.AddSSBO(vertex_stage, DescriptorSetType::VertexStreams, sd);
+        }
+    }
 }
 }//namespace hgl::graph::mtl

@@ -63,7 +63,9 @@ public:
         return streams[size_t(semantic)];
     }
 
-    const   VIL *   GetDefaultVIL()const{return pulling_enabled?nullptr:default_vil;}
+    // Even in pulling mode we keep returning the default VIL sentinel (typically
+    // count=0) so legacy call sites that require non-null VIL can proceed.
+    const   VIL *   GetDefaultVIL()const{return default_vil;}
     VIL *           CreateVIL(const VILConfig *format_map=nullptr);
     bool            Release(VIL *);
     const uint32_t  GetInstanceCount()const{return vil_sets.GetCount();}

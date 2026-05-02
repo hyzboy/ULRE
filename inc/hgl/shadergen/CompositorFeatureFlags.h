@@ -2,8 +2,10 @@
 
 #include <hgl/common/PositionProvider.h>
 #include <hgl/common/VertexAttribDef.h>
+#include <hgl/common/AttributeProvider.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
+#include <array>
 #include <cstddef>
 #include <string>
 
@@ -15,6 +17,12 @@ struct CompositorFeatureFlags
     PositionProviderId position_provider = PositionProviderId::DirectVec3;
     uint32 vertex_attrib_bits = 0;
     bool has_direction    = false;
+
+    // Phase C: per-semantic attribute provider IDs for SSBO vertex pulling.
+    // Mirrors MaterialVariantKey::attribute_providers.
+    // All None by default → VBO path; any non-None → GEOMETRY_FETCH_SSBO=1 emitted.
+    std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)>
+        attribute_providers{};
 
     bool HasVertexAttrib(const VertexAttrib attrib)const
     {

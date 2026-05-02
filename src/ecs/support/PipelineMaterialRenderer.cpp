@@ -38,6 +38,19 @@ namespace hgl::ecs
     bool PipelineMaterialRenderer::BindVAB(const DrawBatch* batch,
                                                MaterialInstanceAssignmentBuffer* mi_buffer)
     {
+        if (material)
+        {
+            const bool pulling_enabled =
+                material->IsPullingEnabled() || material->hasSet(graph::DescriptorSetType::VertexStreams);
+
+            if (pulling_enabled)
+            {
+                (void)batch;
+                (void)mi_buffer;
+                return true;
+            }
+        }
+
         // Log GeometryDataBuffer details
         //if (batch->geom_data_buffer)
         //{
