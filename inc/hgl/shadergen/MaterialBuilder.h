@@ -11,6 +11,8 @@ namespace hgl::graph
 {
     class ShaderCreateInfo;
     class ShaderCreateInfoVertex;
+    class ShaderCreateInfoTask;
+    class ShaderCreateInfoMesh;
 
     namespace mtl
     {
@@ -54,6 +56,8 @@ namespace hgl::graph
 
             // Accessor for shader editing (during build phase)
             ShaderCreateInfoVertex *GetVertexShader();
+            ShaderCreateInfoTask *GetTaskShader();
+            ShaderCreateInfoMesh *GetMeshShader();
             ShaderCreateInfo *GetStageShader(ShaderStage ss);
 
             /// Temporarily expose Resort for InjectLayoutDefines compatibility

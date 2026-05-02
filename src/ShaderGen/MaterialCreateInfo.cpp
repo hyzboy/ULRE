@@ -1,6 +1,8 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderStageIO.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
+#include<hgl/shadergen/ShaderCreateInfoTask.h>
+#include<hgl/shadergen/ShaderCreateInfoMesh.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/math/Matrix.h>
@@ -205,8 +207,8 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     : config(*mc)
 {
     if(HasVertex    ())shader_map.Add(new ShaderCreateInfoVertex(&descriptor_db));
-    if(HasTask      ())shader_map.Add(new ShaderCreateInfo(new ShaderStageIO(ShaderStage::Task),&descriptor_db));
-    if(HasMesh      ())shader_map.Add(new ShaderCreateInfo(new ShaderStageIO(ShaderStage::Mesh),&descriptor_db));
+    if(HasTask      ())shader_map.Add(new ShaderCreateInfoTask(&descriptor_db));
+    if(HasMesh      ())shader_map.Add(new ShaderCreateInfoMesh(&descriptor_db));
     if(HasFragment  ())shader_map.Add(new ShaderCreateInfo(new FragmentShaderStageIO(),&descriptor_db));
 
     ubo_range=0;

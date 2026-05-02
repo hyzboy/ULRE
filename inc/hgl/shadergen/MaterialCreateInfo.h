@@ -4,6 +4,8 @@
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
+#include<hgl/shadergen/ShaderCreateInfoTask.h>
+#include<hgl/shadergen/ShaderCreateInfoMesh.h>
 #include<hgl/shadergen/ShaderStageMap.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
 #include<hgl/common/MeshShaderStreamContract.h>
@@ -108,6 +110,12 @@ namespace hgl::graph
 
             ShaderCreateInfoVertex *           GetVertexShader(){auto *s=GetStageShader(ShaderStage::Vertex);assert(!s||HasVertex());return static_cast<ShaderCreateInfoVertex *>(s);}
             const ShaderCreateInfoVertex *     GetVertexShader()const{const auto *s=GetStageShader(ShaderStage::Vertex);assert(!s||HasVertex());return static_cast<const ShaderCreateInfoVertex *>(s);}
+
+            ShaderCreateInfoTask *             GetTaskShader(){auto *s=GetStageShader(ShaderStage::Task);assert(!s||HasTask());return static_cast<ShaderCreateInfoTask *>(s);}
+            const ShaderCreateInfoTask *       GetTaskShader()const{const auto *s=GetStageShader(ShaderStage::Task);assert(!s||HasTask());return static_cast<const ShaderCreateInfoTask *>(s);}
+
+            ShaderCreateInfoMesh *             GetMeshShader(){auto *s=GetStageShader(ShaderStage::Mesh);assert(!s||HasMesh());return static_cast<ShaderCreateInfoMesh *>(s);}
+            const ShaderCreateInfoMesh *       GetMeshShader()const{const auto *s=GetStageShader(ShaderStage::Mesh);assert(!s||HasMesh());return static_cast<const ShaderCreateInfoMesh *>(s);}
 
             const ShaderStageMap &GetShaderMap()const{return shader_map;}
 

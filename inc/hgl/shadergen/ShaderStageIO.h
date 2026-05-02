@@ -72,6 +72,22 @@ public:
     virtual ~FragmentShaderStageIO() override = default;
 };//class FragmentShaderStageIO
 
+class TaskShaderStageIO : public ShaderStageIO
+{
+public:
+
+    TaskShaderStageIO() : ShaderStageIO(ShaderStage::Task) {}
+    virtual ~TaskShaderStageIO() override = default;
+};//class TaskShaderStageIO
+
+class MeshShaderStageIO : public ShaderStageIO
+{
+public:
+
+    MeshShaderStageIO() : ShaderStageIO(ShaderStage::Mesh) {}
+    virtual ~MeshShaderStageIO() override = default;
+};//class MeshShaderStageIO
+
 // Compute Shader 还没有启用，暂时注释掉
 // class ComputeShaderStageIO : public ShaderStageIO
 // {

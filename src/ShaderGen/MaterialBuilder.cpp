@@ -1,6 +1,8 @@
 #include<hgl/shadergen/MaterialBuilder.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
+#include<hgl/shadergen/ShaderCreateInfoTask.h>
+#include<hgl/shadergen/ShaderCreateInfoMesh.h>
 
 using namespace hgl::graph;
 using namespace hgl::graph::mtl;
@@ -85,6 +87,20 @@ namespace hgl::graph::mtl
         if(!building_)
             return nullptr;
         return building_->GetVertexShader();
+    }
+
+    ShaderCreateInfoTask *MaterialBuilder::GetTaskShader()
+    {
+        if(!building_)
+            return nullptr;
+        return building_->GetTaskShader();
+    }
+
+    ShaderCreateInfoMesh *MaterialBuilder::GetMeshShader()
+    {
+        if(!building_)
+            return nullptr;
+        return building_->GetMeshShader();
     }
 
     ShaderCreateInfo *MaterialBuilder::GetStageShader(ShaderStage ss)
