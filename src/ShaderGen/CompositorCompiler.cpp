@@ -14,7 +14,7 @@
 #include <hgl/mtl/ShaderDataSchema.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
-#include <hgl/shadergen/ShaderCreateInfoVertex.h>
+#include <hgl/shadergen/ShaderStageIO.h>
 #include <hgl/shadergen/ShaderLayoutResolver.h>
 #include <hgl/shadergen/ShaderLayoutEmitter.h>
 #include <hgl/shadergen/SamplerGLSLEmitter.h>
@@ -212,6 +212,44 @@ namespace
         return include_text;
     }
 
+    static bool AppendFixedVertexInputs(ShaderCreateInfo *vertex_shader,
+                                        const StaticMaterialDef &def,
+                                        std::string *diagnostics)
+    {
+        if (!vertex_shader)
+            return true;
+
+        auto *vertex_io = dynamic_cast<VertexShaderStageIO *>(vertex_shader->GetShaderStageIO());
+        if (!vertex_io)
+        {
+            std::string msg;
+            msg.reserve(192);
+            msg += "[CompositorCompiler] vertex stage exists but StageIO is not VertexShaderStageIO";
+            msg += " material='";
+            msg += def.name ? def.name : "<unnamed>";
+            msg += "'";
+
+            std::fprintf(stderr, "%s\n", msg.c_str());
+            AppendDiagnosticLine(diagnostics, msg);
+            return false;
+        }
+
+        for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+        {
+            const FixedVertexEntry &entry = def.vertex_entries[i];
+
+            VIA via;
+            via.attrib = entry.attrib;
+            via.basetype = static_cast<uint8>(entry.type.basetype);
+            via.vec_size = entry.type.vec_size;
+            via.interpolation = Interpolation::Smooth;
+
+            vertex_io->AddInput(via);
+        }
+
+        return true;
+    }
+
     static MaterialCreateInfo *CreatePreparedCompositorMaterial(
         const contract::PhysicalDeviceProfileLite *profile,
         const StaticMaterialDef &def,
@@ -323,15 +361,13 @@ namespace
             }
         }
 
-        ShaderCreateInfoVertex *vsc = builder.GetVertexShader();
-        if (vsc)
-        {
-            for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
-            {
-                const FixedVertexEntry &entry = def.vertex_entries[i];
-                vsc->AddInput(entry.type, entry.attrib);
-            }
-        }
+        ShaderCreateInfo *vert = builder.GetStageShader(ShaderStage::Vertex);
+        ShaderCreateInfo *task = builder.GetStageShader(ShaderStage::Task);
+        ShaderCreateInfo *mesh = builder.GetStageShader(ShaderStage::Mesh);
+        ShaderCreateInfo *frag = builder.GetStageShader(ShaderStage::Fragment);
+
+        if (!AppendFixedVertexInputs(vert, def, diagnostics))
+            return FailWithBuilder("AppendFixedVertexInputs() failed");
 
         if (def.shader_data_schema != ShaderDataSchema::None)
         {
@@ -344,14 +380,9 @@ namespace
                 return FailWithBuilder("SetMaterialInstance() failed");
         }
 
-        ShaderCreateInfoVertex *vert = builder.GetVertexShader();
-    ShaderCreateInfo *task = builder.GetStageShader(ShaderStage::Task);
-    ShaderCreateInfo *mesh = builder.GetStageShader(ShaderStage::Mesh);
-        ShaderCreateInfo *frag = builder.GetStageShader(ShaderStage::Fragment);
-
         std::string final_vs_glsl = vs_glsl;
         std::string final_fs_glsl = fs_glsl;
-    std::string final_mesh_glsl = vs_glsl;
+        std::string final_mesh_glsl = vs_glsl;
 
         if (def.shader_data_schema != ShaderDataSchema::None)
         {
@@ -506,7 +537,7 @@ bool PrepareCompositorGLSLForReflection(
     if (!mci)
         return false;
 
-    ShaderCreateInfoVertex *vert = mci->GetVertexShader();
+    ShaderCreateInfo *vert = mci->GetStageShader(ShaderStage::Vertex);
     ShaderCreateInfo *frag = mci->GetStageShader(ShaderStage::Fragment);
 
     out_vs_glsl = vert ? vert->GetFinalGLSL() : std::string();
@@ -541,7 +572,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
 
 bool InjectLayoutDefines(MaterialCreateInfo &mci)
 {
-    ShaderCreateInfoVertex *vert = mci.GetVertexShader();
+    ShaderCreateInfo *vert = mci.GetStageShader(ShaderStage::Vertex);
     ShaderCreateInfo       *task = mci.GetStageShader(ShaderStage::Task);
     ShaderCreateInfo       *mesh = mci.GetStageShader(ShaderStage::Mesh);
     ShaderCreateInfo       *frag = mci.GetStageShader(ShaderStage::Fragment);

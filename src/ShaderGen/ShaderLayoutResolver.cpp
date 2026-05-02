@@ -2,13 +2,14 @@
 ///
 /// Builds ShaderLayoutContract from a MaterialCreateInfo after Resort() has run.
 /// Three buckets are filled:
-///   1. vertex_locations  — from VIAArray (ShaderCreateInfoVertex::GetInput)
+///   1. vertex_locations  — from Vertex stage StageIO (if present)
 ///   2. descriptor_sets   — one entry per non-empty ShaderDescriptorSet
 ///   3. descriptor_bindings — one entry per individual ShaderDescriptor
 
 #include <hgl/shadergen/ShaderLayoutResolver.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
-#include <hgl/shadergen/ShaderCreateInfoVertex.h>
+#include <hgl/shadergen/ShaderCreateInfo.h>
+#include <hgl/shadergen/ShaderStageIO.h>
 #include <hgl/common/ShaderDescriptorDef.h>
 #include <hgl/common/VertexInputDef.h>
 #include <hgl/mtl/DescriptorSemanticRegistry.h>
@@ -131,16 +132,20 @@ ShaderLayoutContract BuildShaderLayoutContract(const mtl::MaterialCreateInfo &mc
     ShaderLayoutContract contract;
 
     // ── Bucket 1: vertex input locations ─────────────────────────────────────
-    const ShaderCreateInfoVertex *vsc = mci.GetVertexShader();
-    if (vsc)
+    const ShaderCreateInfo *vertex_shader = mci.GetStageShader(ShaderStage::Vertex);
+    if (vertex_shader)
     {
-        const VIAArray &via_array = vsc->GetInput();
-        for (uint i = 0; i < via_array.count; ++i)
+        const auto *vertex_io = dynamic_cast<const VertexShaderStageIO *>(vertex_shader->GetShaderStageIO());
+        if (vertex_io)
         {
-            const VIA &via = via_array.items[i];
-            const std::string macro = GetVertexAttribLocationMacroName(via.attrib);
-            if (!macro.empty())
-                contract.vertex_locations.push_back({ macro, static_cast<int>(via.location) });
+            const VIAArray &via_array = vertex_io->GetInput();
+            for (uint i = 0; i < via_array.count; ++i)
+            {
+                const VIA &via = via_array.items[i];
+                const std::string macro = GetVertexAttribLocationMacroName(via.attrib);
+                if (!macro.empty())
+                    contract.vertex_locations.push_back({ macro, static_cast<int>(via.location) });
+            }
         }
     }
 

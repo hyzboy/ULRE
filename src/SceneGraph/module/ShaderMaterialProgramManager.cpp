@@ -17,7 +17,7 @@
 #include<hgl/graph/module/MaterialCreatePrecheckAdapter.h>
 #include<hgl/graph/module/MaterialFinalizeFlowAdapter.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/shadergen/ShaderCreateInfoVertex.h>
+#include<hgl/shadergen/ShaderStageIO.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialLibrary.h>
@@ -115,6 +115,32 @@ namespace
     static bool IsMeshStageRequested(const uint32_t stage_bits)
     {
         return (stage_bits & (uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Task))) != 0;
+    }
+
+    static const VIAArray *TryGetVertexInputArray(const mtl::MaterialCreateInfo *mci,
+                                                  const AnsiString &mtl_name)
+    {
+        if (!mci)
+            return nullptr;
+
+        const ShaderCreateInfo *vertex_shader = mci->GetStageShader(ShaderStage::Vertex);
+        if (!vertex_shader)
+            return nullptr;
+
+        const auto *vertex_io = dynamic_cast<const VertexShaderStageIO *>(vertex_shader->GetShaderStageIO());
+        if (!vertex_io)
+        {
+            std::fprintf(stderr,
+                "[ShaderMaterialProgramManager] WARN material='%s' vertex stage exists but StageIO is not VertexShaderStageIO; vertex_input fallback to null\n",
+                mtl_name.c_str());
+            return nullptr;
+        }
+
+        const VIAArray &via = vertex_io->GetInput();
+        if (via.count == 0)
+            return nullptr;
+
+        return &via;
     }
 
 }//namespace
@@ -373,8 +399,15 @@ bool ShaderMaterialProgramManager::ExecuteMaterialBuildPipeline(ShaderMaterialPr
 
     CreateShaderStageList(mtl->shader_stage_list,mtl->shader_maps);
 
-    const ShaderCreateInfoVertex *vert = mci->GetVertexShader();
-    mtl->vertex_input = vert ? GetVertexInput(vert->GetInput()) : nullptr;
+    const VIAArray *vertex_input_array = TryGetVertexInputArray(mci, mtl_name);
+    mtl->vertex_input = vertex_input_array ? GetVertexInput(*vertex_input_array) : nullptr;
+
+    if (!vertex_input_array && IsMeshStageRequested(mci->GetShaderStage()))
+    {
+        std::fprintf(stdout,
+            "[ShaderMaterialProgramManager] material='%s' mesh/task path keeps vertex_input empty by design\n",
+            mtl_name.c_str());
+    }
 
     const auto &mdi = mci->GetDescriptorInfo();
     if(mdi.GetCount() > 0)
