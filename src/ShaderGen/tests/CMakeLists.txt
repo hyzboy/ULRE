@@ -105,3 +105,25 @@ target_link_libraries(VKBufferTest PRIVATE CMCore)
 set_property(TARGET VKBufferTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 
 add_test(NAME VKBufferTest COMMAND VKBufferTest)
+
+# MeshShaderToolchainTest validates Phase 2 mesh/task toolchain alignment:
+#   - runtime stage name/flag conversion consistency (Task/Mesh)
+#   - task/mesh GLSL compile success via GLSLCompiler plugin
+#   - SPIR-V OpEntryPoint execution model tags
+#   - reflection parse path for task/mesh SPIR-V
+add_executable(MeshShaderToolchainTest
+    MeshShaderToolchainTest.cpp
+)
+
+target_link_libraries(MeshShaderToolchainTest PRIVATE ${ULRE})
+
+set_property(TARGET MeshShaderToolchainTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+if(MSVC)
+    set_target_properties(MeshShaderToolchainTest PROPERTIES
+        VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
+add_test(NAME MeshShaderToolchainTest COMMAND MeshShaderToolchainTest)
+set_tests_properties(MeshShaderToolchainTest PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})

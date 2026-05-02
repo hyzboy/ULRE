@@ -122,6 +122,12 @@ namespace hgl
             return value > 0x7fffffffull ? 0x7fffffff : static_cast<int>(value);
         }
 
+        static void EnsurePositiveLimit(int &value,const int fallback)
+        {
+            if(value<=0)
+                value=fallback;
+        }
+
         static void ApplyPhysicalDeviceProfileToCompilerLimits(const mtl::contract::PhysicalDeviceProfileLite &profile)
         {
             if(!gsi || !gsi->GetLimit || !gsi->SetLimit)
@@ -178,6 +184,29 @@ namespace hgl
                 bir.limits.generalSamplerIndexing = true;
                 bir.limits.generalVariableIndexing = true;
             }
+
+            // Some GLSLCompiler builds expose mesh/task limits as zero in the
+            // default TBuiltInResource. Keep safe non-zero fallbacks so
+            // mesh/task stage compilation can proceed during toolchain tests.
+            EnsurePositiveLimit(bir.maxTaskWorkGroupSizeX_EXT,32);
+            EnsurePositiveLimit(bir.maxTaskWorkGroupSizeY_EXT,1);
+            EnsurePositiveLimit(bir.maxTaskWorkGroupSizeZ_EXT,1);
+            EnsurePositiveLimit(bir.maxMeshWorkGroupSizeX_EXT,32);
+            EnsurePositiveLimit(bir.maxMeshWorkGroupSizeY_EXT,1);
+            EnsurePositiveLimit(bir.maxMeshWorkGroupSizeZ_EXT,1);
+            EnsurePositiveLimit(bir.maxMeshOutputVerticesEXT,256);
+            EnsurePositiveLimit(bir.maxMeshOutputPrimitivesEXT,256);
+            EnsurePositiveLimit(bir.maxMeshViewCountEXT,1);
+
+            EnsurePositiveLimit(bir.maxTaskWorkGroupSizeX_NV,bir.maxTaskWorkGroupSizeX_EXT);
+            EnsurePositiveLimit(bir.maxTaskWorkGroupSizeY_NV,bir.maxTaskWorkGroupSizeY_EXT);
+            EnsurePositiveLimit(bir.maxTaskWorkGroupSizeZ_NV,bir.maxTaskWorkGroupSizeZ_EXT);
+            EnsurePositiveLimit(bir.maxMeshWorkGroupSizeX_NV,bir.maxMeshWorkGroupSizeX_EXT);
+            EnsurePositiveLimit(bir.maxMeshWorkGroupSizeY_NV,bir.maxMeshWorkGroupSizeY_EXT);
+            EnsurePositiveLimit(bir.maxMeshWorkGroupSizeZ_NV,bir.maxMeshWorkGroupSizeZ_EXT);
+            EnsurePositiveLimit(bir.maxMeshOutputVerticesNV,bir.maxMeshOutputVerticesEXT);
+            EnsurePositiveLimit(bir.maxMeshOutputPrimitivesNV,bir.maxMeshOutputPrimitivesEXT);
+            EnsurePositiveLimit(bir.maxMeshViewCountNV,bir.maxMeshViewCountEXT);
 
             gsi->SetLimit(&bir, sizeof(TBuiltInResourceCompat));
         }
