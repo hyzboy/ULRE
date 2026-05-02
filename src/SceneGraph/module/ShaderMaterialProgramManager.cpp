@@ -371,6 +371,41 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetFallbackMaterial()
     return fallback_material;
 }
 
+ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveCreateFailureWithFallback(ShaderMaterialProgram *created,
+                                                                                       const bool mesh_stage_requested,
+                                                                                       const uint32_t stage_bits,
+                                                                                       const int preset_id,
+                                                                                       const bool has_preset)
+{
+    if(created)
+        return created;
+
+    if(mesh_stage_requested)
+    {
+        if(has_preset)
+        {
+            std::fprintf(stderr,
+                "[ShaderMaterialProgramManager] ResolveOrCreateProgram(mesh strict) failed: preset=%d stage_bits=0x%08X, fallback material disabled for mesh path\n",
+                preset_id,
+                stage_bits);
+        }
+        else
+        {
+            std::fprintf(stderr,
+                "[ShaderMaterialProgramManager] ResolveOrCreateProgram(mesh strict) failed: stage_bits=0x%08X, fallback material disabled for mesh path\n",
+                stage_bits);
+        }
+
+        return nullptr;
+    }
+
+    ShaderMaterialProgram *fallback = GetFallbackMaterial();
+    if(fallback)
+        acquire_fallback_used.fetch_add(1);
+
+    return fallback;
+}
+
 bool ShaderMaterialProgramManager::ExecuteMaterialBuildPipeline(ShaderMaterialProgram *mtl,
                                                    const AnsiString &mtl_name,
                                                    const mtl::MaterialCreateInfo *mci,
@@ -643,26 +678,12 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 {
     acquire_material_requests.fetch_add(1);
 
-    ShaderMaterialProgram *mtl = CreateMaterial(mtl_id, cfg);
-
     const bool mesh_stage_requested = cfg && IsMeshStageRequested(cfg->shader_stage_flag_bit);
-
-    if(!mtl)
-    {
-        if(mesh_stage_requested)
-        {
-            std::fprintf(stderr,
-                "[ShaderMaterialProgramManager] ResolveOrCreateProgram(mesh strict) failed: preset=%d stage_bits=0x%08X, fallback material disabled for mesh path\n",
-                int(mtl_id),
-                cfg ? cfg->shader_stage_flag_bit : 0u);
-        }
-        else
-        {
-            mtl = GetFallbackMaterial();
-            if(mtl)
-                acquire_fallback_used.fetch_add(1);
-        }
-    }
+    ShaderMaterialProgram *mtl = ResolveCreateFailureWithFallback(CreateMaterial(mtl_id, cfg),
+                                                                   mesh_stage_requested,
+                                                                   cfg ? cfg->shader_stage_flag_bit : 0u,
+                                                                   int(mtl_id),
+                                                                   true);
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
@@ -674,26 +695,12 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 {
     acquire_material_requests.fetch_add(1);
 
-    ShaderMaterialProgram *mtl = CreateMaterial(mtl_id, cfg);
-
     const bool mesh_stage_requested = cfg && IsMeshStageRequested(cfg->shader_stage_flag_bit);
-
-    if(!mtl)
-    {
-        if(mesh_stage_requested)
-        {
-            std::fprintf(stderr,
-                "[ShaderMaterialProgramManager] ResolveOrCreateProgram(mesh strict) failed: preset=%d stage_bits=0x%08X, fallback material disabled for mesh path\n",
-                int(mtl_id),
-                cfg ? cfg->shader_stage_flag_bit : 0u);
-        }
-        else
-        {
-            mtl = GetFallbackMaterial();
-            if(mtl)
-                acquire_fallback_used.fetch_add(1);
-        }
-    }
+    ShaderMaterialProgram *mtl = ResolveCreateFailureWithFallback(CreateMaterial(mtl_id, cfg),
+                                                                   mesh_stage_requested,
+                                                                   cfg ? cfg->shader_stage_flag_bit : 0u,
+                                                                   int(mtl_id),
+                                                                   true);
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
@@ -705,25 +712,12 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 {
     acquire_material_requests.fetch_add(1);
 
-    ShaderMaterialProgram *mtl = CreateMaterial(key, cfg);
-
     const bool mesh_stage_requested = cfg && IsMeshStageRequested(cfg->shader_stage_flag_bit);
-
-    if(!mtl)
-    {
-        if(mesh_stage_requested)
-        {
-            std::fprintf(stderr,
-                "[ShaderMaterialProgramManager] ResolveOrCreateProgram(mesh strict) failed: stage_bits=0x%08X, fallback material disabled for mesh path\n",
-                cfg ? cfg->shader_stage_flag_bit : 0u);
-        }
-        else
-        {
-            mtl = GetFallbackMaterial();
-            if(mtl)
-                acquire_fallback_used.fetch_add(1);
-        }
-    }
+    ShaderMaterialProgram *mtl = ResolveCreateFailureWithFallback(CreateMaterial(key, cfg),
+                                                                   mesh_stage_requested,
+                                                                   cfg ? cfg->shader_stage_flag_bit : 0u,
+                                                                   0,
+                                                                   false);
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
@@ -735,25 +729,12 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 {
     acquire_material_requests.fetch_add(1);
 
-    ShaderMaterialProgram *mtl = CreateMaterial(key, cfg);
-
     const bool mesh_stage_requested = cfg && IsMeshStageRequested(cfg->shader_stage_flag_bit);
-
-    if(!mtl)
-    {
-        if(mesh_stage_requested)
-        {
-            std::fprintf(stderr,
-                "[ShaderMaterialProgramManager] ResolveOrCreateProgram(mesh strict) failed: stage_bits=0x%08X, fallback material disabled for mesh path\n",
-                cfg ? cfg->shader_stage_flag_bit : 0u);
-        }
-        else
-        {
-            mtl = GetFallbackMaterial();
-            if(mtl)
-                acquire_fallback_used.fetch_add(1);
-        }
-    }
+    ShaderMaterialProgram *mtl = ResolveCreateFailureWithFallback(CreateMaterial(key, cfg),
+                                                                   mesh_stage_requested,
+                                                                   cfg ? cfg->shader_stage_flag_bit : 0u,
+                                                                   0,
+                                                                   false);
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
