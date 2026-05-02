@@ -18,6 +18,14 @@
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
+#include <cstdio>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
 
 namespace hgl
 {
@@ -30,6 +38,150 @@ namespace hgl
     namespace
     {
         static int APP_FRAMEWORK_COUNT = 0;
+
+        constexpr const char *kStartupErrorTitle = "ULRE Startup Error";
+
+        void ShowStartupErrorDialog(const char *message)
+        {
+#ifdef _WIN32
+            MessageBoxA(nullptr,
+                        message ? message : "Unknown startup error.",
+                        kStartupErrorTitle,
+                        MB_OK | MB_ICONERROR | MB_TOPMOST);
+#else
+            (void)message;
+#endif
+        }
+
+        const graph::VulkanPhyDevice *SelectPreferredPhysicalDevice(graph::VulkanInstance *instance)
+        {
+            if (!instance)
+                return nullptr;
+
+            if (const auto *pd = instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU))
+                return pd;
+
+            if (const auto *pd = instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU))
+                return pd;
+
+            if (const auto *pd = instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU))
+                return pd;
+
+            return nullptr;
+        }
+
+        bool CheckMeshTaskStartupSupport(const graph::VulkanPhyDevice *pd, bool &ext, bool &mesh, bool &task)
+        {
+            ext = false;
+            mesh = false;
+            task = false;
+
+            if (!pd)
+                return false;
+
+            ext = pd->SupportMeshShaderExtension();
+            mesh = pd->SupportMeshShader();
+            task = pd->SupportTaskShader();
+
+#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT
+            // Re-probe mesh/task bits directly from Vulkan at startup to avoid
+            // false negatives from cached feature chains on some layer stacks.
+            if (ext)
+            {
+                mesh = false;
+                task = false;
+
+                auto merge_probe = [&](const VkPhysicalDeviceMeshShaderFeaturesEXT &probe)
+                {
+                    if (probe.meshShader == VK_TRUE)
+                        mesh = true;
+
+                    if (probe.taskShader == VK_TRUE)
+                        task = true;
+                };
+
+                const VkInstance instance = pd->GetVulkanInstance();
+                const VkPhysicalDevice vk_physical_device = pd->GetVulkanDevice();
+
+                bool queried = false;
+
+                if (instance)
+                {
+                    if (auto core_query = (PFN_vkGetPhysicalDeviceFeatures2)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFeatures2"))
+                    {
+                        VkPhysicalDeviceMeshShaderFeaturesEXT probe{};
+                        probe.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+
+                        VkPhysicalDeviceFeatures2 features2{};
+                        features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                        features2.pNext = &probe;
+
+                        core_query(vk_physical_device, &features2);
+                        merge_probe(probe);
+                        queried = true;
+                    }
+
+                    if (auto khr_query = (PFN_vkGetPhysicalDeviceFeatures2KHR)vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFeatures2KHR"))
+                    {
+                        VkPhysicalDeviceMeshShaderFeaturesEXT probe{};
+                        probe.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+
+                        VkPhysicalDeviceFeatures2 features2{};
+                        features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                        features2.pNext = &probe;
+
+                        khr_query(vk_physical_device, &features2);
+                        merge_probe(probe);
+                        queried = true;
+                    }
+                }
+
+                if (!queried)
+                {
+                    VkPhysicalDeviceMeshShaderFeaturesEXT probe{};
+                    probe.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+
+                    VkPhysicalDeviceFeatures2 features2{};
+                    features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                    features2.pNext = &probe;
+
+                    vkGetPhysicalDeviceFeatures2(vk_physical_device, &features2);
+                    merge_probe(probe);
+                }
+            }
+#endif
+
+            return ext && mesh && task;
+        }
+
+        void ShowMeshTaskUnsupportedDialog(const graph::VulkanPhyDevice *pd,
+                                           const bool ext,
+                                           const bool mesh,
+                                           const bool task)
+        {
+            const char *device_name = (pd && pd->GetDeviceName()) ? pd->GetDeviceName() : "<unknown>";
+
+            char message[1024]{};
+            std::snprintf(message,
+                          sizeof(message),
+                          "This build requires Mesh Shader + Task Shader at startup.\n\n"
+                          "Selected device: %s\n"
+                          "VK_EXT_mesh_shader extension: %s\n"
+                          "meshShader feature: %s\n"
+                          "taskShader feature: %s\n\n"
+                          "The application will now exit.",
+                          device_name,
+                          ext ? "yes" : "no",
+                          mesh ? "yes" : "no",
+                          task ? "yes" : "no");
+
+            ShowStartupErrorDialog(message);
+        }
+
+        void ShowMeshTaskInitializationFailedDialog()
+        {
+            ShowStartupErrorDialog("Vulkan Mesh/Task-only initialization failed.\nThe application will now exit.");
+        }
 
         graph::VulkanInstance *CreateVulkanInstance(const U8String &app_name)
         {
@@ -187,9 +339,50 @@ namespace hgl
         // Create Vulkan device
         graph::VulkanHardwareRequirement vh_req;
 
+        // Project policy: startup must be Mesh/Task-only. Unsupported runtime exits immediately.
+        vh_req.meshShaderOnlyMode = true;
+        vh_req.meshShader = graph::VulkanHardwareRequirement::SupportLevel::Must;
+        vh_req.taskShader = graph::VulkanHardwareRequirement::SupportLevel::Must;
+
+        const graph::VulkanPhyDevice *startup_pd = SelectPreferredPhysicalDevice(inst);
+        bool mesh_ext = false;
+        bool mesh_supported = false;
+        bool task_supported = false;
+        const bool startup_mesh_task_ready = CheckMeshTaskStartupSupport(startup_pd, mesh_ext, mesh_supported, task_supported);
+
+        if (!startup_mesh_task_ready)
+        {
+            if (!mesh_ext)
+            {
+                GLogError("[AppFramework] Startup abort: Mesh/Task shader is required (device='%s', extension=%s mesh=%s task=%s).",
+                          startup_pd ? startup_pd->GetDeviceName() : "<none>",
+                          mesh_ext ? "yes" : "no",
+                          mesh_supported ? "yes" : "no",
+                          task_supported ? "yes" : "no");
+
+                ShowMeshTaskUnsupportedDialog(startup_pd, mesh_ext, mesh_supported, task_supported);
+                return false;
+            }
+
+            GLogInfo("[AppFramework] Startup mesh/task feature probe reports extension=%s mesh=%s task=%s on '%s'; proceeding to CreateRenderDevice for definitive startup validation.",
+                     mesh_ext ? "yes" : "no",
+                     mesh_supported ? "yes" : "no",
+                     task_supported ? "yes" : "no",
+                     startup_pd ? startup_pd->GetDeviceName() : "<none>");
+        }
+
         device = CreateRenderDevice(inst, win, &vh_req);
         if (!device)
+        {
+            GLogError("[AppFramework] Startup abort: CreateRenderDevice failed in Mesh/Task-only mode.");
+
+            if (!startup_mesh_task_ready)
+                ShowMeshTaskUnsupportedDialog(startup_pd, mesh_ext, mesh_supported, task_supported);
+            else
+                ShowMeshTaskInitializationFailedDialog();
+
             return false;
+        }
 
         win->AddChildDispatcher(this);
 

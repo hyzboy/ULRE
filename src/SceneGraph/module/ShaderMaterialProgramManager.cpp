@@ -538,7 +538,9 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
         if (rec.use_mesh_shader)
         {
             VulkanDevice *device = mm->GetDevice();
+            const bool mesh_ext_enabled = device && device->IsMeshShaderExtensionEnabled();
             const bool mesh_runtime_enabled = device && device->IsMeshShaderEnabled();
+            const bool task_runtime_enabled = device && device->IsTaskShaderEnabled();
 
             if (mesh_runtime_enabled)
             {
@@ -547,8 +549,13 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             else
             {
                 std::fprintf(stderr,
-                    "[CreateMaterialFromRecord] Mesh shader requested but runtime mesh feature is unavailable; falling back to Vertex+Fragment. preset=%d\n",
+                    "[CreateMaterialFromRecord] Mesh shader requested but runtime mesh feature is unavailable (ext=%d mesh=%d task=%d). Material creation aborted. preset=%d\n",
+                    mesh_ext_enabled ? 1 : 0,
+                    mesh_runtime_enabled ? 1 : 0,
+                    task_runtime_enabled ? 1 : 0,
                     int(rec.preset));
+
+                return nullptr;
             }
         }
 
@@ -628,11 +635,24 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 
     ShaderMaterialProgram *mtl = CreateMaterial(mtl_id, cfg);
 
+    const bool mesh_stage_requested =
+        cfg && (cfg->shader_stage_flag_bit & (uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Task)));
+
     if(!mtl)
     {
-        mtl = GetFallbackMaterial();
-        if(mtl)
-            acquire_fallback_used.fetch_add(1);
+        if(mesh_stage_requested)
+        {
+            std::fprintf(stderr,
+                "[ShaderMaterialProgramManager] ResolveOrCreateProgram(mesh strict) failed: preset=%d stage_bits=0x%08X, fallback material disabled for mesh path\n",
+                int(mtl_id),
+                cfg ? cfg->shader_stage_flag_bit : 0u);
+        }
+        else
+        {
+            mtl = GetFallbackMaterial();
+            if(mtl)
+                acquire_fallback_used.fetch_add(1);
+        }
     }
 
     if(out_key)
@@ -666,11 +686,23 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 
     ShaderMaterialProgram *mtl = CreateMaterial(key, cfg);
 
+    const bool mesh_stage_requested =
+        cfg && (cfg->shader_stage_flag_bit & (uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Task)));
+
     if(!mtl)
     {
-        mtl = GetFallbackMaterial();
-        if(mtl)
-            acquire_fallback_used.fetch_add(1);
+        if(mesh_stage_requested)
+        {
+            std::fprintf(stderr,
+                "[ShaderMaterialProgramManager] ResolveOrCreateProgram(mesh strict) failed: stage_bits=0x%08X, fallback material disabled for mesh path\n",
+                cfg ? cfg->shader_stage_flag_bit : 0u);
+        }
+        else
+        {
+            mtl = GetFallbackMaterial();
+            if(mtl)
+                acquire_fallback_used.fetch_add(1);
+        }
     }
 
     if(out_key)
