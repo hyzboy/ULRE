@@ -8,6 +8,17 @@ namespace hgl::graph
     class VulkanDevice;
     class StagedBuffer;
 
+    struct MeshIndexStreamUploadInfo
+    {
+        const void *source_data = nullptr;     ///< Source index stream base pointer
+        VkDeviceSize source_size = 0;          ///< Total source byte size available
+        VkDeviceSize source_offset = 0;        ///< Byte offset from source_data to stream start
+        uint32_t source_stride = 0;            ///< Byte stride between indices (0 = tightly packed)
+        IndexType source_index_type = IndexType::U32;
+        uint32_t first_index = 0;              ///< First index element within the source stream
+        uint32_t index_count = 0;              ///< Number of indices to upload
+    };
+
     /**
      * GPU VertexData 结构匹配 GLSL std430 layout:
      *   struct VertexData { vec3 position; vec3 normal; vec2 uv0; };
@@ -60,6 +71,12 @@ namespace hgl::graph
 
         BlockAllocator::UserNode *AllocateIndexBlock(uint32_t index_count);
         bool UploadIndices(const BlockAllocator::UserNode *node,const uint32_t *data,uint32_t count);
+        bool UploadIndices(const BlockAllocator::UserNode *node,
+                           const void *data,
+                           uint32_t count,
+                           IndexType source_index_type,
+                           uint32_t source_stride=0);
+        bool UploadIndexStream(const BlockAllocator::UserNode *node,const MeshIndexStreamUploadInfo &info);
         bool FreeIndexBlock(BlockAllocator::UserNode *node);
 
     public: // Buffer access for descriptor binding
@@ -86,4 +103,12 @@ namespace hgl::graph
                               VertexDataBufferManager *vdbm,
                               const SSBOVertexData *vertices,uint32_t vertex_count,
                               const uint32_t *indices=nullptr,uint32_t index_count=0);
+
+    /**
+     * Upload mesh index stream into the global SSBO index buffer with
+     * stride/offset/range validation and set Geometry SSBO index node.
+     */
+    bool UploadGeometryIndexStreamToSSBO(Geometry *geo,
+                                         VertexDataBufferManager *vdbm,
+                                         const MeshIndexStreamUploadInfo &info);
 }//namespace hgl::graph

@@ -2,9 +2,54 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKStagedBuffer.h>
+#include<cstring>
+#include<vector>
 
 namespace hgl::graph
 {
+    namespace
+    {
+        static uint32_t GetIndexTypeByteStride(const IndexType index_type)
+        {
+            if(index_type==IndexType::U8) return 1;
+            if(index_type==IndexType::U16) return 2;
+            if(index_type==IndexType::U32) return 4;
+            return 0;
+        }
+
+        static bool ValidateMeshIndexUploadInfo(const MeshIndexStreamUploadInfo &info,
+                                                uint32_t &type_stride,
+                                                uint32_t &source_stride,
+                                                VkDeviceSize &stream_begin)
+        {
+            if(!info.source_data || info.source_size==0 || info.index_count==0)
+                return false;
+
+            type_stride=GetIndexTypeByteStride(info.source_index_type);
+            if(type_stride==0)
+                return false;
+
+            source_stride=(info.source_stride==0)?type_stride:info.source_stride;
+            if(source_stride<type_stride)
+                return false;
+
+            if((info.source_offset%type_stride)!=0 || (source_stride%type_stride)!=0)
+                return false;
+
+            if(info.source_offset>=info.source_size)
+                return false;
+
+            stream_begin=info.source_offset+VkDeviceSize(info.first_index)*source_stride;
+            if(stream_begin>=info.source_size)
+                return false;
+
+            const VkDeviceSize last_entry=stream_begin+VkDeviceSize(info.index_count-1)*source_stride;
+            const VkDeviceSize required_end=last_entry+type_stride;
+
+            return required_end<=info.source_size;
+        }
+    }
+
     VertexDataBufferManager::VertexDataBufferManager(VulkanDevice *dev)
         :device(dev),
          vertex_buffer(nullptr),
@@ -115,16 +160,85 @@ namespace hgl::graph
 
     bool VertexDataBufferManager::UploadIndices(const BlockAllocator::UserNode *node,const uint32_t *data,uint32_t count)
     {
-        if(!node||!data||!index_buffer||count==0)
+        return UploadIndices(node,
+                             static_cast<const void *>(data),
+                             count,
+                             IndexType::U32,
+                             uint32_t(sizeof(uint32_t)));
+    }
+
+    bool VertexDataBufferManager::UploadIndices(const BlockAllocator::UserNode *node,
+                                                const void *data,
+                                                uint32_t count,
+                                                IndexType source_index_type,
+                                                uint32_t source_stride)
+    {
+        const uint32_t type_stride=GetIndexTypeByteStride(source_index_type);
+        if(type_stride==0)
             return false;
 
-        if((uint32_t)node->GetCount()<count)
+        MeshIndexStreamUploadInfo info;
+        info.source_data=data;
+        info.source_stride=source_stride;
+        info.source_index_type=source_index_type;
+        info.first_index=0;
+        info.index_count=count;
+        info.source_size=VkDeviceSize(count)*(source_stride==0?type_stride:source_stride);
+
+        return UploadIndexStream(node,info);
+    }
+
+    bool VertexDataBufferManager::UploadIndexStream(const BlockAllocator::UserNode *node,const MeshIndexStreamUploadInfo &info)
+    {
+        if(!node||!index_buffer)
             return false;
 
-        const VkDeviceSize offset=(VkDeviceSize)node->GetStart()*sizeof(uint32_t);
-        const VkDeviceSize size  =(VkDeviceSize)count*sizeof(uint32_t);
+        if((uint32_t)node->GetCount()<info.index_count)
+            return false;
 
-        return index_buffer->Write(data,offset,size);
+        uint32_t type_stride=0;
+        uint32_t source_stride=0;
+        VkDeviceSize stream_begin=0;
+        if(!ValidateMeshIndexUploadInfo(info,type_stride,source_stride,stream_begin))
+            return false;
+
+        std::vector<uint32_t> converted_indices;
+        converted_indices.resize(info.index_count);
+
+        const uint8_t *stream_bytes=static_cast<const uint8_t *>(info.source_data);
+
+        for(uint32_t i=0;i<info.index_count;i++)
+        {
+            const VkDeviceSize entry_offset=stream_begin+VkDeviceSize(i)*source_stride;
+            const uint8_t *entry_ptr=stream_bytes+entry_offset;
+
+            uint32_t value=0;
+            if(type_stride==1)
+            {
+                value=*entry_ptr;
+            }
+            else if(type_stride==2)
+            {
+                uint16_t u16=0;
+                std::memcpy(&u16,entry_ptr,sizeof(uint16_t));
+                value=u16;
+            }
+            else if(type_stride==4)
+            {
+                std::memcpy(&value,entry_ptr,sizeof(uint32_t));
+            }
+            else
+            {
+                return false;
+            }
+
+            converted_indices[i]=value;
+        }
+
+        const VkDeviceSize offset=VkDeviceSize(node->GetStart())*sizeof(uint32_t);
+        const VkDeviceSize size=VkDeviceSize(info.index_count)*sizeof(uint32_t);
+
+        return index_buffer->Write(converted_indices.data(),offset,size);
     }
 
     bool VertexDataBufferManager::FreeIndexBlock(BlockAllocator::UserNode *node)
@@ -194,19 +308,40 @@ namespace hgl::graph
 
         if(indices&&index_count>0)
         {
-            auto *idx_node=vdbm->AllocateIndexBlock(index_count);
-            if(!idx_node)
-                return false;
+            MeshIndexStreamUploadInfo info;
+            info.source_data=indices;
+            info.source_size=VkDeviceSize(index_count)*sizeof(uint32_t);
+            info.source_offset=0;
+            info.source_stride=sizeof(uint32_t);
+            info.source_index_type=IndexType::U32;
+            info.first_index=0;
+            info.index_count=index_count;
 
-            if(!vdbm->UploadIndices(idx_node,indices,index_count))
-            {
-                vdbm->FreeIndexBlock(idx_node);
+            if(!UploadGeometryIndexStreamToSSBO(geo,vdbm,info))
                 return false;
-            }
-
-            geo->SetSSBOIndexNode(idx_node);
         }
 
+        return true;
+    }
+
+    bool UploadGeometryIndexStreamToSSBO(Geometry *geo,
+                                         VertexDataBufferManager *vdbm,
+                                         const MeshIndexStreamUploadInfo &info)
+    {
+        if(!geo||!vdbm||info.index_count==0)
+            return false;
+
+        auto *idx_node=vdbm->AllocateIndexBlock(info.index_count);
+        if(!idx_node)
+            return false;
+
+        if(!vdbm->UploadIndexStream(idx_node,info))
+        {
+            vdbm->FreeIndexBlock(idx_node);
+            return false;
+        }
+
+        geo->SetSSBOIndexNode(idx_node);
         return true;
     }
 }//namespace hgl::graph
