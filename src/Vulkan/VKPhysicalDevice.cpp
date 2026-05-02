@@ -486,11 +486,9 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
     const char *mesh_ext_support = "no-sdk";
 #endif
 
-    GLogInfo("%s mesh shader support: extension=%s feature.mesh=%s feature.task=%s",
+    GLogInfo("%s mesh shader support: extension=%s (runtime mesh/task enablement is validated during device creation)",
              debug_front.c_str(),
-             mesh_ext_support,
-             SupportMeshShader()?"yes":"no",
-             SupportTaskShader()?"yes":"no");
+             mesh_ext_support);
 
     physical_device_profile = mtl::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*this);
 
