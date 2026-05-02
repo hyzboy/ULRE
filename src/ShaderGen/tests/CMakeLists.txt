@@ -127,3 +127,24 @@ endif()
 add_test(NAME MeshShaderToolchainTest COMMAND MeshShaderToolchainTest)
 set_tests_properties(MeshShaderToolchainTest PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+# MeshPipelineCreateOnlyTest is the minimal Phase 3 gate:
+#   - compile task/mesh/fragment shaders
+#   - create Vulkan graphics pipeline once
+#   - no draw-path switch and no draw submission
+add_executable(MeshPipelineCreateOnlyTest
+    MeshPipelineCreateOnlyTest.cpp
+)
+
+target_link_libraries(MeshPipelineCreateOnlyTest PRIVATE ${ULRE})
+
+set_property(TARGET MeshPipelineCreateOnlyTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+if(MSVC)
+    set_target_properties(MeshPipelineCreateOnlyTest PROPERTIES
+        VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
+add_test(NAME MeshPipelineCreateOnlyTest COMMAND MeshPipelineCreateOnlyTest)
+set_tests_properties(MeshPipelineCreateOnlyTest PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
