@@ -12,7 +12,6 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
-#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -252,32 +251,19 @@ private:
 
         smp->SetPullingEnabled(true);
 
-        auto *mp = smp->GetMP(SET_TYPE_VERTEX_STREAMS);
-        if (!mp)
-            return false;
-
-        if (!mp->BindAttribSSBO(AttributeSemantic::BuiltinCount, pos_vab_->GetGPUBuffer()))
-            return false;
-
-        if (!smp->BindAttribStream(AttributeSemantic::Normal, norm_vab_->GetGPUBuffer(), 0, 12))
-            return false;
-
-        if (!smp->BindAttribStream(AttributeSemantic::TexCoord0, uv_vab_->GetGPUBuffer(), 0, 8))
-            return false;
-
-        if (material_uses_mesh_stage)
-        {
-            auto *ibo = geometry_ ? geometry_->GetIBO() : nullptr;
-            if (!ibo || !smp->BindMeshIndexStream(ibo->GetGPUBuffer()))
-                return false;
-        }
-
         auto *pm = GetPrimitiveManager();
         if (!pm)
             return false;
 
         auto *prim = pm->CreatePrimitive(geometry_, mi);
         if (!prim)
+            return false;
+
+        if (!prim->SetVertexStreamSource(AttributeSemantic::BuiltinCount, pos_vab_->GetGPUBuffer(), 0, 12))
+            return false;
+        if (!prim->SetVertexStreamSource(AttributeSemantic::Normal, norm_vab_->GetGPUBuffer(), 0, 12))
+            return false;
+        if (!prim->SetVertexStreamSource(AttributeSemantic::TexCoord0, uv_vab_->GetGPUBuffer(), 0, 8))
             return false;
 
         if (material_uses_mesh_stage)

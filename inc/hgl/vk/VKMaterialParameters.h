@@ -60,6 +60,7 @@ public:
     bool BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindAttribSSBO(const AttributeSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindVertexStreamSSBO(const uint32_t binding,const IGPUBuffer *gpu,bool dynamic=false);
+    bool HasBinding(const uint32_t binding)const;
     bool BindTexture(const mtl::SamplerSlot slot,Texture *tex);
     bool BindResourceSampler(const mtl::SamplerSlot slot,Texture *tex,Sampler *sampler);
 

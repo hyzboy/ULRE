@@ -7,6 +7,23 @@
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph{
+namespace
+{
+    bool TryMapStreamSemanticToVertexAttrib(const AttributeSemantic semantic,VertexAttrib &attrib)
+    {
+        switch(semantic)
+        {
+        case AttributeSemantic::Normal:            attrib=VertexAttrib::Normal;      return true;
+        case AttributeSemantic::Tangent:           attrib=VertexAttrib::Tangent;     return true;
+        case AttributeSemantic::Color:             attrib=VertexAttrib::Color;       return true;
+        case AttributeSemantic::TexCoord0:         attrib=VertexAttrib::TexCoord;    return true;
+        case AttributeSemantic::Joints:            attrib=VertexAttrib::JointID;     return true;
+        case AttributeSemantic::Weights:           attrib=VertexAttrib::JointWeight; return true;
+        case AttributeSemantic::BuiltinCount:      attrib=VertexAttrib::Position;    return true;
+        default: return false;
+        }
+    }
+}
 
 GeometryDataBuffer::GeometryDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManager *_vdm)
 {
@@ -105,6 +122,102 @@ bool Primitive::UpdateGeometry()
     }
 
     return data_buffer->Update(geometry,vil);
+}
+bool Primitive::SetVertexStreamSource(AttributeSemantic semantic, const IGPUBuffer *gpu, VkDeviceSize offset, VkDeviceSize stride)
+{
+    if (!gpu)
+        return false;
+
+    const uint32_t binding = uint32_t(semantic);
+    if (binding > kVertexStreamPositionBinding)
+        return false;
+
+    auto &slot = vertex_stream_sources[binding];
+    slot.buffer = gpu;
+    slot.offset = offset;
+    slot.stride = stride;
+    slot.has_override = true;
+    return true;
+}
+
+bool Primitive::ClearVertexStreamSource(AttributeSemantic semantic)
+{
+    const uint32_t binding = uint32_t(semantic);
+    if (binding > kVertexStreamPositionBinding)
+        return false;
+
+    vertex_stream_sources[binding] = VertexStreamSource{};
+    return true;
+}
+
+bool Primitive::ResolveVertexStreamSource(AttributeSemantic semantic, const IGPUBuffer *&gpu, VkDeviceSize &offset, VkDeviceSize &stride) const
+{
+    gpu = nullptr;
+    offset = 0;
+    stride = 0;
+
+    const uint32_t binding = uint32_t(semantic);
+    if (binding > kVertexStreamPositionBinding)
+        return false;
+
+    const auto &slot = vertex_stream_sources[binding];
+    if (slot.has_override)
+    {
+        if (!slot.buffer)
+            return false;
+
+        gpu = slot.buffer;
+        offset = slot.offset;
+        stride = slot.stride;
+        return true;
+    }
+
+    if (!geometry)
+        return false;
+
+    VertexAttrib attrib = VertexAttrib::RANGE_SIZE;
+    if (!TryMapStreamSemanticToVertexAttrib(semantic, attrib))
+        return false;
+
+    VAB *vab = geometry->GetVAB(attrib);
+    if (!vab)
+        return false;
+
+    gpu = vab->GetGPUBuffer();
+    if (!gpu)
+        return false;
+
+    offset = 0;
+    stride = vab->GetStride();
+    return true;
+}
+
+bool Primitive::SetMeshIndexStreamSource(const IGPUBuffer *gpu)
+{
+    if (!gpu)
+        return false;
+
+    mesh_index_stream_source = gpu;
+    has_mesh_index_stream_source = true;
+    return true;
+}
+
+void Primitive::ClearMeshIndexStreamSource()
+{
+    mesh_index_stream_source = nullptr;
+    has_mesh_index_stream_source = false;
+}
+
+const IGPUBuffer *Primitive::ResolveMeshIndexStreamSource() const
+{
+    if (has_mesh_index_stream_source)
+        return mesh_index_stream_source;
+
+    if (!geometry)
+        return nullptr;
+
+    auto *ibo = geometry->GetIBO();
+    return ibo ? ibo->GetGPUBuffer() : nullptr;
 }
 
 Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,GraphicsPipelinePreRaster *p,const VIL *explicit_vil)

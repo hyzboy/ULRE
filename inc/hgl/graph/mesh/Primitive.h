@@ -11,6 +11,7 @@
 #include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
+#include<array>
 
 namespace hgl::graph{
 /**
@@ -25,6 +26,18 @@ class Primitive
     GeometryDrawRange   draw_range;
 
     const VIL *         vil         = nullptr;    ///< VIL captured at construction; geometry sharing key
+
+    struct VertexStreamSource
+    {
+        const IGPUBuffer *buffer = nullptr;
+        VkDeviceSize offset = 0;
+        VkDeviceSize stride = 0;
+        bool has_override = false;
+    };
+
+    std::array<VertexStreamSource, kVertexStreamPositionBinding + 1u> vertex_stream_sources{};
+    const IGPUBuffer *mesh_index_stream_source = nullptr;
+    bool has_mesh_index_stream_source = false;
 
 private:
 
@@ -50,6 +63,15 @@ public:
             IndexBuffer *       GetIBO              (){return geometry->GetIBO();}
 
     virtual bool                UpdateGeometry      ();     ///<更新Geometry,一般用于Geometry改变数据后需要通知Mesh的情况
+
+            // Stream source override path for VertexStreams auto-binding in ECS sync phase.
+            bool SetVertexStreamSource(AttributeSemantic semantic,const IGPUBuffer *gpu,VkDeviceSize offset=0,VkDeviceSize stride=0);
+            bool ClearVertexStreamSource(AttributeSemantic semantic);
+            bool ResolveVertexStreamSource(AttributeSemantic semantic,const IGPUBuffer *&gpu,VkDeviceSize &offset,VkDeviceSize &stride)const;
+
+            bool SetMeshIndexStreamSource(const IGPUBuffer *gpu);
+            void ClearMeshIndexStreamSource();
+            const IGPUBuffer *ResolveMeshIndexStreamSource()const;
 
 public:
 

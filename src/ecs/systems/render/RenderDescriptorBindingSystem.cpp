@@ -16,7 +16,9 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderMaterialProgramManager.h>
+#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/render/RenderContext.h>
+#include<hgl/common/MeshShaderStreamContract.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/vk/VKDomainResourceBinding.h>
 #include<unordered_set>
@@ -110,6 +112,152 @@ namespace hgl::ecs
                     }
                 }
                 environment_system = es ? es.get() : nullptr;
+            }
+        }
+
+        bool MaterialHasMeshOrTaskStages(graph::ShaderMaterialProgram *material)
+        {
+            if (!material)
+                return false;
+
+            for (const auto &stage_ci : material->GetStageList())
+            {
+                if (stage_ci.stage == VK_SHADER_STAGE_TASK_BIT_EXT
+                 || stage_ci.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
+                    return true;
+            }
+
+            return false;
+        }
+
+        bool ResolveUniformVertexStreamFromBatch(const MaterialBatch *batch,
+                                                 graph::AttributeSemantic semantic,
+                                                 const graph::IGPUBuffer *&out_gpu,
+                                                 VkDeviceSize &out_offset,
+                                                 VkDeviceSize &out_stride)
+        {
+            out_gpu = nullptr;
+            out_offset = 0;
+            out_stride = 0;
+
+            if (!batch)
+                return false;
+
+            bool has_value = false;
+
+            for (auto *item : batch->items)
+            {
+                if (!item)
+                    continue;
+
+                auto *primitive = item->GetPrimitive();
+                if (!primitive)
+                    continue;
+
+                const graph::IGPUBuffer *gpu = nullptr;
+                VkDeviceSize offset = 0;
+                VkDeviceSize stride = 0;
+
+                if (!primitive->ResolveVertexStreamSource(semantic, gpu, offset, stride) || !gpu)
+                    return false;
+
+                if (!has_value)
+                {
+                    out_gpu = gpu;
+                    out_offset = offset;
+                    out_stride = stride;
+                    has_value = true;
+                    continue;
+                }
+
+                if (out_gpu != gpu || out_offset != offset || out_stride != stride)
+                    return false;
+            }
+
+            return has_value;
+        }
+
+        bool ResolveUniformMeshIndexStreamFromBatch(const MaterialBatch *batch,
+                                                    const graph::IGPUBuffer *&out_gpu)
+        {
+            out_gpu = nullptr;
+
+            if (!batch)
+                return false;
+
+            bool has_value = false;
+
+            for (auto *item : batch->items)
+            {
+                if (!item)
+                    continue;
+
+                auto *primitive = item->GetPrimitive();
+                if (!primitive)
+                    continue;
+
+                const graph::IGPUBuffer *gpu = primitive->ResolveMeshIndexStreamSource();
+                if (!gpu)
+                    return false;
+
+                if (!has_value)
+                {
+                    out_gpu = gpu;
+                    has_value = true;
+                    continue;
+                }
+
+                if (out_gpu != gpu)
+                    return false;
+            }
+
+            return has_value;
+        }
+
+        void ApplyAutoVertexStreamsBinding(graph::ShaderMaterialProgram *material,
+                                           const MaterialBatch *batch)
+        {
+            if (!material || !batch)
+                return;
+
+            auto *mp = material->GetMP(graph::DescriptorSetType::VertexStreams);
+            if (!mp)
+                return;
+
+              for (uint32_t binding = graph::kVertexStreamAttributeBindingBegin;
+                  binding < graph::kVertexStreamAttributeBindingCount;
+                 ++binding)
+            {
+                if (!mp->HasBinding(binding))
+                    continue;
+
+                const auto semantic = graph::AttributeSemantic(binding);
+
+                const graph::IGPUBuffer *gpu = nullptr;
+                VkDeviceSize offset = 0;
+                VkDeviceSize stride = 0;
+
+                if (!ResolveUniformVertexStreamFromBatch(batch, semantic, gpu, offset, stride) || !gpu)
+                    continue;
+
+                material->BindAttribStream(semantic, gpu, uint32_t(offset), uint32_t(stride));
+            }
+
+            if (mp->HasBinding(graph::kVertexStreamPositionBinding))
+            {
+                const graph::IGPUBuffer *gpu = nullptr;
+                VkDeviceSize offset = 0;
+                VkDeviceSize stride = 0;
+
+                if (ResolveUniformVertexStreamFromBatch(batch, graph::AttributeSemantic::BuiltinCount, gpu, offset, stride) && gpu)
+                    mp->BindVertexStreamSSBO(graph::kVertexStreamPositionBinding, gpu);
+            }
+
+            if (MaterialHasMeshOrTaskStages(material) && mp->HasBinding(graph::kMeshShaderIndexStreamBinding))
+            {
+                const graph::IGPUBuffer *mesh_index_gpu = nullptr;
+                if (ResolveUniformMeshIndexStreamFromBatch(batch, mesh_index_gpu) && mesh_index_gpu)
+                    material->BindMeshIndexStream(mesh_index_gpu);
             }
         }
 
@@ -433,6 +581,7 @@ namespace hgl::ecs
 
             const auto &contract = material->GetBindingContract();
             ApplySceneUBOBindings(material, contract, scene_ubo_resolvers);
+            ApplyAutoVertexStreamsBinding(material, batch);
 
             for (size_t i = 1; i < graph::mtl::SSBODescriptorSemanticCount; ++i)
             {

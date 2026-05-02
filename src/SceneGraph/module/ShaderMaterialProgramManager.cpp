@@ -117,6 +117,35 @@ namespace
         return (stage_bits & (uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Task))) != 0;
     }
 
+    static bool IsMeshOrTaskStageMaterial(const ShaderMaterialProgram *material)
+    {
+        if (!material)
+            return false;
+
+        for (const auto &stage_ci : material->GetStageList())
+        {
+            if (stage_ci.stage == VK_SHADER_STAGE_TASK_BIT_EXT ||
+                stage_ci.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
+                return true;
+        }
+
+        return false;
+    }
+
+    static bool ShouldFallbackToDefaultVIL(const ShaderMaterialProgram *material)
+    {
+        if (!material)
+            return false;
+
+        if (IsMeshOrTaskStageMaterial(material))
+            return false;
+
+        if (material->IsPullingEnabled() || material->hasSet(DescriptorSetType::VertexStreams))
+            return false;
+
+        return true;
+    }
+
     static constexpr uint32_t kMeshFragmentStageBits = uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
 
     template<typename CreateConfigT>
@@ -952,8 +981,15 @@ MaterialBindingInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(c
     if(!mtl)
         return nullptr;
 
-    const VIL *resolved_vil = spec.vil_cfg ? mtl->CreateVIL(spec.vil_cfg)
-                                           : (spec.vil ? spec.vil : mtl->GetDefaultVIL());
+    const bool allow_default_vil_fallback = ShouldFallbackToDefaultVIL(mtl);
+
+    const VIL *resolved_vil = nullptr;
+    if (spec.vil_cfg)
+        resolved_vil = mtl->CreateVIL(spec.vil_cfg);
+    else if (spec.vil)
+        resolved_vil = spec.vil;
+    else if (allow_default_vil_fallback)
+        resolved_vil = mtl->GetDefaultVIL();
 
     MaterialBindingInstance *mi = CreateMaterialInstance(mtl,
                                                          spec.domain,
@@ -1076,8 +1112,7 @@ MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(Sh
     if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
         return nullptr;
 
-    const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
-    (void)use_vil;   // VIL no longer stored in MI; kept for potential local validation
+    (void)vil;   // VIL no longer stored in MI; kept for API compatibility.
     int mi_id = domain->AllocMISlot();
     MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, mi_id);
     mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
@@ -1107,8 +1142,7 @@ MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(Sh
     if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
         return nullptr;
 
-    const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
-    (void)use_vil;
+    (void)vil;
     int mi_id = domain->AllocMISlot();
     MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, mi_id);
     mi->InitMITLayout(mtl->GetTextureArraySlotFlags());

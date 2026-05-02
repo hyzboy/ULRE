@@ -6,8 +6,8 @@
 //  1. Position / Normal / TexCoord0 三个顶点属性全部通过 Storage Buffer 拉取，
 //     不绑定任何顶点缓冲区（vkCmdBindVertexBuffers count = 0）。
 //  2. 使用 VF_V3F / VF_V2F 格式创建 VAB（prefer_storage_usage = true）。
-//  3. 通过 ResolveOrCreateBindingInstance 直接创建 MaterialBindingInstance，
-//     绕过 ECS 延迟路径，从而能在 Init() 阶段立即完成 SSBO 绑定。
+//  3. 通过 Primitive::SetVertexStreamSource 声明流来源，
+//     由 RenderDescriptorBindingSystem 在 sync 阶段统一完成 VertexStreams 绑定。
 //  4. smp->SetPullingEnabled(true) 使管线 VIL 为空，
 //     shader 侧 GEOMETRY_FETCH_SSBO=1 触发 SSBO fetch 路径。
 //
@@ -24,7 +24,6 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
-#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -242,35 +241,19 @@ private:
         // Pipeline side: VIL returns nullptr → vkCmdBindVertexBuffers count = 0.
         smp->SetPullingEnabled(true);
 
-        // Shader side: SSBO bindings for the VERTEX_STREAMS descriptor set.
-        // Position uses sentinel binding = BuiltinCount (= 8).
-        auto *mp = smp->GetMP(SET_TYPE_VERTEX_STREAMS);
-        if (!mp)
-            return false;
-
-        if (!mp->BindAttribSSBO(AttributeSemantic::BuiltinCount, pos_vab_->GetGPUBuffer()))
-            return false;
-
-        // Normal (binding = 0) and TexCoord0 (binding = 3) via BindAttribStream
-        // which internally calls BindAttribSSBO + vertex_input->SetAttribStream.
-        if (!smp->BindAttribStream(AttributeSemantic::Normal,    norm_vab_->GetGPUBuffer(), 0, 12))
-            return false;
-        if (!smp->BindAttribStream(AttributeSemantic::TexCoord0, uv_vab_->GetGPUBuffer(),   0, 8))
-            return false;
-
-        if (material_uses_mesh_stage)
-        {
-            auto *ibo = geometry_ ? geometry_->GetIBO() : nullptr;
-            if (!ibo || !smp->BindMeshIndexStream(ibo->GetGPUBuffer()))
-                return false;
-        }
-
         auto *pm = GetPrimitiveManager();
         if (!pm)
             return false;
 
         auto *prim = pm->CreatePrimitive(geometry_, mi);
         if (!prim)
+            return false;
+
+        if (!prim->SetVertexStreamSource(AttributeSemantic::BuiltinCount, pos_vab_->GetGPUBuffer(), 0, 12))
+            return false;
+        if (!prim->SetVertexStreamSource(AttributeSemantic::Normal, norm_vab_->GetGPUBuffer(), 0, 12))
+            return false;
+        if (!prim->SetVertexStreamSource(AttributeSemantic::TexCoord0, uv_vab_->GetGPUBuffer(), 0, 8))
             return false;
 
         if (material_uses_mesh_stage)

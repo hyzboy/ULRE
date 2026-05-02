@@ -97,6 +97,11 @@ bool MaterialParameters::BindVertexStreamSSBO(const uint32_t binding,const IGPUB
     return BindSSBO(int(binding),gpu,dynamic);
 }
 
+bool MaterialParameters::HasBinding(const uint32_t binding)const
+{
+    return desc_manager&&desc_manager->HasBinding(set_type,binding);
+}
+
 bool MaterialParameters::BindTexture(const int &index,Texture *tex)
 {
     if(index < 0 || !tex)
