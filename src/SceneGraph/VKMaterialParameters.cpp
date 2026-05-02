@@ -78,6 +78,17 @@ bool MaterialParameters::BindAttribSSBO(const AttributeSemantic semantic,const I
     return BindSSBO(int(semantic),gpu,dynamic);
 }
 
+bool MaterialParameters::BindVertexStreamSSBO(const uint32_t binding,const IGPUBuffer *gpu,bool dynamic)
+{
+    if(set_type != DescriptorSetType::VertexStreams)
+        return false;
+
+    if(binding >= kVertexStreamBindingCountWithMesh)
+        return false;
+
+    return BindSSBO(int(binding),gpu,dynamic);
+}
+
 bool MaterialParameters::BindTexture(const int &index,Texture *tex)
 {
     if(index < 0 || !tex)

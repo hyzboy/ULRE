@@ -294,6 +294,9 @@ namespace
         if (def.vertex_stream_key)
             mci->AddVertexStreamSSBOs(*def.vertex_stream_key);
 
+        if (def.mesh_stream_contract)
+            mci->AddMeshShaderStreamSSBOs(*def.mesh_stream_contract);
+
         if (!InjectLayoutDefines(*mci))
         {
             delete mci;

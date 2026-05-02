@@ -8,6 +8,7 @@
 #include<hgl/mtl/MaterialKey.h>
 #include<hgl/log/Log.h>
 #include<hgl/common/AttributeProvider.h>
+#include<hgl/common/MeshShaderStreamContract.h>
 #include<unordered_set>
 
 
@@ -120,6 +121,10 @@ public:
     bool BindUBO(const UBOAccessorBase *ubo,bool dynamic=false);
     bool BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindAttribStream(const AttributeSemantic semantic,const IGPUBuffer *buffer,uint32_t byte_offset=0,uint32_t stride=0);
+    bool BindVertexStreamBinding(const uint32_t binding,const IGPUBuffer *buffer,bool dynamic=false);
+    bool BindMeshIndexStream(const IGPUBuffer *buffer,bool dynamic=false);
+    bool BindMeshletStream(const IGPUBuffer *buffer,bool dynamic=false);
+    bool BindTaskPayloadStream(const IGPUBuffer *buffer,bool dynamic=false);
 
     template<typename T,mtl::UBODescriptorSemantic Semantic>
     bool BindUBO(const UBOAccessor<T,Semantic> *ubo,bool dynamic=false)

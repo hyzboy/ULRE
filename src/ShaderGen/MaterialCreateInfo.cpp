@@ -507,4 +507,27 @@ void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
         }
     }
 }
+
+void MaterialCreateInfo::AddMeshShaderStreamSSBOs(const MeshShaderStreamContract &contract)
+{
+    constexpr uint32_t task_mesh_stage = uint32_t(ShaderStage::TaskMesh);
+
+    auto add_stream_binding = [this](const uint32_t stage_bits,const uint32_t binding)
+    {
+        if(binding >= kVertexStreamBindingCountWithMesh)
+            return;
+
+        auto *sd = new SSBODescriptor();
+        sd->semantic = SSBODescriptorSemantic(binding);  // VertexStreams: semantic index == binding
+        descriptor_db.AddSSBO(stage_bits, DescriptorSetType::VertexStreams, sd);
+    };
+
+    add_stream_binding(task_mesh_stage, contract.index.binding);
+
+    if(contract.enable_meshlet_stream)
+        add_stream_binding(task_mesh_stage, contract.meshlet.binding);
+
+    if(contract.enable_task_payload_stream)
+        add_stream_binding(task_mesh_stage, contract.task_payload.binding);
+}
 }//namespace hgl::graph::mtl

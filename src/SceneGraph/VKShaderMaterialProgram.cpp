@@ -133,6 +133,31 @@ bool ShaderMaterialProgram::BindAttribStream(const AttributeSemantic semantic,co
     return(true);
 }
 
+bool ShaderMaterialProgram::BindVertexStreamBinding(const uint32_t binding,const IGPUBuffer *buffer,bool dynamic)
+{
+    MaterialParameters *mp = GetMP(SET_TYPE_VERTEX_STREAMS);
+
+    if(!mp)
+        return false;
+
+    return mp->BindVertexStreamSSBO(binding,buffer,dynamic);
+}
+
+bool ShaderMaterialProgram::BindMeshIndexStream(const IGPUBuffer *buffer,bool dynamic)
+{
+    return BindVertexStreamBinding(kMeshShaderIndexStreamBinding,buffer,dynamic);
+}
+
+bool ShaderMaterialProgram::BindMeshletStream(const IGPUBuffer *buffer,bool dynamic)
+{
+    return BindVertexStreamBinding(kMeshShaderMeshletStreamBinding,buffer,dynamic);
+}
+
+bool ShaderMaterialProgram::BindTaskPayloadStream(const IGPUBuffer *buffer,bool dynamic)
+{
+    return BindVertexStreamBinding(kMeshShaderTaskPayloadStreamBinding,buffer,dynamic);
+}
+
 bool ShaderMaterialProgram::BindTexture(const DescriptorSetType &type,mtl::SamplerSlot slot,Texture *tex)
 {
     MaterialParameters *mp = GetMP(type);
