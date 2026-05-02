@@ -305,7 +305,7 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
     if (name.IsEmpty())
         name = request.material->GetName();
 
-    return new GraphicsPipeline(name, context.device->GetDevice(), vk_pipeline, build_vil, pd);
+    return new GraphicsPipeline(name, context.device->GetDevice(), vk_pipeline, mesh_pipeline, build_vil, pd);
 }
 
 GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
@@ -411,6 +411,6 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
     if (name.IsEmpty())
         name = request.material->GetName();
 
-    return new GraphicsPipeline(name, vk_device, final_pipeline, build_vil, nullptr);
+    return new GraphicsPipeline(name, vk_device, final_pipeline, mesh_pipeline, build_vil, nullptr);
 }
 }//namespace hgl::graph

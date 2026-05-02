@@ -20,6 +20,11 @@ struct GeometryDrawRange
     uint32_t        vertex_count;
     uint32_t        index_count;
 
+    // mesh draw counts: 表示 vkCmdDrawMeshTasksEXT 的 group counts
+    uint32_t        mesh_task_group_count_x;
+    uint32_t        mesh_task_group_count_y;
+    uint32_t        mesh_task_group_count_z;
+
     // data counts: 表示缓冲区中实际包含的数据数量（buffer capacity）
     uint32_t        data_vertex_count;
     uint32_t        data_index_count;
@@ -40,6 +45,15 @@ public:
             return cmp;
 
         if(auto cmp = index_count <=> other.index_count; cmp != 0)
+            return cmp;
+
+        if(auto cmp = mesh_task_group_count_x <=> other.mesh_task_group_count_x; cmp != 0)
+            return cmp;
+
+        if(auto cmp = mesh_task_group_count_y <=> other.mesh_task_group_count_y; cmp != 0)
+            return cmp;
+
+        if(auto cmp = mesh_task_group_count_z <=> other.mesh_task_group_count_z; cmp != 0)
             return cmp;
 
         if(auto cmp = data_vertex_count <=> other.data_vertex_count; cmp != 0)

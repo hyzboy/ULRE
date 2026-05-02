@@ -100,6 +100,14 @@ namespace hgl::ecs
     void PipelineMaterialRenderer::ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw,
                                                          graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
     {
+        if (cmd_buf && cmd_buf->IsBoundMeshPipeline())
+        {
+            std::cout << "[PipelineMaterialRenderer::ProcIndirectRender] WARNING: skip indirect draw flush in mesh pipeline mode" << std::endl;
+            first_indirect_draw_index = -1;
+            indirect_draw_count = 0;
+            return;
+        }
+
         // 提交累积的间接绘制命令
         if (last_data_buffer->ibo)
         {
@@ -165,8 +173,10 @@ namespace hgl::ecs
         //     std::cout << "[PipelineMaterialRenderer::Draw] Using cached buffer (no switch)" << std::endl;
         // }
 
+        const bool mesh_pipeline_active = cmd_buf && cmd_buf->IsBoundMeshPipeline();
+
         // 提交绘制命令
-        if (batch->geom_data_buffer->vdm)
+        if (batch->geom_data_buffer->vdm && !mesh_pipeline_active)
         {
             // 间接绘制：累积命令
             if (indirect_draw_count == 0)
