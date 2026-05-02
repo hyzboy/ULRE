@@ -117,6 +117,15 @@ namespace
         return (stage_bits & (uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Task))) != 0;
     }
 
+    static constexpr uint32_t kMeshFragmentStageBits = uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
+
+    template<typename CreateConfigT>
+    static void ApplyMeshStageBitsIfRequested(const mtl::MaterialRecipe &rec, CreateConfigT &cfg)
+    {
+        if (rec.use_mesh_shader)
+            cfg.shader_stage_flag_bit = kMeshFragmentStageBits;
+    }
+
     static const VIAArray *TryGetVertexInputArray(const mtl::MaterialCreateInfo *mci,
                                                   const AnsiString &mtl_name)
     {
@@ -554,8 +563,7 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode == TextureSourceMode::Array)
             { cfg.use_texture_array = true; break; }
 
-        if (rec.use_mesh_shader)
-            cfg.shader_stage_flag_bit = uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
+        ApplyMeshStageBitsIfRequested(rec, cfg);
 
         std::fprintf(stderr, "[CreateMaterialFromRecord] Billboard preset=%d  use_texture_array=%d  blend=%d\n",
             (int)rec.preset, (int)cfg.use_texture_array, (int)cfg.blend_mode);
@@ -575,8 +583,7 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
 
-        if (rec.use_mesh_shader)
-            cfg.shader_stage_flag_bit = uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
+        ApplyMeshStageBitsIfRequested(rec, cfg);
 
         // Keep 2D recipe and key paths consistent with 3D: route through
         // ResolveRecipePrimaryKey so attribute/position provider overrides are
@@ -620,8 +627,7 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
 
-        if (rec.use_mesh_shader)
-            cfg.shader_stage_flag_bit = uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
+        ApplyMeshStageBitsIfRequested(rec, cfg);
 
         // Use the recipe-derived variant key so that attribute_providers and
         // position_provider (vertex pulling) are propagated through to
