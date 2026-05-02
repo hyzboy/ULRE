@@ -209,7 +209,7 @@ namespace hgl::ecs
         cfg.texture_id  = ToStdString(texture_path);
         cfg.blend_mode  = QuadResourcePrepareSystem::GetBlendModeForWorld(world);
         cfg.base_color_channel = QuadResourcePrepareSystem::GetChannelHintForWorld(world);
-        cfg.shader_stage_flag_bit = uint32_t(graph::ShaderStage::Mesh) | uint32_t(graph::ShaderStage::Fragment);
+        cfg.shader_stage_flag_bit = uint32_t(graph::ShaderStage::Vertex) | uint32_t(graph::ShaderStage::Fragment);
 
         const auto preset = cfg.fixed_size
             ? graph::mtl::MaterialPreset::Billboard2DFixed

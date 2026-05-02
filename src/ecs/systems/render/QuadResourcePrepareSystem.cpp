@@ -293,7 +293,7 @@ namespace hgl::ecs
         cfg.fixed_size  = fixed;
         cfg.blend_mode  = GetBlendModeForWorld(world);
         cfg.base_color_channel = GetChannelHintForWorld(world);
-        cfg.shader_stage_flag_bit = uint32_t(graph::ShaderStage::Mesh) | uint32_t(graph::ShaderStage::Fragment);
+        cfg.shader_stage_flag_bit = uint32_t(graph::ShaderStage::Vertex) | uint32_t(graph::ShaderStage::Fragment);
 
         auto* shared_material = material_manager->ResolveOrCreateProgram(billboard_preset, &cfg);
         if (!shared_material)
@@ -472,7 +472,7 @@ namespace hgl::ecs
                 cfg.base_color_channel = GetChannelHintForWorld(world);
                 cfg.texture_id         = dr.domain_tag;
                 cfg.use_texture_array  = true;
-                cfg.shader_stage_flag_bit = uint32_t(graph::ShaderStage::Mesh) | uint32_t(graph::ShaderStage::Fragment);
+                cfg.shader_stage_flag_bit = uint32_t(graph::ShaderStage::Vertex) | uint32_t(graph::ShaderStage::Fragment);
 
                 std::fprintf(stderr, "[QuadResPrepare] EnsureDomainResources domain='%s'  use_texture_array=%d  blend=%d  fixed=%d  preset=%d\n",
                     dr.domain_tag.c_str(), (int)cfg.use_texture_array, (int)cfg.blend_mode, (int)domain_fixed, (int)domain_preset);
@@ -499,7 +499,7 @@ namespace hgl::ecs
                     rec.dim       = graph::mtl::MaterialRecipe::Dim::D3;
                     rec.prim      = graph::PrimitiveType::Billboard;
                     rec.pipeline  = GetPresetForWorld(world);
-                    rec.use_mesh_shader = true;
+                    rec.use_mesh_shader = false;
                     rec.textures  = {
                         { graph::mtl::SamplerSlot::BaseColor, graph::mtl::TextureSourceMode::Array, "" },
                     };
