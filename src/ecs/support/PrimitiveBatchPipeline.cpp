@@ -602,18 +602,18 @@ namespace hgl::ecs
                 if (pipeline_data)
                     prim_restart = (pipeline_data->input_assembly.primitiveRestartEnable == VK_TRUE);
 
-                if (vil && pipeline_data && device)
+                graph::GraphicsPipelineBuildRequest req;
+                req.material = material;
+                req.vil = vil;
+                req.render_format = render_format;
+                req.pipeline_data = pipeline_data;
+                req.primitive = material->GetPrimitiveType();
+                req.primitive_restart = prim_restart;
+
+                if (device && graph::IsValidGraphicsPipelineBuildRequest(req))
                 {
                     ++frame_attempts;
                     RecordPipelineResolveAttempt(g_pipeline_preresolve_counters);
-
-                    graph::GraphicsPipelineBuildRequest req;
-                    req.material = material;
-                    req.vil = vil;
-                    req.render_format = render_format;
-                    req.pipeline_data = pipeline_data;
-                    req.primitive = material->GetPrimitiveType();
-                    req.primitive_restart = prim_restart;
 
                     if (graph::GraphicsPipeline* acquired = device->AcquireGraphicsPipeline(req))
                     {
@@ -645,11 +645,13 @@ namespace hgl::ecs
                     const uint64_t skips_total = ++g_pipeline_preresolve_skips;
                     if (ShouldLogPow2(skips_total))
                     {
-                        LogDebug("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve skipped: missing data (vil=%p pipeline_data=%p device=%p preset=%d), total_skips=%llu",
+                        const bool vertex_input_ignored = graph::IsVertexInputIgnored(req);
+                        LogDebug("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve skipped: invalid request (vil=%p pipeline_data=%p device=%p preset=%d vertex_input_ignored=%s), total_skips=%llu",
                                  static_cast<const void *>(vil),
                                  static_cast<const void *>(pipeline_data),
                                  static_cast<const void *>(device),
                                  int(preset),
+                                 vertex_input_ignored ? "yes" : "no",
                                  static_cast<unsigned long long>(skips_total));
                     }
                 }

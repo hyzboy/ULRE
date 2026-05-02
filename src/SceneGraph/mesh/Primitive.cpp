@@ -115,6 +115,16 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,Grap
     auto *material = MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
     if(!material)return(nullptr);
 
+    bool mesh_pipeline = false;
+    for (const auto &stage : material->GetStageList())
+    {
+        if (stage.stage == VK_SHADER_STAGE_TASK_BIT_EXT || stage.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
+        {
+            mesh_pipeline = true;
+            break;
+        }
+    }
+
     const VIL *vil = explicit_vil
                    ? explicit_vil
                    : (p ? p->GetVIL() : material->GetDefaultVIL());
@@ -125,20 +135,20 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,Grap
     const bool pulling_enabled =
         material->IsPullingEnabled() || material->hasSet(SET_TYPE_VERTEX_STREAMS);
 
-    if(!vil && pulling_enabled)
+    if(!vil && pulling_enabled && !mesh_pipeline)
         vil = material->GetDefaultVIL();
 
-    if (!vil) return(nullptr);
+    if (!mesh_pipeline && !vil) return(nullptr);
 
     const VIL *pipeline_vil = p ? p->GetVIL() : nullptr;
 
-    if(p && explicit_vil && pipeline_vil && *explicit_vil!=*pipeline_vil)
+    if(!mesh_pipeline && p && explicit_vil && pipeline_vil && *explicit_vil!=*pipeline_vil)
         return(nullptr);
 
-    if(p && !explicit_vil && pipeline_vil && *vil!=*pipeline_vil)
+    if(!mesh_pipeline && p && !explicit_vil && pipeline_vil && *vil!=*pipeline_vil)
         return(nullptr);
 
-    const uint32_t input_count = pulling_enabled ? 0u : vil->GetVertexAttribCount();
+    const uint32_t input_count = (pulling_enabled || mesh_pipeline || !vil) ? 0u : vil->GetVertexAttribCount();
     const AnsiString &mtl_name=material->GetName();
     const GeometryVertexFormat &geometry_vertex_format = geom->GetGeometryVertexFormat();
 
@@ -180,7 +190,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,Grap
         return(nullptr);
     }
 
-    const VertexInputFormat *vif=vil->GetVIFList();
+    const VertexInputFormat *vif = (input_count > 0 && vil) ? vil->GetVIFList() : nullptr;
 
     uint32_t max_binding=0;
     for(uint i=0;i<input_count;i++)

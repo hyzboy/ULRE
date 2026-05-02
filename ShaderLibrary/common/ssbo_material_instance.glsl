@@ -7,12 +7,20 @@ layout(std430, set=PERMATERIAL_SET, binding=MBI_ID_BINDING) readonly buffer Mate
     uint ids[];
 } mbi_id;
 
+#if !defined(ULRE_INSTANCE_INDEX)
+#if defined(ULRE_MESH_SHADER_STAGE)
+#define ULRE_INSTANCE_INDEX 0u
+#else
+#define ULRE_INSTANCE_INDEX gl_InstanceIndex
+#endif
+#endif
+
 uint GetMaterialInstanceID()
 {
 #ifdef MATERIAL_INSTANCE_ID_OVERRIDE
     return MATERIAL_INSTANCE_ID_OVERRIDE;
 #else
-    return mbi_id.ids[gl_InstanceIndex];
+    return mbi_id.ids[ULRE_INSTANCE_INDEX];
 #endif
 }
 

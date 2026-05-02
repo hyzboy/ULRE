@@ -24,6 +24,10 @@
 #ifndef ULRE_COMMON_VERTEX_FETCH_SSBO_GLSL
 #define ULRE_COMMON_VERTEX_FETCH_SSBO_GLSL
 
+#ifndef VERTEXSTREAMS_SET
+#define VERTEXSTREAMS_SET 4
+#endif
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Position
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,7 +47,7 @@
 // Normal  (AttributeSemantic::Normal = 0)
 // ─────────────────────────────────────────────────────────────────────────────
 #ifdef FETCH_NORMAL_SSBO_BINDING
-    #define ATTRIB_SET     4
+    #define ATTRIB_SET     VERTEXSTREAMS_SET
     #define ATTRIB_BINDING FETCH_NORMAL_SSBO_BINDING
     #define ATTRIB_TAG     Normal
     #include "attribute_provider/ssbo_vec3.glsl"
@@ -59,7 +63,7 @@
 // Tangent  (AttributeSemantic::Tangent = 1)
 // ─────────────────────────────────────────────────────────────────────────────
 #ifdef FETCH_TANGENT_SSBO_BINDING
-    #define ATTRIB_SET     4
+    #define ATTRIB_SET     VERTEXSTREAMS_SET
     #define ATTRIB_BINDING FETCH_TANGENT_SSBO_BINDING
     #define ATTRIB_TAG     Tangent
     #include "attribute_provider/ssbo_vec3.glsl"
@@ -75,7 +79,7 @@
 // TexCoord0  (AttributeSemantic::TexCoord0 = 3)
 // ─────────────────────────────────────────────────────────────────────────────
 #ifdef FETCH_TEXCOORD0_SSBO_BINDING
-    #define ATTRIB_SET     4
+    #define ATTRIB_SET     VERTEXSTREAMS_SET
     #define ATTRIB_BINDING FETCH_TEXCOORD0_SSBO_BINDING
     #define ATTRIB_TAG     TexCoord0
     #include "attribute_provider/ssbo_vec2.glsl"
@@ -91,7 +95,7 @@
 // TexCoord1  (AttributeSemantic::TexCoord1 = 4)
 // ─────────────────────────────────────────────────────────────────────────────
 #ifdef FETCH_TEXCOORD1_SSBO_BINDING
-    #define ATTRIB_SET     4
+    #define ATTRIB_SET     VERTEXSTREAMS_SET
     #define ATTRIB_BINDING FETCH_TEXCOORD1_SSBO_BINDING
     #define ATTRIB_TAG     TexCoord1
     #include "attribute_provider/ssbo_vec2.glsl"

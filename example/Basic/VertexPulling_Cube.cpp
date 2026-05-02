@@ -22,6 +22,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
+#include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -112,7 +113,7 @@ static const PackedFloat2 kUVs[24] =
     {0,0},{1,0},{1,1},{0,1},  // -Z
 };
 
-static constexpr uint16_t kIndices[36] =
+static constexpr uint32_t kIndices[36] =
 {
      0, 1, 2,  0, 2, 3,   // +X
      4, 5, 6,  4, 6, 7,   // -X
@@ -144,6 +145,7 @@ static const mtl::MaterialRecipe kPullRecipe = []()
     r.attribute_providers[size_t(AttributeSemantic::Normal)]    = AttributeProviderId::SSBO_Vec3;
     r.attribute_providers[size_t(AttributeSemantic::TexCoord0)] = AttributeProviderId::SSBO_Vec2;
     r.position_provider = PositionProviderId::SSBO_PackedVec3;
+    r.use_mesh_shader = true;
     return r;
 }();
 
@@ -203,7 +205,7 @@ private:
 
         // Index-only geometry: no vertex attribute writes ({} empty list).
         geometry_ = CreateGeometry("pulling_cube", 24, 36,
-                                   IndexType::U16, {}, kIndices);
+                                   IndexType::U32, {}, kIndices);
         return geometry_ != nullptr;
     }
 
@@ -227,6 +229,16 @@ private:
         if (!smp)
             return false;
 
+        bool material_uses_mesh_stage = false;
+        for (const auto &stage_ci : smp->GetStageList())
+        {
+            if (stage_ci.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
+            {
+                material_uses_mesh_stage = true;
+                break;
+            }
+        }
+
         // Pipeline side: VIL returns nullptr → vkCmdBindVertexBuffers count = 0.
         smp->SetPullingEnabled(true);
 
@@ -246,6 +258,13 @@ private:
         if (!smp->BindAttribStream(AttributeSemantic::TexCoord0, uv_vab_->GetGPUBuffer(),   0, 8))
             return false;
 
+        if (material_uses_mesh_stage)
+        {
+            auto *ibo = geometry_ ? geometry_->GetIBO() : nullptr;
+            if (!ibo || !smp->BindMeshIndexStream(ibo->GetGPUBuffer()))
+                return false;
+        }
+
         auto *pm = GetPrimitiveManager();
         if (!pm)
             return false;
@@ -253,6 +272,13 @@ private:
         auto *prim = pm->CreatePrimitive(geometry_, mi);
         if (!prim)
             return false;
+
+        if (material_uses_mesh_stage)
+        {
+            const uint32_t mesh_group_count_x = geometry_->GetIndexCount() / 3u;
+            if (mesh_group_count_x == 0 || !prim->SetMeshTaskGroupCounts(mesh_group_count_x, 1u, 1u))
+                return false;
+        }
 
         auto prim_comp = cube_entity_->GetComponent<PrimitiveComponent>();
         if (!prim_comp)

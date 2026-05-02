@@ -8,6 +8,14 @@
 // vertex shaders.  Include this after #version and any #extension lines.
 // ──────────────────────────────────────────────────────────────────────────
 
+#if !defined(ULRE_INSTANCE_INDEX)
+#if defined(ULRE_MESH_SHADER_STAGE)
+#define ULRE_INSTANCE_INDEX 0u
+#else
+#define ULRE_INSTANCE_INDEX gl_InstanceIndex
+#endif
+#endif
+
 #include "common/ubo_camera.glsl"
 #include "common/ssbo_transform.glsl"
 
@@ -17,7 +25,7 @@
 #else
 uint GetMaterialInstanceID()
 {
-	return gl_InstanceIndex;
+	return ULRE_INSTANCE_INDEX;
 }
 #endif
 

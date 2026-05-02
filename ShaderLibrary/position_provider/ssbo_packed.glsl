@@ -27,9 +27,17 @@ layout(scalar, set=POSITION_SSBO_SET, binding=POSITION_SSBO_BINDING) readonly bu
     vec3 positions[];
 } u_PositionData;
 
+#if !defined(ULRE_POSITION_FETCH_INDEX)
+#if defined(ULRE_MESH_SHADER_STAGE)
+#define ULRE_POSITION_FETCH_INDEX 0u
+#else
+#define ULRE_POSITION_FETCH_INDEX gl_VertexIndex
+#endif
+#endif
+
 vec3 GetPositionLocal()
 {
-    return u_PositionData.positions[gl_VertexIndex];
+    return u_PositionData.positions[ULRE_POSITION_FETCH_INDEX];
 }
 
 #endif // ULRE_POS_SSBO_PACKED_GLSL

@@ -211,6 +211,17 @@ void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,const VkDeviceSize byte_offset)
 {
     //LogVerbose(u"BindIBO entry");
 
+    if(bound_mesh_pipeline)
+    {
+        static bool warned_mesh_ibo_bind = false;
+        if(!warned_mesh_ibo_bind)
+        {
+            LogWarning("[RenderCmdBuffer::BindIBO] Ignore vkCmdBindIndexBuffer while mesh pipeline is bound");
+            warned_mesh_ibo_bind = true;
+        }
+        return;
+    }
+
     if(!ibo)
     {
         LogError("Null IBO");
@@ -239,7 +250,7 @@ bool RenderCmdBuffer::BindDataBuffer(const GeometryDataBuffer *geom_data_buffer)
         return(false);
     }
 
-    if(geom_data_buffer->vab_count<=0)
+    if(geom_data_buffer->vab_count<=0 && !bound_mesh_pipeline)
     {
         LogError("No VABs to bind");
         return(false);
@@ -255,11 +266,14 @@ bool RenderCmdBuffer::BindDataBuffer(const GeometryDataBuffer *geom_data_buffer)
     //              << ", offset: " << geom_data_buffer->vab_offset[i] << std::endl;
     //}
 
-    vkCmdBindVertexBuffers(cmd_buf,
-                           0,               //first binding
-                           geom_data_buffer->vab_count,
-                           geom_data_buffer->vab_list,
-                           geom_data_buffer->vab_offset);        //vab byte offsets
+    if(geom_data_buffer->vab_count>0)
+    {
+        vkCmdBindVertexBuffers(cmd_buf,
+                               0,               //first binding
+                               geom_data_buffer->vab_count,
+                               geom_data_buffer->vab_list,
+                               geom_data_buffer->vab_offset);        //vab byte offsets
+    }
 
 //    std::cerr << "[RenderCmdBuffer::BindDataBuffer] Vertex buffers bound" << std::endl;
 

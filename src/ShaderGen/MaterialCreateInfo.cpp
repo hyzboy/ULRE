@@ -474,7 +474,13 @@ bool MaterialCreateInfo::CompileSPV()
 
 void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
 {
-    constexpr uint32_t vertex_stage = uint32_t(ShaderStage::Vertex);
+    uint32_t stream_stage_bits = uint32_t(ShaderStage::Vertex);
+    if (HasMesh())
+    {
+        stream_stage_bits = uint32_t(ShaderStage::Mesh);
+        if (HasTask())
+            stream_stage_bits |= uint32_t(ShaderStage::Task);
+    }
 
     // Attribute streams: binding index = AttributeSemantic ordinal (sparse binding).
     // CompositorAssembler emits "#define FETCH_<Tag>_SSBO_BINDING <i>" with the same index.
@@ -490,7 +496,7 @@ void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
 
         auto *sd = new SSBODescriptor();
         sd->semantic = SSBODescriptorSemantic(i);   // index → binding via Resort()
-        descriptor_db.AddSSBO(vertex_stage, DescriptorSetType::VertexStreams, sd);
+        descriptor_db.AddSSBO(stream_stage_bits, DescriptorSetType::VertexStreams, sd);
     }
 
     // Position stream: binding = BuiltinCount (= 8).
@@ -503,14 +509,16 @@ void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
             auto *sd = new SSBODescriptor();
             // semantic index 8 = BuiltinCount; Resort() maps index → binding = 8
             sd->semantic = SSBODescriptorSemantic(size_t(AttributeSemantic::BuiltinCount));
-            descriptor_db.AddSSBO(vertex_stage, DescriptorSetType::VertexStreams, sd);
+            descriptor_db.AddSSBO(stream_stage_bits, DescriptorSetType::VertexStreams, sd);
         }
     }
 }
 
 void MaterialCreateInfo::AddMeshShaderStreamSSBOs(const MeshShaderStreamContract &contract)
 {
-    constexpr uint32_t task_mesh_stage = uint32_t(ShaderStage::TaskMesh);
+    uint32_t stage_bits = uint32_t(ShaderStage::Mesh);
+    if (HasTask())
+        stage_bits |= uint32_t(ShaderStage::Task);
 
     auto add_stream_binding = [this](const uint32_t stage_bits,const uint32_t binding)
     {
@@ -522,12 +530,12 @@ void MaterialCreateInfo::AddMeshShaderStreamSSBOs(const MeshShaderStreamContract
         descriptor_db.AddSSBO(stage_bits, DescriptorSetType::VertexStreams, sd);
     };
 
-    add_stream_binding(task_mesh_stage, contract.index.binding);
+    add_stream_binding(stage_bits, contract.index.binding);
 
     if(contract.enable_meshlet_stream)
-        add_stream_binding(task_mesh_stage, contract.meshlet.binding);
+        add_stream_binding(stage_bits, contract.meshlet.binding);
 
     if(contract.enable_task_payload_stream)
-        add_stream_binding(task_mesh_stage, contract.task_payload.binding);
+        add_stream_binding(stage_bits, contract.task_payload.binding);
 }
 }//namespace hgl::graph::mtl

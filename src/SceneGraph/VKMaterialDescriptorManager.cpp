@@ -284,4 +284,21 @@ const int MaterialDescriptorManager::GetTextureSampler(const DescriptorSetType &
 
     return texture_sampler_binding_map[size_t(set_type)][slot_index];
 }
+
+const bool MaterialDescriptorManager::HasBinding(const DescriptorSetType &set_type,const uint32_t binding)const
+{
+    RANGE_CHECK_RETURN(set_type,false)
+
+    const DescriptorSetLayoutCreateInfo *dslci=GetDSLCI(set_type);
+    if(!dslci||dslci->bindingCount<=0||!dslci->pBindings)
+        return false;
+
+    for(uint32_t i=0;i<dslci->bindingCount;++i)
+    {
+        if(dslci->pBindings[i].binding==binding)
+            return true;
+    }
+
+    return false;
+}
 }//namespace hgl::graph

@@ -16,6 +16,20 @@ namespace hgl::graph{
 
 void ReleaseVertexInput(VertexInput *vi);
 
+namespace
+{
+    static bool HasShaderStage(const ShaderStageCreateInfoList &stage_list,const VkShaderStageFlagBits stage)
+    {
+        for(const auto &ci:stage_list)
+        {
+            if(ci.stage==stage)
+                return true;
+        }
+
+        return false;
+    }
+}
+
 ShaderMaterialProgram::ShaderMaterialProgram(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
 {
     name=n;
@@ -145,16 +159,25 @@ bool ShaderMaterialProgram::BindVertexStreamBinding(const uint32_t binding,const
 
 bool ShaderMaterialProgram::BindMeshIndexStream(const IGPUBuffer *buffer,bool dynamic)
 {
+    if(!HasShaderStage(shader_stage_list,VK_SHADER_STAGE_MESH_BIT_EXT))
+        return true;
+
     return BindVertexStreamBinding(kMeshShaderIndexStreamBinding,buffer,dynamic);
 }
 
 bool ShaderMaterialProgram::BindMeshletStream(const IGPUBuffer *buffer,bool dynamic)
 {
+    if(!HasShaderStage(shader_stage_list,VK_SHADER_STAGE_MESH_BIT_EXT))
+        return true;
+
     return BindVertexStreamBinding(kMeshShaderMeshletStreamBinding,buffer,dynamic);
 }
 
 bool ShaderMaterialProgram::BindTaskPayloadStream(const IGPUBuffer *buffer,bool dynamic)
 {
+    if(!HasShaderStage(shader_stage_list,VK_SHADER_STAGE_TASK_BIT_EXT))
+        return true;
+
     return BindVertexStreamBinding(kMeshShaderTaskPayloadStreamBinding,buffer,dynamic);
 }
 

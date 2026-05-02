@@ -241,6 +241,37 @@ static void LogPipelineVertexInputComparison(const GraphicsPipelineBuildRequest 
         }
     }
 }
+
+static bool ValidateMeshRuntimeSupport(const GraphicsPipelineBuildContext &context,
+                                       const GraphicsPipelineBuildRequest &request,
+                                       const bool mesh_pipeline)
+{
+    if (!context.device || !request.material)
+        return true;
+
+    if (!mesh_pipeline)
+        return true;
+
+    if (!context.device->IsMeshShaderEnabled())
+    {
+        GLogError("[PipelineBuild.MeshFeature] Mesh pipeline requested but device mesh shader feature is disabled: material=%s extension=%s mesh=%s task=%s",
+                  request.material->GetName().c_str(),
+                  context.device->IsMeshShaderExtensionEnabled() ? "yes" : "no",
+                  context.device->IsMeshShaderEnabled() ? "yes" : "no",
+                  context.device->IsTaskShaderEnabled() ? "yes" : "no");
+        return false;
+    }
+
+    const PipelineStageComposition sc = BuildPipelineStageComposition(request.material);
+    if (sc.task && !context.device->IsTaskShaderEnabled())
+    {
+        GLogError("[PipelineBuild.MeshFeature] Task shader stage requested but device task shader feature is disabled: material=%s",
+                  request.material->GetName().c_str());
+        return false;
+    }
+
+    return true;
+}
 }
 
 GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
@@ -265,6 +296,9 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
                   static_cast<const void *>(request.pipeline_data));
         return nullptr;
     }
+
+    if (!ValidateMeshRuntimeSupport(context, request, mesh_pipeline))
+        return nullptr;
 
     const VIL *build_vil = vertex_input_ignored ? nullptr : request.vil;
 
@@ -330,6 +364,9 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
                   static_cast<const void *>(request.pipeline_data));
         return nullptr;
     }
+
+    if (!ValidateMeshRuntimeSupport(context, request, mesh_pipeline))
+        return nullptr;
 
     LogPipelineStageAndLayoutDiagnostics(request, mesh_pipeline, vertex_input_ignored);
     LogPipelineVertexInputComparison(request, mesh_pipeline, vertex_input_ignored);

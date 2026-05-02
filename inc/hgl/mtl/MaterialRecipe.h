@@ -116,6 +116,10 @@ struct MaterialRecipe
     // std::nullopt → use default for this preset (usually DirectVec3 for 3D).
     // Set to SSBO_PackedVec3 for full vertex pulling (no VAB for position).
     std::optional<PositionProviderId> position_provider;
+
+    // Pilot toggle: request mesh-shader graphics pipeline (Mesh+Fragment).
+    // Defaults to false to preserve existing Vertex+Fragment behavior.
+    bool use_mesh_shader = false;
 };
 
 } // namespace hgl::graph::mtl

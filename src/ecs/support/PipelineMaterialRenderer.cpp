@@ -17,11 +17,26 @@
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        uint32_t GetMaterialVertexInputCount(const graph::ShaderMaterialProgram *m)
+        {
+            if (!m)
+                return 0;
+
+            const auto *vi = m->GetVertexInput();
+            if (!vi)
+                return 0;
+
+            return vi->GetCount();
+        }
+    }
+
     PipelineMaterialRenderer::PipelineMaterialRenderer(graph::ShaderMaterialProgram* m, graph::GraphicsPipeline* p)
         : material(m)
         , pipeline(p)
         , cmd_buf(nullptr)
-        , vab_list(new graph::VABList(m->GetVertexInput()->GetCount()))
+        , vab_list(new graph::VABList(GetMaterialVertexInputCount(m)))
         , last_data_buffer(nullptr)
         , last_vdm(nullptr)
         , last_draw_range(nullptr)
@@ -80,7 +95,7 @@ namespace hgl::ecs
             {
                 std::cout << "[PipelineMaterialRenderer::BindVAB] WARNING: VABList not full ("
                           << vab_list->GetWriteCount() << "/"
-                          << material->GetVertexInput()->GetCount()
+                          << GetMaterialVertexInputCount(material)
                           << "), padding with VK_NULL_HANDLE" << std::endl;
 
                 while (!vab_list->IsFull())
@@ -159,7 +174,7 @@ namespace hgl::ecs
             }
 
             // 如果有索引缓冲，也需要绑定
-            if (batch->geom_data_buffer->ibo)
+            if (batch->geom_data_buffer->ibo && !(cmd_buf && cmd_buf->IsBoundMeshPipeline()))
             {
                 cmd_buf->BindIBO(batch->geom_data_buffer->ibo);
             }

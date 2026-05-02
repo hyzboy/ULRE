@@ -86,6 +86,14 @@ bool MaterialParameters::BindVertexStreamSSBO(const uint32_t binding,const IGPUB
     if(binding >= kVertexStreamBindingCountWithMesh)
         return false;
 
+    if(!desc_manager || !desc_manager->HasBinding(set_type,binding))
+    {
+        LogWarning(u8"[VKShaderMaterialProgramParameters] BindVertexStreamSSBO skipped: binding=%u is not declared in material='%s' VertexStreams set",
+                   binding,
+                   desc_manager ? desc_manager->GetMaterialName().c_str() : "<null>");
+        return false;
+    }
+
     return BindSSBO(int(binding),gpu,dynamic);
 }
 

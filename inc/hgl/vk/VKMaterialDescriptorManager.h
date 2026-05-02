@@ -41,6 +41,7 @@ public:
     const int GetSSBO(const DescriptorSetType &set_type,const mtl::SSBODescriptorSemantic semantic,bool dynamic)const;
     const int GetTexture(const DescriptorSetType &set_type,const mtl::SamplerSlot slot)const;
     const int GetTextureSampler(const DescriptorSetType &set_type,const mtl::SamplerSlot slot)const;
+    const bool HasBinding(const DescriptorSetType &set_type,const uint32_t binding)const;
 
     const DescriptorSetLayoutCreateInfo *GetDSLCI(const DescriptorSetType &type)const{return dsl_ci+size_t(type);}
 

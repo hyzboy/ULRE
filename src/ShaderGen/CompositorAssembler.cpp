@@ -85,7 +85,7 @@ namespace
         if (any_ssbo) {
             writer.EmitDefine("GEOMETRY_FETCH_SSBO", "1");
             if (f.position_provider == hgl::graph::PositionProviderId::SSBO_PackedVec3) {
-                writer.EmitDefine("POSITION_SSBO_SET",     "4");
+                writer.EmitDefine("POSITION_SSBO_SET",     "VERTEXSTREAMS_SET");
                 writer.EmitDefine("POSITION_SSBO_BINDING",
                     std::to_string(size_t(hgl::graph::AttributeSemantic::BuiltinCount)).c_str());
             }

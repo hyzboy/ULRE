@@ -12,9 +12,17 @@ layout(set=PEROBJECT_SET, binding=TRANSFORM_DATA_BINDING) readonly buffer LocalT
     mat4 mats[];
 } transform_data;
 
+#if !defined(ULRE_INSTANCE_INDEX)
+#if defined(ULRE_MESH_SHADER_STAGE)
+#define ULRE_INSTANCE_INDEX 0u
+#else
+#define ULRE_INSTANCE_INDEX gl_InstanceIndex
+#endif
+#endif
+
 uint GetTransformID()
 {
-    return transform_id.ids[gl_InstanceIndex];
+    return transform_id.ids[ULRE_INSTANCE_INDEX];
 }
 
 mat4 GetTransform()
