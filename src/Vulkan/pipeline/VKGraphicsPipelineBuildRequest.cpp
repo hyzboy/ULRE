@@ -11,6 +11,49 @@
 namespace hgl::graph{
 namespace
 {
+    struct GraphicsStageMask
+    {
+        bool has_vertex = false;
+        bool has_tess_ctrl = false;
+        bool has_tess_eval = false;
+        bool has_geometry = false;
+        bool has_fragment = false;
+        bool has_task = false;
+        bool has_mesh = false;
+        bool has_compute = false;
+        uint32_t stage_count = 0;
+    };
+
+    GraphicsStageMask BuildGraphicsStageMask(const ShaderStageCreateInfoList &stages)
+    {
+        GraphicsStageMask mask;
+
+        for (const auto &s : stages)
+        {
+            ++mask.stage_count;
+
+            switch (s.stage)
+            {
+                case VK_SHADER_STAGE_VERTEX_BIT:                    mask.has_vertex = true; break;
+                case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:      mask.has_tess_ctrl = true; break;
+                case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:   mask.has_tess_eval = true; break;
+                case VK_SHADER_STAGE_GEOMETRY_BIT:                  mask.has_geometry = true; break;
+                case VK_SHADER_STAGE_FRAGMENT_BIT:                  mask.has_fragment = true; break;
+                case VK_SHADER_STAGE_COMPUTE_BIT:                   mask.has_compute = true; break;
+                case VK_SHADER_STAGE_TASK_BIT_EXT:                  mask.has_task = true; break;
+                case VK_SHADER_STAGE_MESH_BIT_EXT:                  mask.has_mesh = true; break;
+                default: break;
+            }
+        }
+
+        return mask;
+    }
+
+    bool HasVertexPathStages(const GraphicsStageMask &mask)
+    {
+        return mask.has_vertex || mask.has_tess_ctrl || mask.has_tess_eval || mask.has_geometry;
+    }
+
     inline void HashU32(uint64_t &h, uint32_t v)
     {
         h = hgl::hash::FNV1aAppendValueBytes(h, v);
@@ -96,12 +139,69 @@ namespace
     }
 }
 
+const char *GetGraphicsPipelineRequestModeName(GraphicsPipelineRequestMode mode)
+{
+    switch (mode)
+    {
+        case GraphicsPipelineRequestMode::Auto:   return "Auto";
+        case GraphicsPipelineRequestMode::Vertex: return "Vertex";
+        case GraphicsPipelineRequestMode::Mesh:   return "Mesh";
+        default:                                  return "Unknown";
+    }
+}
+
+bool IsMeshPipelineRequest(const GraphicsPipelineBuildRequest &req)
+{
+    if (req.request_mode == GraphicsPipelineRequestMode::Mesh)
+        return true;
+
+    if (req.request_mode == GraphicsPipelineRequestMode::Vertex)
+        return false;
+
+    if (!req.material)
+        return false;
+
+    const GraphicsStageMask mask = BuildGraphicsStageMask(req.material->GetStageList());
+    return mask.has_mesh || mask.has_task;
+}
+
+bool IsVertexInputIgnored(const GraphicsPipelineBuildRequest &req)
+{
+    if (!req.material)
+        return false;
+
+    if (IsMeshPipelineRequest(req))
+        return true;
+
+    return req.material->IsPullingEnabled()
+        || req.material->hasSet(SET_TYPE_VERTEX_STREAMS);
+}
+
 bool IsValidGraphicsPipelineBuildRequest(const GraphicsPipelineBuildRequest &req)
 {
-    return req.material
-        && req.vil
-        && req.render_format
-        && req.pipeline_data;
+    if (!req.material || !req.render_format || !req.pipeline_data)
+        return false;
+
+    if (!IsVertexInputIgnored(req) && !req.vil)
+        return false;
+
+    const GraphicsStageMask mask = BuildGraphicsStageMask(req.material->GetStageList());
+    if (mask.stage_count == 0)
+        return false;
+
+    if (mask.has_task && !mask.has_mesh)
+        return false;
+
+    if (mask.has_mesh && HasVertexPathStages(mask))
+        return false;
+
+    if (req.request_mode == GraphicsPipelineRequestMode::Mesh && !mask.has_mesh)
+        return false;
+
+    if (req.request_mode == GraphicsPipelineRequestMode::Vertex && (mask.has_task || mask.has_mesh))
+        return false;
+
+    return true;
 }
 
 GplVertexInputKey BuildVertexInputKey(const VertexInputLayout *vil)
@@ -138,6 +238,8 @@ GplPreRasterKey BuildPreRasterKey(const GraphicsPipelineBuildRequest &req)
     HashAnsiString(h, req.material->GetName());
     HashU32(h, static_cast<uint32_t>(req.primitive));
     HashBool(h, req.primitive_restart);
+    HashU32(h, static_cast<uint32_t>(req.request_mode));
+    HashBool(h, IsVertexInputIgnored(req));
 
     const auto &stages = req.material->GetStageList();
     HashShaderStages(h, stages, false, true);
@@ -181,7 +283,9 @@ GplLinkedPipelineKey BuildLinkedPipelineKey(const GraphicsPipelineBuildRequest &
 {
     GplLinkedPipelineKey key{};
 
-    key.vi = BuildVertexInputKey(req.vil);
+    const VertexInputLayout *effective_vil = IsVertexInputIgnored(req) ? nullptr : req.vil;
+
+    key.vi = BuildVertexInputKey(effective_vil);
     key.pr = BuildPreRasterKey(req);
     key.fs = BuildFragmentShaderKey(req);
     key.fo = BuildFragmentOutputKey(req.render_format);
@@ -194,6 +298,8 @@ GplLinkedPipelineKey BuildLinkedPipelineKey(const GraphicsPipelineBuildRequest &
         HashU32(layout_hash, static_cast<uint32_t>(req.material->GetPrimitiveType()));
         HashBool(layout_hash, req.material->hasLocalToWorld());
         HashBool(layout_hash, req.material->hasMI());
+        HashU32(layout_hash, static_cast<uint32_t>(req.request_mode));
+        HashBool(layout_hash, IsVertexInputIgnored(req));
         HashU32(layout_hash, static_cast<uint32_t>(req.material->GetShaderDataSchema()));
         HashU32(layout_hash, req.material->GetTextureArraySlotFlags());
 

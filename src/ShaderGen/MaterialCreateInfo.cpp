@@ -205,6 +205,8 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     : config(*mc)
 {
     if(HasVertex    ())shader_map.Add(new ShaderCreateInfoVertex(&descriptor_db));
+    if(HasTask      ())shader_map.Add(new ShaderCreateInfo(new ShaderStageIO(ShaderStage::Task),&descriptor_db));
+    if(HasMesh      ())shader_map.Add(new ShaderCreateInfo(new ShaderStageIO(ShaderStage::Mesh),&descriptor_db));
     if(HasFragment  ())shader_map.Add(new ShaderCreateInfo(new FragmentShaderStageIO(),&descriptor_db));
 
     ubo_range=0;

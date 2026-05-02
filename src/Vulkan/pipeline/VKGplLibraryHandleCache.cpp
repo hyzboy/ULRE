@@ -26,11 +26,17 @@ VkPipeline CreateVILibrary(VkDevice device, VkPipelineCache cache,
                             const GraphicsPipelineBuildRequest &req)
 {
     const VertexInputLayout *vil = req.vil;
-    const GraphicsPipelineData      *pd  = req.pipeline_data;
-    const uint32_t           count = vil->GetVertexAttribCount();
+    const GraphicsPipelineData *pd = req.pipeline_data;
+    const uint32_t count = vil ? vil->GetVertexAttribCount() : 0;
 
-    VkVertexInputBindingDescription   *bindings   = vil->NewBindListCopy();
-    VkVertexInputAttributeDescription *attributes = vil->NewAttrListCopy();
+    VkVertexInputBindingDescription *bindings = nullptr;
+    VkVertexInputAttributeDescription *attributes = nullptr;
+
+    if (vil && count > 0)
+    {
+        bindings = vil->NewBindListCopy();
+        attributes = vil->NewAttrListCopy();
+    }
 
     VkPipelineVertexInputStateCreateInfo vi_state{};
     vi_state.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -72,29 +78,84 @@ VkPipeline CreatePRLibrary(VkDevice device, VkPipelineCache cache,
                             const GraphicsPipelineBuildRequest &req)
 {
     const GraphicsPipelineData *pd = req.pipeline_data;
+    const bool mesh_pipeline = IsMeshPipelineRequest(req);
 
     // Filter vertex-side shader stages from the material's combined list
     const ShaderStageCreateInfoList &all_stages = req.material->GetStageList();
     const uint32_t stage_count = static_cast<uint32_t>(all_stages.size());
 
     // Collect pre-raster stages into a local array
-    VkPipelineShaderStageCreateInfo pr_stages[16]; // VS + GS + TC + TE max 4, well below 16
+    VkPipelineShaderStageCreateInfo pr_stages[16]; // mesh/vertex pipeline stages, always <=16
     uint32_t pr_stage_count = 0;
+
+    bool has_vertex_path_stages = false;
+    bool has_mesh_path_stages = false;
+    bool selected_has_mesh_stage = false;
+
     for (uint32_t i = 0; i < stage_count; ++i)
     {
         const VkShaderStageFlagBits stage = all_stages[i].stage;
+
         if (stage == VK_SHADER_STAGE_VERTEX_BIT
          || stage == VK_SHADER_STAGE_GEOMETRY_BIT
          || stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
          || stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
         {
-            pr_stages[pr_stage_count++] = all_stages[i];
+            has_vertex_path_stages = true;
         }
+
+        if (stage == VK_SHADER_STAGE_TASK_BIT_EXT
+         || stage == VK_SHADER_STAGE_MESH_BIT_EXT)
+        {
+            has_mesh_path_stages = true;
+        }
+
+        if (mesh_pipeline)
+        {
+            if (stage == VK_SHADER_STAGE_TASK_BIT_EXT
+             || stage == VK_SHADER_STAGE_MESH_BIT_EXT)
+            {
+                pr_stages[pr_stage_count++] = all_stages[i];
+                if (stage == VK_SHADER_STAGE_MESH_BIT_EXT)
+                    selected_has_mesh_stage = true;
+            }
+        }
+        else
+        {
+            if (stage == VK_SHADER_STAGE_VERTEX_BIT
+             || stage == VK_SHADER_STAGE_GEOMETRY_BIT
+             || stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
+             || stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
+            {
+                pr_stages[pr_stage_count++] = all_stages[i];
+            }
+        }
+    }
+
+    if (mesh_pipeline && has_vertex_path_stages)
+    {
+        GLogError("[GplLibraryHandleCache] CreatePRLibrary: mesh mode cannot mix with Vertex/Tess/Geometry stages");
+        return VK_NULL_HANDLE;
+    }
+
+    if (!mesh_pipeline && has_mesh_path_stages)
+    {
+        GLogError("[GplLibraryHandleCache] CreatePRLibrary: vertex mode cannot include Task/Mesh stages");
+        return VK_NULL_HANDLE;
     }
 
     if (pr_stage_count == 0)
     {
-        GLogError("[GplLibraryHandleCache] CreatePRLibrary: no vertex-side shader stages found");
+        GLogError("[GplLibraryHandleCache] CreatePRLibrary: no pre-raster stages found for mode=%s",
+                  GetGraphicsPipelineRequestModeName(mesh_pipeline
+                      ? GraphicsPipelineRequestMode::Mesh
+                      : GraphicsPipelineRequestMode::Vertex));
+        return VK_NULL_HANDLE;
+    }
+
+    if (mesh_pipeline && !selected_has_mesh_stage)
+    {
+        GLogError("[GplLibraryHandleCache] CreatePRLibrary: mesh mode requires VK_SHADER_STAGE_MESH_BIT_EXT");
         return VK_NULL_HANDLE;
     }
 

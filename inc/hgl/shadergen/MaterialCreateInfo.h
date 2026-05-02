@@ -92,6 +92,8 @@ namespace hgl::graph
 
                     bool        HasVertex       ()const{return HasShader(ShaderStage::Vertex);}
                     bool        HasFragment     ()const{return HasShader(ShaderStage::Fragment);}
+                    bool        HasTask         ()const{return HasShader(ShaderStage::Task);}
+                    bool        HasMesh         ()const{return HasShader(ShaderStage::Mesh);}
         //          bool        HasCompute      ()const{return HasShader(ShaderStage::Compute);}
 
             ShaderCreateInfo *GetStageShader(const ShaderStage ss)
