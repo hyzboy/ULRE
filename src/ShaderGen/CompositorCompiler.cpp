@@ -74,6 +74,63 @@ namespace
         *diagnostics += line;
     }
 
+    static bool ValidateMeshStageCombination(const StaticMaterialDef &def,
+                                             const Material3DCreateConfig &cfg,
+                                             std::string *diagnostics)
+    {
+        const uint32_t bits = ResolveDescriptorStageBits(cfg);
+
+        const uint32_t legacy_bits = uint32_t(ShaderStage::Vertex)
+                                   | uint32_t(ShaderStage::TessControl)
+                                   | uint32_t(ShaderStage::TessEval)
+                                   | uint32_t(ShaderStage::Geometry);
+
+        const bool has_task = (bits & uint32_t(ShaderStage::Task)) != 0;
+        const bool has_mesh = (bits & uint32_t(ShaderStage::Mesh)) != 0;
+        const bool has_frag = (bits & uint32_t(ShaderStage::Fragment)) != 0;
+
+        // During migration we keep legacy non-mesh materials intact.
+        // Mesh path requests, however, must use canonical mesh-only combos.
+        if (!has_task && !has_mesh)
+            return true;
+
+        auto fail = [&](const char *reason) -> bool
+        {
+            std::string msg;
+            msg.reserve(256);
+            msg += "[CompositorCompiler] invalid mesh stage combination: ";
+            msg += reason ? reason : "<unknown>";
+            msg += " material='";
+            msg += def.name ? def.name : "<unnamed>";
+            msg += "' stage_bits=0x";
+
+            char bits_text[16]{};
+            std::snprintf(bits_text, sizeof(bits_text), "%08X", bits);
+            msg += bits_text;
+
+            std::fprintf(stderr, "%s\n", msg.c_str());
+            AppendDiagnosticLine(diagnostics, msg);
+            return false;
+        };
+
+        if (!has_mesh)
+            return fail("task stage requires mesh stage");
+
+        if (!has_frag)
+            return fail("mesh path requires fragment stage");
+
+        if ((bits & legacy_bits) != 0)
+            return fail("mesh path cannot mix with vertex/tess/geometry stages");
+
+        const uint32_t kMeshFrag = uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
+        const uint32_t kTaskMeshFrag = uint32_t(ShaderStage::Task) | uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
+
+        if (bits != kMeshFrag && bits != kTaskMeshFrag)
+            return fail("mesh path must be Mesh|Fragment or Task|Mesh|Fragment");
+
+        return true;
+    }
+
     static void EmitInferenceMismatchDiagnostics(
         const StaticMaterialDef &def,
         const Material3DCreateConfig &cfg,
@@ -175,6 +232,9 @@ namespace
         cfg.shader_stage_flag_bit = config
             ? ResolveDescriptorStageBits(*config)
             : kDefaultDescriptorStageBits;
+
+        if (!ValidateMeshStageCombination(def, cfg, diagnostics))
+            return nullptr;
 
         const uint32_t descriptor_stage_bits = ResolveDescriptorStageBits(cfg);
 

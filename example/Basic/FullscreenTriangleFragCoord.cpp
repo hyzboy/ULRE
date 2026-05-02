@@ -25,6 +25,7 @@ private:
         .dim      = mtl::MaterialRecipe::Dim::D3,
         .l2w      = false,
         .pipeline = GraphicsPipelinePreset::Solid3D,
+        .use_mesh_shader = true,
     };
 
 private:

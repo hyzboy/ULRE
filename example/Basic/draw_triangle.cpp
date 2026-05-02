@@ -34,7 +34,7 @@ static float position_data_float[VERTEX_COUNT][2]=
     {0.25,  0.75}
 };
 
-static int16 position_data[VERTEX_COUNT][2]={};
+static float position_data[VERTEX_COUNT][3]={};
 
 constexpr uint8 color_data[VERTEX_COUNT*4]=
 {
@@ -43,8 +43,8 @@ constexpr uint8 color_data[VERTEX_COUNT*4]=
     0,0,255,255
 };
 
-constexpr VAType   POSITION_SHADER_FORMAT   =VAT_IVEC2;
-constexpr VkFormat POSITION_DATA_FORMAT     =VF_V2I16;
+constexpr VAType   POSITION_SHADER_FORMAT   =VAT_VEC3;
+constexpr VkFormat POSITION_DATA_FORMAT     =VF_V3F;
 
 constexpr VkFormat COLOR_DATA_FORMAT        =VF_V4UN8;
 
@@ -65,9 +65,17 @@ private:
         .preset     = mtl::MaterialPreset::VertexColor2D,
         .dim        = mtl::MaterialRecipe::Dim::D2,
         .l2w        = false,
-        .pos_format = POSITION_SHADER_FORMAT,   // VAT_IVEC2: shader中 ivec2 顶点输入
+        .pos_format = POSITION_SHADER_FORMAT,
         .coord_2d   = CoordinateSystem2D::Ortho,
         .pipeline   = GraphicsPipelinePreset::Solid2D,
+        .attribute_providers = []
+        {
+            std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)> providers{};
+            providers[size_t(AttributeSemantic::Color)] = AttributeProviderId::SSBO_PackedRGBA8;
+            return providers;
+        }(),
+        .position_provider = PositionProviderId::SSBO_PackedVec3,
+        .use_mesh_shader = true,
     };
 
 private:
@@ -84,8 +92,9 @@ private:
 
         for(uint i=0;i<VERTEX_COUNT;i++)
         {
-            position_data[i][0]=position_data_float[i][0]*extent.width;
-            position_data[i][1]=position_data_float[i][1]*extent.height;
+            position_data[i][0] = position_data_float[i][0] * extent.width;
+            position_data[i][1] = position_data_float[i][1] * extent.height;
+            position_data[i][2] = 0.0f;
         }
 
         return true;

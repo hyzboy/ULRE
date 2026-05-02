@@ -9,7 +9,6 @@
 // 5. ECS与渲染系统的集成
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -28,11 +27,11 @@ constexpr uint32_t VERTEX_COUNT=3;
 
 constexpr uint32_t TRIANGLE_NUMBER=12;
 
-constexpr float position_data[VERTEX_COUNT*2]=
+constexpr float position_data[VERTEX_COUNT][3]=
 {
-     0.0,  0.0,
-    -0.1,  0.9,
-     0.1,  0.9
+    { 0.0f, 0.0f, 0.0f },
+    { -0.1f, 0.9f, 0.0f },
+    { 0.1f, 0.9f, 0.0f }
 };
 
 constexpr uint8 color_data[VERTEX_COUNT][4]=
@@ -59,7 +58,16 @@ private:
         .id       = "auto_instance_vertex_color",
         .preset   = mtl::MaterialPreset::VertexColor2D,
         .dim      = mtl::MaterialRecipe::Dim::D2,
+        .pos_format = VAT_VEC3,
         .pipeline = GraphicsPipelinePreset::Solid2D,
+        .attribute_providers = []
+        {
+            std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)> providers{};
+            providers[size_t(AttributeSemantic::Color)] = AttributeProviderId::SSBO_PackedRGBA8;
+            return providers;
+        }(),
+        .position_provider = PositionProviderId::SSBO_PackedVec3,
+        .use_mesh_shader = true,
     };
 
 private:
@@ -73,7 +81,7 @@ private:
     {
         geom_triangle = WorkObject::CreateGeometry("Triangle",
                                                    VERTEX_COUNT,
-                                                   {{VAN::Position,VF_V2F,position_data},
+                                                   {{VAN::Position,VF_V3F,position_data},
                                                     {VAN::Color,VF_V4UN8,color_data}});
 
         if(!geom_triangle)

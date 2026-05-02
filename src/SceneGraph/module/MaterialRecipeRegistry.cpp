@@ -77,6 +77,21 @@ static uint32_t HashDomainIDString(const std::string &did)
     return h == 0 ? 1u : h;
 }
 
+static bool MaterialUsesMeshStage(const ShaderMaterialProgram *material)
+{
+    if (!material)
+        return false;
+
+    for (const auto &stage_ci : material->GetStageList())
+    {
+        if (stage_ci.stage == VK_SHADER_STAGE_MESH_BIT_EXT
+         || stage_ci.stage == VK_SHADER_STAGE_TASK_BIT_EXT)
+            return true;
+    }
+
+    return false;
+}
+
 static bool TryParseDomainID(const std::string &did, uint32_t &out_id)
 {
     if (did.empty())
@@ -291,17 +306,29 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     if (out_handle)
         *out_handle = handle;
 
-    // 从 ShaderMaterialProgram DefaultVIL 与 GVF 的差异自动推算 VILConfig
-    const VIL *default_vil = handle.material->GetDefaultVIL();
-    if (!default_vil)
-        return nullptr;
-
     MaterialInstanceSpec spec;
     spec.material = handle.material;
     spec.domain   = handle.domain;
     spec.preset   = rec.pipeline;
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
+
+    // 从 ShaderMaterialProgram DefaultVIL 与 GVF 的差异自动推算 VILConfig
+    const VIL *default_vil = handle.material->GetDefaultVIL();
+    if (!default_vil)
+    {
+        if (!MaterialUsesMeshStage(handle.material))
+            return nullptr;
+
+        if (out_vil)
+            *out_vil = nullptr;
+
+        MaterialBindingInstance *mi = mm->AcquireMaterialInstance(spec);
+        if (mi)
+            MaterialBindingInstanceInternalAccess::SetDomainBinding(mi, handle.binding);
+
+        return mi;
+    }
 
     VILConfig vil_cfg;
     const uint32_t attrib_count = default_vil->GetVertexAttribCount();
@@ -368,16 +395,28 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     if (out_handle)
         *out_handle = handle;
 
-    const VIL *default_vil = handle.material->GetDefaultVIL();
-    if (!default_vil)
-        return nullptr;
-
     MaterialInstanceSpec spec;
     spec.material = handle.material;
     spec.domain   = handle.domain;
     spec.preset   = rec.pipeline;
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
+
+    const VIL *default_vil = handle.material->GetDefaultVIL();
+    if (!default_vil)
+    {
+        if (!MaterialUsesMeshStage(handle.material))
+            return nullptr;
+
+        if (out_vil)
+            *out_vil = nullptr;
+
+        MaterialBindingInstance *mi = mm->AcquireMaterialInstance(spec);
+        if (mi)
+            MaterialBindingInstanceInternalAccess::SetDomainBinding(mi, handle.binding);
+
+        return mi;
+    }
 
     VILConfig vil_cfg;
     const uint32_t attrib_count = default_vil->GetVertexAttribCount();

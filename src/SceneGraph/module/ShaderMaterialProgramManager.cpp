@@ -112,6 +112,11 @@ namespace
         return k;
     }
 
+    static bool IsMeshStageRequested(const uint32_t stage_bits)
+    {
+        return (stage_bits & (uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Task))) != 0;
+    }
+
 }//namespace
 
 GRAPH_MODULE_CONSTRUCT(ShaderMaterialProgramManager)
@@ -481,6 +486,9 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode == TextureSourceMode::Array)
             { cfg.use_texture_array = true; break; }
 
+        if (rec.use_mesh_shader)
+            cfg.shader_stage_flag_bit = uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
+
         std::fprintf(stderr, "[CreateMaterialFromRecord] Billboard preset=%d  use_texture_array=%d  blend=%d\n",
             (int)rec.preset, (int)cfg.use_texture_array, (int)cfg.blend_mode);
 
@@ -498,7 +506,16 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
         for (const auto &tc : rec.textures)
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
-        return mm->ResolveOrCreateProgram(rec.preset, &cfg);
+
+        if (rec.use_mesh_shader)
+            cfg.shader_stage_flag_bit = uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
+
+        // Keep 2D recipe and key paths consistent with 3D: route through
+        // ResolveRecipePrimaryKey so attribute/position provider overrides are
+        // preserved for vertex pulling and mesh-stage materials.
+        cfg.preset_name = mtl::GetMaterialPresetName(rec.preset);
+        mtl::MaterialVariantKey vk = mtl::ResolveRecipePrimaryKey(rec).variant;
+        return mm->ResolveOrCreateProgram(vk, &cfg);
     }
     // ── 3D ─────────────────────────────────────────────────────────────────
     else
@@ -536,28 +553,7 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
 
         if (rec.use_mesh_shader)
-        {
-            VulkanDevice *device = mm->GetDevice();
-            const bool mesh_ext_enabled = device && device->IsMeshShaderExtensionEnabled();
-            const bool mesh_runtime_enabled = device && device->IsMeshShaderEnabled();
-            const bool task_runtime_enabled = device && device->IsTaskShaderEnabled();
-
-            if (mesh_runtime_enabled)
-            {
-                cfg.shader_stage_flag_bit = uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
-            }
-            else
-            {
-                std::fprintf(stderr,
-                    "[CreateMaterialFromRecord] Mesh shader requested but runtime mesh feature is unavailable (ext=%d mesh=%d task=%d). Material creation aborted. preset=%d\n",
-                    mesh_ext_enabled ? 1 : 0,
-                    mesh_runtime_enabled ? 1 : 0,
-                    task_runtime_enabled ? 1 : 0,
-                    int(rec.preset));
-
-                return nullptr;
-            }
-        }
+            cfg.shader_stage_flag_bit = uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
 
         // Use the recipe-derived variant key so that attribute_providers and
         // position_provider (vertex pulling) are propagated through to
@@ -616,11 +612,23 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 
     ShaderMaterialProgram *mtl = CreateMaterial(mtl_id, cfg);
 
+    const bool mesh_stage_requested = cfg && IsMeshStageRequested(cfg->shader_stage_flag_bit);
+
     if(!mtl)
     {
-        mtl = GetFallbackMaterial();
-        if(mtl)
-            acquire_fallback_used.fetch_add(1);
+        if(mesh_stage_requested)
+        {
+            std::fprintf(stderr,
+                "[ShaderMaterialProgramManager] ResolveOrCreateProgram(mesh strict) failed: preset=%d stage_bits=0x%08X, fallback material disabled for mesh path\n",
+                int(mtl_id),
+                cfg ? cfg->shader_stage_flag_bit : 0u);
+        }
+        else
+        {
+            mtl = GetFallbackMaterial();
+            if(mtl)
+                acquire_fallback_used.fetch_add(1);
+        }
     }
 
     if(out_key)
@@ -635,8 +643,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 
     ShaderMaterialProgram *mtl = CreateMaterial(mtl_id, cfg);
 
-    const bool mesh_stage_requested =
-        cfg && (cfg->shader_stage_flag_bit & (uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Task)));
+    const bool mesh_stage_requested = cfg && IsMeshStageRequested(cfg->shader_stage_flag_bit);
 
     if(!mtl)
     {
@@ -667,11 +674,22 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 
     ShaderMaterialProgram *mtl = CreateMaterial(key, cfg);
 
+    const bool mesh_stage_requested = cfg && IsMeshStageRequested(cfg->shader_stage_flag_bit);
+
     if(!mtl)
     {
-        mtl = GetFallbackMaterial();
-        if(mtl)
-            acquire_fallback_used.fetch_add(1);
+        if(mesh_stage_requested)
+        {
+            std::fprintf(stderr,
+                "[ShaderMaterialProgramManager] ResolveOrCreateProgram(mesh strict) failed: stage_bits=0x%08X, fallback material disabled for mesh path\n",
+                cfg ? cfg->shader_stage_flag_bit : 0u);
+        }
+        else
+        {
+            mtl = GetFallbackMaterial();
+            if(mtl)
+                acquire_fallback_used.fetch_add(1);
+        }
     }
 
     if(out_key)
@@ -686,8 +704,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 
     ShaderMaterialProgram *mtl = CreateMaterial(key, cfg);
 
-    const bool mesh_stage_requested =
-        cfg && (cfg->shader_stage_flag_bit & (uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Task)));
+    const bool mesh_stage_requested = cfg && IsMeshStageRequested(cfg->shader_stage_flag_bit);
 
     if(!mtl)
     {

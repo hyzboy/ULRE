@@ -48,7 +48,18 @@ static MaterialVariantKey CanonicalizeRegistryLookupKey(const MaterialVariantKey
     for (auto &p : canon.attribute_providers)
         p = AttributeProviderId::None;
     if (canon.position_provider == PositionProviderId::SSBO_PackedVec3)
+    {
+      if (canon.geometry_mode == GeometryMode::Quad2D
+       || Is2DSurfaceType(canon.surface_type))
+      {
+        // 2D presets are registered with VAB_Vec2 as their canonical provider.
+        canon.position_provider = PositionProviderId::VAB_Vec2;
+      }
+      else
+      {
         canon.position_provider = PositionProviderId::DirectVec3;
+      }
+    }
 
     return canon;
 }
