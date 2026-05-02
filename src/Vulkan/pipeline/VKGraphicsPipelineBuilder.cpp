@@ -12,6 +12,15 @@ namespace hgl::graph{
 
 namespace
 {
+static bool IsPullingMaterial(const ShaderMaterialProgram *material)
+{
+    if (!material)
+        return false;
+
+    return material->IsPullingEnabled()
+        || material->hasSet(DescriptorSetType::VertexStreams);
+}
+
 static void LogVertexInputLayoutDetails(const char *tag, const VIL *vil)
 {
     if (!vil)
@@ -47,6 +56,13 @@ static void LogPipelineVertexInputComparison(const GraphicsPipelineBuildRequest 
 {
     if (!request.material)
         return;
+
+    if (IsPullingMaterial(request.material))
+    {
+        LogVertexInputLayoutDetails("PipelineBuild.GeometryVIL", request.vil);
+        GLogInfo("[PipelineBuild.MaterialDefaultVIL] Pulling enabled: forcing empty VkPipelineVertexInputState");
+        return;
+    }
 
     const VIL *material_vil = request.material->GetDefaultVIL();
     LogVertexInputLayoutDetails("PipelineBuild.GeometryVIL", request.vil);
@@ -97,7 +113,10 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
         return nullptr;
     }
 
-    if (!request.material || !request.render_format || !request.vil || !request.pipeline_data)
+    const bool pulling_enabled = IsPullingMaterial(request.material);
+
+    if (!request.material || !request.render_format || !request.pipeline_data
+     || (!pulling_enabled && !request.vil))
     {
         GLogError("[MonolithicGraphicsPipelineBuilder] Build invalid request: "
                   "material=%p render_format=%p vil=%p pipeline_data=%p",
@@ -108,10 +127,12 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
         return nullptr;
     }
 
+    const VIL *build_vil = pulling_enabled ? nullptr : request.vil;
+
     GraphicsPipelineData *pd = new GraphicsPipelineData(request.pipeline_data);
     pd->SetPrim(request.primitive, request.primitive_restart);
     pd->InitShaderStage(request.material->GetStageList());
-    pd->InitVertexInputState(request.vil);
+    pd->InitVertexInputState(build_vil);
 
     LogPipelineVertexInputComparison(request);
 
@@ -144,7 +165,7 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
     if (name.IsEmpty())
         name = request.material->GetName();
 
-    return new GraphicsPipeline(name, context.device->GetDevice(), vk_pipeline, request.vil, pd);
+    return new GraphicsPipeline(name, context.device->GetDevice(), vk_pipeline, build_vil, pd);
 }
 
 GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
@@ -162,17 +183,23 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
         handle_cache_->Init(context.device->GetDevice(), context.pipeline_cache);
     });
 
+    const bool pulling_enabled = IsPullingMaterial(request.material);
+    const VIL *build_vil = pulling_enabled ? nullptr : request.vil;
+
+    GraphicsPipelineBuildRequest build_request = request;
+    build_request.vil = build_vil;
+
     // ── Compute per-library keys ──────────────────────────────────────────────
-    const GplVertexInputKey    vi_key = BuildVertexInputKey(request.vil);
-    const GplPreRasterKey      pr_key = BuildPreRasterKey(request);
-    const GplFragmentShaderKey fs_key = BuildFragmentShaderKey(request);
-    const GplFragmentOutputKey fo_key = BuildFragmentOutputKey(request.render_format);
+    const GplVertexInputKey    vi_key = BuildVertexInputKey(build_request.vil);
+    const GplPreRasterKey      pr_key = BuildPreRasterKey(build_request);
+    const GplFragmentShaderKey fs_key = BuildFragmentShaderKey(build_request);
+    const GplFragmentOutputKey fo_key = BuildFragmentOutputKey(build_request.render_format);
 
     // ── Acquire (or create-and-cache) the four library handles ────────────────
-    const VkPipeline vi_lib = handle_cache_->AcquireVertexInputLibrary(vi_key, request);
-    const VkPipeline pr_lib = handle_cache_->AcquirePreRasterLibrary(pr_key, request);
-    const VkPipeline fs_lib = handle_cache_->AcquireFragmentShaderLibrary(fs_key, request);
-    const VkPipeline fo_lib = handle_cache_->AcquireFragmentOutputLibrary(fo_key, request);
+    const VkPipeline vi_lib = handle_cache_->AcquireVertexInputLibrary(vi_key, build_request);
+    const VkPipeline pr_lib = handle_cache_->AcquirePreRasterLibrary(pr_key, build_request);
+    const VkPipeline fs_lib = handle_cache_->AcquireFragmentShaderLibrary(fs_key, build_request);
+    const VkPipeline fo_lib = handle_cache_->AcquireFragmentOutputLibrary(fo_key, build_request);
 
     if (vi_lib == VK_NULL_HANDLE || pr_lib == VK_NULL_HANDLE
      || fs_lib == VK_NULL_HANDLE || fo_lib == VK_NULL_HANDLE)
@@ -227,6 +254,6 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
     if (name.IsEmpty())
         name = request.material->GetName();
 
-    return new GraphicsPipeline(name, vk_device, final_pipeline, request.vil, nullptr);
+    return new GraphicsPipeline(name, vk_device, final_pipeline, build_vil, nullptr);
 }
 }//namespace hgl::graph

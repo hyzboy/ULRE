@@ -22,7 +22,7 @@
 //   POSITION_SSBO_SET     – descriptor set index
 //   POSITION_SSBO_BINDING – binding index within that set
 
-layout(set=POSITION_SSBO_SET, binding=POSITION_SSBO_BINDING) readonly buffer PositionData
+layout(scalar, set=POSITION_SSBO_SET, binding=POSITION_SSBO_BINDING) readonly buffer PositionData
 {
     vec3 positions[];
 } u_PositionData;

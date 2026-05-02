@@ -44,14 +44,33 @@ using namespace hgl::graph;
 using namespace hgl::ecs;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cube vertex data — 24 unique vertices (6 faces × 4 verts), 36 indices
-// CCW winding when viewed from the outside face normal direction.
+// Cube vertex data — 24 unique vertices (6 faces × 4 verts), 36 indices.
+// Winding is clockwise when viewed from the outside face normal direction,
+// matching the current default VK_FRONT_FACE_CLOCKWISE raster state.
 // ─────────────────────────────────────────────────────────────────────────────
 
 namespace
 {
 
-static const glm::vec3 kPositions[24] =
+struct PackedFloat3
+{
+    float x;
+    float y;
+    float z;
+};
+
+struct PackedFloat2
+{
+    float x;
+    float y;
+};
+
+static_assert(sizeof(PackedFloat3) == 12, "PackedFloat3 must be tightly packed");
+static_assert(sizeof(PackedFloat2) == 8,  "PackedFloat2 must be tightly packed");
+
+// SSBO_Vec3 expects tightly-packed 12-byte vec3 records.
+// Use POD arrays instead of glm::vec3 to avoid aligned-gentype padding.
+static const PackedFloat3 kPositions[24] =
 {
     // +X face  (normal = 1,0,0)
     { 0.5f, -0.5f,  0.5f }, { 0.5f, -0.5f, -0.5f },
@@ -73,7 +92,7 @@ static const glm::vec3 kPositions[24] =
     {-0.5f,  0.5f, -0.5f }, { 0.5f,  0.5f, -0.5f },
 };
 
-static const glm::vec3 kNormals[24] =
+static const PackedFloat3 kNormals[24] =
 {
     { 1, 0, 0},{ 1, 0, 0},{ 1, 0, 0},{ 1, 0, 0},  // +X
     {-1, 0, 0},{-1, 0, 0},{-1, 0, 0},{-1, 0, 0},  // -X
@@ -83,7 +102,7 @@ static const glm::vec3 kNormals[24] =
     { 0, 0,-1},{ 0, 0,-1},{ 0, 0,-1},{ 0, 0,-1},  // -Z
 };
 
-static const glm::vec2 kUVs[24] =
+static const PackedFloat2 kUVs[24] =
 {
     {0,0},{1,0},{1,1},{0,1},  // +X
     {0,0},{1,0},{1,1},{0,1},  // -X
@@ -95,16 +114,16 @@ static const glm::vec2 kUVs[24] =
 
 static constexpr uint16_t kIndices[36] =
 {
-     0, 1, 2,  0, 2, 3,   // +X
-     4, 5, 6,  4, 6, 7,   // -X
-     8, 9,10,  8,10,11,   // +Y
-    12,13,14, 12,14,15,   // -Y
-    16,17,18, 16,18,19,   // +Z
-    20,21,22, 20,22,23,   // -Z
+     0, 2, 1,  0, 3, 2,   // +X
+     4, 6, 5,  4, 7, 6,   // -X
+     8,10, 9,  8,11,10,   // +Y
+    12,14,13, 12,15,14,   // -Y
+    16,18,17, 16,19,18,   // +Z
+    20,22,21, 20,23,22,   // -Z
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MaterialRecipe — Standard preset (PBR default), BaseColor texture only.
+// MaterialRecipe — Standard preset (PBR default), BaseColor + Normal textures.
 // attribute_providers forces Normal + TexCoord0 onto SSBO fetch.
 // position_provider forces Position onto SSBO fetch.
 // Lambda initializer required: array indices cannot use designated-initializers.
@@ -116,8 +135,12 @@ static const mtl::MaterialRecipe kPullRecipe = []()
     r.id       = "vertex_pulling_cube";
     r.preset   = mtl::MaterialPreset::Standard;
     r.pipeline = GraphicsPipelinePreset::Solid3D;
-    r.textures = { { mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None,
-                     "res/image/Brickwall/Albedo.Tex2D" } };
+    r.textures = {
+        { mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Simple,
+          "res/image/Brickwall/Albedo.Tex2D" },
+        { mtl::SamplerSlot::Normal, mtl::TextureSourceMode::Simple,
+          "res/image/Brickwall/Normal.Tex2D" },
+    };
     r.attribute_providers[size_t(AttributeSemantic::Normal)]    = AttributeProviderId::SSBO_Vec3;
     r.attribute_providers[size_t(AttributeSemantic::TexCoord0)] = AttributeProviderId::SSBO_Vec2;
     r.position_provider = PositionProviderId::SSBO_PackedVec3;
@@ -194,6 +217,7 @@ private:
         mi_data.base_color = 0xFFFFFFFFu;  // white
         mi_data.metallic   = 0.0f;
         mi_data.roughness  = 0.9f;
+        mi_data.normal_scale = 0.0f;
 
         auto *mi = ResolveOrCreateBindingInstance(kPullRecipe, &mi_data, sizeof(mi_data));
         if (!mi)
