@@ -25,6 +25,9 @@ struct VulkanDevAttr
     bool                                uint8_index_type    =false;
     bool                                uint32_index_type   =false;
     bool                                wide_lines          =false;
+    bool                                mesh_shader_extension =false;
+    bool                                mesh_shader_enabled =false;
+    bool                                task_shader_enabled =false;
 
     VkDevice                            device          =VK_NULL_HANDLE;
     VkCommandPool                       cmd_pool        =VK_NULL_HANDLE;
@@ -35,6 +38,12 @@ struct VulkanDevAttr
 
     PFN_vkCmdBeginRenderingKHR          pfn_vkCmdBeginRenderingKHR = nullptr;
     PFN_vkCmdEndRenderingKHR            pfn_vkCmdEndRenderingKHR   = nullptr;
+
+#ifdef VK_EXT_mesh_shader
+    PFN_vkCmdDrawMeshTasksEXT           pfn_vkCmdDrawMeshTasksEXT = nullptr;
+    PFN_vkCmdDrawMeshTasksIndirectEXT   pfn_vkCmdDrawMeshTasksIndirectEXT = nullptr;
+    PFN_vkCmdDrawMeshTasksIndirectCountEXT pfn_vkCmdDrawMeshTasksIndirectCountEXT = nullptr;
+#endif
 
 #ifdef _DEBUG
     DebugUtils *                        debug_utils     =nullptr;

@@ -97,6 +97,12 @@ struct VulkanHardwareRequirement
     // 1.3 特性
     SupportLevel dynamicRendering;             ///<要求支持动态渲染
 
+    // Mesh Shader (VK_EXT_mesh_shader)
+    SupportLevel taskShader;                   ///<要求支持Task Shader
+    SupportLevel meshShader;                   ///<要求支持Mesh Shader
+
+    bool meshShaderOnlyMode;                   ///<是否强制Mesh Shader Only模式（不允许传统Vertex路径）
+
     uint32_t descriptor_pool;                  ///<描述符池大小(默认1024)
 
 public:
@@ -108,6 +114,9 @@ public:
         descriptor_pool=1024;
 
         geometryShader=SupportLevel::Want;
+
+        taskShader=SupportLevel::Want;
+        meshShader=SupportLevel::Want;
 
         fullDrawIndexUint8=SupportLevel::Want;
         fullDrawIndexUint32=SupportLevel::Want;
