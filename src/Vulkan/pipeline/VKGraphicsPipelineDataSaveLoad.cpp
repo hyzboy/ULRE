@@ -152,7 +152,7 @@ bool GraphicsPipelineData::LoadFromMemory(uchar *origin_data,uint size)
 
     CHECK_SIZE_AND_EQUAL(alpha_test,float);
 
-    InitInputAssemblyState();
+    pipeline_info.pInputAssemblyState=&input_assembly;
     pipeline_info.pTessellationState =tessellation;
     pipeline_info.pRasterizationState=rasterization;
     pipeline_info.pMultisampleState  =multi_sample;

@@ -334,15 +334,15 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     {
         mesh_shader_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
         mesh_shader_features.pNext=const_cast<void*>(static_cast<const void*>(create_info.pNext));
-        mesh_shader_features.meshShader=VK_TRUE;
-        mesh_shader_features.taskShader=VK_TRUE;
 
-        // Keep mesh bring-up minimal: optional mesh subfeatures require additional
-        // dependent feature chains (multiview / fragment shading rate / query path).
-        // We do not rely on them in current runtime, so leave them disabled.
-        mesh_shader_features.multiviewMeshShader=VK_FALSE;
-        mesh_shader_features.primitiveFragmentShadingRateMeshShader=VK_FALSE;
-        mesh_shader_features.meshShaderQueries=VK_FALSE;
+        // Mesh-only example path expects mesh/task stages; keep core bits on.
+        // Optional bits stay disabled unless dependent feature chains are added.
+        mesh_shader_features.meshShader = VK_TRUE;
+        mesh_shader_features.taskShader = VK_TRUE;
+
+        mesh_shader_features.multiviewMeshShader = VK_FALSE;
+        mesh_shader_features.primitiveFragmentShadingRateMeshShader = VK_FALSE;
+        mesh_shader_features.meshShaderQueries = VK_FALSE;
         create_info.pNext=&mesh_shader_features;
     }
 
@@ -581,50 +581,11 @@ bool VulkanDeviceCreater::ChoosePhysicalDevice()
 {
     physical_device=nullptr;
 
-    if(!instance)
-        return false;
+    if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);      //先找独显
+    if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);    //再找集显
+    if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);       //最后找虚拟显卡
 
-    const auto &device_list = instance->GetDeviceList();
-
-    auto try_pick_by_type = [&](const VkPhysicalDeviceType type) -> bool
-    {
-        for(const VulkanPhyDevice *pd : device_list)
-        {
-            if(!pd || pd->GetDeviceType() != type)
-                continue;
-
-            physical_device = pd;
-            if(RequirementCheck())
-                return true;
-        }
-
-        return false;
-    };
-
-    // Priority: discrete -> integrated -> virtual, but each candidate must pass requirements.
-    if(try_pick_by_type(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU))
-        return true;
-
-    if(try_pick_by_type(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU))
-        return true;
-
-    if(try_pick_by_type(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU))
-        return true;
-
-    // Final fallback: probe all remaining device types.
-    for(const VulkanPhyDevice *pd : device_list)
-    {
-        if(!pd)
-            continue;
-
-        physical_device = pd;
-        if(RequirementCheck())
-            return true;
-    }
-
-    physical_device = nullptr;
-    GLogError("[VulkanDeviceCreater] No physical device satisfies current hardware requirements.");
-    return false;
+    return physical_device;
 }
 
 bool VulkanDeviceCreater::RequirementCheck()

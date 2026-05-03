@@ -318,8 +318,6 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
     rendering_ci.colorAttachmentCount    = request.render_format->GetColorCount();
     rendering_ci.pColorAttachmentFormats = request.render_format->GetColorFormat().data();
     rendering_ci.depthAttachmentFormat   = request.render_format->GetDepthFormat();
-    if (IsDepthStencilFormat(rendering_ci.depthAttachmentFormat))
-        rendering_ci.stencilAttachmentFormat = rendering_ci.depthAttachmentFormat;
     pd->pipeline_info.pNext              = &rendering_ci;
     pd->pipeline_info.renderPass         = VK_NULL_HANDLE;
     pd->pipeline_info.subpass            = 0;
@@ -341,26 +339,7 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
     if (name.IsEmpty())
         name = request.material->GetName();
 
-    GraphicsPipeline *result = new GraphicsPipeline(name,
-                                                    context.device->GetDevice(),
-                                                    vk_pipeline,
-                                                    mesh_pipeline,
-                                                    build_vil,
-                                                    pd);
-
-    result->SetDebugRenderingSignature(rendering_ci.depthAttachmentFormat,
-                                       request.render_format->GetColorCount(),
-                                       false);
-
-    GLogInfo("[MonolithicGraphicsPipelineBuilder] Created pipeline handle=0x%llx material=%s depthFormat=%d stencilFormat=%d colorCount=%u mesh=%s",
-             (unsigned long long)(uintptr_t)vk_pipeline,
-             request.material->GetName().c_str(),
-             (int)rendering_ci.depthAttachmentFormat,
-             (int)rendering_ci.stencilAttachmentFormat,
-             request.render_format->GetColorCount(),
-             mesh_pipeline ? "yes" : "no");
-
-    return result;
+    return new GraphicsPipeline(name, context.device->GetDevice(), vk_pipeline, mesh_pipeline, build_vil, pd);
 }
 
 GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
@@ -402,10 +381,6 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
     const VIL *build_vil = vertex_input_ignored ? nullptr : request.vil;
 
     GraphicsPipelineBuildRequest build_request = request;
-    GraphicsPipelineData prepared_pipeline_data(request.pipeline_data);
-    prepared_pipeline_data.SetPrim(request.primitive, request.primitive_restart);
-
-    build_request.pipeline_data = &prepared_pipeline_data;
     build_request.vil = build_vil;
 
     // ── Compute per-library keys ──────────────────────────────────────────────
@@ -437,7 +412,6 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
 
     VkPipelineLibraryCreateInfoKHR lib_ci{};
     lib_ci.sType        = VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR;
-    lib_ci.pNext        = nullptr;
     lib_ci.libraryCount = 4;
     lib_ci.pLibraries   = libs;
 
@@ -448,13 +422,12 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
     rendering_ci.colorAttachmentCount    = color_count;
     rendering_ci.pColorAttachmentFormats = request.render_format->GetColorFormat().data();
     rendering_ci.depthAttachmentFormat   = request.render_format->GetDepthFormat();
-    if (IsDepthStencilFormat(rendering_ci.depthAttachmentFormat))
-        rendering_ci.stencilAttachmentFormat = rendering_ci.depthAttachmentFormat;
-    rendering_ci.pNext                   = &lib_ci;
+
+    lib_ci.pNext = &rendering_ci;
 
     VkGraphicsPipelineCreateInfo link_ci{};
     link_ci.sType      = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    link_ci.pNext      = &rendering_ci;
+    link_ci.pNext      = &lib_ci;
     link_ci.flags      = VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT;
     link_ci.layout     = request.material->GetPipelineLayout();
     link_ci.renderPass = VK_NULL_HANDLE;
@@ -475,25 +448,6 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
     if (name.IsEmpty())
         name = request.material->GetName();
 
-    GraphicsPipeline *result = new GraphicsPipeline(name,
-                                                    vk_device,
-                                                    final_pipeline,
-                                                    mesh_pipeline,
-                                                    build_vil,
-                                                    nullptr);
-
-    result->SetDebugRenderingSignature(rendering_ci.depthAttachmentFormat,
-                                       request.render_format->GetColorCount(),
-                                       true);
-
-    GLogInfo("[GplGraphicsPipelineBuilder] Linked pipeline handle=0x%llx material=%s depthFormat=%d stencilFormat=%d colorCount=%u mesh=%s",
-             (unsigned long long)(uintptr_t)final_pipeline,
-             request.material->GetName().c_str(),
-             (int)rendering_ci.depthAttachmentFormat,
-             (int)rendering_ci.stencilAttachmentFormat,
-             request.render_format->GetColorCount(),
-             mesh_pipeline ? "yes" : "no");
-
-    return result;
+    return new GraphicsPipeline(name, vk_device, final_pipeline, mesh_pipeline, build_vil, nullptr);
 }
 }//namespace hgl::graph

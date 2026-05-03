@@ -110,15 +110,8 @@ namespace
         };
 
         // During migration we keep legacy non-mesh materials intact.
-        // Billboard path is excluded from this compatibility branch and must
-        // always request mesh stages explicitly.
         if (!has_task && !has_mesh)
-        {
-            if (is_billboard)
-                return fail("billboard materials must enable mesh stage");
-
             return true;
-        }
 
         if (!has_mesh)
             return fail("task stage requires mesh stage");
