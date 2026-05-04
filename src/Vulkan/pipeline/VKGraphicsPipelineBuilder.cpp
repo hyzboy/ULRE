@@ -356,7 +356,9 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
     build_request.vil = build_vil;
 
     // ── Compute per-library keys ──────────────────────────────────────────────
-    const GplVertexInputKey    vi_key = BuildVertexInputKey(build_request.vil);
+    const GplVertexInputKey    vi_key = BuildVertexInputKey(build_request.vil,
+                                                            build_request.primitive,
+                                                            build_request.primitive_restart);
     const GplPreRasterKey      pr_key = BuildPreRasterKey(build_request);
     const GplFragmentShaderKey fs_key = BuildFragmentShaderKey(build_request);
     const GplFragmentOutputKey fo_key = BuildFragmentOutputKey(build_request.render_format);

@@ -36,7 +36,9 @@ bool IsVertexInputIgnored(const GraphicsPipelineBuildRequest &req);
 
 bool IsValidGraphicsPipelineBuildRequest(const GraphicsPipelineBuildRequest &req);
 
-GplVertexInputKey  BuildVertexInputKey(const VertexInputLayout *vil);
+GplVertexInputKey  BuildVertexInputKey(const VertexInputLayout *vil,
+                                       PrimitiveType primitive,
+                                       bool primitive_restart);
 GplPreRasterKey    BuildPreRasterKey(const GraphicsPipelineBuildRequest &req);
 GplFragmentShaderKey BuildFragmentShaderKey(const GraphicsPipelineBuildRequest &req);
 GplFragmentOutputKey BuildFragmentOutputKey(const RenderTargetFormat *rf);

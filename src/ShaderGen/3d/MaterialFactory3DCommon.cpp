@@ -34,19 +34,24 @@ MaterialCreateInfo *CreateFromFixedDef3D(
     const Material3DCreateConfig *cfg,
     const MaterialVariantDesc &var_desc)
 {
-    if (cfg && cfg->prim != def.primitive_type)
+    StaticMaterialDef effective_def = def;
+
+    if (cfg && cfg->prim != effective_def.primitive_type)
     {
         std::fprintf(stderr,
-            "[%s] Primitive mismatch: cfg->prim=%u def.primitive_type=%u (using def value)\n",
+            "[%s] Primitive override: cfg->prim=%u def.primitive_type=%u (using cfg value)\n",
             debug_tag ? debug_tag : "3DFactory",
             static_cast<unsigned>(cfg->prim),
-            static_cast<unsigned>(def.primitive_type));
+            static_cast<unsigned>(effective_def.primitive_type));
+
+        // Respect recipe/runtime primitive overrides (e.g. PureColor3D wireframe lines).
+        effective_def.primitive_type = cfg->prim;
     }
 
     // Populate vertex attribute feature bits from the actual vertex layout.
     // Builder functions (e.g. BuildForwardLitVS) derive has_uv0 / has_normal etc. from these bits.
     MaterialVariantKey assemble_key = var_key;
-    PopulateVariantKeyVertexAttribBits(assemble_key, def);
+    PopulateVariantKeyVertexAttribBits(assemble_key, effective_def);
 
     CompositorAssembler assembler;
 
@@ -59,7 +64,6 @@ MaterialCreateInfo *CreateFromFixedDef3D(
         return nullptr;
     }
 
-    StaticMaterialDef effective_def = def;
     const bool needs_vertex_streams = UsesVertexStreamProviders(assemble_key);
     if (needs_vertex_streams && !effective_def.vertex_stream_key)
         effective_def.vertex_stream_key = &assemble_key;

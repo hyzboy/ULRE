@@ -179,12 +179,19 @@ bool IsValidGraphicsPipelineBuildRequest(const GraphicsPipelineBuildRequest &req
     return true;
 }
 
-GplVertexInputKey BuildVertexInputKey(const VertexInputLayout *vil)
+GplVertexInputKey BuildVertexInputKey(const VertexInputLayout *vil,
+                                      PrimitiveType primitive,
+                                      bool primitive_restart)
 {
-    if (!vil)
-        return {};
-
     uint64_t h = hgl::hash::FNV1aInit<uint64_t>();
+
+    // VI library also captures input assembly topology/restart state.
+    // Include both so line and triangle requests do not alias to one cache entry.
+    HashU32(h, static_cast<uint32_t>(primitive));
+    HashBool(h, primitive_restart);
+
+    if (!vil)
+        return { h };
 
     const uint32_t count = vil->GetVertexAttribCount();
     HashU32(h, count);
@@ -274,7 +281,7 @@ GplLinkedPipelineKey BuildLinkedPipelineKey(const GraphicsPipelineBuildRequest &
 
     const VertexInputLayout *effective_vil = IsVertexInputIgnored(req) ? nullptr : req.vil;
 
-    key.vi = BuildVertexInputKey(effective_vil);
+    key.vi = BuildVertexInputKey(effective_vil, req.primitive, req.primitive_restart);
     key.pr = BuildPreRasterKey(req);
     key.fs = BuildFragmentShaderKey(req);
     key.fo = BuildFragmentOutputKey(req.render_format);
