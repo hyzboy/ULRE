@@ -68,7 +68,6 @@ static const mtl::MaterialRecipe kPullRecipe = []()
     r.attribute_providers[size_t(AttributeSemantic::Normal)]    = AttributeProviderId::SSBO_Vec3;
     r.attribute_providers[size_t(AttributeSemantic::TexCoord0)] = AttributeProviderId::SSBO_Vec2;
     r.position_provider = PositionProviderId::SSBO_PackedVec3;
-    r.use_mesh_shader = true;
     return r;
 }();
 
@@ -240,16 +239,6 @@ private:
         if (!smp)
             return false;
 
-        bool material_uses_mesh_stage = false;
-        for (const auto &stage_ci : smp->GetStageList())
-        {
-            if (stage_ci.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
-            {
-                material_uses_mesh_stage = true;
-                break;
-            }
-        }
-
         smp->SetPullingEnabled(true);
 
         auto *mp = smp->GetMP(SET_TYPE_VERTEX_STREAMS);
@@ -265,13 +254,6 @@ private:
         if (!smp->BindAttribStream(AttributeSemantic::TexCoord0, uv_vab_->GetGPUBuffer(), 0, 8))
             return false;
 
-        if (material_uses_mesh_stage)
-        {
-            auto *ibo = geometry_ ? geometry_->GetIBO() : nullptr;
-            if (!ibo || !smp->BindMeshIndexStream(ibo->GetGPUBuffer()))
-                return false;
-        }
-
         auto *pm = GetPrimitiveManager();
         if (!pm)
             return false;
@@ -279,13 +261,6 @@ private:
         auto *prim = pm->CreatePrimitive(geometry_, mi);
         if (!prim)
             return false;
-
-        if (material_uses_mesh_stage)
-        {
-            const uint32_t mesh_group_count_x = geometry_->GetIndexCount() / 3u;
-            if (mesh_group_count_x == 0 || !prim->SetMeshTaskGroupCounts(mesh_group_count_x, 1u, 1u))
-                return false;
-        }
 
         auto prim_comp = sphere_entity_->GetComponent<PrimitiveComponent>();
         if (!prim_comp)

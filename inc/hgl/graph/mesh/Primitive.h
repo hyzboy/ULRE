@@ -72,7 +72,6 @@ public:
             bool                SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t draw_vertex_count,uint32_t draw_index_count=0);
 
             // 设置Mesh任务组数量
-            bool                SetMeshTaskGroupCounts(uint32_t group_count_x,uint32_t group_count_y=1,uint32_t group_count_z=1);
 
             // 取得缓冲区实际数据数量
             uint32_t            GetDataVertexCount()const{return draw_range.data_vertex_count;}

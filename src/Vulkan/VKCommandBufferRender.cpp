@@ -250,9 +250,9 @@ bool RenderCmdBuffer::BindDataBuffer(const GeometryDataBuffer *geom_data_buffer)
         return(false);
     }
 
-    if(geom_data_buffer->vab_count<=0 && !bound_mesh_pipeline)
+    if(geom_data_buffer->vab_count<=0 && !geom_data_buffer->ibo)
     {
-        LogError("No VABs to bind");
+        LogError("No vertex or index buffers to bind");
         return(false);
     }
 
@@ -422,53 +422,6 @@ void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const Geom
     if(!geom_data_buffer||!geom_draw_range)
     {
         LogError("Null parameter in Draw");
-        return;
-    }
-
-    if(bound_mesh_pipeline)
-    {
-        uint32_t group_count_x = geom_draw_range->mesh_task_group_count_x;
-        const uint32_t group_count_y = geom_draw_range->mesh_task_group_count_y;
-        const uint32_t group_count_z = geom_draw_range->mesh_task_group_count_z;
-
-        if(group_count_x==0 || group_count_y==0 || group_count_z==0)
-        {
-            LogError("[RenderCmdBuffer::Draw] Invalid mesh task group counts: (%u,%u,%u)",
-                     group_count_x,
-                     group_count_y,
-                     group_count_z);
-            return;
-        }
-
-        if(geom_data_buffer->ibo && geom_draw_range->index_count>0)
-        {
-            static bool warned_mesh_indexed_guard = false;
-            if(!warned_mesh_indexed_guard)
-            {
-                LogWarning("[RenderCmdBuffer::Draw] Mesh pipeline bound; indexed draw path is blocked and index metadata is ignored");
-                warned_mesh_indexed_guard = true;
-            }
-        }
-
-        if(instance_count>1)
-        {
-            if(group_count_x > UINT32_MAX / instance_count)
-                group_count_x = UINT32_MAX;
-            else
-                group_count_x *= instance_count;
-        }
-
-        if(first_instance!=0)
-        {
-            static bool warned_mesh_first_instance = false;
-            if(!warned_mesh_first_instance)
-            {
-                LogWarning("[RenderCmdBuffer::Draw] first_instance is ignored for mesh draw path");
-                warned_mesh_first_instance = true;
-            }
-        }
-
-        DrawMeshTasks(group_count_x,group_count_y,group_count_z);
         return;
     }
 

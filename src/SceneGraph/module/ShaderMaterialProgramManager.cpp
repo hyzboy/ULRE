@@ -535,23 +535,6 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
 
-        if (rec.use_mesh_shader)
-        {
-            VulkanDevice *device = mm->GetDevice();
-            const bool mesh_runtime_enabled = device && device->IsMeshShaderEnabled();
-
-            if (mesh_runtime_enabled)
-            {
-                cfg.shader_stage_flag_bit = uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
-            }
-            else
-            {
-                std::fprintf(stderr,
-                    "[CreateMaterialFromRecord] Mesh shader requested but runtime mesh feature is unavailable; falling back to Vertex+Fragment. preset=%d\n",
-                    int(rec.preset));
-            }
-        }
-
         // Use the recipe-derived variant key so that attribute_providers and
         // position_provider (vertex pulling) are propagated through to
         // Standard_Adapter → AddVertexStreamSSBOs.  RouteKey(preset) drops them.

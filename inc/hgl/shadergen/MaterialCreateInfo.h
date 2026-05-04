@@ -6,7 +6,6 @@
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/ShaderStageMap.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
-#include<hgl/common/MeshShaderStreamContract.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
 #include<hgl/shadergen/MaterialBuilderBlocks.h>
 #include<string>
@@ -93,8 +92,6 @@ namespace hgl::graph
 
                     bool        HasVertex       ()const{return HasShader(ShaderStage::Vertex);}
                     bool        HasFragment     ()const{return HasShader(ShaderStage::Fragment);}
-                    bool        HasTask         ()const{return HasShader(ShaderStage::Task);}
-                    bool        HasMesh         ()const{return HasShader(ShaderStage::Mesh);}
         //          bool        HasCompute      ()const{return HasShader(ShaderStage::Compute);}
 
             ShaderCreateInfo *GetStageShader(const ShaderStage ss)
@@ -133,9 +130,6 @@ namespace hgl::graph
             /// Bindings are assigned by semantic index to match CompositorAssembler macros.
             void AddVertexStreamSSBOs(const MaterialVariantKey &key);
 
-            /// Register mesh-shader specific SSBO descriptors in the VertexStreams set.
-            /// This reserves index and optional meshlet/task payload stream bindings.
-            void AddMeshShaderStreamSSBOs(const MeshShaderStreamContract &contract);
         };//class MaterialCreateInfo
     }//namespace mtl
 }//namespace hgl::graph
