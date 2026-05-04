@@ -191,7 +191,14 @@ GplVertexInputKey BuildVertexInputKey(const VertexInputLayout *vil,
     HashBool(h, primitive_restart);
 
     if (!vil)
-        return { h };
+    {
+        return {
+            h,
+            static_cast<uint32_t>(primitive),
+            primitive_restart ? uint8_t(1) : uint8_t(0),
+            0
+        };
+    }
 
     const uint32_t count = vil->GetVertexAttribCount();
     HashU32(h, count);
@@ -207,7 +214,12 @@ GplVertexInputKey BuildVertexInputKey(const VertexInputLayout *vil,
         HashU32(h, static_cast<uint32_t>(vif[i].input_rate));
     }
 
-    return { h };
+    return {
+        h,
+        static_cast<uint32_t>(primitive),
+        primitive_restart ? uint8_t(1) : uint8_t(0),
+        count
+    };
 }
 
 GplPreRasterKey BuildPreRasterKey(const GraphicsPipelineBuildRequest &req)

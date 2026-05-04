@@ -16,7 +16,17 @@ namespace hgl::graph{
 struct GplVertexInputKey
 {
     uint64_t hash = 0;
-    bool operator==(const GplVertexInputKey &rhs) const { return hash == rhs.hash; }
+    uint32_t primitive = 0;
+    uint8_t primitive_restart = 0;
+    uint32_t attrib_count = 0;
+
+    bool operator==(const GplVertexInputKey &rhs) const
+    {
+        return hash == rhs.hash
+            && primitive == rhs.primitive
+            && primitive_restart == rhs.primitive_restart
+            && attrib_count == rhs.attrib_count;
+    }
 };
 
 struct GplPreRasterKey
@@ -66,7 +76,11 @@ struct hash<hgl::graph::GplVertexInputKey>
 {
     size_t operator()(const hgl::graph::GplVertexInputKey &key) const noexcept
     {
-        return static_cast<size_t>(key.hash);
+        size_t h = static_cast<size_t>(key.hash);
+        h ^= (std::hash<uint32_t>{}(key.primitive) << 1);
+        h ^= (std::hash<uint8_t>{}(key.primitive_restart) << 2);
+        h ^= (std::hash<uint32_t>{}(key.attrib_count) << 3);
+        return h;
     }
 };
 

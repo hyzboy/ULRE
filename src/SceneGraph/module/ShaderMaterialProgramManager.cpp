@@ -103,12 +103,21 @@ namespace
         return true;
     }
 
-    static mtl::MaterialKey MakeMaterialKeyFromVariantKey(const mtl::MaterialVariantKey &vk)
+    static mtl::MaterialKey MakeMaterialKeyFromVariantKey(const mtl::MaterialVariantKey &vk,
+                                                          const mtl::MaterialCreateConfig *cfg = nullptr)
     {
         mtl::MaterialKey k{};
         k.variant = vk;
         k.pass    = vk.pass_hint;
-        // schema / def_id / version fields: placeholder zeros (Step 6 will fill)
+
+        // Distinguish cache entries by configured primitive type so one variant
+        // can safely compile both line and triangle materials in the same run.
+        if (cfg)
+        {
+            k.def_id = static_cast<mtl::StaticMaterialDefId>(static_cast<uint32_t>(cfg->prim));
+        }
+
+        // schema / version fields: placeholder zeros (Step 6 will fill)
         return k;
     }
 
@@ -753,7 +762,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         ? AnsiString(cfg->preset_name) + "#" + key_hash
         : AnsiString("variant#") + key_hash;
 
-    const mtl::MaterialKey mkey = MakeMaterialKeyFromVariantKey(key);
+    const mtl::MaterialKey mkey = MakeMaterialKeyFromVariantKey(key, cfg);
 
     // Fast path: material_by_key
     {
@@ -761,6 +770,17 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         if (it != material_by_key.end())
         {
             by_key_hits.fetch_add(1);
+
+            if (it->second && it->second->GetPrimitiveType() != cfg->prim)
+            {
+                std::fprintf(stderr,
+                    "[ShaderMaterialProgramManager] Material cache primitive mismatch on hit: key_hash=%llu requested_prim=%u cached_prim=%u material=%s\n",
+                    static_cast<unsigned long long>(mkey.Hash()),
+                    static_cast<unsigned>(cfg->prim),
+                    static_cast<unsigned>(it->second->GetPrimitiveType()),
+                    it->second->GetName().c_str());
+            }
+
             return it->second;
         }
     }
@@ -821,7 +841,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         ? AnsiString(cfg->preset_name) + "#" + key_hash
         : AnsiString("variant#") + key_hash;
 
-    const mtl::MaterialKey mkey = MakeMaterialKeyFromVariantKey(cache_key);
+    const mtl::MaterialKey mkey = MakeMaterialKeyFromVariantKey(cache_key, cfg);
 
     // Fast path: material_by_key
     {
@@ -829,6 +849,17 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         if (it != material_by_key.end())
         {
             by_key_hits.fetch_add(1);
+
+            if (it->second && it->second->GetPrimitiveType() != cfg->prim)
+            {
+                std::fprintf(stderr,
+                    "[ShaderMaterialProgramManager] Material cache primitive mismatch on hit: key_hash=%llu requested_prim=%u cached_prim=%u material=%s\n",
+                    static_cast<unsigned long long>(mkey.Hash()),
+                    static_cast<unsigned>(cfg->prim),
+                    static_cast<unsigned>(it->second->GetPrimitiveType()),
+                    it->second->GetName().c_str());
+            }
+
             return it->second;
         }
     }

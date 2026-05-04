@@ -136,6 +136,20 @@ static void LogPipelineStageAndLayoutDiagnostics(const GraphicsPipelineBuildRequ
              stage_text.c_str(),
              sc.count);
 
+    GLogInfo("[PipelineBuild.Primitive] material=%s request_prim=%u material_prim=%u restart=%s",
+             request.material->GetName().c_str(),
+             static_cast<unsigned>(request.primitive),
+             static_cast<unsigned>(request.material->GetPrimitiveType()),
+             request.primitive_restart ? "yes" : "no");
+
+    if (request.material->GetPrimitiveType() != request.primitive)
+    {
+        GLogWarning("[PipelineBuild.Primitive] mismatch: request primitive differs from material primitive (material=%s request=%u material=%u)",
+                    request.material->GetName().c_str(),
+                    static_cast<unsigned>(request.primitive),
+                    static_cast<unsigned>(request.material->GetPrimitiveType()));
+    }
+
     if (sc.task || sc.mesh)
     {
         GLogError("[PipelineBuild.StageCompose] Graphics pipeline build no longer supports Task/Mesh stages");

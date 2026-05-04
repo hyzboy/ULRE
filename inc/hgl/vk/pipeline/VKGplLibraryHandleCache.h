@@ -18,12 +18,20 @@ struct GraphicsPipelineBuildRequest;
  */
 class GplLibraryHandleCache
 {
+    struct VILibraryEntry
+    {
+        VkPipeline handle = VK_NULL_HANDLE;
+        uint32_t primitive = 0;
+        uint8_t primitive_restart = 0;
+        uint32_t attrib_count = 0;
+    };
+
     VkDevice        device_         = VK_NULL_HANDLE;
     VkPipelineCache pipeline_cache_ = VK_NULL_HANDLE;
 
     mutable std::mutex lib_mutex_;
 
-    std::unordered_map<GplVertexInputKey,   VkPipeline> vi_lib_;
+    std::unordered_map<GplVertexInputKey,   VILibraryEntry> vi_lib_;
     std::unordered_map<GplPreRasterKey,     VkPipeline> pr_lib_;
     std::unordered_map<GplFragmentShaderKey,VkPipeline> fs_lib_;
     std::unordered_map<GplFragmentOutputKey,VkPipeline> fo_lib_;

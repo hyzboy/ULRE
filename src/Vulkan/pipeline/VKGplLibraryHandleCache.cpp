@@ -67,12 +67,14 @@ VkPipeline CreateVILibrary(VkDevice device, VkPipelineCache cache,
     }
     else
     {
-        GLogInfo("[GplLibraryHandleCache] CreateVILibrary ok lib=0x%llx material=%s topology=%d restart=%s attribCount=%u",
+        GLogInfo("[GplLibraryHandleCache] CreateVILibrary ok lib=0x%llx material=%s topology=%d restart=%s attribCount=%u req_prim=%u material_prim=%u",
                  (unsigned long long)(uintptr_t)lib,
                  req.material ? req.material->GetName().c_str() : "<null>",
                  (int)ia_state.topology,
                  ia_state.primitiveRestartEnable ? "yes" : "no",
-                 count);
+             count,
+             static_cast<unsigned>(req.primitive),
+             req.material ? static_cast<unsigned>(req.material->GetPrimitiveType()) : 0u);
     }
 
     delete[] bindings;
@@ -383,8 +385,8 @@ GplLibraryHandleCache::~GplLibraryHandleCache()
 
     std::lock_guard<std::mutex> lock(lib_mutex_);
 
-    for (auto &[key, lib] : vi_lib_)
-        vkDestroyPipeline(device_, lib, nullptr);
+    for (auto &[key, entry] : vi_lib_)
+        vkDestroyPipeline(device_, entry.handle, nullptr);
     for (auto &[key, lib] : pr_lib_)
         vkDestroyPipeline(device_, lib, nullptr);
     for (auto &[key, lib] : fs_lib_)
@@ -401,8 +403,86 @@ void GplLibraryHandleCache::Init(VkDevice device, VkPipelineCache pipeline_cache
 
 VkPipeline GplLibraryHandleCache::AcquireVertexInputLibrary(const GplVertexInputKey &key, const GraphicsPipelineBuildRequest &req)
 {
-    return AcquireLibrary(vi_lib_, lib_mutex_, key, "VILibrary",
-        [&]{ return CreateVILibrary(device_, pipeline_cache_, req); });
+    const uint32_t req_prim = static_cast<uint32_t>(req.primitive);
+    const uint8_t req_restart = req.primitive_restart ? uint8_t(1) : uint8_t(0);
+    const uint32_t req_attrib_count = req.vil ? req.vil->GetVertexAttribCount() : 0;
+
+    {
+        std::lock_guard<std::mutex> lock(lib_mutex_);
+        auto it = vi_lib_.find(key);
+        if (it != vi_lib_.end())
+        {
+            const VILibraryEntry &entry = it->second;
+
+            if (entry.primitive != req_prim
+             || entry.primitive_restart != req_restart
+             || entry.attrib_count != req_attrib_count)
+            {
+                GLogError("[GplLibraryHandleCache] AcquireVILibrary HIT mismatch: lib=0x%llx key_hash=0x%llx expected(prim=%u restart=%u attrib=%u) cached(prim=%u restart=%u attrib=%u)",
+                          (unsigned long long)(uintptr_t)entry.handle,
+                          static_cast<unsigned long long>(key.hash),
+                          req_prim,
+                          static_cast<unsigned>(req_restart),
+                          req_attrib_count,
+                          entry.primitive,
+                          static_cast<unsigned>(entry.primitive_restart),
+                          entry.attrib_count);
+            }
+            else
+            {
+                GLogInfo("[GplLibraryHandleCache] AcquireVILibrary HIT lib=0x%llx prim=%u restart=%u attribCount=%u",
+                         (unsigned long long)(uintptr_t)entry.handle,
+                         entry.primitive,
+                         static_cast<unsigned>(entry.primitive_restart),
+                         entry.attrib_count);
+            }
+
+            return entry.handle;
+        }
+    }
+
+    VkPipeline created = CreateVILibrary(device_, pipeline_cache_, req);
+    if (created == VK_NULL_HANDLE)
+        return VK_NULL_HANDLE;
+
+    const VILibraryEntry new_entry{created, req_prim, req_restart, req_attrib_count};
+
+    {
+        std::lock_guard<std::mutex> lock(lib_mutex_);
+        auto [it, inserted] = vi_lib_.emplace(key, new_entry);
+        if (!inserted)
+        {
+            const VILibraryEntry &winner = it->second;
+
+            if (created != winner.handle)
+                vkDestroyPipeline(device_, created, nullptr);
+
+            if (winner.primitive != req_prim
+             || winner.primitive_restart != req_restart
+             || winner.attrib_count != req_attrib_count)
+            {
+                GLogError("[GplLibraryHandleCache] AcquireVILibrary RACE-WON-BY-OTHER mismatch: selected=0x%llx expected(prim=%u restart=%u attrib=%u) selected(prim=%u restart=%u attrib=%u)",
+                          (unsigned long long)(uintptr_t)winner.handle,
+                          req_prim,
+                          static_cast<unsigned>(req_restart),
+                          req_attrib_count,
+                          winner.primitive,
+                          static_cast<unsigned>(winner.primitive_restart),
+                          winner.attrib_count);
+            }
+
+            GLogInfo("[GplLibraryHandleCache] AcquireVILibrary RACE-WON-BY-OTHER selected=0x%llx",
+                     (unsigned long long)(uintptr_t)winner.handle);
+            return winner.handle;
+        }
+    }
+
+    GLogInfo("[GplLibraryHandleCache] AcquireVILibrary MISS->CREATE lib=0x%llx prim=%u restart=%u attribCount=%u",
+             (unsigned long long)(uintptr_t)created,
+             req_prim,
+             static_cast<unsigned>(req_restart),
+             req_attrib_count);
+    return created;
 }
 
 VkPipeline GplLibraryHandleCache::AcquirePreRasterLibrary(const GplPreRasterKey &key, const GraphicsPipelineBuildRequest &req)
