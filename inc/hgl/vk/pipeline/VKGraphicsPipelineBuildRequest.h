@@ -16,7 +16,6 @@ enum class GraphicsPipelineRequestMode : uint8_t
 {
     Auto = 0,
     Vertex,
-    Mesh,
 };
 
 struct GraphicsPipelineBuildRequest
@@ -32,8 +31,6 @@ struct GraphicsPipelineBuildRequest
 };
 
 const char *GetGraphicsPipelineRequestModeName(GraphicsPipelineRequestMode mode);
-
-bool IsMeshPipelineRequest(const GraphicsPipelineBuildRequest &req);
 
 bool IsVertexInputIgnored(const GraphicsPipelineBuildRequest &req);
 

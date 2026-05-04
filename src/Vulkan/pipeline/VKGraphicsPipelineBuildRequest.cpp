@@ -145,33 +145,14 @@ const char *GetGraphicsPipelineRequestModeName(GraphicsPipelineRequestMode mode)
     {
         case GraphicsPipelineRequestMode::Auto:   return "Auto";
         case GraphicsPipelineRequestMode::Vertex: return "Vertex";
-        case GraphicsPipelineRequestMode::Mesh:   return "Mesh";
         default:                                  return "Unknown";
     }
-}
-
-bool IsMeshPipelineRequest(const GraphicsPipelineBuildRequest &req)
-{
-    if (req.request_mode == GraphicsPipelineRequestMode::Mesh)
-        return true;
-
-    if (req.request_mode == GraphicsPipelineRequestMode::Vertex)
-        return false;
-
-    if (!req.material)
-        return false;
-
-    const GraphicsStageMask mask = BuildGraphicsStageMask(req.material->GetStageList());
-    return mask.has_mesh || mask.has_task;
 }
 
 bool IsVertexInputIgnored(const GraphicsPipelineBuildRequest &req)
 {
     if (!req.material)
         return false;
-
-    if (IsMeshPipelineRequest(req))
-        return true;
 
     return req.material->IsPullingEnabled()
         || req.material->hasSet(SET_TYPE_VERTEX_STREAMS);
@@ -189,16 +170,10 @@ bool IsValidGraphicsPipelineBuildRequest(const GraphicsPipelineBuildRequest &req
     if (mask.stage_count == 0)
         return false;
 
-    if (mask.has_task && !mask.has_mesh)
+    if (mask.has_task || mask.has_mesh)
         return false;
 
-    if (mask.has_mesh && HasVertexPathStages(mask))
-        return false;
-
-    if (req.request_mode == GraphicsPipelineRequestMode::Mesh && !mask.has_mesh)
-        return false;
-
-    if (req.request_mode == GraphicsPipelineRequestMode::Vertex && (mask.has_task || mask.has_mesh))
+    if (!HasVertexPathStages(mask))
         return false;
 
     return true;

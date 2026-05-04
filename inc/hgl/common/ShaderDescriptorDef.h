@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <hgl/common/DescriptorSetTypeDef.h>
 #include <hgl/common/AttributeProvider.h>
-#include <hgl/common/MeshShaderStreamContract.h>
+#include <hgl/common/VertexStreamBindingDef.h>
 #include <hgl/mtl/DescriptorSemanticRegistry.h>
 #include <cctype>
 
@@ -11,8 +11,8 @@ namespace hgl::graph
 {
     constexpr size_t DESCRIPTOR_NAME_MAX_LENGTH=32;
 
-    // VertexStreams uses sparse SSBO bindings and reserves extra mesh-shader stream slots.
-    constexpr size_t VERTEX_STREAM_SSBO_BINDING_COUNT = size_t(kVertexStreamBindingCountWithMesh);
+    // VertexStreams uses sparse SSBO bindings for attributes plus position stream.
+    constexpr size_t VERTEX_STREAM_SSBO_BINDING_COUNT = size_t(kVertexStreamBindingCount);
     constexpr size_t SHADER_DESCRIPTOR_SSBO_SLOT_COUNT =
         (mtl::SSBODescriptorSemanticCount > VERTEX_STREAM_SSBO_BINDING_COUNT)
             ? mtl::SSBODescriptorSemanticCount

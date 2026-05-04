@@ -4,7 +4,7 @@
 #include<hgl/type/String.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
-#include<hgl/common/MeshShaderStreamContract.h>
+#include<hgl/common/VertexStreamBindingDef.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/common/AttributeProvider.h>
 #include<hgl/log/Log.h>

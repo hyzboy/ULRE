@@ -36,8 +36,6 @@ public:
     const bool                              IsGeometry      ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Geometry;}
     const bool                              IsFragment      ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Fragment;}
     const bool                              IsCompute       ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Compute;}
-    const bool                              IsTask          ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Task;}
-    const bool                              IsMesh          ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Mesh;}
 
     const VkPipelineShaderStageCreateInfo * GetCreateInfo   ()const{return stage_create_info;}
 

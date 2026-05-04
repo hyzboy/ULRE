@@ -42,15 +42,11 @@ class VulkanPhyDevice
     VkPhysicalDeviceVulkan13Features    features13;
     VkPhysicalDeviceVulkan14Features    features14;
 
-    VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shader_features;
-
     VkPhysicalDeviceProperties          properties;
     VkPhysicalDeviceVulkan11Properties  properties11;
     VkPhysicalDeviceVulkan12Properties  properties12;
     VkPhysicalDeviceVulkan13Properties  properties13;
     VkPhysicalDeviceVulkan14Properties  properties14;
-
-    VkPhysicalDeviceMeshShaderPropertiesEXT mesh_shader_properties;
 
     VkPhysicalDeviceMemoryProperties    memory_properties;
 
@@ -66,7 +62,6 @@ private:
     bool support_u8_index=false;
     bool dynamic_state=false;
     bool graphics_pipeline_library=false;
-    bool mesh_shader_extension=false;
     VkDeviceSize rebar_size=0;  // Resizable BAR size (0 if not available)
 
 public:
@@ -253,13 +248,6 @@ public:
     }
 
     const bool      SupportDynamicState() const {return dynamic_state;}
-    const bool      SupportMeshShaderExtension()const{return mesh_shader_extension;}
-
-    const VkPhysicalDeviceMeshShaderFeaturesEXT &GetMeshShaderFeatures()const{return mesh_shader_features;}
-    const VkBool32  SupportTaskShader           ()const{return mesh_shader_features.taskShader;}
-    const VkBool32  SupportMeshShader           ()const{return mesh_shader_features.meshShader;}
-
-    const VkPhysicalDeviceMeshShaderPropertiesEXT &GetMeshShaderProperties()const{return mesh_shader_properties;}
 
 public: // Vulkan API
 

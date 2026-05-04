@@ -233,11 +233,10 @@ GraphicsPipeline *VulkanDevice::AcquireGraphicsPipeline(const GraphicsPipelineBu
         const VkFormat req_depth = req.render_format ? req.render_format->GetDepthFormat() : VK_FORMAT_UNDEFINED;
         const uint32_t req_color_count = req.render_format ? req.render_format->GetColorCount() : 0;
 
-        LogInfo("[VulkanDevice] %s handle=0x%llx name=%s mesh=%s gpl=%s depthFormat=%d(req=%d) colorCount=%u(req=%u)",
+        LogInfo("[VulkanDevice] %s handle=0x%llx name=%s gpl=%s depthFormat=%d(req=%d) colorCount=%u(req=%u)",
                 tag ? tag : "PipelineSignature",
                 (unsigned long long)(uintptr_t)(VkPipeline)(*pipeline),
                 pipeline->GetName().c_str(),
-                pipeline->IsMeshPipeline() ? "yes" : "no",
                 pipeline->IsDebugCreatedWithGpl() ? "yes" : "no",
                 (int)pipeline->GetDebugDepthAttachmentFormat(),
                 (int)req_depth,

@@ -75,7 +75,6 @@ private:
             return providers;
         }(),
         .position_provider = PositionProviderId::SSBO_PackedVec3,
-        .use_mesh_shader = true,
     };
 
 private:

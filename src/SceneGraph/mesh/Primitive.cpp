@@ -50,9 +50,6 @@ void GeometryDrawRange::Set(const Geometry *geometry)
         data_index_count = 0;
         vertex_count = 0;
         index_count = 0;
-        mesh_task_group_count_x = 1;
-        mesh_task_group_count_y = 1;
-        mesh_task_group_count_z = 1;
         vertex_offset = 0;
         first_index = 0;
         return;
@@ -65,11 +62,6 @@ void GeometryDrawRange::Set(const Geometry *geometry)
     // initialize draw counts to data counts by default
     vertex_count    = data_vertex_count;
     index_count     = data_index_count;
-
-    // default mesh dispatch uses one workgroup per draw call unless caller overrides it.
-    mesh_task_group_count_x = 1;
-    mesh_task_group_count_y = 1;
-    mesh_task_group_count_z = 1;
 
     vertex_offset   = geometry->GetVertexOffset();
     first_index     = geometry->GetFirstIndex();
@@ -190,34 +182,6 @@ bool Primitive::ResolveVertexStreamSource(AttributeSemantic semantic, const IGPU
     offset = 0;
     stride = vab->GetStride();
     return true;
-}
-
-bool Primitive::SetMeshIndexStreamSource(const IGPUBuffer *gpu)
-{
-    if (!gpu)
-        return false;
-
-    mesh_index_stream_source = gpu;
-    has_mesh_index_stream_source = true;
-    return true;
-}
-
-void Primitive::ClearMeshIndexStreamSource()
-{
-    mesh_index_stream_source = nullptr;
-    has_mesh_index_stream_source = false;
-}
-
-const IGPUBuffer *Primitive::ResolveMeshIndexStreamSource() const
-{
-    if (has_mesh_index_stream_source)
-        return mesh_index_stream_source;
-
-    if (!geometry)
-        return nullptr;
-
-    auto *ibo = geometry->GetIBO();
-    return ibo ? ibo->GetGPUBuffer() : nullptr;
 }
 
 Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,GraphicsPipelinePreRaster *p,const VIL *explicit_vil)
@@ -454,17 +418,6 @@ bool Primitive::SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t
     draw_range.vertex_count = draw_vertex_count;
     draw_range.index_count  = draw_index_count;
 
-    return true;
-}
-
-bool Primitive::SetMeshTaskGroupCounts(uint32_t group_count_x,uint32_t group_count_y,uint32_t group_count_z)
-{
-    if(group_count_x==0 || group_count_y==0 || group_count_z==0)
-        return false;
-
-    draw_range.mesh_task_group_count_x = group_count_x;
-    draw_range.mesh_task_group_count_y = group_count_y;
-    draw_range.mesh_task_group_count_z = group_count_z;
     return true;
 }
 

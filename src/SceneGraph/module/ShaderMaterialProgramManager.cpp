@@ -124,9 +124,8 @@ namespace
     }
 
     template<typename CreateConfigT>
-    static void ForceVertexFragmentStages(const mtl::MaterialRecipe &rec, CreateConfigT &cfg)
+    static void ForceVertexFragmentStages(CreateConfigT &cfg)
     {
-        (void)rec;
         cfg.shader_stage_flag_bit &= (uint32_t(ShaderStage::Vertex) | uint32_t(ShaderStage::Fragment));
     }
 
@@ -537,7 +536,7 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode == TextureSourceMode::Array)
             { cfg.use_texture_array = true; break; }
 
-        ForceVertexFragmentStages(rec, cfg);
+        ForceVertexFragmentStages(cfg);
 
         std::fprintf(stderr, "[CreateMaterialFromRecord] Billboard preset=%d  use_texture_array=%d  blend=%d\n",
             (int)rec.preset, (int)cfg.use_texture_array, (int)cfg.blend_mode);
@@ -557,7 +556,7 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
 
-        ForceVertexFragmentStages(rec, cfg);
+        ForceVertexFragmentStages(cfg);
 
         // Keep 2D recipe and key paths consistent with 3D: route through
         // ResolveRecipePrimaryKey so attribute/position provider overrides are
@@ -601,7 +600,7 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
 
-        ForceVertexFragmentStages(rec, cfg);
+        ForceVertexFragmentStages(cfg);
 
         // Use the recipe-derived variant key so that attribute_providers and
         // position_provider (vertex pulling) are propagated through to

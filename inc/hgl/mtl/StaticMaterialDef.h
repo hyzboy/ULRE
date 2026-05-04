@@ -7,8 +7,6 @@
 #include<map>
 #include<set>
 
-namespace hgl::graph { struct MeshShaderStreamContract; }
-
 namespace hgl::graph::mtl{
 
 struct MaterialVariantKey;  // forward declare; defined in MaterialVariantKey.h
@@ -84,11 +82,6 @@ struct StaticMaterialDef
     /// VertexStreams descriptor set (set=4).  Pointer must remain valid
     /// throughout the CreatePreparedCompositorMaterial call chain.
     const MaterialVariantKey *vertex_stream_key = nullptr;
-
-    /// Optional mesh-shader stream contract for VertexStreams set extension.
-    /// When provided, index stream and optional meshlet/task payload streams
-    /// are registered before layout defines are injected.
-    const hgl::graph::MeshShaderStreamContract *mesh_stream_contract = nullptr;
 };
 
 }//namespace hgl::graph::mtl

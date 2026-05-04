@@ -15,7 +15,6 @@ class GraphicsPipeline
     AnsiString name;
 
     VkPipeline pipeline;
-    bool mesh_pipeline;
 
     VkFormat debug_depth_attachment_format = VK_FORMAT_UNDEFINED;
     uint32_t debug_color_attachment_count = 0;
@@ -29,13 +28,12 @@ private:
     friend class MonolithicGraphicsPipelineBuilder;
     friend class GplGraphicsPipelineBuilder;
 
-    GraphicsPipeline(const AnsiString &n,VkDevice dev,VkPipeline p,bool mp,const VIL *v,GraphicsPipelineData *pd)
+    GraphicsPipeline(const AnsiString &n,VkDevice dev,VkPipeline p,const VIL *v,GraphicsPipelineData *pd)
     {
         name=n;
 
         device=dev;
         pipeline=p;
-        mesh_pipeline=mp;
         vil=v;
         data=pd;
     }
@@ -50,7 +48,6 @@ public:
 
     const VIL *GetVIL()const{return vil;}
     const GraphicsPipelineData *GetData()const{return data;}
-    const bool IsMeshPipeline()const{return mesh_pipeline;}
 
     void SetDebugRenderingSignature(const VkFormat depth_format,
                                    const uint32_t color_count,

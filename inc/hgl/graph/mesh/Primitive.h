@@ -36,8 +36,6 @@ class Primitive
     };
 
     std::array<VertexStreamSource, kVertexStreamPositionBinding + 1u> vertex_stream_sources{};
-    const IGPUBuffer *mesh_index_stream_source = nullptr;
-    bool has_mesh_index_stream_source = false;
 
 private:
 
@@ -69,10 +67,6 @@ public:
             bool ClearVertexStreamSource(AttributeSemantic semantic);
             bool ResolveVertexStreamSource(AttributeSemantic semantic,const IGPUBuffer *&gpu,VkDeviceSize &offset,VkDeviceSize &stride)const;
 
-            bool SetMeshIndexStreamSource(const IGPUBuffer *gpu);
-            void ClearMeshIndexStreamSource();
-            const IGPUBuffer *ResolveMeshIndexStreamSource()const;
-
 public:
 
             bool                ChangeMaterialInstance(MaterialBindingInstance *mi)
@@ -92,9 +86,6 @@ public:
 
             // 设置绘制范围和数量
             bool                SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t draw_vertex_count,uint32_t draw_index_count=0);
-
-            // 设置Mesh任务组数量
-            bool                SetMeshTaskGroupCounts(uint32_t group_count_x,uint32_t group_count_y=1,uint32_t group_count_z=1);
 
             // 取得缓冲区实际数据数量
             uint32_t            GetDataVertexCount()const{return draw_range.data_vertex_count;}

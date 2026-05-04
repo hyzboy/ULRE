@@ -83,7 +83,7 @@ bool MaterialParameters::BindVertexStreamSSBO(const uint32_t binding,const IGPUB
     if(set_type != DescriptorSetType::VertexStreams)
         return false;
 
-    if(binding >= kVertexStreamBindingCountWithMesh)
+    if(binding >= kVertexStreamBindingCount)
         return false;
 
     if(!desc_manager || !desc_manager->HasBinding(set_type,binding))

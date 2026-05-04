@@ -53,58 +53,6 @@ namespace hgl
 #endif
         }
 
-        const graph::VulkanPhyDevice *SelectPreferredPhysicalDevice(graph::VulkanInstance *instance)
-        {
-            if (!instance)
-                return nullptr;
-
-            if (const auto *pd = instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU))
-                return pd;
-
-            if (const auto *pd = instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU))
-                return pd;
-
-            if (const auto *pd = instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU))
-                return pd;
-
-            return nullptr;
-        }
-
-        bool CheckMeshTaskStartupSupport(const graph::VulkanPhyDevice *pd, bool &ext)
-        {
-            ext = false;
-
-            if (!pd)
-                return false;
-
-            ext = pd->SupportMeshShaderExtension();
-
-            return ext;
-        }
-
-        void ShowMeshTaskUnsupportedDialog(const graph::VulkanPhyDevice *pd,
-                                           const bool ext)
-        {
-            const char *device_name = (pd && pd->GetDeviceName()) ? pd->GetDeviceName() : "<unknown>";
-
-            char message[1024]{};
-            std::snprintf(message,
-                          sizeof(message),
-                          "This build requires Mesh Shader + Task Shader at startup.\n\n"
-                          "Selected device: %s\n"
-                          "VK_EXT_mesh_shader extension: %s\n\n"
-                          "The application will now exit.",
-                          device_name,
-                          ext ? "yes" : "no");
-
-            ShowStartupErrorDialog(message);
-        }
-
-        void ShowMeshTaskInitializationFailedDialog()
-        {
-            ShowStartupErrorDialog("Vulkan Mesh/Task-only initialization failed.\nThe application will now exit.");
-        }
-
         graph::VulkanInstance *CreateVulkanInstance(const U8String &app_name)
         {
             graph::CreateInstanceLayerInfo cili;
@@ -261,29 +209,10 @@ namespace hgl
         // Create Vulkan device
         graph::VulkanHardwareRequirement vh_req;
 
-        // Project policy: startup must be Mesh/Task-only. Unsupported runtime exits immediately.
-        vh_req.meshShaderOnlyMode = true;
-        vh_req.meshShader = graph::VulkanHardwareRequirement::SupportLevel::Must;
-        vh_req.taskShader = graph::VulkanHardwareRequirement::SupportLevel::Must;
-
-        const graph::VulkanPhyDevice *startup_pd = SelectPreferredPhysicalDevice(inst);
-        bool mesh_ext = false;
-        if (!CheckMeshTaskStartupSupport(startup_pd, mesh_ext))
-        {
-            GLogError("[AppFramework] Startup abort: Mesh/Task shader path requires VK_EXT_mesh_shader extension (device='%s', extension=%s).",
-                      startup_pd ? startup_pd->GetDeviceName() : "<none>",
-                      mesh_ext ? "yes" : "no");
-
-            ShowMeshTaskUnsupportedDialog(startup_pd, mesh_ext);
-            return false;
-        }
-
         device = CreateRenderDevice(inst, win, &vh_req);
         if (!device)
         {
-            GLogError("[AppFramework] Startup abort: CreateRenderDevice failed in Mesh/Task-only mode.");
-
-            ShowMeshTaskInitializationFailedDialog();
+            GLogError("[AppFramework] Startup abort: CreateRenderDevice failed.");
 
             return false;
         }
