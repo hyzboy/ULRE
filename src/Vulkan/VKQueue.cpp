@@ -6,11 +6,23 @@
 #include<cstdint>
 #include<chrono>
 #include<thread>
+#ifdef _WIN32
+#include<Windows.h>
+#endif
 
 namespace hgl::graph{
 namespace
 {
     const VkPipelineStageFlags pipe_stage_flags=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    bool IsRenderDocAttached()
+    {
+#ifdef _WIN32
+        return GetModuleHandleA("renderdoc.dll") != nullptr;
+#else
+        return false;
+#endif
+    }
 }//namespace
 
 DeviceQueue::DeviceQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
@@ -45,6 +57,12 @@ DeviceQueue::~DeviceQueue()
 
 bool DeviceQueue::WaitQueue()
 {
+    if (IsRenderDocAttached())
+    {
+        LogInfo("[FENCE] WaitQueue SKIP queue=%p (RenderDoc attached)", (void*)queue);
+        return true;
+    }
+
     auto start = std::chrono::high_resolution_clock::now();
     LogInfo("[FENCE] WaitQueue START queue=%p", (void*)queue);
 

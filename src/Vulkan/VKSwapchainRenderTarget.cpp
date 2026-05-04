@@ -128,23 +128,13 @@ bool SwapchainRenderTarget::Submit()
     const bool renderdoc_attached = IsRenderDocAttached();
     if (renderdoc_attached)
     {
-        // RenderDoc compatibility path: fully serialize queue work and present
-        // without binary wait semaphore dependency to avoid tool-injected timing
-        // sensitivity around submit->present handoff.
-        if (!queue->WaitQueue())
-        {
-            LogWarning("[SWAPCHAIN] RenderDoc present workaround: WaitQueue FAILED before Present");
-            return false;
-        }
+        // RenderDoc path: keep standard semaphore-based submit->present ordering.
+        // Queue-idle waits can stall under capture overlays.
+        LogInfo("[SWAPCHAIN] RenderDoc detected: using semaphore-based present path");
+    }
 
-        present_info.waitSemaphoreCount = 0;
-        present_info.pWaitSemaphores    = nullptr;
-    }
-    else
-    {
-        present_info.waitSemaphoreCount = 1;
-        present_info.pWaitSemaphores    = &wait_semaphores;
-    }
+    present_info.waitSemaphoreCount = 1;
+    present_info.pWaitSemaphores    = &wait_semaphores;
 
     present_info.pImageIndices      =&current_frame;
 

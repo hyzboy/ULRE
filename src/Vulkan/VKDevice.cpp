@@ -17,6 +17,7 @@
 #include <thread>
 #include <utility>
 #include <cstdint>
+#include <cstdlib>
 #include <unordered_map>
 #include <string>
 #ifdef _WIN32
@@ -27,6 +28,25 @@ namespace hgl::graph{
 namespace
 {
     std::unordered_map<VkDevice, VulkanDevice *> g_device_map;
+
+    bool IsRenderDocActive()
+    {
+#ifdef _WIN32
+        if (GetModuleHandleA("renderdoc.dll") != nullptr)
+            return true;
+#endif
+
+        auto has_env = [](const char *name) -> bool
+        {
+            const char *value = std::getenv(name);
+            return value && *value;
+        };
+
+        return has_env("RENDERDOC_CAPFILE")
+            || has_env("RENDERDOC_CAPTUREOPTS")
+            || has_env("RENDERDOC_DEBUG_LOG_FILE")
+            || has_env("RENDERDOC_LOGFILE");
+    }
 
     AnsiString GenerateRenderFormatKey(const RenderbufferInfo *rbi)
     {
@@ -88,17 +108,11 @@ VulkanDevice::VulkanDevice(VulkanDevAttr *da)
     gpl_supported = (attr && attr->physical_device) ? attr->physical_device->SupportGraphicsPipelineLibrary() : false;
     gpl_enabled = gpl_supported;
 
-#ifdef _WIN32
-    if (gpl_enabled)
+    if (gpl_enabled && IsRenderDocActive())
     {
-        const HMODULE renderdoc_module = GetModuleHandleA("renderdoc.dll");
-        if (renderdoc_module != nullptr)
-        {
-            gpl_enabled = false;
-            LogWarning("[VulkanDevice] RenderDoc detected; forcing monolithic graphics pipelines (GPL disabled) for compatibility.");
-        }
+        gpl_enabled = false;
+        LogWarning("[VulkanDevice] RenderDoc detected; forcing monolithic graphics pipelines (GPL disabled) for compatibility.");
     }
-#endif
 
     link_backend_mono = std::make_unique<MonolithicGraphicsPipelineBuilder>();
     link_backend_gpl = std::make_unique<GplGraphicsPipelineBuilder>();
