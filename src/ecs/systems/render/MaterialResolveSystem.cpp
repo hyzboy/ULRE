@@ -242,8 +242,7 @@ namespace hgl::ecs
 															 seed_gvf,
 															 seed.slot->GetInstanceDataPtr(),
 															 seed.slot->GetInstanceDataSize(),
-															 nullptr,
-															 &resolve_vil);
+													 nullptr);
 				if (!mi)
 				{
 					resolve_fail_count += static_cast<uint32_t>(mi_indices.size());

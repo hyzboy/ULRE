@@ -32,11 +32,15 @@
 // Position
 // ─────────────────────────────────────────────────────────────────────────────
 #ifdef POSITION_SSBO_BINDING
-    // Full SSBO pulling: position is in a packed vec3 storage buffer.
-    // ssbo_packed.glsl uses POSITION_SSBO_SET / POSITION_SSBO_BINDING macros
-    // and defines u_PositionData + GetPositionLocal().
-    #include "position_provider/ssbo_packed.glsl"
-    vec3 FetchPosition(uint i) { return u_PositionData.positions[i]; }
+    // Full SSBO pulling: position is in a packed storage buffer.
+    // POSITION_SSBO_IS_VEC2 selects vec2 storage for 2D materials.
+    #if defined(POSITION_SSBO_IS_VEC2)
+        #include "position_provider/ssbo_packed_vec2.glsl"
+        vec3 FetchPosition(uint i) { return vec3(u_PositionData.positions[i], 0.0); }
+    #else
+        #include "position_provider/ssbo_packed.glsl"
+        vec3 FetchPosition(uint i) { return u_PositionData.positions[i]; }
+    #endif
 #else
     // Hybrid mode: position stays in the vertex buffer (inPosition declared by
     // vertex_input_position.glsl); SSBO pulling is used only for other attributes.

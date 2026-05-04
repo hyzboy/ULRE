@@ -4,7 +4,6 @@
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/font/TextLayoutEngine.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/framework/AppFramework.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -197,13 +196,8 @@ namespace hgl::graph
 
         //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RG16I格式
         {
-            VILConfig vil_config;
-
-            vil_config.Add(VAN::Position,VF_V2I16);
-
             MaterialInstanceSpec mi_spec;
             mi_spec.material = mtl_fs;
-            mi_spec.vil_cfg = &vil_config;
             mi_spec.instance_data = &fixed_style;
             mi_spec.instance_data_size = sizeof(fixed_style);
             mi_spec.preset = GraphicsPipelinePreset::Solid2D;

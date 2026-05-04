@@ -9,7 +9,6 @@
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKDomainResourceBinding.h>
@@ -17,26 +16,10 @@
 
 namespace hgl::ecs
 {
-    namespace
-    {
-        uint32_t GetMaterialVertexInputCount(const graph::ShaderMaterialProgram *m)
-        {
-            if (!m)
-                return 0;
-
-            const auto *vi = m->GetVertexInput();
-            if (!vi)
-                return 0;
-
-            return vi->GetCount();
-        }
-    }
-
     PipelineMaterialRenderer::PipelineMaterialRenderer(graph::ShaderMaterialProgram* m, graph::GraphicsPipeline* p)
         : material(m)
         , pipeline(p)
         , cmd_buf(nullptr)
-        , vab_list(new graph::VABList(GetMaterialVertexInputCount(m)))
         , last_data_buffer(nullptr)
         , last_vdm(nullptr)
         , last_draw_range(nullptr)
@@ -46,69 +29,14 @@ namespace hgl::ecs
     }
 
     PipelineMaterialRenderer::~PipelineMaterialRenderer()
-    {
-        SAFE_CLEAR(vab_list);
-    }
+    = default;
 
     bool PipelineMaterialRenderer::BindVAB(const DrawBatch* batch,
                                                MaterialInstanceAssignmentBuffer* mi_buffer)
     {
-        if (material)
-        {
-            const bool pulling_enabled =
-                material->IsPullingEnabled() || material->hasSet(graph::DescriptorSetType::VertexStreams);
-
-            if (pulling_enabled)
-            {
-                (void)batch;
-                (void)mi_buffer;
-                return true;
-            }
-        }
-
-        // Log GeometryDataBuffer details
-        //if (batch->geom_data_buffer)
-        //{
-        //    // Log each VAB
-        //    for (uint32_t i = 0; i < batch->geom_data_buffer->vab_count; i++)
-        //    {
-        //        std::cout << "[PipelineMaterialRenderer::BindVAB]   VAB[" << i << "]: buffer="
-        //                  << batch->geom_data_buffer->vab_list[i]
-        //                  << ", offset=" << batch->geom_data_buffer->vab_offset[i] << std::endl;
-        //    }
-        //}
-
-        vab_list->Restart();
-
-        // 添加几何数据的VAB。
-        // PCG类材质（如FullscreenTriangle）的VIL attr_count=0，vab_list容量为0，
-        // Restart()后IsFull()即为true，直接跳过Add，不需要也不应绑定任何顶点缓冲。
-        if (!vab_list->IsFull())
-        {
-            if (!vab_list->Add(batch->geom_data_buffer))
-            {
-                std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add geometry data buffer to VABList!" << std::endl;
-                return false;
-            }
-
-            if (!vab_list->IsFull())
-            {
-                std::cout << "[PipelineMaterialRenderer::BindVAB] WARNING: VABList not full ("
-                          << vab_list->GetWriteCount() << "/"
-                          << GetMaterialVertexInputCount(material)
-                          << "), padding with VK_NULL_HANDLE" << std::endl;
-
-                while (!vab_list->IsFull())
-                {
-                    vab_list->Add(VK_NULL_HANDLE, 0);
-                }
-            }
-        }
-
+        (void)material;
+        (void)batch;
         (void)mi_buffer;
-
-        cmd_buf->BindVAB(vab_list);
-
         return true;
     }
 

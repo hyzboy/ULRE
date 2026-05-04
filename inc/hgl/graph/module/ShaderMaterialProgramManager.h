@@ -54,7 +54,6 @@ struct MaterialInstanceSpec
     ResourceDomain *domain = nullptr;
 
     const VIL *vil = nullptr;
-    const VILConfig *vil_cfg = nullptr;
 
     const void *instance_data = nullptr;
     uint32 instance_data_size = 0;
@@ -324,20 +323,12 @@ public: // ResourceDomain MaterialBindingInstanceData creation (Phase 1)
 
     /// 从资源域分配 MI，走域独立的数据池（旧 ShaderMaterialProgram 池不变）。
     MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VIL *vil = nullptr);
-    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VILConfig *vil_cfg);
     MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size);
-    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size);
 
     template<typename T>
     MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VIL *vil, const T *data)
     {
         return CreateMaterialInstance(material, domain, vil, data, sizeof(T));
-    }
-
-    template<typename T>
-    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VILConfig *vil_cfg, const T *data)
-    {
-        return CreateMaterialInstance(material, domain, vil_cfg, data, sizeof(T));
     }
 
 public: // Phase 0 Stats — 帧级资源量观测

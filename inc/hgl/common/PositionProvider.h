@@ -19,6 +19,7 @@ namespace hgl::graph
         SSBO_PackedVec3        = 3,  ///< gl_VertexIndex → vec3 read from storage buffer; no VAB
         TerrainGrid            = 4,  ///< Grid (col, row) + heightmap sampler; no VAB
         VAB_Packed16           = 5,  ///< 16-bit packed VAB (R16G16B16A16_SNORM decode); reserved
+        SSBO_PackedVec2        = 6,  ///< gl_VertexIndex → vec2 read from storage buffer; returns vec3(x,y,0)
 
         // ── User-defined range ───────────────────────────────────────────────
         UserCustom_Begin       = 0x8000,

@@ -4,7 +4,7 @@
  * 参照 PipelineMaterialRenderer 设计，但支持 ECS 版本的 Assignment Buffers
  * 职责：
  * - 执行ECS渲染命令
- * - 管理渲染状态（VAB绑定、IBO绑定等）
+ * - 管理渲染状态（IBO绑定等）
  * - 处理直接绘制和间接绘制
  * - 与 TransformAssignmentBuffer 和 MaterialInstanceAssignmentBuffer 配合
  */
@@ -72,7 +72,6 @@ namespace hgl::ecs
 
         // === 渲染状态缓存 ===
         graph::RenderCmdBuffer* cmd_buf;                    ///<当前渲染命令缓冲
-        graph::VABList* vab_list;                           ///<顶点属性缓冲列表
 
         const graph::GeometryDataBuffer* last_data_buffer;  ///<上次绑定的几何数据缓冲
         const graph::VDM* last_vdm;                         ///<上次使用的顶点数据管理器
@@ -84,11 +83,10 @@ namespace hgl::ecs
         // === 渲染辅助方法 ===
 
         /**
-         * 绑定顶点属性缓冲
+         * 顶点属性缓冲兼容入口
          * @param batch 绘制批次
-         * @param transform_buffer ECS Transform分配缓冲
          * @param mi_buffer ECS 材质实例分配缓冲
-         * @return 绑定是否成功
+         * @return 始终成功；SSBO-only 路径不再绑定顶点缓冲
          */
         bool BindVAB(const DrawBatch* batch,
                      MaterialInstanceAssignmentBuffer* mi_buffer);

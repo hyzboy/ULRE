@@ -2,7 +2,6 @@
 
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/font/TextLayout.h>
-#include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/log/Log.h>
 #include<cstdint>
 #include<unordered_map>
@@ -59,7 +58,6 @@ namespace hgl
                 graph::TextGeometry* geometry = nullptr;
                 graph::Primitive* primitive = nullptr;
                 graph::MaterialBindingInstance* material_instance = nullptr;
-                const graph::VIL* fixed_vil = nullptr;
 
                 uint32_t last_draw_char_count = 0;
                 uint32_t last_string_count = 0;

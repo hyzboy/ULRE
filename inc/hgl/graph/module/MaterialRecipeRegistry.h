@@ -78,16 +78,12 @@ public:
                                 uint32_t instance_data_size = 0,
                                 MaterialDomainHandle *out_handle = nullptr);
 
-    /// 一站式：Acquire + 从 GVF 自动推算 VIL 覆写 + CreateMI
-    /// - 对比 ShaderMaterialProgram DefaultVIL 与 Geometry 实际顶点格式，自动生成 VILConfig
-    /// - 调用方无需在 MaterialRecipe 中维护手写 VIL 覆写字段
-    /// - out_vil（可选）：接收实际使用的 VIL 指针，可用于 Primitive 创建等场景
+    /// 一站式：Acquire + CreateMI（GVF 可用于自动补全 legacy recipe 的 SSBO provider）
     MaterialBindingInstance *ResolveOrCreateBindingInstance(const mtl::MaterialRecipe &rec,
                                 const GeometryVertexFormat &gvf,
                                 const void *instance_data = nullptr,
                                 uint32_t instance_data_size = 0,
-                                MaterialDomainHandle *out_handle = nullptr,
-                                const VIL **out_vil = nullptr);
+                                MaterialDomainHandle *out_handle = nullptr);
 
     /// Key 透传版本：ECS 已在循环入口算好 MaterialKey，跳过内部 Acquire 的重复计算
     MaterialBindingInstance *ResolveOrCreateBindingInstance(const mtl::MaterialKey &key,
@@ -95,8 +91,7 @@ public:
                                 const GeometryVertexFormat &gvf,
                                 const void *instance_data = nullptr,
                                 uint32_t instance_data_size = 0,
-                                MaterialDomainHandle *out_handle = nullptr,
-                                const VIL **out_vil = nullptr);
+                                MaterialDomainHandle *out_handle = nullptr);
 
     /// Record 驱动重载：pipeline 与可选 VIL 覆写均来自 rec
     MaterialBindingInstance *CreateMI(const MaterialDomainHandle &handle,

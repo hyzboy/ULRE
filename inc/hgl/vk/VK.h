@@ -235,7 +235,6 @@ enum class GraphicsPipelinePreset;
 class GraphicsPipeline;
 
 struct VAConfig;
-class VILConfig;
 class VertexInput;
 
 struct VertexInputFormat;

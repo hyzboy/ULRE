@@ -9,6 +9,23 @@
 
 namespace hgl::graph::mtl{
 
+namespace
+{
+    bool UsesVertexStreamProviders(const MaterialVariantKey &key)
+    {
+        if (key.position_provider != PositionProviderId::DirectVec3)
+            return true;
+
+        for (const auto provider : key.attribute_providers)
+        {
+            if (provider != AttributeProviderId::None)
+                return true;
+        }
+
+        return false;
+    }
+}
+
 MaterialCreateInfo *CreateFromFixedDef3D(
     const char *debug_tag,
     const contract::PhysicalDeviceProfileLite *profile,
@@ -42,15 +59,29 @@ MaterialCreateInfo *CreateFromFixedDef3D(
         return nullptr;
     }
 
+    StaticMaterialDef effective_def = def;
+    const bool needs_vertex_streams = UsesVertexStreamProviders(assemble_key);
+    if (needs_vertex_streams && !effective_def.vertex_stream_key)
+        effective_def.vertex_stream_key = &assemble_key;
+
     MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        def,
+        effective_def,
         result.vertex_glsl,
         result.fragment_glsl,
         cfg);
 
     if (!mci)
         std::fprintf(stderr, "[%s] CompileCompositorMaterial failed\n", debug_tag);
+    else if (needs_vertex_streams)
+    {
+        std::fprintf(stderr,
+                     "[%s] Enabled VertexStreams bridge: position_provider=%u color_provider=%u normal_provider=%u\n",
+                     debug_tag,
+                     static_cast<unsigned>(assemble_key.position_provider),
+                     static_cast<unsigned>(assemble_key.attribute_providers[size_t(AttributeSemantic::Color)]),
+                     static_cast<unsigned>(assemble_key.attribute_providers[size_t(AttributeSemantic::Normal)]));
+    }
 
     return mci;
 }

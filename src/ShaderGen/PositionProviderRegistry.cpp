@@ -13,6 +13,7 @@ namespace hgl::graph
         { Id::PCG_FullscreenTriangle, "ShaderLibrary/position_provider/pcg_fullscreen_triangle.glsl",             0, false, false, false },
         { Id::SSBO_PackedVec3,        "ShaderLibrary/position_provider/ssbo_packed.glsl",                         0, true,  false, false },
         { Id::TerrainGrid,            "ShaderLibrary/position_provider/terrain_grid.glsl",                        0, false, true,  true  },
+        { Id::SSBO_PackedVec2,        "ShaderLibrary/position_provider/ssbo_packed_vec2.glsl",                    0, true,  false, false },
     };
 
     static constexpr size_t kBuiltinProviderCount =

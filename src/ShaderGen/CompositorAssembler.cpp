@@ -5,6 +5,7 @@
 #include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/VertexAttribMacroMap.h>
+#include <hgl/shadergen/PositionProviderRegistry.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/SkyLight.h>
@@ -68,26 +69,32 @@ namespace
 
         EmitEnabledVertexAttribDefines(writer, f);
 
-        // Map PositionProviderId -> GLSL POSITION_KIND (0=None/procedural, 1=Vec2, 2=Vec3)
-        // SSBO_PackedVec3 uses kind 0: vertex_fetch_ssbo.glsl provides FetchPosition().
+        // Map PositionProviderId -> GLSL POSITION_KIND (0=None/procedural, 1=Vec2, 2=Vec3).
+        // SSBO-based position providers use kind 0 and fetch from VertexStreams SSBO.
+        const auto *pos_provider = hgl::graph::FindBuiltinProvider(f.position_provider);
+        const bool position_ssbo = pos_provider && pos_provider->needs_ssbo;
         const int pos_kind = (f.position_provider == hgl::graph::PositionProviderId::VAB_Vec2) ? 1
                            : (f.position_provider == hgl::graph::PositionProviderId::PCG_FullscreenTriangle) ? 0
-                           : (f.position_provider == hgl::graph::PositionProviderId::SSBO_PackedVec3) ? 0
+                   : (position_ssbo) ? 0
                            : 2; // DirectVec3 and other VBO providers
         writer.EmitDefine("POSITION_KIND", std::to_string(pos_kind).c_str());
         if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
 
         // Phase C: emit GEOMETRY_FETCH_SSBO + per-attribute SSBO binding macros.
-        bool any_ssbo = (f.position_provider == hgl::graph::PositionProviderId::SSBO_PackedVec3);
+        bool any_ssbo = position_ssbo;
         for (const auto &p : f.attribute_providers)
             if (p != hgl::graph::AttributeProviderId::None) { any_ssbo = true; break; }
 
         if (any_ssbo) {
             writer.EmitDefine("GEOMETRY_FETCH_SSBO", "1");
-            if (f.position_provider == hgl::graph::PositionProviderId::SSBO_PackedVec3) {
+            if (position_ssbo) {
                 writer.EmitDefine("POSITION_SSBO_SET",     "VERTEXSTREAMS_SET");
                 writer.EmitDefine("POSITION_SSBO_BINDING",
                     std::to_string(size_t(hgl::graph::AttributeSemantic::BuiltinCount)).c_str());
+                writer.EmitDefine("POSITION_PROVIDER_ID",
+                    std::to_string(static_cast<uint32_t>(f.position_provider)).c_str());
+                if (f.position_provider == hgl::graph::PositionProviderId::SSBO_PackedVec2)
+                    writer.EmitDefine("POSITION_SSBO_IS_VEC2", "1");
             }
             for (size_t i = 0; i < f.attribute_providers.size(); ++i) {
                 if (f.attribute_providers[i] != hgl::graph::AttributeProviderId::None) {

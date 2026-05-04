@@ -47,7 +47,8 @@ static MaterialVariantKey CanonicalizeRegistryLookupKey(const MaterialVariantKey
     // materials to resolve the same base variant entry as VAB counterparts.
     for (auto &p : canon.attribute_providers)
         p = AttributeProviderId::None;
-    if (canon.position_provider == PositionProviderId::SSBO_PackedVec3)
+    if (canon.position_provider == PositionProviderId::SSBO_PackedVec3
+     || canon.position_provider == PositionProviderId::SSBO_PackedVec2)
     {
       if (canon.geometry_mode == GeometryMode::Quad2D
        || Is2DSurfaceType(canon.surface_type))

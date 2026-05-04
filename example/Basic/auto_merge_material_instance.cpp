@@ -32,9 +32,9 @@ constexpr uint32_t VERTEX_COUNT=3;
 
 constexpr float position_data[VERTEX_COUNT*2]=
 {
-     0.0,  0.0,
+    0.0,  0.0,
     -0.1,  0.9,
-     0.1,  0.9
+    0.1,  0.9
 };
 
 constexpr uint DRAW_OBJECT_COUNT=12;

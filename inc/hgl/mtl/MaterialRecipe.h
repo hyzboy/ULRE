@@ -113,8 +113,9 @@ struct MaterialRecipe
         attribute_providers{};
 
     // ── Phase C: position SSBO override (vertex pulling) ─────────────────────
-    // std::nullopt → use default for this preset (usually DirectVec3 for 3D).
-    // Set to SSBO_PackedVec3 for full vertex pulling (no VAB for position).
+    // std::nullopt → use default for this preset (migration default is SSBO).
+    // Set to SSBO_PackedVec2 / SSBO_PackedVec3 for full vertex pulling
+    // without VAB position input.
     std::optional<PositionProviderId> position_provider;
 };
 

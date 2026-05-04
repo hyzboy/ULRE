@@ -112,17 +112,6 @@ namespace
         return k;
     }
 
-    static bool ShouldFallbackToDefaultVIL(const ShaderMaterialProgram *material)
-    {
-        if (!material)
-            return false;
-
-        if (material->IsPullingEnabled() || material->hasSet(DescriptorSetType::VertexStreams))
-            return false;
-
-        return true;
-    }
-
     template<typename CreateConfigT>
     static void ForceVertexFragmentStages(CreateConfigT &cfg)
     {
@@ -905,15 +894,7 @@ MaterialBindingInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(c
     if(!mtl)
         return nullptr;
 
-    const bool allow_default_vil_fallback = ShouldFallbackToDefaultVIL(mtl);
-
-    const VIL *resolved_vil = nullptr;
-    if (spec.vil_cfg)
-        resolved_vil = mtl->CreateVIL(spec.vil_cfg);
-    else if (spec.vil)
-        resolved_vil = spec.vil;
-    else if (allow_default_vil_fallback)
-        resolved_vil = mtl->GetDefaultVIL();
+    const VIL *resolved_vil = spec.vil;
 
     MaterialBindingInstance *mi = CreateMaterialInstance(mtl,
                                                          spec.domain,
@@ -1044,21 +1025,6 @@ MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(Sh
     return mi;
 }
 
-MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VILConfig *vil_cfg)
-{
-    if(!domain || !mtl) return nullptr;
-
-    if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
-        return nullptr;
-
-    // VIL no longer stored in MI; compute only for potential validation
-    int mi_id = domain->AllocMISlot();
-    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, mi_id);
-    mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
-    Add(mi);
-    return mi;
-}
-
 MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size)
 {
     if(!domain || !mtl) return nullptr;
@@ -1067,24 +1033,6 @@ MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(Sh
         return nullptr;
 
     (void)vil;
-    int mi_id = domain->AllocMISlot();
-    MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, mi_id);
-    mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
-    Add(mi);
-
-    if(data && data_size > 0)
-        mi->WriteMIData(data, data_size);
-
-    return mi;
-}
-
-MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size)
-{
-    if(!domain || !mtl) return nullptr;
-
-    if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
-        return nullptr;
-
     int mi_id = domain->AllocMISlot();
     MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, mi_id);
     mi->InitMITLayout(mtl->GetTextureArraySlotFlags());

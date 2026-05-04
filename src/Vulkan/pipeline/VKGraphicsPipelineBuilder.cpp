@@ -174,47 +174,27 @@ static void LogPipelineVertexInputComparison(const GraphicsPipelineBuildRequest 
     if (vertex_input_ignored)
     {
         LogVertexInputLayoutDetails("PipelineBuild.GeometryVIL", request.vil);
-        GLogInfo("[PipelineBuild.MaterialDefaultVIL] Pulling enabled: forcing empty VkPipelineVertexInputState");
+        GLogInfo("[PipelineBuild.VertexInput] Pulling enabled: forcing empty VkPipelineVertexInputState");
         return;
     }
 
-    const VIL *material_vil = request.material->GetDefaultVIL();
     LogVertexInputLayoutDetails("PipelineBuild.GeometryVIL", request.vil);
-    LogVertexInputLayoutDetails("PipelineBuild.MaterialDefaultVIL", material_vil);
 
-    if (!request.vil || !material_vil)
+    if (!request.vil)
         return;
 
     const uint32_t g_count = request.vil->GetVertexAttribCount();
-    const uint32_t m_count = material_vil->GetVertexAttribCount();
-    if (g_count != m_count)
-    {
-        GLogWarning("[PipelineBuild.VertexInputDiff] attr_count mismatch geometry=%u material=%u",
-                    g_count,
-                    m_count);
-    }
-
-    const uint32_t n = g_count < m_count ? g_count : m_count;
-    for (uint32_t i = 0; i < n; ++i)
+    for (uint32_t i = 0; i < g_count; ++i)
     {
         const VertexInputFormat *g = request.vil->GetConfig(i);
-        const VertexInputFormat *m = material_vil->GetConfig(i);
-        if (!g || !m)
+        if (!g)
             continue;
 
-        if (g->attrib != m->attrib
-         || g->format != m->format
-         || g->vec_size != m->vec_size)
-        {
-            GLogWarning("[PipelineBuild.VertexInputDiff] index=%u geom(attrib=%u format=%d vec=%u) material(attrib=%u format=%d vec=%u)",
-                        i,
-                        static_cast<unsigned>(g->attrib),
-                        static_cast<int>(g->format),
-                        g->vec_size,
-                        static_cast<unsigned>(m->attrib),
-                        static_cast<int>(m->format),
-                        m->vec_size);
-        }
+        GLogInfo("[PipelineBuild.VertexInput] index=%u attrib=%u format=%d vec=%u",
+                 i,
+                 static_cast<unsigned>(g->attrib),
+                 static_cast<int>(g->format),
+                 g->vec_size);
     }
 }
 

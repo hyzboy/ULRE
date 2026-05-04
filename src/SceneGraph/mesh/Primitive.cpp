@@ -196,18 +196,10 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,Grap
 
     const VIL *vil = explicit_vil
                    ? explicit_vil
-                   : (p ? p->GetVIL() : material->GetDefaultVIL());
+                   : (p ? p->GetVIL() : nullptr);
 
-    // Pulling materials still require a non-null VIL sentinel at many legacy
-    // call sites (pipeline pre-resolve / primitive keying). Use material
-    // default VIL fallback when available.
     const bool pulling_enabled =
         material->IsPullingEnabled() || material->hasSet(SET_TYPE_VERTEX_STREAMS);
-
-    if(!vil && pulling_enabled)
-        vil = material->GetDefaultVIL();
-
-    if (!vil) return(nullptr);
 
     const VIL *pipeline_vil = p ? p->GetVIL() : nullptr;
 

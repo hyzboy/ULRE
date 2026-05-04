@@ -157,7 +157,8 @@ namespace hgl::graph
                 return(false);
 
             {
-                const auto gvf = GeometryVertexFormat::FromVIL(gizmo_triangle.mtl->GetDefaultVIL());
+                GeometryVertexFormat gvf;
+                gvf.Set(VertexAttrib::Position, VF_V3F, 12u, 0);
                 gizmo_triangle.vdm=new VertexDataManager(buffer_manager,gvf);
 
                 if(!gizmo_triangle.vdm)

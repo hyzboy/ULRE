@@ -213,7 +213,20 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
     key.vertex_attribute_feature_bits |= ov.extra_vertex_attrib_bits;
 
     // Step 5: apply remaining overrides (not covered by entry selection).
-    if (ov.position_provider) key.position_provider = *ov.position_provider;  // Step 11.D
+    if (ov.position_provider)
+    {
+        key.position_provider = *ov.position_provider;  // Step 11.D
+    }
+    else
+    {
+        // Default migration policy: keep presets/variants on SSBO position input
+        // unless caller explicitly requests a different provider.
+        if (key.position_provider == PositionProviderId::DirectVec3)
+            key.position_provider = PositionProviderId::SSBO_PackedVec3;
+        else if (key.position_provider == PositionProviderId::VAB_Vec2)
+            key.position_provider = PositionProviderId::SSBO_PackedVec2;
+    }
+
     if (ov.pass_hint)         key.pass_hint         = *ov.pass_hint;
     if (ov.sky_ambient_model) key.sky_ambient_model = *ov.sky_ambient_model;
     if (ov.debug_shading)     key.SetDebugShading(true);

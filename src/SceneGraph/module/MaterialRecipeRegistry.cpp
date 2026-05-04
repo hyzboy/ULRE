@@ -11,11 +11,9 @@
 #include <hgl/vk/VKMaterialBindingInstance.h>
 #include <hgl/vk/VKResourceDomain.h>
 #include <hgl/vk/VKDomainResourceBinding.h>
-#include <hgl/vk/VKVertexInputConfig.h>
-#include <hgl/vk/VKVertexInputLayout.h>
-
 #include <cctype>
 #include <cstdio>
+#include <limits>
 
 namespace hgl::graph
 {
@@ -77,33 +75,177 @@ static uint32_t HashDomainIDString(const std::string &did)
     return h == 0 ? 1u : h;
 }
 
-static bool MaterialUsesMeshStage(const ShaderMaterialProgram *material)
-{
-    (void)material;
-    return false;
-}
-
-static bool TryParseDomainID(const std::string &did, uint32_t &out_id)
+static bool ParseDomainIDString(const std::string &did, uint32_t &out_id)
 {
     if (did.empty())
-    {
-        out_id = 0;
-        return true;
-    }
+        return false;
 
-    uint64_t value = 0;
     for (char ch : did)
     {
         if (!std::isdigit(static_cast<unsigned char>(ch)))
             return false;
-
-        value = value * 10 + uint64_t(ch - '0');
-        if (value > 0xFFFFFFFFull)
-            return false;
     }
+
+    const unsigned long long value = std::strtoull(did.c_str(), nullptr, 10);
+    if (value > std::numeric_limits<uint32_t>::max())
+        return false;
 
     out_id = static_cast<uint32_t>(value);
     return true;
+}
+
+static bool HasExplicitVertexStreamProviders(const mtl::MaterialRecipe &rec)
+{
+    if (rec.position_provider.has_value())
+        return true;
+
+    for (const auto provider : rec.attribute_providers)
+    {
+        if (provider != AttributeProviderId::None)
+            return true;
+    }
+
+    return false;
+}
+
+static bool TryMapVertexAttribToSemantic(const VertexAttrib attrib, AttributeSemantic &semantic)
+{
+    switch (attrib)
+    {
+        case VertexAttrib::Normal:      semantic = AttributeSemantic::Normal;    return true;
+        case VertexAttrib::Tangent:     semantic = AttributeSemantic::Tangent;   return true;
+        case VertexAttrib::Color:       semantic = AttributeSemantic::Color;     return true;
+        case VertexAttrib::TexCoord:    semantic = AttributeSemantic::TexCoord0; return true;
+        case VertexAttrib::JointID:     semantic = AttributeSemantic::Joints;    return true;
+        case VertexAttrib::JointWeight: semantic = AttributeSemantic::Weights;   return true;
+        default: return false;
+    }
+}
+
+static AttributeProviderId InferProviderByFormat(const VertexAttrib attrib, const VkFormat format)
+{
+    if (format == VK_FORMAT_UNDEFINED)
+        return AttributeProviderId::None;
+
+    switch (attrib)
+    {
+        case VertexAttrib::Normal:
+        case VertexAttrib::Tangent:
+        case VertexAttrib::Bitangent:
+        {
+            if (format == VK_FORMAT_R32G32B32_SFLOAT)
+                return AttributeProviderId::SSBO_Vec3;
+
+            if (format == VK_FORMAT_R32G32B32A32_SFLOAT)
+                return AttributeProviderId::SSBO_Vec4;
+
+            return AttributeProviderId::None;
+        }
+
+        case VertexAttrib::Color:
+        {
+            if (format == VK_FORMAT_R8G8B8A8_UNORM
+             || format == VK_FORMAT_B8G8R8A8_UNORM
+             || format == VK_FORMAT_A8B8G8R8_UNORM_PACK32)
+                return AttributeProviderId::SSBO_PackedRGBA8;
+
+            if (format == VK_FORMAT_R32G32B32A32_SFLOAT)
+                return AttributeProviderId::SSBO_Vec4;
+
+            if (format == VK_FORMAT_R32G32B32_SFLOAT)
+                return AttributeProviderId::SSBO_Vec3;
+
+            return AttributeProviderId::None;
+        }
+
+        case VertexAttrib::TexCoord:
+        {
+            if (format == VK_FORMAT_R32G32_SFLOAT)
+                return AttributeProviderId::SSBO_Vec2;
+
+            if (format == VK_FORMAT_R16G16_UNORM)
+                return AttributeProviderId::SSBO_PackedUV_2x16;
+
+            return AttributeProviderId::None;
+        }
+
+        case VertexAttrib::JointID:
+        case VertexAttrib::JointWeight:
+        {
+            if (format == VK_FORMAT_R32G32B32A32_SFLOAT)
+                return AttributeProviderId::SSBO_Vec4;
+
+            return AttributeProviderId::None;
+        }
+
+        default:
+            return AttributeProviderId::None;
+    }
+}
+
+static bool BuildLegacyVertexStreamBridgeRecipe(const mtl::MaterialRecipe &rec,
+                                                const GeometryVertexFormat &gvf,
+                                                mtl::MaterialRecipe &out_recipe)
+{
+    out_recipe = rec;
+
+    if (HasExplicitVertexStreamProviders(rec))
+        return false;
+
+    bool changed = false;
+
+    if (!out_recipe.position_provider.has_value())
+    {
+        const VkFormat pos_format = gvf.GetFormat(VertexAttrib::Position);
+
+        // Legacy bridge: when old callers still provide V2F/V3F position via
+        // VAB, auto-switch to SSBO position fetch without requiring recipe edits.
+        if (pos_format == VK_FORMAT_R32G32_SFLOAT)
+        {
+            out_recipe.position_provider = PositionProviderId::SSBO_PackedVec2;
+            changed = true;
+        }
+        else if (pos_format == VK_FORMAT_R32G32B32_SFLOAT)
+        {
+            out_recipe.position_provider = PositionProviderId::SSBO_PackedVec3;
+            changed = true;
+        }
+    }
+
+    constexpr VertexAttrib kBridgeAttribs[] = {
+        VertexAttrib::Normal,
+        VertexAttrib::Tangent,
+        VertexAttrib::Color,
+        VertexAttrib::TexCoord,
+        VertexAttrib::JointID,
+        VertexAttrib::JointWeight,
+    };
+
+    for (const VertexAttrib attrib : kBridgeAttribs)
+    {
+        if (!gvf.Has(attrib))
+            continue;
+
+        AttributeSemantic semantic = AttributeSemantic::BuiltinCount;
+        if (!TryMapVertexAttribToSemantic(attrib, semantic))
+            continue;
+
+        const size_t semantic_index = size_t(semantic);
+        if (semantic_index >= out_recipe.attribute_providers.size())
+            continue;
+
+        if (out_recipe.attribute_providers[semantic_index] != AttributeProviderId::None)
+            continue;
+
+        const AttributeProviderId inferred = InferProviderByFormat(attrib, gvf.GetFormat(attrib));
+        if (inferred == AttributeProviderId::None)
+            continue;
+
+        out_recipe.attribute_providers[semantic_index] = inferred;
+        changed = true;
+    }
+
+    return changed;
 }
 
 // ── DMBKeyHash ───────────────────────────────────────────────────────────────
@@ -156,7 +298,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
     const auto schema = handle.material->GetShaderDataSchema();
 
     uint32_t numeric_domain_id = 0;
-    if (!TryParseDomainID(did, numeric_domain_id))
+    if (!ParseDomainIDString(did, numeric_domain_id))
     {
         numeric_domain_id = HashDomainIDString(did);
     }
@@ -281,10 +423,13 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     const GeometryVertexFormat &gvf,
     const void *instance_data,
     uint32_t instance_data_size,
-    MaterialDomainHandle *out_handle,
-    const VIL **out_vil)
+    MaterialDomainHandle *out_handle)
 {
-    MaterialDomainHandle handle = Acquire(rec);
+    mtl::MaterialRecipe bridged_recipe;
+    const bool bridged = BuildLegacyVertexStreamBridgeRecipe(rec, gvf, bridged_recipe);
+    const mtl::MaterialRecipe &effective_recipe = bridged ? bridged_recipe : rec;
+
+    MaterialDomainHandle handle = Acquire(effective_recipe);
     if (!handle.material)
         return nullptr;
 
@@ -300,60 +445,9 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     MaterialInstanceSpec spec;
     spec.material = handle.material;
     spec.domain   = handle.domain;
-    spec.preset   = rec.pipeline;
+    spec.preset   = effective_recipe.pipeline;
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
-
-    // 从 ShaderMaterialProgram DefaultVIL 与 GVF 的差异自动推算 VILConfig
-    const VIL *default_vil = handle.material->GetDefaultVIL();
-    if (!default_vil)
-    {
-        if (!MaterialUsesMeshStage(handle.material))
-            return nullptr;
-
-        if (out_vil)
-            *out_vil = nullptr;
-
-        MaterialBindingInstance *mi = mm->AcquireMaterialInstance(spec);
-        if (mi)
-            MaterialBindingInstanceInternalAccess::SetDomainBinding(mi, handle.binding);
-
-        return mi;
-    }
-
-    VILConfig vil_cfg;
-    const uint32_t attrib_count = default_vil->GetVertexAttribCount();
-
-    for (uint32_t i = 0; i < attrib_count; ++i)
-    {
-        const auto *vif = default_vil->GetConfig(i);
-        if (!vif)
-            continue;
-
-        const VkFormat gvf_format = gvf.GetFormat(vif->attrib);
-
-        if (gvf_format == VK_FORMAT_UNDEFINED)
-            continue;   // Geometry 没有此 attrib，跳过（使用 DefaultVIL 默认值）
-
-        if (gvf_format != vif->format)
-        {
-            VAConfig vac;
-            vac.format = gvf_format;
-
-            if (!vil_cfg.Add(vif->attrib, vac))
-                return nullptr;
-        }
-    }
-
-    if (vil_cfg.GetCount() > 0)
-        spec.vil_cfg = &vil_cfg;
-
-    // Stage-5: expose the actual VIL that will be used so callers can avoid
-    // storing it in MaterialBindingInstance.
-    if (out_vil)
-        *out_vil = (vil_cfg.GetCount() > 0)
-                       ? handle.material->CreateVIL(&vil_cfg)   // cached by ShaderMaterialProgram
-                       : default_vil;
 
     MaterialBindingInstance *mi = mm->AcquireMaterialInstance(spec);
     if (mi)
@@ -370,10 +464,14 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     const GeometryVertexFormat &gvf,
     const void *instance_data,
     uint32_t instance_data_size,
-    MaterialDomainHandle *out_handle,
-    const VIL **out_vil)
+    MaterialDomainHandle *out_handle)
 {
-    MaterialDomainHandle handle = Acquire(key, rec);
+    mtl::MaterialRecipe bridged_recipe;
+    const bool bridged = BuildLegacyVertexStreamBridgeRecipe(rec, gvf, bridged_recipe);
+    const mtl::MaterialRecipe &effective_recipe = bridged ? bridged_recipe : rec;
+    const mtl::MaterialKey effective_key = bridged ? mtl::ResolveRecipePrimaryKey(effective_recipe) : key;
+
+    MaterialDomainHandle handle = Acquire(effective_key, effective_recipe);
     if (!handle.material)
         return nullptr;
 
@@ -389,57 +487,9 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     MaterialInstanceSpec spec;
     spec.material = handle.material;
     spec.domain   = handle.domain;
-    spec.preset   = rec.pipeline;
+    spec.preset   = effective_recipe.pipeline;
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
-
-    const VIL *default_vil = handle.material->GetDefaultVIL();
-    if (!default_vil)
-    {
-        if (!MaterialUsesMeshStage(handle.material))
-            return nullptr;
-
-        if (out_vil)
-            *out_vil = nullptr;
-
-        MaterialBindingInstance *mi = mm->AcquireMaterialInstance(spec);
-        if (mi)
-            MaterialBindingInstanceInternalAccess::SetDomainBinding(mi, handle.binding);
-
-        return mi;
-    }
-
-    VILConfig vil_cfg;
-    const uint32_t attrib_count = default_vil->GetVertexAttribCount();
-
-    for (uint32_t i = 0; i < attrib_count; ++i)
-    {
-        const auto *vif = default_vil->GetConfig(i);
-        if (!vif)
-            continue;
-
-        const VkFormat gvf_format = gvf.GetFormat(vif->attrib);
-
-        if (gvf_format == VK_FORMAT_UNDEFINED)
-            continue;
-
-        if (gvf_format != vif->format)
-        {
-            VAConfig vac;
-            vac.format = gvf_format;
-
-            if (!vil_cfg.Add(vif->attrib, vac))
-                return nullptr;
-        }
-    }
-
-    if (vil_cfg.GetCount() > 0)
-        spec.vil_cfg = &vil_cfg;
-
-    if (out_vil)
-        *out_vil = (vil_cfg.GetCount() > 0)
-                       ? handle.material->CreateVIL(&vil_cfg)
-                       : default_vil;
 
     MaterialBindingInstance *mi = mm->AcquireMaterialInstance(spec);
     if (mi)

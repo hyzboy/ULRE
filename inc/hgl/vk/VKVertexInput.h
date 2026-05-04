@@ -8,7 +8,6 @@
 
 namespace hgl::graph{
 class IGPUBuffer;
-class VILConfig;
 
 class VertexInputConfig
 {
@@ -25,17 +24,11 @@ public:
 
     VertexInputConfig(const VertexInputAttributeArray &sa_array);
     ~VertexInputConfig();
-
-    VIL *CreateVIL(const VILConfig *format_map=nullptr);
 };
 
 class VertexInput
 {
     VertexInputConfig vic;
-
-    VIL *default_vil;
-
-    OrderedSet<VIL *> vil_sets;
 
     bool pulling_enabled=false;
 
@@ -62,13 +55,6 @@ public:
     {
         return streams[size_t(semantic)];
     }
-
-    // Even in pulling mode we keep returning the default VIL sentinel (typically
-    // count=0) so legacy call sites that require non-null VIL can proceed.
-    const   VIL *   GetDefaultVIL()const{return default_vil;}
-    VIL *           CreateVIL(const VILConfig *format_map=nullptr);
-    bool            Release(VIL *);
-    const uint32_t  GetInstanceCount()const{return vil_sets.GetCount();}
 };//class VertexInput
 
 VertexInput *GetVertexInput(const VIAArray &);

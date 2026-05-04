@@ -594,11 +594,6 @@ namespace hgl::ecs
                 bool prim_restart = false;
                 graph::GraphicsPipelinePreset preset = state.preset;
 
-                const graph::VIL* default_vil = material->GetDefaultVIL();
-
-                if (!vil)
-                    vil = default_vil;
-
                 pipeline_data = graph::GetGraphicsPipelineData(preset);
                 if (pipeline_data)
                     prim_restart = (pipeline_data->input_assembly.primitiveRestartEnable == VK_TRUE);
@@ -647,12 +642,17 @@ namespace hgl::ecs
                     if (ShouldLogPow2(skips_total))
                     {
                         const bool vertex_input_ignored = graph::IsVertexInputIgnored(req);
-                        LogDebug("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve skipped: invalid request (vil=%p pipeline_data=%p device=%p preset=%d vertex_input_ignored=%s), total_skips=%llu",
+                        const bool has_vertex_streams = material && material->hasSet(graph::DescriptorSetType::VertexStreams);
+                        const bool pulling_enabled = material && material->IsPullingEnabled();
+                        LogDebug("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve skipped: invalid request (material=%p vil=%p pipeline_data=%p device=%p preset=%d vertex_input_ignored=%s pulling=%s has_vertex_streams=%s), total_skips=%llu",
+                                 static_cast<const void *>(material),
                                  static_cast<const void *>(vil),
                                  static_cast<const void *>(pipeline_data),
                                  static_cast<const void *>(device),
                                  int(preset),
                                  vertex_input_ignored ? "yes" : "no",
+                                 pulling_enabled ? "yes" : "no",
+                                 has_vertex_streams ? "yes" : "no",
                                  static_cast<unsigned long long>(skips_total));
                     }
                 }

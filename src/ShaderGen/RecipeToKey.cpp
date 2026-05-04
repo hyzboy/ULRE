@@ -220,8 +220,18 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     if (r.pos_format.Check())
     {
         k.position_provider = (r.pos_format.vec_size == 2)
-            ? PositionProviderId::VAB_Vec2
-            : PositionProviderId::DirectVec3;
+            ? PositionProviderId::SSBO_PackedVec2
+            : PositionProviderId::SSBO_PackedVec3;
+    }
+
+    // Default migration policy: route legacy VAB/direct position providers to
+    // SSBO providers unless the recipe explicitly selects a provider.
+    if (!r.position_provider.has_value())
+    {
+        if (k.position_provider == PositionProviderId::VAB_Vec2)
+            k.position_provider = PositionProviderId::SSBO_PackedVec2;
+        else if (k.position_provider == PositionProviderId::DirectVec3)
+            k.position_provider = PositionProviderId::SSBO_PackedVec3;
     }
 
     // ── Step 3.B: explicit position provider override (Phase C) ──────────────

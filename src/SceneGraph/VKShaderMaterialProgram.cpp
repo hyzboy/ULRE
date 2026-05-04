@@ -73,34 +73,6 @@ const bool ShaderMaterialProgram::hasSet(const DescriptorSetType &dst)const
     return desc_manager->hasSet(dst);
 }
 
-const VIL *ShaderMaterialProgram::GetDefaultVIL()const
-{
-    if(!vertex_input)
-        return nullptr;
-    return vertex_input->GetDefaultVIL();
-}
-
-VIL *ShaderMaterialProgram::CreateVIL(const VILConfig *format_map)
-{
-    if(!vertex_input)
-        return nullptr;
-    return vertex_input->CreateVIL(format_map);
-}
-
-bool ShaderMaterialProgram::Release(VIL *vil)
-{
-    if(!vertex_input)
-        return false;
-    return vertex_input->Release(vil);
-}
-
-const uint ShaderMaterialProgram::GetVILCount()
-{
-    if(!vertex_input)
-        return 0;
-    return vertex_input->GetInstanceCount();
-}
-
 bool ShaderMaterialProgram::BindUBO(const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic)
 {
     const DescriptorSetType type = mtl::GetExpectedSetType(semantic);

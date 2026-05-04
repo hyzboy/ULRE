@@ -7,7 +7,6 @@
 
 namespace hgl::graph
 {
-    class VILConfig;
     class GraphicsContext;
 
     namespace mtl

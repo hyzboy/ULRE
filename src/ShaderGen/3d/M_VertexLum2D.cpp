@@ -43,7 +43,7 @@ MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfil
                  key.vertex_attribute_feature_bits);
 
     MaterialVariantKey local_key = key;
-    local_key.position_provider = PositionProviderId::VAB_Vec2;
+    local_key.position_provider = PositionProviderId::SSBO_PackedVec2;
 
     return CreateFromFixedDef3D("VertexLuminance2D", profile, def, local_key, cfg, desc);
 }

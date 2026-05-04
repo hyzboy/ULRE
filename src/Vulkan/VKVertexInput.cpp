@@ -29,106 +29,10 @@ VertexInputConfig::~VertexInputConfig()
     delete[] type_list;
 }
 
-VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
-{
-    VIL *vil=new VIL(via_array.count);
-
-    VkVertexInputBindingDescription *bind_desc=vil->bind_list;
-    VkVertexInputAttributeDescription *attr_desc=vil->attr_list;
-    VertexInputFormat *vif=vil->vif_list;
-
-    const VertexInputAttribute *via;
-    VAConfig vac;
-    uint binding=0;
-    via=via_array.items;
-
-    for(uint i=0;i<via_array.count;i++)
-    {
-        //binding对应的是第几个数据输入流
-        //实际使用一个binding可以绑定多个attrib
-        //比如在一个流中传递{pos,color}这样两个数据，就需要两个attrib
-        //但在我们的设计中，仅支持一个流传递一个attrib
-
-        attr_desc->binding   =binding;
-        attr_desc->location  =via->location;                 //此值对应shader中的layout(location=
-
-        attr_desc->offset    =0;
-
-        bind_desc->binding   =binding;                      //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
-                                                            //在Mesh类中，buffer_list必需严格按照本此binding为序列号排列
-
-        ++binding;
-
-        if(!cfg||!cfg->Get(via->attrib,vac))
-        {
-            attr_desc->format    =GetVulkanFormat(via);
-
-            bind_desc->inputRate =VkVertexInputRate::VK_VERTEX_INPUT_RATE_VERTEX;
-        }
-        else
-        {
-            attr_desc->format    =(vac.format==PF_UNDEFINED?GetVulkanFormat(via):vac.format);
-
-            bind_desc->inputRate =vac.input_rate;
-        }
-
-        bind_desc->stride    =GetStrideByFormat(attr_desc->format);
-
-        vif->format     =attr_desc->format;
-        vif->vec_size   =via->vec_size;
-        vif->stride     =bind_desc->stride;
-
-        vif->attrib     =via->attrib;
-        vif->binding    =attr_desc->binding;
-        vif->input_rate =bind_desc->inputRate;
-
-        ++vif;
-        ++attr_desc;
-        ++bind_desc;
-
-        ++via;
-    }
-
-    return(vil);
-}
-
-VertexInput::VertexInput(const VIAArray &sa_array):vic(sa_array)
-{
-    default_vil=vic.CreateVIL(nullptr);
-}
+VertexInput::VertexInput(const VIAArray &sa_array):vic(sa_array){}
 
 VertexInput::~VertexInput()
-{
-    delete default_vil;
-
-    if(vil_sets.GetCount()>0)
-    {
-        //还有在用的，这是个错误
-    }
-}
-
-VIL *VertexInput::CreateVIL(const VILConfig *cfg)
-{
-    if(pulling_enabled)
-        return(default_vil);   // Pulling 路径：返回默认(通常为0属性)哨兵，避免上层因null早退
-
-    if(!cfg)
-        return(default_vil);
-
-    //原本是想在这里做根据VILConfig的Map缓冲管理，避免重复创建VIL。
-    //但VILConfig的复制与比较过于复杂，而且这种使用情况极少。所以放弃做这个事情，如未来真正产生这种需求时再做。
-
-    VIL *vil=vic.CreateVIL(cfg);
-
-    vil_sets.Add(vil);
-
-    return vil;
-}
-
-bool VertexInput::Release(VIL *vil)
-{
-    return vil_sets.Delete(vil);
-}
+{}
 
 namespace
 {

@@ -14,7 +14,6 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
-#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/graph/module/ShaderMaterialProgramManager.h>
@@ -42,26 +41,15 @@ namespace hgl::ecs
         {
             graph::MaterialBindingInstance *binding_instance = nullptr;
             graph::ShaderMaterialProgram *material = nullptr;
-            const graph::VIL *vil = nullptr;
             graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid2D;
         };
 
-        graph::VILConfig BuildTextSpecialVILConfig()
-        {
-            graph::VILConfig vil_config;
-            vil_config.Add(graph::VAN::Position, graph::TEXT_GEOMETRY_POSITION_FORMAT);
-            vil_config.Add(graph::VAN::TexCoord, graph::TEXT_GEOMETRY_TEXCOORD_FORMAT);
-            return vil_config;
-        }
-
         TextResolvedMaterialState ResolveTextMaterialState(graph::MaterialBindingInstance *mi,
-                                                           graph::ShaderMaterialProgram *expected_material = nullptr,
-                                                           const graph::VIL *expected_vil = nullptr)
+                                                           graph::ShaderMaterialProgram *expected_material = nullptr)
         {
             TextResolvedMaterialState state{};
             state.binding_instance = mi;
             state.material = expected_material;
-            state.vil = expected_vil;
 
             if (!mi)
                 return state;
@@ -182,12 +170,6 @@ namespace hgl::ecs
             {
                 material_manager->Release(res.material_instance);
                 res.material_instance = nullptr;
-            }
-
-            if (res.fixed_vil && res.material)
-            {
-                res.material->Release(const_cast<graph::VIL *>(res.fixed_vil));
-                res.fixed_vil = nullptr;
             }
 
             if (res.material && material_manager)
@@ -414,13 +396,6 @@ namespace hgl::ecs
         resources.material = guard.material;
         resources.sampler = guard.sampler;
 
-        {
-            const graph::VILConfig text_vil_config = BuildTextSpecialVILConfig();
-            resources.fixed_vil = guard.material->CreateVIL(&text_vil_config);
-        }
-        if (!resources.fixed_vil)
-            return nullptr;
-
         guard.committed = true;
 
         resources_by_font.Add(font_source, resources);
@@ -434,8 +409,8 @@ namespace hgl::ecs
         if (!device || !render_target || !resources.material || !resources.material_instance)
             return false;
 
-        const auto state = ResolveTextMaterialState(resources.material_instance, resources.material, resources.fixed_vil);
-        if (!state.material || !state.vil)
+        const auto state = ResolveTextMaterialState(resources.material_instance, resources.material);
+        if (!state.material)
             return false;
 
         auto* render_format = render_target->GetRenderFormat();
@@ -452,7 +427,7 @@ namespace hgl::ecs
 
         graph::GraphicsPipelineBuildRequest req;
         req.material = state.material;
-        req.vil = state.vil;
+        req.vil = nullptr;
         req.render_format = render_format;
         req.pipeline_data = pipeline_data;
         req.primitive = state.material->GetPrimitiveType();
@@ -563,11 +538,8 @@ namespace hgl::ecs
             graph::MaterialBindingInstance* mi = resources->material_instance;
             if (!mi)
             {
-                const graph::VILConfig vil_config = BuildTextSpecialVILConfig();
-
                 graph::MaterialInstanceSpec mi_spec;
                 mi_spec.material = resources->material;
-                mi_spec.vil_cfg = &vil_config;
                 mi_spec.preset = graph::GraphicsPipelinePreset::Solid2D;
                 mi_spec.domain = ResolveDomainForMaterial(material_manager, resources->material, 2001u);
 

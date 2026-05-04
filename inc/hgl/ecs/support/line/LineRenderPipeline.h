@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include <hgl/ecs/support/RenderPipelineBase.h>
-#include <hgl/vk/VKVertexInputLayout.h>
 #include <hgl/vk/VKBufferAccessor.h>
 #include <hgl/color/Color4f.h>
 #include <memory>
@@ -76,7 +75,6 @@ namespace hgl::ecs
         graph::VulkanDevice*    device_         = nullptr;
         graph::ShaderMaterialProgram*        material_       = nullptr;
         graph::MaterialBindingInstance* mi_            = nullptr;
-        const graph::VIL*       fixed_vil_      = nullptr;
         graph::GraphicsPipeline*        pipeline_       = nullptr;
         graph::RenderTargetFormat*     render_format_  = nullptr;
 

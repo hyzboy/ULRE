@@ -19,7 +19,10 @@ inline void PopulateVariantKeyVertexAttribBits(MaterialVariantKey &key, const St
         // Detect vec2 Position to distinguish VertexLuminance2D (vec2) from VertexLuminance3D (vec3).
         if (entry.attrib == hgl::graph::VertexAttrib::Position && entry.type == hgl::graph::VAT_VEC2)
         {
-            key.position_provider = PositionProviderId::VAB_Vec2;
+            if (key.position_provider == PositionProviderId::DirectVec3)
+                key.position_provider = PositionProviderId::VAB_Vec2;
+            else if (key.position_provider == PositionProviderId::SSBO_PackedVec3)
+                key.position_provider = PositionProviderId::SSBO_PackedVec2;
         }
     }
 }
