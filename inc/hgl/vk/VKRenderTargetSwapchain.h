@@ -15,11 +15,13 @@ class SwapchainRenderTarget:public MultiFrameRenderTarget
     Swapchain *swapchain;
     PresentInfo present_info;
 
-    Semaphore *present_complete_semaphore=nullptr;
+    Semaphore **image_acquired_semaphores=nullptr;
+    Semaphore *current_image_acquired_semaphore=nullptr;
+    uint32_t next_acquire_semaphore_index=0;
 
 private:
 
-    SwapchainRenderTarget(hgl::ecs::ECSContext *ctx,Swapchain *sc,Semaphore *pcs,RenderTargetData *rtdl);
+    SwapchainRenderTarget(hgl::ecs::ECSContext *ctx,Swapchain *sc,RenderTargetData *rtdl);
 
     friend class SwapchainModule;
     friend class RenderTargetManager;
@@ -41,7 +43,7 @@ public:
     bool WaitQueue  ()override;
 
     /**
-     * Release swapchain-owned resources (Swapchain and present_complete_semaphore)
+     * Release swapchain-owned resources (Swapchain and image-acquired semaphores)
      * Must be called by SwapchainModule before destroying this object
      */
     void ReleaseSwapchainResources();

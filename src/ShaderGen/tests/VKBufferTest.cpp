@@ -32,18 +32,17 @@ using namespace hgl::graph;
 // ---------------------------------------------------------------------------
 static void test_compute_vab_usage_flags()
 {
-    // prefer_storage=false: only VERTEX_BUFFER_BIT set
+    // All VAB paths now include both VERTEX and STORAGE usage bits.
     const uint32_t vbo_only = ComputeVABUsageFlags(false);
     CHECK_TRUE( (vbo_only & kVkBufferUsageVertexBufferBit)  != 0u );
-    CHECK_TRUE( (vbo_only & kVkBufferUsageStorageBufferBit) == 0u );
+    CHECK_TRUE( (vbo_only & kVkBufferUsageStorageBufferBit) != 0u );
 
-    // prefer_storage=true: both bits set
+    // Parameter retained for compatibility; result is identical.
     const uint32_t with_ssbo = ComputeVABUsageFlags(true);
     CHECK_TRUE( (with_ssbo & kVkBufferUsageVertexBufferBit)  != 0u );
     CHECK_TRUE( (with_ssbo & kVkBufferUsageStorageBufferBit) != 0u );
 
-    // The two return values must differ exactly by STORAGE_BUFFER_BIT
-    CHECK_EQ(with_ssbo ^ vbo_only, kVkBufferUsageStorageBufferBit);
+    CHECK_EQ(with_ssbo, vbo_only);
 }
 
 // ---------------------------------------------------------------------------

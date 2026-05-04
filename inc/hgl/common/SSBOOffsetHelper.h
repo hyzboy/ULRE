@@ -16,12 +16,14 @@ inline constexpr uint32_t kVkBufferUsageVertexBufferBit  = 0x00000080u;
 
 /// Compute VAB (VertexAttribBuffer) usage flags.
 ///
-/// Always includes VERTEX_BUFFER_BIT so the buffer can be used as a traditional VBO.
-/// When \p prefer_storage is true, STORAGE_BUFFER_BIT is also set so the same buffer
-/// can be bound as an SSBO in a vertex-pulling pipeline without reallocation.
-inline constexpr uint32_t ComputeVABUsageFlags(bool prefer_storage) noexcept
+/// Always includes both VERTEX_BUFFER_BIT and STORAGE_BUFFER_BIT so the same
+/// buffer can be consumed by fixed-function vertex input and SSBO-based
+/// vertex-pulling paths without reallocation.
+///
+/// \p prefer_storage is kept for API compatibility and is intentionally ignored.
+inline constexpr uint32_t ComputeVABUsageFlags(bool /*prefer_storage*/) noexcept
 {
-    return kVkBufferUsageVertexBufferBit | (prefer_storage ? kVkBufferUsageStorageBufferBit : 0u);
+    return kVkBufferUsageVertexBufferBit | kVkBufferUsageStorageBufferBit;
 }
 
 /// Align \p byte_offset upward to the next multiple of \p alignment that satisfies

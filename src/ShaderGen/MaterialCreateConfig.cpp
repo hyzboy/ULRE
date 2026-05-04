@@ -32,10 +32,6 @@ std::string MaterialCreateConfig::ToHashStdString()
         hash.push_back('F');
     if(shader_stage_flag_bit&(uint32)ShaderStage::Compute)
         hash.push_back('C');
-    if(shader_stage_flag_bit&(uint32)ShaderStage::Mesh)
-        hash.push_back('M');
-    if(shader_stage_flag_bit&(uint32)ShaderStage::Task)
-        hash.push_back('T');
 
     hash.push_back('_');
 

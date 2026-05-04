@@ -264,7 +264,6 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
 
     sc_render_target=new SwapchainRenderTarget(ecs_context,
                                                swapchain,
-                                               device->CreateGPUSemaphore("Swapchain:ImageAcquired"),
                                                rtd_list
     );
 

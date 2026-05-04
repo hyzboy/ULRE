@@ -3,6 +3,7 @@
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/log/Log.h>
 #include<chrono>
+#include<cstring>
 #ifdef _WIN32
 #include<Windows.h>
 #endif
@@ -21,7 +22,7 @@ namespace
     }
 }
 
-SwapchainRenderTarget::SwapchainRenderTarget(hgl::ecs::ECSContext *ctx,Swapchain *sc,Semaphore *pcs,RenderTargetData *rtl):MultiFrameRenderTarget(ctx,sc->image_count,rtl)
+SwapchainRenderTarget::SwapchainRenderTarget(hgl::ecs::ECSContext *ctx,Swapchain *sc,RenderTargetData *rtl):MultiFrameRenderTarget(ctx,sc->image_count,rtl)
 {
     swapchain=sc;
 
@@ -31,7 +32,19 @@ SwapchainRenderTarget::SwapchainRenderTarget(hgl::ecs::ECSContext *ctx,Swapchain
     present_info.pResults           = nullptr;
     present_info.pSwapchains        = &(swapchain->swap_chain);
 
-    present_complete_semaphore=pcs;
+    if (frame_number > 0)
+    {
+        image_acquired_semaphores = new Semaphore*[frame_number];
+        std::memset(image_acquired_semaphores, 0, sizeof(Semaphore*) * frame_number);
+
+        if (auto *device = GetDevice())
+        {
+            for (uint32_t i = 0; i < frame_number; ++i)
+                image_acquired_semaphores[i] = device->CreateGPUSemaphore("Swapchain:ImageAcquired");
+        }
+
+        current_image_acquired_semaphore = image_acquired_semaphores[0];
+    }
 }
 
 SwapchainRenderTarget::~SwapchainRenderTarget()
@@ -43,12 +56,42 @@ SwapchainRenderTarget::~SwapchainRenderTarget()
 bool SwapchainRenderTarget::NextFrame()
 {
     auto start = std::chrono::high_resolution_clock::now();
-    LogInfo("[SWAPCHAIN] NextFrame START current_frame=%u semaphore=%p", current_frame, (void*)present_complete_semaphore);
+
+    if (!image_acquired_semaphores || frame_number == 0)
+    {
+        LogWarning("[SWAPCHAIN] NextFrame FAILED: no image-acquired semaphores");
+        return false;
+    }
+
+    const uint32_t semaphore_index = next_acquire_semaphore_index;
+
+    if (!image_acquired_semaphores[semaphore_index])
+    {
+        auto *device = GetDevice();
+        if (!device)
+        {
+            LogWarning("[SWAPCHAIN] NextFrame FAILED: device is null while creating acquire semaphore (index=%u)", semaphore_index);
+            return false;
+        }
+
+        image_acquired_semaphores[semaphore_index] = device->CreateGPUSemaphore("Swapchain:ImageAcquired");
+    }
+
+    current_image_acquired_semaphore = image_acquired_semaphores[semaphore_index];
+    next_acquire_semaphore_index = (next_acquire_semaphore_index + 1u) % frame_number;
+
+    if (!current_image_acquired_semaphore)
+    {
+        LogWarning("[SWAPCHAIN] NextFrame FAILED: acquire semaphore is null (index=%u)", semaphore_index);
+        return false;
+    }
+
+    LogInfo("[SWAPCHAIN] NextFrame START current_frame=%u semaphore[%u]=%p", current_frame, semaphore_index, (void*)current_image_acquired_semaphore);
 
     VkResult result = vkAcquireNextImageKHR(GetVkDevice(),
                                  swapchain->swap_chain,
                                  UINT64_MAX,
-                                 *present_complete_semaphore,
+                                 *current_image_acquired_semaphore,
                                  VK_NULL_HANDLE,
                                  &current_frame);
 
@@ -115,7 +158,7 @@ bool SwapchainRenderTarget::Submit()
 
     RenderTargetData *rtd=rtd_list+current_frame;
 
-    if(!rtd->Submit(present_complete_semaphore))
+    if(!rtd->Submit(current_image_acquired_semaphore))
     {
         LogWarning("[SWAPCHAIN] Submit RenderTargetData::Submit FAILED");
         return(false);
@@ -175,9 +218,19 @@ bool SwapchainRenderTarget::Submit()
 
 void SwapchainRenderTarget::ReleaseSwapchainResources()
 {
-    // SwapchainModule is responsible for cleaning up Swapchain and present_complete_semaphore
-    // Delete them here (called by SwapchainModule::Release())
-    SAFE_CLEAR(present_complete_semaphore);
+    // SwapchainModule is responsible for cleaning up Swapchain.
+    // SwapchainRenderTarget owns image-acquired semaphores created in ctor.
+    if (image_acquired_semaphores)
+    {
+        for (uint32_t i = 0; i < frame_number; ++i)
+            SAFE_CLEAR(image_acquired_semaphores[i]);
+
+        delete[] image_acquired_semaphores;
+        image_acquired_semaphores = nullptr;
+    }
+
+    current_image_acquired_semaphore = nullptr;
+    next_acquire_semaphore_index = 0;
     SAFE_CLEAR(swapchain);
 }
 }//namespace hgl::graph

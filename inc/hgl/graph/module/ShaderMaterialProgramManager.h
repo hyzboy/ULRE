@@ -135,11 +135,7 @@ private: // Helper methods with integrated DebugUtils
                                       const mtl::MaterialCreateInfo *mci,
                                       const ShaderStageMap &sci_map);
 
-    ShaderMaterialProgram *ResolveCreateFailureWithFallback(ShaderMaterialProgram *created,
-                                                            bool mesh_stage_requested,
-                                                            uint32_t stage_bits,
-                                                            int preset_id,
-                                                            bool has_preset);
+    ShaderMaterialProgram *ResolveCreateFailureWithFallback(ShaderMaterialProgram *created);
 
      ShaderMaterialProgram *TryInitializeFallbackMaterial();
      ShaderMaterialProgram *GetFallbackMaterial();

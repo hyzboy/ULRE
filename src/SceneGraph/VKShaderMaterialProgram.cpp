@@ -159,26 +159,23 @@ bool ShaderMaterialProgram::BindVertexStreamBinding(const uint32_t binding,const
 
 bool ShaderMaterialProgram::BindMeshIndexStream(const IGPUBuffer *buffer,bool dynamic)
 {
-    if(!HasShaderStage(shader_stage_list,VK_SHADER_STAGE_MESH_BIT_EXT))
-        return true;
-
-    return BindVertexStreamBinding(kMeshShaderIndexStreamBinding,buffer,dynamic);
+    (void)buffer;
+    (void)dynamic;
+    return true;
 }
 
 bool ShaderMaterialProgram::BindMeshletStream(const IGPUBuffer *buffer,bool dynamic)
 {
-    if(!HasShaderStage(shader_stage_list,VK_SHADER_STAGE_MESH_BIT_EXT))
-        return true;
-
-    return BindVertexStreamBinding(kMeshShaderMeshletStreamBinding,buffer,dynamic);
+    (void)buffer;
+    (void)dynamic;
+    return true;
 }
 
 bool ShaderMaterialProgram::BindTaskPayloadStream(const IGPUBuffer *buffer,bool dynamic)
 {
-    if(!HasShaderStage(shader_stage_list,VK_SHADER_STAGE_TASK_BIT_EXT))
-        return true;
-
-    return BindVertexStreamBinding(kMeshShaderTaskPayloadStreamBinding,buffer,dynamic);
+    (void)buffer;
+    (void)dynamic;
+    return true;
 }
 
 bool ShaderMaterialProgram::BindTexture(const DescriptorSetType &type,mtl::SamplerSlot slot,Texture *tex)

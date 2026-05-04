@@ -1,8 +1,6 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderStageIO.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/shadergen/ShaderCreateInfoTask.h>
-#include<hgl/shadergen/ShaderCreateInfoMesh.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/math/Matrix.h>
@@ -207,8 +205,6 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     : config(*mc)
 {
     if(HasVertex    ())shader_map.Add(new ShaderCreateInfoVertex(&descriptor_db));
-    if(HasTask      ())shader_map.Add(new ShaderCreateInfoTask(&descriptor_db));
-    if(HasMesh      ())shader_map.Add(new ShaderCreateInfoMesh(&descriptor_db));
     if(HasFragment  ())shader_map.Add(new ShaderCreateInfo(new FragmentShaderStageIO(),&descriptor_db));
 
     ubo_range=0;
@@ -476,13 +472,7 @@ bool MaterialCreateInfo::CompileSPV()
 
 void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
 {
-    uint32_t stream_stage_bits = uint32_t(ShaderStage::Vertex);
-    if (HasMesh())
-    {
-        stream_stage_bits = uint32_t(ShaderStage::Mesh);
-        if (HasTask())
-            stream_stage_bits |= uint32_t(ShaderStage::Task);
-    }
+    const uint32_t stream_stage_bits = uint32_t(ShaderStage::Vertex);
 
     // Attribute streams: binding index = AttributeSemantic ordinal (sparse binding).
     // CompositorAssembler emits "#define FETCH_<Tag>_SSBO_BINDING <i>" with the same index.
@@ -516,28 +506,4 @@ void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
     }
 }
 
-void MaterialCreateInfo::AddMeshShaderStreamSSBOs(const MeshShaderStreamContract &contract)
-{
-    uint32_t stage_bits = uint32_t(ShaderStage::Mesh);
-    if (HasTask())
-        stage_bits |= uint32_t(ShaderStage::Task);
-
-    auto add_stream_binding = [this](const uint32_t stage_bits,const uint32_t binding)
-    {
-        if(binding >= kVertexStreamBindingCountWithMesh)
-            return;
-
-        auto *sd = new SSBODescriptor();
-        sd->semantic = SSBODescriptorSemantic(binding);  // VertexStreams: semantic index == binding
-        descriptor_db.AddSSBO(stage_bits, DescriptorSetType::VertexStreams, sd);
-    };
-
-    add_stream_binding(stage_bits, contract.index.binding);
-
-    if(contract.enable_meshlet_stream)
-        add_stream_binding(stage_bits, contract.meshlet.binding);
-
-    if(contract.enable_task_payload_stream)
-        add_stream_binding(stage_bits, contract.task_payload.binding);
-}
 }//namespace hgl::graph::mtl

@@ -18,7 +18,6 @@
 #include<hgl/graph/module/ShaderMaterialProgramManager.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/render/RenderContext.h>
-#include<hgl/common/MeshShaderStreamContract.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/vk/VKDomainResourceBinding.h>
 #include<unordered_set>
@@ -115,21 +114,6 @@ namespace hgl::ecs
             }
         }
 
-        bool MaterialHasMeshOrTaskStages(graph::ShaderMaterialProgram *material)
-        {
-            if (!material)
-                return false;
-
-            for (const auto &stage_ci : material->GetStageList())
-            {
-                if (stage_ci.stage == VK_SHADER_STAGE_TASK_BIT_EXT
-                 || stage_ci.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
-                    return true;
-            }
-
-            return false;
-        }
-
         bool ResolveUniformVertexStreamFromBatch(const MaterialBatch *batch,
                                                  graph::AttributeSemantic semantic,
                                                  const graph::IGPUBuffer *&out_gpu,
@@ -177,43 +161,6 @@ namespace hgl::ecs
             return has_value;
         }
 
-        bool ResolveUniformMeshIndexStreamFromBatch(const MaterialBatch *batch,
-                                                    const graph::IGPUBuffer *&out_gpu)
-        {
-            out_gpu = nullptr;
-
-            if (!batch)
-                return false;
-
-            bool has_value = false;
-
-            for (auto *item : batch->items)
-            {
-                if (!item)
-                    continue;
-
-                auto *primitive = item->GetPrimitive();
-                if (!primitive)
-                    continue;
-
-                const graph::IGPUBuffer *gpu = primitive->ResolveMeshIndexStreamSource();
-                if (!gpu)
-                    return false;
-
-                if (!has_value)
-                {
-                    out_gpu = gpu;
-                    has_value = true;
-                    continue;
-                }
-
-                if (out_gpu != gpu)
-                    return false;
-            }
-
-            return has_value;
-        }
-
         void ApplyAutoVertexStreamsBinding(graph::ShaderMaterialProgram *material,
                                            const MaterialBatch *batch)
         {
@@ -253,12 +200,6 @@ namespace hgl::ecs
                     mp->BindVertexStreamSSBO(graph::kVertexStreamPositionBinding, gpu);
             }
 
-            if (MaterialHasMeshOrTaskStages(material) && mp->HasBinding(graph::kMeshShaderIndexStreamBinding))
-            {
-                const graph::IGPUBuffer *mesh_index_gpu = nullptr;
-                if (ResolveUniformMeshIndexStreamFromBatch(batch, mesh_index_gpu) && mesh_index_gpu)
-                    material->BindMeshIndexStream(mesh_index_gpu);
-            }
         }
 
     } // anonymous namespace

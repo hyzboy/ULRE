@@ -79,16 +79,7 @@ static uint32_t HashDomainIDString(const std::string &did)
 
 static bool MaterialUsesMeshStage(const ShaderMaterialProgram *material)
 {
-    if (!material)
-        return false;
-
-    for (const auto &stage_ci : material->GetStageList())
-    {
-        if (stage_ci.stage == VK_SHADER_STAGE_MESH_BIT_EXT
-         || stage_ci.stage == VK_SHADER_STAGE_TASK_BIT_EXT)
-            return true;
-    }
-
+    (void)material;
     return false;
 }
 

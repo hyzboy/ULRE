@@ -112,32 +112,9 @@ namespace
         return k;
     }
 
-    static bool IsMeshStageRequested(const uint32_t stage_bits)
-    {
-        return (stage_bits & (uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Task))) != 0;
-    }
-
-    static bool IsMeshOrTaskStageMaterial(const ShaderMaterialProgram *material)
-    {
-        if (!material)
-            return false;
-
-        for (const auto &stage_ci : material->GetStageList())
-        {
-            if (stage_ci.stage == VK_SHADER_STAGE_TASK_BIT_EXT ||
-                stage_ci.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
-                return true;
-        }
-
-        return false;
-    }
-
     static bool ShouldFallbackToDefaultVIL(const ShaderMaterialProgram *material)
     {
         if (!material)
-            return false;
-
-        if (IsMeshOrTaskStageMaterial(material))
             return false;
 
         if (material->IsPullingEnabled() || material->hasSet(DescriptorSetType::VertexStreams))
@@ -146,13 +123,11 @@ namespace
         return true;
     }
 
-    static constexpr uint32_t kMeshFragmentStageBits = uint32_t(ShaderStage::Mesh) | uint32_t(ShaderStage::Fragment);
-
     template<typename CreateConfigT>
-    static void ApplyMeshStageBitsIfRequested(const mtl::MaterialRecipe &rec, CreateConfigT &cfg)
+    static void ForceVertexFragmentStages(const mtl::MaterialRecipe &rec, CreateConfigT &cfg)
     {
-        if (rec.use_mesh_shader)
-            cfg.shader_stage_flag_bit = kMeshFragmentStageBits;
+        (void)rec;
+        cfg.shader_stage_flag_bit &= (uint32_t(ShaderStage::Vertex) | uint32_t(ShaderStage::Fragment));
     }
 
     static const VIAArray *TryGetVertexInputArray(const mtl::MaterialCreateInfo *mci,
@@ -409,33 +384,10 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetFallbackMaterial()
     return fallback_material;
 }
 
-ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveCreateFailureWithFallback(ShaderMaterialProgram *created,
-                                                                                       const bool mesh_stage_requested,
-                                                                                       const uint32_t stage_bits,
-                                                                                       const int preset_id,
-                                                                                       const bool has_preset)
+ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveCreateFailureWithFallback(ShaderMaterialProgram *created)
 {
     if(created)
         return created;
-
-    if(mesh_stage_requested)
-    {
-        if(has_preset)
-        {
-            std::fprintf(stderr,
-                "[ShaderMaterialProgramManager] ResolveOrCreateProgram(mesh strict) failed: preset=%d stage_bits=0x%08X, fallback material disabled for mesh path\n",
-                preset_id,
-                stage_bits);
-        }
-        else
-        {
-            std::fprintf(stderr,
-                "[ShaderMaterialProgramManager] ResolveOrCreateProgram(mesh strict) failed: stage_bits=0x%08X, fallback material disabled for mesh path\n",
-                stage_bits);
-        }
-
-        return nullptr;
-    }
 
     ShaderMaterialProgram *fallback = GetFallbackMaterial();
     if(fallback)
@@ -474,13 +426,6 @@ bool ShaderMaterialProgramManager::ExecuteMaterialBuildPipeline(ShaderMaterialPr
 
     const VIAArray *vertex_input_array = TryGetVertexInputArray(mci, mtl_name);
     mtl->vertex_input = vertex_input_array ? GetVertexInput(*vertex_input_array) : nullptr;
-
-    if (!vertex_input_array && IsMeshStageRequested(mci->GetShaderStage()))
-    {
-        std::fprintf(stdout,
-            "[ShaderMaterialProgramManager] material='%s' mesh/task path keeps vertex_input empty by design\n",
-            mtl_name.c_str());
-    }
 
     const auto &mdi = mci->GetDescriptorInfo();
     if(mdi.GetCount() > 0)
@@ -592,7 +537,7 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode == TextureSourceMode::Array)
             { cfg.use_texture_array = true; break; }
 
-        ApplyMeshStageBitsIfRequested(rec, cfg);
+        ForceVertexFragmentStages(rec, cfg);
 
         std::fprintf(stderr, "[CreateMaterialFromRecord] Billboard preset=%d  use_texture_array=%d  blend=%d\n",
             (int)rec.preset, (int)cfg.use_texture_array, (int)cfg.blend_mode);
@@ -612,11 +557,11 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
 
-        ApplyMeshStageBitsIfRequested(rec, cfg);
+        ForceVertexFragmentStages(rec, cfg);
 
         // Keep 2D recipe and key paths consistent with 3D: route through
         // ResolveRecipePrimaryKey so attribute/position provider overrides are
-        // preserved for vertex pulling and mesh-stage materials.
+        // preserved for vertex pulling paths.
         cfg.preset_name = mtl::GetMaterialPresetName(rec.preset);
         mtl::MaterialVariantKey vk = mtl::ResolveRecipePrimaryKey(rec).variant;
         return mm->ResolveOrCreateProgram(vk, &cfg);
@@ -656,7 +601,7 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
 
-        ApplyMeshStageBitsIfRequested(rec, cfg);
+        ForceVertexFragmentStages(rec, cfg);
 
         // Use the recipe-derived variant key so that attribute_providers and
         // position_provider (vertex pulling) are propagated through to
@@ -713,12 +658,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 {
     acquire_material_requests.fetch_add(1);
 
-    const bool mesh_stage_requested = cfg && IsMeshStageRequested(cfg->shader_stage_flag_bit);
-    ShaderMaterialProgram *mtl = ResolveCreateFailureWithFallback(CreateMaterial(mtl_id, cfg),
-                                                                   mesh_stage_requested,
-                                                                   cfg ? cfg->shader_stage_flag_bit : 0u,
-                                                                   int(mtl_id),
-                                                                   true);
+    ShaderMaterialProgram *mtl = ResolveCreateFailureWithFallback(CreateMaterial(mtl_id, cfg));
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
@@ -730,12 +670,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 {
     acquire_material_requests.fetch_add(1);
 
-    const bool mesh_stage_requested = cfg && IsMeshStageRequested(cfg->shader_stage_flag_bit);
-    ShaderMaterialProgram *mtl = ResolveCreateFailureWithFallback(CreateMaterial(mtl_id, cfg),
-                                                                   mesh_stage_requested,
-                                                                   cfg ? cfg->shader_stage_flag_bit : 0u,
-                                                                   int(mtl_id),
-                                                                   true);
+    ShaderMaterialProgram *mtl = ResolveCreateFailureWithFallback(CreateMaterial(mtl_id, cfg));
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
@@ -747,12 +682,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 {
     acquire_material_requests.fetch_add(1);
 
-    const bool mesh_stage_requested = cfg && IsMeshStageRequested(cfg->shader_stage_flag_bit);
-    ShaderMaterialProgram *mtl = ResolveCreateFailureWithFallback(CreateMaterial(key, cfg),
-                                                                   mesh_stage_requested,
-                                                                   cfg ? cfg->shader_stage_flag_bit : 0u,
-                                                                   0,
-                                                                   false);
+    ShaderMaterialProgram *mtl = ResolveCreateFailureWithFallback(CreateMaterial(key, cfg));
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
@@ -764,12 +694,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 {
     acquire_material_requests.fetch_add(1);
 
-    const bool mesh_stage_requested = cfg && IsMeshStageRequested(cfg->shader_stage_flag_bit);
-    ShaderMaterialProgram *mtl = ResolveCreateFailureWithFallback(CreateMaterial(key, cfg),
-                                                                   mesh_stage_requested,
-                                                                   cfg ? cfg->shader_stage_flag_bit : 0u,
-                                                                   0,
-                                                                   false);
+    ShaderMaterialProgram *mtl = ResolveCreateFailureWithFallback(CreateMaterial(key, cfg));
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();

@@ -499,7 +499,6 @@ namespace hgl::ecs
                     rec.dim       = graph::mtl::MaterialRecipe::Dim::D3;
                     rec.prim      = graph::PrimitiveType::Billboard;
                     rec.pipeline  = GetPresetForWorld(world);
-                    rec.use_mesh_shader = false;
                     rec.textures  = {
                         { graph::mtl::SamplerSlot::BaseColor, graph::mtl::TextureSourceMode::Array, "" },
                     };

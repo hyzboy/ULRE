@@ -51,40 +51,16 @@ MaterialCreateInfo *CreateFullscreenTriangle(const contract::PhysicalDeviceProfi
     local_cfg.material_instance   = false;
     local_cfg.effective_feature_mask = 0;
 
-    const bool use_mesh_stage =
-        (local_cfg.shader_stage_flag_bit & uint32_t(ShaderStage::Mesh)) != 0;
+    local_cfg.shader_stage_flag_bit &= (uint32_t(ShaderStage::Vertex) | uint32_t(ShaderStage::Fragment));
+    local_cfg.shader_stage_flag_bit |= (uint32_t(ShaderStage::Vertex) | uint32_t(ShaderStage::Fragment));
 
-    std::string stage_glsl;
-
-    if (use_mesh_stage)
-    {
-        // Mesh-path fullscreen triangle: emit clip-space vertices directly,
-        // avoiding gl_VertexIndex-based providers that are vertex-stage-only.
-        std::ostringstream mesh_out;
-        mesh_out << "#version 460\n";
-        mesh_out << "#extension GL_EXT_mesh_shader : require\n\n";
-        mesh_out << "layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;\n";
-        mesh_out << "layout(triangles, max_vertices = 3, max_primitives = 1) out;\n\n";
-        mesh_out << "void main()\n";
-        mesh_out << "{\n";
-        mesh_out << "    SetMeshOutputsEXT(3u, 1u);\n";
-        mesh_out << "    gl_MeshVerticesEXT[0].gl_Position = vec4(-1.0, -1.0, 0.0, 1.0);\n";
-        mesh_out << "    gl_MeshVerticesEXT[1].gl_Position = vec4( 3.0, -1.0, 0.0, 1.0);\n";
-        mesh_out << "    gl_MeshVerticesEXT[2].gl_Position = vec4(-1.0,  3.0, 0.0, 1.0);\n";
-        mesh_out << "    gl_PrimitiveTriangleIndicesEXT[0] = uvec3(0u, 1u, 2u);\n";
-        mesh_out << "}\n";
-        stage_glsl = mesh_out.str();
-    }
-    else
-    {
-        // Build vertex-stage fullscreen triangle via PCG provider.
-        const PositionProvider *pp = FindBuiltinProvider(PositionProviderId::PCG_FullscreenTriangle);
-        std::ostringstream vs_out;
-        vs_out << "#version 450\n\n";
-        EmitPositionInput(vs_out, *pp, 0);
-        vs_out << "\nvoid main()\n{\n    gl_Position = vec4(GetPositionLocal(), 1.0);\n}\n";
-        stage_glsl = vs_out.str();
-    }
+    // Build vertex-stage fullscreen triangle via PCG provider.
+    const PositionProvider *pp = FindBuiltinProvider(PositionProviderId::PCG_FullscreenTriangle);
+    std::ostringstream vs_out;
+    vs_out << "#version 450\n\n";
+    EmitPositionInput(vs_out, *pp, 0);
+    vs_out << "\nvoid main()\n{\n    gl_Position = vec4(GetPositionLocal(), 1.0);\n}\n";
+    const std::string stage_glsl = vs_out.str();
 
     return CompileCompositorMaterial(profile,
                                      FULLSCREEN_TRIANGLE_DEF,

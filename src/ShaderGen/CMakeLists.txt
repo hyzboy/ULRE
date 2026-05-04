@@ -7,14 +7,10 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 # Shader Create Info
 SET(SHADER_CREATER_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfo.h
                                 ${SHADERGEN_INCLUDE_PATH}/ShaderStageMap.h
-                                ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoVertex.h
-                                ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoTask.h
-                                ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoMesh.h)
+                                ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoVertex.h)
 SET(SHADER_CREATER_SOURCE_FILES ShaderCreateInfo.cpp
                                 ShaderStageMap.cpp
-                                ShaderCreateInfoVertex.cpp
-                                ShaderCreateInfoTask.cpp
-                                ShaderCreateInfoMesh.cpp)
+                                ShaderCreateInfoVertex.cpp)
 SOURCE_GROUP("Material Create Info\\Shader" FILES   ${SHADER_CREATER_HEADER_FILES}
                                                     ${SHADER_CREATER_SOURCE_FILES})
 
