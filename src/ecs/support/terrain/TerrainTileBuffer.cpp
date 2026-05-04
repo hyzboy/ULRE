@@ -3,11 +3,14 @@
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKVertexAttribBuffer.h>
 #include <hgl/graph/module/BufferManager.h>
+#include <hgl/graph/mesh/GeometryDataBuffer.h>
 #include <hgl/type/AlignUtil.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::ecs
 {
+    TerrainTileBuffer::~TerrainTileBuffer() = default;
+
     bool TerrainTileBuffer::Initialize(hgl::graph::VulkanDevice* device, hgl::graph::BufferManager* bm)
     {
         if (!device || !bm)
@@ -75,6 +78,15 @@ namespace hgl::ecs
 
         tile_vab_buf_ = tile_vab_->GetVkBuffer();
         vab_capacity_ = new_cap;
+
+        if (!geom_data_buffer_)
+            geom_data_buffer_ = std::make_unique<hgl::graph::GeometryDataBuffer>(1, nullptr, nullptr);
+
+        geom_data_buffer_->vab_list[0] = tile_vab_buf_;
+        geom_data_buffer_->vab_offset[0] = 0;
+        geom_data_buffer_->ibo = nullptr;
+        geom_data_buffer_->vdm = nullptr;
+
         return true;
     }
 

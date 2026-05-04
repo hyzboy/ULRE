@@ -894,11 +894,8 @@ MaterialBindingInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(c
     if(!mtl)
         return nullptr;
 
-    const VIL *resolved_vil = spec.vil;
-
     MaterialBindingInstance *mi = CreateMaterialInstance(mtl,
                                                          spec.domain,
-                                                         resolved_vil,
                                                          spec.instance_data,
                                                          spec.instance_data_size);
 
@@ -912,7 +909,6 @@ MaterialBindingInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(c
     if(out_key)
     {
         out_key->material = spec.material;
-        out_key->vil = resolved_vil;
         out_key->preset = spec.preset;
         out_key->domain = spec.domain;
     }
@@ -1009,7 +1005,7 @@ DomainResourceBinding *ShaderMaterialProgramManager::FindDomainMaterialBinding(R
     return nullptr;
 }
 
-MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VIL *vil)
+MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain)
 {
     if (!domain || !mtl)
         return nullptr;
@@ -1017,7 +1013,6 @@ MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(Sh
     if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
         return nullptr;
 
-    (void)vil;   // VIL no longer stored in MI; kept for API compatibility.
     int mi_id = domain->AllocMISlot();
     MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, mi_id);
     mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
@@ -1025,14 +1020,13 @@ MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(Sh
     return mi;
 }
 
-MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size)
+MaterialBindingInstance *ShaderMaterialProgramManager::CreateMaterialInstance(ShaderMaterialProgram *mtl, ResourceDomain *domain, const void *data, const uint32 data_size)
 {
     if(!domain || !mtl) return nullptr;
 
     if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
         return nullptr;
 
-    (void)vil;
     int mi_id = domain->AllocMISlot();
     MaterialBindingInstance *mi = new MaterialBindingInstance(mtl, domain, mi_id);
     mi->InitMITLayout(mtl->GetTextureArraySlotFlags());

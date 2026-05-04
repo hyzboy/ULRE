@@ -13,7 +13,6 @@
 #include <hgl/mtl/MaterialKey.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
-#include <hgl/vk/VKVertexInputLayout.h>
 
 #include <string>
 #include <unordered_map>
@@ -93,7 +92,7 @@ public:
                                 uint32_t instance_data_size = 0,
                                 MaterialDomainHandle *out_handle = nullptr);
 
-    /// Record 驱动重载：pipeline 与可选 VIL 覆写均来自 rec
+    /// Record 驱动重载：pipeline 由 rec 指定
     MaterialBindingInstance *CreateMI(const MaterialDomainHandle &handle,
                                const mtl::MaterialRecipe &rec,
                                const void *instance_data = nullptr,

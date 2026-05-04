@@ -109,7 +109,6 @@ namespace hgl::graph
 
                 MaterialInstanceSpec mi_spec;
                 mi_spec.material = gr->mtl;
-                mi_spec.vil = nullptr;
                 mi_spec.instance_data = &color;
                 mi_spec.instance_data_size = sizeof(color);
                 mi_spec.preset = GraphicsPipelinePreset::GizmoOverlay3D;

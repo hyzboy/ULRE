@@ -83,15 +83,6 @@ namespace hgl::ecs
         // === 渲染辅助方法 ===
 
         /**
-         * 顶点属性缓冲兼容入口
-         * @param batch 绘制批次
-         * @param mi_buffer ECS 材质实例分配缓冲
-         * @return 始终成功；SSBO-only 路径不再绑定顶点缓冲
-         */
-        bool BindVAB(const DrawBatch* batch,
-                     MaterialInstanceAssignmentBuffer* mi_buffer);
-
-        /**
          * 处理间接渲染
          * @param icb_draw 间接绘制缓冲（无索引）
          * @param icb_draw_indexed 间接绘制缓冲（有索引）

@@ -43,7 +43,6 @@ struct MaterialSpecKey
 struct MaterialInstanceSpecKey
 {
     ShaderMaterialProgram *material = nullptr;
-    const VIL *vil = nullptr;
     GraphicsPipelinePreset preset = GraphicsPipelinePreset::Solid3D;
     ResourceDomain *domain = nullptr;
 };
@@ -52,8 +51,6 @@ struct MaterialInstanceSpec
 {
     ShaderMaterialProgram *material = nullptr;
     ResourceDomain *domain = nullptr;
-
-    const VIL *vil = nullptr;
 
     const void *instance_data = nullptr;
     uint32 instance_data_size = 0;
@@ -322,13 +319,13 @@ public: // ResourceDomain — Phase 1 / Phase 3
 public: // ResourceDomain MaterialBindingInstanceData creation (Phase 1)
 
     /// 从资源域分配 MI，走域独立的数据池（旧 ShaderMaterialProgram 池不变）。
-    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VIL *vil = nullptr);
-    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size);
+    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain);
+    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const void *data, const uint32 data_size);
 
     template<typename T>
-    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const VIL *vil, const T *data)
+    MaterialBindingInstance *  CreateMaterialInstance(ShaderMaterialProgram *material, ResourceDomain *domain, const T *data)
     {
-        return CreateMaterialInstance(material, domain, vil, data, sizeof(T));
+        return CreateMaterialInstance(material, domain, data, sizeof(T));
     }
 
 public: // Phase 0 Stats — 帧级资源量观测

@@ -12,29 +12,6 @@
 
 namespace hgl::graph{
 
-bool RenderCmdBuffer::BindVAB(const VABList *vab_list)
-{
-    if(!vab_list)
-    {
-        LogError("VABList is null");
-        return(false);
-    }
-
-    if(!vab_list->IsFull())
-    {
-        LogError("VABList is not full");
-        return(false);
-    }
-
-    vkCmdBindVertexBuffers(cmd_buf,
-                           0,                           //first binding
-                           vab_list->GetWriteCount(),   //binding count (use actual count, not capacity)
-                           vab_list->GetVABList(),      //buffers
-                           vab_list->GetVABOffset());   //buffer offsets
-
-    return(true);
-}
-
 RenderCmdBuffer::RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):VulkanCmdBuffer(attr,cb)
 {
     cv_count=0;

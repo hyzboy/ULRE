@@ -150,6 +150,15 @@ private:
                 {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
                 {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array, ""},
             },
+            .attribute_providers = []
+            {
+                std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)> providers{};
+                providers[size_t(AttributeSemantic::Normal)]    = AttributeProviderId::SSBO_Vec3;
+                providers[size_t(AttributeSemantic::Tangent)]   = AttributeProviderId::SSBO_Vec3;
+                providers[size_t(AttributeSemantic::TexCoord0)] = AttributeProviderId::SSBO_Vec2;
+                return providers;
+            }(),
+            .position_provider = PositionProviderId::SSBO_PackedVec3,
         };
         mtl::StandardMaterialInstance seed_mi_data{};
         seed_mi_data.base_color = PackRGBA8Float(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
@@ -313,6 +322,15 @@ private:
                             {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
                             {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array, ""},
                         },
+                        .attribute_providers = []
+                        {
+                            std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)> providers{};
+                            providers[size_t(AttributeSemantic::Normal)]    = AttributeProviderId::SSBO_Vec3;
+                            providers[size_t(AttributeSemantic::Tangent)]   = AttributeProviderId::SSBO_Vec3;
+                            providers[size_t(AttributeSemantic::TexCoord0)] = AttributeProviderId::SSBO_Vec2;
+                            return providers;
+                        }(),
+                        .position_provider = PositionProviderId::SSBO_PackedVec3,
                     },
                     &d,
                     sizeof(d));

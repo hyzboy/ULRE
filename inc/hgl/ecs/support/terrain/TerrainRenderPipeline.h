@@ -19,7 +19,7 @@ namespace hgl::ecs
      *   PrepareFrame()  — 清空 visible_tiles_ 与 tile_buffer_
      *   RunCollect()    — 收集可见 TerrainTileComponent（RenderCollect 阶段）
      *   RunBuild()      — AddTile × N → Commit()，写入 GPU VAB + IndirectDrawBuffer（RenderBatch 阶段）
-     *   Render(cmd)     — BindPipeline → BindDescriptorSets → BindVAB → vkCmdDrawIndirect（RenderDrawSubmit 阶段）
+    *   Render(cmd)     — BindPipeline → BindDescriptorSets → BindDataBuffer → vkCmdDrawIndirect（RenderDrawSubmit 阶段）
      *
      * 关键约束：场景中所有 Tile 必须共享同一 pipeline 与 material，
      *            才能合并为一次 vkCmdDrawIndirect。

@@ -226,18 +226,11 @@ public:
     void PushConstants(const void *data,const uint32_t size)                        {vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)ShaderStage::Vertex,0,       size,data);}
     void PushConstants(const void *data,const uint32_t offset,const uint32_t size)  {vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)ShaderStage::Vertex,offset,  size,data);}
 
-    void BindVAB(const uint32_t first,const uint32_t count,const VkBuffer *vab,const VkDeviceSize *offsets)
-    {
-        vkCmdBindVertexBuffers(cmd_buf,first,count,vab,offsets);
-    }
-
-    bool BindVAB(const VABList *vab_list);
-
     void BindIBO(IndexBuffer *,const VkDeviceSize byte_offset=0);
 
     /**
     * 直接绑定Mesh的VBO/IBO。
-    * 有点像是BindVAB+BindIBO,适用于完全使用Mesh数据.
+    * 直接绑定 GeometryDataBuffer 中的 vertex/index buffers，适用于 Mesh 数据路径.
     */
     bool BindDataBuffer(const GeometryDataBuffer *);
 

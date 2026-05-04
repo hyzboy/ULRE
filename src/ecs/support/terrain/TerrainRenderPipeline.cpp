@@ -113,11 +113,14 @@ namespace hgl::ecs
         //    subsequent descriptor binding)
         cmd->BindDescriptorSets(representative->material);
 
-        // 3. Bind instance-rate VAB at binding slot 0
+        // 3. Bind instance-rate vertex buffer view.
         //    The terrain VS reads per-instance tile params from this buffer via gl_InstanceIndex.
-        VkBuffer     vab_buf = tile_buffer_.GetVABBuffer();
-        VkDeviceSize zero    = 0;
-        cmd->BindVAB(0, 1, &vab_buf, &zero);
+        const auto* geom_data_buffer = tile_buffer_.GetGeometryDataBuffer();
+        if (!geom_data_buffer || !cmd->BindDataBuffer(geom_data_buffer))
+        {
+            LogError("[TerrainRenderPipeline] Failed to bind tile geometry data buffer");
+            return;
+        }
 
         // 4. One vkCmdDrawIndirect for ALL tiles
         //    Each VkDrawIndirectCommand carries the per-tile vertex count (gw*gh*6).

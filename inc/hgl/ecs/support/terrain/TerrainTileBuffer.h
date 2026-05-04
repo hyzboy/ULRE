@@ -5,12 +5,14 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <cstdint>
+#include <memory>
 
 namespace hgl::graph
 {
     class VulkanDevice;
     class BufferManager;
     class VertexAttribBuffer;
+    struct GeometryDataBuffer;
     using VAB = VertexAttribBuffer;
 }
 
@@ -42,8 +44,8 @@ namespace hgl::ecs
      *   1. BeginFrame()         — 清空 CPU staging 向量
      *   2. AddTile(component)   — 追加 Tile 参数 + VkDrawIndirectCommand
      *   3. Commit()             — 按需扩容 GPU 缓冲，写入数据
-     *   4. 在 Render pass 中：
-     *      a. BindVAB(cmd)      — 绑定 instance-rate VAB 到 binding 0
+    *   4. 在 Render pass 中：
+    *      a. BindDataBuffer()  — 绑定 instance-rate vertex buffer 视图
      *      b. DrawIndirect(cmd) — 一次 vkCmdDrawIndirect 绘制全部 Tile
      *
      * 参考：TransformAssignmentBuffer（Instance VAB 管理模式）
@@ -64,6 +66,9 @@ namespace hgl::ecs
         VkBuffer         tile_vab_buf_ = VK_NULL_HANDLE;
         uint32_t         vab_capacity_ = 0;
 
+        // For RenderCmdBuffer::BindDataBuffer compatibility.
+        std::unique_ptr<hgl::graph::GeometryDataBuffer> geom_data_buffer_;
+
         // GPU：Indirect draw 命令缓冲
         hgl::graph::IndirectDrawBuffer* indirect_buf_ = nullptr;
         uint32_t                        icb_capacity_ = 0;
@@ -73,7 +78,7 @@ namespace hgl::ecs
 
     public:
         TerrainTileBuffer() = default;
-        ~TerrainTileBuffer() = default;  ///< VAB / ICB 由 VulkanDevice 所有
+        ~TerrainTileBuffer();            ///< VAB / ICB 由 VulkanDevice 所有
 
         /**
          * 初始化（必须在使用前调用）
@@ -89,8 +94,8 @@ namespace hgl::ecs
         bool     IsEmpty()      const { return tile_params_.empty(); }
         uint32_t GetTileCount() const { return static_cast<uint32_t>(tile_params_.size()); }
 
-        /// 返回 instance-rate VAB 的 VkBuffer，供 vkCmdBindVertexBuffers 使用
-        VkBuffer GetVABBuffer() const { return tile_vab_buf_; }
+        /// 返回几何数据视图，供 RenderCmdBuffer::BindDataBuffer 使用
+        const hgl::graph::GeometryDataBuffer* GetGeometryDataBuffer() const { return geom_data_buffer_.get(); }
 
         /// 返回 indirect draw buffer，供 vkCmdDrawIndirect 使用
         hgl::graph::IndirectDrawBuffer* GetIndirectBuffer() const { return indirect_buf_; }

@@ -31,15 +31,6 @@ namespace hgl::ecs
     PipelineMaterialRenderer::~PipelineMaterialRenderer()
     = default;
 
-    bool PipelineMaterialRenderer::BindVAB(const DrawBatch* batch,
-                                               MaterialInstanceAssignmentBuffer* mi_buffer)
-    {
-        (void)material;
-        (void)batch;
-        (void)mi_buffer;
-        return true;
-    }
-
     void PipelineMaterialRenderer::ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw,
                                                          graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
     {
@@ -85,13 +76,6 @@ namespace hgl::ecs
             // 更新缓冲状态
             last_data_buffer = batch->geom_data_buffer;
             last_draw_range = nullptr;
-
-            // 绑定新的顶点数组缓冲
-            if (!BindVAB(batch, mi_buffer))
-            {
-                std::cout << "[PipelineMaterialRenderer::Draw] ERROR: BindVAB failed!" << std::endl;
-                return false;
-            }
 
             // 如果有索引缓冲，也需要绑定
             if (batch->geom_data_buffer->ibo)
@@ -166,7 +150,7 @@ namespace hgl::ecs
         first_indirect_draw_index = -1;
 
         // L2W / MI descriptor binding is unified in RenderDescriptorBindingSystem.
-        // PipelineMaterialRenderer only handles VAB/IBO and draw submission here.
+        // PipelineMaterialRenderer only handles geometry/IBO state and draw submission here.
         if (!material->hasLocalToWorld())
         {
             transform_buffer=nullptr;
