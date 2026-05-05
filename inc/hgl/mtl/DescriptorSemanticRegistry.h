@@ -43,7 +43,9 @@ namespace hgl::graph::mtl
         "MaterialBindingInstanceData",
         "MaterialBindingInstanceTexture",
         "BoneJoint",
-        "BoneJointWeight"
+        "BoneJointWeight",
+        "VertexStreams",
+        "IndexStreams"
     };
 
     constexpr size_t UBODescriptorSemanticCount = size_t(UBODescriptorSemantic::RANGE_SIZE);
@@ -69,6 +71,8 @@ namespace hgl::graph::mtl
         {SET_TYPE_MATERIAL,         "mbi_texture",      "MBI_TEXTURE_BINDING",      "MaterialBindingInstanceTexture",   BufferUpdateClass::Default       }, // MaterialBindingInstanceTexture, 这里存的是每个实例对应的纹理ID（layer index），配合TextureArray使用。所以它是SSBO不是TextureSampler
         {SET_TYPE_TRANSFORM,        "joint",            "JOINT_BINDING",            "Joint",                            BufferUpdateClass::TransformData }, // BoneJoint
         {SET_TYPE_TRANSFORM,        "joint_weight",     "JOINT_WEIGHT_BINDING",     "JointWeight",                      BufferUpdateClass::TransformData }, // BoneJointWeight
+        {SET_TYPE_VERTEX_STREAMS,   "vertex_streams",   nullptr,                     nullptr,                             BufferUpdateClass::Default       }, // VertexStreams: set ownership marker; binding is explicit VertexAttrib ordinal
+        {SET_TYPE_VERTEX_STREAMS,   "index_streams",    nullptr,                     nullptr,                             BufferUpdateClass::Default       }, // IndexStreams: set ownership marker for index-stream SSBOs in VertexStreams set
         {DescriptorSetType::Unknow, nullptr,            nullptr,                    nullptr,                            BufferUpdateClass::Default       }, // Custom
     };
 

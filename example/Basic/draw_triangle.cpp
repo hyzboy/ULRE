@@ -70,8 +70,8 @@ private:
         .pipeline   = GraphicsPipelinePreset::Solid2D,
         .attribute_providers = []
         {
-            std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)> providers{};
-            providers[size_t(AttributeSemantic::Color)] = AttributeProviderId::SSBO_PackedRGBA8;
+            std::array<AttributeProviderId, size_t(VertexAttrib::RANGE_SIZE)> providers{};
+            providers[size_t(VertexAttrib::Color)] = AttributeProviderId::SSBO_PackedRGBA8;
             return providers;
         }(),
         .position_provider = PositionProviderId::SSBO_PackedVec3,

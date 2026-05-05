@@ -64,6 +64,10 @@ void MaterialDescriptorManager::RegisterEnumBinding(const ShaderDescriptor *sd)
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
         {
+            // VertexStreams uses binding-index addressing, not SSBO semantic lookup.
+            if(sd->set_type==DescriptorSetType::VertexStreams)
+                break;
+
             const auto *ssbo_sd = dynamic_cast<const SSBODescriptor *>(sd);
             if(!ssbo_sd)
                 break;

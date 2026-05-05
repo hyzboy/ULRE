@@ -7,6 +7,7 @@
 #include<hgl/mtl/MaterialVariantKey.h>
 #include<hgl/shadergen/AttributeProviderRegistry.h>
 #include<hgl/shadergen/PositionProviderRegistry.h>
+
 #include<string>
 #include<limits>
 
@@ -474,8 +475,8 @@ void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
 {
     const uint32_t stream_stage_bits = uint32_t(ShaderStage::Vertex);
 
-    // Attribute streams: binding index = AttributeSemantic ordinal (sparse binding).
-    // CompositorAssembler emits "#define FETCH_<Tag>_SSBO_BINDING <i>" with the same index.
+    // Attribute streams: binding index = VertexAttrib ordinal.
+    // CompositorAssembler emits "#define FETCH_<Tag>_SSBO_BINDING <binding>" with the same index.
     for (size_t i = 0; i < key.attribute_providers.size(); ++i)
     {
         const AttributeProviderId pid = key.attribute_providers[i];
@@ -486,21 +487,27 @@ void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
         if (!ap || !ap->needs_ssbo)
             continue;
 
+        const VertexAttrib attrib = VertexAttrib(i);
+        if (attrib == VertexAttrib::Position)
+            continue;
+
+        const uint32_t binding = uint32_t(attrib);
+
         auto *sd = new SSBODescriptor();
-        sd->semantic = SSBODescriptorSemantic(i);   // index → binding via Resort()
+        sd->semantic = SSBODescriptorSemantic::VertexStreams;
+        sd->binding = int(binding);
         descriptor_db.AddSSBO(stream_stage_bits, DescriptorSetType::VertexStreams, sd);
     }
 
-    // Position stream: binding = BuiltinCount (= 8).
-    // CompositorAssembler emits "#define POSITION_SSBO_BINDING 8".
+    // Position stream: binding = VertexAttrib::Position.
     if (key.position_provider != PositionProviderId::DirectVec3)
     {
         const PositionProvider *pp = FindBuiltinProvider(key.position_provider);
         if (pp && pp->needs_ssbo)
         {
             auto *sd = new SSBODescriptor();
-            // semantic index 8 = BuiltinCount; Resort() maps index → binding = 8
-            sd->semantic = SSBODescriptorSemantic(size_t(AttributeSemantic::BuiltinCount));
+            sd->semantic = SSBODescriptorSemantic::VertexStreams;
+            sd->binding = int(uint32_t(VertexAttrib::Position));
             descriptor_db.AddSSBO(stream_stage_bits, DescriptorSetType::VertexStreams, sd);
         }
     }

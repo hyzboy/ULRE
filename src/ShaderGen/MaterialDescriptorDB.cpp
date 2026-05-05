@@ -97,11 +97,34 @@ const SSBODescriptor *MaterialDescriptorDB::AddSSBO(uint32_t ssb,DescriptorSetTy
 
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
-    SSBODescriptor *obj=sds->AddSSBO(ssb,sd);
+    SSBODescriptor *obj=nullptr;
 
-    // VertexStreams SSBOs are addressed by binding index, not by semantic lookup;
-    // skip ssbo_by_semantic to avoid corrupting the per-semantic index map.
-    if (obj && set_type != DescriptorSetType::VertexStreams)
+    if(set_type==DescriptorSetType::VertexStreams)
+    {
+        if(sd->binding<0)
+        {
+            delete sd;
+            return nullptr;
+        }
+
+        obj=sds->AddVertexStreamSSBO(ssb,uint32_t(sd->binding),sd);
+
+        if(obj)
+        {
+            const auto sem = obj->semantic;
+            if(sem==mtl::SSBODescriptorSemantic::VertexStreams
+            || sem==mtl::SSBODescriptorSemantic::IndexStreams)
+                ssbo_by_semantic[size_t(sem)] = obj;
+        }
+
+        return obj;
+    }
+
+    obj=sds->AddSSBO(ssb,sd);
+
+    // Semantic SSBO sets keep a semantic->descriptor map.
+    // VertexStreams is handled by the early return above and does not participate.
+    if (obj)
     {
         const auto sem = obj->semantic;
         if(RangeCheck(sem))
@@ -178,8 +201,8 @@ void MaterialDescriptorDB::Resort()
         if (p.set_type == DescriptorSetType::VertexStreams)
         {
             // Vertex stream SSBOs use the array index directly as the binding number
-            // to match the sparse ATTRIB_BINDING / POSITION_SSBO_BINDING macros that
-            // CompositorAssembler hard-codes into the GLSL source (e.g. Normal=0, TexCoord0=3, Position=8).
+            // to match the ATTRIB_BINDING / POSITION_SSBO_BINDING macros emitted by
+            // CompositorAssembler (binding = VertexAttrib ordinal).
             for (size_t idx = 0; idx < std::size(p.ssbo_descriptor_map); ++idx)
             {
                 auto *d = p.ssbo_descriptor_map[idx];

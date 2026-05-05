@@ -9,14 +9,13 @@
 //
 //   Position from SSBO:
 //     POSITION_SSBO_SET      — Vulkan descriptor set index  (= 4)
-//     POSITION_SSBO_BINDING  — binding index within that set (= AttributeSemantic::BuiltinCount = 8)
+//     POSITION_SSBO_BINDING  — binding index within that set (= VertexAttrib::Position = 0)
 //
-//   Per-semantic attribute SSBOs (binding = AttributeSemantic ordinal):
-//     FETCH_NORMAL_SSBO_BINDING           (binding = 0)
-//     FETCH_TANGENT_SSBO_BINDING          (binding = 1)
-//     FETCH_COLOR_SSBO_BINDING            (binding = 2)
-//     FETCH_TEXCOORD0_SSBO_BINDING        (binding = 3)
-//     FETCH_TEXCOORD1_SSBO_BINDING        (binding = 4)
+//   Per-attribute SSBOs (binding = VertexAttrib ordinal):
+//     FETCH_NORMAL_SSBO_BINDING           (binding = 1)
+//     FETCH_TANGENT_SSBO_BINDING          (binding = 2)
+//     FETCH_COLOR_SSBO_BINDING            (binding = 4)
+//     FETCH_TEXCOORD_SSBO_BINDING         (binding = 6)
 //
 // Any macro not emitted → the corresponding Fetch*() returns a safe default
 // (position delegates to GetPositionLocal() which reads from the VBO).
@@ -48,7 +47,7 @@
 #endif
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Normal  (AttributeSemantic::Normal = 0)
+// Normal  (VertexAttrib::Normal -> binding 0)
 // ─────────────────────────────────────────────────────────────────────────────
 #ifdef FETCH_NORMAL_SSBO_BINDING
     #define ATTRIB_SET     VERTEXSTREAMS_SET
@@ -64,7 +63,7 @@
 #endif
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tangent  (AttributeSemantic::Tangent = 1)
+// Tangent  (VertexAttrib::Tangent -> binding 1)
 // ─────────────────────────────────────────────────────────────────────────────
 #ifdef FETCH_TANGENT_SSBO_BINDING
     #define ATTRIB_SET     VERTEXSTREAMS_SET
@@ -80,35 +79,40 @@
 #endif
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TexCoord0  (AttributeSemantic::TexCoord0 = 3)
+// Color  (VertexAttrib::Color -> binding 2)
 // ─────────────────────────────────────────────────────────────────────────────
-#ifdef FETCH_TEXCOORD0_SSBO_BINDING
+#ifdef FETCH_COLOR_SSBO_BINDING
     #define ATTRIB_SET     VERTEXSTREAMS_SET
-    #define ATTRIB_BINDING FETCH_TEXCOORD0_SSBO_BINDING
-    #define ATTRIB_TAG     TexCoord0
+    #define ATTRIB_BINDING FETCH_COLOR_SSBO_BINDING
+    #define ATTRIB_TAG     Color
+    #include "attribute_provider/ssbo_vec4.glsl"
+    #undef ATTRIB_TAG
+    #undef ATTRIB_BINDING
+    #undef ATTRIB_SET
+    vec4 FetchColor(uint i) { return ReadAttrib_Color(i); }
+#else
+    vec4 FetchColor(uint i) { return vec4(1.0); }
+#endif
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TexCoord  (VertexAttrib::TexCoord -> binding 3)
+// ─────────────────────────────────────────────────────────────────────────────
+#if defined(FETCH_TEXCOORD_SSBO_BINDING) || defined(FETCH_TEXCOORD0_SSBO_BINDING)
+    #if !defined(FETCH_TEXCOORD_SSBO_BINDING)
+        #define FETCH_TEXCOORD_SSBO_BINDING FETCH_TEXCOORD0_SSBO_BINDING
+    #endif
+    #define ATTRIB_SET     VERTEXSTREAMS_SET
+    #define ATTRIB_BINDING FETCH_TEXCOORD_SSBO_BINDING
+    #define ATTRIB_TAG     TexCoord
     #include "attribute_provider/ssbo_vec2.glsl"
     #undef ATTRIB_TAG
     #undef ATTRIB_BINDING
     #undef ATTRIB_SET
-    vec2 FetchUV0(uint i) { return ReadAttrib_TexCoord0(i); }
+    vec2 FetchUV0(uint i) { return ReadAttrib_TexCoord(i); }
 #else
     vec2 FetchUV0(uint i) { return vec2(0.0); }
 #endif
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TexCoord1  (AttributeSemantic::TexCoord1 = 4)
-// ─────────────────────────────────────────────────────────────────────────────
-#ifdef FETCH_TEXCOORD1_SSBO_BINDING
-    #define ATTRIB_SET     VERTEXSTREAMS_SET
-    #define ATTRIB_BINDING FETCH_TEXCOORD1_SSBO_BINDING
-    #define ATTRIB_TAG     TexCoord1
-    #include "attribute_provider/ssbo_vec2.glsl"
-    #undef ATTRIB_TAG
-    #undef ATTRIB_BINDING
-    #undef ATTRIB_SET
-    vec2 FetchUV1(uint i) { return ReadAttrib_TexCoord1(i); }
-#else
-    vec2 FetchUV1(uint i) { return vec2(0.0); }
-#endif
+vec2 FetchUV1(uint i) { return vec2(0.0); }
 
 #endif // ULRE_COMMON_VERTEX_FETCH_SSBO_GLSL

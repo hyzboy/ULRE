@@ -83,8 +83,8 @@ MaterialCreateInfo *CreateFromFixedDef3D(
                      "[%s] Enabled VertexStreams bridge: position_provider=%u color_provider=%u normal_provider=%u\n",
                      debug_tag,
                      static_cast<unsigned>(assemble_key.position_provider),
-                     static_cast<unsigned>(assemble_key.attribute_providers[size_t(AttributeSemantic::Color)]),
-                     static_cast<unsigned>(assemble_key.attribute_providers[size_t(AttributeSemantic::Normal)]));
+                     static_cast<unsigned>(assemble_key.attribute_providers[size_t(VertexAttrib::Color)]),
+                     static_cast<unsigned>(assemble_key.attribute_providers[size_t(VertexAttrib::Normal)]));
     }
 
     return mci;

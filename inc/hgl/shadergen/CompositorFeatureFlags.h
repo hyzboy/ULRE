@@ -18,10 +18,10 @@ struct CompositorFeatureFlags
     uint32 vertex_attrib_bits = 0;
     bool has_direction    = false;
 
-    // Phase C: per-semantic attribute provider IDs for SSBO vertex pulling.
+    // Phase C: per-vertex-attrib attribute provider IDs for SSBO vertex pulling.
     // Mirrors MaterialVariantKey::attribute_providers.
     // All None by default → VBO path; any non-None → GEOMETRY_FETCH_SSBO=1 emitted.
-    std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)>
+    std::array<AttributeProviderId, size_t(VertexAttrib::RANGE_SIZE)>
         attribute_providers{};
 
     bool HasVertexAttrib(const VertexAttrib attrib)const

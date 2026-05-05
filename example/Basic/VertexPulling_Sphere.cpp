@@ -64,8 +64,8 @@ static const mtl::MaterialRecipe kPullRecipe = []()
         { mtl::SamplerSlot::Normal, mtl::TextureSourceMode::Simple,
           "res/image/Brickwall/Normal.Tex2D" },
     };
-    r.attribute_providers[size_t(AttributeSemantic::Normal)]    = AttributeProviderId::SSBO_Vec3;
-    r.attribute_providers[size_t(AttributeSemantic::TexCoord0)] = AttributeProviderId::SSBO_Vec2;
+    r.attribute_providers[size_t(VertexAttrib::Normal)]    = AttributeProviderId::SSBO_Vec3;
+    r.attribute_providers[size_t(VertexAttrib::TexCoord)] = AttributeProviderId::SSBO_Vec2;
     r.position_provider = PositionProviderId::SSBO_PackedVec3;
     return r;
 }();
@@ -248,11 +248,11 @@ private:
         if (!prim)
             return false;
 
-        if (!prim->SetVertexStreamSource(AttributeSemantic::BuiltinCount, pos_vab_->GetGPUBuffer(), 0, 12))
+        if (!prim->SetVertexStreamSource(VertexAttrib::Position, pos_vab_->GetGPUBuffer(), 0, 12))
             return false;
-        if (!prim->SetVertexStreamSource(AttributeSemantic::Normal, norm_vab_->GetGPUBuffer(), 0, 12))
+        if (!prim->SetVertexStreamSource(VertexAttrib::Normal, norm_vab_->GetGPUBuffer(), 0, 12))
             return false;
-        if (!prim->SetVertexStreamSource(AttributeSemantic::TexCoord0, uv_vab_->GetGPUBuffer(), 0, 8))
+        if (!prim->SetVertexStreamSource(VertexAttrib::TexCoord, uv_vab_->GetGPUBuffer(), 0, 8))
             return false;
 
         auto prim_comp = sphere_entity_->GetComponent<PrimitiveComponent>();

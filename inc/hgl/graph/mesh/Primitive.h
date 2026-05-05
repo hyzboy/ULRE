@@ -35,7 +35,7 @@ class Primitive
         bool has_override = false;
     };
 
-    std::array<VertexStreamSource, kVertexStreamPositionBinding + 1u> vertex_stream_sources{};
+    std::array<VertexStreamSource, uint32_t(VertexAttrib::RANGE_SIZE)> vertex_stream_sources{};
 
 private:
 
@@ -63,9 +63,9 @@ public:
     virtual bool                UpdateGeometry      ();     ///<更新Geometry,一般用于Geometry改变数据后需要通知Mesh的情况
 
             // Stream source override path for VertexStreams auto-binding in ECS sync phase.
-            bool SetVertexStreamSource(AttributeSemantic semantic,const IGPUBuffer *gpu,VkDeviceSize offset=0,VkDeviceSize stride=0);
-            bool ClearVertexStreamSource(AttributeSemantic semantic);
-            bool ResolveVertexStreamSource(AttributeSemantic semantic,const IGPUBuffer *&gpu,VkDeviceSize &offset,VkDeviceSize &stride)const;
+            bool SetVertexStreamSource(VertexAttrib attrib,const IGPUBuffer *gpu,VkDeviceSize offset=0,VkDeviceSize stride=0);
+            bool ClearVertexStreamSource(VertexAttrib attrib);
+            bool ResolveVertexStreamSource(VertexAttrib attrib,const IGPUBuffer *&gpu,VkDeviceSize &offset,VkDeviceSize &stride)const;
 
 public:
 

@@ -105,11 +105,11 @@ struct MaterialRecipe
         std::string        texture_id;                                      ///< 纹理唯一标识
     } billboard;
 
-    // ── Phase C: per-semantic SSBO attribute providers (vertex pulling) ───────
-    // Index = AttributeSemantic ordinal; all None by default → standard VBO path.
+    // ── Phase C: per-vertex-attrib SSBO attribute providers (vertex pulling) ───────
+    // Index = VertexAttrib ordinal; all None by default → standard VBO path.
     // Set individual entries to SSBO_Vec3 / SSBO_Vec2 to enable per-attribute
-    // SSBO fetch for that semantic.
-    std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)>
+    // SSBO fetch for that attribute.
+    std::array<AttributeProviderId, size_t(VertexAttrib::RANGE_SIZE)>
         attribute_providers{};
 
     // ── Phase C: position SSBO override (vertex pulling) ─────────────────────

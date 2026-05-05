@@ -108,20 +108,6 @@ static bool HasExplicitVertexStreamProviders(const mtl::MaterialRecipe &rec)
     return false;
 }
 
-static bool TryMapVertexAttribToSemantic(const VertexAttrib attrib, AttributeSemantic &semantic)
-{
-    switch (attrib)
-    {
-        case VertexAttrib::Normal:      semantic = AttributeSemantic::Normal;    return true;
-        case VertexAttrib::Tangent:     semantic = AttributeSemantic::Tangent;   return true;
-        case VertexAttrib::Color:       semantic = AttributeSemantic::Color;     return true;
-        case VertexAttrib::TexCoord:    semantic = AttributeSemantic::TexCoord0; return true;
-        case VertexAttrib::JointID:     semantic = AttributeSemantic::Joints;    return true;
-        case VertexAttrib::JointWeight: semantic = AttributeSemantic::Weights;   return true;
-        default: return false;
-    }
-}
-
 static AttributeProviderId InferProviderByFormat(const VertexAttrib attrib, const VkFormat format)
 {
     if (format == VK_FORMAT_UNDEFINED)
@@ -226,22 +212,18 @@ static bool BuildLegacyVertexStreamBridgeRecipe(const mtl::MaterialRecipe &rec,
         if (!gvf.Has(attrib))
             continue;
 
-        AttributeSemantic semantic = AttributeSemantic::BuiltinCount;
-        if (!TryMapVertexAttribToSemantic(attrib, semantic))
+        const size_t attrib_index = size_t(attrib);
+        if (attrib_index >= out_recipe.attribute_providers.size())
             continue;
 
-        const size_t semantic_index = size_t(semantic);
-        if (semantic_index >= out_recipe.attribute_providers.size())
-            continue;
-
-        if (out_recipe.attribute_providers[semantic_index] != AttributeProviderId::None)
+        if (out_recipe.attribute_providers[attrib_index] != AttributeProviderId::None)
             continue;
 
         const AttributeProviderId inferred = InferProviderByFormat(attrib, gvf.GetFormat(attrib));
         if (inferred == AttributeProviderId::None)
             continue;
 
-        out_recipe.attribute_providers[semantic_index] = inferred;
+        out_recipe.attribute_providers[attrib_index] = inferred;
         changed = true;
     }
 

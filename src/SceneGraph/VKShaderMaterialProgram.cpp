@@ -7,6 +7,7 @@
 #include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/UBOAccessor.h>
 
+
 namespace hgl::graph{
 void ShaderMaterialProgram::SetPullingEnabled(bool v){if(vertex_input)vertex_input->SetPullingEnabled(v);}
 bool ShaderMaterialProgram::IsPullingEnabled()const{return vertex_input?vertex_input->IsPullingEnabled():false;}
@@ -15,20 +16,6 @@ bool ShaderMaterialProgram::IsPullingEnabled()const{return vertex_input?vertex_i
 namespace hgl::graph{
 
 void ReleaseVertexInput(VertexInput *vi);
-
-namespace
-{
-    static bool HasShaderStage(const ShaderStageCreateInfoList &stage_list,const VkShaderStageFlagBits stage)
-    {
-        for(const auto &ci:stage_list)
-        {
-            if(ci.stage==stage)
-                return true;
-        }
-
-        return false;
-    }
-}
 
 ShaderMaterialProgram::ShaderMaterialProgram(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
 {
@@ -103,18 +90,18 @@ bool ShaderMaterialProgram::BindSSBO(const mtl::SSBODescriptorSemantic semantic,
     return mp->BindSSBO(semantic,gpu,dynamic);
 }
 
-bool ShaderMaterialProgram::BindAttribStream(const AttributeSemantic semantic,const IGPUBuffer *buffer,uint32_t byte_offset,uint32_t stride)
+bool ShaderMaterialProgram::BindAttribStream(const VertexAttrib attrib,const IGPUBuffer *buffer,uint32_t byte_offset,uint32_t stride)
 {
     MaterialParameters *mp=GetMP(SET_TYPE_VERTEX_STREAMS);
 
     if(!mp)
         return(false);
 
-    if(!mp->BindAttribSSBO(semantic,buffer))
+    if(!mp->BindAttribSSBO(attrib,buffer))
         return(false);
 
     if(vertex_input)
-        vertex_input->SetAttribStream(semantic,buffer,byte_offset,stride);
+        vertex_input->SetAttribStream(attrib,buffer,byte_offset,stride);
 
     return(true);
 }

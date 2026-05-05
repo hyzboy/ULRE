@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <hgl/common/DescriptorSetTypeDef.h>
 #include <hgl/common/AttributeProvider.h>
-#include <hgl/common/VertexStreamBindingDef.h>
+
 #include <hgl/mtl/DescriptorSemanticRegistry.h>
 #include <cctype>
 
@@ -11,8 +11,8 @@ namespace hgl::graph
 {
     constexpr size_t DESCRIPTOR_NAME_MAX_LENGTH=32;
 
-    // VertexStreams uses sparse SSBO bindings for attributes plus position stream.
-    constexpr size_t VERTEX_STREAM_SSBO_BINDING_COUNT = size_t(kVertexStreamBindingCount);
+    // VertexStreams uses VertexAttrib-ordinal SSBO bindings.
+    constexpr size_t VERTEX_STREAM_SSBO_BINDING_COUNT = size_t(uint32_t(VertexAttrib::RANGE_SIZE));
     constexpr size_t SHADER_DESCRIPTOR_SSBO_SLOT_COUNT =
         (mtl::SSBODescriptorSemanticCount > VERTEX_STREAM_SSBO_BINDING_COUNT)
             ? mtl::SSBODescriptorSemanticCount
@@ -217,6 +217,7 @@ namespace hgl::graph
 
         UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,UBODescriptor *new_sd);
         SSBODescriptor *AddSSBO(uint32_t shader_stage_flag_bits,SSBODescriptor *new_sd);
+        SSBODescriptor *AddVertexStreamSSBO(uint32_t shader_stage_flag_bits,uint32_t binding,SSBODescriptor *new_sd);
         TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,TextureDescriptor *new_sd);
         TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,TextureSamplerDescriptor *new_sd);
     };

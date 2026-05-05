@@ -6,12 +6,15 @@
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/VertexAttribMacroMap.h>
 #include <hgl/shadergen/PositionProviderRegistry.h>
+#include <hgl/shadergen/AttributeProviderRegistry.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
+
 #include <algorithm>
 #include <cstdio>
+#include <cctype>
 
 namespace
 {
@@ -44,21 +47,25 @@ namespace
         }
     }
 
-    // Per-semantic SSBO fetch macro name tags; index == AttributeSemantic ordinal.
-    static constexpr const char *kAttribFetchMacroTags[] = {
-        "NORMAL",            // 0
-        "TANGENT",           // 1
-        "COLOR",             // 2
-        "TEXCOORD0",         // 3
-        "TEXCOORD1",         // 4
-        "JOINTS",            // 5
-        "WEIGHTS",           // 6
-        "INSTANCETRANSFORM", // 7
-    };
-    static_assert(
-        sizeof(kAttribFetchMacroTags) / sizeof(*kAttribFetchMacroTags)
-            == size_t(hgl::graph::AttributeSemantic::BuiltinCount),
-        "kAttribFetchMacroTags size mismatch");
+    bool TryBuildFetchMacroTag(const hgl::graph::VertexAttrib attrib,
+                               std::string &macro_tag)
+    {
+        if (attrib < hgl::graph::VertexAttrib::Position || attrib >= hgl::graph::VertexAttrib::RANGE_SIZE)
+            return false;
+
+        const char *name = hgl::graph::GetVertexAttribName(attrib);
+        if (!name || !name[0])
+            return false;
+
+        macro_tag.clear();
+        while (*name)
+        {
+            macro_tag.push_back(char(std::toupper(static_cast<unsigned char>(*name))));
+            ++name;
+        }
+
+        return !macro_tag.empty();
+    }
 
     std::string BuildForwardVertexEntry(const hgl::graph::CompositorFeatureFlags &f)
     {
@@ -82,27 +89,61 @@ namespace
 
         // Phase C: emit GEOMETRY_FETCH_SSBO + per-attribute SSBO binding macros.
         bool any_ssbo = position_ssbo;
-        for (const auto &p : f.attribute_providers)
-            if (p != hgl::graph::AttributeProviderId::None) { any_ssbo = true; break; }
+        for (size_t i = 0; i < f.attribute_providers.size(); ++i)
+        {
+            const auto provider = f.attribute_providers[i];
+            if (provider == hgl::graph::AttributeProviderId::None
+             || provider == hgl::graph::AttributeProviderId::Constant)
+                continue;
+
+            const auto *ap = hgl::graph::FindBuiltinAttribProvider(provider);
+            if (!ap || !ap->needs_ssbo)
+                continue;
+
+            std::string macro_tag;
+            if (!TryBuildFetchMacroTag(hgl::graph::VertexAttrib(i), macro_tag))
+                continue;
+
+            any_ssbo = true;
+            break;
+        }
 
         if (any_ssbo) {
             writer.EmitDefine("GEOMETRY_FETCH_SSBO", "1");
             if (position_ssbo) {
                 writer.EmitDefine("POSITION_SSBO_SET",     "VERTEXSTREAMS_SET");
                 writer.EmitDefine("POSITION_SSBO_BINDING",
-                    std::to_string(size_t(hgl::graph::AttributeSemantic::BuiltinCount)).c_str());
+                    std::to_string(uint32_t(hgl::graph::VertexAttrib::Position)).c_str());
                 writer.EmitDefine("POSITION_PROVIDER_ID",
                     std::to_string(static_cast<uint32_t>(f.position_provider)).c_str());
                 if (f.position_provider == hgl::graph::PositionProviderId::SSBO_PackedVec2)
                     writer.EmitDefine("POSITION_SSBO_IS_VEC2", "1");
             }
-            for (size_t i = 0; i < f.attribute_providers.size(); ++i) {
-                if (f.attribute_providers[i] != hgl::graph::AttributeProviderId::None) {
-                    std::string macro = "FETCH_";
-                    macro += kAttribFetchMacroTags[i];
-                    macro += "_SSBO_BINDING";
-                    writer.EmitDefine(macro.c_str(), std::to_string(i).c_str());
-                }
+            for (size_t i = 0; i < f.attribute_providers.size(); ++i)
+            {
+                const auto provider = f.attribute_providers[i];
+                if (provider == hgl::graph::AttributeProviderId::None
+                 || provider == hgl::graph::AttributeProviderId::Constant)
+                    continue;
+
+                const auto *ap = hgl::graph::FindBuiltinAttribProvider(provider);
+                if (!ap || !ap->needs_ssbo)
+                    continue;
+
+                const auto attrib = hgl::graph::VertexAttrib(i);
+                if (attrib == hgl::graph::VertexAttrib::Position)
+                    continue;
+
+                std::string macro_tag;
+                if (!TryBuildFetchMacroTag(attrib, macro_tag))
+                    continue;
+
+                const uint32_t binding = uint32_t(attrib);
+
+                std::string macro = "FETCH_";
+                macro += macro_tag;
+                macro += "_SSBO_BINDING";
+                writer.EmitDefine(macro.c_str(), std::to_string(binding).c_str());
             }
         }
 

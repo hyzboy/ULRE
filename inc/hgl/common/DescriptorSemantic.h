@@ -33,7 +33,9 @@ namespace hgl::graph::mtl
         MaterialBindingInstanceTexture,
         BoneJoint,
         BoneJointWeight,
+        VertexStreams,
+        IndexStreams,
 
-        ENUM_CLASS_RANGE(Unknown, BoneJointWeight)
+        ENUM_CLASS_RANGE(Unknown, IndexStreams)
     };
 }//namespace hgl::graph::mtl

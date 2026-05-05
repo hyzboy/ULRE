@@ -142,6 +142,10 @@ namespace hgl::graph
         "JointWeight"
     };
 
+        static_assert((sizeof(VertexAttribNames)/sizeof(*VertexAttribNames))
+                                        == static_cast<size_t>(VertexAttrib::RANGE_SIZE),
+                                    "VertexAttribNames must cover all VertexAttrib entries");
+
     inline const char *GetVertexAttribName(const VertexAttrib va)
     {
         RANGE_CHECK_RETURN_NULLPTR(va);

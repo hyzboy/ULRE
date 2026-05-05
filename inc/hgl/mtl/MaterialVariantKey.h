@@ -66,10 +66,10 @@ namespace hgl::graph::mtl
         // When non-zero, represents the authoritative feature set for this variant routing decision.
         uint64            effective_feature_mask = 0;
 
-        // Phase B: Per-semantic attribute-provider IDs. Index = AttributeSemantic ordinal.
+        // Phase B: Per-vertex-attrib attribute-provider IDs. Index = VertexAttrib ordinal.
         // Default (all None=0) means no vertex-pulling; hash contribution is skipped when
         // all entries are None, preserving backward hash compatibility.
-        std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)>
+        std::array<AttributeProviderId, size_t(VertexAttrib::RANGE_SIZE)>
             attribute_providers{};
 
         static constexpr uint32 TextureSourceBitsPerSlot = 2;

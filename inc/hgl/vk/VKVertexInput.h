@@ -3,7 +3,7 @@
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/type/OrderedSet.h>
 #include<hgl/vk/VKVertexInputAttribute.h>
-#include<hgl/common/AttributeProvider.h>
+
 #include<array>
 
 namespace hgl::graph{
@@ -33,7 +33,7 @@ class VertexInput
     bool pulling_enabled=false;
 
     struct AttribStream { const IGPUBuffer *buffer=nullptr; uint32_t byte_offset=0; uint32_t stride=0; };
-    std::array<AttribStream,size_t(AttributeSemantic::BuiltinCount)> streams{};
+    std::array<AttribStream,size_t(uint32_t(VertexAttrib::RANGE_SIZE))> streams{};
 
 public:
 
@@ -46,14 +46,41 @@ public:
     void            SetPullingEnabled(bool v){pulling_enabled=v;}
     bool            IsPullingEnabled()const{return pulling_enabled;}
 
-    void SetAttribStream(const AttributeSemantic semantic,const IGPUBuffer *buffer,uint32_t byte_offset,uint32_t stride)
+    bool SetAttribStream(const VertexAttrib attrib,const IGPUBuffer *buffer,uint32_t byte_offset,uint32_t stride)
     {
-        auto &st=streams[size_t(semantic)];
+        const uint32_t binding = uint32_t(attrib);
+        if(binding>=streams.size())
+            return false;
+
+        auto &st=streams[size_t(binding)];
         st.buffer=buffer; st.byte_offset=byte_offset; st.stride=stride;
+        return true;
     }
-    const AttribStream &GetAttribStream(const AttributeSemantic semantic)const
+    bool SetVertexStreamBinding(const uint32_t binding,const IGPUBuffer *buffer,uint32_t byte_offset,uint32_t stride)
     {
-        return streams[size_t(semantic)];
+        if(binding>=streams.size())
+            return false;
+
+        auto &st=streams[size_t(binding)];
+        st.buffer=buffer; st.byte_offset=byte_offset; st.stride=stride;
+        return true;
+    }
+
+    const AttribStream *GetAttribStream(const VertexAttrib attrib)const
+    {
+        const uint32_t binding = uint32_t(attrib);
+        if(binding>=streams.size())
+            return nullptr;
+
+        return &streams[size_t(binding)];
+    }
+
+    const AttribStream *GetVertexStreamBinding(const uint32_t binding)const
+    {
+        if(binding>=streams.size())
+            return nullptr;
+
+        return &streams[size_t(binding)];
     }
 };//class VertexInput
 

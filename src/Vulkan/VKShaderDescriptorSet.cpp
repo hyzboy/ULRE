@@ -49,13 +49,14 @@ SSBODescriptor *ShaderDescriptorSet::AddSSBO(uint32_t ssb,SSBODescriptor *new_sd
     if(!new_sd)
         return nullptr;
 
-    const size_t index=size_t(new_sd->semantic);
-    const size_t max_index =
-        (set_type==DescriptorSetType::VertexStreams)
-            ? SHADER_DESCRIPTOR_SSBO_SLOT_COUNT
-            : mtl::SSBODescriptorSemanticCount;
+    if(set_type==DescriptorSetType::VertexStreams)
+    {
+        delete new_sd;
+        return nullptr;
+    }
 
-    if(index>=max_index)
+    const size_t index=size_t(new_sd->semantic);
+    if(index>=mtl::SSBODescriptorSemanticCount)
     {
         delete new_sd;
         return nullptr;
@@ -67,6 +68,42 @@ SSBODescriptor *ShaderDescriptorSet::AddSSBO(uint32_t ssb,SSBODescriptor *new_sd
         ssbo_descriptor_map[index]->stage_flag|=ssb;
         return ssbo_descriptor_map[index];
     }
+
+    ssbo_descriptor_map[index]=new_sd;
+    return FinalizeInsert(this,ssb,new_sd);
+}
+
+SSBODescriptor *ShaderDescriptorSet::AddVertexStreamSSBO(uint32_t ssb,uint32_t binding,SSBODescriptor *new_sd)
+{
+    if(!new_sd)
+        return nullptr;
+
+    if(set_type!=DescriptorSetType::VertexStreams)
+    {
+        delete new_sd;
+        return nullptr;
+    }
+
+    if(binding>=VERTEX_STREAM_SSBO_BINDING_COUNT)
+    {
+        delete new_sd;
+        return nullptr;
+    }
+
+    const size_t index=size_t(binding);
+
+    if(ssbo_descriptor_map[index])
+    {
+        delete new_sd;
+        ssbo_descriptor_map[index]->stage_flag|=ssb;
+        return ssbo_descriptor_map[index];
+    }
+
+    if(new_sd->semantic!=mtl::SSBODescriptorSemantic::VertexStreams
+    && new_sd->semantic!=mtl::SSBODescriptorSemantic::IndexStreams)
+        new_sd->semantic = mtl::SSBODescriptorSemantic::VertexStreams;
+
+    new_sd->binding  = int(binding);
 
     ssbo_descriptor_map[index]=new_sd;
     return FinalizeInsert(this,ssb,new_sd);

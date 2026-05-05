@@ -3,28 +3,11 @@
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
+
 #include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph{
-namespace
-{
-    bool TryMapStreamSemanticToVertexAttrib(const AttributeSemantic semantic,VertexAttrib &attrib)
-    {
-        switch(semantic)
-        {
-        case AttributeSemantic::Normal:            attrib=VertexAttrib::Normal;      return true;
-        case AttributeSemantic::Tangent:           attrib=VertexAttrib::Tangent;     return true;
-        case AttributeSemantic::Color:             attrib=VertexAttrib::Color;       return true;
-        case AttributeSemantic::TexCoord0:         attrib=VertexAttrib::TexCoord;    return true;
-        case AttributeSemantic::Joints:            attrib=VertexAttrib::JointID;     return true;
-        case AttributeSemantic::Weights:           attrib=VertexAttrib::JointWeight; return true;
-        case AttributeSemantic::BuiltinCount:      attrib=VertexAttrib::Position;    return true;
-        default: return false;
-        }
-    }
-}
-
 GeometryDataBuffer::GeometryDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManager *_vdm)
 {
     vab_count=c;
@@ -115,16 +98,16 @@ bool Primitive::UpdateGeometry()
 
     return data_buffer->Update(geometry,vil);
 }
-bool Primitive::SetVertexStreamSource(AttributeSemantic semantic, const IGPUBuffer *gpu, VkDeviceSize offset, VkDeviceSize stride)
+
+bool Primitive::SetVertexStreamSource(VertexAttrib attrib, const IGPUBuffer *gpu, VkDeviceSize offset, VkDeviceSize stride)
 {
     if (!gpu)
         return false;
 
-    const uint32_t binding = uint32_t(semantic);
-    if (binding > kVertexStreamPositionBinding)
-        return false;
+    if(!RangeCheck(attrib))
+        return(false);
 
-    auto &slot = vertex_stream_sources[binding];
+    auto &slot = vertex_stream_sources[uint32_t(attrib)];
     slot.buffer = gpu;
     slot.offset = offset;
     slot.stride = stride;
@@ -132,27 +115,25 @@ bool Primitive::SetVertexStreamSource(AttributeSemantic semantic, const IGPUBuff
     return true;
 }
 
-bool Primitive::ClearVertexStreamSource(AttributeSemantic semantic)
+bool Primitive::ClearVertexStreamSource(VertexAttrib attrib)
 {
-    const uint32_t binding = uint32_t(semantic);
-    if (binding > kVertexStreamPositionBinding)
-        return false;
+    if(!RangeCheck(attrib))
+        return(false);
 
-    vertex_stream_sources[binding] = VertexStreamSource{};
+    vertex_stream_sources[uint32_t(attrib)] = VertexStreamSource{};
     return true;
 }
 
-bool Primitive::ResolveVertexStreamSource(AttributeSemantic semantic, const IGPUBuffer *&gpu, VkDeviceSize &offset, VkDeviceSize &stride) const
+bool Primitive::ResolveVertexStreamSource(VertexAttrib attrib, const IGPUBuffer *&gpu, VkDeviceSize &offset, VkDeviceSize &stride) const
 {
     gpu = nullptr;
     offset = 0;
     stride = 0;
 
-    const uint32_t binding = uint32_t(semantic);
-    if (binding > kVertexStreamPositionBinding)
-        return false;
+    if(!RangeCheck(attrib))
+        return(false);
 
-    const auto &slot = vertex_stream_sources[binding];
+    const auto &slot = vertex_stream_sources[uint32_t(attrib)];
     if (slot.has_override)
     {
         if (!slot.buffer)
@@ -165,10 +146,6 @@ bool Primitive::ResolveVertexStreamSource(AttributeSemantic semantic, const IGPU
     }
 
     if (!geometry)
-        return false;
-
-    VertexAttrib attrib = VertexAttrib::RANGE_SIZE;
-    if (!TryMapStreamSemanticToVertexAttrib(semantic, attrib))
         return false;
 
     VAB *vab = geometry->GetVAB(attrib);

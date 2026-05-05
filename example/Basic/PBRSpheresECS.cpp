@@ -152,10 +152,10 @@ private:
             },
             .attribute_providers = []
             {
-                std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)> providers{};
-                providers[size_t(AttributeSemantic::Normal)]    = AttributeProviderId::SSBO_Vec3;
-                providers[size_t(AttributeSemantic::Tangent)]   = AttributeProviderId::SSBO_Vec3;
-                providers[size_t(AttributeSemantic::TexCoord0)] = AttributeProviderId::SSBO_Vec2;
+                std::array<AttributeProviderId, size_t(VertexAttrib::RANGE_SIZE)> providers{};
+                providers[size_t(VertexAttrib::Normal)]    = AttributeProviderId::SSBO_Vec3;
+                providers[size_t(VertexAttrib::Tangent)]   = AttributeProviderId::SSBO_Vec3;
+                providers[size_t(VertexAttrib::TexCoord)] = AttributeProviderId::SSBO_Vec2;
                 return providers;
             }(),
             .position_provider = PositionProviderId::SSBO_PackedVec3,
@@ -324,10 +324,10 @@ private:
                         },
                         .attribute_providers = []
                         {
-                            std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)> providers{};
-                            providers[size_t(AttributeSemantic::Normal)]    = AttributeProviderId::SSBO_Vec3;
-                            providers[size_t(AttributeSemantic::Tangent)]   = AttributeProviderId::SSBO_Vec3;
-                            providers[size_t(AttributeSemantic::TexCoord0)] = AttributeProviderId::SSBO_Vec2;
+                            std::array<AttributeProviderId, size_t(VertexAttrib::RANGE_SIZE)> providers{};
+                            providers[size_t(VertexAttrib::Normal)]    = AttributeProviderId::SSBO_Vec3;
+                            providers[size_t(VertexAttrib::Tangent)]   = AttributeProviderId::SSBO_Vec3;
+                            providers[size_t(VertexAttrib::TexCoord)] = AttributeProviderId::SSBO_Vec2;
                             return providers;
                         }(),
                         .position_provider = PositionProviderId::SSBO_PackedVec3,

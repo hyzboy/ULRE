@@ -37,7 +37,7 @@
     // --- Tangent (xyz world + w handedness) ---
 #ifdef HAS_TANGENT
   #if GEOMETRY_FETCH_SSBO
-    vec3  _rawTangent = vec3(1.0, 0.0, 0.0);
+    vec3  _rawTangent = FetchTangent(gl_VertexIndex);
     float _tangentW   = 1.0;
   #elif defined(TANGENT_LOCATION)
     vec3  _rawTangent = inTangent.xyz;
@@ -60,12 +60,21 @@
 
     // --- Vertex color ---
 #ifdef HAS_COLOR
+  #if GEOMETRY_FETCH_SSBO
+    fragVertexColor = FetchColor(gl_VertexIndex);
+  #else
     fragVertexColor = inColor;
+  #endif
 #endif
 
     // --- Luminance ---
 #ifdef HAS_LUMINANCE
+  #if GEOMETRY_FETCH_SSBO
+    // Luminance has no dedicated SSBO stream in the current pulling path.
+    fragLuminance = 1.0;
+  #else
     fragLuminance = inLuminance;
+  #endif
 #endif
 
     // --- World position varying + direction (sky) ---

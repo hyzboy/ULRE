@@ -18,6 +18,7 @@
 #include<hgl/graph/module/ShaderMaterialProgramManager.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/render/RenderContext.h>
+#include<hgl/common/VertexAttribDef.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/vk/VKDomainResourceBinding.h>
 #include<unordered_set>
@@ -115,7 +116,7 @@ namespace hgl::ecs
         }
 
         bool ResolveUniformVertexStreamFromBatch(const MaterialBatch *batch,
-                                                 graph::AttributeSemantic semantic,
+                             graph::VertexAttrib attrib,
                                                  const graph::IGPUBuffer *&out_gpu,
                                                  VkDeviceSize &out_offset,
                                                  VkDeviceSize &out_stride)
@@ -142,7 +143,7 @@ namespace hgl::ecs
                 VkDeviceSize offset = 0;
                 VkDeviceSize stride = 0;
 
-                if (!primitive->ResolveVertexStreamSource(semantic, gpu, offset, stride) || !gpu)
+                if (!primitive->ResolveVertexStreamSource(attrib, gpu, offset, stride) || !gpu)
                     return false;
 
                 if (!has_value)
@@ -171,35 +172,24 @@ namespace hgl::ecs
             if (!mp)
                 return;
 
-              for (uint32_t binding = graph::kVertexStreamAttributeBindingBegin;
-                  binding < graph::kVertexStreamAttributeBindingCount;
+            for (uint32_t binding = uint32_t(graph::VertexAttrib::BEGIN_RANGE);
+                 binding < uint32_t(graph::VertexAttrib::END_RANGE);
                  ++binding)
             {
                 if (!mp->HasBinding(binding))
                     continue;
 
-                const auto semantic = graph::AttributeSemantic(binding);
+                const auto attrib = graph::VertexAttrib(binding);
 
                 const graph::IGPUBuffer *gpu = nullptr;
                 VkDeviceSize offset = 0;
                 VkDeviceSize stride = 0;
 
-                if (!ResolveUniformVertexStreamFromBatch(batch, semantic, gpu, offset, stride) || !gpu)
+                if (!ResolveUniformVertexStreamFromBatch(batch, attrib, gpu, offset, stride) || !gpu)
                     continue;
 
-                material->BindAttribStream(semantic, gpu, uint32_t(offset), uint32_t(stride));
+                material->BindAttribStream(attrib, gpu, uint32_t(offset), uint32_t(stride));
             }
-
-            if (mp->HasBinding(graph::kVertexStreamPositionBinding))
-            {
-                const graph::IGPUBuffer *gpu = nullptr;
-                VkDeviceSize offset = 0;
-                VkDeviceSize stride = 0;
-
-                if (ResolveUniformVertexStreamFromBatch(batch, graph::AttributeSemantic::BuiltinCount, gpu, offset, stride) && gpu)
-                    mp->BindVertexStreamSSBO(graph::kVertexStreamPositionBinding, gpu);
-            }
-
         }
 
     } // anonymous namespace
@@ -638,6 +628,9 @@ namespace hgl::ecs
                     }
                     break;
                 }
+                case graph::mtl::SSBODescriptorSemantic::VertexStreams:
+                case graph::mtl::SSBODescriptorSemantic::IndexStreams:
+                    break;
                 default:
                     break;
                 }
@@ -672,6 +665,9 @@ namespace hgl::ecs
                     // or a dedicated registration path — no mi_buffer available here.
                     break;
                 }
+                case graph::mtl::SSBODescriptorSemantic::VertexStreams:
+                case graph::mtl::SSBODescriptorSemantic::IndexStreams:
+                    break;
                 default:
                     break;
                 }

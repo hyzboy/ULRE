@@ -4,35 +4,50 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/shadergen/PositionProviderRegistry.h>
 #include<hgl/shadergen/AttributeProviderRegistry.h>
+
 #include<cstdio>
+#include<cctype>
 
 namespace hgl::graph::mtl{
 
 namespace
 {
-    constexpr const char *kAttribFetchMacroTags[] = {
-        "NORMAL",
-        "TANGENT",
-        "COLOR",
-        "TEXCOORD0",
-        "TEXCOORD1",
-        "JOINTS",
-        "WEIGHTS",
-        "INSTANCETRANSFORM",
-    };
+    bool TryBuildFetchMacroTag(const VertexAttrib attrib,
+                               std::string &macro_tag)
+    {
+        if (attrib < VertexAttrib::Position || attrib >= VertexAttrib::RANGE_SIZE)
+            return false;
+
+        const char *name = GetVertexAttribName(attrib);
+        if (!name || !name[0])
+            return false;
+
+        macro_tag.clear();
+        while (*name)
+        {
+            macro_tag.push_back(char(std::toupper(static_cast<unsigned char>(*name))));
+            ++name;
+        }
+        return !macro_tag.empty();
+    }
 
     bool UsesVertexStreamProviders(const MaterialVariantKey &key)
     {
         if (const PositionProvider *pp = FindBuiltinProvider(key.position_provider); pp && pp->needs_ssbo)
             return true;
 
-        for (const auto provider : key.attribute_providers)
+        for (size_t i = 0; i < key.attribute_providers.size(); ++i)
         {
+            const auto provider = key.attribute_providers[i];
             if (provider == AttributeProviderId::None || provider == AttributeProviderId::Constant)
                 continue;
 
             if (const AttributeProvider *ap = FindBuiltinAttribProvider(provider); ap && ap->needs_ssbo)
-                return true;
+            {
+                std::string macro_tag;
+                if (TryBuildFetchMacroTag(VertexAttrib(i), macro_tag))
+                    return true;
+            }
         }
 
         return false;
@@ -51,7 +66,7 @@ namespace
             defines += "\n";
             defines += "#define POSITION_SSBO_SET VERTEXSTREAMS_SET\n";
             defines += "#define POSITION_SSBO_BINDING ";
-            defines += std::to_string(size_t(AttributeSemantic::BuiltinCount));
+            defines += std::to_string(uint32_t(VertexAttrib::Position));
             defines += "\n";
             if (key.position_provider == PositionProviderId::SSBO_PackedVec2)
                 defines += "#define POSITION_SSBO_IS_VEC2 1\n";
@@ -67,17 +82,27 @@ namespace
             if (!ap || !ap->needs_ssbo)
                 continue;
 
+            const VertexAttrib attrib = VertexAttrib(i);
+            if (attrib == VertexAttrib::Position)
+                continue;
+
+            std::string macro_tag;
+            if (!TryBuildFetchMacroTag(attrib, macro_tag))
+                continue;
+
+            const uint32_t binding = uint32_t(attrib);
+
             has_ssbo_fetch = true;
 
             std::string binding_macro = "#define FETCH_";
-            binding_macro += kAttribFetchMacroTags[i];
+            binding_macro += macro_tag;
             binding_macro += "_SSBO_BINDING ";
-            binding_macro += std::to_string(i);
+            binding_macro += std::to_string(binding);
             binding_macro += "\n";
             defines += binding_macro;
 
             std::string provider_macro = "#define FETCH_";
-            provider_macro += kAttribFetchMacroTags[i];
+            provider_macro += macro_tag;
             provider_macro += "_PROVIDER_ID ";
             provider_macro += std::to_string(uint32_t(provider));
             provider_macro += "\n";
@@ -158,7 +183,7 @@ MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
                      "[%s] Enabled VertexStreams bridge: position_provider=%u color_provider=%u\n",
                      debug_tag ? debug_tag : "2DFactory",
                      static_cast<unsigned>(assemble_key.position_provider),
-                     static_cast<unsigned>(assemble_key.attribute_providers[size_t(AttributeSemantic::Color)]));
+                     static_cast<unsigned>(assemble_key.attribute_providers[size_t(VertexAttrib::Color)]));
     }
 
     return mci;

@@ -3,6 +3,7 @@
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKBufferOwner.h>
+#include<hgl/common/VertexAttribDef.h>
 
 namespace hgl::graph{
 MaterialParameters::MaterialParameters(const MaterialDescriptorManager *mdm,const DescriptorSetType &type,DescriptorSet *ds)
@@ -44,18 +45,6 @@ bool MaterialParameters::BindUBO(const mtl::UBODescriptorSemantic semantic,const
     return(true);
 }
 
-
-bool MaterialParameters::BindSSBO(const int &index,const IGPUBuffer *gpu,bool dynamic)
-{
-    if(index<0||!gpu)
-        return(false);
-
-    if(!descriptor_set->BindSSBO(index,gpu,dynamic))
-        return(false);
-
-    return(true);
-}
-
 bool MaterialParameters::BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic)
 {
     if(!gpu)
@@ -66,24 +55,24 @@ bool MaterialParameters::BindSSBO(const mtl::SSBODescriptorSemantic semantic,con
     if(index<0)
         return(false);
 
-    if(!descriptor_set->BindSSBO(index,gpu,dynamic))
-        return(false);
-
-    return(true);
+    return descriptor_set->BindSSBO(index,gpu,dynamic);
 }
 
 
-bool MaterialParameters::BindAttribSSBO(const AttributeSemantic semantic,const IGPUBuffer *gpu,bool dynamic)
+bool MaterialParameters::BindAttribSSBO(const VertexAttrib attrib,const IGPUBuffer *gpu,bool dynamic)
 {
-    return BindSSBO(int(semantic),gpu,dynamic);
+    if(!RangeCheck(attrib))
+        return(false);
+
+    return BindVertexStreamSSBO(uint32_t(attrib),gpu,dynamic);
 }
 
 bool MaterialParameters::BindVertexStreamSSBO(const uint32_t binding,const IGPUBuffer *gpu,bool dynamic)
 {
-    if(set_type != DescriptorSetType::VertexStreams)
+    if(!gpu || !descriptor_set)
         return false;
 
-    if(binding >= kVertexStreamBindingCount)
+    if(set_type != DescriptorSetType::VertexStreams)
         return false;
 
     if(!desc_manager || !desc_manager->HasBinding(set_type,binding))
@@ -94,7 +83,7 @@ bool MaterialParameters::BindVertexStreamSSBO(const uint32_t binding,const IGPUB
         return false;
     }
 
-    return BindSSBO(int(binding),gpu,dynamic);
+    return descriptor_set->BindSSBO(int(binding),gpu,dynamic);
 }
 
 bool MaterialParameters::HasBinding(const uint32_t binding)const

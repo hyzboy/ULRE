@@ -18,27 +18,9 @@
 #if GEOMETRY_FETCH_SSBO
     #include "common/vertex_fetch_ssbo.glsl"
 #else
-    // Position is declared by common/vertex_input_position.glsl (included before this file).
+    // Legacy compatibility declarations for non-SSBO materials.
+    #include "common/vertex_input_compat.glsl"
 
-    #ifdef HAS_NORMAL
-        layout(location=NORMAL_LOCATION) in vec3 inNormal;
-    #endif
-
-    #if defined(HAS_TANGENT) && defined(TANGENT_LOCATION)
-        layout(location=TANGENT_LOCATION) in vec4 inTangent;
-    #endif
-
-    #ifdef HAS_TEXCOORD
-        layout(location=TEXCOORD_LOCATION) in vec2 inUV0;
-    #endif
-
-    #ifdef HAS_COLOR
-        layout(location=COLOR_LOCATION) in vec4 inColor;
-    #endif
-
-    #ifdef HAS_LUMINANCE
-        layout(location=LUMINANCE_LOCATION) in float inLuminance;
-    #endif
 #endif
 
 // --- Varying interface ---

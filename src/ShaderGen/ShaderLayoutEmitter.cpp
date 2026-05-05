@@ -7,6 +7,7 @@
 #include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/shadergen/AttributeProviderRegistry.h>
 #include <hgl/common/DescriptorSetTypeDef.h>
+
 #include <ostream>
 #include <string>
 
@@ -99,25 +100,11 @@ void EmitPositionInput(std::ostream &out,
     }
 }
 
-// Semantic name strings, indexed by AttributeSemantic ordinal.
-static constexpr const char *kAttribSemanticNames[] = {
-    "Normal",
-    "Tangent",
-    "Color",
-    "TexCoord0",
-    "TexCoord1",
-    "Joints",
-    "Weights",
-    "InstanceTransform",
-};
-static_assert(std::size(kAttribSemanticNames) == size_t(AttributeSemantic::BuiltinCount),
-              "kAttribSemanticNames must cover every built-in AttributeSemantic");
-
 void EmitAttribInput(std::ostream &out, const mtl::MaterialVariantKey &key)
 {
     constexpr int kVertexStreamsSet = int(SET_TYPE_VERTEX_STREAMS);
 
-    for (uint32_t i = 0; i < uint32_t(AttributeSemantic::BuiltinCount); ++i)
+    for (uint32_t i = 0; i < uint32_t(VertexAttrib::RANGE_SIZE); ++i)
     {
         const AttributeProviderId pid = key.attribute_providers[i];
         if (pid == AttributeProviderId::None)
@@ -127,9 +114,19 @@ void EmitAttribInput(std::ostream &out, const mtl::MaterialVariantKey &key)
         if (!p)
             continue;
 
-        out << "#define ATTRIB_TAG     " << kAttribSemanticNames[i] << "\n";
+        const VertexAttrib attrib = VertexAttrib(i);
+        if (attrib < VertexAttrib::Position || attrib >= VertexAttrib::RANGE_SIZE || attrib == VertexAttrib::Position)
+            continue;
+
+        const uint32_t binding = uint32_t(attrib);
+
+        const char *attrib_name = GetVertexAttribName(attrib);
+        if (!attrib_name || !attrib_name[0])
+            continue;
+
+        out << "#define ATTRIB_TAG     " << attrib_name             << "\n";
         out << "#define ATTRIB_SET     " << kVertexStreamsSet        << "\n";
-        out << "#define ATTRIB_BINDING " << i                       << "\n";
+        out << "#define ATTRIB_BINDING " << binding                 << "\n";
         out << "#include \"" << p->glsl_path                        << "\"\n";
         out << "#undef ATTRIB_BINDING\n";
         out << "#undef ATTRIB_SET\n";

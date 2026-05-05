@@ -4,7 +4,7 @@
 #include<hgl/type/String.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
-#include<hgl/common/VertexStreamBindingDef.h>
+
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/common/AttributeProvider.h>
 #include<hgl/log/Log.h>
@@ -29,7 +29,6 @@ protected:
     bool BindInputAttachment(const int &index,ImageView *);
 
     bool BindUBO(const int &index,const IGPUBuffer *gpu,bool dynamic=false);
-    bool BindSSBO(const int &index,const IGPUBuffer *gpu,bool dynamic=false);
 
 public:
 
@@ -58,7 +57,7 @@ public:
 
     bool BindUBO(const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
-    bool BindAttribSSBO(const AttributeSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindAttribSSBO(const VertexAttrib attrib,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindVertexStreamSSBO(const uint32_t binding,const IGPUBuffer *gpu,bool dynamic=false);
     bool HasBinding(const uint32_t binding)const;
     bool BindTexture(const mtl::SamplerSlot slot,Texture *tex);

@@ -1,31 +1,13 @@
 #pragma once
 
 #include <hgl/type/EnumUtil.h>
+#include <hgl/common/VertexAttribDef.h>
 #include <string_view>
 
 namespace hgl::graph
 {
-    /// Identifies which vertex attribute semantic slot a provider services.
-    ///
-    /// Numeric values are stable and are embedded in the shader cache key.
-    /// Built-in IDs 0–7 must never be reordered or repurposed.
-    /// UserCustom_Begin (64) and above are reserved for application extension.
-    enum class AttributeSemantic : uint8
-    {
-        Normal              = 0,
-        Tangent             = 1,
-        Color               = 2,
-        TexCoord0           = 3,
-        TexCoord1           = 4,
-        Joints              = 5,
-        Weights             = 6,
-        InstanceTransform   = 7,   ///< per-instance LocalToWorld (replaces instance VBO)
-        BuiltinCount        = 8,
-        UserCustom_Begin    = 64,
-    };
-
     /// Identifies which attribute provider implementation (GLSL source + upload
-    /// format) is used for a given AttributeSemantic.
+    /// format) is used for a given VertexAttrib.
     ///
     /// Built-in IDs 0–1023 are stable and embedded in the shader cache key.
     /// User-defined IDs start at 0x8000 (lower 15 bits = hash of glsl_path).
@@ -49,7 +31,7 @@ namespace hgl::graph
     struct AttributeProvider
     {
         AttributeProviderId id;
-        AttributeSemantic   semantic_hint;  ///< which semantic this provider most naturally serves (hint only)
+        VertexAttrib        semantic_hint;  ///< which vertex attribute this provider most naturally serves (hint only)
 
         /// Path to the GLSL implementation file, relative to the shader library root.
         /// Empty for None and Constant (emitter handles those inline).

@@ -239,7 +239,7 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
         k.position_provider = *r.position_provider;
 
     // ── Step 3.C: attribute provider overrides (vertex pulling, Phase C) ──────
-    for (size_t i = 0; i < size_t(AttributeSemantic::BuiltinCount); ++i)
+    for (size_t i = 0; i < size_t(VertexAttrib::RANGE_SIZE); ++i)
         if (r.attribute_providers[i] != AttributeProviderId::None)
             k.attribute_providers[i] = r.attribute_providers[i];
 
