@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKVABList.h>
@@ -9,12 +9,6 @@
 #include<hgl/color/Color4f.h>
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/log/Log.h>
-
-#ifdef VK_EXT_mesh_shader
-constexpr uint32_t kMeshTasksIndirectCommandStride = sizeof(VkDrawMeshTasksIndirectCommandEXT);
-#else
-constexpr uint32_t kMeshTasksIndirectCommandStride = sizeof(uint32_t) * 3;
-#endif
 
 namespace hgl::graph{
 class DomainResourceBinding;
@@ -75,11 +69,9 @@ private:
     VkViewport viewport;
 
     VkPipelineLayout pipeline_layout;
-    bool bound_mesh_pipeline;
 
     uint32_t frame_vertex_draw_count;
     uint32_t frame_indexed_draw_count;
-    uint32_t frame_mesh_draw_count;
 
     /*
     * 绝大部分desc绑定会全部使用这些自动绑定器绑定
@@ -104,19 +96,16 @@ public:
 
         frame_vertex_draw_count = 0;
         frame_indexed_draw_count = 0;
-        frame_mesh_draw_count = 0;
-        bound_mesh_pipeline = false;
         return true;
     }
 
     bool End() override
     {
-        if(cmd_begin && (frame_vertex_draw_count>0 || frame_indexed_draw_count>0 || frame_mesh_draw_count>0))
+        if(cmd_begin && (frame_vertex_draw_count>0 || frame_indexed_draw_count>0))
         {
-            LogInfo("[RenderCmdBuffer] frame draw counters: vertex=%u indexed=%u mesh=%u",
+            LogInfo("[RenderCmdBuffer] frame draw counters: vertex=%u indexed=%u",
                     frame_vertex_draw_count,
-                    frame_indexed_draw_count,
-                    frame_mesh_draw_count);
+                    frame_indexed_draw_count);
         }
 
         return VulkanCmdBuffer::End();
@@ -162,14 +151,11 @@ public:
         if(!p)return(false);
 
         vkCmdBindPipeline(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,*p);
-        bound_mesh_pipeline = p->IsMeshPipeline();
         return(true);
     }
 
-    bool IsBoundMeshPipeline()const{return bound_mesh_pipeline;}
     uint32_t GetFrameVertexDrawCount()const{return frame_vertex_draw_count;}
     uint32_t GetFrameIndexedDrawCount()const{return frame_indexed_draw_count;}
-    uint32_t GetFrameMeshDrawCount()const{return frame_mesh_draw_count;}
 
     bool BindDescriptorSets(DescriptorSet *dsl)
     {
@@ -251,24 +237,6 @@ public:
 
 public: //draw
 
-                                bool DrawMeshTasks      (const uint32_t group_count_x,
-                                                         const uint32_t group_count_y = 1,
-                                                         const uint32_t group_count_z = 1);
-
-                                bool DrawMeshTasksIndirect(
-                                                         VkBuffer buffer,
-                                                         VkDeviceSize offset,
-                                                         uint32_t draw_count,
-                                                         uint32_t stride = kMeshTasksIndirectCommandStride);
-
-                                bool DrawMeshTasksIndirectCount(
-                                                         VkBuffer buffer,
-                                                         VkDeviceSize offset,
-                                                         VkBuffer count_buffer,
-                                                         VkDeviceSize count_offset,
-                                                         uint32_t max_draw_count,
-                                                         uint32_t stride = kMeshTasksIndirectCommandStride);
-
                                 void Draw               (const uint32_t vertex_count)
                                 {
                                     vkCmdDraw(cmd_buf,vertex_count,1,0,0);
@@ -276,12 +244,6 @@ public: //draw
                                 }
                                 void DrawIndexed        (const uint32_t index_count )
                                 {
-                                    if(bound_mesh_pipeline)
-                                    {
-                                        LogError("[RenderCmdBuffer::DrawIndexed] DrawIndexed is blocked while mesh pipeline is bound");
-                                        return;
-                                    }
-
                                     vkCmdDrawIndexed(cmd_buf,index_count,1,0,0,0);
                                     ++frame_indexed_draw_count;
                                 }
@@ -292,23 +254,11 @@ public: //draw
                                 }
                                 void DrawIndexed        (const uint32_t index_count ,const uint32_t instance_count)
                                 {
-                                    if(bound_mesh_pipeline)
-                                    {
-                                        LogError("[RenderCmdBuffer::DrawIndexed] DrawIndexed is blocked while mesh pipeline is bound");
-                                        return;
-                                    }
-
                                     vkCmdDrawIndexed(cmd_buf,index_count,instance_count,0,0,0);
                                     ++frame_indexed_draw_count;
                                 }
                                 void DrawIndexed        (const uint32_t index_count ,const uint32_t instance_count,const uint32_t firstIndex,const int32_t vertexOffset,const uint32_t firstInstance)
                                 {
-                                    if(bound_mesh_pipeline)
-                                    {
-                                        LogError("[RenderCmdBuffer::DrawIndexed] DrawIndexed is blocked while mesh pipeline is bound");
-                                        return;
-                                    }
-
                                     vkCmdDrawIndexed(cmd_buf,
                                                      index_count,
                                                      instance_count,
@@ -397,3 +347,5 @@ public:
     }
 };//class TextureCmdBuffer:public VulkanCmdBuffer
 }//namespace hgl::graph
+
+

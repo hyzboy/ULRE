@@ -18,8 +18,6 @@ namespace
         bool has_tess_eval = false;
         bool has_geometry = false;
         bool has_fragment = false;
-        bool has_task = false;
-        bool has_mesh = false;
         bool has_compute = false;
         uint32_t stage_count = 0;
     };
@@ -40,18 +38,11 @@ namespace
                 case VK_SHADER_STAGE_GEOMETRY_BIT:                  mask.has_geometry = true; break;
                 case VK_SHADER_STAGE_FRAGMENT_BIT:                  mask.has_fragment = true; break;
                 case VK_SHADER_STAGE_COMPUTE_BIT:                   mask.has_compute = true; break;
-                case VK_SHADER_STAGE_TASK_BIT_EXT:                  mask.has_task = true; break;
-                case VK_SHADER_STAGE_MESH_BIT_EXT:                  mask.has_mesh = true; break;
                 default: break;
             }
         }
 
         return mask;
-    }
-
-    bool HasVertexPathStages(const GraphicsStageMask &mask)
-    {
-        return mask.has_vertex || mask.has_tess_ctrl || mask.has_tess_eval || mask.has_geometry;
     }
 
     inline void HashU32(uint64_t &h, uint32_t v)
@@ -152,17 +143,8 @@ const char *GetGraphicsPipelineRequestModeName(GraphicsPipelineRequestMode mode)
 
 bool IsMeshPipelineRequest(const GraphicsPipelineBuildRequest &req)
 {
-    if (req.request_mode == GraphicsPipelineRequestMode::Mesh)
-        return true;
-
-    if (req.request_mode == GraphicsPipelineRequestMode::Vertex)
-        return false;
-
-    if (!req.material)
-        return false;
-
-    const GraphicsStageMask mask = BuildGraphicsStageMask(req.material->GetStageList());
-    return mask.has_mesh || mask.has_task;
+    (void)req;
+    return false;
 }
 
 bool IsVertexInputIgnored(const GraphicsPipelineBuildRequest &req)
@@ -187,18 +169,6 @@ bool IsValidGraphicsPipelineBuildRequest(const GraphicsPipelineBuildRequest &req
 
     const GraphicsStageMask mask = BuildGraphicsStageMask(req.material->GetStageList());
     if (mask.stage_count == 0)
-        return false;
-
-    if (mask.has_task && !mask.has_mesh)
-        return false;
-
-    if (mask.has_mesh && HasVertexPathStages(mask))
-        return false;
-
-    if (req.request_mode == GraphicsPipelineRequestMode::Mesh && !mask.has_mesh)
-        return false;
-
-    if (req.request_mode == GraphicsPipelineRequestMode::Vertex && (mask.has_task || mask.has_mesh))
         return false;
 
     return true;

@@ -157,30 +157,6 @@ bool ShaderMaterialProgram::BindVertexStreamBinding(const uint32_t binding,const
     return mp->BindVertexStreamSSBO(binding,buffer,dynamic);
 }
 
-bool ShaderMaterialProgram::BindMeshIndexStream(const IGPUBuffer *buffer,bool dynamic)
-{
-    if(!HasShaderStage(shader_stage_list,VK_SHADER_STAGE_MESH_BIT_EXT))
-        return true;
-
-    return BindVertexStreamBinding(kMeshShaderIndexStreamBinding,buffer,dynamic);
-}
-
-bool ShaderMaterialProgram::BindMeshletStream(const IGPUBuffer *buffer,bool dynamic)
-{
-    if(!HasShaderStage(shader_stage_list,VK_SHADER_STAGE_MESH_BIT_EXT))
-        return true;
-
-    return BindVertexStreamBinding(kMeshShaderMeshletStreamBinding,buffer,dynamic);
-}
-
-bool ShaderMaterialProgram::BindTaskPayloadStream(const IGPUBuffer *buffer,bool dynamic)
-{
-    if(!HasShaderStage(shader_stage_list,VK_SHADER_STAGE_TASK_BIT_EXT))
-        return true;
-
-    return BindVertexStreamBinding(kMeshShaderTaskPayloadStreamBinding,buffer,dynamic);
-}
-
 bool ShaderMaterialProgram::BindTexture(const DescriptorSetType &type,mtl::SamplerSlot slot,Texture *tex)
 {
     MaterialParameters *mp = GetMP(type);

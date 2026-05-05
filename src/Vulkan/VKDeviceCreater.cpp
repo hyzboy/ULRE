@@ -39,46 +39,6 @@ void LogSurfaceFormat(const VkSurfaceFormatList &surface_formats_list)
 
 namespace
 {
-    constexpr const char *BoolText(const bool v)
-    {
-        return v ? "yes" : "no";
-    }
-
-    bool HasDeviceExtension(const CharPointerList &ext_list,const char *ext_name)
-    {
-        if(!ext_name || !*ext_name)
-            return false;
-
-        const int count=ext_list.GetCount();
-
-        for(int i=0;i<count;i++)
-        {
-            const char *name=nullptr;
-
-            if(!ext_list.Get(i,name))
-                continue;
-
-            if(name&&std::strcmp(name,ext_name)==0)
-                return true;
-        }
-
-        return false;
-    }
-
-    void AddDeviceExtensionIfSupported(CharPointerList *ext_list,const VulkanPhyDevice *physical_device,const char *ext_name)
-    {
-        if(!ext_list||!physical_device||!ext_name||!*ext_name)
-            return;
-
-        if(!physical_device->CheckExtensionSupport(ext_name))
-            return;
-
-        if(HasDeviceExtension(*ext_list,ext_name))
-            return;
-
-        ext_list->Add(ext_name);
-    }
-
     void SetDeviceExtension(CharPointerList *ext_list,const VulkanPhyDevice *physical_device,const VulkanHardwareRequirement &require)
     {
         ext_list->Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -127,15 +87,6 @@ namespace
 
         if(require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
             ext_list->Add(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
-
-    #ifdef VK_EXT_MESH_SHADER_EXTENSION_NAME
-        if(require.meshShaderOnlyMode
-        || require.meshShader>=VulkanHardwareRequirement::SupportLevel::Want
-        || require.taskShader>=VulkanHardwareRequirement::SupportLevel::Want)
-        {
-            AddDeviceExtensionIfSupported(ext_list,physical_device,VK_EXT_MESH_SHADER_EXTENSION_NAME);
-        }
-    #endif
     }
 
     void SetDeviceFeatures(VkPhysicalDeviceFeatures *features,const VkPhysicalDeviceFeatures &pdf,const VulkanHardwareRequirement &require)
@@ -286,17 +237,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 
     VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8_features;
     VkPhysicalDeviceVulkan12Features features12{};
-    const bool enable_mesh_shader_ext=
-#ifdef VK_EXT_MESH_SHADER_EXTENSION_NAME
-        HasDeviceExtension(ext_list,VK_EXT_MESH_SHADER_EXTENSION_NAME);
-#else
-        false;
-#endif
-
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT
-    VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shader_features{};
-#endif
-
 #ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT
     VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
 #endif
@@ -337,20 +277,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     features13.maintenance4     = physical_device->GetFeatures13().maintenance4;
     features13.shaderDemoteToHelperInvocation = physical_device->GetFeatures13().shaderDemoteToHelperInvocation;
     create_info.pNext           = &features13;
-
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT
-    if(enable_mesh_shader_ext)
-    {
-        mesh_shader_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
-        mesh_shader_features.pNext=const_cast<void*>(static_cast<const void*>(create_info.pNext));
-        mesh_shader_features.taskShader=physical_device->SupportTaskShader()?VK_TRUE:VK_FALSE;
-        mesh_shader_features.meshShader=physical_device->SupportMeshShader()?VK_TRUE:VK_FALSE;
-        mesh_shader_features.multiviewMeshShader=physical_device->GetMeshShaderFeatures().multiviewMeshShader;
-        mesh_shader_features.primitiveFragmentShadingRateMeshShader=physical_device->GetMeshShaderFeatures().primitiveFragmentShadingRateMeshShader;
-        mesh_shader_features.meshShaderQueries=physical_device->GetMeshShaderFeatures().meshShaderQueries;
-        create_info.pNext=&mesh_shader_features;
-    }
-#endif
 
 #ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT
     if(physical_device->SupportGraphicsPipelineLibrary())
@@ -429,75 +355,13 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     SetDeviceExtension(&ext_list,physical_device,require);
     SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
 
-    const bool mesh_shader_ext_supported=physical_device->SupportMeshShaderExtension();
-    const bool mesh_shader_supported=physical_device->SupportMeshShader();
-    const bool task_shader_supported=physical_device->SupportTaskShader();
-
-#ifdef VK_EXT_MESH_SHADER_EXTENSION_NAME
-    const bool mesh_shader_ext_enabled=HasDeviceExtension(ext_list,VK_EXT_MESH_SHADER_EXTENSION_NAME);
-#else
-    const bool mesh_shader_ext_enabled=false;
-#endif
-
-        GLogInfo("[VulkanDeviceCreater] MeshShader support matrix: extension=%s mesh=%s task=%s",
-            BoolText(mesh_shader_ext_supported),
-            BoolText(mesh_shader_supported),
-            BoolText(task_shader_supported));
-
-        GLogInfo("[VulkanDeviceCreater] MeshShader request: onlyMode=%s require.mesh=%d require.task=%d extensionEnabled=%s",
-            BoolText(require.meshShaderOnlyMode),
-            int(require.meshShader),
-            int(require.taskShader),
-            BoolText(mesh_shader_ext_enabled));
-
     device_attr->device=CreateDevice(graphics_family);
 
     if(!device_attr->device)
         return(nullptr);
 
-    device_attr->mesh_shader_extension=mesh_shader_ext_enabled;
-    device_attr->mesh_shader_enabled=mesh_shader_ext_enabled&&mesh_shader_supported;
-    device_attr->task_shader_enabled=mesh_shader_ext_enabled&&task_shader_supported;
-
     device_attr->pfn_vkCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)vkGetDeviceProcAddr(device_attr->device, "vkCmdBeginRenderingKHR");
     device_attr->pfn_vkCmdEndRenderingKHR   = (PFN_vkCmdEndRenderingKHR)  vkGetDeviceProcAddr(device_attr->device, "vkCmdEndRenderingKHR");
-
-#ifdef VK_EXT_mesh_shader
-    if(device_attr->mesh_shader_extension)
-    {
-        device_attr->pfn_vkCmdDrawMeshTasksEXT=
-            (PFN_vkCmdDrawMeshTasksEXT)vkGetDeviceProcAddr(device_attr->device,"vkCmdDrawMeshTasksEXT");
-
-        device_attr->pfn_vkCmdDrawMeshTasksIndirectEXT=
-            (PFN_vkCmdDrawMeshTasksIndirectEXT)vkGetDeviceProcAddr(device_attr->device,"vkCmdDrawMeshTasksIndirectEXT");
-
-        device_attr->pfn_vkCmdDrawMeshTasksIndirectCountEXT=
-            (PFN_vkCmdDrawMeshTasksIndirectCountEXT)vkGetDeviceProcAddr(device_attr->device,"vkCmdDrawMeshTasksIndirectCountEXT");
-    }
-#endif
-
-    GLogInfo("[VulkanDeviceCreater] MeshShader enabled state: extension=%s mesh=%s task=%s",
-            BoolText(device_attr->mesh_shader_extension),
-            BoolText(device_attr->mesh_shader_enabled),
-            BoolText(device_attr->task_shader_enabled));
-
-#ifdef VK_EXT_mesh_shader
-    if(device_attr->mesh_shader_extension)
-    {
-        GLogInfo("[VulkanDeviceCreater] MeshShader command proc: DrawMeshTasks=%s DrawMeshTasksIndirect=%s DrawMeshTasksIndirectCount=%s",
-                BoolText(device_attr->pfn_vkCmdDrawMeshTasksEXT!=nullptr),
-                BoolText(device_attr->pfn_vkCmdDrawMeshTasksIndirectEXT!=nullptr),
-                BoolText(device_attr->pfn_vkCmdDrawMeshTasksIndirectCountEXT!=nullptr));
-
-        if(require.meshShaderOnlyMode
-        &&(!device_attr->pfn_vkCmdDrawMeshTasksEXT
-        || !device_attr->mesh_shader_enabled))
-        {
-            GLogError("[VulkanDeviceCreater] MeshShaderOnly mode requested but mesh draw command is unavailable");
-            return(nullptr);
-        }
-    }
-#endif
 
     ChooseSurfaceFormat();
 
@@ -606,21 +470,6 @@ bool VulkanDeviceCreater::RequirementCheck()
 {
     const VkPhysicalDeviceLimits &limits=physical_device->GetLimits();
 
-    const bool mesh_shader_ext=physical_device->SupportMeshShaderExtension();
-    const bool mesh_shader_feature=physical_device->SupportMeshShader();
-    const bool task_shader_feature=physical_device->SupportTaskShader();
-
-    if(require.meshShaderOnlyMode&&(!mesh_shader_ext||!mesh_shader_feature))
-    {
-        GLogError("[VulkanDeviceCreater] MeshShaderOnly mode requested, but device '%s' does not support VK_EXT_mesh_shader mesh stage (extension=%s mesh=%s task=%s)",
-                 physical_device->GetDeviceName(),
-                 BoolText(mesh_shader_ext),
-                 BoolText(mesh_shader_feature),
-                 BoolText(task_shader_feature));
-
-        return false;
-    }
-
 #define VHR_MINCHECK(name) if(require.name>0&&require.name>limits.name)return(false);
 
     VHR_MINCHECK(maxImageDimension1D     )
@@ -680,9 +529,6 @@ bool VulkanDeviceCreater::RequirementCheck()
     VHRC_PDE(texture_compression.PVRTC,     IMG_FORMAT_PVRTC);
 
     VHRC_F13(dynamicRendering);
-
-    VHRC(meshShader,mesh_shader_ext&&mesh_shader_feature);
-    VHRC(taskShader,mesh_shader_ext&&task_shader_feature);
 
     VHRC_PDE(dynamicState[0],      EXT_EXTENDED_DYNAMIC_STATE);
     VHRC_PDE(dynamicState[1],      EXT_EXTENDED_DYNAMIC_STATE_2);

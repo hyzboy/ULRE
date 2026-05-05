@@ -20,8 +20,6 @@ struct PipelineStageComposition
     bool tess_eval = false;
     bool geometry = false;
     bool fragment = false;
-    bool task = false;
-    bool mesh = false;
     bool compute = false;
     uint32_t count = 0;
 };
@@ -45,19 +43,12 @@ static PipelineStageComposition BuildPipelineStageComposition(const ShaderMateri
             case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:   sc.tess_eval = true; break;
             case VK_SHADER_STAGE_GEOMETRY_BIT:                  sc.geometry = true; break;
             case VK_SHADER_STAGE_FRAGMENT_BIT:                  sc.fragment = true; break;
-            case VK_SHADER_STAGE_TASK_BIT_EXT:                  sc.task = true; break;
-            case VK_SHADER_STAGE_MESH_BIT_EXT:                  sc.mesh = true; break;
             case VK_SHADER_STAGE_COMPUTE_BIT:                   sc.compute = true; break;
             default: break;
         }
     }
 
     return sc;
-}
-
-static bool HasLegacyVertexPathStages(const PipelineStageComposition &sc)
-{
-    return sc.vertex || sc.tess_ctrl || sc.tess_eval || sc.geometry;
 }
 
 static void AppendStageName(std::string &out, const bool enabled, const char *name)
@@ -78,8 +69,6 @@ static std::string FormatPipelineStageComposition(const PipelineStageComposition
     AppendStageName(out, sc.tess_ctrl, "TessCtrl");
     AppendStageName(out, sc.tess_eval, "TessEval");
     AppendStageName(out, sc.geometry, "Geometry");
-    AppendStageName(out, sc.task, "Task");
-    AppendStageName(out, sc.mesh, "Mesh");
     AppendStageName(out, sc.fragment, "Fragment");
     AppendStageName(out, sc.compute, "Compute");
 
@@ -121,7 +110,6 @@ static void LogVertexInputLayoutDetails(const char *tag, const VIL *vil)
 }
 
 static void LogPipelineStageAndLayoutDiagnostics(const GraphicsPipelineBuildRequest &request,
-                                                 const bool mesh_pipeline,
                                                  const bool vertex_input_ignored)
 {
     if (!request.material)
@@ -130,37 +118,11 @@ static void LogPipelineStageAndLayoutDiagnostics(const GraphicsPipelineBuildRequ
     const PipelineStageComposition sc = BuildPipelineStageComposition(request.material);
     const std::string stage_text = FormatPipelineStageComposition(sc);
 
-    GLogInfo("[PipelineBuild.StageCompose] material=%s request_mode=%s effective_mode=%s stages=%s stage_count=%u",
+    GLogInfo("[PipelineBuild.StageCompose] material=%s request_mode=%s effective_mode=Vertex stages=%s stage_count=%u",
              request.material->GetName().c_str(),
              GetGraphicsPipelineRequestModeName(request.request_mode),
-             mesh_pipeline ? "Mesh" : "Vertex",
              stage_text.c_str(),
              sc.count);
-
-    if (mesh_pipeline)
-    {
-        if (!sc.mesh)
-        {
-            GLogError("[PipelineBuild.StageCompose] Mesh mode selected but mesh stage is missing");
-        }
-
-        if (HasLegacyVertexPathStages(sc))
-        {
-            GLogError("[PipelineBuild.StageCompose] Mesh mode is incompatible with Vertex/Tess/Geometry stages in the same pipeline");
-        }
-    }
-    else
-    {
-        if (sc.task || sc.mesh)
-        {
-            GLogError("[PipelineBuild.StageCompose] Vertex mode is incompatible with Task/Mesh stages (use request_mode=Mesh or Auto with mesh stages)");
-        }
-    }
-
-    if (sc.task && !sc.mesh)
-    {
-        GLogError("[PipelineBuild.StageCompose] Task stage present without mesh stage");
-    }
 
     VkPipelineLayout layout = request.material->GetPipelineLayout();
     if (!layout)
@@ -182,18 +144,10 @@ static void LogPipelineStageAndLayoutDiagnostics(const GraphicsPipelineBuildRequ
 }
 
 static void LogPipelineVertexInputComparison(const GraphicsPipelineBuildRequest &request,
-                                             const bool mesh_pipeline,
                                              const bool vertex_input_ignored)
 {
     if (!request.material)
         return;
-
-    if (mesh_pipeline)
-    {
-        LogVertexInputLayoutDetails("PipelineBuild.GeometryVIL", request.vil);
-        GLogInfo("[PipelineBuild.MaterialDefaultVIL] Mesh mode: forcing empty VkPipelineVertexInputState");
-        return;
-    }
 
     if (vertex_input_ignored)
     {
@@ -241,37 +195,6 @@ static void LogPipelineVertexInputComparison(const GraphicsPipelineBuildRequest 
         }
     }
 }
-
-static bool ValidateMeshRuntimeSupport(const GraphicsPipelineBuildContext &context,
-                                       const GraphicsPipelineBuildRequest &request,
-                                       const bool mesh_pipeline)
-{
-    if (!context.device || !request.material)
-        return true;
-
-    if (!mesh_pipeline)
-        return true;
-
-    if (!context.device->IsMeshShaderEnabled())
-    {
-        GLogError("[PipelineBuild.MeshFeature] Mesh pipeline requested but device mesh shader feature is disabled: material=%s extension=%s mesh=%s task=%s",
-                  request.material->GetName().c_str(),
-                  context.device->IsMeshShaderExtensionEnabled() ? "yes" : "no",
-                  context.device->IsMeshShaderEnabled() ? "yes" : "no",
-                  context.device->IsTaskShaderEnabled() ? "yes" : "no");
-        return false;
-    }
-
-    const PipelineStageComposition sc = BuildPipelineStageComposition(request.material);
-    if (sc.task && !context.device->IsTaskShaderEnabled())
-    {
-        GLogError("[PipelineBuild.MeshFeature] Task shader stage requested but device task shader feature is disabled: material=%s",
-                  request.material->GetName().c_str());
-        return false;
-    }
-
-    return true;
-}
 }
 
 GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
@@ -282,7 +205,6 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
         return nullptr;
     }
 
-    const bool mesh_pipeline = IsMeshPipelineRequest(request);
     const bool vertex_input_ignored = IsVertexInputIgnored(request);
 
     if (!request.material || !request.render_format || !request.pipeline_data
@@ -297,9 +219,6 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
         return nullptr;
     }
 
-    if (!ValidateMeshRuntimeSupport(context, request, mesh_pipeline))
-        return nullptr;
-
     const VIL *build_vil = vertex_input_ignored ? nullptr : request.vil;
 
     GraphicsPipelineData *pd = new GraphicsPipelineData(request.pipeline_data);
@@ -307,8 +226,8 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
     pd->InitShaderStage(request.material->GetStageList());
     pd->InitVertexInputState(build_vil);
 
-    LogPipelineStageAndLayoutDiagnostics(request, mesh_pipeline, vertex_input_ignored);
-    LogPipelineVertexInputComparison(request, mesh_pipeline, vertex_input_ignored);
+    LogPipelineStageAndLayoutDiagnostics(request, vertex_input_ignored);
+    LogPipelineVertexInputComparison(request, vertex_input_ignored);
 
     pd->SetColorAttachments(request.render_format->GetColorCount());
     pd->pipeline_info.layout = request.material->GetPipelineLayout();
@@ -339,7 +258,7 @@ GraphicsPipeline *MonolithicGraphicsPipelineBuilder::Build(const GraphicsPipelin
     if (name.IsEmpty())
         name = request.material->GetName();
 
-    return new GraphicsPipeline(name, context.device->GetDevice(), vk_pipeline, mesh_pipeline, build_vil, pd);
+    return new GraphicsPipeline(name, context.device->GetDevice(), vk_pipeline, build_vil, pd);
 }
 
 GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildContext &context, const GraphicsPipelineBuildRequest &request)
@@ -350,7 +269,6 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
         return nullptr;
     }
 
-    const bool mesh_pipeline = IsMeshPipelineRequest(request);
     const bool vertex_input_ignored = IsVertexInputIgnored(request);
 
     if (!request.material || !request.render_format || !request.pipeline_data
@@ -365,11 +283,8 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
         return nullptr;
     }
 
-    if (!ValidateMeshRuntimeSupport(context, request, mesh_pipeline))
-        return nullptr;
-
-    LogPipelineStageAndLayoutDiagnostics(request, mesh_pipeline, vertex_input_ignored);
-    LogPipelineVertexInputComparison(request, mesh_pipeline, vertex_input_ignored);
+    LogPipelineStageAndLayoutDiagnostics(request, vertex_input_ignored);
+    LogPipelineVertexInputComparison(request, vertex_input_ignored);
 
     // ── One-time pool initialization ──────────────────────────────────────────
     std::call_once(init_flag_, [&]()
@@ -448,6 +363,6 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
     if (name.IsEmpty())
         name = request.material->GetName();
 
-    return new GraphicsPipeline(name, vk_device, final_pipeline, mesh_pipeline, build_vil, nullptr);
+    return new GraphicsPipeline(name, vk_device, final_pipeline, build_vil, nullptr);
 }
 }//namespace hgl::graph

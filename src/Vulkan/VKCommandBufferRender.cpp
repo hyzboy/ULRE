@@ -11,40 +11,6 @@
 #include<hgl/vk/VKTexture.h>
 
 namespace hgl::graph{
-namespace
-{
-    bool CanDrawMeshTasks(const VulkanDevAttr *attr, const char *entry_name, const void *proc)
-    {
-        if (attr && attr->mesh_shader_extension && attr->mesh_shader_enabled && proc)
-            return true;
-
-        static bool warned = false;
-        if (!warned)
-        {
-            GLogWarning("[RenderCmdBuffer::%s] Mesh shader draw command unavailable: ext=%s mesh=%s proc=%s",
-                        entry_name ? entry_name : "<unknown>",
-                        attr && attr->mesh_shader_extension ? "yes" : "no",
-                        attr && attr->mesh_shader_enabled ? "yes" : "no",
-                        proc ? "yes" : "no");
-            warned = true;
-        }
-
-        return false;
-    }
-
-    bool CanDrawMeshTasksPlatform(const char *entry_name)
-    {
-        static bool warned = false;
-        if (!warned)
-        {
-            GLogWarning("[RenderCmdBuffer::%s] Mesh shader command is not compiled on this platform/toolchain.",
-                        entry_name ? entry_name : "<unknown>");
-            warned = true;
-        }
-        return false;
-    }
-}
-
 bool RenderCmdBuffer::BindVAB(const VABList *vab_list)
 {
     if(!vab_list)
@@ -77,10 +43,8 @@ RenderCmdBuffer::RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):V
     mem_zero(viewport);
 
     pipeline_layout=VK_NULL_HANDLE;
-    bound_mesh_pipeline=false;
     frame_vertex_draw_count=0;
     frame_indexed_draw_count=0;
-    frame_mesh_draw_count=0;
 }
 
 RenderCmdBuffer::~RenderCmdBuffer()
@@ -211,17 +175,6 @@ void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,const VkDeviceSize byte_offset)
 {
     //LogVerbose(u"BindIBO entry");
 
-    if(bound_mesh_pipeline)
-    {
-        static bool warned_mesh_ibo_bind = false;
-        if(!warned_mesh_ibo_bind)
-        {
-            LogWarning("[RenderCmdBuffer::BindIBO] Ignore vkCmdBindIndexBuffer while mesh pipeline is bound");
-            warned_mesh_ibo_bind = true;
-        }
-        return;
-    }
-
     if(!ibo)
     {
         LogError("Null IBO");
@@ -250,7 +203,7 @@ bool RenderCmdBuffer::BindDataBuffer(const GeometryDataBuffer *geom_data_buffer)
         return(false);
     }
 
-    if(geom_data_buffer->vab_count<=0 && !bound_mesh_pipeline)
+    if(geom_data_buffer->vab_count<=0)
     {
         LogError("No VABs to bind");
         return(false);
@@ -310,12 +263,6 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
                                             uint32_t        drawCount,
                                             uint32_t        stride)
 {
-    if(bound_mesh_pipeline)
-    {
-        LogError("[RenderCmdBuffer::DrawIndexedIndirect] DrawIndexedIndirect is blocked while mesh pipeline is bound");
-        return;
-    }
-
     if(this->dev_attr->physical_device->SupportMDI())
         vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset,drawCount,stride);
     else
@@ -324,97 +271,6 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
 
     frame_indexed_draw_count += drawCount;
 }
-
-bool RenderCmdBuffer::DrawMeshTasks(const uint32_t group_count_x,
-                                    const uint32_t group_count_y,
-                                    const uint32_t group_count_z)
-{
-#ifdef VK_EXT_mesh_shader
-    if (!CanDrawMeshTasks(dev_attr,
-                          "DrawMeshTasks",
-                          reinterpret_cast<const void *>(dev_attr ? dev_attr->pfn_vkCmdDrawMeshTasksEXT : nullptr)))
-    {
-        return false;
-    }
-
-    dev_attr->pfn_vkCmdDrawMeshTasksEXT(cmd_buf,
-                                        group_count_x,
-                                        group_count_y,
-                                        group_count_z);
-    ++frame_mesh_draw_count;
-    return true;
-#else
-    (void)group_count_x;
-    (void)group_count_y;
-    (void)group_count_z;
-    return CanDrawMeshTasksPlatform("DrawMeshTasks");
-#endif
-}
-
-bool RenderCmdBuffer::DrawMeshTasksIndirect(VkBuffer buffer,
-                                            VkDeviceSize offset,
-                                            uint32_t draw_count,
-                                            uint32_t stride)
-{
-#ifdef VK_EXT_mesh_shader
-    if (!CanDrawMeshTasks(dev_attr,
-                          "DrawMeshTasksIndirect",
-                          reinterpret_cast<const void *>(dev_attr ? dev_attr->pfn_vkCmdDrawMeshTasksIndirectEXT : nullptr)))
-    {
-        return false;
-    }
-
-    dev_attr->pfn_vkCmdDrawMeshTasksIndirectEXT(cmd_buf,
-                                                buffer,
-                                                offset,
-                                                draw_count,
-                                                stride);
-    frame_mesh_draw_count += draw_count;
-    return true;
-#else
-    (void)buffer;
-    (void)offset;
-    (void)draw_count;
-    (void)stride;
-    return CanDrawMeshTasksPlatform("DrawMeshTasksIndirect");
-#endif
-}
-
-bool RenderCmdBuffer::DrawMeshTasksIndirectCount(VkBuffer buffer,
-                                                 VkDeviceSize offset,
-                                                 VkBuffer count_buffer,
-                                                 VkDeviceSize count_offset,
-                                                 uint32_t max_draw_count,
-                                                 uint32_t stride)
-{
-#ifdef VK_EXT_mesh_shader
-    if (!CanDrawMeshTasks(dev_attr,
-                          "DrawMeshTasksIndirectCount",
-                          reinterpret_cast<const void *>(dev_attr ? dev_attr->pfn_vkCmdDrawMeshTasksIndirectCountEXT : nullptr)))
-    {
-        return false;
-    }
-
-    dev_attr->pfn_vkCmdDrawMeshTasksIndirectCountEXT(cmd_buf,
-                                                     buffer,
-                                                     offset,
-                                                     count_buffer,
-                                                     count_offset,
-                                                     max_draw_count,
-                                                     stride);
-    ++frame_mesh_draw_count;
-    return true;
-#else
-    (void)buffer;
-    (void)offset;
-    (void)count_buffer;
-    (void)count_offset;
-    (void)max_draw_count;
-    (void)stride;
-    return CanDrawMeshTasksPlatform("DrawMeshTasksIndirectCount");
-#endif
-}
-
 void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const GeometryDrawRange *geom_draw_range,const uint32_t instance_count,const uint32_t first_instance)
 {
     //LogVerbose(u"Draw entry");
@@ -422,53 +278,6 @@ void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const Geom
     if(!geom_data_buffer||!geom_draw_range)
     {
         LogError("Null parameter in Draw");
-        return;
-    }
-
-    if(bound_mesh_pipeline)
-    {
-        uint32_t group_count_x = geom_draw_range->mesh_task_group_count_x;
-        const uint32_t group_count_y = geom_draw_range->mesh_task_group_count_y;
-        const uint32_t group_count_z = geom_draw_range->mesh_task_group_count_z;
-
-        if(group_count_x==0 || group_count_y==0 || group_count_z==0)
-        {
-            LogError("[RenderCmdBuffer::Draw] Invalid mesh task group counts: (%u,%u,%u)",
-                     group_count_x,
-                     group_count_y,
-                     group_count_z);
-            return;
-        }
-
-        if(geom_data_buffer->ibo && geom_draw_range->index_count>0)
-        {
-            static bool warned_mesh_indexed_guard = false;
-            if(!warned_mesh_indexed_guard)
-            {
-                LogWarning("[RenderCmdBuffer::Draw] Mesh pipeline bound; indexed draw path is blocked and index metadata is ignored");
-                warned_mesh_indexed_guard = true;
-            }
-        }
-
-        if(instance_count>1)
-        {
-            if(group_count_x > UINT32_MAX / instance_count)
-                group_count_x = UINT32_MAX;
-            else
-                group_count_x *= instance_count;
-        }
-
-        if(first_instance!=0)
-        {
-            static bool warned_mesh_first_instance = false;
-            if(!warned_mesh_first_instance)
-            {
-                LogWarning("[RenderCmdBuffer::Draw] first_instance is ignored for mesh draw path");
-                warned_mesh_first_instance = true;
-            }
-        }
-
-        DrawMeshTasks(group_count_x,group_count_y,group_count_z);
         return;
     }
 

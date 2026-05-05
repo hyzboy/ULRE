@@ -204,9 +204,24 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
 MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     : config(*mc)
 {
+    constexpr uint32_t kAllowedStageBits =
+        uint32_t(ShaderStage::Vertex) |
+        uint32_t(ShaderStage::TessControl) |
+        uint32_t(ShaderStage::TessEval) |
+        uint32_t(ShaderStage::Geometry) |
+        uint32_t(ShaderStage::Fragment) |
+        uint32_t(ShaderStage::Compute) |
+        uint32_t(ShaderStage::ClusterCulling);
+
+    config.shader_stage_flag_bit &= kAllowedStageBits;
+
+    if((config.shader_stage_flag_bit & uint32_t(ShaderStage::Vertex)) == 0)
+        config.shader_stage_flag_bit |= uint32_t(ShaderStage::Vertex);
+
+    if((config.shader_stage_flag_bit & uint32_t(ShaderStage::Fragment)) == 0)
+        config.shader_stage_flag_bit |= uint32_t(ShaderStage::Fragment);
+
     if(HasVertex    ())shader_map.Add(new ShaderCreateInfoVertex(&descriptor_db));
-    if(HasTask      ())shader_map.Add(new ShaderCreateInfo(new ShaderStageIO(ShaderStage::Task),&descriptor_db));
-    if(HasMesh      ())shader_map.Add(new ShaderCreateInfo(new ShaderStageIO(ShaderStage::Mesh),&descriptor_db));
     if(HasFragment  ())shader_map.Add(new ShaderCreateInfo(new FragmentShaderStageIO(),&descriptor_db));
 
     ubo_range=0;
@@ -474,13 +489,7 @@ bool MaterialCreateInfo::CompileSPV()
 
 void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
 {
-    uint32_t stream_stage_bits = uint32_t(ShaderStage::Vertex);
-    if (HasMesh())
-    {
-        stream_stage_bits = uint32_t(ShaderStage::Mesh);
-        if (HasTask())
-            stream_stage_bits |= uint32_t(ShaderStage::Task);
-    }
+    const uint32_t stream_stage_bits = uint32_t(ShaderStage::Vertex);
 
     // Attribute streams: binding index = AttributeSemantic ordinal (sparse binding).
     // CompositorAssembler emits "#define FETCH_<Tag>_SSBO_BINDING <i>" with the same index.
@@ -512,30 +521,5 @@ void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
             descriptor_db.AddSSBO(stream_stage_bits, DescriptorSetType::VertexStreams, sd);
         }
     }
-}
-
-void MaterialCreateInfo::AddMeshShaderStreamSSBOs(const MeshShaderStreamContract &contract)
-{
-    uint32_t stage_bits = uint32_t(ShaderStage::Mesh);
-    if (HasTask())
-        stage_bits |= uint32_t(ShaderStage::Task);
-
-    auto add_stream_binding = [this](const uint32_t stage_bits,const uint32_t binding)
-    {
-        if(binding >= kVertexStreamBindingCountWithMesh)
-            return;
-
-        auto *sd = new SSBODescriptor();
-        sd->semantic = SSBODescriptorSemantic(binding);  // VertexStreams: semantic index == binding
-        descriptor_db.AddSSBO(stage_bits, DescriptorSetType::VertexStreams, sd);
-    };
-
-    add_stream_binding(stage_bits, contract.index.binding);
-
-    if(contract.enable_meshlet_stream)
-        add_stream_binding(stage_bits, contract.meshlet.binding);
-
-    if(contract.enable_task_payload_stream)
-        add_stream_binding(stage_bits, contract.task_payload.binding);
 }
 }//namespace hgl::graph::mtl

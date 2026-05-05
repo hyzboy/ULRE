@@ -15,8 +15,6 @@ static const char *GetShaderStageNameByStage(const ShaderStage stage)
         case ShaderStage::Vertex: return "Vertex";
         case ShaderStage::Fragment: return "Fragment";
         case ShaderStage::Compute: return "Compute";
-        case ShaderStage::Task: return "Task";
-        case ShaderStage::Mesh: return "Mesh";
         case ShaderStage::ClusterCulling: return "ClusterCulling";
         default: return "Unknown";
     }

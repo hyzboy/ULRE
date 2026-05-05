@@ -80,10 +80,12 @@ bool MaterialParameters::BindAttribSSBO(const AttributeSemantic semantic,const I
 
 bool MaterialParameters::BindVertexStreamSSBO(const uint32_t binding,const IGPUBuffer *gpu,bool dynamic)
 {
+    constexpr uint32_t kVertexStreamBindingCount = uint32_t(AttributeSemantic::BuiltinCount) + 1u;
+
     if(set_type != DescriptorSetType::VertexStreams)
         return false;
 
-    if(binding >= kVertexStreamBindingCountWithMesh)
+    if(binding >= kVertexStreamBindingCount)
         return false;
 
     if(!desc_manager || !desc_manager->HasBinding(set_type,binding))

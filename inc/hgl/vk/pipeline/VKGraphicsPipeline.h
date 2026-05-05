@@ -15,7 +15,6 @@ class GraphicsPipeline
     AnsiString name;
 
     VkPipeline pipeline;
-    bool mesh_pipeline;
 
     const VIL *vil;
     GraphicsPipelineData *data;
@@ -25,13 +24,12 @@ private:
     friend class MonolithicGraphicsPipelineBuilder;
     friend class GplGraphicsPipelineBuilder;
 
-    GraphicsPipeline(const AnsiString &n,VkDevice dev,VkPipeline p,bool mp,const VIL *v,GraphicsPipelineData *pd)
+    GraphicsPipeline(const AnsiString &n,VkDevice dev,VkPipeline p,const VIL *v,GraphicsPipelineData *pd)
     {
         name=n;
 
         device=dev;
         pipeline=p;
-        mesh_pipeline=mp;
         vil=v;
         data=pd;
     }
@@ -46,7 +44,6 @@ public:
 
     const VIL *GetVIL()const{return vil;}
     const GraphicsPipelineData *GetData()const{return data;}
-    const bool IsMeshPipeline()const{return mesh_pipeline;}
 
     const bool IsAlphaTest()const{return data && data->alpha_test>0;}
     const bool IsAlphaBlend()const{return data && data->alpha_blend;}

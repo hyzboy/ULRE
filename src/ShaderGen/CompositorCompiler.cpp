@@ -30,21 +30,31 @@ static bool HasPerMaterialDescriptor(const StaticMaterialDef &def);
 namespace
 {
     static constexpr uint32_t kDefaultDescriptorStageBits = uint32_t(ShaderStage::VertexFragment);
-    static constexpr const char *kDefaultTaskShaderGLSL =
-        "#version 460\n"
-        "#extension GL_EXT_mesh_shader : require\n"
-        "layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;\n"
-        "void main()\n"
-        "{\n"
-        "    EmitMeshTasksEXT(1u, 1u, 1u);\n"
-        "}\n";
+    static constexpr uint32_t kAllowedDescriptorStageBits =
+        uint32_t(ShaderStage::Vertex) |
+        uint32_t(ShaderStage::TessControl) |
+        uint32_t(ShaderStage::TessEval) |
+        uint32_t(ShaderStage::Geometry) |
+        uint32_t(ShaderStage::Fragment) |
+        uint32_t(ShaderStage::Compute) |
+        uint32_t(ShaderStage::ClusterCulling);
 
     static uint32_t ResolveDescriptorStageBits(const Material3DCreateConfig &cfg)
     {
-        if (cfg.shader_stage_flag_bit != 0)
-            return cfg.shader_stage_flag_bit;
+        uint32_t stage_bits = kDefaultDescriptorStageBits;
 
-        return kDefaultDescriptorStageBits;
+        if (cfg.shader_stage_flag_bit != 0)
+            stage_bits = cfg.shader_stage_flag_bit;
+
+        stage_bits &= kAllowedDescriptorStageBits;
+
+        if ((stage_bits & uint32_t(ShaderStage::Vertex)) == 0)
+            stage_bits |= uint32_t(ShaderStage::Vertex);
+
+        if ((stage_bits & uint32_t(ShaderStage::Fragment)) == 0)
+            stage_bits |= uint32_t(ShaderStage::Fragment);
+
+        return stage_bits;
     }
 
     static bool ResolveConfiguredCameraRequirement(const Material3DCreateConfig &cfg)
@@ -282,13 +292,10 @@ namespace
         }
 
         ShaderCreateInfoVertex *vert = builder.GetVertexShader();
-    ShaderCreateInfo *task = builder.GetStageShader(ShaderStage::Task);
-    ShaderCreateInfo *mesh = builder.GetStageShader(ShaderStage::Mesh);
         ShaderCreateInfo *frag = builder.GetStageShader(ShaderStage::Fragment);
 
         std::string final_vs_glsl = vs_glsl;
         std::string final_fs_glsl = fs_glsl;
-    std::string final_mesh_glsl = vs_glsl;
 
         if (def.shader_data_schema != ShaderDataSchema::None)
         {
@@ -299,18 +306,11 @@ namespace
                 return FailWithBuilder("shader data schema has no GLSL include path");
 
             final_vs_glsl = hgl::graph::internal::InjectAfterVersion(final_vs_glsl, schema_include);
-            final_mesh_glsl = hgl::graph::internal::InjectAfterVersion(final_mesh_glsl, schema_include);
             final_fs_glsl = hgl::graph::internal::InjectAfterVersion(final_fs_glsl, schema_include);
         }
 
         if (vert)
             vert->SetFinalGLSL(final_vs_glsl);
-
-        if (mesh)
-            mesh->SetFinalGLSL(final_mesh_glsl);
-
-        if (task)
-            task->SetFinalGLSL(kDefaultTaskShaderGLSL);
 
         if (frag)
             frag->SetFinalGLSL(final_fs_glsl);
@@ -323,9 +323,6 @@ namespace
         // BEFORE InjectLayoutDefines calls Resort(), so the bindings are included.
         if (def.vertex_stream_key)
             mci->AddVertexStreamSSBOs(*def.vertex_stream_key);
-
-        if (def.mesh_stream_contract)
-            mci->AddMeshShaderStreamSSBOs(*def.mesh_stream_contract);
 
         if (!InjectLayoutDefines(*mci))
         {
@@ -479,8 +476,6 @@ MaterialCreateInfo *CompileCompositorMaterial(
 bool InjectLayoutDefines(MaterialCreateInfo &mci)
 {
     ShaderCreateInfoVertex *vert = mci.GetVertexShader();
-    ShaderCreateInfo       *task = mci.GetStageShader(ShaderStage::Task);
-    ShaderCreateInfo       *mesh = mci.GetStageShader(ShaderStage::Mesh);
     ShaderCreateInfo       *frag = mci.GetStageShader(ShaderStage::Fragment);
 
     mci.Resort();
@@ -488,16 +483,12 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
     const std::string layout_defs = hgl::graph::EmitShaderLayoutDefines(layout);
     const MaterialDescriptorDB &mdi = mci.GetDescriptorInfo();
     const std::string vert_sampler_defs = vert ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Vertex)   : std::string();
-    const std::string task_sampler_defs = task ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Task)     : std::string();
-    const std::string mesh_sampler_defs = mesh ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Mesh)     : std::string();
     const std::string frag_sampler_defs = frag ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Fragment) : std::string();
     const std::string frag_mit_defs     = frag ? hgl::graph::EmitMaterialInstanceTextureGLSL(mdi, ShaderStage::Fragment) : std::string();
 
-    if (!layout_defs.empty() || !vert_sampler_defs.empty() || !task_sampler_defs.empty() || !mesh_sampler_defs.empty() || !frag_sampler_defs.empty() || !frag_mit_defs.empty())
+    if (!layout_defs.empty() || !vert_sampler_defs.empty() || !frag_sampler_defs.empty() || !frag_mit_defs.empty())
     {
         if (vert) vert->SetFinalGLSL(hgl::graph::internal::InjectAfterVersion(vert->GetFinalGLSL(), layout_defs + vert_sampler_defs));
-        if (task) task->SetFinalGLSL(hgl::graph::internal::InjectAfterVersion(task->GetFinalGLSL(), layout_defs + task_sampler_defs));
-        if (mesh) mesh->SetFinalGLSL(hgl::graph::internal::InjectAfterVersion(mesh->GetFinalGLSL(), layout_defs + mesh_sampler_defs));
         if (frag) frag->SetFinalGLSL(hgl::graph::internal::InjectAfterVersion(frag->GetFinalGLSL(), layout_defs + frag_sampler_defs + frag_mit_defs));
     }
 

@@ -56,12 +56,8 @@ public:
     const uint32 enableGeometryShader   () { return shader_stage_flag_bit|=(uint32)ShaderStage::Geometry; }
     const uint32 enableTesslationShader () { return shader_stage_flag_bit|=(uint32)ShaderStage::Tessellation; }
     const uint32 enableFragmentShader   () { return shader_stage_flag_bit|=(uint32)ShaderStage::Fragment; }
-    const uint32 enableTaskShader       () { return shader_stage_flag_bit|=(uint32)ShaderStage::Task; }
-    const uint32 enableMeshShader       () { return shader_stage_flag_bit|=(uint32)ShaderStage::Mesh; }
 
     const uint32 enableVertexFragmentShader() { return shader_stage_flag_bit|=(uint32)ShaderStage::VertexFragment; }
-    const uint32 enableTaskMeshShader      () { return shader_stage_flag_bit|=(uint32)ShaderStage::TaskMesh; }
-    const uint32 enableTaskMeshFragmentShader() { return shader_stage_flag_bit|=(uint32)ShaderStage::TaskMeshFragment; }
 
     const uint32 enableComputeShader    () { return shader_stage_flag_bit|=(uint32)ShaderStage::Compute; }
 

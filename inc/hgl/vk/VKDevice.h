@@ -174,9 +174,6 @@ public: //内存相关
     void SetDrawPhaseActive(bool active) { draw_phase_active = active; }
     bool IsDrawPhaseActive() const { return draw_phase_active; }
     bool IsGplSupported() const { return gpl_supported; }
-    bool IsMeshShaderExtensionEnabled() const { return attr->mesh_shader_extension; }
-    bool IsMeshShaderEnabled() const { return attr->mesh_shader_enabled; }
-    bool IsTaskShaderEnabled() const { return attr->task_shader_enabled; }
     /// Runtime switch for graphics pipeline library usage.
     /// If the device does not support GPL, this always keeps GPL disabled.
     void SetGplEnabled(bool enabled);

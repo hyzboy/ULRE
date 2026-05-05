@@ -33,9 +33,6 @@ void GeometryDrawRange::Set(const Geometry *geometry)
         data_index_count = 0;
         vertex_count = 0;
         index_count = 0;
-        mesh_task_group_count_x = 1;
-        mesh_task_group_count_y = 1;
-        mesh_task_group_count_z = 1;
         vertex_offset = 0;
         first_index = 0;
         return;
@@ -48,11 +45,6 @@ void GeometryDrawRange::Set(const Geometry *geometry)
     // initialize draw counts to data counts by default
     vertex_count    = data_vertex_count;
     index_count     = data_index_count;
-
-    // default mesh dispatch uses one workgroup per draw call unless caller overrides it.
-    mesh_task_group_count_x = 1;
-    mesh_task_group_count_y = 1;
-    mesh_task_group_count_z = 1;
 
     vertex_offset   = geometry->GetVertexOffset();
     first_index     = geometry->GetFirstIndex();
@@ -115,16 +107,6 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,Grap
     auto *material = MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
     if(!material)return(nullptr);
 
-    bool mesh_pipeline = false;
-    for (const auto &stage : material->GetStageList())
-    {
-        if (stage.stage == VK_SHADER_STAGE_TASK_BIT_EXT || stage.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
-        {
-            mesh_pipeline = true;
-            break;
-        }
-    }
-
     const VIL *vil = explicit_vil
                    ? explicit_vil
                    : (p ? p->GetVIL() : material->GetDefaultVIL());
@@ -135,20 +117,20 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialBindingInstance *mi,Grap
     const bool pulling_enabled =
         material->IsPullingEnabled() || material->hasSet(SET_TYPE_VERTEX_STREAMS);
 
-    if(!vil && pulling_enabled && !mesh_pipeline)
+    if(!vil && pulling_enabled)
         vil = material->GetDefaultVIL();
 
-    if (!mesh_pipeline && !vil) return(nullptr);
+    if (!pulling_enabled && !vil) return(nullptr);
 
     const VIL *pipeline_vil = p ? p->GetVIL() : nullptr;
 
-    if(!mesh_pipeline && p && explicit_vil && pipeline_vil && *explicit_vil!=*pipeline_vil)
+    if(p && explicit_vil && pipeline_vil && *explicit_vil!=*pipeline_vil)
         return(nullptr);
 
-    if(!mesh_pipeline && p && !explicit_vil && pipeline_vil && *vil!=*pipeline_vil)
+    if(p && !explicit_vil && pipeline_vil && vil && *vil!=*pipeline_vil)
         return(nullptr);
 
-    const uint32_t input_count = (pulling_enabled || mesh_pipeline || !vil) ? 0u : vil->GetVertexAttribCount();
+    const uint32_t input_count = (pulling_enabled || !vil) ? 0u : vil->GetVertexAttribCount();
     const AnsiString &mtl_name=material->GetName();
     const GeometryVertexFormat &geometry_vertex_format = geom->GetGeometryVertexFormat();
 
@@ -349,17 +331,6 @@ bool Primitive::SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t
     draw_range.vertex_count = draw_vertex_count;
     draw_range.index_count  = draw_index_count;
 
-    return true;
-}
-
-bool Primitive::SetMeshTaskGroupCounts(uint32_t group_count_x,uint32_t group_count_y,uint32_t group_count_z)
-{
-    if(group_count_x==0 || group_count_y==0 || group_count_z==0)
-        return false;
-
-    draw_range.mesh_task_group_count_x = group_count_x;
-    draw_range.mesh_task_group_count_y = group_count_y;
-    draw_range.mesh_task_group_count_z = group_count_z;
     return true;
 }
 
