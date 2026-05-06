@@ -2,6 +2,7 @@
 
 #include <hgl/common/ShaderDescriptorDef.h>
 #include <hgl/mtl/SamplerSlot.h>
+#include<array>
 #include<string>
 #include<memory>
 
@@ -12,21 +13,21 @@ namespace hgl{namespace graph{
 */
 class MaterialDescriptorDB
 {
-    uint32_t descriptor_count;
+    uint32_t descriptor_count=0;
     ShaderDescriptorSetArray desc_set_array;
 
-    bool ubo_struct_by_semantic [mtl::UBODescriptorSemanticCount] = {};
-    bool ssbo_struct_by_semantic[mtl::SSBODescriptorSemanticCount] = {};
-    UBODescriptor  *ubo_by_semantic [mtl::UBODescriptorSemanticCount] = {};
-    SSBODescriptor *ssbo_by_semantic[mtl::SSBODescriptorSemanticCount] = {};
+    std::array<bool,mtl::UBODescriptorSemanticCount> ubo_struct_by_semantic = {};
+    std::array<bool,mtl::SSBODescriptorSemanticCount> ssbo_struct_by_semantic = {};
+    std::array<UBODescriptor *,mtl::UBODescriptorSemanticCount> ubo_by_semantic = {};
+    std::array<SSBODescriptor *,mtl::SSBODescriptorSemanticCount> ssbo_by_semantic = {};
 
-    TextureDescriptor        *texture_by_slot        [mtl::SamplerSlotCount] = {};
-    TextureSamplerDescriptor *texture_sampler_by_slot[mtl::SamplerSlotCount] = {};
+    std::array<TextureDescriptor *,mtl::SamplerSlotCount> texture_by_slot = {};
+    std::array<TextureSamplerDescriptor *,mtl::SamplerSlotCount> texture_sampler_by_slot = {};
 
 public:
 
     MaterialDescriptorDB();
-    ~MaterialDescriptorDB();
+    ~MaterialDescriptorDB()=default;
 
     bool AddUBOStruct(const mtl::UBODescriptorSemantic semantic)
     {

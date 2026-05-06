@@ -18,31 +18,6 @@ MaterialDescriptorDB::MaterialDescriptorDB()
     descriptor_count=0;
 }
 
-MaterialDescriptorDB::~MaterialDescriptorDB()
-{
-    for(auto &set:desc_set_array)
-    {
-        for(auto &p:set.ubo_descriptor_map) p=nullptr;
-        for(auto &p:set.ssbo_descriptor_map) p=nullptr;
-        for(auto &p:set.texture_descriptor_map) p=nullptr;
-        for(auto &p:set.texture_sampler_descriptor_map) p=nullptr;
-        set.count=0;
-        set.set=-1;
-    }
-
-    for(auto &p:ubo_by_semantic)
-        p=nullptr;
-
-    for(auto &p:ssbo_by_semantic)
-        p=nullptr;
-
-    for(auto &p:texture_by_slot)
-        p=nullptr;
-
-    for(auto &p:texture_sampler_by_slot)
-        p=nullptr;
-}
-
 const UBODescriptor *MaterialDescriptorDB::AddUBO(uint32_t ssb,DescriptorSetType set_type,UBODescriptor *sd)
 {
     return AddUBO(ssb,set_type,std::unique_ptr<UBODescriptor>(sd));
@@ -53,7 +28,7 @@ const UBODescriptor *MaterialDescriptorDB::AddUBO(uint32_t ssb,DescriptorSetType
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
 
-    ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
+    ShaderDescriptorSet *sds=&desc_set_array[size_t(set_type)];
 
     UBODescriptor *obj=sds->AddUBO(ssb,std::move(sd));
 
@@ -79,7 +54,7 @@ const SSBODescriptor *MaterialDescriptorDB::AddSSBO(uint32_t ssb,DescriptorSetTy
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
 
-    ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
+    ShaderDescriptorSet *sds=&desc_set_array[size_t(set_type)];
 
     SSBODescriptor *obj=sds->AddSSBO(ssb,std::move(sd));
 
@@ -108,7 +83,7 @@ const TextureDescriptor *MaterialDescriptorDB::AddTexture(uint32_t shader_stage_
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
 
-    ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
+    ShaderDescriptorSet *sds=&desc_set_array[size_t(set_type)];
 
     TextureDescriptor *obj=sds->AddTexture(shader_stage_flag_bits,std::move(sd));
 
@@ -133,7 +108,7 @@ const TextureSamplerDescriptor *MaterialDescriptorDB::AddTextureSampler(uint32_t
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
 
-    ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
+    ShaderDescriptorSet *sds=&desc_set_array[size_t(set_type)];
 
     TextureSamplerDescriptor *obj=sds->AddTextureSampler(ssb,std::move(sd));
 
@@ -183,10 +158,11 @@ void MaterialDescriptorDB::Resort()
             // Vertex stream SSBOs use the array index directly as the binding number
             // to match the sparse ATTRIB_BINDING / POSITION_SSBO_BINDING macros that
             // CompositorAssembler hard-codes into the GLSL source (e.g. Normal=0, TexCoord0=3, Position=8).
-            for (size_t idx = 0; idx < std::size(p.ssbo_descriptor_map); ++idx)
+            size_t idx = 0;
+            for (auto &d : p.ssbo_descriptor_map)
             {
-                auto *d = p.ssbo_descriptor_map[idx].get();
                 if (d) { d->set = set; d->binding = (int)idx; }
+                ++idx;
             }
         }
         else
