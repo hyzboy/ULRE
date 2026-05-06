@@ -31,14 +31,9 @@ std::unique_ptr<MaterialCreateInfo> CreateVertexColor2DOwned(const contract::Phy
     return CreateFromFixedDef2DOwned("VertexColor2D", profile, def, key, vs_preamble, fs_preamble, cfg, desc);
 }
 
-static std::unique_ptr<MaterialCreateInfo> VertexColor2D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateVertexColor2DOwned(profile, static_cast<const Material2DCreateConfig *>(cfg), *desc, key); }
-
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(VertexColor2D, "VertexColor2D", hgl::graph::mtl::VertexColor2D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(
+    VertexColor2D,
+    const hgl::graph::mtl::Material2DCreateConfig)

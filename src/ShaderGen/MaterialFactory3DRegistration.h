@@ -26,3 +26,31 @@
         };                                                                           \
         static AutoReg_##preset s_auto_reg_##preset;                                 \
     }
+
+/// 从 Owned Creator 自动生成 adapter 并注册。
+///
+/// 适用于常见签名：
+///   Create{Preset}Owned(profile, TypedConfig*, const MaterialVariantDesc&, const MaterialVariantKey&)
+///
+/// 用法：
+///   ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(
+///       Gizmo3D,
+///       hgl::graph::mtl::Material3DCreateConfig)
+///
+/// 约定：
+///   - 日志 name 自动使用 #preset
+///   - Owned creator 自动拼接为 ::hgl::graph::mtl::Create##preset##Owned
+#define ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(preset, cfg_type)                   \
+    namespace {                                                                      \
+        static std::unique_ptr<::hgl::graph::mtl::MaterialCreateInfo>               \
+            AutoAdapter_##preset(                                                    \
+                const ::hgl::graph::mtl::contract::PhysicalDeviceProfileLite *profile, \
+                const ::hgl::graph::mtl::MaterialVariantDesc *desc,                 \
+                const ::hgl::graph::mtl::MaterialVariantKey &key,                   \
+                ::hgl::graph::mtl::MaterialCreateConfig *cfg)                       \
+        {                                                                            \
+            return ::hgl::graph::mtl::Create##preset##Owned(                        \
+                profile, static_cast<cfg_type *>(cfg), *desc, key);                 \
+        }                                                                            \
+    }                                                                                \
+    ULRE_REGISTER_PRESET_FACTORY(preset, #preset, AutoAdapter_##preset)

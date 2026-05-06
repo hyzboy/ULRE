@@ -40,14 +40,9 @@ std::unique_ptr<MaterialCreateInfo> CreateGizmo3DOwned(const contract::PhysicalD
 
     return CreateFromFixedDef3DOwned("Gizmo3D", profile, GIZMO_3D_DEF, key, cfg, desc);
 }
-
-static std::unique_ptr<MaterialCreateInfo> Gizmo3D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateGizmo3DOwned(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(Gizmo3D, "Gizmo3D", hgl::graph::mtl::Gizmo3D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(
+    Gizmo3D,
+    hgl::graph::mtl::Material3DCreateConfig)

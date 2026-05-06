@@ -67,14 +67,17 @@ std::unique_ptr<MaterialCreateInfo> CreateFullscreenTriangleOwned(const contract
                                           &local_cfg);
 }
 
-static std::unique_ptr<MaterialCreateInfo> FullscreenTriangle_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *,
-    const MaterialVariantKey                  &,
-    MaterialCreateConfig *cfg)
-{ return CreateFullscreenTriangleOwned(profile, static_cast<Material3DCreateConfig *>(cfg)); }
+std::unique_ptr<MaterialCreateInfo> CreateFullscreenTriangleOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                                  Material3DCreateConfig *cfg,
+                                                                  const MaterialVariantDesc &,
+                                                                  const MaterialVariantKey &)
+{
+    return CreateFullscreenTriangleOwned(profile, cfg);
+}
 
 } // namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(FullscreenTriangle, "FullscreenTriangle", hgl::graph::mtl::FullscreenTriangle_Adapter)
+ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(
+    FullscreenTriangle,
+    hgl::graph::mtl::Material3DCreateConfig)

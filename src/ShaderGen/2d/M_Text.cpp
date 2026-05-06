@@ -56,15 +56,10 @@ std::unique_ptr<MaterialCreateInfo> CreateText2DOwned(const contract::PhysicalDe
         std::fprintf(stderr, "[Text2D] CompileCompositorMaterial failed\n");
     return mci;
 }
-
-static std::unique_ptr<MaterialCreateInfo> Text2D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateText2DOwned(profile, static_cast<const Text2DMaterialCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(Text2D, "Text2D", hgl::graph::mtl::Text2D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(
+    Text2D,
+    const hgl::graph::mtl::Text2DMaterialCreateConfig)
 

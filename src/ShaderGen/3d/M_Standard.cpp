@@ -176,15 +176,18 @@ std::unique_ptr<MaterialCreateInfo> CreateStandardVariantOwned(const contract::P
     return mci;
 }
 
-static std::unique_ptr<MaterialCreateInfo> Standard_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateStandardVariantOwned(profile, *desc, key, static_cast<const Material3DCreateConfig *>(cfg)); }
+std::unique_ptr<MaterialCreateInfo> CreateStandardOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                        const Material3DCreateConfig *cfg,
+                                                        const MaterialVariantDesc &desc,
+                                                        const MaterialVariantKey &key)
+{
+    return CreateStandardVariantOwned(profile, desc, key, cfg);
+}
 
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(Standard, "Standard", hgl::graph::mtl::Standard_Adapter)
+ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(
+    Standard,
+    const hgl::graph::mtl::Material3DCreateConfig)
 

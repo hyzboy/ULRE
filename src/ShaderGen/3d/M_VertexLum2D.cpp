@@ -51,14 +51,9 @@ std::unique_ptr<MaterialCreateInfo> CreateVertexLuminance2DOwned(const contract:
 
     return CreateFromFixedDef3DOwned("VertexLuminance2D", profile, def, local_key, cfg, desc);
 }
-
-static std::unique_ptr<MaterialCreateInfo> VertexLuminance2D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateVertexLuminance2DOwned(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(VertexLuminance2D, "VertexLuminance2D", hgl::graph::mtl::VertexLuminance2D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(
+    VertexLuminance2D,
+    hgl::graph::mtl::Material3DCreateConfig)

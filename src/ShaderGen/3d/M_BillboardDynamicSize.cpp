@@ -116,14 +116,10 @@ std::unique_ptr<MaterialCreateInfo> CreateBillboard2DDynamicOwned(const contract
     return mci;
 }
 
-static std::unique_ptr<MaterialCreateInfo> Billboard2DDynamic_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateBillboard2DDynamicOwned(profile, static_cast<BillboardMaterialCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(Billboard2DDynamic, "Billboard2DDynamic", hgl::graph::mtl::Billboard2DDynamic_Adapter)
+ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(
+    Billboard2DDynamic,
+    hgl::graph::mtl::BillboardMaterialCreateConfig)
 

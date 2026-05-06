@@ -43,14 +43,9 @@ std::unique_ptr<MaterialCreateInfo> CreateVertexPaletteColor3DOwned(const contra
 
     return CreateFromFixedDef3DOwned("VertexPaletteColor3D", profile, VERTEX_PALETTE_COLOR_3D_DEF, key, &local_cfg, desc);
 }
-
-static std::unique_ptr<MaterialCreateInfo> VertexPaletteColor3D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateVertexPaletteColor3DOwned(profile, static_cast<const Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(VertexPaletteColor3D, "VertexPaletteColor3D", hgl::graph::mtl::VertexPaletteColor3D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(
+    VertexPaletteColor3D,
+    const hgl::graph::mtl::Material3DCreateConfig)

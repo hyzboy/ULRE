@@ -34,14 +34,9 @@ std::unique_ptr<MaterialCreateInfo> CreatePureColor3DOwned(const contract::Physi
 {
     return CreateFromFixedDef3DOwned("PureColor3D", profile, PURE_COLOR_3D_DEF, key, cfg, desc);
 }
-
-static std::unique_ptr<MaterialCreateInfo> PureColor3D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreatePureColor3DOwned(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(PureColor3D, "PureColor3D", hgl::graph::mtl::PureColor3D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(
+    PureColor3D,
+    hgl::graph::mtl::Material3DCreateConfig)

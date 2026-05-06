@@ -47,14 +47,9 @@ std::unique_ptr<MaterialCreateInfo> CreateTerrainGridOwned(const contract::Physi
 {
     return CreateFromFixedDef3DOwned("TerrainGrid", profile, TERRAIN_GRID_DEF, key, cfg, desc);
 }
-
-static std::unique_ptr<MaterialCreateInfo> TerrainGrid_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateTerrainGridOwned(profile, static_cast<const TerrainGridCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(TerrainGrid, "TerrainGrid", hgl::graph::mtl::TerrainGrid_Adapter)
+ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(
+    TerrainGrid,
+    const hgl::graph::mtl::TerrainGridCreateConfig)

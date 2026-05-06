@@ -38,14 +38,9 @@ std::unique_ptr<MaterialCreateInfo> CreateVertexLuminance3DOwned(const contract:
 
     return CreateFromFixedDef3DOwned("VertexLuminance3D", profile, VERTEX_LUMINANCE_3D_DEF, key, cfg, desc);
 }
-
-static std::unique_ptr<MaterialCreateInfo> VertexLuminance3D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateVertexLuminance3DOwned(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(VertexLuminance3D, "VertexLuminance3D", hgl::graph::mtl::VertexLuminance3D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(
+    VertexLuminance3D,
+    hgl::graph::mtl::Material3DCreateConfig)

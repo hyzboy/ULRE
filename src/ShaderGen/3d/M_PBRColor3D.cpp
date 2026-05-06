@@ -125,15 +125,18 @@ std::unique_ptr<MaterialCreateInfo> CreatePBRColor3DOwned(const contract::Physic
     return mci;
 }
 
-static std::unique_ptr<MaterialCreateInfo> PBRColor3D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &,
-    MaterialCreateConfig *cfg)
-{ return CreatePBRColor3DOwned(profile, *desc, static_cast<PBRColor3DMaterialCreateConfig *>(cfg)); }
+std::unique_ptr<MaterialCreateInfo> CreatePBRColor3DOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                          PBRColor3DMaterialCreateConfig *cfg,
+                                                          const MaterialVariantDesc &desc,
+                                                          const MaterialVariantKey &)
+{
+    return CreatePBRColor3DOwned(profile, desc, cfg);
+}
 
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(PBRColor3D, "PBRColor3D", hgl::graph::mtl::PBRColor3D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY_FROM_OWNED(
+    PBRColor3D,
+    hgl::graph::mtl::PBRColor3DMaterialCreateConfig)
 
