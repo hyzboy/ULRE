@@ -40,10 +40,8 @@ SOURCE_GROUP("GLSL Compiler" FILES ${GLSL_COMPILER_SOURCE})
 SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UBOCommon.h
                             ${STD_MTL_HEADER_PATH}/SamplerSlot.h
                             ${STD_MTL_HEADER_PATH}/ShaderVariableType.h
-                            ${SHADERGEN_INCLUDE_PATH}/ShaderLibraryPath.h
                             ${SHADERGEN_INCLUDE_PATH}/ShaderWriter.h
                             ShaderVariableType.cpp
-                            ShaderLibraryPath.cpp
                             ShaderWriter.cpp
                             common/UBOCommon.cpp)
 SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})

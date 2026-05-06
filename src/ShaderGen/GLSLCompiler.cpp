@@ -1,7 +1,6 @@
 ﻿#include"GLSLCompiler.h"
 #include"TBuiltInResourceCompat.h"
 #include"SPVParseData.h"
-#include <hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/platform/ExternalModule.h>
 #include<hgl/type/StringList.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -42,6 +41,24 @@ namespace hgl
         static bool g_pd_profile_valid = false;
 
         static CompileInfo compile_info;
+        static std::string g_shader_library_path = "ShaderLibrary";
+
+        static const std::string &GetShaderLibraryPathFromContextStorage()
+        {
+            return g_shader_library_path;
+        }
+
+        static bool UpdateShaderLibraryPathInContextStorage(const std::string &path)
+        {
+            if(path.empty())
+                return false;
+
+            const bool path_changed = (path != g_shader_library_path);
+            if(path_changed)
+                g_shader_library_path = path;
+
+            return path_changed;
+        }
 
         struct GLSLCompilerInterface
         {
@@ -258,12 +275,9 @@ namespace hgl
         {
             if(!context.shader_library_path.empty())
             {
-                const bool path_changed = (context.shader_library_path != GetShaderLibraryPath());
+                const bool path_changed = UpdateShaderLibraryPathInContextStorage(context.shader_library_path);
                 if(path_changed)
-                {
-                    SetShaderLibraryPath(context.shader_library_path);
                     AddShaderIncludePath(context.shader_library_path.c_str());
-                }
             }
 
             if(context.has_profile)
@@ -273,7 +287,7 @@ namespace hgl
         ShaderCompilerContext CaptureShaderCompilerContext()
         {
             ShaderCompilerContext context;
-            context.shader_library_path = GetShaderLibraryPath();
+            context.shader_library_path = GetShaderLibraryPathFromContextStorage();
             context.has_profile = g_pd_profile_valid;
 
             if(g_pd_profile_valid)
