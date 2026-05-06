@@ -232,6 +232,47 @@ static void test_standard_def_id_matches_canonical_definition()
     CHECK_EQ(array.def_id, expected_array);
 }
 
+/// Schema must follow the registered StaticMaterialDef when def_id is valid.
+static void test_schema_matches_registered_def_when_def_id_is_valid()
+{
+    const auto flat = ResolveRecipePrimaryKey(MakeStandardRecipe());
+    const auto array = ResolveRecipePrimaryKey(MakeStandardArrayRecipe());
+
+    const auto *flat_def = StaticMaterialDefRegistry::Instance().Get(flat.def_id);
+    const auto *array_def = StaticMaterialDefRegistry::Instance().Get(array.def_id);
+
+    CHECK_TRUE(flat_def != nullptr);
+    CHECK_TRUE(array_def != nullptr);
+    if (!flat_def || !array_def) return;
+
+    CHECK_EQ(flat.schema, flat_def->shader_data_schema);
+    CHECK_EQ(array.schema, array_def->shader_data_schema);
+
+    MaterialRecipe alias = MakeStandardRecipe();
+    alias.preset = MaterialPreset::HumanSkin;
+
+    const auto alias_key = ResolveRecipePrimaryKey(alias);
+    const auto *alias_def = StaticMaterialDefRegistry::Instance().Get(alias_key.def_id);
+
+    CHECK_TRUE(alias_def != nullptr);
+    if (!alias_def) return;
+
+    CHECK_EQ(alias_key.schema, alias_def->shader_data_schema);
+}
+
+/// Non-static presets (def_id invalid) should keep preset-based schema fallback.
+static void test_nonstatic_preset_schema_fallback_still_applies()
+{
+    MaterialRecipe r;
+    r.preset = MaterialPreset::PureColor2D;
+    r.dim = MaterialRecipe::Dim::D2;
+
+    const auto key = ResolveRecipePrimaryKey(r);
+
+    CHECK_EQ(key.def_id, kInvalidStaticMaterialDefId);
+    CHECK_EQ(key.schema, ShaderDataSchema::Color4f);
+}
+
 /// Toolchain version constants have expected values.
 static void test_toolchain_version_constants()
 {
@@ -257,6 +298,8 @@ int main()
     test_primary_pass_matches_pass_expansion_front();
     test_compositor_and_pass_expansion_are_consistent();
     test_standard_def_id_matches_canonical_definition();
+    test_schema_matches_registered_def_when_def_id_is_valid();
+    test_nonstatic_preset_schema_fallback_still_applies();
     test_toolchain_version_constants();
 
     if (g_failures == 0)

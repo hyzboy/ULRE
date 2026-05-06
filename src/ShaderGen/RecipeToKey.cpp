@@ -76,13 +76,23 @@ static StaticMaterialDefId ResolveDefIdForRecipe(const MaterialRecipe &r) noexce
     }
 }
 
-/// Map a preset to its default ShaderDataSchema.
+/// Resolve ShaderDataSchema for the recipe.
 ///
-/// TODO(Step-6): replace with StaticMaterialDef lookup once def_id is wired up.
-/// Until then this table provides stable defaults for the key's schema field.
-static ShaderDataSchema GetDefaultSchemaForPreset(const MaterialPreset p) noexcept
+/// Step-6: prefer def_id-driven schema from StaticMaterialDefRegistry.
+/// When def_id is unavailable (non-static presets), fall back to preset defaults.
+static ShaderDataSchema ResolveSchemaForRecipe(const MaterialRecipe &r,
+                                               const StaticMaterialDefId def_id) noexcept
 {
-    switch (p)
+    if (def_id != kInvalidStaticMaterialDefId)
+    {
+        const StaticMaterialDef *def =
+            StaticMaterialDefRegistry::Instance().Get(def_id);
+
+        if (def)
+            return def->shader_data_schema;
+    }
+
+    switch (r.preset)
     {
     case MaterialPreset::PureColor2D:
     case MaterialPreset::PureColor3D:
@@ -247,11 +257,11 @@ MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &r) noexcept
     // Phase C: primary pass
     k.pass = detail::GetPrimaryPassForBlendMode(vk.blend_mode);
 
-    // Phase D: schema
-    k.schema = GetDefaultSchemaForPreset(r.preset);
-
-    // Phase E: def_id
+    // Phase D: def_id
     k.def_id = ResolveDefIdForRecipe(r);
+
+    // Phase E: schema (def_id-driven with preset fallback)
+    k.schema = ResolveSchemaForRecipe(r, k.def_id);
 
     // Phase F: toolchain versions
     k.glsl_version = kMaterialKeyGLSLVersion;

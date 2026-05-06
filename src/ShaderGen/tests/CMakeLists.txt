@@ -147,6 +147,19 @@ set_property(TARGET ShaderCompilerContextContractTests PROPERTY FOLDER "ULRE/Tes
 
 add_test(NAME ShaderCompilerContextContractTests COMMAND ShaderCompilerContextContractTests)
 
+# VariantLookupCanonicalizationTests validates registry lookup canonicalization
+# contracts for provider overrides, sky normalization, feature-mask matching,
+# and billboard blend/pass route consistency.
+add_executable(VariantLookupCanonicalizationTests
+    VariantLookupCanonicalizationTests.cpp
+)
+
+link_ulre_for_tests(VariantLookupCanonicalizationTests)
+
+set_property(TARGET VariantLookupCanonicalizationTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME VariantLookupCanonicalizationTests COMMAND VariantLookupCanonicalizationTests)
+
 # MaterialKeyAbiSnapshot guards sizeof/alignof, constants, and hash stability.
 add_executable(MaterialKeyAbiSnapshot
     MaterialKeyAbiSnapshot.cpp
