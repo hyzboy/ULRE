@@ -4,13 +4,23 @@
 #include <hgl/shadergen/internal/CompositorSourceDefines.h>
 #include <hgl/shadergen/internal/CompositorTemplateCompose.h>
 #include <hgl/shadergen/internal/GLSLSourceUtils.h>
-#include <hgl/shadergen/ShaderLibraryPath.h>
+#include <hgl/shadergen/GLSLCompilerConfig.h>
 #include <hgl/mtl/PassExpansion.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 
 namespace
 {
+    std::string ResolveShaderLibraryPathFromContext()
+    {
+        const hgl::graph::ShaderCompilerContext shader_context = hgl::graph::CaptureShaderCompilerContext();
+
+        if(!shader_context.shader_library_path.empty())
+            return shader_context.shader_library_path;
+
+        return "ShaderLibrary";
+    }
+
     hgl::graph::CompositorAssembler::AssembleResult MakeError(std::string message)
     {
         hgl::graph::CompositorAssembler::AssembleResult result;
@@ -23,7 +33,7 @@ namespace
 namespace hgl::graph
 {
     CompositorAssembler::CompositorAssembler()
-        : CompositorAssembler(GetShaderLibraryPath())
+        : CompositorAssembler(ResolveShaderLibraryPathFromContext())
     {}
 
     CompositorAssembler::CompositorAssembler(const std::string &shader_library_path)

@@ -2,6 +2,7 @@
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/GLSLCompilerConfig.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <cstdio>
 #include <vector>
@@ -153,7 +154,8 @@ std::unique_ptr<MaterialCreateInfo> CreateStandardVariantOwned(const contract::P
     // in the VertexStreams descriptor set so the pipeline layout includes set=4.
     dynamic_def.vertex_stream_key = &assemble_key;
 
-    CompositorAssembler assembler;
+    const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+    CompositorAssembler assembler(shader_context.shader_library_path);
 
     auto result = assembler.Assemble(assemble_key, *var_desc);
 

@@ -8,6 +8,7 @@
 //   doc/refactor/golden/phase0/index.md
 
 #include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/GLSLCompilerConfig.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/SamplerSlot.h>
 
@@ -186,7 +187,8 @@ int main(int argc, char **argv)
     std::vector<DumpRow> rows;
     rows.reserve(kPhase0CandidateNames.size());
 
-    CompositorAssembler assembler;
+    const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+    CompositorAssembler assembler(shader_context.shader_library_path);
     int failures = 0;
 
     for (const char *name : kPhase0CandidateNames)

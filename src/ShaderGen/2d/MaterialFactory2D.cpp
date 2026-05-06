@@ -2,6 +2,7 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
+#include<hgl/shadergen/GLSLCompilerConfig.h>
 #include<cstdio>
 
 namespace hgl::graph::mtl{
@@ -25,7 +26,8 @@ std::unique_ptr<MaterialCreateInfo> CreateFromFixedDef2DOwned(const char *debug_
     for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
         assemble_key.SetVertexAttribEnabled(def.vertex_entries[i].attrib);
 
-    CompositorAssembler assembler;
+    const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+    CompositorAssembler assembler(shader_context.shader_library_path);
     const auto result = assembler.Assemble(assemble_key, var_desc);
     if(!result.success)
     {

@@ -1,5 +1,5 @@
 #include <hgl/mtl/ShaderDataSchema.h>
-#include <hgl/shadergen/ShaderLibraryPath.h>
+#include <hgl/shadergen/GLSLCompilerConfig.h>
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -44,13 +44,23 @@ namespace
         return true;
     }
 
+    static std::string ResolveShaderLibraryPathFromContext()
+    {
+        const graph::ShaderCompilerContext shader_context = graph::CaptureShaderCompilerContext();
+
+        if (!shader_context.shader_library_path.empty())
+            return shader_context.shader_library_path;
+
+        return "ShaderLibrary";
+    }
+
     static uint32_t ComputeSchemaByteSize(const char *schema_file)
     {
         if (!schema_file || !schema_file[0])
             return 0;
 
         std::string glsl;
-        const std::string path = graph::GetShaderLibraryPath() + "/common/schema/" + schema_file;
+        const std::string path = ResolveShaderLibraryPathFromContext() + "/common/schema/" + schema_file;
         if (!ReadTextFile(path, glsl))
             return 0;
 
@@ -68,7 +78,7 @@ namespace
             ShaderDataSchemaInfo &info = kSchemaTable[i];
 
             std::string glsl;
-            const std::string path = graph::GetShaderLibraryPath() + "/common/schema/" + info.glsl_schema_file;
+            const std::string path = ResolveShaderLibraryPathFromContext() + "/common/schema/" + info.glsl_schema_file;
             if (!ReadTextFile(path, glsl))
             {
                 std::fprintf(stderr,

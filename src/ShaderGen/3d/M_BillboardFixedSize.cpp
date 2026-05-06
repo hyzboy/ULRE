@@ -1,6 +1,7 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
+#include<hgl/shadergen/GLSLCompilerConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialVariantDesc.h>
 #include<hgl/mtl/SamplerSlot.h>
@@ -90,7 +91,8 @@ std::unique_ptr<MaterialCreateInfo> CreateBillboard2DFixedOwned(const contract::
         static_cast<unsigned long long>(routing_key.Hash()),
         static_cast<unsigned long long>(assemble_key.Hash()));
 
-    CompositorAssembler assembler;
+    const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+    CompositorAssembler assembler(shader_context.shader_library_path);
 
     auto result = assembler.Assemble(assemble_key, desc);
 

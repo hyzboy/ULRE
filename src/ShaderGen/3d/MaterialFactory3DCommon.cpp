@@ -4,6 +4,7 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
+#include<hgl/shadergen/GLSLCompilerConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<cstdio>
 
@@ -31,7 +32,8 @@ std::unique_ptr<MaterialCreateInfo> CreateFromFixedDef3DOwned(
     MaterialVariantKey assemble_key = var_key;
     PopulateVariantKeyVertexAttribBits(assemble_key, def);
 
-    CompositorAssembler assembler;
+    const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+    CompositorAssembler assembler(shader_context.shader_library_path);
 
     auto result = assembler.Assemble(assemble_key, var_desc);
 

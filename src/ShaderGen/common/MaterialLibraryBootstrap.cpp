@@ -3,7 +3,7 @@
 
 #include <hgl/mtl/MaterialVariantRegistry.h>
 #include <hgl/shadergen/MaterialFactory3D.h>
-#include <hgl/shadergen/ShaderLibraryPath.h>
+#include <hgl/shadergen/GLSLCompilerConfig.h>
 
 #include "../BuiltinVariantEntry.h"
 
@@ -18,12 +18,22 @@ namespace hgl::graph::mtl::bootstrap
 namespace
 {
 
+std::string ResolveShaderLibraryPathFromContext()
+{
+    const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+
+    if(!shader_context.shader_library_path.empty())
+        return shader_context.shader_library_path;
+
+    return "ShaderLibrary";
+}
+
 bool RunStartupVariantValidation()
 {
     std::vector<std::string> diagnostics;
 
     const bool ok = GetBuiltinVariantRegistry().ValidateBuiltinVariantTemplates(
-        GetShaderLibraryPath(),
+        ResolveShaderLibraryPathFromContext(),
         diagnostics);
 
     if (ok)

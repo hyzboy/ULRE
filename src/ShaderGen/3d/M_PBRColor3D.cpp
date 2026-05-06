@@ -2,6 +2,7 @@
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/GLSLCompilerConfig.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <cstdio>
 #include <vector>
@@ -101,7 +102,8 @@ std::unique_ptr<MaterialCreateInfo> CreatePBRColor3DOwned(const contract::Physic
         "[PBRColor3D] VariantRegistry resolved variant=%s\n",
         desc.variant_name.c_str());
 
-    CompositorAssembler assembler;
+    const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+    CompositorAssembler assembler(shader_context.shader_library_path);
 
     auto result = assembler.Assemble(var_key, desc);
 

@@ -7,6 +7,7 @@
 //  4) Compositor-prefixed template path must route to generated source.
 
 #include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/GLSLCompilerConfig.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 
@@ -46,7 +47,8 @@ static void test_generated_sources_inject_key_defines_and_surface_include()
     MaterialVariantDesc desc;
     desc.surface_function_path = "surface/golden_surface.glsl";
 
-    CompositorAssembler assembler;
+    const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+    CompositorAssembler assembler(shader_context.shader_library_path);
     const auto result = assembler.Assemble(key, desc);
 
     CHECK_TRUE(result.success);
@@ -85,7 +87,8 @@ static void test_non_array_texture_mode_does_not_inject_array_define()
     MaterialVariantDesc desc;
     desc.surface_function_path = "surface/golden_surface.glsl";
 
-    CompositorAssembler assembler;
+    const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+    CompositorAssembler assembler(shader_context.shader_library_path);
     const auto result = assembler.Assemble(key, desc);
 
     CHECK_TRUE(result.success);
@@ -105,7 +108,8 @@ static void test_non_compositor_template_path_reports_read_failure()
     desc.vs_template_path = "tests/nonexistent_custom_template.vert.glsl";
     desc.surface_function_path = "surface/golden_surface.glsl";
 
-    CompositorAssembler assembler;
+    const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+    CompositorAssembler assembler(shader_context.shader_library_path);
     const auto result = assembler.Assemble(key, desc);
 
     CHECK_TRUE(!result.success);
@@ -125,7 +129,8 @@ static void test_compositor_prefixed_vs_template_path_uses_generation_route()
     desc.vs_template_path = "compositor/nonexistent_custom_template.vert.glsl";
     desc.surface_function_path = "surface/golden_surface.glsl";
 
-    CompositorAssembler assembler;
+    const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+    CompositorAssembler assembler(shader_context.shader_library_path);
     const auto result = assembler.Assemble(key, desc);
 
     CHECK_TRUE(result.success);
@@ -146,7 +151,8 @@ static void test_compositor_prefixed_fs_template_path_uses_generation_route()
     desc.fs_template_path = "compositor/nonexistent_custom_template.frag.glsl";
     desc.surface_function_path = "surface/golden_surface.glsl";
 
-    CompositorAssembler assembler;
+    const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+    CompositorAssembler assembler(shader_context.shader_library_path);
     const auto result = assembler.Assemble(key, desc);
 
     CHECK_TRUE(result.success);

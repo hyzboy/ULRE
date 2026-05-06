@@ -2,6 +2,7 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
+#include<hgl/shadergen/GLSLCompilerConfig.h>
 #include<hgl/mtl/SamplerSlot.h>
 #include<hgl/mtl/MaterialVariantDesc.h>
 #include<cstdio>
@@ -26,7 +27,8 @@ std::unique_ptr<MaterialCreateInfo> CreateText2DOwned(const contract::PhysicalDe
     auto vs_preamble = build2d::Build2DVertexPreamble(&new_cfg, true, true, SamplerSlot::Text);
     auto fs_preamble = build2d::Build2DFragmentPreamble(&new_cfg, true, true, SamplerSlot::Text);
 
-    CompositorAssembler assembler;
+    const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+    CompositorAssembler assembler(shader_context.shader_library_path);
     const auto result = assembler.Assemble(key, desc);
     if (!result.success)
     {

@@ -326,7 +326,9 @@ namespace hgl
                         if(g_pd_profile_valid)
                             ApplyPhysicalDeviceProfileToCompilerLimits(g_pd_profile);
 
-                        AddShaderIncludePath(GetShaderLibraryPath().c_str());
+                        const ShaderCompilerContext shader_context = CaptureShaderCompilerContext();
+                        if(!shader_context.shader_library_path.empty())
+                            AddShaderIncludePath(shader_context.shader_library_path.c_str());
 
                         return(true);
                     }
