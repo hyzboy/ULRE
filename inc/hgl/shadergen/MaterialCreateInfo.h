@@ -125,7 +125,7 @@ namespace hgl::graph
         public:
 
             MaterialCreateInfo(const MaterialCreateConfig *);
-            ~MaterialCreateInfo();  // Need explicit destructor to properly clean up shader_map
+            ~MaterialCreateInfo() = default;
 
             /// Compile shader stages from FinalGLSL to SPV.
             /// Call this after SetFinalGLSL() on shaders to build SPV binaries.

@@ -232,11 +232,6 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     local_to_world = LocalToWorldBlock{0, 0, config.local_to_world};
 }
 
-MaterialCreateInfo::~MaterialCreateInfo()
-{
-    shader_map.Clear();
-}
-
 bool MaterialCreateInfo::AddResolvedUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const UBODescriptorSemantic semantic,const std::string &struct_name,const std::string &name)
 {
     if(flag_bits==0)return(false);          //没有任何SHADER用?

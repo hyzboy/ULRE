@@ -8,12 +8,34 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <memory>
 #include <vector>
 
 namespace hgl::graph::mtl
 {
 namespace
 {
+    struct SPVDataDeleter
+    {
+        void operator()(SPVData *ptr) const noexcept
+        {
+            if (ptr)
+                FreeSPVData(ptr);
+        }
+    };
+
+    struct SPVParseDataDeleter
+    {
+        void operator()(SPVParseData *ptr) const noexcept
+        {
+            if (ptr)
+                FreeShaderSPVParseData(ptr);
+        }
+    };
+
+    using SPVDataHandle = std::unique_ptr<SPVData, SPVDataDeleter>;
+    using SPVParseDataHandle = std::unique_ptr<SPVParseData, SPVParseDataDeleter>;
+
     struct ReflectedResource
     {
         std::string name;
@@ -227,7 +249,7 @@ namespace
         if (source.empty())
             return true;
 
-        SPVData *spv = CompileShader(stage_flags, source.c_str());
+        SPVDataHandle spv(CompileShader(stage_flags, source.c_str()));
         if (!spv)
         {
             if (diagnostics)
@@ -235,20 +257,17 @@ namespace
             return false;
         }
 
-        SPVParseData *parse_data = ParseShaderSPV(spv);
+        SPVParseDataHandle parse_data(ParseShaderSPV(spv.get()));
         if (!parse_data)
         {
             if (diagnostics)
                 *diagnostics += "ParseShaderSPV() returned null for stage " + std::to_string(stage_flags) + "\n";
-            FreeSPVData(spv);
             return false;
         }
 
         for (uint32_t descriptor_type = 0; descriptor_type < VK_DESCRIPTOR_TYPE_COUNT; ++descriptor_type)
             AppendReflectedStageResources(descriptor_type, stage_flags, parse_data->resource[descriptor_type], out_resources);
 
-        FreeShaderSPVParseData(parse_data);
-        FreeSPVData(spv);
         return true;
     }
 
