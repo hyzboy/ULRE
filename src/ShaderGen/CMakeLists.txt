@@ -187,7 +187,9 @@ SOURCE_GROUP("Material Compiler" FILES ${MATERIAL_COMPILER_FILES})
 
 # Material Compiler / Internal
 SET(MATERIAL_COMPILER_INTERNAL_FILES ${SHADERGEN_INCLUDE_PATH}/internal/CompositorMaterialPreparation.h
-                                     internal/CompositorMaterialPreparation.cpp)
+                                     ${SHADERGEN_INCLUDE_PATH}/internal/CompositorLayoutDefines.h
+                                     internal/CompositorMaterialPreparation.cpp
+                                     internal/CompositorLayoutDefines.cpp)
 SOURCE_GROUP("Material Compiler\\Internal" FILES ${MATERIAL_COMPILER_INTERNAL_FILES})
 
 # Material Compiler / Requirements
@@ -224,10 +226,12 @@ SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
 # Compositor / Internal
 SET(COMPOSITOR_INTERNAL_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/internal/GLSLSourceUtils.h
                                     ${SHADERGEN_INCLUDE_PATH}/internal/CompositorAssembleDiagnostics.h
-                                    ${SHADERGEN_INCLUDE_PATH}/internal/CompositorSourceCache.h)
+                                    ${SHADERGEN_INCLUDE_PATH}/internal/CompositorSourceCache.h
+                                    ${SHADERGEN_INCLUDE_PATH}/internal/CompositorTemplateCompose.h)
 SET(COMPOSITOR_INTERNAL_SOURCE_FILES internal/GLSLSourceUtils.cpp
                                     internal/CompositorAssembleDiagnostics.cpp
-                                    internal/CompositorSourceCache.cpp)
+                                    internal/CompositorSourceCache.cpp
+                                    internal/CompositorTemplateCompose.cpp)
 SOURCE_GROUP("Compositor\\Internal" FILES ${COMPOSITOR_INTERNAL_HEADER_FILES}
                                           ${COMPOSITOR_INTERNAL_SOURCE_FILES})
 

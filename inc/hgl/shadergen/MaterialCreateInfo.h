@@ -21,6 +21,13 @@ namespace hgl::graph
     namespace mtl
     {
         class MaterialBuilder;
+        class MaterialCreateInfo;
+
+        namespace internal
+        {
+            bool ApplyCompositorLayoutDefines(MaterialCreateInfo &mci);
+        }
+
         struct MaterialVariantKey;  // forward declare; defined in MaterialVariantKey.h
 
         namespace contract
@@ -33,6 +40,7 @@ namespace hgl::graph
             friend class MaterialBuilder;
             // Forward declare InjectLayoutDefines for friend access
             friend bool InjectLayoutDefines(MaterialCreateInfo &mci);
+            friend bool internal::ApplyCompositorLayoutDefines(MaterialCreateInfo &mci);
 
         protected:
 

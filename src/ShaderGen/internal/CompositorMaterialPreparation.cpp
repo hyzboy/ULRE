@@ -1,5 +1,5 @@
 #include <hgl/shadergen/internal/CompositorMaterialPreparation.h>
-#include <hgl/shadergen/CompositorCompiler.h>
+#include <hgl/shadergen/internal/CompositorLayoutDefines.h>
 #include <hgl/shadergen/internal/GLSLSourceUtils.h>
 #include <hgl/shadergen/MaterialBuilder.h>
 #include <hgl/mtl/MaterialFeature.h>
@@ -349,8 +349,8 @@ std::unique_ptr<MaterialCreateInfo> PrepareCompositorMaterialSnapshotOwned(
     if (def.vertex_stream_key)
         mci->AddVertexStreamSSBOs(*def.vertex_stream_key);
 
-    if (!InjectLayoutDefines(*mci))
-        return FailWithBuilder("InjectLayoutDefines() failed");
+    if (!ApplyCompositorLayoutDefines(*mci))
+        return FailWithBuilder("ApplyCompositorLayoutDefines() failed");
 
     return mci;
 }
