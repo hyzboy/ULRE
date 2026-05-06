@@ -4,14 +4,13 @@
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialVariantRegistry.h>
 #include<hgl/mtl/RecipeToKey.h>
-#include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/shadergen/MaterialFactory3D.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<cstdio>
+#include "common/MaterialLibraryBootstrap.h"
 #include "common/VariantLookupService.h"
 #include "common/VariantRoutingPolicy.h"
-#include "BuiltinVariantEntry.h"
 
 namespace hgl::graph::mtl{
 
@@ -106,79 +105,7 @@ std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract
                                                                   const MaterialVariantKey &key,
                                                                   MaterialCreateConfig *cfg)
 {
-    static const bool s_builtin_factory_registration_done = []()
-    {
-        MaterialFactory3D::RegisterBuiltinFactories();
-        return true;
-    }();
-
-    (void)s_builtin_factory_registration_done;
-
-    static const bool s_startup_variant_validation_done = []()
-    {
-        std::vector<std::string> diagnostics;
-
-        const bool ok = ValidateBuiltinMaterialVariants(GetShaderLibraryPath(),diagnostics);
-        if(ok)
-        {
-            std::printf("[MaterialLibrary] Startup variant validation passed.\n");
-            return true;
-        }
-
-        std::fprintf(stderr,
-                     "[MaterialLibrary] Startup variant validation failed: %zu issue(s).\n",
-                     diagnostics.size());
-
-        for(const auto &msg:diagnostics)
-            std::fprintf(stderr,"[MaterialLibrary] %s\n",msg.c_str());
-
-        return false;
-    }();
-
-    (void)s_startup_variant_validation_done;
-
-    // [Step 3.5 T4] Routing self-test: every kBuiltinVariants entry must round-trip
-    // through the registry (BuildKey → QueryVariantWithCanonicalFallback → factory_type
-    // must equal entry.preset). Any mismatch is a programming error → abort immediately.
-    static const bool s_routing_consistency_ok = []() noexcept
-    {
-        bool all_ok = true;
-        for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
-        {
-            const auto &e = kBuiltinVariants[i];
-            const MaterialVariantKey k = BuildKey(e);
-            const MaterialVariantDesc *found =
-                GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(k, nullptr);
-            const bool entry_ok = found
-                                && found->factory_type.has_value()
-                                && *found->factory_type == e.preset;
-            if (!entry_ok)
-            {
-                std::fprintf(stderr,
-                    "[MaterialLibrary] FATAL: routing self-test FAILED for entry[%zu] \"%s\""
-                    " (preset=%u): registry returned %s\n",
-                    i,
-                    e.name,
-                    static_cast<unsigned>(e.preset),
-                    found ? (found->factory_type.has_value()
-                             ? "wrong factory_type"
-                             : "desc with no factory_type")
-                          : "nullptr");
-                all_ok = false;
-            }
-        }
-        if (!all_ok)
-        {
-            std::fprintf(stderr,
-                "[MaterialLibrary] FATAL: BuiltinVariantEntry routing self-test failed"
-                " — aborting to prevent undefined behaviour in main loop.\n");
-            std::abort();
-        }
-        std::printf("[MaterialLibrary] BuiltinVariantEntry routing self-test passed"
-                    " (%zu entries).\n", kBuiltinVariantsCount);
-        return true;
-    }();
-    (void)s_routing_consistency_ok;
+    bootstrap::EnsureMaterialLibraryBootstrap();
 
     if(!cfg)
     {
