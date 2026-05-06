@@ -342,9 +342,9 @@ std::unique_ptr<MaterialCreateInfo> PrepareCompositorMaterialSnapshotOwned(
     if (frag)
         frag->SetFinalGLSL(final_fs_glsl);
 
-    std::unique_ptr<MaterialCreateInfo> mci(builder.BuildSnapshotOnly());
+    std::unique_ptr<MaterialCreateInfo> mci = builder.BuildSnapshotOwned();
     if (!mci)
-        return FailWithBuilder("MaterialBuilder::BuildSnapshotOnly() failed");
+        return FailWithBuilder("MaterialBuilder::BuildSnapshotOwned() failed");
 
     if (def.vertex_stream_key)
         mci->AddVertexStreamSSBOs(*def.vertex_stream_key);

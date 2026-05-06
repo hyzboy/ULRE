@@ -63,7 +63,15 @@ namespace hgl::graph
 
             /// Complete the build, compile SPV, and return owning MaterialCreateInfo*.
             /// Returns nullptr on failure. After this call, builder owns nothing.
+            std::unique_ptr<MaterialCreateInfo> BuildOwned();
+
+            /// Complete the build, compile SPV, and return owning MaterialCreateInfo*.
+            /// Returns nullptr on failure. After this call, builder owns nothing.
             MaterialCreateInfo *Build();
+
+            /// Build without compiling SPV (snapshot only, for reflection).
+            /// Returns nullptr on failure. After this call, builder owns nothing.
+            std::unique_ptr<MaterialCreateInfo> BuildSnapshotOwned();
 
             /// Build without compiling SPV (snapshot only, for reflection).
             /// Returns nullptr on failure. After this call, builder owns nothing.

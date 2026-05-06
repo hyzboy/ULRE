@@ -97,7 +97,7 @@ namespace hgl::graph::mtl
             building_->Resort();
     }
 
-    MaterialCreateInfo *MaterialBuilder::Build()
+    std::unique_ptr<MaterialCreateInfo> MaterialBuilder::BuildOwned()
     {
         if(!building_)
             return nullptr;
@@ -117,10 +117,15 @@ namespace hgl::graph::mtl
         }
 
         // Transfer ownership to caller
-        return building_.release();
+        return std::move(building_);
     }
 
-    MaterialCreateInfo *MaterialBuilder::BuildSnapshotOnly()
+    MaterialCreateInfo *MaterialBuilder::Build()
+    {
+        return BuildOwned().release();
+    }
+
+    std::unique_ptr<MaterialCreateInfo> MaterialBuilder::BuildSnapshotOwned()
     {
         if(!building_)
             return nullptr;
@@ -130,6 +135,11 @@ namespace hgl::graph::mtl
         building_->BuildBindingContract();
 
         // Transfer ownership to caller
-        return building_.release();
+        return std::move(building_);
+    }
+
+    MaterialCreateInfo *MaterialBuilder::BuildSnapshotOnly()
+    {
+        return BuildSnapshotOwned().release();
     }
 }
