@@ -38,8 +38,6 @@ namespace hgl::graph
         class MaterialCreateInfo
         {
             friend class MaterialBuilder;
-            // Forward declare InjectLayoutDefines for friend access
-            friend bool InjectLayoutDefines(MaterialCreateInfo &mci);
             friend bool internal::ApplyCompositorLayoutDefines(MaterialCreateInfo &mci);
 
         protected:
@@ -134,7 +132,7 @@ namespace hgl::graph
             bool CompileSPV();
 
             /// Register SSBO descriptors for the VertexStreams descriptor set (set=4).
-            /// Call after BuildSnapshotOwned() and before InjectLayoutDefines().
+            /// Call after BuildSnapshotOwned() and before internal::ApplyCompositorLayoutDefines().
             /// Bindings are assigned by semantic index to match CompositorAssembler macros.
             void AddVertexStreamSSBOs(const MaterialVariantKey &key);
         };//class MaterialCreateInfo

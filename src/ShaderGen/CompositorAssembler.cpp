@@ -1,13 +1,13 @@
 ﻿#include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/CompositorTemplateRouter.h>
 #include <hgl/shadergen/internal/CompositorAssembleDiagnostics.h>
+#include <hgl/shadergen/internal/CompositorSourceDefines.h>
 #include <hgl/shadergen/internal/CompositorTemplateCompose.h>
 #include <hgl/shadergen/internal/GLSLSourceUtils.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/mtl/PassExpansion.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/MaterialVariantKey.h>
-#include <cstdio>
 
 namespace
 {
@@ -29,32 +29,6 @@ namespace hgl::graph
     CompositorAssembler::CompositorAssembler(const std::string &shader_library_path)
         : source_cache_(shader_library_path)
     {}
-
-    std::string CompositorAssembler::InjectDefines(const std::string &source, const mtl::MaterialVariantKey &key) const
-    {
-        std::string defines;
-        {
-            char buf[128] = {};
-            const uint32 shadow_mode = 0u;
-            std::snprintf(buf,
-                          sizeof(buf),
-                          "#define SURFACE_TYPE %d\n"
-                          "#define SHADOW_MODE %u\n",
-                          static_cast<int>(key.surface_type),
-                          shadow_mode);
-            defines += buf;
-        }
-
-        if (key.HasAnyTextureMode(mtl::TextureSourceMode::Array))
-        {
-            defines += "#define TEXTURE_ARRAY_MODE\n";
-        }
-
-        if(defines.empty())
-            return source;
-
-        return hgl::graph::internal::InjectAfterVersion(source, defines);
-    }
 
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         const mtl::MaterialVariantKey  &key,
@@ -114,8 +88,8 @@ namespace hgl::graph
             return MakeError(internal::BuildCompositorPreprocessFailureMessage(
                 "FS", desc.fs_template_path, "BuildFragmentTemplateFromKey produced empty source", fs_source));
 
-        vs_source = InjectDefines(vs_source, key);
-        fs_source = InjectDefines(fs_source, key);
+        vs_source = internal::InjectCompositorKeyDefines(vs_source, key);
+        fs_source = internal::InjectCompositorKeyDefines(fs_source, key);
 
         result.vertex_glsl   = std::move(vs_source);
         result.fragment_glsl = std::move(fs_source);

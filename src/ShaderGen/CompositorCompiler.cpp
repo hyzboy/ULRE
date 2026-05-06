@@ -6,7 +6,6 @@
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
 #include <hgl/shadergen/CompositorCompiler.h>
-#include <hgl/shadergen/internal/CompositorLayoutDefines.h>
 #include <hgl/shadergen/internal/CompositorMaterialPreparation.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
@@ -108,11 +107,6 @@ std::unique_ptr<MaterialCreateInfo> CompileCompositorMaterialOwned(
     }
 
     return CompileCompositorMaterialOwned(profile, def, vs_glsl, fs_glsl, &cfg3d);
-}
-
-bool InjectLayoutDefines(MaterialCreateInfo &mci)
-{
-    return internal::ApplyCompositorLayoutDefines(mci);
 }
 
 }  // namespace hgl::graph::mtl

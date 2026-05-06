@@ -74,6 +74,18 @@ set_property(TARGET EnumerateRecipeKeysTests PROPERTY FOLDER "ULRE/Tests/ShaderG
 
 add_test(NAME EnumerateRecipeKeysTests COMMAND EnumerateRecipeKeysTests)
 
+# CompositorAssemblerGoldenTests validates generated-source assembly output:
+# key define injection, surface include routing, and read-failure diagnostics.
+add_executable(CompositorAssemblerGoldenTests
+    CompositorAssemblerGoldenTests.cpp
+)
+
+link_ulre_for_tests(CompositorAssemblerGoldenTests)
+
+set_property(TARGET CompositorAssemblerGoldenTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME CompositorAssemblerGoldenTests COMMAND CompositorAssemblerGoldenTests)
+
 # MaterialKeyAbiSnapshot guards sizeof/alignof, constants, and hash stability.
 add_executable(MaterialKeyAbiSnapshot
     MaterialKeyAbiSnapshot.cpp

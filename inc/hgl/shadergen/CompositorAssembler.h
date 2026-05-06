@@ -61,9 +61,6 @@ namespace hgl::graph
         ) const;
 
     private:
-
-        std::string InjectDefines(const std::string &source, const mtl::MaterialVariantKey &key) const;
-
         mutable internal::CompositorSourceCache source_cache_;
     };
 }

@@ -33,15 +33,6 @@ std::unique_ptr<MaterialCreateInfo> CompileCompositorMaterialOwned(
     const std::string &         fs_glsl,
     const Material2DCreateConfig *config);
 
-/**
- * Resort descriptors, build layout contract, emit layout/sampler defines,
- * and inject them into the VS/FS GLSL stored in @p mci.
- *
- * Call this after all descriptors, vertex inputs, and MI have been set up
- * but before CreateShaderDirect().
- */
-bool InjectLayoutDefines(MaterialCreateInfo &mci);
-
 bool PrepareCompositorGLSLForReflection(
     const StaticMaterialDef &def,
     const std::string &vs_glsl,
