@@ -59,6 +59,8 @@ SET(SHADERGEN_COMMON_VARIANT_POLICY_FILES common/DefaultVariantRouter.h
                                           common/VariantRoutingPolicy.cpp
                                           common/VariantLookupService.h
                                           common/VariantLookupService.cpp
+                                          common/VariantKeyOps.h
+                                          common/VariantKeyOps.cpp
                                           common/MaterialLibraryBootstrap.h
                                           common/MaterialLibraryBootstrap.cpp)
 SOURCE_GROUP("Common\\Variant Policy" FILES ${SHADERGEN_COMMON_VARIANT_POLICY_FILES})

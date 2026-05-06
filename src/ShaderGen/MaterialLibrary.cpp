@@ -1,6 +1,5 @@
 ﻿#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/SamplerSlot.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialVariantRegistry.h>
 #include<hgl/mtl/RecipeToKey.h>
@@ -9,6 +8,7 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<cstdio>
 #include "common/MaterialLibraryBootstrap.h"
+#include "common/VariantKeyOps.h"
 #include "common/VariantLookupService.h"
 #include "common/VariantRoutingPolicy.h"
 
@@ -23,56 +23,6 @@ bool ValidateBuiltinMaterialVariants(const std::string &shader_library_path,
 std::string GetBuiltinMaterialVariantSnapshot()
 {
     return GetBuiltinVariantRegistry().DumpSnapshot();
-}
-
-namespace {
-
-static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
-{
-    std::string text;
-    text.reserve(320);
-
-    text += "hash=";
-    text += std::to_string(static_cast<unsigned long long>(key.Hash()));
-    text += " ST=";
-    text += std::to_string(static_cast<unsigned>(key.surface_type));
-    text += " GM=";
-    text += std::to_string(static_cast<unsigned>(key.geometry_mode));
-    text += " sky=";
-    text += std::to_string(static_cast<unsigned>(key.sky_ambient_model));
-    text += " light=";
-    text += std::to_string(static_cast<unsigned>(key.lighting_model));
-    text += " tex_bits=0x";
-
-    char hex[16] = {};
-    std::snprintf(hex, sizeof(hex), "%08X", key.texture_source_bits);
-    text += hex;
-    text += " sampler_bits=0x";
-    std::snprintf(hex, sizeof(hex), "%08X", key.sampler_feature_bits);
-    text += hex;
-    text += " slots=[";
-
-    for (size_t i = 0; i < SamplerSlotCount; ++i)
-    {
-        if (i > 0)
-            text += ",";
-
-        const SamplerSlot slot = static_cast<SamplerSlot>(i);
-        text += SamplerSlotNameList[i];
-        text += ":";
-        text += std::to_string(static_cast<unsigned>(key.GetTextureSourceMode(slot)));
-    }
-
-    text += "]";
-    text += " va_bits=0x";
-    std::snprintf(hex, sizeof(hex), "%08X", key.vertex_attribute_feature_bits);
-    text += hex;
-    text += " extra_bits=0x";
-    std::snprintf(hex, sizeof(hex), "%08X", key.extra_feature_bits);
-    text += hex;
-    return text;
-}
-
 }
 
 MaterialLOD GetDefaultMaterialLOD()
@@ -150,9 +100,9 @@ std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract
     std::fprintf(stderr,
         "[MaterialLibrary] resolved variant=%s request={%s} lookup={%s} resolved={%s}\n",
         variant_desc->variant_name.c_str(),
-        FormatVariantKeyForLog(key).c_str(),
-        FormatVariantKeyForLog(registry_lookup_key).c_str(),
-        FormatVariantKeyForLog(resolved_key).c_str());
+        routing::FormatVariantKeyForLog(key).c_str(),
+        routing::FormatVariantKeyForLog(registry_lookup_key).c_str(),
+        routing::FormatVariantKeyForLog(resolved_key).c_str());
 
     if(!variant_desc->factory_type)
     {
@@ -179,56 +129,7 @@ std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract
 
 void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreateConfig *cfg)
 {
-    if (!cfg)
-        return;
-
-    // Billboard: blend_mode is per-instance and was not part of the RouteKey call
-    // (RouteKey picks the first matching entry, which defaults to Opaque).
-    // Apply the caller-supplied blend_mode here so the correct variant is selected.
-    if (const auto *billboard_cfg = AsBillboard(cfg))
-    {
-        key.blend_mode = billboard_cfg->blend_mode;
-        key.pass_hint  = detail::GetPrimaryPassForBlendMode(billboard_cfg->blend_mode);
-    }
-
-    if (const auto *cfg3d = As3D(cfg))
-    {
-        key.sky_ambient_model = cfg3d->sky_ambient_model;
-        key.lighting_model = cfg3d->lighting_model;
-        
-        // Phase 2: Copy effective feature mask (resolved from intent_features)
-        // If non-zero, this is the authoritative feature decision.
-        key.effective_feature_mask = cfg3d->effective_feature_mask;
-    }
-
-    if (cfg->override_geometry_mode)
-        key.geometry_mode = cfg->geometry_mode_override;
-
-    if (cfg->texture_source_bits_override != 0)
-    {
-        key.texture_source_bits = cfg->texture_source_bits_override;
-
-        // Derive primary texture source mode from per-slot bits.
-        // If caller did not provide an explicit sampler feature override,
-        // derive mask from per-slot texture source bits to keep key coherent.
-        if (cfg->sampler_feature_bits_override != 0)
-            key.sampler_feature_bits = cfg->sampler_feature_bits_override;
-        else
-        {
-            key.sampler_feature_bits = 0;
-            for (uint8_t s = 0; s < uint8_t(SamplerSlot::RANGE_SIZE); ++s)
-            {
-                const TextureSourceMode mode = TextureSourceMode((key.texture_source_bits >> (uint32_t(s) * MaterialVariantKey::TextureSourceBitsPerSlot))
-                                          & MaterialVariantKey::TextureSourceMask);
-                if (mode != TextureSourceMode::None)
-                    key.sampler_feature_bits |= SamplerFeatureBit(SamplerSlot(s));
-            }
-        }
-    }
-    else if (cfg->sampler_feature_bits_override != 0)
-    {
-        key.sampler_feature_bits = cfg->sampler_feature_bits_override;
-    }
+    routing::ApplyCreateConfigOverrides(key, cfg);
 }
 
 std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract::PhysicalDeviceProfileLite *profile,
@@ -265,7 +166,7 @@ std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract
         "[MaterialLibrary] request preset=%u resolved_preset=%u key={%s}\n",
         static_cast<unsigned>(mtl_id),
         static_cast<unsigned>(resolved_preset),
-        FormatVariantKeyForLog(key).c_str());
+        routing::FormatVariantKeyForLog(key).c_str());
 
     return CreateMaterialCreateInfoOwned(profile, key, cfg);
 }

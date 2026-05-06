@@ -1,6 +1,7 @@
 #include<hgl/mtl/MaterialVariantRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/shadergen/CompositorAssembler.h>
+#include "common/VariantKeyOps.h"
 #include "common/VariantLookupService.h"
 #include "BuiltinVariantEntry.h"
 #include <algorithm>
@@ -17,62 +18,6 @@ constexpr bool kVariantRegistryVerbose = true;
 #else
 constexpr bool kVariantRegistryVerbose = false;
 #endif
-
-static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
-{
-    std::string text;
-  text.reserve(320);
-
-    text += "hash=";
-    text += std::to_string(static_cast<unsigned long long>(key.Hash()));
-    text += " ST=";
-    text += std::to_string(static_cast<unsigned>(key.surface_type));
-    text += " GM=";
-    text += std::to_string(static_cast<unsigned>(key.geometry_mode));
-    text += " blend=";
-    text += std::to_string(static_cast<unsigned>(key.blend_mode));
-    text += " pass=";
-    text += std::to_string(static_cast<unsigned>(key.pass_hint));
-    text += " sky=";
-    text += std::to_string(static_cast<unsigned>(key.sky_ambient_model));
-    text += " light=";
-    text += std::to_string(static_cast<unsigned>(key.lighting_model));
-    text += " eff=0x";
-
-    char hex64[24] = {};
-    std::snprintf(hex64, sizeof(hex64), "%016llX",
-        static_cast<unsigned long long>(key.effective_feature_mask));
-    text += hex64;
-    text += " tex_bits=0x";
-
-    char hex[16] = {};
-    std::snprintf(hex, sizeof(hex), "%08X", key.texture_source_bits);
-    text += hex;
-    text += " sampler_bits=0x";
-    std::snprintf(hex, sizeof(hex), "%08X", key.sampler_feature_bits);
-    text += hex;
-    text += " slots=[";
-
-    for (size_t i = 0; i < SamplerSlotCount; ++i)
-    {
-        if (i > 0)
-            text += ",";
-
-        const SamplerSlot slot = static_cast<SamplerSlot>(i);
-        text += SamplerSlotNameList[i];
-        text += ":";
-        text += std::to_string(static_cast<unsigned>(key.GetTextureSourceMode(slot)));
-    }
-
-    text += "]";
-    text += " va_bits=0x";
-    std::snprintf(hex, sizeof(hex), "%08X", key.vertex_attribute_feature_bits);
-    text += hex;
-    text += " extra_bits=0x";
-    std::snprintf(hex, sizeof(hex), "%08X", key.extra_feature_bits);
-    text += hex;
-    return text;
-}
 
 } // anonymous namespace
 
@@ -119,8 +64,8 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
   {
     std::fprintf(stderr,
       "[VariantRegistry] canonicalized lookup request={%s} canonical={%s}\n",
-      FormatVariantKeyForLog(key).c_str(),
-      FormatVariantKeyForLog(request_key).c_str());
+      routing::FormatVariantKeyForLog(key, true).c_str(),
+      routing::FormatVariantKeyForLog(request_key, true).c_str());
   }
 
     if(const MaterialVariantDesc *exact=QueryVariant(request_key, options))
@@ -132,7 +77,7 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
             std::fprintf(stderr,
                 "[VariantRegistry] exact-match variant=%s %s\n",
                 exact->variant_name.empty() ? "<unnamed>" : exact->variant_name.c_str(),
-                FormatVariantKeyForLog(request_key).c_str());
+              routing::FormatVariantKeyForLog(request_key, true).c_str());
         }
         if(resolved_key)
             *resolved_key=request_key;
@@ -144,7 +89,7 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
 
     std::fprintf(stderr,
       "[VariantRegistry] miss request={%s}\n",
-      FormatVariantKeyForLog(request_key).c_str());
+      routing::FormatVariantKeyForLog(request_key, true).c_str());
 
     return nullptr;
 }
