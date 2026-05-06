@@ -67,8 +67,6 @@ namespace
     const char true_string[]="true";
     const char false_string[]="false";
 
-    template<typename E> IVulkanEnumStringList *VkGetEnumStringList();
-
     constexpr const VkEnumString<VkPolygonMode> vk_polygon_mode_list[]=
     {
         {VK_POLYGON_MODE_FILL,              "fill"},

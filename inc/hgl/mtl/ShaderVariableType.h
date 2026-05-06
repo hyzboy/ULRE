@@ -39,30 +39,30 @@ struct ShaderVariableType
 
                     union
                     {
-                        struct Scalar
+                        struct
                         {
                             VABaseType type;
                         }scalar;
 
-                        struct Vector
+                        struct
                         {
                             VABaseType type;
                             uint8 vec_size;
                         }vector;
 
-                        struct Matrix
+                        struct
                         {
                             VABaseType type;
                             uint8 n;
                             uint8 m;
                         }matrix;
 
-                        struct Sampler
+                        struct
                         {
                             SamplerType type;
                         }sampler;
 
-                        struct Image
+                        struct
                         {
                             ShaderImageType type;
                         }image;
@@ -81,7 +81,7 @@ struct ShaderVariableType
 public:
 
     // ? 使用默认构造函数，使类型成为 trivial
-    constexpr ShaderVariableType() : svt_code(0) {}
+    constexpr ShaderVariableType() = default;
 
     // ? 使用默认拷贝构造和赋值
     constexpr ShaderVariableType(const ShaderVariableType &) = default;

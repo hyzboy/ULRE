@@ -70,7 +70,7 @@ namespace hgl::graph{
 
     private:
 
-        friend VulkanInstance *CreateInstance(const U8String &app_name,VKDebugOut *out=nullptr,CreateInstanceLayerInfo *cili=nullptr);
+        friend VulkanInstance *CreateInstance(const U8String &app_name,VKDebugOut *out,CreateInstanceLayerInfo *cili);
 
         VulkanInstance(VkInstance,VKDebugOut *);
 
@@ -91,7 +91,7 @@ namespace hgl::graph{
         }
 
         template<typename T>
-        T *GetDeviceProc(VkDevice *dev,const char *name)
+        T *GetDeviceProc(VkDevice dev,const char *name)
         {
             if(!GetDeviceProcAddr)return(nullptr);
 

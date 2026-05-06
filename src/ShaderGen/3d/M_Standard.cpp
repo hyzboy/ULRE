@@ -11,6 +11,7 @@
 
 #include "MaterialFactory3DCommon.h"
 #include "StandardDescriptorBuilder.h"
+#include "StandardStaticDef.h"
 #include "StandardVariantRouter.h"
 
 namespace hgl::graph::mtl{
@@ -42,36 +43,6 @@ namespace
             any_array ? 1 : 0);
     }
 
-    constexpr FixedVertexEntry STANDARD_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
-        { VAT_VEC2, VAN::TexCoord },
-        { VAT_VEC3, VAN::Normal },
-    };
-
-    // Non-texture descriptors only texture entries are built dynamically in CreateStandardVariant().
-    const UBOSemanticSet STANDARD_BASE_UBOS = {
-        UBODescriptorSemantic::ViewportInfo,
-        UBODescriptorSemantic::CameraInfo,
-        UBODescriptorSemantic::SkyInfo,
-    };
-
-    const SSBOSemanticSet STANDARD_BASE_SSBOS = {
-        SSBODescriptorSemantic::TransformData,
-        SSBODescriptorSemantic::TransformID,
-        SSBODescriptorSemantic::MaterialBindingInstanceID,
-        SSBODescriptorSemantic::MaterialBindingInstanceData,
-    };
-
-    // Ordered list of texture slots used by the Standard material.
-    // Standard is a schema-fixed material: extending slots (e.g. Emissive/ORM) means a new material type,
-    // not an in-place quality/feature variant inside Standard.
-    constexpr SamplerSlot STANDARD_TEX_SLOTS[] = {
-        SamplerSlot::BaseColor,
-        SamplerSlot::Normal,
-    };
-    constexpr uint32_t STANDARD_TEX_SLOT_COUNT = uint32_t(sizeof(STANDARD_TEX_SLOTS) / sizeof(STANDARD_TEX_SLOTS[0]));
-    static_assert(STANDARD_TEX_SLOT_COUNT == 2, "Standard material slot schema is fixed (BaseColor + Normal).");
-
     static constexpr const char *kAttribFetchMacroTags[] = {
         "NORMAL",            // 0
         "TANGENT",           // 1
@@ -86,17 +57,6 @@ namespace
         sizeof(kAttribFetchMacroTags) / sizeof(*kAttribFetchMacroTags)
             == size_t(AttributeSemantic::BuiltinCount),
         "kAttribFetchMacroTags size mismatch");
-
-    const StaticMaterialDef STANDARD_DEF_TEMPLATE {
-        "Standard_v1",
-        PrimitiveType::Triangles,
-        STANDARD_VERTEX,
-        uint32_t(sizeof(STANDARD_VERTEX) / sizeof(STANDARD_VERTEX[0])),
-        &STANDARD_BASE_UBOS,
-        &STANDARD_BASE_SSBOS,
-        nullptr,
-        ShaderDataSchema::StandardParams,
-    };
 
 } // anonymous namespace
 
@@ -118,6 +78,17 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     const StandardVariantPolicyResult policy = BuildStandardVariantPolicy(input_key);
 
+    uint32_t standard_tex_slot_count = 0;
+    const SamplerSlot *standard_tex_slots = GetStandardTextureSlots(standard_tex_slot_count);
+
+    if (standard_tex_slot_count != 2)
+    {
+        std::fprintf(stderr,
+            "[Standard] CreateStandardVariant failed: unexpected texture slot count=%u\n",
+            standard_tex_slot_count);
+        return nullptr;
+    }
+
     const TextureSourceMode standard_tex_slot_modes[] = {
         policy.resolved_base,
         policy.resolved_normal,
@@ -135,11 +106,11 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     BuildStandardDescriptorState(
         cfg,
-        STANDARD_TEX_SLOTS,
+        standard_tex_slots,
         standard_tex_slot_modes,
-        STANDARD_TEX_SLOT_COUNT,
+        standard_tex_slot_count,
         policy.any_array,
-        STANDARD_BASE_SSBOS,
+        GetStandardBaseSSBOs(),
         cfg_with_mi,
         ambient,
         lighting,
@@ -149,7 +120,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         any_array);
 
     StaticMaterialDef dynamic_def = BuildStandardDynamicDef(
-        STANDARD_DEF_TEMPLATE,
+        BuildCanonicalStandardStaticDef(any_array),
         dynamic_ssbos,
         dynamic_samplers,
         ShaderDataSchema::StandardParams,

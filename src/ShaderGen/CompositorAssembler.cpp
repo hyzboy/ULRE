@@ -5,6 +5,7 @@
 #include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/VertexAttribMacroMap.h>
+#include <hgl/mtl/PassExpansion.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/SkyLight.h>
@@ -443,27 +444,6 @@ namespace hgl::graph
 
     std::span<const PassType> CompositorAssembler::GetPassTypesForBlendMode(RenderAlphaMode blend)
     {
-        using PT = PassType;
-        static constexpr PassType kOpaque[]          = { PT::ForwardOpaque, PT::ShadowOpaque, PT::EarlyZSolid };
-        static constexpr PassType kMasked[]          = { PT::ForwardMasked, PT::ShadowMasked, PT::EarlyZMasked };
-        static constexpr PassType kTransparent[]     = { PT::ForwardTransparent };
-        static constexpr PassType kDither[]          = { PT::ForwardDither, PT::ShadowOpaque };
-        static constexpr PassType kAlphaToCoverage[] = { PT::ForwardA2C, PT::ShadowMasked };
-
-        switch (blend)
-        {
-        case RenderAlphaMode::Opaque:          return kOpaque;
-        case RenderAlphaMode::Masked:          return kMasked;
-        case RenderAlphaMode::Transparent:
-            // 透明物体无阴影、无 EarlyZ（从后往前排序第 8 Pass 渲染）
-            return kTransparent;
-        case RenderAlphaMode::Dither:
-            // Dither 小批目使用 ShadowOpaque（不需要 alpha 阴影）
-            return kDither;
-        case RenderAlphaMode::AlphaToCoverage:
-            // A2C 阴影和 Masked 相同——需要 alpha discard 避免阴影漏光
-            return kAlphaToCoverage;
-        default:                               return kOpaque;
-        }
+        return mtl::GetPassTypesForBlendMode(blend);
     }
 }

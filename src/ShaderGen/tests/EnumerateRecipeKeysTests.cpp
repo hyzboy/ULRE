@@ -7,6 +7,10 @@
 #include <hgl/mtl/RecipeToKey.h>
 #include <hgl/mtl/StaticMaterialDefRegistry.h>
 #include <hgl/mtl/MaterialKeyToolchainVersion.h>
+#include <hgl/mtl/PassExpansion.h>
+#include <hgl/shadergen/CompositorAssembler.h>
+
+#include "../3d/StandardStaticDef.h"
 
 #include <cstdio>
 #include <vector>
@@ -167,6 +171,67 @@ static void test_array_and_flat_def_ids_differ()
     CHECK_NE(keys_flat[0].def_id, keys_array[0].def_id);
 }
 
+/// Primary pass from ResolveRecipePrimaryKey must equal pass-expansion front entry.
+static void test_primary_pass_matches_pass_expansion_front()
+{
+    constexpr RenderAlphaMode kModes[] = {
+        RenderAlphaMode::Opaque,
+        RenderAlphaMode::Masked,
+        RenderAlphaMode::Transparent,
+        RenderAlphaMode::Dither,
+        RenderAlphaMode::AlphaToCoverage,
+    };
+
+    for (const auto mode : kModes)
+    {
+        const auto recipe = MakeBillboardRecipe(mode);
+        const auto primary = ResolveRecipePrimaryKey(recipe);
+        const auto expanded = GetPassTypesForBlendMode(mode);
+
+        CHECK_TRUE(!expanded.empty());
+        if (expanded.empty()) continue;
+
+        CHECK_EQ(primary.pass, expanded.front());
+    }
+}
+
+/// CompositorAssembler pass mapping must be a pure proxy of PassExpansion.
+static void test_compositor_and_pass_expansion_are_consistent()
+{
+    constexpr RenderAlphaMode kModes[] = {
+        RenderAlphaMode::Opaque,
+        RenderAlphaMode::Masked,
+        RenderAlphaMode::Transparent,
+        RenderAlphaMode::Dither,
+        RenderAlphaMode::AlphaToCoverage,
+    };
+
+    for (const auto mode : kModes)
+    {
+        const auto expected = GetPassTypesForBlendMode(mode);
+        const auto actual = hgl::graph::CompositorAssembler::GetPassTypesForBlendMode(mode);
+
+        CHECK_EQ(actual.size(), expected.size());
+        if (actual.size() != expected.size()) continue;
+
+        for (size_t i = 0; i < actual.size(); ++i)
+            CHECK_EQ(actual[i], expected[i]);
+    }
+}
+
+/// Recipe-key def_id for Standard must match canonical Standard static def.
+static void test_standard_def_id_matches_canonical_definition()
+{
+    const auto flat = ResolveRecipePrimaryKey(MakeStandardRecipe());
+    const auto array = ResolveRecipePrimaryKey(MakeStandardArrayRecipe());
+
+    const auto expected_flat = AcquireStaticMaterialDefId(BuildCanonicalStandardStaticDef(false));
+    const auto expected_array = AcquireStaticMaterialDefId(BuildCanonicalStandardStaticDef(true));
+
+    CHECK_EQ(flat.def_id, expected_flat);
+    CHECK_EQ(array.def_id, expected_array);
+}
+
 /// Toolchain version constants have expected values.
 static void test_toolchain_version_constants()
 {
@@ -189,6 +254,9 @@ int main()
     test_standard_def_id_is_valid();
     test_toolchain_versions_are_nonzero();
     test_array_and_flat_def_ids_differ();
+    test_primary_pass_matches_pass_expansion_front();
+    test_compositor_and_pass_expansion_are_consistent();
+    test_standard_def_id_matches_canonical_definition();
     test_toolchain_version_constants();
 
     if (g_failures == 0)

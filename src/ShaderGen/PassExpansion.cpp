@@ -7,7 +7,7 @@ std::span<const PassType> GetPassTypesForBlendMode(RenderAlphaMode blend) noexce
 {
     using PT = PassType;
 
-    // Mirror the pass tables from CompositorAssembler.cpp
+    // Canonical pass-expansion table used by both key resolution and assembly.
     static constexpr PassType kOpaque[]          = { PT::ForwardOpaque, PT::ShadowOpaque, PT::EarlyZSolid };
     static constexpr PassType kMasked[]          = { PT::ForwardMasked, PT::ShadowMasked, PT::EarlyZMasked };
     static constexpr PassType kTransparent[]     = { PT::ForwardTransparent };

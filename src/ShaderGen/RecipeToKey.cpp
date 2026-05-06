@@ -17,8 +17,8 @@
 #include <hgl/mtl/PassExpansion.h>
 #include <hgl/mtl/MaterialKeyToolchainVersion.h>
 #include <hgl/mtl/StaticMaterialDefRegistry.h>
-#include <hgl/mtl/SamplerSlot.h>
-#include <hgl/mtl/UBOCommon.h>
+
+#include "3d/StandardStaticDef.h"
 
 namespace hgl::graph::mtl
 {
@@ -40,81 +40,17 @@ static bool HasAnyArrayTexture(const MaterialRecipe &r) noexcept
 /// @param any_array  true → Sampler2DArray variant; false → Sampler2D variant.
 static StaticMaterialDefId GetStandardDefId(bool any_array) noexcept
 {
-    // Static vertices and non-sampler descriptors match M_Standard.cpp exactly.
-    static const FixedVertexEntry kStdVertex[] = {
-        { VAT_VEC3, VAN::Position },
-        { VAT_VEC2, VAN::TexCoord },
-        { VAT_VEC3, VAN::Normal   },
-    };
-    static const UBOSemanticSet kStdBaseUBOs = {
-        UBODescriptorSemantic::ViewportInfo,
-        UBODescriptorSemantic::CameraInfo,
-        UBODescriptorSemantic::SkyInfo,
-    };
-    // Base SSBOs (without MaterialBindingInstanceTexture — added when any_array)
-    static const SSBOSemanticSet kStdBaseSSBOs = {
-        SSBODescriptorSemantic::TransformData,
-        SSBODescriptorSemantic::TransformID,
-        SSBODescriptorSemantic::MaterialBindingInstanceID,
-        SSBODescriptorSemantic::MaterialBindingInstanceData,
-    };
-    static const SSBOSemanticSet kStdArraySSBOs = {
-        SSBODescriptorSemantic::TransformData,
-        SSBODescriptorSemantic::TransformID,
-        SSBODescriptorSemantic::MaterialBindingInstanceID,
-        SSBODescriptorSemantic::MaterialBindingInstanceData,
-        SSBODescriptorSemantic::MaterialBindingInstanceTexture,
-    };
-    // Sampler2D variant
-    static const StaticTextureSamplerDescriptors kStdSamplers2D = {
-        { SamplerSlot::BaseColor, { SamplerType::Sampler2D, 0, 0, TextureChannelHint::RGBA } },
-        { SamplerSlot::Normal,    { SamplerType::Sampler2D, 0, 0, TextureChannelHint::RGBA } },
-    };
-    // Sampler2DArray variant
-    static const StaticTextureSamplerDescriptors kStdSamplers2DArray = {
-        { SamplerSlot::BaseColor, { SamplerType::Sampler2DArray, 0, 0, TextureChannelHint::RGBA } },
-        { SamplerSlot::Normal,    { SamplerType::Sampler2DArray, 0, 0, TextureChannelHint::RGBA } },
-    };
-
     static StaticMaterialDefId s_id_2d    = kInvalidStaticMaterialDefId;
     static StaticMaterialDefId s_id_array = kInvalidStaticMaterialDefId;
 
-    if (!any_array)
+    StaticMaterialDefId &slot = any_array ? s_id_array : s_id_2d;
+
+    if (slot == kInvalidStaticMaterialDefId)
     {
-        if (s_id_2d == kInvalidStaticMaterialDefId)
-        {
-            const StaticMaterialDef def {
-                "Standard_v1",
-                PrimitiveType::Triangles,
-                kStdVertex,
-                uint32_t(sizeof(kStdVertex) / sizeof(kStdVertex[0])),
-                &kStdBaseUBOs,
-                &kStdBaseSSBOs,
-                &kStdSamplers2D,
-                ShaderDataSchema::StandardParams,
-            };
-            s_id_2d = AcquireStaticMaterialDefId(def);
-        }
-        return s_id_2d;
+        slot = AcquireStaticMaterialDefId(BuildCanonicalStandardStaticDef(any_array));
     }
-    else
-    {
-        if (s_id_array == kInvalidStaticMaterialDefId)
-        {
-            const StaticMaterialDef def {
-                "StandardTextureArray_v1",
-                PrimitiveType::Triangles,
-                kStdVertex,
-                uint32_t(sizeof(kStdVertex) / sizeof(kStdVertex[0])),
-                &kStdBaseUBOs,
-                &kStdArraySSBOs,
-                &kStdSamplers2DArray,
-                ShaderDataSchema::StandardParams,
-            };
-            s_id_array = AcquireStaticMaterialDefId(def);
-        }
-        return s_id_array;
-    }
+
+    return slot;
 }
 
 /// Resolve the StaticMaterialDefId for the given recipe.
@@ -188,17 +124,8 @@ namespace detail
 
 PassType GetPrimaryPassForBlendMode(RenderAlphaMode blend) noexcept
 {
-    // Mirrors the first entry returned by
-    // CompositorAssembler::GetPassTypesForBlendMode.
-    switch (blend)
-    {
-    case RenderAlphaMode::Opaque:          return PassType::ForwardOpaque;
-    case RenderAlphaMode::Masked:          return PassType::ForwardMasked;
-    case RenderAlphaMode::Transparent:     return PassType::ForwardTransparent;
-    case RenderAlphaMode::Dither:          return PassType::ForwardDither;
-    case RenderAlphaMode::AlphaToCoverage: return PassType::ForwardA2C;
-    default:                               return PassType::ForwardOpaque;
-    }
+    const auto passes = GetPassTypesForBlendMode(blend);
+    return passes.empty() ? PassType::ForwardOpaque : passes.front();
 }
 
 MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexcept
