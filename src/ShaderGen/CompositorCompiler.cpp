@@ -64,16 +64,6 @@ std::unique_ptr<MaterialCreateInfo> CompileCompositorMaterialOwned(
     return mci;
 }
 
-MaterialCreateInfo *CompileCompositorMaterial(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const StaticMaterialDef &    def,
-    const std::string &         vs_glsl,
-    const std::string &         fs_glsl,
-    const Material3DCreateConfig *config)
-{
-    return CompileCompositorMaterialOwned(profile,def,vs_glsl,fs_glsl,config).release();
-}
-
 bool PrepareCompositorGLSLForReflection(
     const StaticMaterialDef &def,
     const std::string &vs_glsl,
@@ -121,16 +111,6 @@ std::unique_ptr<MaterialCreateInfo> CompileCompositorMaterialOwned(
     }
 
     return CompileCompositorMaterialOwned(profile, def, vs_glsl, fs_glsl, &cfg3d);
-}
-
-MaterialCreateInfo *CompileCompositorMaterial(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const StaticMaterialDef &    def,
-    const std::string &         vs_glsl,
-    const std::string &         fs_glsl,
-    const Material2DCreateConfig *config)
-{
-    return CompileCompositorMaterialOwned(profile, def, vs_glsl, fs_glsl, config).release();
 }
 
 bool InjectLayoutDefines(MaterialCreateInfo &mci)

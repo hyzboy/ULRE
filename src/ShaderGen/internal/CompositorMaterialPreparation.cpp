@@ -355,20 +355,4 @@ std::unique_ptr<MaterialCreateInfo> PrepareCompositorMaterialSnapshotOwned(
     return mci;
 }
 
-MaterialCreateInfo *PrepareCompositorMaterialSnapshot(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const StaticMaterialDef &def,
-    const std::string &vs_glsl,
-    const std::string &fs_glsl,
-    const Material3DCreateConfig *config,
-    std::string *diagnostics)
-{
-    return PrepareCompositorMaterialSnapshotOwned(profile,
-                                                  def,
-                                                  vs_glsl,
-                                                  fs_glsl,
-                                                  config,
-                                                  diagnostics).release();
-}
-
 } // namespace hgl::graph::mtl::internal

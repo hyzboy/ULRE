@@ -24,7 +24,7 @@ namespace hgl::graph
 
         /// Builder for constructing MaterialCreateInfo with write-only interface.
         /// Manages the lifecycle of the MaterialCreateInfo being built.
-        /// Once Build() is called, ownership transfers to caller; builder becomes empty.
+        /// Once BuildOwned() is called, ownership transfers to caller; builder becomes empty.
         class MaterialBuilder
         {
         private:
@@ -61,21 +61,13 @@ namespace hgl::graph
             /// (will be removed in Phase C.3)
             void Resort();
 
-            /// Complete the build, compile SPV, and return owning MaterialCreateInfo*.
+            /// Complete the build, compile SPV, and return an owning std::unique_ptr<MaterialCreateInfo>.
             /// Returns nullptr on failure. After this call, builder owns nothing.
             std::unique_ptr<MaterialCreateInfo> BuildOwned();
-
-            /// Complete the build, compile SPV, and return owning MaterialCreateInfo*.
-            /// Returns nullptr on failure. After this call, builder owns nothing.
-            MaterialCreateInfo *Build();
 
             /// Build without compiling SPV (snapshot only, for reflection).
             /// Returns nullptr on failure. After this call, builder owns nothing.
             std::unique_ptr<MaterialCreateInfo> BuildSnapshotOwned();
-
-            /// Build without compiling SPV (snapshot only, for reflection).
-            /// Returns nullptr on failure. After this call, builder owns nothing.
-            MaterialCreateInfo *BuildSnapshotOnly();
         };
     }//namespace mtl
 }//namespace hgl::graph

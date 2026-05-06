@@ -126,7 +126,7 @@ namespace hgl::graph
             bool CompileSPV();
 
             /// Register SSBO descriptors for the VertexStreams descriptor set (set=4).
-            /// Call after BuildSnapshotOnly() and before InjectLayoutDefines().
+            /// Call after BuildSnapshotOwned() and before InjectLayoutDefines().
             /// Bindings are assigned by semantic index to match CompositorAssembler macros.
             void AddVertexStreamSSBOs(const MaterialVariantKey &key);
         };//class MaterialCreateInfo

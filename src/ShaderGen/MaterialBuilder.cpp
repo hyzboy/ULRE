@@ -120,11 +120,6 @@ namespace hgl::graph::mtl
         return std::move(building_);
     }
 
-    MaterialCreateInfo *MaterialBuilder::Build()
-    {
-        return BuildOwned().release();
-    }
-
     std::unique_ptr<MaterialCreateInfo> MaterialBuilder::BuildSnapshotOwned()
     {
         if(!building_)
@@ -138,8 +133,4 @@ namespace hgl::graph::mtl
         return std::move(building_);
     }
 
-    MaterialCreateInfo *MaterialBuilder::BuildSnapshotOnly()
-    {
-        return BuildSnapshotOwned().release();
-    }
 }

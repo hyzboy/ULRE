@@ -30,7 +30,7 @@ namespace hgl::graph::mtl
         /// name 仅用于日志，不参与查找。
         static bool Register(MaterialPreset preset, const char *name, PresetFactoryFn fn);
 
-        /// 按 preset 创建 MaterialCreateInfo*。未注册返回 nullptr 并打 warning。
+        /// 按 preset 创建 std::unique_ptr<MaterialCreateInfo>。未注册返回 nullptr 并打 warning。
         /// desc 是路由层已查找好的 variant 描述符，直接透传给工厂，无需工厂再次 QueryVariant。
         static std::unique_ptr<MaterialCreateInfo> Create(
             MaterialPreset                             preset,

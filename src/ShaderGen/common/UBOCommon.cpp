@@ -10,11 +10,6 @@ static bool CStrEq(const char *lhs,const char *rhs)
     return lhs && rhs && std::strcmp(lhs,rhs)==0;
 }
 
-UBODescriptor *CreateUBODescriptor(const UBODescriptorSemantic semantic,const uint32_t flag_bits)
-{
-    return CreateUBODescriptorOwned(semantic,flag_bits).release();
-}
-
 std::unique_ptr<UBODescriptor> CreateUBODescriptorOwned(const UBODescriptorSemantic semantic,const uint32_t flag_bits)
 {
     const auto &meta = GetDescriptorSemanticMeta(semantic);
@@ -29,11 +24,6 @@ std::unique_ptr<UBODescriptor> CreateUBODescriptorOwned(const UBODescriptorSeman
     ubo->stage_flag=flag_bits;
 
     return ubo;
-}
-
-SSBODescriptor *CreateSSBODescriptor(const SSBODescriptorSemantic semantic,const uint32_t flag_bits)
-{
-    return CreateSSBODescriptorOwned(semantic,flag_bits).release();
 }
 
 std::unique_ptr<SSBODescriptor> CreateSSBODescriptorOwned(const SSBODescriptorSemantic semantic,const uint32_t flag_bits)
