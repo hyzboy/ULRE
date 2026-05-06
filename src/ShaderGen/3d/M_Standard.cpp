@@ -184,12 +184,12 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     return CreateStandardVariantOwned(profile,desc,input_key,cfg).release();
 }
 
-static MaterialCreateInfo *Standard_Adapter(
+static std::unique_ptr<MaterialCreateInfo> Standard_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreateStandardVariant(profile, *desc, key, static_cast<const Material3DCreateConfig *>(cfg)); }
+{ return CreateStandardVariantOwned(profile, *desc, key, static_cast<const Material3DCreateConfig *>(cfg)); }
 
 }//namespace hgl::graph::mtl
 

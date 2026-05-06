@@ -132,12 +132,12 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     return CreatePBRColor3DOwned(profile,desc,cfg).release();
 }
 
-static MaterialCreateInfo *PBRColor3D_Adapter(
+static std::unique_ptr<MaterialCreateInfo> PBRColor3D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &,
     MaterialCreateConfig *cfg)
-{ return CreatePBRColor3D(profile, *desc, static_cast<PBRColor3DMaterialCreateConfig *>(cfg)); }
+{ return CreatePBRColor3DOwned(profile, *desc, static_cast<PBRColor3DMaterialCreateConfig *>(cfg)); }
 
 }//namespace hgl::graph::mtl
 

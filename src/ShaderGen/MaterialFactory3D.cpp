@@ -1,9 +1,9 @@
 #include <hgl/shadergen/MaterialFactory3D.h>
+#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <ankerl/unordered_dense.h>
 #include <cstdio>
 
-namespace hgl::graph::mtl
-{
+namespace hgl{namespace graph{namespace mtl{
     namespace
     {
         struct FactoryEntry
@@ -35,7 +35,7 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    MaterialCreateInfo *MaterialFactory3D::Create(
+    std::unique_ptr<MaterialCreateInfo> MaterialFactory3D::Create(
         MaterialPreset                             preset,
         const contract::PhysicalDeviceProfileLite *profile,
         const MaterialVariantDesc                 *desc,
@@ -65,4 +65,4 @@ namespace hgl::graph::mtl
         auto  it = r.find(preset);
         return it != r.end() ? it->second.name : nullptr;
     }
-} // namespace hgl::graph::mtl
+}}} // namespace hgl::graph::mtl

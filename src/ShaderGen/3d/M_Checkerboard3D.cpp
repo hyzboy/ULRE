@@ -70,18 +70,12 @@ std::unique_ptr<MaterialCreateInfo> CreateCheckerboard3DOwned(const contract::Ph
                                           &local_cfg);
 }
 
-MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLite *profile,
-                                         Material3DCreateConfig *cfg)
-{
-    return CreateCheckerboard3DOwned(profile,cfg).release();
-}
-
-static MaterialCreateInfo *Checkerboard3D_Adapter(
+static std::unique_ptr<MaterialCreateInfo> Checkerboard3D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *,
     const MaterialVariantKey                  &,
     MaterialCreateConfig *cfg)
-{ return CreateCheckerboard3D(profile, static_cast<Material3DCreateConfig *>(cfg)); }
+{ return CreateCheckerboard3DOwned(profile, static_cast<Material3DCreateConfig *>(cfg)); }
 
 } // namespace hgl::graph::mtl
 

@@ -31,18 +31,10 @@ std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract
                                                                   const MaterialPreset mtl_id,
                                                                   MaterialCreateConfig *cfg);
 
-MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                             const MaterialPreset mtl_id,
-                                             MaterialCreateConfig *cfg);
-
 // Low-level entry path: callers already know the exact variant/shader-facing routing key.
 std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract::PhysicalDeviceProfileLite *profile,
                                                                   const MaterialVariantKey &key,
                                                                   MaterialCreateConfig *cfg);
-
-MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                             const MaterialVariantKey &key,
-                                             MaterialCreateConfig *cfg);
 
 // Bootstrap-only global fallback. This exists so the current program can run with a single built-in
 // material implementation level. It should not be treated as the final architecture for forward,

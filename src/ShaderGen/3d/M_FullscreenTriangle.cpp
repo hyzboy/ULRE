@@ -73,12 +73,12 @@ MaterialCreateInfo *CreateFullscreenTriangle(const contract::PhysicalDeviceProfi
     return CreateFullscreenTriangleOwned(profile,cfg).release();
 }
 
-static MaterialCreateInfo *FullscreenTriangle_Adapter(
+static std::unique_ptr<MaterialCreateInfo> FullscreenTriangle_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *,
     const MaterialVariantKey                  &,
     MaterialCreateConfig *cfg)
-{ return CreateFullscreenTriangle(profile, static_cast<Material3DCreateConfig *>(cfg)); }
+{ return CreateFullscreenTriangleOwned(profile, static_cast<Material3DCreateConfig *>(cfg)); }
 
 } // namespace hgl::graph::mtl
 

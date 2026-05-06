@@ -741,12 +741,12 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 
     const auto *profile=GetPhysicalDeviceProfile();
 
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
+    auto mci=mtl::CreateMaterialCreateInfoOwned(profile,key,cfg);
 
     if(!mci)
         return(nullptr);
 
-    ShaderMaterialProgram *mat = this->CreateMaterial(mtl_debug_name,mci);
+    ShaderMaterialProgram *mat = this->CreateMaterial(mtl_debug_name,mci.get());
     if (mat)
     {
         uint8_t flags = 0;
@@ -817,7 +817,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 
     // Pass original key (not cache_key) to CreateMaterialCreateInfo — the registry lookup
     // must use the clean key without the array bit injected for caching purposes.
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
+    auto mci=mtl::CreateMaterialCreateInfoOwned(profile,key,cfg);
 
     if(!mci)
     {
@@ -834,7 +834,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         return(nullptr);
     }
 
-    ShaderMaterialProgram *mat = this->CreateMaterial(mtl_debug_name,mci);
+    ShaderMaterialProgram *mat = this->CreateMaterial(mtl_debug_name,mci.get());
     if (mat)
     {
         uint8_t flags = 0;

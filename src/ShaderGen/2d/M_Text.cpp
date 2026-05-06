@@ -65,12 +65,12 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     return CreateText2DOwned(profile,cfg,desc,key).release();
 }
 
-static MaterialCreateInfo *Text2D_Adapter(
+static std::unique_ptr<MaterialCreateInfo> Text2D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreateText2D(profile, static_cast<const Text2DMaterialCreateConfig *>(cfg), *desc, key); }
+{ return CreateText2DOwned(profile, static_cast<const Text2DMaterialCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

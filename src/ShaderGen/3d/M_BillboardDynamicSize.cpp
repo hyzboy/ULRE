@@ -124,12 +124,12 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
     return CreateBillboard2DDynamicOwned(profile,cfg,desc,routing_key).release();
 }
 
-static MaterialCreateInfo *Billboard2DDynamic_Adapter(
+static std::unique_ptr<MaterialCreateInfo> Billboard2DDynamic_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreateBillboard2DDynamic(profile, static_cast<BillboardMaterialCreateConfig *>(cfg), *desc, key); }
+{ return CreateBillboard2DDynamicOwned(profile, static_cast<BillboardMaterialCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

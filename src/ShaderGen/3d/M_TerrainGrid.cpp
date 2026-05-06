@@ -1,7 +1,9 @@
 #include"MaterialFactory3DCommon.h"
 #include"Build3DCommon.h"
+#include <hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/UBOCommon.h>
+#include <memory>
 
 namespace hgl::graph::mtl{
 namespace
@@ -44,12 +46,12 @@ MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite 
     return CreateFromFixedDef3D("TerrainGrid", profile, TERRAIN_GRID_DEF, key, cfg, desc);
 }
 
-static MaterialCreateInfo *TerrainGrid_Adapter(
+static std::unique_ptr<MaterialCreateInfo> TerrainGrid_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreateTerrainGrid(profile, static_cast<const TerrainGridCreateConfig *>(cfg), *desc, key); }
+{ return std::unique_ptr<MaterialCreateInfo>(CreateTerrainGrid(profile, static_cast<const TerrainGridCreateConfig *>(cfg), *desc, key)); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

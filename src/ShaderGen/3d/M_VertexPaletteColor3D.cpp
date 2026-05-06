@@ -1,7 +1,9 @@
 #include"MaterialFactory3DCommon.h"
 #include"Build3DCommon.h"
+#include <hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include <memory>
 
 namespace hgl::graph::mtl{
 namespace
@@ -40,12 +42,12 @@ MaterialCreateInfo *CreateVertexPaletteColor3D(const contract::PhysicalDevicePro
     return CreateFromFixedDef3D("VertexPaletteColor3D", profile, VERTEX_PALETTE_COLOR_3D_DEF, key, &local_cfg, desc);
 }
 
-static MaterialCreateInfo *VertexPaletteColor3D_Adapter(
+static std::unique_ptr<MaterialCreateInfo> VertexPaletteColor3D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreateVertexPaletteColor3D(profile, static_cast<const Material3DCreateConfig *>(cfg), *desc, key); }
+{ return std::unique_ptr<MaterialCreateInfo>(CreateVertexPaletteColor3D(profile, static_cast<const Material3DCreateConfig *>(cfg), *desc, key)); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

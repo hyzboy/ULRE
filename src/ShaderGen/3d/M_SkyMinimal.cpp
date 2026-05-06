@@ -1,6 +1,8 @@
 #include"MaterialFactory3DCommon.h"
 #include"Build3DCommon.h"
+#include <hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include <memory>
 
 namespace hgl::graph::mtl{
 namespace
@@ -31,12 +33,12 @@ MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *
     return CreateFromFixedDef3D("SkyMinimal", profile, SKY_MINIMAL_DEF, key, cfg, desc);
 }
 
-static MaterialCreateInfo *SkyMinimal_Adapter(
+static std::unique_ptr<MaterialCreateInfo> SkyMinimal_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreateSkyMinimal(profile, static_cast<const SkyMinimalCreateConfig *>(cfg), *desc, key); }
+{ return std::unique_ptr<MaterialCreateInfo>(CreateSkyMinimal(profile, static_cast<const SkyMinimalCreateConfig *>(cfg), *desc, key)); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

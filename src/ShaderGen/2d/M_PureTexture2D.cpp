@@ -2,6 +2,7 @@
 #include"MaterialFactory2D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/mtl/SamplerSlot.h>
+#include <memory>
 
 namespace hgl::graph::mtl{
 
@@ -76,12 +77,12 @@ MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLit
     return CreatePureTextureVariant(profile, key, cfg, desc);
 }
 
-static MaterialCreateInfo *PureTexture2D_Adapter(
+static std::unique_ptr<MaterialCreateInfo> PureTexture2D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreatePureTexture2D(profile, static_cast<const Material2DCreateConfig *>(cfg), *desc, key); }
+{ return std::unique_ptr<MaterialCreateInfo>(CreatePureTexture2D(profile, static_cast<const Material2DCreateConfig *>(cfg), *desc, key)); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

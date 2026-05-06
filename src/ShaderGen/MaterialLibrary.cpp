@@ -110,11 +110,6 @@ const char *GetMaterialPresetName(const MaterialPreset mtl_id)
     return routing::GetPresetName(mtl_id);
 }
 
-MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLite *profile,
-                                         Material3DCreateConfig *cfg);
-
-
-
 std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract::PhysicalDeviceProfileLite *profile,
                                                                   const MaterialVariantKey &key,
                                                                   MaterialCreateConfig *cfg)
@@ -191,20 +186,6 @@ std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract
         return nullptr;
     }
 
-    if(cfg->preset_name
-    && std::strcmp(cfg->preset_name, GetMaterialPresetName(MaterialPreset::Checkerboard3D)) == 0)
-    {
-        Material3DCreateConfig *cfg3d = As3D(cfg);
-        if(!cfg3d)
-        {
-            std::fprintf(stderr,
-                "[MaterialLibrary] CreateMaterialCreateInfo failed: Checkerboard3D requires Material3DCreateConfig\n");
-            return nullptr;
-        }
-
-        return std::unique_ptr<MaterialCreateInfo>(CreateCheckerboard3D(profile, cfg3d));
-    }
-
     if(!profile)
     {
         std::fprintf(stderr,
@@ -256,8 +237,8 @@ std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract
 
     const MaterialPreset factory_type = *variant_desc->factory_type;
 
-    if(MaterialCreateInfo *mci=MaterialFactory3D::Create(factory_type,profile,variant_desc,key,cfg))
-        return std::unique_ptr<MaterialCreateInfo>(mci);
+    if(auto mci = MaterialFactory3D::Create(factory_type,profile,variant_desc,key,cfg))
+        return mci;
 
     std::fprintf(stderr,
         "[MaterialLibrary] CreateMaterialCreateInfo failed: factory dispatch failed (variant=%s factory_type=%u key_hash=%llu resolved_key_hash=%llu)\n",
@@ -266,13 +247,6 @@ std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract
         static_cast<unsigned long long>(key.Hash()),
         static_cast<unsigned long long>(resolved_key.Hash()));
     return nullptr;
-}
-
-MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                             const MaterialVariantKey &key,
-                                             MaterialCreateConfig *cfg)
-{
-    return CreateMaterialCreateInfoOwned(profile,key,cfg).release();
 }
 
 void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreateConfig *cfg)
@@ -367,13 +341,6 @@ std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract
         FormatVariantKeyForLog(key).c_str());
 
     return CreateMaterialCreateInfoOwned(profile, key, cfg);
-}
-
-MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                             const MaterialPreset mtl_id,
-                                             MaterialCreateConfig *cfg)
-{
-    return CreateMaterialCreateInfoOwned(profile,mtl_id,cfg).release();
 }
 
 }//namespace hgl::graph::mtl

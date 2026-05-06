@@ -1,6 +1,7 @@
 ﻿#include"Build2DCommon.h"
 #include"MaterialFactory2D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include <memory>
 
 namespace hgl::graph::mtl{
 
@@ -33,12 +34,12 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
     return CreateFromFixedDef2D("PureColor2D", profile, def, key, vs_preamble, fs_preamble, cfg, desc);
 }
 
-static MaterialCreateInfo *PureColor2D_Adapter(
+static std::unique_ptr<MaterialCreateInfo> PureColor2D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreatePureColor2D(profile, static_cast<Material2DCreateConfig *>(cfg), *desc, key); }
+{ return std::unique_ptr<MaterialCreateInfo>(CreatePureColor2D(profile, static_cast<Material2DCreateConfig *>(cfg), *desc, key)); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
