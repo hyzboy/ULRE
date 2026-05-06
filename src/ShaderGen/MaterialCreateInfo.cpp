@@ -9,6 +9,7 @@
 #include<hgl/shadergen/PositionProviderRegistry.h>
 #include<string>
 #include<limits>
+#include<memory>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -221,8 +222,8 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     if((config.shader_stage_flag_bit & uint32_t(ShaderStage::Fragment)) == 0)
         config.shader_stage_flag_bit |= uint32_t(ShaderStage::Fragment);
 
-    if(HasVertex    ())shader_map.Add(new ShaderCreateInfoVertex(&descriptor_db));
-    if(HasFragment  ())shader_map.Add(new ShaderCreateInfo(new FragmentShaderStageIO(),&descriptor_db));
+    if(HasVertex    ())shader_map.Add(std::make_unique<ShaderCreateInfoVertex>(&descriptor_db));
+    if(HasFragment  ())shader_map.Add(std::make_unique<ShaderCreateInfo>(new FragmentShaderStageIO(),&descriptor_db));
 
     ubo_range=0;
     ssbo_range=0;

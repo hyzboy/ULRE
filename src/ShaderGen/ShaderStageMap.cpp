@@ -4,18 +4,16 @@ namespace hgl{namespace graph{
 
 bool ShaderStageMap::Add(ShaderCreateInfo *sc)
 {
-    std::unique_ptr<ShaderCreateInfo> owned(sc);
+    return Add(std::unique_ptr<ShaderCreateInfo>(sc));
+}
 
-    if(!owned)
+bool ShaderStageMap::Add(std::unique_ptr<ShaderCreateInfo> sc)
+{
+    if(!sc)
         return false;
 
-    ShaderStage flag=owned->GetShaderStage();
-
-    if(ContainsKey(flag))
-        return false;
-
-    map.emplace(flag,std::move(owned));
-    return true;
+    const ShaderStage flag=sc->GetShaderStage();
+    return Add(flag,std::move(sc));
 }
 
 }}//namespace hgl::graph

@@ -10,6 +10,7 @@
 #include<hgl/shadergen/device/DeviceProfileJson.h>
 #include<vector>
 #include<string>
+#include<memory>
 
 namespace hgl
 {
@@ -253,7 +254,7 @@ namespace hgl
             spv_version=compile_info.spv_version;
         }
 
-        static ExternalModule *gsi_module=nullptr;
+        static std::unique_ptr<ExternalModule> gsi_module;
 
         typedef GLSLCompilerInterface *(*GetInterfaceFUNC)();
 
@@ -274,7 +275,7 @@ namespace hgl
             }
             glsl_compiler_fullname=filesystem::JoinPathWithFilename(cur_path,OS_TEXT("GLSLCompiler") HGL_PLUGIN_EXTNAME);
 
-            gsi_module=LoadExternalModule(glsl_compiler_fullname);
+            gsi_module.reset(LoadExternalModule(glsl_compiler_fullname));
 
             if(!gsi_module)
             {
@@ -314,8 +315,8 @@ namespace hgl
                 std::fprintf(stderr,"[GLSLCompiler] Init failed: cannot resolve GetInterface symbol\n");
             }
 
-            delete gsi_module;
-            gsi_module=nullptr;
+            gsi=nullptr;
+            gsi_module.reset();
             return(false);
         }
 
@@ -335,11 +336,7 @@ namespace hgl
                 gsi=nullptr;
             }
 
-            if(gsi_module)
-            {
-                delete gsi_module;
-                gsi_module=nullptr;
-            }
+            gsi_module.reset();
         }
 
         const char PreambleString[]="";

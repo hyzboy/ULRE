@@ -31,19 +31,23 @@ public:
 
     bool Add(const ShaderStage flag,ShaderCreateInfo *sc)
     {
-        std::unique_ptr<ShaderCreateInfo> owned(sc);
+        return Add(flag,std::unique_ptr<ShaderCreateInfo>(sc));
+    }
 
-        if(!owned)
+    bool Add(const ShaderStage flag,std::unique_ptr<ShaderCreateInfo> sc)
+    {
+        if(!sc)
             return false;
 
         if(ContainsKey(flag))
             return false;
 
-        map.emplace(flag,std::move(owned));
+        map.emplace(flag,std::move(sc));
         return true;
     }
 
     bool Add(ShaderCreateInfo *sc);
+    bool Add(std::unique_ptr<ShaderCreateInfo> sc);
 
     /// 命中返回 ShaderCreateInfo*，未命中返回 nullptr。
     /// 与 std::unordered_map::operator[] 不同，不会插入新元素。
