@@ -26,6 +26,11 @@ namespace hgl::graph::mtl
     class MaterialFactory3D
     {
     public:
+        /// 显式注册内置 preset 工厂。可重复调用（幂等）。
+        ///
+        /// 该入口用于在不依赖静态初始化副作用的场景下，确保内置材质工厂已可用。
+        static void RegisterBuiltinFactories();
+
         /// 注册 preset → 工厂回调。重复注册被忽略并打 warning。
         /// name 仅用于日志，不参与查找。
         static bool Register(MaterialPreset preset, const char *name, PresetFactoryFn fn);

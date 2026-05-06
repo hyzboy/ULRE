@@ -114,6 +114,14 @@ std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract
                                                                   const MaterialVariantKey &key,
                                                                   MaterialCreateConfig *cfg)
 {
+    static const bool s_builtin_factory_registration_done = []()
+    {
+        MaterialFactory3D::RegisterBuiltinFactories();
+        return true;
+    }();
+
+    (void)s_builtin_factory_registration_done;
+
     static const bool s_startup_variant_validation_done = []()
     {
         std::vector<std::string> diagnostics;

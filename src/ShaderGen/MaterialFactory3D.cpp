@@ -2,8 +2,34 @@
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <ankerl/unordered_dense.h>
 #include <cstdio>
+#include <mutex>
 
 namespace hgl{namespace graph{namespace mtl{
+
+#define ULRE_FOR_EACH_BUILTIN_FACTORY(X) \
+    X(PureColor2D)                      \
+    X(PureTexture2D)                    \
+    X(VertexColor2D)                    \
+    X(Text2D)                           \
+    X(Checkerboard3D)                   \
+    X(FullscreenTriangle)               \
+    X(PureColor3D)                      \
+    X(VertexColor3D)                    \
+    X(VertexLuminance3D)                \
+    X(VertexLuminance2D)                \
+    X(Billboard2DDynamic)               \
+    X(Billboard2DFixed)                 \
+    X(Gizmo3D)                          \
+    X(SkyMinimal)                       \
+    X(Standard)                         \
+    X(PBRColor3D)                       \
+    X(VertexPaletteColor3D)             \
+    X(TerrainGrid)
+
+#define DECLARE_BUILTIN_FACTORY_REGISTER_FN(preset) void RegisterBuiltinFactory_##preset();
+    ULRE_FOR_EACH_BUILTIN_FACTORY(DECLARE_BUILTIN_FACTORY_REGISTER_FN)
+#undef DECLARE_BUILTIN_FACTORY_REGISTER_FN
+
     namespace
     {
         struct FactoryEntry
@@ -18,7 +44,25 @@ namespace hgl{namespace graph{namespace mtl{
             static ankerl::unordered_dense::map<MaterialPreset, FactoryEntry> r;
             return r;
         }
+
+        void RegisterBuiltinFactoriesImpl()
+        {
+#define REGISTER_BUILTIN_IF_MISSING(preset)                                         \
+            if (!MaterialFactory3D::GetRegisteredName(MaterialPreset::preset))      \
+                RegisterBuiltinFactory_##preset();
+            ULRE_FOR_EACH_BUILTIN_FACTORY(REGISTER_BUILTIN_IF_MISSING)
+#undef REGISTER_BUILTIN_IF_MISSING
+        }
     } // anonymous namespace
+
+    void MaterialFactory3D::RegisterBuiltinFactories()
+    {
+        static std::once_flag once;
+        std::call_once(once, []()
+        {
+            RegisterBuiltinFactoriesImpl();
+        });
+    }
 
     bool MaterialFactory3D::Register(MaterialPreset preset, const char *name, PresetFactoryFn fn)
     {
@@ -65,4 +109,6 @@ namespace hgl{namespace graph{namespace mtl{
         auto  it = r.find(preset);
         return it != r.end() ? it->second.name : nullptr;
     }
+
+#undef ULRE_FOR_EACH_BUILTIN_FACTORY
 }}} // namespace hgl::graph::mtl

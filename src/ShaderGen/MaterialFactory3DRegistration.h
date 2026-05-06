@@ -16,12 +16,20 @@
 ///     此时需在 CMake 中对 ShaderGen 添加 /WHOLEARCHIVE（MSVC）
 ///     或 --whole-archive（GCC/Clang）链接选项。
 #define ULRE_REGISTER_PRESET_FACTORY(preset, name, fn)                              \
+    namespace hgl::graph::mtl {                                                     \
+        void RegisterBuiltinFactory_##preset() {                                    \
+            if (::hgl::graph::mtl::MaterialFactory3D::GetRegisteredName(            \
+                    ::hgl::graph::mtl::MaterialPreset::preset))                     \
+                return;                                                              \
+            ::hgl::graph::mtl::MaterialFactory3D::Register(                         \
+                ::hgl::graph::mtl::MaterialPreset::preset, name,                    \
+                &(fn));                                                              \
+        }                                                                            \
+    }                                                                                \
     namespace {                                                                      \
         struct AutoReg_##preset {                                                    \
             AutoReg_##preset() {                                                     \
-                ::hgl::graph::mtl::MaterialFactory3D::Register(                     \
-                    ::hgl::graph::mtl::MaterialPreset::preset, name,                 \
-                    &(fn));                                                           \
+                ::hgl::graph::mtl::RegisterBuiltinFactory_##preset();               \
             }                                                                        \
         };                                                                           \
         static AutoReg_##preset s_auto_reg_##preset;                                 \
