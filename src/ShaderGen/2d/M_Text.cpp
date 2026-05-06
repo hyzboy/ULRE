@@ -50,10 +50,10 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     std::string vs = vs_preamble + result.vertex_glsl;
     std::string fs = fs_preamble + result.fragment_glsl;
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, &new_cfg);
+    auto mci = CompileCompositorMaterialOwned(profile, def, vs, fs, &new_cfg);
     if(!mci)
         std::fprintf(stderr, "[Text2D] CompileCompositorMaterial failed\n");
-    return mci;
+    return mci.release();
 }
 
 static MaterialCreateInfo *Text2D_Adapter(

@@ -10,6 +10,7 @@
 
 #include<hgl/mtl/StaticMaterialDef.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
+#include <memory>
 #include <string>
 
 namespace hgl::graph::mtl{
@@ -17,6 +18,20 @@ namespace hgl::graph::mtl{
 struct Material3DCreateConfig;
 struct Material2DCreateConfig;
 class MaterialCreateInfo;
+
+std::unique_ptr<MaterialCreateInfo> CompileCompositorMaterialOwned(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const StaticMaterialDef &    def,
+    const std::string &         vs_glsl,
+    const std::string &         fs_glsl,
+    const Material3DCreateConfig *config = nullptr);
+
+std::unique_ptr<MaterialCreateInfo> CompileCompositorMaterialOwned(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const StaticMaterialDef &    def,
+    const std::string &         vs_glsl,
+    const std::string &         fs_glsl,
+    const Material2DCreateConfig *config);
 
 /**
  * 编译 Compositor 模板产出的完整 GLSL → MaterialCreateInfo*。

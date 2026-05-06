@@ -163,7 +163,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         return nullptr;
     }
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
+    auto mci = CompileCompositorMaterialOwned(
         profile,
         dynamic_def,
         result.vertex_glsl,
@@ -172,7 +172,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     if (!mci)
         std::fprintf(stderr, "[Standard] CompileCompositorMaterial failed\n");
-    return mci;
+    return mci.release();
 }
 
 static MaterialCreateInfo *Standard_Adapter(

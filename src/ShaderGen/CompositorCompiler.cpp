@@ -21,7 +21,7 @@
 
 namespace hgl::graph::mtl {
 
-MaterialCreateInfo *CompileCompositorMaterial(
+std::unique_ptr<MaterialCreateInfo> CompileCompositorMaterialOwned(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &    def,
     const std::string &         vs_glsl,
@@ -29,12 +29,12 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const Material3DCreateConfig *config)
 {
     std::string diagnostics;
-    std::unique_ptr<MaterialCreateInfo> mci(internal::PrepareCompositorMaterialSnapshot(profile,
-                                                                                         def,
-                                                                                         vs_glsl,
-                                                                                         fs_glsl,
-                                                                                         config,
-                                                                                         &diagnostics));
+    std::unique_ptr<MaterialCreateInfo> mci = internal::PrepareCompositorMaterialSnapshotOwned(profile,
+                                                                                                 def,
+                                                                                                 vs_glsl,
+                                                                                                 fs_glsl,
+                                                                                                 config,
+                                                                                                 &diagnostics);
     if (!mci)
     {
         std::fprintf(stderr,
@@ -61,7 +61,17 @@ MaterialCreateInfo *CompileCompositorMaterial(
             diagnostics.c_str());
     }
 
-    return mci.release();
+    return mci;
+}
+
+MaterialCreateInfo *CompileCompositorMaterial(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const StaticMaterialDef &    def,
+    const std::string &         vs_glsl,
+    const std::string &         fs_glsl,
+    const Material3DCreateConfig *config)
+{
+    return CompileCompositorMaterialOwned(profile,def,vs_glsl,fs_glsl,config).release();
 }
 
 bool PrepareCompositorGLSLForReflection(
@@ -72,12 +82,12 @@ bool PrepareCompositorGLSLForReflection(
     std::string &out_fs_glsl,
     std::string *diagnostics)
 {
-    std::unique_ptr<MaterialCreateInfo> mci(internal::PrepareCompositorMaterialSnapshot(nullptr,
-                                                                                         def,
-                                                                                         vs_glsl,
-                                                                                         fs_glsl,
-                                                                                         nullptr,
-                                                                                         diagnostics));
+    std::unique_ptr<MaterialCreateInfo> mci = internal::PrepareCompositorMaterialSnapshotOwned(nullptr,
+                                                                                                 def,
+                                                                                                 vs_glsl,
+                                                                                                 fs_glsl,
+                                                                                                 nullptr,
+                                                                                                 diagnostics);
     if (!mci)
         return false;
 
@@ -90,7 +100,7 @@ bool PrepareCompositorGLSLForReflection(
     return true;
 }
 
-MaterialCreateInfo *CompileCompositorMaterial(
+std::unique_ptr<MaterialCreateInfo> CompileCompositorMaterialOwned(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &    def,
     const std::string &         vs_glsl,
@@ -110,7 +120,17 @@ MaterialCreateInfo *CompileCompositorMaterial(
         cfg3d.shader_stage_flag_bit             = config->shader_stage_flag_bit;
     }
 
-    return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, &cfg3d);
+    return CompileCompositorMaterialOwned(profile, def, vs_glsl, fs_glsl, &cfg3d);
+}
+
+MaterialCreateInfo *CompileCompositorMaterial(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const StaticMaterialDef &    def,
+    const std::string &         vs_glsl,
+    const std::string &         fs_glsl,
+    const Material2DCreateConfig *config)
+{
+    return CompileCompositorMaterialOwned(profile, def, vs_glsl, fs_glsl, config).release();
 }
 
 bool InjectLayoutDefines(MaterialCreateInfo &mci)

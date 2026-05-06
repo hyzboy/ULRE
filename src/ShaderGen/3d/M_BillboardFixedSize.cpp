@@ -100,7 +100,7 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
 
     std::fprintf(stderr, "[BillboardFixed] assemble OK, compiling material...\n");
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
+    auto mci = CompileCompositorMaterialOwned(
         profile,
         dynamic_def,
         result.vertex_glsl,
@@ -111,7 +111,7 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
         std::fprintf(stderr, "[BillboardFixed] CompileCompositorMaterial failed\n");
     else
         std::fprintf(stderr, "[BillboardFixed] material created OK\n");
-    return mci;
+    return mci.release();
 }
 
 static MaterialCreateInfo *Billboard2DFixed_Adapter(

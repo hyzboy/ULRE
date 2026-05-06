@@ -99,7 +99,7 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
 
     std::fprintf(stderr, "[BillboardDynamic] assemble OK, compiling material...\n");
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
+    auto mci = CompileCompositorMaterialOwned(
         profile,
         dynamic_def,
         result.vertex_glsl,
@@ -110,7 +110,7 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
         std::fprintf(stderr, "[BillboardDynamic] CompileCompositorMaterial failed\n");
     else
         std::fprintf(stderr, "[BillboardDynamic] material created OK\n");
-    return mci;
+    return mci.release();
 }
 
 static MaterialCreateInfo *Billboard2DDynamic_Adapter(

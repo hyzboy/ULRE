@@ -190,7 +190,7 @@ std::string BuildShaderDataSchemaDebugText(const StaticMaterialDef &def)
     return text;
 }
 
-MaterialCreateInfo *PrepareCompositorMaterialSnapshot(
+std::unique_ptr<MaterialCreateInfo> PrepareCompositorMaterialSnapshotOwned(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &def,
     const std::string &vs_glsl,
@@ -236,7 +236,7 @@ MaterialCreateInfo *PrepareCompositorMaterialSnapshot(
     if (profile)
         builder.SetDevice(profile);
 
-    auto FailWithBuilder = [&](const char *reason) -> MaterialCreateInfo *
+    auto FailWithBuilder = [&](const char *reason) -> std::unique_ptr<MaterialCreateInfo>
     {
         if (diagnostics)
         {
@@ -352,7 +352,23 @@ MaterialCreateInfo *PrepareCompositorMaterialSnapshot(
     if (!InjectLayoutDefines(*mci))
         return FailWithBuilder("InjectLayoutDefines() failed");
 
-    return mci.release();
+    return mci;
+}
+
+MaterialCreateInfo *PrepareCompositorMaterialSnapshot(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const StaticMaterialDef &def,
+    const std::string &vs_glsl,
+    const std::string &fs_glsl,
+    const Material3DCreateConfig *config,
+    std::string *diagnostics)
+{
+    return PrepareCompositorMaterialSnapshotOwned(profile,
+                                                  def,
+                                                  vs_glsl,
+                                                  fs_glsl,
+                                                  config,
+                                                  diagnostics).release();
 }
 
 } // namespace hgl::graph::mtl::internal

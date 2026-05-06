@@ -1,4 +1,5 @@
 #include <hgl/shadergen/CompositorCompiler.h>
+#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderLayoutEmitter.h>
 #include <hgl/shadergen/PositionProviderRegistry.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
@@ -58,11 +59,11 @@ MaterialCreateInfo *CreateFullscreenTriangle(const contract::PhysicalDeviceProfi
     EmitPositionInput(vs_out, *pp, 0);
     vs_out << "\nvoid main()\n{\n    gl_Position = vec4(GetPositionLocal(), 1.0);\n}\n";
 
-    return CompileCompositorMaterial(profile,
-                                     FULLSCREEN_TRIANGLE_DEF,
-                                     vs_out.str(),
-                                     kFullscreenTriangleFS,
-                                     &local_cfg);
+    return CompileCompositorMaterialOwned(profile,
+                                          FULLSCREEN_TRIANGLE_DEF,
+                                          vs_out.str(),
+                                          kFullscreenTriangleFS,
+                                          &local_cfg).release();
 }
 
 static MaterialCreateInfo *FullscreenTriangle_Adapter(

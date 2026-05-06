@@ -109,7 +109,7 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
         return nullptr;
     }
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
+    auto mci = CompileCompositorMaterialOwned(
         profile,
         dynamic_def,
         result.vertex_glsl,
@@ -119,7 +119,7 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     if (!mci)
         std::fprintf(stderr, "[PBRColor3D] CompileCompositorMaterial failed\n");
 
-    return mci;
+    return mci.release();
 }
 
 static MaterialCreateInfo *PBRColor3D_Adapter(

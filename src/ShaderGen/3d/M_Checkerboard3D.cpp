@@ -1,4 +1,5 @@
 #include <hgl/shadergen/CompositorCompiler.h>
+#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/StaticMaterialDef.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
@@ -61,11 +62,11 @@ MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLi
     local_cfg.material_instance = false;
     local_cfg.effective_feature_mask = 0;
 
-    return CompileCompositorMaterial(profile,
-                                     CHECKERBOARD_3D_DEF,
-                                     kCheckerboardVS,
-                                     kCheckerboardFS,
-                                     &local_cfg);
+    return CompileCompositorMaterialOwned(profile,
+                                          CHECKERBOARD_3D_DEF,
+                                          kCheckerboardVS,
+                                          kCheckerboardFS,
+                                          &local_cfg).release();
 }
 
 static MaterialCreateInfo *Checkerboard3D_Adapter(

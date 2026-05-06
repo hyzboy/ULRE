@@ -42,7 +42,7 @@ MaterialCreateInfo *CreateFromFixedDef3D(
         return nullptr;
     }
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
+    auto mci = CompileCompositorMaterialOwned(
         profile,
         def,
         result.vertex_glsl,
@@ -52,7 +52,7 @@ MaterialCreateInfo *CreateFromFixedDef3D(
     if (!mci)
         std::fprintf(stderr, "[%s] CompileCompositorMaterial failed\n", debug_tag);
 
-    return mci;
+    return mci.release();
 }
 
 }//namespace hgl::graph::mtl

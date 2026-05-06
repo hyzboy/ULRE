@@ -38,11 +38,11 @@ MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
     const std::string vs = vs_preamble + result.vertex_glsl;
     const std::string fs = fs_preamble + result.fragment_glsl;
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
+    auto mci = CompileCompositorMaterialOwned(profile, def, vs, fs, cfg);
     if(!mci)
         std::fprintf(stderr, "[%s] CompileCompositorMaterial failed\n", debug_tag ? debug_tag : "2DFactory");
 
-    return mci;
+    return mci.release();
 }
 
 }//namespace hgl::graph::mtl
