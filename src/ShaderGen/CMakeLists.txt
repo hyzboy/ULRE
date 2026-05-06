@@ -27,6 +27,13 @@ SET(MATERIAL_CREATE_INFO_BUILDER_FILES ${SHADERGEN_INCLUDE_PATH}/BindingContract
                                        DescriptorLayoutBuilder.cpp)
 SOURCE_GROUP("Material Create Info\\Builders" FILES ${MATERIAL_CREATE_INFO_BUILDER_FILES})
 
+# Material Create Info / Compilers
+SET(MATERIAL_CREATE_INFO_COMPILER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageCompiler.h
+                                        ${SHADERGEN_INCLUDE_PATH}/ShaderSetCompiler.h
+                                        ShaderStageCompiler.cpp
+                                        ShaderSetCompiler.cpp)
+SOURCE_GROUP("Material Create Info\\Compilers" FILES ${MATERIAL_CREATE_INFO_COMPILER_FILES})
+
 # Descriptor Info
 SET(DESC_INFO_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderStageIO.h
                             ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorDB.h
@@ -220,6 +227,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${MATERIAL_CREATE_INFO_HEADER_FILES}
     ${MATERIAL_CREATE_INFO_SOURCE_FILES}
     ${MATERIAL_CREATE_INFO_BUILDER_FILES}
+    ${MATERIAL_CREATE_INFO_COMPILER_FILES}
     ${SHADER_CREATER_HEADER_FILES}
     ${SHADER_CREATER_SOURCE_FILES}
     ${GLSL_COMPILER_SOURCE}

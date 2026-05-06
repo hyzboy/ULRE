@@ -1,6 +1,7 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/BindingContractBuilder.h>
 #include<hgl/shadergen/DescriptorLayoutBuilder.h>
+#include<hgl/shadergen/ShaderSetCompiler.h>
 #include<hgl/shadergen/ShaderStageIO.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
@@ -423,37 +424,13 @@ void MaterialCreateInfo::SetDevice(const contract::PhysicalDeviceProfileLite *pr
 
 bool MaterialCreateInfo::CreateShaderDirect()
 {
-    if(shader_map.IsEmpty())
-        return(false);
-
-    descriptor_db.Resort();
-
-    for(auto& kv : shader_map)
-    {
-        ShaderCreateInfo *sc = kv.second;
-
-        if(!sc->CompileFinalGLSLToSPV())
-            return(false);
-    }
-
-    return(true);
+    DescriptorLayoutBuilder::Finalize(descriptor_db,binding_contract);
+    return ShaderSetCompiler::Compile(shader_map);
 }
 
 bool MaterialCreateInfo::CompileSPV()
 {
-    if(shader_map.IsEmpty())
-        return(false);
-
     DescriptorLayoutBuilder::Finalize(descriptor_db,binding_contract);
-
-    for(auto& kv : shader_map)
-    {
-        ShaderCreateInfo *sc = kv.second;
-
-        if(!sc->CompileFinalGLSLToSPV())
-            return(false);
-    }
-
-    return(true);
+    return ShaderSetCompiler::Compile(shader_map);
 }
 }//namespace hgl::graph::mtl
