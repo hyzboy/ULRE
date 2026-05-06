@@ -8,6 +8,12 @@
 
 namespace hgl{namespace graph{
 
+void ShaderCreateInfo::SPVDataDeleter::operator()(SPVData *ptr) const noexcept
+{
+    if(ptr)
+        FreeSPVData(ptr);
+}
+
 static const char *GetShaderStageNameByStage(const ShaderStage stage)
 {
     switch (stage)
@@ -21,20 +27,14 @@ static const char *GetShaderStageNameByStage(const ShaderStage stage)
 }
 
 ShaderCreateInfo::ShaderCreateInfo(ShaderStageIO *s,MaterialDescriptorDB *m)
+    :shader_stage(s->GetShaderStage())
+    ,stage_io(s)
+    ,descriptor_db(m)
+    ,spv_data(nullptr)
 {
-    stage_io=s;
-    descriptor_db=m;
-    shader_stage=s->GetShaderStage();
-    spv_data=nullptr;
 }
 
-ShaderCreateInfo::~ShaderCreateInfo()
-{
-    delete stage_io;
-
-    if(spv_data)
-        FreeSPVData(spv_data);
-}
+ShaderCreateInfo::~ShaderCreateInfo()=default;
 
 bool ShaderCreateInfo::CompileFinalGLSLToSPV()
 {
@@ -49,9 +49,10 @@ bool ShaderCreateInfo::CompileFinalGLSLToSPV()
 
 bool ShaderCreateInfo::CompileToSPV()
 {
-    spv_data=CompileShader(uint32_t(shader_stage),final_shader.c_str());
+    spv_data.reset();
+    spv_data.reset(CompileShader(uint32_t(shader_stage),final_shader.c_str()));
 
-    if(!spv_data)
+    if(!spv_data.get())
         return(false);
 
     return(true);
@@ -59,11 +60,13 @@ bool ShaderCreateInfo::CompileToSPV()
 
 const uint32 *ShaderCreateInfo::GetSPVData()const
 {
-    return spv_data?spv_data->spv_data:nullptr;
+    const SPVData *data=spv_data.get();
+    return data?data->spv_data:nullptr;
 }
 
 const size_t ShaderCreateInfo::GetSPVSize()const
 {
-    return spv_data?spv_data->spv_length:0;
+    const SPVData *data=spv_data.get();
+    return data?data->spv_length:0;
 }
 }}//namespace hgl::graph

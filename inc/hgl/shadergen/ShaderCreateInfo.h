@@ -5,6 +5,7 @@
 #include <hgl/common/InterpolationDef.h>
 #include<hgl/log/Log.h>
 #include<string>
+#include<memory>
 
 namespace hgl{namespace graph
 {
@@ -26,12 +27,17 @@ protected:
 
     ShaderStage shader_stage;                      ///<着色器阶段
 
-    ShaderStageIO *stage_io;                      ///<着色器描述符信息(owned)
+    struct SPVDataDeleter
+    {
+        void operator()(SPVData *ptr) const noexcept;
+    };
+
+    std::unique_ptr<ShaderStageIO> stage_io;      ///<着色器描述符信息(owned)
     MaterialDescriptorDB *descriptor_db;
 
     std::string final_shader;
 
-    SPVData *spv_data;
+    std::unique_ptr<SPVData,SPVDataDeleter> spv_data;
 
 protected:
 
@@ -39,8 +45,8 @@ protected:
 
 public:
 
-    ShaderStageIO *GetShaderStageIO(){return stage_io;}
-    const ShaderStageIO *GetShaderStageIO()const{return stage_io;}
+    ShaderStageIO *GetShaderStageIO(){return stage_io.get();}
+    const ShaderStageIO *GetShaderStageIO()const{return stage_io.get();}
     const ShaderStage GetShaderStage()const{return shader_stage;}
 
 public:
