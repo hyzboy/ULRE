@@ -6,7 +6,6 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/log/Logger.h>
 #include<hgl/shadergen/device/DeviceProfileTargetVersion.h>
-#include<hgl/shadergen/device/DeviceProfileJson.h>
 #include<vector>
 #include<string>
 #include<memory>
@@ -247,24 +246,6 @@ namespace hgl
             ApplyPhysicalDeviceProfileToCompilerLimits(g_pd_profile);
         }
 
-        void SetShaderCompilerPhysicalDeviceProfile(const mtl::contract::PhysicalDeviceProfileLite &profile)
-        {
-            ApplyShaderCompilerPhysicalDeviceProfile(profile);
-        }
-
-        bool SetShaderCompilerPhysicalDeviceProfileFromJson(const char *json_text)
-        {
-            if(!json_text)
-                return false;
-
-            mtl::contract::PhysicalDeviceProfileLite profile;
-            if(!mtl::contract::BuildPhysicalDeviceProfileFromCollectorJson(json_text,profile))
-                return false;
-
-            SetShaderCompilerPhysicalDeviceProfile(profile);
-            return true;
-        }
-
         void GetShaderCompilerTargetVersions(uint32 &vulkan_version,uint32 &spv_version)
         {
             vulkan_version=compile_info.vulkan_version;
@@ -281,7 +262,7 @@ namespace hgl
             }
 
             if(context.has_profile)
-                SetShaderCompilerPhysicalDeviceProfile(context.profile);
+                ApplyShaderCompilerPhysicalDeviceProfile(context.profile);
         }
 
         ShaderCompilerContext CaptureShaderCompilerContext()

@@ -135,6 +135,18 @@ set_property(TARGET ShaderCompilerThreadSmokeTests PROPERTY FOLDER "ULRE/Tests/S
 
 add_test(NAME ShaderCompilerThreadSmokeTests COMMAND ShaderCompilerThreadSmokeTests)
 
+# ShaderCompilerContextContractTests validates context apply/capture roundtrip,
+# target-version mapping, and path-only context consistency behavior.
+add_executable(ShaderCompilerContextContractTests
+    ShaderCompilerContextContractTests.cpp
+)
+
+link_ulre_for_tests(ShaderCompilerContextContractTests)
+
+set_property(TARGET ShaderCompilerContextContractTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME ShaderCompilerContextContractTests COMMAND ShaderCompilerContextContractTests)
+
 # MaterialKeyAbiSnapshot guards sizeof/alignof, constants, and hash stability.
 add_executable(MaterialKeyAbiSnapshot
     MaterialKeyAbiSnapshot.cpp
