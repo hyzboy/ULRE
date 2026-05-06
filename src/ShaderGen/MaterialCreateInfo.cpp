@@ -366,7 +366,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const uint32_t data_bytes,const uin
 
     material_instance.max_count=std::min<uint32_t>(ssbo_range/data_bytes,HGL_U16_MAX);
 
-    auto mi_ssbo=std::unique_ptr<SSBODescriptor>(CreateSSBODescriptor(SSBODescriptorSemantic::MaterialBindingInstanceData,shader_stage_flag_bits));
+    auto mi_ssbo=CreateSSBODescriptorOwned(SSBODescriptorSemantic::MaterialBindingInstanceData,shader_stage_flag_bits);
 
     descriptor_db.AddSSBO(shader_stage_flag_bits,
                           GetDescriptorSemanticMeta(SSBODescriptorSemantic::MaterialBindingInstanceData).set_type,

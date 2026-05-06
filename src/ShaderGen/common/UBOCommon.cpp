@@ -12,6 +12,11 @@ static bool CStrEq(const char *lhs,const char *rhs)
 
 UBODescriptor *CreateUBODescriptor(const UBODescriptorSemantic semantic,const uint32_t flag_bits)
 {
+    return CreateUBODescriptorOwned(semantic,flag_bits).release();
+}
+
+std::unique_ptr<UBODescriptor> CreateUBODescriptorOwned(const UBODescriptorSemantic semantic,const uint32_t flag_bits)
+{
     const auto &meta = GetDescriptorSemanticMeta(semantic);
 
     auto ubo=std::make_unique<UBODescriptor>();
@@ -23,10 +28,15 @@ UBODescriptor *CreateUBODescriptor(const UBODescriptorSemantic semantic,const ui
     ubo->semantic=semantic;
     ubo->stage_flag=flag_bits;
 
-    return ubo.release();
+    return ubo;
 }
 
 SSBODescriptor *CreateSSBODescriptor(const SSBODescriptorSemantic semantic,const uint32_t flag_bits)
+{
+    return CreateSSBODescriptorOwned(semantic,flag_bits).release();
+}
+
+std::unique_ptr<SSBODescriptor> CreateSSBODescriptorOwned(const SSBODescriptorSemantic semantic,const uint32_t flag_bits)
 {
     const auto &meta = GetDescriptorSemanticMeta(semantic);
 
@@ -39,6 +49,6 @@ SSBODescriptor *CreateSSBODescriptor(const SSBODescriptorSemantic semantic,const
     ssbo->semantic=semantic;
     ssbo->stage_flag=flag_bits;
 
-    return ssbo.release();
+    return ssbo;
 }
 }//namespace hgl::graph::mtl
