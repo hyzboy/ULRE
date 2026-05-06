@@ -181,6 +181,11 @@ SET(MATERIAL_COMPILER_FILES ${SHADERGEN_INCLUDE_PATH}/CompositorCompiler.h
                             CompositorCompiler.cpp)
 SOURCE_GROUP("Material Compiler" FILES ${MATERIAL_COMPILER_FILES})
 
+# Material Compiler / Internal
+SET(MATERIAL_COMPILER_INTERNAL_FILES ${SHADERGEN_INCLUDE_PATH}/internal/CompositorMaterialPreparation.h
+                                     internal/CompositorMaterialPreparation.cpp)
+SOURCE_GROUP("Material Compiler\\Internal" FILES ${MATERIAL_COMPILER_INTERNAL_FILES})
+
 # Material Compiler / Requirements
 SET(SHADER_REQUIRE_SCANNER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderResourceScanner.h
                                  ShaderResourceScanner.cpp
@@ -246,6 +251,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${STD_MTL_3D_SOURCE_FILES}
     ${FIXED_MTL_FILES}
     ${MATERIAL_COMPILER_FILES}
+    ${MATERIAL_COMPILER_INTERNAL_FILES}
     ${SHADER_REQUIRE_SCANNER_FILES}
     ${SAMPLER_GLSL_EMITTER_FILES}
     ${SHADER_LAYOUT_HEADER_FILES}
