@@ -1,6 +1,7 @@
 #include<hgl/mtl/UBOCommon.h>
 #include <hgl/common/ShaderDescriptorDef.h>
 #include<cstring>
+#include<memory>
 
 namespace hgl::graph::mtl{
 
@@ -13,7 +14,7 @@ UBODescriptor *CreateUBODescriptor(const UBODescriptorSemantic semantic,const ui
 {
     const auto &meta = GetDescriptorSemanticMeta(semantic);
 
-    UBODescriptor *ubo=new UBODescriptor;
+    auto ubo=std::make_unique<UBODescriptor>();
 
     ubo->type=meta.struct_name;
 
@@ -22,14 +23,14 @@ UBODescriptor *CreateUBODescriptor(const UBODescriptorSemantic semantic,const ui
     ubo->semantic=semantic;
     ubo->stage_flag=flag_bits;
 
-    return ubo;
+    return ubo.release();
 }
 
 SSBODescriptor *CreateSSBODescriptor(const SSBODescriptorSemantic semantic,const uint32_t flag_bits)
 {
     const auto &meta = GetDescriptorSemanticMeta(semantic);
 
-    SSBODescriptor *ssbo=new SSBODescriptor;
+    auto ssbo=std::make_unique<SSBODescriptor>();
 
     ssbo->type=meta.struct_name;
 
@@ -38,6 +39,6 @@ SSBODescriptor *CreateSSBODescriptor(const SSBODescriptorSemantic semantic,const
     ssbo->semantic=semantic;
     ssbo->stage_flag=flag_bits;
 
-    return ssbo;
+    return ssbo.release();
 }
 }//namespace hgl::graph::mtl

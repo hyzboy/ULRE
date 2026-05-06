@@ -7,10 +7,11 @@
 #include<ankerl/unordered_dense.h>
 #include<vector>
 #include<string>
+#include<memory>
 
 namespace hgl{namespace graph
 {
-using ConstValueDescriptorList=std::vector<ConstValueDescriptor *>;
+using ConstValueDescriptorList=std::vector<std::unique_ptr<ConstValueDescriptor>>;
 
 /**
 * Shader数据管理器,用于生成正式Shader前的资源统计

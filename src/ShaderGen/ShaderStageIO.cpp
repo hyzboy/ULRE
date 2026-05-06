@@ -1,4 +1,5 @@
 ﻿#include<hgl/shadergen/ShaderStageIO.h>
+#include<memory>
 
 namespace hgl{namespace graph{
 ShaderStageIO::ShaderStageIO(ShaderStage flag_bit)
@@ -9,10 +10,7 @@ ShaderStageIO::ShaderStageIO(ShaderStage flag_bit)
 }
 
 ShaderStageIO::~ShaderStageIO()
-{
-    for(auto *p:const_value_list)
-        delete p;
-}
+    =default;
 
 std::string ShaderStageIO::GetStageName()const
 {
@@ -31,14 +29,16 @@ std::string ShaderStageIO::GetStageName()const
 
 bool ShaderStageIO::AddConstValue(ConstValueDescriptor *sd)
 {
-    if(!sd)return(false);
+    std::unique_ptr<ConstValueDescriptor> owned(sd);
 
-    for(auto *p:const_value_list)
-        if(p->name==sd->name)
+    if(!owned)return(false);
+
+    for(const auto &p:const_value_list)
+        if(p&&p->name==owned->name)
             return(false);
 
-    sd->constant_id=static_cast<int>(const_value_list.size());
-    const_value_list.push_back(sd);
+    owned->constant_id=static_cast<int>(const_value_list.size());
+    const_value_list.push_back(std::move(owned));
     return(true);
 }
 
