@@ -117,14 +117,6 @@ std::unique_ptr<MaterialCreateInfo> CreateBillboard2DFixedOwned(const contract::
     return mci;
 }
 
-MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfileLite *profile,
-                                           mtl::BillboardMaterialCreateConfig *cfg,
-                                           const MaterialVariantDesc &desc,
-                                           const MaterialVariantKey &routing_key)
-{
-    return CreateBillboard2DFixedOwned(profile,cfg,desc,routing_key).release();
-}
-
 static std::unique_ptr<MaterialCreateInfo> Billboard2DFixed_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,

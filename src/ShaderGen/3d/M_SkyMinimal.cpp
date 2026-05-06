@@ -27,10 +27,12 @@ namespace
     };
 }//namespace
 
-MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg,
-                                     const MaterialVariantDesc &desc, const MaterialVariantKey &key)
+std::unique_ptr<MaterialCreateInfo> CreateSkyMinimalOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                          const SkyMinimalCreateConfig *cfg,
+                                                          const MaterialVariantDesc &desc,
+                                                          const MaterialVariantKey &key)
 {
-    return CreateFromFixedDef3D("SkyMinimal", profile, SKY_MINIMAL_DEF, key, cfg, desc);
+    return CreateFromFixedDef3DOwned("SkyMinimal", profile, SKY_MINIMAL_DEF, key, cfg, desc);
 }
 
 static std::unique_ptr<MaterialCreateInfo> SkyMinimal_Adapter(
@@ -38,7 +40,7 @@ static std::unique_ptr<MaterialCreateInfo> SkyMinimal_Adapter(
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return std::unique_ptr<MaterialCreateInfo>(CreateSkyMinimal(profile, static_cast<const SkyMinimalCreateConfig *>(cfg), *desc, key)); }
+{ return CreateSkyMinimalOwned(profile, static_cast<const SkyMinimalCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

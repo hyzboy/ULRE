@@ -67,12 +67,6 @@ std::unique_ptr<MaterialCreateInfo> CreateFullscreenTriangleOwned(const contract
                                           &local_cfg);
 }
 
-MaterialCreateInfo *CreateFullscreenTriangle(const contract::PhysicalDeviceProfileLite *profile,
-                                             Material3DCreateConfig *cfg)
-{
-    return CreateFullscreenTriangleOwned(profile,cfg).release();
-}
-
 static std::unique_ptr<MaterialCreateInfo> FullscreenTriangle_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *,

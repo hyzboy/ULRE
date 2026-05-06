@@ -116,14 +116,6 @@ std::unique_ptr<MaterialCreateInfo> CreateBillboard2DDynamicOwned(const contract
     return mci;
 }
 
-MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfileLite *profile,
-                                             mtl::BillboardMaterialCreateConfig *cfg,
-                                             const MaterialVariantDesc &desc,
-                                             const MaterialVariantKey &routing_key)
-{
-    return CreateBillboard2DDynamicOwned(profile,cfg,desc,routing_key).release();
-}
-
 static std::unique_ptr<MaterialCreateInfo> Billboard2DDynamic_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,

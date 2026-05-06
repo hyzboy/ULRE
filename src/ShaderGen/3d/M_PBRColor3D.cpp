@@ -125,13 +125,6 @@ std::unique_ptr<MaterialCreateInfo> CreatePBRColor3DOwned(const contract::Physic
     return mci;
 }
 
-MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile,
-                                     const MaterialVariantDesc &desc,
-                                     PBRColor3DMaterialCreateConfig *cfg)
-{
-    return CreatePBRColor3DOwned(profile,desc,cfg).release();
-}
-
 static std::unique_ptr<MaterialCreateInfo> PBRColor3D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,

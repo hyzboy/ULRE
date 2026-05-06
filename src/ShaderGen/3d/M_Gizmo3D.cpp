@@ -30,13 +30,15 @@ namespace
     };
 }
 
-MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg,
-                                  const MaterialVariantDesc &desc, const MaterialVariantKey &key)
+std::unique_ptr<MaterialCreateInfo> CreateGizmo3DOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                       Material3DCreateConfig *cfg,
+                                                       const MaterialVariantDesc &desc,
+                                                       const MaterialVariantKey &key)
 {
     if(cfg)
         cfg->material_instance=true;    // Gizmo requires per-instance data
 
-    return CreateFromFixedDef3D("Gizmo3D", profile, GIZMO_3D_DEF, key, cfg, desc);
+    return CreateFromFixedDef3DOwned("Gizmo3D", profile, GIZMO_3D_DEF, key, cfg, desc);
 }
 
 static std::unique_ptr<MaterialCreateInfo> Gizmo3D_Adapter(
@@ -44,7 +46,7 @@ static std::unique_ptr<MaterialCreateInfo> Gizmo3D_Adapter(
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return std::unique_ptr<MaterialCreateInfo>(CreateGizmo3D(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key)); }
+{ return CreateGizmo3DOwned(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

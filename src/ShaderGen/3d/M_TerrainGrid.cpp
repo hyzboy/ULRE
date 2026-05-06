@@ -40,10 +40,12 @@ namespace
     };
 }//namespace
 
-MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite *profile, const TerrainGridCreateConfig *cfg,
-                                      const MaterialVariantDesc &desc, const MaterialVariantKey &key)
+std::unique_ptr<MaterialCreateInfo> CreateTerrainGridOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                           const TerrainGridCreateConfig *cfg,
+                                                           const MaterialVariantDesc &desc,
+                                                           const MaterialVariantKey &key)
 {
-    return CreateFromFixedDef3D("TerrainGrid", profile, TERRAIN_GRID_DEF, key, cfg, desc);
+    return CreateFromFixedDef3DOwned("TerrainGrid", profile, TERRAIN_GRID_DEF, key, cfg, desc);
 }
 
 static std::unique_ptr<MaterialCreateInfo> TerrainGrid_Adapter(
@@ -51,7 +53,7 @@ static std::unique_ptr<MaterialCreateInfo> TerrainGrid_Adapter(
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return std::unique_ptr<MaterialCreateInfo>(CreateTerrainGrid(profile, static_cast<const TerrainGridCreateConfig *>(cfg), *desc, key)); }
+{ return CreateTerrainGridOwned(profile, static_cast<const TerrainGridCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

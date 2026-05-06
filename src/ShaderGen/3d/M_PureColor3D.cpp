@@ -27,10 +27,12 @@ namespace
     };
 }
 
-MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg,
-                                      const MaterialVariantDesc &desc, const MaterialVariantKey &key)
+std::unique_ptr<MaterialCreateInfo> CreatePureColor3DOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                           Material3DCreateConfig *cfg,
+                                                           const MaterialVariantDesc &desc,
+                                                           const MaterialVariantKey &key)
 {
-    return CreateFromFixedDef3D("PureColor3D", profile, PURE_COLOR_3D_DEF, key, cfg, desc);
+    return CreateFromFixedDef3DOwned("PureColor3D", profile, PURE_COLOR_3D_DEF, key, cfg, desc);
 }
 
 static std::unique_ptr<MaterialCreateInfo> PureColor3D_Adapter(
@@ -38,7 +40,7 @@ static std::unique_ptr<MaterialCreateInfo> PureColor3D_Adapter(
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return std::unique_ptr<MaterialCreateInfo>(CreatePureColor3D(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key)); }
+{ return CreatePureColor3DOwned(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

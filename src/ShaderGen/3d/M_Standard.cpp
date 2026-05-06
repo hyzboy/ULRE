@@ -176,14 +176,6 @@ std::unique_ptr<MaterialCreateInfo> CreateStandardVariantOwned(const contract::P
     return mci;
 }
 
-MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileLite *profile,
-                                          const MaterialVariantDesc &desc,
-                                          const MaterialVariantKey &input_key,
-                                          const Material3DCreateConfig *cfg)
-{
-    return CreateStandardVariantOwned(profile,desc,input_key,cfg).release();
-}
-
 static std::unique_ptr<MaterialCreateInfo> Standard_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,
