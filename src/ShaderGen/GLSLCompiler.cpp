@@ -254,6 +254,34 @@ namespace hgl
             spv_version=compile_info.spv_version;
         }
 
+        void ApplyShaderCompilerContext(const ShaderCompilerContext &context)
+        {
+            if(!context.shader_library_path.empty())
+            {
+                const bool path_changed = (context.shader_library_path != GetShaderLibraryPath());
+                if(path_changed)
+                {
+                    SetShaderLibraryPath(context.shader_library_path);
+                    AddShaderIncludePath(context.shader_library_path.c_str());
+                }
+            }
+
+            if(context.has_profile)
+                SetShaderCompilerPhysicalDeviceProfile(context.profile);
+        }
+
+        ShaderCompilerContext CaptureShaderCompilerContext()
+        {
+            ShaderCompilerContext context;
+            context.shader_library_path = GetShaderLibraryPath();
+            context.has_profile = g_pd_profile_valid;
+
+            if(g_pd_profile_valid)
+                context.profile = g_pd_profile;
+
+            return context;
+        }
+
         static std::unique_ptr<ExternalModule> gsi_module;
 
         typedef GLSLCompilerInterface *(*GetInterfaceFUNC)();
