@@ -97,11 +97,6 @@ inline MaterialVariantKey RouteKey(MaterialPreset preset) noexcept
     return RouteKey(preset, 0u, RuntimeKeyOverrides{});
 }
 
-// Phase-A migration helpers: preset <-> variant mapping.
-// [Step 3.5 T1] DEPRECATED：转发到 RouteKey()，T2/T3 完成后将彻底删除。
-[[deprecated("use RouteKey(preset, extra_attrib_bits, ov) -- see VertexInputFormat_plan.md Step 3.5 T1")]]
-MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id);
-
 /// Apply per-cfg overrides (geometry_mode, texture_source_bits, sampler_feature_bits) to an
 /// already-constructed MaterialVariantKey.  Used by both CreateMaterialCreateInfo and
 /// ShaderMaterialProgramManager::CreateMaterial so the same logic is executed regardless of which entry

@@ -4,7 +4,7 @@
 /// previously scattered across five call sites:
 ///   1. MaterialAssetLoader::CreateMaterialFromRecord (header-only)
 ///   2. MaterialFactory3D::Create → M_*.cpp::Create*Variant
-///   3. MaterialLibrary::MapPresetToVariantKey
+///   3. MaterialLibrary::RouteKey
 ///   4. MaterialLibrary::ApplyCreateConfigToVariantKey
 ///   5. *VariantRouter::Build*Policy
 ///
@@ -12,7 +12,7 @@
 /// that would add such a dependency must be rejected.
 
 #include <hgl/mtl/RecipeToKey.h>
-#include <hgl/mtl/MaterialLibrary.h>   // MapPresetToVariantKey
+#include <hgl/mtl/MaterialLibrary.h>   // RouteKey
 #include <hgl/mtl/MaterialFeature.h>   // ResolveIntentFeatureMask, ResolveLightingModelFromFeatures
 #include <hgl/mtl/PassExpansion.h>
 #include <hgl/mtl/MaterialKeyToolchainVersion.h>
@@ -131,8 +131,8 @@ PassType GetPrimaryPassForBlendMode(RenderAlphaMode blend) noexcept
 MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexcept
 {
     // ── Step 1: preset → base variant key ────────────────────────────────────
-    // [Step 3.5 T1] Routes through the single RouteKey() entry instead of the
-    // deprecated free function MapPresetToVariantKey. Behaviour is identical
+    // [Step 3.5 T1] Routes through the single RouteKey() entry.
+    // Behaviour is identical
     // (LOD resolution + canonical preset aliasing) because RouteKey() applies
     // the same PresetResolveTable.
     MaterialVariantKey k = RouteKey(r.preset);
@@ -193,7 +193,7 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     // ── Step 7: billboard blend mode ─────────────────────────────────────────
     // Billboard presets allow the caller to override the default Transparent
     // blend_mode via BillboardConfig::blend_mode.
-    // Non-billboard presets inherit their blend_mode from MapPresetToVariantKey
+    // Non-billboard presets inherit their blend_mode from RouteKey preset defaults
     // (typically Opaque for 3-D presets, Transparent for billboard bases).
     if (r.preset == MaterialPreset::Billboard2DFixed
         || r.preset == MaterialPreset::Billboard2DDynamic)

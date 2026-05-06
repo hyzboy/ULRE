@@ -90,14 +90,6 @@ MaterialPreset ResolveMaterialPresetForLOD(const MaterialPreset preset,
     return routing::ResolvePresetForLOD(preset,lod);
 }
 
-MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
-{
-    // [Step 3.5 T1] Deprecated forwarder. RouteKey is the single source of truth
-    // for variant key construction; this remains only as a thin shim until all
-    // call sites in the factory layer (T2) and external callers are migrated.
-    return RouteKey(mtl_id, 0u, RuntimeKeyOverrides{});
-}
-
 MaterialVariantKey RouteKey(MaterialPreset preset,
                             uint32 extra_attrib_bits,
                             const RuntimeKeyOverrides &ov) noexcept
@@ -328,8 +320,7 @@ std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract
             static_cast<unsigned>(lod));
     }
 
-    // [Step 3.5 T1] Route through RouteKey() so this internal call site does not
-    // emit a [[deprecated]] warning and remains aligned with the single-track entry.
+    // Route through RouteKey(): this is the single entry for variant-key construction.
     MaterialVariantKey key = RouteKey(resolved_preset);
 
     ApplyCreateConfigToVariantKey(key, cfg);

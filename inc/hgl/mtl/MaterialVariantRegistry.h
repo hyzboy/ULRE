@@ -49,9 +49,6 @@ namespace hgl::graph::mtl
         // 导出稳定顺序的快照文本，便于回归比对。
         std::string DumpSnapshot() const;
 
-        // 根据 preset（兼容层）查询对应的 key
-        MaterialVariantKey MapPresetToVariantKey(MaterialPreset preset) const;
-
         // 初始化内置变体
         void InitializeBuiltinVariants();
 
