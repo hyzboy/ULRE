@@ -159,26 +159,30 @@ ShaderLayoutContract BuildShaderLayoutContract(const mtl::MaterialCreateInfo &mc
             contract.descriptor_sets.push_back({ set_macro, sd_set.set });
 
         // Individual descriptor bindings within this set
-        for (const auto *sd : sd_set.ubo_descriptor_map)
+        for (const auto &sd_owner : sd_set.ubo_descriptor_map)
         {
+            const auto *sd = sd_owner.get();
             if (!sd || sd->binding < 0) continue;
             AppendDescriptorBindingMacros(contract, sd);
         }
 
-        for (const auto *sd : sd_set.ssbo_descriptor_map)
+        for (const auto &sd_owner : sd_set.ssbo_descriptor_map)
         {
+            const auto *sd = sd_owner.get();
             if (!sd || sd->binding < 0) continue;
             AppendDescriptorBindingMacros(contract, sd);
         }
 
-        for (const auto *sd : sd_set.texture_descriptor_map)
+        for (const auto &sd_owner : sd_set.texture_descriptor_map)
         {
+            const auto *sd = sd_owner.get();
             if (!sd || sd->binding < 0) continue;
             AppendDescriptorBindingMacros(contract, sd);
         }
 
-        for (const auto *sd : sd_set.texture_sampler_descriptor_map)
+        for (const auto &sd_owner : sd_set.texture_sampler_descriptor_map)
         {
+            const auto *sd = sd_owner.get();
             if (!sd || sd->binding < 0) continue;
             AppendDescriptorBindingMacros(contract, sd);
         }

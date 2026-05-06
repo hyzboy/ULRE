@@ -1,5 +1,4 @@
 ﻿#include<hgl/shadergen/MaterialDescriptorDB.h>
-#include<cassert>
 
 namespace hgl{namespace graph{
 MaterialDescriptorDB::MaterialDescriptorDB()
@@ -23,34 +22,6 @@ MaterialDescriptorDB::~MaterialDescriptorDB()
 {
     for(auto &set:desc_set_array)
     {
-        for(auto *d:set.ubo_descriptor_map)
-        {
-            if(!d) continue;
-            assert(d != nullptr);
-            delete d;
-        }
-
-        for(auto *d:set.ssbo_descriptor_map)
-        {
-            if(!d) continue;
-            assert(d != nullptr);
-            delete d;
-        }
-
-        for(auto *d:set.texture_descriptor_map)
-        {
-            if(!d) continue;
-            assert(d != nullptr);
-            delete d;
-        }
-
-        for(auto *d:set.texture_sampler_descriptor_map)
-        {
-            if(!d) continue;
-            assert(d != nullptr);
-            delete d;
-        }
-
         for(auto &p:set.ubo_descriptor_map) p=nullptr;
         for(auto &p:set.ssbo_descriptor_map) p=nullptr;
         for(auto &p:set.texture_descriptor_map) p=nullptr;
@@ -214,7 +185,7 @@ void MaterialDescriptorDB::Resort()
             // CompositorAssembler hard-codes into the GLSL source (e.g. Normal=0, TexCoord0=3, Position=8).
             for (size_t idx = 0; idx < std::size(p.ssbo_descriptor_map); ++idx)
             {
-                auto *d = p.ssbo_descriptor_map[idx];
+                auto *d = p.ssbo_descriptor_map[idx].get();
                 if (d) { d->set = set; d->binding = (int)idx; }
             }
         }
@@ -223,16 +194,16 @@ void MaterialDescriptorDB::Resort()
             // Array indices are ascending enum order — exactly the desired binding order.
             int binding=0;
 
-            for(auto *d:p.ubo_descriptor_map)
+            for(auto &d:p.ubo_descriptor_map)
                 if(d) { d->set=set; d->binding=binding++; }
 
-            for(auto *d:p.ssbo_descriptor_map)
+            for(auto &d:p.ssbo_descriptor_map)
                 if(d) { d->set=set; d->binding=binding++; }
 
-            for(auto *d:p.texture_descriptor_map)
+            for(auto &d:p.texture_descriptor_map)
                 if(d) { d->set=set; d->binding=binding++; }
 
-            for(auto *d:p.texture_sampler_descriptor_map)
+            for(auto &d:p.texture_sampler_descriptor_map)
                 if(d) { d->set=set; d->binding=binding++; }
         }
 

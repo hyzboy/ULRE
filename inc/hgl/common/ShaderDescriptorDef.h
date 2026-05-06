@@ -208,12 +208,10 @@ namespace hgl::graph
         int set;
         int count;
 
-        UBODescriptor           *ubo_descriptor_map             [mtl::UBODescriptorSemanticCount]  = {};
-        SSBODescriptor          *ssbo_descriptor_map            [SHADER_DESCRIPTOR_SSBO_SLOT_COUNT] = {};
-        TextureDescriptor       *texture_descriptor_map         [mtl::SamplerSlotCount]            = {};
-        TextureSamplerDescriptor *texture_sampler_descriptor_map[mtl::SamplerSlotCount]            = {};
-
-    public:
+        std::unique_ptr<UBODescriptor>            ubo_descriptor_map             [mtl::UBODescriptorSemanticCount]  = {};
+        std::unique_ptr<SSBODescriptor>           ssbo_descriptor_map            [SHADER_DESCRIPTOR_SSBO_SLOT_COUNT] = {};
+        std::unique_ptr<TextureDescriptor>        texture_descriptor_map         [mtl::SamplerSlotCount]            = {};
+        std::unique_ptr<TextureSamplerDescriptor> texture_sampler_descriptor_map [mtl::SamplerSlotCount]            = {};
 
         UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,std::unique_ptr<UBODescriptor> new_sd);
         SSBODescriptor *AddSSBO(uint32_t shader_stage_flag_bits,std::unique_ptr<SSBODescriptor> new_sd);

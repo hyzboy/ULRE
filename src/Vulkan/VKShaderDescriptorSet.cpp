@@ -30,13 +30,12 @@ UBODescriptor *ShaderDescriptorSet::AddUBO(uint32_t ssb,std::unique_ptr<UBODescr
     if(ubo_descriptor_map[index])
     {
         ubo_descriptor_map[index]->stage_flag|=ssb;
-        return ubo_descriptor_map[index];
+        return ubo_descriptor_map[index].get();
     }
 
-    UBODescriptor *raw=new_sd.get();
-    ubo_descriptor_map[index]=raw;
+    ubo_descriptor_map[index]=std::move(new_sd);
+    UBODescriptor *raw=ubo_descriptor_map[index].get();
     FinalizeInsert(this,ssb,raw);
-    new_sd.release();
     return raw;
 }
 
@@ -60,13 +59,12 @@ SSBODescriptor *ShaderDescriptorSet::AddSSBO(uint32_t ssb,std::unique_ptr<SSBODe
     if(ssbo_descriptor_map[index])
     {
         ssbo_descriptor_map[index]->stage_flag|=ssb;
-        return ssbo_descriptor_map[index];
+        return ssbo_descriptor_map[index].get();
     }
 
-    SSBODescriptor *raw=new_sd.get();
-    ssbo_descriptor_map[index]=raw;
+    ssbo_descriptor_map[index]=std::move(new_sd);
+    SSBODescriptor *raw=ssbo_descriptor_map[index].get();
     FinalizeInsert(this,ssb,raw);
-    new_sd.release();
     return raw;
 }
 
@@ -85,13 +83,12 @@ TextureDescriptor *ShaderDescriptorSet::AddTexture(uint32_t ssb,std::unique_ptr<
     if(texture_descriptor_map[index])
     {
         texture_descriptor_map[index]->stage_flag|=ssb;
-        return texture_descriptor_map[index];
+        return texture_descriptor_map[index].get();
     }
 
-    TextureDescriptor *raw=new_sd.get();
-    texture_descriptor_map[index]=raw;
+    texture_descriptor_map[index]=std::move(new_sd);
+    TextureDescriptor *raw=texture_descriptor_map[index].get();
     FinalizeInsert(this,ssb,raw);
-    new_sd.release();
     return raw;
 }
 
@@ -110,13 +107,12 @@ TextureSamplerDescriptor *ShaderDescriptorSet::AddTextureSampler(uint32_t ssb,st
     if(texture_sampler_descriptor_map[index])
     {
         texture_sampler_descriptor_map[index]->stage_flag|=ssb;
-        return texture_sampler_descriptor_map[index];
+        return texture_sampler_descriptor_map[index].get();
     }
 
-    TextureSamplerDescriptor *raw=new_sd.get();
-    texture_sampler_descriptor_map[index]=raw;
+    texture_sampler_descriptor_map[index]=std::move(new_sd);
+    TextureSamplerDescriptor *raw=texture_sampler_descriptor_map[index].get();
     FinalizeInsert(this,ssb,raw);
-    new_sd.release();
     return raw;
 }
 }//namespace hgl::graph
