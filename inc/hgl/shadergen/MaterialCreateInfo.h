@@ -59,7 +59,7 @@ namespace hgl::graph
 
             /// Delegates to descriptor_db.Resort() — finalises set and binding numbers.
             /// Call this before BuildShaderLayoutContract() if you need layout numbers
-            /// outside of CreateShaderDirect() (which calls Resort internally).
+            /// outside of CompilePreparedShaderSources() (which calls Resort internally).
             void Resort(){descriptor_db.Resort();}
 
             void SetDevice(const contract::PhysicalDeviceProfileLite *profile);
@@ -78,7 +78,6 @@ namespace hgl::graph
             bool AddTextureSampler(const uint32_t flag_bits,const SamplerType &st,const SamplerSlot slot,const TextureChannelHint channel_hint=TextureChannelHint::RGBA);
 
             bool CompilePreparedShaderSources();     ///< 直接编译各阶段的 FinalGLSL 到 SPV
-            bool CreateShaderDirect();               ///< 兼容旧命名，内部转调 CompilePreparedShaderSources
 
         public:
 
@@ -122,10 +121,6 @@ namespace hgl::graph
             ~MaterialCreateInfo();  // Need explicit destructor to properly clean up shader_map
 
             bool CompileShaderStagesToSPV();
-
-            /// Compile shader stages from FinalGLSL to SPV.
-            /// Call this after SetFinalGLSL() on shaders to build SPV binaries.
-            bool CompileSPV();
         };//class MaterialCreateInfo
     }//namespace mtl
 }//namespace hgl::graph

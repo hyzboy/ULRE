@@ -5,7 +5,7 @@
 /// 使用 CompileCompositorMaterial 编译 Compositor 模板产出的完整 GLSL。
 /// 内部流程：
 ///   1. 按 def 的 ubo/ssbo/texture_samplers 三组定义构建 MaterialDescriptorDB
-///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
+///   2. 使用 SetFinalGLSL + CompilePreparedShaderSources 直接编译
 ///   3. 填充并返回 MaterialCreateInfo*
 
 #include<hgl/mtl/StaticMaterialDef.h>
@@ -21,7 +21,7 @@ class MaterialCreateInfo;
 /**
  * 编译 Compositor 模板产出的完整 GLSL → MaterialCreateInfo*。
  *
- * 使用 SetFinalGLSL() + CreateShaderDirect() 直接编译。
+ * 使用 SetFinalGLSL() + CompilePreparedShaderSources() 直接编译。
  *
  * @param profile   设备能力 profile
  * @param def       材质定义（descriptor/vertex/MI 元数据）
@@ -55,7 +55,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
  * and inject them into the VS/FS GLSL stored in @p mci.
  *
  * Call this after all descriptors, vertex inputs, and MI have been set up
- * but before CreateShaderDirect().
+ * but before CompilePreparedShaderSources().
  */
 bool InjectLayoutDefines(MaterialCreateInfo &mci);
 

@@ -426,18 +426,8 @@ bool MaterialCreateInfo::CompilePreparedShaderSources()
     return ShaderSetCompiler::Compile(shader_stage_set.GetMap());
 }
 
-bool MaterialCreateInfo::CreateShaderDirect()
-{
-    return CompilePreparedShaderSources();
-}
-
 bool MaterialCreateInfo::CompileShaderStagesToSPV()
 {
     return CompilePreparedShaderSources();
-}
-
-bool MaterialCreateInfo::CompileSPV()
-{
-    return CompileShaderStagesToSPV();
 }
 }//namespace hgl::graph::mtl
