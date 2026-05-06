@@ -57,14 +57,6 @@ std::unique_ptr<MaterialCreateInfo> CreateText2DOwned(const contract::PhysicalDe
     return mci;
 }
 
-MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,
-                                 const Text2DMaterialCreateConfig *cfg,
-                                 const MaterialVariantDesc &desc,
-                                 const MaterialVariantKey &key)
-{
-    return CreateText2DOwned(profile,cfg,desc,key).release();
-}
-
 static std::unique_ptr<MaterialCreateInfo> Text2D_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,

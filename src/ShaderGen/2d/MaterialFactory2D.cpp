@@ -45,23 +45,4 @@ std::unique_ptr<MaterialCreateInfo> CreateFromFixedDef2DOwned(const char *debug_
     return mci;
 }
 
-MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
-                                         const contract::PhysicalDeviceProfileLite *profile,
-                                         const StaticMaterialDef &def,
-                                         const MaterialVariantKey &var_key,
-                                         const std::string &vs_preamble,
-                                         const std::string &fs_preamble,
-                                         const Material2DCreateConfig *cfg,
-                                         const MaterialVariantDesc &var_desc)
-{
-    return CreateFromFixedDef2DOwned(debug_tag,
-                                     profile,
-                                     def,
-                                     var_key,
-                                     vs_preamble,
-                                     fs_preamble,
-                                     cfg,
-                                     var_desc).release();
-}
-
 }//namespace hgl::graph::mtl

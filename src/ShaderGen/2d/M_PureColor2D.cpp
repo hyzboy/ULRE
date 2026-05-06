@@ -5,13 +5,13 @@
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite *profile,
-                                        Material2DCreateConfig *cfg,
-                                        const MaterialVariantDesc &desc,
-                                        const MaterialVariantKey &key)
+std::unique_ptr<MaterialCreateInfo> CreatePureColor2DOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                           Material2DCreateConfig *cfg,
+                                                           const MaterialVariantDesc &desc,
+                                                           const MaterialVariantKey &key)
 {
     if(!profile||!cfg)
-        return(nullptr);
+        return nullptr;
 
     cfg->material_instance=true;
 
@@ -31,7 +31,7 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
                                  manifest,
                                  ShaderDataSchema::Color4f);
 
-    return CreateFromFixedDef2D("PureColor2D", profile, def, key, vs_preamble, fs_preamble, cfg, desc);
+    return CreateFromFixedDef2DOwned("PureColor2D", profile, def, key, vs_preamble, fs_preamble, cfg, desc);
 }
 
 static std::unique_ptr<MaterialCreateInfo> PureColor2D_Adapter(
@@ -39,7 +39,7 @@ static std::unique_ptr<MaterialCreateInfo> PureColor2D_Adapter(
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return std::unique_ptr<MaterialCreateInfo>(CreatePureColor2D(profile, static_cast<Material2DCreateConfig *>(cfg), *desc, key)); }
+{ return CreatePureColor2DOwned(profile, static_cast<Material2DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"

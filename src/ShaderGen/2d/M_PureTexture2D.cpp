@@ -6,13 +6,13 @@
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfileLite *profile,
-                                             const MaterialVariantKey &key,
-                                             const mtl::Material2DCreateConfig *cfg,
-                                             const MaterialVariantDesc &desc)
+std::unique_ptr<MaterialCreateInfo> CreatePureTextureVariantOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                                  const MaterialVariantKey &key,
+                                                                  const mtl::Material2DCreateConfig *cfg,
+                                                                  const MaterialVariantDesc &desc)
 {
     if(!profile||!cfg)
-        return(nullptr);
+        return nullptr;
 
     const TextureSourceMode mode = key.GetTextureSourceMode(SamplerSlot::BaseColor);
     const bool use_array = (mode == TextureSourceMode::Array);
@@ -52,13 +52,13 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
                                  manifest,
                                  use_array ? ShaderDataSchema::TextureArrayID : ShaderDataSchema::None);
 
-    return CreateFromFixedDef2D("PureTexture2D", profile, def, key, vs_preamble, fs_preamble, &inner, desc);
+    return CreateFromFixedDef2DOwned("PureTexture2D", profile, def, key, vs_preamble, fs_preamble, &inner, desc);
 }
 
-MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,
-                                         const mtl::Material2DCreateConfig *cfg,
-                                         const MaterialVariantDesc &desc,
-                                         MaterialVariantKey key)
+std::unique_ptr<MaterialCreateInfo> CreatePureTexture2DOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                             const mtl::Material2DCreateConfig *cfg,
+                                                             const MaterialVariantDesc &desc,
+                                                             MaterialVariantKey key)
 {
     if(cfg && cfg->texture_source_bits_override != 0)
     {
@@ -74,7 +74,7 @@ MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLit
         key.sampler_feature_bits = cfg->sampler_feature_bits_override;
     }
 
-    return CreatePureTextureVariant(profile, key, cfg, desc);
+    return CreatePureTextureVariantOwned(profile, key, cfg, desc);
 }
 
 static std::unique_ptr<MaterialCreateInfo> PureTexture2D_Adapter(
@@ -82,7 +82,7 @@ static std::unique_ptr<MaterialCreateInfo> PureTexture2D_Adapter(
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return std::unique_ptr<MaterialCreateInfo>(CreatePureTexture2D(profile, static_cast<const Material2DCreateConfig *>(cfg), *desc, key)); }
+{ return CreatePureTexture2DOwned(profile, static_cast<const Material2DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
