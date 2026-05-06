@@ -1,5 +1,6 @@
 ﻿#include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/CompositorTemplateRouter.h>
+#include <hgl/shadergen/internal/CompositorAssembleDiagnostics.h>
 #include <hgl/shadergen/internal/GLSLSourceUtils.h>
 #include <hgl/shadergen/CompositorFeatureFlags.h>
 #include <hgl/shadergen/ShaderWriter.h>
@@ -10,7 +11,6 @@
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
-#include <algorithm>
 #include <cstdio>
 
 namespace
@@ -274,44 +274,6 @@ namespace
         return BuildForwardFragmentEntry(FSFeatureFlagsFromKey(key, blend, surface_path));
     }
 
-    std::string BuildReadFailureMessage(const char *stage,
-                                                const std::string &template_path,
-                                                const std::string &file_path,
-                                                const std::string &reason)
-    {
-        std::string msg;
-        msg.reserve(256 + reason.size());
-        msg += "[CompositorAssembler] ";
-        msg += stage;
-        msg += " template load failed. template=";
-        msg += template_path.empty() ? "<auto-route>" : template_path;
-        msg += " file=";
-        msg += file_path;
-        msg += " reason=";
-        msg += reason;
-        return msg;
-    }
-
-    std::string BuildPreprocessFailureMessage(const char *stage,
-                                                      const std::string &template_path,
-                                                      const std::string &detail,
-                                                      const std::string &glsl_source)
-    {
-        std::string msg;
-        msg.reserve(384 + detail.size() + std::min<size_t>(glsl_source.size(), 2048));
-        msg += "[CompositorAssembler] ";
-        msg += stage;
-        msg += " preprocess failed. template=";
-        msg += template_path.empty() ? "<auto-route>" : template_path;
-        msg += " detail=";
-        msg += detail;
-        msg += "\n[";
-        msg += stage;
-        msg += " GLSL first 80 lines]\n";
-        msg += hgl::graph::internal::BuildGLSLPreviewFirstLines(glsl_source, 80);
-        return msg;
-    }
-
     hgl::graph::CompositorAssembler::AssembleResult MakeError(std::string message)
     {
         hgl::graph::CompositorAssembler::AssembleResult result;
@@ -328,32 +290,8 @@ namespace hgl::graph
     {}
 
     CompositorAssembler::CompositorAssembler(const std::string &shader_library_path)
-        : shader_lib_path_(shader_library_path)
+        : source_cache_(shader_library_path)
     {}
-
-    bool CompositorAssembler::ReadFileCached(const std::string &rel_path,
-                                             std::string       &out_source,
-                                             std::string       &out_error) const
-    {
-        const std::string full_path = shader_lib_path_ + "/" + rel_path;
-        {
-            std::lock_guard<std::mutex> lock(file_cache_mutex_);
-            auto it = file_cache_.find(full_path);
-            if (it != file_cache_.end())
-            {
-                out_source = it->second;
-                return true;
-            }
-        }
-        std::string source;
-        if (!hgl::graph::internal::ReadTextFile(full_path, source, out_error))
-            return false;
-
-        std::lock_guard<std::mutex> lock(file_cache_mutex_);
-        file_cache_.emplace(full_path, source);
-        out_source = std::move(source);
-        return true;
-    }
 
     std::string CompositorAssembler::InjectDefines(const std::string &source, const mtl::MaterialVariantKey &key) const
     {
@@ -398,10 +336,13 @@ namespace hgl::graph
         if (!desc.vs_template_path.empty() && !hgl::graph::IsCompositorTemplatePath(desc.vs_template_path))
         {
             std::string read_error;
-            if (!ReadFileCached(desc.vs_template_path, vs_source, read_error))
+            if (!source_cache_.ReadFileCached(desc.vs_template_path, vs_source, read_error))
             {
-                return MakeError(BuildReadFailureMessage(
-                    "VS", desc.vs_template_path, shader_lib_path_ + "/" + desc.vs_template_path, read_error));
+                return MakeError(internal::BuildCompositorReadFailureMessage(
+                    "VS",
+                    desc.vs_template_path,
+                    source_cache_.GetShaderLibraryPath() + "/" + desc.vs_template_path,
+                    read_error));
             }
         }
         else
@@ -414,10 +355,13 @@ namespace hgl::graph
         if (!desc.fs_template_path.empty() && !hgl::graph::IsCompositorTemplatePath(desc.fs_template_path))
         {
             std::string read_error;
-            if (!ReadFileCached(desc.fs_template_path, fs_source, read_error))
+            if (!source_cache_.ReadFileCached(desc.fs_template_path, fs_source, read_error))
             {
-                return MakeError(BuildReadFailureMessage(
-                    "FS", desc.fs_template_path, shader_lib_path_ + "/" + desc.fs_template_path, read_error));
+                return MakeError(internal::BuildCompositorReadFailureMessage(
+                    "FS",
+                    desc.fs_template_path,
+                    source_cache_.GetShaderLibraryPath() + "/" + desc.fs_template_path,
+                    read_error));
             }
         }
         else
@@ -426,11 +370,11 @@ namespace hgl::graph
         }
 
         if (vs_source.empty())
-            return MakeError(BuildPreprocessFailureMessage(
+            return MakeError(internal::BuildCompositorPreprocessFailureMessage(
                 "VS", desc.vs_template_path, "BuildVSFromKey produced empty source", vs_source));
 
         if (fs_source.empty())
-            return MakeError(BuildPreprocessFailureMessage(
+            return MakeError(internal::BuildCompositorPreprocessFailureMessage(
                 "FS", desc.fs_template_path, "BuildFSFromKey produced empty source", fs_source));
 
         vs_source = InjectDefines(vs_source, key);

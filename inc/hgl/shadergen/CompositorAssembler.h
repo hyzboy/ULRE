@@ -5,10 +5,9 @@
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
-#include <mutex>
+#include <hgl/shadergen/internal/CompositorSourceCache.h>
 #include <span>
 #include <string>
-#include <unordered_map>
 
 // Forward declarations for VariantDesc-based overload
 namespace hgl::graph::mtl
@@ -65,12 +64,6 @@ namespace hgl::graph
 
         std::string InjectDefines(const std::string &source, const mtl::MaterialVariantKey &key) const;
 
-        /// Read a file from shader_lib_path_, with per-instance caching. Thread-safe.
-        bool ReadFileCached(const std::string &rel_path, std::string &out_source, std::string &out_error) const;
-
-        std::string shader_lib_path_;
-
-        mutable std::mutex                             file_cache_mutex_;
-        mutable std::unordered_map<std::string, std::string> file_cache_;
+        mutable internal::CompositorSourceCache source_cache_;
     };
 }

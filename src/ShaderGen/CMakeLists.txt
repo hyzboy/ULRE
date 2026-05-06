@@ -213,8 +213,12 @@ SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
                                 ${COMPOSITOR_SOURCE_FILES})
 
 # Compositor / Internal
-SET(COMPOSITOR_INTERNAL_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/internal/GLSLSourceUtils.h)
-SET(COMPOSITOR_INTERNAL_SOURCE_FILES internal/GLSLSourceUtils.cpp)
+SET(COMPOSITOR_INTERNAL_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/internal/GLSLSourceUtils.h
+                                    ${SHADERGEN_INCLUDE_PATH}/internal/CompositorAssembleDiagnostics.h
+                                    ${SHADERGEN_INCLUDE_PATH}/internal/CompositorSourceCache.h)
+SET(COMPOSITOR_INTERNAL_SOURCE_FILES internal/GLSLSourceUtils.cpp
+                                    internal/CompositorAssembleDiagnostics.cpp
+                                    internal/CompositorSourceCache.cpp)
 SOURCE_GROUP("Compositor\\Internal" FILES ${COMPOSITOR_INTERNAL_HEADER_FILES}
                                           ${COMPOSITOR_INTERNAL_SOURCE_FILES})
 
