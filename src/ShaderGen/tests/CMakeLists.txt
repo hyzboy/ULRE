@@ -110,6 +110,31 @@ set_property(TARGET ShaderCreateInfoLifecycleTests PROPERTY FOLDER "ULRE/Tests/S
 
 add_test(NAME ShaderCreateInfoLifecycleTests COMMAND ShaderCreateInfoLifecycleTests)
 
+# MaterialLifecycleStressTests validates repeated MaterialCreateInfo snapshot
+# build/destroy ownership paths and (when available) repeated SPV compile
+# lifecycle invariants under pressure rounds.
+add_executable(MaterialLifecycleStressTests
+    MaterialLifecycleStressTests.cpp
+)
+
+link_ulre_for_tests(MaterialLifecycleStressTests)
+
+set_property(TARGET MaterialLifecycleStressTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME MaterialLifecycleStressTests COMMAND MaterialLifecycleStressTests)
+
+# ShaderCompilerThreadSmokeTests validates multi-threaded CompileShader smoke
+# behavior when GLSLCompiler plugin is available.
+add_executable(ShaderCompilerThreadSmokeTests
+    ShaderCompilerThreadSmokeTests.cpp
+)
+
+link_ulre_for_tests(ShaderCompilerThreadSmokeTests)
+
+set_property(TARGET ShaderCompilerThreadSmokeTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME ShaderCompilerThreadSmokeTests COMMAND ShaderCompilerThreadSmokeTests)
+
 # MaterialKeyAbiSnapshot guards sizeof/alignof, constants, and hash stability.
 add_executable(MaterialKeyAbiSnapshot
     MaterialKeyAbiSnapshot.cpp
