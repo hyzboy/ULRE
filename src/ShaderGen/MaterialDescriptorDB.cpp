@@ -81,6 +81,9 @@ const UBODescriptor *MaterialDescriptorDB::AddUBO(uint32_t ssb,DescriptorSetType
 
     UBODescriptor *obj=sds->AddUBO(ssb,sd);
 
+    if(!obj)
+        return nullptr;
+
     {
         const auto sem = obj->semantic;
         if(RangeCheck(sem))
@@ -98,6 +101,9 @@ const SSBODescriptor *MaterialDescriptorDB::AddSSBO(uint32_t ssb,DescriptorSetTy
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
     SSBODescriptor *obj=sds->AddSSBO(ssb,sd);
+
+    if(!obj)
+        return nullptr;
 
     // VertexStreams SSBOs are addressed by binding index, not by semantic lookup;
     // skip ssbo_by_semantic to avoid corrupting the per-semantic index map.
@@ -120,6 +126,9 @@ const TextureDescriptor *MaterialDescriptorDB::AddTexture(uint32_t shader_stage_
 
     TextureDescriptor *obj=sds->AddTexture(shader_stage_flag_bits,sd);
 
+    if(!obj)
+        return nullptr;
+
     {
         mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
         if(mtl::TryGetSlotFromDescriptorName(obj->name,slot))
@@ -136,6 +145,9 @@ const TextureSamplerDescriptor *MaterialDescriptorDB::AddTextureSampler(uint32_t
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
     TextureSamplerDescriptor *obj=sds->AddTextureSampler(ssb,sd);
+
+    if(!obj)
+        return nullptr;
 
     {
         mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;

@@ -16,6 +16,7 @@
 #include <hgl/shadergen/ShaderLayoutEmitter.h>
 #include <hgl/shadergen/SamplerGLSLEmitter.h>
 #include <cstdio>
+#include <memory>
 #include <string>
 
 namespace hgl::graph::mtl {
@@ -28,12 +29,12 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const Material3DCreateConfig *config)
 {
     std::string diagnostics;
-    MaterialCreateInfo *mci = internal::PrepareCompositorMaterialSnapshot(profile,
-                                                                          def,
-                                                                          vs_glsl,
-                                                                          fs_glsl,
-                                                                          config,
-                                                                          &diagnostics);
+    std::unique_ptr<MaterialCreateInfo> mci(internal::PrepareCompositorMaterialSnapshot(profile,
+                                                                                         def,
+                                                                                         vs_glsl,
+                                                                                         fs_glsl,
+                                                                                         config,
+                                                                                         &diagnostics));
     if (!mci)
     {
         std::fprintf(stderr,
@@ -49,7 +50,6 @@ MaterialCreateInfo *CompileCompositorMaterial(
             "[CompileCompositorMaterial] material=%s failed: CompileSPV() failed (check GLSLCompiler log) (%s)\n",
             def.name ? def.name : "<unnamed>",
             internal::BuildShaderDataSchemaDebugText(def).c_str());
-        delete mci;
         return nullptr;
     }
 
@@ -61,7 +61,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
             diagnostics.c_str());
     }
 
-    return mci;
+    return mci.release();
 }
 
 bool PrepareCompositorGLSLForReflection(
@@ -72,12 +72,12 @@ bool PrepareCompositorGLSLForReflection(
     std::string &out_fs_glsl,
     std::string *diagnostics)
 {
-    MaterialCreateInfo *mci = internal::PrepareCompositorMaterialSnapshot(nullptr,
-                                                                          def,
-                                                                          vs_glsl,
-                                                                          fs_glsl,
-                                                                          nullptr,
-                                                                          diagnostics);
+    std::unique_ptr<MaterialCreateInfo> mci(internal::PrepareCompositorMaterialSnapshot(nullptr,
+                                                                                         def,
+                                                                                         vs_glsl,
+                                                                                         fs_glsl,
+                                                                                         nullptr,
+                                                                                         diagnostics));
     if (!mci)
         return false;
 
@@ -87,7 +87,6 @@ bool PrepareCompositorGLSLForReflection(
     out_vs_glsl = vert ? vert->GetFinalGLSL() : std::string();
     out_fs_glsl = frag ? frag->GetFinalGLSL() : std::string();
 
-    delete mci;
     return true;
 }
 

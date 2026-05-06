@@ -1,6 +1,7 @@
 #include<hgl/shadergen/MaterialBuilder.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
+#include<memory>
 
 using namespace hgl::graph;
 using namespace hgl::graph::mtl;
@@ -8,15 +9,11 @@ using namespace hgl::graph::mtl;
 namespace hgl::graph::mtl
 {
     MaterialBuilder::MaterialBuilder(const MaterialCreateConfig *config)
-        : building_(new MaterialCreateInfo(config))
+        : building_(std::make_unique<MaterialCreateInfo>(config))
     {
     }
 
-    MaterialBuilder::~MaterialBuilder()
-    {
-        if(building_)
-            delete building_;
-    }
+    MaterialBuilder::~MaterialBuilder()=default;
 
     void MaterialBuilder::SetDevice(const contract::PhysicalDeviceProfileLite *profile)
     {
@@ -120,9 +117,7 @@ namespace hgl::graph::mtl
         }
 
         // Transfer ownership to caller
-        MaterialCreateInfo *result = building_;
-        building_ = nullptr;
-        return result;
+        return building_.release();
     }
 
     MaterialCreateInfo *MaterialBuilder::BuildSnapshotOnly()
@@ -135,8 +130,6 @@ namespace hgl::graph::mtl
         building_->BuildBindingContract();
 
         // Transfer ownership to caller
-        MaterialCreateInfo *result = building_;
-        building_ = nullptr;
-        return result;
+        return building_.release();
     }
 }

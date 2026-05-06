@@ -75,9 +75,11 @@ namespace
             return false;
         }
 
-        for (auto [stage, sci_ptr] : sci_map)
+        for (const auto &[stage, sci_owner] : sci_map)
         {
             (void)stage;
+
+            const ShaderCreateInfo *sci_ptr = sci_owner.get();
 
             if (!sci_ptr)
             {

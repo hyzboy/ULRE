@@ -233,13 +233,6 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
 
 MaterialCreateInfo::~MaterialCreateInfo()
 {
-    // Explicitly clear the shader_map to properly clean up ShaderCreateInfo objects
-    // This ensures proper destructor ordering and prevents crashes with UnorderedMap
-    for(auto [stage, sc] : shader_map)
-    {
-        if(sc)
-            delete sc;
-    }
     shader_map.Clear();
 }
 
@@ -462,7 +455,7 @@ bool MaterialCreateInfo::CreateShaderDirect()
 
     for(auto& kv : shader_map)
     {
-        ShaderCreateInfo *sc = kv.second;
+        ShaderCreateInfo *sc = kv.second.get();
 
         if(!sc->CompileFinalGLSLToSPV())
             return(false);
@@ -478,7 +471,7 @@ bool MaterialCreateInfo::CompileSPV()
 
     for(auto& kv : shader_map)
     {
-        ShaderCreateInfo *sc = kv.second;
+        ShaderCreateInfo *sc = kv.second.get();
 
         if(!sc->CompileFinalGLSLToSPV())
             return(false);

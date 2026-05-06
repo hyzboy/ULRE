@@ -6,6 +6,7 @@
 #include<hgl/common/TextureSamplerTypeDef.h>
 #include<string>
 #include<cstdint>
+#include<memory>
 
 namespace hgl::graph
 {
@@ -27,7 +28,7 @@ namespace hgl::graph
         class MaterialBuilder
         {
         private:
-            MaterialCreateInfo *building_;
+            std::unique_ptr<MaterialCreateInfo> building_;
 
         public:
             explicit MaterialBuilder(const MaterialCreateConfig *config);

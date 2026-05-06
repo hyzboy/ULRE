@@ -1,16 +1,16 @@
 ﻿#pragma once
 
 #include<cstdint>
+#include<memory>
 #include<ankerl/unordered_dense.h>
+#include<hgl/shadergen/ShaderCreateInfo.h>
 
 namespace hgl{namespace graph{
 enum class ShaderStage:uint32_t;
 
-class ShaderCreateInfo;
-
 class ShaderStageMap
 {
-    using MapType=ankerl::unordered_dense::map<ShaderStage,ShaderCreateInfo *>;
+    using MapType=ankerl::unordered_dense::map<ShaderStage,std::unique_ptr<ShaderCreateInfo>>;
     MapType map;
 
 public:
@@ -31,13 +31,15 @@ public:
 
     bool Add(const ShaderStage flag,ShaderCreateInfo *sc)
     {
-        if(!sc)
+        std::unique_ptr<ShaderCreateInfo> owned(sc);
+
+        if(!owned)
             return false;
 
         if(ContainsKey(flag))
             return false;
 
-        map.emplace(flag,sc);
+        map.emplace(flag,std::move(owned));
         return true;
     }
 
@@ -48,12 +50,12 @@ public:
     ShaderCreateInfo *Find(const ShaderStage key)
     {
         auto it = map.find(key);
-        return it != map.end() ? it->second : nullptr;
+        return it != map.end() ? it->second.get() : nullptr;
     }
     const ShaderCreateInfo *Find(const ShaderStage key) const
     {
         auto it = map.find(key);
-        return it != map.end() ? it->second : nullptr;
+        return it != map.end() ? it->second.get() : nullptr;
     }
 
     /// 带 out 参数的版本，命中返回 true。
@@ -61,7 +63,7 @@ public:
     {
         auto it = map.find(key);
         if (it == map.end()) return false;
-        out = it->second;
+        out = it->second.get();
         return true;
     }
 
@@ -70,14 +72,14 @@ public:
     ShaderCreateInfo* operator[](const ShaderStage& key)
     {
         auto iter=map.find(key);
-        return iter!=map.end()?iter->second:nullptr;
+        return iter!=map.end()?iter->second.get():nullptr;
     }
 
     [[deprecated("Use Find(key); operator[] does NOT match std::map semantics (returns nullptr, not default-insert)")]]
     const ShaderCreateInfo* operator[](const ShaderStage& key) const
     {
         auto iter=map.find(key);
-        return iter!=map.end()?iter->second:nullptr;
+        return iter!=map.end()?iter->second.get():nullptr;
     }
 };
 }}//namespace hgl::graph

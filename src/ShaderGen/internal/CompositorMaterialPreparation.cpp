@@ -9,6 +9,7 @@
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <cstdio>
+#include <memory>
 #include <string>
 
 namespace hgl::graph::mtl::internal {
@@ -341,7 +342,7 @@ MaterialCreateInfo *PrepareCompositorMaterialSnapshot(
     if (frag)
         frag->SetFinalGLSL(final_fs_glsl);
 
-    MaterialCreateInfo *mci = builder.BuildSnapshotOnly();
+    std::unique_ptr<MaterialCreateInfo> mci(builder.BuildSnapshotOnly());
     if (!mci)
         return FailWithBuilder("MaterialBuilder::BuildSnapshotOnly() failed");
 
@@ -349,12 +350,9 @@ MaterialCreateInfo *PrepareCompositorMaterialSnapshot(
         mci->AddVertexStreamSSBOs(*def.vertex_stream_key);
 
     if (!InjectLayoutDefines(*mci))
-    {
-        delete mci;
         return FailWithBuilder("InjectLayoutDefines() failed");
-    }
 
-    return mci;
+    return mci.release();
 }
 
 } // namespace hgl::graph::mtl::internal
