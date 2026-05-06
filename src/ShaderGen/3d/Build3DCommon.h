@@ -2,7 +2,6 @@
 
 #include<hgl/mtl/StaticMaterialDef.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<hgl/mtl/MaterialVariantKey.h>
 
 namespace hgl
 {

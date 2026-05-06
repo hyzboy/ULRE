@@ -43,4 +43,33 @@ MaterialVariantKey CanonicalizeRegistryLookupKey(const MaterialVariantKey &key,
     return canon;
 }
 
+bool ResolveVariantForKey(const MaterialVariantKey &request_key,
+                          const VariantRegistry &registry,
+                          VariantLookupResult &out,
+                          const RegistryLookupOptions &options)
+{
+    out.request_key = request_key;
+    out.lookup_key = CanonicalizeRegistryLookupKey(request_key, options);
+
+    MaterialVariantKey resolved{};
+    const MaterialVariantDesc *desc = registry.QueryVariantWithCanonicalFallback(
+        out.lookup_key,
+        &resolved,
+        options);
+
+    out.resolved_key = resolved;
+    out.variant_desc = desc;
+    return desc != nullptr;
+}
+
+bool ResolveBuiltinVariantForKey(const MaterialVariantKey &request_key,
+                                 VariantLookupResult &out,
+                                 const RegistryLookupOptions &options)
+{
+    return ResolveVariantForKey(request_key,
+                                GetBuiltinVariantRegistry(),
+                                out,
+                                options);
+}
+
 } // namespace hgl::graph::mtl::routing

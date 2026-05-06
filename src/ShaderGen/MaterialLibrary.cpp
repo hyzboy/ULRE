@@ -200,11 +200,8 @@ std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract
             key.extra_feature_bits);
     }
 
-    const MaterialVariantKey registry_lookup_key = routing::CanonicalizeRegistryLookupKey(key, RegistryLookupOptions{});
-
-    MaterialVariantKey resolved_key{};
-    const MaterialVariantDesc *variant_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(registry_lookup_key,&resolved_key);
-    if(!variant_desc)
+    routing::VariantLookupResult lookup_result{};
+    if(!routing::ResolveBuiltinVariantForKey(key, lookup_result))
     {
         std::fprintf(stderr,
             "[MaterialLibrary] CreateMaterialCreateInfo failed: no registered variant (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
@@ -218,6 +215,10 @@ std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract
             key.extra_feature_bits);
         return nullptr;
     }
+
+    const MaterialVariantDesc *variant_desc = lookup_result.variant_desc;
+    const MaterialVariantKey &registry_lookup_key = lookup_result.lookup_key;
+    const MaterialVariantKey &resolved_key = lookup_result.resolved_key;
 
     std::fprintf(stderr,
         "[MaterialLibrary] resolved variant=%s request={%s} lookup={%s} resolved={%s}\n",
