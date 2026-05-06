@@ -42,12 +42,10 @@ public:
 
 public:
 
-    #define MP_TYPE_IS(name)    const   bool is##name()const{return set_type==DescriptorSetType::name;}
-        MP_TYPE_IS(Static)
-        MP_TYPE_IS(PerFrame)
-        MP_TYPE_IS(PerObject)
-        MP_TYPE_IS(PerMaterial)
-    #undef MP_TYPE_IS
+    const bool isStatic() const { return set_type==DescriptorSetType::Static; }
+    const bool isPerFrame() const { return set_type==DescriptorSetType::PerFrame; }
+    const bool isPerObject() const { return set_type==DescriptorSetType::PerObject; }
+    const bool isPerMaterial() const { return set_type==DescriptorSetType::PerMaterial; }
 
 public:
 
