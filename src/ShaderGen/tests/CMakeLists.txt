@@ -50,6 +50,18 @@ set_property(TARGET MaterialRecipeStoreTests PROPERTY FOLDER "ULRE/Tests/ShaderG
 
 add_test(NAME MaterialRecipeStoreTests COMMAND MaterialRecipeStoreTests)
 
+# MaterialFactory3DRegistrationTests validates the explicit builtin factory
+# registration entry and name coverage.
+add_executable(MaterialFactory3DRegistrationTests
+    MaterialFactory3DRegistrationTests.cpp
+)
+
+link_ulre_for_tests(MaterialFactory3DRegistrationTests)
+
+set_property(TARGET MaterialFactory3DRegistrationTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME MaterialFactory3DRegistrationTests COMMAND MaterialFactory3DRegistrationTests)
+
 # EnumerateRecipeKeysTests exercises EnumerateRecipeKeys() and the new
 # PassExpansion / StaticMaterialDefRegistry / toolchain-version code.
 add_executable(EnumerateRecipeKeysTests

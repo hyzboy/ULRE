@@ -262,12 +262,16 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${COMPOSITOR_INTERNAL_SOURCE_FILES}
 )
 
+option(ULRE_SHADERGEN_FORCE_WHOLEARCHIVE
+    "Force /WHOLEARCHIVE for ULRE.ShaderGen static registration compatibility."
+    ON)
+
 # On MSVC, ULRE.ShaderGen is a static library. The self-registering preset
 # factories in the M_*.cpp translation units have no externally-referenced
 # symbols, so the linker would otherwise dead-strip them before their static
 # initializers run.  /WHOLEARCHIVE forces the linker to include every .obj
 # from this lib, ensuring all AutoReg_* constructors execute at startup.
-if(MSVC)
+if(MSVC AND ULRE_SHADERGEN_FORCE_WHOLEARCHIVE)
     target_link_options(ULRE.ShaderGen INTERFACE
         /WHOLEARCHIVE:$<TARGET_FILE:ULRE.ShaderGen>)
 endif()
