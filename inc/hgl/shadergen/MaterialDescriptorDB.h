@@ -3,6 +3,7 @@
 #include <hgl/common/ShaderDescriptorDef.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include<string>
+#include<memory>
 
 namespace hgl{namespace graph{
 /**
@@ -62,9 +63,16 @@ public:
     }
 
     const UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd);
+    const UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,std::unique_ptr<UBODescriptor> sd);
+
     const SSBODescriptor *AddSSBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,SSBODescriptor *sd);
+    const SSBODescriptor *AddSSBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,std::unique_ptr<SSBODescriptor> sd);
+
     const TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd);
+    const TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,std::unique_ptr<TextureDescriptor> sd);
+
     const TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureSamplerDescriptor *sd);
+    const TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,std::unique_ptr<TextureSamplerDescriptor> sd);
 
     TextureDescriptor *GetTexture(mtl::SamplerSlot slot)
     {

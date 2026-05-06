@@ -74,12 +74,17 @@ MaterialDescriptorDB::~MaterialDescriptorDB()
 
 const UBODescriptor *MaterialDescriptorDB::AddUBO(uint32_t ssb,DescriptorSetType set_type,UBODescriptor *sd)
 {
+    return AddUBO(ssb,set_type,std::unique_ptr<UBODescriptor>(sd));
+}
+
+const UBODescriptor *MaterialDescriptorDB::AddUBO(uint32_t ssb,DescriptorSetType set_type,std::unique_ptr<UBODescriptor> sd)
+{
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
 
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
-    UBODescriptor *obj=sds->AddUBO(ssb,sd);
+    UBODescriptor *obj=sds->AddUBO(ssb,std::move(sd));
 
     if(!obj)
         return nullptr;
@@ -95,12 +100,17 @@ const UBODescriptor *MaterialDescriptorDB::AddUBO(uint32_t ssb,DescriptorSetType
 
 const SSBODescriptor *MaterialDescriptorDB::AddSSBO(uint32_t ssb,DescriptorSetType set_type,SSBODescriptor *sd)
 {
+    return AddSSBO(ssb,set_type,std::unique_ptr<SSBODescriptor>(sd));
+}
+
+const SSBODescriptor *MaterialDescriptorDB::AddSSBO(uint32_t ssb,DescriptorSetType set_type,std::unique_ptr<SSBODescriptor> sd)
+{
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
 
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
-    SSBODescriptor *obj=sds->AddSSBO(ssb,sd);
+    SSBODescriptor *obj=sds->AddSSBO(ssb,std::move(sd));
 
     if(!obj)
         return nullptr;
@@ -119,12 +129,17 @@ const SSBODescriptor *MaterialDescriptorDB::AddSSBO(uint32_t ssb,DescriptorSetTy
 
 const TextureDescriptor *MaterialDescriptorDB::AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd)
 {
+    return AddTexture(shader_stage_flag_bits,set_type,std::unique_ptr<TextureDescriptor>(sd));
+}
+
+const TextureDescriptor *MaterialDescriptorDB::AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,std::unique_ptr<TextureDescriptor> sd)
+{
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
 
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
-    TextureDescriptor *obj=sds->AddTexture(shader_stage_flag_bits,sd);
+    TextureDescriptor *obj=sds->AddTexture(shader_stage_flag_bits,std::move(sd));
 
     if(!obj)
         return nullptr;
@@ -139,12 +154,17 @@ const TextureDescriptor *MaterialDescriptorDB::AddTexture(uint32_t shader_stage_
 
 const TextureSamplerDescriptor *MaterialDescriptorDB::AddTextureSampler(uint32_t ssb,DescriptorSetType set_type,TextureSamplerDescriptor *sd)
 {
+    return AddTextureSampler(ssb,set_type,std::unique_ptr<TextureSamplerDescriptor>(sd));
+}
+
+const TextureSamplerDescriptor *MaterialDescriptorDB::AddTextureSampler(uint32_t ssb,DescriptorSetType set_type,std::unique_ptr<TextureSamplerDescriptor> sd)
+{
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
 
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
-    TextureSamplerDescriptor *obj=sds->AddTextureSampler(ssb,sd);
+    TextureSamplerDescriptor *obj=sds->AddTextureSampler(ssb,std::move(sd));
 
     if(!obj)
         return nullptr;

@@ -20,31 +20,40 @@ static TDesc *FinalizeInsert(ShaderDescriptorSet *owner,const uint32_t ssb,TDesc
 */
 UBODescriptor *ShaderDescriptorSet::AddUBO(uint32_t ssb,UBODescriptor *new_sd)
 {
+    return AddUBO(ssb,std::unique_ptr<UBODescriptor>(new_sd));
+}
+
+UBODescriptor *ShaderDescriptorSet::AddUBO(uint32_t ssb,std::unique_ptr<UBODescriptor> new_sd)
+{
     if(!new_sd)
         return nullptr;
 
     const size_t index=size_t(new_sd->semantic);
     if(index>=mtl::UBODescriptorSemanticCount)
-    {
-        delete new_sd;
         return nullptr;
-    }
 
     if(ubo_descriptor_map[index])
     {
-        delete new_sd;
         ubo_descriptor_map[index]->stage_flag|=ssb;
         return ubo_descriptor_map[index];
     }
 
-    ubo_descriptor_map[index]=new_sd;
-    return FinalizeInsert(this,ssb,new_sd);
+    UBODescriptor *raw=new_sd.get();
+    ubo_descriptor_map[index]=raw;
+    FinalizeInsert(this,ssb,raw);
+    new_sd.release();
+    return raw;
 }
 
 /**
 * 添加SSBO描述符
 */
 SSBODescriptor *ShaderDescriptorSet::AddSSBO(uint32_t ssb,SSBODescriptor *new_sd)
+{
+    return AddSSBO(ssb,std::unique_ptr<SSBODescriptor>(new_sd));
+}
+
+SSBODescriptor *ShaderDescriptorSet::AddSSBO(uint32_t ssb,std::unique_ptr<SSBODescriptor> new_sd)
 {
     if(!new_sd)
         return nullptr;
@@ -56,20 +65,19 @@ SSBODescriptor *ShaderDescriptorSet::AddSSBO(uint32_t ssb,SSBODescriptor *new_sd
             : mtl::SSBODescriptorSemanticCount;
 
     if(index>=max_index)
-    {
-        delete new_sd;
         return nullptr;
-    }
 
     if(ssbo_descriptor_map[index])
     {
-        delete new_sd;
         ssbo_descriptor_map[index]->stage_flag|=ssb;
         return ssbo_descriptor_map[index];
     }
 
-    ssbo_descriptor_map[index]=new_sd;
-    return FinalizeInsert(this,ssb,new_sd);
+    SSBODescriptor *raw=new_sd.get();
+    ssbo_descriptor_map[index]=raw;
+    FinalizeInsert(this,ssb,raw);
+    new_sd.release();
+    return raw;
 }
 
 /**
@@ -77,25 +85,29 @@ SSBODescriptor *ShaderDescriptorSet::AddSSBO(uint32_t ssb,SSBODescriptor *new_sd
 */
 TextureDescriptor *ShaderDescriptorSet::AddTexture(uint32_t ssb,TextureDescriptor *new_sd)
 {
+    return AddTexture(ssb,std::unique_ptr<TextureDescriptor>(new_sd));
+}
+
+TextureDescriptor *ShaderDescriptorSet::AddTexture(uint32_t ssb,std::unique_ptr<TextureDescriptor> new_sd)
+{
     if(!new_sd)
         return nullptr;
 
     const size_t index=size_t(new_sd->slot);
     if(index>=mtl::SamplerSlotCount)
-    {
-        delete new_sd;
         return nullptr;
-    }
 
     if(texture_descriptor_map[index])
     {
-        delete new_sd;
         texture_descriptor_map[index]->stage_flag|=ssb;
         return texture_descriptor_map[index];
     }
 
-    texture_descriptor_map[index]=new_sd;
-    return FinalizeInsert(this,ssb,new_sd);
+    TextureDescriptor *raw=new_sd.get();
+    texture_descriptor_map[index]=raw;
+    FinalizeInsert(this,ssb,raw);
+    new_sd.release();
+    return raw;
 }
 
 /**
@@ -103,24 +115,28 @@ TextureDescriptor *ShaderDescriptorSet::AddTexture(uint32_t ssb,TextureDescripto
 */
 TextureSamplerDescriptor *ShaderDescriptorSet::AddTextureSampler(uint32_t ssb,TextureSamplerDescriptor *new_sd)
 {
+    return AddTextureSampler(ssb,std::unique_ptr<TextureSamplerDescriptor>(new_sd));
+}
+
+TextureSamplerDescriptor *ShaderDescriptorSet::AddTextureSampler(uint32_t ssb,std::unique_ptr<TextureSamplerDescriptor> new_sd)
+{
     if(!new_sd)
         return nullptr;
 
     const size_t index=size_t(new_sd->slot);
     if(index>=mtl::SamplerSlotCount)
-    {
-        delete new_sd;
         return nullptr;
-    }
 
     if(texture_sampler_descriptor_map[index])
     {
-        delete new_sd;
         texture_sampler_descriptor_map[index]->stage_flag|=ssb;
         return texture_sampler_descriptor_map[index];
     }
 
-    texture_sampler_descriptor_map[index]=new_sd;
-    return FinalizeInsert(this,ssb,new_sd);
+    TextureSamplerDescriptor *raw=new_sd.get();
+    texture_sampler_descriptor_map[index]=raw;
+    FinalizeInsert(this,ssb,raw);
+    new_sd.release();
+    return raw;
 }
 }//namespace hgl::graph

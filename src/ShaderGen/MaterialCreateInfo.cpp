@@ -111,7 +111,7 @@ static const UBODescriptor *ResolveUBODescriptor(
         owned->type=struct_name.c_str();
         hgl::strcpy(owned->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
         owned->semantic=semantic;
-        return mdi.AddUBO((uint32_t)flag_bit,set_type,owned.release());
+        return mdi.AddUBO((uint32_t)flag_bit,set_type,std::move(owned));
     }
 
     return nullptr;
@@ -140,7 +140,7 @@ static const SSBODescriptor *ResolveSSBODescriptor(
         owned->type=struct_name.c_str();
         hgl::strcpy(owned->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
         owned->semantic=semantic;
-        return mdi.AddSSBO((uint32_t)flag_bit,set_type,owned.release());
+        return mdi.AddSSBO((uint32_t)flag_bit,set_type,std::move(owned));
     }
 
     return nullptr;
@@ -170,7 +170,7 @@ static const TextureDescriptor *ResolveTextureDescriptor(
     hgl::strcpy(owned->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
     owned->slot=slot;
 
-    return mdi.AddTexture((uint32_t)flag_bit,set_type,owned.release());
+    return mdi.AddTexture((uint32_t)flag_bit,set_type,std::move(owned));
 }
 
 static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
@@ -199,7 +199,7 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
     owned->slot=slot;
     owned->channel_hint=channel_hint;
 
-    return mdi.AddTextureSampler((uint32_t)flag_bit,set_type,owned.release());
+    return mdi.AddTextureSampler((uint32_t)flag_bit,set_type,std::move(owned));
 }
 
 MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
@@ -370,7 +370,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const uint32_t data_bytes,const uin
 
     descriptor_db.AddSSBO(shader_stage_flag_bits,
                           GetDescriptorSemanticMeta(SSBODescriptorSemantic::MaterialBindingInstanceData).set_type,
-                          mi_ssbo.release());
+                          std::move(mi_ssbo));
 
     material_instance.stage_bits=shader_stage_flag_bits;
 
@@ -499,7 +499,7 @@ void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
 
         auto sd = std::make_unique<SSBODescriptor>();
         sd->semantic = SSBODescriptorSemantic(i);   // index → binding via Resort()
-        descriptor_db.AddSSBO(stream_stage_bits, DescriptorSetType::VertexStreams, sd.release());
+        descriptor_db.AddSSBO(stream_stage_bits, DescriptorSetType::VertexStreams, std::move(sd));
     }
 
     // Position stream: binding = BuiltinCount (= 8).
@@ -512,7 +512,7 @@ void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
             auto sd = std::make_unique<SSBODescriptor>();
             // semantic index 8 = BuiltinCount; Resort() maps index → binding = 8
             sd->semantic = SSBODescriptorSemantic(size_t(AttributeSemantic::BuiltinCount));
-            descriptor_db.AddSSBO(stream_stage_bits, DescriptorSetType::VertexStreams, sd.release());
+            descriptor_db.AddSSBO(stream_stage_bits, DescriptorSetType::VertexStreams, std::move(sd));
         }
     }
 }
