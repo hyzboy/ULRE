@@ -46,7 +46,12 @@ ShaderCreateInfo::~ShaderCreateInfo()=default;
 bool ShaderCreateInfo::CompileFinalGLSLToSPV()
 {
     if(final_shader.empty())
+    {
+        // Keep SPV cache coherent with shader text state.
+        // Empty source means no valid SPV should remain observable.
+        spv_data.reset();
         return(false);
+    }
 
     if(!CompileToSPV())
         return(false);

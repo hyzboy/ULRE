@@ -86,6 +86,30 @@ set_property(TARGET CompositorAssemblerGoldenTests PROPERTY FOLDER "ULRE/Tests/S
 
 add_test(NAME CompositorAssemblerGoldenTests COMMAND CompositorAssemblerGoldenTests)
 
+# CompositorCompilerPipelineTests validates preparation-stage descriptor
+# contract invariants and layout define injection for reflection output.
+add_executable(CompositorCompilerPipelineTests
+    CompositorCompilerPipelineTests.cpp
+)
+
+link_ulre_for_tests(CompositorCompilerPipelineTests)
+
+set_property(TARGET CompositorCompilerPipelineTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME CompositorCompilerPipelineTests COMMAND CompositorCompilerPipelineTests)
+
+# ShaderCreateInfoLifecycleTests validates SPV cache lifecycle invariants:
+# empty GLSL compile attempts must clear stale SPV payload.
+add_executable(ShaderCreateInfoLifecycleTests
+    ShaderCreateInfoLifecycleTests.cpp
+)
+
+link_ulre_for_tests(ShaderCreateInfoLifecycleTests)
+
+set_property(TARGET ShaderCreateInfoLifecycleTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME ShaderCreateInfoLifecycleTests COMMAND ShaderCreateInfoLifecycleTests)
+
 # MaterialKeyAbiSnapshot guards sizeof/alignof, constants, and hash stability.
 add_executable(MaterialKeyAbiSnapshot
     MaterialKeyAbiSnapshot.cpp

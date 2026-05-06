@@ -4,9 +4,10 @@
 ///
 /// 使用 CompileCompositorMaterialOwned 编译 Compositor 模板产出的完整 GLSL。
 /// 内部流程：
-///   1. 按 def 的 ubo/ssbo/texture_samplers 三组定义构建 MaterialDescriptorDB
-///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
-///   3. 填充并返回 MaterialCreateInfo 的 unique_ptr
+///   1. 描述符/材质快照准备（internal::PrepareCompositorMaterialSnapshotOwned）
+///   2. layout/sampler define 注入（internal::ApplyCompositorLayoutDefines）
+///   3. SPV 编译执行（MaterialCreateInfo::CompileSPV）
+///   4. 返回 MaterialCreateInfo 的 unique_ptr
 
 #include<hgl/mtl/StaticMaterialDef.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
