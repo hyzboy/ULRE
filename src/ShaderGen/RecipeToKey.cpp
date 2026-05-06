@@ -167,8 +167,12 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
 
     // ── Step 3.C: attribute provider overrides (vertex pulling, Phase C) ──────
     for (size_t i = 0; i < size_t(AttributeSemantic::BuiltinCount); ++i)
-        if (r.attribute_providers[i] != AttributeProviderId::None)
-            k.attribute_providers[i] = r.attribute_providers[i];
+    {
+        const auto semantic = static_cast<AttributeSemantic>(i);
+        const auto pid = r.GetAttributeProvider(semantic);
+        if (pid != AttributeProviderId::None)
+            k.SetAttributeProvider(semantic, pid);
+    }
 
     // ── Step 4: sky / lighting (3-D only) ────────────────────────────────────
     // Mirrors the Material3DCreateConfig block in ApplyCreateConfigToVariantKey

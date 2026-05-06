@@ -63,6 +63,24 @@
 				"presentation": {
 					"reveal": "silent"
 				}
+			},
+			{
+				"label": "ShaderGen: Minimal Regression (Ninja Debug)",
+				"type": "shell",
+				"command": "powershell",
+				"args": [
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"scripts/ci/run_shadergen_minimal_regression.ps1",
+					"-BuildPreset",
+					"windows-ninja-debug"
+				],
+				"group": "test",
+				"presentation": {
+					"reveal": "always",
+					"panel": "shared"
+				}
 			}
 		]
 	}

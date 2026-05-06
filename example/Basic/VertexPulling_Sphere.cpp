@@ -65,8 +65,8 @@ static const mtl::MaterialRecipe kPullRecipe = []()
         { mtl::SamplerSlot::Normal, mtl::TextureSourceMode::Simple,
           "res/image/Brickwall/Normal.Tex2D" },
     };
-    r.attribute_providers[size_t(AttributeSemantic::Normal)]    = AttributeProviderId::SSBO_Vec3;
-    r.attribute_providers[size_t(AttributeSemantic::TexCoord0)] = AttributeProviderId::SSBO_Vec2;
+    r.SetAttributeProvider(VertexAttrib::Normal,   AttributeProviderId::SSBO_Vec3);
+    r.SetAttributeProvider(VertexAttrib::TexCoord, AttributeProviderId::SSBO_Vec2);
     r.position_provider = PositionProviderId::SSBO_PackedVec3;
     return r;
 }();
@@ -245,13 +245,13 @@ private:
         if (!mp)
             return false;
 
-        if (!mp->BindAttribSSBO(AttributeSemantic::BuiltinCount, pos_vab_->GetGPUBuffer()))
+        if (!smp->BindVertexStreamBinding(GetPositionSSBOBinding(), pos_vab_->GetGPUBuffer()))
             return false;
 
-        if (!smp->BindAttribStream(AttributeSemantic::Normal, norm_vab_->GetGPUBuffer(), 0, 12))
+        if (!smp->BindAttribStream(VertexAttrib::Normal, norm_vab_->GetGPUBuffer(), 0, 12))
             return false;
 
-        if (!smp->BindAttribStream(AttributeSemantic::TexCoord0, uv_vab_->GetGPUBuffer(), 0, 8))
+        if (!smp->BindAttribStream(VertexAttrib::TexCoord, uv_vab_->GetGPUBuffer(), 0, 8))
             return false;
 
         auto *pm = GetPrimitiveManager();

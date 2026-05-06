@@ -7,6 +7,7 @@
 #include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/shadergen/AttributeProviderRegistry.h>
 #include <hgl/common/DescriptorSetTypeDef.h>
+#include <hgl/common/VertexAttribSemantic.h>
 #include <ostream>
 #include <string>
 
@@ -99,27 +100,14 @@ void EmitPositionInput(std::ostream &out,
     }
 }
 
-// Semantic name strings, indexed by AttributeSemantic ordinal.
-static constexpr const char *kAttribSemanticNames[] = {
-    "Normal",
-    "Tangent",
-    "Color",
-    "TexCoord0",
-    "TexCoord1",
-    "Joints",
-    "Weights",
-    "InstanceTransform",
-};
-static_assert(std::size(kAttribSemanticNames) == size_t(AttributeSemantic::BuiltinCount),
-              "kAttribSemanticNames must cover every built-in AttributeSemantic");
-
 void EmitAttribInput(std::ostream &out, const mtl::MaterialVariantKey &key)
 {
     constexpr int kVertexStreamsSet = int(SET_TYPE_VERTEX_STREAMS);
 
     for (uint32_t i = 0; i < uint32_t(AttributeSemantic::BuiltinCount); ++i)
     {
-        const AttributeProviderId pid = key.attribute_providers[i];
+        const auto semantic = static_cast<AttributeSemantic>(i);
+        const AttributeProviderId pid = key.GetAttributeProvider(semantic);
         if (pid == AttributeProviderId::None)
             continue;
 
@@ -127,7 +115,11 @@ void EmitAttribInput(std::ostream &out, const mtl::MaterialVariantKey &key)
         if (!p)
             continue;
 
-        out << "#define ATTRIB_TAG     " << kAttribSemanticNames[i] << "\n";
+        const char *semantic_name = GetAttributeSemanticName(semantic);
+        if (!semantic_name)
+            continue;
+
+        out << "#define ATTRIB_TAG     " << semantic_name         << "\n";
         out << "#define ATTRIB_SET     " << kVertexStreamsSet        << "\n";
         out << "#define ATTRIB_BINDING " << i                       << "\n";
         out << "#include \"" << p->glsl_path                        << "\"\n";

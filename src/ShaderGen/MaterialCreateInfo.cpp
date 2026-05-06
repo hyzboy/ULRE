@@ -484,7 +484,8 @@ void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
     // CompositorAssembler emits "#define FETCH_<Tag>_SSBO_BINDING <i>" with the same index.
     for (size_t i = 0; i < key.attribute_providers.size(); ++i)
     {
-        const AttributeProviderId pid = key.attribute_providers[i];
+        const auto semantic = static_cast<AttributeSemantic>(i);
+        const AttributeProviderId pid = key.GetAttributeProvider(semantic);
         if (pid == AttributeProviderId::None || pid == AttributeProviderId::Constant)
             continue;
 

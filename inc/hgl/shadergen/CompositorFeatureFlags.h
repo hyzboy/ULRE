@@ -3,6 +3,7 @@
 #include <hgl/common/PositionProvider.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/common/AttributeProvider.h>
+#include <hgl/common/VertexAttribSemantic.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
 #include <array>
@@ -21,8 +22,7 @@ struct CompositorFeatureFlags
     // Phase C: per-semantic attribute provider IDs for SSBO vertex pulling.
     // Mirrors MaterialVariantKey::attribute_providers.
     // All None by default → VBO path; any non-None → GEOMETRY_FETCH_SSBO=1 emitted.
-    std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)>
-        attribute_providers{};
+    AttributeProviderBindings attribute_providers{};
 
     bool HasVertexAttrib(const VertexAttrib attrib)const
     {
@@ -42,6 +42,28 @@ struct CompositorFeatureFlags
             vertex_attrib_bits |= bit;
         else
             vertex_attrib_bits &= ~bit;
+    }
+
+    bool SetAttributeProvider(const AttributeSemantic semantic,
+                              const AttributeProviderId provider)
+    {
+        return hgl::graph::SetAttributeProvider(attribute_providers, semantic, provider);
+    }
+
+    AttributeProviderId GetAttributeProvider(const AttributeSemantic semantic) const
+    {
+        return hgl::graph::GetAttributeProvider(attribute_providers, semantic);
+    }
+
+    bool SetAttributeProvider(const VertexAttrib attrib,
+                              const AttributeProviderId provider)
+    {
+        return hgl::graph::SetVertexAttribProvider(attribute_providers, attrib, provider);
+    }
+
+    AttributeProviderId GetAttributeProvider(const VertexAttrib attrib) const
+    {
+        return hgl::graph::GetVertexAttribProvider(attribute_providers, attrib);
     }
 
     // Fragment stage flags

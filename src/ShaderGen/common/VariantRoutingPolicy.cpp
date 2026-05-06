@@ -1,6 +1,7 @@
 #include "VariantRoutingPolicy.h"
 
 #include "../BuiltinVariantEntry.h"
+#include <hgl/common/VertexAttribSemantic.h>
 
 #include <cstdio>
 
@@ -149,8 +150,12 @@ MaterialVariantKey BuildRouteKey(MaterialPreset preset,
 
     // Phase C: apply per-semantic attribute provider overrides (vertex pulling).
     for (size_t i = 0; i < ov.attribute_providers.size(); ++i)
-        if (ov.attribute_providers[i] != AttributeProviderId::None)
-            key.attribute_providers[i] = ov.attribute_providers[i];
+    {
+        const auto semantic = static_cast<AttributeSemantic>(i);
+        const auto pid = hgl::graph::GetAttributeProvider(ov.attribute_providers, semantic);
+        if (pid != AttributeProviderId::None)
+            key.SetAttributeProvider(semantic, pid);
+    }
 
     return key;
 }

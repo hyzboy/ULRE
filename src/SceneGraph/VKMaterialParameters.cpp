@@ -3,6 +3,7 @@
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKBufferOwner.h>
+#include<limits>
 
 namespace hgl::graph{
 MaterialParameters::MaterialParameters(const MaterialDescriptorManager *mdm,const DescriptorSetType &type,DescriptorSet *ds)
@@ -75,12 +76,24 @@ bool MaterialParameters::BindSSBO(const mtl::SSBODescriptorSemantic semantic,con
 
 bool MaterialParameters::BindAttribSSBO(const AttributeSemantic semantic,const IGPUBuffer *gpu,bool dynamic)
 {
-    return BindSSBO(int(semantic),gpu,dynamic);
+    if(!IsBuiltinAttributeSemantic(semantic))
+        return false;
+
+    return BindSSBO(int(GetAttributeSemanticBinding(semantic)),gpu,dynamic);
+}
+
+bool MaterialParameters::BindAttribSSBO(const VertexAttrib attrib,const IGPUBuffer *gpu,bool dynamic)
+{
+    const uint32_t binding = GetVertexAttribSSBOBinding(attrib);
+    if(binding == std::numeric_limits<uint32_t>::max())
+        return false;
+
+    return BindSSBO(int(binding),gpu,dynamic);
 }
 
 bool MaterialParameters::BindVertexStreamSSBO(const uint32_t binding,const IGPUBuffer *gpu,bool dynamic)
 {
-    constexpr uint32_t kVertexStreamBindingCount = uint32_t(AttributeSemantic::BuiltinCount) + 1u;
+    constexpr uint32_t kVertexStreamBindingCount = GetPositionSSBOBinding() + 1u;
 
     if(set_type != DescriptorSetType::VertexStreams)
         return false;

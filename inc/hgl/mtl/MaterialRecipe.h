@@ -26,6 +26,7 @@
 #include <hgl/common/PrimitiveTypeDef.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
 #include <hgl/common/AttributeProvider.h>
+#include <hgl/common/VertexAttribSemantic.h>
 #include <hgl/common/PositionProvider.h>
 #include <hgl/vk/VertexAttrib.h>
 #include <hgl/vk/VKFormat.h>
@@ -109,8 +110,29 @@ struct MaterialRecipe
     // Index = AttributeSemantic ordinal; all None by default → standard VBO path.
     // Set individual entries to SSBO_Vec3 / SSBO_Vec2 to enable per-attribute
     // SSBO fetch for that semantic.
-    std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)>
-        attribute_providers{};
+    AttributeProviderBindings attribute_providers{};
+
+    bool SetAttributeProvider(const AttributeSemantic semantic,
+                              const AttributeProviderId provider) noexcept
+    {
+        return hgl::graph::SetAttributeProvider(attribute_providers, semantic, provider);
+    }
+
+    AttributeProviderId GetAttributeProvider(const AttributeSemantic semantic) const noexcept
+    {
+        return hgl::graph::GetAttributeProvider(attribute_providers, semantic);
+    }
+
+    bool SetAttributeProvider(const VertexAttrib attrib,
+                              const AttributeProviderId provider) noexcept
+    {
+        return hgl::graph::SetVertexAttribProvider(attribute_providers, attrib, provider);
+    }
+
+    AttributeProviderId GetAttributeProvider(const VertexAttrib attrib) const noexcept
+    {
+        return hgl::graph::GetVertexAttribProvider(attribute_providers, attrib);
+    }
 
     // ── Phase C: position SSBO override (vertex pulling) ─────────────────────
     // std::nullopt → use default for this preset (usually DirectVec3 for 3D).

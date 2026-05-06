@@ -10,6 +10,13 @@ namespace hgl::graph
     /// Numeric values are stable and are embedded in the shader cache key.
     /// Built-in IDs 0–7 must never be reordered or repurposed.
     /// UserCustom_Begin (64) and above are reserved for application extension.
+    ///
+    /// Transition note:
+    /// This enum is retained for compatibility while call sites are cleaned up
+    /// toward VertexAttrib-centric access paths.
+    // REMOVE: AttributeSemantic enum and all references.
+    // REMOVE: semantic_hint field in AttributeProvider struct.
+    // REMOVE: All compatibility notes referencing AttributeSemantic.
     enum class AttributeSemantic : uint8
     {
         Normal              = 0,
@@ -49,7 +56,7 @@ namespace hgl::graph
     struct AttributeProvider
     {
         AttributeProviderId id;
-        AttributeSemantic   semantic_hint;  ///< which semantic this provider most naturally serves (hint only)
+        // REMOVE: semantic_hint field in AttributeProvider struct.
 
         /// Path to the GLSL implementation file, relative to the shader library root.
         /// Empty for None and Constant (emitter handles those inline).

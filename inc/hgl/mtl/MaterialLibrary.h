@@ -79,8 +79,7 @@ struct RuntimeKeyOverrides
     // Phase C: per-semantic SSBO attribute provider overrides for vertex pulling.
     // All None by default → no SSBO pulling.  Non-None entries are applied to the
     // variant key's attribute_providers[] array in RouteKey().
-    std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)>
-        attribute_providers{};
+    AttributeProviderBindings attribute_providers{};
 };
 
 /// [Step 3.5 T1] **唯一**的 MaterialVariantKey 构造入口。

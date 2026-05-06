@@ -66,8 +66,9 @@ namespace hgl::graph::mtl {
         // Phase B: attribute_providers comparison (lexicographic over the array).
         for (size_t i = 0; i < variant.attribute_providers.size(); ++i)
         {
-            if (auto c = static_cast<uint16>(variant.attribute_providers[i])
-                     <=> static_cast<uint16>(rhs.variant.attribute_providers[i]); c != 0)
+            const auto semantic = static_cast<AttributeSemantic>(i);
+            if (auto c = static_cast<uint16>(variant.GetAttributeProvider(semantic))
+                     <=> static_cast<uint16>(rhs.variant.GetAttributeProvider(semantic)); c != 0)
                 return c;
         }
 

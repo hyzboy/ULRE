@@ -65,7 +65,7 @@ static void test_single_provider_changes_hash()
 {
     MaterialVariantKey base{};
     MaterialVariantKey modified{};
-    modified.attribute_providers[size_t(AttributeSemantic::Normal)] = AttributeProviderId::SSBO_Vec3;
+    modified.SetAttributeProvider(VertexAttrib::Normal, AttributeProviderId::SSBO_Vec3);
 
     CHECK_NE(base.Hash(), modified.Hash());
     CHECK_TRUE(!(base == modified));
@@ -75,10 +75,10 @@ static void test_single_provider_changes_hash()
 static void test_different_slots_differ()
 {
     MaterialVariantKey key_normal{};
-    key_normal.attribute_providers[size_t(AttributeSemantic::Normal)] = AttributeProviderId::SSBO_Vec3;
+    key_normal.SetAttributeProvider(VertexAttrib::Normal, AttributeProviderId::SSBO_Vec3);
 
     MaterialVariantKey key_tangent{};
-    key_tangent.attribute_providers[size_t(AttributeSemantic::Tangent)] = AttributeProviderId::SSBO_Vec3;
+    key_tangent.SetAttributeProvider(VertexAttrib::Tangent, AttributeProviderId::SSBO_Vec3);
 
     CHECK_NE(key_normal.Hash(), key_tangent.Hash());
     CHECK_TRUE(!(key_normal == key_tangent));
@@ -97,7 +97,7 @@ static void test_emit_attrib_input_all_none_is_empty()
 static void test_emit_attrib_input_single_active()
 {
     MaterialVariantKey key{};
-    key.attribute_providers[size_t(AttributeSemantic::Normal)] = AttributeProviderId::SSBO_Vec3;
+    key.SetAttributeProvider(VertexAttrib::Normal, AttributeProviderId::SSBO_Vec3);
 
     std::ostringstream oss;
     EmitAttribInput(oss, key);

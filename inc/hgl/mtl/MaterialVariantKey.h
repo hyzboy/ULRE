@@ -7,6 +7,7 @@
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
 #include <hgl/common/VertexAttribDef.h>
+#include <hgl/common/VertexAttribSemantic.h>
 #include <hgl/common/PositionProvider.h>
 #include <hgl/common/AttributeProvider.h>
 #include <hgl/type/FNV1a.h>
@@ -69,8 +70,7 @@ namespace hgl::graph::mtl
         // Phase B: Per-semantic attribute-provider IDs. Index = AttributeSemantic ordinal.
         // Default (all None=0) means no vertex-pulling; hash contribution is skipped when
         // all entries are None, preserving backward hash compatibility.
-        std::array<AttributeProviderId, size_t(AttributeSemantic::BuiltinCount)>
-            attribute_providers{};
+        AttributeProviderBindings attribute_providers{};
 
         static constexpr uint32 TextureSourceBitsPerSlot = 2;
         static constexpr uint32 TextureSourceSlotCount   = uint32(SamplerSlot::RANGE_SIZE);
@@ -124,6 +124,28 @@ namespace hgl::graph::mtl
         bool HasVertexAttrib(const VertexAttrib attrib) const noexcept
         {
             return (vertex_attribute_feature_bits & VertexAttribFeatureBit(attrib)) != 0;
+        }
+
+        bool SetAttributeProvider(const AttributeSemantic semantic,
+                                  const AttributeProviderId provider) noexcept
+        {
+            return hgl::graph::SetAttributeProvider(attribute_providers, semantic, provider);
+        }
+
+        AttributeProviderId GetAttributeProvider(const AttributeSemantic semantic) const noexcept
+        {
+            return hgl::graph::GetAttributeProvider(attribute_providers, semantic);
+        }
+
+        bool SetAttributeProvider(const VertexAttrib attrib,
+                                  const AttributeProviderId provider) noexcept
+        {
+            return hgl::graph::SetVertexAttribProvider(attribute_providers, attrib, provider);
+        }
+
+        AttributeProviderId GetAttributeProvider(const VertexAttrib attrib) const noexcept
+        {
+            return hgl::graph::GetVertexAttribProvider(attribute_providers, attrib);
         }
 
         void SetDebugShading(const bool enabled = true) noexcept

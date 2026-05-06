@@ -4,6 +4,7 @@
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/GLSLCompilerConfig.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
+#include <hgl/common/VertexAttribSemantic.h>
 #include <cstdio>
 #include <vector>
 #include <memory>
@@ -45,20 +46,10 @@ namespace
             any_array ? 1 : 0);
     }
 
-    static constexpr const char *kAttribFetchMacroTags[] = {
-        "NORMAL",            // 0
-        "TANGENT",           // 1
-        "COLOR",             // 2
-        "TEXCOORD0",         // 3
-        "TEXCOORD1",         // 4
-        "JOINTS",            // 5
-        "WEIGHTS",           // 6
-        "INSTANCETRANSFORM", // 7
-    };
-    static_assert(
-        sizeof(kAttribFetchMacroTags) / sizeof(*kAttribFetchMacroTags)
-            == size_t(AttributeSemantic::BuiltinCount),
-        "kAttribFetchMacroTags size mismatch");
+    static_assert(hgl::graph::GetAttributeSemanticMacroTag(AttributeSemantic::Normal) != nullptr,
+                  "Attribute semantic macro tags must be available");
+    static_assert(hgl::graph::GetAttributeSemanticName(AttributeSemantic::Normal) != nullptr,
+                  "Attribute semantic names must be available");
 
 } // anonymous namespace
 

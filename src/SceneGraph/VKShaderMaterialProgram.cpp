@@ -4,6 +4,7 @@
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/common/VertexAttribSemantic.h>
 #include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/UBOAccessor.h>
 
@@ -145,6 +146,15 @@ bool ShaderMaterialProgram::BindAttribStream(const AttributeSemantic semantic,co
         vertex_input->SetAttribStream(semantic,buffer,byte_offset,stride);
 
     return(true);
+}
+
+bool ShaderMaterialProgram::BindAttribStream(const VertexAttrib attrib,const IGPUBuffer *buffer,uint32_t byte_offset,uint32_t stride)
+{
+    AttributeSemantic semantic{};
+    if(!TryMapVertexAttribToAttributeSemantic(attrib,semantic))
+        return false;
+
+    return BindAttribStream(semantic,buffer,byte_offset,stride);
 }
 
 bool ShaderMaterialProgram::BindVertexStreamBinding(const uint32_t binding,const IGPUBuffer *buffer,bool dynamic)

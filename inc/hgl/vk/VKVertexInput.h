@@ -4,6 +4,7 @@
 #include<hgl/type/OrderedSet.h>
 #include<hgl/vk/VKVertexInputAttribute.h>
 #include<hgl/common/AttributeProvider.h>
+#include<hgl/common/VertexAttribSemantic.h>
 #include<array>
 
 namespace hgl::graph{
@@ -55,12 +56,39 @@ public:
 
     void SetAttribStream(const AttributeSemantic semantic,const IGPUBuffer *buffer,uint32_t byte_offset,uint32_t stride)
     {
+        if(!IsBuiltinAttributeSemantic(semantic))
+            return;
+
         auto &st=streams[size_t(semantic)];
         st.buffer=buffer; st.byte_offset=byte_offset; st.stride=stride;
     }
+    void SetAttribStream(const VertexAttrib attrib,const IGPUBuffer *buffer,uint32_t byte_offset,uint32_t stride)
+    {
+        AttributeSemantic semantic{};
+        if(!TryMapVertexAttribToAttributeSemantic(attrib,semantic))
+            return;
+
+        SetAttribStream(semantic,buffer,byte_offset,stride);
+    }
     const AttribStream &GetAttribStream(const AttributeSemantic semantic)const
     {
+        static const AttribStream kEmpty{};
+
+        if(!IsBuiltinAttributeSemantic(semantic))
+            return kEmpty;
+
         return streams[size_t(semantic)];
+    }
+    const AttribStream &GetAttribStream(const VertexAttrib attrib)const
+    {
+        AttributeSemantic semantic{};
+        if(!TryMapVertexAttribToAttributeSemantic(attrib,semantic))
+        {
+            static const AttribStream kEmpty{};
+            return kEmpty;
+        }
+
+        return GetAttribStream(semantic);
     }
 
     // Even in pulling mode we keep returning the default VIL sentinel (typically

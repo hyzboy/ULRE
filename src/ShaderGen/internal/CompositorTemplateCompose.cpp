@@ -37,23 +37,6 @@ void EmitEnabledVertexAttribDefines(hgl::graph::ShaderWriter &writer,
     }
 }
 
-// Per-semantic SSBO fetch macro name tags; index == AttributeSemantic ordinal.
-static constexpr const char *kAttribFetchMacroTags[] = {
-    "NORMAL",            // 0
-    "TANGENT",           // 1
-    "COLOR",             // 2
-    "TEXCOORD0",         // 3
-    "TEXCOORD1",         // 4
-    "JOINTS",            // 5
-    "WEIGHTS",           // 6
-    "INSTANCETRANSFORM", // 7
-};
-
-static_assert(
-    sizeof(kAttribFetchMacroTags) / sizeof(*kAttribFetchMacroTags)
-        == size_t(hgl::graph::AttributeSemantic::BuiltinCount),
-    "kAttribFetchMacroTags size mismatch");
-
 std::string BuildForwardVertexEntry(const hgl::graph::CompositorFeatureFlags &f,
                                     const int shader_version)
 {
@@ -85,14 +68,19 @@ std::string BuildForwardVertexEntry(const hgl::graph::CompositorFeatureFlags &f,
         {
             writer.EmitDefine("POSITION_SSBO_SET", "VERTEXSTREAMS_SET");
             writer.EmitDefine("POSITION_SSBO_BINDING",
-                std::to_string(size_t(hgl::graph::AttributeSemantic::BuiltinCount)).c_str());
+                std::to_string(hgl::graph::GetPositionSSBOBinding()).c_str());
         }
         for (size_t i = 0; i < f.attribute_providers.size(); ++i)
         {
-            if (f.attribute_providers[i] != hgl::graph::AttributeProviderId::None)
+            const auto semantic = static_cast<hgl::graph::AttributeSemantic>(i);
+            if (f.GetAttributeProvider(semantic) != hgl::graph::AttributeProviderId::None)
             {
+                const char *tag = hgl::graph::GetAttributeSemanticMacroTag(semantic);
+                if (!tag)
+                    continue;
+
                 std::string macro = "FETCH_";
-                macro += kAttribFetchMacroTags[i];
+                macro += tag;
                 macro += "_SSBO_BINDING";
                 writer.EmitDefine(macro.c_str(), std::to_string(i).c_str());
             }
