@@ -32,6 +32,11 @@ SET(MATERIAL_CREATE_INFO_BINDER_FILES ${SHADERGEN_INCLUDE_PATH}/MaterialDescript
                                       MaterialDescriptorStageBinder.cpp)
 SOURCE_GROUP("Material Create Info\\Binders" FILES ${MATERIAL_CREATE_INFO_BINDER_FILES})
 
+# Material Create Info / Configurators
+SET(MATERIAL_CREATE_INFO_CONFIGURATOR_FILES ${SHADERGEN_INCLUDE_PATH}/MaterialInstanceConfigurator.h
+                                            MaterialInstanceConfigurator.cpp)
+SOURCE_GROUP("Material Create Info\\Configurators" FILES ${MATERIAL_CREATE_INFO_CONFIGURATOR_FILES})
+
 # Material Create Info / Compilers
 SET(MATERIAL_CREATE_INFO_COMPILER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageCompiler.h
                                         ${SHADERGEN_INCLUDE_PATH}/ShaderSetCompiler.h
@@ -238,6 +243,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${MATERIAL_CREATE_INFO_SOURCE_FILES}
     ${MATERIAL_CREATE_INFO_BUILDER_FILES}
     ${MATERIAL_CREATE_INFO_BINDER_FILES}
+    ${MATERIAL_CREATE_INFO_CONFIGURATOR_FILES}
     ${MATERIAL_CREATE_INFO_COMPILER_FILES}
     ${MATERIAL_CREATE_INFO_STAGE_SET_FILES}
     ${SHADER_CREATER_HEADER_FILES}
