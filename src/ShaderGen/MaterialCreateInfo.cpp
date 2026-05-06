@@ -107,11 +107,11 @@ static const UBODescriptor *ResolveUBODescriptor(
             return ubo;
         }
 
-        ubo=new UBODescriptor();
-        ubo->type=struct_name.c_str();
-        hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
-        ubo->semantic=semantic;
-        return mdi.AddUBO((uint32_t)flag_bit,set_type,ubo);
+        auto owned=std::make_unique<UBODescriptor>();
+        owned->type=struct_name.c_str();
+        hgl::strcpy(owned->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
+        owned->semantic=semantic;
+        return mdi.AddUBO((uint32_t)flag_bit,set_type,owned.release());
     }
 
     return nullptr;
@@ -136,11 +136,11 @@ static const SSBODescriptor *ResolveSSBODescriptor(
             return ssbo;
         }
 
-        ssbo=new SSBODescriptor();
-        ssbo->type=struct_name.c_str();
-        hgl::strcpy(ssbo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
-        ssbo->semantic=semantic;
-        return mdi.AddSSBO((uint32_t)flag_bit,set_type,ssbo);
+        auto owned=std::make_unique<SSBODescriptor>();
+        owned->type=struct_name.c_str();
+        hgl::strcpy(owned->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
+        owned->semantic=semantic;
+        return mdi.AddSSBO((uint32_t)flag_bit,set_type,owned.release());
     }
 
     return nullptr;
@@ -165,12 +165,12 @@ static const TextureDescriptor *ResolveTextureDescriptor(
         return texture;
     }
 
-    texture=new TextureDescriptor();
-    texture->type=type_name.c_str();
-    hgl::strcpy(texture->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
-    texture->slot=slot;
+    auto owned=std::make_unique<TextureDescriptor>();
+    owned->type=type_name.c_str();
+    hgl::strcpy(owned->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
+    owned->slot=slot;
 
-    return mdi.AddTexture((uint32_t)flag_bit,set_type,texture);
+    return mdi.AddTexture((uint32_t)flag_bit,set_type,owned.release());
 }
 
 static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
@@ -193,13 +193,13 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
         return image_sampler;
     }
 
-    image_sampler=new TextureSamplerDescriptor();
-    image_sampler->type=type_name.c_str();
-    hgl::strcpy(image_sampler->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
-    image_sampler->slot=slot;
-    image_sampler->channel_hint=channel_hint;
+    auto owned=std::make_unique<TextureSamplerDescriptor>();
+    owned->type=type_name.c_str();
+    hgl::strcpy(owned->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
+    owned->slot=slot;
+    owned->channel_hint=channel_hint;
 
-    return mdi.AddTextureSampler((uint32_t)flag_bit,set_type,image_sampler);
+    return mdi.AddTextureSampler((uint32_t)flag_bit,set_type,owned.release());
 }
 
 MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
@@ -223,7 +223,7 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
         config.shader_stage_flag_bit |= uint32_t(ShaderStage::Fragment);
 
     if(HasVertex    ())shader_map.Add(std::make_unique<ShaderCreateInfoVertex>(&descriptor_db));
-    if(HasFragment  ())shader_map.Add(std::make_unique<ShaderCreateInfo>(new FragmentShaderStageIO(),&descriptor_db));
+    if(HasFragment  ())shader_map.Add(std::make_unique<ShaderCreateInfo>(std::make_unique<FragmentShaderStageIO>(),&descriptor_db));
 
     ubo_range=0;
     ssbo_range=0;
@@ -366,11 +366,11 @@ bool MaterialCreateInfo::SetMaterialInstance(const uint32_t data_bytes,const uin
 
     material_instance.max_count=std::min<uint32_t>(ssbo_range/data_bytes,HGL_U16_MAX);
 
-    SSBODescriptor *mi_ssbo=CreateSSBODescriptor(SSBODescriptorSemantic::MaterialBindingInstanceData,shader_stage_flag_bits);
+    auto mi_ssbo=std::unique_ptr<SSBODescriptor>(CreateSSBODescriptor(SSBODescriptorSemantic::MaterialBindingInstanceData,shader_stage_flag_bits));
 
     descriptor_db.AddSSBO(shader_stage_flag_bits,
                           GetDescriptorSemanticMeta(SSBODescriptorSemantic::MaterialBindingInstanceData).set_type,
-                          mi_ssbo);
+                          mi_ssbo.release());
 
     material_instance.stage_bits=shader_stage_flag_bits;
 
@@ -497,9 +497,9 @@ void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
         if (!ap || !ap->needs_ssbo)
             continue;
 
-        auto *sd = new SSBODescriptor();
+        auto sd = std::make_unique<SSBODescriptor>();
         sd->semantic = SSBODescriptorSemantic(i);   // index → binding via Resort()
-        descriptor_db.AddSSBO(stream_stage_bits, DescriptorSetType::VertexStreams, sd);
+        descriptor_db.AddSSBO(stream_stage_bits, DescriptorSetType::VertexStreams, sd.release());
     }
 
     // Position stream: binding = BuiltinCount (= 8).
@@ -509,10 +509,10 @@ void MaterialCreateInfo::AddVertexStreamSSBOs(const MaterialVariantKey &key)
         const PositionProvider *pp = FindBuiltinProvider(key.position_provider);
         if (pp && pp->needs_ssbo)
         {
-            auto *sd = new SSBODescriptor();
+            auto sd = std::make_unique<SSBODescriptor>();
             // semantic index 8 = BuiltinCount; Resort() maps index → binding = 8
             sd->semantic = SSBODescriptorSemantic(size_t(AttributeSemantic::BuiltinCount));
-            descriptor_db.AddSSBO(stream_stage_bits, DescriptorSetType::VertexStreams, sd);
+            descriptor_db.AddSSBO(stream_stage_bits, DescriptorSetType::VertexStreams, sd.release());
         }
     }
 }

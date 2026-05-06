@@ -3,6 +3,7 @@
 #include<hgl/shadergen/MaterialDescriptorDB.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<string>
+#include<cassert>
 
 #include"GLSLCompiler.h"
 
@@ -27,11 +28,17 @@ static const char *GetShaderStageNameByStage(const ShaderStage stage)
 }
 
 ShaderCreateInfo::ShaderCreateInfo(ShaderStageIO *s,MaterialDescriptorDB *m)
-    :shader_stage(s->GetShaderStage())
-    ,stage_io(s)
+    :ShaderCreateInfo(std::unique_ptr<ShaderStageIO>(s),m)
+{
+}
+
+ShaderCreateInfo::ShaderCreateInfo(std::unique_ptr<ShaderStageIO> s,MaterialDescriptorDB *m)
+    :shader_stage(s ? s->GetShaderStage() : ShaderStage::Vertex)
+    ,stage_io(std::move(s))
     ,descriptor_db(m)
     ,spv_data(nullptr)
 {
+    assert(stage_io&&"ShaderCreateInfo requires non-null ShaderStageIO");
 }
 
 ShaderCreateInfo::~ShaderCreateInfo()=default;

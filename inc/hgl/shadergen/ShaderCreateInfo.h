@@ -52,6 +52,7 @@ public:
 public:
 
     ShaderCreateInfo(ShaderStageIO *stage_io,MaterialDescriptorDB *m);
+    ShaderCreateInfo(std::unique_ptr<ShaderStageIO> stage_io,MaterialDescriptorDB *m);
     virtual ~ShaderCreateInfo();
 
     const std::string &GetFinalGLSL()const{return final_shader;}

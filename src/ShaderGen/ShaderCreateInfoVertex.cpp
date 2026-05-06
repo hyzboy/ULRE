@@ -3,7 +3,7 @@
 namespace hgl::graph{
 
 ShaderCreateInfoVertex::ShaderCreateInfoVertex(MaterialDescriptorDB *m)
-    :ShaderCreateInfo(new VertexShaderStageIO(),m)
+    :ShaderCreateInfo(std::make_unique<VertexShaderStageIO>(),m)
 {
     vertex_stage_io=static_cast<VertexShaderStageIO *>(stage_io.get());
 }
