@@ -1,4 +1,6 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/BindingContractBuilder.h>
+#include<hgl/shadergen/DescriptorLayoutBuilder.h>
 #include<hgl/shadergen/ShaderStageIO.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
@@ -384,21 +386,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const ShaderDataSchema schema,
 
 void MaterialCreateInfo::BuildBindingContract()
 {
-    binding_contract = DescriptorBindingSlots{};
-
-    for(size_t i=0;i<UBODescriptorSemanticCount;++i)
-    {
-        const UBODescriptor *d = descriptor_db.GetUBO(UBODescriptorSemantic(i));
-        if(d)
-            binding_contract.ubos[i] = d->stage_flag;
-    }
-
-    for(size_t i=0;i<SSBODescriptorSemanticCount;++i)
-    {
-        const SSBODescriptor *d = descriptor_db.GetSSBO(SSBODescriptorSemantic(i));
-        if(d)
-            binding_contract.ssbos[i] = d->stage_flag;
-    }
+    BindingContractBuilder::Build(descriptor_db,binding_contract);
 }
 
 bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
@@ -455,6 +443,8 @@ bool MaterialCreateInfo::CompileSPV()
 {
     if(shader_map.IsEmpty())
         return(false);
+
+    DescriptorLayoutBuilder::Finalize(descriptor_db,binding_contract);
 
     for(auto& kv : shader_map)
     {
