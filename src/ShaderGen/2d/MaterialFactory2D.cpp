@@ -8,17 +8,17 @@ namespace hgl::graph::mtl{
 
 // Shared 2D compile path for low-variance creators.
 // Text2D and other highly specialized creators should keep dedicated code paths.
-MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
-                                         const contract::PhysicalDeviceProfileLite *profile,
-                                         const StaticMaterialDef &def,
-                                         const MaterialVariantKey &var_key,
-                                         const std::string &vs_preamble,
-                                         const std::string &fs_preamble,
-                                         const Material2DCreateConfig *cfg,
-                                         const MaterialVariantDesc &var_desc)
+std::unique_ptr<MaterialCreateInfo> CreateFromFixedDef2DOwned(const char *debug_tag,
+                                                              const contract::PhysicalDeviceProfileLite *profile,
+                                                              const StaticMaterialDef &def,
+                                                              const MaterialVariantKey &var_key,
+                                                              const std::string &vs_preamble,
+                                                              const std::string &fs_preamble,
+                                                              const Material2DCreateConfig *cfg,
+                                                              const MaterialVariantDesc &var_desc)
 {
     if(!profile||!cfg)
-        return(nullptr);
+        return nullptr;
 
     // Populate vertex attribute feature bits from the actual vertex layout.
     MaterialVariantKey assemble_key = var_key;
@@ -42,7 +42,26 @@ MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
     if(!mci)
         std::fprintf(stderr, "[%s] CompileCompositorMaterial failed\n", debug_tag ? debug_tag : "2DFactory");
 
-    return mci.release();
+    return mci;
+}
+
+MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
+                                         const contract::PhysicalDeviceProfileLite *profile,
+                                         const StaticMaterialDef &def,
+                                         const MaterialVariantKey &var_key,
+                                         const std::string &vs_preamble,
+                                         const std::string &fs_preamble,
+                                         const Material2DCreateConfig *cfg,
+                                         const MaterialVariantDesc &var_desc)
+{
+    return CreateFromFixedDef2DOwned(debug_tag,
+                                     profile,
+                                     def,
+                                     var_key,
+                                     vs_preamble,
+                                     fs_preamble,
+                                     cfg,
+                                     var_desc).release();
 }
 
 }//namespace hgl::graph::mtl

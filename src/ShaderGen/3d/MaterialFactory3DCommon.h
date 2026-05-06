@@ -6,6 +6,7 @@
 #include<hgl/mtl/StaticMaterialDef.h>
 #include<hgl/mtl/MaterialVariantKey.h>
 #include<hgl/mtl/MaterialVariantDesc.h>
+#include <memory>
 
 namespace hgl::graph::mtl{
 
@@ -27,6 +28,14 @@ inline void PopulateVariantKeyVertexAttribBits(MaterialVariantKey &key, const St
 namespace contract{struct PhysicalDeviceProfileLite;}
 struct Material3DCreateConfig;
 class MaterialCreateInfo;
+
+std::unique_ptr<MaterialCreateInfo> CreateFromFixedDef3DOwned(
+    const char *debug_tag,
+    const contract::PhysicalDeviceProfileLite *profile,
+    const StaticMaterialDef &def,
+    const MaterialVariantKey &var_key,
+    const Material3DCreateConfig *cfg,
+    const MaterialVariantDesc &var_desc);
 
 /// 通用 3D 工厂：StaticMaterialDef + VariantKey + VariantDesc → MaterialCreateInfo*
 ///

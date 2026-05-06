@@ -9,7 +9,7 @@
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreateFromFixedDef3D(
+std::unique_ptr<MaterialCreateInfo> CreateFromFixedDef3DOwned(
     const char *debug_tag,
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &def,
@@ -52,7 +52,23 @@ MaterialCreateInfo *CreateFromFixedDef3D(
     if (!mci)
         std::fprintf(stderr, "[%s] CompileCompositorMaterial failed\n", debug_tag);
 
-    return mci.release();
+    return mci;
+}
+
+MaterialCreateInfo *CreateFromFixedDef3D(
+    const char *debug_tag,
+    const contract::PhysicalDeviceProfileLite *profile,
+    const StaticMaterialDef &def,
+    const MaterialVariantKey &var_key,
+    const Material3DCreateConfig *cfg,
+    const MaterialVariantDesc &var_desc)
+{
+    return CreateFromFixedDef3DOwned(debug_tag,
+                                     profile,
+                                     def,
+                                     var_key,
+                                     cfg,
+                                     var_desc).release();
 }
 
 }//namespace hgl::graph::mtl
