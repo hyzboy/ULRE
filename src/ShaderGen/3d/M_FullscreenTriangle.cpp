@@ -6,6 +6,7 @@
 #include <hgl/mtl/StaticMaterialDef.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 
+#include <memory>
 #include <sstream>
 #include <string>
 
@@ -40,8 +41,8 @@ namespace
         "}\n";
 }
 
-MaterialCreateInfo *CreateFullscreenTriangle(const contract::PhysicalDeviceProfileLite *profile,
-                                             Material3DCreateConfig *cfg)
+std::unique_ptr<MaterialCreateInfo> CreateFullscreenTriangleOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                                  Material3DCreateConfig *cfg)
 {
     Material3DCreateConfig local_cfg = cfg ? *cfg : Material3DCreateConfig();
 
@@ -63,7 +64,13 @@ MaterialCreateInfo *CreateFullscreenTriangle(const contract::PhysicalDeviceProfi
                                           FULLSCREEN_TRIANGLE_DEF,
                                           vs_out.str(),
                                           kFullscreenTriangleFS,
-                                          &local_cfg).release();
+                                          &local_cfg);
+}
+
+MaterialCreateInfo *CreateFullscreenTriangle(const contract::PhysicalDeviceProfileLite *profile,
+                                             Material3DCreateConfig *cfg)
+{
+    return CreateFullscreenTriangleOwned(profile,cfg).release();
 }
 
 static MaterialCreateInfo *FullscreenTriangle_Adapter(

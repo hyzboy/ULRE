@@ -5,16 +5,17 @@
 #include<hgl/mtl/SamplerSlot.h>
 #include<hgl/mtl/MaterialVariantDesc.h>
 #include<cstdio>
+#include <memory>
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,
-                                   const Text2DMaterialCreateConfig *cfg,
-                                   const MaterialVariantDesc &desc,
-                                   const MaterialVariantKey &key)
+std::unique_ptr<MaterialCreateInfo> CreateText2DOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                      const Text2DMaterialCreateConfig *cfg,
+                                                      const MaterialVariantDesc &desc,
+                                                      const MaterialVariantKey &key)
 {
     if(!profile||!cfg)
-        return(nullptr);
+        return nullptr;
 
     Text2DMaterialCreateConfig new_cfg=*cfg;
     new_cfg.prim=PrimitiveType::Triangles;
@@ -53,7 +54,15 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     auto mci = CompileCompositorMaterialOwned(profile, def, vs, fs, &new_cfg);
     if(!mci)
         std::fprintf(stderr, "[Text2D] CompileCompositorMaterial failed\n");
-    return mci.release();
+    return mci;
+}
+
+MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,
+                                 const Text2DMaterialCreateConfig *cfg,
+                                 const MaterialVariantDesc &desc,
+                                 const MaterialVariantKey &key)
+{
+    return CreateText2DOwned(profile,cfg,desc,key).release();
 }
 
 static MaterialCreateInfo *Text2D_Adapter(

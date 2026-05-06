@@ -7,6 +7,7 @@
 #include<cstdio>
 #include<vector>
 #include<hgl/mtl/MaterialLibrary.h>
+#include <memory>
 
 namespace hgl::graph::mtl{
 namespace
@@ -45,11 +46,13 @@ namespace
     };
 }//namespace
 
-MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfileLite *profile,mtl::BillboardMaterialCreateConfig *cfg,
-                                           const MaterialVariantDesc &desc, const MaterialVariantKey &routing_key)
+std::unique_ptr<MaterialCreateInfo> CreateBillboard2DFixedOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                                mtl::BillboardMaterialCreateConfig *cfg,
+                                                                const MaterialVariantDesc &desc,
+                                                                const MaterialVariantKey &routing_key)
 {
     if(!cfg)
-        return(nullptr);
+        return nullptr;
 
     cfg->local_to_world=true;
     cfg->material_instance=true;
@@ -111,7 +114,15 @@ MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfile
         std::fprintf(stderr, "[BillboardFixed] CompileCompositorMaterial failed\n");
     else
         std::fprintf(stderr, "[BillboardFixed] material created OK\n");
-    return mci.release();
+    return mci;
+}
+
+MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfileLite *profile,
+                                           mtl::BillboardMaterialCreateConfig *cfg,
+                                           const MaterialVariantDesc &desc,
+                                           const MaterialVariantKey &routing_key)
+{
+    return CreateBillboard2DFixedOwned(profile,cfg,desc,routing_key).release();
 }
 
 static MaterialCreateInfo *Billboard2DFixed_Adapter(

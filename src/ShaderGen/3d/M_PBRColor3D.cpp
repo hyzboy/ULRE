@@ -5,6 +5,7 @@
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <cstdio>
 #include <vector>
+#include <memory>
 
 #include <hgl/mtl/MaterialVariantDesc.h>
 
@@ -58,7 +59,9 @@ namespace
     };
 }//namespace
 
-MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile, const MaterialVariantDesc &desc, PBRColor3DMaterialCreateConfig *cfg)
+std::unique_ptr<MaterialCreateInfo> CreatePBRColor3DOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                          const MaterialVariantDesc &desc,
+                                                          PBRColor3DMaterialCreateConfig *cfg)
 {
     if (cfg)
         cfg->material_instance = true;
@@ -119,7 +122,14 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     if (!mci)
         std::fprintf(stderr, "[PBRColor3D] CompileCompositorMaterial failed\n");
 
-    return mci.release();
+    return mci;
+}
+
+MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile,
+                                     const MaterialVariantDesc &desc,
+                                     PBRColor3DMaterialCreateConfig *cfg)
+{
+    return CreatePBRColor3DOwned(profile,desc,cfg).release();
 }
 
 static MaterialCreateInfo *PBRColor3D_Adapter(

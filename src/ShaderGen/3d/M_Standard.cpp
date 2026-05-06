@@ -5,6 +5,7 @@
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <cstdio>
 #include <vector>
+#include <memory>
 
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/SamplerSlot.h>
@@ -60,10 +61,10 @@ namespace
 
 } // anonymous namespace
 
-MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileLite *profile,
-                                          const MaterialVariantDesc &desc,
-                                          const MaterialVariantKey &input_key,
-                                          const Material3DCreateConfig *cfg)
+std::unique_ptr<MaterialCreateInfo> CreateStandardVariantOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                               const MaterialVariantDesc &desc,
+                                                               const MaterialVariantKey &input_key,
+                                                               const Material3DCreateConfig *cfg)
 {
     if (!cfg)
     {
@@ -172,7 +173,15 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     if (!mci)
         std::fprintf(stderr, "[Standard] CompileCompositorMaterial failed\n");
-    return mci.release();
+    return mci;
+}
+
+MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileLite *profile,
+                                          const MaterialVariantDesc &desc,
+                                          const MaterialVariantKey &input_key,
+                                          const Material3DCreateConfig *cfg)
+{
+    return CreateStandardVariantOwned(profile,desc,input_key,cfg).release();
 }
 
 static MaterialCreateInfo *Standard_Adapter(

@@ -4,6 +4,7 @@
 #include <hgl/mtl/StaticMaterialDef.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 
+#include <memory>
 #include <string>
 
 namespace hgl::graph::mtl
@@ -50,8 +51,8 @@ namespace
         "}\n";
 }
 
-MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLite *profile,
-                                         Material3DCreateConfig *cfg)
+std::unique_ptr<MaterialCreateInfo> CreateCheckerboard3DOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                              Material3DCreateConfig *cfg)
 {
     Material3DCreateConfig local_cfg = cfg ? *cfg : Material3DCreateConfig();
 
@@ -66,7 +67,13 @@ MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLi
                                           CHECKERBOARD_3D_DEF,
                                           kCheckerboardVS,
                                           kCheckerboardFS,
-                                          &local_cfg).release();
+                                          &local_cfg);
+}
+
+MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLite *profile,
+                                         Material3DCreateConfig *cfg)
+{
+    return CreateCheckerboard3DOwned(profile,cfg).release();
 }
 
 static MaterialCreateInfo *Checkerboard3D_Adapter(
