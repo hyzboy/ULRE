@@ -215,13 +215,9 @@ namespace hgl::graph
 
     public:
 
-        UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,UBODescriptor *new_sd);
         UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,std::unique_ptr<UBODescriptor> new_sd);
-        SSBODescriptor *AddSSBO(uint32_t shader_stage_flag_bits,SSBODescriptor *new_sd);
         SSBODescriptor *AddSSBO(uint32_t shader_stage_flag_bits,std::unique_ptr<SSBODescriptor> new_sd);
-        TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,TextureDescriptor *new_sd);
         TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,std::unique_ptr<TextureDescriptor> new_sd);
-        TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,TextureSamplerDescriptor *new_sd);
         TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,std::unique_ptr<TextureSamplerDescriptor> new_sd);
     };
 

@@ -18,11 +18,6 @@ static TDesc *FinalizeInsert(ShaderDescriptorSet *owner,const uint32_t ssb,TDesc
 /**
 * 添加UBO描述符
 */
-UBODescriptor *ShaderDescriptorSet::AddUBO(uint32_t ssb,UBODescriptor *new_sd)
-{
-    return AddUBO(ssb,std::unique_ptr<UBODescriptor>(new_sd));
-}
-
 UBODescriptor *ShaderDescriptorSet::AddUBO(uint32_t ssb,std::unique_ptr<UBODescriptor> new_sd)
 {
     if(!new_sd)
@@ -48,11 +43,6 @@ UBODescriptor *ShaderDescriptorSet::AddUBO(uint32_t ssb,std::unique_ptr<UBODescr
 /**
 * 添加SSBO描述符
 */
-SSBODescriptor *ShaderDescriptorSet::AddSSBO(uint32_t ssb,SSBODescriptor *new_sd)
-{
-    return AddSSBO(ssb,std::unique_ptr<SSBODescriptor>(new_sd));
-}
-
 SSBODescriptor *ShaderDescriptorSet::AddSSBO(uint32_t ssb,std::unique_ptr<SSBODescriptor> new_sd)
 {
     if(!new_sd)
@@ -83,11 +73,6 @@ SSBODescriptor *ShaderDescriptorSet::AddSSBO(uint32_t ssb,std::unique_ptr<SSBODe
 /**
 * 添加纹理描述符
 */
-TextureDescriptor *ShaderDescriptorSet::AddTexture(uint32_t ssb,TextureDescriptor *new_sd)
-{
-    return AddTexture(ssb,std::unique_ptr<TextureDescriptor>(new_sd));
-}
-
 TextureDescriptor *ShaderDescriptorSet::AddTexture(uint32_t ssb,std::unique_ptr<TextureDescriptor> new_sd)
 {
     if(!new_sd)
@@ -113,11 +98,6 @@ TextureDescriptor *ShaderDescriptorSet::AddTexture(uint32_t ssb,std::unique_ptr<
 /**
 * 添加纹理采样器描述符
 */
-TextureSamplerDescriptor *ShaderDescriptorSet::AddTextureSampler(uint32_t ssb,TextureSamplerDescriptor *new_sd)
-{
-    return AddTextureSampler(ssb,std::unique_ptr<TextureSamplerDescriptor>(new_sd));
-}
-
 TextureSamplerDescriptor *ShaderDescriptorSet::AddTextureSampler(uint32_t ssb,std::unique_ptr<TextureSamplerDescriptor> new_sd)
 {
     if(!new_sd)
