@@ -1,10 +1,22 @@
 #include "VariantLookupService.h"
+#include "VariantKeyOps.h"
 
 #include <atomic>
 #include <cstdio>
 
 namespace hgl::graph::mtl::routing
 {
+
+namespace
+{
+
+#if defined(ULRE_SHADERGEN_VERBOSE)
+constexpr bool kVariantRegistryVerbose = true;
+#else
+constexpr bool kVariantRegistryVerbose = false;
+#endif
+
+}
 
 MaterialVariantKey CanonicalizeRegistryLookupKey(const MaterialVariantKey &key,
                                                  const RegistryLookupOptions &options)
@@ -51,14 +63,41 @@ bool ResolveVariantForKey(const MaterialVariantKey &request_key,
     out.request_key = request_key;
     out.lookup_key = CanonicalizeRegistryLookupKey(request_key, options);
 
-    MaterialVariantKey resolved{};
-    const MaterialVariantDesc *desc = registry.QueryVariantWithCanonicalFallback(
-        out.lookup_key,
-        &resolved,
-        options);
+    if (kVariantRegistryVerbose && !(out.lookup_key == request_key))
+    {
+        std::fprintf(stderr,
+            "[VariantRegistry] canonicalized lookup request={%s} canonical={%s}\n",
+            FormatVariantKeyForLog(request_key, true).c_str(),
+            FormatVariantKeyForLog(out.lookup_key, true).c_str());
+    }
 
-    out.resolved_key = resolved;
+    const MaterialVariantDesc *desc = registry.QueryVariant(out.lookup_key, options);
+
+    out.resolved_key = out.lookup_key;
     out.variant_desc = desc;
+
+    if (desc)
+    {
+        if (auto *s = GetGlobalVariantRegistryStatsSink())
+            s->OnExactMatch(out.lookup_key, *desc);
+
+        if (kVariantRegistryVerbose)
+        {
+            std::fprintf(stderr,
+                "[VariantRegistry] exact-match variant=%s %s\n",
+                desc->variant_name.empty() ? "<unnamed>" : desc->variant_name.c_str(),
+                FormatVariantKeyForLog(out.lookup_key, true).c_str());
+        }
+        return true;
+    }
+
+    if (auto *s = GetGlobalVariantRegistryStatsSink())
+        s->OnMiss(out.lookup_key);
+
+    std::fprintf(stderr,
+        "[VariantRegistry] miss request={%s}\n",
+        FormatVariantKeyForLog(out.lookup_key, true).c_str());
+
     return desc != nullptr;
 }
 

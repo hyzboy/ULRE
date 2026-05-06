@@ -1,4 +1,5 @@
 #include "MaterialLibraryBootstrap.h"
+#include "VariantLookupService.h"
 
 #include <hgl/mtl/MaterialVariantRegistry.h>
 #include <hgl/shadergen/MaterialFactory3D.h>
@@ -49,8 +50,9 @@ void RunRoutingConsistencySelfTest()
     {
         const auto &e = kBuiltinVariants[i];
         const MaterialVariantKey k = BuildKey(e);
-        const MaterialVariantDesc *found =
-            GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(k, nullptr);
+        routing::VariantLookupResult lookup_result{};
+        const bool lookup_ok = routing::ResolveBuiltinVariantForKey(k, lookup_result);
+        const MaterialVariantDesc *found = lookup_ok ? lookup_result.variant_desc : nullptr;
 
         const bool entry_ok = found
                            && found->factory_type.has_value()

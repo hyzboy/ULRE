@@ -1,7 +1,6 @@
 #include<hgl/mtl/MaterialVariantRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/shadergen/CompositorAssembler.h>
-#include "common/VariantKeyOps.h"
 #include "common/VariantLookupService.h"
 #include "BuiltinVariantEntry.h"
 #include <algorithm>
@@ -10,16 +9,6 @@
 #include <string>
 
 namespace hgl::graph::mtl{
-
-namespace {
-
-#if defined(ULRE_SHADERGEN_VERBOSE)
-constexpr bool kVariantRegistryVerbose = true;
-#else
-constexpr bool kVariantRegistryVerbose = false;
-#endif
-
-} // anonymous namespace
 
 // ---------------------------------------------------------------------------
 // VariantRegistry
@@ -41,14 +30,12 @@ void VariantRegistry::RegisterVariant(const MaterialVariantKey &key, const Mater
 }
 
 const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKey &key,
-                                                         const RegistryLookupOptions &options) const
+                             const RegistryLookupOptions &) const
 {
-  const MaterialVariantKey query_key = routing::CanonicalizeRegistryLookupKey(key, options);
-
-    auto it = variant_map.find(query_key.Hash());
+  auto it = variant_map.find(key.Hash());
     if (it == variant_map.end())
         return nullptr;
-    if (!(it->second.key == query_key))
+  if (!(it->second.key == key))
         return nullptr;
     return &it->second.desc;
 }
@@ -58,40 +45,14 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
     MaterialVariantKey *resolved_key,
     const RegistryLookupOptions &options) const
 {
-  const MaterialVariantKey request_key = routing::CanonicalizeRegistryLookupKey(key, options);
-
-  if (kVariantRegistryVerbose && !(request_key == key))
-  {
-    std::fprintf(stderr,
-      "[VariantRegistry] canonicalized lookup request={%s} canonical={%s}\n",
-      routing::FormatVariantKeyForLog(key, true).c_str(),
-      routing::FormatVariantKeyForLog(request_key, true).c_str());
-  }
-
-    if(const MaterialVariantDesc *exact=QueryVariant(request_key, options))
-    {
-        if (auto *s = GetGlobalVariantRegistryStatsSink())
-            s->OnExactMatch(request_key, *exact);
-        if (kVariantRegistryVerbose)
-        {
-            std::fprintf(stderr,
-                "[VariantRegistry] exact-match variant=%s %s\n",
-                exact->variant_name.empty() ? "<unnamed>" : exact->variant_name.c_str(),
-              routing::FormatVariantKeyForLog(request_key, true).c_str());
-        }
-        if(resolved_key)
-            *resolved_key=request_key;
-        return exact;
-    }
-
-    if (auto *s = GetGlobalVariantRegistryStatsSink())
-        s->OnMiss(request_key);
-
-    std::fprintf(stderr,
-      "[VariantRegistry] miss request={%s}\n",
-      routing::FormatVariantKeyForLog(request_key, true).c_str());
-
+  routing::VariantLookupResult lookup{};
+  if (!routing::ResolveVariantForKey(key, *this, lookup, options))
     return nullptr;
+
+  if (resolved_key)
+    *resolved_key = lookup.resolved_key;
+
+  return lookup.variant_desc;
 }
 
 bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_library_path,
