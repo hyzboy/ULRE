@@ -54,7 +54,11 @@ SOURCE_GROUP("Common\\Material Functions" FILES ${SHADERGEN_COMMON_MATFUNC_FILES
 
 # Common / Variant Policy
 SET(SHADERGEN_COMMON_VARIANT_POLICY_FILES common/DefaultVariantRouter.h
-                                          common/DefaultVariantRouter.cpp)
+                                          common/DefaultVariantRouter.cpp
+                                          common/VariantRoutingPolicy.h
+                                          common/VariantRoutingPolicy.cpp
+                                          common/VariantLookupService.h
+                                          common/VariantLookupService.cpp)
 SOURCE_GROUP("Common\\Variant Policy" FILES ${SHADERGEN_COMMON_VARIANT_POLICY_FILES})
 
 # Fixed Material Config

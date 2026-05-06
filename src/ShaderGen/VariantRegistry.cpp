@@ -1,9 +1,9 @@
 #include<hgl/mtl/MaterialVariantRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/shadergen/CompositorAssembler.h>
+#include "common/VariantLookupService.h"
 #include "BuiltinVariantEntry.h"
 #include <algorithm>
-#include <atomic>
 #include <cstdio>
 #include <initializer_list>
 #include <string>
@@ -17,41 +17,6 @@ constexpr bool kVariantRegistryVerbose = true;
 #else
 constexpr bool kVariantRegistryVerbose = false;
 #endif
-
-static MaterialVariantKey CanonicalizeRegistryLookupKey(const MaterialVariantKey &key,
-                                                        const RegistryLookupOptions &options)
-{
-    MaterialVariantKey canon = key;
-
-    if (!options.match_effective_feature_mask && canon.effective_feature_mask != 0)
-    {
-        static std::atomic_bool s_warned_effective_mask_ignored{false};
-        bool expected = false;
-        if (s_warned_effective_mask_ignored.compare_exchange_strong(expected, true, std::memory_order_relaxed))
-        {
-            std::fprintf(stderr,
-                "[VariantRegistry] warning: effective_feature_mask is ignored for variant routing by default; "
-                "set RegistryLookupOptions::match_effective_feature_mask = true to include it in registry lookup.\n");
-        }
-
-        canon.effective_feature_mask = 0;
-    }
-
-    // Strip vertex-pulling provider bits for registry lookup.
-    // The variant registry selects shader descriptor layouts and does NOT
-    // distinguish vertex-stream sources.  Registered variants always use
-    // DirectVec3 position and all-None attribute_providers.  SSBO-based
-    // providers only affect the VertexStreams descriptor set (set=4), which is
-    // configured post-lookup by AddVertexStreamSSBOs when MaterialFactory3D
-    // receives the *original* key.  Clearing them here allows vertex-pulling
-    // materials to resolve the same base variant entry as VAB counterparts.
-    for (auto &p : canon.attribute_providers)
-        p = AttributeProviderId::None;
-    if (canon.position_provider == PositionProviderId::SSBO_PackedVec3)
-        canon.position_provider = PositionProviderId::DirectVec3;
-
-    return canon;
-}
 
 static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
 {
@@ -133,7 +98,7 @@ void VariantRegistry::RegisterVariant(const MaterialVariantKey &key, const Mater
 const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKey &key,
                                                          const RegistryLookupOptions &options) const
 {
-    const MaterialVariantKey query_key = CanonicalizeRegistryLookupKey(key, options);
+  const MaterialVariantKey query_key = routing::CanonicalizeRegistryLookupKey(key, options);
 
     auto it = variant_map.find(query_key.Hash());
     if (it == variant_map.end())
@@ -148,7 +113,7 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
     MaterialVariantKey *resolved_key,
     const RegistryLookupOptions &options) const
 {
-    const MaterialVariantKey request_key = CanonicalizeRegistryLookupKey(key, options);
+  const MaterialVariantKey request_key = routing::CanonicalizeRegistryLookupKey(key, options);
 
   if (kVariantRegistryVerbose && !(request_key == key))
   {

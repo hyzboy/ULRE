@@ -5,6 +5,16 @@
 # dependencies).  The global include_directories set by use_cm_module() in the
 # root CMakeLists.txt provide all required header search paths.
 
+function(link_ulre_for_tests target_name)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # GNU ld is order-sensitive for static archives; a second pass helps
+        # resolve symbols from earlier archives referenced by later ones.
+        target_link_libraries(${target_name} PRIVATE ${ULRE} ${ULRE})
+    else()
+        target_link_libraries(${target_name} PRIVATE ${ULRE})
+    endif()
+endfunction()
+
 add_executable(MaterialKeyTest
     MaterialKeyTest.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../MaterialKey.cpp
@@ -22,7 +32,7 @@ add_executable(RecipeToKeyTest
     RecipeToKeyTests.cpp
 )
 
-target_link_libraries(RecipeToKeyTest PRIVATE ${ULRE})
+link_ulre_for_tests(RecipeToKeyTest)
 
 set_property(TARGET RecipeToKeyTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 
@@ -34,7 +44,7 @@ add_executable(MaterialRecipeStoreTests
     MaterialRecipeStoreTests.cpp
 )
 
-target_link_libraries(MaterialRecipeStoreTests PRIVATE ${ULRE})
+link_ulre_for_tests(MaterialRecipeStoreTests)
 
 set_property(TARGET MaterialRecipeStoreTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 
@@ -46,7 +56,7 @@ add_executable(EnumerateRecipeKeysTests
     EnumerateRecipeKeysTests.cpp
 )
 
-target_link_libraries(EnumerateRecipeKeysTests PRIVATE ${ULRE})
+link_ulre_for_tests(EnumerateRecipeKeysTests)
 
 set_property(TARGET EnumerateRecipeKeysTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 
@@ -57,7 +67,7 @@ add_executable(MaterialKeyAbiSnapshot
     MaterialKeyAbiSnapshot.cpp
 )
 
-target_link_libraries(MaterialKeyAbiSnapshot PRIVATE ${ULRE})
+link_ulre_for_tests(MaterialKeyAbiSnapshot)
 
 set_property(TARGET MaterialKeyAbiSnapshot PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 
