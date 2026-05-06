@@ -2,6 +2,7 @@
 #include<hgl/shadergen/BindingContractBuilder.h>
 #include<hgl/shadergen/DescriptorLayoutBuilder.h>
 #include<hgl/shadergen/ShaderSetCompiler.h>
+#include<hgl/shadergen/ShaderStageBuildSet.h>
 #include<hgl/shadergen/ShaderStageIO.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
@@ -204,8 +205,10 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
 MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     : config(*mc)
 {
-    if(HasVertex    ())shader_map.Add(new ShaderCreateInfoVertex(&descriptor_db));
-    if(HasFragment  ())shader_map.Add(new ShaderCreateInfo(new FragmentShaderStageIO(),&descriptor_db));
+    ShaderStageBuildSet shader_stage_set(shader_map);
+
+    if(HasVertex    ())shader_stage_set.Add(new ShaderCreateInfoVertex(&descriptor_db));
+    if(HasFragment  ())shader_stage_set.Add(new ShaderCreateInfo(new FragmentShaderStageIO(),&descriptor_db));
 
     ubo_range=0;
     ssbo_range=0;
@@ -216,14 +219,7 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
 
 MaterialCreateInfo::~MaterialCreateInfo()
 {
-    // Explicitly clear the shader_map to properly clean up ShaderCreateInfo objects
-    // This ensures proper destructor ordering and prevents crashes with UnorderedMap
-    for(auto [stage, sc] : shader_map)
-    {
-        if(sc)
-            delete sc;
-    }
-    shader_map.Clear();
+    ShaderStageBuildSet(shader_map).DeleteAllShaders();
 }
 
 bool MaterialCreateInfo::AddResolvedUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const UBODescriptorSemantic semantic,const std::string &struct_name,const std::string &name)
@@ -424,13 +420,17 @@ void MaterialCreateInfo::SetDevice(const contract::PhysicalDeviceProfileLite *pr
 
 bool MaterialCreateInfo::CreateShaderDirect()
 {
+    ShaderStageBuildSet shader_stage_set(shader_map);
+
     DescriptorLayoutBuilder::Finalize(descriptor_db,binding_contract);
-    return ShaderSetCompiler::Compile(shader_map);
+    return ShaderSetCompiler::Compile(shader_stage_set.GetMap());
 }
 
 bool MaterialCreateInfo::CompileSPV()
 {
+    ShaderStageBuildSet shader_stage_set(shader_map);
+
     DescriptorLayoutBuilder::Finalize(descriptor_db,binding_contract);
-    return ShaderSetCompiler::Compile(shader_map);
+    return ShaderSetCompiler::Compile(shader_stage_set.GetMap());
 }
 }//namespace hgl::graph::mtl

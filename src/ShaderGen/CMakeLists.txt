@@ -34,6 +34,11 @@ SET(MATERIAL_CREATE_INFO_COMPILER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageCom
                                         ShaderSetCompiler.cpp)
 SOURCE_GROUP("Material Create Info\\Compilers" FILES ${MATERIAL_CREATE_INFO_COMPILER_FILES})
 
+# Material Create Info / Stage Set
+SET(MATERIAL_CREATE_INFO_STAGE_SET_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageBuildSet.h
+                                         ShaderStageBuildSet.cpp)
+SOURCE_GROUP("Material Create Info\\Stage Set" FILES ${MATERIAL_CREATE_INFO_STAGE_SET_FILES})
+
 # Descriptor Info
 SET(DESC_INFO_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderStageIO.h
                             ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorDB.h
@@ -228,6 +233,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${MATERIAL_CREATE_INFO_SOURCE_FILES}
     ${MATERIAL_CREATE_INFO_BUILDER_FILES}
     ${MATERIAL_CREATE_INFO_COMPILER_FILES}
+    ${MATERIAL_CREATE_INFO_STAGE_SET_FILES}
     ${SHADER_CREATER_HEADER_FILES}
     ${SHADER_CREATER_SOURCE_FILES}
     ${GLSL_COMPILER_SOURCE}
