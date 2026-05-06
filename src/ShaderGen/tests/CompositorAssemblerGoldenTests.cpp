@@ -4,6 +4,7 @@
 //  1) Key-derived define injection in generated VS/FS GLSL.
 //  2) Surface include path propagation.
 //  3) Non-compositor template path read-failure diagnostics.
+//  4) Compositor-prefixed template path must route to generated source.
 
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
@@ -115,11 +116,56 @@ static void test_non_compositor_template_path_reports_read_failure()
     CHECK_TRUE(Contains(result.error_message, desc.vs_template_path));
 }
 
+static void test_compositor_prefixed_vs_template_path_uses_generation_route()
+{
+    MaterialVariantKey key;
+    key.surface_type = SurfaceType::Unlit;
+
+    MaterialVariantDesc desc;
+    desc.vs_template_path = "compositor/nonexistent_custom_template.vert.glsl";
+    desc.surface_function_path = "surface/golden_surface.glsl";
+
+    CompositorAssembler assembler;
+    const auto result = assembler.Assemble(key, desc);
+
+    CHECK_TRUE(result.success);
+    if (!result.success)
+        return;
+
+    // If compositor prefix is honored, VS should come from generated template composition.
+    CHECK_TRUE(Contains(result.vertex_glsl, "#include \"compositor/vert_forward_ubo.glsl\""));
+    CHECK_TRUE(Contains(result.vertex_glsl, "#include \"compositor/vert_forward_main.glsl\""));
+}
+
+static void test_compositor_prefixed_fs_template_path_uses_generation_route()
+{
+    MaterialVariantKey key;
+    key.surface_type = SurfaceType::Unlit;
+
+    MaterialVariantDesc desc;
+    desc.fs_template_path = "compositor/nonexistent_custom_template.frag.glsl";
+    desc.surface_function_path = "surface/golden_surface.glsl";
+
+    CompositorAssembler assembler;
+    const auto result = assembler.Assemble(key, desc);
+
+    CHECK_TRUE(result.success);
+    if (!result.success)
+        return;
+
+    // If compositor prefix is honored, FS should come from generated template composition.
+    CHECK_TRUE(Contains(result.fragment_glsl, "#include \"compositor/frag_forward_ubo.glsl\""));
+    CHECK_TRUE(Contains(result.fragment_glsl, "#include \"surface/golden_surface.glsl\""));
+    CHECK_TRUE(Contains(result.fragment_glsl, "#include \"compositor/frag_forward_main.glsl\""));
+}
+
 int main()
 {
     test_generated_sources_inject_key_defines_and_surface_include();
     test_non_array_texture_mode_does_not_inject_array_define();
     test_non_compositor_template_path_reports_read_failure();
+    test_compositor_prefixed_vs_template_path_uses_generation_route();
+    test_compositor_prefixed_fs_template_path_uses_generation_route();
 
     if (g_failures == 0)
         std::printf("All tests passed.\n");

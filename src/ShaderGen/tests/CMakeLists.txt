@@ -139,3 +139,13 @@ target_link_libraries(VKBufferTest PRIVATE CMCore)
 set_property(TARGET VKBufferTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 
 add_test(NAME VKBufferTest COMMAND VKBufferTest)
+
+# Phase0GoldenDump exports selected built-in variant assembled GLSL snapshots
+# to doc/refactor/golden/phase0/ for phase-0 baseline completion.
+add_executable(Phase0GoldenDump
+    Phase0GoldenDump.cpp
+)
+
+link_ulre_for_tests(Phase0GoldenDump)
+
+set_property(TARGET Phase0GoldenDump PROPERTY FOLDER "ULRE/Tools/ShaderGen")
