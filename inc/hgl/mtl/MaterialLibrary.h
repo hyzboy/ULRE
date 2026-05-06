@@ -5,6 +5,7 @@
 #include<hgl/mtl/MaterialBuildFlags.h>
 #include<hgl/mtl/MaterialPreset.h>
 #include<hgl/mtl/MaterialVariantKey.h>
+#include<memory>
 #include<vector>
 #include<string>
 #include<optional>
@@ -26,11 +27,19 @@ inline MaterialCreateInfo *Create##name(const contract::PhysicalDeviceProfileLit
 
 // Semantic entry path: MaterialPreset is authoring/content intent. The library resolves it through
 // runtime material LOD and then maps it to a concrete MaterialVariantKey / shading implementation.
+std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                                  const MaterialPreset mtl_id,
+                                                                  MaterialCreateConfig *cfg);
+
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialPreset mtl_id,
                                              MaterialCreateConfig *cfg);
 
 // Low-level entry path: callers already know the exact variant/shader-facing routing key.
+std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                                  const MaterialVariantKey &key,
+                                                                  MaterialCreateConfig *cfg);
+
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialVariantKey &key,
                                              MaterialCreateConfig *cfg);

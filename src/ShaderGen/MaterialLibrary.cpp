@@ -7,6 +7,7 @@
 #include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/shadergen/MaterialFactory3D.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<cstdio>
 #include "common/VariantLookupService.h"
 #include "common/VariantRoutingPolicy.h"
@@ -114,9 +115,9 @@ MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLi
 
 
 
-MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                             const MaterialVariantKey &key,
-                                             MaterialCreateConfig *cfg)
+std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                                  const MaterialVariantKey &key,
+                                                                  MaterialCreateConfig *cfg)
 {
     static const bool s_startup_variant_validation_done = []()
     {
@@ -201,7 +202,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             return nullptr;
         }
 
-        return CreateCheckerboard3D(profile, cfg3d);
+        return std::unique_ptr<MaterialCreateInfo>(CreateCheckerboard3D(profile, cfg3d));
     }
 
     if(!profile)
@@ -256,7 +257,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     const MaterialPreset factory_type = *variant_desc->factory_type;
 
     if(MaterialCreateInfo *mci=MaterialFactory3D::Create(factory_type,profile,variant_desc,key,cfg))
-        return mci;
+        return std::unique_ptr<MaterialCreateInfo>(mci);
 
     std::fprintf(stderr,
         "[MaterialLibrary] CreateMaterialCreateInfo failed: factory dispatch failed (variant=%s factory_type=%u key_hash=%llu resolved_key_hash=%llu)\n",
@@ -265,6 +266,13 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         static_cast<unsigned long long>(key.Hash()),
         static_cast<unsigned long long>(resolved_key.Hash()));
     return nullptr;
+}
+
+MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
+                                             const MaterialVariantKey &key,
+                                             MaterialCreateConfig *cfg)
+{
+    return CreateMaterialCreateInfoOwned(profile,key,cfg).release();
 }
 
 void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreateConfig *cfg)
@@ -321,9 +329,9 @@ void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreate
     }
 }
 
-MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                             const MaterialPreset mtl_id,
-                                             MaterialCreateConfig *cfg)
+std::unique_ptr<MaterialCreateInfo> CreateMaterialCreateInfoOwned(const contract::PhysicalDeviceProfileLite *profile,
+                                                                  const MaterialPreset mtl_id,
+                                                                  MaterialCreateConfig *cfg)
 {
     const MaterialLOD lod = GetDefaultMaterialLOD();
     const MaterialPreset resolved_preset = ResolveMaterialPresetForLOD(mtl_id,lod);
@@ -358,7 +366,14 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         static_cast<unsigned>(resolved_preset),
         FormatVariantKeyForLog(key).c_str());
 
-    return CreateMaterialCreateInfo(profile, key, cfg);
+    return CreateMaterialCreateInfoOwned(profile, key, cfg);
+}
+
+MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
+                                             const MaterialPreset mtl_id,
+                                             MaterialCreateConfig *cfg)
+{
+    return CreateMaterialCreateInfoOwned(profile,mtl_id,cfg).release();
 }
 
 }//namespace hgl::graph::mtl
