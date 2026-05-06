@@ -366,10 +366,10 @@ MaterialCreateInfo *CompileCompositorMaterial(
         return nullptr;
     }
 
-    if (!mci->CompileSPV())
+    if (!mci->CompileShaderStagesToSPV())
     {
         std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s failed: CompileSPV() failed (check GLSLCompiler log) (%s)\n",
+            "[CompileCompositorMaterial] material=%s failed: CompileShaderStagesToSPV() failed (check GLSLCompiler log) (%s)\n",
             def.name ? def.name : "<unnamed>",
             BuildShaderDataSchemaDebugText(def).c_str());
         delete mci;

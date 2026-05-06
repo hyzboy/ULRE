@@ -418,7 +418,7 @@ void MaterialCreateInfo::SetDevice(const contract::PhysicalDeviceProfileLite *pr
     ssbo_range=static_cast<uint32_t>((profile_ssbo>max_u32)?max_u32:profile_ssbo);
 }
 
-bool MaterialCreateInfo::CreateShaderDirect()
+bool MaterialCreateInfo::CompilePreparedShaderSources()
 {
     ShaderStageBuildSet shader_stage_set(shader_map);
 
@@ -426,11 +426,18 @@ bool MaterialCreateInfo::CreateShaderDirect()
     return ShaderSetCompiler::Compile(shader_stage_set.GetMap());
 }
 
+bool MaterialCreateInfo::CreateShaderDirect()
+{
+    return CompilePreparedShaderSources();
+}
+
+bool MaterialCreateInfo::CompileShaderStagesToSPV()
+{
+    return CompilePreparedShaderSources();
+}
+
 bool MaterialCreateInfo::CompileSPV()
 {
-    ShaderStageBuildSet shader_stage_set(shader_map);
-
-    DescriptorLayoutBuilder::Finalize(descriptor_db,binding_contract);
-    return ShaderSetCompiler::Compile(shader_stage_set.GetMap());
+    return CompileShaderStagesToSPV();
 }
 }//namespace hgl::graph::mtl
