@@ -869,7 +869,7 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
                                                                                  const bool run_baseline_compare_script)
 {
     std::vector<CompileCompositorTrialBatchItem> items;
-    items.reserve(4);
+    items.reserve(5);
     std::vector<SSBOSemanticSet *> owned_ssbo_sets;
     std::vector<StaticTextureSamplerDescriptors *> owned_sampler_sets;
     owned_ssbo_sets.reserve(1);
@@ -878,6 +878,7 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
     const MaterialPreset candidate_presets[] =
     {
         MaterialPreset::Gizmo3D,
+        MaterialPreset::Billboard2DDynamic,
         MaterialPreset::Billboard2DFixed,
         MaterialPreset::PBRColor3D,
         MaterialPreset::Standard,
@@ -939,6 +940,44 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
             gizmo_cfg.material_instance = true;
             gizmo_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
             cfg=&gizmo_cfg;
+        }
+        else
+        if(preset==MaterialPreset::Billboard2DDynamic)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+            };
+            static const UBOSemanticSet ubos =
+            {
+                UBODescriptorSemantic::ViewportInfo,
+                UBODescriptorSemantic::CameraInfo,
+            };
+            static const SSBOSemanticSet ssbos =
+            {
+                SSBODescriptorSemantic::TransformData,
+                SSBODescriptorSemantic::TransformID,
+                SSBODescriptorSemantic::MaterialBindingInstanceID,
+                SSBODescriptorSemantic::MaterialBindingInstanceData,
+            };
+            static const StaticTextureSamplerDescriptors samplers =
+            {
+                { SamplerSlot::BaseColor, MakeStaticTextureSamplerDescriptor(SamplerType::Sampler2D) }
+            };
+
+            def.name = "BillboardDynamic";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = &samplers;
+            def.shader_data_schema = ShaderDataSchema::BillboardSizeUVec2;
+
+            static Material3DCreateConfig billboard_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
+            billboard_cfg.material_instance = true;
+            billboard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+            cfg=&billboard_cfg;
         }
         else
         if(preset==MaterialPreset::Billboard2DFixed)

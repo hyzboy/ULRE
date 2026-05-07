@@ -724,6 +724,9 @@ static void TestCompileCompositorBuiltinCandidateTrialBatchSummary()
     std::ifstream gizmo_report_ifs("build/shadergen_trial/reports/Gizmo3D_baseline_compare.md",std::ios::in);
     CHECK_TRUE(gizmo_report_ifs.is_open());
 
+    std::ifstream billboard_dynamic_report_ifs("build/shadergen_trial/reports/BillboardDynamic_baseline_compare.md",std::ios::in);
+    CHECK_TRUE(billboard_dynamic_report_ifs.is_open());
+
     std::ifstream standard_pipeline_ifs("build/shadergen_trial/pipeline/Standard_v1/result_summary.txt",std::ios::in);
     CHECK_TRUE(standard_pipeline_ifs.is_open());
 }
