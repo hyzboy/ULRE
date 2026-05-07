@@ -53,4 +53,41 @@ const char *GetShaderBuildRouteName(const ShaderBuildRoute route)
         default: return "LegacyMaterialCreateInfo";
     }
 }
+
+ShaderBuildRouteEvaluation EvaluateShaderBuildResultForRouteSwitch(const ShaderGenResult<ShaderBuildResult> &result)
+{
+    ShaderBuildRouteEvaluation evaluation{};
+
+    if(!result.success)
+    {
+        evaluation.reasons.emplace_back("pipeline build did not succeed");
+        return evaluation;
+    }
+
+    if(!result.value.layout_finalized)
+        evaluation.reasons.emplace_back("descriptor layout not finalized");
+
+    if(result.value.binaries.empty())
+        evaluation.reasons.emplace_back("no compiled shader binaries produced");
+
+    bool has_schema_diag=false;
+    for(const auto &d:result.diagnostics)
+    {
+        if(d.subject=="ShaderBuildPipeline.MaterialInstance.Schema")
+            has_schema_diag=true;
+    }
+
+    evaluation.schema_aware_material_instance =
+        result.value.material_instance.schema!=mtl::ShaderDataSchema::None &&
+        !result.value.material_instance.schema_file.empty() &&
+        has_schema_diag;
+
+    evaluation.pipeline_ready = result.success && result.value.layout_finalized && !result.value.binaries.empty();
+    evaluation.baseline_compare_ready = evaluation.pipeline_ready;
+
+    if(result.value.material_instance.schema!=mtl::ShaderDataSchema::None && !evaluation.schema_aware_material_instance)
+        evaluation.reasons.emplace_back("material_instance schema-aware diagnostics/model are incomplete");
+
+    return evaluation;
+}
 }//namespace hgl::graph

@@ -1,4 +1,5 @@
 #include <hgl/shadergen/ShaderBuildPipeline.h>
+#include <hgl/shadergen/ShaderBuildRouteSwitch.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/MaterialBuilder.h>
 #include <hgl/mtl/DescriptorSemanticRegistry.h>
@@ -346,6 +347,38 @@ static void TestBuildFailsWhenMaterialInstanceSchemaBytesMissing()
     CHECK_TRUE(!result.diagnostics.empty());
     CHECK_TRUE(result.diagnostics[0].subject=="ShaderBuildPipeline.MaterialInstance.Schema");
     CHECK_TRUE(result.diagnostics[0].message=="material_instance schema requires non-zero byte size");
+}
+
+static void TestRouteSwitchEvaluationForSchemaAwareMaterialInstance()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeMaterialInstanceConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    ShaderBuildDescriptorSpec spec = MakeMaterialInstanceSchemaDescriptorSpec();
+
+    auto result = pipeline.Build(cfg,&profile,&spec);
+    auto evaluation = EvaluateShaderBuildResultForRouteSwitch(result);
+
+    CHECK_TRUE(evaluation.pipeline_ready);
+    CHECK_TRUE(evaluation.baseline_compare_ready);
+    CHECK_TRUE(evaluation.schema_aware_material_instance);
+    CHECK_TRUE(evaluation.reasons.empty());
+}
+
+static void TestRouteSwitchEvaluationRejectsFailedSchemaBuild()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeMaterialInstanceConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    ShaderBuildDescriptorSpec spec = MakeMaterialInstanceSchemaWithoutBytesDescriptorSpec();
+
+    auto result = pipeline.Build(cfg,&profile,&spec);
+    auto evaluation = EvaluateShaderBuildResultForRouteSwitch(result);
+
+    CHECK_TRUE(!evaluation.pipeline_ready);
+    CHECK_TRUE(!evaluation.baseline_compare_ready);
+    CHECK_TRUE(!evaluation.schema_aware_material_instance);
+    CHECK_TRUE(!evaluation.reasons.empty());
 }
 
 static void TestBuildModelParityWithLegacyForMaterialInstanceSchemaConfig()
@@ -835,6 +868,8 @@ int main()
     TestCompileSucceedsWhenMaterialInstanceSchemaSpecProvided();
     TestBuildFailsWhenMaterialInstanceSchemaByteSizeMismatched();
     TestBuildFailsWhenMaterialInstanceSchemaBytesMissing();
+    TestRouteSwitchEvaluationForSchemaAwareMaterialInstance();
+    TestRouteSwitchEvaluationRejectsFailedSchemaBuild();
     TestDescriptorParityWithLegacyForMinimalConfig();
     TestDescriptorParityWithLegacyForFragmentConfig();
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();
