@@ -1,5 +1,6 @@
 #include <hgl/shadergen/ShaderBuildPipeline.h>
 #include <hgl/shadergen/ShaderBuildRouteSwitch.h>
+#include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/MaterialBuilder.h>
 #include <hgl/mtl/DescriptorSemanticRegistry.h>
@@ -399,6 +400,17 @@ static void TestRouteSwitchEvaluationRejectsFailedSchemaBuild()
     CHECK_TRUE(summary.find("pipeline_ready=false")!=std::string::npos);
     CHECK_TRUE(summary.find("baseline_compare_ready=false")!=std::string::npos);
     CHECK_TRUE(summary.find("reasons=")!=std::string::npos);
+}
+
+static void TestCompileCompositorRoutePlanDefaults()
+{
+    const auto plan=BuildCompileCompositorRoutePlan();
+
+    CHECK_TRUE(plan.preferred_route==ShaderBuildRoute::LegacyMaterialCreateInfo);
+    CHECK_TRUE(plan.allow_pipeline_fallback);
+    CHECK_TRUE(plan.can_export_readiness);
+    CHECK_TRUE(plan.can_emit_baseline_artifacts);
+    CHECK_TRUE(!plan.rationale.empty());
 }
 
 static void TestBuildModelParityWithLegacyForMaterialInstanceSchemaConfig()
@@ -890,6 +902,7 @@ int main()
     TestBuildFailsWhenMaterialInstanceSchemaBytesMissing();
     TestRouteSwitchEvaluationForSchemaAwareMaterialInstance();
     TestRouteSwitchEvaluationRejectsFailedSchemaBuild();
+    TestCompileCompositorRoutePlanDefaults();
     TestDescriptorParityWithLegacyForMinimalConfig();
     TestDescriptorParityWithLegacyForFragmentConfig();
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();

@@ -414,6 +414,17 @@ bool PrepareCompositorGLSLForReflection(
     return true;
 }
 
+CompileCompositorRoutePlan BuildCompileCompositorRoutePlan()
+{
+    CompileCompositorRoutePlan plan{};
+    plan.preferred_route = ShaderBuildRoute::LegacyMaterialCreateInfo;
+    plan.allow_pipeline_fallback = true;
+    plan.can_export_readiness = true;
+    plan.can_emit_baseline_artifacts = true;
+    plan.rationale = "CompileCompositorMaterial holds StaticMaterialDef + GLSL + config + profile, making it the closest unified compile/model boundary for future route-switch, fallback, readiness export, and baseline artifact emission without changing the default production path yet.";
+    return plan;
+}
+
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &    def,

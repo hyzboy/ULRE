@@ -9,6 +9,7 @@
 ///   3. 填充并返回 MaterialCreateInfo*
 
 #include<hgl/mtl/StaticMaterialDef.h>
+#include<hgl/shadergen/ShaderBuildRouteSwitch.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include <string>
 
@@ -17,6 +18,15 @@ namespace hgl::graph::mtl{
 struct Material3DCreateConfig;
 struct Material2DCreateConfig;
 class MaterialCreateInfo;
+
+struct CompileCompositorRoutePlan
+{
+    ShaderBuildRoute preferred_route = ShaderBuildRoute::LegacyMaterialCreateInfo;
+    bool allow_pipeline_fallback = true;
+    bool can_export_readiness = false;
+    bool can_emit_baseline_artifacts = false;
+    std::string rationale;
+};
 
 /**
  * 编译 Compositor 模板产出的完整 GLSL → MaterialCreateInfo*。
@@ -66,6 +76,8 @@ bool PrepareCompositorGLSLForReflection(
     std::string &out_vs_glsl,
     std::string &out_fs_glsl,
     std::string *diagnostics = nullptr);
+
+CompileCompositorRoutePlan BuildCompileCompositorRoutePlan();
 
 // diagnostics may also contain non-fatal inference mismatch warnings on success.
 
