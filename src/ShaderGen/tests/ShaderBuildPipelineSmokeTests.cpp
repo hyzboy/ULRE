@@ -1,5 +1,6 @@
 #include <hgl/shadergen/ShaderBuildPipeline.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/MaterialBuilder.h>
 #include <hgl/mtl/DescriptorSemanticRegistry.h>
 
 #include "GLSLCompiler.h"
@@ -18,6 +19,30 @@ static int g_failures = 0;
     } while (0)
 
 #define CHECK_EQ(a, b)  CHECK_TRUE((a) == (b))
+
+template<typename TResult>
+static void PrintBuildResult(const char *name,const TResult &result)
+{
+    std::fprintf(stdout,
+                 "[Smoke] %s: success=%d final_state=%u layout_finalized=%d descriptor_count=%u binaries=%zu diagnostics=%zu\n",
+                 name,
+                 result.success?1:0,
+                 (unsigned)result.value.final_state,
+                 result.value.layout_finalized?1:0,
+                 result.value.descriptor_count,
+                 result.value.binaries.size(),
+                 result.diagnostics.size());
+
+    for(const auto &d:result.diagnostics)
+    {
+        std::fprintf(stdout,
+                     "[Smoke][Diag] code=%u stage=0x%08X subject=%s message=%s\n",
+                     (unsigned)d.code,
+                     (unsigned)d.stage,
+                     d.subject.c_str(),
+                     d.message.c_str());
+    }
+}
 
 using namespace hgl::graph;
 using namespace hgl::graph::mtl;
@@ -68,6 +93,15 @@ static MaterialCreateConfig MakeTextureSamplerOverrideConfig()
     return cfg;
 }
 
+static MaterialCreateConfig MakeTextureSamplerMultiSlotOverrideConfig()
+{
+    MaterialCreateConfig cfg(PrimitiveType::Triangles,false);
+    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::Fragment);
+    cfg.SetTextureSourceSlotEnabledOverride(SamplerSlot::BaseColor,true);
+    cfg.SetTextureSourceSlotEnabledOverride(SamplerSlot::Normal,true);
+    return cfg;
+}
+
 static PhysicalDeviceProfileLite MakeBasicProfile()
 {
     PhysicalDeviceProfileLite profile{};
@@ -87,6 +121,7 @@ static void TestBuildFailsWhenStageBitsIsZero()
     PhysicalDeviceProfileLite profile = MakeBasicProfile();
 
     auto result = pipeline.Build(cfg,&profile);
+    PrintBuildResult("StageBitsIsZero",result);
 
     CHECK_TRUE(!result.success);
     CHECK_TRUE(!result.diagnostics.empty());
@@ -99,6 +134,7 @@ static void TestBuildFailsWhenProfileNull()
     MaterialCreateConfig cfg = MakeBasicConfig();
 
     auto result = pipeline.Build(cfg,nullptr);
+    PrintBuildResult("ProfileNull",result);
 
     CHECK_TRUE(!result.success);
     CHECK_TRUE(!result.diagnostics.empty());
@@ -112,6 +148,7 @@ static void TestBuildMinimalVertexPath()
     PhysicalDeviceProfileLite profile = MakeBasicProfile();
 
     auto result = pipeline.Build(cfg,&profile);
+    PrintBuildResult("MinimalVertexPath",result);
 
     CHECK_TRUE(result.success);
     CHECK_EQ(result.value.final_state, ShaderBuildState::Compiled);
@@ -127,6 +164,7 @@ static void TestBuildMinimalFragmentPath()
     PhysicalDeviceProfileLite profile = MakeBasicProfile();
 
     auto result = pipeline.Build(cfg,&profile);
+    PrintBuildResult("MinimalFragmentPath",result);
 
     CHECK_TRUE(result.success);
     CHECK_EQ(result.value.final_state, ShaderBuildState::Compiled);
@@ -142,10 +180,67 @@ static void TestBuildFailsWhenStageUnsupportedByMinimalPipeline()
     PhysicalDeviceProfileLite profile = MakeBasicProfile();
 
     auto result = pipeline.Build(cfg,&profile);
+    PrintBuildResult("StageUnsupportedByMinimalPipeline",result);
+    PrintBuildResult("MaterialInstanceRequested",result);
 
     CHECK_TRUE(!result.success);
     CHECK_EQ(result.value.final_state, ShaderBuildState::Failed);
     CHECK_TRUE(!result.diagnostics.empty());
+}
+
+static void TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeTextureSamplerOverrideConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+
+    auto pipeline_result = pipeline.Build(cfg,&profile);
+    CHECK_TRUE(pipeline_result.success);
+
+    MaterialBuilder builder(&cfg);
+    CHECK_TRUE(builder.AddTextureSampler(ShaderStage::Fragment,SamplerType::Sampler2D,SamplerSlot::BaseColor));
+
+    MaterialCreateInfo *legacy_mci=builder.BuildSnapshotOnly();
+    CHECK_TRUE(legacy_mci!=nullptr);
+
+    if(!legacy_mci)
+        return;
+
+    CHECK_EQ(pipeline_result.value.descriptor_count, legacy_mci->GetDescriptorInfo().GetCount());
+
+    const auto &legacy_contract=legacy_mci->GetBindingContract();
+
+    for(size_t i=0;i<UBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ubos[i], legacy_contract.ubos[i]);
+
+    for(size_t i=0;i<SSBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ssbos[i], legacy_contract.ssbos[i]);
+
+    delete legacy_mci;
+}
+
+static void TestDescriptorCountParityWithLegacyForTextureSamplerMultiSlotOverrideConfig()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeTextureSamplerMultiSlotOverrideConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+
+    auto pipeline_result = pipeline.Build(cfg,&profile);
+    CHECK_TRUE(pipeline_result.success);
+
+    MaterialBuilder builder(&cfg);
+    CHECK_TRUE(builder.AddTextureSampler(ShaderStage::Fragment,SamplerType::Sampler2D,SamplerSlot::BaseColor));
+    CHECK_TRUE(builder.AddTextureSampler(ShaderStage::Fragment,SamplerType::Sampler2D,SamplerSlot::Normal));
+
+    MaterialCreateInfo *legacy_mci=builder.BuildSnapshotOnly();
+    CHECK_TRUE(legacy_mci!=nullptr);
+
+    if(!legacy_mci)
+        return;
+
+    CHECK_EQ(pipeline_result.value.descriptor_count, legacy_mci->GetDescriptorInfo().GetCount());
+
+    delete legacy_mci;
 }
 
 static void TestDescriptorParityWithLegacyForMinimalConfig()
@@ -212,6 +307,7 @@ static void TestBuildFailsWhenLocalToWorldRequested()
     PhysicalDeviceProfileLite profile = MakeBasicProfile();
 
     auto result = pipeline.Build(cfg,&profile);
+    PrintBuildResult("LocalToWorldRequested",result);
 
     CHECK_TRUE(!result.success);
     CHECK_EQ(result.value.final_state, ShaderBuildState::Failed);
@@ -225,10 +321,11 @@ static void TestBuildFailsWhenTextureSamplerOverrideRequested()
     PhysicalDeviceProfileLite profile = MakeBasicProfile();
 
     auto result = pipeline.Build(cfg,&profile);
+    PrintBuildResult("TextureSamplerOverrideRequested",result);
 
-    CHECK_TRUE(!result.success);
-    CHECK_EQ(result.value.final_state, ShaderBuildState::Failed);
-    CHECK_TRUE(!result.diagnostics.empty());
+    CHECK_TRUE(result.success);
+    CHECK_EQ(result.value.final_state, ShaderBuildState::Compiled);
+    CHECK_TRUE(result.value.layout_finalized);
 }
 
 int main()
@@ -249,6 +346,8 @@ int main()
     TestBuildFailsWhenTextureSamplerOverrideRequested();
     TestDescriptorParityWithLegacyForMinimalConfig();
     TestDescriptorParityWithLegacyForFragmentConfig();
+    TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();
+    TestDescriptorCountParityWithLegacyForTextureSamplerMultiSlotOverrideConfig();
 
     if(g_failures==0)
         std::fprintf(stdout,"ShaderBuildPipelineSmokeTests PASSED.\n");

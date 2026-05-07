@@ -1,6 +1,51 @@
 #include<hgl/shadergen/ShaderBuildPipeline.h>
 #include<hgl/shadergen/DescriptorLayoutBuilder.h>
 #include<hgl/shadergen/MaterialDescriptorDB.h>
+#include<hgl/shadergen/MaterialDescriptorStageBinder.h>
+
+namespace
+{
+static bool HasStageBit(const uint32_t bits,const hgl::graph::ShaderStage stage)
+{
+    return (bits&uint32_t(stage))!=0;
+}
+
+static hgl::graph::ShaderStage ResolveTextureBindStage(const uint32_t stage_bits)
+{
+    if(HasStageBit(stage_bits,hgl::graph::ShaderStage::Fragment))
+        return hgl::graph::ShaderStage::Fragment;
+
+    return hgl::graph::ShaderStage::Vertex;
+}
+
+static bool ApplyTextureSamplerOverrides(const hgl::graph::mtl::MaterialCreateConfig &config,
+                                         hgl::graph::MaterialDescriptorDB &descriptor_db)
+{
+    if(config.sampler_feature_bits_override==0)
+        return true;
+
+    const hgl::graph::ShaderStage bind_stage=ResolveTextureBindStage(config.shader_stage_flag_bit);
+
+    for(size_t i=0;i<hgl::graph::mtl::SamplerSlotCount;++i)
+    {
+        const uint32_t bit=(1u<<i);
+
+        if((config.sampler_feature_bits_override&bit)==0)
+            continue;
+
+        const auto slot=static_cast<hgl::graph::mtl::SamplerSlot>(i);
+
+        if(!hgl::graph::mtl::MaterialDescriptorStageBinder::AddTextureSampler(descriptor_db,
+                                                                               bind_stage,
+                                                                               hgl::graph::SamplerType::Sampler2D,
+                                                                               slot,
+                                                                               hgl::graph::TextureChannelHint::RGBA))
+            return false;
+    }
+
+    return true;
+}
+}
 
 namespace hgl::graph
 {
@@ -61,7 +106,7 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
         return result;
     }
 
-    if(config.sampler_feature_bits_override!=0 || config.texture_source_bits_override!=0)
+    if(config.texture_source_bits_override!=0 && config.sampler_feature_bits_override==0)
     {
         result.success=false;
         result.value.final_state=ShaderBuildState::Failed;
@@ -69,12 +114,24 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
                                       ShaderGenErrorCode::InvalidConfig,
                                       ShaderStage::Fragment,
                                       "ShaderBuildPipeline.TextureSampler",
-                                      "minimal pipeline does not support texture sampler overrides yet"});
+                                      "texture source override requires sampler slot override"});
         return result;
     }
 
     MaterialDescriptorDB descriptor_db;
     mtl::DescriptorBindingSlots binding_contract{};
+
+    if(!ApplyTextureSamplerOverrides(config,descriptor_db))
+    {
+        result.success=false;
+        result.value.final_state=ShaderBuildState::Failed;
+        result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                      ShaderGenErrorCode::InvalidConfig,
+                                      ShaderStage::Fragment,
+                                      "ShaderBuildPipeline.TextureSampler",
+                                      "failed to apply texture sampler overrides"});
+        return result;
+    }
 
     mtl::DescriptorLayoutBuilder::Finalize(descriptor_db,binding_contract);
 
