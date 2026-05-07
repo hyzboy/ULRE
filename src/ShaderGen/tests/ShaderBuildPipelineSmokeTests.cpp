@@ -7,6 +7,7 @@
 #include "GLSLCompiler.h"
 
 #include <cstdio>
+#include <fstream>
 
 static int g_failures = 0;
 
@@ -363,6 +364,20 @@ static void TestRouteSwitchEvaluationForSchemaAwareMaterialInstance()
     CHECK_TRUE(evaluation.baseline_compare_ready);
     CHECK_TRUE(evaluation.schema_aware_material_instance);
     CHECK_TRUE(evaluation.reasons.empty());
+
+    const std::string summary=GetShaderBuildRouteEvaluationSummary(evaluation);
+    CHECK_TRUE(summary.find("pipeline_ready=true")!=std::string::npos);
+    CHECK_TRUE(summary.find("baseline_compare_ready=true")!=std::string::npos);
+    CHECK_TRUE(summary.find("schema_aware_material_instance=true")!=std::string::npos);
+
+    const char *summary_file="build/shadergen_route_readiness_smoke.txt";
+    CHECK_TRUE(WriteShaderBuildRouteEvaluationSummary(evaluation,summary_file));
+
+    std::ifstream ifs(summary_file,std::ios::in);
+    CHECK_TRUE(ifs.is_open());
+    std::string file_text;
+    std::getline(ifs,file_text);
+    CHECK_TRUE(file_text.find("pipeline_ready=true")!=std::string::npos);
 }
 
 static void TestRouteSwitchEvaluationRejectsFailedSchemaBuild()
@@ -379,6 +394,11 @@ static void TestRouteSwitchEvaluationRejectsFailedSchemaBuild()
     CHECK_TRUE(!evaluation.baseline_compare_ready);
     CHECK_TRUE(!evaluation.schema_aware_material_instance);
     CHECK_TRUE(!evaluation.reasons.empty());
+
+    const std::string summary=GetShaderBuildRouteEvaluationSummary(evaluation);
+    CHECK_TRUE(summary.find("pipeline_ready=false")!=std::string::npos);
+    CHECK_TRUE(summary.find("baseline_compare_ready=false")!=std::string::npos);
+    CHECK_TRUE(summary.find("reasons=")!=std::string::npos);
 }
 
 static void TestBuildModelParityWithLegacyForMaterialInstanceSchemaConfig()

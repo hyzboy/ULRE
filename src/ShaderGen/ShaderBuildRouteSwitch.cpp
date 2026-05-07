@@ -1,6 +1,8 @@
 #include<hgl/shadergen/ShaderBuildRouteSwitch.h>
 #include<cstdlib>
 #include<cstring>
+#include<fstream>
+#include<sstream>
 
 namespace hgl::graph
 {
@@ -89,5 +91,39 @@ ShaderBuildRouteEvaluation EvaluateShaderBuildResultForRouteSwitch(const ShaderG
         evaluation.reasons.emplace_back("material_instance schema-aware diagnostics/model are incomplete");
 
     return evaluation;
+}
+
+std::string GetShaderBuildRouteEvaluationSummary(const ShaderBuildRouteEvaluation &evaluation)
+{
+    std::ostringstream ss;
+    ss << "pipeline_ready=" << (evaluation.pipeline_ready?"true":"false")
+       << ", baseline_compare_ready=" << (evaluation.baseline_compare_ready?"true":"false")
+       << ", schema_aware_material_instance=" << (evaluation.schema_aware_material_instance?"true":"false");
+
+    if(!evaluation.reasons.empty())
+    {
+        ss << ", reasons=";
+        for(size_t i=0;i<evaluation.reasons.size();++i)
+        {
+            if(i>0)
+                ss << " | ";
+            ss << evaluation.reasons[i];
+        }
+    }
+
+    return ss.str();
+}
+
+bool WriteShaderBuildRouteEvaluationSummary(const ShaderBuildRouteEvaluation &evaluation,const char *filename)
+{
+    if(!filename||!*filename)
+        return false;
+
+    std::ofstream ofs(filename,std::ios::out|std::ios::trunc);
+    if(!ofs.is_open())
+        return false;
+
+    ofs << GetShaderBuildRouteEvaluationSummary(evaluation);
+    return ofs.good();
 }
 }//namespace hgl::graph

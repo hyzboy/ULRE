@@ -29,4 +29,6 @@ struct ShaderBuildRouteEvaluation
 ShaderBuildRoute ResolveShaderBuildRoute(const ShaderBuildSwitchConfig *config=nullptr);
 const char *GetShaderBuildRouteName(const ShaderBuildRoute route);
 ShaderBuildRouteEvaluation EvaluateShaderBuildResultForRouteSwitch(const ShaderGenResult<ShaderBuildResult> &result);
+std::string GetShaderBuildRouteEvaluationSummary(const ShaderBuildRouteEvaluation &evaluation);
+bool WriteShaderBuildRouteEvaluationSummary(const ShaderBuildRouteEvaluation &evaluation,const char *filename);
 }//namespace hgl::graph
