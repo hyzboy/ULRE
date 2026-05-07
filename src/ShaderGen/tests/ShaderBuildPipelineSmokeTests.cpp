@@ -102,6 +102,14 @@ static MaterialCreateConfig MakeTextureSamplerMultiSlotOverrideConfig()
     return cfg;
 }
 
+static MaterialCreateConfig MakeVertexFragmentTextureSamplerOverrideConfig()
+{
+    MaterialCreateConfig cfg(PrimitiveType::Triangles,false);
+    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+    cfg.SetTextureSourceSlotEnabledOverride(SamplerSlot::BaseColor,true);
+    return cfg;
+}
+
 static PhysicalDeviceProfileLite MakeBasicProfile()
 {
     PhysicalDeviceProfileLite profile{};
@@ -192,6 +200,37 @@ static void TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig()
 {
     ShaderBuildPipeline pipeline;
     MaterialCreateConfig cfg = MakeTextureSamplerOverrideConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+
+    auto pipeline_result = pipeline.Build(cfg,&profile);
+    CHECK_TRUE(pipeline_result.success);
+
+    MaterialBuilder builder(&cfg);
+    CHECK_TRUE(builder.AddTextureSampler(ShaderStage::Fragment,SamplerType::Sampler2D,SamplerSlot::BaseColor));
+
+    MaterialCreateInfo *legacy_mci=builder.BuildSnapshotOnly();
+    CHECK_TRUE(legacy_mci!=nullptr);
+
+    if(!legacy_mci)
+        return;
+
+    CHECK_EQ(pipeline_result.value.descriptor_count, legacy_mci->GetDescriptorInfo().GetCount());
+
+    const auto &legacy_contract=legacy_mci->GetBindingContract();
+
+    for(size_t i=0;i<UBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ubos[i], legacy_contract.ubos[i]);
+
+    for(size_t i=0;i<SSBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ssbos[i], legacy_contract.ssbos[i]);
+
+    delete legacy_mci;
+}
+
+static void TestDescriptorParityWithLegacyForVertexFragmentTextureSamplerOverrideConfig()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeVertexFragmentTextureSamplerOverrideConfig();
     PhysicalDeviceProfileLite profile = MakeBasicProfile();
 
     auto pipeline_result = pipeline.Build(cfg,&profile);
@@ -348,6 +387,7 @@ int main()
     TestDescriptorParityWithLegacyForFragmentConfig();
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();
     TestDescriptorCountParityWithLegacyForTextureSamplerMultiSlotOverrideConfig();
+    TestDescriptorParityWithLegacyForVertexFragmentTextureSamplerOverrideConfig();
 
     if(g_failures==0)
         std::fprintf(stdout,"ShaderBuildPipelineSmokeTests PASSED.\n");
