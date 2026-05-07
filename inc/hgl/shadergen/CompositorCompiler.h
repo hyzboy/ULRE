@@ -99,6 +99,14 @@ std::string GetCompileCompositorRouteDecisionSummary(const CompileCompositorRout
 CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(const contract::PhysicalDeviceProfileLite *profile,
                                                                               const StaticMaterialDef &def,
                                                                               const Material3DCreateConfig *config = nullptr);
+bool WriteCompileCompositorShadowBuildArtifacts(const CompileCompositorShadowBuildReport &report,
+                                                const char *material_name,
+                                                const char *reports_dir = "build/shadergen_trial/reports");
+bool WriteCompileCompositorTrialBaselineReport(const CompileCompositorShadowBuildReport &report,
+                                               const char *material_name,
+                                               bool legacy_compile_success,
+                                               const char *legacy_summary,
+                                               const char *trial_root = "build/shadergen_trial");
 
 // diagnostics may also contain non-fatal inference mismatch warnings on success.
 

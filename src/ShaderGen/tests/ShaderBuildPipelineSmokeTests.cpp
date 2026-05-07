@@ -496,6 +496,64 @@ static void TestCompileCompositorShadowPipelineReport()
     CHECK_TRUE(report.summary.find("schema_aware_material_instance=true")!=std::string::npos);
 }
 
+static void TestCompileCompositorShadowBuildArtifacts()
+{
+    Material3DCreateConfig cfg(PrimitiveType::Triangles,
+                               IncludeCamera::With,
+                               IncludeL2W::With,
+                               IncludeSky::Without);
+    cfg.material_instance = true;
+    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    const StaticMaterialDef def = MakeSchemaAwareCompositorDef();
+    const auto report = BuildCompileCompositorShadowPipelineReport(&profile,def,&cfg);
+
+    const char *reports_dir = "build/shadergen_trial/reports";
+    CHECK_TRUE(WriteCompileCompositorShadowBuildArtifacts(report,def.name,reports_dir));
+
+    std::ifstream readiness_ifs("build/shadergen_trial/reports/SchemaAwareSmokeCompositor_readiness.txt",std::ios::in);
+    CHECK_TRUE(readiness_ifs.is_open());
+    std::string readiness_text;
+    std::getline(readiness_ifs,readiness_text);
+    CHECK_TRUE(readiness_text.find("pipeline_ready=true")!=std::string::npos);
+
+    std::ifstream diagnostics_ifs("build/shadergen_trial/reports/SchemaAwareSmokeCompositor_diagnostics.log",std::ios::in);
+    CHECK_TRUE(diagnostics_ifs.is_open());
+    std::string diagnostics_text;
+    std::getline(diagnostics_ifs,diagnostics_text);
+    CHECK_TRUE(diagnostics_text.find("material=SchemaAwareSmokeCompositor")!=std::string::npos);
+}
+
+static void TestCompileCompositorTrialBaselineReport()
+{
+    Material3DCreateConfig cfg(PrimitiveType::Triangles,
+                               IncludeCamera::With,
+                               IncludeL2W::With,
+                               IncludeSky::Without);
+    cfg.material_instance = true;
+    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    const StaticMaterialDef def = MakeSchemaAwareCompositorDef();
+    const auto report = BuildCompileCompositorShadowPipelineReport(&profile,def,&cfg);
+
+    CHECK_TRUE(WriteCompileCompositorTrialBaselineReport(report,
+                                                         def.name,
+                                                         true,
+                                                         "legacy compile succeeded",
+                                                         "build/shadergen_trial"));
+
+    std::ifstream report_ifs("build/shadergen_trial/reports/SchemaAwareSmokeCompositor_baseline_compare.md",std::ios::in);
+    CHECK_TRUE(report_ifs.is_open());
+
+    std::string report_text((std::istreambuf_iterator<char>(report_ifs)),
+                            std::istreambuf_iterator<char>());
+    CHECK_TRUE(report_text.find("# ShaderGen 基线对比报告（自动生成）")!=std::string::npos);
+    CHECK_TRUE(report_text.find("Readiness: `pipeline_ready=true")!=std::string::npos);
+    CHECK_TRUE(report_text.find("LegacySummary: `legacy compile succeeded`")!=std::string::npos);
+}
+
 static void TestCompileCompositorRouteDecisionKeepsLegacyWhenPipelineRequested()
 {
     ShaderBuildSwitchConfig switch_config{};
@@ -1004,6 +1062,8 @@ int main()
     TestCompileCompositorRouteDecisionKeepsLegacyWhenPipelineRequested();
     TestCompileCompositorRouteDecisionSummary();
     TestCompileCompositorShadowPipelineReport();
+    TestCompileCompositorShadowBuildArtifacts();
+    TestCompileCompositorTrialBaselineReport();
     TestDescriptorParityWithLegacyForMinimalConfig();
     TestDescriptorParityWithLegacyForFragmentConfig();
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();

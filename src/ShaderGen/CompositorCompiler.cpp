@@ -18,6 +18,8 @@
 #include <hgl/shadergen/ShaderLayoutEmitter.h>
 #include <hgl/shadergen/SamplerGLSLEmitter.h>
 #include <hgl/shadergen/ShaderBuildPipeline.h>
+#include <fstream>
+#include <filesystem>
 #include <cstdio>
 #include <string>
 
@@ -212,6 +214,115 @@ namespace
             text += ": ";
             text += diag.message;
         }
+    }
+
+    static std::string SanitizeArtifactName(const char *text)
+    {
+        if(!text || !*text)
+            return std::string("unnamed_material");
+
+        std::string sanitized;
+        sanitized.reserve(std::char_traits<char>::length(text));
+
+        for(const char ch:std::string(text))
+        {
+            if((ch>='a'&&ch<='z')||(ch>='A'&&ch<='Z')||(ch>='0'&&ch<='9')||ch=='_'||ch=='-')
+                sanitized.push_back(ch);
+            else
+                sanitized.push_back('_');
+        }
+
+        return sanitized.empty()?std::string("unnamed_material"):sanitized;
+    }
+
+    static bool EnsureDirectoryExists(const char *dir)
+    {
+        if(!dir || !*dir)
+            return false;
+
+        std::error_code ec;
+        std::filesystem::create_directories(std::filesystem::path(dir),ec);
+        return !ec;
+    }
+
+    static bool WriteTextFile(const std::filesystem::path &path,const std::string &text)
+    {
+        std::ofstream ofs(path,std::ios::out|std::ios::trunc);
+        if(!ofs.is_open())
+            return false;
+
+        ofs << text;
+        return ofs.good();
+    }
+
+    static std::string BuildShadowDiagnosticsText(const CompileCompositorShadowBuildReport &report,
+                                                  const char *material_name)
+    {
+        std::string text;
+        text.reserve(512);
+        text += "material=";
+        text += material_name ? material_name : "<unnamed>";
+        text += "\n";
+        text += "summary=";
+        text += report.summary;
+        text += "\n";
+
+        for(const auto &diag:report.result.diagnostics)
+        {
+            text += "diag.subject=";
+            text += diag.subject;
+            text += ", diag.message=";
+            text += diag.message;
+            text += "\n";
+        }
+
+        return text;
+    }
+
+    static std::string BuildBaselineCompareReportText(const CompileCompositorShadowBuildReport &report,
+                                                      const char *material_name,
+                                                      const bool legacy_compile_success,
+                                                      const char *legacy_summary)
+    {
+        std::string text;
+        text.reserve(1024);
+        text += "# ShaderGen 基线对比报告（自动生成）\n\n";
+        text += "- Material: `";
+        text += material_name ? material_name : "<unnamed>";
+        text += "`\n";
+        text += "- Legacy compile: `";
+        text += legacy_compile_success ? "success" : "failed";
+        text += "`\n";
+        text += "- Pipeline shadow compile: `";
+        text += report.result.success ? "success" : "failed";
+        text += "`\n\n";
+        text += "## Route-Switch Readiness\n\n";
+        text += "- Readiness: `";
+        text += report.summary;
+        text += "`\n\n";
+        text += "## Legacy 摘要\n\n";
+        text += "- LegacySummary: `";
+        text += legacy_summary ? legacy_summary : (legacy_compile_success ? "compile succeeded" : "compile failed");
+        text += "`\n\n";
+        text += "## Shadow Diagnostics\n\n";
+
+        if(report.result.diagnostics.empty())
+        {
+            text += "- `<none>`\n";
+        }
+        else
+        {
+            for(const auto &diag:report.result.diagnostics)
+            {
+                text += "- `";
+                text += diag.subject;
+                text += "`: ";
+                text += diag.message;
+                text += "\n";
+            }
+        }
+
+        return text;
     }
 
     static MaterialCreateInfo *CreatePreparedCompositorMaterial(
@@ -429,6 +540,40 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const std::string &         fs_glsl,
     const Material3DCreateConfig *config)
 {
+    const CompileCompositorRouteDecision route_decision=ResolveCompileCompositorRouteDecision(nullptr);
+
+    std::fprintf(stderr,
+        "[CompileCompositorMaterial] material=%s route_decision: %s\n",
+        def.name ? def.name : "<unnamed>",
+        GetCompileCompositorRouteDecisionSummary(route_decision).c_str());
+
+    CompileCompositorShadowBuildReport shadow_report{};
+    bool has_shadow_report=false;
+
+    if(route_decision.pipeline_trial_requested)
+    {
+        shadow_report=BuildCompileCompositorShadowPipelineReport(profile,def,config);
+        has_shadow_report=true;
+
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s pipeline_shadow: %s\n",
+            def.name ? def.name : "<unnamed>",
+            shadow_report.summary.empty() ? "<empty>" : shadow_report.summary.c_str());
+
+        if(WriteCompileCompositorShadowBuildArtifacts(shadow_report,def.name))
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial] material=%s pipeline_shadow_artifacts=build/shadergen_trial/reports\n",
+                def.name ? def.name : "<unnamed>");
+        }
+        else
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial] material=%s pipeline_shadow_artifacts_write_failed\n",
+                def.name ? def.name : "<unnamed>");
+        }
+    }
+
     std::string diagnostics;
     MaterialCreateInfo *mci = CreatePreparedCompositorMaterial(profile,
                                                                def,
@@ -438,6 +583,14 @@ MaterialCreateInfo *CompileCompositorMaterial(
                                                                &diagnostics);
     if (!mci)
     {
+        if(has_shadow_report)
+        {
+            WriteCompileCompositorTrialBaselineReport(shadow_report,
+                                                      def.name,
+                                                      false,
+                                                      diagnostics.empty() ? "CreatePreparedCompositorMaterial failed" : diagnostics.c_str());
+        }
+
         std::fprintf(stderr,
             "[CompileCompositorMaterial] material=%s failed: %s\n",
             def.name ? def.name : "<unnamed>",
@@ -447,6 +600,14 @@ MaterialCreateInfo *CompileCompositorMaterial(
 
     if (!mci->CompileShaderStagesToSPV())
     {
+        if(has_shadow_report)
+        {
+            WriteCompileCompositorTrialBaselineReport(shadow_report,
+                                                      def.name,
+                                                      false,
+                                                      "CompileShaderStagesToSPV() failed");
+        }
+
         std::fprintf(stderr,
             "[CompileCompositorMaterial] material=%s failed: CompileShaderStagesToSPV() failed (check GLSLCompiler log) (%s)\n",
             def.name ? def.name : "<unnamed>",
@@ -461,6 +622,25 @@ MaterialCreateInfo *CompileCompositorMaterial(
             "[CompileCompositorMaterial] material=%s diagnostics: %s\n",
             def.name ? def.name : "<unnamed>",
             diagnostics.c_str());
+    }
+
+    if(has_shadow_report)
+    {
+        if(WriteCompileCompositorTrialBaselineReport(shadow_report,
+                                                     def.name,
+                                                     true,
+                                                     diagnostics.empty() ? "CompileCompositorMaterial legacy compile succeeded" : diagnostics.c_str()))
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial] material=%s baseline_compare_report=build/shadergen_trial/reports\n",
+                def.name ? def.name : "<unnamed>");
+        }
+        else
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial] material=%s baseline_compare_report_write_failed\n",
+                def.name ? def.name : "<unnamed>");
+        }
     }
 
     return mci;
@@ -571,6 +751,49 @@ CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(co
     }
 
     return report;
+}
+
+bool WriteCompileCompositorShadowBuildArtifacts(const CompileCompositorShadowBuildReport &report,
+                                                const char *material_name,
+                                                const char *reports_dir)
+{
+    if(!EnsureDirectoryExists(reports_dir))
+        return false;
+
+    const std::filesystem::path reports_path(reports_dir);
+    const std::string sanitized_name=SanitizeArtifactName(material_name);
+
+    const std::filesystem::path readiness_path=reports_path/(sanitized_name + "_readiness.txt");
+    if(!WriteShaderBuildRouteEvaluationSummary(report.evaluation,readiness_path.string().c_str()))
+        return false;
+
+    const std::filesystem::path diagnostics_path=reports_path/(sanitized_name + "_diagnostics.log");
+    return WriteTextFile(diagnostics_path,BuildShadowDiagnosticsText(report,material_name));
+}
+
+bool WriteCompileCompositorTrialBaselineReport(const CompileCompositorShadowBuildReport &report,
+                                               const char *material_name,
+                                               const bool legacy_compile_success,
+                                               const char *legacy_summary,
+                                               const char *trial_root)
+{
+    if(!EnsureDirectoryExists(trial_root))
+        return false;
+
+    const std::filesystem::path trial_root_path(trial_root);
+    const std::filesystem::path reports_path=trial_root_path/"reports";
+
+    if(!EnsureDirectoryExists(reports_path.string().c_str()))
+        return false;
+
+    const std::string sanitized_name=SanitizeArtifactName(material_name);
+    const std::filesystem::path report_path=reports_path/(sanitized_name + "_baseline_compare.md");
+
+    return WriteTextFile(report_path,
+                         BuildBaselineCompareReportText(report,
+                                                        material_name,
+                                                        legacy_compile_success,
+                                                        legacy_summary));
 }
 
 MaterialCreateInfo *CompileCompositorMaterial(
