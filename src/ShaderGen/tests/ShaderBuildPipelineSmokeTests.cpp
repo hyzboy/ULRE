@@ -127,6 +127,20 @@ static ShaderBuildDescriptorSpec MakeViewportCameraDescriptorSpec()
     return spec;
 }
 
+static ShaderBuildDescriptorSpec MakeSkyDescriptorSpec()
+{
+    ShaderBuildDescriptorSpec spec{};
+    spec.ubos.push_back(UBODescriptorSemantic::SkyInfo);
+    return spec;
+}
+
+static ShaderBuildDescriptorSpec MakeColorPaletteDescriptorSpec()
+{
+    ShaderBuildDescriptorSpec spec{};
+    spec.ubos.push_back(UBODescriptorSemantic::ColorPalette);
+    return spec;
+}
+
 static void TestBuildFailsWhenStageBitsIsZero()
 {
     ShaderBuildPipeline pipeline;
@@ -215,6 +229,70 @@ static void TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig()
 
     MaterialBuilder builder(&cfg);
     CHECK_TRUE(builder.AddTextureSampler(ShaderStage::Fragment,SamplerType::Sampler2D,SamplerSlot::BaseColor));
+
+    MaterialCreateInfo *legacy_mci=builder.BuildSnapshotOnly();
+    CHECK_TRUE(legacy_mci!=nullptr);
+
+    if(!legacy_mci)
+        return;
+
+    CHECK_EQ(pipeline_result.value.descriptor_count, legacy_mci->GetDescriptorInfo().GetCount());
+
+    const auto &legacy_contract=legacy_mci->GetBindingContract();
+
+    for(size_t i=0;i<UBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ubos[i], legacy_contract.ubos[i]);
+
+    for(size_t i=0;i<SSBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ssbos[i], legacy_contract.ssbos[i]);
+
+    delete legacy_mci;
+}
+
+static void TestDescriptorParityWithLegacyForSkyUBOFragmentConfig()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeFragmentConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    ShaderBuildDescriptorSpec spec = MakeSkyDescriptorSpec();
+
+    auto pipeline_result = pipeline.Build(cfg,&profile,&spec);
+    CHECK_TRUE(pipeline_result.success);
+
+    MaterialBuilder builder(&cfg);
+    CHECK_TRUE(builder.AddUBOStruct(cfg.shader_stage_flag_bit,UBODescriptorSemantic::SkyInfo));
+
+    MaterialCreateInfo *legacy_mci=builder.BuildSnapshotOnly();
+    CHECK_TRUE(legacy_mci!=nullptr);
+
+    if(!legacy_mci)
+        return;
+
+    CHECK_EQ(pipeline_result.value.descriptor_count, legacy_mci->GetDescriptorInfo().GetCount());
+
+    const auto &legacy_contract=legacy_mci->GetBindingContract();
+
+    for(size_t i=0;i<UBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ubos[i], legacy_contract.ubos[i]);
+
+    for(size_t i=0;i<SSBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ssbos[i], legacy_contract.ssbos[i]);
+
+    delete legacy_mci;
+}
+
+static void TestDescriptorParityWithLegacyForColorPaletteUBOFragmentConfig()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeFragmentConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    ShaderBuildDescriptorSpec spec = MakeColorPaletteDescriptorSpec();
+
+    auto pipeline_result = pipeline.Build(cfg,&profile,&spec);
+    CHECK_TRUE(pipeline_result.success);
+
+    MaterialBuilder builder(&cfg);
+    CHECK_TRUE(builder.AddUBOStruct(cfg.shader_stage_flag_bit,UBODescriptorSemantic::ColorPalette));
 
     MaterialCreateInfo *legacy_mci=builder.BuildSnapshotOnly();
     CHECK_TRUE(legacy_mci!=nullptr);
@@ -497,6 +575,8 @@ int main()
     TestDescriptorParityWithLegacyForLocalToWorldConfig();
     TestDescriptorParityWithLegacyForViewportCameraUBOConfig();
     TestDescriptorParityWithLegacyForViewportCameraUBOFragmentConfig();
+    TestDescriptorParityWithLegacyForSkyUBOFragmentConfig();
+    TestDescriptorParityWithLegacyForColorPaletteUBOFragmentConfig();
 
     if(g_failures==0)
         std::fprintf(stdout,"ShaderBuildPipelineSmokeTests PASSED.\n");
