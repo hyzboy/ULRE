@@ -7,45 +7,63 @@
 
 namespace
 {
-static std::string BuildMaterialInstanceSchemaSnippet(const hgl::graph::mtl::MaterialInstanceBlock &material_instance)
+static bool BuildMaterialInstanceSchemaSnippet(const hgl::graph::mtl::MaterialInstanceBlock &material_instance,
+                                               std::string &snippet,
+                                               hgl::graph::ShaderGenDiagnostic &diagnostic)
 {
     if(material_instance.schema==hgl::graph::mtl::ShaderDataSchema::None)
-        return {};
+        return true;
 
     if(material_instance.schema_file.empty())
-        return {};
+    {
+        diagnostic={hgl::graph::ShaderGenSeverity::Error,
+                    hgl::graph::ShaderGenErrorCode::SourceGenerationFailed,
+                    hgl::graph::ShaderStage::Vertex,
+                    "ShaderBuildPipeline.MaterialInstance.Schema",
+                    "material_instance schema_file is empty during source generation"};
+        return false;
+    }
 
-    std::string snippet;
     snippet += "#define ULRE_PIPELINE_MATERIAL_INSTANCE_SCHEMA ";
     snippet += material_instance.schema_file;
     snippet += "\n";
     snippet += "// material_instance schema injected for pipeline compile path\n";
     snippet += "struct MaterialBindingInstance { vec4 Color; };\n";
-    return snippet;
+    return true;
 }
 
-static std::string BuildVertexShaderSource(const hgl::graph::mtl::MaterialInstanceBlock &material_instance)
+static bool BuildVertexShaderSource(const hgl::graph::mtl::MaterialInstanceBlock &material_instance,
+                                    std::string &source,
+                                    hgl::graph::ShaderGenDiagnostic &diagnostic)
 {
-    std::string source = "#version 450\n";
+    source = "#version 450\n";
 
-    const std::string schema_snippet=BuildMaterialInstanceSchemaSnippet(material_instance);
+    std::string schema_snippet;
+    if(!BuildMaterialInstanceSchemaSnippet(material_instance,schema_snippet,diagnostic))
+        return false;
+
     if(!schema_snippet.empty())
         source += schema_snippet;
 
     source += "void main(){}\n";
-    return source;
+    return true;
 }
 
-static std::string BuildFragmentShaderSource(const hgl::graph::mtl::MaterialInstanceBlock &material_instance)
+static bool BuildFragmentShaderSource(const hgl::graph::mtl::MaterialInstanceBlock &material_instance,
+                                      std::string &source,
+                                      hgl::graph::ShaderGenDiagnostic &diagnostic)
 {
-    std::string source = "#version 450\n";
+    source = "#version 450\n";
 
-    const std::string schema_snippet=BuildMaterialInstanceSchemaSnippet(material_instance);
+    std::string schema_snippet;
+    if(!BuildMaterialInstanceSchemaSnippet(material_instance,schema_snippet,diagnostic))
+        return false;
+
     if(!schema_snippet.empty())
         source += schema_snippet;
 
     source += "layout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n";
-    return source;
+    return true;
 }
 
 static bool HasStageBit(const uint32_t bits,const hgl::graph::ShaderStage stage)
@@ -159,7 +177,8 @@ static bool ApplyBuildModelSpec(const hgl::graph::mtl::MaterialCreateConfig &con
                                 const hgl::graph::ShaderBuildDescriptorSpec *descriptor_spec,
                                 hgl::graph::MaterialDescriptorDB &descriptor_db,
                                 hgl::graph::mtl::MaterialInstanceBlock &material_instance,
-                                hgl::graph::mtl::LocalToWorldBlock &local_to_world)
+                                hgl::graph::mtl::LocalToWorldBlock &local_to_world,
+                                hgl::graph::ShaderGenDiagnostic &diagnostic)
 {
     if(config.material_instance && descriptor_spec && descriptor_spec->material_instance_bytes>0)
     {
@@ -167,8 +186,35 @@ static bool ApplyBuildModelSpec(const hgl::graph::mtl::MaterialCreateConfig &con
         {
             const auto &schema_info=hgl::graph::mtl::GetShaderDataSchemaInfo(descriptor_spec->material_instance_schema);
 
-            if(schema_info.byte_size!=descriptor_spec->material_instance_bytes)
+            if(schema_info.byte_size==0)
+            {
+                diagnostic={hgl::graph::ShaderGenSeverity::Error,
+                            hgl::graph::ShaderGenErrorCode::SourceGenerationFailed,
+                            hgl::graph::ShaderStage::Vertex,
+                            "ShaderBuildPipeline.MaterialInstance.Schema",
+                            "material_instance schema info has zero byte size"};
                 return false;
+            }
+
+            if(!schema_info.glsl_schema_file||!*schema_info.glsl_schema_file)
+            {
+                diagnostic={hgl::graph::ShaderGenSeverity::Error,
+                            hgl::graph::ShaderGenErrorCode::SourceGenerationFailed,
+                            hgl::graph::ShaderStage::Vertex,
+                            "ShaderBuildPipeline.MaterialInstance.Schema",
+                            "material_instance schema file is missing"};
+                return false;
+            }
+
+            if(schema_info.byte_size!=descriptor_spec->material_instance_bytes)
+            {
+                diagnostic={hgl::graph::ShaderGenSeverity::Error,
+                            hgl::graph::ShaderGenErrorCode::InvalidConfig,
+                            hgl::graph::ShaderStage::Vertex,
+                            "ShaderBuildPipeline.MaterialInstance.Schema",
+                            "material_instance schema byte size mismatch"};
+                return false;
+            }
 
             if(!hgl::graph::mtl::MaterialInstanceConfigurator::ConfigureMaterialInstance(descriptor_db,
                                                                                           material_instance,
@@ -176,7 +222,14 @@ static bool ApplyBuildModelSpec(const hgl::graph::mtl::MaterialCreateConfig &con
                                                                                           descriptor_spec->material_instance_schema,
                                                                                           schema_info,
                                                                                           config.shader_stage_flag_bit))
+            {
+                diagnostic={hgl::graph::ShaderGenSeverity::Error,
+                            hgl::graph::ShaderGenErrorCode::InvalidConfig,
+                            hgl::graph::ShaderStage::Vertex,
+                            "ShaderBuildPipeline.MaterialInstance.Schema",
+                            "failed to configure material_instance from schema"};
                 return false;
+            }
         }
         else
         {
@@ -185,7 +238,14 @@ static bool ApplyBuildModelSpec(const hgl::graph::mtl::MaterialCreateConfig &con
                                                                                           0,
                                                                                           descriptor_spec->material_instance_bytes,
                                                                                           config.shader_stage_flag_bit))
+            {
+                diagnostic={hgl::graph::ShaderGenSeverity::Error,
+                            hgl::graph::ShaderGenErrorCode::InvalidConfig,
+                            hgl::graph::ShaderStage::Vertex,
+                            "ShaderBuildPipeline.MaterialInstance",
+                            "failed to configure material_instance from byte size"};
                 return false;
+            }
         }
     }
 
@@ -237,13 +297,14 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
 
     if(config.material_instance && (!descriptor_spec || descriptor_spec->material_instance_bytes==0))
     {
+        const bool has_schema=descriptor_spec&&descriptor_spec->material_instance_schema!=mtl::ShaderDataSchema::None;
         result.success=false;
         result.value.final_state=ShaderBuildState::Failed;
         result.diagnostics.push_back({ShaderGenSeverity::Error,
                                       ShaderGenErrorCode::InvalidConfig,
                                       ShaderStage::Vertex,
-                                      "ShaderBuildPipeline.SSBO.MaterialInstance",
-                                      "material_instance descriptor path is not aligned yet"});
+                                      has_schema?"ShaderBuildPipeline.MaterialInstance.Schema":"ShaderBuildPipeline.SSBO.MaterialInstance",
+                                      has_schema?"material_instance schema requires non-zero byte size":"material_instance descriptor path is not aligned yet"});
         return result;
     }
 
@@ -261,20 +322,24 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
 
     MaterialDescriptorDB descriptor_db;
     mtl::DescriptorBindingSlots binding_contract{};
+    ShaderGenDiagnostic build_model_diagnostic{};
 
     if(!ApplyBuildModelSpec(config,
                             descriptor_spec,
                             descriptor_db,
                             result.value.material_instance,
-                            result.value.local_to_world))
+                            result.value.local_to_world,
+                            build_model_diagnostic))
     {
         result.success=false;
         result.value.final_state=ShaderBuildState::Failed;
-        result.diagnostics.push_back({ShaderGenSeverity::Error,
-                                      ShaderGenErrorCode::InvalidConfig,
-                                      ShaderStage::Vertex,
-                                      "ShaderBuildPipeline.BuildModel",
-                                      "failed to apply build model spec"});
+        result.diagnostics.push_back(build_model_diagnostic.subject.empty()
+                                         ? ShaderGenDiagnostic{ShaderGenSeverity::Error,
+                                                               ShaderGenErrorCode::InvalidConfig,
+                                                               ShaderStage::Vertex,
+                                                               "ShaderBuildPipeline.BuildModel",
+                                                               "failed to apply build model spec"}
+                                         : build_model_diagnostic);
         return result;
     }
 
@@ -327,16 +392,30 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
     request.vulkan_version=0;
     request.spv_version=0;
 
+    ShaderGenDiagnostic source_diagnostic{};
+
     if(config.shader_stage_flag_bit&uint32_t(ShaderStage::Vertex))
     {
         request.stage=ShaderStage::Vertex;
-        request.source=BuildVertexShaderSource(result.value.material_instance);
+        if(!BuildVertexShaderSource(result.value.material_instance,request.source,source_diagnostic))
+        {
+            result.success=false;
+            result.value.final_state=ShaderBuildState::Failed;
+            result.diagnostics.push_back(source_diagnostic);
+            return result;
+        }
     }
     else
     if(config.shader_stage_flag_bit&uint32_t(ShaderStage::Fragment))
     {
         request.stage=ShaderStage::Fragment;
-        request.source=BuildFragmentShaderSource(result.value.material_instance);
+        if(!BuildFragmentShaderSource(result.value.material_instance,request.source,source_diagnostic))
+        {
+            result.success=false;
+            result.value.final_state=ShaderBuildState::Failed;
+            result.diagnostics.push_back(source_diagnostic);
+            return result;
+        }
     }
 
     if(request.source.empty())

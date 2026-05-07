@@ -165,6 +165,14 @@ static ShaderBuildDescriptorSpec MakeMaterialInstanceSchemaDescriptorSpec()
     return spec;
 }
 
+static ShaderBuildDescriptorSpec MakeMaterialInstanceSchemaWithoutBytesDescriptorSpec()
+{
+    ShaderBuildDescriptorSpec spec{};
+    spec.material_instance_schema = ShaderDataSchema::Color4f;
+    spec.material_instance_bytes = 0;
+    return spec;
+}
+
 static void TestBuildFailsWhenStageBitsIsZero()
 {
     ShaderBuildPipeline pipeline;
@@ -318,6 +326,25 @@ static void TestBuildFailsWhenMaterialInstanceSchemaByteSizeMismatched()
     CHECK_TRUE(!result.success);
     CHECK_EQ(result.value.final_state, ShaderBuildState::Failed);
     CHECK_TRUE(!result.diagnostics.empty());
+    CHECK_TRUE(result.diagnostics[0].subject=="ShaderBuildPipeline.MaterialInstance.Schema");
+    CHECK_TRUE(result.diagnostics[0].message=="material_instance schema byte size mismatch");
+}
+
+static void TestBuildFailsWhenMaterialInstanceSchemaBytesMissing()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeMaterialInstanceConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    ShaderBuildDescriptorSpec spec = MakeMaterialInstanceSchemaWithoutBytesDescriptorSpec();
+
+    auto result = pipeline.Build(cfg,&profile,&spec);
+    PrintBuildResult("MaterialInstanceSchemaBytesMissing",result);
+
+    CHECK_TRUE(!result.success);
+    CHECK_EQ(result.value.final_state, ShaderBuildState::Failed);
+    CHECK_TRUE(!result.diagnostics.empty());
+    CHECK_TRUE(result.diagnostics[0].subject=="ShaderBuildPipeline.MaterialInstance.Schema");
+    CHECK_TRUE(result.diagnostics[0].message=="material_instance schema requires non-zero byte size");
 }
 
 static void TestBuildModelParityWithLegacyForMaterialInstanceSchemaConfig()
@@ -806,6 +833,7 @@ int main()
     TestBuildModelParityWithLegacyForMaterialInstanceSchemaConfig();
     TestCompileSucceedsWhenMaterialInstanceSchemaSpecProvided();
     TestBuildFailsWhenMaterialInstanceSchemaByteSizeMismatched();
+    TestBuildFailsWhenMaterialInstanceSchemaBytesMissing();
     TestDescriptorParityWithLegacyForMinimalConfig();
     TestDescriptorParityWithLegacyForFragmentConfig();
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();
