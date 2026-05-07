@@ -12,6 +12,7 @@
 #include<hgl/shadergen/ShaderBuildRouteSwitch.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include <string>
+#include <vector>
 
 namespace hgl::graph::mtl{
 
@@ -49,6 +50,25 @@ struct CompileCompositorShadowBuildReport
         : pipeline_config(PrimitiveType::Triangles,false)
     {
     }
+};
+
+struct CompileCompositorTrialBatchItem
+{
+    const StaticMaterialDef *def = nullptr;
+    std::string vs_glsl;
+    std::string fs_glsl;
+    const Material3DCreateConfig *config = nullptr;
+    std::string material_name_override;
+};
+
+struct CompileCompositorTrialBatchReport
+{
+    size_t total_count = 0;
+    size_t legacy_success_count = 0;
+    size_t pipeline_trial_success_count = 0;
+    size_t baseline_report_count = 0;
+    size_t baseline_compare_success_count = 0;
+    bool aggregate_report_written = false;
 };
 
 /**
@@ -125,6 +145,11 @@ std::string BuildCompileCompositorBaselineCompareCommand(const char *material_na
 bool RunCompileCompositorBaselineCompare(const char *material_name,
                                          const char *trial_root = "build/shadergen_trial");
 bool WriteCompileCompositorTrialAggregateReport(const char *trial_root = "build/shadergen_trial");
+std::string GetCompileCompositorTrialBatchSummary(const CompileCompositorTrialBatchReport &report);
+CompileCompositorTrialBatchReport RunCompileCompositorTrialBatch(const contract::PhysicalDeviceProfileLite *profile,
+                                                                 const std::vector<CompileCompositorTrialBatchItem> &items,
+                                                                 const char *trial_root = "build/shadergen_trial",
+                                                                 bool run_baseline_compare_script = true);
 
 // diagnostics may also contain non-fatal inference mismatch warnings on success.
 

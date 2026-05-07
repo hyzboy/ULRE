@@ -647,6 +647,66 @@ static void TestCompileCompositorTrialAggregateReport()
     CHECK_TRUE(aggregate_text.find("SchemaAwareSmokeCompositor_baseline_compare.md")!=std::string::npos);
 }
 
+static void TestCompileCompositorTrialBatchSummary()
+{
+    CompileCompositorTrialBatchReport report{};
+    report.total_count = 2;
+    report.legacy_success_count = 1;
+    report.pipeline_trial_success_count = 2;
+    report.baseline_report_count = 1;
+    report.baseline_compare_success_count = 1;
+    report.aggregate_report_written = true;
+
+    const std::string summary = GetCompileCompositorTrialBatchSummary(report);
+    CHECK_TRUE(summary.find("total_count=2")!=std::string::npos);
+    CHECK_TRUE(summary.find("legacy_success_count=1")!=std::string::npos);
+    CHECK_TRUE(summary.find("aggregate_report_written=true")!=std::string::npos);
+}
+
+static void TestCompileCompositorTrialBatch()
+{
+    Material3DCreateConfig cfg(PrimitiveType::Triangles,
+                               IncludeCamera::With,
+                               IncludeL2W::With,
+                               IncludeSky::Without);
+    cfg.material_instance = true;
+    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    const StaticMaterialDef def = MakeSchemaAwareCompositorDef();
+
+    CompileCompositorTrialBatchItem item{};
+    item.def = &def;
+    item.vs_glsl = "#version 450\nvoid main(){}\n";
+    item.fs_glsl = "#version 450\nlayout(location=0) out vec4 outColor; void main(){outColor=vec4(1.0);}\n";
+    item.config = &cfg;
+    item.material_name_override = "SchemaAwareSmokeBatch";
+
+    std::vector<CompileCompositorTrialBatchItem> items;
+    items.push_back(item);
+
+    const auto report = RunCompileCompositorTrialBatch(&profile,
+                                                       items,
+                                                       "build/shadergen_trial",
+                                                       false);
+
+    CHECK_EQ(report.total_count, size_t(1));
+    CHECK_EQ(report.legacy_success_count, size_t(1));
+    CHECK_EQ(report.pipeline_trial_success_count, size_t(1));
+    CHECK_EQ(report.baseline_report_count, size_t(1));
+    CHECK_EQ(report.baseline_compare_success_count, size_t(0));
+    CHECK_TRUE(report.aggregate_report_written);
+
+    std::ifstream pipeline_ifs("build/shadergen_trial/pipeline/SchemaAwareSmokeBatch/result_summary.txt",std::ios::in);
+    CHECK_TRUE(pipeline_ifs.is_open());
+
+    std::ifstream legacy_ifs("build/shadergen_trial/legacy/SchemaAwareSmokeBatch/descriptor_info.txt",std::ios::in);
+    CHECK_TRUE(legacy_ifs.is_open());
+
+    std::ifstream batch_report_ifs("build/shadergen_trial/reports/SchemaAwareSmokeBatch_baseline_compare.md",std::ios::in);
+    CHECK_TRUE(batch_report_ifs.is_open());
+}
+
 static void TestCompileCompositorRouteDecisionKeepsLegacyWhenPipelineRequested()
 {
     ShaderBuildSwitchConfig switch_config{};
@@ -1161,6 +1221,8 @@ int main()
     TestCompileCompositorLegacyTree();
     TestCompileCompositorBaselineCompareCommand();
     TestCompileCompositorTrialAggregateReport();
+    TestCompileCompositorTrialBatchSummary();
+    TestCompileCompositorTrialBatch();
     TestDescriptorParityWithLegacyForMinimalConfig();
     TestDescriptorParityWithLegacyForFragmentConfig();
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();

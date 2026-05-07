@@ -781,6 +781,82 @@ bool WriteCompileCompositorTrialAggregateReport(const char *trial_root)
                          BuildTrialAggregateReportText(trial_root_path));
 }
 
+std::string GetCompileCompositorTrialBatchSummary(const CompileCompositorTrialBatchReport &report)
+{
+    std::string text;
+    text += "total_count=";
+    text += std::to_string(report.total_count);
+    text += ", legacy_success_count=";
+    text += std::to_string(report.legacy_success_count);
+    text += ", pipeline_trial_success_count=";
+    text += std::to_string(report.pipeline_trial_success_count);
+    text += ", baseline_report_count=";
+    text += std::to_string(report.baseline_report_count);
+    text += ", baseline_compare_success_count=";
+    text += std::to_string(report.baseline_compare_success_count);
+    text += ", aggregate_report_written=";
+    text += report.aggregate_report_written ? "true" : "false";
+    return text;
+}
+
+CompileCompositorTrialBatchReport RunCompileCompositorTrialBatch(const contract::PhysicalDeviceProfileLite *profile,
+                                                                 const std::vector<CompileCompositorTrialBatchItem> &items,
+                                                                 const char *trial_root,
+                                                                 const bool run_baseline_compare_script)
+{
+    CompileCompositorTrialBatchReport report{};
+    report.total_count=items.size();
+
+    for(const auto &item:items)
+    {
+        if(!item.def)
+            continue;
+
+        const char *material_name = item.material_name_override.empty()
+                                  ? (item.def->name ? item.def->name : "<unnamed>")
+                                  : item.material_name_override.c_str();
+
+        CompileCompositorShadowBuildReport shadow_report = BuildCompileCompositorShadowPipelineReport(profile,*item.def,item.config);
+
+        if(shadow_report.result.success)
+            ++report.pipeline_trial_success_count;
+
+        WriteCompileCompositorShadowBuildArtifacts(shadow_report,material_name);
+        WriteCompileCompositorShadowPipelineTree(shadow_report,material_name);
+
+        MaterialCreateInfo *mci = CompileCompositorMaterial(profile,
+                                                            *item.def,
+                                                            item.vs_glsl,
+                                                            item.fs_glsl,
+                                                            item.config);
+
+        const bool legacy_success = mci != nullptr;
+
+        if(legacy_success)
+        {
+            ++report.legacy_success_count;
+            WriteCompileCompositorLegacyTree(*mci,material_name);
+        }
+
+        if(WriteCompileCompositorTrialBaselineReport(shadow_report,
+                                                     material_name,
+                                                     legacy_success,
+                                                     legacy_success ? "legacy compile succeeded" : "legacy compile failed",
+                                                     trial_root))
+        {
+            ++report.baseline_report_count;
+        }
+
+        if(run_baseline_compare_script && RunCompileCompositorBaselineCompare(material_name,trial_root))
+            ++report.baseline_compare_success_count;
+
+        delete mci;
+    }
+
+    report.aggregate_report_written = WriteCompileCompositorTrialAggregateReport(trial_root);
+    return report;
+}
+
 static bool HasUBOSemantic(const StaticMaterialDef &def, const UBODescriptorSemantic semantic)
 {
     if (!def.ubo_descriptors || semantic == UBODescriptorSemantic::Unknown)
