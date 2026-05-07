@@ -714,12 +714,18 @@ static void TestCompileCompositorBuiltinCandidateTrialBatchSummary()
                                                                        "build/shadergen_trial",
                                                                        false);
 
-    CHECK_TRUE(report.total_count >= size_t(1));
-    CHECK_TRUE(report.pipeline_trial_success_count >= size_t(1));
+    CHECK_TRUE(report.total_count >= size_t(2));
+    CHECK_TRUE(report.pipeline_trial_success_count >= size_t(2));
     CHECK_TRUE(report.aggregate_report_written);
 
     const std::string summary = GetCompileCompositorTrialBatchSummary(report);
     CHECK_TRUE(summary.find("total_count=")!=std::string::npos);
+
+    std::ifstream gizmo_report_ifs("build/shadergen_trial/reports/Gizmo3D_baseline_compare.md",std::ios::in);
+    CHECK_TRUE(gizmo_report_ifs.is_open());
+
+    std::ifstream standard_pipeline_ifs("build/shadergen_trial/pipeline/Standard_v1/result_summary.txt",std::ios::in);
+    CHECK_TRUE(standard_pipeline_ifs.is_open());
 }
 
 static void TestCompileCompositorRouteDecisionKeepsLegacyWhenPipelineRequested()

@@ -22,6 +22,9 @@
 #include <hgl/shadergen/SamplerGLSLEmitter.h>
 #include <hgl/shadergen/ShaderBuildPipeline.h>
 #include <hgl/shadergen/CompositorAssembler.h>
+#include "3d/StandardDescriptorBuilder.h"
+#include "3d/StandardVariantRouter.h"
+#include "3d/MaterialFactory3DCommon.h"
 #include <fstream>
 #include <filesystem>
 #include <cstdlib>
@@ -866,12 +869,18 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
                                                                                  const bool run_baseline_compare_script)
 {
     std::vector<CompileCompositorTrialBatchItem> items;
-    items.reserve(2);
+    items.reserve(4);
+    std::vector<SSBOSemanticSet *> owned_ssbo_sets;
+    std::vector<StaticTextureSamplerDescriptors *> owned_sampler_sets;
+    owned_ssbo_sets.reserve(1);
+    owned_sampler_sets.reserve(1);
 
     const MaterialPreset candidate_presets[] =
     {
         MaterialPreset::Gizmo3D,
         MaterialPreset::Billboard2DFixed,
+        MaterialPreset::PBRColor3D,
+        MaterialPreset::Standard,
     };
 
     for(const auto preset:candidate_presets)
@@ -969,12 +978,147 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
             billboard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
             cfg=&billboard_cfg;
         }
+        else
+        if(preset==MaterialPreset::PBRColor3D)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+                { VAT_VEC3, VAN::Normal },
+            };
+            static const UBOSemanticSet ubos =
+            {
+                UBODescriptorSemantic::CameraInfo,
+                UBODescriptorSemantic::SkyInfo,
+            };
+            static const SSBOSemanticSet ssbos =
+            {
+                SSBODescriptorSemantic::TransformData,
+                SSBODescriptorSemantic::TransformID,
+                SSBODescriptorSemantic::MaterialBindingInstanceID,
+                SSBODescriptorSemantic::MaterialBindingInstanceData,
+            };
+
+            def.name = "PBRColor3D";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = nullptr;
+            def.shader_data_schema = ShaderDataSchema::PBRColorParams;
+
+            static Material3DCreateConfig pbr_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::With);
+            pbr_cfg.material_instance = true;
+            pbr_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+            pbr_cfg.lighting_model = LightingModel::PBR;
+            cfg=&pbr_cfg;
+        }
+        else
+        if(preset==MaterialPreset::Standard)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+                { VAT_VEC2, VAN::TexCoord },
+                { VAT_VEC3, VAN::Normal },
+            };
+            static const UBOSemanticSet ubos =
+            {
+                UBODescriptorSemantic::ViewportInfo,
+                UBODescriptorSemantic::CameraInfo,
+                UBODescriptorSemantic::SkyInfo,
+            };
+            static const SSBOSemanticSet base_ssbos =
+            {
+                SSBODescriptorSemantic::TransformData,
+                SSBODescriptorSemantic::TransformID,
+                SSBODescriptorSemantic::MaterialBindingInstanceID,
+                SSBODescriptorSemantic::MaterialBindingInstanceData,
+            };
+            static constexpr SamplerSlot standard_tex_slots[] =
+            {
+                SamplerSlot::BaseColor,
+                SamplerSlot::Normal,
+            };
+
+            static Material3DCreateConfig standard_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::With);
+            standard_cfg.material_instance = true;
+            standard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            const TextureSourceMode tex_slot_modes[] =
+            {
+                TextureSourceMode::Simple,
+                TextureSourceMode::Simple,
+            };
+
+            SkyLightAmbientModel ambient = SkyLightAmbientModel::Simple;
+            LightingModel lighting = LightingModel::Lambert;
+            SSBOSemanticSet dynamic_ssbos;
+            StaticTextureSamplerDescriptors dynamic_samplers;
+            std::vector<const char *> unused_resources;
+            bool any_array=false;
+            Material3DCreateConfig cfg_with_mi;
+
+            BuildStandardDescriptorState(&standard_cfg,
+                                         standard_tex_slots,
+                                         tex_slot_modes,
+                                         uint32_t(sizeof(standard_tex_slots)/sizeof(standard_tex_slots[0])),
+                                         false,
+                                         base_ssbos,
+                                         cfg_with_mi,
+                                         ambient,
+                                         lighting,
+                                         dynamic_ssbos,
+                                         dynamic_samplers,
+                                         unused_resources,
+                                         any_array);
+
+            static const StaticMaterialDef standard_template =
+            {
+                "Standard_v1",
+                PrimitiveType::Triangles,
+                vertex_entries,
+                uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0])),
+                &ubos,
+                nullptr,
+                nullptr,
+                ShaderDataSchema::StandardParams,
+            };
+
+            def = BuildStandardDynamicDef(standard_template,
+                                          dynamic_ssbos,
+                                          dynamic_samplers,
+                                          ShaderDataSchema::StandardParams,
+                                          any_array);
+            def.name = "Standard_v1";
+
+            auto *owned_dynamic_ssbos = new SSBOSemanticSet(dynamic_ssbos);
+            auto *owned_dynamic_samplers = new StaticTextureSamplerDescriptors(dynamic_samplers);
+            owned_ssbo_sets.push_back(owned_dynamic_ssbos);
+            owned_sampler_sets.push_back(owned_dynamic_samplers);
+            def.ssbo_descriptors = owned_dynamic_ssbos;
+            def.texture_samplers = owned_dynamic_samplers;
+
+            static Material3DCreateConfig standard_cfg_with_mi;
+            standard_cfg_with_mi = cfg_with_mi;
+            cfg=&standard_cfg_with_mi;
+
+            key = RouteKey(MaterialPreset::Standard,0u,RuntimeKeyOverrides{});
+            auto policy=BuildStandardVariantPolicy(key);
+            key = policy.assemble_key;
+            key.lighting_model = lighting;
+            key.sky_ambient_model = ambient;
+        }
 
         if(!cfg)
             continue;
 
+        MaterialVariantKey assemble_key=key;
+        PopulateVariantKeyVertexAttribBits(assemble_key,def);
+
         CompositorAssembler assembler;
-        const auto assembled=assembler.Assemble(key,*desc);
+        const auto assembled=assembler.Assemble(assemble_key,*desc);
         if(!assembled.success)
             continue;
 
@@ -991,6 +1135,12 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
 
     for(const auto &item:items)
         delete item.def;
+
+    for(auto *ssbos:owned_ssbo_sets)
+        delete ssbos;
+
+    for(auto *samplers:owned_sampler_sets)
+        delete samplers;
 
     return report;
 }
