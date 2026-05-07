@@ -707,6 +707,21 @@ static void TestCompileCompositorTrialBatch()
     CHECK_TRUE(batch_report_ifs.is_open());
 }
 
+static void TestCompileCompositorBuiltinCandidateTrialBatchSummary()
+{
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    const auto report = RunCompileCompositorBuiltinCandidateTrialBatch(&profile,
+                                                                       "build/shadergen_trial",
+                                                                       false);
+
+    CHECK_TRUE(report.total_count >= size_t(1));
+    CHECK_TRUE(report.pipeline_trial_success_count >= size_t(1));
+    CHECK_TRUE(report.aggregate_report_written);
+
+    const std::string summary = GetCompileCompositorTrialBatchSummary(report);
+    CHECK_TRUE(summary.find("total_count=")!=std::string::npos);
+}
+
 static void TestCompileCompositorRouteDecisionKeepsLegacyWhenPipelineRequested()
 {
     ShaderBuildSwitchConfig switch_config{};
@@ -1223,6 +1238,7 @@ int main()
     TestCompileCompositorTrialAggregateReport();
     TestCompileCompositorTrialBatchSummary();
     TestCompileCompositorTrialBatch();
+    TestCompileCompositorBuiltinCandidateTrialBatchSummary();
     TestDescriptorParityWithLegacyForMinimalConfig();
     TestDescriptorParityWithLegacyForFragmentConfig();
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();

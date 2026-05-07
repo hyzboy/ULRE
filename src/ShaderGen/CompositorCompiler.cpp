@@ -7,17 +7,21 @@
 
 #include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/shadergen/MaterialBuilder.h>
+#include "BuiltinVariantEntry.h"
 #include <hgl/shadergen/internal/GLSLSourceUtils.h>
 #include <hgl/mtl/MaterialFeature.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
 #include <hgl/mtl/ShaderDataSchema.h>
+#include <hgl/mtl/MaterialLibrary.h>
+#include <hgl/mtl/MaterialVariantRegistry.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/shadergen/ShaderLayoutResolver.h>
 #include <hgl/shadergen/ShaderLayoutEmitter.h>
 #include <hgl/shadergen/SamplerGLSLEmitter.h>
 #include <hgl/shadergen/ShaderBuildPipeline.h>
+#include <hgl/shadergen/CompositorAssembler.h>
 #include <fstream>
 #include <filesystem>
 #include <cstdlib>
@@ -854,6 +858,140 @@ CompileCompositorTrialBatchReport RunCompileCompositorTrialBatch(const contract:
     }
 
     report.aggregate_report_written = WriteCompileCompositorTrialAggregateReport(trial_root);
+    return report;
+}
+
+CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch(const contract::PhysicalDeviceProfileLite *profile,
+                                                                                 const char *trial_root,
+                                                                                 const bool run_baseline_compare_script)
+{
+    std::vector<CompileCompositorTrialBatchItem> items;
+    items.reserve(2);
+
+    const MaterialPreset candidate_presets[] =
+    {
+        MaterialPreset::Gizmo3D,
+        MaterialPreset::Billboard2DFixed,
+    };
+
+    for(const auto preset:candidate_presets)
+    {
+        MaterialVariantKey key=RouteKey(preset,0u,RuntimeKeyOverrides{});
+        const MaterialVariantDesc *desc=GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(key);
+        if(!desc)
+            continue;
+
+        const BuiltinVariantEntry *entry=nullptr;
+        for(size_t i=0;i<kBuiltinVariantsCount;++i)
+        {
+            if(kBuiltinVariants[i].preset==preset)
+            {
+                entry=&kBuiltinVariants[i];
+                break;
+            }
+        }
+
+        if(!entry)
+            continue;
+
+        StaticMaterialDef def{};
+        Material3DCreateConfig *cfg=nullptr;
+
+        if(preset==MaterialPreset::Gizmo3D)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+                { VAT_VEC3, VAN::Normal },
+            };
+            static const UBOSemanticSet ubos =
+            {
+                UBODescriptorSemantic::ViewportInfo,
+                UBODescriptorSemantic::CameraInfo,
+            };
+            static const SSBOSemanticSet ssbos =
+            {
+                SSBODescriptorSemantic::TransformData,
+                SSBODescriptorSemantic::TransformID,
+                SSBODescriptorSemantic::MaterialBindingInstanceID,
+                SSBODescriptorSemantic::MaterialBindingInstanceData,
+            };
+
+            def.name = "Gizmo3D";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = nullptr;
+            def.shader_data_schema = ShaderDataSchema::Color4f;
+
+            static Material3DCreateConfig gizmo_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
+            gizmo_cfg.material_instance = true;
+            gizmo_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+            cfg=&gizmo_cfg;
+        }
+        else
+        if(preset==MaterialPreset::Billboard2DFixed)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+            };
+            static const UBOSemanticSet ubos =
+            {
+                UBODescriptorSemantic::ViewportInfo,
+                UBODescriptorSemantic::CameraInfo,
+            };
+            static const SSBOSemanticSet ssbos =
+            {
+                SSBODescriptorSemantic::TransformData,
+                SSBODescriptorSemantic::TransformID,
+                SSBODescriptorSemantic::MaterialBindingInstanceID,
+                SSBODescriptorSemantic::MaterialBindingInstanceData,
+            };
+            static const StaticTextureSamplerDescriptors samplers =
+            {
+                { SamplerSlot::BaseColor, MakeStaticTextureSamplerDescriptor(SamplerType::Sampler2D) }
+            };
+
+            def.name = "BillboardFixed";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = &samplers;
+            def.shader_data_schema = ShaderDataSchema::BillboardSizeUVec2;
+
+            static Material3DCreateConfig billboard_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
+            billboard_cfg.material_instance = true;
+            billboard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+            cfg=&billboard_cfg;
+        }
+
+        if(!cfg)
+            continue;
+
+        CompositorAssembler assembler;
+        const auto assembled=assembler.Assemble(key,*desc);
+        if(!assembled.success)
+            continue;
+
+        CompileCompositorTrialBatchItem item{};
+        item.def = new StaticMaterialDef(def);
+        item.vs_glsl = assembled.vertex_glsl;
+        item.fs_glsl = assembled.fragment_glsl;
+        item.config = cfg;
+        item.material_name_override = def.name ? def.name : entry->name;
+        items.push_back(item);
+    }
+
+    const auto report=RunCompileCompositorTrialBatch(profile,items,trial_root,run_baseline_compare_script);
+
+    for(const auto &item:items)
+        delete item.def;
+
     return report;
 }
 
