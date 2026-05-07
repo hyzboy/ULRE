@@ -24,6 +24,7 @@ struct ShaderBuildDescriptorSpec
 {
     std::vector<mtl::UBODescriptorSemantic> ubos;
     std::vector<mtl::SSBODescriptorSemantic> ssbos;
+    uint32_t material_instance_bytes = 0;
 };
 
 struct ShaderBuildResult

@@ -96,6 +96,14 @@ static bool ApplyDescriptorSpec(const hgl::graph::ShaderBuildDescriptorSpec *des
             return false;
     }
 
+    if(descriptor_spec->material_instance_bytes>0)
+    {
+        if(!AddSSBOBySemantic(descriptor_db,
+                              hgl::graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceData,
+                              stage_bits))
+            return false;
+    }
+
     return true;
 }
 
@@ -150,7 +158,7 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
         return result;
     }
 
-    if(config.material_instance)
+    if(config.material_instance && (!descriptor_spec || descriptor_spec->material_instance_bytes==0))
     {
         result.success=false;
         result.value.final_state=ShaderBuildState::Failed;
