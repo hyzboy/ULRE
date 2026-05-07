@@ -333,6 +333,7 @@ static void TestBuildFailsWhenMaterialInstanceRequested()
     PhysicalDeviceProfileLite profile = MakeBasicProfile();
 
     auto result = pipeline.Build(cfg,&profile);
+    PrintBuildResult("MaterialInstanceRequested",result);
 
     CHECK_TRUE(!result.success);
     CHECK_EQ(result.value.final_state, ShaderBuildState::Failed);
@@ -348,9 +349,40 @@ static void TestBuildFailsWhenLocalToWorldRequested()
     auto result = pipeline.Build(cfg,&profile);
     PrintBuildResult("LocalToWorldRequested",result);
 
-    CHECK_TRUE(!result.success);
-    CHECK_EQ(result.value.final_state, ShaderBuildState::Failed);
-    CHECK_TRUE(!result.diagnostics.empty());
+    CHECK_TRUE(result.success);
+    CHECK_EQ(result.value.final_state, ShaderBuildState::Compiled);
+    CHECK_TRUE(result.value.layout_finalized);
+}
+
+static void TestDescriptorParityWithLegacyForLocalToWorldConfig()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeLocalToWorldConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+
+    auto pipeline_result = pipeline.Build(cfg,&profile);
+    CHECK_TRUE(pipeline_result.success);
+
+    MaterialBuilder builder(&cfg);
+    CHECK_TRUE(builder.SetLocalToWorld(cfg.shader_stage_flag_bit));
+
+    MaterialCreateInfo *legacy_mci=builder.BuildSnapshotOnly();
+    CHECK_TRUE(legacy_mci!=nullptr);
+
+    if(!legacy_mci)
+        return;
+
+    CHECK_EQ(pipeline_result.value.descriptor_count, legacy_mci->GetDescriptorInfo().GetCount());
+
+    const auto &legacy_contract=legacy_mci->GetBindingContract();
+
+    for(size_t i=0;i<UBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ubos[i], legacy_contract.ubos[i]);
+
+    for(size_t i=0;i<SSBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ssbos[i], legacy_contract.ssbos[i]);
+
+    delete legacy_mci;
 }
 
 static void TestBuildFailsWhenTextureSamplerOverrideRequested()
@@ -388,6 +420,7 @@ int main()
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();
     TestDescriptorCountParityWithLegacyForTextureSamplerMultiSlotOverrideConfig();
     TestDescriptorParityWithLegacyForVertexFragmentTextureSamplerOverrideConfig();
+    TestDescriptorParityWithLegacyForLocalToWorldConfig();
 
     if(g_failures==0)
         std::fprintf(stdout,"ShaderBuildPipelineSmokeTests PASSED.\n");

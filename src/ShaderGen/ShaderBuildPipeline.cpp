@@ -2,6 +2,7 @@
 #include<hgl/shadergen/DescriptorLayoutBuilder.h>
 #include<hgl/shadergen/MaterialDescriptorDB.h>
 #include<hgl/shadergen/MaterialDescriptorStageBinder.h>
+#include<hgl/mtl/UBOCommon.h>
 
 namespace
 {
@@ -40,6 +41,35 @@ static bool ApplyTextureSamplerOverrides(const hgl::graph::mtl::MaterialCreateCo
                                                                                hgl::graph::SamplerType::Sampler2D,
                                                                                slot,
                                                                                hgl::graph::TextureChannelHint::RGBA))
+            return false;
+    }
+
+    return true;
+}
+
+static bool AddSSBOBySemantic(hgl::graph::MaterialDescriptorDB &descriptor_db,
+                              const hgl::graph::mtl::SSBODescriptorSemantic semantic,
+                              const uint32_t stage_bits)
+{
+    if(!descriptor_db.AddSSBOStruct(semantic))
+        return false;
+
+    const auto &meta=hgl::graph::mtl::GetDescriptorSemanticMeta(semantic);
+    auto *ssbo=hgl::graph::mtl::CreateSSBODescriptor(semantic,stage_bits);
+    if(!ssbo)
+        return false;
+
+    return descriptor_db.AddSSBO(stage_bits,meta.set_type,ssbo)!=nullptr;
+}
+
+static bool ApplySSBOOverrides(const hgl::graph::mtl::MaterialCreateConfig &config,
+                               hgl::graph::MaterialDescriptorDB &descriptor_db)
+{
+    if(config.local_to_world)
+    {
+        if(!AddSSBOBySemantic(descriptor_db,
+                              hgl::graph::mtl::SSBODescriptorSemantic::TransformData,
+                              config.shader_stage_flag_bit))
             return false;
     }
 
@@ -90,19 +120,7 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
                                       ShaderGenErrorCode::InvalidConfig,
                                       ShaderStage::Vertex,
                                       "ShaderBuildPipeline.SSBO.MaterialInstance",
-                                      "minimal pipeline does not support material_instance yet"});
-        return result;
-    }
-
-    if(config.local_to_world)
-    {
-        result.success=false;
-        result.value.final_state=ShaderBuildState::Failed;
-        result.diagnostics.push_back({ShaderGenSeverity::Error,
-                                      ShaderGenErrorCode::InvalidConfig,
-                                      ShaderStage::Vertex,
-                                      "ShaderBuildPipeline.SSBO.LocalToWorld",
-                                      "minimal pipeline does not support local_to_world yet"});
+                                      "material_instance descriptor path is not aligned yet"});
         return result;
     }
 
@@ -120,6 +138,18 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
 
     MaterialDescriptorDB descriptor_db;
     mtl::DescriptorBindingSlots binding_contract{};
+
+    if(!ApplySSBOOverrides(config,descriptor_db))
+    {
+        result.success=false;
+        result.value.final_state=ShaderBuildState::Failed;
+        result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                      ShaderGenErrorCode::InvalidConfig,
+                                      ShaderStage::Vertex,
+                                      "ShaderBuildPipeline.SSBO",
+                                      "failed to apply SSBO overrides"});
+        return result;
+    }
 
     if(!ApplyTextureSamplerOverrides(config,descriptor_db))
     {
