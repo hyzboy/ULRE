@@ -213,25 +213,29 @@ void MaterialCreateInfo::SetDevice(const contract::PhysicalDeviceProfileLite *pr
 
 bool MaterialCreateInfo::CompilePreparedShaderSources()
 {
-    ShaderStageBuildSet shader_stage_set(shader_map);
+    std::vector<ShaderGenDiagnostic> diagnostics;
+    ShaderGenStatus result=TryCompileShaderStagesToSPV(&diagnostics);
 
-    if(shader_stage_set.IsEmpty())
+    if(!result.success)
     {
-        GLogError("[ShaderGen][MaterialCreateInfo] CompilePreparedShaderSources failed: shader set is empty");
-        return false;
+        if(diagnostics.empty())
+        {
+            GLogError("[ShaderGen][MaterialCreateInfo] CompilePreparedShaderSources failed");
+        }
+        else
+        {
+            for(const auto &d:diagnostics)
+            {
+                GLogError("[ShaderGen][MaterialCreateInfo] CompilePreparedShaderSources failed: code=%u stage=0x%08X subject=%s message=%s",
+                          (uint32_t)d.code,
+                          (uint32_t)d.stage,
+                          d.subject.c_str(),
+                          d.message.c_str());
+            }
+        }
     }
 
-    DescriptorLayoutBuilder::Finalize(descriptor_db,binding_contract);
-
-    layout_finalized=true;
-
-    const bool ok=ShaderSetCompiler::Compile(shader_stage_set.GetMap());
-    shader_compiled=ok;
-
-    if(!ok)
-        GLogError("[ShaderGen][MaterialCreateInfo] CompilePreparedShaderSources failed: ShaderSetCompiler::Compile returned false");
-
-    return ok;
+    return result.success;
 }
 
 bool MaterialCreateInfo::CompileShaderStagesToSPV()
@@ -244,14 +248,15 @@ ShaderGenStatus MaterialCreateInfo::TryCompileShaderStagesToSPV(std::vector<Shad
 {
     ShaderGenStatus result{};
 
-    if(!CompilePreparedShaderSources())
+    ShaderStageBuildSet shader_stage_set(shader_map);
+    if(shader_stage_set.IsEmpty())
     {
         result.success=false;
-        result.diagnostics.push_back({ShaderGenSeverity::Error,
-                                      ShaderGenErrorCode::CompileFailed,
+        result.diagnostics.push_back({ShaderGenSeverity::Warning,
+                                      ShaderGenErrorCode::InvalidConfig,
                                       ShaderStage::Vertex,
                                       "MaterialCreateInfo",
-                                      "CompilePreparedShaderSources failed"});
+                                      "shader set is empty"});
 
         if(diagnostics)
             diagnostics->insert(diagnostics->end(),result.diagnostics.begin(),result.diagnostics.end());
@@ -259,6 +264,30 @@ ShaderGenStatus MaterialCreateInfo::TryCompileShaderStagesToSPV(std::vector<Shad
         return result;
     }
 
+    DescriptorLayoutBuilder::Finalize(descriptor_db,binding_contract);
+    layout_finalized=true;
+
+    std::vector<ShaderGenDiagnostic> compile_diagnostics;
+    ShaderGenStatus compile_result=ShaderSetCompiler::TryCompile(shader_stage_set.GetMap(),&compile_diagnostics);
+
+    if(!compile_result.success)
+    {
+        shader_compiled=false;
+        result.success=false;
+        result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                      ShaderGenErrorCode::InternalError,
+                                      ShaderStage::Vertex,
+                                      "MaterialCreateInfo",
+                                      "ShaderSetCompiler::TryCompile failed"});
+        result.diagnostics.insert(result.diagnostics.end(),compile_diagnostics.begin(),compile_diagnostics.end());
+
+        if(diagnostics)
+            diagnostics->insert(diagnostics->end(),result.diagnostics.begin(),result.diagnostics.end());
+
+        return result;
+    }
+
+    shader_compiled=true;
     result.success=true;
     if(diagnostics)
         diagnostics->insert(diagnostics->end(),result.diagnostics.begin(),result.diagnostics.end());
