@@ -63,6 +63,8 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
 
     ubo_range=0;
     ssbo_range=0;
+    layout_finalized=false;
+    shader_compiled=false;
 
     material_instance = MaterialInstanceBlock{};
     local_to_world = LocalToWorldBlock{0, 0, config.local_to_world};
@@ -83,12 +85,21 @@ bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const UBODescript
     const DescriptorSemanticMeta *meta = nullptr;
 
     if(!ResolveUBOSemanticMeta(semantic,meta))
+    {
+        GLogError("[ShaderGen][MaterialCreateInfo] AddUBOStruct failed: invalid semantic=%u",(uint32_t)semantic);
         return false;
+    }
 
     if(!descriptor_db.AddUBOStruct(semantic))
+    {
+        GLogError("[ShaderGen][MaterialCreateInfo] AddUBOStruct failed: descriptor_db.AddUBOStruct semantic=%u",(uint32_t)semantic);
         return false;
+    }
 
-    return AddResolvedUBO(flag_bits,meta->set_type,semantic,meta->struct_name,meta->name);
+    const bool ok=AddResolvedUBO(flag_bits,meta->set_type,semantic,meta->struct_name,meta->name);
+    if(!ok)
+        GLogError("[ShaderGen][MaterialCreateInfo] AddUBOStruct failed: AddResolvedUBO semantic=%u flag_bits=0x%08X",(uint32_t)semantic,flag_bits);
+    return ok;
 }
 
 bool MaterialCreateInfo::AddResolvedSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const SSBODescriptorSemantic semantic,const std::string &struct_name,const std::string &name)
@@ -101,12 +112,21 @@ bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const SSBODescri
     const DescriptorSemanticMeta *meta = nullptr;
 
     if(!ResolveSSBOSemanticMeta(semantic,meta))
+    {
+        GLogError("[ShaderGen][MaterialCreateInfo] AddSSBOStruct failed: invalid semantic=%u",(uint32_t)semantic);
         return false;
+    }
 
     if(!descriptor_db.AddSSBOStruct(semantic))
+    {
+        GLogError("[ShaderGen][MaterialCreateInfo] AddSSBOStruct failed: descriptor_db.AddSSBOStruct semantic=%u",(uint32_t)semantic);
         return false;
+    }
 
-    return AddResolvedSSBO(flag_bits,meta->set_type,semantic,meta->struct_name,meta->name);
+    const bool ok=AddResolvedSSBO(flag_bits,meta->set_type,semantic,meta->struct_name,meta->name);
+    if(!ok)
+        GLogError("[ShaderGen][MaterialCreateInfo] AddSSBOStruct failed: AddResolvedSSBO semantic=%u flag_bits=0x%08X",(uint32_t)semantic,flag_bits);
+    return ok;
 }
 
 bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const TextureType &tt,const SamplerSlot slot)
@@ -132,23 +152,29 @@ bool MaterialCreateInfo::AddTextureSampler(const uint32_t flag_bits,const Sample
 */
 bool MaterialCreateInfo::SetMaterialInstance(const uint32_t data_bytes,const uint32_t shader_stage_flag_bits)
 {
-    return MaterialInstanceConfigurator::ConfigureMaterialInstance(descriptor_db,
-                                                                   material_instance,
-                                                                   ssbo_range,
-                                                                   data_bytes,
-                                                                   shader_stage_flag_bits);
+    const bool ok=MaterialInstanceConfigurator::ConfigureMaterialInstance(descriptor_db,
+                                                                          material_instance,
+                                                                          ssbo_range,
+                                                                          data_bytes,
+                                                                          shader_stage_flag_bits);
+    if(!ok)
+        GLogError("[ShaderGen][MaterialCreateInfo] SetMaterialInstance failed: bytes=%u stage_bits=0x%08X",data_bytes,shader_stage_flag_bits);
+    return ok;
 }
 
 bool MaterialCreateInfo::SetMaterialInstance(const ShaderDataSchema schema,
                                              const ShaderDataSchemaInfo &schema_info,
                                              const uint32_t shader_stage_flag_bits)
 {
-    return MaterialInstanceConfigurator::ConfigureMaterialInstance(descriptor_db,
-                                                                   material_instance,
-                                                                   ssbo_range,
-                                                                   schema,
-                                                                   schema_info,
-                                                                   shader_stage_flag_bits);
+    const bool ok=MaterialInstanceConfigurator::ConfigureMaterialInstance(descriptor_db,
+                                                                          material_instance,
+                                                                          ssbo_range,
+                                                                          schema,
+                                                                          schema_info,
+                                                                          shader_stage_flag_bits);
+    if(!ok)
+        GLogError("[ShaderGen][MaterialCreateInfo] SetMaterialInstance(schema) failed: schema=%u stage_bits=0x%08X",(uint32_t)schema,shader_stage_flag_bits);
+    return ok;
 }
 
 void MaterialCreateInfo::BuildBindingContract()
@@ -158,11 +184,14 @@ void MaterialCreateInfo::BuildBindingContract()
 
 bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 {
-    return MaterialInstanceConfigurator::ConfigureLocalToWorld(descriptor_db,
-                                                               shader_map,
-                                                               local_to_world,
-                                                               ssbo_range,
-                                                               shader_stage_flag_bits);
+    const bool ok=MaterialInstanceConfigurator::ConfigureLocalToWorld(descriptor_db,
+                                                                      shader_map,
+                                                                      local_to_world,
+                                                                      ssbo_range,
+                                                                      shader_stage_flag_bits);
+    if(!ok)
+        GLogError("[ShaderGen][MaterialCreateInfo] SetLocalToWorld failed: stage_bits=0x%08X",shader_stage_flag_bits);
+    return ok;
 }
 //
 void MaterialCreateInfo::SetDevice(const contract::PhysicalDeviceProfileLite *profile)
@@ -186,8 +215,23 @@ bool MaterialCreateInfo::CompilePreparedShaderSources()
 {
     ShaderStageBuildSet shader_stage_set(shader_map);
 
+    if(shader_stage_set.IsEmpty())
+    {
+        GLogError("[ShaderGen][MaterialCreateInfo] CompilePreparedShaderSources failed: shader set is empty");
+        return false;
+    }
+
     DescriptorLayoutBuilder::Finalize(descriptor_db,binding_contract);
-    return ShaderSetCompiler::Compile(shader_stage_set.GetMap());
+
+    layout_finalized=true;
+
+    const bool ok=ShaderSetCompiler::Compile(shader_stage_set.GetMap());
+    shader_compiled=ok;
+
+    if(!ok)
+        GLogError("[ShaderGen][MaterialCreateInfo] CompilePreparedShaderSources failed: ShaderSetCompiler::Compile returned false");
+
+    return ok;
 }
 
 bool MaterialCreateInfo::CompileShaderStagesToSPV()

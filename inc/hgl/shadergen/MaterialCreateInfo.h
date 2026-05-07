@@ -39,6 +39,9 @@ namespace hgl::graph
             uint32_t ubo_range;
             uint32_t ssbo_range;
 
+            bool layout_finalized = false;
+            bool shader_compiled = false;
+
             MaterialDescriptorDB descriptor_db;                     ///<材质描述符管理器
             DescriptorBindingSlots binding_contract;                ///<descriptor semantic contract (phase 2)
 
@@ -118,6 +121,8 @@ namespace hgl::graph
         public:
 
             MaterialCreateInfo(const MaterialCreateConfig *);
+            MaterialCreateInfo(const MaterialCreateInfo &) = delete;
+            MaterialCreateInfo &operator=(const MaterialCreateInfo &) = delete;
             ~MaterialCreateInfo();  // Need explicit destructor to properly clean up shader_map
 
             bool CompileShaderStagesToSPV();

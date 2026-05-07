@@ -51,10 +51,19 @@ bool ShaderCreateInfo::CompileFinalGLSLToSPV()
 
 bool ShaderCreateInfo::CompileToSPV()
 {
+    if(spv_data)
+    {
+        FreeSPVData(spv_data);
+        spv_data=nullptr;
+    }
+
     spv_data=CompileShader(uint32_t(shader_stage),final_shader.c_str());
 
     if(!spv_data)
+    {
+        GLogError("[ShaderGen][ShaderCreateInfo] CompileToSPV failed: stage=%s",GetShaderStageNameByStage(shader_stage));
         return(false);
+    }
 
     return(true);
 }
