@@ -3,6 +3,7 @@
 #include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/MaterialBuilder.h>
+#include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/DescriptorSemanticRegistry.h>
 
 #include "GLSLCompiler.h"
@@ -174,6 +175,41 @@ static ShaderBuildDescriptorSpec MakeMaterialInstanceSchemaWithoutBytesDescripto
     spec.material_instance_schema = ShaderDataSchema::Color4f;
     spec.material_instance_bytes = 0;
     return spec;
+}
+
+static StaticMaterialDef MakeSchemaAwareCompositorDef()
+{
+    static FixedVertexEntry vertex_entries[] =
+    {
+        { VAT_VEC3, VertexAttrib::Position }
+    };
+
+    static UBOSemanticSet ubos =
+    {
+        UBODescriptorSemantic::ViewportInfo,
+        UBODescriptorSemantic::CameraInfo
+    };
+
+    static SSBOSemanticSet ssbos =
+    {
+        SSBODescriptorSemantic::TransformData
+    };
+
+    static StaticTextureSamplerDescriptors samplers =
+    {
+        { SamplerSlot::BaseColor, MakeStaticTextureSamplerDescriptor(SamplerType::Sampler2D) }
+    };
+
+    StaticMaterialDef def{};
+    def.name = "SchemaAwareSmokeCompositor";
+    def.primitive_type = PrimitiveType::Triangles;
+    def.vertex_entries = vertex_entries;
+    def.vertex_entry_count = 1;
+    def.ubo_descriptors = &ubos;
+    def.ssbo_descriptors = &ssbos;
+    def.texture_samplers = &samplers;
+    def.shader_data_schema = ShaderDataSchema::Color4f;
+    return def;
 }
 
 static void TestBuildFailsWhenStageBitsIsZero()
@@ -436,6 +472,28 @@ static void TestCompileCompositorRouteDecisionSummary()
     CHECK_TRUE(summary.find("will_use_legacy_now=true")!=std::string::npos);
     CHECK_TRUE(summary.find("pipeline_trial_requested=true")!=std::string::npos);
     CHECK_TRUE(summary.find("fallback_to_legacy=true")!=std::string::npos);
+}
+
+static void TestCompileCompositorShadowPipelineReport()
+{
+    Material3DCreateConfig cfg(PrimitiveType::Triangles,
+                               IncludeCamera::With,
+                               IncludeL2W::With,
+                               IncludeSky::Without);
+    cfg.material_instance = true;
+    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    const StaticMaterialDef def = MakeSchemaAwareCompositorDef();
+
+    const auto report = BuildCompileCompositorShadowPipelineReport(&profile,def,&cfg);
+
+    CHECK_TRUE(report.result.success);
+    CHECK_TRUE(report.evaluation.pipeline_ready);
+    CHECK_TRUE(report.evaluation.baseline_compare_ready);
+    CHECK_TRUE(report.evaluation.schema_aware_material_instance);
+    CHECK_TRUE(report.summary.find("pipeline_ready=true")!=std::string::npos);
+    CHECK_TRUE(report.summary.find("schema_aware_material_instance=true")!=std::string::npos);
 }
 
 static void TestCompileCompositorRouteDecisionKeepsLegacyWhenPipelineRequested()
@@ -945,6 +1003,7 @@ int main()
     TestCompileCompositorRouteDecisionDefaultsToLegacy();
     TestCompileCompositorRouteDecisionKeepsLegacyWhenPipelineRequested();
     TestCompileCompositorRouteDecisionSummary();
+    TestCompileCompositorShadowPipelineReport();
     TestDescriptorParityWithLegacyForMinimalConfig();
     TestDescriptorParityWithLegacyForFragmentConfig();
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();

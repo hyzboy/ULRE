@@ -37,6 +37,13 @@ struct CompileCompositorRouteDecision
     std::string rationale;
 };
 
+struct CompileCompositorShadowBuildReport
+{
+    ShaderGenResult<ShaderBuildResult> result;
+    ShaderBuildRouteEvaluation evaluation;
+    std::string summary;
+};
+
 /**
  * 编译 Compositor 模板产出的完整 GLSL → MaterialCreateInfo*。
  *
@@ -89,6 +96,9 @@ bool PrepareCompositorGLSLForReflection(
 CompileCompositorRoutePlan BuildCompileCompositorRoutePlan();
 CompileCompositorRouteDecision ResolveCompileCompositorRouteDecision(const ShaderBuildSwitchConfig *switch_config=nullptr);
 std::string GetCompileCompositorRouteDecisionSummary(const CompileCompositorRouteDecision &decision);
+CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(const contract::PhysicalDeviceProfileLite *profile,
+                                                                              const StaticMaterialDef &def,
+                                                                              const Material3DCreateConfig *config = nullptr);
 
 // diagnostics may also contain non-fatal inference mismatch warnings on success.
 
