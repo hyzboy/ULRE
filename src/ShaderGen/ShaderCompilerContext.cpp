@@ -38,7 +38,23 @@ ShaderGenResult<ShaderBinary> ShaderCompilerContext::Compile(const ShaderCompile
     result.value.stage=request.stage;
 
     if(spv->spv_data&&spv->spv_length>0)
-        result.value.spirv.assign(spv->spv_data,spv->spv_data+spv->spv_length);
+    {
+        if((spv->spv_length%sizeof(uint32))!=0)
+        {
+            FreeSPVData(spv);
+
+            result.success=false;
+            result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                          ShaderGenErrorCode::CompileFailed,
+                                          request.stage,
+                                          "ShaderCompilerContext",
+                                          "invalid SPIR-V byte length (not uint32-aligned)"});
+            return result;
+        }
+
+        const size_t word_count=spv->spv_length/sizeof(uint32);
+        result.value.spirv.assign(spv->spv_data,spv->spv_data+word_count);
+    }
 
     if(!spv->result)
     {

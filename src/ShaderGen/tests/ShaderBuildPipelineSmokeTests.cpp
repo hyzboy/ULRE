@@ -2,6 +2,8 @@
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/DescriptorSemanticRegistry.h>
 
+#include "GLSLCompiler.h"
+
 #include <cstdio>
 
 static int g_failures = 0;
@@ -168,6 +170,28 @@ static void TestDescriptorParityWithLegacyForMinimalConfig()
         CHECK_EQ(pipeline_result.value.binding_contract.ssbos[i], legacy_contract.ssbos[i]);
 }
 
+static void TestDescriptorParityWithLegacyForFragmentConfig()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeFragmentConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+
+    auto pipeline_result = pipeline.Build(cfg,&profile);
+    CHECK_TRUE(pipeline_result.success);
+
+    MaterialCreateInfo legacy_mci(&cfg);
+
+    CHECK_EQ(pipeline_result.value.descriptor_count, legacy_mci.GetDescriptorInfo().GetCount());
+
+    const auto &legacy_contract=legacy_mci.GetBindingContract();
+
+    for(size_t i=0;i<UBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ubos[i], legacy_contract.ubos[i]);
+
+    for(size_t i=0;i<SSBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ssbos[i], legacy_contract.ssbos[i]);
+}
+
 static void TestBuildFailsWhenMaterialInstanceRequested()
 {
     ShaderBuildPipeline pipeline;
@@ -207,12 +231,6 @@ static void TestBuildFailsWhenTextureSamplerOverrideRequested()
     CHECK_TRUE(!result.diagnostics.empty());
 }
 
-namespace hgl::graph
-{
-    bool InitShaderCompiler();
-    void CloseShaderCompiler();
-}
-
 int main()
 {
     if(!hgl::graph::InitShaderCompiler())
@@ -230,6 +248,7 @@ int main()
     TestBuildFailsWhenLocalToWorldRequested();
     TestBuildFailsWhenTextureSamplerOverrideRequested();
     TestDescriptorParityWithLegacyForMinimalConfig();
+    TestDescriptorParityWithLegacyForFragmentConfig();
 
     if(g_failures==0)
         std::fprintf(stdout,"ShaderBuildPipelineSmokeTests PASSED.\n");
