@@ -7,6 +7,47 @@
 
 namespace
 {
+static std::string BuildMaterialInstanceSchemaSnippet(const hgl::graph::mtl::MaterialInstanceBlock &material_instance)
+{
+    if(material_instance.schema==hgl::graph::mtl::ShaderDataSchema::None)
+        return {};
+
+    if(material_instance.schema_file.empty())
+        return {};
+
+    std::string snippet;
+    snippet += "#define ULRE_PIPELINE_MATERIAL_INSTANCE_SCHEMA ";
+    snippet += material_instance.schema_file;
+    snippet += "\n";
+    snippet += "// material_instance schema injected for pipeline compile path\n";
+    snippet += "struct MaterialBindingInstance { vec4 Color; };\n";
+    return snippet;
+}
+
+static std::string BuildVertexShaderSource(const hgl::graph::mtl::MaterialInstanceBlock &material_instance)
+{
+    std::string source = "#version 450\n";
+
+    const std::string schema_snippet=BuildMaterialInstanceSchemaSnippet(material_instance);
+    if(!schema_snippet.empty())
+        source += schema_snippet;
+
+    source += "void main(){}\n";
+    return source;
+}
+
+static std::string BuildFragmentShaderSource(const hgl::graph::mtl::MaterialInstanceBlock &material_instance)
+{
+    std::string source = "#version 450\n";
+
+    const std::string schema_snippet=BuildMaterialInstanceSchemaSnippet(material_instance);
+    if(!schema_snippet.empty())
+        source += schema_snippet;
+
+    source += "layout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n";
+    return source;
+}
+
 static bool HasStageBit(const uint32_t bits,const hgl::graph::ShaderStage stage)
 {
     return (bits&uint32_t(stage))!=0;
@@ -289,13 +330,13 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
     if(config.shader_stage_flag_bit&uint32_t(ShaderStage::Vertex))
     {
         request.stage=ShaderStage::Vertex;
-        request.source="#version 450\nvoid main(){}\n";
+        request.source=BuildVertexShaderSource(result.value.material_instance);
     }
     else
     if(config.shader_stage_flag_bit&uint32_t(ShaderStage::Fragment))
     {
         request.stage=ShaderStage::Fragment;
-        request.source="#version 450\nlayout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n";
+        request.source=BuildFragmentShaderSource(result.value.material_instance);
     }
 
     if(request.source.empty())
@@ -311,6 +352,15 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
     }
 
     state=ShaderBuildState::SourceGenerated;
+
+    if(result.value.material_instance.schema!=mtl::ShaderDataSchema::None)
+    {
+        result.diagnostics.push_back({ShaderGenSeverity::Info,
+                                      ShaderGenErrorCode::None,
+                                      request.stage,
+                                      "ShaderBuildPipeline.MaterialInstance.Schema",
+                                      std::string("schema-aware compile path active: ")+result.value.material_instance.schema_file});
+    }
 
     ShaderCompilerContext compiler(*profile);
     ShaderGenResult<ShaderBinary> compile_result=compiler.Compile(request);

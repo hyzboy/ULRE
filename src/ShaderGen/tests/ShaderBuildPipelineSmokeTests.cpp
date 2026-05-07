@@ -276,6 +276,50 @@ static void TestDescriptorParityWithLegacyForMaterialInstanceConfig()
     delete legacy_mci;
 }
 
+static void TestCompileSucceedsWhenMaterialInstanceSchemaSpecProvided()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeMaterialInstanceConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    ShaderBuildDescriptorSpec spec = MakeMaterialInstanceSchemaDescriptorSpec();
+
+    auto result = pipeline.Build(cfg,&profile,&spec);
+    PrintBuildResult("MaterialInstanceSchemaSpecProvided",result);
+
+    CHECK_TRUE(result.success);
+    CHECK_EQ(result.value.final_state, ShaderBuildState::Compiled);
+    CHECK_TRUE(result.value.layout_finalized);
+    CHECK_TRUE(!result.value.binaries.empty());
+    CHECK_TRUE(!result.value.binaries[0].spirv.empty());
+    CHECK_EQ((int)result.value.material_instance.schema, (int)spec.material_instance_schema);
+    CHECK_TRUE(!result.value.material_instance.schema_file.empty());
+
+    bool has_schema_diag=false;
+    for(const auto &d:result.diagnostics)
+    {
+        if(d.subject=="ShaderBuildPipeline.MaterialInstance.Schema")
+            has_schema_diag=true;
+    }
+
+    CHECK_TRUE(has_schema_diag);
+}
+
+static void TestBuildFailsWhenMaterialInstanceSchemaByteSizeMismatched()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeMaterialInstanceConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    ShaderBuildDescriptorSpec spec = MakeMaterialInstanceSchemaDescriptorSpec();
+    ++spec.material_instance_bytes;
+
+    auto result = pipeline.Build(cfg,&profile,&spec);
+    PrintBuildResult("MaterialInstanceSchemaByteSizeMismatched",result);
+
+    CHECK_TRUE(!result.success);
+    CHECK_EQ(result.value.final_state, ShaderBuildState::Failed);
+    CHECK_TRUE(!result.diagnostics.empty());
+}
+
 static void TestBuildModelParityWithLegacyForMaterialInstanceSchemaConfig()
 {
     ShaderBuildPipeline pipeline;
@@ -760,6 +804,8 @@ int main()
     TestBuildFailsWhenTextureSamplerOverrideRequested();
     TestDescriptorParityWithLegacyForMaterialInstanceConfig();
     TestBuildModelParityWithLegacyForMaterialInstanceSchemaConfig();
+    TestCompileSucceedsWhenMaterialInstanceSchemaSpecProvided();
+    TestBuildFailsWhenMaterialInstanceSchemaByteSizeMismatched();
     TestDescriptorParityWithLegacyForMinimalConfig();
     TestDescriptorParityWithLegacyForFragmentConfig();
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();
