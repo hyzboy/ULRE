@@ -157,6 +157,14 @@ static ShaderBuildDescriptorSpec MakeMaterialInstanceDescriptorSpec()
     return spec;
 }
 
+static ShaderBuildDescriptorSpec MakeMaterialInstanceSchemaDescriptorSpec()
+{
+    ShaderBuildDescriptorSpec spec{};
+    spec.material_instance_schema = ShaderDataSchema::Color4f;
+    spec.material_instance_bytes = GetShaderDataSchemaInfo(spec.material_instance_schema).byte_size;
+    return spec;
+}
+
 static void TestBuildFailsWhenStageBitsIsZero()
 {
     ShaderBuildPipeline pipeline;
@@ -264,6 +272,34 @@ static void TestDescriptorParityWithLegacyForMaterialInstanceConfig()
 
     for(size_t i=0;i<SSBODescriptorSemanticCount;++i)
         CHECK_EQ(pipeline_result.value.binding_contract.ssbos[i], legacy_contract.ssbos[i]);
+
+    delete legacy_mci;
+}
+
+static void TestBuildModelParityWithLegacyForMaterialInstanceSchemaConfig()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeMaterialInstanceConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    ShaderBuildDescriptorSpec spec = MakeMaterialInstanceSchemaDescriptorSpec();
+
+    auto pipeline_result = pipeline.Build(cfg,&profile,&spec);
+    CHECK_TRUE(pipeline_result.success);
+
+    MaterialBuilder builder(&cfg);
+    const auto &schema_info=GetShaderDataSchemaInfo(spec.material_instance_schema);
+    CHECK_TRUE(builder.SetMaterialInstance(spec.material_instance_schema,schema_info,cfg.shader_stage_flag_bit));
+
+    MaterialCreateInfo *legacy_mci=builder.BuildSnapshotOnly();
+    CHECK_TRUE(legacy_mci!=nullptr);
+
+    if(!legacy_mci)
+        return;
+
+    CHECK_EQ(pipeline_result.value.material_instance.stride, legacy_mci->GetMaterialInstance().stride);
+    CHECK_EQ(pipeline_result.value.material_instance.stage_bits, legacy_mci->GetMaterialInstance().stage_bits);
+    CHECK_EQ((int)pipeline_result.value.material_instance.schema, (int)legacy_mci->GetMaterialInstance().schema);
+    CHECK_TRUE(pipeline_result.value.material_instance.schema_file == legacy_mci->GetMaterialInstance().schema_file);
 
     delete legacy_mci;
 }
@@ -723,6 +759,7 @@ int main()
     TestBuildFailsWhenLocalToWorldRequested();
     TestBuildFailsWhenTextureSamplerOverrideRequested();
     TestDescriptorParityWithLegacyForMaterialInstanceConfig();
+    TestBuildModelParityWithLegacyForMaterialInstanceSchemaConfig();
     TestDescriptorParityWithLegacyForMinimalConfig();
     TestDescriptorParityWithLegacyForFragmentConfig();
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();

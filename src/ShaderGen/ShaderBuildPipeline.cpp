@@ -122,12 +122,30 @@ static bool ApplyBuildModelSpec(const hgl::graph::mtl::MaterialCreateConfig &con
 {
     if(config.material_instance && descriptor_spec && descriptor_spec->material_instance_bytes>0)
     {
-        if(!hgl::graph::mtl::MaterialInstanceConfigurator::ConfigureMaterialInstance(descriptor_db,
-                                                                                      material_instance,
-                                                                                      0,
-                                                                                      descriptor_spec->material_instance_bytes,
-                                                                                      config.shader_stage_flag_bit))
-            return false;
+        if(descriptor_spec->material_instance_schema!=hgl::graph::mtl::ShaderDataSchema::None)
+        {
+            const auto &schema_info=hgl::graph::mtl::GetShaderDataSchemaInfo(descriptor_spec->material_instance_schema);
+
+            if(schema_info.byte_size!=descriptor_spec->material_instance_bytes)
+                return false;
+
+            if(!hgl::graph::mtl::MaterialInstanceConfigurator::ConfigureMaterialInstance(descriptor_db,
+                                                                                          material_instance,
+                                                                                          0,
+                                                                                          descriptor_spec->material_instance_schema,
+                                                                                          schema_info,
+                                                                                          config.shader_stage_flag_bit))
+                return false;
+        }
+        else
+        {
+            if(!hgl::graph::mtl::MaterialInstanceConfigurator::ConfigureMaterialInstance(descriptor_db,
+                                                                                          material_instance,
+                                                                                          0,
+                                                                                          descriptor_spec->material_instance_bytes,
+                                                                                          config.shader_stage_flag_bit))
+                return false;
+        }
     }
 
     if(config.local_to_world)
