@@ -20,6 +20,7 @@
 #include <hgl/shadergen/ShaderBuildPipeline.h>
 #include <fstream>
 #include <filesystem>
+#include <cstdlib>
 #include <cstdio>
 #include <string>
 
@@ -279,6 +280,248 @@ namespace
         return text;
     }
 
+    static std::string BuildTrialAggregateReportText(const std::filesystem::path &trial_root)
+    {
+        const std::filesystem::path reports_dir=trial_root/"reports";
+        std::string text;
+        text += "# ShaderGen 试运行汇总报告（自动生成）\n\n";
+        text += "- TrialRoot: `";
+        text += trial_root.string();
+        text += "`\n\n";
+        text += "## Per-Material Baseline Reports\n\n";
+
+        bool has_any=false;
+        std::error_code ec;
+        if(std::filesystem::exists(reports_dir,ec))
+        {
+            for(const auto &entry:std::filesystem::directory_iterator(reports_dir,ec))
+            {
+                if(ec)
+                    break;
+
+                if(!entry.is_regular_file())
+                    continue;
+
+                const auto filename=entry.path().filename().string();
+                if(filename.find("_baseline_compare.md")==std::string::npos)
+                    continue;
+
+                has_any=true;
+                text += "- `";
+                text += filename;
+                text += "`\n";
+            }
+        }
+
+        if(!has_any)
+            text += "- `<none>`\n";
+
+        return text;
+    }
+
+    static std::string BuildDescriptorSpecText(const ShaderBuildDescriptorSpec &spec)
+    {
+        std::string text;
+        text += "ubos=";
+        for(size_t i=0;i<spec.ubos.size();++i)
+        {
+            if(i>0)
+                text += ",";
+            text += std::to_string(static_cast<int>(spec.ubos[i]));
+        }
+
+        text += "\nssbos=";
+        for(size_t i=0;i<spec.ssbos.size();++i)
+        {
+            if(i>0)
+                text += ",";
+            text += std::to_string(static_cast<int>(spec.ssbos[i]));
+        }
+
+        text += "\nmaterial_instance_bytes=";
+        text += std::to_string(spec.material_instance_bytes);
+        text += "\nmaterial_instance_schema=";
+        text += std::to_string(static_cast<int>(spec.material_instance_schema));
+        text += "\n";
+        return text;
+    }
+
+    static const char *GetShaderStageArtifactName(const ShaderStage stage)
+    {
+        switch(stage)
+        {
+            case ShaderStage::Vertex:   return "vertex";
+            case ShaderStage::Fragment: return "fragment";
+            case ShaderStage::Geometry: return "geometry";
+            case ShaderStage::Compute:  return "compute";
+            default:                    return "unknown";
+        }
+    }
+
+    static std::string BuildDescriptorInfoText(const MaterialDescriptorDB &descriptor_db,
+                                               const DescriptorBindingSlots &binding_contract)
+    {
+        std::string text;
+        text += "descriptor_count=";
+        text += std::to_string(descriptor_db.GetCount());
+        text += "\nubos=";
+
+        for(size_t i=0;i<UBODescriptorSemanticCount;++i)
+        {
+            if(i>0)
+                text += ",";
+            text += std::to_string(binding_contract.ubos[i]);
+        }
+
+        text += "\nssbos=";
+
+        for(size_t i=0;i<SSBODescriptorSemanticCount;++i)
+        {
+            if(i>0)
+                text += ",";
+            text += std::to_string(binding_contract.ssbos[i]);
+        }
+
+        text += "\n";
+        return text;
+    }
+
+    static std::string BuildMaterialBlocksText(const MaterialCreateInfo &mci)
+    {
+        const auto &material_instance=mci.GetMaterialInstance();
+        const auto &local_to_world=mci.GetLocalToWorld();
+
+        std::string text;
+        text += "material_instance.enabled=";
+        text += material_instance.IsActive() ? "true" : "false";
+        text += "\nmaterial_instance.stage_bits=";
+        text += std::to_string(material_instance.stage_bits);
+        text += "\nmaterial_instance.stride=";
+        text += std::to_string(material_instance.stride);
+        text += "\nmaterial_instance.schema=";
+        text += std::to_string(static_cast<int>(material_instance.schema));
+        text += "\nmaterial_instance.schema_file=";
+        text += material_instance.schema_file;
+        text += "\nlocal_to_world.enabled=";
+        text += local_to_world.enabled ? "true" : "false";
+        text += "\nlocal_to_world.stage_bits=";
+        text += std::to_string(local_to_world.stage_bits);
+        text += "\n";
+        return text;
+    }
+
+    static bool WriteLegacyShaderArtifacts(const std::filesystem::path &material_root,
+                                           const MaterialCreateInfo &mci)
+    {
+        for(const auto &[stage,shader]:mci.GetShaderMap())
+        {
+            if(!shader)
+                continue;
+
+            const char *stage_name=GetShaderStageArtifactName(stage);
+            const std::filesystem::path glsl_path=material_root/(std::string(stage_name) + ".glsl");
+            if(!WriteTextFile(glsl_path,shader->GetFinalGLSL()))
+                return false;
+
+            const uint32 *spv_data=shader->GetSPVData();
+            const size_t spv_size=shader->GetSPVSize();
+
+            if(spv_data&&spv_size>0)
+            {
+                std::string spv_text;
+                const size_t word_count=spv_size/sizeof(uint32_t);
+                spv_text.reserve(word_count*9);
+
+                for(size_t i=0;i<word_count;++i)
+                {
+                    char buf[16]{};
+                    std::snprintf(buf,sizeof(buf),"%08X",spv_data[i]);
+                    spv_text += buf;
+                    spv_text += '\n';
+                }
+
+                const std::filesystem::path spv_path=material_root/(std::string(stage_name) + ".spv.txt");
+                if(!WriteTextFile(spv_path,spv_text))
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool WriteCompileCompositorLegacyTreeInternal(const MaterialCreateInfo &mci,
+                                                  const char *material_name,
+                                                  const char *legacy_root)
+{
+    if(!EnsureDirectoryExists(legacy_root))
+        return false;
+
+    const std::string sanitized_name=SanitizeArtifactName(material_name);
+    const std::filesystem::path material_root=std::filesystem::path(legacy_root)/sanitized_name;
+
+    if(!EnsureDirectoryExists(material_root.string().c_str()))
+        return false;
+
+    if(!WriteTextFile(material_root/"descriptor_info.txt",
+                      BuildDescriptorInfoText(mci.GetDescriptorInfo(),mci.GetBindingContract())))
+        return false;
+
+    if(!WriteTextFile(material_root/"material_blocks.txt",BuildMaterialBlocksText(mci)))
+        return false;
+
+    return WriteLegacyShaderArtifacts(material_root,mci);
+}
+
+    static std::string BuildPipelineConfigText(const MaterialCreateConfig &config)
+    {
+        std::string text;
+        text += "shader_stage_flag_bit=";
+        text += std::to_string(config.shader_stage_flag_bit);
+        text += "\nmaterial_instance=";
+        text += config.material_instance ? "true" : "false";
+        text += "\nlocal_to_world=";
+        text += config.local_to_world ? "true" : "false";
+        text += "\nsampler_feature_bits_override=";
+        text += std::to_string(config.sampler_feature_bits_override);
+        text += "\ntexture_source_bits_override=";
+        text += std::to_string(config.texture_source_bits_override);
+        text += "\n";
+        return text;
+    }
+
+    static std::string BuildPipelineResultText(const CompileCompositorShadowBuildReport &report)
+    {
+        std::string text;
+        text += "success=";
+        text += report.result.success ? "true" : "false";
+        text += "\nfinal_state=";
+        text += std::to_string(static_cast<int>(report.result.value.final_state));
+        text += "\ndescriptor_count=";
+        text += std::to_string(report.result.value.descriptor_count);
+        text += "\nlayout_finalized=";
+        text += report.result.value.layout_finalized ? "true" : "false";
+        text += "\nbinary_count=";
+        text += std::to_string(report.result.value.binaries.size());
+        text += "\n";
+        return text;
+    }
+
+    static std::string BuildSpirvHexText(const ShaderBinary &binary)
+    {
+        std::string text;
+        text.reserve(binary.spirv.size()*9);
+
+        for(size_t i=0;i<binary.spirv.size();++i)
+        {
+            char buf[16]{};
+            std::snprintf(buf,sizeof(buf),"%08X",binary.spirv[i]);
+            text += buf;
+            text += '\n';
+        }
+
+        return text;
+    }
+
     static std::string BuildBaselineCompareReportText(const CompileCompositorShadowBuildReport &report,
                                                       const char *material_name,
                                                       const bool legacy_compile_success,
@@ -488,6 +731,56 @@ namespace
     }
 }
 
+bool WriteCompileCompositorLegacyTree(const MaterialCreateInfo &mci,
+                                      const char *material_name,
+                                      const char *legacy_root)
+{
+    return WriteCompileCompositorLegacyTreeInternal(mci,material_name,legacy_root);
+}
+
+std::string BuildCompileCompositorBaselineCompareCommand(const char *material_name,
+                                                         const char *trial_root)
+{
+    const std::string sanitized_name=SanitizeArtifactName(material_name);
+    const std::filesystem::path trial_root_path(trial_root ? trial_root : "build/shadergen_trial");
+    const std::filesystem::path legacy_dir=trial_root_path/"legacy"/sanitized_name;
+    const std::filesystem::path pipeline_dir=trial_root_path/"pipeline"/sanitized_name;
+    const std::filesystem::path report_path=trial_root_path/"reports"/(sanitized_name + "_baseline_compare.md");
+    const std::filesystem::path readiness_path=trial_root_path/"reports"/(sanitized_name + "_readiness.txt");
+
+    std::string command;
+    command.reserve(512);
+    command += "python shadergen_baseline_compare.py --legacy \"";
+    command += legacy_dir.string();
+    command += "\" --pipeline \"";
+    command += pipeline_dir.string();
+    command += "\" --report \"";
+    command += report_path.string();
+    command += "\" --readiness-file \"";
+    command += readiness_path.string();
+    command += "\"";
+    return command;
+}
+
+bool RunCompileCompositorBaselineCompare(const char *material_name,
+                                         const char *trial_root)
+{
+    const std::string command=BuildCompileCompositorBaselineCompareCommand(material_name,trial_root);
+    return std::system(command.c_str())==0;
+}
+
+bool WriteCompileCompositorTrialAggregateReport(const char *trial_root)
+{
+    const std::filesystem::path trial_root_path(trial_root ? trial_root : "build/shadergen_trial");
+    const std::filesystem::path reports_path=trial_root_path/"reports";
+
+    if(!EnsureDirectoryExists(reports_path.string().c_str()))
+        return false;
+
+    return WriteTextFile(reports_path/"baseline_compare.md",
+                         BuildTrialAggregateReportText(trial_root_path));
+}
+
 static bool HasUBOSemantic(const StaticMaterialDef &def, const UBODescriptorSemantic semantic)
 {
     if (!def.ubo_descriptors || semantic == UBODescriptorSemantic::Unknown)
@@ -572,6 +865,19 @@ MaterialCreateInfo *CompileCompositorMaterial(
                 "[CompileCompositorMaterial] material=%s pipeline_shadow_artifacts_write_failed\n",
                 def.name ? def.name : "<unnamed>");
         }
+
+        if(WriteCompileCompositorShadowPipelineTree(shadow_report,def.name))
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial] material=%s pipeline_shadow_tree=build/shadergen_trial/pipeline\n",
+                def.name ? def.name : "<unnamed>");
+        }
+        else
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial] material=%s pipeline_shadow_tree_write_failed\n",
+                def.name ? def.name : "<unnamed>");
+        }
     }
 
     std::string diagnostics;
@@ -641,6 +947,45 @@ MaterialCreateInfo *CompileCompositorMaterial(
                 "[CompileCompositorMaterial] material=%s baseline_compare_report_write_failed\n",
                 def.name ? def.name : "<unnamed>");
         }
+
+        if(RunCompileCompositorBaselineCompare(def.name))
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial] material=%s baseline_compare_script=build/shadergen_trial/reports\n",
+                def.name ? def.name : "<unnamed>");
+
+            if(WriteCompileCompositorTrialAggregateReport())
+            {
+                std::fprintf(stderr,
+                    "[CompileCompositorMaterial] material=%s baseline_compare_aggregate=build/shadergen_trial/reports/baseline_compare.md\n",
+                    def.name ? def.name : "<unnamed>");
+            }
+            else
+            {
+                std::fprintf(stderr,
+                    "[CompileCompositorMaterial] material=%s baseline_compare_aggregate_write_failed\n",
+                    def.name ? def.name : "<unnamed>");
+            }
+        }
+        else
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial] material=%s baseline_compare_script_failed\n",
+                def.name ? def.name : "<unnamed>");
+        }
+    }
+
+    if(WriteCompileCompositorLegacyTree(*mci,def.name))
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s legacy_tree=build/shadergen_trial/legacy\n",
+            def.name ? def.name : "<unnamed>");
+    }
+    else
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s legacy_tree_write_failed\n",
+            def.name ? def.name : "<unnamed>");
     }
 
     return mci;
@@ -738,6 +1083,9 @@ CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(co
     const MaterialCreateConfig pipeline_cfg=BuildPipelineConfigFromCompositorConfig(def,config);
     const ShaderBuildDescriptorSpec descriptor_spec=BuildDescriptorSpecFromStaticMaterialDef(def);
 
+    report.pipeline_config=pipeline_cfg;
+    report.descriptor_spec=descriptor_spec;
+
     report.result=pipeline.Build(pipeline_cfg,profile,&descriptor_spec);
     report.evaluation=EvaluateShaderBuildResultForRouteSwitch(report.result);
     report.summary=GetShaderBuildRouteEvaluationSummary(report.evaluation);
@@ -794,6 +1142,46 @@ bool WriteCompileCompositorTrialBaselineReport(const CompileCompositorShadowBuil
                                                         material_name,
                                                         legacy_compile_success,
                                                         legacy_summary));
+}
+
+bool WriteCompileCompositorShadowPipelineTree(const CompileCompositorShadowBuildReport &report,
+                                              const char *material_name,
+                                              const char *pipeline_root)
+{
+    if(!EnsureDirectoryExists(pipeline_root))
+        return false;
+
+    const std::string sanitized_name=SanitizeArtifactName(material_name);
+    const std::filesystem::path material_root=std::filesystem::path(pipeline_root)/sanitized_name;
+
+    if(!EnsureDirectoryExists(material_root.string().c_str()))
+        return false;
+
+    if(!WriteTextFile(material_root/"descriptor_spec.txt",BuildDescriptorSpecText(report.descriptor_spec)))
+        return false;
+
+    if(!WriteTextFile(material_root/"pipeline_config.txt",BuildPipelineConfigText(report.pipeline_config)))
+        return false;
+
+    if(!WriteTextFile(material_root/"result_summary.txt",BuildPipelineResultText(report)))
+        return false;
+
+    if(!WriteTextFile(material_root/"readiness.txt",report.summary))
+        return false;
+
+    if(!WriteTextFile(material_root/"diagnostics.log",BuildShadowDiagnosticsText(report,material_name)))
+        return false;
+
+    for(size_t i=0;i<report.result.value.binaries.size();++i)
+    {
+        const ShaderBinary &binary=report.result.value.binaries[i];
+        const std::filesystem::path spv_path=material_root/(std::string("stage_") + std::to_string(i) + ".spv.txt");
+
+        if(!WriteTextFile(spv_path,BuildSpirvHexText(binary)))
+            return false;
+    }
+
+    return true;
 }
 
 MaterialCreateInfo *CompileCompositorMaterial(

@@ -39,9 +39,16 @@ struct CompileCompositorRouteDecision
 
 struct CompileCompositorShadowBuildReport
 {
+    MaterialCreateConfig pipeline_config;
+    ShaderBuildDescriptorSpec descriptor_spec;
     ShaderGenResult<ShaderBuildResult> result;
     ShaderBuildRouteEvaluation evaluation;
     std::string summary;
+
+    CompileCompositorShadowBuildReport()
+        : pipeline_config(PrimitiveType::Triangles,false)
+    {
+    }
 };
 
 /**
@@ -107,6 +114,17 @@ bool WriteCompileCompositorTrialBaselineReport(const CompileCompositorShadowBuil
                                                bool legacy_compile_success,
                                                const char *legacy_summary,
                                                const char *trial_root = "build/shadergen_trial");
+bool WriteCompileCompositorShadowPipelineTree(const CompileCompositorShadowBuildReport &report,
+                                              const char *material_name,
+                                              const char *pipeline_root = "build/shadergen_trial/pipeline");
+bool WriteCompileCompositorLegacyTree(const MaterialCreateInfo &mci,
+                                      const char *material_name,
+                                      const char *legacy_root = "build/shadergen_trial/legacy");
+std::string BuildCompileCompositorBaselineCompareCommand(const char *material_name,
+                                                         const char *trial_root = "build/shadergen_trial");
+bool RunCompileCompositorBaselineCompare(const char *material_name,
+                                         const char *trial_root = "build/shadergen_trial");
+bool WriteCompileCompositorTrialAggregateReport(const char *trial_root = "build/shadergen_trial");
 
 // diagnostics may also contain non-fatal inference mismatch warnings on success.
 

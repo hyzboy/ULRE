@@ -554,6 +554,99 @@ static void TestCompileCompositorTrialBaselineReport()
     CHECK_TRUE(report_text.find("LegacySummary: `legacy compile succeeded`")!=std::string::npos);
 }
 
+static void TestCompileCompositorShadowPipelineTree()
+{
+    Material3DCreateConfig cfg(PrimitiveType::Triangles,
+                               IncludeCamera::With,
+                               IncludeL2W::With,
+                               IncludeSky::Without);
+    cfg.material_instance = true;
+    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    const StaticMaterialDef def = MakeSchemaAwareCompositorDef();
+    const auto report = BuildCompileCompositorShadowPipelineReport(&profile,def,&cfg);
+
+    CHECK_TRUE(WriteCompileCompositorShadowPipelineTree(report,
+                                                        def.name,
+                                                        "build/shadergen_trial/pipeline"));
+
+    std::ifstream descriptor_ifs("build/shadergen_trial/pipeline/SchemaAwareSmokeCompositor/descriptor_spec.txt",std::ios::in);
+    CHECK_TRUE(descriptor_ifs.is_open());
+    std::string descriptor_text;
+    std::getline(descriptor_ifs,descriptor_text);
+    CHECK_TRUE(descriptor_text.find("ubos=")!=std::string::npos);
+
+    std::ifstream result_ifs("build/shadergen_trial/pipeline/SchemaAwareSmokeCompositor/result_summary.txt",std::ios::in);
+    CHECK_TRUE(result_ifs.is_open());
+    std::string result_text;
+    std::getline(result_ifs,result_text);
+    CHECK_TRUE(result_text.find("success=true")!=std::string::npos);
+
+    std::ifstream spv_ifs("build/shadergen_trial/pipeline/SchemaAwareSmokeCompositor/stage_0.spv.txt",std::ios::in);
+    CHECK_TRUE(spv_ifs.is_open());
+}
+
+static void TestCompileCompositorLegacyTree()
+{
+    Material3DCreateConfig cfg(PrimitiveType::Triangles,
+                               IncludeCamera::With,
+                               IncludeL2W::With,
+                               IncludeSky::Without);
+    cfg.material_instance = true;
+    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    const StaticMaterialDef def = MakeSchemaAwareCompositorDef();
+
+    MaterialCreateInfo *mci = CompileCompositorMaterial(&profile,
+                                                        def,
+                                                        "#version 450\nvoid main(){}\n",
+                                                        "#version 450\nlayout(location=0) out vec4 outColor; void main(){outColor=vec4(1.0);}\n",
+                                                        &cfg);
+    CHECK_TRUE(mci!=nullptr);
+
+    if(!mci)
+        return;
+
+    CHECK_TRUE(WriteCompileCompositorLegacyTree(*mci,def.name,"build/shadergen_trial/legacy"));
+
+    std::ifstream descriptor_ifs("build/shadergen_trial/legacy/SchemaAwareSmokeCompositor/descriptor_info.txt",std::ios::in);
+    CHECK_TRUE(descriptor_ifs.is_open());
+
+    std::ifstream vertex_glsl_ifs("build/shadergen_trial/legacy/SchemaAwareSmokeCompositor/vertex.glsl",std::ios::in);
+    CHECK_TRUE(vertex_glsl_ifs.is_open());
+
+    std::ifstream fragment_spv_ifs("build/shadergen_trial/legacy/SchemaAwareSmokeCompositor/fragment.spv.txt",std::ios::in);
+    CHECK_TRUE(fragment_spv_ifs.is_open());
+
+    delete mci;
+}
+
+static void TestCompileCompositorBaselineCompareCommand()
+{
+    const std::string command=BuildCompileCompositorBaselineCompareCommand("SchemaAwareSmokeCompositor","build/shadergen_trial");
+
+    CHECK_TRUE(command.find("python shadergen_baseline_compare.py")!=std::string::npos);
+    CHECK_TRUE(command.find("SchemaAwareSmokeCompositor")!=std::string::npos);
+    CHECK_TRUE(command.find("legacy")!=std::string::npos);
+    CHECK_TRUE(command.find("pipeline")!=std::string::npos);
+    CHECK_TRUE(command.find("_readiness.txt")!=std::string::npos);
+}
+
+static void TestCompileCompositorTrialAggregateReport()
+{
+    CHECK_TRUE(WriteCompileCompositorTrialAggregateReport("build/shadergen_trial"));
+
+    std::ifstream aggregate_ifs("build/shadergen_trial/reports/baseline_compare.md",std::ios::in);
+    CHECK_TRUE(aggregate_ifs.is_open());
+
+    std::string aggregate_text((std::istreambuf_iterator<char>(aggregate_ifs)),
+                               std::istreambuf_iterator<char>());
+    CHECK_TRUE(aggregate_text.find("# ShaderGen 试运行汇总报告（自动生成）")!=std::string::npos);
+    CHECK_TRUE(aggregate_text.find("SchemaAwareSmokeCompositor_baseline_compare.md")!=std::string::npos);
+}
+
 static void TestCompileCompositorRouteDecisionKeepsLegacyWhenPipelineRequested()
 {
     ShaderBuildSwitchConfig switch_config{};
@@ -1064,6 +1157,10 @@ int main()
     TestCompileCompositorShadowPipelineReport();
     TestCompileCompositorShadowBuildArtifacts();
     TestCompileCompositorTrialBaselineReport();
+    TestCompileCompositorShadowPipelineTree();
+    TestCompileCompositorLegacyTree();
+    TestCompileCompositorBaselineCompareCommand();
+    TestCompileCompositorTrialAggregateReport();
     TestDescriptorParityWithLegacyForMinimalConfig();
     TestDescriptorParityWithLegacyForFragmentConfig();
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();
