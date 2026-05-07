@@ -2,6 +2,7 @@
 
 #include<hgl/shadergen/ShaderGenDiagnostic.h>
 #include<hgl/shadergen/ShaderCompilerContext.h>
+#include<hgl/shadergen/MaterialBuilderBlocks.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
@@ -31,6 +32,8 @@ struct ShaderBuildResult
 {
     ShaderBuildState final_state = ShaderBuildState::Empty;
     mtl::DescriptorBindingSlots binding_contract;
+    mtl::MaterialInstanceBlock material_instance;
+    mtl::LocalToWorldBlock local_to_world;
     uint32_t descriptor_count = 0;
     bool layout_finalized = false;
     std::vector<ShaderBinary> binaries;

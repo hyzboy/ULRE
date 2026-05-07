@@ -2,6 +2,7 @@
 #include<hgl/shadergen/DescriptorLayoutBuilder.h>
 #include<hgl/shadergen/MaterialDescriptorDB.h>
 #include<hgl/shadergen/MaterialDescriptorStageBinder.h>
+#include<hgl/shadergen/MaterialInstanceConfigurator.h>
 #include<hgl/mtl/UBOCommon.h>
 
 namespace
@@ -96,14 +97,6 @@ static bool ApplyDescriptorSpec(const hgl::graph::ShaderBuildDescriptorSpec *des
             return false;
     }
 
-    if(descriptor_spec->material_instance_bytes>0)
-    {
-        if(!AddSSBOBySemantic(descriptor_db,
-                              hgl::graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceData,
-                              stage_bits))
-            return false;
-    }
-
     return true;
 }
 
@@ -116,6 +109,31 @@ static bool ApplySSBOOverrides(const hgl::graph::mtl::MaterialCreateConfig &conf
                               hgl::graph::mtl::SSBODescriptorSemantic::TransformData,
                               config.shader_stage_flag_bit))
             return false;
+    }
+
+    return true;
+}
+
+static bool ApplyBuildModelSpec(const hgl::graph::mtl::MaterialCreateConfig &config,
+                                const hgl::graph::ShaderBuildDescriptorSpec *descriptor_spec,
+                                hgl::graph::MaterialDescriptorDB &descriptor_db,
+                                hgl::graph::mtl::MaterialInstanceBlock &material_instance,
+                                hgl::graph::mtl::LocalToWorldBlock &local_to_world)
+{
+    if(config.material_instance && descriptor_spec && descriptor_spec->material_instance_bytes>0)
+    {
+        if(!hgl::graph::mtl::MaterialInstanceConfigurator::ConfigureMaterialInstance(descriptor_db,
+                                                                                      material_instance,
+                                                                                      0,
+                                                                                      descriptor_spec->material_instance_bytes,
+                                                                                      config.shader_stage_flag_bit))
+            return false;
+    }
+
+    if(config.local_to_world)
+    {
+        local_to_world.stage_bits=config.shader_stage_flag_bit;
+        local_to_world.enabled=true;
     }
 
     return true;
@@ -184,6 +202,22 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
 
     MaterialDescriptorDB descriptor_db;
     mtl::DescriptorBindingSlots binding_contract{};
+
+    if(!ApplyBuildModelSpec(config,
+                            descriptor_spec,
+                            descriptor_db,
+                            result.value.material_instance,
+                            result.value.local_to_world))
+    {
+        result.success=false;
+        result.value.final_state=ShaderBuildState::Failed;
+        result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                      ShaderGenErrorCode::InvalidConfig,
+                                      ShaderStage::Vertex,
+                                      "ShaderBuildPipeline.BuildModel",
+                                      "failed to apply build model spec"});
+        return result;
+    }
 
     if(!ApplyDescriptorSpec(descriptor_spec,config.shader_stage_flag_bit,descriptor_db))
     {

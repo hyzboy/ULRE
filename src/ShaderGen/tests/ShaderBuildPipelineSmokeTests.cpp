@@ -254,6 +254,8 @@ static void TestDescriptorParityWithLegacyForMaterialInstanceConfig()
         return;
 
     CHECK_EQ(pipeline_result.value.descriptor_count, legacy_mci->GetDescriptorInfo().GetCount());
+    CHECK_EQ(pipeline_result.value.material_instance.stride, legacy_mci->GetMaterialInstance().stride);
+    CHECK_EQ(pipeline_result.value.material_instance.stage_bits, legacy_mci->GetMaterialInstance().stage_bits);
 
     const auto &legacy_contract=legacy_mci->GetBindingContract();
 
@@ -285,6 +287,8 @@ static void TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig()
         return;
 
     CHECK_EQ(pipeline_result.value.descriptor_count, legacy_mci->GetDescriptorInfo().GetCount());
+    CHECK_EQ(pipeline_result.value.local_to_world.enabled, legacy_mci->GetLocalToWorld().enabled);
+    CHECK_EQ(pipeline_result.value.local_to_world.stage_bits, legacy_mci->GetLocalToWorld().stage_bits);
 
     const auto &legacy_contract=legacy_mci->GetBindingContract();
 
