@@ -62,6 +62,43 @@ static bool AddSSBOBySemantic(hgl::graph::MaterialDescriptorDB &descriptor_db,
     return descriptor_db.AddSSBO(stage_bits,meta.set_type,ssbo)!=nullptr;
 }
 
+static bool AddUBOBySemantic(hgl::graph::MaterialDescriptorDB &descriptor_db,
+                             const hgl::graph::mtl::UBODescriptorSemantic semantic,
+                             const uint32_t stage_bits)
+{
+    if(!descriptor_db.AddUBOStruct(semantic))
+        return false;
+
+    const auto &meta=hgl::graph::mtl::GetDescriptorSemanticMeta(semantic);
+    auto *ubo=hgl::graph::mtl::CreateUBODescriptor(semantic,stage_bits);
+    if(!ubo)
+        return false;
+
+    return descriptor_db.AddUBO(stage_bits,meta.set_type,ubo)!=nullptr;
+}
+
+static bool ApplyDescriptorSpec(const hgl::graph::ShaderBuildDescriptorSpec *descriptor_spec,
+                                const uint32_t stage_bits,
+                                hgl::graph::MaterialDescriptorDB &descriptor_db)
+{
+    if(!descriptor_spec)
+        return true;
+
+    for(const auto semantic:descriptor_spec->ubos)
+    {
+        if(!AddUBOBySemantic(descriptor_db,semantic,stage_bits))
+            return false;
+    }
+
+    for(const auto semantic:descriptor_spec->ssbos)
+    {
+        if(!AddSSBOBySemantic(descriptor_db,semantic,stage_bits))
+            return false;
+    }
+
+    return true;
+}
+
 static bool ApplySSBOOverrides(const hgl::graph::mtl::MaterialCreateConfig &config,
                                hgl::graph::MaterialDescriptorDB &descriptor_db)
 {
@@ -80,7 +117,8 @@ static bool ApplySSBOOverrides(const hgl::graph::mtl::MaterialCreateConfig &conf
 namespace hgl::graph
 {
 ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::MaterialCreateConfig &config,
-                                                              const mtl::contract::PhysicalDeviceProfileLite *profile)
+                                                              const mtl::contract::PhysicalDeviceProfileLite *profile,
+                                                              const ShaderBuildDescriptorSpec *descriptor_spec)
 {
     ShaderGenResult<ShaderBuildResult> result{};
 
@@ -138,6 +176,18 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
 
     MaterialDescriptorDB descriptor_db;
     mtl::DescriptorBindingSlots binding_contract{};
+
+    if(!ApplyDescriptorSpec(descriptor_spec,config.shader_stage_flag_bit,descriptor_db))
+    {
+        result.success=false;
+        result.value.final_state=ShaderBuildState::Failed;
+        result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                      ShaderGenErrorCode::InvalidConfig,
+                                      ShaderStage::Vertex,
+                                      "ShaderBuildPipeline.DescriptorSpec",
+                                      "failed to apply descriptor spec"});
+        return result;
+    }
 
     if(!ApplySSBOOverrides(config,descriptor_db))
     {

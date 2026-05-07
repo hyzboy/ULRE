@@ -20,6 +20,12 @@ enum class ShaderBuildState
     Failed
 };
 
+struct ShaderBuildDescriptorSpec
+{
+    std::vector<mtl::UBODescriptorSemantic> ubos;
+    std::vector<mtl::SSBODescriptorSemantic> ssbos;
+};
+
 struct ShaderBuildResult
 {
     ShaderBuildState final_state = ShaderBuildState::Empty;
@@ -34,6 +40,7 @@ class ShaderBuildPipeline
 {
 public:
     ShaderGenResult<ShaderBuildResult> Build(const mtl::MaterialCreateConfig &config,
-                                             const mtl::contract::PhysicalDeviceProfileLite *profile);
+                                             const mtl::contract::PhysicalDeviceProfileLite *profile,
+                                             const ShaderBuildDescriptorSpec *descriptor_spec=nullptr);
 };
 }//namespace hgl::graph
