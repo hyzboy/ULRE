@@ -5,6 +5,7 @@
 #include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/ShaderStageMap.h>
+#include<hgl/shadergen/ShaderGenDiagnostic.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
 #include<hgl/shadergen/MaterialBuilderBlocks.h>
@@ -125,6 +126,7 @@ namespace hgl::graph
             MaterialCreateInfo &operator=(const MaterialCreateInfo &) = delete;
             ~MaterialCreateInfo();  // Need explicit destructor to properly clean up shader_map
 
+            ShaderGenStatus TryCompileShaderStagesToSPV(std::vector<ShaderGenDiagnostic> *diagnostics=nullptr);
             bool CompileShaderStagesToSPV();
         };//class MaterialCreateInfo
     }//namespace mtl

@@ -49,6 +49,17 @@ SET(MATERIAL_CREATE_INFO_STAGE_SET_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageBu
                                          ShaderStageBuildSet.cpp)
 SOURCE_GROUP("Material Create Info\\Stage Set" FILES ${MATERIAL_CREATE_INFO_STAGE_SET_FILES})
 
+# Material Create Info / Diagnostics
+SET(MATERIAL_CREATE_INFO_DIAGNOSTIC_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderGenDiagnostic.h)
+SOURCE_GROUP("Material Create Info\\Diagnostics" FILES ${MATERIAL_CREATE_INFO_DIAGNOSTIC_FILES})
+
+# Material Create Info / Pipeline Skeleton
+SET(MATERIAL_CREATE_INFO_PIPELINE_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerContext.h
+                                        ${SHADERGEN_INCLUDE_PATH}/ShaderBuildPipeline.h
+                                        ShaderCompilerContext.cpp
+                                        ShaderBuildPipeline.cpp)
+SOURCE_GROUP("Material Create Info\\Pipeline Skeleton" FILES ${MATERIAL_CREATE_INFO_PIPELINE_FILES})
+
 # Descriptor Info
 SET(DESC_INFO_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderStageIO.h
                             ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorDB.h
@@ -246,6 +257,8 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${MATERIAL_CREATE_INFO_CONFIGURATOR_FILES}
     ${MATERIAL_CREATE_INFO_COMPILER_FILES}
     ${MATERIAL_CREATE_INFO_STAGE_SET_FILES}
+    ${MATERIAL_CREATE_INFO_DIAGNOSTIC_FILES}
+    ${MATERIAL_CREATE_INFO_PIPELINE_FILES}
     ${SHADER_CREATER_HEADER_FILES}
     ${SHADER_CREATER_SOURCE_FILES}
     ${GLSL_COMPILER_SOURCE}

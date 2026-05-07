@@ -236,6 +236,32 @@ bool MaterialCreateInfo::CompilePreparedShaderSources()
 
 bool MaterialCreateInfo::CompileShaderStagesToSPV()
 {
-    return CompilePreparedShaderSources();
+    auto result=TryCompileShaderStagesToSPV(nullptr);
+    return result.success;
+}
+
+ShaderGenStatus MaterialCreateInfo::TryCompileShaderStagesToSPV(std::vector<ShaderGenDiagnostic> *diagnostics)
+{
+    ShaderGenStatus result{};
+
+    if(!CompilePreparedShaderSources())
+    {
+        result.success=false;
+        result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                      ShaderGenErrorCode::CompileFailed,
+                                      ShaderStage::Vertex,
+                                      "MaterialCreateInfo",
+                                      "CompilePreparedShaderSources failed"});
+
+        if(diagnostics)
+            diagnostics->insert(diagnostics->end(),result.diagnostics.begin(),result.diagnostics.end());
+
+        return result;
+    }
+
+    result.success=true;
+    if(diagnostics)
+        diagnostics->insert(diagnostics->end(),result.diagnostics.begin(),result.diagnostics.end());
+    return result;
 }
 }//namespace hgl::graph::mtl
