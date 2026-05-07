@@ -301,6 +301,7 @@ static void TestCompileSucceedsWhenMaterialInstanceSchemaSpecProvided()
     CHECK_TRUE(!result.value.binaries[0].spirv.empty());
     CHECK_EQ((int)result.value.material_instance.schema, (int)spec.material_instance_schema);
     CHECK_TRUE(!result.value.material_instance.schema_file.empty());
+    CHECK_TRUE(result.diagnostics[0].message=="schema-aware compile path active: schema_color4f.glsl");
 
     bool has_schema_diag=false;
     for(const auto &d:result.diagnostics)

@@ -3,6 +3,7 @@
 #include<hgl/shadergen/MaterialDescriptorDB.h>
 #include<hgl/shadergen/MaterialDescriptorStageBinder.h>
 #include<hgl/shadergen/MaterialInstanceConfigurator.h>
+#include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/mtl/UBOCommon.h>
 
 namespace
@@ -28,7 +29,10 @@ static bool BuildMaterialInstanceSchemaSnippet(const hgl::graph::mtl::MaterialIn
     snippet += material_instance.schema_file;
     snippet += "\n";
     snippet += "// material_instance schema injected for pipeline compile path\n";
-    snippet += "struct MaterialBindingInstance { vec4 Color; };\n";
+    snippet += "#include \"";
+    snippet += "common/schema/";
+    snippet += material_instance.schema_file;
+    snippet += "\"\n";
     return true;
 }
 
