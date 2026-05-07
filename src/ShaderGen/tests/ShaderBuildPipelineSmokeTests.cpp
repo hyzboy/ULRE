@@ -413,6 +413,45 @@ static void TestCompileCompositorRoutePlanDefaults()
     CHECK_TRUE(!plan.rationale.empty());
 }
 
+static void TestCompileCompositorRouteDecisionDefaultsToLegacy()
+{
+    const auto decision=ResolveCompileCompositorRouteDecision(nullptr);
+
+    CHECK_TRUE(decision.resolved_route==ShaderBuildRoute::LegacyMaterialCreateInfo);
+    CHECK_TRUE(decision.will_use_legacy_now);
+    CHECK_TRUE(!decision.pipeline_trial_requested);
+    CHECK_TRUE(decision.fallback_to_legacy);
+    CHECK_TRUE(!decision.rationale.empty());
+}
+
+static void TestCompileCompositorRouteDecisionSummary()
+{
+    ShaderBuildSwitchConfig switch_config{};
+    switch_config.enable_pipeline=true;
+
+    const auto decision=ResolveCompileCompositorRouteDecision(&switch_config);
+    const std::string summary=GetCompileCompositorRouteDecisionSummary(decision);
+
+    CHECK_TRUE(summary.find("resolved_route=Pipeline")!=std::string::npos);
+    CHECK_TRUE(summary.find("will_use_legacy_now=true")!=std::string::npos);
+    CHECK_TRUE(summary.find("pipeline_trial_requested=true")!=std::string::npos);
+    CHECK_TRUE(summary.find("fallback_to_legacy=true")!=std::string::npos);
+}
+
+static void TestCompileCompositorRouteDecisionKeepsLegacyWhenPipelineRequested()
+{
+    ShaderBuildSwitchConfig switch_config{};
+    switch_config.enable_pipeline=true;
+
+    const auto decision=ResolveCompileCompositorRouteDecision(&switch_config);
+
+    CHECK_TRUE(decision.resolved_route==ShaderBuildRoute::Pipeline);
+    CHECK_TRUE(decision.will_use_legacy_now);
+    CHECK_TRUE(decision.pipeline_trial_requested);
+    CHECK_TRUE(decision.fallback_to_legacy);
+    CHECK_TRUE(!decision.rationale.empty());
+}
+
 static void TestBuildModelParityWithLegacyForMaterialInstanceSchemaConfig()
 {
     ShaderBuildPipeline pipeline;
@@ -903,6 +942,9 @@ int main()
     TestRouteSwitchEvaluationForSchemaAwareMaterialInstance();
     TestRouteSwitchEvaluationRejectsFailedSchemaBuild();
     TestCompileCompositorRoutePlanDefaults();
+    TestCompileCompositorRouteDecisionDefaultsToLegacy();
+    TestCompileCompositorRouteDecisionKeepsLegacyWhenPipelineRequested();
+    TestCompileCompositorRouteDecisionSummary();
     TestDescriptorParityWithLegacyForMinimalConfig();
     TestDescriptorParityWithLegacyForFragmentConfig();
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();

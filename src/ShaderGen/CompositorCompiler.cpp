@@ -425,6 +425,50 @@ CompileCompositorRoutePlan BuildCompileCompositorRoutePlan()
     return plan;
 }
 
+CompileCompositorRouteDecision ResolveCompileCompositorRouteDecision(const ShaderBuildSwitchConfig *switch_config)
+{
+    const CompileCompositorRoutePlan plan=BuildCompileCompositorRoutePlan();
+
+    CompileCompositorRouteDecision decision{};
+    decision.resolved_route=ResolveShaderBuildRoute(switch_config);
+    decision.pipeline_trial_requested=(decision.resolved_route==ShaderBuildRoute::Pipeline);
+    decision.fallback_to_legacy=plan.allow_pipeline_fallback;
+    decision.will_use_legacy_now=true;
+
+    if(decision.pipeline_trial_requested)
+    {
+        decision.rationale = "Pipeline route requested for CompileCompositorMaterial, but the current F2.10 plan keeps the production entry on Legacy while preserving fallback/readiness export preparation.";
+    }
+    else
+    {
+        decision.rationale = "CompileCompositorMaterial remains on Legacy by default in F2.10; route-switch intent is evaluated but not yet wired into the production compile branch.";
+    }
+
+    return decision;
+}
+
+std::string GetCompileCompositorRouteDecisionSummary(const CompileCompositorRouteDecision &decision)
+{
+    std::string text;
+    text.reserve(256 + decision.rationale.size());
+    text += "resolved_route=";
+    text += GetShaderBuildRouteName(decision.resolved_route);
+    text += ", will_use_legacy_now=";
+    text += decision.will_use_legacy_now ? "true" : "false";
+    text += ", pipeline_trial_requested=";
+    text += decision.pipeline_trial_requested ? "true" : "false";
+    text += ", fallback_to_legacy=";
+    text += decision.fallback_to_legacy ? "true" : "false";
+
+    if(!decision.rationale.empty())
+    {
+        text += ", rationale=";
+        text += decision.rationale;
+    }
+
+    return text;
+}
+
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &    def,

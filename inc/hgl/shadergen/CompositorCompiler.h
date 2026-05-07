@@ -28,6 +28,15 @@ struct CompileCompositorRoutePlan
     std::string rationale;
 };
 
+struct CompileCompositorRouteDecision
+{
+    ShaderBuildRoute resolved_route = ShaderBuildRoute::LegacyMaterialCreateInfo;
+    bool will_use_legacy_now = true;
+    bool pipeline_trial_requested = false;
+    bool fallback_to_legacy = false;
+    std::string rationale;
+};
+
 /**
  * 编译 Compositor 模板产出的完整 GLSL → MaterialCreateInfo*。
  *
@@ -78,6 +87,8 @@ bool PrepareCompositorGLSLForReflection(
     std::string *diagnostics = nullptr);
 
 CompileCompositorRoutePlan BuildCompileCompositorRoutePlan();
+CompileCompositorRouteDecision ResolveCompileCompositorRouteDecision(const ShaderBuildSwitchConfig *switch_config=nullptr);
+std::string GetCompileCompositorRouteDecisionSummary(const CompileCompositorRouteDecision &decision);
 
 // diagnostics may also contain non-fatal inference mismatch warnings on success.
 
