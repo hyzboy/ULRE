@@ -62,3 +62,15 @@ target_link_libraries(MaterialKeyAbiSnapshot PRIVATE ${ULRE})
 set_property(TARGET MaterialKeyAbiSnapshot PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 
 add_test(NAME MaterialKeyAbiSnapshot COMMAND MaterialKeyAbiSnapshot)
+
+# ShaderBuildPipelineSmokeTests validates the new pipeline minimal chain
+# (config validation + minimal source generation + context compile).
+add_executable(ShaderBuildPipelineSmokeTests
+    ShaderBuildPipelineSmokeTests.cpp
+)
+
+target_link_libraries(ShaderBuildPipelineSmokeTests PRIVATE ${ULRE})
+
+set_property(TARGET ShaderBuildPipelineSmokeTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+
+add_test(NAME ShaderBuildPipelineSmokeTests COMMAND ShaderBuildPipelineSmokeTests)
