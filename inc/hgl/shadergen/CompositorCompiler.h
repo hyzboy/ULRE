@@ -16,6 +16,7 @@
 
 namespace hgl::graph::mtl{
 
+struct MaterialCreateConfig;
 struct Material3DCreateConfig;
 struct Material2DCreateConfig;
 class MaterialCreateInfo;
@@ -57,7 +58,7 @@ struct CompileCompositorTrialBatchItem
     const StaticMaterialDef *def = nullptr;
     std::string vs_glsl;
     std::string fs_glsl;
-    const Material3DCreateConfig *config = nullptr;
+    const MaterialCreateConfig *config = nullptr;
     std::string material_name_override;
 };
 

@@ -727,6 +727,9 @@ static void TestCompileCompositorBuiltinCandidateTrialBatchSummary()
     std::ifstream billboard_dynamic_report_ifs("build/shadergen_trial/reports/BillboardDynamic_baseline_compare.md",std::ios::in);
     CHECK_TRUE(billboard_dynamic_report_ifs.is_open());
 
+    std::ifstream text2d_report_ifs("build/shadergen_trial/reports/Text2D_baseline_compare.md",std::ios::in);
+    CHECK_TRUE(text2d_report_ifs.is_open());
+
     std::ifstream standard_pipeline_ifs("build/shadergen_trial/pipeline/Standard_v1/result_summary.txt",std::ios::in);
     CHECK_TRUE(standard_pipeline_ifs.is_open());
 }

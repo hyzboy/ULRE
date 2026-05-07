@@ -25,6 +25,7 @@
 #include "3d/StandardDescriptorBuilder.h"
 #include "3d/StandardVariantRouter.h"
 #include "3d/MaterialFactory3DCommon.h"
+#include "2d/Build2DCommon.h"
 #include <fstream>
 #include <filesystem>
 #include <cstdlib>
@@ -36,6 +37,15 @@ namespace hgl::graph::mtl {
 static bool HasUBOSemantic(const StaticMaterialDef &def, const UBODescriptorSemantic semantic);
 static bool HasSSBOSemantic(const StaticMaterialDef &def, const SSBODescriptorSemantic semantic);
 static bool HasPerMaterialDescriptor(const StaticMaterialDef &def);
+
+static CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReportForConfig(const contract::PhysicalDeviceProfileLite *profile,
+                                                                                               const StaticMaterialDef &def,
+                                                                                               const MaterialCreateConfig *config);
+static MaterialCreateInfo *CompileCompositorMaterialForConfig(const contract::PhysicalDeviceProfileLite *profile,
+                                                              const StaticMaterialDef &def,
+                                                              const std::string &vs_glsl,
+                                                              const std::string &fs_glsl,
+                                                              const MaterialCreateConfig *config);
 
 namespace
 {
@@ -823,7 +833,7 @@ CompileCompositorTrialBatchReport RunCompileCompositorTrialBatch(const contract:
                                   ? (item.def->name ? item.def->name : "<unnamed>")
                                   : item.material_name_override.c_str();
 
-        CompileCompositorShadowBuildReport shadow_report = BuildCompileCompositorShadowPipelineReport(profile,*item.def,item.config);
+        CompileCompositorShadowBuildReport shadow_report = BuildCompileCompositorShadowPipelineReportForConfig(profile,*item.def,item.config);
 
         if(shadow_report.result.success)
             ++report.pipeline_trial_success_count;
@@ -831,11 +841,11 @@ CompileCompositorTrialBatchReport RunCompileCompositorTrialBatch(const contract:
         WriteCompileCompositorShadowBuildArtifacts(shadow_report,material_name);
         WriteCompileCompositorShadowPipelineTree(shadow_report,material_name);
 
-        MaterialCreateInfo *mci = CompileCompositorMaterial(profile,
-                                                            *item.def,
-                                                            item.vs_glsl,
-                                                            item.fs_glsl,
-                                                            item.config);
+        MaterialCreateInfo *mci = CompileCompositorMaterialForConfig(profile,
+                                                                     *item.def,
+                                                                     item.vs_glsl,
+                                                                     item.fs_glsl,
+                                                                     item.config);
 
         const bool legacy_success = mci != nullptr;
 
@@ -869,11 +879,15 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
                                                                                  const bool run_baseline_compare_script)
 {
     std::vector<CompileCompositorTrialBatchItem> items;
-    items.reserve(5);
+    items.reserve(6);
     std::vector<SSBOSemanticSet *> owned_ssbo_sets;
     std::vector<StaticTextureSamplerDescriptors *> owned_sampler_sets;
+    std::vector<std::vector<FixedVertexEntry> *> owned_vertex_lists;
+    std::vector<MaterialResourceManifest *> owned_manifests;
     owned_ssbo_sets.reserve(1);
     owned_sampler_sets.reserve(1);
+    owned_vertex_lists.reserve(1);
+    owned_manifests.reserve(1);
 
     const MaterialPreset candidate_presets[] =
     {
@@ -882,6 +896,7 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
         MaterialPreset::Billboard2DFixed,
         MaterialPreset::PBRColor3D,
         MaterialPreset::Standard,
+        MaterialPreset::Text2D,
     };
 
     for(const auto preset:candidate_presets)
@@ -978,6 +993,50 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
             billboard_cfg.material_instance = true;
             billboard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
             cfg=&billboard_cfg;
+        }
+        else
+        if(preset==MaterialPreset::Text2D)
+        {
+            static Text2DMaterialCreateConfig text_cfg;
+            text_cfg.prim = PrimitiveType::Triangles;
+            text_cfg.position_format = VAT_IVEC2;
+            text_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+            text_cfg.material_instance = true;
+
+            auto *vertices = new std::vector<FixedVertexEntry>();
+            build2d::PushBaseVertexEntries(*vertices,&text_cfg);
+            vertices->push_back({VAT_VEC2, VAN::TexCoord});
+
+            auto *manifest = new MaterialResourceManifest();
+            AddTextureSampler(manifest->samplers, SamplerSlot::Text, SamplerType::Sampler2D);
+
+            owned_vertex_lists.push_back(vertices);
+            owned_manifests.push_back(manifest);
+
+            def = {};
+            build2d::BuildBase2DFixedDef(def,
+                                         "Text2D",
+                                         &text_cfg,
+                                         *vertices,
+                                         *manifest,
+                                         ShaderDataSchema::TextColor);
+
+            std::string vs_preamble = build2d::Build2DVertexPreamble(&text_cfg, true, true, SamplerSlot::Text);
+            std::string fs_preamble = build2d::Build2DFragmentPreamble(&text_cfg, true, true, SamplerSlot::Text);
+
+            CompositorAssembler assembler;
+            const auto assembled=assembler.Assemble(key,*desc);
+            if(!assembled.success)
+                continue;
+
+            CompileCompositorTrialBatchItem item{};
+            item.def = new StaticMaterialDef(def);
+            item.vs_glsl = vs_preamble + assembled.vertex_glsl;
+            item.fs_glsl = fs_preamble + assembled.fragment_glsl;
+            item.config = &text_cfg;
+            item.material_name_override = "Text2D";
+            items.push_back(item);
+            continue;
         }
         else
         if(preset==MaterialPreset::Billboard2DFixed)
@@ -1181,7 +1240,51 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
     for(auto *samplers:owned_sampler_sets)
         delete samplers;
 
+    for(auto *vertices:owned_vertex_lists)
+        delete vertices;
+
+    for(auto *manifest:owned_manifests)
+        delete manifest;
+
     return report;
+}
+
+static CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReportForConfig(const contract::PhysicalDeviceProfileLite *profile,
+                                                                                               const StaticMaterialDef &def,
+                                                                                               const MaterialCreateConfig *config)
+{
+    if(const auto *cfg3d=As3D(config))
+        return BuildCompileCompositorShadowPipelineReport(profile,def,cfg3d);
+
+    if(config && (config->kind==ConfigKind::D2 || config->kind==ConfigKind::Text2D))
+    {
+        Material3DCreateConfig cfg3d(
+            config->prim,
+            IncludeCamera::Without,
+            config->local_to_world ? IncludeL2W::With : IncludeL2W::Without,
+            IncludeSky::Without);
+        cfg3d.rt_output = config->rt_output;
+        cfg3d.material_instance = config->material_instance;
+        cfg3d.shader_stage_flag_bit = config->shader_stage_flag_bit;
+        return BuildCompileCompositorShadowPipelineReport(profile,def,&cfg3d);
+    }
+
+    return BuildCompileCompositorShadowPipelineReport(profile,def,nullptr);
+}
+
+static MaterialCreateInfo *CompileCompositorMaterialForConfig(const contract::PhysicalDeviceProfileLite *profile,
+                                                              const StaticMaterialDef &def,
+                                                              const std::string &vs_glsl,
+                                                              const std::string &fs_glsl,
+                                                              const MaterialCreateConfig *config)
+{
+    if(const auto *cfg3d=As3D(config))
+        return CompileCompositorMaterial(profile,def,vs_glsl,fs_glsl,cfg3d);
+
+    if(config && (config->kind==ConfigKind::D2 || config->kind==ConfigKind::Text2D))
+        return CompileCompositorMaterial(profile,def,vs_glsl,fs_glsl,static_cast<const Material2DCreateConfig *>(config));
+
+    return CompileCompositorMaterial(profile,def,vs_glsl,fs_glsl,static_cast<const Material3DCreateConfig *>(nullptr));
 }
 
 static bool HasUBOSemantic(const StaticMaterialDef &def, const UBODescriptorSemantic semantic)
