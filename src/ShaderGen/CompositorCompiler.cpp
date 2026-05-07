@@ -51,6 +51,386 @@ namespace
 {
     static constexpr uint32_t kDefaultDescriptorStageBits = uint32_t(ShaderStage::VertexFragment);
 
+    struct BuiltinTrialBatchBuilderState
+    {
+        std::vector<CompileCompositorTrialBatchItem> items;
+        std::vector<SSBOSemanticSet *> owned_ssbo_sets;
+        std::vector<StaticTextureSamplerDescriptors *> owned_sampler_sets;
+        std::vector<std::vector<FixedVertexEntry> *> owned_vertex_lists;
+        std::vector<MaterialResourceManifest *> owned_manifests;
+
+        BuiltinTrialBatchBuilderState()
+        {
+            items.reserve(6);
+            owned_ssbo_sets.reserve(1);
+            owned_sampler_sets.reserve(1);
+            owned_vertex_lists.reserve(1);
+            owned_manifests.reserve(1);
+        }
+
+        ~BuiltinTrialBatchBuilderState()
+        {
+            for(const auto &item:items)
+                delete item.def;
+
+            for(auto *ssbos:owned_ssbo_sets)
+                delete ssbos;
+
+            for(auto *samplers:owned_sampler_sets)
+                delete samplers;
+
+            for(auto *vertices:owned_vertex_lists)
+                delete vertices;
+
+            for(auto *manifest:owned_manifests)
+                delete manifest;
+        }
+    };
+
+    static const BuiltinVariantEntry *FindBuiltinVariantEntry(const MaterialPreset preset)
+    {
+        for(size_t i=0;i<kBuiltinVariantsCount;++i)
+        {
+            if(kBuiltinVariants[i].preset==preset)
+                return &kBuiltinVariants[i];
+        }
+
+        return nullptr;
+    }
+
+    static bool AppendAssembledBuiltinTrialItem(BuiltinTrialBatchBuilderState &state,
+                                                const StaticMaterialDef &def,
+                                                const MaterialCreateConfig *config,
+                                                const MaterialVariantKey &key,
+                                                const MaterialVariantDesc &desc,
+                                                const char *material_name_override,
+                                                const std::string &vs_prefix = std::string(),
+                                                const std::string &fs_prefix = std::string())
+    {
+        MaterialVariantKey assemble_key=key;
+        PopulateVariantKeyVertexAttribBits(assemble_key,def);
+
+        CompositorAssembler assembler;
+        const auto assembled=assembler.Assemble(assemble_key,desc);
+        if(!assembled.success)
+            return false;
+
+        CompileCompositorTrialBatchItem item{};
+        item.def = new StaticMaterialDef(def);
+        item.vs_glsl = vs_prefix + assembled.vertex_glsl;
+        item.fs_glsl = fs_prefix + assembled.fragment_glsl;
+        item.config = config;
+        item.material_name_override = material_name_override ? material_name_override : (def.name ? def.name : desc.variant_name);
+        state.items.push_back(std::move(item));
+        return true;
+    }
+
+    static bool TryAppendBuiltinTrialCandidate(BuiltinTrialBatchBuilderState &state,
+                                               const MaterialPreset preset)
+    {
+        MaterialVariantKey key=RouteKey(preset,0u,RuntimeKeyOverrides{});
+        const MaterialVariantDesc *desc=GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(key);
+        if(!desc)
+            return false;
+
+        const BuiltinVariantEntry *entry=FindBuiltinVariantEntry(preset);
+        if(!entry)
+            return false;
+
+        StaticMaterialDef def{};
+        const MaterialCreateConfig *config=nullptr;
+
+        if(preset==MaterialPreset::Gizmo3D)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+                { VAT_VEC3, VAN::Normal },
+            };
+            static const UBOSemanticSet ubos =
+            {
+                UBODescriptorSemantic::ViewportInfo,
+                UBODescriptorSemantic::CameraInfo,
+            };
+            static const SSBOSemanticSet ssbos =
+            {
+                SSBODescriptorSemantic::TransformData,
+                SSBODescriptorSemantic::TransformID,
+                SSBODescriptorSemantic::MaterialBindingInstanceID,
+                SSBODescriptorSemantic::MaterialBindingInstanceData,
+            };
+            static Material3DCreateConfig gizmo_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
+
+            gizmo_cfg.material_instance = true;
+            gizmo_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            def.name = "Gizmo3D";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = nullptr;
+            def.shader_data_schema = ShaderDataSchema::Color4f;
+            config=&gizmo_cfg;
+        }
+        else
+        if(preset==MaterialPreset::Billboard2DDynamic)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+            };
+            static const UBOSemanticSet ubos =
+            {
+                UBODescriptorSemantic::ViewportInfo,
+                UBODescriptorSemantic::CameraInfo,
+            };
+            static const SSBOSemanticSet ssbos =
+            {
+                SSBODescriptorSemantic::TransformData,
+                SSBODescriptorSemantic::TransformID,
+                SSBODescriptorSemantic::MaterialBindingInstanceID,
+                SSBODescriptorSemantic::MaterialBindingInstanceData,
+            };
+            static const StaticTextureSamplerDescriptors samplers =
+            {
+                { SamplerSlot::BaseColor, MakeStaticTextureSamplerDescriptor(SamplerType::Sampler2D) }
+            };
+            static Material3DCreateConfig billboard_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
+
+            billboard_cfg.material_instance = true;
+            billboard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            def.name = "BillboardDynamic";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = &samplers;
+            def.shader_data_schema = ShaderDataSchema::BillboardSizeUVec2;
+            config=&billboard_cfg;
+        }
+        else
+        if(preset==MaterialPreset::Billboard2DFixed)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+            };
+            static const UBOSemanticSet ubos =
+            {
+                UBODescriptorSemantic::ViewportInfo,
+                UBODescriptorSemantic::CameraInfo,
+            };
+            static const SSBOSemanticSet ssbos =
+            {
+                SSBODescriptorSemantic::TransformData,
+                SSBODescriptorSemantic::TransformID,
+                SSBODescriptorSemantic::MaterialBindingInstanceID,
+                SSBODescriptorSemantic::MaterialBindingInstanceData,
+            };
+            static const StaticTextureSamplerDescriptors samplers =
+            {
+                { SamplerSlot::BaseColor, MakeStaticTextureSamplerDescriptor(SamplerType::Sampler2D) }
+            };
+            static Material3DCreateConfig billboard_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
+
+            billboard_cfg.material_instance = true;
+            billboard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            def.name = "BillboardFixed";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = &samplers;
+            def.shader_data_schema = ShaderDataSchema::BillboardSizeUVec2;
+            config=&billboard_cfg;
+        }
+        else
+        if(preset==MaterialPreset::PBRColor3D)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+                { VAT_VEC3, VAN::Normal },
+            };
+            static const UBOSemanticSet ubos =
+            {
+                UBODescriptorSemantic::CameraInfo,
+                UBODescriptorSemantic::SkyInfo,
+            };
+            static const SSBOSemanticSet ssbos =
+            {
+                SSBODescriptorSemantic::TransformData,
+                SSBODescriptorSemantic::TransformID,
+                SSBODescriptorSemantic::MaterialBindingInstanceID,
+                SSBODescriptorSemantic::MaterialBindingInstanceData,
+            };
+            static Material3DCreateConfig pbr_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::With);
+
+            pbr_cfg.material_instance = true;
+            pbr_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+            pbr_cfg.lighting_model = LightingModel::PBR;
+
+            def.name = "PBRColor3D";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = nullptr;
+            def.shader_data_schema = ShaderDataSchema::PBRColorParams;
+            config=&pbr_cfg;
+        }
+        else
+        if(preset==MaterialPreset::Standard)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+                { VAT_VEC2, VAN::TexCoord },
+                { VAT_VEC3, VAN::Normal },
+            };
+            static const UBOSemanticSet ubos =
+            {
+                UBODescriptorSemantic::ViewportInfo,
+                UBODescriptorSemantic::CameraInfo,
+                UBODescriptorSemantic::SkyInfo,
+            };
+            static const SSBOSemanticSet base_ssbos =
+            {
+                SSBODescriptorSemantic::TransformData,
+                SSBODescriptorSemantic::TransformID,
+                SSBODescriptorSemantic::MaterialBindingInstanceID,
+                SSBODescriptorSemantic::MaterialBindingInstanceData,
+            };
+            static constexpr SamplerSlot standard_tex_slots[] =
+            {
+                SamplerSlot::BaseColor,
+                SamplerSlot::Normal,
+            };
+            static Material3DCreateConfig standard_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::With);
+            static Material3DCreateConfig standard_cfg_with_mi;
+
+            standard_cfg.material_instance = true;
+            standard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            const TextureSourceMode tex_slot_modes[] =
+            {
+                TextureSourceMode::Simple,
+                TextureSourceMode::Simple,
+            };
+
+            SkyLightAmbientModel ambient = SkyLightAmbientModel::Simple;
+            LightingModel lighting = LightingModel::Lambert;
+            SSBOSemanticSet dynamic_ssbos;
+            StaticTextureSamplerDescriptors dynamic_samplers;
+            std::vector<const char *> unused_resources;
+            bool any_array=false;
+            Material3DCreateConfig cfg_with_mi;
+
+            BuildStandardDescriptorState(&standard_cfg,
+                                         standard_tex_slots,
+                                         tex_slot_modes,
+                                         uint32_t(sizeof(standard_tex_slots)/sizeof(standard_tex_slots[0])),
+                                         false,
+                                         base_ssbos,
+                                         cfg_with_mi,
+                                         ambient,
+                                         lighting,
+                                         dynamic_ssbos,
+                                         dynamic_samplers,
+                                         unused_resources,
+                                         any_array);
+
+            static const StaticMaterialDef standard_template =
+            {
+                "Standard_v1",
+                PrimitiveType::Triangles,
+                vertex_entries,
+                uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0])),
+                &ubos,
+                nullptr,
+                nullptr,
+                ShaderDataSchema::StandardParams,
+            };
+
+            def = BuildStandardDynamicDef(standard_template,
+                                          dynamic_ssbos,
+                                          dynamic_samplers,
+                                          ShaderDataSchema::StandardParams,
+                                          any_array);
+            def.name = "Standard_v1";
+
+            auto *owned_dynamic_ssbos = new SSBOSemanticSet(dynamic_ssbos);
+            auto *owned_dynamic_samplers = new StaticTextureSamplerDescriptors(dynamic_samplers);
+            state.owned_ssbo_sets.push_back(owned_dynamic_ssbos);
+            state.owned_sampler_sets.push_back(owned_dynamic_samplers);
+            def.ssbo_descriptors = owned_dynamic_ssbos;
+            def.texture_samplers = owned_dynamic_samplers;
+
+            standard_cfg_with_mi = cfg_with_mi;
+            config=&standard_cfg_with_mi;
+
+            key = RouteKey(MaterialPreset::Standard,0u,RuntimeKeyOverrides{});
+            auto policy=BuildStandardVariantPolicy(key);
+            key = policy.assemble_key;
+            key.lighting_model = lighting;
+            key.sky_ambient_model = ambient;
+        }
+        else
+        if(preset==MaterialPreset::Text2D)
+        {
+            static Text2DMaterialCreateConfig text_cfg;
+
+            text_cfg.prim = PrimitiveType::Triangles;
+            text_cfg.position_format = VAT_IVEC2;
+            text_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+            text_cfg.material_instance = true;
+
+            auto *vertices = new std::vector<FixedVertexEntry>();
+            build2d::PushBaseVertexEntries(*vertices,&text_cfg);
+            vertices->push_back({VAT_VEC2, VAN::TexCoord});
+
+            auto *manifest = new MaterialResourceManifest();
+            AddTextureSampler(manifest->samplers, SamplerSlot::Text, SamplerType::Sampler2D);
+
+            state.owned_vertex_lists.push_back(vertices);
+            state.owned_manifests.push_back(manifest);
+
+            build2d::BuildBase2DFixedDef(def,
+                                         "Text2D",
+                                         &text_cfg,
+                                         *vertices,
+                                         *manifest,
+                                         ShaderDataSchema::TextColor);
+
+            return AppendAssembledBuiltinTrialItem(state,
+                                                   def,
+                                                   &text_cfg,
+                                                   key,
+                                                   *desc,
+                                                   "Text2D",
+                                                   build2d::Build2DVertexPreamble(&text_cfg,true,true,SamplerSlot::Text),
+                                                   build2d::Build2DFragmentPreamble(&text_cfg,true,true,SamplerSlot::Text));
+        }
+        else
+        {
+            return false;
+        }
+
+        return AppendAssembledBuiltinTrialItem(state,
+                                               def,
+                                               config,
+                                               key,
+                                               *desc,
+                                               def.name ? def.name : entry->name);
+    }
+
     static bool ResolveConfiguredCameraRequirement(const Material3DCreateConfig &cfg)
     {
         if (cfg.effective_feature_mask != 0)
@@ -878,16 +1258,7 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
                                                                                  const char *trial_root,
                                                                                  const bool run_baseline_compare_script)
 {
-    std::vector<CompileCompositorTrialBatchItem> items;
-    items.reserve(6);
-    std::vector<SSBOSemanticSet *> owned_ssbo_sets;
-    std::vector<StaticTextureSamplerDescriptors *> owned_sampler_sets;
-    std::vector<std::vector<FixedVertexEntry> *> owned_vertex_lists;
-    std::vector<MaterialResourceManifest *> owned_manifests;
-    owned_ssbo_sets.reserve(1);
-    owned_sampler_sets.reserve(1);
-    owned_vertex_lists.reserve(1);
-    owned_manifests.reserve(1);
+    BuiltinTrialBatchBuilderState state;
 
     const MaterialPreset candidate_presets[] =
     {
@@ -900,353 +1271,9 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
     };
 
     for(const auto preset:candidate_presets)
-    {
-        MaterialVariantKey key=RouteKey(preset,0u,RuntimeKeyOverrides{});
-        const MaterialVariantDesc *desc=GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(key);
-        if(!desc)
-            continue;
+        TryAppendBuiltinTrialCandidate(state,preset);
 
-        const BuiltinVariantEntry *entry=nullptr;
-        for(size_t i=0;i<kBuiltinVariantsCount;++i)
-        {
-            if(kBuiltinVariants[i].preset==preset)
-            {
-                entry=&kBuiltinVariants[i];
-                break;
-            }
-        }
-
-        if(!entry)
-            continue;
-
-        StaticMaterialDef def{};
-        Material3DCreateConfig *cfg=nullptr;
-
-        if(preset==MaterialPreset::Gizmo3D)
-        {
-            static constexpr FixedVertexEntry vertex_entries[] =
-            {
-                { VAT_VEC3, VAN::Position },
-                { VAT_VEC3, VAN::Normal },
-            };
-            static const UBOSemanticSet ubos =
-            {
-                UBODescriptorSemantic::ViewportInfo,
-                UBODescriptorSemantic::CameraInfo,
-            };
-            static const SSBOSemanticSet ssbos =
-            {
-                SSBODescriptorSemantic::TransformData,
-                SSBODescriptorSemantic::TransformID,
-                SSBODescriptorSemantic::MaterialBindingInstanceID,
-                SSBODescriptorSemantic::MaterialBindingInstanceData,
-            };
-
-            def.name = "Gizmo3D";
-            def.primitive_type = PrimitiveType::Triangles;
-            def.vertex_entries = vertex_entries;
-            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
-            def.ubo_descriptors = &ubos;
-            def.ssbo_descriptors = &ssbos;
-            def.texture_samplers = nullptr;
-            def.shader_data_schema = ShaderDataSchema::Color4f;
-
-            static Material3DCreateConfig gizmo_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
-            gizmo_cfg.material_instance = true;
-            gizmo_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
-            cfg=&gizmo_cfg;
-        }
-        else
-        if(preset==MaterialPreset::Billboard2DDynamic)
-        {
-            static constexpr FixedVertexEntry vertex_entries[] =
-            {
-                { VAT_VEC3, VAN::Position },
-            };
-            static const UBOSemanticSet ubos =
-            {
-                UBODescriptorSemantic::ViewportInfo,
-                UBODescriptorSemantic::CameraInfo,
-            };
-            static const SSBOSemanticSet ssbos =
-            {
-                SSBODescriptorSemantic::TransformData,
-                SSBODescriptorSemantic::TransformID,
-                SSBODescriptorSemantic::MaterialBindingInstanceID,
-                SSBODescriptorSemantic::MaterialBindingInstanceData,
-            };
-            static const StaticTextureSamplerDescriptors samplers =
-            {
-                { SamplerSlot::BaseColor, MakeStaticTextureSamplerDescriptor(SamplerType::Sampler2D) }
-            };
-
-            def.name = "BillboardDynamic";
-            def.primitive_type = PrimitiveType::Triangles;
-            def.vertex_entries = vertex_entries;
-            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
-            def.ubo_descriptors = &ubos;
-            def.ssbo_descriptors = &ssbos;
-            def.texture_samplers = &samplers;
-            def.shader_data_schema = ShaderDataSchema::BillboardSizeUVec2;
-
-            static Material3DCreateConfig billboard_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
-            billboard_cfg.material_instance = true;
-            billboard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
-            cfg=&billboard_cfg;
-        }
-        else
-        if(preset==MaterialPreset::Text2D)
-        {
-            static Text2DMaterialCreateConfig text_cfg;
-            text_cfg.prim = PrimitiveType::Triangles;
-            text_cfg.position_format = VAT_IVEC2;
-            text_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
-            text_cfg.material_instance = true;
-
-            auto *vertices = new std::vector<FixedVertexEntry>();
-            build2d::PushBaseVertexEntries(*vertices,&text_cfg);
-            vertices->push_back({VAT_VEC2, VAN::TexCoord});
-
-            auto *manifest = new MaterialResourceManifest();
-            AddTextureSampler(manifest->samplers, SamplerSlot::Text, SamplerType::Sampler2D);
-
-            owned_vertex_lists.push_back(vertices);
-            owned_manifests.push_back(manifest);
-
-            def = {};
-            build2d::BuildBase2DFixedDef(def,
-                                         "Text2D",
-                                         &text_cfg,
-                                         *vertices,
-                                         *manifest,
-                                         ShaderDataSchema::TextColor);
-
-            std::string vs_preamble = build2d::Build2DVertexPreamble(&text_cfg, true, true, SamplerSlot::Text);
-            std::string fs_preamble = build2d::Build2DFragmentPreamble(&text_cfg, true, true, SamplerSlot::Text);
-
-            CompositorAssembler assembler;
-            const auto assembled=assembler.Assemble(key,*desc);
-            if(!assembled.success)
-                continue;
-
-            CompileCompositorTrialBatchItem item{};
-            item.def = new StaticMaterialDef(def);
-            item.vs_glsl = vs_preamble + assembled.vertex_glsl;
-            item.fs_glsl = fs_preamble + assembled.fragment_glsl;
-            item.config = &text_cfg;
-            item.material_name_override = "Text2D";
-            items.push_back(item);
-            continue;
-        }
-        else
-        if(preset==MaterialPreset::Billboard2DFixed)
-        {
-            static constexpr FixedVertexEntry vertex_entries[] =
-            {
-                { VAT_VEC3, VAN::Position },
-            };
-            static const UBOSemanticSet ubos =
-            {
-                UBODescriptorSemantic::ViewportInfo,
-                UBODescriptorSemantic::CameraInfo,
-            };
-            static const SSBOSemanticSet ssbos =
-            {
-                SSBODescriptorSemantic::TransformData,
-                SSBODescriptorSemantic::TransformID,
-                SSBODescriptorSemantic::MaterialBindingInstanceID,
-                SSBODescriptorSemantic::MaterialBindingInstanceData,
-            };
-            static const StaticTextureSamplerDescriptors samplers =
-            {
-                { SamplerSlot::BaseColor, MakeStaticTextureSamplerDescriptor(SamplerType::Sampler2D) }
-            };
-
-            def.name = "BillboardFixed";
-            def.primitive_type = PrimitiveType::Triangles;
-            def.vertex_entries = vertex_entries;
-            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
-            def.ubo_descriptors = &ubos;
-            def.ssbo_descriptors = &ssbos;
-            def.texture_samplers = &samplers;
-            def.shader_data_schema = ShaderDataSchema::BillboardSizeUVec2;
-
-            static Material3DCreateConfig billboard_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
-            billboard_cfg.material_instance = true;
-            billboard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
-            cfg=&billboard_cfg;
-        }
-        else
-        if(preset==MaterialPreset::PBRColor3D)
-        {
-            static constexpr FixedVertexEntry vertex_entries[] =
-            {
-                { VAT_VEC3, VAN::Position },
-                { VAT_VEC3, VAN::Normal },
-            };
-            static const UBOSemanticSet ubos =
-            {
-                UBODescriptorSemantic::CameraInfo,
-                UBODescriptorSemantic::SkyInfo,
-            };
-            static const SSBOSemanticSet ssbos =
-            {
-                SSBODescriptorSemantic::TransformData,
-                SSBODescriptorSemantic::TransformID,
-                SSBODescriptorSemantic::MaterialBindingInstanceID,
-                SSBODescriptorSemantic::MaterialBindingInstanceData,
-            };
-
-            def.name = "PBRColor3D";
-            def.primitive_type = PrimitiveType::Triangles;
-            def.vertex_entries = vertex_entries;
-            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
-            def.ubo_descriptors = &ubos;
-            def.ssbo_descriptors = &ssbos;
-            def.texture_samplers = nullptr;
-            def.shader_data_schema = ShaderDataSchema::PBRColorParams;
-
-            static Material3DCreateConfig pbr_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::With);
-            pbr_cfg.material_instance = true;
-            pbr_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
-            pbr_cfg.lighting_model = LightingModel::PBR;
-            cfg=&pbr_cfg;
-        }
-        else
-        if(preset==MaterialPreset::Standard)
-        {
-            static constexpr FixedVertexEntry vertex_entries[] =
-            {
-                { VAT_VEC3, VAN::Position },
-                { VAT_VEC2, VAN::TexCoord },
-                { VAT_VEC3, VAN::Normal },
-            };
-            static const UBOSemanticSet ubos =
-            {
-                UBODescriptorSemantic::ViewportInfo,
-                UBODescriptorSemantic::CameraInfo,
-                UBODescriptorSemantic::SkyInfo,
-            };
-            static const SSBOSemanticSet base_ssbos =
-            {
-                SSBODescriptorSemantic::TransformData,
-                SSBODescriptorSemantic::TransformID,
-                SSBODescriptorSemantic::MaterialBindingInstanceID,
-                SSBODescriptorSemantic::MaterialBindingInstanceData,
-            };
-            static constexpr SamplerSlot standard_tex_slots[] =
-            {
-                SamplerSlot::BaseColor,
-                SamplerSlot::Normal,
-            };
-
-            static Material3DCreateConfig standard_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::With);
-            standard_cfg.material_instance = true;
-            standard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
-
-            const TextureSourceMode tex_slot_modes[] =
-            {
-                TextureSourceMode::Simple,
-                TextureSourceMode::Simple,
-            };
-
-            SkyLightAmbientModel ambient = SkyLightAmbientModel::Simple;
-            LightingModel lighting = LightingModel::Lambert;
-            SSBOSemanticSet dynamic_ssbos;
-            StaticTextureSamplerDescriptors dynamic_samplers;
-            std::vector<const char *> unused_resources;
-            bool any_array=false;
-            Material3DCreateConfig cfg_with_mi;
-
-            BuildStandardDescriptorState(&standard_cfg,
-                                         standard_tex_slots,
-                                         tex_slot_modes,
-                                         uint32_t(sizeof(standard_tex_slots)/sizeof(standard_tex_slots[0])),
-                                         false,
-                                         base_ssbos,
-                                         cfg_with_mi,
-                                         ambient,
-                                         lighting,
-                                         dynamic_ssbos,
-                                         dynamic_samplers,
-                                         unused_resources,
-                                         any_array);
-
-            static const StaticMaterialDef standard_template =
-            {
-                "Standard_v1",
-                PrimitiveType::Triangles,
-                vertex_entries,
-                uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0])),
-                &ubos,
-                nullptr,
-                nullptr,
-                ShaderDataSchema::StandardParams,
-            };
-
-            def = BuildStandardDynamicDef(standard_template,
-                                          dynamic_ssbos,
-                                          dynamic_samplers,
-                                          ShaderDataSchema::StandardParams,
-                                          any_array);
-            def.name = "Standard_v1";
-
-            auto *owned_dynamic_ssbos = new SSBOSemanticSet(dynamic_ssbos);
-            auto *owned_dynamic_samplers = new StaticTextureSamplerDescriptors(dynamic_samplers);
-            owned_ssbo_sets.push_back(owned_dynamic_ssbos);
-            owned_sampler_sets.push_back(owned_dynamic_samplers);
-            def.ssbo_descriptors = owned_dynamic_ssbos;
-            def.texture_samplers = owned_dynamic_samplers;
-
-            static Material3DCreateConfig standard_cfg_with_mi;
-            standard_cfg_with_mi = cfg_with_mi;
-            cfg=&standard_cfg_with_mi;
-
-            key = RouteKey(MaterialPreset::Standard,0u,RuntimeKeyOverrides{});
-            auto policy=BuildStandardVariantPolicy(key);
-            key = policy.assemble_key;
-            key.lighting_model = lighting;
-            key.sky_ambient_model = ambient;
-        }
-
-        if(!cfg)
-            continue;
-
-        MaterialVariantKey assemble_key=key;
-        PopulateVariantKeyVertexAttribBits(assemble_key,def);
-
-        CompositorAssembler assembler;
-        const auto assembled=assembler.Assemble(assemble_key,*desc);
-        if(!assembled.success)
-            continue;
-
-        CompileCompositorTrialBatchItem item{};
-        item.def = new StaticMaterialDef(def);
-        item.vs_glsl = assembled.vertex_glsl;
-        item.fs_glsl = assembled.fragment_glsl;
-        item.config = cfg;
-        item.material_name_override = def.name ? def.name : entry->name;
-        items.push_back(item);
-    }
-
-    const auto report=RunCompileCompositorTrialBatch(profile,items,trial_root,run_baseline_compare_script);
-
-    for(const auto &item:items)
-        delete item.def;
-
-    for(auto *ssbos:owned_ssbo_sets)
-        delete ssbos;
-
-    for(auto *samplers:owned_sampler_sets)
-        delete samplers;
-
-    for(auto *vertices:owned_vertex_lists)
-        delete vertices;
-
-    for(auto *manifest:owned_manifests)
-        delete manifest;
-
-    return report;
+    return RunCompileCompositorTrialBatch(profile,state.items,trial_root,run_baseline_compare_script);
 }
 
 static CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReportForConfig(const contract::PhysicalDeviceProfileLite *profile,
