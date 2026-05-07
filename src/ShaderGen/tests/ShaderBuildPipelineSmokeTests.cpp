@@ -727,6 +727,12 @@ static void TestCompileCompositorBuiltinCandidateTrialBatchSummary()
     std::ifstream billboard_dynamic_report_ifs("build/shadergen_trial/reports/BillboardDynamic_baseline_compare.md",std::ios::in);
     CHECK_TRUE(billboard_dynamic_report_ifs.is_open());
 
+    std::ifstream pure_color_2d_report_ifs("build/shadergen_trial/reports/PureColor2D_baseline_compare.md",std::ios::in);
+    CHECK_TRUE(pure_color_2d_report_ifs.is_open());
+
+    std::ifstream vertex_color_3d_report_ifs("build/shadergen_trial/reports/VertexColor3D_baseline_compare.md",std::ios::in);
+    CHECK_TRUE(vertex_color_3d_report_ifs.is_open());
+
     std::ifstream text2d_report_ifs("build/shadergen_trial/reports/Text2D_baseline_compare.md",std::ios::in);
     CHECK_TRUE(text2d_report_ifs.is_open());
 

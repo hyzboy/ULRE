@@ -61,11 +61,11 @@ namespace
 
         BuiltinTrialBatchBuilderState()
         {
-            items.reserve(6);
+            items.reserve(16);
             owned_ssbo_sets.reserve(1);
             owned_sampler_sets.reserve(1);
-            owned_vertex_lists.reserve(1);
-            owned_manifests.reserve(1);
+            owned_vertex_lists.reserve(8);
+            owned_manifests.reserve(8);
         }
 
         ~BuiltinTrialBatchBuilderState()
@@ -173,6 +173,110 @@ namespace
             def.texture_samplers = nullptr;
             def.shader_data_schema = ShaderDataSchema::Color4f;
             config=&gizmo_cfg;
+        }
+        else
+        if(preset==MaterialPreset::PureColor3D)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+            };
+            static const UBOSemanticSet ubos = build3d::MakeViewportCameraUBOs();
+            static const SSBOSemanticSet ssbos = build3d::MakeTransformSSBOs(true);
+            static Material3DCreateConfig pure_color_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
+
+            pure_color_cfg.material_instance = true;
+            pure_color_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            def.name = "PureColor3D";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = nullptr;
+            def.shader_data_schema = ShaderDataSchema::Color4f;
+            config=&pure_color_cfg;
+        }
+        else
+        if(preset==MaterialPreset::VertexColor3D)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+                { VAT_VEC4, VAN::Color },
+            };
+            static const UBOSemanticSet ubos = build3d::MakeViewportCameraUBOs();
+            static const SSBOSemanticSet ssbos = build3d::MakeTransformSSBOs(false);
+            static Material3DCreateConfig vertex_color_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
+
+            vertex_color_cfg.material_instance = false;
+            vertex_color_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            def.name = "VertexColor3D";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = nullptr;
+            def.shader_data_schema = ShaderDataSchema::None;
+            config=&vertex_color_cfg;
+        }
+        else
+        if(preset==MaterialPreset::VertexLuminance3D)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+                { VAT_FLOAT, VAN::Luminance },
+            };
+            static const UBOSemanticSet ubos = build3d::MakeViewportCameraUBOs();
+            static const SSBOSemanticSet ssbos = build3d::MakeTransformSSBOs(true);
+            static Material3DCreateConfig vertex_luminance_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
+
+            vertex_luminance_cfg.material_instance = true;
+            vertex_luminance_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            def.name = "VertexLuminance3D";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = nullptr;
+            def.shader_data_schema = ShaderDataSchema::Color4f;
+            config=&vertex_luminance_cfg;
+        }
+        else
+        if(preset==MaterialPreset::VertexPaletteColor3D)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+                { VAT_UINT, VAN::Color },
+            };
+            static const UBOSemanticSet ubos = []()
+            {
+                UBOSemanticSet descriptors = build3d::MakeViewportCameraUBOs();
+                descriptors.insert(UBODescriptorSemantic::ColorPalette);
+                return descriptors;
+            }();
+            static const SSBOSemanticSet ssbos = build3d::MakeTransformSSBOs(false);
+            static Material3DCreateConfig vertex_palette_cfg(PrimitiveType::Triangles,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
+
+            vertex_palette_cfg.material_instance = false;
+            vertex_palette_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            def.name = "VertexPaletteColor3D";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = nullptr;
+            def.shader_data_schema = ShaderDataSchema::None;
+            config=&vertex_palette_cfg;
         }
         else
         if(preset==MaterialPreset::Billboard2DDynamic)
@@ -381,6 +485,108 @@ namespace
             key = policy.assemble_key;
             key.lighting_model = lighting;
             key.sky_ambient_model = ambient;
+        }
+        else
+        if(preset==MaterialPreset::PureColor2D)
+        {
+            static Material2DCreateConfig pure_color_cfg(PrimitiveType::Triangles,CoordinateSystem2D::NDC,IncludeL2W::Without);
+
+            pure_color_cfg.material_instance = true;
+            pure_color_cfg.position_format = VAT_VEC2;
+            pure_color_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            auto *vertices = new std::vector<FixedVertexEntry>();
+            build2d::PushBaseVertexEntries(*vertices,&pure_color_cfg);
+
+            auto *manifest = new MaterialResourceManifest();
+
+            state.owned_vertex_lists.push_back(vertices);
+            state.owned_manifests.push_back(manifest);
+
+            build2d::BuildBase2DFixedDef(def,
+                                         "PureColor2D",
+                                         &pure_color_cfg,
+                                         *vertices,
+                                         *manifest,
+                                         ShaderDataSchema::Color4f);
+
+            return AppendAssembledBuiltinTrialItem(state,
+                                                   def,
+                                                   &pure_color_cfg,
+                                                   key,
+                                                   *desc,
+                                                   "PureColor2D",
+                                                   build2d::Build2DVertexPreamble(&pure_color_cfg,false,true),
+                                                   build2d::Build2DFragmentPreamble(&pure_color_cfg,false,true));
+        }
+        else
+        if(preset==MaterialPreset::VertexColor2D)
+        {
+            static Material2DCreateConfig vertex_color_cfg(PrimitiveType::Triangles,CoordinateSystem2D::NDC,IncludeL2W::Without);
+
+            vertex_color_cfg.material_instance = false;
+            vertex_color_cfg.position_format = VAT_VEC2;
+            vertex_color_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            auto *vertices = new std::vector<FixedVertexEntry>();
+            build2d::PushBaseVertexEntries(*vertices,&vertex_color_cfg);
+            vertices->push_back({VAT_VEC4, VAN::Color});
+
+            auto *manifest = new MaterialResourceManifest();
+
+            state.owned_vertex_lists.push_back(vertices);
+            state.owned_manifests.push_back(manifest);
+
+            build2d::BuildBase2DFixedDef(def,
+                                         "VertexColor2D",
+                                         &vertex_color_cfg,
+                                         *vertices,
+                                         *manifest,
+                                         ShaderDataSchema::None);
+
+            return AppendAssembledBuiltinTrialItem(state,
+                                                   def,
+                                                   &vertex_color_cfg,
+                                                   key,
+                                                   *desc,
+                                                   "VertexColor2D",
+                                                   build2d::Build2DVertexPreamble(&vertex_color_cfg,false,false),
+                                                   build2d::Build2DFragmentPreamble(&vertex_color_cfg,false,false));
+        }
+        else
+        if(preset==MaterialPreset::PureTexture2D)
+        {
+            static Material2DCreateConfig pure_texture_cfg(PrimitiveType::Triangles,CoordinateSystem2D::NDC,IncludeL2W::Without);
+
+            pure_texture_cfg.material_instance = false;
+            pure_texture_cfg.position_format = VAT_VEC2;
+            pure_texture_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            auto *vertices = new std::vector<FixedVertexEntry>();
+            build2d::PushBaseVertexEntries(*vertices,&pure_texture_cfg);
+            vertices->push_back({VAT_VEC2, VAN::TexCoord});
+
+            auto *manifest = new MaterialResourceManifest();
+            AddTextureSampler(manifest->samplers, SamplerSlot::BaseColor, SamplerType::Sampler2D);
+
+            state.owned_vertex_lists.push_back(vertices);
+            state.owned_manifests.push_back(manifest);
+
+            build2d::BuildBase2DFixedDef(def,
+                                         "PureTexture2D",
+                                         &pure_texture_cfg,
+                                         *vertices,
+                                         *manifest,
+                                         ShaderDataSchema::None);
+
+            return AppendAssembledBuiltinTrialItem(state,
+                                                   def,
+                                                   &pure_texture_cfg,
+                                                   key,
+                                                   *desc,
+                                                   "PureTexture2D",
+                                                   build2d::Build2DVertexPreamble(&pure_texture_cfg,true,false,SamplerSlot::BaseColor,false),
+                                                   build2d::Build2DFragmentPreamble(&pure_texture_cfg,true,false,SamplerSlot::BaseColor,false));
         }
         else
         if(preset==MaterialPreset::Text2D)
@@ -1262,6 +1468,13 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
 
     const MaterialPreset candidate_presets[] =
     {
+        MaterialPreset::PureColor2D,
+        MaterialPreset::PureTexture2D,
+        MaterialPreset::VertexColor2D,
+        MaterialPreset::PureColor3D,
+        MaterialPreset::VertexColor3D,
+        MaterialPreset::VertexLuminance3D,
+        MaterialPreset::VertexPaletteColor3D,
         MaterialPreset::Gizmo3D,
         MaterialPreset::Billboard2DDynamic,
         MaterialPreset::Billboard2DFixed,
