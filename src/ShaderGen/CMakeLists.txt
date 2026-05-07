@@ -56,8 +56,10 @@ SOURCE_GROUP("Material Create Info\\Diagnostics" FILES ${MATERIAL_CREATE_INFO_DI
 # Material Create Info / Pipeline Skeleton
 SET(MATERIAL_CREATE_INFO_PIPELINE_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerContext.h
                                         ${SHADERGEN_INCLUDE_PATH}/ShaderBuildPipeline.h
+                                        ${SHADERGEN_INCLUDE_PATH}/ShaderBuildRouteSwitch.h
                                         ShaderCompilerContext.cpp
-                                        ShaderBuildPipeline.cpp)
+                                        ShaderBuildPipeline.cpp
+                                        ShaderBuildRouteSwitch.cpp)
 SOURCE_GROUP("Material Create Info\\Pipeline Skeleton" FILES ${MATERIAL_CREATE_INFO_PIPELINE_FILES})
 
 # Descriptor Info
