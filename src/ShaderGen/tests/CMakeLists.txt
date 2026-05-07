@@ -5,6 +5,11 @@
 # dependencies).  The global include_directories set by use_cm_module() in the
 # root CMakeLists.txt provide all required header search paths.
 
+function(shadergen_set_test_runtime_dir name)
+    set_target_properties(${name} PROPERTIES
+        VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endfunction()
+
 add_executable(MaterialKeyTest
     MaterialKeyTest.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../MaterialKey.cpp
@@ -13,6 +18,7 @@ add_executable(MaterialKeyTest
 target_link_libraries(MaterialKeyTest PRIVATE CMCore)
 
 set_property(TARGET MaterialKeyTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(MaterialKeyTest)
 
 add_test(NAME MaterialKeyTest COMMAND MaterialKeyTest)
 
@@ -25,6 +31,7 @@ add_executable(RecipeToKeyTest
 target_link_libraries(RecipeToKeyTest PRIVATE ${ULRE})
 
 set_property(TARGET RecipeToKeyTest PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(RecipeToKeyTest)
 
 add_test(NAME RecipeToKeyTest COMMAND RecipeToKeyTest)
 
@@ -37,6 +44,7 @@ add_executable(MaterialRecipeStoreTests
 target_link_libraries(MaterialRecipeStoreTests PRIVATE ${ULRE})
 
 set_property(TARGET MaterialRecipeStoreTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(MaterialRecipeStoreTests)
 
 add_test(NAME MaterialRecipeStoreTests COMMAND MaterialRecipeStoreTests)
 
@@ -49,6 +57,7 @@ add_executable(EnumerateRecipeKeysTests
 target_link_libraries(EnumerateRecipeKeysTests PRIVATE ${ULRE})
 
 set_property(TARGET EnumerateRecipeKeysTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(EnumerateRecipeKeysTests)
 
 add_test(NAME EnumerateRecipeKeysTests COMMAND EnumerateRecipeKeysTests)
 
@@ -60,6 +69,7 @@ add_executable(MaterialKeyAbiSnapshot
 target_link_libraries(MaterialKeyAbiSnapshot PRIVATE ${ULRE})
 
 set_property(TARGET MaterialKeyAbiSnapshot PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(MaterialKeyAbiSnapshot)
 
 add_test(NAME MaterialKeyAbiSnapshot COMMAND MaterialKeyAbiSnapshot)
 
@@ -72,5 +82,6 @@ add_executable(ShaderBuildPipelineSmokeTests
 target_link_libraries(ShaderBuildPipelineSmokeTests PRIVATE ${ULRE})
 
 set_property(TARGET ShaderBuildPipelineSmokeTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(ShaderBuildPipelineSmokeTests)
 
 add_test(NAME ShaderBuildPipelineSmokeTests COMMAND ShaderBuildPipelineSmokeTests)

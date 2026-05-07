@@ -1,4 +1,6 @@
 #include<hgl/shadergen/ShaderBuildPipeline.h>
+#include<hgl/shadergen/DescriptorLayoutBuilder.h>
+#include<hgl/shadergen/MaterialDescriptorDB.h>
 
 namespace hgl::graph
 {
@@ -70,6 +72,15 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
                                       "minimal pipeline does not support texture sampler overrides yet"});
         return result;
     }
+
+    MaterialDescriptorDB descriptor_db;
+    mtl::DescriptorBindingSlots binding_contract{};
+
+    mtl::DescriptorLayoutBuilder::Finalize(descriptor_db,binding_contract);
+
+    result.value.binding_contract=binding_contract;
+    result.value.descriptor_count=descriptor_db.GetCount();
+    result.value.layout_finalized=true;
 
     state=ShaderBuildState::DescriptorLayoutFinalized;
 

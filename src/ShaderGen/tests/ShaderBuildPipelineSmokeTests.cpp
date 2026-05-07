@@ -1,4 +1,6 @@
 #include <hgl/shadergen/ShaderBuildPipeline.h>
+#include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/mtl/DescriptorSemanticRegistry.h>
 
 #include <cstdio>
 
@@ -111,6 +113,7 @@ static void TestBuildMinimalVertexPath()
 
     CHECK_TRUE(result.success);
     CHECK_EQ(result.value.final_state, ShaderBuildState::Compiled);
+    CHECK_TRUE(result.value.layout_finalized);
     CHECK_TRUE(!result.value.binaries.empty());
     CHECK_TRUE(!result.value.binaries[0].spirv.empty());
 }
@@ -125,6 +128,7 @@ static void TestBuildMinimalFragmentPath()
 
     CHECK_TRUE(result.success);
     CHECK_EQ(result.value.final_state, ShaderBuildState::Compiled);
+    CHECK_TRUE(result.value.layout_finalized);
     CHECK_TRUE(!result.value.binaries.empty());
     CHECK_TRUE(!result.value.binaries[0].spirv.empty());
 }
@@ -140,6 +144,28 @@ static void TestBuildFailsWhenStageUnsupportedByMinimalPipeline()
     CHECK_TRUE(!result.success);
     CHECK_EQ(result.value.final_state, ShaderBuildState::Failed);
     CHECK_TRUE(!result.diagnostics.empty());
+}
+
+static void TestDescriptorParityWithLegacyForMinimalConfig()
+{
+    ShaderBuildPipeline pipeline;
+    MaterialCreateConfig cfg = MakeBasicConfig();
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+
+    auto pipeline_result = pipeline.Build(cfg,&profile);
+    CHECK_TRUE(pipeline_result.success);
+
+    MaterialCreateInfo legacy_mci(&cfg);
+
+    CHECK_EQ(pipeline_result.value.descriptor_count, legacy_mci.GetDescriptorInfo().GetCount());
+
+    const auto &legacy_contract=legacy_mci.GetBindingContract();
+
+    for(size_t i=0;i<UBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ubos[i], legacy_contract.ubos[i]);
+
+    for(size_t i=0;i<SSBODescriptorSemanticCount;++i)
+        CHECK_EQ(pipeline_result.value.binding_contract.ssbos[i], legacy_contract.ssbos[i]);
 }
 
 static void TestBuildFailsWhenMaterialInstanceRequested()
@@ -181,8 +207,20 @@ static void TestBuildFailsWhenTextureSamplerOverrideRequested()
     CHECK_TRUE(!result.diagnostics.empty());
 }
 
+namespace hgl::graph
+{
+    bool InitShaderCompiler();
+    void CloseShaderCompiler();
+}
+
 int main()
 {
+    if(!hgl::graph::InitShaderCompiler())
+    {
+        std::fprintf(stderr,"Failed to initialize shader compiler.\n");
+        return 1;
+    }
+
     TestBuildFailsWhenStageBitsIsZero();
     TestBuildFailsWhenProfileNull();
     TestBuildMinimalVertexPath();
@@ -191,11 +229,14 @@ int main()
     TestBuildFailsWhenMaterialInstanceRequested();
     TestBuildFailsWhenLocalToWorldRequested();
     TestBuildFailsWhenTextureSamplerOverrideRequested();
+    TestDescriptorParityWithLegacyForMinimalConfig();
 
     if(g_failures==0)
         std::fprintf(stdout,"ShaderBuildPipelineSmokeTests PASSED.\n");
     else
         std::fprintf(stderr,"ShaderBuildPipelineSmokeTests FAILED: %d\n",g_failures);
+
+    hgl::graph::CloseShaderCompiler();
 
     return g_failures;
 }
