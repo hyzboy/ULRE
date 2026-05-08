@@ -56,6 +56,13 @@ public:
                                              const mtl::contract::PhysicalDeviceProfileLite *profile,
                                              const ShaderBuildDescriptorSpec *descriptor_spec=nullptr);
 
+    ShaderGenResult<mtl::MaterialCreateInfo *> PrepareMaterialCreateInfo(
+        const mtl::StaticMaterialDef &def,
+        const mtl::MaterialCreateConfig &config,
+        const mtl::contract::PhysicalDeviceProfileLite *profile,
+        const std::string &vs_glsl,
+        const std::string &fs_glsl);
+
     ShaderGenResult<mtl::MaterialCreateInfo *> BuildMaterialCreateInfo(
         const mtl::StaticMaterialDef &def,
         const mtl::MaterialCreateConfig &config,

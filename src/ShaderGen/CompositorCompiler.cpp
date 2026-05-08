@@ -1580,11 +1580,11 @@ namespace
                      diagnostics);
 
         ShaderBuildPipeline pipeline;
-        auto build_result = pipeline.BuildMaterialCreateInfo(def,
-                                                             static_cast<const MaterialCreateConfig &>(cfg),
-                                                             profile,
-                                                             vs_glsl,
-                                                             fs_glsl);
+        auto build_result = pipeline.PrepareMaterialCreateInfo(def,
+                                                               static_cast<const MaterialCreateConfig &>(cfg),
+                                                               profile,
+                                                               vs_glsl,
+                                                               fs_glsl);
 
         if (!build_result.success)
         {

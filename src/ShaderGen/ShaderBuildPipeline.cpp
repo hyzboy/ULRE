@@ -528,6 +528,35 @@ static hgl::graph::mtl::MaterialCreateInfo *BuildCompiledMaterialCreateInfo(
 
     return mci;
 }
+
+static hgl::graph::mtl::MaterialCreateInfo *BuildPreparedMaterialCreateInfo(
+    hgl::graph::mtl::MaterialBuilder &builder,
+    std::vector<hgl::graph::ShaderGenDiagnostic> &diagnostics)
+{
+    hgl::graph::mtl::MaterialCreateInfo *mci = builder.BuildSnapshotOnly();
+    if(!mci)
+    {
+        AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
+                                                hgl::graph::ShaderGenErrorCode::InternalError,
+                                                hgl::graph::ShaderStage::Vertex,
+                                                "ShaderBuildPipeline.PrepareMaterialCreateInfo",
+                                                "MaterialBuilder::BuildSnapshotOnly() failed");
+        return nullptr;
+    }
+
+    if(!hgl::graph::mtl::InjectLayoutDefines(*mci))
+    {
+        delete mci;
+        AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
+                                                hgl::graph::ShaderGenErrorCode::LayoutNotFinalized,
+                                                hgl::graph::ShaderStage::Vertex,
+                                                "ShaderBuildPipeline.PrepareMaterialCreateInfo",
+                                                "InjectLayoutDefines() failed");
+        return nullptr;
+    }
+
+    return mci;
+}
 }
 
 namespace hgl::graph
@@ -792,6 +821,48 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
     result.value.final_state=state;
     result.value.binaries.push_back(std::move(compile_result.value));
     result.success=true;
+    return result;
+}
+
+ShaderGenResult<mtl::MaterialCreateInfo *> ShaderBuildPipeline::PrepareMaterialCreateInfo(
+    const mtl::StaticMaterialDef &def,
+    const mtl::MaterialCreateConfig &config,
+    const mtl::contract::PhysicalDeviceProfileLite *profile,
+    const std::string &vs_glsl,
+    const std::string &fs_glsl)
+{
+    ShaderGenResult<mtl::MaterialCreateInfo *> result{};
+    result.value=nullptr;
+
+    if(vs_glsl.empty()||fs_glsl.empty())
+    {
+        result.success=false;
+        AppendBuildMaterialCreateInfoDiagnostic(result.diagnostics,
+                                                ShaderGenErrorCode::InvalidConfig,
+                                                ShaderStage::Vertex,
+                                                "ShaderBuildPipeline.PrepareMaterialCreateInfo",
+                                                "vs_glsl or fs_glsl is empty");
+        return result;
+    }
+
+    mtl::MaterialBuilder builder(&config);
+    if(profile)
+        builder.SetDevice(profile);
+
+    if(!ApplyStaticMaterialDefToBuilder(def,builder,result.diagnostics))
+    {
+        result.success=false;
+        return result;
+    }
+
+    if(!ApplyFinalGLSLToBuilder(def,builder,vs_glsl,fs_glsl,result.diagnostics))
+    {
+        result.success=false;
+        return result;
+    }
+
+    result.value=BuildPreparedMaterialCreateInfo(builder,result.diagnostics);
+    result.success=result.value!=nullptr;
     return result;
 }
 
