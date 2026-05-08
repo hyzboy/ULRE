@@ -7,6 +7,10 @@
 #include<hgl/shadergen/ShaderStageBuildSet.h>
 #include<hgl/shadergen/ShaderStageIO.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
+#include<hgl/shadergen/ShaderLayoutResolver.h>
+#include<hgl/shadergen/ShaderLayoutEmitter.h>
+#include<hgl/shadergen/SamplerGLSLEmitter.h>
+#include<hgl/shadergen/internal/GLSLSourceUtils.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/math/Matrix.h>
@@ -50,6 +54,33 @@ static bool ResolveSSBOSemanticMeta(
     const DescriptorSemanticMeta *&meta)
 {
     return ResolveSemanticMeta(semantic, meta);
+}
+
+bool InjectLayoutDefines(MaterialCreateInfo &mci)
+{
+    ShaderCreateInfoVertex *vert = mci.GetVertexShader();
+    ShaderCreateInfo       *frag = mci.GetStageShader(ShaderStage::Fragment);
+
+    mci.Resort();
+    const ShaderLayoutContract layout = BuildShaderLayoutContract(mci);
+    const std::string layout_defs = EmitShaderLayoutDefines(layout);
+    const MaterialDescriptorDB &mdi = mci.GetDescriptorInfo();
+    const std::string vert_sampler_defs = vert ? EmitSimpleSamplerGLSL(mdi, ShaderStage::Vertex) : std::string();
+    const std::string frag_sampler_defs = frag ? EmitSimpleSamplerGLSL(mdi, ShaderStage::Fragment) : std::string();
+    const std::string frag_mit_defs = frag ? EmitMaterialInstanceTextureGLSL(mdi, ShaderStage::Fragment) : std::string();
+
+    if(!layout_defs.empty() || !vert_sampler_defs.empty() || !frag_sampler_defs.empty() || !frag_mit_defs.empty())
+    {
+        if(vert)
+            vert->SetFinalGLSL(internal::InjectAfterVersion(vert->GetFinalGLSL(),
+                                                            layout_defs + vert_sampler_defs));
+
+        if(frag)
+            frag->SetFinalGLSL(internal::InjectAfterVersion(frag->GetFinalGLSL(),
+                                                            layout_defs + frag_sampler_defs + frag_mit_defs));
+    }
+
+    return true;
 }
 
 

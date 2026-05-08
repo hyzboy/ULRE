@@ -2059,19 +2059,20 @@ MaterialCreateInfo *CompileCompositorMaterial(
 
     std::string diagnostics;
     ShaderBuildPipeline pipeline;
-    auto prepare_result = pipeline.PrepareMaterialCreateInfo(def,
-                                                             config,
-                                                             profile,
-                                                             vs_glsl,
-                                                             fs_glsl,
-                                                             &diagnostics);
-    MaterialCreateInfo *mci = prepare_result.success ? prepare_result.value : nullptr;
+    auto build_result = pipeline.PrepareMaterialCreateInfo(def,
+                                                           config,
+                                                           profile,
+                                                           vs_glsl,
+                                                           fs_glsl,
+                                                           &diagnostics);
+    MaterialCreateInfo *mci = build_result.success ? build_result.value : nullptr;
     if (!mci)
     {
-        EmitCompileCompositorPrepareFailure(shadow_report,
-                                            has_shadow_report,
-                                            def.name,
-                                            diagnostics);
+        EmitCompileCompositorFailureAndTrialArtifacts(shadow_report,
+                                                      has_shadow_report,
+                                                      def.name,
+                                                      diagnostics.empty() ? "<unknown>" : diagnostics.c_str(),
+                                                      diagnostics.empty() ? "PrepareMaterialCreateInfo failed" : diagnostics.c_str());
         return nullptr;
     }
 
@@ -2101,35 +2102,6 @@ MaterialCreateInfo *CompileCompositorMaterial(
     return mci;
 }
 
-bool PrepareCompositorGLSLForReflection(
-    const StaticMaterialDef &def,
-    const std::string &vs_glsl,
-    const std::string &fs_glsl,
-    std::string &out_vs_glsl,
-    std::string &out_fs_glsl,
-    std::string *diagnostics)
-{
-    ShaderBuildPipeline pipeline;
-    auto build_result = pipeline.PrepareMaterialCreateInfo(def,
-                                                           static_cast<const Material3DCreateConfig *>(nullptr),
-                                                           nullptr,
-                                                           vs_glsl,
-                                                           fs_glsl,
-                                                           diagnostics);
-    MaterialCreateInfo *mci = build_result.success ? build_result.value : nullptr;
-    if (!mci)
-        return false;
-
-    ShaderCreateInfoVertex *vert = mci->GetVertexShader();
-    ShaderCreateInfo       *frag = mci->GetStageShader(ShaderStage::Fragment);
-
-    out_vs_glsl = vert ? vert->GetFinalGLSL() : std::string();
-    out_fs_glsl = frag ? frag->GetFinalGLSL() : std::string();
-
-    delete mci;
-    return true;
-}
-
 CompileCompositorRoutePlan BuildCompileCompositorRoutePlan()
 {
     CompileCompositorRoutePlan plan{};
@@ -2157,7 +2129,8 @@ CompileCompositorRouteDecision ResolveCompileCompositorRouteDecision(const Shade
     }
     else
     {
-        decision.rationale = "CompileCompositorMaterial remains on Legacy by default in F2.10; route-switch intent is evaluated but not yet wired into the production compile branch.";
+        decision.rationale = "CompileCompositorMaterial remains on Legacy by default in F2.10; route-switch intent is evaluated but not yet wired into the production compile branch."
+                            " consider using 'material_instance' in the config to force-enable the pipeline variant for this material.";
     }
 
     return decision;
@@ -2319,26 +2292,61 @@ MaterialCreateInfo *CompileCompositorMaterial(
     return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, &cfg3d);
 }
 
-bool InjectLayoutDefines(MaterialCreateInfo &mci)
+bool PrepareCompositorGLSLForReflection(
+    const StaticMaterialDef &def,
+    const std::string &vs_glsl,
+    const std::string &fs_glsl,
+    std::string &out_vs_glsl,
+    std::string &out_fs_glsl,
+    std::string *diagnostics)
 {
-    ShaderCreateInfoVertex *vert = mci.GetVertexShader();
-    ShaderCreateInfo       *frag = mci.GetStageShader(ShaderStage::Fragment);
+    if (diagnostics)
+        diagnostics->clear();
 
-    mci.Resort();
-    const ShaderLayoutContract layout = hgl::graph::BuildShaderLayoutContract(mci);
-    const std::string layout_defs = hgl::graph::EmitShaderLayoutDefines(layout);
-    const MaterialDescriptorDB &mdi = mci.GetDescriptorInfo();
-    const std::string vert_sampler_defs = vert ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Vertex)   : std::string();
-    const std::string frag_sampler_defs = frag ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Fragment) : std::string();
-    const std::string frag_mit_defs     = frag ? hgl::graph::EmitMaterialInstanceTextureGLSL(mdi, ShaderStage::Fragment) : std::string();
+    ShaderBuildPipeline pipeline;
+    auto build_result = pipeline.PrepareMaterialCreateInfo(def,
+                                                           nullptr,
+                                                           nullptr,
+                                                           vs_glsl,
+                                                           fs_glsl,
+                                                           diagnostics);
+    MaterialCreateInfo *mci = build_result.success ? build_result.value : nullptr;
+    if (!mci)
+        return false;
 
-    if (!layout_defs.empty() || !vert_sampler_defs.empty() || !frag_sampler_defs.empty() || !frag_mit_defs.empty())
-    {
-        if (vert) vert->SetFinalGLSL(hgl::graph::internal::InjectAfterVersion(vert->GetFinalGLSL(), layout_defs + vert_sampler_defs));
-        if (frag) frag->SetFinalGLSL(hgl::graph::internal::InjectAfterVersion(frag->GetFinalGLSL(), layout_defs + frag_sampler_defs + frag_mit_defs));
-    }
+    ShaderCreateInfoVertex *vert = mci->GetVertexShader();
+    ShaderCreateInfo       *frag = mci->GetStageShader(ShaderStage::Fragment);
 
+    out_vs_glsl = vert ? vert->GetFinalGLSL() : std::string();
+    out_fs_glsl = frag ? frag->GetFinalGLSL() : std::string();
+
+    delete mci;
     return true;
 }
+
+// Removed InjectLayoutDefines definition as the shared implementation now lives in MaterialCreateInfo.cpp
+
+// The following function was removed:
+// bool InjectLayoutDefines(MaterialCreateInfo &mci)
+// {
+//     ShaderCreateInfoVertex *vert = mci.GetVertexShader();
+//     ShaderCreateInfo       *frag = mci->GetStageShader(ShaderStage::Fragment);
+//
+//     mci.Resort();
+//     const ShaderLayoutContract layout = hgl::graph::BuildShaderLayoutContract(mci);
+//     const std::string layout_defs = hgl::graph::EmitShaderLayoutDefines(layout);
+//     const MaterialDescriptorDB &mdi = mci.GetDescriptorInfo();
+//     const std::string vert_sampler_defs = vert ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Vertex)   : std::string();
+//     const std::string frag_sampler_defs = frag ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Fragment) : std::string();
+//     const std::string frag_mit_defs     = frag ? hgl::graph::EmitMaterialInstanceTextureGLSL(mdi, ShaderStage::Fragment) : std::string();
+//
+//     if (!layout_defs.empty() || !vert_sampler_defs.empty() || !frag_sampler_defs.empty() || !frag_mit_defs.empty())
+//     {
+//         if (vert) vert->SetFinalGLSL(hgl::graph::internal::InjectAfterVersion(vert->GetFinalGLSL(), layout_defs + vert_sampler_defs));
+//         if (frag) frag->SetFinalGLSL(hgl::graph::internal::InjectAfterVersion(frag->GetFinalGLSL(), layout_defs + frag_sampler_defs + frag_mit_defs));
+//     }
+//
+//     return true;
+// }
 
 }  // namespace hgl::graph::mtl
