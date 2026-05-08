@@ -129,6 +129,64 @@ namespace
     static bool TryAppendBuiltinTrialCandidate(BuiltinTrialBatchBuilderState &state,
                                                const MaterialPreset preset)
     {
+        if(preset==MaterialPreset::Checkerboard3D)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+            };
+            static const StaticMaterialDef checkerboard_def =
+            {
+                "Checkerboard3D",
+                PrimitiveType::Triangles,
+                vertex_entries,
+                uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0])),
+                nullptr,
+                nullptr,
+                nullptr,
+                ShaderDataSchema::None,
+            };
+            static const std::string checkerboard_vs =
+                "#version 450\n"
+                "layout(location=0) in vec3 inPosition;\n"
+                "layout(location=0) out vec3 vWorldPos;\n"
+                "void main()\n"
+                "{\n"
+                "    vWorldPos = inPosition;\n"
+                "    gl_Position = vec4(inPosition, 1.0);\n"
+                "}\n";
+            static const std::string checkerboard_fs =
+                "#version 450\n"
+                "layout(location=0) in vec3 vWorldPos;\n"
+                "layout(location=0) out vec4 outColor;\n"
+                "void main()\n"
+                "{\n"
+                "    vec2 grid = floor(vWorldPos.xz * 0.5);\n"
+                "    float checker = mod(grid.x + grid.y, 2.0);\n"
+                "    vec3 c0 = vec3(0.65, 0.65, 0.65);\n"
+                "    vec3 c1 = vec3(0.25, 0.25, 0.25);\n"
+                "    vec3 col = mix(c0, c1, checker);\n"
+                "    outColor = vec4(col, 1.0);\n"
+                "}\n";
+            static Material3DCreateConfig checkerboard_cfg;
+
+            checkerboard_cfg.camera = false;
+            checkerboard_cfg.sky = false;
+            checkerboard_cfg.local_to_world = false;
+            checkerboard_cfg.material_instance = false;
+            checkerboard_cfg.effective_feature_mask = 0;
+            checkerboard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            CompileCompositorTrialBatchItem item{};
+            item.def = new StaticMaterialDef(checkerboard_def);
+            item.vs_glsl = checkerboard_vs;
+            item.fs_glsl = checkerboard_fs;
+            item.config = &checkerboard_cfg;
+            item.material_name_override = "Checkerboard3D";
+            state.items.push_back(std::move(item));
+            return true;
+        }
+
         MaterialVariantKey key=RouteKey(preset,0u,RuntimeKeyOverrides{});
         const MaterialVariantDesc *desc=GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(key);
         if(!desc)
@@ -1555,6 +1613,7 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
         MaterialPreset::PureColor2D,
         MaterialPreset::PureTexture2D,
         MaterialPreset::VertexColor2D,
+        MaterialPreset::Checkerboard3D,
         MaterialPreset::PureColor3D,
         MaterialPreset::TerrainGrid,
         MaterialPreset::SkyMinimal,

@@ -742,6 +742,9 @@ static void TestCompileCompositorBuiltinCandidateTrialBatchSummary()
     std::ifstream terrain_grid_report_ifs("build/shadergen_trial/reports/TerrainGrid_baseline_compare.md",std::ios::in);
     CHECK_TRUE(terrain_grid_report_ifs.is_open());
 
+    std::ifstream checkerboard_report_ifs("build/shadergen_trial/reports/Checkerboard3D_baseline_compare.md",std::ios::in);
+    CHECK_TRUE(checkerboard_report_ifs.is_open());
+
     std::ifstream text2d_report_ifs("build/shadergen_trial/reports/Text2D_baseline_compare.md",std::ios::in);
     CHECK_TRUE(text2d_report_ifs.is_open());
 
