@@ -145,7 +145,7 @@ namespace
         }
     }
 
-    static bool AppendAssembledBuiltinTrialItem(BuiltinTrialBatchBuilderState &state,
+    static bool AppendBuiltinTrialAssembledItem(BuiltinTrialBatchBuilderState &state,
                                                 const StaticMaterialDef &def,
                                                 const MaterialCreateConfig *config,
                                                 const MaterialVariantKey &key,
@@ -172,7 +172,7 @@ namespace
         return true;
     }
 
-    static void AllocateBuiltin2DTrialResources(BuiltinTrialBatchBuilderState &state,
+    static void AllocateBuiltinTrial2DResources(BuiltinTrialBatchBuilderState &state,
                                                 std::vector<FixedVertexEntry> *&vertices,
                                                 MaterialResourceManifest *&manifest)
     {
@@ -203,7 +203,7 @@ namespace
         def.shader_data_schema = shader_data_schema;
     }
 
-    static bool AppendRawBuiltinTrialItem(BuiltinTrialBatchBuilderState &state,
+    static bool AppendBuiltinTrialRawItem(BuiltinTrialBatchBuilderState &state,
                                           const StaticMaterialDef &def,
                                           const MaterialCreateConfig *config,
                                           const std::string &vs_glsl,
@@ -265,7 +265,7 @@ namespace
                 EmitPositionInput(vs_out, *pp, 0);
                 vs_out << "\nvoid main()\n{\n    gl_Position = vec4(GetPositionLocal(), 1.0);\n}\n";
 
-                return AppendRawBuiltinTrialItem(state,
+                return AppendBuiltinTrialRawItem(state,
                                                  fullscreen_triangle_def,
                                                  &fullscreen_triangle_cfg,
                                                  vs_out.str(),
@@ -321,7 +321,7 @@ namespace
                 checkerboard_cfg.effective_feature_mask = 0;
                 checkerboard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
-                return AppendRawBuiltinTrialItem(state,
+                return AppendBuiltinTrialRawItem(state,
                                                  checkerboard_def,
                                                  &checkerboard_cfg,
                                                  checkerboard_vs,
@@ -796,7 +796,7 @@ namespace
                 return false;
         }
 
-        return AppendAssembledBuiltinTrialItem(state,
+        return AppendBuiltinTrialAssembledItem(state,
                                                def,
                                                config,
                                                key,
@@ -823,7 +823,7 @@ namespace
 
                 std::vector<FixedVertexEntry> *vertices=nullptr;
                 MaterialResourceManifest *manifest=nullptr;
-                AllocateBuiltin2DTrialResources(state,vertices,manifest);
+                AllocateBuiltinTrial2DResources(state,vertices,manifest);
                 build2d::PushBaseVertexEntries(*vertices,&pure_color_cfg);
 
                 build2d::BuildBase2DFixedDef(def,
@@ -833,7 +833,7 @@ namespace
                                              *manifest,
                                              ShaderDataSchema::Color4f);
 
-                return AppendAssembledBuiltinTrialItem(state,
+                return AppendBuiltinTrialAssembledItem(state,
                                                        def,
                                                        &pure_color_cfg,
                                                        key,
@@ -853,7 +853,7 @@ namespace
 
                 std::vector<FixedVertexEntry> *vertices=nullptr;
                 MaterialResourceManifest *manifest=nullptr;
-                AllocateBuiltin2DTrialResources(state,vertices,manifest);
+                AllocateBuiltinTrial2DResources(state,vertices,manifest);
                 build2d::PushBaseVertexEntries(*vertices,&vertex_color_cfg);
                 vertices->push_back({VAT_VEC4, VAN::Color});
 
@@ -864,7 +864,7 @@ namespace
                                              *manifest,
                                              ShaderDataSchema::None);
 
-                return AppendAssembledBuiltinTrialItem(state,
+                return AppendBuiltinTrialAssembledItem(state,
                                                        def,
                                                        &vertex_color_cfg,
                                                        key,
@@ -884,7 +884,7 @@ namespace
 
                 std::vector<FixedVertexEntry> *vertices=nullptr;
                 MaterialResourceManifest *manifest=nullptr;
-                AllocateBuiltin2DTrialResources(state,vertices,manifest);
+                AllocateBuiltinTrial2DResources(state,vertices,manifest);
                 build2d::PushBaseVertexEntries(*vertices,&pure_texture_cfg);
                 vertices->push_back({VAT_VEC2, VAN::TexCoord});
                 AddTextureSampler(manifest->samplers, SamplerSlot::BaseColor, SamplerType::Sampler2D);
@@ -896,7 +896,7 @@ namespace
                                              *manifest,
                                              ShaderDataSchema::None);
 
-                return AppendAssembledBuiltinTrialItem(state,
+                return AppendBuiltinTrialAssembledItem(state,
                                                        def,
                                                        &pure_texture_cfg,
                                                        key,
@@ -917,7 +917,7 @@ namespace
 
                 std::vector<FixedVertexEntry> *vertices=nullptr;
                 MaterialResourceManifest *manifest=nullptr;
-                AllocateBuiltin2DTrialResources(state,vertices,manifest);
+                AllocateBuiltinTrial2DResources(state,vertices,manifest);
                 build2d::PushBaseVertexEntries(*vertices,&text_cfg);
                 vertices->push_back({VAT_VEC2, VAN::TexCoord});
                 AddTextureSampler(manifest->samplers, SamplerSlot::Text, SamplerType::Sampler2D);
@@ -929,7 +929,7 @@ namespace
                                              *manifest,
                                              ShaderDataSchema::TextColor);
 
-                return AppendAssembledBuiltinTrialItem(state,
+                return AppendBuiltinTrialAssembledItem(state,
                                                        def,
                                                        &text_cfg,
                                                        key,
