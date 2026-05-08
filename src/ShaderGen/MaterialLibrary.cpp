@@ -8,6 +8,7 @@
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/shadergen/MaterialFactory3D.h>
 #include<cstdio>
+#include<type_traits>
 #include "BuiltinVariantEntry.h"
 
 namespace hgl::graph::mtl{
@@ -140,6 +141,87 @@ static const PresetResolveEntry *FindPresetResolveEntry(const MaterialPreset pre
     return nullptr;
 }
 
+template<typename TCfg>
+static MaterialCreateInfo *ForwardLegacyMaterialCreate(const contract::PhysicalDeviceProfileLite *profile,
+                                                       const MaterialPreset preset,
+                                                       TCfg *cfg)
+{
+    using MutableCfg = std::remove_const_t<TCfg>;
+    return CreateMaterialCreateInfo(profile,preset,const_cast<MutableCfg *>(cfg));
+}
+
+}
+
+MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,
+                                      Material3DCreateConfig *cfg)
+{
+    return ForwardLegacyMaterialCreate(profile,MaterialPreset::PureColor3D,cfg);
+}
+
+MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,
+                                        const Material3DCreateConfig *cfg)
+{
+    return ForwardLegacyMaterialCreate(profile,MaterialPreset::VertexColor3D,cfg);
+}
+
+MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,
+                                            Material3DCreateConfig *cfg)
+{
+    return ForwardLegacyMaterialCreate(profile,MaterialPreset::VertexLuminance3D,cfg);
+}
+
+MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfileLite *profile,
+                                            Material3DCreateConfig *cfg)
+{
+    return ForwardLegacyMaterialCreate(profile,MaterialPreset::VertexLuminance2D,cfg);
+}
+
+MaterialCreateInfo *CreateVertexPaletteColor3D(const contract::PhysicalDeviceProfileLite *profile,
+                                               const Material3DCreateConfig *cfg)
+{
+    return ForwardLegacyMaterialCreate(profile,MaterialPreset::VertexPaletteColor3D,cfg);
+}
+
+MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,
+                                  Material3DCreateConfig *cfg)
+{
+    return ForwardLegacyMaterialCreate(profile,MaterialPreset::Gizmo3D,cfg);
+}
+
+MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *profile,
+                                   const Material3DCreateConfig *cfg)
+{
+    return ForwardLegacyMaterialCreate(profile,MaterialPreset::Standard,cfg);
+}
+
+MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite *profile,
+                                      const TerrainGridCreateConfig *cfg)
+{
+    return ForwardLegacyMaterialCreate(profile,MaterialPreset::TerrainGrid,cfg);
+}
+
+MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile,
+                                     const SkyMinimalCreateConfig *cfg)
+{
+    return ForwardLegacyMaterialCreate(profile,MaterialPreset::SkyMinimal,cfg);
+}
+
+MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfileLite *profile,
+                                             BillboardMaterialCreateConfig *cfg)
+{
+    return ForwardLegacyMaterialCreate(profile,MaterialPreset::Billboard2DDynamic,cfg);
+}
+
+MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfileLite *profile,
+                                           BillboardMaterialCreateConfig *cfg)
+{
+    return ForwardLegacyMaterialCreate(profile,MaterialPreset::Billboard2DFixed,cfg);
+}
+
+MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile,
+                                     PBRColor3DMaterialCreateConfig *cfg)
+{
+    return ForwardLegacyMaterialCreate(profile,MaterialPreset::PBRColor3D,cfg);
 }
 
 MaterialLOD GetDefaultMaterialLOD()
