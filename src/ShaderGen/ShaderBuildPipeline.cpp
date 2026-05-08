@@ -318,6 +318,216 @@ static std::string BuildSchemaIncludeText(const hgl::graph::mtl::ShaderDataSchem
     include_text += "\"\n";
     return include_text;
 }
+
+static void AppendBuildMaterialCreateInfoDiagnostic(
+    std::vector<hgl::graph::ShaderGenDiagnostic> &diagnostics,
+    const hgl::graph::ShaderGenErrorCode error_code,
+    const hgl::graph::ShaderStage stage,
+    const char *subject,
+    const char *message)
+{
+    diagnostics.push_back({hgl::graph::ShaderGenSeverity::Error,
+                           error_code,
+                           stage,
+                           subject ? subject : "ShaderBuildPipeline.BuildMaterialCreateInfo",
+                           message ? message : "<unknown>"});
+}
+
+static bool ApplyStaticMaterialDefToBuilder(
+    const hgl::graph::mtl::StaticMaterialDef &def,
+    hgl::graph::mtl::MaterialBuilder &builder,
+    std::vector<hgl::graph::ShaderGenDiagnostic> &diagnostics)
+{
+    constexpr uint32_t kBuilderStageBits = uint32_t(hgl::graph::ShaderStage::VertexFragment);
+    uint32_t mi_stage_bits = uint32_t(hgl::graph::ShaderStage::Fragment);
+
+    if(def.ubo_descriptors)
+    {
+        for(const auto semantic:*def.ubo_descriptors)
+        {
+            if(!builder.AddUBOStruct(kBuilderStageBits, semantic))
+            {
+                AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
+                                                        hgl::graph::ShaderGenErrorCode::InvalidConfig,
+                                                        hgl::graph::ShaderStage::Vertex,
+                                                        "ShaderBuildPipeline.BuildMaterialCreateInfo.UBO",
+                                                        "failed to add UBO semantic");
+                return false;
+            }
+        }
+    }
+
+    if(def.ssbo_descriptors)
+    {
+        for(const auto semantic:*def.ssbo_descriptors)
+        {
+            if(semantic == hgl::graph::mtl::SSBODescriptorSemantic::TransformData)
+            {
+                if(!builder.SetLocalToWorld(kBuilderStageBits))
+                {
+                    AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
+                                                            hgl::graph::ShaderGenErrorCode::InvalidConfig,
+                                                            hgl::graph::ShaderStage::Vertex,
+                                                            "ShaderBuildPipeline.BuildMaterialCreateInfo.LocalToWorld",
+                                                            "failed to configure local_to_world");
+                    return false;
+                }
+
+                continue;
+            }
+
+            if(semantic == hgl::graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceData)
+            {
+                mi_stage_bits = kBuilderStageBits;
+                continue;
+            }
+
+            if(!builder.AddSSBOStruct(kBuilderStageBits, semantic))
+            {
+                AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
+                                                        hgl::graph::ShaderGenErrorCode::InvalidConfig,
+                                                        hgl::graph::ShaderStage::Vertex,
+                                                        "ShaderBuildPipeline.BuildMaterialCreateInfo.SSBO",
+                                                        "failed to add SSBO semantic");
+                return false;
+            }
+        }
+    }
+
+    if(def.texture_samplers)
+    {
+        for(const auto &[slot, descriptor] : *def.texture_samplers)
+        {
+            if(!builder.AddTextureSampler(kBuilderStageBits,
+                                          descriptor.sampler_type,
+                                          slot,
+                                          descriptor.channel_hint))
+            {
+                AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
+                                                        hgl::graph::ShaderGenErrorCode::InvalidConfig,
+                                                        hgl::graph::ShaderStage::Fragment,
+                                                        "ShaderBuildPipeline.BuildMaterialCreateInfo.TextureSampler",
+                                                        "failed to add texture sampler");
+                return false;
+            }
+        }
+    }
+
+    if(def.vertex_entries)
+    {
+        if(auto *vsc = builder.GetVertexShader())
+        {
+            for(uint32_t i=0;i<def.vertex_entry_count;++i)
+            {
+                const auto &entry=def.vertex_entries[i];
+                vsc->AddInput(entry.type, entry.attrib);
+            }
+        }
+    }
+
+    if(def.shader_data_schema != hgl::graph::mtl::ShaderDataSchema::None)
+    {
+        const auto &schema_info = hgl::graph::mtl::GetShaderDataSchemaInfo(def.shader_data_schema);
+
+        if(schema_info.byte_size==0 || !schema_info.glsl_schema_file || !*schema_info.glsl_schema_file)
+        {
+            AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
+                                                    hgl::graph::ShaderGenErrorCode::InvalidConfig,
+                                                    hgl::graph::ShaderStage::Vertex,
+                                                    "ShaderBuildPipeline.BuildMaterialCreateInfo.MaterialInstance.Schema",
+                                                    "shader data schema info is incomplete");
+            return false;
+        }
+
+        if(!builder.SetMaterialInstance(def.shader_data_schema, schema_info, mi_stage_bits))
+        {
+            AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
+                                                    hgl::graph::ShaderGenErrorCode::InvalidConfig,
+                                                    hgl::graph::ShaderStage::Fragment,
+                                                    "ShaderBuildPipeline.BuildMaterialCreateInfo.MaterialInstance.Schema",
+                                                    "failed to configure material_instance from schema");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool ApplyFinalGLSLToBuilder(
+    const hgl::graph::mtl::StaticMaterialDef &def,
+    hgl::graph::mtl::MaterialBuilder &builder,
+    const std::string &vs_glsl,
+    const std::string &fs_glsl,
+    std::vector<hgl::graph::ShaderGenDiagnostic> &diagnostics)
+{
+    std::string final_vs_glsl = vs_glsl;
+    std::string final_fs_glsl = fs_glsl;
+
+    if(def.shader_data_schema != hgl::graph::mtl::ShaderDataSchema::None)
+    {
+        const std::string schema_include = BuildSchemaIncludeText(def.shader_data_schema);
+        if(schema_include.empty())
+        {
+            AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
+                                                    hgl::graph::ShaderGenErrorCode::SourceGenerationFailed,
+                                                    hgl::graph::ShaderStage::Vertex,
+                                                    "ShaderBuildPipeline.BuildMaterialCreateInfo.MaterialInstance.Schema",
+                                                    "shader data schema has no GLSL include path");
+            return false;
+        }
+
+        final_vs_glsl = hgl::graph::internal::InjectAfterVersion(final_vs_glsl, schema_include);
+        final_fs_glsl = hgl::graph::internal::InjectAfterVersion(final_fs_glsl, schema_include);
+    }
+
+    if(auto *vert = builder.GetVertexShader())
+        vert->SetFinalGLSL(final_vs_glsl);
+
+    if(auto *frag = builder.GetStageShader(hgl::graph::ShaderStage::Fragment))
+        frag->SetFinalGLSL(final_fs_glsl);
+
+    return true;
+}
+
+static hgl::graph::mtl::MaterialCreateInfo *BuildCompiledMaterialCreateInfo(
+    hgl::graph::mtl::MaterialBuilder &builder,
+    std::vector<hgl::graph::ShaderGenDiagnostic> &diagnostics)
+{
+    hgl::graph::mtl::MaterialCreateInfo *mci = builder.BuildSnapshotOnly();
+    if(!mci)
+    {
+        AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
+                                                hgl::graph::ShaderGenErrorCode::InternalError,
+                                                hgl::graph::ShaderStage::Vertex,
+                                                "ShaderBuildPipeline.BuildMaterialCreateInfo",
+                                                "MaterialBuilder::BuildSnapshotOnly() failed");
+        return nullptr;
+    }
+
+    if(!hgl::graph::mtl::InjectLayoutDefines(*mci))
+    {
+        delete mci;
+        AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
+                                                hgl::graph::ShaderGenErrorCode::LayoutNotFinalized,
+                                                hgl::graph::ShaderStage::Vertex,
+                                                "ShaderBuildPipeline.BuildMaterialCreateInfo",
+                                                "InjectLayoutDefines() failed");
+        return nullptr;
+    }
+
+    if(!mci->CompileShaderStagesToSPV())
+    {
+        delete mci;
+        AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
+                                                hgl::graph::ShaderGenErrorCode::CompileFailed,
+                                                hgl::graph::ShaderStage::Vertex,
+                                                "ShaderBuildPipeline.BuildMaterialCreateInfo",
+                                                "CompileShaderStagesToSPV() failed");
+        return nullptr;
+    }
+
+    return mci;
+}
 }
 
 namespace hgl::graph
