@@ -2128,12 +2128,14 @@ bool PrepareCompositorGLSLForReflection(
     std::string &out_fs_glsl,
     std::string *diagnostics)
 {
-    MaterialCreateInfo *mci = CreatePreparedCompositorMaterial(nullptr,
-                                                               def,
-                                                               vs_glsl,
-                                                               fs_glsl,
-                                                               nullptr,
-                                                               diagnostics);
+    ShaderBuildPipeline pipeline;
+    auto build_result = pipeline.PrepareMaterialCreateInfo(def,
+                                                           static_cast<const Material3DCreateConfig *>(nullptr),
+                                                           nullptr,
+                                                           vs_glsl,
+                                                           fs_glsl,
+                                                           diagnostics);
+    MaterialCreateInfo *mci = build_result.success ? build_result.value : nullptr;
     if (!mci)
         return false;
 
