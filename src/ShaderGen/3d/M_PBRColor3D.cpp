@@ -56,6 +56,7 @@ namespace
         nullptr,
         ShaderDataSchema::PBRColorParams,
     };
+
     static MaterialCreateInfo *CreatePBRColor3DFactory(
         const contract::PhysicalDeviceProfileLite *profile,
         const MaterialVariantDesc                 *desc,
@@ -125,4 +126,3 @@ namespace
 
 #include "../MaterialFactory3DRegistration.h"
 ULRE_REGISTER_PRESET_FACTORY(PBRColor3D, "PBRColor3D", hgl::graph::mtl::CreatePBRColor3DFactory)
-

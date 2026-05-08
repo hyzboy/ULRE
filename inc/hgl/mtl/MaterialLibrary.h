@@ -14,16 +14,6 @@ namespace hgl::graph::mtl{
 struct MaterialCreateConfig;
 class MaterialCreateInfo;
 
-/// 仅声明材质创建函数，不产生任何注册或全局常量副作用。
-#define DECLARE_MATERIAL_CREATOR(name,cfg_type) \
-MaterialCreateInfo *Create##name(const contract::PhysicalDeviceProfileLite *profile,cfg_type *); \
-\
-inline MaterialCreateInfo *Create##name(const contract::PhysicalDeviceProfileLite *profile)  \
-{   \
-    cfg_type cfg;   \
-    return Create##name(profile,&cfg);  \
-}
-
 // Semantic entry path: MaterialPreset is authoring/content intent. The library resolves it through
 // runtime material LOD and then maps it to a concrete MaterialVariantKey / shading implementation.
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
