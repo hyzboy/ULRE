@@ -152,42 +152,6 @@ static MaterialCreateInfo *ForwardLegacyMaterialCreate(const contract::PhysicalD
 
 }
 
-MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,
-                                      Material3DCreateConfig *cfg)
-{
-    return ForwardLegacyMaterialCreate(profile,MaterialPreset::PureColor3D,cfg);
-}
-
-MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,
-                                        const Material3DCreateConfig *cfg)
-{
-    return ForwardLegacyMaterialCreate(profile,MaterialPreset::VertexColor3D,cfg);
-}
-
-MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,
-                                            Material3DCreateConfig *cfg)
-{
-    return ForwardLegacyMaterialCreate(profile,MaterialPreset::VertexLuminance3D,cfg);
-}
-
-MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfileLite *profile,
-                                            Material3DCreateConfig *cfg)
-{
-    return ForwardLegacyMaterialCreate(profile,MaterialPreset::VertexLuminance2D,cfg);
-}
-
-MaterialCreateInfo *CreateVertexPaletteColor3D(const contract::PhysicalDeviceProfileLite *profile,
-                                               const Material3DCreateConfig *cfg)
-{
-    return ForwardLegacyMaterialCreate(profile,MaterialPreset::VertexPaletteColor3D,cfg);
-}
-
-MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,
-                                  Material3DCreateConfig *cfg)
-{
-    return ForwardLegacyMaterialCreate(profile,MaterialPreset::Gizmo3D,cfg);
-}
-
 MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *profile,
                                    const Material3DCreateConfig *cfg)
 {
