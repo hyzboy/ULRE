@@ -5,10 +5,10 @@
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfileLite *profile,
-                                             const MaterialVariantKey &key,
-                                             const mtl::Material2DCreateConfig *cfg,
-                                             const MaterialVariantDesc &desc)
+static MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfileLite *profile,
+                                                    const MaterialVariantKey &key,
+                                                    const mtl::Material2DCreateConfig *cfg,
+                                                    const MaterialVariantDesc &desc)
 {
     if(!profile||!cfg)
         return(nullptr);
@@ -54,10 +54,10 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
     return CreateFromFixedDef2D("PureTexture2D", profile, def, key, vs_preamble, fs_preamble, &inner, desc);
 }
 
-MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,
-                                         const mtl::Material2DCreateConfig *cfg,
-                                         const MaterialVariantDesc &desc,
-                                         MaterialVariantKey key)
+static MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,
+                                               const mtl::Material2DCreateConfig *cfg,
+                                               const MaterialVariantDesc &desc,
+                                               MaterialVariantKey key)
 {
     if(cfg && cfg->texture_source_bits_override != 0)
     {

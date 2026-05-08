@@ -4,10 +4,10 @@
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLite *profile,
-                                          const Material2DCreateConfig *cfg,
-                                          const MaterialVariantDesc &desc,
-                                          const MaterialVariantKey &key)
+static MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLite *profile,
+                                               const Material2DCreateConfig *cfg,
+                                               const MaterialVariantDesc &desc,
+                                               const MaterialVariantKey &key)
 {
     if(!profile||!cfg)
         return(nullptr);

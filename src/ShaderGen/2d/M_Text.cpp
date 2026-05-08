@@ -8,10 +8,10 @@
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,
-                                   const Text2DMaterialCreateConfig *cfg,
-                                   const MaterialVariantDesc &desc,
-                                   const MaterialVariantKey &key)
+static MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,
+                                        const Text2DMaterialCreateConfig *cfg,
+                                        const MaterialVariantDesc &desc,
+                                        const MaterialVariantKey &key)
 {
     if(!profile||!cfg)
         return(nullptr);
