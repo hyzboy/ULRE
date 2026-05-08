@@ -19,6 +19,7 @@
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/shadergen/ShaderLayoutResolver.h>
 #include <hgl/shadergen/ShaderLayoutEmitter.h>
+#include <hgl/shadergen/PositionProviderRegistry.h>
 #include <hgl/shadergen/SamplerGLSLEmitter.h>
 #include <hgl/shadergen/ShaderBuildPipeline.h>
 #include <hgl/shadergen/CompositorAssembler.h>
@@ -31,6 +32,7 @@
 #include <filesystem>
 #include <cstdlib>
 #include <cstdio>
+#include <sstream>
 #include <string>
 
 namespace hgl::graph::mtl {
@@ -129,6 +131,56 @@ namespace
     static bool TryAppendBuiltinTrialCandidate(BuiltinTrialBatchBuilderState &state,
                                                const MaterialPreset preset)
     {
+        if(preset==MaterialPreset::FullscreenTriangle)
+        {
+            static const StaticMaterialDef fullscreen_triangle_def =
+            {
+                "FullscreenTriangle",
+                PrimitiveType::Triangles,
+                nullptr,
+                0,
+                nullptr,
+                nullptr,
+                nullptr,
+                ShaderDataSchema::None,
+            };
+            static const std::string fullscreen_triangle_fs =
+                "#version 450\n"
+                "\n"
+                "layout(location = 0) out vec4 outColor;\n"
+                "\n"
+                "void main()\n"
+                "{\n"
+                "    outColor = vec4(fract(gl_FragCoord.xyz * 0.01), 1.0);\n"
+                "}\n";
+            static Material3DCreateConfig fullscreen_triangle_cfg;
+
+            fullscreen_triangle_cfg.camera = false;
+            fullscreen_triangle_cfg.sky = false;
+            fullscreen_triangle_cfg.local_to_world = false;
+            fullscreen_triangle_cfg.material_instance = false;
+            fullscreen_triangle_cfg.effective_feature_mask = 0;
+            fullscreen_triangle_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            const PositionProvider *pp = FindBuiltinProvider(PositionProviderId::PCG_FullscreenTriangle);
+            if(!pp)
+                return false;
+
+            std::ostringstream vs_out;
+            vs_out << "#version 450\n\n";
+            EmitPositionInput(vs_out, *pp, 0);
+            vs_out << "\nvoid main()\n{\n    gl_Position = vec4(GetPositionLocal(), 1.0);\n}\n";
+
+            CompileCompositorTrialBatchItem item{};
+            item.def = new StaticMaterialDef(fullscreen_triangle_def);
+            item.vs_glsl = vs_out.str();
+            item.fs_glsl = fullscreen_triangle_fs;
+            item.config = &fullscreen_triangle_cfg;
+            item.material_name_override = "FullscreenTriangle";
+            state.items.push_back(std::move(item));
+            return true;
+        }
+
         if(preset==MaterialPreset::Checkerboard3D)
         {
             static constexpr FixedVertexEntry vertex_entries[] =
@@ -1614,6 +1666,7 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
         MaterialPreset::PureTexture2D,
         MaterialPreset::VertexColor2D,
         MaterialPreset::Checkerboard3D,
+        MaterialPreset::FullscreenTriangle,
         MaterialPreset::PureColor3D,
         MaterialPreset::TerrainGrid,
         MaterialPreset::SkyMinimal,
