@@ -129,9 +129,6 @@ public:
     std::string ToHashStdString() override;
 };
 
-DECLARE_MATERIAL_CREATOR(Billboard2DDynamic, BillboardMaterialCreateConfig)
-DECLARE_MATERIAL_CREATOR(Billboard2DFixed, BillboardMaterialCreateConfig)
-
 struct StandardMaterialInstance
 {
     uint32 base_color;      ///<基础颜色
@@ -163,8 +160,6 @@ public:
         lighting_model = LightingModel::PBR;
     }
 };
-
-DECLARE_MATERIAL_CREATOR(PBRColor3D, PBRColor3DMaterialCreateConfig)
 
 // ---------------------------------------------------------------------------
 // Type-safe downcast helpers — replaces dynamic_cast<> throughout the codebase.

@@ -152,24 +152,6 @@ static MaterialCreateInfo *ForwardLegacyMaterialCreate(const contract::PhysicalD
 
 }
 
-MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfileLite *profile,
-                                             BillboardMaterialCreateConfig *cfg)
-{
-    return ForwardLegacyMaterialCreate(profile,MaterialPreset::Billboard2DDynamic,cfg);
-}
-
-MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfileLite *profile,
-                                           BillboardMaterialCreateConfig *cfg)
-{
-    return ForwardLegacyMaterialCreate(profile,MaterialPreset::Billboard2DFixed,cfg);
-}
-
-MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile,
-                                     PBRColor3DMaterialCreateConfig *cfg)
-{
-    return ForwardLegacyMaterialCreate(profile,MaterialPreset::PBRColor3D,cfg);
-}
-
 MaterialLOD GetDefaultMaterialLOD()
 {
     // Temporary bootstrap fallback: current runtime only exposes one built-in material
