@@ -52,6 +52,9 @@ static MaterialCreateInfo *CompileCompositorMaterialForConfig(const contract::Ph
 
 namespace
 {
+    // Trial-batch helpers only.
+    // These helpers organize built-in candidate observability and do not define
+    // a future renderer-facing VS/FS split material model.
     static constexpr uint32_t kDefaultDescriptorStageBits = uint32_t(ShaderStage::VertexFragment);
 
     struct BuiltinTrialBatchBuilderState
@@ -169,6 +172,54 @@ namespace
         return true;
     }
 
+    static void AllocateBuiltin2DTrialResources(BuiltinTrialBatchBuilderState &state,
+                                                std::vector<FixedVertexEntry> *&vertices,
+                                                MaterialResourceManifest *&manifest)
+    {
+        vertices = new std::vector<FixedVertexEntry>();
+        manifest = new MaterialResourceManifest();
+
+        state.owned_vertex_lists.push_back(vertices);
+        state.owned_manifests.push_back(manifest);
+    }
+
+    static void FillBuiltinTrialStaticMaterialDef(StaticMaterialDef &def,
+                                                  const char *name,
+                                                  const PrimitiveType primitive_type,
+                                                  const FixedVertexEntry *vertex_entries,
+                                                  const uint32_t vertex_entry_count,
+                                                  const UBOSemanticSet *ubos,
+                                                  const SSBOSemanticSet *ssbos,
+                                                  const StaticTextureSamplerDescriptors *samplers,
+                                                  const ShaderDataSchema shader_data_schema)
+    {
+        def.name = name;
+        def.primitive_type = primitive_type;
+        def.vertex_entries = vertex_entries;
+        def.vertex_entry_count = vertex_entry_count;
+        def.ubo_descriptors = ubos;
+        def.ssbo_descriptors = ssbos;
+        def.texture_samplers = samplers;
+        def.shader_data_schema = shader_data_schema;
+    }
+
+    static bool AppendRawBuiltinTrialItem(BuiltinTrialBatchBuilderState &state,
+                                          const StaticMaterialDef &def,
+                                          const MaterialCreateConfig *config,
+                                          const std::string &vs_glsl,
+                                          const std::string &fs_glsl,
+                                          const char *material_name_override)
+    {
+        CompileCompositorTrialBatchItem item{};
+        item.def = new StaticMaterialDef(def);
+        item.vs_glsl = vs_glsl;
+        item.fs_glsl = fs_glsl;
+        item.config = config;
+        item.material_name_override = material_name_override ? material_name_override : def.name;
+        state.items.push_back(std::move(item));
+        return true;
+    }
+
     static bool TryAppendBuiltinSpecialTrialCandidate(BuiltinTrialBatchBuilderState &state,
                                                       const MaterialPreset preset)
     {
@@ -214,14 +265,12 @@ namespace
                 EmitPositionInput(vs_out, *pp, 0);
                 vs_out << "\nvoid main()\n{\n    gl_Position = vec4(GetPositionLocal(), 1.0);\n}\n";
 
-                CompileCompositorTrialBatchItem item{};
-                item.def = new StaticMaterialDef(fullscreen_triangle_def);
-                item.vs_glsl = vs_out.str();
-                item.fs_glsl = fullscreen_triangle_fs;
-                item.config = &fullscreen_triangle_cfg;
-                item.material_name_override = "FullscreenTriangle";
-                state.items.push_back(std::move(item));
-                return true;
+                return AppendRawBuiltinTrialItem(state,
+                                                 fullscreen_triangle_def,
+                                                 &fullscreen_triangle_cfg,
+                                                 vs_out.str(),
+                                                 fullscreen_triangle_fs,
+                                                 "FullscreenTriangle");
             }
 
             case MaterialPreset::Checkerboard3D:
@@ -272,14 +321,12 @@ namespace
                 checkerboard_cfg.effective_feature_mask = 0;
                 checkerboard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
-                CompileCompositorTrialBatchItem item{};
-                item.def = new StaticMaterialDef(checkerboard_def);
-                item.vs_glsl = checkerboard_vs;
-                item.fs_glsl = checkerboard_fs;
-                item.config = &checkerboard_cfg;
-                item.material_name_override = "Checkerboard3D";
-                state.items.push_back(std::move(item));
-                return true;
+                return AppendRawBuiltinTrialItem(state,
+                                                 checkerboard_def,
+                                                 &checkerboard_cfg,
+                                                 checkerboard_vs,
+                                                 checkerboard_fs,
+                                                 "Checkerboard3D");
             }
 
             default:
@@ -322,14 +369,15 @@ namespace
                 gizmo_cfg.material_instance = true;
                 gizmo_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
-                def.name = "Gizmo3D";
-                def.primitive_type = PrimitiveType::Triangles;
-                def.vertex_entries = vertex_entries;
-                def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
-                def.ubo_descriptors = &ubos;
-                def.ssbo_descriptors = &ssbos;
-                def.texture_samplers = nullptr;
-                def.shader_data_schema = ShaderDataSchema::Color4f;
+                FillBuiltinTrialStaticMaterialDef(def,
+                                                  "Gizmo3D",
+                                                  PrimitiveType::Triangles,
+                                                  vertex_entries,
+                                                  uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0])),
+                                                  &ubos,
+                                                  &ssbos,
+                                                  nullptr,
+                                                  ShaderDataSchema::Color4f);
                 config=&gizmo_cfg;
                 break;
             }
@@ -347,14 +395,15 @@ namespace
                 sky_cfg.material_instance = false;
                 sky_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
-                def.name = "SkyMinimal";
-                def.primitive_type = PrimitiveType::Triangles;
-                def.vertex_entries = vertex_entries;
-                def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
-                def.ubo_descriptors = &ubos;
-                def.ssbo_descriptors = &ssbos;
-                def.texture_samplers = nullptr;
-                def.shader_data_schema = ShaderDataSchema::None;
+                FillBuiltinTrialStaticMaterialDef(def,
+                                                  "SkyMinimal",
+                                                  PrimitiveType::Triangles,
+                                                  vertex_entries,
+                                                  uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0])),
+                                                  &ubos,
+                                                  &ssbos,
+                                                  nullptr,
+                                                  ShaderDataSchema::None);
                 config=&sky_cfg;
                 break;
             }
@@ -380,14 +429,15 @@ namespace
                 terrain_cfg.material_instance = false;
                 terrain_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
-                def.name = "TerrainGrid";
-                def.primitive_type = PrimitiveType::Triangles;
-                def.vertex_entries = nullptr;
-                def.vertex_entry_count = 0;
-                def.ubo_descriptors = &ubos;
-                def.ssbo_descriptors = &ssbos;
-                def.texture_samplers = &samplers;
-                def.shader_data_schema = ShaderDataSchema::None;
+                FillBuiltinTrialStaticMaterialDef(def,
+                                                  "TerrainGrid",
+                                                  PrimitiveType::Triangles,
+                                                  nullptr,
+                                                  0,
+                                                  &ubos,
+                                                  &ssbos,
+                                                  &samplers,
+                                                  ShaderDataSchema::None);
                 config=&terrain_cfg;
                 break;
             }
@@ -405,14 +455,15 @@ namespace
                 pure_color_cfg.material_instance = true;
                 pure_color_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
-                def.name = "PureColor3D";
-                def.primitive_type = PrimitiveType::Triangles;
-                def.vertex_entries = vertex_entries;
-                def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
-                def.ubo_descriptors = &ubos;
-                def.ssbo_descriptors = &ssbos;
-                def.texture_samplers = nullptr;
-                def.shader_data_schema = ShaderDataSchema::Color4f;
+                FillBuiltinTrialStaticMaterialDef(def,
+                                                  "PureColor3D",
+                                                  PrimitiveType::Triangles,
+                                                  vertex_entries,
+                                                  uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0])),
+                                                  &ubos,
+                                                  &ssbos,
+                                                  nullptr,
+                                                  ShaderDataSchema::Color4f);
                 config=&pure_color_cfg;
                 break;
             }
@@ -431,14 +482,15 @@ namespace
                 vertex_color_cfg.material_instance = false;
                 vertex_color_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
-                def.name = "VertexColor3D";
-                def.primitive_type = PrimitiveType::Triangles;
-                def.vertex_entries = vertex_entries;
-                def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
-                def.ubo_descriptors = &ubos;
-                def.ssbo_descriptors = &ssbos;
-                def.texture_samplers = nullptr;
-                def.shader_data_schema = ShaderDataSchema::None;
+                FillBuiltinTrialStaticMaterialDef(def,
+                                                  "VertexColor3D",
+                                                  PrimitiveType::Triangles,
+                                                  vertex_entries,
+                                                  uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0])),
+                                                  &ubos,
+                                                  &ssbos,
+                                                  nullptr,
+                                                  ShaderDataSchema::None);
                 config=&vertex_color_cfg;
                 break;
             }
@@ -769,13 +821,10 @@ namespace
                 pure_color_cfg.position_format = VAT_VEC2;
                 pure_color_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
-                auto *vertices = new std::vector<FixedVertexEntry>();
+                std::vector<FixedVertexEntry> *vertices=nullptr;
+                MaterialResourceManifest *manifest=nullptr;
+                AllocateBuiltin2DTrialResources(state,vertices,manifest);
                 build2d::PushBaseVertexEntries(*vertices,&pure_color_cfg);
-
-                auto *manifest = new MaterialResourceManifest();
-
-                state.owned_vertex_lists.push_back(vertices);
-                state.owned_manifests.push_back(manifest);
 
                 build2d::BuildBase2DFixedDef(def,
                                              "PureColor2D",
@@ -802,14 +851,11 @@ namespace
                 vertex_color_cfg.position_format = VAT_VEC2;
                 vertex_color_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
-                auto *vertices = new std::vector<FixedVertexEntry>();
+                std::vector<FixedVertexEntry> *vertices=nullptr;
+                MaterialResourceManifest *manifest=nullptr;
+                AllocateBuiltin2DTrialResources(state,vertices,manifest);
                 build2d::PushBaseVertexEntries(*vertices,&vertex_color_cfg);
                 vertices->push_back({VAT_VEC4, VAN::Color});
-
-                auto *manifest = new MaterialResourceManifest();
-
-                state.owned_vertex_lists.push_back(vertices);
-                state.owned_manifests.push_back(manifest);
 
                 build2d::BuildBase2DFixedDef(def,
                                              "VertexColor2D",
@@ -836,15 +882,12 @@ namespace
                 pure_texture_cfg.position_format = VAT_VEC2;
                 pure_texture_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
-                auto *vertices = new std::vector<FixedVertexEntry>();
+                std::vector<FixedVertexEntry> *vertices=nullptr;
+                MaterialResourceManifest *manifest=nullptr;
+                AllocateBuiltin2DTrialResources(state,vertices,manifest);
                 build2d::PushBaseVertexEntries(*vertices,&pure_texture_cfg);
                 vertices->push_back({VAT_VEC2, VAN::TexCoord});
-
-                auto *manifest = new MaterialResourceManifest();
                 AddTextureSampler(manifest->samplers, SamplerSlot::BaseColor, SamplerType::Sampler2D);
-
-                state.owned_vertex_lists.push_back(vertices);
-                state.owned_manifests.push_back(manifest);
 
                 build2d::BuildBase2DFixedDef(def,
                                              "PureTexture2D",
@@ -872,15 +915,12 @@ namespace
                 text_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
                 text_cfg.material_instance = true;
 
-                auto *vertices = new std::vector<FixedVertexEntry>();
+                std::vector<FixedVertexEntry> *vertices=nullptr;
+                MaterialResourceManifest *manifest=nullptr;
+                AllocateBuiltin2DTrialResources(state,vertices,manifest);
                 build2d::PushBaseVertexEntries(*vertices,&text_cfg);
                 vertices->push_back({VAT_VEC2, VAN::TexCoord});
-
-                auto *manifest = new MaterialResourceManifest();
                 AddTextureSampler(manifest->samplers, SamplerSlot::Text, SamplerType::Sampler2D);
-
-                state.owned_vertex_lists.push_back(vertices);
-                state.owned_manifests.push_back(manifest);
 
                 build2d::BuildBase2DFixedDef(def,
                                              "Text2D",
@@ -907,7 +947,9 @@ namespace
     static bool TryAppendBuiltinTrialCandidate(BuiltinTrialBatchBuilderState &state,
                                                const MaterialPreset preset)
     {
-        switch(ResolveBuiltinTrialCandidateCategory(preset))
+        const BuiltinTrialCandidateCategory category=ResolveBuiltinTrialCandidateCategory(preset);
+
+        switch(category)
         {
             case BuiltinTrialCandidateCategory::Special:
                 return TryAppendBuiltinSpecialTrialCandidate(state,preset);
@@ -929,7 +971,7 @@ namespace
         if(!entry)
             return false;
 
-        switch(ResolveBuiltinTrialCandidateCategory(preset))
+        switch(category)
         {
             case BuiltinTrialCandidateCategory::Ordinary3D:
                 return TryAppendBuiltinOrdinary3DTrialCandidate(state,preset,key,*entry,*desc);
