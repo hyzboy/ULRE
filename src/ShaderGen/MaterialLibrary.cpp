@@ -152,24 +152,6 @@ static MaterialCreateInfo *ForwardLegacyMaterialCreate(const contract::PhysicalD
 
 }
 
-MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *profile,
-                                   const Material3DCreateConfig *cfg)
-{
-    return ForwardLegacyMaterialCreate(profile,MaterialPreset::Standard,cfg);
-}
-
-MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite *profile,
-                                      const TerrainGridCreateConfig *cfg)
-{
-    return ForwardLegacyMaterialCreate(profile,MaterialPreset::TerrainGrid,cfg);
-}
-
-MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile,
-                                     const SkyMinimalCreateConfig *cfg)
-{
-    return ForwardLegacyMaterialCreate(profile,MaterialPreset::SkyMinimal,cfg);
-}
-
 MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfileLite *profile,
                                              BillboardMaterialCreateConfig *cfg)
 {

@@ -79,8 +79,6 @@ public:
     std::string ToHashStdString() override;
 };//struct Material3DCreateConfig:public MaterialCreateConfig
 
-DECLARE_MATERIAL_CREATOR(Standard,          const Material3DCreateConfig)
-
 struct TerrainGridCreateConfig:public Material3DCreateConfig
 {
 public:
@@ -92,8 +90,6 @@ public:
     }
 };
 
-DECLARE_MATERIAL_CREATOR(TerrainGrid,       const TerrainGridCreateConfig)
-
 struct SkyMinimalCreateConfig:public Material3DCreateConfig
 {
 public:
@@ -104,11 +100,9 @@ public:
     }
 };
 
-DECLARE_MATERIAL_CREATOR(SkyMinimal,        const SkyMinimalCreateConfig)
-
 struct BillboardMaterialCreateConfig:public Material3DCreateConfig
 {
-    bool        fixed_size;             ///<固定大小(指像素尺寸)
+    bool        fixed_size;
 
     Vector2u    pixel_size;             ///<像素尺寸
 
