@@ -2158,6 +2158,30 @@ static void EmitCompileCompositorSuccessAndTrialArtifacts(const CompileComposito
     }
 }
 
+struct CompileCompositorTrialContext
+{
+    CompileCompositorShadowBuildReport shadow_report{};
+    bool has_shadow_report=false;
+};
+
+static CompileCompositorTrialContext BuildCompileCompositorTrialContext(const contract::PhysicalDeviceProfileLite *profile,
+                                                                       const StaticMaterialDef &def,
+                                                                       const Material3DCreateConfig *config,
+                                                                       const CompileCompositorRouteDecision &route_decision)
+{
+    CompileCompositorTrialContext context{};
+
+    if(route_decision.pipeline_trial_requested)
+    {
+        context.shadow_report=BuildCompileCompositorShadowPipelineReport(profile,def,config);
+        context.has_shadow_report=true;
+
+        EmitCompileCompositorShadowTrialArtifacts(context.shadow_report,def.name);
+    }
+
+    return context;
+}
+
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &    def,
@@ -2172,16 +2196,10 @@ MaterialCreateInfo *CompileCompositorMaterial(
         def.name ? def.name : "<unnamed>",
         GetCompileCompositorRouteDecisionSummary(route_decision).c_str());
 
-    CompileCompositorShadowBuildReport shadow_report{};
-    bool has_shadow_report=false;
-
-    if(route_decision.pipeline_trial_requested)
-    {
-        shadow_report=BuildCompileCompositorShadowPipelineReport(profile,def,config);
-        has_shadow_report=true;
-
-        EmitCompileCompositorShadowTrialArtifacts(shadow_report,def.name);
-    }
+    const CompileCompositorTrialContext trial_context=BuildCompileCompositorTrialContext(profile,
+                                                                                         def,
+                                                                                         config,
+                                                                                         route_decision);
 
     std::string diagnostics;
     MaterialCreateInfo *mci = CreatePreparedCompositorMaterial(profile,
@@ -2192,8 +2210,8 @@ MaterialCreateInfo *CompileCompositorMaterial(
                                                                &diagnostics);
     if (!mci)
     {
-        EmitCompileCompositorFailureAndTrialArtifacts(shadow_report,
-                                                      has_shadow_report,
+        EmitCompileCompositorFailureAndTrialArtifacts(trial_context.shadow_report,
+                                                      trial_context.has_shadow_report,
                                                       def.name,
                                                       diagnostics.empty() ? "<unknown>" : diagnostics.c_str(),
                                                       diagnostics.empty() ? "CreatePreparedCompositorMaterial failed" : diagnostics.c_str());
@@ -2206,8 +2224,8 @@ MaterialCreateInfo *CompileCompositorMaterial(
         failure_text += BuildShaderDataSchemaDebugText(def);
         failure_text += ")";
 
-        EmitCompileCompositorFailureAndTrialArtifacts(shadow_report,
-                                                      has_shadow_report,
+        EmitCompileCompositorFailureAndTrialArtifacts(trial_context.shadow_report,
+                                                      trial_context.has_shadow_report,
                                                       def.name,
                                                       failure_text.c_str(),
                                                       "CompileShaderStagesToSPV() failed");
@@ -2223,8 +2241,8 @@ MaterialCreateInfo *CompileCompositorMaterial(
             diagnostics.c_str());
     }
 
-    EmitCompileCompositorSuccessAndTrialArtifacts(shadow_report,
-                                                  has_shadow_report,
+    EmitCompileCompositorSuccessAndTrialArtifacts(trial_context.shadow_report,
+                                                  trial_context.has_shadow_report,
                                                   *mci,
                                                   def.name,
                                                   diagnostics.empty() ? "CompileCompositorMaterial legacy compile succeeded" : diagnostics.c_str());
