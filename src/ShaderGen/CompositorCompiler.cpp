@@ -2087,194 +2087,225 @@ MaterialCreateInfo *CompileCompositorMaterial(
     return mci;
 }
 
-CompileCompositorRoutePlan BuildCompileCompositorRoutePlan()
-{
-    CompileCompositorRoutePlan plan{};
-    plan.preferred_route = ShaderBuildRoute::LegacyMaterialCreateInfo;
-    plan.allow_pipeline_fallback = true;
-    plan.can_export_readiness = true;
-    plan.can_emit_baseline_artifacts = true;
-    plan.rationale = "CompileCompositorMaterial holds StaticMaterialDef + GLSL + config + profile, making it the closest unified compile/model boundary for future route-switch, fallback, readiness export, and baseline artifact emission without changing the default production path yet.";
-    return plan;
-}
-
-CompileCompositorRouteDecision ResolveCompileCompositorRouteDecision(const ShaderBuildSwitchConfig *switch_config)
-{
-    const CompileCompositorRoutePlan plan=BuildCompileCompositorRoutePlan();
-
-    CompileCompositorRouteDecision decision{};
-    decision.resolved_route=ResolveShaderBuildRoute(switch_config);
-    decision.pipeline_trial_requested=(decision.resolved_route==ShaderBuildRoute::Pipeline);
-    decision.fallback_to_legacy=plan.allow_pipeline_fallback;
-    decision.will_use_legacy_now=true;
-
-    if(decision.pipeline_trial_requested)
+bool PrepareCompositorGLSLForReflection(
+        const StaticMaterialDef &def,
+        const std::string &vs_glsl,
+        const std::string &fs_glsl,
+        std::string &out_vs_glsl,
+        std::string &out_fs_glsl,
+        std::string *diagnostics)
     {
-        decision.rationale = "Pipeline route requested for CompileCompositorMaterial, but the current F2.10 plan keeps the production entry on Legacy while preserving fallback/readiness export preparation.";
-    }
-    else
-    {
-        decision.rationale = "CompileCompositorMaterial remains on Legacy by default in F2.10; route-switch intent is evaluated but not yet wired into the production compile branch."
-                            " consider using 'material_instance' in the config to force-enable the pipeline variant for this material.";
-    }
+        if (diagnostics)
+            diagnostics->clear();
 
-    return decision;
-}
+        ShaderBuildPipeline pipeline;
+        auto build_result = pipeline.PrepareMaterialCreateInfo(def,
+                                                               nullptr,
+                                                               nullptr,
+                                                               vs_glsl,
+                                                               fs_glsl,
+                                                               diagnostics);
+        MaterialCreateInfo *mci = build_result.success ? build_result.value : nullptr;
+        if (!mci)
+            return false;
 
-std::string GetCompileCompositorRouteDecisionSummary(const CompileCompositorRouteDecision &decision)
-{
-    std::string text;
-    text.reserve(256 + decision.rationale.size());
-    text += "resolved_route=";
-    text += GetShaderBuildRouteName(decision.resolved_route);
-    text += ", will_use_legacy_now=";
-    text += decision.will_use_legacy_now ? "true" : "false";
-    text += ", pipeline_trial_requested=";
-    text += decision.pipeline_trial_requested ? "true" : "false";
-    text += ", fallback_to_legacy=";
-    text += decision.fallback_to_legacy ? "true" : "false";
+        ShaderCreateInfoVertex *vert = mci->GetVertexShader();
+        ShaderCreateInfo       *frag = mci->GetStageShader(ShaderStage::Fragment);
 
-    if(!decision.rationale.empty())
-    {
-        text += ", rationale=";
-        text += decision.rationale;
+        out_vs_glsl = vert ? vert->GetFinalGLSL() : std::string();
+        out_fs_glsl = frag ? frag->GetFinalGLSL() : std::string();
+
+        delete mci;
+        return true;
     }
 
-    return text;
-}
+    CompileCompositorRoutePlan BuildCompileCompositorRoutePlan()
+    {
+        CompileCompositorRoutePlan plan{};
+        plan.preferred_route = ShaderBuildRoute::LegacyMaterialCreateInfo;
+        plan.allow_pipeline_fallback = true;
+        plan.can_export_readiness = true;
+        plan.can_emit_baseline_artifacts = true;
+        plan.rationale = "CompileCompositorMaterial holds StaticMaterialDef + GLSL + config + profile, making it the closest unified compile/model boundary for future route-switch, fallback, readiness export, and baseline artifact emission without changing the default production path yet.";
+        return plan;
+    }
 
-CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(const contract::PhysicalDeviceProfileLite *profile,
+    CompileCompositorRouteDecision ResolveCompileCompositorRouteDecision(const ShaderBuildSwitchConfig *switch_config)
+    {
+        const CompileCompositorRoutePlan plan=BuildCompileCompositorRoutePlan();
+
+        CompileCompositorRouteDecision decision{};
+        decision.resolved_route=ResolveShaderBuildRoute(switch_config);
+        decision.pipeline_trial_requested=(decision.resolved_route==ShaderBuildRoute::Pipeline);
+        decision.fallback_to_legacy=plan.allow_pipeline_fallback;
+        decision.will_use_legacy_now=true;
+
+        if(decision.pipeline_trial_requested)
+        {
+            decision.rationale = "Pipeline route requested for CompileCompositorMaterial, but the current F2.10 plan keeps the production entry on Legacy while preserving fallback/readiness export preparation.";
+        }
+        else    {
+            decision.rationale = "CompileCompositorMaterial remains on Legacy by default in F2.10; route-switch intent is evaluated but not yet wired into the production compile branch."
+                                " consider using 'material_instance' in the config to force-enable the pipeline variant for this material.";
+        }
+
+        return decision;
+    }
+
+    std::string GetCompileCompositorRouteDecisionSummary(const CompileCompositorRouteDecision &decision)
+    {
+        std::string text;
+        text.reserve(256 + decision.rationale.size());
+        text += "resolved_route=";
+        text += GetShaderBuildRouteName(decision.resolved_route);
+        text += ", will_use_legacy_now=";
+        text += decision.will_use_legacy_now ? "true" : "false";
+        text += ", pipeline_trial_requested=";
+        text += decision.pipeline_trial_requested ? "true" : "false";
+        text += ", fallback_to_legacy=";
+        text += decision.fallback_to_legacy ? "true" : "false";
+
+        if(!decision.rationale.empty())
+        {
+            text += ", rationale=";
+            text += decision.rationale;
+        }
+
+        return text;
+    }
+
+    CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(const contract::PhysicalDeviceProfileLite *profile,
                                                                               const StaticMaterialDef &def,
                                                                               const Material3DCreateConfig *config)
-{
-    CompileCompositorShadowBuildReport report{};
-
-    ShaderBuildPipeline pipeline;
-    const MaterialCreateConfig pipeline_cfg=BuildPipelineConfigFromCompositorConfig(def,config);
-    const ShaderBuildDescriptorSpec descriptor_spec=BuildDescriptorSpecFromStaticMaterialDef(def);
-
-    report.pipeline_config=pipeline_cfg;
-    report.descriptor_spec=descriptor_spec;
-
-    report.result=pipeline.Build(pipeline_cfg,profile,&descriptor_spec);
-    report.evaluation=EvaluateShaderBuildResultForRouteSwitch(report.result);
-    report.summary=GetShaderBuildRouteEvaluationSummary(report.evaluation);
-
-    if(!report.result.success)
     {
-        if(!report.summary.empty())
-            report.summary += ", diagnostics=";
+        CompileCompositorShadowBuildReport report{};
 
-        AppendShadowBuildDiagnostics(report.summary,report.result);
+        ShaderBuildPipeline pipeline;
+        const MaterialCreateConfig pipeline_cfg=BuildPipelineConfigFromCompositorConfig(def,config);
+        const ShaderBuildDescriptorSpec descriptor_spec=BuildDescriptorSpecFromStaticMaterialDef(def);
+
+        report.pipeline_config=pipeline_cfg;
+        report.descriptor_spec=descriptor_spec;
+
+        report.result=pipeline.Build(pipeline_cfg,profile,&descriptor_spec);
+        report.evaluation=EvaluateShaderBuildResultForRouteSwitch(report.result);
+        report.summary=GetShaderBuildRouteEvaluationSummary(report.evaluation);
+
+        if(!report.result.success)
+        {
+            if(!report.summary.empty())
+                report.summary += ", diagnostics=";
+
+            AppendShadowBuildDiagnostics(report.summary,report.result);
+        }
+
+        return report;
     }
 
-    return report;
-}
-
-bool WriteCompileCompositorShadowBuildArtifacts(const CompileCompositorShadowBuildReport &report,
+    bool WriteCompileCompositorShadowBuildArtifacts(const CompileCompositorShadowBuildReport &report,
                                                 const char *material_name,
                                                 const char *reports_dir)
-{
-    if(!EnsureDirectoryExists(reports_dir))
-        return false;
+    {
+        if(!EnsureDirectoryExists(reports_dir))
+            return false;
 
-    const std::filesystem::path reports_path(reports_dir);
-    const std::string sanitized_name=SanitizeArtifactName(material_name);
+        const std::filesystem::path reports_path(reports_dir);
+        const std::string sanitized_name=SanitizeArtifactName(material_name);
 
-    const std::filesystem::path readiness_path=reports_path/(sanitized_name + "_readiness.txt");
-    if(!WriteShaderBuildRouteEvaluationSummary(report.evaluation,readiness_path.string().c_str()))
-        return false;
+        const std::filesystem::path readiness_path=reports_path/(sanitized_name + "_readiness.txt");
+        if(!WriteShaderBuildRouteEvaluationSummary(report.evaluation,readiness_path.string().c_str()))
+            return false;
 
-    const std::filesystem::path diagnostics_path=reports_path/(sanitized_name + "_diagnostics.log");
-    return WriteTextFile(diagnostics_path,BuildShadowDiagnosticsText(report,material_name));
-}
+        const std::filesystem::path diagnostics_path=reports_path/(sanitized_name + "_diagnostics.log");
+        return WriteTextFile(diagnostics_path,BuildShadowDiagnosticsText(report,material_name));
+    }
 
-bool WriteCompileCompositorTrialBaselineReport(const CompileCompositorShadowBuildReport &report,
+    bool WriteCompileCompositorTrialBaselineReport(const CompileCompositorShadowBuildReport &report,
                                                const char *material_name,
                                                const bool legacy_compile_success,
                                                const char *legacy_summary,
                                                const char *trial_root)
-{
-    if(!EnsureDirectoryExists(trial_root))
-        return false;
+    {
+        if(!EnsureDirectoryExists(trial_root))
+            return false;
 
-    const std::filesystem::path trial_root_path(trial_root);
-    const std::filesystem::path reports_path=trial_root_path/"reports";
+        const std::filesystem::path trial_root_path(trial_root);
+        const std::filesystem::path reports_path=trial_root_path/"reports";
 
-    if(!EnsureDirectoryExists(reports_path.string().c_str()))
-        return false;
+        if(!EnsureDirectoryExists(reports_path.string().c_str()))
+            return false;
 
-    const std::string sanitized_name=SanitizeArtifactName(material_name);
-    const std::filesystem::path report_path=reports_path/(sanitized_name + "_baseline_compare.md");
+        const std::string sanitized_name=SanitizeArtifactName(material_name);
+        const std::filesystem::path report_path=reports_path/(sanitized_name + "_baseline_compare.md");
 
-    return WriteTextFile(report_path,
+        return WriteTextFile(report_path,
                          BuildBaselineCompareReportText(report,
                                                         material_name,
                                                         legacy_compile_success,
                                                         legacy_summary));
-}
+    }
 
-bool WriteCompileCompositorShadowPipelineTree(const CompileCompositorShadowBuildReport &report,
+    bool WriteCompileCompositorShadowPipelineTree(const CompileCompositorShadowBuildReport &report,
                                               const char *material_name,
                                               const char *pipeline_root)
-{
-    if(!EnsureDirectoryExists(pipeline_root))
-        return false;
-
-    const std::string sanitized_name=SanitizeArtifactName(material_name);
-    const std::filesystem::path material_root=std::filesystem::path(pipeline_root)/sanitized_name;
-
-    if(!EnsureDirectoryExists(material_root.string().c_str()))
-        return false;
-
-    if(!WriteTextFile(material_root/"descriptor_spec.txt",BuildDescriptorSpecText(report.descriptor_spec)))
-        return false;
-
-    if(!WriteTextFile(material_root/"pipeline_config.txt",BuildPipelineConfigText(report.pipeline_config)))
-        return false;
-
-    if(!WriteTextFile(material_root/"result_summary.txt",BuildPipelineResultText(report)))
-        return false;
-
-    if(!WriteTextFile(material_root/"readiness.txt",report.summary))
-        return false;
-
-    if(!WriteTextFile(material_root/"diagnostics.log",BuildShadowDiagnosticsText(report,material_name)))
-        return false;
-
-    for(size_t i=0;i<report.result.value.binaries.size();++i)
     {
-        const ShaderBinary &binary=report.result.value.binaries[i];
-        const std::filesystem::path spv_path=material_root/(std::string("stage_") + std::to_string(i) + ".spv.txt");
-
-        if(!WriteTextFile(spv_path,BuildSpirvHexText(binary)))
+        if(!EnsureDirectoryExists(pipeline_root))
             return false;
+
+        const std::string sanitized_name=SanitizeArtifactName(material_name);
+        const std::filesystem::path material_root=std::filesystem::path(pipeline_root)/sanitized_name;
+
+        if(!EnsureDirectoryExists(material_root.string().c_str()))
+            return false;
+
+        if(!WriteTextFile(material_root/"descriptor_spec.txt",BuildDescriptorSpecText(report.descriptor_spec)))
+            return false;
+
+        if(!WriteTextFile(material_root/"pipeline_config.txt",BuildPipelineConfigText(report.pipeline_config)))
+            return false;
+
+        if(!WriteTextFile(material_root/"result_summary.txt",BuildPipelineResultText(report)))
+            return false;
+
+        if(!WriteTextFile(material_root/"readiness.txt",report.summary))
+            return false;
+
+        if(!WriteTextFile(material_root/"diagnostics.log",BuildShadowDiagnosticsText(report,material_name)))
+            return false;
+
+        for(size_t i=0;i<report.result.value.binaries.size();++i)
+        {
+            const ShaderBinary &binary=report.result.value.binaries[i];
+            const std::filesystem::path spv_path=material_root/(std::string("stage_") + std::to_string(i) + ".spv.txt");
+
+            if(!WriteTextFile(spv_path,BuildSpirvHexText(binary)))
+                return false;
+        }
+
+        return true;
     }
 
-    return true;
-}
-
-MaterialCreateInfo *CompileCompositorMaterial(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const StaticMaterialDef &    def,
-    const std::string &         vs_glsl,
-    const std::string &         fs_glsl,
-    const Material2DCreateConfig *config)
-{
-    Material3DCreateConfig cfg3d(
-        config ? config->prim : def.primitive_type,
-        IncludeCamera::Without,
-        config && config->local_to_world ? IncludeL2W::With : IncludeL2W::Without,
-        IncludeSky::Without);
-
-    if (config)
+    MaterialCreateInfo *CompileCompositorMaterial(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const StaticMaterialDef &    def,
+        const std::string &         vs_glsl,
+        const std::string &         fs_glsl,
+        const Material2DCreateConfig *config)
     {
-        cfg3d.rt_output                         = config->rt_output;
-        cfg3d.material_instance                 = config->material_instance;
-        cfg3d.shader_stage_flag_bit             = config->shader_stage_flag_bit;
-    }
+        Material3DCreateConfig cfg3d(
+            config ? config->prim : def.primitive_type,
+            IncludeCamera::Without,
+            config && config->local_to_world ? IncludeL2W::With : IncludeL2W::Without,
+            IncludeSky::Without);
 
-    return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, &cfg3d);
-}
+        if (config)
+        {
+            cfg3d.rt_output                         = config->rt_output;
+            cfg3d.material_instance                 = config->material_instance;
+            cfg3d.shader_stage_flag_bit             = config->shader_stage_flag_bit;
+        }
+
+        return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, &cfg3d);
+    }
 
 }  // namespace hgl::graph::mtl
