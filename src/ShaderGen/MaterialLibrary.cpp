@@ -227,11 +227,6 @@ const char *GetMaterialPresetName(const MaterialPreset mtl_id)
     return entry?entry->name:nullptr;
 }
 
-MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLite *profile,
-                                         Material3DCreateConfig *cfg);
-
-
-
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialVariantKey &key,
                                              MaterialCreateConfig *cfg)
@@ -319,7 +314,11 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             return nullptr;
         }
 
-        return CreateCheckerboard3D(profile, cfg3d);
+        return MaterialFactory3D::Create(MaterialPreset::Checkerboard3D,
+                                         profile,
+                                         nullptr,
+                                         MaterialVariantKey{},
+                                         cfg3d);
     }
 
     if(!profile)

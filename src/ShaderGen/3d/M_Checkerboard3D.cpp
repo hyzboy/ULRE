@@ -72,12 +72,6 @@ namespace
     }
 }
 
-MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLite *profile,
-                                         Material3DCreateConfig *cfg)
-{
-    return CreateCheckerboard3DFactory(profile,nullptr,MaterialVariantKey{},cfg);
-}
-
 } // namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
