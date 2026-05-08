@@ -37,42 +37,39 @@ namespace
         "    // Visualize window-space fragment coordinate directly.\n"
         "    outColor = vec4(fract(gl_FragCoord.xyz * 0.01), 1.0);\n"
         "}\n";
+
+    static MaterialCreateInfo *CreateFullscreenTriangleFactory(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialVariantDesc                 *,
+        const MaterialVariantKey                  &,
+        MaterialCreateConfig                      *cfg)
+    {
+        auto *cfg_3d=static_cast<Material3DCreateConfig *>(cfg);
+        Material3DCreateConfig local_cfg = cfg_3d ? *cfg_3d : Material3DCreateConfig();
+
+        // PCG: no camera transform, no local-to-world, no material instance — purely procedural.
+        local_cfg.camera              = false;
+        local_cfg.sky                 = false;
+        local_cfg.local_to_world      = false;
+        local_cfg.material_instance   = false;
+        local_cfg.effective_feature_mask = 0;
+
+        // Build VS via PCG_FullscreenTriangle provider: no VAB, GetPositionLocal() → NDC.
+        const PositionProvider *pp = FindBuiltinProvider(PositionProviderId::PCG_FullscreenTriangle);
+        std::ostringstream vs_out;
+        vs_out << "#version 450\n\n";
+        EmitPositionInput(vs_out, *pp, 0);
+        vs_out << "\nvoid main()\n{\n    gl_Position = vec4(GetPositionLocal(), 1.0);\n}\n";
+
+        return CompileCompositorMaterial(profile,
+                                         FULLSCREEN_TRIANGLE_DEF,
+                                         vs_out.str(),
+                                         kFullscreenTriangleFS,
+                                         &local_cfg);
+    }
 }
-
-MaterialCreateInfo *CreateFullscreenTriangle(const contract::PhysicalDeviceProfileLite *profile,
-                                             Material3DCreateConfig *cfg)
-{
-    Material3DCreateConfig local_cfg = cfg ? *cfg : Material3DCreateConfig();
-
-    // PCG: no camera transform, no local-to-world, no material instance — purely procedural.
-    local_cfg.camera              = false;
-    local_cfg.sky                 = false;
-    local_cfg.local_to_world      = false;
-    local_cfg.material_instance   = false;
-    local_cfg.effective_feature_mask = 0;
-
-    // Build VS via PCG_FullscreenTriangle provider: no VAB, GetPositionLocal() → NDC.
-    const PositionProvider *pp = FindBuiltinProvider(PositionProviderId::PCG_FullscreenTriangle);
-    std::ostringstream vs_out;
-    vs_out << "#version 450\n\n";
-    EmitPositionInput(vs_out, *pp, 0);
-    vs_out << "\nvoid main()\n{\n    gl_Position = vec4(GetPositionLocal(), 1.0);\n}\n";
-
-    return CompileCompositorMaterial(profile,
-                                     FULLSCREEN_TRIANGLE_DEF,
-                                     vs_out.str(),
-                                     kFullscreenTriangleFS,
-                                     &local_cfg);
-}
-
-static MaterialCreateInfo *FullscreenTriangle_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *,
-    const MaterialVariantKey                  &,
-    MaterialCreateConfig *cfg)
-{ return CreateFullscreenTriangle(profile, static_cast<Material3DCreateConfig *>(cfg)); }
 
 } // namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(FullscreenTriangle, "FullscreenTriangle", hgl::graph::mtl::FullscreenTriangle_Adapter)
+ULRE_REGISTER_PRESET_FACTORY(FullscreenTriangle, "FullscreenTriangle", hgl::graph::mtl::CreateFullscreenTriangleFactory)

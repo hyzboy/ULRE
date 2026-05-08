@@ -24,21 +24,22 @@ namespace
         nullptr,
         ShaderDataSchema::None
     };
-}
 
-MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg,
-                                        const MaterialVariantDesc &desc, const MaterialVariantKey &key)
-{
-    return CreateFromFixedDef3D("VertexColor3D", profile, VERTEX_COLOR_3D_DEF, key, cfg, desc);
+    static MaterialCreateInfo *CreateVertexColor3DFactory(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialVariantDesc                 *desc,
+        const MaterialVariantKey                  &key,
+        MaterialCreateConfig                      *cfg)
+    {
+        return CreateFromFixedDef3D("VertexColor3D",
+                                    profile,
+                                    VERTEX_COLOR_3D_DEF,
+                                    key,
+                                    static_cast<const Material3DCreateConfig *>(cfg),
+                                    *desc);
+    }
 }
-
-static MaterialCreateInfo *VertexColor3D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateVertexColor3D(profile, static_cast<const Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(VertexColor3D, "VertexColor3D", hgl::graph::mtl::VertexColor3D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY(VertexColor3D, "VertexColor3D", hgl::graph::mtl::CreateVertexColor3DFactory)

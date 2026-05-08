@@ -43,85 +43,83 @@ namespace
         nullptr,
         ShaderDataSchema::BillboardSizeUVec2,
     };
-}//namespace
+    static MaterialCreateInfo *CreateBillboard2DFixedFactory(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialVariantDesc                 *desc,
+        const MaterialVariantKey                  &routing_key,
+        MaterialCreateConfig                      *cfg)
+    {
+        auto *billboard_cfg=static_cast<BillboardMaterialCreateConfig *>(cfg);
 
-MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfileLite *profile,mtl::BillboardMaterialCreateConfig *cfg,
-                                           const MaterialVariantDesc &desc, const MaterialVariantKey &routing_key)
-{
-    if(!cfg)
+        if(!billboard_cfg)
         return(nullptr);
 
-    cfg->local_to_world=true;
-    cfg->material_instance=true;
+        billboard_cfg->local_to_world=true;
+        billboard_cfg->material_instance=true;
 
-    const bool use_array = cfg->use_texture_array;
+        const bool use_array = billboard_cfg->use_texture_array;
 
-    StaticTextureSamplerDescriptors dynamic_samplers;
-    for (uint32_t i = 0; i < BILLBOARD_FIXED_TEX_SLOT_COUNT; ++i)
-        AddTextureSampler(dynamic_samplers, BILLBOARD_FIXED_TEX_SLOTS[i],
-                               use_array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D,
-                               0, 0,
-                               cfg->base_color_channel);
+        StaticTextureSamplerDescriptors dynamic_samplers;
+        for (uint32_t i = 0; i < BILLBOARD_FIXED_TEX_SLOT_COUNT; ++i)
+            AddTextureSampler(dynamic_samplers, BILLBOARD_FIXED_TEX_SLOTS[i],
+                                   use_array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D,
+                                   0, 0,
+                                   billboard_cfg->base_color_channel);
 
-    // When using texture arrays, the MIT SSBO carries per-instance layer indices.
-    SSBOSemanticSet dynamic_ssbos = BILLBOARD_FIXED_BASE_SSBOS;
-    if (use_array)
-        AddSSBODescriptor(dynamic_ssbos, SSBODescriptorSemantic::MaterialBindingInstanceTexture);
+        // When using texture arrays, the MIT SSBO carries per-instance layer indices.
+        SSBOSemanticSet dynamic_ssbos = BILLBOARD_FIXED_BASE_SSBOS;
+        if (use_array)
+            AddSSBODescriptor(dynamic_ssbos, SSBODescriptorSemantic::MaterialBindingInstanceTexture);
 
-    StaticMaterialDef dynamic_def = BILLBOARD_FIXED_DEF_TEMPLATE;
-    dynamic_def.texture_samplers  = &dynamic_samplers;
-    dynamic_def.ssbo_descriptors  = &dynamic_ssbos;
+        StaticMaterialDef dynamic_def = BILLBOARD_FIXED_DEF_TEMPLATE;
+        dynamic_def.texture_samplers  = &dynamic_samplers;
+        dynamic_def.ssbo_descriptors  = &dynamic_ssbos;
 
-    // assemble_key extends the routing key with array-mode texture source when needed
-    MaterialVariantKey assemble_key = routing_key;
-    if (use_array)
-        assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Array);
+        // assemble_key extends the routing key with array-mode texture source when needed
+        MaterialVariantKey assemble_key = routing_key;
+        if (use_array)
+            assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Array);
 
-    std::fprintf(stderr, "[BillboardFixed] use_array=%d  blend=%d  samplerType=%s\n",
-        (int)use_array, (int)cfg->blend_mode,
-        use_array ? "Sampler2DArray" : "Sampler2D");
+        std::fprintf(stderr, "[BillboardFixed] use_array=%d  blend=%d  samplerType=%s\n",
+            (int)use_array, (int)billboard_cfg->blend_mode,
+            use_array ? "Sampler2DArray" : "Sampler2D");
 
-    std::fprintf(stderr,
-        "[BillboardFixed] variant=%s routing_hash=%llu assemble_hash=%llu\n",
-        desc.variant_name.c_str(),
-        static_cast<unsigned long long>(routing_key.Hash()),
-        static_cast<unsigned long long>(assemble_key.Hash()));
+        std::fprintf(stderr,
+            "[BillboardFixed] variant=%s routing_hash=%llu assemble_hash=%llu\n",
+            desc->variant_name.c_str(),
+            static_cast<unsigned long long>(routing_key.Hash()),
+            static_cast<unsigned long long>(assemble_key.Hash()));
 
-    CompositorAssembler assembler;
+        CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(assemble_key, desc);
+        auto result = assembler.Assemble(assemble_key, *desc);
 
-    if (!result.success)
-    {
-        std::fprintf(stderr, "[BillboardFixed] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
-        return nullptr;
+        if (!result.success)
+        {
+            std::fprintf(stderr, "[BillboardFixed] CompositorAssembler failed: %s\n",
+                result.error_message.c_str());
+            return nullptr;
+        }
+
+        std::fprintf(stderr, "[BillboardFixed] assemble OK, compiling material...\n");
+
+        MaterialCreateInfo *mci = CompileCompositorMaterial(
+            profile,
+            dynamic_def,
+            result.vertex_glsl,
+            result.fragment_glsl,
+            billboard_cfg);
+
+        if (!mci)
+            std::fprintf(stderr, "[BillboardFixed] CompileCompositorMaterial failed\n");
+        else
+            std::fprintf(stderr, "[BillboardFixed] material created OK\n");
+
+        return mci;
     }
-
-    std::fprintf(stderr, "[BillboardFixed] assemble OK, compiling material...\n");
-
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
-        profile,
-        dynamic_def,
-        result.vertex_glsl,
-        result.fragment_glsl,
-        cfg);
-
-    if (!mci)
-        std::fprintf(stderr, "[BillboardFixed] CompileCompositorMaterial failed\n");
-    else
-        std::fprintf(stderr, "[BillboardFixed] material created OK\n");
-    return mci;
-}
-
-static MaterialCreateInfo *Billboard2DFixed_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateBillboard2DFixed(profile, static_cast<BillboardMaterialCreateConfig *>(cfg), *desc, key); }
+}//namespace
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(Billboard2DFixed, "Billboard2DFixed", hgl::graph::mtl::Billboard2DFixed_Adapter)
+ULRE_REGISTER_PRESET_FACTORY(Billboard2DFixed, "Billboard2DFixed", hgl::graph::mtl::CreateBillboard2DFixedFactory)
 

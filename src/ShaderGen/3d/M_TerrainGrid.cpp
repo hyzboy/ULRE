@@ -36,21 +36,21 @@ namespace
         &TERRAIN_GRID_SAMPLERS,
         ShaderDataSchema::None
     };
+    static MaterialCreateInfo *CreateTerrainGridFactory(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialVariantDesc                 *desc,
+        const MaterialVariantKey                  &key,
+        MaterialCreateConfig                      *cfg)
+    {
+        return CreateFromFixedDef3D("TerrainGrid",
+                                    profile,
+                                    TERRAIN_GRID_DEF,
+                                    key,
+                                    static_cast<const TerrainGridCreateConfig *>(cfg),
+                                    *desc);
+    }
 }//namespace
-
-MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite *profile, const TerrainGridCreateConfig *cfg,
-                                      const MaterialVariantDesc &desc, const MaterialVariantKey &key)
-{
-    return CreateFromFixedDef3D("TerrainGrid", profile, TERRAIN_GRID_DEF, key, cfg, desc);
-}
-
-static MaterialCreateInfo *TerrainGrid_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateTerrainGrid(profile, static_cast<const TerrainGridCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(TerrainGrid, "TerrainGrid", hgl::graph::mtl::TerrainGrid_Adapter)
+ULRE_REGISTER_PRESET_FACTORY(TerrainGrid, "TerrainGrid", hgl::graph::mtl::CreateTerrainGridFactory)

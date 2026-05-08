@@ -23,21 +23,22 @@ namespace
         nullptr,
         ShaderDataSchema::Color4f,
     };
-}
 
-MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg,
-                                      const MaterialVariantDesc &desc, const MaterialVariantKey &key)
-{
-    return CreateFromFixedDef3D("PureColor3D", profile, PURE_COLOR_3D_DEF, key, cfg, desc);
+    static MaterialCreateInfo *CreatePureColor3DFactory(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialVariantDesc                 *desc,
+        const MaterialVariantKey                  &key,
+        MaterialCreateConfig                      *cfg)
+    {
+        return CreateFromFixedDef3D("PureColor3D",
+                                    profile,
+                                    PURE_COLOR_3D_DEF,
+                                    key,
+                                    static_cast<Material3DCreateConfig *>(cfg),
+                                    *desc);
+    }
 }
-
-static MaterialCreateInfo *PureColor3D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreatePureColor3D(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(PureColor3D, "PureColor3D", hgl::graph::mtl::PureColor3D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY(PureColor3D, "PureColor3D", hgl::graph::mtl::CreatePureColor3DFactory)

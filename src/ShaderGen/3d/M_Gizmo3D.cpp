@@ -26,24 +26,22 @@ namespace
         nullptr,
         ShaderDataSchema::Color4f,
     };
+
+    static MaterialCreateInfo *CreateGizmo3DFactory(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialVariantDesc                 *desc,
+        const MaterialVariantKey                  &key,
+        MaterialCreateConfig                      *cfg)
+    {
+        auto *cfg_3d=static_cast<Material3DCreateConfig *>(cfg);
+
+        if(cfg_3d)
+            cfg_3d->material_instance=true;    // Gizmo requires per-instance data
+
+        return CreateFromFixedDef3D("Gizmo3D", profile, GIZMO_3D_DEF, key, cfg_3d, *desc);
+    }
 }
-
-MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg,
-                                  const MaterialVariantDesc &desc, const MaterialVariantKey &key)
-{
-    if(cfg)
-        cfg->material_instance=true;    // Gizmo requires per-instance data
-
-    return CreateFromFixedDef3D("Gizmo3D", profile, GIZMO_3D_DEF, key, cfg, desc);
-}
-
-static MaterialCreateInfo *Gizmo3D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateGizmo3D(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(Gizmo3D, "Gizmo3D", hgl::graph::mtl::Gizmo3D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY(Gizmo3D, "Gizmo3D", hgl::graph::mtl::CreateGizmo3DFactory)

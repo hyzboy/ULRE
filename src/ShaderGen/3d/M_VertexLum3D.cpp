@@ -25,23 +25,20 @@ namespace
         nullptr,
         ShaderDataSchema::Color4f,
     };
+
+    static MaterialCreateInfo *CreateVertexLuminance3DFactory(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialVariantDesc                 *desc,
+        const MaterialVariantKey                  &key,
+        MaterialCreateConfig                      *cfg)
+    {
+        auto *cfg_3d=static_cast<Material3DCreateConfig *>(cfg);
+        cfg_3d->material_instance=true;
+
+        return CreateFromFixedDef3D("VertexLuminance3D", profile, VERTEX_LUMINANCE_3D_DEF, key, cfg_3d, *desc);
+    }
 }
-
-MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg,
-                                            const MaterialVariantDesc &desc, const MaterialVariantKey &key)
-{
-    cfg->material_instance=true;
-
-    return CreateFromFixedDef3D("VertexLuminance3D", profile, VERTEX_LUMINANCE_3D_DEF, key, cfg, desc);
-}
-
-static MaterialCreateInfo *VertexLuminance3D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateVertexLuminance3D(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(VertexLuminance3D, "VertexLuminance3D", hgl::graph::mtl::VertexLuminance3D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY(VertexLuminance3D, "VertexLuminance3D", hgl::graph::mtl::CreateVertexLuminance3DFactory)

@@ -23,21 +23,21 @@ namespace
         nullptr,
         ShaderDataSchema::None
     };
+    static MaterialCreateInfo *CreateSkyMinimalFactory(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialVariantDesc                 *desc,
+        const MaterialVariantKey                  &key,
+        MaterialCreateConfig                      *cfg)
+    {
+        return CreateFromFixedDef3D("SkyMinimal",
+                                    profile,
+                                    SKY_MINIMAL_DEF,
+                                    key,
+                                    static_cast<const SkyMinimalCreateConfig *>(cfg),
+                                    *desc);
+    }
 }//namespace
-
-MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg,
-                                     const MaterialVariantDesc &desc, const MaterialVariantKey &key)
-{
-    return CreateFromFixedDef3D("SkyMinimal", profile, SKY_MINIMAL_DEF, key, cfg, desc);
-}
-
-static MaterialCreateInfo *SkyMinimal_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateSkyMinimal(profile, static_cast<const SkyMinimalCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(SkyMinimal, "SkyMinimal", hgl::graph::mtl::SkyMinimal_Adapter)
+ULRE_REGISTER_PRESET_FACTORY(SkyMinimal, "SkyMinimal", hgl::graph::mtl::CreateSkyMinimalFactory)

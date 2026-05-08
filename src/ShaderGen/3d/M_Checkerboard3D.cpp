@@ -47,35 +47,38 @@ namespace
         "    vec3 col = mix(c0, c1, checker);\n"
         "    outColor = vec4(col, 1.0);\n"
         "}\n";
+
+    static MaterialCreateInfo *CreateCheckerboard3DFactory(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialVariantDesc                 *,
+        const MaterialVariantKey                  &,
+        MaterialCreateConfig                      *cfg)
+    {
+        auto *cfg_3d=static_cast<Material3DCreateConfig *>(cfg);
+        Material3DCreateConfig local_cfg = cfg_3d ? *cfg_3d : Material3DCreateConfig();
+
+        // Hard requirement: fallback checkerboard depends only on vertex position.
+        local_cfg.camera = false;
+        local_cfg.sky = false;
+        local_cfg.local_to_world = false;
+        local_cfg.material_instance = false;
+        local_cfg.effective_feature_mask = 0;
+
+        return CompileCompositorMaterial(profile,
+                                         CHECKERBOARD_3D_DEF,
+                                         kCheckerboardVS,
+                                         kCheckerboardFS,
+                                         &local_cfg);
+    }
 }
 
 MaterialCreateInfo *CreateCheckerboard3D(const contract::PhysicalDeviceProfileLite *profile,
                                          Material3DCreateConfig *cfg)
 {
-    Material3DCreateConfig local_cfg = cfg ? *cfg : Material3DCreateConfig();
-
-    // Hard requirement: fallback checkerboard depends only on vertex position.
-    local_cfg.camera = false;
-    local_cfg.sky = false;
-    local_cfg.local_to_world = false;
-    local_cfg.material_instance = false;
-    local_cfg.effective_feature_mask = 0;
-
-    return CompileCompositorMaterial(profile,
-                                     CHECKERBOARD_3D_DEF,
-                                     kCheckerboardVS,
-                                     kCheckerboardFS,
-                                     &local_cfg);
+    return CreateCheckerboard3DFactory(profile,nullptr,MaterialVariantKey{},cfg);
 }
-
-static MaterialCreateInfo *Checkerboard3D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *,
-    const MaterialVariantKey                  &,
-    MaterialCreateConfig *cfg)
-{ return CreateCheckerboard3D(profile, static_cast<Material3DCreateConfig *>(cfg)); }
 
 } // namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(Checkerboard3D, "Checkerboard3D", hgl::graph::mtl::Checkerboard3D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY(Checkerboard3D, "Checkerboard3D", hgl::graph::mtl::CreateCheckerboard3DFactory)

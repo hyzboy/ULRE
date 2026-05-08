@@ -26,35 +26,32 @@ namespace
         nullptr,
         ShaderDataSchema::Color4f,
     };
+
+    static MaterialCreateInfo *CreateVertexLuminance2DFactory(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialVariantDesc                 *desc,
+        const MaterialVariantKey                  &key,
+        MaterialCreateConfig                      *cfg)
+    {
+        auto *cfg_3d=static_cast<Material3DCreateConfig *>(cfg);
+        cfg_3d->material_instance=true;
+
+        StaticMaterialDef def = VERTEX_LUMINANCE_2D_DEF;
+        if (cfg_3d)
+            def.primitive_type = cfg_3d->prim;
+
+        std::fprintf(stderr,
+                     "[VertexLuminance2D] route primitive=%u va_bits=0x%08X\n",
+                     static_cast<unsigned>(def.primitive_type),
+                     key.vertex_attribute_feature_bits);
+
+        MaterialVariantKey local_key = key;
+        local_key.position_provider = PositionProviderId::VAB_Vec2;
+
+        return CreateFromFixedDef3D("VertexLuminance2D", profile, def, local_key, cfg_3d, *desc);
+    }
 }
-
-MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg,
-                                            const MaterialVariantDesc &desc, const MaterialVariantKey &key)
-{
-    cfg->material_instance=true;
-
-    StaticMaterialDef def = VERTEX_LUMINANCE_2D_DEF;
-    if (cfg)
-        def.primitive_type = cfg->prim;
-
-    std::fprintf(stderr,
-                 "[VertexLuminance2D] route primitive=%u va_bits=0x%08X\n",
-                 static_cast<unsigned>(def.primitive_type),
-                 key.vertex_attribute_feature_bits);
-
-    MaterialVariantKey local_key = key;
-    local_key.position_provider = PositionProviderId::VAB_Vec2;
-
-    return CreateFromFixedDef3D("VertexLuminance2D", profile, def, local_key, cfg, desc);
-}
-
-static MaterialCreateInfo *VertexLuminance2D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateVertexLuminance2D(profile, static_cast<Material3DCreateConfig *>(cfg), *desc, key); }
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(VertexLuminance2D, "VertexLuminance2D", hgl::graph::mtl::VertexLuminance2D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY(VertexLuminance2D, "VertexLuminance2D", hgl::graph::mtl::CreateVertexLuminance2DFactory)
