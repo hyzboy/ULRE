@@ -2182,6 +2182,47 @@ static CompileCompositorTrialContext BuildCompileCompositorTrialContext(const co
     return context;
 }
 
+static void EmitCompileCompositorDiagnostics(const char *material_name,
+                                            const std::string &diagnostics)
+{
+    if (!diagnostics.empty())
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s diagnostics: %s\n",
+            material_name ? material_name : "<unnamed>",
+            diagnostics.c_str());
+    }
+}
+
+static MaterialCreateInfo *HandleCompileCompositorPreparedMaterialFailure(const CompileCompositorTrialContext &trial_context,
+                                                                         const char *material_name,
+                                                                         const std::string &diagnostics)
+{
+    EmitCompileCompositorFailureAndTrialArtifacts(trial_context.shadow_report,
+                                                  trial_context.has_shadow_report,
+                                                  material_name,
+                                                  diagnostics.empty() ? "<unknown>" : diagnostics.c_str(),
+                                                  diagnostics.empty() ? "CreatePreparedCompositorMaterial failed" : diagnostics.c_str());
+    return nullptr;
+}
+
+static MaterialCreateInfo *HandleCompileCompositorSpvFailure(const CompileCompositorTrialContext &trial_context,
+                                                             const StaticMaterialDef &def,
+                                                             MaterialCreateInfo *mci)
+{
+    std::string failure_text = "CompileShaderStagesToSPV() failed (check GLSLCompiler log) (";
+    failure_text += BuildShaderDataSchemaDebugText(def);
+    failure_text += ")";
+
+    EmitCompileCompositorFailureAndTrialArtifacts(trial_context.shadow_report,
+                                                  trial_context.has_shadow_report,
+                                                  def.name,
+                                                  failure_text.c_str(),
+                                                  "CompileShaderStagesToSPV() failed");
+    delete mci;
+    return nullptr;
+}
+
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &    def,
@@ -2209,37 +2250,12 @@ MaterialCreateInfo *CompileCompositorMaterial(
                                                                config,
                                                                &diagnostics);
     if (!mci)
-    {
-        EmitCompileCompositorFailureAndTrialArtifacts(trial_context.shadow_report,
-                                                      trial_context.has_shadow_report,
-                                                      def.name,
-                                                      diagnostics.empty() ? "<unknown>" : diagnostics.c_str(),
-                                                      diagnostics.empty() ? "CreatePreparedCompositorMaterial failed" : diagnostics.c_str());
-        return nullptr;
-    }
+        return HandleCompileCompositorPreparedMaterialFailure(trial_context,def.name,diagnostics);
 
     if (!mci->CompileShaderStagesToSPV())
-    {
-        std::string failure_text = "CompileShaderStagesToSPV() failed (check GLSLCompiler log) (";
-        failure_text += BuildShaderDataSchemaDebugText(def);
-        failure_text += ")";
+        return HandleCompileCompositorSpvFailure(trial_context,def,mci);
 
-        EmitCompileCompositorFailureAndTrialArtifacts(trial_context.shadow_report,
-                                                      trial_context.has_shadow_report,
-                                                      def.name,
-                                                      failure_text.c_str(),
-                                                      "CompileShaderStagesToSPV() failed");
-        delete mci;
-        return nullptr;
-    }
-
-    if (!diagnostics.empty())
-    {
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s diagnostics: %s\n",
-            def.name ? def.name : "<unnamed>",
-            diagnostics.c_str());
-    }
+    EmitCompileCompositorDiagnostics(def.name,diagnostics);
 
     EmitCompileCompositorSuccessAndTrialArtifacts(trial_context.shadow_report,
                                                   trial_context.has_shadow_report,
