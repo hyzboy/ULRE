@@ -9,6 +9,7 @@
 #include<hgl/shadergen/MaterialInstanceConfigurator.h>
 #include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/shadergen/internal/GLSLSourceUtils.h>
+#include<hgl/mtl/MaterialFeature.h>
 #include<hgl/mtl/UBOCommon.h>
 
 namespace
@@ -39,6 +40,79 @@ static bool BuildMaterialInstanceSchemaSnippet(const hgl::graph::mtl::MaterialIn
     snippet += material_instance.schema_file;
     snippet += "\"\n";
     return true;
+}
+
+static bool ResolveConfiguredCameraRequirement(const hgl::graph::mtl::Material3DCreateConfig &cfg)
+{
+    if(cfg.effective_feature_mask!=0)
+        return hgl::graph::mtl::HasFeature(cfg.effective_feature_mask,hgl::graph::mtl::MaterialFeature::NeedsCamera);
+
+    return cfg.camera;
+}
+
+static bool ResolveConfiguredSkyRequirement(const hgl::graph::mtl::Material3DCreateConfig &cfg)
+{
+    if(cfg.effective_feature_mask!=0)
+        return hgl::graph::mtl::HasFeature(cfg.effective_feature_mask,hgl::graph::mtl::MaterialFeature::NeedsSky);
+
+    return cfg.sky;
+}
+
+static void AppendDiagnosticLine(std::string *diagnostics,const std::string &line)
+{
+    if(!diagnostics||line.empty())
+        return;
+
+    if(!diagnostics->empty())
+        *diagnostics += '\n';
+
+    *diagnostics += line;
+}
+
+static void EmitInferenceMismatchDiagnostics(const hgl::graph::mtl::StaticMaterialDef &def,
+                                            const hgl::graph::mtl::Material3DCreateConfig &cfg,
+                                            const bool infer_has_camera,
+                                            const bool infer_has_sky,
+                                            std::string *diagnostics)
+{
+    const bool configured_camera=ResolveConfiguredCameraRequirement(cfg);
+    const bool configured_sky=ResolveConfiguredSkyRequirement(cfg);
+
+    auto emit_one = [&](const char *label,const bool configured,const bool inferred)
+    {
+        if(configured==inferred)
+            return;
+
+        std::string message;
+        message.reserve(256);
+        message += "[CompositorCompiler] inferred ";
+        message += label;
+        message += "=";
+        message += inferred ? "true" : "false";
+        message += " differs from configured/effective=";
+        message += configured ? "true" : "false";
+        message += " for material='";
+        message += def.name ? def.name : "<unnamed>";
+        message += "'";
+
+        if(cfg.effective_feature_mask!=0)
+        {
+            char buf[96]{};
+            std::snprintf(buf,
+                          sizeof(buf),
+                          " effective_feature_mask=0x%016llx",
+                          static_cast<unsigned long long>(cfg.effective_feature_mask));
+            message += buf;
+        }
+
+        message += "; compiler inference is diagnostics-only";
+
+        std::fprintf(stderr,"%s\n",message.c_str());
+        AppendDiagnosticLine(diagnostics,message);
+    };
+
+    emit_one("camera",configured_camera,infer_has_camera);
+    emit_one("sky",configured_sky,infer_has_sky);
 }
 
 static bool BuildVertexShaderSource(const hgl::graph::mtl::MaterialInstanceBlock &material_instance,
@@ -274,6 +348,15 @@ static bool HasSSBOSemantic(const hgl::graph::mtl::StaticMaterialDef &def,
         return false;
 
     return def.ssbo_descriptors->contains(semantic);
+}
+
+static bool HasUBOSemantic(const hgl::graph::mtl::StaticMaterialDef &def,
+                           const hgl::graph::mtl::UBODescriptorSemantic semantic)
+{
+    if(!def.ubo_descriptors || semantic==hgl::graph::mtl::UBODescriptorSemantic::Unknown)
+        return false;
+
+    return def.ubo_descriptors->contains(semantic);
 }
 
 static bool HasPerMaterialDescriptor(const hgl::graph::mtl::StaticMaterialDef &def)
@@ -593,6 +676,37 @@ mtl::MaterialCreateConfig ShaderBuildPipeline::BuildConfigFromStaticMaterialDef(
     return build_cfg;
 }
 
+mtl::Material3DCreateConfig ShaderBuildPipeline::Build3DConfigFromStaticMaterialDef(
+    const mtl::StaticMaterialDef &def,
+    const mtl::Material3DCreateConfig *config)
+{
+    mtl::Material3DCreateConfig build_cfg=config?*config:mtl::Material3DCreateConfig();
+    const mtl::MaterialCreateConfig shared_cfg=BuildConfigFromStaticMaterialDef(def,
+                                                                                static_cast<const mtl::MaterialCreateConfig *>(config));
+
+    static_cast<mtl::MaterialCreateConfig &>(build_cfg)=shared_cfg;
+    return build_cfg;
+}
+
+std::string ShaderBuildPipeline::BuildShaderDataSchemaDebugText(
+    const mtl::StaticMaterialDef &def)
+{
+    if(def.shader_data_schema==mtl::ShaderDataSchema::None)
+        return std::string("schema=<none>");
+
+    const auto &schema_info=mtl::GetShaderDataSchemaInfo(def.shader_data_schema);
+
+    std::string text;
+    text.reserve(128);
+    text += "schema=";
+    text += std::to_string(static_cast<uint32_t>(def.shader_data_schema));
+    text += " file=";
+    text += schema_info.glsl_schema_file ? schema_info.glsl_schema_file : "<null>";
+    text += " bytes=";
+    text += std::to_string(schema_info.byte_size);
+    return text;
+}
+
 ShaderBuildDescriptorSpec ShaderBuildPipeline::BuildDescriptorSpecFromStaticMaterialDef(
     const mtl::StaticMaterialDef &def)
 {
@@ -863,6 +977,46 @@ ShaderGenResult<mtl::MaterialCreateInfo *> ShaderBuildPipeline::PrepareMaterialC
 
     result.value=BuildPreparedMaterialCreateInfo(builder,result.diagnostics);
     result.success=result.value!=nullptr;
+    return result;
+}
+
+ShaderGenResult<mtl::MaterialCreateInfo *> ShaderBuildPipeline::PrepareMaterialCreateInfo(
+    const mtl::StaticMaterialDef &def,
+    const mtl::Material3DCreateConfig *config,
+    const mtl::contract::PhysicalDeviceProfileLite *profile,
+    const std::string &vs_glsl,
+    const std::string &fs_glsl,
+    std::string *diagnostics)
+{
+    if(diagnostics)
+        diagnostics->clear();
+
+    mtl::Material3DCreateConfig cfg=Build3DConfigFromStaticMaterialDef(def,config);
+
+    const bool infer_has_camera=HasUBOSemantic(def,mtl::UBODescriptorSemantic::CameraInfo);
+    const bool infer_has_sky=HasUBOSemantic(def,mtl::UBODescriptorSemantic::SkyInfo);
+    EmitInferenceMismatchDiagnostics(def,cfg,infer_has_camera,infer_has_sky,diagnostics);
+
+    ShaderGenResult<mtl::MaterialCreateInfo *> result=PrepareMaterialCreateInfo(def,
+                                                                                static_cast<const mtl::MaterialCreateConfig &>(cfg),
+                                                                                profile,
+                                                                                vs_glsl,
+                                                                                fs_glsl);
+
+    if(!result.success)
+    {
+        std::string message;
+        if(!result.diagnostics.empty())
+            message=result.diagnostics.front().message;
+        else
+            message="<unknown>";
+
+        message += " (";
+        message += BuildShaderDataSchemaDebugText(def);
+        message += ")";
+        AppendDiagnosticLine(diagnostics,message);
+    }
+
     return result;
 }
 

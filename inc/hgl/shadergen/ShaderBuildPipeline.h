@@ -6,6 +6,7 @@
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/StaticMaterialDef.h>
 #include<vector>
 
@@ -49,6 +50,13 @@ public:
         const mtl::StaticMaterialDef &def,
         const mtl::MaterialCreateConfig *config=nullptr);
 
+    static mtl::Material3DCreateConfig Build3DConfigFromStaticMaterialDef(
+        const mtl::StaticMaterialDef &def,
+        const mtl::Material3DCreateConfig *config=nullptr);
+
+    static std::string BuildShaderDataSchemaDebugText(
+        const mtl::StaticMaterialDef &def);
+
     static ShaderBuildDescriptorSpec BuildDescriptorSpecFromStaticMaterialDef(
         const mtl::StaticMaterialDef &def);
 
@@ -62,6 +70,14 @@ public:
         const mtl::contract::PhysicalDeviceProfileLite *profile,
         const std::string &vs_glsl,
         const std::string &fs_glsl);
+
+    ShaderGenResult<mtl::MaterialCreateInfo *> PrepareMaterialCreateInfo(
+        const mtl::StaticMaterialDef &def,
+        const mtl::Material3DCreateConfig *config,
+        const mtl::contract::PhysicalDeviceProfileLite *profile,
+        const std::string &vs_glsl,
+        const std::string &fs_glsl,
+        std::string *diagnostics);
 
     ShaderGenResult<mtl::MaterialCreateInfo *> BuildMaterialCreateInfo(
         const mtl::StaticMaterialDef &def,
