@@ -23,6 +23,7 @@
 #include <hgl/shadergen/ShaderBuildPipeline.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include "3d/StandardDescriptorBuilder.h"
+#include "3d/Build3DCommon.h"
 #include "3d/StandardVariantRouter.h"
 #include "3d/MaterialFactory3DCommon.h"
 #include "2d/Build2DCommon.h"
@@ -247,6 +248,33 @@ namespace
             def.texture_samplers = nullptr;
             def.shader_data_schema = ShaderDataSchema::Color4f;
             config=&vertex_luminance_cfg;
+        }
+        else
+        if(preset==MaterialPreset::VertexLuminance2D)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC2, VAN::Position },
+                { VAT_FLOAT, VAN::Luminance },
+            };
+            static const UBOSemanticSet ubos = build3d::MakeViewportCameraUBOs();
+            static const SSBOSemanticSet ssbos = build3d::MakeTransformSSBOs(true);
+            static Material3DCreateConfig vertex_luminance_cfg(PrimitiveType::Lines,IncludeCamera::With,IncludeL2W::With,IncludeSky::Without);
+
+            vertex_luminance_cfg.material_instance = true;
+            vertex_luminance_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            def.name = "VertexLuminance2D";
+            def.primitive_type = vertex_luminance_cfg.prim;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = nullptr;
+            def.shader_data_schema = ShaderDataSchema::Color4f;
+            config=&vertex_luminance_cfg;
+
+            key.position_provider = PositionProviderId::VAB_Vec2;
         }
         else
         if(preset==MaterialPreset::VertexPaletteColor3D)
@@ -1473,6 +1501,7 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
         MaterialPreset::VertexColor2D,
         MaterialPreset::PureColor3D,
         MaterialPreset::VertexColor3D,
+        MaterialPreset::VertexLuminance2D,
         MaterialPreset::VertexLuminance3D,
         MaterialPreset::VertexPaletteColor3D,
         MaterialPreset::Gizmo3D,
