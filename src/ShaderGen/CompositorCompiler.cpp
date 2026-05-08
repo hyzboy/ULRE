@@ -1604,27 +1604,6 @@ namespace
 
         return text;
     }
-
-    static MaterialCreateInfo *CreatePreparedCompositorMaterial(
-        const contract::PhysicalDeviceProfileLite *profile,
-        const StaticMaterialDef &def,
-        const std::string &vs_glsl,
-        const std::string &fs_glsl,
-        const Material3DCreateConfig *config,
-        std::string *diagnostics)
-    {
-        if (diagnostics)
-            diagnostics->clear();
-
-        ShaderBuildPipeline pipeline;
-        auto build_result = pipeline.PrepareMaterialCreateInfo(def,
-                                                               config,
-                                                               profile,
-                                                               vs_glsl,
-                                                               fs_glsl,
-                                                               diagnostics);
-        return build_result.success ? build_result.value : nullptr;
-    }
 }
 
 bool WriteCompileCompositorLegacyTree(const MaterialCreateInfo &mci,
@@ -2079,12 +2058,14 @@ MaterialCreateInfo *CompileCompositorMaterial(
     }
 
     std::string diagnostics;
-    MaterialCreateInfo *mci = CreatePreparedCompositorMaterial(profile,
-                                                               def,
-                                                               vs_glsl,
-                                                               fs_glsl,
-                                                               config,
-                                                               &diagnostics);
+    ShaderBuildPipeline pipeline;
+    auto prepare_result = pipeline.PrepareMaterialCreateInfo(def,
+                                                             config,
+                                                             profile,
+                                                             vs_glsl,
+                                                             fs_glsl,
+                                                             &diagnostics);
+    MaterialCreateInfo *mci = prepare_result.success ? prepare_result.value : nullptr;
     if (!mci)
     {
         EmitCompileCompositorPrepareFailure(shadow_report,
