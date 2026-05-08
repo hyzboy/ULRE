@@ -1,4 +1,5 @@
 ﻿#include"MaterialFactory2D.h"
+#include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
@@ -38,7 +39,11 @@ MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
     const std::string vs = vs_preamble + result.vertex_glsl;
     const std::string fs = fs_preamble + result.fragment_glsl;
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
+    MaterialCreateInfo *mci = CompileCompositorMaterial(profile,
+                                                        def,
+                                                        vs,
+                                                        fs,
+                                                        static_cast<const MaterialCreateConfig *>(cfg));
     if(!mci)
         std::fprintf(stderr, "[%s] CompileCompositorMaterial failed\n", debug_tag ? debug_tag : "2DFactory");
 

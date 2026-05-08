@@ -93,13 +93,19 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const StaticMaterialDef &    def,
     const std::string &         vs_glsl,
     const std::string &         fs_glsl,
+    const MaterialCreateConfig *config);
+
+MaterialCreateInfo *CompileCompositorMaterial(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const StaticMaterialDef &    def,
+    const std::string &         vs_glsl,
+    const std::string &         fs_glsl,
     const Material3DCreateConfig *config = nullptr);
 
 /**
  * CompileCompositorMaterial — 2D 材质重载
  *
- * 将 Material2DCreateConfig 映射到内部 Material3DCreateConfig 后调用主版本。
- * camera/sky 默认关闭，其余字段从 2D 配置继承。
+ * 保留的 2D 便捷重载，内部直接转发到 base config 路径。
  */
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
@@ -128,6 +134,9 @@ bool PrepareCompositorGLSLForReflection(
 CompileCompositorRoutePlan BuildCompileCompositorRoutePlan();
 CompileCompositorRouteDecision ResolveCompileCompositorRouteDecision(const ShaderBuildSwitchConfig *switch_config=nullptr);
 std::string GetCompileCompositorRouteDecisionSummary(const CompileCompositorRouteDecision &decision);
+CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(const contract::PhysicalDeviceProfileLite *profile,
+                                                                              const StaticMaterialDef &def,
+                                                                              const MaterialCreateConfig *config);
 CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(const contract::PhysicalDeviceProfileLite *profile,
                                                                               const StaticMaterialDef &def,
                                                                               const Material3DCreateConfig *config = nullptr);

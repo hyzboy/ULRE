@@ -1122,39 +1122,6 @@ namespace
         return spec;
     }
 
-    static MaterialCreateConfig BuildPipelineConfigFromCompositorConfig(const StaticMaterialDef &def,
-                                                                       const Material3DCreateConfig *config)
-    {
-        MaterialCreateConfig pipeline_cfg(def.primitive_type,false);
-
-        if(config)
-        {
-            pipeline_cfg=*static_cast<const MaterialCreateConfig *>(config);
-            pipeline_cfg.prim=def.primitive_type;
-        }
-
-        pipeline_cfg.shader_stage_flag_bit=uint32_t(ShaderStage::VertexFragment);
-
-        if(def.texture_samplers)
-        {
-            for(const auto &[slot,descriptor]:*def.texture_samplers)
-            {
-                pipeline_cfg.SetTextureSourceSlotEnabledOverride(slot,true);
-                if(descriptor.sampler_type!=SamplerType::Sampler2D)
-                    continue;
-            }
-        }
-
-        const bool infer_has_l2w=HasSSBOSemantic(def,SSBODescriptorSemantic::TransformData);
-        const bool infer_has_mi=HasSSBOSemantic(def,SSBODescriptorSemantic::MaterialBindingInstanceData)
-                              || HasPerMaterialDescriptor(def)
-                              || (def.shader_data_schema!=ShaderDataSchema::None);
-
-        pipeline_cfg.local_to_world = pipeline_cfg.local_to_world || infer_has_l2w;
-        pipeline_cfg.material_instance = pipeline_cfg.material_instance || infer_has_mi;
-        return pipeline_cfg;
-    }
-
     static void AppendShadowBuildDiagnostics(std::string &text,
                                              const ShaderGenResult<ShaderBuildResult> &result)
     {
@@ -1283,7 +1250,7 @@ namespace
             AppendTrialBatchSummaryFields(text,*trial_report,true);
             text += "\n";
 
-            text += "### Legacy Failed Materials\n\n";
+            text += "### Direct Compile Failed Materials\n\n";
 
             if(trial_report->legacy_failed_materials.empty())
             {
@@ -1481,9 +1448,9 @@ namespace
         return true;
     }
 
-    bool WriteCompileCompositorLegacyTreeInternal(const MaterialCreateInfo &mci,
-                                                  const char *material_name,
-                                                  const char *legacy_root)
+    bool WriteCompileCompositorPreparedTreeInternal(const MaterialCreateInfo &mci,
+                                                    const char *material_name,
+                                                    const char *legacy_root)
 {
     if(!EnsureDirectoryExists(legacy_root))
         return false;
@@ -1556,8 +1523,8 @@ namespace
 
     static std::string BuildBaselineCompareReportText(const CompileCompositorShadowBuildReport &report,
                                                       const char *material_name,
-                                                      const bool legacy_compile_success,
-                                                      const char *legacy_summary)
+                                                      const bool direct_compile_success,
+                                                      const char *direct_compile_summary)
     {
         std::string text;
         text.reserve(1024);
@@ -1565,8 +1532,8 @@ namespace
         text += "- Material: `";
         text += material_name ? material_name : "<unnamed>";
         text += "`\n";
-        text += "- Legacy compile: `";
-        text += legacy_compile_success ? "success" : "failed";
+        text += "- Direct compile: `";
+        text += direct_compile_success ? "success" : "failed";
         text += "`\n";
         text += "- Pipeline shadow compile: `";
         text += report.result.success ? "success" : "failed";
@@ -1575,9 +1542,9 @@ namespace
         text += "- Readiness: `";
         text += report.summary;
         text += "`\n\n";
-        text += "## Legacy 摘要\n\n";
-        text += "- LegacySummary: `";
-        text += legacy_summary ? legacy_summary : (legacy_compile_success ? "compile succeeded" : "compile failed");
+        text += "## Direct Compile 摘要\n\n";
+        text += "- DirectCompileSummary: `";
+        text += direct_compile_summary ? direct_compile_summary : (direct_compile_success ? "compile succeeded" : "compile failed");
         text += "`\n\n";
         text += "## Shadow Diagnostics\n\n";
 
@@ -1605,7 +1572,7 @@ bool WriteCompileCompositorLegacyTree(const MaterialCreateInfo &mci,
                                       const char *material_name,
                                       const char *legacy_root)
 {
-    return WriteCompileCompositorLegacyTreeInternal(mci,material_name,legacy_root);
+    return WriteCompileCompositorPreparedTreeInternal(mci,material_name,legacy_root);
 }
 
 std::string BuildCompileCompositorBaselineCompareCommand(const char *material_name,
@@ -1733,9 +1700,9 @@ CompileCompositorTrialBatchReport RunCompileCompositorTrialBatch(const contract:
                                             item.fs_glsl,
                                             static_cast<const Material3DCreateConfig *>(nullptr));
 
-        const bool legacy_success = mci != nullptr;
+        const bool direct_compile_success = mci != nullptr;
 
-        if(legacy_success)
+        if(direct_compile_success)
         {
             ++report.legacy_success_count;
             WriteCompileCompositorLegacyTree(*mci,material_name);
@@ -1748,8 +1715,8 @@ CompileCompositorTrialBatchReport RunCompileCompositorTrialBatch(const contract:
 
         if(WriteCompileCompositorTrialBaselineReport(shadow_report,
                                                      material_name,
-                                                     legacy_success,
-                                                     legacy_success ? "legacy compile succeeded" : "legacy compile failed",
+                                                     direct_compile_success,
+                                                     direct_compile_success ? "direct compile succeeded" : "direct compile failed",
                                                      trial_root))
         {
             ++report.baseline_report_count;
@@ -1803,23 +1770,7 @@ static CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineRe
                                                                                                const StaticMaterialDef &def,
                                                                                                const MaterialCreateConfig *config)
 {
-    if(const auto *cfg3d=As3D(config))
-        return BuildCompileCompositorShadowPipelineReport(profile,def,cfg3d);
-
-    if(config && (config->kind==ConfigKind::D2 || config->kind==ConfigKind::Text2D))
-    {
-        Material3DCreateConfig cfg3d(
-            config->prim,
-            IncludeCamera::Without,
-            config->local_to_world ? IncludeL2W::With : IncludeL2W::Without,
-            IncludeSky::Without);
-        cfg3d.rt_output = config->rt_output;
-        cfg3d.material_instance = config->material_instance;
-        cfg3d.shader_stage_flag_bit = config->shader_stage_flag_bit;
-        return BuildCompileCompositorShadowPipelineReport(profile,def,&cfg3d);
-    }
-
-    return BuildCompileCompositorShadowPipelineReport(profile,def,nullptr);
+    return BuildCompileCompositorShadowPipelineReport(profile,def,config);
 }
 
 static bool HasUBOSemantic(const StaticMaterialDef &def, const UBODescriptorSemantic semantic)
@@ -2007,7 +1958,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const StaticMaterialDef &    def,
     const std::string &         vs_glsl,
     const std::string &         fs_glsl,
-    const Material3DCreateConfig *config)
+    const MaterialCreateConfig *config)
 {
     const CompileCompositorRouteDecision route_decision=ResolveCompileCompositorRouteDecision(nullptr);
 
@@ -2029,12 +1980,30 @@ MaterialCreateInfo *CompileCompositorMaterial(
 
     std::string diagnostics;
     ShaderBuildPipeline pipeline;
+    const MaterialCreateConfig build_cfg=ShaderBuildPipeline::BuildConfigFromStaticMaterialDef(def,config);
+
+    if(config && config->kind==ConfigKind::D3)
+    {
+        const auto *cfg3d=static_cast<const Material3DCreateConfig *>(config);
+        const bool infer_has_camera=HasUBOSemantic(def,UBODescriptorSemantic::CameraInfo);
+        const bool infer_has_sky=HasUBOSemantic(def,UBODescriptorSemantic::SkyInfo);
+        EmitInferenceMismatchDiagnostics(def,*cfg3d,infer_has_camera,infer_has_sky,&diagnostics);
+    }
+
     auto build_result = pipeline.PrepareMaterialCreateInfo(def,
-                                                           config,
+                                                           build_cfg,
                                                            profile,
                                                            vs_glsl,
-                                                           fs_glsl,
-                                                           &diagnostics);
+                                                           fs_glsl);
+    if(!build_result.success && !build_result.diagnostics.empty())
+    {
+        std::string message=build_result.diagnostics.front().message;
+        message += " (";
+        message += ShaderBuildPipeline::BuildShaderDataSchemaDebugText(def);
+        message += ")";
+        AppendDiagnosticLine(&diagnostics,message);
+    }
+
     MaterialCreateInfo *mci = build_result.success ? build_result.value : nullptr;
     if (!mci)
     {
@@ -2164,14 +2133,14 @@ bool PrepareCompositorGLSLForReflection(
         return text;
     }
 
-    CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(const contract::PhysicalDeviceProfileLite *profile,
+CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(const contract::PhysicalDeviceProfileLite *profile,
                                                                               const StaticMaterialDef &def,
-                                                                              const Material3DCreateConfig *config)
+                                                                              const MaterialCreateConfig *config)
     {
         CompileCompositorShadowBuildReport report{};
 
         ShaderBuildPipeline pipeline;
-        const MaterialCreateConfig pipeline_cfg=BuildPipelineConfigFromCompositorConfig(def,config);
+    const MaterialCreateConfig pipeline_cfg=ShaderBuildPipeline::BuildConfigFromStaticMaterialDef(def,config);
         const ShaderBuildDescriptorSpec descriptor_spec=BuildDescriptorSpecFromStaticMaterialDef(def);
 
         report.pipeline_config=pipeline_cfg;
@@ -2191,6 +2160,15 @@ bool PrepareCompositorGLSLForReflection(
 
         return report;
     }
+
+CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(const contract::PhysicalDeviceProfileLite *profile,
+                                                                              const StaticMaterialDef &def,
+                                                                              const Material3DCreateConfig *config)
+{
+    return BuildCompileCompositorShadowPipelineReport(profile,
+                                                      def,
+                                                      static_cast<const MaterialCreateConfig *>(config));
+}
 
     bool WriteCompileCompositorShadowBuildArtifacts(const CompileCompositorShadowBuildReport &report,
                                                 const char *material_name,
@@ -2280,22 +2258,27 @@ bool PrepareCompositorGLSLForReflection(
         const StaticMaterialDef &    def,
         const std::string &         vs_glsl,
         const std::string &         fs_glsl,
+    const Material3DCreateConfig *config)
+{
+    return CompileCompositorMaterial(profile,
+                                     def,
+                                     vs_glsl,
+                                     fs_glsl,
+                                     static_cast<const MaterialCreateConfig *>(config));
+}
+
+MaterialCreateInfo *CompileCompositorMaterial(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const StaticMaterialDef &    def,
+    const std::string &         vs_glsl,
+    const std::string &         fs_glsl,
         const Material2DCreateConfig *config)
     {
-        Material3DCreateConfig cfg3d(
-            config ? config->prim : def.primitive_type,
-            IncludeCamera::Without,
-            config && config->local_to_world ? IncludeL2W::With : IncludeL2W::Without,
-            IncludeSky::Without);
-
-        if (config)
-        {
-            cfg3d.rt_output                         = config->rt_output;
-            cfg3d.material_instance                 = config->material_instance;
-            cfg3d.shader_stage_flag_bit             = config->shader_stage_flag_bit;
-        }
-
-        return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, &cfg3d);
+    return CompileCompositorMaterial(profile,
+                                     def,
+                                     vs_glsl,
+                                     fs_glsl,
+                                     static_cast<const MaterialCreateConfig *>(config));
     }
 
 }  // namespace hgl::graph::mtl
