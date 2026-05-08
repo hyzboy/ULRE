@@ -991,6 +991,98 @@ namespace
         }
     }
 
+    static bool ResolveConfiguredCameraRequirement(const Material3DCreateConfig &cfg)
+    {
+        if (cfg.effective_feature_mask != 0)
+            return HasFeature(cfg.effective_feature_mask, MaterialFeature::NeedsCamera);
+
+        return cfg.camera;
+    }
+
+    static bool ResolveConfiguredSkyRequirement(const Material3DCreateConfig &cfg)
+    {
+        if (cfg.effective_feature_mask != 0)
+            return HasFeature(cfg.effective_feature_mask, MaterialFeature::NeedsSky);
+
+        return cfg.sky;
+    }
+
+    static void AppendDiagnosticLine(std::string *diagnostics, const std::string &line)
+    {
+        if (!diagnostics || line.empty())
+            return;
+
+        if (!diagnostics->empty())
+            *diagnostics += '\n';
+
+        *diagnostics += line;
+    }
+
+    static void EmitInferenceMismatchDiagnostics(
+        const StaticMaterialDef &def,
+        const Material3DCreateConfig &cfg,
+        const bool infer_has_camera,
+        const bool infer_has_sky,
+        std::string *diagnostics)
+    {
+        const bool configured_camera = ResolveConfiguredCameraRequirement(cfg);
+        const bool configured_sky = ResolveConfiguredSkyRequirement(cfg);
+
+        auto emit_one = [&](const char *label, const bool configured, const bool inferred)
+        {
+            if (configured == inferred)
+                return;
+
+            std::string message;
+            message.reserve(256);
+            message += "[CompositorCompiler] inferred ";
+            message += label;
+            message += "=";
+            message += inferred ? "true" : "false";
+            message += " differs from configured/effective=";
+            message += configured ? "true" : "false";
+            message += " for material='";
+            message += def.name ? def.name : "<unnamed>";
+            message += "'";
+
+            if (cfg.effective_feature_mask != 0)
+            {
+                char buf[96]{};
+                std::snprintf(buf,
+                              sizeof(buf),
+                              " effective_feature_mask=0x%016llx",
+                              static_cast<unsigned long long>(cfg.effective_feature_mask));
+                message += buf;
+            }
+
+            message += "; compiler inference is diagnostics-only";
+
+            std::fprintf(stderr, "%s\n", message.c_str());
+            AppendDiagnosticLine(diagnostics, message);
+        };
+
+        emit_one("camera", configured_camera, infer_has_camera);
+        emit_one("sky", configured_sky, infer_has_sky);
+    }
+
+    static std::string BuildShaderDataSchemaDebugText(const StaticMaterialDef &def)
+    {
+        if (def.shader_data_schema == ShaderDataSchema::None)
+            return std::string("schema=<none>");
+
+        const ShaderDataSchemaInfo &schema_info = GetShaderDataSchemaInfo(def.shader_data_schema);
+
+        std::string text;
+        text.reserve(128);
+        text += "schema=";
+        text += std::to_string(static_cast<uint32_t>(def.shader_data_schema));
+        text += " file=";
+        text += schema_info.glsl_schema_file ? schema_info.glsl_schema_file : "<null>";
+        text += " bytes=";
+        text += std::to_string(schema_info.byte_size);
+        return text;
+    }
+
     static std::string BuildShaderDataSchemaIncludeText(const ShaderDataSchemaInfo &schema_info)
     {
         if (!schema_info.glsl_schema_file || !schema_info.glsl_schema_file[0])
@@ -1002,6 +1094,70 @@ namespace
         include_text += schema_info.glsl_schema_file;
         include_text += "\"\n";
         return include_text;
+    }
+
+    static ShaderBuildDescriptorSpec BuildDescriptorSpecFromStaticMaterialDef(const StaticMaterialDef &def)
+    {
+        ShaderBuildDescriptorSpec spec{};
+
+        if(def.ubo_descriptors)
+        {
+            for(const auto semantic:*def.ubo_descriptors)
+                spec.ubos.push_back(semantic);
+        }
+
+        if(def.ssbo_descriptors)
+        {
+            for(const auto semantic:*def.ssbo_descriptors)
+            {
+                if(semantic==SSBODescriptorSemantic::TransformData)
+                    continue;
+
+                spec.ssbos.push_back(semantic);
+            }
+        }
+
+        if(def.shader_data_schema!=ShaderDataSchema::None)
+        {
+            const ShaderDataSchemaInfo &schema_info=GetShaderDataSchemaInfo(def.shader_data_schema);
+            spec.material_instance_schema=def.shader_data_schema;
+            spec.material_instance_bytes=schema_info.byte_size;
+        }
+
+        return spec;
+    }
+
+    static MaterialCreateConfig BuildPipelineConfigFromCompositorConfig(const StaticMaterialDef &def,
+                                                                       const Material3DCreateConfig *config)
+    {
+        MaterialCreateConfig pipeline_cfg(def.primitive_type,false);
+
+        if(config)
+        {
+            pipeline_cfg=*static_cast<const MaterialCreateConfig *>(config);
+            pipeline_cfg.prim=def.primitive_type;
+        }
+
+        pipeline_cfg.shader_stage_flag_bit=uint32_t(ShaderStage::VertexFragment);
+
+        if(def.texture_samplers)
+        {
+            for(const auto &[slot,descriptor]:*def.texture_samplers)
+            {
+                pipeline_cfg.SetTextureSourceSlotEnabledOverride(slot,true);
+                if(descriptor.sampler_type!=SamplerType::Sampler2D)
+                    continue;
+            }
+        }
+
+        const bool infer_has_l2w=HasSSBOSemantic(def,SSBODescriptorSemantic::TransformData);
+        const bool infer_has_mi=HasSSBOSemantic(def,SSBODescriptorSemantic::MaterialBindingInstanceData)
+                              || HasPerMaterialDescriptor(def)
+                              || (def.shader_data_schema!=ShaderDataSchema::None);
+
+        pipeline_cfg.local_to_world = pipeline_cfg.local_to_world || infer_has_l2w;
+        pipeline_cfg.material_instance = pipeline_cfg.material_instance || infer_has_mi;
+        return pipeline_cfg;
     }
 
     static void AppendShadowBuildDiagnostics(std::string &text,
@@ -1352,27 +1508,6 @@ namespace
 
     return WriteLegacyShaderArtifacts(material_root,mci);
 }
-
-    static void EmitInferenceMismatchDiagnostics(
-        const StaticMaterialDef &def,
-        const Material3DCreateConfig &cfg,
-        const bool infer_has_camera,
-        const bool infer_has_sky,
-        std::string *diagnostics)
-    {
-        ShaderBuildPipeline pipeline;
-        (void)pipeline;
-        (void)def;
-        (void)cfg;
-        (void)infer_has_camera;
-        (void)infer_has_sky;
-        (void)diagnostics;
-    }
-
-    static std::string BuildShaderDataSchemaDebugText(const StaticMaterialDef &def)
-    {
-        return ShaderBuildPipeline::BuildShaderDataSchemaDebugText(def);
-    }
 
     static std::string BuildPipelineConfigText(const MaterialCreateConfig &config)
     {
@@ -1882,69 +2017,40 @@ static void EmitCompileCompositorSuccessAndTrialArtifacts(const CompileComposito
     }
 }
 
-struct CompileCompositorTrialContext
+static void EmitCompileCompositorPrepareFailure(const CompileCompositorShadowBuildReport &shadow_report,
+                                                const bool has_shadow_report,
+                                                const char *material_name,
+                                                const std::string &diagnostics)
 {
-    CompileCompositorShadowBuildReport shadow_report{};
-    bool has_shadow_report=false;
-};
+    const char *failure_text=diagnostics.empty() ? "<unknown>" : diagnostics.c_str();
+    const char *baseline_summary=diagnostics.empty() ? "CreatePreparedCompositorMaterial failed" : diagnostics.c_str();
 
-static CompileCompositorTrialContext BuildCompileCompositorTrialContext(const contract::PhysicalDeviceProfileLite *profile,
-                                                                       const StaticMaterialDef &def,
-                                                                       const Material3DCreateConfig *config,
-                                                                       const CompileCompositorRouteDecision &route_decision)
-{
-    CompileCompositorTrialContext context{};
-
-    if(route_decision.pipeline_trial_requested)
-    {
-        context.shadow_report=BuildCompileCompositorShadowPipelineReport(profile,def,config);
-        context.has_shadow_report=true;
-
-        EmitCompileCompositorShadowTrialArtifacts(context.shadow_report,def.name);
-    }
-
-    return context;
-}
-
-static void EmitCompileCompositorDiagnostics(const char *material_name,
-                                            const std::string &diagnostics)
-{
-    if (!diagnostics.empty())
-    {
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s diagnostics: %s\n",
-            material_name ? material_name : "<unnamed>",
-            diagnostics.c_str());
-    }
-}
-
-static MaterialCreateInfo *HandleCompileCompositorPreparedMaterialFailure(const CompileCompositorTrialContext &trial_context,
-                                                                         const char *material_name,
-                                                                         const std::string &diagnostics)
-{
-    EmitCompileCompositorFailureAndTrialArtifacts(trial_context.shadow_report,
-                                                  trial_context.has_shadow_report,
+    EmitCompileCompositorFailureAndTrialArtifacts(shadow_report,
+                                                  has_shadow_report,
                                                   material_name,
-                                                  diagnostics.empty() ? "<unknown>" : diagnostics.c_str(),
-                                                  diagnostics.empty() ? "CreatePreparedCompositorMaterial failed" : diagnostics.c_str());
-    return nullptr;
+                                                  failure_text,
+                                                  baseline_summary);
 }
 
-static MaterialCreateInfo *HandleCompileCompositorSpvFailure(const CompileCompositorTrialContext &trial_context,
-                                                             const StaticMaterialDef &def,
-                                                             MaterialCreateInfo *mci)
+static std::string BuildCompileShaderStagesFailureText(const StaticMaterialDef &def)
 {
     std::string failure_text = "CompileShaderStagesToSPV() failed (check GLSLCompiler log) (";
-    failure_text += BuildShaderDataSchemaDebugText(def);
+    failure_text += ShaderBuildPipeline::BuildShaderDataSchemaDebugText(def);
     failure_text += ")";
+    return failure_text;
+}
 
-    EmitCompileCompositorFailureAndTrialArtifacts(trial_context.shadow_report,
-                                                  trial_context.has_shadow_report,
+static void EmitCompileCompositorStageCompileFailure(const CompileCompositorShadowBuildReport &shadow_report,
+                                                     const bool has_shadow_report,
+                                                     const StaticMaterialDef &def)
+{
+    const std::string failure_text=BuildCompileShaderStagesFailureText(def);
+
+    EmitCompileCompositorFailureAndTrialArtifacts(shadow_report,
+                                                  has_shadow_report,
                                                   def.name,
                                                   failure_text.c_str(),
                                                   "CompileShaderStagesToSPV() failed");
-    delete mci;
-    return nullptr;
 }
 
 MaterialCreateInfo *CompileCompositorMaterial(
@@ -1961,10 +2067,16 @@ MaterialCreateInfo *CompileCompositorMaterial(
         def.name ? def.name : "<unnamed>",
         GetCompileCompositorRouteDecisionSummary(route_decision).c_str());
 
-    const CompileCompositorTrialContext trial_context=BuildCompileCompositorTrialContext(profile,
-                                                                                         def,
-                                                                                         config,
-                                                                                         route_decision);
+    CompileCompositorShadowBuildReport shadow_report{};
+    bool has_shadow_report=false;
+
+    if(route_decision.pipeline_trial_requested)
+    {
+        shadow_report=BuildCompileCompositorShadowPipelineReport(profile,def,config);
+        has_shadow_report=true;
+
+        EmitCompileCompositorShadowTrialArtifacts(shadow_report,def.name);
+    }
 
     std::string diagnostics;
     MaterialCreateInfo *mci = CreatePreparedCompositorMaterial(profile,
@@ -1974,15 +2086,33 @@ MaterialCreateInfo *CompileCompositorMaterial(
                                                                config,
                                                                &diagnostics);
     if (!mci)
-        return HandleCompileCompositorPreparedMaterialFailure(trial_context,def.name,diagnostics);
+    {
+        EmitCompileCompositorPrepareFailure(shadow_report,
+                                            has_shadow_report,
+                                            def.name,
+                                            diagnostics);
+        return nullptr;
+    }
 
     if (!mci->CompileShaderStagesToSPV())
-        return HandleCompileCompositorSpvFailure(trial_context,def,mci);
+    {
+        EmitCompileCompositorStageCompileFailure(shadow_report,
+                                                has_shadow_report,
+                                                def);
+        delete mci;
+        return nullptr;
+    }
 
-    EmitCompileCompositorDiagnostics(def.name,diagnostics);
+    if (!diagnostics.empty())
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s diagnostics: %s\n",
+            def.name ? def.name : "<unnamed>",
+            diagnostics.c_str());
+    }
 
-    EmitCompileCompositorSuccessAndTrialArtifacts(trial_context.shadow_report,
-                                                  trial_context.has_shadow_report,
+    EmitCompileCompositorSuccessAndTrialArtifacts(shadow_report,
+                                                  has_shadow_report,
                                                   *mci,
                                                   def.name,
                                                   diagnostics.empty() ? "CompileCompositorMaterial legacy compile succeeded" : diagnostics.c_str());
@@ -2079,8 +2209,8 @@ CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(co
     CompileCompositorShadowBuildReport report{};
 
     ShaderBuildPipeline pipeline;
-    const MaterialCreateConfig pipeline_cfg=ShaderBuildPipeline::BuildConfigFromStaticMaterialDef(def,config);
-    const ShaderBuildDescriptorSpec descriptor_spec=ShaderBuildPipeline::BuildDescriptorSpecFromStaticMaterialDef(def);
+    const MaterialCreateConfig pipeline_cfg=BuildPipelineConfigFromCompositorConfig(def,config);
+    const ShaderBuildDescriptorSpec descriptor_spec=BuildDescriptorSpecFromStaticMaterialDef(def);
 
     report.pipeline_config=pipeline_cfg;
     report.descriptor_spec=descriptor_spec;
