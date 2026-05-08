@@ -309,6 +309,12 @@ namespace hgl::ecs
         if (!material_)
             return false;
 
+        GLogInfo("[LineRenderPipeline] Initialize: requested_cfg_prim=%u material=%p material_prim=%u wide_lines=%d",
+                 static_cast<unsigned>(cfg.prim),
+                 material_,
+                 static_cast<unsigned>(material_->GetPrimitiveType()),
+                 support_wide_lines_ ? 1 : 0);
+
         if (auto rdbs = context_->GetSystem<RenderDescriptorBindingSystem>())
             rdbs->RegisterPipelineMaterial(material_);
 
@@ -330,6 +336,12 @@ namespace hgl::ecs
         mi_ = mat_mgr->AcquireMaterialInstance(spec);
         if (!mi_)
             return false;
+
+        GLogInfo("[LineRenderPipeline] Initialize: mi=%p preset=%u fixed_vil=%p material_prim=%u",
+                 mi_,
+                 static_cast<unsigned>(preset),
+                 fixed_vil_,
+                 static_cast<unsigned>(material_->GetPrimitiveType()));
 
         // ------- Create color palette UBO -------
         auto* buf_mgr = gc->GetBufferManager();

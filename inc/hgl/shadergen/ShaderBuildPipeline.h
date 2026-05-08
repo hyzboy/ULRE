@@ -45,6 +45,13 @@ struct ShaderBuildResult
 class ShaderBuildPipeline
 {
 public:
+    static mtl::MaterialCreateConfig BuildConfigFromStaticMaterialDef(
+        const mtl::StaticMaterialDef &def,
+        const mtl::MaterialCreateConfig *config=nullptr);
+
+    static ShaderBuildDescriptorSpec BuildDescriptorSpecFromStaticMaterialDef(
+        const mtl::StaticMaterialDef &def);
+
     ShaderGenResult<ShaderBuildResult> Build(const mtl::MaterialCreateConfig &config,
                                              const mtl::contract::PhysicalDeviceProfileLite *profile,
                                              const ShaderBuildDescriptorSpec *descriptor_spec=nullptr);

@@ -1096,70 +1096,6 @@ namespace
         return include_text;
     }
 
-    static ShaderBuildDescriptorSpec BuildDescriptorSpecFromStaticMaterialDef(const StaticMaterialDef &def)
-    {
-        ShaderBuildDescriptorSpec spec{};
-
-        if(def.ubo_descriptors)
-        {
-            for(const auto semantic:*def.ubo_descriptors)
-                spec.ubos.push_back(semantic);
-        }
-
-        if(def.ssbo_descriptors)
-        {
-            for(const auto semantic:*def.ssbo_descriptors)
-            {
-                if(semantic==SSBODescriptorSemantic::TransformData)
-                    continue;
-
-                spec.ssbos.push_back(semantic);
-            }
-        }
-
-        if(def.shader_data_schema!=ShaderDataSchema::None)
-        {
-            const ShaderDataSchemaInfo &schema_info=GetShaderDataSchemaInfo(def.shader_data_schema);
-            spec.material_instance_schema=def.shader_data_schema;
-            spec.material_instance_bytes=schema_info.byte_size;
-        }
-
-        return spec;
-    }
-
-    static MaterialCreateConfig BuildPipelineConfigFromCompositorConfig(const StaticMaterialDef &def,
-                                                                       const Material3DCreateConfig *config)
-    {
-        MaterialCreateConfig pipeline_cfg(def.primitive_type,false);
-
-        if(config)
-        {
-            pipeline_cfg=*static_cast<const MaterialCreateConfig *>(config);
-            pipeline_cfg.prim=def.primitive_type;
-        }
-
-        pipeline_cfg.shader_stage_flag_bit=uint32_t(ShaderStage::VertexFragment);
-
-        if(def.texture_samplers)
-        {
-            for(const auto &[slot,descriptor]:*def.texture_samplers)
-            {
-                pipeline_cfg.SetTextureSourceSlotEnabledOverride(slot,true);
-                if(descriptor.sampler_type!=SamplerType::Sampler2D)
-                    continue;
-            }
-        }
-
-        const bool infer_has_l2w=HasSSBOSemantic(def,SSBODescriptorSemantic::TransformData);
-        const bool infer_has_mi=HasSSBOSemantic(def,SSBODescriptorSemantic::MaterialBindingInstanceData)
-                              || HasPerMaterialDescriptor(def)
-                              || (def.shader_data_schema!=ShaderDataSchema::None);
-
-        pipeline_cfg.local_to_world = pipeline_cfg.local_to_world || infer_has_l2w;
-        pipeline_cfg.material_instance = pipeline_cfg.material_instance || infer_has_mi;
-        return pipeline_cfg;
-    }
-
     static void AppendShadowBuildDiagnostics(std::string &text,
                                              const ShaderGenResult<ShaderBuildResult> &result)
     {
@@ -2264,8 +2200,8 @@ CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(co
     CompileCompositorShadowBuildReport report{};
 
     ShaderBuildPipeline pipeline;
-    const MaterialCreateConfig pipeline_cfg=BuildPipelineConfigFromCompositorConfig(def,config);
-    const ShaderBuildDescriptorSpec descriptor_spec=BuildDescriptorSpecFromStaticMaterialDef(def);
+    const MaterialCreateConfig pipeline_cfg=ShaderBuildPipeline::BuildConfigFromStaticMaterialDef(def,config);
+    const ShaderBuildDescriptorSpec descriptor_spec=ShaderBuildPipeline::BuildDescriptorSpecFromStaticMaterialDef(def);
 
     report.pipeline_config=pipeline_cfg;
     report.descriptor_spec=descriptor_spec;

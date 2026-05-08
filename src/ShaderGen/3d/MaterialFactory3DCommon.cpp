@@ -20,16 +20,20 @@ MaterialCreateInfo *CreateFromFixedDef3D(
     if (cfg && cfg->prim != def.primitive_type)
     {
         std::fprintf(stderr,
-            "[%s] Primitive mismatch: cfg->prim=%u def.primitive_type=%u (using def value)\n",
+            "[%s] Primitive mismatch: cfg->prim=%u def.primitive_type=%u (using cfg value)\n",
             debug_tag ? debug_tag : "3DFactory",
             static_cast<unsigned>(cfg->prim),
             static_cast<unsigned>(def.primitive_type));
     }
 
+    StaticMaterialDef effective_def = def;
+    if (cfg)
+        effective_def.primitive_type = cfg->prim;
+
     // Populate vertex attribute feature bits from the actual vertex layout.
     // Builder functions (e.g. BuildForwardLitVS) derive has_uv0 / has_normal etc. from these bits.
     MaterialVariantKey assemble_key = var_key;
-    PopulateVariantKeyVertexAttribBits(assemble_key, def);
+    PopulateVariantKeyVertexAttribBits(assemble_key, effective_def);
 
     CompositorAssembler assembler;
 
@@ -44,7 +48,7 @@ MaterialCreateInfo *CreateFromFixedDef3D(
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        def,
+        effective_def,
         result.vertex_glsl,
         result.fragment_glsl,
         cfg);

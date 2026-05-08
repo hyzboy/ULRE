@@ -21,6 +21,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/RecipeToKey.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdio>
 #include<cstdint>
@@ -459,6 +460,15 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
 
     using namespace mtl;
 
+    std::fprintf(stderr,
+        "[ShaderMaterialProgramManager] CreateMaterialFromRecord: preset=%u dim=%u prim=%u l2w=%u pipeline=%u key_hash=0x%llx\n",
+        static_cast<unsigned>(rec.preset),
+        static_cast<unsigned>(rec.dim),
+        static_cast<unsigned>(rec.prim),
+        rec.l2w ? 1u : 0u,
+        static_cast<unsigned>(rec.pipeline),
+        static_cast<unsigned long long>(mtl::ResolveRecipePrimaryKey(rec).Hash()));
+
     // ── Billboard2DFixed / Billboard2DDynamic ────────────────────────────────
     if (rec.preset == MaterialPreset::Billboard2DFixed ||
         rec.preset == MaterialPreset::Billboard2DDynamic)
@@ -497,6 +507,10 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
         for (const auto &tc : rec.textures)
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
+        std::fprintf(stderr,
+            "[ShaderMaterialProgramManager] CreateMaterialFromRecord: 2D cfg.prim=%u preset=%u\n",
+            static_cast<unsigned>(cfg.prim),
+            static_cast<unsigned>(rec.preset));
         return mm->ResolveOrCreateProgram(rec.preset, &cfg);
     }
     // ── 3D ─────────────────────────────────────────────────────────────────
@@ -533,6 +547,12 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
         for (const auto &tc : rec.textures)
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
+        std::fprintf(stderr,
+            "[ShaderMaterialProgramManager] CreateMaterialFromRecord: 3D cfg.prim=%u preset=%u include_camera=%u include_sky=%u\n",
+            static_cast<unsigned>(cfg.prim),
+            static_cast<unsigned>(rec.preset),
+            include_camera ? 1u : 0u,
+            include_sky ? 1u : 0u);
         return mm->ResolveOrCreateProgram(rec.preset, &cfg);
     }
 }
@@ -541,17 +561,38 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     const mtl::MaterialKey &key,
     const mtl::MaterialRecipe &recipe)
 {
+    std::fprintf(stderr,
+        "[ShaderMaterialProgramManager] GetOrCreateProgramByKey: key_hash=0x%llx recipe_prim=%u preset=%u pipeline=%u\n",
+        static_cast<unsigned long long>(key.Hash()),
+        static_cast<unsigned>(recipe.prim),
+        static_cast<unsigned>(recipe.preset),
+        static_cast<unsigned>(recipe.pipeline));
+
     // Fast path: key already in cache (populated by ResolveOrCreateProgram on first call)
     auto it = material_by_key.find(key);
     if (it != material_by_key.end())
     {
         by_key_hits.fetch_add(1, std::memory_order_relaxed);
+        std::fprintf(stderr,
+            "[ShaderMaterialProgramManager] GetOrCreateProgramByKey: cache_hit material=%p name='%s' material_prim=%u\n",
+            it->second,
+            it->second->GetName().c_str(),
+            static_cast<unsigned>(it->second->GetPrimitiveType()));
         return it->second;
     }
 
     // Miss — fall back to recipe-based creation.  CreateMaterialFromRecord calls
     // ResolveOrCreateProgram which populates material_by_key as a side-effect (Step 3).
     ShaderMaterialProgram *prog = CreateMaterialFromRecord(this, recipe);
+
+    if (prog)
+    {
+        std::fprintf(stderr,
+            "[ShaderMaterialProgramManager] GetOrCreateProgramByKey: created material=%p name='%s' material_prim=%u\n",
+            prog,
+            prog->GetName().c_str(),
+            static_cast<unsigned>(prog->GetPrimitiveType()));
+    }
 
 #ifndef NDEBUG
     if (prog)

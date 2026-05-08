@@ -195,6 +195,18 @@ namespace hgl::ecs
 			task.gvf_hash = HashGeometryVertexFormat(gvf);
 			task.instance_hash = HashBytes(slot.GetInstanceDataPtr(), slot.GetInstanceDataSize());
 
+			LogInfo("[ECS::MaterialResolveSystem] resolve_input comp=%p recipe_id=%u preset=%u dim=%u recipe_prim=%u pipeline=%u geom=%p key_hash=0x%llx gvf_hash=0x%llx instance_hash=0x%llx",
+				comp.get(),
+				static_cast<unsigned>(slot.recipe_id),
+				static_cast<unsigned>(recipe->preset),
+				static_cast<unsigned>(recipe->dim),
+				static_cast<unsigned>(recipe->prim),
+				static_cast<unsigned>(recipe->pipeline),
+				geom,
+				static_cast<unsigned long long>(task.material_key.Hash()),
+				static_cast<unsigned long long>(task.gvf_hash),
+				static_cast<unsigned long long>(task.instance_hash));
+
 			const size_t index = tasks.size();
 			tasks.push_back(task);
 			++resolve_input_count;
@@ -244,6 +256,13 @@ namespace hgl::ecs
 															 seed.slot->GetInstanceDataSize(),
 															 nullptr,
 															 &resolve_vil);
+                LogInfo("[ECS::MaterialResolveSystem] resolve_bucket key_hash=0x%llx recipe_prim=%u pipeline=%u mi=%p vil=%p bucket_size=%u",
+					static_cast<unsigned long long>(seed.material_key.Hash()),
+					static_cast<unsigned>(seed.recipe->prim),
+					static_cast<unsigned>(seed.recipe->pipeline),
+					mi,
+					resolve_vil,
+					static_cast<unsigned>(mi_indices.size()));
 				if (!mi)
 				{
 					resolve_fail_count += static_cast<uint32_t>(mi_indices.size());
@@ -262,6 +281,14 @@ namespace hgl::ecs
 					task.slot->resolved_mi_id = mi->GetMIID();
 					task.slot->resolved_preset = mi->GetRenderPreset();
 					task.slot->dirty = false;
+                   LogInfo("[ECS::MaterialResolveSystem] resolved_output comp=%p mi=%p material=%p material_prim=%u resolved_preset=%u domain_id=%u vil=%p",
+						task.comp.get(),
+						mi,
+						task.slot->resolved_material,
+						task.slot->resolved_material ? static_cast<unsigned>(task.slot->resolved_material->GetPrimitiveType()) : 0u,
+						static_cast<unsigned>(task.slot->resolved_preset),
+						static_cast<unsigned>(task.slot->resolved_domain_id),
+						resolve_vil);
 					++resolved_count;
 
 					// Stage-2: unresolved geometry still creates Primitive in-place.

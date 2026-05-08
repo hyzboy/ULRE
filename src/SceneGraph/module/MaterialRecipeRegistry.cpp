@@ -129,6 +129,15 @@ MaterialRecipeRegistry::MaterialRecipeRegistry(
 
 MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &rec)
 {
+    std::fprintf(stderr,
+        "[MaterialRecipeRegistry] Acquire(recipe): preset=%u dim=%u prim=%u pipeline=%u domain='%s' textures=%zu key_hash=0x%llx\n",
+        static_cast<unsigned>(rec.preset),
+        static_cast<unsigned>(rec.dim),
+        static_cast<unsigned>(rec.prim),
+        static_cast<unsigned>(rec.pipeline),
+        rec.domain_id.c_str(),
+        rec.textures.size(),
+        static_cast<unsigned long long>(mtl::ResolveRecipePrimaryKey(rec).Hash()));
     return Acquire(mtl::ResolveRecipePrimaryKey(rec), rec);
 }
 
@@ -136,10 +145,24 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
 {
     MaterialDomainHandle handle;
 
+    std::fprintf(stderr,
+        "[MaterialRecipeRegistry] Acquire(key): key_hash=0x%llx preset=%u prim=%u pipeline=%u\n",
+        static_cast<unsigned long long>(key.Hash()),
+        static_cast<unsigned>(rec.preset),
+        static_cast<unsigned>(rec.prim),
+        static_cast<unsigned>(rec.pipeline));
+
     // 1. ShaderMaterialProgram — key-transparent fast path (checks material_by_key first)
     handle.material = mm->GetOrCreateProgramByKey(key, rec);
     if (!handle.material)
         return {};
+
+    std::fprintf(stderr,
+        "[MaterialRecipeRegistry] Acquire(key): material=%p material_name='%s' material_prim=%u shader_schema=%u\n",
+        handle.material,
+        handle.material->GetName().c_str(),
+        static_cast<unsigned>(handle.material->GetPrimitiveType()),
+        static_cast<unsigned>(handle.material->GetShaderDataSchema()));
 
     const AnsiString &mat_name = handle.material->GetName();
     std::string mat_name_str(mat_name.c_str() ? mat_name.c_str() : "",
@@ -339,7 +362,18 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
 
     MaterialBindingInstance *mi = mm->AcquireMaterialInstance(spec);
     if (mi)
+    {
         MaterialBindingInstanceInternalAccess::SetDomainBinding(mi, handle.binding);
+
+        std::fprintf(stderr,
+            "[MaterialRecipeRegistry] ResolveOrCreateBindingInstance(key+gvf): mi=%p material=%p material_prim=%u preset=%u domain=%p vil=%p\n",
+            mi,
+            handle.material,
+            static_cast<unsigned>(handle.material->GetPrimitiveType()),
+            static_cast<unsigned>(spec.preset),
+            handle.domain,
+            out_vil ? *out_vil : nullptr);
+    }
 
     return mi;
 }

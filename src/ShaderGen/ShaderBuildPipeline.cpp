@@ -322,6 +322,70 @@ static std::string BuildSchemaIncludeText(const hgl::graph::mtl::ShaderDataSchem
 
 namespace hgl::graph
 {
+mtl::MaterialCreateConfig ShaderBuildPipeline::BuildConfigFromStaticMaterialDef(
+    const mtl::StaticMaterialDef &def,
+    const mtl::MaterialCreateConfig *config)
+{
+    mtl::MaterialCreateConfig build_cfg(def.primitive_type,false);
+
+    if(config)
+    {
+        build_cfg=*config;
+    }
+
+    build_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+    if(def.texture_samplers)
+    {
+        for(const auto &[slot,descriptor]:*def.texture_samplers)
+        {
+            build_cfg.SetTextureSourceSlotEnabledOverride(slot,true);
+            (void)descriptor;
+        }
+    }
+
+    build_cfg.local_to_world = build_cfg.local_to_world
+                            || HasSSBOSemantic(def, mtl::SSBODescriptorSemantic::TransformData);
+    build_cfg.material_instance = build_cfg.material_instance
+                               || HasSSBOSemantic(def, mtl::SSBODescriptorSemantic::MaterialBindingInstanceData)
+                               || HasPerMaterialDescriptor(def)
+                               || (def.shader_data_schema != mtl::ShaderDataSchema::None);
+
+    return build_cfg;
+}
+
+ShaderBuildDescriptorSpec ShaderBuildPipeline::BuildDescriptorSpecFromStaticMaterialDef(
+    const mtl::StaticMaterialDef &def)
+{
+    ShaderBuildDescriptorSpec spec{};
+
+    if(def.ubo_descriptors)
+    {
+        for(const auto semantic:*def.ubo_descriptors)
+            spec.ubos.push_back(semantic);
+    }
+
+    if(def.ssbo_descriptors)
+    {
+        for(const auto semantic:*def.ssbo_descriptors)
+        {
+            if(semantic==mtl::SSBODescriptorSemantic::TransformData)
+                continue;
+
+            spec.ssbos.push_back(semantic);
+        }
+    }
+
+    if(def.shader_data_schema!=mtl::ShaderDataSchema::None)
+    {
+        const auto &schema_info=mtl::GetShaderDataSchemaInfo(def.shader_data_schema);
+        spec.material_instance_schema=def.shader_data_schema;
+        spec.material_instance_bytes=schema_info.byte_size;
+    }
+
+    return spec;
+}
+
 ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::MaterialCreateConfig &config,
                                                               const mtl::contract::PhysicalDeviceProfileLite *profile,
                                                               const ShaderBuildDescriptorSpec *descriptor_spec)
@@ -550,14 +614,7 @@ ShaderGenResult<mtl::MaterialCreateInfo *> ShaderBuildPipeline::BuildMaterialCre
         return result;
     }
 
-    mtl::MaterialCreateConfig build_cfg(config);
-    build_cfg.prim = def.primitive_type;
-    build_cfg.local_to_world = build_cfg.local_to_world || HasSSBOSemantic(def, mtl::SSBODescriptorSemantic::TransformData);
-    build_cfg.material_instance = build_cfg.material_instance
-                               || HasSSBOSemantic(def, mtl::SSBODescriptorSemantic::MaterialBindingInstanceData)
-                               || HasPerMaterialDescriptor(def)
-                               || (def.shader_data_schema != mtl::ShaderDataSchema::None);
-    build_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+    mtl::MaterialCreateConfig build_cfg = BuildConfigFromStaticMaterialDef(def,&config);
 
     mtl::MaterialBuilder builder(&build_cfg);
     builder.SetDevice(profile);

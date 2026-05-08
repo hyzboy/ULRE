@@ -1,5 +1,7 @@
 ﻿#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
+#include<cstdio>
 
 namespace hgl::graph{
 
@@ -47,6 +49,15 @@ Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialBindingInstanc
 {
     if(!mi||!r)
         return(nullptr);
+
+    auto *material = MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
+    std::fprintf(stderr,
+        "[PrimitiveManager] CreatePrimitive(geom,mi,vil): geom=%p mi=%p vil=%p material=%p material_prim=%u\n",
+        r,
+        mi,
+        vil,
+        material,
+        material ? static_cast<unsigned>(material->GetPrimitiveType()) : 0u);
 
     Primitive *ri=hgl::graph::DirectCreatePrimitive(r,mi,nullptr,vil);
 
