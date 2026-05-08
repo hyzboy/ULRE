@@ -657,8 +657,9 @@ static void TestCompileCompositorTrialAggregateReport()
                                std::istreambuf_iterator<char>());
     CHECK_TRUE(aggregate_text.find("# ShaderGen 试运行汇总报告（自动生成）")!=std::string::npos);
     CHECK_TRUE(aggregate_text.find("## Trial Batch Summary")!=std::string::npos);
-    CHECK_TRUE(aggregate_text.find("LegacyFailureCount: `1`")!=std::string::npos);
-    CHECK_TRUE(aggregate_text.find("PipelineTrialFailureCount: `2`")!=std::string::npos);
+    CHECK_TRUE(aggregate_text.find("- total_count=`3`")!=std::string::npos);
+    CHECK_TRUE(aggregate_text.find("- legacy_failure_count=`1`")!=std::string::npos);
+    CHECK_TRUE(aggregate_text.find("- pipeline_trial_failure_count=`2`")!=std::string::npos);
     CHECK_TRUE(aggregate_text.find("LegacyOnlyFailure")!=std::string::npos);
     CHECK_TRUE(aggregate_text.find("PipelineOnlyFailure")!=std::string::npos);
     CHECK_TRUE(aggregate_text.find("SchemaAwareSmokeCompositor_baseline_compare.md")!=std::string::npos);
@@ -743,6 +744,15 @@ static void TestCompileCompositorBuiltinCandidateTrialBatchSummary()
     CHECK_TRUE(summary.find("total_count=")!=std::string::npos);
     CHECK_TRUE(summary.find("legacy_failure_count=")!=std::string::npos);
     CHECK_TRUE(summary.find("pipeline_trial_failure_count=")!=std::string::npos);
+
+    std::ifstream aggregate_ifs("build/shadergen_trial/reports/baseline_compare.md",std::ios::in);
+    CHECK_TRUE(aggregate_ifs.is_open());
+
+    std::string aggregate_text((std::istreambuf_iterator<char>(aggregate_ifs)),
+                               std::istreambuf_iterator<char>());
+    CHECK_TRUE(aggregate_text.find("## Trial Batch Summary")!=std::string::npos);
+    CHECK_TRUE(aggregate_text.find("### Legacy Failed Materials")!=std::string::npos);
+    CHECK_TRUE(aggregate_text.find("### Pipeline Trial Failed Materials")!=std::string::npos);
 
     std::ifstream gizmo_report_ifs("build/shadergen_trial/reports/Gizmo3D_baseline_compare.md",std::ios::in);
     CHECK_TRUE(gizmo_report_ifs.is_open());

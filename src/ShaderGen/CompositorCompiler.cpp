@@ -1213,6 +1213,41 @@ namespace
         return ofs.good();
     }
 
+    static void AppendTrialBatchSummaryFields(std::string &text,
+                                              const CompileCompositorTrialBatchReport &report,
+                                              const bool markdown_list)
+    {
+        const char *separator = markdown_list ? "- " : ", ";
+        const char *line_end = markdown_list ? "\n" : "";
+        const char *value_prefix = markdown_list ? "`" : "";
+        const char *value_suffix = markdown_list ? "`" : "";
+
+        auto append_one = [&](const char *name, const std::string &value)
+        {
+            if(!text.empty() && !markdown_list)
+                text += separator;
+            else
+            if(markdown_list)
+                text += separator;
+
+            text += name;
+            text += "=";
+            text += value_prefix;
+            text += value;
+            text += value_suffix;
+            text += line_end;
+        };
+
+        append_one("total_count",std::to_string(report.total_count));
+        append_one("legacy_success_count",std::to_string(report.legacy_success_count));
+        append_one("legacy_failure_count",std::to_string(report.legacy_failure_count));
+        append_one("pipeline_trial_success_count",std::to_string(report.pipeline_trial_success_count));
+        append_one("pipeline_trial_failure_count",std::to_string(report.pipeline_trial_failure_count));
+        append_one("baseline_report_count",std::to_string(report.baseline_report_count));
+        append_one("baseline_compare_success_count",std::to_string(report.baseline_compare_success_count));
+        append_one("aggregate_report_written",report.aggregate_report_written ? "true" : "false");
+    }
+
     static std::string BuildShadowDiagnosticsText(const CompileCompositorShadowBuildReport &report,
                                                   const char *material_name)
     {
@@ -1250,30 +1285,8 @@ namespace
         if(trial_report)
         {
             text += "## Trial Batch Summary\n\n";
-            text += "- TotalCount: `";
-            text += std::to_string(trial_report->total_count);
-            text += "`\n";
-            text += "- LegacySuccessCount: `";
-            text += std::to_string(trial_report->legacy_success_count);
-            text += "`\n";
-            text += "- LegacyFailureCount: `";
-            text += std::to_string(trial_report->legacy_failure_count);
-            text += "`\n";
-            text += "- PipelineTrialSuccessCount: `";
-            text += std::to_string(trial_report->pipeline_trial_success_count);
-            text += "`\n";
-            text += "- PipelineTrialFailureCount: `";
-            text += std::to_string(trial_report->pipeline_trial_failure_count);
-            text += "`\n";
-            text += "- BaselineReportCount: `";
-            text += std::to_string(trial_report->baseline_report_count);
-            text += "`\n";
-            text += "- BaselineCompareSuccessCount: `";
-            text += std::to_string(trial_report->baseline_compare_success_count);
-            text += "`\n";
-            text += "- AggregateReportWritten: `";
-            text += trial_report->aggregate_report_written ? "true" : "false";
-            text += "`\n\n";
+            AppendTrialBatchSummaryFields(text,*trial_report,true);
+            text += "\n";
 
             text += "### Legacy Failed Materials\n\n";
 
@@ -1809,22 +1822,7 @@ bool WriteCompileCompositorTrialAggregateReport(const char *trial_root,
 std::string GetCompileCompositorTrialBatchSummary(const CompileCompositorTrialBatchReport &report)
 {
     std::string text;
-    text += "total_count=";
-    text += std::to_string(report.total_count);
-    text += ", legacy_success_count=";
-    text += std::to_string(report.legacy_success_count);
-    text += ", legacy_failure_count=";
-    text += std::to_string(report.legacy_failure_count);
-    text += ", pipeline_trial_success_count=";
-    text += std::to_string(report.pipeline_trial_success_count);
-    text += ", pipeline_trial_failure_count=";
-    text += std::to_string(report.pipeline_trial_failure_count);
-    text += ", baseline_report_count=";
-    text += std::to_string(report.baseline_report_count);
-    text += ", baseline_compare_success_count=";
-    text += std::to_string(report.baseline_compare_success_count);
-    text += ", aggregate_report_written=";
-    text += report.aggregate_report_written ? "true" : "false";
+    AppendTrialBatchSummaryFields(text,report,false);
 
     if(!report.legacy_failed_materials.empty())
     {
