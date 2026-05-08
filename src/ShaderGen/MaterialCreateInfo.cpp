@@ -10,6 +10,8 @@
 #include<hgl/shadergen/ShaderLayoutResolver.h>
 #include<hgl/shadergen/ShaderLayoutEmitter.h>
 #include<hgl/shadergen/SamplerGLSLEmitter.h>
+#include<hgl/shadergen/ShaderBuildPipeline.h>
+#include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/internal/GLSLSourceUtils.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/mtl/UBOCommon.h>
@@ -80,6 +82,38 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
                                                             layout_defs + frag_sampler_defs + frag_mit_defs));
     }
 
+    return true;
+}
+
+bool PrepareCompositorGLSLForReflection(
+    const StaticMaterialDef &def,
+    const std::string &vs_glsl,
+    const std::string &fs_glsl,
+    std::string &out_vs_glsl,
+    std::string &out_fs_glsl,
+    std::string *diagnostics)
+{
+    if(diagnostics)
+        diagnostics->clear();
+
+    ShaderBuildPipeline pipeline;
+    auto build_result=pipeline.PrepareMaterialCreateInfo(def,
+                                                         nullptr,
+                                                         nullptr,
+                                                         vs_glsl,
+                                                         fs_glsl,
+                                                         diagnostics);
+    MaterialCreateInfo *mci=build_result.success ? build_result.value : nullptr;
+    if(!mci)
+        return false;
+
+    ShaderCreateInfoVertex *vert=mci->GetVertexShader();
+    ShaderCreateInfo *frag=mci->GetStageShader(ShaderStage::Fragment);
+
+    out_vs_glsl=vert ? vert->GetFinalGLSL() : std::string();
+    out_fs_glsl=frag ? frag->GetFinalGLSL() : std::string();
+
+    delete mci;
     return true;
 }
 

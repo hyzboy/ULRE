@@ -2011,27 +2011,6 @@ static void EmitCompileCompositorPrepareFailure(const CompileCompositorShadowBui
                                                   baseline_summary);
 }
 
-static std::string BuildCompileShaderStagesFailureText(const StaticMaterialDef &def)
-{
-    std::string failure_text = "CompileShaderStagesToSPV() failed (check GLSLCompiler log) (";
-    failure_text += ShaderBuildPipeline::BuildShaderDataSchemaDebugText(def);
-    failure_text += ")";
-    return failure_text;
-}
-
-static void EmitCompileCompositorStageCompileFailure(const CompileCompositorShadowBuildReport &shadow_report,
-                                                     const bool has_shadow_report,
-                                                     const StaticMaterialDef &def)
-{
-    const std::string failure_text=BuildCompileShaderStagesFailureText(def);
-
-    EmitCompileCompositorFailureAndTrialArtifacts(shadow_report,
-                                                  has_shadow_report,
-                                                  def.name,
-                                                  failure_text.c_str(),
-                                                  "CompileShaderStagesToSPV() failed");
-}
-
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &    def,
@@ -2078,9 +2057,15 @@ MaterialCreateInfo *CompileCompositorMaterial(
 
     if (!mci->CompileShaderStagesToSPV())
     {
-        EmitCompileCompositorStageCompileFailure(shadow_report,
-                                                has_shadow_report,
-                                                def);
+        std::string failure_text = "CompileShaderStagesToSPV() failed (check GLSLCompiler log) (";
+        failure_text += ShaderBuildPipeline::BuildShaderDataSchemaDebugText(def);
+        failure_text += ")";
+
+        EmitCompileCompositorFailureAndTrialArtifacts(shadow_report,
+                                                      has_shadow_report,
+                                                      def.name,
+                                                      failure_text.c_str(),
+                                                      "CompileShaderStagesToSPV() failed");
         delete mci;
         return nullptr;
     }
@@ -2291,62 +2276,5 @@ MaterialCreateInfo *CompileCompositorMaterial(
 
     return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, &cfg3d);
 }
-
-bool PrepareCompositorGLSLForReflection(
-    const StaticMaterialDef &def,
-    const std::string &vs_glsl,
-    const std::string &fs_glsl,
-    std::string &out_vs_glsl,
-    std::string &out_fs_glsl,
-    std::string *diagnostics)
-{
-    if (diagnostics)
-        diagnostics->clear();
-
-    ShaderBuildPipeline pipeline;
-    auto build_result = pipeline.PrepareMaterialCreateInfo(def,
-                                                           nullptr,
-                                                           nullptr,
-                                                           vs_glsl,
-                                                           fs_glsl,
-                                                           diagnostics);
-    MaterialCreateInfo *mci = build_result.success ? build_result.value : nullptr;
-    if (!mci)
-        return false;
-
-    ShaderCreateInfoVertex *vert = mci->GetVertexShader();
-    ShaderCreateInfo       *frag = mci->GetStageShader(ShaderStage::Fragment);
-
-    out_vs_glsl = vert ? vert->GetFinalGLSL() : std::string();
-    out_fs_glsl = frag ? frag->GetFinalGLSL() : std::string();
-
-    delete mci;
-    return true;
-}
-
-// Removed InjectLayoutDefines definition as the shared implementation now lives in MaterialCreateInfo.cpp
-
-// The following function was removed:
-// bool InjectLayoutDefines(MaterialCreateInfo &mci)
-// {
-//     ShaderCreateInfoVertex *vert = mci.GetVertexShader();
-//     ShaderCreateInfo       *frag = mci->GetStageShader(ShaderStage::Fragment);
-//
-//     mci.Resort();
-//     const ShaderLayoutContract layout = hgl::graph::BuildShaderLayoutContract(mci);
-//     const std::string layout_defs = hgl::graph::EmitShaderLayoutDefines(layout);
-//     const MaterialDescriptorDB &mdi = mci.GetDescriptorInfo();
-//     const std::string vert_sampler_defs = vert ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Vertex)   : std::string();
-//     const std::string frag_sampler_defs = frag ? hgl::graph::EmitSimpleSamplerGLSL(mdi, ShaderStage::Fragment) : std::string();
-//     const std::string frag_mit_defs     = frag ? hgl::graph::EmitMaterialInstanceTextureGLSL(mdi, ShaderStage::Fragment) : std::string();
-//
-//     if (!layout_defs.empty() || !vert_sampler_defs.empty() || !frag_sampler_defs.empty() || !frag_mit_defs.empty())
-//     {
-//         if (vert) vert->SetFinalGLSL(hgl::graph::internal::InjectAfterVersion(vert->GetFinalGLSL(), layout_defs + vert_sampler_defs));
-//         if (frag) frag->SetFinalGLSL(hgl::graph::internal::InjectAfterVersion(frag->GetFinalGLSL(), layout_defs + frag_sampler_defs + frag_mit_defs));
-//     }
-//
-//     return true;
-// }
 
 }  // namespace hgl::graph::mtl
