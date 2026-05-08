@@ -90,6 +90,14 @@ namespace
         }
     };
 
+    enum class BuiltinTrialCandidateCategory
+    {
+        Unsupported,
+        Special,
+        Ordinary3D,
+        Ordinary2D,
+    };
+
     static const BuiltinVariantEntry *FindBuiltinVariantEntry(const MaterialPreset preset)
     {
         for(size_t i=0;i<kBuiltinVariantsCount;++i)
@@ -99,6 +107,39 @@ namespace
         }
 
         return nullptr;
+    }
+
+    static BuiltinTrialCandidateCategory ResolveBuiltinTrialCandidateCategory(const MaterialPreset preset)
+    {
+        switch(preset)
+        {
+            case MaterialPreset::FullscreenTriangle:
+            case MaterialPreset::Checkerboard3D:
+                return BuiltinTrialCandidateCategory::Special;
+
+            case MaterialPreset::Gizmo3D:
+            case MaterialPreset::SkyMinimal:
+            case MaterialPreset::TerrainGrid:
+            case MaterialPreset::PureColor3D:
+            case MaterialPreset::VertexColor3D:
+            case MaterialPreset::VertexLuminance3D:
+            case MaterialPreset::VertexLuminance2D:
+            case MaterialPreset::VertexPaletteColor3D:
+            case MaterialPreset::Billboard2DDynamic:
+            case MaterialPreset::Billboard2DFixed:
+            case MaterialPreset::PBRColor3D:
+            case MaterialPreset::Standard:
+                return BuiltinTrialCandidateCategory::Ordinary3D;
+
+            case MaterialPreset::PureColor2D:
+            case MaterialPreset::VertexColor2D:
+            case MaterialPreset::PureTexture2D:
+            case MaterialPreset::Text2D:
+                return BuiltinTrialCandidateCategory::Ordinary2D;
+
+            default:
+                return BuiltinTrialCandidateCategory::Unsupported;
+        }
     }
 
     static bool AppendAssembledBuiltinTrialItem(BuiltinTrialBatchBuilderState &state,
@@ -128,126 +169,130 @@ namespace
         return true;
     }
 
-    static bool TryAppendBuiltinTrialCandidate(BuiltinTrialBatchBuilderState &state,
-                                               const MaterialPreset preset)
+    static bool TryAppendBuiltinSpecialTrialCandidate(BuiltinTrialBatchBuilderState &state,
+                                                      const MaterialPreset preset)
     {
-        if(preset==MaterialPreset::FullscreenTriangle)
+        switch(preset)
         {
-            static const StaticMaterialDef fullscreen_triangle_def =
+            case MaterialPreset::FullscreenTriangle:
             {
-                "FullscreenTriangle",
-                PrimitiveType::Triangles,
-                nullptr,
-                0,
-                nullptr,
-                nullptr,
-                nullptr,
-                ShaderDataSchema::None,
-            };
-            static const std::string fullscreen_triangle_fs =
-                "#version 450\n"
-                "\n"
-                "layout(location = 0) out vec4 outColor;\n"
-                "\n"
-                "void main()\n"
-                "{\n"
-                "    outColor = vec4(fract(gl_FragCoord.xyz * 0.01), 1.0);\n"
-                "}\n";
-            static Material3DCreateConfig fullscreen_triangle_cfg;
+                static const StaticMaterialDef fullscreen_triangle_def =
+                {
+                    "FullscreenTriangle",
+                    PrimitiveType::Triangles,
+                    nullptr,
+                    0,
+                    nullptr,
+                    nullptr,
+                    nullptr,
+                    ShaderDataSchema::None,
+                };
+                static const std::string fullscreen_triangle_fs =
+                    "#version 450\n"
+                    "\n"
+                    "layout(location = 0) out vec4 outColor;\n"
+                    "\n"
+                    "void main()\n"
+                    "{\n"
+                    "    outColor = vec4(fract(gl_FragCoord.xyz * 0.01), 1.0);\n"
+                    "}\n";
+                static Material3DCreateConfig fullscreen_triangle_cfg;
 
-            fullscreen_triangle_cfg.camera = false;
-            fullscreen_triangle_cfg.sky = false;
-            fullscreen_triangle_cfg.local_to_world = false;
-            fullscreen_triangle_cfg.material_instance = false;
-            fullscreen_triangle_cfg.effective_feature_mask = 0;
-            fullscreen_triangle_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+                fullscreen_triangle_cfg.camera = false;
+                fullscreen_triangle_cfg.sky = false;
+                fullscreen_triangle_cfg.local_to_world = false;
+                fullscreen_triangle_cfg.material_instance = false;
+                fullscreen_triangle_cfg.effective_feature_mask = 0;
+                fullscreen_triangle_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
-            const PositionProvider *pp = FindBuiltinProvider(PositionProviderId::PCG_FullscreenTriangle);
-            if(!pp)
+                const PositionProvider *pp = FindBuiltinProvider(PositionProviderId::PCG_FullscreenTriangle);
+                if(!pp)
+                    return false;
+
+                std::ostringstream vs_out;
+                vs_out << "#version 450\n\n";
+                EmitPositionInput(vs_out, *pp, 0);
+                vs_out << "\nvoid main()\n{\n    gl_Position = vec4(GetPositionLocal(), 1.0);\n}\n";
+
+                CompileCompositorTrialBatchItem item{};
+                item.def = new StaticMaterialDef(fullscreen_triangle_def);
+                item.vs_glsl = vs_out.str();
+                item.fs_glsl = fullscreen_triangle_fs;
+                item.config = &fullscreen_triangle_cfg;
+                item.material_name_override = "FullscreenTriangle";
+                state.items.push_back(std::move(item));
+                return true;
+            }
+
+            case MaterialPreset::Checkerboard3D:
+            {
+                static constexpr FixedVertexEntry vertex_entries[] =
+                {
+                    { VAT_VEC3, VAN::Position },
+                };
+                static const StaticMaterialDef checkerboard_def =
+                {
+                    "Checkerboard3D",
+                    PrimitiveType::Triangles,
+                    vertex_entries,
+                    uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0])),
+                    nullptr,
+                    nullptr,
+                    nullptr,
+                    ShaderDataSchema::None,
+                };
+                static const std::string checkerboard_vs =
+                    "#version 450\n"
+                    "layout(location=0) in vec3 inPosition;\n"
+                    "layout(location=0) out vec3 vWorldPos;\n"
+                    "void main()\n"
+                    "{\n"
+                    "    vWorldPos = inPosition;\n"
+                    "    gl_Position = vec4(inPosition, 1.0);\n"
+                    "}\n";
+                static const std::string checkerboard_fs =
+                    "#version 450\n"
+                    "layout(location=0) in vec3 vWorldPos;\n"
+                    "layout(location=0) out vec4 outColor;\n"
+                    "void main()\n"
+                    "{\n"
+                    "    vec2 grid = floor(vWorldPos.xz * 0.5);\n"
+                    "    float checker = mod(grid.x + grid.y, 2.0);\n"
+                    "    vec3 c0 = vec3(0.65, 0.65, 0.65);\n"
+                    "    vec3 c1 = vec3(0.25, 0.25, 0.25);\n"
+                    "    vec3 col = mix(c0, c1, checker);\n"
+                    "    outColor = vec4(col, 1.0);\n"
+                    "}\n";
+                static Material3DCreateConfig checkerboard_cfg;
+
+                checkerboard_cfg.camera = false;
+                checkerboard_cfg.sky = false;
+                checkerboard_cfg.local_to_world = false;
+                checkerboard_cfg.material_instance = false;
+                checkerboard_cfg.effective_feature_mask = 0;
+                checkerboard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+                CompileCompositorTrialBatchItem item{};
+                item.def = new StaticMaterialDef(checkerboard_def);
+                item.vs_glsl = checkerboard_vs;
+                item.fs_glsl = checkerboard_fs;
+                item.config = &checkerboard_cfg;
+                item.material_name_override = "Checkerboard3D";
+                state.items.push_back(std::move(item));
+                return true;
+            }
+
+            default:
                 return false;
-
-            std::ostringstream vs_out;
-            vs_out << "#version 450\n\n";
-            EmitPositionInput(vs_out, *pp, 0);
-            vs_out << "\nvoid main()\n{\n    gl_Position = vec4(GetPositionLocal(), 1.0);\n}\n";
-
-            CompileCompositorTrialBatchItem item{};
-            item.def = new StaticMaterialDef(fullscreen_triangle_def);
-            item.vs_glsl = vs_out.str();
-            item.fs_glsl = fullscreen_triangle_fs;
-            item.config = &fullscreen_triangle_cfg;
-            item.material_name_override = "FullscreenTriangle";
-            state.items.push_back(std::move(item));
-            return true;
         }
+    }
 
-        if(preset==MaterialPreset::Checkerboard3D)
-        {
-            static constexpr FixedVertexEntry vertex_entries[] =
-            {
-                { VAT_VEC3, VAN::Position },
-            };
-            static const StaticMaterialDef checkerboard_def =
-            {
-                "Checkerboard3D",
-                PrimitiveType::Triangles,
-                vertex_entries,
-                uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0])),
-                nullptr,
-                nullptr,
-                nullptr,
-                ShaderDataSchema::None,
-            };
-            static const std::string checkerboard_vs =
-                "#version 450\n"
-                "layout(location=0) in vec3 inPosition;\n"
-                "layout(location=0) out vec3 vWorldPos;\n"
-                "void main()\n"
-                "{\n"
-                "    vWorldPos = inPosition;\n"
-                "    gl_Position = vec4(inPosition, 1.0);\n"
-                "}\n";
-            static const std::string checkerboard_fs =
-                "#version 450\n"
-                "layout(location=0) in vec3 vWorldPos;\n"
-                "layout(location=0) out vec4 outColor;\n"
-                "void main()\n"
-                "{\n"
-                "    vec2 grid = floor(vWorldPos.xz * 0.5);\n"
-                "    float checker = mod(grid.x + grid.y, 2.0);\n"
-                "    vec3 c0 = vec3(0.65, 0.65, 0.65);\n"
-                "    vec3 c1 = vec3(0.25, 0.25, 0.25);\n"
-                "    vec3 col = mix(c0, c1, checker);\n"
-                "    outColor = vec4(col, 1.0);\n"
-                "}\n";
-            static Material3DCreateConfig checkerboard_cfg;
-
-            checkerboard_cfg.camera = false;
-            checkerboard_cfg.sky = false;
-            checkerboard_cfg.local_to_world = false;
-            checkerboard_cfg.material_instance = false;
-            checkerboard_cfg.effective_feature_mask = 0;
-            checkerboard_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
-
-            CompileCompositorTrialBatchItem item{};
-            item.def = new StaticMaterialDef(checkerboard_def);
-            item.vs_glsl = checkerboard_vs;
-            item.fs_glsl = checkerboard_fs;
-            item.config = &checkerboard_cfg;
-            item.material_name_override = "Checkerboard3D";
-            state.items.push_back(std::move(item));
-            return true;
-        }
-
-        MaterialVariantKey key=RouteKey(preset,0u,RuntimeKeyOverrides{});
-        const MaterialVariantDesc *desc=GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(key);
-        if(!desc)
-            return false;
-
-        const BuiltinVariantEntry *entry=FindBuiltinVariantEntry(preset);
-        if(!entry)
-            return false;
-
+    static bool TryAppendBuiltinOrdinary3DTrialCandidate(BuiltinTrialBatchBuilderState &state,
+                                                         const MaterialPreset preset,
+                                                         MaterialVariantKey &key,
+                                                         const BuiltinVariantEntry &entry,
+                                                         const MaterialVariantDesc &desc)
+    {
         StaticMaterialDef def{};
         const MaterialCreateConfig *config=nullptr;
 
@@ -681,6 +726,25 @@ namespace
             key.sky_ambient_model = ambient;
         }
         else
+        {
+            return false;
+        }
+
+        return AppendAssembledBuiltinTrialItem(state,
+                                               def,
+                                               config,
+                                               key,
+                                               desc,
+                                               def.name ? def.name : entry.name);
+    }
+
+    static bool TryAppendBuiltinOrdinary2DTrialCandidate(BuiltinTrialBatchBuilderState &state,
+                                                         const MaterialPreset preset,
+                                                         const MaterialVariantKey &key,
+                                                         const MaterialVariantDesc &desc)
+    {
+        StaticMaterialDef def{};
+
         if(preset==MaterialPreset::PureColor2D)
         {
             static Material2DCreateConfig pure_color_cfg(PrimitiveType::Triangles,CoordinateSystem2D::NDC,IncludeL2W::Without);
@@ -708,7 +772,7 @@ namespace
                                                    def,
                                                    &pure_color_cfg,
                                                    key,
-                                                   *desc,
+                                                   desc,
                                                    "PureColor2D",
                                                    build2d::Build2DVertexPreamble(&pure_color_cfg,false,true),
                                                    build2d::Build2DFragmentPreamble(&pure_color_cfg,false,true));
@@ -742,7 +806,7 @@ namespace
                                                    def,
                                                    &vertex_color_cfg,
                                                    key,
-                                                   *desc,
+                                                   desc,
                                                    "VertexColor2D",
                                                    build2d::Build2DVertexPreamble(&vertex_color_cfg,false,false),
                                                    build2d::Build2DFragmentPreamble(&vertex_color_cfg,false,false));
@@ -777,7 +841,7 @@ namespace
                                                    def,
                                                    &pure_texture_cfg,
                                                    key,
-                                                   *desc,
+                                                   desc,
                                                    "PureTexture2D",
                                                    build2d::Build2DVertexPreamble(&pure_texture_cfg,true,false,SamplerSlot::BaseColor,false),
                                                    build2d::Build2DFragmentPreamble(&pure_texture_cfg,true,false,SamplerSlot::BaseColor,false));
@@ -813,22 +877,51 @@ namespace
                                                    def,
                                                    &text_cfg,
                                                    key,
-                                                   *desc,
+                                                   desc,
                                                    "Text2D",
                                                    build2d::Build2DVertexPreamble(&text_cfg,true,true,SamplerSlot::Text),
                                                    build2d::Build2DFragmentPreamble(&text_cfg,true,true,SamplerSlot::Text));
         }
-        else
+
+        return false;
+    }
+
+    static bool TryAppendBuiltinTrialCandidate(BuiltinTrialBatchBuilderState &state,
+                                               const MaterialPreset preset)
+    {
+        switch(ResolveBuiltinTrialCandidateCategory(preset))
         {
-            return false;
+            case BuiltinTrialCandidateCategory::Special:
+                return TryAppendBuiltinSpecialTrialCandidate(state,preset);
+
+            case BuiltinTrialCandidateCategory::Ordinary3D:
+            case BuiltinTrialCandidateCategory::Ordinary2D:
+                break;
+
+            default:
+                return false;
         }
 
-        return AppendAssembledBuiltinTrialItem(state,
-                                               def,
-                                               config,
-                                               key,
-                                               *desc,
-                                               def.name ? def.name : entry->name);
+        MaterialVariantKey key=RouteKey(preset,0u,RuntimeKeyOverrides{});
+        const MaterialVariantDesc *desc=GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(key);
+        if(!desc)
+            return false;
+
+        const BuiltinVariantEntry *entry=FindBuiltinVariantEntry(preset);
+        if(!entry)
+            return false;
+
+        switch(ResolveBuiltinTrialCandidateCategory(preset))
+        {
+            case BuiltinTrialCandidateCategory::Ordinary3D:
+                return TryAppendBuiltinOrdinary3DTrialCandidate(state,preset,key,*entry,*desc);
+
+            case BuiltinTrialCandidateCategory::Ordinary2D:
+                return TryAppendBuiltinOrdinary2DTrialCandidate(state,preset,key,*desc);
+
+            default:
+                return false;
+        }
     }
 
     static bool ResolveConfiguredCameraRequirement(const Material3DCreateConfig &cfg)
