@@ -146,44 +146,44 @@ namespace
     }
 
     static bool AppendBuiltinTrialAssembledItem(BuiltinTrialBatchBuilderState &state,
-                                                const StaticMaterialDef &def,
-                                                const MaterialCreateConfig *config,
-                                                const MaterialVariantKey &key,
-                                                const MaterialVariantDesc &desc,
-                                                const char *material_name_override,
-                                                const std::string &vs_prefix = std::string(),
-                                                const std::string &fs_prefix = std::string())
+                                                const StaticMaterialDef &candidate_def,
+                                                const MaterialCreateConfig *candidate_config,
+                                                const MaterialVariantKey &variant_key,
+                                                const MaterialVariantDesc &variant_desc,
+                                                const char *candidate_name_override,
+                                                const std::string &vertex_prefix_glsl = std::string(),
+                                                const std::string &fragment_prefix_glsl = std::string())
     {
-        MaterialVariantKey assemble_key=key;
-        PopulateVariantKeyVertexAttribBits(assemble_key,def);
+        MaterialVariantKey trial_assemble_key=variant_key;
+        PopulateVariantKeyVertexAttribBits(trial_assemble_key,candidate_def);
 
-        CompositorAssembler assembler;
-        const auto assembled=assembler.Assemble(assemble_key,desc);
-        if(!assembled.success)
+        CompositorAssembler compositor_assembler;
+        const auto assembled_result=compositor_assembler.Assemble(trial_assemble_key,variant_desc);
+        if(!assembled_result.success)
             return false;
 
-        CompileCompositorTrialBatchItem item{};
-        item.def = new StaticMaterialDef(def);
-        item.vs_glsl = vs_prefix + assembled.vertex_glsl;
-        item.fs_glsl = fs_prefix + assembled.fragment_glsl;
-        item.config = config;
-        item.material_name_override = material_name_override ? material_name_override : (def.name ? def.name : desc.variant_name);
-        state.items.push_back(std::move(item));
+        CompileCompositorTrialBatchItem trial_item{};
+        trial_item.def = new StaticMaterialDef(candidate_def);
+        trial_item.vs_glsl = vertex_prefix_glsl + assembled_result.vertex_glsl;
+        trial_item.fs_glsl = fragment_prefix_glsl + assembled_result.fragment_glsl;
+        trial_item.config = candidate_config;
+        trial_item.material_name_override = candidate_name_override ? candidate_name_override : (candidate_def.name ? candidate_def.name : variant_desc.variant_name);
+        state.items.push_back(std::move(trial_item));
         return true;
     }
 
     static void AllocateBuiltinTrial2DResources(BuiltinTrialBatchBuilderState &state,
-                                                std::vector<FixedVertexEntry> *&vertices,
-                                                MaterialResourceManifest *&manifest)
+                                                std::vector<FixedVertexEntry> *&candidate_vertices,
+                                                MaterialResourceManifest *&candidate_manifest)
     {
-        vertices = new std::vector<FixedVertexEntry>();
-        manifest = new MaterialResourceManifest();
+        candidate_vertices = new std::vector<FixedVertexEntry>();
+        candidate_manifest = new MaterialResourceManifest();
 
-        state.owned_vertex_lists.push_back(vertices);
-        state.owned_manifests.push_back(manifest);
+        state.owned_vertex_lists.push_back(candidate_vertices);
+        state.owned_manifests.push_back(candidate_manifest);
     }
 
-    static void FillBuiltinTrialStaticMaterialDef(StaticMaterialDef &def,
+    static void FillBuiltinTrialStaticMaterialDef(StaticMaterialDef &candidate_def,
                                                   const char *name,
                                                   const PrimitiveType primitive_type,
                                                   const FixedVertexEntry *vertex_entries,
@@ -193,33 +193,35 @@ namespace
                                                   const StaticTextureSamplerDescriptors *samplers,
                                                   const ShaderDataSchema shader_data_schema)
     {
-        def.name = name;
-        def.primitive_type = primitive_type;
-        def.vertex_entries = vertex_entries;
-        def.vertex_entry_count = vertex_entry_count;
-        def.ubo_descriptors = ubos;
-        def.ssbo_descriptors = ssbos;
-        def.texture_samplers = samplers;
-        def.shader_data_schema = shader_data_schema;
+        candidate_def.name = name;
+        candidate_def.primitive_type = primitive_type;
+        candidate_def.vertex_entries = vertex_entries;
+        candidate_def.vertex_entry_count = vertex_entry_count;
+        candidate_def.ubo_descriptors = ubos;
+        candidate_def.ssbo_descriptors = ssbos;
+        candidate_def.texture_samplers = samplers;
+        candidate_def.shader_data_schema = shader_data_schema;
     }
 
     static bool AppendBuiltinTrialRawItem(BuiltinTrialBatchBuilderState &state,
-                                          const StaticMaterialDef &def,
-                                          const MaterialCreateConfig *config,
-                                          const std::string &vs_glsl,
-                                          const std::string &fs_glsl,
-                                          const char *material_name_override)
+                                          const StaticMaterialDef &candidate_def,
+                                          const MaterialCreateConfig *candidate_config,
+                                          const std::string &vertex_glsl,
+                                          const std::string &fragment_glsl,
+                                          const char *candidate_name_override)
     {
-        CompileCompositorTrialBatchItem item{};
-        item.def = new StaticMaterialDef(def);
-        item.vs_glsl = vs_glsl;
-        item.fs_glsl = fs_glsl;
-        item.config = config;
-        item.material_name_override = material_name_override ? material_name_override : def.name;
-        state.items.push_back(std::move(item));
+        CompileCompositorTrialBatchItem trial_item{};
+        trial_item.def = new StaticMaterialDef(candidate_def);
+        trial_item.vs_glsl = vertex_glsl;
+        trial_item.fs_glsl = fragment_glsl;
+        trial_item.config = candidate_config;
+        trial_item.material_name_override = candidate_name_override ? candidate_name_override : candidate_def.name;
+        state.items.push_back(std::move(trial_item));
         return true;
     }
 
+    // Special trial candidates are handwritten or otherwise outside the normal
+    // compositor-assembled candidate flow. This remains a trial-only grouping.
     static bool TryAppendBuiltinSpecialTrialCandidate(BuiltinTrialBatchBuilderState &state,
                                                       const MaterialPreset preset)
     {
@@ -334,6 +336,9 @@ namespace
         }
     }
 
+    // Ordinary 3D trial candidates still represent legacy VS+FS-together
+    // material units. This helper only organizes trial-batch assembly and does
+    // not imply a renderer-facing stage split.
     static bool TryAppendBuiltinOrdinary3DTrialCandidate(BuiltinTrialBatchBuilderState &state,
                                                          const MaterialPreset preset,
                                                          MaterialVariantKey &key,
@@ -804,6 +809,8 @@ namespace
                                                def.name ? def.name : entry.name);
     }
 
+    // Ordinary 2D trial candidates are also assembled as legacy VS+FS-together
+    // units. The separation here is only for trial-batch readability.
     static bool TryAppendBuiltinOrdinary2DTrialCandidate(BuiltinTrialBatchBuilderState &state,
                                                          const MaterialPreset preset,
                                                          const MaterialVariantKey &key,
@@ -947,9 +954,9 @@ namespace
     static bool TryAppendBuiltinTrialCandidate(BuiltinTrialBatchBuilderState &state,
                                                const MaterialPreset preset)
     {
-        const BuiltinTrialCandidateCategory category=ResolveBuiltinTrialCandidateCategory(preset);
+        const BuiltinTrialCandidateCategory candidate_category=ResolveBuiltinTrialCandidateCategory(preset);
 
-        switch(category)
+        switch(candidate_category)
         {
             case BuiltinTrialCandidateCategory::Special:
                 return TryAppendBuiltinSpecialTrialCandidate(state,preset);
@@ -971,7 +978,7 @@ namespace
         if(!entry)
             return false;
 
-        switch(category)
+        switch(candidate_category)
         {
             case BuiltinTrialCandidateCategory::Ordinary3D:
                 return TryAppendBuiltinOrdinary3DTrialCandidate(state,preset,key,*entry,*desc);
