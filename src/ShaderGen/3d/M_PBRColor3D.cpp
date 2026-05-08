@@ -56,81 +56,73 @@ namespace
         nullptr,
         ShaderDataSchema::PBRColorParams,
     };
-}//namespace
-
-MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile, const MaterialVariantDesc &desc, PBRColor3DMaterialCreateConfig *cfg)
-{
-    if (cfg)
-        cfg->material_instance = true;
-
-    // Dynamic descriptor injection for non-Simple sky models
-    SkyLightAmbientModel ambient = cfg ? cfg->sky_ambient_model : SkyLightAmbientModel::Simple;
-    LightingModel lighting = cfg ? cfg->lighting_model : LightingModel::Lambert;
-
-    StaticTextureSamplerDescriptors dynamic_samplers;
-
-    std::vector<const char *> unused_resources;
-    ApplySkyLightResourceInjection(
-        GetSkyLightResourceInjectionSpec(ambient),
-        dynamic_samplers,
-        unused_resources);
-
-    StaticMaterialDef dynamic_def = PBR_COLOR_3D_DEF;
-    dynamic_def.texture_samplers        = &dynamic_samplers;
-
-    // Assemble GLSL via VariantRegistry (Standard, Mesh3D, no texture ??color via MI)
-    MaterialVariantKey var_key;
-    var_key.surface_type = SurfaceType::Standard;
-    var_key.sky_ambient_model = SkyLightAmbientModel::Simple;
-    var_key.lighting_model = lighting;
-
-    // Populate vertex attribute feature bits from the vertex layout AFTER registry lookup
-    // (registry keys don't carry vertex attrib bits; they affect shader generation only)
-    for (uint32_t i = 0; i < uint32_t(sizeof(PBR_COLOR_3D_VERTEX) / sizeof(PBR_COLOR_3D_VERTEX[0])); ++i)
-        var_key.SetVertexAttribEnabled(PBR_COLOR_3D_VERTEX[i].attrib);
-
-    // Keep runtime-requested sky model for final shader assembly and diagnostics.
-    var_key.sky_ambient_model = ambient;
-
-    PrintPBRColorRouteKey("VariantRegistry resolved route-request", var_key);
-    PrintPBRColorRouteKey("VariantRegistry resolved route-final", var_key);
-    std::fprintf(stderr,
-        "[PBRColor3D] VariantRegistry resolved variant=%s\n",
-        desc.variant_name.c_str());
-
-    CompositorAssembler assembler;
-
-    auto result = assembler.Assemble(var_key, desc);
-
-    if (!result.success)
+    static MaterialCreateInfo *CreatePBRColor3DFactory(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialVariantDesc                 *desc,
+        const MaterialVariantKey                  &,
+        MaterialCreateConfig                      *cfg)
     {
-        std::fprintf(stderr, "[PBRColor3D] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
-        return nullptr;
+        auto *pbr_cfg=static_cast<PBRColor3DMaterialCreateConfig *>(cfg);
+        if (pbr_cfg)
+            pbr_cfg->material_instance = true;
+
+        SkyLightAmbientModel ambient = pbr_cfg ? pbr_cfg->sky_ambient_model : SkyLightAmbientModel::Simple;
+        LightingModel lighting = pbr_cfg ? pbr_cfg->lighting_model : LightingModel::Lambert;
+
+        StaticTextureSamplerDescriptors dynamic_samplers;
+
+        std::vector<const char *> unused_resources;
+        ApplySkyLightResourceInjection(
+            GetSkyLightResourceInjectionSpec(ambient),
+            dynamic_samplers,
+            unused_resources);
+
+        StaticMaterialDef dynamic_def = PBR_COLOR_3D_DEF;
+        dynamic_def.texture_samplers = &dynamic_samplers;
+
+        MaterialVariantKey var_key;
+        var_key.surface_type = SurfaceType::Standard;
+        var_key.sky_ambient_model = SkyLightAmbientModel::Simple;
+        var_key.lighting_model = lighting;
+
+        for (uint32_t i = 0; i < uint32_t(sizeof(PBR_COLOR_3D_VERTEX) / sizeof(PBR_COLOR_3D_VERTEX[0])); ++i)
+            var_key.SetVertexAttribEnabled(PBR_COLOR_3D_VERTEX[i].attrib);
+
+        var_key.sky_ambient_model = ambient;
+
+        PrintPBRColorRouteKey("VariantRegistry resolved route-request", var_key);
+        PrintPBRColorRouteKey("VariantRegistry resolved route-final", var_key);
+        std::fprintf(stderr,
+            "[PBRColor3D] VariantRegistry resolved variant=%s\n",
+            desc->variant_name.c_str());
+
+        CompositorAssembler assembler;
+
+        auto result = assembler.Assemble(var_key, *desc);
+
+        if (!result.success)
+        {
+            std::fprintf(stderr, "[PBRColor3D] CompositorAssembler failed: %s\n",
+                result.error_message.c_str());
+            return nullptr;
+        }
+
+        MaterialCreateInfo *mci = CompileCompositorMaterial(
+            profile,
+            dynamic_def,
+            result.vertex_glsl,
+            result.fragment_glsl,
+            pbr_cfg);
+
+        if (!mci)
+            std::fprintf(stderr, "[PBRColor3D] CompileCompositorMaterial failed\n");
+
+        return mci;
     }
-
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
-        profile,
-        dynamic_def,
-        result.vertex_glsl,
-        result.fragment_glsl,
-        cfg);
-
-    if (!mci)
-        std::fprintf(stderr, "[PBRColor3D] CompileCompositorMaterial failed\n");
-
-    return mci;
-}
-
-static MaterialCreateInfo *PBRColor3D_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &,
-    MaterialCreateConfig *cfg)
-{ return CreatePBRColor3D(profile, *desc, static_cast<PBRColor3DMaterialCreateConfig *>(cfg)); }
+}//namespace
 
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(PBRColor3D, "PBRColor3D", hgl::graph::mtl::PBRColor3D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY(PBRColor3D, "PBRColor3D", hgl::graph::mtl::CreatePBRColor3DFactory)
 

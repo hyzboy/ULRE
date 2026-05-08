@@ -83,117 +83,107 @@ namespace
         ShaderDataSchema::StandardParams,
     };
 
+    static MaterialCreateInfo *CreateStandardFactory(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialVariantDesc                 *desc,
+        const MaterialVariantKey                  &input_key,
+        MaterialCreateConfig                      *cfg)
+    {
+        auto *cfg_3d=static_cast<const Material3DCreateConfig *>(cfg);
+        if (!cfg_3d)
+        {
+            std::fprintf(stderr, "[Standard] CreateStandardVariant failed: cfg is null\n");
+            return nullptr;
+        }
+
+        if (!profile)
+        {
+            std::fprintf(stderr, "[Standard] CreateStandardVariant warning: profile is null\n");
+        }
+
+        const StandardVariantPolicyResult policy = BuildStandardVariantPolicy(input_key);
+
+        const TextureSourceMode standard_tex_slot_modes[] = {
+            policy.resolved_base,
+            policy.resolved_normal,
+        };
+
+        Material3DCreateConfig cfg_with_mi;
+        SkyLightAmbientModel ambient = SkyLightAmbientModel::Simple;
+        LightingModel lighting = LightingModel::Lambert;
+
+        SSBOSemanticSet dynamic_ssbos;
+        StaticTextureSamplerDescriptors dynamic_samplers;
+        std::vector<const char *> unused_resources;
+        bool any_array = false;
+
+        BuildStandardDescriptorState(
+            cfg_3d,
+            STANDARD_TEX_SLOTS,
+            standard_tex_slot_modes,
+            STANDARD_TEX_SLOT_COUNT,
+            policy.any_array,
+            STANDARD_BASE_SSBOS,
+            cfg_with_mi,
+            ambient,
+            lighting,
+            dynamic_ssbos,
+            dynamic_samplers,
+            unused_resources,
+            any_array);
+
+        StaticMaterialDef dynamic_def = BuildStandardDynamicDef(
+            STANDARD_DEF_TEMPLATE,
+            dynamic_ssbos,
+            dynamic_samplers,
+            ShaderDataSchema::StandardParams,
+            any_array);
+
+        MaterialVariantKey route_key = policy.route_key;
+        route_key.lighting_model = lighting;
+        route_key.sky_ambient_model = SkyLightAmbientModel::Simple;
+
+        PrintStandardRouteKey("VariantRegistry resolved route-request", route_key, any_array);
+        PrintStandardRouteKey("VariantRegistry resolved route-final", route_key, any_array);
+        if (kStandardVerbose)
+        {
+            std::fprintf(stderr,
+                "[Standard] VariantRegistry resolved variant=%s\n",
+                desc->variant_name.c_str());
+        }
+
+        MaterialVariantKey assemble_key = policy.assemble_key;
+        assemble_key.lighting_model = lighting;
+        assemble_key.sky_ambient_model = ambient;
+        PopulateVariantKeyVertexAttribBits(assemble_key, dynamic_def);
+
+        CompositorAssembler assembler;
+
+        auto result = assembler.Assemble(assemble_key, *desc);
+
+        if (!result.success)
+        {
+            std::fprintf(stderr, "[Standard] CompositorAssembler failed: %s\n",
+                result.error_message.c_str());
+            return nullptr;
+        }
+
+        MaterialCreateInfo *mci = CompileCompositorMaterial(
+            profile,
+            dynamic_def,
+            result.vertex_glsl,
+            result.fragment_glsl,
+            &cfg_with_mi);
+
+        if (!mci)
+            std::fprintf(stderr, "[Standard] CompileCompositorMaterial failed\n");
+        return mci;
+    }
+
 } // anonymous namespace
-
-MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileLite *profile,
-                                          const MaterialVariantDesc &desc,
-                                          const MaterialVariantKey &input_key,
-                                          const Material3DCreateConfig *cfg)
-{
-    if (!cfg)
-    {
-        std::fprintf(stderr, "[Standard] CreateStandardVariant failed: cfg is null\n");
-        return nullptr;
-    }
-
-    if (!profile)
-    {
-        std::fprintf(stderr, "[Standard] CreateStandardVariant warning: profile is null\n");
-    }
-
-    const StandardVariantPolicyResult policy = BuildStandardVariantPolicy(input_key);
-
-    const TextureSourceMode standard_tex_slot_modes[] = {
-        policy.resolved_base,
-        policy.resolved_normal,
-    };
-
-    Material3DCreateConfig cfg_with_mi;
-    SkyLightAmbientModel ambient = SkyLightAmbientModel::Simple;
-    LightingModel lighting = LightingModel::Lambert;
-
-    // Start with stable non-texture descriptors, then append texture entries.
-    SSBOSemanticSet dynamic_ssbos;
-    StaticTextureSamplerDescriptors dynamic_samplers;
-    std::vector<const char *> unused_resources;
-    bool any_array = false;
-
-    BuildStandardDescriptorState(
-        cfg,
-        STANDARD_TEX_SLOTS,
-        standard_tex_slot_modes,
-        STANDARD_TEX_SLOT_COUNT,
-        policy.any_array,
-        STANDARD_BASE_SSBOS,
-        cfg_with_mi,
-        ambient,
-        lighting,
-        dynamic_ssbos,
-        dynamic_samplers,
-        unused_resources,
-        any_array);
-
-    StaticMaterialDef dynamic_def = BuildStandardDynamicDef(
-        STANDARD_DEF_TEMPLATE,
-        dynamic_ssbos,
-        dynamic_samplers,
-        ShaderDataSchema::StandardParams,
-        any_array);
-
-    MaterialVariantKey route_key = policy.route_key;
-    route_key.lighting_model = lighting;
-    // Registry descriptors are not split by sky model; keep lookup key on canonical sky.
-    route_key.sky_ambient_model = SkyLightAmbientModel::Simple;
-
-    const MaterialVariantDesc *var_desc = &desc;
-    PrintStandardRouteKey("VariantRegistry resolved route-request", route_key, any_array);
-    PrintStandardRouteKey("VariantRegistry resolved route-final", route_key, any_array);
-    if (kStandardVerbose)
-    {
-        std::fprintf(stderr,
-            "[Standard] VariantRegistry resolved variant=%s\n",
-            var_desc->variant_name.c_str());
-    }
-
-    // Populate vertex attribute feature bits from the actual vertex layout.
-    // policy is const, so take a mutable copy of assemble_key.
-    MaterialVariantKey assemble_key = policy.assemble_key;
-    assemble_key.lighting_model = lighting;
-    assemble_key.sky_ambient_model = ambient;
-    PopulateVariantKeyVertexAttribBits(assemble_key, dynamic_def);
-
-    CompositorAssembler assembler;
-
-    auto result = assembler.Assemble(assemble_key, *var_desc);
-
-    if (!result.success)
-    {
-        std::fprintf(stderr, "[Standard] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
-        return nullptr;
-    }
-
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
-        profile,
-        dynamic_def,
-        result.vertex_glsl,
-        result.fragment_glsl,
-        &cfg_with_mi);
-
-    if (!mci)
-        std::fprintf(stderr, "[Standard] CompileCompositorMaterial failed\n");
-    return mci;
-}
-
-static MaterialCreateInfo *Standard_Adapter(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialVariantDesc                 *desc,
-    const MaterialVariantKey                  &key,
-    MaterialCreateConfig *cfg)
-{ return CreateStandardVariant(profile, *desc, key, static_cast<const Material3DCreateConfig *>(cfg)); }
 
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(Standard, "Standard", hgl::graph::mtl::Standard_Adapter)
+ULRE_REGISTER_PRESET_FACTORY(Standard, "Standard", hgl::graph::mtl::CreateStandardFactory)
 
