@@ -1638,133 +1638,42 @@ namespace
         cfg.material_instance = cfg.material_instance || infer_has_mi;
 
         EmitInferenceMismatchDiagnostics(def,
-                         cfg,
-                         infer_has_camera,
-                         infer_has_sky,
-                         diagnostics);
+                     cfg,
+                     infer_has_camera,
+                     infer_has_sky,
+                     diagnostics);
 
-        MaterialBuilder builder(&cfg);
-        if (profile)
-            builder.SetDevice(profile);
+        ShaderBuildPipeline pipeline;
+        auto build_result = pipeline.BuildMaterialCreateInfo(def,
+                                                             static_cast<const MaterialCreateConfig &>(cfg),
+                                                             profile,
+                                                             vs_glsl,
+                                                             fs_glsl);
 
-        auto FailWithBuilder = [&](const char *reason) -> MaterialCreateInfo *
+        if (!build_result.success)
         {
             if (diagnostics)
             {
-                *diagnostics = reason ? reason : "<unknown>";
-                *diagnostics += " (";
-                *diagnostics += BuildShaderDataSchemaDebugText(def);
-                *diagnostics += ")";
+                if (diagnostics->empty() && !build_result.diagnostics.empty())
+                    *diagnostics = build_result.diagnostics.front().message;
+                else if (!build_result.diagnostics.empty())
+                {
+                    *diagnostics += "\n";
+                    *diagnostics += build_result.diagnostics.front().message;
+                }
+
+                if (!diagnostics->empty())
+                {
+                    *diagnostics += " (";
+                    *diagnostics += BuildShaderDataSchemaDebugText(def);
+                    *diagnostics += ")";
+                }
             }
+
             return nullptr;
-        };
-
-        uint32_t mi_stage_bits = uint32_t(ShaderStage::Fragment);
-
-        if (def.ubo_descriptors)
-        {
-            for (const auto semantic : *def.ubo_descriptors)
-            {
-                if (!builder.AddUBOStruct(kDefaultDescriptorStageBits, semantic))
-                    return FailWithBuilder("AddUBO() failed");
-            }
         }
 
-        if (def.ssbo_descriptors)
-        {
-            for (const auto semantic : *def.ssbo_descriptors)
-            {
-                if (semantic == SSBODescriptorSemantic::TransformData)
-                {
-                    builder.SetLocalToWorld(kDefaultDescriptorStageBits);
-                    continue;
-                }
-
-                if (semantic == SSBODescriptorSemantic::MaterialBindingInstanceData)
-                {
-                    mi_stage_bits = kDefaultDescriptorStageBits;
-                    continue;
-                }
-
-                if (!builder.AddSSBOStruct(kDefaultDescriptorStageBits, semantic))
-                    return FailWithBuilder("AddSSBO() failed");
-            }
-        }
-
-        if (def.texture_samplers)
-        {
-            for (const auto &[slot, descriptor] : *def.texture_samplers)
-            {
-                if (!RangeCheck(descriptor.sampler_type))
-                    return FailWithBuilder("texture sampler slot has invalid SamplerType");
-
-                // Use default descriptor stage bits for texture samplers
-                if (!builder.AddTextureSampler(kDefaultDescriptorStageBits,
-                                            descriptor.sampler_type,
-                                            slot,
-                                            descriptor.channel_hint))
-                {
-                    return FailWithBuilder("AddTextureSampler(slot) failed");
-                }
-            }
-        }
-
-        ShaderCreateInfoVertex *vsc = builder.GetVertexShader();
-        if (vsc)
-        {
-            for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
-            {
-                const FixedVertexEntry &entry = def.vertex_entries[i];
-                vsc->AddInput(entry.type, entry.attrib);
-            }
-        }
-
-        if (def.shader_data_schema != ShaderDataSchema::None)
-        {
-            const ShaderDataSchemaInfo &schema_info = GetShaderDataSchemaInfo(def.shader_data_schema);
-
-            if (schema_info.byte_size == 0)
-                return FailWithBuilder("shader data schema has zero byte size");
-
-            if (!builder.SetMaterialInstance(def.shader_data_schema, schema_info, mi_stage_bits))
-                return FailWithBuilder("SetMaterialInstance() failed");
-        }
-
-        ShaderCreateInfoVertex *vert = builder.GetVertexShader();
-        ShaderCreateInfo *frag = builder.GetStageShader(ShaderStage::Fragment);
-
-        std::string final_vs_glsl = vs_glsl;
-        std::string final_fs_glsl = fs_glsl;
-
-        if (def.shader_data_schema != ShaderDataSchema::None)
-        {
-            const ShaderDataSchemaInfo &schema_info = GetShaderDataSchemaInfo(def.shader_data_schema);
-            const std::string schema_include = BuildShaderDataSchemaIncludeText(schema_info);
-
-            if (schema_include.empty())
-                return FailWithBuilder("shader data schema has no GLSL include path");
-
-            final_vs_glsl = hgl::graph::internal::InjectAfterVersion(final_vs_glsl, schema_include);
-            final_fs_glsl = hgl::graph::internal::InjectAfterVersion(final_fs_glsl, schema_include);
-        }
-
-        if (vert)
-            vert->SetFinalGLSL(final_vs_glsl);
-
-        if (frag)
-            frag->SetFinalGLSL(final_fs_glsl);
-
-        MaterialCreateInfo *mci = builder.BuildSnapshotOnly();
-        if (!mci)
-            return FailWithBuilder("MaterialBuilder::BuildSnapshotOnly() failed");
-
-        if (!InjectLayoutDefines(*mci))
-        {
-            delete mci;
-            return FailWithBuilder("InjectLayoutDefines() failed");
-        }
-
-        return mci;
+        return build_result.value;
     }
 }
 
@@ -2284,7 +2193,7 @@ bool PrepareCompositorGLSLForReflection(
         return false;
 
     ShaderCreateInfoVertex *vert = mci->GetVertexShader();
-    ShaderCreateInfo *frag = mci->GetStageShader(ShaderStage::Fragment);
+    ShaderCreateInfo       *frag = mci->GetStageShader(ShaderStage::Fragment);
 
     out_vs_glsl = vert ? vert->GetFinalGLSL() : std::string();
     out_fs_glsl = frag ? frag->GetFinalGLSL() : std::string();

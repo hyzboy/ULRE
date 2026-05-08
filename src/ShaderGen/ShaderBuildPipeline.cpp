@@ -276,6 +276,32 @@ static bool HasSSBOSemantic(const hgl::graph::mtl::StaticMaterialDef &def,
     return def.ssbo_descriptors->contains(semantic);
 }
 
+static bool HasPerMaterialDescriptor(const hgl::graph::mtl::StaticMaterialDef &def)
+{
+    if(def.ubo_descriptors)
+    {
+        for(const auto semantic:*def.ubo_descriptors)
+        {
+            if(hgl::graph::mtl::GetDescriptorSemanticMeta(semantic).set_type==hgl::graph::SET_TYPE_MATERIAL)
+                return true;
+        }
+    }
+
+    if(def.ssbo_descriptors)
+    {
+        for(const auto semantic:*def.ssbo_descriptors)
+        {
+            if(hgl::graph::mtl::GetDescriptorSemanticMeta(semantic).set_type==hgl::graph::SET_TYPE_MATERIAL)
+                return true;
+        }
+    }
+
+    if(def.texture_samplers && !def.texture_samplers->empty())
+        return true;
+
+    return false;
+}
+
 static std::string BuildSchemaIncludeText(const hgl::graph::mtl::ShaderDataSchema schema)
 {
     if(schema==hgl::graph::mtl::ShaderDataSchema::None)
@@ -527,7 +553,10 @@ ShaderGenResult<mtl::MaterialCreateInfo *> ShaderBuildPipeline::BuildMaterialCre
     mtl::MaterialCreateConfig build_cfg(config);
     build_cfg.prim = def.primitive_type;
     build_cfg.local_to_world = build_cfg.local_to_world || HasSSBOSemantic(def, mtl::SSBODescriptorSemantic::TransformData);
-    build_cfg.material_instance = build_cfg.material_instance || (def.shader_data_schema != mtl::ShaderDataSchema::None);
+    build_cfg.material_instance = build_cfg.material_instance
+                               || HasSSBOSemantic(def, mtl::SSBODescriptorSemantic::MaterialBindingInstanceData)
+                               || HasPerMaterialDescriptor(def)
+                               || (def.shader_data_schema != mtl::ShaderDataSchema::None);
     build_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
     mtl::MaterialBuilder builder(&build_cfg);
