@@ -176,6 +176,30 @@ namespace
             config=&gizmo_cfg;
         }
         else
+        if(preset==MaterialPreset::SkyMinimal)
+        {
+            static constexpr FixedVertexEntry vertex_entries[] =
+            {
+                { VAT_VEC3, VAN::Position },
+            };
+            static const UBOSemanticSet ubos = build3d::MakeViewportCameraSkyUBOs();
+            static const SSBOSemanticSet ssbos = build3d::MakeTransformSSBOs(false);
+            static SkyMinimalCreateConfig sky_cfg;
+
+            sky_cfg.material_instance = false;
+            sky_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            def.name = "SkyMinimal";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = vertex_entries;
+            def.vertex_entry_count = uint32_t(sizeof(vertex_entries)/sizeof(vertex_entries[0]));
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = nullptr;
+            def.shader_data_schema = ShaderDataSchema::None;
+            config=&sky_cfg;
+        }
+        else
         if(preset==MaterialPreset::PureColor3D)
         {
             static constexpr FixedVertexEntry vertex_entries[] =
@@ -1500,6 +1524,7 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
         MaterialPreset::PureTexture2D,
         MaterialPreset::VertexColor2D,
         MaterialPreset::PureColor3D,
+        MaterialPreset::SkyMinimal,
         MaterialPreset::VertexColor3D,
         MaterialPreset::VertexLuminance2D,
         MaterialPreset::VertexLuminance3D,

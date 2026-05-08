@@ -736,6 +736,9 @@ static void TestCompileCompositorBuiltinCandidateTrialBatchSummary()
     std::ifstream vertex_luminance_2d_report_ifs("build/shadergen_trial/reports/VertexLuminance2D_baseline_compare.md",std::ios::in);
     CHECK_TRUE(vertex_luminance_2d_report_ifs.is_open());
 
+    std::ifstream sky_minimal_report_ifs("build/shadergen_trial/reports/SkyMinimal_baseline_compare.md",std::ios::in);
+    CHECK_TRUE(sky_minimal_report_ifs.is_open());
+
     std::ifstream text2d_report_ifs("build/shadergen_trial/reports/Text2D_baseline_compare.md",std::ios::in);
     CHECK_TRUE(text2d_report_ifs.is_open());
 
