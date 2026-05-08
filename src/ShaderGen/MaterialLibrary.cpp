@@ -8,7 +8,6 @@
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/shadergen/MaterialFactory3D.h>
 #include<cstdio>
-#include<type_traits>
 #include "BuiltinVariantEntry.h"
 
 namespace hgl::graph::mtl{
@@ -139,15 +138,6 @@ static const PresetResolveEntry *FindPresetResolveEntry(const MaterialPreset pre
             return &entry;
 
     return nullptr;
-}
-
-template<typename TCfg>
-static MaterialCreateInfo *ForwardLegacyMaterialCreate(const contract::PhysicalDeviceProfileLite *profile,
-                                                       const MaterialPreset preset,
-                                                       TCfg *cfg)
-{
-    using MutableCfg = std::remove_const_t<TCfg>;
-    return CreateMaterialCreateInfo(profile,preset,const_cast<MutableCfg *>(cfg));
 }
 
 }
