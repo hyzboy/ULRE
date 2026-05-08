@@ -44,11 +44,6 @@ public:
     std::string ToHashStdString() override;
 };//struct Material2DCreateConfig:public MaterialCreateConfig
 
-DECLARE_MATERIAL_CREATOR(VertexColor2D,         const Material2DCreateConfig)
-DECLARE_MATERIAL_CREATOR(PureColor2D,           Material2DCreateConfig)
-
-DECLARE_MATERIAL_CREATOR(PureTexture2D,         const Material2DCreateConfig)
-
 struct Text2DMaterialCreateConfig:public Material2DCreateConfig
 {
 public:
@@ -62,7 +57,5 @@ public:
         position_format=VAT_IVEC2;
     }
 };
-
-DECLARE_MATERIAL_CREATOR(Text2D, const Text2DMaterialCreateConfig)
 
 }//namespace hgl::graph::mtl
