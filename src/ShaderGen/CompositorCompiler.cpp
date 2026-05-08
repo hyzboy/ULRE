@@ -991,98 +991,6 @@ namespace
         }
     }
 
-    static bool ResolveConfiguredCameraRequirement(const Material3DCreateConfig &cfg)
-    {
-        if (cfg.effective_feature_mask != 0)
-            return HasFeature(cfg.effective_feature_mask, MaterialFeature::NeedsCamera);
-
-        return cfg.camera;
-    }
-
-    static bool ResolveConfiguredSkyRequirement(const Material3DCreateConfig &cfg)
-    {
-        if (cfg.effective_feature_mask != 0)
-            return HasFeature(cfg.effective_feature_mask, MaterialFeature::NeedsSky);
-
-        return cfg.sky;
-    }
-
-    static void AppendDiagnosticLine(std::string *diagnostics, const std::string &line)
-    {
-        if (!diagnostics || line.empty())
-            return;
-
-        if (!diagnostics->empty())
-            *diagnostics += '\n';
-
-        *diagnostics += line;
-    }
-
-    static void EmitInferenceMismatchDiagnostics(
-        const StaticMaterialDef &def,
-        const Material3DCreateConfig &cfg,
-        const bool infer_has_camera,
-        const bool infer_has_sky,
-        std::string *diagnostics)
-    {
-        const bool configured_camera = ResolveConfiguredCameraRequirement(cfg);
-        const bool configured_sky = ResolveConfiguredSkyRequirement(cfg);
-
-        auto emit_one = [&](const char *label, const bool configured, const bool inferred)
-        {
-            if (configured == inferred)
-                return;
-
-            std::string message;
-            message.reserve(256);
-            message += "[CompositorCompiler] inferred ";
-            message += label;
-            message += "=";
-            message += inferred ? "true" : "false";
-            message += " differs from configured/effective=";
-            message += configured ? "true" : "false";
-            message += " for material='";
-            message += def.name ? def.name : "<unnamed>";
-            message += "'";
-
-            if (cfg.effective_feature_mask != 0)
-            {
-                char buf[96]{};
-                std::snprintf(buf,
-                              sizeof(buf),
-                              " effective_feature_mask=0x%016llx",
-                              static_cast<unsigned long long>(cfg.effective_feature_mask));
-                message += buf;
-            }
-
-            message += "; compiler inference is diagnostics-only";
-
-            std::fprintf(stderr, "%s\n", message.c_str());
-            AppendDiagnosticLine(diagnostics, message);
-        };
-
-        emit_one("camera", configured_camera, infer_has_camera);
-        emit_one("sky", configured_sky, infer_has_sky);
-    }
-
-    static std::string BuildShaderDataSchemaDebugText(const StaticMaterialDef &def)
-    {
-        if (def.shader_data_schema == ShaderDataSchema::None)
-            return std::string("schema=<none>");
-
-        const ShaderDataSchemaInfo &schema_info = GetShaderDataSchemaInfo(def.shader_data_schema);
-
-        std::string text;
-        text.reserve(128);
-        text += "schema=";
-        text += std::to_string(static_cast<uint32_t>(def.shader_data_schema));
-        text += " file=";
-        text += schema_info.glsl_schema_file ? schema_info.glsl_schema_file : "<null>";
-        text += " bytes=";
-        text += std::to_string(schema_info.byte_size);
-        return text;
-    }
-
     static std::string BuildShaderDataSchemaIncludeText(const ShaderDataSchemaInfo &schema_info)
     {
         if (!schema_info.glsl_schema_file || !schema_info.glsl_schema_file[0])
@@ -1445,6 +1353,27 @@ namespace
     return WriteLegacyShaderArtifacts(material_root,mci);
 }
 
+    static void EmitInferenceMismatchDiagnostics(
+        const StaticMaterialDef &def,
+        const Material3DCreateConfig &cfg,
+        const bool infer_has_camera,
+        const bool infer_has_sky,
+        std::string *diagnostics)
+    {
+        ShaderBuildPipeline pipeline;
+        (void)pipeline;
+        (void)def;
+        (void)cfg;
+        (void)infer_has_camera;
+        (void)infer_has_sky;
+        (void)diagnostics;
+    }
+
+    static std::string BuildShaderDataSchemaDebugText(const StaticMaterialDef &def)
+    {
+        return ShaderBuildPipeline::BuildShaderDataSchemaDebugText(def);
+    }
+
     static std::string BuildPipelineConfigText(const MaterialCreateConfig &config)
     {
         std::string text;
@@ -1552,64 +1481,14 @@ namespace
         if (diagnostics)
             diagnostics->clear();
 
-        if (vs_glsl.empty() || fs_glsl.empty())
-        {
-            if (diagnostics)
-                *diagnostics = "vs_glsl or fs_glsl is empty";
-            return nullptr;
-        }
-
-        Material3DCreateConfig cfg = config ? *config : Material3DCreateConfig();
-        cfg.prim = config ? config->prim : def.primitive_type;
-        cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
-
-        const bool infer_has_camera = HasUBOSemantic(def, UBODescriptorSemantic::CameraInfo);
-        const bool infer_has_sky    = HasUBOSemantic(def, UBODescriptorSemantic::SkyInfo);
-        const bool infer_has_l2w    = HasSSBOSemantic(def, SSBODescriptorSemantic::TransformData);
-        const bool infer_has_mi     = HasSSBOSemantic(def, SSBODescriptorSemantic::MaterialBindingInstanceData)
-                                   || HasPerMaterialDescriptor(def)
-                                   || (def.shader_data_schema != ShaderDataSchema::None);
-
-        cfg.local_to_world    = cfg.local_to_world    || infer_has_l2w;
-        cfg.material_instance = cfg.material_instance || infer_has_mi;
-
-        EmitInferenceMismatchDiagnostics(def,
-                     cfg,
-                     infer_has_camera,
-                     infer_has_sky,
-                     diagnostics);
-
         ShaderBuildPipeline pipeline;
         auto build_result = pipeline.PrepareMaterialCreateInfo(def,
-                                                               static_cast<const MaterialCreateConfig &>(cfg),
+                                                               config,
                                                                profile,
                                                                vs_glsl,
-                                                               fs_glsl);
-
-        if (!build_result.success)
-        {
-            if (diagnostics)
-            {
-                if (diagnostics->empty() && !build_result.diagnostics.empty())
-                    *diagnostics = build_result.diagnostics.front().message;
-                else if (!build_result.diagnostics.empty())
-                {
-                    *diagnostics += "\n";
-                    *diagnostics += build_result.diagnostics.front().message;
-                }
-
-                if (!diagnostics->empty())
-                {
-                    *diagnostics += " (";
-                    *diagnostics += BuildShaderDataSchemaDebugText(def);
-                    *diagnostics += ")";
-                }
-            }
-
-            return nullptr;
-        }
-
-        return build_result.value;
+                                                               fs_glsl,
+                                                               diagnostics);
+        return build_result.success ? build_result.value : nullptr;
     }
 }
 
