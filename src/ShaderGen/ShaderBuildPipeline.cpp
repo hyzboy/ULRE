@@ -1,9 +1,14 @@
 #include<hgl/shadergen/ShaderBuildPipeline.h>
+#include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/DescriptorLayoutBuilder.h>
 #include<hgl/shadergen/MaterialDescriptorDB.h>
 #include<hgl/shadergen/MaterialDescriptorStageBinder.h>
+#include<hgl/shadergen/MaterialBuilder.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/MaterialInstanceConfigurator.h>
 #include<hgl/shadergen/ShaderLibraryPath.h>
+#include<hgl/shadergen/internal/GLSLSourceUtils.h>
 #include<hgl/mtl/UBOCommon.h>
 
 namespace
@@ -261,6 +266,32 @@ static bool ApplyBuildModelSpec(const hgl::graph::mtl::MaterialCreateConfig &con
 
     return true;
 }
+
+static bool HasSSBOSemantic(const hgl::graph::mtl::StaticMaterialDef &def,
+                            const hgl::graph::mtl::SSBODescriptorSemantic semantic)
+{
+    if(!def.ssbo_descriptors || semantic==hgl::graph::mtl::SSBODescriptorSemantic::Unknown)
+        return false;
+
+    return def.ssbo_descriptors->contains(semantic);
+}
+
+static std::string BuildSchemaIncludeText(const hgl::graph::mtl::ShaderDataSchema schema)
+{
+    if(schema==hgl::graph::mtl::ShaderDataSchema::None)
+        return std::string();
+
+    const auto &schema_info=hgl::graph::mtl::GetShaderDataSchemaInfo(schema);
+    if(!schema_info.glsl_schema_file || !*schema_info.glsl_schema_file)
+        return std::string();
+
+    std::string include_text;
+    include_text.reserve(48 + std::char_traits<char>::length(schema_info.glsl_schema_file));
+    include_text += "#include \"common/schema/";
+    include_text += schema_info.glsl_schema_file;
+    include_text += "\"\n";
+    return include_text;
+}
 }
 
 namespace hgl::graph
@@ -461,6 +492,214 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
     result.value.final_state=state;
     result.value.binaries.push_back(std::move(compile_result.value));
     result.success=true;
+    return result;
+}
+
+ShaderGenResult<mtl::MaterialCreateInfo *> ShaderBuildPipeline::BuildMaterialCreateInfo(
+    const mtl::StaticMaterialDef &def,
+    const mtl::MaterialCreateConfig &config,
+    const mtl::contract::PhysicalDeviceProfileLite *profile,
+    const std::string &vs_glsl,
+    const std::string &fs_glsl)
+{
+    ShaderGenResult<mtl::MaterialCreateInfo *> result{};
+
+    if(!profile)
+    {
+        result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                      ShaderGenErrorCode::InvalidConfig,
+                                      ShaderStage::Vertex,
+                                      "ShaderBuildPipeline.BuildMaterialCreateInfo",
+                                      "physical device profile is null"});
+        return result;
+    }
+
+    if(vs_glsl.empty() || fs_glsl.empty())
+    {
+        result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                      ShaderGenErrorCode::InvalidConfig,
+                                      ShaderStage::Vertex,
+                                      "ShaderBuildPipeline.BuildMaterialCreateInfo",
+                                      "vs_glsl or fs_glsl is empty"});
+        return result;
+    }
+
+    mtl::MaterialCreateConfig build_cfg(config);
+    build_cfg.prim = def.primitive_type;
+    build_cfg.local_to_world = build_cfg.local_to_world || HasSSBOSemantic(def, mtl::SSBODescriptorSemantic::TransformData);
+    build_cfg.material_instance = build_cfg.material_instance || (def.shader_data_schema != mtl::ShaderDataSchema::None);
+    build_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+    mtl::MaterialBuilder builder(&build_cfg);
+    builder.SetDevice(profile);
+
+    if(def.ubo_descriptors)
+    {
+        for(const auto semantic:*def.ubo_descriptors)
+        {
+            if(!builder.AddUBOStruct(uint32_t(ShaderStage::VertexFragment), semantic))
+            {
+                result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                              ShaderGenErrorCode::InvalidConfig,
+                                              ShaderStage::Vertex,
+                                              "ShaderBuildPipeline.BuildMaterialCreateInfo.UBO",
+                                              "failed to add UBO semantic"});
+                return result;
+            }
+        }
+    }
+
+    if(def.ssbo_descriptors)
+    {
+        for(const auto semantic:*def.ssbo_descriptors)
+        {
+            if(semantic == mtl::SSBODescriptorSemantic::TransformData)
+            {
+                if(!builder.SetLocalToWorld(uint32_t(ShaderStage::VertexFragment)))
+                {
+                    result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                                  ShaderGenErrorCode::InvalidConfig,
+                                                  ShaderStage::Vertex,
+                                                  "ShaderBuildPipeline.BuildMaterialCreateInfo.LocalToWorld",
+                                                  "failed to configure local_to_world"});
+                    return result;
+                }
+
+                continue;
+            }
+
+            if(semantic == mtl::SSBODescriptorSemantic::MaterialBindingInstanceData)
+                continue;
+
+            if(!builder.AddSSBOStruct(uint32_t(ShaderStage::VertexFragment), semantic))
+            {
+                result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                              ShaderGenErrorCode::InvalidConfig,
+                                              ShaderStage::Vertex,
+                                              "ShaderBuildPipeline.BuildMaterialCreateInfo.SSBO",
+                                              "failed to add SSBO semantic"});
+                return result;
+            }
+        }
+    }
+
+    if(def.texture_samplers)
+    {
+        for(const auto &[slot, descriptor] : *def.texture_samplers)
+        {
+            if(!builder.AddTextureSampler(uint32_t(ShaderStage::VertexFragment),
+                                          descriptor.sampler_type,
+                                          slot,
+                                          descriptor.channel_hint))
+            {
+                result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                              ShaderGenErrorCode::InvalidConfig,
+                                              ShaderStage::Fragment,
+                                              "ShaderBuildPipeline.BuildMaterialCreateInfo.TextureSampler",
+                                              "failed to add texture sampler"});
+                return result;
+            }
+        }
+    }
+
+    if(def.vertex_entries)
+    {
+        if(auto *vsc = builder.GetVertexShader())
+        {
+            for(uint32_t i=0;i<def.vertex_entry_count;++i)
+            {
+                const auto &entry=def.vertex_entries[i];
+                vsc->AddInput(entry.type, entry.attrib);
+            }
+        }
+    }
+
+    if(def.shader_data_schema != mtl::ShaderDataSchema::None)
+    {
+        const auto &schema_info = mtl::GetShaderDataSchemaInfo(def.shader_data_schema);
+
+        if(schema_info.byte_size==0 || !schema_info.glsl_schema_file || !*schema_info.glsl_schema_file)
+        {
+            result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                          ShaderGenErrorCode::InvalidConfig,
+                                          ShaderStage::Vertex,
+                                          "ShaderBuildPipeline.BuildMaterialCreateInfo.MaterialInstance.Schema",
+                                          "shader data schema info is incomplete"});
+            return result;
+        }
+
+        if(!builder.SetMaterialInstance(def.shader_data_schema, schema_info, uint32_t(ShaderStage::Fragment)))
+        {
+            result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                          ShaderGenErrorCode::InvalidConfig,
+                                          ShaderStage::Fragment,
+                                          "ShaderBuildPipeline.BuildMaterialCreateInfo.MaterialInstance.Schema",
+                                          "failed to configure material_instance from schema"});
+            return result;
+        }
+    }
+
+    std::string final_vs_glsl = vs_glsl;
+    std::string final_fs_glsl = fs_glsl;
+
+    if(def.shader_data_schema != mtl::ShaderDataSchema::None)
+    {
+        const std::string schema_include = BuildSchemaIncludeText(def.shader_data_schema);
+        if(schema_include.empty())
+        {
+            result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                          ShaderGenErrorCode::SourceGenerationFailed,
+                                          ShaderStage::Vertex,
+                                          "ShaderBuildPipeline.BuildMaterialCreateInfo.MaterialInstance.Schema",
+                                          "shader data schema has no GLSL include path"});
+            return result;
+        }
+
+        final_vs_glsl = hgl::graph::internal::InjectAfterVersion(final_vs_glsl, schema_include);
+        final_fs_glsl = hgl::graph::internal::InjectAfterVersion(final_fs_glsl, schema_include);
+    }
+
+    if(auto *vert = builder.GetVertexShader())
+        vert->SetFinalGLSL(final_vs_glsl);
+
+    if(auto *frag = builder.GetStageShader(ShaderStage::Fragment))
+        frag->SetFinalGLSL(final_fs_glsl);
+
+    mtl::MaterialCreateInfo *mci = builder.BuildSnapshotOnly();
+    if(!mci)
+    {
+        result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                      ShaderGenErrorCode::InternalError,
+                                      ShaderStage::Vertex,
+                                      "ShaderBuildPipeline.BuildMaterialCreateInfo",
+                                      "MaterialBuilder::BuildSnapshotOnly() failed"});
+        return result;
+    }
+
+    if(!mtl::InjectLayoutDefines(*mci))
+    {
+        delete mci;
+        result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                      ShaderGenErrorCode::LayoutNotFinalized,
+                                      ShaderStage::Vertex,
+                                      "ShaderBuildPipeline.BuildMaterialCreateInfo",
+                                      "InjectLayoutDefines() failed"});
+        return result;
+    }
+
+    if(!mci->CompileShaderStagesToSPV())
+    {
+        delete mci;
+        result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                      ShaderGenErrorCode::CompileFailed,
+                                      ShaderStage::Vertex,
+                                      "ShaderBuildPipeline.BuildMaterialCreateInfo",
+                                      "CompileShaderStagesToSPV() failed"});
+        return result;
+    }
+
+    result.success = true;
+    result.value = mci;
     return result;
 }
 }//namespace hgl::graph

@@ -6,6 +6,7 @@
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
+#include<hgl/mtl/StaticMaterialDef.h>
 #include<vector>
 
 namespace hgl::graph
@@ -47,5 +48,12 @@ public:
     ShaderGenResult<ShaderBuildResult> Build(const mtl::MaterialCreateConfig &config,
                                              const mtl::contract::PhysicalDeviceProfileLite *profile,
                                              const ShaderBuildDescriptorSpec *descriptor_spec=nullptr);
+
+    ShaderGenResult<mtl::MaterialCreateInfo *> BuildMaterialCreateInfo(
+        const mtl::StaticMaterialDef &def,
+        const mtl::MaterialCreateConfig &config,
+        const mtl::contract::PhysicalDeviceProfileLite *profile,
+        const std::string &vs_glsl,
+        const std::string &fs_glsl);
 };
 }//namespace hgl::graph

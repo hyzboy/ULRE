@@ -212,6 +212,46 @@ static StaticMaterialDef MakeSchemaAwareCompositorDef()
     return def;
 }
 
+static void TestBuildMaterialCreateInfoForSchemaAwareCompositor()
+{
+    ShaderBuildPipeline pipeline;
+    Material3DCreateConfig cfg(PrimitiveType::Triangles,
+                               IncludeCamera::With,
+                               IncludeL2W::With,
+                               IncludeSky::Without);
+    cfg.material_instance = true;
+    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    const StaticMaterialDef def = MakeSchemaAwareCompositorDef();
+
+    auto result = pipeline.BuildMaterialCreateInfo(
+        def,
+        cfg,
+        &profile,
+        "#version 450\nvoid main(){}\n",
+        "#version 450\nlayout(location=0) out vec4 outColor; void main(){outColor=vec4(1.0);}\n");
+
+    CHECK_TRUE(result.success);
+    CHECK_TRUE(result.value != nullptr);
+
+    if(!result.success || !result.value)
+        return;
+
+    MaterialCreateInfo *mci = result.value;
+    CHECK_TRUE(mci->GetVertexShader() != nullptr);
+    CHECK_TRUE(mci->GetStageShader(ShaderStage::Fragment) != nullptr);
+    CHECK_TRUE(mci->GetDescriptorInfo().GetCount() > 0);
+    CHECK_TRUE(mci->HasLocalToWorld());
+    CHECK_EQ((int)mci->GetMaterialInstance().schema, (int)ShaderDataSchema::Color4f);
+    CHECK_TRUE(!mci->GetMaterialInstance().schema_file.empty());
+
+    const auto &shader_map = mci->GetShaderMap();
+    CHECK_TRUE(!shader_map.IsEmpty());
+
+    delete mci;
+}
+
 static void TestBuildFailsWhenStageBitsIsZero()
 {
     ShaderBuildPipeline pipeline;
@@ -1280,6 +1320,7 @@ int main()
     TestBuildFailsWhenProfileNull();
     TestBuildMinimalVertexPath();
     TestBuildMinimalFragmentPath();
+    TestBuildMaterialCreateInfoForSchemaAwareCompositor();
     TestBuildFailsWhenStageUnsupportedByMinimalPipeline();
     TestBuildFailsWhenMaterialInstanceRequested();
     TestBuildFailsWhenLocalToWorldRequested();
