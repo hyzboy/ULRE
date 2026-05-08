@@ -2038,6 +2038,126 @@ static bool HasPerMaterialDescriptor(const StaticMaterialDef &def)
     return false;
 }
 
+static void EmitCompileCompositorShadowTrialArtifacts(const CompileCompositorShadowBuildReport &shadow_report,
+                                                      const char *material_name)
+{
+    std::fprintf(stderr,
+        "[CompileCompositorMaterial] material=%s pipeline_shadow: %s\n",
+        material_name ? material_name : "<unnamed>",
+        shadow_report.summary.empty() ? "<empty>" : shadow_report.summary.c_str());
+
+    if(WriteCompileCompositorShadowBuildArtifacts(shadow_report,material_name))
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s pipeline_shadow_artifacts=build/shadergen_trial/reports\n",
+            material_name ? material_name : "<unnamed>");
+    }
+    else
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s pipeline_shadow_artifacts_write_failed\n",
+            material_name ? material_name : "<unnamed>");
+    }
+
+    if(WriteCompileCompositorShadowPipelineTree(shadow_report,material_name))
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s pipeline_shadow_tree=build/shadergen_trial/pipeline\n",
+            material_name ? material_name : "<unnamed>");
+    }
+    else
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s pipeline_shadow_tree_write_failed\n",
+            material_name ? material_name : "<unnamed>");
+    }
+}
+
+static void EmitCompileCompositorFailureAndTrialArtifacts(const CompileCompositorShadowBuildReport &shadow_report,
+                                                          const bool has_shadow_report,
+                                                          const char *material_name,
+                                                          const char *failure_text,
+                                                          const char *baseline_summary)
+{
+    if(has_shadow_report)
+    {
+        WriteCompileCompositorTrialBaselineReport(shadow_report,
+                                                  material_name,
+                                                  false,
+                                                  baseline_summary);
+    }
+
+    std::fprintf(stderr,
+        "[CompileCompositorMaterial] material=%s failed: %s\n",
+        material_name ? material_name : "<unnamed>",
+        failure_text ? failure_text : "<unknown>");
+}
+
+static void EmitCompileCompositorSuccessAndTrialArtifacts(const CompileCompositorShadowBuildReport &shadow_report,
+                                                          const bool has_shadow_report,
+                                                          const MaterialCreateInfo &mci,
+                                                          const char *material_name,
+                                                          const char *baseline_summary)
+{
+    if(has_shadow_report)
+    {
+        if(WriteCompileCompositorTrialBaselineReport(shadow_report,
+                                                     material_name,
+                                                     true,
+                                                     baseline_summary))
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial] material=%s baseline_compare_report=build/shadergen_trial/reports\n",
+                material_name ? material_name : "<unnamed>");
+        }
+        else
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial] material=%s baseline_compare_report_write_failed\n",
+                material_name ? material_name : "<unnamed>");
+        }
+
+        if(RunCompileCompositorBaselineCompare(material_name))
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial] material=%s baseline_compare_script=build/shadergen_trial/reports\n",
+                material_name ? material_name : "<unnamed>");
+
+            if(WriteCompileCompositorTrialAggregateReport())
+            {
+                std::fprintf(stderr,
+                    "[CompileCompositorMaterial] material=%s baseline_compare_aggregate=build/shadergen_trial/reports/baseline_compare.md\n",
+                    material_name ? material_name : "<unnamed>");
+            }
+            else
+            {
+                std::fprintf(stderr,
+                    "[CompileCompositorMaterial] material=%s baseline_compare_aggregate_write_failed\n",
+                    material_name ? material_name : "<unnamed>");
+            }
+        }
+        else
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial] material=%s baseline_compare_script_failed\n",
+                material_name ? material_name : "<unnamed>");
+        }
+    }
+
+    if(WriteCompileCompositorLegacyTree(mci,material_name))
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s legacy_tree=build/shadergen_trial/legacy\n",
+            material_name ? material_name : "<unnamed>");
+    }
+    else
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s legacy_tree_write_failed\n",
+            material_name ? material_name : "<unnamed>");
+    }
+}
+
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &    def,
@@ -2060,36 +2180,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
         shadow_report=BuildCompileCompositorShadowPipelineReport(profile,def,config);
         has_shadow_report=true;
 
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s pipeline_shadow: %s\n",
-            def.name ? def.name : "<unnamed>",
-            shadow_report.summary.empty() ? "<empty>" : shadow_report.summary.c_str());
-
-        if(WriteCompileCompositorShadowBuildArtifacts(shadow_report,def.name))
-        {
-            std::fprintf(stderr,
-                "[CompileCompositorMaterial] material=%s pipeline_shadow_artifacts=build/shadergen_trial/reports\n",
-                def.name ? def.name : "<unnamed>");
-        }
-        else
-        {
-            std::fprintf(stderr,
-                "[CompileCompositorMaterial] material=%s pipeline_shadow_artifacts_write_failed\n",
-                def.name ? def.name : "<unnamed>");
-        }
-
-        if(WriteCompileCompositorShadowPipelineTree(shadow_report,def.name))
-        {
-            std::fprintf(stderr,
-                "[CompileCompositorMaterial] material=%s pipeline_shadow_tree=build/shadergen_trial/pipeline\n",
-                def.name ? def.name : "<unnamed>");
-        }
-        else
-        {
-            std::fprintf(stderr,
-                "[CompileCompositorMaterial] material=%s pipeline_shadow_tree_write_failed\n",
-                def.name ? def.name : "<unnamed>");
-        }
+        EmitCompileCompositorShadowTrialArtifacts(shadow_report,def.name);
     }
 
     std::string diagnostics;
@@ -2101,35 +2192,25 @@ MaterialCreateInfo *CompileCompositorMaterial(
                                                                &diagnostics);
     if (!mci)
     {
-        if(has_shadow_report)
-        {
-            WriteCompileCompositorTrialBaselineReport(shadow_report,
+        EmitCompileCompositorFailureAndTrialArtifacts(shadow_report,
+                                                      has_shadow_report,
                                                       def.name,
-                                                      false,
+                                                      diagnostics.empty() ? "<unknown>" : diagnostics.c_str(),
                                                       diagnostics.empty() ? "CreatePreparedCompositorMaterial failed" : diagnostics.c_str());
-        }
-
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s failed: %s\n",
-            def.name ? def.name : "<unnamed>",
-            diagnostics.empty() ? "<unknown>" : diagnostics.c_str());
         return nullptr;
     }
 
     if (!mci->CompileShaderStagesToSPV())
     {
-        if(has_shadow_report)
-        {
-            WriteCompileCompositorTrialBaselineReport(shadow_report,
-                                                      def.name,
-                                                      false,
-                                                      "CompileShaderStagesToSPV() failed");
-        }
+        std::string failure_text = "CompileShaderStagesToSPV() failed (check GLSLCompiler log) (";
+        failure_text += BuildShaderDataSchemaDebugText(def);
+        failure_text += ")";
 
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s failed: CompileShaderStagesToSPV() failed (check GLSLCompiler log) (%s)\n",
-            def.name ? def.name : "<unnamed>",
-            BuildShaderDataSchemaDebugText(def).c_str());
+        EmitCompileCompositorFailureAndTrialArtifacts(shadow_report,
+                                                      has_shadow_report,
+                                                      def.name,
+                                                      failure_text.c_str(),
+                                                      "CompileShaderStagesToSPV() failed");
         delete mci;
         return nullptr;
     }
@@ -2142,63 +2223,11 @@ MaterialCreateInfo *CompileCompositorMaterial(
             diagnostics.c_str());
     }
 
-    if(has_shadow_report)
-    {
-        if(WriteCompileCompositorTrialBaselineReport(shadow_report,
-                                                     def.name,
-                                                     true,
-                                                     diagnostics.empty() ? "CompileCompositorMaterial legacy compile succeeded" : diagnostics.c_str()))
-        {
-            std::fprintf(stderr,
-                "[CompileCompositorMaterial] material=%s baseline_compare_report=build/shadergen_trial/reports\n",
-                def.name ? def.name : "<unnamed>");
-        }
-        else
-        {
-            std::fprintf(stderr,
-                "[CompileCompositorMaterial] material=%s baseline_compare_report_write_failed\n",
-                def.name ? def.name : "<unnamed>");
-        }
-
-        if(RunCompileCompositorBaselineCompare(def.name))
-        {
-            std::fprintf(stderr,
-                "[CompileCompositorMaterial] material=%s baseline_compare_script=build/shadergen_trial/reports\n",
-                def.name ? def.name : "<unnamed>");
-
-            if(WriteCompileCompositorTrialAggregateReport())
-            {
-                std::fprintf(stderr,
-                    "[CompileCompositorMaterial] material=%s baseline_compare_aggregate=build/shadergen_trial/reports/baseline_compare.md\n",
-                    def.name ? def.name : "<unnamed>");
-            }
-            else
-            {
-                std::fprintf(stderr,
-                    "[CompileCompositorMaterial] material=%s baseline_compare_aggregate_write_failed\n",
-                    def.name ? def.name : "<unnamed>");
-            }
-        }
-        else
-        {
-            std::fprintf(stderr,
-                "[CompileCompositorMaterial] material=%s baseline_compare_script_failed\n",
-                def.name ? def.name : "<unnamed>");
-        }
-    }
-
-    if(WriteCompileCompositorLegacyTree(*mci,def.name))
-    {
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s legacy_tree=build/shadergen_trial/legacy\n",
-            def.name ? def.name : "<unnamed>");
-    }
-    else
-    {
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s legacy_tree_write_failed\n",
-            def.name ? def.name : "<unnamed>");
-    }
+    EmitCompileCompositorSuccessAndTrialArtifacts(shadow_report,
+                                                  has_shadow_report,
+                                                  *mci,
+                                                  def.name,
+                                                  diagnostics.empty() ? "CompileCompositorMaterial legacy compile succeeded" : diagnostics.c_str());
 
     return mci;
 }
