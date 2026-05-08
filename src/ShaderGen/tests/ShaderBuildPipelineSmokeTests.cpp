@@ -739,6 +739,9 @@ static void TestCompileCompositorBuiltinCandidateTrialBatchSummary()
     std::ifstream sky_minimal_report_ifs("build/shadergen_trial/reports/SkyMinimal_baseline_compare.md",std::ios::in);
     CHECK_TRUE(sky_minimal_report_ifs.is_open());
 
+    std::ifstream terrain_grid_report_ifs("build/shadergen_trial/reports/TerrainGrid_baseline_compare.md",std::ios::in);
+    CHECK_TRUE(terrain_grid_report_ifs.is_open());
+
     std::ifstream text2d_report_ifs("build/shadergen_trial/reports/Text2D_baseline_compare.md",std::ios::in);
     CHECK_TRUE(text2d_report_ifs.is_open());
 

@@ -200,6 +200,38 @@ namespace
             config=&sky_cfg;
         }
         else
+        if(preset==MaterialPreset::TerrainGrid)
+        {
+            static constexpr SamplerSlot terrain_tex_slots[] =
+            {
+                SamplerSlot::Height,
+                SamplerSlot::Normal,
+            };
+            static const UBOSemanticSet ubos = build3d::MakeViewportCameraUBOs();
+            static const SSBOSemanticSet ssbos = build3d::MakeTransformSSBOs(false);
+            static const StaticTextureSamplerDescriptors samplers = []()
+            {
+                StaticTextureSamplerDescriptors descriptors;
+                AddTextureSampler(descriptors, terrain_tex_slots[0], SamplerType::Sampler2D);
+                AddTextureSampler(descriptors, terrain_tex_slots[1], SamplerType::Sampler2D);
+                return descriptors;
+            }();
+            static TerrainGridCreateConfig terrain_cfg;
+
+            terrain_cfg.material_instance = false;
+            terrain_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+            def.name = "TerrainGrid";
+            def.primitive_type = PrimitiveType::Triangles;
+            def.vertex_entries = nullptr;
+            def.vertex_entry_count = 0;
+            def.ubo_descriptors = &ubos;
+            def.ssbo_descriptors = &ssbos;
+            def.texture_samplers = &samplers;
+            def.shader_data_schema = ShaderDataSchema::None;
+            config=&terrain_cfg;
+        }
+        else
         if(preset==MaterialPreset::PureColor3D)
         {
             static constexpr FixedVertexEntry vertex_entries[] =
@@ -1524,6 +1556,7 @@ CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch
         MaterialPreset::PureTexture2D,
         MaterialPreset::VertexColor2D,
         MaterialPreset::PureColor3D,
+        MaterialPreset::TerrainGrid,
         MaterialPreset::SkyMinimal,
         MaterialPreset::VertexColor3D,
         MaterialPreset::VertexLuminance2D,
