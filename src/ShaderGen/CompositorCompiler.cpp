@@ -1237,7 +1237,8 @@ namespace
         return text;
     }
 
-    static std::string BuildTrialAggregateReportText(const std::filesystem::path &trial_root)
+    static std::string BuildTrialAggregateReportText(const std::filesystem::path &trial_root,
+                                                     const CompileCompositorTrialBatchReport *trial_report)
     {
         const std::filesystem::path reports_dir=trial_root/"reports";
         std::string text;
@@ -1245,6 +1246,72 @@ namespace
         text += "- TrialRoot: `";
         text += trial_root.string();
         text += "`\n\n";
+
+        if(trial_report)
+        {
+            text += "## Trial Batch Summary\n\n";
+            text += "- TotalCount: `";
+            text += std::to_string(trial_report->total_count);
+            text += "`\n";
+            text += "- LegacySuccessCount: `";
+            text += std::to_string(trial_report->legacy_success_count);
+            text += "`\n";
+            text += "- LegacyFailureCount: `";
+            text += std::to_string(trial_report->legacy_failure_count);
+            text += "`\n";
+            text += "- PipelineTrialSuccessCount: `";
+            text += std::to_string(trial_report->pipeline_trial_success_count);
+            text += "`\n";
+            text += "- PipelineTrialFailureCount: `";
+            text += std::to_string(trial_report->pipeline_trial_failure_count);
+            text += "`\n";
+            text += "- BaselineReportCount: `";
+            text += std::to_string(trial_report->baseline_report_count);
+            text += "`\n";
+            text += "- BaselineCompareSuccessCount: `";
+            text += std::to_string(trial_report->baseline_compare_success_count);
+            text += "`\n";
+            text += "- AggregateReportWritten: `";
+            text += trial_report->aggregate_report_written ? "true" : "false";
+            text += "`\n\n";
+
+            text += "### Legacy Failed Materials\n\n";
+
+            if(trial_report->legacy_failed_materials.empty())
+            {
+                text += "- `<none>`\n\n";
+            }
+            else
+            {
+                for(const auto &material_name:trial_report->legacy_failed_materials)
+                {
+                    text += "- `";
+                    text += material_name;
+                    text += "`\n";
+                }
+
+                text += "\n";
+            }
+
+            text += "### Pipeline Trial Failed Materials\n\n";
+
+            if(trial_report->pipeline_trial_failed_materials.empty())
+            {
+                text += "- `<none>`\n\n";
+            }
+            else
+            {
+                for(const auto &material_name:trial_report->pipeline_trial_failed_materials)
+                {
+                    text += "- `";
+                    text += material_name;
+                    text += "`\n";
+                }
+
+                text += "\n";
+            }
+        }
+
         text += "## Per-Material Baseline Reports\n\n";
 
         bool has_any=false;
@@ -1726,7 +1793,8 @@ bool RunCompileCompositorBaselineCompare(const char *material_name,
     return std::system(command.c_str())==0;
 }
 
-bool WriteCompileCompositorTrialAggregateReport(const char *trial_root)
+bool WriteCompileCompositorTrialAggregateReport(const char *trial_root,
+                                                const CompileCompositorTrialBatchReport *report)
 {
     const std::filesystem::path trial_root_path(trial_root ? trial_root : "build/shadergen_trial");
     const std::filesystem::path reports_path=trial_root_path/"reports";
@@ -1735,7 +1803,7 @@ bool WriteCompileCompositorTrialAggregateReport(const char *trial_root)
         return false;
 
     return WriteTextFile(reports_path/"baseline_compare.md",
-                         BuildTrialAggregateReportText(trial_root_path));
+                         BuildTrialAggregateReportText(trial_root_path,report));
 }
 
 std::string GetCompileCompositorTrialBatchSummary(const CompileCompositorTrialBatchReport &report)
@@ -1745,14 +1813,45 @@ std::string GetCompileCompositorTrialBatchSummary(const CompileCompositorTrialBa
     text += std::to_string(report.total_count);
     text += ", legacy_success_count=";
     text += std::to_string(report.legacy_success_count);
+    text += ", legacy_failure_count=";
+    text += std::to_string(report.legacy_failure_count);
     text += ", pipeline_trial_success_count=";
     text += std::to_string(report.pipeline_trial_success_count);
+    text += ", pipeline_trial_failure_count=";
+    text += std::to_string(report.pipeline_trial_failure_count);
     text += ", baseline_report_count=";
     text += std::to_string(report.baseline_report_count);
     text += ", baseline_compare_success_count=";
     text += std::to_string(report.baseline_compare_success_count);
     text += ", aggregate_report_written=";
     text += report.aggregate_report_written ? "true" : "false";
+
+    if(!report.legacy_failed_materials.empty())
+    {
+        text += ", legacy_failed_materials=";
+
+        for(size_t i=0;i<report.legacy_failed_materials.size();++i)
+        {
+            if(i>0)
+                text += "|";
+
+            text += report.legacy_failed_materials[i];
+        }
+    }
+
+    if(!report.pipeline_trial_failed_materials.empty())
+    {
+        text += ", pipeline_trial_failed_materials=";
+
+        for(size_t i=0;i<report.pipeline_trial_failed_materials.size();++i)
+        {
+            if(i>0)
+                text += "|";
+
+            text += report.pipeline_trial_failed_materials[i];
+        }
+    }
+
     return text;
 }
 
@@ -1777,6 +1876,11 @@ CompileCompositorTrialBatchReport RunCompileCompositorTrialBatch(const contract:
 
         if(shadow_report.result.success)
             ++report.pipeline_trial_success_count;
+        else
+        {
+            ++report.pipeline_trial_failure_count;
+            report.pipeline_trial_failed_materials.emplace_back(material_name ? material_name : "<unnamed>");
+        }
 
         WriteCompileCompositorShadowBuildArtifacts(shadow_report,material_name);
         WriteCompileCompositorShadowPipelineTree(shadow_report,material_name);
@@ -1794,6 +1898,11 @@ CompileCompositorTrialBatchReport RunCompileCompositorTrialBatch(const contract:
             ++report.legacy_success_count;
             WriteCompileCompositorLegacyTree(*mci,material_name);
         }
+        else
+        {
+            ++report.legacy_failure_count;
+            report.legacy_failed_materials.emplace_back(material_name ? material_name : "<unnamed>");
+        }
 
         if(WriteCompileCompositorTrialBaselineReport(shadow_report,
                                                      material_name,
@@ -1810,7 +1919,7 @@ CompileCompositorTrialBatchReport RunCompileCompositorTrialBatch(const contract:
         delete mci;
     }
 
-    report.aggregate_report_written = WriteCompileCompositorTrialAggregateReport(trial_root);
+    report.aggregate_report_written = WriteCompileCompositorTrialAggregateReport(trial_root,&report);
     return report;
 }
 

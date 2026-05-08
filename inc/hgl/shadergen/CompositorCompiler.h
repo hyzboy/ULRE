@@ -66,10 +66,14 @@ struct CompileCompositorTrialBatchReport
 {
     size_t total_count = 0;
     size_t legacy_success_count = 0;
+    size_t legacy_failure_count = 0;
     size_t pipeline_trial_success_count = 0;
+    size_t pipeline_trial_failure_count = 0;
     size_t baseline_report_count = 0;
     size_t baseline_compare_success_count = 0;
     bool aggregate_report_written = false;
+    std::vector<std::string> legacy_failed_materials;
+    std::vector<std::string> pipeline_trial_failed_materials;
 };
 
 /**
@@ -145,7 +149,8 @@ std::string BuildCompileCompositorBaselineCompareCommand(const char *material_na
                                                          const char *trial_root = "build/shadergen_trial");
 bool RunCompileCompositorBaselineCompare(const char *material_name,
                                          const char *trial_root = "build/shadergen_trial");
-bool WriteCompileCompositorTrialAggregateReport(const char *trial_root = "build/shadergen_trial");
+bool WriteCompileCompositorTrialAggregateReport(const char *trial_root = "build/shadergen_trial",
+                                               const CompileCompositorTrialBatchReport *report = nullptr);
 std::string GetCompileCompositorTrialBatchSummary(const CompileCompositorTrialBatchReport &report);
 CompileCompositorTrialBatchReport RunCompileCompositorTrialBatch(const contract::PhysicalDeviceProfileLite *profile,
                                                                  const std::vector<CompileCompositorTrialBatchItem> &items,
