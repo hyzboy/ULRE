@@ -44,11 +44,6 @@ static bool HasPerMaterialDescriptor(const StaticMaterialDef &def);
 static CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReportForConfig(const contract::PhysicalDeviceProfileLite *profile,
                                                                                                const StaticMaterialDef &def,
                                                                                                const MaterialCreateConfig *config);
-static MaterialCreateInfo *CompileCompositorMaterialForConfig(const contract::PhysicalDeviceProfileLite *profile,
-                                                              const StaticMaterialDef &def,
-                                                              const std::string &vs_glsl,
-                                                              const std::string &fs_glsl,
-                                                              const MaterialCreateConfig *config);
 
 namespace
 {
@@ -1721,11 +1716,22 @@ CompileCompositorTrialBatchReport RunCompileCompositorTrialBatch(const contract:
         WriteCompileCompositorShadowBuildArtifacts(shadow_report,material_name);
         WriteCompileCompositorShadowPipelineTree(shadow_report,material_name);
 
-        MaterialCreateInfo *mci = CompileCompositorMaterialForConfig(profile,
-                                                                     *item.def,
-                                                                     item.vs_glsl,
-                                                                     item.fs_glsl,
-                                                                     item.config);
+        MaterialCreateInfo *mci = nullptr;
+
+        if(const auto *cfg3d=As3D(item.config))
+            mci = CompileCompositorMaterial(profile,*item.def,item.vs_glsl,item.fs_glsl,cfg3d);
+        else if(item.config && (item.config->kind==ConfigKind::D2 || item.config->kind==ConfigKind::Text2D))
+            mci = CompileCompositorMaterial(profile,
+                                            *item.def,
+                                            item.vs_glsl,
+                                            item.fs_glsl,
+                                            static_cast<const Material2DCreateConfig *>(item.config));
+        else
+            mci = CompileCompositorMaterial(profile,
+                                            *item.def,
+                                            item.vs_glsl,
+                                            item.fs_glsl,
+                                            static_cast<const Material3DCreateConfig *>(nullptr));
 
         const bool legacy_success = mci != nullptr;
 
@@ -1814,21 +1820,6 @@ static CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineRe
     }
 
     return BuildCompileCompositorShadowPipelineReport(profile,def,nullptr);
-}
-
-static MaterialCreateInfo *CompileCompositorMaterialForConfig(const contract::PhysicalDeviceProfileLite *profile,
-                                                              const StaticMaterialDef &def,
-                                                              const std::string &vs_glsl,
-                                                              const std::string &fs_glsl,
-                                                              const MaterialCreateConfig *config)
-{
-    if(const auto *cfg3d=As3D(config))
-        return CompileCompositorMaterial(profile,def,vs_glsl,fs_glsl,cfg3d);
-
-    if(config && (config->kind==ConfigKind::D2 || config->kind==ConfigKind::Text2D))
-        return CompileCompositorMaterial(profile,def,vs_glsl,fs_glsl,static_cast<const Material2DCreateConfig *>(config));
-
-    return CompileCompositorMaterial(profile,def,vs_glsl,fs_glsl,static_cast<const Material3DCreateConfig *>(nullptr));
 }
 
 static bool HasUBOSemantic(const StaticMaterialDef &def, const UBODescriptorSemantic semantic)
@@ -2002,7 +1993,7 @@ static void EmitCompileCompositorPrepareFailure(const CompileCompositorShadowBui
                                                 const std::string &diagnostics)
 {
     const char *failure_text=diagnostics.empty() ? "<unknown>" : diagnostics.c_str();
-    const char *baseline_summary=diagnostics.empty() ? "CreatePreparedCompositorMaterial failed" : diagnostics.c_str();
+    const char *baseline_summary=diagnostics.empty() ? "ShaderBuildPipeline.PrepareMaterialCreateInfo failed" : diagnostics.c_str();
 
     EmitCompileCompositorFailureAndTrialArtifacts(shadow_report,
                                                   has_shadow_report,
@@ -2060,7 +2051,6 @@ MaterialCreateInfo *CompileCompositorMaterial(
         std::string failure_text = "CompileShaderStagesToSPV() failed (check GLSLCompiler log) (";
         failure_text += ShaderBuildPipeline::BuildShaderDataSchemaDebugText(def);
         failure_text += ")";
-
         EmitCompileCompositorFailureAndTrialArtifacts(shadow_report,
                                                       has_shadow_report,
                                                       def.name,
