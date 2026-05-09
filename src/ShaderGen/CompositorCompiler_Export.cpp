@@ -11,7 +11,6 @@
 
 namespace hgl::graph::mtl
 {
-
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &def,
@@ -109,7 +108,7 @@ CompileCompositorRouteDecision ResolveCompileCompositorRouteDecision(const Shade
     CompileCompositorRouteDecision decision{};
     decision.resolved_route = ResolveShaderBuildRoute(switch_config);
     decision.will_use_legacy_now = (decision.resolved_route == ShaderBuildRoute::LegacyMaterialCreateInfo);
-    decision.pipeline_trial_requested = (decision.resolved_route == ShaderBuildRoute::Pipeline);
+    decision.pipeline_trial_requested = false;
     decision.fallback_to_legacy = false;
     decision.rationale = decision.will_use_legacy_now
         ? "Legacy route selected explicitly by shader build switch config."

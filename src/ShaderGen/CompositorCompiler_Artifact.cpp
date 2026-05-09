@@ -31,8 +31,8 @@
 #include <span>
 #include <string>
 
-namespace hgl::graph::mtl {
-
+namespace hgl::graph::mtl
+{
 bool ResolveConfiguredCameraRequirement(const Material3DCreateConfig &cfg)
     {
         if (cfg.effective_feature_mask != 0)
@@ -768,7 +768,7 @@ bool WriteCompileCompositorShadowBuildArtifacts(const CompileCompositorShadowBui
 
 bool WriteCompileCompositorTrialBaselineReport(const CompileCompositorShadowBuildReport &report,
                                                const char *material_name,
-                                               const bool legacy_compile_success,
+                                               bool legacy_compile_success,
                                                const char *legacy_summary,
                                                const char *trial_root)
 {
