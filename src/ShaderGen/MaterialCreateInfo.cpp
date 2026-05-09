@@ -15,6 +15,7 @@
 #include<hgl/shadergen/internal/GLSLSourceUtils.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/mtl/UBOCommon.h>
+#include<hgl/mtl/MaterialStagePolicy.h>
 #include<hgl/math/Matrix.h>
 #include<string>
 #include<limits>
@@ -89,6 +90,20 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
 MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     : config(*mc)
 {
+    if(mtl::HasUnsupportedMaterialShaderStageBits(config.shader_stage_flag_bit))
+    {
+        const uint32 unsupported_bits = config.shader_stage_flag_bit & ~mtl::MaterialShaderStageMask;
+        GLogError("[ShaderGen][MaterialCreateInfo] unsupported material shader stage bits stripped: 0x%08X", unsupported_bits);
+        config.shader_stage_flag_bit = mtl::NormalizeMaterialShaderStageMask(config.shader_stage_flag_bit);
+    }
+
+    if(!mtl::HasRequiredMaterialShaderStages(config.shader_stage_flag_bit))
+    {
+        GLogError("[ShaderGen][MaterialCreateInfo] material shader stages normalized to VertexFragment from stage_bits=0x%08X",
+                  config.shader_stage_flag_bit);
+        config.shader_stage_flag_bit = uint32(ShaderStage::VertexFragment);
+    }
+
     ShaderStageBuildSet shader_stage_set(shader_map);
 
     if(HasVertex    ())shader_stage_set.Add(new ShaderCreateInfoVertex(&descriptor_db));
