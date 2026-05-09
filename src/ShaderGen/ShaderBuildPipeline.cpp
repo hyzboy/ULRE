@@ -648,14 +648,12 @@ mtl::MaterialCreateConfig ShaderBuildPipeline::BuildConfigFromStaticMaterialDef(
     const mtl::StaticMaterialDef &def,
     const mtl::MaterialCreateConfig *config)
 {
-    mtl::MaterialCreateConfig build_cfg(def.primitive_type,false);
+    mtl::MaterialCreateConfig build_cfg = config ? *config : mtl::MaterialCreateConfig(def.primitive_type,false);
 
-    if(config)
-    {
-        build_cfg=*config;
-    }
+    build_cfg.prim = def.primitive_type;
 
-    build_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+    if(build_cfg.shader_stage_flag_bit == 0)
+        build_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
     if(def.texture_samplers)
     {

@@ -18,8 +18,7 @@ static int g_failures = 0;
 #define CHECK_TRUE(expr)                                                    \
     do {                                                                    \
         if (!(expr)) {                                                      \
-            std::fprintf(stderr, "FAIL (%s:%d): %s\n",                    \
-                         __FILE__, __LINE__, #expr);                        \
+            std::fprintf(stderr, "FAIL (%s:%d): %s\n", __FILE__, __LINE__, #expr); \
             ++g_failures;                                                   \
         }                                                                   \
     } while (0)
@@ -214,6 +213,49 @@ static void TestBuildFailsWhenProfileNull()
     CHECK_EQ(result.value.final_state, ShaderBuildState::Failed);
 }
 
+static void TestBuildDescriptorSpecFromStaticMaterialDef()
+{
+    const StaticMaterialDef def = MakeSchemaAwareCompositorDef();
+    const auto spec = ShaderBuildPipeline::BuildDescriptorSpecFromStaticMaterialDef(def);
+
+    CHECK_EQ(spec.ubos.size(), size_t(2));
+    CHECK_EQ(spec.ubos[0], UBODescriptorSemantic::ViewportInfo);
+    CHECK_EQ(spec.ubos[1], UBODescriptorSemantic::CameraInfo);
+    CHECK_EQ(spec.ssbos.size(), size_t(0));
+    CHECK_EQ(spec.material_instance_schema, ShaderDataSchema::Color4f);
+    CHECK_EQ(spec.material_instance_bytes, GetShaderDataSchemaInfo(ShaderDataSchema::Color4f).byte_size);
+}
+
+static void TestBuildConfigFromStaticMaterialDefMergesStaticNeeds()
+{
+    static StaticTextureSamplerDescriptors samplers =
+    {
+        { SamplerSlot::BaseColor, MakeStaticTextureSamplerDescriptor(SamplerType::Sampler2D) }
+    };
+
+    static SSBOSemanticSet ssbos =
+    {
+        SSBODescriptorSemantic::TransformData
+    };
+
+    StaticMaterialDef def{};
+    def.name = "ConfigMergeSmoke";
+    def.primitive_type = PrimitiveType::Triangles;
+    def.texture_samplers = &samplers;
+    def.ssbo_descriptors = &ssbos;
+
+    MaterialCreateConfig cfg(PrimitiveType::Points,false);
+    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::Vertex);
+
+    const auto merged = ShaderBuildPipeline::BuildConfigFromStaticMaterialDef(def,&cfg);
+
+    CHECK_EQ(merged.prim, PrimitiveType::Triangles);
+    CHECK_EQ(merged.shader_stage_flag_bit, uint32_t(ShaderStage::Vertex));
+    CHECK_TRUE(merged.material_instance);
+    CHECK_TRUE(merged.local_to_world);
+    CHECK_TRUE(merged.HasTextureSourceBitsOverride() || merged.sampler_feature_bits_override != 0);
+}
+
 static void TestBuildMinimalVertexPath()
 {
     ShaderBuildPipeline pipeline;
@@ -278,7 +320,6 @@ static void TestBuildProductForMinimalPipelineMaterial()
 
     CHECK_TRUE(result.success);
     CHECK_TRUE(result.value != nullptr);
-
     if(!result.success || !result.value)
         return;
 
@@ -291,9 +332,7 @@ static void TestBuildProductForMinimalPipelineMaterial()
     CHECK_TRUE(!mci->GetStageShader(ShaderStage::Fragment)->GetFinalGLSL().empty());
     CHECK_TRUE(mci->GetStageShader(ShaderStage::Vertex)->GetSPVSize() > 0);
     CHECK_TRUE(mci->GetStageShader(ShaderStage::Fragment)->GetSPVSize() > 0);
-
-    const VIAArray empty_input{};
-    CHECK_TRUE(!(mci->GetVertexShader()->GetInput() == empty_input));
+    CHECK_TRUE(mci->GetVertexShader()->GetInput().count > 0);
 
     delete mci;
 }
@@ -322,7 +361,6 @@ static void TestBuildMaterialCreateInfoForSchemaAwareCompositor()
 
     CHECK_TRUE(result.success);
     CHECK_TRUE(result.value != nullptr);
-
     if(!result.success || !result.value)
         return;
 
@@ -338,7 +376,7 @@ static void TestBuildMaterialCreateInfoForSchemaAwareCompositor()
     CHECK_TRUE(mci->GetMaterialInstance().stride > 0);
     CHECK_TRUE(mci->GetMaterialInstance().stage_bits != 0);
     CHECK_TRUE(!mci->GetShaderMap().IsEmpty());
-    CHECK_TRUE(!(mci->GetVertexShader()->GetInput() == VIAArray{}));
+    CHECK_TRUE(mci->GetVertexShader()->GetInput().count > 0);
 
     delete mci;
 }
@@ -380,6 +418,8 @@ int main()
 
     TestBuildFailsWhenStageBitsIsZero();
     TestBuildFailsWhenProfileNull();
+    TestBuildDescriptorSpecFromStaticMaterialDef();
+    TestBuildConfigFromStaticMaterialDefMergesStaticNeeds();
     TestBuildMinimalVertexPath();
     TestBuildMinimalFragmentPath();
     TestBuildFailsWhenStageUnsupportedByMinimalPipeline();
