@@ -27,6 +27,7 @@
 #include<cstdint>
 #include<vector>
 #include<algorithm>
+#include<cassert>
 
 namespace hgl::graph{
 
@@ -103,12 +104,21 @@ namespace
         return true;
     }
 
-    static mtl::MaterialKey MakeMaterialKeyFromVariantKey(const mtl::MaterialVariantKey &vk)
+    static mtl::MaterialKey BuildMaterialKeyFromVariantKey(const mtl::MaterialVariantKey &vk) noexcept
     {
         mtl::MaterialKey k{};
         k.variant = vk;
         k.pass    = vk.pass_hint;
-        // schema / def_id / version fields: placeholder zeros (Step 6 will fill)
+
+        // Baseline runtime key for variant-driven program cache.
+        // def/schema/version axes are currently unresolved at this call site and
+        // remain at MaterialKey defaults by design.
+        k.def_id       = mtl::kInvalidStaticMaterialDefId;
+        k.schema       = mtl::ShaderDataSchema::None;
+        k.glsl_version = 0;
+        k.vk_version   = 0;
+        k.spv_version  = 0;
+
         return k;
     }
 
@@ -573,6 +583,14 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     if (it != material_by_key.end())
     {
         by_key_hits.fetch_add(1, std::memory_order_relaxed);
+#ifndef NDEBUG
+        assert(it->second != nullptr);
+
+        // Alias-aware check: lookup key may be enriched (schema/version axes)
+        // while program keeps its baseline creation key.
+        auto it_verify = material_by_key.find(key);
+        assert(it_verify != material_by_key.end() && it_verify->second == it->second);
+#endif
         std::fprintf(stderr,
             "[ShaderMaterialProgramManager] GetOrCreateProgramByKey: cache_hit material=%p name='%s' material_prim=%u\n",
             it->second,
@@ -592,6 +610,14 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
             prog,
             prog->GetName().c_str(),
             static_cast<unsigned>(prog->GetPrimitiveType()));
+
+        // Alias requested key to the created program so callers that already hold
+        // enriched MaterialKey(def/schema/version axes) can hit cache on next lookup.
+        material_by_key[key] = prog;
+#ifndef NDEBUG
+        auto it_alias = material_by_key.find(key);
+        assert(it_alias != material_by_key.end() && it_alias->second == prog);
+#endif
     }
 
 #ifndef NDEBUG
@@ -752,7 +778,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         ? AnsiString(cfg->preset_name) + "#" + key_hash
         : AnsiString("variant#") + key_hash;
 
-    const mtl::MaterialKey mkey = MakeMaterialKeyFromVariantKey(key);
+    const mtl::MaterialKey mkey = BuildMaterialKeyFromVariantKey(key);
 
     // Fast path: material_by_key
     {
@@ -760,6 +786,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         if (it != material_by_key.end())
         {
             by_key_hits.fetch_add(1);
+#ifndef NDEBUG
+            assert(it->second != nullptr);
+            if (it->second && it->second->HasMaterialKey())
+                assert(it->second->GetMaterialKey() == mkey);
+#endif
             return it->second;
         }
     }
@@ -782,6 +813,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         // Dual-write to key map
         mat->SetMaterialKey(mkey);
         material_by_key[mkey] = mat;
+#ifndef NDEBUG
+        auto it_verify = material_by_key.find(mkey);
+        assert(it_verify != material_by_key.end() && it_verify->second == mat);
+        assert(mat->HasMaterialKey() && mat->GetMaterialKey() == mkey);
+#endif
     }
     return mat;
 }
@@ -820,7 +856,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         ? AnsiString(cfg->preset_name) + "#" + key_hash
         : AnsiString("variant#") + key_hash;
 
-    const mtl::MaterialKey mkey = MakeMaterialKeyFromVariantKey(cache_key);
+    const mtl::MaterialKey mkey = BuildMaterialKeyFromVariantKey(cache_key);
 
     // Fast path: material_by_key
     {
@@ -828,6 +864,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         if (it != material_by_key.end())
         {
             by_key_hits.fetch_add(1);
+#ifndef NDEBUG
+            assert(it->second != nullptr);
+            if (it->second && it->second->HasMaterialKey())
+                assert(it->second->GetMaterialKey() == mkey);
+#endif
             return it->second;
         }
     }
@@ -870,6 +911,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         // Dual-write to key map using cache_key-derived mkey for correct differentiation
         mat->SetMaterialKey(mkey);
         material_by_key[mkey] = mat;
+#ifndef NDEBUG
+        auto it_verify = material_by_key.find(mkey);
+        assert(it_verify != material_by_key.end() && it_verify->second == mat);
+        assert(mat->HasMaterialKey() && mat->GetMaterialKey() == mkey);
+#endif
     }
     return mat;
 }

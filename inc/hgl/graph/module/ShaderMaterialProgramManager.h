@@ -158,8 +158,13 @@ public: //Release
         if (!mtl)
             return;
 
-        if (mtl->HasMaterialKey())
-            material_by_key.erase(mtl->GetMaterialKey());
+        for (auto it = material_by_key.begin(); it != material_by_key.end();)
+        {
+            if (it->second == mtl)
+                it = material_by_key.erase(it);
+            else
+                ++it;
+        }
 
         rm_material.Release(mtl, true);
     }
