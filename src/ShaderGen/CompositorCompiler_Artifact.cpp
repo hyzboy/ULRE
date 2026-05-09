@@ -461,7 +461,7 @@ std::string BuildSpirvHexText(const ShaderBinary &binary)
         return text;
     }
 
-// Trial/baseline/report output moved to CompositorCompiler_TrialSupport.cpp.
+// Trial/baseline/report entry points were moved to CompositorCompiler_TrialSupport.cpp.
 
 }  // namespace hgl::graph::mtl
 

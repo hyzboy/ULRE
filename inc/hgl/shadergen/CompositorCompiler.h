@@ -11,9 +11,9 @@
 #include<hgl/mtl/StaticMaterialDef.h>
 #include<hgl/shadergen/ShaderBuildRouteSwitch.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
+#include <filesystem>
 #include <string>
 #include <vector>
-#include <filesystem>
 
 namespace hgl::graph::mtl{
 
@@ -24,8 +24,8 @@ class MaterialCreateInfo;
 
 struct CompileCompositorRoutePlan
 {
-    ShaderBuildRoute preferred_route = ShaderBuildRoute::LegacyMaterialCreateInfo;
-    bool allow_pipeline_fallback = true;
+    ShaderBuildRoute preferred_route = ShaderBuildRoute::Pipeline;
+    bool allow_pipeline_fallback = false;
     bool can_export_readiness = false;
     bool can_emit_baseline_artifacts = false;
     std::string rationale;
@@ -33,8 +33,8 @@ struct CompileCompositorRoutePlan
 
 struct CompileCompositorRouteDecision
 {
-    ShaderBuildRoute resolved_route = ShaderBuildRoute::LegacyMaterialCreateInfo;
-    bool will_use_legacy_now = true;
+    ShaderBuildRoute resolved_route = ShaderBuildRoute::Pipeline;
+    bool will_use_legacy_now = false;
     bool pipeline_trial_requested = false;
     bool fallback_to_legacy = false;
     std::string rationale;
@@ -68,18 +68,6 @@ struct CompileCompositorTrialBatchReport
     std::vector<std::string> pipeline_trial_failed_materials;
 };
 
-/**
- * 编译 Compositor 模板产出的完整 GLSL → MaterialCreateInfo*。
- *
- * 使用 SetFinalGLSL() + CompilePreparedShaderSources() 直接编译。
- *
- * @param profile   设备能力 profile
- * @param def       材质定义（descriptor/vertex/MI 元数据）
- * @param vs_glsl   完整的 vertex shader GLSL（含 #version, layout, main）
- * @param fs_glsl   完整的 fragment shader GLSL（含 #version, layout, main）
- * @param config    运行时配置（可选）
- * @return          编译好的 MaterialCreateInfo*; 失败返回 nullptr
- */
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &    def,
@@ -94,13 +82,6 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const std::string &         fs_glsl,
     const Material3DCreateConfig *config = nullptr);
 
-/**
- * Resort descriptors, build layout contract, emit layout/sampler defines,
- * and inject them into the VS/FS GLSL stored in @p mci.
- *
- * Call this after all descriptors, vertex inputs, and MI have been set up
- * but before CompilePreparedShaderSources().
- */
 bool InjectLayoutDefines(MaterialCreateInfo &mci);
 
 bool PrepareCompositorGLSLForReflection(
@@ -120,27 +101,13 @@ CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(co
 CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(const contract::PhysicalDeviceProfileLite *profile,
                                                                               const StaticMaterialDef &def,
                                                                               const Material3DCreateConfig *config = nullptr);
+
 bool WriteCompileCompositorShadowBuildArtifacts(const CompileCompositorShadowBuildReport &report,
                                                 const char *material_name,
                                                 const char *reports_dir = "build/shadergen_trial/reports");
-bool WriteCompileCompositorTrialBaselineReport(const CompileCompositorShadowBuildReport &report,
-                                               const char *material_name,
-                                               bool legacy_compile_success,
-                                               const char *legacy_summary,
-                                               const char *trial_root = "build/shadergen_trial");
 bool WriteCompileCompositorShadowPipelineTree(const CompileCompositorShadowBuildReport &report,
                                               const char *material_name,
                                               const char *pipeline_root = "build/shadergen_trial/pipeline");
-bool WriteCompileCompositorLegacyTree(const MaterialCreateInfo &mci,
-                                      const char *material_name,
-                                      const char *legacy_root = "build/shadergen_trial");
-std::string BuildCompileCompositorBaselineCompareCommand(const char *material_name,
-                                                         const char *trial_root = "build/shadergen_trial");
-bool RunCompileCompositorBaselineCompare(const char *material_name,
-                                         const char *trial_root = "build/shadergen_trial");
-bool WriteCompileCompositorTrialAggregateReport(const char *trial_root = "build/shadergen_trial",
-                                               const CompileCompositorTrialBatchReport *report = nullptr);
-std::string GetCompileCompositorTrialBatchSummary(const CompileCompositorTrialBatchReport &report);
 
 std::string BuildShadowDiagnosticsText(const CompileCompositorShadowBuildReport &report,
                                        const char *material_name);
@@ -151,17 +118,8 @@ std::string BuildDescriptorSpecText(const ShaderBuildDescriptorSpec &spec);
 std::string BuildPipelineConfigText(const MaterialCreateConfig &config);
 std::string BuildPipelineResultText(const CompileCompositorShadowBuildReport &report);
 std::string BuildSpirvHexText(const ShaderBinary &binary);
-std::string BuildBaselineCompareReportText(const CompileCompositorShadowBuildReport &report,
-                                           const char *material_name,
-                                           const bool direct_compile_success,
-                                           const char *direct_compile_summary);
 bool WriteCompileCompositorPreparedTreeInternal(const MaterialCreateInfo &mci,
                                                 const char *material_name,
                                                 const char *legacy_root);
-void AppendTrialBatchSummaryFields(std::string &text,
-                                  const CompileCompositorTrialBatchReport &report,
-                                  const bool markdown_list);
-std::string BuildTrialAggregateReportText(const std::filesystem::path &trial_root,
-                                         const CompileCompositorTrialBatchReport *trial_report);
 
 }//namespace hgl::graph::mtl

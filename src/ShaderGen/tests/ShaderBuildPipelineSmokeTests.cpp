@@ -1,5 +1,4 @@
 #include <hgl/shadergen/ShaderBuildPipeline.h>
-#include <hgl/shadergen/ShaderBuildRouteSwitch.h>
 #include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/MaterialBuilder.h>
@@ -416,42 +415,6 @@ static void TestBuildProductConsistencyForMaterialInstanceConfig()
     delete product_result.value;
 }
 
-static void TestRouteSwitchDefaultsToPipeline()
-{
-    CHECK_EQ(ResolveShaderBuildRoute(nullptr), ShaderBuildRoute::Pipeline);
-
-    const auto decision = ResolveCompileCompositorRouteDecision(nullptr);
-    CHECK_EQ(decision.resolved_route, ShaderBuildRoute::Pipeline);
-    CHECK_TRUE(!decision.will_use_legacy_now);
-    CHECK_TRUE(!decision.pipeline_trial_requested);
-    CHECK_TRUE(!decision.fallback_to_legacy);
-    CHECK_TRUE(decision.rationale.find("Pipeline route is the default production path")!=std::string::npos);
-}
-
-static void TestRouteSwitchExplicitPipelineSelectionRemainsPipeline()
-{
-    ShaderBuildSwitchConfig switch_config{};
-    switch_config.enable_pipeline = true;
-
-    const auto decision = ResolveCompileCompositorRouteDecision(&switch_config);
-    CHECK_EQ(decision.resolved_route, ShaderBuildRoute::Pipeline);
-    CHECK_TRUE(!decision.will_use_legacy_now);
-    CHECK_TRUE(!decision.pipeline_trial_requested);
-    CHECK_TRUE(!decision.fallback_to_legacy);
-    CHECK_TRUE(decision.rationale.find("Pipeline route is the default production path")!=std::string::npos);
-}
-
-static void TestRouteSwitchSummaryMentionsPipeline()
-{
-    const auto decision = ResolveCompileCompositorRouteDecision(nullptr);
-    const std::string summary = GetCompileCompositorRouteDecisionSummary(decision);
-
-    CHECK_TRUE(summary.find("resolved_route=Pipeline")!=std::string::npos);
-    CHECK_TRUE(summary.find("will_use_legacy_now=false")!=std::string::npos);
-    CHECK_TRUE(summary.find("pipeline_trial_requested=false")!=std::string::npos);
-    CHECK_TRUE(summary.find("fallback_to_legacy=false")!=std::string::npos);
-}
-
 int main()
 {
     if(!hgl::graph::InitShaderCompiler())
@@ -462,9 +425,6 @@ int main()
 
     TestBuildFailsWhenStageBitsIsZero();
     TestBuildFailsWhenProfileNull();
-    TestRouteSwitchDefaultsToPipeline();
-    TestRouteSwitchExplicitPipelineSelectionRemainsPipeline();
-    TestRouteSwitchSummaryMentionsPipeline();
     TestBuildDescriptorSpecFromStaticMaterialDef();
     TestBuildConfigFromStaticMaterialDefMergesStaticNeeds();
     TestBuildMinimalVertexPath();

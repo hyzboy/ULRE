@@ -37,8 +37,8 @@ static bool IsEnabledText(const char *text)
 
 ShaderBuildRoute ResolveShaderBuildRoute(const ShaderBuildSwitchConfig *config)
 {
-    if(config)
-        return config->enable_pipeline ? ShaderBuildRoute::Pipeline : ShaderBuildRoute::LegacyMaterialCreateInfo;
+    if(config && !config->enable_pipeline)
+        return ShaderBuildRoute::Pipeline;
 
     const char *env_value=std::getenv("ULRE_SHADERGEN_PIPELINE");
     if(IsEnabledText(env_value))
@@ -51,8 +51,7 @@ const char *GetShaderBuildRouteName(const ShaderBuildRoute route)
 {
     switch(route)
     {
-        case ShaderBuildRoute::Pipeline: return "Pipeline";
-        default: return "LegacyMaterialCreateInfo";
+        default: return "Pipeline";
     }
 }
 

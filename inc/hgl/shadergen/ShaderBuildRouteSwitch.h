@@ -8,14 +8,12 @@ namespace hgl::graph
 {
 enum class ShaderBuildRoute
 {
-    LegacyMaterialCreateInfo = 0,
     Pipeline = 1
 };
 
 struct ShaderBuildSwitchConfig
 {
-    bool enable_pipeline = false;
-    bool allow_fallback_to_legacy = true;
+    bool enable_pipeline = true;
 };
 
 struct ShaderBuildRouteEvaluation

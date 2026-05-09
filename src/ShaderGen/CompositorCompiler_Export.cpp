@@ -92,50 +92,6 @@ bool PrepareCompositorGLSLForReflection(
     return true;
 }
 
-CompileCompositorRoutePlan BuildCompileCompositorRoutePlan()
-{
-    CompileCompositorRoutePlan plan{};
-    plan.preferred_route = ShaderBuildRoute::Pipeline;
-    plan.allow_pipeline_fallback = true;
-    plan.can_export_readiness = true;
-    plan.can_emit_baseline_artifacts = true;
-    plan.rationale = "Pipeline is the preferred production route during migration.";
-    return plan;
-}
-
-CompileCompositorRouteDecision ResolveCompileCompositorRouteDecision(const ShaderBuildSwitchConfig *switch_config)
-{
-    CompileCompositorRouteDecision decision{};
-    decision.resolved_route = ResolveShaderBuildRoute(switch_config);
-    decision.will_use_legacy_now = false;
-    decision.pipeline_trial_requested = false;
-    decision.fallback_to_legacy = false;
-    decision.rationale = "Pipeline route is the default production path for CompileCompositorMaterial.";
-    return decision;
-}
- 
-std::string GetCompileCompositorRouteDecisionSummary(const CompileCompositorRouteDecision &decision)
-{
-    std::string text;
-    text.reserve(256 + decision.rationale.size());
-    text += "resolved_route=";
-    text += GetShaderBuildRouteName(decision.resolved_route);
-    text += ", will_use_legacy_now=";
-    text += decision.will_use_legacy_now ? "true" : "false";
-    text += ", pipeline_trial_requested=";
-    text += decision.pipeline_trial_requested ? "true" : "false";
-    text += ", fallback_to_legacy=";
-    text += decision.fallback_to_legacy ? "true" : "false";
-
-    if(!decision.rationale.empty())
-    {
-        text += ", rationale=";
-        text += decision.rationale;
-    }
-
-    return text;
-}
-
 CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &def,
