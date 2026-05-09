@@ -53,13 +53,9 @@ struct MaterialCreateConfig
 public:
 
     const uint32 enableVertexShader     () { return shader_stage_flag_bit|=(uint32)ShaderStage::Vertex; }
-    const uint32 enableGeometryShader   () { return shader_stage_flag_bit|=(uint32)ShaderStage::Geometry; }
-    const uint32 enableTesslationShader () { return shader_stage_flag_bit|=(uint32)ShaderStage::Tessellation; }
     const uint32 enableFragmentShader   () { return shader_stage_flag_bit|=(uint32)ShaderStage::Fragment; }
 
     const uint32 enableVertexFragmentShader() { return shader_stage_flag_bit|=(uint32)ShaderStage::VertexFragment; }
-
-    const uint32 enableComputeShader    () { return shader_stage_flag_bit|=(uint32)ShaderStage::Compute; }
 
     void SetGeometryModeOverride(const GeometryMode gm)
     {
