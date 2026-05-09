@@ -651,6 +651,8 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
         if (!mtl::HasFeature(feature_mask, mtl::MaterialFeature::EnableLighting))
             cfg.lighting_model = mtl::LightingModel::Lambert;
 
+        cfg.effective_feature_mask = feature_mask;
+
         if (rec.pos_format.Check())
             cfg.position_format = rec.pos_format;
         for (const auto &tc : rec.textures)
@@ -731,6 +733,12 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
                 material_by_key[merged_key] = it->second;
             }
         }
+
+        if (it->second && it->second->GetEffectiveFeatureMask() == 0
+         && key.variant.effective_feature_mask != 0)
+        {
+            it->second->effective_feature_mask = key.variant.effective_feature_mask;
+        }
 #ifndef NDEBUG
         assert(it->second != nullptr);
 
@@ -772,6 +780,9 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
             prog->SetMaterialKey(merged_key);
             material_by_key[merged_key] = prog;
         }
+
+        if (prog->GetEffectiveFeatureMask() == 0 && key.variant.effective_feature_mask != 0)
+            prog->effective_feature_mask = key.variant.effective_feature_mask;
 
         // Alias requested key to the created program so callers that already hold
         // enriched MaterialKey(def/schema/version axes) can hit cache on next lookup.
@@ -992,6 +1003,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
             if (key.GetTextureSourceMode(mtl::SamplerSlot(s)) == mtl::TextureSourceMode::Array)
                 flags |= (1u << s);
         mat->SetTextureArraySlotFlags(flags);
+        mat->effective_feature_mask = key.effective_feature_mask;
 
         // Primary key uses enriched axes; keep baseline alias for fast variant-key path.
         mat->SetMaterialKey(enriched_key);
@@ -1097,6 +1109,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
             if (cache_key.GetTextureSourceMode(mtl::SamplerSlot(s)) == mtl::TextureSourceMode::Array)
                 flags |= (1u << s);
         mat->SetTextureArraySlotFlags(flags);
+        mat->effective_feature_mask = cache_key.effective_feature_mask;
 
         // Primary key uses enriched axes; keep baseline alias for fast variant-key path.
         mat->SetMaterialKey(enriched_key);
