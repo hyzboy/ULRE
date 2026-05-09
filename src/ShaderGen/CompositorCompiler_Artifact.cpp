@@ -224,27 +224,27 @@ bool WriteTextFile(const std::filesystem::path &path,const std::string &text)
 
 std::string BuildShadowDiagnosticsText(const CompileCompositorShadowBuildReport &report,
                                        const char *material_name)
+{
+    std::string text;
+    text.reserve(512);
+    text += "material=";
+    text += material_name ? material_name : "<unnamed>";
+    text += "\n";
+    text += "summary=";
+    text += report.summary;
+    text += "\n";
+
+    for(const auto &diag:report.result.diagnostics)
     {
-        std::string text;
-        text.reserve(512);
-        text += "material=";
-        text += material_name ? material_name : "<unnamed>";
+        text += "diag.subject=";
+        text += diag.subject;
+        text += ", diag.message=";
+        text += diag.message;
         text += "\n";
-        text += "summary=";
-        text += report.summary;
-        text += "\n";
-
-        for(const auto &diag:report.result.diagnostics)
-        {
-            text += "diag.subject=";
-            text += diag.subject;
-            text += ", diag.message=";
-            text += diag.message;
-            text += "\n";
-        }
-
-        return text;
     }
+
+    return text;
+}
 
 std::string BuildDescriptorSpecText(const ShaderBuildDescriptorSpec &spec)
     {
