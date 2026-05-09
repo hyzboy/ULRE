@@ -85,5 +85,12 @@ public:
         const mtl::contract::PhysicalDeviceProfileLite *profile,
         const std::string &vs_glsl,
         const std::string &fs_glsl);
+
+    ShaderGenResult<mtl::MaterialCreateInfo *> BuildProduct(
+        const mtl::StaticMaterialDef &def,
+        const mtl::MaterialCreateConfig &config,
+        const mtl::contract::PhysicalDeviceProfileLite *profile,
+        const std::string &vs_glsl,
+        const std::string &fs_glsl);
 };
 }//namespace hgl::graph

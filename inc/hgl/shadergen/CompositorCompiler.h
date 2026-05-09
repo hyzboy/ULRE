@@ -53,15 +53,6 @@ struct CompileCompositorShadowBuildReport
     }
 };
 
-struct CompileCompositorTrialBatchItem
-{
-    const StaticMaterialDef *def = nullptr;
-    std::string vs_glsl;
-    std::string fs_glsl;
-    const MaterialCreateConfig *config = nullptr;
-    std::string material_name_override;
-};
-
 struct CompileCompositorTrialBatchReport
 {
     size_t total_count = 0;

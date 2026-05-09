@@ -1068,4 +1068,14 @@ ShaderGenResult<mtl::MaterialCreateInfo *> ShaderBuildPipeline::BuildMaterialCre
     result.value = mci;
     return result;
 }
+
+ShaderGenResult<mtl::MaterialCreateInfo *> ShaderBuildPipeline::BuildProduct(
+    const mtl::StaticMaterialDef &def,
+    const mtl::MaterialCreateConfig &config,
+    const mtl::contract::PhysicalDeviceProfileLite *profile,
+    const std::string &vs_glsl,
+    const std::string &fs_glsl)
+{
+    return BuildMaterialCreateInfo(def,config,profile,vs_glsl,fs_glsl);
+}
 }//namespace hgl::graph
