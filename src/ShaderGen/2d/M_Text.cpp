@@ -19,7 +19,6 @@ static MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLit
     Text2DMaterialCreateConfig new_cfg=*cfg;
     new_cfg.prim=PrimitiveType::Triangles;
     new_cfg.position_format=VAT_IVEC2;
-    new_cfg.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
 
     // Build DEF
     auto vs_preamble = build2d::Build2DVertexPreamble(&new_cfg, true, true, SamplerSlot::Text);
