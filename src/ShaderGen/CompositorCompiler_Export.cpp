@@ -2,7 +2,6 @@
 #include <hgl/shadergen/ShaderBuildPipeline.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
-#include <hgl/shadergen/ShaderBuildRouteSwitch.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
 
@@ -92,13 +91,12 @@ bool PrepareCompositorGLSLForReflection(
     return true;
 }
 
-CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(
+bool BuildCompileCompositorShadowPipelineReport(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &def,
-    const MaterialCreateConfig *config)
+    const MaterialCreateConfig *config,
+    CompileCompositorShadowBuildReport &report)
 {
-    CompileCompositorShadowBuildReport report{};
-
     ShaderBuildPipeline pipeline;
     const MaterialCreateConfig pipeline_cfg = ShaderBuildPipeline::BuildConfigFromStaticMaterialDef(def,config);
     const ShaderBuildDescriptorSpec descriptor_spec = ShaderBuildPipeline::BuildDescriptorSpecFromStaticMaterialDef(def);
@@ -108,17 +106,19 @@ CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(
     report.result = pipeline.Build(pipeline_cfg,profile,&descriptor_spec);
     report.evaluation = EvaluateShaderBuildResultForRouteSwitch(report.result);
     report.summary = GetShaderBuildRouteEvaluationSummary(report.evaluation);
-    return report;
+    return report.result.success;
 }
 
-CompileCompositorShadowBuildReport BuildCompileCompositorShadowPipelineReport(
+bool BuildCompileCompositorShadowPipelineReport(
     const contract::PhysicalDeviceProfileLite *profile,
     const StaticMaterialDef &def,
-    const Material3DCreateConfig *config)
+    const Material3DCreateConfig *config,
+    CompileCompositorShadowBuildReport &report)
 {
     return BuildCompileCompositorShadowPipelineReport(profile,
                                                       def,
-                                                      static_cast<const MaterialCreateConfig *>(config));
+                                                      static_cast<const MaterialCreateConfig *>(config),
+                                                      report);
 }
 
-}  // namespace hgl::graph::mtl
+}//namespace hgl::graph::mtl

@@ -33,18 +33,6 @@
 
 namespace hgl::graph::mtl
 {
-void AppendTrialBatchSummaryFields(std::string &text,
-                                  const CompileCompositorTrialBatchReport &report,
-                                  const bool markdown_list);
-std::string BuildTrialAggregateReportText(const std::filesystem::path &trial_root,
-                                          const CompileCompositorTrialBatchReport *trial_report);
-std::string BuildBaselineCompareReportText(const CompileCompositorShadowBuildReport &report,
-                                           const char *material_name,
-                                           const bool direct_compile_success,
-                                           const char *direct_compile_summary);
-// Keep only shared helper implementations in this file.
-// Trial/baseline public entry points live in CompositorCompiler_TrialSupport.cpp
-
 bool ResolveConfiguredCameraRequirement(const Material3DCreateConfig &cfg)
     {
         if (cfg.effective_feature_mask != 0)
