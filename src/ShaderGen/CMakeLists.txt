@@ -128,7 +128,9 @@ SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
 
 # Material Key
 SET(MATERIAL_KEY_FILES  ${MTL_TYPE_INCLUDE_PATH}/MaterialKey.h
-                        MaterialKey.cpp)
+                        ${MTL_TYPE_INCLUDE_PATH}/ShaderProgramKey.h
+                        MaterialKey.cpp
+                        ShaderProgramKey.cpp)
 SOURCE_GROUP("Material Key" FILES ${MATERIAL_KEY_FILES})
 
 # Recipe To Key
