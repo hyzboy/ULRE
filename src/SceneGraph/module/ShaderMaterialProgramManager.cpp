@@ -202,6 +202,27 @@ namespace
             *out_mismatch_mask = mismatch_mask;
     }
 
+    static void LogEffectiveFeatureMaskConsistency(const ShaderMaterialProgram *prog,
+                                                   const mtl::MaterialKey &request_key,
+                                                   const char *phase)
+    {
+        if(!prog)
+            return;
+
+        const uint64_t program_mask = prog->GetEffectiveFeatureMask();
+        const uint64_t request_mask = request_key.variant.effective_feature_mask;
+
+        if(program_mask != request_mask)
+        {
+            std::fprintf(stderr,
+                "[ShaderMaterialProgramManager] effective_feature_mask drift (%s): program=0x%016llx request=0x%016llx material='%s'\n",
+                phase ? phase : "unknown",
+                static_cast<unsigned long long>(program_mask),
+                static_cast<unsigned long long>(request_mask),
+                prog->GetName().c_str());
+        }
+    }
+
 }//namespace
 
 void ShaderMaterialProgramManager::RecordMaterialKeyAxisMismatch(uint32_t mismatch_mask)
@@ -739,6 +760,8 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
         {
             it->second->effective_feature_mask = key.variant.effective_feature_mask;
         }
+
+        LogEffectiveFeatureMaskConsistency(it->second, key, "cache_hit");
 #ifndef NDEBUG
         assert(it->second != nullptr);
 
@@ -783,6 +806,8 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
 
         if (prog->GetEffectiveFeatureMask() == 0 && key.variant.effective_feature_mask != 0)
             prog->effective_feature_mask = key.variant.effective_feature_mask;
+
+        LogEffectiveFeatureMaskConsistency(prog, key, "cache_miss_created");
 
         // Alias requested key to the created program so callers that already hold
         // enriched MaterialKey(def/schema/version axes) can hit cache on next lookup.
