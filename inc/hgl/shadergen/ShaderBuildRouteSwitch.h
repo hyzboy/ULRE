@@ -19,6 +19,7 @@ struct ShaderBuildSwitchConfig
 struct ShaderBuildRouteEvaluation
 {
     bool pipeline_ready = false;
+    // Compatibility flag: kept for existing report consumers; currently mirrors pipeline_ready.
     bool baseline_compare_ready = false;
     bool schema_aware_material_instance = false;
     std::vector<std::string> reasons;

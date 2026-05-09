@@ -3,10 +3,10 @@
 /// CompositorCompiler.h — StaticMaterialDef → MaterialCreateInfo 编译器接口
 ///
 /// 使用 CompileCompositorMaterial 编译 Compositor 模板产出的完整 GLSL。
-/// 内部流程：
-///   1. 按 def 的 ubo/ssbo/texture_samplers 三组定义构建 MaterialDescriptorDB
-///   2. 使用 SetFinalGLSL + CompilePreparedShaderSources 直接编译
-///   3. 填充并返回 MaterialCreateInfo*
+/// 当前路径为 pipeline-first：
+///   1. 基于 StaticMaterialDef 生成/校验 MaterialCreateConfig 与描述符模型
+///   2. 注入 layout/sampler/schema 相关 GLSL 定义
+///   3. 编译各阶段 GLSL 为 SPIR-V，并返回 MaterialCreateInfo*
 
 #include<hgl/mtl/StaticMaterialDef.h>
 #include<hgl/shadergen/ShaderBuildRouteSwitch.h>

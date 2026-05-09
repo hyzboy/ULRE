@@ -84,6 +84,7 @@ ShaderBuildRouteEvaluation EvaluateShaderBuildResultForRouteSwitch(const ShaderG
         has_schema_diag;
 
     evaluation.pipeline_ready = result.success && result.value.layout_finalized && !result.value.binaries.empty();
+    // Compatibility mirror: keep legacy report field populated for downstream tooling.
     evaluation.baseline_compare_ready = evaluation.pipeline_ready;
 
     if(result.value.material_instance.schema!=mtl::ShaderDataSchema::None && !evaluation.schema_aware_material_instance)

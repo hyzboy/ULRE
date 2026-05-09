@@ -51,15 +51,15 @@ namespace
         }
     }
 
-    bool BuildLegacyShaderModules(ShaderMaterialProgramManager *manager,
-                                  const AnsiString &mtl_name,
-                                  const ShaderStageMap &sci_map,
-                                  ShaderModuleMap *shader_maps)
+    bool BuildShaderModulesFromStageMap(ShaderMaterialProgramManager *manager,
+                                        const AnsiString &mtl_name,
+                                        const ShaderStageMap &sci_map,
+                                        ShaderModuleMap *shader_maps)
     {
         if (!manager || !shader_maps)
         {
             std::fprintf(stderr,
-                "[ShaderMaterialProgramManager] BuildLegacyShaderModules failed for '%s': manager=%p shader_maps=%p\n",
+                "[ShaderMaterialProgramManager] BuildShaderModulesFromStageMap failed for '%s': manager=%p shader_maps=%p\n",
                 mtl_name.c_str(),
                 manager,
                 shader_maps);
@@ -69,7 +69,7 @@ namespace
         if (sci_map.GetCount() < 2)
         {
             std::fprintf(stderr,
-                "[ShaderMaterialProgramManager] BuildLegacyShaderModules failed for '%s': shader count=%d (expected >= 2)\n",
+                "[ShaderMaterialProgramManager] BuildShaderModulesFromStageMap failed for '%s': shader count=%d (expected >= 2)\n",
                 mtl_name.c_str(),
                 sci_map.GetCount());
             return false;
@@ -82,7 +82,7 @@ namespace
             if (!sci_ptr)
             {
                 std::fprintf(stderr,
-                    "[ShaderMaterialProgramManager] BuildLegacyShaderModules failed for '%s': shader create info is null\n",
+                    "[ShaderMaterialProgramManager] BuildShaderModulesFromStageMap failed for '%s': shader create info is null\n",
                     mtl_name.c_str());
                 return false;
             }
@@ -91,7 +91,7 @@ namespace
             if (!module)
             {
                 std::fprintf(stderr,
-                    "[ShaderMaterialProgramManager] BuildLegacyShaderModules failed for '%s': CreateShaderModule returned null for stage=%u\n",
+                    "[ShaderMaterialProgramManager] BuildShaderModulesFromStageMap failed for '%s': CreateShaderModule returned null for stage=%u\n",
                     mtl_name.c_str(),
                     static_cast<unsigned>(sci_ptr->GetShaderStage()));
                 return false;
@@ -355,13 +355,13 @@ bool ShaderMaterialProgramManager::ExecuteMaterialBuildPipeline(ShaderMaterialPr
         return false;
     }
 
-    if(!BuildLegacyShaderModules(this,
-                                 mtl_name,
-                                 sci_map,
-                                 mtl->shader_maps))
+    if(!BuildShaderModulesFromStageMap(this,
+                                       mtl_name,
+                                       sci_map,
+                                       mtl->shader_maps))
     {
         std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] ExecuteMaterialBuildPipeline failed for '%s': BuildLegacyShaderModules returned false\n",
+            "[ShaderMaterialProgramManager] ExecuteMaterialBuildPipeline failed for '%s': BuildShaderModulesFromStageMap returned false\n",
             mtl_name.c_str());
         return false;
     }
@@ -691,7 +691,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 
 void ShaderMaterialProgramManager::ResetShaderGenProfiler()
 {
-    // Legacy-only mode keeps ShaderGen debug APIs as no-op for compatibility.
+    // Current pipeline path keeps ShaderGen debug APIs as no-op for compatibility.
 }
 
 ShaderGenProfilerSnapshot ShaderMaterialProgramManager::GetShaderGenProfilerSnapshot() const
