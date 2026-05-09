@@ -10,6 +10,173 @@
 namespace hgl::graph::mtl
 {
 
+std::string BuildShadowDiagnosticsText(const CompileCompositorShadowBuildReport &report,
+                                       const char *material_name);
+bool EnsureDirectoryExists(const char *dir);
+bool WriteTextFile(const std::filesystem::path &path,const std::string &text);
+std::string SanitizeArtifactName(const char *text);
+std::string BuildDescriptorSpecText(const ShaderBuildDescriptorSpec &spec);
+std::string BuildPipelineConfigText(const MaterialCreateConfig &config);
+std::string BuildPipelineResultText(const CompileCompositorShadowBuildReport &report);
+std::string BuildSpirvHexText(const ShaderBinary &binary);
+bool WriteCompileCompositorPreparedTreeInternal(const MaterialCreateInfo &mci,
+                                                const char *material_name,
+                                                const char *legacy_root);
+bool WriteShaderBuildRouteEvaluationSummary(const ShaderBuildRouteEvaluation &evaluation,const char *filename);
+
+void AppendTrialBatchSummaryFields(std::string &text,
+                                  const CompileCompositorTrialBatchReport &report,
+                                  const bool markdown_list)
+{
+    const char *separator = markdown_list ? "- " : ", ";
+    const char *line_end = markdown_list ? "\n" : "";
+    const char *value_prefix = markdown_list ? "`" : "";
+    const char *value_suffix = markdown_list ? "`" : "";
+
+    auto append_one = [&](const char *name, const std::string &value)
+    {
+        if(!text.empty() && !markdown_list)
+            text += separator;
+        else if(markdown_list)
+            text += separator;
+
+        text += name;
+        text += "=";
+        text += value_prefix;
+        text += value;
+        text += value_suffix;
+        text += line_end;
+    };
+
+    append_one("total_count",std::to_string(report.total_count));
+    append_one("legacy_success_count",std::to_string(report.legacy_success_count));
+    append_one("legacy_failure_count",std::to_string(report.legacy_failure_count));
+    append_one("pipeline_trial_success_count",std::to_string(report.pipeline_trial_success_count));
+    append_one("pipeline_trial_failure_count",std::to_string(report.pipeline_trial_failure_count));
+    append_one("baseline_report_count",std::to_string(report.baseline_report_count));
+    append_one("baseline_compare_success_count",std::to_string(report.baseline_compare_success_count));
+    append_one("aggregate_report_written",report.aggregate_report_written ? "true" : "false");
+}
+
+std::string BuildTrialAggregateReportText(const std::filesystem::path &trial_root,
+                                         const CompileCompositorTrialBatchReport *trial_report)
+{
+    const std::filesystem::path reports_dir=trial_root/"reports";
+    std::string text;
+    text += "# ShaderGen 试运行汇总报告（自动生成）\n\n";
+    text += "- TrialRoot: `";
+    text += trial_root.string();
+    text += "`\n\n";
+
+    if(trial_report)
+    {
+        text += "## Trial Batch Summary\n\n";
+        AppendTrialBatchSummaryFields(text,*trial_report,true);
+        text += "\n";
+
+        text += "### Direct Compile Failed Materials\n\n";
+        if(trial_report->legacy_failed_materials.empty())
+            text += "- `<none>`\n\n";
+        else
+        {
+            for(const auto &material_name:trial_report->legacy_failed_materials)
+            {
+                text += "- `";
+                text += material_name;
+                text += "`\n";
+            }
+            text += "\n";
+        }
+
+        text += "### Pipeline Trial Failed Materials\n\n";
+        if(trial_report->pipeline_trial_failed_materials.empty())
+            text += "- `<none>`\n\n";
+        else
+        {
+            for(const auto &material_name:trial_report->pipeline_trial_failed_materials)
+            {
+                text += "- `";
+                text += material_name;
+                text += "`\n";
+            }
+            text += "\n";
+        }
+    }
+
+    text += "## Per-Material Baseline Reports\n\n";
+
+    bool has_any=false;
+    std::error_code ec;
+    if(std::filesystem::exists(reports_dir,ec))
+    {
+        for(const auto &entry:std::filesystem::directory_iterator(reports_dir,ec))
+        {
+            if(ec)
+                break;
+            if(!entry.is_regular_file())
+                continue;
+
+            const auto filename=entry.path().filename().string();
+            if(filename.find("_baseline_compare.md")==std::string::npos)
+                continue;
+
+            has_any=true;
+            text += "- `";
+            text += filename;
+            text += "`\n";
+        }
+    }
+
+    if(!has_any)
+        text += "- `<none>`\n";
+
+    return text;
+}
+
+std::string BuildBaselineCompareReportText(const CompileCompositorShadowBuildReport &report,
+                                           const char *material_name,
+                                           const bool direct_compile_success,
+                                           const char *direct_compile_summary)
+{
+    std::string text;
+    text.reserve(1024);
+    text += "# ShaderGen 基线对比报告（自动生成）\n\n";
+    text += "- Material: `";
+    text += material_name ? material_name : "<unnamed>";
+    text += "`\n";
+    text += "- Direct compile: `";
+    text += direct_compile_success ? "success" : "failed";
+    text += "`\n";
+    text += "- Pipeline shadow compile: `";
+    text += report.result.success ? "success" : "failed";
+    text += "`\n\n";
+    text += "## Route-Switch Readiness\n\n";
+    text += "- Readiness: `";
+    text += report.summary;
+    text += "`\n\n";
+    text += "## Direct Compile 摘要\n\n";
+    text += "- DirectCompileSummary: `";
+    text += direct_compile_summary ? direct_compile_summary : (direct_compile_success ? "compile succeeded" : "compile failed");
+    text += "`\n\n";
+    text += "## Shadow Diagnostics\n\n";
+
+    if(report.result.diagnostics.empty())
+        text += "- `<none>`\n";
+    else
+    {
+        for(const auto &diag:report.result.diagnostics)
+        {
+            text += "- `";
+            text += diag.subject;
+            text += "`: ";
+            text += diag.message;
+            text += "\n";
+        }
+    }
+
+    return text;
+}
+
 bool WriteCompileCompositorShadowBuildArtifacts(const CompileCompositorShadowBuildReport &report,
                                                 const char *material_name,
                                                 const char *reports_dir)
@@ -20,7 +187,7 @@ bool WriteCompileCompositorShadowBuildArtifacts(const CompileCompositorShadowBui
     const std::filesystem::path reports_path(reports_dir);
     const std::string sanitized_name=SanitizeArtifactName(material_name);
     const std::filesystem::path readiness_path=reports_path/(sanitized_name + "_readiness.txt");
-    if(!WriteShaderBuildRouteEvaluationSummary(report.evaluation,readiness_path.string().c_str()))
+    if(!hgl::graph::WriteShaderBuildRouteEvaluationSummary(report.evaluation,readiness_path.string().c_str()))
         return false;
 
     const std::filesystem::path diagnostics_path=reports_path/(sanitized_name + "_diagnostics.log");

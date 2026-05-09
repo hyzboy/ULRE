@@ -13,6 +13,7 @@
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 namespace hgl::graph::mtl{
 
@@ -132,7 +133,7 @@ bool WriteCompileCompositorShadowPipelineTree(const CompileCompositorShadowBuild
                                               const char *pipeline_root = "build/shadergen_trial/pipeline");
 bool WriteCompileCompositorLegacyTree(const MaterialCreateInfo &mci,
                                       const char *material_name,
-                                      const char *legacy_root = "build/shadergen_trial/legacy");
+                                      const char *legacy_root = "build/shadergen_trial");
 std::string BuildCompileCompositorBaselineCompareCommand(const char *material_name,
                                                          const char *trial_root = "build/shadergen_trial");
 bool RunCompileCompositorBaselineCompare(const char *material_name,
@@ -140,5 +141,27 @@ bool RunCompileCompositorBaselineCompare(const char *material_name,
 bool WriteCompileCompositorTrialAggregateReport(const char *trial_root = "build/shadergen_trial",
                                                const CompileCompositorTrialBatchReport *report = nullptr);
 std::string GetCompileCompositorTrialBatchSummary(const CompileCompositorTrialBatchReport &report);
+
+std::string BuildShadowDiagnosticsText(const CompileCompositorShadowBuildReport &report,
+                                       const char *material_name);
+bool EnsureDirectoryExists(const char *dir);
+bool WriteTextFile(const std::filesystem::path &path,const std::string &text);
+std::string SanitizeArtifactName(const char *text);
+std::string BuildDescriptorSpecText(const ShaderBuildDescriptorSpec &spec);
+std::string BuildPipelineConfigText(const MaterialCreateConfig &config);
+std::string BuildPipelineResultText(const CompileCompositorShadowBuildReport &report);
+std::string BuildSpirvHexText(const ShaderBinary &binary);
+std::string BuildBaselineCompareReportText(const CompileCompositorShadowBuildReport &report,
+                                           const char *material_name,
+                                           const bool direct_compile_success,
+                                           const char *direct_compile_summary);
+bool WriteCompileCompositorPreparedTreeInternal(const MaterialCreateInfo &mci,
+                                                const char *material_name,
+                                                const char *legacy_root);
+void AppendTrialBatchSummaryFields(std::string &text,
+                                  const CompileCompositorTrialBatchReport &report,
+                                  const bool markdown_list);
+std::string BuildTrialAggregateReportText(const std::filesystem::path &trial_root,
+                                         const CompileCompositorTrialBatchReport *trial_report);
 
 }//namespace hgl::graph::mtl
