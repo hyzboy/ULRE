@@ -173,6 +173,19 @@ static StaticMaterialDef MakeMinimalProductDef()
     return def;
 }
 
+static bool HasAnyBindingContract(const DescriptorBindingSlots &contract)
+{
+    for(size_t i=0;i<UBODescriptorSemanticCount;++i)
+        if(contract.ubos[i]!=0)
+            return true;
+
+    for(size_t i=0;i<SSBODescriptorSemanticCount;++i)
+        if(contract.ssbos[i]!=0)
+            return true;
+
+    return false;
+}
+
 static void TestBuildFailsWhenStageBitsIsZero()
 {
     ShaderBuildPipeline pipeline;
@@ -279,6 +292,9 @@ static void TestBuildProductForMinimalPipelineMaterial()
     CHECK_TRUE(mci->GetStageShader(ShaderStage::Vertex)->GetSPVSize() > 0);
     CHECK_TRUE(mci->GetStageShader(ShaderStage::Fragment)->GetSPVSize() > 0);
 
+    const VIAArray empty_input{};
+    CHECK_TRUE(!(mci->GetVertexShader()->GetInput() == empty_input));
+
     delete mci;
 }
 
@@ -302,6 +318,8 @@ static void TestBuildMaterialCreateInfoForSchemaAwareCompositor()
         "#version 450\nvoid main(){}\n",
         "#version 450\nlayout(location=0) out vec4 outColor; void main(){outColor=vec4(1.0);}\n");
 
+    PrintBuildResult("SchemaAwareCompositorProduct",result);
+
     CHECK_TRUE(result.success);
     CHECK_TRUE(result.value != nullptr);
 
@@ -312,10 +330,15 @@ static void TestBuildMaterialCreateInfoForSchemaAwareCompositor()
     CHECK_TRUE(mci->GetVertexShader() != nullptr);
     CHECK_TRUE(mci->GetStageShader(ShaderStage::Fragment) != nullptr);
     CHECK_TRUE(mci->GetDescriptorInfo().GetCount() > 0);
+    CHECK_TRUE(HasAnyBindingContract(mci->GetBindingContract()));
     CHECK_TRUE(mci->HasLocalToWorld());
+    CHECK_TRUE(!mci->GetLocalToWorld().enabled || mci->GetLocalToWorld().stage_bits != 0);
     CHECK_EQ((int)mci->GetMaterialInstance().schema, (int)ShaderDataSchema::Color4f);
     CHECK_TRUE(!mci->GetMaterialInstance().schema_file.empty());
+    CHECK_TRUE(mci->GetMaterialInstance().stride > 0);
+    CHECK_TRUE(mci->GetMaterialInstance().stage_bits != 0);
     CHECK_TRUE(!mci->GetShaderMap().IsEmpty());
+    CHECK_TRUE(!(mci->GetVertexShader()->GetInput() == VIAArray{}));
 
     delete mci;
 }
@@ -329,6 +352,8 @@ static void TestBuildProductParityForMaterialInstanceConfig()
 
     auto pipeline_result = pipeline.Build(cfg,&profile,&spec);
     CHECK_TRUE(pipeline_result.success);
+    CHECK_TRUE(pipeline_result.value.descriptor_count > 0);
+    CHECK_TRUE(HasAnyBindingContract(pipeline_result.value.binding_contract));
 
     MaterialBuilder builder(&cfg);
     CHECK_TRUE(builder.SetMaterialInstance(spec.material_instance_bytes,cfg.shader_stage_flag_bit));
