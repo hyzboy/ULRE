@@ -208,7 +208,9 @@ SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 
 # Material Compiler
 SET(MATERIAL_COMPILER_FILES ${SHADERGEN_INCLUDE_PATH}/CompositorCompiler.h
-                            CompositorCompiler.cpp)
+                            CompositorCompiler_TrialBatch.cpp
+                            CompositorCompiler_Artifact.cpp
+                            CompositorCompiler_Export.cpp)
 SOURCE_GROUP("Material Compiler" FILES ${MATERIAL_COMPILER_FILES})
 
 # Material Compiler / Requirements
