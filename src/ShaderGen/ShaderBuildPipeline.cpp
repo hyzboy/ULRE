@@ -424,9 +424,12 @@ static bool ApplyStaticMaterialDefToBuilder(
     constexpr uint32_t kBuilderStageBits = uint32_t(hgl::graph::ShaderStage::VertexFragment);
     uint32_t mi_stage_bits = uint32_t(hgl::graph::ShaderStage::Fragment);
 
-    if(def.ubo_descriptors)
+    const auto vertex_view = hgl::graph::mtl::BuildVertexDefFromStaticMaterialDef(def);
+    const auto fragment_view = hgl::graph::mtl::BuildFragmentDefFromStaticMaterialDef(def);
+
+    if(fragment_view.ubo_descriptors)
     {
-        for(const auto semantic:*def.ubo_descriptors)
+        for(const auto semantic:*fragment_view.ubo_descriptors)
         {
             if(!builder.AddUBOStruct(kBuilderStageBits, semantic))
             {
@@ -440,9 +443,9 @@ static bool ApplyStaticMaterialDefToBuilder(
         }
     }
 
-    if(def.ssbo_descriptors)
+    if(fragment_view.ssbo_descriptors)
     {
-        for(const auto semantic:*def.ssbo_descriptors)
+        for(const auto semantic:*fragment_view.ssbo_descriptors)
         {
             if(semantic == hgl::graph::mtl::SSBODescriptorSemantic::TransformData)
             {
@@ -477,9 +480,9 @@ static bool ApplyStaticMaterialDefToBuilder(
         }
     }
 
-    if(def.texture_samplers)
+    if(fragment_view.texture_samplers)
     {
-        for(const auto &[slot, descriptor] : *def.texture_samplers)
+        for(const auto &[slot, descriptor] : *fragment_view.texture_samplers)
         {
             if(!builder.AddTextureSampler(kBuilderStageBits,
                                           descriptor.sampler_type,
@@ -496,21 +499,21 @@ static bool ApplyStaticMaterialDefToBuilder(
         }
     }
 
-    if(def.vertex_entries)
+    if(vertex_view.vertex_entries)
     {
         if(auto *vsc = builder.GetVertexShader())
         {
-            for(uint32_t i=0;i<def.vertex_entry_count;++i)
+            for(uint32_t i=0;i<vertex_view.vertex_entry_count;++i)
             {
-                const auto &entry=def.vertex_entries[i];
+                const auto &entry=vertex_view.vertex_entries[i];
                 vsc->AddInput(entry.type, entry.attrib);
             }
         }
     }
 
-    if(def.shader_data_schema != hgl::graph::mtl::ShaderDataSchema::None)
+    if(fragment_view.shader_data_schema != hgl::graph::mtl::ShaderDataSchema::None)
     {
-        const auto &schema_info = hgl::graph::mtl::GetShaderDataSchemaInfo(def.shader_data_schema);
+        const auto &schema_info = hgl::graph::mtl::GetShaderDataSchemaInfo(fragment_view.shader_data_schema);
 
         if(schema_info.byte_size==0 || !schema_info.glsl_schema_file || !*schema_info.glsl_schema_file)
         {
@@ -522,7 +525,7 @@ static bool ApplyStaticMaterialDefToBuilder(
             return false;
         }
 
-        if(!builder.SetMaterialInstance(def.shader_data_schema, schema_info, mi_stage_bits))
+        if(!builder.SetMaterialInstance(fragment_view.shader_data_schema, schema_info, mi_stage_bits))
         {
             AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
                                                     hgl::graph::ShaderGenErrorCode::InvalidConfig,
@@ -546,9 +549,11 @@ static bool ApplyFinalGLSLToBuilder(
     std::string final_vs_glsl = vs_glsl;
     std::string final_fs_glsl = fs_glsl;
 
-    if(def.shader_data_schema != hgl::graph::mtl::ShaderDataSchema::None)
+    const auto fragment_view = hgl::graph::mtl::BuildFragmentDefFromStaticMaterialDef(def);
+
+    if(fragment_view.shader_data_schema != hgl::graph::mtl::ShaderDataSchema::None)
     {
-        const std::string schema_include = BuildSchemaIncludeText(def.shader_data_schema);
+        const std::string schema_include = BuildSchemaIncludeText(fragment_view.shader_data_schema);
         if(schema_include.empty())
         {
             AppendBuildMaterialCreateInfoDiagnostic(diagnostics,

@@ -77,4 +77,38 @@ struct StaticMaterialDef
     ShaderDataSchema            shader_data_schema = ShaderDataSchema::None;
 };
 
+struct StaticVertexDefView
+{
+    PrimitiveType primitive_type = PrimitiveType::Triangles;
+    const FixedVertexEntry *vertex_entries = nullptr;
+    uint32_t vertex_entry_count = 0;
+};
+
+struct StaticFragmentDefView
+{
+    const UBOSemanticSet *ubo_descriptors = nullptr;
+    const SSBOSemanticSet *ssbo_descriptors = nullptr;
+    const StaticTextureSamplerDescriptors *texture_samplers = nullptr;
+    ShaderDataSchema shader_data_schema = ShaderDataSchema::None;
+};
+
+inline StaticVertexDefView BuildVertexDefFromStaticMaterialDef(const StaticMaterialDef &def) noexcept
+{
+    StaticVertexDefView view{};
+    view.primitive_type = def.primitive_type;
+    view.vertex_entries = def.vertex_entries;
+    view.vertex_entry_count = def.vertex_entry_count;
+    return view;
+}
+
+inline StaticFragmentDefView BuildFragmentDefFromStaticMaterialDef(const StaticMaterialDef &def) noexcept
+{
+    StaticFragmentDefView view{};
+    view.ubo_descriptors = def.ubo_descriptors;
+    view.ssbo_descriptors = def.ssbo_descriptors;
+    view.texture_samplers = def.texture_samplers;
+    view.shader_data_schema = def.shader_data_schema;
+    return view;
+}
+
 }//namespace hgl::graph::mtl
