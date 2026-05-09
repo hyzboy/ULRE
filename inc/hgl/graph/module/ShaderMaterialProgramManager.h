@@ -80,6 +80,16 @@ struct MaterialInstanceAcquireStats
     uint64_t created = 0;
 };
 
+struct MaterialKeyAxisMismatchStats
+{
+    uint64_t total = 0;
+    uint64_t def_id = 0;
+    uint64_t schema = 0;
+    uint64_t glsl_version = 0;
+    uint64_t vk_version = 0;
+    uint64_t spv_version = 0;
+};
+
 constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;//GetBitOffset((uint32_t)VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)+1;
 
 GRAPH_MODULE_CLASS(ShaderMaterialProgramManager)
@@ -110,6 +120,14 @@ private:
     // Step 3: material_by_key diagnostics
     std::atomic<uint64_t> by_key_hits             {0};
 
+    // MaterialKey axis mismatch diagnostics (aggregate counters)
+    std::atomic<uint64_t> key_axis_mismatch_total {0};
+    std::atomic<uint64_t> key_axis_mismatch_def_id {0};
+    std::atomic<uint64_t> key_axis_mismatch_schema {0};
+    std::atomic<uint64_t> key_axis_mismatch_glsl {0};
+    std::atomic<uint64_t> key_axis_mismatch_vk {0};
+    std::atomic<uint64_t> key_axis_mismatch_spv {0};
+
     // Fallback material for error handling (initialized on first use)
     ShaderMaterialProgram *fallback_material = nullptr;
 
@@ -121,6 +139,8 @@ private:
     friend class GraphModuleManager;
 
 private: // Helper methods with integrated DebugUtils
+
+    void RecordMaterialKeyAxisMismatch(uint32_t mismatch_mask);
 
     ShaderMaterialProgram *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
     ShaderMaterialProgram *CreateMaterial(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);   ///<基于内置材质ID创建2D材质
@@ -272,6 +292,18 @@ public: // Acquire stats
         return s;
     }
 
+    MaterialKeyAxisMismatchStats GetMaterialKeyAxisMismatchStats() const
+    {
+        MaterialKeyAxisMismatchStats s;
+        s.total = key_axis_mismatch_total.load();
+        s.def_id = key_axis_mismatch_def_id.load();
+        s.schema = key_axis_mismatch_schema.load();
+        s.glsl_version = key_axis_mismatch_glsl.load();
+        s.vk_version = key_axis_mismatch_vk.load();
+        s.spv_version = key_axis_mismatch_spv.load();
+        return s;
+    }
+
     void ResetAcquireStats()
     {
         acquire_material_requests.store(0);
@@ -283,6 +315,13 @@ public: // Acquire stats
         acquire_mi_requests.store(0);
         acquire_mi_created.store(0);
         by_key_hits.store(0);
+
+        key_axis_mismatch_total.store(0);
+        key_axis_mismatch_def_id.store(0);
+        key_axis_mismatch_schema.store(0);
+        key_axis_mismatch_glsl.store(0);
+        key_axis_mismatch_vk.store(0);
+        key_axis_mismatch_spv.store(0);
     }
 
     void DumpKeyMapDiagnostics() const;
