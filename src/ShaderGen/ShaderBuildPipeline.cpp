@@ -14,6 +14,24 @@
 
 namespace
 {
+struct VertexShaderProduct
+{
+    std::string source;
+    hgl::graph::ShaderStage stage = hgl::graph::ShaderStage::Vertex;
+};
+
+struct FragmentShaderProduct
+{
+    std::string source;
+    hgl::graph::ShaderStage stage = hgl::graph::ShaderStage::Fragment;
+};
+
+struct MaterialShaderProduct
+{
+    VertexShaderProduct vertex;
+    FragmentShaderProduct fragment;
+};
+
 static bool BuildMaterialInstanceSchemaSnippet(const hgl::graph::mtl::MaterialInstanceBlock &material_instance,
                                                std::string &snippet,
                                                hgl::graph::ShaderGenDiagnostic &diagnostic)
@@ -546,8 +564,9 @@ static bool ApplyFinalGLSLToBuilder(
     const std::string &fs_glsl,
     std::vector<hgl::graph::ShaderGenDiagnostic> &diagnostics)
 {
-    std::string final_vs_glsl = vs_glsl;
-    std::string final_fs_glsl = fs_glsl;
+    MaterialShaderProduct shader_product{};
+    shader_product.vertex.source = vs_glsl;
+    shader_product.fragment.source = fs_glsl;
 
     const auto fragment_view = hgl::graph::mtl::BuildFragmentDefFromStaticMaterialDef(def);
 
@@ -564,15 +583,17 @@ static bool ApplyFinalGLSLToBuilder(
             return false;
         }
 
-        final_vs_glsl = hgl::graph::internal::InjectAfterVersion(final_vs_glsl, schema_include);
-        final_fs_glsl = hgl::graph::internal::InjectAfterVersion(final_fs_glsl, schema_include);
+        shader_product.vertex.source = hgl::graph::internal::InjectAfterVersion(shader_product.vertex.source,
+                                                                                 schema_include);
+        shader_product.fragment.source = hgl::graph::internal::InjectAfterVersion(shader_product.fragment.source,
+                                                                                   schema_include);
     }
 
     if(auto *vert = builder.GetVertexShader())
-        vert->SetFinalGLSL(final_vs_glsl);
+        vert->SetFinalGLSL(shader_product.vertex.source);
 
     if(auto *frag = builder.GetStageShader(hgl::graph::ShaderStage::Fragment))
-        frag->SetFinalGLSL(final_fs_glsl);
+        frag->SetFinalGLSL(shader_product.fragment.source);
 
     return true;
 }
@@ -868,17 +889,12 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
 
     state=ShaderBuildState::DescriptorLayoutFinalized;
 
-    ShaderCompileRequest request{};
-    request.profile=*profile;
-    request.vulkan_version=0;
-    request.spv_version=0;
-
+    MaterialShaderProduct shader_product{};
     ShaderGenDiagnostic source_diagnostic{};
 
     if(config.shader_stage_flag_bit&uint32_t(ShaderStage::Vertex))
     {
-        request.stage=ShaderStage::Vertex;
-        if(!BuildVertexShaderSource(result.value.material_instance,request.source,source_diagnostic))
+        if(!BuildVertexShaderSource(result.value.material_instance,shader_product.vertex.source,source_diagnostic))
         {
             result.success=false;
             result.value.final_state=ShaderBuildState::Failed;
@@ -886,17 +902,33 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
             return result;
         }
     }
-    else
+
     if(config.shader_stage_flag_bit&uint32_t(ShaderStage::Fragment))
     {
-        request.stage=ShaderStage::Fragment;
-        if(!BuildFragmentShaderSource(result.value.material_instance,request.source,source_diagnostic))
+        if(!BuildFragmentShaderSource(result.value.material_instance,shader_product.fragment.source,source_diagnostic))
         {
             result.success=false;
             result.value.final_state=ShaderBuildState::Failed;
             result.diagnostics.push_back(source_diagnostic);
             return result;
         }
+    }
+
+    ShaderCompileRequest request{};
+    request.profile=*profile;
+    request.vulkan_version=0;
+    request.spv_version=0;
+
+    if(!shader_product.vertex.source.empty())
+    {
+        request.stage=ShaderStage::Vertex;
+        request.source=shader_product.vertex.source;
+    }
+    else
+    if(!shader_product.fragment.source.empty())
+    {
+        request.stage=ShaderStage::Fragment;
+        request.source=shader_product.fragment.source;
     }
 
     if(request.source.empty())
