@@ -107,15 +107,15 @@ CompileCompositorRouteDecision ResolveCompileCompositorRouteDecision(const Shade
 {
     CompileCompositorRouteDecision decision{};
     decision.resolved_route = ResolveShaderBuildRoute(switch_config);
-    decision.will_use_legacy_now = (decision.resolved_route == ShaderBuildRoute::LegacyMaterialCreateInfo);
+    decision.will_use_legacy_now = false;
     decision.pipeline_trial_requested = false;
     decision.fallback_to_legacy = false;
-    decision.rationale = decision.will_use_legacy_now
-        ? "Legacy route selected explicitly by shader build switch config."
-        : "Pipeline route is the default production path for CompileCompositorMaterial.";
+    decision.rationale = (decision.resolved_route == ShaderBuildRoute::Pipeline)
+        ? "Pipeline route is the default production path for CompileCompositorMaterial."
+        : "Legacy route selected explicitly by shader build switch config.";
     return decision;
 }
-
+ 
 std::string GetCompileCompositorRouteDecisionSummary(const CompileCompositorRouteDecision &decision)
 {
     std::string text;

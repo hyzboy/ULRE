@@ -2,6 +2,7 @@
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/MaterialBuilder.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
+#include <hgl/mtl/Material2DCreateConfig.h>
 #include <hgl/mtl/DescriptorSemanticRegistry.h>
 
 #include "GLSLCompiler.h"
@@ -408,6 +409,95 @@ static void TestBuildProductParityForMaterialInstanceConfig()
     delete legacy_mci;
 }
 
+static void TestBuild2DFactoryPathsUsePipelineCompile()
+{
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+
+    Material2DCreateConfig vertex_cfg(PrimitiveType::Triangles,hgl::graph::CoordinateSystem2D::NDC,IncludeL2W::Without);
+    vertex_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+    static FixedVertexEntry vertex_entries[] =
+    {
+        { VAT_VEC2, VertexAttrib::Position }
+    };
+    static UBOSemanticSet ubos{};
+    static SSBOSemanticSet ssbos{};
+    static StaticTextureSamplerDescriptors samplers{};
+
+    StaticMaterialDef def{};
+    def.name = "2DFactoryPipelineSmoke";
+    def.primitive_type = PrimitiveType::Triangles;
+    def.vertex_entries = vertex_entries;
+    def.vertex_entry_count = 1;
+    def.ubo_descriptors = &ubos;
+    def.ssbo_descriptors = &ssbos;
+    def.texture_samplers = &samplers;
+
+    auto pipeline = ShaderBuildPipeline{};
+    auto result = pipeline.BuildProduct(
+        def,
+        vertex_cfg,
+        &profile,
+        "#version 450\nvoid main(){}\n",
+        "#version 450\nlayout(location=0) out vec4 outColor; void main(){outColor=vec4(1.0);}\n");
+
+    CHECK_TRUE(result.success);
+    CHECK_TRUE(result.value != nullptr);
+    if(!result.success || !result.value)
+        return;
+
+    CHECK_TRUE(result.value->GetVertexShader() != nullptr);
+    CHECK_TRUE(result.value->GetStageShader(ShaderStage::Fragment) != nullptr);
+    CHECK_TRUE(!result.value->GetShaderMap().IsEmpty());
+    delete result.value;
+}
+
+static void TestBuildText2DConfigIsAcceptedByPipelineProduct()
+{
+    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    Text2DMaterialCreateConfig text_cfg;
+    text_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+    static FixedVertexEntry vertex_entries[] =
+    {
+        { VAT_IVEC2, VertexAttrib::Position }
+    };
+    static UBOSemanticSet ubos{};
+    static SSBOSemanticSet ssbos{};
+    static StaticTextureSamplerDescriptors samplers =
+    {
+        { SamplerSlot::Text, MakeStaticTextureSamplerDescriptor(SamplerType::Sampler2D) }
+    };
+
+    StaticMaterialDef def{};
+    def.name = "Text2DPipelineSmoke";
+    def.primitive_type = PrimitiveType::Triangles;
+    def.vertex_entries = vertex_entries;
+    def.vertex_entry_count = 1;
+    def.ubo_descriptors = &ubos;
+    def.ssbo_descriptors = &ssbos;
+    def.texture_samplers = &samplers;
+    def.shader_data_schema = ShaderDataSchema::TextColor;
+
+    auto pipeline = ShaderBuildPipeline{};
+    auto result = pipeline.BuildProduct(
+        def,
+        text_cfg,
+        &profile,
+        "#version 450\nvoid main(){}\n",
+        "#version 450\nlayout(location=0) out vec4 outColor; void main(){outColor=vec4(1.0);}\n");
+
+    CHECK_TRUE(result.success);
+    CHECK_TRUE(result.value != nullptr);
+    if(!result.success || !result.value)
+        return;
+
+    CHECK_TRUE(result.value->GetVertexShader() != nullptr);
+    CHECK_TRUE(result.value->GetStageShader(ShaderStage::Fragment) != nullptr);
+    CHECK_EQ((int)result.value->GetMaterialInstance().schema, (int)ShaderDataSchema::TextColor);
+    delete result.value;
+}
+
 int main()
 {
     if(!hgl::graph::InitShaderCompiler())
@@ -426,6 +516,8 @@ int main()
     TestBuildProductForMinimalPipelineMaterial();
     TestBuildMaterialCreateInfoForSchemaAwareCompositor();
     TestBuildProductParityForMaterialInstanceConfig();
+    TestBuild2DFactoryPathsUsePipelineCompile();
+    TestBuildText2DConfigIsAcceptedByPipelineProduct();
 
     hgl::graph::CloseShaderCompiler();
     return g_failures;
