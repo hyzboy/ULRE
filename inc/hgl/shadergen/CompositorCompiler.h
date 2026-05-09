@@ -149,14 +149,5 @@ bool RunCompileCompositorBaselineCompare(const char *material_name,
 bool WriteCompileCompositorTrialAggregateReport(const char *trial_root = "build/shadergen_trial",
                                                const CompileCompositorTrialBatchReport *report = nullptr);
 std::string GetCompileCompositorTrialBatchSummary(const CompileCompositorTrialBatchReport &report);
-CompileCompositorTrialBatchReport RunCompileCompositorTrialBatch(const contract::PhysicalDeviceProfileLite *profile,
-                                                                 const std::vector<CompileCompositorTrialBatchItem> &items,
-                                                                 const char *trial_root = "build/shadergen_trial",
-                                                                 bool run_baseline_compare_script = true);
-CompileCompositorTrialBatchReport RunCompileCompositorBuiltinCandidateTrialBatch(const contract::PhysicalDeviceProfileLite *profile,
-                                                                                 const char *trial_root = "build/shadergen_trial",
-                                                                                 bool run_baseline_compare_script = true);
-
-// diagnostics may also contain non-fatal inference mismatch warnings on success.
 
 }//namespace hgl::graph::mtl

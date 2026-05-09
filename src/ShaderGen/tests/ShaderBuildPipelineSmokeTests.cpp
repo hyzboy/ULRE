@@ -720,114 +720,50 @@ static void TestCompileCompositorTrialBatchSummary()
     CHECK_TRUE(summary.find("legacy_success_count=1")!=std::string::npos);
     CHECK_TRUE(summary.find("aggregate_report_written=true")!=std::string::npos);
 }
-
-static void TestCompileCompositorTrialBatch()
-{
-    Material3DCreateConfig cfg(PrimitiveType::Triangles,
-                               IncludeCamera::With,
-                               IncludeL2W::With,
-                               IncludeSky::Without);
-    cfg.material_instance = true;
-    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
-
-    PhysicalDeviceProfileLite profile = MakeBasicProfile();
-    const StaticMaterialDef def = MakeSchemaAwareCompositorDef();
-
-    CompileCompositorTrialBatchItem item{};
-    item.def = &def;
-    item.vs_glsl = "#version 450\nvoid main(){}\n";
-    item.fs_glsl = "#version 450\nlayout(location=0) out vec4 outColor; void main(){outColor=vec4(1.0);}\n";
-    item.config = &cfg;
-    item.material_name_override = "SchemaAwareSmokeBatch";
-
-    std::vector<CompileCompositorTrialBatchItem> items;
-    items.push_back(item);
-
-    const auto report = RunCompileCompositorTrialBatch(&profile,
-                                                       items,
-                                                       "build/shadergen_trial",
-                                                       false);
-
-    CHECK_EQ(report.total_count, size_t(1));
-    CHECK_EQ(report.legacy_success_count, size_t(1));
-    CHECK_EQ(report.pipeline_trial_success_count, size_t(1));
-    CHECK_EQ(report.baseline_report_count, size_t(1));
-    CHECK_EQ(report.baseline_compare_success_count, size_t(0));
-    CHECK_TRUE(report.aggregate_report_written);
-
-    std::ifstream pipeline_ifs("build/shadergen_trial/pipeline/SchemaAwareSmokeBatch/result_summary.txt",std::ios::in);
-    CHECK_TRUE(pipeline_ifs.is_open());
-
-    std::ifstream legacy_ifs("build/shadergen_trial/legacy/SchemaAwareSmokeBatch/descriptor_info.txt",std::ios::in);
-    CHECK_TRUE(legacy_ifs.is_open());
-
-    std::ifstream batch_report_ifs("build/shadergen_trial/reports/SchemaAwareSmokeBatch_baseline_compare.md",std::ios::in);
-    CHECK_TRUE(batch_report_ifs.is_open());
-}
-
-static void TestCompileCompositorBuiltinCandidateTrialBatchSummary()
-{
-    PhysicalDeviceProfileLite profile = MakeBasicProfile();
-    const auto report = RunCompileCompositorBuiltinCandidateTrialBatch(&profile,
-                                                                       "build/shadergen_trial",
-                                                                       false);
-
-    CHECK_TRUE(report.total_count >= size_t(2));
-    CHECK_TRUE(report.pipeline_trial_success_count >= size_t(2));
-    CHECK_TRUE(report.aggregate_report_written);
-    CHECK_EQ(report.total_count,
-             report.pipeline_trial_success_count + report.pipeline_trial_failure_count);
-    CHECK_EQ(report.total_count,
-             report.legacy_success_count + report.legacy_failure_count);
-
-    const std::string summary = GetCompileCompositorTrialBatchSummary(report);
-    CHECK_TRUE(summary.find("total_count=")!=std::string::npos);
-    CHECK_TRUE(summary.find("legacy_failure_count=")!=std::string::npos);
-    CHECK_TRUE(summary.find("pipeline_trial_failure_count=")!=std::string::npos);
-
-    std::ifstream aggregate_ifs("build/shadergen_trial/reports/baseline_compare.md",std::ios::in);
-    CHECK_TRUE(aggregate_ifs.is_open());
-
-    std::string aggregate_text((std::istreambuf_iterator<char>(aggregate_ifs)),
-                               std::istreambuf_iterator<char>());
-    CHECK_TRUE(aggregate_text.find("## Trial Batch Summary")!=std::string::npos);
-    CHECK_TRUE(aggregate_text.find("### Legacy Failed Materials")!=std::string::npos);
-    CHECK_TRUE(aggregate_text.find("### Pipeline Trial Failed Materials")!=std::string::npos);
-
-    std::ifstream gizmo_report_ifs("build/shadergen_trial/reports/Gizmo3D_baseline_compare.md",std::ios::in);
-    CHECK_TRUE(gizmo_report_ifs.is_open());
-
-    std::ifstream billboard_dynamic_report_ifs("build/shadergen_trial/reports/BillboardDynamic_baseline_compare.md",std::ios::in);
-    CHECK_TRUE(billboard_dynamic_report_ifs.is_open());
-
-    std::ifstream pure_color_2d_report_ifs("build/shadergen_trial/reports/PureColor2D_baseline_compare.md",std::ios::in);
-    CHECK_TRUE(pure_color_2d_report_ifs.is_open());
-
-    std::ifstream vertex_color_3d_report_ifs("build/shadergen_trial/reports/VertexColor3D_baseline_compare.md",std::ios::in);
-    CHECK_TRUE(vertex_color_3d_report_ifs.is_open());
-
-    std::ifstream vertex_luminance_2d_report_ifs("build/shadergen_trial/reports/VertexLuminance2D_baseline_compare.md",std::ios::in);
-    CHECK_TRUE(vertex_luminance_2d_report_ifs.is_open());
-
-    std::ifstream sky_minimal_report_ifs("build/shadergen_trial/reports/SkyMinimal_baseline_compare.md",std::ios::in);
-    CHECK_TRUE(sky_minimal_report_ifs.is_open());
-
-    std::ifstream terrain_grid_report_ifs("build/shadergen_trial/reports/TerrainGrid_baseline_compare.md",std::ios::in);
-    CHECK_TRUE(terrain_grid_report_ifs.is_open());
-
-    std::ifstream checkerboard_report_ifs("build/shadergen_trial/reports/Checkerboard3D_baseline_compare.md",std::ios::in);
-    CHECK_TRUE(checkerboard_report_ifs.is_open());
-
-    std::ifstream fullscreen_triangle_report_ifs("build/shadergen_trial/reports/FullscreenTriangle_baseline_compare.md",std::ios::in);
-    CHECK_TRUE(fullscreen_triangle_report_ifs.is_open());
-
-    std::ifstream text2d_report_ifs("build/shadergen_trial/reports/Text2D_baseline_compare.md",std::ios::in);
-    CHECK_TRUE(text2d_report_ifs.is_open());
-
-    std::ifstream standard_pipeline_ifs("build/shadergen_trial/pipeline/Standard_v1/result_summary.txt",std::ios::in);
-    CHECK_TRUE(standard_pipeline_ifs.is_open());
-}
-
+//
+//static void TestCompileCompositorTrialBatch()
+//{
+//    Material3DCreateConfig cfg(PrimitiveType::Triangles,
+//                               IncludeCamera::With,
+//                               IncludeL2W::With,
+//                               IncludeSky::Without);
+//    cfg.material_instance = true;
+//    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+//
+//    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+//    const StaticMaterialDef def = MakeSchemaAwareCompositorDef();
+//
+//    CompileCompositorTrialBatchItem item{};
+//    item.def = &def;
+//    item.vs_glsl = "#version 450\nvoid main(){}\n";
+//    item.fs_glsl = "#version 450\nlayout(location=0) out vec4 outColor; void main(){outColor=vec4(1.0);}\n";
+//    item.config = &cfg;
+//    item.material_name_override = "SchemaAwareSmokeBatch";
+//
+//    std::vector<CompileCompositorTrialBatchItem> items;
+//    items.push_back(item);
+//
+//    const auto report = RunCompileCompositorTrialBatch(&profile,
+//                                                       items,
+//                                                       "build/shadergen_trial",
+//                                                       false);
+//
+//    CHECK_EQ(report.total_count, size_t(1));
+//    CHECK_EQ(report.legacy_success_count, size_t(1));
+//    CHECK_EQ(report.pipeline_trial_success_count, size_t(1));
+//    CHECK_EQ(report.baseline_report_count, size_t(1));
+//    CHECK_EQ(report.baseline_compare_success_count, size_t(0));
+//    CHECK_TRUE(report.aggregate_report_written);
+//
+//    std::ifstream pipeline_ifs("build/shadergen_trial/pipeline/SchemaAwareSmokeBatch/result_summary.txt",std::ios::in);
+//    CHECK_TRUE(pipeline_ifs.is_open());
+//
+//    std::ifstream legacy_ifs("build/shadergen_trial/legacy/SchemaAwareSmokeBatch/descriptor_info.txt",std::ios::in);
+//    CHECK_TRUE(legacy_ifs.is_open());
+//
+//    std::ifstream batch_report_ifs("build/shadergen_trial/reports/SchemaAwareSmokeBatch_baseline_compare.md",std::ios::in);
+//    CHECK_TRUE(batch_report_ifs.is_open());
+//}
 static void TestCompileCompositorRouteDecisionKeepsLegacyWhenPipelineRequested()
 {
     ShaderBuildSwitchConfig switch_config{};
@@ -1344,8 +1280,7 @@ int main()
     TestCompileCompositorBaselineCompareCommand();
     TestCompileCompositorTrialAggregateReport();
     TestCompileCompositorTrialBatchSummary();
-    TestCompileCompositorTrialBatch();
-    TestCompileCompositorBuiltinCandidateTrialBatchSummary();
+    //TestCompileCompositorTrialBatch();
     TestDescriptorParityWithLegacyForMinimalConfig();
     TestDescriptorParityWithLegacyForFragmentConfig();
     TestDescriptorParityWithLegacyForTextureSamplerOverrideConfig();
