@@ -103,18 +103,6 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const Material3DCreateConfig *config = nullptr);
 
 /**
- * CompileCompositorMaterial — 2D 材质重载
- *
- * 保留的 2D 便捷重载，内部直接转发到 base config 路径。
- */
-MaterialCreateInfo *CompileCompositorMaterial(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const StaticMaterialDef &    def,
-    const std::string &         vs_glsl,
-    const std::string &         fs_glsl,
-    const Material2DCreateConfig *config);
-
-/**
  * Resort descriptors, build layout contract, emit layout/sampler defines,
  * and inject them into the VS/FS GLSL stored in @p mci.
  *
