@@ -33,6 +33,18 @@
 
 namespace hgl::graph::mtl
 {
+void AppendTrialBatchSummaryFields(std::string &text,
+                                  const CompileCompositorTrialBatchReport &report,
+                                  const bool markdown_list);
+std::string BuildTrialAggregateReportText(const std::filesystem::path &trial_root,
+                                          const CompileCompositorTrialBatchReport *trial_report);
+std::string BuildBaselineCompareReportText(const CompileCompositorShadowBuildReport &report,
+                                           const char *material_name,
+                                           const bool direct_compile_success,
+                                           const char *direct_compile_summary);
+// Keep only shared helper implementations in this file.
+// Trial/baseline public entry points live in CompositorCompiler_TrialSupport.cpp
+
 bool ResolveConfiguredCameraRequirement(const Material3DCreateConfig &cfg)
     {
         if (cfg.effective_feature_mask != 0)
@@ -222,41 +234,6 @@ bool WriteTextFile(const std::filesystem::path &path,const std::string &text)
         return ofs.good();
     }
 
-void AppendTrialBatchSummaryFields(std::string &text,
-                                   const CompileCompositorTrialBatchReport &report,
-                                   const bool markdown_list)
-    {
-        const char *separator = markdown_list ? "- " : ", ";
-        const char *line_end = markdown_list ? "\n" : "";
-        const char *value_prefix = markdown_list ? "`" : "";
-        const char *value_suffix = markdown_list ? "`" : "";
-
-        auto append_one = [&](const char *name, const std::string &value)
-        {
-            if(!text.empty() && !markdown_list)
-                text += separator;
-            else
-            if(markdown_list)
-                text += separator;
-
-            text += name;
-            text += "=";
-            text += value_prefix;
-            text += value;
-            text += value_suffix;
-            text += line_end;
-        };
-
-        append_one("total_count",std::to_string(report.total_count));
-        append_one("legacy_success_count",std::to_string(report.legacy_success_count));
-        append_one("legacy_failure_count",std::to_string(report.legacy_failure_count));
-        append_one("pipeline_trial_success_count",std::to_string(report.pipeline_trial_success_count));
-        append_one("pipeline_trial_failure_count",std::to_string(report.pipeline_trial_failure_count));
-        append_one("baseline_report_count",std::to_string(report.baseline_report_count));
-        append_one("baseline_compare_success_count",std::to_string(report.baseline_compare_success_count));
-        append_one("aggregate_report_written",report.aggregate_report_written ? "true" : "false");
-    }
-
 std::string BuildShadowDiagnosticsText(const CompileCompositorShadowBuildReport &report,
                                        const char *material_name)
     {
@@ -277,90 +254,6 @@ std::string BuildShadowDiagnosticsText(const CompileCompositorShadowBuildReport 
             text += diag.message;
             text += "\n";
         }
-
-        return text;
-    }
-
-std::string BuildTrialAggregateReportText(const std::filesystem::path &trial_root,
-                                          const CompileCompositorTrialBatchReport *trial_report)
-    {
-        const std::filesystem::path reports_dir=trial_root/"reports";
-        std::string text;
-        text += "# ShaderGen 试运行汇总报告（自动生成）\n\n";
-        text += "- TrialRoot: `";
-        text += trial_root.string();
-        text += "`\n\n";
-
-        if(trial_report)
-        {
-            text += "## Trial Batch Summary\n\n";
-            AppendTrialBatchSummaryFields(text,*trial_report,true);
-            text += "\n";
-
-            text += "### Direct Compile Failed Materials\n\n";
-
-            if(trial_report->legacy_failed_materials.empty())
-            {
-                text += "- `<none>`\n\n";
-            }
-            else
-            {
-                for(const auto &material_name:trial_report->legacy_failed_materials)
-                {
-                    text += "- `";
-                    text += material_name;
-                    text += "`\n";
-                }
-
-                text += "\n";
-            }
-
-            text += "### Pipeline Trial Failed Materials\n\n";
-
-            if(trial_report->pipeline_trial_failed_materials.empty())
-            {
-                text += "- `<none>`\n\n";
-            }
-            else
-            {
-                for(const auto &material_name:trial_report->pipeline_trial_failed_materials)
-                {
-                    text += "- `";
-                    text += material_name;
-                    text += "`\n";
-                }
-
-                text += "\n";
-            }
-        }
-
-        text += "## Per-Material Baseline Reports\n\n";
-
-        bool has_any=false;
-        std::error_code ec;
-        if(std::filesystem::exists(reports_dir,ec))
-        {
-            for(const auto &entry:std::filesystem::directory_iterator(reports_dir,ec))
-            {
-                if(ec)
-                    break;
-
-                if(!entry.is_regular_file())
-                    continue;
-
-                const auto filename=entry.path().filename().string();
-                if(filename.find("_baseline_compare.md")==std::string::npos)
-                    continue;
-
-                has_any=true;
-                text += "- `";
-                text += filename;
-                text += "`\n";
-            }
-        }
-
-        if(!has_any)
-            text += "- `<none>`\n";
 
         return text;
     }
@@ -568,187 +461,6 @@ std::string BuildSpirvHexText(const ShaderBinary &binary)
         return text;
     }
 
-std::string BuildBaselineCompareReportText(const CompileCompositorShadowBuildReport &report,
-                                           const char *material_name,
-                                           const bool direct_compile_success,
-                                           const char *direct_compile_summary)
-    {
-        std::string text;
-        text.reserve(1024);
-        text += "# ShaderGen 基线对比报告（自动生成）\n\n";
-        text += "- Material: `";
-        text += material_name ? material_name : "<unnamed>";
-        text += "`\n";
-        text += "- Direct compile: `";
-        text += direct_compile_success ? "success" : "failed";
-        text += "`\n";
-        text += "- Pipeline shadow compile: `";
-        text += report.result.success ? "success" : "failed";
-        text += "`\n\n";
-        text += "## Route-Switch Readiness\n\n";
-        text += "- Readiness: `";
-        text += report.summary;
-        text += "`\n\n";
-        text += "## Direct Compile 摘要\n\n";
-        text += "- DirectCompileSummary: `";
-        text += direct_compile_summary ? direct_compile_summary : (direct_compile_success ? "compile succeeded" : "compile failed");
-        text += "`\n\n";
-        text += "## Shadow Diagnostics\n\n";
-
-        if(report.result.diagnostics.empty())
-        {
-            text += "- `<none>`\n";
-        }
-        else
-        {
-            for(const auto &diag:report.result.diagnostics)
-            {
-                text += "- `";
-                text += diag.subject;
-                text += "`: ";
-                text += diag.message;
-                text += "\n";
-            }
-        }
-
-        return text;
-    }
-
-void EmitCompileCompositorShadowTrialArtifacts(const CompileCompositorShadowBuildReport &shadow_report,
-                                               const char *material_name)
-{
-    std::fprintf(stderr,
-        "[CompileCompositorMaterial] material=%s pipeline_shadow: %s\n",
-        material_name ? material_name : "<unnamed>",
-        shadow_report.summary.empty() ? "<empty>" : shadow_report.summary.c_str());
-
-    if(WriteCompileCompositorShadowBuildArtifacts(shadow_report,material_name))
-    {
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s pipeline_shadow_artifacts=build/shadergen_trial/reports\n",
-            material_name ? material_name : "<unnamed>");
-    }
-    else
-    {
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s pipeline_shadow_artifacts_write_failed\n",
-            material_name ? material_name : "<unnamed>");
-    }
-
-    if(WriteCompileCompositorShadowPipelineTree(shadow_report,material_name))
-    {
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s pipeline_shadow_tree=build/shadergen_trial/pipeline\n",
-            material_name ? material_name : "<unnamed>");
-    }
-    else
-    {
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s pipeline_shadow_tree_write_failed\n",
-            material_name ? material_name : "<unnamed>");
-    }
-}
-
-void EmitCompileCompositorFailureAndTrialArtifacts(const CompileCompositorShadowBuildReport &shadow_report,
-                                                   const bool has_shadow_report,
-                                                   const char *material_name,
-                                                   const char *failure_text,
-                                                   const char *baseline_summary)
-{
-    if(has_shadow_report)
-    {
-        WriteCompileCompositorTrialBaselineReport(shadow_report,
-                                                  material_name,
-                                                  false,
-                                                  baseline_summary);
-    }
-
-    std::fprintf(stderr,
-        "[CompileCompositorMaterial] material=%s failed: %s\n",
-        material_name ? material_name : "<unnamed>",
-        failure_text ? failure_text : "<unknown>");
-}
-
-void EmitCompileCompositorSuccessAndTrialArtifacts(const CompileCompositorShadowBuildReport &shadow_report,
-                                                   const bool has_shadow_report,
-                                                   const MaterialCreateInfo &mci,
-                                                   const char *material_name,
-                                                   const char *baseline_summary)
-{
-    if(has_shadow_report)
-    {
-        if(WriteCompileCompositorTrialBaselineReport(shadow_report,
-                                                     material_name,
-                                                     true,
-                                                     baseline_summary))
-        {
-            std::fprintf(stderr,
-                "[CompileCompositorMaterial] material=%s baseline_compare_report=build/shadergen_trial/reports\n",
-                material_name ? material_name : "<unnamed>");
-        }
-        else
-        {
-            std::fprintf(stderr,
-                "[CompileCompositorMaterial] material=%s baseline_compare_report_write_failed\n",
-                material_name ? material_name : "<unnamed>");
-        }
-
-        if(RunCompileCompositorBaselineCompare(material_name))
-        {
-            std::fprintf(stderr,
-                "[CompileCompositorMaterial] material=%s baseline_compare_script=build/shadergen_trial/reports\n",
-                material_name ? material_name : "<unnamed>");
-
-            if(WriteCompileCompositorTrialAggregateReport())
-            {
-                std::fprintf(stderr,
-                    "[CompileCompositorMaterial] material=%s baseline_compare_aggregate=build/shadergen_trial/reports/baseline_compare.md\n",
-                    material_name ? material_name : "<unnamed>");
-            }
-            else
-            {
-                std::fprintf(stderr,
-                    "[CompileCompositorMaterial] material=%s baseline_compare_aggregate_write_failed\n",
-                    material_name ? material_name : "<unnamed>");
-            }
-        }
-        else
-        {
-            std::fprintf(stderr,
-                "[CompileCompositorMaterial] material=%s baseline_compare_script_failed\n",
-                material_name ? material_name : "<unnamed>");
-        }
-    }
-
-    if(WriteCompileCompositorLegacyTree(mci,material_name))
-    {
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s legacy_tree=build/shadergen_trial/legacy\n",
-            material_name ? material_name : "<unnamed>");
-    }
-    else
-    {
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s legacy_tree_write_failed\n",
-            material_name ? material_name : "<unnamed>");
-    }
-}
-
-void EmitCompileCompositorPrepareFailure(const CompileCompositorShadowBuildReport &shadow_report,
-                                         const bool has_shadow_report,
-                                         const char *material_name,
-                                         const std::string &diagnostics)
-{
-    const char *failure_text=diagnostics.empty() ? "<unknown>" : diagnostics.c_str();
-    const char *baseline_summary=diagnostics.empty() ? "ShaderBuildPipeline.PrepareMaterialCreateInfo failed" : diagnostics.c_str();
-
-    EmitCompileCompositorFailureAndTrialArtifacts(shadow_report,
-                                                  has_shadow_report,
-                                                  material_name,
-                                                  failure_text,
-                                                  baseline_summary);
-}
-
 bool WriteCompileCompositorShadowBuildArtifacts(const CompileCompositorShadowBuildReport &report,
                                                 const char *material_name,
                                                 const char *reports_dir)
@@ -950,6 +662,163 @@ bool HasPerMaterialDescriptor(const StaticMaterialDef &def)
     }
 
     return false;
+}
+
+void AppendTrialBatchSummaryFields(std::string &text,
+                                  const CompileCompositorTrialBatchReport &report,
+                                  const bool markdown_list)
+{
+    const char *separator = markdown_list ? "- " : ", ";
+    const char *line_end = markdown_list ? "\n" : "";
+    const char *value_prefix = markdown_list ? "`" : "";
+    const char *value_suffix = markdown_list ? "`" : "";
+
+    auto append_one = [&](const char *name, const std::string &value)
+    {
+        if(!text.empty() && !markdown_list)
+            text += separator;
+        else if(markdown_list)
+            text += separator;
+
+        text += name;
+        text += "=";
+        text += value_prefix;
+        text += value;
+        text += value_suffix;
+        text += line_end;
+    };
+
+    append_one("total_count",std::to_string(report.total_count));
+    append_one("legacy_success_count",std::to_string(report.legacy_success_count));
+    append_one("legacy_failure_count",std::to_string(report.legacy_failure_count));
+    append_one("pipeline_trial_success_count",std::to_string(report.pipeline_trial_success_count));
+    append_one("pipeline_trial_failure_count",std::to_string(report.pipeline_trial_failure_count));
+    append_one("baseline_report_count",std::to_string(report.baseline_report_count));
+    append_one("baseline_compare_success_count",std::to_string(report.baseline_compare_success_count));
+    append_one("aggregate_report_written",report.aggregate_report_written ? "true" : "false");
+}
+
+std::string BuildTrialAggregateReportText(const std::filesystem::path &trial_root,
+                                         const CompileCompositorTrialBatchReport *trial_report)
+{
+    const std::filesystem::path reports_dir=trial_root/"reports";
+    std::string text;
+    text += "# ShaderGen 试运行汇总报告（自动生成）\n\n";
+    text += "- TrialRoot: `";
+    text += trial_root.string();
+    text += "`\n\n";
+
+    if(trial_report)
+    {
+        text += "## Trial Batch Summary\n\n";
+        AppendTrialBatchSummaryFields(text,*trial_report,true);
+        text += "\n";
+
+        text += "### Direct Compile Failed Materials\n\n";
+        if(trial_report->legacy_failed_materials.empty())
+        {
+            text += "- `<none>`\n\n";
+        }
+        else
+        {
+            for(const auto &material_name:trial_report->legacy_failed_materials)
+            {
+                text += "- `";
+                text += material_name;
+                text += "`\n";
+            }
+            text += "\n";
+        }
+
+        text += "### Pipeline Trial Failed Materials\n\n";
+        if(trial_report->pipeline_trial_failed_materials.empty())
+        {
+            text += "- `<none>`\n\n";
+        }
+        else
+        {
+            for(const auto &material_name:trial_report->pipeline_trial_failed_materials)
+            {
+                text += "- `";
+                text += material_name;
+                text += "`\n";
+            }
+            text += "\n";
+        }
+    }
+
+    text += "## Per-Material Baseline Reports\n\n";
+
+    bool has_any=false;
+    std::error_code ec;
+    if(std::filesystem::exists(reports_dir,ec))
+    {
+        for(const auto &entry:std::filesystem::directory_iterator(reports_dir,ec))
+        {
+            if(ec)
+                break;
+            if(!entry.is_regular_file())
+                continue;
+
+            const auto filename=entry.path().filename().string();
+            if(filename.find("_baseline_compare.md")==std::string::npos)
+                continue;
+
+            has_any=true;
+            text += "- `";
+            text += filename;
+            text += "`\n";
+        }
+    }
+
+    if(!has_any)
+        text += "- `<none>`\n";
+
+    return text;
+}
+
+std::string BuildBaselineCompareReportText(const CompileCompositorShadowBuildReport &report,
+                                           const char *material_name,
+                                           const bool direct_compile_success,
+                                           const char *direct_compile_summary)
+{
+    std::string text;
+    text.reserve(1024);
+    text += "# ShaderGen 基线对比报告（自动生成）\n\n";
+    text += "- Material: `";
+    text += material_name ? material_name : "<unnamed>";
+    text += "`\n";
+    text += "- Direct compile: `";
+    text += direct_compile_success ? "success" : "failed";
+    text += "`\n";
+    text += "- Pipeline shadow compile: `";
+    text += report.result.success ? "success" : "failed";
+    text += "`\n\n";
+    text += "## Route-Switch Readiness\n\n";
+    text += "- Readiness: `";
+    text += report.summary;
+    text += "`\n\n";
+    text += "## Direct Compile 摘要\n\n";
+    text += "- DirectCompileSummary: `";
+    text += direct_compile_summary ? direct_compile_summary : (direct_compile_success ? "compile succeeded" : "compile failed");
+    text += "`\n\n";
+    text += "## Shadow Diagnostics\n\n";
+
+    if(report.result.diagnostics.empty())
+        text += "- `<none>`\n";
+    else
+    {
+        for(const auto &diag:report.result.diagnostics)
+        {
+            text += "- `";
+            text += diag.subject;
+            text += "`: ";
+            text += diag.message;
+            text += "\n";
+        }
+    }
+
+    return text;
 }
 
 }  // namespace hgl::graph::mtl

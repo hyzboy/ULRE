@@ -110,9 +110,7 @@ CompileCompositorRouteDecision ResolveCompileCompositorRouteDecision(const Shade
     decision.will_use_legacy_now = false;
     decision.pipeline_trial_requested = false;
     decision.fallback_to_legacy = false;
-    decision.rationale = (decision.resolved_route == ShaderBuildRoute::Pipeline)
-        ? "Pipeline route is the default production path for CompileCompositorMaterial."
-        : "Legacy route selected explicitly by shader build switch config.";
+    decision.rationale = "Pipeline route is the default production path for CompileCompositorMaterial.";
     return decision;
 }
  

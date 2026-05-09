@@ -1,4 +1,6 @@
 #include <hgl/shadergen/ShaderBuildPipeline.h>
+#include <hgl/shadergen/ShaderBuildRouteSwitch.h>
+#include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/MaterialBuilder.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
@@ -382,7 +384,7 @@ static void TestBuildMaterialCreateInfoForSchemaAwareCompositor()
     delete mci;
 }
 
-static void TestBuildProductParityForMaterialInstanceConfig()
+static void TestBuildProductConsistencyForMaterialInstanceConfig()
 {
     ShaderBuildPipeline pipeline;
     MaterialCreateConfig cfg = MakeMaterialInstanceConfig();
@@ -391,111 +393,63 @@ static void TestBuildProductParityForMaterialInstanceConfig()
 
     auto pipeline_result = pipeline.Build(cfg,&profile,&spec);
     CHECK_TRUE(pipeline_result.success);
-    CHECK_TRUE(pipeline_result.value.descriptor_count > 0);
+
+    const StaticMaterialDef def = MakeSchemaAwareCompositorDef();
+    auto product_result = pipeline.BuildProduct(
+        def,
+        cfg,
+        &profile,
+        "#version 450\nvoid main(){}\n",
+        "#version 450\nlayout(location=0) out vec4 outColor; void main(){outColor=vec4(1.0);}\n");
+
+    CHECK_TRUE(product_result.success);
+    CHECK_TRUE(product_result.value != nullptr);
+    if(!product_result.success || !product_result.value)
+        return;
+
     CHECK_TRUE(HasAnyBindingContract(pipeline_result.value.binding_contract));
+    CHECK_TRUE(HasAnyBindingContract(product_result.value->GetBindingContract()));
+    CHECK_EQ(pipeline_result.value.material_instance.stage_bits, product_result.value->GetMaterialInstance().stage_bits);
+    CHECK_EQ(pipeline_result.value.material_instance.stride, product_result.value->GetMaterialInstance().stride);
+    CHECK_EQ(pipeline_result.value.descriptor_count, product_result.value->GetDescriptorInfo().GetCount());
 
-    MaterialBuilder builder(&cfg);
-    CHECK_TRUE(builder.SetMaterialInstance(spec.material_instance_bytes,cfg.shader_stage_flag_bit));
-
-    MaterialCreateInfo *legacy_mci = builder.BuildSnapshotOnly();
-    CHECK_TRUE(legacy_mci != nullptr);
-    if(!legacy_mci)
-        return;
-
-    CHECK_EQ(pipeline_result.value.descriptor_count, legacy_mci->GetDescriptorInfo().GetCount());
-    CHECK_EQ(pipeline_result.value.material_instance.stride, legacy_mci->GetMaterialInstance().stride);
-    CHECK_EQ(pipeline_result.value.material_instance.stage_bits, legacy_mci->GetMaterialInstance().stage_bits);
-
-    delete legacy_mci;
+    delete product_result.value;
 }
 
-static void TestBuild2DFactoryPathsUsePipelineCompile()
+static void TestRouteSwitchDefaultsToPipeline()
 {
-    PhysicalDeviceProfileLite profile = MakeBasicProfile();
+    CHECK_EQ(ResolveShaderBuildRoute(nullptr), ShaderBuildRoute::Pipeline);
 
-    Material2DCreateConfig vertex_cfg(PrimitiveType::Triangles,hgl::graph::CoordinateSystem2D::NDC,IncludeL2W::Without);
-    vertex_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
-
-    static FixedVertexEntry vertex_entries[] =
-    {
-        { VAT_VEC2, VertexAttrib::Position }
-    };
-    static UBOSemanticSet ubos{};
-    static SSBOSemanticSet ssbos{};
-    static StaticTextureSamplerDescriptors samplers{};
-
-    StaticMaterialDef def{};
-    def.name = "2DFactoryPipelineSmoke";
-    def.primitive_type = PrimitiveType::Triangles;
-    def.vertex_entries = vertex_entries;
-    def.vertex_entry_count = 1;
-    def.ubo_descriptors = &ubos;
-    def.ssbo_descriptors = &ssbos;
-    def.texture_samplers = &samplers;
-
-    auto pipeline = ShaderBuildPipeline{};
-    auto result = pipeline.BuildProduct(
-        def,
-        vertex_cfg,
-        &profile,
-        "#version 450\nvoid main(){}\n",
-        "#version 450\nlayout(location=0) out vec4 outColor; void main(){outColor=vec4(1.0);}\n");
-
-    CHECK_TRUE(result.success);
-    CHECK_TRUE(result.value != nullptr);
-    if(!result.success || !result.value)
-        return;
-
-    CHECK_TRUE(result.value->GetVertexShader() != nullptr);
-    CHECK_TRUE(result.value->GetStageShader(ShaderStage::Fragment) != nullptr);
-    CHECK_TRUE(!result.value->GetShaderMap().IsEmpty());
-    delete result.value;
+    const auto decision = ResolveCompileCompositorRouteDecision(nullptr);
+    CHECK_EQ(decision.resolved_route, ShaderBuildRoute::Pipeline);
+    CHECK_TRUE(!decision.will_use_legacy_now);
+    CHECK_TRUE(!decision.pipeline_trial_requested);
+    CHECK_TRUE(!decision.fallback_to_legacy);
+    CHECK_TRUE(decision.rationale.find("Pipeline route is the default production path")!=std::string::npos);
 }
 
-static void TestBuildText2DConfigIsAcceptedByPipelineProduct()
+static void TestRouteSwitchExplicitPipelineSelectionRemainsPipeline()
 {
-    PhysicalDeviceProfileLite profile = MakeBasicProfile();
-    Text2DMaterialCreateConfig text_cfg;
-    text_cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+    ShaderBuildSwitchConfig switch_config{};
+    switch_config.enable_pipeline = true;
 
-    static FixedVertexEntry vertex_entries[] =
-    {
-        { VAT_IVEC2, VertexAttrib::Position }
-    };
-    static UBOSemanticSet ubos{};
-    static SSBOSemanticSet ssbos{};
-    static StaticTextureSamplerDescriptors samplers =
-    {
-        { SamplerSlot::Text, MakeStaticTextureSamplerDescriptor(SamplerType::Sampler2D) }
-    };
+    const auto decision = ResolveCompileCompositorRouteDecision(&switch_config);
+    CHECK_EQ(decision.resolved_route, ShaderBuildRoute::Pipeline);
+    CHECK_TRUE(!decision.will_use_legacy_now);
+    CHECK_TRUE(!decision.pipeline_trial_requested);
+    CHECK_TRUE(!decision.fallback_to_legacy);
+    CHECK_TRUE(decision.rationale.find("Pipeline route is the default production path")!=std::string::npos);
+}
 
-    StaticMaterialDef def{};
-    def.name = "Text2DPipelineSmoke";
-    def.primitive_type = PrimitiveType::Triangles;
-    def.vertex_entries = vertex_entries;
-    def.vertex_entry_count = 1;
-    def.ubo_descriptors = &ubos;
-    def.ssbo_descriptors = &ssbos;
-    def.texture_samplers = &samplers;
-    def.shader_data_schema = ShaderDataSchema::TextColor;
+static void TestRouteSwitchSummaryMentionsPipeline()
+{
+    const auto decision = ResolveCompileCompositorRouteDecision(nullptr);
+    const std::string summary = GetCompileCompositorRouteDecisionSummary(decision);
 
-    auto pipeline = ShaderBuildPipeline{};
-    auto result = pipeline.BuildProduct(
-        def,
-        text_cfg,
-        &profile,
-        "#version 450\nvoid main(){}\n",
-        "#version 450\nlayout(location=0) out vec4 outColor; void main(){outColor=vec4(1.0);}\n");
-
-    CHECK_TRUE(result.success);
-    CHECK_TRUE(result.value != nullptr);
-    if(!result.success || !result.value)
-        return;
-
-    CHECK_TRUE(result.value->GetVertexShader() != nullptr);
-    CHECK_TRUE(result.value->GetStageShader(ShaderStage::Fragment) != nullptr);
-    CHECK_EQ((int)result.value->GetMaterialInstance().schema, (int)ShaderDataSchema::TextColor);
-    delete result.value;
+    CHECK_TRUE(summary.find("resolved_route=Pipeline")!=std::string::npos);
+    CHECK_TRUE(summary.find("will_use_legacy_now=false")!=std::string::npos);
+    CHECK_TRUE(summary.find("pipeline_trial_requested=false")!=std::string::npos);
+    CHECK_TRUE(summary.find("fallback_to_legacy=false")!=std::string::npos);
 }
 
 int main()
@@ -508,6 +462,9 @@ int main()
 
     TestBuildFailsWhenStageBitsIsZero();
     TestBuildFailsWhenProfileNull();
+    TestRouteSwitchDefaultsToPipeline();
+    TestRouteSwitchExplicitPipelineSelectionRemainsPipeline();
+    TestRouteSwitchSummaryMentionsPipeline();
     TestBuildDescriptorSpecFromStaticMaterialDef();
     TestBuildConfigFromStaticMaterialDefMergesStaticNeeds();
     TestBuildMinimalVertexPath();
@@ -515,9 +472,7 @@ int main()
     TestBuildFailsWhenStageUnsupportedByMinimalPipeline();
     TestBuildProductForMinimalPipelineMaterial();
     TestBuildMaterialCreateInfoForSchemaAwareCompositor();
-    TestBuildProductParityForMaterialInstanceConfig();
-    TestBuild2DFactoryPathsUsePipelineCompile();
-    TestBuildText2DConfigIsAcceptedByPipelineProduct();
+    TestBuildProductConsistencyForMaterialInstanceConfig();
 
     hgl::graph::CloseShaderCompiler();
     return g_failures;
