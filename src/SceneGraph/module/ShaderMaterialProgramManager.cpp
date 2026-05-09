@@ -22,6 +22,7 @@
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/RecipeToKey.h>
+#include<hgl/mtl/ShaderProgramKey.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdio>
 #include<cstdint>
@@ -221,6 +222,24 @@ namespace
                 static_cast<unsigned long long>(request_mask),
                 prog->GetName().c_str());
         }
+    }
+
+    static void LogProgramKeyTriplet(const char *phase,
+                                     const mtl::MaterialKey &material_key,
+                                     const graph::PrimitiveType primitive,
+                                     const bool has_local_to_world) noexcept
+    {
+        const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(material_key.variant,
+                                                                       primitive,
+                                                                       has_local_to_world);
+        const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(material_key.variant);
+
+        std::fprintf(stderr,
+            "[ShaderMaterialProgramManager] key_triplet(%s): material=0x%016llx vertex=0x%016llx fragment=0x%016llx\n",
+            phase ? phase : "unknown",
+            static_cast<unsigned long long>(material_key.Hash()),
+            static_cast<unsigned long long>(vkey.Hash()),
+            static_cast<unsigned long long>(fkey.Hash()));
     }
 
 }//namespace
@@ -700,6 +719,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
         static_cast<unsigned>(recipe.preset),
         static_cast<unsigned>(recipe.pipeline));
 
+    LogProgramKeyTriplet("GetOrCreateProgramByKey.request",
+                         key,
+                         recipe.prim,
+                         recipe.l2w);
+
     // Fast path: key already in cache (populated by ResolveOrCreateProgram on first call)
     auto it = material_by_key.find(key);
     if (it != material_by_key.end())
@@ -995,6 +1019,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 
     const mtl::MaterialKey baseline_key = BuildMaterialKeyFromVariantKey(key);
 
+    LogProgramKeyTriplet("CreateMaterial.2D.baseline",
+                         baseline_key,
+                         cfg->prim,
+                         cfg->local_to_world);
+
     // Fast path: material_by_key
     {
         auto it = material_by_key.find(baseline_key);
@@ -1022,6 +1051,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     {
         mtl::MaterialKey enriched_key = baseline_key;
         EnrichMaterialKeyWithCreateInfoAxes(enriched_key, *mci);
+
+        LogProgramKeyTriplet("CreateMaterial.2D.enriched",
+                             enriched_key,
+                             cfg->prim,
+                             cfg->local_to_world);
 
         uint8_t flags = 0;
         for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
@@ -1081,6 +1115,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 
     const mtl::MaterialKey baseline_key = BuildMaterialKeyFromVariantKey(cache_key);
 
+    LogProgramKeyTriplet("CreateMaterial.3D.baseline",
+                         baseline_key,
+                         cfg->prim,
+                         cfg->local_to_world);
+
     // Fast path: material_by_key
     {
         auto it = material_by_key.find(baseline_key);
@@ -1128,6 +1167,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     {
         mtl::MaterialKey enriched_key = baseline_key;
         EnrichMaterialKeyWithCreateInfoAxes(enriched_key, *mci);
+
+        LogProgramKeyTriplet("CreateMaterial.3D.enriched",
+                             enriched_key,
+                             cfg->prim,
+                             cfg->local_to_world);
 
         uint8_t flags = 0;
         for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)

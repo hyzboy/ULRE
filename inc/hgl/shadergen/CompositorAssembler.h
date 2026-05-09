@@ -63,6 +63,17 @@ namespace hgl::graph
 
     private:
 
+        bool AssembleVertexShaderSource(const mtl::MaterialVariantKey &key,
+                                        const mtl::MaterialVariantDesc &desc,
+                                        std::string &out_source,
+                                        std::string &out_error) const;
+
+        bool AssembleFragmentShaderSource(const mtl::MaterialVariantKey &key,
+                                          const mtl::MaterialVariantDesc &desc,
+                                          const std::string &surface_rel,
+                                          std::string &out_source,
+                                          std::string &out_error) const;
+
         std::string InjectDefines(const std::string &source, const mtl::MaterialVariantKey &key) const;
 
         /// Read a file from shader_lib_path_, with per-instance caching. Thread-safe.

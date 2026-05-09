@@ -336,6 +336,73 @@ namespace hgl::graph
         return hgl::graph::internal::InjectAfterVersion(source, defines);
     }
 
+    bool CompositorAssembler::AssembleVertexShaderSource(const mtl::MaterialVariantKey &key,
+                                                         const mtl::MaterialVariantDesc &desc,
+                                                         std::string &out_source,
+                                                         std::string &out_error) const
+    {
+        out_source.clear();
+        out_error.clear();
+
+        if (!desc.vs_template_path.empty() && !hgl::graph::IsCompositorTemplatePath(desc.vs_template_path))
+        {
+            std::string read_error;
+            if (!ReadFileCached(desc.vs_template_path, out_source, read_error))
+            {
+                out_error = BuildReadFailureMessage(
+                    "VS", desc.vs_template_path, shader_lib_path_ + "/" + desc.vs_template_path, read_error);
+                return false;
+            }
+        }
+        else
+        {
+            out_source = BuildVSFromKey(key);
+        }
+
+        if (out_source.empty())
+        {
+            out_error = BuildPreprocessFailureMessage(
+                "VS", desc.vs_template_path, "BuildVSFromKey produced empty source", out_source);
+            return false;
+        }
+
+        return true;
+    }
+
+    bool CompositorAssembler::AssembleFragmentShaderSource(const mtl::MaterialVariantKey &key,
+                                                           const mtl::MaterialVariantDesc &desc,
+                                                           const std::string &surface_rel,
+                                                           std::string &out_source,
+                                                           std::string &out_error) const
+    {
+        out_source.clear();
+        out_error.clear();
+
+        if (!desc.fs_template_path.empty() && !hgl::graph::IsCompositorTemplatePath(desc.fs_template_path))
+        {
+            std::string read_error;
+            if (!ReadFileCached(desc.fs_template_path, out_source, read_error))
+            {
+                out_error = BuildReadFailureMessage(
+                    "FS", desc.fs_template_path, shader_lib_path_ + "/" + desc.fs_template_path, read_error);
+                return false;
+            }
+        }
+        else
+        {
+            out_source = BuildFSFromKey(key, key.blend_mode, surface_rel);
+        }
+
+        if (out_source.empty())
+        {
+            out_error = BuildPreprocessFailureMessage(
+                "FS", desc.fs_template_path, "BuildFSFromKey produced empty source", out_source);
+            return false;
+        }
+
+        return true;
+    }
+
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         const mtl::MaterialVariantKey  &key,
         const mtl::MaterialVariantDesc &desc
@@ -347,46 +414,15 @@ namespace hgl::graph
             ? hgl::graph::GetSurfaceFunctionPath(key.surface_type)
             : desc.surface_function_path;
 
-        // VS: non-compositor custom path (e.g. 2D shader files) → ReadFileCached;
-        //     empty or compositor/ prefix → key-derived generation.
         std::string vs_source;
-        if (!desc.vs_template_path.empty() && !hgl::graph::IsCompositorTemplatePath(desc.vs_template_path))
-        {
-            std::string read_error;
-            if (!ReadFileCached(desc.vs_template_path, vs_source, read_error))
-            {
-                return MakeError(BuildReadFailureMessage(
-                    "VS", desc.vs_template_path, shader_lib_path_ + "/" + desc.vs_template_path, read_error));
-            }
-        }
-        else
-        {
-            vs_source = BuildVSFromKey(key);
-        }
+        std::string vs_error;
+        if(!AssembleVertexShaderSource(key, desc, vs_source, vs_error))
+            return MakeError(std::move(vs_error));
 
-        // FS: same routing logic.
         std::string fs_source;
-        if (!desc.fs_template_path.empty() && !hgl::graph::IsCompositorTemplatePath(desc.fs_template_path))
-        {
-            std::string read_error;
-            if (!ReadFileCached(desc.fs_template_path, fs_source, read_error))
-            {
-                return MakeError(BuildReadFailureMessage(
-                    "FS", desc.fs_template_path, shader_lib_path_ + "/" + desc.fs_template_path, read_error));
-            }
-        }
-        else
-        {
-            fs_source = BuildFSFromKey(key, key.blend_mode, surface_rel);
-        }
-
-        if (vs_source.empty())
-            return MakeError(BuildPreprocessFailureMessage(
-                "VS", desc.vs_template_path, "BuildVSFromKey produced empty source", vs_source));
-
-        if (fs_source.empty())
-            return MakeError(BuildPreprocessFailureMessage(
-                "FS", desc.fs_template_path, "BuildFSFromKey produced empty source", fs_source));
+        std::string fs_error;
+        if(!AssembleFragmentShaderSource(key, desc, surface_rel, fs_source, fs_error))
+            return MakeError(std::move(fs_error));
 
         vs_source = InjectDefines(vs_source, key);
         fs_source = InjectDefines(fs_source, key);
