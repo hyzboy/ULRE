@@ -770,6 +770,46 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
     ShaderGenResult<ShaderBuildResult> result{};
 
     ShaderBuildState state=ShaderBuildState::Empty;
+    ShaderStage summary_stage = ShaderStage::Vertex;
+
+    struct BuildSummaryScope
+    {
+        ShaderGenResult<ShaderBuildResult> &result;
+        ShaderBuildState &state;
+        ShaderStage &summary_stage;
+
+        ~BuildSummaryScope()
+        {
+            if(result.value.final_state==ShaderBuildState::Empty)
+                result.value.final_state = result.success ? state : ShaderBuildState::Failed;
+
+            std::string first_error_subject;
+            for(const auto &d : result.diagnostics)
+            {
+                if(d.severity == ShaderGenSeverity::Error)
+                {
+                    first_error_subject = d.subject;
+                    break;
+                }
+            }
+
+            char summary[384] = {};
+            std::snprintf(summary,
+                          sizeof(summary),
+                          "success=%s final_state=%u binaries=%zu diagnostics=%zu first_error_subject=%s",
+                          result.success ? "true" : "false",
+                          static_cast<unsigned>(result.value.final_state),
+                          result.value.binaries.size(),
+                          result.diagnostics.size(),
+                          first_error_subject.empty() ? "<none>" : first_error_subject.c_str());
+
+            result.diagnostics.push_back({ShaderGenSeverity::Info,
+                                          ShaderGenErrorCode::None,
+                                          summary_stage,
+                                          "ShaderBuildPipeline.Summary",
+                                          summary});
+        }
+    } build_summary_scope{result,state,summary_stage};
 
     if(config.shader_stage_flag_bit==0)
     {
@@ -926,12 +966,14 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
     if(!shader_product.vertex.source.empty())
     {
         request.stage=ShaderStage::Vertex;
+        summary_stage = ShaderStage::Vertex;
         request.source=shader_product.vertex.source;
     }
     else
     if(!shader_product.fragment.source.empty())
     {
         request.stage=ShaderStage::Fragment;
+        summary_stage = ShaderStage::Fragment;
         request.source=shader_product.fragment.source;
     }
 
@@ -994,14 +1036,25 @@ ShaderGenResult<mtl::MaterialCreateInfo *> ShaderBuildPipeline::PrepareMaterialC
     ShaderGenResult<mtl::MaterialCreateInfo *> result{};
     result.value=nullptr;
 
-    if(vs_glsl.empty()||fs_glsl.empty())
+    if(vs_glsl.empty())
     {
         result.success=false;
         AppendBuildMaterialCreateInfoDiagnostic(result.diagnostics,
                                                 ShaderGenErrorCode::InvalidConfig,
                                                 ShaderStage::Vertex,
-                                                "ShaderBuildPipeline.PrepareMaterialCreateInfo",
-                                                "vs_glsl or fs_glsl is empty");
+                                                "ShaderBuildPipeline.PrepareMaterialCreateInfo.Source.Vertex",
+                                                "vs_glsl is empty");
+        return result;
+    }
+
+    if(fs_glsl.empty())
+    {
+        result.success=false;
+        AppendBuildMaterialCreateInfoDiagnostic(result.diagnostics,
+                                                ShaderGenErrorCode::InvalidConfig,
+                                                ShaderStage::Fragment,
+                                                "ShaderBuildPipeline.PrepareMaterialCreateInfo.Source.Fragment",
+                                                "fs_glsl is empty");
         return result;
     }
 
@@ -1011,12 +1064,30 @@ ShaderGenResult<mtl::MaterialCreateInfo *> ShaderBuildPipeline::PrepareMaterialC
 
     if(!ApplyStaticMaterialDefToBuilder(def,builder,result.diagnostics))
     {
+        if(result.diagnostics.empty())
+        {
+            AppendBuildMaterialCreateInfoDiagnostic(result.diagnostics,
+                                                    ShaderGenErrorCode::InvalidConfig,
+                                                    ShaderStage::Vertex,
+                                                    "ShaderBuildPipeline.PrepareMaterialCreateInfo.Builder.ApplyStaticDef",
+                                                    "failed to apply static material def");
+        }
+
         result.success=false;
         return result;
     }
 
     if(!ApplyFinalGLSLToBuilder(def,builder,vs_glsl,fs_glsl,result.diagnostics))
     {
+        if(result.diagnostics.empty())
+        {
+            AppendBuildMaterialCreateInfoDiagnostic(result.diagnostics,
+                                                    ShaderGenErrorCode::SourceGenerationFailed,
+                                                    ShaderStage::Vertex,
+                                                    "ShaderBuildPipeline.PrepareMaterialCreateInfo.Source.ApplyFinalGLSL",
+                                                    "failed to apply final GLSL to builder");
+        }
+
         result.success=false;
         return result;
     }
@@ -1080,18 +1151,28 @@ ShaderGenResult<mtl::MaterialCreateInfo *> ShaderBuildPipeline::BuildMaterialCre
         result.diagnostics.push_back({ShaderGenSeverity::Error,
                                       ShaderGenErrorCode::InvalidConfig,
                                       ShaderStage::Vertex,
-                                      "ShaderBuildPipeline.BuildMaterialCreateInfo",
+                                      "ShaderBuildPipeline.BuildMaterialCreateInfo.Config.Profile",
                                       "physical device profile is null"});
         return result;
     }
 
-    if(vs_glsl.empty() || fs_glsl.empty())
+    if(vs_glsl.empty())
     {
         result.diagnostics.push_back({ShaderGenSeverity::Error,
                                       ShaderGenErrorCode::InvalidConfig,
                                       ShaderStage::Vertex,
-                                      "ShaderBuildPipeline.BuildMaterialCreateInfo",
-                                      "vs_glsl or fs_glsl is empty"});
+                                      "ShaderBuildPipeline.BuildMaterialCreateInfo.Source.Vertex",
+                                      "vs_glsl is empty"});
+        return result;
+    }
+
+    if(fs_glsl.empty())
+    {
+        result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                      ShaderGenErrorCode::InvalidConfig,
+                                      ShaderStage::Fragment,
+                                      "ShaderBuildPipeline.BuildMaterialCreateInfo.Source.Fragment",
+                                      "fs_glsl is empty"});
         return result;
     }
 
@@ -1101,10 +1182,32 @@ ShaderGenResult<mtl::MaterialCreateInfo *> ShaderBuildPipeline::BuildMaterialCre
     builder.SetDevice(profile);
 
     if(!ApplyStaticMaterialDefToBuilder(def,builder,result.diagnostics))
+    {
+        if(result.diagnostics.empty())
+        {
+            result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                          ShaderGenErrorCode::InvalidConfig,
+                                          ShaderStage::Vertex,
+                                          "ShaderBuildPipeline.BuildMaterialCreateInfo.Builder.ApplyStaticDef",
+                                          "failed to apply static material def"});
+        }
+
         return result;
+    }
 
     if(!ApplyFinalGLSLToBuilder(def,builder,vs_glsl,fs_glsl,result.diagnostics))
+    {
+        if(result.diagnostics.empty())
+        {
+            result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                          ShaderGenErrorCode::SourceGenerationFailed,
+                                          ShaderStage::Vertex,
+                                          "ShaderBuildPipeline.BuildMaterialCreateInfo.Source.ApplyFinalGLSL",
+                                          "failed to apply final GLSL to builder"});
+        }
+
         return result;
+    }
 
     mtl::MaterialCreateInfo *mci = BuildCompiledMaterialCreateInfo(builder,result.diagnostics);
     if(!mci)
