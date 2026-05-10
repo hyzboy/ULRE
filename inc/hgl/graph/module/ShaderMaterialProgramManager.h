@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
+#include<hgl/graph/module/ShaderMaterialProgramStats.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKShaderModule.h>
@@ -13,9 +14,6 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <unordered_set>
-#include <mutex>
-#include <atomic>
 #include <cstdio>
 
 namespace hgl::graph{
@@ -66,54 +64,6 @@ struct MaterialInstanceSpec
     bool IsValid() const { return material != nullptr && domain != nullptr; }
 };
 
-struct MaterialAcquireStats
-{
-    uint64_t requests = 0;
-    uint64_t cache_lookups = 0;
-    uint64_t cache_hits = 0;
-    uint64_t cache_misses = 0;
-    uint64_t created = 0;
-    uint64_t fallback_used = 0;
-};
-
-struct MaterialInstanceAcquireStats
-{
-    uint64_t requests = 0;
-    uint64_t created = 0;
-};
-
-struct MaterialKeyAxisMismatchStats
-{
-    uint64_t total = 0;
-    uint64_t def_id = 0;
-    uint64_t schema = 0;
-    uint64_t glsl_version = 0;
-    uint64_t vk_version = 0;
-    uint64_t spv_version = 0;
-};
-
-struct ShaderProgramKeyCoverageStats
-{
-    uint64_t vertex_seen = 0;
-    uint64_t vertex_unique = 0;
-    uint64_t fragment_seen = 0;
-    uint64_t fragment_unique = 0;
-};
-
-struct ShaderProgramKeyShadowCacheStats
-{
-    uint64_t vertex_hits = 0;
-    uint64_t vertex_misses = 0;
-    uint64_t fragment_hits = 0;
-    uint64_t fragment_misses = 0;
-    uint64_t combined_hits = 0;
-    uint64_t combined_misses = 0;
-    uint64_t vertex_entries = 0;
-    uint64_t fragment_entries = 0;
-    uint64_t combined_pointer_match_hits = 0;
-    uint64_t combined_pointer_mismatch_hits = 0;
-};
-
 constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;//GetBitOffset((uint32_t)VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)+1;
 
 GRAPH_MODULE_CLASS(ShaderMaterialProgramManager)
@@ -131,45 +81,7 @@ private:
     // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainResourceBinding
     std::unordered_map<ResourceDomain *, std::vector<DomainResourceBinding *>> domain_bindings_map;
 
-    std::atomic<uint64_t> acquire_material_requests {0};
-    std::atomic<uint64_t> acquire_material_cache_lookups {0};
-    std::atomic<uint64_t> acquire_material_cache_hits {0};
-    std::atomic<uint64_t> acquire_material_cache_misses {0};
-    std::atomic<uint64_t> acquire_material_created {0};
-    std::atomic<uint64_t> acquire_fallback_used {0};
-
-    std::atomic<uint64_t> acquire_mi_requests {0};
-    std::atomic<uint64_t> acquire_mi_created {0};
-
-    // Step 3: material_by_key diagnostics
-    std::atomic<uint64_t> by_key_hits             {0};
-
-    // MaterialKey axis mismatch diagnostics (aggregate counters)
-    std::atomic<uint64_t> key_axis_mismatch_total {0};
-    std::atomic<uint64_t> key_axis_mismatch_def_id {0};
-    std::atomic<uint64_t> key_axis_mismatch_schema {0};
-    std::atomic<uint64_t> key_axis_mismatch_glsl {0};
-    std::atomic<uint64_t> key_axis_mismatch_vk {0};
-    std::atomic<uint64_t> key_axis_mismatch_spv {0};
-
-    // VS/FS key observability (Phase 6.1)
-    std::atomic<uint64_t> vertex_program_key_seen {0};
-    std::atomic<uint64_t> fragment_program_key_seen {0};
-    std::unordered_set<uint64_t> vertex_program_key_unique_hashes;
-    std::unordered_set<uint64_t> fragment_program_key_unique_hashes;
-    mutable std::mutex shader_program_key_stats_mutex;
-
-    // Phase 6.2 shadow caches (diagnostics-only; does not drive creation path)
-    std::unordered_map<uint64_t, ShaderMaterialProgram *> vertex_program_shadow_cache;
-    std::unordered_map<uint64_t, ShaderMaterialProgram *> fragment_program_shadow_cache;
-    std::atomic<uint64_t> shadow_vertex_hits {0};
-    std::atomic<uint64_t> shadow_vertex_misses {0};
-    std::atomic<uint64_t> shadow_fragment_hits {0};
-    std::atomic<uint64_t> shadow_fragment_misses {0};
-    std::atomic<uint64_t> shadow_combined_hits {0};
-    std::atomic<uint64_t> shadow_combined_misses {0};
-    std::atomic<uint64_t> shadow_combined_ptr_match_hits {0};
-    std::atomic<uint64_t> shadow_combined_ptr_mismatch_hits {0};
+    ShaderMaterialProgramStats stats;
 
     // Fallback material for error handling (initialized on first use)
     ShaderMaterialProgram *fallback_material = nullptr;
@@ -182,15 +94,6 @@ private:
     friend class GraphModuleManager;
 
 private: // Helper methods with integrated DebugUtils
-
-    void RecordMaterialKeyAxisMismatch(uint32_t mismatch_mask);
-    void RecordShaderProgramKeyCoverage(const mtl::VertexProgramKey &vkey,
-                                        const mtl::FragmentProgramKey &fkey);
-    void RecordShaderProgramShadowCacheLookup(const mtl::VertexProgramKey &vkey,
-                                              const mtl::FragmentProgramKey &fkey);
-    void RecordShaderProgramShadowCacheInsert(const mtl::VertexProgramKey &vkey,
-                                              const mtl::FragmentProgramKey &fkey,
-                                              ShaderMaterialProgram *program);
 
     ShaderMaterialProgram *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
     ShaderMaterialProgram *CreateMaterial(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);   ///<基于内置材质ID创建2D材质
@@ -297,7 +200,7 @@ public: // Override Release from GraphModule - cleanup all resources
 
         fallback_material = nullptr;
 
-        ResetAcquireStats();
+        stats.Reset();
     }
 
 public: //Shader
@@ -324,106 +227,71 @@ public: // Acquire stats
 
     MaterialAcquireStats GetMaterialAcquireStats() const
     {
-        MaterialAcquireStats s;
-        s.requests = acquire_material_requests.load();
-        s.cache_lookups = acquire_material_cache_lookups.load();
-        s.cache_hits = acquire_material_cache_hits.load();
-        s.cache_misses = acquire_material_cache_misses.load();
-        s.created = acquire_material_created.load();
-            s.fallback_used = acquire_fallback_used.load();
-        return s;
+        return stats.GetMaterialAcquireStats();
     }
 
     MaterialInstanceAcquireStats GetMaterialInstanceAcquireStats() const
     {
-        MaterialInstanceAcquireStats s;
-        s.requests = acquire_mi_requests.load();
-        s.created = acquire_mi_created.load();
-        return s;
+        return stats.GetMaterialInstanceAcquireStats();
     }
 
     MaterialKeyAxisMismatchStats GetMaterialKeyAxisMismatchStats() const
     {
-        MaterialKeyAxisMismatchStats s;
-        s.total = key_axis_mismatch_total.load();
-        s.def_id = key_axis_mismatch_def_id.load();
-        s.schema = key_axis_mismatch_schema.load();
-        s.glsl_version = key_axis_mismatch_glsl.load();
-        s.vk_version = key_axis_mismatch_vk.load();
-        s.spv_version = key_axis_mismatch_spv.load();
-        return s;
+        return stats.GetMaterialKeyAxisMismatchStats();
     }
 
     ShaderProgramKeyCoverageStats GetShaderProgramKeyCoverageStats() const
     {
-        ShaderProgramKeyCoverageStats s;
-        s.vertex_seen = vertex_program_key_seen.load();
-        s.fragment_seen = fragment_program_key_seen.load();
-
-        std::lock_guard<std::mutex> lock(shader_program_key_stats_mutex);
-        s.vertex_unique = static_cast<uint64_t>(vertex_program_key_unique_hashes.size());
-        s.fragment_unique = static_cast<uint64_t>(fragment_program_key_unique_hashes.size());
-        return s;
+        return stats.GetShaderProgramKeyCoverageStats();
     }
 
     ShaderProgramKeyShadowCacheStats GetShaderProgramKeyShadowCacheStats() const
     {
-        ShaderProgramKeyShadowCacheStats s;
-        s.vertex_hits = shadow_vertex_hits.load();
-        s.vertex_misses = shadow_vertex_misses.load();
-        s.fragment_hits = shadow_fragment_hits.load();
-        s.fragment_misses = shadow_fragment_misses.load();
-        s.combined_hits = shadow_combined_hits.load();
-        s.combined_misses = shadow_combined_misses.load();
-        s.combined_pointer_match_hits = shadow_combined_ptr_match_hits.load();
-        s.combined_pointer_mismatch_hits = shadow_combined_ptr_mismatch_hits.load();
-
-        std::lock_guard<std::mutex> lock(shader_program_key_stats_mutex);
-        s.vertex_entries = static_cast<uint64_t>(vertex_program_shadow_cache.size());
-        s.fragment_entries = static_cast<uint64_t>(fragment_program_shadow_cache.size());
-        return s;
+        return stats.GetShaderProgramKeyShadowCacheStats();
     }
 
     void ResetAcquireStats()
     {
-        acquire_material_requests.store(0);
-        acquire_material_cache_lookups.store(0);
-        acquire_material_cache_hits.store(0);
-        acquire_material_cache_misses.store(0);
-        acquire_material_created.store(0);
-            acquire_fallback_used.store(0);
-        acquire_mi_requests.store(0);
-        acquire_mi_created.store(0);
-        by_key_hits.store(0);
-
-        key_axis_mismatch_total.store(0);
-        key_axis_mismatch_def_id.store(0);
-        key_axis_mismatch_schema.store(0);
-        key_axis_mismatch_glsl.store(0);
-        key_axis_mismatch_vk.store(0);
-        key_axis_mismatch_spv.store(0);
-
-        vertex_program_key_seen.store(0);
-        fragment_program_key_seen.store(0);
-        {
-            std::lock_guard<std::mutex> lock(shader_program_key_stats_mutex);
-            vertex_program_key_unique_hashes.clear();
-            fragment_program_key_unique_hashes.clear();
-            vertex_program_shadow_cache.clear();
-            fragment_program_shadow_cache.clear();
-        }
-
-        shadow_vertex_hits.store(0);
-        shadow_vertex_misses.store(0);
-        shadow_fragment_hits.store(0);
-        shadow_fragment_misses.store(0);
-        shadow_combined_hits.store(0);
-        shadow_combined_misses.store(0);
-        shadow_combined_ptr_match_hits.store(0);
-        shadow_combined_ptr_mismatch_hits.store(0);
+        stats.Reset();
     }
 
     void DumpKeyMapDiagnostics() const;
+
+    void LogCreateMaterialFromRecordRequest(const uint32_t preset,
+                                            const uint32_t dim,
+                                            const uint32_t prim,
+                                            const bool l2w,
+                                            const uint32_t pipeline,
+                                            const uint64_t key_hash) const
+    {
+        stats.LogCreateMaterialFromRecordRequest(preset, dim, prim, l2w, pipeline, key_hash);
+    }
+
+    void LogCreateMaterialFromRecordBillboard(const int preset,
+                                              const int use_texture_array,
+                                              const int blend_mode) const
+    {
+        stats.LogCreateMaterialFromRecordBillboard(preset, use_texture_array, blend_mode);
+    }
+
+    void LogCreateMaterialFromRecord2D(const uint32_t prim,
+                                       const uint32_t preset) const
+    {
+        stats.LogCreateMaterialFromRecord2D(prim, preset);
+    }
+
+    void LogCreateMaterialFromRecord3D(const uint32_t prim,
+                                       const uint32_t preset,
+                                       const bool include_camera,
+                                       const bool include_sky) const
+    {
+        stats.LogCreateMaterialFromRecord3D(prim, preset, include_camera, include_sky);
+    }
+
+    void LogStatsLine(const std::string &line) const
+    {
+        stats.LogLine(line);
+    }
 
 public: //ShaderMaterialProgram
 

@@ -36,15 +36,6 @@ namespace hgl::graph{
 
 namespace
 {
-    enum : uint32_t
-    {
-        MATERIAL_KEY_MISMATCH_DEF_ID       = 1u << 0,
-        MATERIAL_KEY_MISMATCH_SCHEMA       = 1u << 1,
-        MATERIAL_KEY_MISMATCH_GLSL_VERSION = 1u << 2,
-        MATERIAL_KEY_MISMATCH_VK_VERSION   = 1u << 3,
-        MATERIAL_KEY_MISMATCH_SPV_VERSION  = 1u << 4,
-    };
-
     void CreateShaderStageList(ShaderStageCreateInfoList &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
@@ -152,7 +143,7 @@ namespace
         else
         if (request.def_id != mtl::kInvalidStaticMaterialDefId && dst.def_id != request.def_id)
         {
-            mismatch_mask |= MATERIAL_KEY_MISMATCH_DEF_ID;
+            mismatch_mask |= ShaderMaterialProgramStats::MATERIAL_KEY_MISMATCH_DEF_ID;
         }
 
         if (dst.schema == mtl::ShaderDataSchema::None)
@@ -163,7 +154,7 @@ namespace
         else
         if (request.schema != mtl::ShaderDataSchema::None && dst.schema != request.schema)
         {
-            mismatch_mask |= MATERIAL_KEY_MISMATCH_SCHEMA;
+            mismatch_mask |= ShaderMaterialProgramStats::MATERIAL_KEY_MISMATCH_SCHEMA;
         }
 
         if (dst.glsl_version == 0)
@@ -174,7 +165,7 @@ namespace
         else
         if (request.glsl_version != 0 && dst.glsl_version != request.glsl_version)
         {
-            mismatch_mask |= MATERIAL_KEY_MISMATCH_GLSL_VERSION;
+            mismatch_mask |= ShaderMaterialProgramStats::MATERIAL_KEY_MISMATCH_GLSL_VERSION;
         }
 
         if (dst.vk_version == 0)
@@ -185,7 +176,7 @@ namespace
         else
         if (request.vk_version != 0 && dst.vk_version != request.vk_version)
         {
-            mismatch_mask |= MATERIAL_KEY_MISMATCH_VK_VERSION;
+            mismatch_mask |= ShaderMaterialProgramStats::MATERIAL_KEY_MISMATCH_VK_VERSION;
         }
 
         if (dst.spv_version == 0)
@@ -196,151 +187,14 @@ namespace
         else
         if (request.spv_version != 0 && dst.spv_version != request.spv_version)
         {
-            mismatch_mask |= MATERIAL_KEY_MISMATCH_SPV_VERSION;
+            mismatch_mask |= ShaderMaterialProgramStats::MATERIAL_KEY_MISMATCH_SPV_VERSION;
         }
 
         if (out_mismatch_mask)
             *out_mismatch_mask = mismatch_mask;
     }
 
-    static void LogEffectiveFeatureMaskConsistency(const ShaderMaterialProgram *prog,
-                                                   const mtl::MaterialKey &request_key,
-                                                   const char *phase)
-    {
-        if(!prog)
-            return;
-
-        const uint64_t program_mask = prog->GetEffectiveFeatureMask();
-        const uint64_t request_mask = request_key.variant.effective_feature_mask;
-
-        if(program_mask != request_mask)
-        {
-            std::fprintf(stderr,
-                "[ShaderMaterialProgramManager] effective_feature_mask drift (%s): program=0x%016llx request=0x%016llx material='%s'\n",
-                phase ? phase : "unknown",
-                static_cast<unsigned long long>(program_mask),
-                static_cast<unsigned long long>(request_mask),
-                prog->GetName().c_str());
-        }
-    }
-
-    static void LogProgramKeyTriplet(const char *phase,
-                                     const mtl::MaterialKey &material_key,
-                                     const graph::PrimitiveType primitive,
-                                     const bool has_local_to_world) noexcept
-    {
-        const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(material_key.variant,
-                                                                       primitive,
-                                                                       has_local_to_world);
-        const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(material_key.variant);
-
-        std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] key_triplet(%s): material=0x%016llx vertex=0x%016llx fragment=0x%016llx\n",
-            phase ? phase : "unknown",
-            static_cast<unsigned long long>(material_key.Hash()),
-            static_cast<unsigned long long>(vkey.Hash()),
-            static_cast<unsigned long long>(fkey.Hash()));
-    }
-
 }//namespace
-
-void ShaderMaterialProgramManager::RecordMaterialKeyAxisMismatch(uint32_t mismatch_mask)
-{
-    if(mismatch_mask==0)
-        return;
-
-    key_axis_mismatch_total.fetch_add(1, std::memory_order_relaxed);
-
-    if(mismatch_mask & MATERIAL_KEY_MISMATCH_DEF_ID)
-        key_axis_mismatch_def_id.fetch_add(1, std::memory_order_relaxed);
-    if(mismatch_mask & MATERIAL_KEY_MISMATCH_SCHEMA)
-        key_axis_mismatch_schema.fetch_add(1, std::memory_order_relaxed);
-    if(mismatch_mask & MATERIAL_KEY_MISMATCH_GLSL_VERSION)
-        key_axis_mismatch_glsl.fetch_add(1, std::memory_order_relaxed);
-    if(mismatch_mask & MATERIAL_KEY_MISMATCH_VK_VERSION)
-        key_axis_mismatch_vk.fetch_add(1, std::memory_order_relaxed);
-    if(mismatch_mask & MATERIAL_KEY_MISMATCH_SPV_VERSION)
-        key_axis_mismatch_spv.fetch_add(1, std::memory_order_relaxed);
-}
-
-void ShaderMaterialProgramManager::RecordShaderProgramKeyCoverage(const mtl::VertexProgramKey &vkey,
-                                                                  const mtl::FragmentProgramKey &fkey)
-{
-    vertex_program_key_seen.fetch_add(1, std::memory_order_relaxed);
-    fragment_program_key_seen.fetch_add(1, std::memory_order_relaxed);
-
-    const uint64_t vhash = vkey.Hash();
-    const uint64_t fhash = fkey.Hash();
-
-    std::lock_guard<std::mutex> lock(shader_program_key_stats_mutex);
-    vertex_program_key_unique_hashes.insert(vhash);
-    fragment_program_key_unique_hashes.insert(fhash);
-}
-
-void ShaderMaterialProgramManager::RecordShaderProgramShadowCacheLookup(const mtl::VertexProgramKey &vkey,
-                                                                        const mtl::FragmentProgramKey &fkey)
-{
-    const uint64_t vhash = vkey.Hash();
-    const uint64_t fhash = fkey.Hash();
-
-    bool vhit = false;
-    bool fhit = false;
-    ShaderMaterialProgram *vprog = nullptr;
-    ShaderMaterialProgram *fprog = nullptr;
-
-    {
-        std::lock_guard<std::mutex> lock(shader_program_key_stats_mutex);
-
-        auto vit = vertex_program_shadow_cache.find(vhash);
-        if(vit != vertex_program_shadow_cache.end())
-        {
-            vhit = true;
-            vprog = vit->second;
-        }
-
-        auto fit = fragment_program_shadow_cache.find(fhash);
-        if(fit != fragment_program_shadow_cache.end())
-        {
-            fhit = true;
-            fprog = fit->second;
-        }
-    }
-
-    if(vhit) shadow_vertex_hits.fetch_add(1, std::memory_order_relaxed);
-    else     shadow_vertex_misses.fetch_add(1, std::memory_order_relaxed);
-
-    if(fhit) shadow_fragment_hits.fetch_add(1, std::memory_order_relaxed);
-    else     shadow_fragment_misses.fetch_add(1, std::memory_order_relaxed);
-
-    if(vhit && fhit)
-    {
-        shadow_combined_hits.fetch_add(1, std::memory_order_relaxed);
-
-        if(vprog == fprog && vprog != nullptr)
-            shadow_combined_ptr_match_hits.fetch_add(1, std::memory_order_relaxed);
-        else
-            shadow_combined_ptr_mismatch_hits.fetch_add(1, std::memory_order_relaxed);
-    }
-    else
-    {
-        shadow_combined_misses.fetch_add(1, std::memory_order_relaxed);
-    }
-}
-
-void ShaderMaterialProgramManager::RecordShaderProgramShadowCacheInsert(const mtl::VertexProgramKey &vkey,
-                                                                        const mtl::FragmentProgramKey &fkey,
-                                                                        ShaderMaterialProgram *program)
-{
-    if(!program)
-        return;
-
-    const uint64_t vhash = vkey.Hash();
-    const uint64_t fhash = fkey.Hash();
-
-    std::lock_guard<std::mutex> lock(shader_program_key_stats_mutex);
-    vertex_program_shadow_cache[vhash] = program;
-    fragment_program_shadow_cache[fhash] = program;
-}
 
 GRAPH_MODULE_CONSTRUCT(ShaderMaterialProgramManager)
 {
@@ -528,14 +382,12 @@ void ShaderMaterialProgramManager::ApplyMaterialFinalizePlan(ShaderMaterialProgr
 
     mtl->mi_schema     = finalize_plan.mi_schema;
 
-    std::fprintf(stderr,
-        "[ShaderMaterialProgramManager] Finalize material='%s' mi_bytes=%u mi_max=%u schema=%u schema_file=%s descriptor_sets=%zu\n",
-        mtl_name.c_str(),
-        finalize_plan.mi_data_bytes,
-        finalize_plan.mi_max_count,
-        static_cast<unsigned>(finalize_plan.mi_schema),
-        finalize_plan.mi_schema_file.empty() ? "<none>" : finalize_plan.mi_schema_file.c_str(),
-        finalize_plan.mp_set_types.size());
+    stats.LogMaterialFinalizeSummary(mtl_name,
+                                     finalize_plan.mi_data_bytes,
+                                     finalize_plan.mi_max_count,
+                                     static_cast<uint32_t>(finalize_plan.mi_schema),
+                                     finalize_plan.mi_schema_file,
+                                     finalize_plan.mp_set_types.size());
 }
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::TryInitializeFallbackMaterial()
@@ -553,9 +405,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::TryInitializeFallbackMateri
         return nullptr;
     }
 
-    std::fprintf(stdout,
-        "[ShaderMaterialProgramManager] Fallback material initialized: default checkerboard name=%s\n",
-        fallback_material->GetName().c_str());
+    stats.LogFallbackMaterialInitialized(fallback_material->GetName());
 
     return fallback_material;
 }
@@ -656,7 +506,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const AnsiSt
     }
 
     Add(mtl);
-    acquire_material_created.fetch_add(1);
+    stats.RecordMaterialCreated();
 
     // ShaderMaterialProgram is a C++ object managed by ShaderMaterialProgramManager, not a Vulkan object
     // No need to track with ObjectTracker
@@ -688,14 +538,12 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
 
     using namespace mtl;
 
-    std::fprintf(stderr,
-        "[ShaderMaterialProgramManager] CreateMaterialFromRecord: preset=%u dim=%u prim=%u l2w=%u pipeline=%u key_hash=0x%llx\n",
-        static_cast<unsigned>(rec.preset),
-        static_cast<unsigned>(rec.dim),
-        static_cast<unsigned>(rec.prim),
-        rec.l2w ? 1u : 0u,
-        static_cast<unsigned>(rec.pipeline),
-        static_cast<unsigned long long>(mtl::ResolveRecipePrimaryKey(rec).Hash()));
+    mm->LogCreateMaterialFromRecordRequest(static_cast<uint32_t>(rec.preset),
+                                           static_cast<uint32_t>(rec.dim),
+                                           static_cast<uint32_t>(rec.prim),
+                                           rec.l2w,
+                                           static_cast<uint32_t>(rec.pipeline),
+                                           static_cast<uint64_t>(mtl::ResolveRecipePrimaryKey(rec).Hash()));
 
     // ── Billboard2DFixed / Billboard2DDynamic ────────────────────────────────
     if (rec.preset == MaterialPreset::Billboard2DFixed ||
@@ -718,8 +566,9 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode == TextureSourceMode::Array)
             { cfg.use_texture_array = true; break; }
 
-        std::fprintf(stderr, "[CreateMaterialFromRecord] Billboard preset=%d  use_texture_array=%d  blend=%d\n",
-            (int)rec.preset, (int)cfg.use_texture_array, (int)cfg.blend_mode);
+        mm->LogCreateMaterialFromRecordBillboard((int)rec.preset,
+                                                 (int)cfg.use_texture_array,
+                                                 (int)cfg.blend_mode);
 
         return mm->ResolveOrCreateProgram(rec.preset, &cfg);
     }
@@ -735,10 +584,9 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
         for (const auto &tc : rec.textures)
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
-        std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] CreateMaterialFromRecord: 2D cfg.prim=%u preset=%u\n",
-            static_cast<unsigned>(cfg.prim),
-            static_cast<unsigned>(rec.preset));
+
+        mm->LogCreateMaterialFromRecord2D(static_cast<uint32_t>(cfg.prim),
+                                          static_cast<uint32_t>(rec.preset));
         return mm->ResolveOrCreateProgram(rec.preset, &cfg);
     }
     // ── 3D ─────────────────────────────────────────────────────────────────
@@ -752,7 +600,7 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             const std::string warning = mtl::BuildMalformedIntentFeatureWarningMessage(feature_mask,
                                                                                        rec.preset,
                                                                                        feature_validation);
-            std::fprintf(stderr, "%s\n", warning.c_str());
+            mm->LogStatsLine(warning);
         }
 
         const bool include_camera = mtl::HasFeature(feature_mask, mtl::MaterialFeature::NeedsCamera);
@@ -777,12 +625,11 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
         for (const auto &tc : rec.textures)
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
-        std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] CreateMaterialFromRecord: 3D cfg.prim=%u preset=%u include_camera=%u include_sky=%u\n",
-            static_cast<unsigned>(cfg.prim),
-            static_cast<unsigned>(rec.preset),
-            include_camera ? 1u : 0u,
-            include_sky ? 1u : 0u);
+
+        mm->LogCreateMaterialFromRecord3D(static_cast<uint32_t>(cfg.prim),
+                                          static_cast<uint32_t>(rec.preset),
+                                          include_camera,
+                                          include_sky);
         return mm->ResolveOrCreateProgram(rec.preset, &cfg);
     }
 }
@@ -791,27 +638,25 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     const mtl::MaterialKey &key,
     const mtl::MaterialRecipe &recipe)
 {
-    std::fprintf(stderr,
-        "[ShaderMaterialProgramManager] GetOrCreateProgramByKey: key_hash=0x%llx recipe_prim=%u preset=%u pipeline=%u\n",
-        static_cast<unsigned long long>(key.Hash()),
-        static_cast<unsigned>(recipe.prim),
-        static_cast<unsigned>(recipe.preset),
-        static_cast<unsigned>(recipe.pipeline));
+    stats.LogGetOrCreateProgramByKeyRequest(static_cast<uint64_t>(key.Hash()),
+                                            static_cast<uint32_t>(recipe.prim),
+                                            static_cast<uint32_t>(recipe.preset),
+                                            static_cast<uint32_t>(recipe.pipeline));
 
-    LogProgramKeyTriplet("GetOrCreateProgramByKey.request",
-                         key,
-                         recipe.prim,
-                         recipe.l2w);
+    stats.LogProgramKeyTriplet("GetOrCreateProgramByKey.request",
+                               key,
+                               recipe.prim,
+                               recipe.l2w);
 
     const mtl::VertexProgramKey req_vkey = mtl::BuildVertexProgramKey(key.variant, recipe.prim, recipe.l2w);
     const mtl::FragmentProgramKey req_fkey = mtl::BuildFragmentProgramKey(key.variant);
-    RecordShaderProgramShadowCacheLookup(req_vkey, req_fkey);
+    stats.RecordShaderProgramShadowCacheLookup(req_vkey, req_fkey);
 
     // Fast path: key already in cache (populated by ResolveOrCreateProgram on first call)
     auto it = material_by_key.find(key);
     if (it != material_by_key.end())
     {
-        by_key_hits.fetch_add(1, std::memory_order_relaxed);
+        stats.RecordByKeyHit();
 
         if (it->second && it->second->HasMaterialKey())
         {
@@ -822,37 +667,8 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
 
             if (mismatch_mask != 0)
             {
-                RecordMaterialKeyAxisMismatch(mismatch_mask);
-
-                if (mismatch_mask & MATERIAL_KEY_MISMATCH_DEF_ID)
-                    std::fprintf(stderr,
-                        "[ShaderMaterialProgramManager] MaterialKey axis mismatch: def_id cached=%u request=%u\n",
-                        static_cast<unsigned>(old_key.def_id),
-                        static_cast<unsigned>(key.def_id));
-
-                if (mismatch_mask & MATERIAL_KEY_MISMATCH_SCHEMA)
-                    std::fprintf(stderr,
-                        "[ShaderMaterialProgramManager] MaterialKey axis mismatch: schema cached=%u request=%u\n",
-                        static_cast<unsigned>(old_key.schema),
-                        static_cast<unsigned>(key.schema));
-
-                if (mismatch_mask & MATERIAL_KEY_MISMATCH_GLSL_VERSION)
-                    std::fprintf(stderr,
-                        "[ShaderMaterialProgramManager] MaterialKey axis mismatch: glsl_version cached=%u request=%u\n",
-                        static_cast<unsigned>(old_key.glsl_version),
-                        static_cast<unsigned>(key.glsl_version));
-
-                if (mismatch_mask & MATERIAL_KEY_MISMATCH_VK_VERSION)
-                    std::fprintf(stderr,
-                        "[ShaderMaterialProgramManager] MaterialKey axis mismatch: vk_version cached=%u request=%u\n",
-                        static_cast<unsigned>(old_key.vk_version),
-                        static_cast<unsigned>(key.vk_version));
-
-                if (mismatch_mask & MATERIAL_KEY_MISMATCH_SPV_VERSION)
-                    std::fprintf(stderr,
-                        "[ShaderMaterialProgramManager] MaterialKey axis mismatch: spv_version cached=%u request=%u\n",
-                        static_cast<unsigned>(old_key.spv_version),
-                        static_cast<unsigned>(key.spv_version));
+                stats.RecordMaterialKeyAxisMismatch(mismatch_mask);
+                stats.LogMaterialKeyAxisMismatchDetails(old_key, key, mismatch_mask);
             }
 
             if (!(merged_key == old_key))
@@ -868,7 +684,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
             it->second->effective_feature_mask = key.variant.effective_feature_mask;
         }
 
-        LogEffectiveFeatureMaskConsistency(it->second, key, "cache_hit");
+        stats.LogEffectiveFeatureMaskConsistency(it->second, key, "cache_hit");
 #ifndef NDEBUG
         assert(it->second != nullptr);
 
@@ -877,11 +693,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
         auto it_verify = material_by_key.find(key);
         assert(it_verify != material_by_key.end() && it_verify->second == it->second);
 #endif
-        std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] GetOrCreateProgramByKey: cache_hit material=%p name='%s' material_prim=%u\n",
-            it->second,
-            it->second->GetName().c_str(),
-            static_cast<unsigned>(it->second->GetPrimitiveType()));
+        stats.LogGetOrCreateProgramByKeyCacheHit(it->second);
         return it->second;
     }
 
@@ -891,11 +703,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
 
     if (prog)
     {
-        std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] GetOrCreateProgramByKey: created material=%p name='%s' material_prim=%u\n",
-            prog,
-            prog->GetName().c_str(),
-            static_cast<unsigned>(prog->GetPrimitiveType()));
+        stats.LogGetOrCreateProgramByKeyCreated(prog);
 
         // If program key still carries unresolved default axes, merge richer axes
         // from the incoming request key (def/schema/toolchain versions).
@@ -905,7 +713,10 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
             uint32_t mismatch_mask = 0;
             MergeMaterialKeyAxesFromRequestIfDefault(merged_key, key, &mismatch_mask);
             if (mismatch_mask != 0)
-                RecordMaterialKeyAxisMismatch(mismatch_mask);
+            {
+                stats.RecordMaterialKeyAxisMismatch(mismatch_mask);
+                stats.LogMaterialKeyAxisMismatchDetails(prog->GetMaterialKey(), key, mismatch_mask);
+            }
 
             prog->SetMaterialKey(merged_key);
             material_by_key[merged_key] = prog;
@@ -916,14 +727,14 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
             const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(merged_key.variant);
             prog->SetVertexProgramKey(vkey);
             prog->SetFragmentProgramKey(fkey);
-            RecordShaderProgramKeyCoverage(vkey, fkey);
-            RecordShaderProgramShadowCacheInsert(vkey, fkey, prog);
+            stats.RecordShaderProgramKeyCoverage(vkey, fkey);
+            stats.RecordShaderProgramShadowCacheInsert(vkey, fkey, prog);
         }
 
         if (prog->GetEffectiveFeatureMask() == 0 && key.variant.effective_feature_mask != 0)
             prog->effective_feature_mask = key.variant.effective_feature_mask;
 
-        LogEffectiveFeatureMaskConsistency(prog, key, "cache_miss_created");
+        stats.LogEffectiveFeatureMaskConsistency(prog, key, "cache_miss_created");
 
         // Alias requested key to the created program so callers that already hold
         // enriched MaterialKey(def/schema/version axes) can hit cache on next lookup.
@@ -957,11 +768,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
         auto it2 = material_by_key.find(key);
         if (it2 == material_by_key.end() || it2->second != prog)
         {
-            std::fprintf(stderr,
-                "[ShaderMaterialProgramManager] WARN GetOrCreateProgramByKey: "
-                "key.Hash=0x%llx not in material_by_key after creation — "
-                "MaterialKey derivation may be inconsistent.\n",
-                static_cast<unsigned long long>(key.Hash()));
+            stats.LogGetOrCreateProgramByKeyAliasWarning(static_cast<uint64_t>(key.Hash()));
         }
     }
 #endif
@@ -972,7 +779,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(const mtl::MaterialPreset mtl_id, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
-    acquire_material_requests.fetch_add(1);
+    stats.RecordMaterialRequest();
 
     ShaderMaterialProgram *mtl = CreateMaterial(mtl_id, cfg);
 
@@ -980,7 +787,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
     {
         mtl = GetFallbackMaterial();
         if(mtl)
-            acquire_fallback_used.fetch_add(1);
+            stats.RecordFallbackUsed();
     }
 
     if(out_key)
@@ -991,7 +798,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(const mtl::MaterialPreset mtl_id, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
-    acquire_material_requests.fetch_add(1);
+    stats.RecordMaterialRequest();
 
     ShaderMaterialProgram *mtl = CreateMaterial(mtl_id, cfg);
 
@@ -999,7 +806,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
     {
         mtl = GetFallbackMaterial();
         if(mtl)
-            acquire_fallback_used.fetch_add(1);
+            stats.RecordFallbackUsed();
     }
 
     if(out_key)
@@ -1010,7 +817,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(const mtl::MaterialVariantKey &key, mtl::Material2DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
-    acquire_material_requests.fetch_add(1);
+    stats.RecordMaterialRequest();
 
     ShaderMaterialProgram *mtl = CreateMaterial(key, cfg);
 
@@ -1018,7 +825,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
     {
         mtl = GetFallbackMaterial();
         if(mtl)
-            acquire_fallback_used.fetch_add(1);
+            stats.RecordFallbackUsed();
     }
 
     if(out_key)
@@ -1029,7 +836,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(const mtl::MaterialVariantKey &key, mtl::Material3DCreateConfig *cfg, MaterialSpecKey *out_key)
 {
-    acquire_material_requests.fetch_add(1);
+    stats.RecordMaterialRequest();
 
     ShaderMaterialProgram *mtl = CreateMaterial(key, cfg);
 
@@ -1037,7 +844,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
     {
         mtl = GetFallbackMaterial();
         if(mtl)
-            acquire_fallback_used.fetch_add(1);
+            stats.RecordFallbackUsed();
     }
 
     if(out_key)
@@ -1111,17 +918,17 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 
     const mtl::MaterialKey baseline_key = BuildMaterialKeyFromVariantKey(key);
 
-    LogProgramKeyTriplet("CreateMaterial.2D.baseline",
-                         baseline_key,
-                         cfg->prim,
-                         cfg->local_to_world);
+    stats.LogProgramKeyTriplet("CreateMaterial.2D.baseline",
+                               baseline_key,
+                               cfg->prim,
+                               cfg->local_to_world);
 
     // Fast path: material_by_key
     {
         auto it = material_by_key.find(baseline_key);
         if (it != material_by_key.end())
         {
-            by_key_hits.fetch_add(1);
+            stats.RecordByKeyHit();
 #ifndef NDEBUG
             assert(it->second != nullptr);
             auto it_verify = material_by_key.find(baseline_key);
@@ -1144,10 +951,10 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         mtl::MaterialKey enriched_key = baseline_key;
         EnrichMaterialKeyWithCreateInfoAxes(enriched_key, *mci);
 
-        LogProgramKeyTriplet("CreateMaterial.2D.enriched",
-                             enriched_key,
-                             cfg->prim,
-                             cfg->local_to_world);
+        stats.LogProgramKeyTriplet("CreateMaterial.2D.enriched",
+                                   enriched_key,
+                                   cfg->prim,
+                                   cfg->local_to_world);
 
         const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(enriched_key.variant,
                                                                        cfg->prim,
@@ -1155,8 +962,8 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(enriched_key.variant);
         mat->SetVertexProgramKey(vkey);
         mat->SetFragmentProgramKey(fkey);
-        RecordShaderProgramKeyCoverage(vkey, fkey);
-        RecordShaderProgramShadowCacheInsert(vkey, fkey, mat);
+        stats.RecordShaderProgramKeyCoverage(vkey, fkey);
+        stats.RecordShaderProgramShadowCacheInsert(vkey, fkey, mat);
 
         uint8_t flags = 0;
         for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
@@ -1199,9 +1006,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         if (billboard_cfg->use_texture_array)
         {
             cache_key.SetTextureSourceMode(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
-            std::fprintf(stderr,
-                "[ShaderMaterialProgramManager] Billboard domain: use_texture_array=true cache_key_hash=%llu\n",
-                static_cast<unsigned long long>(cache_key.Hash()));
+            stats.LogBillboardDomainArrayKey(static_cast<uint64_t>(cache_key.Hash()));
         }
     }
 
@@ -1216,17 +1021,17 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 
     const mtl::MaterialKey baseline_key = BuildMaterialKeyFromVariantKey(cache_key);
 
-    LogProgramKeyTriplet("CreateMaterial.3D.baseline",
-                         baseline_key,
-                         cfg->prim,
-                         cfg->local_to_world);
+    stats.LogProgramKeyTriplet("CreateMaterial.3D.baseline",
+                               baseline_key,
+                               cfg->prim,
+                               cfg->local_to_world);
 
     // Fast path: material_by_key
     {
         auto it = material_by_key.find(baseline_key);
         if (it != material_by_key.end())
         {
-            by_key_hits.fetch_add(1);
+            stats.RecordByKeyHit();
 #ifndef NDEBUG
             assert(it->second != nullptr);
             auto it_verify = material_by_key.find(baseline_key);
@@ -1269,10 +1074,10 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         mtl::MaterialKey enriched_key = baseline_key;
         EnrichMaterialKeyWithCreateInfoAxes(enriched_key, *mci);
 
-        LogProgramKeyTriplet("CreateMaterial.3D.enriched",
-                             enriched_key,
-                             cfg->prim,
-                             cfg->local_to_world);
+        stats.LogProgramKeyTriplet("CreateMaterial.3D.enriched",
+                                   enriched_key,
+                                   cfg->prim,
+                                   cfg->local_to_world);
 
         const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(enriched_key.variant,
                                                                        cfg->prim,
@@ -1280,8 +1085,8 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(enriched_key.variant);
         mat->SetVertexProgramKey(vkey);
         mat->SetFragmentProgramKey(fkey);
-        RecordShaderProgramKeyCoverage(vkey, fkey);
-        RecordShaderProgramShadowCacheInsert(vkey, fkey, mat);
+        stats.RecordShaderProgramKeyCoverage(vkey, fkey);
+        stats.RecordShaderProgramShadowCacheInsert(vkey, fkey, mat);
 
         uint8_t flags = 0;
         for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
@@ -1307,51 +1112,12 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 
 void ShaderMaterialProgramManager::DumpKeyMapDiagnostics() const
 {
-    const auto key_stats = GetShaderProgramKeyCoverageStats();
-    const auto shadow_stats = GetShaderProgramKeyShadowCacheStats();
-
-    std::fprintf(stderr,
-        "[ShaderMaterialProgramManager] KeyMap: by_key=%zu hits=%llu "
-        "vkey(seen=%llu unique=%llu) fkey(seen=%llu unique=%llu) "
-        "shadow(vhit=%llu vmiss=%llu fhit=%llu fmiss=%llu chit=%llu cmiss=%llu "
-        "cptr_match=%llu cptr_mismatch=%llu ventry=%llu fentry=%llu)\n",
-        material_by_key.size(),
-        static_cast<unsigned long long>(by_key_hits.load()),
-        static_cast<unsigned long long>(key_stats.vertex_seen),
-        static_cast<unsigned long long>(key_stats.vertex_unique),
-        static_cast<unsigned long long>(key_stats.fragment_seen),
-        static_cast<unsigned long long>(key_stats.fragment_unique),
-        static_cast<unsigned long long>(shadow_stats.vertex_hits),
-        static_cast<unsigned long long>(shadow_stats.vertex_misses),
-        static_cast<unsigned long long>(shadow_stats.fragment_hits),
-        static_cast<unsigned long long>(shadow_stats.fragment_misses),
-        static_cast<unsigned long long>(shadow_stats.combined_hits),
-        static_cast<unsigned long long>(shadow_stats.combined_misses),
-        static_cast<unsigned long long>(shadow_stats.combined_pointer_match_hits),
-        static_cast<unsigned long long>(shadow_stats.combined_pointer_mismatch_hits),
-        static_cast<unsigned long long>(shadow_stats.vertex_entries),
-        static_cast<unsigned long long>(shadow_stats.fragment_entries));
-
-    const uint64_t combined_hits = shadow_stats.combined_hits;
-    const uint64_t mismatch_hits = shadow_stats.combined_pointer_mismatch_hits;
-    const bool has_shadow_sample = combined_hits >= 64;
-    const double mismatch_ratio = combined_hits > 0
-        ? (double(mismatch_hits) / double(combined_hits))
-        : 1.0;
-
-    const bool ready_for_shadow_cache_rollout = has_shadow_sample && mismatch_ratio <= 0.02;
-
-    std::fprintf(stderr,
-        "[ShaderMaterialProgramManager] ShadowCacheHint: sample=%llu mismatch_ratio=%.4f ready=%s "
-        "(rule: combined_hits>=64 && mismatch_ratio<=0.02)\n",
-        static_cast<unsigned long long>(combined_hits),
-        mismatch_ratio,
-        ready_for_shadow_cache_rollout ? "true" : "false");
+    stats.DumpKeyMapDiagnostics(material_by_key.size());
 }
 
 MaterialBindingInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)
 {
-    acquire_mi_requests.fetch_add(1);
+    stats.RecordMaterialInstanceRequest();
 
     if(!spec.IsValid())
         return nullptr;
@@ -1372,7 +1138,7 @@ MaterialBindingInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(c
     if(!mi)
         return nullptr;
 
-    acquire_mi_created.fetch_add(1);
+    stats.RecordMaterialInstanceCreated();
 
     mi->SetRenderPreset(spec.preset);
 
