@@ -392,6 +392,52 @@ namespace
         return msg;
     }
 
+    bool ValidateBoundRowConsistency(const hgl::graph::mtl::MaterialVariantKey &key,
+                                     const hgl::graph::mtl::MaterialVariantDesc &desc,
+                                     std::string &out_error)
+    {
+        out_error.clear();
+
+        const auto *row = desc.bound_row;
+        if (!row)
+            return true;
+
+        if (desc.factory_type.has_value() && row->factory_type != *desc.factory_type)
+        {
+            out_error = "[CompositorAssembler] bound_row factory_type mismatch for variant='";
+            out_error += desc.variant_name.empty() ? "<unnamed>" : desc.variant_name;
+            out_error += "'";
+            return false;
+        }
+
+        if (DescLooksBuiltinRouted(desc)
+         && !desc.variant_name.empty()
+         && row->name
+         && desc.variant_name != row->name)
+        {
+            out_error = "[CompositorAssembler] builtin bound_row name mismatch for variant='";
+            out_error += desc.variant_name;
+            out_error += "' row='";
+            out_error += row->name;
+            out_error += "'";
+            return false;
+        }
+
+        if (row->surface_type != key.surface_type
+         || row->geometry_mode != key.geometry_mode
+         || row->position_provider != key.position_provider
+         || row->blend != key.blend_mode
+         || row->pass != key.pass_hint)
+        {
+            out_error = "[CompositorAssembler] bound_row structural identity mismatches key for variant='";
+            out_error += desc.variant_name.empty() ? "<unnamed>" : desc.variant_name;
+            out_error += "'";
+            return false;
+        }
+
+        return true;
+    }
+
     hgl::graph::CompositorFeatureFlags VSFeatureFlagsFromRow(const hgl::graph::mtl::MaterialVariantRow &row)
     {
         hgl::graph::CompositorFeatureFlags flags;
@@ -662,6 +708,9 @@ namespace hgl::graph
         out_source.clear();
         out_error.clear();
 
+        if (!ValidateBoundRowConsistency(key, desc, out_error))
+            return false;
+
         const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
         const char *vs_template_path = GetStageTemplatePath(desc.vs_template_path, resolved_row, true);
 
@@ -722,6 +771,9 @@ namespace hgl::graph
     {
         out_source.clear();
         out_error.clear();
+
+        if (!ValidateBoundRowConsistency(key, desc, out_error))
+            return false;
 
         const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
         const char *fs_template_path = GetStageTemplatePath(desc.fs_template_path, resolved_row, false);
