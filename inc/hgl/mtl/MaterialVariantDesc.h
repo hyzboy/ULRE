@@ -7,6 +7,8 @@
 
 namespace hgl::graph::mtl
 {
+    struct MaterialVariantRow;
+
     /// MaterialVariantDesc - 材质变体的完整描述
     /// 包含着色器组装所需路径与调试标识等信息
     struct MaterialVariantDesc
@@ -19,6 +21,11 @@ namespace hgl::graph::mtl
         std::string vs_template_path;       // 顶点着色器模板路径（相对 ShaderLibrary）
         std::string fs_template_path;       // 片段着色器模板路径（相对 ShaderLibrary）
         std::string surface_function_path;  // Surface include 路径（相对 ShaderLibrary）
+
+        // Optional explicit row binding.
+        // For builtin variants, row lookup should normally come from the registered builtin row table.
+        // For custom descriptors, callers can bind a row directly to avoid legacy key-derived fallback.
+        const MaterialVariantRow *bound_row = nullptr;
 
         MaterialVariantDesc()
         {
@@ -35,7 +42,8 @@ namespace hgl::graph::mtl
               factory_type(type),
               vs_template_path(vs_path),
               fs_template_path(fs_path),
-              surface_function_path(surface_path)
+              surface_function_path(surface_path),
+              bound_row(nullptr)
         {
         }
     };

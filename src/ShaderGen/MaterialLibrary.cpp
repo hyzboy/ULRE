@@ -180,6 +180,7 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
             legacy += legacy.empty() ? "terrain behavior still depends on dedicated row template path" : ",terrain behavior still depends on dedicated row template path";
         if (row.vertex_policy == VertexTransformPolicy::Sky)
             legacy += legacy.empty() ? "sky fallback still exists in key-based path" : ",sky fallback still exists in key-based path";
+        legacy += legacy.empty() ? "custom descriptors may now bind row explicitly via MaterialVariantDesc::bound_row" : ",custom descriptors may now bind row explicitly via MaterialVariantDesc::bound_row";
         out += legacy.empty() ? "None" : legacy;
         out += "\n";
     });

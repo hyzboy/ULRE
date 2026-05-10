@@ -360,6 +360,9 @@ namespace
         if (row)
             return row;
 
+        if (desc.bound_row)
+            return desc.bound_row;
+
         if (const auto *named_row = FindBuiltinVariantRow(desc))
             return named_row;
 
