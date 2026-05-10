@@ -297,6 +297,33 @@ namespace
         return nullptr;
     }
 
+    const hgl::graph::mtl::MaterialVariantRow *ResolveVariantRow(const hgl::graph::mtl::MaterialVariantKey &key,
+                                                                 const hgl::graph::mtl::MaterialVariantDesc &desc,
+                                                                 const hgl::graph::mtl::MaterialVariantRow *row)
+    {
+        if (row)
+            return row;
+
+        return FindBuiltinVariantRow(key, desc);
+    }
+
+    const char *GetStageTemplatePath(const std::string &desc_template_path,
+                                     const hgl::graph::mtl::MaterialVariantRow *row,
+                                     const bool is_vertex_stage)
+    {
+        if (!desc_template_path.empty())
+            return desc_template_path.c_str();
+
+        if (!row)
+            return nullptr;
+
+        const char *row_template_path = is_vertex_stage ? row->vs_template_path : row->fs_template_path;
+        if (row_template_path && row_template_path[0])
+            return row_template_path;
+
+        return nullptr;
+    }
+
     /// Unified VS generator: derives complete GLSL from MaterialVariantKey fields alone.
     std::string BuildVSFromKey(const hgl::graph::mtl::MaterialVariantKey &key)
     {
@@ -338,15 +365,6 @@ namespace
 
     std::string BuildVSFromRow(const hgl::graph::mtl::MaterialVariantRow &row)
     {
-        using VTP = hgl::graph::mtl::VertexTransformPolicy;
-
-        if (row.vertex_policy == VTP::BillboardCameraFacing)
-            return BuildIncludeOnlyVS("compositor/main_forward_billboard_dynamic.vert.glsl");
-        if (row.vertex_policy == VTP::BillboardAxisLocked)
-            return BuildIncludeOnlyVS("compositor/main_forward_billboard_fixed.vert.glsl");
-        if (row.vertex_policy == VTP::TerrainGrid)
-            return BuildIncludeOnlyVS("compositor/main_terrain_grid.vert.glsl");
-
         if (row.vs_template_path && row.vs_template_path[0])
             return BuildIncludeOnlyVS(row.vs_template_path);
 
@@ -576,31 +594,32 @@ namespace hgl::graph
         out_source.clear();
         out_error.clear();
 
-        if (!desc.vs_template_path.empty())
+        const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
+        const char *vs_template_path = GetStageTemplatePath(desc.vs_template_path, resolved_row, true);
+
+        if (vs_template_path)
         {
-            LogVSAssemblyPath("desc.vs_template_path", key, desc, row);
+            LogVSAssemblyPath(desc.vs_template_path.empty() ? "row.vs_template_path" : "desc.vs_template_path",
+                              key,
+                              desc,
+                              resolved_row);
             std::string read_error;
-            if (!ReadFileCached(desc.vs_template_path, out_source, read_error))
+            if (!ReadFileCached(vs_template_path, out_source, read_error))
             {
                 out_error = BuildReadFailureMessage(
-                    "VS", desc.vs_template_path, shader_lib_path_ + "/" + desc.vs_template_path, read_error);
+                    "VS", vs_template_path, shader_lib_path_ + "/" + vs_template_path, read_error);
                 return false;
             }
 
-            if (hgl::graph::IsCompositorTemplatePath(desc.vs_template_path))
-                out_source = BuildIncludeOnlyShader(desc.vs_template_path.c_str());
+            if (hgl::graph::IsCompositorTemplatePath(vs_template_path))
+                out_source = BuildIncludeOnlyShader(vs_template_path);
         }
         else
         {
-            if (row)
+            if (resolved_row)
             {
                 LogVSAssemblyPath("explicit_row", key, desc, row);
-                out_source = BuildVSFromRow(*row);
-            }
-            else if (const auto *builtin_row = FindBuiltinVariantRow(key, desc))
-            {
-                LogVSAssemblyPath("builtin_row_lookup", key, desc, builtin_row);
-                out_source = BuildVSFromRow(*builtin_row);
+                out_source = BuildVSFromRow(*resolved_row);
             }
             else
             {
@@ -629,25 +648,26 @@ namespace hgl::graph
         out_source.clear();
         out_error.clear();
 
-        if (!desc.fs_template_path.empty())
+        const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
+        const char *fs_template_path = GetStageTemplatePath(desc.fs_template_path, resolved_row, false);
+
+        if (fs_template_path)
         {
             std::string read_error;
-            if (!ReadFileCached(desc.fs_template_path, out_source, read_error))
+            if (!ReadFileCached(fs_template_path, out_source, read_error))
             {
                 out_error = BuildReadFailureMessage(
-                    "FS", desc.fs_template_path, shader_lib_path_ + "/" + desc.fs_template_path, read_error);
+                    "FS", fs_template_path, shader_lib_path_ + "/" + fs_template_path, read_error);
                 return false;
             }
 
-            if (hgl::graph::IsCompositorTemplatePath(desc.fs_template_path))
-                out_source = BuildIncludeOnlyShader(desc.fs_template_path.c_str());
+            if (hgl::graph::IsCompositorTemplatePath(fs_template_path))
+                out_source = BuildIncludeOnlyShader(fs_template_path);
         }
         else
         {
-            if (row)
-                out_source = BuildForwardFragmentEntry(FSFeatureFlagsFromRow(key, *row, key.blend_mode, surface_rel));
-            else if (const auto *builtin_row = FindBuiltinVariantRow(key, desc))
-                out_source = BuildForwardFragmentEntry(FSFeatureFlagsFromRow(key, *builtin_row, key.blend_mode, surface_rel));
+            if (resolved_row)
+                out_source = BuildForwardFragmentEntry(FSFeatureFlagsFromRow(key, *resolved_row, key.blend_mode, surface_rel));
             else
                 out_source = BuildFSFromKey(key, key.blend_mode, surface_rel);
         }
@@ -707,13 +727,16 @@ namespace hgl::graph
     {
         AssembleStageResult result{};
 
-        const std::string surface_rel = desc.surface_function_path.empty()
-            ? hgl::graph::GetSurfaceFunctionPath(key.surface_type)
-            : desc.surface_function_path;
+        const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
+        const std::string surface_rel = !desc.surface_function_path.empty()
+            ? desc.surface_function_path
+            : (resolved_row && resolved_row->surface_path && resolved_row->surface_path[0])
+                ? resolved_row->surface_path
+                : hgl::graph::GetSurfaceFunctionPath(key.surface_type);
 
         std::string source;
         std::string error;
-        if(!AssembleFragmentShaderSource(key, desc, row, surface_rel, source, error))
+        if(!AssembleFragmentShaderSource(key, desc, resolved_row, surface_rel, source, error))
         {
             result.error_message = std::move(error);
             return result;

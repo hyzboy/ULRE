@@ -175,9 +175,9 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
         if (row.resources.needs_sky)
             legacy += legacy.empty() ? "sky_model still also mirrored in key" : ",sky_model still also mirrored in key";
         if (row.vertex_policy == VertexTransformPolicy::BillboardCameraFacing || row.vertex_policy == VertexTransformPolicy::BillboardAxisLocked)
-            legacy += legacy.empty() ? "billboard VS path still selected by compositor special-case" : ",billboard VS path still selected by compositor special-case";
+            legacy += legacy.empty() ? "billboard behavior still depends on dedicated row template path" : ",billboard behavior still depends on dedicated row template path";
         if (row.vertex_policy == VertexTransformPolicy::TerrainGrid)
-            legacy += legacy.empty() ? "terrain VS path still selected by compositor special-case" : ",terrain VS path still selected by compositor special-case";
+            legacy += legacy.empty() ? "terrain behavior still depends on dedicated row template path" : ",terrain behavior still depends on dedicated row template path";
         if (row.vertex_policy == VertexTransformPolicy::Sky)
             legacy += legacy.empty() ? "sky fallback still exists in key-based path" : ",sky fallback still exists in key-based path";
         out += legacy.empty() ? "None" : legacy;
