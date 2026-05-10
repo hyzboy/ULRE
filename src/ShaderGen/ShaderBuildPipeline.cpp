@@ -898,6 +898,8 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
         {
             result.success=false;
             result.value.final_state=ShaderBuildState::Failed;
+            if(source_diagnostic.subject.empty())
+                source_diagnostic.subject = "ShaderBuildPipeline.Source.Vertex";
             result.diagnostics.push_back(source_diagnostic);
             return result;
         }
@@ -909,6 +911,8 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
         {
             result.success=false;
             result.value.final_state=ShaderBuildState::Failed;
+            if(source_diagnostic.subject.empty())
+                source_diagnostic.subject = "ShaderBuildPipeline.Source.Fragment";
             result.diagnostics.push_back(source_diagnostic);
             return result;
         }
@@ -961,6 +965,13 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
     {
         result.success=false;
         result.value.final_state=ShaderBuildState::Failed;
+        result.diagnostics.push_back({ShaderGenSeverity::Error,
+                                      ShaderGenErrorCode::CompileFailed,
+                                      request.stage,
+                                      request.stage==ShaderStage::Vertex
+                                          ? "ShaderBuildPipeline.Compile.Vertex"
+                                          : "ShaderBuildPipeline.Compile.Fragment",
+                                      "stage compile failed"});
         result.diagnostics.insert(result.diagnostics.end(),compile_result.diagnostics.begin(),compile_result.diagnostics.end());
         return result;
     }
