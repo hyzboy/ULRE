@@ -15,7 +15,6 @@
 
 namespace
 {
-
     // Thread-local shader version for #version directive (default 450)
     thread_local int g_shader_version = 450;
 
@@ -31,6 +30,89 @@ namespace
             case SkyLightAmbientModel::IBL:                 return "common/skylight_ibl.glsl";
             default:                                        return "common/skylight_simple.glsl";
         }
+    }
+
+    std::string FormatVertexAttribBitsForLog(const uint32_t bits)
+    {
+        std::string text;
+        bool first = true;
+
+        for (size_t i = 0; i < static_cast<size_t>(hgl::graph::VertexAttrib::RANGE_SIZE); ++i)
+        {
+            const auto attrib = static_cast<hgl::graph::VertexAttrib>(i);
+            if ((bits & (1u << static_cast<uint32_t>(attrib))) == 0)
+                continue;
+
+            if (!first)
+                text += ",";
+
+            const char *name = hgl::graph::GetVertexAttribName(attrib);
+            text += name ? name : "<unnamed>";
+            first = false;
+        }
+
+        return first ? "None" : text;
+    }
+
+    std::string FormatRowVSFeaturesForLog(const hgl::graph::mtl::MaterialVariantRow &row)
+    {
+        std::string text = FormatVertexAttribBitsForLog(0);
+        bool has_any = false;
+        text.clear();
+
+        for (size_t i = 0; i < static_cast<size_t>(hgl::graph::VertexAttrib::RANGE_SIZE); ++i)
+        {
+            const auto attrib = static_cast<hgl::graph::VertexAttrib>(i);
+            if (!row.vs_features.HasVertexAttrib(attrib))
+                continue;
+
+            if (has_any)
+                text += ",";
+
+            const char *name = hgl::graph::GetVertexAttribName(attrib);
+            text += name ? name : "<unnamed>";
+            has_any = true;
+        }
+
+        if (!has_any)
+            text = "None";
+
+        if (row.vs_features.has_direction)
+            text += (text == "None" ? "Direction" : ",Direction");
+
+        return text;
+    }
+
+    void LogVSAssemblyPath(const char *source_tag,
+                           const hgl::graph::mtl::MaterialVariantKey &key,
+                           const hgl::graph::mtl::MaterialVariantDesc &desc,
+                           const hgl::graph::mtl::MaterialVariantRow *row)
+    {
+        if (row)
+        {
+            std::fprintf(stderr,
+                         "[CompositorAssembler][VS] path=%s variant='%s' row='%s' policy=%s vs_template='%s' row_vs_features=[%s] key_va_bits=[%s] pos_provider=%u blend=%u pass=%u\n",
+                         source_tag,
+                         desc.variant_name.c_str(),
+                         row->name ? row->name : "",
+                         hgl::graph::mtl::GetVertexTransformPolicyName(row->vertex_policy),
+                         row->vs_template_path ? row->vs_template_path : "",
+                         FormatRowVSFeaturesForLog(*row).c_str(),
+                         FormatVertexAttribBitsForLog(key.vertex_attribute_feature_bits).c_str(),
+                         static_cast<unsigned>(key.position_provider),
+                         static_cast<unsigned>(key.blend_mode),
+                         static_cast<unsigned>(key.pass_hint));
+            return;
+        }
+
+        std::fprintf(stderr,
+                     "[CompositorAssembler][VS] path=%s variant='%s' row=<none> key_va_bits=[%s] pos_provider=%u blend=%u pass=%u\n",
+                     source_tag,
+                     desc.variant_name.c_str(),
+                     FormatVertexAttribBitsForLog(key.vertex_attribute_feature_bits).c_str(),
+                     static_cast<unsigned>(key.position_provider),
+                     static_cast<unsigned>(key.blend_mode),
+                     static_cast<unsigned>(key.pass_hint));
     }
 
     void EmitEnabledVertexAttribDefines(hgl::graph::ShaderWriter &writer, const hgl::graph::CompositorFeatureFlags &flags)
@@ -155,6 +237,56 @@ namespace
         return nullptr;
     }
 
+    const hgl::graph::mtl::MaterialVariantRow *FindBuiltinVariantRow(const hgl::graph::mtl::MaterialVariantKey &key,
+                                                                     const hgl::graph::mtl::MaterialVariantDesc &desc)
+    {
+        if (const auto *row = FindBuiltinVariantRow(desc))
+            return row;
+
+        for (size_t i = 0; i < hgl::graph::mtl::kBuiltinVariantRowsCount; ++i)
+        {
+            const auto &row = hgl::graph::mtl::kBuiltinVariantRows[i];
+
+            if (row.surface_type != key.surface_type) continue;
+            if (row.geometry_mode != key.geometry_mode) continue;
+            if (row.position_provider != key.position_provider) continue;
+            if (row.blend != key.blend_mode) continue;
+            if (row.pass != key.pass_hint) continue;
+
+            bool textures_match = true;
+            for (uint8_t s = 0; s < uint8_t(hgl::graph::mtl::SamplerSlot::RANGE_SIZE); ++s)
+            {
+                const auto slot = static_cast<hgl::graph::mtl::SamplerSlot>(s);
+                const auto key_mode = key.GetTextureSourceMode(slot);
+
+                bool row_has_slot = false;
+                hgl::graph::mtl::TextureSourceMode row_mode = hgl::graph::mtl::TextureSourceMode::None;
+                for (uint32_t t = 0; t < row.texture_count; ++t)
+                {
+                    if (row.textures[t].slot == slot)
+                    {
+                        row_has_slot = true;
+                        row_mode = row.textures[t].source_mode;
+                        break;
+                    }
+                }
+
+                if ((row_has_slot ? row_mode : hgl::graph::mtl::TextureSourceMode::None) != key_mode)
+                {
+                    textures_match = false;
+                    break;
+                }
+            }
+
+            if (!textures_match)
+                continue;
+
+            return &row;
+        }
+
+        return nullptr;
+    }
+
     /// Unified VS generator: derives complete GLSL from MaterialVariantKey fields alone.
     std::string BuildVSFromKey(const hgl::graph::mtl::MaterialVariantKey &key)
     {
@@ -172,6 +304,43 @@ namespace
 
         // 3. All other materials: derive flags from key and generate via template.
         return BuildForwardVertexEntry(VSFeatureFlagsFromKey(key));
+    }
+
+    hgl::graph::CompositorFeatureFlags VSFeatureFlagsFromRow(const hgl::graph::mtl::MaterialVariantRow &row)
+    {
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.position_provider = row.position_provider;
+
+        for (size_t i = 0; i < static_cast<size_t>(hgl::graph::VertexAttrib::RANGE_SIZE); ++i)
+        {
+            const auto attrib = static_cast<hgl::graph::VertexAttrib>(i);
+            if (row.vs_features.HasVertexAttrib(attrib))
+                flags.SetVertexAttrib(attrib);
+        }
+
+        flags.has_direction = row.vs_features.has_direction;
+
+        if (row.surface_model == hgl::graph::mtl::SurfaceShadingModel::SkyMinimal)
+            flags.vertex_attrib_bits = 0;
+
+        return flags;
+    }
+
+    std::string BuildVSFromRow(const hgl::graph::mtl::MaterialVariantRow &row)
+    {
+        using VTP = hgl::graph::mtl::VertexTransformPolicy;
+
+        if (row.vertex_policy == VTP::BillboardCameraFacing)
+            return BuildIncludeOnlyVS("compositor/main_forward_billboard_dynamic.vert.glsl");
+        if (row.vertex_policy == VTP::BillboardAxisLocked)
+            return BuildIncludeOnlyVS("compositor/main_forward_billboard_fixed.vert.glsl");
+        if (row.vertex_policy == VTP::TerrainGrid)
+            return BuildIncludeOnlyVS("compositor/main_terrain_grid.vert.glsl");
+
+        if (row.vs_template_path && row.vs_template_path[0])
+            return BuildIncludeOnlyVS(row.vs_template_path);
+
+        return BuildForwardVertexEntry(VSFeatureFlagsFromRow(row));
     }
 
     /// Derive FS CompositorFeatureFlags from MaterialVariantKey fields.
@@ -390,6 +559,7 @@ namespace hgl::graph
 
     bool CompositorAssembler::AssembleVertexShaderSource(const mtl::MaterialVariantKey &key,
                                                          const mtl::MaterialVariantDesc &desc,
+                                                         const mtl::MaterialVariantRow *row,
                                                          std::string &out_source,
                                                          std::string &out_error) const
     {
@@ -398,6 +568,7 @@ namespace hgl::graph
 
         if (!desc.vs_template_path.empty())
         {
+            LogVSAssemblyPath("desc.vs_template_path", key, desc, row);
             std::string read_error;
             if (!ReadFileCached(desc.vs_template_path, out_source, read_error))
             {
@@ -411,7 +582,21 @@ namespace hgl::graph
         }
         else
         {
-            out_source = BuildVSFromKey(key);
+            if (row)
+            {
+                LogVSAssemblyPath("explicit_row", key, desc, row);
+                out_source = BuildVSFromRow(*row);
+            }
+            else if (const auto *builtin_row = FindBuiltinVariantRow(key, desc))
+            {
+                LogVSAssemblyPath("builtin_row_lookup", key, desc, builtin_row);
+                out_source = BuildVSFromRow(*builtin_row);
+            }
+            else
+            {
+                LogVSAssemblyPath("key_fallback", key, desc, nullptr);
+                out_source = BuildVSFromKey(key);
+            }
         }
 
         if (out_source.empty())
@@ -426,6 +611,7 @@ namespace hgl::graph
 
     bool CompositorAssembler::AssembleFragmentShaderSource(const mtl::MaterialVariantKey &key,
                                                            const mtl::MaterialVariantDesc &desc,
+                                                           const mtl::MaterialVariantRow *row,
                                                            const std::string &surface_rel,
                                                            std::string &out_source,
                                                            std::string &out_error) const
@@ -448,8 +634,10 @@ namespace hgl::graph
         }
         else
         {
-            if (const auto *row = FindBuiltinVariantRow(desc))
+            if (row)
                 out_source = BuildForwardFragmentEntry(FSFeatureFlagsFromRow(key, *row, key.blend_mode, surface_rel));
+            else if (const auto *builtin_row = FindBuiltinVariantRow(key, desc))
+                out_source = BuildForwardFragmentEntry(FSFeatureFlagsFromRow(key, *builtin_row, key.blend_mode, surface_rel));
             else
                 out_source = BuildFSFromKey(key, key.blend_mode, surface_rel);
         }
@@ -469,11 +657,20 @@ namespace hgl::graph
         const mtl::MaterialVariantDesc &desc
     ) const
     {
+        return AssembleVertexShader(key, desc, nullptr);
+    }
+
+    CompositorAssembler::AssembleStageResult CompositorAssembler::AssembleVertexShader(
+        const mtl::MaterialVariantKey  &key,
+        const mtl::MaterialVariantDesc &desc,
+        const mtl::MaterialVariantRow  *row
+    ) const
+    {
         AssembleStageResult result{};
 
         std::string source;
         std::string error;
-        if(!AssembleVertexShaderSource(key, desc, source, error))
+        if(!AssembleVertexShaderSource(key, desc, row, source, error))
         {
             result.error_message = std::move(error);
             return result;
@@ -489,6 +686,15 @@ namespace hgl::graph
         const mtl::MaterialVariantDesc &desc
     ) const
     {
+        return AssembleFragmentShader(key, desc, nullptr);
+    }
+
+    CompositorAssembler::AssembleStageResult CompositorAssembler::AssembleFragmentShader(
+        const mtl::MaterialVariantKey  &key,
+        const mtl::MaterialVariantDesc &desc,
+        const mtl::MaterialVariantRow  *row
+    ) const
+    {
         AssembleStageResult result{};
 
         const std::string surface_rel = desc.surface_function_path.empty()
@@ -497,7 +703,7 @@ namespace hgl::graph
 
         std::string source;
         std::string error;
-        if(!AssembleFragmentShaderSource(key, desc, surface_rel, source, error))
+        if(!AssembleFragmentShaderSource(key, desc, row, surface_rel, source, error))
         {
             result.error_message = std::move(error);
             return result;
@@ -513,13 +719,22 @@ namespace hgl::graph
         const mtl::MaterialVariantDesc &desc
     ) const
     {
+        return Assemble(key, desc, nullptr);
+    }
+
+    CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
+        const mtl::MaterialVariantKey  &key,
+        const mtl::MaterialVariantDesc &desc,
+        const mtl::MaterialVariantRow  *row
+    ) const
+    {
         AssembleResult result{};
 
-        const AssembleStageResult vs_result = AssembleVertexShader(key, desc);
+        const AssembleStageResult vs_result = AssembleVertexShader(key, desc, row);
         if(!vs_result.success)
             return MakeError(vs_result.error_message);
 
-        const AssembleStageResult fs_result = AssembleFragmentShader(key, desc);
+        const AssembleStageResult fs_result = AssembleFragmentShader(key, desc, row);
         if(!fs_result.success)
             return MakeError(fs_result.error_message);
 

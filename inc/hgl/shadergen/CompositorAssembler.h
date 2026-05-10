@@ -15,6 +15,7 @@ namespace hgl::graph::mtl
 {
     struct MaterialVariantKey;
     struct MaterialVariantDesc;
+    struct MaterialVariantRow;
 }
 
 namespace hgl::graph
@@ -66,9 +67,21 @@ namespace hgl::graph
             const mtl::MaterialVariantDesc &desc
         ) const;
 
+        AssembleStageResult AssembleVertexShader(
+            const mtl::MaterialVariantKey  &key,
+            const mtl::MaterialVariantDesc &desc,
+            const mtl::MaterialVariantRow  *row
+        ) const;
+
         AssembleStageResult AssembleFragmentShader(
             const mtl::MaterialVariantKey  &key,
             const mtl::MaterialVariantDesc &desc
+        ) const;
+
+        AssembleStageResult AssembleFragmentShader(
+            const mtl::MaterialVariantKey  &key,
+            const mtl::MaterialVariantDesc &desc,
+            const mtl::MaterialVariantRow  *row
         ) const;
 
         /// VariantDesc overload — derives SurfaceType/RenderAlphaMode/PassType/QualityTier from key,
@@ -78,15 +91,23 @@ namespace hgl::graph
             const mtl::MaterialVariantDesc &desc
         ) const;
 
+        AssembleResult Assemble(
+            const mtl::MaterialVariantKey  &key,
+            const mtl::MaterialVariantDesc &desc,
+            const mtl::MaterialVariantRow  *row
+        ) const;
+
     private:
 
         bool AssembleVertexShaderSource(const mtl::MaterialVariantKey &key,
                                         const mtl::MaterialVariantDesc &desc,
+                                        const mtl::MaterialVariantRow *row,
                                         std::string &out_source,
                                         std::string &out_error) const;
 
         bool AssembleFragmentShaderSource(const mtl::MaterialVariantKey &key,
                                           const mtl::MaterialVariantDesc &desc,
+                                          const mtl::MaterialVariantRow *row,
                                           const std::string &surface_rel,
                                           std::string &out_source,
                                           std::string &out_error) const;
