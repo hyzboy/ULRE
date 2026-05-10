@@ -38,7 +38,6 @@ using _BVE_PT   = PassType;
 using _BVE_Slot = SamplerSlot;
 
 inline constexpr uint32 _BVE_VA(VertexAttrib a) { return VertexAttribFeatureBit(a); }
-inline constexpr uint32 _BVE_EX(ExtraFeature  f) { return static_cast<uint32>(f); }
 
 // ---------------------------------------------------------------------------
 // BuiltinVariantEntry  —  flat POD row for one registered shader variant

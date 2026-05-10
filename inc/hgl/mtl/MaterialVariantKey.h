@@ -25,14 +25,6 @@ namespace hgl::graph::mtl
         return 1u << static_cast<uint32>(attrib);
     }
 
-    enum class ExtraFeature : uint32
-    {
-        None         = 0,
-        DebugShading = 1u << 0,
-
-        ENUM_CLASS_RANGE(None, DebugShading)
-    };
-
     enum class GeometryMode : uint8
     {
         Mesh3D = 0,
@@ -54,12 +46,12 @@ namespace hgl::graph::mtl
         uint32            texture_source_bits           = 0;
         uint32            sampler_feature_bits          = 0;
         uint32            vertex_attribute_feature_bits = 0;
-        uint32            extra_feature_bits            = static_cast<uint32>(ExtraFeature::None);
+        uint32            extra_feature_bits            = 0;
         RenderAlphaMode   blend_mode          = RenderAlphaMode::Opaque;
         PassType          pass_hint           = PassType::ForwardOpaque;
         SkyLightAmbientModel sky_ambient_model = SkyLightAmbientModel::Simple;
         LightingModel lighting_model = LightingModel::Lambert;
-        
+
         // Phase 2: Effective feature mask (resolved from intent_features via MaterialRecipe)
         // When non-zero, represents the authoritative feature set for this variant routing decision.
         uint64            effective_feature_mask = 0;
@@ -116,20 +108,6 @@ namespace hgl::graph::mtl
         bool HasVertexAttrib(const VertexAttrib attrib) const noexcept
         {
             return (vertex_attribute_feature_bits & VertexAttribFeatureBit(attrib)) != 0;
-        }
-
-        void SetDebugShading(const bool enabled = true) noexcept
-        {
-            constexpr uint32 debug_shading_bit = static_cast<uint32>(ExtraFeature::DebugShading);
-            if (enabled)
-                extra_feature_bits |= debug_shading_bit;
-            else
-                extra_feature_bits &= ~debug_shading_bit;
-        }
-
-        bool IsDebugShading() const noexcept
-        {
-            return (extra_feature_bits & static_cast<uint32>(ExtraFeature::DebugShading)) != 0;
         }
 
         uint64 Hash() const noexcept

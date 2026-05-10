@@ -76,15 +76,6 @@ inline MaterialVariantKey MakeVariantKeyWithAttrib(const VertexAttrib attrib)
     return key;
 }
 
-[[deprecated("[Step 3.5 T1] use RouteKey(preset, VertexAttribFeatureBit(attrib), {.debug_shading=true})")]]
-inline MaterialVariantKey MakeVariantKeyWithAttribAndDebug(const VertexAttrib attrib)
-{
-    MaterialVariantKey key{};
-    key.SetVertexAttribEnabled(attrib);
-    key.SetDebugShading(true);
-    return key;
-}
-
 inline Material3DCreateConfig MakeLocalConfig(const Material3DCreateConfig *cfg)
 {
     return cfg ? *cfg : Material3DCreateConfig();

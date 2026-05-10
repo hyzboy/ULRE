@@ -208,7 +208,6 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
     if (ov.position_provider) key.position_provider = *ov.position_provider;  // Step 11.D
     if (ov.pass_hint)         key.pass_hint         = *ov.pass_hint;
     if (ov.sky_ambient_model) key.sky_ambient_model = *ov.sky_ambient_model;
-    if (ov.debug_shading)     key.SetDebugShading(true);
 
     return key;
 }

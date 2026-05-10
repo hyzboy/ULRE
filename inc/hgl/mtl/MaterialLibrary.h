@@ -63,7 +63,6 @@ struct RuntimeKeyOverrides
     std::optional<SkyLightAmbientModel> sky_ambient_model;   // 同上
     std::optional<LightingModel>     lighting_model;         // 同上
     uint32                           extra_vertex_attrib_bits = 0;  // 与 preset 默认 OR 合并
-    bool                             debug_shading = false;          // 仅置位
 };
 
 /// [Step 3.5 T1] **唯一**的 MaterialVariantKey 构造入口。
