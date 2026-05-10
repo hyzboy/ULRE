@@ -658,30 +658,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     {
         stats.RecordByKeyHit();
 
-        if (it->second && it->second->HasMaterialKey())
-        {
-            mtl::MaterialKey merged_key = it->second->GetMaterialKey();
-            const mtl::MaterialKey old_key = merged_key;
-            uint32_t mismatch_mask = 0;
-            MergeMaterialKeyAxesFromRequestIfDefault(merged_key, key, &mismatch_mask);
-
-            if (mismatch_mask != 0)
-            {
-                stats.RecordMaterialKeyAxisMismatch(mismatch_mask);
-                stats.LogMaterialKeyAxisMismatchDetails(old_key, key, mismatch_mask);
-            }
-
-            if (!(merged_key == old_key))
-            {
-                it->second->SetMaterialKey(merged_key);
-                material_by_key[merged_key] = it->second;
-
-                auto it_old = material_by_key.find(old_key);
-                if (it_old != material_by_key.end() && it_old->second == it->second)
-                    material_by_key.erase(it_old);
-            }
-        }
-
         if (it->second && it->second->GetEffectiveFeatureMask() == 0
          && key.variant.effective_feature_mask != 0)
         {
@@ -709,40 +685,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     {
         stats.LogGetOrCreateProgramByKeyCreated(prog);
 
-        // If program key still carries unresolved default axes, merge richer axes
-        // from the incoming request key (def/schema/toolchain versions).
-        if (prog->HasMaterialKey())
-        {
-            mtl::MaterialKey merged_key = prog->GetMaterialKey();
-            const mtl::MaterialKey old_key = merged_key;
-            uint32_t mismatch_mask = 0;
-            MergeMaterialKeyAxesFromRequestIfDefault(merged_key, key, &mismatch_mask);
-            if (mismatch_mask != 0)
-            {
-                stats.RecordMaterialKeyAxisMismatch(mismatch_mask);
-                stats.LogMaterialKeyAxisMismatchDetails(old_key, key, mismatch_mask);
-            }
-
-            prog->SetMaterialKey(merged_key);
-            material_by_key[merged_key] = prog;
-
-            if (!(merged_key == old_key))
-            {
-                auto it_old = material_by_key.find(old_key);
-                if (it_old != material_by_key.end() && it_old->second == prog)
-                    material_by_key.erase(it_old);
-            }
-
-            const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(merged_key.variant,
-                                                                           recipe.prim,
-                                                                           recipe.l2w);
-            const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(merged_key.variant);
-            prog->SetVertexProgramKey(vkey);
-            prog->SetFragmentProgramKey(fkey);
-            stats.RecordShaderProgramKeyCoverage(vkey, fkey);
-            stats.RecordShaderProgramShadowCacheInsert(vkey, fkey, prog);
-        }
-
         if (prog->GetEffectiveFeatureMask() == 0 && key.variant.effective_feature_mask != 0)
             prog->effective_feature_mask = key.variant.effective_feature_mask;
 
@@ -751,7 +693,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
         // Alias requested key to the created program so callers that already hold
         // enriched MaterialKey(def/schema/version axes) can hit cache on next lookup.
         material_by_key[key] = prog;
-
 #ifndef NDEBUG
         auto it_alias = material_by_key.find(key);
         assert(it_alias != material_by_key.end() && it_alias->second == prog);
