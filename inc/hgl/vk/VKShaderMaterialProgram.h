@@ -80,6 +80,10 @@ public:
 
     const   ShaderStageCreateInfoList &         GetStageList            ()const{return shader_stage_list;}
 
+    const   ShaderModule *                      GetShaderModule         (const VkShaderStageFlagBits stage)const;
+    const   ShaderModule *                      GetVertexShaderModule   ()const { return GetShaderModule(VK_SHADER_STAGE_VERTEX_BIT); }
+    const   ShaderModule *                      GetFragmentShaderModule ()const { return GetShaderModule(VK_SHADER_STAGE_FRAGMENT_BIT); }
+
 //    const   MaterialDescriptorManager *         GetDescriptorManager    ()const{return desc_manager;}
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
     const   GraphicsPipelineLayoutData *                GetGraphicsPipelineLayoutData   ()const{return pipeline_layout_data;}

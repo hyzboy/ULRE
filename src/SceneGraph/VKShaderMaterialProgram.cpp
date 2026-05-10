@@ -40,6 +40,18 @@ ShaderMaterialProgram::~ShaderMaterialProgram()
         SAFE_CLEAR(mp);
 }
 
+const ShaderModule *ShaderMaterialProgram::GetShaderModule(const VkShaderStageFlagBits stage)const
+{
+    if(!shader_maps)
+        return nullptr;
+
+    const ShaderModule *sm = nullptr;
+    if(shader_maps->Get(stage, sm))
+        return sm;
+
+    return nullptr;
+}
+
 const VkPipelineLayout ShaderMaterialProgram::GetPipelineLayout()const
 {
     if(!pipeline_layout_data)
