@@ -263,6 +263,20 @@ void ShaderMaterialProgramManager::RecordMaterialKeyAxisMismatch(uint32_t mismat
         key_axis_mismatch_spv.fetch_add(1, std::memory_order_relaxed);
 }
 
+void ShaderMaterialProgramManager::RecordShaderProgramKeyCoverage(const mtl::VertexProgramKey &vkey,
+                                                                  const mtl::FragmentProgramKey &fkey)
+{
+    vertex_program_key_seen.fetch_add(1, std::memory_order_relaxed);
+    fragment_program_key_seen.fetch_add(1, std::memory_order_relaxed);
+
+    const uint64_t vhash = vkey.Hash();
+    const uint64_t fhash = fkey.Hash();
+
+    std::lock_guard<std::mutex> lock(shader_program_key_stats_mutex);
+    vertex_program_key_unique_hashes.insert(vhash);
+    fragment_program_key_unique_hashes.insert(fhash);
+}
+
 GRAPH_MODULE_CONSTRUCT(ShaderMaterialProgramManager)
 {
 }
@@ -833,6 +847,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
             const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(merged_key.variant);
             prog->SetVertexProgramKey(vkey);
             prog->SetFragmentProgramKey(fkey);
+            RecordShaderProgramKeyCoverage(vkey, fkey);
         }
 
         if (prog->GetEffectiveFeatureMask() == 0 && key.variant.effective_feature_mask != 0)
@@ -1070,6 +1085,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(enriched_key.variant);
         mat->SetVertexProgramKey(vkey);
         mat->SetFragmentProgramKey(fkey);
+        RecordShaderProgramKeyCoverage(vkey, fkey);
 
         uint8_t flags = 0;
         for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
@@ -1193,6 +1209,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(enriched_key.variant);
         mat->SetVertexProgramKey(vkey);
         mat->SetFragmentProgramKey(fkey);
+        RecordShaderProgramKeyCoverage(vkey, fkey);
 
         uint8_t flags = 0;
         for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
@@ -1218,10 +1235,16 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 
 void ShaderMaterialProgramManager::DumpKeyMapDiagnostics() const
 {
+    const auto key_stats = GetShaderProgramKeyCoverageStats();
+
     std::fprintf(stderr,
-        "[ShaderMaterialProgramManager] KeyMap: by_key=%zu hits=%llu\n",
+        "[ShaderMaterialProgramManager] KeyMap: by_key=%zu hits=%llu vkey(seen=%llu unique=%llu) fkey(seen=%llu unique=%llu)\n",
         material_by_key.size(),
-        static_cast<unsigned long long>(by_key_hits.load()));
+        static_cast<unsigned long long>(by_key_hits.load()),
+        static_cast<unsigned long long>(key_stats.vertex_seen),
+        static_cast<unsigned long long>(key_stats.vertex_unique),
+        static_cast<unsigned long long>(key_stats.fragment_seen),
+        static_cast<unsigned long long>(key_stats.fragment_unique));
 }
 
 MaterialBindingInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)

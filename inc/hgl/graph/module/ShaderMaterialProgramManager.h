@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
+#include <mutex>
 #include <atomic>
 #include <cstdio>
 
@@ -90,6 +92,14 @@ struct MaterialKeyAxisMismatchStats
     uint64_t spv_version = 0;
 };
 
+struct ShaderProgramKeyCoverageStats
+{
+    uint64_t vertex_seen = 0;
+    uint64_t vertex_unique = 0;
+    uint64_t fragment_seen = 0;
+    uint64_t fragment_unique = 0;
+};
+
 constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;//GetBitOffset((uint32_t)VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)+1;
 
 GRAPH_MODULE_CLASS(ShaderMaterialProgramManager)
@@ -128,6 +138,13 @@ private:
     std::atomic<uint64_t> key_axis_mismatch_vk {0};
     std::atomic<uint64_t> key_axis_mismatch_spv {0};
 
+    // VS/FS key observability (Phase 6.1)
+    std::atomic<uint64_t> vertex_program_key_seen {0};
+    std::atomic<uint64_t> fragment_program_key_seen {0};
+    std::unordered_set<uint64_t> vertex_program_key_unique_hashes;
+    std::unordered_set<uint64_t> fragment_program_key_unique_hashes;
+    mutable std::mutex shader_program_key_stats_mutex;
+
     // Fallback material for error handling (initialized on first use)
     ShaderMaterialProgram *fallback_material = nullptr;
 
@@ -141,6 +158,8 @@ private:
 private: // Helper methods with integrated DebugUtils
 
     void RecordMaterialKeyAxisMismatch(uint32_t mismatch_mask);
+    void RecordShaderProgramKeyCoverage(const mtl::VertexProgramKey &vkey,
+                                        const mtl::FragmentProgramKey &fkey);
 
     ShaderMaterialProgram *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
     ShaderMaterialProgram *CreateMaterial(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);   ///<基于内置材质ID创建2D材质
@@ -304,6 +323,18 @@ public: // Acquire stats
         return s;
     }
 
+    ShaderProgramKeyCoverageStats GetShaderProgramKeyCoverageStats() const
+    {
+        ShaderProgramKeyCoverageStats s;
+        s.vertex_seen = vertex_program_key_seen.load();
+        s.fragment_seen = fragment_program_key_seen.load();
+
+        std::lock_guard<std::mutex> lock(shader_program_key_stats_mutex);
+        s.vertex_unique = static_cast<uint64_t>(vertex_program_key_unique_hashes.size());
+        s.fragment_unique = static_cast<uint64_t>(fragment_program_key_unique_hashes.size());
+        return s;
+    }
+
     void ResetAcquireStats()
     {
         acquire_material_requests.store(0);
@@ -322,6 +353,14 @@ public: // Acquire stats
         key_axis_mismatch_glsl.store(0);
         key_axis_mismatch_vk.store(0);
         key_axis_mismatch_spv.store(0);
+
+        vertex_program_key_seen.store(0);
+        fragment_program_key_seen.store(0);
+        {
+            std::lock_guard<std::mutex> lock(shader_program_key_stats_mutex);
+            vertex_program_key_unique_hashes.clear();
+            fragment_program_key_unique_hashes.clear();
+        }
     }
 
     void DumpKeyMapDiagnostics() const;
