@@ -15,6 +15,12 @@
 
 namespace
 {
+    #if defined(ULRE_SHADERGEN_VERBOSE)
+    constexpr bool kCompositorAssemblerVerbose = true;
+    #else
+    constexpr bool kCompositorAssemblerVerbose = false;
+    #endif
+
     // Thread-local shader version for #version directive (default 450)
     thread_local int g_shader_version = 450;
 
@@ -88,6 +94,9 @@ namespace
                            const hgl::graph::mtl::MaterialVariantDesc &desc,
                            const hgl::graph::mtl::MaterialVariantRow *row)
     {
+        if (!kCompositorAssemblerVerbose)
+            return;
+
         if (row)
         {
             std::fprintf(stderr,

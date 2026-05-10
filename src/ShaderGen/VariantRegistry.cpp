@@ -173,6 +173,60 @@ static std::string FormatRowTexturesForLog(const MaterialVariantRow &row)
     return text;
 }
 
+static bool RowUsesStandardTexCoord(const MaterialVariantRow &row) noexcept
+{
+    return row.vs_features.HasVertexAttrib(VertexAttrib::TexCoord)
+        || row.fs_features.HasVertexAttrib(VertexAttrib::TexCoord);
+}
+
+static bool RowUsesBillboardTexCoordPath(const MaterialVariantRow &row) noexcept
+{
+    return row.vertex_policy == VertexTransformPolicy::BillboardCameraFacing
+        || row.vertex_policy == VertexTransformPolicy::BillboardAxisLocked;
+}
+
+static void ValidateBuiltinRowConsistency(const MaterialVariantRow &row,
+                                          std::vector<std::string> &diagnostics)
+{
+    auto push = [&](const char *message)
+    {
+        std::string text = "Builtin row consistency failed: ";
+        text += row.name ? row.name : "<unnamed>";
+        text += " - ";
+        text += message;
+        diagnostics.emplace_back(std::move(text));
+    };
+
+    if (row.fs_features.has_direction && !row.vs_features.has_direction)
+        push("fs_features.has_direction requires vs_features.has_direction");
+
+    if (row.vs_features.has_clip_pos && !row.fs_features.has_clip_pos)
+        push("vs_features.has_clip_pos is set but fs_features.has_clip_pos is not");
+
+    if (RowUsesStandardTexCoord(row) && RowUsesBillboardTexCoordPath(row))
+        push("standard TexCoord varyings must not be mixed with billboard texcoord path");
+
+    if (row.resources.needs_material_texture_index && row.texture_count == 0)
+        push("needs_material_texture_index requires at least one texture slot");
+
+    if (row.resources.enable_lighting && !row.resources.needs_camera)
+        push("enable_lighting requires needs_camera");
+
+    if (row.resources.enable_lighting && !row.resources.needs_sky && row.surface_type != SurfaceType::Unlit)
+        push("lit 3D row should declare needs_sky unless explicitly unlit");
+
+    const bool has_textures = row.texture_count > 0;
+    const bool has_standard_texcoord = RowUsesStandardTexCoord(row);
+    if (has_textures && !RowUsesBillboardTexCoordPath(row) && !has_standard_texcoord)
+        push("textured non-billboard row must declare TexCoord in VS/FS features");
+
+    if (row.surface_type == SurfaceType::Sky && !row.vs_features.has_direction)
+        push("sky row must emit direction from vertex stage");
+
+    if (row.surface_type == SurfaceType::Sky && !row.fs_features.has_direction)
+        push("sky row must consume direction in fragment stage");
+}
+
 static ShaderStageFeatureDesc MakeStageFeatures(std::initializer_list<hgl::graph::VertexAttrib> attribs,
                                                 const bool has_direction = false,
                                                 const bool has_clip_pos = false)
@@ -291,6 +345,9 @@ bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_
                                                       std::vector<std::string> &diagnostics) const
 {
     diagnostics.clear();
+
+    for (size_t i = 0; i < kBuiltinVariantRowsCount; ++i)
+        ValidateBuiltinRowConsistency(kBuiltinVariantRows[i], diagnostics);
 
     CompositorAssembler assembler(shader_library_path);
 
