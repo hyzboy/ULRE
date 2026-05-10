@@ -11,8 +11,8 @@
 
 namespace hgl::graph::mtl{
 
-namespace {
-
+namespace
+{
 #if defined(ULRE_SHADERGEN_VERBOSE)
 constexpr bool kVariantRegistryVerbose = true;
 #else
@@ -173,6 +173,37 @@ static std::string FormatRowTexturesForLog(const MaterialVariantRow &row)
     return text;
 }
 
+static size_t CountBuiltinRowsByName(const char *name) noexcept
+{
+    if (!name || !name[0])
+        return 0;
+
+    size_t count = 0;
+    for (size_t i = 0; i < kBuiltinVariantRowsCount; ++i)
+    {
+        const auto &row = kBuiltinVariantRows[i];
+        if (row.name && std::string_view(row.name) == name)
+            ++count;
+    }
+
+    return count;
+}
+
+static const MaterialVariantRow *FindBuiltinRowByName(const std::string &name) noexcept
+{
+    if (name.empty())
+        return nullptr;
+
+    for (size_t i = 0; i < kBuiltinVariantRowsCount; ++i)
+    {
+        const auto &row = kBuiltinVariantRows[i];
+        if (row.name && name == row.name)
+            return &row;
+    }
+
+    return nullptr;
+}
+
 static bool RowUsesStandardTexCoord(const MaterialVariantRow &row) noexcept
 {
     return row.vs_features.HasVertexAttrib(VertexAttrib::TexCoord)
@@ -225,6 +256,59 @@ static void ValidateBuiltinRowConsistency(const MaterialVariantRow &row,
 
     if (row.surface_type == SurfaceType::Sky && !row.fs_features.has_direction)
         push("sky row must consume direction in fragment stage");
+
+    const size_t duplicate_name_count = CountBuiltinRowsByName(row.name);
+    if (duplicate_name_count > 1)
+        push("row name must be unique for exact builtin variant binding");
+}
+
+static void ValidateBuiltinVariantDescRowBinding(const MaterialVariantKey &key,
+                                                 const MaterialVariantDesc &desc,
+                                                 std::vector<std::string> &diagnostics)
+{
+    if (!desc.factory_type.has_value())
+        return;
+
+    if (desc.variant_name.empty())
+    {
+        diagnostics.emplace_back("Builtin variant descriptor binding failed: variant_name must not be empty when factory_type is set");
+        return;
+    }
+
+    const MaterialVariantRow *row = FindBuiltinRowByName(desc.variant_name);
+    if (!row)
+    {
+        std::string text = "Builtin variant descriptor binding failed: no MaterialVariantRow named '";
+        text += desc.variant_name;
+        text += "' for factory=";
+        text += std::to_string(static_cast<unsigned>(*desc.factory_type));
+        diagnostics.emplace_back(std::move(text));
+        return;
+    }
+
+    if (row->factory_type != *desc.factory_type)
+    {
+        std::string text = "Builtin variant descriptor binding failed: row '";
+        text += desc.variant_name;
+        text += "' factory_type mismatch (row=";
+        text += std::to_string(static_cast<unsigned>(row->factory_type));
+        text += ", desc=";
+        text += std::to_string(static_cast<unsigned>(*desc.factory_type));
+        text += ")";
+        diagnostics.emplace_back(std::move(text));
+    }
+
+    if (row->surface_type != key.surface_type
+     || row->geometry_mode != key.geometry_mode
+     || row->position_provider != key.position_provider
+     || row->blend != key.blend_mode
+     || row->pass != key.pass_hint)
+    {
+        std::string text = "Builtin variant descriptor binding failed: row '";
+        text += desc.variant_name;
+        text += "' structural identity mismatches registered key";
+        diagnostics.emplace_back(std::move(text));
+    }
 }
 
 static ShaderStageFeatureDesc MakeStageFeatures(std::initializer_list<hgl::graph::VertexAttrib> attribs,
@@ -355,6 +439,8 @@ bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_
     {
         for(const auto &entry:bucket)
         {
+            ValidateBuiltinVariantDescRowBinding(entry.key, entry.desc, diagnostics);
+
             const auto result=assembler.Assemble(entry.key,entry.desc);
             if(result.success)
                 continue;

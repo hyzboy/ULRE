@@ -11,6 +11,7 @@
 #include <hgl/mtl/LightingModel.h>
 #include "BuiltinVariantEntry.h"
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 
 namespace
@@ -237,22 +238,21 @@ namespace
 
     const hgl::graph::mtl::MaterialVariantRow *FindBuiltinVariantRow(const hgl::graph::mtl::MaterialVariantDesc &desc)
     {
+        if (desc.variant_name.empty())
+            return nullptr;
+
         for (size_t i = 0; i < hgl::graph::mtl::kBuiltinVariantRowsCount; ++i)
         {
             const auto &row = hgl::graph::mtl::kBuiltinVariantRows[i];
-            if (!desc.variant_name.empty() && desc.variant_name == row.name)
+            if (desc.variant_name == row.name)
                 return &row;
         }
 
         return nullptr;
     }
 
-    const hgl::graph::mtl::MaterialVariantRow *FindBuiltinVariantRow(const hgl::graph::mtl::MaterialVariantKey &key,
-                                                                     const hgl::graph::mtl::MaterialVariantDesc &desc)
+    const hgl::graph::mtl::MaterialVariantRow *FindBuiltinVariantRowByLegacyKeyApproximation(const hgl::graph::mtl::MaterialVariantKey &key)
     {
-        if (const auto *row = FindBuiltinVariantRow(desc))
-            return row;
-
         for (size_t i = 0; i < hgl::graph::mtl::kBuiltinVariantRowsCount; ++i)
         {
             const auto &row = hgl::graph::mtl::kBuiltinVariantRows[i];
@@ -297,16 +297,6 @@ namespace
         return nullptr;
     }
 
-    const hgl::graph::mtl::MaterialVariantRow *ResolveVariantRow(const hgl::graph::mtl::MaterialVariantKey &key,
-                                                                 const hgl::graph::mtl::MaterialVariantDesc &desc,
-                                                                 const hgl::graph::mtl::MaterialVariantRow *row)
-    {
-        if (row)
-            return row;
-
-        return FindBuiltinVariantRow(key, desc);
-    }
-
     const char *GetStageTemplatePath(const std::string &desc_template_path,
                                      const hgl::graph::mtl::MaterialVariantRow *row,
                                      const bool is_vertex_stage)
@@ -324,23 +314,79 @@ namespace
         return nullptr;
     }
 
-    /// Unified VS generator: derives complete GLSL from MaterialVariantKey fields alone.
-    std::string BuildVSFromKey(const hgl::graph::mtl::MaterialVariantKey &key)
+    hgl::graph::CompositorFeatureFlags LegacyVSFeatureFlagsFromKey(const hgl::graph::mtl::MaterialVariantKey &key)
     {
-        using GM = hgl::graph::mtl::GeometryMode;
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.vertex_attrib_bits = key.vertex_attribute_feature_bits;
 
-        // 1. Billboard geometry modes: delegate to pre-built VS files.
-        if (key.geometry_mode == GM::BillboardCameraFacing)
-            return BuildIncludeOnlyVS("compositor/main_forward_billboard_dynamic.vert.glsl");
-        if (key.geometry_mode == GM::BillboardAxisLocked)
-            return BuildIncludeOnlyVS("compositor/main_forward_billboard_fixed.vert.glsl");
+        flags.position_provider = key.position_provider;
+        if (key.surface_type == hgl::graph::SurfaceType::Sky)
+        {
+            flags.has_direction      = true;
+            flags.vertex_attrib_bits = 0;
+        }
 
-        // 2. Terrain: delegate to terrain VS file.
-        if (key.surface_type == hgl::graph::SurfaceType::Terrain)
-            return BuildIncludeOnlyVS("compositor/main_terrain_grid.vert.glsl");
+        return flags;
+    }
 
-        // 3. All other materials: derive flags from key and generate via template.
-        return BuildForwardVertexEntry(VSFeatureFlagsFromKey(key));
+    bool DescLooksBuiltinRouted(const hgl::graph::mtl::MaterialVariantDesc &desc) noexcept
+    {
+        return desc.factory_type.has_value();
+    }
+
+    void WarnLegacyKeyFallbackOnce(const char *stage,
+                                   const hgl::graph::mtl::MaterialVariantKey &key,
+                                   const hgl::graph::mtl::MaterialVariantDesc &desc)
+    {
+        static std::atomic_bool s_warned{false};
+        bool expected = false;
+        if (!s_warned.compare_exchange_strong(expected, true, std::memory_order_relaxed))
+            return;
+
+        std::fprintf(stderr,
+                     "[CompositorAssembler] warning: using legacy key fallback for %s stage variant='%s' factory=%s surface=%u geometry=%u. "
+                     "This path is compatibility-only; prefer explicit MaterialVariantRow/row-bound descriptors.\n",
+                     stage,
+                     desc.variant_name.empty() ? "<unnamed>" : desc.variant_name.c_str(),
+                     desc.factory_type ? std::to_string(static_cast<unsigned>(*desc.factory_type)).c_str() : "<none>",
+                     static_cast<unsigned>(key.surface_type),
+                     static_cast<unsigned>(key.geometry_mode));
+    }
+
+    const hgl::graph::mtl::MaterialVariantRow *ResolveVariantRow(const hgl::graph::mtl::MaterialVariantKey &key,
+                                                                 const hgl::graph::mtl::MaterialVariantDesc &desc,
+                                                                 const hgl::graph::mtl::MaterialVariantRow *row)
+    {
+        if (row)
+            return row;
+
+        if (const auto *named_row = FindBuiltinVariantRow(desc))
+            return named_row;
+
+        if (DescLooksBuiltinRouted(desc))
+            return nullptr;
+
+        return FindBuiltinVariantRowByLegacyKeyApproximation(key);
+    }
+
+    std::string BuildMissingRowMessage(const char *stage,
+                                       const hgl::graph::mtl::MaterialVariantKey &key,
+                                       const hgl::graph::mtl::MaterialVariantDesc &desc)
+    {
+        std::string msg;
+        msg.reserve(256);
+        msg += "[CompositorAssembler] ";
+        msg += stage;
+        msg += " requires explicit MaterialVariantRow for builtin-routed variant='";
+        msg += desc.variant_name.empty() ? "<unnamed>" : desc.variant_name;
+        msg += "' factory=";
+        msg += desc.factory_type ? std::to_string(static_cast<unsigned>(*desc.factory_type)) : std::string("<none>");
+        msg += " surface=";
+        msg += std::to_string(static_cast<unsigned>(key.surface_type));
+        msg += " geometry=";
+        msg += std::to_string(static_cast<unsigned>(key.geometry_mode));
+        msg += ". Key fallback is reserved for non-builtin custom descriptors.";
+        return msg;
     }
 
     hgl::graph::CompositorFeatureFlags VSFeatureFlagsFromRow(const hgl::graph::mtl::MaterialVariantRow &row)
@@ -363,6 +409,25 @@ namespace
         return flags;
     }
 
+    /// Legacy fallback VS generator: only used for non-builtin custom descriptors.
+    std::string BuildLegacyVSFromKey(const hgl::graph::mtl::MaterialVariantKey &key)
+    {
+        using GM = hgl::graph::mtl::GeometryMode;
+
+        // 1. Billboard geometry modes: delegate to pre-built VS files.
+        if (key.geometry_mode == GM::BillboardCameraFacing)
+            return BuildIncludeOnlyVS("compositor/main_forward_billboard_dynamic.vert.glsl");
+        if (key.geometry_mode == GM::BillboardAxisLocked)
+            return BuildIncludeOnlyVS("compositor/main_forward_billboard_fixed.vert.glsl");
+
+        // 2. Terrain: delegate to terrain VS file.
+        if (key.surface_type == hgl::graph::SurfaceType::Terrain)
+            return BuildIncludeOnlyVS("compositor/main_terrain_grid.vert.glsl");
+
+        // 3. All other materials: derive flags from key and generate via template.
+        return BuildForwardVertexEntry(LegacyVSFeatureFlagsFromKey(key));
+    }
+
     std::string BuildVSFromRow(const hgl::graph::mtl::MaterialVariantRow &row)
     {
         if (row.vs_template_path && row.vs_template_path[0])
@@ -371,10 +436,10 @@ namespace
         return BuildForwardVertexEntry(VSFeatureFlagsFromRow(row));
     }
 
-    /// Derive FS CompositorFeatureFlags from MaterialVariantKey fields.
-    hgl::graph::CompositorFeatureFlags FSFeatureFlagsFromKey(const hgl::graph::mtl::MaterialVariantKey &key,
-                                                              hgl::graph::RenderAlphaMode blend,
-                                                              const std::string &surface_path)
+    /// Legacy key-derived FS feature inference: only used by non-builtin fallback assembly.
+    hgl::graph::CompositorFeatureFlags LegacyFSFeatureFlagsFromKey(const hgl::graph::mtl::MaterialVariantKey &key,
+                                                                   hgl::graph::RenderAlphaMode blend,
+                                                                   const std::string &surface_path)
     {
         using ST = hgl::graph::SurfaceType;
         using GM = hgl::graph::mtl::GeometryMode;
@@ -470,12 +535,12 @@ namespace
         return flags;
     }
 
-    /// Unified FS generator: derives complete GLSL from MaterialVariantKey fields alone.
-    std::string BuildFSFromKey(const hgl::graph::mtl::MaterialVariantKey &key,
-                               hgl::graph::RenderAlphaMode blend,
-                               const std::string &surface_path)
+    /// Legacy fallback FS generator: only used for non-builtin custom descriptors.
+    std::string BuildLegacyFSFromKey(const hgl::graph::mtl::MaterialVariantKey &key,
+                                     hgl::graph::RenderAlphaMode blend,
+                                     const std::string &surface_path)
     {
-        return BuildForwardFragmentEntry(FSFeatureFlagsFromKey(key, blend, surface_path));
+        return BuildForwardFragmentEntry(LegacyFSFeatureFlagsFromKey(key, blend, surface_path));
     }
 
     std::string BuildReadFailureMessage(const char *stage,
@@ -618,13 +683,20 @@ namespace hgl::graph
         {
             if (resolved_row)
             {
-                LogVSAssemblyPath("explicit_row", key, desc, row);
+                LogVSAssemblyPath("explicit_row", key, desc, resolved_row);
                 out_source = BuildVSFromRow(*resolved_row);
             }
             else
             {
-                LogVSAssemblyPath("key_fallback", key, desc, nullptr);
-                out_source = BuildVSFromKey(key);
+                if (DescLooksBuiltinRouted(desc))
+                {
+                    out_error = BuildMissingRowMessage("VS", key, desc);
+                    return false;
+                }
+
+                WarnLegacyKeyFallbackOnce("VS", key, desc);
+                LogVSAssemblyPath("legacy_key_fallback", key, desc, nullptr);
+                out_source = BuildLegacyVSFromKey(key);
             }
         }
 
@@ -669,13 +741,22 @@ namespace hgl::graph
             if (resolved_row)
                 out_source = BuildForwardFragmentEntry(FSFeatureFlagsFromRow(key, *resolved_row, key.blend_mode, surface_rel));
             else
-                out_source = BuildFSFromKey(key, key.blend_mode, surface_rel);
+            {
+                if (DescLooksBuiltinRouted(desc))
+                {
+                    out_error = BuildMissingRowMessage("FS", key, desc);
+                    return false;
+                }
+
+                WarnLegacyKeyFallbackOnce("FS", key, desc);
+                out_source = BuildLegacyFSFromKey(key, key.blend_mode, surface_rel);
+            }
         }
 
         if (out_source.empty())
         {
             out_error = BuildPreprocessFailureMessage(
-                "FS", desc.fs_template_path, "BuildFSFromKey produced empty source", out_source);
+                "FS", desc.fs_template_path, "BuildLegacyFSFromKey produced empty source", out_source);
             return false;
         }
 
