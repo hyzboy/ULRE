@@ -105,16 +105,26 @@ static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
 void VariantRegistry::RegisterVariant(const MaterialVariantKey &key, const MaterialVariantDesc &desc)
 {
     const uint64 hash = key.Hash();
-    auto it = variant_map.find(hash);
-    if (it != variant_map.end() && !(it->second.key == key))
+    auto &bucket = variant_map[hash];
+
+    for (const auto &existing : bucket)
     {
-        std::fprintf(stderr,
-            "[VariantRegistry] Hash collision on RegisterVariant '%s' (hash=0x%016llx); existing entry kept.\n",
-            desc.variant_name.empty() ? "<unnamed>" : desc.variant_name.c_str(),
-            static_cast<unsigned long long>(hash));
-        return;
+        if (!(existing.key == key))
+            continue;
+
+        const bool same_factory = existing.desc.factory_type == desc.factory_type;
+        if (same_factory)
+        {
+            std::fprintf(stderr,
+                "[VariantRegistry] duplicate variant ignored on RegisterVariant '%s' (hash=0x%016llx).\n",
+                desc.variant_name.empty() ? "<unnamed>" : desc.variant_name.c_str(),
+                static_cast<unsigned long long>(hash));
+            return;
+        }
     }
-    variant_map[hash] = VariantEntry{key, desc};
+
+    bucket.push_back(VariantEntry{key, desc});
+    ++variant_count;
 }
 
 const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKey &key,
@@ -125,9 +135,26 @@ const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKe
     auto it = variant_map.find(query_key.Hash());
     if (it == variant_map.end())
         return nullptr;
-    if (!(it->second.key == query_key))
-        return nullptr;
-    return &it->second.desc;
+
+    const auto *fallback = static_cast<const MaterialVariantDesc *>(nullptr);
+
+    for (const auto &candidate : it->second)
+    {
+        if (!(candidate.key == query_key))
+            continue;
+
+        if (options.preferred_factory_type
+         && candidate.desc.factory_type
+         && *candidate.desc.factory_type == *options.preferred_factory_type)
+        {
+            return &candidate.desc;
+        }
+
+        if (!fallback)
+            fallback = &candidate.desc;
+    }
+
+    return fallback;
 }
 
 const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
@@ -178,25 +205,28 @@ bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_
 
     CompositorAssembler assembler(shader_library_path);
 
-    for(const auto &[hash,entry]:variant_map)
+    for(const auto &[hash,bucket]:variant_map)
     {
-        const auto result=assembler.Assemble(entry.key,entry.desc);
-        if(result.success)
-            continue;
-
-        std::string msg="Variant validation failed: ";
-        msg += entry.desc.variant_name.empty()?"<unnamed>":entry.desc.variant_name;
-        msg += " (hash=";
-        msg += std::to_string(hash);
-        msg += ")";
-
-        if(!result.error_message.empty())
+        for(const auto &entry:bucket)
         {
-            msg += " - ";
-            msg += result.error_message;
-        }
+            const auto result=assembler.Assemble(entry.key,entry.desc);
+            if(result.success)
+                continue;
 
-        diagnostics.emplace_back(std::move(msg));
+            std::string msg="Variant validation failed: ";
+            msg += entry.desc.variant_name.empty()?"<unnamed>":entry.desc.variant_name;
+            msg += " (hash=";
+            msg += std::to_string(hash);
+            msg += ")";
+
+            if(!result.error_message.empty())
+            {
+                msg += " - ";
+                msg += result.error_message;
+            }
+
+            diagnostics.emplace_back(std::move(msg));
+        }
     }
 
     return diagnostics.empty();
@@ -205,10 +235,11 @@ bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_
 std::string VariantRegistry::DumpSnapshot() const
 {
     std::vector<std::pair<uint64, const VariantEntry *>> rows;
-    rows.reserve(variant_map.size());
+    rows.reserve(variant_count);
 
-    for(const auto &[hash,entry]:variant_map)
-        rows.emplace_back(hash,&entry);
+    for(const auto &[hash,bucket]:variant_map)
+        for (const auto &entry : bucket)
+            rows.emplace_back(hash,&entry);
 
     std::sort(rows.begin(),rows.end(),
         [](const auto &a,const auto &b)
@@ -280,8 +311,9 @@ std::string VariantRegistry::DumpSnapshot() const
 void VariantRegistry::ForEach(
     std::function<void(const MaterialVariantKey &, const MaterialVariantDesc &)> cb) const
 {
-    for (const auto &[hash, entry] : variant_map)
-        cb(entry.key, entry.desc);
+    for (const auto &[hash, bucket] : variant_map)
+        for (const auto &entry : bucket)
+            cb(entry.key, entry.desc);
 }
 
 // ---------------------------------------------------------------------------
@@ -299,7 +331,6 @@ using RM   = _BVE_RM;
 using PT   = _BVE_PT;
 using Slot = _BVE_Slot;
 constexpr auto VA = _BVE_VA;
-constexpr auto EX = _BVE_EX;
 } // anonymous (aliases only)
 
 // clang-format off
@@ -343,12 +374,11 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .surface_path = "surface/unlit_luminance_surface.glsl"   },
 
     { .name = "VertexPaletteColor3D", .preset = MaterialPreset::VertexPaletteColor3D,
-      .vertex_bits = VA(VertexAttrib::Color), .extra_bits = EX(ExtraFeature::DebugShading),
+      .vertex_bits = VA(VertexAttrib::Color),
       .vs_path = "compositor/main_forward_unlit_palette.vert.glsl",
       .surface_path = "surface/unlit_vertexcolor_surface.glsl" },
 
     { .name = "Gizmo3D",            .preset = MaterialPreset::Gizmo3D,
-      .extra_bits = EX(ExtraFeature::DebugShading),
       .surface_path = "surface/gizmo3d_surface.glsl" },
 
     // ── Billboard  (2 geometries × 5 blend modes) ───────────────────────────────────────────────
@@ -356,70 +386,60 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .geometry_mode = GM::BillboardCameraFacing, .blend = RM::Opaque,          .pass = PT::ForwardOpaque,
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
-      .fs_path = "compositor/main_forward_billboard.frag.glsl",
       .surface_path = "surface/billboard_texture_surface.glsl" },
 
     { .name = "Billboard2DDynamic",         .preset = MaterialPreset::Billboard2DDynamic,
       .geometry_mode = GM::BillboardCameraFacing, .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
-      .fs_path = "compositor/main_forward_billboard.frag.glsl",
       .surface_path = "surface/billboard_texture_surface.glsl" },
 
     { .name = "Billboard2DDynamicMasked",   .preset = MaterialPreset::Billboard2DDynamic,
       .geometry_mode = GM::BillboardCameraFacing, .blend = RM::Masked,          .pass = PT::ForwardMasked,
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
-      .fs_path = "compositor/main_forward_billboard.frag.glsl",
       .surface_path = "surface/billboard_texture_surface.glsl" },
 
     { .name = "Billboard2DDynamicDither",   .preset = MaterialPreset::Billboard2DDynamic,
       .geometry_mode = GM::BillboardCameraFacing, .blend = RM::Dither,          .pass = PT::ForwardDither,
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
-      .fs_path = "compositor/main_forward_billboard.frag.glsl",
       .surface_path = "surface/billboard_texture_surface.glsl" },
 
     { .name = "Billboard2DDynamicA2C",      .preset = MaterialPreset::Billboard2DDynamic,
       .geometry_mode = GM::BillboardCameraFacing, .blend = RM::AlphaToCoverage, .pass = PT::ForwardA2C,
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
-      .fs_path = "compositor/main_forward_billboard.frag.glsl",
       .surface_path = "surface/billboard_texture_surface.glsl" },
 
     { .name = "Billboard2DFixedOpaque",     .preset = MaterialPreset::Billboard2DFixed,
       .geometry_mode = GM::BillboardAxisLocked,   .blend = RM::Opaque,          .pass = PT::ForwardOpaque,
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
-      .fs_path = "compositor/main_forward_billboard.frag.glsl",
       .surface_path = "surface/billboard_texture_surface.glsl" },
 
     { .name = "Billboard2DFixed",           .preset = MaterialPreset::Billboard2DFixed,
       .geometry_mode = GM::BillboardAxisLocked,   .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
-      .fs_path = "compositor/main_forward_billboard.frag.glsl",
       .surface_path = "surface/billboard_texture_surface.glsl" },
 
     { .name = "Billboard2DFixedMasked",     .preset = MaterialPreset::Billboard2DFixed,
       .geometry_mode = GM::BillboardAxisLocked,   .blend = RM::Masked,          .pass = PT::ForwardMasked,
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
-      .fs_path = "compositor/main_forward_billboard.frag.glsl",
       .surface_path = "surface/billboard_texture_surface.glsl" },
 
     { .name = "Billboard2DFixedDither",     .preset = MaterialPreset::Billboard2DFixed,
       .geometry_mode = GM::BillboardAxisLocked,   .blend = RM::Dither,          .pass = PT::ForwardDither,
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
-      .fs_path = "compositor/main_forward_billboard.frag.glsl",
       .surface_path = "surface/billboard_texture_surface.glsl" },
 
     { .name = "Billboard2DFixedA2C",        .preset = MaterialPreset::Billboard2DFixed,
       .geometry_mode = GM::BillboardAxisLocked,   .blend = RM::AlphaToCoverage, .pass = PT::ForwardA2C,
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
-      .fs_path = "compositor/main_forward_billboard.frag.glsl",
       .surface_path = "surface/billboard_texture_surface.glsl" },
 
     // ── Terrain / Sky ────────────────────────────────────────────────────────────────────────────
@@ -430,8 +450,6 @@ const BuiltinVariantEntry kBuiltinVariants[] =
 
     { .name = "SkyMinimal",   .preset = MaterialPreset::SkyMinimal,
       .surface_type = ST::Sky,
-      .vs_path = "compositor/main_forward_sky.vert.glsl",
-      .fs_path = "compositor/main_forward_sky.frag.glsl",
       .surface_path = "surface/sky_minimal_surface.glsl"   },
 
     // ── Standard 3D Lit  (texture-based, BaseColor + Normal) ────────────────────────────────────

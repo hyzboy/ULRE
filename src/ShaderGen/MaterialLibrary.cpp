@@ -256,8 +256,10 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         {
             const auto &e = kBuiltinVariants[i];
             const MaterialVariantKey k = BuildKey(e);
+            RegistryLookupOptions routing_opts{};
+            routing_opts.preferred_factory_type = e.preset;
             const MaterialVariantDesc *found =
-                GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(k, nullptr);
+                GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(k, nullptr, routing_opts);
             const bool entry_ok = found
                                 && found->factory_type.has_value()
                                 && *found->factory_type == e.preset;
@@ -338,7 +340,22 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     }
 
     MaterialVariantKey resolved_key{};
-    const MaterialVariantDesc *variant_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(registry_lookup_key,&resolved_key);
+    RegistryLookupOptions lookup_opts{};
+    if(cfg->preset_name)
+    {
+        for (const auto &e : kPresetResolveTable)
+        {
+            if (std::strcmp(cfg->preset_name, e.name) == 0)
+            {
+                lookup_opts.preferred_factory_type = ResolveMaterialPresetForLOD(e.preset, GetDefaultMaterialLOD());
+                break;
+            }
+        }
+    }
+
+    const MaterialVariantDesc *variant_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(registry_lookup_key,
+                                                                                                             &resolved_key,
+                                                                                                             lookup_opts);
     if(!variant_desc)
     {
         std::fprintf(stderr,
@@ -425,8 +442,9 @@ void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreate
             key.sampler_feature_bits = 0;
             for (uint8_t s = 0; s < uint8_t(SamplerSlot::RANGE_SIZE); ++s)
             {
-                const TextureSourceMode mode = TextureSourceMode((key.texture_source_bits >> (uint32_t(s) * MaterialVariantKey::TextureSourceBitsPerSlot))
-                                          & MaterialVariantKey::TextureSourceMask);
+                const TextureSourceMode mode = TextureSourceMode(
+                    (key.texture_source_bits >> (uint32_t(s) * MaterialVariantKey::TextureSourceBitsPerSlot))
+                    & MaterialVariantKey::TextureSourceMask);
                 if (mode != TextureSourceMode::None)
                     key.sampler_feature_bits |= SamplerFeatureBit(SamplerSlot(s));
             }

@@ -675,6 +675,10 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
             {
                 it->second->SetMaterialKey(merged_key);
                 material_by_key[merged_key] = it->second;
+
+                auto it_old = material_by_key.find(old_key);
+                if (it_old != material_by_key.end() && it_old->second == it->second)
+                    material_by_key.erase(it_old);
             }
         }
 
@@ -710,16 +714,24 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
         if (prog->HasMaterialKey())
         {
             mtl::MaterialKey merged_key = prog->GetMaterialKey();
+            const mtl::MaterialKey old_key = merged_key;
             uint32_t mismatch_mask = 0;
             MergeMaterialKeyAxesFromRequestIfDefault(merged_key, key, &mismatch_mask);
             if (mismatch_mask != 0)
             {
                 stats.RecordMaterialKeyAxisMismatch(mismatch_mask);
-                stats.LogMaterialKeyAxisMismatchDetails(prog->GetMaterialKey(), key, mismatch_mask);
+                stats.LogMaterialKeyAxisMismatchDetails(old_key, key, mismatch_mask);
             }
 
             prog->SetMaterialKey(merged_key);
             material_by_key[merged_key] = prog;
+
+            if (!(merged_key == old_key))
+            {
+                auto it_old = material_by_key.find(old_key);
+                if (it_old != material_by_key.end() && it_old->second == prog)
+                    material_by_key.erase(it_old);
+            }
 
             const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(merged_key.variant,
                                                                            recipe.prim,
@@ -740,22 +752,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
         // enriched MaterialKey(def/schema/version axes) can hit cache on next lookup.
         material_by_key[key] = prog;
 
-        // Also alias current program baseline key to keep variant-key based lookup
-        // and key-transparent lookup converging to the same cache entry.
-        if (prog->HasMaterialKey())
-        {
-            mtl::MaterialKey baseline_alias = prog->GetMaterialKey();
-            baseline_alias.def_id       = mtl::kInvalidStaticMaterialDefId;
-            baseline_alias.schema       = mtl::ShaderDataSchema::None;
-            baseline_alias.glsl_version = mtl::kMaterialKeyGLSLVersion;
-            baseline_alias.vk_version   = mtl::kMaterialKeyVulkanVersion;
-            baseline_alias.spv_version  = mtl::kMaterialKeySpvVersion;
-            material_by_key[baseline_alias] = prog;
-#ifndef NDEBUG
-            auto it_base_alias = material_by_key.find(baseline_alias);
-            assert(it_base_alias != material_by_key.end() && it_base_alias->second == prog);
-#endif
-        }
 #ifndef NDEBUG
         auto it_alias = material_by_key.find(key);
         assert(it_alias != material_by_key.end() && it_alias->second == prog);
@@ -923,21 +919,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
                                cfg->prim,
                                cfg->local_to_world);
 
-    // Fast path: material_by_key
-    {
-        auto it = material_by_key.find(baseline_key);
-        if (it != material_by_key.end())
-        {
-            stats.RecordByKeyHit();
-#ifndef NDEBUG
-            assert(it->second != nullptr);
-            auto it_verify = material_by_key.find(baseline_key);
-            assert(it_verify != material_by_key.end() && it_verify->second == it->second);
-#endif
-            return it->second;
-        }
-    }
-
     const auto *profile=GetPhysicalDeviceProfile();
 
     AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
@@ -1025,21 +1006,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
                                baseline_key,
                                cfg->prim,
                                cfg->local_to_world);
-
-    // Fast path: material_by_key
-    {
-        auto it = material_by_key.find(baseline_key);
-        if (it != material_by_key.end())
-        {
-            stats.RecordByKeyHit();
-#ifndef NDEBUG
-            assert(it->second != nullptr);
-            auto it_verify = material_by_key.find(baseline_key);
-            assert(it_verify != material_by_key.end() && it_verify->second == it->second);
-#endif
-            return it->second;
-        }
-    }
 
     const auto *profile=GetPhysicalDeviceProfile();
     if(!profile)

@@ -130,6 +130,13 @@ namespace
         return out;
     }
 
+    std::string BuildIncludeOnlyShader(const char *include_path)
+    {
+        std::string out = "#version " + std::to_string(g_shader_version) + "\n\n";
+        hgl::graph::ShaderWriter(out).EmitInclude(include_path);
+        return out;
+    }
+
     std::string BuildForwardUnlitPaletteVS(const hgl::graph::mtl::MaterialVariantKey &)
     {
         return BuildIncludeOnlyVS("compositor/main_forward_unlit_palette.vert.glsl");
@@ -150,12 +157,7 @@ namespace
         if (key.surface_type == hgl::graph::SurfaceType::Terrain)
             return BuildIncludeOnlyVS("compositor/main_terrain_grid.vert.glsl");
 
-        // 3. VertexPaletteColor: Color vertex attrib + DebugShading.
-        //    TODO (improvement item 6): move inline GLSL to a .glsl file and remove this special case.
-        if (key.IsDebugShading() && key.HasVertexAttrib(hgl::graph::VertexAttrib::Color))
-            return BuildForwardUnlitPaletteVS(key);
-
-        // 4. All other materials: derive flags from key and generate via template.
+        // 3. All other materials: derive flags from key and generate via template.
         return BuildForwardVertexEntry(VSFeatureFlagsFromKey(key));
     }
 
@@ -201,14 +203,7 @@ namespace
             return flags;
         }
 
-        // 4. Gizmo (DebugShading + no Color attrib): normal-based debug shading, needs camera UBO.
-        if (key.IsDebugShading() && !key.HasVertexAttrib(VA::Color))
-        {
-            flags.needs_camera = true;
-            return flags;
-        }
-
-        // 5. Lit 3D (not Unlit, not a 2D surface type).
+        // 4. Lit 3D (not Unlit, not a 2D surface type).
         if (key.surface_type != ST::Unlit && !hgl::graph::Is2DSurfaceType(key.surface_type))
         {
             flags.enable_lighting   = true;
@@ -344,7 +339,7 @@ namespace hgl::graph
         out_source.clear();
         out_error.clear();
 
-        if (!desc.vs_template_path.empty() && !hgl::graph::IsCompositorTemplatePath(desc.vs_template_path))
+        if (!desc.vs_template_path.empty())
         {
             std::string read_error;
             if (!ReadFileCached(desc.vs_template_path, out_source, read_error))
@@ -353,6 +348,9 @@ namespace hgl::graph
                     "VS", desc.vs_template_path, shader_lib_path_ + "/" + desc.vs_template_path, read_error);
                 return false;
             }
+
+            if (hgl::graph::IsCompositorTemplatePath(desc.vs_template_path))
+                out_source = BuildIncludeOnlyShader(desc.vs_template_path.c_str());
         }
         else
         {
@@ -378,7 +376,7 @@ namespace hgl::graph
         out_source.clear();
         out_error.clear();
 
-        if (!desc.fs_template_path.empty() && !hgl::graph::IsCompositorTemplatePath(desc.fs_template_path))
+        if (!desc.fs_template_path.empty())
         {
             std::string read_error;
             if (!ReadFileCached(desc.fs_template_path, out_source, read_error))
@@ -387,6 +385,9 @@ namespace hgl::graph
                     "FS", desc.fs_template_path, shader_lib_path_ + "/" + desc.fs_template_path, read_error);
                 return false;
             }
+
+            if (hgl::graph::IsCompositorTemplatePath(desc.fs_template_path))
+                out_source = BuildIncludeOnlyShader(desc.fs_template_path.c_str());
         }
         else
         {

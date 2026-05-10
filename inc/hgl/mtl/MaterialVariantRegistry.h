@@ -17,6 +17,9 @@ namespace hgl::graph::mtl
         /// 若为 true，则将 effective_feature_mask 纳入查询 key；
         /// 默认 false，保持与注册时行为一致。
         bool match_effective_feature_mask = false;
+
+        /// 当同一 key 存在多个 factory_type 候选时，优先匹配该 preset。
+        std::optional<MaterialPreset> preferred_factory_type;
     };
 
     /// VariantRegistry - 变体注册表
@@ -56,7 +59,7 @@ namespace hgl::graph::mtl
         void ForEach(std::function<void(const MaterialVariantKey &, const MaterialVariantDesc &)> cb) const;
 
         // 返回已注册变体数量
-        size_t Size() const noexcept { return variant_map.size(); }
+        size_t Size() const noexcept { return variant_count; }
 
     private:
         struct VariantEntry
@@ -65,8 +68,9 @@ namespace hgl::graph::mtl
             MaterialVariantDesc desc;
         };
 
-        // 使用 key 的哈希作为查询键
-        ankerl::unordered_dense::map<uint64, VariantEntry> variant_map;
+        // hash bucket -> candidates (supports same-key multi-factory variants)
+        ankerl::unordered_dense::map<uint64, std::vector<VariantEntry>> variant_map;
+        size_t variant_count = 0;
     };
 
     /// 返回全局内置变体注册表单例（首次调用时初始化）

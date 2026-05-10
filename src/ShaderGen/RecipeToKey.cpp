@@ -117,12 +117,89 @@ static StaticMaterialDefId GetStandardDefId(bool any_array) noexcept
     }
 }
 
+static StaticMaterialDefId GetPureColor3DDefId() noexcept
+{
+    static const FixedVertexEntry kVertex[] = {
+        { VAT_VEC3, VAN::Position },
+    };
+    static const UBOSemanticSet kUBOs = {
+        UBODescriptorSemantic::ViewportInfo,
+        UBODescriptorSemantic::CameraInfo,
+    };
+    static const SSBOSemanticSet kSSBOs = {
+        SSBODescriptorSemantic::TransformData,
+        SSBODescriptorSemantic::TransformID,
+        SSBODescriptorSemantic::MaterialBindingInstanceID,
+        SSBODescriptorSemantic::MaterialBindingInstanceData,
+    };
+
+    static StaticMaterialDefId s_id = kInvalidStaticMaterialDefId;
+    if (s_id == kInvalidStaticMaterialDefId)
+    {
+        const StaticMaterialDef def {
+            "PureColor3D_v1",
+            PrimitiveType::Triangles,
+            kVertex,
+            uint32_t(sizeof(kVertex) / sizeof(kVertex[0])),
+            &kUBOs,
+            &kSSBOs,
+            nullptr,
+            ShaderDataSchema::Color4f,
+        };
+        s_id = AcquireStaticMaterialDefId(def);
+    }
+
+    return s_id;
+}
+
+static StaticMaterialDefId GetGizmo3DDefId() noexcept
+{
+    static const FixedVertexEntry kVertex[] = {
+        { VAT_VEC3, VAN::Position },
+        { VAT_VEC3, VAN::Normal },
+    };
+    static const UBOSemanticSet kUBOs = {
+        UBODescriptorSemantic::ViewportInfo,
+        UBODescriptorSemantic::CameraInfo,
+    };
+    static const SSBOSemanticSet kSSBOs = {
+        SSBODescriptorSemantic::TransformData,
+        SSBODescriptorSemantic::TransformID,
+        SSBODescriptorSemantic::MaterialBindingInstanceID,
+        SSBODescriptorSemantic::MaterialBindingInstanceData,
+    };
+
+    static StaticMaterialDefId s_id = kInvalidStaticMaterialDefId;
+    if (s_id == kInvalidStaticMaterialDefId)
+    {
+        const StaticMaterialDef def {
+            "Gizmo3D_v1",
+            PrimitiveType::Triangles,
+            kVertex,
+            uint32_t(sizeof(kVertex) / sizeof(kVertex[0])),
+            &kUBOs,
+            &kSSBOs,
+            nullptr,
+            ShaderDataSchema::Color4f,
+        };
+        s_id = AcquireStaticMaterialDefId(def);
+    }
+
+    return s_id;
+}
+
 /// Resolve the StaticMaterialDefId for the given recipe.
 /// Returns kInvalidStaticMaterialDefId for presets that have no registered def.
 static StaticMaterialDefId ResolveDefIdForRecipe(const MaterialRecipe &r) noexcept
 {
     switch (r.preset)
     {
+    case MaterialPreset::PureColor3D:
+        return GetPureColor3DDefId();
+
+    case MaterialPreset::Gizmo3D:
+        return GetGizmo3DDefId();
+
     case MaterialPreset::Standard:
     case MaterialPreset::HumanSkin:
     case MaterialPreset::AmphibiansSkin:
@@ -150,6 +227,7 @@ static ShaderDataSchema GetDefaultSchemaForPreset(const MaterialPreset p) noexce
     {
     case MaterialPreset::PureColor2D:
     case MaterialPreset::PureColor3D:
+    case MaterialPreset::Gizmo3D:
         return ShaderDataSchema::Color4f;
 
     case MaterialPreset::Text2D:
