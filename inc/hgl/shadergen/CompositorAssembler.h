@@ -40,6 +40,13 @@ namespace hgl::graph
             std::string error_message;
         };
 
+        struct AssembleStageResult
+        {
+            std::string glsl;
+            bool        success = false;
+            std::string error_message;
+        };
+
         /// Uses global ShaderLibrary path from ShaderGenPathConfig.
         CompositorAssembler();
 
@@ -53,6 +60,16 @@ namespace hgl::graph
         /// Dither→[ForwardDither,ShadowOpaque]
         /// AlphaToCoverage→[ForwardA2C,ShadowMasked]
         static std::span<const PassType> GetPassTypesForBlendMode(RenderAlphaMode blend);
+
+        AssembleStageResult AssembleVertexShader(
+            const mtl::MaterialVariantKey  &key,
+            const mtl::MaterialVariantDesc &desc
+        ) const;
+
+        AssembleStageResult AssembleFragmentShader(
+            const mtl::MaterialVariantKey  &key,
+            const mtl::MaterialVariantDesc &desc
+        ) const;
 
         /// VariantDesc overload — derives SurfaceType/RenderAlphaMode/PassType/QualityTier from key,
         /// uses desc's shader template paths (empty path → auto-routing fallback).

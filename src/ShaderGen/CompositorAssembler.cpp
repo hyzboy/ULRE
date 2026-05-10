@@ -403,6 +403,50 @@ namespace hgl::graph
         return true;
     }
 
+    CompositorAssembler::AssembleStageResult CompositorAssembler::AssembleVertexShader(
+        const mtl::MaterialVariantKey  &key,
+        const mtl::MaterialVariantDesc &desc
+    ) const
+    {
+        AssembleStageResult result{};
+
+        std::string source;
+        std::string error;
+        if(!AssembleVertexShaderSource(key, desc, source, error))
+        {
+            result.error_message = std::move(error);
+            return result;
+        }
+
+        result.glsl = InjectDefines(source, key);
+        result.success = true;
+        return result;
+    }
+
+    CompositorAssembler::AssembleStageResult CompositorAssembler::AssembleFragmentShader(
+        const mtl::MaterialVariantKey  &key,
+        const mtl::MaterialVariantDesc &desc
+    ) const
+    {
+        AssembleStageResult result{};
+
+        const std::string surface_rel = desc.surface_function_path.empty()
+            ? hgl::graph::GetSurfaceFunctionPath(key.surface_type)
+            : desc.surface_function_path;
+
+        std::string source;
+        std::string error;
+        if(!AssembleFragmentShaderSource(key, desc, surface_rel, source, error))
+        {
+            result.error_message = std::move(error);
+            return result;
+        }
+
+        result.glsl = InjectDefines(source, key);
+        result.success = true;
+        return result;
+    }
+
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         const mtl::MaterialVariantKey  &key,
         const mtl::MaterialVariantDesc &desc
@@ -410,25 +454,16 @@ namespace hgl::graph
     {
         AssembleResult result{};
 
-        const std::string surface_rel = desc.surface_function_path.empty()
-            ? hgl::graph::GetSurfaceFunctionPath(key.surface_type)
-            : desc.surface_function_path;
+        const AssembleStageResult vs_result = AssembleVertexShader(key, desc);
+        if(!vs_result.success)
+            return MakeError(vs_result.error_message);
 
-        std::string vs_source;
-        std::string vs_error;
-        if(!AssembleVertexShaderSource(key, desc, vs_source, vs_error))
-            return MakeError(std::move(vs_error));
+        const AssembleStageResult fs_result = AssembleFragmentShader(key, desc);
+        if(!fs_result.success)
+            return MakeError(fs_result.error_message);
 
-        std::string fs_source;
-        std::string fs_error;
-        if(!AssembleFragmentShaderSource(key, desc, surface_rel, fs_source, fs_error))
-            return MakeError(std::move(fs_error));
-
-        vs_source = InjectDefines(vs_source, key);
-        fs_source = InjectDefines(fs_source, key);
-
-        result.vertex_glsl   = std::move(vs_source);
-        result.fragment_glsl = std::move(fs_source);
+        result.vertex_glsl   = vs_result.glsl;
+        result.fragment_glsl = fs_result.glsl;
         result.success       = true;
         return result;
     }
