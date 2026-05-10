@@ -53,6 +53,9 @@ namespace hgl::graph::mtl
         // 导出稳定顺序的快照文本，便于回归比对。
         std::string DumpSnapshot() const;
 
+        // 导出 Phase 2 builtin row 快照文本，便于检查表驱动字段。
+        std::string DumpBuiltinRowSnapshot() const;
+
         // 初始化内置变体
         void InitializeBuiltinVariants();
 

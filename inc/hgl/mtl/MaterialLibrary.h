@@ -45,6 +45,9 @@ bool ValidateBuiltinMaterialVariants(const std::string &shader_library_path,
 // 导出内置变体快照文本，用于回归对比。
 std::string GetBuiltinMaterialVariantSnapshot();
 
+// 导出内置 row 快照文本（Phase 2 table model），用于检查显式 VS/FS/resource/schema 配置。
+std::string GetBuiltinMaterialVariantRowSnapshot();
+
 // ---------------------------------------------------------------------------
 // [Step 3.5 T1] Variant Key 单轨化路由入口
 // ---------------------------------------------------------------------------

@@ -424,5 +424,7 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 // ---------------------------------------------------------------------------
 extern const BuiltinVariantEntry kBuiltinVariants[];
 extern const size_t              kBuiltinVariantsCount;
+extern const MaterialVariantRow  kBuiltinVariantRows[];
+extern const size_t              kBuiltinVariantRowsCount;
 
 } // namespace hgl::graph::mtl

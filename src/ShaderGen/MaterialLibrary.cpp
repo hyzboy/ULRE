@@ -23,6 +23,11 @@ std::string GetBuiltinMaterialVariantSnapshot()
     return GetBuiltinVariantRegistry().DumpSnapshot();
 }
 
+std::string GetBuiltinMaterialVariantRowSnapshot()
+{
+    return GetBuiltinVariantRegistry().DumpBuiltinRowSnapshot();
+}
+
 namespace {
 
 static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
