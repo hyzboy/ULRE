@@ -28,6 +28,165 @@ std::string GetBuiltinMaterialVariantRowSnapshot()
     return GetBuiltinVariantRegistry().DumpBuiltinRowSnapshot();
 }
 
+std::string GetBuiltinMaterialPresetAuditSnapshot()
+{
+    const auto &registry = GetBuiltinVariantRegistry();
+
+    std::string out;
+    out.reserve(8192);
+    out += "# Builtin MaterialPreset Audit Snapshot\n";
+    out += "preset|resolved_preset|row_name|primitive|vertex_input|vertex_policy|surface_model|surface_type|geometry_mode|blend|pass|schema|def_hint|vs_features|fs_features|resources|textures|runtime_transition|explicit_axes|legacy_inference\n";
+
+    registry.ForEachBuiltinRow([&](const MaterialVariantRow &row)
+    {
+        out += GetMaterialPresetName(row.preset) ? GetMaterialPresetName(row.preset) : "<unnamed>";
+        out += "|";
+
+        const MaterialPreset resolved_preset = ResolveMaterialPresetForLOD(row.preset, GetDefaultMaterialLOD());
+        out += GetMaterialPresetName(resolved_preset) ? GetMaterialPresetName(resolved_preset) : "<unnamed>";
+        out += "|";
+
+        out += row.name ? row.name : "";
+        out += "|";
+        out += std::to_string(static_cast<uint32>(row.primitive));
+        out += "|";
+        out += GetVertexInputProfileName(row.vertex_input);
+        out += "|";
+        out += GetVertexTransformPolicyName(row.vertex_policy);
+        out += "|";
+        out += GetSurfaceShadingModelName(row.surface_model);
+        out += "|";
+        out += std::to_string(static_cast<uint32>(row.surface_type));
+        out += "|";
+        out += std::to_string(static_cast<uint32>(row.geometry_mode));
+        out += "|";
+        out += std::to_string(static_cast<uint32>(row.blend));
+        out += "|";
+        out += std::to_string(static_cast<uint32>(row.pass));
+        out += "|";
+        out += std::to_string(static_cast<uint32>(row.schema));
+        out += "|";
+        out += GetStaticMaterialDefIdHintName(row.def_hint);
+        out += "|";
+
+        auto format_stage = [](const ShaderStageFeatureDesc &desc)
+        {
+            std::string text;
+            bool first = true;
+            for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
+            {
+                const auto attrib = static_cast<VertexAttrib>(i);
+                if (!desc.HasVertexAttrib(attrib))
+                    continue;
+
+                if (!first)
+                    text += ",";
+                text += GetVertexAttribName(attrib);
+                first = false;
+            }
+
+            if (desc.has_direction)
+            {
+                if (!first)
+                    text += ",";
+                text += "Direction";
+                first = false;
+            }
+
+            if (desc.has_clip_pos)
+            {
+                if (!first)
+                    text += ",";
+                text += "ClipPos";
+                first = false;
+            }
+
+            return first ? std::string("None") : text;
+        };
+
+        auto format_resources = [](const MaterialResourceRequirements &res)
+        {
+            std::string text;
+            bool first = true;
+            auto append = [&](const char *name, const bool enabled)
+            {
+                if (!enabled)
+                    return;
+                if (!first)
+                    text += ",";
+                text += name;
+                first = false;
+            };
+
+            append("Viewport", res.needs_viewport);
+            append("Camera", res.needs_camera);
+            append("Sky", res.needs_sky);
+            append("Transform", res.needs_transform);
+            append("MaterialInstance", res.needs_material_instance);
+            append("MaterialTextureIndex", res.needs_material_texture_index);
+            append("ColorPalette", res.needs_color_palette);
+            append("Lighting", res.enable_lighting);
+            return first ? std::string("None") : text;
+        };
+
+        auto format_textures = [](const MaterialVariantRow &audit_row)
+        {
+            if (audit_row.texture_count == 0)
+                return std::string("None");
+
+            std::string text;
+            for (uint32 i = 0; i < audit_row.texture_count; ++i)
+            {
+                if (i > 0)
+                    text += ",";
+                text += SamplerSlotNameList[static_cast<size_t>(audit_row.textures[i].slot)];
+                text += ":";
+                text += std::to_string(static_cast<uint32>(audit_row.textures[i].source_mode));
+            }
+            return text;
+        };
+
+        out += format_stage(row.vs_features);
+        out += "|";
+        out += format_stage(row.fs_features);
+        out += "|";
+        out += format_resources(row.resources);
+        out += "|";
+        out += format_textures(row);
+        out += "|";
+
+        if (row.blend == RenderAlphaMode::Dither)
+            out += "DefaultDither";
+        else if (row.surface_model == SurfaceShadingModel::StandardLambert
+              || row.surface_model == SurfaceShadingModel::StandardBlinnPhong
+              || row.surface_model == SurfaceShadingModel::StandardPBR
+              || row.surface_model == SurfaceShadingModel::PBRColor)
+            out += "ReservedForAutoDitherOverlay";
+        else
+            out += "None";
+
+        out += "|";
+        out += "preset,row,vs_features,fs_features,resources,textures,schema,def_hint";
+        out += "|";
+
+        std::string legacy;
+        if (row.resources.enable_lighting)
+            legacy += legacy.empty() ? "lighting_model still also mirrored in key" : ",lighting_model still also mirrored in key";
+        if (row.resources.needs_sky)
+            legacy += legacy.empty() ? "sky_model still also mirrored in key" : ",sky_model still also mirrored in key";
+        if (row.vertex_policy == VertexTransformPolicy::BillboardCameraFacing || row.vertex_policy == VertexTransformPolicy::BillboardAxisLocked)
+            legacy += legacy.empty() ? "billboard VS path still selected by compositor special-case" : ",billboard VS path still selected by compositor special-case";
+        if (row.vertex_policy == VertexTransformPolicy::TerrainGrid)
+            legacy += legacy.empty() ? "terrain VS path still selected by compositor special-case" : ",terrain VS path still selected by compositor special-case";
+        if (row.vertex_policy == VertexTransformPolicy::Sky)
+            legacy += legacy.empty() ? "sky fallback still exists in key-based path" : ",sky fallback still exists in key-based path";
+        out += legacy.empty() ? "None" : legacy;
+        out += "\n";
+    });
+
+    return out;
+}
+
 namespace {
 
 static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)

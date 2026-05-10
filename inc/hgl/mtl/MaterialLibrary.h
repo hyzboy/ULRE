@@ -48,6 +48,9 @@ std::string GetBuiltinMaterialVariantSnapshot();
 // 导出内置 row 快照文本（Phase 2 table model），用于检查显式 VS/FS/resource/schema 配置。
 std::string GetBuiltinMaterialVariantRowSnapshot();
 
+// 导出 MaterialPreset -> 显式结构轴审计快照（Phase 1），用于区分 alias 展开结果与仍保留的推导路径。
+std::string GetBuiltinMaterialPresetAuditSnapshot();
+
 // ---------------------------------------------------------------------------
 // [Step 3.5 T1] Variant Key 单轨化路由入口
 // ---------------------------------------------------------------------------
