@@ -277,6 +277,71 @@ void ShaderMaterialProgramManager::RecordShaderProgramKeyCoverage(const mtl::Ver
     fragment_program_key_unique_hashes.insert(fhash);
 }
 
+void ShaderMaterialProgramManager::RecordShaderProgramShadowCacheLookup(const mtl::VertexProgramKey &vkey,
+                                                                        const mtl::FragmentProgramKey &fkey)
+{
+    const uint64_t vhash = vkey.Hash();
+    const uint64_t fhash = fkey.Hash();
+
+    bool vhit = false;
+    bool fhit = false;
+    ShaderMaterialProgram *vprog = nullptr;
+    ShaderMaterialProgram *fprog = nullptr;
+
+    {
+        std::lock_guard<std::mutex> lock(shader_program_key_stats_mutex);
+
+        auto vit = vertex_program_shadow_cache.find(vhash);
+        if(vit != vertex_program_shadow_cache.end())
+        {
+            vhit = true;
+            vprog = vit->second;
+        }
+
+        auto fit = fragment_program_shadow_cache.find(fhash);
+        if(fit != fragment_program_shadow_cache.end())
+        {
+            fhit = true;
+            fprog = fit->second;
+        }
+    }
+
+    if(vhit) shadow_vertex_hits.fetch_add(1, std::memory_order_relaxed);
+    else     shadow_vertex_misses.fetch_add(1, std::memory_order_relaxed);
+
+    if(fhit) shadow_fragment_hits.fetch_add(1, std::memory_order_relaxed);
+    else     shadow_fragment_misses.fetch_add(1, std::memory_order_relaxed);
+
+    if(vhit && fhit)
+    {
+        shadow_combined_hits.fetch_add(1, std::memory_order_relaxed);
+
+        if(vprog == fprog && vprog != nullptr)
+            shadow_combined_ptr_match_hits.fetch_add(1, std::memory_order_relaxed);
+        else
+            shadow_combined_ptr_mismatch_hits.fetch_add(1, std::memory_order_relaxed);
+    }
+    else
+    {
+        shadow_combined_misses.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+void ShaderMaterialProgramManager::RecordShaderProgramShadowCacheInsert(const mtl::VertexProgramKey &vkey,
+                                                                        const mtl::FragmentProgramKey &fkey,
+                                                                        ShaderMaterialProgram *program)
+{
+    if(!program)
+        return;
+
+    const uint64_t vhash = vkey.Hash();
+    const uint64_t fhash = fkey.Hash();
+
+    std::lock_guard<std::mutex> lock(shader_program_key_stats_mutex);
+    vertex_program_shadow_cache[vhash] = program;
+    fragment_program_shadow_cache[fhash] = program;
+}
+
 GRAPH_MODULE_CONSTRUCT(ShaderMaterialProgramManager)
 {
 }
@@ -738,6 +803,10 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
                          recipe.prim,
                          recipe.l2w);
 
+    const mtl::VertexProgramKey req_vkey = mtl::BuildVertexProgramKey(key.variant, recipe.prim, recipe.l2w);
+    const mtl::FragmentProgramKey req_fkey = mtl::BuildFragmentProgramKey(key.variant);
+    RecordShaderProgramShadowCacheLookup(req_vkey, req_fkey);
+
     // Fast path: key already in cache (populated by ResolveOrCreateProgram on first call)
     auto it = material_by_key.find(key);
     if (it != material_by_key.end())
@@ -848,6 +917,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
             prog->SetVertexProgramKey(vkey);
             prog->SetFragmentProgramKey(fkey);
             RecordShaderProgramKeyCoverage(vkey, fkey);
+            RecordShaderProgramShadowCacheInsert(vkey, fkey, prog);
         }
 
         if (prog->GetEffectiveFeatureMask() == 0 && key.variant.effective_feature_mask != 0)
@@ -1086,6 +1156,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         mat->SetVertexProgramKey(vkey);
         mat->SetFragmentProgramKey(fkey);
         RecordShaderProgramKeyCoverage(vkey, fkey);
+        RecordShaderProgramShadowCacheInsert(vkey, fkey, mat);
 
         uint8_t flags = 0;
         for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
@@ -1210,6 +1281,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         mat->SetVertexProgramKey(vkey);
         mat->SetFragmentProgramKey(fkey);
         RecordShaderProgramKeyCoverage(vkey, fkey);
+        RecordShaderProgramShadowCacheInsert(vkey, fkey, mat);
 
         uint8_t flags = 0;
         for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
@@ -1236,15 +1308,45 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 void ShaderMaterialProgramManager::DumpKeyMapDiagnostics() const
 {
     const auto key_stats = GetShaderProgramKeyCoverageStats();
+    const auto shadow_stats = GetShaderProgramKeyShadowCacheStats();
 
     std::fprintf(stderr,
-        "[ShaderMaterialProgramManager] KeyMap: by_key=%zu hits=%llu vkey(seen=%llu unique=%llu) fkey(seen=%llu unique=%llu)\n",
+        "[ShaderMaterialProgramManager] KeyMap: by_key=%zu hits=%llu "
+        "vkey(seen=%llu unique=%llu) fkey(seen=%llu unique=%llu) "
+        "shadow(vhit=%llu vmiss=%llu fhit=%llu fmiss=%llu chit=%llu cmiss=%llu "
+        "cptr_match=%llu cptr_mismatch=%llu ventry=%llu fentry=%llu)\n",
         material_by_key.size(),
         static_cast<unsigned long long>(by_key_hits.load()),
         static_cast<unsigned long long>(key_stats.vertex_seen),
         static_cast<unsigned long long>(key_stats.vertex_unique),
         static_cast<unsigned long long>(key_stats.fragment_seen),
-        static_cast<unsigned long long>(key_stats.fragment_unique));
+        static_cast<unsigned long long>(key_stats.fragment_unique),
+        static_cast<unsigned long long>(shadow_stats.vertex_hits),
+        static_cast<unsigned long long>(shadow_stats.vertex_misses),
+        static_cast<unsigned long long>(shadow_stats.fragment_hits),
+        static_cast<unsigned long long>(shadow_stats.fragment_misses),
+        static_cast<unsigned long long>(shadow_stats.combined_hits),
+        static_cast<unsigned long long>(shadow_stats.combined_misses),
+        static_cast<unsigned long long>(shadow_stats.combined_pointer_match_hits),
+        static_cast<unsigned long long>(shadow_stats.combined_pointer_mismatch_hits),
+        static_cast<unsigned long long>(shadow_stats.vertex_entries),
+        static_cast<unsigned long long>(shadow_stats.fragment_entries));
+
+    const uint64_t combined_hits = shadow_stats.combined_hits;
+    const uint64_t mismatch_hits = shadow_stats.combined_pointer_mismatch_hits;
+    const bool has_shadow_sample = combined_hits >= 64;
+    const double mismatch_ratio = combined_hits > 0
+        ? (double(mismatch_hits) / double(combined_hits))
+        : 1.0;
+
+    const bool ready_for_shadow_cache_rollout = has_shadow_sample && mismatch_ratio <= 0.02;
+
+    std::fprintf(stderr,
+        "[ShaderMaterialProgramManager] ShadowCacheHint: sample=%llu mismatch_ratio=%.4f ready=%s "
+        "(rule: combined_hits>=64 && mismatch_ratio<=0.02)\n",
+        static_cast<unsigned long long>(combined_hits),
+        mismatch_ratio,
+        ready_for_shadow_cache_rollout ? "true" : "false");
 }
 
 MaterialBindingInstance *ShaderMaterialProgramManager::AcquireMaterialInstance(const MaterialInstanceSpec &spec, MaterialInstanceSpecKey *out_key)

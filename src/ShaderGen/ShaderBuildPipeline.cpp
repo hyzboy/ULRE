@@ -784,24 +784,37 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
                 result.value.final_state = result.success ? state : ShaderBuildState::Failed;
 
             std::string first_error_subject;
+            std::string first_error_message;
+            ShaderGenErrorCode first_error_code = ShaderGenErrorCode::None;
             for(const auto &d : result.diagnostics)
             {
                 if(d.severity == ShaderGenSeverity::Error)
                 {
                     first_error_subject = d.subject;
+                    first_error_message = d.message;
+                    first_error_code = d.code;
                     break;
                 }
             }
 
-            char summary[384] = {};
+            constexpr size_t kMaxSummaryErrorMessageLen = 192;
+            if(first_error_message.size() > kMaxSummaryErrorMessageLen)
+            {
+                first_error_message.resize(kMaxSummaryErrorMessageLen);
+                first_error_message += "...";
+            }
+
+            char summary[640] = {};
             std::snprintf(summary,
                           sizeof(summary),
-                          "success=%s final_state=%u binaries=%zu diagnostics=%zu first_error_subject=%s",
+                          "success=%s final_state=%u binaries=%zu diagnostics=%zu first_error_code=%u first_error_subject=%s first_error_message=%s",
                           result.success ? "true" : "false",
                           static_cast<unsigned>(result.value.final_state),
                           result.value.binaries.size(),
                           result.diagnostics.size(),
-                          first_error_subject.empty() ? "<none>" : first_error_subject.c_str());
+                          static_cast<unsigned>(first_error_code),
+                          first_error_subject.empty() ? "<none>" : first_error_subject.c_str(),
+                          first_error_message.empty() ? "<none>" : first_error_message.c_str());
 
             result.diagnostics.push_back({ShaderGenSeverity::Info,
                                           ShaderGenErrorCode::None,

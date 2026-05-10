@@ -100,6 +100,20 @@ struct ShaderProgramKeyCoverageStats
     uint64_t fragment_unique = 0;
 };
 
+struct ShaderProgramKeyShadowCacheStats
+{
+    uint64_t vertex_hits = 0;
+    uint64_t vertex_misses = 0;
+    uint64_t fragment_hits = 0;
+    uint64_t fragment_misses = 0;
+    uint64_t combined_hits = 0;
+    uint64_t combined_misses = 0;
+    uint64_t vertex_entries = 0;
+    uint64_t fragment_entries = 0;
+    uint64_t combined_pointer_match_hits = 0;
+    uint64_t combined_pointer_mismatch_hits = 0;
+};
+
 constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;//GetBitOffset((uint32_t)VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)+1;
 
 GRAPH_MODULE_CLASS(ShaderMaterialProgramManager)
@@ -145,6 +159,18 @@ private:
     std::unordered_set<uint64_t> fragment_program_key_unique_hashes;
     mutable std::mutex shader_program_key_stats_mutex;
 
+    // Phase 6.2 shadow caches (diagnostics-only; does not drive creation path)
+    std::unordered_map<uint64_t, ShaderMaterialProgram *> vertex_program_shadow_cache;
+    std::unordered_map<uint64_t, ShaderMaterialProgram *> fragment_program_shadow_cache;
+    std::atomic<uint64_t> shadow_vertex_hits {0};
+    std::atomic<uint64_t> shadow_vertex_misses {0};
+    std::atomic<uint64_t> shadow_fragment_hits {0};
+    std::atomic<uint64_t> shadow_fragment_misses {0};
+    std::atomic<uint64_t> shadow_combined_hits {0};
+    std::atomic<uint64_t> shadow_combined_misses {0};
+    std::atomic<uint64_t> shadow_combined_ptr_match_hits {0};
+    std::atomic<uint64_t> shadow_combined_ptr_mismatch_hits {0};
+
     // Fallback material for error handling (initialized on first use)
     ShaderMaterialProgram *fallback_material = nullptr;
 
@@ -160,6 +186,11 @@ private: // Helper methods with integrated DebugUtils
     void RecordMaterialKeyAxisMismatch(uint32_t mismatch_mask);
     void RecordShaderProgramKeyCoverage(const mtl::VertexProgramKey &vkey,
                                         const mtl::FragmentProgramKey &fkey);
+    void RecordShaderProgramShadowCacheLookup(const mtl::VertexProgramKey &vkey,
+                                              const mtl::FragmentProgramKey &fkey);
+    void RecordShaderProgramShadowCacheInsert(const mtl::VertexProgramKey &vkey,
+                                              const mtl::FragmentProgramKey &fkey,
+                                              ShaderMaterialProgram *program);
 
     ShaderMaterialProgram *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
     ShaderMaterialProgram *CreateMaterial(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);   ///<基于内置材质ID创建2D材质
@@ -335,6 +366,24 @@ public: // Acquire stats
         return s;
     }
 
+    ShaderProgramKeyShadowCacheStats GetShaderProgramKeyShadowCacheStats() const
+    {
+        ShaderProgramKeyShadowCacheStats s;
+        s.vertex_hits = shadow_vertex_hits.load();
+        s.vertex_misses = shadow_vertex_misses.load();
+        s.fragment_hits = shadow_fragment_hits.load();
+        s.fragment_misses = shadow_fragment_misses.load();
+        s.combined_hits = shadow_combined_hits.load();
+        s.combined_misses = shadow_combined_misses.load();
+        s.combined_pointer_match_hits = shadow_combined_ptr_match_hits.load();
+        s.combined_pointer_mismatch_hits = shadow_combined_ptr_mismatch_hits.load();
+
+        std::lock_guard<std::mutex> lock(shader_program_key_stats_mutex);
+        s.vertex_entries = static_cast<uint64_t>(vertex_program_shadow_cache.size());
+        s.fragment_entries = static_cast<uint64_t>(fragment_program_shadow_cache.size());
+        return s;
+    }
+
     void ResetAcquireStats()
     {
         acquire_material_requests.store(0);
@@ -360,7 +409,18 @@ public: // Acquire stats
             std::lock_guard<std::mutex> lock(shader_program_key_stats_mutex);
             vertex_program_key_unique_hashes.clear();
             fragment_program_key_unique_hashes.clear();
+            vertex_program_shadow_cache.clear();
+            fragment_program_shadow_cache.clear();
         }
+
+        shadow_vertex_hits.store(0);
+        shadow_vertex_misses.store(0);
+        shadow_fragment_hits.store(0);
+        shadow_fragment_misses.store(0);
+        shadow_combined_hits.store(0);
+        shadow_combined_misses.store(0);
+        shadow_combined_ptr_match_hits.store(0);
+        shadow_combined_ptr_mismatch_hits.store(0);
     }
 
     void DumpKeyMapDiagnostics() const;
