@@ -83,14 +83,19 @@ namespace hgl::graph::mtl
 
     struct ShaderStageFeatureDesc
     {
-        bool has_position = false;
-        bool has_normal = false;
-        bool has_tangent = false;
-        bool has_color = false;
-        bool has_luminance = false;
-        bool has_texcoord = false;
+        bool vertex_attribs[static_cast<size_t>(VertexAttrib::RANGE_SIZE)] = {};
         bool has_direction = false;
         bool has_clip_pos = false;
+
+        bool HasVertexAttrib(const VertexAttrib attrib) const noexcept
+        {
+            return vertex_attribs[static_cast<size_t>(attrib)];
+        }
+
+        void SetVertexAttrib(const VertexAttrib attrib, const bool enabled = true) noexcept
+        {
+            vertex_attribs[static_cast<size_t>(attrib)] = enabled;
+        }
     };
 
     struct MaterialResourceRequirements

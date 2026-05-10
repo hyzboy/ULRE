@@ -9,6 +9,7 @@
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
+#include "BuiltinVariantEntry.h"
 #include <algorithm>
 #include <cstdio>
 
@@ -142,6 +143,18 @@ namespace
         return BuildIncludeOnlyVS("compositor/main_forward_unlit_palette.vert.glsl");
     }
 
+    const hgl::graph::mtl::MaterialVariantRow *FindBuiltinVariantRow(const hgl::graph::mtl::MaterialVariantDesc &desc)
+    {
+        for (size_t i = 0; i < hgl::graph::mtl::kBuiltinVariantRowsCount; ++i)
+        {
+            const auto &row = hgl::graph::mtl::kBuiltinVariantRows[i];
+            if (!desc.variant_name.empty() && desc.variant_name == row.name)
+                return &row;
+        }
+
+        return nullptr;
+    }
+
     /// Unified VS generator: derives complete GLSL from MaterialVariantKey fields alone.
     std::string BuildVSFromKey(const hgl::graph::mtl::MaterialVariantKey &key)
     {
@@ -212,6 +225,50 @@ namespace
             flags.needs_sky         = true;
             flags.sky_ambient_model = key.sky_ambient_model;
         }
+
+        return flags;
+    }
+
+    hgl::graph::CompositorFeatureFlags FSFeatureFlagsFromRow(const hgl::graph::mtl::MaterialVariantKey &key,
+                                                             const hgl::graph::mtl::MaterialVariantRow &row,
+                                                             hgl::graph::RenderAlphaMode blend,
+                                                             const std::string &surface_path)
+    {
+        using VIP = hgl::graph::mtl::VertexInputProfile;
+
+        hgl::graph::CompositorFeatureFlags flags;
+        flags.surface_path = surface_path;
+        flags.vertex_attrib_bits = key.vertex_attribute_feature_bits;
+
+        if (blend == hgl::graph::RenderAlphaMode::Masked) flags.alpha_masked = true;
+        if (blend == hgl::graph::RenderAlphaMode::Dither) flags.alpha_dither = true;
+
+        for (size_t i = 0; i < static_cast<size_t>(hgl::graph::VertexAttrib::RANGE_SIZE); ++i)
+        {
+            const auto attrib = static_cast<hgl::graph::VertexAttrib>(i);
+            if (!row.fs_features.HasVertexAttrib(attrib))
+                continue;
+
+            if (attrib == hgl::graph::VertexAttrib::TexCoord)
+            {
+                flags.has_texcoord = true;
+                continue;
+            }
+
+            flags.SetVertexAttrib(attrib);
+        }
+
+        flags.has_direction = row.fs_features.has_direction;
+        flags.has_clip_pos = row.fs_features.has_clip_pos;
+
+        flags.enable_lighting = row.resources.enable_lighting;
+        flags.lighting_model = row.resources.lighting_model;
+        flags.needs_camera = row.resources.needs_camera;
+        flags.needs_sky = row.resources.needs_sky;
+        flags.sky_ambient_model = row.resources.sky_model;
+
+        if (row.vertex_input == VIP::BillboardPositionOnly3D || row.fs_features.has_direction)
+            flags.vertex_attrib_bits = 0;
 
         return flags;
     }
@@ -391,7 +448,10 @@ namespace hgl::graph
         }
         else
         {
-            out_source = BuildFSFromKey(key, key.blend_mode, surface_rel);
+            if (const auto *row = FindBuiltinVariantRow(desc))
+                out_source = BuildForwardFragmentEntry(FSFeatureFlagsFromRow(key, *row, key.blend_mode, surface_rel));
+            else
+                out_source = BuildFSFromKey(key, key.blend_mode, surface_rel);
         }
 
         if (out_source.empty())
