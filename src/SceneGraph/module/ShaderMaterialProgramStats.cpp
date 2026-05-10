@@ -451,6 +451,28 @@ namespace hgl::graph
             static_cast<unsigned long long>(cache_key_hash));
     }
 
+    void ShaderMaterialProgramStats::LogCreateMaterialKey3DProfileNull(const uint64_t key_hash) const
+    {
+        std::fprintf(stderr,
+            "[ShaderMaterialProgramManager] CreateMaterial(key/3D) warning: physical device profile is null (key_hash=%llu)\n",
+            static_cast<unsigned long long>(key_hash));
+    }
+
+    void ShaderMaterialProgramStats::LogCreateMaterialKey3DCreateInfoFailed(const mtl::MaterialVariantKey &key,
+                                                                             const std::string &cfg_hash) const
+    {
+        std::fprintf(stderr,
+            "[ShaderMaterialProgramManager] CreateMaterial(key/3D) failed: CreateMaterialCreateInfo returned null (key_hash=%llu surface=%u geom=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X cfg_hash=%s)\n",
+            static_cast<unsigned long long>(key.Hash()),
+            static_cast<unsigned>(key.surface_type),
+            static_cast<unsigned>(key.geometry_mode),
+            key.texture_source_bits,
+            key.sampler_feature_bits,
+            key.vertex_attribute_feature_bits,
+            key.extra_feature_bits,
+            cfg_hash.c_str());
+    }
+
     void ShaderMaterialProgramStats::LogLine(const std::string &line) const
     {
         if(!line.empty())

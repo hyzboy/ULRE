@@ -190,6 +190,9 @@ namespace hgl::graph
 
         void LogFallbackMaterialInitialized(const AnsiString &material_name) const;
         void LogBillboardDomainArrayKey(const uint64_t cache_key_hash) const;
+        void LogCreateMaterialKey3DProfileNull(const uint64_t key_hash) const;
+        void LogCreateMaterialKey3DCreateInfoFailed(const mtl::MaterialVariantKey &key,
+                                                    const std::string &cfg_hash) const;
 
         void LogLine(const std::string &line) const;
     };

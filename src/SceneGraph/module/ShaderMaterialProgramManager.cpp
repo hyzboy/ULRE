@@ -1044,9 +1044,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     const auto *profile=GetPhysicalDeviceProfile();
     if(!profile)
     {
-        std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] CreateMaterial(key/3D) warning: physical device profile is null (key_hash=%llu)\n",
-            static_cast<unsigned long long>(key.Hash()));
+        stats.LogCreateMaterialKey3DProfileNull(static_cast<uint64_t>(key.Hash()));
     }
 
     // Pass original key (not cache_key) to CreateMaterialCreateInfo — the registry lookup
@@ -1055,16 +1053,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 
     if(!mci)
     {
-        std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] CreateMaterial(key/3D) failed: CreateMaterialCreateInfo returned null (key_hash=%llu surface=%u geom=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X cfg_hash=%s)\n",
-            static_cast<unsigned long long>(key.Hash()),
-            static_cast<unsigned>(key.surface_type),
-            static_cast<unsigned>(key.geometry_mode),
-            key.texture_source_bits,
-            key.sampler_feature_bits,
-            key.vertex_attribute_feature_bits,
-            key.extra_feature_bits,
-            cfg->ToHashStdString().c_str());
+        stats.LogCreateMaterialKey3DCreateInfoFailed(key, cfg->ToHashStdString());
         return(nullptr);
     }
 

@@ -55,7 +55,7 @@ namespace hgl::graph::mtl
         uint32            sampler_feature_bits          = 0;
         uint32            vertex_attribute_feature_bits = 0;
         uint32            extra_feature_bits            = static_cast<uint32>(ExtraFeature::None);
-        RenderAlphaMode         blend_mode          = RenderAlphaMode::Opaque;
+        RenderAlphaMode   blend_mode          = RenderAlphaMode::Opaque;
         PassType          pass_hint           = PassType::ForwardOpaque;
         SkyLightAmbientModel sky_ambient_model = SkyLightAmbientModel::Simple;
         LightingModel lighting_model = LightingModel::Lambert;
