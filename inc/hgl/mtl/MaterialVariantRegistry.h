@@ -2,6 +2,7 @@
 #define HGL_MTL_MATERIAL_VARIANT_REGISTRY_H
 
 #include <hgl/mtl/MaterialPreset.h>
+#include <hgl/mtl/MaterialVariantRow.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <functional>
@@ -57,6 +58,9 @@ namespace hgl::graph::mtl
 
         // 遍历所有注册变体
         void ForEach(std::function<void(const MaterialVariantKey &, const MaterialVariantDesc &)> cb) const;
+
+        // 遍历所有内置 row（Phase 2 table model）
+        void ForEachBuiltinRow(std::function<void(const MaterialVariantRow &)> cb) const;
 
         // 返回已注册变体数量
         size_t Size() const noexcept { return variant_count; }

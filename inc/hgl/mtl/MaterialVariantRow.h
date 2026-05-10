@@ -1,0 +1,233 @@
+#pragma once
+
+#include <hgl/CoreType.h>
+#include <hgl/common/PrimitiveTypeDef.h>
+#include <hgl/common/PositionProvider.h>
+#include <hgl/common/TextureSamplerTypeDef.h>
+#include <hgl/mtl/LightingModel.h>
+#include <hgl/mtl/MaterialPreset.h>
+#include <hgl/mtl/MaterialVariantKey.h>
+#include <hgl/mtl/PassType.h>
+#include <hgl/mtl/RenderAlphaMode.h>
+#include <hgl/mtl/SamplerSlot.h>
+#include <hgl/mtl/ShaderDataSchema.h>
+#include <hgl/mtl/SkyLight.h>
+#include <hgl/mtl/SurfaceType.h>
+
+namespace hgl::graph::mtl
+{
+    enum class VertexInputProfile : uint8
+    {
+        Unknown = 0,
+        Position2D,
+        Position3D,
+        PositionNormal3D,
+        PositionColor3D,
+        PositionLuminance3D,
+        PositionLuminance2D,
+        PositionTexCoord2D,
+        PositionPaletteIndex3D,
+        BillboardPositionOnly3D,
+        FullscreenProcedural,
+    };
+
+    enum class VertexTransformPolicy : uint8
+    {
+        Unknown = 0,
+        Mesh3D,
+        Quad2D,
+        BillboardCameraFacing,
+        BillboardAxisLocked,
+        TerrainGrid,
+        Sky,
+        Text2D,
+        FullscreenTriangle,
+    };
+
+    enum class SurfaceShadingModel : uint8
+    {
+        Unknown = 0,
+        PureColor,
+        VertexColor,
+        VertexLuminance,
+        Texture2D,
+        Text,
+        BillboardTexture,
+        Gizmo,
+        TerrainGrid,
+        SkyMinimal,
+        StandardLambert,
+        StandardBlinnPhong,
+        StandardPBR,
+        PBRColor,
+        CheckerboardFallback,
+    };
+
+    enum class StaticMaterialDefIdHint : uint8
+    {
+        None = 0,
+        PureColor3D,
+        Gizmo3D,
+        Standard2D,
+        Standard3D,
+        BillboardFixed,
+        BillboardDynamic,
+        TerrainGrid,
+        SkyMinimal,
+        VertexColor3D,
+        VertexPaletteColor3D,
+        VertexLuminance3D,
+        Text2D,
+        FullscreenTriangle,
+    };
+
+    struct ShaderStageFeatureDesc
+    {
+        bool has_position = false;
+        bool has_normal = false;
+        bool has_tangent = false;
+        bool has_color = false;
+        bool has_luminance = false;
+        bool has_texcoord = false;
+        bool has_direction = false;
+        bool has_clip_pos = false;
+    };
+
+    struct MaterialResourceRequirements
+    {
+        bool needs_viewport = false;
+        bool needs_camera = false;
+        bool needs_sky = false;
+        bool needs_transform = false;
+        bool needs_material_instance = false;
+        bool needs_material_texture_index = false;
+        bool needs_color_palette = false;
+
+        bool enable_lighting = false;
+        LightingModel lighting_model = LightingModel::Lambert;
+        SkyLightAmbientModel sky_model = SkyLightAmbientModel::Simple;
+    };
+
+    struct MaterialTextureSlotDesc
+    {
+        SamplerSlot slot = SamplerSlot::BaseColor;
+        TextureSourceMode source_mode = TextureSourceMode::None;
+        SamplerType sampler_type = SamplerType::Sampler2D;
+        TextureChannelHint channel_hint = TextureChannelHint::RGBA;
+    };
+
+    constexpr uint32 kMaterialVariantRowTextureCapacity = 4;
+
+    struct MaterialVariantRow
+    {
+        const char *name = "";
+        MaterialPreset preset = MaterialPreset::PureColor3D;
+        MaterialPreset factory_type = MaterialPreset::PureColor3D;
+
+        PrimitiveType primitive = PrimitiveType::Triangles;
+        SurfaceType surface_type = SurfaceType::Unlit;
+        GeometryMode geometry_mode = GeometryMode::Mesh3D;
+        PositionProviderId position_provider = PositionProviderId::DirectVec3;
+
+        VertexInputProfile vertex_input = VertexInputProfile::Unknown;
+        VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
+        SurfaceShadingModel surface_model = SurfaceShadingModel::Unknown;
+
+        RenderAlphaMode blend = RenderAlphaMode::Opaque;
+        PassType pass = PassType::ForwardOpaque;
+
+        const char *vs_template_path = "";
+        const char *fs_template_path = "";
+        const char *surface_path = "";
+
+        ShaderStageFeatureDesc vs_features{};
+        ShaderStageFeatureDesc fs_features{};
+        MaterialResourceRequirements resources{};
+        MaterialTextureSlotDesc textures[kMaterialVariantRowTextureCapacity]{};
+        uint32 texture_count = 0;
+
+        ShaderDataSchema schema = ShaderDataSchema::None;
+        StaticMaterialDefIdHint def_hint = StaticMaterialDefIdHint::None;
+    };
+
+    inline const char *GetVertexInputProfileName(const VertexInputProfile profile) noexcept
+    {
+        switch (profile)
+        {
+        case VertexInputProfile::Unknown: return "Unknown";
+        case VertexInputProfile::Position2D: return "Position2D";
+        case VertexInputProfile::Position3D: return "Position3D";
+        case VertexInputProfile::PositionNormal3D: return "PositionNormal3D";
+        case VertexInputProfile::PositionColor3D: return "PositionColor3D";
+        case VertexInputProfile::PositionLuminance3D: return "PositionLuminance3D";
+        case VertexInputProfile::PositionLuminance2D: return "PositionLuminance2D";
+        case VertexInputProfile::PositionTexCoord2D: return "PositionTexCoord2D";
+        case VertexInputProfile::PositionPaletteIndex3D: return "PositionPaletteIndex3D";
+        case VertexInputProfile::BillboardPositionOnly3D: return "BillboardPositionOnly3D";
+        case VertexInputProfile::FullscreenProcedural: return "FullscreenProcedural";
+        default: return "Unknown";
+        }
+    }
+
+    inline const char *GetVertexTransformPolicyName(const VertexTransformPolicy policy) noexcept
+    {
+        switch (policy)
+        {
+        case VertexTransformPolicy::Unknown: return "Unknown";
+        case VertexTransformPolicy::Mesh3D: return "Mesh3D";
+        case VertexTransformPolicy::Quad2D: return "Quad2D";
+        case VertexTransformPolicy::BillboardCameraFacing: return "BillboardCameraFacing";
+        case VertexTransformPolicy::BillboardAxisLocked: return "BillboardAxisLocked";
+        case VertexTransformPolicy::TerrainGrid: return "TerrainGrid";
+        case VertexTransformPolicy::Sky: return "Sky";
+        case VertexTransformPolicy::Text2D: return "Text2D";
+        case VertexTransformPolicy::FullscreenTriangle: return "FullscreenTriangle";
+        default: return "Unknown";
+        }
+    }
+
+    inline const char *GetSurfaceShadingModelName(const SurfaceShadingModel model) noexcept
+    {
+        switch (model)
+        {
+        case SurfaceShadingModel::Unknown: return "Unknown";
+        case SurfaceShadingModel::PureColor: return "PureColor";
+        case SurfaceShadingModel::VertexColor: return "VertexColor";
+        case SurfaceShadingModel::VertexLuminance: return "VertexLuminance";
+        case SurfaceShadingModel::Texture2D: return "Texture2D";
+        case SurfaceShadingModel::Text: return "Text";
+        case SurfaceShadingModel::BillboardTexture: return "BillboardTexture";
+        case SurfaceShadingModel::Gizmo: return "Gizmo";
+        case SurfaceShadingModel::TerrainGrid: return "TerrainGrid";
+        case SurfaceShadingModel::SkyMinimal: return "SkyMinimal";
+        case SurfaceShadingModel::StandardLambert: return "StandardLambert";
+        case SurfaceShadingModel::StandardBlinnPhong: return "StandardBlinnPhong";
+        case SurfaceShadingModel::StandardPBR: return "StandardPBR";
+        case SurfaceShadingModel::PBRColor: return "PBRColor";
+        case SurfaceShadingModel::CheckerboardFallback: return "CheckerboardFallback";
+        default: return "Unknown";
+        }
+    }
+
+    inline const char *GetStaticMaterialDefIdHintName(const StaticMaterialDefIdHint hint) noexcept
+    {
+        switch (hint)
+        {
+        case StaticMaterialDefIdHint::None: return "None";
+        case StaticMaterialDefIdHint::PureColor3D: return "PureColor3D";
+        case StaticMaterialDefIdHint::Gizmo3D: return "Gizmo3D";
+        case StaticMaterialDefIdHint::Standard2D: return "Standard2D";
+        case StaticMaterialDefIdHint::Standard3D: return "Standard3D";
+        case StaticMaterialDefIdHint::BillboardFixed: return "BillboardFixed";
+        case StaticMaterialDefIdHint::BillboardDynamic: return "BillboardDynamic";
+        case StaticMaterialDefIdHint::TerrainGrid: return "TerrainGrid";
+        case StaticMaterialDefIdHint::SkyMinimal: return "SkyMinimal";
+        case StaticMaterialDefIdHint::VertexColor3D: return "VertexColor3D";
+        case StaticMaterialDefIdHint::VertexPaletteColor3D: return "VertexPaletteColor3D";
+        case StaticMaterialDefIdHint::VertexLuminance3D: return "VertexLuminance3D";
+        case StaticMaterialDefIdHint::Text2D: return "Text2D";
+        case StaticMaterialDefIdHint::FullscreenTriangle: return "FullscreenTriangle";
+        default: return "None";
+        }
+    }
+}

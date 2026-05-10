@@ -2,6 +2,7 @@
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include "BuiltinVariantEntry.h"
+#include <hgl/mtl/MaterialVariantRow.h>
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
@@ -93,6 +94,76 @@ static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
     text += " extra_bits=0x";
     std::snprintf(hex, sizeof(hex), "%08X", key.extra_feature_bits);
     text += hex;
+    return text;
+}
+
+static std::string FormatShaderStageFeatureDescForLog(const ShaderStageFeatureDesc &desc)
+{
+    std::string text;
+    text += "pos=";
+    text += desc.has_position ? "1" : "0";
+    text += ",nrm=";
+    text += desc.has_normal ? "1" : "0";
+    text += ",tan=";
+    text += desc.has_tangent ? "1" : "0";
+    text += ",col=";
+    text += desc.has_color ? "1" : "0";
+    text += ",lum=";
+    text += desc.has_luminance ? "1" : "0";
+    text += ",uv=";
+    text += desc.has_texcoord ? "1" : "0";
+    text += ",dir=";
+    text += desc.has_direction ? "1" : "0";
+    text += ",clip=";
+    text += desc.has_clip_pos ? "1" : "0";
+    return text;
+}
+
+static std::string FormatMaterialResourcesForLog(const MaterialResourceRequirements &res)
+{
+    std::string text;
+    text += "VP=";
+    text += res.needs_viewport ? "1" : "0";
+    text += ",Cam=";
+    text += res.needs_camera ? "1" : "0";
+    text += ",Sky=";
+    text += res.needs_sky ? "1" : "0";
+    text += ",Xf=";
+    text += res.needs_transform ? "1" : "0";
+    text += ",MI=";
+    text += res.needs_material_instance ? "1" : "0";
+    text += ",MITex=";
+    text += res.needs_material_texture_index ? "1" : "0";
+    text += ",Pal=";
+    text += res.needs_color_palette ? "1" : "0";
+    text += ",Lit=";
+    text += res.enable_lighting ? "1" : "0";
+    text += ",LM=";
+    text += std::to_string(static_cast<unsigned>(res.lighting_model));
+    text += ",SkyModel=";
+    text += std::to_string(static_cast<unsigned>(res.sky_model));
+    return text;
+}
+
+static std::string FormatRowTexturesForLog(const MaterialVariantRow &row)
+{
+    std::string text;
+    if (row.texture_count == 0)
+        return "None";
+
+    for (uint32 i = 0; i < row.texture_count; ++i)
+    {
+        if (i > 0)
+            text += ",";
+
+        const auto &t = row.textures[i];
+        text += SamplerSlotNameList[static_cast<size_t>(t.slot)];
+        text += ":src=";
+        text += std::to_string(static_cast<unsigned>(t.source_mode));
+        text += ":smp=";
+        text += std::to_string(static_cast<unsigned>(t.sampler_type));
+    }
+
     return text;
 }
 
@@ -251,13 +322,26 @@ std::string VariantRegistry::DumpSnapshot() const
     out.reserve(rows.size()*120);
 
     out += "# VariantRegistry Snapshot\n";
-    out += "hash|name|factory|surface|geometry|tex_modes|tex_bits|sampler_bits|va_bits|extra_bits|blend|pass\n";
+    out += "hash|name|factory|surface|geometry|tex_modes|tex_bits|sampler_bits|va_bits|extra_bits|blend|pass|row_vertex_input|row_vertex_policy|row_surface_model|row_vs_features|row_fs_features|row_resources|row_schema|row_def_hint|row_textures\n";
 
     for(const auto &[hash,entry_ptr]:rows)
     {
         const auto &entry=*entry_ptr;
         const auto &k=entry.key;
         const auto &d=entry.desc;
+        const MaterialVariantRow row = BuildRowFromBuiltinVariantEntry(kBuiltinVariants[0]);
+
+        const MaterialVariantRow *row_ptr = nullptr;
+        for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
+        {
+            if (d.variant_name == kBuiltinVariants[i].name)
+            {
+                static thread_local MaterialVariantRow cached_row;
+                cached_row = BuildRowFromBuiltinVariantEntry(kBuiltinVariants[i]);
+                row_ptr = &cached_row;
+                break;
+            }
+        }
 
         out += std::to_string(hash);
         out += "|";
@@ -302,10 +386,36 @@ std::string VariantRegistry::DumpSnapshot() const
         out += std::to_string(static_cast<uint32>(k.blend_mode));
         out += "|";
         out += std::to_string(static_cast<uint32>(k.pass_hint));
+        out += "|";
+        out += row_ptr ? GetVertexInputProfileName(row_ptr->vertex_input) : "Unknown";
+        out += "|";
+        out += row_ptr ? GetVertexTransformPolicyName(row_ptr->vertex_policy) : "Unknown";
+        out += "|";
+        out += row_ptr ? GetSurfaceShadingModelName(row_ptr->surface_model) : "Unknown";
+        out += "|";
+        out += row_ptr ? FormatShaderStageFeatureDescForLog(row_ptr->vs_features) : "";
+        out += "|";
+        out += row_ptr ? FormatShaderStageFeatureDescForLog(row_ptr->fs_features) : "";
+        out += "|";
+        out += row_ptr ? FormatMaterialResourcesForLog(row_ptr->resources) : "";
+        out += "|";
+        out += row_ptr ? std::to_string(static_cast<uint32>(row_ptr->schema)) : "0";
+        out += "|";
+        out += row_ptr ? GetStaticMaterialDefIdHintName(row_ptr->def_hint) : "None";
+        out += "|";
+        out += row_ptr ? FormatRowTexturesForLog(*row_ptr) : "None";
         out += "\n";
     }
 
     return out;
+}
+
+void VariantRegistry::ForEachBuiltinRow(std::function<void(const MaterialVariantRow &)> cb) const
+{
+    for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
+    {
+        cb(BuildRowFromBuiltinVariantEntry(kBuiltinVariants[i]));
+    }
 }
 
 void VariantRegistry::ForEach(
