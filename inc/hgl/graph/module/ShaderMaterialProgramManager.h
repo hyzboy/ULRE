@@ -154,8 +154,8 @@ public: // Override Release from GraphModule - cleanup all resources
 
     void Release() override
     {
-        const MaterialAcquireStats mat_stats = GetMaterialAcquireStats();
-        const MaterialInstanceAcquireStats mi_stats = GetMaterialInstanceAcquireStats();
+        const MaterialAcquireStats mat_stats = stats.GetMaterialAcquireStats();
+        const MaterialInstanceAcquireStats mi_stats = stats.GetMaterialInstanceAcquireStats();
 
         if (mat_stats.requests > 0 || mi_stats.requests > 0)
         {
@@ -225,73 +225,10 @@ public: //ShaderGen Profiler (debug entry, collect-only)
 
 public: // Acquire stats
 
-    MaterialAcquireStats GetMaterialAcquireStats() const
-    {
-        return stats.GetMaterialAcquireStats();
-    }
-
-    MaterialInstanceAcquireStats GetMaterialInstanceAcquireStats() const
-    {
-        return stats.GetMaterialInstanceAcquireStats();
-    }
-
-    MaterialKeyAxisMismatchStats GetMaterialKeyAxisMismatchStats() const
-    {
-        return stats.GetMaterialKeyAxisMismatchStats();
-    }
-
-    ShaderProgramKeyCoverageStats GetShaderProgramKeyCoverageStats() const
-    {
-        return stats.GetShaderProgramKeyCoverageStats();
-    }
-
-    ShaderProgramKeyShadowCacheStats GetShaderProgramKeyShadowCacheStats() const
-    {
-        return stats.GetShaderProgramKeyShadowCacheStats();
-    }
-
-    void ResetAcquireStats()
-    {
-        stats.Reset();
-    }
+    const ShaderMaterialProgramStats &GetStats() const noexcept { return stats; }
+    ShaderMaterialProgramStats &GetStats() noexcept { return stats; }
 
     void DumpKeyMapDiagnostics() const;
-
-    void LogCreateMaterialFromRecordRequest(const uint32_t preset,
-                                            const uint32_t dim,
-                                            const uint32_t prim,
-                                            const bool l2w,
-                                            const uint32_t pipeline,
-                                            const uint64_t key_hash) const
-    {
-        stats.LogCreateMaterialFromRecordRequest(preset, dim, prim, l2w, pipeline, key_hash);
-    }
-
-    void LogCreateMaterialFromRecordBillboard(const int preset,
-                                              const int use_texture_array,
-                                              const int blend_mode) const
-    {
-        stats.LogCreateMaterialFromRecordBillboard(preset, use_texture_array, blend_mode);
-    }
-
-    void LogCreateMaterialFromRecord2D(const uint32_t prim,
-                                       const uint32_t preset) const
-    {
-        stats.LogCreateMaterialFromRecord2D(prim, preset);
-    }
-
-    void LogCreateMaterialFromRecord3D(const uint32_t prim,
-                                       const uint32_t preset,
-                                       const bool include_camera,
-                                       const bool include_sky) const
-    {
-        stats.LogCreateMaterialFromRecord3D(prim, preset, include_camera, include_sky);
-    }
-
-    void LogStatsLine(const std::string &line) const
-    {
-        stats.LogLine(line);
-    }
 
 public: //ShaderMaterialProgram
 

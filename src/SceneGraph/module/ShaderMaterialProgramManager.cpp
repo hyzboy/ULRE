@@ -538,12 +538,12 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
 
     using namespace mtl;
 
-    mm->LogCreateMaterialFromRecordRequest(static_cast<uint32_t>(rec.preset),
-                                           static_cast<uint32_t>(rec.dim),
-                                           static_cast<uint32_t>(rec.prim),
-                                           rec.l2w,
-                                           static_cast<uint32_t>(rec.pipeline),
-                                           static_cast<uint64_t>(mtl::ResolveRecipePrimaryKey(rec).Hash()));
+    mm->GetStats().LogCreateMaterialFromRecordRequest(static_cast<uint32_t>(rec.preset),
+                                                      static_cast<uint32_t>(rec.dim),
+                                                      static_cast<uint32_t>(rec.prim),
+                                                      rec.l2w,
+                                                      static_cast<uint32_t>(rec.pipeline),
+                                                      static_cast<uint64_t>(mtl::ResolveRecipePrimaryKey(rec).Hash()));
 
     // ── Billboard2DFixed / Billboard2DDynamic ────────────────────────────────
     if (rec.preset == MaterialPreset::Billboard2DFixed ||
@@ -566,9 +566,9 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode == TextureSourceMode::Array)
             { cfg.use_texture_array = true; break; }
 
-        mm->LogCreateMaterialFromRecordBillboard((int)rec.preset,
-                                                 (int)cfg.use_texture_array,
-                                                 (int)cfg.blend_mode);
+        mm->GetStats().LogCreateMaterialFromRecordBillboard((int)rec.preset,
+                                                            (int)cfg.use_texture_array,
+                                                            (int)cfg.blend_mode);
 
         return mm->ResolveOrCreateProgram(rec.preset, &cfg);
     }
@@ -585,8 +585,8 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
 
-        mm->LogCreateMaterialFromRecord2D(static_cast<uint32_t>(cfg.prim),
-                                          static_cast<uint32_t>(rec.preset));
+        mm->GetStats().LogCreateMaterialFromRecord2D(static_cast<uint32_t>(cfg.prim),
+                                                     static_cast<uint32_t>(rec.preset));
         return mm->ResolveOrCreateProgram(rec.preset, &cfg);
     }
     // ── 3D ─────────────────────────────────────────────────────────────────
@@ -600,7 +600,7 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             const std::string warning = mtl::BuildMalformedIntentFeatureWarningMessage(feature_mask,
                                                                                        rec.preset,
                                                                                        feature_validation);
-            mm->LogStatsLine(warning);
+            mm->GetStats().LogLine(warning);
         }
 
         const bool include_camera = mtl::HasFeature(feature_mask, mtl::MaterialFeature::NeedsCamera);
@@ -626,10 +626,10 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
 
-        mm->LogCreateMaterialFromRecord3D(static_cast<uint32_t>(cfg.prim),
-                                          static_cast<uint32_t>(rec.preset),
-                                          include_camera,
-                                          include_sky);
+        mm->GetStats().LogCreateMaterialFromRecord3D(static_cast<uint32_t>(cfg.prim),
+                                                     static_cast<uint32_t>(rec.preset),
+                                                     include_camera,
+                                                     include_sky);
         return mm->ResolveOrCreateProgram(rec.preset, &cfg);
     }
 }
