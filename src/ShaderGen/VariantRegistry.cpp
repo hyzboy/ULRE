@@ -900,7 +900,7 @@ const MaterialVariantRow kBuiltinVariantRows[] =
       .vertex_input = VertexInputProfile::Position3D, .vertex_policy = VertexTransformPolicy::Sky, .surface_model = SurfaceShadingModel::SkyMinimal,
       .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
       .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/sky_minimal_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position }), .fs_features = MakeStageFeatures({}, true, false),
+      .vs_features = MakeStageFeatures({ VertexAttrib::Position }, true, false), .fs_features = MakeStageFeatures({}, true, false),
       .resources = { true, true, true, true, false, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
       .schema = ShaderDataSchema::None, .def_hint = StaticMaterialDefIdHint::SkyMinimal },
 

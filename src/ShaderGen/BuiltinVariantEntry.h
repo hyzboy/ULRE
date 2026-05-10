@@ -331,6 +331,7 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vertex_policy = VertexTransformPolicy::Sky;
         row.surface_model = SurfaceShadingModel::SkyMinimal;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
+        row.vs_features.has_direction = true;
         row.fs_features.has_direction = true;
         row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
