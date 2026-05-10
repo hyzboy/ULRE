@@ -826,6 +826,13 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
 
             prog->SetMaterialKey(merged_key);
             material_by_key[merged_key] = prog;
+
+            const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(merged_key.variant,
+                                                                           recipe.prim,
+                                                                           recipe.l2w);
+            const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(merged_key.variant);
+            prog->SetVertexProgramKey(vkey);
+            prog->SetFragmentProgramKey(fkey);
         }
 
         if (prog->GetEffectiveFeatureMask() == 0 && key.variant.effective_feature_mask != 0)
@@ -1057,6 +1064,13 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
                              cfg->prim,
                              cfg->local_to_world);
 
+        const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(enriched_key.variant,
+                                                                       cfg->prim,
+                                                                       cfg->local_to_world);
+        const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(enriched_key.variant);
+        mat->SetVertexProgramKey(vkey);
+        mat->SetFragmentProgramKey(fkey);
+
         uint8_t flags = 0;
         for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
             if (key.GetTextureSourceMode(mtl::SamplerSlot(s)) == mtl::TextureSourceMode::Array)
@@ -1172,6 +1186,13 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
                              enriched_key,
                              cfg->prim,
                              cfg->local_to_world);
+
+        const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(enriched_key.variant,
+                                                                       cfg->prim,
+                                                                       cfg->local_to_world);
+        const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(enriched_key.variant);
+        mat->SetVertexProgramKey(vkey);
+        mat->SetFragmentProgramKey(fkey);
 
         uint8_t flags = 0;
         for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)

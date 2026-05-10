@@ -6,6 +6,7 @@
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/mtl/MaterialKey.h>
+#include<hgl/mtl/ShaderProgramKey.h>
 #include<hgl/log/Log.h>
 #include<unordered_set>
 
@@ -60,6 +61,10 @@ class ShaderMaterialProgram
     uint64_t effective_feature_mask = 0; ///< Effective feature mask from Phase 3 cache key resolution
 
     mtl::MaterialKey material_key_{}; ///< Step 3: MaterialKey — set after creation for fast keyed lookup
+    mtl::VertexProgramKey vertex_program_key_{};
+    mtl::FragmentProgramKey fragment_program_key_{};
+    bool has_vertex_program_key_ = false;
+    bool has_fragment_program_key_ = false;
 
 private:
 
@@ -155,6 +160,17 @@ public: // Step 3: MaterialKey cache support
     void SetMaterialKey(const mtl::MaterialKey &k) noexcept { material_key_ = k; }
     const mtl::MaterialKey &GetMaterialKey() const noexcept { return material_key_; }
     bool HasMaterialKey() const noexcept { return material_key_.Hash() != 0; }
+
+public: // Phase 5.2: optional VS/FS key observability
+
+    void SetVertexProgramKey(const mtl::VertexProgramKey &k) noexcept { vertex_program_key_ = k; has_vertex_program_key_ = true; }
+    void SetFragmentProgramKey(const mtl::FragmentProgramKey &k) noexcept { fragment_program_key_ = k; has_fragment_program_key_ = true; }
+
+    bool HasVertexProgramKey() const noexcept { return has_vertex_program_key_; }
+    bool HasFragmentProgramKey() const noexcept { return has_fragment_program_key_; }
+
+    const mtl::VertexProgramKey *GetVertexProgramKey() const noexcept { return has_vertex_program_key_ ? &vertex_program_key_ : nullptr; }
+    const mtl::FragmentProgramKey *GetFragmentProgramKey() const noexcept { return has_fragment_program_key_ ? &fragment_program_key_ : nullptr; }
 
 };//class ShaderMaterialProgram
 
