@@ -7,11 +7,33 @@
 #include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/shadergen/MaterialFactory3D.h>
+#include<atomic>
 #include<cstring>
 #include<cstdio>
 #include "BuiltinVariantEntry.h"
 
 namespace hgl::graph::mtl{
+
+namespace {
+
+static bool StageFeaturesDeclareAnyVertexAttrib(const ShaderStageFeatureDesc &features) noexcept
+{
+    for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
+    {
+        if (features.HasVertexAttrib(static_cast<VertexAttrib>(i)))
+            return true;
+    }
+
+    return false;
+}
+
+static bool RowDeclaresAnyVertexAttrib(const MaterialVariantRow &row) noexcept
+{
+    return StageFeaturesDeclareAnyVertexAttrib(row.vs_features)
+        || StageFeaturesDeclareAnyVertexAttrib(row.fs_features);
+}
+
+}
 
 bool ValidateBuiltinMaterialVariants(const std::string &shader_library_path,
                                      std::vector<std::string> &diagnostics)
@@ -177,6 +199,9 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
             legacy += legacy.empty() ? "sky_model still mirrored in key but now treated as strict row parity" : ",sky_model still mirrored in key but now treated as strict row parity";
         if (row.texture_count > 0)
             legacy += legacy.empty() ? "texture source and sampler bits still mirrored in key but now treated as strict row parity" : ",texture source and sampler bits still mirrored in key but now treated as strict row parity";
+        if (RowDeclaresAnyVertexAttrib(row))
+            legacy += legacy.empty() ? "vertex_attribute_feature_bits remain runtime-additive but are now constrained to the row-declared attrib envelope" : ",vertex_attribute_feature_bits remain runtime-additive but are now constrained to the row-declared attrib envelope";
+        legacy += legacy.empty() ? "extra_feature_bits/effective_feature_mask are now treated as legacy override channels and should stay off builtin row-driven paths" : ",extra_feature_bits/effective_feature_mask are now treated as legacy override channels and should stay off builtin row-driven paths";
         if (row.vertex_policy == VertexTransformPolicy::BillboardCameraFacing || row.vertex_policy == VertexTransformPolicy::BillboardAxisLocked)
             legacy += legacy.empty() ? "billboard behavior still depends on dedicated row template path" : ",billboard behavior still depends on dedicated row template path";
         if (row.vertex_policy == VertexTransformPolicy::TerrainGrid)
@@ -345,6 +370,102 @@ static const PresetResolveEntry *FindPresetResolveEntry(const MaterialPreset pre
             return &entry;
 
     return nullptr;
+}
+
+static void StripLegacyOverrideChannelsForBuiltinPreset(const MaterialPreset preset,
+                                                        MaterialVariantKey &key)
+{
+    if (key.extra_feature_bits == 0 && key.effective_feature_mask == 0)
+        return;
+
+    static std::atomic_bool s_warned{false};
+    bool expected = false;
+    if (s_warned.compare_exchange_strong(expected, true, std::memory_order_relaxed))
+    {
+        std::fprintf(stderr,
+                     "[MaterialLibrary] warning: builtin preset route preset=%u carried legacy override channels "
+                     "(extra_bits=0x%08X, effective_feature_mask=0x%016llX). Clearing them to keep builtin row-driven routing on explicit row identity.\n",
+                     static_cast<unsigned>(preset),
+                     key.extra_feature_bits,
+                     static_cast<unsigned long long>(key.effective_feature_mask));
+    }
+
+    key.extra_feature_bits = 0;
+    key.effective_feature_mask = 0;
+}
+
+static void NormalizeBuiltinPresetParityOverrides(const MaterialPreset preset,
+                                                  const MaterialCreateConfig *cfg,
+                                                  const MaterialVariantKey &routed_key,
+                                                  MaterialVariantKey &key)
+{
+    const auto *cfg3d = As3D(cfg);
+    if (!cfg3d)
+        return;
+
+    if (preset == MaterialPreset::PBRColor3D)
+        return;
+
+    if (preset == MaterialPreset::Billboard2DDynamic || preset == MaterialPreset::Billboard2DFixed)
+        return;
+
+    if (cfg3d->lighting_model != routed_key.lighting_model)
+    {
+        std::fprintf(stderr,
+                     "[MaterialLibrary] warning: ignoring lighting_model override=%u for builtin preset=%u; builtin row-driven path requires strict parity with routed key=%u.\n",
+                     static_cast<unsigned>(cfg3d->lighting_model),
+                     static_cast<unsigned>(preset),
+                     static_cast<unsigned>(routed_key.lighting_model));
+    }
+
+    if (cfg3d->sky_ambient_model != routed_key.sky_ambient_model)
+    {
+        std::fprintf(stderr,
+                     "[MaterialLibrary] warning: ignoring sky_ambient_model override=%u for builtin preset=%u; builtin row-driven path requires strict parity with routed key=%u.\n",
+                     static_cast<unsigned>(cfg3d->sky_ambient_model),
+                     static_cast<unsigned>(preset),
+                     static_cast<unsigned>(routed_key.sky_ambient_model));
+    }
+
+    key.lighting_model = routed_key.lighting_model;
+    key.sky_ambient_model = routed_key.sky_ambient_model;
+}
+
+static bool IsBuiltinPresetTextureOverrideAllowed(const MaterialPreset preset) noexcept
+{
+    switch (preset)
+    {
+    case MaterialPreset::PureTexture2D:
+    case MaterialPreset::Billboard2DDynamic:
+    case MaterialPreset::Billboard2DFixed:
+    case MaterialPreset::Standard:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static void NormalizeBuiltinPresetTextureOverrides(const MaterialPreset preset,
+                                                   const MaterialCreateConfig *cfg,
+                                                   const MaterialVariantKey &routed_key,
+                                                   MaterialVariantKey &key)
+{
+    if (!cfg)
+        return;
+
+    if (!cfg->HasTextureSourceBitsOverride() && cfg->sampler_feature_bits_override == 0)
+        return;
+
+    if (IsBuiltinPresetTextureOverrideAllowed(preset))
+        return;
+
+    std::fprintf(stderr,
+                 "[MaterialLibrary] warning: ignoring texture override channels for builtin preset=%u; "
+                 "builtin row-driven path keeps texture_source_bits/sampler_feature_bits at routed parity unless the preset explicitly supports texture-domain selection.\n",
+                 static_cast<unsigned>(preset));
+
+    key.texture_source_bits = routed_key.texture_source_bits;
+    key.sampler_feature_bits = routed_key.sampler_feature_bits;
 }
 
 }
@@ -681,9 +802,13 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
 
     // [Step 3.5 T1] Route through RouteKey() so this internal call site does not
     // emit a [[deprecated]] warning and remains aligned with the single-track entry.
-    MaterialVariantKey key = RouteKey(resolved_preset);
+    const MaterialVariantKey routed_key = RouteKey(resolved_preset);
+    MaterialVariantKey key = routed_key;
 
     ApplyCreateConfigToVariantKey(key, cfg);
+    StripLegacyOverrideChannelsForBuiltinPreset(resolved_preset, key);
+    NormalizeBuiltinPresetParityOverrides(resolved_preset, cfg, routed_key, key);
+    NormalizeBuiltinPresetTextureOverrides(resolved_preset, cfg, routed_key, key);
 
     if (resolved_preset == MaterialPreset::PBRColor3D)
     {

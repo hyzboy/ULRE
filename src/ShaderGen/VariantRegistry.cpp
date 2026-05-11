@@ -250,6 +250,30 @@ static uint32 BuildRowSamplerFeatureBits(const MaterialVariantRow &row) noexcept
     return bits;
 }
 
+static bool KeyUsesLegacyExtraFeatureBits(const MaterialVariantKey &key) noexcept
+{
+    return key.extra_feature_bits != 0;
+}
+
+static bool KeyUsesEffectiveFeatureMaskOverride(const MaterialVariantKey &key) noexcept
+{
+    return key.effective_feature_mask != 0;
+}
+
+static uint32 BuildRowVertexAttribFeatureBits(const MaterialVariantRow &row) noexcept
+{
+    uint32 bits = 0;
+
+    for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
+    {
+        const auto attrib = static_cast<VertexAttrib>(i);
+        if (row.vs_features.HasVertexAttrib(attrib) || row.fs_features.HasVertexAttrib(attrib))
+            bits |= VertexAttribFeatureBit(attrib);
+    }
+
+    return bits;
+}
+
 static void ValidateBuiltinRowConsistency(const MaterialVariantRow &row,
                                           std::vector<std::string> &diagnostics)
 {
@@ -398,6 +422,47 @@ static void ValidateBuiltinVariantDescRowBinding(const MaterialVariantKey &key,
         text += ", key=";
         text += std::to_string(key.sampler_feature_bits);
         text += ")";
+        diagnostics.emplace_back(std::move(text));
+    }
+
+    const uint32 row_vertex_bits = BuildRowVertexAttribFeatureBits(*row);
+    const uint32 unsupported_key_vertex_bits = key.vertex_attribute_feature_bits & ~row_vertex_bits;
+    if (unsupported_key_vertex_bits != 0)
+    {
+        std::string text = "Builtin variant descriptor binding failed: row '";
+        text += desc.variant_name;
+        text += "' vertex_attribute_feature_bits exceed row-declared attrib envelope (unsupported_bits=0x";
+
+        char hex[16] = {};
+        std::snprintf(hex, sizeof(hex), "%08X", unsupported_key_vertex_bits);
+        text += hex;
+        text += ")";
+        diagnostics.emplace_back(std::move(text));
+    }
+
+    if (KeyUsesLegacyExtraFeatureBits(key))
+    {
+        std::string text = "Builtin variant descriptor binding failed: row '";
+        text += desc.variant_name;
+        text += "' carries legacy extra_feature_bits=0x";
+
+        char hex[16] = {};
+        std::snprintf(hex, sizeof(hex), "%08X", key.extra_feature_bits);
+        text += hex;
+        text += "; builtin row-driven paths should not depend on extra_feature_bits";
+        diagnostics.emplace_back(std::move(text));
+    }
+
+    if (KeyUsesEffectiveFeatureMaskOverride(key))
+    {
+        std::string text = "Builtin variant descriptor binding failed: row '";
+        text += desc.variant_name;
+        text += "' carries effective_feature_mask override=0x";
+
+        char hex64[24] = {};
+        std::snprintf(hex64, sizeof(hex64), "%016llX", static_cast<unsigned long long>(key.effective_feature_mask));
+        text += hex64;
+        text += "; builtin row-driven paths should resolve through explicit row identity rather than effective_feature_mask overrides";
         diagnostics.emplace_back(std::move(text));
     }
 }
