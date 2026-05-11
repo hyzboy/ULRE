@@ -3,6 +3,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialVariantRegistry.h>
+#include<hgl/mtl/MaterialPrunePolicy.h>
 #include<hgl/mtl/RecipeToKey.h>
 #include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
@@ -210,6 +211,35 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
             legacy += legacy.empty() ? "sky fallback still exists in key-based path" : ",sky fallback still exists in key-based path";
         legacy += legacy.empty() ? "custom descriptors should prefer CreateBuiltinRowBoundVariantDesc() or MaterialVariantDesc::CreateRowBound()/BindRow() over legacy key fallback" : ",custom descriptors should prefer CreateBuiltinRowBoundVariantDesc() or MaterialVariantDesc::CreateRowBound()/BindRow() over legacy key fallback";
         out += legacy.empty() ? "None" : legacy;
+        out += "|";
+
+        // Phase 4: per-pass effective resource summary (pruning table applied).
+        // Format: pass:sky/light/mi/mitex where 1=kept, 0=pruned.
+        auto format_prune_summary = [&](const PassType pass)
+        {
+            const MaterialResourceRequirements eff = DeriveEffectiveResources(row.resources, pass);
+            std::string s;
+            s += std::to_string(static_cast<unsigned>(pass));
+            s += ":sky=";
+            s += eff.needs_sky ? "1" : "0";
+            s += "/light=";
+            s += eff.enable_lighting ? "1" : "0";
+            s += "/mi=";
+            s += eff.needs_material_instance ? "1" : "0";
+            s += "/mitex=";
+            s += eff.needs_material_texture_index ? "1" : "0";
+            return s;
+        };
+
+        out += format_prune_summary(PassType::ForwardOpaque);
+        out += ";";
+        out += format_prune_summary(PassType::ShadowOpaque);
+        out += ";";
+        out += format_prune_summary(PassType::ShadowMasked);
+        out += ";";
+        out += format_prune_summary(PassType::EarlyZSolid);
+        out += ";";
+        out += format_prune_summary(PassType::EarlyZMasked);
         out += "\n";
     });
 
@@ -825,6 +855,35 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         FormatVariantKeyForLog(key).c_str(),
         FormatVariantKeyForLog(registry_lookup_key).c_str(),
         FormatVariantKeyForLog(resolved_key).c_str());
+
+    // Phase 4: derive effective resource requirements by applying pass/quality pruning.
+    // The bound_row carries the full authored resource policy; pruning narrows it for
+    // shadow/early-z/low-quality variants. This result is diagnostic-only for now (Phase 5
+    // will wire it into the descriptor builder).
+    if (variant_desc->bound_row)
+    {
+        const MaterialResourceRequirements &authored = variant_desc->bound_row->resources;
+        const PassType pass_hint = key.pass_hint;
+        const MaterialResourceRequirements effective = DeriveEffectiveResources(authored, pass_hint);
+
+        const bool sky_pruned     = authored.needs_sky && !effective.needs_sky;
+        const bool light_pruned   = authored.enable_lighting && !effective.enable_lighting;
+        const bool mi_pruned      = authored.needs_material_instance && !effective.needs_material_instance;
+        const bool mitex_pruned   = authored.needs_material_texture_index && !effective.needs_material_texture_index;
+
+        if (sky_pruned || light_pruned || mi_pruned || mitex_pruned)
+        {
+            std::fprintf(stderr,
+                "[MaterialLibrary] Phase4 prune: variant=%s pass=%u"
+                " sky=%d→%d light=%d→%d mi=%d→%d mitex=%d→%d\n",
+                variant_desc->variant_name.c_str(),
+                static_cast<unsigned>(pass_hint),
+                authored.needs_sky,        effective.needs_sky,
+                authored.enable_lighting,  effective.enable_lighting,
+                authored.needs_material_instance,       effective.needs_material_instance,
+                authored.needs_material_texture_index,  effective.needs_material_texture_index);
+        }
+    }
 
     if(!variant_desc->factory_type)
     {
