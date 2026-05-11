@@ -129,72 +129,7 @@ namespace
         k.schema = mci.GetMaterialInstance().schema;
     }
 
-    static void MergeMaterialKeyAxesFromRequestIfDefault(mtl::MaterialKey &dst,
-                                                          const mtl::MaterialKey &request,
-                                                          uint32_t *out_mismatch_mask = nullptr) noexcept
-    {
-        uint32_t mismatch_mask = 0;
-
-        if (dst.def_id == mtl::kInvalidStaticMaterialDefId)
-        {
-            if (request.def_id != mtl::kInvalidStaticMaterialDefId)
-                dst.def_id = request.def_id;
-        }
-        else
-        if (request.def_id != mtl::kInvalidStaticMaterialDefId && dst.def_id != request.def_id)
-        {
-            mismatch_mask |= ShaderMaterialProgramStats::MATERIAL_KEY_MISMATCH_DEF_ID;
-        }
-
-        if (dst.schema == mtl::ShaderDataSchema::None)
-        {
-            if (request.schema != mtl::ShaderDataSchema::None)
-                dst.schema = request.schema;
-        }
-        else
-        if (request.schema != mtl::ShaderDataSchema::None && dst.schema != request.schema)
-        {
-            mismatch_mask |= ShaderMaterialProgramStats::MATERIAL_KEY_MISMATCH_SCHEMA;
-        }
-
-        if (dst.glsl_version == 0)
-        {
-            if (request.glsl_version != 0)
-                dst.glsl_version = request.glsl_version;
-        }
-        else
-        if (request.glsl_version != 0 && dst.glsl_version != request.glsl_version)
-        {
-            mismatch_mask |= ShaderMaterialProgramStats::MATERIAL_KEY_MISMATCH_GLSL_VERSION;
-        }
-
-        if (dst.vk_version == 0)
-        {
-            if (request.vk_version != 0)
-                dst.vk_version = request.vk_version;
-        }
-        else
-        if (request.vk_version != 0 && dst.vk_version != request.vk_version)
-        {
-            mismatch_mask |= ShaderMaterialProgramStats::MATERIAL_KEY_MISMATCH_VK_VERSION;
-        }
-
-        if (dst.spv_version == 0)
-        {
-            if (request.spv_version != 0)
-                dst.spv_version = request.spv_version;
-        }
-        else
-        if (request.spv_version != 0 && dst.spv_version != request.spv_version)
-        {
-            mismatch_mask |= ShaderMaterialProgramStats::MATERIAL_KEY_MISMATCH_SPV_VERSION;
-        }
-
-        if (out_mismatch_mask)
-            *out_mismatch_mask = mismatch_mask;
-    }
-
-}//namespace
+    }//namespace
 
 GRAPH_MODULE_CONSTRUCT(ShaderMaterialProgramManager)
 {
@@ -855,13 +790,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         ? AnsiString(cfg->preset_name) + "#" + key_hash
         : AnsiString("variant#") + key_hash;
 
-    const mtl::MaterialKey baseline_key = BuildMaterialKeyFromVariantKey(key);
-
-    stats.LogProgramKeyTriplet("CreateMaterial.2D.baseline",
-                               baseline_key,
-                               cfg->prim,
-                               cfg->local_to_world);
-
     const auto *profile=GetPhysicalDeviceProfile();
 
     AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
@@ -872,10 +800,10 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     ShaderMaterialProgram *mat = this->CreateMaterial(mtl_debug_name,mci);
     if (mat)
     {
-        mtl::MaterialKey enriched_key = baseline_key;
+        mtl::MaterialKey enriched_key = BuildMaterialKeyFromVariantKey(key);
         EnrichMaterialKeyWithCreateInfoAxes(enriched_key, *mci);
 
-        stats.LogProgramKeyTriplet("CreateMaterial.2D.enriched",
+        stats.LogProgramKeyTriplet("CreateMaterial.2D",
                                    enriched_key,
                                    cfg->prim,
                                    cfg->local_to_world);
@@ -895,15 +823,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         mat->SetTextureArraySlotFlags(flags);
         mat->effective_feature_mask = key.effective_feature_mask;
 
-        // Primary key uses enriched axes; keep baseline alias for fast variant-key path.
         mat->SetMaterialKey(enriched_key);
-        material_by_key[baseline_key] = mat;
         material_by_key[enriched_key] = mat;
 #ifndef NDEBUG
-        auto it_verify_base = material_by_key.find(baseline_key);
-        assert(it_verify_base != material_by_key.end() && it_verify_base->second == mat);
-        auto it_verify_enriched = material_by_key.find(enriched_key);
-        assert(it_verify_enriched != material_by_key.end() && it_verify_enriched->second == mat);
+        auto it_verify = material_by_key.find(enriched_key);
+        assert(it_verify != material_by_key.end() && it_verify->second == mat);
         assert(mat->HasMaterialKey() && mat->GetMaterialKey() == enriched_key);
 #endif
     }
@@ -942,13 +866,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         ? AnsiString(cfg->preset_name) + "#" + key_hash
         : AnsiString("variant#") + key_hash;
 
-    const mtl::MaterialKey baseline_key = BuildMaterialKeyFromVariantKey(cache_key);
-
-    stats.LogProgramKeyTriplet("CreateMaterial.3D.baseline",
-                               baseline_key,
-                               cfg->prim,
-                               cfg->local_to_world);
-
     const auto *profile=GetPhysicalDeviceProfile();
     if(!profile)
     {
@@ -968,10 +885,10 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     ShaderMaterialProgram *mat = this->CreateMaterial(mtl_debug_name,mci);
     if (mat)
     {
-        mtl::MaterialKey enriched_key = baseline_key;
+        mtl::MaterialKey enriched_key = BuildMaterialKeyFromVariantKey(cache_key);
         EnrichMaterialKeyWithCreateInfoAxes(enriched_key, *mci);
 
-        stats.LogProgramKeyTriplet("CreateMaterial.3D.enriched",
+        stats.LogProgramKeyTriplet("CreateMaterial.3D",
                                    enriched_key,
                                    cfg->prim,
                                    cfg->local_to_world);
@@ -991,15 +908,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         mat->SetTextureArraySlotFlags(flags);
         mat->effective_feature_mask = cache_key.effective_feature_mask;
 
-        // Primary key uses enriched axes; keep baseline alias for fast variant-key path.
         mat->SetMaterialKey(enriched_key);
-        material_by_key[baseline_key] = mat;
         material_by_key[enriched_key] = mat;
 #ifndef NDEBUG
-        auto it_verify_base = material_by_key.find(baseline_key);
-        assert(it_verify_base != material_by_key.end() && it_verify_base->second == mat);
-        auto it_verify_enriched = material_by_key.find(enriched_key);
-        assert(it_verify_enriched != material_by_key.end() && it_verify_enriched->second == mat);
+        auto it_verify = material_by_key.find(enriched_key);
+        assert(it_verify != material_by_key.end() && it_verify->second == mat);
         assert(mat->HasMaterialKey() && mat->GetMaterialKey() == enriched_key);
 #endif
     }
