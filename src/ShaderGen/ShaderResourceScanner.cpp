@@ -390,4 +390,134 @@ MaterialResourceManifest MergeManifestWithAutoRequirements(
     result.MergeKeepFirst(auto_requirements);
     return result;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 5: manifest ↔ effective-policy operations
+// ─────────────────────────────────────────────────────────────────────────────
+
+MaterialResourceManifest PruneManifestByPolicy(
+    const MaterialResourceManifest     &manifest,
+    const MaterialResourceRequirements &effective_policy)
+{
+    MaterialResourceManifest pruned = manifest;
+
+    // Sky: SkyInfo UBO
+    if (!effective_policy.needs_sky)
+    {
+        pruned.ubos.erase(UBODescriptorSemantic::SkyInfo);
+    }
+
+    // Lighting: no separate UBO semantic, but if lighting is pruned then sky
+    // typically also goes (handled above). Nothing else to remove from the manifest
+    // at this level—lighting determines which shader code path is chosen, not
+    // which *distinct* UBO resource is bound separately from CameraInfo.
+
+    // MaterialInstance / MI: handled by the SSBO remove below.
+    if (!effective_policy.needs_material_instance)
+    {
+        pruned.ssbos.erase(SSBODescriptorSemantic::MaterialBindingInstanceID);
+        pruned.ssbos.erase(SSBODescriptorSemantic::MaterialBindingInstanceData);
+    }
+
+    if (!effective_policy.needs_material_texture_index)
+    {
+        pruned.ssbos.erase(SSBODescriptorSemantic::MaterialBindingInstanceTexture);
+    }
+
+    // Camera / Viewport: rarely pruned in practice (depth pass still needs camera),
+    // but honour the policy flags so the table is authoritative.
+    if (!effective_policy.needs_camera)
+    {
+        pruned.ubos.erase(UBODescriptorSemantic::CameraInfo);
+    }
+
+    if (!effective_policy.needs_viewport)
+    {
+        pruned.ubos.erase(UBODescriptorSemantic::ViewportInfo);
+    }
+
+    return pruned;
 }
+
+bool ValidateManifestAgainstPolicy(
+    const MaterialResourceManifest     &manifest,
+    const MaterialResourceRequirements &effective_policy,
+    const char                         *material_name,
+    std::string                        *diagnostics)
+{
+    const char *name = material_name ? material_name : "<unnamed>";
+    bool ok = true;
+
+    // Helper: append a message and mark violation.
+    auto forbids = [&](const char *resource)
+    {
+        std::string msg;
+        msg += "[ShaderResourceScanner] Phase5 PolicyForbids: material='";
+        msg += name;
+        msg += "' manifest contains '";
+        msg += resource;
+        msg += "' but effective policy disallows it";
+        std::fprintf(stderr, "%s\n", msg.c_str());
+        if (diagnostics)
+        {
+            *diagnostics += msg;
+            *diagnostics += "\n";
+        }
+        ok = false;
+    };
+
+    auto pruned_info = [&](const char *resource)
+    {
+        std::fprintf(stderr,
+            "[ShaderResourceScanner] Phase5 PolicyRequires: material='%s'"
+            " policy allows '%s' but manifest omits it (pruned by reflection — OK)\n",
+            name, resource);
+    };
+
+    // SkyInfo UBO
+    {
+        const bool has_sky = manifest.ubos.count(UBODescriptorSemantic::SkyInfo) > 0;
+        const PolicyManifestCheckResult r = CheckUBOAgainstPolicy(has_sky, effective_policy.needs_sky);
+        if (r == PolicyManifestCheckResult::PolicyForbids)
+            forbids("SkyInfo");
+        else if (r == PolicyManifestCheckResult::PolicyRequires)
+            pruned_info("SkyInfo");
+    }
+
+    // CameraInfo UBO
+    {
+        const bool has_cam = manifest.ubos.count(UBODescriptorSemantic::CameraInfo) > 0;
+        const PolicyManifestCheckResult r = CheckUBOAgainstPolicy(has_cam, effective_policy.needs_camera);
+        if (r == PolicyManifestCheckResult::PolicyForbids)
+            forbids("CameraInfo");
+    }
+
+    // ViewportInfo UBO
+    {
+        const bool has_vp = manifest.ubos.count(UBODescriptorSemantic::ViewportInfo) > 0;
+        const PolicyManifestCheckResult r = CheckUBOAgainstPolicy(has_vp, effective_policy.needs_viewport);
+        if (r == PolicyManifestCheckResult::PolicyForbids)
+            forbids("ViewportInfo");
+    }
+
+    // MaterialBindingInstanceID / Data SSBOs
+    {
+        const bool has_mi = manifest.ssbos.count(SSBODescriptorSemantic::MaterialBindingInstanceID) > 0
+                         || manifest.ssbos.count(SSBODescriptorSemantic::MaterialBindingInstanceData) > 0;
+        const PolicyManifestCheckResult r = CheckUBOAgainstPolicy(has_mi, effective_policy.needs_material_instance);
+        if (r == PolicyManifestCheckResult::PolicyForbids)
+            forbids("MaterialBindingInstance");
+    }
+
+    // MaterialBindingInstanceTexture SSBO
+    {
+        const bool has_mitex = manifest.ssbos.count(SSBODescriptorSemantic::MaterialBindingInstanceTexture) > 0;
+        const PolicyManifestCheckResult r = CheckUBOAgainstPolicy(has_mitex, effective_policy.needs_material_texture_index);
+        if (r == PolicyManifestCheckResult::PolicyForbids)
+            forbids("MaterialBindingInstanceTexture");
+    }
+
+    return ok;
+}
+
+} // end anonymous namespace guard — file namespace hgl::graph::mtl

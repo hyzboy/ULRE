@@ -1,6 +1,7 @@
 #include<hgl/mtl/MaterialVariantRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/shadergen/CompositorAssembler.h>
+#include<hgl/shadergen/ShaderResourceScanner.h>
 #include "BuiltinVariantEntry.h"
 #include <hgl/mtl/MaterialVariantRow.h>
 #include <algorithm>
@@ -606,7 +607,60 @@ bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_
 
             const auto result=assembler.Assemble(entry.key,entry.desc);
             if(result.success)
+            {
+                // Phase 5: validate reflected resources against the row's effective policy.
+                // Use the bound_row's authored requirements + pass prune table to derive
+                // the effective policy for this pass, then cross-check the reflection manifest.
+                if (entry.desc.bound_row)
+                {
+                    const MaterialVariantRow &row = *entry.desc.bound_row;
+                    const PassType pass = entry.key.pass_hint;
+                    const MaterialResourceRequirements effective =
+                        DeriveEffectiveResources(row.resources, pass);
+
+                    // Build a StaticMaterialDef seed from the row for scanner context.
+                    // Only UBO/SSBO seeds are needed; we can use an empty def with the
+                    // authoritative UBO list for now (reflection will detect actual usage).
+                    StaticMaterialDef seed_def;
+                    seed_def.name = row.name;
+                    // We intentionally skip shader_library_path-dependent full scan here
+                    // to avoid re-compiling shaders a second time in validation.
+                    // Instead, use the assembled GLSL already produced by the assembler
+                    // and build a minimal manifest directly from reflection raw data.
+                    MaterialResourceManifest reflected_manifest;
+                    std::string reflection_diag;
+                    const bool reflection_ok = CollectShaderAutoRequirements(
+                        seed_def,
+                        shader_library_path,
+                        result.vertex_glsl,
+                        result.fragment_glsl,
+                        reflected_manifest,
+                        &reflection_diag);
+
+                    if (reflection_ok)
+                    {
+                        std::string policy_diag;
+                        ValidateManifestAgainstPolicy(
+                            reflected_manifest,
+                            effective,
+                            row.name,
+                            &policy_diag);
+
+                        if (!policy_diag.empty())
+                            diagnostics.emplace_back(std::move(policy_diag));
+                    }
+                    else if (!reflection_diag.empty())
+                    {
+                        // Reflection failed (e.g. unknown sampler) — log but don't
+                        // treat as a hard validation failure for the variant registry.
+                        std::fprintf(stderr,
+                            "[VariantRegistry] Phase5 reflection warning for '%s': %s\n",
+                            entry.desc.variant_name.c_str(),
+                            reflection_diag.c_str());
+                    }
+                }
                 continue;
+            }
 
             std::string msg="Variant validation failed: ";
             msg += entry.desc.variant_name.empty()?"<unnamed>":entry.desc.variant_name;
