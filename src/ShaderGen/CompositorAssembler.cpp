@@ -334,6 +334,23 @@ namespace
         return desc.factory_type.has_value();
     }
 
+    bool DescAllowsLegacyKeyApproximation(const hgl::graph::mtl::MaterialVariantDesc &desc) noexcept
+    {
+        if (desc.bound_row)
+            return false;
+
+        if (DescLooksBuiltinRouted(desc))
+            return false;
+
+        if (!desc.variant_name.empty())
+            return false;
+
+        if (!desc.vs_template_path.empty() || !desc.fs_template_path.empty() || !desc.surface_function_path.empty())
+            return false;
+
+        return true;
+    }
+
     void WarnLegacyKeyFallbackOnce(const char *stage,
                                    const hgl::graph::mtl::MaterialVariantKey &key,
                                    const hgl::graph::mtl::MaterialVariantDesc &desc)
@@ -345,7 +362,7 @@ namespace
 
         std::fprintf(stderr,
                      "[CompositorAssembler] warning: using legacy key fallback for %s stage variant='%s' factory=%s surface=%u geometry=%u. "
-                     "This path is compatibility-only; prefer explicit MaterialVariantRow/row-bound descriptors.\n",
+                     "This path is compatibility-only; prefer CreateBuiltinRowBoundVariantDesc() or MaterialVariantDesc::CreateRowBound()/BindRow() with explicit MaterialVariantRow binding.\n",
                      stage,
                      desc.variant_name.empty() ? "<unnamed>" : desc.variant_name.c_str(),
                      desc.factory_type ? std::to_string(static_cast<unsigned>(*desc.factory_type)).c_str() : "<none>",
@@ -366,7 +383,7 @@ namespace
         if (const auto *named_row = FindBuiltinVariantRow(desc))
             return named_row;
 
-        if (DescLooksBuiltinRouted(desc))
+        if (!DescAllowsLegacyKeyApproximation(desc))
             return nullptr;
 
         return FindBuiltinVariantRowByLegacyKeyApproximation(key);
@@ -388,7 +405,7 @@ namespace
         msg += std::to_string(static_cast<unsigned>(key.surface_type));
         msg += " geometry=";
         msg += std::to_string(static_cast<unsigned>(key.geometry_mode));
-        msg += ". Key fallback is reserved for non-builtin custom descriptors.";
+        msg += ". Key fallback is reserved for legacy anonymous descriptors without explicit row/name/template binding; prefer CreateBuiltinRowBoundVariantDesc() or MaterialVariantDesc::CreateRowBound()/BindRow().";
         return msg;
     }
 

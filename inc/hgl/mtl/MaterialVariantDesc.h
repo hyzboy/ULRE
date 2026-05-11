@@ -32,6 +32,29 @@ namespace hgl::graph::mtl
             factory_type.reset();
         }
 
+        static MaterialVariantDesc CreateRowBound(const std::string &name,
+                                                 const MaterialVariantRow *row,
+                                                 const std::optional<MaterialPreset> &type = std::nullopt,
+                                                 const std::string &vs_path = {},
+                                                 const std::string &fs_path = {},
+                                                 const std::string &surface_path = {})
+        {
+            MaterialVariantDesc desc;
+            desc.variant_name = name;
+            desc.factory_type = type;
+            desc.vs_template_path = vs_path;
+            desc.fs_template_path = fs_path;
+            desc.surface_function_path = surface_path;
+            desc.bound_row = row;
+            return desc;
+        }
+
+        MaterialVariantDesc &BindRow(const MaterialVariantRow *row) noexcept
+        {
+            bound_row = row;
+            return *this;
+        }
+
         MaterialVariantDesc(
             const std::string& name,
             MaterialPreset type,

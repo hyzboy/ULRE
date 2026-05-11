@@ -7,6 +7,7 @@
 #include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/shadergen/MaterialFactory3D.h>
+#include<cstring>
 #include<cstdio>
 #include "BuiltinVariantEntry.h"
 
@@ -180,12 +181,51 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
             legacy += legacy.empty() ? "terrain behavior still depends on dedicated row template path" : ",terrain behavior still depends on dedicated row template path";
         if (row.vertex_policy == VertexTransformPolicy::Sky)
             legacy += legacy.empty() ? "sky fallback still exists in key-based path" : ",sky fallback still exists in key-based path";
-        legacy += legacy.empty() ? "custom descriptors may now bind row explicitly via MaterialVariantDesc::bound_row" : ",custom descriptors may now bind row explicitly via MaterialVariantDesc::bound_row";
+        legacy += legacy.empty() ? "custom descriptors should prefer CreateBuiltinRowBoundVariantDesc() or MaterialVariantDesc::CreateRowBound()/BindRow() over legacy key fallback" : ",custom descriptors should prefer CreateBuiltinRowBoundVariantDesc() or MaterialVariantDesc::CreateRowBound()/BindRow() over legacy key fallback";
         out += legacy.empty() ? "None" : legacy;
         out += "\n";
     });
 
     return out;
+}
+
+const MaterialVariantRow *FindBuiltinMaterialVariantRowByName(const char *name)
+{
+    if (!name || !name[0])
+        return nullptr;
+
+    const auto &registry = GetBuiltinVariantRegistry();
+    const MaterialVariantRow *result = nullptr;
+
+    registry.ForEachBuiltinRow([&](const MaterialVariantRow &row)
+    {
+        if (result)
+            return;
+
+        if (row.name && std::strcmp(row.name, name) == 0)
+            result = &row;
+    });
+
+    return result;
+}
+
+MaterialVariantDesc CreateBuiltinRowBoundVariantDesc(const char *row_name,
+                                                     const std::optional<MaterialPreset> &type,
+                                                     const std::string &vs_path,
+                                                     const std::string &fs_path,
+                                                     const std::string &surface_path)
+{
+    const MaterialVariantRow *row = FindBuiltinMaterialVariantRowByName(row_name);
+
+    if (!row)
+    {
+        std::fprintf(stderr,
+                     "[MaterialLibrary] warning: CreateBuiltinRowBoundVariantDesc failed to find builtin row '%s'. "
+                     "The returned descriptor has no bound_row; prefer a valid builtin row name or explicit MaterialVariantDesc::CreateRowBound().\n",
+                     row_name ? row_name : "<null>");
+    }
+
+    return MaterialVariantDesc::CreateRowBound(row_name ? row_name : "", row, type, vs_path, fs_path, surface_path);
 }
 
 namespace {

@@ -4,6 +4,7 @@
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/mtl/MaterialBuildFlags.h>
 #include<hgl/mtl/MaterialPreset.h>
+#include<hgl/mtl/MaterialVariantDesc.h>
 #include<hgl/mtl/MaterialVariantKey.h>
 #include<vector>
 #include<string>
@@ -13,6 +14,7 @@ namespace hgl::graph::mtl{
 
 struct MaterialCreateConfig;
 class MaterialCreateInfo;
+struct MaterialVariantRow;
 
 // Semantic entry path: MaterialPreset is authoring/content intent. The library resolves it through
 // runtime material LOD and then maps it to a concrete MaterialVariantKey / shading implementation.
@@ -50,6 +52,16 @@ std::string GetBuiltinMaterialVariantRowSnapshot();
 
 // 导出 MaterialPreset -> 显式结构轴审计快照（Phase 1），用于区分 alias 展开结果与仍保留的推导路径。
 std::string GetBuiltinMaterialPresetAuditSnapshot();
+
+// 查找内置 row（按精确名字匹配）。可用于 custom descriptor 显式绑定 bound_row。
+const MaterialVariantRow *FindBuiltinMaterialVariantRowByName(const char *name);
+
+// 按 builtin row 名称直接构造 row-bound descriptor，作为 custom/compat 路径推荐入口。
+MaterialVariantDesc CreateBuiltinRowBoundVariantDesc(const char *row_name,
+                                                    const std::optional<MaterialPreset> &type = std::nullopt,
+                                                    const std::string &vs_path = {},
+                                                    const std::string &fs_path = {},
+                                                    const std::string &surface_path = {});
 
 // ---------------------------------------------------------------------------
 // [Step 3.5 T1] Variant Key 单轨化路由入口
