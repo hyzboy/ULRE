@@ -166,7 +166,7 @@ GraphicsPipeline *GplGraphicsPipelineBuilder::Build(const GraphicsPipelineBuildC
     const GplVertexInputKey    vi_key = BuildVertexInputKey(request.vil, request.primitive, request.primitive_restart);
     const GplPreRasterKey      pr_key = BuildPreRasterKey(request);
     const GplFragmentShaderKey fs_key = BuildFragmentShaderKey(request);
-    const GplFragmentOutputKey fo_key = BuildFragmentOutputKey(request.render_format);
+    const GplFragmentOutputKey fo_key = BuildFragmentOutputKey(request);
 
     // ── Acquire (or create-and-cache) the four library handles ────────────────
     const VkPipeline vi_lib = handle_cache_->AcquireVertexInputLibrary(vi_key, request);

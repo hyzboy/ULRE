@@ -1,5 +1,6 @@
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsRenderState.h>
+#include<hgl/vk/pipeline/VKGraphicsPipelineData.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/vk/VKVertexInputLayout.h>
@@ -164,18 +165,51 @@ GplFragmentShaderKey BuildFragmentShaderKey(const GraphicsPipelineBuildRequest &
     return { h };
 }
 
-GplFragmentOutputKey BuildFragmentOutputKey(const RenderTargetFormat *rf)
+GplFragmentOutputKey BuildFragmentOutputKey(const GraphicsPipelineBuildRequest &req)
 {
+    const RenderTargetFormat    *rf = req.render_format;
+    const GraphicsPipelineData  *pd = req.pipeline_data;
+
     if (!rf)
         return {};
 
     uint64_t h = hgl::hash::FNV1aInit<uint64_t>();
 
-    HashU32(h, rf->GetColorCount());
-    for (uint32_t i = 0; i < rf->GetColorCount(); ++i)
+    // RT attachment formats
+    const uint32_t n = rf->GetColorCount();
+    HashU32(h, n);
+    for (uint32_t i = 0; i < n; ++i)
         HashU32(h, static_cast<uint32_t>(rf->GetColorFormat(static_cast<int>(i))));
-
     HashU32(h, static_cast<uint32_t>(rf->GetDepthFormat()));
+
+    // Per-attachment blend state (blendEnable, src/dst factors, ops, writeMask)
+    if (pd && pd->color_blend_attachments)
+    {
+        for (uint32_t i = 0; i < n; ++i)
+        {
+            const auto &a = pd->color_blend_attachments[i < 1 ? 0 : i];
+            HashBool(h, a.blendEnable != VK_FALSE);
+            HashU32(h, static_cast<uint32_t>(a.srcColorBlendFactor));
+            HashU32(h, static_cast<uint32_t>(a.dstColorBlendFactor));
+            HashU32(h, static_cast<uint32_t>(a.colorBlendOp));
+            HashU32(h, static_cast<uint32_t>(a.srcAlphaBlendFactor));
+            HashU32(h, static_cast<uint32_t>(a.dstAlphaBlendFactor));
+            HashU32(h, static_cast<uint32_t>(a.alphaBlendOp));
+            HashU32(h, static_cast<uint32_t>(a.colorWriteMask));
+        }
+    }
+
+    // Global color blend state (logicOp, blendConstants)
+    if (pd && pd->color_blend)
+    {
+        HashBool(h, pd->color_blend->logicOpEnable != VK_FALSE);
+        HashU32(h, static_cast<uint32_t>(pd->color_blend->logicOp));
+        HashBytes(h, pd->color_blend->blendConstants, sizeof(pd->color_blend->blendConstants));
+    }
+
+    // Multisample state (rasterizationSamples)
+    if (pd && pd->multi_sample)
+        HashU32(h, static_cast<uint32_t>(pd->multi_sample->rasterizationSamples));
 
     return { h };
 }
@@ -188,7 +222,7 @@ GplLinkedPipelineKey BuildLinkedPipelineKey(const GraphicsPipelineBuildRequest &
     key.vi = BuildVertexInputKey(req.vil, req.primitive, req.primitive_restart);
     key.pr = BuildPreRasterKey(req);
     key.fs = BuildFragmentShaderKey(req);
-    key.fo = BuildFragmentOutputKey(req.render_format);
+    key.fo = BuildFragmentOutputKey(req);
     key.state_hash = state_profile.Hash();
 
     uint64_t layout_hash = hgl::hash::FNV1aInit<uint64_t>();

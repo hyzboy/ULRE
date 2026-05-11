@@ -29,7 +29,7 @@ GplVertexInputKey  BuildVertexInputKey(const VertexInputLayout *vil,
                                        bool primitive_restart);
 GplPreRasterKey    BuildPreRasterKey(const GraphicsPipelineBuildRequest &req);
 GplFragmentShaderKey BuildFragmentShaderKey(const GraphicsPipelineBuildRequest &req);
-GplFragmentOutputKey BuildFragmentOutputKey(const RenderTargetFormat *rf);
+GplFragmentOutputKey BuildFragmentOutputKey(const GraphicsPipelineBuildRequest &req);
 GplLinkedPipelineKey BuildLinkedPipelineKey(const GraphicsPipelineBuildRequest &req,
                                             const GraphicsRenderState &state_profile);
 }//namespace hgl::graph
