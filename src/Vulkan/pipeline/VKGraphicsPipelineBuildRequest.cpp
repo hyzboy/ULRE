@@ -104,12 +104,18 @@ bool IsValidGraphicsPipelineBuildRequest(const GraphicsPipelineBuildRequest &req
         && req.pipeline_data;
 }
 
-GplVertexInputKey BuildVertexInputKey(const VertexInputLayout *vil)
+GplVertexInputKey BuildVertexInputKey(const VertexInputLayout *vil,
+                                      PrimitiveType primitive,
+                                      bool primitive_restart)
 {
     if (!vil)
         return {};
 
     uint64_t h = hgl::hash::FNV1aInit<uint64_t>();
+
+    // Topology belongs to VERTEX_INPUT_INTERFACE in GPL — hash it here, not in PreRaster.
+    HashU32(h, static_cast<uint32_t>(primitive));
+    HashBool(h, primitive_restart);
 
     const uint32_t count = vil->GetVertexAttribCount();
     HashU32(h, count);
@@ -136,8 +142,6 @@ GplPreRasterKey BuildPreRasterKey(const GraphicsPipelineBuildRequest &req)
     uint64_t h = hgl::hash::FNV1aInit<uint64_t>();
 
     HashAnsiString(h, req.material->GetName());
-    HashU32(h, static_cast<uint32_t>(req.primitive));
-    HashBool(h, req.primitive_restart);
 
     const auto &stages = req.material->GetStageList();
     HashShaderStages(h, stages, false, true);
@@ -181,7 +185,7 @@ GplLinkedPipelineKey BuildLinkedPipelineKey(const GraphicsPipelineBuildRequest &
 {
     GplLinkedPipelineKey key{};
 
-    key.vi = BuildVertexInputKey(req.vil);
+    key.vi = BuildVertexInputKey(req.vil, req.primitive, req.primitive_restart);
     key.pr = BuildPreRasterKey(req);
     key.fs = BuildFragmentShaderKey(req);
     key.fo = BuildFragmentOutputKey(req.render_format);

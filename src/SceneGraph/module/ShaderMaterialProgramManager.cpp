@@ -649,7 +649,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
                                recipe.prim,
                                recipe.l2w);
 
-    const mtl::VertexProgramKey req_vkey = mtl::BuildVertexProgramKey(key.variant, recipe.prim, recipe.l2w);
+    const mtl::VertexProgramKey req_vkey = mtl::BuildVertexProgramKey(key.variant, recipe.l2w);
     const mtl::FragmentProgramKey req_fkey = mtl::BuildFragmentProgramKey(key.variant);
     stats.RecordShaderProgramShadowCacheLookup(req_vkey, req_fkey);
 
@@ -881,7 +881,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
                                    cfg->local_to_world);
 
         const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(enriched_key.variant,
-                                                                       cfg->prim,
                                                                        cfg->local_to_world);
         const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(enriched_key.variant);
         mat->SetVertexProgramKey(vkey);
@@ -978,7 +977,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
                                    cfg->local_to_world);
 
         const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(enriched_key.variant,
-                                                                       cfg->prim,
                                                                        cfg->local_to_world);
         const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(enriched_key.variant);
         mat->SetVertexProgramKey(vkey);

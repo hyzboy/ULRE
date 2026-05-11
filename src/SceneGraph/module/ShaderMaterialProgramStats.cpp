@@ -253,7 +253,6 @@ namespace hgl::graph
                                                           const bool has_local_to_world) const noexcept
     {
         const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(material_key.variant,
-                                                                       primitive,
                                                                        has_local_to_world);
         const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(material_key.variant);
 

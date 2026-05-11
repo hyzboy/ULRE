@@ -8,7 +8,6 @@ namespace hgl::graph::mtl
         h = hgl::hash::FNV1aAppend(h, geometry_mode);
         h = hgl::hash::FNV1aAppend(h, position_provider);
         h = hgl::hash::FNV1aAppend(h, vertex_attribute_feature_bits);
-        h = hgl::hash::FNV1aAppend(h, primitive_type);
         h = hgl::hash::FNV1aAppend(h, has_local_to_world ? uint8(1) : uint8(0));
         return h;
     }
@@ -28,14 +27,12 @@ namespace hgl::graph::mtl
     }
 
     VertexProgramKey BuildVertexProgramKey(const MaterialVariantKey &key,
-                                           const PrimitiveType primitive_type,
                                            const bool has_local_to_world) noexcept
     {
         VertexProgramKey out{};
         out.geometry_mode = key.geometry_mode;
         out.position_provider = key.position_provider;
         out.vertex_attribute_feature_bits = key.vertex_attribute_feature_bits;
-        out.primitive_type = primitive_type;
         out.has_local_to_world = has_local_to_world;
         return out;
     }
