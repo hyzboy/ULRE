@@ -18,6 +18,7 @@ GRAPH_MODULE_CLASS(PrimitiveManager)
 private:
 
     AutoIdObjectManager<PrimitiveID, Primitive> rm_primitive_set;    ///<渲染实例集合集
+    bool released = false;
 
     PrimitiveManager(GraphicsContext *);
     ~PrimitiveManager() = default;
@@ -32,6 +33,11 @@ public: // Add/Get/Release
 
     void Release() override
     {
+        if (released)
+            return;
+
+        released = true;
+
         if (rm_primitive_set.GetCount() > 0)
             rm_primitive_set.Clear();
     }

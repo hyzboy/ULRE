@@ -43,10 +43,16 @@ static MaterialVariantKey CanonicalizeRegistryLookupKey(const MaterialVariantKey
 static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
 {
     std::string text;
-  text.reserve(320);
+  text.reserve(352);
 
     text += "hash=";
     text += std::to_string(static_cast<unsigned long long>(key.Hash()));
+    text += " row=0x";
+
+    char hex64[24] = {};
+    std::snprintf(hex64, sizeof(hex64), "%016llX",
+        static_cast<unsigned long long>(key.variant_row_name_hash));
+    text += hex64;
     text += " ST=";
     text += std::to_string(static_cast<unsigned>(key.surface_type));
     text += " GM=";
@@ -61,7 +67,6 @@ static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
     text += std::to_string(static_cast<unsigned>(key.lighting_model));
     text += " eff=0x";
 
-    char hex64[24] = {};
     std::snprintf(hex64, sizeof(hex64), "%016llX",
         static_cast<unsigned long long>(key.effective_feature_mask));
     text += hex64;

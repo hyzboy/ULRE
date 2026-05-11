@@ -260,10 +260,16 @@ namespace {
 static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
 {
     std::string text;
-    text.reserve(320);
+    text.reserve(352);
 
     text += "hash=";
     text += std::to_string(static_cast<unsigned long long>(key.Hash()));
+    text += " row=0x";
+
+    char hex64[24] = {};
+    std::snprintf(hex64, sizeof(hex64), "%016llX",
+        static_cast<unsigned long long>(key.variant_row_name_hash));
+    text += hex64;
     text += " ST=";
     text += std::to_string(static_cast<unsigned>(key.surface_type));
     text += " GM=";
@@ -566,6 +572,48 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
     return key;
 }
 
+uint64 ResolveBuiltinVariantRowHash(MaterialPreset preset,
+                                    const MaterialVariantKey &key) noexcept
+{
+    const MaterialPreset resolved_preset =
+        ResolveMaterialPresetForLOD(preset, GetDefaultMaterialLOD());
+
+    MaterialVariantKey query = key;
+    query.variant_row_name_hash = 0;
+    query.effective_feature_mask = 0;
+
+    if (query.surface_type == SurfaceType::Standard
+     && query.geometry_mode == GeometryMode::Mesh3D)
+    {
+        // Standard Mesh3D row selection is not split by sky ambient model.
+        // Keep row-hash rebinding canonicalized the same way as registry lookup.
+        query.sky_ambient_model = SkyLightAmbientModel::Simple;
+    }
+
+    for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
+    {
+        const auto &entry = kBuiltinVariants[i];
+        if (entry.preset != resolved_preset)
+            continue;
+
+        MaterialVariantKey candidate = BuildKey(entry);
+        const uint64 candidate_row_hash = candidate.variant_row_name_hash;
+        candidate.variant_row_name_hash = 0;
+        candidate.effective_feature_mask = 0;
+
+        if (candidate.surface_type == SurfaceType::Standard
+         && candidate.geometry_mode == GeometryMode::Mesh3D)
+        {
+            candidate.sky_ambient_model = SkyLightAmbientModel::Simple;
+        }
+
+        if (candidate == query)
+            return candidate_row_hash;
+    }
+
+    return key.variant_row_name_hash;
+}
+
 const char *GetMaterialPresetName(const MaterialPreset mtl_id)
 {
     const PresetResolveEntry *entry=FindPresetResolveEntry(mtl_id);
@@ -686,9 +734,25 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     if (registry_lookup_key.surface_type == SurfaceType::Standard
      && registry_lookup_key.geometry_mode == GeometryMode::Mesh3D)
     {
-        // Standard Mesh3D descriptor selection is not split by sky model.
-        // Keep runtime-requested sky model on the original key for downstream
-        // assembly/diagnostics, but use canonical sky for registry descriptor lookup.
+        // TODO [Phase 1]: Temporary compatibility bridge for Standard Mesh3D sky canonicalization.
+        // DESIGN NOTE: This is a tactical patch that should be removed in Phase 3 of the Sky Resource
+        // Requirement Refactor Plan (SKY_RESOURCE_REQUIREMENT_REFACTOR_PLAN.md).
+        //
+        // ISSUE: sky_ambient_model currently mixes three concerns:
+        //   1. Authoring intent (some materials need SkyInfo UBO)
+        //   2. Routing identity (affects which builtin row is selected)
+        //   3. Resource binding requirement (affects final descriptor layout)
+        //
+        // CURRENT WORKAROUND: Standard Mesh3D rows are not split by sky model, so we canonicalize
+        // to Simple for registry lookup. This allows BaseColor:Array + Normal:Array + any sky_model
+        // to match StandardPBRArray or similar rows.
+        //
+        // FINAL DESIGN: sky_ambient_model will move out of row identity into explicit resource policy,
+        // with pass/quality-driven pruning. Row hash rebinding in ResolveBuiltinVariantRowHash() will
+        // use the same canonicalization table-driven rules, not hardcoded for Standard.
+        //
+        // DO NOT: Add more special cases for new materials. Instead, use Phase 2-3 refactoring.
+        
         registry_lookup_key.sky_ambient_model = SkyLightAmbientModel::Simple;
     }
 
@@ -711,8 +775,14 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                                                                                              lookup_opts);
     if(!variant_desc)
     {
+        // TODO [Phase 1]: When Standard Mesh3D sky canonicalization is applied,
+        // include diagnostic info to help identify registry mismatches.
+        const bool applied_sky_canon = 
+            key.surface_type == SurfaceType::Standard &&
+            key.geometry_mode == GeometryMode::Mesh3D;
+        
         std::fprintf(stderr,
-            "[MaterialLibrary] CreateMaterialCreateInfo failed: no registered variant (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
+            "[MaterialLibrary] CreateMaterialCreateInfo failed: no registered variant (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)%s\n",
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
             static_cast<unsigned>(key.geometry_mode),
@@ -720,7 +790,8 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             key.texture_source_bits,
             key.sampler_feature_bits,
             key.vertex_attribute_feature_bits,
-            key.extra_feature_bits);
+            key.extra_feature_bits,
+            applied_sky_canon ? " [sky canonicalization applied]" : "");
         return nullptr;
     }
 

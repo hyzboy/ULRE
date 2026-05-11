@@ -55,6 +55,12 @@ static void test_field_changes_affect_hash()
 
     {
         MaterialKey k = base;
+        k.variant.variant_row_name_hash = 1;
+        CHECK_NE(k.Hash(), base.Hash());
+        CHECK_NE(k, base);
+    }
+    {
+        MaterialKey k = base;
         k.pass = PassType::ShadowOpaque;
         CHECK_NE(k.Hash(), base.Hash());
         CHECK_NE(k, base);
@@ -107,21 +113,21 @@ static void test_reserved_does_not_affect_hash()
 static void test_size_is_stable()
 {
     // Layout:
-    //   0  : variant          (MaterialVariantKey, 32 bytes)
-    //  32  : pass             (uint8,  1 byte)
-    //  33  : [padding]        (1 byte)
-    //  34  : def_id           (uint16, 2 bytes)
-    //  36  : schema           (uint32, 4 bytes)
-    //  40  : glsl_version     (uint16, 2 bytes)
-    //  42  : vk_version       (uint16, 2 bytes)
-    //  44  : spv_version      (uint16, 2 bytes)
-    //  46  : [padding]        (2 bytes)
-    //  48  : _reserved        (uint64, 8 bytes)
-    // Total: 56 bytes
-    static_assert(sizeof(MaterialKey) == 56,
+    //   0  : variant          (MaterialVariantKey, 40 bytes)
+    //  40  : pass             (uint8,  1 byte)
+    //  41  : [padding]        (1 byte)
+    //  42  : def_id           (uint16, 2 bytes)
+    //  44  : schema           (uint32, 4 bytes)
+    //  48  : glsl_version     (uint16, 2 bytes)
+    //  50  : vk_version       (uint16, 2 bytes)
+    //  52  : spv_version      (uint16, 2 bytes)
+    //  54  : [padding]        (2 bytes)
+    //  56  : _reserved        (uint64, 8 bytes)
+    // Total: 64 bytes
+    static_assert(sizeof(MaterialKey) == 64,
                   "MaterialKey ABI size changed — update layout comment and "
                   "increment the schema version before committing");
-    CHECK_EQ(sizeof(MaterialKey), 56u);
+    CHECK_EQ(sizeof(MaterialKey), 64u);
 }
 
 // MaterialKey must be usable as an unordered_map key via std::hash.

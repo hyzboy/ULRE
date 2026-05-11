@@ -26,6 +26,11 @@ TextureManager::~TextureManager()
 
 void TextureManager::Release()
 {
+    if (released)
+        return;
+
+    released = true;
+
     std::cout << "[DEBUG] TextureManager::Release() - Start, texture_queue=" << (void*)texture_queue << std::endl;
     // Delete using a stable snapshot so destructor-side unregister is safe.
     if (texture_set.GetCount() > 0)

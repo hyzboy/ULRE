@@ -16,6 +16,7 @@ GRAPH_MODULE_CLASS(TextureManager)
 {
     DeviceQueue *texture_queue=nullptr;
     TextureCmdBuffer *texture_cmd_buf=nullptr;
+    bool released = false;
 
 private:
 

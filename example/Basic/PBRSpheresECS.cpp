@@ -255,8 +255,9 @@ private:
                                                                 probe_normal->GetFormat(),
                                                                 true);
 
-        SAFE_CLEAR(probe_base)
-        SAFE_CLEAR(probe_normal)
+        // Loaded probe textures are owned by TextureManager. Keep them manager-owned.
+        probe_base = nullptr;
+        probe_normal = nullptr;
 
         if (!base_color_texture || !normal_texture) {
             printf("[ERROR] InitTextures: Failed to create Texture2DArray - base_color=%p normal=%p\n", 
@@ -659,13 +660,17 @@ public:
     {
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
-            SAFE_CLEAR(base_primitives[i])
+            base_primitives[i] = nullptr;
+            builtin_geometries[i] = nullptr;
         }
 
         SAFE_CLEAR(mesh_vdm)
-        SAFE_CLEAR(base_color_texture)
-        SAFE_CLEAR(normal_texture)
-        SAFE_CLEAR(sampler)
+
+        // These resources are owned and destroyed by GraphicsContext managers.
+        // Null local raw pointers here to avoid double-destroy during app shutdown.
+        base_color_texture = nullptr;
+        normal_texture = nullptr;
+        sampler = nullptr;
     }
 
     bool Init() override

@@ -12,6 +12,7 @@ GRAPH_MODULE_CLASS(SamplerManager)
 {
 private:
     AutoIdObjectManager<SamplerID, Sampler> rm_samplers; ///<采样器合集
+    bool released = false;
 
     SamplerManager(GraphicsContext *);
     ~SamplerManager() = default;
@@ -25,6 +26,11 @@ public:
 
     void Release() override
     {
+        if (released)
+            return;
+
+        released = true;
+
         if (rm_samplers.GetCount() > 0)
             rm_samplers.Clear();
     }

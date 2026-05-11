@@ -92,6 +92,11 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
                             uint32 extra_attrib_bits,
                             const RuntimeKeyOverrides &ov) noexcept;
 
+// Re-resolve builtin row identity after callers mutate a key produced from RouteKey()
+// (for example via ApplyCreateConfigToVariantKey or recipe-specific overrides).
+uint64 ResolveBuiltinVariantRowHash(MaterialPreset preset,
+                                    const MaterialVariantKey &key) noexcept;
+
 inline MaterialVariantKey RouteKey(MaterialPreset preset) noexcept
 {
     return RouteKey(preset, 0u, RuntimeKeyOverrides{});

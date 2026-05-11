@@ -526,6 +526,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     // remains the cfg-derived overlay until T3 unifies them.
     mtl::MaterialVariantKey key = mtl::RouteKey(mtl_id);
     mtl::ApplyCreateConfigToVariantKey(key, cfg);
+    key.variant_row_name_hash = mtl::ResolveBuiltinVariantRowHash(mtl_id, key);
     return CreateMaterial(key, cfg);
 }
 
@@ -837,6 +838,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     // [Step 3.5 T1] RouteKey is the single entry (see VertexInputFormat_plan.md).
     mtl::MaterialVariantKey key = mtl::RouteKey(mtl_id);
     mtl::ApplyCreateConfigToVariantKey(key, cfg);
+    key.variant_row_name_hash = mtl::ResolveBuiltinVariantRowHash(mtl_id, key);
     return CreateMaterial(key, cfg);
 }
 

@@ -30,11 +30,17 @@ namespace hgl::graph::mtl {
     std::strong_ordering MaterialKey::operator<=>(const MaterialKey &rhs) const noexcept
     {
         // --- MaterialVariantKey fields ---
+        if (auto c = variant.variant_row_name_hash
+                 <=> rhs.variant.variant_row_name_hash; c != 0) return c;
+
         if (auto c = static_cast<uint8>(variant.surface_type)
                  <=> static_cast<uint8>(rhs.variant.surface_type); c != 0) return c;
 
         if (auto c = static_cast<uint8>(variant.geometry_mode)
                  <=> static_cast<uint8>(rhs.variant.geometry_mode); c != 0) return c;
+
+        if (auto c = static_cast<uint8>(variant.position_provider)
+                 <=> static_cast<uint8>(rhs.variant.position_provider); c != 0) return c;
 
         if (auto c = variant.texture_source_bits
                  <=> rhs.variant.texture_source_bits; c != 0) return c;

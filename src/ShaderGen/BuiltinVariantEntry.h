@@ -76,6 +76,14 @@ struct BuiltinVariantEntry
 inline MaterialVariantKey BuildKey(const BuiltinVariantEntry &e)
 {
     MaterialVariantKey k;
+    uint64 row_hash = hgl::hash::FNV1aInit<uint64>();
+    if (e.name)
+    {
+        for (const char *p = e.name; *p; ++p)
+            row_hash = hgl::hash::FNV1aAppend(row_hash, static_cast<uchar>(*p));
+    }
+
+    k.variant_row_name_hash         = row_hash;
     k.surface_type                  = e.surface_type;
     k.geometry_mode                 = e.geometry_mode;
     k.position_provider             = e.position_provider;

@@ -38,6 +38,7 @@ namespace hgl::graph::mtl
 
     struct MaterialVariantKey
     {
+        uint64            variant_row_name_hash = 0;
         SurfaceType       surface_type        = SurfaceType::Unlit;
         GeometryMode      geometry_mode       = GeometryMode::Mesh3D;
 
@@ -114,6 +115,7 @@ namespace hgl::graph::mtl
         {
             uint64 h = hgl::hash::FNV1aInit<uint64>();
 
+            h = hgl::hash::FNV1aAppend(h, variant_row_name_hash);
             h = hgl::hash::FNV1aAppend(h, surface_type);
             h = hgl::hash::FNV1aAppend(h, geometry_mode);
             h = hgl::hash::FNV1aAppend(h, texture_source_bits);
@@ -135,7 +137,8 @@ namespace hgl::graph::mtl
 
         bool operator==(const MaterialVariantKey &rhs) const noexcept
         {
-            return surface_type == rhs.surface_type
+            return variant_row_name_hash == rhs.variant_row_name_hash
+                && surface_type == rhs.surface_type
                 && geometry_mode == rhs.geometry_mode
                 && position_provider == rhs.position_provider
                 && texture_source_bits == rhs.texture_source_bits

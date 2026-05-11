@@ -19,6 +19,7 @@
 #include <hgl/mtl/StaticMaterialDefRegistry.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include <hgl/mtl/UBOCommon.h>
+#include "BuiltinVariantEntry.h"
 
 namespace hgl::graph::mtl
 {
@@ -34,6 +35,34 @@ static bool HasAnyArrayTexture(const MaterialRecipe &r) noexcept
         if (tc.source_mode == TextureSourceMode::Array)
             return true;
     return false;
+}
+
+static uint64 TryResolveBuiltinVariantRowHash(const MaterialPreset preset,
+                                              const MaterialVariantKey &key) noexcept
+{
+    const MaterialPreset resolved_preset =
+        ResolveMaterialPresetForLOD(preset, GetDefaultMaterialLOD());
+
+    MaterialVariantKey query = key;
+    query.variant_row_name_hash = 0;
+    query.effective_feature_mask = 0;
+
+    for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
+    {
+        const auto &entry = kBuiltinVariants[i];
+        if (entry.preset != resolved_preset)
+            continue;
+
+        MaterialVariantKey candidate = BuildKey(entry);
+        const uint64 candidate_row_hash = candidate.variant_row_name_hash;
+        candidate.variant_row_name_hash = 0;
+        candidate.effective_feature_mask = 0;
+
+        if (candidate == query)
+            return candidate_row_hash;
+    }
+
+    return key.variant_row_name_hash;
 }
 
 /// Lazy-init helper: acquire (and cache) the def ID for the Standard material.
@@ -351,6 +380,10 @@ MaterialVariantKey ApplyRouterCanonicalization(const MaterialVariantKey &in) noe
 {
     MaterialVariantKey k = in;
 
+    // TODO [Phase 1]: Temporary compatibility bridge for Standard Mesh3D sky canonicalization.
+    // DESIGN NOTE: This is a tactical patch that should be removed in Phase 3 of the Sky Resource
+    // Requirement Refactor Plan (SKY_RESOURCE_REQUIREMENT_REFACTOR_PLAN.md).
+    //
     // Standard + Mesh3D: canonicalize sky_ambient_model to Simple.
     //
     // This rule originates from three independent call sites in the old path:
@@ -360,6 +393,15 @@ MaterialVariantKey ApplyRouterCanonicalization(const MaterialVariantKey &in) noe
     //
     // Both Standard and PBRColor3D use surface_type = SurfaceType::Standard,
     // so one condition covers both presets.
+    //
+    // ISSUE: sky_ambient_model mixes authoring intent, routing identity, and resource binding.
+    // See SKY_RESOURCE_REQUIREMENT_REFACTOR_PLAN.md for full design rationale.
+    //
+    // FINAL DESIGN: This canonicalization will be replaced with table-driven identity-axis rules
+    // in Phase 3, separating Sky from routing identity into explicit resource policy.
+    //
+    // DO NOT: Add more special cases. Use Phase 2-3 refactoring instead.
+    
     if (k.surface_type == SurfaceType::Standard
      && k.geometry_mode == GeometryMode::Mesh3D)
     {
@@ -384,6 +426,7 @@ MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &r) noexcept
 
     // Phase B: apply router canonicalization
     vk = detail::ApplyRouterCanonicalization(vk);
+    vk.variant_row_name_hash = TryResolveBuiltinVariantRowHash(r.preset, vk);
     k.variant = vk;
 
     // Phase C: primary pass
