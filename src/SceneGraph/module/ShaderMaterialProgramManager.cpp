@@ -112,7 +112,7 @@ namespace
         k.variant = vk;
         k.pass    = vk.pass_hint;
 
-        // Baseline runtime key for variant-driven cache lookup.
+        // def_id and schema are filled in by EnrichMaterialKeyWithCreateInfoAxes.
         k.def_id       = mtl::kInvalidStaticMaterialDefId;
         k.schema       = mtl::ShaderDataSchema::None;
         k.glsl_version = mtl::kMaterialKeyGLSLVersion;
@@ -603,18 +603,12 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
         stats.LogEffectiveFeatureMaskConsistency(it->second, key, "cache_hit");
 #ifndef NDEBUG
         assert(it->second != nullptr);
-
-        // Alias-aware check: lookup key may be enriched (schema/version axes)
-        // while program keeps a baseline alias for variant-key fast paths.
-        auto it_verify = material_by_key.find(key);
-        assert(it_verify != material_by_key.end() && it_verify->second == it->second);
 #endif
         stats.LogGetOrCreateProgramByKeyCacheHit(it->second);
         return it->second;
     }
 
-    // Miss — fall back to recipe-based creation.  CreateMaterialFromRecord calls
-    // ResolveOrCreateProgram which populates material_by_key as a side-effect (Step 3).
+    // Miss — fall back to recipe-based creation.
     ShaderMaterialProgram *prog = CreateMaterialFromRecord(this, recipe);
 
     if (prog)
@@ -626,8 +620,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
 
         stats.LogEffectiveFeatureMaskConsistency(prog, key, "cache_miss_created");
 
-        // Alias requested key to the created program so callers that already hold
-        // enriched MaterialKey(def/schema/version axes) can hit cache on next lookup.
         material_by_key[key] = prog;
 #ifndef NDEBUG
         auto it_alias = material_by_key.find(key);
