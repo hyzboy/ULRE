@@ -68,6 +68,11 @@ struct BuiltinVariantEntry
     const char*          vs_path       = "";
     const char*          fs_path       = "";
     const char*          surface_path  = "";
+
+    // Phase 3: when false, sky_model is resource-policy only and does NOT affect
+    // the registry lookup key or row-hash matching. Set true only for rows that
+    // actually have distinct shader templates per sky model.
+    bool                 sky_is_routing_axis = false;
 };
 
 // ---------------------------------------------------------------------------
@@ -92,7 +97,12 @@ inline MaterialVariantKey BuildKey(const BuiltinVariantEntry &e)
     k.blend_mode                    = e.blend;
     k.pass_hint                     = e.pass;
     k.lighting_model                = e.lighting;
-    k.sky_ambient_model             = e.sky_model;
+    // Phase 3: sky_ambient_model only participates in key identity when the row
+    // explicitly opts in via sky_is_routing_axis. Otherwise canonicalize to Simple
+    // so all sky model values match the same row.
+    k.sky_ambient_model             = e.sky_is_routing_axis
+                                      ? e.sky_model
+                                      : SkyLightAmbientModel::Simple;
     for (const auto &tm : e.tex)
         if (tm.mode != _BVE_TSM::None)
             k.SetTextureSourceMode(tm.slot, tm.mode);
@@ -126,6 +136,7 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
     row.surface_path = e.surface_path;
     row.resources.lighting_model = e.lighting;
     row.resources.sky_model = e.sky_model;
+    row.sky_is_routing_axis = e.sky_is_routing_axis;
 
     switch (e.preset)
     {

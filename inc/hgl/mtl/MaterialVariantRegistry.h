@@ -56,6 +56,9 @@ namespace hgl::graph::mtl
         // 导出 Phase 2 builtin row 快照文本，便于检查表驱动字段。
         std::string DumpBuiltinRowSnapshot() const;
 
+        // 导出 Phase 2 资源政策审计文本，记录每个 row 的显式资源需求配置。
+        std::string DumpResourcePolicyAudit() const;
+
         // 初始化内置变体
         void InitializeBuiltinVariants();
 

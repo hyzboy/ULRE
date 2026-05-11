@@ -153,6 +153,12 @@ namespace hgl::graph::mtl
 
         ShaderDataSchema schema = ShaderDataSchema::None;
         StaticMaterialDefIdHint def_hint = StaticMaterialDefIdHint::None;
+
+        // Phase 3: identity-axis flags.
+        // When false (default), that dimension is a resource-policy attribute and
+        // does NOT participate in row-hash matching or registry lookup.
+        // Set to true only when distinct shader templates exist for each value.
+        bool sky_is_routing_axis = false;
     };
 
     inline const char *GetVertexInputProfileName(const VertexInputProfile profile) noexcept

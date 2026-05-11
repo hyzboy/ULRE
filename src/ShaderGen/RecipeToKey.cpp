@@ -58,7 +58,13 @@ static uint64 TryResolveBuiltinVariantRowHash(const MaterialPreset preset,
         candidate.variant_row_name_hash = 0;
         candidate.effective_feature_mask = 0;
 
-        if (candidate == query)
+        // Phase 3: BuildKey already canonicalizes sky to Simple when sky_is_routing_axis==false.
+        // Mirror that on the query side so key matching is consistent with the table rule.
+        MaterialVariantKey local_query = query;
+        if (!entry.sky_is_routing_axis)
+            local_query.sky_ambient_model = SkyLightAmbientModel::Simple;
+
+        if (candidate == local_query)
             return candidate_row_hash;
     }
 

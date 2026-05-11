@@ -227,7 +227,9 @@ static bool RowRequiresLightingKeyParity(const MaterialVariantRow &row) noexcept
 
 static bool RowRequiresSkyKeyParity(const MaterialVariantRow &row) noexcept
 {
-    return row.resources.needs_sky;
+    // Phase 3: sky parity is only required when sky is a true routing axis.
+    // needs_sky is a resource-policy flag and does NOT imply parity in the key.
+    return row.sky_is_routing_axis;
 }
 
 static TextureSourceMode GetRowTextureSourceMode(const MaterialVariantRow &row,
