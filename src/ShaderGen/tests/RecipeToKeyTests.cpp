@@ -80,6 +80,8 @@ static void test_texture_mode_change_affects_key()
     CHECK_NE(ResolveRecipePrimaryKey(r1).Hash(), ResolveRecipePrimaryKey(r2).Hash());
 }
 
+// Phase 6 regression: Standard + Mesh3D always canonicalizes sky to Simple,
+// regardless of the authored sky_ambient value.
 static void test_sky_canonicalization_for_standard_mesh3d()
 {
     MaterialRecipe r = MakeStandardOpaqueRecipe();
@@ -87,6 +89,58 @@ static void test_sky_canonicalization_for_standard_mesh3d()
 
     const MaterialKey k = ResolveRecipePrimaryKey(r);
     CHECK_EQ(k.variant.sky_ambient_model, SkyLightAmbientModel::Simple);
+}
+
+// Phase 6 regression: Standard + FakeAtmosphere sky still canonicalizes to Simple,
+// because Standard rows do not declare sky_is_routing_axis.
+static void test_sky_canonicalization_standard_fakeatmosphere()
+{
+    MaterialRecipe r = MakeStandardOpaqueRecipe();
+    r.sky_ambient = SkyLightAmbientModel::FakeAtmosphere;
+
+    const MaterialKey k = ResolveRecipePrimaryKey(r);
+    CHECK_EQ(k.variant.sky_ambient_model, SkyLightAmbientModel::Simple);
+}
+
+// Phase 6 regression: Standard + Simple sky must be idempotent under canonicalization.
+static void test_sky_canonicalization_standard_simple_idempotent()
+{
+    MaterialRecipe r = MakeStandardOpaqueRecipe();
+    r.sky_ambient = SkyLightAmbientModel::Simple;
+
+    const MaterialKey k = ResolveRecipePrimaryKey(r);
+    CHECK_EQ(k.variant.sky_ambient_model, SkyLightAmbientModel::Simple);
+}
+
+// Phase 6 regression: StandardPBRArray + FakeAtmosphere also collapses to Simple.
+static void test_sky_canonicalization_stdpbrarray_fakeatmosphere()
+{
+    MaterialRecipe r;
+    r.preset      = MaterialPreset::Standard;
+    r.dim         = MaterialRecipe::Dim::D3;
+    r.sky_ambient = SkyLightAmbientModel::FakeAtmosphere;
+
+    MaterialRecipe::TextureSlotConfig tc;
+    tc.slot        = SamplerSlot::BaseColor;
+    tc.source_mode = TextureSourceMode::Array;
+    r.textures.push_back(tc);
+
+    const MaterialKey k = ResolveRecipePrimaryKey(r);
+    CHECK_EQ(k.variant.sky_ambient_model, SkyLightAmbientModel::Simple);
+}
+
+// Phase 6 regression: two recipes that differ only in sky_ambient produce the
+// same key when both are non-routing-axis presets.
+static void test_different_sky_values_same_key_when_not_routing_axis()
+{
+    MaterialRecipe r_simple = MakeStandardOpaqueRecipe();
+    r_simple.sky_ambient = SkyLightAmbientModel::Simple;
+
+    MaterialRecipe r_fake = MakeStandardOpaqueRecipe();
+    r_fake.sky_ambient = SkyLightAmbientModel::FakeAtmosphere;
+
+    CHECK_EQ(ResolveRecipePrimaryKey(r_simple).Hash(),
+             ResolveRecipePrimaryKey(r_fake).Hash());
 }
 
 // ---------------------------------------------------------------------------
@@ -98,6 +152,10 @@ int main()
     test_equivalent_recipes_produce_same_key();
     test_texture_mode_change_affects_key();
     test_sky_canonicalization_for_standard_mesh3d();
+    test_sky_canonicalization_standard_fakeatmosphere();
+    test_sky_canonicalization_standard_simple_idempotent();
+    test_sky_canonicalization_stdpbrarray_fakeatmosphere();
+    test_different_sky_values_same_key_when_not_routing_axis();
 
     if (g_failures > 0)
     {

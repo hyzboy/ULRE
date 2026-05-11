@@ -382,37 +382,47 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     return k;
 }
 
+/// Phase 6 (replaces Phase 1 TODO bridge): table-driven sky canonicalization.
+/// Scans kBuiltinVariants for any entry whose key (with sky set to Simple)
+/// matches the incoming key. If the matched entry has sky_is_routing_axis==false,
+/// canonicalize sky to Simple. This is the same rule used by IsSkyRoutingAxisForPresetKey
+/// in MaterialLibrary.cpp, expressed here without a known preset parameter.
+static bool SkyIsRoutingAxisForKey(const MaterialVariantKey &key) noexcept
+{
+    // Build a probe key with sky canonicalized so we can match entries regardless
+    // of the current sky value.
+    MaterialVariantKey probe = key;
+    probe.variant_row_name_hash = 0;
+    probe.effective_feature_mask = 0;
+    probe.sky_ambient_model = SkyLightAmbientModel::Simple;
+
+    for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
+    {
+        const auto &entry = kBuiltinVariants[i];
+
+        MaterialVariantKey candidate = BuildKey(entry);
+        candidate.variant_row_name_hash = 0;
+        candidate.effective_feature_mask = 0;
+        // candidate already has sky==Simple when sky_is_routing_axis==false (from BuildKey)
+
+        if (candidate == probe)
+            return entry.sky_is_routing_axis;
+    }
+
+    // No row matched; conservatively treat sky as NOT a routing axis.
+    return false;
+}
+
 MaterialVariantKey ApplyRouterCanonicalization(const MaterialVariantKey &in) noexcept
 {
     MaterialVariantKey k = in;
 
-    // TODO [Phase 1]: Temporary compatibility bridge for Standard Mesh3D sky canonicalization.
-    // DESIGN NOTE: This is a tactical patch that should be removed in Phase 3 of the Sky Resource
-    // Requirement Refactor Plan (SKY_RESOURCE_REQUIREMENT_REFACTOR_PLAN.md).
-    //
-    // Standard + Mesh3D: canonicalize sky_ambient_model to Simple.
-    //
-    // This rule originates from three independent call sites in the old path:
-    //   - M_Standard.cpp:145    (StandardVariantRouter::BuildPolicy)
-    //   - M_PBRColor3D.cpp:83   (PBRColor3D variant construction)
-    //   - MaterialLibrary.cpp:477 (CreateMaterialCreateInfo registry lookup)
-    //
-    // Both Standard and PBRColor3D use surface_type = SurfaceType::Standard,
-    // so one condition covers both presets.
-    //
-    // ISSUE: sky_ambient_model mixes authoring intent, routing identity, and resource binding.
-    // See SKY_RESOURCE_REQUIREMENT_REFACTOR_PLAN.md for full design rationale.
-    //
-    // FINAL DESIGN: This canonicalization will be replaced with table-driven identity-axis rules
-    // in Phase 3, separating Sky from routing identity into explicit resource policy.
-    //
-    // DO NOT: Add more special cases. Use Phase 2-3 refactoring instead.
-    
-    if (k.surface_type == SurfaceType::Standard
-     && k.geometry_mode == GeometryMode::Mesh3D)
-    {
+    // Phase 6: table-driven sky routing-axis check replaces the Phase 1
+    // hardcoded "Standard && Mesh3D → canonicalize sky to Simple" branch.
+    // The rule is now: canonicalize sky_ambient_model to Simple unless the
+    // matching builtin row explicitly declares sky_is_routing_axis = true.
+    if (!SkyIsRoutingAxisForKey(k))
         k.sky_ambient_model = SkyLightAmbientModel::Simple;
-    }
 
     return k;
 }
