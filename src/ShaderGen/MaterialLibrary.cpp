@@ -467,28 +467,16 @@ static void NormalizeBuiltinPresetParityOverrides(const MaterialPreset preset,
     key.sky_ambient_model = routed_key.sky_ambient_model;
 }
 
-static bool IsBuiltinPresetTextureOverrideAllowed(const MaterialPreset preset) noexcept
-{
-    switch (preset)
-    {
-    case MaterialPreset::PureTexture2D:
-    case MaterialPreset::Billboard2DDynamic:
-    case MaterialPreset::Billboard2DFixed:
-        return true;
-    default:
-        return false;
-    }
-}
-
-static bool IsStandardTextureOverrideAllowedForKey(const MaterialVariantKey &routed_key,
+/// Phase 4 (收尾): Row-aware texture override check — replaces the old preset allowlist.
+/// Accepts the override only when the overridden key resolves to a registered builtin
+/// variant AND that variant has a bound row in kBuiltinVariantRows.  This rule applies
+/// to all presets uniformly; no special-cased allowlist is needed.
+static bool IsBuiltinTextureOverrideAllowedForKey(const MaterialPreset resolved_preset,
                                                    const MaterialVariantKey &overridden_key) noexcept
 {
-    if (routed_key.surface_type != SurfaceType::Standard || routed_key.geometry_mode != GeometryMode::Mesh3D)
-        return false;
-
     const RegistryLookupOptions opts{};
     const MaterialVariantDesc *desc = GetBuiltinVariantRegistry().QueryVariant(overridden_key, opts);
-    if (!desc || !desc->factory_type || *desc->factory_type != MaterialPreset::Standard)
+    if (!desc || !desc->factory_type || *desc->factory_type != resolved_preset)
         return false;
 
     return FindBuiltinMaterialVariantRowByName(desc->variant_name.c_str()) != nullptr;
@@ -505,30 +493,19 @@ static void NormalizeBuiltinPresetTextureOverrides(const MaterialPreset preset,
     if (!cfg->HasTextureSourceBitsOverride() && cfg->sampler_feature_bits_override == 0)
         return;
 
-    if (preset == MaterialPreset::Standard)
-    {
-        if (IsStandardTextureOverrideAllowedForKey(routed_key, key))
-            return;
-
-        std::fprintf(stderr,
-                     "[MaterialLibrary] warning: rejecting Standard texture override that does not resolve to a registered builtin row; "
-                     "keeping texture_source_bits/sampler_feature_bits at routed parity.\n");
-        key.texture_source_bits = routed_key.texture_source_bits;
-        key.sampler_feature_bits = routed_key.sampler_feature_bits;
-        return;
-    }
-
-    if (IsBuiltinPresetTextureOverrideAllowed(preset))
+    if (IsBuiltinTextureOverrideAllowedForKey(preset, key))
         return;
 
     std::fprintf(stderr,
-                 "[MaterialLibrary] warning: ignoring texture override channels for builtin preset=%u; "
-                 "builtin row-driven path keeps texture_source_bits/sampler_feature_bits at routed parity unless the preset explicitly supports texture-domain selection.\n",
+                 "[MaterialLibrary] warning: rejecting texture/sampler override for preset=%u; "
+                 "the overridden key does not resolve to a registered builtin row — "
+                 "keeping texture_source_bits/sampler_feature_bits at routed parity.\n",
                  static_cast<unsigned>(preset));
 
-    key.texture_source_bits = routed_key.texture_source_bits;
+    key.texture_source_bits  = routed_key.texture_source_bits;
     key.sampler_feature_bits = routed_key.sampler_feature_bits;
 }
+
 
 }
 
