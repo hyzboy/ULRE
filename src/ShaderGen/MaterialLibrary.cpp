@@ -438,11 +438,24 @@ static bool IsBuiltinPresetTextureOverrideAllowed(const MaterialPreset preset) n
     case MaterialPreset::PureTexture2D:
     case MaterialPreset::Billboard2DDynamic:
     case MaterialPreset::Billboard2DFixed:
-    case MaterialPreset::Standard:
         return true;
     default:
         return false;
     }
+}
+
+static bool IsStandardTextureOverrideAllowedForKey(const MaterialVariantKey &routed_key,
+                                                   const MaterialVariantKey &overridden_key) noexcept
+{
+    if (routed_key.surface_type != SurfaceType::Standard || routed_key.geometry_mode != GeometryMode::Mesh3D)
+        return false;
+
+    const RegistryLookupOptions opts{};
+    const MaterialVariantDesc *desc = GetBuiltinVariantRegistry().QueryVariant(overridden_key, opts);
+    if (!desc || !desc->factory_type || *desc->factory_type != MaterialPreset::Standard)
+        return false;
+
+    return FindBuiltinMaterialVariantRowByName(desc->variant_name.c_str()) != nullptr;
 }
 
 static void NormalizeBuiltinPresetTextureOverrides(const MaterialPreset preset,
@@ -455,6 +468,19 @@ static void NormalizeBuiltinPresetTextureOverrides(const MaterialPreset preset,
 
     if (!cfg->HasTextureSourceBitsOverride() && cfg->sampler_feature_bits_override == 0)
         return;
+
+    if (preset == MaterialPreset::Standard)
+    {
+        if (IsStandardTextureOverrideAllowedForKey(routed_key, key))
+            return;
+
+        std::fprintf(stderr,
+                     "[MaterialLibrary] warning: rejecting Standard texture override that does not resolve to a registered builtin row; "
+                     "keeping texture_source_bits/sampler_feature_bits at routed parity.\n");
+        key.texture_source_bits = routed_key.texture_source_bits;
+        key.sampler_feature_bits = routed_key.sampler_feature_bits;
+        return;
+    }
 
     if (IsBuiltinPresetTextureOverrideAllowed(preset))
         return;
