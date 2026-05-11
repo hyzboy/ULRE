@@ -172,9 +172,11 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
 
         std::string legacy;
         if (row.resources.enable_lighting)
-            legacy += legacy.empty() ? "lighting_model still also mirrored in key" : ",lighting_model still also mirrored in key";
+            legacy += legacy.empty() ? "lighting_model still mirrored in key but now treated as strict row parity" : ",lighting_model still mirrored in key but now treated as strict row parity";
         if (row.resources.needs_sky)
-            legacy += legacy.empty() ? "sky_model still also mirrored in key" : ",sky_model still also mirrored in key";
+            legacy += legacy.empty() ? "sky_model still mirrored in key but now treated as strict row parity" : ",sky_model still mirrored in key but now treated as strict row parity";
+        if (row.texture_count > 0)
+            legacy += legacy.empty() ? "texture source and sampler bits still mirrored in key but now treated as strict row parity" : ",texture source and sampler bits still mirrored in key but now treated as strict row parity";
         if (row.vertex_policy == VertexTransformPolicy::BillboardCameraFacing || row.vertex_policy == VertexTransformPolicy::BillboardAxisLocked)
             legacy += legacy.empty() ? "billboard behavior still depends on dedicated row template path" : ",billboard behavior still depends on dedicated row template path";
         if (row.vertex_policy == VertexTransformPolicy::TerrainGrid)

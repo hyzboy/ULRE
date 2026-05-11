@@ -10,7 +10,6 @@
 #include <string>
 
 namespace hgl::graph::mtl{
-
 namespace
 {
 #if defined(ULRE_SHADERGEN_VERBOSE)
@@ -216,6 +215,41 @@ static bool RowUsesBillboardTexCoordPath(const MaterialVariantRow &row) noexcept
         || row.vertex_policy == VertexTransformPolicy::BillboardAxisLocked;
 }
 
+static bool RowRequiresLightingKeyParity(const MaterialVariantRow &row) noexcept
+{
+    return row.resources.enable_lighting;
+}
+
+static bool RowRequiresSkyKeyParity(const MaterialVariantRow &row) noexcept
+{
+    return row.resources.needs_sky;
+}
+
+static TextureSourceMode GetRowTextureSourceMode(const MaterialVariantRow &row,
+                                                 const SamplerSlot slot) noexcept
+{
+    for (uint32 i = 0; i < row.texture_count; ++i)
+    {
+        if (row.textures[i].slot == slot)
+            return row.textures[i].source_mode;
+    }
+
+    return TextureSourceMode::None;
+}
+
+static uint32 BuildRowSamplerFeatureBits(const MaterialVariantRow &row) noexcept
+{
+    uint32 bits = 0;
+    for (size_t i = 0; i < SamplerSlotCount; ++i)
+    {
+        const auto slot = static_cast<SamplerSlot>(i);
+        if (GetRowTextureSourceMode(row, slot) != TextureSourceMode::None)
+            bits |= SamplerFeatureBit(slot);
+    }
+
+    return bits;
+}
+
 static void ValidateBuiltinRowConsistency(const MaterialVariantRow &row,
                                           std::vector<std::string> &diagnostics)
 {
@@ -307,6 +341,63 @@ static void ValidateBuiltinVariantDescRowBinding(const MaterialVariantKey &key,
         std::string text = "Builtin variant descriptor binding failed: row '";
         text += desc.variant_name;
         text += "' structural identity mismatches registered key";
+        diagnostics.emplace_back(std::move(text));
+    }
+
+    if (RowRequiresLightingKeyParity(*row) && row->resources.lighting_model != key.lighting_model)
+    {
+        std::string text = "Builtin variant descriptor binding failed: row '";
+        text += desc.variant_name;
+        text += "' lighting_model mirror mismatches key (row=";
+        text += std::to_string(static_cast<unsigned>(row->resources.lighting_model));
+        text += ", key=";
+        text += std::to_string(static_cast<unsigned>(key.lighting_model));
+        text += ")";
+        diagnostics.emplace_back(std::move(text));
+    }
+
+    if (RowRequiresSkyKeyParity(*row) && row->resources.sky_model != key.sky_ambient_model)
+    {
+        std::string text = "Builtin variant descriptor binding failed: row '";
+        text += desc.variant_name;
+        text += "' sky_model mirror mismatches key (row=";
+        text += std::to_string(static_cast<unsigned>(row->resources.sky_model));
+        text += ", key=";
+        text += std::to_string(static_cast<unsigned>(key.sky_ambient_model));
+        text += ")";
+        diagnostics.emplace_back(std::move(text));
+    }
+
+    for (size_t i = 0; i < SamplerSlotCount; ++i)
+    {
+        const auto slot = static_cast<SamplerSlot>(i);
+        const TextureSourceMode row_mode = GetRowTextureSourceMode(*row, slot);
+        const TextureSourceMode key_mode = key.GetTextureSourceMode(slot);
+        if (row_mode == key_mode)
+            continue;
+
+        std::string text = "Builtin variant descriptor binding failed: row '";
+        text += desc.variant_name;
+        text += "' texture source mirror mismatches key for slot '";
+        text += SamplerSlotNameList[i];
+        text += "' (row=";
+        text += std::to_string(static_cast<unsigned>(row_mode));
+        text += ", key=";
+        text += std::to_string(static_cast<unsigned>(key_mode));
+        text += ")";
+        diagnostics.emplace_back(std::move(text));
+    }
+
+    const uint32 row_sampler_bits = BuildRowSamplerFeatureBits(*row);
+    if (row_sampler_bits != key.sampler_feature_bits)
+    {
+        std::string text = "Builtin variant descriptor binding failed: row '";
+        text += desc.variant_name;
+        text += "' sampler_feature_bits mirror mismatches key (row=";
+        text += std::to_string(row_sampler_bits);
+        text += ", key=";
+        text += std::to_string(key.sampler_feature_bits);
+        text += ")";
         diagnostics.emplace_back(std::move(text));
     }
 }
