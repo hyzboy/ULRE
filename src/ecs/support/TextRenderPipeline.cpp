@@ -12,12 +12,14 @@
 #include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineBuildRequest.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<hgl/graph/module/ShaderMaterialProgramManager.h>
+#include<hgl/graph/module/MaterialRecipeRegistry.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/module/SamplerManager.h>
@@ -350,15 +352,35 @@ namespace hgl::ecs
         if (!guard.tile_font)
             return nullptr;
 
-        graph::mtl::Text2DMaterialCreateConfig mtl_cfg;
-
         material_manager = graphics_context->GetMaterialManager();
         if (!material_manager)
             return nullptr;
 
+        auto* recipe_registry = graphics_context->GetMaterialAssetRegistry();
+        if (!recipe_registry)
+            return nullptr;
+
         guard.material_manager = material_manager;
 
-        guard.material = material_manager->ResolveOrCreateProgram(graph::mtl::MaterialPreset::Text2D, &mtl_cfg);
+        graph::mtl::MaterialRecipe text_recipe;
+        text_recipe.id = "text_render_pipeline_text2d";
+        text_recipe.domain_id = "2001";
+        text_recipe.preset = graph::mtl::MaterialPreset::Text2D;
+        text_recipe.dim = graph::mtl::MaterialRecipe::Dim::D2;
+        text_recipe.prim = graph::PrimitiveType::Triangles;
+        text_recipe.l2w = false;
+        text_recipe.pos_format = graph::VAT_IVEC2;
+        text_recipe.vertex_input = graph::mtl::VertexInputProfile::PositionTexCoord2D;
+        text_recipe.vertex_policy = graph::mtl::VertexTransformPolicy::Text2D;
+        text_recipe.shading_model = graph::mtl::SurfaceShadingModel::Text;
+        text_recipe.schema = graph::mtl::ShaderDataSchema::TextColor;
+        text_recipe.has_explicit_schema = true;
+        text_recipe.coord_2d = graph::CoordinateSystem2D::Ortho;
+        text_recipe.pipeline = graph::GraphicsPipelinePreset::Solid2D;
+        text_recipe.textures.push_back({ graph::mtl::SamplerSlot::Text, graph::mtl::TextureSourceMode::Atlas, {} });
+
+        graph::MaterialDomainHandle text_handle = recipe_registry->Acquire(text_recipe);
+        guard.material = text_handle.material;
         if (!guard.material)
             return nullptr;
 
