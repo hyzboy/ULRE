@@ -89,6 +89,13 @@ set(ECS_SYS_06_TickPostCamera_FacingTransformSystem_FILES
     components/FacingTransformComponent.cpp
 )
 
+set(ECS_SYS_06A_TickPostCamera_BillboardScaleSystem_FILES
+    ${ECS_INCLUDE_PATH}/systems/transform/BillboardScaleSystem.h
+    systems/transform/BillboardScaleSystem.cpp
+    ${ECS_INCLUDE_PATH}/components/BillboardScaleComponent.h
+    components/BillboardScaleComponent.cpp
+)
+
 set(ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/tick/LineBoundsUpdateSystem.h
     systems/tick/LineBoundsUpdateSystem.cpp
@@ -325,6 +332,7 @@ set(ECS_SOURCE
     ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES}
     ${ECS_SYS_05_TickCamera_CameraSystem_FILES}
     ${ECS_SYS_06_TickPostCamera_FacingTransformSystem_FILES}
+    ${ECS_SYS_06A_TickPostCamera_BillboardScaleSystem_FILES}
     ${ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES}
     ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES}
     ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES}
@@ -368,6 +376,7 @@ source_group("ECS\\Systems\\03 TickTransform_BoundingBoxUpdateSystem" FILES ${EC
 source_group("ECS\\Systems\\04 TickTransform_VisibilitySystem" FILES ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES})
 source_group("ECS\\Systems\\05 TickCamera_CameraSystem" FILES ${ECS_SYS_05_TickCamera_CameraSystem_FILES})
 source_group("ECS\\Systems\\06 TickPostCamera_FacingTransformSystem" FILES ${ECS_SYS_06_TickPostCamera_FacingTransformSystem_FILES})
+source_group("ECS\\Systems\\06A TickPostCamera_BillboardScaleSystem" FILES ${ECS_SYS_06A_TickPostCamera_BillboardScaleSystem_FILES})
 source_group("ECS\\Systems\\07 RenderSwapchainNextImage_SwapchainAcquireSystem" FILES ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES})
 source_group("ECS\\Systems\\08 RenderPreBeginFrame_RenderTargetSystem" FILES ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES})
 source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES})
