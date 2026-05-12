@@ -5,10 +5,10 @@
 #include<hgl/mtl/RenderAlphaMode.h>
 #include<hgl/mtl/MaterialPreset.h>
 #include<hgl/common/TextureSamplerTypeDef.h>
+#include<hgl/graph/module/TextureDomainRegistry.h>
 #include<hgl/type/String.h>
 #include<glm/glm.hpp>
 #include<string>
-#include<unordered_map>
 
 namespace hgl
 {
@@ -16,11 +16,8 @@ namespace hgl
     {
         class Primitive;
         class MaterialBindingInstance;
-        class ShaderMaterialProgram;
         class RenderTargetFormat;
         class Sampler;
-        class Texture2DArray;
-        class DomainResourceBinding;
     }
 }
 
@@ -35,7 +32,7 @@ namespace hgl::ecs
      * - Create and cache shared quad geometry (single point billboard)
      * - Create shared material instance and pipeline
      * - Create shared sampler for texture sampling
-     * - Manage per-domain Texture2DArray + DomainResourceBinding for batched rendering
+     * - Delegate per-domain Texture2DArray management to TextureDomainRegistry.
      *
      * This system runs early in the render phase to ensure resources
      * are ready before QuadMaterialBindingSystem needs them.
@@ -44,22 +41,8 @@ namespace hgl::ecs
     {
     public:
 
-        /// Per-domain resources for texture array batching.
-        /// All billboards sharing the same domain_tag use a single Texture2DArray
-        /// with per-MI layer selection, enabling single draw-call per domain.
-        struct DomainResources
-        {
-            std::string                             domain_tag;
-            graph::Texture2DArray*                  texture_array   = nullptr;
-            graph::ShaderMaterialProgram*                        material        = nullptr;
-            graph::DomainResourceBinding*           dmb             = nullptr;
-            graph::Sampler*                         sampler         = nullptr;
-            graph::Primitive*                       primitive       = nullptr;
-            uint32_t                                max_layers      = 0;        ///< allocated capacity
-            uint32_t                                used_layers     = 0;        ///< next free layer index
-            std::unordered_map<hgl::OSString, uint32_t> path_to_layer;          ///< texture path → layer index
-            bool                                    dirty           = false;    ///< new textures added since last build
-        };
+        /// Alias to the registry entry — keeps old callers working without copying data.
+        using DomainResources = graph::TextureDomainRegistry::DomainEntry;
 
     private:
 
@@ -70,9 +53,6 @@ namespace hgl::ecs
         static graph::MaterialBindingInstance* shared_material_instance;
         static graph::RenderTargetFormat* shared_render_pass;
         static graph::Sampler* shared_sampler;
-
-        // Per-domain texture array resources
-        static std::unordered_map<std::string, DomainResources> s_domain_resources;
 
     public:
 

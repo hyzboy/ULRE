@@ -46,6 +46,14 @@ namespace hgl::ecs
                 uv.x, uv.w,
             };
 
+            const float normal_data[12] =
+            {
+                0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f,
+            };
+
             const uint16_t clockwise_indices[6] = { 0, 1, 2, 0, 2, 3 };
             const uint16_t counter_clockwise_indices[6] = { 0, 2, 1, 0, 3, 2 };
             const uint16_t *index_data = front_face == VK_FRONT_FACE_COUNTER_CLOCKWISE
@@ -55,6 +63,7 @@ namespace hgl::ecs
             graph::GeometryVertexFormat gvf;
             gvf.Set(graph::VAN::Position, VF_V3F);
             gvf.Set(graph::VAN::TexCoord, VF_V2F);
+            gvf.Set(graph::VAN::Normal, VF_V3F);
 
             auto pc = std::make_unique<graph::GeometryCreater>(device, gvf);
             if (!pc->Init("QuadMesh", 4, 6, graph::IndexType::U16))
@@ -64,6 +73,9 @@ namespace hgl::ecs
                 return nullptr;
 
             if (!pc->WriteVAB(graph::VAN::TexCoord, VF_V2F, uv_data))
+                return nullptr;
+
+            if (!pc->WriteVAB(graph::VAN::Normal, VF_V3F, normal_data))
                 return nullptr;
 
             if (!pc->WriteIBO(index_data))

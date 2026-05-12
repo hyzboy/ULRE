@@ -35,6 +35,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/PrimitiveManager.h
                         ${SG_INCLUDE_PATH}/module/RenderModule.h
                         ${SG_INCLUDE_PATH}/module/SwapchainModule.h
+                        ${SG_INCLUDE_PATH}/module/TextureDomainRegistry.h
                         module/GraphModule.cpp
                         module/GraphModuleManager.cpp
                         module/TextureManager.cpp
@@ -50,7 +51,8 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/RenderTargetManager.cpp
                         module/GeometryManager.cpp
                         module/PrimitiveManager.cpp
-                        module/SwapChainModule.cpp)
+                        module/SwapChainModule.cpp
+                        module/TextureDomainRegistry.cpp)
 
 SOURCE_GROUP("1.Core\\Module" FILES ${GRAPH_MODULE_FILES})
 

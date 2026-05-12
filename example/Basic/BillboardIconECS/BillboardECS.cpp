@@ -26,6 +26,8 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/BillboardComponent.h>
 #include<hgl/ecs/components/QuadComponent.h>
+#include<hgl/ecs/components/QuadMeshComponent.h>
+#include<hgl/ecs/components/TextureBindingComponent.h>
 #include<hgl/ecs/components/FacingTransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -56,6 +58,8 @@ private:
     // Entities
     Entity* grid_entity = nullptr;
     Entity* billboard_entity = nullptr;
+    Entity* textured_quad_entity = nullptr;
+    Entity* textured_quad_domain_entity = nullptr;
     Entity* camera_entity = nullptr;
 
     // PlaneGrid resources
@@ -71,6 +75,17 @@ private:
         .schema        = mtl::ShaderDataSchema::Color4f,
         .has_explicit_schema = true,
         .pipeline      = GraphicsPipelinePreset::Solid3D,
+    };
+
+    inline static const mtl::MaterialRecipe kTexturedQuadCfg {
+        .id            = "billboard_ecs_texture_binding_quad",
+        .preset        = mtl::MaterialPreset::Standard,
+        .dim           = mtl::MaterialRecipe::Dim::D3,
+        .prim          = PrimitiveType::Triangles,
+        .pipeline      = GraphicsPipelinePreset::Alpha3D,
+        .textures      = {
+            { mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Simple, "" },
+        },
     };
 
     // Billboard resources are managed by BillboardRenderSystem
@@ -340,63 +355,47 @@ private:
             std::cout << "  -> SetTexture(gradient[" << current_icon_index << "])" << std::endl;
         }
 
-        std::cout << "\n[BillboardECS] Runtime controls: [1]=Solid, [2]=Alpha, [3]=Dither" << std::endl;
-        std::cout << "[BillboardECS] Default mode: Solid3D, texture=" << current_icon_index << "\n" << std::endl;
-
-        // ADVANCED: Example of using QuadComponent directly (without facing transform)
-        //
-        // This shows the flexibility of the decoupled architecture:
-        // If you only need a static sprite (no camera-facing rotation),
-        // you can use just QuadComponent.
-        //
-        // This is commented out by default, but you can uncomment to test:
-        /*
-        std::cout << "\n[BillboardECS] Creating Static Quad entity..." << std::endl;
+        std::cout << "\n[BillboardECS] Creating Phase4 TextureBinding entities..." << std::endl;
         {
-            auto quad_entity = ecs_context->CreateEntity<Entity>("StaticQuad");
-            std::cout << "  -> StaticQuad entity created" << std::endl;
+            textured_quad_entity = ecs_context->CreateEntity<Entity>("TextureBoundQuad");
+            auto transform = textured_quad_entity->AddComponent<TransformComponent>(Mobility::Static);
+            transform->SetLocalPosition(glm::vec3(-12.0f, 10.0f, 0.0f));
+            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform->SetMovable(false);
 
-            auto quad_transform = quad_entity->AddComponent<TransformComponent>(Mobility::Static);
-            quad_transform->SetLocalPosition(glm::vec3(2.0f, 0.0f, 0.0f));
-            quad_transform->SetLocalScale(glm::vec3(2.0f, 2.0f, 1.0f));
+            auto quad_mesh = textured_quad_entity->AddComponent<QuadMeshComponent>();
+            quad_mesh->SetSize(8.0f, 8.0f);
+            quad_mesh->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
 
-            auto quad = quad_entity->AddComponent<QuadComponent>();
-            quad->SetVisible(true);
-            quad->SetPixelSize(128, 128);
-            quad->SetTexturePath(OS_TEXT("res/image/sprite.Tex2D"));
-            std::cout << "  -> QuadComponent added (no rotation, static)" << std::endl;
+            auto primitive = textured_quad_entity->AddComponent<PrimitiveComponent>();
+            primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg));
+            primitive->SetVisible(true);
+
+            auto texture_binding = textured_quad_entity->AddComponent<TextureBindingComponent>();
+            texture_binding->SetTexturePath(kIconTextures[22]);
         }
-        */
 
-        // ADVANCED: Example of using FacingTransformComponent with a custom target
-        //
-        // This shows using FacingTransformComponent independently:
-        // Any entity can face towards a specific position.
-        //
-        // This is commented out by default, but you can uncomment to test:
-        /*
-        std::cout << "\n[BillboardECS] Creating Look-At-Target entity..." << std::endl;
         {
-            auto target_entity = ecs_context->CreateEntity<Entity>("LookAtTarget");
-            std::cout << "  -> LookAtTarget entity created" << std::endl;
+            textured_quad_domain_entity = ecs_context->CreateEntity<Entity>("TextureBoundQuadDomain");
+            auto transform = textured_quad_domain_entity->AddComponent<TransformComponent>(Mobility::Static);
+            transform->SetLocalPosition(glm::vec3(12.0f, 10.0f, 0.0f));
+            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform->SetMovable(false);
 
-            auto target_transform = target_entity->AddComponent<TransformComponent>(Mobility::Static);
-            target_transform->SetLocalPosition(glm::vec3(-2.0f, 0.0f, 0.0f));
+            auto quad_mesh = textured_quad_domain_entity->AddComponent<QuadMeshComponent>();
+            quad_mesh->SetSize(8.0f, 8.0f);
+            quad_mesh->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
 
-            auto quad = target_entity->AddComponent<QuadComponent>();
-            quad->SetVisible(true);
-            quad->SetPixelSize(128, 128);
-            quad->SetTexturePath(OS_TEXT("res/image/marker.Tex2D"));
+            auto primitive = textured_quad_domain_entity->AddComponent<PrimitiveComponent>();
+            primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg));
+            primitive->SetVisible(true);
 
-            auto facing = target_entity->AddComponent<FacingTransformComponent>();
-            facing->SetFacingMode(FacingMode::LookAtTarget);
-            facing->SetTargetPosition(glm::vec3(2.0f, 0.0f, 0.0f));  // Look at the static quad
-            std::cout << "  -> FacingTransformComponent added (looks at static quad)" << std::endl;
+            auto texture_binding = textured_quad_domain_entity->AddComponent<TextureBindingComponent>();
+            texture_binding->SetTexturePath(kIconTextures[10]);
+            texture_binding->SetDomainTag("3001");
         }
-        */
-
-        std::cout << "\n[BillboardECS] Final entity count: " << ecs_context->GetEntityCount() << std::endl;
-        std::cout << "[BillboardECS] === ECS INITIALIZATION COMPLETE ===\n" << std::endl;
 
         return true;
     }
