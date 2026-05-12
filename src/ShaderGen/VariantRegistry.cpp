@@ -898,7 +898,7 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .vs_path = "2d/puretexture2d.vert.glsl",  .fs_path = "2d/puretexture2d.frag.glsl"  },
 
     { .name = "Text2D",             .preset = MaterialPreset::Text2D,
-      .geometry_mode = GM::Quad2D,  .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::BaseColor, TSM::Atlas }},
+      .geometry_mode = GM::Quad2D,  .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::Text, TSM::Atlas }},
       .vs_path = "2d/text2d.vert.glsl",         .fs_path = "2d/text2d.frag.glsl"         },
 
     // ── 3D Unlit ────────────────────────────────────────────────────────────────────────────────

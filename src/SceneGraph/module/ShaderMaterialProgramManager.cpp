@@ -508,6 +508,18 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
 
         return mm->ResolveOrCreateProgram(rec.preset, &cfg);
     }
+    // ── Text2D ──────────────────────────────────────────────────────────────
+    else if (rec.preset == MaterialPreset::Text2D)
+    {
+        Text2DMaterialCreateConfig cfg;
+        for (const auto &tc : rec.textures)
+            if (tc.source_mode != TextureSourceMode::None)
+                cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
+
+        mm->GetStats().LogCreateMaterialFromRecord2D(static_cast<uint32_t>(cfg.prim),
+                                                     static_cast<uint32_t>(rec.preset));
+        return mm->ResolveOrCreateProgram(rec.preset, &cfg);
+    }
     // ── 2D ──────────────────────────────────────────────────────────────────
     else if (rec.dim == MaterialRecipe::Dim::D2)
     {
