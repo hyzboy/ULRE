@@ -14,6 +14,7 @@
 #include <hgl/mtl/RecipeToKey.h>
 #include <hgl/mtl/MaterialLibrary.h>   // MapPresetToVariantKey
 #include <hgl/mtl/MaterialFeature.h>   // ResolveIntentFeatureMask, ResolveLightingModelFromFeatures
+#include <hgl/mtl/MaterialVariantRow.h> // VertexTransformPolicy, VertexInputProfile, SurfaceShadingModel
 #include <hgl/mtl/PassExpansion.h>
 #include <hgl/mtl/MaterialKeyToolchainVersion.h>
 #include <hgl/mtl/StaticMaterialDefRegistry.h>
@@ -27,6 +28,109 @@ namespace hgl::graph::mtl
 // ─────────────────────────────────────────────────────────────────────────────
 // File-local helpers (not exposed in the header)
 // ─────────────────────────────────────────────────────────────────────────────
+
+static bool HasAnyArrayTexture(const MaterialRecipe &r) noexcept;
+
+namespace
+{
+static PassType PrimaryPassForBlendMode(const RenderAlphaMode blend) noexcept
+{
+    switch (blend)
+    {
+    case RenderAlphaMode::Opaque:          return PassType::ForwardOpaque;
+    case RenderAlphaMode::Masked:          return PassType::ForwardMasked;
+    case RenderAlphaMode::Transparent:     return PassType::ForwardTransparent;
+    case RenderAlphaMode::Dither:          return PassType::ForwardDither;
+    case RenderAlphaMode::AlphaToCoverage: return PassType::ForwardA2C;
+    default:                               return PassType::ForwardOpaque;
+    }
+}
+
+struct RecipeAxisExpansion
+{
+    VertexInputProfile vertex_input = VertexInputProfile::Unknown;
+    VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
+    SurfaceShadingModel shading_model = SurfaceShadingModel::Unknown;
+    MaterialResourceRequirements resources{};
+    ShaderDataSchema schema = ShaderDataSchema::None;
+};
+
+static bool RowHasTextureMode(const MaterialVariantRow &row, const TextureSourceMode mode) noexcept
+{
+    for (uint32 i = 0; i < row.texture_count; ++i)
+    {
+        if (row.textures[i].source_mode == mode)
+            return true;
+    }
+
+    return false;
+}
+
+static RecipeAxisExpansion ExpandRecipeAxesFromPresetAlias(const MaterialRecipe &r) noexcept
+{
+    RecipeAxisExpansion out{};
+
+    const MaterialPreset resolved_preset =
+        ResolveMaterialPresetForLOD(r.preset, GetDefaultMaterialLOD());
+
+    const RenderAlphaMode target_blend =
+        (r.preset == MaterialPreset::Billboard2DDynamic || r.preset == MaterialPreset::Billboard2DFixed)
+        ? r.billboard.blend_mode
+        : RenderAlphaMode::Opaque;
+    const PassType target_pass = PrimaryPassForBlendMode(target_blend);
+    const bool wants_array = HasAnyArrayTexture(r);
+
+    const MaterialFeatureMask fmask = ResolveIntentFeatureMask(r.preset, r.intent_features);
+    const LightingModel desired_lighting =
+        ResolveLightingModelFromFeatures(fmask, LightingModel::Lambert);
+
+    const MaterialVariantRow *best = nullptr;
+    int best_score = -1000000;
+
+    for (size_t i = 0; i < kBuiltinVariantRowsCount; ++i)
+    {
+        const MaterialVariantRow &row = kBuiltinVariantRows[i];
+        if (row.preset != resolved_preset)
+            continue;
+
+        int score = 0;
+        if (row.blend == target_blend)
+            score += 100;
+        if (row.pass == target_pass)
+            score += 50;
+
+        if (row.resources.enable_lighting)
+        {
+            if (row.resources.lighting_model == desired_lighting)
+                score += 40;
+        }
+        else if (desired_lighting == LightingModel::Lambert)
+        {
+            score += 5;
+        }
+
+        const bool row_has_array = RowHasTextureMode(row, TextureSourceMode::Array);
+        if (row_has_array == wants_array)
+            score += 20;
+
+        if (!best || score > best_score)
+        {
+            best = &row;
+            best_score = score;
+        }
+    }
+
+    if (!best)
+        return out;
+
+    out.vertex_input = best->vertex_input;
+    out.vertex_policy = best->vertex_policy;
+    out.shading_model = best->surface_model;
+    out.resources = best->resources;
+    out.schema = best->schema;
+    return out;
+}
+}
 
 /// Returns true if any texture channel in the recipe uses Array source mode.
 static bool HasAnyArrayTexture(const MaterialRecipe &r) noexcept
@@ -316,6 +420,8 @@ PassType GetPrimaryPassForBlendMode(RenderAlphaMode blend) noexcept
 
 MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexcept
 {
+    const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
+
     // ── Step 1: preset → base variant key ────────────────────────────────────
     // [Step 3.5 T1] Routes through the single RouteKey() entry instead of the
     // deprecated free function MapPresetToVariantKey. Behaviour is identical
@@ -379,6 +485,32 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
         k.pass_hint  = GetPrimaryPassForBlendMode(r.billboard.blend_mode);
     }
 
+    // ── Step 8: explicit axis overrides (Phase B) ─────────────────────────────
+    // Explicit value has priority; Unknown falls back to preset alias expansion.
+    const VertexTransformPolicy effective_vertex_policy =
+        (r.vertex_policy != VertexTransformPolicy::Unknown)
+        ? r.vertex_policy
+        : alias_axes.vertex_policy;
+
+    if (effective_vertex_policy != VertexTransformPolicy::Unknown)
+    {
+        switch (effective_vertex_policy)
+        {
+        case VertexTransformPolicy::Mesh3D:
+            k.geometry_mode = GeometryMode::Mesh3D; break;
+        case VertexTransformPolicy::Quad2D:
+            k.geometry_mode = GeometryMode::Quad2D; break;
+        case VertexTransformPolicy::BillboardCameraFacing:
+            k.geometry_mode = GeometryMode::BillboardCameraFacing; break;
+        case VertexTransformPolicy::BillboardAxisLocked:
+            k.geometry_mode = GeometryMode::BillboardAxisLocked; break;
+        default:
+            // Sky, TerrainGrid, Text2D, FullscreenTriangle etc. have no
+            // GeometryMode counterpart yet; leave geometry_mode unchanged.
+            break;
+        }
+    }
+
     return k;
 }
 
@@ -437,6 +569,8 @@ MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &r) noexcept
 {
     MaterialKey k{};
 
+    const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
+
     // Phase A: build un-canonicalized variant key
     MaterialVariantKey vk = detail::BuildBaseVariantKeyFromRecipe(r);
 
@@ -449,7 +583,12 @@ MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &r) noexcept
     k.pass = detail::GetPrimaryPassForBlendMode(vk.blend_mode);
 
     // Phase D: schema
-    k.schema = GetDefaultSchemaForPreset(r.preset);
+    if (r.has_explicit_schema && r.schema != ShaderDataSchema::None)
+        k.schema = r.schema;
+    else if (alias_axes.schema != ShaderDataSchema::None)
+        k.schema = alias_axes.schema;
+    else
+        k.schema = GetDefaultSchemaForPreset(r.preset);
 
     // Phase E: def_id
     k.def_id = ResolveDefIdForRecipe(r);

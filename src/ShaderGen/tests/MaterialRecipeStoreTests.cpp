@@ -158,6 +158,36 @@ static void TestUpdateRecipeInvalidID()
 }
 
 // ---------------------------------------------------------------------------
+// Test: Phase B explicit-axis fields participate in content hash/dedup identity
+// ---------------------------------------------------------------------------
+static void TestPhaseBExplicitAxesAffectHash()
+{
+    MaterialRecipeStore store;
+
+    MaterialRecipe base = MakeSimpleRecipe("phaseb_axes");
+    MaterialRecipe axis = base;
+    axis.vertex_policy = VertexTransformPolicy::Mesh3D;
+    axis.has_explicit_schema = true;
+    axis.schema = ShaderDataSchema::StandardParams;
+
+    const uint64_t base_hash = MaterialRecipeStore::ComputeContentHash(base);
+    const uint64_t axis_hash = MaterialRecipeStore::ComputeContentHash(axis);
+
+    CHECK_NE(base_hash, axis_hash);
+
+    const MaterialRecipeID id_base = store.RegisterRecipe(base);
+    const MaterialRecipeID id_axis = store.RegisterRecipe(axis);
+    CHECK_NE(id_base, id_axis);
+
+    std::fprintf(stdout,
+        "TestPhaseBExplicitAxesAffectHash: base_hash=%llu axis_hash=%llu id_base=%u id_axis=%u\n",
+        static_cast<unsigned long long>(base_hash),
+        static_cast<unsigned long long>(axis_hash),
+        id_base,
+        id_axis);
+}
+
+// ---------------------------------------------------------------------------
 int main()
 {
     TestRegisterReturnsValidID();
@@ -168,6 +198,7 @@ int main()
     TestFindByContentHash();
     TestUpdateRecipe();
     TestUpdateRecipeInvalidID();
+    TestPhaseBExplicitAxesAffectHash();
 
     if (g_failures == 0)
         std::fprintf(stdout, "All tests PASSED.\n");

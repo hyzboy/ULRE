@@ -28,6 +28,8 @@
 #include <hgl/vk/VertexAttrib.h>
 #include <hgl/vk/VKFormat.h>
 #include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
+#include <hgl/mtl/MaterialVariantRow.h>
+#include <hgl/mtl/ShaderDataSchema.h>
 
 #include <vector>
 #include <string>
@@ -69,6 +71,29 @@ struct MaterialRecipe
     /// position 顶点属性格式；零初始化（vat_code==0）= 使用维度默认值
     /// （D2 默认 VAT_VEC2，D3 默认 VAT_VEC3）
     VAType          pos_format = {};
+
+    // ── 显式材质轴（Phase B）──────────────────────────────────────────────────
+    /// 顶点输入布局声明。Unknown = 由 preset alias 展开决定（兼容旧路径）。
+    VertexInputProfile    vertex_input  = VertexInputProfile::Unknown;
+
+    /// 顶点变换策略。Unknown = 由 preset alias 展开决定（兼容旧路径）。
+    /// 非 Unknown 时会覆盖 BuildBaseVariantKeyFromRecipe 得到的 geometry_mode。
+    VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
+
+    /// 表面着色模型。Unknown = 由 preset alias 展开决定（兼容旧路径）。
+    SurfaceShadingModel   shading_model = SurfaceShadingModel::Unknown;
+
+    /// 兼容旧字段名（Phase A/B 过渡期）：若 shading_model 仍为 Unknown，
+    /// 路由层会回退读取 surface_model。
+    SurfaceShadingModel   surface_model = SurfaceShadingModel::Unknown;
+
+    /// 资源需求轴。默认不启用显式覆盖，保持 preset-only 旧行为。
+    MaterialResourceRequirements resources{};
+    bool has_explicit_resources = false;
+
+    /// schema 轴。默认不启用显式覆盖，保持 preset-only 旧行为。
+    ShaderDataSchema schema = ShaderDataSchema::None;
+    bool has_explicit_schema = false;
 
     // ── 2D 专用（dim == D2 时有效）────────────────────────────────────────────
     CoordinateSystem2D coord_2d = CoordinateSystem2D::NDC;  ///< 2D 坐标系

@@ -143,6 +143,29 @@ static void test_different_sky_values_same_key_when_not_routing_axis()
              ResolveRecipePrimaryKey(r_fake).Hash());
 }
 
+static void test_explicit_schema_override_applies()
+{
+    MaterialRecipe r = MakeStandardOpaqueRecipe();
+    r.has_explicit_schema = true;
+    r.schema = ShaderDataSchema::PBRColorParams;
+
+    const MaterialKey k = ResolveRecipePrimaryKey(r);
+    CHECK_EQ(k.schema, ShaderDataSchema::PBRColorParams);
+}
+
+static void test_legacy_surface_model_field_compatibility()
+{
+    MaterialRecipe legacy;
+    legacy.preset = MaterialPreset::Standard;
+    legacy.surface_model = SurfaceShadingModel::StandardPBR;
+
+    MaterialRecipe modern = legacy;
+    modern.shading_model = modern.surface_model;
+
+    CHECK_EQ(ResolveRecipePrimaryKey(legacy).Hash(),
+             ResolveRecipePrimaryKey(modern).Hash());
+}
+
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
@@ -156,6 +179,8 @@ int main()
     test_sky_canonicalization_standard_simple_idempotent();
     test_sky_canonicalization_stdpbrarray_fakeatmosphere();
     test_different_sky_values_same_key_when_not_routing_axis();
+    test_explicit_schema_override_applies();
+    test_legacy_surface_model_field_compatibility();
 
     if (g_failures > 0)
     {

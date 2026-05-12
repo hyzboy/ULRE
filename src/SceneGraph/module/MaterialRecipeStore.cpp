@@ -26,6 +26,30 @@ namespace hgl::graph::mtl
     h = hgl::hash::FNV1aAppendValueBytes(h, r.prim);
     h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.l2w ? 1u : 0u));
     h = hgl::hash::FNV1aAppendValueBytes(h, r.pos_format);
+    h = hgl::hash::FNV1aAppendValueBytes(h, r.vertex_input);
+    h = hgl::hash::FNV1aAppendValueBytes(h, r.vertex_policy);
+    h = hgl::hash::FNV1aAppendValueBytes(h, r.shading_model);
+    h = hgl::hash::FNV1aAppendValueBytes(h, r.surface_model);
+
+    h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.has_explicit_resources ? 1u : 0u));
+    if (r.has_explicit_resources)
+    {
+        h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_viewport ? 1u : 0u));
+        h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_camera ? 1u : 0u));
+        h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_sky ? 1u : 0u));
+        h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_transform ? 1u : 0u));
+        h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_material_instance ? 1u : 0u));
+        h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_material_texture_index ? 1u : 0u));
+        h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_color_palette ? 1u : 0u));
+        h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.enable_lighting ? 1u : 0u));
+        h = hgl::hash::FNV1aAppendValueBytes(h, r.resources.lighting_model);
+        h = hgl::hash::FNV1aAppendValueBytes(h, r.resources.sky_model);
+    }
+
+    h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.has_explicit_schema ? 1u : 0u));
+    if (r.has_explicit_schema)
+        h = hgl::hash::FNV1aAppendValueBytes(h, r.schema);
+
     h = hgl::hash::FNV1aAppendValueBytes(h, r.coord_2d);
     h = hgl::hash::FNV1aAppendValueBytes(h, r.sky_ambient);
     h = hgl::hash::FNV1aAppendValueBytes(h, r.pipeline);
