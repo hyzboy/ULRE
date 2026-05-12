@@ -5,6 +5,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/QuadComponent.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/SamplerSlot.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/render/RenderContext.h>
@@ -12,6 +13,7 @@
 #include<hgl/graph/module/ShaderMaterialProgramManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/MaterialRecipeRegistry.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/type/StdString.h>
@@ -54,6 +56,33 @@ namespace hgl::ecs
 #endif
 
         return state.material;
+    }
+
+    static graph::mtl::MaterialRecipe BuildLegacyQuadRecipe(const QuadComponent *quad,
+                                                            const graph::GraphicsPipelinePreset pipeline,
+                                                            const graph::RenderAlphaMode blend_mode,
+                                                            const graph::TextureChannelHint channel_hint,
+                                                            const hgl::OSString &texture_path)
+    {
+        graph::mtl::MaterialRecipe recipe;
+        recipe.id = "quad_legacy_single_texture";
+        recipe.preset = quad && quad->IsFixedPixelSize()
+            ? graph::mtl::MaterialPreset::Billboard2DFixed
+            : graph::mtl::MaterialPreset::Billboard2DDynamic;
+        recipe.dim = graph::mtl::MaterialRecipe::Dim::D3;
+        recipe.prim = graph::PrimitiveType::Billboard;
+        recipe.pipeline = pipeline;
+        recipe.billboard.fixed_size = quad ? quad->IsFixedPixelSize() : false;
+        recipe.billboard.pixel_w = quad ? quad->GetPixelSize().x : 64u;
+        recipe.billboard.pixel_h = quad ? quad->GetPixelSize().y : 64u;
+        recipe.billboard.blend_mode = blend_mode;
+        recipe.billboard.base_color_channel = channel_hint;
+        recipe.billboard.front_face_ccw = quad && quad->GetFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        recipe.billboard.texture_id = ToStdString(texture_path);
+        recipe.textures = {
+            { graph::mtl::SamplerSlot::BaseColor, graph::mtl::TextureSourceMode::Simple, "" },
+        };
+        return recipe;
     }
 
     static graph::ResourceDomain *ResolveDomainForMaterial(graph::GraphicsContext *gc,
@@ -188,7 +217,8 @@ namespace hgl::ecs
         auto* material_manager = graphics_context->GetMaterialManager();
         auto* primitive_manager = graphics_context->GetPrimitiveManager();
         auto* texture_manager = graphics_context->GetTextureManager();
-        if (!material_manager || !primitive_manager || !texture_manager)
+        auto* recipe_registry = graphics_context->GetMaterialAssetRegistry();
+        if (!material_manager || !primitive_manager || !texture_manager || !recipe_registry)
             return false;
 
         // Load texture
@@ -201,30 +231,17 @@ namespace hgl::ecs
         if (!shared_sampler)
             return false;
 
-        // Create material instance with quad-specific config
-        graph::mtl::BillboardMaterialCreateConfig cfg(graph::PrimitiveType::Billboard);
-        cfg.fixed_size  = quad->IsFixedPixelSize();
-        cfg.front_face  = quad->GetFrontFace();
-        cfg.pixel_size  = quad->GetPixelSize();
-        cfg.texture_id  = ToStdString(texture_path);
-        cfg.blend_mode  = QuadResourcePrepareSystem::GetBlendModeForWorld(world);
-        cfg.base_color_channel = QuadResourcePrepareSystem::GetChannelHintForWorld(world);
+        const auto pipeline = QuadResourcePrepareSystem::GetPresetForWorld(world);
+        const auto blend_mode = QuadResourcePrepareSystem::GetBlendModeForWorld(world);
+        const auto channel_hint = QuadResourcePrepareSystem::GetChannelHintForWorld(world);
 
-        const auto preset = cfg.fixed_size
-            ? graph::mtl::MaterialPreset::Billboard2DFixed
-            : graph::mtl::MaterialPreset::Billboard2DDynamic;
-
-        auto* quad_material = material_manager->ResolveOrCreateProgram(preset, &cfg);
-        if (!quad_material)
+        graph::MaterialDomainHandle handle;
+        auto recipe = BuildLegacyQuadRecipe(quad, pipeline, blend_mode, channel_hint, texture_path);
+        auto* mi = recipe_registry->ResolveOrCreateBindingInstance(recipe, nullptr, 0, &handle);
+        if (!mi || !handle.material)
             return false;
 
-        graph::MaterialInstanceSpec spec;
-        spec.material = quad_material;
-        spec.domain   = ResolveDomainForMaterial(graphics_context, quad_material, 2u);
-        spec.preset = QuadResourcePrepareSystem::GetPresetForWorld(world);
-        auto* mi = material_manager->AcquireMaterialInstance(spec);
-        if (!mi)
-            return false;
+        auto* quad_material = handle.material;
 
         const auto mi_state = ResolveMaterialInstanceState(mi, quad_material);
         if (!mi_state.material)

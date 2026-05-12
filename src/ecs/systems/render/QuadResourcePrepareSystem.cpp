@@ -272,8 +272,9 @@ namespace hgl::ecs
 
         auto* material_manager = graphics_context->GetMaterialManager();
         auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* recipe_registry = graphics_context->GetMaterialAssetRegistry();
         auto* device = graphics_context->GetDevice();
-        if (!material_manager || !primitive_manager || !device)
+        if (!material_manager || !primitive_manager || !recipe_registry || !device)
             return false;
 
         auto* render_target = render_context->GetCurrentRenderTarget();
@@ -289,22 +290,26 @@ namespace hgl::ecs
         const bool fixed = IsFixedSizeForWorld(world);
         const auto billboard_preset = GetBillboardPresetForWorld(world);
 
-        graph::mtl::BillboardMaterialCreateConfig cfg(graph::PrimitiveType::Billboard);
-        cfg.fixed_size  = fixed;
-        cfg.blend_mode  = GetBlendModeForWorld(world);
-        cfg.base_color_channel = GetChannelHintForWorld(world);
+        graph::mtl::MaterialRecipe rec;
+        rec.id = "quad_shared_billboard";
+        rec.preset = billboard_preset;
+        rec.dim = graph::mtl::MaterialRecipe::Dim::D3;
+        rec.prim = graph::PrimitiveType::Billboard;
+        rec.pipeline = GetPresetForWorld(world);
+        rec.billboard.fixed_size = fixed;
+        rec.billboard.blend_mode = GetBlendModeForWorld(world);
+        rec.billboard.base_color_channel = GetChannelHintForWorld(world);
+        rec.billboard.texture_id = "quad_shared";
+        rec.textures = {
+            { graph::mtl::SamplerSlot::BaseColor, graph::mtl::TextureSourceMode::Simple, "" },
+        };
 
-        auto* shared_material = material_manager->ResolveOrCreateProgram(billboard_preset, &cfg);
-        if (!shared_material)
+        graph::MaterialDomainHandle handle;
+        shared_material_instance = recipe_registry->ResolveOrCreateBindingInstance(rec, nullptr, 0, &handle);
+        if (!shared_material_instance || !handle.material)
             return false;
 
-        graph::MaterialInstanceSpec spec;
-        spec.material = shared_material;
-        spec.domain   = ResolveDomainForMaterial(graphics_context, shared_material, 1u);
-        spec.preset = GetPresetForWorld(world);
-        shared_material_instance = material_manager->AcquireMaterialInstance(spec);
-        if (!shared_material_instance)
-            return false;
+        auto* shared_material = handle.material;
 
         shared_material_instance->SetRenderPreset(GetPresetForWorld(world));
 
@@ -464,35 +469,22 @@ namespace hgl::ecs
             {
                 const bool domain_fixed = IsFixedSizeForWorld(world);
                 const auto domain_preset = GetBillboardPresetForWorld(world);
-
-                graph::mtl::BillboardMaterialCreateConfig cfg(graph::PrimitiveType::Billboard);
-                cfg.fixed_size         = domain_fixed;
-                cfg.blend_mode         = GetBlendModeForWorld(world);
-                cfg.base_color_channel = GetChannelHintForWorld(world);
-                cfg.texture_id         = dr.domain_tag;
-                cfg.use_texture_array  = true;
+                const auto blend_mode = GetBlendModeForWorld(world);
+                const auto channel_hint = GetChannelHintForWorld(world);
 
                 std::fprintf(stderr, "[QuadResPrepare] EnsureDomainResources domain='%s'  use_texture_array=%d  blend=%d  fixed=%d  preset=%d\n",
-                    dr.domain_tag.c_str(), (int)cfg.use_texture_array, (int)cfg.blend_mode, (int)domain_fixed, (int)domain_preset);
+                    dr.domain_tag.c_str(), 1, (int)blend_mode, (int)domain_fixed, (int)domain_preset);
 
-                dr.material = material_manager->ResolveOrCreateProgram(domain_preset, &cfg);
-
-                if (dr.material)
+                auto* recipe_registry = graphics_context->GetMaterialAssetRegistry();
+                if (recipe_registry)
                 {
-                    // Mark material as using texture array on BaseColor slot
-                    dr.material->SetTextureArraySlotFlags(
-                        uint8_t(1u << uint8_t(graph::mtl::SamplerSlot::BaseColor)));
-
-                    // Create DMB via registry
-                    graph::MaterialRecipeRegistry registry(material_manager, texture_manager, sampler_manager);
-
                     graph::mtl::MaterialRecipe rec;
                     rec.id        = "billboard_domain_" + dr.domain_tag;
                     rec.domain_id = dr.domain_tag;
                     rec.preset    = domain_preset;
-                    rec.billboard.texture_id       = dr.domain_tag;
-                    rec.billboard.blend_mode        = cfg.blend_mode;
-                    rec.billboard.base_color_channel = cfg.base_color_channel;
+                    rec.billboard.texture_id        = dr.domain_tag;
+                    rec.billboard.blend_mode        = blend_mode;
+                    rec.billboard.base_color_channel = channel_hint;
                     rec.billboard.fixed_size        = domain_fixed;
                     rec.dim       = graph::mtl::MaterialRecipe::Dim::D3;
                     rec.prim      = graph::PrimitiveType::Billboard;
@@ -501,7 +493,7 @@ namespace hgl::ecs
                         { graph::mtl::SamplerSlot::BaseColor, graph::mtl::TextureSourceMode::Array, "" },
                     };
 
-                    auto handle = registry.Acquire(rec);
+                    graph::MaterialDomainHandle handle = recipe_registry->Acquire(rec);
                     if (handle.IsValid())
                     {
                         dr.dmb      = handle.binding;

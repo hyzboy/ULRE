@@ -237,10 +237,11 @@ public: //ShaderMaterialProgram
     ShaderMaterialProgram *GetOrCreateProgramByKey(const mtl::MaterialKey &key,
                                                    const mtl::MaterialRecipe &recipe);
 
-    ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialPreset, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
-    ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialPreset, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
-    ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);
-    ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);
+    // Legacy compat entry points (pending full MaterialRecipe convergence).
+    ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialPreset, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr);   ///<基于内置材质ID创建2D材质
+    ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialPreset, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr);   ///<基于内置材质ID创建3D材质
+    ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *, MaterialSpecKey *out_key = nullptr); ///<基于variant key创建2D材质
+    ShaderMaterialProgram *          ResolveOrCreateProgram (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *, MaterialSpecKey *out_key = nullptr); ///<基于variant key创建3D材质
 
 public: //MaterialBindingInstanceData
 

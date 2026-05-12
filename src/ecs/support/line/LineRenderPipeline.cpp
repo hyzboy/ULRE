@@ -11,11 +11,13 @@
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/graph/module/ShaderMaterialProgramManager.h>
+#include <hgl/graph/module/MaterialRecipeRegistry.h>
 #include <hgl/graph/module/ResourceDomainManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/mesh/Primitive.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
+#include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKShaderMaterialProgram.h>
@@ -295,19 +297,35 @@ namespace hgl::ecs
         support_wide_lines_ = device_->GetDevAttr() && device_->GetDevAttr()->wide_lines;
 
         // ------- Create material -------
+        auto* mat_mgr = gc->GetMaterialManager();
+        auto* recipe_registry = gc->GetMaterialAssetRegistry();
+        if (!mat_mgr || !recipe_registry)
+            return false;
+
+        graph::mtl::MaterialRecipe line_recipe;
+        line_recipe.id = "line_render_pipeline";
+        line_recipe.preset = graph::mtl::MaterialPreset::VertexPaletteColor3D;
+        line_recipe.dim = graph::mtl::MaterialRecipe::Dim::D3;
+        line_recipe.prim = graph::PrimitiveType::Lines;
+        line_recipe.vertex_input = graph::mtl::VertexInputProfile::PositionPaletteIndex3D;
+        line_recipe.vertex_policy = graph::mtl::VertexTransformPolicy::Mesh3D;
+        line_recipe.shading_model = graph::mtl::SurfaceShadingModel::VertexColor;
+
+        graph::MaterialDomainHandle line_handle;
+        auto *bootstrap_mi = recipe_registry->ResolveOrCreateBindingInstance(line_recipe, nullptr, 0, &line_handle);
+        if (!bootstrap_mi || !line_handle.material)
+            return false;
+
+        material_ = line_handle.material;
+
+        if (bootstrap_mi)
+            mat_mgr->Destroy(bootstrap_mi);
+
         graph::mtl::Material3DCreateConfig cfg(
             graph::PrimitiveType::Lines,
             graph::mtl::IncludeCamera::With,
             graph::mtl::IncludeL2W::With,
             graph::mtl::IncludeSky::Without);
-
-        auto* mat_mgr = gc->GetMaterialManager();
-        if (!mat_mgr)
-            return false;
-
-        material_ = mat_mgr->ResolveOrCreateProgram(graph::mtl::MaterialPreset::VertexPaletteColor3D, &cfg);
-        if (!material_)
-            return false;
 
         GLogInfo("[LineRenderPipeline] Initialize: requested_cfg_prim=%u material=%p material_prim=%u wide_lines=%d",
                  static_cast<unsigned>(cfg.prim),

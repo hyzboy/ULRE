@@ -3,16 +3,20 @@
 
 // @require SSBO(MaterialBindingInstanceID)
 
+#if defined(MBI_ID_BINDING)
 layout(std430, set=PERMATERIAL_SET, binding=MBI_ID_BINDING) readonly buffer MaterialInstanceIDData {
     uint ids[];
 } mbi_id;
+#endif
 
 uint GetMaterialInstanceID()
 {
 #ifdef MATERIAL_INSTANCE_ID_OVERRIDE
     return MATERIAL_INSTANCE_ID_OVERRIDE;
-#else
+#elif defined(MBI_ID_BINDING)
     return mbi_id.ids[gl_InstanceIndex];
+#else
+    return 0u;
 #endif
 }
 

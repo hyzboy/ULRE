@@ -10,6 +10,8 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderMaterialProgramManager.h>
+#include<hgl/graph/module/MaterialRecipeRegistry.h>
+#include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include"GizmoResource.h"
@@ -27,6 +29,8 @@ namespace hgl::graph
         static GraphicsContext *graphics_context=nullptr;
         static RenderTargetFormat *gizmo_render_pass=nullptr;
         static ShaderMaterialProgramManager *gizmo_mtl_manager=nullptr;
+        static ResourceDomain *gizmo_domain = nullptr;
+        static DomainResourceBinding *gizmo_binding = nullptr;
 
         struct GizmoResource
         {
@@ -82,21 +86,21 @@ namespace hgl::graph
             if(!gr||!gr->mtl)
                 return(false);
 
-               ResourceDomain *gizmo_domain = nullptr;
-               if (gr->mtl->hasMI())
+               ResourceDomain *gizmo_domain_local = gizmo_domain;
+               if (gr->mtl->hasMI() && !gizmo_domain_local)
                {
                    auto *rdm = graphics_context ? graphics_context->GetResourceDomainManager() : nullptr;
                    if (rdm)
                    {
                        const auto schema = gr->mtl->GetShaderDataSchema();
-                       gizmo_domain = rdm->Get(schema, 1u);
-                       if (!gizmo_domain)
+                       gizmo_domain_local = rdm->Get(schema, 2048u);
+                       if (!gizmo_domain_local)
                        {
                            ResourceDomainCreateInfo ci;
-                           ci.schema            = schema;
-                           ci.domain_id         = 1u;
-                           ci.initial_capacity  = 64;
-                           gizmo_domain = rdm->Create(ci);
+                           ci.schema = schema;
+                           ci.domain_id = 2048u;
+                           ci.initial_capacity = 512;
+                           gizmo_domain_local = rdm->Create(ci);
                        }
                    }
                }
@@ -113,12 +117,15 @@ namespace hgl::graph
                 mi_spec.instance_data = &color;
                 mi_spec.instance_data_size = sizeof(color);
                 mi_spec.preset = GraphicsPipelinePreset::GizmoOverlay3D;
-                    mi_spec.domain = gizmo_domain;
+                    mi_spec.domain = gizmo_domain_local;
 
                 gr->mi[i]=gizmo_mtl_manager->AcquireMaterialInstance(mi_spec);
 
                 if(!gr->mi[i])
                     return(false);
+
+                if (gizmo_binding)
+                    MaterialBindingInstanceInternalAccess::SetDomainBinding(gr->mi[i], gizmo_binding);
             }
 
             return(true);
@@ -139,14 +146,28 @@ namespace hgl::graph
             gizmo_mtl_manager=graphics_context->GetMaterialManager();
 
             {
-                mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
+                mtl::MaterialRecipe recipe;
+                recipe.id = "gizmo_resource_purecolor";
+                recipe.preset = mtl::MaterialPreset::PureColor3D;
+                recipe.dim = mtl::MaterialRecipe::Dim::D3;
+                recipe.vertex_input = mtl::VertexInputProfile::Position3D;
+                recipe.vertex_policy = mtl::VertexTransformPolicy::Mesh3D;
+                recipe.shading_model = mtl::SurfaceShadingModel::PureColor;
+                recipe.schema = mtl::ShaderDataSchema::Color4f;
+                recipe.has_explicit_schema = true;
+                recipe.pipeline = GraphicsPipelinePreset::GizmoOverlay3D;
 
-                cfg.local_to_world=true;
-                cfg.material_instance=true;
+                auto* recipe_registry = graphics_context->GetMaterialAssetRegistry();
+                if (!recipe_registry)
+                    return false;
 
-                gizmo_triangle.mtl=gizmo_mtl_manager->ResolveOrCreateProgram(mtl::MaterialPreset::PureColor3D,&cfg);
-                if(!gizmo_triangle.mtl)
+                MaterialDomainHandle handle = recipe_registry->Acquire(recipe);
+                if(!handle.material || !handle.domain)
                     return(false);
+
+                gizmo_triangle.mtl = handle.material;
+                gizmo_domain = handle.domain;
+                gizmo_binding = handle.binding;
 
                 gizmo_triangle.mtl->Update();
             }
