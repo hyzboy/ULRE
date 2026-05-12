@@ -1,6 +1,6 @@
 #include<hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
 #include<hgl/ecs/systems/render/MaterialResolveSystem.h>
-#include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
+#include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>  // execution-order dependency only; no Quad API called
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
@@ -134,6 +134,8 @@ namespace hgl::ecs
         SetSystemType(SystemType::ShaderMaterialProgram);
         SetExecutionOrder(ExecutionPhase::RenderMaterialBind);
         SetRenderElementType("Primitive");
+        // Execution-order dependency only: ensures domain texture arrays are rebuilt before this system runs.
+        // TODO(Phase 5): replace with a generic DomainResourcesReadySystem.
         AddDependency<QuadResourcePrepareSystem>();
         AddDependency<MaterialResolveSystem>();
     }
@@ -261,16 +263,11 @@ namespace hgl::ecs
                 return false;
 
             auto *domain_resources = graph::TextureDomainRegistry::GetEntry(binding->GetDomainTag());
+            // Domain resources are built by QuadResourcePrepareSystem::Update() which runs first
+            // due to AddDependency<QuadResourcePrepareSystem>() in the constructor.
+            // TODO(Phase 5): replace execution-order dependency with a generic DomainResourcesReadySystem.
             if (!domain_resources || domain_resources->dirty || !domain_resources->texture_array || !domain_resources->sampler)
-            {
-                if (auto prep_sys = world->GetSystem<QuadResourcePrepareSystem>())
-                    prep_sys->EnsureDomainResources();
-
-                domain_resources = graph::TextureDomainRegistry::GetEntry(binding->GetDomainTag());
-            }
-
-            if (!domain_resources || !domain_resources->texture_array || !domain_resources->sampler)
-                return false;
+                return false; // not ready yet; will retry next frame
 
             if (handle.binding)
             {
