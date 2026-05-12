@@ -5,8 +5,6 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
-#include<hgl/ecs/components/SubWorldComponent.h>
-#include<hgl/ecs/components/SubSceneMembershipComponent.h>
 #include<hgl/ecs/core/ComponentRecords.h>
 
 #include<cereal/archives/json.hpp>
@@ -142,8 +140,6 @@ namespace hgl::ecs
                               RenderableRecord,
                               PrimitiveRecord,
                               CameraRecord,
-                              SubWorldComponentRecord,
-                              SubSceneMembershipRecord,
                               AssetInstanceComponentRecord,
                               AssetNodeMotionComponentRecord>;
 
@@ -200,10 +196,6 @@ namespace hgl::ecs
                     result.payload = std::any_cast<PrimitiveRecord>(record.payload);
                 else if (record.type == "Camera")
                     result.payload = std::any_cast<CameraRecord>(record.payload);
-                else if (record.type == "SubWorld")
-                    result.payload = std::any_cast<SubWorldComponentRecord>(record.payload);
-                else if (record.type == "SubSceneMembership")
-                    result.payload = std::any_cast<SubSceneMembershipRecord>(record.payload);
                 else if (record.type == "AssetInstance")
                     result.payload = std::any_cast<AssetInstanceComponentRecord>(record.payload);
                 else if (record.type == "AssetNodeMotion")
@@ -256,16 +248,6 @@ namespace hgl::ecs
                 if (auto value = std::get_if<CameraRecord>(&record.payload))
                     result.payload = *value;
             }
-            else if (record.type == "SubWorld")
-            {
-                if (auto value = std::get_if<SubWorldComponentRecord>(&record.payload))
-                    result.payload = *value;
-            }
-            else if (record.type == "SubSceneMembership")
-            {
-                if (auto value = std::get_if<SubSceneMembershipRecord>(&record.payload))
-                    result.payload = *value;
-            }
             else if (record.type == "AssetInstance")
             {
                 if (auto value = std::get_if<AssetInstanceComponentRecord>(&record.payload))
@@ -308,8 +290,6 @@ namespace hgl::ecs
                 {PrimitiveComponent::GetSerializationType(), PrimitiveComponent::SerializeToRecord, PrimitiveComponent::DeserializeFromRecord},
                 {RenderableComponent::GetSerializationType(), RenderableComponent::SerializeToRecord, RenderableComponent::DeserializeFromRecord},
                 {CameraComponent::GetSerializationType(), CameraComponent::SerializeToRecord, CameraComponent::DeserializeFromRecord},
-                {SubWorldComponent::GetSerializationType(), SubWorldComponent::SerializeToRecord, SubWorldComponent::DeserializeFromRecord},
-                {SubSceneMembershipComponent::GetSerializationType(), SubSceneMembershipComponent::SerializeToRecord, SubSceneMembershipComponent::DeserializeFromRecord},
             };
             return registry;
         }

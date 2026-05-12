@@ -42,17 +42,10 @@ namespace hgl
     namespace ecs
     {
         class CameraSystem;
-    class RenderSystemCore;
+        class RenderSystemCore;
         class RenderPipelineBase;
         class MaterialBatch;
         class RenderItem;
-
-        struct SubSceneState
-        {
-            bool paused = false;
-            bool tick_enabled = true;
-            bool render_enabled = true;
-        };
 
         struct RenderFrameCache
         {
@@ -144,7 +137,7 @@ namespace hgl
 
             bool active = false;
             bool shutdown_in_progress = false;
-            bool sub_world_auto_update = true;
+
             ContextRole context_role = ContextRole::RootShared;
             bool allow_render_system_registration = true;
             uint32_t rejected_render_system_registration_count = 0;
@@ -159,7 +152,7 @@ namespace hgl
             bool descriptor_contract_diag_log_enabled = false;
             uint64_t descriptor_contract_diag_last_log_ms = 0;
             bool material_binding_query_log_enabled = false;
-            std::unordered_map<uint64_t, SubSceneState> subscene_states;
+
             uint32_t filtered_entity_count_last_frame = 0;
 
             /// Unified render pipeline registry: name → RenderPipelineBase
@@ -221,7 +214,6 @@ namespace hgl
             void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunSystemUpdate(System *system, float deltaTime);
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
-            uint64_t ResolveEntitySubsceneID(const Entity* entity) const;
 
         public:
 
@@ -572,14 +564,9 @@ namespace hgl
                     entity_manager->GetAllEntityPointers(out_entities);
             }
 
-            void SetSubsceneState(uint64_t subscene_id, bool paused, bool tick_enabled, bool render_enabled);
-            bool GetSubsceneState(uint64_t subscene_id, SubSceneState& out_state) const;
-            void RemoveSubsceneState(uint64_t subscene_id);
-            bool IsSubsceneTickEnabled(uint64_t subscene_id) const;
-            bool IsSubsceneRenderEnabled(uint64_t subscene_id) const;
-            bool IsEntityTickEnabled(const Entity* entity) const;
-            bool IsEntityRenderEnabled(const Entity* entity) const;
-            uint32_t GetActiveSubSceneCount() const { return static_cast<uint32_t>(subscene_states.size()); }
+            bool IsEntityTickEnabled(const Entity* entity) const {return true;}
+            bool IsEntityRenderEnabled(const Entity* entity) const {return true;}
+
             uint32_t GetFilteredEntityCountLastFrame() const { return filtered_entity_count_last_frame; }
 
             /// Ensure CameraSystem exists in this context.
@@ -772,11 +759,6 @@ namespace hgl
 
             /// Check if world is active
             bool IsActive() const { return active; }
-
-            /// Enable/disable auto-updating SubWorldComponent trees inside ECSContext::Tick/Render.
-            /// When using World as the scheduler, this should be disabled and driven by World instead.
-            void SetSubWorldAutoUpdate(bool value) { sub_world_auto_update = value; }
-            bool IsSubWorldAutoUpdateEnabled() const { return sub_world_auto_update; }
 
             /// Gate for local render-system registration. Used by hybrid SubWorld policy.
             void SetRenderSystemRegistrationAllowed(bool value) { allow_render_system_registration = value; }

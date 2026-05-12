@@ -5,8 +5,6 @@
 #include<hgl/ecs/systems/tick/VisibilitySystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/components/SubWorldComponent.h>
-#include<hgl/ecs/components/SubSceneMembershipComponent.h>
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/MaterialBatch.h>
@@ -31,74 +29,6 @@
 #include<hgl/object/ObjectTracker.h>
 #include<algorithm>
 #include<chrono>
-
-namespace
-{
-    struct SubWorldDispatchStats
-    {
-        uint32_t shared_count = 0;
-        uint32_t isolated_count = 0;
-        uint32_t dispatched_count = 0;
-    };
-
-    template<typename Fn>
-    SubWorldDispatchStats DispatchLocalLogicSubWorldComponents(hgl::ecs::ECSContext* context, Fn&& fn)
-    {
-        SubWorldDispatchStats stats;
-
-        if (!context)
-            return stats;
-
-        std::vector<std::shared_ptr<hgl::ecs::SubWorldComponent>> sub_worlds;
-        context->GetComponents(sub_worlds);
-        for (const auto& sub_world : sub_worlds)
-        {
-            if (!sub_world)
-                continue;
-
-            if (!sub_world->IsLogicIsolated())
-            {
-                ++stats.shared_count;
-                continue;
-            }
-
-            ++stats.isolated_count;
-            fn(*sub_world);
-            ++stats.dispatched_count;
-        }
-
-        return stats;
-    }
-
-    template<typename Fn>
-    SubWorldDispatchStats DispatchLocalRenderSubWorldComponents(hgl::ecs::ECSContext* context, Fn&& fn)
-    {
-        SubWorldDispatchStats stats;
-
-        if (!context)
-            return stats;
-
-        std::vector<std::shared_ptr<hgl::ecs::SubWorldComponent>> sub_worlds;
-        context->GetComponents(sub_worlds);
-        for (const auto& sub_world : sub_worlds)
-        {
-            if (!sub_world)
-                continue;
-
-            if (sub_world->IsRenderShared())
-            {
-                ++stats.shared_count;
-                continue;
-            }
-
-            ++stats.isolated_count;
-            fn(*sub_world);
-            ++stats.dispatched_count;
-        }
-
-        return stats;
-    }
-}
 
 namespace hgl
 {
@@ -270,103 +200,6 @@ namespace hgl
             return camera_system;
         }
 
-        uint64_t ECSContext::ResolveEntitySubsceneID(const Entity* entity) const
-        {
-            if (!entity)
-                return 0;
-
-            auto membership = entity->GetComponent<SubSceneMembershipComponent>();
-            if (!membership)
-                return 0;
-
-            return membership->GetSubsceneID();
-        }
-
-        void ECSContext::SetSubsceneState(uint64_t subscene_id, bool paused, bool tick_enabled, bool render_enabled)
-        {
-            if (subscene_id == 0)
-                return;
-
-            SubSceneState state;
-            state.paused = paused;
-            state.tick_enabled = tick_enabled;
-            state.render_enabled = render_enabled;
-            subscene_states[subscene_id] = state;
-
-#if ULRE_ECS_DEBUG_API
-            LogDebug("[ECSContext] SetSubsceneState context='%s' subscene=%llu paused=%d tick=%d render=%d size=%zu",
-                     GetName().c_str(),
-                     static_cast<unsigned long long>(subscene_id),
-                     paused ? 1 : 0,
-                     tick_enabled ? 1 : 0,
-                     render_enabled ? 1 : 0,
-                     subscene_states.size());
-#endif
-        }
-
-        bool ECSContext::GetSubsceneState(uint64_t subscene_id, SubSceneState& out_state) const
-        {
-            auto it = subscene_states.find(subscene_id);
-            if (it == subscene_states.end())
-                return false;
-
-            out_state = it->second;
-            return true;
-        }
-
-        void ECSContext::RemoveSubsceneState(uint64_t subscene_id)
-        {
-            if (subscene_id == 0)
-                return;
-
-            const size_t erased = subscene_states.erase(subscene_id);
-
-#if ULRE_ECS_DEBUG_API
-            LogDebug("[ECSContext] RemoveSubsceneState context='%s' subscene=%llu erased=%zu size=%zu shutdown=%d",
-                     GetName().c_str(),
-                     static_cast<unsigned long long>(subscene_id),
-                     erased,
-                     subscene_states.size(),
-                     shutdown_in_progress ? 1 : 0);
-#endif
-        }
-
-        bool ECSContext::IsSubsceneTickEnabled(uint64_t subscene_id) const
-        {
-            if (subscene_id == 0)
-                return true;
-
-            auto it = subscene_states.find(subscene_id);
-            if (it == subscene_states.end())
-                return true;
-
-            const auto& state = it->second;
-            return !state.paused && state.tick_enabled;
-        }
-
-        bool ECSContext::IsSubsceneRenderEnabled(uint64_t subscene_id) const
-        {
-            if (subscene_id == 0)
-                return true;
-
-            auto it = subscene_states.find(subscene_id);
-            if (it == subscene_states.end())
-                return true;
-
-            const auto& state = it->second;
-            return !state.paused && state.render_enabled;
-        }
-
-        bool ECSContext::IsEntityTickEnabled(const Entity* entity) const
-        {
-            return IsSubsceneTickEnabled(ResolveEntitySubsceneID(entity));
-        }
-
-        bool ECSContext::IsEntityRenderEnabled(const Entity* entity) const
-        {
-            return IsSubsceneRenderEnabled(ResolveEntitySubsceneID(entity));
-        }
-
         RenderPipelineBase* ECSContext::GetRenderPipeline(const std::string& name)
         {
             auto it = render_pipelines.find(name);
@@ -447,7 +280,6 @@ namespace hgl
                 installed_system_groups.clear();
                 static_transforms.clear();
                 movable_transforms.clear();
-                subscene_states.clear();
 
                 LogDebug("[ECSContext] Shutdown(inactive) - releasing %zu material batches",
                          render_frame_cache.materialBatches.GetCount());
@@ -494,7 +326,6 @@ namespace hgl
             installed_system_groups.clear();
             static_transforms.clear();
             movable_transforms.clear();
-            subscene_states.clear();
 
             // Finally, clear materialBatches after all systems/entities are destroyed
             LogDebug("[ECSContext] Shutdown - releasing %zu material batches",
@@ -539,29 +370,6 @@ namespace hgl
                         entity->OnUpdate(deltaTime);
                     }
                 }
-            }
-
-            // Update sub-worlds attached via SubWorldComponent
-            if (sub_world_auto_update)
-            {
-                const auto stats = DispatchLocalLogicSubWorldComponents(
-                    this,
-                    [deltaTime](SubWorldComponent& sub_world)
-                    {
-                        sub_world.UpdateSubWorld(deltaTime);
-                    });
-
-#if ULRE_ECS_DEBUG_API
-                static bool logged_once = false;
-                if (!logged_once && stats.shared_count > 0)
-                {
-                    logged_once = true;
-                    LogDebug("[ECSContext] Tick auto sub-world dispatch: shared=%u isolated=%u dispatched=%u",
-                             stats.shared_count,
-                             stats.isolated_count,
-                             stats.dispatched_count);
-                }
-#endif
             }
 
             if (auto input_system = GetSystem<InputSystem>())
@@ -631,29 +439,6 @@ namespace hgl
                 }
             }
 
-            // Render sub-worlds attached via SubWorldComponent
-            if (sub_world_auto_update)
-            {
-                const auto stats = DispatchLocalRenderSubWorldComponents(
-                    this,
-                    [cmd, deltaTime](SubWorldComponent& sub_world)
-                    {
-                        sub_world.RenderSubWorld(cmd, deltaTime);
-                    });
-
-#if ULRE_ECS_DEBUG_API
-                static bool logged_once = false;
-                if (!logged_once && stats.shared_count > 0)
-                {
-                    logged_once = true;
-                    LogDebug("[ECSContext] Render auto sub-world dispatch: shared=%u isolated=%u dispatched=%u",
-                             stats.shared_count,
-                             stats.isolated_count,
-                             stats.dispatched_count);
-                }
-#endif
-            }
-
             // (Phase 1) 清除当前命令缓冲区（如果是我们设置的）
             if (current_render_cmd == cmd) {
                 current_render_cmd = nullptr;
@@ -688,29 +473,6 @@ namespace hgl
                 HGL_CAPTURE_SCOPE();
                 LogDebug("[ECS] RenderDrawOnly: %s", entry.system->GetName().c_str());
                 entry.system->Render(cmd, deltaTime);
-            }
-
-            // Recurse into nested sub-worlds (draw-only — they were also Prepare'd before the pass)
-            if (sub_world_auto_update)
-            {
-                const auto stats = DispatchLocalRenderSubWorldComponents(
-                    this,
-                    [cmd, deltaTime](SubWorldComponent& sub_world)
-                    {
-                        sub_world.DrawSubWorld(cmd, deltaTime);
-                    });
-
-#if ULRE_ECS_DEBUG_API
-                static bool logged_once = false;
-                if (!logged_once && stats.shared_count > 0)
-                {
-                    logged_once = true;
-                    LogDebug("[ECSContext] RenderDrawOnly auto sub-world dispatch: shared=%u isolated=%u dispatched=%u",
-                             stats.shared_count,
-                             stats.isolated_count,
-                             stats.dispatched_count);
-                }
-#endif
             }
 
             if (current_render_cmd == cmd)
