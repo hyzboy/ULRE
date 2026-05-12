@@ -272,6 +272,8 @@ namespace hgl::ecs
 				for (const size_t idx : mi_indices)
 				{
 					ResolveTask &task = tasks[idx];
+					graph::Primitive *previous_primitive = task.comp->GetPrimitive();
+					graph::Geometry *previous_unresolved_geometry = task.comp->GetUnresolvedGeometry();
 
 					task.slot->resolved_binding_instance = mi;
 					task.slot->resolved_material = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
@@ -322,6 +324,11 @@ namespace hgl::ecs
 							}
 						}
 					}
+
+                 if (previous_unresolved_geometry
+					 && previous_unresolved_geometry != task.comp->GetUnresolvedGeometry()
+					 && (!task.comp->GetPrimitive() || previous_unresolved_geometry != task.comp->GetPrimitive()->GetGeometry()))
+						delete previous_unresolved_geometry;
 				}
 			}
 		}

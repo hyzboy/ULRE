@@ -47,6 +47,20 @@ namespace hgl::ecs
             }
         };
 
+        struct QuadMeshRecord
+        {
+            std::array<float, 2> size { 1.0f, 1.0f };
+            std::array<float, 2> pivot { 0.5f, 0.5f };
+            std::array<float, 4> uv_rect { 0.0f, 0.0f, 1.0f, 1.0f };
+            uint32_t front_face = 1;
+
+            template<class Archive>
+            void serialize(Archive& ar)
+            {
+                ar(CEREAL_NVP(size), CEREAL_NVP(pivot), CEREAL_NVP(uv_rect), CEREAL_NVP(front_face));
+            }
+        };
+
         struct BoundingBoxRecord
         {
             std::array<float, 3> min{};
