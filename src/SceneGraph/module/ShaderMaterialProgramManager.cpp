@@ -465,21 +465,47 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     return CreateMaterial(key, cfg);
 }
 
-// file-static: moved from MaterialAssetLoader.h (was inline)
-static ShaderMaterialProgram *CreateMaterialFromRecord(
-    ShaderMaterialProgramManager *mm,
+ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
     const mtl::MaterialRecipe &rec)
 {
-    if (!mm) return nullptr;
-
     using namespace mtl;
 
-    mm->GetStats().LogCreateMaterialFromRecordRequest(static_cast<uint32_t>(rec.preset),
-                                                      static_cast<uint32_t>(rec.dim),
-                                                      static_cast<uint32_t>(rec.prim),
-                                                      rec.l2w,
-                                                      static_cast<uint32_t>(rec.pipeline),
-                                                      static_cast<uint64_t>(mtl::ResolveRecipePrimaryKey(rec).Hash()));
+    GetStats().LogCreateMaterialFromRecordRequest(static_cast<uint32_t>(rec.preset),
+                                                  static_cast<uint32_t>(rec.dim),
+                                                  static_cast<uint32_t>(rec.prim),
+                                                  rec.l2w,
+                                                  static_cast<uint32_t>(rec.pipeline),
+                                                  static_cast<uint64_t>(mtl::ResolveRecipePrimaryKey(rec).Hash()));
+
+    auto create_2d = [this](const MaterialPreset preset, Material2DCreateConfig *cfg) -> ShaderMaterialProgram *
+    {
+        stats.RecordMaterialRequest();
+
+        ShaderMaterialProgram *mtl = CreateMaterial(preset, cfg);
+        if (!mtl)
+        {
+            mtl = GetFallbackMaterial();
+            if (mtl)
+                stats.RecordFallbackUsed();
+        }
+
+        return mtl;
+    };
+
+    auto create_3d = [this](const MaterialPreset preset, Material3DCreateConfig *cfg) -> ShaderMaterialProgram *
+    {
+        stats.RecordMaterialRequest();
+
+        ShaderMaterialProgram *mtl = CreateMaterial(preset, cfg);
+        if (!mtl)
+        {
+            mtl = GetFallbackMaterial();
+            if (mtl)
+                stats.RecordFallbackUsed();
+        }
+
+        return mtl;
+    };
 
     // ── Billboard2DFixed / Billboard2DDynamic ────────────────────────────────
     if (rec.preset == MaterialPreset::Billboard2DFixed ||
@@ -502,11 +528,11 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode == TextureSourceMode::Array)
             { cfg.use_texture_array = true; break; }
 
-        mm->GetStats().LogCreateMaterialFromRecordBillboard((int)rec.preset,
-                                                            (int)cfg.use_texture_array,
-                                                            (int)cfg.blend_mode);
+        GetStats().LogCreateMaterialFromRecordBillboard((int)rec.preset,
+                                                        (int)cfg.use_texture_array,
+                                                        (int)cfg.blend_mode);
 
-        return mm->ResolveOrCreateProgram(rec.preset, &cfg);
+        return create_3d(rec.preset, &cfg);
     }
     // ── Text2D ──────────────────────────────────────────────────────────────
     else if (rec.preset == MaterialPreset::Text2D)
@@ -516,9 +542,9 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
 
-        mm->GetStats().LogCreateMaterialFromRecord2D(static_cast<uint32_t>(cfg.prim),
-                                                     static_cast<uint32_t>(rec.preset));
-        return mm->ResolveOrCreateProgram(rec.preset, &cfg);
+        GetStats().LogCreateMaterialFromRecord2D(static_cast<uint32_t>(cfg.prim),
+                                                 static_cast<uint32_t>(rec.preset));
+        return create_2d(rec.preset, &cfg);
     }
     // ── 2D ──────────────────────────────────────────────────────────────────
     else if (rec.dim == MaterialRecipe::Dim::D2)
@@ -533,9 +559,9 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
 
-        mm->GetStats().LogCreateMaterialFromRecord2D(static_cast<uint32_t>(cfg.prim),
-                                                     static_cast<uint32_t>(rec.preset));
-        return mm->ResolveOrCreateProgram(rec.preset, &cfg);
+        GetStats().LogCreateMaterialFromRecord2D(static_cast<uint32_t>(cfg.prim),
+                                                 static_cast<uint32_t>(rec.preset));
+        return create_2d(rec.preset, &cfg);
     }
     // ── 3D ─────────────────────────────────────────────────────────────────
     else
@@ -548,7 +574,7 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             const std::string warning = mtl::BuildMalformedIntentFeatureWarningMessage(feature_mask,
                                                                                        rec.preset,
                                                                                        feature_validation);
-            mm->GetStats().LogLine(warning);
+            GetStats().LogLine(warning);
         }
 
         const bool include_camera = mtl::HasFeature(feature_mask, mtl::MaterialFeature::NeedsCamera);
@@ -574,11 +600,11 @@ static ShaderMaterialProgram *CreateMaterialFromRecord(
             if (tc.source_mode != TextureSourceMode::None)
                 cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
 
-        mm->GetStats().LogCreateMaterialFromRecord3D(static_cast<uint32_t>(cfg.prim),
-                                                     static_cast<uint32_t>(rec.preset),
-                                                     include_camera,
-                                                     include_sky);
-        return mm->ResolveOrCreateProgram(rec.preset, &cfg);
+        GetStats().LogCreateMaterialFromRecord3D(static_cast<uint32_t>(cfg.prim),
+                                                 static_cast<uint32_t>(rec.preset),
+                                                 include_camera,
+                                                 include_sky);
+        return create_3d(rec.preset, &cfg);
     }
 }
 
@@ -621,7 +647,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     }
 
     // Miss — fall back to recipe-based creation.
-    ShaderMaterialProgram *prog = CreateMaterialFromRecord(this, recipe);
+    ShaderMaterialProgram *prog = CreateMaterialFromRecord(recipe);
 
     if (prog)
     {
