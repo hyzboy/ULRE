@@ -100,16 +100,26 @@ private:
     Entity *camera_entity = nullptr;
 
     inline static const mtl::MaterialRecipe kSolidCfg {
-        .id       = "bounds_solid",
-        .preset   = mtl::MaterialPreset::Gizmo3D,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
+        .id             = "bounds_solid",
+        .preset         = mtl::MaterialPreset::Gizmo3D,
+        .vertex_input   = mtl::VertexInputProfile::PositionNormal3D,
+        .vertex_policy  = mtl::VertexTransformPolicy::Mesh3D,
+        .shading_model  = mtl::SurfaceShadingModel::Gizmo,
+        .schema         = mtl::ShaderDataSchema::Color4f,
+        .has_explicit_schema = true,
+        .pipeline       = GraphicsPipelinePreset::Solid3D,
     };
 
     inline static const mtl::MaterialRecipe kWireCfg {
-        .id       = "bounds_wire",
-        .preset   = mtl::MaterialPreset::PureColor3D,
-        .prim     = PrimitiveType::Lines,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
+        .id             = "bounds_wire",
+        .preset         = mtl::MaterialPreset::PureColor3D,
+        .prim           = PrimitiveType::Lines,
+        .vertex_input   = mtl::VertexInputProfile::Position3D,
+        .vertex_policy  = mtl::VertexTransformPolicy::Mesh3D,
+        .shading_model  = mtl::SurfaceShadingModel::PureColor,
+        .schema         = mtl::ShaderDataSchema::Color4f,
+        .has_explicit_schema = true,
+        .pipeline       = GraphicsPipelinePreset::Solid3D,
     };
 
 private:

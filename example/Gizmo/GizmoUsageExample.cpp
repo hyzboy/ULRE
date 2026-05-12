@@ -49,16 +49,26 @@ private:
     Geometry *cube_geometry = nullptr;
 
     inline static const mtl::MaterialRecipe kGridCfg {
-        .id       = "gizmo_grid",
-        .preset   = mtl::MaterialPreset::VertexLuminance2D,
-        .prim     = PrimitiveType::Lines,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
+        .id            = "gizmo_grid",
+        .preset        = mtl::MaterialPreset::VertexLuminance2D,
+        .prim          = PrimitiveType::Lines,
+        .vertex_input  = mtl::VertexInputProfile::PositionLuminance2D,
+        .vertex_policy = mtl::VertexTransformPolicy::Quad2D,
+        .shading_model = mtl::SurfaceShadingModel::VertexLuminance,
+        .schema        = mtl::ShaderDataSchema::Color4f,
+        .has_explicit_schema = true,
+        .pipeline      = GraphicsPipelinePreset::Solid3D,
     };
 
     inline static const mtl::MaterialRecipe kCubeCfg {
-        .id       = "gizmo_cube",
-        .preset   = mtl::MaterialPreset::Gizmo3D,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
+        .id            = "gizmo_cube",
+        .preset        = mtl::MaterialPreset::Gizmo3D,
+        .vertex_input  = mtl::VertexInputProfile::PositionNormal3D,
+        .vertex_policy = mtl::VertexTransformPolicy::Mesh3D,
+        .shading_model = mtl::SurfaceShadingModel::Gizmo,
+        .schema        = mtl::ShaderDataSchema::Color4f,
+        .has_explicit_schema = true,
+        .pipeline      = GraphicsPipelinePreset::Solid3D,
     };
 
     Color4f grid_color;

@@ -6,6 +6,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/framework/AppFramework.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderMaterialProgramManager.h>
@@ -25,6 +26,18 @@ namespace hgl::graph
 
     namespace
     {
+        inline const mtl::MaterialRecipe kText2DRecipe {
+            .id            = "text_render_text2d",
+            .preset        = mtl::MaterialPreset::Text2D,
+            .dim           = mtl::MaterialRecipe::Dim::D2,
+            .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,
+            .vertex_policy = mtl::VertexTransformPolicy::Text2D,
+            .shading_model = mtl::SurfaceShadingModel::Text,
+            .schema        = mtl::ShaderDataSchema::TextColor,
+            .has_explicit_schema = true,
+            .pipeline      = GraphicsPipelinePreset::Solid2D,
+        };
+
         ResourceDomain *ResolveDomainForMaterial(ShaderMaterialProgramManager *material_manager,
                                                  ShaderMaterialProgram *material,
                                                  uint32_t domain_id)
@@ -192,7 +205,7 @@ namespace hgl::graph
     {
         mtl::Text2DMaterialCreateConfig mtl_cfg;
 
-        mtl_fs=mtl_manager->ResolveOrCreateProgram(mtl::MaterialPreset::Text2D,&mtl_cfg);
+        mtl_fs=mtl_manager->ResolveOrCreateProgram(kText2DRecipe.preset,&mtl_cfg);
         if(!mtl_fs)return(false);
 
         //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RG16I格式

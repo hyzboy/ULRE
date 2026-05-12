@@ -62,10 +62,15 @@ private:
     Geometry* geom_plane_grid = nullptr;
 
     inline static const mtl::MaterialRecipe kPlaneGridCfg {
-        .id       = "billboard_ecs_plane_grid",
-        .preset   = mtl::MaterialPreset::VertexLuminance2D,
-        .prim     = PrimitiveType::Lines,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
+        .id            = "billboard_ecs_plane_grid",
+        .preset        = mtl::MaterialPreset::VertexLuminance2D,
+        .prim          = PrimitiveType::Lines,
+        .vertex_input  = mtl::VertexInputProfile::PositionLuminance2D,
+        .vertex_policy = mtl::VertexTransformPolicy::Quad2D,
+        .shading_model = mtl::SurfaceShadingModel::VertexLuminance,
+        .schema        = mtl::ShaderDataSchema::Color4f,
+        .has_explicit_schema = true,
+        .pipeline      = GraphicsPipelinePreset::Solid3D,
     };
 
     // Billboard resources are managed by BillboardRenderSystem
