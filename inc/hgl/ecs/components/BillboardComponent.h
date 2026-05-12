@@ -10,11 +10,18 @@
 namespace hgl::ecs
 {
     class QuadComponent;
+    class BillboardScaleComponent;
     class FacingTransformComponent;
     class TransformComponent;
     class Entity;
     enum class FacingMode : uint8_t;
     struct ComponentRecord;
+
+    enum class BillboardRenderBridgeMode : uint8_t
+    {
+        LegacyQuad = 0,
+        BehaviorOnly = 1,
+    };
 
     /**
      * BillboardComponent - Convenience wrapper for quad + facing transform
@@ -49,13 +56,16 @@ namespace hgl::ecs
     private:
 
         QuadComponent* quad = nullptr;
+        BillboardScaleComponent* scale = nullptr;
         FacingTransformComponent* facing = nullptr;
+        BillboardRenderBridgeMode bridge_mode = BillboardRenderBridgeMode::LegacyQuad;
 
     public:
 
         explicit BillboardComponent(const std::string& name = "Billboard")
             : Component(name)
             , quad(nullptr)
+            , scale(nullptr)
             , facing(nullptr)
         {
         }
@@ -68,7 +78,10 @@ namespace hgl::ecs
 
         // Access underlying components
         QuadComponent* GetQuadComponent() const { return quad; }
+        BillboardScaleComponent* GetScaleComponent() const { return scale; }
         FacingTransformComponent* GetFacingComponent() const { return facing; }
+        void SetRenderBridgeMode(BillboardRenderBridgeMode mode) { bridge_mode = mode; }
+        BillboardRenderBridgeMode GetRenderBridgeMode() const { return bridge_mode; }
 
     public:
 

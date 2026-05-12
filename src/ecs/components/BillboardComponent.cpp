@@ -1,5 +1,6 @@
 ﻿#include<hgl/ecs/components/BillboardComponent.h>
 #include<hgl/ecs/components/QuadComponent.h>
+#include<hgl/ecs/components/BillboardScaleComponent.h>
 #include<hgl/ecs/components/FacingTransformComponent.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/ComponentRecords.h>
@@ -20,51 +21,86 @@ namespace hgl::ecs
     // Convenience API - delegates to QuadComponent
     void BillboardComponent::SetSize(uint32_t width, uint32_t height)
     {
-        auto* owner = GetOwner();
-        if (!quad)
-            quad = GetOrAddComponentHelper<QuadComponent>(owner);
-
-        if (quad)
-            quad->SetPixelSize(width, height);
+        SetPixelSize(width, height);
     }
 
     void BillboardComponent::SetPixelSize(uint32_t width, uint32_t height)
     {
         auto* owner = GetOwner();
-        if (!quad)
-            quad = GetOrAddComponentHelper<QuadComponent>(owner);
 
-        if (quad)
-            quad->SetPixelSize(width, height);
+        if (!scale)
+            scale = GetOrAddComponentHelper<BillboardScaleComponent>(owner);
+
+        if (scale)
+        {
+            scale->SetFixedPixelSize(true);
+            scale->SetPixelSize(width, height);
+        }
+
+        if (bridge_mode == BillboardRenderBridgeMode::LegacyQuad)
+        {
+            if (!quad)
+                quad = GetOrAddComponentHelper<QuadComponent>(owner);
+
+            if (quad)
+                quad->SetPixelSize(width, height);
+        }
     }
 
     void BillboardComponent::SetWorldSize(float width, float height)
     {
         auto* owner = GetOwner();
-        if (!quad)
-            quad = GetOrAddComponentHelper<QuadComponent>(owner);
 
-        if (quad)
-            quad->SetWorldSize(width, height);
+        if (!scale)
+            scale = GetOrAddComponentHelper<BillboardScaleComponent>(owner);
+
+        if (scale)
+        {
+            scale->SetFixedPixelSize(false);
+            scale->SetWorldSize(width, height);
+        }
+
+        if (bridge_mode == BillboardRenderBridgeMode::LegacyQuad)
+        {
+            if (!quad)
+                quad = GetOrAddComponentHelper<QuadComponent>(owner);
+
+            if (quad)
+                quad->SetWorldSize(width, height);
+        }
     }
 
     bool BillboardComponent::IsFixedPixelSize() const
     {
-        return quad ? quad->IsFixedPixelSize() : true;
+        return scale ? scale->IsFixedPixelSize()
+                     : (quad ? quad->IsFixedPixelSize() : true);
     }
 
     void BillboardComponent::SetFixedPixelSize(bool fixed)
     {
         auto* owner = const_cast<BillboardComponent*>(this)->GetOwner();
-        if (!quad)
-            quad = GetOrAddComponentHelper<QuadComponent>(owner);
 
-        if (quad)
-            quad->SetFixedPixelSize(fixed);
+        if (!scale)
+            scale = GetOrAddComponentHelper<BillboardScaleComponent>(owner);
+
+        if (scale)
+            scale->SetFixedPixelSize(fixed);
+
+        if (bridge_mode == BillboardRenderBridgeMode::LegacyQuad)
+        {
+            if (!quad)
+                quad = GetOrAddComponentHelper<QuadComponent>(owner);
+
+            if (quad)
+                quad->SetFixedPixelSize(fixed);
+        }
     }
 
     void BillboardComponent::SetTexture(const hgl::OSString& path)
     {
+        if (bridge_mode != BillboardRenderBridgeMode::LegacyQuad)
+            return;
+
         auto* owner = GetOwner();
         if (!quad)
             quad = GetOrAddComponentHelper<QuadComponent>(owner);
@@ -81,6 +117,9 @@ namespace hgl::ecs
 
     void BillboardComponent::SetDomainTag(const std::string& tag)
     {
+        if (bridge_mode != BillboardRenderBridgeMode::LegacyQuad)
+            return;
+
         auto* owner = GetOwner();
         if (!quad)
             quad = GetOrAddComponentHelper<QuadComponent>(owner);
@@ -97,6 +136,9 @@ namespace hgl::ecs
 
     void BillboardComponent::SetFrontFace(VkFrontFace face)
     {
+        if (bridge_mode != BillboardRenderBridgeMode::LegacyQuad)
+            return;
+
         auto* owner = GetOwner();
         if (!quad)
             quad = GetOrAddComponentHelper<QuadComponent>(owner);
@@ -144,6 +186,9 @@ namespace hgl::ecs
 
     void BillboardComponent::SetVisible(bool visible)
     {
+        if (bridge_mode != BillboardRenderBridgeMode::LegacyQuad)
+            return;
+
         auto* owner = GetOwner();
         if (!quad)
             quad = GetOrAddComponentHelper<QuadComponent>(owner);
@@ -163,7 +208,10 @@ namespace hgl::ecs
         auto* owner = GetOwner();
         if (owner)
         {
-            quad = GetOrAddComponentHelper<QuadComponent>(owner);
+            if (bridge_mode == BillboardRenderBridgeMode::LegacyQuad)
+                quad = GetOrAddComponentHelper<QuadComponent>(owner);
+
+            scale = GetOrAddComponentHelper<BillboardScaleComponent>(owner);
             facing = GetOrAddComponentHelper<FacingTransformComponent>(owner);
         }
 
