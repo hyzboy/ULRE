@@ -271,6 +271,142 @@ namespace hgl::ecs
             return false;
         }
 
+        if (!binding.HasDomainTag())
+        {
+            auto *previous_material = primitive->GetShaderMaterialProgram();
+            auto *descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>().get();
+            const auto resolved_state = primitive->ResolveEffectiveMaterialState();
+            auto *mi = resolved_state.binding_instance;
+            auto *material = resolved_state.material;
+            auto *mi_binding = mi ? graph::MaterialBindingInstanceInternalAccess::GetDomainBinding(mi) : nullptr;
+            const graph::VIL *resolved_vil = resolved_state.vil;
+
+            if (!mi || !material)
+            {
+                LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] Non-domain: missing resolved state: primitive=%p mi=%p material=%p texture='%s'",
+                        static_cast<void *>(primitive),
+                        static_cast<void *>(mi),
+                        static_cast<void *>(material),
+                        texture_path.c_str());
+                return false;
+            }
+
+            LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain: reusing resolved state: primitive=%p mi=%p material=%p(%s) mi.binding=%p slot=%u",
+                    static_cast<void *>(primitive),
+                    static_cast<void *>(mi),
+                    static_cast<void *>(material),
+                    material->GetName().c_str(),
+                    static_cast<void *>(mi_binding),
+                    static_cast<unsigned>(binding.slot));
+            LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain request source: texture='%s' source_mode=%u",
+                    texture_path.c_str(),
+                    static_cast<unsigned>(binding.source_mode));
+
+            auto *texture = texture_manager->LoadTexture2D(texture_path, true);
+            if (!texture)
+            {
+                LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] LoadTexture2D failed: texture='%s'", texture_path.c_str());
+                return false;
+            }
+
+            auto *sampler = QuadResourcePrepareSystem::GetSharedSampler();
+            if (!sampler)
+                sampler = sampler_manager->CreateSampler(texture);
+            if (!sampler)
+            {
+                LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] sampler is null: texture='%s'",
+                        texture_path.c_str());
+                return false;
+            }
+
+            if (mi_binding)
+            {
+                mi_binding->BindResourceSampler(binding.slot, texture, sampler);
+                mi_binding->Update();
+                auto *binding_pm = mi_binding->GetPerMaterialMP();
+                LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain mi.binding updated: binding=%p pm=%p ds=%p tex=%p sampler=%p",
+                        static_cast<void *>(mi_binding),
+                        static_cast<void *>(binding_pm),
+                        binding_pm ? (void *)binding_pm->GetVkDescriptorSet() : nullptr,
+                        static_cast<void *>(texture),
+                        static_cast<void *>(sampler));
+            }
+
+            if (!material->BindResourceSampler(binding.slot, texture, sampler))
+            {
+                LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] material->BindResourceSampler failed (non-domain): material=%p(%s) slot=%u tex=%p sampler=%p",
+                        static_cast<void *>(material),
+                        material->GetName().c_str(),
+                        static_cast<unsigned>(binding.slot),
+                        static_cast<void *>(texture),
+                        static_cast<void *>(sampler));
+                return false;
+            }
+            material->Update();
+            auto *material_pm = material->GetMP(hgl::graph::DescriptorSetType::PerMaterial);
+            LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain material updated: material=%p(%s) pm=%p ds=%p tex=%p sampler=%p",
+                    static_cast<void *>(material),
+                    material->GetName().c_str(),
+                    static_cast<void *>(material_pm),
+                    material_pm ? (void *)material_pm->GetVkDescriptorSet() : nullptr,
+                    static_cast<void *>(texture),
+                    static_cast<void *>(sampler));
+
+            if (descriptor_binding_system)
+            {
+                if (previous_material && previous_material != material)
+                    descriptor_binding_system->ClearMaterialBindings(previous_material);
+
+                if (mi_binding)
+                {
+                    descriptor_binding_system->RegisterDomainBinding(mi_binding);
+                    descriptor_binding_system->RegisterDomainTextureSampler(mi_binding,
+                                                                           binding.slot,
+                                                                           texture,
+                                                                           sampler);
+                }
+
+                descriptor_binding_system->RegisterMaterialTextureSampler(material,
+                                                                          binding.slot,
+                                                                          texture,
+                                                                          sampler);
+            }
+
+            math::Vector2u texture_size(texture->GetWidth(), texture->GetHeight());
+            mi->WriteMIData(texture_size);
+
+            RuntimeTextureBinding runtime_binding{};
+            runtime_binding.kind = RuntimeTextureBinding::Kind::SingleTexture;
+            runtime_binding.texture = texture;
+            runtime_binding.sampler = sampler;
+            runtime_binding.domain_binding = mi_binding;
+            runtime_binding.domain = resolved_state.domain;
+            runtime_binding.binding_id = g_runtime_texture_binding_id++;
+            runtime_binding.status = RuntimeTextureBinding::Status::Ready;
+            runtime_binding.ready = true;
+            primitive->SetRuntimeTextureBinding(runtime_binding);
+
+            UpdateResolvedMaterialState(primitive, mi, material, resolved_vil);
+            primitive->SetStagingRenderState(BuildStagingMaterialState(primitive,
+                                                                       mi,
+                                                                       material,
+                                                                       resolved_vil,
+                                                                       primitive->GetRuntimeTextureBinding()),
+                                             primitive->GetPrimitive());
+            mi_binding = graph::MaterialBindingInstanceInternalAccess::GetDomainBinding(mi);
+            LogInfo("[TBV][TextureMaterialBindingSystem] Final resolved state updated (non-domain): primitive=%p primitive.prim=%p mi=%p material=%p(%s) mi.binding=%p resolved_domain=%p resolved_mi_id=%d preset=%u",
+                    static_cast<void *>(primitive),
+                    static_cast<void *>(primitive->GetPrimitive()),
+                    static_cast<void *>(mi),
+                    static_cast<void *>(material),
+                    material->GetName().c_str(),
+                    static_cast<void *>(mi_binding),
+                    static_cast<void *>(graph::MaterialBindingInstanceInternalAccess::GetDomain(mi)),
+                    mi->GetMIID(),
+                    static_cast<unsigned>(mi->GetRenderPreset()));
+            return true;
+        }
+
         graph::mtl::MaterialRecipe recipe;
         if (!BuildBoundRecipe(world, primitive, binding, recipe))
         {
@@ -320,17 +456,6 @@ namespace hgl::ecs
                 static_cast<const void *>(resolved_vil),
                 binding.HasDomainTag() ? binding.domain_tag.c_str() : "",
                 texture_path.c_str());
-
-        if (!EnsurePrimitiveBindingInstance(primitive_manager, primitive, mi, resolved_vil))
-        {
-            LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] EnsurePrimitiveBindingInstance failed: primitive=%p mi=%p material=%p(%s) vil=%p",
-                    static_cast<void *>(primitive),
-                    static_cast<void *>(mi),
-                    static_cast<void *>(material),
-                    material ? material->GetName().c_str() : "<null>",
-                    static_cast<const void *>(resolved_vil));
-            return false;
-        }
 
         auto *descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>().get();
 
@@ -470,6 +595,17 @@ namespace hgl::ecs
                         domain_resources ? static_cast<void *>(domain_resources->texture_array) : nullptr,
                         domain_resources ? static_cast<void *>(domain_resources->sampler) : nullptr);
                 return false; // not ready yet; will retry next frame
+            }
+
+            if (!EnsurePrimitiveBindingInstance(primitive_manager, primitive, mi, resolved_vil))
+            {
+                LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] EnsurePrimitiveBindingInstance failed: primitive=%p mi=%p material=%p(%s) vil=%p",
+                        static_cast<void *>(primitive),
+                        static_cast<void *>(mi),
+                        static_cast<void *>(material),
+                        material ? material->GetName().c_str() : "<null>",
+                        static_cast<const void *>(resolved_vil));
+                return false;
             }
 
             if (handle.binding)

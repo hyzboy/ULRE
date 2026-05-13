@@ -62,7 +62,7 @@ namespace hgl::ecs
 
     private:
 
-        bool EnsurePrimitiveTextureBinding(class PrimitiveComponent *primitive,
-                                            const TextureBindingTask  &task);
+        bool ProcessTask(const TextureBindingTask &task);
+        bool EnsurePrimitiveTextureBinding(PrimitiveComponent *primitive,const TextureBindingTask &binding);
     };
 }//namespace hgl::ecs

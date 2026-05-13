@@ -1,4 +1,4 @@
-﻿#include <hgl/ecs/core/DefaultSystems.h>
+#include <hgl/ecs/core/DefaultSystems.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/SystemGroup.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
@@ -17,6 +17,7 @@
 #include <hgl/ecs/systems/render/PrimitiveBindingCommitSystem.h>
 #include <hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
 #include <hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
+#include <hgl/ecs/systems/render/QuadMeshPrepareSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
 #include <hgl/ecs/support/terrain/TerrainRenderPipelineGroup.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
@@ -69,6 +70,10 @@ namespace
         auto quad_resource_prepare_system = EnsureRenderSystem<hgl::ecs::QuadResourcePrepareSystem>(ctx);
         if (quad_resource_prepare_system)
             quad_resource_prepare_system->SetWorld(ctx);
+
+        auto quad_mesh_prepare_system = EnsureRenderSystem<hgl::ecs::QuadMeshPrepareSystem>(ctx);
+        if (quad_mesh_prepare_system)
+            quad_mesh_prepare_system->SetWorld(ctx);
 
         // MaterialResolveSystem
         auto material_resolve_system = EnsureRenderSystem<hgl::ecs::MaterialResolveSystem>(ctx);
