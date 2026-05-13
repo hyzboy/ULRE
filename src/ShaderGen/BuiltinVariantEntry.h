@@ -285,6 +285,26 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.def_hint = StaticMaterialDefIdHint::Gizmo3D;
         break;
 
+    case MaterialPreset::UnlitTexture3D:
+        row.primitive = PrimitiveType::Triangles;
+        row.vertex_input = VertexInputProfile::PositionTexCoord3D;
+        row.vertex_policy = VertexTransformPolicy::Mesh3D;
+        row.surface_model = SurfaceShadingModel::UnlitTexture3D;
+        row.vs_features.SetVertexAttrib(VertexAttrib::Position);
+        row.vs_features.SetVertexAttrib(VertexAttrib::TexCoord);
+        row.fs_features.SetVertexAttrib(VertexAttrib::TexCoord);
+        row.resources.needs_viewport = true;
+        row.resources.needs_camera = true;
+        row.resources.needs_transform = true;
+        row.texture_count = 1;
+        row.textures[0].slot = SamplerSlot::BaseColor;
+        row.textures[0].source_mode = e.tex[0].mode;
+        row.textures[0].sampler_type = e.tex[0].mode == TextureSourceMode::Array
+                                       ? SamplerType::Sampler2DArray
+                                       : SamplerType::Sampler2D;
+        row.def_hint = StaticMaterialDefIdHint::UnlitTexture3D;
+        break;
+
     case MaterialPreset::Billboard2DDynamic:
         row.primitive = PrimitiveType::Billboard;
         row.vertex_input = VertexInputProfile::BillboardPositionOnly3D;

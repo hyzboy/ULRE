@@ -138,10 +138,39 @@ bool ShaderMaterialProgram::BindResourceSampler(const DescriptorSetType &type,mt
 {
     MaterialParameters *mp=GetMP(type);
 
-    if(!mp)
-        return(false);
+    LogInfo("[TBV][ShaderMaterialProgram] BindResourceSampler: material=%p(%s) type=%u slot=%u mp=%p tex=%p sampler=%p",
+            static_cast<void *>(this),
+            GetName().c_str(),
+            static_cast<unsigned>(type),
+            static_cast<unsigned>(slot),
+            static_cast<void *>(mp),
+            static_cast<void *>(tex),
+            static_cast<void *>(sampler));
 
-    return mp->BindResourceSampler(slot,tex,sampler);
+    if(!mp)
+    {
+        LogInfo("[TBV][ShaderMaterialProgram][FAIL] GetMP returned null: material=%p(%s) type=%u slot=%u",
+                static_cast<void *>(this),
+                GetName().c_str(),
+                static_cast<unsigned>(type),
+                static_cast<unsigned>(slot));
+        return(false);
+    }
+
+    const bool ok = mp->BindResourceSampler(slot,tex,sampler);
+    if(!ok)
+    {
+        LogInfo("[TBV][ShaderMaterialProgram][FAIL] mp->BindResourceSampler returned false: material=%p(%s) type=%u slot=%u mp=%p tex=%p sampler=%p",
+                static_cast<void *>(this),
+                GetName().c_str(),
+                static_cast<unsigned>(type),
+                static_cast<unsigned>(slot),
+                static_cast<void *>(mp),
+                static_cast<void *>(tex),
+                static_cast<void *>(sampler));
+    }
+
+    return ok;
 }
 
 void ShaderMaterialProgram::Update()

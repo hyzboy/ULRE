@@ -26,6 +26,7 @@ namespace hgl::graph::mtl
         PositionLuminance3D,
         PositionLuminance2D,
         PositionTexCoord2D,
+        PositionTexCoord3D,
         PositionPaletteIndex3D,
         BillboardPositionOnly3D,
         FullscreenProcedural,
@@ -53,6 +54,7 @@ namespace hgl::graph::mtl
         Texture2D,
         Text,
         BillboardTexture,
+        UnlitTexture3D,
         Gizmo,
         TerrainGrid,
         SkyMinimal,
@@ -77,6 +79,7 @@ namespace hgl::graph::mtl
         VertexColor3D,
         VertexPaletteColor3D,
         VertexLuminance3D,
+        UnlitTexture3D,
         Text2D,
         FullscreenTriangle,
     };
@@ -173,6 +176,7 @@ namespace hgl::graph::mtl
         case VertexInputProfile::PositionLuminance3D: return "PositionLuminance3D";
         case VertexInputProfile::PositionLuminance2D: return "PositionLuminance2D";
         case VertexInputProfile::PositionTexCoord2D: return "PositionTexCoord2D";
+        case VertexInputProfile::PositionTexCoord3D: return "PositionTexCoord3D";
         case VertexInputProfile::PositionPaletteIndex3D: return "PositionPaletteIndex3D";
         case VertexInputProfile::BillboardPositionOnly3D: return "BillboardPositionOnly3D";
         case VertexInputProfile::FullscreenProcedural: return "FullscreenProcedural";

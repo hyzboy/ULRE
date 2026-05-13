@@ -5,7 +5,7 @@
 namespace hgl::ecs
 {
     class ECSContext;
-    class TextureBindingComponent;
+    class TextureBindingRequestComponent;
 
     class TextureMaterialBindingSystem : public System
     {
@@ -27,6 +27,6 @@ namespace hgl::ecs
     private:
 
         bool EnsurePrimitiveTextureBinding(class PrimitiveComponent *primitive,
-                                           TextureBindingComponent *binding);
+                                           TextureBindingRequestComponent *binding);
     };
 }//namespace hgl::ecs

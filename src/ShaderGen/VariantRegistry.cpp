@@ -925,6 +925,19 @@ const BuiltinVariantEntry kBuiltinVariants[] =
     { .name = "Gizmo3D",            .preset = MaterialPreset::Gizmo3D,
       .surface_path = "surface/gizmo3d_surface.glsl" },
 
+    // ── UnlitTexture3D (Mesh3D, BaseColor only, Simple + Array) ─────────────────────────────────
+    { .name = "UnlitTexture3D",      .preset = MaterialPreset::UnlitTexture3D,
+      .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
+      .vertex_bits = VA(VertexAttrib::TexCoord),
+      .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .surface_path = "surface/unlit_texture3d_surface.glsl" },
+
+    { .name = "UnlitTexture3DArray", .preset = MaterialPreset::UnlitTexture3D,
+      .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
+      .vertex_bits = VA(VertexAttrib::TexCoord),
+      .tex = {{ Slot::BaseColor, TSM::Array }},
+      .surface_path = "surface/unlit_texture3d_surface.glsl" },
+
     // ── Billboard  (2 geometries × 5 blend modes) ───────────────────────────────────────────────
     { .name = "Billboard2DDynamicOpaque",   .preset = MaterialPreset::Billboard2DDynamic,
       .geometry_mode = GM::BillboardCameraFacing, .blend = RM::Opaque,          .pass = PT::ForwardOpaque,
@@ -1144,6 +1157,26 @@ const MaterialVariantRow kBuiltinVariantRows[] =
       .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal }), .fs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal }),
       .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
       .schema = ShaderDataSchema::Color4f, .def_hint = StaticMaterialDefIdHint::Gizmo3D },
+
+    { .name = "UnlitTexture3D", .preset = MaterialPreset::UnlitTexture3D, .factory_type = MaterialPreset::UnlitTexture3D,
+      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
+      .vertex_input = VertexInputProfile::PositionTexCoord3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::UnlitTexture3D,
+      .blend = RenderAlphaMode::Transparent, .pass = PassType::ForwardTransparent,
+      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/unlit_texture3d_surface.glsl",
+      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::TexCoord }), .fs_features = MakeStageFeatures({ VertexAttrib::TexCoord }),
+      .resources = { true, true, false, true, false, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
+      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
+      .schema = ShaderDataSchema::None, .def_hint = StaticMaterialDefIdHint::UnlitTexture3D },
+
+    { .name = "UnlitTexture3DArray", .preset = MaterialPreset::UnlitTexture3D, .factory_type = MaterialPreset::UnlitTexture3D,
+      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
+      .vertex_input = VertexInputProfile::PositionTexCoord3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::UnlitTexture3D,
+      .blend = RenderAlphaMode::Transparent, .pass = PassType::ForwardTransparent,
+      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/unlit_texture3d_surface.glsl",
+      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::TexCoord }), .fs_features = MakeStageFeatures({ VertexAttrib::TexCoord }),
+      .resources = { true, true, false, true, false, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
+      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Array, SamplerType::Sampler2DArray, TextureChannelHint::RGBA } }, .texture_count = 1,
+      .schema = ShaderDataSchema::None, .def_hint = StaticMaterialDefIdHint::UnlitTexture3D },
 
     { .name = "Billboard2DDynamicOpaque", .preset = MaterialPreset::Billboard2DDynamic, .factory_type = MaterialPreset::Billboard2DDynamic,
       .primitive = PrimitiveType::Billboard, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::BillboardCameraFacing, .position_provider = PositionProviderId::DirectVec3,

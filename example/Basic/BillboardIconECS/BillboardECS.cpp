@@ -27,7 +27,7 @@
 #include<hgl/ecs/components/BillboardComponent.h>
 #include<hgl/ecs/components/QuadComponent.h>
 #include<hgl/ecs/components/QuadMeshComponent.h>
-#include<hgl/ecs/components/TextureBindingComponent.h>
+#include<hgl/ecs/components/TextureBindingRequestComponent.h>
 #include<hgl/ecs/components/FacingTransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -372,7 +372,7 @@ private:
             primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg));
             primitive->SetVisible(true);
 
-            auto texture_binding = textured_quad_entity->AddComponent<TextureBindingComponent>();
+            auto texture_binding = textured_quad_entity->AddComponent<TextureBindingRequestComponent>();
             texture_binding->SetTexturePath(kIconTextures[22]);
         }
 
@@ -392,7 +392,7 @@ private:
             primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg));
             primitive->SetVisible(true);
 
-            auto texture_binding = textured_quad_domain_entity->AddComponent<TextureBindingComponent>();
+            auto texture_binding = textured_quad_domain_entity->AddComponent<TextureBindingRequestComponent>();
             texture_binding->SetTexturePath(kIconTextures[10]);
             texture_binding->SetDomainTag("3001");
         }

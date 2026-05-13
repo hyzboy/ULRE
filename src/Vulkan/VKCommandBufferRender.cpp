@@ -157,11 +157,15 @@ bool RenderCmdBuffer::BindDescriptorSets(DomainResourceBinding *binding)
 
     const uint32_t first_set = pld ? (uint32_t)pld->GetVulkanSetIndex(DescriptorSetType::PerMaterial) : 0;
 
-        LogInfo("[RenderCmdBuffer] BindDescriptorSets(domain) material=%s domain=%p set=%u ds=%p",
+        LogInfo("[TBV][RenderCmdBuffer] BindDescriptorSets(domain) binding=%p material=%s domain=%p set=%u ds=%p pm=%p po=%p po_ds=%p",
+            static_cast<void *>(binding),
             binding->GetShaderMaterialProgram() ? binding->GetShaderMaterialProgram()->GetName().c_str() : "<null>",
             static_cast<void *>(binding->GetDomain()),
             first_set,
-                (void *)ds);
+            (void *)ds,
+            static_cast<void *>(mp),
+            static_cast<void *>(po_mp),
+            po_mp ? (void *)po_mp->GetVkDescriptorSet() : nullptr);
 
     vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             pipeline_layout, first_set, 1, &ds, 0, nullptr);

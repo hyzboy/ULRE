@@ -17,18 +17,6 @@ namespace hgl::ecs
         };
     }
 
-    void TextureBindingRequestComponent::OnAttach()
-    {
-    }
-
-    void TextureBindingRequestComponent::OnUpdate(float)
-    {
-    }
-
-    void TextureBindingRequestComponent::OnDetach()
-    {
-    }
-
     const char* TextureBindingRequestComponent::GetSerializationType()
     {
         return "TextureBindingRequest";

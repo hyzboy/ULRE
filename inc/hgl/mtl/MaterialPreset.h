@@ -59,6 +59,7 @@ namespace hgl::graph::mtl
         Standard,
         PBRColor3D,
         VertexLuminance2D,
+        UnlitTexture3D,
 
         // Semantic presets (currently aliases to Standard pipeline)
         HumanSkin,

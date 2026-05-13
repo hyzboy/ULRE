@@ -111,10 +111,26 @@ bool MaterialParameters::BindResourceSampler(const int &index,Texture *tex,Sampl
             (void*)descriptor_set);
 
     if(index<0||!tex||!sampler)
+    {
+        LogInfo(u8"[TBV][MaterialParameters][FAIL] BindResourceSampler(index) invalid input: index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
+            index,
+            (uint)set_type,
+            (void*)tex,
+            (void*)sampler,
+            (void*)descriptor_set);
         return(false);
+    }
 
     if(!descriptor_set->BindResourceSampler(index,tex,sampler))
+    {
+        LogInfo(u8"[TBV][MaterialParameters][FAIL] descriptor_set->BindResourceSampler(index) failed: index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
+            index,
+            (uint)set_type,
+            (void*)tex,
+            (void*)sampler,
+            (void*)descriptor_set);
         return(false);
+    }
 
     return(true);
 }
@@ -122,7 +138,15 @@ bool MaterialParameters::BindResourceSampler(const int &index,Texture *tex,Sampl
 bool MaterialParameters::BindResourceSampler(const mtl::SamplerSlot slot,Texture *tex,Sampler *sampler)
 {
     if(!tex||!sampler)
+    {
+        LogInfo(u8"[TBV][MaterialParameters][FAIL] BindResourceSampler(slot) invalid tex/sampler: slot=%u set_type=%u tex=%p sampler=%p descriptor_set=%p",
+            (uint)slot,
+            (uint)set_type,
+            (void*)tex,
+            (void*)sampler,
+            (void*)descriptor_set);
         return(false);
+    }
 
     const int index=desc_manager->GetTextureSampler(set_type,slot);
 
@@ -135,10 +159,26 @@ bool MaterialParameters::BindResourceSampler(const mtl::SamplerSlot slot,Texture
             (void*)descriptor_set);
 
     if(index<0)
+    {
+        LogInfo(u8"[TBV][MaterialParameters][FAIL] GetTextureSampler returned invalid index: slot=%u index=%d set_type=%u descriptor_set=%p",
+            (uint)slot,
+            index,
+            (uint)set_type,
+            (void*)descriptor_set);
         return(false);
+    }
 
     if(!descriptor_set->BindResourceSampler(index,tex,sampler))
+    {
+        LogInfo(u8"[TBV][MaterialParameters][FAIL] descriptor_set->BindResourceSampler(slot) failed: slot=%u index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
+            (uint)slot,
+            index,
+            (uint)set_type,
+            (void*)tex,
+            (void*)sampler,
+            (void*)descriptor_set);
         return(false);
+    }
 
     return(true);
 }

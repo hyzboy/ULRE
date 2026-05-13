@@ -131,8 +131,8 @@ set(ECS_SYS_10B_RenderMaterialBind_QuadMeshPrepareSystem_FILES
 set(ECS_SYS_10C_RenderMaterialBind_TextureMaterialBindingSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/TextureMaterialBindingSystem.h
     systems/render/TextureMaterialBindingSystem.cpp
-    ${ECS_INCLUDE_PATH}/components/TextureBindingComponent.h
-    components/TextureBindingComponent.cpp
+    ${ECS_INCLUDE_PATH}/components/TextureBindingRequestComponent.h
+    components/TextureBindingRequestComponent.cpp
 )
 
 set(ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES
