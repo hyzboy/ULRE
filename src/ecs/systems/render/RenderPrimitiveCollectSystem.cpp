@@ -60,6 +60,7 @@ namespace hgl::ecs
         size_t skipped_invisible = 0;
         size_t skipped_no_owner = 0;
         size_t skipped_no_transform = 0;
+        size_t skipped_no_committed_state = 0;
         size_t added = 0;
 
         const glm::vec3 camera_pos = glm::vec3(cameraInfo->pos);
@@ -97,6 +98,13 @@ namespace hgl::ecs
             if (!world->IsEntityRenderEnabled(entity))
                 continue;
 
+            if (!primitiveComp->HasCommittedRenderState())
+            {
+                ++skipped_no_committed_state;
+                continue;
+
+            }
+
             auto transform = entity->GetComponent<TransformComponent>();
             if (!transform)
             {
@@ -119,14 +127,16 @@ namespace hgl::ecs
             ++added;
         }
 
-        //if (cache.renderableCount == 0)
-        //{
-        //    LogInfo("[RenderPrimitiveCollectSystem] No renderables: total=%zu visible=%zu no_owner=%zu no_transform=%zu",
-        //             primitives.size(),
-        //             added,
-        //             skipped_no_owner,
-        //             skipped_no_transform);
-        //}
+        if (cache.renderableCount == 0)
+        {
+            LogInfo("[ECS::RenderPrimitiveCollectSystem] no renderables: total=%zu added=%zu invisible=%zu no_owner=%zu no_transform=%zu no_committed=%zu",
+                    primitives.size(),
+                    added,
+                    skipped_invisible,
+                    skipped_no_owner,
+                    skipped_no_transform,
+                    skipped_no_committed_state);
+        }
     }
 }//namespace hgl::ecs
 

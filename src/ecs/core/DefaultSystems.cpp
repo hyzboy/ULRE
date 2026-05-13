@@ -14,6 +14,7 @@
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include <hgl/ecs/systems/render/MaterialResolveSystem.h>
+#include <hgl/ecs/systems/render/PrimitiveBindingCommitSystem.h>
 #include <hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
 #include <hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
@@ -78,6 +79,10 @@ namespace
         auto texture_binding_system = EnsureRenderSystem<hgl::ecs::TextureMaterialBindingSystem>(ctx);
         if (texture_binding_system)
             texture_binding_system->SetWorld(ctx);
+
+        auto primitive_binding_commit_system = EnsureRenderSystem<hgl::ecs::PrimitiveBindingCommitSystem>(ctx);
+        if (primitive_binding_commit_system)
+            primitive_binding_commit_system->SetWorld(ctx);
 
         // Collect system stays: gathers PrimitiveComponents into RenderFrameCache
         auto render_collect_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveCollectSystem>(ctx);

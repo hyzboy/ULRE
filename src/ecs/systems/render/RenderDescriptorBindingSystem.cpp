@@ -431,6 +431,14 @@ namespace hgl::ecs
             graph::MaterialParameters *domain_mp = domain_binding ? domain_binding->GetPerMaterialMP() : nullptr;
             graph::MaterialParameters *domain_po = domain_binding ? domain_binding->GetPerObjectMP()   : nullptr;
 
+            // Cache the resolved domain binding on the batch so PrimitiveRenderSystem can use it
+            // without relying on runtime_texture_binding (which is only set for texture-bearing primitives).
+            {
+                MaterialBatch *mutable_batch = pair.second.get();
+                if (mutable_batch)
+                    mutable_batch->domain_binding = domain_binding;
+            }
+
             const auto &contract = material->GetBindingContract();
             ApplySceneUBOBindings(material, contract, scene_ubo_resolvers);
 

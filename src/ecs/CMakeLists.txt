@@ -145,6 +145,11 @@ set(ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES
     systems/render/MaterialResolveSystem.cpp
 )
 
+set(ECS_SYS_11C_RenderMaterialBind_PrimitiveBindingCommitSystem_FILES
+    ${ECS_INCLUDE_PATH}/systems/render/PrimitiveBindingCommitSystem.h
+    systems/render/PrimitiveBindingCommitSystem.cpp
+)
+
 set(ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderBufferUploadSystem.h
     systems/render/RenderBufferUploadSystem.cpp
@@ -354,6 +359,7 @@ set(ECS_SOURCE
     ${ECS_SYS_10C_RenderMaterialBind_TextureMaterialBindingSystem_FILES}
     ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES}
     ${ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES}
+    ${ECS_SYS_11C_RenderMaterialBind_PrimitiveBindingCommitSystem_FILES}
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
     ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES}
     ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES}
@@ -399,6 +405,7 @@ source_group("ECS\\Systems\\10B RenderMaterialBind_QuadMeshPrepareSystem" FILES 
 source_group("ECS\\Systems\\10C RenderMaterialBind_TextureMaterialBindingSystem" FILES ${ECS_SYS_10C_RenderMaterialBind_TextureMaterialBindingSystem_FILES})
 source_group("ECS\\Systems\\11 RenderMaterialBind_QuadMaterialBindingSystem" FILES ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES})
 source_group("ECS\\Systems\\11B RenderMaterialBind_MaterialResolveSystem" FILES ${ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES})
+source_group("ECS\\Systems\\11C RenderMaterialBind_PrimitiveBindingCommitSystem" FILES ${ECS_SYS_11C_RenderMaterialBind_PrimitiveBindingCommitSystem_FILES})
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
 source_group("ECS\\Systems\\15 RenderFrameSync_RenderFrameBusinessSyncSystem" FILES ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES})
 source_group("ECS\\Systems\\15B RenderFrameSync_RenderDescriptorBindingSystem" FILES ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES})

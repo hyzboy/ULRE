@@ -14,6 +14,7 @@ namespace hgl
         class VulkanDevice;
         class IndirectDrawBuffer;
         class IndirectDrawIndexedBuffer;
+        class DomainResourceBinding;
     }
 
     namespace ecs
@@ -49,6 +50,8 @@ namespace hgl::ecs
 
         graph::IndirectDrawBuffer *             icb_draw                = nullptr;          ///<间接绘制命令缓冲（无索引）
         graph::IndirectDrawIndexedBuffer *      icb_draw_indexed        = nullptr;          ///<间接绘制命令缓冲（有索引）
+
+        graph::DomainResourceBinding *          domain_binding          = nullptr;          ///<解析后的domain绑定（由RenderDescriptorBindingSystem填写）
 
         TransformAssignmentBuffer *          transform_buffer         = nullptr;          ///<变换分配缓冲
         MaterialInstanceAssignmentBuffer *   mi_buffer               = nullptr;          ///<材质实例分配缓冲

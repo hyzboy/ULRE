@@ -27,6 +27,28 @@ namespace hgl::ecs
             RenderableRecord renderable;
             bool hasPrimitive = false;
         };
+
+        static PrimitiveComponent::ResolvedMaterialState BuildMaterialStateFromResolveRequest(
+            const graph::MaterialResolveRequest &request,
+            const RuntimeTextureBinding &runtime_binding)
+        {
+            PrimitiveComponent::ResolvedMaterialState state{};
+            state.preset = hgl::graph::GraphicsPipelinePreset::Solid3D;
+            state.runtime_texture_binding = runtime_binding;
+
+            state.binding_instance = request.resolved_binding_instance;
+            state.material = request.resolved_material;
+            state.domain = request.resolved_domain;
+            state.domain_id = request.resolved_domain_id;
+            state.vil = request.resolved_vil;
+            state.mi_id = request.resolved_mi_id;
+            state.preset = request.resolved_preset;
+
+            if (state.runtime_texture_binding.IsReady() && state.runtime_texture_binding.domain)
+                state.domain = state.runtime_texture_binding.domain;
+
+            return state;
+        }
     }
 
     const char* PrimitiveComponent::GetSerializationType()
@@ -78,6 +100,31 @@ namespace hgl::ecs
             float radius = math::Length(extents) * 0.5f; // Half diagonal
 
             SetBoundingRadius(radius);
+
+            // Auto-stage render state from the primitive's MI when the caller
+            // has already created the Primitive externally (bypassing MaterialResolveSystem).
+            auto* mi = primitive->GetResolvedBindingInstance();
+            if (mi)
+            {
+                auto* material = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
+                auto* domain   = graph::MaterialBindingInstanceInternalAccess::GetDomain(mi);
+                uint32_t domain_id = graph::MaterialBindingInstanceInternalAccess::GetDomainID(mi);
+
+                if (material)
+                {
+                    ResolvedMaterialState staged{};
+                    staged.binding_instance = mi;
+                    staged.material         = material;
+                    staged.domain           = domain;
+                    staged.domain_id        = domain_id;
+                    staged.vil              = primitive->GetVIL();
+                    staged.mi_id            = mi->GetMIID();
+                    staged.preset           = mi->GetRenderPreset();
+
+                    SetStagingRenderState(staged, primitive);
+                    CommitStagingRenderState();
+                }
+            }
         }
         else
         {
@@ -108,6 +155,40 @@ namespace hgl::ecs
         runtime_texture_binding_generation++;
         runtime_texture_binding.Reset();
         runtime_texture_binding.generation = runtime_texture_binding_generation;
+    }
+
+    void PrimitiveComponent::SetStagingRenderState(const ResolvedMaterialState& state,
+                                                   hgl::graph::Primitive* resolved_primitive)
+    {
+        staging_render_state.primitive = resolved_primitive ? resolved_primitive : primitive;
+        staging_render_state.material_state = state;
+        staging_render_state.generation = render_state_generation + 1;
+        staging_render_state.ready = state.binding_instance != nullptr
+                                  && state.material != nullptr
+                                  && state.vil != nullptr;
+    }
+
+    void PrimitiveComponent::ClearStagingRenderState()
+    {
+        staging_render_state.Reset();
+    }
+
+    bool PrimitiveComponent::CommitStagingRenderState()
+    {
+        if (!staging_render_state.ready)
+            return false;
+
+        committed_render_state = staging_render_state;
+        render_state_generation++;
+        committed_render_state.generation = render_state_generation;
+        committed_render_state.ready = true;
+        staging_render_state.Reset();
+        return true;
+    }
+
+    void PrimitiveComponent::ClearCommittedRenderState()
+    {
+        committed_render_state.Reset();
     }
 
     hgl::graph::MaterialBindingInstance* PrimitiveComponent::GetResolvedBindingInstance() const
@@ -147,25 +228,15 @@ namespace hgl::ecs
 
     PrimitiveComponent::EffectiveMaterialState PrimitiveComponent::ResolveEffectiveMaterialState() const
     {
-        EffectiveMaterialState state{};
-        state.preset = hgl::graph::GraphicsPipelinePreset::Solid3D;
-        state.runtime_texture_binding = runtime_texture_binding;
+        if (committed_render_state.ready)
+            return committed_render_state.material_state;
 
-        // Priority 1: deferred resolve result (latest requested binding instance)
-        if (material_slot.resolved_binding_instance)
-        {
-            state.binding_instance = material_slot.resolved_binding_instance;
+        if (staging_render_state.ready)
+            return staging_render_state.material_state;
 
-            // Stage-5: runtime state prefers resolver cache over MI live getter.
-            state.material = material_slot.resolved_material;
-            state.domain = material_slot.resolved_domain;
-            state.domain_id = material_slot.resolved_domain_id;
-            state.vil = material_slot.resolved_vil;
-            state.mi_id = material_slot.resolved_mi_id;
-            state.preset = material_slot.resolved_preset;
-        }
-        // Priority 2: primitive-owned binding instance (compatibility fallback)
-        else if (primitive)
+        EffectiveMaterialState state = BuildMaterialStateFromResolveRequest(material_slot, runtime_texture_binding);
+
+        if (!state.binding_instance && primitive)
             state.binding_instance = primitive->GetResolvedBindingInstance();
 
         if (state.binding_instance)
@@ -195,9 +266,6 @@ namespace hgl::ecs
             assert(state.preset == state.binding_instance->GetRenderPreset());
 #endif
         }
-
-        if (state.runtime_texture_binding.IsReady() && state.runtime_texture_binding.domain)
-            state.domain = state.runtime_texture_binding.domain;
 
         return state;
     }
@@ -250,6 +318,8 @@ namespace hgl::ecs
         // Just clear our reference
         primitive = nullptr;
         runtime_texture_binding.Reset();
+        staging_render_state.Reset();
+        committed_render_state.Reset();
     }
 }//namespace hgl::ecs
 

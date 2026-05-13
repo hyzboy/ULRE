@@ -58,6 +58,25 @@ namespace hgl::ecs
             bool HasMaterial() const { return material != nullptr; }
         };
 
+        struct PrimitiveRenderState
+        {
+            hgl::graph::Primitive* primitive = nullptr;
+            ResolvedMaterialState material_state{};
+            uint32_t generation = 0;
+            bool ready = false;
+
+            void Reset()
+            {
+                primitive = nullptr;
+                material_state = ResolvedMaterialState{};
+                generation = 0;
+                ready = false;
+            }
+
+            bool HasBindingInstance() const { return material_state.binding_instance != nullptr; }
+            bool HasMaterial() const { return material_state.material != nullptr; }
+        };
+
         using EffectiveMaterialState = ResolvedMaterialState;
 
     private:
@@ -68,6 +87,9 @@ namespace hgl::ecs
         hgl::graph::Geometry* unresolved_geometry = nullptr; // Geometry awaiting MI (not owned)
         RuntimeTextureBinding runtime_texture_binding;
         uint32_t runtime_texture_binding_generation = 0;
+        PrimitiveRenderState staging_render_state;
+        PrimitiveRenderState committed_render_state;
+        uint32_t render_state_generation = 0;
 
     public:
 
@@ -105,12 +127,21 @@ namespace hgl::ecs
         const hgl::graph::VertexInputLayout* GetResolvedVIL() const;
         int GetResolvedMIID() const;
         hgl::graph::GraphicsPipelinePreset GetResolvedRenderPreset() const;
+        const PrimitiveRenderState& GetCommittedRenderState() const { return committed_render_state; }
+        const PrimitiveRenderState& GetStagingRenderState() const { return staging_render_state; }
+        bool HasCommittedRenderState() const { return committed_render_state.ready; }
+        bool HasStagingRenderState() const { return staging_render_state.ready; }
         EffectiveMaterialState ResolveEffectiveMaterialState() const;
         const RuntimeTextureBinding& GetRuntimeTextureBinding() const { return runtime_texture_binding; }
         RuntimeTextureBinding& GetRuntimeTextureBinding() { return runtime_texture_binding; }
         uint32_t GetRuntimeTextureBindingGeneration() const { return runtime_texture_binding_generation; }
         void SetRuntimeTextureBinding(const RuntimeTextureBinding& binding);
         void ClearRuntimeTextureBinding();
+        void SetStagingRenderState(const ResolvedMaterialState& state,
+                                   hgl::graph::Primitive* resolved_primitive = nullptr);
+        void ClearStagingRenderState();
+        bool CommitStagingRenderState();
+        void ClearCommittedRenderState();
 
         // Bounding volume
         bool GetLocalAABB(hgl::math::AABB& outAABB) const;

@@ -291,6 +291,8 @@ namespace hgl::ecs
 						static_cast<unsigned>(task.slot->resolved_preset),
 						static_cast<unsigned>(task.slot->resolved_domain_id),
 						resolve_vil);
+					LogInfo("[ECS::MaterialResolveSystem] resolved_output note: staging_render_state is not populated here; committed path requires a later staging/commit writer for comp=%p",
+						task.comp.get());
 					++resolved_count;
 
 					// Stage-2: unresolved geometry still creates Primitive in-place.
@@ -323,6 +325,35 @@ namespace hgl::ecs
 								++resolve_fail_count;
 							}
 						}
+					}
+
+					auto *resolved_primitive = task.comp->GetPrimitive();
+					if (resolved_primitive)
+					{
+						PrimitiveComponent::ResolvedMaterialState staged_state{};
+						staged_state.binding_instance = task.slot->resolved_binding_instance;
+						staged_state.material = task.slot->resolved_material;
+						staged_state.domain = task.slot->resolved_domain;
+						staged_state.domain_id = task.slot->resolved_domain_id;
+						staged_state.vil = task.slot->resolved_vil;
+						staged_state.mi_id = task.slot->resolved_mi_id;
+						staged_state.preset = task.slot->resolved_preset;
+
+						task.comp->SetStagingRenderState(staged_state, resolved_primitive);
+
+						LogInfo("[ECS::MaterialResolveSystem] staged_render_state comp=%p primitive=%p mi=%p material=%p vil=%p domain=%p preset=%u",
+							task.comp.get(),
+							resolved_primitive,
+							staged_state.binding_instance,
+							staged_state.material,
+							staged_state.vil,
+							staged_state.domain,
+							static_cast<unsigned>(staged_state.preset));
+					}
+					else
+					{
+						LogInfo("[ECS::MaterialResolveSystem] skip staging: resolved primitive is null for comp=%p",
+							task.comp.get());
 					}
 
                  if (previous_unresolved_geometry

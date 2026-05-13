@@ -52,7 +52,12 @@ namespace hgl::ecs
 
         auto& cache = context->GetRenderFrameCache();
         if (cache.renderableCount == 0)
+        {
+            LogInfo("[ECS::PrimitiveRenderSystem] skip draw submit: renderableCount=0 materialBatches=%u",
+                    static_cast<unsigned>(cache.materialBatches.GetCount()));
             return;
+
+        }
 
         std::vector<MaterialBatch*> ordered_batches;
         ordered_batches.reserve(cache.materialBatches.GetCount());
@@ -111,7 +116,14 @@ namespace hgl::ecs
             const char *binding_source = "none";
             if (key.domain)
             {
-                if (!batch->items.empty() && batch->items.front())
+                // Prefer the binding cached by RenderDescriptorBindingSystem (covers all primitives,
+                // not just those with a runtime_texture_binding).
+                if (batch->domain_binding)
+                {
+                    domain_binding = batch->domain_binding;
+                    binding_source = "batch-domain";
+                }
+                else if (!batch->items.empty() && batch->items.front())
                 {
                     const auto state = batch->items.front()->GetResolvedMaterialState();
                     if (state.runtime_texture_binding.IsReady() && state.runtime_texture_binding.domain_binding)
@@ -129,35 +141,6 @@ namespace hgl::ecs
                                 static_cast<void *>(state.runtime_texture_binding.texture),
                                 static_cast<void *>(state.runtime_texture_binding.sampler),
                                 state.runtime_texture_binding.layer);
-                    }
-                    else if (state.binding_instance)
-                    {
-                        domain_binding = hgl::graph::MaterialBindingInstanceInternalAccess::GetDomainBinding(state.binding_instance);
-                        if (domain_binding)
-                            binding_source = "item-mi";
-
-                        LogInfo("[TBV][PrimitiveRenderSystem] Batch first-item state: batch=%p item=%p material=%p(%s) domain=%p mi=%p mi.binding=%p mi_id=%d preset=%u",
-                                static_cast<void *>(batch),
-                                static_cast<void *>(batch->items.front()),
-                                static_cast<void *>(state.material),
-                                state.material ? state.material->GetName().c_str() : "<null>",
-                                static_cast<void *>(state.domain),
-                                static_cast<void *>(state.binding_instance),
-                                static_cast<void *>(domain_binding),
-                                state.mi_id,
-                                static_cast<unsigned>(state.preset));
-                    }
-                }
-
-                if (!domain_binding)
-                {
-                    auto *graphics_context = context->GetGraphicsContext();
-                    auto *material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
-                    if (material_manager)
-                    {
-                        domain_binding = material_manager->FindDomainMaterialBinding(key.domain, key.material);
-                        if (domain_binding)
-                            binding_source = "manager";
                     }
                 }
             }

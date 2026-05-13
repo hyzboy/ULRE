@@ -93,6 +93,29 @@ namespace hgl::ecs
             request.dirty = false;
         }
 
+        static PrimitiveComponent::ResolvedMaterialState BuildStagingMaterialState(
+            PrimitiveComponent *primitive,
+            graph::MaterialBindingInstance *mi,
+            graph::ShaderMaterialProgram *material,
+            const graph::VIL *resolved_vil,
+            const RuntimeTextureBinding &runtime_binding)
+        {
+            PrimitiveComponent::ResolvedMaterialState state{};
+            state.binding_instance = mi;
+            state.material = material;
+            state.domain = graph::MaterialBindingInstanceInternalAccess::GetDomain(mi);
+            state.domain_id = graph::MaterialBindingInstanceInternalAccess::GetDomainID(mi);
+            state.runtime_texture_binding = runtime_binding;
+            state.vil = resolved_vil ? resolved_vil : (primitive ? primitive->GetResolvedVIL() : nullptr);
+            state.mi_id = mi ? mi->GetMIID() : -1;
+            state.preset = mi ? mi->GetRenderPreset() : hgl::graph::GraphicsPipelinePreset::Solid3D;
+
+            if (state.runtime_texture_binding.IsReady() && state.runtime_texture_binding.domain)
+                state.domain = state.runtime_texture_binding.domain;
+
+            return state;
+        }
+
         static bool EnsurePrimitiveBindingInstance(graph::PrimitiveManager *primitive_manager,
                                                    PrimitiveComponent *primitive,
                                                    graph::MaterialBindingInstance *mi,
@@ -311,6 +334,8 @@ namespace hgl::ecs
 
         auto *descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>().get();
 
+        RuntimeTextureBinding produced_runtime_binding{};
+
         if (!binding.HasDomainTag())
         {
             RuntimeTextureBinding runtime_binding{};
@@ -406,6 +431,7 @@ namespace hgl::ecs
             runtime_binding.status = RuntimeTextureBinding::Status::Ready;
             runtime_binding.ready = true;
             primitive->SetRuntimeTextureBinding(runtime_binding);
+            produced_runtime_binding = primitive->GetRuntimeTextureBinding();
         }
         else
         {
@@ -531,9 +557,16 @@ namespace hgl::ecs
             runtime_binding.status = RuntimeTextureBinding::Status::Ready;
             runtime_binding.ready = true;
             primitive->SetRuntimeTextureBinding(runtime_binding);
+            produced_runtime_binding = primitive->GetRuntimeTextureBinding();
         }
 
         UpdateResolvedMaterialState(primitive, mi, material, resolved_vil);
+        primitive->SetStagingRenderState(BuildStagingMaterialState(primitive,
+                                                                   mi,
+                                                                   material,
+                                                                   resolved_vil,
+                                                                   produced_runtime_binding),
+                                         primitive->GetPrimitive());
         mi_binding = graph::MaterialBindingInstanceInternalAccess::GetDomainBinding(mi);
         LogInfo("[TBV][TextureMaterialBindingSystem] Final resolved state updated: primitive=%p primitive.prim=%p mi=%p material=%p(%s) mi.binding=%p resolved_domain=%p resolved_mi_id=%d preset=%u",
                 static_cast<void *>(primitive),
