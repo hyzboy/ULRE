@@ -74,25 +74,6 @@ namespace hgl::ecs
                                                                  : ToStdString(binding.texture_path));
         }
 
-        static void UpdateResolvedMaterialState(PrimitiveComponent *primitive,
-                                                graph::MaterialBindingInstance *mi,
-                                                graph::ShaderMaterialProgram *material,
-                                                const graph::VIL *resolved_vil)
-        {
-            if (!primitive || !mi)
-                return;
-
-            auto &request = primitive->GetMaterialResolveRequest();
-            request.resolved_binding_instance = mi;
-            request.resolved_material = material;
-            request.resolved_domain = graph::MaterialBindingInstanceInternalAccess::GetDomain(mi);
-            request.resolved_domain_id = graph::MaterialBindingInstanceInternalAccess::GetDomainID(mi);
-            request.resolved_vil = resolved_vil ? resolved_vil : primitive->GetResolvedVIL();
-            request.resolved_mi_id = mi->GetMIID();
-            request.resolved_preset = mi->GetRenderPreset();
-            request.dirty = false;
-        }
-
         static PrimitiveComponent::ResolvedMaterialState BuildStagingMaterialState(
             PrimitiveComponent *primitive,
             graph::MaterialBindingInstance *mi,
@@ -386,7 +367,6 @@ namespace hgl::ecs
             runtime_binding.ready = true;
             primitive->SetRuntimeTextureBinding(runtime_binding);
 
-            UpdateResolvedMaterialState(primitive, mi, material, resolved_vil);
             primitive->SetStagingRenderState(BuildStagingMaterialState(primitive,
                                                                        mi,
                                                                        material,
@@ -696,7 +676,6 @@ namespace hgl::ecs
             produced_runtime_binding = primitive->GetRuntimeTextureBinding();
         }
 
-        UpdateResolvedMaterialState(primitive, mi, material, resolved_vil);
         primitive->SetStagingRenderState(BuildStagingMaterialState(primitive,
                                                                    mi,
                                                                    material,
