@@ -20,10 +20,10 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/QuadMeshComponent.h>
-#include<hgl/ecs/components/TextureBindingRequestComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/QuadMeshPrepareSystem.h>
+#include<hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
 
 // plane-grid shared resources
 #include<hgl/graph/geo/InlineGeometry.h>
@@ -162,8 +162,11 @@ private:
             p->SetVisible(true);
         }
 
+        auto texture_binding_system = ecs_context->GetSystem<TextureMaterialBindingSystem>();
+        if (!texture_binding_system) return false;
+
         // ── Non-domain quad ───────────────────────────────────────────────────
-        // Validates: TextureBindingRequestComponent, domain_tag empty → single texture path.
+        // Validates: explicit TextureBindingTask submit, domain_tag empty → single texture path.
         {
             non_domain_entity = ecs_context->CreateEntity<Entity>("NonDomainQuad");
 
@@ -181,15 +184,13 @@ private:
             p->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg));
             p->SetVisible(true);
 
-            // domain_tag is empty by default → non-domain / single texture path
-            auto tb = non_domain_entity->AddComponent<TextureBindingRequestComponent>();
-            tb->SetTexturePath(kIconTextures[3]);
+            texture_binding_system->SubmitTextureBindingRequest(non_domain_entity->GetID(), kIconTextures[3]);
 
             std::cout << "[TBV] NonDomainQuad created, texture=res/image/gradient/3.Tex2D" << std::endl;
         }
 
         // ── Domain quad ───────────────────────────────────────────────────────
-        // Validates: TextureBindingRequestComponent with domain_tag → domain / texture-array path.
+        // Validates: explicit TextureBindingTask submit with domain_tag → domain / texture-array path.
         {
             domain_entity = ecs_context->CreateEntity<Entity>("DomainQuad");
 
@@ -207,9 +208,9 @@ private:
             p->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg));
             p->SetVisible(true);
 
-            auto tb = domain_entity->AddComponent<TextureBindingRequestComponent>();
-            tb->SetTexturePath(kIconTextures[10]);
-            tb->SetDomainTag("texture_binding_test");
+            texture_binding_system->SubmitTextureBindingRequest(domain_entity->GetID(),
+                                                                kIconTextures[10],
+                                                                "texture_binding_test");
 
             std::cout << "[TBV] DomainQuad created, texture=res/image/gradient/10.Tex2D, domain_tag=texture_binding_test" << std::endl;
         }

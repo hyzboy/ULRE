@@ -27,13 +27,13 @@
 #include<hgl/ecs/components/BillboardComponent.h>
 #include<hgl/ecs/components/QuadComponent.h>
 #include<hgl/ecs/components/QuadMeshComponent.h>
-#include<hgl/ecs/components/TextureBindingRequestComponent.h>
 #include<hgl/ecs/components/FacingTransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
 #include<hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
+#include<hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
 #include<hgl/ecs/systems/transform/FacingTransformSystem.h>
 
 #include<glm/glm.hpp>
@@ -294,6 +294,9 @@ private:
 
         if (!EnsureRenderSystems()) return false;
 
+        auto texture_binding_system = ecs_context->GetSystem<TextureMaterialBindingSystem>();
+        if (!texture_binding_system) return false;
+
         QuadResourcePrepareSystem::SetPresetForWorld(ecs_context, GraphicsPipelinePreset::Solid3D);
         QuadResourcePrepareSystem::SetChannelHintForWorld(ecs_context, TextureChannelHint::Grayscale);
 
@@ -372,8 +375,7 @@ private:
             primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg));
             primitive->SetVisible(true);
 
-            auto texture_binding = textured_quad_entity->AddComponent<TextureBindingRequestComponent>();
-            texture_binding->SetTexturePath(kIconTextures[22]);
+            texture_binding_system->SubmitTextureBindingRequest(textured_quad_entity->GetID(), kIconTextures[22]);
         }
 
         {
@@ -392,9 +394,9 @@ private:
             primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg));
             primitive->SetVisible(true);
 
-            auto texture_binding = textured_quad_domain_entity->AddComponent<TextureBindingRequestComponent>();
-            texture_binding->SetTexturePath(kIconTextures[10]);
-            texture_binding->SetDomainTag("3001");
+            texture_binding_system->SubmitTextureBindingRequest(textured_quad_domain_entity->GetID(),
+                                                                kIconTextures[10],
+                                                                "3001");
         }
 
         return true;

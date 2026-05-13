@@ -25,6 +25,23 @@ namespace hgl::ecs
 {
     namespace
     {
+        static TextureBindingTask BuildTaskFromRequest(EntityID entity_id,
+                                                       const TextureBindingRequestComponent *binding)
+        {
+            TextureBindingTask task{};
+            task.entity_id = entity_id;
+
+            if (!binding)
+                return task;
+
+            task.slot = binding->GetSamplerSlot();
+            task.source_mode = binding->GetTextureSourceMode();
+            task.channel_hint = binding->GetChannelHint();
+            task.texture_path = binding->GetTexturePath();
+            task.domain_tag = binding->GetDomainTag();
+            return task;
+        }
+
         static bool PatchTextureSlotRecipe(graph::mtl::MaterialRecipe &recipe,
                                            graph::mtl::SamplerSlot slot,
                                            graph::mtl::TextureSourceMode source_mode,
@@ -46,10 +63,10 @@ namespace hgl::ecs
 
         static bool BuildBoundRecipe(ECSContext *world,
                                      PrimitiveComponent *primitive,
-                                     TextureBindingRequestComponent *binding,
+                                     const TextureBindingTask &binding,
                                      graph::mtl::MaterialRecipe &out_recipe)
         {
-            if (!world || !primitive || !binding)
+            if (!world || !primitive)
                 return false;
 
             auto *graphics_context = world->GetGraphicsContext();
@@ -63,14 +80,14 @@ namespace hgl::ecs
                 return false;
 
             out_recipe = *base_recipe;
-            out_recipe.domain_id = binding->HasDomainTag() ? binding->GetDomainTag() : std::string();
+            out_recipe.domain_id = binding.HasDomainTag() ? binding.domain_tag : std::string();
 
             return PatchTextureSlotRecipe(out_recipe,
-                                          binding->GetSamplerSlot(),
-                                          binding->HasDomainTag() ? graph::mtl::TextureSourceMode::Array
-                                                                  : binding->GetTextureSourceMode(),
-                                          binding->HasDomainTag() ? std::string()
-                                                                  : ToStdString(binding->GetTexturePath()));
+                                          binding.slot,
+                                          binding.HasDomainTag() ? graph::mtl::TextureSourceMode::Array
+                                                                 : binding.source_mode,
+                                          binding.HasDomainTag() ? std::string()
+                                                                 : ToStdString(binding.texture_path));
         }
 
         static void UpdateResolvedMaterialState(PrimitiveComponent *primitive,
@@ -142,10 +159,61 @@ namespace hgl::ecs
         AddDependency<MaterialResolveSystem>();
     }
 
+    void TextureMaterialBindingSystem::SubmitTextureBindingTask(const TextureBindingTask &task)
+    {
+        if (!task.entity_id.IsValid() || task.texture_path.IsEmpty())
+            return;
+
+        pending_tasks.push_back(task);
+    }
+
+    bool TextureMaterialBindingSystem::SubmitTextureBindingRequest(EntityID entity_id,
+                                                                   const hgl::OSString &texture_path,
+                                                                   const std::string &domain_tag,
+                                                                   graph::mtl::SamplerSlot slot,
+                                                                   graph::mtl::TextureSourceMode source_mode,
+                                                                   graph::TextureChannelHint channel_hint)
+    {
+        if (!entity_id.IsValid() || texture_path.IsEmpty())
+            return false;
+
+        TextureBindingTask task{};
+        task.entity_id = entity_id;
+        task.texture_path = texture_path;
+        task.domain_tag = domain_tag;
+        task.slot = slot;
+        task.source_mode = source_mode;
+        task.channel_hint = channel_hint;
+        SubmitTextureBindingTask(task);
+        return true;
+    }
+
     void TextureMaterialBindingSystem::Update(float)
     {
         if (!world)
             return;
+
+        if (!pending_tasks.empty())
+        {
+            std::vector<TextureBindingTask> retry_tasks;
+            retry_tasks.reserve(pending_tasks.size());
+
+            for (const auto &task : pending_tasks)
+            {
+                Entity *entity = world->GetEntity(task.entity_id);
+                if (!entity)
+                    continue;
+
+                auto primitive = entity->GetComponent<PrimitiveComponent>();
+                if (!primitive || !primitive->IsVisible())
+                    continue;
+
+                if (!EnsurePrimitiveTextureBinding(primitive.get(), task))
+                    retry_tasks.push_back(task);
+            }
+
+            pending_tasks.swap(retry_tasks);
+        }
 
         std::vector<Entity*> entities;
         world->GetAllEntities(entities);
@@ -163,7 +231,7 @@ namespace hgl::ecs
             if (!primitive->IsVisible() || !binding->IsEnabled())
                 continue;
 
-            if (EnsurePrimitiveTextureBinding(primitive.get(), binding.get()))
+            if (EnsurePrimitiveTextureBinding(primitive.get(), BuildTaskFromRequest(entity->GetID(), binding.get())))
                 entity->RemoveComponent<TextureBindingRequestComponent>();
         }
     }
@@ -171,16 +239,25 @@ namespace hgl::ecs
     bool TextureMaterialBindingSystem::EnsurePrimitiveTextureBinding(PrimitiveComponent *primitive,
                                                                      TextureBindingRequestComponent *binding)
     {
-        if (!world || !primitive || !binding)
+        if (!binding)
+            return false;
+
+        return EnsurePrimitiveTextureBinding(primitive, BuildTaskFromRequest(binding->GetOwnerID(), binding));
+    }
+
+    bool TextureMaterialBindingSystem::EnsurePrimitiveTextureBinding(PrimitiveComponent *primitive,
+                                                                     const TextureBindingTask &binding)
+    {
+        if (!world || !primitive)
         {
             LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] missing input: world=%p primitive=%p binding=%p",
                     static_cast<void *>(world),
                     static_cast<void *>(primitive),
-                    static_cast<void *>(binding));
+                    nullptr);
             return false;
         }
 
-        const auto &texture_path = binding->GetTexturePath();
+        const auto &texture_path = binding.texture_path;
         if (texture_path.IsEmpty())
             return true;
 
@@ -222,7 +299,7 @@ namespace hgl::ecs
             LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] BuildBoundRecipe failed: primitive=%p texture='%s' domain_tag='%s'",
                     static_cast<void *>(primitive),
                     texture_path.c_str(),
-                    binding->HasDomainTag() ? binding->GetDomainTag().c_str() : "");
+                    binding.HasDomainTag() ? binding.domain_tag.c_str() : "");
             return false;
         }
 
@@ -263,7 +340,7 @@ namespace hgl::ecs
                 static_cast<void *>(handle.binding),
                 static_cast<void *>(mi_binding),
                 static_cast<const void *>(resolved_vil),
-                binding->HasDomainTag() ? binding->GetDomainTag().c_str() : "",
+                binding.HasDomainTag() ? binding.domain_tag.c_str() : "",
                 texture_path.c_str());
 
         if (!EnsurePrimitiveBindingInstance(primitive_manager, primitive, mi, resolved_vil))
@@ -279,7 +356,7 @@ namespace hgl::ecs
 
         auto *descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>().get();
 
-        if (!binding->HasDomainTag())
+        if (!binding.HasDomainTag())
         {
             LogInfo("[TBV][TextureMaterialBindingSystem] Enter non-domain branch: primitive=%p mi=%p material=%p handle.binding=%p mi.binding=%p slot=%u",
                     static_cast<void *>(primitive),
@@ -287,7 +364,7 @@ namespace hgl::ecs
                     static_cast<void *>(material),
                     static_cast<void *>(handle.binding),
                     static_cast<void *>(mi_binding),
-                    static_cast<unsigned>(binding->GetSamplerSlot()));
+                    static_cast<unsigned>(binding.slot));
 
             auto *texture = texture_manager->LoadTexture2D(texture_path, true);
             if (!texture)
@@ -308,7 +385,7 @@ namespace hgl::ecs
 
             if (handle.binding)
             {
-                handle.binding->BindResourceSampler(binding->GetSamplerSlot(), texture, sampler);
+                handle.binding->BindResourceSampler(binding.slot, texture, sampler);
                 handle.binding->Update();
 
                 auto *handle_pm = handle.binding->GetPerMaterialMP();
@@ -327,12 +404,12 @@ namespace hgl::ecs
                         static_cast<void *>(material));
             }
 
-            if (!material->BindResourceSampler(binding->GetSamplerSlot(), texture, sampler))
+            if (!material->BindResourceSampler(binding.slot, texture, sampler))
             {
                 LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] material->BindResourceSampler failed (non-domain): material=%p(%s) slot=%u tex=%p sampler=%p",
                         static_cast<void *>(material),
                         material ? material->GetName().c_str() : "<null>",
-                        static_cast<unsigned>(binding->GetSamplerSlot()),
+                        static_cast<unsigned>(binding.slot),
                         static_cast<void *>(texture),
                         static_cast<void *>(sampler));
                 return false;
@@ -354,7 +431,7 @@ namespace hgl::ecs
                     descriptor_binding_system->ClearMaterialBindings(previous_material);
 
                 descriptor_binding_system->RegisterMaterialTextureSampler(material,
-                                                                          binding->GetSamplerSlot(),
+                                                                          binding.slot,
                                                                           texture,
                                                                           sampler);
             }
@@ -370,26 +447,26 @@ namespace hgl::ecs
                     static_cast<void *>(material),
                     static_cast<void *>(handle.binding),
                     static_cast<void *>(mi_binding),
-                    static_cast<unsigned>(binding->GetSamplerSlot()),
-                    binding->GetDomainTag().c_str());
+                    static_cast<unsigned>(binding.slot),
+                    binding.domain_tag.c_str());
 
-            const int layer = graph::TextureDomainRegistry::RegisterTexture(binding->GetDomainTag(), texture_path);
+            const int layer = graph::TextureDomainRegistry::RegisterTexture(binding.domain_tag, texture_path);
             if (layer < 0)
             {
                 LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] RegisterTexture failed: domain_tag='%s' texture='%s'",
-                        binding->GetDomainTag().c_str(),
+                        binding.domain_tag.c_str(),
                         texture_path.c_str());
                 return false;
             }
 
-            auto *domain_resources = graph::TextureDomainRegistry::GetEntry(binding->GetDomainTag());
+            auto *domain_resources = graph::TextureDomainRegistry::GetEntry(binding.domain_tag);
             // Domain resources are built by QuadResourcePrepareSystem::Update() which runs first
             // due to AddDependency<QuadResourcePrepareSystem>() in the constructor.
             // TODO(Phase 5): replace execution-order dependency with a generic DomainResourcesReadySystem.
             if (!domain_resources || domain_resources->dirty || !domain_resources->texture_array || !domain_resources->sampler)
             {
                 LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] domain resources not ready: domain_tag='%s' resources=%p dirty=%d texture_array=%p sampler=%p",
-                        binding->GetDomainTag().c_str(),
+                        binding.domain_tag.c_str(),
                         static_cast<void *>(domain_resources),
                         domain_resources ? int(domain_resources->dirty) : -1,
                         domain_resources ? static_cast<void *>(domain_resources->texture_array) : nullptr,
@@ -399,7 +476,7 @@ namespace hgl::ecs
 
             if (handle.binding)
             {
-                handle.binding->BindResourceSampler(binding->GetSamplerSlot(),
+                handle.binding->BindResourceSampler(binding.slot,
                                                     domain_resources->texture_array,
                                                     domain_resources->sampler);
                 handle.binding->Update();
@@ -419,21 +496,21 @@ namespace hgl::ecs
                         static_cast<void *>(primitive),
                         static_cast<void *>(mi),
                         static_cast<void *>(material),
-                        binding->GetDomainTag().c_str());
+                        binding.domain_tag.c_str());
             }
 
-            if (!material->BindResourceSampler(binding->GetSamplerSlot(),
+            if (!material->BindResourceSampler(binding.slot,
                                                domain_resources->texture_array,
                                                domain_resources->sampler))
             {
                 LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] material->BindResourceSampler failed (domain): material=%p(%s) slot=%u tex_array=%p sampler=%p layer=%d domain_tag='%s'",
                         static_cast<void *>(material),
                         material ? material->GetName().c_str() : "<null>",
-                        static_cast<unsigned>(binding->GetSamplerSlot()),
+                        static_cast<unsigned>(binding.slot),
                         static_cast<void *>(domain_resources->texture_array),
                         static_cast<void *>(domain_resources->sampler),
                         layer,
-                        binding->GetDomainTag().c_str());
+                        binding.domain_tag.c_str());
                 return false;
             }
             material->Update();
@@ -457,18 +534,18 @@ namespace hgl::ecs
                 {
                     descriptor_binding_system->RegisterDomainBinding(handle.binding);
                     descriptor_binding_system->RegisterDomainTextureSampler(handle.binding,
-                                                                           binding->GetSamplerSlot(),
+                                                                           binding.slot,
                                                                            domain_resources->texture_array,
                                                                            domain_resources->sampler);
                 }
 
                 descriptor_binding_system->RegisterMaterialTextureSampler(material,
-                                                                          binding->GetSamplerSlot(),
+                                                                          binding.slot,
                                                                           domain_resources->texture_array,
                                                                           domain_resources->sampler);
             }
 
-            mi->SetTextureArrayLayer(binding->GetSamplerSlot(), static_cast<uint32_t>(layer));
+            mi->SetTextureArrayLayer(binding.slot, static_cast<uint32_t>(layer));
             math::Vector2u texture_size(domain_resources->texture_array->GetWidth(),
                                         domain_resources->texture_array->GetHeight());
             mi->WriteMIData(texture_size);
