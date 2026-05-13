@@ -114,7 +114,23 @@ namespace hgl::ecs
                 if (!batch->items.empty() && batch->items.front())
                 {
                     const auto state = batch->items.front()->GetResolvedMaterialState();
-                    if (state.binding_instance)
+                    if (state.runtime_texture_binding.ready && state.runtime_texture_binding.domain_binding)
+                    {
+                        domain_binding = state.runtime_texture_binding.domain_binding;
+                        binding_source = "runtime-binding";
+
+                        LogInfo("[TBV][PrimitiveRenderSystem] Batch first-item runtime binding: batch=%p item=%p material=%p(%s) domain=%p runtime.binding=%p runtime.tex=%p runtime.sampler=%p layer=%u",
+                                static_cast<void *>(batch),
+                                static_cast<void *>(batch->items.front()),
+                                static_cast<void *>(state.material),
+                                state.material ? state.material->GetName().c_str() : "<null>",
+                                static_cast<void *>(state.runtime_texture_binding.domain),
+                                static_cast<void *>(domain_binding),
+                                static_cast<void *>(state.runtime_texture_binding.texture),
+                                static_cast<void *>(state.runtime_texture_binding.sampler),
+                                state.runtime_texture_binding.layer);
+                    }
+                    else if (state.binding_instance)
                     {
                         domain_binding = hgl::graph::MaterialBindingInstanceInternalAccess::GetDomainBinding(state.binding_instance);
                         if (domain_binding)

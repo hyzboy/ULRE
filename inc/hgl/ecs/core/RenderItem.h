@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/EntityHandle.h>
+#include<hgl/ecs/core/RuntimeTextureBinding.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<cstdint>
 #include<memory>
@@ -41,6 +42,7 @@ namespace hgl::ecs
             hgl::graph::MaterialBindingInstance* binding_instance = nullptr;
             hgl::graph::ShaderMaterialProgram* material = nullptr;
             hgl::graph::ResourceDomain* domain = nullptr;
+            RuntimeTextureBinding runtime_texture_binding{};
             uint32_t domain_id = 0xFFFFFFFFu;
             const hgl::graph::VertexInputLayout* vil = nullptr;
             int mi_id = -1;

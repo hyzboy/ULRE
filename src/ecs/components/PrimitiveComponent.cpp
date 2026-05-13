@@ -133,6 +133,7 @@ namespace hgl::ecs
     {
         EffectiveMaterialState state{};
         state.preset = hgl::graph::GraphicsPipelinePreset::Solid3D;
+        state.runtime_texture_binding = runtime_texture_binding;
 
         // Priority 1: deferred resolve result (latest requested binding instance)
         if (material_slot.resolved_binding_instance)
@@ -178,6 +179,9 @@ namespace hgl::ecs
             assert(state.preset == state.binding_instance->GetRenderPreset());
 #endif
         }
+
+        if (state.runtime_texture_binding.ready && state.runtime_texture_binding.domain)
+            state.domain = state.runtime_texture_binding.domain;
 
         return state;
     }
@@ -229,6 +233,7 @@ namespace hgl::ecs
         // Don't delete primitive - it's managed externally
         // Just clear our reference
         primitive = nullptr;
+        runtime_texture_binding.Reset();
     }
 }//namespace hgl::ecs
 

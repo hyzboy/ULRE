@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/components/RenderableComponent.h>
+#include<hgl/ecs/core/RuntimeTextureBinding.h>
 #include<hgl/mtl/MaterialResolveRequest.h>
 #include<glm/glm.hpp>
 
@@ -47,6 +48,7 @@ namespace hgl::ecs
             hgl::graph::MaterialBindingInstance* binding_instance = nullptr;
             hgl::graph::ShaderMaterialProgram* material = nullptr;
             hgl::graph::ResourceDomain* domain = nullptr;
+            RuntimeTextureBinding runtime_texture_binding{};
             uint32_t domain_id = 0xFFFFFFFFu;
             const hgl::graph::VertexInputLayout* vil = nullptr;
             int mi_id = -1;
@@ -64,6 +66,7 @@ namespace hgl::ecs
 
         hgl::graph::MaterialResolveRequest material_slot;        // Deferred MI resolution slot (Phase B)
         hgl::graph::Geometry* unresolved_geometry = nullptr; // Geometry awaiting MI (not owned)
+        RuntimeTextureBinding runtime_texture_binding;
 
     public:
 
@@ -102,6 +105,10 @@ namespace hgl::ecs
         int GetResolvedMIID() const;
         hgl::graph::GraphicsPipelinePreset GetResolvedRenderPreset() const;
         EffectiveMaterialState ResolveEffectiveMaterialState() const;
+        const RuntimeTextureBinding& GetRuntimeTextureBinding() const { return runtime_texture_binding; }
+        RuntimeTextureBinding& GetRuntimeTextureBinding() { return runtime_texture_binding; }
+        void SetRuntimeTextureBinding(const RuntimeTextureBinding& binding) { runtime_texture_binding = binding; }
+        void ClearRuntimeTextureBinding() { runtime_texture_binding.Reset(); }
 
         // Bounding volume
         bool GetLocalAABB(hgl::math::AABB& outAABB) const;

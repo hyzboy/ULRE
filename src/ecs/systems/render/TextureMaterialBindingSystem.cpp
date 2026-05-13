@@ -311,6 +311,9 @@ namespace hgl::ecs
 
         if (!binding.HasDomainTag())
         {
+            RuntimeTextureBinding runtime_binding{};
+            runtime_binding.kind = RuntimeTextureBinding::Kind::SingleTexture;
+
             LogInfo("[TBV][TextureMaterialBindingSystem] Enter non-domain branch: primitive=%p mi=%p material=%p handle.binding=%p mi.binding=%p slot=%u",
                     static_cast<void *>(primitive),
                     static_cast<void *>(mi),
@@ -391,9 +394,19 @@ namespace hgl::ecs
 
             math::Vector2u texture_size(texture->GetWidth(), texture->GetHeight());
             mi->WriteMIData(texture_size);
+
+            runtime_binding.texture = texture;
+            runtime_binding.sampler = sampler;
+            runtime_binding.domain_binding = handle.binding;
+            runtime_binding.domain = handle.domain;
+            runtime_binding.ready = true;
+            primitive->SetRuntimeTextureBinding(runtime_binding);
         }
         else
         {
+            RuntimeTextureBinding runtime_binding{};
+            runtime_binding.kind = RuntimeTextureBinding::Kind::TextureArray;
+
             LogInfo("[TBV][TextureMaterialBindingSystem] Enter domain branch: primitive=%p mi=%p material=%p handle.binding=%p mi.binding=%p slot=%u domain_tag='%s'",
                     static_cast<void *>(primitive),
                     static_cast<void *>(mi),
@@ -502,6 +515,14 @@ namespace hgl::ecs
             math::Vector2u texture_size(domain_resources->texture_array->GetWidth(),
                                         domain_resources->texture_array->GetHeight());
             mi->WriteMIData(texture_size);
+
+            runtime_binding.texture = domain_resources->texture_array;
+            runtime_binding.sampler = domain_resources->sampler;
+            runtime_binding.domain_binding = handle.binding;
+            runtime_binding.domain = handle.domain;
+            runtime_binding.layer = static_cast<uint32_t>(layer);
+            runtime_binding.ready = true;
+            primitive->SetRuntimeTextureBinding(runtime_binding);
         }
 
         UpdateResolvedMaterialState(primitive, mi, material, resolved_vil);
