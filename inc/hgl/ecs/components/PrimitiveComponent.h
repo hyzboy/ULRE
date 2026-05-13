@@ -67,6 +67,7 @@ namespace hgl::ecs
         hgl::graph::MaterialResolveRequest material_slot;        // Deferred MI resolution slot (Phase B)
         hgl::graph::Geometry* unresolved_geometry = nullptr; // Geometry awaiting MI (not owned)
         RuntimeTextureBinding runtime_texture_binding;
+        uint32_t runtime_texture_binding_generation = 0;
 
     public:
 
@@ -107,8 +108,9 @@ namespace hgl::ecs
         EffectiveMaterialState ResolveEffectiveMaterialState() const;
         const RuntimeTextureBinding& GetRuntimeTextureBinding() const { return runtime_texture_binding; }
         RuntimeTextureBinding& GetRuntimeTextureBinding() { return runtime_texture_binding; }
-        void SetRuntimeTextureBinding(const RuntimeTextureBinding& binding) { runtime_texture_binding = binding; }
-        void ClearRuntimeTextureBinding() { runtime_texture_binding.Reset(); }
+        uint32_t GetRuntimeTextureBindingGeneration() const { return runtime_texture_binding_generation; }
+        void SetRuntimeTextureBinding(const RuntimeTextureBinding& binding);
+        void ClearRuntimeTextureBinding();
 
         // Bounding volume
         bool GetLocalAABB(hgl::math::AABB& outAABB) const;

@@ -94,6 +94,22 @@ namespace hgl::ecs
             material_slot.SetInstanceData(instance_data, instance_data_size);
     }
 
+    void PrimitiveComponent::SetRuntimeTextureBinding(const RuntimeTextureBinding& binding)
+    {
+        runtime_texture_binding = binding;
+        runtime_texture_binding_generation++;
+        runtime_texture_binding.generation = runtime_texture_binding_generation;
+        if (runtime_texture_binding.ready)
+            runtime_texture_binding.status = RuntimeTextureBinding::Status::Ready;
+    }
+
+    void PrimitiveComponent::ClearRuntimeTextureBinding()
+    {
+        runtime_texture_binding_generation++;
+        runtime_texture_binding.Reset();
+        runtime_texture_binding.generation = runtime_texture_binding_generation;
+    }
+
     hgl::graph::MaterialBindingInstance* PrimitiveComponent::GetResolvedBindingInstance() const
     {
         return ResolveEffectiveMaterialState().binding_instance;
@@ -180,7 +196,7 @@ namespace hgl::ecs
 #endif
         }
 
-        if (state.runtime_texture_binding.ready && state.runtime_texture_binding.domain)
+        if (state.runtime_texture_binding.IsReady() && state.runtime_texture_binding.domain)
             state.domain = state.runtime_texture_binding.domain;
 
         return state;

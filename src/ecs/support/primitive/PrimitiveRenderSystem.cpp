@@ -114,7 +114,7 @@ namespace hgl::ecs
                 if (!batch->items.empty() && batch->items.front())
                 {
                     const auto state = batch->items.front()->GetResolvedMaterialState();
-                    if (state.runtime_texture_binding.ready && state.runtime_texture_binding.domain_binding)
+                    if (state.runtime_texture_binding.IsReady() && state.runtime_texture_binding.domain_binding)
                     {
                         domain_binding = state.runtime_texture_binding.domain_binding;
                         binding_source = "runtime-binding";

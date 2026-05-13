@@ -24,6 +24,8 @@ namespace hgl::ecs
 {
     namespace
     {
+        static uint64_t g_runtime_texture_binding_id = 1;
+
         static bool PatchTextureSlotRecipe(graph::mtl::MaterialRecipe &recipe,
                                            graph::mtl::SamplerSlot slot,
                                            graph::mtl::TextureSourceMode source_mode,
@@ -313,6 +315,7 @@ namespace hgl::ecs
         {
             RuntimeTextureBinding runtime_binding{};
             runtime_binding.kind = RuntimeTextureBinding::Kind::SingleTexture;
+            runtime_binding.status = RuntimeTextureBinding::Status::Pending;
 
             LogInfo("[TBV][TextureMaterialBindingSystem] Enter non-domain branch: primitive=%p mi=%p material=%p handle.binding=%p mi.binding=%p slot=%u",
                     static_cast<void *>(primitive),
@@ -399,6 +402,8 @@ namespace hgl::ecs
             runtime_binding.sampler = sampler;
             runtime_binding.domain_binding = handle.binding;
             runtime_binding.domain = handle.domain;
+            runtime_binding.binding_id = g_runtime_texture_binding_id++;
+            runtime_binding.status = RuntimeTextureBinding::Status::Ready;
             runtime_binding.ready = true;
             primitive->SetRuntimeTextureBinding(runtime_binding);
         }
@@ -406,6 +411,7 @@ namespace hgl::ecs
         {
             RuntimeTextureBinding runtime_binding{};
             runtime_binding.kind = RuntimeTextureBinding::Kind::TextureArray;
+            runtime_binding.status = RuntimeTextureBinding::Status::Pending;
 
             LogInfo("[TBV][TextureMaterialBindingSystem] Enter domain branch: primitive=%p mi=%p material=%p handle.binding=%p mi.binding=%p slot=%u domain_tag='%s'",
                     static_cast<void *>(primitive),
@@ -521,6 +527,8 @@ namespace hgl::ecs
             runtime_binding.domain_binding = handle.binding;
             runtime_binding.domain = handle.domain;
             runtime_binding.layer = static_cast<uint32_t>(layer);
+            runtime_binding.binding_id = g_runtime_texture_binding_id++;
+            runtime_binding.status = RuntimeTextureBinding::Status::Ready;
             runtime_binding.ready = true;
             primitive->SetRuntimeTextureBinding(runtime_binding);
         }
