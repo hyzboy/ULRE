@@ -5,7 +5,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/TextureBindingRequestComponent.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
@@ -25,23 +24,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        static TextureBindingTask BuildTaskFromRequest(EntityID entity_id,
-                                                       const TextureBindingRequestComponent *binding)
-        {
-            TextureBindingTask task{};
-            task.entity_id = entity_id;
-
-            if (!binding)
-                return task;
-
-            task.slot = binding->GetSamplerSlot();
-            task.source_mode = binding->GetTextureSourceMode();
-            task.channel_hint = binding->GetChannelHint();
-            task.texture_path = binding->GetTexturePath();
-            task.domain_tag = binding->GetDomainTag();
-            return task;
-        }
-
         static bool PatchTextureSlotRecipe(graph::mtl::MaterialRecipe &recipe,
                                            graph::mtl::SamplerSlot slot,
                                            graph::mtl::TextureSourceMode source_mode,
@@ -193,56 +175,27 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        if (!pending_tasks.empty())
+        if (pending_tasks.empty())
+            return;
+
+        std::vector<TextureBindingTask> retry_tasks;
+        retry_tasks.reserve(pending_tasks.size());
+
+        for (const auto &task : pending_tasks)
         {
-            std::vector<TextureBindingTask> retry_tasks;
-            retry_tasks.reserve(pending_tasks.size());
-
-            for (const auto &task : pending_tasks)
-            {
-                Entity *entity = world->GetEntity(task.entity_id);
-                if (!entity)
-                    continue;
-
-                auto primitive = entity->GetComponent<PrimitiveComponent>();
-                if (!primitive || !primitive->IsVisible())
-                    continue;
-
-                if (!EnsurePrimitiveTextureBinding(primitive.get(), task))
-                    retry_tasks.push_back(task);
-            }
-
-            pending_tasks.swap(retry_tasks);
-        }
-
-        std::vector<Entity*> entities;
-        world->GetAllEntities(entities);
-
-        for (Entity* entity : entities)
-        {
+            Entity *entity = world->GetEntity(task.entity_id);
             if (!entity)
                 continue;
 
             auto primitive = entity->GetComponent<PrimitiveComponent>();
-            auto binding = entity->GetComponent<TextureBindingRequestComponent>();
-            if (!primitive || !binding)
+            if (!primitive || !primitive->IsVisible())
                 continue;
 
-            if (!primitive->IsVisible() || !binding->IsEnabled())
-                continue;
-
-            if (EnsurePrimitiveTextureBinding(primitive.get(), BuildTaskFromRequest(entity->GetID(), binding.get())))
-                entity->RemoveComponent<TextureBindingRequestComponent>();
+            if (!EnsurePrimitiveTextureBinding(primitive.get(), task))
+                retry_tasks.push_back(task);
         }
-    }
 
-    bool TextureMaterialBindingSystem::EnsurePrimitiveTextureBinding(PrimitiveComponent *primitive,
-                                                                     TextureBindingRequestComponent *binding)
-    {
-        if (!binding)
-            return false;
-
-        return EnsurePrimitiveTextureBinding(primitive, BuildTaskFromRequest(binding->GetOwnerID(), binding));
+        pending_tasks.swap(retry_tasks);
     }
 
     bool TextureMaterialBindingSystem::EnsurePrimitiveTextureBinding(PrimitiveComponent *primitive,

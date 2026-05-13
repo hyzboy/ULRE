@@ -10,7 +10,6 @@
 namespace hgl::ecs
 {
     class ECSContext;
-    class TextureBindingRequestComponent;
 
     struct TextureBindingTask
     {
@@ -52,8 +51,6 @@ namespace hgl::ecs
 
     private:
 
-        bool EnsurePrimitiveTextureBinding(class PrimitiveComponent *primitive,
-                                           TextureBindingRequestComponent *binding);
         bool EnsurePrimitiveTextureBinding(class PrimitiveComponent *primitive,
                                            const TextureBindingTask &task);
     };

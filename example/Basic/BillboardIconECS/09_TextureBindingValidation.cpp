@@ -1,7 +1,7 @@
 // Phase 4E — TextureBinding 新路径最小验证示例
 //
 // 验证目标：
-//   QuadMeshComponent + PrimitiveComponent + TextureBindingRequestComponent 可独立驱动贴图绑定，
+//   QuadMeshComponent + PrimitiveComponent + 显式 TextureBindingTask 可独立驱动贴图绑定，
 //   不依赖 QuadMaterialBindingSystem / QuadResourcePrepareSystem。
 //
 // 两个实体：
