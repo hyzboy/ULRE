@@ -290,9 +290,7 @@ namespace hgl::ecs
                 return false;
             }
 
-            auto *sampler = QuadResourcePrepareSystem::GetSharedSampler();
-            if (!sampler)
-                sampler = sampler_manager->CreateSampler(texture);
+            auto *sampler = sampler_manager->CreateSampler(texture);
             if (!sampler)
             {
                 LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] sampler is null: texture='%s'",
@@ -302,36 +300,11 @@ namespace hgl::ecs
 
             if (mi_binding)
             {
-                mi_binding->BindResourceSampler(binding.slot, texture, sampler);
-                mi_binding->Update();
-                auto *binding_pm = mi_binding->GetPerMaterialMP();
-                LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain mi.binding updated: binding=%p pm=%p ds=%p tex=%p sampler=%p",
+                LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain mi.binding registered: binding=%p tex=%p sampler=%p",
                         static_cast<void *>(mi_binding),
-                        static_cast<void *>(binding_pm),
-                        binding_pm ? (void *)binding_pm->GetVkDescriptorSet() : nullptr,
                         static_cast<void *>(texture),
                         static_cast<void *>(sampler));
             }
-
-            if (!material->BindResourceSampler(binding.slot, texture, sampler))
-            {
-                LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] material->BindResourceSampler failed (non-domain): material=%p(%s) slot=%u tex=%p sampler=%p",
-                        static_cast<void *>(material),
-                        material->GetName().c_str(),
-                        static_cast<unsigned>(binding.slot),
-                        static_cast<void *>(texture),
-                        static_cast<void *>(sampler));
-                return false;
-            }
-            material->Update();
-            auto *material_pm = material->GetMP(hgl::graph::DescriptorSetType::PerMaterial);
-            LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain material updated: material=%p(%s) pm=%p ds=%p tex=%p sampler=%p",
-                    static_cast<void *>(material),
-                    material->GetName().c_str(),
-                    static_cast<void *>(material_pm),
-                    material_pm ? (void *)material_pm->GetVkDescriptorSet() : nullptr,
-                    static_cast<void *>(texture),
-                    static_cast<void *>(sampler));
 
             if (descriptor_binding_system)
             {
@@ -462,9 +435,7 @@ namespace hgl::ecs
                 return false;
             }
 
-            auto *sampler = QuadResourcePrepareSystem::GetSharedSampler(); // TODO(Phase 7): replace with generic sampler manager
-            if (!sampler)
-                sampler = sampler_manager->CreateSampler(texture);
+            auto *sampler = sampler_manager->CreateSampler(texture);
             if (!sampler)
             {
                 LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] sampler is null: texture='%s'",
@@ -474,14 +445,8 @@ namespace hgl::ecs
 
             if (handle.binding)
             {
-                handle.binding->BindResourceSampler(binding.slot, texture, sampler);
-                handle.binding->Update();
-
-                auto *handle_pm = handle.binding->GetPerMaterialMP();
-                LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain handle.binding updated: binding=%p pm=%p ds=%p tex=%p sampler=%p",
+                LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain handle.binding registered: binding=%p tex=%p sampler=%p",
                         static_cast<void *>(handle.binding),
-                        static_cast<void *>(handle_pm),
-                        handle_pm ? (void *)handle_pm->GetVkDescriptorSet() : nullptr,
                         static_cast<void *>(texture),
                         static_cast<void *>(sampler));
             }
@@ -492,27 +457,6 @@ namespace hgl::ecs
                         static_cast<void *>(mi),
                         static_cast<void *>(material));
             }
-
-            if (!material->BindResourceSampler(binding.slot, texture, sampler))
-            {
-                LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] material->BindResourceSampler failed (non-domain): material=%p(%s) slot=%u tex=%p sampler=%p",
-                        static_cast<void *>(material),
-                        material ? material->GetName().c_str() : "<null>",
-                        static_cast<unsigned>(binding.slot),
-                        static_cast<void *>(texture),
-                        static_cast<void *>(sampler));
-                return false;
-            }
-            material->Update();
-
-            auto *material_pm = material->GetMP(hgl::graph::DescriptorSetType::PerMaterial);
-            LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain material updated: material=%p(%s) pm=%p ds=%p tex=%p sampler=%p",
-                    static_cast<void *>(material),
-                    material ? material->GetName().c_str() : "<null>",
-                    static_cast<void *>(material_pm),
-                    material_pm ? (void *)material_pm->GetVkDescriptorSet() : nullptr,
-                    static_cast<void *>(texture),
-                    static_cast<void *>(sampler));
 
             if (descriptor_binding_system)
             {
@@ -590,16 +534,8 @@ namespace hgl::ecs
 
             if (handle.binding)
             {
-                handle.binding->BindResourceSampler(binding.slot,
-                                                    domain_resources->texture_array,
-                                                    domain_resources->sampler);
-                handle.binding->Update();
-
-                auto *handle_pm = handle.binding->GetPerMaterialMP();
-                LogInfo("[TBV][TextureMaterialBindingSystem] Domain handle.binding updated: binding=%p pm=%p ds=%p tex_array=%p sampler=%p layer=%d",
+                LogInfo("[TBV][TextureMaterialBindingSystem] Domain handle.binding registered: binding=%p tex_array=%p sampler=%p layer=%d",
                         static_cast<void *>(handle.binding),
-                        static_cast<void *>(handle_pm),
-                        handle_pm ? (void *)handle_pm->GetVkDescriptorSet() : nullptr,
                         static_cast<void *>(domain_resources->texture_array),
                         static_cast<void *>(domain_resources->sampler),
                         layer);
@@ -612,32 +548,6 @@ namespace hgl::ecs
                         static_cast<void *>(material),
                         binding.domain_tag.c_str());
             }
-
-            if (!material->BindResourceSampler(binding.slot,
-                                               domain_resources->texture_array,
-                                               domain_resources->sampler))
-            {
-                LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] material->BindResourceSampler failed (domain): material=%p(%s) slot=%u tex_array=%p sampler=%p layer=%d domain_tag='%s'",
-                        static_cast<void *>(material),
-                        material ? material->GetName().c_str() : "<null>",
-                        static_cast<unsigned>(binding.slot),
-                        static_cast<void *>(domain_resources->texture_array),
-                        static_cast<void *>(domain_resources->sampler),
-                        layer,
-                        binding.domain_tag.c_str());
-                return false;
-            }
-            material->Update();
-
-            auto *material_pm = material->GetMP(hgl::graph::DescriptorSetType::PerMaterial);
-            LogInfo("[TBV][TextureMaterialBindingSystem] Domain material updated: material=%p(%s) pm=%p ds=%p tex_array=%p sampler=%p layer=%d",
-                    static_cast<void *>(material),
-                    material ? material->GetName().c_str() : "<null>",
-                    static_cast<void *>(material_pm),
-                    material_pm ? (void *)material_pm->GetVkDescriptorSet() : nullptr,
-                    static_cast<void *>(domain_resources->texture_array),
-                    static_cast<void *>(domain_resources->sampler),
-                    layer);
 
             if (descriptor_binding_system)
             {

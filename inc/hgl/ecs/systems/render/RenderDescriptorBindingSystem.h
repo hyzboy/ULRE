@@ -77,14 +77,14 @@ namespace hgl::ecs
         graph::UBOViewportInfo *viewport_ubo = nullptr;
         uint32_t pending_viewport_width  = 0;
         uint32_t pending_viewport_height = 0;
-        std::unordered_map<const graph::ShaderMaterialProgram *, bool> contract_last_ok;
-        std::unordered_map<const graph::ShaderMaterialProgram *, std::unordered_map<TextureBindingSlot, MaterialResourceBinding>> material_resource_bindings;
+        std::unordered_map<graph::ShaderMaterialProgram *, bool> contract_last_ok;
+        std::unordered_map<graph::ShaderMaterialProgram *, std::unordered_map<TextureBindingSlot, MaterialResourceBinding>> material_resource_bindings;
         bool contract_diagnostics_enabled = true;
         ContractDiagStats last_contract_stats{};
         std::unordered_set<graph::ShaderMaterialProgram *> pipeline_materials;
 
         // Phase 2 — DomainResourceBinding texture/sampler bindings
-        std::unordered_map<const graph::DomainResourceBinding *, std::unordered_map<TextureBindingSlot, MaterialResourceBinding>> domain_resource_bindings;
+        std::unordered_map<graph::DomainResourceBinding *, std::unordered_map<TextureBindingSlot, MaterialResourceBinding>> domain_resource_bindings;
         std::unordered_set<graph::DomainResourceBinding *> registered_domain_bindings;
 
         std::array<graph::UBOAccessorBase *, graph::mtl::UBODescriptorSemanticCount> scene_ubo_resolvers{};

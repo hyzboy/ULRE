@@ -56,7 +56,7 @@ namespace hgl::ecs
     #if !ULRE_ECS_DEBUG_API
         return false;
     #else
-        auto material_it = material_resource_bindings.find(material);
+        auto material_it = material_resource_bindings.find(const_cast<graph::ShaderMaterialProgram *>(material));
         if (material_it == material_resource_bindings.end())
             return false;
 

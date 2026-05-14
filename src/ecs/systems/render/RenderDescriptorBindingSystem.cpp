@@ -352,7 +352,7 @@ namespace hgl::ecs
         if (!material)
             return nullptr;
 
-        auto material_it = material_resource_bindings.find(material);
+        auto material_it = material_resource_bindings.find(const_cast<graph::ShaderMaterialProgram *>(material));
         if (material_it == material_resource_bindings.end())
             return nullptr;
 
@@ -369,7 +369,7 @@ namespace hgl::ecs
         if (!binding)
             return nullptr;
 
-        auto it = domain_resource_bindings.find(binding);
+        auto it = domain_resource_bindings.find(const_cast<graph::DomainResourceBinding *>(binding));
         if (it == domain_resource_bindings.end())
             return nullptr;
 
@@ -562,6 +562,23 @@ namespace hgl::ecs
             }
 
         }
+
+        // Replay registered texture/sampler bindings into each active material's descriptor set.
+        for (auto &[material, slots] : material_resource_bindings)
+        {
+            if (!material)
+                continue;
+            bool updated = false;
+            for (auto &[slot_key, res] : slots)
+            {
+                if (!res.texture || !res.sampler)
+                    continue;
+                material->BindResourceSampler(static_cast<graph::mtl::SamplerSlot>(slot_key), res.texture, res.sampler);
+                updated = true;
+            }
+            if (updated)
+                material->Update();
+        }
     }
 
     void RenderDescriptorBindingSystem::ApplyPipelineMaterialBindings(
@@ -693,10 +710,10 @@ namespace hgl::ecs
                 }
 }
 
-            auto it = contract_last_ok.find(material);
+            auto it = contract_last_ok.find(const_cast<graph::ShaderMaterialProgram *>(material));
             if (it == contract_last_ok.end())
             {
-                contract_last_ok.emplace(material, all_required_ok);
+                contract_last_ok.emplace(const_cast<graph::ShaderMaterialProgram *>(material), all_required_ok);
 
                 if (!all_required_ok)
                     ++frame_stats.materials_unresolved;
@@ -765,8 +782,17 @@ namespace hgl::ecs
             if (!binding)
                 continue;
 
-            // MaterialBindingInstanceTexture for domain bindings requires a domain-level
-            // MIT buffer — not yet implemented for the domain path.
+            // Replay registered texture/sampler bindings into the domain binding's descriptor set.
+            auto it = domain_resource_bindings.find(binding);
+            if (it != domain_resource_bindings.end())
+            {
+                for (auto &[slot_key, res] : it->second)
+                {
+                    if (!res.texture || !res.sampler)
+                        continue;
+                    binding->BindResourceSampler(static_cast<graph::mtl::SamplerSlot>(slot_key), res.texture, res.sampler);
+                }
+            }
 
             binding->Update();
         }
