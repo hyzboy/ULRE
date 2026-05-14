@@ -52,7 +52,7 @@ namespace hgl::ecs
         if (committed_state.ready && committed_state.primitive)
             return committed_state.primitive;
 
-        return primitiveComp->GetPrimitive();
+        return nullptr;
     }
 
     hgl::graph::MaterialBindingInstance* PrimitiveRenderItem::GetResolvedBindingInstance() const
@@ -71,9 +71,9 @@ namespace hgl::ecs
             return RenderItem::ResolvedMaterialState{};
 
         const auto &committed_state = primitiveComp->GetCommittedRenderState();
-        const auto comp_state = committed_state.ready
-                              ? committed_state.material_state
-                              : primitiveComp->ResolveEffectiveMaterialState();
+        if (!committed_state.ready)
+            return RenderItem::ResolvedMaterialState{};
+        const auto &comp_state = committed_state.material_state;
 
         RenderItem::ResolvedMaterialState state{};
         state.binding_instance = comp_state.binding_instance;

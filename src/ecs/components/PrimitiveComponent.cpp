@@ -231,43 +231,7 @@ namespace hgl::ecs
         if (committed_render_state.ready)
             return committed_render_state.material_state;
 
-        if (staging_render_state.ready)
-            return staging_render_state.material_state;
-
-        EffectiveMaterialState state = BuildMaterialStateFromResolveRequest(material_slot, runtime_texture_binding);
-
-        if (!state.binding_instance && primitive)
-            state.binding_instance = primitive->GetResolvedBindingInstance();
-
-        if (state.binding_instance)
-        {
-            if (!state.material)
-                state.material = hgl::graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(state.binding_instance);
-
-            if (!state.vil)
-                if (primitive) state.vil = primitive->GetVIL();
-
-            if (!state.domain)
-                state.domain = hgl::graph::MaterialBindingInstanceInternalAccess::GetDomain(state.binding_instance);
-
-            if (state.domain_id == 0xFFFFFFFFu)
-                state.domain_id = hgl::graph::MaterialBindingInstanceInternalAccess::GetDomainID(state.binding_instance);
-
-            if (state.mi_id < 0)
-                state.mi_id = state.binding_instance->GetMIID();
-
-            if (state.preset == hgl::graph::GraphicsPipelinePreset::Solid3D)
-                state.preset = state.binding_instance->GetRenderPreset();
-
-#ifdef _DEBUG
-        assert(state.domain == hgl::graph::MaterialBindingInstanceInternalAccess::GetDomain(state.binding_instance));
-        assert(state.domain_id == hgl::graph::MaterialBindingInstanceInternalAccess::GetDomainID(state.binding_instance));
-            assert(state.mi_id == state.binding_instance->GetMIID());
-            assert(state.preset == state.binding_instance->GetRenderPreset());
-#endif
-        }
-
-        return state;
+        return EffectiveMaterialState{};
     }
 
     bool PrimitiveComponent::GetLocalAABB(hgl::math::AABB& outAABB) const
