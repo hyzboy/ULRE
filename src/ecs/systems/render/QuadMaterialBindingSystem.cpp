@@ -313,9 +313,9 @@ namespace hgl::ecs
                                                                       shared_sampler);
         }
 
-        // Write texture size to material instance data
-        math::Vector2u texture_size(texture->GetWidth(), texture->GetHeight());
-        mi->WriteMIData(texture_size);
+        // Write billboard display size to material instance data (BillboardSize in schema)
+        math::Vector2u pixel_size(quad->GetPixelSize().x, quad->GetPixelSize().y);
+        mi->WriteMIData(pixel_size);
 
         // Update quad component
         quad->SetPrimitive(quad_primitive);
@@ -370,11 +370,10 @@ namespace hgl::ecs
         // Set the texture array layer for this quad's texture
         mi->SetTextureArrayLayer(graph::mtl::SamplerSlot::BaseColor, static_cast<uint32_t>(layer));
 
-        // Write texture size to MI data (use texture array dimensions)
-        if (dr->texture_array)
+        // Write billboard display size to MI data (BillboardSize in schema)
         {
-            math::Vector2u texture_size(dr->texture_array->GetWidth(), dr->texture_array->GetHeight());
-            mi->WriteMIData(texture_size);
+            math::Vector2u pixel_size(quad->GetPixelSize().x, quad->GetPixelSize().y);
+            mi->WriteMIData(pixel_size);
         }
 
         // Assign domain primitive or reuse current

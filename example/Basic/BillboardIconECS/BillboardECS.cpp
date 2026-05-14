@@ -79,7 +79,7 @@ private:
 
     inline static const mtl::MaterialRecipe kTexturedQuadCfg {
         .id            = "billboard_ecs_texture_binding_quad",
-        .preset        = mtl::MaterialPreset::Standard,
+        .preset        = mtl::MaterialPreset::PureTexture2D,
         .dim           = mtl::MaterialRecipe::Dim::D3,
         .prim          = PrimitiveType::Triangles,
         .pipeline      = GraphicsPipelinePreset::Alpha3D,

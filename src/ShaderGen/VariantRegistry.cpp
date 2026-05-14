@@ -586,6 +586,40 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
       "[VariantRegistry] miss request={%s}\n",
       FormatVariantKeyForLog(request_key).c_str());
 
+    // Diagnostic: enumerate all registered variants that share the same preset/surface/geom
+    // and show what differs so the caller can understand why lookup failed.
+    {
+        std::optional<MaterialPreset> req_preset = options.preferred_factory_type;
+        int close_count = 0;
+        for (const auto &[hash, bucket] : variant_map)
+        {
+            for (const auto &entry : bucket)
+            {
+                bool same_preset = !req_preset || (entry.desc.factory_type && *entry.desc.factory_type == *req_preset);
+                bool same_surface = (entry.key.surface_type == request_key.surface_type);
+                bool same_geom    = (entry.key.geometry_mode == request_key.geometry_mode);
+                if (!same_preset || !same_surface || !same_geom)
+                    continue;
+                if (close_count == 0)
+                    std::fprintf(stderr, "[VariantRegistry] miss candidates (same preset/surface/geom):\n");
+                std::fprintf(stderr,
+                    "[VariantRegistry]   candidate variant='%s' tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X"
+                    " (request tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X)\n",
+                    entry.desc.variant_name.c_str(),
+                    entry.key.texture_source_bits,
+                    entry.key.sampler_feature_bits,
+                    entry.key.vertex_attribute_feature_bits,
+                    request_key.texture_source_bits,
+                    request_key.sampler_feature_bits,
+                    request_key.vertex_attribute_feature_bits);
+                if (++close_count >= 8) break;
+            }
+            if (close_count >= 8) break;
+        }
+        if (close_count == 0)
+            std::fprintf(stderr, "[VariantRegistry] miss: no registered variant shares same preset/surface/geom\n");
+    }
+
     return nullptr;
 }
 

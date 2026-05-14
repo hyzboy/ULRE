@@ -536,6 +536,10 @@ namespace hgl::ecs
         if (!world)
             return;
 
+        static int s_batch_diag_frame = 0;
+        ++s_batch_diag_frame;
+        const bool batch_diag = (s_batch_diag_frame <= 3);
+
         const uint64_t vkcreate_at_start = graph::RenderTargetFormat::GetVkCreateCount();
         const uint64_t outside = ComputeOutsideBatchPipelineCreation(vkcreate_at_start,
                                                                      g_pipeline_batch_phase_tracker);
@@ -656,7 +660,18 @@ namespace hgl::ecs
             }
 
             if (!material || !pipeline)
+            {
+                if (batch_diag)
+                {
+                    Entity* diag_entity = item->GetEntity();
+                    const char* entity_name = diag_entity ? diag_entity->GetName().c_str() : "<null>";
+                    LogInfo("[BatchDiag] frame=%d SKIP entity='%s' material=%p pipeline=%p",
+                            s_batch_diag_frame, entity_name,
+                            static_cast<const void*>(material),
+                            static_cast<const void*>(pipeline));
+                }
                 continue;
+            }
 
             // Phase 4: include ResourceDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
@@ -671,6 +686,26 @@ namespace hgl::ecs
 
             MaterialPipelineKey key(material, pipeline, domain, queue);
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
+
+            if (batch_diag)
+            {
+                Entity* diag_entity = item->GetEntity();
+                const char* entity_name = diag_entity ? diag_entity->GetName().c_str() : "<null>";
+                const char* material_name = material ? material->GetName().c_str() : "<null>";
+                const char* geom_name = "<no-prim>";
+                AnsiString geom_name_str;
+                if (primitive && primitive->GetGeometry())
+                {
+                    geom_name_str = primitive->GetGeometry()->GetName();
+                    geom_name = geom_name_str.c_str();
+                }
+                const glm::vec3 wp = item->worldPosition;
+                LogInfo("[BatchDiag] frame=%d entity='%s' material='%s' geom='%s' world=(%.2f,%.2f,%.2f) domain=%p queue=%d",
+                        s_batch_diag_frame, entity_name, material_name, geom_name,
+                        wp.x, wp.y, wp.z,
+                        static_cast<const void*>(domain),
+                        int(queue));
+            }
 
             if (!batch_ptr)
             {
