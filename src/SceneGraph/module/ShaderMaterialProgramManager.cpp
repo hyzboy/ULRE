@@ -327,30 +327,16 @@ void ShaderMaterialProgramManager::ApplyMaterialFinalizePlan(ShaderMaterialProgr
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::TryInitializeFallbackMaterial()
 {
-    if(fallback_material)
-        return fallback_material;
-
-    mtl::Material3DCreateConfig cfg;
-    fallback_material = CreateMaterial(mtl::MaterialPreset::Checkerboard3D, &cfg);
-
-    if(!fallback_material)
-    {
-        std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] TryInitializeFallbackMaterial failed: Checkerboard3D creation failed\n");
-        return nullptr;
-    }
-
-    stats.LogFallbackMaterialInitialized(fallback_material->GetName());
-
-    return fallback_material;
+    // Phase 1: silent Checkerboard3D fallback removed.
+    // FS failures are now handled by ErrorIndicator surface inside the material factory.
+    // VS failures must propagate as nullptr so callers can make an explicit decision.
+    return nullptr;
 }
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::GetFallbackMaterial()
 {
-    if(!fallback_material)
-        TryInitializeFallbackMaterial();
-
-    return fallback_material;
+    // Phase 1: no global fallback material is maintained any more.
+    return nullptr;
 }
 
 bool ShaderMaterialProgramManager::ExecuteMaterialBuildPipeline(ShaderMaterialProgram *mtl,
@@ -482,13 +468,8 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
         stats.RecordMaterialRequest();
 
         ShaderMaterialProgram *mtl = CreateMaterial(preset, cfg);
-        if (!mtl)
-        {
-            mtl = GetFallbackMaterial();
-            if (mtl)
-                stats.RecordFallbackUsed();
-        }
-
+        // Phase 1: no silent fallback — return nullptr on failure;
+        // Phase 2 ErrorIndicator FS was already injected by MaterialLibrary on variant miss.
         return mtl;
     };
 
@@ -497,13 +478,8 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
         stats.RecordMaterialRequest();
 
         ShaderMaterialProgram *mtl = CreateMaterial(preset, cfg);
-        if (!mtl)
-        {
-            mtl = GetFallbackMaterial();
-            if (mtl)
-                stats.RecordFallbackUsed();
-        }
-
+        // Phase 1: no silent fallback — return nullptr on failure;
+        // Phase 2 ErrorIndicator FS was already injected by MaterialLibrary on variant miss.
         return mtl;
     };
 
@@ -685,13 +661,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
     stats.RecordMaterialRequest();
 
     ShaderMaterialProgram *mtl = CreateMaterial(mtl_id, cfg);
-
-    if(!mtl)
-    {
-        mtl = GetFallbackMaterial();
-        if(mtl)
-            stats.RecordFallbackUsed();
-    }
+    // Phase 1: no silent fallback.
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
@@ -704,13 +674,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
     stats.RecordMaterialRequest();
 
     ShaderMaterialProgram *mtl = CreateMaterial(mtl_id, cfg);
-
-    if(!mtl)
-    {
-        mtl = GetFallbackMaterial();
-        if(mtl)
-            stats.RecordFallbackUsed();
-    }
+    // Phase 1: no silent fallback.
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
@@ -723,13 +687,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
     stats.RecordMaterialRequest();
 
     ShaderMaterialProgram *mtl = CreateMaterial(key, cfg);
-
-    if(!mtl)
-    {
-        mtl = GetFallbackMaterial();
-        if(mtl)
-            stats.RecordFallbackUsed();
-    }
+    // Phase 1: no silent fallback.
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();
@@ -742,13 +700,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::ResolveOrCreateProgram(cons
     stats.RecordMaterialRequest();
 
     ShaderMaterialProgram *mtl = CreateMaterial(key, cfg);
-
-    if(!mtl)
-    {
-        mtl = GetFallbackMaterial();
-        if(mtl)
-            stats.RecordFallbackUsed();
-    }
+    // Phase 1: no silent fallback.
 
     if(out_key)
         out_key->cache_name = mtl ? mtl->GetName() : AnsiString();

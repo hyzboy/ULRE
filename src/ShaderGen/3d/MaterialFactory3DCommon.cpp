@@ -4,6 +4,7 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
+#include<hgl/shadergen/ErrorIndicatorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<cstdio>
 
@@ -44,6 +45,17 @@ MaterialCreateInfo *CreateFromFixedDef3D(
         std::fprintf(stderr, "[%s] CompositorAssembler failed: %s\n",
             debug_tag, result.error_message.c_str());
         return nullptr;
+    }
+
+    // Phase 2: if this variant was assembled with an ErrorIndicator FS override,
+    // re-assemble the fragment shader via AssembleErrorIndicatorFS so that the
+    // error_code is baked in as a compile-time constant.
+    if (var_desc.fs_error_code != 0)
+    {
+        std::string ei_fs;
+        std::string ei_err;
+        AssembleErrorIndicatorFS(assemble_key, var_desc, var_desc.fs_error_code, ei_fs, ei_err);
+        result.fragment_glsl = std::move(ei_fs);
     }
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(

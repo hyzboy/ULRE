@@ -8,6 +8,7 @@
 #include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/shadergen/MaterialFactory3D.h>
+#include<hgl/shadergen/registry/ErrorCodeRegistry.h>
 #include<atomic>
 #include<cstring>
 #include<cstdio>
@@ -823,6 +824,75 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             key.extra_feature_bits,
             registry_lookup_key.sky_ambient_model == SkyLightAmbientModel::Simple
                 && key.sky_ambient_model != SkyLightAmbientModel::Simple ? "yes" : "no");
+
+        // Phase 2: VS/FS split fallback.
+        // The full variant miss does not necessarily mean VS is broken — it may be
+        // that only the FS surface configuration (tex_bits / sampler_bits) has no match.
+        // Strategy: scan registered variants for one that shares the same geometry_mode.
+        // If found, VS assembly is likely valid; substitute ErrorIndicator surface for FS.
+        const MaterialVariantDesc *vs_candidate = nullptr;
+        MaterialVariantKey vs_candidate_key{};
+        GetBuiltinVariantRegistry().ForEach(
+            [&](const MaterialVariantKey &vk, const MaterialVariantDesc &vd)
+            {
+                if (vs_candidate)
+                    return; // already found one
+                if (vk.geometry_mode != registry_lookup_key.geometry_mode)
+                    return;
+                if (!vd.factory_type)
+                    return;
+                vs_candidate     = &vd;
+                vs_candidate_key = vk;
+            });
+
+        if (vs_candidate && vs_candidate->factory_type)
+        {
+            // Encode the FS error reason so the user can see why the surface failed.
+            const uint32_t error_code = EncodeFSError(
+                FSErrorReason::NoSurfaceVariant,
+                static_cast<uint8_t>(key.surface_type),
+                static_cast<uint8_t>(key.texture_source_bits & 0xFF),
+                static_cast<uint8_t>(key.sampler_feature_bits & 0xFF));
+
+            std::fprintf(stderr,
+                "[MaterialLibrary] Phase2 FS-fallback: VS candidate='%s' (geom=%u)"
+                " error_code=0x%08X [%s]\n",
+                vs_candidate->variant_name.c_str(),
+                static_cast<unsigned>(vs_candidate_key.geometry_mode),
+                error_code,
+                FormatFSError(error_code).c_str());
+
+            // Clone the candidate desc and set ErrorIndicator surface + error code.
+            MaterialVariantDesc ei_desc = *vs_candidate;
+            ei_desc.variant_name        = vs_candidate->variant_name + "_ErrorIndicator";
+            ei_desc.surface_function_path = "surface/error_indicator_surface.glsl";
+            ei_desc.fs_template_path.clear();
+            ei_desc.fs_error_code       = error_code;
+
+            // Use the original request key so VS vertex attributes / blend / pass are correct.
+            if (MaterialCreateInfo *ei_mci = MaterialFactory3D::Create(
+                    *vs_candidate->factory_type,
+                    profile,
+                    &ei_desc,
+                    key,
+                    cfg))
+            {
+                return ei_mci;
+            }
+
+            std::fprintf(stderr,
+                "[MaterialLibrary] Phase2 FS-fallback failed: factory dispatch returned null"
+                " (candidate='%s')\n",
+                vs_candidate->variant_name.c_str());
+        }
+        else
+        {
+            std::fprintf(stderr,
+                "[MaterialLibrary] Phase2 FS-fallback: no geometry_mode=%u candidate found"
+                " — VS routing also failed\n",
+                static_cast<unsigned>(registry_lookup_key.geometry_mode));
+        }
+
         return nullptr;
     }
 

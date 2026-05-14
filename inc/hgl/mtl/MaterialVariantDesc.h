@@ -27,6 +27,13 @@ namespace hgl::graph::mtl
         // For custom descriptors, callers can bind a row directly to avoid legacy key-derived fallback.
         const MaterialVariantRow *bound_row = nullptr;
 
+        // Phase 2: FS error indicator support.
+        // When non-zero, the assembler will replace the normal surface function with
+        // error_indicator_surface.glsl and bake this code into the FS as a compile-time
+        // constant (R=reason, G=surface_model_id, B=tex_bits_lo).
+        // Encode via ErrorCodeRegistry::EncodeFSError(); decode via FormatFSError().
+        uint32_t fs_error_code = 0;
+
         MaterialVariantDesc()
         {
             factory_type.reset();

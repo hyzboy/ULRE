@@ -198,6 +198,7 @@ SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             MaterialSpecValidator.cpp
                             VariantRegistry.cpp
                             VariantRegistryStatsSink.cpp
+                            registry/ErrorCodeRegistry.cpp
                             ${STD_MTL_HEADER_PATH}/MaterialLibrary.h
                             ${STD_MTL_HEADER_PATH}/MaterialSpec.h
                             ${STD_MTL_HEADER_PATH}/MaterialPreset.h
@@ -206,7 +207,8 @@ SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             ${MTL_TYPE_INCLUDE_PATH}/MaterialVariantKey.h
                             ${MTL_TYPE_INCLUDE_PATH}/SurfaceType.h
                             ${MTL_TYPE_INCLUDE_PATH}/RenderAlphaMode.h
-                            ${MTL_TYPE_INCLUDE_PATH}/PassType.h)
+                            ${MTL_TYPE_INCLUDE_PATH}/PassType.h
+                            ${SHADERGEN_INCLUDE_PATH}/registry/ErrorCodeRegistry.h)
 SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 
 # Material Compiler
@@ -240,10 +242,12 @@ SOURCE_GROUP("Material Compiler\\Layout" FILES  ${SHADER_LAYOUT_HEADER_FILES}
 SET(COMPOSITOR_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/CompositorAssembler.h
                              ${SHADERGEN_INCLUDE_PATH}/CompositorFeatureFlags.h
                              ${SHADERGEN_INCLUDE_PATH}/CompositorTemplateRouter.h
-                             ${SHADERGEN_INCLUDE_PATH}/MaterialBuilder.h)
+                             ${SHADERGEN_INCLUDE_PATH}/MaterialBuilder.h
+                             ${SHADERGEN_INCLUDE_PATH}/ErrorIndicatorAssembler.h)
 SET(COMPOSITOR_SOURCE_FILES  CompositorAssembler.cpp
                              CompositorTemplateRouter.cpp
-                             MaterialBuilder.cpp)
+                             MaterialBuilder.cpp
+                             ErrorIndicatorAssembler.cpp)
 SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
                                 ${COMPOSITOR_SOURCE_FILES})
 
