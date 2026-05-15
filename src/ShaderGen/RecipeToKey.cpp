@@ -525,7 +525,7 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
 }
 
 /// Phase 6 (replaces Phase 1 TODO bridge): table-driven sky canonicalization.
-/// Scans kBuiltinVariants for any entry whose key (with sky set to Simple)
+/// Scans the builtin entry table for any entry whose key (with sky set to Simple)
 /// matches the incoming key. If the matched entry has sky_is_routing_axis==false,
 /// canonicalize sky to Simple. This is the same rule used by IsSkyRoutingAxisForPresetKey
 /// in MaterialLibrary.cpp, expressed here without a known preset parameter.

@@ -542,7 +542,7 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
     const MaterialPreset resolved_preset =
         ResolveMaterialPresetForLOD(preset, GetDefaultMaterialLOD());
 
-    // Step 2: scan kBuiltinVariants for the best matching entry.
+    // Step 2: scan the builtin entry table for the best matching entry.
     //   • If ov.blend_mode is set, select the entry whose blend field matches.
     //   • If ov.lighting_model is set, additionally filter on lighting field.
     //   • First match wins (table entries ordered from most common to rarest).

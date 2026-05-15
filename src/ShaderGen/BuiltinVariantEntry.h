@@ -5,8 +5,8 @@
 //
 // USAGE:
 //   VariantRegistry.cpp  — defines kBuiltinVariants[] and calls BuildKey()/BuildDesc()
-//   MaterialLibrary.cpp  — scans kBuiltinVariants[] in RouteKey() to eliminate the old
-//                          per-preset MakeXxxKey() function-pointer dispatch.
+//   MaterialLibrary.cpp  — scans kBuiltinVariants[] in RouteKey() to select the base entry
+//                          for a preset before applying runtime overrides.
 //
 // This file intentionally has no include guards of its own (use #pragma once at each
 // including TU) and relies on the including TU to have pulled in the MTL/SurfaceType etc.
