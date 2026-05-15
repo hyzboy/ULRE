@@ -1,4 +1,5 @@
 #include "CodegenRegistry.h"
+#include "BuiltinSamplerCodegen.h"
 
 #include <cassert>
 
@@ -22,8 +23,15 @@ const IColorSourceCodegen* ColorSourceCodegenRegistry::Find(ColorSourceKind kind
 
 ColorSourceCodegenRegistry& ColorSourceCodegenRegistry::Global()
 {
-    // Step 1: 骨架 —— 返回空注册表；后续 Step 2 在此处注册内置实现。
-    static ColorSourceCodegenRegistry instance;
+    static ColorSourceCodegenRegistry instance = []
+    {
+        ColorSourceCodegenRegistry reg;
+        reg.Register(ColorSourceKind::BuiltinSampler2D,
+                     std::make_unique<BuiltinSampler2DCodegen>());
+        reg.Register(ColorSourceKind::BuiltinSampler2DArray,
+                     std::make_unique<BuiltinSampler2DArrayCodegen>());
+        return reg;
+    }();
     return instance;
 }
 

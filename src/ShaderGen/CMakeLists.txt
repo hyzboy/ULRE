@@ -266,10 +266,17 @@ SET(COMPOSITOR_INTERNAL_SOURCE_FILES internal/GLSLSourceUtils.cpp)
 SOURCE_GROUP("Compositor\\Internal" FILES ${COMPOSITOR_INTERNAL_HEADER_FILES}
                                           ${COMPOSITOR_INTERNAL_SOURCE_FILES})
 
-# ColorSource / PCG 统一化 (Step 1 骨架)
-SET(COLORSOURCE_HEADER_FILES    ColorSource/BindingAllocator.h
+# ColorSource / PCG 统一化 (Step 1 骨架 + Step 2 内置 sampler codegen)
+SET(COLORSOURCE_HEADER_FILES    ${SHADERGEN_INCLUDE_PATH}/DescriptorRequirement.h
+                                ${SHADERGEN_INCLUDE_PATH}/ColorSource.h
+                                ${SHADERGEN_INCLUDE_PATH}/IColorSourceCodegen.h
+                                ColorSource/BuiltinSamplerCodegen.h
+                                ColorSource/BindingAllocator.h
                                 ColorSource/CodegenRegistry.h)
-SET(COLORSOURCE_SOURCE_FILES    ColorSource/BindingAllocator.cpp
+SET(COLORSOURCE_SOURCE_FILES    ColorSource/ColorSource.cpp
+                                ColorSource/BuiltinSampler2DCodegen.cpp
+                                ColorSource/BuiltinSampler2DArrayCodegen.cpp
+                                ColorSource/BindingAllocator.cpp
                                 ColorSource/CodegenRegistry.cpp)
 SOURCE_GROUP("ColorSource" FILES ${COLORSOURCE_HEADER_FILES}
                                  ${COLORSOURCE_SOURCE_FILES})
