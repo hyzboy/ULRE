@@ -664,25 +664,6 @@ namespace hgl::graph
             defines += "#define TEXTURE_ARRAY_MODE\n";
         }
 
-        // Emit HAS_SAMPLER_XXX defines for each active texture slot so that
-        // sampler_getters.glsl getter functions are activated during reflection
-        // validation (where SamplerGLSLEmitter has not yet run).
-        for (uint32 i = 0; i < uint32(mtl::SamplerSlot::RANGE_SIZE); ++i)
-        {
-            const auto slot = static_cast<mtl::SamplerSlot>(i);
-            if (key.GetTextureSourceMode(slot) == mtl::TextureSourceMode::None)
-                continue;
-            const std::string upper = mtl::ToUpperASCII(mtl::SamplerSlotNameList[i]);
-            defines += "#define HAS_SAMPLER_";
-            defines += upper;
-            defines += "\n";
-            if (key.GetTextureSourceMode(slot) == mtl::TextureSourceMode::Array)
-            {
-                defines += "#define SAMPLER_";
-                defines += upper;
-                defines += "_ARRAY\n";
-            }
-        }
 
         if(defines.empty())
             return source;

@@ -17,19 +17,12 @@ void BuiltinSampler2DArrayCodegen::EmitDeclarations(ShaderWriter          &write
 
     const char       *sampler_symbol = mtl::ToGLSLSamplerSymbol(src.slot);
     const char       *slot_name      = mtl::SamplerSlotNameList[uint8_t(src.slot)];
-    const std::string upper_name     = mtl::ToUpperASCII(slot_name);
     const std::string layer_var      = std::string("_tex_layer_") + slot_name;
 
     writer.EmitLayoutBinding(set, binding)
           .EmitUniform("sampler2DArray", sampler_symbol);
 
     writer.EmitVariable("uint", layer_var);
-
-    writer.EmitDefine("HAS_SAMPLER_" + upper_name)
-          .EmitDefine("SAMPLER_" + upper_name + "_ARRAY");
-
-    if (src.builtin.output_format == ColorSourceOutputFormat::Grayscale_R)
-        writer.EmitDefine("SAMPLER_" + upper_name + "_GRAYSCALE");
 }
 
 void BuiltinSampler2DArrayCodegen::EmitGetterFunction(ShaderWriter          &writer,

@@ -57,14 +57,9 @@ void BuiltinSampler2DCodegen::EmitDeclarations(ShaderWriter          &writer,
     FindResolved(resolved_bindings, debug_name, set, binding);
 
     const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(src.slot);
-    const std::string upper_name = mtl::ToUpperASCII(mtl::SamplerSlotNameList[uint8_t(src.slot)]);
 
     writer.EmitLayoutBinding(set, binding)
-          .EmitUniform("sampler2D", sampler_symbol)
-          .EmitDefine("HAS_SAMPLER_" + upper_name);
-
-    if (src.builtin.output_format == ColorSourceOutputFormat::Grayscale_R)
-        writer.EmitDefine("SAMPLER_" + upper_name + "_GRAYSCALE");
+          .EmitUniform("sampler2D", sampler_symbol);
 }
 
 void BuiltinSampler2DCodegen::EmitGetterFunction(ShaderWriter          &writer,

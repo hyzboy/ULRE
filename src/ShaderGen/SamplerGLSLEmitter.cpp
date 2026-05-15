@@ -31,14 +31,12 @@ namespace
     {
         const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(slot);
         const char *slot_name      = mtl::SamplerSlotNameList[uint8(slot)];
-        const std::string upper_name = mtl::ToUpperASCII(mtl::SamplerSlotNameList[uint8(slot)]);
         ShaderWriter writer(out);
 
         writer.EmitLayoutBinding(descriptor->set, descriptor->binding)
-              .EmitUniform("sampler2D", sampler_symbol)
-              .EmitDefine("HAS_SAMPLER_" + upper_name);
+              .EmitUniform("sampler2D", sampler_symbol);
 
-        // Inline getter — no longer needs sampler_getters.glsl
+        // Inline getter
         if (channel_hint == TextureChannelHint::Grayscale)
         {
             out += "vec4 GetSampler"; out += slot_name;
@@ -59,7 +57,6 @@ namespace
     {
         const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(slot);
         const char *slot_name      = mtl::SamplerSlotNameList[uint8(slot)];
-        const std::string upper_name = mtl::ToUpperASCII(slot_name);
         const std::string layer_var  = std::string("_tex_layer_") + slot_name;
         ShaderWriter writer(out);
 
@@ -67,12 +64,6 @@ namespace
               .EmitUniform("sampler2DArray", sampler_symbol);
 
         writer.EmitVariable("uint", layer_var);
-
-        writer.EmitDefine("HAS_SAMPLER_" + upper_name)
-              .EmitDefine("SAMPLER_" + upper_name + "_ARRAY");
-
-        if (channel_hint == TextureChannelHint::Grayscale)
-            writer.EmitDefine("SAMPLER_" + upper_name + "_GRAYSCALE");
 
         // Inline getter — array variant
         if (channel_hint == TextureChannelHint::Grayscale)
@@ -151,16 +142,11 @@ std::string EmitSimpleSamplerGLSL(const MaterialDescriptorDB &mdi, ShaderStage s
     out.reserve(512);
     out += "// ---- Auto-generated simple sampler declarations ----\n";
 
-    bool has_known_slot = false;
-
     for (const SamplerEntry &entry : samplers)
     {
         mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
         if (mtl::TryGetSlotFromDescriptorName(entry.descriptor->name, slot))
-        {
             AppendKnownSlotSampler(out, entry.descriptor, slot, entry.channel_hint);
-            has_known_slot = true;
-        }
         else
             AppendGenericSampler(out, entry.descriptor);
     }
@@ -169,18 +155,10 @@ std::string EmitSimpleSamplerGLSL(const MaterialDescriptorDB &mdi, ShaderStage s
     {
         mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
         if (mtl::TryGetSlotFromDescriptorName(entry.descriptor->name, slot))
-        {
             AppendKnownSlotArraySampler(out, entry.descriptor, slot, entry.channel_hint);
-            has_known_slot = true;
-        }
         else
             AppendGenericSampler(out, entry.descriptor);
     }
-
-    if (has_known_slot)
-        // Pre-apply the file's include guard so a stray #include "common/sampler_getters.glsl"
-        // in any surface file will be a no-op (getters are already generated inline above).
-        out += "#define ULRE_COMMON_SAMPLER_GETTERS_GLSL\n";
 
     out += "// ----------------------------------------------------\n\n";
     return out;
