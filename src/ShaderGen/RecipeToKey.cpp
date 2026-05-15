@@ -20,7 +20,7 @@
 #include <hgl/mtl/StaticMaterialDefRegistry.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include <hgl/mtl/UBOCommon.h>
-#include "BuiltinVariantEntry.h"
+#include <hgl/mtl/MaterialVariantRegistry.h>
 
 namespace hgl::graph::mtl
 {
@@ -87,11 +87,10 @@ static RecipeAxisExpansion ExpandRecipeAxesFromPresetAlias(const MaterialRecipe 
     const MaterialVariantRow *best = nullptr;
     int best_score = -1000000;
 
-    for (size_t i = 0; i < kBuiltinVariantRowsCount; ++i)
+    GetBuiltinVariantRegistry().ForEachBuiltinRow([&](const MaterialVariantRow &row)
     {
-        const MaterialVariantRow &row = kBuiltinVariantRows[i];
         if (row.preset != resolved_preset)
-            continue;
+            return;
 
         int score = 0;
         if (row.blend == target_blend)
@@ -109,16 +108,22 @@ static RecipeAxisExpansion ExpandRecipeAxesFromPresetAlias(const MaterialRecipe 
             score += 5;
         }
 
-        const bool row_has_array = RowHasTextureMode(row, TextureSourceMode::Array);
-        if (row_has_array == wants_array)
-            score += 20;
-
-        if (!best || score > best_score)
+        if (wants_array)
         {
-            best = &row;
-            best_score = score;
+            if (RowHasTextureMode(row, TextureSourceMode::Array))
+                score += 30;
         }
-    }
+        else if (RowHasTextureMode(row, TextureSourceMode::Simple))
+        {
+            score += 20;
+        }
+
+        if (score > best_score)
+        {
+            best_score = score;
+            best = &row;
+        }
+    });
 
     if (!best)
         return out;
@@ -151,26 +156,31 @@ static uint64 TryResolveBuiltinVariantRowHash(const MaterialPreset preset,
     query.variant_row_name_hash = 0;
     query.effective_feature_mask = 0;
 
-    for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
-    {
-        const auto &entry = kBuiltinVariants[i];
-        if (entry.preset != resolved_preset)
-            continue;
+    GetBuiltinVariantRegistry().ForEach(
+        [&](const MaterialVariantKey &candidate_key, const MaterialVariantDesc &desc)
+        {
+            if (candidate_key.variant_row_name_hash == 0)
+                return;
+            if (!desc.factory_type.has_value() || ResolveMaterialPresetForLOD(*desc.factory_type, GetDefaultMaterialLOD()) != resolved_preset)
+                return;
 
-        MaterialVariantKey candidate = BuildKey(entry);
-        const uint64 candidate_row_hash = candidate.variant_row_name_hash;
-        candidate.variant_row_name_hash = 0;
-        candidate.effective_feature_mask = 0;
+            MaterialVariantKey candidate = candidate_key;
+            const uint64 candidate_row_hash = candidate.variant_row_name_hash;
+            candidate.variant_row_name_hash = 0;
+            candidate.effective_feature_mask = 0;
 
-        // Phase 3: BuildKey already canonicalizes sky to Simple when sky_is_routing_axis==false.
-        // Mirror that on the query side so key matching is consistent with the table rule.
-        MaterialVariantKey local_query = query;
-        if (!entry.sky_is_routing_axis)
-            local_query.sky_ambient_model = SkyLightAmbientModel::Simple;
+            MaterialVariantKey local_query = query;
+            if (!desc.bound_row || !desc.bound_row->sky_is_routing_axis)
+                local_query.sky_ambient_model = SkyLightAmbientModel::Simple;
 
-        if (candidate == local_query)
-            return candidate_row_hash;
-    }
+            if (candidate == local_query)
+            {
+                query.variant_row_name_hash = candidate_row_hash;
+            }
+        });
+
+    if (query.variant_row_name_hash != 0)
+        return query.variant_row_name_hash;
 
     return key.variant_row_name_hash;
 }
@@ -528,18 +538,26 @@ static bool SkyIsRoutingAxisForKey(const MaterialVariantKey &key) noexcept
     probe.effective_feature_mask = 0;
     probe.sky_ambient_model = SkyLightAmbientModel::Simple;
 
-    for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
-    {
-        const auto &entry = kBuiltinVariants[i];
+    bool found = false;
+    bool routing_axis = false;
+    GetBuiltinVariantRegistry().ForEach(
+        [&](const MaterialVariantKey &candidate_key, const MaterialVariantDesc &desc)
+        {
+            if (found)
+                return;
 
-        MaterialVariantKey candidate = BuildKey(entry);
-        candidate.variant_row_name_hash = 0;
-        candidate.effective_feature_mask = 0;
-        // candidate already has sky==Simple when sky_is_routing_axis==false (from BuildKey)
+            MaterialVariantKey candidate = candidate_key;
+            candidate.variant_row_name_hash = 0;
+            candidate.effective_feature_mask = 0;
+            if (candidate == probe)
+            {
+                found = true;
+                routing_axis = desc.bound_row ? desc.bound_row->sky_is_routing_axis : false;
+            }
+        });
 
-        if (candidate == probe)
-            return entry.sky_is_routing_axis;
-    }
+    if (found)
+        return routing_axis;
 
     // No row matched; conservatively treat sky as NOT a routing axis.
     return false;

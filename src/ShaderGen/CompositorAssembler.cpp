@@ -241,59 +241,13 @@ namespace
         if (desc.variant_name.empty())
             return nullptr;
 
-        for (size_t i = 0; i < hgl::graph::mtl::kBuiltinVariantRowsCount; ++i)
-        {
-            const auto &row = hgl::graph::mtl::kBuiltinVariantRows[i];
-            if (desc.variant_name == row.name)
-                return &row;
-        }
-
-        return nullptr;
+        const auto *row = desc.bound_row;
+        return row;
     }
 
     const hgl::graph::mtl::MaterialVariantRow *FindBuiltinVariantRowByLegacyKeyApproximation(const hgl::graph::mtl::MaterialVariantKey &key)
     {
-        for (size_t i = 0; i < hgl::graph::mtl::kBuiltinVariantRowsCount; ++i)
-        {
-            const auto &row = hgl::graph::mtl::kBuiltinVariantRows[i];
-
-            if (row.surface_type != key.surface_type) continue;
-            if (row.geometry_mode != key.geometry_mode) continue;
-            if (row.position_provider != key.position_provider) continue;
-            if (row.blend != key.blend_mode) continue;
-            if (row.pass != key.pass_hint) continue;
-
-            bool textures_match = true;
-            for (uint8_t s = 0; s < uint8_t(hgl::graph::mtl::SamplerSlot::RANGE_SIZE); ++s)
-            {
-                const auto slot = static_cast<hgl::graph::mtl::SamplerSlot>(s);
-                const auto key_mode = key.GetTextureSourceMode(slot);
-
-                bool row_has_slot = false;
-                hgl::graph::mtl::TextureSourceMode row_mode = hgl::graph::mtl::TextureSourceMode::None;
-                for (uint32_t t = 0; t < row.texture_count; ++t)
-                {
-                    if (row.textures[t].slot == slot)
-                    {
-                        row_has_slot = true;
-                        row_mode = row.textures[t].source_mode;
-                        break;
-                    }
-                }
-
-                if ((row_has_slot ? row_mode : hgl::graph::mtl::TextureSourceMode::None) != key_mode)
-                {
-                    textures_match = false;
-                    break;
-                }
-            }
-
-            if (!textures_match)
-                continue;
-
-            return &row;
-        }
-
+        (void)key;
         return nullptr;
     }
 

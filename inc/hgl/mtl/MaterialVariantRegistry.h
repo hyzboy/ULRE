@@ -80,6 +80,7 @@ namespace hgl::graph::mtl
 
         // hash bucket -> candidates (supports same-key multi-factory variants)
         ankerl::unordered_dense::map<uint64, std::vector<VariantEntry>> variant_map;
+        std::vector<MaterialVariantRow> builtin_row_storage;
         size_t variant_count = 0;
     };
 

@@ -24,10 +24,10 @@
 //   error_code = uint(R*255) | (uint(G*255)<<8) | (uint(B*255)<<16) →
 //   用 ErrorCodeRegistry::FormatFSError(error_code) 解析
 
-// ULRE_ERROR_CODE 通过 specialization constant (constant_id=0) 传入
-// 若未通过 specialization constant 覆盖，默认值 0 表示"Unknown error"
+// ULRE_ERROR_CODE 通过 C++ 侧装配时内联到 GLSL 常量中传入。
+// 这里保留普通 const，避免在当前反射/预处理路径里触发 specialization constant 限制。
 #ifndef ULRE_ERROR_CODE
-layout(constant_id = 0) const uint ULRE_ERROR_CODE = 0u;
+const uint ULRE_ERROR_CODE = 0u;
 #endif
 
 SurfaceOutput EvalSurface(SurfaceInput si)

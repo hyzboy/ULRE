@@ -683,38 +683,49 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
 
     (void)s_startup_variant_validation_done;
 
-    // [Step 3.5 T4] Routing self-test: every kBuiltinVariants entry must round-trip
-    // through the registry (BuildKey → QueryVariantWithCanonicalFallback → factory_type
-    // must equal entry.preset). Any mismatch is a programming error → abort immediately.
+    // [Step 3.5 T4] Routing self-test: every registered builtin variant must round-trip
+    // through the registry. Any mismatch is a programming error → abort immediately.
     static const bool s_routing_consistency_ok = []() noexcept
     {
         bool all_ok = true;
-        for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
-        {
-            const auto &e = kBuiltinVariants[i];
-            const MaterialVariantKey k = BuildKey(e);
-            RegistryLookupOptions routing_opts{};
-            routing_opts.preferred_factory_type = e.preset;
-            const MaterialVariantDesc *found =
-                GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(k, nullptr, routing_opts);
-            const bool entry_ok = found
-                                && found->factory_type.has_value()
-                                && *found->factory_type == e.preset;
-            if (!entry_ok)
+        size_t entry_count = 0;
+        GetBuiltinVariantRegistry().ForEach(
+            [&](const MaterialVariantKey &k, const MaterialVariantDesc &desc)
             {
-                std::fprintf(stderr,
-                    "[MaterialLibrary] FATAL: routing self-test FAILED for entry[%zu] \"%s\""
-                    " (preset=%u): registry returned %s\n",
-                    i,
-                    e.name,
-                    static_cast<unsigned>(e.preset),
-                    found ? (found->factory_type.has_value()
-                             ? "wrong factory_type"
-                             : "desc with no factory_type")
-                          : "nullptr");
-                all_ok = false;
-            }
-        }
+                ++entry_count;
+                if (!desc.factory_type.has_value())
+                {
+                    std::fprintf(stderr,
+                        "[MaterialLibrary] FATAL: routing self-test FAILED for entry[%zu] \"%s\""
+                        " (missing factory_type)\n",
+                        entry_count - 1,
+                        desc.variant_name.c_str());
+                    all_ok = false;
+                    return;
+                }
+
+                RegistryLookupOptions routing_opts{};
+                routing_opts.preferred_factory_type = *desc.factory_type;
+                const MaterialVariantDesc *found =
+                    GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(k, nullptr, routing_opts);
+                const bool entry_ok = found
+                                    && found->factory_type.has_value()
+                                    && *found->factory_type == *desc.factory_type;
+                if (!entry_ok)
+                {
+                    std::fprintf(stderr,
+                        "[MaterialLibrary] FATAL: routing self-test FAILED for entry[%zu] \"%s\""
+                        " (preset=%u): registry returned %s\n",
+                        entry_count - 1,
+                        desc.variant_name.c_str(),
+                        static_cast<unsigned>(*desc.factory_type),
+                        found ? (found->factory_type.has_value()
+                                 ? "wrong factory_type"
+                                 : "desc with no factory_type")
+                              : "nullptr");
+                    all_ok = false;
+                }
+            });
         if (!all_ok)
         {
             std::fprintf(stderr,
@@ -723,7 +734,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             std::abort();
         }
         std::printf("[MaterialLibrary] BuiltinVariantEntry routing self-test passed"
-                    " (%zu entries).\n", kBuiltinVariantsCount);
+                    " (%zu entries).\n", entry_count);
         return true;
     }();
     (void)s_routing_consistency_ok;

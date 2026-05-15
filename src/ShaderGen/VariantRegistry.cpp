@@ -179,35 +179,19 @@ static std::string FormatRowTexturesForLog(const MaterialVariantRow &row)
     return text;
 }
 
-static size_t CountBuiltinRowsByName(const char *name) noexcept
+static size_t CountBuiltinRowsByName(const VariantRegistry &registry, const char *name) noexcept
 {
     if (!name || !name[0])
         return 0;
 
     size_t count = 0;
-    for (size_t i = 0; i < kBuiltinVariantRowsCount; ++i)
+    registry.ForEachBuiltinRow([&](const MaterialVariantRow &row)
     {
-        const auto &row = kBuiltinVariantRows[i];
         if (row.name && std::string_view(row.name) == name)
             ++count;
-    }
+    });
 
     return count;
-}
-
-static const MaterialVariantRow *FindBuiltinRowByName(const std::string &name) noexcept
-{
-    if (name.empty())
-        return nullptr;
-
-    for (size_t i = 0; i < kBuiltinVariantRowsCount; ++i)
-    {
-        const auto &row = kBuiltinVariantRows[i];
-        if (row.name && name == row.name)
-            return &row;
-    }
-
-    return nullptr;
 }
 
 static bool RowUsesStandardTexCoord(const MaterialVariantRow &row) noexcept
@@ -283,7 +267,8 @@ static uint32 BuildRowVertexAttribFeatureBits(const MaterialVariantRow &row) noe
     return bits;
 }
 
-static void ValidateBuiltinRowConsistency(const MaterialVariantRow &row,
+static void ValidateBuiltinRowConsistency(const VariantRegistry &registry,
+                                          const MaterialVariantRow &row,
                                           std::vector<std::string> &diagnostics)
 {
     auto push = [&](const char *message)
@@ -324,12 +309,13 @@ static void ValidateBuiltinRowConsistency(const MaterialVariantRow &row,
     if (row.surface_type == SurfaceType::Sky && !row.fs_features.has_direction)
         push("sky row must consume direction in fragment stage");
 
-    const size_t duplicate_name_count = CountBuiltinRowsByName(row.name);
+    const size_t duplicate_name_count = CountBuiltinRowsByName(registry, row.name);
     if (duplicate_name_count > 1)
         push("row name must be unique for exact builtin variant binding");
 }
 
-static void ValidateBuiltinVariantDescRowBinding(const MaterialVariantKey &key,
+static void ValidateBuiltinVariantDescRowBinding(const VariantRegistry &registry,
+                                                 const MaterialVariantKey &key,
                                                  const MaterialVariantDesc &desc,
                                                  std::vector<std::string> &diagnostics)
 {
@@ -342,7 +328,12 @@ static void ValidateBuiltinVariantDescRowBinding(const MaterialVariantKey &key,
         return;
     }
 
-    const MaterialVariantRow *row = FindBuiltinRowByName(desc.variant_name);
+    const MaterialVariantRow *row = nullptr;
+    registry.ForEachBuiltinRow([&](const MaterialVariantRow &candidate)
+    {
+        if (!row && candidate.name && desc.variant_name == candidate.name)
+            row = &candidate;
+    });
     if (!row)
     {
         std::string text = "Builtin variant descriptor binding failed: no MaterialVariantRow named '";
@@ -650,13 +641,16 @@ bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_
             diagnostics.emplace_back("PipelineStateRow validation failed: empty name");
     }
 
+    for (size_t i = 0; i < builtin_row_storage.size(); ++i)
+        ValidateBuiltinRowConsistency(*this, builtin_row_storage[i], diagnostics);
+
     CompositorAssembler assembler(shader_library_path);
 
     for(const auto &[hash,bucket]:variant_map)
     {
         for(const auto &entry:bucket)
         {
-            ValidateBuiltinVariantDescRowBinding(entry.key, entry.desc, diagnostics);
+            ValidateBuiltinVariantDescRowBinding(*this, entry.key, entry.desc, diagnostics);
 
             const auto phase3 = QueryPhase3Registry(entry.key);
             if (phase3.vertex && phase3.fragment && phase3.pipeline)
@@ -913,27 +907,8 @@ std::string VariantRegistry::DumpBuiltinRowSnapshot() const
 
 void VariantRegistry::ForEachBuiltinRow(std::function<void(const MaterialVariantRow &)> cb) const
 {
-    for(const auto &[hash,bucket]:variant_map)
-    {
-        for(const auto &entry:bucket)
-        {
-            const RegistryQueryResult phase3 = QueryPhase3Registry(entry.key);
-            if (phase3.vertex && phase3.fragment && phase3.pipeline)
-            {
-                const MaterialVariantRow row = ComposeLegacyRow(
-                    phase3.vertex,
-                    phase3.fragment,
-                    phase3.pipeline,
-                    entry.key,
-                    entry.desc.variant_name.c_str());
-                cb(row);
-            }
-            else if (entry.desc.bound_row)
-            {
-                cb(*entry.desc.bound_row);
-            }
-        }
-    }
+    for (const auto &row : builtin_row_storage)
+        cb(row);
 }
 
 void VariantRegistry::ForEach(
@@ -1137,341 +1112,18 @@ const BuiltinVariantEntry kBuiltinVariants[] =
 
 const size_t kBuiltinVariantsCount = std::size(kBuiltinVariants);
 
-// clang-format off
-const MaterialVariantRow kBuiltinVariantRows[] =
-{
-    { .name = "VertexColor2D", .preset = MaterialPreset::VertexColor2D, .factory_type = MaterialPreset::VertexColor2D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Quad2D, .position_provider = PositionProviderId::VAB_Vec2,
-      .vertex_input = VertexInputProfile::Position2D, .vertex_policy = VertexTransformPolicy::Quad2D, .surface_model = SurfaceShadingModel::VertexColor,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "2d/vertexcolor2d.vert.glsl", .fs_template_path = "2d/vertexcolor2d.frag.glsl", .surface_path = "",
-      .vs_features = { true, false, false, true, false, false, false, false }, .fs_features = { false, false, false, true, false, false, false, false },
-      .resources = { false, false, false, false, false, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .schema = ShaderDataSchema::None, .def_hint = StaticMaterialDefIdHint::Standard2D },
-
-    { .name = "PureColor2D", .preset = MaterialPreset::PureColor2D, .factory_type = MaterialPreset::PureColor2D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Quad2D, .position_provider = PositionProviderId::VAB_Vec2,
-      .vertex_input = VertexInputProfile::Position2D, .vertex_policy = VertexTransformPolicy::Quad2D, .surface_model = SurfaceShadingModel::PureColor,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "2d/purecolor2d.vert.glsl", .fs_template_path = "2d/purecolor2d.frag.glsl", .surface_path = "",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position }), .fs_features = MakeStageFeatures({ VertexAttrib::Position }),
-      .resources = { false, false, false, false, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .schema = ShaderDataSchema::Color4f, .def_hint = StaticMaterialDefIdHint::Standard2D },
-
-    { .name = "PureTexture2D", .preset = MaterialPreset::PureTexture2D, .factory_type = MaterialPreset::PureTexture2D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Quad2D, .position_provider = PositionProviderId::VAB_Vec2,
-      .vertex_input = VertexInputProfile::PositionTexCoord2D, .vertex_policy = VertexTransformPolicy::Quad2D, .surface_model = SurfaceShadingModel::Texture2D,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "2d/puretexture2d.vert.glsl", .fs_template_path = "2d/puretexture2d.frag.glsl", .surface_path = "",
-      .vs_features = { true, false, false, false, false, true, false, false }, .fs_features = { false, false, false, false, false, true, false, false },
-      .resources = { false, false, false, false, false, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::None, .def_hint = StaticMaterialDefIdHint::Standard2D },
-
-    { .name = "PureTexture2DArray", .preset = MaterialPreset::PureTexture2D, .factory_type = MaterialPreset::PureTexture2D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Quad2D, .position_provider = PositionProviderId::VAB_Vec2,
-      .vertex_input = VertexInputProfile::PositionTexCoord2D, .vertex_policy = VertexTransformPolicy::Quad2D, .surface_model = SurfaceShadingModel::Texture2D,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "2d/puretexture2d.vert.glsl", .fs_template_path = "2d/puretexture2d.frag.glsl", .surface_path = "",
-      .vs_features = { true, false, false, false, false, true, false, false }, .fs_features = { false, false, false, false, false, true, false, false },
-      .resources = { false, false, false, false, false, true, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Array, SamplerType::Sampler2DArray, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::None, .def_hint = StaticMaterialDefIdHint::Standard2D },
-
-    { .name = "Text2D", .preset = MaterialPreset::Text2D, .factory_type = MaterialPreset::Text2D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Quad2D, .position_provider = PositionProviderId::VAB_Vec2,
-      .vertex_input = VertexInputProfile::PositionTexCoord2D, .vertex_policy = VertexTransformPolicy::Text2D, .surface_model = SurfaceShadingModel::Text,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "2d/text2d.vert.glsl", .fs_template_path = "2d/text2d.frag.glsl", .surface_path = "",
-      .vs_features = { true, false, false, false, false, true, false, false }, .fs_features = { false, false, false, false, false, true, false, false },
-      .resources = { false, false, false, false, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::Text, TextureSourceMode::Atlas, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::TextColor, .def_hint = StaticMaterialDefIdHint::Text2D },
-
-    { .name = "PureColor3D", .preset = MaterialPreset::PureColor3D, .factory_type = MaterialPreset::PureColor3D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::Position3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::PureColor,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "",
-      .vs_features = { true, false, false, false, false, false, false, false }, .fs_features = { true, false, false, false, false, false, false, false },
-      .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .schema = ShaderDataSchema::Color4f, .def_hint = StaticMaterialDefIdHint::PureColor3D },
-
-    { .name = "VertexColor3D", .preset = MaterialPreset::VertexColor3D, .factory_type = MaterialPreset::VertexColor3D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::PositionColor3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::VertexColor,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/unlit_vertexcolor_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Color }), .fs_features = MakeStageFeatures({ VertexAttrib::Color }),
-      .resources = { true, true, false, true, false, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .schema = ShaderDataSchema::None, .def_hint = StaticMaterialDefIdHint::VertexColor3D },
-
-    { .name = "VertexLuminance3D", .preset = MaterialPreset::VertexLuminance3D, .factory_type = MaterialPreset::VertexLuminance3D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::PositionLuminance3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::VertexLuminance,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/unlit_luminance_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Luminance }), .fs_features = MakeStageFeatures({ VertexAttrib::Luminance }),
-      .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .schema = ShaderDataSchema::Color4f, .def_hint = StaticMaterialDefIdHint::VertexLuminance3D },
-
-    { .name = "VertexLuminance2D", .preset = MaterialPreset::VertexLuminance2D, .factory_type = MaterialPreset::VertexLuminance2D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::VAB_Vec2,
-      .vertex_input = VertexInputProfile::PositionLuminance2D, .vertex_policy = VertexTransformPolicy::Quad2D, .surface_model = SurfaceShadingModel::VertexLuminance,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/unlit_luminance_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Luminance }), .fs_features = MakeStageFeatures({ VertexAttrib::Luminance }),
-      .resources = { false, false, false, false, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .schema = ShaderDataSchema::Color4f, .def_hint = StaticMaterialDefIdHint::Standard2D },
-
-    { .name = "VertexPaletteColor3D", .preset = MaterialPreset::VertexPaletteColor3D, .factory_type = MaterialPreset::VertexPaletteColor3D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::PositionPaletteIndex3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::VertexColor,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "compositor/main_forward_unlit_palette.vert.glsl", .fs_template_path = "", .surface_path = "surface/unlit_vertexcolor_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Color }), .fs_features = MakeStageFeatures({ VertexAttrib::Color }),
-      .resources = { true, true, false, true, false, false, true, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .schema = ShaderDataSchema::None, .def_hint = StaticMaterialDefIdHint::VertexPaletteColor3D },
-
-    { .name = "Gizmo3D", .preset = MaterialPreset::Gizmo3D, .factory_type = MaterialPreset::Gizmo3D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::PositionNormal3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::Gizmo,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/gizmo3d_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal }), .fs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal }),
-      .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .schema = ShaderDataSchema::Color4f, .def_hint = StaticMaterialDefIdHint::Gizmo3D },
-
-    { .name = "UnlitTexture3D", .preset = MaterialPreset::UnlitTexture3D, .factory_type = MaterialPreset::UnlitTexture3D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::PositionTexCoord3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::UnlitTexture3D,
-      .blend = RenderAlphaMode::Transparent, .pass = PassType::ForwardTransparent,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/unlit_texture3d_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::TexCoord }), .fs_features = MakeStageFeatures({ VertexAttrib::TexCoord }),
-      .resources = { true, true, false, true, false, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::None, .def_hint = StaticMaterialDefIdHint::UnlitTexture3D },
-
-    { .name = "UnlitTexture3DArray", .preset = MaterialPreset::UnlitTexture3D, .factory_type = MaterialPreset::UnlitTexture3D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::PositionTexCoord3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::UnlitTexture3D,
-      .blend = RenderAlphaMode::Transparent, .pass = PassType::ForwardTransparent,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/unlit_texture3d_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::TexCoord }), .fs_features = MakeStageFeatures({ VertexAttrib::TexCoord }),
-      .resources = { true, true, false, true, false, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Array, SamplerType::Sampler2DArray, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::None, .def_hint = StaticMaterialDefIdHint::UnlitTexture3D },
-
-    { .name = "Billboard2DDynamicOpaque", .preset = MaterialPreset::Billboard2DDynamic, .factory_type = MaterialPreset::Billboard2DDynamic,
-      .primitive = PrimitiveType::Billboard, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::BillboardCameraFacing, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::BillboardPositionOnly3D, .vertex_policy = VertexTransformPolicy::BillboardCameraFacing, .surface_model = SurfaceShadingModel::BillboardTexture,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "compositor/main_forward_billboard_dynamic.vert.glsl", .fs_template_path = "", .surface_path = "surface/billboard_texture_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position }), .fs_features = MakeStageFeatures({ VertexAttrib::TexCoord }),
-      .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::BillboardSizeUVec2, .def_hint = StaticMaterialDefIdHint::BillboardDynamic },
-
-    { .name = "Billboard2DDynamic", .preset = MaterialPreset::Billboard2DDynamic, .factory_type = MaterialPreset::Billboard2DDynamic,
-      .primitive = PrimitiveType::Billboard, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::BillboardCameraFacing, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::BillboardPositionOnly3D, .vertex_policy = VertexTransformPolicy::BillboardCameraFacing, .surface_model = SurfaceShadingModel::BillboardTexture,
-      .blend = RenderAlphaMode::Transparent, .pass = PassType::ForwardTransparent,
-      .vs_template_path = "compositor/main_forward_billboard_dynamic.vert.glsl", .fs_template_path = "", .surface_path = "surface/billboard_texture_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position }), .fs_features = MakeStageFeatures({ VertexAttrib::TexCoord }),
-      .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::BillboardSizeUVec2, .def_hint = StaticMaterialDefIdHint::BillboardDynamic },
-
-    { .name = "Billboard2DDynamicMasked", .preset = MaterialPreset::Billboard2DDynamic, .factory_type = MaterialPreset::Billboard2DDynamic,
-      .primitive = PrimitiveType::Billboard, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::BillboardCameraFacing, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::BillboardPositionOnly3D, .vertex_policy = VertexTransformPolicy::BillboardCameraFacing, .surface_model = SurfaceShadingModel::BillboardTexture,
-      .blend = RenderAlphaMode::Masked, .pass = PassType::ForwardMasked,
-      .vs_template_path = "compositor/main_forward_billboard_dynamic.vert.glsl", .fs_template_path = "", .surface_path = "surface/billboard_texture_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position }), .fs_features = MakeStageFeatures({ VertexAttrib::TexCoord }),
-      .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::BillboardSizeUVec2, .def_hint = StaticMaterialDefIdHint::BillboardDynamic },
-
-    { .name = "Billboard2DDynamicDither", .preset = MaterialPreset::Billboard2DDynamic, .factory_type = MaterialPreset::Billboard2DDynamic,
-      .primitive = PrimitiveType::Billboard, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::BillboardCameraFacing, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::BillboardPositionOnly3D, .vertex_policy = VertexTransformPolicy::BillboardCameraFacing, .surface_model = SurfaceShadingModel::BillboardTexture,
-      .blend = RenderAlphaMode::Dither, .pass = PassType::ForwardDither,
-      .vs_template_path = "compositor/main_forward_billboard_dynamic.vert.glsl", .fs_template_path = "", .surface_path = "surface/billboard_texture_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position }), .fs_features = MakeStageFeatures({ VertexAttrib::TexCoord }),
-      .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::BillboardSizeUVec2, .def_hint = StaticMaterialDefIdHint::BillboardDynamic },
-
-    { .name = "Billboard2DDynamicA2C", .preset = MaterialPreset::Billboard2DDynamic, .factory_type = MaterialPreset::Billboard2DDynamic,
-      .primitive = PrimitiveType::Billboard, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::BillboardCameraFacing, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::BillboardPositionOnly3D, .vertex_policy = VertexTransformPolicy::BillboardCameraFacing, .surface_model = SurfaceShadingModel::BillboardTexture,
-      .blend = RenderAlphaMode::AlphaToCoverage, .pass = PassType::ForwardA2C,
-      .vs_template_path = "compositor/main_forward_billboard_dynamic.vert.glsl", .fs_template_path = "", .surface_path = "surface/billboard_texture_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position }), .fs_features = MakeStageFeatures({ VertexAttrib::TexCoord }),
-      .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::BillboardSizeUVec2, .def_hint = StaticMaterialDefIdHint::BillboardDynamic },
-
-    { .name = "Billboard2DFixedOpaque", .preset = MaterialPreset::Billboard2DFixed, .factory_type = MaterialPreset::Billboard2DFixed,
-      .primitive = PrimitiveType::Billboard, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::BillboardAxisLocked, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::BillboardPositionOnly3D, .vertex_policy = VertexTransformPolicy::BillboardAxisLocked, .surface_model = SurfaceShadingModel::BillboardTexture,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "compositor/main_forward_billboard_fixed.vert.glsl", .fs_template_path = "", .surface_path = "surface/billboard_texture_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position }), .fs_features = MakeStageFeatures({ VertexAttrib::TexCoord }),
-      .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::BillboardSizeUVec2, .def_hint = StaticMaterialDefIdHint::BillboardFixed },
-
-    { .name = "Billboard2DFixed", .preset = MaterialPreset::Billboard2DFixed, .factory_type = MaterialPreset::Billboard2DFixed,
-      .primitive = PrimitiveType::Billboard, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::BillboardAxisLocked, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::BillboardPositionOnly3D, .vertex_policy = VertexTransformPolicy::BillboardAxisLocked, .surface_model = SurfaceShadingModel::BillboardTexture,
-      .blend = RenderAlphaMode::Transparent, .pass = PassType::ForwardTransparent,
-      .vs_template_path = "compositor/main_forward_billboard_fixed.vert.glsl", .fs_template_path = "", .surface_path = "surface/billboard_texture_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position }), .fs_features = MakeStageFeatures({ VertexAttrib::TexCoord }),
-      .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::BillboardSizeUVec2, .def_hint = StaticMaterialDefIdHint::BillboardFixed },
-
-    { .name = "Billboard2DFixedMasked", .preset = MaterialPreset::Billboard2DFixed, .factory_type = MaterialPreset::Billboard2DFixed,
-      .primitive = PrimitiveType::Billboard, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::BillboardAxisLocked, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::BillboardPositionOnly3D, .vertex_policy = VertexTransformPolicy::BillboardAxisLocked, .surface_model = SurfaceShadingModel::BillboardTexture,
-      .blend = RenderAlphaMode::Masked, .pass = PassType::ForwardMasked,
-      .vs_template_path = "compositor/main_forward_billboard_fixed.vert.glsl", .fs_template_path = "", .surface_path = "surface/billboard_texture_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position }), .fs_features = MakeStageFeatures({ VertexAttrib::TexCoord }),
-      .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::BillboardSizeUVec2, .def_hint = StaticMaterialDefIdHint::BillboardFixed },
-
-    { .name = "Billboard2DFixedDither", .preset = MaterialPreset::Billboard2DFixed, .factory_type = MaterialPreset::Billboard2DFixed,
-      .primitive = PrimitiveType::Billboard, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::BillboardAxisLocked, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::BillboardPositionOnly3D, .vertex_policy = VertexTransformPolicy::BillboardAxisLocked, .surface_model = SurfaceShadingModel::BillboardTexture,
-      .blend = RenderAlphaMode::Dither, .pass = PassType::ForwardDither,
-      .vs_template_path = "compositor/main_forward_billboard_fixed.vert.glsl", .fs_template_path = "", .surface_path = "surface/billboard_texture_surface.glsl",
-      .vs_features = { true, false, false, false, false, false, false, false }, .fs_features = { false, false, false, false, false, true, false, false },
-      .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::BillboardSizeUVec2, .def_hint = StaticMaterialDefIdHint::BillboardFixed },
-
-    { .name = "Billboard2DFixedA2C", .preset = MaterialPreset::Billboard2DFixed, .factory_type = MaterialPreset::Billboard2DFixed,
-      .primitive = PrimitiveType::Billboard, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::BillboardAxisLocked, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::BillboardPositionOnly3D, .vertex_policy = VertexTransformPolicy::BillboardAxisLocked, .surface_model = SurfaceShadingModel::BillboardTexture,
-      .blend = RenderAlphaMode::AlphaToCoverage, .pass = PassType::ForwardA2C,
-      .vs_template_path = "compositor/main_forward_billboard_fixed.vert.glsl", .fs_template_path = "", .surface_path = "surface/billboard_texture_surface.glsl",
-      .vs_features = { true, false, false, false, false, false, false, false }, .fs_features = { false, false, false, false, false, true, false, false },
-      .resources = { true, true, false, true, true, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 1,
-      .schema = ShaderDataSchema::BillboardSizeUVec2, .def_hint = StaticMaterialDefIdHint::BillboardFixed },
-
-    { .name = "TerrainGrid", .preset = MaterialPreset::TerrainGrid, .factory_type = MaterialPreset::TerrainGrid,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Terrain, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::Position3D, .vertex_policy = VertexTransformPolicy::TerrainGrid, .surface_model = SurfaceShadingModel::TerrainGrid,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "compositor/main_terrain_grid.vert.glsl", .fs_template_path = "", .surface_path = "surface/terrain_grid_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position }), .fs_features = MakeStageFeatures({ VertexAttrib::Normal }, false, true),
-      .resources = { true, true, false, true, false, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::Height, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA }, { SamplerSlot::Normal, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 2,
-      .schema = ShaderDataSchema::None, .def_hint = StaticMaterialDefIdHint::TerrainGrid },
-
-    { .name = "SkyMinimal", .preset = MaterialPreset::SkyMinimal, .factory_type = MaterialPreset::SkyMinimal,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Sky, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::Position3D, .vertex_policy = VertexTransformPolicy::Sky, .surface_model = SurfaceShadingModel::SkyMinimal,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/sky_minimal_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position }, true, false), .fs_features = MakeStageFeatures({}, true, false),
-      .resources = { true, true, true, true, false, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .schema = ShaderDataSchema::None, .def_hint = StaticMaterialDefIdHint::SkyMinimal },
-
-    { .name = "Standard", .preset = MaterialPreset::Standard, .factory_type = MaterialPreset::Standard,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Standard, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::PositionNormal3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::StandardLambert,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/standard_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal, VertexAttrib::TexCoord }), .fs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal, VertexAttrib::TexCoord }),
-      .resources = { true, true, true, true, true, false, false, true, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA }, { SamplerSlot::Normal, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 2,
-      .schema = ShaderDataSchema::StandardParams, .def_hint = StaticMaterialDefIdHint::Standard3D },
-
-    { .name = "StandardBlinnPhong", .preset = MaterialPreset::Standard, .factory_type = MaterialPreset::Standard,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Standard, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::PositionNormal3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::StandardBlinnPhong,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/textureblinnphong_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal, VertexAttrib::TexCoord }), .fs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal, VertexAttrib::TexCoord }),
-      .resources = { true, true, true, true, true, false, false, true, LightingModel::BlinnPhong, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA }, { SamplerSlot::Normal, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 2,
-      .schema = ShaderDataSchema::StandardParams, .def_hint = StaticMaterialDefIdHint::Standard3D },
-
-    { .name = "StandardPBR", .preset = MaterialPreset::Standard, .factory_type = MaterialPreset::Standard,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Standard, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::PositionNormal3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::StandardPBR,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/standard_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal, VertexAttrib::TexCoord }), .fs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal, VertexAttrib::TexCoord }),
-      .resources = { true, true, true, true, true, false, false, true, LightingModel::PBR, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA }, { SamplerSlot::Normal, TextureSourceMode::Simple, SamplerType::Sampler2D, TextureChannelHint::RGBA } }, .texture_count = 2,
-      .schema = ShaderDataSchema::StandardParams, .def_hint = StaticMaterialDefIdHint::Standard3D },
-
-    { .name = "StandardTextureArray", .preset = MaterialPreset::Standard, .factory_type = MaterialPreset::Standard,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Standard, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::PositionNormal3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::StandardLambert,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/standard_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal, VertexAttrib::TexCoord }), .fs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal, VertexAttrib::TexCoord }),
-      .resources = { true, true, true, true, true, true, false, true, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Array, SamplerType::Sampler2DArray, TextureChannelHint::RGBA }, { SamplerSlot::Normal, TextureSourceMode::Array, SamplerType::Sampler2DArray, TextureChannelHint::RGBA } }, .texture_count = 2,
-      .schema = ShaderDataSchema::StandardParams, .def_hint = StaticMaterialDefIdHint::Standard3D },
-
-    { .name = "StandardBlinnPhongArray", .preset = MaterialPreset::Standard, .factory_type = MaterialPreset::Standard,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Standard, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::PositionNormal3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::StandardBlinnPhong,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/textureblinnphong_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal, VertexAttrib::TexCoord }), .fs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal, VertexAttrib::TexCoord }),
-      .resources = { true, true, true, true, true, true, false, true, LightingModel::BlinnPhong, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Array, SamplerType::Sampler2DArray, TextureChannelHint::RGBA }, { SamplerSlot::Normal, TextureSourceMode::Array, SamplerType::Sampler2DArray, TextureChannelHint::RGBA } }, .texture_count = 2,
-      .schema = ShaderDataSchema::StandardParams, .def_hint = StaticMaterialDefIdHint::Standard3D },
-
-    { .name = "StandardPBRArray", .preset = MaterialPreset::Standard, .factory_type = MaterialPreset::Standard,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Standard, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::PositionNormal3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::StandardPBR,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/standard_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal, VertexAttrib::TexCoord }), .fs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal, VertexAttrib::TexCoord }),
-      .resources = { true, true, true, true, true, true, false, true, LightingModel::PBR, SkyLightAmbientModel::Simple },
-      .textures = { { SamplerSlot::BaseColor, TextureSourceMode::Array, SamplerType::Sampler2DArray, TextureChannelHint::RGBA }, { SamplerSlot::Normal, TextureSourceMode::Array, SamplerType::Sampler2DArray, TextureChannelHint::RGBA } }, .texture_count = 2,
-      .schema = ShaderDataSchema::StandardParams, .def_hint = StaticMaterialDefIdHint::Standard3D },
-
-    { .name = "PBRColor3D", .preset = MaterialPreset::PBRColor3D, .factory_type = MaterialPreset::PBRColor3D,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Standard, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::DirectVec3,
-      .vertex_input = VertexInputProfile::PositionNormal3D, .vertex_policy = VertexTransformPolicy::Mesh3D, .surface_model = SurfaceShadingModel::PBRColor,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "surface/pbrcolor3d_surface.glsl",
-      .vs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal }), .fs_features = MakeStageFeatures({ VertexAttrib::Position, VertexAttrib::Normal }),
-      .resources = { true, true, true, true, true, false, false, true, LightingModel::PBR, SkyLightAmbientModel::Simple },
-      .schema = ShaderDataSchema::PBRColorParams, .def_hint = StaticMaterialDefIdHint::Standard3D },
-
-    { .name = "FullscreenTriangle", .preset = MaterialPreset::FullscreenTriangle, .factory_type = MaterialPreset::FullscreenTriangle,
-      .primitive = PrimitiveType::Triangles, .surface_type = SurfaceType::Unlit, .geometry_mode = GeometryMode::Mesh3D, .position_provider = PositionProviderId::PCG_FullscreenTriangle,
-      .vertex_input = VertexInputProfile::FullscreenProcedural, .vertex_policy = VertexTransformPolicy::FullscreenTriangle, .surface_model = SurfaceShadingModel::Unknown,
-      .blend = RenderAlphaMode::Opaque, .pass = PassType::ForwardOpaque,
-      .vs_template_path = "", .fs_template_path = "", .surface_path = "",
-      .vs_features = MakeStageFeatures({}), .fs_features = MakeStageFeatures({}),
-      .resources = { false, false, false, false, false, false, false, false, LightingModel::Lambert, SkyLightAmbientModel::Simple },
-      .schema = ShaderDataSchema::None, .def_hint = StaticMaterialDefIdHint::FullscreenTriangle },
-};
-// clang-format on
-
-const size_t kBuiltinVariantRowsCount = std::size(kBuiltinVariantRows);
-static_assert(kBuiltinVariantRowsCount == kBuiltinVariantsCount,
-              "kBuiltinVariantRows must cover every kBuiltinVariants entry in Phase 2");
 
 void VariantRegistry::InitializeBuiltinVariants()
 {
+    builtin_row_storage.clear();
+    builtin_row_storage.reserve(kBuiltinVariantsCount);
+
     for (const auto &e : kBuiltinVariants)
     {
+        builtin_row_storage.emplace_back(BuildRowFromBuiltinVariantEntry(e));
         MaterialVariantDesc desc = BuildDesc(e);
-        if (const MaterialVariantRow *row = FindBuiltinRowByName(e.name))
-            desc.bound_row = row;
+        if (!builtin_row_storage.empty())
+            desc.bound_row = &builtin_row_storage.back();
         RegisterVariant(BuildKey(e), desc);
     }
 }
