@@ -1,6 +1,7 @@
 #include<hgl/mtl/MaterialVariantRegistry.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/shadergen/CompositorAssembler.h>
+#include<hgl/shadergen/RegistryQuery.h>
 #include<hgl/shadergen/ShaderResourceScanner.h>
 #include "BuiltinVariantEntry.h"
 #include <hgl/mtl/MaterialVariantRow.h>
@@ -628,8 +629,26 @@ bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_
 {
     diagnostics.clear();
 
-    for (size_t i = 0; i < kBuiltinVariantRowsCount; ++i)
-        ValidateBuiltinRowConsistency(kBuiltinVariantRows[i], diagnostics);
+    for (size_t i = 0; i < kVertexProgramTemplatesCount; ++i)
+    {
+        const auto &tpl = kVertexProgramTemplates[i];
+        if (!tpl.name || !tpl.name[0])
+            diagnostics.emplace_back("VertexProgramTemplate validation failed: empty name");
+    }
+
+    for (size_t i = 0; i < kSurfaceFragmentTemplatesCount; ++i)
+    {
+        const auto &tpl = kSurfaceFragmentTemplates[i];
+        if (!tpl.name || !tpl.name[0])
+            diagnostics.emplace_back("SurfaceFragmentTemplate validation failed: empty name");
+    }
+
+    for (size_t i = 0; i < kPipelineStateRowsCount; ++i)
+    {
+        const auto &row = kPipelineStateRows[i];
+        if (!row.name || !row.name[0])
+            diagnostics.emplace_back("PipelineStateRow validation failed: empty name");
+    }
 
     CompositorAssembler assembler(shader_library_path);
 
@@ -639,28 +658,41 @@ bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_
         {
             ValidateBuiltinVariantDescRowBinding(entry.key, entry.desc, diagnostics);
 
-            const auto result=assembler.Assemble(entry.key,entry.desc);
-            if(result.success)
+            const auto phase3 = QueryPhase3Registry(entry.key);
+            if (phase3.vertex && phase3.fragment && phase3.pipeline)
             {
-                // Phase 5: validate reflected resources against the row's effective policy.
-                // Use the bound_row's authored requirements + pass prune table to derive
-                // the effective policy for this pass, then cross-check the reflection manifest.
-                if (entry.desc.bound_row)
-                {
-                    const MaterialVariantRow &row = *entry.desc.bound_row;
-                    const PassType pass = entry.key.pass_hint;
-                    const MaterialResourceRequirements effective =
-                        DeriveEffectiveResources(row.resources, pass);
+                const MaterialVariantRow composed = ComposeLegacyRow(
+                    phase3.vertex,
+                    phase3.fragment,
+                    phase3.pipeline,
+                    entry.key,
+                    entry.desc.variant_name.c_str());
 
-                    // Build a StaticMaterialDef seed from the row for scanner context.
-                    // Only UBO/SSBO seeds are needed; we can use an empty def with the
-                    // authoritative UBO list for now (reflection will detect actual usage).
-                    StaticMaterialDef seed_def;
-                    seed_def.name = row.name;
-                    // We intentionally skip shader_library_path-dependent full scan here
-                    // to avoid re-compiling shaders a second time in validation.
-                    // Instead, use the assembled GLSL already produced by the assembler
-                    // and build a minimal manifest directly from reflection raw data.
+                MaterialVariantDesc composed_desc = MaterialVariantDesc::CreateRowBound(
+                    entry.desc.variant_name,
+                    &composed,
+                    phase3.fragment->preset,
+                    phase3.vertex->vs_template_path ? phase3.vertex->vs_template_path : "",
+                    phase3.fragment->fs_template_path ? phase3.fragment->fs_template_path : "",
+                    phase3.fragment->surface_path ? phase3.fragment->surface_path : "");
+
+                composed_desc.fs_error_code = entry.desc.fs_error_code;
+
+                const auto result = assembler.Assemble(entry.key, composed_desc, &composed);
+                if(result.success)
+                {
+                    const MaterialResourceRequirements effective =
+                        DeriveEffectiveResources(composed.resources, entry.key.pass_hint);
+
+                    StaticMaterialDef seed_def{};
+                    seed_def.name = composed.name;
+                    seed_def.primitive_type = composed.primitive;
+                    seed_def.vertex_entries = nullptr;
+                    seed_def.vertex_entry_count = 0;
+                    seed_def.ubo_descriptors = nullptr;
+                    seed_def.ssbo_descriptors = nullptr;
+                    seed_def.texture_samplers = nullptr;
+                    seed_def.shader_data_schema = composed.schema;
                     MaterialResourceManifest reflected_manifest;
                     std::string reflection_diag;
                     const bool reflection_ok = CollectShaderAutoRequirements(
@@ -677,7 +709,7 @@ bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_
                         ValidateManifestAgainstPolicy(
                             reflected_manifest,
                             effective,
-                            row.name,
+                            composed.name,
                             &policy_diag);
 
                         if (!policy_diag.empty())
@@ -685,13 +717,19 @@ bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_
                     }
                     else if (!reflection_diag.empty())
                     {
-                        // Reflection failed (e.g. unknown sampler) — log but don't
-                        // treat as a hard validation failure for the variant registry.
                         std::fprintf(stderr,
-                            "[VariantRegistry] Phase5 reflection warning for '%s': %s\n",
+                            "[VariantRegistry] Phase3 reflection warning for '%s': %s\n",
                             entry.desc.variant_name.c_str(),
                             reflection_diag.c_str());
                     }
+                }
+                else
+                {
+                    std::string msg = "Variant validation failed: ";
+                    msg += entry.desc.variant_name.empty()?"<unnamed>":entry.desc.variant_name;
+                    msg += " (phase3 composed row) - ";
+                    msg += result.error_message;
+                    diagnostics.emplace_back(std::move(msg));
                 }
                 continue;
             }
@@ -701,12 +739,6 @@ bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_
             msg += " (hash=";
             msg += std::to_string(hash);
             msg += ")";
-
-            if(!result.error_message.empty())
-            {
-                msg += " - ";
-                msg += result.error_message;
-            }
 
             diagnostics.emplace_back(std::move(msg));
         }
@@ -742,15 +774,10 @@ std::string VariantRegistry::DumpSnapshot() const
         const auto &k=entry.key;
         const auto &d=entry.desc;
 
-        const MaterialVariantRow *row_ptr = nullptr;
-        for (size_t i = 0; i < kBuiltinVariantRowsCount; ++i)
-        {
-            if (d.variant_name == kBuiltinVariantRows[i].name)
-            {
-                row_ptr = &kBuiltinVariantRows[i];
-                break;
-            }
-        }
+        const RegistryQueryResult phase3 = QueryPhase3Registry(k);
+        const MaterialVariantRow row = (phase3.vertex && phase3.fragment && phase3.pipeline)
+            ? ComposeLegacyRow(phase3.vertex, phase3.fragment, phase3.pipeline, k, d.variant_name.c_str())
+            : (d.bound_row ? *d.bound_row : MaterialVariantRow{});
 
         out += std::to_string(hash);
         out += "|";
@@ -796,23 +823,23 @@ std::string VariantRegistry::DumpSnapshot() const
         out += "|";
         out += std::to_string(static_cast<uint32>(k.pass_hint));
         out += "|";
-        out += row_ptr ? GetVertexInputProfileName(row_ptr->vertex_input) : "Unknown";
+        out += row.name && row.name[0] ? GetVertexInputProfileName(row.vertex_input) : "Unknown";
         out += "|";
-        out += row_ptr ? GetVertexTransformPolicyName(row_ptr->vertex_policy) : "Unknown";
+        out += row.name && row.name[0] ? GetVertexTransformPolicyName(row.vertex_policy) : "Unknown";
         out += "|";
-        out += row_ptr ? GetSurfaceShadingModelName(row_ptr->surface_model) : "Unknown";
+        out += row.name && row.name[0] ? GetSurfaceShadingModelName(row.surface_model) : "Unknown";
         out += "|";
-        out += row_ptr ? FormatShaderStageFeatureDescForLog(row_ptr->vs_features) : "";
+        out += row.name && row.name[0] ? FormatShaderStageFeatureDescForLog(row.vs_features) : "";
         out += "|";
-        out += row_ptr ? FormatShaderStageFeatureDescForLog(row_ptr->fs_features) : "";
+        out += row.name && row.name[0] ? FormatShaderStageFeatureDescForLog(row.fs_features) : "";
         out += "|";
-        out += row_ptr ? FormatMaterialResourcesForLog(row_ptr->resources) : "";
+        out += row.name && row.name[0] ? FormatMaterialResourcesForLog(row.resources) : "";
         out += "|";
-        out += row_ptr ? std::to_string(static_cast<uint32>(row_ptr->schema)) : "0";
+        out += row.name && row.name[0] ? std::to_string(static_cast<uint32>(row.schema)) : "0";
         out += "|";
-        out += row_ptr ? GetStaticMaterialDefIdHintName(row_ptr->def_hint) : "None";
+        out += row.name && row.name[0] ? GetStaticMaterialDefIdHintName(row.def_hint) : "None";
         out += "|";
-        out += row_ptr ? FormatRowTexturesForLog(*row_ptr) : "None";
+        out += row.name && row.name[0] ? FormatRowTexturesForLog(row) : "None";
         out += "\n";
     }
 
@@ -822,57 +849,63 @@ std::string VariantRegistry::DumpSnapshot() const
 std::string VariantRegistry::DumpBuiltinRowSnapshot() const
 {
     std::string out;
-    out.reserve(kBuiltinVariantRowsCount * 240);
+    out.reserve(variant_count * 240);
 
     out += "# Builtin MaterialVariantRow Snapshot\n";
     out += "name|preset|factory|primitive|surface|geometry|position_provider|vertex_input|vertex_policy|surface_model|blend|pass|vs_template|fs_template|surface_path|vs_features|fs_features|resources|schema|def_hint|textures\n";
 
-    for (size_t i = 0; i < kBuiltinVariantRowsCount; ++i)
+    for(const auto &[hash,bucket]:variant_map)
     {
-        const MaterialVariantRow &row = kBuiltinVariantRows[i];
+        for(const auto &entry:bucket)
+        {
+            const RegistryQueryResult phase3 = QueryPhase3Registry(entry.key);
+            const MaterialVariantRow row = (phase3.vertex && phase3.fragment && phase3.pipeline)
+                ? ComposeLegacyRow(phase3.vertex, phase3.fragment, phase3.pipeline, entry.key, entry.desc.variant_name.c_str())
+                : (entry.desc.bound_row ? *entry.desc.bound_row : MaterialVariantRow{});
 
-        out += row.name ? row.name : "";
-        out += "|";
-        out += std::to_string(static_cast<uint32>(row.preset));
-        out += "|";
-        out += std::to_string(static_cast<uint32>(row.factory_type));
-        out += "|";
-        out += std::to_string(static_cast<uint32>(row.primitive));
-        out += "|";
-        out += std::to_string(static_cast<uint32>(row.surface_type));
-        out += "|";
-        out += std::to_string(static_cast<uint32>(row.geometry_mode));
-        out += "|";
-        out += std::to_string(static_cast<uint32>(row.position_provider));
-        out += "|";
-        out += GetVertexInputProfileName(row.vertex_input);
-        out += "|";
-        out += GetVertexTransformPolicyName(row.vertex_policy);
-        out += "|";
-        out += GetSurfaceShadingModelName(row.surface_model);
-        out += "|";
-        out += std::to_string(static_cast<uint32>(row.blend));
-        out += "|";
-        out += std::to_string(static_cast<uint32>(row.pass));
-        out += "|";
-        out += row.vs_template_path ? row.vs_template_path : "";
-        out += "|";
-        out += row.fs_template_path ? row.fs_template_path : "";
-        out += "|";
-        out += row.surface_path ? row.surface_path : "";
-        out += "|";
-        out += FormatShaderStageFeatureDescForLog(row.vs_features);
-        out += "|";
-        out += FormatShaderStageFeatureDescForLog(row.fs_features);
-        out += "|";
-        out += FormatMaterialResourcesForLog(row.resources);
-        out += "|";
-        out += std::to_string(static_cast<uint32>(row.schema));
-        out += "|";
-        out += GetStaticMaterialDefIdHintName(row.def_hint);
-        out += "|";
-        out += FormatRowTexturesForLog(row);
-        out += "\n";
+            out += row.name ? row.name : "";
+            out += "|";
+            out += std::to_string(static_cast<uint32>(row.preset));
+            out += "|";
+            out += std::to_string(static_cast<uint32>(row.factory_type));
+            out += "|";
+            out += std::to_string(static_cast<uint32>(row.primitive));
+            out += "|";
+            out += std::to_string(static_cast<uint32>(row.surface_type));
+            out += "|";
+            out += std::to_string(static_cast<uint32>(row.geometry_mode));
+            out += "|";
+            out += std::to_string(static_cast<uint32>(row.position_provider));
+            out += "|";
+            out += GetVertexInputProfileName(row.vertex_input);
+            out += "|";
+            out += GetVertexTransformPolicyName(row.vertex_policy);
+            out += "|";
+            out += GetSurfaceShadingModelName(row.surface_model);
+            out += "|";
+            out += std::to_string(static_cast<uint32>(row.blend));
+            out += "|";
+            out += std::to_string(static_cast<uint32>(row.pass));
+            out += "|";
+            out += row.vs_template_path ? row.vs_template_path : "";
+            out += "|";
+            out += row.fs_template_path ? row.fs_template_path : "";
+            out += "|";
+            out += row.surface_path ? row.surface_path : "";
+            out += "|";
+            out += FormatShaderStageFeatureDescForLog(row.vs_features);
+            out += "|";
+            out += FormatShaderStageFeatureDescForLog(row.fs_features);
+            out += "|";
+            out += FormatMaterialResourcesForLog(row.resources);
+            out += "|";
+            out += std::to_string(static_cast<uint32>(row.schema));
+            out += "|";
+            out += GetStaticMaterialDefIdHintName(row.def_hint);
+            out += "|";
+            out += FormatRowTexturesForLog(row);
+            out += "\n";
+        }
     }
 
     return out;
@@ -880,9 +913,26 @@ std::string VariantRegistry::DumpBuiltinRowSnapshot() const
 
 void VariantRegistry::ForEachBuiltinRow(std::function<void(const MaterialVariantRow &)> cb) const
 {
-    for (size_t i = 0; i < kBuiltinVariantRowsCount; ++i)
+    for(const auto &[hash,bucket]:variant_map)
     {
-        cb(kBuiltinVariantRows[i]);
+        for(const auto &entry:bucket)
+        {
+            const RegistryQueryResult phase3 = QueryPhase3Registry(entry.key);
+            if (phase3.vertex && phase3.fragment && phase3.pipeline)
+            {
+                const MaterialVariantRow row = ComposeLegacyRow(
+                    phase3.vertex,
+                    phase3.fragment,
+                    phase3.pipeline,
+                    entry.key,
+                    entry.desc.variant_name.c_str());
+                cb(row);
+            }
+            else if (entry.desc.bound_row)
+            {
+                cb(*entry.desc.bound_row);
+            }
+        }
     }
 }
 
@@ -1418,7 +1468,12 @@ static_assert(kBuiltinVariantRowsCount == kBuiltinVariantsCount,
 void VariantRegistry::InitializeBuiltinVariants()
 {
     for (const auto &e : kBuiltinVariants)
-        RegisterVariant(BuildKey(e), BuildDesc(e));
+    {
+        MaterialVariantDesc desc = BuildDesc(e);
+        if (const MaterialVariantRow *row = FindBuiltinRowByName(e.name))
+            desc.bound_row = row;
+        RegisterVariant(BuildKey(e), desc);
+    }
 }
 
 // ---------------------------------------------------------------------------
