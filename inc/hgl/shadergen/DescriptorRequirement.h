@@ -7,27 +7,12 @@
 /// 向 BindingAllocator 显式声明自己需要哪些 binding，不允许任何"幕后塞 binding"。
 
 #include <hgl/common/ShaderStageDef.h>
+#include <hgl/vk/VK.h>
 #include <cstdint>
 #include <string>
 
 namespace hgl::graph
 {
-
-/// descriptor 类型（值与 VkDescriptorType 对应，不直接引入 vulkan.h 以避免头文件污染）
-enum class DescriptorType : uint32_t
-{
-    Sampler                  = 0,
-    CombinedImageSampler     = 1,
-    SampledImage             = 2,
-    StorageImage             = 3,
-    UniformTexelBuffer       = 4,
-    StorageTexelBuffer       = 5,
-    UniformBuffer            = 6,
-    StorageBuffer            = 7,
-    UniformBufferDynamic     = 8,
-    StorageBufferDynamic     = 9,
-    InputAttachment          = 10,
-};
 
 /// binding 号分配策略
 enum class BindingPolicy : uint8_t
@@ -40,7 +25,7 @@ enum class BindingPolicy : uint8_t
 /// 单个 descriptor 资源的需求声明
 struct DescriptorRequirement
 {
-    DescriptorType   type            = DescriptorType::CombinedImageSampler;
+    DescriptorType   type            = DescriptorType::TextureSampler;
     uint32_t         count           = 1;       ///< 数组大小；0 = unbounded（bindless）
     ShaderStage      stages          = ShaderStage::Fragment;
     BindingPolicy    binding_policy  = BindingPolicy::Auto;

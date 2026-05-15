@@ -14,7 +14,7 @@ ColorSource ColorSource::MakeSampler2D(mtl::SamplerSlot slot,
     cs.signature = ColorSourceSignature::UV2D;
     cs.builtin.output_format = fmt;
     cs.bindings.push_back(DescriptorRequirement{
-        .type           = DescriptorType::CombinedImageSampler,
+        .type           = DescriptorType::TextureSampler,
         .count          = 1,
         .stages         = ShaderStage::Fragment,
         .binding_policy = BindingPolicy::Auto,
@@ -35,7 +35,7 @@ ColorSource ColorSource::MakeSampler2DArray(mtl::SamplerSlot slot,
     cs.signature = ColorSourceSignature::UV2DPerInstance;
     cs.builtin.output_format = fmt;
     cs.bindings.push_back(DescriptorRequirement{
-        .type           = DescriptorType::CombinedImageSampler,
+        .type           = DescriptorType::TextureSampler,
         .count          = 1,
         .stages         = ShaderStage::Fragment,
         .binding_policy = BindingPolicy::Auto,

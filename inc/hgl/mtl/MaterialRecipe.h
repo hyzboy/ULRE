@@ -22,6 +22,7 @@
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include <hgl/mtl/RenderAlphaMode.h>
+#include <hgl/shadergen/ColorSource.h>
 #include <hgl/common/CoordinateSystem.h>
 #include <hgl/common/PrimitiveTypeDef.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
@@ -112,7 +113,14 @@ struct MaterialRecipe
         std::string       path;                                          ///< 空字符串 = 不加载贴图
     };
 
+    /// 旧纹理配置列表（legacy，请改用 color_sources[]）
+    [[deprecated("Use color_sources[] instead")]]
     std::vector<TextureSlotConfig> textures;
+
+    /// 统一颜色/纹理来源声明（ColorSource / PCG 统一化路径）。
+    /// 若非空，优先于 textures[] 生效。
+    /// 可通过 LegacyTexturesToColorSources(textures) 从旧字段迁移。
+    std::vector<graph::ColorSource> color_sources;
 
     // ── Billboard 专用配置（仅对 Billboard2DFixed / Billboard2DDynamic 有效）──
     struct BillboardConfig
