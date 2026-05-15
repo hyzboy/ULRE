@@ -266,6 +266,14 @@ SET(COMPOSITOR_INTERNAL_SOURCE_FILES internal/GLSLSourceUtils.cpp)
 SOURCE_GROUP("Compositor\\Internal" FILES ${COMPOSITOR_INTERNAL_HEADER_FILES}
                                           ${COMPOSITOR_INTERNAL_SOURCE_FILES})
 
+# ColorSource / PCG 统一化 (Step 1 骨架)
+SET(COLORSOURCE_HEADER_FILES    ColorSource/BindingAllocator.h
+                                ColorSource/CodegenRegistry.h)
+SET(COLORSOURCE_SOURCE_FILES    ColorSource/BindingAllocator.cpp
+                                ColorSource/CodegenRegistry.cpp)
+SOURCE_GROUP("ColorSource" FILES ${COLORSOURCE_HEADER_FILES}
+                                 ${COLORSOURCE_SOURCE_FILES})
+
 add_cm_library(ULRE.ShaderGen "ULRE"    
     ${SHADERGEN_INCLUDE_PATH}
     ${DESC_INFO_HEADER_FILES}
@@ -304,6 +312,8 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${COMPOSITOR_SOURCE_FILES}
     ${COMPOSITOR_INTERNAL_HEADER_FILES}
     ${COMPOSITOR_INTERNAL_SOURCE_FILES}
+    ${COLORSOURCE_HEADER_FILES}
+    ${COLORSOURCE_SOURCE_FILES}
 )
 
 # On MSVC, ULRE.ShaderGen is a static library. The self-registering preset

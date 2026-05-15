@@ -5,6 +5,8 @@
 #include <array>
 #include <string>
 
+#include <hgl/type/EnumUtil.h>
+
 namespace hgl::graph::mtl
 {
     enum class SamplerSlot : uint8_t
