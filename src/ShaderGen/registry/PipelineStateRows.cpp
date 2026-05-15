@@ -1,0 +1,15 @@
+#include <hgl/mtl/PipelineStateRow.h>
+
+namespace hgl::graph::mtl
+{
+    const PipelineStateRow kPipelineStateRows[] = {
+        { "PS_OpaqueTriangles", MaterialPreset::PureColor3D, PrimitiveType::Triangles, RenderAlphaMode::Opaque, PassType::ForwardOpaque },
+        { "PS_TransparentTriangles", MaterialPreset::PureColor3D, PrimitiveType::Triangles, RenderAlphaMode::Transparent, PassType::ForwardTransparent },
+        { "PS_MaskedTriangles", MaterialPreset::PureColor3D, PrimitiveType::Triangles, RenderAlphaMode::Mask, PassType::ForwardOpaque },
+        { "PS_BillboardOpaque", MaterialPreset::Billboard2DDynamic, PrimitiveType::Billboard, RenderAlphaMode::Opaque, PassType::ForwardOpaque },
+        { "PS_BillboardTransparent", MaterialPreset::Billboard2DDynamic, PrimitiveType::Billboard, RenderAlphaMode::Transparent, PassType::ForwardTransparent },
+        { "PS_TextAlpha", MaterialPreset::Text2D, PrimitiveType::Triangles, RenderAlphaMode::Transparent, PassType::ForwardTransparent },
+    };
+
+    const size_t kPipelineStateRowsCount = std::size(kPipelineStateRows);
+}
