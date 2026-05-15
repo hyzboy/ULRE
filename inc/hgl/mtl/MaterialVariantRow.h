@@ -13,6 +13,8 @@
 #include <hgl/mtl/ShaderDataSchema.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/SurfaceType.h>
+#include <hgl/shadergen/ColorSource.h>
+#include <vector>
 
 namespace hgl::graph::mtl
 {
@@ -153,6 +155,11 @@ namespace hgl::graph::mtl
         MaterialResourceRequirements resources{};
         MaterialTextureSlotDesc textures[kMaterialVariantRowTextureCapacity]{};
         uint32 texture_count = 0;
+
+        /// Step 3: 新路径 — 显式 ColorSource 列表。
+        /// RowAdapter 从 textures[] 自动填充此字段（legacy bridge）。
+        /// 新写法可直接由 MaterialRecipe::color_sources[] 填充。
+        std::vector<graph::ColorSource> color_sources;
 
         ShaderDataSchema schema = ShaderDataSchema::None;
         StaticMaterialDefIdHint def_hint = StaticMaterialDefIdHint::None;
