@@ -4,6 +4,7 @@
 #include <hgl/mtl/MaterialPreset.h>
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/RenderAlphaMode.h>
+#include <cstddef>
 
 namespace hgl::graph::mtl
 {
@@ -15,4 +16,7 @@ namespace hgl::graph::mtl
         RenderAlphaMode blend = RenderAlphaMode::Opaque;
         PassType pass = PassType::ForwardOpaque;
     };
+
+    extern const PipelineStateRow kPipelineStateRows[];
+    extern const size_t           kPipelineStateRowsCount;
 }

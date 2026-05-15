@@ -4,6 +4,7 @@
 #include <hgl/common/PositionProvider.h>
 #include <hgl/mtl/MaterialPreset.h>
 #include <hgl/mtl/MaterialVariantRow.h>
+#include <cstddef>
 #include <string_view>
 
 namespace hgl::graph::mtl
@@ -22,4 +23,7 @@ namespace hgl::graph::mtl
         MaterialResourceRequirements resource_contract{};
         StaticMaterialDefIdHint def_hint = StaticMaterialDefIdHint::None;
     };
+
+    extern const VertexProgramTemplate kVertexProgramTemplates[];
+    extern const size_t                kVertexProgramTemplatesCount;
 }

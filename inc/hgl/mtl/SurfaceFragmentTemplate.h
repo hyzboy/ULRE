@@ -3,6 +3,7 @@
 #include <hgl/CoreType.h>
 #include <hgl/mtl/MaterialPreset.h>
 #include <hgl/mtl/MaterialVariantRow.h>
+#include <cstddef>
 
 namespace hgl::graph::mtl
 {
@@ -22,4 +23,7 @@ namespace hgl::graph::mtl
         MaterialResourceRequirements resource_contract{};
         StaticMaterialDefIdHint def_hint = StaticMaterialDefIdHint::None;
     };
+
+    extern const SurfaceFragmentTemplate kSurfaceFragmentTemplates[];
+    extern const size_t                  kSurfaceFragmentTemplatesCount;
 }
