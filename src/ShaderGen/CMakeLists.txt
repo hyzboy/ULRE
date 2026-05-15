@@ -199,16 +199,25 @@ SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             VariantRegistry.cpp
                             VariantRegistryStatsSink.cpp
                             registry/ErrorCodeRegistry.cpp
+                            registry/RegistryQuery.cpp
+                            registry/RowAdapter.cpp
+                            registry/VertexProgramTemplates.cpp
+                            registry/SurfaceFragmentTemplates.cpp
+                            registry/PipelineStateRows.cpp
                             ${STD_MTL_HEADER_PATH}/MaterialLibrary.h
                             ${STD_MTL_HEADER_PATH}/MaterialSpec.h
                             ${STD_MTL_HEADER_PATH}/MaterialPreset.h
                             ${STD_MTL_HEADER_PATH}/MaterialVariantDesc.h
                             ${STD_MTL_HEADER_PATH}/MaterialVariantRegistry.h
+                            ${MTL_TYPE_INCLUDE_PATH}/VertexProgramTemplate.h
+                            ${MTL_TYPE_INCLUDE_PATH}/SurfaceFragmentTemplate.h
+                            ${MTL_TYPE_INCLUDE_PATH}/PipelineStateRow.h
                             ${MTL_TYPE_INCLUDE_PATH}/MaterialVariantKey.h
                             ${MTL_TYPE_INCLUDE_PATH}/SurfaceType.h
                             ${MTL_TYPE_INCLUDE_PATH}/RenderAlphaMode.h
                             ${MTL_TYPE_INCLUDE_PATH}/PassType.h
-                            ${SHADERGEN_INCLUDE_PATH}/registry/ErrorCodeRegistry.h)
+                            ${SHADERGEN_INCLUDE_PATH}/registry/ErrorCodeRegistry.h
+                            ${SHADERGEN_INCLUDE_PATH}/RegistryQuery.h)
 SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 
 # Material Compiler

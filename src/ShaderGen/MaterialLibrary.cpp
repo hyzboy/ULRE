@@ -8,6 +8,7 @@
 #include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/shadergen/MaterialFactory3D.h>
+#include<hgl/shadergen/RegistryQuery.h>
 #include<hgl/shadergen/registry/ErrorCodeRegistry.h>
 #include<atomic>
 #include<cstring>
@@ -804,6 +805,9 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         }
     }
 
+    MaterialVariantRow phase3_row{};
+    MaterialVariantDesc phase3_desc{};
+
     const MaterialVariantDesc *variant_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(registry_lookup_key,
                                                                                                              &resolved_key,
                                                                                                              lookup_opts);
@@ -824,6 +828,41 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             key.extra_feature_bits,
             registry_lookup_key.sky_ambient_model == SkyLightAmbientModel::Simple
                 && key.sky_ambient_model != SkyLightAmbientModel::Simple ? "yes" : "no");
+
+        // Phase 3: before dropping into Phase 2's geometry-only FS fallback, try the
+        // new three-table query path and compose a temporary legacy row for the existing
+        // assembler / factory pipeline.
+        const RegistryQueryResult phase3_query = QueryPhase3Registry(registry_lookup_key);
+        if (phase3_query.vertex && phase3_query.fragment && phase3_query.pipeline)
+        {
+            phase3_row = ComposeLegacyRow(phase3_query.vertex,
+                                          phase3_query.fragment,
+                                          phase3_query.pipeline,
+                                          key,
+                                          "Phase3ComposedRow");
+
+            phase3_desc = MaterialVariantDesc::CreateRowBound(
+                "Phase3ComposedVariant",
+                &phase3_row,
+                phase3_query.fragment->preset,
+                phase3_query.vertex->vs_template_path ? phase3_query.vertex->vs_template_path : "",
+                phase3_query.fragment->fs_template_path ? phase3_query.fragment->fs_template_path : "",
+                phase3_query.fragment->surface_path ? phase3_query.fragment->surface_path : "");
+
+            variant_desc = &phase3_desc;
+            resolved_key = key;
+
+            std::fprintf(stderr,
+                "[MaterialLibrary] Phase3 route hit: vertex=%s fragment=%s pipeline=%s request={%s}\n",
+                phase3_query.vertex->name,
+                phase3_query.fragment->name,
+                phase3_query.pipeline->name,
+                FormatVariantKeyForLog(key).c_str());
+        }
+    }
+
+    if(!variant_desc)
+    {
 
         // Phase 2: VS/FS split fallback.
         // The full variant miss does not necessarily mean VS is broken — it may be

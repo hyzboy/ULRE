@@ -1,4 +1,5 @@
 #include <hgl/shadergen/CompositorTemplateRouter.h>
+#include <hgl/shadergen/RegistryQuery.h>
 #include <hgl/mtl/SurfaceType.h>
 
 namespace hgl::graph {
@@ -30,6 +31,27 @@ static const SurfaceFunctionRoute kSurfaceFunctionRoutes[] = {
 };
 
 } // anonymous namespace
+
+VertexRouteResult RouteVertexTemplate(const mtl::MaterialVariantKey &key)
+{
+    VertexRouteResult result;
+    result.tpl = mtl::FindVertexProgramTemplate(key, &result.miss_reason);
+    return result;
+}
+
+FragmentRouteResult RouteFragmentTemplate(const mtl::MaterialVariantKey &key)
+{
+    FragmentRouteResult result;
+    result.tpl = mtl::FindSurfaceFragmentTemplate(key, &result.miss_reason);
+    return result;
+}
+
+PipelineStateResult RoutePipelineState(const mtl::MaterialVariantKey &key)
+{
+    PipelineStateResult result;
+    result.row = mtl::FindPipelineStateRow(key, &result.miss_reason);
+    return result;
+}
 
 bool IsCompositorTemplatePath(std::string_view template_path)
 {
