@@ -3,6 +3,7 @@
 #include <hgl/CoreType.h>
 #include <hgl/mtl/MaterialPreset.h>
 #include <hgl/mtl/MaterialVariantRow.h>
+#include <hgl/mtl/ShaderDataSchema.h>
 #include <cstddef>
 
 namespace hgl::graph::mtl
@@ -22,6 +23,7 @@ namespace hgl::graph::mtl
         ShaderStageFeatureDesc fs_features{};
         MaterialResourceRequirements resource_contract{};
         StaticMaterialDefIdHint def_hint = StaticMaterialDefIdHint::None;
+        ShaderDataSchema schema = ShaderDataSchema::None;
     };
 
     extern const SurfaceFragmentTemplate kSurfaceFragmentTemplates[];

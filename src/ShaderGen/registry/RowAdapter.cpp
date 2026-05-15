@@ -67,6 +67,8 @@ namespace hgl::graph::mtl
             row.resources.needs_sky = row.resources.needs_sky || fragment->resource_contract.needs_sky;
             row.resources.needs_material_instance = row.resources.needs_material_instance || fragment->resource_contract.needs_material_instance;
             row.def_hint = fragment->def_hint != StaticMaterialDefIdHint::None ? fragment->def_hint : row.def_hint;
+            if (fragment->schema != ShaderDataSchema::None)
+                row.schema = fragment->schema;
         }
 
         if (pipeline)

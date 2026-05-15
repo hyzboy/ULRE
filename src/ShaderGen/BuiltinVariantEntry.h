@@ -389,8 +389,15 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
     case MaterialPreset::Metal:
     case MaterialPreset::BirdFeathers:
     case MaterialPreset::Scales:
+    {
+        const bool standard_has_textures =
+            (e.tex[0].mode != TextureSourceMode::None) ||
+            (e.tex[1].mode != TextureSourceMode::None);
+
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::PositionNormal3D;
+        row.vertex_input = standard_has_textures
+            ? VertexInputProfile::PositionTexCoord3D
+            : VertexInputProfile::PositionNormal3D;
         row.vertex_policy = VertexTransformPolicy::Mesh3D;
         row.surface_model = e.lighting == LightingModel::BlinnPhong
             ? SurfaceShadingModel::StandardBlinnPhong
@@ -399,22 +406,36 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Normal);
         row.fs_features.SetVertexAttrib(VertexAttrib::Position);
         row.fs_features.SetVertexAttrib(VertexAttrib::Normal);
+        if (standard_has_textures)
+        {
+            row.vs_features.SetVertexAttrib(VertexAttrib::TexCoord);
+            row.fs_features.SetVertexAttrib(VertexAttrib::TexCoord);
+        }
         row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
         row.resources.needs_sky = true;
         row.resources.needs_transform = true;
         row.resources.needs_material_instance = true;
         row.resources.enable_lighting = true;
-        row.texture_count = 2;
-        row.textures[0].slot = e.tex[0].slot;
-        row.textures[0].source_mode = e.tex[0].mode;
-        row.textures[0].sampler_type = e.tex[0].mode == TextureSourceMode::Array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D;
-        row.textures[1].slot = e.tex[1].slot;
-        row.textures[1].source_mode = e.tex[1].mode;
-        row.textures[1].sampler_type = e.tex[1].mode == TextureSourceMode::Array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D;
+        row.texture_count = 0;
+        if (e.tex[0].mode != TextureSourceMode::None)
+        {
+            auto &t = row.textures[row.texture_count++];
+            t.slot = e.tex[0].slot;
+            t.source_mode = e.tex[0].mode;
+            t.sampler_type = e.tex[0].mode == TextureSourceMode::Array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D;
+        }
+        if (e.tex[1].mode != TextureSourceMode::None)
+        {
+            auto &t = row.textures[row.texture_count++];
+            t.slot = e.tex[1].slot;
+            t.source_mode = e.tex[1].mode;
+            t.sampler_type = e.tex[1].mode == TextureSourceMode::Array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D;
+        }
         row.schema = ShaderDataSchema::StandardParams;
         row.def_hint = StaticMaterialDefIdHint::Standard3D;
         break;
+    }
 
     case MaterialPreset::PBRColor3D:
         row.primitive = PrimitiveType::Triangles;

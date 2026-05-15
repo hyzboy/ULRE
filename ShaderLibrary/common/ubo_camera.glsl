@@ -3,6 +3,13 @@
 
 // @require UBO(CameraInfo)
 
+#ifndef PERFRAME_SET
+#define PERFRAME_SET 0
+#endif
+#ifndef CAMERA_BINDING
+#define CAMERA_BINDING 0
+#endif
+
 layout(set=PERFRAME_SET, binding=CAMERA_BINDING) uniform CameraInfo
 {
     mat4 projection;

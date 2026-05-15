@@ -4,6 +4,16 @@
 // @require SSBO(TransformID)
 // @require SSBO(LocalToWorld)
 
+#ifndef PEROBJECT_SET
+#define PEROBJECT_SET 0
+#endif
+#ifndef TRANSFORM_ID_BINDING
+#define TRANSFORM_ID_BINDING 0
+#endif
+#ifndef TRANSFORM_DATA_BINDING
+#define TRANSFORM_DATA_BINDING 1
+#endif
+
 layout(set=PEROBJECT_SET, binding=TRANSFORM_ID_BINDING) readonly buffer TransformIDData {
     uint ids[];
 } transform_id;

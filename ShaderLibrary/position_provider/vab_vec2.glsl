@@ -15,6 +15,10 @@
 // Prerequisites injected by emitter:
 //   POSITION_LOCATION  – vertex input location for the position attribute
 
+#ifndef POSITION_LOCATION
+    #define POSITION_LOCATION 0
+#endif
+
 layout(location=POSITION_LOCATION) in vec2 inPosition;
 
 vec3 GetPositionLocal()

@@ -3,6 +3,13 @@
 
 // @require UBO(ViewportInfo)
 
+#ifndef STATIC_SET
+#define STATIC_SET 0
+#endif
+#ifndef VIEWPORT_BINDING
+#define VIEWPORT_BINDING 0
+#endif
+
 layout(set=STATIC_SET, binding=VIEWPORT_BINDING) uniform ViewportInfo
 {
     mat4 ortho_matrix;

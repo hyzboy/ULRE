@@ -15,6 +15,10 @@
 //   [layout in declaration]  inPosition  (only for POSITION_KIND 1 or 2)
 //   vec3 GetPositionLocal()  -- returns object-space position as vec3
 
+#ifndef POSITION_LOCATION
+    #define POSITION_LOCATION 0
+#endif
+
 #if POSITION_KIND == 2
     layout(location=POSITION_LOCATION) in vec3 inPosition;
     vec3 GetPositionLocal() { return inPosition; }

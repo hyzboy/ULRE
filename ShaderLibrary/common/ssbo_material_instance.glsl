@@ -24,6 +24,13 @@ uint GetMaterialInstanceID()
 
 // @require SSBO(MaterialBindingInstance)
 
+#ifndef PERMATERIAL_SET
+#define PERMATERIAL_SET 0
+#endif
+#ifndef MBI_DATA_BINDING
+#define MBI_DATA_BINDING 1
+#endif
+
 layout(scalar, set=PERMATERIAL_SET, binding=MBI_DATA_BINDING) readonly buffer MaterialBindingInstanceData {
     MaterialBindingInstance datas[];
 } mbi_data;

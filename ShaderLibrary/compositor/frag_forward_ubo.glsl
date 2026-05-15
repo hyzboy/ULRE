@@ -28,4 +28,7 @@
 // Varying declarations
 #include "common/varying_fs.glsl"
 
+// Sampler getter functions (activated by HAS_SAMPLER_XXX defines set by InjectDefines)
+#include "common/sampler_getters.glsl"
+
 #endif // ULRE_COMPOSITOR_FRAG_FORWARD_UBO_GLSL

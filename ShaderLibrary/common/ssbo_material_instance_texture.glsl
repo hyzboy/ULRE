@@ -37,6 +37,13 @@ struct MaterialInstanceTexture
 #endif
 };
 
+#ifndef PERMATERIAL_SET
+#define PERMATERIAL_SET 0
+#endif
+#ifndef MBI_TEXTURE_BINDING
+#define MBI_TEXTURE_BINDING 2
+#endif
+
 layout(std430, set=PERMATERIAL_SET, binding=MBI_TEXTURE_BINDING) readonly buffer MaterialBindingInstanceTexture
 {
     MaterialInstanceTexture tex_id[];

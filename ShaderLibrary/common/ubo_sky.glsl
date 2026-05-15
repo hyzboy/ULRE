@@ -3,6 +3,13 @@
 
 // @require UBO(SkyInfo)
 
+#ifndef STATIC_SET
+#define STATIC_SET 0
+#endif
+#ifndef SKY_BINDING
+#define SKY_BINDING 0
+#endif
+
 layout(set=STATIC_SET, binding=SKY_BINDING) uniform SkyInfo
 {
     vec4 base_sky_color;
