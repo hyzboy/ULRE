@@ -44,13 +44,18 @@ struct ColorSourcePipelineResult
 
 /// 统一 G1+G2 管道：
 ///   1. G1 ValidateColorSources
-///   2. 通过 CodegenRegistry 调用每个 ColorSource 的 DeclareRequirements
-///   3. BindingAllocator::Allocate (G2)
+///   2. （可选）Bindless fallback: supports_descriptor_indexing=false 时
+///      将 ColorSourceKind::BuiltinBindlessSamplerArray 重写为 BuiltinSampler2DArray，并 warn
+///   3. 通过 CodegenRegistry 调用每个 ColorSource 的 DeclareRequirements
+///   4. BindingAllocator::Allocate (G2)
 ///
-/// @param sources       待验证/分配的 ColorSource 列表（来自 MaterialVariantRow 或 MaterialCreateInfo）
-/// @param debug_context 用于诊断日志的上下文名称（如 row.name 或 "InjectLayoutDefines"）
+/// @param sources                       待验证/分配的 ColorSource 列表
+/// @param debug_context                 诊断日志上下文名称（如 row.name）
+/// @param supports_descriptor_indexing  设备是否支持 VK_EXT_descriptor_indexing；
+///                                      false 时 Bindless 种类自动 fallback 到 SamperArray
 ColorSourcePipelineResult FinalizeColorSources(
     const std::vector<ColorSource> &sources,
-    const char                     *debug_context = nullptr);
+    const char                     *debug_context                 = nullptr,
+    bool                            supports_descriptor_indexing  = false);
 
 } // namespace hgl::graph

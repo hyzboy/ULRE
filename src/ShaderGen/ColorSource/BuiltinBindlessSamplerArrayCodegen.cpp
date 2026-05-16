@@ -1,11 +1,18 @@
 /// BuiltinBindlessSamplerArrayCodegen.cpp
 ///
-/// Step 6 stub 实现 —— VK_EXT_descriptor_indexing 尚未实现。
+/// C7 完整实现 —— VK_EXT_descriptor_indexing (GL_EXT_nonuniform_qualifier)。
 ///
-/// TODO(Step 6 完整版): 当 capability 查询基础设施就绪后：
-///   1. 检查设备是否支持 VK_EXT_descriptor_indexing / VkPhysicalDeviceDescriptorIndexingFeatures
-///   2. 若支持：emit 真实 bindless layout 声明与 NonUniformEXT 采样 getter
-///   3. 若不支持：fallback 到 BuiltinSampler2DArrayCodegen 路径（或报 fatal，视策略而定）
+/// EmitDeclarations:
+///   #extension GL_EXT_nonuniform_qualifier : enable
+///   layout(set=S, binding=B) uniform sampler2D Sampler_<Slot>_Bindless[];
+///
+/// EmitGetterFunction:
+///   vec4 GetSampler<Slot>(uint idx, vec2 uv) {
+///       return texture(Sampler_<Slot>_Bindless[nonuniformEXT(idx)], uv);
+///   }
+///
+/// FallbackToArray: FinalizeColorSources 在 supports_descriptor_indexing=false 时
+/// 将 kind 重写为 BuiltinSampler2DArray 并 warn；不需要此文件做任何处理。
 
 #include "BuiltinSamplerCodegen.h"
 #include <hgl/mtl/SamplerSlot.h>
@@ -16,8 +23,9 @@ namespace hgl::graph
 
 // ── DeclareRequirements ───────────────────────────────────────────────────────
 //
-// 用 count=0 声明 unbounded descriptor 数组（bindless 的标准形状）。
-// BindingAllocator 看到 count=0 时应保留槽位但不分配实际 binding 号（未来实现）。
+// count=0 = unbounded array（VK_EXT_descriptor_indexing 语义）。
+// BindingAllocator 对 count=0 的项目照常分配一个 binding 槽位；
+// 实际描述符集合创建时由 Vulkan 层负责声明为 VARIABLE_COUNT。
 
 void BuiltinBindlessSamplerArrayCodegen::DeclareRequirements(
     const ColorSource                     &src,
@@ -38,53 +46,75 @@ void BuiltinBindlessSamplerArrayCodegen::DeclareRequirements(
 
 // ── EmitDeclarations ──────────────────────────────────────────────────────────
 //
-// Stub: 仅 emit TODO 注释，不产生实际 layout 声明。
-// 运行时 shader 将因缺少 sampler 声明而使用 fallback getter 中的品红色输出。
+// 发出 GL_EXT_nonuniform_qualifier extension 启用指令和 unbounded sampler2D 数组声明。
+// (set, binding) 来自 resolved_bindings，保证与 BindingAllocator 分配结果一致。
 
 void BuiltinBindlessSamplerArrayCodegen::EmitDeclarations(
     ShaderWriter            &writer,
     const ColorSource        &src,
-    const ResolvedBindings   & /*resolved_bindings*/) const
+    const ResolvedBindings   &resolved_bindings) const
 {
     const char *slot_name = mtl::SamplerSlotNameList[uint8_t(src.slot)];
+    const std::string debug_name = std::string("Sampler_") + slot_name + "_Bindless";
 
-    std::string comment;
-    comment += "// TODO(Step 6): BuiltinBindlessSamplerArray for slot '";
-    comment += slot_name;
-    comment += "' — VK_EXT_descriptor_indexing not yet implemented; using fallback getter.";
-    writer.EmitLine(comment);
+    uint32_t set = 0, binding = 0;
+    FindResolved(resolved_bindings, debug_name, set, binding);
+
+    // Extension guard — may already be emitted by another bindless slot; the guard prevents duplication.
+    writer.EmitLine("#ifndef ULRE_EXT_NONUNIFORM_QUALIFIER_ENABLED");
+    writer.EmitLine("#extension GL_EXT_nonuniform_qualifier : enable");
+    writer.EmitLine("#define ULRE_EXT_NONUNIFORM_QUALIFIER_ENABLED");
+    writer.EmitLine("#endif");
+
+    // Unbounded array: [] after type name (requires VK_EXT_descriptor_indexing on device).
+    std::string decl = "layout(set=";
+    decl += std::to_string(set);
+    decl += ", binding=";
+    decl += std::to_string(binding);
+    decl += ") uniform sampler2D ";
+    decl += debug_name;
+    decl += "[];";
+    writer.EmitLine(decl);
 }
 
 // ── EmitGetterFunction ────────────────────────────────────────────────────────
 //
-// Stub: 返回品红色 (1,0,1,1)，确保 shader 可编译。
-// 运行时出现品红色即可识别 bindless 路径未实现。
+// nonuniformEXT(idx) は VK_EXT_descriptor_indexing が要求する non-uniform index ラッパー。
+// Grayscale_R フォーマットにも対応。
 
 void BuiltinBindlessSamplerArrayCodegen::EmitGetterFunction(
     ShaderWriter            &writer,
     const ColorSource        &src,
     const ResolvedBindings   & /*resolved_bindings*/) const
 {
-    const char *slot_name = mtl::SamplerSlotNameList[uint8_t(src.slot)];
+    const char *slot_name  = mtl::SamplerSlotNameList[uint8_t(src.slot)];
+    const std::string array_name = std::string("Sampler_") + slot_name + "_Bindless";
 
-    std::string getter;
-    getter += "vec4 GetSampler";
-    getter += slot_name;
-    getter += "(uint /*mi_id*/, vec2 /*uv*/)"
-              " { return vec4(1.0, 0.0, 1.0, 1.0); }"
-              " // TODO(Step 6): bindless not implemented\n";
-    writer.EmitLine(getter);
+    std::string tmp;
+    if (src.builtin.output_format == ColorSourceOutputFormat::Grayscale_R)
+    {
+        tmp += "vec4 GetSampler"; tmp += slot_name;
+        tmp += "(uint idx, vec2 uv) { float r = texture(";
+        tmp += array_name; tmp += "[nonuniformEXT(idx)], uv).r; return vec4(r,r,r,r); }\n";
+    }
+    else
+    {
+        tmp += "vec4 GetSampler"; tmp += slot_name;
+        tmp += "(uint idx, vec2 uv) { return texture(";
+        tmp += array_name; tmp += "[nonuniformEXT(idx)], uv); }\n";
+    }
+    writer.EmitLine(tmp);
 }
 
 // ── Validate ─────────────────────────────────────────────────────────────────
 //
-// 仅返回警告，不 fatal，避免阻塞已有 sample。
-// 待 VK_EXT_descriptor_indexing 就绪后改为检查 capability。
+// slot 合法性チェック。bindings[] は DeclareRequirements で動的生成するため空でも Ok。
 
 ColorSourceCodegenValidation BuiltinBindlessSamplerArrayCodegen::Validate(
-    const ColorSource & /*src*/) const
+    const ColorSource &src) const
 {
-    // Non-fatal: allow existing samples to continue running with fallback output.
+    if (size_t(src.slot) >= mtl::SamplerSlotCount)
+        return ColorSourceCodegenValidation::Fail("invalid SamplerSlot value for BuiltinBindlessSamplerArray");
     return ColorSourceCodegenValidation::Ok();
 }
 

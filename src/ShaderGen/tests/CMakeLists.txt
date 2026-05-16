@@ -99,3 +99,16 @@ set_property(TARGET BindingAllocatorTests PROPERTY FOLDER "ULRE/Tests/ShaderGen"
 shadergen_set_test_runtime_dir(BindingAllocatorTests)
 
 add_test(NAME BindingAllocatorTests COMMAND BindingAllocatorTests)
+
+# BindlessSmokeTests — C7: BuiltinBindlessSamplerArrayCodegen emit + FinalizeColorSources fallback.
+# Links full ULRE stack (CodegenRegistry, ShaderWriter, ColorSourcePipeline, etc.).
+add_executable(BindlessSmokeTests
+    BindlessSmokeTests.cpp
+)
+
+target_link_libraries(BindlessSmokeTests PRIVATE ${ULRE})
+
+set_property(TARGET BindlessSmokeTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(BindlessSmokeTests)
+
+add_test(NAME BindlessSmokeTests COMMAND BindlessSmokeTests)

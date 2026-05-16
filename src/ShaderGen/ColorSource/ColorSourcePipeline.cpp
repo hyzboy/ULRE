@@ -7,6 +7,7 @@
 #include <hgl/shadergen/IColorSourceCodegen.h>
 #include "BindingAllocator.h"
 #include "CodegenRegistry.h"
+#include <hgl/mtl/SamplerSlot.h>
 #include <cstdio>
 
 namespace hgl::graph
@@ -14,14 +15,37 @@ namespace hgl::graph
 
 ColorSourcePipelineResult FinalizeColorSources(
     const std::vector<ColorSource> &sources,
-    const char                     *debug_context)
+    const char                     *debug_context,
+    bool                            supports_descriptor_indexing)
 {
     const char *ctx = debug_context ? debug_context : "FinalizeColorSources";
 
     ColorSourcePipelineResult result;
 
+    // ── Bindless fallback ────────────────────────────────────────────────────
+    // Rewrite BuiltinBindlessSamplerArray → BuiltinSampler2DArray when the device
+    // does not support VK_EXT_descriptor_indexing.  We operate on a local copy so
+    // callers never see the rewritten sources.
+    std::vector<ColorSource> effective_sources = sources;
+    if (!supports_descriptor_indexing)
+    {
+        for (auto &cs : effective_sources)
+        {
+            if (cs.kind == ColorSourceKind::BuiltinBindlessSamplerArray)
+            {
+                const std::string msg = std::string("[Bindless][") + ctx
+                    + "] device does not support VK_EXT_descriptor_indexing; "
+                      "falling back BuiltinBindlessSamplerArray → BuiltinSampler2DArray for slot "
+                    + mtl::SamplerSlotNameList[uint8_t(cs.slot)];
+                std::fprintf(stderr, "%s\n", msg.c_str());
+                result.diags.push_back({ ColorSourcePipelineResult::Diag::Level::Warning, msg });
+                cs.kind = ColorSourceKind::BuiltinSampler2DArray;
+            }
+        }
+    }
+
     // ── G1: 结构合法性校验 ──────────────────────────────────────────────────
-    const ColorSourceValidationResult g1 = ValidateColorSources(sources);
+    const ColorSourceValidationResult g1 = ValidateColorSources(effective_sources);
     if (!g1.ok)
     {
         result.ok = false;
@@ -40,7 +64,7 @@ ColorSourcePipelineResult FinalizeColorSources(
 
     BindingAllocator allocator;
 
-    for (const auto &cs : sources)
+    for (const auto &cs : effective_sources)
     {
         const IColorSourceCodegen *codegen = reg.Find(cs.kind);
         if (!codegen)
