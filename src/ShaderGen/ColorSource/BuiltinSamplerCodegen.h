@@ -79,4 +79,39 @@ public:
                             const ResolvedBindings   &resolved_bindings) const override;
 };
 
+// ── BuiltinBindlessSamplerArrayCodegen ───────────────────────────────────────
+//
+// Step 6 stub: VK_EXT_descriptor_indexing 尚未实现。
+//
+// DeclareRequirements: count=0（unbounded），标记未来 bindless descriptor 形状。
+// EmitDeclarations:    emit TODO 注释，不产生实际 layout 声明。
+// EmitGetterFunction:  emit 品红色 fallback getter (vec4(1,0,1,1))，使 shader 可编译
+//                      且运行时出现品红色即可识别 bindless 路径未实现。
+// Validate:            仅警告，不 fatal，避免阻塞已有 sample。
+//
+// 待 VK_EXT_descriptor_indexing capability 查询基础设施就绪后，替换为真实实现。
+
+class BuiltinBindlessSamplerArrayCodegen final : public BuiltinSamplerCodegenBase
+{
+public:
+    ColorSourceKind GetKind() const override
+    {
+        return ColorSourceKind::BuiltinBindlessSamplerArray;
+    }
+
+    void DeclareRequirements(const ColorSource                     &src,
+                             std::vector<DescriptorRequirement>    &out_bindings,
+                             std::vector<PushConstantRequirement>  &out_push) const override;
+
+    void EmitDeclarations(ShaderWriter            &writer,
+                          const ColorSource        &src,
+                          const ResolvedBindings   &resolved_bindings) const override;
+
+    void EmitGetterFunction(ShaderWriter            &writer,
+                            const ColorSource        &src,
+                            const ResolvedBindings   &resolved_bindings) const override;
+
+    ColorSourceValidationResult Validate(const ColorSource &src) const override;
+};
+
 } // namespace hgl::graph

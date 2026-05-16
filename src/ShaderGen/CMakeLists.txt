@@ -280,6 +280,7 @@ SET(COLORSOURCE_HEADER_FILES    ${SHADERGEN_INCLUDE_PATH}/DescriptorRequirement.
 SET(COLORSOURCE_SOURCE_FILES    ColorSource/ColorSource.cpp
                                 ColorSource/BuiltinSampler2DCodegen.cpp
                                 ColorSource/BuiltinSampler2DArrayCodegen.cpp
+                                ColorSource/BuiltinBindlessSamplerArrayCodegen.cpp
                                 ColorSource/ColorSourceBridge.cpp
                                 ColorSource/ColorSourceValidator.cpp
                                 ColorSource/BindingAllocator.cpp

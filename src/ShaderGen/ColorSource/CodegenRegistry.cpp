@@ -30,6 +30,8 @@ ColorSourceCodegenRegistry& ColorSourceCodegenRegistry::Global()
                      std::make_unique<BuiltinSampler2DCodegen>());
         reg.Register(ColorSourceKind::BuiltinSampler2DArray,
                      std::make_unique<BuiltinSampler2DArrayCodegen>());
+        reg.Register(ColorSourceKind::BuiltinBindlessSamplerArray,
+                     std::make_unique<BuiltinBindlessSamplerArrayCodegen>());
         return reg;
     }();
     return instance;
