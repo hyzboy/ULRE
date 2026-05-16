@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/support/TextRenderPipeline.h>
+#include<hgl/ecs/support/TextRenderPipeline.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
@@ -35,6 +35,7 @@
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/type/AlignUtil.h>
 #include<cmath>
+#include<hgl/log/Log.h>
 
 namespace hgl::ecs
 {
@@ -228,7 +229,10 @@ namespace hgl::ecs
     bool TextRenderPipeline::PrepareFrame()
     {
         if (!world)
+        {
+            GLogError("[TextRenderPipeline] PrepareFrame: world is null");
             return false;
+        }
 
         const uint32_t frame_index = world->GetFrameIndex();
         if (prepared_frame_index == frame_index)
@@ -238,13 +242,17 @@ namespace hgl::ecs
         frame_inputs.clear();
 
         world->GetComponents<TextComponent>(frame_texts);
+        GLogInfo("[TextRenderPipeline] PrepareFrame: found %d TextComponent(s)", (int)frame_texts.size());
 
         if (!PrepareFrameResources(frame_graphics_context,
                                    frame_material_manager,
                                    frame_primitive_manager,
                                    frame_device,
                                    frame_render_target))
+        {
+            GLogError("[TextRenderPipeline] PrepareFrame: PrepareFrameResources failed");
             return false;
+        }
 
         prepared_frame_index = frame_index;
         return true;
@@ -254,6 +262,8 @@ namespace hgl::ecs
     {
         frame_inputs.clear();
         BuildInputs(frame_texts, frame_inputs);
+        GLogInfo("[TextRenderPipeline] RunCollect: texts=%d inputs(font buckets)=%d",
+                 (int)frame_texts.size(), (int)frame_inputs.size());
     }
 
     void TextRenderPipeline::RunBuild()
@@ -302,10 +312,16 @@ namespace hgl::ecs
             graphics_context = world->GetGraphicsContext();
 
         if (!render_context || !graphics_context)
+        {
+            GLogError("[TextRenderPipeline] GetOrCreateResources: render_context=%p graphics_context=%p",
+                      (void*)render_context, (void*)graphics_context);
             return nullptr;
+        }
 
         if (auto* entry = resources_by_font.GetValuePointer(font_source))
             return entry;
+
+        GLogInfo("[TextRenderPipeline] GetOrCreateResources: creating new resources for font=%p", (void*)font_source);
 
         RenderResources resources;
         graph::ShaderMaterialProgramManager* material_manager = nullptr;
@@ -350,7 +366,12 @@ namespace hgl::ecs
 
         guard.tile_font.reset(CreateTileFont(render_context, font_source, limit_count, &extent));
         if (!guard.tile_font)
+        {
+            GLogError("[TextRenderPipeline] GetOrCreateResources: CreateTileFont failed (font=%p limit=%d)",
+                      (void*)font_source, limit_count);
             return nullptr;
+        }
+        GLogInfo("[TextRenderPipeline] GetOrCreateResources: TileFont created OK");
 
         material_manager = graphics_context->GetMaterialManager();
         if (!material_manager)
@@ -379,10 +400,15 @@ namespace hgl::ecs
         text_recipe.pipeline = graph::GraphicsPipelinePreset::Solid2D;
         text_recipe.color_sources.push_back(graph::ColorSource::MakeSampler2D(graph::mtl::SamplerSlot::Text));
 
+        GLogInfo("[TextRenderPipeline] GetOrCreateResources: acquiring material recipe 'text_render_pipeline_text2d'");
         graph::MaterialDomainHandle text_handle = recipe_registry->Acquire(text_recipe);
         guard.material = text_handle.material;
         if (!guard.material)
+        {
+            GLogError("[TextRenderPipeline] GetOrCreateResources: recipe_registry->Acquire failed for text material");
             return nullptr;
+        }
+        GLogInfo("[TextRenderPipeline] GetOrCreateResources: material acquired OK material=%p", (void*)guard.material);
 
         sampler_manager = graphics_context->GetSamplerManager();
         if (!sampler_manager)
@@ -392,7 +418,10 @@ namespace hgl::ecs
 
         guard.sampler = sampler_manager->CreateSampler();
         if (!guard.sampler)
+        {
+            GLogError("[TextRenderPipeline] GetOrCreateResources: CreateSampler failed");
             return nullptr;
+        }
 
         buffer_manager = graphics_context->GetBufferManager();
         if (!buffer_manager)
@@ -409,7 +438,10 @@ namespace hgl::ecs
 
             if (!guard.material->BindSSBO(graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceData,
                                           guard.material_instance_buffer->GetGPUBuffer()))
+            {
+                GLogError("[TextRenderPipeline] GetOrCreateResources: BindSSBO(MaterialBindingInstanceData) failed");
                 return nullptr;
+            }
 
             resources.material_instance_buffer = guard.material_instance_buffer;
             guard.material_instance_buffer = nullptr;
@@ -418,7 +450,10 @@ namespace hgl::ecs
         if (!guard.material->BindResourceSampler(graph::mtl::SamplerSlot::Text,
                             guard.tile_font->GetTexture(),
                             guard.sampler))
+        {
+            GLogError("[TextRenderPipeline] GetOrCreateResources: BindResourceSampler(Text) failed");
             return nullptr;
+        }
 
         if (world)
         {
@@ -441,8 +476,12 @@ namespace hgl::ecs
             resources.fixed_vil = guard.material->CreateVIL(&text_vil_config);
         }
         if (!resources.fixed_vil)
+        {
+            GLogError("[TextRenderPipeline] GetOrCreateResources: CreateVIL failed");
             return nullptr;
+        }
 
+        GLogInfo("[TextRenderPipeline] GetOrCreateResources: all resources created OK, committing");
         guard.committed = true;
 
         resources_by_font.Add(font_source, resources);
@@ -497,21 +536,36 @@ namespace hgl::ecs
                                                    graph::IRenderTarget*& render_target)
     {
         if (!world)
+        {
+            GLogError("[TextRenderPipeline] PrepareFrameResources: world is null");
             return false;
+        }
 
         if (!render_context)
             render_context = world->GetRenderContext();
 
         if (!render_context)
+        {
+            GLogError("[TextRenderPipeline] PrepareFrameResources: render_context is null");
             return false;
+        }
 
         graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
         if (!graphics_context && world)
             graphics_context = world->GetGraphicsContext();
 
+        if (!graphics_context)
+        {
+            GLogError("[TextRenderPipeline] PrepareFrameResources: graphics_context is null");
+            return false;
+        }
+
         device = graphics_context ? graphics_context->GetDevice() : nullptr;
         if (!device)
+        {
+            GLogError("[TextRenderPipeline] PrepareFrameResources: device is null");
             return false;
+        }
 
         material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
         primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr;
@@ -520,9 +574,23 @@ namespace hgl::ecs
         if (!render_target && world)
             render_target = world->GetRenderTarget();
 
-        if (!material_manager || !primitive_manager || !render_target)
+        if (!material_manager)
+        {
+            GLogError("[TextRenderPipeline] PrepareFrameResources: material_manager is null");
             return false;
+        }
+        if (!primitive_manager)
+        {
+            GLogError("[TextRenderPipeline] PrepareFrameResources: primitive_manager is null");
+            return false;
+        }
+        if (!render_target)
+        {
+            GLogError("[TextRenderPipeline] PrepareFrameResources: render_target is null");
+            return false;
+        }
 
+        GLogInfo("[TextRenderPipeline] PrepareFrameResources: OK");
         return true;
     }
 
@@ -562,16 +630,28 @@ namespace hgl::ecs
                                            graph::PrimitiveManager* primitive_manager,
                                            graph::VulkanDevice* device)
     {
+        GLogInfo("[TextRenderPipeline] ProcessInputs: %d font bucket(s)", (int)inputs.size());
         for (auto& pair : inputs)
         {
             auto& input = pair.second;
 
             if (!input.font_source || input.texts.empty())
+            {
+                GLogWarning("[TextRenderPipeline] ProcessInputs: skipping bucket - font_source=%p texts=%d",
+                         (void*)input.font_source, (int)input.texts.size());
                 continue;
+            }
+
+            GLogInfo("[TextRenderPipeline] ProcessInputs: font=%p texts=%d total_chars=%d dirty=%d",
+                     (void*)input.font_source, (int)input.texts.size(), (int)input.total_chars, (int)input.dirty);
 
             auto* resources = GetOrCreateResources(input.font_source, input.total_chars);
             if (!resources)
+            {
+                GLogError("[TextRenderPipeline] ProcessInputs: GetOrCreateResources failed for font=%p",
+                          (void*)input.font_source);
                 continue;
+            }
 
             const bool font_changed = !resources->tile_font;
             const bool style_changed = font_changed || mem_compare(resources->char_style, input.batch_style) != 0;
@@ -595,14 +675,21 @@ namespace hgl::ecs
 
                 mi = material_manager->AcquireMaterialInstance(mi_spec);
                 if (!mi)
+                {
+                    GLogError("[TextRenderPipeline] ProcessInputs: AcquireMaterialInstance failed");
                     continue;
+                }
+                GLogInfo("[TextRenderPipeline] ProcessInputs: MaterialInstance acquired OK mi=%p", (void*)mi);
 
                 resources->material_instance = mi;
                 input.dirty = true;
             }
 
             if (!ResolvePipelineForCurrentRenderTarget(*resources, device, frame_render_target))
+            {
+                GLogError("[TextRenderPipeline] ProcessInputs: ResolvePipelineForCurrentRenderTarget failed");
                 continue;
+            }
 
             if (input.dirty)
             {
@@ -631,6 +718,7 @@ namespace hgl::ecs
             if (should_layout)
             {
                 graph::layout::TextLayout layout_engine(resources->tile_font);
+                GLogInfo("[TextRenderPipeline] ProcessInputs: layout Begin total_chars=%d", (int)input.total_chars);
                 if (layout_engine.Begin(geometry, input.total_chars))
                 {
                     for (const auto* text_comp : input.texts)
@@ -645,6 +733,7 @@ namespace hgl::ecs
                     }
 
                     const int draw_count = layout_engine.End();
+                    GLogInfo("[TextRenderPipeline] ProcessInputs: layout_engine.End() draw_count=%d", draw_count);
                     if (draw_count > 0)
                     {
                         resources->last_draw_char_count = static_cast<uint32_t>(draw_count);
@@ -653,16 +742,25 @@ namespace hgl::ecs
                         if (prim)
                             prim->UpdateGeometry();
                     }
+                    else
+                    {
+                        GLogWarning("[TextRenderPipeline] ProcessInputs: layout produced 0 draw chars");
+                    }
                 }
             }
 
             graph::Primitive* primitive = resources->primitive;
             if (!primitive)
             {
+                GLogInfo("[TextRenderPipeline] ProcessInputs: creating Primitive geometry=%p mi=%p pipeline=%p",
+                         (void*)geometry, (void*)mi, (void*)resources->pipeline);
                 primitive = primitive_manager->CreatePrimitive(geometry, mi, resources->pipeline);
                 if (!primitive)
+                {
+                    GLogError("[TextRenderPipeline] ProcessInputs: CreatePrimitive failed");
                     continue;
-
+                }
+                GLogInfo("[TextRenderPipeline] ProcessInputs: Primitive created OK primitive=%p", (void*)primitive);
                 resources->primitive = primitive;
             }
 

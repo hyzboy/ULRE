@@ -28,7 +28,7 @@ namespace hgl::graph::mtl
           LightingModel::Lambert, 1u << static_cast<uint32>(SamplerSlot::BaseColor), 0u, 0u, "surface/billboard_texture_surface.glsl", "", {}, {}, StaticMaterialDefIdHint::BillboardDynamic, ShaderDataSchema::BillboardSizeUVec2 },
 
         { "FS_Text2D", MaterialPreset::Text2D, SurfaceType::Text2D, SurfaceShadingModel::Text,
-          LightingModel::Lambert, 1u << static_cast<uint32>(SamplerSlot::BaseColor), 0u, 0u, "", "2d/text2d.frag.glsl", {}, {}, StaticMaterialDefIdHint::Text2D, ShaderDataSchema::TextColor },
+          LightingModel::Lambert, 1u << static_cast<uint32>(SamplerSlot::Text), 0u, 0u, "", "2d/text2d.frag.glsl", {}, {}, StaticMaterialDefIdHint::Text2D, ShaderDataSchema::TextColor },
 
         { "FS_StandardLambert", MaterialPreset::Standard,
           SurfaceType::Standard, SurfaceShadingModel::StandardLambert,
