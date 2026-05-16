@@ -233,12 +233,12 @@ SET(SHADER_REQUIRE_SCANNER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderResourceScanner
                                  MaterialResourceManifest.cpp)
 SOURCE_GROUP("Material Compiler\\Requirements" FILES ${SHADER_REQUIRE_SCANNER_FILES})
 
-# Material Compiler / Sampler
-SET(SAMPLER_GLSL_EMITTER_FILES ${SHADERGEN_INCLUDE_PATH}/SamplerGLSLEmitter.h
-                               SamplerGLSLEmitter.cpp
-                               ${SHADERGEN_INCLUDE_PATH}/InterstageVaryingLayout.h
-                               InterstageVaryingLayout.cpp)
-SOURCE_GROUP("Material Compiler\\Sampler" FILES ${SAMPLER_GLSL_EMITTER_FILES})
+# Material Compiler / MIT SSBO Emitter
+SET(MIT_SSBO_EMITTER_FILES ${SHADERGEN_INCLUDE_PATH}/MITSSBOEmitter.h
+                           MITSSBOEmitter.cpp
+                           ${SHADERGEN_INCLUDE_PATH}/InterstageVaryingLayout.h
+                           InterstageVaryingLayout.cpp)
+SOURCE_GROUP("Material Compiler\\Sampler" FILES ${MIT_SSBO_EMITTER_FILES})
 
 # Material Compiler / Layout
 SET(SHADER_LAYOUT_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderLayoutContract.h
@@ -317,7 +317,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${FIXED_MTL_FILES}
     ${MATERIAL_COMPILER_FILES}
     ${SHADER_REQUIRE_SCANNER_FILES}
-    ${SAMPLER_GLSL_EMITTER_FILES}
+    ${MIT_SSBO_EMITTER_FILES}
     ${SHADER_LAYOUT_HEADER_FILES}
     ${SHADER_LAYOUT_SOURCE_FILES}
     ${COMPOSITOR_HEADER_FILES}

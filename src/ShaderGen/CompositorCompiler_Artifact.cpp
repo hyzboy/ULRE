@@ -6,7 +6,7 @@
 #include <hgl/shadergen/ShaderLayoutResolver.h>
 #include <hgl/shadergen/ShaderLayoutEmitter.h>
 #include <hgl/shadergen/PositionProviderRegistry.h>
-#include <hgl/shadergen/SamplerGLSLEmitter.h>
+#include <hgl/shadergen/MITSSBOEmitter.h>
 #include <hgl/shadergen/ShaderBuildPipeline.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/mtl/MaterialFeature.h>

@@ -9,7 +9,7 @@
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/ShaderLayoutResolver.h>
 #include<hgl/shadergen/ShaderLayoutEmitter.h>
-#include<hgl/shadergen/SamplerGLSLEmitter.h>
+#include<hgl/shadergen/MITSSBOEmitter.h>
 #include<hgl/shadergen/ShaderBuildPipeline.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/internal/GLSLSourceUtils.h>
@@ -181,27 +181,13 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
         return true;
     }
 
-    // ── Legacy fallback path (SamplerGLSLEmitter) ────────────────────────────
-    GLogInfo("[InjectLayoutDefines] color_sources empty — falling back to legacy SamplerGLSLEmitter");
-
-    const std::string vert_sampler_defs = vert ? EmitSimpleSamplerGLSL(mdi, ShaderStage::Vertex) : std::string();
-    const std::string frag_sampler_defs = frag ? EmitSimpleSamplerGLSL(mdi, ShaderStage::Fragment) : std::string();
-    const std::string frag_mit_defs = frag ? EmitMaterialInstanceTextureGLSL(mdi, ShaderStage::Fragment) : std::string();
-
-    GLogInfo("[InjectLayoutDefines] vert_sampler_defs empty=%d frag_sampler_defs empty=%d frag_mit_defs empty=%d",
-             int(vert_sampler_defs.empty()), int(frag_sampler_defs.empty()), int(frag_mit_defs.empty()));
-    if (!vert_sampler_defs.empty())
-        GLogWarning("[InjectLayoutDefines] WARNING: vert_sampler_defs is NON-EMPTY — injecting sampler code into VS:\n%s", vert_sampler_defs.c_str());
-
-    if(!layout_defs.empty() || !vert_sampler_defs.empty() || !frag_sampler_defs.empty() || !frag_mit_defs.empty())
+    // No color_sources — only inject layout defines (no sampler declarations).
+    if (!layout_defs.empty())
     {
-        if(vert)
-            vert->SetFinalGLSL(internal::InjectAfterVersion(vert->GetFinalGLSL(),
-                                                            layout_defs + vert_sampler_defs));
-
-        if(frag)
-            frag->SetFinalGLSL(internal::InjectAfterVersion(frag->GetFinalGLSL(),
-                                                            layout_defs + frag_mit_defs + frag_sampler_defs));
+        if (vert)
+            vert->SetFinalGLSL(internal::InjectAfterVersion(vert->GetFinalGLSL(), layout_defs));
+        if (frag)
+            frag->SetFinalGLSL(internal::InjectAfterVersion(frag->GetFinalGLSL(), layout_defs));
     }
 
     return true;
