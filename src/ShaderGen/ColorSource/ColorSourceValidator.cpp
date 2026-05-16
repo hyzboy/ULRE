@@ -68,25 +68,39 @@ ColorSourceValidationResult ValidateColorSources(const std::vector<ColorSource> 
 
 // ── G4 实现 ───────────────────────────────────────────────────────────────────
 
-/// 构建 MaterialDescriptorDB 中已声明的 sampler GLSL 符号名集合
-/// 遍历所有已知 SamplerSlot；若 GetTextureSampler(slot) 非 null 则该 slot 已被声明。
-static std::vector<std::string> BuildDeclaredSamplerNames(const MaterialDescriptorDB &db)
+/// (name, set, binding) 三元组，用于 G4 诊断表输出
+struct BindingEntry
 {
-    std::vector<std::string> names;
-    names.reserve(mtl::SamplerSlotCount);
+    std::string name;
+    int         set     = -1;
+    int         binding = -1;
+};
+
+/// 从 MaterialDescriptorDB 收集所有 COMBINED_IMAGE_SAMPLER 的 (glsl_name, set, binding)。
+/// glsl_name 使用 ToGLSLSamplerSymbol(slot)，与 SPIR-V 反射侧保持一致。
+/// Resort() 调用完成后 set/binding 已经确定。
+static std::vector<BindingEntry> BuildDeclaredBindingTable(const MaterialDescriptorDB &db)
+{
+    std::vector<BindingEntry> table;
+    table.reserve(mtl::SamplerSlotCount);
     for (size_t i = 0; i < mtl::SamplerSlotCount; ++i)
     {
         const mtl::SamplerSlot slot = static_cast<mtl::SamplerSlot>(i);
-        if (db.GetTextureSampler(slot))
-            names.push_back(mtl::ToGLSLSamplerSymbol(slot));
+        const TextureSamplerDescriptor *ts = db.GetTextureSampler(slot);
+        if (!ts || ts->set < 0 || ts->binding < 0)
+            continue;
+        // GLSL シンボル名（"Sampler_BaseColor" など）を使う。
+        // これが SPIR-V 反射側の名前と一致する唯一の権威名。
+        table.push_back({ mtl::ToGLSLSamplerSymbol(slot), ts->set, ts->binding });
     }
-    return names;
+    return table;
 }
 
-/// 从 FS GLSL 源码重新编译并用 ParseShaderSPV 提取 COMBINED_IMAGE_SAMPLER 名称列表
-static std::vector<std::string> ExtractFSSamplerNamesFromGLSL(const std::string &fs_glsl)
+/// 从 FS GLSL 源码重新编译，用 ParseShaderSPV 提取 COMBINED_IMAGE_SAMPLER 的
+/// (name, set, binding) 三元组。
+static std::vector<BindingEntry> ExtractReflectedBindingTable(const std::string &fs_glsl)
 {
-    std::vector<std::string> result;
+    std::vector<BindingEntry> result;
     if (fs_glsl.empty())
         return result;
 
@@ -103,13 +117,26 @@ static std::vector<std::string> ExtractFSSamplerNamesFromGLSL(const std::string 
     const auto &combined = parse_data->resource[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER];
     for (uint32_t i = 0; i < combined.count; ++i)
     {
-        const char *name = combined.items[i].name;
-        if (name && name[0] != '\0')
-            result.push_back(name);
+        const Descriptor &d = combined.items[i];
+        if (d.name && d.name[0] != '\0')
+            result.push_back({ std::string(d.name), int(d.set), int(d.binding) });
     }
 
     FreeShaderSPVParseData(parse_data);
     return result;
+}
+
+/// 将 BindingEntry 列表格式化为单行字符串，用于诊断消息。
+static std::string FormatBindingTable(const std::vector<BindingEntry> &table)
+{
+    if (table.empty()) return "(empty)";
+    std::string s;
+    for (const auto &e : table)
+    {
+        if (!s.empty()) s += ", ";
+        s += e.name + "(set=" + std::to_string(e.set) + ",b=" + std::to_string(e.binding) + ")";
+    }
+    return s;
 }
 
 bool G4ValidateReflectedSamplers(const mtl::MaterialCreateInfo &mci,
@@ -126,76 +153,62 @@ bool G4ValidateReflectedSamplers(const mtl::MaterialCreateInfo &mci,
     if (fs_glsl.empty())
         return true;
 
-    // 1. 从 DB 收集已声明的 sampler 名
-    const std::vector<std::string> declared = BuildDeclaredSamplerNames(mci.GetDescriptorInfo());
+    // ── 1. Declared 表：从 MaterialDescriptorDB 取 (name, set, binding) ────────
+    const std::vector<BindingEntry> declared =
+        BuildDeclaredBindingTable(mci.GetDescriptorInfo());
 
-    // 如果没有任何 sampler 声明，G4 不需要运行
+    // 没有任何 sampler 声明 → G4 不需要运行
     if (declared.empty())
         return true;
 
-    // 2. 从 FS GLSL 重新提取 SPIR-V 中实际引用的 sampler 名
-    const std::vector<std::string> reflected = ExtractFSSamplerNamesFromGLSL(fs_glsl);
+    // ── 2. Reflected 表：从 FS SPIR-V 取 (name, set, binding) ─────────────────
+    const std::vector<BindingEntry> reflected =
+        ExtractReflectedBindingTable(fs_glsl);
 
     bool all_ok = true;
 
-    // 3. 反向检查：reflected 中的每个名字必须在 declared 中能找到
-    for (const std::string &rname : reflected)
+    // ── 3. 反向检查：reflected ⊆ declared（按名字匹配）──────────────────────
+    for (const auto &re : reflected)
     {
         bool found = false;
-        for (const std::string &dname : declared)
+        for (const auto &de : declared)
         {
-            if (rname == dname)
-            {
-                found = true;
-                break;
-            }
+            if (re.name == de.name) { found = true; break; }
         }
 
         if (!found)
         {
-            // 尝试反查 SamplerSlot 以提供更详细的诊断
-            bool slot_known = false;
-            for (size_t i = 0; i < mtl::SamplerSlotCount; ++i)
-            {
-                if (rname == mtl::ToGLSLSamplerSymbol(static_cast<mtl::SamplerSlot>(i)))
-                {
-                    slot_known = true;
-                    break;
-                }
-            }
-
-            const char *severity_tag = slot_known ? "[G4][WARN]" : "[G4][FATAL]";
-            std::string msg = std::string(severity_tag)
-                + " FS sampler '" + rname
-                + "' is referenced in SPIR-V but NOT declared in MaterialDescriptorDB";
+            // Mismatch → 一律 FATAL；包含两份 (set, binding) 表
+            const std::string msg =
+                std::string("[G4][FATAL] FS sampler '") + re.name
+                + "' (set=" + std::to_string(re.set) + ",b=" + std::to_string(re.binding)
+                + ") is referenced in SPIR-V but NOT found in the declared binding table.\n"
+                "  declared  : " + FormatBindingTable(declared) + "\n"
+                "  reflected : " + FormatBindingTable(reflected);
 
             std::fprintf(stderr, "%s\n", msg.c_str());
-
             diag.push_back({
                 ShaderGenSeverity::Error,
                 ShaderGenErrorCode::ReflectionMismatch,
                 ShaderStage::Fragment,
                 "G4.ReflectedSamplerNotDeclared",
-                std::move(msg)
+                msg
             });
-
             all_ok = false;
         }
     }
 
-    // 4. 正向信息：declared 中有 SPIR-V 未出现的（被编译器剔除）→ INFO 日志
-    for (const std::string &dname : declared)
+    // ── 4. 正向检查：declared 中的 sampler 被 SPIR-V 剪掉是正常的，输出 INFO ──
+    for (const auto &de : declared)
     {
         bool used = false;
-        for (const std::string &rname : reflected)
-        {
-            if (rname == dname) { used = true; break; }
-        }
+        for (const auto &re : reflected) { if (re.name == de.name) { used = true; break; } }
         if (!used)
         {
             std::fprintf(stderr,
-                "[G4][INFO] declared sampler '%s' not referenced in FS SPIR-V (pruned by optimizer — OK)\n",
-                dname.c_str());
+                "[G4][INFO] declared sampler '%s'(set=%d,b=%d) not referenced in FS SPIR-V"
+                " (pruned by optimizer — OK)\n",
+                de.name.c_str(), de.set, de.binding);
         }
     }
 

@@ -8,8 +8,10 @@
 ///   - bindings 数量与 kind 语义一致
 ///
 /// G4（G4ValidateReflectedSamplers）: SPIR-V 编译后：
-///   - FS 实际引用的 sampler 名 ⊆ MaterialDescriptorDB 已声明的 sampler 名
-///   - 任何未能反查到 SamplerSlot 的 sampler 名 → [G4][FATAL]
+///   - declared 表：从 MaterialDescriptorDB 取 COMBINED_IMAGE_SAMPLER (name, set, binding)
+///   - reflected 表：从 FS SPIR-V 取 COMBINED_IMAGE_SAMPLER (name, set, binding)
+///   - 校验：reflected ⊆ declared（按名字匹配）
+///   - 任何 reflected 中出现而 declared 中没有的 sampler → [G4][FATAL]，同时输出两份表
 ///   - 已声明但 SPIR-V 中未出现（被优化掉）→ [G4][INFO]（不报错）
 
 #include <hgl/shadergen/ColorSource.h>
@@ -49,6 +51,11 @@ namespace hgl::graph
 {
 
 /// G4 校验：SPIR-V 反射后，验证 FS 实际引用的 sampler 名 ⊆ 已声明的 binding。
+///
+/// declared 表来自 MaterialDescriptorDB（Resort() 后 set/binding 已确定）。
+/// reflected 表来自 FS SPIR-V COMBINED_IMAGE_SAMPLER 反射结果。
+/// 任何 mismatch → [G4][FATAL]（不再区分 slot_known WARN vs FATAL）。
+/// 诊断消息包含两份 (name, set, binding) 表。
 ///
 /// @param mci       已完成 CompileShaderStagesToSPV() 的 MaterialCreateInfo
 /// @param diag      诊断输出列表（追加，不清零）
