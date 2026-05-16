@@ -151,17 +151,18 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
 
         auto format_textures = [](const MaterialVariantRow &audit_row)
         {
-            if (audit_row.texture_count == 0)
+            if (audit_row.color_sources.empty())
                 return std::string("None");
 
             std::string text;
-            for (uint32 i = 0; i < audit_row.texture_count; ++i)
+            for (size_t i = 0; i < audit_row.color_sources.size(); ++i)
             {
                 if (i > 0)
                     text += ",";
-                text += SamplerSlotNameList[static_cast<size_t>(audit_row.textures[i].slot)];
-                text += ":";
-                text += std::to_string(static_cast<uint32>(audit_row.textures[i].source_mode));
+                const auto &cs = audit_row.color_sources[i];
+                text += SamplerSlotNameList[static_cast<size_t>(cs.slot)];
+                text += ":kind=";
+                text += std::to_string(static_cast<int>(cs.kind));
             }
             return text;
         };
@@ -194,7 +195,7 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
             legacy += legacy.empty() ? "lighting_model still mirrored in key but now treated as strict row parity" : ",lighting_model still mirrored in key but now treated as strict row parity";
         if (row.resources.needs_sky)
             legacy += legacy.empty() ? "sky_model still mirrored in key but now treated as strict row parity" : ",sky_model still mirrored in key but now treated as strict row parity";
-        if (row.texture_count > 0)
+        if (!row.color_sources.empty())
             legacy += legacy.empty() ? "texture source and sampler bits still mirrored in key but now treated as strict row parity" : ",texture source and sampler bits still mirrored in key but now treated as strict row parity";
         if (RowDeclaresAnyVertexAttrib(row))
             legacy += legacy.empty() ? "vertex_attribute_feature_bits remain runtime-additive but are now constrained to the row-declared attrib envelope" : ",vertex_attribute_feature_bits remain runtime-additive but are now constrained to the row-declared attrib envelope";

@@ -5,27 +5,6 @@
 
 namespace hgl::graph::mtl
 {
-    namespace
-    {
-        SamplerType ToSamplerType(const TextureSourceMode mode) noexcept
-        {
-            return mode == TextureSourceMode::Array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D;
-        }
-
-        void AddTexture(MaterialVariantRow &row, const SamplerSlot slot, const TextureSourceMode mode) noexcept
-        {
-            if (mode == TextureSourceMode::None)
-                return;
-
-            if (row.texture_count >= kMaterialVariantRowTextureCapacity)
-                return;
-
-            auto &dst = row.textures[row.texture_count++];
-            dst.slot = slot;
-            dst.source_mode = mode;
-            dst.sampler_type = ToSamplerType(mode);
-        }
-    }
 
     MaterialVariantRow ComposeMaterialVariantRow(const VertexProgramTemplate *vertex,
                                              const SurfaceFragmentTemplate *fragment,
@@ -77,26 +56,17 @@ namespace hgl::graph::mtl
         if (pipeline)
             row.primitive = pipeline->primitive;
 
+        // Build color_sources directly from the key's texture source modes.
         for (uint32 i = 0; i < uint32(SamplerSlot::RANGE_SIZE); ++i)
         {
             const auto slot = static_cast<SamplerSlot>(i);
-            AddTexture(row, slot, key.GetTextureSourceMode(slot));
-        }
-
-        // ── Color sources: emit directly from row.textures[] ──────────────
-        row.color_sources.reserve(row.texture_count);
-        for (uint32 i = 0; i < row.texture_count; ++i)
-        {
-            const auto &t = row.textures[i];
-            if (t.source_mode == TextureSourceMode::None)
+            const TextureSourceMode mode = key.GetTextureSourceMode(slot);
+            if (mode == TextureSourceMode::None)
                 continue;
-            if (t.source_mode == TextureSourceMode::Array)
-                row.color_sources.push_back(graph::ColorSource::MakeSampler2DArray(t.slot));
+            if (mode == TextureSourceMode::Array)
+                row.color_sources.push_back(graph::ColorSource::MakeSampler2DArray(slot));
             else
-                // Simple and Atlas both map to Sampler2D here; Atlas UV offset is handled
-                // by the surface shader.  When a dedicated AtlasUV ColorSource node is
-                // introduced, add an explicit case TextureSourceMode::Atlas above.
-                row.color_sources.push_back(graph::ColorSource::MakeSampler2D(t.slot));
+                row.color_sources.push_back(graph::ColorSource::MakeSampler2D(slot));
         }
 
         // G1 校验：签名/槽位合法性

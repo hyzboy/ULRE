@@ -118,16 +118,6 @@ namespace hgl::graph::mtl
         SkyLightAmbientModel sky_model = SkyLightAmbientModel::Simple;
     };
 
-    struct MaterialTextureSlotDesc
-    {
-        SamplerSlot slot = SamplerSlot::BaseColor;
-        TextureSourceMode source_mode = TextureSourceMode::None;
-        SamplerType sampler_type = SamplerType::Sampler2D;
-        TextureChannelHint channel_hint = TextureChannelHint::RGBA;
-    };
-
-    constexpr uint32 kMaterialVariantRowTextureCapacity = 4;
-
     struct MaterialVariantRow
     {
         const char *name = "";
@@ -153,12 +143,8 @@ namespace hgl::graph::mtl
         ShaderStageFeatureDesc vs_features{};
         ShaderStageFeatureDesc fs_features{};
         MaterialResourceRequirements resources{};
-        MaterialTextureSlotDesc textures[kMaterialVariantRowTextureCapacity]{};
-        uint32 texture_count = 0;
 
-        /// Step 3: 新路径 — 显式 ColorSource 列表。
-        /// RowAdapter 从 textures[] 自动填充此字段（legacy bridge）。
-        /// 新写法可直接由 MaterialRecipe::color_sources[] 填充。
+        /// Explicit ColorSource list — the shader routing source of truth.
         std::vector<graph::ColorSource> color_sources;
 
         ShaderDataSchema schema = ShaderDataSchema::None;

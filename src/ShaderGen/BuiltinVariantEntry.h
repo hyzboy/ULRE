@@ -171,10 +171,10 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::TexCoord);
         row.fs_features.SetVertexAttrib(VertexAttrib::TexCoord);
-        row.texture_count = 1;
-        row.textures[0].slot = SamplerSlot::BaseColor;
-        row.textures[0].source_mode = e.tex[0].mode;
-        row.textures[0].sampler_type = e.tex[0].mode == TextureSourceMode::Array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D;
+        if (e.tex[0].mode == TextureSourceMode::Array)
+            row.color_sources.push_back(graph::ColorSource::MakeSampler2DArray(SamplerSlot::BaseColor));
+        else if (e.tex[0].mode != TextureSourceMode::None)
+            row.color_sources.push_back(graph::ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
         row.def_hint = StaticMaterialDefIdHint::Standard2D;
         break;
 
@@ -186,10 +186,7 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::TexCoord);
         row.fs_features.SetVertexAttrib(VertexAttrib::TexCoord);
-        row.texture_count = 1;
-        row.textures[0].slot = SamplerSlot::Text;
-        row.textures[0].source_mode = TextureSourceMode::Atlas;
-        row.textures[0].sampler_type = SamplerType::Sampler2D;
+        row.color_sources.push_back(graph::ColorSource::MakeSampler2D(SamplerSlot::Text));
         row.resources.needs_material_instance = true;
         row.schema = ShaderDataSchema::TextColor;
         row.def_hint = StaticMaterialDefIdHint::Text2D;
@@ -296,12 +293,10 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
         row.resources.needs_transform = true;
-        row.texture_count = 1;
-        row.textures[0].slot = SamplerSlot::BaseColor;
-        row.textures[0].source_mode = e.tex[0].mode;
-        row.textures[0].sampler_type = e.tex[0].mode == TextureSourceMode::Array
-                                       ? SamplerType::Sampler2DArray
-                                       : SamplerType::Sampler2D;
+        if (e.tex[0].mode != TextureSourceMode::None)
+            row.color_sources.push_back(e.tex[0].mode == TextureSourceMode::Array
+                ? graph::ColorSource::MakeSampler2DArray(SamplerSlot::BaseColor)
+                : graph::ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
         row.def_hint = StaticMaterialDefIdHint::UnlitTexture3D;
         break;
 
@@ -316,10 +311,10 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.resources.needs_camera = true;
         row.resources.needs_transform = true;
         row.resources.needs_material_instance = true;
-        row.texture_count = 1;
-        row.textures[0].slot = SamplerSlot::BaseColor;
-        row.textures[0].source_mode = e.tex[0].mode;
-        row.textures[0].sampler_type = SamplerType::Sampler2D;
+        if (e.tex[0].mode != TextureSourceMode::None)
+            row.color_sources.push_back(e.tex[0].mode == TextureSourceMode::Array
+                ? graph::ColorSource::MakeSampler2DArray(SamplerSlot::BaseColor)
+                : graph::ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
         row.schema = ShaderDataSchema::BillboardSizeUVec2;
         row.def_hint = StaticMaterialDefIdHint::BillboardDynamic;
         break;
@@ -335,10 +330,10 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.resources.needs_camera = true;
         row.resources.needs_transform = true;
         row.resources.needs_material_instance = true;
-        row.texture_count = 1;
-        row.textures[0].slot = SamplerSlot::BaseColor;
-        row.textures[0].source_mode = e.tex[0].mode;
-        row.textures[0].sampler_type = SamplerType::Sampler2D;
+        if (e.tex[0].mode != TextureSourceMode::None)
+            row.color_sources.push_back(e.tex[0].mode == TextureSourceMode::Array
+                ? graph::ColorSource::MakeSampler2DArray(SamplerSlot::BaseColor)
+                : graph::ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
         row.schema = ShaderDataSchema::BillboardSizeUVec2;
         row.def_hint = StaticMaterialDefIdHint::BillboardFixed;
         break;
@@ -354,13 +349,8 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
         row.resources.needs_transform = true;
-        row.texture_count = 2;
-        row.textures[0].slot = SamplerSlot::Height;
-        row.textures[0].source_mode = TextureSourceMode::Simple;
-        row.textures[0].sampler_type = SamplerType::Sampler2D;
-        row.textures[1].slot = SamplerSlot::Normal;
-        row.textures[1].source_mode = TextureSourceMode::Simple;
-        row.textures[1].sampler_type = SamplerType::Sampler2D;
+        row.color_sources.push_back(graph::ColorSource::MakeSampler2D(SamplerSlot::Height));
+        row.color_sources.push_back(graph::ColorSource::MakeSampler2D(SamplerSlot::Normal));
         row.def_hint = StaticMaterialDefIdHint::TerrainGrid;
         break;
 
@@ -417,21 +407,14 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.resources.needs_transform = true;
         row.resources.needs_material_instance = true;
         row.resources.enable_lighting = true;
-        row.texture_count = 0;
         if (e.tex[0].mode != TextureSourceMode::None)
-        {
-            auto &t = row.textures[row.texture_count++];
-            t.slot = e.tex[0].slot;
-            t.source_mode = e.tex[0].mode;
-            t.sampler_type = e.tex[0].mode == TextureSourceMode::Array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D;
-        }
+            row.color_sources.push_back(e.tex[0].mode == TextureSourceMode::Array
+                ? graph::ColorSource::MakeSampler2DArray(e.tex[0].slot)
+                : graph::ColorSource::MakeSampler2D(e.tex[0].slot));
         if (e.tex[1].mode != TextureSourceMode::None)
-        {
-            auto &t = row.textures[row.texture_count++];
-            t.slot = e.tex[1].slot;
-            t.source_mode = e.tex[1].mode;
-            t.sampler_type = e.tex[1].mode == TextureSourceMode::Array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D;
-        }
+            row.color_sources.push_back(e.tex[1].mode == TextureSourceMode::Array
+                ? graph::ColorSource::MakeSampler2DArray(e.tex[1].slot)
+                : graph::ColorSource::MakeSampler2D(e.tex[1].slot));
         row.schema = ShaderDataSchema::StandardParams;
         row.def_hint = StaticMaterialDefIdHint::Standard3D;
         break;
@@ -474,23 +457,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 
     default:
         break;
-    }
-
-    // Sync color_sources from textures[] so downstream consumers (RowAdapter,
-    // ShaderBuildPipeline) don't need a separate legacy bridge step.
-    if (row.texture_count > 0)
-    {
-        row.color_sources.reserve(row.texture_count);
-        for (uint32 i = 0; i < row.texture_count; ++i)
-        {
-            const auto &t = row.textures[i];
-            if (t.source_mode == _BVE_TSM::None)
-                continue;
-            if (t.source_mode == _BVE_TSM::Array)
-                row.color_sources.push_back(graph::ColorSource::MakeSampler2DArray(t.slot));
-            else
-                row.color_sources.push_back(graph::ColorSource::MakeSampler2D(t.slot));
-        }
     }
 
     return row;

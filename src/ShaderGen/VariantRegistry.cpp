@@ -159,23 +159,19 @@ static std::string FormatMaterialResourcesForLog(const MaterialResourceRequireme
 
 static std::string FormatRowTexturesForLog(const MaterialVariantRow &row)
 {
-    std::string text;
-    if (row.texture_count == 0)
+    if (row.color_sources.empty())
         return "None";
 
-    for (uint32 i = 0; i < row.texture_count; ++i)
+    std::string text;
+    for (size_t i = 0; i < row.color_sources.size(); ++i)
     {
         if (i > 0)
             text += ",";
-
-        const auto &t = row.textures[i];
-        text += SamplerSlotNameList[static_cast<size_t>(t.slot)];
-        text += ":src=";
-        text += std::to_string(static_cast<unsigned>(t.source_mode));
-        text += ":smp=";
-        text += std::to_string(static_cast<unsigned>(t.sampler_type));
+        const auto &cs = row.color_sources[i];
+        text += mtl::SamplerSlotNameList[static_cast<size_t>(cs.slot)];
+        text += ":kind=";
+        text += std::to_string(static_cast<int>(cs.kind));
     }
-
     return text;
 }
 

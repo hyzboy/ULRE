@@ -58,12 +58,19 @@ struct RecipeAxisExpansion
 
 static bool RowHasTextureMode(const MaterialVariantRow &row, const TextureSourceMode mode) noexcept
 {
-    for (uint32 i = 0; i < row.texture_count; ++i)
+    for (const auto &cs : row.color_sources)
     {
-        if (row.textures[i].source_mode == mode)
-            return true;
+        if (mode == TextureSourceMode::Array)
+        {
+            if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
+                return true;
+        }
+        else // Simple / Atlas / anything non-Array
+        {
+            if (cs.kind == graph::ColorSourceKind::BuiltinSampler2D)
+                return true;
+        }
     }
-
     return false;
 }
 
