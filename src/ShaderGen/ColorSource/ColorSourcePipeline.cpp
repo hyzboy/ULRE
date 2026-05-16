@@ -8,6 +8,7 @@
 #include "BindingAllocator.h"
 #include "CodegenRegistry.h"
 #include <hgl/mtl/SamplerSlot.h>
+#include <hgl/shadergen/ColorSource.h>
 #include <cstdio>
 
 namespace hgl::graph
@@ -35,11 +36,17 @@ ColorSourcePipelineResult FinalizeColorSources(
             {
                 const std::string msg = std::string("[Bindless][") + ctx
                     + "] device does not support VK_EXT_descriptor_indexing; "
-                      "falling back BuiltinBindlessSamplerArray → BuiltinSampler2DArray for slot "
+                      "fallback BuiltinBindlessSamplerArray → BuiltinSampler2DArray for slot "
                     + mtl::SamplerSlotNameList[uint8_t(cs.slot)];
                 std::fprintf(stderr, "%s\n", msg.c_str());
                 result.diags.push_back({ ColorSourcePipelineResult::Diag::Level::Warning, msg });
                 cs.kind = ColorSourceKind::BuiltinSampler2DArray;
+                // BuiltinSampler2DArray is required to have exactly 1 binding by the G1
+                // validator.  The original BuiltinBindlessSamplerArray source may have had
+                // no bindings declared (bindless uses a different binding model), so
+                // synthesize the standard TextureSampler binding here.
+                if (cs.bindings.empty())
+                    cs = ColorSource::MakeSampler2DArray(cs.slot, cs.builtin.output_format);
             }
         }
     }

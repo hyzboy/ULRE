@@ -8,6 +8,7 @@
 #include <hgl/mtl/MaterialKeyToolchainVersion.h>
 #include <hgl/mtl/RecipeToKey.h>
 #include <hgl/mtl/StaticMaterialDefRegistry.h>
+#include <hgl/shadergen/ColorSource.h>
 
 #include <cstdio>
 
@@ -73,10 +74,10 @@ static void test_deterministic_hash_for_standard_opaque()
     r.dim        = MaterialRecipe::Dim::D3;
     r.sky_ambient = SkyLightAmbientModel::Simple;
 
-    MaterialRecipe::TextureSlotConfig tc;
-    tc.slot        = SamplerSlot::BaseColor;
-    tc.source_mode = TextureSourceMode::Simple;
-    r.textures.push_back(tc);
+    MaterialRecipe::TextureAssetRef ta;
+    ta.slot = SamplerSlot::BaseColor;
+    r.textures.push_back(ta);
+    r.color_sources.push_back(ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
 
     const MaterialKey k1 = ResolveRecipePrimaryKey(r);
     const MaterialKey k2 = ResolveRecipePrimaryKey(r);

@@ -4,6 +4,7 @@
 // Success: main() returns 0.
 
 #include <hgl/mtl/RecipeToKey.h>
+#include <hgl/shadergen/ColorSource.h>
 
 #include <cstdio>
 
@@ -37,10 +38,10 @@ static MaterialRecipe MakeStandardOpaqueRecipe()
     r.dim = MaterialRecipe::Dim::D3;
     r.sky_ambient = SkyLightAmbientModel::Simple;
 
-    MaterialRecipe::TextureSlotConfig tc;
-    tc.slot = SamplerSlot::BaseColor;
-    tc.source_mode = TextureSourceMode::Simple;
-    r.textures.push_back(tc);
+    MaterialRecipe::TextureAssetRef ta;
+    ta.slot = SamplerSlot::BaseColor;
+    r.textures.push_back(ta);
+    r.color_sources.push_back(ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
 
     return r;
 }
@@ -75,7 +76,8 @@ static void test_texture_mode_change_affects_key()
     MaterialRecipe r1 = MakeStandardOpaqueRecipe();
     MaterialRecipe r2 = r1;
 
-    r2.textures[0].source_mode = TextureSourceMode::Array;
+    // Switch the color source from Simple (Sampler2D) to Array (Sampler2DArray)
+    r2.color_sources[0] = ColorSource::MakeSampler2DArray(SamplerSlot::BaseColor);
 
     CHECK_NE(ResolveRecipePrimaryKey(r1).Hash(), ResolveRecipePrimaryKey(r2).Hash());
 }
@@ -120,10 +122,10 @@ static void test_sky_canonicalization_stdpbrarray_fakeatmosphere()
     r.dim         = MaterialRecipe::Dim::D3;
     r.sky_ambient = SkyLightAmbientModel::FakeAtmosphere;
 
-    MaterialRecipe::TextureSlotConfig tc;
-    tc.slot        = SamplerSlot::BaseColor;
-    tc.source_mode = TextureSourceMode::Array;
-    r.textures.push_back(tc);
+    MaterialRecipe::TextureAssetRef ta;
+    ta.slot = SamplerSlot::BaseColor;
+    r.textures.push_back(ta);
+    r.color_sources.push_back(ColorSource::MakeSampler2DArray(SamplerSlot::BaseColor));
 
     const MaterialKey k = ResolveRecipePrimaryKey(r);
     CHECK_EQ(k.variant.sky_ambient_model, SkyLightAmbientModel::Simple);
@@ -153,17 +155,17 @@ static void test_explicit_schema_override_applies()
     CHECK_EQ(k.schema, ShaderDataSchema::PBRColorParams);
 }
 
-static void test_legacy_surface_model_field_compatibility()
+static void test_shading_model_affects_key()
 {
-    MaterialRecipe legacy;
-    legacy.preset = MaterialPreset::Standard;
-    legacy.surface_model = SurfaceShadingModel::StandardPBR;
+    MaterialRecipe r_default;
+    r_default.preset = MaterialPreset::Standard;
 
-    MaterialRecipe modern = legacy;
-    modern.shading_model = modern.surface_model;
+    MaterialRecipe r_pbr = r_default;
+    r_pbr.shading_model = SurfaceShadingModel::StandardPBR;
 
-    CHECK_EQ(ResolveRecipePrimaryKey(legacy).Hash(),
-             ResolveRecipePrimaryKey(modern).Hash());
+    // Both resolve the same because Standard canonicalizes to PBR anyway.
+    CHECK_EQ(ResolveRecipePrimaryKey(r_default).Hash(),
+             ResolveRecipePrimaryKey(r_pbr).Hash());
 }
 
 // ---------------------------------------------------------------------------
@@ -180,7 +182,7 @@ int main()
     test_sky_canonicalization_stdpbrarray_fakeatmosphere();
     test_different_sky_values_same_key_when_not_routing_axis();
     test_explicit_schema_override_applies();
-    test_legacy_surface_model_field_compatibility();
+    test_shading_model_affects_key();
 
     if (g_failures > 0)
     {

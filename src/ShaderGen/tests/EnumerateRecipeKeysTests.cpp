@@ -7,6 +7,7 @@
 #include <hgl/mtl/RecipeToKey.h>
 #include <hgl/mtl/StaticMaterialDefRegistry.h>
 #include <hgl/mtl/MaterialKeyToolchainVersion.h>
+#include <hgl/shadergen/ColorSource.h>
 
 #include <cstdio>
 #include <vector>
@@ -52,10 +53,10 @@ static MaterialRecipe MakeStandardRecipe()
     r.dim    = MaterialRecipe::Dim::D3;
     r.sky_ambient = SkyLightAmbientModel::Simple;
 
-    MaterialRecipe::TextureSlotConfig tc;
-    tc.slot        = SamplerSlot::BaseColor;
-    tc.source_mode = TextureSourceMode::Simple;
-    r.textures.push_back(tc);
+    MaterialRecipe::TextureAssetRef ta;
+    ta.slot = SamplerSlot::BaseColor;
+    r.textures.push_back(ta);
+    r.color_sources.push_back(ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
 
     return r;
 }
@@ -67,10 +68,10 @@ static MaterialRecipe MakeStandardArrayRecipe()
     r.dim    = MaterialRecipe::Dim::D3;
     r.sky_ambient = SkyLightAmbientModel::Simple;
 
-    MaterialRecipe::TextureSlotConfig tc;
-    tc.slot        = SamplerSlot::BaseColor;
-    tc.source_mode = TextureSourceMode::Array;
-    r.textures.push_back(tc);
+    MaterialRecipe::TextureAssetRef ta;
+    ta.slot = SamplerSlot::BaseColor;
+    r.textures.push_back(ta);
+    r.color_sources.push_back(ColorSource::MakeSampler2DArray(SamplerSlot::BaseColor));
 
     return r;
 }
