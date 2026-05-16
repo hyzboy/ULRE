@@ -18,7 +18,7 @@ SurfaceOutput EvalSurface(SurfaceInput si)
     MaterialBindingInstance mi = GetMaterialBindingInstance();
     vec4 textColor = unpackUnorm4x8(mi.TextColor);
 
-    float lum = GetSamplerText(si.uv0).r;
+    float lum = GetSamplerText(GetMaterialInstanceID(), si.uv0).r;
 
     SurfaceOutput so;
     so.baseColor = textColor.rgb * lum;

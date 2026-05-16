@@ -17,12 +17,12 @@ SurfaceOutput EvalSurface(SurfaceInput si)
     vec3 skyAmbient = ULRE_GetSkyAmbientColor();
 
     vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
-    albedo *= GetSamplerBaseColor(si.uv0).rgb;
+    albedo *= GetSamplerBaseColor(GetMaterialInstanceID(), si.uv0).rgb;
 
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
 
-    vec3 nm = GetSamplerNormal(si.uv0).xyz * 2.0 - 1.0;
+    vec3 nm = GetSamplerNormal(GetMaterialInstanceID(), si.uv0).xyz * 2.0 - 1.0;
     nm.y = -nm.y;
     N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
 

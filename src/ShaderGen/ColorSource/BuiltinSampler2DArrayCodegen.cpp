@@ -32,16 +32,16 @@ void BuiltinSampler2DArrayCodegen::EmitGetterFunction(ShaderWriter          &wri
     if (src.builtin.output_format == ColorSourceOutputFormat::Grayscale_R)
     {
         tmp += "vec4 GetSampler"; tmp += slot_name;
-        tmp += "(vec2 uv) { uint _layer = GetMITLayer_"; tmp += slot_name;
-        tmp += "(MATERIAL_INSTANCE_ID_OVERRIDE);"
+        tmp += "(uint mi_id, vec2 uv) { uint _layer = GetMITLayer_"; tmp += slot_name;
+        tmp += "(mi_id);"
                " float r = texture("; tmp += sampler_symbol;
         tmp += ", vec3(uv, float(_layer))).r; return vec4(r,r,r,r); }\n";
     }
     else
     {
         tmp += "vec4 GetSampler"; tmp += slot_name;
-        tmp += "(vec2 uv) { uint _layer = GetMITLayer_"; tmp += slot_name;
-        tmp += "(MATERIAL_INSTANCE_ID_OVERRIDE);"
+        tmp += "(uint mi_id, vec2 uv) { uint _layer = GetMITLayer_"; tmp += slot_name;
+        tmp += "(mi_id);"
                " return texture("; tmp += sampler_symbol;
         tmp += ", vec3(uv, float(_layer))); }\n";
     }

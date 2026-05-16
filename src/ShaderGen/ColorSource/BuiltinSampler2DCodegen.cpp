@@ -75,13 +75,13 @@ void BuiltinSampler2DCodegen::EmitGetterFunction(ShaderWriter          &writer,
     if (src.builtin.output_format == ColorSourceOutputFormat::Grayscale_R)
     {
         tmp += "vec4 GetSampler"; tmp += slot_name;
-        tmp += "(vec2 uv) { float r = texture("; tmp += sampler_symbol;
+        tmp += "(uint /*mi_id*/, vec2 uv) { float r = texture("; tmp += sampler_symbol;
         tmp += ", uv).r; return vec4(r,r,r,r); }\n";
     }
     else
     {
         tmp += "vec4 GetSampler"; tmp += slot_name;
-        tmp += "(vec2 uv) { return texture("; tmp += sampler_symbol;
+        tmp += "(uint /*mi_id*/, vec2 uv) { return texture("; tmp += sampler_symbol;
         tmp += ", uv); }\n";
     }
     writer.EmitLine(tmp);

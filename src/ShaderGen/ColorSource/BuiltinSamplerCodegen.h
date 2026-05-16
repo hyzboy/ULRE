@@ -6,12 +6,15 @@
 ///
 /// BuiltinSampler2DCodegen      — 对应 ColorSourceKind::BuiltinSampler2D
 ///   emit:  layout(set,binding) uniform sampler2D Sampler_Xxx;
-///          vec4 GetSamplerXxx(vec2 uv) { ... }
+///          vec4 GetSamplerXxx(uint /*mi_id*/, vec2 uv) { ... }   // mi_id 忽略，兼容统一调用形式
 ///
 /// BuiltinSampler2DArrayCodegen — 对应 ColorSourceKind::BuiltinSampler2DArray
 ///   emit:  layout(set,binding) uniform sampler2DArray Sampler_Xxx;
-///          uint _tex_layer_Xxx;          // per-frame global (兼容旧路径，Step 5 再迁移)
-///          vec4 GetSamplerXxx(vec2 uv) { ... }   // 从 _tex_layer_Xxx 取 layer
+///          vec4 GetSamplerXxx(uint mi_id, vec2 uv) { ... }       // mi_id 作为 layer 索引参数
+///
+/// 两者均使用统一的双参数签名 (uint mi_id, vec2 uv)，surface shader 调用点一律写
+///   GetSamplerXxx(GetMaterialInstanceID(), uv)
+/// 无需 ifdef 区分 2D vs 2DArray。
 ///
 /// (set,binding) 来自 resolved_bindings，不由 emitter 自行决策。
 /// 这是 Step 2 "内置 PCG 也声明 bindings[]" 目标的落地。

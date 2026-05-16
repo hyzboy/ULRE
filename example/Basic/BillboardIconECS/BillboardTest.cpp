@@ -31,6 +31,8 @@
 #include<cstdint>
 #include<cstdio>
 
+//#define SHOW_PLANE_GRID 1
+
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
@@ -51,12 +53,14 @@ class TestApp:public WorkObject
 {
 private:
 
+#ifdef SHOW_PLANE_GRID
     inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id       = "billboard_test_plane_grid",
         .preset   = mtl::MaterialPreset::VertexLuminance2D,
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };
+#endif//SHOW_PLANE_GRID
 
     inline static const mtl::MaterialRecipe kBillboardCfg {
         .id       = "billboard_test_fixed",
@@ -113,15 +117,18 @@ private:
 
 private:
 
-    ECSContext *  ecs_context      = nullptr;
-    Entity *      grid_entity    = nullptr;
-    Entity *      billboard_entity = nullptr;
-    Entity *      camera_entity  = nullptr;
+    ECSContext *  ecs_context       = nullptr;
+    Entity *      camera_entity     = nullptr;
 
-    Geometry *          geom_plane_grid     = nullptr;
-    Geometry *          geom_billboard      = nullptr;
+    Entity *      billboard_entity  = nullptr;
+    Geometry *    geom_billboard    = nullptr;
 
-    bool                shadergen_report_dumped = false;
+#ifdef SHOW_PLANE_GRID
+    Entity *      grid_entity       = nullptr;
+    Geometry *    geom_plane_grid   = nullptr;
+#endif//SHOW_PLANE_GRID
+
+    bool          shadergen_report_dumped = false;
 
 private:
 
@@ -135,6 +142,7 @@ private:
 
         using namespace inline_geometry;
 
+    #ifdef SHOW_PLANE_GRID
         {
             GeometryVertexFormat gvf_lum;
             gvf_lum.Set(VAN::Position, VF_V2F);
@@ -158,6 +166,7 @@ private:
 
             std::cout << "[BillboardECS] PlaneGrid geometry: " << (void*)geom_plane_grid << std::endl;
         }
+    #endif//SHOW_PLANE_GRID
 
         {
             geom_billboard = WorkObject::CreateGeometry("Billboard",
@@ -181,6 +190,7 @@ private:
         if(!ecs_context)
             return false;
 
+#ifdef SHOW_PLANE_GRID
         grid_entity = ecs_context->CreateEntity<Entity>("PlaneGrid");
         auto grid_transform = grid_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto grid_primitive = grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -193,6 +203,7 @@ private:
         grid_primitive->SetUnresolvedGeometry(geom_plane_grid);
         grid_primitive->SetMaterialRecipe(RegisterMaterialRecipe(kPlaneGridCfg), &white_color, sizeof(white_color));
         grid_primitive->SetVisible(true);
+#endif//SHOW_PLANE_GRID
 
         billboard_entity = ecs_context->CreateEntity<Entity>("Billboard");
         auto billboard_transform = billboard_entity->AddComponent<TransformComponent>(Mobility::Static);

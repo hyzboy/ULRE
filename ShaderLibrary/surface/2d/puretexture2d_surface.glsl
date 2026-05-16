@@ -13,7 +13,7 @@
 
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    vec4 color = GetSamplerBaseColor(si.uv0);
+    vec4 color = GetSamplerBaseColor(GetMaterialInstanceID(), si.uv0);
 
     SurfaceOutput so;
     so.baseColor = color.rgb;
@@ -28,7 +28,7 @@ SurfaceOutput EvalSurface(SurfaceInput si)
 
 float EvalAlpha(SurfaceInput si)
 {
-    return GetSamplerBaseColor(si.uv0).a;
+    return GetSamplerBaseColor(GetMaterialInstanceID(), si.uv0).a;
 }
 
-#endif // ULRE_SURFACE_2D_PURETEXTURE2D_SURFACE_GLSL
+#endif

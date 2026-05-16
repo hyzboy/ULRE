@@ -32,7 +32,7 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
-#define SHOW_PLANE_GRID
+//#define SHOW_PLANE_GRID
 
 /**
  * Shared base for all billboard-icon ECS examples.

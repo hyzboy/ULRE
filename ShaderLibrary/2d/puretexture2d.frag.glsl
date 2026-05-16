@@ -10,5 +10,5 @@
 layout(location=0) out vec4 FragColor;
 
 void main()
-{    FragColor = GetSamplerBaseColor(fragUV0);
+{    FragColor = GetSamplerBaseColor(GetMaterialInstanceID(), fragUV0);
 }

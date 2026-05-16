@@ -38,17 +38,24 @@ namespace
         writer.EmitLayoutBinding(descriptor->set, descriptor->binding)
               .EmitUniform("sampler2D", sampler_symbol);
 
-        // Inline getter
+        // Ensure GetMaterialInstanceID() is always available for the unified 2-arg call form.
+        // (MIT SSBO path defines it via ssbo_material_instance.glsl; simple sampler path may not.)
+        out += "#ifndef ULRE_HAS_GET_MATERIAL_INSTANCE_ID\n";
+        out += "#define ULRE_HAS_GET_MATERIAL_INSTANCE_ID\n";
+        out += "uint GetMaterialInstanceID() { return 0u; }\n";
+        out += "#endif\n";
+
+        // Inline getter — unified 2-arg signature; mi_id ignored for plain sampler2D.
         if (channel_hint == TextureChannelHint::Grayscale)
         {
             out += "vec4 GetSampler"; out += slot_name;
-            out += "(vec2 uv) { float r = texture("; out += sampler_symbol;
+            out += "(uint /*mi_id*/, vec2 uv) { float r = texture("; out += sampler_symbol;
             out += ", uv).r; return vec4(r,r,r,r); }\n";
         }
         else
         {
             out += "vec4 GetSampler"; out += slot_name;
-            out += "(vec2 uv) { return texture("; out += sampler_symbol;
+            out += "(uint /*mi_id*/, vec2 uv) { return texture("; out += sampler_symbol;
             out += ", uv); }\n";
         }
 
@@ -67,20 +74,20 @@ namespace
         writer.EmitLayoutBinding(descriptor->set, descriptor->binding)
               .EmitUniform("sampler2DArray", sampler_symbol);
 
-        // Inline getter — layer index read directly from MIT SSBO; no global needed.
+        // Inline getter — layer index received as explicit mi_id parameter (Step 5).
         if (channel_hint == TextureChannelHint::Grayscale)
         {
             out += "vec4 GetSampler"; out += slot_name;
-            out += "(vec2 uv) { uint _layer = GetMITLayer_"; out += slot_name;
-            out += "(GetMaterialInstanceID());";
+            out += "(uint mi_id, vec2 uv) { uint _layer = GetMITLayer_"; out += slot_name;
+            out += "(mi_id);";
             out += " float r = texture("; out += sampler_symbol;
             out += ", vec3(uv, float(_layer))).r; return vec4(r,r,r,r); }\n";
         }
         else
         {
             out += "vec4 GetSampler"; out += slot_name;
-            out += "(vec2 uv) { uint _layer = GetMITLayer_"; out += slot_name;
-            out += "(GetMaterialInstanceID());";
+            out += "(uint mi_id, vec2 uv) { uint _layer = GetMITLayer_"; out += slot_name;
+            out += "(mi_id);";
             out += " return texture("; out += sampler_symbol;
             out += ", vec3(uv, float(_layer))); }\n";
         }

@@ -6,6 +6,6 @@ layout(location=0) out vec4 FragColor;
 
 void main()
 {
-    float lum = GetSamplerText(fragTexCoord).r;
+    float lum = GetSamplerText(GetMaterialInstanceID(), fragTexCoord).r;
     FragColor = vec4(fragTextColor.rgb * lum, fragTextColor.a);
 }
