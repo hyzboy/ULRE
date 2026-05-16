@@ -27,15 +27,15 @@ namespace hgl::graph::mtl
         }
     }
 
-    MaterialVariantRow ComposeLegacyRow(const VertexProgramTemplate *vertex,
-                                        const SurfaceFragmentTemplate *fragment,
-                                        const PipelineStateRow *pipeline,
-                                        const MaterialVariantKey &key,
-                                        const char *debug_name)
+    MaterialVariantRow ComposeMaterialVariantRow(const VertexProgramTemplate *vertex,
+                                             const SurfaceFragmentTemplate *fragment,
+                                             const PipelineStateRow *pipeline,
+                                             const MaterialVariantKey &key,
+                                             const char *debug_name)
     {
         MaterialVariantRow row;
 
-        row.name = debug_name ? debug_name : "Phase3ComposedRow";
+        row.name = debug_name ? debug_name : "ComposedRow";
         row.preset = fragment ? fragment->preset : (vertex ? vertex->preset : MaterialPreset::PureColor3D);
         row.factory_type = row.preset;
         row.surface_type = key.surface_type;
@@ -93,6 +93,9 @@ namespace hgl::graph::mtl
             if (t.source_mode == TextureSourceMode::Array)
                 row.color_sources.push_back(graph::ColorSource::MakeSampler2DArray(t.slot));
             else
+                // Simple and Atlas both map to Sampler2D here; Atlas UV offset is handled
+                // by the surface shader.  When a dedicated AtlasUV ColorSource node is
+                // introduced, add an explicit case TextureSourceMode::Atlas above.
                 row.color_sources.push_back(graph::ColorSource::MakeSampler2D(t.slot));
         }
 

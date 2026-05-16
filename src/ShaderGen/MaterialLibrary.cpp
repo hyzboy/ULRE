@@ -817,11 +817,11 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         const RegistryQueryResult phase3_query = QueryPhase3Registry(registry_lookup_key);
         if (phase3_query.vertex && phase3_query.fragment && phase3_query.pipeline)
         {
-            phase3_row = ComposeLegacyRow(phase3_query.vertex,
+            phase3_row = ComposeMaterialVariantRow(phase3_query.vertex,
                                           phase3_query.fragment,
                                           phase3_query.pipeline,
                                           key,
-                                          "Phase3ComposedRow");
+                                          "ComposedRow");
 
             phase3_desc = MaterialVariantDesc::CreateRowBound(
                 "Phase3ComposedVariant",

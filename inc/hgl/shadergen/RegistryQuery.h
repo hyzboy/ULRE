@@ -28,9 +28,9 @@ namespace hgl::graph::mtl
 
     RegistryQueryResult QueryPhase3Registry(const MaterialVariantKey &key);
 
-    MaterialVariantRow ComposeLegacyRow(const VertexProgramTemplate *vertex,
-                                        const SurfaceFragmentTemplate *fragment,
-                                        const PipelineStateRow *pipeline,
-                                        const MaterialVariantKey &key,
-                                        const char *debug_name = "Phase3ComposedRow");
+    MaterialVariantRow ComposeMaterialVariantRow(const VertexProgramTemplate *vertex,
+                                             const SurfaceFragmentTemplate *fragment,
+                                             const PipelineStateRow *pipeline,
+                                             const MaterialVariantKey &key,
+                                             const char *debug_name = "ComposedRow");
 }

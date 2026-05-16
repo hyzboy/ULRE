@@ -356,7 +356,7 @@ std::string VariantRegistry::DumpSnapshot() const
 
         const RegistryQueryResult phase3 = QueryPhase3Registry(k);
         const MaterialVariantRow row = (phase3.vertex && phase3.fragment && phase3.pipeline)
-            ? ComposeLegacyRow(phase3.vertex, phase3.fragment, phase3.pipeline, k, d.variant_name.c_str())
+            ? ComposeMaterialVariantRow(phase3.vertex, phase3.fragment, phase3.pipeline, k, d.variant_name.c_str())
             : (d.bound_row ? *d.bound_row : MaterialVariantRow{});
 
         out += std::to_string(hash);
@@ -440,7 +440,7 @@ std::string VariantRegistry::DumpBuiltinRowSnapshot() const
         {
             const RegistryQueryResult phase3 = QueryPhase3Registry(entry.key);
             const MaterialVariantRow row = (phase3.vertex && phase3.fragment && phase3.pipeline)
-                ? ComposeLegacyRow(phase3.vertex, phase3.fragment, phase3.pipeline, entry.key, entry.desc.variant_name.c_str())
+                ? ComposeMaterialVariantRow(phase3.vertex, phase3.fragment, phase3.pipeline, entry.key, entry.desc.variant_name.c_str())
                 : (entry.desc.bound_row ? *entry.desc.bound_row : MaterialVariantRow{});
 
             out += row.name ? row.name : "";

@@ -8,6 +8,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/shadergen/ColorSource.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -57,7 +58,10 @@ private:
         .coord_2d = CoordinateSystem2D::ZeroToOne,
         .pipeline = GraphicsPipelinePreset::Solid2D,
         .textures = {
-            {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/lena.Tex2D"},
+            {mtl::SamplerSlot::BaseColor, "res/image/lena.Tex2D"},
+        },
+        .color_sources = {
+            graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
     };
 
