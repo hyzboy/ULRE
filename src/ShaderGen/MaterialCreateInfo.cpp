@@ -9,7 +9,6 @@
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/ShaderLayoutResolver.h>
 #include<hgl/shadergen/ShaderLayoutEmitter.h>
-#include<hgl/shadergen/MITSSBOEmitter.h>
 #include<hgl/shadergen/ShaderBuildPipeline.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/internal/GLSLSourceUtils.h>
@@ -21,6 +20,7 @@
 #include<hgl/log/Log.h>
 #include<string>
 #include<limits>
+#include<unordered_map>
 
 // New-path includes (C1)
 #include "ColorSource/CodegenRegistry.h"
@@ -160,14 +160,31 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
             }
         }
 
-        // MIT SSBO helper (GetMITLayer_* etc.) must come BEFORE the getter functions
-        // that call them.  Re-use the legacy emitter for this auxiliary block only.
-        const std::string frag_mit_defs = frag ? EmitMaterialInstanceTextureGLSL(mdi, ShaderStage::Fragment) : std::string();
+        // Group auxiliary emission: call EmitGroupAuxiliary once per kind with all sources of that kind.
+        // This is where sampler2DArray codegens emit their shared MIT SSBO + GetMITLayer_* block.
+        // Must come BEFORE EmitGetterFunction calls that reference GetMITLayer_*.
+        std::string frag_aux_defs;
+        {
+            // Build per-kind groups.
+            std::unordered_map<int, std::vector<ColorSource>> kind_groups;
+            for (const auto &cs : color_sources)
+            {
+                if (!cs.bindings.empty())
+                    kind_groups[static_cast<int>(cs.kind)].push_back(cs);
+            }
+            for (const auto &kv : kind_groups)
+            {
+                const IColorSourceCodegen *codegen = reg.Find(static_cast<ColorSourceKind>(kv.first));
+                if (!codegen) continue;
+                ShaderWriter w(frag_aux_defs);
+                codegen->EmitGroupAuxiliary(w, kv.second, resolved);
+            }
+        }
 
-        GLogInfo("[InjectLayoutDefines][C1] frag_decl empty=%d frag_getter empty=%d frag_mit empty=%d",
-                 int(frag_decl_defs.empty()), int(frag_getter_defs.empty()), int(frag_mit_defs.empty()));
+        GLogInfo("[InjectLayoutDefines][C1] frag_decl empty=%d frag_getter empty=%d frag_aux empty=%d",
+                 int(frag_decl_defs.empty()), int(frag_getter_defs.empty()), int(frag_aux_defs.empty()));
 
-        if (!layout_defs.empty() || !frag_decl_defs.empty() || !frag_getter_defs.empty() || !frag_mit_defs.empty())
+        if (!layout_defs.empty() || !frag_decl_defs.empty() || !frag_getter_defs.empty() || !frag_aux_defs.empty())
         {
             // VS only gets layout defines (no sampler getter into VS).
             if (vert)
@@ -175,7 +192,7 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
 
             if (frag)
                 frag->SetFinalGLSL(internal::InjectAfterVersion(frag->GetFinalGLSL(),
-                                                                 layout_defs + frag_decl_defs + frag_mit_defs + frag_getter_defs));
+                                                                 layout_defs + frag_decl_defs + frag_aux_defs + frag_getter_defs));
         }
 
         return true;

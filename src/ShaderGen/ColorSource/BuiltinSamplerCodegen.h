@@ -74,6 +74,10 @@ public:
                           const ColorSource        &src,
                           const ResolvedBindings   &resolved_bindings) const override;
 
+    void EmitGroupAuxiliary(ShaderWriter                      &writer,
+                            const std::vector<ColorSource>    &group,
+                            const ResolvedBindings            &resolved_bindings) const override;
+
     void EmitGetterFunction(ShaderWriter            &writer,
                             const ColorSource        &src,
                             const ResolvedBindings   &resolved_bindings) const override;

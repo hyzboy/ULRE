@@ -233,12 +233,10 @@ SET(SHADER_REQUIRE_SCANNER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderResourceScanner
                                  MaterialResourceManifest.cpp)
 SOURCE_GROUP("Material Compiler\\Requirements" FILES ${SHADER_REQUIRE_SCANNER_FILES})
 
-# Material Compiler / MIT SSBO Emitter
-SET(MIT_SSBO_EMITTER_FILES ${SHADERGEN_INCLUDE_PATH}/MITSSBOEmitter.h
-                           MITSSBOEmitter.cpp
-                           ${SHADERGEN_INCLUDE_PATH}/InterstageVaryingLayout.h
-                           InterstageVaryingLayout.cpp)
-SOURCE_GROUP("Material Compiler\\Sampler" FILES ${MIT_SSBO_EMITTER_FILES})
+# Material Compiler / Interstage Varying Layout (used by BuiltinSampler2DArrayCodegen)
+SET(INTERSTAGE_VARYING_FILES ${SHADERGEN_INCLUDE_PATH}/InterstageVaryingLayout.h
+                             InterstageVaryingLayout.cpp)
+SOURCE_GROUP("Material Compiler\\Sampler" FILES ${INTERSTAGE_VARYING_FILES})
 
 # Material Compiler / Layout
 SET(SHADER_LAYOUT_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderLayoutContract.h
@@ -317,7 +315,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${FIXED_MTL_FILES}
     ${MATERIAL_COMPILER_FILES}
     ${SHADER_REQUIRE_SCANNER_FILES}
-    ${MIT_SSBO_EMITTER_FILES}
+    ${INTERSTAGE_VARYING_FILES}
     ${SHADER_LAYOUT_HEADER_FILES}
     ${SHADER_LAYOUT_SOURCE_FILES}
     ${COMPOSITOR_HEADER_FILES}

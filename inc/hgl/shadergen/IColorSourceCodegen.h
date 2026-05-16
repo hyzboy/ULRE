@@ -72,6 +72,16 @@ public:
                                     const ColorSource        &src,
                                     const ResolvedBindings   &resolved_bindings) const = 0;
 
+    /// Emit 跨全组 sources 共享的辅助代码（例如 sampler2DArray 组的 MIT SSBO + GetMITLayer_* 函数）。
+    /// 在同一 kind 的所有 EmitDeclarations 调用之后、所有 EmitGetterFunction 调用之前调用一次。
+    /// 默认实现为空，仅需 group-level 辅助代码的 codegen 才需重写。
+    virtual void EmitGroupAuxiliary(ShaderWriter                      &writer,
+                                    const std::vector<ColorSource>    &group,
+                                    const ResolvedBindings            &resolved_bindings) const
+    {
+        (void)writer; (void)group; (void)resolved_bindings;
+    }
+
     /// 校验此 ColorSource 的配置是否合法（路径存在、签名兼容等）。
     /// 对应计划文档中的 G1 闸门（RecipeFinalize 时调用）。
     virtual ColorSourceValidationResult Validate(const ColorSource &src) const = 0;
