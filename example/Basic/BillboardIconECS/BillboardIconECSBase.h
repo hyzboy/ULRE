@@ -19,8 +19,6 @@
 #include<hgl/ecs/components/FacingTransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
-#include<hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
 #include<hgl/ecs/systems/transform/FacingTransformSystem.h>
 
 #include<glm/glm.hpp>
@@ -38,8 +36,8 @@ using namespace hgl::ecs;
  * Shared base for all billboard-icon ECS examples.
  *
  * Every example shares: a plane-grid entity, 100 spiral billboard entities using
- * the freepik icon set, a standard camera, and the three ECS render systems
- * (QuadResourcePrepareSystem, QuadMaterialBindingSystem, FacingTransformSystem).
+ * the freepik icon set, a standard camera, and the facing-transform tick system
+ * (FacingTransformSystem).
  *
  * Derived classes only need to implement GetEntityPrefix() to tag their billboard
  * entity names, and optionally override Init()/Tick() for example-specific setup

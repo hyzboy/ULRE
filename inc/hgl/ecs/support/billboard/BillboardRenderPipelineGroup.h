@@ -6,11 +6,7 @@ namespace hgl::ecs
     /**
      * BillboardRenderPipelineGroup
      *
-     * Wraps the two Quad/Billboard setup systems:
-     *   - QuadResourcePrepareSystem  (RenderResourceSetup phase)
-     *   - QuadMaterialBindingSystem  (RenderMaterialBind  phase)
-     *
-     * Note: Billboard geometry is rendered by the Primitive pipeline via
+     * Billboard geometry is rendered by the Primitive pipeline via
      * RenderPrimitiveCollectSystem — there is no separate render-draw stage here.
      */
     class BillboardRenderPipelineGroup : public RenderPipelineGroup

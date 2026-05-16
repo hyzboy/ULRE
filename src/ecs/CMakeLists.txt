@@ -116,11 +116,6 @@ set(ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES
     systems/render/EnvironmentSystem.cpp
 )
 
-set(ECS_SYS_10_RenderResourceSetup_QuadResourcePrepareSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/QuadResourcePrepareSystem.h
-    systems/render/QuadResourcePrepareSystem.cpp
-)
-
 set(ECS_SYS_10B_RenderMaterialBind_QuadMeshPrepareSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/QuadMeshPrepareSystem.h
     systems/render/QuadMeshPrepareSystem.cpp
@@ -133,9 +128,7 @@ set(ECS_SYS_10C_RenderMaterialBind_TextureMaterialBindingSystem_FILES
     systems/render/TextureMaterialBindingSystem.cpp
 )
 
-set(ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/QuadMaterialBindingSystem.h
-    systems/render/QuadMaterialBindingSystem.cpp
+set(ECS_SYS_11_RenderMaterialBind_QuadComponent_FILES
     ${ECS_INCLUDE_PATH}/components/QuadComponent.h
     components/QuadComponent.cpp
 )
@@ -354,10 +347,9 @@ set(ECS_SOURCE
     ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES}
     ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES}
     ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES}
-    ${ECS_SYS_10_RenderResourceSetup_QuadResourcePrepareSystem_FILES}
     ${ECS_SYS_10B_RenderMaterialBind_QuadMeshPrepareSystem_FILES}
     ${ECS_SYS_10C_RenderMaterialBind_TextureMaterialBindingSystem_FILES}
-    ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES}
+    ${ECS_SYS_11_RenderMaterialBind_QuadComponent_FILES}
     ${ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES}
     ${ECS_SYS_11C_RenderMaterialBind_PrimitiveBindingCommitSystem_FILES}
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
@@ -400,10 +392,9 @@ source_group("ECS\\Systems\\06A TickPostCamera_BillboardScaleSystem" FILES ${ECS
 source_group("ECS\\Systems\\07 RenderSwapchainNextImage_SwapchainAcquireSystem" FILES ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES})
 source_group("ECS\\Systems\\08 RenderPreBeginFrame_RenderTargetSystem" FILES ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES})
 source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES})
-source_group("ECS\\Systems\\10 RenderResourceSetup_QuadResourcePrepareSystem" FILES ${ECS_SYS_10_RenderResourceSetup_QuadResourcePrepareSystem_FILES})
 source_group("ECS\\Systems\\10B RenderMaterialBind_QuadMeshPrepareSystem" FILES ${ECS_SYS_10B_RenderMaterialBind_QuadMeshPrepareSystem_FILES})
 source_group("ECS\\Systems\\10C RenderMaterialBind_TextureMaterialBindingSystem" FILES ${ECS_SYS_10C_RenderMaterialBind_TextureMaterialBindingSystem_FILES})
-source_group("ECS\\Systems\\11 RenderMaterialBind_QuadMaterialBindingSystem" FILES ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES})
+source_group("ECS\\Systems\\11 RenderMaterialBind_QuadComponent" FILES ${ECS_SYS_11_RenderMaterialBind_QuadComponent_FILES})
 source_group("ECS\\Systems\\11B RenderMaterialBind_MaterialResolveSystem" FILES ${ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES})
 source_group("ECS\\Systems\\11C RenderMaterialBind_PrimitiveBindingCommitSystem" FILES ${ECS_SYS_11C_RenderMaterialBind_PrimitiveBindingCommitSystem_FILES})
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})

@@ -18,9 +18,6 @@ protected:
 
     void ConfigureQuadPipelineMode() override
     {
-        QuadResourcePrepareSystem::SetPresetForWorld(ecs_context, GraphicsPipelinePreset::Dither3D);
-        QuadResourcePrepareSystem::SetChannelHintForWorld(ecs_context, TextureChannelHint::Grayscale);
-        QuadResourcePrepareSystem::SetFixedSizeForWorld(ecs_context, false);
     }
 };
 

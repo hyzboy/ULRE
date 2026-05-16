@@ -16,7 +16,6 @@
 #include <hgl/ecs/systems/render/MaterialResolveSystem.h>
 #include <hgl/ecs/systems/render/PrimitiveBindingCommitSystem.h>
 #include <hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
-#include <hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
 #include <hgl/ecs/systems/render/QuadMeshPrepareSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
 #include <hgl/ecs/support/terrain/TerrainRenderPipelineGroup.h>
@@ -66,10 +65,6 @@ namespace
         const hgl::graph::CameraInfo *camera_info = nullptr;
         if (auto camera_system = ctx->GetSystem<hgl::ecs::CameraSystem>())
             camera_info = camera_system->GetCameraInfo();
-
-        auto quad_resource_prepare_system = EnsureRenderSystem<hgl::ecs::QuadResourcePrepareSystem>(ctx);
-        if (quad_resource_prepare_system)
-            quad_resource_prepare_system->SetWorld(ctx);
 
         auto quad_mesh_prepare_system = EnsureRenderSystem<hgl::ecs::QuadMeshPrepareSystem>(ctx);
         if (quad_mesh_prepare_system)

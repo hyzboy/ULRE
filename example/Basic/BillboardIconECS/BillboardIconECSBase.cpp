@@ -17,8 +17,6 @@ BillboardIconECSBase::~BillboardIconECSBase()
 
 void BillboardIconECSBase::ConfigureQuadPipelineMode()
 {
-    QuadResourcePrepareSystem::SetPresetForWorld(ecs_context, GraphicsPipelinePreset::Solid3D);
-    QuadResourcePrepareSystem::SetFixedSizeForWorld(ecs_context, false);    // dynamic world-space billboards
 }
 
 #ifdef SHOW_PLANE_GRID
@@ -108,7 +106,6 @@ bool BillboardIconECSBase::CreatePrimitives()
             billboard->SetWorldSize(8.0f, 8.0f);
             billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
             billboard->SetTexture(GetIconTextures(i));
-            billboard->SetDomainTag(GetDomainTag());
         }
     }
 
@@ -118,30 +115,6 @@ bool BillboardIconECSBase::CreatePrimitives()
 bool BillboardIconECSBase::EnsureRenderSystems()
 {
     if (!ecs_context) return false;
-
-    auto quad_prepare_system = ecs_context->GetSystem<QuadResourcePrepareSystem>();
-    if (!quad_prepare_system)
-    {
-        quad_prepare_system = ecs_context->RegisterRenderSystem<QuadResourcePrepareSystem>();
-        quad_prepare_system->SetWorld(ecs_context);
-        if (ecs_context->IsActive())
-        {
-            quad_prepare_system->OnDependenciesReady();
-            quad_prepare_system->Initialize();
-        }
-    }
-
-    auto quad_binding_system = ecs_context->GetSystem<QuadMaterialBindingSystem>();
-    if (!quad_binding_system)
-    {
-        quad_binding_system = ecs_context->RegisterRenderSystem<QuadMaterialBindingSystem>();
-        quad_binding_system->SetWorld(ecs_context);
-        if (ecs_context->IsActive())
-        {
-            quad_binding_system->OnDependenciesReady();
-            quad_binding_system->Initialize();
-        }
-    }
 
     auto facing_system = ecs_context->GetSystem<FacingTransformSystem>();
     if (!facing_system)
@@ -156,7 +129,7 @@ bool BillboardIconECSBase::EnsureRenderSystems()
         }
     }
 
-    return quad_prepare_system && quad_binding_system && facing_system;
+    return facing_system != nullptr;
 }
 
 bool BillboardIconECSBase::InitializeECS()

@@ -33,9 +33,7 @@ namespace hgl
             RenderPreBeginFrame,        // per-frame env / viewport sync
                                         //   EnvironmentSystem, RenderTargetSystem
             RenderResourceSetup,        // lazy one-time GPU resource creation
-                                        //   QuadResourcePrepareSystem
             RenderMaterialBind,         // per-entity material / texture binding
-                                        //   QuadMaterialBindingSystem
 
             // ── Pre-pass CPU work (command buffer open, outside render pass) ─
             RenderBeginFrame,       // open command buffer, record frame UBOs

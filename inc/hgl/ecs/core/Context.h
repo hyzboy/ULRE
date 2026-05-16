@@ -276,10 +276,10 @@ namespace hgl
             /// Covers RenderPreBeginFrame + RenderResourceSetup + RenderMaterialBind.
             void RenderPreBeginFrame(float deltaTime);
 
-            /// Run lazy GPU resource-creation phase (QuadResourcePrepareSystem, etc.)
+            /// Run lazy GPU resource-creation phase.
             void RenderResourceSetup(float deltaTime);
 
-            /// Run per-entity material/texture binding phase (QuadMaterialBindingSystem, etc.)
+            /// Run per-entity material/texture binding phase.
             void RenderMaterialBind(float deltaTime);
 
             /// Run swapchain image acquisition updates (no command buffer)

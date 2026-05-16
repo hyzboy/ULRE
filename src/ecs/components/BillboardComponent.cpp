@@ -96,42 +96,24 @@ namespace hgl::ecs
         }
     }
 
-    void BillboardComponent::SetTexture(const hgl::OSString& path)
+    void BillboardComponent::SetTexture(const hgl::OSString&)
     {
-        if (bridge_mode != BillboardRenderBridgeMode::LegacyQuad)
-            return;
-
-        auto* owner = GetOwner();
-        if (!quad)
-            quad = GetOrAddComponentHelper<QuadComponent>(owner);
-
-        if (quad)
-            quad->SetTexturePath(path);
     }
 
     const hgl::OSString& BillboardComponent::GetTexturePath() const
     {
         static const hgl::OSString empty;
-        return quad ? quad->GetTexturePath() : empty;
+        return empty;
     }
 
-    void BillboardComponent::SetDomainTag(const std::string& tag)
+    void BillboardComponent::SetDomainTag(const std::string&)
     {
-        if (bridge_mode != BillboardRenderBridgeMode::LegacyQuad)
-            return;
-
-        auto* owner = GetOwner();
-        if (!quad)
-            quad = GetOrAddComponentHelper<QuadComponent>(owner);
-
-        if (quad)
-            quad->SetDomainTag(tag);
     }
 
     const std::string& BillboardComponent::GetDomainTag() const
     {
         static const std::string empty;
-        return quad ? quad->GetDomainTag() : empty;
+        return empty;
     }
 
     void BillboardComponent::SetFrontFace(VkFrontFace face)

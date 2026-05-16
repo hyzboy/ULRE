@@ -22,8 +22,6 @@
 #include<hgl/ecs/components/FacingTransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
-#include<hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
 #include<hgl/ecs/systems/transform/FacingTransformSystem.h>
 
 #include<glm/glm.hpp>
@@ -198,30 +196,6 @@ private:
     {
         if (!ecs_context) return false;
 
-        auto quad_prepare = ecs_context->GetSystem<QuadResourcePrepareSystem>();
-        if (!quad_prepare)
-        {
-            quad_prepare = ecs_context->RegisterRenderSystem<QuadResourcePrepareSystem>();
-            quad_prepare->SetWorld(ecs_context);
-            if (ecs_context->IsActive())
-            {
-                quad_prepare->OnDependenciesReady();
-                quad_prepare->Initialize();
-            }
-        }
-
-        auto quad_binding = ecs_context->GetSystem<QuadMaterialBindingSystem>();
-        if (!quad_binding)
-        {
-            quad_binding = ecs_context->RegisterRenderSystem<QuadMaterialBindingSystem>();
-            quad_binding->SetWorld(ecs_context);
-            if (ecs_context->IsActive())
-            {
-                quad_binding->OnDependenciesReady();
-                quad_binding->Initialize();
-            }
-        }
-
         auto facing = ecs_context->GetSystem<FacingTransformSystem>();
         if (!facing)
         {
@@ -235,7 +209,7 @@ private:
             }
         }
 
-        return quad_prepare && quad_binding && facing;
+        return facing != nullptr;
     }
 
     /// 创建一组螺旋排列的 billboard 实体
@@ -276,7 +250,6 @@ private:
             billboard->SetWorldSize(8.0f, 8.0f);
             billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
             billboard->SetTexture(icon_list[i % icon_count]);
-            billboard->SetDomainTag(domain_tag);
         }
     }
 
@@ -284,8 +257,6 @@ private:
     {
         ecs_context = GetECSContext();
         if (!ecs_context) return false;
-
-        QuadResourcePrepareSystem::SetFixedSizeForWorld(ecs_context, false);    // dynamic world-space billboards
 
         if (!EnsureRenderSystems()) return false;
 
