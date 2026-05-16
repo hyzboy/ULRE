@@ -31,17 +31,32 @@ namespace hgl::ecs
                                            graph::mtl::TextureSourceMode source_mode,
                                            const std::string &path)
         {
+            // Update texture asset path
             for (auto &tc : recipe.textures)
             {
                 if (tc.slot != slot)
                     continue;
-
-                tc.source_mode = source_mode;
                 tc.path = path;
+                goto update_color_source;
+            }
+            recipe.textures.push_back({ slot, path });
+
+        update_color_source:
+            // Update shader routing via color_sources
+            for (auto &cs : recipe.color_sources)
+            {
+                if (cs.slot != slot)
+                    continue;
+                if (source_mode == graph::mtl::TextureSourceMode::Array)
+                    cs.kind = graph::ColorSourceKind::BuiltinSampler2DArray;
+                else if (source_mode != graph::mtl::TextureSourceMode::None)
+                    cs.kind = graph::ColorSourceKind::BuiltinSampler2D;
                 return true;
             }
-
-            recipe.textures.push_back({ slot, source_mode, path });
+            if (source_mode == graph::mtl::TextureSourceMode::Array)
+                recipe.color_sources.push_back(graph::ColorSource::MakeSampler2DArray(slot));
+            else if (source_mode != graph::mtl::TextureSourceMode::None)
+                recipe.color_sources.push_back(graph::ColorSource::MakeSampler2D(slot));
             return true;
         }
 

@@ -74,8 +74,8 @@ private:
         .dim           = mtl::MaterialRecipe::Dim::D3,
         .prim          = PrimitiveType::Triangles,
         .pipeline      = GraphicsPipelinePreset::Alpha3D,
-        .textures      = {
-            { mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Simple, "" },
+        .color_sources = {
+            graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
     };
 

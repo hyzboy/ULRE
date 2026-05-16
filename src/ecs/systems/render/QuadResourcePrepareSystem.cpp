@@ -276,8 +276,8 @@ namespace hgl::ecs
         rec.billboard.blend_mode = GetBlendModeForWorld(world);
         rec.billboard.base_color_channel = GetChannelHintForWorld(world);
         rec.billboard.texture_id = "quad_shared";
-        rec.textures = {
-            { graph::mtl::SamplerSlot::BaseColor, graph::mtl::TextureSourceMode::Simple, "" },
+        rec.color_sources = {
+            graph::ColorSource::MakeSampler2D(graph::mtl::SamplerSlot::BaseColor),
         };
 
         graph::MaterialDomainHandle handle;
@@ -409,8 +409,8 @@ namespace hgl::ecs
             rec.dim       = graph::mtl::MaterialRecipe::Dim::D3;
             rec.prim      = graph::PrimitiveType::Billboard;
             rec.pipeline  = GetPresetForWorld(world);
-            rec.textures  = {
-                { graph::mtl::SamplerSlot::BaseColor, graph::mtl::TextureSourceMode::Array, "" },
+            rec.color_sources  = {
+                graph::ColorSource::MakeSampler2DArray(graph::mtl::SamplerSlot::BaseColor),
             };
 
             graph::MaterialDomainHandle handle = recipe_registry->Acquire(rec);

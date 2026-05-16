@@ -54,8 +54,11 @@ private:
         .dim            = mtl::MaterialRecipe::Dim::D2,
         .l2w            = false,
         .pipeline  = GraphicsPipelinePreset::Solid2D,
+        .color_sources = {
+            graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
+        },
         .textures  = {
-            {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/lena.Tex2D"},
+            {mtl::SamplerSlot::BaseColor, "res/image/lena.Tex2D"},
         },
     };
 

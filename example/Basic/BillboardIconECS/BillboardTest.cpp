@@ -67,12 +67,11 @@ private:
         .preset   = mtl::MaterialPreset::Billboard2DFixed,
         .prim     = PrimitiveType::Billboard,
         .pipeline = GraphicsPipelinePreset::Alpha3D,
+        .color_sources = {
+            graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
+        },
         .textures = {
-            {
-                .slot = mtl::SamplerSlot::BaseColor,
-                .source_mode = mtl::TextureSourceMode::Simple,
-                .path = "res/image/lena.Tex2D"
-            }
+            { mtl::SamplerSlot::BaseColor, "res/image/lena.Tex2D" }
         },
         .billboard = {
             .fixed_size = true,

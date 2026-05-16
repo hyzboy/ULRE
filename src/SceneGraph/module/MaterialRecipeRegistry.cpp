@@ -46,7 +46,7 @@ static bool BindDomainTexturesFromRecord(
 // ── FNV-1a 64-bit texture config hash ────────────────────────────────────────
 
 static uint64_t ComputeTextureConfigHash(
-    const std::vector<mtl::MaterialRecipe::TextureSlotConfig> &textures)
+    const std::vector<mtl::MaterialRecipe::TextureAssetRef> &textures)
 {
     uint64_t hash = 14695981039346656037ULL; // FNV offset basis
 
@@ -59,9 +59,7 @@ static uint64_t ComputeTextureConfigHash(
         };
 
         auto slot = static_cast<uint8_t>(tc.slot);
-        auto mode = static_cast<uint8_t>(tc.source_mode);
         feed(&slot, 1);
-        feed(&mode, 1);
         feed(tc.path.data(), tc.path.size());
     }
     return hash;

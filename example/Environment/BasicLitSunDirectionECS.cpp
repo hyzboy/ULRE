@@ -69,9 +69,13 @@ private:
         .preset         = mtl::MaterialPreset::Standard,
         .sky_ambient    = mtl::SkyLightAmbientModel::FakeAtmosphere,
         .pipeline  = GraphicsPipelinePreset::Solid3D,
+        .color_sources = {
+            graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
+            graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::Normal),
+        },
         .textures  = {
-            {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::None, "res/image/Brickwall/Albedo.Tex2D"},
-            {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::None, "res/image/Brickwall/Normal.Tex2D"},
+            {mtl::SamplerSlot::BaseColor, "res/image/Brickwall/Albedo.Tex2D"},
+            {mtl::SamplerSlot::Normal,    "res/image/Brickwall/Normal.Tex2D"},
         },
     };
 

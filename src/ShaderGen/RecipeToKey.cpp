@@ -21,6 +21,7 @@
 #include <hgl/mtl/SamplerSlot.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/mtl/MaterialVariantRegistry.h>
+#include <hgl/shadergen/ColorSource.h>
 
 namespace hgl::graph::mtl
 {
@@ -137,11 +138,11 @@ static RecipeAxisExpansion ExpandRecipeAxesFromPresetAlias(const MaterialRecipe 
 }
 }
 
-/// Returns true if any texture channel in the recipe uses Array source mode.
+/// Returns true if any color source in the recipe uses a Sampler2DArray (Array mode).
 static bool HasAnyArrayTexture(const MaterialRecipe &r) noexcept
 {
-    for (const auto &tc : r.textures)
-        if (tc.source_mode == TextureSourceMode::Array)
+    for (const auto &cs : r.color_sources)
+        if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
             return true;
     return false;
 }
@@ -467,12 +468,16 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
             ResolveLightingModelFromFeatures(fmask, LightingModel::Lambert);
     }
 
-    // ── Step 5: texture source-mode overrides ─────────────────────────────────
-    // Mirrors the SetTextureSourceModeOverride loop in CreateMaterialFromRecord.
-    for (const auto &tc : r.textures)
+    // ── Step 5: texture source-mode overrides (from color_sources) ─────────────
+    // Derive per-slot TextureSourceMode from color_sources[] for key construction.
+    for (const auto &cs : r.color_sources)
     {
-        if (tc.source_mode != TextureSourceMode::None)
-            k.SetTextureSourceMode(tc.slot, tc.source_mode);
+        if (cs.slot == graph::mtl::SamplerSlot::RANGE_SIZE)
+            continue;
+        if (cs.kind == graph::ColorSourceKind::BuiltinSampler2D)
+            k.SetTextureSourceMode(cs.slot, TextureSourceMode::Simple);
+        else if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
+            k.SetTextureSourceMode(cs.slot, TextureSourceMode::Array);
     }
 
     // ── Step 6: billboard geometry mode ──────────────────────────────────────

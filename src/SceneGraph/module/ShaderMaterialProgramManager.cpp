@@ -500,8 +500,8 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
             cfg.texture_id = rec.billboard.texture_id;
         if (rec.pos_format.Check())
             cfg.position_format = rec.pos_format;
-        for (const auto &tc : rec.textures)
-            if (tc.source_mode == TextureSourceMode::Array)
+        for (const auto &cs : rec.color_sources)
+            if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
             { cfg.use_texture_array = true; break; }
 
         GetStats().LogCreateMaterialFromRecordBillboard((int)rec.preset,
@@ -514,9 +514,13 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
     else if (rec.preset == MaterialPreset::Text2D)
     {
         Text2DMaterialCreateConfig cfg;
-        for (const auto &tc : rec.textures)
-            if (tc.source_mode != TextureSourceMode::None)
-                cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
+        for (const auto &cs : rec.color_sources)
+        {
+            if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
+                cfg.SetTextureSourceModeOverride(cs.slot, TextureSourceMode::Array);
+            else if (cs.kind == graph::ColorSourceKind::BuiltinSampler2D)
+                cfg.SetTextureSourceModeOverride(cs.slot, TextureSourceMode::Simple);
+        }
 
         GetStats().LogCreateMaterialFromRecord2D(static_cast<uint32_t>(cfg.prim),
                                                  static_cast<uint32_t>(rec.preset));
@@ -531,9 +535,13 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
             rec.l2w ? IncludeL2W::With : IncludeL2W::Without);
         if (rec.pos_format.Check())
             cfg.position_format = rec.pos_format;
-        for (const auto &tc : rec.textures)
-            if (tc.source_mode != TextureSourceMode::None)
-                cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
+        for (const auto &cs : rec.color_sources)
+        {
+            if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
+                cfg.SetTextureSourceModeOverride(cs.slot, TextureSourceMode::Array);
+            else if (cs.kind == graph::ColorSourceKind::BuiltinSampler2D)
+                cfg.SetTextureSourceModeOverride(cs.slot, TextureSourceMode::Simple);
+        }
 
         GetStats().LogCreateMaterialFromRecord2D(static_cast<uint32_t>(cfg.prim),
                                                  static_cast<uint32_t>(rec.preset));
@@ -572,9 +580,13 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
 
         if (rec.pos_format.Check())
             cfg.position_format = rec.pos_format;
-        for (const auto &tc : rec.textures)
-            if (tc.source_mode != TextureSourceMode::None)
-                cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
+        for (const auto &cs : rec.color_sources)
+        {
+            if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
+                cfg.SetTextureSourceModeOverride(cs.slot, TextureSourceMode::Array);
+            else if (cs.kind == graph::ColorSourceKind::BuiltinSampler2D)
+                cfg.SetTextureSourceModeOverride(cs.slot, TextureSourceMode::Simple);
+        }
 
         GetStats().LogCreateMaterialFromRecord3D(static_cast<uint32_t>(cfg.prim),
                                                  static_cast<uint32_t>(rec.preset),

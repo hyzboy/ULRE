@@ -476,6 +476,23 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         break;
     }
 
+    // Sync color_sources from textures[] so downstream consumers (RowAdapter,
+    // ShaderBuildPipeline) don't need a separate legacy bridge step.
+    if (row.texture_count > 0)
+    {
+        row.color_sources.reserve(row.texture_count);
+        for (uint32 i = 0; i < row.texture_count; ++i)
+        {
+            const auto &t = row.textures[i];
+            if (t.source_mode == _BVE_TSM::None)
+                continue;
+            if (t.source_mode == _BVE_TSM::Array)
+                row.color_sources.push_back(graph::ColorSource::MakeSampler2DArray(t.slot));
+            else
+                row.color_sources.push_back(graph::ColorSource::MakeSampler2D(t.slot));
+        }
+    }
+
     return row;
 }
 

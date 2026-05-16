@@ -114,8 +114,8 @@ private:
             .dim             = mtl::MaterialRecipe::Dim::D2,
             .coord_2d  = CoordinateSystem2D::ZeroToOne,
             .pipeline  = GraphicsPipelinePreset::Solid2D,
-            .textures  = {
-                {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
+            .color_sources = {
+                graph::ColorSource::MakeSampler2DArray(mtl::SamplerSlot::BaseColor),
             },
         };
         MaterialDomainHandle handle;

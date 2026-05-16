@@ -79,8 +79,8 @@ namespace hgl::ecs
         recipe.billboard.base_color_channel = channel_hint;
         recipe.billboard.front_face_ccw = quad && quad->GetFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE;
         recipe.billboard.texture_id = ToStdString(texture_path);
-        recipe.textures = {
-            { graph::mtl::SamplerSlot::BaseColor, graph::mtl::TextureSourceMode::Simple, "" },
+        recipe.color_sources = {
+            graph::ColorSource::MakeSampler2D(graph::mtl::SamplerSlot::BaseColor),
         };
         return recipe;
     }

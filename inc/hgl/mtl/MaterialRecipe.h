@@ -105,22 +105,18 @@ struct MaterialRecipe
     // ── MaterialBindingInstance 管线预设 ──────────────────────────────────────────────
     GraphicsPipelinePreset pipeline = GraphicsPipelinePreset::Solid3D;
 
-    // ── 纹理配置列表（以 SamplerSlot 为显式 key）────────────────────────────────
-    struct TextureSlotConfig
-    {
-        SamplerSlot       slot        = SamplerSlot::BaseColor;          ///< 目标插槽
-        TextureSourceMode source_mode = TextureSourceMode::None;         ///< None = 不覆写来源模式
-        std::string       path;                                          ///< 空字符串 = 不加载贴图
-    };
-
-    /// 旧纹理配置列表（legacy，请改用 color_sources[]）
-    [[deprecated("Use color_sources[] instead")]]
-    std::vector<TextureSlotConfig> textures;
-
     /// 统一颜色/纹理来源声明（ColorSource / PCG 统一化路径）。
-    /// 若非空，优先于 textures[] 生效。
-    /// 可通过 LegacyTexturesToColorSources(textures) 从旧字段迁移。
     std::vector<graph::ColorSource> color_sources;
+
+    // ── 纹理资产引用（仅用于资产层加载，不影响 shader routing）───────────────
+    /// slot+path 对，供 MaterialRecipeRegistry 加载纹理到 DomainResourceBinding。
+    /// shader routing / source_mode 已由 color_sources[] 承担，此处无需再存。
+    struct TextureAssetRef
+    {
+        SamplerSlot  slot = SamplerSlot::BaseColor;     ///< 目标插槽
+        std::string  path;                              ///< 空字符串 = 不加载贴图
+    };
+    std::vector<TextureAssetRef> textures;              ///< 纹理资产绑定列表
 
     // ── Billboard 专用配置（仅对 Billboard2DFixed / Billboard2DDynamic 有效）──
     struct BillboardConfig

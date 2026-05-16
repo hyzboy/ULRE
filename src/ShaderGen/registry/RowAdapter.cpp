@@ -1,5 +1,5 @@
 #include <hgl/shadergen/RegistryQuery.h>
-#include <hgl/shadergen/ColorSourceBridge.h>
+#include <hgl/shadergen/ColorSource.h>
 #include <hgl/shadergen/ColorSourceValidator.h>
 #include <cstdio>
 
@@ -83,31 +83,27 @@ namespace hgl::graph::mtl
             AddTexture(row, slot, key.GetTextureSourceMode(slot));
         }
 
-        // ── Step 3: legacy bridge ──────────────────────────────────────────
-        // 从旧 textures[] 生成 ColorSource 列表，供新管线消费（旧管线仍用 textures[]）
+        // ── Color sources: emit directly from row.textures[] ──────────────
+        row.color_sources.reserve(row.texture_count);
+        for (uint32 i = 0; i < row.texture_count; ++i)
         {
-            std::vector<graph::LegacyTextureSlotDesc> legacy_descs;
-            legacy_descs.reserve(row.texture_count);
-            for (uint32 i = 0; i < row.texture_count; ++i)
-            {
-                const auto &t = row.textures[i];
-                legacy_descs.push_back({
-                    t.slot,
-                    t.source_mode,
-                    t.channel_hint,
-                });
-            }
-            row.color_sources = graph::LegacyTexturesToColorSources(legacy_descs);
+            const auto &t = row.textures[i];
+            if (t.source_mode == TextureSourceMode::None)
+                continue;
+            if (t.source_mode == TextureSourceMode::Array)
+                row.color_sources.push_back(graph::ColorSource::MakeSampler2DArray(t.slot));
+            else
+                row.color_sources.push_back(graph::ColorSource::MakeSampler2D(t.slot));
+        }
 
-            // G1 校验：签名/槽位合法性
-            const auto g1 = graph::ValidateColorSources(row.color_sources);
-            if (!g1.ok)
+        // G1 校验：签名/槽位合法性
+        const auto g1 = graph::ValidateColorSources(row.color_sources);
+        if (!g1.ok)
+        {
+            for (const auto &err : g1.errors)
             {
-                for (const auto &err : g1.errors)
-                {
-                    fprintf(stderr, "[ColorSource G1] row=%s, idx=%zu: %s\n",
-                         row.name, err.source_index, err.message.c_str());
-                }
+                fprintf(stderr, "[ColorSource G1] row=%s, idx=%zu: %s\n",
+                     row.name, err.source_index, err.message.c_str());
             }
         }
 

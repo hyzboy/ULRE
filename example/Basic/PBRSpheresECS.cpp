@@ -146,9 +146,9 @@ private:
             .preset          = mtl::MaterialPreset::Standard,
             .sky_ambient     = mtl::SkyLightAmbientModel::FakeAtmosphere,
             .pipeline  = GraphicsPipelinePreset::Solid3D,
-            .textures  = {
-                {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
-                {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array, ""},
+            .color_sources = {
+                graph::ColorSource::MakeSampler2DArray(mtl::SamplerSlot::BaseColor),
+                graph::ColorSource::MakeSampler2DArray(mtl::SamplerSlot::Normal),
             },
         };
         mtl::StandardMaterialInstance seed_mi_data{};
@@ -310,9 +310,9 @@ private:
                         .preset      = mtl::MaterialPreset::Standard,
                         .sky_ambient = mtl::SkyLightAmbientModel::FakeAtmosphere,
                         .pipeline    = GraphicsPipelinePreset::Solid3D,
-                        .textures    = {
-                            {mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array, ""},
-                            {mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array, ""},
+                        .color_sources = {
+                            graph::ColorSource::MakeSampler2DArray(mtl::SamplerSlot::BaseColor),
+                            graph::ColorSource::MakeSampler2DArray(mtl::SamplerSlot::Normal),
                         },
                     },
                     &d,

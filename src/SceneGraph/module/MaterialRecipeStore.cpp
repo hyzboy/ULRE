@@ -54,13 +54,12 @@ namespace hgl::graph::mtl
     h = hgl::hash::FNV1aAppendValueBytes(h, r.sky_ambient);
     h = hgl::hash::FNV1aAppendValueBytes(h, r.pipeline);
 
-    // ── 纹理列表 ────────────────────────────────────────────────────────────
+    // ── 纹理资产引用列表（slot+path）────────────────────────────────────────
     const uint32_t tex_count = static_cast<uint32_t>(r.textures.size());
     h = hgl::hash::FNV1aAppendValueBytes(h, tex_count);
     for (const auto &tc : r.textures)
     {
         h = hgl::hash::FNV1aAppendValueBytes(h, tc.slot);
-        h = hgl::hash::FNV1aAppendValueBytes(h, tc.source_mode);
         h = hgl::hash::FNV1aAppendBytes(h, tc.path.data(), tc.path.size());
         h = hgl::hash::FNV1aAppend(h, '\0');
     }

@@ -377,7 +377,7 @@ namespace hgl::ecs
         text_recipe.has_explicit_schema = true;
         text_recipe.coord_2d = graph::CoordinateSystem2D::Ortho;
         text_recipe.pipeline = graph::GraphicsPipelinePreset::Solid2D;
-        text_recipe.textures.push_back({ graph::mtl::SamplerSlot::Text, graph::mtl::TextureSourceMode::Atlas, {} });
+        text_recipe.color_sources.push_back(graph::ColorSource::MakeSampler2D(graph::mtl::SamplerSlot::Text));
 
         graph::MaterialDomainHandle text_handle = recipe_registry->Acquire(text_recipe);
         guard.material = text_handle.material;
