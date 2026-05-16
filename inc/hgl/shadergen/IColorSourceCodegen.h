@@ -21,15 +21,15 @@
 namespace hgl::graph
 {
 
-// ── 校验结果 ──────────────────────────────────────────────────────────────────
+// ── 单条目校验结果（per-source Validate() 返回值）──────────────────────────────
 
-struct ColorSourceValidationResult
+struct ColorSourceCodegenValidation
 {
     bool        ok      = true;
     std::string message;        ///< 仅 !ok 时有效
 
-    static ColorSourceValidationResult Ok() { return {}; }
-    static ColorSourceValidationResult Fail(std::string msg)
+    static ColorSourceCodegenValidation Ok() { return {}; }
+    static ColorSourceCodegenValidation Fail(std::string msg)
     {
         return { false, std::move(msg) };
     }
@@ -84,7 +84,7 @@ public:
 
     /// 校验此 ColorSource 的配置是否合法（路径存在、签名兼容等）。
     /// 对应计划文档中的 G1 闸门（RecipeFinalize 时调用）。
-    virtual ColorSourceValidationResult Validate(const ColorSource &src) const = 0;
+    virtual ColorSourceCodegenValidation Validate(const ColorSource &src) const = 0;
 };
 
 } // namespace hgl::graph

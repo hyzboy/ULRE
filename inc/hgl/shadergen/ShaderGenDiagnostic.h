@@ -25,7 +25,8 @@ enum class ShaderGenErrorCode
     CompileFailed,
     DeviceLimitExceeded,
     InternalError,
-    ReflectionMismatch,     ///< G4: SPIR-V 反射结果与声明不一致
+    ReflectionMismatch,           ///< G4: SPIR-V 反射结果与声明不一致
+    ColorSourceValidationFailed,  ///< G1/G2: ColorSource 结构校验或 binding 分配失败
 };
 
 struct ShaderGenDiagnostic

@@ -25,6 +25,8 @@
 // New-path includes (C1)
 #include "ColorSource/CodegenRegistry.h"
 #include "ColorSource/BindingAllocator.h"
+#include <hgl/shadergen/ColorSourcePipeline.h>
+#include <hgl/shadergen/ColorSourceValidator.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -81,6 +83,16 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
 
     if (!color_sources.empty())
     {
+        // G1: structural validation before entering the DB-override allocator path.
+        const ColorSourceValidationResult g1 = ValidateColorSources(color_sources);
+        if (!g1.ok)
+        {
+            for (const auto &err : g1.errors)
+                GLogError("[InjectLayoutDefines][G1] idx=%zu: %s", err.source_index, err.message.c_str());
+            GLogError("[InjectLayoutDefines][G1] ColorSource validation failed — aborting");
+            return false;
+        }
+
         // Build a BindingAllocator using FixedSetAndBinding so binding numbers
         // exactly match what MaterialDescriptorDB::Resort() already assigned.
         BindingAllocator allocator;
@@ -128,6 +140,19 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
         {
             GLogError("[InjectLayoutDefines][G2] BindingAllocator reported conflicts — aborting");
             return false;
+        }
+
+        // G2 observable: log the resolved binding map for every new material build.
+        if (!alloc.bindings.empty())
+        {
+            std::string bmap;
+            for (const auto &rb : alloc.bindings)
+            {
+                if (!bmap.empty()) bmap += ' ';
+                bmap += rb.debug_name + "→(set=" + std::to_string(rb.set)
+                        + ",b=" + std::to_string(rb.binding) + ")";
+            }
+            GLogInfo("[InjectLayoutDefines][G2] binding map: %s", bmap.c_str());
         }
 
         const ResolvedBindings &resolved = alloc.bindings;

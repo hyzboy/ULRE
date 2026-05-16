@@ -36,13 +36,13 @@ void BuiltinSamplerCodegenBase::DeclareRequirements(
         out_push.push_back(p);
 }
 
-ColorSourceValidationResult BuiltinSamplerCodegenBase::Validate(const ColorSource &src) const
+ColorSourceCodegenValidation BuiltinSamplerCodegenBase::Validate(const ColorSource &src) const
 {
     if (size_t(src.slot) >= mtl::SamplerSlotCount)
-        return ColorSourceValidationResult::Fail("invalid SamplerSlot value");
+        return ColorSourceCodegenValidation::Fail("invalid SamplerSlot value");
     if (src.bindings.empty())
-        return ColorSourceValidationResult::Fail("BuiltinSampler requires at least one DescriptorRequirement in bindings[]");
-    return ColorSourceValidationResult::Ok();
+        return ColorSourceCodegenValidation::Fail("BuiltinSampler requires at least one DescriptorRequirement in bindings[]");
+    return ColorSourceCodegenValidation::Ok();
 }
 
 // ── BuiltinSampler2DCodegen ───────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 #include <hgl/shadergen/RegistryQuery.h>
 #include <hgl/shadergen/ColorSource.h>
-#include <hgl/shadergen/ColorSourceValidator.h>
+#include <hgl/shadergen/ColorSourcePipeline.h>
 #include <cstdio>
 
 namespace hgl::graph::mtl
@@ -69,15 +69,12 @@ namespace hgl::graph::mtl
                 row.color_sources.push_back(graph::ColorSource::MakeSampler2D(slot));
         }
 
-        // G1 校验：签名/槽位合法性
-        const auto g1 = graph::ValidateColorSources(row.color_sources);
-        if (!g1.ok)
+        // G1 + G2 校验：通过统一管道验证槽位合法性并确认 binding 无冲突
+        const auto pipe = graph::FinalizeColorSources(row.color_sources, row.name);
+        if (!pipe.ok)
         {
-            for (const auto &err : g1.errors)
-            {
-                fprintf(stderr, "[ColorSource G1] row=%s, idx=%zu: %s\n",
-                     row.name, err.source_index, err.message.c_str());
-            }
+            for (const auto &d : pipe.diags)
+                fprintf(stderr, "[ColorSource] %s\n", d.message.c_str());
         }
 
         return row;

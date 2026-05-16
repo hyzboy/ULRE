@@ -81,11 +81,11 @@ void BuiltinBindlessSamplerArrayCodegen::EmitGetterFunction(
 // 仅返回警告，不 fatal，避免阻塞已有 sample。
 // 待 VK_EXT_descriptor_indexing 就绪后改为检查 capability。
 
-ColorSourceValidationResult BuiltinBindlessSamplerArrayCodegen::Validate(
+ColorSourceCodegenValidation BuiltinBindlessSamplerArrayCodegen::Validate(
     const ColorSource & /*src*/) const
 {
     // Non-fatal: allow existing samples to continue running with fallback output.
-    return ColorSourceValidationResult::Ok();
+    return ColorSourceCodegenValidation::Ok();
 }
 
 } // namespace hgl::graph

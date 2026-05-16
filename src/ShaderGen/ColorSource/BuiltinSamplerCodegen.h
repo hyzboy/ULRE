@@ -44,7 +44,7 @@ public:
                              std::vector<PushConstantRequirement>  &out_push) const override;
 
     // Validate：slot 合法 + bindings 非空
-    ColorSourceValidationResult Validate(const ColorSource &src) const override;
+    ColorSourceCodegenValidation Validate(const ColorSource &src) const override;
 };
 
 // ── BuiltinSampler2DCodegen ───────────────────────────────────────────────────
@@ -115,7 +115,7 @@ public:
                             const ColorSource        &src,
                             const ResolvedBindings   &resolved_bindings) const override;
 
-    ColorSourceValidationResult Validate(const ColorSource &src) const override;
+    ColorSourceCodegenValidation Validate(const ColorSource &src) const override;
 };
 
 } // namespace hgl::graph
