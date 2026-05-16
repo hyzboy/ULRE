@@ -24,7 +24,8 @@ enum class ShaderGenErrorCode
     SourceGenerationFailed,
     CompileFailed,
     DeviceLimitExceeded,
-    InternalError
+    InternalError,
+    ReflectionMismatch,     ///< G4: SPIR-V 反射结果与声明不一致
 };
 
 struct ShaderGenDiagnostic

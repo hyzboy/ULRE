@@ -69,14 +69,14 @@ namespace hgl::graph
 
     using ShaderDescriptorResource = ShaderResourceData<Descriptor>[VK_DESCRIPTOR_TYPE_COUNT];
 
-    struct ShaderStageIO
+    struct SPVStageIO
     {
         ShaderAttributeArray input, output;
     };
 
     struct SPVParseData
     {
-        ShaderStageIO stage_io;
+        SPVStageIO stage_io;
         ShaderDescriptorResource resource;
         ShaderResourceData<PushConstant> push_constant;
         ShaderResourceData<SubpassInput> subpass_input;

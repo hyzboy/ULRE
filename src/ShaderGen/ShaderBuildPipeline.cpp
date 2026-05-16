@@ -9,6 +9,7 @@
 #include<hgl/shadergen/MaterialInstanceConfigurator.h>
 #include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/shadergen/internal/GLSLSourceUtils.h>
+#include<hgl/shadergen/ColorSourceValidator.h>
 #include<hgl/mtl/MaterialFeature.h>
 #include<hgl/mtl/UBOCommon.h>
 
@@ -633,6 +634,25 @@ static hgl::graph::mtl::MaterialCreateInfo *BuildCompiledMaterialCreateInfo(
                                                 "ShaderBuildPipeline.BuildMaterialCreateInfo",
                                                 "CompileShaderStagesToSPV() failed");
         return nullptr;
+    }
+
+    // G4 校验：FS SPIR-V 反射后比对 sampler 声明
+    {
+        std::vector<hgl::graph::ShaderGenDiagnostic> g4_diag;
+        if (!hgl::graph::G4ValidateReflectedSamplers(*mci, g4_diag))
+        {
+            for (const auto &d : g4_diag)
+                diagnostics.push_back(d);
+            delete mci;
+            AppendBuildMaterialCreateInfoDiagnostic(diagnostics,
+                                                    hgl::graph::ShaderGenErrorCode::ReflectionMismatch,
+                                                    hgl::graph::ShaderStage::Fragment,
+                                                    "ShaderBuildPipeline.G4",
+                                                    "G4 sampler reflection mismatch — see preceding [G4][FATAL] entries");
+            return nullptr;
+        }
+        for (const auto &d : g4_diag)
+            diagnostics.push_back(d);
     }
 
     return mci;
