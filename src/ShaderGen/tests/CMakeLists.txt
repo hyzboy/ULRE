@@ -85,3 +85,17 @@ set_property(TARGET ShaderBuildPipelineSmokeTests PROPERTY FOLDER "ULRE/Tests/Sh
 shadergen_set_test_runtime_dir(ShaderBuildPipelineSmokeTests)
 
 add_test(NAME ShaderBuildPipelineSmokeTests COMMAND ShaderBuildPipelineSmokeTests)
+
+# BindingAllocatorTests — pure data-structure tests, no GPU / glslang dependency.
+# Compiles BindingAllocator.cpp directly (same pattern as MaterialKeyTest).
+add_executable(BindingAllocatorTests
+    BindingAllocatorTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../ColorSource/BindingAllocator.cpp
+)
+
+target_link_libraries(BindingAllocatorTests PRIVATE CMCore)
+
+set_property(TARGET BindingAllocatorTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(BindingAllocatorTests)
+
+add_test(NAME BindingAllocatorTests COMMAND BindingAllocatorTests)
