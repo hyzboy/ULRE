@@ -38,12 +38,6 @@ static bool RowDeclaresAnyVertexAttrib(const MaterialVariantRow &row) noexcept
 
 }
 
-bool ValidateBuiltinMaterialVariants(const std::string &shader_library_path,
-                                     std::vector<std::string> &diagnostics)
-{
-    return GetBuiltinVariantRegistry().ValidateBuiltinVariantTemplates(shader_library_path,diagnostics);
-}
-
 std::string GetBuiltinMaterialVariantSnapshot()
 {
     return GetBuiltinVariantRegistry().DumpSnapshot();
@@ -660,29 +654,6 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                              const MaterialVariantKey &key,
                                              MaterialCreateConfig *cfg)
 {
-    static const bool s_startup_variant_validation_done = []()
-    {
-        std::vector<std::string> diagnostics;
-
-        const bool ok = ValidateBuiltinMaterialVariants(GetShaderLibraryPath(),diagnostics);
-        if(ok)
-        {
-            std::printf("[MaterialLibrary] Startup variant validation passed.\n");
-            return true;
-        }
-
-        std::fprintf(stderr,
-                     "[MaterialLibrary] Startup variant validation failed: %zu issue(s).\n",
-                     diagnostics.size());
-
-        for(const auto &msg:diagnostics)
-            std::fprintf(stderr,"[MaterialLibrary] %s\n",msg.c_str());
-
-        return false;
-    }();
-
-    (void)s_startup_variant_validation_done;
-
     // [Step 3.5 T4] Routing self-test: every registered builtin variant must round-trip
     // through the registry. Any mismatch is a programming error → abort immediately.
     static const bool s_routing_consistency_ok = []() noexcept

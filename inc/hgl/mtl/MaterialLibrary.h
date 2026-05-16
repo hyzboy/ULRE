@@ -40,10 +40,6 @@ MaterialPreset ResolveMaterialPresetForLOD(MaterialPreset preset,
 
 const char *GetMaterialPresetName(const MaterialPreset mtl_id);
 
-// 启动期自检：校验内置变体模板是否可组装，失败诊断写入 diagnostics。
-bool ValidateBuiltinMaterialVariants(const std::string &shader_library_path,
-                                     std::vector<std::string> &diagnostics);
-
 // 导出内置变体快照文本，用于回归对比。
 std::string GetBuiltinMaterialVariantSnapshot();
 

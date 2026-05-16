@@ -84,10 +84,6 @@ struct MaterialRecipe
     /// 表面着色模型。Unknown = 由 preset alias 展开决定（兼容旧路径）。
     SurfaceShadingModel   shading_model = SurfaceShadingModel::Unknown;
 
-    /// 兼容旧字段名（Phase A/B 过渡期）：若 shading_model 仍为 Unknown，
-    /// 路由层会回退读取 surface_model。
-    SurfaceShadingModel   surface_model = SurfaceShadingModel::Unknown;
-
     /// 资源需求轴。默认不启用显式覆盖，保持 preset-only 旧行为。
     MaterialResourceRequirements resources{};
     bool has_explicit_resources = false;

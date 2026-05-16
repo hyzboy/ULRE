@@ -272,7 +272,6 @@ SOURCE_GROUP("Compositor\\Internal" FILES ${COMPOSITOR_INTERNAL_HEADER_FILES}
 SET(COLORSOURCE_HEADER_FILES    ${SHADERGEN_INCLUDE_PATH}/DescriptorRequirement.h
                                 ${SHADERGEN_INCLUDE_PATH}/ColorSource.h
                                 ${SHADERGEN_INCLUDE_PATH}/IColorSourceCodegen.h
-                                ${SHADERGEN_INCLUDE_PATH}/ColorSourceBridge.h
                                 ${SHADERGEN_INCLUDE_PATH}/ColorSourceValidator.h
                                 ColorSource/BuiltinSamplerCodegen.h
                                 ColorSource/BindingAllocator.h
@@ -281,7 +280,6 @@ SET(COLORSOURCE_SOURCE_FILES    ColorSource/ColorSource.cpp
                                 ColorSource/BuiltinSampler2DCodegen.cpp
                                 ColorSource/BuiltinSampler2DArrayCodegen.cpp
                                 ColorSource/BuiltinBindlessSamplerArrayCodegen.cpp
-                                ColorSource/ColorSourceBridge.cpp
                                 ColorSource/ColorSourceValidator.cpp
                                 ColorSource/BindingAllocator.cpp
                                 ColorSource/CodegenRegistry.cpp)

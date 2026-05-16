@@ -327,13 +327,6 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
     return nullptr;
 }
 
-bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_library_path,
-                                                      std::vector<std::string> &diagnostics) const
-{
-    // Legacy reflection-based validation removed; superseded by ColorSource pipeline validation.
-    return true;
-}
-
 std::string VariantRegistry::DumpSnapshot() const
 {
     std::vector<std::pair<uint64, const VariantEntry *>> rows;

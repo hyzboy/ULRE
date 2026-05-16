@@ -46,10 +46,6 @@ namespace hgl::graph::mtl
             MaterialVariantKey *resolved_key = nullptr,
             const RegistryLookupOptions &options = {}) const;
 
-        // 校验内置变体模板是否可组装（文件存在性 + 路由有效性）
-        bool ValidateBuiltinVariantTemplates(const std::string &shader_library_path,
-                                             std::vector<std::string> &diagnostics) const;
-
         // 导出稳定顺序的快照文本，便于回归比对。
         std::string DumpSnapshot() const;
 

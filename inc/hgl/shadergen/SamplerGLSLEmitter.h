@@ -8,7 +8,8 @@ namespace hgl::graph
 class MaterialDescriptorDB;
 
 // Emit sampler2D declarations/getters for the given shader stage.
-// This is the phase-1 simple path only: sampler2DArray/atlas stay on legacy GLSL.
+// Covers the unified simple-sampler path; array slots are handled separately
+// by EmitMaterialInstanceTextureGLSL below.
 std::string EmitSimpleSamplerGLSL(const MaterialDescriptorDB &mdi, ShaderStage stage);
 
 // Emit the MaterialInstanceTexture SSBO struct, buffer layout, getter, and
