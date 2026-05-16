@@ -15,14 +15,10 @@ void BuiltinSampler2DArrayCodegen::EmitDeclarations(ShaderWriter          &write
     uint32_t set = 0, binding = 0;
     FindResolved(resolved_bindings, debug_name, set, binding);
 
-    const char       *sampler_symbol = mtl::ToGLSLSamplerSymbol(src.slot);
-    const char       *slot_name      = mtl::SamplerSlotNameList[uint8_t(src.slot)];
-    const std::string layer_var      = std::string("_tex_layer_") + slot_name;
+    const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(src.slot);
 
     writer.EmitLayoutBinding(set, binding)
           .EmitUniform("sampler2DArray", sampler_symbol);
-
-    writer.EmitVariable("uint", layer_var);
 }
 
 void BuiltinSampler2DArrayCodegen::EmitGetterFunction(ShaderWriter          &writer,
@@ -31,20 +27,23 @@ void BuiltinSampler2DArrayCodegen::EmitGetterFunction(ShaderWriter          &wri
 {
     const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(src.slot);
     const char *slot_name      = mtl::SamplerSlotNameList[uint8_t(src.slot)];
-    const std::string layer_var = std::string("_tex_layer_") + slot_name;
 
     std::string tmp;
     if (src.builtin.output_format == ColorSourceOutputFormat::Grayscale_R)
     {
         tmp += "vec4 GetSampler"; tmp += slot_name;
-        tmp += "(vec2 uv) { float r = texture("; tmp += sampler_symbol;
-        tmp += ", vec3(uv, float("; tmp += layer_var; tmp += "))).r; return vec4(r,r,r,r); }\n";
+        tmp += "(vec2 uv) { uint _layer = GetMITLayer_"; tmp += slot_name;
+        tmp += "(MATERIAL_INSTANCE_ID_OVERRIDE);"
+               " float r = texture("; tmp += sampler_symbol;
+        tmp += ", vec3(uv, float(_layer))).r; return vec4(r,r,r,r); }\n";
     }
     else
     {
         tmp += "vec4 GetSampler"; tmp += slot_name;
-        tmp += "(vec2 uv) { return texture("; tmp += sampler_symbol;
-        tmp += ", vec3(uv, float("; tmp += layer_var; tmp += "))); }\n";
+        tmp += "(vec2 uv) { uint _layer = GetMITLayer_"; tmp += slot_name;
+        tmp += "(MATERIAL_INSTANCE_ID_OVERRIDE);"
+               " return texture("; tmp += sampler_symbol;
+        tmp += ", vec3(uv, float(_layer))); }\n";
     }
     writer.EmitLine(tmp);
 }

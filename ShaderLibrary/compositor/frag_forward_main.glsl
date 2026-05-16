@@ -29,10 +29,6 @@ layout(location=0) out vec4 outColor;
 
 void main()
 {
-#ifdef TEXTURE_ARRAY_MODE
-    _ULRE_InitTextureLayerIndices(MATERIAL_INSTANCE_ID_OVERRIDE);
-#endif
-
     SurfaceInput  si = ResolveSurfaceInput();
     SurfaceOutput so = EvalSurface(si);
     ComposeOutput(so, si);

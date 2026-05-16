@@ -1,7 +1,10 @@
 // common/varying_fs.glsl — Fragment shader input varyings (stage = in)
 //
+// *** AUTHORITATIVE LAYOUT: inc/hgl/shadergen/InterstageVaryingLayout.h ***
+// Location numbers here must stay in sync with kVaryingTable in
+// src/ShaderGen/InterstageVaryingLayout.cpp.
+//
 // Include in fragment shaders AFTER defining HAS_* attrib macros.
-// Replaces the old "varying_interface.glsl" pattern in fragment stage.
 //
 // Also auto-defines MATERIAL_INSTANCE_ID_OVERRIDE so that
 // ssbo_material_instance.glsl uses the flat varying instead of gl_InstanceIndex.
@@ -15,7 +18,10 @@
 #define ULRE_COMMON_VARYING_FS_GLSL
 
 // location 0: Material Instance ID (always present)
+#ifndef ULRE_HAS_FRAG_MATERIAL_INSTANCE_ID
 layout(location=0) flat in uint fragMaterialInstanceID;
+#define ULRE_HAS_FRAG_MATERIAL_INSTANCE_ID
+#endif
 
 // location 1: World Position
 #ifdef HAS_POSITION

@@ -1,7 +1,10 @@
 // common/varying_vs.glsl — Vertex shader output varyings (stage = out)
 //
+// *** AUTHORITATIVE LAYOUT: inc/hgl/shadergen/InterstageVaryingLayout.h ***
+// Location numbers here must stay in sync with kVaryingTable in
+// src/ShaderGen/InterstageVaryingLayout.cpp.
+//
 // Include in vertex shaders AFTER defining HAS_* attrib macros.
-// Replaces the old "VARYING_STAGE_VERT + varying_interface.glsl" pattern.
 //
 // Usage:
 //   #define HAS_POSITION

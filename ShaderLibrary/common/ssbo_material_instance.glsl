@@ -9,6 +9,8 @@ layout(std430, set=PERMATERIAL_SET, binding=MBI_ID_BINDING) readonly buffer Mate
 } mbi_id;
 #endif
 
+#ifndef ULRE_HAS_GET_MATERIAL_INSTANCE_ID
+#define ULRE_HAS_GET_MATERIAL_INSTANCE_ID
 uint GetMaterialInstanceID()
 {
 #ifdef MATERIAL_INSTANCE_ID_OVERRIDE
@@ -19,6 +21,7 @@ uint GetMaterialInstanceID()
     return 0u;
 #endif
 }
+#endif
 
 #ifndef MATERIAL_INSTANCE_ID_ONLY
 

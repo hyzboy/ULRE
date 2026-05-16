@@ -235,7 +235,9 @@ SOURCE_GROUP("Material Compiler\\Requirements" FILES ${SHADER_REQUIRE_SCANNER_FI
 
 # Material Compiler / Sampler
 SET(SAMPLER_GLSL_EMITTER_FILES ${SHADERGEN_INCLUDE_PATH}/SamplerGLSLEmitter.h
-                               SamplerGLSLEmitter.cpp)
+                               SamplerGLSLEmitter.cpp
+                               ${SHADERGEN_INCLUDE_PATH}/InterstageVaryingLayout.h
+                               InterstageVaryingLayout.cpp)
 SOURCE_GROUP("Material Compiler\\Sampler" FILES ${SAMPLER_GLSL_EMITTER_FILES})
 
 # Material Compiler / Layout

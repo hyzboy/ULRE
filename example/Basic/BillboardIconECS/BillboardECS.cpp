@@ -49,6 +49,8 @@ using namespace hgl::ecs;
 
 static Color4f white_color(1, 1, 1, 1);
 
+#define SHOW_PLANE_GRID 1
+
 class BillboardECSApp : public WorkObject
 {
 private:
@@ -56,11 +58,13 @@ private:
     ECSContext* ecs_context = nullptr;
 
     // Entities
-    Entity* grid_entity = nullptr;
     Entity* billboard_entity = nullptr;
     Entity* textured_quad_entity = nullptr;
     Entity* textured_quad_domain_entity = nullptr;
     Entity* camera_entity = nullptr;
+
+#ifdef SHOW_PLANE_GRID
+    Entity* grid_entity = nullptr;
 
     // PlaneGrid resources
     Geometry* geom_plane_grid = nullptr;
@@ -76,6 +80,7 @@ private:
         .has_explicit_schema = true,
         .pipeline      = GraphicsPipelinePreset::Solid3D,
     };
+#endif//SHOW_PLANE_GRID
 
     inline static const mtl::MaterialRecipe kTexturedQuadCfg {
         .id            = "billboard_ecs_texture_binding_quad",
@@ -186,6 +191,7 @@ private:
 
         using namespace inline_geometry;
 
+    #ifdef SHOW_PLANE_GRID
         // Create plane grid geometry
         {
             GeometryVertexFormat gvf;
@@ -208,6 +214,7 @@ private:
 
             std::cout << "[BillboardECS] PlaneGrid geometry: " << (void*)geom_plane_grid << std::endl;
         }
+    #endif//SHOW_PLANE_GRID
 
         return true;
     }
@@ -300,7 +307,9 @@ private:
         QuadResourcePrepareSystem::SetPresetForWorld(ecs_context, GraphicsPipelinePreset::Solid3D);
         QuadResourcePrepareSystem::SetChannelHintForWorld(ecs_context, TextureChannelHint::Grayscale);
 
+    #ifdef SHOW_PLANE_GRID
         std::cout << "\n[BillboardECS] Creating PlaneGrid entity..." << std::endl;
+
         // Create plane grid entity
         {
             grid_entity = ecs_context->CreateEntity<Entity>("PlaneGrid");
@@ -319,6 +328,7 @@ private:
             grid_primitive->SetVisible(true);
             std::cout << "  -> PrimitiveComponent added, visible=" << grid_primitive->IsVisible() << std::endl;
         }
+    #endif//SHOW_PLANE_GRID
 
         std::cout << "\n[BillboardECS] Creating Billboard entity..." << std::endl;
         // Create billboard entity with BillboardComponent

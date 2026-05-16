@@ -1,18 +1,17 @@
 layout(location=TEXCOORD_LOCATION) in vec2 TexCoord;
 
-layout(location=0) out vec2 fragTexCoord;
-
+#define HAS_TEXCOORD
 #ifdef HAS_MI
 #define MATERIAL_INSTANCE_ID_ONLY
 #include "common/ssbo_material_instance.glsl"
-layout(location=1) flat out uint fragMaterialInstanceID;
 #endif
+#include "common/varying_vs.glsl"
 
 void main()
 {
-    fragTexCoord = TexCoord;
 #ifdef HAS_MI
     fragMaterialInstanceID = GetMaterialInstanceID();
 #endif
+    fragUV0 = TexCoord;
     gl_Position = GetPosition2D();
 }

@@ -142,7 +142,7 @@ namespace hgl::ecs
         {
             if (!entity) continue;
             auto quad = entity->GetComponent<QuadComponent>();
-            if (!quad || !quad->IsVisible() || !quad->HasDomainTag()) continue;
+            if (!quad || !quad->IsVisible() || !quad->HasDomainTag() || !quad->IsTextureArrayMode()) continue;
 
             const auto& texture_path = quad->GetTexturePath();
             if (texture_path.IsEmpty()) continue;
@@ -201,7 +201,10 @@ namespace hgl::ecs
             return true;
 
         // ── Domain texture-array path ─────────────────────────────
-        if (quad->HasDomainTag())
+        // Only enter the Array path when both a domain tag is set AND the source mode
+        // is explicitly Array.  A Simple-mode quad that happens to carry a domain tag
+        // (e.g. for organisational grouping) must still use the single-texture path.
+        if (quad->HasDomainTag() && quad->IsTextureArrayMode())
             return EnsureQuadMaterialDomain(quad);
 
         // ── Legacy single-texture path ────────────────────────────

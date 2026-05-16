@@ -17,6 +17,7 @@
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/mtl/MaterialStagePolicy.h>
 #include<hgl/math/Matrix.h>
+#include<hgl/log/Log.h>
 #include<string>
 #include<limits>
 
@@ -72,6 +73,11 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
     const std::string frag_sampler_defs = frag ? EmitSimpleSamplerGLSL(mdi, ShaderStage::Fragment) : std::string();
     const std::string frag_mit_defs = frag ? EmitMaterialInstanceTextureGLSL(mdi, ShaderStage::Fragment) : std::string();
 
+    GLogInfo("[InjectLayoutDefines] vert_sampler_defs empty=%d frag_sampler_defs empty=%d frag_mit_defs empty=%d",
+             int(vert_sampler_defs.empty()), int(frag_sampler_defs.empty()), int(frag_mit_defs.empty()));
+    if (!vert_sampler_defs.empty())
+        GLogWarning("[InjectLayoutDefines] WARNING: vert_sampler_defs is NON-EMPTY — injecting sampler code into VS:\n%s", vert_sampler_defs.c_str());
+
     if(!layout_defs.empty() || !vert_sampler_defs.empty() || !frag_sampler_defs.empty() || !frag_mit_defs.empty())
     {
         if(vert)
@@ -80,7 +86,7 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
 
         if(frag)
             frag->SetFinalGLSL(internal::InjectAfterVersion(frag->GetFinalGLSL(),
-                                                            layout_defs + frag_sampler_defs + frag_mit_defs));
+                                                            layout_defs + frag_mit_defs + frag_sampler_defs));
     }
 
     return true;

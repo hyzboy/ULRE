@@ -432,14 +432,36 @@ namespace hgl::ecs
             graph::MaterialParameters *domain_po = domain_binding ? domain_binding->GetPerObjectMP()   : nullptr;
 
             // Cache the resolved domain binding on the batch so PrimitiveRenderSystem can use it
-            // without relying on runtime_texture_binding (which is only set for texture-bearing primitives).
-            {
-                MaterialBatch *mutable_batch = pair.second.get();
-                if (mutable_batch)
-                    mutable_batch->domain_binding = domain_binding;
-            }
+                // without relying on runtime_texture_binding (which is only set for texture-bearing primitives).
+                {
+                    MaterialBatch *mutable_batch = pair.second.get();
+                    if (mutable_batch)
+                        mutable_batch->domain_binding = domain_binding;
+                }
 
-            const auto &contract = material->GetBindingContract();
+                // If this material has a domain binding, apply registered texture/sampler bindings
+                // directly to domain_mp — the renderer uses domain_mp's DS, not the material's own DS.
+                if (domain_mp)
+                {
+                    auto tex_it = material_resource_bindings.find(material);
+                    if (tex_it != material_resource_bindings.end())
+                    {
+                        bool domain_updated = false;
+                        for (auto &[slot_key, res] : tex_it->second)
+                        {
+                            if (!res.texture || !res.sampler)
+                                continue;
+                            domain_mp->BindResourceSampler(
+                                static_cast<graph::mtl::SamplerSlot>(slot_key),
+                                res.texture, res.sampler);
+                            domain_updated = true;
+                        }
+                        if (domain_updated)
+                            domain_mp->Update();
+                    }
+                }
+
+                const auto &contract = material->GetBindingContract();
             ApplySceneUBOBindings(material, contract, scene_ubo_resolvers);
 
             for (size_t i = 1; i < graph::mtl::SSBODescriptorSemanticCount; ++i)

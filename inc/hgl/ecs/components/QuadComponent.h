@@ -4,6 +4,7 @@
 #include<glm/glm.hpp>
 #include<hgl/math/VectorTypes.h>
 #include<hgl/type/String.h>
+#include<hgl/mtl/SamplerSlot.h>
 #include<vulkan/vulkan.h>
 #include<string>
 
@@ -51,7 +52,8 @@ namespace hgl::ecs
         hgl::OSString       texture_path;       ///< Optional texture path (system loads/binds)
         hgl::OSString       applied_texture;    ///< Last applied texture path
         bool                texture_dirty;      ///< Texture path changed
-        std::string         domain_tag;         ///< Domain tag for texture array batching (empty = legacy single-texture path)
+        std::string                   domain_tag;           ///< Domain tag for texture array batching (empty = legacy single-texture path)
+        graph::mtl::TextureSourceMode texture_source_mode; ///< Texture source mode; Simple = single texture, Array = texture array domain
         class hgl::graph::Texture2D* texture;   ///< Cached texture (optional)
         class hgl::graph::Sampler* sampler;     ///< Cached sampler (optional)
 
@@ -64,6 +66,7 @@ namespace hgl::ecs
             , world_size(1.0f, 1.0f)
             , front_face(VK_FRONT_FACE_CLOCKWISE)
             , texture_dirty(false)
+            , texture_source_mode(graph::mtl::TextureSourceMode::Simple)
             , texture(nullptr)
             , sampler(nullptr)
         {
@@ -101,6 +104,11 @@ namespace hgl::ecs
         void SetDomainTag(const std::string& tag) { domain_tag = tag; }
         const std::string& GetDomainTag() const { return domain_tag; }
         bool HasDomainTag() const { return !domain_tag.empty(); }
+
+        // Texture source mode (Simple = single texture, Array = texture array domain)
+        void SetTextureSourceMode(graph::mtl::TextureSourceMode mode) { texture_source_mode = mode; }
+        graph::mtl::TextureSourceMode GetTextureSourceMode() const { return texture_source_mode; }
+        bool IsTextureArrayMode() const { return texture_source_mode == graph::mtl::TextureSourceMode::Array; }
 
         void SetTextureObjects(hgl::graph::Texture2D* tex, hgl::graph::Sampler* samp)
         {

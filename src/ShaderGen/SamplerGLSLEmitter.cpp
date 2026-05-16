@@ -1,8 +1,10 @@
 ﻿#include <hgl/shadergen/SamplerGLSLEmitter.h>
 #include <hgl/shadergen/MaterialDescriptorDB.h>
 #include <hgl/shadergen/ShaderWriter.h>
+#include <hgl/shadergen/InterstageVaryingLayout.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include <hgl/common/ShaderDescriptorDef.h>
+#include <hgl/log/Log.h>
 #include <algorithm>
 #include <cstring>
 #include <string>
@@ -57,26 +59,30 @@ namespace
     {
         const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(slot);
         const char *slot_name      = mtl::SamplerSlotNameList[uint8(slot)];
-        const std::string layer_var  = std::string("_tex_layer_") + slot_name;
+        GLogInfo("[SamplerGLSLEmitter] AppendKnownSlotArraySampler: slot=%s symbol=%s set=%d binding=%d stage_flag=0x%08X channel_hint=%d",
+                 slot_name, sampler_symbol, descriptor->set, descriptor->binding,
+                 descriptor->stage_flag, int(channel_hint));
         ShaderWriter writer(out);
 
         writer.EmitLayoutBinding(descriptor->set, descriptor->binding)
               .EmitUniform("sampler2DArray", sampler_symbol);
 
-        writer.EmitVariable("uint", layer_var);
-
-        // Inline getter — array variant
+        // Inline getter — layer index read directly from MIT SSBO; no global needed.
         if (channel_hint == TextureChannelHint::Grayscale)
         {
             out += "vec4 GetSampler"; out += slot_name;
-            out += "(vec2 uv) { float r = texture("; out += sampler_symbol;
-            out += ", vec3(uv, float("; out += layer_var; out += "))).r; return vec4(r,r,r,r); }\n";
+            out += "(vec2 uv) { uint _layer = GetMITLayer_"; out += slot_name;
+            out += "(GetMaterialInstanceID());";
+            out += " float r = texture("; out += sampler_symbol;
+            out += ", vec3(uv, float(_layer))).r; return vec4(r,r,r,r); }\n";
         }
         else
         {
             out += "vec4 GetSampler"; out += slot_name;
-            out += "(vec2 uv) { return texture("; out += sampler_symbol;
-            out += ", vec3(uv, float("; out += layer_var; out += "))); }\n";
+            out += "(vec2 uv) { uint _layer = GetMITLayer_"; out += slot_name;
+            out += "(GetMaterialInstanceID());";
+            out += " return texture("; out += sampler_symbol;
+            out += ", vec3(uv, float(_layer))); }\n";
         }
 
         writer.NewLine();
@@ -124,6 +130,15 @@ std::string EmitSimpleSamplerGLSL(const MaterialDescriptorDB &mdi, ShaderStage s
                 collect(samp);
     }
 
+    GLogInfo("[SamplerGLSLEmitter] EmitSimpleSamplerGLSL: stage=%u simple=%zu array=%zu",
+             uint32_t(stage), samplers.size(), array_samplers.size());
+    for (const SamplerEntry &e : samplers)
+        GLogInfo("[SamplerGLSLEmitter]   simple  name=%s desc_type=%d set=%d binding=%d stage_flag=0x%08X",
+                 e.descriptor->name, int(e.descriptor->desc_type), e.descriptor->set, e.descriptor->binding, e.descriptor->stage_flag);
+    for (const SamplerEntry &e : array_samplers)
+        GLogInfo("[SamplerGLSLEmitter]   array   name=%s desc_type=%d set=%d binding=%d stage_flag=0x%08X",
+                 e.descriptor->name, int(e.descriptor->desc_type), e.descriptor->set, e.descriptor->binding, e.descriptor->stage_flag);
+
     if (samplers.empty() && array_samplers.empty())
         return {};
 
@@ -154,10 +169,22 @@ std::string EmitSimpleSamplerGLSL(const MaterialDescriptorDB &mdi, ShaderStage s
     for (const SamplerEntry &entry : array_samplers)
     {
         mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
-        if (mtl::TryGetSlotFromDescriptorName(entry.descriptor->name, slot))
+        mtl::TryGetSlotFromDescriptorName(entry.descriptor->name, slot);
+
+        // Array sampler getters call GetMITLayer_* / MATERIAL_INSTANCE_ID_OVERRIDE which are
+        // only available in FS (injected via ssbo_material_instance.glsl).
+        // For VS (and other non-FS stages) emit only the uniform declaration — no getter body.
+        if (stage == ShaderStage::Fragment)
+        {
             AppendKnownSlotArraySampler(out, entry.descriptor, slot, entry.channel_hint);
+        }
         else
-            AppendGenericSampler(out, entry.descriptor);
+        {
+            ShaderWriter writer(out);
+            writer.EmitLayoutBinding(entry.descriptor->set, entry.descriptor->binding)
+                  .EmitUniform("sampler2DArray", mtl::ToGLSLSamplerSymbol(slot))
+                  .NewLine();
+        }
     }
 
     out += "// ----------------------------------------------------\n\n";
@@ -192,10 +219,15 @@ std::string EmitMaterialInstanceTextureGLSL(const MaterialDescriptorDB &mdi, Sha
                 try_collect(samp);
     }
 
+    GLogInfo("[SamplerGLSLEmitter] EmitMaterialInstanceTextureGLSL: stage=%u array_slots=%zu",
+             uint32_t(stage), array_slots.size());
+    for (const mtl::SamplerSlot s : array_slots)
+        GLogInfo("[SamplerGLSLEmitter]   MIT slot=%s", mtl::SamplerSlotNameList[uint8(s)]);
+
     if (array_slots.empty())
         return {};
 
-    // Sort and deduplicate by slot ordinal to keep emitted indices deterministic.
+    // Sort and deduplicate
     std::sort(array_slots.begin(), array_slots.end());
     array_slots.erase(std::unique(array_slots.begin(), array_slots.end()), array_slots.end());
 
@@ -203,6 +235,23 @@ std::string EmitMaterialInstanceTextureGLSL(const MaterialDescriptorDB &mdi, Sha
     ShaderWriter writer(out);
     out.reserve(512);
     writer.EmitLine("// ---- Auto-generated MaterialInstanceTexture SSBO ----");
+
+    // Emit the FS input for MaterialInstanceID via the canonical varying layout
+    // (avoids hardcoding location=0 here).
+    {
+        const std::string mi_decl = EmitFSInput(InterstageVarying::MaterialInstanceID);
+        writer.EmitLine("#ifndef ULRE_HAS_FRAG_MATERIAL_INSTANCE_ID");
+        out += mi_decl;
+        writer.EmitLine("#define ULRE_HAS_FRAG_MATERIAL_INSTANCE_ID");
+        writer.EmitLine("#endif");
+    }
+    writer.EmitLine("#ifndef MATERIAL_INSTANCE_ID_OVERRIDE");
+    writer.EmitLine("#define MATERIAL_INSTANCE_ID_OVERRIDE fragMaterialInstanceID");
+    writer.EmitLine("#endif");
+    writer.EmitLine("#ifndef ULRE_HAS_GET_MATERIAL_INSTANCE_ID");
+    writer.EmitLine("#define ULRE_HAS_GET_MATERIAL_INSTANCE_ID");
+    writer.EmitLine("uint GetMaterialInstanceID() { return MATERIAL_INSTANCE_ID_OVERRIDE; }");
+    writer.EmitLine("#endif");
 
     // 1. Emit compact per-instance stride and per-slot index defines.
     writer.EmitDefine("MIT_TEXTURE_COUNT", std::to_string(array_slots.size()).c_str());
@@ -219,16 +268,17 @@ std::string EmitMaterialInstanceTextureGLSL(const MaterialDescriptorDB &mdi, Sha
     writer.EmitLine("uint tex_id[];");
     writer.EndBlock(hgl::graph::ShaderWriter::EndBlockMode::NamedInstance, "mit").NewLine();
 
-    // 3. _ULRE_InitTextureLayerIndices(uint instance_id)
-    writer.EmitLine("void _ULRE_InitTextureLayerIndices(uint instance_id)").BeginBlock();
-    writer.EmitLine("uint offset = instance_id * MIT_TEXTURE_COUNT;");
+    // 3. Per-slot inline layer-index accessors — no global variables needed.
     for (const mtl::SamplerSlot slot : array_slots)
     {
         const char *name = mtl::SamplerSlotNameList[uint8(slot)];
         const std::string upper_name = mtl::ToUpperASCII(name);
-        writer.EmitLine(std::string("_tex_layer_") + name + " = mit.tex_id[offset + MIT_" + upper_name + "_IDX];");
+        std::string fn;
+        fn += "uint GetMITLayer_"; fn += name;
+        fn += "(uint mi_id) { return mit.tex_id[mi_id * MIT_TEXTURE_COUNT + MIT_";
+        fn += upper_name; fn += "_IDX]; }";
+        writer.EmitLine(fn);
     }
-    writer.EndBlock(hgl::graph::ShaderWriter::EndBlockMode::Plain);
 
     writer.EmitLine("// ------------------------------------------------------").NewLine();
     return out;
