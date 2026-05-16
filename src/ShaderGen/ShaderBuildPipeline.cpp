@@ -10,8 +10,10 @@
 #include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/shadergen/internal/GLSLSourceUtils.h>
 #include<hgl/shadergen/ColorSourceValidator.h>
+#include<hgl/shadergen/ColorSource.h>
 #include<hgl/mtl/MaterialFeature.h>
 #include<hgl/mtl/UBOCommon.h>
+#include<cstring>
 
 namespace
 {
@@ -599,6 +601,41 @@ static bool ApplyFinalGLSLToBuilder(
     return true;
 }
 
+/// Reconstruct ColorSource list from the texture sampler descriptors that were registered
+/// into the MaterialDescriptorDB.  Used to populate mci->color_sources so that
+/// InjectLayoutDefines can dispatch through IColorSourceCodegen.
+static std::vector<hgl::graph::ColorSource> BuildColorSourcesFromDescriptorDB(
+    const hgl::graph::MaterialDescriptorDB &mdi)
+{
+    std::vector<hgl::graph::ColorSource> sources;
+    sources.reserve(hgl::graph::mtl::SamplerSlotCount);
+
+    for (size_t i = 0; i < hgl::graph::mtl::SamplerSlotCount; ++i)
+    {
+        const auto slot = static_cast<hgl::graph::mtl::SamplerSlot>(i);
+
+        // Prefer TextureSampler (combined image+sampler); fall back to pure Texture.
+        const hgl::graph::TextureSamplerDescriptor *ts = mdi.GetTextureSampler(slot);
+        const hgl::graph::TextureDescriptor        *t  = mdi.GetTexture(slot);
+
+        const hgl::graph::ShaderDescriptor *sd = ts ? static_cast<const hgl::graph::ShaderDescriptor *>(ts)
+                                                     : static_cast<const hgl::graph::ShaderDescriptor *>(t);
+        if (!sd || sd->set < 0 || sd->binding < 0)
+            continue;
+
+        // Determine kind from the type string.
+        const std::string &type_str = ts ? ts->type : t->type;
+        const bool is_array = (type_str == "sampler2DArray");
+
+        if (is_array)
+            sources.push_back(hgl::graph::ColorSource::MakeSampler2DArray(slot));
+        else
+            sources.push_back(hgl::graph::ColorSource::MakeSampler2D(slot));
+    }
+
+    return sources;
+}
+
 static hgl::graph::mtl::MaterialCreateInfo *BuildCompiledMaterialCreateInfo(
     hgl::graph::mtl::MaterialBuilder &builder,
     std::vector<hgl::graph::ShaderGenDiagnostic> &diagnostics)
@@ -613,6 +650,10 @@ static hgl::graph::mtl::MaterialCreateInfo *BuildCompiledMaterialCreateInfo(
                                                 "MaterialBuilder::BuildSnapshotOnly() failed");
         return nullptr;
     }
+
+    // C1: populate color_sources from registered texture samplers so that
+    // InjectLayoutDefines can use IColorSourceCodegen instead of SamplerGLSLEmitter.
+    mci->SetColorSources(BuildColorSourcesFromDescriptorDB(mci->GetDescriptorInfo()));
 
     if(!hgl::graph::mtl::InjectLayoutDefines(*mci))
     {
@@ -672,6 +713,9 @@ static hgl::graph::mtl::MaterialCreateInfo *BuildPreparedMaterialCreateInfo(
                                                 "MaterialBuilder::BuildSnapshotOnly() failed");
         return nullptr;
     }
+
+    // C1: populate color_sources from registered texture samplers.
+    mci->SetColorSources(BuildColorSourcesFromDescriptorDB(mci->GetDescriptorInfo()));
 
     if(!hgl::graph::mtl::InjectLayoutDefines(*mci))
     {

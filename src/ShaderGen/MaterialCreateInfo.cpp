@@ -14,12 +14,17 @@
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/internal/GLSLSourceUtils.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
+#include<hgl/shadergen/ShaderWriter.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/mtl/MaterialStagePolicy.h>
 #include<hgl/math/Matrix.h>
 #include<hgl/log/Log.h>
 #include<string>
 #include<limits>
+
+// New-path includes (C1)
+#include "ColorSource/CodegenRegistry.h"
+#include "ColorSource/BindingAllocator.h"
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -69,6 +74,116 @@ bool InjectLayoutDefines(MaterialCreateInfo &mci)
     const ShaderLayoutContract layout = BuildShaderLayoutContract(mci);
     const std::string layout_defs = EmitShaderLayoutDefines(layout);
     const MaterialDescriptorDB &mdi = mci.GetDescriptorInfo();
+
+    // ── C1 new path: dispatch through IColorSourceCodegen ────────────────────
+    // Active when color_sources were injected by ShaderBuildPipeline.
+    const auto &color_sources = mci.GetColorSources();
+
+    if (!color_sources.empty())
+    {
+        // Build a BindingAllocator using FixedSetAndBinding so binding numbers
+        // exactly match what MaterialDescriptorDB::Resort() already assigned.
+        BindingAllocator allocator;
+
+        for (const auto &cs : color_sources)
+        {
+            if (cs.bindings.empty())
+                continue;
+
+            // Find the resolved descriptor in the DB by slot to get set/binding.
+            const TextureSamplerDescriptor *ts = mdi.GetTextureSampler(cs.slot);
+            const TextureDescriptor        *t  = mdi.GetTexture(cs.slot);
+            const ShaderDescriptor         *sd = ts ? static_cast<const ShaderDescriptor *>(ts)
+                                                     : static_cast<const ShaderDescriptor *>(t);
+
+            if (!sd || sd->set < 0 || sd->binding < 0)
+            {
+                GLogWarning("[InjectLayoutDefines][C1] no descriptor resolved for slot=%d, skipping",
+                            static_cast<int>(cs.slot));
+                continue;
+            }
+
+            // Override the requirement with FixedSetAndBinding from the DB.
+            std::vector<DescriptorRequirement> fixed_reqs = cs.bindings;
+            for (auto &req : fixed_reqs)
+            {
+                req.binding_policy = BindingPolicy::FixedSetAndBinding;
+                req.fixed_set      = static_cast<uint32_t>(sd->set);
+                req.fixed_binding  = static_cast<uint32_t>(sd->binding);
+            }
+            allocator.AddRequirements(fixed_reqs);
+        }
+
+        const BindingAllocResult alloc = allocator.Allocate();
+
+        // Log G2 diagnostics.
+        for (const auto &d : alloc.diags)
+        {
+            if (d.level == BindingAllocDiag::Level::Error)
+                { GLogError("[InjectLayoutDefines][G2] %s", d.message.c_str()); }
+            else
+                { GLogWarning("[InjectLayoutDefines][G2] %s", d.message.c_str()); }
+        }
+        if (!alloc.ok)
+        {
+            GLogError("[InjectLayoutDefines][G2] BindingAllocator reported conflicts — aborting");
+            return false;
+        }
+
+        const ResolvedBindings &resolved = alloc.bindings;
+
+        const ColorSourceCodegenRegistry &reg = ColorSourceCodegenRegistry::Global();
+
+        std::string frag_decl_defs;
+        std::string frag_getter_defs;
+
+        for (const auto &cs : color_sources)
+        {
+            if (cs.bindings.empty())
+                continue;
+
+            const IColorSourceCodegen *codegen = reg.Find(cs.kind);
+            if (!codegen)
+            {
+                GLogWarning("[InjectLayoutDefines][C1] no codegen for kind=%d slot=%d, skipping",
+                            static_cast<int>(cs.kind), static_cast<int>(cs.slot));
+                continue;
+            }
+
+            {
+                ShaderWriter w(frag_decl_defs);
+                codegen->EmitDeclarations(w, cs, resolved);
+            }
+            {
+                ShaderWriter w(frag_getter_defs);
+                codegen->EmitGetterFunction(w, cs, resolved);
+            }
+        }
+
+        // MIT SSBO helper (GetMITLayer_* etc.) must come BEFORE the getter functions
+        // that call them.  Re-use the legacy emitter for this auxiliary block only.
+        const std::string frag_mit_defs = frag ? EmitMaterialInstanceTextureGLSL(mdi, ShaderStage::Fragment) : std::string();
+
+        GLogInfo("[InjectLayoutDefines][C1] frag_decl empty=%d frag_getter empty=%d frag_mit empty=%d",
+                 int(frag_decl_defs.empty()), int(frag_getter_defs.empty()), int(frag_mit_defs.empty()));
+
+        if (!layout_defs.empty() || !frag_decl_defs.empty() || !frag_getter_defs.empty() || !frag_mit_defs.empty())
+        {
+            // VS only gets layout defines (no sampler getter into VS).
+            if (vert)
+                vert->SetFinalGLSL(internal::InjectAfterVersion(vert->GetFinalGLSL(), layout_defs));
+
+            if (frag)
+                frag->SetFinalGLSL(internal::InjectAfterVersion(frag->GetFinalGLSL(),
+                                                                 layout_defs + frag_decl_defs + frag_mit_defs + frag_getter_defs));
+        }
+
+        return true;
+    }
+
+    // ── Legacy fallback path (SamplerGLSLEmitter) ────────────────────────────
+    GLogInfo("[InjectLayoutDefines] color_sources empty — falling back to legacy SamplerGLSLEmitter");
+
     const std::string vert_sampler_defs = vert ? EmitSimpleSamplerGLSL(mdi, ShaderStage::Vertex) : std::string();
     const std::string frag_sampler_defs = frag ? EmitSimpleSamplerGLSL(mdi, ShaderStage::Fragment) : std::string();
     const std::string frag_mit_defs = frag ? EmitMaterialInstanceTextureGLSL(mdi, ShaderStage::Fragment) : std::string();

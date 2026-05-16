@@ -9,8 +9,10 @@
 #include<hgl/mtl/MaterialCreateConfig.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
 #include<hgl/shadergen/MaterialBuilderBlocks.h>
+#include<hgl/shadergen/ColorSource.h>
 #include<string>
 #include<cassert>
+#include<vector>
 
 namespace hgl::graph
 {
@@ -49,7 +51,11 @@ namespace hgl::graph
             MaterialInstanceBlock material_instance;
             LocalToWorldBlock     local_to_world;
 
-            ShaderStageMap shader_map;                         ///<着色器列表
+            /// ColorSource list for IColorSourceCodegen emit path (C1).
+            /// Populated by SetColorSources() before InjectLayoutDefines().
+            std::vector<graph::ColorSource> color_sources;
+
+            ShaderStageMap shader_map;
 
         private:
 
@@ -82,6 +88,19 @@ namespace hgl::graph
             bool AddTextureSampler(const uint32_t flag_bits,const SamplerType &st,const SamplerSlot slot,const TextureChannelHint channel_hint=TextureChannelHint::RGBA);
 
             bool CompilePreparedShaderSources();     ///< 直接编译各阶段的 FinalGLSL 到 SPV
+
+        public:
+
+            /// Inject the ColorSource list (used by InjectLayoutDefines via IColorSourceCodegen).
+            void SetColorSources(std::vector<graph::ColorSource> sources)
+            {
+                color_sources = std::move(sources);
+            }
+
+            const std::vector<graph::ColorSource>& GetColorSources() const
+            {
+                return color_sources;
+            }
 
         public:
 

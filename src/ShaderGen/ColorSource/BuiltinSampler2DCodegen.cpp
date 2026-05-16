@@ -60,6 +60,13 @@ void BuiltinSampler2DCodegen::EmitDeclarations(ShaderWriter          &writer,
 
     writer.EmitLayoutBinding(set, binding)
           .EmitUniform("sampler2D", sampler_symbol);
+
+    // Ensure GetMaterialInstanceID() is always available for the unified 2-arg call form.
+    // (MIT SSBO path defines it via ssbo_material_instance.glsl; simple sampler path may not.)
+    writer.EmitLine("#ifndef ULRE_HAS_GET_MATERIAL_INSTANCE_ID")
+          .EmitLine("#define ULRE_HAS_GET_MATERIAL_INSTANCE_ID")
+          .EmitLine("uint GetMaterialInstanceID() { return 0u; }")
+          .EmitLine("#endif");
 }
 
 void BuiltinSampler2DCodegen::EmitGetterFunction(ShaderWriter          &writer,
@@ -85,6 +92,7 @@ void BuiltinSampler2DCodegen::EmitGetterFunction(ShaderWriter          &writer,
         tmp += ", uv); }\n";
     }
     writer.EmitLine(tmp);
+    writer.NewLine();
 }
 
 } // namespace hgl::graph
