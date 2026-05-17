@@ -274,6 +274,12 @@ SET(COMPOSITOR_INTERNAL_SOURCE_FILES internal/GLSLSourceUtils.cpp)
 SOURCE_GROUP("Compositor\\Internal" FILES ${COMPOSITOR_INTERNAL_HEADER_FILES}
                                           ${COMPOSITOR_INTERNAL_SOURCE_FILES})
 
+# Shader Fragment Manifest (SFM)
+SET(SHADER_REQUIREMENT_FILES    ${SHADERGEN_INCLUDE_PATH}/ShaderRequirement.h
+                                ${SHADERGEN_INCLUDE_PATH}/ShaderRequirementSet.h
+                                ShaderRequirementSet.cpp)
+SOURCE_GROUP("Shader Fragment Manifest" FILES ${SHADER_REQUIREMENT_FILES})
+
 # ColorSource / PCG 统一化 (Step 1 骨架 + Step 2 内置 sampler codegen + Step 3 bridge/validator)
 SET(COLORSOURCE_HEADER_FILES    ${SHADERGEN_INCLUDE_PATH}/DescriptorRequirement.h
                                 ${SHADERGEN_INCLUDE_PATH}/ColorSource.h
@@ -334,6 +340,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${COMPOSITOR_SOURCE_FILES}
     ${COMPOSITOR_INTERNAL_HEADER_FILES}
     ${COMPOSITOR_INTERNAL_SOURCE_FILES}
+    ${SHADER_REQUIREMENT_FILES}
     ${COLORSOURCE_HEADER_FILES}
     ${COLORSOURCE_SOURCE_FILES}
 )
