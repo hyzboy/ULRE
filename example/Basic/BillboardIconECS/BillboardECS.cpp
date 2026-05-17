@@ -87,46 +87,74 @@ private:
     // Phase 5: decoupled billboard recipes (one per pipeline variant)
     inline static const mtl::MaterialRecipe kBillboardSolidCfg {
         .id            = "billboard_ecs_decoupled_solid",
-        .preset        = mtl::MaterialPreset::PureTexture2D,
+        .preset        = mtl::MaterialPreset::Billboard2DFixed,
         .dim           = mtl::MaterialRecipe::Dim::D3,
-        .prim          = PrimitiveType::Triangles,
+        .prim          = PrimitiveType::Billboard,
         .pipeline      = GraphicsPipelinePreset::Solid3D,
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
+        .billboard = {
+            .fixed_size = true,
+            .pixel_w = 128,
+            .pixel_h = 128,
+            .blend_mode = RenderAlphaMode::Opaque,
+            .texture_id = "billboard_ecs_runtime"
+        }
     };
 
     inline static const mtl::MaterialRecipe kBillboardAlphaCfg {
         .id            = "billboard_ecs_decoupled_alpha",
-        .preset        = mtl::MaterialPreset::PureTexture2D,
+        .preset        = mtl::MaterialPreset::Billboard2DFixed,
         .dim           = mtl::MaterialRecipe::Dim::D3,
-        .prim          = PrimitiveType::Triangles,
+        .prim          = PrimitiveType::Billboard,
         .pipeline      = GraphicsPipelinePreset::Alpha3D,
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
+        .billboard = {
+            .fixed_size = true,
+            .pixel_w = 128,
+            .pixel_h = 128,
+            .blend_mode = RenderAlphaMode::Transparent,
+            .texture_id = "billboard_ecs_runtime"
+        }
     };
 
     inline static const mtl::MaterialRecipe kBillboardDitherCfg {
         .id            = "billboard_ecs_decoupled_dither",
-        .preset        = mtl::MaterialPreset::PureTexture2D,
+        .preset        = mtl::MaterialPreset::Billboard2DFixed,
         .dim           = mtl::MaterialRecipe::Dim::D3,
-        .prim          = PrimitiveType::Triangles,
+        .prim          = PrimitiveType::Billboard,
         .pipeline      = GraphicsPipelinePreset::Dither3D,
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
+        .billboard = {
+            .fixed_size = true,
+            .pixel_w = 128,
+            .pixel_h = 128,
+            .blend_mode = RenderAlphaMode::Dither,
+            .texture_id = "billboard_ecs_runtime"
+        }
     };
 
     inline static const mtl::MaterialRecipe kTexturedQuadCfg {
         .id            = "billboard_ecs_texture_binding_quad",
-        .preset        = mtl::MaterialPreset::PureTexture2D,
+        .preset        = mtl::MaterialPreset::Billboard2DFixed,
         .dim           = mtl::MaterialRecipe::Dim::D3,
-        .prim          = PrimitiveType::Triangles,
+        .prim          = PrimitiveType::Billboard,
         .pipeline      = GraphicsPipelinePreset::Alpha3D,
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
+        .billboard = {
+            .fixed_size = true,
+            .pixel_w = 128,
+            .pixel_h = 128,
+            .blend_mode = RenderAlphaMode::Transparent,
+            .texture_id = "billboard_ecs_texture_binding"
+        }
     };
 
     // Billboard resources are managed by BillboardRenderSystem
@@ -178,14 +206,17 @@ private:
             if (preset == GraphicsPipelinePreset::Alpha3D)  recipe = &kBillboardAlphaCfg;
             if (preset == GraphicsPipelinePreset::Dither3D) recipe = &kBillboardDitherCfg;
 
-            primitive->SetMaterialRecipe(RegisterMaterialRecipe(*recipe));
+            const math::Vector2u billboard_size(
+                recipe->billboard.pixel_w,
+                recipe->billboard.pixel_h);
+            primitive->SetMaterialRecipe(RegisterMaterialRecipe(*recipe), &billboard_size, sizeof(billboard_size));
 
             auto texture_binding_system = ecs_context->GetSystem<TextureMaterialBindingSystem>();
             if (texture_binding_system)
                 texture_binding_system->SubmitTextureBindingRequest(
                     billboard_entity->GetID(),
                     kIconTextures[current_icon_index],
-                    "billboard_ecs",
+                    {},
                     graph::mtl::SamplerSlot::BaseColor,
                     graph::mtl::TextureSourceMode::Simple,
                     graph::TextureChannelHint::Grayscale);
@@ -371,9 +402,9 @@ private:
                 std::cout << "  -> BillboardComponent (BehaviorOnly) added" << std::endl;
 
                 auto scale = billboard_entity->AddComponent<BillboardScaleComponent>();
-                scale->SetFixedPixelSize(true);
-                scale->SetPixelSize(512, 512);
-                std::cout << "  -> BillboardScaleComponent added, 512x512 fixed-pixel" << std::endl;
+                scale->SetFixedPixelSize(false);
+                scale->SetWorldSize(1.0f, 1.0f);
+                std::cout << "  -> BillboardScaleComponent added, neutral world-size" << std::endl;
 
                 auto quad_mesh = billboard_entity->AddComponent<QuadMeshComponent>();
                 quad_mesh->SetSize(1.0f, 1.0f);
@@ -381,18 +412,21 @@ private:
                 std::cout << "  -> QuadMeshComponent added" << std::endl;
 
                 auto primitive = billboard_entity->AddComponent<PrimitiveComponent>();
-                primitive->SetMaterialRecipe(RegisterMaterialRecipe(kBillboardSolidCfg));
+                const math::Vector2u billboard_size(
+                    kBillboardSolidCfg.billboard.pixel_w,
+                    kBillboardSolidCfg.billboard.pixel_h);
+                primitive->SetMaterialRecipe(RegisterMaterialRecipe(kBillboardSolidCfg), &billboard_size, sizeof(billboard_size));
                 primitive->SetVisible(true);
-                std::cout << "  -> PrimitiveComponent added (Solid3D recipe)" << std::endl;
+                std::cout << "  -> PrimitiveComponent added (Billboard2DFixed recipe)" << std::endl;
 
                 texture_binding_system->SubmitTextureBindingRequest(
                     billboard_entity->GetID(),
                     kIconTextures[current_icon_index],
-                    "billboard_ecs",
+                    {},
                     graph::mtl::SamplerSlot::BaseColor,
                     graph::mtl::TextureSourceMode::Simple,
                     graph::TextureChannelHint::Grayscale);
-                std::cout << "  -> TextureBindingTask submitted: gradient[" << current_icon_index << "] domain=billboard_ecs" << std::endl;
+                std::cout << "  -> TextureBindingTask submitted: gradient[" << current_icon_index << "] non-domain" << std::endl;
             }
             else
             {
@@ -416,11 +450,14 @@ private:
             transform->SetMovable(false);
 
             auto quad_mesh = textured_quad_entity->AddComponent<QuadMeshComponent>();
-            quad_mesh->SetSize(8.0f, 8.0f);
+            quad_mesh->SetSize(1.0f, 1.0f);
             quad_mesh->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
 
             auto primitive = textured_quad_entity->AddComponent<PrimitiveComponent>();
-            primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg));
+            const math::Vector2u billboard_size(
+                kTexturedQuadCfg.billboard.pixel_w,
+                kTexturedQuadCfg.billboard.pixel_h);
+            primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg), &billboard_size, sizeof(billboard_size));
             primitive->SetVisible(true);
 
             texture_binding_system->SubmitTextureBindingRequest(textured_quad_entity->GetID(), kIconTextures[22]);
@@ -435,11 +472,14 @@ private:
             transform->SetMovable(false);
 
             auto quad_mesh = textured_quad_domain_entity->AddComponent<QuadMeshComponent>();
-            quad_mesh->SetSize(8.0f, 8.0f);
+            quad_mesh->SetSize(1.0f, 1.0f);
             quad_mesh->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
 
             auto primitive = textured_quad_domain_entity->AddComponent<PrimitiveComponent>();
-            primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg));
+            const math::Vector2u billboard_size(
+                kTexturedQuadCfg.billboard.pixel_w,
+                kTexturedQuadCfg.billboard.pixel_h);
+            primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg), &billboard_size, sizeof(billboard_size));
             primitive->SetVisible(true);
 
             texture_binding_system->SubmitTextureBindingRequest(textured_quad_domain_entity->GetID(),
