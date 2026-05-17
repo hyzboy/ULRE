@@ -17,12 +17,9 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/BillboardComponent.h>
-#include<hgl/ecs/components/QuadComponent.h>
-#include<hgl/ecs/components/FacingTransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/transform/FacingTransformSystem.h>
+#include<hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -128,6 +125,35 @@ static constexpr const char *kFreepikDomainID  = "1001";
 static constexpr const char *kGradientDomainID = "1002";
 static constexpr const char *kGridDomainID     = "2001";
 
+// Unit quad vertex data: Position2D + TexCoord
+static const float kDomainQuadPosition[8] = {
+    -0.5f, -0.5f,
+     0.5f, -0.5f,
+     0.5f,  0.5f,
+    -0.5f,  0.5f
+};
+static const float kDomainQuadTexCoord[8] = {
+    0.0f, 0.0f,
+    1.0f, 0.0f,
+    1.0f, 1.0f,
+    0.0f, 1.0f
+};
+static const uint16_t kDomainQuadIndices[6] = {0, 1, 2, 0, 2, 3};
+
+// Shared billboard recipe
+static const mtl::MaterialRecipe kBillboardIconCfg {
+    .id            = "domain_demo_billboard_icon",
+    .preset        = mtl::MaterialPreset::UnlitTexture3D,
+    .dim           = mtl::MaterialRecipe::Dim::D3,
+    .prim          = PrimitiveType::Triangles,
+    .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,
+    .vertex_policy = mtl::VertexTransformPolicy::BillboardAxisLocked,
+    .pipeline      = GraphicsPipelinePreset::Alpha3D,
+    .color_sources = {
+        graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
+    },
+};
+
 // ── App ─────────────────────────────────────────────────────────────────────
 
 static Color4f white_color(1, 1, 1, 1);
@@ -142,7 +168,10 @@ private:
     Entity* camera_entity = nullptr;
 
     // PlaneGrid resources
-    Geometry*         geom_plane_grid = nullptr;
+    Geometry* geom_plane_grid = nullptr;
+    Geometry* geom_unit_quad  = nullptr;
+
+    TextureMaterialBindingSystem* texture_binding_system = nullptr;
 
     inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id             = "domain_demo_plane_grid",
@@ -196,20 +225,9 @@ private:
     {
         if (!ecs_context) return false;
 
-        auto facing = ecs_context->GetSystem<FacingTransformSystem>();
-        if (!facing)
-        {
-            facing = ecs_context->RegisterTickSystem<FacingTransformSystem>();
-            facing->SetWorld(ecs_context);
-            facing->SetCameraInfo(GetCameraInfo());
-            if (ecs_context->IsActive())
-            {
-                facing->OnDependenciesReady();
-                facing->Initialize();
-            }
-        }
-
-        return facing != nullptr;
+        auto tbs = ecs_context->GetSystem<TextureMaterialBindingSystem>();
+        texture_binding_system = tbs ? tbs.get() : nullptr;
+        return true;
     }
 
     /// 创建一组螺旋排列的 billboard 实体
@@ -241,15 +259,19 @@ private:
             auto transform = e->AddComponent<TransformComponent>(Mobility::Static);
             transform->SetLocalPosition(glm::vec3(x, y, 0.0f));
             transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform->SetLocalScale(glm::vec3(8.0f, 8.0f, 1.0f));  // world size via scale
             transform->SetMovable(false);
 
-            auto billboard = e->AddComponent<BillboardComponent>();
-            billboard->SetVisible(true);
-            billboard->SetFixedPixelSize(false);
-            billboard->SetWorldSize(8.0f, 8.0f);
-            billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
-            billboard->SetTexture(icon_list[i % icon_count]);
+            auto prim = e->AddComponent<PrimitiveComponent>();
+            prim->SetUnresolvedGeometry(geom_unit_quad);
+            prim->SetMaterialRecipe(RegisterMaterialRecipe(kBillboardIconCfg));
+            prim->SetVisible(true);
+
+            if (texture_binding_system)
+                texture_binding_system->SubmitTextureBindingRequest(
+                    e->GetID(),
+                    icon_list[i % icon_count],
+                    domain_tag);
         }
     }
 
@@ -260,7 +282,17 @@ private:
 
         if (!EnsureRenderSystems()) return false;
 
-        // PlaneGrid entity
+        // Create shared unit quad geometry
+        {
+            geom_unit_quad = WorkObject::CreateGeometry("Domain_UnitQuad",
+                                                        4, 6, IndexType::U16,
+                                                        {{VAN::Position, VF_V2F, kDomainQuadPosition},
+                                                         {VAN::TexCoord, VF_V2F, kDomainQuadTexCoord}},
+                                                        kDomainQuadIndices);
+            if (!geom_unit_quad) return false;
+            }
+
+            // PlaneGrid entity
         {
             grid_entity = ecs_context->CreateEntity<Entity>("PlaneGrid");
 

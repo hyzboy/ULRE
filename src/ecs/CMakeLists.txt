@@ -82,20 +82,6 @@ set(ECS_SYS_05_TickCamera_CameraSystem_FILES
     components/CameraComponent.cpp
 )
 
-set(ECS_SYS_06_TickPostCamera_FacingTransformSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/transform/FacingTransformSystem.h
-    systems/transform/FacingTransformSystem.cpp
-    ${ECS_INCLUDE_PATH}/components/FacingTransformComponent.h
-    components/FacingTransformComponent.cpp
-)
-
-set(ECS_SYS_06A_TickPostCamera_BillboardScaleSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/transform/BillboardScaleSystem.h
-    systems/transform/BillboardScaleSystem.cpp
-    ${ECS_INCLUDE_PATH}/components/BillboardScaleComponent.h
-    components/BillboardScaleComponent.cpp
-)
-
 set(ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/tick/LineBoundsUpdateSystem.h
     systems/tick/LineBoundsUpdateSystem.cpp
@@ -116,21 +102,9 @@ set(ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES
     systems/render/EnvironmentSystem.cpp
 )
 
-set(ECS_SYS_10B_RenderMaterialBind_QuadMeshPrepareSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/QuadMeshPrepareSystem.h
-    systems/render/QuadMeshPrepareSystem.cpp
-    ${ECS_INCLUDE_PATH}/components/QuadMeshComponent.h
-    components/QuadMeshComponent.cpp
-)
-
 set(ECS_SYS_10C_RenderMaterialBind_TextureMaterialBindingSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/TextureMaterialBindingSystem.h
     systems/render/TextureMaterialBindingSystem.cpp
-)
-
-set(ECS_SYS_11_RenderMaterialBind_QuadComponent_FILES
-    ${ECS_INCLUDE_PATH}/components/QuadComponent.h
-    components/QuadComponent.cpp
 )
 
 set(ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES
@@ -174,8 +148,6 @@ set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
     ${ECS_INCLUDE_PATH}/components/PrimitiveComponent.h
     components/PrimitiveComponent.cpp
     ${ECS_INCLUDE_PATH}/components/RenderableComponent.h
-    ${ECS_INCLUDE_PATH}/components/BillboardComponent.h
-    components/BillboardComponent.cpp
 )
 
 set(ECS_SYS_16B_RenderCollect_AssetInstanceCollectSystem_FILES
@@ -307,11 +279,6 @@ set(ECS_SUPPORT_LINE_FILES
     support/line/LineRenderPipelineGroup.cpp
 )
 
-set(ECS_SUPPORT_BILLBOARD_FILES
-    ${ECS_INCLUDE_PATH}/support/billboard/BillboardRenderPipelineGroup.h
-    support/billboard/BillboardRenderPipelineGroup.cpp
-)
-
 set(ECS_SUPPORT_TERRAIN_FILES
     ${ECS_INCLUDE_PATH}/support/terrain/TerrainTileBuffer.h
     ${ECS_INCLUDE_PATH}/support/terrain/TerrainRenderPipeline.h
@@ -341,15 +308,11 @@ set(ECS_SOURCE
     ${ECS_SYS_03_TickTransform_BoundingBoxUpdateSystem_FILES}
     ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES}
     ${ECS_SYS_05_TickCamera_CameraSystem_FILES}
-    ${ECS_SYS_06_TickPostCamera_FacingTransformSystem_FILES}
-    ${ECS_SYS_06A_TickPostCamera_BillboardScaleSystem_FILES}
     ${ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES}
     ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES}
     ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES}
     ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES}
-    ${ECS_SYS_10B_RenderMaterialBind_QuadMeshPrepareSystem_FILES}
     ${ECS_SYS_10C_RenderMaterialBind_TextureMaterialBindingSystem_FILES}
-    ${ECS_SYS_11_RenderMaterialBind_QuadComponent_FILES}
     ${ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES}
     ${ECS_SYS_11C_RenderMaterialBind_PrimitiveBindingCommitSystem_FILES}
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
@@ -374,7 +337,6 @@ set(ECS_SOURCE
     ${ECS_SUPPORT_PRIMITIVE_FILES}
     ${ECS_SUPPORT_TEXT_FILES}
     ${ECS_SUPPORT_LINE_FILES}
-    ${ECS_SUPPORT_BILLBOARD_FILES}
     ${ECS_SUPPORT_TERRAIN_FILES}
     ${ECS_SERIALIZATION_FILES}
 )
@@ -387,14 +349,10 @@ source_group("ECS\\Systems\\02 TickTransform_TransformSystem" FILES ${ECS_SYS_02
 source_group("ECS\\Systems\\03 TickTransform_BoundingBoxUpdateSystem" FILES ${ECS_SYS_03_TickTransform_BoundingBoxUpdateSystem_FILES})
 source_group("ECS\\Systems\\04 TickTransform_VisibilitySystem" FILES ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES})
 source_group("ECS\\Systems\\05 TickCamera_CameraSystem" FILES ${ECS_SYS_05_TickCamera_CameraSystem_FILES})
-source_group("ECS\\Systems\\06 TickPostCamera_FacingTransformSystem" FILES ${ECS_SYS_06_TickPostCamera_FacingTransformSystem_FILES})
-source_group("ECS\\Systems\\06A TickPostCamera_BillboardScaleSystem" FILES ${ECS_SYS_06A_TickPostCamera_BillboardScaleSystem_FILES})
 source_group("ECS\\Systems\\07 RenderSwapchainNextImage_SwapchainAcquireSystem" FILES ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES})
 source_group("ECS\\Systems\\08 RenderPreBeginFrame_RenderTargetSystem" FILES ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES})
 source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES})
-source_group("ECS\\Systems\\10B RenderMaterialBind_QuadMeshPrepareSystem" FILES ${ECS_SYS_10B_RenderMaterialBind_QuadMeshPrepareSystem_FILES})
 source_group("ECS\\Systems\\10C RenderMaterialBind_TextureMaterialBindingSystem" FILES ${ECS_SYS_10C_RenderMaterialBind_TextureMaterialBindingSystem_FILES})
-source_group("ECS\\Systems\\11 RenderMaterialBind_QuadComponent" FILES ${ECS_SYS_11_RenderMaterialBind_QuadComponent_FILES})
 source_group("ECS\\Systems\\11B RenderMaterialBind_MaterialResolveSystem" FILES ${ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES})
 source_group("ECS\\Systems\\11C RenderMaterialBind_PrimitiveBindingCommitSystem" FILES ${ECS_SYS_11C_RenderMaterialBind_PrimitiveBindingCommitSystem_FILES})
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})

@@ -1,11 +1,37 @@
 #include "BillboardIconECSBase.h"
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
+#include<hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include <iostream>
 #include <memory>
 
 // ---------------------------------------------------------------------------
 
 static Color4f white_color(1, 1, 1, 1);
+
+// Unit quad: centered, Position2D + TexCoord
+static const float kBaseQuadPosition[8] = {
+    -0.5f, -0.5f,  0.5f, -0.5f,
+     0.5f,  0.5f, -0.5f,  0.5f
+};
+static const float kBaseQuadTexCoord[8] = {
+    0.0f, 0.0f,  1.0f, 0.0f,
+    1.0f, 1.0f,  0.0f, 1.0f
+};
+static const uint16_t kBaseQuadIndices[6] = {0, 1, 2, 0, 2, 3};
+
+static const mtl::MaterialRecipe kBillboardBaseCfg {
+    .id            = "billboard_icon_base",
+    .preset        = mtl::MaterialPreset::UnlitTexture3D,
+    .dim           = mtl::MaterialRecipe::Dim::D3,
+    .prim          = PrimitiveType::Triangles,
+    .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,
+    .vertex_policy = mtl::VertexTransformPolicy::BillboardAxisLocked,
+    .pipeline      = GraphicsPipelinePreset::Alpha3D,
+    .color_sources = {
+        graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
+    },
+};
 
 // ---------------------------------------------------------------------------
 // BillboardIconECSBase implementation
@@ -81,6 +107,17 @@ bool BillboardIconECSBase::CreatePrimitives()
 
         const char* prefix = GetEntityPrefix();
 
+        // Create shared unit quad geometry
+        Geometry* geom_unit_quad = CreateGeometry("BillboardBase_UnitQuad",
+                                                   4, 6, IndexType::U16,
+                                                   {{VAN::Position, VF_V2F, kBaseQuadPosition},
+                                                    {VAN::TexCoord, VF_V2F, kBaseQuadTexCoord}},
+                                                   kBaseQuadIndices);
+        if (!geom_unit_quad) return false;
+
+        auto mat_handle = RegisterMaterialRecipe(kBillboardBaseCfg);
+        auto texture_binding_system = ecs_context->GetSystem<TextureMaterialBindingSystem>();
+
         for (int i = 0; i < kBillboardCount; ++i)
         {
             const float angle  = kAngleStep * static_cast<float>(i);
@@ -97,15 +134,19 @@ bool BillboardIconECSBase::CreatePrimitives()
             auto transform = billboard_entity->AddComponent<TransformComponent>(Mobility::Static);
             transform->SetLocalPosition(glm::vec3(x, y, z));
             transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform->SetLocalScale(glm::vec3(8.0f, 8.0f, 1.0f));  // world size via scale
             transform->SetMovable(false);
 
-            auto billboard = billboard_entity->AddComponent<BillboardComponent>();
-            billboard->SetVisible(true);
-            billboard->SetFixedPixelSize(false);
-            billboard->SetWorldSize(8.0f, 8.0f);
-            billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
-            billboard->SetTexture(GetIconTextures(i));
+            auto prim = billboard_entity->AddComponent<PrimitiveComponent>();
+            prim->SetUnresolvedGeometry(geom_unit_quad);
+            prim->SetMaterialRecipe(mat_handle);
+            prim->SetVisible(true);
+
+            if (texture_binding_system)
+                texture_binding_system->SubmitTextureBindingRequest(
+                    billboard_entity->GetID(),
+                    GetIconTextures(i),
+                    GetDomainTag());
         }
     }
 
@@ -114,22 +155,7 @@ bool BillboardIconECSBase::CreatePrimitives()
 
 bool BillboardIconECSBase::EnsureRenderSystems()
 {
-    if (!ecs_context) return false;
-
-    auto facing_system = ecs_context->GetSystem<FacingTransformSystem>();
-    if (!facing_system)
-    {
-        facing_system = ecs_context->RegisterTickSystem<FacingTransformSystem>();
-        facing_system->SetWorld(ecs_context);
-        facing_system->SetCameraInfo(GetCameraInfo());
-        if (ecs_context->IsActive())
-        {
-            facing_system->OnDependenciesReady();
-            facing_system->Initialize();
-        }
-    }
-
-    return facing_system != nullptr;
+    return ecs_context != nullptr;
 }
 
 bool BillboardIconECSBase::InitializeECS()

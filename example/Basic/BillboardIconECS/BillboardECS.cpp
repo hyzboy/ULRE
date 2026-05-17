@@ -1,14 +1,12 @@
-// Billboard ECS Example - Refactored with decoupled Quad + FacingTransform
+// Billboard ECS Example - Billboard as VertexTransformPolicy
 //
-// This example demonstrates the new decoupled architecture:
-// - QuadComponent: Handles quad geometry and rendering
-// - FacingTransformComponent: Handles camera-facing rotation
-// - BillboardComponent: Convenience wrapper that combines both
+// Billboard is no longer a special primitive type. It is a regular mesh (unit quad)
+// with VertexTransformPolicy::BillboardAxisLocked or BillboardCameraFacing applied
+// in the vertex shader. Size is expressed via Transform.scale.
 //
-// The architecture allows for flexible reuse:
-// - Use just QuadComponent for static sprites
-// - Use just FacingTransformComponent for other entities that need rotation
-// - Use BillboardComponent for the classic billboard use case
+// Entity layout:
+//   MeshComponent (unit quad)  +  TransformComponent (pos + scale)  +
+//   MaterialInstanceComponent (UnlitTexture3D + Billboard*)  +  RenderTagComponent
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
@@ -24,16 +22,10 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/BillboardComponent.h>
-#include<hgl/ecs/components/QuadComponent.h>
-#include<hgl/ecs/components/QuadMeshComponent.h>
-#include<hgl/ecs/components/FacingTransformComponent.h>
-#include<hgl/ecs/components/BillboardScaleComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
-#include<hgl/ecs/systems/transform/FacingTransformSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -48,8 +40,20 @@ using namespace hgl::ecs;
 
 static Color4f white_color(1, 1, 1, 1);
 
-// Phase 5 runtime switch: true = new decoupled path, false = legacy QuadComponent path
-static constexpr bool kUseDecoupledBillboardPath = true;
+// Unit quad vertex data: Position2D + TexCoord
+static const float kUnitQuadPosition[8] = {
+    -0.5f, -0.5f,
+     0.5f, -0.5f,
+     0.5f,  0.5f,
+    -0.5f,  0.5f
+};
+static const float kUnitQuadTexCoord[8] = {
+    0.0f, 0.0f,
+    1.0f, 0.0f,
+    1.0f, 1.0f,
+    0.0f, 1.0f
+};
+static const uint16_t kUnitQuadIndices[6] = {0, 1, 2, 0, 2, 3};
 
 #define SHOW_PLANE_GRID 1
 
@@ -65,10 +69,11 @@ private:
     Entity* textured_quad_domain_entity = nullptr;
     Entity* camera_entity = nullptr;
 
+    // Shared unit quad geometry
+    Geometry* geom_unit_quad = nullptr;
+
 #ifdef SHOW_PLANE_GRID
     Entity* grid_entity = nullptr;
-
-    // PlaneGrid resources
     Geometry* geom_plane_grid = nullptr;
 
     inline static const mtl::MaterialRecipe kPlaneGridCfg {
@@ -84,80 +89,58 @@ private:
     };
 #endif//SHOW_PLANE_GRID
 
-    // Phase 5: decoupled billboard recipes (one per pipeline variant)
+    // Billboard recipes: UnlitTexture3D + BillboardAxisLocked, one per blend mode
     inline static const mtl::MaterialRecipe kBillboardSolidCfg {
-        .id            = "billboard_ecs_decoupled_solid",
-        .preset        = mtl::MaterialPreset::Billboard2DFixed,
+        .id            = "billboard_ecs_solid",
+        .preset        = mtl::MaterialPreset::UnlitTexture3D,
         .dim           = mtl::MaterialRecipe::Dim::D3,
-        .prim          = PrimitiveType::Billboard,
+        .prim          = PrimitiveType::Triangles,
+        .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,
+        .vertex_policy = mtl::VertexTransformPolicy::BillboardAxisLocked,
         .pipeline      = GraphicsPipelinePreset::Solid3D,
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
-        .billboard = {
-            .fixed_size = true,
-            .pixel_w = 128,
-            .pixel_h = 128,
-            .blend_mode = RenderAlphaMode::Opaque,
-            .texture_id = "billboard_ecs_runtime"
-        }
     };
 
     inline static const mtl::MaterialRecipe kBillboardAlphaCfg {
-        .id            = "billboard_ecs_decoupled_alpha",
-        .preset        = mtl::MaterialPreset::Billboard2DFixed,
+        .id            = "billboard_ecs_alpha",
+        .preset        = mtl::MaterialPreset::UnlitTexture3D,
         .dim           = mtl::MaterialRecipe::Dim::D3,
-        .prim          = PrimitiveType::Billboard,
+        .prim          = PrimitiveType::Triangles,
+        .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,
+        .vertex_policy = mtl::VertexTransformPolicy::BillboardAxisLocked,
         .pipeline      = GraphicsPipelinePreset::Alpha3D,
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
-        .billboard = {
-            .fixed_size = true,
-            .pixel_w = 128,
-            .pixel_h = 128,
-            .blend_mode = RenderAlphaMode::Transparent,
-            .texture_id = "billboard_ecs_runtime"
-        }
     };
 
     inline static const mtl::MaterialRecipe kBillboardDitherCfg {
-        .id            = "billboard_ecs_decoupled_dither",
-        .preset        = mtl::MaterialPreset::Billboard2DFixed,
+        .id            = "billboard_ecs_dither",
+        .preset        = mtl::MaterialPreset::UnlitTexture3D,
         .dim           = mtl::MaterialRecipe::Dim::D3,
-        .prim          = PrimitiveType::Billboard,
+        .prim          = PrimitiveType::Triangles,
+        .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,
+        .vertex_policy = mtl::VertexTransformPolicy::BillboardAxisLocked,
         .pipeline      = GraphicsPipelinePreset::Dither3D,
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
-        .billboard = {
-            .fixed_size = true,
-            .pixel_w = 128,
-            .pixel_h = 128,
-            .blend_mode = RenderAlphaMode::Dither,
-            .texture_id = "billboard_ecs_runtime"
-        }
     };
 
     inline static const mtl::MaterialRecipe kTexturedQuadCfg {
-        .id            = "billboard_ecs_texture_binding_quad",
-        .preset        = mtl::MaterialPreset::Billboard2DFixed,
+        .id            = "billboard_ecs_texture_quad",
+        .preset        = mtl::MaterialPreset::UnlitTexture3D,
         .dim           = mtl::MaterialRecipe::Dim::D3,
-        .prim          = PrimitiveType::Billboard,
+        .prim          = PrimitiveType::Triangles,
+        .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,
+        .vertex_policy = mtl::VertexTransformPolicy::BillboardAxisLocked,
         .pipeline      = GraphicsPipelinePreset::Alpha3D,
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
-        .billboard = {
-            .fixed_size = true,
-            .pixel_w = 128,
-            .pixel_h = 128,
-            .blend_mode = RenderAlphaMode::Transparent,
-            .texture_id = "billboard_ecs_texture_binding"
-        }
     };
-
-    // Billboard resources are managed by BillboardRenderSystem
 
     bool last_key_1 = false;
     bool last_key_2 = false;
@@ -184,51 +167,33 @@ private:
         if (!ecs_context || !billboard_entity)
             return false;
 
-        auto billboard = billboard_entity->GetComponent<BillboardComponent>();
-        if (!billboard)
-            return false;
+        if (icon_index < 0)        icon_index = 0;
+        if (icon_index >= kIconCount) icon_index = kIconCount - 1;
 
-        if (icon_index < 0)
-            icon_index = 0;
-        if (icon_index >= kIconCount)
-            icon_index = kIconCount - 1;
-
-        current_pipeline = preset;
+        current_pipeline   = preset;
         current_icon_index = icon_index;
 
-        if (kUseDecoupledBillboardPath)
-        {
-            // New path: re-submit recipe + texture binding task
-            auto primitive = billboard_entity->GetComponent<PrimitiveComponent>();
-            if (!primitive) return false;
+        auto primitive = billboard_entity->GetComponent<PrimitiveComponent>();
+        if (!primitive) return false;
 
-            const mtl::MaterialRecipe* recipe = &kBillboardSolidCfg;
-            if (preset == GraphicsPipelinePreset::Alpha3D)  recipe = &kBillboardAlphaCfg;
-            if (preset == GraphicsPipelinePreset::Dither3D) recipe = &kBillboardDitherCfg;
+        const mtl::MaterialRecipe* recipe = &kBillboardSolidCfg;
+        if (preset == GraphicsPipelinePreset::Alpha3D)  recipe = &kBillboardAlphaCfg;
+        if (preset == GraphicsPipelinePreset::Dither3D) recipe = &kBillboardDitherCfg;
 
-            const math::Vector2u billboard_size(
-                recipe->billboard.pixel_w,
-                recipe->billboard.pixel_h);
-            primitive->SetMaterialRecipe(RegisterMaterialRecipe(*recipe), &billboard_size, sizeof(billboard_size));
+        primitive->SetMaterialRecipe(RegisterMaterialRecipe(*recipe), nullptr, 0);
 
-            auto texture_binding_system = ecs_context->GetSystem<TextureMaterialBindingSystem>();
-            if (texture_binding_system)
-                texture_binding_system->SubmitTextureBindingRequest(
-                    billboard_entity->GetID(),
-                    kIconTextures[current_icon_index],
-                    {},
-                    graph::mtl::SamplerSlot::BaseColor,
-                    graph::mtl::TextureSourceMode::Simple,
-                    graph::TextureChannelHint::Grayscale);
-        }
-        else
-        {
-            billboard->SetTexture(kIconTextures[current_icon_index]);
-        }
+        auto texture_binding_system = ecs_context->GetSystem<TextureMaterialBindingSystem>();
+        if (texture_binding_system)
+            texture_binding_system->SubmitTextureBindingRequest(
+                billboard_entity->GetID(),
+                kIconTextures[current_icon_index],
+                {},
+                graph::mtl::SamplerSlot::BaseColor,
+                graph::mtl::TextureSourceMode::Simple,
+                graph::TextureChannelHint::Grayscale);
 
         std::cout << "[BillboardECS] Mode switched: " << GetPipelineName(preset)
-                  << ", texture index=" << current_icon_index
-                  << " (" << (kUseDecoupledBillboardPath ? "decoupled" : "legacy") << ")" << std::endl;
+                  << ", texture index=" << current_icon_index << std::endl;
         return true;
     }
 
@@ -273,16 +238,15 @@ private:
         auto* render_context = GetRenderContext();
         if (!render_context) return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context) return false;
-
-        GraphicsGeometryFactory geometry_factory(graphics_context);
-
         using namespace inline_geometry;
 
     #ifdef SHOW_PLANE_GRID
-        // Create plane grid geometry
         {
+            auto* graphics_context = render_context->GetGraphicsContext();
+            if (!graphics_context) return false;
+
+            GraphicsGeometryFactory geometry_factory(graphics_context);
+
             GeometryVertexFormat gvf;
             gvf.Set(VAN::Position,  VF_V2F);
             gvf.Set(VAN::Luminance, VF_V1UN8);
@@ -310,32 +274,10 @@ private:
 
     /**
      * Ensure render systems are registered
-     * - FacingTransformSystem: Handles camera-facing rotation
      */
     bool EnsureRenderSystems()
     {
-        if (!ecs_context) return false;
-
-        // Register FacingTransformSystem (handles camera-facing rotation)
-        auto facing_system = ecs_context->GetSystem<FacingTransformSystem>();
-        if (!facing_system)
-        {
-            std::cout << "[BillboardECS] Creating FacingTransformSystem..." << std::endl;
-            facing_system = ecs_context->RegisterTickSystem<FacingTransformSystem>();
-            facing_system->SetWorld(ecs_context);
-            facing_system->SetCameraInfo(GetCameraInfo());
-
-            std::cout << "[BillboardECS] FacingTransformSystem created at " << (void*)facing_system.get() << std::endl;
-
-            if (ecs_context->IsActive())
-            {
-                facing_system->OnDependenciesReady();
-                facing_system->Initialize();
-                std::cout << "[BillboardECS] FacingTransformSystem initialized and started" << std::endl;
-            }
-        }
-
-        return facing_system != nullptr;
+        return ecs_context != nullptr;
     }
 
     /**
@@ -347,117 +289,88 @@ private:
         if (!ecs_context) return false;
 
         std::cout << "\n[BillboardECS] === ECS INITIALIZATION START ===" << std::endl;
-        std::cout << "[BillboardECS] ECSContext pointer: " << (void*)ecs_context << std::endl;
-        std::cout << "[BillboardECS] Initial entity count: " << ecs_context->GetEntityCount() << std::endl;
 
         if (!EnsureRenderSystems()) return false;
 
         auto texture_binding_system = ecs_context->GetSystem<TextureMaterialBindingSystem>();
         if (!texture_binding_system) return false;
 
-        if (!kUseDecoupledBillboardPath)
+        // Create shared unit quad geometry
         {
+            auto* graphics_context = GetGraphicsContext();
+            if (!graphics_context) return false;
+
+            GraphicsGeometryFactory geometry_factory(graphics_context);
+
+            geom_unit_quad = WorkObject::CreateGeometry("UnitQuad",
+                                                        4, 6, IndexType::U16,
+                                                        {{VAN::Position, VF_V2F, kUnitQuadPosition},
+                                                         {VAN::TexCoord, VF_V2F, kUnitQuadTexCoord}},
+                                                        kUnitQuadIndices);
+            if (!geom_unit_quad)
+            {
+                std::cout << "[BillboardECS] Failed to create unit quad geometry" << std::endl;
+                return false;
+            }
+            std::cout << "[BillboardECS] Unit quad geometry: " << (void*)geom_unit_quad << std::endl;
         }
 
     #ifdef SHOW_PLANE_GRID
         std::cout << "\n[BillboardECS] Creating PlaneGrid entity..." << std::endl;
-
-        // Create plane grid entity
         {
             grid_entity = ecs_context->CreateEntity<Entity>("PlaneGrid");
-            std::cout << "  -> PlaneGrid entity created at " << (void*)grid_entity << std::endl;
 
             auto grid_transform = grid_entity->AddComponent<TransformComponent>(Mobility::Static);
             grid_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             grid_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             grid_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             grid_transform->SetMovable(false);
-            std::cout << "  -> TransformComponent added" << std::endl;
 
             auto grid_primitive = grid_entity->AddComponent<PrimitiveComponent>();
             grid_primitive->SetUnresolvedGeometry(geom_plane_grid);
             grid_primitive->SetMaterialRecipe(RegisterMaterialRecipe(kPlaneGridCfg), &white_color, sizeof(white_color));
             grid_primitive->SetVisible(true);
-            std::cout << "  -> PrimitiveComponent added, visible=" << grid_primitive->IsVisible() << std::endl;
         }
     #endif//SHOW_PLANE_GRID
 
-        std::cout << "\n[BillboardECS] Creating Billboard entity (path=" << (kUseDecoupledBillboardPath ? "decoupled" : "legacy") << ")..." << std::endl;
+        std::cout << "\n[BillboardECS] Creating Billboard entity..." << std::endl;
         {
             billboard_entity = ecs_context->CreateEntity<Entity>("Billboard");
-            std::cout << "  -> Billboard entity created at " << (void*)billboard_entity << std::endl;
 
             auto billboard_transform = billboard_entity->AddComponent<TransformComponent>(Mobility::Static);
             billboard_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             billboard_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            billboard_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            billboard_transform->SetLocalScale(glm::vec3(128.0f, 128.0f, 1.0f));  // 128x128 pixel size via scale
             billboard_transform->SetMovable(false);
 
-            auto billboard = billboard_entity->AddComponent<BillboardComponent>();
+            auto primitive = billboard_entity->AddComponent<PrimitiveComponent>();
+            primitive->SetUnresolvedGeometry(geom_unit_quad);
+            primitive->SetMaterialRecipe(RegisterMaterialRecipe(kBillboardSolidCfg), nullptr, 0);
+            primitive->SetVisible(true);
+            std::cout << "  -> PrimitiveComponent added (UnlitTexture3D + BillboardAxisLocked)" << std::endl;
 
-            if (kUseDecoupledBillboardPath)
-            {
-                // Phase 5 new path: BehaviorOnly + BillboardScaleComponent + QuadMeshComponent + PrimitiveComponent
-                billboard->SetRenderBridgeMode(BillboardRenderBridgeMode::BehaviorOnly);
-                std::cout << "  -> BillboardComponent (BehaviorOnly) added" << std::endl;
-
-                auto scale = billboard_entity->AddComponent<BillboardScaleComponent>();
-                scale->SetFixedPixelSize(false);
-                scale->SetWorldSize(1.0f, 1.0f);
-                std::cout << "  -> BillboardScaleComponent added, neutral world-size" << std::endl;
-
-                auto quad_mesh = billboard_entity->AddComponent<QuadMeshComponent>();
-                quad_mesh->SetSize(1.0f, 1.0f);
-                quad_mesh->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
-                std::cout << "  -> QuadMeshComponent added" << std::endl;
-
-                auto primitive = billboard_entity->AddComponent<PrimitiveComponent>();
-                const math::Vector2u billboard_size(
-                    kBillboardSolidCfg.billboard.pixel_w,
-                    kBillboardSolidCfg.billboard.pixel_h);
-                primitive->SetMaterialRecipe(RegisterMaterialRecipe(kBillboardSolidCfg), &billboard_size, sizeof(billboard_size));
-                primitive->SetVisible(true);
-                std::cout << "  -> PrimitiveComponent added (Billboard2DFixed recipe)" << std::endl;
-
-                texture_binding_system->SubmitTextureBindingRequest(
-                    billboard_entity->GetID(),
-                    kIconTextures[current_icon_index],
-                    {},
-                    graph::mtl::SamplerSlot::BaseColor,
-                    graph::mtl::TextureSourceMode::Simple,
-                    graph::TextureChannelHint::Grayscale);
-                std::cout << "  -> TextureBindingTask submitted: gradient[" << current_icon_index << "] non-domain" << std::endl;
-            }
-            else
-            {
-                // Legacy path: BillboardComponent drives QuadComponent
-                billboard->SetVisible(true);
-                billboard->SetFixedPixelSize(true);
-                billboard->SetPixelSize(512, 512);
-                billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
-                billboard->SetTexture(kIconTextures[current_icon_index]);
-                std::cout << "  -> BillboardComponent (LegacyQuad) configured, texture=gradient[" << current_icon_index << "]" << std::endl;
-            }
+            texture_binding_system->SubmitTextureBindingRequest(
+                billboard_entity->GetID(),
+                kIconTextures[current_icon_index],
+                {},
+                graph::mtl::SamplerSlot::BaseColor,
+                graph::mtl::TextureSourceMode::Simple,
+                graph::TextureChannelHint::Grayscale);
+            std::cout << "  -> Texture binding submitted: gradient[" << current_icon_index << "]" << std::endl;
         }
 
-        std::cout << "\n[BillboardECS] Creating Phase4 TextureBinding entities..." << std::endl;
+        std::cout << "\n[BillboardECS] Creating TextureBinding entities..." << std::endl;
         {
             textured_quad_entity = ecs_context->CreateEntity<Entity>("TextureBoundQuad");
             auto transform = textured_quad_entity->AddComponent<TransformComponent>(Mobility::Static);
             transform->SetLocalPosition(glm::vec3(-12.0f, 10.0f, 0.0f));
             transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform->SetLocalScale(glm::vec3(128.0f, 128.0f, 1.0f));
             transform->SetMovable(false);
 
-            auto quad_mesh = textured_quad_entity->AddComponent<QuadMeshComponent>();
-            quad_mesh->SetSize(1.0f, 1.0f);
-            quad_mesh->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
-
             auto primitive = textured_quad_entity->AddComponent<PrimitiveComponent>();
-            const math::Vector2u billboard_size(
-                kTexturedQuadCfg.billboard.pixel_w,
-                kTexturedQuadCfg.billboard.pixel_h);
-            primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg), &billboard_size, sizeof(billboard_size));
+            primitive->SetUnresolvedGeometry(geom_unit_quad);
+            primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg), nullptr, 0);
             primitive->SetVisible(true);
 
             texture_binding_system->SubmitTextureBindingRequest(textured_quad_entity->GetID(), kIconTextures[22]);
@@ -468,18 +381,12 @@ private:
             auto transform = textured_quad_domain_entity->AddComponent<TransformComponent>(Mobility::Static);
             transform->SetLocalPosition(glm::vec3(12.0f, 10.0f, 0.0f));
             transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform->SetLocalScale(glm::vec3(128.0f, 128.0f, 1.0f));
             transform->SetMovable(false);
 
-            auto quad_mesh = textured_quad_domain_entity->AddComponent<QuadMeshComponent>();
-            quad_mesh->SetSize(1.0f, 1.0f);
-            quad_mesh->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
-
             auto primitive = textured_quad_domain_entity->AddComponent<PrimitiveComponent>();
-            const math::Vector2u billboard_size(
-                kTexturedQuadCfg.billboard.pixel_w,
-                kTexturedQuadCfg.billboard.pixel_h);
-            primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg), &billboard_size, sizeof(billboard_size));
+            primitive->SetUnresolvedGeometry(geom_unit_quad);
+            primitive->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg), nullptr, 0);
             primitive->SetVisible(true);
 
             texture_binding_system->SubmitTextureBindingRequest(textured_quad_domain_entity->GetID(),

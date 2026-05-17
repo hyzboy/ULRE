@@ -37,12 +37,20 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
-static const float billboard_position_data[12]=
+static const float billboard_position_data[8]=
 {
-    -0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.5f,  0.5f, 0.0f,
-    -0.5f,  0.5f, 0.0f
+    -0.5f, -0.5f,
+     0.5f, -0.5f,
+     0.5f,  0.5f,
+    -0.5f,  0.5f
+};
+
+static const float billboard_texcoord_data[8]=
+{
+    0.0f, 0.0f,
+    1.0f, 0.0f,
+    1.0f, 1.0f,
+    0.0f, 1.0f
 };
 
 static const uint16_t billboard_index_data[6]={0,1,2,0,2,3};
@@ -63,23 +71,19 @@ private:
 #endif//SHOW_PLANE_GRID
 
     inline static const mtl::MaterialRecipe kBillboardCfg {
-        .id       = "billboard_test_fixed",
-        .preset   = mtl::MaterialPreset::Billboard2DFixed,
-        .prim     = PrimitiveType::Billboard,
-        .pipeline = GraphicsPipelinePreset::Alpha3D,
+        .id           = "billboard_test_fixed",
+        .preset       = mtl::MaterialPreset::UnlitTexture3D,
+        .dim          = mtl::MaterialRecipe::Dim::D3,
+        .prim         = PrimitiveType::Triangles,
+        .vertex_input = mtl::VertexInputProfile::PositionTexCoord2D,
+        .vertex_policy= mtl::VertexTransformPolicy::BillboardAxisLocked,
+        .pipeline     = GraphicsPipelinePreset::Alpha3D,
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
         .textures = {
             { mtl::SamplerSlot::BaseColor, "res/image/lena.Tex2D" }
         },
-        .billboard = {
-            .fixed_size = true,
-            .pixel_w = 512,
-            .pixel_h = 512,
-            .blend_mode = RenderAlphaMode::Transparent,
-            .texture_id = "billboard_test_lena"
-        }
     };
 
     void DumpShaderGenValidationSample()
@@ -172,7 +176,8 @@ private:
                                                         4,
                                                         6,
                                                         IndexType::U16,
-                                                        {{VAN::Position, VF_V3F, billboard_position_data}},
+                                                        {{VAN::Position, VF_V2F, billboard_position_data},
+                                                         {VAN::TexCoord, VF_V2F, billboard_texcoord_data}},
                                                         billboard_index_data);
             if(!geom_billboard)
                 return false;
@@ -210,15 +215,11 @@ private:
 
         billboard_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         billboard_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        billboard_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        billboard_transform->SetLocalScale(glm::vec3(512.0f, 512.0f, 1.0f));  // pixel size via scale
         billboard_transform->SetMovable(false);
 
-        // Deferred path creates a new MI; keep SSBO size in sync with recipe config.
-        const math::Vector2u billboard_size(
-            kBillboardCfg.billboard.pixel_w,
-            kBillboardCfg.billboard.pixel_h);
         billboard_primitive->SetUnresolvedGeometry(geom_billboard);
-        billboard_primitive->SetMaterialRecipe(RegisterMaterialRecipe(kBillboardCfg), &billboard_size, sizeof(billboard_size));
+        billboard_primitive->SetMaterialRecipe(RegisterMaterialRecipe(kBillboardCfg), nullptr, 0);
         billboard_primitive->SetVisible(true);
 
         return true;

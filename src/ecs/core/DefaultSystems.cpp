@@ -8,7 +8,6 @@
 #include <hgl/ecs/support/line/LineRenderPipelineGroup.h>
 #include <hgl/ecs/support/line/LineCollectSystem.h>
 #include <hgl/ecs/support/line/LineRenderSystem.h>
-#include <hgl/ecs/support/billboard/BillboardRenderPipelineGroup.h>
 #include <hgl/ecs/systems/render/LineStatsSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -16,7 +15,6 @@
 #include <hgl/ecs/systems/render/MaterialResolveSystem.h>
 #include <hgl/ecs/systems/render/PrimitiveBindingCommitSystem.h>
 #include <hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
-#include <hgl/ecs/systems/render/QuadMeshPrepareSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
 #include <hgl/ecs/support/terrain/TerrainRenderPipelineGroup.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
@@ -66,10 +64,6 @@ namespace
         if (auto camera_system = ctx->GetSystem<hgl::ecs::CameraSystem>())
             camera_info = camera_system->GetCameraInfo();
 
-        auto quad_mesh_prepare_system = EnsureRenderSystem<hgl::ecs::QuadMeshPrepareSystem>(ctx);
-        if (quad_mesh_prepare_system)
-            quad_mesh_prepare_system->SetWorld(ctx);
-
         // MaterialResolveSystem
         auto material_resolve_system = EnsureRenderSystem<hgl::ecs::MaterialResolveSystem>(ctx);
         if (material_resolve_system)
@@ -114,18 +108,6 @@ namespace
 
         // New unified pipeline group replaces TextCollect/Build/Sync/Submit systems
         hgl::ecs::TextRenderPipelineGroup group;
-        group.Initialize(ctx);
-
-        return true;
-    }
-
-    bool InstallBillboardGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
-    {
-        if (!ctx)
-            return false;
-
-        // New unified pipeline group replaces inline system registration
-        hgl::ecs::BillboardRenderPipelineGroup group;
         group.Initialize(ctx);
 
         return true;
@@ -191,7 +173,6 @@ namespace
         registry.RegisterGroupInstaller("Primitive", InstallPrimitiveGroup);
         registry.RegisterGroupInstaller("AssetInstance", InstallAssetInstanceGroup);
         registry.RegisterGroupInstaller("Text", InstallTextGroup);
-        registry.RegisterGroupInstaller("Billboard", InstallBillboardGroup);
         registry.RegisterGroupInstaller("Line", InstallLineGroup);
         registry.RegisterGroupInstaller("Terrain", InstallTerrainGroup);
 
@@ -262,7 +243,6 @@ namespace hgl::ecs
         RegisterSystemGroupInstallers();
         EnsureSystemGroupSystems(ctx, "Primitive", default_rt);
         EnsureSystemGroupSystems(ctx, "Text", default_rt);
-        EnsureSystemGroupSystems(ctx, "Billboard", default_rt);
         EnsureSystemGroupSystems(ctx, "Line", default_rt);
 
         systems.input_system                = ctx->GetSystem<ecs::InputSystem>();

@@ -3,9 +3,8 @@
 // This example creates a batch of real 3D meshes and makes them always face the camera
 // while keeping Z as the up axis (Z-up billboard, no roll).
 //
-// Differences from FacingMeshBillboardECS:
-// - Facing mode uses BillboardZ (Z-up, no roll)
-// - Keeps orientation stable without flattening when camera has height
+// The facing behaviour is expressed via VertexTransformPolicy::BillboardCameraFacing
+// in the material recipe; no per-frame CPU transform update is required.
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
@@ -20,10 +19,8 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/FacingTransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/transform/FacingTransformSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -58,7 +55,6 @@ private:
         Entity* entity = nullptr;
         std::shared_ptr<TransformComponent> transform;
         std::shared_ptr<PrimitiveComponent> primitive_comp;
-        std::shared_ptr<FacingTransformComponent> facing_comp;
 
         ~RenderMesh()
         {
@@ -75,9 +71,10 @@ private:
     Entity* camera_entity = nullptr;
 
     inline static const mtl::MaterialRecipe kSolidCfg {
-        .id       = "facing_billboard_z_solid",
-        .preset   = mtl::MaterialPreset::Gizmo3D,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
+        .id            = "facing_billboard_z_solid",
+        .preset        = mtl::MaterialPreset::Gizmo3D,
+        .vertex_policy = mtl::VertexTransformPolicy::BillboardCameraFacing,
+        .pipeline      = GraphicsPipelinePreset::Solid3D,
     };
 
 private:
@@ -213,28 +210,6 @@ private:
         return true;
     }
 
-    bool EnsureFacingSystem()
-    {
-        if (!ecs_context)
-            return false;
-
-        auto facing_system = ecs_context->GetSystem<FacingTransformSystem>();
-        if (!facing_system)
-        {
-            facing_system = ecs_context->RegisterTickSystem<FacingTransformSystem>();
-            facing_system->SetWorld(ecs_context);
-            facing_system->SetCameraInfo(GetCameraInfo());
-
-            if (ecs_context->IsActive())
-            {
-                facing_system->OnDependenciesReady();
-                facing_system->Initialize();
-            }
-        }
-
-        return facing_system != nullptr;
-    }
-
     bool InitSceneEntities()
     {
         if (!ecs_context || render_meshes.empty())
@@ -251,7 +226,6 @@ private:
             rm->entity = ecs_context->CreateEntity<Entity>("FacingMeshZ_" + std::to_string(i));
             rm->transform = rm->entity->AddComponent<TransformComponent>(Mobility::Static);
             rm->primitive_comp = rm->entity->AddComponent<PrimitiveComponent>();
-            rm->facing_comp = rm->entity->AddComponent<FacingTransformComponent>();
 
             float angle = glm::radians(360.0f * static_cast<float>(i) / static_cast<float>(mesh_count));
             glm::vec3 pos = glm::vec3(std::cos(angle) * 8.0f,
@@ -266,9 +240,6 @@ private:
             rm->primitive_comp->SetUnresolvedGeometry(rm->geometry);
             rm->primitive_comp->SetMaterialRecipe(RegisterMaterialRecipe(kSolidCfg), &entity_colors[rm->color_index], sizeof(Color4f));
             rm->primitive_comp->SetVisible(true);
-
-            rm->facing_comp->SetFacingMode(FacingMode::BillboardZ);
-            rm->facing_comp->SetEnabled(true);
         }
 
         return true;
@@ -278,9 +249,6 @@ private:
     {
         ecs_context = GetECSContext();
         if (!ecs_context)
-            return false;
-
-        if (!EnsureFacingSystem())
             return false;
 
         if (!CreateGeometryMeshes())

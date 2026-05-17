@@ -1,8 +1,8 @@
 // Phase 4E — TextureBinding 新路径最小验证示例
 //
 // 验证目标：
-//   QuadMeshComponent + PrimitiveComponent + 显式 TextureBindingTask 可独立驱动贴图绑定，
-//   不依赖 QuadMaterialBindingSystem / QuadResourcePrepareSystem。
+//   unit quad geometry + PrimitiveComponent + 显式 TextureBindingTask 可独立驱动贴图绑定。
+//   两个实体使用共享 unit quad mesh，尺寸通过 Transform.scale 表达。
 //
 // 两个实体：
 //   1. "NonDomainQuad"  — non-domain 路径，domain_tag 为空
@@ -19,10 +19,8 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/components/QuadMeshComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/QuadMeshPrepareSystem.h>
 #include<hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
 
 // plane-grid shared resources
@@ -43,6 +41,21 @@ using namespace hgl::ecs;
 
 static Color4f white_color(1, 1, 1, 1);
 
+// Unit quad vertex data: Position2D + TexCoord
+static const float kTBVQuadPosition[8] = {
+    -0.5f, -0.5f,
+     0.5f, -0.5f,
+     0.5f,  0.5f,
+    -0.5f,  0.5f
+};
+static const float kTBVQuadTexCoord[8] = {
+    0.0f, 0.0f,
+    1.0f, 0.0f,
+    1.0f, 1.0f,
+    0.0f, 1.0f
+};
+static const uint16_t kTBVQuadIndices[6] = {0, 1, 2, 0, 2, 3};
+
 class TextureBindingValidationApp : public WorkObject
 {
 private:
@@ -55,6 +68,7 @@ private:
     Entity* grid_entity           = nullptr;
 
     Geometry* geom_plane_grid     = nullptr;
+    Geometry* geom_unit_quad      = nullptr;
 
     inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id            = "tbv_plane_grid",
@@ -116,25 +130,7 @@ private:
 
     bool EnsureRenderSystems()
     {
-        if (!ecs_context) return false;
-
-        // QuadMeshPrepareSystem is not in DefaultSystems — register explicitly.
-        auto quad_mesh_prepare = ecs_context->GetSystem<QuadMeshPrepareSystem>();
-        if (!quad_mesh_prepare)
-        {
-            quad_mesh_prepare = ecs_context->RegisterRenderSystem<QuadMeshPrepareSystem>();
-            quad_mesh_prepare->SetWorld(ecs_context);
-            if (ecs_context->IsActive())
-            {
-                quad_mesh_prepare->OnDependenciesReady();
-                quad_mesh_prepare->Initialize();
-            }
-        }
-
-        // MaterialResolveSystem / TextureMaterialBindingSystem / RenderDescriptorBindingSystem
-        // are all registered by DefaultSystems automatically — no explicit registration needed.
-
-        return quad_mesh_prepare != nullptr;
+        return ecs_context != nullptr;
     }
 
     bool InitializeECS()
@@ -145,6 +141,20 @@ private:
         std::cout << "\n[TBV] === ECS INITIALIZATION START ===" << std::endl;
 
         if (!EnsureRenderSystems()) return false;
+
+        // Create shared unit quad geometry
+        {
+            geom_unit_quad = WorkObject::CreateGeometry("TBV_UnitQuad",
+                                                        4, 6, IndexType::U16,
+                                                        {{VAN::Position, VF_V2F, kTBVQuadPosition},
+                                                         {VAN::TexCoord, VF_V2F, kTBVQuadTexCoord}},
+                                                        kTBVQuadIndices);
+            if (!geom_unit_quad)
+            {
+                std::cout << "[TBV] Failed to create unit quad geometry" << std::endl;
+                return false;
+            }
+        }
 
         // ── Plane grid entity ─────────────────────────────────────────────────
         {
@@ -173,14 +183,11 @@ private:
             auto t = non_domain_entity->AddComponent<TransformComponent>(Mobility::Static);
             t->SetLocalPosition(glm::vec3(-8.0f, 8.0f, 0.0f));
             t->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            t->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            t->SetLocalScale(glm::vec3(8.0f, 8.0f, 1.0f));  // size via scale
             t->SetMovable(false);
 
-            auto qm = non_domain_entity->AddComponent<QuadMeshComponent>();
-            qm->SetSize(8.0f, 8.0f);
-            qm->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
-
             auto p = non_domain_entity->AddComponent<PrimitiveComponent>();
+            p->SetUnresolvedGeometry(geom_unit_quad);
             p->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg));
             p->SetVisible(true);
 
@@ -197,14 +204,11 @@ private:
             auto t = domain_entity->AddComponent<TransformComponent>(Mobility::Static);
             t->SetLocalPosition(glm::vec3(8.0f, 8.0f, 0.0f));
             t->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            t->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            t->SetLocalScale(glm::vec3(8.0f, 8.0f, 1.0f));  // size via scale
             t->SetMovable(false);
 
-            auto qm = domain_entity->AddComponent<QuadMeshComponent>();
-            qm->SetSize(8.0f, 8.0f);
-            qm->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
-
             auto p = domain_entity->AddComponent<PrimitiveComponent>();
+            p->SetUnresolvedGeometry(geom_unit_quad);
             p->SetMaterialRecipe(RegisterMaterialRecipe(kTexturedQuadCfg));
             p->SetVisible(true);
 
