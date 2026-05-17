@@ -3,7 +3,7 @@
 /// MaterialAssetLoader.h — 从 MaterialRecipe 驱动材质创建的内联辅助函数
 ///
 /// 将 MaterialRecipe 中的平铺字段还原为对应的
-/// Material2DCreateConfig / Material3DCreateConfig / BillboardMaterialCreateConfig，
+/// Material2DCreateConfig / Material3DCreateConfig，
 /// 调用 ShaderMaterialProgramManager::ResolveOrCreateProgram，并可选地加载纹理并绑定到材质。
 ///
 /// 用法示例（示例程序顶部的静态配置表）：

@@ -37,7 +37,9 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
-static const float billboard_position_data[8]=
+// Unit quad vertex data: Position2D + TexCoord.
+// Billboard size is expressed only through Transform.scale.
+static const float kUnitQuadPosition[8]=
 {
     -0.5f, -0.5f,
      0.5f, -0.5f,
@@ -45,7 +47,7 @@ static const float billboard_position_data[8]=
     -0.5f,  0.5f
 };
 
-static const float billboard_texcoord_data[8]=
+static const float kUnitQuadTexCoord[8]=
 {
     0.0f, 0.0f,
     1.0f, 0.0f,
@@ -53,7 +55,10 @@ static const float billboard_texcoord_data[8]=
     0.0f, 1.0f
 };
 
-static const uint16_t billboard_index_data[6]={0,1,2,0,2,3};
+static const uint16_t kUnitQuadIndices[6]={0,1,2,0,2,3};
+
+constexpr float kBillboardPixelWidth  = 512.0f;
+constexpr float kBillboardPixelHeight = 512.0f;
 
 static Color4f white_color(1,1,1,1);
 
@@ -172,13 +177,13 @@ private:
     #endif//SHOW_PLANE_GRID
 
         {
-            geom_billboard = WorkObject::CreateGeometry("Billboard",
+            geom_billboard = WorkObject::CreateGeometry("BillboardBase_UnitQuad",
                                                         4,
                                                         6,
                                                         IndexType::U16,
-                                                        {{VAN::Position, VF_V2F, billboard_position_data},
-                                                         {VAN::TexCoord, VF_V2F, billboard_texcoord_data}},
-                                                        billboard_index_data);
+                                                        {{VAN::Position, VF_V2F, kUnitQuadPosition},
+                                                         {VAN::TexCoord, VF_V2F, kUnitQuadTexCoord}},
+                                                        kUnitQuadIndices);
             if(!geom_billboard)
                 return false;
 
@@ -209,13 +214,13 @@ private:
         grid_primitive->SetVisible(true);
 #endif//SHOW_PLANE_GRID
 
-        billboard_entity = ecs_context->CreateEntity<Entity>("Billboard");
+        billboard_entity = ecs_context->CreateEntity<Entity>("Billboard_AxisLocked");
         auto billboard_transform = billboard_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto billboard_primitive = billboard_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
         billboard_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         billboard_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        billboard_transform->SetLocalScale(glm::vec3(512.0f, 512.0f, 1.0f));  // pixel size via scale
+        billboard_transform->SetLocalScale(glm::vec3(kBillboardPixelWidth, kBillboardPixelHeight, 1.0f));
         billboard_transform->SetMovable(false);
 
         billboard_primitive->SetUnresolvedGeometry(geom_billboard);
