@@ -42,8 +42,6 @@ SurfaceInput ResolveSurfaceInput()
     // uv0
 #if defined(HAS_TEXCOORD)
     si.uv0         = fragUV0;
-#elif defined(HAS_BILLBOARD_TEXCOORD)
-    si.uv0         = fragTexCoord;
 #else
     si.uv0         = vec2(0.0);
 #endif

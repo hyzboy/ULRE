@@ -46,11 +46,6 @@ layout(location=3) _VARYING_DIR vec2 fragUV0;
 layout(location=4) _VARYING_DIR vec4 fragVertexColor;
 #endif
 
-// --- location 5: Billboard Tex Coord ---
-#ifdef HAS_BILLBOARD_TEXCOORD
-layout(location=5) _VARYING_DIR vec2 fragTexCoord;
-#endif
-
 // --- location 6: Direction (sky) ---
 #ifdef HAS_DIRECTION
 layout(location=6) _VARYING_DIR vec3 fragDirection;

@@ -37,11 +37,6 @@ layout(location=3) out vec2 fragUV0;
 layout(location=4) out vec4 fragVertexColor;
 #endif
 
-// location 5: Billboard Tex Coord
-#ifdef HAS_BILLBOARD_TEXCOORD
-layout(location=5) out vec2 fragTexCoord;
-#endif
-
 // location 6: Direction (sky / atmosphere)
 #ifdef HAS_DIRECTION
 layout(location=6) out vec3 fragDirection;
