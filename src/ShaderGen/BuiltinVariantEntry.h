@@ -301,7 +301,7 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         break;
 
     case MaterialPreset::Billboard2DDynamic:
-        row.primitive = PrimitiveType::Billboard;
+        row.primitive = PrimitiveType::Triangles;
         row.vertex_input = VertexInputProfile::BillboardPositionOnly3D;
         row.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
         row.surface_model = SurfaceShadingModel::BillboardTexture;
@@ -320,7 +320,7 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         break;
 
     case MaterialPreset::Billboard2DFixed:
-        row.primitive = PrimitiveType::Billboard;
+        row.primitive = PrimitiveType::Triangles;
         row.vertex_input = VertexInputProfile::BillboardPositionOnly3D;
         row.vertex_policy = VertexTransformPolicy::BillboardAxisLocked;
         row.surface_model = SurfaceShadingModel::BillboardTexture;
