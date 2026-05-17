@@ -173,6 +173,8 @@ namespace
         }
 
         // ── Common UBOs (camera, transform, MI id) ────────────────────────────
+        if (f.needs_camera)    writer.EmitDefine("NEEDS_CAMERA");
+        if (f.needs_transform) writer.EmitDefine("NEEDS_TRANSFORM");
         writer.EmitInclude("compositor/vert_forward_ubo.glsl");
 
         // ── Axis 2: vertex policy ─────────────────────────────────────────────
@@ -492,8 +494,10 @@ namespace
                 flags.SetVertexAttrib(attrib);
         }
 
-        flags.has_direction = row.vs_features.has_direction;
-        flags.vertex_policy = row.vertex_policy;
+        flags.has_direction   = row.vs_features.has_direction;
+        flags.vertex_policy   = row.vertex_policy;
+        flags.needs_camera    = row.resources.needs_camera;
+        flags.needs_transform = row.resources.needs_transform;
 
         if (row.surface_model == hgl::graph::mtl::SurfaceShadingModel::SkyMinimal)
             flags.vertex_attrib_bits = 0;

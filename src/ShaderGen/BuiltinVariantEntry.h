@@ -424,6 +424,11 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vertex_policy = VertexTransformPolicy::FullscreenTriangle;
         row.surface_model = SurfaceShadingModel::Unknown;
         row.def_hint = StaticMaterialDefIdHint::FullscreenTriangle;
+        // PCG fullscreen: VS 不做矩阵变换，无需 camera / transform binding
+        // FS (pcg_fragcoord) 需要 viewport 做屏幕空间归一化
+        row.resources.needs_viewport   = true;
+        row.resources.needs_camera     = false;
+        row.resources.needs_transform  = false;
         break;
 
     case MaterialPreset::Checkerboard3D:

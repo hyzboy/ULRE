@@ -43,6 +43,7 @@ struct CompositorFeatureFlags
     FragmentProviderId            fragment_provider = FragmentProviderId::Default;
     bool enable_lighting  = false;
     bool needs_camera     = false;
+    bool needs_transform  = false;
     bool needs_sky        = false;
     bool alpha_masked     = false;
     bool alpha_dither     = false;
