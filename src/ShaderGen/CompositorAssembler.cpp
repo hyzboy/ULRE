@@ -164,7 +164,6 @@ namespace
     {
         std::string out = "#version " + std::to_string(g_shader_version) + "\n\n";
         hgl::graph::ShaderWriter writer(out);
-        const bool has_standard_texcoord = f.HasVertexAttrib(hgl::graph::VertexAttrib::TexCoord);
 
         writer.EmitCommentLine("BuildForwardFragmentEntry.Begin");
 
@@ -175,7 +174,6 @@ namespace
         if (f.needs_sky)        writer.EmitDefine("NEEDS_SKY");
         if (f.alpha_masked)     writer.EmitDefine("ALPHA_MODE_MASKED");
         if (f.alpha_dither)     writer.EmitDefine("ALPHA_MODE_DITHER");
-        if (f.has_texcoord && !has_standard_texcoord) writer.EmitDefine("HAS_BILLBOARD_TEXCOORD");
         if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
         if (f.has_clip_pos)     writer.EmitDefine("HAS_CLIP_POS");
 
@@ -549,7 +547,7 @@ namespace
         flags.needs_sky = row.resources.needs_sky;
         flags.sky_ambient_model = row.resources.sky_model;
 
-        if (row.vertex_input == VIP::BillboardPositionOnly3D || row.fs_features.has_direction)
+        if (row.fs_features.has_direction)
             flags.vertex_attrib_bits = 0;
 
         return flags;

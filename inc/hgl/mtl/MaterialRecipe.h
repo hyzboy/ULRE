@@ -11,8 +11,7 @@
 ///   ├─ Material2DCreateConfig      2D 材质（坐标系、position 格式）
 ///   └─ Material3DCreateConfig      3D 材质（摄像机/天空/光照模型）
 ///      ├─ SkyMinimalCreateConfig   仅预设构造参数，无额外字段
-///      ├─ TerrainGridCreateConfig  仅预设构造参数，无额外字段
-///      └─ BillboardMaterialCreateConfig  固定/动态大小 + 混合模式等
+///      └─ TerrainGridCreateConfig  仅预设构造参数，无额外字段
 ///
 /// MaterialRecipe 将上述所有字段展平到单个结构体中，
 /// 通过 dim 字段区分 2D / 3D，通过 preset 字段决定子类型处理逻辑。
@@ -44,7 +43,6 @@ namespace hgl::graph::mtl
 /// - 与序列化层解耦：字段全部是基础类型或 std::string，无运行时指针
 /// - 2D/3D 共用一个结构体，通过 dim 字段区分；未使用的字段在对应分支被忽略
 /// - 纹理路径为空时跳过加载；pos_format 为零初始化时使用维度默认值
-/// - billboard 子结构仅在 preset == Billboard2DFixed / Billboard2DDynamic 时生效
 struct MaterialRecipe
 {
     // ── 标识 ──────────────────────────────────────────────────────────────────
@@ -114,17 +112,6 @@ struct MaterialRecipe
     };
     std::vector<TextureAssetRef> textures;              ///< 纹理资产绑定列表
 
-    // ── Billboard 专用配置（仅对 Billboard2DFixed / Billboard2DDynamic 有效）──
-    struct BillboardConfig
-    {
-        bool               fixed_size          = false;                     ///< 像素固定大小
-        uint32             pixel_w             = 64;                        ///< 像素宽度
-        uint32             pixel_h             = 64;                        ///< 像素高度
-        RenderAlphaMode    blend_mode          = RenderAlphaMode::Transparent;    ///< 混合模式
-        TextureChannelHint base_color_channel  = TextureChannelHint::RGBA;  ///< 通道提示
-        bool               front_face_ccw      = false;                     ///< false = Clockwise
-        std::string        texture_id;                                      ///< 纹理唯一标识
-    } billboard;
 };
 
 } // namespace hgl::graph::mtl

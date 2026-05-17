@@ -81,10 +81,7 @@ static RecipeAxisExpansion ExpandRecipeAxesFromPresetAlias(const MaterialRecipe 
     const MaterialPreset resolved_preset =
         ResolveMaterialPresetForLOD(r.preset, GetDefaultMaterialLOD());
 
-    const RenderAlphaMode target_blend =
-        (r.preset == MaterialPreset::Billboard2DDynamic || r.preset == MaterialPreset::Billboard2DFixed)
-        ? r.billboard.blend_mode
-        : RenderAlphaMode::Opaque;
+    const RenderAlphaMode target_blend = RenderAlphaMode::Opaque;
     const PassType target_pass = PrimaryPassForBlendMode(target_blend);
     const bool wants_array = HasAnyArrayTexture(r);
 
@@ -390,10 +387,6 @@ static ShaderDataSchema GetDefaultSchemaForPreset(const MaterialPreset p) noexce
     case MaterialPreset::Text2D:
         return ShaderDataSchema::TextColor;
 
-    case MaterialPreset::Billboard2DFixed:
-    case MaterialPreset::Billboard2DDynamic:
-        return ShaderDataSchema::BillboardSizeUVec2;
-
     case MaterialPreset::PBRColor3D:
         return ShaderDataSchema::PBRColorParams;
 
@@ -485,26 +478,6 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
             k.SetTextureSourceMode(cs.slot, TextureSourceMode::Simple);
         else if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
             k.SetTextureSourceMode(cs.slot, TextureSourceMode::Array);
-    }
-
-    // ── Step 6: billboard geometry mode ──────────────────────────────────────
-    // Ensure the correct geometry mode regardless of the dim override above.
-    // Mirrors M_BillboardFixedSize / M_BillboardDynamicSize lookup key setup.
-    if (r.preset == MaterialPreset::Billboard2DFixed)
-        k.geometry_mode = GeometryMode::BillboardAxisLocked;
-    else if (r.preset == MaterialPreset::Billboard2DDynamic)
-        k.geometry_mode = GeometryMode::BillboardCameraFacing;
-
-    // ── Step 7: billboard blend mode ─────────────────────────────────────────
-    // Billboard presets allow the caller to override the default Transparent
-    // blend_mode via BillboardConfig::blend_mode.
-    // Non-billboard presets inherit their blend_mode from MapPresetToVariantKey
-    // (typically Opaque for 3-D presets, Transparent for billboard bases).
-    if (r.preset == MaterialPreset::Billboard2DFixed
-        || r.preset == MaterialPreset::Billboard2DDynamic)
-    {
-        k.blend_mode = r.billboard.blend_mode;
-        k.pass_hint  = GetPrimaryPassForBlendMode(r.billboard.blend_mode);
     }
 
     // ── Step 8: explicit axis overrides (Phase B) ─────────────────────────────

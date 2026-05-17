@@ -121,45 +121,5 @@ std::string Material3DCreateConfig::ToHashStdString()
     return hash;
 }
 
-std::string BillboardMaterialCreateConfig::ToHashStdString()
-{
-    std::string hash = Material3DCreateConfig::ToHashStdString();
-
-    hash += fixed_size ? "_Fixed" : "_Dynamic";
-
-    if (fixed_size && (pixel_size.x > 0 || pixel_size.y > 0))
-    {
-        hash += "_";
-        hash += std::to_string(pixel_size.x);
-        hash += "x";
-        hash += std::to_string(pixel_size.y);
-    }
-
-    if (front_face == VK_FRONT_FACE_COUNTER_CLOCKWISE)
-        hash += "_CCW";
-
-    if (!texture_id.empty())
-    {
-        hash += "_";
-        hash += texture_id;
-    }
-
-    switch (blend_mode)
-    {
-    case RenderAlphaMode::Masked:         hash += "_Masked";  break;
-    case RenderAlphaMode::Dither:         hash += "_Dither";  break;
-    case RenderAlphaMode::AlphaToCoverage:hash += "_A2C";     break;
-    case RenderAlphaMode::Opaque:         hash += "_Opaque";  break;
-    default: break; // Transparent is the default, no suffix needed
-    }
-
-    if (base_color_channel == TextureChannelHint::Grayscale)
-        hash += "_Gray";
-
-    if (use_texture_array)
-        hash += "_TexArr";
-
-    return hash;
-}
 
 }//namespace hgl::graph::mtl

@@ -63,16 +63,6 @@ namespace hgl::graph::mtl
         h = hgl::hash::FNV1aAppend(h, '\0');
     }
 
-    // ── Billboard 专用配置 ──────────────────────────────────────────────────
-    h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.billboard.fixed_size ? 1u : 0u));
-    h = hgl::hash::FNV1aAppendValueBytes(h, r.billboard.pixel_w);
-    h = hgl::hash::FNV1aAppendValueBytes(h, r.billboard.pixel_h);
-    h = hgl::hash::FNV1aAppendValueBytes(h, r.billboard.blend_mode);
-    h = hgl::hash::FNV1aAppendValueBytes(h, r.billboard.base_color_channel);
-    h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.billboard.front_face_ccw ? 1u : 0u));
-    h = hgl::hash::FNV1aAppendBytes(h, r.billboard.texture_id.data(), r.billboard.texture_id.size());
-    h = hgl::hash::FNV1aAppend(h, '\0');
-
     return h;
 }
 

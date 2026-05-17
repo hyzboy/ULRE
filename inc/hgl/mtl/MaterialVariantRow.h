@@ -30,7 +30,6 @@ namespace hgl::graph::mtl
         PositionTexCoord2D,
         PositionTexCoord3D,
         PositionPaletteIndex3D,
-        BillboardPositionOnly3D,
         FullscreenProcedural,
     };
 
@@ -55,7 +54,6 @@ namespace hgl::graph::mtl
         VertexLuminance,
         Texture2D,
         Text,
-        BillboardTexture,
         UnlitTexture3D,
         Gizmo,
         TerrainGrid,
@@ -74,8 +72,6 @@ namespace hgl::graph::mtl
         Gizmo3D,
         Standard2D,
         Standard3D,
-        BillboardFixed,
-        BillboardDynamic,
         TerrainGrid,
         SkyMinimal,
         VertexColor3D,
@@ -171,7 +167,6 @@ namespace hgl::graph::mtl
         case VertexInputProfile::PositionTexCoord2D: return "PositionTexCoord2D";
         case VertexInputProfile::PositionTexCoord3D: return "PositionTexCoord3D";
         case VertexInputProfile::PositionPaletteIndex3D: return "PositionPaletteIndex3D";
-        case VertexInputProfile::BillboardPositionOnly3D: return "BillboardPositionOnly3D";
         case VertexInputProfile::FullscreenProcedural: return "FullscreenProcedural";
         default: return "Unknown";
         }
@@ -204,7 +199,7 @@ namespace hgl::graph::mtl
         case SurfaceShadingModel::VertexLuminance: return "VertexLuminance";
         case SurfaceShadingModel::Texture2D: return "Texture2D";
         case SurfaceShadingModel::Text: return "Text";
-        case SurfaceShadingModel::BillboardTexture: return "BillboardTexture";
+        case SurfaceShadingModel::UnlitTexture3D: return "UnlitTexture3D";
         case SurfaceShadingModel::Gizmo: return "Gizmo";
         case SurfaceShadingModel::TerrainGrid: return "TerrainGrid";
         case SurfaceShadingModel::SkyMinimal: return "SkyMinimal";
@@ -226,13 +221,12 @@ namespace hgl::graph::mtl
         case StaticMaterialDefIdHint::Gizmo3D: return "Gizmo3D";
         case StaticMaterialDefIdHint::Standard2D: return "Standard2D";
         case StaticMaterialDefIdHint::Standard3D: return "Standard3D";
-        case StaticMaterialDefIdHint::BillboardFixed: return "BillboardFixed";
-        case StaticMaterialDefIdHint::BillboardDynamic: return "BillboardDynamic";
         case StaticMaterialDefIdHint::TerrainGrid: return "TerrainGrid";
         case StaticMaterialDefIdHint::SkyMinimal: return "SkyMinimal";
         case StaticMaterialDefIdHint::VertexColor3D: return "VertexColor3D";
         case StaticMaterialDefIdHint::VertexPaletteColor3D: return "VertexPaletteColor3D";
         case StaticMaterialDefIdHint::VertexLuminance3D: return "VertexLuminance3D";
+        case StaticMaterialDefIdHint::UnlitTexture3D: return "UnlitTexture3D";
         case StaticMaterialDefIdHint::Text2D: return "Text2D";
         case StaticMaterialDefIdHint::FullscreenTriangle: return "FullscreenTriangle";
         default: return "None";

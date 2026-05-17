@@ -378,8 +378,6 @@ static const PresetResolveEntry kPresetResolveTable[] =
     {MaterialPreset::Gizmo3D,              "Gizmo3D"},
     {MaterialPreset::TerrainGrid,          "TerrainGrid"},
     {MaterialPreset::SkyMinimal,           "SkyMinimal"},
-    {MaterialPreset::Billboard2DDynamic,   "Billboard2DDynamic"},
-    {MaterialPreset::Billboard2DFixed,     "Billboard2DFixed"},
     {MaterialPreset::Standard,             "Standard"},
     {MaterialPreset::PBRColor3D,           "PBRColor3D"},
     // Semantic aliases (LOD reserved, current lod=0 target is Standard)
@@ -437,9 +435,6 @@ static void NormalizeBuiltinPresetParityOverrides(const MaterialPreset preset,
         return;
 
     if (preset == MaterialPreset::PBRColor3D)
-        return;
-
-    if (preset == MaterialPreset::Billboard2DDynamic || preset == MaterialPreset::Billboard2DFixed)
         return;
 
     if (cfg3d->lighting_model != routed_key.lighting_model)
@@ -981,15 +976,6 @@ void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreate
 {
     if (!cfg)
         return;
-
-    // Billboard: blend_mode is per-instance and was not part of the RouteKey call
-    // (RouteKey picks the first matching entry, which defaults to Opaque).
-    // Apply the caller-supplied blend_mode here so the correct variant is selected.
-    if (const auto *billboard_cfg = AsBillboard(cfg))
-    {
-        key.blend_mode = billboard_cfg->blend_mode;
-        key.pass_hint  = detail::GetPrimaryPassForBlendMode(billboard_cfg->blend_mode);
-    }
 
     if (const auto *cfg3d = As3D(cfg))
     {

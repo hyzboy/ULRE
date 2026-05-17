@@ -54,8 +54,6 @@ namespace hgl::graph::mtl
         Gizmo3D,
         TerrainGrid,
         SkyMinimal,
-        Billboard2DDynamic,
-        Billboard2DFixed,
         Standard,
         PBRColor3D,
         VertexLuminance2D,

@@ -15,7 +15,6 @@ enum class InterstageVarying : int
     WorldNormal        = 2,  ///< vec3       — HAS_NORMAL
     UV0                = 3,  ///< vec2       — HAS_TEXCOORD
     VertexColor        = 4,  ///< vec4       — HAS_COLOR
-    BillboardTexCoord  = 5,  ///< vec2       — HAS_BILLBOARD_TEXCOORD
     Direction          = 6,  ///< vec3       — HAS_DIRECTION
     Luminance          = 7,  ///< float      — HAS_LUMINANCE
     ClipPos            = 8,  ///< vec4       — HAS_CLIP_POS

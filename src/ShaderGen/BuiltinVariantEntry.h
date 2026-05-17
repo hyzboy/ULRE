@@ -284,9 +284,26 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 
     case MaterialPreset::UnlitTexture3D:
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::PositionTexCoord3D;
-        row.vertex_policy = VertexTransformPolicy::Mesh3D;
         row.surface_model = SurfaceShadingModel::UnlitTexture3D;
+
+        if (e.geometry_mode == GeometryMode::BillboardCameraFacing)
+        {
+            row.vertex_input = VertexInputProfile::PositionTexCoord2D;
+            row.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
+            row.position_provider = PositionProviderId::VAB_Vec2;
+        }
+        else if (e.geometry_mode == GeometryMode::BillboardAxisLocked)
+        {
+            row.vertex_input = VertexInputProfile::PositionTexCoord2D;
+            row.vertex_policy = VertexTransformPolicy::BillboardAxisLocked;
+            row.position_provider = PositionProviderId::VAB_Vec2;
+        }
+        else
+        {
+            row.vertex_input = VertexInputProfile::PositionTexCoord3D;
+            row.vertex_policy = VertexTransformPolicy::Mesh3D;
+        }
+
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::TexCoord);
         row.fs_features.SetVertexAttrib(VertexAttrib::TexCoord);
@@ -298,44 +315,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
                 ? graph::ColorSource::MakeSampler2DArray(SamplerSlot::BaseColor)
                 : graph::ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
         row.def_hint = StaticMaterialDefIdHint::UnlitTexture3D;
-        break;
-
-    case MaterialPreset::Billboard2DDynamic:
-        row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::BillboardPositionOnly3D;
-        row.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
-        row.surface_model = SurfaceShadingModel::BillboardTexture;
-        row.vs_features.SetVertexAttrib(VertexAttrib::Position);
-        row.fs_features.SetVertexAttrib(VertexAttrib::TexCoord);
-        row.resources.needs_viewport = true;
-        row.resources.needs_camera = true;
-        row.resources.needs_transform = true;
-        row.resources.needs_material_instance = true;
-        if (e.tex[0].mode != TextureSourceMode::None)
-            row.color_sources.push_back(e.tex[0].mode == TextureSourceMode::Array
-                ? graph::ColorSource::MakeSampler2DArray(SamplerSlot::BaseColor)
-                : graph::ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
-        row.schema = ShaderDataSchema::BillboardSizeUVec2;
-        row.def_hint = StaticMaterialDefIdHint::BillboardDynamic;
-        break;
-
-    case MaterialPreset::Billboard2DFixed:
-        row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::BillboardPositionOnly3D;
-        row.vertex_policy = VertexTransformPolicy::BillboardAxisLocked;
-        row.surface_model = SurfaceShadingModel::BillboardTexture;
-        row.vs_features.SetVertexAttrib(VertexAttrib::Position);
-        row.fs_features.SetVertexAttrib(VertexAttrib::TexCoord);
-        row.resources.needs_viewport = true;
-        row.resources.needs_camera = true;
-        row.resources.needs_transform = true;
-        row.resources.needs_material_instance = true;
-        if (e.tex[0].mode != TextureSourceMode::None)
-            row.color_sources.push_back(e.tex[0].mode == TextureSourceMode::Array
-                ? graph::ColorSource::MakeSampler2DArray(SamplerSlot::BaseColor)
-                : graph::ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
-        row.schema = ShaderDataSchema::BillboardSizeUVec2;
-        row.def_hint = StaticMaterialDefIdHint::BillboardFixed;
         break;
 
     case MaterialPreset::TerrainGrid:

@@ -29,13 +29,13 @@ namespace hgl::graph::mtl
           GeometryMode::Mesh3D, VertexInputProfile::PositionTexCoord3D, VertexTransformPolicy::Mesh3D,
           PositionProviderId::DirectVec3, 0xFFFFFFFFu, "", {}, kMesh3DVertexContract, StaticMaterialDefIdHint::UnlitTexture3D },
 
-        { "VS_BillboardDynamic", MaterialPreset::Billboard2DDynamic,
-          GeometryMode::BillboardCameraFacing, VertexInputProfile::BillboardPositionOnly3D, VertexTransformPolicy::BillboardCameraFacing,
-          PositionProviderId::DirectVec3, 0xFFFFFFFFu, "compositor/main_forward_billboard_dynamic.vert.glsl", {}, kBillboardVertexContract, StaticMaterialDefIdHint::BillboardDynamic },
+        { "VS_UnlitTexture3DBillboardDynamic", MaterialPreset::UnlitTexture3D,
+          GeometryMode::BillboardCameraFacing, VertexInputProfile::PositionTexCoord2D, VertexTransformPolicy::BillboardCameraFacing,
+          PositionProviderId::VAB_Vec2, 0xFFFFFFFFu, "compositor/main_forward_billboard_dynamic.vert.glsl", {}, kBillboardVertexContract, StaticMaterialDefIdHint::UnlitTexture3D },
 
-        { "VS_BillboardFixed", MaterialPreset::Billboard2DFixed,
-          GeometryMode::BillboardAxisLocked, VertexInputProfile::BillboardPositionOnly3D, VertexTransformPolicy::BillboardAxisLocked,
-          PositionProviderId::DirectVec3, 0xFFFFFFFFu, "compositor/main_forward_billboard_fixed.vert.glsl", {}, kBillboardVertexContract, StaticMaterialDefIdHint::BillboardFixed },
+        { "VS_UnlitTexture3DBillboardFixed", MaterialPreset::UnlitTexture3D,
+          GeometryMode::BillboardAxisLocked, VertexInputProfile::PositionTexCoord2D, VertexTransformPolicy::BillboardAxisLocked,
+          PositionProviderId::VAB_Vec2, 0xFFFFFFFFu, "compositor/main_forward_billboard_fixed.vert.glsl", {}, kBillboardVertexContract, StaticMaterialDefIdHint::UnlitTexture3D },
 
         { "VS_Text2D", MaterialPreset::Text2D,
           GeometryMode::Quad2D, VertexInputProfile::PositionTexCoord2D, VertexTransformPolicy::Text2D,

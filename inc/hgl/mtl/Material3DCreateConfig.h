@@ -100,35 +100,6 @@ public:
     }
 };
 
-struct BillboardMaterialCreateConfig:public Material3DCreateConfig
-{
-    bool        fixed_size;
-
-    Vector2u    pixel_size;             ///<像素尺寸
-
-    VkFrontFace front_face=VK_FRONT_FACE_CLOCKWISE; ///<正面朝向
-
-    std::string texture_id;             ///<纹理唯一标识，用于区分不同纹理的材质缓存
-
-    RenderAlphaMode   blend_mode = RenderAlphaMode::Transparent; ///<透明/混合模式，决定shader variant
-
-    TextureChannelHint base_color_channel = TextureChannelHint::RGBA; ///<BaseColor纹理通道提示
-
-    bool        use_texture_array = false; ///<是否使用TextureArray(sampler2DArray)替代sampler2D
-
-public:
-
-    BillboardMaterialCreateConfig(const PrimitiveType &p = PrimitiveType::Triangles,
-                                  const IncludeL2W &l2w = IncludeL2W::With,
-                                  const IncludeSky &s = IncludeSky::Without)
-        : Material3DCreateConfig(p, IncludeCamera::With, l2w, s)
-    {
-        kind = ConfigKind::Billboard;
-    }
-
-    std::string ToHashStdString() override;
-};
-
 struct StandardMaterialInstance
 {
     uint32 base_color;      ///<基础颜色
@@ -167,34 +138,19 @@ public:
 // relationships are visible and static_cast can be validated by the compiler.
 // ---------------------------------------------------------------------------
 
-/// Cast to Material3DCreateConfig* if kind is D3 or Billboard; else nullptr.
+/// Cast to Material3DCreateConfig* if kind is D3; else nullptr.
 inline Material3DCreateConfig *As3D(MaterialCreateConfig *cfg) noexcept
 {
     if (!cfg) return nullptr;
-    return (cfg->kind == ConfigKind::D3 || cfg->kind == ConfigKind::Billboard)
+    return (cfg->kind == ConfigKind::D3)
         ? static_cast<Material3DCreateConfig *>(cfg) : nullptr;
 }
 
 inline const Material3DCreateConfig *As3D(const MaterialCreateConfig *cfg) noexcept
 {
     if (!cfg) return nullptr;
-    return (cfg->kind == ConfigKind::D3 || cfg->kind == ConfigKind::Billboard)
+    return (cfg->kind == ConfigKind::D3)
         ? static_cast<const Material3DCreateConfig *>(cfg) : nullptr;
-}
-
-/// Cast to BillboardMaterialCreateConfig* only if kind is Billboard; else nullptr.
-inline BillboardMaterialCreateConfig *AsBillboard(MaterialCreateConfig *cfg) noexcept
-{
-    if (!cfg) return nullptr;
-    return cfg->kind == ConfigKind::Billboard
-        ? static_cast<BillboardMaterialCreateConfig *>(cfg) : nullptr;
-}
-
-inline const BillboardMaterialCreateConfig *AsBillboard(const MaterialCreateConfig *cfg) noexcept
-{
-    if (!cfg) return nullptr;
-    return cfg->kind == ConfigKind::Billboard
-        ? static_cast<const BillboardMaterialCreateConfig *>(cfg) : nullptr;
 }
 
 }//namespace hgl::graph::mtl

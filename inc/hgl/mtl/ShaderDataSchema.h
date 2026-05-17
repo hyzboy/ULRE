@@ -19,7 +19,6 @@ enum class ShaderDataSchema : uint32_t
 
     Color4f,            ///< struct MaterialBindingInstance { vec4 Color; }          — 16 bytes
     TextColor,          ///< struct MaterialBindingInstance { uint TextColor; }       —  4 bytes
-    BillboardSizeUVec2, ///< struct MaterialBindingInstance { uvec2 BillboardSize; }  —  8 bytes
     PBRColorParams,     ///< struct MaterialBindingInstance { uint base_color; float metallic; float roughness; }   — 12 bytes
     StandardParams,     ///< struct MaterialBindingInstance { uint base_color; float metallic; float roughness; float normal_scale; } — 16 bytes
     TextureArrayID,     ///< struct MaterialBindingInstance { uvec4 id; }             — 16 bytes

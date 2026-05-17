@@ -35,13 +35,31 @@ static int g_failures = 0;
 using namespace hgl::graph::mtl;
 using namespace hgl::graph;
 
-// Billboard recipes allow per-recipe blend mode override.
-static MaterialRecipe MakeBillboardRecipe(RenderAlphaMode blend)
+static MaterialRecipe MakeUnlitBillboardRecipe(RenderAlphaMode blend)
 {
     MaterialRecipe r;
-    r.preset = MaterialPreset::Billboard2DDynamic;
-    r.billboard.blend_mode = blend;
-    r.billboard.texture_id = "test";
+    r.preset = MaterialPreset::UnlitTexture3D;
+    r.dim    = MaterialRecipe::Dim::D3;
+    r.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
+
+    MaterialRecipe::TextureAssetRef ta;
+    ta.slot = SamplerSlot::BaseColor;
+    r.textures.push_back(ta);
+    r.color_sources.push_back(ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
+
+    switch (blend)
+    {
+    case RenderAlphaMode::Transparent:
+        r.pipeline = GraphicsPipelinePreset::Alpha3D;
+        break;
+    case RenderAlphaMode::Masked:
+        r.pipeline = GraphicsPipelinePreset::Masked3D;
+        break;
+    default:
+        r.pipeline = GraphicsPipelinePreset::Solid3D;
+        break;
+    }
+
     return r;
 }
 
@@ -83,28 +101,28 @@ static MaterialRecipe MakeStandardArrayRecipe()
 /// Opaque blend → 3 passes (ForwardOpaque, ShadowOpaque, EarlyZSolid)
 static void test_opaque_produces_three_passes()
 {
-    const auto keys = EnumerateRecipeKeys(MakeBillboardRecipe(RenderAlphaMode::Opaque));
+    const auto keys = EnumerateRecipeKeys(MakeUnlitBillboardRecipe(RenderAlphaMode::Opaque));
     CHECK_EQ(keys.size(), size_t(3));
 }
 
 /// Transparent blend → 1 pass (ForwardTransparent)
 static void test_transparent_produces_one_pass()
 {
-    const auto keys = EnumerateRecipeKeys(MakeBillboardRecipe(RenderAlphaMode::Transparent));
+    const auto keys = EnumerateRecipeKeys(MakeUnlitBillboardRecipe(RenderAlphaMode::Transparent));
     CHECK_EQ(keys.size(), size_t(1));
 }
 
 /// Masked blend → 3 passes (ForwardMasked, ShadowMasked, EarlyZMasked)
 static void test_masked_produces_three_passes()
 {
-    const auto keys = EnumerateRecipeKeys(MakeBillboardRecipe(RenderAlphaMode::Masked));
+    const auto keys = EnumerateRecipeKeys(MakeUnlitBillboardRecipe(RenderAlphaMode::Masked));
     CHECK_EQ(keys.size(), size_t(3));
 }
 
 /// All keys returned for opaque must have distinct pass fields.
 static void test_passes_are_distinct()
 {
-    const auto keys = EnumerateRecipeKeys(MakeBillboardRecipe(RenderAlphaMode::Opaque));
+    const auto keys = EnumerateRecipeKeys(MakeUnlitBillboardRecipe(RenderAlphaMode::Opaque));
     CHECK_EQ(keys.size(), size_t(3));
     if (keys.size() < 3) return; // avoid OOB if count wrong
     CHECK_NE(keys[0].pass, keys[1].pass);
@@ -115,7 +133,7 @@ static void test_passes_are_distinct()
 /// All non-pass fields must be identical across the returned keys.
 static void test_non_pass_fields_are_identical()
 {
-    const auto keys = EnumerateRecipeKeys(MakeBillboardRecipe(RenderAlphaMode::Opaque));
+    const auto keys = EnumerateRecipeKeys(MakeUnlitBillboardRecipe(RenderAlphaMode::Opaque));
     CHECK_TRUE(!keys.empty());
     if (keys.empty()) return;
 

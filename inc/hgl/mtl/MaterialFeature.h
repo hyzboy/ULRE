@@ -191,8 +191,6 @@ namespace hgl::graph::mtl
             case MaterialPreset::VertexPaletteColor3D:
             case MaterialPreset::Gizmo3D:
             case MaterialPreset::Checkerboard3D:
-            case MaterialPreset::Billboard2DDynamic:
-            case MaterialPreset::Billboard2DFixed:
             default:
                 return ToFeatureMask(MF::SurfaceUnlit);
         }

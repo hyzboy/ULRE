@@ -19,7 +19,6 @@ enum class ConfigKind : uint8_t
     D3        = 0,   ///< Material3DCreateConfig (default — most common)
     D2        = 1,   ///< Material2DCreateConfig
     Text2D    = 2,   ///< Text2DMaterialCreateConfig
-    Billboard = 3,   ///< BillboardMaterialCreateConfig
 };
 
 /**
@@ -30,7 +29,7 @@ struct MaterialCreateConfig
     const char *                preset_name=nullptr;        ///<原始材质预设名称(如"PBRColor3D")，用于日志输出
 
     /// Subclass identity — set by each derived class constructor.
-    /// Never modify after construction.  Use As3D() / AsBillboard() helpers.
+    /// Never modify after construction.  Use As3D() helper.
     ConfigKind                  kind = ConfigKind::D3;
 
     bool                        material_instance;          ///<是否包含材质实例

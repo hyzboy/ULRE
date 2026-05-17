@@ -20,8 +20,6 @@ namespace
         { "schema_color4f.glsl",          0 },
         // TextColor
         { "schema_text_color.glsl",       0 },
-        // BillboardSizeUVec2
-        { "schema_billboard_size.glsl",   0 },
         // PBRColorParams
         { "schema_pbr_color_params.glsl", 0 },
         // StandardParams

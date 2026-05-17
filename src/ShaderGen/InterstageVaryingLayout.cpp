@@ -17,24 +17,29 @@ static const VaryingDesc kVaryingTable[] =
     { InterstageVarying::WorldNormal,        2, "vec3",  "fragWorldNormal",        "HAS_NORMAL",                VaryingInterp::Smooth },
     { InterstageVarying::UV0,                3, "vec2",  "fragUV0",                "HAS_TEXCOORD",              VaryingInterp::Smooth },
     { InterstageVarying::VertexColor,        4, "vec4",  "fragVertexColor",        "HAS_COLOR",                 VaryingInterp::Smooth },
-    { InterstageVarying::BillboardTexCoord,  5, "vec2",  "fragTexCoord",           "HAS_BILLBOARD_TEXCOORD",    VaryingInterp::Smooth },
     { InterstageVarying::Direction,          6, "vec3",  "fragDirection",          "HAS_DIRECTION",             VaryingInterp::Smooth },
     { InterstageVarying::Luminance,          7, "float", "fragLuminance",          "HAS_LUMINANCE",             VaryingInterp::Smooth },
     { InterstageVarying::ClipPos,            8, "vec4",  "fragClipPos",            "HAS_CLIP_POS",              VaryingInterp::Smooth },
     { InterstageVarying::WorldTangent,       9, "vec4",  "fragWorldTangent",       "HAS_TANGENT",               VaryingInterp::Smooth },
 };
 
-static_assert(sizeof(kVaryingTable)/sizeof(kVaryingTable[0]) == int(InterstageVarying::COUNT),
-              "kVaryingTable size must match InterstageVarying::COUNT");
-
 // ──────────────────────────────────────────────────────────────────────────────
 
 const VaryingDesc *GetVaryingDesc(InterstageVarying v)
 {
-    int idx = int(v);
-    if (idx < 0 || idx >= int(InterstageVarying::COUNT))
-        return nullptr;
-    return &kVaryingTable[idx];
+    switch (v)
+    {
+    case InterstageVarying::MaterialInstanceID: return &kVaryingTable[0];
+    case InterstageVarying::WorldPos:           return &kVaryingTable[1];
+    case InterstageVarying::WorldNormal:        return &kVaryingTable[2];
+    case InterstageVarying::UV0:                return &kVaryingTable[3];
+    case InterstageVarying::VertexColor:        return &kVaryingTable[4];
+    case InterstageVarying::Direction:          return &kVaryingTable[5];
+    case InterstageVarying::Luminance:          return &kVaryingTable[6];
+    case InterstageVarying::ClipPos:            return &kVaryingTable[7];
+    case InterstageVarying::WorldTangent:       return &kVaryingTable[8];
+    default:                                    return nullptr;
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -95,16 +100,16 @@ std::string EmitFSInput(InterstageVarying v)
 std::string EmitAllVSOutputs()
 {
     std::string out;
-    for (const VaryingDesc &d : kVaryingTable)
-        out += EmitDecl(d, true);
+    for (int i = 0; i < 9; ++i)
+        out += EmitDecl(kVaryingTable[i], true);
     return out;
 }
 
 std::string EmitAllFSInputs()
 {
     std::string out;
-    for (const VaryingDesc &d : kVaryingTable)
-        out += EmitDecl(d, false);
+    for (int i = 0; i < 9; ++i)
+        out += EmitDecl(kVaryingTable[i], false);
     return out;
 }
 

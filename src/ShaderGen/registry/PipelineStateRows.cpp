@@ -6,8 +6,6 @@ namespace hgl::graph::mtl
         { "PS_OpaqueTriangles", MaterialPreset::PureColor3D, PrimitiveType::Triangles, RenderAlphaMode::Opaque, PassType::ForwardOpaque },
         { "PS_TransparentTriangles", MaterialPreset::PureColor3D, PrimitiveType::Triangles, RenderAlphaMode::Transparent, PassType::ForwardTransparent },
         { "PS_MaskedTriangles", MaterialPreset::PureColor3D, PrimitiveType::Triangles, RenderAlphaMode::Masked, PassType::ForwardOpaque },
-        { "PS_BillboardOpaque", MaterialPreset::Billboard2DDynamic, PrimitiveType::Triangles, RenderAlphaMode::Opaque, PassType::ForwardOpaque },
-        { "PS_BillboardTransparent", MaterialPreset::Billboard2DDynamic, PrimitiveType::Triangles, RenderAlphaMode::Transparent, PassType::ForwardTransparent },
         { "PS_TextAlpha", MaterialPreset::Text2D, PrimitiveType::Triangles, RenderAlphaMode::Transparent, PassType::ForwardTransparent },
     };
 

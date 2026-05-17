@@ -483,35 +483,8 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
         return mtl;
     };
 
-    // ── Billboard2DFixed / Billboard2DDynamic ────────────────────────────────
-    if (rec.preset == MaterialPreset::Billboard2DFixed ||
-        rec.preset == MaterialPreset::Billboard2DDynamic)
-    {
-        BillboardMaterialCreateConfig cfg(rec.prim);
-        cfg.local_to_world  = rec.l2w;
-        cfg.fixed_size      = rec.billboard.fixed_size;
-        cfg.pixel_size      = { rec.billboard.pixel_w, rec.billboard.pixel_h };
-        cfg.blend_mode      = rec.billboard.blend_mode;
-        cfg.base_color_channel = rec.billboard.base_color_channel;
-        cfg.front_face      = rec.billboard.front_face_ccw
-                              ? VK_FRONT_FACE_COUNTER_CLOCKWISE
-                              : VK_FRONT_FACE_CLOCKWISE;
-        if (!rec.billboard.texture_id.empty())
-            cfg.texture_id = rec.billboard.texture_id;
-        if (rec.pos_format.Check())
-            cfg.position_format = rec.pos_format;
-        for (const auto &cs : rec.color_sources)
-            if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
-            { cfg.use_texture_array = true; break; }
-
-        GetStats().LogCreateMaterialFromRecordBillboard((int)rec.preset,
-                                                        (int)cfg.use_texture_array,
-                                                        (int)cfg.blend_mode);
-
-        return create_3d(rec.preset, &cfg);
-    }
     // ── Text2D ──────────────────────────────────────────────────────────────
-    else if (rec.preset == MaterialPreset::Text2D)
+    if (rec.preset == MaterialPreset::Text2D)
     {
         Text2DMaterialCreateConfig cfg;
         for (const auto &cs : rec.color_sources)
@@ -838,24 +811,8 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         return(nullptr);
     }
 
-    // For Billboard materials, the variant registry key is shared between sampler2D and
-    // sampler2DArray variants (differentiated inside the factory via cfg->use_texture_array).
-    // Use a separate cache_key that encodes the array flag to avoid collisions in material_by_key.
-    mtl::MaterialVariantKey cache_key = key;
-    if (const auto *billboard_cfg = AsBillboard(cfg))
-    {
-        if (billboard_cfg->use_texture_array)
-        {
-            cache_key.SetTextureSourceMode(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
-            stats.LogBillboardDomainArrayKey(static_cast<uint64_t>(cache_key.Hash()));
-        }
-    }
-
-    // Compute debug name using cache_key (not key) so that billboard array/non-array variants
-    // get distinct names — prevents VirtualLibraryCache from returning the wrong shader module
-    // when both variants share the same preset key.
     char key_hash[32] = {};
-    std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(cache_key.Hash()));
+    std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
     AnsiString mtl_debug_name = cfg->preset_name
         ? AnsiString(cfg->preset_name) + "#" + key_hash
         : AnsiString("variant#") + key_hash;
@@ -866,8 +823,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         stats.LogCreateMaterialKey3DProfileNull(static_cast<uint64_t>(key.Hash()));
     }
 
-    // Pass original key (not cache_key) to CreateMaterialCreateInfo — the registry lookup
-    // must use the clean key without the array bit injected for caching purposes.
     AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
 
     if(!mci)
@@ -879,7 +834,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     ShaderMaterialProgram *mat = this->CreateMaterial(mtl_debug_name,mci);
     if (mat)
     {
-        mtl::MaterialKey enriched_key = BuildMaterialKeyFromVariantKey(cache_key);
+        mtl::MaterialKey enriched_key = BuildMaterialKeyFromVariantKey(key);
         EnrichMaterialKeyWithCreateInfoAxes(enriched_key, *mci);
 
         stats.LogProgramKeyTriplet("CreateMaterial.3D",
@@ -897,10 +852,10 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 
         uint8_t flags = 0;
         for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
-            if (cache_key.GetTextureSourceMode(mtl::SamplerSlot(s)) == mtl::TextureSourceMode::Array)
+            if (key.GetTextureSourceMode(mtl::SamplerSlot(s)) == mtl::TextureSourceMode::Array)
                 flags |= (1u << s);
         mat->SetTextureArraySlotFlags(flags);
-        mat->effective_feature_mask = cache_key.effective_feature_mask;
+        mat->effective_feature_mask = key.effective_feature_mask;
 
         mat->SetMaterialKey(enriched_key);
         material_by_key[enriched_key] = mat;
