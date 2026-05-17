@@ -1,25 +1,22 @@
 #ifndef ULRE_COMPOSITOR_VERT_FORWARD_MAIN_GLSL
 #define ULRE_COMPOSITOR_VERT_FORWARD_MAIN_GLSL
 
-// vert_forward_main.glsl -- Unified forward vertex entry point.
+// vert_forward_main.glsl -- Unified forward vertex entry point (policy-driven).
 //
-// Injected by C++ CompositorAssembler after:
-//   common/vertex_input_position.glsl  (inPosition decl + GetPositionLocal())
-//   compositor/vert_forward_ubo.glsl   (camera, transform, MI id)
-//   common/varying_interface.glsl (VARYING_STAGE_VERT must be defined first)
+// Emit order enforced by CompositorAssembler::BuildForwardVertexEntry():
+//   1. #include "position_provider/<file>.glsl"  → vec3 GetPositionLocal()
+//   2. #include "compositor/vert_forward_ubo.glsl"  (camera, GetTransform(), MI id)
+//      + conditionally: #include "common/ubo_viewport.glsl"  (when policy needs_viewport)
+//   3. #include "vertex_policy/<file>.glsl"  → void ApplyVertexTransform(...)
+//   4. #include "compositor/vert_forward_main.glsl"  (this file)
 //
-// Control defines (set by CompositorAssembler):
+// Control defines set by CompositorAssembler:
 //   HAS_POSITION / HAS_NORMAL / HAS_TANGENT / HAS_TEXCOORD
 //   HAS_COLOR / HAS_LUMINANCE / HAS_DIRECTION
-//   POSITION_KIND       -- 0=None, 1=Vec2, 2=Vec3 (handled by vertex_input_position.glsl)
-//   GEOMETRY_FETCH_SSBO -- read geometry from SSBO instead of vertex attribs
+//   GEOMETRY_FETCH_SSBO  — read geometry from SSBO instead of vertex attribs
 
-// --- Vertex inputs ---
-#if GEOMETRY_FETCH_SSBO
-    #include "common/vertex_fetch_ssbo.glsl"
-#else
-    // Position is declared by common/vertex_input_position.glsl (included before this file).
-
+// --- VBO vertex inputs (skipped for PCG / SSBO providers) ---
+#if !defined(GEOMETRY_FETCH_SSBO)
     #ifdef HAS_NORMAL
         layout(location=NORMAL_LOCATION) in vec3 inNormal;
     #endif
@@ -41,16 +38,28 @@
     #endif
 #endif
 
-// --- Varying interface ---
+// --- Varying outputs ---
 #include "common/varying_vs.glsl"
 
 void main()
 {
     fragMaterialInstanceID = GetMaterialInstanceID();
 
-#include "compositor/vert_input_resolve.glsl"
+    // ── Axis 1: position provider (already included above) ─────────────────
+    vec3 local = GetPositionLocal();
 
-    gl_Position = camera.vp * worldPos;
+    // ── Axis 2: vertex policy (already included above) ──────────────────────
+    vec4 worldPos;
+    vec4 clipPos;
+    ApplyVertexTransform(local, worldPos, clipPos);
+
+    // ── Attribute writers ────────────────────────────────────────────────────
+    // Writes fragWorldPos / fragWorldNormal / fragWorldTangent / fragUV0 /
+    // fragVertexColor / fragLuminance / fragDirection based on HAS_* defines.
+    // Normal & tangent transforms require POLICY_HAS_TRANSFORM_MAT (set by mesh3d).
+#include "compositor/vert_attrib_writers.glsl"
+
+    gl_Position = clipPos;
 }
 
 #endif // ULRE_COMPOSITOR_VERT_FORWARD_MAIN_GLSL

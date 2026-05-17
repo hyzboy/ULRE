@@ -2,8 +2,10 @@
 
 #include <hgl/common/PositionProvider.h>
 #include <hgl/common/VertexAttribDef.h>
+#include <hgl/mtl/MaterialVariantRow.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
+#include <hgl/shadergen/FragmentProviderRegistry.h>
 #include <cstddef>
 #include <string>
 
@@ -12,7 +14,8 @@ namespace hgl::graph {
 struct CompositorFeatureFlags
 {
     // Vertex stage flags
-    PositionProviderId position_provider = PositionProviderId::DirectVec3;
+    PositionProviderId            position_provider = PositionProviderId::DirectVec3;
+    mtl::VertexTransformPolicy    vertex_policy     = mtl::VertexTransformPolicy::Mesh3D;
     uint32 vertex_attrib_bits = 0;
     bool has_direction    = false;
 
@@ -37,6 +40,7 @@ struct CompositorFeatureFlags
     }
 
     // Fragment stage flags
+    FragmentProviderId            fragment_provider = FragmentProviderId::Default;
     bool enable_lighting  = false;
     bool needs_camera     = false;
     bool needs_sky        = false;

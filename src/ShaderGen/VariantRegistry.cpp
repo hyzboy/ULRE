@@ -585,7 +585,6 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .blend = RM::Opaque,          .pass = PT::ForwardOpaque,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
     { .name = "UnlitTexture3DBillboardDynamic",         .preset = MaterialPreset::UnlitTexture3D,
@@ -593,7 +592,6 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
     { .name = "UnlitTexture3DBillboardDynamicMasked",   .preset = MaterialPreset::UnlitTexture3D,
@@ -601,7 +599,6 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .blend = RM::Masked,          .pass = PT::ForwardMasked,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
     { .name = "UnlitTexture3DBillboardDynamicDither",   .preset = MaterialPreset::UnlitTexture3D,
@@ -609,7 +606,6 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .blend = RM::Dither,          .pass = PT::ForwardDither,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
     { .name = "UnlitTexture3DBillboardDynamicA2C",      .preset = MaterialPreset::UnlitTexture3D,
@@ -617,7 +613,6 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .blend = RM::AlphaToCoverage, .pass = PT::ForwardA2C,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .vs_path = "compositor/main_forward_billboard_dynamic.vert.glsl",
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
     { .name = "UnlitTexture3DBillboardFixedOpaque",     .preset = MaterialPreset::UnlitTexture3D,
@@ -625,7 +620,6 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .blend = RM::Opaque,          .pass = PT::ForwardOpaque,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
     { .name = "UnlitTexture3DBillboardFixed",           .preset = MaterialPreset::UnlitTexture3D,
@@ -633,7 +627,6 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
     { .name = "UnlitTexture3DBillboardFixedMasked",     .preset = MaterialPreset::UnlitTexture3D,
@@ -641,7 +634,6 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .blend = RM::Masked,          .pass = PT::ForwardMasked,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
     { .name = "UnlitTexture3DBillboardFixedDither",     .preset = MaterialPreset::UnlitTexture3D,
@@ -649,7 +641,6 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .blend = RM::Dither,          .pass = PT::ForwardDither,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
     { .name = "UnlitTexture3DBillboardFixedA2C",        .preset = MaterialPreset::UnlitTexture3D,
@@ -657,10 +648,9 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .blend = RM::AlphaToCoverage, .pass = PT::ForwardA2C,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .vs_path = "compositor/main_forward_billboard_fixed.vert.glsl",
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
-    // ── Terrain / Sky ────────────────────────────────────────────────────────────────────────────
+    // ── Terrain / Sky
     { .name = "TerrainGrid",  .preset = MaterialPreset::TerrainGrid,
       .surface_type = ST::Terrain,
       .vs_path = "compositor/main_terrain_grid.vert.glsl",
@@ -708,7 +698,8 @@ const BuiltinVariantEntry kBuiltinVariants[] =
 
     // ── PCG / Fullscreen ─────────────────────────────────────────────────────────────────────────
     { .name = "FullscreenTriangle", .preset = MaterialPreset::FullscreenTriangle,
-      .position_provider = PositionProviderId::PCG_FullscreenTriangle },
+      .position_provider = PositionProviderId::PCG_FullscreenTriangle,
+      .surface_path = "surface/fragcoord_surface.glsl" },
 };
 // clang-format on
 

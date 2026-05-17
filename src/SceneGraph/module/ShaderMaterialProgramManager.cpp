@@ -607,8 +607,62 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
         return it->second;
     }
 
-    // Miss — fall back to recipe-based creation.
-    ShaderMaterialProgram *prog = CreateMaterialFromRecord(recipe);
+    // Miss — preserve the already-resolved key instead of rebuilding from recipe-only
+    // 2D/3D configs, which can drop routing axes like explicit vertex_policy.
+    ShaderMaterialProgram *prog = nullptr;
+    if (recipe.dim == mtl::MaterialRecipe::Dim::D2)
+    {
+        mtl::Material2DCreateConfig cfg(
+            recipe.prim,
+            recipe.coord_2d,
+            recipe.l2w ? mtl::IncludeL2W::With : mtl::IncludeL2W::Without);
+        cfg.preset_name = mtl::GetMaterialPresetName(recipe.preset);
+
+        if (recipe.pos_format.Check())
+            cfg.position_format = recipe.pos_format;
+
+        for (const auto &cs : recipe.color_sources)
+        {
+            if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
+                cfg.SetTextureSourceModeOverride(cs.slot, mtl::TextureSourceMode::Array);
+            else if (cs.kind == graph::ColorSourceKind::BuiltinSampler2D)
+                cfg.SetTextureSourceModeOverride(cs.slot, mtl::TextureSourceMode::Simple);
+        }
+
+        prog = CreateMaterial(key.variant, &cfg);
+    }
+    else
+    {
+        const mtl::MaterialFeatureMask feature_mask = hgl::graph::ResolveRecipeIntentFeatureMask(recipe);
+        const bool include_camera = mtl::HasFeature(feature_mask, mtl::MaterialFeature::NeedsCamera);
+        const bool include_sky = mtl::HasFeature(feature_mask, mtl::MaterialFeature::NeedsSky);
+
+        mtl::Material3DCreateConfig cfg(
+            recipe.prim,
+            include_camera ? mtl::IncludeCamera::With : mtl::IncludeCamera::Without,
+            recipe.l2w ? mtl::IncludeL2W::With : mtl::IncludeL2W::Without,
+            include_sky ? mtl::IncludeSky::With : mtl::IncludeSky::Without);
+
+        cfg.preset_name = mtl::GetMaterialPresetName(recipe.preset);
+        cfg.sky_ambient_model = recipe.sky_ambient;
+        cfg.lighting_model = mtl::ResolveLightingModelFromFeatures(feature_mask, mtl::LightingModel::Lambert);
+        if (!mtl::HasFeature(feature_mask, mtl::MaterialFeature::EnableLighting))
+            cfg.lighting_model = mtl::LightingModel::Lambert;
+        cfg.effective_feature_mask = feature_mask;
+
+        if (recipe.pos_format.Check())
+            cfg.position_format = recipe.pos_format;
+
+        for (const auto &cs : recipe.color_sources)
+        {
+            if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
+                cfg.SetTextureSourceModeOverride(cs.slot, mtl::TextureSourceMode::Array);
+            else if (cs.kind == graph::ColorSourceKind::BuiltinSampler2D)
+                cfg.SetTextureSourceModeOverride(cs.slot, mtl::TextureSourceMode::Simple);
+        }
+
+        prog = CreateMaterial(key.variant, &cfg);
+    }
 
     if (prog)
     {

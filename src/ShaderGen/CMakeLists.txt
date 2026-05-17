@@ -189,6 +189,16 @@ SET(POSITION_PROVIDER_FILES ${ROOT_INCLUDE_PATH}/hgl/common/PositionProvider.h
                             PositionProviderRegistry.cpp)
 SOURCE_GROUP("Position Provider" FILES ${POSITION_PROVIDER_FILES})
 
+# Vertex Policy Registry
+SET(VERTEX_POLICY_FILES     ${SHADERGEN_INCLUDE_PATH}/VertexPolicyRegistry.h
+                            VertexPolicyRegistry.cpp)
+SOURCE_GROUP("Vertex Policy" FILES ${VERTEX_POLICY_FILES})
+
+# Fragment Provider Registry
+SET(FRAGMENT_PROVIDER_FILES ${SHADERGEN_INCLUDE_PATH}/FragmentProviderRegistry.h
+                            FragmentProviderRegistry.cpp)
+SOURCE_GROUP("Fragment Provider" FILES ${FRAGMENT_PROVIDER_FILES})
+
 # Shader Library
 SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             MaterialFactory3D.cpp
@@ -304,6 +314,8 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${SHADERGEN_COMMON_MATFUNC_FILES}
     ${SHADERGEN_COMMON_VARIANT_POLICY_FILES}
     ${POSITION_PROVIDER_FILES}
+    ${VERTEX_POLICY_FILES}
+    ${FRAGMENT_PROVIDER_FILES}
     ${SHADER_LIBRARY_FILES}
     ${STD_MTL_SOURCE}
     ${MATERIAL_KEY_FILES}

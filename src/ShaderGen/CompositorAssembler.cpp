@@ -5,6 +5,9 @@
 #include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/VertexAttribMacroMap.h>
+#include <hgl/shadergen/PositionProviderRegistry.h>
+#include <hgl/shadergen/VertexPolicyRegistry.h>
+#include <hgl/shadergen/FragmentProviderRegistry.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/SkyLight.h>
@@ -144,17 +147,59 @@ namespace
         writer.EmitCommentLine("BuildForwardVertexEntry.Begin");
 
         EmitEnabledVertexAttribDefines(writer, f);
+        if (f.has_direction) writer.EmitDefine("HAS_DIRECTION");
 
-        // Map PositionProviderId -> GLSL POSITION_KIND (0=None/procedural, 1=Vec2, 2=Vec3)
-        const int pos_kind = (f.position_provider == hgl::graph::PositionProviderId::VAB_Vec2) ? 1
-                           : (f.position_provider == hgl::graph::PositionProviderId::PCG_FullscreenTriangle) ? 0
-                           : 2; // DirectVec3, SSBO_PackedVec3, etc.
-        writer.EmitDefine("POSITION_KIND", std::to_string(pos_kind).c_str());
-        if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
+        // ── Axis 1: position provider ─────────────────────────────────────────
+        // Each provider file declares its own VBO layout (or none) and exposes
+        // vec3 GetPositionLocal().  DirectVec3 (empty path) falls back to the
+        // legacy common/vertex_input_position.glsl path.
+        {
+            const hgl::graph::PositionProvider *pp =
+                hgl::graph::FindBuiltinProvider(f.position_provider);
 
-        writer.EmitInclude("common/vertex_input_position.glsl")
-              .EmitInclude("compositor/vert_forward_ubo.glsl")
-              .EmitInclude("compositor/vert_forward_main.glsl");
+            if (pp && !pp->glsl_path.empty())
+            {
+                // Emit POSITION_LOCATION if the provider uses a VBO slot.
+                // The emitter can extend this to emit set/binding for SSBO providers.
+                writer.EmitInclude(std::string(pp->glsl_path));
+            }
+            else
+            {
+                // Fallback: legacy POSITION_KIND macro + common/vertex_input_position.glsl
+                const int pos_kind = (f.position_provider == hgl::graph::PositionProviderId::VAB_Vec2) ? 1 : 2;
+                writer.EmitDefine("POSITION_KIND", std::to_string(pos_kind).c_str());
+                writer.EmitInclude("common/vertex_input_position.glsl");
+            }
+        }
+
+        // ── Common UBOs (camera, transform, MI id) ────────────────────────────
+        writer.EmitInclude("compositor/vert_forward_ubo.glsl");
+
+        // ── Axis 2: vertex policy ─────────────────────────────────────────────
+        // Each policy file implements ApplyVertexTransform(local, out worldPos, out clipPos).
+        {
+            const hgl::graph::VertexPolicyDescriptor *vp =
+                hgl::graph::FindBuiltinVertexPolicy(f.vertex_policy);
+
+            if (vp && !vp->glsl_path.empty())
+            {
+                if (vp->needs_viewport)
+                    writer.EmitInclude("common/ubo_viewport.glsl");
+
+                writer.EmitInclude(vp->glsl_path.data());
+            }
+            else
+            {
+                // Unknown / unimplemented policy: emit a safe no-op so the shader
+                // at least compiles (will produce a black/invisible object).
+                writer.EmitCommentLine("WARNING: no vertex_policy glsl found; emitting identity passthrough");
+                out += "void ApplyVertexTransform(vec3 l, out vec4 w, out vec4 c)"
+                       "{ w=vec4(l,1.0); c=vec4(l,1.0); }\n";
+            }
+        }
+
+        // ── Generic forward main (glue) ───────────────────────────────────────
+        writer.EmitInclude("compositor/vert_forward_main.glsl");
 
         writer.EmitCommentLine("BuildForwardVertexEntry.End");
         return out;
@@ -185,6 +230,17 @@ namespace
         if (f.enable_lighting)
             writer.EmitInclude(hgl::graph::mtl::GetLightingModelGLSLPath(f.lighting_model));
 
+        // Fragment provider: if non-default, include the PCG/procedural provider
+        // and set PCG_FRAGMENT_PROVIDER so frag_forward_main skips frag_input_resolve.
+        const auto *frag_prov = hgl::graph::FindBuiltinFragmentProvider(f.fragment_provider);
+        if (frag_prov && !frag_prov->glsl_path.empty())
+        {
+            if (frag_prov->needs_viewport)
+                writer.EmitInclude("common/ubo_viewport.glsl");
+            writer.EmitDefine("PCG_FRAGMENT_PROVIDER");
+            writer.EmitInclude(std::string(frag_prov->glsl_path));
+        }
+
         writer.EmitInclude(f.surface_path)
               .EmitInclude("compositor/frag_forward_main.glsl");
 
@@ -196,6 +252,22 @@ namespace
     // Unified key-based VS/FS generators (replaces the old route-table system)
     // ─────────────────────────────────────────────────────────────────────────
 
+    /// Map GeometryMode to VertexTransformPolicy explicitly — they do NOT share numeric values.
+    hgl::graph::mtl::VertexTransformPolicy GeometryModeToVertexPolicy(hgl::graph::mtl::GeometryMode gm) noexcept
+    {
+        using GM = hgl::graph::mtl::GeometryMode;
+        using VP = hgl::graph::mtl::VertexTransformPolicy;
+        switch (gm)
+        {
+            case GM::Mesh3D:               return VP::Mesh3D;
+            case GM::Quad2D:               return VP::Quad2D;
+            case GM::ScreenRect:           return VP::Quad2D;   // ScreenRect = 2D quad in clip space
+            case GM::BillboardCameraFacing:return VP::BillboardCameraFacing;
+            case GM::BillboardAxisLocked:  return VP::BillboardAxisLocked;
+            default:                       return VP::Mesh3D;
+        }
+    }
+
     /// Derive VS CompositorFeatureFlags from MaterialVariantKey fields.
     /// Does NOT cover Billboard / Terrain / Palette (handled as special cases in BuildVSFromKey).
     hgl::graph::CompositorFeatureFlags VSFeatureFlagsFromKey(const hgl::graph::mtl::MaterialVariantKey &key)
@@ -203,8 +275,9 @@ namespace
         hgl::graph::CompositorFeatureFlags flags;
         flags.vertex_attrib_bits = key.vertex_attribute_feature_bits;
 
-        // Propagate position_provider from key (already set correctly by routing layer).
+        // Propagate position_provider and vertex_policy from key.
         flags.position_provider = key.position_provider;
+        flags.vertex_policy = GeometryModeToVertexPolicy(key.geometry_mode);
         if (key.surface_type == hgl::graph::SurfaceType::Sky)
         {
             flags.has_direction      = true;
@@ -420,6 +493,7 @@ namespace
         }
 
         flags.has_direction = row.vs_features.has_direction;
+        flags.vertex_policy = row.vertex_policy;
 
         if (row.surface_model == hgl::graph::mtl::SurfaceShadingModel::SkyMinimal)
             flags.vertex_attrib_bits = 0;
@@ -430,19 +504,13 @@ namespace
     /// Legacy fallback VS generator: only used for non-builtin custom descriptors.
     std::string BuildLegacyVSFromKey(const hgl::graph::mtl::MaterialVariantKey &key)
     {
-        using GM = hgl::graph::mtl::GeometryMode;
-
-        // 1. Billboard geometry modes: delegate to pre-built VS files.
-        if (key.geometry_mode == GM::BillboardCameraFacing)
-            return BuildIncludeOnlyVS("compositor/main_forward_billboard_dynamic.vert.glsl");
-        if (key.geometry_mode == GM::BillboardAxisLocked)
-            return BuildIncludeOnlyVS("compositor/main_forward_billboard_fixed.vert.glsl");
-
-        // 2. Terrain: delegate to terrain VS file.
+        // Terrain still uses a bespoke VS file (TODO: migrate to vertex_policy).
         if (key.surface_type == hgl::graph::SurfaceType::Terrain)
             return BuildIncludeOnlyVS("compositor/main_terrain_grid.vert.glsl");
 
-        // 3. All other materials: derive flags from key and generate via template.
+        // All other cases (including Billboard*) now go through the two-axis
+        // BuildForwardVertexEntry: position_provider selects GetPositionLocal(),
+        // vertex_policy selects ApplyVertexTransform().
         return BuildForwardVertexEntry(LegacyVSFeatureFlagsFromKey(key));
     }
 
@@ -546,6 +614,13 @@ namespace
         flags.needs_camera = row.resources.needs_camera;
         flags.needs_sky = row.resources.needs_sky;
         flags.sky_ambient_model = row.resources.sky_model;
+
+        // Fragment provider: PCG_FullscreenTriangle preset pairs with PCG_FragCoord
+        // so the FS derives its SurfaceInput from gl_FragCoord instead of varyings.
+        if (row.position_provider == hgl::graph::PositionProviderId::PCG_FullscreenTriangle)
+            flags.fragment_provider = hgl::graph::FragmentProviderId::PCG_FragCoord;
+        else
+            flags.fragment_provider = hgl::graph::FragmentProviderId::Default;
 
         if (row.fs_features.has_direction)
             flags.vertex_attrib_bits = 0;

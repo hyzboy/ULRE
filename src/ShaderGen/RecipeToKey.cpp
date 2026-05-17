@@ -445,7 +445,24 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     if (r.dim == MaterialRecipe::Dim::D2)
         k.geometry_mode = GeometryMode::Quad2D;
 
-    // ── Step 3: vertex position format ───────────────────────────────────────
+    // ── Step 3: position provider ─────────────────────────────────────────────
+    // Mirrors fixed-def key population: vec2 position inputs must route as VAB_Vec2.
+    const VertexInputProfile effective_vertex_input =
+        (r.vertex_input != VertexInputProfile::Unknown)
+        ? r.vertex_input
+        : alias_axes.vertex_input;
+
+    switch (effective_vertex_input)
+    {
+    case VertexInputProfile::Position2D:
+    case VertexInputProfile::PositionLuminance2D:
+    case VertexInputProfile::PositionTexCoord2D:
+        k.position_provider = PositionProviderId::VAB_Vec2;
+        break;
+    default:
+        break;
+    }
+
     // Mirrors Material2DCreateConfig::position_format in ApplyCreateConfigToVariantKey.
     if (r.pos_format.Check())
     {
