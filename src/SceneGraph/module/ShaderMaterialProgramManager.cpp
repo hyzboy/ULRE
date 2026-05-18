@@ -436,19 +436,18 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const AnsiSt
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg)
 {
-    HGL_CAPTURE_SCOPE();
+    if (!cfg) return nullptr;
 
-    if(!cfg)
-        return(nullptr);
-
-    cfg->preset_name=mtl::GetMaterialPresetName(mtl_id);
-
-    // [Step 3.5 T1] RouteKey is the single entry; ApplyCreateConfigToVariantKey
-    // remains the cfg-derived overlay until T3 unifies them.
-    mtl::MaterialVariantKey key = mtl::RouteKey(mtl_id);
-    mtl::ApplyCreateConfigToVariantKey(key, cfg);
-    key.variant_row_name_hash = mtl::ResolveBuiltinVariantRowHash(mtl_id, key);
-    return CreateMaterial(key, cfg);
+    mtl::Material3DCreateConfig cfg3d(cfg->prim, cfg->local_to_world ? mtl::IncludeL2W::With : mtl::IncludeL2W::Without);
+    cfg3d.preset_name       = cfg->preset_name;
+    cfg3d.position_format   = cfg->position_format;
+    cfg3d.coord_2d          = cfg->coordinate_system;
+    cfg3d.material_instance = cfg->material_instance;
+    cfg3d.shader_stage_flag_bit = cfg->shader_stage_flag_bit;
+    cfg3d.rt_output         = cfg->rt_output;
+    cfg3d.texture_source_bits_override  = cfg->texture_source_bits_override;
+    cfg3d.sampler_feature_bits_override = cfg->sampler_feature_bits_override;
+    return CreateMaterial(mtl_id, &cfg3d);
 }
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
@@ -463,24 +462,16 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
                                                   static_cast<uint32_t>(rec.pipeline),
                                                   static_cast<uint64_t>(mtl::ResolveRecipePrimaryKey(rec).Hash()));
 
-    auto create_2d = [this](const MaterialPreset preset, Material2DCreateConfig *cfg) -> ShaderMaterialProgram *
+    auto create_2d = [this](const MaterialPreset preset, Material3DCreateConfig *cfg) -> ShaderMaterialProgram *
     {
         stats.RecordMaterialRequest();
-
-        ShaderMaterialProgram *mtl = CreateMaterial(preset, cfg);
-        // Phase 1: no silent fallback — return nullptr on failure;
-        // Phase 2 ErrorIndicator FS was already injected by MaterialLibrary on variant miss.
-        return mtl;
+        return CreateMaterial(preset, cfg);
     };
 
     auto create_3d = [this](const MaterialPreset preset, Material3DCreateConfig *cfg) -> ShaderMaterialProgram *
     {
         stats.RecordMaterialRequest();
-
-        ShaderMaterialProgram *mtl = CreateMaterial(preset, cfg);
-        // Phase 1: no silent fallback — return nullptr on failure;
-        // Phase 2 ErrorIndicator FS was already injected by MaterialLibrary on variant miss.
-        return mtl;
+        return CreateMaterial(preset, cfg);
     };
 
     // ── Text2D ──────────────────────────────────────────────────────────────
@@ -497,17 +488,17 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
 
         GetStats().LogCreateMaterialFromRecord2D(static_cast<uint32_t>(cfg.prim),
                                                  static_cast<uint32_t>(rec.preset));
-        return create_2d(rec.preset, &cfg);
+        // Text2D still uses its own config type through the 2D overload
+        return CreateMaterial(rec.preset, static_cast<Material2DCreateConfig*>(&cfg));
     }
     // ── 2D ──────────────────────────────────────────────────────────────────
     else if (rec.dim == MaterialRecipe::Dim::D2)
     {
-        Material2DCreateConfig cfg(
+        Material3DCreateConfig cfg(
             rec.prim,
-            rec.coord_2d,
             rec.l2w ? IncludeL2W::With : IncludeL2W::Without);
-        if (rec.pos_format.Check())
-            cfg.position_format = rec.pos_format;
+        cfg.position_format = rec.pos_format.Check() ? rec.pos_format : VAT_VEC2;
+        cfg.coord_2d        = rec.coord_2d;
         for (const auto &cs : rec.color_sources)
         {
             if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
@@ -605,14 +596,12 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     ShaderMaterialProgram *prog = nullptr;
     if (recipe.dim == mtl::MaterialRecipe::Dim::D2)
     {
-        mtl::Material2DCreateConfig cfg(
+        mtl::Material3DCreateConfig cfg(
             recipe.prim,
-            recipe.coord_2d,
             recipe.l2w ? mtl::IncludeL2W::With : mtl::IncludeL2W::Without);
-        cfg.preset_name = mtl::GetMaterialPresetName(recipe.preset);
-
-        if (recipe.pos_format.Check())
-            cfg.position_format = recipe.pos_format;
+        cfg.preset_name     = mtl::GetMaterialPresetName(recipe.preset);
+        cfg.position_format = recipe.pos_format.Check() ? recipe.pos_format : VAT_VEC2;
+        cfg.coord_2d        = recipe.coord_2d;
 
         for (const auto &cs : recipe.color_sources)
         {
@@ -789,59 +778,18 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material2DCreateConfig *cfg)
 {
-    HGL_CAPTURE_SCOPE();
+    if (!cfg) return nullptr;
 
-    if(!cfg)
-        return(nullptr);
-
-    char key_hash[32] = {};
-    std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
-    AnsiString mtl_debug_name = cfg->preset_name
-        ? AnsiString(cfg->preset_name) + "#" + key_hash
-        : AnsiString("variant#") + key_hash;
-
-    const auto *profile=GetPhysicalDeviceProfile();
-
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
-
-    if(!mci)
-        return(nullptr);
-
-    ShaderMaterialProgram *mat = this->CreateMaterial(mtl_debug_name,mci);
-    if (mat)
-    {
-        mtl::MaterialKey enriched_key = BuildMaterialKeyFromVariantKey(key);
-        EnrichMaterialKeyWithCreateInfoAxes(enriched_key, *mci);
-
-        stats.LogProgramKeyTriplet("CreateMaterial.2D",
-                                   enriched_key,
-                                   cfg->prim,
-                                   cfg->local_to_world);
-
-        const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(enriched_key.variant,
-                                                                       cfg->local_to_world);
-        const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(enriched_key.variant);
-        mat->SetVertexProgramKey(vkey);
-        mat->SetFragmentProgramKey(fkey);
-        stats.RecordShaderProgramKeyCoverage(vkey, fkey);
-        stats.RecordShaderProgramShadowCacheInsert(vkey, fkey, mat);
-
-        uint8_t flags = 0;
-        for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
-            if (key.GetTextureSourceMode(mtl::SamplerSlot(s)) == mtl::TextureSourceMode::Array)
-                flags |= (1u << s);
-        mat->SetTextureArraySlotFlags(flags);
-        mat->effective_feature_mask = key.effective_feature_mask;
-
-        mat->SetMaterialKey(enriched_key);
-        material_by_key[enriched_key] = mat;
-#ifndef NDEBUG
-        auto it_verify = material_by_key.find(enriched_key);
-        assert(it_verify != material_by_key.end() && it_verify->second == mat);
-        assert(mat->HasMaterialKey() && mat->GetMaterialKey() == enriched_key);
-#endif
-    }
-    return mat;
+    mtl::Material3DCreateConfig cfg3d(cfg->prim, cfg->local_to_world ? mtl::IncludeL2W::With : mtl::IncludeL2W::Without);
+    cfg3d.preset_name       = cfg->preset_name;
+    cfg3d.position_format   = cfg->position_format;
+    cfg3d.coord_2d          = cfg->coordinate_system;
+    cfg3d.material_instance = cfg->material_instance;
+    cfg3d.shader_stage_flag_bit = cfg->shader_stage_flag_bit;
+    cfg3d.rt_output         = cfg->rt_output;
+    cfg3d.texture_source_bits_override  = cfg->texture_source_bits_override;
+    cfg3d.sampler_feature_bits_override = cfg->sampler_feature_bits_override;
+    return CreateMaterial(key, &cfg3d);
 }
 
 ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg)

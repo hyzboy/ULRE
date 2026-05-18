@@ -845,6 +845,7 @@ namespace hgl::graph
     bool CompositorAssembler::AssembleVertexShaderSource(const mtl::MaterialVariantKey &key,
                                                          const mtl::MaterialVariantDesc &desc,
                                                          const mtl::MaterialVariantRow *row,
+                                                         hgl::graph::CoordinateSystem2D coord_2d,
                                                          std::string &out_source,
                                                          std::string &out_error) const
     {
@@ -879,7 +880,7 @@ namespace hgl::graph
             if (resolved_row)
             {
                 LogVSAssemblyPath("explicit_row", key, desc, resolved_row);
-                out_source = BuildVSFromRow(*resolved_row, desc.coord_2d);
+                out_source = BuildVSFromRow(*resolved_row, coord_2d);
             }
             else
             {
@@ -963,23 +964,25 @@ namespace hgl::graph
 
     CompositorAssembler::AssembleStageResult CompositorAssembler::AssembleVertexShader(
         const mtl::MaterialVariantKey  &key,
-        const mtl::MaterialVariantDesc &desc
+        const mtl::MaterialVariantDesc &desc,
+        hgl::graph::CoordinateSystem2D  coord_2d
     ) const
     {
-        return AssembleVertexShader(key, desc, nullptr);
+        return AssembleVertexShader(key, desc, nullptr, coord_2d);
     }
 
     CompositorAssembler::AssembleStageResult CompositorAssembler::AssembleVertexShader(
         const mtl::MaterialVariantKey  &key,
         const mtl::MaterialVariantDesc &desc,
-        const mtl::MaterialVariantRow  *row
+        const mtl::MaterialVariantRow  *row,
+        hgl::graph::CoordinateSystem2D  coord_2d
     ) const
     {
         AssembleStageResult result{};
 
         std::string source;
         std::string error;
-        if(!AssembleVertexShaderSource(key, desc, row, source, error))
+        if(!AssembleVertexShaderSource(key, desc, row, coord_2d, source, error))
         {
             result.error_message = std::move(error);
             return result;
@@ -1029,12 +1032,13 @@ namespace hgl::graph
     CompositorAssembler::CompositorShaderArtifact CompositorAssembler::AssembleVertexArtifact(
         const mtl::MaterialVariantKey  &key,
         const mtl::MaterialVariantDesc &desc,
-        const mtl::MaterialVariantRow  *row
+        const mtl::MaterialVariantRow  *row,
+        hgl::graph::CoordinateSystem2D  coord_2d
     ) const
     {
         CompositorShaderArtifact artifact;
 
-        const AssembleStageResult stage = AssembleVertexShader(key, desc, row);
+        const AssembleStageResult stage = AssembleVertexShader(key, desc, row, coord_2d);
         artifact.glsl          = stage.glsl;
         artifact.success       = stage.success;
         artifact.error_message = stage.error_message;
@@ -1047,7 +1051,7 @@ namespace hgl::graph
                 if (!resolved_row->vs_template_path || !resolved_row->vs_template_path[0])
                 {
                     // Standard two-axis path: collect from fragment/policy/position files
-                    CollectVSRequirements(VSFeatureFlagsFromRow(*resolved_row, desc.coord_2d), artifact.req_set, shader_lib_path_);
+                    CollectVSRequirements(VSFeatureFlagsFromRow(*resolved_row, coord_2d), artifact.req_set, shader_lib_path_);
                 }
                 else
                 {

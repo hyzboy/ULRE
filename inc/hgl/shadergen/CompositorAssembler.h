@@ -6,6 +6,7 @@
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
 #include <hgl/shadergen/ShaderRequirementSet.h>
+#include <hgl/common/CoordinateSystem.h>
 #include <mutex>
 #include <span>
 #include <string>
@@ -74,13 +75,15 @@ namespace hgl::graph
 
         AssembleStageResult AssembleVertexShader(
             const mtl::MaterialVariantKey  &key,
-            const mtl::MaterialVariantDesc &desc
+            const mtl::MaterialVariantDesc &desc,
+            graph::CoordinateSystem2D       coord_2d = graph::CoordinateSystem2D::NDC
         ) const;
 
         AssembleStageResult AssembleVertexShader(
             const mtl::MaterialVariantKey  &key,
             const mtl::MaterialVariantDesc &desc,
-            const mtl::MaterialVariantRow  *row
+            const mtl::MaterialVariantRow  *row,
+            graph::CoordinateSystem2D       coord_2d = graph::CoordinateSystem2D::NDC
         ) const;
 
         AssembleStageResult AssembleFragmentShader(
@@ -98,7 +101,8 @@ namespace hgl::graph
         CompositorShaderArtifact AssembleVertexArtifact(
             const mtl::MaterialVariantKey  &key,
             const mtl::MaterialVariantDesc &desc,
-            const mtl::MaterialVariantRow  *row = nullptr
+            const mtl::MaterialVariantRow  *row      = nullptr,
+            graph::CoordinateSystem2D       coord_2d = graph::CoordinateSystem2D::NDC
         ) const;
 
         /// 与 AssembleFragmentShader 等价，但同时返回依赖收集结果 req_set
@@ -126,6 +130,7 @@ namespace hgl::graph
         bool AssembleVertexShaderSource(const mtl::MaterialVariantKey &key,
                                         const mtl::MaterialVariantDesc &desc,
                                         const mtl::MaterialVariantRow *row,
+                                        graph::CoordinateSystem2D coord_2d,
                                         std::string &out_source,
                                         std::string &out_error) const;
 

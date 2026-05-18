@@ -37,10 +37,13 @@ MaterialCreateInfo *CreateFromFixedDef3D(
     MaterialVariantKey assemble_key = var_key;
     PopulateVariantKeyVertexAttribBits(assemble_key, effective_def);
 
+    const hgl::graph::CoordinateSystem2D coord_2d =
+        cfg ? cfg->coord_2d : hgl::graph::CoordinateSystem2D::NDC;
+
     CompositorAssembler assembler;
 
     // Phase 5: use artifact path to collect SFM requirements alongside GLSL generation
-    auto vs_artifact = assembler.AssembleVertexArtifact(assemble_key, var_desc);
+    auto vs_artifact = assembler.AssembleVertexArtifact(assemble_key, var_desc, nullptr, coord_2d);
     if (!vs_artifact.success)
     {
         std::fprintf(stderr, "[%s] CompositorAssembler VS failed: %s\n",
