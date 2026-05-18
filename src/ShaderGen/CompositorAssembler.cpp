@@ -4,6 +4,7 @@
 #include <hgl/shadergen/CompositorFeatureFlags.h>
 #include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
+#include <hgl/shadergen/ShaderRequirementSet.h>
 #include <hgl/shadergen/VertexAttribMacroMap.h>
 #include <hgl/shadergen/PositionProviderRegistry.h>
 #include <hgl/shadergen/VertexPolicyRegistry.h>
@@ -685,6 +686,64 @@ namespace
         // success is already false by default
         return result;
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SFM helpers: mirror the include chain from Build* to collect req_set
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Collect VS resource requirements that match the include chain of BuildForwardVertexEntry.
+    void CollectVSRequirements(const hgl::graph::CompositorFeatureFlags &f,
+                               hgl::graph::ShaderRequirementSet &req_set)
+    {
+        // position provider
+        {
+            const hgl::graph::PositionProvider *pp = hgl::graph::FindBuiltinProvider(f.position_provider);
+            if (pp && !pp->glsl_path.empty())
+                req_set.ParseFromGLSLFile(pp->glsl_path);
+        }
+
+        // common VS UBO prologue (carries @sfm:require for camera / transform)
+        req_set.ParseFromGLSLFile("compositor/vert_forward_ubo.glsl");
+
+        // vertex policy
+        {
+            const hgl::graph::VertexPolicyDescriptor *vp = hgl::graph::FindBuiltinVertexPolicy(f.vertex_policy);
+            if (vp && !vp->glsl_path.empty())
+                req_set.ParseFromGLSLFile(vp->glsl_path);
+        }
+    }
+
+    /// Collect FS resource requirements that match the include chain of BuildForwardFragmentEntry.
+    void CollectFSRequirements(const hgl::graph::CompositorFeatureFlags &f,
+                               hgl::graph::ShaderRequirementSet &req_set)
+    {
+        // common FS UBO prologue (carries @sfm:require for camera / sky)
+        req_set.ParseFromGLSLFile("compositor/frag_forward_ubo.glsl");
+
+        // sky light
+        if (f.needs_sky)
+            req_set.ParseFromGLSLFile(GetSkyLightGLSLPath(f.sky_ambient_model));
+
+        // lighting model
+        if (f.enable_lighting)
+            req_set.ParseFromGLSLFile(hgl::graph::mtl::GetLightingModelGLSLPath(f.lighting_model));
+
+        // fragment provider
+        {
+            const hgl::graph::FragmentProviderDescriptor *fp =
+                hgl::graph::FindBuiltinFragmentProvider(f.fragment_provider);
+            if (fp && !fp->glsl_path.empty())
+            {
+                if (fp->needs_viewport)
+                    req_set.ParseFromGLSLFile("common/ubo_viewport.glsl");
+                req_set.ParseFromGLSLFile(fp->glsl_path);
+            }
+        }
+
+        // surface
+        if (!f.surface_path.empty())
+            req_set.ParseFromGLSLFile(f.surface_path);
+    }
 }
 
 namespace hgl::graph
@@ -930,6 +989,64 @@ namespace hgl::graph
         result.glsl = InjectDefines(source, key);
         result.success = true;
         return result;
+    }
+
+    CompositorAssembler::CompositorShaderArtifact CompositorAssembler::AssembleVertexArtifact(
+        const mtl::MaterialVariantKey  &key,
+        const mtl::MaterialVariantDesc &desc,
+        const mtl::MaterialVariantRow  *row
+    ) const
+    {
+        CompositorShaderArtifact artifact;
+
+        const AssembleStageResult stage = AssembleVertexShader(key, desc, row);
+        artifact.glsl          = stage.glsl;
+        artifact.success       = stage.success;
+        artifact.error_message = stage.error_message;
+
+        if (artifact.success)
+        {
+            const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
+            if (resolved_row && (!resolved_row->vs_template_path || !resolved_row->vs_template_path[0]))
+            {
+                // Only collect when we went through the BuildForwardVertexEntry path
+                CollectVSRequirements(VSFeatureFlagsFromRow(*resolved_row), artifact.req_set);
+            }
+        }
+
+        return artifact;
+    }
+
+    CompositorAssembler::CompositorShaderArtifact CompositorAssembler::AssembleFragmentArtifact(
+        const mtl::MaterialVariantKey  &key,
+        const mtl::MaterialVariantDesc &desc,
+        const mtl::MaterialVariantRow  *row
+    ) const
+    {
+        CompositorShaderArtifact artifact;
+
+        const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
+        const std::string surface_rel = !desc.surface_function_path.empty()
+            ? desc.surface_function_path
+            : (resolved_row && resolved_row->surface_path && resolved_row->surface_path[0])
+                ? resolved_row->surface_path
+                : hgl::graph::GetSurfaceFunctionPath(key.surface_type);
+
+        const AssembleStageResult stage = AssembleFragmentShader(key, desc, resolved_row);
+        artifact.glsl          = stage.glsl;
+        artifact.success       = stage.success;
+        artifact.error_message = stage.error_message;
+
+        if (artifact.success && resolved_row &&
+            (!resolved_row->fs_template_path || !resolved_row->fs_template_path[0]))
+        {
+            // Only collect when we went through the BuildForwardFragmentEntry path
+            CollectFSRequirements(
+                FSFeatureFlagsFromRow(key, *resolved_row, key.blend_mode, surface_rel),
+                artifact.req_set);
+        }
+
+        return artifact;
     }
 
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(

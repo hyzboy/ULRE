@@ -29,6 +29,11 @@ namespace hgl::graph
         /// 只解析顶部连续的 // 注释行，遇第一个非注释/非空行停止
         void ParseFromGLSLSource(std::string_view glsl_source);
 
+        /// 从 ShaderLibrary 相对路径读取文件，解析 @sfm:require 注解
+        /// rel_path 为相对于 GetShaderLibraryPath() 的路径（如 "compositor/vert_forward_ubo.glsl"）
+        /// 文件不存在或读取失败时静默跳过。
+        void ParseFromGLSLFile(std::string_view rel_path);
+
         // ── 查询接口 ─────────────────────────────────────────────────────────
 
         /// 是否已包含指定语义名的需求

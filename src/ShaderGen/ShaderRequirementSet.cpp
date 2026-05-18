@@ -1,8 +1,10 @@
 #include <hgl/shadergen/ShaderRequirementSet.h>
+#include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/mtl/DescriptorSemanticRegistry.h>
 #include <algorithm>
 #include <sstream>
 #include <cstring>
+#include <fstream>
 #include <vulkan/vulkan.h>
 
 namespace hgl::graph
@@ -188,6 +190,43 @@ namespace hgl::graph
                 Add(req);
             // 未识别的语义名直接跳过（不打断解析）
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ParseFromGLSLFile
+    // ─────────────────────────────────────────────────────────────────────────
+    void ShaderRequirementSet::ParseFromGLSLFile(std::string_view rel_path)
+    {
+        if (rel_path.empty()) return;
+
+        std::string full_path = GetShaderLibraryPath();
+        full_path += '/';
+        full_path.append(rel_path.data(), rel_path.size());
+
+        std::ifstream f(full_path);
+        if (!f.is_open()) return;
+
+        // 只读顶部注释块，无需加载整个文件
+        std::string src;
+        src.reserve(2048);
+        std::string line;
+        while (std::getline(f, line))
+        {
+            // 去前导空白后判断是否还是注释行
+            const char *p = line.c_str();
+            while (*p == ' ' || *p == '\t') ++p;
+            const bool is_comment = (p[0] == '/' && p[1] == '/');
+            const bool is_empty   = (*p == '\0' || *p == '\r');
+
+            src += line;
+            src += '\n';
+
+            // 遇到第一个非注释/非空行就停止读取
+            if (!is_comment && !is_empty)
+                break;
+        }
+
+        ParseFromGLSLSource(src);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
+#include <hgl/shadergen/ShaderRequirementSet.h>
 #include <mutex>
 #include <span>
 #include <string>
@@ -48,6 +49,15 @@ namespace hgl::graph
             std::string error_message;
         };
 
+        /// 晃展的 Stage 结果，新增 req_set 供 pipeline layout builder 使用
+        struct CompositorShaderArtifact
+        {
+            std::string              glsl;       ///< 生成的 GLSL 源码
+            ShaderRequirementSet     req_set;    ///< 从所有 include 片段收集到的资源需求
+            bool                     success = false;
+            std::string              error_message;
+        };
+
         /// Uses global ShaderLibrary path from ShaderGenPathConfig.
         CompositorAssembler();
 
@@ -82,6 +92,20 @@ namespace hgl::graph
             const mtl::MaterialVariantKey  &key,
             const mtl::MaterialVariantDesc &desc,
             const mtl::MaterialVariantRow  *row
+        ) const;
+
+        /// 与 AssembleVertexShader 等价，但同时返回依赖收集结果 req_set
+        CompositorShaderArtifact AssembleVertexArtifact(
+            const mtl::MaterialVariantKey  &key,
+            const mtl::MaterialVariantDesc &desc,
+            const mtl::MaterialVariantRow  *row = nullptr
+        ) const;
+
+        /// 与 AssembleFragmentShader 等价，但同时返回依赖收集结果 req_set
+        CompositorShaderArtifact AssembleFragmentArtifact(
+            const mtl::MaterialVariantKey  &key,
+            const mtl::MaterialVariantDesc &desc,
+            const mtl::MaterialVariantRow  *row = nullptr
         ) const;
 
         /// VariantDesc overload — derives SurfaceType/RenderAlphaMode/PassType/QualityTier from key,
