@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/common/PrimitiveTypeDef.h>
 #include <hgl/mtl/MaterialPreset.h>
@@ -11,7 +11,7 @@ namespace hgl::graph::mtl
     struct PipelineStateRow
     {
         const char *name = "";
-        MaterialPreset preset = MaterialPreset::PureColor3D;
+        MaterialPreset preset = MaterialPreset::PureColor;
         PrimitiveType primitive = PrimitiveType::Triangles;
         RenderAlphaMode blend = RenderAlphaMode::Opaque;
         PassType pass = PassType::ForwardOpaque;

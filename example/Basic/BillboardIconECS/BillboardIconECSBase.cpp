@@ -1,4 +1,4 @@
-#include "BillboardIconECSBase.h"
+﻿#include "BillboardIconECSBase.h"
 #include<hgl/graph/geo/GraphicsGeometryFactory.h>
 #include<hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
 #include<hgl/mtl/MaterialLibrary.h>
@@ -22,7 +22,7 @@ static const uint16_t kBaseQuadIndices[6] = {0, 1, 2, 0, 2, 3};
 
 static const mtl::MaterialRecipe kBillboardBaseCfg {
     .id            = "billboard_icon_base",
-    .preset        = mtl::MaterialPreset::UnlitTexture3D,
+    .preset        = mtl::MaterialPreset::UnlitTexture,
     .dim           = mtl::MaterialRecipe::Dim::D3,
     .prim          = PrimitiveType::Triangles,
     .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,

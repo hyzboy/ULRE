@@ -1,4 +1,4 @@
-#include <hgl/mtl/SurfaceFragmentTemplate.h>
+﻿#include <hgl/mtl/SurfaceFragmentTemplate.h>
 
 namespace hgl::graph::mtl
 {
@@ -15,13 +15,13 @@ namespace hgl::graph::mtl
     };
 
     const SurfaceFragmentTemplate kSurfaceFragmentTemplates[] = {
-        { "FS_PureColor", MaterialPreset::PureColor3D, SurfaceType::Unlit, SurfaceShadingModel::PureColor,
+        { "FS_PureColor", MaterialPreset::PureColor, SurfaceType::Unlit, SurfaceShadingModel::PureColor,
           LightingModel::Lambert, 0u, 0u, 0u, "surface/purecolor3d_surface.glsl", "", {}, kMaterialInstanceFSContract, StaticMaterialDefIdHint::PureColor3D, ShaderDataSchema::Color4f },
 
-        { "FS_VertexColor", MaterialPreset::VertexColor3D, SurfaceType::Unlit, SurfaceShadingModel::VertexColor,
+        { "FS_VertexColor", MaterialPreset::VertexColor, SurfaceType::Unlit, SurfaceShadingModel::VertexColor,
           LightingModel::Lambert, 0u, 0u, 0u, "surface/unlit_vertexcolor_surface.glsl", "", {}, {}, StaticMaterialDefIdHint::VertexColor3D, ShaderDataSchema::Color4f },
 
-        { "FS_UnlitTexture3D", MaterialPreset::UnlitTexture3D, SurfaceType::Unlit, SurfaceShadingModel::UnlitTexture3D,
+        { "FS_UnlitTexture3D", MaterialPreset::UnlitTexture, SurfaceType::Unlit, SurfaceShadingModel::UnlitTexture3D,
           LightingModel::Lambert, 1u << static_cast<uint32>(SamplerSlot::BaseColor), 0u, 0u, "surface/unlit_texture3d_surface.glsl", "", {}, {}, StaticMaterialDefIdHint::UnlitTexture3D, ShaderDataSchema::Color4f },
 
         { "FS_Text2D", MaterialPreset::Text2D, SurfaceType::Text2D, SurfaceShadingModel::Text,
@@ -35,7 +35,7 @@ namespace hgl::graph::mtl
           0u,
           "surface/standard_surface.glsl", "", {}, kLitMaterialInstanceFSContract, StaticMaterialDefIdHint::Standard3D, ShaderDataSchema::StandardParams },
 
-        { "FS_ErrorIndicator", MaterialPreset::PureColor3D, SurfaceType::Unlit, SurfaceShadingModel::CheckerboardFallback,
+        { "FS_ErrorIndicator", MaterialPreset::PureColor, SurfaceType::Unlit, SurfaceShadingModel::CheckerboardFallback,
           LightingModel::Lambert, 0u, 0u, 0u, "surface/error_indicator_surface.glsl", "", {}, {}, StaticMaterialDefIdHint::None, ShaderDataSchema::None },
     };
 

@@ -1,7 +1,6 @@
+// @sfm:require UBO sky
 #ifndef UBO_SKY_GLSL
 #define UBO_SKY_GLSL
-
-// @require UBO(SkyInfo)
 
 #ifndef STATIC_SET
 #define STATIC_SET 0

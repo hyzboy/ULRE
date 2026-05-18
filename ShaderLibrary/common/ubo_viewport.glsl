@@ -1,7 +1,6 @@
+// @sfm:require UBO viewport
 #ifndef UBO_VIEWPORT_GLSL
 #define UBO_VIEWPORT_GLSL
-
-// @require UBO(ViewportInfo)
 
 #ifndef STATIC_SET
 #define STATIC_SET 0

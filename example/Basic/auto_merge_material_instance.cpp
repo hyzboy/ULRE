@@ -1,4 +1,4 @@
-// 该范例主要演示使用ECS架构，在一个材质下使用不同材质实例传递颜色参数绘制三角形
+﻿// 该范例主要演示使用ECS架构，在一个材质下使用不同材质实例传递颜色参数绘制三角形
 // 并依赖RenderCollector中的自动合并功能，让同一材质下所有不同材质实例的对象一次渲染完成
 // This example demonstrates using different material instances under one material with ECS architecture
 //
@@ -53,7 +53,7 @@ private:
 
     inline static const mtl::MaterialRecipe kMergeCfg {
         .id       = "auto_merge_pure_color",
-        .preset   = mtl::MaterialPreset::PureColor2D,
+        .preset   = mtl::MaterialPreset::PureColor,
         .dim      = mtl::MaterialRecipe::Dim::D2,
         .pipeline = GraphicsPipelinePreset::Solid2D,
     };

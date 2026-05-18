@@ -1,4 +1,4 @@
-// 该范例主要演示使用ECS架构结合Static/Movable Transform分离的时钟示例
+﻿// 该范例主要演示使用ECS架构结合Static/Movable Transform分离的时钟示例
 // 刻度是静态的三角形（Static Transform），指针是动态更新的三角形（Movable Transform）
 // This example demonstrates a clock using ECS architecture with Static/Movable Transform separation
 //
@@ -59,7 +59,7 @@ private:
 
     inline static const mtl::MaterialRecipe kClockCfg {
         .id       = "clock_pure_color",
-        .preset   = mtl::MaterialPreset::PureColor2D,
+        .preset   = mtl::MaterialPreset::PureColor,
         .dim      = mtl::MaterialRecipe::Dim::D2,
         .pipeline = GraphicsPipelinePreset::Solid2D,
     };

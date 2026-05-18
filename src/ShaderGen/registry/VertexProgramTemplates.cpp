@@ -1,4 +1,4 @@
-#include <hgl/mtl/VertexProgramTemplate.h>
+﻿#include <hgl/mtl/VertexProgramTemplate.h>
 
 namespace hgl::graph::mtl
 {
@@ -10,15 +10,15 @@ namespace hgl::graph::mtl
     };
 
     const VertexProgramTemplate kVertexProgramTemplates[] = {
-        { "VS_PureColor3D", MaterialPreset::PureColor3D,
+        { "VS_PureColor3D", MaterialPreset::PureColor,
           GeometryMode::Mesh3D, VertexInputProfile::Position3D, VertexTransformPolicy::Mesh3D,
           PositionProviderId::DirectVec3, 0xFFFFFFFFu, "", {}, kMesh3DVertexContract, StaticMaterialDefIdHint::PureColor3D },
 
-        { "VS_VertexColor3D", MaterialPreset::VertexColor3D,
+        { "VS_VertexColor3D", MaterialPreset::VertexColor,
           GeometryMode::Mesh3D, VertexInputProfile::PositionColor3D, VertexTransformPolicy::Mesh3D,
           PositionProviderId::DirectVec3, 0xFFFFFFFFu, "", {}, kMesh3DVertexContract, StaticMaterialDefIdHint::VertexColor3D },
 
-        { "VS_UnlitTexture3D", MaterialPreset::UnlitTexture3D,
+        { "VS_UnlitTexture3D", MaterialPreset::UnlitTexture,
           GeometryMode::Mesh3D, VertexInputProfile::PositionTexCoord3D, VertexTransformPolicy::Mesh3D,
           PositionProviderId::DirectVec3, 0xFFFFFFFFu, "", {}, kMesh3DVertexContract, StaticMaterialDefIdHint::UnlitTexture3D },
 

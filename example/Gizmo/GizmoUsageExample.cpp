@@ -1,4 +1,4 @@
-/*
+﻿/*
  TransformGizmoSystem 使用示例
 
  展示如何使用 TransformGizmoSystem 控制物体变换
@@ -50,7 +50,7 @@ private:
 
     inline static const mtl::MaterialRecipe kGridCfg {
         .id            = "gizmo_grid",
-        .preset        = mtl::MaterialPreset::VertexLuminance2D,
+        .preset        = mtl::MaterialPreset::VertexLuminance,
         .prim          = PrimitiveType::Lines,
         .vertex_input  = mtl::VertexInputProfile::PositionLuminance2D,
         .vertex_policy = mtl::VertexTransformPolicy::Quad2D,

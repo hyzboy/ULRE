@@ -5,6 +5,7 @@
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
 #include<hgl/common/TextureSamplerTypeDef.h>
+#include<hgl/common/CoordinateSystem.h>
 #include<hgl/vk/VertexAttrib.h>
 
 namespace hgl::graph::mtl{
@@ -27,6 +28,11 @@ struct Material3DCreateConfig:public MaterialCreateConfig
     // Populated by MaterialAssetLoader via ResolveRecipeIntentFeatureMask before calling ApplyCreateConfigToVariantKey.
     // 0 means no intent_features override (use defaults derived from camera/sky/lighting_model).
     uint64              effective_feature_mask = 0;
+
+    // P7-3: 2D coordinate system for materials with 2D position inputs (VAT_VEC2).
+    // When position_format == VAT_VEC2 and coord_2d != CoordinateSystem2D::NDC, the
+    // compositor emits the appropriate GetPosition2D() variant code.
+    graph::CoordinateSystem2D coord_2d = graph::CoordinateSystem2D::NDC;
 
 public:
 
@@ -71,6 +77,9 @@ public:
             return cmp;
 
         if(auto cmp=position_format<=>cfg.position_format; cmp!=0)
+            return cmp;
+
+        if(auto cmp=coord_2d<=>cfg.coord_2d; cmp!=0)
             return cmp;
 
         return effective_feature_mask <=> cfg.effective_feature_mask;

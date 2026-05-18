@@ -1,4 +1,4 @@
-// R8 — domain_id 语义化演示：双图标集 Billboard 阵列
+﻿// R8 — domain_id 语义化演示：双图标集 Billboard 阵列
 //
 // 两组 Billboard 螺旋各使用不同的图标集（Freepik / Gradient），
 // PlaneGrid 材质通过 domain_id 区分批次，验证 ResourceDomain 隔离端到端正确。
@@ -143,7 +143,7 @@ static const uint16_t kDomainQuadIndices[6] = {0, 1, 2, 0, 2, 3};
 // Shared billboard recipe
 static const mtl::MaterialRecipe kBillboardIconCfg {
     .id            = "domain_demo_billboard_icon",
-    .preset        = mtl::MaterialPreset::UnlitTexture3D,
+    .preset        = mtl::MaterialPreset::UnlitTexture,
     .dim           = mtl::MaterialRecipe::Dim::D3,
     .prim          = PrimitiveType::Triangles,
     .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,
@@ -176,7 +176,7 @@ private:
     inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id             = "domain_demo_plane_grid",
         .domain_id      = kGridDomainID,
-        .preset         = mtl::MaterialPreset::VertexLuminance2D,
+        .preset         = mtl::MaterialPreset::VertexLuminance,
         .prim           = PrimitiveType::Lines,
         .vertex_input   = mtl::VertexInputProfile::PositionLuminance2D,
         .vertex_policy  = mtl::VertexTransformPolicy::Quad2D,

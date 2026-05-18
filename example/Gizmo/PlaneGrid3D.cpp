@@ -1,4 +1,4 @@
-// PlaneGrid3D
+﻿// PlaneGrid3D
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -34,7 +34,7 @@ private:
 
     inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id       = "plane_grid",
-        .preset   = mtl::MaterialPreset::VertexLuminance2D,
+        .preset   = mtl::MaterialPreset::VertexLuminance,
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };

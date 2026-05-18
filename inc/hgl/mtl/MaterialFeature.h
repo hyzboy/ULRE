@@ -180,14 +180,11 @@ namespace hgl::graph::mtl
                 return mask;
             }
 
-            case MaterialPreset::PureColor2D:
-            case MaterialPreset::PureTexture2D:
-            case MaterialPreset::VertexColor2D:
+            case MaterialPreset::PureColor:
+            case MaterialPreset::UnlitTexture:
+            case MaterialPreset::VertexColor:
             case MaterialPreset::Text2D:
-            case MaterialPreset::PureColor3D:
-            case MaterialPreset::VertexColor3D:
-            case MaterialPreset::VertexLuminance3D:
-            case MaterialPreset::VertexLuminance2D:
+            case MaterialPreset::VertexLuminance:
             case MaterialPreset::VertexPaletteColor3D:
             case MaterialPreset::Gizmo3D:
             case MaterialPreset::Checkerboard3D:

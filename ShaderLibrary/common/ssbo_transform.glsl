@@ -1,8 +1,7 @@
+// @sfm:require SSBO transform_id
+// @sfm:require SSBO transform_data
 #ifndef L2W_SSBO_GLSL
 #define L2W_SSBO_GLSL
-
-// @require SSBO(TransformID)
-// @require SSBO(LocalToWorld)
 
 #ifndef PEROBJECT_SET
 #define PEROBJECT_SET 0

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
@@ -54,7 +54,7 @@ protected:
 
     inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id            = "billboard_icon_plane_grid",
-        .preset        = mtl::MaterialPreset::VertexLuminance2D,
+        .preset        = mtl::MaterialPreset::VertexLuminance,
         .prim          = PrimitiveType::Lines,
         .vertex_input  = mtl::VertexInputProfile::PositionLuminance2D,
         .vertex_policy = mtl::VertexTransformPolicy::Quad2D,

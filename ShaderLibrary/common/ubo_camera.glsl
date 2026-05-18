@@ -1,7 +1,6 @@
+// @sfm:require UBO camera
 #ifndef UBO_CAMERA_GLSL
 #define UBO_CAMERA_GLSL
-
-// @require UBO(CameraInfo)
 
 #ifndef PERFRAME_SET
 #define PERFRAME_SET 0

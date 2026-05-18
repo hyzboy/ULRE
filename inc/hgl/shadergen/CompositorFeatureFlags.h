@@ -2,6 +2,7 @@
 
 #include <hgl/common/PositionProvider.h>
 #include <hgl/common/VertexAttribDef.h>
+#include <hgl/common/CoordinateSystem.h>
 #include <hgl/mtl/MaterialVariantRow.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
@@ -58,6 +59,10 @@ struct CompositorFeatureFlags
 
     // Surface function path (FS only)
     std::string surface_path;
+
+    // 2D coordinate system (only used when position_provider == VAB_Vec2).
+    // NDC = no extra transform; Ortho / ZeroToOne emit corresponding GLSL macros.
+    CoordinateSystem2D coord_2d = CoordinateSystem2D::NDC;
 };
 
 } // namespace hgl::graph

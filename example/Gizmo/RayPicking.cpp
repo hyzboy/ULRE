@@ -1,4 +1,4 @@
-// RayPicking (ECS Version)
+﻿// RayPicking (ECS Version)
 // 该范例主要演示使用ECS架构实现射线拾取功能
 // This example demonstrates ray picking using ECS architecture
 //
@@ -61,14 +61,14 @@ private:
     inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id       = "ray_picking_plane_grid",
         .domain_id = "plane_grid_domain",
-        .preset   = mtl::MaterialPreset::VertexLuminance2D,
+        .preset   = mtl::MaterialPreset::VertexLuminance,
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };
     inline static const mtl::MaterialRecipe kLineCfg {
         .id       = "ray_picking_line",
         .domain_id = "line_3d_domain",
-        .preset   = mtl::MaterialPreset::VertexLuminance3D,
+        .preset   = mtl::MaterialPreset::VertexLuminance,
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };

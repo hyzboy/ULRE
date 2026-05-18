@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/CoreType.h>
 #include <hgl/common/PositionProvider.h>
@@ -12,7 +12,7 @@ namespace hgl::graph::mtl
     struct VertexProgramTemplate
     {
         const char *name = "";
-        MaterialPreset preset = MaterialPreset::PureColor3D;
+        MaterialPreset preset = MaterialPreset::PureColor;
         GeometryMode geometry_mode = GeometryMode::Mesh3D;
         VertexInputProfile vertex_input = VertexInputProfile::Unknown;
         VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;

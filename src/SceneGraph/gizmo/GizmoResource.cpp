@@ -148,7 +148,7 @@ namespace hgl::graph
             {
                 mtl::MaterialRecipe recipe;
                 recipe.id = "gizmo_resource_purecolor";
-                recipe.preset = mtl::MaterialPreset::PureColor3D;
+                recipe.preset = mtl::MaterialPreset::PureColor;
                 recipe.dim = mtl::MaterialRecipe::Dim::D3;
                 recipe.vertex_input = mtl::VertexInputProfile::Position3D;
                 recipe.vertex_policy = mtl::VertexTransformPolicy::Mesh3D;

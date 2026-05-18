@@ -150,6 +150,17 @@ namespace
         EmitEnabledVertexAttribDefines(writer, f);
         if (f.has_direction) writer.EmitDefine("HAS_DIRECTION");
 
+        // Emit 2D coordinate system macros before any includes so that both the
+        // position provider (vab_vec2.glsl) and the vertex policy
+        // (position2d_transform.glsl) can see them.
+        if (f.position_provider == hgl::graph::PositionProviderId::VAB_Vec2)
+        {
+            if (f.coord_2d == hgl::graph::CoordinateSystem2D::Ortho)
+                writer.EmitDefine("COORD_ORTHO");
+            else if (f.coord_2d == hgl::graph::CoordinateSystem2D::ZeroToOne)
+                writer.EmitDefine("COORD_ZERO_TO_ONE");
+        }
+
         // ── Axis 1: position provider ─────────────────────────────────────────
         // Each provider file declares its own VBO layout (or none) and exposes
         // vec3 GetPositionLocal().  DirectVec3 (empty path) falls back to the
@@ -167,8 +178,7 @@ namespace
             else
             {
                 // Fallback: legacy POSITION_KIND macro + common/vertex_input_position.glsl
-                const int pos_kind = (f.position_provider == hgl::graph::PositionProviderId::VAB_Vec2) ? 1 : 2;
-                writer.EmitDefine("POSITION_KIND", std::to_string(pos_kind).c_str());
+                writer.EmitDefine("POSITION_KIND", "2");
                 writer.EmitInclude("common/vertex_input_position.glsl");
             }
         }
@@ -494,7 +504,8 @@ namespace
         return true;
     }
 
-    hgl::graph::CompositorFeatureFlags VSFeatureFlagsFromRow(const hgl::graph::mtl::MaterialVariantRow &row)
+    hgl::graph::CompositorFeatureFlags VSFeatureFlagsFromRow(const hgl::graph::mtl::MaterialVariantRow &row,
+                                                             hgl::graph::CoordinateSystem2D coord_2d = hgl::graph::CoordinateSystem2D::NDC)
     {
         hgl::graph::CompositorFeatureFlags flags;
         flags.position_provider = row.position_provider;
@@ -510,6 +521,7 @@ namespace
         flags.vertex_policy   = row.vertex_policy;
         flags.needs_camera    = row.resources.needs_camera;
         flags.needs_transform = row.resources.needs_transform;
+        flags.coord_2d        = coord_2d;
 
         if (row.surface_model == hgl::graph::mtl::SurfaceShadingModel::SkyMinimal)
             flags.vertex_attrib_bits = 0;
@@ -530,12 +542,13 @@ namespace
         return BuildForwardVertexEntry(LegacyVSFeatureFlagsFromKey(key));
     }
 
-    std::string BuildVSFromRow(const hgl::graph::mtl::MaterialVariantRow &row)
+    std::string BuildVSFromRow(const hgl::graph::mtl::MaterialVariantRow &row,
+                               hgl::graph::CoordinateSystem2D coord_2d = hgl::graph::CoordinateSystem2D::NDC)
     {
         if (row.vs_template_path && row.vs_template_path[0])
             return BuildIncludeOnlyVS(row.vs_template_path);
 
-        return BuildForwardVertexEntry(VSFeatureFlagsFromRow(row));
+        return BuildForwardVertexEntry(VSFeatureFlagsFromRow(row, coord_2d));
     }
 
     /// Legacy key-derived FS feature inference: only used by non-builtin fallback assembly.
@@ -863,7 +876,7 @@ namespace hgl::graph
             if (resolved_row)
             {
                 LogVSAssemblyPath("explicit_row", key, desc, resolved_row);
-                out_source = BuildVSFromRow(*resolved_row);
+                out_source = BuildVSFromRow(*resolved_row, desc.coord_2d);
             }
             else
             {
@@ -1031,7 +1044,7 @@ namespace hgl::graph
                 if (!resolved_row->vs_template_path || !resolved_row->vs_template_path[0])
                 {
                     // Standard two-axis path: collect from fragment/policy/position files
-                    CollectVSRequirements(VSFeatureFlagsFromRow(*resolved_row), artifact.req_set, shader_lib_path_);
+                    CollectVSRequirements(VSFeatureFlagsFromRow(*resolved_row, desc.coord_2d), artifact.req_set, shader_lib_path_);
                 }
                 else
                 {

@@ -1,4 +1,4 @@
-// 画一个圆角矩形，它是UI的基本绘图元件
+﻿// 画一个圆角矩形，它是UI的基本绘图元件
 // 通过控制尺寸、每个角的半径，可绘制出正圆、矩形、圆角矩形
 
 #include<hgl/WorkManager.h>
@@ -52,7 +52,7 @@ private:
 
     inline static const mtl::MaterialRecipe kRoundRectCfg {
         .id       = "roundrect_texture",
-        .preset   = mtl::MaterialPreset::PureTexture2D,
+        .preset   = mtl::MaterialPreset::UnlitTexture,
         .dim      = mtl::MaterialRecipe::Dim::D2,
         .l2w      = false,
         .coord_2d = CoordinateSystem2D::ZeroToOne,

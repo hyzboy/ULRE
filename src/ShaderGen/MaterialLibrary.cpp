@@ -437,16 +437,14 @@ static bool IsSemanticMaterialPreset(const MaterialPreset preset)
 
 static const PresetResolveEntry kPresetResolveTable[] =
 {
-    // Canonical presets (one entry per kBuiltinVariants preset)
-    {MaterialPreset::Checkerboard3D,       "Checkerboard3D"},      // alias → Standard via IsSemanticMaterialPreset
-    {MaterialPreset::VertexColor2D,        "VertexColor2D"},
-    {MaterialPreset::PureColor2D,          "PureColor2D"},
-    {MaterialPreset::PureTexture2D,        "PureTexture2D"},
+    // One canonical name per semantic preset.
+    // 2D vs 3D is a vertex transform policy, not a preset distinction.
+    {MaterialPreset::Checkerboard3D,       "Checkerboard3D"},
+    {MaterialPreset::VertexColor,          "VertexColor"},
+    {MaterialPreset::PureColor,            "PureColor"},
+    {MaterialPreset::UnlitTexture,         "UnlitTexture"},
     {MaterialPreset::Text2D,               "Text2D"},
-    {MaterialPreset::PureColor3D,          "PureColor3D"},
-    {MaterialPreset::VertexColor3D,        "VertexColor3D"},
-    {MaterialPreset::VertexLuminance3D,    "VertexLuminance3D"},
-    {MaterialPreset::VertexLuminance2D,    "VertexLuminance2D"},
+    {MaterialPreset::VertexLuminance,      "VertexLuminance"},
     {MaterialPreset::VertexPaletteColor3D, "VertexPaletteColor3D"},
     {MaterialPreset::Gizmo3D,              "Gizmo3D"},
     {MaterialPreset::TerrainGrid,          "TerrainGrid"},

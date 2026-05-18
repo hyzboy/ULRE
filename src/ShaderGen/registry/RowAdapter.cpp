@@ -1,4 +1,4 @@
-#include <hgl/shadergen/RegistryQuery.h>
+﻿#include <hgl/shadergen/RegistryQuery.h>
 #include <hgl/shadergen/ColorSource.h>
 #include <hgl/shadergen/ColorSourcePipeline.h>
 #include <cstdio>
@@ -15,7 +15,7 @@ namespace hgl::graph::mtl
         MaterialVariantRow row;
 
         row.name = debug_name ? debug_name : "ComposedRow";
-        row.preset = fragment ? fragment->preset : (vertex ? vertex->preset : MaterialPreset::PureColor3D);
+        row.preset = fragment ? fragment->preset : (vertex ? vertex->preset : MaterialPreset::PureColor);
         row.factory_type = row.preset;
         row.surface_type = key.surface_type;
         row.geometry_mode = key.geometry_mode;

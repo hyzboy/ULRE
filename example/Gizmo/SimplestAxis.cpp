@@ -1,4 +1,4 @@
-// SimplestAxis
+﻿// SimplestAxis
 // 直接从0,0,0向三个方向画一条直线，用于确认坐标轴方向
 
 #include<hgl/framework/WorkManager.h>
@@ -35,7 +35,7 @@ private:
 
     inline static const mtl::MaterialRecipe kAxisCfg {
         .id       = "axis_vertex_color",
-        .preset   = mtl::MaterialPreset::VertexColor3D,
+        .preset   = mtl::MaterialPreset::VertexColor,
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };

@@ -118,6 +118,12 @@ std::string Material3DCreateConfig::ToHashStdString()
     else
         hash+="UnknownVA";
 
+    if(coord_2d != graph::CoordinateSystem2D::NDC)
+    {
+        hash+="_2D";
+        hash+=graph::GetCoordinateSystem2DName(coord_2d);
+    }
+
     return hash;
 }
 

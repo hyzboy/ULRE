@@ -30,6 +30,7 @@ namespace hgl::graph
         { Policy::Sky,                  "",  /* TODO: migrate sky VS */                             true,         false },
         { Policy::Text2D,               "",  /* TODO: migrate text2d.vert.glsl */                   true,         false },
         { Policy::FullscreenTriangle,   "ShaderLibrary/vertex_policy/passthrough_ndc.glsl",        false,        false },
+        { Policy::Position2DTransform,  "ShaderLibrary/vertex_policy/position2d_transform.glsl",   false,        true  },
     };
 
     static constexpr size_t kBuiltinPolicyCount =

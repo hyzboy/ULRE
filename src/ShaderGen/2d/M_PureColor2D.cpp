@@ -1,45 +1,57 @@
-﻿#include"Build2DCommon.h"
-#include"MaterialFactory2D.h"
+﻿#include"../3d/MaterialFactory3DCommon.h"
+#include"../3d/Build3DCommon.h"
+#include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialVariantDesc.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
 namespace hgl::graph::mtl{
+namespace{
 
-static MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite *profile,
-                                             Material2DCreateConfig *cfg,
-                                             const MaterialVariantDesc &desc,
-                                             const MaterialVariantKey &key)
-{
-    if(!profile||!cfg)
-        return(nullptr);
+// ── 3D path ───────────────────────────────────────────────────────────────────────
+constexpr FixedVertexEntry kPureColor3DVertex[] = {
+    { VAT_VEC3, VAN::Position },
+};
+const UBOSemanticSet  kPureColor3DUBOs  = build3d::MakeViewportCameraUBOs();
+const SSBOSemanticSet kPureColor3DSSBOs = build3d::MakeTransformSSBOs(true);
+const StaticMaterialDef kPureColor3DDef {
+    "PureColor", PrimitiveType::Triangles,
+    kPureColor3DVertex, 1,
+    &kPureColor3DUBOs, &kPureColor3DSSBOs, nullptr,
+    ShaderDataSchema::Color4f,
+};
 
-    cfg->material_instance=true;
-
-    auto vs_preamble = build2d::Build2DVertexPreamble(cfg, false, true);
-    auto fs_preamble = build2d::Build2DFragmentPreamble(cfg, false, true);
-
-    // Build DEF dynamically
-    std::vector<FixedVertexEntry> vertices;
-    build2d::PushBaseVertexEntries(vertices, cfg);
-
-    MaterialResourceManifest manifest;
-    StaticMaterialDef def{};
-    build2d::BuildBase2DFixedDef(def,
-                                 "PureColor2D",
-                                 cfg,
-                                 vertices,
-                                 manifest,
-                                 ShaderDataSchema::Color4f);
-
-    return CreateFromFixedDef2D("PureColor2D", profile, def, key, vs_preamble, fs_preamble, cfg, desc);
-}
-
-static MaterialCreateInfo *PureColor2D_Adapter(
+// ── Unified adapter ──────────────────────────────────────────────────────────────
+static MaterialCreateInfo *PureColor_Adapter(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialVariantDesc                 *desc,
     const MaterialVariantKey                  &key,
     MaterialCreateConfig *cfg)
-{ return CreatePureColor2D(profile, static_cast<Material2DCreateConfig *>(cfg), *desc, key); }
+{
+    if (!profile || !cfg) return nullptr;
+
+    if (cfg->kind == ConfigKind::D2)
+    {
+        const Material2DCreateConfig *c2 = static_cast<const Material2DCreateConfig *>(cfg);
+        Material3DCreateConfig cfg3d(c2->prim, IncludeCamera::Without, IncludeL2W::Without, IncludeSky::Without);
+        cfg3d.position_format   = VAT_VEC2;
+        cfg3d.local_to_world    = c2->local_to_world;
+        cfg3d.coord_2d          = c2->coordinate_system;
+        cfg3d.preset_name       = c2->preset_name;
+        cfg3d.material_instance = true;
+        MaterialVariantDesc e = *desc; e.coord_2d = c2->coordinate_system;
+        FixedVertexEntry v[] = {{ VAT_VEC2, VAN::Position }};
+        StaticMaterialDef def { "PureColor", cfg3d.prim, v, 1, nullptr, nullptr, nullptr, ShaderDataSchema::Color4f };
+        return CreateFromFixedDef3D("PureColor", profile, def, key, &cfg3d, e);
+    }
+    else
+    {
+        auto *c3 = static_cast<Material3DCreateConfig *>(cfg);
+        return CreateFromFixedDef3D("PureColor", profile, kPureColor3DDef, key, c3, *desc);
+    }
+}
+}//anonymous
 }//namespace hgl::graph::mtl
 
 #include "../MaterialFactory3DRegistration.h"
-ULRE_REGISTER_PRESET_FACTORY(PureColor2D, "PureColor2D", hgl::graph::mtl::PureColor2D_Adapter)
+ULRE_REGISTER_PRESET_FACTORY(PureColor, "PureColor", hgl::graph::mtl::PureColor_Adapter)

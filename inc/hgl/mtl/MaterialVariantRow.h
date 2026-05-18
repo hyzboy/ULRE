@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/CoreType.h>
 #include <hgl/common/PrimitiveTypeDef.h>
@@ -44,6 +44,7 @@ namespace hgl::graph::mtl
         Sky,
         Text2D,
         FullscreenTriangle,
+        Position2DTransform,    ///< P7-3: 2D coord transform (NDC/Ortho/ZeroToOne via coord_2d flag)
     };
 
     enum class SurfaceShadingModel : uint8
@@ -128,8 +129,8 @@ namespace hgl::graph::mtl
     struct MaterialVariantRow
     {
         const char *name = "";
-        MaterialPreset preset = MaterialPreset::PureColor3D;
-        MaterialPreset factory_type = MaterialPreset::PureColor3D;
+        MaterialPreset preset = MaterialPreset::PureColor;
+        MaterialPreset factory_type = MaterialPreset::PureColor;
 
         PrimitiveType primitive = PrimitiveType::Triangles;
         SurfaceType surface_type = SurfaceType::Unlit;
@@ -196,6 +197,7 @@ namespace hgl::graph::mtl
         case VertexTransformPolicy::Sky: return "Sky";
         case VertexTransformPolicy::Text2D: return "Text2D";
         case VertexTransformPolicy::FullscreenTriangle: return "FullscreenTriangle";
+        case VertexTransformPolicy::Position2DTransform: return "Position2DTransform";
         default: return "Unknown";
         }
     }

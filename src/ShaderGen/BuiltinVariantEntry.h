@@ -140,43 +140,101 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 
     switch (e.preset)
     {
-    case MaterialPreset::VertexColor2D:
+    case MaterialPreset::VertexColor:
+    {
+        const bool is2D = (e.position_provider == PositionProviderId::VAB_Vec2);
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::Position2D;
-        row.vertex_policy = VertexTransformPolicy::Quad2D;
+        row.vertex_input  = is2D ? VertexInputProfile::Position2D : VertexInputProfile::PositionColor3D;
+        row.vertex_policy = is2D ? VertexTransformPolicy::Position2DTransform : VertexTransformPolicy::Mesh3D;
         row.surface_model = SurfaceShadingModel::VertexColor;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::Color);
         row.fs_features.SetVertexAttrib(VertexAttrib::Color);
-        row.def_hint = StaticMaterialDefIdHint::Standard2D;
+        if (!is2D) { row.resources.needs_camera = true; row.resources.needs_transform = true; }
+        row.def_hint = is2D ? StaticMaterialDefIdHint::Standard2D : StaticMaterialDefIdHint::VertexColor3D;
         break;
+    }
 
-    case MaterialPreset::PureColor2D:
+    case MaterialPreset::PureColor:
+    {
+        const bool is2D = (e.position_provider == PositionProviderId::VAB_Vec2);
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::Position2D;
-        row.vertex_policy = VertexTransformPolicy::Quad2D;
+        row.vertex_input  = is2D ? VertexInputProfile::Position2D : VertexInputProfile::Position3D;
+        row.vertex_policy = is2D ? VertexTransformPolicy::Position2DTransform : VertexTransformPolicy::Mesh3D;
         row.surface_model = SurfaceShadingModel::PureColor;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.fs_features.SetVertexAttrib(VertexAttrib::Position);
         row.resources.needs_material_instance = true;
-        row.schema = ShaderDataSchema::Color4f;
-        row.def_hint = StaticMaterialDefIdHint::Standard2D;
+        if (!is2D) { row.resources.needs_camera = true; row.resources.needs_transform = true; }
+        row.schema   = ShaderDataSchema::Color4f;
+        row.def_hint = is2D ? StaticMaterialDefIdHint::Standard2D : StaticMaterialDefIdHint::PureColor3D;
         break;
+    }
 
-    case MaterialPreset::PureTexture2D:
+    case MaterialPreset::VertexLuminance:
+    {
+        const bool is2D = (e.position_provider == PositionProviderId::VAB_Vec2);
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::PositionTexCoord2D;
-        row.vertex_policy = VertexTransformPolicy::Quad2D;
-        row.surface_model = SurfaceShadingModel::Texture2D;
+        row.vertex_input  = is2D ? VertexInputProfile::PositionLuminance2D : VertexInputProfile::PositionLuminance3D;
+        row.vertex_policy = is2D ? VertexTransformPolicy::Position2DTransform : VertexTransformPolicy::Mesh3D;
+        row.surface_model = SurfaceShadingModel::VertexLuminance;
+        row.vs_features.SetVertexAttrib(VertexAttrib::Position);
+        row.vs_features.SetVertexAttrib(VertexAttrib::Luminance);
+        row.fs_features.SetVertexAttrib(VertexAttrib::Luminance);
+        row.resources.needs_material_instance = true;
+        if (!is2D) { row.resources.needs_camera = true; row.resources.needs_transform = true; }
+        row.schema   = ShaderDataSchema::Color4f;
+        row.def_hint = is2D ? StaticMaterialDefIdHint::Standard2D : StaticMaterialDefIdHint::VertexLuminance3D;
+        break;
+    }
+
+    case MaterialPreset::UnlitTexture:
+    {
+        const bool is2D = (e.position_provider == PositionProviderId::VAB_Vec2
+                        && e.geometry_mode != GeometryMode::BillboardCameraFacing
+                        && e.geometry_mode != GeometryMode::BillboardAxisLocked);
+        row.primitive     = PrimitiveType::Triangles;
+        row.surface_model = SurfaceShadingModel::UnlitTexture3D;
+
+        if (e.geometry_mode == GeometryMode::BillboardCameraFacing)
+        {
+            row.vertex_input  = VertexInputProfile::PositionTexCoord2D;
+            row.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
+            row.position_provider = PositionProviderId::VAB_Vec2;
+            row.resources.needs_camera    = true;
+            row.resources.needs_transform = true;
+        }
+        else if (e.geometry_mode == GeometryMode::BillboardAxisLocked)
+        {
+            row.vertex_input  = VertexInputProfile::PositionTexCoord2D;
+            row.vertex_policy = VertexTransformPolicy::BillboardAxisLocked;
+            row.position_provider = PositionProviderId::VAB_Vec2;
+            row.resources.needs_camera    = true;
+            row.resources.needs_transform = true;
+            row.resources.needs_viewport  = true;
+        }
+        else if (is2D)
+        {
+            row.vertex_input  = VertexInputProfile::PositionTexCoord2D;
+            row.vertex_policy = VertexTransformPolicy::Position2DTransform;
+        }
+        else
+        {
+            row.vertex_input  = VertexInputProfile::PositionTexCoord3D;
+            row.vertex_policy = VertexTransformPolicy::Mesh3D;
+        }
+
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::TexCoord);
         row.fs_features.SetVertexAttrib(VertexAttrib::TexCoord);
-        if (e.tex[0].mode == TextureSourceMode::Array)
-            row.color_sources.push_back(graph::ColorSource::MakeSampler2DArray(SamplerSlot::BaseColor));
-        else if (e.tex[0].mode != TextureSourceMode::None)
-            row.color_sources.push_back(graph::ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
-        row.def_hint = StaticMaterialDefIdHint::Standard2D;
+        if (!is2D) { row.resources.needs_camera = true; row.resources.needs_transform = true; }
+        if (e.tex[0].mode != TextureSourceMode::None)
+            row.color_sources.push_back(e.tex[0].mode == TextureSourceMode::Array
+                ? graph::ColorSource::MakeSampler2DArray(SamplerSlot::BaseColor)
+                : graph::ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
+        row.def_hint = StaticMaterialDefIdHint::UnlitTexture3D;
         break;
+    }
 
     case MaterialPreset::Text2D:
         row.primitive = PrimitiveType::Triangles;
@@ -190,61 +248,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.resources.needs_material_instance = true;
         row.schema = ShaderDataSchema::TextColor;
         row.def_hint = StaticMaterialDefIdHint::Text2D;
-        break;
-
-    case MaterialPreset::PureColor3D:
-        row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::Position3D;
-        row.vertex_policy = VertexTransformPolicy::Mesh3D;
-        row.surface_model = SurfaceShadingModel::PureColor;
-        row.vs_features.SetVertexAttrib(VertexAttrib::Position);
-        row.fs_features.SetVertexAttrib(VertexAttrib::Position);
-        row.resources.needs_camera = true;
-        row.resources.needs_transform = true;
-        row.resources.needs_material_instance = true;
-        row.schema = ShaderDataSchema::Color4f;
-        row.def_hint = StaticMaterialDefIdHint::PureColor3D;
-        break;
-
-    case MaterialPreset::VertexColor3D:
-        row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::PositionColor3D;
-        row.vertex_policy = VertexTransformPolicy::Mesh3D;
-        row.surface_model = SurfaceShadingModel::VertexColor;
-        row.vs_features.SetVertexAttrib(VertexAttrib::Position);
-        row.vs_features.SetVertexAttrib(VertexAttrib::Color);
-        row.fs_features.SetVertexAttrib(VertexAttrib::Color);
-        row.resources.needs_camera = true;
-        row.resources.needs_transform = true;
-        row.def_hint = StaticMaterialDefIdHint::VertexColor3D;
-        break;
-
-    case MaterialPreset::VertexLuminance3D:
-        row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::PositionLuminance3D;
-        row.vertex_policy = VertexTransformPolicy::Mesh3D;
-        row.surface_model = SurfaceShadingModel::VertexLuminance;
-        row.vs_features.SetVertexAttrib(VertexAttrib::Position);
-        row.vs_features.SetVertexAttrib(VertexAttrib::Luminance);
-        row.fs_features.SetVertexAttrib(VertexAttrib::Luminance);
-        row.resources.needs_camera = true;
-        row.resources.needs_transform = true;
-        row.resources.needs_material_instance = true;
-        row.schema = ShaderDataSchema::Color4f;
-        row.def_hint = StaticMaterialDefIdHint::VertexLuminance3D;
-        break;
-
-    case MaterialPreset::VertexLuminance2D:
-        row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::PositionLuminance2D;
-        row.vertex_policy = VertexTransformPolicy::Quad2D;
-        row.surface_model = SurfaceShadingModel::VertexLuminance;
-        row.vs_features.SetVertexAttrib(VertexAttrib::Position);
-        row.vs_features.SetVertexAttrib(VertexAttrib::Luminance);
-        row.fs_features.SetVertexAttrib(VertexAttrib::Luminance);
-        row.resources.needs_material_instance = true;
-        row.schema = ShaderDataSchema::Color4f;
-        row.def_hint = StaticMaterialDefIdHint::Standard2D;
         break;
 
     case MaterialPreset::VertexPaletteColor3D:
@@ -275,40 +278,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.resources.needs_material_instance = true;
         row.schema = ShaderDataSchema::Color4f;
         row.def_hint = StaticMaterialDefIdHint::Gizmo3D;
-        break;
-
-    case MaterialPreset::UnlitTexture3D:
-        row.primitive = PrimitiveType::Triangles;
-        row.surface_model = SurfaceShadingModel::UnlitTexture3D;
-
-        if (e.geometry_mode == GeometryMode::BillboardCameraFacing)
-        {
-            row.vertex_input = VertexInputProfile::PositionTexCoord2D;
-            row.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
-            row.position_provider = PositionProviderId::VAB_Vec2;
-        }
-        else if (e.geometry_mode == GeometryMode::BillboardAxisLocked)
-        {
-            row.vertex_input = VertexInputProfile::PositionTexCoord2D;
-            row.vertex_policy = VertexTransformPolicy::BillboardAxisLocked;
-            row.position_provider = PositionProviderId::VAB_Vec2;
-        }
-        else
-        {
-            row.vertex_input = VertexInputProfile::PositionTexCoord3D;
-            row.vertex_policy = VertexTransformPolicy::Mesh3D;
-        }
-
-        row.vs_features.SetVertexAttrib(VertexAttrib::Position);
-        row.vs_features.SetVertexAttrib(VertexAttrib::TexCoord);
-        row.fs_features.SetVertexAttrib(VertexAttrib::TexCoord);
-        row.resources.needs_camera = true;
-        row.resources.needs_transform = true;
-        if (e.tex[0].mode != TextureSourceMode::None)
-            row.color_sources.push_back(e.tex[0].mode == TextureSourceMode::Array
-                ? graph::ColorSource::MakeSampler2DArray(SamplerSlot::BaseColor)
-                : graph::ColorSource::MakeSampler2D(SamplerSlot::BaseColor));
-        row.def_hint = StaticMaterialDefIdHint::UnlitTexture3D;
         break;
 
     case MaterialPreset::TerrainGrid:

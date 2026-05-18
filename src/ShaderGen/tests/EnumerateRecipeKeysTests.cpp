@@ -1,4 +1,4 @@
-// EnumerateRecipeKeys unit tests — standalone executable, no external test framework.
+﻿// EnumerateRecipeKeys unit tests — standalone executable, no external test framework.
 //
 // Tests that EnumerateRecipeKeys returns the correct pass-expanded keys for
 // various blend modes, and that all non-pass fields are identical across the
@@ -38,7 +38,7 @@ using namespace hgl::graph;
 static MaterialRecipe MakeUnlitBillboardRecipe(RenderAlphaMode blend)
 {
     MaterialRecipe r;
-    r.preset = MaterialPreset::UnlitTexture3D;
+    r.preset = MaterialPreset::UnlitTexture;
     r.dim    = MaterialRecipe::Dim::D3;
     r.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
 

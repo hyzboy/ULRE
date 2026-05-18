@@ -1,4 +1,4 @@
-// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
+﻿// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
 // This example demonstrates managing and drawing a gradient colored triangle using the new ECS architecture
 //
 // 本范例展示了：
@@ -34,7 +34,7 @@ static float position_data_float[VERTEX_COUNT][2]=
     {0.25,  0.75}
 };
 
-static int16 position_data[VERTEX_COUNT][2]={};
+static float position_data[VERTEX_COUNT][2]={};
 
 constexpr uint8 color_data[VERTEX_COUNT*4]=
 {
@@ -43,8 +43,8 @@ constexpr uint8 color_data[VERTEX_COUNT*4]=
     0,0,255,255
 };
 
-constexpr VAType   POSITION_SHADER_FORMAT   =VAT_IVEC2;
-constexpr VkFormat POSITION_DATA_FORMAT     =VF_V2I16;
+constexpr VAType   POSITION_SHADER_FORMAT   =VAT_VEC2;
+constexpr VkFormat POSITION_DATA_FORMAT     =VF_V2F;
 
 constexpr VkFormat COLOR_DATA_FORMAT        =VF_V4UN8;
 
@@ -62,7 +62,7 @@ private:
 
     inline static const mtl::MaterialRecipe kTriangleCfg {
         .id         = "draw_triangle_vertex_color",
-        .preset     = mtl::MaterialPreset::VertexColor2D,
+        .preset     = mtl::MaterialPreset::VertexColor,
         .dim        = mtl::MaterialRecipe::Dim::D2,
         .l2w        = false,
         .pos_format = POSITION_SHADER_FORMAT,   // VAT_IVEC2: shader中 ivec2 顶点输入
@@ -84,8 +84,8 @@ private:
 
         for(uint i=0;i<VERTEX_COUNT;i++)
         {
-            position_data[i][0]=position_data_float[i][0]*extent.width;
-            position_data[i][1]=position_data_float[i][1]*extent.height;
+            position_data[i][0]=position_data_float[i][0]*float(extent.width);
+            position_data[i][1]=position_data_float[i][1]*float(extent.height);
         }
 
         return true;

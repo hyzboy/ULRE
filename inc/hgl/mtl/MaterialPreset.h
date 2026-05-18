@@ -42,22 +42,21 @@ namespace hgl::graph::mtl
         // Error/Fallback material
         Checkerboard3D,    ///< Gray checkerboard pattern for missing/error cases
 
-        VertexColor2D,
-        PureColor2D,
-        PureTexture2D,
-        Text2D,
+        // Unified presets — 2D vs 3D is purely a vertex transform policy choice,
+        // not a separate material preset.  The coord system / position provider
+        // is expressed via Material3DCreateConfig::coord_2d / position_format.
+        VertexColor,
+        PureColor,
+        UnlitTexture,
+        VertexLuminance,
+        Text2D,            ///< Still has bespoke 2D vs/fs; kept separate until unified
 
-        PureColor3D,
-        VertexColor3D,
-        VertexLuminance3D,
         VertexPaletteColor3D,
         Gizmo3D,
         TerrainGrid,
         SkyMinimal,
         Standard,
         PBRColor3D,
-        VertexLuminance2D,
-        UnlitTexture3D,
 
         // Semantic presets (currently aliases to Standard pipeline)
         HumanSkin,
@@ -73,6 +72,7 @@ namespace hgl::graph::mtl
         // PCG / procedural presets
         FullscreenTriangle,
 
-        ENUM_CLASS_RANGE(Checkerboard3D,FullscreenTriangle)
-    };
+        ENUM_CLASS_RANGE(Checkerboard3D,FullscreenTriangle),
+
+        };
 }

@@ -1,4 +1,4 @@
-// 该范例主要演示使用ECS架构绘制多个几何体，并渲染对应的包围盒
+﻿// 该范例主要演示使用ECS架构绘制多个几何体，并渲染对应的包围盒
 // This example demonstrates rendering multiple geometries with ECS and drawing their bounding boxes
 //
 // 本范例展示了：
@@ -112,7 +112,7 @@ private:
 
     inline static const mtl::MaterialRecipe kWireCfg {
         .id             = "bounds_wire",
-        .preset         = mtl::MaterialPreset::PureColor3D,
+        .preset         = mtl::MaterialPreset::PureColor,
         .prim           = PrimitiveType::Lines,
         .vertex_input   = mtl::VertexInputProfile::Position3D,
         .vertex_policy  = mtl::VertexTransformPolicy::Mesh3D,

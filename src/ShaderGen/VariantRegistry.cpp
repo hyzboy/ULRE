@@ -522,39 +522,39 @@ constexpr auto VA = _BVE_VA;
 // clang-format off
 const BuiltinVariantEntry kBuiltinVariants[] =
 {
-    // ── 2D ──────────────────────────────────────────────────────────────────────────────────────
-    { .name = "VertexColor2D",      .preset = MaterialPreset::VertexColor2D,
+    // ── 2D (vertex transform policy = Position2DTransform, via position_provider=VAB_Vec2) ────────
+    { .name = "VertexColor2D",        .preset = MaterialPreset::VertexColor,
       .geometry_mode = GM::Quad2D,  .position_provider = PositionProviderId::VAB_Vec2, .vertex_bits = VA(VertexAttrib::Color),
-      .vs_path = "2d/vertexcolor2d.vert.glsl",  .fs_path = "2d/vertexcolor2d.frag.glsl"  },
+      .surface_path = "surface/unlit_vertexcolor_surface.glsl"  },
 
-    { .name = "PureColor2D",        .preset = MaterialPreset::PureColor2D,
+    { .name = "PureColor2D",          .preset = MaterialPreset::PureColor,
       .geometry_mode = GM::Quad2D,  .position_provider = PositionProviderId::VAB_Vec2,
-      .vs_path = "2d/purecolor2d.vert.glsl",    .fs_path = "2d/purecolor2d.frag.glsl"    },
+      .surface_path = "surface/purecolor3d_surface.glsl"        },
 
-    { .name = "PureTexture2D",      .preset = MaterialPreset::PureTexture2D,
+    { .name = "UnlitTexture2D",       .preset = MaterialPreset::UnlitTexture,
       .geometry_mode = GM::Quad2D,  .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .vs_path = "2d/puretexture2d.vert.glsl",  .fs_path = "2d/puretexture2d.frag.glsl"  },
+      .surface_path = "surface/unlit_texture3d_surface.glsl"    },
 
-    { .name = "PureTexture2DArray", .preset = MaterialPreset::PureTexture2D,
+    { .name = "UnlitTexture2DArray",  .preset = MaterialPreset::UnlitTexture,
       .geometry_mode = GM::Quad2D,  .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::BaseColor, TSM::Array }},
-      .vs_path = "2d/puretexture2d.vert.glsl",  .fs_path = "2d/puretexture2d.frag.glsl"  },
+      .surface_path = "surface/unlit_texture3d_surface.glsl"    },
 
     { .name = "Text2D",             .preset = MaterialPreset::Text2D,
       .geometry_mode = GM::Quad2D,  .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::Text, TSM::Simple }},
       .vs_path = "2d/text2d.vert.glsl",         .fs_path = "2d/text2d.frag.glsl"         },
 
     // ── 3D Unlit ────────────────────────────────────────────────────────────────────────────────
-    { .name = "PureColor3D",        .preset = MaterialPreset::PureColor3D },
+    { .name = "PureColor",          .preset = MaterialPreset::PureColor },
 
-    { .name = "VertexColor3D",      .preset = MaterialPreset::VertexColor3D,
+    { .name = "VertexColor",        .preset = MaterialPreset::VertexColor,
       .vertex_bits = VA(VertexAttrib::Color),
       .surface_path = "surface/unlit_vertexcolor_surface.glsl" },
 
-    { .name = "VertexLuminance3D",  .preset = MaterialPreset::VertexLuminance3D,
+    { .name = "VertexLuminance",    .preset = MaterialPreset::VertexLuminance,
       .vertex_bits = VA(VertexAttrib::Luminance),
       .surface_path = "surface/unlit_luminance_surface.glsl"   },
 
-    { .name = "VertexLuminance2D",  .preset = MaterialPreset::VertexLuminance2D,
+    { .name = "VertexLuminance2D",  .preset = MaterialPreset::VertexLuminance,
       .position_provider = PositionProviderId::VAB_Vec2,
       .vertex_bits = VA(VertexAttrib::Luminance),
       .surface_path = "surface/unlit_luminance_surface.glsl"   },
@@ -567,23 +567,23 @@ const BuiltinVariantEntry kBuiltinVariants[] =
     { .name = "Gizmo3D",            .preset = MaterialPreset::Gizmo3D,
       .surface_path = "surface/gizmo3d_surface.glsl" },
 
-    // ── UnlitTexture3D (Mesh3D, BaseColor only, Simple + Array) ─────────────────────────────────
-    { .name = "UnlitTexture3D",      .preset = MaterialPreset::UnlitTexture3D,
+    // ── UnlitTexture (Mesh3D, BaseColor only, Simple + Array) ──────────────────────────────────
+    { .name = "UnlitTexture",        .preset = MaterialPreset::UnlitTexture,
       .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
-    { .name = "UnlitTexture3DArray", .preset = MaterialPreset::UnlitTexture3D,
+    { .name = "UnlitTextureArray",   .preset = MaterialPreset::UnlitTexture,
       .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Array }},
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
-    // Billboard is a vertex-transform variant of UnlitTexture3D (not a preset-level special case).
+    // Billboard is a vertex-transform variant of UnlitTexture (not a preset-level special case).
     // Billboard rows: position is a vec2 input (screen-space XY), so position_provider = VAB_Vec2.
     // geometry_mode drives vertex_policy selection in BuiltinVariantEntry.h BuildDesc().
-    { .name = "UnlitTexture3DBillboardAxisLocked",   .preset = MaterialPreset::UnlitTexture3D,
+    { .name = "UnlitTextureBillboardAxisLocked",   .preset = MaterialPreset::UnlitTexture,
       .geometry_mode = GM::BillboardAxisLocked,
       .position_provider = PPI::VAB_Vec2,
       .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
@@ -591,7 +591,7 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
-    { .name = "UnlitTexture3DBillboardCameraFacing", .preset = MaterialPreset::UnlitTexture3D,
+    { .name = "UnlitTextureBillboardCameraFacing", .preset = MaterialPreset::UnlitTexture,
       .geometry_mode = GM::BillboardCameraFacing,
       .position_provider = PPI::VAB_Vec2,
       .blend = RM::Transparent,     .pass = PT::ForwardTransparent,

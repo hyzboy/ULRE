@@ -348,8 +348,7 @@ static StaticMaterialDefId ResolveDefIdForRecipe(const MaterialRecipe &r) noexce
 {
     switch (r.preset)
     {
-    case MaterialPreset::PureColor3D:
-        return GetPureColor3DDefId();
+    case MaterialPreset::PureColor:
 
     case MaterialPreset::Gizmo3D:
         return GetGizmo3DDefId();
@@ -379,8 +378,7 @@ static ShaderDataSchema GetDefaultSchemaForPreset(const MaterialPreset p) noexce
 {
     switch (p)
     {
-    case MaterialPreset::PureColor2D:
-    case MaterialPreset::PureColor3D:
+    case MaterialPreset::PureColor:
     case MaterialPreset::Gizmo3D:
         return ShaderDataSchema::Color4f;
 

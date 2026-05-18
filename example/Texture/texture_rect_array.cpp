@@ -1,4 +1,4 @@
-// 画一个带纹理的矩形，2D模式专用 (ECS)
+﻿// 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/module/MaterialRecipeRegistry.h>
@@ -110,7 +110,7 @@ private:
 
         static const mtl::MaterialRecipe kTexArrayCfg {
             .id              = "texture_rect_array",
-            .preset          = mtl::MaterialPreset::PureTexture2D,
+            .preset          = mtl::MaterialPreset::UnlitTexture,
             .dim             = mtl::MaterialRecipe::Dim::D2,
             .coord_2d  = CoordinateSystem2D::ZeroToOne,
             .pipeline  = GraphicsPipelinePreset::Solid2D,

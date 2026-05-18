@@ -1,4 +1,4 @@
-// Phase 4E — TextureBinding 新路径最小验证示例
+﻿// Phase 4E — TextureBinding 新路径最小验证示例
 //
 // 验证目标：
 //   unit quad geometry + PrimitiveComponent + 显式 TextureBindingTask 可独立驱动贴图绑定。
@@ -72,7 +72,7 @@ private:
 
     inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id            = "tbv_plane_grid",
-        .preset        = mtl::MaterialPreset::VertexLuminance2D,
+        .preset        = mtl::MaterialPreset::VertexLuminance,
         .prim          = PrimitiveType::Lines,
         .vertex_input  = mtl::VertexInputProfile::PositionLuminance2D,
         .vertex_policy = mtl::VertexTransformPolicy::Quad2D,
@@ -84,7 +84,7 @@ private:
 
     inline static const mtl::MaterialRecipe kTexturedQuadCfg {
         .id            = "tbv_textured_quad",
-        .preset        = mtl::MaterialPreset::UnlitTexture3D,
+        .preset        = mtl::MaterialPreset::UnlitTexture,
         .dim           = mtl::MaterialRecipe::Dim::D3,
         .prim          = PrimitiveType::Triangles,
         .pipeline      = GraphicsPipelinePreset::Alpha3D,

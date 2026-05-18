@@ -2,6 +2,7 @@
 #define HGL_MTL_MATERIAL_VARIANT_DESC_H
 
 #include<hgl/mtl/MaterialPreset.h>
+#include<hgl/common/CoordinateSystem.h>
 #include<optional>
 #include<string>
 
@@ -33,6 +34,11 @@ namespace hgl::graph::mtl
         // constant (R=reason, G=surface_model_id, B=tex_bits_lo).
         // Encode via ErrorCodeRegistry::EncodeFSError(); decode via FormatFSError().
         uint32_t fs_error_code = 0;
+
+        // P7-3: 2D coordinate system for materials with VAB_Vec2 position inputs.
+        // Controls COORD_ORTHO / COORD_ZERO_TO_ONE macro emission in BuildForwardVertexEntry.
+        // Default NDC means no extra coordinate transform (pass-through).
+        graph::CoordinateSystem2D coord_2d = graph::CoordinateSystem2D::NDC;
 
         MaterialVariantDesc()
         {

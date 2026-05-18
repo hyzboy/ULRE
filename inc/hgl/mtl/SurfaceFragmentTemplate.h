@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/CoreType.h>
 #include <hgl/mtl/MaterialPreset.h>
@@ -11,7 +11,7 @@ namespace hgl::graph::mtl
     struct SurfaceFragmentTemplate
     {
         const char *name = "";
-        MaterialPreset preset = MaterialPreset::PureColor3D;
+        MaterialPreset preset = MaterialPreset::PureColor;
         SurfaceType surface_type = SurfaceType::Unlit;
         SurfaceShadingModel surface_model = SurfaceShadingModel::Unknown;
         LightingModel lighting_model = LightingModel::Lambert;

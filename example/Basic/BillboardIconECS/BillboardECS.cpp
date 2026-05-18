@@ -1,4 +1,4 @@
-// Billboard ECS Example - Billboard as VertexTransformPolicy
+﻿// Billboard ECS Example - Billboard as VertexTransformPolicy
 //
 // Billboard is no longer a special primitive type. It is a regular mesh (unit quad)
 // with VertexTransformPolicy::BillboardAxisLocked or BillboardCameraFacing applied
@@ -78,7 +78,7 @@ private:
 
     inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id            = "billboard_ecs_plane_grid",
-        .preset        = mtl::MaterialPreset::VertexLuminance2D,
+        .preset        = mtl::MaterialPreset::VertexLuminance,
         .prim          = PrimitiveType::Lines,
         .vertex_input  = mtl::VertexInputProfile::PositionLuminance2D,
         .vertex_policy = mtl::VertexTransformPolicy::Quad2D,
@@ -92,7 +92,7 @@ private:
     // Billboard recipes: UnlitTexture3D + BillboardAxisLocked, one per blend mode
     inline static const mtl::MaterialRecipe kBillboardSolidCfg {
         .id            = "billboard_ecs_solid",
-        .preset        = mtl::MaterialPreset::UnlitTexture3D,
+        .preset        = mtl::MaterialPreset::UnlitTexture,
         .dim           = mtl::MaterialRecipe::Dim::D3,
         .prim          = PrimitiveType::Triangles,
         .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,
@@ -105,7 +105,7 @@ private:
 
     inline static const mtl::MaterialRecipe kBillboardAlphaCfg {
         .id            = "billboard_ecs_alpha",
-        .preset        = mtl::MaterialPreset::UnlitTexture3D,
+        .preset        = mtl::MaterialPreset::UnlitTexture,
         .dim           = mtl::MaterialRecipe::Dim::D3,
         .prim          = PrimitiveType::Triangles,
         .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,
@@ -118,7 +118,7 @@ private:
 
     inline static const mtl::MaterialRecipe kBillboardDitherCfg {
         .id            = "billboard_ecs_dither",
-        .preset        = mtl::MaterialPreset::UnlitTexture3D,
+        .preset        = mtl::MaterialPreset::UnlitTexture,
         .dim           = mtl::MaterialRecipe::Dim::D3,
         .prim          = PrimitiveType::Triangles,
         .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,
@@ -131,7 +131,7 @@ private:
 
     inline static const mtl::MaterialRecipe kTexturedQuadCfg {
         .id            = "billboard_ecs_texture_quad",
-        .preset        = mtl::MaterialPreset::UnlitTexture3D,
+        .preset        = mtl::MaterialPreset::UnlitTexture,
         .dim           = mtl::MaterialRecipe::Dim::D3,
         .prim          = PrimitiveType::Triangles,
         .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,

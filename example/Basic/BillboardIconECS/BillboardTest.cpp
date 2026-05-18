@@ -1,4 +1,4 @@
-// Billboard (ECS)
+﻿// Billboard (ECS)
 //
 // This example demonstrates rendering a billboard and a plane grid using ECS.
 
@@ -69,7 +69,7 @@ private:
 #ifdef SHOW_PLANE_GRID
     inline static const mtl::MaterialRecipe kPlaneGridCfg {
         .id       = "billboard_test_plane_grid",
-        .preset   = mtl::MaterialPreset::VertexLuminance2D,
+        .preset   = mtl::MaterialPreset::VertexLuminance,
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };
@@ -77,7 +77,7 @@ private:
 
     inline static const mtl::MaterialRecipe kBillboardCfg {
         .id           = "billboard_test_fixed",
-        .preset       = mtl::MaterialPreset::UnlitTexture3D,
+        .preset       = mtl::MaterialPreset::UnlitTexture,
         .dim          = mtl::MaterialRecipe::Dim::D3,
         .prim         = PrimitiveType::Triangles,
         .vertex_input = mtl::VertexInputProfile::PositionTexCoord2D,

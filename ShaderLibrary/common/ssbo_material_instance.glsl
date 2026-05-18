@@ -1,7 +1,7 @@
+// @sfm:require SSBO mbi_id
+// @sfm:require SSBO mbi_data
 #ifndef MATERIAL_INSTANCE_SSBO_GLSL
 #define MATERIAL_INSTANCE_SSBO_GLSL
-
-// @require SSBO(MaterialBindingInstanceID)
 
 #if defined(MBI_ID_BINDING)
 layout(std430, set=PERMATERIAL_SET, binding=MBI_ID_BINDING) readonly buffer MaterialInstanceIDData {
@@ -24,8 +24,6 @@ uint GetMaterialInstanceID()
 #endif
 
 #ifndef MATERIAL_INSTANCE_ID_ONLY
-
-// @require SSBO(MaterialBindingInstance)
 
 #ifndef PERMATERIAL_SET
 #define PERMATERIAL_SET 0

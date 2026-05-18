@@ -1,4 +1,4 @@
-#include<hgl/framework/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -67,7 +67,7 @@ private:
 
     inline static const mtl::MaterialRecipe kWireCfg {
         .id       = "geometry_wire",
-        .preset   = mtl::MaterialPreset::PureColor3D,
+        .preset   = mtl::MaterialPreset::PureColor,
         .prim     = PrimitiveType::Lines,
         .pipeline = GraphicsPipelinePreset::Solid3D,
     };
