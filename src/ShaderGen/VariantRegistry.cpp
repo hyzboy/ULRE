@@ -5,6 +5,7 @@
 #include<hgl/shadergen/ShaderResourceScanner.h>
 #include "BuiltinVariantEntry.h"
 #include <hgl/mtl/MaterialVariantRow.h>
+#include <hgl/shadergen/VertexPolicyRegistry.h>
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
@@ -663,6 +664,18 @@ void VariantRegistry::InitializeBuiltinVariants()
     for (const auto &e : kBuiltinVariants)
     {
         builtin_row_storage.emplace_back(BuildRowFromBuiltinVariantEntry(e));
+        MaterialVariantRow &row = builtin_row_storage.back();
+
+        // Autofill needs_camera / needs_viewport / needs_transform from the
+        // vertex policy's @sfm:require annotations.  This is the single source
+        // of truth; BuiltinVariantEntry must NOT hand-code these flags.
+        if (const auto *vp = FindBuiltinVertexPolicy(row.vertex_policy))
+        {
+            if (vp->needs_camera)    row.resources.needs_camera    = true;
+            if (vp->needs_viewport)  row.resources.needs_viewport  = true;
+            if (vp->needs_transform) row.resources.needs_transform = true;
+        }
+
         MaterialVariantDesc desc = BuildDesc(e);
         if (!builtin_row_storage.empty())
             desc.bound_row = &builtin_row_storage.back();

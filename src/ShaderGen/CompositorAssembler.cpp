@@ -150,17 +150,6 @@ namespace
         EmitEnabledVertexAttribDefines(writer, f);
         if (f.has_direction) writer.EmitDefine("HAS_DIRECTION");
 
-        // Emit 2D coordinate system macros before any includes so that both the
-        // position provider (vab_vec2.glsl) and the vertex policy
-        // (position2d_transform.glsl) can see them.
-        if (f.position_provider == hgl::graph::PositionProviderId::VAB_Vec2)
-        {
-            if (f.coord_2d == hgl::graph::CoordinateSystem2D::Ortho)
-                writer.EmitDefine("COORD_ORTHO");
-            else if (f.coord_2d == hgl::graph::CoordinateSystem2D::ZeroToOne)
-                writer.EmitDefine("COORD_ZERO_TO_ONE");
-        }
-
         // ── Axis 1: position provider ─────────────────────────────────────────
         // Each provider file declares its own VBO layout (or none) and exposes
         // vec3 GetPositionLocal().  DirectVec3 (empty path) falls back to the
@@ -522,6 +511,20 @@ namespace
         flags.needs_camera    = row.resources.needs_camera;
         flags.needs_transform = row.resources.needs_transform;
         flags.coord_2d        = coord_2d;
+
+        // Remap the default 2D policy to the concrete variant selected by coord_2d.
+        // BuiltinVariantEntry always stores Position2DNdc as the placeholder for
+        // 2D rows; we resolve it here at assembly time.
+        using VP = hgl::graph::mtl::VertexTransformPolicy;
+        using CS = hgl::graph::CoordinateSystem2D;
+        if (flags.vertex_policy == VP::Position2DNdc)
+        {
+            if (coord_2d == CS::Ortho)
+                flags.vertex_policy = VP::Position2DOrtho;
+            else if (coord_2d == CS::ZeroToOne)
+                flags.vertex_policy = VP::Position2DZeroToOne;
+            // else CS::NDC → keep Position2DNdc
+        }
 
         if (row.surface_model == hgl::graph::mtl::SurfaceShadingModel::SkyMinimal)
             flags.vertex_attrib_bits = 0;

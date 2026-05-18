@@ -44,7 +44,10 @@ namespace hgl::graph::mtl
         Sky,
         Text2D,
         FullscreenTriangle,
-        Position2DTransform,    ///< P7-3: 2D coord transform (NDC/Ortho/ZeroToOne via coord_2d flag)
+        Position2DTransform,    ///< @deprecated — kept for snapshot compat; use Position2DNdc/ZeroToOne/Ortho
+        Position2DNdc,          ///< 2D passthrough: input coords are already in NDC [-1,1]
+        Position2DZeroToOne,    ///< 2D linear remap: input coords in [0,1] -> NDC
+        Position2DOrtho,        ///< 2D pixel-space ortho: uses viewport UBO ortho_matrix
     };
 
     enum class SurfaceShadingModel : uint8
@@ -198,6 +201,9 @@ namespace hgl::graph::mtl
         case VertexTransformPolicy::Text2D: return "Text2D";
         case VertexTransformPolicy::FullscreenTriangle: return "FullscreenTriangle";
         case VertexTransformPolicy::Position2DTransform: return "Position2DTransform";
+        case VertexTransformPolicy::Position2DNdc:       return "Position2DNdc";
+        case VertexTransformPolicy::Position2DZeroToOne: return "Position2DZeroToOne";
+        case VertexTransformPolicy::Position2DOrtho:     return "Position2DOrtho";
         default: return "Unknown";
         }
     }

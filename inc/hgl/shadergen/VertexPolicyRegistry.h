@@ -27,10 +27,9 @@
 //
 // ─── UBO NEEDS ────────────────────────────────────────────────────────────────
 //
-// The CompositorAssembler uses VertexPolicyDescriptor::needs_camera and
-// needs_viewport to decide which UBOs to #include before the policy file.
-// Policy files MUST NOT add #include directives for UBOs themselves; instead,
-// declare those needs in the MANIFEST comment inside the .glsl file.
+// needs_camera, needs_viewport, needs_transform are populated automatically by
+// VertexPolicyRegistry at first use via @sfm:require annotations in the .glsl
+// file.  Do NOT set these manually; they are derived from shader source truth.
 //
 // ─── ADDING A NEW POLICY ──────────────────────────────────────────────────────
 //
@@ -50,9 +49,10 @@ namespace hgl::graph
 struct VertexPolicyDescriptor
 {
     mtl::VertexTransformPolicy  policy;
-    std::string_view            glsl_path;      ///< relative to ShaderLibrary root
-    bool                        needs_camera;   ///< requires compositor/vert_forward_ubo.glsl camera block
-    bool                        needs_viewport; ///< requires common/ubo_viewport.glsl
+    std::string_view            glsl_path;        ///< relative to ShaderLibrary root
+    bool                        needs_camera    = false; ///< auto-filled from @sfm:require camera
+    bool                        needs_viewport  = false; ///< auto-filled from @sfm:require viewport
+    bool                        needs_transform = false; ///< auto-filled from @sfm:require transform_id/transform_data
 };
 
 /// Returns a pointer to the built-in VertexPolicyDescriptor for @p policy,
