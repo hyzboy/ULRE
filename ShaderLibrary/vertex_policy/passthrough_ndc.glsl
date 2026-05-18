@@ -1,8 +1,8 @@
+// @sfm:no-require
 #ifndef ULRE_VERTEX_POLICY_PASSTHROUGH_NDC_GLSL
 #define ULRE_VERTEX_POLICY_PASSTHROUGH_NDC_GLSL
 
 // vertex_policy/passthrough_ndc.glsl
-// @sfm:no-require
 //
 // Transform policy: NDC passthrough — no matrix multiplication.
 // For use with position providers whose GetPositionLocal() already returns

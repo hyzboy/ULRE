@@ -1,3 +1,6 @@
+// @sfm:require  UBO camera
+// @sfm:require  SSBO transform_id
+// @sfm:require  SSBO transform_data
 #ifndef ULRE_COMPOSITOR_VERT_FORWARD_UBO_GLSL
 #define ULRE_COMPOSITOR_VERT_FORWARD_UBO_GLSL
 
@@ -10,9 +13,6 @@
 // NEEDS_CAMERA    — define before including to pull in ubo_camera.glsl
 // NEEDS_TRANSFORM — define before including to pull in ssbo_transform.glsl
 //
-// @sfm:require  UBO camera
-// @sfm:require  SSBO transform_id
-// @sfm:require  SSBO transform_data
 // (注意：实际 include 受 NEEDS_CAMERA / NEEDS_TRANSFORM 宏保护，
 //  ShaderGen 按 row.resources 决定是否激活，SFM 注解记录全量声明供审计)
 // ──────────────────────────────────────────────────────────────────────────

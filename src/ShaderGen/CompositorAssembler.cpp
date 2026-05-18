@@ -689,40 +689,52 @@ namespace
 
     /// Collect VS resource requirements that match the include chain of BuildForwardVertexEntry.
     void CollectVSRequirements(const hgl::graph::CompositorFeatureFlags &f,
-                               hgl::graph::ShaderRequirementSet &req_set)
+                               hgl::graph::ShaderRequirementSet &req_set,
+                               const std::string &lib_path)
     {
         // position provider
         {
             const hgl::graph::PositionProvider *pp = hgl::graph::FindBuiltinProvider(f.position_provider);
             if (pp && !pp->glsl_path.empty())
-                req_set.ParseFromGLSLFile(pp->glsl_path);
+                req_set.ParseFromGLSLFile(pp->glsl_path, lib_path);
         }
 
-        // common VS UBO prologue (carries @sfm:require for camera / transform)
-        req_set.ParseFromGLSLFile("compositor/vert_forward_ubo.glsl");
+        // common VS UBO prologue: only collect camera/transform requirements when
+        // the flags actually request them, mirroring the NEEDS_CAMERA / NEEDS_TRANSFORM
+        // macro guards inside vert_forward_ubo.glsl.
+        if (f.needs_camera || f.needs_transform)
+            req_set.ParseFromGLSLFile("compositor/vert_forward_ubo.glsl", lib_path);
 
         // vertex policy
         {
             const hgl::graph::VertexPolicyDescriptor *vp = hgl::graph::FindBuiltinVertexPolicy(f.vertex_policy);
             if (vp && !vp->glsl_path.empty())
-                req_set.ParseFromGLSLFile(vp->glsl_path);
+            {
+                if (vp->needs_viewport)
+                    req_set.ParseFromGLSLFile("common/ubo_viewport.glsl", lib_path);
+                req_set.ParseFromGLSLFile(vp->glsl_path, lib_path);
+            }
         }
     }
 
     /// Collect FS resource requirements that match the include chain of BuildForwardFragmentEntry.
     void CollectFSRequirements(const hgl::graph::CompositorFeatureFlags &f,
-                               hgl::graph::ShaderRequirementSet &req_set)
+                               hgl::graph::ShaderRequirementSet &req_set,
+                               const std::string &lib_path)
     {
-        // common FS UBO prologue (carries @sfm:require for camera / sky)
-        req_set.ParseFromGLSLFile("compositor/frag_forward_ubo.glsl");
+        // common FS UBO prologue: only collect camera/sky requirements when flags
+        // request them, mirroring the NEEDS_CAMERA / NEEDS_SKY macro guards inside
+        // frag_forward_ubo.glsl.
+        if (f.needs_camera || f.needs_sky || f.enable_lighting)
+            req_set.ParseFromGLSLFile("compositor/frag_forward_ubo.glsl", lib_path);
 
         // sky light
         if (f.needs_sky)
-            req_set.ParseFromGLSLFile(GetSkyLightGLSLPath(f.sky_ambient_model));
+            req_set.ParseFromGLSLFile(GetSkyLightGLSLPath(f.sky_ambient_model), lib_path);
 
         // lighting model
         if (f.enable_lighting)
-            req_set.ParseFromGLSLFile(hgl::graph::mtl::GetLightingModelGLSLPath(f.lighting_model));
+            req_set.ParseFromGLSLFile(hgl::graph::mtl::GetLightingModelGLSLPath(f.lighting_model), lib_path);
 
         // fragment provider
         {
@@ -731,14 +743,14 @@ namespace
             if (fp && !fp->glsl_path.empty())
             {
                 if (fp->needs_viewport)
-                    req_set.ParseFromGLSLFile("common/ubo_viewport.glsl");
-                req_set.ParseFromGLSLFile(fp->glsl_path);
+                    req_set.ParseFromGLSLFile("common/ubo_viewport.glsl", lib_path);
+                req_set.ParseFromGLSLFile(fp->glsl_path, lib_path);
             }
         }
 
         // surface
         if (!f.surface_path.empty())
-            req_set.ParseFromGLSLFile(f.surface_path);
+            req_set.ParseFromGLSLFile(f.surface_path, lib_path);
     }
 }
 
@@ -1003,10 +1015,18 @@ namespace hgl::graph
         if (artifact.success)
         {
             const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
-            if (resolved_row && (!resolved_row->vs_template_path || !resolved_row->vs_template_path[0]))
+            if (resolved_row)
             {
-                // Only collect when we went through the BuildForwardVertexEntry path
-                CollectVSRequirements(VSFeatureFlagsFromRow(*resolved_row), artifact.req_set);
+                if (!resolved_row->vs_template_path || !resolved_row->vs_template_path[0])
+                {
+                    // Standard two-axis path: collect from fragment/policy/position files
+                    CollectVSRequirements(VSFeatureFlagsFromRow(*resolved_row), artifact.req_set, shader_lib_path_);
+                }
+                else
+                {
+                    // Custom vs_path template: parse the template file itself for @sfm annotations
+                    artifact.req_set.ParseFromGLSLFile(resolved_row->vs_template_path, shader_lib_path_);
+                }
             }
         }
 
@@ -1033,13 +1053,20 @@ namespace hgl::graph
         artifact.success       = stage.success;
         artifact.error_message = stage.error_message;
 
-        if (artifact.success && resolved_row &&
-            (!resolved_row->fs_template_path || !resolved_row->fs_template_path[0]))
+        if (artifact.success && resolved_row)
         {
-            // Only collect when we went through the BuildForwardFragmentEntry path
-            CollectFSRequirements(
-                FSFeatureFlagsFromRow(key, *resolved_row, key.blend_mode, surface_rel),
-                artifact.req_set);
+            if (!resolved_row->fs_template_path || !resolved_row->fs_template_path[0])
+            {
+                // Standard two-axis path
+                CollectFSRequirements(
+                    FSFeatureFlagsFromRow(key, *resolved_row, key.blend_mode, surface_rel),
+                    artifact.req_set, shader_lib_path_);
+            }
+            else
+            {
+                // Custom fs_path template: parse the template file for @sfm annotations
+                artifact.req_set.ParseFromGLSLFile(resolved_row->fs_template_path, shader_lib_path_);
+            }
         }
 
         return artifact;

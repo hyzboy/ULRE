@@ -198,9 +198,15 @@ namespace hgl::graph
     // ─────────────────────────────────────────────────────────────────────────
     void ShaderRequirementSet::ParseFromGLSLFile(std::string_view rel_path)
     {
+        ParseFromGLSLFile(rel_path, GetShaderLibraryPath());
+    }
+
+    void ShaderRequirementSet::ParseFromGLSLFile(std::string_view rel_path,
+                                                  const std::string &library_path)
+    {
         if (rel_path.empty()) return;
 
-        std::string full_path = GetShaderLibraryPath();
+        std::string full_path = library_path;
         full_path += '/';
         full_path.append(rel_path.data(), rel_path.size());
 

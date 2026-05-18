@@ -1,3 +1,6 @@
+// @sfm:require  UBO camera
+// @sfm:require  SSBO transform_id
+// @sfm:require  SSBO transform_data
 #ifndef ULRE_COMPOSITOR_MAIN_FORWARD_UNLIT_PALETTE_VERT_GLSL
 #define ULRE_COMPOSITOR_MAIN_FORWARD_UNLIT_PALETTE_VERT_GLSL
 

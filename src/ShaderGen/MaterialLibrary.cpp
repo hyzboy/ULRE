@@ -60,7 +60,7 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
     std::string out;
     out.reserve(8192);
     out += "# Builtin MaterialPreset Audit Snapshot\n";
-    out += "preset|resolved_preset|row_name|primitive|vertex_input|vertex_policy|surface_model|surface_type|geometry_mode|blend|pass|schema|def_hint|vs_features|fs_features|resources|textures|runtime_transition|explicit_axes|legacy_inference|sfm_inferred|sfm_vs_row_resources\n";
+    out += "preset|resolved_preset|row_name|primitive|vertex_input|vertex_policy|surface_model|surface_type|geometry_mode|blend|pass|schema|def_hint|vs_features|fs_features|resources|textures|runtime_transition|explicit_axes|legacy_inference|prune_summary|sfm_inferred|sfm_vs_row_resources\n";
 
     registry.ForEachBuiltinRow([&](const MaterialVariantRow &row)
     {
@@ -254,6 +254,9 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
             audit_key.lighting_model    = row.resources.lighting_model;
             audit_key.sky_ambient_model = row.resources.sky_model;
             audit_key.surface_type      = row.surface_type;
+            audit_key.geometry_mode     = row.geometry_mode;
+            audit_key.pass_hint         = row.pass;
+            audit_key.position_provider = row.position_provider;
 
             const mtl::MaterialVariantDesc audit_desc =
                 mtl::MaterialVariantDesc::CreateRowBound(row.name ? row.name : "", &row);

@@ -1,8 +1,8 @@
+// @sfm:no-require
 #ifndef ULRE_POS_PCG_FULLSCREEN_TRIANGLE_GLSL
 #define ULRE_POS_PCG_FULLSCREEN_TRIANGLE_GLSL
 
 // position_provider/pcg_fullscreen_triangle.glsl
-// @sfm:no-require
 //
 // Position source: procedural – computes NDC positions from gl_VertexIndex.
 // Three vertices cover the entire screen (including clip-space overflow) so

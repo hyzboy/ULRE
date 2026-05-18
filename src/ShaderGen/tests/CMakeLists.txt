@@ -10,6 +10,13 @@ function(shadergen_set_test_runtime_dir name)
         VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endfunction()
 
+# Helper: set CTest working directory for a test that needs ShaderLibrary access.
+# Must be called AFTER add_test().
+function(shadergen_set_test_workdir name)
+    set_tests_properties(${name} PROPERTIES
+        WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endfunction()
+
 add_executable(MaterialKeyTest
     MaterialKeyTest.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../MaterialKey.cpp
@@ -85,6 +92,7 @@ set_property(TARGET ShaderBuildPipelineSmokeTests PROPERTY FOLDER "ULRE/Tests/Sh
 shadergen_set_test_runtime_dir(ShaderBuildPipelineSmokeTests)
 
 add_test(NAME ShaderBuildPipelineSmokeTests COMMAND ShaderBuildPipelineSmokeTests)
+shadergen_set_test_workdir(ShaderBuildPipelineSmokeTests)
 
 # BindingAllocatorTests — pure data-structure tests, no GPU / glslang dependency.
 # Compiles BindingAllocator.cpp directly (same pattern as MaterialKeyTest).
@@ -99,6 +107,31 @@ set_property(TARGET BindingAllocatorTests PROPERTY FOLDER "ULRE/Tests/ShaderGen"
 shadergen_set_test_runtime_dir(BindingAllocatorTests)
 
 add_test(NAME BindingAllocatorTests COMMAND BindingAllocatorTests)
+
+# ShaderRequirementSetTests — Phase 1/2: unit tests for ShaderRequirementSet
+# (parse, dedup, binding order, MergeFrom)
+add_executable(ShaderRequirementSetTests
+    ShaderRequirementSetTests.cpp
+)
+target_link_libraries(ShaderRequirementSetTests PRIVATE ${ULRE})
+set_property(TARGET ShaderRequirementSetTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(ShaderRequirementSetTests)
+add_test(NAME ShaderRequirementSetTests COMMAND ShaderRequirementSetTests)
+shadergen_set_test_workdir(ShaderRequirementSetTests)
+
+# SFMAuditSnapshotTests — Phase 6: runs GetBuiltinMaterialPresetAuditSnapshot() and
+# checks that SFM-inferred resource needs match every builtin row.resources declaration.
+add_executable(SFMAuditSnapshotTests
+    SFMAuditSnapshotTests.cpp
+)
+
+target_link_libraries(SFMAuditSnapshotTests PRIVATE ${ULRE})
+
+set_property(TARGET SFMAuditSnapshotTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(SFMAuditSnapshotTests)
+
+add_test(NAME SFMAuditSnapshotTests COMMAND SFMAuditSnapshotTests)
+shadergen_set_test_workdir(SFMAuditSnapshotTests)
 
 # BindlessSmokeTests — C7: BuiltinBindlessSamplerArrayCodegen emit + FinalizeColorSources fallback.
 # Links full ULRE stack (CodegenRegistry, ShaderWriter, ColorSourcePipeline, etc.).

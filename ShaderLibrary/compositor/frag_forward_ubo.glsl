@@ -1,11 +1,13 @@
+// @sfm:require  UBO camera
+// @sfm:require  UBO sky
 #ifndef ULRE_COMPOSITOR_FRAG_FORWARD_UBO_GLSL
 #define ULRE_COMPOSITOR_FRAG_FORWARD_UBO_GLSL
 
 // ──────────────────────────────────────────────────────────────────────────
 // frag_forward_ubo.glsl — Conditional UBO includes for forward fragment shaders.
 //
-// @sfm:require  UBO camera      (当 ENABLE_LIGHTING / NEEDS_CAMERA / HAS_CLIP_POS 时激活)
-// @sfm:require  UBO sky         (当 ENABLE_LIGHTING / NEEDS_SKY / HAS_DIRECTION 时激活)
+// (注意：实际 include 受 ENABLE_LIGHTING / NEEDS_CAMERA / NEEDS_SKY 等宏保护，
+//  SFM 注解记录全量声明供审计。)
 //
 // Include this before the surface include so that surface
 // functions referencing sky.* / camera.* can find the struct definitions.

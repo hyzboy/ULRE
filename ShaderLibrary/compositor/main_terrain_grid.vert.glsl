@@ -1,3 +1,6 @@
+// @sfm:require  UBO camera
+// @sfm:require  SSBO transform_id
+// @sfm:require  SSBO transform_data
 #ifndef ULRE_COMPOSITOR_MAIN_TERRAIN_GRID_VERT_GLSL
 #define ULRE_COMPOSITOR_MAIN_TERRAIN_GRID_VERT_GLSL
 

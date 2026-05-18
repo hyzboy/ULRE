@@ -199,7 +199,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.surface_model = SurfaceShadingModel::PureColor;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.fs_features.SetVertexAttrib(VertexAttrib::Position);
-        row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
         row.resources.needs_transform = true;
         row.resources.needs_material_instance = true;
@@ -215,7 +214,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::Color);
         row.fs_features.SetVertexAttrib(VertexAttrib::Color);
-        row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
         row.resources.needs_transform = true;
         row.def_hint = StaticMaterialDefIdHint::VertexColor3D;
@@ -229,7 +227,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::Luminance);
         row.fs_features.SetVertexAttrib(VertexAttrib::Luminance);
-        row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
         row.resources.needs_transform = true;
         row.resources.needs_material_instance = true;
@@ -258,7 +255,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::Color);
         row.fs_features.SetVertexAttrib(VertexAttrib::Color);
-        row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
         row.resources.needs_transform = true;
         row.resources.needs_color_palette = true;
@@ -274,7 +270,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Normal);
         row.fs_features.SetVertexAttrib(VertexAttrib::Position);
         row.fs_features.SetVertexAttrib(VertexAttrib::Normal);
-        row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
         row.resources.needs_transform = true;
         row.resources.needs_material_instance = true;
@@ -307,7 +302,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::TexCoord);
         row.fs_features.SetVertexAttrib(VertexAttrib::TexCoord);
-        row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
         row.resources.needs_transform = true;
         if (e.tex[0].mode != TextureSourceMode::None)
@@ -325,7 +319,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.fs_features.SetVertexAttrib(VertexAttrib::Normal);
         row.fs_features.has_clip_pos = true;
-        row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
         row.resources.needs_transform = true;
         row.color_sources.push_back(graph::ColorSource::MakeSampler2D(SamplerSlot::Height));
@@ -341,7 +334,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.has_direction = true;
         row.fs_features.has_direction = true;
-        row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
         row.resources.needs_sky = true;
         row.resources.needs_transform = true;
@@ -380,7 +372,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
             row.vs_features.SetVertexAttrib(VertexAttrib::TexCoord);
             row.fs_features.SetVertexAttrib(VertexAttrib::TexCoord);
         }
-        row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
         row.resources.needs_sky = true;
         row.resources.needs_transform = true;
@@ -408,7 +399,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Normal);
         row.fs_features.SetVertexAttrib(VertexAttrib::Position);
         row.fs_features.SetVertexAttrib(VertexAttrib::Normal);
-        row.resources.needs_viewport = true;
         row.resources.needs_camera = true;
         row.resources.needs_sky = true;
         row.resources.needs_transform = true;
