@@ -43,29 +43,12 @@ struct MaterialCreateConfig
     bool                        local_to_world;             ///<包含LocalToWorld矩阵
 
     // Optional variant overrides (default disabled).
-    bool                        override_geometry_mode      = false;
-    GeometryMode                geometry_mode_override      = GeometryMode::Mesh3D;
-
-    uint32                      texture_source_bits_override  = 0;       ///< 2 bits per slot, same packing as MaterialVariantKey
+    uint32                      texture_source_bits_override  = 0;
     uint32                      sampler_feature_bits_override = 0;       ///< slot enable mask paired with texture_source_bits_override
 
 public:
 
-    const uint32 enableVertexShader     () { return shader_stage_flag_bit|=(uint32)ShaderStage::Vertex; }
-    const uint32 enableFragmentShader   () { return shader_stage_flag_bit|=(uint32)ShaderStage::Fragment; }
-
     const uint32 enableVertexFragmentShader() { return shader_stage_flag_bit|=(uint32)ShaderStage::VertexFragment; }
-
-    void SetGeometryModeOverride(const GeometryMode gm)
-    {
-        override_geometry_mode = true;
-        geometry_mode_override = gm;
-    }
-
-    void ClearGeometryModeOverride()
-    {
-        override_geometry_mode = false;
-    }
 
     void SetTextureSourceModeOverride(const SamplerSlot slot, const TextureSourceMode mode)
     {
@@ -124,12 +107,6 @@ public:
             return cmp;
 
         if(auto cmp=shader_stage_flag_bit<=>cfg.shader_stage_flag_bit;cmp!=0)
-            return cmp;
-
-        if(auto cmp=override_geometry_mode<=>cfg.override_geometry_mode;cmp!=0)
-            return cmp;
-
-        if(auto cmp=geometry_mode_override<=>cfg.geometry_mode_override;cmp!=0)
             return cmp;
 
         if(auto cmp=texture_source_bits_override<=>cfg.texture_source_bits_override;cmp!=0)

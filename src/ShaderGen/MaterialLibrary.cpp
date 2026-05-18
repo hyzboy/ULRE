@@ -1058,9 +1058,6 @@ void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreate
         key.effective_feature_mask = cfg3d->effective_feature_mask;
     }
 
-    if (cfg->override_geometry_mode)
-        key.geometry_mode = cfg->geometry_mode_override;
-
     if (cfg->texture_source_bits_override != 0)
     {
         key.texture_source_bits = cfg->texture_source_bits_override;

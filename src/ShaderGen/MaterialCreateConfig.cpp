@@ -44,12 +44,6 @@ std::string MaterialCreateConfig::ToHashStdString()
     else
         hash+="UnknownPrim";
 
-    if(override_geometry_mode)
-    {
-        hash += "_GM";
-        hash += std::to_string(static_cast<uint32_t>(geometry_mode_override));
-    }
-
     if(texture_source_bits_override != 0)
     {
         hash += "_TSB";
