@@ -5,8 +5,10 @@
 //
 // Emit order enforced by CompositorAssembler::BuildForwardVertexEntry():
 //   1. #include "position_provider/<file>.glsl"  → vec3 GetPositionLocal()
-//   2. #include "compositor/vert_forward_ubo.glsl"  (camera, GetTransform(), MI id)
-//      + conditionally: #include "common/ubo_viewport.glsl"  (when policy needs_viewport)
+//   2. conditionally: #include "common/ubo_camera.glsl"  (when needs_camera)
+//      conditionally: #include "common/ssbo_transform.glsl"  (when needs_transform)
+//      always:        #define MATERIAL_INSTANCE_ID_ONLY + #include "common/ssbo_material_instance.glsl"
+//      conditionally: #include "common/ubo_viewport.glsl"  (when policy needs_viewport)
 //   3. #include "vertex_policy/<file>.glsl"  → void ApplyVertexTransform(...)
 //   4. #include "compositor/vert_forward_main.glsl"  (this file)
 //

@@ -8,7 +8,10 @@
 #define POSITION_KIND 2
 #include "common/vertex_input_position.glsl"
 
-#include "compositor/vert_forward_ubo.glsl"
+#include "common/ubo_camera.glsl"
+#include "common/ssbo_transform.glsl"
+#define MATERIAL_INSTANCE_ID_ONLY
+#include "common/ssbo_material_instance.glsl"
 #include "common/ubo_color_palette.glsl"
 
 layout(location=COLOR_LOCATION) in uint  ColorIndex;

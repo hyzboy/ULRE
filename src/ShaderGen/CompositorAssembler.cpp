@@ -174,9 +174,12 @@ namespace
         }
 
         // ── Common UBOs (camera, transform, MI id) ────────────────────────────
-        if (f.needs_camera)    writer.EmitDefine("NEEDS_CAMERA");
-        if (f.needs_transform) writer.EmitDefine("NEEDS_TRANSFORM");
-        writer.EmitInclude("compositor/vert_forward_ubo.glsl");
+        // Emit each base fragment directly; no macro-based prologue needed.
+        if (f.needs_camera)    writer.EmitInclude("common/ubo_camera.glsl");
+        if (f.needs_transform) writer.EmitInclude("common/ssbo_transform.glsl");
+        // Material instance ID: emit the ID-only variant so GetMaterialInstanceID() is defined.
+        writer.EmitDefine("MATERIAL_INSTANCE_ID_ONLY");
+        writer.EmitInclude("common/ssbo_material_instance.glsl");
 
         // ── Axis 2: vertex policy ─────────────────────────────────────────────
         // Each policy file implements ApplyVertexTransform(local, out worldPos, out clipPos).
@@ -218,14 +221,22 @@ namespace
         EmitEnabledVertexAttribDefines(writer, f);
 
         if (f.enable_lighting)  writer.EmitDefine("ENABLE_LIGHTING");
-        if (f.needs_camera)     writer.EmitDefine("NEEDS_CAMERA");
-        if (f.needs_sky)        writer.EmitDefine("NEEDS_SKY");
         if (f.alpha_masked)     writer.EmitDefine("ALPHA_MODE_MASKED");
         if (f.alpha_dither)     writer.EmitDefine("ALPHA_MODE_DITHER");
         if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
         if (f.has_clip_pos)     writer.EmitDefine("HAS_CLIP_POS");
 
-        writer.EmitInclude("compositor/frag_forward_ubo.glsl");
+        // ── Common UBOs (camera, sky, surface interface, varyings) ──────────
+        // Emit each base fragment directly, no macro-based prologue needed.
+        if (f.enable_lighting || f.needs_sky)
+            writer.EmitInclude("common/ubo_sky.glsl");
+        if (f.enable_lighting || f.needs_camera)
+            writer.EmitInclude("common/ubo_camera.glsl");
+
+        // Shared struct definitions (SurfaceInput, SurfaceOutput, SurfaceOutputExt)
+        writer.EmitInclude("common/surface_interface.glsl");
+        // Varying declarations
+        writer.EmitInclude("common/varying_fs.glsl");
 
         if (f.needs_sky)
             writer.EmitInclude(GetSkyLightGLSLPath(f.sky_ambient_model));
@@ -699,11 +710,11 @@ namespace
                 req_set.ParseFromGLSLFile(pp->glsl_path, lib_path);
         }
 
-        // common VS UBO prologue: only collect camera/transform requirements when
-        // the flags actually request them, mirroring the NEEDS_CAMERA / NEEDS_TRANSFORM
-        // macro guards inside vert_forward_ubo.glsl.
-        if (f.needs_camera || f.needs_transform)
-            req_set.ParseFromGLSLFile("compositor/vert_forward_ubo.glsl", lib_path);
+        // Collect camera / transform requirements directly, mirroring BuildForwardVertexEntry().
+        if (f.needs_camera)
+            req_set.ParseFromGLSLFile("common/ubo_camera.glsl", lib_path);
+        if (f.needs_transform)
+            req_set.ParseFromGLSLFile("common/ssbo_transform.glsl", lib_path);
 
         // vertex policy
         {
@@ -722,11 +733,11 @@ namespace
                                hgl::graph::ShaderRequirementSet &req_set,
                                const std::string &lib_path)
     {
-        // common FS UBO prologue: only collect camera/sky requirements when flags
-        // request them, mirroring the NEEDS_CAMERA / NEEDS_SKY macro guards inside
-        // frag_forward_ubo.glsl.
-        if (f.needs_camera || f.needs_sky || f.enable_lighting)
-            req_set.ParseFromGLSLFile("compositor/frag_forward_ubo.glsl", lib_path);
+        // Collect camera / sky requirements directly, mirroring BuildForwardFragmentEntry().
+        if (f.enable_lighting || f.needs_sky)
+            req_set.ParseFromGLSLFile("common/ubo_sky.glsl", lib_path);
+        if (f.enable_lighting || f.needs_camera)
+            req_set.ParseFromGLSLFile("common/ubo_camera.glsl", lib_path);
 
         // sky light
         if (f.needs_sky)

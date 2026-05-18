@@ -5,7 +5,8 @@
 // frag_forward_main.glsl -- Unified forward fragment entry point.
 //
 // Injected by C++ CompositorAssembler after:
-//   frag_forward_ubo.glsl  (UBO declarations, surface_interface, varyings)
+//   conditionally: common/ubo_sky.glsl, common/ubo_camera.glsl  (per flags)
+//   always: common/surface_interface.glsl, common/varying_fs.glsl
 //   [skylight_*.glsl]      (if NEEDS_SKY / ENABLE_LIGHTING)
 //   [lighting_*.glsl]      (if ENABLE_LIGHTING)
 //   [fragment_provider/*.glsl]  (if PCG_FRAGMENT_PROVIDER is defined)

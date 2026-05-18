@@ -4,7 +4,10 @@
 #ifndef ULRE_COMPOSITOR_MAIN_TERRAIN_GRID_VERT_GLSL
 #define ULRE_COMPOSITOR_MAIN_TERRAIN_GRID_VERT_GLSL
 
-#include "compositor/vert_forward_ubo.glsl"
+#include "common/ubo_camera.glsl"
+#include "common/ssbo_transform.glsl"
+#define MATERIAL_INSTANCE_ID_ONLY
+#include "common/ssbo_material_instance.glsl"
 
 #define VARYING_STAGE_VERT
 #define HAS_CLIP_POS
