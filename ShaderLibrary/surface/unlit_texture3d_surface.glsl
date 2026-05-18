@@ -1,6 +1,8 @@
 #ifndef ULRE_SURFACE_UNLIT_TEXTURE3D_SURFACE_GLSL
 #define ULRE_SURFACE_UNLIT_TEXTURE3D_SURFACE_GLSL
 
+// @sfm:no-require
+
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
     vec4 texColor = GetSamplerBaseColor(GetMaterialInstanceID(), si.uv0);

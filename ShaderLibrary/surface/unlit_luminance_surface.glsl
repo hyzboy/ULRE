@@ -1,6 +1,8 @@
 #ifndef ULRE_SURFACE_UNLIT_LUMINANCE_SURFACE_GLSL
 #define ULRE_SURFACE_UNLIT_LUMINANCE_SURFACE_GLSL
 
+// @sfm:no-require
+
 #include "common/surface_interface.glsl"
 
 #include "common/ssbo_material_instance.glsl"

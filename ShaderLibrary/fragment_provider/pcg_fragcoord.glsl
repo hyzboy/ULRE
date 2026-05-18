@@ -2,6 +2,7 @@
 #define ULRE_FRAG_PCG_FRAGCOORD_GLSL
 
 // fragment_provider/pcg_fragcoord.glsl
+// @sfm:require  UBO viewport
 //
 // MANIFEST: {
 //   "contract":       "GetSurfaceInput",

@@ -1,6 +1,8 @@
 #ifndef ULRE_SURFACE_SKY_MINIMAL_SURFACE_GLSL
 #define ULRE_SURFACE_SKY_MINIMAL_SURFACE_GLSL
 
+// @sfm:no-require
+
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
     vec3 dir      = normalize(si.worldPos);       vec3 to_light = normalize(sky.sun_direction.xyz);

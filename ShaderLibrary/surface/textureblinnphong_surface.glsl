@@ -1,6 +1,8 @@
 #ifndef ULRE_SURFACE_TEXTUREBLINNPHONG_SURFACE_GLSL
 #define ULRE_SURFACE_TEXTUREBLINNPHONG_SURFACE_GLSL
 
+// @sfm:no-require
+
 #include "common/schema/schema_standard_params.glsl"
 
 #include "common/ssbo_material_instance.glsl"

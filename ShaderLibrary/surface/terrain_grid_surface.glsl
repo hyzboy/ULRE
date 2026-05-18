@@ -1,6 +1,8 @@
 #ifndef ULRE_SURFACE_TERRAIN_GRID_SURFACE_GLSL
 #define ULRE_SURFACE_TERRAIN_GRID_SURFACE_GLSL
 
+// @sfm:require  UBO camera
+
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
     const vec3 SUN_DIRECTION = normalize(vec3(0.655386, 0.491539, 0.573462));

@@ -2,6 +2,10 @@
 #define ULRE_VERTEX_POLICY_BILLBOARD_AXIS_LOCKED_GLSL
 
 // vertex_policy/billboard_axis_locked.glsl
+// @sfm:require  UBO camera
+// @sfm:require  UBO viewport
+// @sfm:require  SSBO transform_id
+// @sfm:require  SSBO transform_data
 //
 // Transform policy: axis-locked billboard with fixed pixel size on screen.
 // The position provider supplies a 2-D local offset in [-0.5, 0.5]^2 (xy).

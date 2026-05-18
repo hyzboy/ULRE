@@ -5,6 +5,9 @@
 #define POLICY_HAS_TRANSFORM_MAT 1
 
 // vertex_policy/mesh3d.glsl
+// @sfm:require  UBO camera
+// @sfm:require  SSBO transform_id
+// @sfm:require  SSBO transform_data
 //
 // Transform policy: standard 3-D mesh — multiply local position by the
 // per-instance LocalToWorld matrix.

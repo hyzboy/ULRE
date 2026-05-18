@@ -2,6 +2,9 @@
 #define ULRE_VERTEX_POLICY_BILLBOARD_CAMERA_FACING_GLSL
 
 // vertex_policy/billboard_camera_facing.glsl
+// @sfm:require  UBO camera
+// @sfm:require  SSBO transform_id
+// @sfm:require  SSBO transform_data
 //
 // Transform policy: camera-facing billboard (world-space size).
 // The position provider supplies a 2-D local offset in [-0.5, 0.5]^2 (xy).

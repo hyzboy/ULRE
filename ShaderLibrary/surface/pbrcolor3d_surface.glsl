@@ -1,6 +1,8 @@
 #ifndef ULRE_SURFACE_PBRCOLOR3D_SURFACE_GLSL
 #define ULRE_SURFACE_PBRCOLOR3D_SURFACE_GLSL
 
+// @sfm:no-require
+
 #include "common/surface_interface.glsl"
 #include "common/ssbo_material_instance.glsl"
 #include "util/pbr_brdf.glsl"

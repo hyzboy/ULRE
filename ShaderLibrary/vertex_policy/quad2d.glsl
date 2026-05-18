@@ -2,6 +2,7 @@
 #define ULRE_VERTEX_POLICY_QUAD2D_GLSL
 
 // vertex_policy/quad2d.glsl
+// @sfm:no-require
 //
 // Transform policy: 2-D screen-space quad.
 // The position provider is expected to return coordinates already in
