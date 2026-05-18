@@ -1,6 +1,7 @@
 #include <hgl/shadergen/ShaderRequirementSet.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/mtl/DescriptorSemanticRegistry.h>
+#include <hgl/mtl/MaterialResourceManifest.h>
 #include <algorithm>
 #include <sstream>
 #include <cstring>
@@ -325,6 +326,63 @@ namespace hgl::graph
             result.push_back(b);
         }
         return result;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ToManifest
+    // ─────────────────────────────────────────────────────────────────────────
+    mtl::MaterialResourceManifest ShaderRequirementSet::ToManifest() const
+    {
+        using namespace mtl;
+
+        MaterialResourceManifest manifest;
+
+        for (const auto &[set_type, reqs] : buckets_)
+        {
+            for (const auto &req : reqs)
+            {
+                if (!req.sem_name) continue;
+
+                if (req.kind == DescriptorKind::UBO)
+                {
+                    for (size_t i = 1; i < UBODescriptorSemanticCount; ++i)
+                    {
+                        const auto &meta = UBODescriptorSemanticMetaList[i];
+                        if (meta.name && std::strcmp(req.sem_name, meta.name) == 0)
+                        {
+                            manifest.ubos.insert(static_cast<UBODescriptorSemantic>(i));
+                            break;
+                        }
+                    }
+                }
+                else if (req.kind == DescriptorKind::SSBO)
+                {
+                    for (size_t i = 1; i < SSBODescriptorSemanticCount; ++i)
+                    {
+                        const auto &meta = SSBODescriptorSemanticMetaList[i];
+                        if (meta.name && std::strcmp(req.sem_name, meta.name) == 0)
+                        {
+                            manifest.ssbos.insert(static_cast<SSBODescriptorSemantic>(i));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return manifest;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MergeFrom
+    // ─────────────────────────────────────────────────────────────────────────
+    void ShaderRequirementSet::MergeFrom(const ShaderRequirementSet &other)
+    {
+        for (const auto &[set_type, reqs] : other.buckets_)
+        {
+            for (const auto &req : reqs)
+                Add(req);
+        }
     }
 
 } // namespace hgl::graph

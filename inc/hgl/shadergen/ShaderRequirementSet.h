@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/shadergen/ShaderRequirement.h>
+#include <hgl/mtl/MaterialResourceManifest.h>
 #include <map>
 #include <vector>
 #include <string>
@@ -53,6 +54,13 @@ namespace hgl::graph
         /// 导出 VkDescriptorSetLayoutBinding 数组（供 pipeline layout builder 使用）
         /// binding 号 = 在对应 set_type 桶内的插入顺序下标（0, 1, 2, ...）
         std::vector<VkDescriptorSetLayoutBinding> GetVkBindings(DescriptorSetType set_type) const;
+
+        /// 转换为 MaterialResourceManifest（UBO/SSBO 语义集合）
+        /// 调用方可再用 MergeKeepFirst / MergeOverwrite 与 def 已有声明合并
+        mtl::MaterialResourceManifest ToManifest() const;
+
+        /// 将另一个 ShaderRequirementSet 的全部需求合并进本集合（自动去重）
+        void MergeFrom(const ShaderRequirementSet &other);
 
     private:
         // 按 set_type 分桶，桶内保持插入顺序

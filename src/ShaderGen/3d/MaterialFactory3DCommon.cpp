@@ -6,6 +6,7 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/shadergen/ErrorIndicatorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialResourceManifest.h>
 #include<cstdio>
 
 namespace hgl::graph::mtl{
@@ -38,14 +39,35 @@ MaterialCreateInfo *CreateFromFixedDef3D(
 
     CompositorAssembler assembler;
 
-    auto result = assembler.Assemble(assemble_key, var_desc);
-
-    if (!result.success)
+    // Phase 5: use artifact path to collect SFM requirements alongside GLSL generation
+    auto vs_artifact = assembler.AssembleVertexArtifact(assemble_key, var_desc);
+    if (!vs_artifact.success)
     {
-        std::fprintf(stderr, "[%s] CompositorAssembler failed: %s\n",
-            debug_tag, result.error_message.c_str());
+        std::fprintf(stderr, "[%s] CompositorAssembler VS failed: %s\n",
+            debug_tag, vs_artifact.error_message.c_str());
         return nullptr;
     }
+
+    auto fs_artifact = assembler.AssembleFragmentArtifact(assemble_key, var_desc);
+    if (!fs_artifact.success)
+    {
+        std::fprintf(stderr, "[%s] CompositorAssembler FS failed: %s\n",
+            debug_tag, fs_artifact.error_message.c_str());
+        return nullptr;
+    }
+
+    // Merge VS + FS requirement sets, then convert to manifest.
+    // Priority: explicit def declarations win; SFM fills in the rest.
+    vs_artifact.req_set.MergeFrom(fs_artifact.req_set);
+    MaterialResourceManifest merged_manifest = MaterialResourceManifest::FromStaticDef(def);
+    merged_manifest.MergeKeepFirst(vs_artifact.req_set.ToManifest());
+
+    // Project merged manifest back into a StaticMaterialDef for downstream consumers.
+    // merged_manifest outlives this scope (consumed synchronously by CompileCompositorMaterial).
+    StaticMaterialDef merged_def = merged_manifest.ProjectIntoStaticDef(effective_def);
+
+    std::string vertex_glsl   = std::move(vs_artifact.glsl);
+    std::string fragment_glsl = std::move(fs_artifact.glsl);
 
     // Phase 2: if this variant was assembled with an ErrorIndicator FS override,
     // re-assemble the fragment shader via AssembleErrorIndicatorFS so that the
@@ -55,14 +77,14 @@ MaterialCreateInfo *CreateFromFixedDef3D(
         std::string ei_fs;
         std::string ei_err;
         AssembleErrorIndicatorFS(assemble_key, var_desc, var_desc.fs_error_code, ei_fs, ei_err);
-        result.fragment_glsl = std::move(ei_fs);
+        fragment_glsl = std::move(ei_fs);
     }
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        effective_def,
-        result.vertex_glsl,
-        result.fragment_glsl,
+        merged_def,
+        vertex_glsl,
+        fragment_glsl,
         cfg);
 
     if (!mci)
