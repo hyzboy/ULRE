@@ -533,7 +533,6 @@ namespace
                                                                    const std::string &surface_path)
     {
         using ST = hgl::graph::SurfaceType;
-        using GM = hgl::graph::mtl::GeometryMode;
         using RM = hgl::graph::RenderAlphaMode;
         using VA = hgl::graph::VertexAttrib;
 
@@ -544,16 +543,13 @@ namespace
         if (blend == RM::Masked) flags.alpha_masked = true;
         if (blend == RM::Dither) flags.alpha_dither = true;
 
-        // 1. Billboard: texcoord-based, no standard per-vertex varyings.
-        if (key.geometry_mode == GM::BillboardCameraFacing
-         || key.geometry_mode == GM::BillboardAxisLocked)
-        {
-            flags.has_texcoord       = true;
-            flags.vertex_attrib_bits = 0;
-            return flags;
-        }
+        // Billboard is no longer special-cased here: billboard geometry_mode is
+        // handled entirely by the vertex_policy two-axis path (BillboardCameraFacing /
+        // BillboardAxisLocked in VertexTransformPolicy). Any legacy key that reaches
+        // this function with a billboard geometry_mode falls through to the standard
+        // attrib-driven path below, which is correct for FS feature inference.
 
-        // 2. Terrain: normal varying + clip-pos for grid edge fade.
+        // 1. Terrain: normal varying + clip-pos for grid edge fade.
         if (key.surface_type == ST::Terrain)
         {
             flags.SetVertexAttrib(VA::Normal);
@@ -561,7 +557,7 @@ namespace
             return flags;
         }
 
-        // 3. Sky: direction-based shading, no standard per-vertex varyings.
+        // 2. Sky: direction-based shading, no standard per-vertex varyings.
         if (key.surface_type == ST::Sky)
         {
             flags.has_direction      = true;
@@ -569,7 +565,7 @@ namespace
             return flags;
         }
 
-        // 4. Lit 3D (not Unlit, not a 2D surface type).
+        // 3. Lit 3D (not Unlit, not a 2D surface type).
         if (key.surface_type != ST::Unlit && !hgl::graph::Is2DSurfaceType(key.surface_type))
         {
             flags.enable_lighting   = true;

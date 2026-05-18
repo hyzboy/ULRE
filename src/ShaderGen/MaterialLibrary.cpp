@@ -10,6 +10,8 @@
 #include<hgl/shadergen/MaterialFactory3D.h>
 #include<hgl/shadergen/RegistryQuery.h>
 #include<hgl/shadergen/registry/ErrorCodeRegistry.h>
+#include<hgl/shadergen/CompositorAssembler.h>
+#include<hgl/shadergen/ShaderRequirementSet.h>
 #include<atomic>
 #include<cstring>
 #include<cstdio>
@@ -52,10 +54,13 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
 {
     const auto &registry = GetBuiltinVariantRegistry();
 
+    // Build a reusable assembler for SFM inference (Phase 6 audit columns).
+    const hgl::graph::CompositorAssembler sfm_assembler(GetShaderLibraryPath());
+
     std::string out;
     out.reserve(8192);
     out += "# Builtin MaterialPreset Audit Snapshot\n";
-    out += "preset|resolved_preset|row_name|primitive|vertex_input|vertex_policy|surface_model|surface_type|geometry_mode|blend|pass|schema|def_hint|vs_features|fs_features|resources|textures|runtime_transition|explicit_axes|legacy_inference\n";
+    out += "preset|resolved_preset|row_name|primitive|vertex_input|vertex_policy|surface_model|surface_type|geometry_mode|blend|pass|schema|def_hint|vs_features|fs_features|resources|textures|runtime_transition|explicit_axes|legacy_inference|sfm_inferred|sfm_vs_row_resources\n";
 
     registry.ForEachBuiltinRow([&](const MaterialVariantRow &row)
     {
@@ -237,6 +242,71 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
         out += format_prune_summary(PassType::EarlyZSolid);
         out += ";";
         out += format_prune_summary(PassType::EarlyZMasked);
+        out += "|";
+
+        // Phase 6 (P6-1): SFM-inferred resource column.
+        // Run SFM assembly for this row (without compiling GLSL) to infer which
+        // descriptor sets the assembled shaders actually require, then compare
+        // against row.resources to detect MISMATCH.
+        {
+            mtl::MaterialVariantKey audit_key{};
+            audit_key.blend_mode        = row.blend;
+            audit_key.lighting_model    = row.resources.lighting_model;
+            audit_key.sky_ambient_model = row.resources.sky_model;
+            audit_key.surface_type      = row.surface_type;
+
+            const mtl::MaterialVariantDesc audit_desc =
+                mtl::MaterialVariantDesc::CreateRowBound(row.name ? row.name : "", &row);
+
+            const auto vs_art = sfm_assembler.AssembleVertexArtifact(audit_key, audit_desc, &row);
+            const auto fs_art = sfm_assembler.AssembleFragmentArtifact(audit_key, audit_desc, &row);
+
+            hgl::graph::ShaderRequirementSet merged;
+            merged.MergeFrom(vs_art.req_set);
+            merged.MergeFrom(fs_art.req_set);
+
+            const bool sfm_viewport   = merged.Requires("viewport");
+            const bool sfm_camera     = merged.Requires("camera");
+            const bool sfm_transform  = merged.Requires("transform_id")
+                                     || merged.Requires("transform_data");
+
+            // Format sfm_inferred column.
+            {
+                std::string sfm_txt;
+                auto add = [&](const char *n, bool v)
+                {
+                    if (!v) return;
+                    if (!sfm_txt.empty()) sfm_txt += ",";
+                    sfm_txt += n;
+                };
+                add("Viewport",   sfm_viewport);
+                add("Camera",     sfm_camera);
+                add("Transform",  sfm_transform);
+                if (!vs_art.success) { sfm_txt += sfm_txt.empty() ? "VS_FAIL" : ",VS_FAIL"; }
+                if (!fs_art.success) { sfm_txt += sfm_txt.empty() ? "FS_FAIL" : ",FS_FAIL"; }
+                out += sfm_txt.empty() ? "None" : sfm_txt;
+            }
+            out += "|";
+
+            // Format sfm_vs_row_resources mismatch column.
+            {
+                std::string mismatch;
+                auto check = [&](const char *field, bool sfm_val, bool row_val)
+                {
+                    if (sfm_val == row_val) return;
+                    if (!mismatch.empty()) mismatch += ",";
+                    mismatch += field;
+                    mismatch += ":sfm=";
+                    mismatch += sfm_val ? "1" : "0";
+                    mismatch += "/row=";
+                    mismatch += row_val ? "1" : "0";
+                };
+                check("viewport",   sfm_viewport,  row.resources.needs_viewport);
+                check("camera",     sfm_camera,    row.resources.needs_camera);
+                check("transform",  sfm_transform, row.resources.needs_transform);
+                out += mismatch.empty() ? "OK" : ("MISMATCH:" + mismatch);
+            }
+        }
         out += "\n";
     });
 
