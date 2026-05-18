@@ -34,18 +34,12 @@ namespace hgl::graph::mtl
 {
 bool ResolveConfiguredCameraRequirement(const Material3DCreateConfig &cfg)
     {
-        if (cfg.effective_feature_mask != 0)
-            return HasFeature(cfg.effective_feature_mask, MaterialFeature::NeedsCamera);
-
-        return cfg.camera;
+        return HasFeature(cfg.effective_feature_mask, MaterialFeature::NeedsCamera);
     }
 
 bool ResolveConfiguredSkyRequirement(const Material3DCreateConfig &cfg)
     {
-        if (cfg.effective_feature_mask != 0)
-            return HasFeature(cfg.effective_feature_mask, MaterialFeature::NeedsSky);
-
-        return cfg.sky;
+        return HasFeature(cfg.effective_feature_mask, MaterialFeature::NeedsSky);
     }
 
 void AppendDiagnosticLine(std::string *diagnostics, const std::string &line)

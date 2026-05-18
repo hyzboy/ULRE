@@ -40,7 +40,7 @@ static MaterialCreateInfo *UnlitTexture_Adapter(
         const Material2DCreateConfig *c2 = static_cast<const Material2DCreateConfig *>(cfg);
         const bool use_array = (key.GetTextureSourceMode(SamplerSlot::BaseColor) == TextureSourceMode::Array);
 
-        Material3DCreateConfig cfg3d(c2->prim, IncludeCamera::Without, IncludeL2W::Without, IncludeSky::Without);
+        Material3DCreateConfig cfg3d(c2->prim, IncludeL2W::Without);
         cfg3d.position_format   = VAT_VEC2;
         cfg3d.local_to_world    = c2->local_to_world;
         cfg3d.coord_2d          = c2->coordinate_system;
@@ -67,7 +67,7 @@ static MaterialCreateInfo *UnlitTexture_Adapter(
         auto *c3 = static_cast<Material3DCreateConfig *>(cfg);
         const bool use_array = (key.GetTextureSourceMode(SamplerSlot::BaseColor) == TextureSourceMode::Array);
 
-        c3->camera = true; c3->sky = false; c3->local_to_world = true; c3->material_instance = false;
+        c3->local_to_world = true; c3->material_instance = false;
 
         StaticTextureSamplerDescriptors samplers;
         AddTextureSampler(samplers, SamplerSlot::BaseColor,

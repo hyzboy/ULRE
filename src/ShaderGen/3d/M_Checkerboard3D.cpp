@@ -58,8 +58,6 @@ namespace
         Material3DCreateConfig local_cfg = cfg_3d ? *cfg_3d : Material3DCreateConfig();
 
         // Hard requirement: fallback checkerboard depends only on vertex position.
-        local_cfg.camera = false;
-        local_cfg.sky = false;
         local_cfg.local_to_world = false;
         local_cfg.material_instance = false;
         local_cfg.effective_feature_mask = 0;

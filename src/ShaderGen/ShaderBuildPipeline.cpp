@@ -65,18 +65,12 @@ static bool BuildMaterialInstanceSchemaSnippet(const hgl::graph::mtl::MaterialIn
 
 static bool ResolveConfiguredCameraRequirement(const hgl::graph::mtl::Material3DCreateConfig &cfg)
 {
-    if(cfg.effective_feature_mask!=0)
-        return hgl::graph::mtl::HasFeature(cfg.effective_feature_mask,hgl::graph::mtl::MaterialFeature::NeedsCamera);
-
-    return cfg.camera;
+    return hgl::graph::mtl::HasFeature(cfg.effective_feature_mask,hgl::graph::mtl::MaterialFeature::NeedsCamera);
 }
 
 static bool ResolveConfiguredSkyRequirement(const hgl::graph::mtl::Material3DCreateConfig &cfg)
 {
-    if(cfg.effective_feature_mask!=0)
-        return hgl::graph::mtl::HasFeature(cfg.effective_feature_mask,hgl::graph::mtl::MaterialFeature::NeedsSky);
-
-    return cfg.sky;
+    return hgl::graph::mtl::HasFeature(cfg.effective_feature_mask,hgl::graph::mtl::MaterialFeature::NeedsSky);
 }
 
 static void AppendDiagnosticLine(std::string *diagnostics,const std::string &line)

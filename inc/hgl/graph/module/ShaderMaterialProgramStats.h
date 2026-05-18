@@ -177,9 +177,7 @@ namespace hgl::graph
                                            const uint32_t preset) const;
 
         void LogCreateMaterialFromRecord3D(const uint32_t prim,
-                                           const uint32_t preset,
-                                           const bool include_camera,
-                                           const bool include_sky) const;
+                                           const uint32_t preset) const;
 
         void LogMaterialFinalizeSummary(const AnsiString &material_name,
                                         const uint32_t mi_data_bytes,

@@ -534,14 +534,9 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
             GetStats().LogLine(warning);
         }
 
-        const bool include_camera = mtl::HasFeature(feature_mask, mtl::MaterialFeature::NeedsCamera);
-        const bool include_sky = mtl::HasFeature(feature_mask, mtl::MaterialFeature::NeedsSky);
-
         Material3DCreateConfig cfg(
             rec.prim,
-            include_camera ? IncludeCamera::With : IncludeCamera::Without,
-            rec.l2w    ? IncludeL2W::With    : IncludeL2W::Without,
-            include_sky ? IncludeSky::With : IncludeSky::Without);
+            rec.l2w ? IncludeL2W::With : IncludeL2W::Without);
         cfg.sky_ambient_model = rec.sky_ambient;
 
         cfg.lighting_model = mtl::ResolveLightingModelFromFeatures(feature_mask, mtl::LightingModel::Lambert);
@@ -562,9 +557,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
         }
 
         GetStats().LogCreateMaterialFromRecord3D(static_cast<uint32_t>(cfg.prim),
-                                                 static_cast<uint32_t>(rec.preset),
-                                                 include_camera,
-                                                 include_sky);
+                                                 static_cast<uint32_t>(rec.preset));
         return create_3d(rec.preset, &cfg);
     }
 }
@@ -634,14 +627,10 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     else
     {
         const mtl::MaterialFeatureMask feature_mask = hgl::graph::ResolveRecipeIntentFeatureMask(recipe);
-        const bool include_camera = mtl::HasFeature(feature_mask, mtl::MaterialFeature::NeedsCamera);
-        const bool include_sky = mtl::HasFeature(feature_mask, mtl::MaterialFeature::NeedsSky);
 
         mtl::Material3DCreateConfig cfg(
             recipe.prim,
-            include_camera ? mtl::IncludeCamera::With : mtl::IncludeCamera::Without,
-            recipe.l2w ? mtl::IncludeL2W::With : mtl::IncludeL2W::Without,
-            include_sky ? mtl::IncludeSky::With : mtl::IncludeSky::Without);
+            recipe.l2w ? mtl::IncludeL2W::With : mtl::IncludeL2W::Without);
 
         cfg.preset_name = mtl::GetMaterialPresetName(recipe.preset);
         cfg.sky_ambient_model = recipe.sky_ambient;

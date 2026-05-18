@@ -33,7 +33,7 @@ static MaterialCreateInfo *PureColor_Adapter(
     if (cfg->kind == ConfigKind::D2)
     {
         const Material2DCreateConfig *c2 = static_cast<const Material2DCreateConfig *>(cfg);
-        Material3DCreateConfig cfg3d(c2->prim, IncludeCamera::Without, IncludeL2W::Without, IncludeSky::Without);
+        Material3DCreateConfig cfg3d(c2->prim, IncludeL2W::Without);
         cfg3d.position_format   = VAT_VEC2;
         cfg3d.local_to_world    = c2->local_to_world;
         cfg3d.coord_2d          = c2->coordinate_system;

@@ -1,10 +1,10 @@
 ﻿#pragma once
 
-/// StdMaterial.h — 材质创建辅助枚举
+/// MaterialBuildFlags.h
 ///
-/// 原 StdMaterial 虚函数链已被 CompileCompositorMaterial + StaticMaterialDef 取代。
-/// 本文件仅保留 IncludeSky/IncludeCamera/IncludeL2W 枚举供
-/// Material2DCreateConfig / Material3DCreateConfig 使用。
+/// 本文件保留 IncludeL2W 枚举供 Material3DCreateConfig 使用。
+/// IncludeSky / IncludeCamera 已删除 —— 资源需求现由 vertex policy
+/// @sfm:require 注解和 MaterialVariantRow 自动推导。
 
 #include<hgl/type/String.h>
 
@@ -12,18 +12,6 @@ namespace hgl::graph
 {
     namespace mtl
     {
-        enum class IncludeSky:uint8
-        {
-            Without=0,
-            With
-        };
-
-        enum class IncludeCamera:uint8
-        {
-            Without=0,
-            With
-        };
-
         enum class IncludeL2W:uint8
         {
             Without=0,

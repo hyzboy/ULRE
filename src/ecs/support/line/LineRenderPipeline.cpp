@@ -323,9 +323,7 @@ namespace hgl::ecs
 
         graph::mtl::Material3DCreateConfig cfg(
             graph::PrimitiveType::Lines,
-            graph::mtl::IncludeCamera::With,
-            graph::mtl::IncludeL2W::With,
-            graph::mtl::IncludeSky::Without);
+            graph::mtl::IncludeL2W::With);
 
         GLogInfo("[LineRenderPipeline] Initialize: requested_cfg_prim=%u material=%p material_prim=%u wide_lines=%d",
                  static_cast<unsigned>(cfg.prim),

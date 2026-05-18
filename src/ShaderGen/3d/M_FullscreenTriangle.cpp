@@ -28,9 +28,7 @@ namespace
         auto *cfg_3d = static_cast<Material3DCreateConfig *>(cfg);
         Material3DCreateConfig local_cfg = cfg_3d ? *cfg_3d : Material3DCreateConfig();
 
-        // PCG: no camera transform, no local-to-world, no material instance — purely procedural.
-        local_cfg.camera              = false;
-        local_cfg.sky                 = false;
+        // PCG: no local-to-world, no material instance — purely procedural.
         local_cfg.local_to_world      = false;
         local_cfg.material_instance   = false;
         local_cfg.effective_feature_mask = 0;

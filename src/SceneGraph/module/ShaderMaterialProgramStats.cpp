@@ -407,16 +407,12 @@ namespace hgl::graph
     }
 
     void ShaderMaterialProgramStats::LogCreateMaterialFromRecord3D(const uint32_t prim,
-                                                                    const uint32_t preset,
-                                                                    const bool include_camera,
-                                                                    const bool include_sky) const
+                                                                    const uint32_t preset) const
     {
         std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] CreateMaterialFromRecord: 3D cfg.prim=%u preset=%u include_camera=%u include_sky=%u\n",
+            "[ShaderMaterialProgramManager] CreateMaterialFromRecord: 3D cfg.prim=%u preset=%u\n",
             static_cast<unsigned>(prim),
-            static_cast<unsigned>(preset),
-            include_camera ? 1u : 0u,
-            include_sky ? 1u : 0u);
+            static_cast<unsigned>(preset));
     }
 
     void ShaderMaterialProgramStats::LogMaterialFinalizeSummary(const AnsiString &material_name,

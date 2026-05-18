@@ -343,9 +343,7 @@ static void TestBuildMaterialCreateInfoForSchemaAwareCompositor()
 {
     ShaderBuildPipeline pipeline;
     Material3DCreateConfig cfg(PrimitiveType::Triangles,
-                               IncludeCamera::With,
-                               IncludeL2W::With,
-                               IncludeSky::Without);
+                               IncludeL2W::With);
     cfg.material_instance = true;
     cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 

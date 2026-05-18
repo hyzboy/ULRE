@@ -96,15 +96,6 @@ std::string Material3DCreateConfig::ToHashStdString()
         hash += "_Feat";
         hash += std::to_string(effective_feature_mask);
     }
-    else
-    {
-        // Fallback: old field-based hash path (backward compat when intent_features=0)
-        if(camera)
-            hash+="_Camera";
-
-        if(sky)
-            hash+="_Sky";
-    }
 
     hash+="_Amb";
     hash.push_back(static_cast<char>('0'+(uint8)sky_ambient_model));

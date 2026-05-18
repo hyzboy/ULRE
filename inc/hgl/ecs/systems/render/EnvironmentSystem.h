@@ -131,7 +131,6 @@ namespace hgl
             /// 说明：本接口只负责配置传递，不直接创建/绑定 GPU 资源。
             void ApplySkyLightToMaterialConfig(graph::mtl::Material3DCreateConfig &cfg) const
             {
-                cfg.sky = true;
                 cfg.sky_ambient_model = skylight_model;
             }
 
