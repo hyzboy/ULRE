@@ -509,12 +509,13 @@ void VariantRegistry::ForEach(
 // Convenience aliases (TU-local; do not pollute hgl::graph::mtl public API).
 namespace {
 using ST   = _BVE_ST;
-using GM   = _BVE_GM;
-using TSM  = _BVE_TSM;
-using LM   = _BVE_LM;
-using RM   = _BVE_RM;
-using PT   = _BVE_PT;
-using Slot = _BVE_Slot;
+    using GM   = _BVE_GM;
+    using PPI  = PositionProviderId;
+    using TSM  = _BVE_TSM;
+    using LM   = _BVE_LM;
+    using RM   = _BVE_RM;
+    using PT   = _BVE_PT;
+    using Slot = _BVE_Slot;
 constexpr auto VA = _BVE_VA;
 } // anonymous (aliases only)
 
@@ -579,73 +580,21 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .tex = {{ Slot::BaseColor, TSM::Array }},
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
-    // ── UnlitTexture3D Billboard (2 geometries × 5 blend modes) ───────────────────────────────
-    { .name = "UnlitTexture3DBillboardDynamicOpaque",   .preset = MaterialPreset::UnlitTexture3D,
-      .geometry_mode = GM::BillboardCameraFacing, .position_provider = PositionProviderId::VAB_Vec2,
-      .blend = RM::Opaque,          .pass = PT::ForwardOpaque,
-      .vertex_bits = VA(VertexAttrib::TexCoord),
-      .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .surface_path = "surface/unlit_texture3d_surface.glsl" },
-
-    { .name = "UnlitTexture3DBillboardDynamic",         .preset = MaterialPreset::UnlitTexture3D,
-      .geometry_mode = GM::BillboardCameraFacing, .position_provider = PositionProviderId::VAB_Vec2,
+    // Billboard is a vertex-transform variant of UnlitTexture3D (not a preset-level special case).
+    // Billboard rows: position is a vec2 input (screen-space XY), so position_provider = VAB_Vec2.
+    // geometry_mode drives vertex_policy selection in BuiltinVariantEntry.h BuildDesc().
+    { .name = "UnlitTexture3DBillboardAxisLocked",   .preset = MaterialPreset::UnlitTexture3D,
+      .geometry_mode = GM::BillboardAxisLocked,
+      .position_provider = PPI::VAB_Vec2,
       .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
-    { .name = "UnlitTexture3DBillboardDynamicMasked",   .preset = MaterialPreset::UnlitTexture3D,
-      .geometry_mode = GM::BillboardCameraFacing, .position_provider = PositionProviderId::VAB_Vec2,
-      .blend = RM::Masked,          .pass = PT::ForwardMasked,
-      .vertex_bits = VA(VertexAttrib::TexCoord),
-      .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .surface_path = "surface/unlit_texture3d_surface.glsl" },
-
-    { .name = "UnlitTexture3DBillboardDynamicDither",   .preset = MaterialPreset::UnlitTexture3D,
-      .geometry_mode = GM::BillboardCameraFacing, .position_provider = PositionProviderId::VAB_Vec2,
-      .blend = RM::Dither,          .pass = PT::ForwardDither,
-      .vertex_bits = VA(VertexAttrib::TexCoord),
-      .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .surface_path = "surface/unlit_texture3d_surface.glsl" },
-
-    { .name = "UnlitTexture3DBillboardDynamicA2C",      .preset = MaterialPreset::UnlitTexture3D,
-      .geometry_mode = GM::BillboardCameraFacing, .position_provider = PositionProviderId::VAB_Vec2,
-      .blend = RM::AlphaToCoverage, .pass = PT::ForwardA2C,
-      .vertex_bits = VA(VertexAttrib::TexCoord),
-      .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .surface_path = "surface/unlit_texture3d_surface.glsl" },
-
-    { .name = "UnlitTexture3DBillboardFixedOpaque",     .preset = MaterialPreset::UnlitTexture3D,
-      .geometry_mode = GM::BillboardAxisLocked,   .position_provider = PositionProviderId::VAB_Vec2,
-      .blend = RM::Opaque,          .pass = PT::ForwardOpaque,
-      .vertex_bits = VA(VertexAttrib::TexCoord),
-      .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .surface_path = "surface/unlit_texture3d_surface.glsl" },
-
-    { .name = "UnlitTexture3DBillboardFixed",           .preset = MaterialPreset::UnlitTexture3D,
-      .geometry_mode = GM::BillboardAxisLocked,   .position_provider = PositionProviderId::VAB_Vec2,
+    { .name = "UnlitTexture3DBillboardCameraFacing", .preset = MaterialPreset::UnlitTexture3D,
+      .geometry_mode = GM::BillboardCameraFacing,
+      .position_provider = PPI::VAB_Vec2,
       .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
-      .vertex_bits = VA(VertexAttrib::TexCoord),
-      .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .surface_path = "surface/unlit_texture3d_surface.glsl" },
-
-    { .name = "UnlitTexture3DBillboardFixedMasked",     .preset = MaterialPreset::UnlitTexture3D,
-      .geometry_mode = GM::BillboardAxisLocked,   .position_provider = PositionProviderId::VAB_Vec2,
-      .blend = RM::Masked,          .pass = PT::ForwardMasked,
-      .vertex_bits = VA(VertexAttrib::TexCoord),
-      .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .surface_path = "surface/unlit_texture3d_surface.glsl" },
-
-    { .name = "UnlitTexture3DBillboardFixedDither",     .preset = MaterialPreset::UnlitTexture3D,
-      .geometry_mode = GM::BillboardAxisLocked,   .position_provider = PositionProviderId::VAB_Vec2,
-      .blend = RM::Dither,          .pass = PT::ForwardDither,
-      .vertex_bits = VA(VertexAttrib::TexCoord),
-      .tex = {{ Slot::BaseColor, TSM::Simple }},
-      .surface_path = "surface/unlit_texture3d_surface.glsl" },
-
-    { .name = "UnlitTexture3DBillboardFixedA2C",        .preset = MaterialPreset::UnlitTexture3D,
-      .geometry_mode = GM::BillboardAxisLocked,   .position_provider = PositionProviderId::VAB_Vec2,
-      .blend = RM::AlphaToCoverage, .pass = PT::ForwardA2C,
       .vertex_bits = VA(VertexAttrib::TexCoord),
       .tex = {{ Slot::BaseColor, TSM::Simple }},
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
