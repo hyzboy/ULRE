@@ -28,7 +28,7 @@ namespace hgl::graph
         { Policy::BillboardCameraFacing, "vertex_policy/billboard_camera_facing.glsl" },
         { Policy::BillboardAxisLocked,   "vertex_policy/billboard_axis_locked.glsl" },
         { Policy::TerrainGrid,           "" }, // TODO: migrate main_terrain_grid.vert.glsl
-        { Policy::Sky,                   "" }, // TODO: migrate sky VS
+        { Policy::Sky,                   "vertex_policy/sky.glsl" },
         { Policy::Text2D,                "" }, // TODO: migrate text2d.vert.glsl
         { Policy::FullscreenTriangle,    "vertex_policy/passthrough_ndc.glsl" },
         { Policy::Position2DTransform,   "vertex_policy/position2d_transform.glsl" },
@@ -69,5 +69,4 @@ namespace hgl::graph
         }
         return nullptr;
     }
-
 } // namespace hgl::graph
