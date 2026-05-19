@@ -5,7 +5,6 @@ namespace hgl::graph::mtl
     // Resource contracts for common 3D mesh variants: VS always needs camera + transform.
     static constexpr MaterialResourceRequirements kMesh3DVertexContract = {
         .needs_camera    = true,
-        .needs_sky       = false,
         .needs_transform = true,
     };
 

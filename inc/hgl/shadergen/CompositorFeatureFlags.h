@@ -45,16 +45,14 @@ struct CompositorFeatureFlags
     bool enable_lighting  = false;
     bool needs_camera     = false;
     bool needs_transform  = false;
-    bool needs_sky        = false;
     bool alpha_masked     = false;
     bool alpha_dither     = false;
     bool has_texcoord     = false;
     bool has_clip_pos     = false;
 
-    // Sky ambient model (only used when needs_sky == true)
+    // Sky ambient / lighting model: only active when enable_lighting == true.
+    // Set from MaterialVariantKey (ECS-injected LOD decision); not stored per-preset.
     mtl::SkyLightAmbientModel sky_ambient_model = mtl::SkyLightAmbientModel::Simple;
-
-    // Lighting model (only used when enable_lighting == true)
     mtl::LightingModel lighting_model = mtl::LightingModel::Lambert;
 
     // Surface function path (FS only)

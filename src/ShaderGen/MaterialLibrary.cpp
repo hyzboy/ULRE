@@ -145,11 +145,9 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
 
             append("Viewport", res.needs_viewport);
             append("Camera", res.needs_camera);
-            append("Sky", res.needs_sky);
             append("Transform", res.needs_transform);
             append("MaterialInstance", res.needs_material_instance);
             append("MaterialTextureIndex", res.needs_material_texture_index);
-            append("ColorPalette", res.needs_color_palette);
             append("Lighting", res.enable_lighting);
             return first ? std::string("None") : text;
         };
@@ -197,9 +195,7 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
 
         std::string legacy;
         if (row.resources.enable_lighting)
-            legacy += legacy.empty() ? "lighting_model still mirrored in key but now treated as strict row parity" : ",lighting_model still mirrored in key but now treated as strict row parity";
-        if (row.resources.needs_sky)
-            legacy += legacy.empty() ? "sky_model still mirrored in key but now treated as strict row parity" : ",sky_model still mirrored in key but now treated as strict row parity";
+            legacy += legacy.empty() ? "lighting_model is ECS-injected via MaterialVariantKey" : ",lighting_model is ECS-injected via MaterialVariantKey";
         if (!row.color_sources.empty())
             legacy += legacy.empty() ? "texture source and sampler bits still mirrored in key but now treated as strict row parity" : ",texture source and sampler bits still mirrored in key but now treated as strict row parity";
         if (RowDeclaresAnyVertexAttrib(row))
@@ -222,9 +218,7 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
             const MaterialResourceRequirements eff = DeriveEffectiveResources(row.resources, pass);
             std::string s;
             s += std::to_string(static_cast<unsigned>(pass));
-            s += ":sky=";
-            s += eff.needs_sky ? "1" : "0";
-            s += "/light=";
+            s += ":light=";
             s += eff.enable_lighting ? "1" : "0";
             s += "/mi=";
             s += eff.needs_material_instance ? "1" : "0";
@@ -251,8 +245,8 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
         {
             mtl::MaterialVariantKey audit_key{};
             audit_key.blend_mode        = row.blend;
-            audit_key.lighting_model    = row.resources.lighting_model;
-            audit_key.sky_ambient_model = row.resources.sky_model;
+            audit_key.lighting_model    = LightingModel::Lambert; // default; ECS injects real value at runtime
+            audit_key.sky_ambient_model = SkyLightAmbientModel::Simple; // default
             audit_key.surface_type      = row.surface_type;
             audit_key.geometry_mode     = row.geometry_mode;
             audit_key.pass_hint         = row.pass;
@@ -1001,19 +995,17 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         const PassType pass_hint = key.pass_hint;
         const MaterialResourceRequirements effective = DeriveEffectiveResources(authored, pass_hint);
 
-        const bool sky_pruned     = authored.needs_sky && !effective.needs_sky;
         const bool light_pruned   = authored.enable_lighting && !effective.enable_lighting;
         const bool mi_pruned      = authored.needs_material_instance && !effective.needs_material_instance;
         const bool mitex_pruned   = authored.needs_material_texture_index && !effective.needs_material_texture_index;
 
-        if (sky_pruned || light_pruned || mi_pruned || mitex_pruned)
+        if (light_pruned || mi_pruned || mitex_pruned)
         {
             std::fprintf(stderr,
                 "[MaterialLibrary] Phase4 prune: variant=%s pass=%u"
-                " sky=%d→%d light=%d→%d mi=%d→%d mitex=%d→%d\n",
+                " light=%d->%d mi=%d->%d mitex=%d->%d\n",
                 variant_desc->variant_name.c_str(),
                 static_cast<unsigned>(pass_hint),
-                authored.needs_sky,        effective.needs_sky,
                 authored.enable_lighting,  effective.enable_lighting,
                 authored.needs_material_instance,       effective.needs_material_instance,
                 authored.needs_material_texture_index,  effective.needs_material_texture_index);

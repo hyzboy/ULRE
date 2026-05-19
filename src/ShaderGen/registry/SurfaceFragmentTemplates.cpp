@@ -7,9 +7,9 @@ namespace hgl::graph::mtl
         .needs_material_instance = true,
     };
 
-    // Fragment contract for lit surfaces: needs sky + material instance.
+    // Fragment contract for lit surfaces that need material instance and participate in lighting.
+    // Sky UBO is now SFM-driven (skylight_*.glsl declares @sfm:require UBO sky).
     static constexpr MaterialResourceRequirements kLitMaterialInstanceFSContract = {
-        .needs_sky               = true,
         .needs_material_instance = true,
         .enable_lighting         = true,
     };

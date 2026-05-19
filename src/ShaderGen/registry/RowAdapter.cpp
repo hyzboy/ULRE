@@ -22,8 +22,7 @@ namespace hgl::graph::mtl
         row.position_provider = key.position_provider;
         row.blend = key.blend_mode;
         row.pass = key.pass_hint;
-        row.resources.lighting_model = key.lighting_model;
-        row.resources.sky_model = key.sky_ambient_model;
+        // lighting_model / sky_ambient_model are ECS-injected via MaterialVariantKey; not stored in row.resources.
 
         if (vertex)
         {
@@ -45,8 +44,7 @@ namespace hgl::graph::mtl
             row.surface_path = fragment->surface_path;
             row.fs_features = fragment->fs_features;
             row.resources.enable_lighting = fragment->resource_contract.enable_lighting;
-            row.resources.lighting_model = fragment->lighting_model;
-            row.resources.needs_sky = row.resources.needs_sky || fragment->resource_contract.needs_sky;
+            // needs_sky and lighting_model are SFM-driven / ECS-injected; not propagated from fragment contract.
             row.resources.needs_material_instance = row.resources.needs_material_instance || fragment->resource_contract.needs_material_instance;
             row.def_hint = fragment->def_hint != StaticMaterialDefIdHint::None ? fragment->def_hint : row.def_hint;
             if (fragment->schema != ShaderDataSchema::None)

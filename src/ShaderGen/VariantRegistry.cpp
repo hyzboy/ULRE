@@ -3,6 +3,7 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/shadergen/RegistryQuery.h>
 #include<hgl/shadergen/ShaderResourceScanner.h>
+#include<hgl/shadergen/ShaderRequirementSet.h>
 #include "BuiltinVariantEntry.h"
 #include <hgl/mtl/MaterialVariantRow.h>
 #include <hgl/shadergen/VertexPolicyRegistry.h>
@@ -139,22 +140,14 @@ static std::string FormatMaterialResourcesForLog(const MaterialResourceRequireme
     text += res.needs_viewport ? "1" : "0";
     text += ",Cam=";
     text += res.needs_camera ? "1" : "0";
-    text += ",Sky=";
-    text += res.needs_sky ? "1" : "0";
     text += ",Xf=";
     text += res.needs_transform ? "1" : "0";
     text += ",MI=";
     text += res.needs_material_instance ? "1" : "0";
     text += ",MITex=";
     text += res.needs_material_texture_index ? "1" : "0";
-    text += ",Pal=";
-    text += res.needs_color_palette ? "1" : "0";
     text += ",Lit=";
     text += res.enable_lighting ? "1" : "0";
-    text += ",LM=";
-    text += std::to_string(static_cast<unsigned>(res.lighting_model));
-    text += ",SkyModel=";
-    text += std::to_string(static_cast<unsigned>(res.sky_model));
     return text;
 }
 
@@ -674,6 +667,24 @@ void VariantRegistry::InitializeBuiltinVariants()
             if (vp->needs_camera)    row.resources.needs_camera    = true;
             if (vp->needs_viewport)  row.resources.needs_viewport  = true;
             if (vp->needs_transform) row.resources.needs_transform = true;
+        }
+
+        // Autofill additional resource flags (sky, color_palette, camera, transform,
+        // viewport) by parsing @sfm:require annotations from vs_path and fs_path.
+        // This covers cases like TerrainGrid (custom vs) and UnlitPalette (palette vs)
+        // where the resource dependency is expressed in the GLSL file, not the policy.
+        {
+            ShaderRequirementSet sfm;
+            if (e.vs_path && e.vs_path[0] != '\0')
+                sfm.ParseFromGLSLFile(e.vs_path);
+            if (e.fs_path && e.fs_path[0] != '\0')
+                sfm.ParseFromGLSLFile(e.fs_path);
+            if (e.surface_path && e.surface_path[0] != '\0')
+                sfm.ParseFromGLSLFile(e.surface_path);
+
+            if (sfm.Requires("camera"))        row.resources.needs_camera    = true;
+            if (sfm.Requires("viewport"))      row.resources.needs_viewport  = true;
+            if (sfm.Requires("transform_id"))  row.resources.needs_transform = true;
         }
 
         MaterialVariantDesc desc = BuildDesc(e);

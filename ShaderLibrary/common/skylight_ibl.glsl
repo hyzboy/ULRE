@@ -1,3 +1,4 @@
+// @sfm:require UBO sky
 #ifndef SKYLIGHT_IBL_GLSL
 #define SKYLIGHT_IBL_GLSL
 

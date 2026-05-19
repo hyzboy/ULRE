@@ -105,8 +105,8 @@ static RecipeAxisExpansion ExpandRecipeAxesFromPresetAlias(const MaterialRecipe 
 
         if (row.resources.enable_lighting)
         {
-            if (row.resources.lighting_model == desired_lighting)
-                score += 40;
+            // lighting_model is ECS-injected via MaterialVariantKey; no per-row scoring needed.
+            score += 40;
         }
         else if (desired_lighting == LightingModel::Lambert)
         {

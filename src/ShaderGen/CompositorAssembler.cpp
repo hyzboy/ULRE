@@ -227,7 +227,11 @@ namespace
 
         // ── Common UBOs (camera, sky, surface interface, varyings) ──────────
         // Emit each base fragment directly, no macro-based prologue needed.
-        if (f.enable_lighting || f.needs_sky)
+        // ubo_sky.glsl is included whenever lighting is enabled; the skylight_*.glsl
+        // files each declare @sfm:require UBO sky, so the binding is discovered by SFM.
+        // For SkyMinimal (no enable_lighting), sky_minimal_surface.glsl itself carries
+        // @sfm:require UBO sky — no explicit emit needed here.
+        if (f.enable_lighting)
             writer.EmitInclude("common/ubo_sky.glsl");
         if (f.enable_lighting || f.needs_camera)
             writer.EmitInclude("common/ubo_camera.glsl");
@@ -237,11 +241,11 @@ namespace
         // Varying declarations
         writer.EmitInclude("common/varying_fs.glsl");
 
-        if (f.needs_sky)
-            writer.EmitInclude(GetSkyLightGLSLPath(f.sky_ambient_model));
-
         if (f.enable_lighting)
+        {
+            writer.EmitInclude(GetSkyLightGLSLPath(f.sky_ambient_model));
             writer.EmitInclude(hgl::graph::mtl::GetLightingModelGLSLPath(f.lighting_model));
+        }
 
         // Fragment provider: if non-default, include the PCG/procedural provider
         // and set PCG_FRAGMENT_PROVIDER so frag_forward_main skips frag_input_resolve.
@@ -610,12 +614,13 @@ namespace
         }
 
         // 3. Lit 3D (not Unlit, not a 2D surface type).
+        // needs_sky / sky_ambient_model are now SFM-driven: skylight_*.glsl declares
+        // @sfm:require UBO sky, so sky binding is discovered automatically at compile time.
         if (key.surface_type != ST::Unlit && !hgl::graph::Is2DSurfaceType(key.surface_type))
         {
             flags.enable_lighting   = true;
             flags.lighting_model    = key.lighting_model;
             flags.needs_camera      = true;
-            flags.needs_sky         = true;
             flags.sky_ambient_model = key.sky_ambient_model;
         }
 
@@ -654,11 +659,10 @@ namespace
         flags.has_direction = row.fs_features.has_direction;
         flags.has_clip_pos = row.fs_features.has_clip_pos;
 
-        flags.enable_lighting = row.resources.enable_lighting;
-        flags.lighting_model = row.resources.lighting_model;
-        flags.needs_camera = row.resources.needs_camera;
-        flags.needs_sky = row.resources.needs_sky;
-        flags.sky_ambient_model = row.resources.sky_model;
+        flags.enable_lighting   = row.resources.enable_lighting;
+        flags.needs_camera      = row.resources.needs_camera;
+        // lighting_model / sky_ambient_model come from MaterialVariantKey (ECS-injected).
+        // needs_sky is SFM-driven: skylight_*.glsl declares @sfm:require UBO sky.
 
         // Fragment provider: PCG_FullscreenTriangle preset pairs with PCG_FragCoord
         // so the FS derives its SurfaceInput from gl_FragCoord instead of varyings.
@@ -763,19 +767,16 @@ namespace
                                hgl::graph::ShaderRequirementSet &req_set,
                                const std::string &lib_path)
     {
-        // Collect camera / sky requirements directly, mirroring BuildForwardFragmentEntry().
-        if (f.enable_lighting || f.needs_sky)
+        // Mirror BuildForwardFragmentEntry(): sky UBO + skylight model injected when lighting enabled.
+        // skylight_*.glsl each declare @sfm:require UBO sky, so sky binding flows from SFM.
+        if (f.enable_lighting)
+        {
             req_set.ParseFromGLSLFile("common/ubo_sky.glsl", lib_path);
+            req_set.ParseFromGLSLFile(GetSkyLightGLSLPath(f.sky_ambient_model), lib_path);
+            req_set.ParseFromGLSLFile(hgl::graph::mtl::GetLightingModelGLSLPath(f.lighting_model), lib_path);
+        }
         if (f.enable_lighting || f.needs_camera)
             req_set.ParseFromGLSLFile("common/ubo_camera.glsl", lib_path);
-
-        // sky light
-        if (f.needs_sky)
-            req_set.ParseFromGLSLFile(GetSkyLightGLSLPath(f.sky_ambient_model), lib_path);
-
-        // lighting model
-        if (f.enable_lighting)
-            req_set.ParseFromGLSLFile(hgl::graph::mtl::GetLightingModelGLSLPath(f.lighting_model), lib_path);
 
         // fragment provider
         {

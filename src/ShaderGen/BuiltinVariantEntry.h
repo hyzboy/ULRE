@@ -134,8 +134,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
     row.vs_template_path = e.vs_path;
     row.fs_template_path = e.fs_path;
     row.surface_path = e.surface_path;
-    row.resources.lighting_model = e.lighting;
-    row.resources.sky_model = e.sky_model;
     row.sky_is_routing_axis = e.sky_is_routing_axis;
 
     switch (e.preset)
@@ -248,7 +246,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::Color);
         row.fs_features.SetVertexAttrib(VertexAttrib::Color);
-        row.resources.needs_color_palette = true;
         row.def_hint = StaticMaterialDefIdHint::VertexPaletteColor3D;
         break;
 
@@ -274,9 +271,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.fs_features.SetVertexAttrib(VertexAttrib::Normal);
         row.fs_features.has_clip_pos = true;
-        // TODO: remove once TerrainGrid policy is migrated to vertex_policy/terrain_grid.glsl
-        row.resources.needs_camera    = true;
-        row.resources.needs_transform = true;
         row.color_sources.push_back(graph::ColorSource::MakeSampler2D(SamplerSlot::Height));
         row.color_sources.push_back(graph::ColorSource::MakeSampler2D(SamplerSlot::Normal));
         row.def_hint = StaticMaterialDefIdHint::TerrainGrid;
@@ -290,7 +284,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.has_direction = true;
         row.fs_features.has_direction = true;
-        row.resources.needs_sky = true;
         row.def_hint = StaticMaterialDefIdHint::SkyMinimal;
         break;
 
@@ -326,7 +319,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
             row.vs_features.SetVertexAttrib(VertexAttrib::TexCoord);
             row.fs_features.SetVertexAttrib(VertexAttrib::TexCoord);
         }
-        row.resources.needs_sky = true;
         row.resources.needs_material_instance = true;
         row.resources.enable_lighting = true;
         if (e.tex[0].mode != TextureSourceMode::None)
@@ -351,7 +343,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vs_features.SetVertexAttrib(VertexAttrib::Normal);
         row.fs_features.SetVertexAttrib(VertexAttrib::Position);
         row.fs_features.SetVertexAttrib(VertexAttrib::Normal);
-        row.resources.needs_sky = true;
         row.resources.needs_material_instance = true;
         row.resources.enable_lighting = true;
         row.schema = ShaderDataSchema::PBRColorParams;
@@ -364,10 +355,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.vertex_policy = VertexTransformPolicy::FullscreenTriangle;
         row.surface_model = SurfaceShadingModel::Unknown;
         row.def_hint = StaticMaterialDefIdHint::FullscreenTriangle;
-        // PCG fullscreen: VS 不做矩阵变换，无需 camera / transform binding
-        // FS (pcg_fragcoord) 需要 viewport 做屏幕空间归一化
-        // needs_viewport is explicitly set here because it is FS-driven, not from vertex policy.
-        row.resources.needs_viewport   = true;
         break;
 
     case MaterialPreset::Checkerboard3D:

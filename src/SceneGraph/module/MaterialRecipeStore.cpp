@@ -34,14 +34,10 @@ namespace hgl::graph::mtl
     {
         h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_viewport ? 1u : 0u));
         h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_camera ? 1u : 0u));
-        h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_sky ? 1u : 0u));
         h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_transform ? 1u : 0u));
         h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_material_instance ? 1u : 0u));
         h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_material_texture_index ? 1u : 0u));
-        h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.needs_color_palette ? 1u : 0u));
         h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.resources.enable_lighting ? 1u : 0u));
-        h = hgl::hash::FNV1aAppendValueBytes(h, r.resources.lighting_model);
-        h = hgl::hash::FNV1aAppendValueBytes(h, r.resources.sky_model);
     }
 
     h = hgl::hash::FNV1aAppend(h, static_cast<uint8_t>(r.has_explicit_schema ? 1u : 0u));

@@ -1,7 +1,6 @@
+// @sfm:require UBO sky
 #ifndef ULRE_SURFACE_SKY_MINIMAL_SURFACE_GLSL
 #define ULRE_SURFACE_SKY_MINIMAL_SURFACE_GLSL
-
-// @sfm:no-require
 
 SurfaceOutput EvalSurface(SurfaceInput si)
 {

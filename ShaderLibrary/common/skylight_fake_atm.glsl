@@ -1,3 +1,4 @@
+// @sfm:require UBO sky
 #ifndef SKYLIGHT_FAKE_ATM_GLSL
 #define SKYLIGHT_FAKE_ATM_GLSL
 

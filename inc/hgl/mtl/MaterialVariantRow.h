@@ -105,28 +105,25 @@ namespace hgl::graph::mtl
 
     /// 材质变体的资源需求声明。
     ///
-    /// **Phase 5 之后的语义**：此结构是"显式 override 层"而非"唯一真相来源"。
+    /// **语义**：此结构是"显式 override 层"而非"唯一真相来源"。
     ///   - SFM（Shader Fragment Manifest）通过解析 @sfm:require 注解自动推导
-    ///     needs_viewport / needs_camera / needs_transform 等字段；
+    ///     needs_viewport / needs_camera / needs_transform / needs_sky /
+    ///     needs_color_palette 等资源绑定字段；
     ///   - 此结构中显式设置的字段具有最高优先级，会覆盖 SFM 的推导结果；
     ///   - 对于绝大多数 builtin row，保持默认值即可，SFM 会自动填补缺失的绑定；
-    ///   - 只有当 SFM 推导出错（如条件编译导致运行时路径与静态分析不一致）时，
-    ///     才需要在此处手动补充声明。
-    ///   - enable_lighting / sky_model 等影响 shader 宏但不影响 binding 的字段
-    ///     仍须在此处维护，不受 SFM 覆盖。
+    ///   - enable_lighting 是 preset 语义决策（"此材质是否参与光照计算"），
+    ///     不受 SFM 覆盖，由 preset 层或 ECS 系统写入；
+    ///   - lighting_model / sky_ambient_model 是排列轴，由 ECS LOD 系统通过
+    ///     MaterialVariantKey 注入，不在此结构中存储。
     struct MaterialResourceRequirements
     {
         bool needs_viewport = false;
         bool needs_camera = false;
-        bool needs_sky = false;
         bool needs_transform = false;
         bool needs_material_instance = false;
         bool needs_material_texture_index = false;
-        bool needs_color_palette = false;
 
         bool enable_lighting = false;
-        LightingModel lighting_model = LightingModel::Lambert;
-        SkyLightAmbientModel sky_model = SkyLightAmbientModel::Simple;
     };
 
     struct MaterialVariantRow
