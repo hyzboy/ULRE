@@ -210,7 +210,8 @@ namespace
         return out;
     }
 
-    std::string BuildForwardFragmentEntry(const hgl::graph::CompositorFeatureFlags &f)
+    std::string BuildForwardFragmentEntry(const hgl::graph::CompositorFeatureFlags &f,
+                                          const hgl::graph::ShaderRequirementSet &req_set)
     {
         std::string out = "#version " + std::to_string(g_shader_version) + "\n\n";
         hgl::graph::ShaderWriter writer(out);
@@ -225,15 +226,13 @@ namespace
         if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
         if (f.has_clip_pos)     writer.EmitDefine("HAS_CLIP_POS");
 
-        // ── Common UBOs (camera, sky, surface interface, varyings) ──────────
-        // Emit each base fragment directly, no macro-based prologue needed.
-        // ubo_sky.glsl is included whenever lighting is enabled; the skylight_*.glsl
-        // files each declare @sfm:require UBO sky, so the binding is discovered by SFM.
-        // For SkyMinimal (no enable_lighting), sky_minimal_surface.glsl itself carries
-        // @sfm:require UBO sky — no explicit emit needed here.
-        if (f.enable_lighting)
+        // ── Common UBOs: driven by SFM surface requirements ──────────────────
+        // req_set is pre-parsed from the surface shader's @sfm:require annotations.
+        // enable_lighting is kept as a fallback for lit surfaces that haven't yet
+        // annotated their skylight includes (they will also set req_set sky/camera).
+        if (req_set.Requires("sky") || f.enable_lighting)
             writer.EmitInclude("common/ubo_sky.glsl");
-        if (f.enable_lighting || f.needs_camera)
+        if (req_set.Requires("camera") || f.enable_lighting || f.needs_camera)
             writer.EmitInclude("common/ubo_camera.glsl");
 
         // Shared struct definitions (SurfaceInput, SurfaceOutput, SurfaceOutputExt)
@@ -606,6 +605,8 @@ namespace
         }
 
         // 2. Sky: direction-based shading, no standard per-vertex varyings.
+        // 2. Sky: direction-based shading, no standard per-vertex varyings.
+        // ubo_sky.glsl is now emitted via req_set.Requires("sky") in BuildForwardFragmentEntry.
         if (key.surface_type == ST::Sky)
         {
             flags.has_direction      = true;
@@ -674,15 +675,17 @@ namespace
         if (row.fs_features.has_direction)
             flags.vertex_attrib_bits = 0;
 
+        // If the surface shader itself requires the sky UBO (e.g. SkyMinimal accesses sky.*)
         return flags;
     }
 
     /// Legacy fallback FS generator: only used for non-builtin custom descriptors.
     std::string BuildLegacyFSFromKey(const hgl::graph::mtl::MaterialVariantKey &key,
                                      hgl::graph::RenderAlphaMode blend,
-                                     const std::string &surface_path)
+                                     const std::string &surface_path,
+                                     const hgl::graph::ShaderRequirementSet &req_set)
     {
-        return BuildForwardFragmentEntry(LegacyFSFeatureFlagsFromKey(key, blend, surface_path));
+        return BuildForwardFragmentEntry(LegacyFSFeatureFlagsFromKey(key, blend, surface_path), req_set);
     }
 
     std::string BuildReadFailureMessage(const char *stage,
@@ -952,8 +955,17 @@ namespace hgl::graph
         }
         else
         {
+            // Parse SFM requirements from the surface shader so BuildForwardFragmentEntry
+            // can emit UBOs (sky, camera, etc.) based on what the GLSL actually declares,
+            // rather than inferring from flags.
+            hgl::graph::ShaderRequirementSet surface_req_set;
+            if (!surface_rel.empty())
+                surface_req_set.ParseFromGLSLFile(surface_rel, shader_lib_path_);
+
             if (resolved_row)
-                out_source = BuildForwardFragmentEntry(FSFeatureFlagsFromRow(key, *resolved_row, key.blend_mode, surface_rel));
+                out_source = BuildForwardFragmentEntry(
+                    FSFeatureFlagsFromRow(key, *resolved_row, key.blend_mode, surface_rel),
+                    surface_req_set);
             else
             {
                 if (DescLooksBuiltinRouted(desc))
@@ -963,7 +975,7 @@ namespace hgl::graph
                 }
 
                 WarnLegacyKeyFallbackOnce("FS", key, desc);
-                out_source = BuildLegacyFSFromKey(key, key.blend_mode, surface_rel);
+                out_source = BuildLegacyFSFromKey(key, key.blend_mode, surface_rel, surface_req_set);
             }
         }
 

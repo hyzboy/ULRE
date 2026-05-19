@@ -657,9 +657,17 @@ public:
 
     ~TestApp()
     {
+        // Must Release Geometry objects BEFORE deleting mesh_vdm.
+        // GeometryDataVDM::~GeometryDataVDM() calls vdm->ReleaseIB/ReleaseVAB,
+        // so the VDM must still be alive when those destructors run.
+        // GeometryManager::Release(Geometry*) now uses zero_clear=true, so it
+        // immediately deletes the Geometry and triggers GeometryDataVDM::~GeometryDataVDM().
+        auto* geometry_manager = GetGeometryManager();
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
             base_primitives[i] = nullptr;
+            if (geometry_manager && builtin_geometries[i])
+                geometry_manager->Release(builtin_geometries[i]);
             builtin_geometries[i] = nullptr;
         }
 
