@@ -226,13 +226,12 @@ namespace
         if (f.has_direction)    writer.EmitDefine("HAS_DIRECTION");
         if (f.has_clip_pos)     writer.EmitDefine("HAS_CLIP_POS");
 
-        // ── Common UBOs: driven by SFM surface requirements ──────────────────
-        // req_set is pre-parsed from the surface shader's @sfm:require annotations.
-        // enable_lighting is kept as a fallback for lit surfaces that haven't yet
-        // annotated their skylight includes (they will also set req_set sky/camera).
-        if (req_set.Requires("sky") || f.enable_lighting)
+        // ── Common UBOs: driven entirely by SFM surface+lighting requirements ──
+        // req_set is pre-parsed from surface shader AND skylight includes, so
+        // req_set.Requires("sky"/"camera") is the single source of truth here.
+        if (req_set.Requires("sky"))
             writer.EmitInclude("common/ubo_sky.glsl");
-        if (req_set.Requires("camera") || f.enable_lighting || f.needs_camera)
+        if (req_set.Requires("camera") || f.needs_camera)
             writer.EmitInclude("common/ubo_camera.glsl");
 
         // Shared struct definitions (SurfaceInput, SurfaceOutput, SurfaceOutputExt)
@@ -284,25 +283,6 @@ namespace
         }
     }
 
-    /// Derive VS CompositorFeatureFlags from MaterialVariantKey fields.
-    /// Does NOT cover Billboard / Terrain / Palette (handled as special cases in BuildVSFromKey).
-    hgl::graph::CompositorFeatureFlags VSFeatureFlagsFromKey(const hgl::graph::mtl::MaterialVariantKey &key)
-    {
-        hgl::graph::CompositorFeatureFlags flags;
-        flags.vertex_attrib_bits = key.vertex_attribute_feature_bits;
-
-        // Propagate position_provider and vertex_policy from key.
-        flags.position_provider = key.position_provider;
-        flags.vertex_policy = GeometryModeToVertexPolicy(key.geometry_mode);
-        if (key.surface_type == hgl::graph::SurfaceType::Sky)
-        {
-            flags.has_direction      = true;
-            flags.vertex_attrib_bits = 0;
-        }
-
-        return flags;
-    }
-
     /// Build a single-include VS wrapper: for geometry modes whose VS logic lives in a .glsl file.
     std::string BuildIncludeOnlyVS(const char *include_path)
     {
@@ -316,11 +296,6 @@ namespace
         std::string out = "#version " + std::to_string(g_shader_version) + "\n\n";
         hgl::graph::ShaderWriter(out).EmitInclude(include_path);
         return out;
-    }
-
-    std::string BuildForwardUnlitPaletteVS(const hgl::graph::mtl::MaterialVariantKey &)
-    {
-        return BuildIncludeOnlyVS("compositor/main_forward_unlit_palette.vert.glsl");
     }
 
     const hgl::graph::mtl::MaterialVariantRow *FindBuiltinVariantRow(const hgl::graph::mtl::MaterialVariantDesc &desc)
@@ -609,7 +584,6 @@ namespace
         }
 
         // 2. Sky: direction-based shading, no standard per-vertex varyings.
-        // 2. Sky: direction-based shading, no standard per-vertex varyings.
         // ubo_sky.glsl is now emitted via req_set.Requires("sky") in BuildForwardFragmentEntry.
         if (key.surface_type == ST::Sky)
         {
@@ -793,11 +767,11 @@ namespace
         }
 
         // ── Step 3: emit UBOs driven by req_set — mirrors BuildForwardFragmentEntry ──
-        // ubo_sky.glsl / ubo_camera.glsl are only added when the surface or lighting
-        // chain actually declared a requirement, not by flag inference.
-        if (req_set.Requires("sky") || f.enable_lighting)
+        // After Steps 1+2, req_set already reflects @sfm:require from surface AND
+        // skylight chain, so Requires("sky"/"camera") is the sole decision point.
+        if (req_set.Requires("sky"))
             req_set.ParseFromGLSLFile("common/ubo_sky.glsl", lib_path);
-        if (req_set.Requires("camera") || f.enable_lighting || f.needs_camera)
+        if (req_set.Requires("camera") || f.needs_camera)
             req_set.ParseFromGLSLFile("common/ubo_camera.glsl", lib_path);
 
         // ── Step 4: fragment provider ─────────────────────────────────────────
@@ -970,17 +944,26 @@ namespace hgl::graph
         }
         else
         {
-            // Parse SFM requirements from the surface shader so BuildForwardFragmentEntry
-            // can emit UBOs (sky, camera, etc.) based on what the GLSL actually declares,
-            // rather than inferring from flags.
+            // Build the full SFM requirement set that mirrors the include chain of
+            // BuildForwardFragmentEntry, so that UBO emission (sky, camera) is driven
+            // entirely by req_set.Requires() without needing enable_lighting fallbacks.
+            //   1) surface shader declares its own @sfm:require (e.g. sky_minimal_surface.glsl)
+            //   2) skylight_*.glsl declares @sfm:require UBO sky for lit surfaces
+            //   3) ubo_sky / ubo_camera are then decided by req_set.Requires()
             hgl::graph::ShaderRequirementSet surface_req_set;
             if (!surface_rel.empty())
                 surface_req_set.ParseFromGLSLFile(surface_rel, shader_lib_path_);
 
             if (resolved_row)
-                out_source = BuildForwardFragmentEntry(
-                    FSFeatureFlagsFromRow(key, *resolved_row, key.blend_mode, surface_rel),
-                    surface_req_set);
+            {
+                const auto fs_flags = FSFeatureFlagsFromRow(key, *resolved_row, key.blend_mode, surface_rel);
+                if (fs_flags.enable_lighting)
+                {
+                    surface_req_set.ParseFromGLSLFile(GetSkyLightGLSLPath(fs_flags.sky_ambient_model), shader_lib_path_);
+                    surface_req_set.ParseFromGLSLFile(hgl::graph::mtl::GetLightingModelGLSLPath(fs_flags.lighting_model), shader_lib_path_);
+                }
+                out_source = BuildForwardFragmentEntry(fs_flags, surface_req_set);
+            }
             else
             {
                 if (DescLooksBuiltinRouted(desc))
