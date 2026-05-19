@@ -32,8 +32,9 @@ class MaterialCreateInfo;
 ///
 /// 内部流程：
 ///   1. PopulateVariantKeyVertexAttribBits(assemble_key, def)
-///   2. CompositorAssembler::Assemble(assemble_key, var_desc)
-///   3. CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, cfg)
+///   2. AssembleVertexArtifact / AssembleFragmentArtifact（含 SFM 资源收集）
+///   3. 合并 VS+FS req_set → MaterialResourceManifest → StaticMaterialDef
+///   4. CompileCompositorMaterial(profile, merged_def, vs_glsl, fs_glsl, cfg)
 ///
 /// var_desc 由路由层（MaterialLibrary）传入，无需内部再次 QueryVariant。
 ///

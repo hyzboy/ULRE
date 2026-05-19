@@ -35,14 +35,6 @@ namespace hgl::graph
     {
     public:
 
-        struct AssembleResult
-        {
-            std::string vertex_glsl;
-            std::string fragment_glsl;
-            bool        success = false;
-            std::string error_message;
-        };
-
         struct AssembleStageResult
         {
             std::string glsl;
@@ -112,20 +104,7 @@ namespace hgl::graph
             const mtl::MaterialVariantRow  *row = nullptr
         ) const;
 
-        /// VariantDesc overload — derives SurfaceType/RenderAlphaMode/PassType/QualityTier from key,
-        /// uses desc's shader template paths (empty path → auto-routing fallback).
-        AssembleResult Assemble(
-            const mtl::MaterialVariantKey  &key,
-            const mtl::MaterialVariantDesc &desc
-        ) const;
-
-        AssembleResult Assemble(
-            const mtl::MaterialVariantKey  &key,
-            const mtl::MaterialVariantDesc &desc,
-            const mtl::MaterialVariantRow  *row
-        ) const;
-
-    private:
+        private:
 
         bool AssembleVertexShaderSource(const mtl::MaterialVariantKey &key,
                                         const mtl::MaterialVariantDesc &desc,

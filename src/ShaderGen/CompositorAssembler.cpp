@@ -522,11 +522,25 @@ namespace
         using CS = hgl::graph::CoordinateSystem2D;
         if (flags.vertex_policy == VP::Position2DTransform)
         {
+            VP remapped = VP::Position2DTransform;
             if (coord_2d == CS::Ortho)
-                flags.vertex_policy = VP::Position2DOrtho;
+                remapped = VP::Position2DOrtho;
             else if (coord_2d == CS::ZeroToOne)
-                flags.vertex_policy = VP::Position2DZeroToOne;
+                remapped = VP::Position2DZeroToOne;
             // else CS::NDC → keep Position2DTransform (per-instance L2W)
+
+            if (remapped != VP::Position2DTransform)
+            {
+                flags.vertex_policy = remapped;
+                // Re-derive resource flags from the concrete policy so that a
+                // coord_2d remap (e.g. Ortho / ZeroToOne) does not inherit the
+                // needs_transform / needs_camera flags from Position2DTransform.
+                if (const auto *vp = hgl::graph::FindBuiltinVertexPolicy(remapped))
+                {
+                    flags.needs_camera    = vp->needs_camera;
+                    flags.needs_transform = vp->needs_transform;
+                }
+            }
         }
 
         if (row.surface_model == hgl::graph::mtl::SurfaceShadingModel::SkyMinimal)
@@ -703,14 +717,6 @@ namespace
         msg += " GLSL first 80 lines]\n";
         msg += hgl::graph::internal::BuildGLSLPreviewFirstLines(glsl_source, 80);
         return msg;
-    }
-
-    hgl::graph::CompositorAssembler::AssembleResult MakeError(std::string message)
-    {
-        hgl::graph::CompositorAssembler::AssembleResult result;
-        result.error_message = std::move(message);
-        // success is already false by default
-        return result;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1109,36 +1115,6 @@ namespace hgl::graph
         }
 
         return artifact;
-    }
-
-    CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
-        const mtl::MaterialVariantKey  &key,
-        const mtl::MaterialVariantDesc &desc
-    ) const
-    {
-        return Assemble(key, desc, nullptr);
-    }
-
-    CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
-        const mtl::MaterialVariantKey  &key,
-        const mtl::MaterialVariantDesc &desc,
-        const mtl::MaterialVariantRow  *row
-    ) const
-    {
-        AssembleResult result{};
-
-        const AssembleStageResult vs_result = AssembleVertexShader(key, desc, row);
-        if(!vs_result.success)
-            return MakeError(vs_result.error_message);
-
-        const AssembleStageResult fs_result = AssembleFragmentShader(key, desc, row);
-        if(!fs_result.success)
-            return MakeError(fs_result.error_message);
-
-        result.vertex_glsl   = vs_result.glsl;
-        result.fragment_glsl = fs_result.glsl;
-        result.success       = true;
-        return result;
     }
 
     std::span<const PassType> CompositorAssembler::GetPassTypesForBlendMode(RenderAlphaMode blend)
