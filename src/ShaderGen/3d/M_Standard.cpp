@@ -4,6 +4,7 @@
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
+#include <hgl/mtl/MaterialResourceManifest.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include <cstdio>
 #include <vector>
@@ -148,20 +149,35 @@ namespace
 
         CompositorAssembler assembler;
 
-        auto result = assembler.Assemble(assemble_key, *desc);
-
-        if (!result.success)
+        auto vs_artifact = assembler.AssembleVertexArtifact(assemble_key, *desc, nullptr,
+                                                             cfg_with_mi.coord_2d);
+        if (!vs_artifact.success)
         {
-            std::fprintf(stderr, "[Standard] CompositorAssembler failed: %s\n",
-                result.error_message.c_str());
+            std::fprintf(stderr, "[Standard] CompositorAssembler VS failed: %s\n",
+                vs_artifact.error_message.c_str());
             return nullptr;
         }
 
+        auto fs_artifact = assembler.AssembleFragmentArtifact(assemble_key, *desc);
+        if (!fs_artifact.success)
+        {
+            std::fprintf(stderr, "[Standard] CompositorAssembler FS failed: %s\n",
+                fs_artifact.error_message.c_str());
+            return nullptr;
+        }
+
+        // Merge VS + FS SFM requirements into the manifest so UBOs (CameraInfo, SkyInfo)
+        // and SSBOs discovered from shader annotations are present in the descriptor DB.
+        vs_artifact.req_set.MergeFrom(fs_artifact.req_set);
+        MaterialResourceManifest merged_manifest = MaterialResourceManifest::FromStaticDef(dynamic_def);
+        merged_manifest.MergeKeepFirst(vs_artifact.req_set.ToManifest());
+        StaticMaterialDef merged_def = merged_manifest.ProjectIntoStaticDef(dynamic_def);
+
         MaterialCreateInfo *mci = CompileCompositorMaterial(
             profile,
-            dynamic_def,
-            result.vertex_glsl,
-            result.fragment_glsl,
+            merged_def,
+            vs_artifact.glsl,
+            fs_artifact.glsl,
             &cfg_with_mi);
 
         if (!mci)
