@@ -14,6 +14,7 @@
 #include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/log/Log.h>
 #include"GizmoResource.h"
 
 namespace hgl::graph
@@ -84,7 +85,10 @@ namespace hgl::graph
         bool InitMI(GizmoResource *gr)
         {
             if(!gr||!gr->mtl)
+            {
+                GLogWarning("[GizmoResource] InitMI failed: gr=%p mtl=%p", static_cast<void *>(gr), gr ? static_cast<void *>(gr->mtl) : nullptr);
                 return(false);
+            }
 
                ResourceDomain *gizmo_domain_local = gizmo_domain;
                if (gr->mtl->hasMI() && !gizmo_domain_local)
@@ -101,7 +105,15 @@ namespace hgl::graph
                            ci.domain_id = 2048u;
                            ci.initial_capacity = 512;
                            gizmo_domain_local = rdm->Create(ci);
+                           if (!gizmo_domain_local)
+                           {
+                               GLogWarning("[GizmoResource] InitMI failed: ResourceDomainManager::Create returned null (schema=%u)", static_cast<unsigned>(schema));
+                           }
                        }
+                   }
+                   else
+                   {
+                       GLogWarning("[GizmoResource] InitMI warning: ResourceDomainManager is null while material requires MI");
                    }
                }
 
@@ -116,13 +128,16 @@ namespace hgl::graph
                 mi_spec.vil = nullptr;
                 mi_spec.instance_data = &color;
                 mi_spec.instance_data_size = sizeof(color);
-                mi_spec.preset = GraphicsPipelinePreset::GizmoOverlay3D;
-                    mi_spec.domain = gizmo_domain_local;
+                mi_spec.preset = GraphicsPipelinePreset::Solid3D;
+                mi_spec.domain = gizmo_domain_local;
 
                 gr->mi[i]=gizmo_mtl_manager->AcquireMaterialInstance(mi_spec);
 
                 if(!gr->mi[i])
+                {
+                    GLogWarning("[GizmoResource] InitMI failed: AcquireMaterialInstance returned null at color_index=%u", i);
                     return(false);
+                }
 
                 if (gizmo_binding)
                     MaterialBindingInstanceInternalAccess::SetDomainBinding(gr->mi[i], gizmo_binding);
@@ -134,36 +149,66 @@ namespace hgl::graph
         bool InitGizmoResource3D()
         {
             if(!graphics_context)
+            {
+                GLogWarning("[GizmoResource] InitGizmoResource3D failed: graphics_context is null");
                 return(false);
+            }
 
             VulkanDevice *device=graphics_context->GetDevice();
             auto *buffer_manager = graphics_context->GetBufferManager();
             RenderTargetFormat *render_pass=gizmo_render_pass;
 
             if(!device || !render_pass)
+            {
+                GLogWarning("[GizmoResource] InitGizmoResource3D failed: device=%p render_pass=%p",
+                            static_cast<void *>(device),
+                            static_cast<void *>(render_pass));
                 return(false);
+            }
 
             gizmo_mtl_manager=graphics_context->GetMaterialManager();
 
             {
                 mtl::MaterialRecipe recipe;
-                recipe.id = "gizmo_resource_purecolor";
-                recipe.preset = mtl::MaterialPreset::PureColor;
+                recipe.id = "gizmo_resource_gizmo3d";
+                recipe.preset = mtl::MaterialPreset::Gizmo3D;
                 recipe.dim = mtl::MaterialRecipe::Dim::D3;
-                recipe.vertex_input = mtl::VertexInputProfile::Position3D;
+                recipe.vertex_input = mtl::VertexInputProfile::PositionNormal3D;
                 recipe.vertex_policy = mtl::VertexTransformPolicy::Mesh3D;
-                recipe.shading_model = mtl::SurfaceShadingModel::PureColor;
+                recipe.shading_model = mtl::SurfaceShadingModel::Gizmo;
                 recipe.schema = mtl::ShaderDataSchema::Color4f;
                 recipe.has_explicit_schema = true;
                 recipe.pipeline = GraphicsPipelinePreset::GizmoOverlay3D;
 
                 auto* recipe_registry = graphics_context->GetMaterialAssetRegistry();
                 if (!recipe_registry)
+                {
+                    GLogWarning("[GizmoResource] InitGizmoResource3D failed: MaterialAssetRegistry is null");
                     return false;
+                }
 
                 MaterialDomainHandle handle = recipe_registry->Acquire(recipe);
                 if(!handle.material || !handle.domain)
+                {
+                    GLogWarning("[GizmoResource] Acquire with GizmoOverlay3D failed, fallback to Solid3D: recipe='%s' material=%p domain=%p binding=%p",
+                                recipe.id.c_str(),
+                                static_cast<void *>(handle.material),
+                                static_cast<void *>(handle.domain),
+                                static_cast<void *>(handle.binding));
+
+                    recipe.pipeline = GraphicsPipelinePreset::Solid3D;
+                    handle = recipe_registry->Acquire(recipe);
+                }
+
+                if(!handle.material || !handle.domain)
+                {
+                    GLogWarning("[GizmoResource] InitGizmoResource3D failed: Acquire(recipe='%s') material=%p domain=%p binding=%p",
+                                recipe.id.c_str(),
+                                static_cast<void *>(handle.material),
+                                static_cast<void *>(handle.domain),
+                                static_cast<void *>(handle.binding));
                     return(false);
+                }
 
                 gizmo_triangle.mtl = handle.material;
                 gizmo_domain = handle.domain;
@@ -175,26 +220,38 @@ namespace hgl::graph
             (void)render_pass;
 
             if(!InitMI(&gizmo_triangle))
+            {
+                GLogWarning("[GizmoResource] InitGizmoResource3D failed: InitMI failed");
                 return(false);
+            }
 
             {
                 const auto gvf = GeometryVertexFormat::FromVIL(gizmo_triangle.mtl->GetDefaultVIL());
                 gizmo_triangle.vdm=new VertexDataManager(buffer_manager,gvf);
 
                 if(!gizmo_triangle.vdm)
+                {
+                    GLogWarning("[GizmoResource] InitGizmoResource3D failed: VertexDataManager allocation failed");
                     return(false);
+                }
 
                 if(!gizmo_triangle.vdm->Init(   HGL_SIZE_1MB,       //最大顶点数量
                                                 HGL_SIZE_1MB,       //最大索引数量
                                                 IndexType::U16))    //索引类型
+                {
+                    GLogWarning("[GizmoResource] InitGizmoResource3D failed: VertexDataManager::Init failed");
                     return(false);
+                }
             }
 
             {
                 gizmo_triangle.prim_creater=new GeometryCreater(gizmo_triangle.vdm);
 
                 if(!gizmo_triangle.prim_creater)
+                {
+                    GLogWarning("[GizmoResource] InitGizmoResource3D failed: GeometryCreater allocation failed");
                     return(false);
+                }
             }
 
             {

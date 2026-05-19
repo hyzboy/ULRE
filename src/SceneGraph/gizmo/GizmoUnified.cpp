@@ -39,6 +39,8 @@
 #include<iostream>
 #include<vector>
 #include<utility>
+#include<hgl/log/Log.h>
+#include<cstdio>
 
 namespace hgl::graph{
 
@@ -463,18 +465,66 @@ bool EnsureGizmoSystemResources(hgl::ecs::ECSContext *world)
     }
 
     if (!world)
+    {
+        std::fprintf(stderr, "[GizmoResource] EnsureGizmoSystemResources failed: world=null\n");
+        GLogWarning("[GizmoResource] EnsureGizmoSystemResources failed: world=null");
         return false;
+    }
 
     auto *graphics = world->GetGraphicsContext();
     auto *render_context = world->GetRenderContext();
+
+    // Prefer per-frame render context target when available; otherwise fall back
+    // to ECSContext's stable default render target so gizmo resources can be
+    // initialized before any render pass is built.
     auto *render_target = render_context ? render_context->GetCurrentRenderTarget() : nullptr;
+    const bool use_fallback_target = (render_target == nullptr);
+    if (!render_target)
+        render_target = world->GetRenderTarget();
+
     auto *render_pass = render_target ? render_target->GetRenderFormat() : nullptr;
 
     if (!graphics || !render_pass)
+    {
+        std::fprintf(stderr,
+                     "[GizmoResource] EnsureGizmoSystemResources failed: graphics=%p render_context=%p render_target=%p fallback=%d render_pass=%p\n",
+                     static_cast<void *>(graphics),
+                     static_cast<void *>(render_context),
+                     static_cast<void *>(render_target),
+                     use_fallback_target ? 1 : 0,
+                     static_cast<void *>(render_pass));
+        GLogWarning("[GizmoResource] EnsureGizmoSystemResources failed: graphics=%p render_context=%p render_target=%p fallback=%d render_pass=%p",
+                    static_cast<void *>(graphics),
+                    static_cast<void *>(render_context),
+                    static_cast<void *>(render_target),
+                    use_fallback_target ? 1 : 0,
+                    static_cast<void *>(render_pass));
         return false;
+    }
 
     if (!InitGizmoResource(graphics, render_pass))
+    {
+        std::fprintf(stderr,
+                     "[GizmoResource] EnsureGizmoSystemResources failed: InitGizmoResource graphics=%p render_pass=%p\n",
+                     static_cast<void *>(graphics),
+                     static_cast<void *>(render_pass));
+        GLogWarning("[GizmoResource] EnsureGizmoSystemResources failed: InitGizmoResource graphics=%p render_pass=%p",
+                    static_cast<void *>(graphics),
+                    static_cast<void *>(render_pass));
         return false;
+    }
+
+    std::fprintf(stderr,
+                 "[GizmoResource] EnsureGizmoSystemResources ok: graphics=%p render_target=%p fallback=%d render_pass=%p\n",
+                 static_cast<void *>(graphics),
+                 static_cast<void *>(render_target),
+                 use_fallback_target ? 1 : 0,
+                 static_cast<void *>(render_pass));
+    GLogInfo("[GizmoResource] EnsureGizmoSystemResources ok: graphics=%p render_target=%p fallback=%d render_pass=%p",
+             static_cast<void *>(graphics),
+             static_cast<void *>(render_target),
+             use_fallback_target ? 1 : 0,
+             static_cast<void *>(render_pass));
 
     g_gizmo_resident_state.resources_ready = true;
     g_gizmo_resident_state.standby = false;

@@ -30,6 +30,9 @@ private:
     bool last_left_down = false;
     bool resource_registered = false;
 
+    uint32_t gizmo_resource_init_attempts = 0;
+    bool gizmo_resource_init_permanent_failure = false;
+
 public:
     SunDirectionControlSystem();
     ~SunDirectionControlSystem() override;
@@ -55,6 +58,7 @@ private:
     bool EnsureEnvironment();
     bool EnsureProxyEntity();
     bool EnsureGizmo();
+    bool EnsureGizmoResourcesWithRetry(const char *stage_tag);
 };
 
 }//namespace hgl::graph
