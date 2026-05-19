@@ -546,13 +546,17 @@ namespace
             }
         }
 
-        if (row.surface_model == hgl::graph::mtl::SurfaceShadingModel::SkyMinimal)
+        // Sky vertex shaders declare has_direction=true and use the sky vertex_policy,
+        // which provides a direction vector instead of normal vertex attributes.
+        // Clear vertex_attrib_bits so no spurious HAS_NORMAL / HAS_TEXCOORD defines
+        // are emitted — driven by has_direction, not by surface_model identity.
+        if (flags.has_direction)
             flags.vertex_attrib_bits = 0;
 
         return flags;
     }
 
-    /// Legacy fallback VS generator: only used for non-builtin custom descriptors.
+    /// Legacy fallback VS generator
     std::string BuildLegacyVSFromKey(const hgl::graph::mtl::MaterialVariantKey &key)
     {
         // Terrain still uses a bespoke VS file (TODO: migrate to vertex_policy).
@@ -766,22 +770,37 @@ namespace
     }
 
     /// Collect FS resource requirements that match the include chain of BuildForwardFragmentEntry.
+    /// Must stay in sync with BuildForwardFragmentEntry() — both use req_set.Requires() as the
+    /// single source of truth so that binding contract and emitted GLSL always agree.
     void CollectFSRequirements(const hgl::graph::CompositorFeatureFlags &f,
                                hgl::graph::ShaderRequirementSet &req_set,
                                const std::string &lib_path)
     {
-        // Mirror BuildForwardFragmentEntry(): sky UBO + skylight model injected when lighting enabled.
-        // skylight_*.glsl each declare @sfm:require UBO sky, so sky binding flows from SFM.
+        // ── Step 1: parse the surface shader itself ───────────────────────────
+        // Must come first so req_set.Requires("sky"/"camera") below reflects
+        // any @sfm:require annotations declared directly in the surface file
+        // (e.g. sky_minimal_surface.glsl → @sfm:require UBO sky).
+        if (!f.surface_path.empty())
+            req_set.ParseFromGLSLFile(f.surface_path, lib_path);
+
+        // ── Step 2: lighting chain ────────────────────────────────────────────
+        // skylight_*.glsl each carry @sfm:require UBO sky, so parsing them
+        // populates req_set with the sky binding automatically.
         if (f.enable_lighting)
         {
-            req_set.ParseFromGLSLFile("common/ubo_sky.glsl", lib_path);
             req_set.ParseFromGLSLFile(GetSkyLightGLSLPath(f.sky_ambient_model), lib_path);
             req_set.ParseFromGLSLFile(hgl::graph::mtl::GetLightingModelGLSLPath(f.lighting_model), lib_path);
         }
-        if (f.enable_lighting || f.needs_camera)
+
+        // ── Step 3: emit UBOs driven by req_set — mirrors BuildForwardFragmentEntry ──
+        // ubo_sky.glsl / ubo_camera.glsl are only added when the surface or lighting
+        // chain actually declared a requirement, not by flag inference.
+        if (req_set.Requires("sky") || f.enable_lighting)
+            req_set.ParseFromGLSLFile("common/ubo_sky.glsl", lib_path);
+        if (req_set.Requires("camera") || f.enable_lighting || f.needs_camera)
             req_set.ParseFromGLSLFile("common/ubo_camera.glsl", lib_path);
 
-        // fragment provider
+        // ── Step 4: fragment provider ─────────────────────────────────────────
         {
             const hgl::graph::FragmentProviderDescriptor *fp =
                 hgl::graph::FindBuiltinFragmentProvider(f.fragment_provider);
@@ -792,10 +811,6 @@ namespace
                 req_set.ParseFromGLSLFile(fp->glsl_path, lib_path);
             }
         }
-
-        // surface
-        if (!f.surface_path.empty())
-            req_set.ParseFromGLSLFile(f.surface_path, lib_path);
     }
 }
 
