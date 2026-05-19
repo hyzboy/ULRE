@@ -401,8 +401,11 @@ MaterialResourceManifest PruneManifestByPolicy(
 {
     MaterialResourceManifest pruned = manifest;
 
-    // Sky: SkyInfo UBO — now SFM-driven; prune when lighting is disabled.
-    if (!effective_policy.enable_lighting)
+    // Sky: SkyInfo UBO — SFM-driven via @sfm:require UBO sky; needs_sky is set by
+    // VariantRegistry autofill for any row whose surface/lighting chain declares sky.
+    // SkyMinimal has enable_lighting=false but still requires SkyInfo, so we gate
+    // on needs_sky rather than enable_lighting here.
+    if (!effective_policy.needs_sky)
     {
         pruned.ubos.erase(UBODescriptorSemantic::SkyInfo);
     }
@@ -474,10 +477,10 @@ bool ValidateManifestAgainstPolicy(
             name, resource);
     };
 
-    // SkyInfo UBO — sky is SFM-driven; policy gate is enable_lighting.
+    // SkyInfo UBO — sky is SFM-driven; policy gate is needs_sky.
     {
         const bool has_sky = manifest.ubos.count(UBODescriptorSemantic::SkyInfo) > 0;
-        const PolicyManifestCheckResult r = CheckUBOAgainstPolicy(has_sky, effective_policy.enable_lighting);
+        const PolicyManifestCheckResult r = CheckUBOAgainstPolicy(has_sky, effective_policy.needs_sky);
         if (r == PolicyManifestCheckResult::PolicyForbids)
             forbids("SkyInfo");
         else if (r == PolicyManifestCheckResult::PolicyRequires)

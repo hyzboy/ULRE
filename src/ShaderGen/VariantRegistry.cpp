@@ -146,6 +146,8 @@ static std::string FormatMaterialResourcesForLog(const MaterialResourceRequireme
     text += res.needs_material_instance ? "1" : "0";
     text += ",MITex=";
     text += res.needs_material_texture_index ? "1" : "0";
+    text += ",Sky=";
+    text += res.needs_sky ? "1" : "0";
     text += ",Lit=";
     text += res.enable_lighting ? "1" : "0";
     return text;
@@ -685,6 +687,7 @@ void VariantRegistry::InitializeBuiltinVariants()
             if (sfm.Requires("camera"))        row.resources.needs_camera    = true;
             if (sfm.Requires("viewport"))      row.resources.needs_viewport  = true;
             if (sfm.Requires("transform_id"))  row.resources.needs_transform = true;
+            if (sfm.Requires("sky"))           row.resources.needs_sky       = true;
         }
 
         MaterialVariantDesc desc = BuildDesc(e);

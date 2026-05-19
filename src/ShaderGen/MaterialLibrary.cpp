@@ -148,6 +148,7 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
             append("Transform", res.needs_transform);
             append("MaterialInstance", res.needs_material_instance);
             append("MaterialTextureIndex", res.needs_material_texture_index);
+            append("Sky", res.needs_sky);
             append("Lighting", res.enable_lighting);
             return first ? std::string("None") : text;
         };
@@ -218,7 +219,9 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
             const MaterialResourceRequirements eff = DeriveEffectiveResources(row.resources, pass);
             std::string s;
             s += std::to_string(static_cast<unsigned>(pass));
-            s += ":light=";
+            s += ":sky=";
+            s += eff.needs_sky ? "1" : "0";
+            s += "/light=";
             s += eff.enable_lighting ? "1" : "0";
             s += "/mi=";
             s += eff.needs_material_instance ? "1" : "0";
@@ -995,17 +998,19 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         const PassType pass_hint = key.pass_hint;
         const MaterialResourceRequirements effective = DeriveEffectiveResources(authored, pass_hint);
 
-        const bool light_pruned   = authored.enable_lighting && !effective.enable_lighting;
+        const bool sky_pruned    = authored.needs_sky        && !effective.needs_sky;
+        const bool light_pruned   = authored.enable_lighting  && !effective.enable_lighting;
         const bool mi_pruned      = authored.needs_material_instance && !effective.needs_material_instance;
         const bool mitex_pruned   = authored.needs_material_texture_index && !effective.needs_material_texture_index;
 
-        if (light_pruned || mi_pruned || mitex_pruned)
+        if (sky_pruned || light_pruned || mi_pruned || mitex_pruned)
         {
             std::fprintf(stderr,
                 "[MaterialLibrary] Phase4 prune: variant=%s pass=%u"
-                " light=%d->%d mi=%d->%d mitex=%d->%d\n",
+                " sky=%d->%d light=%d->%d mi=%d->%d mitex=%d->%d\n",
                 variant_desc->variant_name.c_str(),
                 static_cast<unsigned>(pass_hint),
+                authored.needs_sky,        effective.needs_sky,
                 authored.enable_lighting,  effective.enable_lighting,
                 authored.needs_material_instance,       effective.needs_material_instance,
                 authored.needs_material_texture_index,  effective.needs_material_texture_index);

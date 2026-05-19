@@ -123,6 +123,7 @@ namespace hgl::graph::mtl
         bool needs_material_instance = false;
         bool needs_material_texture_index = false;
 
+        bool needs_sky      = false;  ///< Row requires SkyInfo UBO (SFM-driven; set by VariantRegistry autofill).
         bool enable_lighting = false;
     };
 

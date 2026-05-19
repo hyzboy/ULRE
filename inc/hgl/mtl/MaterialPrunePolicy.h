@@ -55,7 +55,7 @@ namespace hgl::graph::mtl
         const MaterialVariantPrunePolicy   &policy) noexcept
     {
         MaterialResourceRequirements eff = authored;
-        if (!policy.allow_sky)                    { /* sky is SFM-driven; pruning not applicable here */ }
+        if (!policy.allow_sky)                    { eff.needs_sky = false; }
         if (!policy.allow_lighting)               { eff.enable_lighting = false; }
         if (!policy.allow_material_instance)      { eff.needs_material_instance = false; }
         if (!policy.allow_material_texture_index) { eff.needs_material_texture_index = false; }
@@ -227,11 +227,12 @@ namespace hgl::graph::mtl
     // ─────────────────────────────────────────────────────────────────────────
 
     /// Returns true if the effective policy allows the SkyInfo UBO to be present.
-    /// Sky is now SFM-driven: it is present when enable_lighting is true (skylight_*.glsl
-    /// declares @sfm:require UBO sky) or when surface_path includes it directly.
+    /// Sky is SFM-driven: needs_sky is set by VariantRegistry autofill from @sfm:require UBO sky
+    /// declarations, covering both enable_lighting rows (via skylight_*.glsl) and non-lit sky
+    /// surfaces like SkyMinimal (via sky_minimal_surface.glsl).
     inline bool PolicyAllowsSky(const MaterialResourceRequirements &effective) noexcept
     {
-        return effective.enable_lighting;
+        return effective.needs_sky;
     }
 
     /// Describes the result of a manifest-vs-policy validation for one UBO semantic.
