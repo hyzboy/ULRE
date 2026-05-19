@@ -63,7 +63,6 @@ private:
     inline static const mtl::MaterialRecipe kSkyCfg {
         .id       = "pbr_color_sky",
         .preset   = mtl::MaterialPreset::SkyMinimal,
-        .l2w      = false,
         .pipeline = GraphicsPipelinePreset::Sky,
     };
 

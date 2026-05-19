@@ -74,7 +74,6 @@ private:
     inline static const mtl::MaterialRecipe kSkyCfg {
         .id       = "blinnphong_sky",
         .preset   = mtl::MaterialPreset::SkyMinimal,
-        .l2w      = false,
         .pipeline = GraphicsPipelinePreset::Sky,
     };
 

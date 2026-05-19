@@ -563,7 +563,6 @@ private:
         static const mtl::MaterialRecipe kSkyCfg {
             .id       = "pbr_spheres_sky",
             .preset   = mtl::MaterialPreset::SkyMinimal,
-            .l2w      = false,
             .pipeline = GraphicsPipelinePreset::Sky,
         };
         mi_sky_sphere = ResolveOrCreateBindingInstance(kSkyCfg);

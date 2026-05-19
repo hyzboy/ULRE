@@ -1,5 +1,4 @@
 #include"MaterialFactory3DCommon.h"
-#include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/math/Vector.h>
 
@@ -11,12 +10,10 @@ namespace
         { VAT_VEC3,  VAN::Position  },
         { VAT_FLOAT, VAN::Luminance },
     };
-    const UBOSemanticSet  kVL3DUBOs  = build3d::MakeViewportCameraUBOs();
-    const SSBOSemanticSet kVL3DSSBOs = build3d::MakeTransformSSBOs(true);
     const StaticMaterialDef kVL3DDef {
         "VertexLuminance", PrimitiveType::Triangles,
         kVL3DVertex, 2,
-        &kVL3DUBOs, &kVL3DSSBOs, nullptr,
+        nullptr, nullptr, nullptr,
         ShaderDataSchema::Color4f,
     };
 
@@ -25,8 +22,6 @@ namespace
         { VAT_VEC2,  VAN::Position  },
         { VAT_FLOAT, VAN::Luminance },
     };
-    const UBOSemanticSet  kVL2DUBOs  = build3d::MakeViewportCameraUBOs();
-    const SSBOSemanticSet kVL2DSSBOs = build3d::MakeTransformSSBOs(true);
 
     // ── Unified adapter (both 2D and 3D share same FS; differ only in vertex transform policy)
     static MaterialCreateInfo *VertexLuminance_Adapter(
@@ -48,7 +43,7 @@ namespace
         StaticMaterialDef def2d {
             "VertexLuminance", c3->prim,
             kVL2DVertex, 2,
-            &kVL2DUBOs, &kVL2DSSBOs, nullptr,
+            nullptr, nullptr, nullptr,
             ShaderDataSchema::Color4f,
         };
         MaterialVariantKey local_key = key_in;

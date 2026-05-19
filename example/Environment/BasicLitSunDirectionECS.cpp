@@ -61,7 +61,6 @@ private:
     inline static const mtl::MaterialRecipe kSkyCfg {
         .id       = "basic_lit_sky",
         .preset   = mtl::MaterialPreset::SkyMinimal,
-        .l2w      = false,
         .pipeline = GraphicsPipelinePreset::Sky,
     };
     inline static const mtl::MaterialRecipe kStandardCfg {

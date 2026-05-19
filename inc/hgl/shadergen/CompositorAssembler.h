@@ -76,14 +76,14 @@ namespace hgl::graph
         AssembleStageResult AssembleVertexShader(
             const mtl::MaterialVariantKey  &key,
             const mtl::MaterialVariantDesc &desc,
-            graph::CoordinateSystem2D       coord_2d = graph::CoordinateSystem2D::NDC
+            graph::CoordinateSystem2D       coord_2d   = graph::CoordinateSystem2D::NDC
         ) const;
 
         AssembleStageResult AssembleVertexShader(
             const mtl::MaterialVariantKey  &key,
             const mtl::MaterialVariantDesc &desc,
             const mtl::MaterialVariantRow  *row,
-            graph::CoordinateSystem2D       coord_2d = graph::CoordinateSystem2D::NDC
+            graph::CoordinateSystem2D       coord_2d   = graph::CoordinateSystem2D::NDC
         ) const;
 
         AssembleStageResult AssembleFragmentShader(

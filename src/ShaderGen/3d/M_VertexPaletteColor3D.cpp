@@ -1,6 +1,4 @@
 #include"MaterialFactory3DCommon.h"
-#include"Build3DCommon.h"
-#include<hgl/mtl/UBOCommon.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 
 namespace hgl::graph::mtl{
@@ -11,23 +9,12 @@ namespace
         { VAT_UINT, VAN::Color },
     };
 
-    const UBOSemanticSet VERTEX_PALETTE_COLOR_3D_UBOS = []()
-    {
-        UBOSemanticSet descriptors = build3d::MakeViewportCameraUBOs();
-        descriptors.insert(UBODescriptorSemantic::ColorPalette);
-        return descriptors;
-    }();
-
-    const SSBOSemanticSet VERTEX_PALETTE_COLOR_3D_SSBOS = build3d::MakeTransformSSBOs(false);
-
     const StaticMaterialDef VERTEX_PALETTE_COLOR_3D_DEF {
         "VertexPaletteColor3D",
         PrimitiveType::Triangles,
         VERTEX_PALETTE_COLOR_3D_VERTEX,
         uint32_t(sizeof(VERTEX_PALETTE_COLOR_3D_VERTEX) / sizeof(VERTEX_PALETTE_COLOR_3D_VERTEX[0])),
-        &VERTEX_PALETTE_COLOR_3D_UBOS,
-        &VERTEX_PALETTE_COLOR_3D_SSBOS,
-        nullptr,
+        nullptr, nullptr, nullptr,
         ShaderDataSchema::None
     };
     static MaterialCreateInfo *CreateVertexPaletteColor3DFactory(
@@ -36,7 +23,8 @@ namespace
         const MaterialVariantKey                  &key,
         MaterialCreateConfig                      *cfg)
     {
-        Material3DCreateConfig local_cfg = build3d::MakeLocalConfig(static_cast<const Material3DCreateConfig *>(cfg));
+        auto *cfg_3d = static_cast<const Material3DCreateConfig *>(cfg);
+        Material3DCreateConfig local_cfg = cfg_3d ? *cfg_3d : Material3DCreateConfig();
 
         return CreateFromFixedDef3D("VertexPaletteColor3D", profile, VERTEX_PALETTE_COLOR_3D_DEF, key, &local_cfg, *desc);
     }

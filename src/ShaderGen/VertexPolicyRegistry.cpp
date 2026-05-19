@@ -31,7 +31,7 @@ namespace hgl::graph
         { Policy::Sky,                   "" }, // TODO: migrate sky VS
         { Policy::Text2D,                "" }, // TODO: migrate text2d.vert.glsl
         { Policy::FullscreenTriangle,    "vertex_policy/passthrough_ndc.glsl" },
-        { Policy::Position2DTransform,   "" }, // @deprecated – superseded by the three below
+        { Policy::Position2DTransform,   "vertex_policy/position2d_transform.glsl" },
         { Policy::Position2DNdc,         "vertex_policy/position2d_ndc.glsl" },
         { Policy::Position2DZeroToOne,   "vertex_policy/position2d_zero_to_one.glsl" },
         { Policy::Position2DOrtho,       "vertex_policy/position2d_ortho.glsl" },

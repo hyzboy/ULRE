@@ -54,7 +54,6 @@ private:
         .id       = "roundrect_texture",
         .preset   = mtl::MaterialPreset::UnlitTexture,
         .dim      = mtl::MaterialRecipe::Dim::D2,
-        .l2w      = false,
         .coord_2d = CoordinateSystem2D::ZeroToOne,
         .pipeline = GraphicsPipelinePreset::Solid2D,
         .textures = {

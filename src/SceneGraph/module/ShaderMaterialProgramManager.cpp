@@ -458,7 +458,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
     GetStats().LogCreateMaterialFromRecordRequest(static_cast<uint32_t>(rec.preset),
                                                   static_cast<uint32_t>(rec.dim),
                                                   static_cast<uint32_t>(rec.prim),
-                                                  rec.l2w,
+                                                  true,
                                                   static_cast<uint32_t>(rec.pipeline),
                                                   static_cast<uint64_t>(mtl::ResolveRecipePrimaryKey(rec).Hash()));
 
@@ -496,7 +496,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
     {
         Material3DCreateConfig cfg(
             rec.prim,
-            rec.l2w ? IncludeL2W::With : IncludeL2W::Without);
+            IncludeL2W::With);
         cfg.position_format = rec.pos_format.Check() ? rec.pos_format : VAT_VEC2;
         cfg.coord_2d        = rec.coord_2d;
         for (const auto &cs : rec.color_sources)
@@ -527,7 +527,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
 
         Material3DCreateConfig cfg(
             rec.prim,
-            rec.l2w ? IncludeL2W::With : IncludeL2W::Without);
+            IncludeL2W::With);
         cfg.sky_ambient_model = rec.sky_ambient;
 
         cfg.lighting_model = mtl::ResolveLightingModelFromFeatures(feature_mask, mtl::LightingModel::Lambert);
@@ -565,9 +565,9 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     stats.LogProgramKeyTriplet("GetOrCreateProgramByKey.request",
                                key,
                                recipe.prim,
-                               recipe.l2w);
+                               true);
 
-    const mtl::VertexProgramKey req_vkey = mtl::BuildVertexProgramKey(key.variant, recipe.l2w);
+    const mtl::VertexProgramKey req_vkey = mtl::BuildVertexProgramKey(key.variant, true);
     const mtl::FragmentProgramKey req_fkey = mtl::BuildFragmentProgramKey(key.variant);
     stats.RecordShaderProgramShadowCacheLookup(req_vkey, req_fkey);
 
@@ -598,7 +598,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     {
         mtl::Material3DCreateConfig cfg(
             recipe.prim,
-            recipe.l2w ? mtl::IncludeL2W::With : mtl::IncludeL2W::Without);
+            mtl::IncludeL2W::With);
         cfg.preset_name     = mtl::GetMaterialPresetName(recipe.preset);
         cfg.position_format = recipe.pos_format.Check() ? recipe.pos_format : VAT_VEC2;
         cfg.coord_2d        = recipe.coord_2d;
@@ -619,7 +619,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
 
         mtl::Material3DCreateConfig cfg(
             recipe.prim,
-            recipe.l2w ? mtl::IncludeL2W::With : mtl::IncludeL2W::Without);
+            mtl::IncludeL2W::With);
 
         cfg.preset_name = mtl::GetMaterialPresetName(recipe.preset);
         cfg.sky_ambient_model = recipe.sky_ambient;
@@ -831,10 +831,9 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         stats.LogProgramKeyTriplet("CreateMaterial.3D",
                                    enriched_key,
                                    cfg->prim,
-                                   cfg->local_to_world);
+                                   true);
 
-        const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(enriched_key.variant,
-                                                                       cfg->local_to_world);
+        const mtl::VertexProgramKey vkey = mtl::BuildVertexProgramKey(enriched_key.variant, true);
         const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(enriched_key.variant);
         mat->SetVertexProgramKey(vkey);
         mat->SetFragmentProgramKey(fkey);

@@ -65,9 +65,8 @@ struct MaterialRecipe
 
     // ── 通用字段（2D & 3D 均有效）────────────────────────────────────────────
     PrimitiveType   prim    = PrimitiveType::Triangles;     ///< 图元类型
-    bool            l2w     = true;                         ///< 是否包含 LocalToWorld 变换
 
-    /// position 顶点属性格式；零初始化（vat_code==0）= 使用维度默认值
+    /// position 顶点属性格式
     /// （D2 默认 VAT_VEC2，D3 默认 VAT_VEC3）
     VAType          pos_format = {};
 

@@ -64,7 +64,6 @@ private:
         .id         = "draw_triangle_vertex_color",
         .preset     = mtl::MaterialPreset::VertexColor,
         .dim        = mtl::MaterialRecipe::Dim::D2,
-        .l2w        = false,
         .pos_format = POSITION_SHADER_FORMAT,   // VAT_IVEC2: shader中 ivec2 顶点输入
         .coord_2d   = CoordinateSystem2D::Ortho,
         .pipeline   = GraphicsPipelinePreset::Solid2D,

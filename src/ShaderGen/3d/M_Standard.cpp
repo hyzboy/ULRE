@@ -1,17 +1,12 @@
-#include <hgl/shadergen/MaterialCreateInfo.h>
-#include <hgl/mtl/UBOCommon.h>
-#include <hgl/shadergen/CompositorCompiler.h>
-#include <hgl/shadergen/CompositorAssembler.h>
-#include <hgl/mtl/Material3DCreateConfig.h>
-#include <cstdio>
-#include <vector>
-
-#include <hgl/mtl/MaterialVariantDesc.h>
-#include <hgl/mtl/SamplerSlot.h>
-
 #include "MaterialFactory3DCommon.h"
 #include "StandardDescriptorBuilder.h"
 #include "StandardVariantRouter.h"
+#include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/CompositorCompiler.h>
+#include <hgl/mtl/Material3DCreateConfig.h>
+#include <hgl/mtl/SamplerSlot.h>
+#include <cstdio>
+#include <vector>
 
 namespace hgl::graph::mtl{
 namespace
@@ -48,13 +43,7 @@ namespace
         { VAT_VEC3, VAN::Normal },
     };
 
-    // Non-texture descriptors only texture entries are built dynamically in CreateStandardVariant().
-    const UBOSemanticSet STANDARD_BASE_UBOS = {
-        UBODescriptorSemantic::ViewportInfo,
-        UBODescriptorSemantic::CameraInfo,
-        UBODescriptorSemantic::SkyInfo,
-    };
-
+    // Non-texture descriptors; texture entries are built dynamically in CreateStandardVariant().
     const SSBOSemanticSet STANDARD_BASE_SSBOS = {
         SSBODescriptorSemantic::TransformData,
         SSBODescriptorSemantic::TransformID,
@@ -77,7 +66,7 @@ namespace
         PrimitiveType::Triangles,
         STANDARD_VERTEX,
         uint32_t(sizeof(STANDARD_VERTEX) / sizeof(STANDARD_VERTEX[0])),
-        &STANDARD_BASE_UBOS,
+        nullptr,
         &STANDARD_BASE_SSBOS,
         nullptr,
         ShaderDataSchema::StandardParams,

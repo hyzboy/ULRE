@@ -512,18 +512,21 @@ namespace
         flags.needs_transform = row.resources.needs_transform;
         flags.coord_2d        = coord_2d;
 
-        // Remap the default 2D policy to the concrete variant selected by coord_2d.
-        // BuiltinVariantEntry always stores Position2DNdc as the placeholder for
-        // 2D rows; we resolve it here at assembly time.
+        // Remap the 2D policy placeholder to the concrete variant selected by coord_2d.
+        // BuiltinVariantEntry stores Position2DTransform as the placeholder for all 2D rows.
+        // coord_2d drives the final selection:
+        //   NDC       → Position2DTransform  (reads per-instance L2W via SSBO; SFM infers needs_transform)
+        //   Ortho     → Position2DOrtho      (viewport ortho_matrix; no per-instance transform)
+        //   ZeroToOne → Position2DZeroToOne  (linear remap; no per-instance transform)
         using VP = hgl::graph::mtl::VertexTransformPolicy;
         using CS = hgl::graph::CoordinateSystem2D;
-        if (flags.vertex_policy == VP::Position2DNdc)
+        if (flags.vertex_policy == VP::Position2DTransform)
         {
             if (coord_2d == CS::Ortho)
                 flags.vertex_policy = VP::Position2DOrtho;
             else if (coord_2d == CS::ZeroToOne)
                 flags.vertex_policy = VP::Position2DZeroToOne;
-            // else CS::NDC → keep Position2DNdc
+            // else CS::NDC → keep Position2DTransform (per-instance L2W)
         }
 
         if (row.surface_model == hgl::graph::mtl::SurfaceShadingModel::SkyMinimal)
@@ -726,11 +729,16 @@ namespace
                 req_set.ParseFromGLSLFile(pp->glsl_path, lib_path);
         }
 
-        // Collect camera / transform requirements directly, mirroring BuildForwardVertexEntry().
+        // Collect camera / transform / material-instance requirements directly,
+        // mirroring BuildForwardVertexEntry() which always includes these files.
         if (f.needs_camera)
             req_set.ParseFromGLSLFile("common/ubo_camera.glsl", lib_path);
         if (f.needs_transform)
             req_set.ParseFromGLSLFile("common/ssbo_transform.glsl", lib_path);
+        // ssbo_material_instance.glsl is always emitted by BuildForwardVertexEntry
+        // (with MATERIAL_INSTANCE_ID_ONLY). Parse its @sfm annotations so mbi_id
+        // ends up in the merged manifest and MBI_ID_BINDING is emitted.
+        req_set.ParseFromGLSLFile("common/ssbo_material_instance.glsl", lib_path);
 
         // vertex policy
         {

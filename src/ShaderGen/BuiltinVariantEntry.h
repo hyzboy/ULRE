@@ -145,8 +145,7 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         const bool is2D = (e.position_provider == PositionProviderId::VAB_Vec2);
         row.primitive = PrimitiveType::Triangles;
         row.vertex_input  = is2D ? VertexInputProfile::Position2D : VertexInputProfile::PositionColor3D;
-        row.vertex_policy = is2D ? VertexTransformPolicy::Position2DNdc : VertexTransformPolicy::Mesh3D;
-        row.surface_model = SurfaceShadingModel::VertexColor;
+        row.vertex_policy = is2D ? VertexTransformPolicy::Position2DTransform : VertexTransformPolicy::Mesh3D;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::Color);
         row.fs_features.SetVertexAttrib(VertexAttrib::Color);
@@ -159,7 +158,7 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         const bool is2D = (e.position_provider == PositionProviderId::VAB_Vec2);
         row.primitive = PrimitiveType::Triangles;
         row.vertex_input  = is2D ? VertexInputProfile::Position2D : VertexInputProfile::Position3D;
-        row.vertex_policy = is2D ? VertexTransformPolicy::Position2DNdc : VertexTransformPolicy::Mesh3D;
+        row.vertex_policy = is2D ? VertexTransformPolicy::Position2DTransform : VertexTransformPolicy::Mesh3D;
         row.surface_model = SurfaceShadingModel::PureColor;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.fs_features.SetVertexAttrib(VertexAttrib::Position);
@@ -174,7 +173,7 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         const bool is2D = (e.position_provider == PositionProviderId::VAB_Vec2);
         row.primitive = PrimitiveType::Triangles;
         row.vertex_input  = is2D ? VertexInputProfile::PositionLuminance2D : VertexInputProfile::PositionLuminance3D;
-        row.vertex_policy = is2D ? VertexTransformPolicy::Position2DNdc : VertexTransformPolicy::Mesh3D;
+        row.vertex_policy = is2D ? VertexTransformPolicy::Position2DTransform : VertexTransformPolicy::Mesh3D;
         row.surface_model = SurfaceShadingModel::VertexLuminance;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::Luminance);
@@ -208,7 +207,7 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         else if (is2D)
         {
             row.vertex_input  = VertexInputProfile::PositionTexCoord2D;
-            row.vertex_policy = VertexTransformPolicy::Position2DNdc;
+            row.vertex_policy = VertexTransformPolicy::Position2DTransform;
         }
         else
         {

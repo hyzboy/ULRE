@@ -1,7 +1,5 @@
 #include"MaterialFactory3DCommon.h"
-#include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<hgl/mtl/UBOCommon.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -13,10 +11,6 @@ namespace
         SamplerSlot::Height,
         SamplerSlot::Normal,
     };
-
-    const UBOSemanticSet TERRAIN_GRID_UBOS = build3d::MakeViewportCameraUBOs();
-
-    const SSBOSemanticSet TERRAIN_GRID_SSBOS = build3d::MakeTransformSSBOs(false);
 
     const StaticTextureSamplerDescriptors TERRAIN_GRID_SAMPLERS = []
     {
@@ -31,8 +25,7 @@ namespace
         PrimitiveType::Triangles,
         TERRAIN_GRID_VERTEX_PTR,
         TERRAIN_GRID_VERTEX_COUNT,
-        &TERRAIN_GRID_UBOS,
-        &TERRAIN_GRID_SSBOS,
+        nullptr, nullptr,
         &TERRAIN_GRID_SAMPLERS,
         ShaderDataSchema::None
     };

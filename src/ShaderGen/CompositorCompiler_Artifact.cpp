@@ -16,7 +16,6 @@
 #include <hgl/mtl/MaterialVariantRegistry.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include "3d/StandardDescriptorBuilder.h"
-#include "3d/Build3DCommon.h"
 #include "3d/StandardVariantRouter.h"
 #include "3d/MaterialFactory3DCommon.h"
 #include "2d/Build2DCommon.h"
