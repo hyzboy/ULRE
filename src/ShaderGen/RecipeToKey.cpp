@@ -406,7 +406,6 @@ static ShaderDataSchema GetDefaultSchemaForPreset(const MaterialPreset p) noexce
 
 namespace detail
 {
-
 PassType GetPrimaryPassForBlendMode(RenderAlphaMode blend) noexcept
 {
     // Mirrors the first entry returned by
@@ -488,16 +487,20 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
         // key-build time we don't yet know which optional attribs the geometry
         // supplies. Phase C (ResolveRecipePrimaryKeyWithSupply) handles optional
         // attribs when actual geometry supply is available.
-        // NOTE: Position and Normal are fixed geometry-contract attribs that are
-        // never used as variant discriminators in the builtin variant table.
-        // Position is expressed via k.position_provider; Normal is always present
-        // in any lit 3D mesh contract. Excluding both avoids spurious key mismatches.
+        // NOTE: Position, Normal and TexCoord are geometry-contract attribs that
+        // are never used as standalone variant discriminators in the builtin table:
+        //   - Position  → expressed via k.position_provider
+        //   - Normal    → fixed contract for every lit 3D mesh
+        //   - TexCoord  → expressed via tex_bits/sampler_bits from color_sources
+        // Only attribs like Color and Luminance actually select between variants.
         const VABits req = demand.required_va;
         for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
         {
             const auto attrib = static_cast<VertexAttrib>(i);
-            if (attrib == VertexAttrib::Position || attrib == VertexAttrib::Normal)
-                continue; // geometry-contract-only; not a variant discriminator
+            if (attrib == VertexAttrib::Position ||
+                attrib == VertexAttrib::Normal   ||
+                attrib == VertexAttrib::TexCoord)
+                continue; // geometry-contract-only; expressed via other key axes
             if (req.bits[i])
                 k.SetVertexAttribEnabled(attrib, true);
         }
@@ -656,14 +659,13 @@ MaterialVariantKey ResolveRecipePrimaryKeyWithSupply_BuildVariantKey(
     r2.preset = effective_preset;
     MaterialVariantKey k = detail::BuildBaseVariantKeyFromRecipe(r2);
 
-    // 3. When supply is known, override vertex_attribute_feature_bits with the
-    //    precise demand∩supply result instead of the legacy profile-switch result.
-    if (supply_known)
-    {
-        const PresetDemand& demand = GetPresetDemand(effective_preset);
-        const VABits effective_va = ResolveEffectiveVABits(demand, supply);
-        k.vertex_attribute_feature_bits = effective_va.ToFeatureBits();
-    }
+    // Step 3 (supply-aware path) intentionally does NOT override
+    // vertex_attribute_feature_bits here.  BuildBaseVariantKeyFromRecipe
+    // (Step 6) is the single authoritative source for that field, and it
+    // already applies the correct exclusions (Position / Normal / TexCoord
+    // are geometry-contract attribs that are never variant discriminators).
+    // A blanket ResolveEffectiveVABits() override would reintroduce those
+    // bits and cause registry misses (e.g. va_bits=0x40 for Standard).
 
     return k;
 }
