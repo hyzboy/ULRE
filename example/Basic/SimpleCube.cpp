@@ -35,11 +35,11 @@ class TestApp:public WorkObject
 {
 private:
 
-    ECSContext *  ecs_context      =nullptr;
-    Entity *      cube_entity    =nullptr;
-    Entity *      camera_entity  =nullptr;
+    ECSContext *  ecs_context   = nullptr;
+    Entity *      cube_entity   = nullptr;
+    Entity *      camera_entity = nullptr;
 
-    Geometry *          geometry        = nullptr;
+    Geometry *    geometry      = nullptr;
 
     inline static const mtl::MaterialRecipe kCubeCfg {
         .id       = "cube_main",

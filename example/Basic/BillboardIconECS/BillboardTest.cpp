@@ -31,7 +31,7 @@
 #include<cstdint>
 #include<cstdio>
 
-//#define SHOW_PLANE_GRID 1
+#define SHOW_PLANE_GRID 1
 
 using namespace hgl;
 using namespace hgl::graph;

@@ -26,7 +26,6 @@
 
 namespace hgl::graph::mtl
 {
-
 // ─────────────────────────────────────────────────────────────────────────────
 // File-local helpers (not exposed in the header)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,111 +34,111 @@ static bool HasAnyArrayTexture(const MaterialRecipe &r) noexcept;
 
 namespace
 {
-static PassType PrimaryPassForBlendMode(const RenderAlphaMode blend) noexcept
-{
-    switch (blend)
+    static PassType PrimaryPassForBlendMode(const RenderAlphaMode blend) noexcept
     {
-    case RenderAlphaMode::Opaque:          return PassType::ForwardOpaque;
-    case RenderAlphaMode::Masked:          return PassType::ForwardMasked;
-    case RenderAlphaMode::Transparent:     return PassType::ForwardTransparent;
-    case RenderAlphaMode::Dither:          return PassType::ForwardDither;
-    case RenderAlphaMode::AlphaToCoverage: return PassType::ForwardA2C;
-    default:                               return PassType::ForwardOpaque;
-    }
-}
-
-struct RecipeAxisExpansion
-{
-    VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
-    SurfaceShadingModel shading_model = SurfaceShadingModel::Unknown;
-    MaterialResourceRequirements resources{};
-    ShaderDataSchema schema = ShaderDataSchema::None;
-};
-
-static bool RowHasTextureMode(const MaterialVariantRow &row, const TextureSourceMode mode) noexcept
-{
-    for (const auto &cs : row.color_sources)
-    {
-        if (mode == TextureSourceMode::Array)
+        switch (blend)
         {
-            if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
-                return true;
-        }
-        else // Simple / Atlas / anything non-Array
-        {
-            if (cs.kind == graph::ColorSourceKind::BuiltinSampler2D)
-                return true;
+        case RenderAlphaMode::Opaque:          return PassType::ForwardOpaque;
+        case RenderAlphaMode::Masked:          return PassType::ForwardMasked;
+        case RenderAlphaMode::Transparent:     return PassType::ForwardTransparent;
+        case RenderAlphaMode::Dither:          return PassType::ForwardDither;
+        case RenderAlphaMode::AlphaToCoverage: return PassType::ForwardA2C;
+        default:                               return PassType::ForwardOpaque;
         }
     }
-    return false;
-}
 
-static RecipeAxisExpansion ExpandRecipeAxesFromPresetAlias(const MaterialRecipe &r) noexcept
-{
-    RecipeAxisExpansion out{};
-
-    const MaterialPreset resolved_preset =
-        ResolveMaterialPresetForLOD(r.preset, GetDefaultMaterialLOD());
-
-    const RenderAlphaMode target_blend = RenderAlphaMode::Opaque;
-    const PassType target_pass = PrimaryPassForBlendMode(target_blend);
-    const bool wants_array = HasAnyArrayTexture(r);
-
-    const MaterialFeatureMask fmask = ResolveIntentFeatureMask(r.preset, r.intent_features);
-    const LightingModel desired_lighting =
-        ResolveLightingModelFromFeatures(fmask, LightingModel::Lambert);
-
-    const MaterialVariantRow *best = nullptr;
-    int best_score = -1000000;
-
-    GetBuiltinVariantRegistry().ForEachBuiltinRow([&](const MaterialVariantRow &row)
+    struct RecipeAxisExpansion
     {
-        if (row.preset != resolved_preset)
-            return;
+        VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
+        SurfaceShadingModel shading_model = SurfaceShadingModel::Unknown;
+        MaterialResourceRequirements resources{};
+        ShaderDataSchema schema = ShaderDataSchema::None;
+    };
 
-        int score = 0;
-        if (row.blend == target_blend)
-            score += 100;
-        if (row.pass == target_pass)
-            score += 50;
+    static bool RowHasTextureMode(const MaterialVariantRow &row, const TextureSourceMode mode) noexcept
+    {
+        for (const auto &cs : row.color_sources)
+        {
+            if (mode == TextureSourceMode::Array)
+            {
+                if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
+                    return true;
+            }
+            else // Simple / Atlas / anything non-Array
+            {
+                if (cs.kind == graph::ColorSourceKind::BuiltinSampler2D)
+                    return true;
+            }
+        }
+        return false;
+    }
 
-        if (row.resources.enable_lighting)
-        {
-            // lighting_model is ECS-injected via MaterialVariantKey; no per-row scoring needed.
-            score += 40;
-        }
-        else if (desired_lighting == LightingModel::Lambert)
-        {
-            score += 5;
-        }
+    static RecipeAxisExpansion ExpandRecipeAxesFromPresetAlias(const MaterialRecipe &r) noexcept
+    {
+        RecipeAxisExpansion out{};
 
-        if (wants_array)
-        {
-            if (RowHasTextureMode(row, TextureSourceMode::Array))
-                score += 30;
-        }
-        else if (RowHasTextureMode(row, TextureSourceMode::Simple))
-        {
-            score += 20;
-        }
+        const MaterialPreset resolved_preset =
+            ResolveMaterialPresetForLOD(r.preset, GetDefaultMaterialLOD());
 
-        if (score > best_score)
-        {
-            best_score = score;
-            best = &row;
-        }
-    });
+        const RenderAlphaMode target_blend = RenderAlphaMode::Opaque;
+        const PassType target_pass = PrimaryPassForBlendMode(target_blend);
+        const bool wants_array = HasAnyArrayTexture(r);
 
-    if (!best)
+        const MaterialFeatureMask fmask = ResolveIntentFeatureMask(r.preset, r.intent_features);
+        const LightingModel desired_lighting =
+            ResolveLightingModelFromFeatures(fmask, LightingModel::Lambert);
+
+        const MaterialVariantRow *best = nullptr;
+        int best_score = -1000000;
+
+        GetBuiltinVariantRegistry().ForEachBuiltinRow([&](const MaterialVariantRow &row)
+        {
+            if (row.preset != resolved_preset)
+                return;
+
+            int score = 0;
+            if (row.blend == target_blend)
+                score += 100;
+            if (row.pass == target_pass)
+                score += 50;
+
+            if (row.resources.enable_lighting)
+            {
+                // lighting_model is ECS-injected via MaterialVariantKey; no per-row scoring needed.
+                score += 40;
+            }
+            else if (desired_lighting == LightingModel::Lambert)
+            {
+                score += 5;
+            }
+
+            if (wants_array)
+            {
+                if (RowHasTextureMode(row, TextureSourceMode::Array))
+                    score += 30;
+            }
+            else if (RowHasTextureMode(row, TextureSourceMode::Simple))
+            {
+                score += 20;
+            }
+
+            if (score > best_score)
+            {
+                best_score = score;
+                best = &row;
+            }
+        });
+
+        if (!best)
+            return out;
+
+        out.vertex_policy = best->vertex_policy;
+        out.shading_model = best->surface_model;
+        out.resources = best->resources;
+        out.schema = best->schema;
         return out;
-
-    out.vertex_policy = best->vertex_policy;
-    out.shading_model = best->surface_model;
-    out.resources = best->resources;
-    out.schema = best->schema;
-    return out;
-}
-}
+    }
+}//namespace
 
 /// Returns true if any color source in the recipe uses a Sampler2DArray (Array mode).
 static bool HasAnyArrayTexture(const MaterialRecipe &r) noexcept
@@ -489,10 +488,19 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
         // key-build time we don't yet know which optional attribs the geometry
         // supplies. Phase C (ResolveRecipePrimaryKeyWithSupply) handles optional
         // attribs when actual geometry supply is available.
+        // NOTE: Position and Normal are fixed geometry-contract attribs that are
+        // never used as variant discriminators in the builtin variant table.
+        // Position is expressed via k.position_provider; Normal is always present
+        // in any lit 3D mesh contract. Excluding both avoids spurious key mismatches.
         const VABits req = demand.required_va;
         for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
+        {
+            const auto attrib = static_cast<VertexAttrib>(i);
+            if (attrib == VertexAttrib::Position || attrib == VertexAttrib::Normal)
+                continue; // geometry-contract-only; not a variant discriminator
             if (req.bits[i])
-                k.SetVertexAttribEnabled(static_cast<VertexAttrib>(i), true);
+                k.SetVertexAttribEnabled(attrib, true);
+        }
     }
 
     // ── Step 7: blend_mode + pass_hint (Phase A) ──────────────────────────────
