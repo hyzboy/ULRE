@@ -135,7 +135,9 @@ SOURCE_GROUP("Material Key" FILES ${MATERIAL_KEY_FILES})
 
 # Recipe To Key
 SET(RECIPE_TO_KEY_FILES ${MTL_TYPE_INCLUDE_PATH}/RecipeToKey.h
-                        RecipeToKey.cpp)
+                        ${MTL_TYPE_INCLUDE_PATH}/PresetDemandTable.h
+                        RecipeToKey.cpp
+                        PresetDemandTable.cpp)
 SOURCE_GROUP("Material Key" FILES ${RECIPE_TO_KEY_FILES})
 
 # Pass Expansion

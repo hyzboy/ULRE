@@ -15,6 +15,7 @@
 #include <hgl/mtl/MaterialLibrary.h>   // MapPresetToVariantKey
 #include <hgl/mtl/MaterialFeature.h>   // ResolveIntentFeatureMask, ResolveLightingModelFromFeatures
 #include <hgl/mtl/MaterialVariantRow.h> // VertexTransformPolicy, VertexInputProfile, SurfaceShadingModel
+#include <hgl/mtl/PresetDemandTable.h>  // Phase C: demand∩supply matching
 #include <hgl/mtl/PassExpansion.h>
 #include <hgl/mtl/MaterialKeyToolchainVersion.h>
 #include <hgl/mtl/StaticMaterialDefRegistry.h>
@@ -708,6 +709,83 @@ MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &r) noexcept
     k.def_id = ResolveDefIdForRecipe(r);
 
     // Phase F: toolchain versions
+    k.glsl_version = kMaterialKeyGLSLVersion;
+    k.vk_version   = kMaterialKeyVulkanVersion;
+    k.spv_version  = kMaterialKeySpvVersion;
+
+    return k;
+}
+
+MaterialVariantKey ResolveRecipePrimaryKeyWithSupply_BuildVariantKey(
+    const MaterialRecipe &r,
+    const VABits         &supply) noexcept
+{
+    // 1. Determine the best-fit preset given the geometry supply.
+    //    If supply is all-zero (unknown), skip fallback resolution.
+    MaterialPreset effective_preset = r.preset;
+    bool supply_known = false;
+    for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
+    {
+        if (supply.bits[i]) { supply_known = true; break; }
+    }
+
+    if (supply_known)
+        effective_preset = ResolveFallbackPreset(r.preset, supply);
+
+    // 2. Build a modified recipe using the resolved preset, then run the
+    //    standard BuildBaseVariantKeyFromRecipe to keep all other axes intact.
+    MaterialRecipe r2 = r;
+    r2.preset = effective_preset;
+    MaterialVariantKey k = detail::BuildBaseVariantKeyFromRecipe(r2);
+
+    // 3. When supply is known, override vertex_attribute_feature_bits with the
+    //    precise demand∩supply result instead of the legacy profile-switch result.
+    if (supply_known)
+    {
+        const PresetDemand& demand = GetPresetDemand(effective_preset);
+        const VABits effective_va = ResolveEffectiveVABits(demand, supply);
+        k.vertex_attribute_feature_bits = effective_va.ToFeatureBits();
+    }
+
+    return k;
+}
+
+MaterialKey ResolveRecipePrimaryKeyWithSupply(
+    const MaterialRecipe &r,
+    const VABits         &geometry_supply) noexcept
+{
+    MaterialKey k{};
+
+    const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
+
+    // Phase C: build variant key using demand∩supply matching.
+    MaterialVariantKey vk = ResolveRecipePrimaryKeyWithSupply_BuildVariantKey(r, geometry_supply);
+
+    // Canonicalization (same as primary-key path).
+    vk = detail::ApplyRouterCanonicalization(vk);
+    vk.variant_row_name_hash = TryResolveBuiltinVariantRowHash(r.preset, vk);
+    k.variant = vk;
+
+    // Primary pass, schema, def_id, toolchain (identical to ResolveRecipePrimaryKey).
+    k.pass = detail::GetPrimaryPassForBlendMode(vk.blend_mode);
+
+    if (r.has_explicit_schema && r.schema != ShaderDataSchema::None)
+        k.schema = r.schema;
+    else if (alias_axes.schema != ShaderDataSchema::None)
+        k.schema = alias_axes.schema;
+    else
+    {
+        // Use the effective (possibly fallen-back) preset for schema lookup.
+        bool supply_known = false;
+        for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
+            if (geometry_supply.bits[i]) { supply_known = true; break; }
+        const MaterialPreset schema_preset = supply_known
+            ? ResolveFallbackPreset(r.preset, geometry_supply)
+            : r.preset;
+        k.schema = GetDefaultSchemaForPreset(schema_preset);
+    }
+
+    k.def_id = ResolveDefIdForRecipe(r);
     k.glsl_version = kMaterialKeyGLSLVersion;
     k.vk_version   = kMaterialKeyVulkanVersion;
     k.spv_version  = kMaterialKeySpvVersion;

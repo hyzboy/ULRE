@@ -355,4 +355,87 @@ MaterialPreset ResolveFallbackPreset(
     return MaterialPreset::Checkerboard3D;
 }
 
+// ---------------------------------------------------------------------------
+// Phase C — VABitsFromVertexInputProfile
+// ---------------------------------------------------------------------------
+/// Convert a legacy VertexInputProfile enum to a VABits supply descriptor.
+/// This bridges old recipe code into the new demand∩supply resolution path.
+VABits VABitsFromVertexInputProfile(VertexInputProfile profile) noexcept
+{
+    auto S = [](std::initializer_list<VertexAttrib> list) noexcept -> VABits {
+        VABits b{};
+        for (auto a : list) b.Set(a);
+        return b;
+    };
+
+    switch (profile)
+    {
+    case VertexInputProfile::Position2D:
+        return S({VertexAttrib::Position});
+
+    case VertexInputProfile::Position3D:
+        return S({VertexAttrib::Position});
+
+    case VertexInputProfile::PositionNormal3D:
+        return S({VertexAttrib::Position, VertexAttrib::Normal});
+
+    case VertexInputProfile::PositionColor3D:
+        return S({VertexAttrib::Position, VertexAttrib::Color});
+
+    case VertexInputProfile::PositionLuminance2D:
+    case VertexInputProfile::PositionLuminance3D:
+        return S({VertexAttrib::Position, VertexAttrib::Luminance});
+
+    case VertexInputProfile::PositionTexCoord2D:
+    case VertexInputProfile::PositionTexCoord3D:
+        return S({VertexAttrib::Position, VertexAttrib::TexCoord});
+
+    case VertexInputProfile::PositionPaletteIndex3D:
+        return S({VertexAttrib::Position, VertexAttrib::JointID});
+
+    case VertexInputProfile::FullscreenProcedural:
+        // Procedural fullscreen: no vertex attribute input from geometry.
+        return VABits{};
+
+    case VertexInputProfile::Unknown:
+    default:
+        // Unknown supply → return empty (callers fall back to legacy path).
+        return VABits{};
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Phase C — ResolveEffectiveVABits
+// ---------------------------------------------------------------------------
+/// Computes the set of vertex attrib bits that should be set in the variant key
+/// given the preset demand and the geometry supply.
+///
+/// Result = ((required ∪ optional) ∩ supply) ∪ (required ∩ derive_mask)
+///
+/// Explanation:
+///   - Required attribs that are supplied → included.
+///   - Optional attribs that are supplied → included (enables richer feature path).
+///   - Required attribs not supplied but derivable → still included (VS derives them).
+///   - Optional attribs not supplied            → excluded (feature-stripped variant).
+///   - Required attribs not supplied and not derivable → excluded
+///     (caller should have already fallen back via ResolveFallbackPreset).
+VABits ResolveEffectiveVABits(const PresetDemand& demand, const VABits& supply) noexcept
+{
+    VABits result{};
+    for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
+    {
+        const bool is_required = demand.required_va.bits[i];
+        const bool is_optional = demand.optional_va.bits[i];
+        const bool is_supplied = supply.bits[i];
+        const bool is_derivable = demand.derive_mask.bits[i];
+
+        if (is_supplied && (is_required || is_optional))
+            result.bits[i] = true;
+        else if (is_required && is_derivable)
+            result.bits[i] = true;
+    }
+    return result;
+}
+
 } // namespace hgl::graph::mtl
+

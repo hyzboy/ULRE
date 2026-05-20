@@ -160,4 +160,20 @@ MaterialPreset ResolveFallbackPreset(
     MaterialPreset  start,
     const VABits&   supply) noexcept;
 
+// ---------------------------------------------------------------------------
+// Phase C bridge helpers
+// ---------------------------------------------------------------------------
+
+/// Convert a VertexInputProfile value (legacy axis) to a VABits supply descriptor.
+/// Used by Phase C to let legacy recipe paths feed into the new demand∩supply
+/// matching without requiring callers to be ported immediately.
+VABits VABitsFromVertexInputProfile(VertexInputProfile profile) noexcept;
+
+/// Compute the effective vertex_attribute_feature_bits for a variant key given:
+///   - demand  : required + optional attribs for the resolved preset
+///   - supply  : attribs the geometry actually provides
+/// The result is: (required ∪ optional) ∩ supply, plus required bits covered by
+/// derive_mask (always set because the VS will derive them).
+VABits ResolveEffectiveVABits(const PresetDemand& demand, const VABits& supply) noexcept;
+
 } // namespace hgl::graph::mtl

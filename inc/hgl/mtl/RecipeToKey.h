@@ -11,6 +11,7 @@
 
 #include <hgl/mtl/MaterialKey.h>
 #include <hgl/mtl/MaterialRecipe.h>
+#include <hgl/mtl/PresetDemandTable.h>   // VABits (Phase C)
 #include <vector>
 
 namespace hgl::graph::mtl
@@ -18,6 +19,22 @@ namespace hgl::graph::mtl
     /// Convert a MaterialRecipe to its canonical MaterialKey (primary pass only).
     /// Pure function — no side effects, no global state, no I/O, no glslang dependency.
     MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &recipe) noexcept;
+
+    /// Phase C variant: same as ResolveRecipePrimaryKey() but also accepts the
+    /// geometry vertex-attrib supply as a VABits descriptor.
+    ///
+    /// The supply is used to:
+    ///   1. Run demand∩supply matching via ResolveFallbackPreset() — if the recipe's
+    ///      preset cannot be satisfied by the supplied attribs, a simpler fallback
+    ///      preset is selected automatically.
+    ///   2. Derive the exact vertex_attribute_feature_bits via ResolveEffectiveVABits()
+    ///      instead of the legacy VertexInputProfile switch.
+    ///
+    /// When supply is empty (all-false VABits{}) the function falls back to the
+    /// legacy path — identical to calling ResolveRecipePrimaryKey().
+    MaterialKey ResolveRecipePrimaryKeyWithSupply(
+        const MaterialRecipe &recipe,
+        const VABits         &geometry_supply) noexcept;
 
     /// Expand a recipe to all MaterialKeys it requires (one per pass type).
     /// The pass field of each key differs; all other fields are identical.
