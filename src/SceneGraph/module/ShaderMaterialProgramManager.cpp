@@ -24,6 +24,7 @@
 #include<hgl/mtl/RecipeToKey.h>
 #include<hgl/mtl/ShaderProgramKey.h>
 #include<hgl/object/ObjectTracker.h>
+#include<hgl/log/Log.h>
 #include<cstdio>
 #include<cstdint>
 #include<vector>
@@ -571,10 +572,23 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     const mtl::FragmentProgramKey req_fkey = mtl::BuildFragmentProgramKey(key.variant);
     stats.RecordShaderProgramShadowCacheLookup(req_vkey, req_fkey);
 
+    GLogInfo("[ShaderMaterialProgramManager] GetOrCreateProgramByKey request key_hash=0x%llx preset=%u prim=%u pipeline=%u dim=%u",
+             static_cast<unsigned long long>(key.Hash()),
+             static_cast<unsigned>(recipe.preset),
+             static_cast<unsigned>(recipe.prim),
+             static_cast<unsigned>(recipe.pipeline),
+             static_cast<unsigned>(recipe.dim));
+
     // Fast path: key already in cache (populated by ResolveOrCreateProgram on first call)
     auto it = material_by_key.find(key);
     if (it != material_by_key.end())
     {
+        GLogInfo("[ShaderMaterialProgramManager] GetOrCreateProgramByKey cache-hit key_hash=0x%llx material=%p name='%s' prim=%u has_mi=%u",
+                 static_cast<unsigned long long>(key.Hash()),
+                 it->second,
+                 it->second ? it->second->GetName().c_str() : "<null>",
+                 it->second ? static_cast<unsigned>(it->second->GetPrimitiveType()) : 0u,
+                 (it->second && it->second->hasMI()) ? 1u : 0u);
         stats.RecordByKeyHit();
 
         if (it->second && it->second->GetEffectiveFeatureMask() == 0
@@ -651,11 +665,38 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
 
         stats.LogEffectiveFeatureMaskConsistency(prog, key, "cache_miss_created");
 
+        std::fprintf(stderr,
+            "[ShaderMaterialProgramManager] GetOrCreateProgramByKey create: key_hash=0x%llx req_prim=%u recipe_preset=%u material=%p material_name='%s' material_prim=%u has_mi=%u schema=%u\n",
+            static_cast<unsigned long long>(key.Hash()),
+            static_cast<unsigned>(recipe.prim),
+            static_cast<unsigned>(recipe.preset),
+            prog,
+            prog->GetName().c_str(),
+            static_cast<unsigned>(prog->GetPrimitiveType()),
+            prog->hasMI() ? 1u : 0u,
+            static_cast<unsigned>(prog->GetShaderDataSchema()));
+
         material_by_key[key] = prog;
 #ifndef NDEBUG
         auto it_alias = material_by_key.find(key);
         assert(it_alias != material_by_key.end() && it_alias->second == prog);
 #endif
+    }
+    else
+    {
+        std::fprintf(stderr,
+            "[ShaderMaterialProgramManager] GetOrCreateProgramByKey fail: key_hash=0x%llx req_prim=%u recipe_preset=%u recipe_dim=%u\n",
+            static_cast<unsigned long long>(key.Hash()),
+            static_cast<unsigned>(recipe.prim),
+            static_cast<unsigned>(recipe.preset),
+            static_cast<unsigned>(recipe.dim));
+
+        GLogError("[ShaderMaterialProgramManager] GetOrCreateProgramByKey fail key_hash=0x%llx preset=%u prim=%u pipeline=%u dim=%u",
+                  static_cast<unsigned long long>(key.Hash()),
+                  static_cast<unsigned>(recipe.preset),
+                  static_cast<unsigned>(recipe.prim),
+                  static_cast<unsigned>(recipe.pipeline),
+                  static_cast<unsigned>(recipe.dim));
     }
 
 #ifndef NDEBUG
@@ -825,6 +866,19 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     ShaderMaterialProgram *mat = this->CreateMaterial(mtl_debug_name,mci);
     if (mat)
     {
+        const auto *fs = mci->GetStageShader(graph::ShaderStage::Fragment);
+        if (fs)
+        {
+            const std::string &fs_glsl = fs->GetFinalGLSL();
+            if (fs_glsl.find("surface/error_indicator_surface.glsl") != std::string::npos)
+            {
+                std::fprintf(stderr,
+                    "[ShaderMaterialProgramManager] CreateMaterial(key/3D) fallback-fs material='%s' key_hash=0x%llx fragment='surface/error_indicator_surface.glsl'\n",
+                    mtl_debug_name.c_str(),
+                    static_cast<unsigned long long>(key.Hash()));
+            }
+        }
+
         mtl::MaterialKey enriched_key = BuildMaterialKeyFromVariantKey(key);
         EnrichMaterialKeyWithCreateInfoAxes(enriched_key, *mci);
 

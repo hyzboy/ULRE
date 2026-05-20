@@ -13,6 +13,7 @@
 #include <hgl/vk/VKDomainResourceBinding.h>
 #include <hgl/vk/VKVertexInputConfig.h>
 #include <hgl/vk/VKVertexInputLayout.h>
+#include <hgl/log/Log.h>
 
 #include <cctype>
 #include <cstdio>
@@ -150,17 +151,32 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
         static_cast<unsigned>(rec.prim),
         static_cast<unsigned>(rec.pipeline));
 
+    GLogInfo("[MaterialRecipeRegistry] Acquire(key) request key_hash=0x%llx preset=%u prim=%u pipeline=%u",
+             static_cast<unsigned long long>(key.Hash()),
+             static_cast<unsigned>(rec.preset),
+             static_cast<unsigned>(rec.prim),
+             static_cast<unsigned>(rec.pipeline));
+
     // 1. ShaderMaterialProgram — key-transparent fast path (checks material_by_key first)
     handle.material = mm->GetOrCreateProgramByKey(key, rec);
     if (!handle.material)
+    {
+        GLogError("[MaterialRecipeRegistry] Acquire(key) fail: material=null key_hash=0x%llx preset=%u prim=%u pipeline=%u",
+                  static_cast<unsigned long long>(key.Hash()),
+                  static_cast<unsigned>(rec.preset),
+                  static_cast<unsigned>(rec.prim),
+                  static_cast<unsigned>(rec.pipeline));
         return {};
+    }
 
     std::fprintf(stderr,
-        "[MaterialRecipeRegistry] Acquire(key): material=%p material_name='%s' material_prim=%u shader_schema=%u\n",
+        "[MaterialRecipeRegistry] Acquire(key): material=%p material_name='%s' material_prim=%u shader_schema=%u has_mi=%u req_prim=%u\n",
         handle.material,
         handle.material->GetName().c_str(),
         static_cast<unsigned>(handle.material->GetPrimitiveType()),
-        static_cast<unsigned>(handle.material->GetShaderDataSchema()));
+        static_cast<unsigned>(handle.material->GetShaderDataSchema()),
+        handle.material->hasMI() ? 1u : 0u,
+        static_cast<unsigned>(rec.prim));
 
     const AnsiString &mat_name = handle.material->GetName();
     std::string mat_name_str(mat_name.c_str() ? mat_name.c_str() : "",
@@ -224,6 +240,12 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
     // Materials without per-instance data still need DMB for texture bindings.
     if (!handle.material->hasMI())
     {
+        std::fprintf(stderr,
+            "[MaterialRecipeRegistry] Acquire(key): material hasMI=0, skip MI binding path material='%s' req_prim=%u pipeline=%u\n",
+            handle.material->GetName().c_str(),
+            static_cast<unsigned>(rec.prim),
+            static_cast<unsigned>(rec.pipeline));
+
         if (tm && sm && !rec.textures.empty())
         {
             auto it_dmb_nomi = dmb_cache.find(dmb_key);
@@ -248,12 +270,25 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
     if (it_dmb != dmb_cache.end())
     {
         handle.binding = it_dmb->second;
+        std::fprintf(stderr,
+            "[MaterialRecipeRegistry] Acquire(key): reuse DMB material='%s' domain=%p binding=%p\n",
+            handle.material->GetName().c_str(),
+            handle.domain,
+            handle.binding);
     }
     else
     {
         handle.binding = mm->CreateDomainMaterialBinding(handle.domain, handle.material);
         if (!handle.binding)
+        {
+            std::fprintf(stderr,
+                "[MaterialRecipeRegistry] Acquire(key) fail: CreateDomainMaterialBinding null material='%s' domain=%p schema=%u req_prim=%u\n",
+                handle.material->GetName().c_str(),
+                handle.domain,
+                static_cast<unsigned>(schema),
+                static_cast<unsigned>(rec.prim));
             return {};
+        }
 
         if (tm && sm && !rec.textures.empty())
         {
@@ -262,6 +297,11 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
         }
 
         dmb_cache[dmb_key] = handle.binding;
+        std::fprintf(stderr,
+            "[MaterialRecipeRegistry] Acquire(key): create DMB material='%s' domain=%p binding=%p\n",
+            handle.material->GetName().c_str(),
+            handle.domain,
+            handle.binding);
     }
 
     return handle;
@@ -344,7 +384,15 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
             vac.format = gvf_format;
 
             if (!vil_cfg.Add(vif->attrib, vac))
+            {
+                std::fprintf(stderr,
+                    "[MaterialRecipeRegistry] ResolveOrCreateBindingInstance(rec+gvf) fail: vil_cfg.Add failed attrib=%u gvf_format=%u default_format=%u material='%s'\n",
+                    static_cast<unsigned>(vif->attrib),
+                    static_cast<unsigned>(gvf_format),
+                    static_cast<unsigned>(vif->format),
+                    handle.material->GetName().c_str());
                 return nullptr;
+            }
         }
     }
 
@@ -389,20 +437,47 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
 {
     MaterialDomainHandle handle = Acquire(key, rec);
     if (!handle.material)
+    {
+        std::fprintf(stderr,
+            "[MaterialRecipeRegistry] ResolveOrCreateBindingInstance(key+gvf) fail: handle.material=null key_hash=0x%llx preset=%u prim=%u pipeline=%u\n",
+            static_cast<unsigned long long>(key.Hash()),
+            static_cast<unsigned>(rec.preset),
+            static_cast<unsigned>(rec.prim),
+            static_cast<unsigned>(rec.pipeline));
         return nullptr;
+    }
 
     if (!handle.domain)
+    {
+        std::fprintf(stderr,
+            "[MaterialRecipeRegistry] ResolveOrCreateBindingInstance(key+gvf) fail: handle.domain=null key_hash=0x%llx material='%s'\n",
+            static_cast<unsigned long long>(key.Hash()),
+            handle.material->GetName().c_str());
         return nullptr;
+    }
 
     if (handle.material->hasMI() && !handle.binding)
+    {
+        std::fprintf(stderr,
+            "[MaterialRecipeRegistry] ResolveOrCreateBindingInstance(key+gvf) fail: hasMI but handle.binding=null key_hash=0x%llx material='%s' domain=%p\n",
+            static_cast<unsigned long long>(key.Hash()),
+            handle.material->GetName().c_str(),
+            handle.domain);
         return nullptr;
+    }
 
     if (out_handle)
         *out_handle = handle;
 
     const VIL *default_vil = handle.material->GetDefaultVIL();
     if (!default_vil)
+    {
+        std::fprintf(stderr,
+            "[MaterialRecipeRegistry] ResolveOrCreateBindingInstance(key+gvf) fail: default_vil=null key_hash=0x%llx material='%s'\n",
+            static_cast<unsigned long long>(key.Hash()),
+            handle.material->GetName().c_str());
         return nullptr;
+    }
 
     MaterialInstanceSpec spec;
     spec.material = handle.material;
@@ -431,7 +506,16 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
             vac.format = gvf_format;
 
             if (!vil_cfg.Add(vif->attrib, vac))
+            {
+                std::fprintf(stderr,
+                    "[MaterialRecipeRegistry] ResolveOrCreateBindingInstance(key+gvf) fail: vil_cfg.Add failed key_hash=0x%llx attrib=%u gvf_format=%u default_format=%u material='%s'\n",
+                    static_cast<unsigned long long>(key.Hash()),
+                    static_cast<unsigned>(vif->attrib),
+                    static_cast<unsigned>(gvf_format),
+                    static_cast<unsigned>(vif->format),
+                    handle.material->GetName().c_str());
                 return nullptr;
+            }
         }
     }
 
@@ -445,7 +529,19 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
 
     MaterialBindingInstance *mi = mm->AcquireMaterialInstance(spec);
     if (mi)
+    {
         MaterialBindingInstanceInternalAccess::SetDomainBinding(mi, handle.binding);
+    }
+    else
+    {
+        std::fprintf(stderr,
+            "[MaterialRecipeRegistry] ResolveOrCreateBindingInstance(key+gvf) fail: AcquireMaterialInstance returned null key_hash=0x%llx material='%s' prim=%u pipeline=%u instance_data_size=%u\n",
+            static_cast<unsigned long long>(key.Hash()),
+            handle.material->GetName().c_str(),
+            static_cast<unsigned>(rec.prim),
+            static_cast<unsigned>(rec.pipeline),
+            static_cast<unsigned>(instance_data_size));
+    }
 
     return mi;
 }

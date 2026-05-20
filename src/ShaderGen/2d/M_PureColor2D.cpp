@@ -16,6 +16,7 @@ static MaterialCreateInfo *PureColor_Adapter(
     if (!profile || !cfg) return nullptr;
 
     auto *c3 = static_cast<Material3DCreateConfig *>(cfg);
+    c3->material_instance = true;
     const bool is2D = (c3->position_format == VAT_VEC2);
 
     FixedVertexEntry v2[] = {{ VAT_VEC2, VAN::Position }};
@@ -27,6 +28,7 @@ static MaterialCreateInfo *PureColor_Adapter(
         nullptr, nullptr, nullptr,
         ShaderDataSchema::Color4f,
     };
+
     return CreateFromFixedDef3D("PureColor", profile, def, key, c3, *desc);
 }
 }//anonymous

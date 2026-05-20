@@ -265,6 +265,27 @@ namespace hgl::ecs
 					static_cast<unsigned>(mi_indices.size()));
 				if (!mi)
 				{
+					LogInfo("[ECS::MaterialResolveSystem] resolve_bucket fail-detail key_hash=0x%llx recipe_id=%u recipe_preset=%u recipe_prim=%u pipeline=%u gvf_hash=0x%llx instance_hash=0x%llx geom=%p bucket_size=%u",
+						static_cast<unsigned long long>(seed.material_key.Hash()),
+						static_cast<unsigned>(seed.slot ? seed.slot->recipe_id : 0u),
+						static_cast<unsigned>(seed.recipe ? static_cast<uint32_t>(seed.recipe->preset) : 0u),
+						static_cast<unsigned>(seed.recipe ? static_cast<uint32_t>(seed.recipe->prim) : 0u),
+						static_cast<unsigned>(seed.recipe ? static_cast<uint32_t>(seed.recipe->pipeline) : 0u),
+						static_cast<unsigned long long>(seed.gvf_hash),
+						static_cast<unsigned long long>(seed.instance_hash),
+						seed.geometry,
+						static_cast<unsigned>(mi_indices.size()));
+
+					auto diag_handle = registry->Acquire(seed.material_key, *seed.recipe);
+					auto *diag_material = diag_handle.material;
+					LogInfo("[ECS::MaterialResolveSystem] resolve_bucket fail-acquire key_hash=0x%llx material=%p material_prim=%u has_mi=%u domain=%p binding=%p",
+						static_cast<unsigned long long>(seed.material_key.Hash()),
+						diag_material,
+						diag_material ? static_cast<unsigned>(diag_material->GetPrimitiveType()) : 0u,
+						diag_material ? (diag_material->hasMI() ? 1u : 0u) : 0u,
+						diag_handle.domain,
+						diag_handle.binding);
+
 					resolve_fail_count += static_cast<uint32_t>(mi_indices.size());
 					continue;
 				}

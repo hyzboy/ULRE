@@ -540,7 +540,8 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .vs_path = "2d/text2d.vert.glsl",         .fs_path = "2d/text2d.frag.glsl"         },
 
     // ── 3D Unlit ────────────────────────────────────────────────────────────────────────────────
-    { .name = "PureColor",          .preset = MaterialPreset::PureColor },
+    { .name = "PureColor",          .preset = MaterialPreset::PureColor,
+      .surface_path = "surface/purecolor3d_surface.glsl" },
 
     { .name = "VertexColor",        .preset = MaterialPreset::VertexColor,
       .vertex_bits = VA(VertexAttrib::Color),

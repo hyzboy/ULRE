@@ -271,6 +271,37 @@ static StaticMaterialDefId GetStandardDefId(bool any_array) noexcept
     }
 }
 
+static StaticMaterialDefId GetPureColorDefId(const MaterialRecipe &r)
+{
+    const bool is2d = (r.dim == MaterialRecipe::Dim::D2)
+                  || (r.pos_format.Check() && r.pos_format.vec_size == 2);
+
+    static const FixedVertexEntry kVertex2D[] = {
+        { VAT_VEC2, VAN::Position },
+    };
+    static const FixedVertexEntry kVertex3D[] = {
+        { VAT_VEC3, VAN::Position },
+    };
+
+    const FixedVertexEntry *vertex = is2d ? kVertex2D : kVertex3D;
+    const uint32_t vertex_count = 1;
+
+    const char *def_name = is2d ? "PureColor2D_v1" : "PureColor3D_v1";
+
+    const StaticMaterialDef def {
+        def_name,
+        r.prim,
+        vertex,
+        vertex_count,
+        nullptr,
+        nullptr,
+        nullptr,
+        ShaderDataSchema::Color4f,
+    };
+
+    return AcquireStaticMaterialDefId(def);
+}
+
 static StaticMaterialDefId GetGizmo3DDefId()
 {
     static const FixedVertexEntry kVertex[] = {
@@ -314,6 +345,7 @@ static StaticMaterialDefId ResolveDefIdForRecipe(const MaterialRecipe &r) noexce
     switch (r.preset)
     {
     case MaterialPreset::PureColor:
+        return GetPureColorDefId(r);
 
     case MaterialPreset::Gizmo3D:
         return GetGizmo3DDefId();
@@ -422,7 +454,14 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     case VertexInputProfile::PositionTexCoord2D:
         k.position_provider = PositionProviderId::VAB_Vec2;
         break;
+    case VertexInputProfile::Unknown:
+        // Unknown: keep the base key's position_provider (inherited from RouteKey).
+        break;
     default:
+        // All known 3-D input profiles use a direct vec3 position attribute.
+        // Explicitly reset so a 2D base key (e.g. PureColor2D from RouteKey)
+        // does not leave position_provider = VAB_Vec2 for a 3D request.
+        k.position_provider = PositionProviderId::DirectVec3;
         break;
     }
 
@@ -599,5 +638,4 @@ std::vector<MaterialKey> EnumerateRecipeKeys(const MaterialRecipe &r)
     }
     return out;
 }
-
 } // namespace hgl::graph::mtl

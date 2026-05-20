@@ -155,6 +155,7 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
     {
         const bool is2D = (e.position_provider == PositionProviderId::VAB_Vec2);
         row.primitive = PrimitiveType::Triangles;
+
         row.vertex_input  = is2D ? VertexInputProfile::Position2D : VertexInputProfile::Position3D;
         row.vertex_policy = is2D ? VertexTransformPolicy::Position2DTransform : VertexTransformPolicy::Mesh3D;
         row.surface_model = SurfaceShadingModel::PureColor;

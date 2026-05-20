@@ -949,19 +949,41 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
 
             // Clone the candidate desc and set ErrorIndicator surface + error code.
             MaterialVariantDesc ei_desc = *vs_candidate;
-            ei_desc.variant_name        = vs_candidate->variant_name + "_ErrorIndicator";
+            if (vs_candidate->bound_row && vs_candidate->bound_row->name)
+            {
+                // Keep variant_name aligned with bound_row identity so builtin
+                // row-consistency validation passes in the assembler.
+                ei_desc.variant_name = vs_candidate->bound_row->name;
+            }
+            else
+            {
+                ei_desc.variant_name = vs_candidate->variant_name;
+            }
             ei_desc.surface_function_path = "surface/error_indicator_surface.glsl";
             ei_desc.fs_template_path.clear();
             ei_desc.fs_error_code       = error_code;
 
-            // Use the original request key so VS vertex attributes / blend / pass are correct.
+            // Build a fallback key aligned to the selected VS candidate row identity
+            // so bound_row structural validation can pass in the assembler.
+            MaterialVariantKey fallback_key = key;
+            fallback_key.surface_type      = vs_candidate_key.surface_type;
+            fallback_key.geometry_mode     = vs_candidate_key.geometry_mode;
+            fallback_key.position_provider = vs_candidate_key.position_provider;
+            fallback_key.blend_mode        = vs_candidate_key.blend_mode;
+            fallback_key.pass_hint         = vs_candidate_key.pass_hint;
+
             if (MaterialCreateInfo *ei_mci = MaterialFactory3D::Create(
                     *vs_candidate->factory_type,
                     profile,
                     &ei_desc,
-                    key,
+                    fallback_key,
                     cfg))
             {
+                std::fprintf(stderr,
+                    "[MaterialLibrary] Phase2 FS-fallback applied key_hash=0x%llx variant='%s' fs='error_indicator_surface.glsl' error_code=0x%08X\n",
+                    static_cast<unsigned long long>(key.Hash()),
+                    ei_desc.variant_name.c_str(),
+                    error_code);
                 return ei_mci;
             }
 
