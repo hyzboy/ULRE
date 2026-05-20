@@ -74,7 +74,6 @@ private:
         .id            = "tbv_plane_grid",
         .preset        = mtl::MaterialPreset::VertexLuminance,
         .prim          = PrimitiveType::Lines,
-        .vertex_input  = mtl::VertexInputProfile::PositionLuminance2D,
         .vertex_policy = mtl::VertexTransformPolicy::Quad2D,
         .shading_model = mtl::SurfaceShadingModel::VertexLuminance,
         .schema        = mtl::ShaderDataSchema::Color4f,

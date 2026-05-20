@@ -80,7 +80,6 @@ private:
         .preset       = mtl::MaterialPreset::UnlitTexture,
         .dim          = mtl::MaterialRecipe::Dim::D3,
         .prim         = PrimitiveType::Triangles,
-        .vertex_input = mtl::VertexInputProfile::PositionTexCoord2D,
         .vertex_policy= mtl::VertexTransformPolicy::BillboardAxisLocked,
         .pipeline     = GraphicsPipelinePreset::Alpha3D,
         .color_sources = {

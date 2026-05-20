@@ -164,11 +164,6 @@ MaterialPreset ResolveFallbackPreset(
 // Phase C bridge helpers
 // ---------------------------------------------------------------------------
 
-/// Convert a VertexInputProfile value (legacy axis) to a VABits supply descriptor.
-/// Used by Phase C to let legacy recipe paths feed into the new demand∩supply
-/// matching without requiring callers to be ported immediately.
-VABits VABitsFromVertexInputProfile(VertexInputProfile profile) noexcept;
-
 /// Compute the effective vertex_attribute_feature_bits for a variant key given:
 ///   - demand  : required + optional attribs for the resolved preset
 ///   - supply  : attribs the geometry actually provides

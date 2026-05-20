@@ -26,7 +26,6 @@ namespace hgl::graph::mtl
 
         if (vertex)
         {
-            row.vertex_input = vertex->vertex_input;
             row.vertex_policy = vertex->vertex_policy;
             row.vs_template_path = vertex->vs_template_path;
             row.vs_features = vertex->vs_features;

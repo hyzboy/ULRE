@@ -102,7 +102,6 @@ private:
     inline static const mtl::MaterialRecipe kSolidCfg {
         .id             = "bounds_solid",
         .preset         = mtl::MaterialPreset::Gizmo3D,
-        .vertex_input   = mtl::VertexInputProfile::PositionNormal3D,
         .vertex_policy  = mtl::VertexTransformPolicy::Mesh3D,
         .shading_model  = mtl::SurfaceShadingModel::Gizmo,
         .schema         = mtl::ShaderDataSchema::Color4f,
@@ -114,7 +113,6 @@ private:
         .id             = "bounds_wire",
         .preset         = mtl::MaterialPreset::PureColor,
         .prim           = PrimitiveType::Lines,
-        .vertex_input   = mtl::VertexInputProfile::Position3D,
         .vertex_policy  = mtl::VertexTransformPolicy::Mesh3D,
         .shading_model  = mtl::SurfaceShadingModel::PureColor,
         .schema         = mtl::ShaderDataSchema::Color4f,

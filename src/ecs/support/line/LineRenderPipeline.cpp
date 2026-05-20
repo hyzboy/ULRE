@@ -307,7 +307,6 @@ namespace hgl::ecs
         line_recipe.preset = graph::mtl::MaterialPreset::VertexPaletteColor3D;
         line_recipe.dim = graph::mtl::MaterialRecipe::Dim::D3;
         line_recipe.prim = graph::PrimitiveType::Lines;
-        line_recipe.vertex_input = graph::mtl::VertexInputProfile::PositionPaletteIndex3D;
         line_recipe.vertex_policy = graph::mtl::VertexTransformPolicy::Mesh3D;
         line_recipe.shading_model = graph::mtl::SurfaceShadingModel::VertexColor;
 

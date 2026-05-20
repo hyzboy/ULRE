@@ -60,7 +60,7 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
     std::string out;
     out.reserve(8192);
     out += "# Builtin MaterialPreset Audit Snapshot\n";
-    out += "preset|resolved_preset|row_name|primitive|vertex_input|vertex_policy|surface_model|surface_type|geometry_mode|blend|pass|schema|def_hint|vs_features|fs_features|resources|textures|runtime_transition|explicit_axes|legacy_inference|prune_summary|sfm_inferred|sfm_vs_row_resources\n";
+    out += "preset|resolved_preset|row_name|primitive|vertex_policy|surface_model|surface_type|geometry_mode|blend|pass|schema|def_hint|vs_features|fs_features|resources|textures|runtime_transition|explicit_axes|legacy_inference|prune_summary|sfm_inferred|sfm_vs_row_resources\n";
 
     registry.ForEachBuiltinRow([&](const MaterialVariantRow &row)
     {
@@ -74,8 +74,6 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
         out += row.name ? row.name : "";
         out += "|";
         out += std::to_string(static_cast<uint32>(row.primitive));
-        out += "|";
-        out += GetVertexInputProfileName(row.vertex_input);
         out += "|";
         out += GetVertexTransformPolicyName(row.vertex_policy);
         out += "|";

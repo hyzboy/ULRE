@@ -30,7 +30,6 @@ namespace hgl::graph
             .id            = "text_render_text2d",
             .preset        = mtl::MaterialPreset::Text2D,
             .dim           = mtl::MaterialRecipe::Dim::D2,
-            .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,
             .vertex_policy = mtl::VertexTransformPolicy::Text2D,
             .shading_model = mtl::SurfaceShadingModel::Text,
             .schema        = mtl::ShaderDataSchema::TextColor,

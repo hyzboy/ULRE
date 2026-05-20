@@ -173,7 +173,6 @@ namespace hgl::graph
                 recipe.id = "gizmo_resource_gizmo3d";
                 recipe.preset = mtl::MaterialPreset::Gizmo3D;
                 recipe.dim = mtl::MaterialRecipe::Dim::D3;
-                recipe.vertex_input = mtl::VertexInputProfile::PositionNormal3D;
                 recipe.vertex_policy = mtl::VertexTransformPolicy::Mesh3D;
                 recipe.shading_model = mtl::SurfaceShadingModel::Gizmo;
                 recipe.schema = mtl::ShaderDataSchema::Color4f;

@@ -356,55 +356,6 @@ MaterialPreset ResolveFallbackPreset(
 }
 
 // ---------------------------------------------------------------------------
-// Phase C — VABitsFromVertexInputProfile
-// ---------------------------------------------------------------------------
-/// Convert a legacy VertexInputProfile enum to a VABits supply descriptor.
-/// This bridges old recipe code into the new demand∩supply resolution path.
-VABits VABitsFromVertexInputProfile(VertexInputProfile profile) noexcept
-{
-    auto S = [](std::initializer_list<VertexAttrib> list) noexcept -> VABits {
-        VABits b{};
-        for (auto a : list) b.Set(a);
-        return b;
-    };
-
-    switch (profile)
-    {
-    case VertexInputProfile::Position2D:
-        return S({VertexAttrib::Position});
-
-    case VertexInputProfile::Position3D:
-        return S({VertexAttrib::Position});
-
-    case VertexInputProfile::PositionNormal3D:
-        return S({VertexAttrib::Position, VertexAttrib::Normal});
-
-    case VertexInputProfile::PositionColor3D:
-        return S({VertexAttrib::Position, VertexAttrib::Color});
-
-    case VertexInputProfile::PositionLuminance2D:
-    case VertexInputProfile::PositionLuminance3D:
-        return S({VertexAttrib::Position, VertexAttrib::Luminance});
-
-    case VertexInputProfile::PositionTexCoord2D:
-    case VertexInputProfile::PositionTexCoord3D:
-        return S({VertexAttrib::Position, VertexAttrib::TexCoord});
-
-    case VertexInputProfile::PositionPaletteIndex3D:
-        return S({VertexAttrib::Position, VertexAttrib::JointID});
-
-    case VertexInputProfile::FullscreenProcedural:
-        // Procedural fullscreen: no vertex attribute input from geometry.
-        return VABits{};
-
-    case VertexInputProfile::Unknown:
-    default:
-        // Unknown supply → return empty (callers fall back to legacy path).
-        return VABits{};
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Phase C — ResolveEffectiveVABits
 // ---------------------------------------------------------------------------
 /// Computes the set of vertex attrib bits that should be set in the variant key

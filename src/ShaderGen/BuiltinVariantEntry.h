@@ -142,7 +142,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
     {
         const bool is2D = (e.position_provider == PositionProviderId::VAB_Vec2);
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input  = is2D ? VertexInputProfile::Position2D : VertexInputProfile::PositionColor3D;
         row.vertex_policy = is2D ? VertexTransformPolicy::Position2DTransform : VertexTransformPolicy::Mesh3D;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::Color);
@@ -156,7 +155,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         const bool is2D = (e.position_provider == PositionProviderId::VAB_Vec2);
         row.primitive = PrimitiveType::Triangles;
 
-        row.vertex_input  = is2D ? VertexInputProfile::Position2D : VertexInputProfile::Position3D;
         row.vertex_policy = is2D ? VertexTransformPolicy::Position2DTransform : VertexTransformPolicy::Mesh3D;
         row.surface_model = SurfaceShadingModel::PureColor;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
@@ -171,7 +169,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
     {
         const bool is2D = (e.position_provider == PositionProviderId::VAB_Vec2);
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input  = is2D ? VertexInputProfile::PositionLuminance2D : VertexInputProfile::PositionLuminance3D;
         row.vertex_policy = is2D ? VertexTransformPolicy::Position2DTransform : VertexTransformPolicy::Mesh3D;
         row.surface_model = SurfaceShadingModel::VertexLuminance;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
@@ -193,24 +190,20 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 
         if (e.geometry_mode == GeometryMode::BillboardCameraFacing)
         {
-            row.vertex_input  = VertexInputProfile::PositionTexCoord2D;
             row.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
             row.position_provider = PositionProviderId::VAB_Vec2;
         }
         else if (e.geometry_mode == GeometryMode::BillboardAxisLocked)
         {
-            row.vertex_input  = VertexInputProfile::PositionTexCoord2D;
             row.vertex_policy = VertexTransformPolicy::BillboardAxisLocked;
             row.position_provider = PositionProviderId::VAB_Vec2;
         }
         else if (is2D)
         {
-            row.vertex_input  = VertexInputProfile::PositionTexCoord2D;
             row.vertex_policy = VertexTransformPolicy::Position2DTransform;
         }
         else
         {
-            row.vertex_input  = VertexInputProfile::PositionTexCoord3D;
             row.vertex_policy = VertexTransformPolicy::Mesh3D;
         }
 
@@ -227,7 +220,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 
     case MaterialPreset::Text2D:
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::PositionTexCoord2D;
         row.vertex_policy = VertexTransformPolicy::Text2D;
         row.surface_model = SurfaceShadingModel::Text;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
@@ -241,7 +233,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 
     case MaterialPreset::VertexPaletteColor3D:
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::PositionPaletteIndex3D;
         row.vertex_policy = VertexTransformPolicy::Mesh3D;
         row.surface_model = SurfaceShadingModel::VertexColor;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
@@ -252,7 +243,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 
     case MaterialPreset::Gizmo3D:
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::PositionNormal3D;
         row.vertex_policy = VertexTransformPolicy::Mesh3D;
         row.surface_model = SurfaceShadingModel::Gizmo;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
@@ -266,7 +256,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 
     case MaterialPreset::TerrainGrid:
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::Position3D;
         row.vertex_policy = VertexTransformPolicy::TerrainGrid;
         row.surface_model = SurfaceShadingModel::TerrainGrid;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
@@ -279,7 +268,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 
     case MaterialPreset::SkyMinimal:
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::Position3D;
         row.vertex_policy = VertexTransformPolicy::Sky;
         row.surface_model = SurfaceShadingModel::SkyMinimal;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
@@ -304,9 +292,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
             (e.tex[1].mode != TextureSourceMode::None);
 
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = standard_has_textures
-            ? VertexInputProfile::PositionTexCoord3D
-            : VertexInputProfile::PositionNormal3D;
         row.vertex_policy = VertexTransformPolicy::Mesh3D;
         row.surface_model = e.lighting == LightingModel::BlinnPhong
             ? SurfaceShadingModel::StandardBlinnPhong
@@ -337,7 +322,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 
     case MaterialPreset::PBRColor3D:
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::PositionNormal3D;
         row.vertex_policy = VertexTransformPolicy::Mesh3D;
         row.surface_model = SurfaceShadingModel::PBRColor;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
@@ -352,7 +336,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 
     case MaterialPreset::FullscreenTriangle:
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::FullscreenProcedural;
         row.vertex_policy = VertexTransformPolicy::FullscreenTriangle;
         row.surface_model = SurfaceShadingModel::Unknown;
         row.def_hint = StaticMaterialDefIdHint::FullscreenTriangle;
@@ -360,7 +343,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 
     case MaterialPreset::Checkerboard3D:
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_input = VertexInputProfile::Position3D;
         row.vertex_policy = VertexTransformPolicy::Mesh3D;
         row.surface_model = SurfaceShadingModel::CheckerboardFallback;
         row.def_hint = StaticMaterialDefIdHint::None;

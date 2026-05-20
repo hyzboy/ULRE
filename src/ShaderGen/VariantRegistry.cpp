@@ -338,7 +338,7 @@ std::string VariantRegistry::DumpSnapshot() const
     out.reserve(rows.size()*120);
 
     out += "# VariantRegistry Snapshot\n";
-    out += "hash|name|factory|surface|geometry|tex_modes|tex_bits|sampler_bits|va_bits|extra_bits|blend|pass|row_vertex_input|row_vertex_policy|row_surface_model|row_vs_features|row_fs_features|row_resources|row_schema|row_def_hint|row_textures\n";
+    out += "hash|name|factory|surface|geometry|tex_modes|tex_bits|sampler_bits|va_bits|extra_bits|blend|pass|row_vertex_policy|row_surface_model|row_vs_features|row_fs_features|row_resources|row_schema|row_def_hint|row_textures\n";
 
     for(const auto &[hash,entry_ptr]:rows)
     {
@@ -395,8 +395,6 @@ std::string VariantRegistry::DumpSnapshot() const
         out += "|";
         out += std::to_string(static_cast<uint32>(k.pass_hint));
         out += "|";
-        out += row.name && row.name[0] ? GetVertexInputProfileName(row.vertex_input) : "Unknown";
-        out += "|";
         out += row.name && row.name[0] ? GetVertexTransformPolicyName(row.vertex_policy) : "Unknown";
         out += "|";
         out += row.name && row.name[0] ? GetSurfaceShadingModelName(row.surface_model) : "Unknown";
@@ -424,7 +422,7 @@ std::string VariantRegistry::DumpBuiltinRowSnapshot() const
     out.reserve(variant_count * 240);
 
     out += "# Builtin MaterialVariantRow Snapshot\n";
-    out += "name|preset|factory|primitive|surface|geometry|position_provider|vertex_input|vertex_policy|surface_model|blend|pass|vs_template|fs_template|surface_path|vs_features|fs_features|resources|schema|def_hint|textures\n";
+    out += "name|preset|factory|primitive|surface|geometry|position_provider|vertex_policy|surface_model|blend|pass|vs_template|fs_template|surface_path|vs_features|fs_features|resources|schema|def_hint|textures\n";
 
     for(const auto &[hash,bucket]:variant_map)
     {
@@ -448,8 +446,6 @@ std::string VariantRegistry::DumpBuiltinRowSnapshot() const
             out += std::to_string(static_cast<uint32>(row.geometry_mode));
             out += "|";
             out += std::to_string(static_cast<uint32>(row.position_provider));
-            out += "|";
-            out += GetVertexInputProfileName(row.vertex_input);
             out += "|";
             out += GetVertexTransformPolicyName(row.vertex_policy);
             out += "|";

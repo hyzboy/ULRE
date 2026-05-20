@@ -18,20 +18,6 @@
 
 namespace hgl::graph::mtl
 {
-    enum class VertexInputProfile : uint8
-    {
-        Unknown = 0,
-        Position2D,
-        Position3D,
-        PositionNormal3D,
-        PositionColor3D,
-        PositionLuminance3D,
-        PositionLuminance2D,
-        PositionTexCoord2D,
-        PositionTexCoord3D,
-        PositionPaletteIndex3D,
-        FullscreenProcedural,
-    };
 
     enum class VertexTransformPolicy : uint8
     {
@@ -138,7 +124,6 @@ namespace hgl::graph::mtl
         GeometryMode geometry_mode = GeometryMode::Mesh3D;
         PositionProviderId position_provider = PositionProviderId::DirectVec3;
 
-        VertexInputProfile vertex_input = VertexInputProfile::Unknown;
         VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
         SurfaceShadingModel surface_model = SurfaceShadingModel::Unknown;
 
@@ -165,25 +150,6 @@ namespace hgl::graph::mtl
         // Set to true only when distinct shader templates exist for each value.
         bool sky_is_routing_axis = false;
     };
-
-    inline const char *GetVertexInputProfileName(const VertexInputProfile profile) noexcept
-    {
-        switch (profile)
-        {
-        case VertexInputProfile::Unknown: return "Unknown";
-        case VertexInputProfile::Position2D: return "Position2D";
-        case VertexInputProfile::Position3D: return "Position3D";
-        case VertexInputProfile::PositionNormal3D: return "PositionNormal3D";
-        case VertexInputProfile::PositionColor3D: return "PositionColor3D";
-        case VertexInputProfile::PositionLuminance3D: return "PositionLuminance3D";
-        case VertexInputProfile::PositionLuminance2D: return "PositionLuminance2D";
-        case VertexInputProfile::PositionTexCoord2D: return "PositionTexCoord2D";
-        case VertexInputProfile::PositionTexCoord3D: return "PositionTexCoord3D";
-        case VertexInputProfile::PositionPaletteIndex3D: return "PositionPaletteIndex3D";
-        case VertexInputProfile::FullscreenProcedural: return "FullscreenProcedural";
-        default: return "Unknown";
-        }
-    }
 
     inline const char *GetVertexTransformPolicyName(const VertexTransformPolicy policy) noexcept
     {

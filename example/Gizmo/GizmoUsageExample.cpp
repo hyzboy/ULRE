@@ -52,7 +52,6 @@ private:
         .id            = "gizmo_grid",
         .preset        = mtl::MaterialPreset::VertexLuminance,
         .prim          = PrimitiveType::Lines,
-        .vertex_input  = mtl::VertexInputProfile::PositionLuminance2D,
         .vertex_policy = mtl::VertexTransformPolicy::Quad2D,
         .shading_model = mtl::SurfaceShadingModel::VertexLuminance,
         .schema        = mtl::ShaderDataSchema::Color4f,
@@ -63,7 +62,6 @@ private:
     inline static const mtl::MaterialRecipe kCubeCfg {
         .id            = "gizmo_cube",
         .preset        = mtl::MaterialPreset::Gizmo3D,
-        .vertex_input  = mtl::VertexInputProfile::PositionNormal3D,
         .vertex_policy = mtl::VertexTransformPolicy::Mesh3D,
         .shading_model = mtl::SurfaceShadingModel::Gizmo,
         .schema        = mtl::ShaderDataSchema::Color4f,

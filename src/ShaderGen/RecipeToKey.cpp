@@ -14,7 +14,7 @@
 #include <hgl/mtl/RecipeToKey.h>
 #include <hgl/mtl/MaterialLibrary.h>   // MapPresetToVariantKey
 #include <hgl/mtl/MaterialFeature.h>   // ResolveIntentFeatureMask, ResolveLightingModelFromFeatures
-#include <hgl/mtl/MaterialVariantRow.h> // VertexTransformPolicy, VertexInputProfile, SurfaceShadingModel
+#include <hgl/mtl/MaterialVariantRow.h> // VertexTransformPolicy, SurfaceShadingModel
 #include <hgl/mtl/PresetDemandTable.h>  // Phase C: demand∩supply matching
 #include <hgl/mtl/PassExpansion.h>
 #include <hgl/mtl/MaterialKeyToolchainVersion.h>
@@ -50,7 +50,6 @@ static PassType PrimaryPassForBlendMode(const RenderAlphaMode blend) noexcept
 
 struct RecipeAxisExpansion
 {
-    VertexInputProfile vertex_input = VertexInputProfile::Unknown;
     VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
     SurfaceShadingModel shading_model = SurfaceShadingModel::Unknown;
     MaterialResourceRequirements resources{};
@@ -134,7 +133,6 @@ static RecipeAxisExpansion ExpandRecipeAxesFromPresetAlias(const MaterialRecipe 
     if (!best)
         return out;
 
-    out.vertex_input = best->vertex_input;
     out.vertex_policy = best->vertex_policy;
     out.shading_model = best->surface_model;
     out.resources = best->resources;
@@ -470,31 +468,11 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
         k.geometry_mode = GeometryMode::Quad2D;
 
     // ── Step 3: position provider ─────────────────────────────────────────────
-    // Mirrors fixed-def key population: vec2 position inputs must route as VAB_Vec2.
-    const VertexInputProfile effective_vertex_input =
-        (r.vertex_input != VertexInputProfile::Unknown)
-        ? r.vertex_input
-        : alias_axes.vertex_input;
-
-    switch (effective_vertex_input)
-    {
-    case VertexInputProfile::Position2D:
-    case VertexInputProfile::PositionLuminance2D:
-    case VertexInputProfile::PositionTexCoord2D:
+    // 2D materials (r.dim == D2) or explicit pos_format.vec_size == 2 → VAB_Vec2.
+    // Otherwise keep the base key's provider (DirectVec3 from RouteKey).
+    if (r.dim == MaterialRecipe::Dim::D2)
         k.position_provider = PositionProviderId::VAB_Vec2;
-        break;
-    case VertexInputProfile::Unknown:
-        // Unknown: keep the base key's position_provider (inherited from RouteKey).
-        break;
-    default:
-        // All known 3-D input profiles use a direct vec3 position attribute.
-        // Explicitly reset so a 2D base key (e.g. PureColor2D from RouteKey)
-        // does not leave position_provider = VAB_Vec2 for a 3D request.
-        k.position_provider = PositionProviderId::DirectVec3;
-        break;
-    }
 
-    // Mirrors Material2DCreateConfig::position_format in ApplyCreateConfigToVariantKey.
     if (r.pos_format.Check())
     {
         k.position_provider = (r.pos_format.vec_size == 2)
@@ -528,59 +506,21 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
             k.SetTextureSourceMode(cs.slot, TextureSourceMode::Array);
     }
 
-    // ── Step 6: vertex_input → vertex_attribute_feature_bits ─────────────────
-    // Derive which VertexAttrib bits are required by this profile so that the
-    // request key matches the registered builtin variant rows (which use
-    // SetVertexAttribEnabled to encode the same information).
+    // ── Step 6: vertex_attribute_feature_bits from PresetDemand ──────────────
+    // Use the preset demand table's required_va as the authoritative VA bit set.
+    // The demand table is keyed by MaterialPreset, so future attrib additions
+    // only require table rows — no switch cases.
     {
-        auto setVA = [&](VertexAttrib a) {
-            k.SetVertexAttribEnabled(a, true);
-        };
-
-        switch (effective_vertex_input)
-        {
-        case VertexInputProfile::Position2D:
-        case VertexInputProfile::Position3D:
-        case VertexInputProfile::FullscreenProcedural:
-            setVA(VertexAttrib::Position);
-            break;
-
-        case VertexInputProfile::PositionTexCoord2D:
-        case VertexInputProfile::PositionTexCoord3D:
-            setVA(VertexAttrib::Position);
-            setVA(VertexAttrib::TexCoord);
-            break;
-
-        case VertexInputProfile::PositionNormal3D:
-            setVA(VertexAttrib::Position);
-            setVA(VertexAttrib::Normal);
-            break;
-
-        case VertexInputProfile::PositionColor3D:
-            setVA(VertexAttrib::Position);
-            setVA(VertexAttrib::Color);
-            break;
-
-        case VertexInputProfile::PositionLuminance2D:
-        case VertexInputProfile::PositionLuminance3D:
-            setVA(VertexAttrib::Position);
-            setVA(VertexAttrib::Luminance);
-            break;
-
-        case VertexInputProfile::PositionPaletteIndex3D:
-            setVA(VertexAttrib::Position);
-            setVA(VertexAttrib::JointID);
-            break;
-
-        case VertexInputProfile::Unknown:
-            // Keep whatever bits the base key already has (from RouteKey / preset alias).
-            break;
-
-        default:
-            // For any future profile not listed above, at minimum set Position.
-            setVA(VertexAttrib::Position);
-            break;
-        }
+        const MaterialPreset resolved = ResolveMaterialPresetForLOD(r.preset, GetDefaultMaterialLOD());
+        const PresetDemand& demand = GetPresetDemand(resolved);
+        // Set required attribs; optional attribs are omitted here because at
+        // key-build time we don't yet know which optional attribs the geometry
+        // supplies. Phase C (ResolveRecipePrimaryKeyWithSupply) handles optional
+        // attribs when actual geometry supply is available.
+        const VABits req = demand.required_va;
+        for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
+            if (req.bits[i])
+                k.SetVertexAttribEnabled(static_cast<VertexAttrib>(i), true);
     }
 
     // ── Step 7: blend_mode + pass_hint (Phase A) ──────────────────────────────

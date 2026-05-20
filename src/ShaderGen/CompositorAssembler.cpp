@@ -611,8 +611,6 @@ namespace
                                                              hgl::graph::RenderAlphaMode blend,
                                                              const std::string &surface_path)
     {
-        using VIP = hgl::graph::mtl::VertexInputProfile;
-
         hgl::graph::CompositorFeatureFlags flags;
         flags.surface_path = surface_path;
         flags.vertex_attrib_bits = key.vertex_attribute_feature_bits;

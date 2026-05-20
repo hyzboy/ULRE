@@ -28,7 +28,7 @@ namespace hgl::graph::mtl
     ///      preset cannot be satisfied by the supplied attribs, a simpler fallback
     ///      preset is selected automatically.
     ///   2. Derive the exact vertex_attribute_feature_bits via ResolveEffectiveVABits()
-    ///      instead of the legacy VertexInputProfile switch.
+    ///      instead of the demand table-driven approach.
     ///
     /// When supply is empty (all-false VABits{}) the function falls back to the
     /// legacy path — identical to calling ResolveRecipePrimaryKey().

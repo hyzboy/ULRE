@@ -25,7 +25,6 @@ namespace hgl::graph::mtl
     h = hgl::hash::FNV1aAppendValueBytes(h, r.dim);
     h = hgl::hash::FNV1aAppendValueBytes(h, r.prim);
     h = hgl::hash::FNV1aAppendValueBytes(h, r.pos_format);
-    h = hgl::hash::FNV1aAppendValueBytes(h, r.vertex_input);
     h = hgl::hash::FNV1aAppendValueBytes(h, r.vertex_policy);
     h = hgl::hash::FNV1aAppendValueBytes(h, r.shading_model);
 

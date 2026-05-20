@@ -146,7 +146,6 @@ static const mtl::MaterialRecipe kBillboardIconCfg {
     .preset        = mtl::MaterialPreset::UnlitTexture,
     .dim           = mtl::MaterialRecipe::Dim::D3,
     .prim          = PrimitiveType::Triangles,
-    .vertex_input  = mtl::VertexInputProfile::PositionTexCoord2D,
     .vertex_policy = mtl::VertexTransformPolicy::BillboardAxisLocked,
     .pipeline      = GraphicsPipelinePreset::Alpha3D,
     .color_sources = {
@@ -178,7 +177,6 @@ private:
         .domain_id      = kGridDomainID,
         .preset         = mtl::MaterialPreset::VertexLuminance,
         .prim           = PrimitiveType::Lines,
-        .vertex_input   = mtl::VertexInputProfile::PositionLuminance2D,
         .vertex_policy  = mtl::VertexTransformPolicy::Quad2D,
         .shading_model  = mtl::SurfaceShadingModel::VertexLuminance,
         .schema         = mtl::ShaderDataSchema::Color4f,
