@@ -424,6 +424,34 @@ PassType GetPrimaryPassForBlendMode(RenderAlphaMode blend) noexcept
     }
 }
 
+// Phase A: resolve effective blend mode from recipe.
+// Priority: default_render_state.blend (new) > pipeline (deprecated legacy fallback).
+static RenderAlphaMode ResolveEffectiveBlend(const MaterialRecipe& r) noexcept
+{
+    // If caller has set a non-Opaque blend in default_render_state, trust it.
+    if (r.default_render_state.blend != RenderAlphaMode::Opaque)
+        return r.default_render_state.blend;
+
+    // Fallback: map deprecated pipeline preset so old recipe code keeps working.
+#pragma warning(push)
+#pragma warning(disable: 4996)  // suppress [[deprecated]] inside migration shim
+    switch (r.pipeline)
+    {
+    case GraphicsPipelinePreset::Alpha3D:
+    case GraphicsPipelinePreset::Alpha2D:
+        return RenderAlphaMode::Transparent;
+    case GraphicsPipelinePreset::Masked3D:
+        return RenderAlphaMode::Masked;
+    case GraphicsPipelinePreset::Dither3D:
+        return RenderAlphaMode::Dither;
+    case GraphicsPipelinePreset::AlphaToCoverage3D:
+        return RenderAlphaMode::AlphaToCoverage;
+    default:
+        return RenderAlphaMode::Opaque;
+    }
+#pragma warning(pop)
+}
+
 MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexcept
 {
     const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
@@ -554,36 +582,13 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
         }
     }
 
-    // ── Step 7: pipeline preset → blend_mode + pass_hint ─────────────────────
-    // recipe.pipeline carries the blend/transparency intent; translate it into
-    // the key fields that the builtin variant registry uses for exact matching.
-    switch (r.pipeline)
+    // ── Step 7: blend_mode + pass_hint (Phase A) ──────────────────────────────
+    // default_render_state.blend takes priority over the deprecated pipeline field.
+    // ResolveEffectiveBlend() handles the fallback so old recipe code still works.
     {
-    case GraphicsPipelinePreset::Alpha3D:
-    case GraphicsPipelinePreset::Alpha2D:
-        k.blend_mode = RenderAlphaMode::Transparent;
-        k.pass_hint  = PassType::ForwardTransparent;
-        break;
-
-    case GraphicsPipelinePreset::Masked3D:
-        k.blend_mode = RenderAlphaMode::Masked;
-        k.pass_hint  = PassType::ForwardMasked;
-        break;
-
-    case GraphicsPipelinePreset::Dither3D:
-        k.blend_mode = RenderAlphaMode::Dither;
-        k.pass_hint  = PassType::ForwardDither;
-        break;
-
-    case GraphicsPipelinePreset::AlphaToCoverage3D:
-        k.blend_mode = RenderAlphaMode::AlphaToCoverage;
-        k.pass_hint  = PassType::ForwardA2C;
-        break;
-
-    default:
-        // Solid3D, Solid2D, GizmoOverlay3D, DynamicLineWidth3D, Sky, and any
-        // future opaque presets keep the default Opaque / ForwardOpaque values.
-        break;
+        const RenderAlphaMode blend = ResolveEffectiveBlend(r);
+        k.blend_mode = blend;
+        k.pass_hint  = GetPrimaryPassForBlendMode(blend);
     }
 
     // ── Step 8: explicit axis overrides (Phase B) ─────────────────────────────

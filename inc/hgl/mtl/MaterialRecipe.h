@@ -21,6 +21,7 @@
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include <hgl/mtl/RenderAlphaMode.h>
+#include <hgl/mtl/MaterialRenderState.h>
 #include <hgl/shadergen/ColorSource.h>
 #include <hgl/common/CoordinateSystem.h>
 #include <hgl/common/PrimitiveTypeDef.h>
@@ -95,7 +96,17 @@ struct MaterialRecipe
     // ── 3D 专用（dim == D3 时有效）────────────────────────────────────────────
     SkyLightAmbientModel sky_ambient = SkyLightAmbientModel::Simple;    ///< 天光模型
 
-    // ── MaterialBindingInstance 管线预设 ──────────────────────────────────────────────
+    // ── Phase A: 渲染状态（取代旧 pipeline 字段）─────────────────────────────────────
+    /// 资源级默认渲染状态。离线烘焙的输入基准。
+    /// 运行时可被 PrimitiveComponent::user_rs_override 或 TransitionState 覆盖。
+    MaterialRenderState default_render_state{};
+
+    /// 烘焙 hint：告知离线烘焙器额外为哪些 pass 生成 SPV 变体。
+    PrecompileHints precompile_hints{};
+
+    // ── 废弃字段（兼容过渡，Phase D 后删除）──────────────────────────────────────────
+    /// @deprecated 使用 default_render_state.blend 代替。
+    [[deprecated("Use default_render_state.blend instead. Will be removed in Phase D.")]]
     GraphicsPipelinePreset pipeline = GraphicsPipelinePreset::Solid3D;
 
     /// 统一颜色/纹理来源声明（ColorSource / PCG 统一化路径）。

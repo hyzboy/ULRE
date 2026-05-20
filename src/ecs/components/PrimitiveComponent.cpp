@@ -173,6 +173,21 @@ namespace hgl::ecs
         staging_render_state.Reset();
     }
 
+    // Phase A: render-state override channel
+    void PrimitiveComponent::SetUserRenderStateOverride(
+        const hgl::graph::mtl::MaterialRenderState* rs)
+    {
+        if (!rs)
+        {
+            delete user_rs_override;
+            user_rs_override = nullptr;
+            return;
+        }
+        if (!user_rs_override)
+            user_rs_override = new hgl::graph::mtl::MaterialRenderState();
+        *user_rs_override = *rs;
+    }
+
     bool PrimitiveComponent::CommitStagingRenderState()
     {
         if (!staging_render_state.ready)
@@ -284,6 +299,11 @@ namespace hgl::ecs
         runtime_texture_binding.Reset();
         staging_render_state.Reset();
         committed_render_state.Reset();
+
+        // Phase A: clear override channels
+        delete user_rs_override;
+        user_rs_override = nullptr;
+        transition_state.Reset();
     }
 }//namespace hgl::ecs
 

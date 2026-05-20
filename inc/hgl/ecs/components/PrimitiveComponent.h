@@ -3,6 +3,7 @@
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/core/RuntimeTextureBinding.h>
 #include<hgl/mtl/MaterialResolveRequest.h>
+#include<hgl/mtl/MaterialRenderState.h>
 #include<glm/glm.hpp>
 
 // Forward declarations to avoid heavy includes
@@ -91,6 +92,12 @@ namespace hgl::ecs
         PrimitiveRenderState committed_render_state;
         uint32_t render_state_generation = 0;
 
+        // Phase A: render-state override channels
+        /// Layer 2: persistent logic override (nullptr = use Recipe default_render_state)
+        hgl::graph::mtl::MaterialRenderState* user_rs_override = nullptr;
+        /// Layer 3: frame-level transition overlay (injected by LOD/MeshBlend/Occlude systems)
+        hgl::graph::mtl::TransitionState      transition_state{};
+
     public:
 
         explicit PrimitiveComponent(const std::string& name = "Primitive")
@@ -99,7 +106,10 @@ namespace hgl::ecs
         {
         }
 
-        virtual ~PrimitiveComponent() = default;
+        virtual ~PrimitiveComponent()
+        {
+            delete user_rs_override;
+        }
 
     public:
 
@@ -142,6 +152,17 @@ namespace hgl::ecs
         void ClearStagingRenderState();
         bool CommitStagingRenderState();
         void ClearCommittedRenderState();
+
+        // Phase A: render-state override channel API
+        /// Layer 2: set persistent user override (copies value; pass nullptr to clear)
+        void SetUserRenderStateOverride(const hgl::graph::mtl::MaterialRenderState* rs);
+        void ClearUserRenderStateOverride() { SetUserRenderStateOverride(nullptr); }
+        const hgl::graph::mtl::MaterialRenderState* GetUserRenderStateOverride() const { return user_rs_override; }
+
+        /// Layer 3: frame-level transition overlay (set by LOD/MeshBlend systems each frame)
+        void SetTransitionState(const hgl::graph::mtl::TransitionState& ts) { transition_state = ts; }
+        void ResetTransitionState()                                          { transition_state.Reset(); }
+        const hgl::graph::mtl::TransitionState& GetTransitionState() const   { return transition_state; }
 
         // Bounding volume
         bool GetLocalAABB(hgl::math::AABB& outAABB) const;
