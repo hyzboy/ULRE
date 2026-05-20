@@ -12,6 +12,9 @@ namespace hgl::graph
     /// User-defined IDs start at 0x8000 (lower 15 bits = hash of the glsl_path).
     enum class PositionProviderId : uint16
     {
+        // ── Sentinel ─────────────────────────────────────────────────────────
+        Unknown                = 0x7FFF, ///< Unset/invalid sentinel; must never reach shader compilation or registry lookup
+
         // ── Built-in IDs (stable) ────────────────────────────────────────────
         DirectVec3             = 0,  ///< VAB vec3 direct pass-through; emitter inlines a #define, zero overhead
         VAB_Vec2               = 1,  ///< VAB vec2; shader pads Z = 0

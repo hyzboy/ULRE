@@ -42,7 +42,7 @@ namespace hgl::graph::mtl
         SurfaceType       surface_type        = SurfaceType::Unlit;
         GeometryMode      geometry_mode       = GeometryMode::Mesh3D;
 
-        PositionProviderId position_provider              = PositionProviderId::DirectVec3;
+        PositionProviderId position_provider  = PositionProviderId::Unknown;
 
         uint32            texture_source_bits           = 0;
         uint32            sampler_feature_bits          = 0;
