@@ -499,6 +499,93 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
             k.SetTextureSourceMode(cs.slot, TextureSourceMode::Array);
     }
 
+    // ── Step 6: vertex_input → vertex_attribute_feature_bits ─────────────────
+    // Derive which VertexAttrib bits are required by this profile so that the
+    // request key matches the registered builtin variant rows (which use
+    // SetVertexAttribEnabled to encode the same information).
+    {
+        auto setVA = [&](VertexAttrib a) {
+            k.SetVertexAttribEnabled(a, true);
+        };
+
+        switch (effective_vertex_input)
+        {
+        case VertexInputProfile::Position2D:
+        case VertexInputProfile::Position3D:
+        case VertexInputProfile::FullscreenProcedural:
+            setVA(VertexAttrib::Position);
+            break;
+
+        case VertexInputProfile::PositionTexCoord2D:
+        case VertexInputProfile::PositionTexCoord3D:
+            setVA(VertexAttrib::Position);
+            setVA(VertexAttrib::TexCoord);
+            break;
+
+        case VertexInputProfile::PositionNormal3D:
+            setVA(VertexAttrib::Position);
+            setVA(VertexAttrib::Normal);
+            break;
+
+        case VertexInputProfile::PositionColor3D:
+            setVA(VertexAttrib::Position);
+            setVA(VertexAttrib::Color);
+            break;
+
+        case VertexInputProfile::PositionLuminance2D:
+        case VertexInputProfile::PositionLuminance3D:
+            setVA(VertexAttrib::Position);
+            setVA(VertexAttrib::Luminance);
+            break;
+
+        case VertexInputProfile::PositionPaletteIndex3D:
+            setVA(VertexAttrib::Position);
+            setVA(VertexAttrib::JointID);
+            break;
+
+        case VertexInputProfile::Unknown:
+            // Keep whatever bits the base key already has (from RouteKey / preset alias).
+            break;
+
+        default:
+            // For any future profile not listed above, at minimum set Position.
+            setVA(VertexAttrib::Position);
+            break;
+        }
+    }
+
+    // ── Step 7: pipeline preset → blend_mode + pass_hint ─────────────────────
+    // recipe.pipeline carries the blend/transparency intent; translate it into
+    // the key fields that the builtin variant registry uses for exact matching.
+    switch (r.pipeline)
+    {
+    case GraphicsPipelinePreset::Alpha3D:
+    case GraphicsPipelinePreset::Alpha2D:
+        k.blend_mode = RenderAlphaMode::Transparent;
+        k.pass_hint  = PassType::ForwardTransparent;
+        break;
+
+    case GraphicsPipelinePreset::Masked3D:
+        k.blend_mode = RenderAlphaMode::Masked;
+        k.pass_hint  = PassType::ForwardMasked;
+        break;
+
+    case GraphicsPipelinePreset::Dither3D:
+        k.blend_mode = RenderAlphaMode::Dither;
+        k.pass_hint  = PassType::ForwardDither;
+        break;
+
+    case GraphicsPipelinePreset::AlphaToCoverage3D:
+        k.blend_mode = RenderAlphaMode::AlphaToCoverage;
+        k.pass_hint  = PassType::ForwardA2C;
+        break;
+
+    default:
+        // Solid3D, Solid2D, GizmoOverlay3D, DynamicLineWidth3D, Sky, and any
+        // future opaque presets keep the default Opaque / ForwardOpaque values.
+        break;
+    }
+
     // ── Step 8: explicit axis overrides (Phase B) ─────────────────────────────
     // Explicit value has priority; Unknown falls back to preset alias expansion.
     const VertexTransformPolicy effective_vertex_policy =
