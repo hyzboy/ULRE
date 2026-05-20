@@ -243,8 +243,13 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
 
     case MaterialPreset::Gizmo3D:
         row.primitive = PrimitiveType::Triangles;
-        row.vertex_policy = VertexTransformPolicy::Mesh3D;
         row.surface_model = SurfaceShadingModel::Gizmo;
+        if (e.geometry_mode == GeometryMode::BillboardCameraFacing)
+            row.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
+        else if (e.geometry_mode == GeometryMode::BillboardAxisLocked)
+            row.vertex_policy = VertexTransformPolicy::BillboardAxisLocked;
+        else
+            row.vertex_policy = VertexTransformPolicy::Mesh3D;
         row.vs_features.SetVertexAttrib(VertexAttrib::Position);
         row.vs_features.SetVertexAttrib(VertexAttrib::Normal);
         row.fs_features.SetVertexAttrib(VertexAttrib::Position);

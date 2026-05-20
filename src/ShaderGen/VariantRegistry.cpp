@@ -560,6 +560,10 @@ const BuiltinVariantEntry kBuiltinVariants[] =
     { .name = "Gizmo3D",            .preset = MaterialPreset::Gizmo3D,
       .surface_path = "surface/gizmo3d_surface.glsl" },
 
+    { .name = "Gizmo3DBillboardCameraFacing", .preset = MaterialPreset::Gizmo3D,
+      .geometry_mode = GM::BillboardCameraFacing,
+      .surface_path = "surface/gizmo3d_surface.glsl" },
+
     // ── UnlitTexture (Mesh3D, BaseColor only, Simple + Array) ──────────────────────────────────
     { .name = "UnlitTexture",        .preset = MaterialPreset::UnlitTexture,
       .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
