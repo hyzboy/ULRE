@@ -423,34 +423,6 @@ PassType GetPrimaryPassForBlendMode(RenderAlphaMode blend) noexcept
     }
 }
 
-// Phase A: resolve effective blend mode from recipe.
-// Priority: default_render_state.blend (new) > pipeline (deprecated legacy fallback).
-static RenderAlphaMode ResolveEffectiveBlend(const MaterialRecipe& r) noexcept
-{
-    // If caller has set a non-Opaque blend in default_render_state, trust it.
-    if (r.default_render_state.blend != RenderAlphaMode::Opaque)
-        return r.default_render_state.blend;
-
-    // Fallback: map deprecated pipeline preset so old recipe code keeps working.
-#pragma warning(push)
-#pragma warning(disable: 4996)  // suppress [[deprecated]] inside migration shim
-    switch (r.pipeline)
-    {
-    case GraphicsPipelinePreset::Alpha3D:
-    case GraphicsPipelinePreset::Alpha2D:
-        return RenderAlphaMode::Transparent;
-    case GraphicsPipelinePreset::Masked3D:
-        return RenderAlphaMode::Masked;
-    case GraphicsPipelinePreset::Dither3D:
-        return RenderAlphaMode::Dither;
-    case GraphicsPipelinePreset::AlphaToCoverage3D:
-        return RenderAlphaMode::AlphaToCoverage;
-    default:
-        return RenderAlphaMode::Opaque;
-    }
-#pragma warning(pop)
-}
-
 MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexcept
 {
     const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
@@ -524,10 +496,8 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     }
 
     // ── Step 7: blend_mode + pass_hint (Phase A) ──────────────────────────────
-    // default_render_state.blend takes priority over the deprecated pipeline field.
-    // ResolveEffectiveBlend() handles the fallback so old recipe code still works.
     {
-        const RenderAlphaMode blend = ResolveEffectiveBlend(r);
+        const RenderAlphaMode blend = r.default_render_state.blend;
         k.blend_mode = blend;
         k.pass_hint  = GetPrimaryPassForBlendMode(blend);
     }

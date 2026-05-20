@@ -66,7 +66,6 @@ private:
         .dim        = mtl::MaterialRecipe::Dim::D2,
         .pos_format = POSITION_SHADER_FORMAT,   // VAT_IVEC2: shader中 ivec2 顶点输入
         .coord_2d   = CoordinateSystem2D::Ortho,
-        .pipeline   = GraphicsPipelinePreset::Solid2D,
     };
 
 private:

@@ -56,7 +56,6 @@ private:
         .shading_model = mtl::SurfaceShadingModel::VertexLuminance,
         .schema        = mtl::ShaderDataSchema::Color4f,
         .has_explicit_schema = true,
-        .pipeline      = GraphicsPipelinePreset::Solid3D,
     };
 
     inline static const mtl::MaterialRecipe kCubeCfg {
@@ -66,7 +65,6 @@ private:
         .shading_model = mtl::SurfaceShadingModel::Gizmo,
         .schema        = mtl::ShaderDataSchema::Color4f,
         .has_explicit_schema = true,
-        .pipeline      = GraphicsPipelinePreset::Solid3D,
     };
 
     Color4f grid_color;

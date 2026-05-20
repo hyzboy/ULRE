@@ -55,7 +55,6 @@ private:
         .id       = "auto_merge_pure_color",
         .preset   = mtl::MaterialPreset::PureColor,
         .dim      = mtl::MaterialRecipe::Dim::D2,
-        .pipeline = GraphicsPipelinePreset::Solid2D,
     };
 
     // 每个三角形的数据

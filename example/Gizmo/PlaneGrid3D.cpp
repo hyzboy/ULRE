@@ -36,7 +36,6 @@ private:
         .id       = "plane_grid",
         .preset   = mtl::MaterialPreset::VertexLuminance,
         .prim     = PrimitiveType::Lines,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 
 private:

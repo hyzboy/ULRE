@@ -1,4 +1,4 @@
-﻿// R8 — domain_id 语义化演示：双图标集 Billboard 阵列
+// R8 — domain_id 语义化演示：双图标集 Billboard 阵列
 //
 // 两组 Billboard 螺旋各使用不同的图标集（Freepik / Gradient），
 // PlaneGrid 材质通过 domain_id 区分批次，验证 ResourceDomain 隔离端到端正确。
@@ -147,7 +147,7 @@ static const mtl::MaterialRecipe kBillboardIconCfg {
     .dim           = mtl::MaterialRecipe::Dim::D3,
     .prim          = PrimitiveType::Triangles,
     .vertex_policy = mtl::VertexTransformPolicy::BillboardAxisLocked,
-    .pipeline      = GraphicsPipelinePreset::Alpha3D,
+    .default_render_state = { .blend = RenderAlphaMode::Transparent },
     .color_sources = {
         graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
     },
@@ -181,7 +181,6 @@ private:
         .shading_model  = mtl::SurfaceShadingModel::VertexLuminance,
         .schema         = mtl::ShaderDataSchema::Color4f,
         .has_explicit_schema = true,
-        .pipeline       = GraphicsPipelinePreset::Solid3D,
     };
 
 private:

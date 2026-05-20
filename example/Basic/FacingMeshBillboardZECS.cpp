@@ -74,7 +74,6 @@ private:
         .id            = "facing_billboard_z_solid",
         .preset        = mtl::MaterialPreset::Gizmo3D,
         .vertex_policy = mtl::VertexTransformPolicy::BillboardCameraFacing,
-        .pipeline      = GraphicsPipelinePreset::Solid3D,
     };
 
 private:

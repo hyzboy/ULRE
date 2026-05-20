@@ -26,7 +26,7 @@ static const mtl::MaterialRecipe kBillboardBaseCfg {
     .dim           = mtl::MaterialRecipe::Dim::D3,
     .prim          = PrimitiveType::Triangles,
     .vertex_policy = mtl::VertexTransformPolicy::BillboardAxisLocked,
-    .pipeline      = GraphicsPipelinePreset::Alpha3D,
+    .default_render_state = { .blend = graph::RenderAlphaMode::Transparent },
     .color_sources = {
         graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
     },

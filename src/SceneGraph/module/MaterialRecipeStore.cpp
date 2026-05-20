@@ -45,7 +45,7 @@ namespace hgl::graph::mtl
 
     h = hgl::hash::FNV1aAppendValueBytes(h, r.coord_2d);
     h = hgl::hash::FNV1aAppendValueBytes(h, r.sky_ambient);
-    h = hgl::hash::FNV1aAppendValueBytes(h, r.pipeline);
+    h = hgl::hash::FNV1aAppendValueBytes(h, r.default_render_state);
 
     // ── 纹理资产引用列表（slot+path）────────────────────────────────────────
     const uint32_t tex_count = static_cast<uint32_t>(r.textures.size());

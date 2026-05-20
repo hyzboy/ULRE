@@ -1,4 +1,4 @@
-﻿// Billboard (ECS)
+// Billboard (ECS)
 //
 // This example demonstrates rendering a billboard and a plane grid using ECS.
 
@@ -71,7 +71,6 @@ private:
         .id       = "billboard_test_plane_grid",
         .preset   = mtl::MaterialPreset::VertexLuminance,
         .prim     = PrimitiveType::Lines,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 #endif//SHOW_PLANE_GRID
 
@@ -81,7 +80,7 @@ private:
         .dim          = mtl::MaterialRecipe::Dim::D3,
         .prim         = PrimitiveType::Triangles,
         .vertex_policy= mtl::VertexTransformPolicy::BillboardAxisLocked,
-        .pipeline     = GraphicsPipelinePreset::Alpha3D,
+        .default_render_state = { .blend = RenderAlphaMode::Transparent },
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },

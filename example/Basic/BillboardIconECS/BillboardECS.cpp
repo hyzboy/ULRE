@@ -1,4 +1,4 @@
-﻿// Billboard ECS Example - Billboard as VertexTransformPolicy
+// Billboard ECS Example - Billboard as VertexTransformPolicy
 //
 // Billboard is no longer a special primitive type. It is a regular mesh (unit quad)
 // with VertexTransformPolicy::BillboardAxisLocked or BillboardCameraFacing applied
@@ -84,7 +84,6 @@ private:
         .shading_model = mtl::SurfaceShadingModel::VertexLuminance,
         .schema        = mtl::ShaderDataSchema::Color4f,
         .has_explicit_schema = true,
-        .pipeline      = GraphicsPipelinePreset::Solid3D,
     };
 #endif//SHOW_PLANE_GRID
 
@@ -95,7 +94,6 @@ private:
         .dim           = mtl::MaterialRecipe::Dim::D3,
         .prim          = PrimitiveType::Triangles,
         .vertex_policy = mtl::VertexTransformPolicy::BillboardAxisLocked,
-        .pipeline      = GraphicsPipelinePreset::Solid3D,
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
@@ -107,7 +105,7 @@ private:
         .dim           = mtl::MaterialRecipe::Dim::D3,
         .prim          = PrimitiveType::Triangles,
         .vertex_policy = mtl::VertexTransformPolicy::BillboardAxisLocked,
-        .pipeline      = GraphicsPipelinePreset::Alpha3D,
+        .default_render_state = { .blend = RenderAlphaMode::Transparent },
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
@@ -119,7 +117,7 @@ private:
         .dim           = mtl::MaterialRecipe::Dim::D3,
         .prim          = PrimitiveType::Triangles,
         .vertex_policy = mtl::VertexTransformPolicy::BillboardAxisLocked,
-        .pipeline      = GraphicsPipelinePreset::Dither3D,
+        .default_render_state = { .blend = RenderAlphaMode::Dither },
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
@@ -131,7 +129,7 @@ private:
         .dim           = mtl::MaterialRecipe::Dim::D3,
         .prim          = PrimitiveType::Triangles,
         .vertex_policy = mtl::VertexTransformPolicy::BillboardAxisLocked,
-        .pipeline      = GraphicsPipelinePreset::Alpha3D,
+        .default_render_state = { .blend = RenderAlphaMode::Transparent },
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },

@@ -55,7 +55,6 @@ private:
         .preset   = mtl::MaterialPreset::UnlitTexture,
         .dim      = mtl::MaterialRecipe::Dim::D2,
         .coord_2d = CoordinateSystem2D::ZeroToOne,
-        .pipeline = GraphicsPipelinePreset::Solid2D,
         .textures = {
             {mtl::SamplerSlot::BaseColor, "res/image/lena.Tex2D"},
         },

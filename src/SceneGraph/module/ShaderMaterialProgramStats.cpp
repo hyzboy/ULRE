@@ -326,14 +326,14 @@ namespace hgl::graph
     void ShaderMaterialProgramStats::LogGetOrCreateProgramByKeyRequest(const uint64_t key_hash,
                                                                         const uint32_t recipe_prim,
                                                                         const uint32_t recipe_preset,
-                                                                        const uint32_t recipe_pipeline) const
+                                                                        const uint32_t recipe_blend_mode) const
     {
         std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] GetOrCreateProgramByKey: key_hash=0x%llx recipe_prim=%u preset=%u pipeline=%u\n",
+            "[ShaderMaterialProgramManager] GetOrCreateProgramByKey: key_hash=0x%llx recipe_prim=%u preset=%u blend=%u\n",
             static_cast<unsigned long long>(key_hash),
             static_cast<unsigned>(recipe_prim),
             static_cast<unsigned>(recipe_preset),
-            static_cast<unsigned>(recipe_pipeline));
+            static_cast<unsigned>(recipe_blend_mode));
     }
 
     void ShaderMaterialProgramStats::LogGetOrCreateProgramByKeyCacheHit(const ShaderMaterialProgram *program) const
@@ -373,16 +373,16 @@ namespace hgl::graph
                                                                          const uint32_t dim,
                                                                          const uint32_t prim,
                                                                          const bool l2w,
-                                                                         const uint32_t pipeline,
+                                                                         const uint32_t blend_mode,
                                                                          const uint64_t key_hash) const
     {
         std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] CreateMaterialFromRecord: preset=%u dim=%u prim=%u l2w=%u pipeline=%u key_hash=0x%llx\n",
+            "[ShaderMaterialProgramManager] CreateMaterialFromRecord: preset=%u dim=%u prim=%u l2w=%u blend=%u key_hash=0x%llx\n",
             static_cast<unsigned>(preset),
             static_cast<unsigned>(dim),
             static_cast<unsigned>(prim),
             l2w ? 1u : 0u,
-            static_cast<unsigned>(pipeline),
+            static_cast<unsigned>(blend_mode),
             static_cast<unsigned long long>(key_hash));
     }
 

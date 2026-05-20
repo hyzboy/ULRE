@@ -36,7 +36,6 @@ private:
     inline static const mtl::MaterialRecipe kCylinderCfg {
         .id       = "cylinder_main",
         .preset   = mtl::MaterialPreset::Gizmo3D,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 
 private:

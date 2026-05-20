@@ -14,12 +14,31 @@
 #include <hgl/vk/VKVertexInputConfig.h>
 #include <hgl/vk/VKVertexInputLayout.h>
 #include <hgl/log/Log.h>
+#include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 
 #include <cctype>
 #include <cstdio>
 
 namespace hgl::graph
 {
+
+// ---------------------------------------------------------------------------
+// Map RenderAlphaMode to GraphicsPipelinePreset for MaterialInstanceSpec.
+// Used wherever legacy code assigned spec.preset = rec.pipeline.
+// ---------------------------------------------------------------------------
+static GraphicsPipelinePreset BlendToPreset(graph::RenderAlphaMode blend, bool is2D) noexcept
+{
+    using R = graph::RenderAlphaMode;
+    switch (blend)
+    {
+    case R::Transparent:      return is2D ? GraphicsPipelinePreset::Alpha2D   : GraphicsPipelinePreset::Alpha3D;
+    case R::Masked:           return GraphicsPipelinePreset::Masked3D;
+    case R::Dither:           return GraphicsPipelinePreset::Dither3D;
+    case R::AlphaToCoverage:  return GraphicsPipelinePreset::AlphaToCoverage3D;
+    default:                  return is2D ? GraphicsPipelinePreset::Solid2D   : GraphicsPipelinePreset::Solid3D;
+    }
+}
+
 
 // ── 将 record 中的纹理加载并绑定到 DomainResourceBinding ─────────────────────
 
@@ -133,7 +152,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &
         static_cast<unsigned>(rec.preset),
         static_cast<unsigned>(rec.dim),
         static_cast<unsigned>(rec.prim),
-        static_cast<unsigned>(rec.pipeline),
+        static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)),
         rec.domain_id.c_str(),
         rec.textures.size(),
         static_cast<unsigned long long>(mtl::ResolveRecipePrimaryKey(rec).Hash()));
@@ -149,13 +168,13 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
         static_cast<unsigned long long>(key.Hash()),
         static_cast<unsigned>(rec.preset),
         static_cast<unsigned>(rec.prim),
-        static_cast<unsigned>(rec.pipeline));
+        static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)));
 
     GLogInfo("[MaterialRecipeRegistry] Acquire(key) request key_hash=0x%llx preset=%u prim=%u pipeline=%u",
              static_cast<unsigned long long>(key.Hash()),
              static_cast<unsigned>(rec.preset),
              static_cast<unsigned>(rec.prim),
-             static_cast<unsigned>(rec.pipeline));
+             static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)));
 
     // 1. ShaderMaterialProgram — key-transparent fast path (checks material_by_key first)
     handle.material = mm->GetOrCreateProgramByKey(key, rec);
@@ -165,7 +184,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
                   static_cast<unsigned long long>(key.Hash()),
                   static_cast<unsigned>(rec.preset),
                   static_cast<unsigned>(rec.prim),
-                  static_cast<unsigned>(rec.pipeline));
+                  static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)));
         return {};
     }
 
@@ -244,7 +263,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
             "[MaterialRecipeRegistry] Acquire(key): material hasMI=0, skip MI binding path material='%s' req_prim=%u pipeline=%u\n",
             handle.material->GetName().c_str(),
             static_cast<unsigned>(rec.prim),
-            static_cast<unsigned>(rec.pipeline));
+            static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)));
 
         if (tm && sm && !rec.textures.empty())
         {
@@ -360,7 +379,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     MaterialInstanceSpec spec;
     spec.material = handle.material;
     spec.domain   = handle.domain;
-    spec.preset   = rec.pipeline;
+    spec.preset   = BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2);
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
 
@@ -443,7 +462,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(rec.preset),
             static_cast<unsigned>(rec.prim),
-            static_cast<unsigned>(rec.pipeline));
+            static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)));
         return nullptr;
     }
 
@@ -482,7 +501,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     MaterialInstanceSpec spec;
     spec.material = handle.material;
     spec.domain   = handle.domain;
-    spec.preset   = rec.pipeline;
+    spec.preset   = BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2);
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
 
@@ -539,7 +558,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
             static_cast<unsigned long long>(key.Hash()),
             handle.material->GetName().c_str(),
             static_cast<unsigned>(rec.prim),
-            static_cast<unsigned>(rec.pipeline),
+            static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)),
             static_cast<unsigned>(instance_data_size));
     }
 
@@ -560,7 +579,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::CreateMI(
     MaterialInstanceSpec spec;
     spec.material = handle.material;
     spec.domain   = handle.domain;
-    spec.preset   = rec.pipeline;
+    spec.preset   = BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2);
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
 

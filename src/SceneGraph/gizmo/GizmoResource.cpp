@@ -177,7 +177,6 @@ namespace hgl::graph
                 recipe.shading_model = mtl::SurfaceShadingModel::Gizmo;
                 recipe.schema = mtl::ShaderDataSchema::Color4f;
                 recipe.has_explicit_schema = true;
-                recipe.pipeline = GraphicsPipelinePreset::GizmoOverlay3D;
 
                 auto* recipe_registry = graphics_context->GetMaterialAssetRegistry();
                 if (!recipe_registry)
@@ -195,7 +194,6 @@ namespace hgl::graph
                                 static_cast<void *>(handle.domain),
                                 static_cast<void *>(handle.binding));
 
-                    recipe.pipeline = GraphicsPipelinePreset::Solid3D;
                     handle = recipe_registry->Acquire(recipe);
                 }
 

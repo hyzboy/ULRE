@@ -60,7 +60,6 @@ private:
                 mtl::MaterialFeature::LightingPBR),
             mtl::MaterialFeature::LightingBlinnPhong),
         .sky_ambient    = mtl::SkyLightAmbientModel::FakeAtmosphere,
-        .pipeline       = GraphicsPipelinePreset::Solid3D,
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::Normal),
@@ -74,7 +73,6 @@ private:
     inline static const mtl::MaterialRecipe kSkyCfg {
         .id       = "basic_lit_sky",
         .preset   = mtl::MaterialPreset::SkyMinimal,
-        .pipeline = GraphicsPipelinePreset::Sky,
     };
 
 private:

@@ -36,7 +36,6 @@ private:
     inline static const mtl::MaterialRecipe kWallsCfg {
         .id             = "walls_standard",
         .preset         = mtl::MaterialPreset::Standard,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },

@@ -143,7 +143,6 @@ public:
         static const mtl::MaterialRecipe kSphereCfg {
             .id       = "rtt_sphere_gizmo",
             .preset   = mtl::MaterialPreset::Gizmo3D,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
         };
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
         mi = owner->ResolveOrCreateBindingInstance(kSphereCfg, &sphere_color, sizeof(sphere_color));
@@ -284,7 +283,6 @@ private:
         static const mtl::MaterialRecipe kCubeCfg {
             .id       = "rtt_cube_standard",
             .preset   = mtl::MaterialPreset::Standard,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
         };
         mtl::StandardMaterialInstance cube_mi_data{};
         cube_mi_data.base_color = 0xFFFFFFFFu;

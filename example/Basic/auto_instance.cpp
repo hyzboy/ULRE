@@ -59,7 +59,6 @@ private:
         .id       = "auto_instance_vertex_color",
         .preset   = mtl::MaterialPreset::VertexColor,
         .dim      = mtl::MaterialRecipe::Dim::D2,
-        .pipeline = GraphicsPipelinePreset::Solid2D,
     };
 
 private:

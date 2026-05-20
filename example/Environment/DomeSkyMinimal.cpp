@@ -31,7 +31,6 @@ private:
     inline static const mtl::MaterialRecipe kSkyCfg {
         .id       = "dome_sky_minimal",
         .preset   = mtl::MaterialPreset::SkyMinimal,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 
 private:

@@ -61,7 +61,6 @@ private:
         .id       = "clock_pure_color",
         .preset   = mtl::MaterialPreset::PureColor,
         .dim      = mtl::MaterialRecipe::Dim::D2,
-        .pipeline = GraphicsPipelinePreset::Solid2D,
     };
 
     // 刻度数据

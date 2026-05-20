@@ -460,7 +460,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
                                                   static_cast<uint32_t>(rec.dim),
                                                   static_cast<uint32_t>(rec.prim),
                                                   true,
-                                                  static_cast<uint32_t>(rec.pipeline),
+                                                  static_cast<uint32_t>(rec.default_render_state.blend),
                                                   static_cast<uint64_t>(mtl::ResolveRecipePrimaryKey(rec).Hash()));
 
     auto create_2d = [this](const MaterialPreset preset, Material3DCreateConfig *cfg) -> ShaderMaterialProgram *
@@ -561,7 +561,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     stats.LogGetOrCreateProgramByKeyRequest(static_cast<uint64_t>(key.Hash()),
                                             static_cast<uint32_t>(recipe.prim),
                                             static_cast<uint32_t>(recipe.preset),
-                                            static_cast<uint32_t>(recipe.pipeline));
+                                            static_cast<uint32_t>(recipe.default_render_state.blend));
 
     stats.LogProgramKeyTriplet("GetOrCreateProgramByKey.request",
                                key,
@@ -572,11 +572,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     const mtl::FragmentProgramKey req_fkey = mtl::BuildFragmentProgramKey(key.variant);
     stats.RecordShaderProgramShadowCacheLookup(req_vkey, req_fkey);
 
-    GLogInfo("[ShaderMaterialProgramManager] GetOrCreateProgramByKey request key_hash=0x%llx preset=%u prim=%u pipeline=%u dim=%u",
+    GLogInfo("[ShaderMaterialProgramManager] GetOrCreateProgramByKey request key_hash=0x%llx preset=%u prim=%u blend=%u dim=%u",
              static_cast<unsigned long long>(key.Hash()),
              static_cast<unsigned>(recipe.preset),
              static_cast<unsigned>(recipe.prim),
-             static_cast<unsigned>(recipe.pipeline),
+             static_cast<unsigned>(recipe.default_render_state.blend),
              static_cast<unsigned>(recipe.dim));
 
     // Fast path: key already in cache (populated by ResolveOrCreateProgram on first call)
@@ -691,11 +691,11 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
             static_cast<unsigned>(recipe.preset),
             static_cast<unsigned>(recipe.dim));
 
-        GLogError("[ShaderMaterialProgramManager] GetOrCreateProgramByKey fail key_hash=0x%llx preset=%u prim=%u pipeline=%u dim=%u",
+        GLogError("[ShaderMaterialProgramManager] GetOrCreateProgramByKey fail key_hash=0x%llx preset=%u prim=%u blend=%u dim=%u",
                   static_cast<unsigned long long>(key.Hash()),
                   static_cast<unsigned>(recipe.preset),
                   static_cast<unsigned>(recipe.prim),
-                  static_cast<unsigned>(recipe.pipeline),
+                  static_cast<unsigned>(recipe.default_render_state.blend),
                   static_cast<unsigned>(recipe.dim));
     }
 

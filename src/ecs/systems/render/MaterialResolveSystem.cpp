@@ -195,13 +195,13 @@ namespace hgl::ecs
 			task.gvf_hash = HashGeometryVertexFormat(gvf);
 			task.instance_hash = HashBytes(slot.GetInstanceDataPtr(), slot.GetInstanceDataSize());
 
-			LogInfo("[ECS::MaterialResolveSystem] resolve_input comp=%p recipe_id=%u preset=%u dim=%u recipe_prim=%u pipeline=%u geom=%p key_hash=0x%llx gvf_hash=0x%llx instance_hash=0x%llx",
+			LogInfo("[ECS::MaterialResolveSystem] resolve_input comp=%p recipe_id=%u preset=%u dim=%u recipe_prim=%u blend=%u geom=%p key_hash=0x%llx gvf_hash=0x%llx instance_hash=0x%llx",
 				comp.get(),
 				static_cast<unsigned>(slot.recipe_id),
 				static_cast<unsigned>(recipe->preset),
 				static_cast<unsigned>(recipe->dim),
 				static_cast<unsigned>(recipe->prim),
-				static_cast<unsigned>(recipe->pipeline),
+				static_cast<unsigned>(recipe->default_render_state.blend),
 				geom,
 				static_cast<unsigned long long>(task.material_key.Hash()),
 				static_cast<unsigned long long>(task.gvf_hash),
@@ -256,10 +256,10 @@ namespace hgl::ecs
 															 seed.slot->GetInstanceDataSize(),
 															 nullptr,
 															 &resolve_vil);
-                LogInfo("[ECS::MaterialResolveSystem] resolve_bucket key_hash=0x%llx recipe_prim=%u pipeline=%u mi=%p vil=%p bucket_size=%u",
+				LogInfo("[ECS::MaterialResolveSystem] resolve_bucket key_hash=0x%llx recipe_prim=%u blend=%u mi=%p vil=%p bucket_size=%u",
 					static_cast<unsigned long long>(seed.material_key.Hash()),
 					static_cast<unsigned>(seed.recipe->prim),
-					static_cast<unsigned>(seed.recipe->pipeline),
+					static_cast<unsigned>(seed.recipe->default_render_state.blend),
 					mi,
 					resolve_vil,
 					static_cast<unsigned>(mi_indices.size()));
@@ -270,7 +270,7 @@ namespace hgl::ecs
 						static_cast<unsigned>(seed.slot ? seed.slot->recipe_id : 0u),
 						static_cast<unsigned>(seed.recipe ? static_cast<uint32_t>(seed.recipe->preset) : 0u),
 						static_cast<unsigned>(seed.recipe ? static_cast<uint32_t>(seed.recipe->prim) : 0u),
-						static_cast<unsigned>(seed.recipe ? static_cast<uint32_t>(seed.recipe->pipeline) : 0u),
+						static_cast<unsigned>(seed.recipe ? static_cast<uint32_t>(seed.recipe->default_render_state.blend) : 0u),
 						static_cast<unsigned long long>(seed.gvf_hash),
 						static_cast<unsigned long long>(seed.instance_hash),
 						seed.geometry,

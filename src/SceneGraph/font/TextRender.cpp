@@ -34,7 +34,6 @@ namespace hgl::graph
             .shading_model = mtl::SurfaceShadingModel::Text,
             .schema        = mtl::ShaderDataSchema::TextColor,
             .has_explicit_schema = true,
-            .pipeline      = GraphicsPipelinePreset::Solid2D,
         };
 
         ResourceDomain *ResolveDomainForMaterial(ShaderMaterialProgramManager *material_manager,

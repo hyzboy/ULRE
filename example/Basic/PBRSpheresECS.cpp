@@ -145,7 +145,6 @@ private:
             .id              = "pbr_spheres_standard",
             .preset          = mtl::MaterialPreset::Standard,
             .sky_ambient     = mtl::SkyLightAmbientModel::FakeAtmosphere,
-            .pipeline  = GraphicsPipelinePreset::Solid3D,
             .color_sources = {
                 graph::ColorSource::MakeSampler2DArray(mtl::SamplerSlot::BaseColor),
                 graph::ColorSource::MakeSampler2DArray(mtl::SamplerSlot::Normal),
@@ -309,7 +308,6 @@ private:
                         .id          = "pbr_spheres_standard",
                         .preset      = mtl::MaterialPreset::Standard,
                         .sky_ambient = mtl::SkyLightAmbientModel::FakeAtmosphere,
-                        .pipeline    = GraphicsPipelinePreset::Solid3D,
                         .color_sources = {
                             graph::ColorSource::MakeSampler2DArray(mtl::SamplerSlot::BaseColor),
                             graph::ColorSource::MakeSampler2DArray(mtl::SamplerSlot::Normal),
@@ -563,7 +561,6 @@ private:
         static const mtl::MaterialRecipe kSkyCfg {
             .id       = "pbr_spheres_sky",
             .preset   = mtl::MaterialPreset::SkyMinimal,
-            .pipeline = GraphicsPipelinePreset::Sky,
         };
         mi_sky_sphere = ResolveOrCreateBindingInstance(kSkyCfg);
         if (!mi_sky_sphere)

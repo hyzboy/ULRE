@@ -395,7 +395,6 @@ namespace hgl::ecs
         text_recipe.schema = graph::mtl::ShaderDataSchema::TextColor;
         text_recipe.has_explicit_schema = true;
         text_recipe.coord_2d = graph::CoordinateSystem2D::Ortho;
-        text_recipe.pipeline = graph::GraphicsPipelinePreset::Solid2D;
         text_recipe.color_sources.push_back(graph::ColorSource::MakeSampler2D(graph::mtl::SamplerSlot::Text));
 
         GLogInfo("[TextRenderPipeline] GetOrCreateResources: acquiring material recipe 'text_render_pipeline_text2d'");

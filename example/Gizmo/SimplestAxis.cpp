@@ -37,7 +37,6 @@ private:
         .id       = "axis_vertex_color",
         .preset   = mtl::MaterialPreset::VertexColor,
         .prim     = PrimitiveType::Lines,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 
 private:

@@ -33,7 +33,6 @@ private:
         .id       = "fullscreen_triangle_fragcoord",
         .preset   = mtl::MaterialPreset::FullscreenTriangle,
         .dim      = mtl::MaterialRecipe::Dim::D3,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 
 private:

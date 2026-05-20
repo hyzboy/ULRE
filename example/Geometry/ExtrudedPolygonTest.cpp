@@ -40,7 +40,6 @@ private:
     inline static const mtl::MaterialRecipe kExtrudedCfg {
         .id       = "extruded_polygon",
         .preset   = mtl::MaterialPreset::Gizmo3D,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 
 private:

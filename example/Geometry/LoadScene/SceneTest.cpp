@@ -106,7 +106,6 @@ private:
         static const mtl::MaterialRecipe kSolidCfg {
             .id       = "scene_gizmo3d",
             .preset   = mtl::MaterialPreset::Gizmo3D,
-            .pipeline = GraphicsPipelinePreset::Solid3D,
         };
         return InitMaterialInstance(&solid, kSolidCfg);
     }

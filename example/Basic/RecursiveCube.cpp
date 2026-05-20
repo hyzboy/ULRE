@@ -41,7 +41,6 @@ private:
     inline static const mtl::MaterialRecipe kRecursiveCubeCfg {
         .id       = "recursive_cube_main",
         .preset   = mtl::MaterialPreset::Gizmo3D,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 
     Color4f cube_color;

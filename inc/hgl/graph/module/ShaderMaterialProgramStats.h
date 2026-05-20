@@ -156,18 +156,18 @@ namespace hgl::graph
         void LogGetOrCreateProgramByKeyRequest(const uint64_t key_hash,
                                                const uint32_t recipe_prim,
                                                const uint32_t recipe_preset,
-                                               const uint32_t recipe_pipeline) const;
+                                               const uint32_t recipe_blend_mode) const;
 
         void LogGetOrCreateProgramByKeyCacheHit(const ShaderMaterialProgram *program) const;
         void LogGetOrCreateProgramByKeyCreated(const ShaderMaterialProgram *program) const;
         void LogGetOrCreateProgramByKeyAliasWarning(const uint64_t key_hash) const;
 
         void LogCreateMaterialFromRecordRequest(const uint32_t preset,
-                                                const uint32_t dim,
-                                                const uint32_t prim,
-                                                const bool l2w,
-                                                const uint32_t pipeline,
-                                                const uint64_t key_hash) const;
+                                                 const uint32_t dim,
+                                                 const uint32_t prim,
+                                                 const bool l2w,
+                                                 const uint32_t blend_mode,
+                                                 const uint64_t key_hash) const;
 
         void LogCreateMaterialFromRecordBillboard(const int preset,
                                                   const int use_texture_array,

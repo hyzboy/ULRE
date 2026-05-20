@@ -28,7 +28,6 @@
 #include <hgl/common/TextureSamplerTypeDef.h>
 #include <hgl/vk/VertexAttrib.h>
 #include <hgl/vk/VKFormat.h>
-#include <hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include <hgl/mtl/MaterialVariantRow.h>
 #include <hgl/mtl/ShaderDataSchema.h>
 
@@ -100,11 +99,6 @@ struct MaterialRecipe
 
     /// 烘焙 hint：告知离线烘焙器额外为哪些 pass 生成 SPV 变体。
     PrecompileHints precompile_hints{};
-
-    // ── 废弃字段（兼容过渡，Phase D 后删除）──────────────────────────────────────────
-    /// @deprecated 使用 default_render_state.blend 代替。
-    [[deprecated("Use default_render_state.blend instead. Will be removed in Phase D.")]]
-    GraphicsPipelinePreset pipeline = GraphicsPipelinePreset::Solid3D;
 
     /// 统一颜色/纹理来源声明（ColorSource / PCG 统一化路径）。
     std::vector<graph::ColorSource> color_sources;

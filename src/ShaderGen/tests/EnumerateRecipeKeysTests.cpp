@@ -50,13 +50,13 @@ static MaterialRecipe MakeUnlitBillboardRecipe(RenderAlphaMode blend)
     switch (blend)
     {
     case RenderAlphaMode::Transparent:
-        r.pipeline = GraphicsPipelinePreset::Alpha3D;
+        r.default_render_state.blend = RenderAlphaMode::Transparent;
         break;
     case RenderAlphaMode::Masked:
-        r.pipeline = GraphicsPipelinePreset::Masked3D;
+        r.default_render_state.blend = RenderAlphaMode::Masked;
         break;
     default:
-        r.pipeline = GraphicsPipelinePreset::Solid3D;
+        // Opaque is already the default
         break;
     }
 

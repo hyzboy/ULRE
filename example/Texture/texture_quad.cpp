@@ -52,7 +52,6 @@ private:
         .id             = "texture_quad",
         .preset         = mtl::MaterialPreset::UnlitTexture,
         .dim            = mtl::MaterialRecipe::Dim::D2,
-        .pipeline  = GraphicsPipelinePreset::Solid2D,
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },

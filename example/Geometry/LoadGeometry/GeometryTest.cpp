@@ -62,14 +62,12 @@ private:
     inline static const mtl::MaterialRecipe kSolidCfg {
         .id       = "geometry_gizmo3d",
         .preset   = mtl::MaterialPreset::Gizmo3D,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 
     inline static const mtl::MaterialRecipe kWireCfg {
         .id       = "geometry_wire",
         .preset   = mtl::MaterialPreset::PureColor,
         .prim     = PrimitiveType::Lines,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 
     struct RenderMesh

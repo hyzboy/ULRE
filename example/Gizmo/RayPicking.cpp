@@ -63,14 +63,12 @@ private:
         .domain_id = "plane_grid_domain",
         .preset   = mtl::MaterialPreset::VertexLuminance,
         .prim     = PrimitiveType::Lines,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
     };
     inline static const mtl::MaterialRecipe kLineCfg {
         .id       = "ray_picking_line",
         .domain_id = "line_3d_domain",
         .preset   = mtl::MaterialPreset::VertexLuminance,
         .prim     = PrimitiveType::Lines,
-        .pipeline = GraphicsPipelinePreset::Solid3D,
     };
 
     math::Ray           ray;

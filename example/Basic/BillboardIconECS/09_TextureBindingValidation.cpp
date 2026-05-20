@@ -1,4 +1,4 @@
-﻿// Phase 4E — TextureBinding 新路径最小验证示例
+// Phase 4E — TextureBinding 新路径最小验证示例
 //
 // 验证目标：
 //   unit quad geometry + PrimitiveComponent + 显式 TextureBindingTask 可独立驱动贴图绑定。
@@ -78,7 +78,6 @@ private:
         .shading_model = mtl::SurfaceShadingModel::VertexLuminance,
         .schema        = mtl::ShaderDataSchema::Color4f,
         .has_explicit_schema = true,
-        .pipeline      = GraphicsPipelinePreset::Solid3D,
     };
 
     inline static const mtl::MaterialRecipe kTexturedQuadCfg {
@@ -86,7 +85,7 @@ private:
         .preset        = mtl::MaterialPreset::UnlitTexture,
         .dim           = mtl::MaterialRecipe::Dim::D3,
         .prim          = PrimitiveType::Triangles,
-        .pipeline      = GraphicsPipelinePreset::Alpha3D,
+        .default_render_state = { .blend = RenderAlphaMode::Transparent },
         .color_sources = {
             graph::ColorSource::MakeSampler2D(mtl::SamplerSlot::BaseColor),
         },
