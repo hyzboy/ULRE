@@ -103,7 +103,7 @@ static void test_reserved_does_not_affect_hash()
 {
     MaterialKey a = default_key();
     MaterialKey b = default_key();
-    b._reserved = 0xDEADBEEFCAFEBABEull;
+    b._reserved = 0xDEADBEEFu;
     CHECK_EQ(a.Hash(), b.Hash());
     // Note: operator== is defaulted, so _reserved DOES affect ==.
     // That is intentional — equality is stricter than hash identity.
@@ -113,16 +113,16 @@ static void test_reserved_does_not_affect_hash()
 static void test_size_is_stable()
 {
     // Layout:
-    //   0  : variant          (MaterialVariantKey, 40 bytes)
-    //  40  : pass             (uint8,  1 byte)
-    //  41  : [padding]        (1 byte)
-    //  42  : def_id           (uint16, 2 bytes)
-    //  44  : schema           (uint32, 4 bytes)
-    //  48  : glsl_version     (uint16, 2 bytes)
-    //  50  : vk_version       (uint16, 2 bytes)
-    //  52  : spv_version      (uint16, 2 bytes)
-    //  54  : [padding]        (2 bytes)
-    //  56  : _reserved        (uint64, 8 bytes)
+    //   0  : variant          (MaterialVariantKey, 44 bytes)
+    //  44  : pass             (uint8,  1 byte)
+    //  45  : [padding]        (1 byte)
+    //  46  : def_id           (uint16, 2 bytes)
+    //  48  : schema           (uint32, 4 bytes)
+    //  52  : glsl_version     (uint16, 2 bytes)
+    //  54  : vk_version       (uint16, 2 bytes)
+    //  56  : spv_version      (uint16, 2 bytes)
+    //  58  : [padding]        (2 bytes)
+    //  60  : _reserved        (uint32, 4 bytes)
     // Total: 64 bytes
     static_assert(sizeof(MaterialKey) == 64,
                   "MaterialKey ABI size changed — update layout comment and "

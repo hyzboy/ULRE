@@ -30,7 +30,7 @@ namespace hgl::graph::mtl {
         uint16                  glsl_version = 0;
         uint16                  vk_version   = 0;
         uint16                  spv_version  = 0;
-        uint64                  _reserved    = 0;   // must stay last; excluded from Hash
+        uint32                  _reserved    = 0;   // must stay last; excluded from Hash
 
         uint64 Hash() const noexcept;
 

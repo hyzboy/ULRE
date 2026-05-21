@@ -43,6 +43,10 @@ namespace hgl::graph::mtl
         GeometryMode      geometry_mode       = GeometryMode::Mesh3D;
 
         PositionProviderId position_provider  = PositionProviderId::Unknown;
+        /// Non-zero only when position_provider == PositionProviderId::UserPCG.
+        /// FNV-1a 32-bit hash of the user-supplied GLSL path (relative to ShaderLibrary).
+        /// Kept POD (uint32) so the key stays trivially copyable and hashable.
+        uint32            user_provider_path_hash       = 0;
 
         uint32            texture_source_bits           = 0;
         uint32            sampler_feature_bits          = 0;
@@ -126,6 +130,7 @@ namespace hgl::graph::mtl
             h = hgl::hash::FNV1aAppend(h, vertex_attribute_feature_bits);
             h = hgl::hash::FNV1aAppend(h, extra_feature_bits);
             h = hgl::hash::FNV1aAppend(h, position_provider);
+            h = hgl::hash::FNV1aAppend(h, user_provider_path_hash);
             h = hgl::hash::FNV1aAppend(h, blend_mode);
             h = hgl::hash::FNV1aAppend(h, pass_hint);
             h = hgl::hash::FNV1aAppend(h, sky_ambient_model);
@@ -144,6 +149,7 @@ namespace hgl::graph::mtl
                 && surface_type == rhs.surface_type
                 && geometry_mode == rhs.geometry_mode
                 && position_provider == rhs.position_provider
+                && user_provider_path_hash == rhs.user_provider_path_hash
                 && texture_source_bits == rhs.texture_source_bits
                 && sampler_feature_bits == rhs.sampler_feature_bits
                 && vertex_attribute_feature_bits == rhs.vertex_attribute_feature_bits
@@ -159,12 +165,15 @@ namespace hgl::graph::mtl
         /// VS-only axis (VAB_Vec2 / DirectVec3 / PCG_*) written into the key by
         /// RecipeToKey but NOT stored in the registry row. The registry stores a single
         /// row per preset/surface/vertex-bits combination regardless of position_provider.
+        /// user_provider_path_hash is similarly excluded for the same reason.
         uint64 RegistryHash() const noexcept
         {
             uint64 h = hgl::hash::FNV1aInit<uint64>();
             h = hgl::hash::FNV1aAppend(h, variant_row_name_hash);
             h = hgl::hash::FNV1aAppend(h, surface_type);
             h = hgl::hash::FNV1aAppend(h, geometry_mode);
+            // position_provider and user_provider_path_hash intentionally excluded —
+            // VS-only axes not stored in the registry row.
             h = hgl::hash::FNV1aAppend(h, texture_source_bits);
             h = hgl::hash::FNV1aAppend(h, sampler_feature_bits);
             h = hgl::hash::FNV1aAppend(h, vertex_attribute_feature_bits);
