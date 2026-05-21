@@ -23,6 +23,7 @@
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/mtl/MaterialVariantRegistry.h>
 #include <hgl/shadergen/ColorSource.h>
+#include <cassert>
 
 namespace hgl::graph::mtl
 {
@@ -422,6 +423,12 @@ PassType GetPrimaryPassForBlendMode(RenderAlphaMode blend) noexcept
 
 MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexcept
 {
+    // Validate: user PCG provider path is only legal when preset == Custom.
+    // A non-Custom preset has a builtin variant row that owns position_provider;
+    // allowing a recipe to silently override it would create silent routing ambiguity.
+    assert((r.vertex_provider_glsl.empty() || r.preset == MaterialPreset::Custom)
+           && "vertex_provider_glsl is only valid when preset == MaterialPreset::Custom");
+
     const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
 
     // ── Step 1: preset → base variant key ────────────────────────────────────

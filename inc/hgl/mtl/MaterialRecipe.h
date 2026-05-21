@@ -80,6 +80,11 @@ struct MaterialRecipe
     ShaderDataSchema schema = ShaderDataSchema::None;
     bool has_explicit_schema = false;
 
+    // ── User PCG provider（仅 preset == Custom 时有效）──────────────────────────
+    /// 用户自定义顶点位置提供器的 GLSL 路径（相对于 ShaderLibrary）。
+    /// 非空时 preset 必须为 MaterialPreset::Custom；由 RecipeToKey 校验。
+    std::string vertex_provider_glsl;
+
     // ── 2D 专用（dim == D2 时有效）────────────────────────────────────────────
     CoordinateSystem2D coord_2d = CoordinateSystem2D::NDC;  ///< 2D 坐标系
 

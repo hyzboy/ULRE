@@ -72,7 +72,11 @@ namespace hgl::graph::mtl
         // PCG / procedural presets
         FullscreenTriangle,
 
-        ENUM_CLASS_RANGE(Checkerboard3D,FullscreenTriangle),
+        // User-defined / fully custom preset: no builtin variant row;
+        // all axes must be declared explicitly in the MaterialRecipe.
+        Custom,
+
+        ENUM_CLASS_RANGE(Checkerboard3D,Custom),
 
         };
 }

@@ -296,6 +296,17 @@ static const PresetDemand kTable[] =
         /* dither     */ false,
         /* fallback   */ MaterialPreset::Checkerboard3D,
     },
+
+    // ── User-defined / fully custom ───────────────────────────────────────────
+    {
+        /* preset     */ MaterialPreset::Custom,
+        /* required   */ VABits{},  // unknown until recipe provides vertex_provider_glsl
+        /* optional   */ VABits{},
+        /* derive     */ VABits{},
+        /* resources  */ kResMesh3D,
+        /* dither     */ false,
+        /* fallback   */ MaterialPreset::Checkerboard3D,
+    },
 };
 // clang-format on
 

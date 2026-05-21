@@ -56,6 +56,10 @@ namespace hgl::graph::mtl
         h = hgl::hash::FNV1aAppend(h, '\0');
     }
 
+    // ── User PCG provider path ───────────────────────────────────────────────
+    h = hgl::hash::FNV1aAppendBytes(h, r.vertex_provider_glsl.data(), r.vertex_provider_glsl.size());
+    h = hgl::hash::FNV1aAppend(h, '\0');
+
     return h;
 }
 
