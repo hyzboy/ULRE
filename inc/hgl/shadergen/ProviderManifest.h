@@ -87,6 +87,9 @@ namespace hgl::graph
         /// and populate the registry.  Safe to call multiple times (re-initializes).
         static void Initialize(std::string_view lib_root);
 
+        /// Clear all registered manifests. Call at shutdown, paired with Initialize.
+        static void Shutdown();
+
         // ── Lookup ───────────────────────────────────────────────────────────
 
         /// Find a builtin manifest by PositionProviderId.

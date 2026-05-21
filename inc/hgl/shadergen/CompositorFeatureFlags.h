@@ -15,8 +15,11 @@ namespace hgl::graph {
 struct CompositorFeatureFlags
 {
     // Vertex stage flags
-    PositionProviderId            position_provider = PositionProviderId::VAB_Vec3;
-    mtl::VertexTransformPolicy    vertex_policy     = mtl::VertexTransformPolicy::Mesh3D;
+    PositionProviderId            position_provider      = PositionProviderId::VAB_Vec3;
+    /// Non-zero only when position_provider == PositionProviderId::UserPCG.
+    /// FNV-1a 32-bit hash of the user-supplied GLSL path; mirrors MaterialVariantKey::user_provider_path_hash.
+    uint32                        user_provider_path_hash = 0;
+    mtl::VertexTransformPolicy    vertex_policy          = mtl::VertexTransformPolicy::Mesh3D;
     uint32 vertex_attrib_bits = 0;
     bool has_direction    = false;
     bool has_mi           = false;  ///< Material has per-instance data (schema != None); controls mbi_id SSBO emission.

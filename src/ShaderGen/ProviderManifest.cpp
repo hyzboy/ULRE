@@ -21,6 +21,7 @@
 
 #include <hgl/shadergen/ProviderManifest.h>
 #include <hgl/shadergen/PositionProviderRegistry.h>
+#include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/common/PositionProvider.h>
 
 #include <filesystem>
@@ -264,13 +265,21 @@ void ProviderManifestRegistry::Initialize(std::string_view lib_root)
     size_t id_count = 0;
     const PositionProviderId* ids = GetAllBuiltinProviderIds(&id_count);
 
-    // Build a path→id table so we can attach IDs after parsing
+    // Build a path→id table so we can attach IDs after parsing.
+    // PositionProviderRegistry stores paths as "ShaderLibrary/position_provider/xxx.glsl"
+    // but the manifest scanner builds relative paths as "position_provider/xxx.glsl"
+    // (relative to lib_root, which is already the ShaderLibrary directory).
+    // Strip the "ShaderLibrary/" prefix so both sides use the same key format.
+    static constexpr std::string_view kShaderLibPrefix = "ShaderLibrary/";
     std::unordered_map<std::string, PositionProviderId> path_to_id;
     for (size_t i = 0; i < id_count; ++i)
     {
         const PositionProvider* p = FindBuiltinProvider(ids[i]);
-        if (p && !p->glsl_path.empty())
-            path_to_id[std::string(p->glsl_path)] = ids[i];
+        if (!p || p->glsl_path.empty()) continue;
+        std::string_view sv = p->glsl_path;
+        if (sv.substr(0, kShaderLibPrefix.size()) == kShaderLibPrefix)
+            sv = sv.substr(kShaderLibPrefix.size());
+        path_to_id[std::string(sv)] = ids[i];
     }
 
     // Scan directory
@@ -296,6 +305,15 @@ void ProviderManifestRegistry::Initialize(std::string_view lib_root)
 
         RegisterManifest(std::move(m));
     }
+}
+
+void ProviderManifestRegistry::Shutdown()
+{
+    g_manifests.clear();
+    g_by_pos_id.clear();
+    g_by_path.clear();
+    g_by_hash.clear();
+    g_lib_root.clear();
 }
 
 const ProviderManifest* ProviderManifestRegistry::FindByPosId(PositionProviderId id) noexcept

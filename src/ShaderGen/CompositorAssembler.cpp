@@ -7,6 +7,7 @@
 #include <hgl/shadergen/ShaderRequirementSet.h>
 #include <hgl/shadergen/VertexAttribMacroMap.h>
 #include <hgl/shadergen/PositionProviderRegistry.h>
+#include <hgl/shadergen/ProviderManifest.h>
 #include <hgl/shadergen/VertexPolicyRegistry.h>
 #include <hgl/shadergen/FragmentProviderRegistry.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
@@ -16,6 +17,7 @@
 #include "BuiltinVariantEntry.h"
 #include <algorithm>
 #include <atomic>
+#include <mutex>
 #include <cstdio>
 
 namespace
@@ -151,22 +153,50 @@ namespace
         if (f.has_direction) writer.EmitDefine("HAS_DIRECTION");
 
         // ── Axis 1: position provider ─────────────────────────────────────────
-        // Each provider file declares its own VBO layout (or none) and exposes
-        // vec3 GetPositionLocal().  DirectVec3 (empty path) falls back to the
-        // legacy common/vertex_input_position.glsl path.
+        // Phase 7: unified manifest-driven lookup replaces FindBuiltinProvider() branching.
+        // UserPCG → FindByPathHash; builtin → FindByPosId; missing/empty → fallback to VAB_Vec3.
+        // output_space == ClipNDC means the provider already emits NDC-space coordinates,
+        // so the vertex policy (MVP transform) must be skipped entirely.
+        bool provider_is_clip_ndc = false;
         {
-            const hgl::graph::PositionProvider *pp =
-                hgl::graph::FindBuiltinProvider(f.position_provider);
+            using hgl::graph::ProviderManifest;
+            using hgl::graph::ProviderManifestRegistry;
 
-            if (pp && !pp->glsl_path.empty())
+            const ProviderManifest *pm = nullptr;
+            if (f.position_provider == hgl::graph::PositionProviderId::UserPCG)
+                pm = ProviderManifestRegistry::FindByPathHash(f.user_provider_path_hash);
+            else
+                pm = ProviderManifestRegistry::FindByPosId(f.position_provider);
+
+            std::fprintf(stderr,
+                "[CompositorAssembler] BuildFwdVS: pos_id=%u hash=%u manifest=%s registry_count=%u\n",
+                static_cast<unsigned>(f.position_provider),
+                f.user_provider_path_hash,
+                pm ? pm->glsl_path.c_str() : "<null>",
+                static_cast<unsigned>(hgl::graph::ProviderManifestRegistry::Count()));
+
+            // Route-time fallback: missing manifest or empty glsl_path → VAB_Vec3 + warning.
+            if (!pm || pm->glsl_path.empty())
             {
-                // Emit POSITION_LOCATION if the provider uses a VBO slot.
-                // The emitter can extend this to emit set/binding for SSBO providers.
-                writer.EmitInclude(std::string(pp->glsl_path));
+                if (kCompositorAssemblerVerbose || pm == nullptr)
+                {
+                    std::fprintf(stderr,
+                        "[CompositorAssembler] provider manifest missing/empty, fallback to VAB_Vec3"
+                        " pos_id=%u hash=%u\n",
+                        static_cast<unsigned>(f.position_provider),
+                        f.user_provider_path_hash);
+                }
+                pm = ProviderManifestRegistry::FindByPosId(hgl::graph::PositionProviderId::VAB_Vec3);
+            }
+
+            if (pm && !pm->glsl_path.empty())
+            {
+                writer.EmitInclude(pm->glsl_path);
+                provider_is_clip_ndc = (pm->output_space == hgl::graph::OutputSpace::ClipNDC);
             }
             else
             {
-                // Fallback: legacy POSITION_KIND macro + common/vertex_input_position.glsl
+                // Last-resort: legacy POSITION_KIND macro path.
                 writer.EmitDefine("POSITION_KIND", "2");
                 writer.EmitInclude("common/vertex_input_position.glsl");
             }
@@ -196,6 +226,9 @@ namespace
 
         // ── Axis 2: vertex policy ─────────────────────────────────────────────
         // Each policy file implements ApplyVertexTransform(local, out worldPos, out clipPos).
+        // Skip entirely when provider_is_clip_ndc: the provider already outputs NDC coords,
+        // so no MVP/Passthrough transform is needed (e.g. PCG_FullscreenTriangle).
+        if (!provider_is_clip_ndc)
         {
             const hgl::graph::VertexPolicyDescriptor *vp =
                 hgl::graph::FindBuiltinVertexPolicy(f.vertex_policy);
@@ -349,7 +382,8 @@ namespace
         hgl::graph::CompositorFeatureFlags flags;
         flags.vertex_attrib_bits = key.vertex_attribute_feature_bits;
 
-        flags.position_provider = key.position_provider;
+        flags.position_provider       = key.position_provider;
+        flags.user_provider_path_hash = key.user_provider_path_hash;
         if (key.surface_type == hgl::graph::SurfaceType::Sky)
         {
             flags.has_direction      = true;
@@ -490,13 +524,15 @@ namespace
 
     hgl::graph::CompositorFeatureFlags VSFeatureFlagsFromRow(const hgl::graph::mtl::MaterialVariantRow &row,
                                                              hgl::graph::CoordinateSystem2D coord_2d = hgl::graph::CoordinateSystem2D::NDC,
-                                                             std::optional<hgl::graph::PositionProviderId> key_position_provider = std::nullopt)
+                                                             std::optional<hgl::graph::PositionProviderId> key_position_provider = std::nullopt,
+                                                             uint32_t user_provider_path_hash = 0)
     {
         hgl::graph::CompositorFeatureFlags flags;
         // Runtime key overrides the row default for position_provider:
         // row stores the preset default (e.g. VAB_Vec3); key carries the effective
         // value from the recipe (e.g. VAB_Vec2 for dim=D2).
-        flags.position_provider = key_position_provider.value_or(row.position_provider);
+        flags.position_provider       = key_position_provider.value_or(row.position_provider);
+        flags.user_provider_path_hash = static_cast<uint32_t>(user_provider_path_hash);
 
         for (size_t i = 0; i < static_cast<size_t>(hgl::graph::VertexAttrib::RANGE_SIZE); ++i)
         {
@@ -565,12 +601,13 @@ namespace
 
     std::string BuildVSFromRow(const hgl::graph::mtl::MaterialVariantRow &row,
                                hgl::graph::CoordinateSystem2D coord_2d = hgl::graph::CoordinateSystem2D::NDC,
-                               std::optional<hgl::graph::PositionProviderId> key_position_provider = std::nullopt)
+                               std::optional<hgl::graph::PositionProviderId> key_position_provider = std::nullopt,
+                               uint32_t user_provider_path_hash = 0)
     {
         if (row.vs_template_path && row.vs_template_path[0])
             return BuildIncludeOnlyVS(row.vs_template_path);
 
-        return BuildForwardVertexEntry(VSFeatureFlagsFromRow(row, coord_2d, key_position_provider));
+        return BuildForwardVertexEntry(VSFeatureFlagsFromRow(row, coord_2d, key_position_provider, user_provider_path_hash));
     }
 
     /// Legacy key-derived FS feature inference: only used by non-builtin fallback assembly.
@@ -731,32 +768,46 @@ namespace
                                hgl::graph::ShaderRequirementSet &req_set,
                                const std::string &lib_path)
     {
-        // position provider
+        // position provider — Phase 7: manifest-driven, mirrors BuildForwardVertexEntry.
         {
-            const hgl::graph::PositionProvider *pp = hgl::graph::FindBuiltinProvider(f.position_provider);
-            if (pp && !pp->glsl_path.empty())
-                req_set.ParseFromGLSLFile(pp->glsl_path, lib_path);
-        }
+            using hgl::graph::ProviderManifest;
+            using hgl::graph::ProviderManifestRegistry;
 
-        // Collect camera / transform / material-instance requirements directly,
-        // mirroring BuildForwardVertexEntry() which always includes these files.
-        if (f.needs_camera)
-            req_set.ParseFromGLSLFile("common/ubo_camera.glsl", lib_path);
-        if (f.needs_transform)
-            req_set.ParseFromGLSLFile("common/ssbo_transform.glsl", lib_path);
-        // ssbo_material_instance.glsl is only emitted when the material has MI data.
-        // When has_mi=false the stub provides no descriptor binding, so nothing to parse.
-        if (f.has_mi)
-            req_set.ParseFromGLSLFile("common/ssbo_material_instance.glsl", lib_path);
+            const ProviderManifest *pm = nullptr;
+            if (f.position_provider == hgl::graph::PositionProviderId::UserPCG)
+                pm = ProviderManifestRegistry::FindByPathHash(f.user_provider_path_hash);
+            else
+                pm = ProviderManifestRegistry::FindByPosId(f.position_provider);
 
-        // vertex policy
-        {
-            const hgl::graph::VertexPolicyDescriptor *vp = hgl::graph::FindBuiltinVertexPolicy(f.vertex_policy);
-            if (vp && !vp->glsl_path.empty())
+            if (!pm || pm->glsl_path.empty())
+                pm = ProviderManifestRegistry::FindByPosId(hgl::graph::PositionProviderId::VAB_Vec3);
+
+            if (pm && !pm->glsl_path.empty())
+                req_set.ParseFromGLSLFile(pm->glsl_path, lib_path);
+
+            // If ClipNDC provider, skip vertex policy (same logic as BuildForwardVertexEntry).
+            const bool clip_ndc = pm && (pm->output_space == hgl::graph::OutputSpace::ClipNDC);
+
+            // Collect camera / transform / material-instance requirements directly,
+            // mirroring BuildForwardVertexEntry() which always includes these files.
+            if (f.needs_camera)
+                req_set.ParseFromGLSLFile("common/ubo_camera.glsl", lib_path);
+            if (f.needs_transform)
+                req_set.ParseFromGLSLFile("common/ssbo_transform.glsl", lib_path);
+            // ssbo_material_instance.glsl is only emitted when the material has MI data.
+            if (f.has_mi)
+                req_set.ParseFromGLSLFile("common/ssbo_material_instance.glsl", lib_path);
+
+            // vertex policy — skip when ClipNDC
+            if (!clip_ndc)
             {
-                if (vp->needs_viewport)
-                    req_set.ParseFromGLSLFile("common/ubo_viewport.glsl", lib_path);
-                req_set.ParseFromGLSLFile(vp->glsl_path, lib_path);
+                const hgl::graph::VertexPolicyDescriptor *vp = hgl::graph::FindBuiltinVertexPolicy(f.vertex_policy);
+                if (vp && !vp->glsl_path.empty())
+                {
+                    if (vp->needs_viewport)
+                        req_set.ParseFromGLSLFile("common/ubo_viewport.glsl", lib_path);
+                    req_set.ParseFromGLSLFile(vp->glsl_path, lib_path);
+                }
             }
         }
     }
@@ -814,7 +865,11 @@ namespace hgl::graph
 
     CompositorAssembler::CompositorAssembler(const std::string &shader_library_path)
         : shader_lib_path_(shader_library_path)
-    {}
+    {
+        // ProviderManifestRegistry is lazily initialized on the first Find*
+        // call via EnsureInitialized() inside ProviderManifest.cpp, so no
+        // explicit initialization is needed here.
+    }
 
     bool CompositorAssembler::ReadFileCached(const std::string &rel_path,
                                              std::string       &out_source,
@@ -904,8 +959,13 @@ namespace hgl::graph
         {
             if (resolved_row)
             {
+                std::fprintf(stderr,
+                    "[CompositorAssembler] AssembleVS: explicit_row path pos_id=%u coord2d=%u user_hash=%u\n",
+                    static_cast<unsigned>(key.position_provider),
+                    static_cast<unsigned>(coord_2d),
+                    key.user_provider_path_hash);
                 LogVSAssemblyPath("explicit_row", key, desc, resolved_row);
-                out_source = BuildVSFromRow(*resolved_row, coord_2d, key.position_provider);
+                out_source = BuildVSFromRow(*resolved_row, coord_2d, key.position_provider, key.user_provider_path_hash);
             }
             else
             {
@@ -1094,7 +1154,7 @@ namespace hgl::graph
                 if (!resolved_row->vs_template_path || !resolved_row->vs_template_path[0])
                 {
                     // Standard two-axis path: collect from fragment/policy/position files
-                    CollectVSRequirements(VSFeatureFlagsFromRow(*resolved_row, coord_2d, key.position_provider), artifact.req_set, shader_lib_path_);
+                    CollectVSRequirements(VSFeatureFlagsFromRow(*resolved_row, coord_2d, key.position_provider, key.user_provider_path_hash), artifact.req_set, shader_lib_path_);
                 }
                 else
                 {

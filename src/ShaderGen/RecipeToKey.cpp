@@ -457,6 +457,11 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     assert((r.vertex_provider_glsl.empty() || r.preset == MaterialPreset::Custom)
            && "vertex_provider_glsl is only valid when preset == MaterialPreset::Custom");
 
+    std::printf("[RecipeToKey] BuildBaseVariantKeyFromRecipe enter: preset=%u dim=%u prim=%u\n",
+                static_cast<unsigned>(r.preset),
+                static_cast<unsigned>(r.dim),
+                static_cast<unsigned>(r.prim));
+
     const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
 
     // ── Step 1: preset → base variant key ────────────────────────────────────
@@ -489,6 +494,11 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
         // so that PCG providers whose manifest declares allow_dim_override=false are preserved.
         k = RouteKey(r.preset, 0u, rov);
 
+        std::printf("[RecipeToKey] Phase6: after RouteKey pos_provider=%u (0=Unk,2=Vec2,3=Vec3) dim=%u policy=%u\n",
+                    static_cast<unsigned>(k.position_provider),
+                    static_cast<unsigned>(r.dim),
+                    static_cast<unsigned>(effective_vertex_policy));
+
         // Phase 6: use manifest allow_dim_override instead of IsPCGPositionProvider().
         // If the manifest is absent (unregistered ID) we conservatively treat it as
         // non-overridable (same safety as old PCG guard).
@@ -496,10 +506,20 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
             const hgl::graph::ProviderManifest* pm =
                 hgl::graph::ProviderManifestRegistry::FindByPosId(k.position_provider);
             const bool may_override = pm ? pm->allow_dim_override : false;
+
+            std::printf("[RecipeToKey] Phase6: manifest=%p allow_dim_override=%d manifest_count=%u\n",
+                        (const void*)pm,
+                        (int)may_override,
+                        (unsigned)hgl::graph::ProviderManifestRegistry::Count());
+
             if (may_override)
             {
-                k.position_provider = ResolveProviderFromDemand(
-                    r.preset, r.dim, effective_vertex_policy);
+                const PositionProviderId new_provider =
+                    ResolveProviderFromDemand(r.preset, r.dim, effective_vertex_policy);
+                std::printf("[RecipeToKey] Phase6: override pos_provider %u -> %u\n",
+                            static_cast<unsigned>(k.position_provider),
+                            static_cast<unsigned>(new_provider));
+                k.position_provider = new_provider;
             }
         }
     }

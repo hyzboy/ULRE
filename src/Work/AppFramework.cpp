@@ -9,6 +9,8 @@
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/ecs/core/DefaultSystems.h>
 #include <hgl/log/Logger.h>
+#include <hgl/shadergen/ProviderManifest.h>
+#include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/io/event/MouseEvent.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -110,6 +112,7 @@ namespace hgl
 
         if (APP_FRAMEWORK_COUNT == 0)
         {
+            graph::ProviderManifestRegistry::Shutdown();
             graph::CloseShaderCompiler();
         }
     }
@@ -157,6 +160,8 @@ namespace hgl
         {
             if (!graph::InitShaderCompiler())
                 return false;
+
+            graph::ProviderManifestRegistry::Initialize(graph::GetShaderLibraryPath());
 
             logger::InitLogger(app_name);
 
