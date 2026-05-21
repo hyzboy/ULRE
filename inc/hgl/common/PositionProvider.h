@@ -27,6 +27,22 @@ namespace hgl::graph
         UserCustom_Begin       = 0x8000,
     };
 
+    /// Returns true if the given provider is a procedural (PCG) source that
+    /// generates vertex positions without consuming any VAB attributes.
+    ///
+    /// Single point of truth: when adding a new PCG_* provider above, add a
+    /// matching case here.  Callers must NOT inline per-ID checks.
+    constexpr bool IsPCGPositionProvider(PositionProviderId id) noexcept
+    {
+        switch (id)
+        {
+        case PositionProviderId::PCG_FullscreenTriangle:
+            return true;
+        default:
+            return false;
+        }
+    }
+
     /// Describes one position provider: where the ID maps to, which GLSL file
     /// implements `GetPositionLocal()`, and what GPU resources it requires.
     ///

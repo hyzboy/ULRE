@@ -442,24 +442,30 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
             ? r.vertex_policy
             : alias_axes.vertex_policy;
 
-        // Derive position_provider from explicit vertex_policy, then dim.
-        // Mesh3D is the row default and does NOT override dim — treat it as "unspecified".
-        // Only policies that carry an inherent dimensionality (Quad2D, Billboard*) are
-        // authoritative over dim.
-        if (effective_vertex_policy == VertexTransformPolicy::Quad2D)
-            rov.position_provider = PositionProviderId::VAB_Vec2;
-        else if (r.dim == MaterialRecipe::Dim::D2)
-            rov.position_provider = PositionProviderId::VAB_Vec2;
-        else
-            rov.position_provider = PositionProviderId::DirectVec3;
-
         // Billboard geometry modes need a hard filter: their VS transform is different.
         if (effective_vertex_policy == VertexTransformPolicy::BillboardCameraFacing)
             rov.preferred_geometry_mode = GeometryMode::BillboardCameraFacing;
         else if (effective_vertex_policy == VertexTransformPolicy::BillboardAxisLocked)
             rov.preferred_geometry_mode = GeometryMode::BillboardAxisLocked;
 
+        // Do NOT preset position_provider in rov here; let RouteKey pick up the builtin
+        // entry's native position_provider first (e.g. PCG_FullscreenTriangle).
+        // We apply the dim-based override AFTER RouteKey so that PCG providers are preserved.
         k = RouteKey(r.preset, 0u, rov);
+
+        // Override position_provider from dim / vertex_policy only when the builtin entry
+        // does NOT use a PCG provider.  PCG providers encode procedural generation intent
+        // that must not be replaced by the caller's dim axis.  Classification is centralized
+        // in IsPCGPositionProvider() — add new PCG_* IDs there, not here.
+        if (!IsPCGPositionProvider(k.position_provider))
+        {
+            if (effective_vertex_policy == VertexTransformPolicy::Quad2D)
+                k.position_provider = PositionProviderId::VAB_Vec2;
+            else if (r.dim == MaterialRecipe::Dim::D2)
+                k.position_provider = PositionProviderId::VAB_Vec2;
+            else
+                k.position_provider = PositionProviderId::DirectVec3;
+        }
     }
 
     // ── Step 2: dimension ─────────────────────────────────────────────────────
