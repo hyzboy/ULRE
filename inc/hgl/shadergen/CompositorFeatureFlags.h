@@ -19,6 +19,7 @@ struct CompositorFeatureFlags
     mtl::VertexTransformPolicy    vertex_policy     = mtl::VertexTransformPolicy::Mesh3D;
     uint32 vertex_attrib_bits = 0;
     bool has_direction    = false;
+    bool has_mi           = false;  ///< Material has per-instance data (schema != None); controls mbi_id SSBO emission.
 
     bool HasVertexAttrib(const VertexAttrib attrib)const
     {

@@ -176,9 +176,23 @@ namespace
         // Emit each base fragment directly; no macro-based prologue needed.
         if (f.needs_camera)    writer.EmitInclude("common/ubo_camera.glsl");
         if (f.needs_transform) writer.EmitInclude("common/ssbo_transform.glsl");
-        // Material instance ID: emit the ID-only variant so GetMaterialInstanceID() is defined.
-        writer.EmitDefine("MATERIAL_INSTANCE_ID_ONLY");
-        writer.EmitInclude("common/ssbo_material_instance.glsl");
+        // Material instance ID SSBO: only emit when the material actually carries MI data.
+        // When has_mi=false no descriptor slot is consumed and no vkUpdateDescriptorSets
+        // warning is produced; GetMaterialInstanceID() is provided as an inline stub.
+        if (f.has_mi)
+        {
+            writer.EmitDefine("MATERIAL_INSTANCE_ID_ONLY");
+            writer.EmitInclude("common/ssbo_material_instance.glsl");
+        }
+        else
+        {
+            // No MI: provide a zero-returning stub so shader code calling
+            // GetMaterialInstanceID() still compiles without declaring any SSBO.
+            out += "#ifndef ULRE_HAS_GET_MATERIAL_INSTANCE_ID\n"
+                   "#define ULRE_HAS_GET_MATERIAL_INSTANCE_ID\n"
+                   "uint GetMaterialInstanceID() { return 0u; }\n"
+                   "#endif\n";
+        }
 
         // ── Axis 2: vertex policy ─────────────────────────────────────────────
         // Each policy file implements ApplyVertexTransform(local, out worldPos, out clipPos).
@@ -496,6 +510,7 @@ namespace
         flags.needs_camera    = row.resources.needs_camera;
         flags.needs_transform = row.resources.needs_transform;
         flags.coord_2d        = coord_2d;
+        flags.has_mi          = (row.schema != hgl::graph::mtl::ShaderDataSchema::None);
 
         // If position_provider is VAB_Vec2 (2D input), derive vertex_policy directly from
         // coord_2d — the three 2D coordinate systems map 1:1 to concrete policies:
@@ -729,10 +744,10 @@ namespace
             req_set.ParseFromGLSLFile("common/ubo_camera.glsl", lib_path);
         if (f.needs_transform)
             req_set.ParseFromGLSLFile("common/ssbo_transform.glsl", lib_path);
-        // ssbo_material_instance.glsl is always emitted by BuildForwardVertexEntry
-        // (with MATERIAL_INSTANCE_ID_ONLY). Parse its @sfm annotations so mbi_id
-        // ends up in the merged manifest and MBI_ID_BINDING is emitted.
-        req_set.ParseFromGLSLFile("common/ssbo_material_instance.glsl", lib_path);
+        // ssbo_material_instance.glsl is only emitted when the material has MI data.
+        // When has_mi=false the stub provides no descriptor binding, so nothing to parse.
+        if (f.has_mi)
+            req_set.ParseFromGLSLFile("common/ssbo_material_instance.glsl", lib_path);
 
         // vertex policy
         {
