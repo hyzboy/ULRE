@@ -23,6 +23,7 @@
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/mtl/MaterialVariantRegistry.h>
 #include <hgl/shadergen/ColorSource.h>
+#include <hgl/shadergen/ProviderManifest.h>
 #include <cassert>
 
 namespace hgl::graph::mtl
@@ -32,6 +33,33 @@ namespace hgl::graph::mtl
 // ─────────────────────────────────────────────────────────────────────────────
 
 static bool HasAnyArrayTexture(const MaterialRecipe &r) noexcept;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ResolveProviderFromDemand
+//
+// Table-driven: given recipe dim / vertex_policy, returns the VAB PositionProviderId
+// that best represents the geometry.  This replaces the old hardcoded dim-switch
+// in BuildBaseVariantKeyFromRecipe Step 1.
+//
+// Rules (in priority order):
+//   1. Quad2D policy              → VAB_Vec2
+//   2. dim == D2                  → VAB_Vec2
+//   3. (default / D3)             → VAB_Vec3
+//
+// Future entries (VAB_Vec4, VAB_IVec2, …) can be added here without touching
+// any other C++ routing code.
+// ─────────────────────────────────────────────────────────────────────────────
+static PositionProviderId ResolveProviderFromDemand(
+    const MaterialPreset         /*preset*/,
+    const MaterialRecipe::Dim    dim,
+    const VertexTransformPolicy  vertex_policy) noexcept
+{
+    if (vertex_policy == VertexTransformPolicy::Quad2D)
+        return PositionProviderId::VAB_Vec2;
+    if (dim == MaterialRecipe::Dim::D2)
+        return PositionProviderId::VAB_Vec2;
+    return PositionProviderId::VAB_Vec3;
+}
 
 namespace
 {
@@ -457,22 +485,35 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
 
         // Do NOT preset position_provider in rov here; let RouteKey pick up the builtin
         // entry's native position_provider first (e.g. PCG_FullscreenTriangle).
-        // We apply the dim-based override AFTER RouteKey so that PCG providers are preserved.
+        // We apply the dim-based override AFTER RouteKey, gated by manifest allow_dim_override,
+        // so that PCG providers whose manifest declares allow_dim_override=false are preserved.
         k = RouteKey(r.preset, 0u, rov);
 
-        // Override position_provider from dim / vertex_policy only when the builtin entry
-        // does NOT use a PCG provider.  PCG providers encode procedural generation intent
-        // that must not be replaced by the caller's dim axis.  Classification is centralized
-        // in IsPCGPositionProvider() — add new PCG_* IDs there, not here.
-        if (!IsPCGPositionProvider(k.position_provider))
+        // Phase 6: use manifest allow_dim_override instead of IsPCGPositionProvider().
+        // If the manifest is absent (unregistered ID) we conservatively treat it as
+        // non-overridable (same safety as old PCG guard).
         {
-            if (effective_vertex_policy == VertexTransformPolicy::Quad2D)
-                k.position_provider = PositionProviderId::VAB_Vec2;
-            else if (r.dim == MaterialRecipe::Dim::D2)
-                k.position_provider = PositionProviderId::VAB_Vec2;
-            else
-                k.position_provider = PositionProviderId::VAB_Vec3;
+            const hgl::graph::ProviderManifest* pm =
+                hgl::graph::ProviderManifestRegistry::FindByPosId(k.position_provider);
+            const bool may_override = pm ? pm->allow_dim_override : false;
+            if (may_override)
+            {
+                k.position_provider = ResolveProviderFromDemand(
+                    r.preset, r.dim, effective_vertex_policy);
+            }
         }
+    }
+
+    // ── UserPCG: wire user_provider_path_hash ─────────────────────────────────
+    // Must happen after RouteKey so that k.position_provider is already set from
+    // the builtin row (for Custom preset it will be Unknown/default; we overwrite
+    // it here to UserPCG and record the path hash for the compositor).
+    if (!r.vertex_provider_glsl.empty())
+    {
+        const hgl::graph::ProviderManifest* pm =
+            hgl::graph::ProviderManifestRegistry::AcquireUserProvider(r.vertex_provider_glsl);
+        k.position_provider       = PositionProviderId::UserPCG;
+        k.user_provider_path_hash = pm ? pm->glsl_path_hash : hgl::graph::Fnv1a32(r.vertex_provider_glsl);
     }
 
     // ── Step 2: dimension ─────────────────────────────────────────────────────
