@@ -26,12 +26,12 @@ namespace hgl::graph
         { Id::VAB_Vec4,           "",                                                                                      1, false, false, false }, // placeholder
         // ── VAB integer ──────────────────────────────────────────────────────────────────────────────────────────────
         { Id::VAB_IFloat,         "",                                                                                      1, false, false, false }, // placeholder
-        { Id::VAB_IVec2,          "",                                                                                      1, false, false, false }, // placeholder (Text2D pixel coord)
+        { Id::VAB_IVec2,          "ShaderLibrary/position_provider/vab_ivec2.glsl",                                       1, false, false, false }, // UI / Text2D pixel coord
         { Id::VAB_IVec3,          "",                                                                                      1, false, false, false }, // placeholder (voxel)
         { Id::VAB_IVec4,          "",                                                                                      1, false, false, false }, // placeholder
         // ── VAB unsigned ─────────────────────────────────────────────────────────────────────────────────────────────
         { Id::VAB_UFloat,         "",                                                                                      1, false, false, false }, // placeholder
-        { Id::VAB_UVec2,          "",                                                                                      1, false, false, false }, // placeholder
+        { Id::VAB_UVec2,          "ShaderLibrary/position_provider/vab_uvec2.glsl",                                       1, false, false, false }, // UI / 2D game sprite coord
         { Id::VAB_UVec3,          "",                                                                                      1, false, false, false }, // placeholder
         { Id::VAB_UVec4,          "",                                                                                      1, false, false, false }, // placeholder
         // ── VAB bool (rarely enter VS directly) ──────────────────────────────────────────────────────────────────────
