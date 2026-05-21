@@ -25,7 +25,7 @@
 // vert_attrib_writers.glsl relies on this to transform normals and tangents.
 //
 // Prerequisites guaranteed by CompositorAssembler before this include:
-//   - position_provider/<file>.glsl  → vec3 GetPositionLocal()
+//   - position_provider/<file>.glsl  → vec4 GetPosition()
 //   - compositor/vert_forward_ubo.glsl → GetTransform(), camera.vp
 
 // Shared LocalToWorld matrix — also consumed by vert_attrib_writers.glsl.

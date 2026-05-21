@@ -27,9 +27,9 @@ layout(set=POSITION_SSBO_SET, binding=POSITION_SSBO_BINDING) readonly buffer Pos
     vec3 positions[];
 } u_PositionData;
 
-vec3 GetPositionLocal()
+vec4 GetPosition()
 {
-    return u_PositionData.positions[gl_VertexIndex];
+    return vec4(u_PositionData.positions[gl_VertexIndex], 1.0);
 }
 
 #endif // ULRE_POS_SSBO_PACKED_GLSL

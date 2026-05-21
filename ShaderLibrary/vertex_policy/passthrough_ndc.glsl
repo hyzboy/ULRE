@@ -5,7 +5,7 @@
 // vertex_policy/passthrough_ndc.glsl
 //
 // Transform policy: NDC passthrough — no matrix multiplication.
-// For use with position providers whose GetPositionLocal() already returns
+// For use with position providers whose GetPosition() already returns
 // clip/NDC coordinates (e.g. pcg_fullscreen_triangle.glsl).
 //
 // world_pos.w is set to 0 to signal "world position is not applicable".
@@ -17,7 +17,7 @@
 // }
 //
 // Prerequisites guaranteed by CompositorAssembler before this include:
-//   - position_provider/<file>.glsl  → vec3 GetPositionLocal()  (NDC coords)
+//   - position_provider/<file>.glsl  → vec4 GetPosition()  (NDC coords)
 
 void ApplyVertexTransform(vec3  local_pos,
                           out vec4 world_pos,

@@ -25,7 +25,7 @@ void main()
 {
     fragMaterialInstanceID = GetMaterialInstanceID();
     mat4 transform_mat = GetTransform();
-    vec4 worldPos = transform_mat * vec4(GetPositionLocal(), 1.0);
+    vec4 worldPos = transform_mat * GetPosition();
 
     fragVertexColor = unpackUnorm4x8(color_palette.color[ColorIndex]);
 

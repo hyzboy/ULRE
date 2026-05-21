@@ -4,7 +4,7 @@
 // vert_forward_main.glsl -- Unified forward vertex entry point (policy-driven).
 //
 // Emit order enforced by CompositorAssembler::BuildForwardVertexEntry():
-//   1. #include "position_provider/<file>.glsl"  → vec3 GetPositionLocal()
+//   1. #include "position_provider/<file>.glsl"  → vec4 GetPosition()
 //   2. conditionally: #include "common/ubo_camera.glsl"  (when needs_camera)
 //      conditionally: #include "common/ssbo_transform.glsl"  (when needs_transform)
 //      always:        #define MATERIAL_INSTANCE_ID_ONLY + #include "common/ssbo_material_instance.glsl"
@@ -48,7 +48,7 @@ void main()
     fragMaterialInstanceID = GetMaterialInstanceID();
 
     // ── Axis 1: position provider (already included above) ─────────────────
-    vec3 local = GetPositionLocal();
+    vec3 local = GetPosition().xyz;
 
     // ── Axis 2: vertex policy (already included above) ──────────────────────
     vec4 worldPos;

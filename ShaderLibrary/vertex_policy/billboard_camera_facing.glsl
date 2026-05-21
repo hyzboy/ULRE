@@ -19,7 +19,7 @@
 // }
 //
 // Prerequisites guaranteed by CompositorAssembler before this include:
-//   - position_provider/<file>.glsl  → vec3 GetPositionLocal()  (expects 2-D offset, z ignored)
+//   - position_provider/<file>.glsl  → vec4 GetPosition()  (expects 2-D offset, z ignored)
 //   - compositor/vert_forward_ubo.glsl → GetTransform(), camera
 
 // Billboard rotation matrix for Z-up world (Vulkan right-handed):

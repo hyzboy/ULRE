@@ -16,7 +16,7 @@
 // }
 //
 // Prerequisites guaranteed by CompositorAssembler before this include:
-//   - position_provider/<file>.glsl  → vec3 GetPositionLocal()  (expects NDC xy)
+//   - position_provider/<file>.glsl  → vec4 GetPosition()  (expects NDC xy)
 
 void ApplyVertexTransform(vec3  local_pos,
                           out vec4 world_pos,

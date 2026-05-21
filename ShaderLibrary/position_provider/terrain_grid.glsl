@@ -43,14 +43,14 @@ layout(set=TERRAIN_SET, binding=0) uniform TerrainParams
 
 layout(set=TERRAIN_SET, binding=1) uniform sampler2D u_Heightmap;
 
-vec3 GetPositionLocal()
+vec4 GetPosition()
 {
     int   ix = gl_VertexIndex % u_Terrain.cols;
     int   iy = gl_VertexIndex / u_Terrain.cols;
     vec2  xy = u_Terrain.tile_origin + vec2(ix, iy) * u_Terrain.cell_size;
     float z  = texture(u_Heightmap, vec2(ix, iy) / vec2(u_Terrain.cols)).r
                * u_Terrain.height_scale;
-    return vec3(xy, z);
+    return vec4(xy, z, 1.0);
 }
 
 #endif // ULRE_POS_TERRAIN_GRID_GLSL
