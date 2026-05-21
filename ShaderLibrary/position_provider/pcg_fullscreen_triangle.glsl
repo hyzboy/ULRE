@@ -1,30 +1,27 @@
-// @sfm:no-require
-#ifndef ULRE_POS_PCG_FULLSCREEN_TRIANGLE_GLSL
-#define ULRE_POS_PCG_FULLSCREEN_TRIANGLE_GLSL
-
 // position_provider/pcg_fullscreen_triangle.glsl
 //
 // Position source: procedural – computes NDC positions from gl_VertexIndex.
 // Three vertices cover the entire screen (including clip-space overflow) so
 // the rasteriser fills every fragment exactly once.
 //
-// IMPORTANT: GetPositionLocal() returns coordinates already in NDC space,
-// NOT object/local space.  The main vertex shader template must NOT multiply
-// the result by any MVP matrix.  Use a dedicated PCG main template that emits:
+// GetPosition() returns coordinates in clip/NDC space (output_space: clip_ndc).
+// The compositor MUST emit:  gl_Position = GetPosition();
+// and must NOT apply any MVP transform.
 //
-//   gl_Position = vec4(GetPositionLocal(), 1.0);
-//
-// MANIFEST: {
-//   "vab_count": 0,
-//   "position_space": "ndc",
-//   "ssbo": [], "ubo": [], "samplers": []
-// }
+// @sfm version: 1
+// @sfm kind: pcg
+// @sfm output_space: clip_ndc
+// @sfm consumes_vab: false
+// @sfm allow_dim_override: false
 
-vec3 GetPositionLocal()
+#ifndef ULRE_POS_PCG_FULLSCREEN_TRIANGLE_GLSL
+#define ULRE_POS_PCG_FULLSCREEN_TRIANGLE_GLSL
+
+vec4 GetPosition()
 {
     // Vertices at NDC (−1,−1), (3,−1), (−1,3) cover the entire clip quad.
     vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
-    return vec3(p * 2.0 - 1.0, 0.0);
+    return vec4(p * 2.0 - 1.0, 0.0, 1.0);
 }
 
 #endif // ULRE_POS_PCG_FULLSCREEN_TRIANGLE_GLSL

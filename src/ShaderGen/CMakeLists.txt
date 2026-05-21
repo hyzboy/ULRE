@@ -186,7 +186,9 @@ SOURCE_GROUP("Standard Material\\3D" FILES ${STD_MTL_3D_SOURCE_FILES})
 # Position Provider Registry
 SET(POSITION_PROVIDER_FILES ${ROOT_INCLUDE_PATH}/hgl/common/PositionProvider.h
                             ${SHADERGEN_INCLUDE_PATH}/PositionProviderRegistry.h
-                            PositionProviderRegistry.cpp)
+                            PositionProviderRegistry.cpp
+                            ${SHADERGEN_INCLUDE_PATH}/ProviderManifest.h
+                            ProviderManifest.cpp)
 SOURCE_GROUP("Position Provider" FILES ${POSITION_PROVIDER_FILES})
 
 # Vertex Policy Registry

@@ -58,6 +58,22 @@ namespace hgl::graph
     static constexpr size_t kBuiltinProviderCount =
         sizeof(kBuiltinProviders) / sizeof(kBuiltinProviders[0]);
 
+    // Pre-built ID list (parallel to kBuiltinProviders)
+    static const PositionProviderId kBuiltinProviderIds[] =
+    {
+        Id::VAB_Float, Id::VAB_Vec2, Id::VAB_Vec3, Id::VAB_Vec4,
+        Id::VAB_IFloat, Id::VAB_IVec2, Id::VAB_IVec3, Id::VAB_IVec4,
+        Id::VAB_UFloat, Id::VAB_UVec2, Id::VAB_UVec3, Id::VAB_UVec4,
+        Id::VAB_BVec2, Id::VAB_BVec3, Id::VAB_BVec4,
+        Id::VAB_DVec2, Id::VAB_DVec3, Id::VAB_DVec4,
+        Id::VAB_Packed_RGB10A2, Id::VAB_Packed_R16G16, Id::VAB_Packed_RGBA16F,
+        Id::PCG_FullscreenTriangle, Id::PCG_FullscreenQuad,
+        Id::PCG_UnitCube, Id::PCG_UnitSphereIcosahedron,
+        Id::PCG_GridXZ, Id::PCG_DebugAxes,
+    };
+    static_assert(sizeof(kBuiltinProviderIds)/sizeof(kBuiltinProviderIds[0]) == kBuiltinProviderCount,
+                  "kBuiltinProviderIds out of sync with kBuiltinProviders");
+
     const PositionProvider *FindBuiltinProvider(PositionProviderId id) noexcept
     {
         // UserPCG is never in this table; the caller resolves it via path hash.
@@ -70,6 +86,12 @@ namespace hgl::graph
             if (kBuiltinProviders[i].id == id)
                 return &kBuiltinProviders[i];
         return nullptr;
+    }
+
+    const PositionProviderId *GetAllBuiltinProviderIds(size_t *out_count) noexcept
+    {
+        if (out_count) *out_count = kBuiltinProviderCount;
+        return kBuiltinProviderIds;
     }
 
 }//namespace hgl::graph
