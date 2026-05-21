@@ -56,7 +56,7 @@ struct BuiltinVariantEntry
 
     SurfaceType          surface_type     = _BVE_ST::Unlit;
     GeometryMode         geometry_mode    = _BVE_GM::Mesh3D;
-    PositionProviderId   position_provider = PositionProviderId::DirectVec3;
+    PositionProviderId   position_provider = PositionProviderId::VAB_Vec3;
     LightingModel        lighting         = _BVE_LM::Lambert;
     SkyLightAmbientModel sky_model     = SkyLightAmbientModel::Simple;
     RenderAlphaMode      blend         = _BVE_RM::Opaque;

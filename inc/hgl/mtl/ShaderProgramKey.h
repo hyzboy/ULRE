@@ -9,7 +9,7 @@ namespace hgl::graph::mtl
     struct VertexProgramKey
     {
         GeometryMode       geometry_mode = GeometryMode::Mesh3D;
-        PositionProviderId position_provider = PositionProviderId::DirectVec3;
+        PositionProviderId position_provider = PositionProviderId::VAB_Vec3;
         // SSBO-migration target: once vertex attribs are passed via SSBO this
         // field will move to a dedicated SSBO layout key and be removed here.
         uint32             vertex_attribute_feature_bits = 0;

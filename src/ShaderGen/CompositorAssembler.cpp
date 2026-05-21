@@ -459,7 +459,7 @@ namespace
         if (row->surface_type != key.surface_type
          || row->geometry_mode != key.geometry_mode
          // position_provider is a runtime VS-only axis and must NOT be compared here:
-         // the registry row always stores the preset default (e.g. DirectVec3) while the
+         // the registry row always stores the preset default (e.g. VAB_Vec3) while the
          // key carries the runtime value (e.g. VAB_Vec2 for a D2 recipe). The assembler
          // reads the effective provider from the key, not from the row.
          || row->blend != key.blend_mode
@@ -480,7 +480,7 @@ namespace
     {
         hgl::graph::CompositorFeatureFlags flags;
         // Runtime key overrides the row default for position_provider:
-        // row stores the preset default (e.g. DirectVec3); key carries the effective
+        // row stores the preset default (e.g. VAB_Vec3); key carries the effective
         // value from the recipe (e.g. VAB_Vec2 for dim=D2).
         flags.position_provider = key_position_provider.value_or(row.position_provider);
 

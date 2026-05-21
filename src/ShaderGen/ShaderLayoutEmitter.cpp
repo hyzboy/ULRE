@@ -84,7 +84,7 @@ void EmitPositionInput(std::ostream &out,
                        const PositionProvider &p,
                        int position_location)
 {
-    if (p.id == PositionProviderId::DirectVec3)
+    if (p.id == PositionProviderId::VAB_Vec3)
     {
         out << "layout(location=" << position_location << ") in vec3 inPosition;\n";
         out << "#define GetPositionLocal() (inPosition)\n";

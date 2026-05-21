@@ -15,7 +15,7 @@ namespace hgl::graph::mtl
         MaterialPreset preset = MaterialPreset::PureColor;
         GeometryMode geometry_mode = GeometryMode::Mesh3D;
         VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
-        PositionProviderId position_provider = PositionProviderId::DirectVec3;
+        PositionProviderId position_provider = PositionProviderId::VAB_Vec3;
         uint32 supported_va_bits_mask = 0;
         const char *vs_template_path = "";
         ShaderStageFeatureDesc vs_features{};

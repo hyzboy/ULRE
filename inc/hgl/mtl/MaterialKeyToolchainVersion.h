@@ -12,6 +12,9 @@ namespace hgl::graph::mtl
     constexpr uint16_t kMaterialKeySpvVersion    = 0x0105; // SPV 1.5
 
     // Schema version is bumped whenever MaterialKey layout changes.
-    constexpr uint32_t kMaterialKeySchemaVersion = 1;
+    // v2: PositionProviderId renumbered (VAB 0x01-0xFF, PCG 0x0100+, UserPCG 0x1000)
+    //     DirectVec3 renamed to VAB_Vec3; Unknown moved from 0x7FFF to 0x0000.
+    //     All SPIR-V and VkPipelineCache blobs from schema v1 must be discarded.
+    constexpr uint32_t kMaterialKeySchemaVersion = 2;
 
 } // namespace hgl::graph::mtl

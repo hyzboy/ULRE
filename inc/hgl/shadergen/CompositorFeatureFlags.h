@@ -15,7 +15,7 @@ namespace hgl::graph {
 struct CompositorFeatureFlags
 {
     // Vertex stage flags
-    PositionProviderId            position_provider = PositionProviderId::DirectVec3;
+    PositionProviderId            position_provider = PositionProviderId::VAB_Vec3;
     mtl::VertexTransformPolicy    vertex_policy     = mtl::VertexTransformPolicy::Mesh3D;
     uint32 vertex_attrib_bits = 0;
     bool has_direction    = false;

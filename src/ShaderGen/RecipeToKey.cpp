@@ -426,9 +426,9 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
 
     // ── Step 1: preset → base variant key ────────────────────────────────────
     // Routes through RouteKey() with two targeted hints:
-    //   • ov.position_provider: soft preference (VAB_Vec2 for 2D, DirectVec3 for 3D).
+    //   • ov.position_provider: soft preference (VAB_Vec2 for 2D, VAB_Vec3 for 3D).
     //     Selects the correct variant when a preset has both a 2D entry (VAB_Vec2 position
-    //     attribute) and a 3D entry (DirectVec3). Presets whose 2D/3D shader is identical
+    //     attribute) and a 3D entry (VAB_Vec3). Presets whose 2D/3D shader is identical
     //     (e.g. PureColor, which has no position vertex attribute) have only one entry and
     //     are found on the fallback pass regardless of the hint.
     //   • ov.preferred_geometry_mode: hard filter, used only for billboard presets whose
@@ -464,7 +464,7 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
             else if (r.dim == MaterialRecipe::Dim::D2)
                 k.position_provider = PositionProviderId::VAB_Vec2;
             else
-                k.position_provider = PositionProviderId::DirectVec3;
+                k.position_provider = PositionProviderId::VAB_Vec3;
         }
     }
 
@@ -475,7 +475,7 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     // have separate builtin rows. Do NOT re-encode dim here.
 
     // ── Step 3: position provider ─────────────────────────────────────────────
-    // 2D recipes always use VAB_Vec2; 3D recipes use DirectVec3.
+    // 2D recipes always use VAB_Vec2; 3D recipes use VAB_Vec3.
     // No recipe-level override needed now that pos_format is removed.
 
     // ── Step 4: sky / lighting (3-D only) ────────────────────────────────────

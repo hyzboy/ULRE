@@ -122,7 +122,7 @@ namespace hgl::graph::mtl
         PrimitiveType primitive = PrimitiveType::Triangles;
         SurfaceType surface_type = SurfaceType::Unlit;
         GeometryMode geometry_mode = GeometryMode::Mesh3D;
-        PositionProviderId position_provider = PositionProviderId::DirectVec3;
+        PositionProviderId position_provider = PositionProviderId::VAB_Vec3;
 
         VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
         SurfaceShadingModel surface_model = SurfaceShadingModel::Unknown;

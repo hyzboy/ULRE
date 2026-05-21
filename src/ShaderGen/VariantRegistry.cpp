@@ -515,7 +515,7 @@ constexpr auto VA = _BVE_VA;
 const BuiltinVariantEntry kBuiltinVariants[] =
 {
     // ── 2D variants ──────────────────────────────────────────────────────────────────────────────
-    // position_provider (VAB_Vec2 / DirectVec3 / PCG_*) is a runtime VS-only axis written into
+    // position_provider (VAB_Vec2 / VAB_Vec3 / PCG_*) is a runtime VS-only axis written into
     // the key at recipe-to-key time. It does NOT differentiate registry rows — the assembler
     // reads key.position_provider directly and overrides the row default. Therefore no separate
     // "PureColor2D / VertexColor2D / VertexLuminance2D" rows are needed; every preset has a
