@@ -271,8 +271,7 @@ static StaticMaterialDefId GetStandardDefId(bool any_array) noexcept
 
 static StaticMaterialDefId GetPureColorDefId(const MaterialRecipe &r)
 {
-    const bool is2d = (r.dim == MaterialRecipe::Dim::D2)
-                  || (r.pos_format.Check() && r.pos_format.vec_size == 2);
+    const bool is2d = (r.dim == MaterialRecipe::Dim::D2);
 
     static const FixedVertexEntry kVertex2D[] = {
         { VAT_VEC2, VAN::Position },
@@ -426,29 +425,52 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
 
     // ── Step 1: preset → base variant key ────────────────────────────────────
-    // [Step 3.5 T1] Routes through the single RouteKey() entry instead of the
-    // deprecated free function MapPresetToVariantKey. Behaviour is identical
-    // (LOD resolution + canonical preset aliasing) because RouteKey() applies
-    // the same PresetResolveTable.
-    MaterialVariantKey k = RouteKey(r.preset);
+    // Routes through RouteKey() with two targeted hints:
+    //   • ov.position_provider: soft preference (VAB_Vec2 for 2D, DirectVec3 for 3D).
+    //     Selects the correct variant when a preset has both a 2D entry (VAB_Vec2 position
+    //     attribute) and a 3D entry (DirectVec3). Presets whose 2D/3D shader is identical
+    //     (e.g. PureColor, which has no position vertex attribute) have only one entry and
+    //     are found on the fallback pass regardless of the hint.
+    //   • ov.preferred_geometry_mode: hard filter, used only for billboard presets whose
+    //     VS transform logic genuinely differs by geometry mode (BillboardCameraFacing, etc.).
+    MaterialVariantKey k;
+    {
+        RuntimeKeyOverrides rov{};
+
+        const VertexTransformPolicy effective_vertex_policy =
+            (r.vertex_policy != VertexTransformPolicy::Unknown)
+            ? r.vertex_policy
+            : alias_axes.vertex_policy;
+
+        // Derive position_provider from explicit vertex_policy, then dim.
+        // Mesh3D is the row default and does NOT override dim — treat it as "unspecified".
+        // Only policies that carry an inherent dimensionality (Quad2D, Billboard*) are
+        // authoritative over dim.
+        if (effective_vertex_policy == VertexTransformPolicy::Quad2D)
+            rov.position_provider = PositionProviderId::VAB_Vec2;
+        else if (r.dim == MaterialRecipe::Dim::D2)
+            rov.position_provider = PositionProviderId::VAB_Vec2;
+        else
+            rov.position_provider = PositionProviderId::DirectVec3;
+
+        // Billboard geometry modes need a hard filter: their VS transform is different.
+        if (effective_vertex_policy == VertexTransformPolicy::BillboardCameraFacing)
+            rov.preferred_geometry_mode = GeometryMode::BillboardCameraFacing;
+        else if (effective_vertex_policy == VertexTransformPolicy::BillboardAxisLocked)
+            rov.preferred_geometry_mode = GeometryMode::BillboardAxisLocked;
+
+        k = RouteKey(r.preset, 0u, rov);
+    }
 
     // ── Step 2: dimension ─────────────────────────────────────────────────────
-    // D2 materials use a quad geometry, not a generic 3-D mesh.
-    if (r.dim == MaterialRecipe::Dim::D2)
-        k.geometry_mode = GeometryMode::Quad2D;
+    // geometry_mode and position_provider are already correctly set by the matched
+    // builtin entry via RouteKey (Step 1). Dimension is a config-layer concern; only
+    // entries that truly differ in shader behaviour (e.g. UnlitTexture2D vs UnlitTexture)
+    // have separate builtin rows. Do NOT re-encode dim here.
 
     // ── Step 3: position provider ─────────────────────────────────────────────
-    // 2D materials (r.dim == D2) or explicit pos_format.vec_size == 2 → VAB_Vec2.
-    // Otherwise keep the base key's provider (DirectVec3 from RouteKey).
-    if (r.dim == MaterialRecipe::Dim::D2)
-        k.position_provider = PositionProviderId::VAB_Vec2;
-
-    if (r.pos_format.Check())
-    {
-        k.position_provider = (r.pos_format.vec_size == 2)
-            ? PositionProviderId::VAB_Vec2
-            : PositionProviderId::DirectVec3;
-    }
+    // 2D recipes always use VAB_Vec2; 3D recipes use DirectVec3.
+    // No recipe-level override needed now that pos_format is removed.
 
     // ── Step 4: sky / lighting (3-D only) ────────────────────────────────────
     // Mirrors the Material3DCreateConfig block in ApplyCreateConfigToVariantKey

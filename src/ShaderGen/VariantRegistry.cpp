@@ -191,12 +191,12 @@ static ShaderStageFeatureDesc MakeStageFeatures(std::initializer_list<hgl::graph
 
 void VariantRegistry::RegisterVariant(const MaterialVariantKey &key, const MaterialVariantDesc &desc)
 {
-    const uint64 hash = key.Hash();
+    const uint64 hash = key.RegistryHash();
     auto &bucket = variant_map[hash];
 
     for (const auto &existing : bucket)
     {
-        if (!(existing.key == key))
+        if (!existing.key.RegistryEquals(key))
             continue;
 
         const bool same_factory = existing.desc.factory_type == desc.factory_type;
@@ -219,7 +219,7 @@ const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKe
 {
     const MaterialVariantKey query_key = CanonicalizeRegistryLookupKey(key, options);
 
-    auto it = variant_map.find(query_key.Hash());
+    auto it = variant_map.find(query_key.RegistryHash());
     if (it == variant_map.end())
         return nullptr;
 
@@ -227,7 +227,7 @@ const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKe
 
     for (const auto &candidate : it->second)
     {
-        if (!(candidate.key == query_key))
+        if (!candidate.key.RegistryEquals(query_key))
             continue;
 
         if (options.preferred_factory_type
@@ -514,14 +514,17 @@ constexpr auto VA = _BVE_VA;
 // clang-format off
 const BuiltinVariantEntry kBuiltinVariants[] =
 {
-    // ── 2D (vertex transform policy = Position2DTransform, via position_provider=VAB_Vec2) ────────
-    { .name = "VertexColor2D",        .preset = MaterialPreset::VertexColor,
-      .geometry_mode = GM::Quad2D,  .position_provider = PositionProviderId::VAB_Vec2, .vertex_bits = VA(VertexAttrib::Color),
-      .surface_path = "surface/unlit_vertexcolor_surface.glsl"  },
-
-    { .name = "PureColor2D",          .preset = MaterialPreset::PureColor,
-      .geometry_mode = GM::Quad2D,  .position_provider = PositionProviderId::VAB_Vec2,
-      .surface_path = "surface/purecolor3d_surface.glsl"        },
+    // ── 2D variants ──────────────────────────────────────────────────────────────────────────────
+    // position_provider (VAB_Vec2 / DirectVec3 / PCG_*) is a runtime VS-only axis written into
+    // the key at recipe-to-key time. It does NOT differentiate registry rows — the assembler
+    // reads key.position_provider directly and overrides the row default. Therefore no separate
+    // "PureColor2D / VertexColor2D / VertexLuminance2D" rows are needed; every preset has a
+    // single row and the 2D vs 3D VS difference is handled by the two-axis compositor path.
+    //
+    // The only entries below that still carry an explicit position_provider are those where
+    // the geometry_mode (Quad2D / billboard) is the row-selection axis AND the preset has
+    // genuinely distinct behaviour per geometry mode (e.g. UnlitTexture2D vs UnlitTexture3D
+    // differ in texture coordinate handling; Text2D uses a bespoke VS/FS pair).
 
     { .name = "UnlitTexture2D",       .preset = MaterialPreset::UnlitTexture,
       .geometry_mode = GM::Quad2D,  .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::BaseColor, TSM::Simple }},
@@ -544,11 +547,6 @@ const BuiltinVariantEntry kBuiltinVariants[] =
       .surface_path = "surface/unlit_vertexcolor_surface.glsl" },
 
     { .name = "VertexLuminance",    .preset = MaterialPreset::VertexLuminance,
-      .vertex_bits = VA(VertexAttrib::Luminance),
-      .surface_path = "surface/unlit_luminance_surface.glsl"   },
-
-    { .name = "VertexLuminance2D",  .preset = MaterialPreset::VertexLuminance,
-      .position_provider = PositionProviderId::VAB_Vec2,
       .vertex_bits = VA(VertexAttrib::Luminance),
       .surface_path = "surface/unlit_luminance_surface.glsl"   },
 

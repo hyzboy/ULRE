@@ -76,6 +76,7 @@ struct RuntimeKeyOverrides
     std::optional<PassType>          pass_hint;              // 同上
     std::optional<SkyLightAmbientModel> sky_ambient_model;   // 同上
     std::optional<LightingModel>     lighting_model;         // 同上
+    std::optional<GeometryMode>      preferred_geometry_mode; // entry-selection filter: skip entries whose geometry_mode differs
     uint32                           extra_vertex_attrib_bits = 0;  // 与 preset 默认 OR 合并
 };
 

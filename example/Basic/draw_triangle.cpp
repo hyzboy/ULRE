@@ -43,7 +43,6 @@ constexpr uint8 color_data[VERTEX_COUNT*4]=
     0,0,255,255
 };
 
-constexpr VAType   POSITION_SHADER_FORMAT   =VAT_VEC2;
 constexpr VkFormat POSITION_DATA_FORMAT     =VF_V2F;
 
 constexpr VkFormat COLOR_DATA_FORMAT        =VF_V4UN8;
@@ -64,7 +63,9 @@ private:
         .id         = "draw_triangle_vertex_color",
         .preset     = mtl::MaterialPreset::VertexColor,
         .dim        = mtl::MaterialRecipe::Dim::D2,
-        .pos_format = POSITION_SHADER_FORMAT,   // VAT_IVEC2: shader中 ivec2 顶点输入
+        // pos_format 不在此声明：dim=D2 已经表达了 2D 输入意图，
+        // 顶点的实际格式（VAT_VEC2/VAT_IVEC2 等）由 Geometry 自身描述；
+        // 即使 Geometry 改变格式，材质不需要重新声明。
         .coord_2d   = CoordinateSystem2D::Ortho,
     };
 

@@ -458,7 +458,10 @@ namespace
 
         if (row->surface_type != key.surface_type
          || row->geometry_mode != key.geometry_mode
-         || row->position_provider != key.position_provider
+         // position_provider is a runtime VS-only axis and must NOT be compared here:
+         // the registry row always stores the preset default (e.g. DirectVec3) while the
+         // key carries the runtime value (e.g. VAB_Vec2 for a D2 recipe). The assembler
+         // reads the effective provider from the key, not from the row.
          || row->blend != key.blend_mode
          || row->pass != key.pass_hint)
         {
@@ -472,10 +475,14 @@ namespace
     }
 
     hgl::graph::CompositorFeatureFlags VSFeatureFlagsFromRow(const hgl::graph::mtl::MaterialVariantRow &row,
-                                                             hgl::graph::CoordinateSystem2D coord_2d = hgl::graph::CoordinateSystem2D::NDC)
+                                                             hgl::graph::CoordinateSystem2D coord_2d = hgl::graph::CoordinateSystem2D::NDC,
+                                                             std::optional<hgl::graph::PositionProviderId> key_position_provider = std::nullopt)
     {
         hgl::graph::CompositorFeatureFlags flags;
-        flags.position_provider = row.position_provider;
+        // Runtime key overrides the row default for position_provider:
+        // row stores the preset default (e.g. DirectVec3); key carries the effective
+        // value from the recipe (e.g. VAB_Vec2 for dim=D2).
+        flags.position_provider = key_position_provider.value_or(row.position_provider);
 
         for (size_t i = 0; i < static_cast<size_t>(hgl::graph::VertexAttrib::RANGE_SIZE); ++i)
         {
@@ -490,34 +497,31 @@ namespace
         flags.needs_transform = row.resources.needs_transform;
         flags.coord_2d        = coord_2d;
 
-        // Remap the 2D policy placeholder to the concrete variant selected by coord_2d.
-        // BuiltinVariantEntry stores Position2DTransform as the placeholder for all 2D rows.
-        // coord_2d drives the final selection:
-        //   NDC       → Position2DTransform  (reads per-instance L2W via SSBO; SFM infers needs_transform)
+        // If position_provider is VAB_Vec2 (2D input), derive vertex_policy directly from
+        // coord_2d — the three 2D coordinate systems map 1:1 to concrete policies:
+        //   NDC       → Position2DTransform  (per-instance L2W via SSBO)
         //   Ortho     → Position2DOrtho      (viewport ortho_matrix; no per-instance transform)
         //   ZeroToOne → Position2DZeroToOne  (linear remap; no per-instance transform)
+        // This is authoritative regardless of what the row stored (e.g. a 3D-default row).
         using VP = hgl::graph::mtl::VertexTransformPolicy;
         using CS = hgl::graph::CoordinateSystem2D;
-        if (flags.vertex_policy == VP::Position2DTransform)
+        const bool is_2d_input =
+            key_position_provider.has_value()
+                ? (*key_position_provider == hgl::graph::PositionProviderId::VAB_Vec2)
+                : (row.position_provider  == hgl::graph::PositionProviderId::VAB_Vec2);
+        if (is_2d_input)
         {
-            VP remapped = VP::Position2DTransform;
+            VP policy = VP::Position2DTransform;
             if (coord_2d == CS::Ortho)
-                remapped = VP::Position2DOrtho;
+                policy = VP::Position2DOrtho;
             else if (coord_2d == CS::ZeroToOne)
-                remapped = VP::Position2DZeroToOne;
-            // else CS::NDC → keep Position2DTransform (per-instance L2W)
+                policy = VP::Position2DZeroToOne;
 
-            if (remapped != VP::Position2DTransform)
+            flags.vertex_policy = policy;
+            if (const auto *vp = hgl::graph::FindBuiltinVertexPolicy(policy))
             {
-                flags.vertex_policy = remapped;
-                // Re-derive resource flags from the concrete policy so that a
-                // coord_2d remap (e.g. Ortho / ZeroToOne) does not inherit the
-                // needs_transform / needs_camera flags from Position2DTransform.
-                if (const auto *vp = hgl::graph::FindBuiltinVertexPolicy(remapped))
-                {
-                    flags.needs_camera    = vp->needs_camera;
-                    flags.needs_transform = vp->needs_transform;
-                }
+                flags.needs_camera    = vp->needs_camera;
+                flags.needs_transform = vp->needs_transform;
             }
         }
 
@@ -545,12 +549,13 @@ namespace
     }
 
     std::string BuildVSFromRow(const hgl::graph::mtl::MaterialVariantRow &row,
-                               hgl::graph::CoordinateSystem2D coord_2d = hgl::graph::CoordinateSystem2D::NDC)
+                               hgl::graph::CoordinateSystem2D coord_2d = hgl::graph::CoordinateSystem2D::NDC,
+                               std::optional<hgl::graph::PositionProviderId> key_position_provider = std::nullopt)
     {
         if (row.vs_template_path && row.vs_template_path[0])
             return BuildIncludeOnlyVS(row.vs_template_path);
 
-        return BuildForwardVertexEntry(VSFeatureFlagsFromRow(row, coord_2d));
+        return BuildForwardVertexEntry(VSFeatureFlagsFromRow(row, coord_2d, key_position_provider));
     }
 
     /// Legacy key-derived FS feature inference: only used by non-builtin fallback assembly.
@@ -885,7 +890,7 @@ namespace hgl::graph
             if (resolved_row)
             {
                 LogVSAssemblyPath("explicit_row", key, desc, resolved_row);
-                out_source = BuildVSFromRow(*resolved_row, coord_2d);
+                out_source = BuildVSFromRow(*resolved_row, coord_2d, key.position_provider);
             }
             else
             {
@@ -1074,7 +1079,7 @@ namespace hgl::graph
                 if (!resolved_row->vs_template_path || !resolved_row->vs_template_path[0])
                 {
                     // Standard two-axis path: collect from fragment/policy/position files
-                    CollectVSRequirements(VSFeatureFlagsFromRow(*resolved_row, coord_2d), artifact.req_set, shader_lib_path_);
+                    CollectVSRequirements(VSFeatureFlagsFromRow(*resolved_row, coord_2d, key.position_provider), artifact.req_set, shader_lib_path_);
                 }
                 else
                 {

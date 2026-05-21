@@ -55,6 +55,8 @@ private:
         .id       = "auto_merge_pure_color",
         .preset   = mtl::MaterialPreset::PureColor,
         .dim      = mtl::MaterialRecipe::Dim::D2,
+        // 顶点数据已在 NDC 范围，并通过 per-instance L2W 旋转。
+        .coord_2d = CoordinateSystem2D::NDC,
     };
 
     // 每个三角形的数据

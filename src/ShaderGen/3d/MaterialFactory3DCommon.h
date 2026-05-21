@@ -7,20 +7,22 @@
 #include<hgl/mtl/MaterialVariantKey.h>
 #include<hgl/mtl/MaterialVariantDesc.h>
 
-namespace hgl::graph::mtl{
-
+namespace hgl::graph::mtl
+{
 inline void PopulateVariantKeyVertexAttribBits(MaterialVariantKey &key, const StaticMaterialDef &def)
 {
     for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
     {
         const FixedVertexEntry &entry = def.vertex_entries[i];
-        key.SetVertexAttribEnabled(entry.attrib);
 
-        // Detect vec2 Position to distinguish VertexLuminance2D (vec2) from VertexLuminance3D (vec3).
-        if (entry.attrib == hgl::graph::VertexAttrib::Position && entry.type == hgl::graph::VAT_VEC2)
-        {
-            key.position_provider = PositionProviderId::VAB_Vec2;
-        }
+        // Position is NOT a shader-variant VA axis: its presence is universal and its
+        // 2D/3D format difference is already encoded in key.position_provider (VAB_Vec2
+        // vs DirectVec3).  Including it in va_bits would cause a structural-identity
+        // mismatch against registry entries that do not set the Position bit.
+        if (entry.attrib == hgl::graph::VertexAttrib::Position)
+            continue;
+
+        key.SetVertexAttribEnabled(entry.attrib);
     }
 }
 

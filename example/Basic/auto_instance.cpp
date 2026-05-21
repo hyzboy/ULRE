@@ -59,6 +59,9 @@ private:
         .id       = "auto_instance_vertex_color",
         .preset   = mtl::MaterialPreset::VertexColor,
         .dim      = mtl::MaterialRecipe::Dim::D2,
+        // 顶点数据已在 NDC 范围（-1..1），并通过 per-instance L2W 进行旋转。
+        // 显式声明 coord_2d 让 vertex_policy 选择 Position2DTransform（NDC + L2W）。
+        .coord_2d = CoordinateSystem2D::NDC,
     };
 
 private:

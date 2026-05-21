@@ -599,16 +599,23 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
         ResolveMaterialPresetForLOD(preset, GetDefaultMaterialLOD());
 
     // Step 2: scan the builtin entry table for the best matching entry.
-    //   • If ov.blend_mode is set, select the entry whose blend field matches.
-    //   • If ov.lighting_model is set, additionally filter on lighting field.
+    //   • ov.position_provider is a runtime VS-only axis written directly into the key
+    //     (Step 5 below). It does NOT filter registry rows because the row default
+    //     (DirectVec3) is always overridden by the recipe dim/vertex_policy at runtime.
+    //     The assembler reads position_provider from the key, not from the bound row.
+    //   • ov.preferred_geometry_mode is a *hard* filter applied in both passes.
+    //     Used only for presets that have genuinely different VS transform logic per geometry
+    //     mode (e.g. Gizmo3D vs Gizmo3DBillboardCameraFacing).
+    //   • blend_mode and lighting_model are *hard* filters (always applied).
     //   • First match wins (table entries ordered from most common to rarest).
     const BuiltinVariantEntry *found = nullptr;
     for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
     {
         const auto &e = kBuiltinVariants[i];
-        if (e.preset != resolved_preset)                           continue;
-        if (ov.blend_mode     && e.blend    != *ov.blend_mode)    continue;
-        if (ov.lighting_model && e.lighting != *ov.lighting_model) continue;
+        if (e.preset != resolved_preset)                                        continue;
+        if (ov.preferred_geometry_mode && e.geometry_mode != *ov.preferred_geometry_mode) continue;
+        if (ov.blend_mode     && e.blend    != *ov.blend_mode)                 continue;
+        if (ov.lighting_model && e.lighting != *ov.lighting_model)             continue;
         found = &e;
         break;
     }

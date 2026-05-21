@@ -389,7 +389,6 @@ namespace hgl::ecs
         text_recipe.preset = graph::mtl::MaterialPreset::Text2D;
         text_recipe.dim = graph::mtl::MaterialRecipe::Dim::D2;
         text_recipe.prim = graph::PrimitiveType::Triangles;
-        text_recipe.pos_format = graph::VAT_IVEC2;
         text_recipe.vertex_policy = graph::mtl::VertexTransformPolicy::Text2D;
         text_recipe.shading_model = graph::mtl::SurfaceShadingModel::Text;
         text_recipe.schema = graph::mtl::ShaderDataSchema::TextColor;

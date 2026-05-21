@@ -61,6 +61,8 @@ private:
         .id       = "clock_pure_color",
         .preset   = mtl::MaterialPreset::PureColor,
         .dim      = mtl::MaterialRecipe::Dim::D2,
+        // 时钟刻度/指针顶点数据在 NDC 范围，并通过 per-instance L2W 旋转/平移。
+        .coord_2d = CoordinateSystem2D::NDC,
     };
 
     // 刻度数据

@@ -26,8 +26,6 @@
 #include <hgl/common/CoordinateSystem.h>
 #include <hgl/common/PrimitiveTypeDef.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
-#include <hgl/vk/VertexAttrib.h>
-#include <hgl/vk/VKFormat.h>
 #include <hgl/mtl/MaterialVariantRow.h>
 #include <hgl/mtl/ShaderDataSchema.h>
 
@@ -42,7 +40,7 @@ namespace hgl::graph::mtl
 /// 设计原则：
 /// - 与序列化层解耦：字段全部是基础类型或 std::string，无运行时指针
 /// - 2D/3D 共用一个结构体，通过 dim 字段区分；未使用的字段在对应分支被忽略
-/// - 纹理路径为空时跳过加载；pos_format 为零初始化时使用维度默认值
+/// - 纹理路径为空时跳过加载；未使用的字段在对应分支被忽略
 struct MaterialRecipe
 {
     // ── 标识 ──────────────────────────────────────────────────────────────────
@@ -65,10 +63,6 @@ struct MaterialRecipe
 
     // ── 通用字段（2D & 3D 均有效）────────────────────────────────────────────
     PrimitiveType   prim    = PrimitiveType::Triangles;     ///< 图元类型
-
-    /// position 顶点属性格式
-    /// （D2 默认 VAT_VEC2，D3 默认 VAT_VEC3）
-    VAType          pos_format = {};
 
     // ── 显式材质轴（Phase B）──────────────────────────────────────────────────
     /// 顶点变换策略。Unknown = 由 preset alias 展开决定（兼容旧路径）。

@@ -19,9 +19,9 @@ namespace hgl::graph
         DirectVec3             = 0,  ///< VAB vec3 direct pass-through; emitter inlines a #define, zero overhead
         VAB_Vec2               = 1,  ///< VAB vec2; shader pads Z = 0
         PCG_FullscreenTriangle = 2,  ///< Procedural fullscreen triangle via gl_VertexIndex; no VAB; NDC space
-        SSBO_PackedVec3        = 3,  ///< gl_VertexIndex → vec3 read from storage buffer; no VAB
-        TerrainGrid            = 4,  ///< Grid (col, row) + heightmap sampler; no VAB
-        VAB_Packed16           = 5,  ///< 16-bit packed VAB (R16G16B16A16_SNORM decode); reserved
+        //SSBO_PackedVec3        = 3,  ///< gl_VertexIndex → vec3 read from storage buffer; no VAB
+        //TerrainGrid            = 4,  ///< Grid (col, row) + heightmap sampler; no VAB
+        //VAB_Packed16           = 5,  ///< 16-bit packed VAB (R16G16B16A16_SNORM decode); reserved
 
         // ── User-defined range ───────────────────────────────────────────────
         UserCustom_Begin       = 0x8000,

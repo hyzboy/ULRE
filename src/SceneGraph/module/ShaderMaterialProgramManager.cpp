@@ -498,7 +498,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
         Material3DCreateConfig cfg(
             rec.prim,
             IncludeL2W::With);
-        cfg.position_format = rec.pos_format.Check() ? rec.pos_format : VAT_VEC2;
+        cfg.position_format = VAT_VEC2;
         cfg.coord_2d        = rec.coord_2d;
         for (const auto &cs : rec.color_sources)
         {
@@ -538,8 +538,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
 
         cfg.effective_feature_mask = feature_mask;
 
-        if (rec.pos_format.Check())
-            cfg.position_format = rec.pos_format;
         for (const auto &cs : rec.color_sources)
         {
             if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
@@ -614,7 +612,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
             recipe.prim,
             mtl::IncludeL2W::With);
         cfg.preset_name     = mtl::GetMaterialPresetName(recipe.preset);
-        cfg.position_format = recipe.pos_format.Check() ? recipe.pos_format : VAT_VEC2;
+        cfg.position_format = VAT_VEC2;
         cfg.coord_2d        = recipe.coord_2d;
 
         for (const auto &cs : recipe.color_sources)
@@ -641,9 +639,6 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
         if (!mtl::HasFeature(feature_mask, mtl::MaterialFeature::EnableLighting))
             cfg.lighting_model = mtl::LightingModel::Lambert;
         cfg.effective_feature_mask = feature_mask;
-
-        if (recipe.pos_format.Check())
-            cfg.position_format = recipe.pos_format;
 
         for (const auto &cs : recipe.color_sources)
         {
