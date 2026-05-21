@@ -249,6 +249,12 @@ namespace
                        "{ w=vec4(l,1.0); c=vec4(l,1.0); }\n";
             }
         }
+        else
+        {
+            // ClipNDC provider: GetPosition() already returns clip-space coords.
+            // Signal vert_forward_main.glsl to use gl_Position = GetPosition() directly.
+            writer.EmitDefine("CLIP_NDC_PROVIDER");
+        }
 
         // ── Generic forward main (glue) ───────────────────────────────────────
         writer.EmitInclude("compositor/vert_forward_main.glsl");

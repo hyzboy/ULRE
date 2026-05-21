@@ -47,6 +47,10 @@ void main()
 {
     fragMaterialInstanceID = GetMaterialInstanceID();
 
+#ifdef CLIP_NDC_PROVIDER
+    // ClipNDC provider: GetPosition() already returns clip-space coords; no transform needed.
+    gl_Position = GetPosition();
+#else
     // ── Axis 1: position provider (already included above) ─────────────────
     vec3 local = GetPosition().xyz;
 
@@ -62,6 +66,7 @@ void main()
 #include "compositor/vert_attrib_writers.glsl"
 
     gl_Position = clipPos;
+#endif
 }
 
 #endif // ULRE_COMPOSITOR_VERT_FORWARD_MAIN_GLSL
