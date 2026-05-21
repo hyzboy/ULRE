@@ -89,11 +89,19 @@ void EmitPositionInput(std::ostream &out,
         out << "layout(location=" << position_location << ") in vec3 inPosition;\n";
         out << "#define GetPositionLocal() (inPosition)\n";
     }
-    else
+    else if (!p.glsl_path.empty())
     {
         if (p.vab_count > 0)
             out << "#define POSITION_LOCATION " << position_location << "\n";
         out << "#include \"" << p.glsl_path << "\"\n";
+    }
+    else
+    {
+        // Placeholder ID with no .glsl yet — should never reach emission.
+        // CompositorAssembler performs route-time fallback before calling here.
+        out << "// ERROR: position provider 0x" << std::hex
+            << static_cast<unsigned>(p.id) << std::dec
+            << " has no glsl_path (placeholder)\n";
     }
 }
 
