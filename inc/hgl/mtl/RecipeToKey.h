@@ -11,7 +11,7 @@
 
 #include <hgl/mtl/MaterialKey.h>
 #include <hgl/mtl/MaterialRecipe.h>
-#include <hgl/mtl/PresetDemandTable.h>   // VABits (Phase C)
+#include <hgl/mtl/PresetDemandTable.h>   // VABits (Phase C — to be removed with MaterialLibrary migration)
 #include <vector>
 
 namespace hgl::graph::mtl

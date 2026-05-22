@@ -93,8 +93,7 @@ static void test_sky_canonicalization_for_standard_mesh3d()
     CHECK_EQ(k.variant.sky_ambient_model, SkyLightAmbientModel::Simple);
 }
 
-// Phase 6 regression: Standard + FakeAtmosphere sky still canonicalizes to Simple,
-// because Standard rows do not declare sky_is_routing_axis.
+// sky_ambient_model is never a routing axis: always canonicalized to Simple.
 static void test_sky_canonicalization_standard_fakeatmosphere()
 {
     MaterialRecipe r = MakeStandardOpaqueRecipe();

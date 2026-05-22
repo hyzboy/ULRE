@@ -203,8 +203,8 @@ static uint64 TryResolveBuiltinVariantRowHash(const MaterialPreset preset,
             candidate.effective_feature_mask = 0;
 
             MaterialVariantKey local_query = query;
-            if (!desc.bound_row || !desc.bound_row->sky_is_routing_axis)
-                local_query.sky_ambient_model = SkyLightAmbientModel::Simple;
+            // sky_ambient_model is never a routing axis: always canonicalize to Simple.
+            local_query.sky_ambient_model = SkyLightAmbientModel::Simple;
 
             if (candidate == local_query)
             {
@@ -631,55 +631,12 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     return k;
 }
 
-/// Phase 6 (replaces Phase 1 TODO bridge): table-driven sky canonicalization.
-/// Scans the builtin entry table for any entry whose key (with sky set to Simple)
-/// matches the incoming key. If the matched entry has sky_is_routing_axis==false,
-/// canonicalize sky to Simple. This is the same rule used by IsSkyRoutingAxisForPresetKey
-/// in MaterialLibrary.cpp, expressed here without a known preset parameter.
-static bool SkyIsRoutingAxisForKey(const MaterialVariantKey &key) noexcept
-{
-    // Build a probe key with sky canonicalized so we can match entries regardless
-    // of the current sky value.
-    MaterialVariantKey probe = key;
-    probe.variant_row_name_hash = 0;
-    probe.effective_feature_mask = 0;
-    probe.sky_ambient_model = SkyLightAmbientModel::Simple;
-
-    bool found = false;
-    bool routing_axis = false;
-    GetBuiltinVariantRegistry().ForEach(
-        [&](const MaterialVariantKey &candidate_key, const MaterialVariantDesc &desc)
-        {
-            if (found)
-                return;
-
-            MaterialVariantKey candidate = candidate_key;
-            candidate.variant_row_name_hash = 0;
-            candidate.effective_feature_mask = 0;
-            if (candidate == probe)
-            {
-                found = true;
-                routing_axis = desc.bound_row ? desc.bound_row->sky_is_routing_axis : false;
-            }
-        });
-
-    if (found)
-        return routing_axis;
-
-    // No row matched; conservatively treat sky as NOT a routing axis.
-    return false;
-}
-
 MaterialVariantKey ApplyRouterCanonicalization(const MaterialVariantKey &in) noexcept
 {
     MaterialVariantKey k = in;
 
-    // Phase 6: table-driven sky routing-axis check replaces the Phase 1
-    // hardcoded "Standard && Mesh3D → canonicalize sky to Simple" branch.
-    // The rule is now: canonicalize sky_ambient_model to Simple unless the
-    // matching builtin row explicitly declares sky_is_routing_axis = true.
-    if (!SkyIsRoutingAxisForKey(k))
-        k.sky_ambient_model = SkyLightAmbientModel::Simple;
+    // sky_ambient_model is never a routing axis: always canonicalize to Simple.
+    k.sky_ambient_model = SkyLightAmbientModel::Simple;
 
     return k;
 }

@@ -644,38 +644,7 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
     return key;
 }
 
-/// Phase 3: Table-driven sky identity-axis query.
-/// Returns true only if the builtin row for this (preset, key) combination declares
-/// sky_ambient_model as a routing axis (i.e., different sky models have distinct shader rows).
-/// Returns false for all current Standard/Mesh3D rows, effectively replacing the hardcoded
-/// Standard && Mesh3D canonicalization with a data-driven rule.
-static bool IsSkyRoutingAxisForPresetKey(const MaterialPreset resolved_preset,
-                                         const MaterialVariantKey &key) noexcept
-{
-    MaterialVariantKey query = key;
-    query.variant_row_name_hash = 0;
-    query.effective_feature_mask = 0;
-    // Canonicalize sky to Simple so we can match the row regardless of current sky value.
-    query.sky_ambient_model = SkyLightAmbientModel::Simple;
 
-    for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
-    {
-        const auto &entry = kBuiltinVariants[i];
-        if (entry.preset != resolved_preset)
-            continue;
-
-        MaterialVariantKey candidate = BuildKey(entry);
-        candidate.variant_row_name_hash = 0;
-        candidate.effective_feature_mask = 0;
-        // candidate already has sky canonicalized to Simple when sky_is_routing_axis==false
-
-        if (candidate == query)
-            return entry.sky_is_routing_axis;
-    }
-
-    // No row matched; conservatively treat sky as NOT a routing axis.
-    return false;
-}
 
 uint64 ResolveBuiltinVariantRowHash(MaterialPreset preset,
                                     const MaterialVariantKey &key) noexcept
@@ -687,10 +656,8 @@ uint64 ResolveBuiltinVariantRowHash(MaterialPreset preset,
     query.variant_row_name_hash = 0;
     query.effective_feature_mask = 0;
 
-    // Phase 3: use table-driven sky identity-axis rules instead of hardcoded preset/geometry checks.
-    const bool sky_is_axis = IsSkyRoutingAxisForPresetKey(resolved_preset, query);
-    if (!sky_is_axis)
-        query.sky_ambient_model = SkyLightAmbientModel::Simple;
+    // sky_ambient_model is never a routing axis: canonicalize to Simple for all presets.
+    query.sky_ambient_model = SkyLightAmbientModel::Simple;
 
     for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
     {
@@ -702,9 +669,7 @@ uint64 ResolveBuiltinVariantRowHash(MaterialPreset preset,
         const uint64 candidate_row_hash = candidate.variant_row_name_hash;
         candidate.variant_row_name_hash = 0;
         candidate.effective_feature_mask = 0;
-
-        if (!entry.sky_is_routing_axis)
-            candidate.sky_ambient_model = SkyLightAmbientModel::Simple;
+        candidate.sky_ambient_model = SkyLightAmbientModel::Simple;
 
         if (candidate == query)
             return candidate_row_hash;
@@ -833,13 +798,8 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                 }
             }
         }
-        const bool sky_is_axis = IsSkyRoutingAxisForPresetKey(lookup_preset, registry_lookup_key);
-        if (!sky_is_axis)
-        {
-            // Sky is resource-policy only; canonicalize to Simple for registry lookup
-            // so any sky model value matches the same row.
-            registry_lookup_key.sky_ambient_model = SkyLightAmbientModel::Simple;
-        }
+        // sky_ambient_model is never a routing axis: always canonicalize to Simple for registry lookup.
+        registry_lookup_key.sky_ambient_model = SkyLightAmbientModel::Simple;
     }
 
     MaterialVariantKey resolved_key{};

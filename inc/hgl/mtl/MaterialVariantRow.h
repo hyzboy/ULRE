@@ -159,10 +159,6 @@ namespace hgl::graph::mtl
 
         ShaderDataSchema schema = ShaderDataSchema::None;
         StaticMaterialDefIdHint def_hint = StaticMaterialDefIdHint::None;
-
-        /// @runtime_deprecated — sky routing axis will be encoded in SFM @sfm:supports_phase.
-        /// Kept for VariantRegistry compat; will be removed with kBuiltinVariants[] (plan step 14).
-        bool sky_is_routing_axis = false;
     };
 
     inline const char *GetVertexTransformPolicyName(const VertexTransformPolicy policy) noexcept
