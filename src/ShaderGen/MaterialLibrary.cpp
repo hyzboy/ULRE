@@ -12,10 +12,10 @@
 #include<hgl/shadergen/registry/ErrorCodeRegistry.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/shadergen/ShaderRequirementSet.h>
+#include<algorithm>
 #include<atomic>
 #include<cstring>
 #include<cstdio>
-#include "BuiltinVariantEntry.h"
 
 namespace hgl::graph::mtl{
 
@@ -598,25 +598,33 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
     const MaterialPreset resolved_preset =
         ResolveMaterialPresetForLOD(preset, GetDefaultMaterialLOD());
 
-    // Step 2: scan the builtin entry table for the best matching entry.
+    // Step 2: collect all registry entries whose factory_type matches resolved_preset,
+    //   then select the first one (by builtin_row_storage insertion order, recovered via
+    //   ascending bound_row pointer) that passes the hard filters.
+    //
     //   • ov.position_provider is a runtime VS-only axis written directly into the key
-    //     (Step 5 below). It does NOT filter registry rows because the row default
-    //     (DirectVec3) is always overridden by the recipe dim/vertex_policy at runtime.
-    //     The assembler reads position_provider from the key, not from the bound row.
-    //   • ov.preferred_geometry_mode is a *hard* filter applied in both passes.
-    //     Used only for presets that have genuinely different VS transform logic per geometry
-    //     mode (e.g. Gizmo3D vs Gizmo3DBillboardCameraFacing).
+    //     (Step 5 below). It does NOT filter registry rows.
+    //   • ov.preferred_geometry_mode is a *hard* filter (billboard presets only).
     //   • blend_mode and lighting_model are *hard* filters (always applied).
-    //   • First match wins (table entries ordered from most common to rarest).
-    const BuiltinVariantEntry *found = nullptr;
-    for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
+    //   • First match wins; candidates are sorted by bound_row address (ascending) which
+    //     equals insertion order in builtin_row_storage (contiguous vector).
+    struct Candidate { const MaterialVariantRow *row; MaterialVariantKey key; };
+    std::vector<Candidate> candidates;
+    GetBuiltinVariantRegistry().ForEach([&](const MaterialVariantKey &k, const MaterialVariantDesc &desc) {
+        if (desc.factory_type && *desc.factory_type == resolved_preset && desc.bound_row)
+            candidates.push_back({desc.bound_row, k});
+    });
+    // Sort by insertion order (bound_row lives in a contiguous vector; lower address = earlier entry).
+    std::sort(candidates.begin(), candidates.end(),
+              [](const Candidate &a, const Candidate &b) { return a.row < b.row; });
+
+    const Candidate *found = nullptr;
+    for (const auto &c : candidates)
     {
-        const auto &e = kBuiltinVariants[i];
-        if (e.preset != resolved_preset)                                        continue;
-        if (ov.preferred_geometry_mode && e.geometry_mode != *ov.preferred_geometry_mode) continue;
-        if (ov.blend_mode     && e.blend    != *ov.blend_mode)                 continue;
-        if (ov.lighting_model && e.lighting != *ov.lighting_model)             continue;
-        found = &e;
+        if (ov.preferred_geometry_mode && c.row->geometry_mode != *ov.preferred_geometry_mode) continue;
+        if (ov.blend_mode     && c.key.blend_mode     != *ov.blend_mode)                       continue;
+        if (ov.lighting_model && c.key.lighting_model != *ov.lighting_model)                   continue;
+        found = &c;
         break;
     }
 
@@ -628,9 +636,8 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
         return MaterialVariantKey{};
     }
 
-    // Step 3: build the base key from the matched entry.
-    //   blend_mode and lighting_model are already correct from entry selection.
-    MaterialVariantKey key = BuildKey(*found);
+    // Step 3: take the pre-built key from the matched registry entry.
+    MaterialVariantKey key = found->key;
 
     // Step 4: OR-merge caller-supplied extra vertex attribute bits.
     key.vertex_attribute_feature_bits |= extra_attrib_bits;
@@ -659,13 +666,19 @@ uint64 ResolveBuiltinVariantRowHash(MaterialPreset preset,
     // sky_ambient_model is never a routing axis: canonicalize to Simple for all presets.
     query.sky_ambient_model = SkyLightAmbientModel::Simple;
 
-    for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
-    {
-        const auto &entry = kBuiltinVariants[i];
-        if (entry.preset != resolved_preset)
-            continue;
+    // Collect and sort candidates by insertion order (same bound_row pointer trick as RouteKey).
+    struct Candidate { const MaterialVariantRow *row; MaterialVariantKey key; };
+    std::vector<Candidate> candidates;
+    GetBuiltinVariantRegistry().ForEach([&](const MaterialVariantKey &k, const MaterialVariantDesc &desc) {
+        if (desc.factory_type && *desc.factory_type == resolved_preset && desc.bound_row)
+            candidates.push_back({desc.bound_row, k});
+    });
+    std::sort(candidates.begin(), candidates.end(),
+              [](const Candidate &a, const Candidate &b) { return a.row < b.row; });
 
-        MaterialVariantKey candidate = BuildKey(entry);
+    for (const auto &c : candidates)
+    {
+        MaterialVariantKey candidate = c.key;
         const uint64 candidate_row_hash = candidate.variant_row_name_hash;
         candidate.variant_row_name_hash = 0;
         candidate.effective_feature_mask = 0;
