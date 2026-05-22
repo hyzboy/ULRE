@@ -528,12 +528,25 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     // Must happen after RouteKey so that k.position_provider is already set from
     // the builtin row (for Custom preset it will be Unknown/default; we overwrite
     // it here to UserPCG and record the path hash for the compositor).
-    if (!r.vertex_provider_glsl.empty())
+    //
+    // Priority: recipe.user_provider_path (new field) → vertex_provider_glsl (deprecated).
     {
-        const hgl::graph::ProviderManifest* pm =
-            hgl::graph::ProviderManifestRegistry::AcquireUserProvider(r.vertex_provider_glsl);
-        k.position_provider       = PositionProviderId::UserPCG;
-        k.user_provider_path_hash = pm ? pm->glsl_path_hash : hgl::graph::Fnv1a32(r.vertex_provider_glsl);
+        const std::string& pcg_path = !r.user_provider_path.empty()
+                                        ? r.user_provider_path
+#pragma warning(suppress: 4996)
+                                        : r.vertex_provider_glsl;  // deprecated fallback
+        if (!pcg_path.empty())
+        {
+            const hgl::graph::ProviderManifest* pm =
+                hgl::graph::ProviderManifestRegistry::AcquireUserProvider(pcg_path);
+            k.position_provider       = PositionProviderId::UserPCG;
+            k.user_provider_path_hash = pm ? pm->glsl_path_hash : hgl::graph::Fnv1a32(pcg_path);
+        }
+        else if (r.position_provider != hgl::graph::PositionProviderId::Unknown)
+        {
+            // Explicit position_provider set on recipe (non-PCG path, e.g. VAB_Vec3)
+            k.position_provider = r.position_provider;
+        }
     }
 
     // ── Step 2: dimension ─────────────────────────────────────────────────────
