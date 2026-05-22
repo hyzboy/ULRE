@@ -26,8 +26,13 @@ namespace hgl::graph
 // Map RenderAlphaMode to GraphicsPipelinePreset for MaterialInstanceSpec.
 // Used wherever legacy code assigned spec.preset = rec.pipeline.
 // ---------------------------------------------------------------------------
-static GraphicsPipelinePreset BlendToPreset(graph::RenderAlphaMode blend, bool is2D) noexcept
+static GraphicsPipelinePreset BlendToPreset(graph::RenderAlphaMode blend, bool is2D,
+                                             mtl::MaterialPreset mat_preset = mtl::MaterialPreset::Standard) noexcept
 {
+    // Sky materials always use the Sky pipeline preset regardless of blend mode.
+    if (mat_preset == mtl::MaterialPreset::SkyMinimal)
+        return GraphicsPipelinePreset::Sky;
+
     using R = graph::RenderAlphaMode;
     switch (blend)
     {
@@ -379,7 +384,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     MaterialInstanceSpec spec;
     spec.material = handle.material;
     spec.domain   = handle.domain;
-    spec.preset   = BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2);
+    spec.preset   = BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2, rec.preset);
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
 
@@ -501,7 +506,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     MaterialInstanceSpec spec;
     spec.material = handle.material;
     spec.domain   = handle.domain;
-    spec.preset   = BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2);
+    spec.preset   = BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2, rec.preset);
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
 
@@ -579,7 +584,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::CreateMI(
     MaterialInstanceSpec spec;
     spec.material = handle.material;
     spec.domain   = handle.domain;
-    spec.preset   = BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2);
+    spec.preset   = BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2, rec.preset);
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
 

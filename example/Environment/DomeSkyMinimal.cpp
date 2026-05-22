@@ -26,11 +26,16 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     Geometry *          prim_sky_dome       = nullptr;
-    Geometry *          prim_ground_plane   = nullptr;
+    Geometry *          prim_ground_cube    = nullptr;
 
     inline static const mtl::MaterialRecipe kSkyCfg {
         .id       = "dome_sky_minimal",
         .preset   = mtl::MaterialPreset::SkyMinimal,
+    };
+
+    inline static const mtl::MaterialRecipe kCubeCfg {
+        .id       = "Cube",
+        .preset   = mtl::MaterialPreset::Gizmo3D,
     };
 
 private:
@@ -53,7 +58,6 @@ private:
 
             DomeCreateInfo dci;
             dci.number_slices = 64;
-            dci.inside_out = true;
 
             prim_sky_dome = CreateDome(pc.get(), &dci);
             if (!prim_sky_dome)
@@ -64,12 +68,14 @@ private:
 
         {
             auto pc = std::make_unique<GeometryCreater>(device, gvf);
+            
+            CubeCreateInfo cci;
 
-            prim_ground_plane = CreatePlaneSqaure(pc.get());
-            if (!prim_ground_plane)
+            prim_ground_cube = CreateCube(pc.get(),&cci);
+            if (!prim_ground_cube)
                 return false;
 
-            geometry_manager->Add(prim_ground_plane);
+            geometry_manager->Add(prim_ground_cube);
         }
 
         return true;
@@ -80,7 +86,7 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!prim_sky_dome || !prim_ground_plane)
+        if(!prim_sky_dome || !prim_ground_cube)
             return false;
 
         sky_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("SkyDome");
@@ -96,7 +102,7 @@ private:
         sky_prim_comp->SetMaterialRecipe(RegisterMaterialRecipe(kSkyCfg));
         sky_prim_comp->SetVisible(true);
 
-        ground_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("GroundPlane");
+        ground_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("GroundCube");
         auto ground_transform = ground_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         auto ground_prim_comp = ground_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -104,9 +110,10 @@ private:
         ground_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         ground_transform->SetLocalScale(glm::vec3(256.0f, 256.0f, 1.0f));
         ground_transform->SetMovable(false);
-
-        ground_prim_comp->SetUnresolvedGeometry(prim_ground_plane);
-        ground_prim_comp->SetMaterialRecipe(RegisterMaterialRecipe(kSkyCfg));
+        
+        Color4f color = GetColor4f(COLOR::UbuntuLightAubergine, 1.0f);
+        ground_prim_comp->SetUnresolvedGeometry(prim_ground_cube);
+        ground_prim_comp->SetMaterialRecipe(RegisterMaterialRecipe(kCubeCfg), &color, sizeof(color));
         ground_prim_comp->SetVisible(true);
 
         return true;
