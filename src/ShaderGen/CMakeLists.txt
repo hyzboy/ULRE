@@ -190,7 +190,9 @@ SET(MATERIAL_PRESET_TABLE_FILES ${STD_MTL_HEADER_PATH}/MaterialPresetTable.h
                                 ${STD_MTL_HEADER_PATH}/GlobalRenderConfig.h
                                 GlobalRenderConfig.cpp
                                 ${SHADERGEN_INCLUDE_PATH}/Matcher.h
-                                Matcher.cpp)
+                                Matcher.cpp
+                                PassShaderResolver.cpp
+                                OverlayChannel.cpp)
 SOURCE_GROUP("Material Preset Table" FILES ${MATERIAL_PRESET_TABLE_FILES})
 
 # Position Provider Registry
