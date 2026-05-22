@@ -14,7 +14,6 @@
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
-#include "BuiltinVariantEntry.h"
 #include <algorithm>
 #include <atomic>
 #include <mutex>
@@ -320,23 +319,7 @@ namespace
     // Unified key-based VS/FS generators (replaces the old route-table system)
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// Map GeometryMode to VertexTransformPolicy explicitly — they do NOT share numeric values.
-    hgl::graph::mtl::VertexTransformPolicy GeometryModeToVertexPolicy(hgl::graph::mtl::GeometryMode gm) noexcept
-    {
-        using GM = hgl::graph::mtl::GeometryMode;
-        using VP = hgl::graph::mtl::VertexTransformPolicy;
-        switch (gm)
-        {
-            case GM::Mesh3D:               return VP::Mesh3D;
-            case GM::Quad2D:               return VP::Quad2D;
-            case GM::ScreenRect:           return VP::Quad2D;   // ScreenRect = 2D quad in clip space
-            case GM::BillboardCameraFacing:return VP::BillboardCameraFacing;
-            case GM::BillboardAxisLocked:  return VP::BillboardAxisLocked;
-            default:                       return VP::Mesh3D;
-        }
-    }
 
-    /// Build a single-include VS wrapper: for geometry modes whose VS logic lives in a .glsl file.
     std::string BuildIncludeOnlyVS(const char *include_path)
     {
         std::string out = "#version " + std::to_string(g_shader_version) + "\n\n";
@@ -431,13 +414,12 @@ namespace
             return;
 
         std::fprintf(stderr,
-                     "[CompositorAssembler] warning: using legacy key fallback for %s stage variant='%s' factory=%s surface=%u geometry=%u. "
+                     "[CompositorAssembler] warning: using legacy key fallback for %s stage variant='%s' factory=%s surface=%u. "
                      "This path is compatibility-only; prefer CreateBuiltinRowBoundVariantDesc() or MaterialVariantDesc::CreateRowBound()/BindRow() with explicit MaterialVariantRow binding.\n",
                      stage,
                      desc.variant_name.empty() ? "<unnamed>" : desc.variant_name.c_str(),
                      desc.factory_type ? std::to_string(static_cast<unsigned>(*desc.factory_type)).c_str() : "<none>",
-                     static_cast<unsigned>(key.surface_type),
-                     static_cast<unsigned>(key.geometry_mode));
+                     static_cast<unsigned>(key.surface_type));
     }
 
     const hgl::graph::mtl::MaterialVariantRow *ResolveVariantRow(const hgl::graph::mtl::MaterialVariantKey &key,
@@ -473,8 +455,6 @@ namespace
         msg += desc.factory_type ? std::to_string(static_cast<unsigned>(*desc.factory_type)) : std::string("<none>");
         msg += " surface=";
         msg += std::to_string(static_cast<unsigned>(key.surface_type));
-        msg += " geometry=";
-        msg += std::to_string(static_cast<unsigned>(key.geometry_mode));
         msg += ". Key fallback is reserved for legacy anonymous descriptors without explicit row/name/template binding; prefer CreateBuiltinRowBoundVariantDesc() or MaterialVariantDesc::CreateRowBound()/BindRow().";
         return msg;
     }
@@ -511,7 +491,6 @@ namespace
         }
 
         if (row->surface_type != key.surface_type
-         || row->geometry_mode != key.geometry_mode
          // position_provider is a runtime VS-only axis and must NOT be compared here:
          // the registry row always stores the preset default (e.g. VAB_Vec3) while the
          // key carries the runtime value (e.g. VAB_Vec2 for a D2 recipe). The assembler
@@ -632,11 +611,9 @@ namespace
         if (blend == RM::Masked) flags.alpha_masked = true;
         if (blend == RM::Dither) flags.alpha_dither = true;
 
-        // Billboard is no longer special-cased here: billboard geometry_mode is
-        // handled entirely by the vertex_policy two-axis path (BillboardCameraFacing /
-        // BillboardAxisLocked in VertexTransformPolicy). Any legacy key that reaches
-        // this function with a billboard geometry_mode falls through to the standard
-        // attrib-driven path below, which is correct for FS feature inference.
+        // Billboard is handled entirely by the vertex_policy two-axis path
+        // (BillboardCameraFacing / BillboardAxisLocked in VertexTransformPolicy);
+        // no special-casing is needed here for FS feature inference.
 
         // 1. Terrain: normal varying + clip-pos for grid edge fade.
         if (key.surface_type == ST::Terrain)

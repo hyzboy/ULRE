@@ -33,7 +33,6 @@ namespace hgl::graph::mtl {
 // Compact type aliases (used inside kBuiltinVariants[] initialisers)
 // ---------------------------------------------------------------------------
 using _BVE_ST   = SurfaceType;
-using _BVE_GM   = GeometryMode;
 using _BVE_TSM  = TextureSourceMode;
 using _BVE_LM   = LightingModel;
 using _BVE_RM   = RenderAlphaMode;
@@ -57,7 +56,7 @@ struct BuiltinVariantEntry
     MaterialPreset       preset;
 
     SurfaceType          surface_type     = _BVE_ST::Unlit;
-    GeometryMode         geometry_mode    = _BVE_GM::Mesh3D;
+    VertexTransformPolicy vertex_policy    = VertexTransformPolicy::Unknown;
     PositionProviderId   position_provider = PositionProviderId::VAB_Vec3;
     LightingModel        lighting         = _BVE_LM::Lambert;
     SkyLightAmbientModel sky_model     = SkyLightAmbientModel::Simple;
@@ -87,7 +86,6 @@ inline MaterialVariantKey BuildKey(const BuiltinVariantEntry &e)
 
     k.variant_row_name_hash         = row_hash;
     k.surface_type                  = e.surface_type;
-    k.geometry_mode                 = e.geometry_mode;
     k.position_provider             = e.position_provider;
     k.vertex_attribute_feature_bits = e.vertex_bits;
     k.extra_feature_bits            = e.extra_bits;
@@ -120,7 +118,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
     row.preset = e.preset;
     row.factory_type = e.preset;
     row.surface_type = e.surface_type;
-    row.geometry_mode = e.geometry_mode;
     row.position_provider = e.position_provider;
     row.blend = e.blend;
     row.pass = e.pass;
@@ -175,17 +172,17 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
     case MaterialPreset::UnlitTexture:
     {
         const bool is2D = (e.position_provider == PositionProviderId::VAB_Vec2
-                        && e.geometry_mode != GeometryMode::BillboardCameraFacing
-                        && e.geometry_mode != GeometryMode::BillboardAxisLocked);
+                        && e.vertex_policy != VertexTransformPolicy::BillboardCameraFacing
+                        && e.vertex_policy != VertexTransformPolicy::BillboardAxisLocked);
         row.primitive     = PrimitiveType::Triangles;
         row.surface_model = SurfaceShadingModel::UnlitTexture3D;
 
-        if (e.geometry_mode == GeometryMode::BillboardCameraFacing)
+        if (e.vertex_policy == VertexTransformPolicy::BillboardCameraFacing)
         {
             row.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
             row.position_provider = PositionProviderId::VAB_Vec2;
         }
-        else if (e.geometry_mode == GeometryMode::BillboardAxisLocked)
+        else if (e.vertex_policy == VertexTransformPolicy::BillboardAxisLocked)
         {
             row.vertex_policy = VertexTransformPolicy::BillboardAxisLocked;
             row.position_provider = PositionProviderId::VAB_Vec2;
@@ -236,9 +233,9 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
     case MaterialPreset::Gizmo3D:
         row.primitive = PrimitiveType::Triangles;
         row.surface_model = SurfaceShadingModel::Gizmo;
-        if (e.geometry_mode == GeometryMode::BillboardCameraFacing)
+        if (e.vertex_policy == VertexTransformPolicy::BillboardCameraFacing)
             row.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
-        else if (e.geometry_mode == GeometryMode::BillboardAxisLocked)
+        else if (e.vertex_policy == VertexTransformPolicy::BillboardAxisLocked)
             row.vertex_policy = VertexTransformPolicy::BillboardAxisLocked;
         else
             row.vertex_policy = VertexTransformPolicy::Mesh3D;

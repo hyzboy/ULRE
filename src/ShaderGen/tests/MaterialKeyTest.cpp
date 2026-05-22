@@ -115,7 +115,7 @@ static void test_size_is_stable()
     // Layout:
     //   0  : variant          (MaterialVariantKey, 48 bytes)
     //         0: variant_row_name_hash (uint64, 8 bytes)
-    //         8: surface_type (uint8) + geometry_mode (uint8) + render_phase (uint8) + quality_level (uint8) = 4 bytes
+    //         8: surface_type (uint8) + render_phase (uint8) + quality_level (uint8) + [1 padding] = 4 bytes
     //        12: [padding] (4 bytes to align uint64)
     //        16: shader_library_revision_hash (uint64, 8 bytes)
     //        24: position_provider (uint16, 2 bytes) + [2 padding] + user_provider_path_hash (uint32, 4 bytes)

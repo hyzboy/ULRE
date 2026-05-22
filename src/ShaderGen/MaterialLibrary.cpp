@@ -60,7 +60,7 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
     std::string out;
     out.reserve(8192);
     out += "# Builtin MaterialPreset Audit Snapshot\n";
-    out += "preset|resolved_preset|row_name|primitive|vertex_policy|surface_model|surface_type|geometry_mode|blend|pass|schema|def_hint|vs_features|fs_features|resources|textures|runtime_transition|explicit_axes|legacy_inference|prune_summary|sfm_inferred|sfm_vs_row_resources\n";
+    out += "preset|resolved_preset|row_name|primitive|vertex_policy|surface_model|surface_type|blend|pass|schema|def_hint|vs_features|fs_features|resources|textures|runtime_transition|explicit_axes|legacy_inference|prune_summary|sfm_inferred|sfm_vs_row_resources\n";
 
     registry.ForEachBuiltinRow([&](const MaterialVariantRow &row)
     {
@@ -80,8 +80,6 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
         out += GetSurfaceShadingModelName(row.surface_model);
         out += "|";
         out += std::to_string(static_cast<uint32>(row.surface_type));
-        out += "|";
-        out += std::to_string(static_cast<uint32>(row.geometry_mode));
         out += "|";
         out += std::to_string(static_cast<uint32>(row.blend));
         out += "|";
@@ -249,7 +247,6 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
             audit_key.lighting_model    = LightingModel::Lambert; // default; ECS injects real value at runtime
             audit_key.sky_ambient_model = SkyLightAmbientModel::Simple; // default
             audit_key.surface_type      = row.surface_type;
-            audit_key.geometry_mode     = row.geometry_mode;
             audit_key.pass_hint         = row.pass;
             audit_key.position_provider = row.position_provider;
 
@@ -367,8 +364,6 @@ static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
     text += hex64;
     text += " ST=";
     text += std::to_string(static_cast<unsigned>(key.surface_type));
-    text += " GM=";
-    text += std::to_string(static_cast<unsigned>(key.geometry_mode));
     text += " sky=";
     text += std::to_string(static_cast<unsigned>(key.sky_ambient_model));
     text += " light=";
@@ -604,7 +599,7 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
     //
     //   • ov.position_provider is a runtime VS-only axis written directly into the key
     //     (Step 5 below). It does NOT filter registry rows.
-    //   • ov.preferred_geometry_mode is a *hard* filter (billboard presets only).
+    //   • ov.preferred_vertex_policy is a *hard* filter (billboard presets only).
     //   • blend_mode and lighting_model are *hard* filters (always applied).
     //   • First match wins; candidates are sorted by bound_row address (ascending) which
     //     equals insertion order in builtin_row_storage (contiguous vector).
@@ -784,10 +779,9 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     if(!profile)
     {
         std::fprintf(stderr,
-            "[MaterialLibrary] CreateMaterialCreateInfo warning: profile is null (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
+            "[MaterialLibrary] CreateMaterialCreateInfo warning: profile is null (key_hash=%llu surface=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
-            static_cast<unsigned>(key.geometry_mode),
             static_cast<unsigned>(key.GetTextureSourceMode(SamplerSlot::BaseColor)),
             key.texture_source_bits,
             key.sampler_feature_bits,
@@ -839,11 +833,10 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     {
         std::fprintf(stderr,
             "[MaterialLibrary] CreateMaterialCreateInfo failed: no registered variant"
-            " (key_hash=%llu surface=%u geom=%u sky=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)"
+            " (key_hash=%llu surface=%u sky=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)"
             " [Phase 3: sky canonicalized to Simple=%s]\n",
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
-            static_cast<unsigned>(key.geometry_mode),
             static_cast<unsigned>(key.sky_ambient_model),
             static_cast<unsigned>(key.GetTextureSourceMode(SamplerSlot::BaseColor)),
             key.texture_source_bits,
@@ -891,7 +884,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         // Phase 2: VS/FS split fallback.
         // The full variant miss does not necessarily mean VS is broken — it may be
         // that only the FS surface configuration (tex_bits / sampler_bits) has no match.
-        // Strategy: scan registered variants for one that shares the same geometry_mode.
+        // Strategy: scan registered variants for one that shares the same surface_type.
         // If found, VS assembly is likely valid; substitute ErrorIndicator surface for FS.
         const MaterialVariantDesc *vs_candidate = nullptr;
         MaterialVariantKey vs_candidate_key{};
@@ -900,8 +893,6 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             {
                 if (vs_candidate)
                     return; // already found one
-                if (vk.geometry_mode != registry_lookup_key.geometry_mode)
-                    return;
                 if (!vd.factory_type)
                     return;
                 vs_candidate     = &vd;
@@ -918,10 +909,9 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                 static_cast<uint8_t>(key.sampler_feature_bits & 0xFF));
 
             std::fprintf(stderr,
-                "[MaterialLibrary] Phase2 FS-fallback: VS candidate='%s' (geom=%u)"
+                "[MaterialLibrary] Phase2 FS-fallback: VS candidate='%s'"
                 " error_code=0x%08X [%s]\n",
                 vs_candidate->variant_name.c_str(),
-                static_cast<unsigned>(vs_candidate_key.geometry_mode),
                 error_code,
                 FormatFSError(error_code).c_str());
 
@@ -945,7 +935,6 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             // so bound_row structural validation can pass in the assembler.
             MaterialVariantKey fallback_key = key;
             fallback_key.surface_type      = vs_candidate_key.surface_type;
-            fallback_key.geometry_mode     = vs_candidate_key.geometry_mode;
             fallback_key.position_provider = vs_candidate_key.position_provider;
             fallback_key.blend_mode        = vs_candidate_key.blend_mode;
             fallback_key.pass_hint         = vs_candidate_key.pass_hint;
@@ -973,9 +962,8 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         else
         {
             std::fprintf(stderr,
-                "[MaterialLibrary] Phase2 FS-fallback: no geometry_mode=%u candidate found"
-                " — VS routing also failed\n",
-                static_cast<unsigned>(registry_lookup_key.geometry_mode));
+                "[MaterialLibrary] Phase2 FS-fallback: no matching candidate found"
+                " — VS routing also failed\n");
         }
 
         return nullptr;

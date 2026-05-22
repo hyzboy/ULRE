@@ -76,7 +76,7 @@ struct RuntimeKeyOverrides
     std::optional<PassType>          pass_hint;              // 同上
     std::optional<SkyLightAmbientModel> sky_ambient_model;   // 同上
     std::optional<LightingModel>     lighting_model;         // 同上
-    std::optional<VertexTransformPolicy> preferred_vertex_policy; // entry-selection filter: skip entries whose vertex_policy differs (replaces deprecated preferred_geometry_mode)
+    std::optional<VertexTransformPolicy> preferred_vertex_policy; // entry-selection filter: skip entries whose vertex_policy differs
     uint32                           extra_vertex_attrib_bits = 0;  // 与 preset 默认 OR 合并
 };
 
@@ -99,7 +99,7 @@ inline MaterialVariantKey RouteKey(MaterialPreset preset) noexcept
     return RouteKey(preset, 0u, RuntimeKeyOverrides{});
 }
 
-/// Apply per-cfg overrides (geometry_mode, texture_source_bits, sampler_feature_bits) to an
+/// Apply per-cfg overrides (texture_source_bits, sampler_feature_bits) to an
 /// already-constructed MaterialVariantKey.  Used by both CreateMaterialCreateInfo and
 /// ShaderMaterialProgramManager::CreateMaterial so the same logic is executed regardless of which entry
 /// point the application uses.

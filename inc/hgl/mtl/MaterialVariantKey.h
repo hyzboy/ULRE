@@ -26,29 +26,12 @@ namespace hgl::graph::mtl
         return 1u << static_cast<uint32>(attrib);
     }
 
-    /// @deprecated GeometryMode will be removed in a future step; meaning folded into
-    /// VertexTransformPolicy + position_provider. Kept temporarily for VariantRegistry compat.
-    enum class GeometryMode : uint8
-    {
-        Mesh3D = 0,
-        Quad2D,
-        ScreenRect,
-        BillboardCameraFacing,
-        BillboardAxisLocked,
-
-        ENUM_CLASS_RANGE(Mesh3D, BillboardAxisLocked)
-    };
-
     struct MaterialVariantKey
     {
         uint64            variant_row_name_hash = 0;
         SurfaceType       surface_type        = SurfaceType::Unlit;
 
-        /// @deprecated Use render_phase + position_provider instead.
-        /// Kept for VariantRegistry compatibility; will be removed with kBuiltinVariants[].
-        GeometryMode      geometry_mode       = GeometryMode::Mesh3D;
-
-        /// New orthogonal render-phase axis (step 10). Included in all cache keys.
+        /// New orthogonal render-phase axis
         RenderPhase render_phase    = RenderPhase::ForwardOpaque;
 
         /// Quality level 1..10 (GlobalRenderConfig.quality_level). Included in cache key.
@@ -140,7 +123,6 @@ namespace hgl::graph::mtl
 
             h = hgl::hash::FNV1aAppend(h, variant_row_name_hash);
             h = hgl::hash::FNV1aAppend(h, surface_type);
-            h = hgl::hash::FNV1aAppend(h, geometry_mode);
             h = hgl::hash::FNV1aAppend(h, render_phase);
             h = hgl::hash::FNV1aAppend(h, quality_level);
             h = hgl::hash::FNV1aAppend(h, texture_source_bits);
@@ -167,7 +149,6 @@ namespace hgl::graph::mtl
         {
             return variant_row_name_hash == rhs.variant_row_name_hash
                 && surface_type == rhs.surface_type
-                && geometry_mode == rhs.geometry_mode
                 && render_phase == rhs.render_phase
                 && quality_level == rhs.quality_level
                 && position_provider == rhs.position_provider
@@ -194,10 +175,9 @@ namespace hgl::graph::mtl
             uint64 h = hgl::hash::FNV1aInit<uint64>();
             h = hgl::hash::FNV1aAppend(h, variant_row_name_hash);
             h = hgl::hash::FNV1aAppend(h, surface_type);
-            h = hgl::hash::FNV1aAppend(h, geometry_mode);
             h = hgl::hash::FNV1aAppend(h, render_phase);
             h = hgl::hash::FNV1aAppend(h, quality_level);
-            // position_provider and user_provider_path_hash intentionally excluded —
+            // position_provider and user_provider_path_hash intentionally excluded
             // VS-only axes not stored in the registry row.
             h = hgl::hash::FNV1aAppend(h, texture_source_bits);
             h = hgl::hash::FNV1aAppend(h, sampler_feature_bits);
@@ -218,7 +198,6 @@ namespace hgl::graph::mtl
         {
             return variant_row_name_hash == rhs.variant_row_name_hash
                 && surface_type == rhs.surface_type
-                && geometry_mode == rhs.geometry_mode
                 && render_phase == rhs.render_phase
                 && quality_level == rhs.quality_level
                 // position_provider intentionally excluded — see RegistryHash()

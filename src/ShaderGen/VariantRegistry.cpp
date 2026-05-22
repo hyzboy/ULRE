@@ -59,8 +59,6 @@ static std::string FormatVariantKeyForLog(const MaterialVariantKey &key)
     text += hex64;
     text += " ST=";
     text += std::to_string(static_cast<unsigned>(key.surface_type));
-    text += " GM=";
-    text += std::to_string(static_cast<unsigned>(key.geometry_mode));
     text += " blend=";
     text += std::to_string(static_cast<unsigned>(key.blend_mode));
     text += " pass=";
@@ -293,8 +291,7 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
             {
                 bool same_preset = !req_preset || (entry.desc.factory_type && *entry.desc.factory_type == *req_preset);
                 bool same_surface = (entry.key.surface_type == request_key.surface_type);
-                bool same_geom    = (entry.key.geometry_mode == request_key.geometry_mode);
-                if (!same_preset || !same_surface || !same_geom)
+                if (!same_preset || !same_surface)
                     continue;
                 if (close_count == 0)
                     std::fprintf(stderr, "[VariantRegistry] miss candidates (same preset/surface/geom):\n");
@@ -360,8 +357,6 @@ std::string VariantRegistry::DumpSnapshot() const
             : std::string("-1");
         out += "|";
         out += std::to_string(static_cast<uint32>(k.surface_type));
-        out += "|";
-        out += std::to_string(static_cast<uint32>(k.geometry_mode));
         out += "|";
         {
             bool first = true;
@@ -443,8 +438,6 @@ std::string VariantRegistry::DumpBuiltinRowSnapshot() const
             out += "|";
             out += std::to_string(static_cast<uint32>(row.surface_type));
             out += "|";
-            out += std::to_string(static_cast<uint32>(row.geometry_mode));
-            out += "|";
             out += std::to_string(static_cast<uint32>(row.position_provider));
             out += "|";
             out += GetVertexTransformPolicyName(row.vertex_policy);
@@ -501,7 +494,6 @@ void VariantRegistry::ForEach(
 // Convenience aliases (TU-local; do not pollute hgl::graph::mtl public API).
 namespace {
 using ST   = _BVE_ST;
-    using GM   = _BVE_GM;
     using PPI  = PositionProviderId;
     using TSM  = _BVE_TSM;
     using LM   = _BVE_LM;
@@ -521,21 +513,21 @@ static const BuiltinVariantEntry kBuiltinVariants[] =
     // "PureColor2D / VertexColor2D / VertexLuminance2D" rows are needed; every preset has a
     // single row and the 2D vs 3D VS difference is handled by the two-axis compositor path.
     //
-    // The only entries below that still carry an explicit position_provider are those where
-    // the geometry_mode (Quad2D / billboard) is the row-selection axis AND the preset has
-    // genuinely distinct behaviour per geometry mode (e.g. UnlitTexture2D vs UnlitTexture3D
-    // differ in texture coordinate handling; Text2D uses a bespoke VS/FS pair).
+    // The only entries below that still carry an explicit vertex_policy + position_provider are
+    // those where the vertex_policy is the row-selection axis AND the preset has genuinely
+    // distinct behaviour (e.g. UnlitTexture2D vs UnlitTexture3D differ in texture coordinate
+    // handling; Text2D uses a bespoke VS/FS pair; billboard variants use a VAB_Vec2 position).
 
     { .name = "UnlitTexture2D",       .preset = MaterialPreset::UnlitTexture,
-      .geometry_mode = GM::Quad2D,  .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::BaseColor, TSM::Simple }},
+      .vertex_policy = VertexTransformPolicy::Position2DTransform,  .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::BaseColor, TSM::Simple }},
       .surface_path = "surface/unlit_texture3d_surface.glsl"    },
 
     { .name = "UnlitTexture2DArray",  .preset = MaterialPreset::UnlitTexture,
-      .geometry_mode = GM::Quad2D,  .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::BaseColor, TSM::Array }},
+      .vertex_policy = VertexTransformPolicy::Position2DTransform,  .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::BaseColor, TSM::Array }},
       .surface_path = "surface/unlit_texture3d_surface.glsl"    },
 
     { .name = "Text2D",             .preset = MaterialPreset::Text2D,
-      .geometry_mode = GM::Quad2D,  .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::Text, TSM::Simple }},
+      .vertex_policy = VertexTransformPolicy::Text2D,  .position_provider = PositionProviderId::VAB_Vec2, .tex = {{ Slot::Text, TSM::Simple }},
       .vs_path = "2d/text2d.vert.glsl",         .fs_path = "2d/text2d.frag.glsl"         },
 
     // ── 3D Unlit ────────────────────────────────────────────────────────────────────────────────
@@ -559,7 +551,7 @@ static const BuiltinVariantEntry kBuiltinVariants[] =
       .surface_path = "surface/gizmo3d_surface.glsl" },
 
     { .name = "Gizmo3DBillboardCameraFacing", .preset = MaterialPreset::Gizmo3D,
-      .geometry_mode = GM::BillboardCameraFacing,
+      .vertex_policy = VertexTransformPolicy::BillboardCameraFacing,
       .surface_path = "surface/gizmo3d_surface.glsl" },
 
     // ── UnlitTexture (Mesh3D, BaseColor only, Simple + Array) ──────────────────────────────────
@@ -577,9 +569,8 @@ static const BuiltinVariantEntry kBuiltinVariants[] =
 
     // Billboard is a vertex-transform variant of UnlitTexture (not a preset-level special case).
     // Billboard rows: position is a vec2 input (screen-space XY), so position_provider = VAB_Vec2.
-    // geometry_mode drives vertex_policy selection in BuiltinVariantEntry.h BuildDesc().
     { .name = "UnlitTextureBillboardAxisLocked",   .preset = MaterialPreset::UnlitTexture,
-      .geometry_mode = GM::BillboardAxisLocked,
+      .vertex_policy = VertexTransformPolicy::BillboardAxisLocked,
       .position_provider = PPI::VAB_Vec2,
       .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
       .vertex_bits = VA(VertexAttrib::TexCoord),
@@ -587,7 +578,7 @@ static const BuiltinVariantEntry kBuiltinVariants[] =
       .surface_path = "surface/unlit_texture3d_surface.glsl" },
 
     { .name = "UnlitTextureBillboardCameraFacing", .preset = MaterialPreset::UnlitTexture,
-      .geometry_mode = GM::BillboardCameraFacing,
+      .vertex_policy = VertexTransformPolicy::BillboardCameraFacing,
       .position_provider = PPI::VAB_Vec2,
       .blend = RM::Transparent,     .pass = PT::ForwardTransparent,
       .vertex_bits = VA(VertexAttrib::TexCoord),

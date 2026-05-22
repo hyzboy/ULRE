@@ -52,8 +52,6 @@ namespace hgl::graph::mtl
         for (size_t i = 0; i < kVertexProgramTemplatesCount; ++i)
         {
             const auto &tpl = kVertexProgramTemplates[i];
-            if (tpl.geometry_mode != key.geometry_mode)
-                continue;
             if (tpl.position_provider != key.position_provider)
                 continue;
             if (!SupportsVertexBits(tpl, key))
@@ -62,7 +60,7 @@ namespace hgl::graph::mtl
         }
 
         if (miss_reason)
-            *miss_reason = "no vertex template matched geometry_mode/position_provider/vertex_attrib_bits";
+            *miss_reason = "no vertex template matched position_provider/vertex_attrib_bits";
         return nullptr;
     }
 

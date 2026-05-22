@@ -5,7 +5,6 @@ namespace hgl::graph::mtl
     uint64 VertexProgramKey::Hash() const noexcept
     {
         uint64 h = hgl::hash::FNV1aInit<uint64>();
-        h = hgl::hash::FNV1aAppend(h, geometry_mode);
         h = hgl::hash::FNV1aAppend(h, position_provider);
         h = hgl::hash::FNV1aAppend(h, vertex_attribute_feature_bits);
         h = hgl::hash::FNV1aAppend(h, has_local_to_world ? uint8(1) : uint8(0));
@@ -30,7 +29,6 @@ namespace hgl::graph::mtl
                                            const bool has_local_to_world) noexcept
     {
         VertexProgramKey out{};
-        out.geometry_mode = key.geometry_mode;
         out.position_provider = key.position_provider;
         out.vertex_attribute_feature_bits = key.vertex_attribute_feature_bits;
         out.has_local_to_world = has_local_to_world;

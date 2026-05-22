@@ -24,11 +24,10 @@ namespace
             return;
 
         std::fprintf(stderr,
-            "[Standard] %s hash=%llu surface=%u geom=%u sky=%u light=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X any_array=%d\n",
+            "[Standard] %s hash=%llu surface=%u sky=%u light=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X any_array=%d\n",
             label ? label : "route",
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
-            static_cast<unsigned>(key.geometry_mode),
             static_cast<unsigned>(key.sky_ambient_model),
             static_cast<unsigned>(key.lighting_model),
             key.texture_source_bits,

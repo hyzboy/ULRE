@@ -457,10 +457,9 @@ namespace hgl::graph
                                                                              const std::string &cfg_hash) const
     {
         std::fprintf(stderr,
-            "[ShaderMaterialProgramManager] CreateMaterial(key/3D) failed: CreateMaterialCreateInfo returned null (key_hash=%llu surface=%u geom=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X cfg_hash=%s)\n",
+            "[ShaderMaterialProgramManager] CreateMaterial(key/3D) failed: CreateMaterialCreateInfo returned null (key_hash=%llu surface=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X cfg_hash=%s)\n",
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
-            static_cast<unsigned>(key.geometry_mode),
             key.texture_source_bits,
             key.sampler_feature_bits,
             key.vertex_attribute_feature_bits,

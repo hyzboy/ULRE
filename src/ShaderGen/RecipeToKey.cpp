@@ -551,7 +551,7 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     }
 
     // ── Step 2: dimension ─────────────────────────────────────────────────────
-    // geometry_mode and position_provider are already correctly set by the matched
+    // vertex_policy and position_provider are already correctly set by the matched
     // builtin entry via RouteKey (Step 1). Dimension is a config-layer concern; only
     // entries that truly differ in shader behaviour (e.g. UnlitTexture2D vs UnlitTexture)
     // have separate builtin rows. Do NOT re-encode dim here.
@@ -600,32 +600,6 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
         const RenderAlphaMode blend = r.default_render_state.blend;
         k.blend_mode = blend;
         k.pass_hint  = GetPrimaryPassForBlendMode(blend);
-    }
-
-    // ── Step 8: explicit axis overrides (Phase B) ─────────────────────────────
-    // Explicit value has priority; Unknown falls back to preset alias expansion.
-    const VertexTransformPolicy effective_vertex_policy =
-        (r.vertex_policy != VertexTransformPolicy::Unknown)
-        ? r.vertex_policy
-        : alias_axes.vertex_policy;
-
-    if (effective_vertex_policy != VertexTransformPolicy::Unknown)
-    {
-        switch (effective_vertex_policy)
-        {
-        case VertexTransformPolicy::Mesh3D:
-            k.geometry_mode = GeometryMode::Mesh3D; break;
-        case VertexTransformPolicy::Quad2D:
-            k.geometry_mode = GeometryMode::Quad2D; break;
-        case VertexTransformPolicy::BillboardCameraFacing:
-            k.geometry_mode = GeometryMode::BillboardCameraFacing; break;
-        case VertexTransformPolicy::BillboardAxisLocked:
-            k.geometry_mode = GeometryMode::BillboardAxisLocked; break;
-        default:
-            // Sky, TerrainGrid, Text2D, FullscreenTriangle etc. have no
-            // GeometryMode counterpart yet; leave geometry_mode unchanged.
-            break;
-        }
     }
 
     return k;

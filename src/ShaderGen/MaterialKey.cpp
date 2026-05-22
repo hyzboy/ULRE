@@ -36,9 +36,6 @@ namespace hgl::graph::mtl {
         if (auto c = static_cast<uint8>(variant.surface_type)
                  <=> static_cast<uint8>(rhs.variant.surface_type); c != 0) return c;
 
-        if (auto c = static_cast<uint8>(variant.geometry_mode)
-                 <=> static_cast<uint8>(rhs.variant.geometry_mode); c != 0) return c;
-
         if (auto c = static_cast<uint8>(variant.position_provider)
                  <=> static_cast<uint8>(rhs.variant.position_provider); c != 0) return c;
 
