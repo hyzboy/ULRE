@@ -1,4 +1,4 @@
-﻿/// ProviderManifest.cpp
+/// ProviderManifest.cpp
 ///
 /// @sfm header parser and ProviderManifestRegistry implementation.
 ///
@@ -422,26 +422,4 @@ size_t ProviderManifestRegistry::Count() noexcept
     return g_manifests.size();
 }
 
-
-// ── SFM annotation parsing helpers ──────────────────────────────────────────────
-
-VertexAttrib VertexAttribFromName(std::string_view name) noexcept
-{
-    for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
-    {
-        if (name == VertexAttribNames[i])
-            return static_cast<VertexAttrib>(i);
-    }
-    return VertexAttrib::RANGE_SIZE; // Sentinel: not found
-}
-
-mtl::RenderPhase RenderPhaseFromName(std::string_view name) noexcept
-{
-    for (size_t i = 0; i < static_cast<size_t>(mtl::RenderPhase::COUNT); ++i)
-    {
-        if (name == mtl::RenderPhaseNames[i])
-            return static_cast<mtl::RenderPhase>(i);
-    }
-    return mtl::RenderPhase::COUNT; // Sentinel: not found
-}
 } // namespace hgl::graph

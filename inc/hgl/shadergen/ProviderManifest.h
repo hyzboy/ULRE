@@ -1,12 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/common/PositionProvider.h>
-#include <hgl/common/VertexAttribDef.h>
-#include <hgl/mtl/RenderPhase.h>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <bitset>
 #include <cstdint>
 
 namespace hgl::graph
@@ -62,22 +59,6 @@ namespace hgl::graph
         bool        needs_sampler       = false;
         bool        allow_dim_override  = false; ///< VAB=true; PCG=false
         OutputSpace output_space        = OutputSpace::Local;
-
-        // ── Vertex attribute requirements (NEW: SFM-driven) ──────────────────
-        using VABitset = std::bitset<static_cast<size_t>(VertexAttrib::RANGE_SIZE)>;
-        VABitset    va_required;    ///< Must be present
-        VABitset    va_optional;    ///< May be used if available
-        VABitset    va_derive;      ///< Can be derived from required/optional
-
-        // ── Resource requirements (NEW: SFM-driven) ───────────────────────────
-        std::vector<std::string> tex_required;   ///< Required texture sampler names
-        std::vector<std::string> ubo_required;   ///< Required UBO names
-        std::vector<std::string> ssbo_required;  ///< Required SSBO names
-
-        // ── Sky & phase support (NEW: SFM-driven) ─────────────────────────────
-        bool        needs_sky = false;           ///< Requires sky/ambient
-        using PhaseBitset = std::bitset<static_cast<size_t>(mtl::RenderPhase::COUNT)>;
-        PhaseBitset supports_phase;              ///< Which render phases this shader supports
 
         // ── Input stream descriptors ──────────────────────────────────────────
         struct InputSpec
@@ -153,14 +134,5 @@ namespace hgl::graph
             h = (h ^ c) * 16777619u;
         return h;
     }
-
-    // ── SFM annotation parsing helpers ───────────────────────────────────────
-    /// Parse a vertex attribute name -> VertexAttrib enum.
-    /// Returns VertexAttrib::RANGE_SIZE if not recognized.
-    VertexAttrib VertexAttribFromName(std::string_view name) noexcept;
-
-    /// Parse a render phase name -> RenderPhase enum.
-    /// Returns RenderPhase::COUNT if not recognized.
-    mtl::RenderPhase RenderPhaseFromName(std::string_view name) noexcept;
 
 } // namespace hgl::graph
