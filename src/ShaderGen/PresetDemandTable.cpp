@@ -143,7 +143,7 @@ static const PresetDemand kTable[] =
     // ── Specialised 3-D presets ───────────────────────────────────────────────
     {
         /* preset     */ MaterialPreset::VertexPaletteColor3D,
-        /* required   */ VA({kPos, kJID}),
+        /* required   */ VA({kPos, kCol}),
         /* optional   */ VABits{},
         /* derive     */ VABits{},
         /* resources  */ kResMesh3D,
