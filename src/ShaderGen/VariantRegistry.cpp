@@ -512,7 +512,7 @@ constexpr auto VA = _BVE_VA;
 } // anonymous (aliases only)
 
 // clang-format off
-const BuiltinVariantEntry kBuiltinVariants[] =
+static const BuiltinVariantEntry kBuiltinVariants[] =
 {
     // ── 2D variants ──────────────────────────────────────────────────────────────────────────────
     // position_provider (VAB_Vec2 / VAB_Vec3 / PCG_*) is a runtime VS-only axis written into
@@ -647,7 +647,7 @@ const BuiltinVariantEntry kBuiltinVariants[] =
 };
 // clang-format on
 
-const size_t kBuiltinVariantsCount = std::size(kBuiltinVariants);
+static const size_t kBuiltinVariantsCount = std::size(kBuiltinVariants);
 
 
 void VariantRegistry::InitializeBuiltinVariants()

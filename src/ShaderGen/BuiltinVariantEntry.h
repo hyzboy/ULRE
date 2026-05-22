@@ -1,12 +1,14 @@
 // BuiltinVariantEntry.h  —  shared internal header for the built-in variant table
 //
 // Defines the BuiltinVariantEntry POD struct together with its BuildKey() / BuildDesc()
-// helpers and the canonical kBuiltinVariants[] declaration.
+// helpers and the canonical kBuiltinVariants[] table (defined in VariantRegistry.cpp).
 //
 // USAGE:
-//   VariantRegistry.cpp  — defines kBuiltinVariants[] and calls BuildKey()/BuildDesc()
-//   MaterialLibrary.cpp  — scans kBuiltinVariants[] in RouteKey() to select the base entry
-//                          for a preset before applying runtime overrides.
+//   VariantRegistry.cpp  — sole owner: defines static kBuiltinVariants[], calls
+//                          BuildKey()/BuildDesc()/BuildRowFromBuiltinVariantEntry().
+//
+// External callers must NOT reference kBuiltinVariants[] directly; use the
+// VariantRegistry API (ForEach / ForEachBuiltinRow / QueryVariant) instead.
 //
 // This file intentionally has no include guards of its own (use #pragma once at each
 // including TU) and relies on the including TU to have pulled in the MTL/SurfaceType etc.
@@ -350,10 +352,4 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
     return row;
 }
 
-// ---------------------------------------------------------------------------
-// kBuiltinVariants  —  defined in VariantRegistry.cpp; visible here for callers
-//                       that need to scan the table (e.g. MaterialLibrary.cpp)
-// ---------------------------------------------------------------------------
-extern const BuiltinVariantEntry kBuiltinVariants[];
-extern const size_t              kBuiltinVariantsCount;
 } // namespace hgl::graph::mtl
