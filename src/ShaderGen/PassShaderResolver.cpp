@@ -47,7 +47,7 @@ const char* PassShaderResolver::GetVisibilityVsPath(uint32_t /*vtx_policy*/,
 // Resolve
 // ---------------------------------------------------------------------------
 PassShaderOverride PassShaderResolver::Resolve(
-    hgl::mtl::RenderPhase               phase,
+    hgl::graph::mtl::RenderPhase        phase,
     uint32_t                            vtx_policy,
     PositionProviderId                  pos_id,
     const std::optional<AlphaOverlay>&  alpha_overlay)
@@ -58,22 +58,22 @@ PassShaderOverride PassShaderResolver::Resolve(
     PassShaderOverride result;
 
     switch (phase) {
-        case hgl::mtl::RenderPhase::EarlyZ:
+        case hgl::graph::mtl::RenderPhase::EarlyZ:
             result.vs_path = GetDepthVsPath(vtx_policy, pos_id);
             result.fs_path = GetShadowFsPath(alpha_overlay); // Masked EarlyZ needs FS discard
             break;
 
-        case hgl::mtl::RenderPhase::ShadowCaster:
+        case hgl::graph::mtl::RenderPhase::ShadowCaster:
             result.vs_path = GetDepthVsPath(vtx_policy, pos_id);
             result.fs_path = GetShadowFsPath(alpha_overlay);
             break;
 
-        case hgl::mtl::RenderPhase::Velocity:
+        case hgl::graph::mtl::RenderPhase::Velocity:
             result.vs_path = GetVelocityVsPath(vtx_policy, pos_id);
             result.fs_path = "pass/velocity.frag.glsl";
             break;
 
-        case hgl::mtl::RenderPhase::VisibilityBuffer:
+        case hgl::graph::mtl::RenderPhase::VisibilityBuffer:
             result.vs_path = GetVisibilityVsPath(vtx_policy, pos_id);
             result.fs_path = "pass/visibility_buffer.frag.glsl";
             break;

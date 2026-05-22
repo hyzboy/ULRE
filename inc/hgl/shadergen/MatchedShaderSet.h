@@ -21,6 +21,7 @@
 
 #include <hgl/mtl/RenderPhase.h>
 #include <hgl/mtl/LightingModel.h>
+#include <hgl/mtl/SkyLight.h>
 #include <hgl/common/PositionProvider.h>  // PositionProviderId
 
 #include <string>

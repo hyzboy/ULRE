@@ -29,12 +29,12 @@
 namespace hgl::graph {
 
 /// Returns true for phases that bypass Matcher and are handled by PassShaderResolver.
-inline bool IsManagedByPassResolver(hgl::mtl::RenderPhase phase) {
+inline bool IsManagedByPassResolver(hgl::graph::mtl::RenderPhase phase) {
     switch (phase) {
-        case hgl::mtl::RenderPhase::EarlyZ:
-        case hgl::mtl::RenderPhase::ShadowCaster:
-        case hgl::mtl::RenderPhase::Velocity:
-        case hgl::mtl::RenderPhase::VisibilityBuffer:
+        case hgl::graph::mtl::RenderPhase::EarlyZ:
+        case hgl::graph::mtl::RenderPhase::ShadowCaster:
+        case hgl::graph::mtl::RenderPhase::Velocity:
+        case hgl::graph::mtl::RenderPhase::VisibilityBuffer:
             return true;
         default:
             return false;
@@ -51,7 +51,7 @@ public:
     /// @param alpha_overlay   Optional; when Masked/AlphaToCoverage the FS must discard.
     /// @return                PassShaderOverride with vs_path (and optionally fs_path).
     static PassShaderOverride Resolve(
-        hgl::mtl::RenderPhase               phase,
+        hgl::graph::mtl::RenderPhase        phase,
         uint32_t                            vtx_policy,
         PositionProviderId                  pos_id,
         const std::optional<AlphaOverlay>&  alpha_overlay = std::nullopt);
