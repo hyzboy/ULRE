@@ -3,6 +3,7 @@
 #include <hgl/mtl/SurfaceType.h>
 #include <hgl/mtl/RenderAlphaMode.h>
 #include <hgl/mtl/PassType.h>
+#include <hgl/mtl/RenderPhase.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include <hgl/mtl/SkyLight.h>
 #include <hgl/mtl/LightingModel.h>
@@ -25,6 +26,8 @@ namespace hgl::graph::mtl
         return 1u << static_cast<uint32>(attrib);
     }
 
+    /// @deprecated GeometryMode will be removed in a future step; meaning folded into
+    /// VertexTransformPolicy + position_provider. Kept temporarily for VariantRegistry compat.
     enum class GeometryMode : uint8
     {
         Mesh3D = 0,
@@ -40,7 +43,20 @@ namespace hgl::graph::mtl
     {
         uint64            variant_row_name_hash = 0;
         SurfaceType       surface_type        = SurfaceType::Unlit;
+
+        /// @deprecated Use render_phase + position_provider instead.
+        /// Kept for VariantRegistry compatibility; will be removed with kBuiltinVariants[].
         GeometryMode      geometry_mode       = GeometryMode::Mesh3D;
+
+        /// New orthogonal render-phase axis (step 10). Included in all cache keys.
+        RenderPhase render_phase    = RenderPhase::ForwardOpaque;
+
+        /// Quality level 1..10 (GlobalRenderConfig.quality_level). Included in cache key.
+        uint8             quality_level       = 10;
+
+        /// FNV-1a 64-bit hash over all parsed SFM annotations at startup.
+        /// Changes when any .glsl file in ShaderLibrary is modified, forcing SPV recompile.
+        uint64            shader_library_revision_hash = 0;
 
         PositionProviderId position_provider  = PositionProviderId::Unknown;
         /// Non-zero only when position_provider == PositionProviderId::UserPCG.
@@ -125,6 +141,8 @@ namespace hgl::graph::mtl
             h = hgl::hash::FNV1aAppend(h, variant_row_name_hash);
             h = hgl::hash::FNV1aAppend(h, surface_type);
             h = hgl::hash::FNV1aAppend(h, geometry_mode);
+            h = hgl::hash::FNV1aAppend(h, render_phase);
+            h = hgl::hash::FNV1aAppend(h, quality_level);
             h = hgl::hash::FNV1aAppend(h, texture_source_bits);
             h = hgl::hash::FNV1aAppend(h, sampler_feature_bits);
             h = hgl::hash::FNV1aAppend(h, vertex_attribute_feature_bits);
@@ -135,6 +153,8 @@ namespace hgl::graph::mtl
             h = hgl::hash::FNV1aAppend(h, pass_hint);
             h = hgl::hash::FNV1aAppend(h, sky_ambient_model);
             h = hgl::hash::FNV1aAppend(h, lighting_model);
+            if (shader_library_revision_hash != 0)
+                h = hgl::hash::FNV1aAppend(h, shader_library_revision_hash);
 
             // Phase 3: Include effective_feature_mask in cache key computation
             if (effective_feature_mask != 0)
@@ -148,6 +168,8 @@ namespace hgl::graph::mtl
             return variant_row_name_hash == rhs.variant_row_name_hash
                 && surface_type == rhs.surface_type
                 && geometry_mode == rhs.geometry_mode
+                && render_phase == rhs.render_phase
+                && quality_level == rhs.quality_level
                 && position_provider == rhs.position_provider
                 && user_provider_path_hash == rhs.user_provider_path_hash
                 && texture_source_bits == rhs.texture_source_bits
@@ -158,6 +180,7 @@ namespace hgl::graph::mtl
                 && pass_hint == rhs.pass_hint
                 && sky_ambient_model == rhs.sky_ambient_model
                 && lighting_model == rhs.lighting_model
+                && shader_library_revision_hash == rhs.shader_library_revision_hash
                 && effective_feature_mask == rhs.effective_feature_mask;
         }
 
@@ -172,6 +195,8 @@ namespace hgl::graph::mtl
             h = hgl::hash::FNV1aAppend(h, variant_row_name_hash);
             h = hgl::hash::FNV1aAppend(h, surface_type);
             h = hgl::hash::FNV1aAppend(h, geometry_mode);
+            h = hgl::hash::FNV1aAppend(h, render_phase);
+            h = hgl::hash::FNV1aAppend(h, quality_level);
             // position_provider and user_provider_path_hash intentionally excluded —
             // VS-only axes not stored in the registry row.
             h = hgl::hash::FNV1aAppend(h, texture_source_bits);
@@ -182,6 +207,8 @@ namespace hgl::graph::mtl
             h = hgl::hash::FNV1aAppend(h, pass_hint);
             h = hgl::hash::FNV1aAppend(h, sky_ambient_model);
             h = hgl::hash::FNV1aAppend(h, lighting_model);
+            if (shader_library_revision_hash != 0)
+                h = hgl::hash::FNV1aAppend(h, shader_library_revision_hash);
             if (effective_feature_mask != 0)
                 h = hgl::hash::FNV1aAppend(h, effective_feature_mask);
             return h;
@@ -192,6 +219,8 @@ namespace hgl::graph::mtl
             return variant_row_name_hash == rhs.variant_row_name_hash
                 && surface_type == rhs.surface_type
                 && geometry_mode == rhs.geometry_mode
+                && render_phase == rhs.render_phase
+                && quality_level == rhs.quality_level
                 // position_provider intentionally excluded — see RegistryHash()
                 && texture_source_bits == rhs.texture_source_bits
                 && sampler_feature_bits == rhs.sampler_feature_bits
@@ -201,6 +230,7 @@ namespace hgl::graph::mtl
                 && pass_hint == rhs.pass_hint
                 && sky_ambient_model == rhs.sky_ambient_model
                 && lighting_model == rhs.lighting_model
+                && shader_library_revision_hash == rhs.shader_library_revision_hash
                 && effective_feature_mask == rhs.effective_feature_mask;
         }
     };

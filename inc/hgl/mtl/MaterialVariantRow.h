@@ -113,6 +113,16 @@ namespace hgl::graph::mtl
         bool enable_lighting = false;
     };
 
+    /// MaterialVariantRow — **snapshot / diagnostic structure**.
+    ///
+    /// This row is the *legacy* registration unit kept for VariantRegistry compatibility
+    /// during the transition to MaterialPresetTable + Matcher (plan step 10–14).
+    ///
+    /// Fields marked @snapshot are read by DumpSnapshot() / DumpBuiltinRowSnapshot() only.
+    /// Fields marked @runtime_deprecated will be removed when kBuiltinVariants[] is deleted
+    /// (plan step 14).  Do NOT add new routing logic that depends on these fields.
+    ///
+    /// The authoritative runtime routing is: Matcher → MatchedShaderSet.
     struct MaterialVariantRow
     {
         const char *name = "";
@@ -121,7 +131,11 @@ namespace hgl::graph::mtl
 
         PrimitiveType primitive = PrimitiveType::Triangles;
         SurfaceType surface_type = SurfaceType::Unlit;
+
+        /// @runtime_deprecated — will be removed with GeometryMode enum (plan step 14).
+        /// Routing semantics absorbed by vertex_policy + position_provider.
         GeometryMode geometry_mode = GeometryMode::Mesh3D;
+
         PositionProviderId position_provider = PositionProviderId::VAB_Vec3;
 
         VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
@@ -130,6 +144,8 @@ namespace hgl::graph::mtl
         RenderAlphaMode blend = RenderAlphaMode::Opaque;
         PassType pass = PassType::ForwardOpaque;
 
+        /// @runtime_deprecated — template paths are superseded by MaterialPresetTable glsl_path.
+        /// Kept for VariantRegistry / CompositorAssembler compat during transition.
         const char *vs_template_path = "";
         const char *fs_template_path = "";
         const char *surface_path = "";
@@ -144,10 +160,8 @@ namespace hgl::graph::mtl
         ShaderDataSchema schema = ShaderDataSchema::None;
         StaticMaterialDefIdHint def_hint = StaticMaterialDefIdHint::None;
 
-        // Phase 3: identity-axis flags.
-        // When false (default), that dimension is a resource-policy attribute and
-        // does NOT participate in row-hash matching or registry lookup.
-        // Set to true only when distinct shader templates exist for each value.
+        /// @runtime_deprecated — sky routing axis will be encoded in SFM @sfm:supports_phase.
+        /// Kept for VariantRegistry compat; will be removed with kBuiltinVariants[] (plan step 14).
         bool sky_is_routing_axis = false;
     };
 

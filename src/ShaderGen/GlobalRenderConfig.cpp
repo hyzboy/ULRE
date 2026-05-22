@@ -3,7 +3,7 @@
 
 #include <hgl/mtl/GlobalRenderConfig.h>
 
-namespace hgl::mtl {
+namespace hgl::graph::mtl {
 
 GlobalRenderConfig& GlobalRenderConfig::Instance() {
     static GlobalRenderConfig instance;
@@ -30,7 +30,7 @@ void GlobalRenderConfig::SetLightingModel(LightingModel model) {
     }
 }
 
-void GlobalRenderConfig::SetSkyAmbientModel(SkyAmbientModel model) {
+void GlobalRenderConfig::SetSkyAmbientModel(SkyLightAmbientModel model) {
     if (sky_ambient_model_ != model) {
         sky_ambient_model_ = model;
         TriggerInvalidation();
@@ -47,4 +47,4 @@ void GlobalRenderConfig::TriggerInvalidation() {
     }
 }
 
-} // namespace hgl::mtl
+} // namespace hgl::graph::mtl

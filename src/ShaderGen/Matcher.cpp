@@ -20,7 +20,7 @@ namespace hgl::graph {
 bool Matcher::CheckSurfaceCompatibility(const char*                 surface_path,
                                         const GeometryVertexFormat& /*geometry*/,
                                         const ResourceSupply&       /*supply*/,
-                                        hgl::mtl::RenderPhase       /*phase*/,
+                                        hgl::graph::mtl::RenderPhase       /*phase*/,
                                         std::string*                /*failure_reason*/)
 {
     if (!surface_path) {
@@ -40,11 +40,11 @@ bool Matcher::CheckSurfaceCompatibility(const char*                 surface_path
 
 MatchedShaderSet Matcher::ComposeResult(const char*                surface_path,
                                         uint32_t                   quality_level,
-                                        hgl::mtl::RenderPhase      phase,
+                                        hgl::graph::mtl::RenderPhase      phase,
                                         const mtl::MaterialRecipe& recipe,
                                         const ResourceSupply&      /*supply*/)
 {
-    const auto& cfg = hgl::mtl::GlobalRenderConfig::Instance();
+    const auto& cfg = hgl::graph::mtl::GlobalRenderConfig::Instance();
 
     MatchedShaderSet result;
     result.surface_path       = surface_path ? surface_path : "";
@@ -67,7 +67,7 @@ MatchedShaderSet Matcher::ComposeResult(const char*                surface_path,
 // ── GetCheckerboardFallback ───────────────────────────────────────────────────
 
 MatchedShaderSet Matcher::GetCheckerboardFallback(mtl::MaterialPreset             preset,
-                                                  hgl::mtl::RenderPhase          phase,
+                                                  hgl::graph::mtl::RenderPhase          phase,
                                                   const std::vector<std::string>& reasons)
 {
     std::fprintf(stderr,
@@ -79,7 +79,7 @@ MatchedShaderSet Matcher::GetCheckerboardFallback(mtl::MaterialPreset           
         "  Phase  : %s\n"
         "  Reasons:\n",
         static_cast<unsigned>(preset),
-        hgl::mtl::GetRenderPhaseName(phase));
+        hgl::graph::mtl::GetRenderPhaseName(phase));
     for (const auto& r : reasons)
         std::fprintf(stderr, "    * %s\n", r.c_str());
     std::fprintf(stderr,
@@ -98,7 +98,7 @@ MatchedShaderSet Matcher::GetCheckerboardFallback(mtl::MaterialPreset           
 MatchedShaderSet Matcher::Resolve(const mtl::MaterialRecipe& recipe,
                                    const GeometryVertexFormat&  geometry,
                                    const ResourceSupply&        supply,
-                                   hgl::mtl::RenderPhase        phase)
+                                   hgl::graph::mtl::RenderPhase        phase)
 {
     // Delegate pass-specific phases to PassShaderResolver
     if (IsManagedByPassResolver(phase)) {
@@ -114,7 +114,7 @@ MatchedShaderSet Matcher::Resolve(const mtl::MaterialRecipe& recipe,
     }
 
     const uint8_t current_quality =
-        static_cast<uint8_t>(hgl::mtl::GlobalRenderConfig::Instance().GetQualityLevel());
+        static_cast<uint8_t>(hgl::graph::mtl::GlobalRenderConfig::Instance().GetQualityLevel());
 
     std::vector<std::string> failure_log;
 
@@ -137,7 +137,7 @@ MatchedShaderSet Matcher::Resolve(const mtl::MaterialRecipe& recipe,
                     "[Matcher] Quality degraded %u → %u for preset %u phase %s\n",
                     current_quality, q,
                     static_cast<unsigned>(recipe.preset),
-                    hgl::mtl::GetRenderPhaseName(phase));
+                    hgl::graph::mtl::GetRenderPhaseName(phase));
             }
             return ComposeResult(surface_path, q, phase, recipe, supply);
         }
@@ -150,3 +150,4 @@ MatchedShaderSet Matcher::Resolve(const mtl::MaterialRecipe& recipe,
 }
 
 } // namespace hgl::graph
+

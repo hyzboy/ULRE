@@ -115,27 +115,29 @@ static void test_size_is_stable()
     // Layout:
     //   0  : variant          (MaterialVariantKey, 48 bytes)
     //         0: variant_row_name_hash (uint64, 8 bytes)
-    //         8: surface_type (uint8) + geometry_mode (uint8) + position_provider (uint16) = 4 bytes
-    //        12: user_provider_path_hash (uint32, 4 bytes)
-    //        16: texture_source_bits + sampler_feature_bits + vertex_attribute_feature_bits + extra_feature_bits (4x4=16 bytes)
-    //        32: blend_mode (uint8) + pass_hint (uint8) + sky_ambient_model (uint8) + lighting_model (uint8) = 4 bytes
-    //        36: [padding] (4 bytes, to align uint64)
-    //        40: effective_feature_mask (uint64, 8 bytes)
-    //  48  : pass             (uint8,  1 byte)
-    //  49  : [padding]        (1 byte)
-    //  50  : def_id           (uint16, 2 bytes)
-    //  52  : schema           (uint32, 4 bytes)
-    //  56  : glsl_version     (uint16, 2 bytes)
-    //  58  : vk_version       (uint16, 2 bytes)
-    //  60  : spv_version      (uint16, 2 bytes)
-    //  62  : [padding]        (2 bytes)
-    //  64  : _reserved        (uint32, 4 bytes)
-    //  68  : [padding]        (4 bytes, struct alignment to 8)
-    // Total: 72 bytes
-    static_assert(sizeof(MaterialKey) == 72,
+    //         8: surface_type (uint8) + geometry_mode (uint8) + render_phase (uint8) + quality_level (uint8) = 4 bytes
+    //        12: [padding] (4 bytes to align uint64)
+    //        16: shader_library_revision_hash (uint64, 8 bytes)
+    //        24: position_provider (uint16, 2 bytes) + [2 padding] + user_provider_path_hash (uint32, 4 bytes)
+    //        32: texture_source_bits + sampler_feature_bits + vertex_attribute_feature_bits + extra_feature_bits (4x4=16 bytes)
+    //        48: blend_mode (uint8) + pass_hint (uint8) + sky_ambient_model (uint8) + lighting_model (uint8) = 4 bytes
+    //        52: [padding] (4 bytes, to align uint64)
+    //        56: effective_feature_mask (uint64, 8 bytes)
+    //  64  : pass             (uint8,  1 byte)
+    //  65  : [padding]        (1 byte)
+    //  66  : def_id           (uint16, 2 bytes)
+    //  68  : schema           (uint32, 4 bytes)
+    //  72  : glsl_version     (uint16, 2 bytes)
+    //  74  : vk_version       (uint16, 2 bytes)
+    //  76  : spv_version      (uint16, 2 bytes)
+    //  78  : [padding]        (2 bytes)
+    //  80  : _reserved        (uint32, 4 bytes)
+    //  84  : [padding]        (4 bytes, struct alignment to 8)
+    // Total: 88 bytes
+    static_assert(sizeof(MaterialKey) == 88,
                   "MaterialKey ABI size changed — update layout comment and "
                   "increment the schema version before committing");
-    CHECK_EQ(sizeof(MaterialKey), 72u);
+    CHECK_EQ(sizeof(MaterialKey), 88u);
 }
 
 // MaterialKey must be usable as an unordered_map key via std::hash.

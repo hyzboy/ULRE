@@ -39,27 +39,28 @@ public:
     static MatchedShaderSet Resolve(const mtl::MaterialRecipe& recipe,
                                     const GeometryVertexFormat& geometry,
                                     const ResourceSupply&       supply,
-                                    hgl::mtl::RenderPhase       phase = hgl::mtl::RenderPhase::ForwardOpaque);
+                                    hgl::graph::mtl::RenderPhase       phase = hgl::graph::mtl::RenderPhase::ForwardOpaque);
 
 private:
     /// Check if a surface GLSL path satisfies VA/resource/sky requirements from SFM annotations.
     static bool CheckSurfaceCompatibility(const char*                 surface_path,
                                           const GeometryVertexFormat& geometry,
                                           const ResourceSupply&       supply,
-                                          hgl::mtl::RenderPhase       phase,
+                                          hgl::graph::mtl::RenderPhase       phase,
                                           std::string*                failure_reason);
 
     /// Compose and return a MatchedShaderSet from a winning surface path.
     static MatchedShaderSet ComposeResult(const char*                surface_path,
                                           uint32_t                   quality_level,
-                                          hgl::mtl::RenderPhase      phase,
+                                          hgl::graph::mtl::RenderPhase      phase,
                                           const mtl::MaterialRecipe& recipe,
                                           const ResourceSupply&      supply);
 
     /// Return the CheckerboardFallback shader set and log diagnostics.
     static MatchedShaderSet GetCheckerboardFallback(mtl::MaterialPreset preset,
-                                                    hgl::mtl::RenderPhase phase,
+                                                    hgl::graph::mtl::RenderPhase phase,
                                                     const std::vector<std::string>& reasons);
 };
 
 } // namespace hgl::graph
+

@@ -6,26 +6,10 @@
 #include <cstdint>
 #include <functional>
 #include <vector>
+#include <hgl/mtl/LightingModel.h>
+#include <hgl/mtl/SkyLight.h>
 
-namespace hgl::mtl {
-
-/// Lighting model used globally
-enum class LightingModel : uint8_t {
-    Lambert = 0,
-    BlinnPhong,
-    PBR,
-    COUNT
-};
-
-/// Sky/ambient lighting source model
-enum class SkyAmbientModel : uint8_t {
-    None = 0,       ///< No sky/ambient contribution
-    Constant,       ///< Constant ambient color
-    Hemisphere,     ///< Hemisphere ambient
-    SkyAtmosphere,  ///< Atmosphere scattering sky
-    Cubemap,        ///< Cubemap-based sky
-    COUNT
-};
+namespace hgl::graph::mtl {
 
 /// Global render configuration state
 class GlobalRenderConfig {
@@ -45,10 +29,10 @@ public:
     void SetLightingModel(LightingModel model);
 
     /// Get current sky/ambient model
-    SkyAmbientModel GetSkyAmbientModel() const { return sky_ambient_model_; }
+    SkyLightAmbientModel GetSkyAmbientModel() const { return sky_ambient_model_; }
 
     /// Set sky/ambient model and trigger cache invalidation callbacks
-    void SetSkyAmbientModel(SkyAmbientModel model);
+    void SetSkyAmbientModel(SkyLightAmbientModel model);
 
     /// Register a callback to be invoked when any config changes that may invalidate shader cache
     void RegisterInvalidationCallback(std::function<void()> callback);
@@ -59,10 +43,10 @@ private:
     void TriggerInvalidation();
 
     uint32_t quality_level_ = 10;  // Default to highest quality
-    LightingModel lighting_model_ = LightingModel::PBR;
-    SkyAmbientModel sky_ambient_model_ = SkyAmbientModel::SkyAtmosphere;
+    LightingModel lighting_model_ = LightingModel::BlinnPhong;
+    SkyLightAmbientModel sky_ambient_model_ = SkyLightAmbientModel::Simple;
 
     std::vector<std::function<void()>> invalidation_callbacks_;
 };
 
-} // namespace hgl::mtl
+} // namespace hgl::graph::mtl

@@ -20,7 +20,7 @@
 #pragma once
 
 #include <hgl/mtl/RenderPhase.h>
-#include <hgl/mtl/GlobalRenderConfig.h>   // LightingModel, SkyAmbientModel
+#include <hgl/mtl/LightingModel.h>
 #include <hgl/common/PositionProvider.h>  // PositionProviderId
 
 #include <string>
@@ -110,9 +110,9 @@ struct MatchedShaderSet {
     uint32_t           quality_level  = 0;    ///< Quality tier used for this match
 
     // ── Phase / global config snapshot ───────────────────────────────────
-    hgl::mtl::RenderPhase   render_phase   = hgl::mtl::RenderPhase::ForwardOpaque;
-    hgl::mtl::LightingModel lighting_model = hgl::mtl::LightingModel::PBR;
-    hgl::mtl::SkyAmbientModel sky_ambient_model = hgl::mtl::SkyAmbientModel::SkyAtmosphere;
+    hgl::graph::mtl::RenderPhase          render_phase       = hgl::graph::mtl::RenderPhase::ForwardOpaque;
+    hgl::graph::mtl::LightingModel        lighting_model     = hgl::graph::mtl::LightingModel::PBR;
+    hgl::graph::mtl::SkyLightAmbientModel sky_ambient_model  = hgl::graph::mtl::SkyLightAmbientModel::Simple;
 
     // ── Resource layout (resolved from supply) ───────────────────────────
     std::vector<TexSlotLayout> tex_layout;

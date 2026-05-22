@@ -5,7 +5,7 @@
 #pragma once
 #include <cstdint>
 
-namespace hgl::mtl {
+namespace hgl::graph::mtl {
 
 enum class RenderPhase : uint8_t {
     EarlyZ = 0,                ///< Depth-only pre-pass
@@ -49,4 +49,4 @@ inline const char* GetRenderPhaseName(RenderPhase phase) {
     return RenderPhaseNames[static_cast<size_t>(phase)];
 }
 
-} // namespace hgl::mtl
+} // namespace hgl::graph::mtl
