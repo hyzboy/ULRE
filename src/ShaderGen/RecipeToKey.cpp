@@ -15,7 +15,8 @@
 #include <hgl/mtl/MaterialLibrary.h>   // MapPresetToVariantKey
 #include <hgl/mtl/MaterialFeature.h>   // ResolveIntentFeatureMask, ResolveLightingModelFromFeatures
 #include <hgl/mtl/MaterialVariantRow.h> // VertexTransformPolicy, SurfaceShadingModel
-#include <hgl/mtl/PresetDemandTable.h>  // Phase C: demand∩supply matching
+#include <hgl/mtl/GlobalRenderConfig.h>  // quality_level / render_phase for cache key
+#include <hgl/mtl/RenderPhase.h>         // RenderPhase enum
 #include <hgl/mtl/PassExpansion.h>
 #include <hgl/mtl/MaterialKeyToolchainVersion.h>
 #include <hgl/mtl/StaticMaterialDefRegistry.h>
@@ -585,34 +586,13 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
             k.SetTextureSourceMode(cs.slot, TextureSourceMode::Array);
     }
 
-    // ── Step 6: vertex_attribute_feature_bits from PresetDemand ──────────────
-    // Use the preset demand table's required_va as the authoritative VA bit set.
-    // The demand table is keyed by MaterialPreset, so future attrib additions
-    // only require table rows — no switch cases.
+    // ── Step 6: render_phase / quality_level from GlobalRenderConfig ────────
+    // VA bits are now determined by Matcher via SFM annotations at match time.
+    // RecipeToKey only records the cache-key axes that are globally stable.
     {
-        const MaterialPreset resolved = ResolveMaterialPresetForLOD(r.preset, GetDefaultMaterialLOD());
-        const PresetDemand& demand = GetPresetDemand(resolved);
-        // Set required attribs; optional attribs are omitted here because at
-        // key-build time we don't yet know which optional attribs the geometry
-        // supplies. Phase C (ResolveRecipePrimaryKeyWithSupply) handles optional
-        // attribs when actual geometry supply is available.
-        // NOTE: Position, Normal and TexCoord are geometry-contract attribs that
-        // are never used as standalone variant discriminators in the builtin table:
-        //   - Position  → expressed via k.position_provider
-        //   - Normal    → fixed contract for every lit 3D mesh
-        //   - TexCoord  → expressed via tex_bits/sampler_bits from color_sources
-        // Only attribs like Color and Luminance actually select between variants.
-        const VABits req = demand.required_va;
-        for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
-        {
-            const auto attrib = static_cast<VertexAttrib>(i);
-            if (attrib == VertexAttrib::Position ||
-                attrib == VertexAttrib::Normal   ||
-                attrib == VertexAttrib::TexCoord)
-                continue; // geometry-contract-only; expressed via other key axes
-            if (req.bits[i])
-                k.SetVertexAttribEnabled(attrib, true);
-        }
+        const auto& cfg = hgl::graph::mtl::GlobalRenderConfig::Instance();
+        k.render_phase   = hgl::graph::mtl::RenderPhase::ForwardOpaque; // default; caller overrides for shadow/EarlyZ
+        k.quality_level  = static_cast<uint8>(cfg.GetQualityLevel());
     }
 
     // ── Step 7: blend_mode + pass_hint (Phase A) ──────────────────────────────
@@ -750,23 +730,14 @@ MaterialVariantKey ResolveRecipePrimaryKeyWithSupply_BuildVariantKey(
     const MaterialRecipe &r,
     const VABits         &supply) noexcept
 {
-    // 1. Determine the best-fit preset given the geometry supply.
-    //    If supply is all-zero (unknown), skip fallback resolution.
-    MaterialPreset effective_preset = r.preset;
-    bool supply_known = false;
-    for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
-    {
-        if (supply.bits[i]) { supply_known = true; break; }
-    }
+    // NOTE: preset fallback (formerly ResolveFallbackPreset) is now handled by
+    // Matcher::Resolve() via quality-level degradation against MaterialPresetTable.
+    // RecipeToKey records r.preset as-is; Matcher selects the best available .glsl.
+    // supply parameter is retained for API compatibility; it no longer drives preset selection.
+    (void)supply;
 
-    if (supply_known)
-        effective_preset = ResolveFallbackPreset(r.preset, supply);
-
-    // 2. Build a modified recipe using the resolved preset, then run the
-    //    standard BuildBaseVariantKeyFromRecipe to keep all other axes intact.
-    MaterialRecipe r2 = r;
-    r2.preset = effective_preset;
-    MaterialVariantKey k = detail::BuildBaseVariantKeyFromRecipe(r2);
+    // 2. Build the variant key; all axes except preset come from the recipe directly.
+    MaterialVariantKey k = detail::BuildBaseVariantKeyFromRecipe(r);
 
     // Step 3 (supply-aware path) intentionally does NOT override
     // vertex_attribute_feature_bits here.  BuildBaseVariantKeyFromRecipe
@@ -804,14 +775,8 @@ MaterialKey ResolveRecipePrimaryKeyWithSupply(
         k.schema = alias_axes.schema;
     else
     {
-        // Use the effective (possibly fallen-back) preset for schema lookup.
-        bool supply_known = false;
-        for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
-            if (geometry_supply.bits[i]) { supply_known = true; break; }
-        const MaterialPreset schema_preset = supply_known
-            ? ResolveFallbackPreset(r.preset, geometry_supply)
-            : r.preset;
-        k.schema = GetDefaultSchemaForPreset(schema_preset);
+        // Use r.preset directly; Matcher handles runtime fallback selection.
+        k.schema = GetDefaultSchemaForPreset(r.preset);
     }
 
     k.def_id = ResolveDefIdForRecipe(r);

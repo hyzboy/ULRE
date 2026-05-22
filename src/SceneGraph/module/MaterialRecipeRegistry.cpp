@@ -23,13 +23,14 @@ namespace hgl::graph
 {
 
 // ---------------------------------------------------------------------------
-// Map RenderAlphaMode to GraphicsPipelinePreset for MaterialInstanceSpec.
-// Used wherever legacy code assigned spec.preset = rec.pipeline.
+// Map RenderAlphaMode + MaterialPreset to GraphicsPipelinePreset.
+// render_phase from MatchedShaderSet will eventually drive this selection;
+// for now, blend mode + material preset category are the primary axes.
 // ---------------------------------------------------------------------------
 static GraphicsPipelinePreset BlendToPreset(graph::RenderAlphaMode blend, bool is2D,
                                              mtl::MaterialPreset mat_preset = mtl::MaterialPreset::Standard) noexcept
 {
-    // Sky materials always use the Sky pipeline preset regardless of blend mode.
+    // Preset-category overrides (take priority over blend mode).
     if (mat_preset == mtl::MaterialPreset::SkyMinimal)
         return GraphicsPipelinePreset::Sky;
 
