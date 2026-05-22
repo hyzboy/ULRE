@@ -1,7 +1,12 @@
 #ifndef ULRE_SURFACE_UNLIT_VERTEXCOLOR_SURFACE_GLSL
 #define ULRE_SURFACE_UNLIT_VERTEXCOLOR_SURFACE_GLSL
 
-// @sfm:no-require
+// @sfm:surface_type    Unlit
+// @sfm:supports_phase  ForwardOpaque ForwardTransparent
+// @sfm:require va      Color
+// @sfm:require tex
+// @sfm:require ubo     camera
+// @sfm:require sky     false
 
 #include "common/surface_interface.glsl"
 

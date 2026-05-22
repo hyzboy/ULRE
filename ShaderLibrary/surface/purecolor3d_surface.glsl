@@ -1,7 +1,12 @@
 #ifndef ULRE_SURFACE_PURECOLOR3D_SURFACE_GLSL
 #define ULRE_SURFACE_PURECOLOR3D_SURFACE_GLSL
 
-// @sfm:no-require
+// @sfm:surface_type    Unlit
+// @sfm:supports_phase  ForwardOpaque ForwardTransparent
+// @sfm:require va
+// @sfm:require tex
+// @sfm:require ubo     camera
+// @sfm:require sky     false
 
 #include "common/surface_interface.glsl"
 #include "common/ssbo_material_instance.glsl"

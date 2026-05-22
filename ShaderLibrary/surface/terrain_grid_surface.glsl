@@ -1,7 +1,12 @@
 #ifndef ULRE_SURFACE_TERRAIN_GRID_SURFACE_GLSL
 #define ULRE_SURFACE_TERRAIN_GRID_SURFACE_GLSL
 
-// @sfm:require  UBO camera
+// @sfm:surface_type    Terrain
+// @sfm:supports_phase  ForwardOpaque
+// @sfm:require va
+// @sfm:require tex
+// @sfm:require ubo     camera
+// @sfm:require sky     false
 
 SurfaceOutput EvalSurface(SurfaceInput si)
 {

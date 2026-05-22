@@ -1,7 +1,14 @@
 #ifndef ULRE_SURFACE_STANDARD_SURFACE_GLSL
 #define ULRE_SURFACE_STANDARD_SURFACE_GLSL
 
-// @sfm:no-require
+// @sfm:surface_type    Standard
+// @sfm:supports_phase  ForwardOpaque ForwardMasked GBuffer
+// @sfm:require va      Normal TexCoord
+// @sfm:optional va     Tangent
+// @sfm:derive va       Tangent
+// @sfm:require tex     BaseColor NormalMap
+// @sfm:require ubo     camera lighting
+// @sfm:require sky     false
 
 #include "common/surface_interface.glsl"
 #include "common/ssbo_material_instance.glsl"

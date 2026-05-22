@@ -1,9 +1,14 @@
 #ifndef ULRE_SURFACE_UNLIT_TEXTURE3D_SURFACE_GLSL
 #define ULRE_SURFACE_UNLIT_TEXTURE3D_SURFACE_GLSL
 
-// @sfm:no-require
+// @sfm:surface_type    Unlit
+// @sfm:supports_phase  ForwardOpaque ForwardMasked ForwardTransparent
+// @sfm:require va      TexCoord
+// @sfm:require tex     BaseColor
+// @sfm:require ubo     camera
+// @sfm:require sky     false
 
-SurfaceOutput EvalSurface(SurfaceInput si)
+SurfaceOutput EvalSurface
 {
     vec4 texColor = GetSamplerBaseColor(GetMaterialInstanceID(), si.uv0);
 

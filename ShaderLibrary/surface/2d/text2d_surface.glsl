@@ -8,6 +8,12 @@
 // C++ SimpleSamplerGLSLEmitter at compile time.
 // Text color is stored as a packed uint in the MaterialBindingInstance SSBO.
 // ──────────────────────────────────────────────────────────────────────────
+// @sfm:surface_type    Unlit
+// @sfm:supports_phase  UI
+// @sfm:require va      TexCoord
+// @sfm:require tex     Text
+// @sfm:require ubo     viewport
+// @sfm:require sky     false
 
 #include "common/surface_interface.glsl"
 

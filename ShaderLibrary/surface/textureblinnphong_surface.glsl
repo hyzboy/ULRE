@@ -1,7 +1,14 @@
 #ifndef ULRE_SURFACE_TEXTUREBLINNPHONG_SURFACE_GLSL
 #define ULRE_SURFACE_TEXTUREBLINNPHONG_SURFACE_GLSL
 
-// @sfm:no-require
+// @sfm:surface_type    Standard
+// @sfm:supports_phase  ForwardOpaque ForwardMasked
+// @sfm:require va      Normal TexCoord
+// @sfm:optional va     Tangent
+// @sfm:derive va       Tangent
+// @sfm:require tex     BaseColor
+// @sfm:require ubo     camera lighting
+// @sfm:require sky     false
 
 #include "common/schema/schema_standard_params.glsl"
 

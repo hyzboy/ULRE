@@ -1,4 +1,10 @@
+// @sfm:surface_type    Sky
+// @sfm:supports_phase  ForwardOpaque
+// @sfm:require va
+// @sfm:require tex
+// @sfm:require ubo     camera
 // @sfm:require UBO sky
+
 #ifndef ULRE_SURFACE_SKY_MINIMAL_SURFACE_GLSL
 #define ULRE_SURFACE_SKY_MINIMAL_SURFACE_GLSL
 

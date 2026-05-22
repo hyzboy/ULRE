@@ -2,7 +2,12 @@
 #define ULRE_SURFACE_FRAGCOORD_SURFACE_GLSL
 
 // surface/fragcoord_surface.glsl
-// @sfm:require  UBO viewport
+// @sfm:surface_type    Unlit
+// @sfm:supports_phase  UI PostProcess
+// @sfm:require va
+// @sfm:require tex
+// @sfm:require ubo     viewport
+// @sfm:require sky     false
 //
 // Minimal PCG surface for FullscreenTriangle + PCG_FragCoord.
 // Returns normalised screen UV as an RGB gradient — useful as a
