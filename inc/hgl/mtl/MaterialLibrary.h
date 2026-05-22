@@ -6,6 +6,7 @@
 #include<hgl/mtl/MaterialPreset.h>
 #include<hgl/mtl/MaterialVariantDesc.h>
 #include<hgl/mtl/MaterialVariantKey.h>
+#include<hgl/mtl/MaterialVariantRow.h>
 #include<vector>
 #include<string>
 #include<optional>
@@ -14,7 +15,6 @@ namespace hgl::graph::mtl{
 
 struct MaterialCreateConfig;
 class MaterialCreateInfo;
-struct MaterialVariantRow;
 
 // Semantic entry path: MaterialPreset is authoring/content intent. The library resolves it through
 // runtime material LOD and then maps it to a concrete MaterialVariantKey / shading implementation.
@@ -76,7 +76,7 @@ struct RuntimeKeyOverrides
     std::optional<PassType>          pass_hint;              // 同上
     std::optional<SkyLightAmbientModel> sky_ambient_model;   // 同上
     std::optional<LightingModel>     lighting_model;         // 同上
-    std::optional<GeometryMode>      preferred_geometry_mode; // entry-selection filter: skip entries whose geometry_mode differs
+    std::optional<VertexTransformPolicy> preferred_vertex_policy; // entry-selection filter: skip entries whose vertex_policy differs (replaces deprecated preferred_geometry_mode)
     uint32                           extra_vertex_attrib_bits = 0;  // 与 preset 默认 OR 合并
 };
 

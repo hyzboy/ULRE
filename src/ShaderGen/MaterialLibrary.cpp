@@ -621,7 +621,7 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
     const Candidate *found = nullptr;
     for (const auto &c : candidates)
     {
-        if (ov.preferred_geometry_mode && c.row->geometry_mode != *ov.preferred_geometry_mode) continue;
+        if (ov.preferred_vertex_policy && c.row->vertex_policy != *ov.preferred_vertex_policy) continue;
         if (ov.blend_mode     && c.key.blend_mode     != *ov.blend_mode)                       continue;
         if (ov.lighting_model && c.key.lighting_model != *ov.lighting_model)                   continue;
         found = &c;

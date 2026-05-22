@@ -472,8 +472,8 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     //     attribute) and a 3D entry (VAB_Vec3). Presets whose 2D/3D shader is identical
     //     (e.g. PureColor, which has no position vertex attribute) have only one entry and
     //     are found on the fallback pass regardless of the hint.
-    //   • ov.preferred_geometry_mode: hard filter, used only for billboard presets whose
-    //     VS transform logic genuinely differs by geometry mode (BillboardCameraFacing, etc.).
+    //   • ov.preferred_vertex_policy: hard filter, used only for billboard presets whose
+    //     VS transform logic genuinely differs by vertex policy (BillboardCameraFacing, etc.).
     MaterialVariantKey k;
     {
         RuntimeKeyOverrides rov{};
@@ -483,11 +483,11 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
             ? r.vertex_policy
             : alias_axes.vertex_policy;
 
-        // Billboard geometry modes need a hard filter: their VS transform is different.
+        // Billboard vertex policies need a hard filter: their VS transform is different.
         if (effective_vertex_policy == VertexTransformPolicy::BillboardCameraFacing)
-            rov.preferred_geometry_mode = GeometryMode::BillboardCameraFacing;
+            rov.preferred_vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
         else if (effective_vertex_policy == VertexTransformPolicy::BillboardAxisLocked)
-            rov.preferred_geometry_mode = GeometryMode::BillboardAxisLocked;
+            rov.preferred_vertex_policy = VertexTransformPolicy::BillboardAxisLocked;
 
         // Do NOT preset position_provider in rov here; let RouteKey pick up the builtin
         // entry's native position_provider first (e.g. PCG_FullscreenTriangle).
