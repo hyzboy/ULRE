@@ -683,67 +683,6 @@ MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &r) noexcept
     return k;
 }
 
-MaterialVariantKey ResolveRecipePrimaryKeyWithSupply_BuildVariantKey(
-    const MaterialRecipe &r,
-    const VABits         &supply) noexcept
-{
-    // NOTE: preset fallback (formerly ResolveFallbackPreset) is now handled by
-    // Matcher::Resolve() via quality-level degradation against MaterialPresetTable.
-    // RecipeToKey records r.preset as-is; Matcher selects the best available .glsl.
-    // supply parameter is retained for API compatibility; it no longer drives preset selection.
-    (void)supply;
-
-    // 2. Build the variant key; all axes except preset come from the recipe directly.
-    MaterialVariantKey k = detail::BuildBaseVariantKeyFromRecipe(r);
-
-    // Step 3 (supply-aware path) intentionally does NOT override
-    // vertex_attribute_feature_bits here.  BuildBaseVariantKeyFromRecipe
-    // (Step 6) is the single authoritative source for that field, and it
-    // already applies the correct exclusions (Position / Normal / TexCoord
-    // are geometry-contract attribs that are never variant discriminators).
-    // A blanket ResolveEffectiveVABits() override would reintroduce those
-    // bits and cause registry misses (e.g. va_bits=0x40 for Standard).
-
-    return k;
-}
-
-MaterialKey ResolveRecipePrimaryKeyWithSupply(
-    const MaterialRecipe &r,
-    const VABits         &geometry_supply) noexcept
-{
-    MaterialKey k{};
-
-    const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
-
-    // Phase C: build variant key using demand∩supply matching.
-    MaterialVariantKey vk = ResolveRecipePrimaryKeyWithSupply_BuildVariantKey(r, geometry_supply);
-
-    // Canonicalization (same as primary-key path).
-    vk = detail::ApplyRouterCanonicalization(vk);
-    vk.variant_row_name_hash = TryResolveBuiltinVariantRowHash(r.preset, vk);
-    k.variant = vk;
-
-    // Primary pass, schema, def_id, toolchain (identical to ResolveRecipePrimaryKey).
-    k.pass = detail::GetPrimaryPassForBlendMode(vk.blend_mode);
-
-    if (r.has_explicit_schema && r.schema != ShaderDataSchema::None)
-        k.schema = r.schema;
-    else if (alias_axes.schema != ShaderDataSchema::None)
-        k.schema = alias_axes.schema;
-    else
-    {
-        // Use r.preset directly; Matcher handles runtime fallback selection.
-        k.schema = GetDefaultSchemaForPreset(r.preset);
-    }
-
-    k.def_id = ResolveDefIdForRecipe(r);
-    k.glsl_version = kMaterialKeyGLSLVersion;
-    k.vk_version   = kMaterialKeyVulkanVersion;
-    k.spv_version  = kMaterialKeySpvVersion;
-
-    return k;
-}
-
 std::vector<MaterialKey> EnumerateRecipeKeys(const MaterialRecipe &r)
 {
     MaterialKey base = ResolveRecipePrimaryKey(r);
