@@ -46,6 +46,15 @@ static MaterialRecipe MakeStandardOpaqueRecipe()
     return r;
 }
 
+static MaterialRecipe MakeVertexColor2DRecipe()
+{
+    MaterialRecipe r;
+    r.preset = MaterialPreset::VertexColor;
+    r.dim = MaterialRecipe::Dim::D2;
+    r.coord_2d = CoordinateSystem2D::Ortho;
+    return r;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -167,6 +176,12 @@ static void test_shading_model_affects_key()
              ResolveRecipePrimaryKey(r_pbr).Hash());
 }
 
+static void test_vertexcolor_2d_resolves_builtin_row_hash()
+{
+    const MaterialKey k = ResolveRecipePrimaryKey(MakeVertexColor2DRecipe());
+    CHECK_NE(k.variant.variant_row_name_hash, uint64_t(0));
+}
+
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
@@ -182,6 +197,7 @@ int main()
     test_different_sky_values_same_key_when_not_routing_axis();
     test_explicit_schema_override_applies();
     test_shading_model_affects_key();
+    test_vertexcolor_2d_resolves_builtin_row_hash();
 
     if (g_failures > 0)
     {

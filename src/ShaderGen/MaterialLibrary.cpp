@@ -678,6 +678,10 @@ uint64 ResolveBuiltinVariantRowHash(MaterialPreset preset,
     MaterialVariantKey query = key;
     query.variant_row_name_hash = 0;
     query.effective_feature_mask = 0;
+    // position_provider / user_provider_path_hash are runtime VS-only axes and
+    // must not participate in builtin row identity recovery.
+    query.position_provider = PositionProviderId::Unknown;
+    query.user_provider_path_hash = 0;
 
     // sky_ambient_model is never a routing axis: canonicalize to Simple for all presets.
     query.sky_ambient_model = SkyLightAmbientModel::Simple;
@@ -698,6 +702,8 @@ uint64 ResolveBuiltinVariantRowHash(MaterialPreset preset,
         const uint64 candidate_row_hash = candidate.variant_row_name_hash;
         candidate.variant_row_name_hash = 0;
         candidate.effective_feature_mask = 0;
+        candidate.position_provider = PositionProviderId::Unknown;
+        candidate.user_provider_path_hash = 0;
         candidate.sky_ambient_model = SkyLightAmbientModel::Simple;
 
         if (candidate == query)

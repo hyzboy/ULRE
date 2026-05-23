@@ -14,6 +14,7 @@
 #include <hgl/mtl/RecipeToKey.h>
 #include <hgl/mtl/MaterialLibrary.h>   // MapPresetToVariantKey
 #include <hgl/mtl/MaterialFeature.h>   // ResolveIntentFeatureMask, ResolveLightingModelFromFeatures
+#include <hgl/mtl/MaterialPresetTable.h>
 #include <hgl/mtl/MaterialVariantRow.h> // VertexTransformPolicy, SurfaceShadingModel
 #include <hgl/mtl/GlobalRenderConfig.h>  // quality_level / render_phase for cache key
 #include <hgl/mtl/RenderPhase.h>         // RenderPhase enum
@@ -22,7 +23,6 @@
 #include <hgl/mtl/StaticMaterialDefRegistry.h>
 #include <hgl/mtl/SamplerSlot.h>
 #include <hgl/mtl/UBOCommon.h>
-#include <hgl/mtl/MaterialVariantRegistry.h>
 #include <hgl/shadergen/ColorSource.h>
 #include <hgl/shadergen/ProviderManifest.h>
 #include <cassert>
@@ -77,96 +77,122 @@ namespace
         }
     }
 
-    struct RecipeAxisExpansion
+    static RenderPhase PrimaryRenderPhaseForBlendMode(const RenderAlphaMode blend) noexcept
     {
-        VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
-        SurfaceShadingModel shading_model = SurfaceShadingModel::Unknown;
-        MaterialResourceRequirements resources{};
-        ShaderDataSchema schema = ShaderDataSchema::None;
-    };
-
-    static bool RowHasTextureMode(const MaterialVariantRow &row, const TextureSourceMode mode) noexcept
-    {
-        for (const auto &cs : row.color_sources)
+        switch (blend)
         {
-            if (mode == TextureSourceMode::Array)
-            {
-                if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
-                    return true;
-            }
-            else // Simple / Atlas / anything non-Array
-            {
-                if (cs.kind == graph::ColorSourceKind::BuiltinSampler2D)
-                    return true;
-            }
+        case RenderAlphaMode::Masked:          return RenderPhase::ForwardMasked;
+        case RenderAlphaMode::Transparent:     return RenderPhase::ForwardTransparent;
+        case RenderAlphaMode::Dither:          return RenderPhase::ForwardMasked;
+        case RenderAlphaMode::AlphaToCoverage: return RenderPhase::ForwardMasked;
+        default:                               return RenderPhase::ForwardOpaque;
         }
-        return false;
     }
 
-    static RecipeAxisExpansion ExpandRecipeAxesFromPresetAlias(const MaterialRecipe &r) noexcept
+    static SurfaceType SurfaceTypeFromSurfaceId(const SurfaceId id) noexcept
     {
-        RecipeAxisExpansion out{};
-
-        const MaterialPreset resolved_preset =
-            ResolveMaterialPresetForLOD(r.preset, GetDefaultMaterialLOD());
-
-        const RenderAlphaMode target_blend = RenderAlphaMode::Opaque;
-        const PassType target_pass = PrimaryPassForBlendMode(target_blend);
-        const bool wants_array = HasAnyArrayTexture(r);
-
-        const MaterialFeatureMask fmask = ResolveIntentFeatureMask(r.preset, r.intent_features);
-        const LightingModel desired_lighting =
-            ResolveLightingModelFromFeatures(fmask, LightingModel::Lambert);
-
-        const MaterialVariantRow *best = nullptr;
-        int best_score = -1000000;
-
-        GetBuiltinVariantRegistry().ForEachBuiltinRow([&](const MaterialVariantRow &row)
+        switch (id)
         {
-            if (row.preset != resolved_preset)
-                return;
+        case SurfaceId::TerrainGrid: return SurfaceType::Terrain;
+        case SurfaceId::SkyMinimal:  return SurfaceType::Sky;
+        case SurfaceId::Text2D:      return SurfaceType::Text2D;
+        case SurfaceId::Standard:
+        case SurfaceId::StandardBlinnPhong:
+        case SurfaceId::StandardPBR:
+        case SurfaceId::PBRColor3D:  return SurfaceType::Standard;
+        default:                     return SurfaceType::Unlit;
+        }
+    }
 
-            int score = 0;
-            if (row.blend == target_blend)
-                score += 100;
-            if (row.pass == target_pass)
-                score += 50;
+    static SurfaceType ResolveSurfaceTypeFromRecipe(const MaterialRecipe &r) noexcept
+    {
+        const auto &cfg = hgl::graph::mtl::GlobalRenderConfig::Instance();
+        const MaterialPreset resolved_preset = ResolveMaterialPresetForLOD(r.preset, GetDefaultMaterialLOD());
+        const PresetQualityEntry *entry = MaterialPresetTable::Lookup(resolved_preset,
+                                                                      static_cast<uint8>(cfg.GetQualityLevel()));
+        if (entry)
+            return SurfaceTypeFromSurfaceId(entry->surface);
 
-            if (row.resources.enable_lighting)
-            {
-                // lighting_model is ECS-injected via MaterialVariantKey; no per-row scoring needed.
-                score += 40;
-            }
-            else if (desired_lighting == LightingModel::Lambert)
-            {
-                score += 5;
-            }
+        switch (resolved_preset)
+        {
+        case MaterialPreset::TerrainGrid:        return SurfaceType::Terrain;
+        case MaterialPreset::SkyMinimal:         return SurfaceType::Sky;
+        case MaterialPreset::Text2D:             return SurfaceType::Text2D;
+        case MaterialPreset::Standard:
+        case MaterialPreset::PBRColor3D:
+        case MaterialPreset::HumanSkin:
+        case MaterialPreset::AmphibiansSkin:
+        case MaterialPreset::Wood:
+        case MaterialPreset::TreeBark:
+        case MaterialPreset::Stone:
+        case MaterialPreset::Leaf:
+        case MaterialPreset::Metal:
+        case MaterialPreset::BirdFeathers:
+        case MaterialPreset::Scales:             return SurfaceType::Standard;
+        default:                                 return SurfaceType::Unlit;
+        }
+    }
 
-            if (wants_array)
-            {
-                if (RowHasTextureMode(row, TextureSourceMode::Array))
-                    score += 30;
-            }
-            else if (RowHasTextureMode(row, TextureSourceMode::Simple))
-            {
-                score += 20;
-            }
+    static VertexTransformPolicy ResolveEffectiveVertexPolicy(const MaterialRecipe &r) noexcept
+    {
+        if (r.vertex_policy != VertexTransformPolicy::Unknown)
+            return r.vertex_policy;
 
-            if (score > best_score)
-            {
-                best_score = score;
-                best = &row;
-            }
-        });
+        const MaterialPreset resolved_preset = ResolveMaterialPresetForLOD(r.preset, GetDefaultMaterialLOD());
+        switch (resolved_preset)
+        {
+        case MaterialPreset::Text2D:             return VertexTransformPolicy::Text2D;
+        case MaterialPreset::TerrainGrid:        return VertexTransformPolicy::TerrainGrid;
+        case MaterialPreset::SkyMinimal:         return VertexTransformPolicy::Sky;
+        case MaterialPreset::FullscreenTriangle: return VertexTransformPolicy::FullscreenTriangle;
+        default:
+            return r.dim == MaterialRecipe::Dim::D2
+                ? VertexTransformPolicy::Position2DTransform
+                : VertexTransformPolicy::Mesh3D;
+        }
+    }
 
-        if (!best)
-            return out;
+    static PositionProviderId ResolveBasePositionProvider(const MaterialRecipe &r,
+                                                          const VertexTransformPolicy effective_vertex_policy) noexcept
+    {
+        if (r.position_provider != PositionProviderId::Unknown)
+            return r.position_provider;
 
-        out.vertex_policy = best->vertex_policy;
-        out.shading_model = best->surface_model;
-        out.resources = best->resources;
-        out.schema = best->schema;
-        return out;
+        if (ResolveMaterialPresetForLOD(r.preset, GetDefaultMaterialLOD()) == MaterialPreset::FullscreenTriangle)
+            return PositionProviderId::PCG_FullscreenTriangle;
+
+        switch (effective_vertex_policy)
+        {
+        case VertexTransformPolicy::Quad2D:
+        case VertexTransformPolicy::BillboardCameraFacing:
+        case VertexTransformPolicy::BillboardAxisLocked:
+        case VertexTransformPolicy::Text2D:
+        case VertexTransformPolicy::Position2DTransform:
+        case VertexTransformPolicy::Position2DNdc:
+        case VertexTransformPolicy::Position2DZeroToOne:
+        case VertexTransformPolicy::Position2DOrtho:
+            return PositionProviderId::VAB_Vec2;
+        case VertexTransformPolicy::FullscreenTriangle:
+            return PositionProviderId::PCG_FullscreenTriangle;
+        default:
+            return ResolveProviderFromDemand(r.preset, r.dim, effective_vertex_policy);
+        }
+    }
+
+    static uint32 ResolveVertexAttribBitsFromRecipe(const MaterialRecipe &r) noexcept
+    {
+        switch (ResolveMaterialPresetForLOD(r.preset, GetDefaultMaterialLOD()))
+        {
+        case MaterialPreset::VertexColor:
+        case MaterialPreset::VertexPaletteColor3D:
+            return VertexAttribFeatureBit(VertexAttrib::Color);
+        case MaterialPreset::VertexLuminance:
+            return VertexAttribFeatureBit(VertexAttrib::Luminance);
+        case MaterialPreset::UnlitTexture:
+            return VertexAttribFeatureBit(VertexAttrib::TexCoord);
+        default:
+            return 0u;
+        }
     }
 }//namespace
 
@@ -177,45 +203,6 @@ static bool HasAnyArrayTexture(const MaterialRecipe &r) noexcept
         if (cs.kind == graph::ColorSourceKind::BuiltinSampler2DArray)
             return true;
     return false;
-}
-
-static uint64 TryResolveBuiltinVariantRowHash(const MaterialPreset preset,
-                                              const MaterialVariantKey &key) noexcept
-{
-    const MaterialPreset resolved_preset =
-        ResolveMaterialPresetForLOD(preset, GetDefaultMaterialLOD());
-
-    MaterialVariantKey query = key;
-    query.variant_row_name_hash = 0;
-    query.effective_feature_mask = 0;
-
-    GetBuiltinVariantRegistry().ForEach(
-        [&](const MaterialVariantKey &candidate_key, const MaterialVariantDesc &desc)
-        {
-            if (candidate_key.variant_row_name_hash == 0)
-                return;
-            if (!desc.factory_type.has_value() || ResolveMaterialPresetForLOD(*desc.factory_type, GetDefaultMaterialLOD()) != resolved_preset)
-                return;
-
-            MaterialVariantKey candidate = candidate_key;
-            const uint64 candidate_row_hash = candidate.variant_row_name_hash;
-            candidate.variant_row_name_hash = 0;
-            candidate.effective_feature_mask = 0;
-
-            MaterialVariantKey local_query = query;
-            // sky_ambient_model is never a routing axis: always canonicalize to Simple.
-            local_query.sky_ambient_model = SkyLightAmbientModel::Simple;
-
-            if (candidate == local_query)
-            {
-                query.variant_row_name_hash = candidate_row_hash;
-            }
-        });
-
-    if (query.variant_row_name_hash != 0)
-        return query.variant_row_name_hash;
-
-    return key.variant_row_name_hash;
 }
 
 /// Lazy-init helper: acquire (and cache) the def ID for the Standard material.
@@ -463,65 +450,36 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
                 static_cast<unsigned>(r.dim),
                 static_cast<unsigned>(r.prim));
 
-    const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
-
-    // ── Step 1: preset → base variant key ────────────────────────────────────
-    // Routes through RouteKey() with two targeted hints:
-    //   • ov.position_provider: soft preference (VAB_Vec2 for 2D, VAB_Vec3 for 3D).
-    //     Selects the correct variant when a preset has both a 2D entry (VAB_Vec2 position
-    //     attribute) and a 3D entry (VAB_Vec3). Presets whose 2D/3D shader is identical
-    //     (e.g. PureColor, which has no position vertex attribute) have only one entry and
-    //     are found on the fallback pass regardless of the hint.
-    //   • ov.preferred_vertex_policy: hard filter, used only for billboard presets whose
-    //     VS transform logic genuinely differs by vertex policy (BillboardCameraFacing, etc.).
     MaterialVariantKey k;
     {
-        RuntimeKeyOverrides rov{};
+        const VertexTransformPolicy effective_vertex_policy = ResolveEffectiveVertexPolicy(r);
 
-        const VertexTransformPolicy effective_vertex_policy =
-            (r.vertex_policy != VertexTransformPolicy::Unknown)
-            ? r.vertex_policy
-            : alias_axes.vertex_policy;
-
-        // Billboard vertex policies need a hard filter: their VS transform is different.
-        if (effective_vertex_policy == VertexTransformPolicy::BillboardCameraFacing)
-            rov.preferred_vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
-        else if (effective_vertex_policy == VertexTransformPolicy::BillboardAxisLocked)
-            rov.preferred_vertex_policy = VertexTransformPolicy::BillboardAxisLocked;
-
-        // Do NOT preset position_provider in rov here; let RouteKey pick up the builtin
-        // entry's native position_provider first (e.g. PCG_FullscreenTriangle).
-        // We apply the dim-based override AFTER RouteKey, gated by manifest allow_dim_override,
-        // so that PCG providers whose manifest declares allow_dim_override=false are preserved.
-        k = RouteKey(r.preset, 0u, rov);
+        k.surface_type                  = ResolveSurfaceTypeFromRecipe(r);
+        k.position_provider             = ResolveBasePositionProvider(r, effective_vertex_policy);
+        k.vertex_attribute_feature_bits = ResolveVertexAttribBitsFromRecipe(r);
 
         std::printf("[RecipeToKey] Phase6: after RouteKey pos_provider=%u (0=Unk,2=Vec2,3=Vec3) dim=%u policy=%u\n",
                     static_cast<unsigned>(k.position_provider),
                     static_cast<unsigned>(r.dim),
                     static_cast<unsigned>(effective_vertex_policy));
 
-        // Phase 6: use manifest allow_dim_override instead of IsPCGPositionProvider().
-        // If the manifest is absent (unregistered ID) we conservatively treat it as
-        // non-overridable (same safety as old PCG guard).
+        const hgl::graph::ProviderManifest* pm =
+            hgl::graph::ProviderManifestRegistry::FindByPosId(k.position_provider);
+        const bool may_override = pm ? pm->allow_dim_override : false;
+
+        std::printf("[RecipeToKey] Phase6: manifest=%p allow_dim_override=%d manifest_count=%u\n",
+                    (const void*)pm,
+                    (int)may_override,
+                    (unsigned)hgl::graph::ProviderManifestRegistry::Count());
+
+        if (may_override)
         {
-            const hgl::graph::ProviderManifest* pm =
-                hgl::graph::ProviderManifestRegistry::FindByPosId(k.position_provider);
-            const bool may_override = pm ? pm->allow_dim_override : false;
-
-            std::printf("[RecipeToKey] Phase6: manifest=%p allow_dim_override=%d manifest_count=%u\n",
-                        (const void*)pm,
-                        (int)may_override,
-                        (unsigned)hgl::graph::ProviderManifestRegistry::Count());
-
-            if (may_override)
-            {
-                const PositionProviderId new_provider =
-                    ResolveProviderFromDemand(r.preset, r.dim, effective_vertex_policy);
-                std::printf("[RecipeToKey] Phase6: override pos_provider %u -> %u\n",
-                            static_cast<unsigned>(k.position_provider),
-                            static_cast<unsigned>(new_provider));
-                k.position_provider = new_provider;
-            }
+            const PositionProviderId new_provider =
+                ResolveProviderFromDemand(r.preset, r.dim, effective_vertex_policy);
+            std::printf("[RecipeToKey] Phase6: override pos_provider %u -> %u\n",
+                        static_cast<unsigned>(k.position_provider),
+                        static_cast<unsigned>(new_provider));
+            k.position_provider = new_provider;
         }
     }
 
@@ -585,7 +543,7 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     // RecipeToKey only records the cache-key axes that are globally stable.
     {
         const auto& cfg = hgl::graph::mtl::GlobalRenderConfig::Instance();
-        k.render_phase   = hgl::graph::mtl::RenderPhase::ForwardOpaque; // default; caller overrides for shadow/EarlyZ
+        k.render_phase   = PrimaryRenderPhaseForBlendMode(r.default_render_state.blend);
         k.quality_level  = static_cast<uint8>(cfg.GetQualityLevel());
     }
 
@@ -608,7 +566,6 @@ MaterialVariantKey ApplyRouterCanonicalization(const MaterialVariantKey &in) noe
 
     return k;
 }
-
 } // namespace detail
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -619,14 +576,12 @@ MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &r) noexcept
 {
     MaterialKey k{};
 
-    const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
-
     // Phase A: build un-canonicalized variant key
     MaterialVariantKey vk = detail::BuildBaseVariantKeyFromRecipe(r);
 
     // Phase B: apply router canonicalization
     vk = detail::ApplyRouterCanonicalization(vk);
-    vk.variant_row_name_hash = TryResolveBuiltinVariantRowHash(r.preset, vk);
+    vk.variant_row_name_hash = ResolveBuiltinVariantRowHash(r.preset, vk);
     k.variant = vk;
 
     // Phase C: primary pass
@@ -635,8 +590,6 @@ MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &r) noexcept
     // Phase D: schema
     if (r.has_explicit_schema && r.schema != ShaderDataSchema::None)
         k.schema = r.schema;
-    else if (alias_axes.schema != ShaderDataSchema::None)
-        k.schema = alias_axes.schema;
     else
         k.schema = GetDefaultSchemaForPreset(r.preset);
 
