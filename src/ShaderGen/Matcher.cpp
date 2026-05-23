@@ -120,7 +120,7 @@ MatchedShaderSet Matcher::Resolve(const mtl::MaterialRecipe& recipe,
 
     for (uint8_t q = current_quality; q >= 1; --q) {
         const mtl::PresetQualityEntry* entry =
-            mtl::MaterialPresetTable::Lookup(recipe.preset, q);
+            mtl::MaterialPresetTable::Lookup(recipe.preset, q, phase);
         if (!entry) {
             failure_log.push_back("Quality " + std::to_string(q) +
                                   ": No preset table entry");

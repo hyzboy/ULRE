@@ -109,7 +109,8 @@ namespace
         const auto &cfg = hgl::graph::mtl::GlobalRenderConfig::Instance();
         const MaterialPreset resolved_preset = ResolveMaterialPresetForLOD(r.preset, GetDefaultMaterialLOD());
         const PresetQualityEntry *entry = MaterialPresetTable::Lookup(resolved_preset,
-                                                                      static_cast<uint8>(cfg.GetQualityLevel()));
+                                                                      static_cast<uint8>(cfg.GetQualityLevel()),
+                                                                      RenderPhase::ForwardOpaque);
         if (entry)
             return SurfaceTypeFromSurfaceId(entry->surface);
 

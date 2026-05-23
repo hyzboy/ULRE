@@ -8,6 +8,12 @@
 
 namespace hgl::graph::mtl {
 
+namespace {
+
+constexpr RenderPhase kForwardOpaque = RenderPhase::ForwardOpaque;
+
+} // namespace
+
 // ---------------------------------------------------------------------------
 // SurfaceId → glsl path
 // ---------------------------------------------------------------------------
@@ -36,83 +42,83 @@ const char* GetSurfacePath(SurfaceId id) noexcept
 
 // ---------------------------------------------------------------------------
 // 每个 preset 独立质量梯度表
-// 格式：{ quality_level, SurfaceId, vs_override, fs_override }
-// 同一 preset 内按 quality_level 降序排列（Lookup 从上往下找第一个 <= 请求值的）
+// 格式：{ quality_level, RenderPhase, SurfaceId, vs_override, fs_override }
+// 同一 preset/phase 内按 quality_level 降序排列（Lookup 从上往下找第一个 <= 请求值的）
 // ---------------------------------------------------------------------------
 
 static constexpr PresetQualityEntry kTable_Checkerboard3D[] = {
-    { 10, SurfaceId::Checkerboard, nullptr, nullptr },
+    { 10, kForwardOpaque, SurfaceId::Checkerboard, nullptr, nullptr },
 };
 
 static constexpr PresetQualityEntry kTable_VertexColor[] = {
-    { 10, SurfaceId::VertexColor, nullptr, nullptr },
+    { 10, kForwardOpaque, SurfaceId::VertexColor, nullptr, nullptr },
 };
 
 static constexpr PresetQualityEntry kTable_PureColor[] = {
-    { 10, SurfaceId::PureColor3D, nullptr, nullptr },
+    { 10, kForwardOpaque, SurfaceId::PureColor3D, nullptr, nullptr },
 };
 
 static constexpr PresetQualityEntry kTable_UnlitTexture[] = {
-    { 10, SurfaceId::UnlitTexture3D, nullptr, nullptr },
+    { 10, kForwardOpaque, SurfaceId::UnlitTexture3D, nullptr, nullptr },
 };
 
 static constexpr PresetQualityEntry kTable_VertexLuminance[] = {
-    { 10, SurfaceId::VertexLuminance, nullptr, nullptr },
+    { 10, kForwardOpaque, SurfaceId::VertexLuminance, nullptr, nullptr },
 };
 
 // Text2D 使用 bespoke VS+FS；无 surface fn（SurfaceId::Text2D → nullptr path）
 static constexpr PresetQualityEntry kTable_Text2D[] = {
-    { 10, SurfaceId::Text2D, "2d/text2d.vert.glsl", "2d/text2d.frag.glsl" },
+    { 10, kForwardOpaque, SurfaceId::Text2D, "2d/text2d.vert.glsl", "2d/text2d.frag.glsl" },
 };
 
 static constexpr PresetQualityEntry kTable_VertexPaletteColor3D[] = {
-    { 10, SurfaceId::VertexPaletteColor3D,
+    { 10, kForwardOpaque, SurfaceId::VertexPaletteColor3D,
       "compositor/main_forward_unlit_palette.vert.glsl", nullptr },
 };
 
 static constexpr PresetQualityEntry kTable_Gizmo3D[] = {
-    { 10, SurfaceId::Gizmo3D, nullptr, nullptr },
+    { 10, kForwardOpaque, SurfaceId::Gizmo3D, nullptr, nullptr },
 };
 
 static constexpr PresetQualityEntry kTable_TerrainGrid[] = {
-    { 10, SurfaceId::TerrainGrid,
+    { 10, kForwardOpaque, SurfaceId::TerrainGrid,
       "compositor/main_terrain_grid.vert.glsl", nullptr },
 };
 
 static constexpr PresetQualityEntry kTable_SkyMinimal[] = {
-    { 10, SurfaceId::SkyMinimal, nullptr, nullptr },
+    { 10, kForwardOpaque, SurfaceId::SkyMinimal, nullptr, nullptr },
 };
 
 // Standard: Q10=PBR, Q6=BlinnPhong, Q1=Lambert/Standard
 static constexpr PresetQualityEntry kTable_Standard[] = {
-    { 10, SurfaceId::StandardPBR,        nullptr, nullptr },
-    {  6, SurfaceId::StandardBlinnPhong, nullptr, nullptr },
-    {  1, SurfaceId::Standard,           nullptr, nullptr },
+    { 10, kForwardOpaque, SurfaceId::StandardPBR,        nullptr, nullptr },
+    {  6, kForwardOpaque, SurfaceId::StandardBlinnPhong, nullptr, nullptr },
+    {  1, kForwardOpaque, SurfaceId::Standard,           nullptr, nullptr },
 };
 
 static constexpr PresetQualityEntry kTable_PBRColor3D[] = {
-    { 10, SurfaceId::PBRColor3D, nullptr, nullptr },
+    { 10, kForwardOpaque, SurfaceId::PBRColor3D, nullptr, nullptr },
 };
 
 // Semantic presets：当前 fallback 到 StandardPBR；各自 surface 独立实现后逐步拆开
-static constexpr PresetQualityEntry kTable_HumanSkin[]      = {{ 10, SurfaceId::StandardPBR, nullptr, nullptr }};
-static constexpr PresetQualityEntry kTable_AmphibiansSkin[] = {{ 10, SurfaceId::StandardPBR, nullptr, nullptr }};
-static constexpr PresetQualityEntry kTable_Wood[]           = {{ 10, SurfaceId::StandardPBR, nullptr, nullptr }};
-static constexpr PresetQualityEntry kTable_TreeBark[]       = {{ 10, SurfaceId::StandardPBR, nullptr, nullptr }};
-static constexpr PresetQualityEntry kTable_Stone[]          = {{ 10, SurfaceId::StandardPBR, nullptr, nullptr }};
-static constexpr PresetQualityEntry kTable_Leaf[]           = {{ 10, SurfaceId::StandardPBR, nullptr, nullptr }};
-static constexpr PresetQualityEntry kTable_Metal[]          = {{ 10, SurfaceId::StandardPBR, nullptr, nullptr }};
-static constexpr PresetQualityEntry kTable_BirdFeathers[]   = {{ 10, SurfaceId::StandardPBR, nullptr, nullptr }};
-static constexpr PresetQualityEntry kTable_Scales[]         = {{ 10, SurfaceId::StandardPBR, nullptr, nullptr }};
+static constexpr PresetQualityEntry kTable_HumanSkin[]      = {{ 10, kForwardOpaque, SurfaceId::StandardPBR, nullptr, nullptr }};
+static constexpr PresetQualityEntry kTable_AmphibiansSkin[] = {{ 10, kForwardOpaque, SurfaceId::StandardPBR, nullptr, nullptr }};
+static constexpr PresetQualityEntry kTable_Wood[]           = {{ 10, kForwardOpaque, SurfaceId::StandardPBR, nullptr, nullptr }};
+static constexpr PresetQualityEntry kTable_TreeBark[]       = {{ 10, kForwardOpaque, SurfaceId::StandardPBR, nullptr, nullptr }};
+static constexpr PresetQualityEntry kTable_Stone[]          = {{ 10, kForwardOpaque, SurfaceId::StandardPBR, nullptr, nullptr }};
+static constexpr PresetQualityEntry kTable_Leaf[]           = {{ 10, kForwardOpaque, SurfaceId::StandardPBR, nullptr, nullptr }};
+static constexpr PresetQualityEntry kTable_Metal[]          = {{ 10, kForwardOpaque, SurfaceId::StandardPBR, nullptr, nullptr }};
+static constexpr PresetQualityEntry kTable_BirdFeathers[]   = {{ 10, kForwardOpaque, SurfaceId::StandardPBR, nullptr, nullptr }};
+static constexpr PresetQualityEntry kTable_Scales[]         = {{ 10, kForwardOpaque, SurfaceId::StandardPBR, nullptr, nullptr }};
 
 static constexpr PresetQualityEntry kTable_FullscreenTriangle[] = {
-    { 10, SurfaceId::FragCoord, nullptr, nullptr },
+    { 10, kForwardOpaque, SurfaceId::FragCoord, nullptr, nullptr },
 };
 
 // Custom：无内置条目；调用方必须自行提供 surface
 // 用一个哨兵占位避免零长数组（MSVC 不允许 constexpr T[] = {}）
 static constexpr PresetQualityEntry kTable_Custom[] = {
-    { 0, SurfaceId::None, nullptr, nullptr },
+    { 0, kForwardOpaque, SurfaceId::None, nullptr, nullptr },
 };
 
 // ---------------------------------------------------------------------------
@@ -180,7 +186,8 @@ void MaterialPresetTable::Initialize() {
 void MaterialPresetTable::Shutdown() {}
 
 const PresetQualityEntry* MaterialPresetTable::Lookup(MaterialPreset preset,
-                                                       uint8_t quality_level) {
+                                                       uint8_t quality_level,
+                                                       RenderPhase phase) {
     const size_t idx = static_cast<size_t>(preset)
                      - static_cast<size_t>(MaterialPreset::Checkerboard3D);
     if (idx >= kPresetIndexCount) return nullptr;
@@ -191,13 +198,22 @@ const PresetQualityEntry* MaterialPresetTable::Lookup(MaterialPreset preset,
     if (quality_level < 1)  quality_level = 1;
     if (quality_level > 10) quality_level = 10;
 
-    // 表内按 quality_level 降序排列；找第一个 quality_level <= 请求值的条目
+    const PresetQualityEntry *lowest_phase_entry = nullptr;
+
+    // 表内按 quality_level 降序排列；在相同 phase 中找第一个 quality_level <= 请求值的条目
     for (size_t i = 0; i < span.count; ++i) {
+        if (span.data[i].phase != phase)
+            continue;
+
+        lowest_phase_entry = &span.data[i];
+
         if (span.data[i].quality_level <= quality_level)
             return &span.data[i];
     }
-    // 所有条目都高于请求值，返回最低质量（最后一条）
-    return &span.data[span.count - 1];
+
+    // 该 phase 的所有条目都高于请求值，返回该 phase 的最低质量条目；
+    // 若 preset 没有该 phase 条目则返回 nullptr，禁止跨 phase 回退。
+    return lowest_phase_entry;
 }
 
 size_t MaterialPresetTable::Count() noexcept {
