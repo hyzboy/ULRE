@@ -424,7 +424,8 @@ std::string VariantRegistry::DumpBuiltinRowSnapshot() const
         for(const auto &entry:bucket)
         {
             const RegistryQueryResult phase3 = QueryPhase3Registry(entry.key);
-            const MaterialVariantRow row = (phase3.vertex && phase3.fragment && phase3.pipeline)
+            const bool has_phase3 = (phase3.vertex && phase3.fragment && phase3.pipeline);
+            const MaterialVariantRow row = has_phase3
                 ? ComposeMaterialVariantRow(phase3.vertex, phase3.fragment, phase3.pipeline, entry.key, entry.desc.variant_name.c_str())
                 : (entry.desc.bound_row ? *entry.desc.bound_row : MaterialVariantRow{});
 
@@ -448,11 +449,17 @@ std::string VariantRegistry::DumpBuiltinRowSnapshot() const
             out += "|";
             out += std::to_string(static_cast<uint32>(row.pass));
             out += "|";
-            out += row.vs_template_path ? row.vs_template_path : "";
+            out += has_phase3
+                ? (phase3.vertex->vs_template_path ? phase3.vertex->vs_template_path : "")
+                : entry.desc.vs_template_path;
             out += "|";
-            out += row.fs_template_path ? row.fs_template_path : "";
+            out += has_phase3
+                ? (phase3.fragment->fs_template_path ? phase3.fragment->fs_template_path : "")
+                : entry.desc.fs_template_path;
             out += "|";
-            out += row.surface_path ? row.surface_path : "";
+            out += has_phase3
+                ? (phase3.fragment->surface_path ? phase3.fragment->surface_path : "")
+                : entry.desc.surface_function_path;
             out += "|";
             out += FormatShaderStageFeatureDescForLog(row.vs_features);
             out += "|";

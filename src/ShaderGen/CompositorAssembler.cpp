@@ -111,7 +111,7 @@ namespace
                          desc.variant_name.c_str(),
                          row->name ? row->name : "",
                          hgl::graph::mtl::GetVertexTransformPolicyName(row->vertex_policy),
-                         row->vs_template_path ? row->vs_template_path : "",
+                         desc.vs_template_path.c_str(),
                          FormatRowVSFeaturesForLog(*row).c_str(),
                          FormatVertexAttribBitsForLog(key.vertex_attribute_feature_bits).c_str(),
                          static_cast<unsigned>(key.position_provider),
@@ -349,20 +349,10 @@ namespace
         return nullptr;
     }
 
-    const char *GetStageTemplatePath(const std::string &desc_template_path,
-                                     const hgl::graph::mtl::MaterialVariantRow *row,
-                                     const bool is_vertex_stage)
+    const char *GetStageTemplatePath(const std::string &desc_template_path)
     {
         if (!desc_template_path.empty())
             return desc_template_path.c_str();
-
-        if (!row)
-            return nullptr;
-
-        const char *row_template_path = is_vertex_stage ? row->vs_template_path : row->fs_template_path;
-        if (row_template_path && row_template_path[0])
-            return row_template_path;
-
         return nullptr;
     }
 
@@ -589,9 +579,6 @@ namespace
                                std::optional<hgl::graph::PositionProviderId> key_position_provider = std::nullopt,
                                uint32_t user_provider_path_hash = 0)
     {
-        if (row.vs_template_path && row.vs_template_path[0])
-            return BuildIncludeOnlyVS(row.vs_template_path);
-
         return BuildForwardVertexEntry(VSFeatureFlagsFromRow(row, coord_2d, key_position_provider, user_provider_path_hash));
     }
 
@@ -919,11 +906,11 @@ namespace hgl::graph
             return false;
 
         const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
-        const char *vs_template_path = GetStageTemplatePath(desc.vs_template_path, resolved_row, true);
+        const char *vs_template_path = GetStageTemplatePath(desc.vs_template_path);
 
         if (vs_template_path)
         {
-            LogVSAssemblyPath(desc.vs_template_path.empty() ? "row.vs_template_path" : "desc.vs_template_path",
+            LogVSAssemblyPath("desc.vs_template_path",
                               key,
                               desc,
                               resolved_row);
@@ -988,7 +975,7 @@ namespace hgl::graph
             return false;
 
         const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
-        const char *fs_template_path = GetStageTemplatePath(desc.fs_template_path, resolved_row, false);
+        const char *fs_template_path = GetStageTemplatePath(desc.fs_template_path);
 
         if (fs_template_path)
         {
@@ -1098,9 +1085,7 @@ namespace hgl::graph
         const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
         const std::string surface_rel = !desc.surface_function_path.empty()
             ? desc.surface_function_path
-            : (resolved_row && resolved_row->surface_path && resolved_row->surface_path[0])
-                ? resolved_row->surface_path
-                : hgl::graph::GetSurfaceFunctionPath(key.surface_type);
+            : hgl::graph::GetSurfaceFunctionPath(key.surface_type);
 
         std::string source;
         std::string error;
@@ -1134,7 +1119,7 @@ namespace hgl::graph
             const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
             if (resolved_row)
             {
-                if (!resolved_row->vs_template_path || !resolved_row->vs_template_path[0])
+                if (desc.vs_template_path.empty())
                 {
                     // Standard two-axis path: collect from fragment/policy/position files
                     CollectVSRequirements(VSFeatureFlagsFromRow(*resolved_row, coord_2d, key.position_provider, key.user_provider_path_hash), artifact.req_set, shader_lib_path_);
@@ -1142,7 +1127,7 @@ namespace hgl::graph
                 else
                 {
                     // Custom vs_path template: parse the template file itself for @sfm annotations
-                    artifact.req_set.ParseFromGLSLFile(resolved_row->vs_template_path, shader_lib_path_);
+                    artifact.req_set.ParseFromGLSLFile(desc.vs_template_path, shader_lib_path_);
                 }
             }
         }
@@ -1161,9 +1146,7 @@ namespace hgl::graph
         const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
         const std::string surface_rel = !desc.surface_function_path.empty()
             ? desc.surface_function_path
-            : (resolved_row && resolved_row->surface_path && resolved_row->surface_path[0])
-                ? resolved_row->surface_path
-                : hgl::graph::GetSurfaceFunctionPath(key.surface_type);
+            : hgl::graph::GetSurfaceFunctionPath(key.surface_type);
 
         const AssembleStageResult stage = AssembleFragmentShader(key, desc, resolved_row);
         artifact.glsl          = stage.glsl;
@@ -1172,7 +1155,7 @@ namespace hgl::graph
 
         if (artifact.success && resolved_row)
         {
-            if (!resolved_row->fs_template_path || !resolved_row->fs_template_path[0])
+            if (desc.fs_template_path.empty())
             {
                 // Standard two-axis path
                 CollectFSRequirements(
@@ -1182,7 +1165,7 @@ namespace hgl::graph
             else
             {
                 // Custom fs_path template: parse the template file for @sfm annotations
-                artifact.req_set.ParseFromGLSLFile(resolved_row->fs_template_path, shader_lib_path_);
+                artifact.req_set.ParseFromGLSLFile(desc.fs_template_path, shader_lib_path_);
             }
         }
 

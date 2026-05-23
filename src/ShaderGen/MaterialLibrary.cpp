@@ -251,7 +251,7 @@ std::string GetBuiltinMaterialPresetAuditSnapshot()
             audit_key.position_provider = row.position_provider;
 
             const mtl::MaterialVariantDesc audit_desc =
-                mtl::MaterialVariantDesc::CreateRowBound(row.name ? row.name : "", &row);
+                CreateBuiltinRowBoundVariantDesc(row.name ? row.name : "", row.factory_type);
 
             const auto vs_art = sfm_assembler.AssembleVertexArtifact(audit_key, audit_desc, &row);
             const auto fs_art = sfm_assembler.AssembleFragmentArtifact(audit_key, audit_desc, &row);
@@ -344,7 +344,28 @@ MaterialVariantDesc CreateBuiltinRowBoundVariantDesc(const char *row_name,
                      row_name ? row_name : "<null>");
     }
 
-    return MaterialVariantDesc::CreateRowBound(row_name ? row_name : "", row, type, vs_path, fs_path, surface_path);
+    std::string resolved_vs_path = vs_path;
+    std::string resolved_fs_path = fs_path;
+    std::string resolved_surface_path = surface_path;
+
+    if (row && (resolved_vs_path.empty() || resolved_fs_path.empty() || resolved_surface_path.empty()))
+    {
+        const auto &registry = GetBuiltinVariantRegistry();
+        registry.ForEach([&](const MaterialVariantKey &, const MaterialVariantDesc &desc)
+        {
+            if (!row->name || std::strcmp(desc.variant_name.c_str(), row->name) != 0)
+                return;
+
+            if (resolved_vs_path.empty())
+                resolved_vs_path = desc.vs_template_path;
+            if (resolved_fs_path.empty())
+                resolved_fs_path = desc.fs_template_path;
+            if (resolved_surface_path.empty())
+                resolved_surface_path = desc.surface_function_path;
+        });
+    }
+
+    return MaterialVariantDesc::CreateRowBound(row_name ? row_name : "", row, type, resolved_vs_path, resolved_fs_path, resolved_surface_path);
 }
 
 namespace {

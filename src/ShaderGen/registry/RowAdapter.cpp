@@ -26,7 +26,6 @@ namespace hgl::graph::mtl
         if (vertex)
         {
             row.vertex_policy = vertex->vertex_policy;
-            row.vs_template_path = vertex->vs_template_path;
             row.vs_features = vertex->vs_features;
             row.resources = vertex->resource_contract;
             row.def_hint = vertex->def_hint;
@@ -38,8 +37,6 @@ namespace hgl::graph::mtl
             row.factory_type = fragment->preset;
             row.surface_type = fragment->surface_type;
             row.surface_model = fragment->surface_model;
-            row.fs_template_path = fragment->fs_template_path;
-            row.surface_path = fragment->surface_path;
             row.fs_features = fragment->fs_features;
             row.resources.enable_lighting = fragment->resource_contract.enable_lighting;
             // needs_sky and lighting_model are SFM-driven / ECS-injected; not propagated from fragment contract.

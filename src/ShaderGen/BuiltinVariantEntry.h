@@ -121,9 +121,6 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
     row.position_provider = e.position_provider;
     row.blend = e.blend;
     row.pass = e.pass;
-    row.vs_template_path = e.vs_path;
-    row.fs_template_path = e.fs_path;
-    row.surface_path = e.surface_path;
 
     switch (e.preset)
     {

@@ -115,14 +115,12 @@ namespace hgl::graph::mtl
 
     /// MaterialVariantRow — **snapshot / diagnostic structure**.
     ///
-    /// This row is the *legacy* registration unit kept for VariantRegistry compatibility
-    /// during the transition to MaterialPresetTable + Matcher (plan step 10–14).
+    /// This row is a legacy compatibility snapshot used by DumpSnapshot(),
+    /// DumpBuiltinRowSnapshot(), and temporary registry bridging while the runtime
+    /// moves to MaterialPresetTable + Matcher.
     ///
-    /// Fields marked @snapshot are read by DumpSnapshot() / DumpBuiltinRowSnapshot() only.
-    /// Fields marked @runtime_deprecated will be removed when kBuiltinVariants[] is deleted
-    /// (plan step 14).  Do NOT add new routing logic that depends on these fields.
-    ///
-    /// The authoritative runtime routing is: Matcher → MatchedShaderSet.
+    /// Runtime shader paths live in MaterialVariantDesc / phase-query results, not here.
+    /// Do NOT add new routing logic that depends on MaterialVariantRow.
     struct MaterialVariantRow
     {
         const char *name = "";
@@ -139,12 +137,6 @@ namespace hgl::graph::mtl
 
         RenderAlphaMode blend = RenderAlphaMode::Opaque;
         PassType pass = PassType::ForwardOpaque;
-
-        /// @runtime_deprecated — template paths are superseded by MaterialPresetTable glsl_path.
-        /// Kept for VariantRegistry / CompositorAssembler compat during transition.
-        const char *vs_template_path = "";
-        const char *fs_template_path = "";
-        const char *surface_path = "";
 
         ShaderStageFeatureDesc vs_features{};
         ShaderStageFeatureDesc fs_features{};
