@@ -57,7 +57,7 @@ namespace hgl::graph::mtl
     }
 
     // ── User PCG provider path ───────────────────────────────────────────────
-    h = hgl::hash::FNV1aAppendBytes(h, r.vertex_provider_glsl.data(), r.vertex_provider_glsl.size());
+    h = hgl::hash::FNV1aAppendBytes(h, r.user_provider_path.data(), r.user_provider_path.size());
     h = hgl::hash::FNV1aAppend(h, '\0');
 
     return h;

@@ -455,8 +455,8 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     // Validate: user PCG provider path is only legal when preset == Custom.
     // A non-Custom preset has a builtin variant row that owns position_provider;
     // allowing a recipe to silently override it would create silent routing ambiguity.
-    assert((r.vertex_provider_glsl.empty() || r.preset == MaterialPreset::Custom)
-           && "vertex_provider_glsl is only valid when preset == MaterialPreset::Custom");
+    assert((r.user_provider_path.empty() || r.preset == MaterialPreset::Custom)
+           && "user_provider_path is only valid when preset == MaterialPreset::Custom");
 
     std::printf("[RecipeToKey] BuildBaseVariantKeyFromRecipe enter: preset=%u dim=%u prim=%u\n",
                 static_cast<unsigned>(r.preset),
@@ -529,19 +529,13 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     // Must happen after RouteKey so that k.position_provider is already set from
     // the builtin row (for Custom preset it will be Unknown/default; we overwrite
     // it here to UserPCG and record the path hash for the compositor).
-    //
-    // Priority: recipe.user_provider_path (new field) → vertex_provider_glsl (deprecated).
     {
-        const std::string& pcg_path = !r.user_provider_path.empty()
-                                        ? r.user_provider_path
-#pragma warning(suppress: 4996)
-                                        : r.vertex_provider_glsl;  // deprecated fallback
-        if (!pcg_path.empty())
+        if (!r.user_provider_path.empty())
         {
             const hgl::graph::ProviderManifest* pm =
-                hgl::graph::ProviderManifestRegistry::AcquireUserProvider(pcg_path);
+                hgl::graph::ProviderManifestRegistry::AcquireUserProvider(r.user_provider_path);
             k.position_provider       = PositionProviderId::UserPCG;
-            k.user_provider_path_hash = pm ? pm->glsl_path_hash : hgl::graph::Fnv1a32(pcg_path);
+            k.user_provider_path_hash = pm ? pm->glsl_path_hash : hgl::graph::Fnv1a32(r.user_provider_path);
         }
         else if (r.position_provider != hgl::graph::PositionProviderId::Unknown)
         {

@@ -161,15 +161,6 @@ struct MaterialRecipe
     };
     std::vector<TextureAssetRef> textures;
 
-    // ════════════════════════════════════════════════════════════════════════
-    // Deprecated — 迁移期保留，后续步骤统一删除
-    // ════════════════════════════════════════════════════════════════════════
-
-    /// @deprecated 请改用 position_provider = UserPCG + user_provider_path。
-    /// 过渡期：RecipeToKey 优先读 user_provider_path；此字段非空时自动 fallback。
-    [[deprecated("use position_provider + user_provider_path instead")]]
-    std::string vertex_provider_glsl;
-
-};
+}; // struct MaterialRecipe
 
 } // namespace hgl::graph::mtl
