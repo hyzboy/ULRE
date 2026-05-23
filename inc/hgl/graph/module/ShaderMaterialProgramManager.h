@@ -20,6 +20,7 @@ namespace hgl::graph{
 
 class ShaderCreateInfo;
 class ShaderStageMap;
+struct MatchedShaderSet;
 
 namespace mtl
 {
@@ -99,7 +100,7 @@ private: // Helper methods with integrated DebugUtils
     ShaderMaterialProgram *CreateMaterial(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);   ///<基于内置材质ID创建2D材质
     ShaderMaterialProgram *CreateMaterial(const mtl::MaterialPreset, mtl::Material3DCreateConfig *);   ///<基于内置材质ID创建3D材质
     ShaderMaterialProgram *CreateMaterial(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质
-    ShaderMaterialProgram *CreateMaterial(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质
+    ShaderMaterialProgram *CreateMaterial(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *, const MatchedShaderSet *matched_set = nullptr); ///<基于variant key创建3D材质
     ShaderMaterialProgram *CreateMaterialFromRecord(const mtl::MaterialRecipe &recipe);
     class GraphicsPipelineLayoutData *CreateMaterialGraphicsPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class GraphicsPipelineLayoutData *pld, const DescriptorSetType &desc_set_type);

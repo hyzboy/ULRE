@@ -723,6 +723,14 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                              const MaterialVariantKey &key,
                                              MaterialCreateConfig *cfg)
 {
+    return CreateMaterialCreateInfo(profile, key, cfg, nullptr);
+}
+
+MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
+                                             const MaterialVariantKey &key,
+                                             MaterialCreateConfig *cfg,
+                                             const hgl::graph::MatchedShaderSet *matched_set)
+{
     // [Step 3.5 T4] Routing self-test: every registered builtin variant must round-trip
     // through the registry. Any mismatch is a programming error → abort immediately.
     static const bool s_routing_consistency_ok = []() noexcept
@@ -853,9 +861,25 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     MaterialVariantRow phase3_row{};
     MaterialVariantDesc phase3_desc{};
 
+    MaterialVariantDesc matched_desc{};
     const MaterialVariantDesc *variant_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(registry_lookup_key,
                                                                                                              &resolved_key,
                                                                                                              lookup_opts);
+    if (variant_desc
+     && matched_set
+     && matched_set->IsValid())
+    {
+        matched_desc = *variant_desc;
+        matched_desc.surface_function_path = matched_set->surface_path;
+        variant_desc = &matched_desc;
+
+        std::fprintf(stderr,
+            "[MaterialLibrary] Matcher route applied: variant=%s surface='%s' quality=%u phase=%s\n",
+            matched_desc.variant_name.c_str(),
+            matched_desc.surface_function_path.c_str(),
+            matched_set->quality_level,
+            hgl::graph::mtl::GetRenderPhaseName(matched_set->render_phase));
+    }
     if(!variant_desc)
     {
         std::fprintf(stderr,
@@ -885,22 +909,27 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                           key,
                                           "ComposedRow");
 
+            const char *phase3_surface_path = phase3_query.fragment->surface_path ? phase3_query.fragment->surface_path : "";
+            if (matched_set && matched_set->IsValid())
+                phase3_surface_path = matched_set->surface_path.c_str();
+
             phase3_desc = MaterialVariantDesc::CreateRowBound(
                 "Phase3ComposedVariant",
                 &phase3_row,
                 phase3_query.fragment->preset,
                 phase3_query.vertex->vs_template_path ? phase3_query.vertex->vs_template_path : "",
                 phase3_query.fragment->fs_template_path ? phase3_query.fragment->fs_template_path : "",
-                phase3_query.fragment->surface_path ? phase3_query.fragment->surface_path : "");
+                phase3_surface_path);
 
             variant_desc = &phase3_desc;
             resolved_key = key;
 
             std::fprintf(stderr,
-                "[MaterialLibrary] Phase3 route hit: vertex=%s fragment=%s pipeline=%s request={%s}\n",
+                "[MaterialLibrary] Phase3 route hit: vertex=%s fragment=%s pipeline=%s surface='%s' request={%s}\n",
                 phase3_query.vertex->name,
                 phase3_query.fragment->name,
                 phase3_query.pipeline->name,
+                phase3_surface_path,
                 FormatVariantKeyForLog(key).c_str());
         }
     }

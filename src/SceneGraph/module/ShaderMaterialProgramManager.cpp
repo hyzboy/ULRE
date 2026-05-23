@@ -23,6 +23,8 @@
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/RecipeToKey.h>
 #include<hgl/mtl/ShaderProgramKey.h>
+#include<hgl/mtl/RenderPhase.h>
+#include<hgl/shadergen/Matcher.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
 #include<cstdio>
@@ -128,6 +130,39 @@ namespace
     {
         // def_id is unresolved at this call site for now.
         k.schema = mci.GetMaterialInstance().schema;
+    }
+
+    static ResourceSupply BuildMatcherResourceSupply(const mtl::MaterialRecipe &recipe)
+    {
+        ResourceSupply supply;
+        supply.sky_available = recipe.resources.needs_sky;
+
+        for (const auto &texture : recipe.textures)
+        {
+            if (!texture.path.empty())
+                supply.available_textures.push_back(mtl::SamplerSlotNameList[static_cast<size_t>(texture.slot)]);
+        }
+
+        for (const auto &cs : recipe.color_sources)
+            supply.available_textures.push_back(mtl::SamplerSlotNameList[static_cast<size_t>(cs.slot)]);
+
+        if (recipe.resources.needs_camera)
+            supply.available_ubos.push_back("camera");
+        if (recipe.resources.needs_viewport)
+            supply.available_ubos.push_back("viewport");
+        if (recipe.resources.needs_transform)
+            supply.available_ubos.push_back("transform");
+        if (recipe.resources.needs_material_instance)
+            supply.available_ubos.push_back("material_instance");
+        if (recipe.resources.needs_material_texture_index)
+            supply.available_ubos.push_back("material_texture_index");
+
+        return supply;
+    }
+
+    static mtl::RenderPhase ResolveMatcherPhase(const mtl::MaterialKey &key) noexcept
+    {
+        return key.variant.render_phase;
     }
 
     }//namespace
@@ -606,6 +641,34 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
     // Miss — preserve the already-resolved key instead of rebuilding from recipe-only
     // 2D/3D configs, which can drop routing axes like explicit vertex_policy.
     ShaderMaterialProgram *prog = nullptr;
+    const GeometryVertexFormat matcher_geometry{};
+    const ResourceSupply matcher_supply = BuildMatcherResourceSupply(recipe);
+    const mtl::RenderPhase matcher_phase = ResolveMatcherPhase(key);
+    const MatchedShaderSet matched_set = Matcher::Resolve(recipe,
+                                                          matcher_geometry,
+                                                          matcher_supply,
+                                                          matcher_phase);
+
+    if (matched_set.IsValid())
+    {
+        std::fprintf(stderr,
+            "[ShaderMaterialProgramManager] Matcher selected surface='%s' quality=%u phase=%s key_hash=0x%llx preset=%u\n",
+            matched_set.surface_path.c_str(),
+            matched_set.quality_level,
+            mtl::GetRenderPhaseName(matched_set.render_phase),
+            static_cast<unsigned long long>(key.Hash()),
+            static_cast<unsigned>(recipe.preset));
+    }
+    else
+    {
+        std::fprintf(stderr,
+            "[ShaderMaterialProgramManager] Matcher returned fallback/invalid for key_hash=0x%llx preset=%u; legacy create path will keep diagnostics visible\n",
+            static_cast<unsigned long long>(key.Hash()),
+            static_cast<unsigned>(recipe.preset));
+    }
+
+    const MatchedShaderSet *matched_set_ptr = matched_set.IsValid() ? &matched_set : nullptr;
+
     if (recipe.dim == mtl::MaterialRecipe::Dim::D2)
     {
         mtl::Material3DCreateConfig cfg(
@@ -623,7 +686,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
                 cfg.SetTextureSourceModeOverride(cs.slot, mtl::TextureSourceMode::Simple);
         }
 
-        prog = CreateMaterial(key.variant, &cfg);
+        prog = CreateMaterial(key.variant, &cfg, matched_set_ptr);
     }
     else
     {
@@ -648,7 +711,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::GetOrCreateProgramByKey(
                 cfg.SetTextureSourceModeOverride(cs.slot, mtl::TextureSourceMode::Simple);
         }
 
-        prog = CreateMaterial(key.variant, &cfg);
+        prog = CreateMaterial(key.variant, &cfg, matched_set_ptr);
     }
 
     if (prog)
@@ -828,7 +891,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
     return CreateMaterial(key, &cfg3d);
 }
 
-ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg)
+ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg,const MatchedShaderSet *matched_set)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -850,7 +913,10 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
         stats.LogCreateMaterialKey3DProfileNull(static_cast<uint64_t>(key.Hash()));
     }
 
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,
+                                                                          key,
+                                                                          cfg,
+                                                                          matched_set);
 
     if(!mci)
     {

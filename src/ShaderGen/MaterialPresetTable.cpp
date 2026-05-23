@@ -11,21 +11,23 @@ namespace hgl::graph::mtl {
 // ---------------------------------------------------------------------------
 // SurfaceId → glsl path
 // ---------------------------------------------------------------------------
-const char* GetSurfacePath(SurfaceId id) noexcept {
-    switch (id) {
+const char* GetSurfacePath(SurfaceId id) noexcept
+{
+    switch (id)
+    {
         case SurfaceId::Checkerboard:           return "surface/checkerboard_surface.glsl";
         case SurfaceId::PureColor3D:            return "surface/purecolor3d_surface.glsl";
         case SurfaceId::VertexColor:            return "surface/unlit_vertexcolor_surface.glsl";
         case SurfaceId::VertexLuminance:        return "surface/unlit_luminance_surface.glsl";
         case SurfaceId::UnlitTexture3D:         return "surface/unlit_texture3d_surface.glsl";
-        case SurfaceId::Gizmo3D:               return "surface/gizmo3d_surface.glsl";
+        case SurfaceId::Gizmo3D:                return "surface/gizmo3d_surface.glsl";
         case SurfaceId::VertexPaletteColor3D:   return "surface/unlit_vertexcolor_surface.glsl";
         case SurfaceId::Text2D:                return nullptr; // bespoke VS+FS, no surface fn
         case SurfaceId::TerrainGrid:           return "surface/terrain_grid_surface.glsl";
         case SurfaceId::SkyMinimal:            return "surface/sky_minimal_surface.glsl";
         case SurfaceId::Standard:              return "surface/standard_surface.glsl";
         case SurfaceId::StandardBlinnPhong:    return "surface/textureblinnphong_surface.glsl";
-        case SurfaceId::StandardPBR:           return "surface/standard_pbr_surface.glsl";
+        case SurfaceId::StandardPBR:           return "surface/standard_surface.glsl";
         case SurfaceId::PBRColor3D:            return "surface/pbrcolor3d_surface.glsl";
         case SurfaceId::FragCoord:             return "surface/fragcoord_surface.glsl";
         default:                               return nullptr;

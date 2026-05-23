@@ -7,6 +7,7 @@
 #include<hgl/mtl/MaterialVariantDesc.h>
 #include<hgl/mtl/MaterialVariantKey.h>
 #include<hgl/mtl/MaterialVariantRow.h>
+#include<hgl/shadergen/MatchedShaderSet.h>
 #include<vector>
 #include<string>
 #include<optional>
@@ -26,6 +27,13 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialVariantKey &key,
                                              MaterialCreateConfig *cfg);
+
+// Transitional Matcher bridge: the key still selects the row/template identity,
+// while matched_set owns the selected surface path when available.
+MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
+                                             const MaterialVariantKey &key,
+                                             MaterialCreateConfig *cfg,
+                                             const hgl::graph::MatchedShaderSet *matched_set);
 
 // Bootstrap-only global fallback. This exists so the current program can run with a single built-in
 // material implementation level. It should not be treated as the final architecture for forward,
