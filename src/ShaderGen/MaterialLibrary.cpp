@@ -911,23 +911,64 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         // Phase 2: VS/FS split fallback.
         // The full variant miss does not necessarily mean VS is broken — it may be
         // that only the FS surface configuration (tex_bits / sampler_bits) has no match.
-        // Strategy: scan registered variants for one that shares the same surface_type.
-        // If found, VS assembly is likely valid; substitute ErrorIndicator surface for FS.
+        // Transition rule D0: never cross MaterialPreset boundaries here. If the
+        // requested preset cannot be recovered, or no same-preset candidate exists,
+        // fail visibly instead of silently borrowing an unrelated VS/FS pair.
         const MaterialVariantDesc *vs_candidate = nullptr;
         MaterialVariantKey vs_candidate_key{};
-        GetBuiltinVariantRegistry().ForEach(
-            [&](const MaterialVariantKey &vk, const MaterialVariantDesc &vd)
-            {
-                if (vs_candidate)
-                    return; // already found one
-                if (!vd.factory_type)
-                    return;
-                vs_candidate     = &vd;
-                vs_candidate_key = vk;
-            });
+        if (lookup_opts.preferred_factory_type)
+        {
+            GetBuiltinVariantRegistry().ForEach(
+                [&](const MaterialVariantKey &vk, const MaterialVariantDesc &vd)
+                {
+                    if (vs_candidate)
+                        return; // already found one
+                    if (!vd.factory_type || *vd.factory_type != *lookup_opts.preferred_factory_type)
+                        return;
+                    vs_candidate     = &vd;
+                    vs_candidate_key = vk;
+                });
+        }
+        else
+        {
+            std::fprintf(stderr,
+                "[MaterialLibrary] Phase2 FS-fallback blocked: requested preset could not be recovered"
+                " from cfg->preset_name='%s'; cross-preset fallback is disabled\n",
+                cfg->preset_name ? cfg->preset_name : "<null>");
+        }
+
+        if (!vs_candidate)
+        {
+            GetBuiltinVariantRegistry().ForEach(
+                [&](const MaterialVariantKey &, const MaterialVariantDesc &vd)
+                {
+                    if (!lookup_opts.preferred_factory_type || !vd.factory_type)
+                        return;
+                    if (*vd.factory_type == *lookup_opts.preferred_factory_type)
+                        return;
+
+                    std::fprintf(stderr,
+                        "[MaterialLibrary] Phase2 FS-fallback blocked cross-preset candidate='%s'"
+                        " requested_factory=%u candidate_factory=%u\n",
+                        vd.variant_name.c_str(),
+                        static_cast<unsigned>(*lookup_opts.preferred_factory_type),
+                        static_cast<unsigned>(*vd.factory_type));
+                });
+        }
 
         if (vs_candidate && vs_candidate->factory_type)
         {
+            if (*vs_candidate->factory_type != *lookup_opts.preferred_factory_type)
+            {
+                std::fprintf(stderr,
+                    "[MaterialLibrary] Phase2 FS-fallback blocked: candidate preset mismatch"
+                    " candidate='%s' requested_factory=%u candidate_factory=%u\n",
+                    vs_candidate->variant_name.c_str(),
+                    static_cast<unsigned>(*lookup_opts.preferred_factory_type),
+                    static_cast<unsigned>(*vs_candidate->factory_type));
+                return nullptr;
+            }
+
             // Encode the FS error reason so the user can see why the surface failed.
             const uint32_t error_code = EncodeFSError(
                 FSErrorReason::NoSurfaceVariant,
@@ -937,8 +978,9 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
 
             std::fprintf(stderr,
                 "[MaterialLibrary] Phase2 FS-fallback: VS candidate='%s'"
-                " error_code=0x%08X [%s]\n",
+                " requested_factory=%u error_code=0x%08X [%s]\n",
                 vs_candidate->variant_name.c_str(),
+                static_cast<unsigned>(*lookup_opts.preferred_factory_type),
                 error_code,
                 FormatFSError(error_code).c_str());
 
@@ -989,8 +1031,11 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         else
         {
             std::fprintf(stderr,
-                "[MaterialLibrary] Phase2 FS-fallback: no matching candidate found"
-                " — VS routing also failed\n");
+                "[MaterialLibrary] Phase2 FS-fallback blocked: no same-preset candidate found"
+                " for requested_factory=%s — cross-preset fallback is disabled\n",
+                lookup_opts.preferred_factory_type
+                    ? std::to_string(static_cast<unsigned>(*lookup_opts.preferred_factory_type)).c_str()
+                    : "<unknown>");
         }
 
         return nullptr;
