@@ -18,16 +18,12 @@
 #include <hgl/mtl/MaterialPresetTable.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/RenderPhase.h>
+#include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/shadergen/MatchedShaderSet.h>
 #include <string>
 #include <vector>
 
 namespace hgl::graph {
-
-/// Placeholder geometry vertex format — replace with real geometry type once unified.
-struct GeometryVertexFormat {
-    bool HasAll() const { return true; } // stub: assume all VA available
-};
 
 /// Shader matcher
 class Matcher {

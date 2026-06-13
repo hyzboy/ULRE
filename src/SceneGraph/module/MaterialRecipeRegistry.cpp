@@ -7,6 +7,8 @@
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/mtl/RecipeToKey.h>
+#include <hgl/shadergen/Matcher.h>
+#include <hgl/shadergen/MatchedShaderSet.h>
 #include <hgl/vk/VKShaderMaterialProgram.h>
 #include <hgl/vk/VKMaterialBindingInstance.h>
 #include <hgl/vk/VKResourceDomain.h>
@@ -18,6 +20,7 @@
 
 #include <cctype>
 #include <cstdio>
+#include <optional>
 
 namespace hgl::graph
 {
@@ -43,6 +46,82 @@ static GraphicsPipelinePreset BlendToPreset(graph::RenderAlphaMode blend, bool i
     case R::AlphaToCoverage:  return GraphicsPipelinePreset::AlphaToCoverage3D;
     default:                  return is2D ? GraphicsPipelinePreset::Solid2D   : GraphicsPipelinePreset::Solid3D;
     }
+}
+
+static ResourceSupply BuildMatcherResourceSupply(const mtl::MaterialRecipe &recipe)
+{
+    ResourceSupply supply;
+    supply.sky_available = recipe.resources.needs_sky;
+
+    for (const auto &texture : recipe.textures)
+    {
+        if (!texture.path.empty())
+            supply.available_textures.push_back(mtl::SamplerSlotNameList[static_cast<size_t>(texture.slot)]);
+    }
+
+    for (const auto &cs : recipe.color_sources)
+        supply.available_textures.push_back(mtl::SamplerSlotNameList[static_cast<size_t>(cs.slot)]);
+
+    if (recipe.resources.needs_camera)
+        supply.available_ubos.push_back("camera");
+    if (recipe.resources.needs_viewport)
+        supply.available_ubos.push_back("viewport");
+    if (recipe.resources.needs_transform)
+        supply.available_ubos.push_back("transform");
+    if (recipe.resources.needs_material_instance)
+        supply.available_ubos.push_back("material_instance");
+    if (recipe.resources.needs_material_texture_index)
+        supply.available_ubos.push_back("material_texture_index");
+
+    return supply;
+}
+
+static MatchedShaderSet ResolveMatchedShaderSetForRecipe(const mtl::MaterialKey &key,
+                                                         const mtl::MaterialRecipe &recipe)
+{
+    const hgl::graph::GeometryVertexFormat matcher_geometry{};
+    const ResourceSupply matcher_supply = BuildMatcherResourceSupply(recipe);
+    return Matcher::Resolve(recipe,
+                            matcher_geometry,
+                            matcher_supply,
+                            key.variant.render_phase);
+}
+
+static GraphicsPipelinePreset PipelinePresetFromMatchedShaderSet(const MatchedShaderSet &matched_set,
+                                                                 const mtl::MaterialRecipe &recipe) noexcept
+{
+    const bool is2D = recipe.dim == mtl::MaterialRecipe::Dim::D2;
+
+    if (recipe.preset == mtl::MaterialPreset::SkyMinimal)
+        return GraphicsPipelinePreset::Sky;
+
+    switch (matched_set.render_phase)
+    {
+    case mtl::RenderPhase::ForwardTransparent:
+        return is2D ? GraphicsPipelinePreset::Alpha2D : GraphicsPipelinePreset::Alpha3D;
+    case mtl::RenderPhase::ForwardMasked:
+        return GraphicsPipelinePreset::Masked3D;
+    default:
+        break;
+    }
+
+    return BlendToPreset(recipe.default_render_state.blend, is2D, recipe.preset);
+}
+
+static GraphicsPipelinePreset ResolvePipelinePreset(const mtl::MaterialKey &key,
+                                                    const mtl::MaterialRecipe &recipe,
+                                                    MatchedShaderSet *out_match = nullptr) noexcept
+{
+    const MatchedShaderSet matched_set = ResolveMatchedShaderSetForRecipe(key, recipe);
+    if (out_match)
+        *out_match = matched_set;
+
+    if (matched_set.IsValid())
+        return PipelinePresetFromMatchedShaderSet(matched_set, recipe);
+
+    return BlendToPreset(recipe.default_render_state.blend,
+                         recipe.dim == mtl::MaterialRecipe::Dim::D2,
+                         recipe.preset);
 }
 
 
@@ -153,34 +232,41 @@ MaterialRecipeRegistry::MaterialRecipeRegistry(
 
 MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &rec)
 {
+    const mtl::MaterialKey key = mtl::ResolveRecipePrimaryKey(rec);
+    const GraphicsPipelinePreset pipeline_preset = ResolvePipelinePreset(key, rec);
+
     std::fprintf(stderr,
         "[MaterialRecipeRegistry] Acquire(recipe): preset=%u dim=%u prim=%u pipeline=%u domain='%s' textures=%zu key_hash=0x%llx\n",
         static_cast<unsigned>(rec.preset),
         static_cast<unsigned>(rec.dim),
         static_cast<unsigned>(rec.prim),
-        static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)),
+        static_cast<unsigned>(pipeline_preset),
         rec.domain_id.c_str(),
         rec.textures.size(),
-        static_cast<unsigned long long>(mtl::ResolveRecipePrimaryKey(rec).Hash()));
-    return Acquire(mtl::ResolveRecipePrimaryKey(rec), rec);
+        static_cast<unsigned long long>(key.Hash()));
+    return Acquire(key, rec);
 }
 
 MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key, const mtl::MaterialRecipe &rec)
 {
     MaterialDomainHandle handle;
+    MatchedShaderSet matched_set;
+    const GraphicsPipelinePreset pipeline_preset = ResolvePipelinePreset(key, rec, &matched_set);
 
     std::fprintf(stderr,
-        "[MaterialRecipeRegistry] Acquire(key): key_hash=0x%llx preset=%u prim=%u pipeline=%u\n",
+        "[MaterialRecipeRegistry] Acquire(key): key_hash=0x%llx preset=%u prim=%u pipeline=%u match_surface='%s' match_phase=%s\n",
         static_cast<unsigned long long>(key.Hash()),
         static_cast<unsigned>(rec.preset),
         static_cast<unsigned>(rec.prim),
-        static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)));
+        static_cast<unsigned>(pipeline_preset),
+        matched_set.surface_path.c_str(),
+        mtl::GetRenderPhaseName(matched_set.render_phase));
 
     GLogInfo("[MaterialRecipeRegistry] Acquire(key) request key_hash=0x%llx preset=%u prim=%u pipeline=%u",
              static_cast<unsigned long long>(key.Hash()),
              static_cast<unsigned>(rec.preset),
              static_cast<unsigned>(rec.prim),
-             static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)));
+             static_cast<unsigned>(pipeline_preset));
 
     // 1. ShaderMaterialProgram — key-transparent fast path (checks material_by_key first)
     handle.material = mm->GetOrCreateProgramByKey(key, rec);
@@ -190,7 +276,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
                   static_cast<unsigned long long>(key.Hash()),
                   static_cast<unsigned>(rec.preset),
                   static_cast<unsigned>(rec.prim),
-                  static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)));
+                  static_cast<unsigned>(pipeline_preset));
         return {};
     }
 
@@ -269,7 +355,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
             "[MaterialRecipeRegistry] Acquire(key): material hasMI=0, skip MI binding path material='%s' req_prim=%u pipeline=%u\n",
             handle.material->GetName().c_str(),
             static_cast<unsigned>(rec.prim),
-            static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)));
+            static_cast<unsigned>(pipeline_preset));
 
         if (tm && sm && !rec.textures.empty())
         {
@@ -385,7 +471,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     MaterialInstanceSpec spec;
     spec.material = handle.material;
     spec.domain   = handle.domain;
-    spec.preset   = BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2, rec.preset);
+    spec.preset   = ResolvePipelinePreset(mtl::ResolveRecipePrimaryKey(rec), rec);
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
 
@@ -468,7 +554,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(rec.preset),
             static_cast<unsigned>(rec.prim),
-            static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)));
+            static_cast<unsigned>(ResolvePipelinePreset(key, rec)));
         return nullptr;
     }
 
@@ -507,7 +593,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     MaterialInstanceSpec spec;
     spec.material = handle.material;
     spec.domain   = handle.domain;
-    spec.preset   = BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2, rec.preset);
+    spec.preset   = ResolvePipelinePreset(key, rec);
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
 
@@ -564,7 +650,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
             static_cast<unsigned long long>(key.Hash()),
             handle.material->GetName().c_str(),
             static_cast<unsigned>(rec.prim),
-            static_cast<unsigned>(BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2)),
+            static_cast<unsigned>(ResolvePipelinePreset(key, rec)),
             static_cast<unsigned>(instance_data_size));
     }
 
@@ -585,7 +671,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::CreateMI(
     MaterialInstanceSpec spec;
     spec.material = handle.material;
     spec.domain   = handle.domain;
-    spec.preset   = BlendToPreset(rec.default_render_state.blend, rec.dim == mtl::MaterialRecipe::Dim::D2, rec.preset);
+    spec.preset   = ResolvePipelinePreset(mtl::ResolveRecipePrimaryKey(rec), rec);
     spec.instance_data      = instance_data;
     spec.instance_data_size = instance_data_size;
 
