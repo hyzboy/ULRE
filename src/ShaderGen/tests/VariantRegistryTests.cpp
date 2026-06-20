@@ -105,11 +105,78 @@ static void test_query_unlittexture3d_simple_hits_registry()
         CHECK_TRUE(!desc->variant_name.empty());
 }
 
+static void test_preferred_factory_type_picks_expected_candidate()
+{
+    VariantRegistry registry;
+
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Mesh3D;
+    key.position_provider = PositionProviderId::DirectVec3;
+    key.blend_mode = RenderAlphaMode::Opaque;
+    key.pass_hint = PassType::ForwardOpaque;
+
+    MaterialVariantDesc desc_a;
+    desc_a.variant_name = "candidate_A";
+    desc_a.factory_type = MaterialPreset::PureColor3D;
+
+    MaterialVariantDesc desc_b;
+    desc_b.variant_name = "candidate_B";
+    desc_b.factory_type = MaterialPreset::VertexColor3D;
+
+    registry.RegisterVariant(key, desc_a);
+    registry.RegisterVariant(key, desc_b);
+
+    const MaterialVariantDesc *default_pick = registry.QueryVariant(key);
+    CHECK_TRUE(default_pick != nullptr);
+
+    RegistryLookupOptions opt{};
+    opt.preferred_factory_type = MaterialPreset::VertexColor3D;
+
+    const MaterialVariantDesc *preferred_pick = registry.QueryVariant(key, opt);
+    CHECK_TRUE(preferred_pick != nullptr);
+    if (preferred_pick)
+        CHECK_TRUE(preferred_pick->variant_name == "candidate_B");
+}
+
+static void test_effective_feature_mask_canonicalization_behavior()
+{
+    VariantRegistry registry;
+
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Mesh3D;
+    key.position_provider = PositionProviderId::DirectVec3;
+    key.blend_mode = RenderAlphaMode::Opaque;
+    key.pass_hint = PassType::ForwardOpaque;
+    key.effective_feature_mask = 0;
+
+    MaterialVariantDesc desc;
+    desc.variant_name = "mask_canonical_base";
+    desc.factory_type = MaterialPreset::PureColor3D;
+    registry.RegisterVariant(key, desc);
+
+    MaterialVariantKey query = key;
+    query.effective_feature_mask = 0x1234u;
+
+    MaterialVariantKey resolved{};
+    const MaterialVariantDesc *canonical_hit = registry.QueryVariantWithCanonicalFallback(query, &resolved);
+    CHECK_TRUE(canonical_hit != nullptr);
+    CHECK_EQ(resolved.effective_feature_mask, 0u);
+
+    RegistryLookupOptions strict_opt{};
+    strict_opt.match_effective_feature_mask = true;
+    const MaterialVariantDesc *strict_miss = registry.QueryVariantWithCanonicalFallback(query, nullptr, strict_opt);
+    CHECK_TRUE(strict_miss == nullptr);
+}
+
 int main()
 {
     test_builtin_registry_not_empty_and_iterable();
     test_query_routekey_purecolor3d_hits_registry();
     test_query_unlittexture3d_simple_hits_registry();
+    test_preferred_factory_type_picks_expected_candidate();
+    test_effective_feature_mask_canonicalization_behavior();
 
     if (g_failures > 0)
     {

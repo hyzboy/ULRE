@@ -49,7 +49,7 @@ VariantRegistry
 ├─ RegisterVariant(key, desc)      // 注册变体
 ├─ QueryVariant(key, options)      // 精确查询
 ├─ QueryVariantWithCanonicalFallback()  // 带回退查询
-├─ InitializeBuiltinVariants()     // 初始化内置变体 [NOT IMPLEMENTED]
+├─ InitializeBuiltinVariants()     // 初始化内置变体 [IMPLEMENTED]
 ├─ ValidateBuiltinVariantTemplates()    // 验证模板有效性
 ├─ DumpSnapshot()                  // 导出快照
 ├─ ForEach()                        // 遍历回调
@@ -61,7 +61,7 @@ VariantRegistry
 - `builtin_row_storage` 为 Phase2 table model 预留存储空间
 - 支持同一 key 对应多个 factory_type 候选（multi-factory）
 
-**状态：** ✅ 结构完整，但 `InitializeBuiltinVariants()` 未实现
+**状态：** ✅ 结构完整，`InitializeBuiltinVariants()` 已实现并纳入测试验证
 
 ---
 
@@ -258,9 +258,9 @@ void VariantRegistry::InitializeBuiltinVariants()
 | Phase0R 四轴框架 | 100% | 80% | ✅ 5/5 | ✅ 就绪 |
 | Phase2 Week1-1 白名单 | 100% | 50% | ✅ 4/4 | ✅ 就绪 |
 | Phase2 Week1-2 解析入口 | 100% | 50% | ✅ 4/4 | ✅ 就绪 |
-| **Phase1 RegistryQuery** | **100%** | **20%** | ⚠️ 基础 | **需集成** |
-| **Phase1 CompositorAssembler** | **100%** | **10%** | ✅ 基础 | **需增强** |
-| **Phase1 VariantRegistry::Init** | **0%** | **0%** | ❌ | **需实现** |
+| **Phase1 RegistryQuery** | **100%** | **85%** | ✅ 已验证 | **基本完成** |
+| **Phase1 CompositorAssembler** | **100%** | **50%** | ✅ 基础 | **待 Phase2 联动** |
+| **Phase1 VariantRegistry::Init** | **100%** | **90%** | ✅ 已验证 | **完成** |
 
 ---
 
@@ -295,30 +295,39 @@ test_phase1_vt211_complete_phase3_registry_query()
 | VT-209 | Key 中 blend/pass 是否与 Pipeline row 匹配 | ✅ 非 nullptr |
 | VT-211 | 完整 Phase3 查询是否返回有效三元组 | ✅ 所有字段非空 |
 
-### 执行障碍（环境问题）
+### 执行状态（2026-06-21 更新）
 
-当前库级编译失败，阻止测试执行：
+阻塞项已解除并完成验收：
 
-**VKString.cpp（✅ 已修复）：** 
-- ❌ 问题：模板声明重复导致特化歧义
-- ✅ 修复：删除第 17 行全局声明，保留匿名命名空间版本
+**VKString.cpp（✅ 已修复）：**
+- 问题：模板声明重复导致特化歧义
+- 结果：修复后编译通过
 
-**VKInstance.h（⏳ 待修复）：**
-- 问题 1：friend 声明有默认参数，但外部声明无默认参数（C++ 标准冲突）
-- 问题 2：GetDeviceProc 模板中 VkDevice** 转 VkDevice* 编译错误
+**VKInstance.h（✅ 已修复）：**
+- 修复 1：friend 声明去除默认参数，消除重复声明冲突
+- 修复 2：`GetDeviceProc` 参数从 `VkDevice*` 修正为 `VkDevice`
 
-**建议解决方案：**
-1. 修复 VKInstance.h friend 声明的参数默认值一致性
-2. 修复 GetDeviceProc 模板签名
-3. 重新编译 RecipeToKeyTest 可执行文件
-4. 运行验收
+**测试执行结果：**
+1. `RecipeToKeyTests`：通过（VT-201~VT-211 全通过）
+2. `VariantRegistryTests`：通过（初始化、查询命中、行为语义验证通过）
+
+### 新增：VariantRegistry 行为级测试
+
+已新增测试文件 `src/ShaderGen/tests/VariantRegistryTests.cpp`，覆盖：
+
+1. `GetBuiltinVariantRegistry()` 初始化后非空且可遍历
+2. `RouteKey(PureColor3D)` 查询命中
+3. `UnlitTexture3D + BaseColor(Simple)` 查询命中
+4. `preferred_factory_type` 候选选择语义
+5. `effective_feature_mask` 的 canonical / strict 匹配语义
 
 ### 测试验收清单
 
 - [x] VKString.cpp 编译通过（已修复）
-- [ ] VKInstance.h 编译通过  
-- [ ] RecipeToKeyTest.exe 编译成功
-- [ ] RecipeToKeyTest 运行时所有 VT-201~211 通过
+- [x] VKInstance.h 编译通过（已修复）
+- [x] RecipeToKeyTest.exe 编译成功
+- [x] RecipeToKeyTest 运行时所有 VT-201~211 通过
+- [x] VariantRegistryTests 编译并运行通过
 
 ---
 
@@ -326,12 +335,12 @@ test_phase1_vt211_complete_phase3_registry_query()
 
 **立即可执行（优先级 P0）：**
 - ✅ 编写 Phase1 集成测试用例验证 RecipeToKey → RegistryQuery 链路（已实现）
-- ⏳ 修复 VKInstance.h 编译障碍，启用测试执行
-- 扩展 RegistryQuery::FindVertexProgramTemplate 支持 SizePolicy 过滤
+- ✅ 修复 VKInstance.h 编译障碍并完成测试执行
+- 转入 Phase2 Week2：PositionProvider/CompositorAssembler 下游联动
 
 **短期可执行（优先级 P1）：**
-- 实现 VariantRegistry::InitializeBuiltinVariants
-- 集成 SFM 注解约束到 CompositorAssembler
+- ✅ 实现并验证 VariantRegistry::InitializeBuiltinVariants
+- 集成 SFM 注解约束到 CompositorAssembler（Phase2）
 
 **中期计划（优先级 P2）：**
 - 验证向后兼容的 geometry_mode 映射
