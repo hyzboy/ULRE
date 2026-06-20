@@ -68,15 +68,6 @@ struct RecipeAxisExpansion
     ShaderDataSchema schema = ShaderDataSchema::None;
 };
 
-struct EffectivePhase0RPolicies
-{
-    VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
-    VertexSourcePolicy vertex_source_policy = VertexSourcePolicy::Unknown;
-    GeometryLiftPolicy geometry_lift_policy = GeometryLiftPolicy::Unknown;
-    OrientationPolicy orientation_policy = OrientationPolicy::Unknown;
-    SizePolicy size_policy = SizePolicy::Unknown;
-};
-
 static VertexSourcePolicy GetDefaultVertexSourcePolicy(const MaterialRecipe &r,
                                                        const VertexTransformPolicy effective_vertex_policy) noexcept
 {
@@ -153,10 +144,10 @@ static SizePolicy GetDefaultSizePolicy(const MaterialRecipe &r,
     return SizePolicy::WorldScale;
 }
 
-static EffectivePhase0RPolicies ResolveEffectivePhase0RPolicies(const MaterialRecipe &r,
-                                                                const RecipeAxisExpansion &alias_axes) noexcept
+static Phase0RPolicyState ResolveEffectivePhase0RPolicies(const MaterialRecipe &r,
+                                                          const RecipeAxisExpansion &alias_axes) noexcept
 {
-    EffectivePhase0RPolicies out{};
+    Phase0RPolicyState out{};
     out.vertex_policy = (r.vertex_policy != VertexTransformPolicy::Unknown)
         ? r.vertex_policy
         : alias_axes.vertex_policy;
@@ -167,7 +158,7 @@ static EffectivePhase0RPolicies ResolveEffectivePhase0RPolicies(const MaterialRe
     return out;
 }
 
-static const char *ValidatePhase0RPolicyTuple(const EffectivePhase0RPolicies &policies) noexcept
+static const char *ValidatePhase0RPolicyStateLocal(const Phase0RPolicyState &policies) noexcept
 {
     if (policies.vertex_source_policy == VertexSourcePolicy::VBO2DTo3D
      && policies.geometry_lift_policy == GeometryLiftPolicy::None)
@@ -192,7 +183,7 @@ static const char *ValidatePhase0RPolicyTuple(const EffectivePhase0RPolicies &po
 }
 
 static void LogPhase0RPolicyTuple(const MaterialRecipe &r,
-                                  const EffectivePhase0RPolicies &policies,
+                                  const Phase0RPolicyState &policies,
                                   const char *validation_code) noexcept
 {
     std::fprintf(stderr,
@@ -583,7 +574,7 @@ PassType GetPrimaryPassForBlendMode(RenderAlphaMode blend) noexcept
 MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexcept
 {
     const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
-    const EffectivePhase0RPolicies phase0r_policies =
+    const Phase0RPolicyState phase0r_policies =
         ResolveEffectivePhase0RPolicies(r, alias_axes);
     const VertexTransformPolicy effective_vertex_policy = phase0r_policies.vertex_policy;
 
@@ -742,14 +733,24 @@ MaterialVariantKey ApplyRouterCanonicalization(const MaterialVariantKey &in) noe
 // Public API
 // ─────────────────────────────────────────────────────────────────────────────
 
+Phase0RPolicyState ResolvePhase0RPolicyState(const MaterialRecipe &r) noexcept
+{
+    const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
+    return ResolveEffectivePhase0RPolicies(r, alias_axes);
+}
+
+const char *ValidatePhase0RPolicyState(const Phase0RPolicyState &state) noexcept
+{
+    return ValidatePhase0RPolicyStateLocal(state);
+}
+
 MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &r) noexcept
 {
     MaterialKey k{};
 
     const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
-    const EffectivePhase0RPolicies phase0r_policies =
-        ResolveEffectivePhase0RPolicies(r, alias_axes);
-    const char *phase0r_validation_code = ValidatePhase0RPolicyTuple(phase0r_policies);
+    const Phase0RPolicyState phase0r_policies = ResolveEffectivePhase0RPolicies(r, alias_axes);
+    const char *phase0r_validation_code = ValidatePhase0RPolicyStateLocal(phase0r_policies);
     LogPhase0RPolicyTuple(r, phase0r_policies, phase0r_validation_code);
 
     // Phase A: build un-canonicalized variant key

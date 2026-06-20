@@ -166,6 +166,83 @@ static void test_legacy_surface_model_field_compatibility()
              ResolveRecipePrimaryKey(modern).Hash());
 }
 
+static void test_phase0r_vt001_mesh3d_defaults()
+{
+    const MaterialRecipe r = MakeStandardOpaqueRecipe();
+    const Phase0RPolicyState state = ResolvePhase0RPolicyState(r);
+
+    CHECK_EQ(state.vertex_source_policy, VertexSourcePolicy::VBO3DDirect);
+    CHECK_EQ(state.geometry_lift_policy, GeometryLiftPolicy::None);
+    CHECK_EQ(state.orientation_policy, OrientationPolicy::None);
+    CHECK_EQ(state.size_policy, SizePolicy::WorldScale);
+    CHECK_TRUE(ValidatePhase0RPolicyState(state) == nullptr);
+}
+
+static void test_phase0r_vt003_quad2d_defaults()
+{
+    MaterialRecipe r;
+    r.preset = MaterialPreset::PureColor2D;
+    r.dim = MaterialRecipe::Dim::D2;
+    r.vertex_policy = VertexTransformPolicy::Quad2D;
+
+    const Phase0RPolicyState state = ResolvePhase0RPolicyState(r);
+
+    CHECK_EQ(state.vertex_source_policy, VertexSourcePolicy::VBO2DTo3D);
+    CHECK_EQ(state.geometry_lift_policy, GeometryLiftPolicy::XY_To_XY0);
+    CHECK_EQ(state.orientation_policy, OrientationPolicy::None);
+    CHECK_EQ(state.size_policy, SizePolicy::WorldScale);
+    CHECK_TRUE(ValidatePhase0RPolicyState(state) == nullptr);
+}
+
+static void test_phase0r_vt005_explicit_billboard_tuple_is_valid()
+{
+    MaterialRecipe r;
+    r.preset = MaterialPreset::UnlitTexture3D;
+    r.dim = MaterialRecipe::Dim::D2;
+    r.prim = PrimitiveType::Billboard;
+    r.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
+    r.vertex_source_policy = VertexSourcePolicy::VBO2DTo3D;
+    r.geometry_lift_policy = GeometryLiftPolicy::XY_To_XY0;
+    r.orientation_policy = OrientationPolicy::FaceCameraFull;
+    r.size_policy = SizePolicy::PixelFixed;
+
+    const Phase0RPolicyState state = ResolvePhase0RPolicyState(r);
+
+    CHECK_EQ(state.vertex_source_policy, VertexSourcePolicy::VBO2DTo3D);
+    CHECK_EQ(state.geometry_lift_policy, GeometryLiftPolicy::XY_To_XY0);
+    CHECK_EQ(state.orientation_policy, OrientationPolicy::FaceCameraFull);
+    CHECK_EQ(state.size_policy, SizePolicy::PixelFixed);
+    CHECK_TRUE(ValidatePhase0RPolicyState(state) == nullptr);
+}
+
+static void test_phase0r_vt101_2d_source_requires_lift()
+{
+    MaterialRecipe r;
+    r.preset = MaterialPreset::UnlitTexture3D;
+    r.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
+    r.vertex_source_policy = VertexSourcePolicy::VBO2DTo3D;
+    r.geometry_lift_policy = GeometryLiftPolicy::None;
+
+    const Phase0RPolicyState state = ResolvePhase0RPolicyState(r);
+    const char *code = ValidatePhase0RPolicyState(state);
+
+    CHECK_TRUE(code != nullptr);
+    CHECK_TRUE(std::strcmp(code, "VT-ERR-NO-LIFT-FOR-2D") == 0);
+}
+
+static void test_phase0r_vt102_3d_source_rejects_redundant_lift()
+{
+    MaterialRecipe r = MakeStandardOpaqueRecipe();
+    r.vertex_source_policy = VertexSourcePolicy::VBO3DDirect;
+    r.geometry_lift_policy = GeometryLiftPolicy::XY_To_XY0;
+
+    const Phase0RPolicyState state = ResolvePhase0RPolicyState(r);
+    const char *code = ValidatePhase0RPolicyState(state);
+
+    CHECK_TRUE(code != nullptr);
+    CHECK_TRUE(std::strcmp(code, "VT-ERR-REDUNDANT-LIFT-FOR-3D") == 0);
+}
+
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
@@ -181,6 +258,11 @@ int main()
     test_different_sky_values_same_key_when_not_routing_axis();
     test_explicit_schema_override_applies();
     test_legacy_surface_model_field_compatibility();
+    test_phase0r_vt001_mesh3d_defaults();
+    test_phase0r_vt003_quad2d_defaults();
+    test_phase0r_vt005_explicit_billboard_tuple_is_valid();
+    test_phase0r_vt101_2d_source_requires_lift();
+    test_phase0r_vt102_3d_source_rejects_redundant_lift();
 
     if (g_failures > 0)
     {

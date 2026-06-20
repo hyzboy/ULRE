@@ -15,6 +15,23 @@
 
 namespace hgl::graph::mtl
 {
+    struct Phase0RPolicyState
+    {
+        VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
+        VertexSourcePolicy vertex_source_policy = VertexSourcePolicy::Unknown;
+        GeometryLiftPolicy geometry_lift_policy = GeometryLiftPolicy::Unknown;
+        OrientationPolicy orientation_policy = OrientationPolicy::Unknown;
+        SizePolicy size_policy = SizePolicy::Unknown;
+    };
+
+    /// Resolve the effective Phase0R policy tuple for a recipe without
+    /// mutating routing behavior. Pure function, safe for unit tests.
+    Phase0RPolicyState ResolvePhase0RPolicyState(const MaterialRecipe &recipe) noexcept;
+
+    /// Validate the currently-resolved Phase0R tuple against local structural
+    /// constraints. Returns nullptr when the tuple is locally valid.
+    const char *ValidatePhase0RPolicyState(const Phase0RPolicyState &state) noexcept;
+
     /// Convert a MaterialRecipe to its canonical MaterialKey (primary pass only).
     /// Pure function — no side effects, no global state, no I/O, no glslang dependency.
     MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &recipe) noexcept;

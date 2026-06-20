@@ -187,6 +187,34 @@ static void TestPhaseBExplicitAxesAffectHash()
         id_axis);
 }
 
+    static void TestPhase0RFourAxisFieldsAffectHash()
+    {
+        MaterialRecipeStore store;
+
+        MaterialRecipe base = MakeSimpleRecipe("phase0r_axes");
+        MaterialRecipe axis = base;
+        axis.vertex_source_policy = VertexSourcePolicy::VBO2DTo3D;
+        axis.geometry_lift_policy = GeometryLiftPolicy::XY_To_XY0;
+        axis.orientation_policy = OrientationPolicy::FaceCameraFull;
+        axis.size_policy = SizePolicy::PixelFixed;
+
+        const uint64_t base_hash = MaterialRecipeStore::ComputeContentHash(base);
+        const uint64_t axis_hash = MaterialRecipeStore::ComputeContentHash(axis);
+
+        CHECK_NE(base_hash, axis_hash);
+
+        const MaterialRecipeID id_base = store.RegisterRecipe(base);
+        const MaterialRecipeID id_axis = store.RegisterRecipe(axis);
+        CHECK_NE(id_base, id_axis);
+
+        std::fprintf(stdout,
+        "TestPhase0RFourAxisFieldsAffectHash: base_hash=%llu axis_hash=%llu id_base=%u id_axis=%u\n",
+        static_cast<unsigned long long>(base_hash),
+        static_cast<unsigned long long>(axis_hash),
+        id_base,
+        id_axis);
+    }
+
 // ---------------------------------------------------------------------------
 int main()
 {
@@ -199,6 +227,7 @@ int main()
     TestUpdateRecipe();
     TestUpdateRecipeInvalidID();
     TestPhaseBExplicitAxesAffectHash();
+    TestPhase0RFourAxisFieldsAffectHash();
 
     if (g_failures == 0)
         std::fprintf(stdout, "All tests PASSED.\n");
