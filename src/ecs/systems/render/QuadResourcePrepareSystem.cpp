@@ -28,6 +28,22 @@
 
 namespace hgl::ecs
 {
+    static void ApplyLegacyBillboardPolicyBridge(graph::mtl::MaterialRecipe &recipe,
+                                                 const bool fixed_size) noexcept
+    {
+        recipe.vertex_policy = fixed_size
+            ? graph::mtl::VertexTransformPolicy::BillboardAxisLocked
+            : graph::mtl::VertexTransformPolicy::BillboardCameraFacing;
+        recipe.vertex_source_policy = graph::mtl::VertexSourcePolicy::VBO3DDirect;
+        recipe.geometry_lift_policy = graph::mtl::GeometryLiftPolicy::None;
+        recipe.orientation_policy = fixed_size
+            ? graph::mtl::OrientationPolicy::FaceCameraAxisLocked
+            : graph::mtl::OrientationPolicy::FaceCameraFull;
+        recipe.size_policy = fixed_size
+            ? graph::mtl::SizePolicy::PixelFixed
+            : graph::mtl::SizePolicy::WorldScale;
+    }
+
     static graph::ResourceDomain *ResolveDomainForMaterial(graph::GraphicsContext *gc,
                                                            graph::ShaderMaterialProgram *material,
                                                            uint32_t domain_id)
@@ -154,9 +170,8 @@ namespace hgl::ecs
 
     graph::mtl::MaterialPreset QuadResourcePrepareSystem::GetBillboardPresetForWorld(const ECSContext* world)
     {
-        return IsFixedSizeForWorld(world)
-            ? graph::mtl::MaterialPreset::Billboard2DFixed
-            : graph::mtl::MaterialPreset::Billboard2DDynamic;
+        (void)world;
+        return graph::mtl::MaterialPreset::UnlitTexture3D;
     }
 
     void QuadResourcePrepareSystem::SetPreset(graph::GraphicsPipelinePreset preset)
@@ -271,9 +286,7 @@ namespace hgl::ecs
         rec.preset = billboard_preset;
         rec.dim = graph::mtl::MaterialRecipe::Dim::D3;
         rec.prim = graph::PrimitiveType::Billboard;
-        rec.vertex_policy = fixed
-            ? graph::mtl::VertexTransformPolicy::BillboardAxisLocked
-            : graph::mtl::VertexTransformPolicy::BillboardCameraFacing;
+        ApplyLegacyBillboardPolicyBridge(rec, fixed);
         rec.pipeline = GetPresetForWorld(world);
         rec.billboard.fixed_size = fixed;
         rec.billboard.blend_mode = GetBlendModeForWorld(world);
@@ -422,9 +435,7 @@ namespace hgl::ecs
             rec.billboard.fixed_size         = domain_fixed;
             rec.dim       = graph::mtl::MaterialRecipe::Dim::D3;
             rec.prim      = graph::PrimitiveType::Billboard;
-            rec.vertex_policy = domain_fixed
-                ? graph::mtl::VertexTransformPolicy::BillboardAxisLocked
-                : graph::mtl::VertexTransformPolicy::BillboardCameraFacing;
+            ApplyLegacyBillboardPolicyBridge(rec, domain_fixed);
             rec.pipeline  = GetPresetForWorld(world);
             rec.textures  = {
                 { graph::mtl::SamplerSlot::BaseColor, graph::mtl::TextureSourceMode::Array, "" },

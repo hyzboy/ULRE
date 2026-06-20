@@ -483,9 +483,13 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
         return mtl;
     };
 
-    // ── Billboard2DFixed / Billboard2DDynamic ────────────────────────────────
-    if (rec.preset == MaterialPreset::Billboard2DFixed ||
-        rec.preset == MaterialPreset::Billboard2DDynamic)
+    const bool is_billboard_recipe =
+        rec.prim == PrimitiveType::Billboard
+        || rec.vertex_policy == VertexTransformPolicy::BillboardCameraFacing
+        || rec.vertex_policy == VertexTransformPolicy::BillboardAxisLocked;
+
+    // ── Billboard recipe path (legacy preset + new prim/policy semantics) ───
+    if (is_billboard_recipe)
     {
         BillboardMaterialCreateConfig cfg(rec.prim);
         cfg.local_to_world  = rec.l2w;
@@ -500,9 +504,26 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterialFromRecord(
             cfg.texture_id = rec.billboard.texture_id;
         if (rec.pos_format.Check())
             cfg.position_format = rec.pos_format;
+
+        GeometryMode billboard_gm = rec.billboard.fixed_size
+            ? GeometryMode::BillboardAxisLocked
+            : GeometryMode::BillboardCameraFacing;
+
+        if (rec.vertex_policy == VertexTransformPolicy::BillboardAxisLocked)
+            billboard_gm = GeometryMode::BillboardAxisLocked;
+        else if (rec.vertex_policy == VertexTransformPolicy::BillboardCameraFacing)
+            billboard_gm = GeometryMode::BillboardCameraFacing;
+
+        cfg.SetGeometryModeOverride(billboard_gm);
+
         for (const auto &tc : rec.textures)
+        {
+            if (tc.source_mode != TextureSourceMode::None)
+                cfg.SetTextureSourceModeOverride(tc.slot, tc.source_mode);
+
             if (tc.source_mode == TextureSourceMode::Array)
-            { cfg.use_texture_array = true; break; }
+                cfg.use_texture_array = true;
+        }
 
         GetStats().LogCreateMaterialFromRecordBillboard((int)rec.preset,
                                                         (int)cfg.use_texture_array,

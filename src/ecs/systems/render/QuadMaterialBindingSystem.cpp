@@ -21,6 +21,22 @@
 
 namespace hgl::ecs
 {
+    static void ApplyLegacyBillboardPolicyBridge(graph::mtl::MaterialRecipe &recipe,
+                                                 const bool fixed_size) noexcept
+    {
+        recipe.vertex_policy = fixed_size
+            ? graph::mtl::VertexTransformPolicy::BillboardAxisLocked
+            : graph::mtl::VertexTransformPolicy::BillboardCameraFacing;
+        recipe.vertex_source_policy = graph::mtl::VertexSourcePolicy::VBO3DDirect;
+        recipe.geometry_lift_policy = graph::mtl::GeometryLiftPolicy::None;
+        recipe.orientation_policy = fixed_size
+            ? graph::mtl::OrientationPolicy::FaceCameraAxisLocked
+            : graph::mtl::OrientationPolicy::FaceCameraFull;
+        recipe.size_policy = fixed_size
+            ? graph::mtl::SizePolicy::PixelFixed
+            : graph::mtl::SizePolicy::WorldScale;
+    }
+
     struct QuadResolvedMaterialState
     {
         graph::MaterialBindingInstance *binding_instance = nullptr;
@@ -66,14 +82,10 @@ namespace hgl::ecs
     {
         graph::mtl::MaterialRecipe recipe;
         recipe.id = "quad_legacy_single_texture";
-        recipe.preset = quad && quad->IsFixedPixelSize()
-            ? graph::mtl::MaterialPreset::Billboard2DFixed
-            : graph::mtl::MaterialPreset::Billboard2DDynamic;
+        recipe.preset = graph::mtl::MaterialPreset::UnlitTexture3D;
         recipe.dim = graph::mtl::MaterialRecipe::Dim::D3;
         recipe.prim = graph::PrimitiveType::Billboard;
-        recipe.vertex_policy = quad && quad->IsFixedPixelSize()
-            ? graph::mtl::VertexTransformPolicy::BillboardAxisLocked
-            : graph::mtl::VertexTransformPolicy::BillboardCameraFacing;
+        ApplyLegacyBillboardPolicyBridge(recipe, quad && quad->IsFixedPixelSize());
         recipe.pipeline = pipeline;
         recipe.billboard.fixed_size = quad ? quad->IsFixedPixelSize() : false;
         recipe.billboard.pixel_w = quad ? quad->GetPixelSize().x : 64u;

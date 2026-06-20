@@ -80,6 +80,12 @@ struct MaterialRecipe
     /// 非 Unknown 时会覆盖 BuildBaseVariantKeyFromRecipe 得到的 geometry_mode。
     VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
 
+    /// Phase0R 四轴策略：先作为桥接输入落地，默认 Unknown 表示回退到旧轴推导。
+    VertexSourcePolicy vertex_source_policy = VertexSourcePolicy::Unknown;
+    GeometryLiftPolicy geometry_lift_policy = GeometryLiftPolicy::Unknown;
+    OrientationPolicy orientation_policy = OrientationPolicy::Unknown;
+    SizePolicy size_policy = SizePolicy::Unknown;
+
     /// 表面着色模型。Unknown = 由 preset alias 展开决定（兼容旧路径）。
     SurfaceShadingModel   shading_model = SurfaceShadingModel::Unknown;
 

@@ -302,6 +302,8 @@ inline MaterialVariantRow BuildRowFromBuiltinVariantEntry(const BuiltinVariantEn
         row.textures[0].sampler_type = e.tex[0].mode == TextureSourceMode::Array
                                        ? SamplerType::Sampler2DArray
                                        : SamplerType::Sampler2D;
+        if (e.geometry_mode == GeometryMode::BillboardCameraFacing || e.geometry_mode == GeometryMode::BillboardAxisLocked)
+            row.schema = ShaderDataSchema::BillboardSizeUVec2;
         row.def_hint = StaticMaterialDefIdHint::UnlitTexture3D;
         break;
 

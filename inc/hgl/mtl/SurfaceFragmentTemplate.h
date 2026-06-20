@@ -24,6 +24,7 @@ namespace hgl::graph::mtl
         MaterialResourceRequirements resource_contract{};
         StaticMaterialDefIdHint def_hint = StaticMaterialDefIdHint::None;
         ShaderDataSchema schema = ShaderDataSchema::None;
+        bool billboard_geometry_only = false;
     };
 
     extern const SurfaceFragmentTemplate kSurfaceFragmentTemplates[];

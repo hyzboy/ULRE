@@ -22,6 +22,8 @@
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/mtl/MaterialVariantRegistry.h>
 
+#include <cstdio>
+
 namespace hgl::graph::mtl
 {
 
@@ -65,6 +67,146 @@ struct RecipeAxisExpansion
     MaterialResourceRequirements resources{};
     ShaderDataSchema schema = ShaderDataSchema::None;
 };
+
+struct EffectivePhase0RPolicies
+{
+    VertexTransformPolicy vertex_policy = VertexTransformPolicy::Unknown;
+    VertexSourcePolicy vertex_source_policy = VertexSourcePolicy::Unknown;
+    GeometryLiftPolicy geometry_lift_policy = GeometryLiftPolicy::Unknown;
+    OrientationPolicy orientation_policy = OrientationPolicy::Unknown;
+    SizePolicy size_policy = SizePolicy::Unknown;
+};
+
+static VertexSourcePolicy GetDefaultVertexSourcePolicy(const MaterialRecipe &r,
+                                                       const VertexTransformPolicy effective_vertex_policy) noexcept
+{
+    if (r.vertex_source_policy != VertexSourcePolicy::Unknown)
+        return r.vertex_source_policy;
+
+    if (r.dim == MaterialRecipe::Dim::D2)
+        return VertexSourcePolicy::VBO2DTo3D;
+
+    switch (effective_vertex_policy)
+    {
+    case VertexTransformPolicy::FullscreenTriangle:
+        return VertexSourcePolicy::PCG;
+    case VertexTransformPolicy::Quad2D:
+    case VertexTransformPolicy::Text2D:
+        return VertexSourcePolicy::VBO2DTo3D;
+    default:
+        return VertexSourcePolicy::VBO3DDirect;
+    }
+}
+
+static GeometryLiftPolicy GetDefaultGeometryLiftPolicy(const MaterialRecipe &r,
+                                                       const VertexTransformPolicy effective_vertex_policy) noexcept
+{
+    if (r.geometry_lift_policy != GeometryLiftPolicy::Unknown)
+        return r.geometry_lift_policy;
+
+    if (r.dim == MaterialRecipe::Dim::D2
+     || effective_vertex_policy == VertexTransformPolicy::Quad2D
+     || effective_vertex_policy == VertexTransformPolicy::Text2D)
+    {
+        return GeometryLiftPolicy::XY_To_XY0;
+    }
+
+    if (effective_vertex_policy == VertexTransformPolicy::FullscreenTriangle)
+        return GeometryLiftPolicy::None;
+
+    return GeometryLiftPolicy::None;
+}
+
+static OrientationPolicy GetDefaultOrientationPolicy(const MaterialRecipe &r,
+                                                     const VertexTransformPolicy effective_vertex_policy) noexcept
+{
+    if (r.orientation_policy != OrientationPolicy::Unknown)
+        return r.orientation_policy;
+
+    switch (effective_vertex_policy)
+    {
+    case VertexTransformPolicy::BillboardCameraFacing:
+        return OrientationPolicy::FaceCameraFull;
+    case VertexTransformPolicy::BillboardAxisLocked:
+        return OrientationPolicy::FaceCameraAxisLocked;
+    default:
+        return OrientationPolicy::None;
+    }
+}
+
+static SizePolicy GetDefaultSizePolicy(const MaterialRecipe &r,
+                                       const VertexTransformPolicy effective_vertex_policy) noexcept
+{
+    if (r.size_policy != SizePolicy::Unknown)
+        return r.size_policy;
+
+    if (IsBillboardRecipe(r))
+    {
+        return r.billboard.fixed_size
+            ? SizePolicy::PixelFixed
+            : SizePolicy::WorldScale;
+    }
+
+    if (effective_vertex_policy == VertexTransformPolicy::Text2D)
+        return SizePolicy::PixelFixed;
+
+    return SizePolicy::WorldScale;
+}
+
+static EffectivePhase0RPolicies ResolveEffectivePhase0RPolicies(const MaterialRecipe &r,
+                                                                const RecipeAxisExpansion &alias_axes) noexcept
+{
+    EffectivePhase0RPolicies out{};
+    out.vertex_policy = (r.vertex_policy != VertexTransformPolicy::Unknown)
+        ? r.vertex_policy
+        : alias_axes.vertex_policy;
+    out.vertex_source_policy = GetDefaultVertexSourcePolicy(r, out.vertex_policy);
+    out.geometry_lift_policy = GetDefaultGeometryLiftPolicy(r, out.vertex_policy);
+    out.orientation_policy = GetDefaultOrientationPolicy(r, out.vertex_policy);
+    out.size_policy = GetDefaultSizePolicy(r, out.vertex_policy);
+    return out;
+}
+
+static const char *ValidatePhase0RPolicyTuple(const EffectivePhase0RPolicies &policies) noexcept
+{
+    if (policies.vertex_source_policy == VertexSourcePolicy::VBO2DTo3D
+     && policies.geometry_lift_policy == GeometryLiftPolicy::None)
+    {
+        return "VT-ERR-NO-LIFT-FOR-2D";
+    }
+
+    if (policies.vertex_source_policy == VertexSourcePolicy::VBO3DDirect)
+    {
+        switch (policies.geometry_lift_policy)
+        {
+        case GeometryLiftPolicy::XY_To_XY0:
+        case GeometryLiftPolicy::XY_To_X0Y:
+        case GeometryLiftPolicy::Screen2DToWorld:
+            return "VT-ERR-REDUNDANT-LIFT-FOR-3D";
+        default:
+            break;
+        }
+    }
+
+    return nullptr;
+}
+
+static void LogPhase0RPolicyTuple(const MaterialRecipe &r,
+                                  const EffectivePhase0RPolicies &policies,
+                                  const char *validation_code) noexcept
+{
+    std::fprintf(stderr,
+        "[RecipeToKey] Phase0R policies code=%s preset=%u dim=%u prim=%u src=%s lift=%s orient=%s size=%s legacy_vertex=%s\n",
+        validation_code ? validation_code : "VT-OK-BRIDGE",
+        static_cast<unsigned>(r.preset),
+        static_cast<unsigned>(r.dim),
+        static_cast<unsigned>(r.prim),
+        GetVertexSourcePolicyName(policies.vertex_source_policy),
+        GetGeometryLiftPolicyName(policies.geometry_lift_policy),
+        GetOrientationPolicyName(policies.orientation_policy),
+        GetSizePolicyName(policies.size_policy),
+        GetVertexTransformPolicyName(policies.vertex_policy));
+}
 
 static bool RowHasTextureMode(const MaterialVariantRow &row, const TextureSourceMode mode) noexcept
 {
@@ -441,6 +583,9 @@ PassType GetPrimaryPassForBlendMode(RenderAlphaMode blend) noexcept
 MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexcept
 {
     const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
+    const EffectivePhase0RPolicies phase0r_policies =
+        ResolveEffectivePhase0RPolicies(r, alias_axes);
+    const VertexTransformPolicy effective_vertex_policy = phase0r_policies.vertex_policy;
 
     // ── Step 1: preset → base variant key ────────────────────────────────────
     // [Step 3.5 T1] Routes through the single RouteKey() entry instead of the
@@ -516,11 +661,6 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
 
     // ── Step 8: explicit axis overrides (Phase B) ─────────────────────────────
     // Explicit value has priority; Unknown falls back to preset alias expansion.
-    const VertexTransformPolicy effective_vertex_policy =
-        (r.vertex_policy != VertexTransformPolicy::Unknown)
-        ? r.vertex_policy
-        : alias_axes.vertex_policy;
-
     if (effective_vertex_policy != VertexTransformPolicy::Unknown)
     {
         switch (effective_vertex_policy)
@@ -607,6 +747,10 @@ MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &r) noexcept
     MaterialKey k{};
 
     const RecipeAxisExpansion alias_axes = ExpandRecipeAxesFromPresetAlias(r);
+    const EffectivePhase0RPolicies phase0r_policies =
+        ResolveEffectivePhase0RPolicies(r, alias_axes);
+    const char *phase0r_validation_code = ValidatePhase0RPolicyTuple(phase0r_policies);
+    LogPhase0RPolicyTuple(r, phase0r_policies, phase0r_validation_code);
 
     // Phase A: build un-canonicalized variant key
     MaterialVariantKey vk = detail::BuildBaseVariantKeyFromRecipe(r);

@@ -31,6 +31,13 @@ namespace hgl::graph::mtl
             if (tpl.lighting_model != key.lighting_model)
                 return false;
 
+            if (tpl.billboard_geometry_only)
+            {
+                if (key.geometry_mode != GeometryMode::BillboardCameraFacing
+                 && key.geometry_mode != GeometryMode::BillboardAxisLocked)
+                    return false;
+            }
+
             const uint32 requested_mask = BuildRequestedTextureMask(key);
             if ((requested_mask & tpl.required_tex_slots_mask) != tpl.required_tex_slots_mask)
                 return false;

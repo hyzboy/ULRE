@@ -45,6 +45,39 @@ namespace hgl::graph::mtl
         FullscreenTriangle,
     };
 
+    enum class VertexSourcePolicy : uint8
+    {
+        Unknown = 0,
+        VBO3DDirect,
+        VBO2DTo3D,
+        PCG,
+    };
+
+    enum class GeometryLiftPolicy : uint8
+    {
+        Unknown = 0,
+        None,
+        XY_To_XY0,
+        XY_To_X0Y,
+        Screen2DToWorld,
+    };
+
+    enum class OrientationPolicy : uint8
+    {
+        Unknown = 0,
+        None,
+        FaceCameraFull,
+        FaceCameraAxisLocked,
+    };
+
+    enum class SizePolicy : uint8
+    {
+        Unknown = 0,
+        WorldScale,
+        PixelFixed,
+        PixelFixedTimesWorldScale,
+    };
+
     enum class SurfaceShadingModel : uint8
     {
         Unknown = 0,
@@ -197,6 +230,55 @@ namespace hgl::graph::mtl
         case VertexTransformPolicy::Sky: return "Sky";
         case VertexTransformPolicy::Text2D: return "Text2D";
         case VertexTransformPolicy::FullscreenTriangle: return "FullscreenTriangle";
+        default: return "Unknown";
+        }
+    }
+
+    inline const char *GetVertexSourcePolicyName(const VertexSourcePolicy policy) noexcept
+    {
+        switch (policy)
+        {
+        case VertexSourcePolicy::Unknown: return "Unknown";
+        case VertexSourcePolicy::VBO3DDirect: return "VBO3DDirect";
+        case VertexSourcePolicy::VBO2DTo3D: return "VBO2DTo3D";
+        case VertexSourcePolicy::PCG: return "PCG";
+        default: return "Unknown";
+        }
+    }
+
+    inline const char *GetGeometryLiftPolicyName(const GeometryLiftPolicy policy) noexcept
+    {
+        switch (policy)
+        {
+        case GeometryLiftPolicy::Unknown: return "Unknown";
+        case GeometryLiftPolicy::None: return "None";
+        case GeometryLiftPolicy::XY_To_XY0: return "XY_To_XY0";
+        case GeometryLiftPolicy::XY_To_X0Y: return "XY_To_X0Y";
+        case GeometryLiftPolicy::Screen2DToWorld: return "Screen2DToWorld";
+        default: return "Unknown";
+        }
+    }
+
+    inline const char *GetOrientationPolicyName(const OrientationPolicy policy) noexcept
+    {
+        switch (policy)
+        {
+        case OrientationPolicy::Unknown: return "Unknown";
+        case OrientationPolicy::None: return "None";
+        case OrientationPolicy::FaceCameraFull: return "FaceCameraFull";
+        case OrientationPolicy::FaceCameraAxisLocked: return "FaceCameraAxisLocked";
+        default: return "Unknown";
+        }
+    }
+
+    inline const char *GetSizePolicyName(const SizePolicy policy) noexcept
+    {
+        switch (policy)
+        {
+        case SizePolicy::Unknown: return "Unknown";
+        case SizePolicy::WorldScale: return "WorldScale";
+        case SizePolicy::PixelFixed: return "PixelFixed";
+        case SizePolicy::PixelFixedTimesWorldScale: return "PixelFixedTimesWorldScale";
         default: return "Unknown";
         }
     }
