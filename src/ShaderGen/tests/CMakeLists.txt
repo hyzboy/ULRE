@@ -61,6 +61,19 @@ shadergen_set_test_runtime_dir(EnumerateRecipeKeysTests)
 
 add_test(NAME EnumerateRecipeKeysTests COMMAND EnumerateRecipeKeysTests)
 
+# SFMAnnotationPolicyTests validates Phase2 Week1-1 whitelist and
+# annotation error-code encoding/decoding helpers.
+add_executable(SFMAnnotationPolicyTests
+    SFMAnnotationPolicyTests.cpp
+)
+
+target_link_libraries(SFMAnnotationPolicyTests PRIVATE ${ULRE})
+
+set_property(TARGET SFMAnnotationPolicyTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(SFMAnnotationPolicyTests)
+
+add_test(NAME SFMAnnotationPolicyTests COMMAND SFMAnnotationPolicyTests)
+
 # MaterialKeyAbiSnapshot guards sizeof/alignof, constants, and hash stability.
 add_executable(MaterialKeyAbiSnapshot
     MaterialKeyAbiSnapshot.cpp

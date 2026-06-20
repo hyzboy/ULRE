@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace hgl::graph::mtl
 {
@@ -77,5 +78,65 @@ namespace hgl::graph::mtl
         out_g = static_cast<uint8_t>((error_code >>  8) & 0xFF);
         out_b = static_cast<uint8_t>((error_code >> 16) & 0xFF);
     }
+
+    /// SFM 注解解析错误码（Phase2 Week1-1）
+    enum class SFMAnnotationError : uint8_t
+    {
+        None               = 0,
+        UnknownKey         = 1,
+        DuplicateKey       = 2,
+        ConflictingKey     = 3,
+        DeriveOutOfRange   = 4,
+        InvalidDirective   = 5,
+    };
+
+    /// SFM 注解错误编码：
+    /// bit  0..7  = SFMAnnotationError
+    /// bit  8..15 = key_index (白名单键序号，255 表示 unknown)
+    /// bit 16..23 = line_mod_256（可选，便于快速定位）
+    /// bit 24..31 = reserved
+    inline uint32_t EncodeSFMAnnotationError(SFMAnnotationError error,
+                                             uint8_t key_index,
+                                             uint8_t line_mod_256 = 0,
+                                             uint8_t reserved = 0) noexcept
+    {
+        return static_cast<uint32_t>(error)
+             | (static_cast<uint32_t>(key_index)    << 8)
+             | (static_cast<uint32_t>(line_mod_256) << 16)
+             | (static_cast<uint32_t>(reserved)     << 24);
+    }
+
+    struct DecodedSFMAnnotationError
+    {
+        SFMAnnotationError error;
+        uint8_t key_index;
+        uint8_t line_mod_256;
+        uint8_t reserved;
+    };
+
+    inline DecodedSFMAnnotationError DecodeSFMAnnotationError(uint32_t code) noexcept
+    {
+        return {
+            static_cast<SFMAnnotationError>(code & 0xFF),
+            static_cast<uint8_t>((code >> 8) & 0xFF),
+            static_cast<uint8_t>((code >> 16) & 0xFF),
+            static_cast<uint8_t>((code >> 24) & 0xFF),
+        };
+    }
+
+    /// 返回 SFMAnnotationError 的可读名称
+    const char *GetSFMAnnotationErrorName(SFMAnnotationError e) noexcept;
+
+    /// SFM 键名白名单：支持 key 原始形式（require）或完整形式（@sfm:require）。
+    bool IsKnownSFMAnnotationKey(std::string_view key) noexcept;
+
+    /// 返回白名单键序号（0..N-1），未知返回 255。
+    uint8_t GetSFMAnnotationKeyIndex(std::string_view key) noexcept;
+
+    /// 返回白名单键名（索引非法返回空串）。
+    std::string_view GetSFMAnnotationKeyName(uint8_t key_index) noexcept;
+
+    /// 将 SFM 注解错误码格式化为可读文本。
+    std::string FormatSFMAnnotationError(uint32_t error_code);
 
 } // namespace hgl::graph::mtl
