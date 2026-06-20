@@ -348,8 +348,9 @@ test_phase1_vt211_complete_phase3_registry_query()
 4. 新增测试 `CompositorAssemblerPositionKindTests`：验证 `DirectVec3=2`、`Vec2/IVec2/UVec2=1`、`PCG_FullscreenTriangle=0`。
 5. 已接入 SFM 约束到 `CompositorAssembler`，并新增 `CompositorAssemblerSFMConstraintTests`。
 6. 已建立首批核心 surface 的 `SFMAuditSnapshotTests` 基线。
+7. `SFMAnnotationScannerTests`、`SFMAuditSnapshotTests`、`CompositorAssemblerSFMConstraintTests` 已通过。 
 
-说明：当前 `windows-ninja-debug` 终端仍受 `ShaderVariableType.h` 既有全局编译阻塞影响，新增测试在本终端无法独立构建验收；请在已可通过的本地链路执行上述测试目标。
+说明：Phase2 Week2 相关功能已在可通过链路完成验收；当前 `windows-ninja-debug` 终端仍存在与本批改动分离的 `ShaderVariableType.h` 既有全局编译阻塞。
 
 **短期可执行（优先级 P1）：**
 - ✅ 实现并验证 VariantRegistry::InitializeBuiltinVariants

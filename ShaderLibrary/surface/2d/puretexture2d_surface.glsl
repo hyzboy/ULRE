@@ -1,6 +1,10 @@
 #ifndef ULRE_SURFACE_2D_PURETEXTURE2D_SURFACE_GLSL
 #define ULRE_SURFACE_2D_PURETEXTURE2D_SURFACE_GLSL
 
+// @sfm:surface_type puretexture2d
+// @sfm:supports_phase forward
+// @sfm:require texture base_color
+
 // ──────────────────────────────────────────────────────────────────────────
 // puretexture2d_surface.glsl — Pure texture 2D surface function.
 //

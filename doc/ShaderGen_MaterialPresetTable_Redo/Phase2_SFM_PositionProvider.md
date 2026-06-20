@@ -178,8 +178,11 @@
 3. 已新增测试：
    - `CompositorAssemblerSFMConstraintTests.cpp`
    - `SFMAuditSnapshotTests.cpp`
+4. 解析与审计测试已在可通过链路完成验收：
+   - `SFMAnnotationScannerTests`
+   - `SFMAuditSnapshotTests`
+   - `CompositorAssemblerSFMConstraintTests`
 
-当前阻塞：
+当前备注：
 
-1. 本地 `windows-ninja-debug` 仍受 `ShaderVariableType.h` 既有 constexpr/union 编译问题影响，导致新增测试目标无法在该终端独立构建验收。
-2. 代码级与文件级校验已完成；建议在已知可通过链路执行上述测试目标确认。 
+1. 上述 Phase2 相关测试已通过；当前剩余环境问题仅限 `windows-ninja-debug` 链路上的既有 `ShaderVariableType.h` constexpr/union 编译阻塞，与本阶段已验收改动分离。 

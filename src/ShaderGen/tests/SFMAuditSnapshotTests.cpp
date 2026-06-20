@@ -108,6 +108,65 @@ static void test_core_surface_snapshots()
         "surface_type:sky\n"
         "supports_phase:forward\n"
         "require:ubo,sky\n");
+
+    CheckSurfaceSnapshot(
+        "ShaderLibrary/surface/2d/puretexture2d_surface.glsl",
+        "surface_type:puretexture2d\n"
+        "supports_phase:forward\n"
+        "require:texture,base_color\n");
+
+    CheckSurfaceSnapshot(
+        "ShaderLibrary/surface/2d/text2d_surface.glsl",
+        "surface_type:text2d\n"
+        "supports_phase:forward\n"
+        "require:texture,text\n"
+        "require:ssbo,material_instance\n");
+
+    CheckSurfaceSnapshot(
+        "ShaderLibrary/surface/unlit_vertexcolor_surface.glsl",
+        "surface_type:unlit\n"
+        "supports_phase:forward,shadow\n"
+        "require:va,vertex_color\n");
+
+    CheckSurfaceSnapshot(
+        "ShaderLibrary/surface/unlit_luminance_surface.glsl",
+        "surface_type:unlit\n"
+        "supports_phase:forward,shadow\n"
+        "require:va,luminance\n"
+        "require:ssbo,material_instance\n");
+
+    CheckSurfaceSnapshot(
+        "ShaderLibrary/surface/gizmo3d_surface.glsl",
+        "surface_type:unlit\n"
+        "supports_phase:forward\n"
+        "require:va,normal\n"
+        "require:ssbo,material_instance\n");
+
+    CheckSurfaceSnapshot(
+        "ShaderLibrary/surface/terrain_grid_surface.glsl",
+        "surface_type:terrain\n"
+        "supports_phase:forward\n"
+        "require:ubo,camera\n"
+        "require:va,normal\n");
+
+    CheckSurfaceSnapshot(
+        "ShaderLibrary/surface/pbrcolor3d_surface.glsl",
+        "surface_type:standard\n"
+        "supports_phase:forward\n"
+        "require:ssbo,material_instance\n"
+        "require:ubo,sky\n");
+
+    CheckSurfaceSnapshot(
+        "ShaderLibrary/surface/textureblinnphong_surface.glsl",
+        "surface_type:standard\n"
+        "supports_phase:forward\n"
+        "require:texture,base_color,normal\n"
+        "require:ssbo,material_instance\n");
+
+    CheckSurfaceSnapshot(
+        "ShaderLibrary/surface/error_indicator_surface.glsl",
+        "surface_type:unlit\n"
+        "supports_phase:forward\n");
 }
 
 int main()

@@ -1,6 +1,11 @@
 #ifndef ULRE_SURFACE_PBRCOLOR3D_SURFACE_GLSL
 #define ULRE_SURFACE_PBRCOLOR3D_SURFACE_GLSL
 
+// @sfm:surface_type standard
+// @sfm:supports_phase forward
+// @sfm:require ssbo material_instance
+// @sfm:require ubo sky
+
 #include "common/surface_interface.glsl"
 #include "common/ssbo_material_instance.glsl"
 #include "util/pbr_brdf.glsl"

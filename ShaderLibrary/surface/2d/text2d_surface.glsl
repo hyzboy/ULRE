@@ -1,6 +1,11 @@
 #ifndef ULRE_SURFACE_2D_TEXT2D_SURFACE_GLSL
 #define ULRE_SURFACE_2D_TEXT2D_SURFACE_GLSL
 
+// @sfm:surface_type text2d
+// @sfm:supports_phase forward
+// @sfm:require texture text
+// @sfm:require ssbo material_instance
+
 // ──────────────────────────────────────────────────────────────────────────
 // text2d_surface.glsl — Text 2D surface function.
 //

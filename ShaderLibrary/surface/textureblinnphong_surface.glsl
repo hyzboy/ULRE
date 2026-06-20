@@ -1,6 +1,11 @@
 #ifndef ULRE_SURFACE_TEXTUREBLINNPHONG_SURFACE_GLSL
 #define ULRE_SURFACE_TEXTUREBLINNPHONG_SURFACE_GLSL
 
+// @sfm:surface_type standard
+// @sfm:supports_phase forward
+// @sfm:require texture base_color normal
+// @sfm:require ssbo material_instance
+
 #include "common/schema/schema_standard_params.glsl"
 
 #include "common/ssbo_material_instance.glsl"

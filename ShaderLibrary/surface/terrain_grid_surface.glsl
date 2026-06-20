@@ -1,6 +1,11 @@
 #ifndef ULRE_SURFACE_TERRAIN_GRID_SURFACE_GLSL
 #define ULRE_SURFACE_TERRAIN_GRID_SURFACE_GLSL
 
+// @sfm:surface_type terrain
+// @sfm:supports_phase forward
+// @sfm:require ubo camera
+// @sfm:require va normal
+
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
     const vec3 SUN_DIRECTION = normalize(vec3(0.655386, 0.491539, 0.573462));

@@ -1,6 +1,10 @@
 #ifndef ULRE_SURFACE_UNLIT_VERTEXCOLOR_SURFACE_GLSL
 #define ULRE_SURFACE_UNLIT_VERTEXCOLOR_SURFACE_GLSL
 
+// @sfm:surface_type unlit
+// @sfm:supports_phase forward shadow
+// @sfm:require va vertex_color
+
 #include "common/surface_interface.glsl"
 
 SurfaceOutput EvalSurface(SurfaceInput si)

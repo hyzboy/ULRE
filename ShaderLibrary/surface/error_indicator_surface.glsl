@@ -1,6 +1,9 @@
 #ifndef ULRE_SURFACE_ERROR_INDICATOR_GLSL
 #define ULRE_SURFACE_ERROR_INDICATOR_GLSL
 
+// @sfm:surface_type unlit
+// @sfm:supports_phase forward
+
 // ErrorIndicator Surface — 用于 FS 路由失败时的可视化诊断
 //
 // 显示红黑交替棋盘格，"黑"格用 RGB 编码 24 位 error_code，便于截屏反推。

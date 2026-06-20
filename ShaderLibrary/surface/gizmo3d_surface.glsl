@@ -1,6 +1,11 @@
 #ifndef ULRE_SURFACE_GIZMO3D_SURFACE_GLSL
 #define ULRE_SURFACE_GIZMO3D_SURFACE_GLSL
 
+// @sfm:surface_type unlit
+// @sfm:supports_phase forward
+// @sfm:require va normal
+// @sfm:require ssbo material_instance
+
 #include "common/surface_interface.glsl"
 
 #include "common/ssbo_material_instance.glsl"
