@@ -1,5 +1,6 @@
 ﻿#include<hgl/vk/VKString.h>
 #include<hgl/type/StrChar.h>
+#include<vulkan/vulkan.h>
 
 namespace hgl::graph{
 
@@ -66,8 +67,6 @@ namespace
 
     const char true_string[]="true";
     const char false_string[]="false";
-
-    template<typename E> IVulkanEnumStringList *VkGetEnumStringList();
 
     constexpr const VkEnumString<VkPolygonMode> vk_polygon_mode_list[]=
     {

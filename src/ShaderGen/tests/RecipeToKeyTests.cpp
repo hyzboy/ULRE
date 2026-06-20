@@ -4,6 +4,7 @@
 // Success: main() returns 0.
 
 #include <hgl/mtl/RecipeToKey.h>
+#include <hgl/shadergen/RegistryQuery.h>
 
 #include <cstdio>
 
@@ -36,6 +37,20 @@ static MaterialRecipe MakeStandardOpaqueRecipe()
     r.preset = MaterialPreset::Standard;
     r.dim = MaterialRecipe::Dim::D3;
     r.sky_ambient = SkyLightAmbientModel::Simple;
+
+    MaterialRecipe::TextureSlotConfig tc;
+    tc.slot = SamplerSlot::BaseColor;
+    tc.source_mode = TextureSourceMode::Simple;
+    r.textures.push_back(tc);
+
+    return r;
+}
+
+static MaterialRecipe MakeUnlitTexture3DRecipe()
+{
+    MaterialRecipe r;
+    r.preset = MaterialPreset::UnlitTexture3D;
+    r.dim = MaterialRecipe::Dim::D3;
 
     MaterialRecipe::TextureSlotConfig tc;
     tc.slot = SamplerSlot::BaseColor;
@@ -244,6 +259,139 @@ static void test_phase0r_vt102_3d_source_rejects_redundant_lift()
 }
 
 // ---------------------------------------------------------------------------
+// Phase1 Integration Tests: Recipe → Key → RegistryQuery
+// ---------------------------------------------------------------------------
+
+static void test_phase1_vt201_quad2d_recipe_finds_vs_template()
+{
+    // VT-201: Quad2D Recipe converts to key, RegistryQuery finds VS
+    MaterialRecipe r;
+    r.preset = MaterialPreset::PureColor2D;
+    r.dim = MaterialRecipe::Dim::D2;
+    r.vertex_policy = VertexTransformPolicy::Quad2D;
+    // Ensure key.position_provider matches current Quad2D VS template table
+    // (DirectVec3), otherwise lookup may miss and return nullptr.
+    r.pos_format.basetype = VertexAttribBaseType::Float;
+    r.pos_format.vec_size = 3;
+
+    const MaterialKey key = ResolveRecipePrimaryKey(r);
+    const VertexProgramTemplate *vs = FindVertexProgramTemplate(
+        static_cast<const MaterialVariantKey &>(key.variant));
+
+    CHECK_TRUE(vs != nullptr);
+    if (vs)
+        CHECK_EQ(vs->geometry_mode, GeometryMode::Quad2D);
+}
+
+static void test_phase1_vt203_billboard_recipe_finds_vs_template()
+{
+    // VT-203: Billboard Recipe converts to key, RegistryQuery finds VS
+    MaterialRecipe r;
+    r.preset = MaterialPreset::UnlitTexture3D;
+    r.dim = MaterialRecipe::Dim::D2;
+    r.prim = PrimitiveType::Billboard;
+    r.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
+
+    const MaterialKey key = ResolveRecipePrimaryKey(r);
+    const VertexProgramTemplate *vs = FindVertexProgramTemplate(
+        static_cast<const MaterialVariantKey &>(key.variant));
+
+    CHECK_TRUE(vs != nullptr);
+    if (vs)
+        CHECK_EQ(vs->geometry_mode, GeometryMode::BillboardCameraFacing);
+}
+
+static void test_phase1_vt205_mesh3d_recipe_finds_vs_template()
+{
+    // VT-205: Mesh3D Recipe converts to key, RegistryQuery finds VS
+    MaterialRecipe r = MakeStandardOpaqueRecipe();
+    r.dim = MaterialRecipe::Dim::D3;
+
+    const MaterialKey key = ResolveRecipePrimaryKey(r);
+    const VertexProgramTemplate *vs = FindVertexProgramTemplate(
+        static_cast<const MaterialVariantKey &>(key.variant));
+
+    CHECK_TRUE(vs != nullptr);
+    if (vs)
+        CHECK_EQ(vs->geometry_mode, GeometryMode::Mesh3D);
+}
+
+static void test_phase1_vt207_surface_type_finds_fragment_template()
+{
+    // VT-207: Key's surface_type matches FS template
+    // Use a stable recipe guaranteed by registry tables.
+    MaterialRecipe r = MakeUnlitTexture3DRecipe();
+
+    const MaterialKey key = ResolveRecipePrimaryKey(r);
+    const SurfaceFragmentTemplate *fs = FindSurfaceFragmentTemplate(
+        static_cast<const MaterialVariantKey &>(key.variant));
+
+    if (!fs)
+    {
+        std::fprintf(stderr,
+                     "[VT-207] FS miss: surface=%u lighting=%u geom=%u blend=%u pass=%u\\n",
+                     static_cast<unsigned>(key.variant.surface_type),
+                     static_cast<unsigned>(key.variant.lighting_model),
+                     static_cast<unsigned>(key.variant.geometry_mode),
+                     static_cast<unsigned>(key.variant.blend_mode),
+                     static_cast<unsigned>(key.variant.pass_hint));
+    }
+
+    CHECK_TRUE(fs != nullptr);
+    if (fs)
+        CHECK_EQ(fs->surface_type, key.variant.surface_type);
+}
+
+static void test_phase1_vt209_blend_mode_finds_pipeline_row()
+{
+    // VT-209: Key's blend/pass matches pipeline state row
+    // Use a stable recipe guaranteed by registry tables.
+    MaterialRecipe r = MakeUnlitTexture3DRecipe();
+
+    const MaterialKey key = ResolveRecipePrimaryKey(r);
+    const PipelineStateRow *pipeline = FindPipelineStateRow(
+        static_cast<const MaterialVariantKey &>(key.variant));
+
+    if (!pipeline)
+    {
+        std::fprintf(stderr,
+                     "[VT-209] Pipeline miss: blend=%u pass=%u\\n",
+                     static_cast<unsigned>(key.variant.blend_mode),
+                     static_cast<unsigned>(key.variant.pass_hint));
+    }
+
+    CHECK_TRUE(pipeline != nullptr);
+    if (pipeline)
+        CHECK_EQ(pipeline->blend, key.variant.blend_mode);
+}
+
+static void test_phase1_vt211_complete_phase3_registry_query()
+{
+    // VT-211: Complete Phase3 registry query returns all three components
+    // Use a stable recipe guaranteed by registry tables.
+    MaterialRecipe r = MakeUnlitTexture3DRecipe();
+
+    const MaterialKey key = ResolveRecipePrimaryKey(r);
+    const RegistryQueryResult result = QueryPhase3Registry(
+        static_cast<const MaterialVariantKey &>(key.variant));
+
+    if (!result.vertex || !result.fragment || !result.pipeline || !result.miss_reason.empty())
+    {
+        std::fprintf(stderr,
+                     "[VT-211] Query miss: vertex=%p fragment=%p pipeline=%p reason=%s\\n",
+                     static_cast<const void *>(result.vertex),
+                     static_cast<const void *>(result.fragment),
+                     static_cast<const void *>(result.pipeline),
+                     result.miss_reason.c_str());
+    }
+
+    CHECK_TRUE(result.vertex != nullptr);
+    CHECK_TRUE(result.fragment != nullptr);
+    CHECK_TRUE(result.pipeline != nullptr);
+    CHECK_TRUE(result.miss_reason.empty());
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 int main()
@@ -263,6 +411,14 @@ int main()
     test_phase0r_vt005_explicit_billboard_tuple_is_valid();
     test_phase0r_vt101_2d_source_requires_lift();
     test_phase0r_vt102_3d_source_rejects_redundant_lift();
+
+    // Phase1 integration tests
+    test_phase1_vt201_quad2d_recipe_finds_vs_template();
+    test_phase1_vt203_billboard_recipe_finds_vs_template();
+    test_phase1_vt205_mesh3d_recipe_finds_vs_template();
+    test_phase1_vt207_surface_type_finds_fragment_template();
+    test_phase1_vt209_blend_mode_finds_pipeline_row();
+    test_phase1_vt211_complete_phase3_registry_query();
 
     if (g_failures > 0)
     {
