@@ -71,6 +71,9 @@ namespace hgl::ecs
             : graph::mtl::MaterialPreset::Billboard2DDynamic;
         recipe.dim = graph::mtl::MaterialRecipe::Dim::D3;
         recipe.prim = graph::PrimitiveType::Billboard;
+        recipe.vertex_policy = quad && quad->IsFixedPixelSize()
+            ? graph::mtl::VertexTransformPolicy::BillboardAxisLocked
+            : graph::mtl::VertexTransformPolicy::BillboardCameraFacing;
         recipe.pipeline = pipeline;
         recipe.billboard.fixed_size = quad ? quad->IsFixedPixelSize() : false;
         recipe.billboard.pixel_w = quad ? quad->GetPixelSize().x : 64u;

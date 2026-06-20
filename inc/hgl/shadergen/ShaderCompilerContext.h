@@ -17,6 +17,7 @@ struct ShaderCompileRequest
 {
     ShaderStage stage = ShaderStage::Vertex;
     std::string source;
+    std::string debug_context;
     mtl::contract::PhysicalDeviceProfileLite profile;
     uint32_t vulkan_version = 0;
     uint32_t spv_version = 0;

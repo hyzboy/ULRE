@@ -22,7 +22,7 @@ namespace hgl
         bool        InitShaderCompiler();
         void        CloseShaderCompiler();
 
-        SPVData *   CompileShader   (const uint32 type,const char *source);
+        SPVData *   CompileShader   (const uint32 type,const char *source,const char *debug_context=nullptr);
         SPVParseData *ParseShaderSPV(SPVData *spv_data);
         void        FreeSPVData     (SPVData *spv_data);
         void        FreeShaderSPVParseData(SPVParseData *parse_data);

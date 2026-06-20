@@ -23,15 +23,24 @@ ShaderGenResult<ShaderBinary> ShaderCompilerContext::Compile(const ShaderCompile
         return result;
     }
 
-    SPVData *spv=CompileShader(static_cast<uint32>(request.stage),request.source.c_str());
+    SPVData *spv=CompileShader(static_cast<uint32>(request.stage),
+                               request.source.c_str(),
+                               request.debug_context.empty()?nullptr:request.debug_context.c_str());
     if(!spv)
     {
         result.success=false;
+        std::string message = "CompileShader returned null";
+        if(!request.debug_context.empty())
+        {
+            message += " | context=";
+            message += request.debug_context;
+        }
+
         result.diagnostics.push_back({ShaderGenSeverity::Error,
                                       ShaderGenErrorCode::CompileFailed,
                                       request.stage,
                                       "ShaderCompilerContext",
-                                      "CompileShader returned null"});
+                                      std::move(message)});
         return result;
     }
 

@@ -31,6 +31,17 @@ namespace hgl::graph::mtl
 
 static bool HasAnyArrayTexture(const MaterialRecipe &r) noexcept;
 
+static bool IsBillboardRecipe(const MaterialRecipe &r) noexcept
+{
+    if (r.prim == PrimitiveType::Billboard)
+        return true;
+
+    return r.vertex_policy == VertexTransformPolicy::BillboardCameraFacing
+        || r.vertex_policy == VertexTransformPolicy::BillboardAxisLocked
+        || r.preset == MaterialPreset::Billboard2DDynamic
+        || r.preset == MaterialPreset::Billboard2DFixed;
+}
+
 namespace
 {
 static PassType PrimaryPassForBlendMode(const RenderAlphaMode blend) noexcept
@@ -74,7 +85,7 @@ static RecipeAxisExpansion ExpandRecipeAxesFromPresetAlias(const MaterialRecipe 
         ResolveMaterialPresetForLOD(r.preset, GetDefaultMaterialLOD());
 
     const RenderAlphaMode target_blend =
-        (r.preset == MaterialPreset::Billboard2DDynamic || r.preset == MaterialPreset::Billboard2DFixed)
+        IsBillboardRecipe(r)
         ? r.billboard.blend_mode
         : RenderAlphaMode::Opaque;
     const PassType target_pass = PrimaryPassForBlendMode(target_blend);
@@ -370,9 +381,12 @@ static StaticMaterialDefId ResolveDefIdForRecipe(const MaterialRecipe &r) noexce
 ///
 /// TODO(Step-6): replace with StaticMaterialDef lookup once def_id is wired up.
 /// Until then this table provides stable defaults for the key's schema field.
-static ShaderDataSchema GetDefaultSchemaForPreset(const MaterialPreset p) noexcept
+static ShaderDataSchema GetDefaultSchemaForRecipe(const MaterialRecipe &r) noexcept
 {
-    switch (p)
+    if (IsBillboardRecipe(r))
+        return ShaderDataSchema::BillboardSizeUVec2;
+
+    switch (r.preset)
     {
     case MaterialPreset::PureColor2D:
     case MaterialPreset::PureColor3D:
@@ -381,10 +395,6 @@ static ShaderDataSchema GetDefaultSchemaForPreset(const MaterialPreset p) noexce
 
     case MaterialPreset::Text2D:
         return ShaderDataSchema::TextColor;
-
-    case MaterialPreset::Billboard2DFixed:
-    case MaterialPreset::Billboard2DDynamic:
-        return ShaderDataSchema::BillboardSizeUVec2;
 
     case MaterialPreset::PBRColor3D:
         return ShaderDataSchema::PBRColorParams;
@@ -478,18 +488,27 @@ MaterialVariantKey BuildBaseVariantKeyFromRecipe(const MaterialRecipe &r) noexce
     // ── Step 6: billboard geometry mode ──────────────────────────────────────
     // Ensure the correct geometry mode regardless of the dim override above.
     // Mirrors M_BillboardFixedSize / M_BillboardDynamicSize lookup key setup.
-    if (r.preset == MaterialPreset::Billboard2DFixed)
-        k.geometry_mode = GeometryMode::BillboardAxisLocked;
-    else if (r.preset == MaterialPreset::Billboard2DDynamic)
-        k.geometry_mode = GeometryMode::BillboardCameraFacing;
+    if (IsBillboardRecipe(r))
+    {
+        const VertexTransformPolicy billboard_policy =
+            (r.vertex_policy != VertexTransformPolicy::Unknown)
+            ? r.vertex_policy
+            : (r.billboard.fixed_size
+                ? VertexTransformPolicy::BillboardAxisLocked
+                : VertexTransformPolicy::BillboardCameraFacing);
+
+        if (billboard_policy == VertexTransformPolicy::BillboardAxisLocked)
+            k.geometry_mode = GeometryMode::BillboardAxisLocked;
+        else if (billboard_policy == VertexTransformPolicy::BillboardCameraFacing)
+            k.geometry_mode = GeometryMode::BillboardCameraFacing;
+    }
 
     // ── Step 7: billboard blend mode ─────────────────────────────────────────
     // Billboard presets allow the caller to override the default Transparent
     // blend_mode via BillboardConfig::blend_mode.
     // Non-billboard presets inherit their blend_mode from MapPresetToVariantKey
     // (typically Opaque for 3-D presets, Transparent for billboard bases).
-    if (r.preset == MaterialPreset::Billboard2DFixed
-        || r.preset == MaterialPreset::Billboard2DDynamic)
+    if (IsBillboardRecipe(r))
     {
         k.blend_mode = r.billboard.blend_mode;
         k.pass_hint  = GetPrimaryPassForBlendMode(r.billboard.blend_mode);
@@ -606,7 +625,7 @@ MaterialKey ResolveRecipePrimaryKey(const MaterialRecipe &r) noexcept
     else if (alias_axes.schema != ShaderDataSchema::None)
         k.schema = alias_axes.schema;
     else
-        k.schema = GetDefaultSchemaForPreset(r.preset);
+        k.schema = GetDefaultSchemaForRecipe(r);
 
     // Phase E: def_id
     k.def_id = ResolveDefIdForRecipe(r);

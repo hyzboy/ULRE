@@ -1,20 +1,59 @@
 ﻿#include"GLSLCompiler.h"
 #include"TBuiltInResourceCompat.h"
 #include"SPVParseData.h"
-#include <hgl/shadergen/ShaderLibraryPath.h>
+#include<string>
+#include<vector>
+#include<vulkan/vulkan.h>
+#include<hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/platform/ExternalModule.h>
 #include<hgl/type/StringList.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/log/Logger.h>
 #include<hgl/shadergen/device/DeviceProfileTargetVersion.h>
 #include<hgl/shadergen/device/DeviceProfileJson.h>
-#include<vector>
-#include<string>
 
 namespace hgl
 {
     namespace graph
     {
+        static const char *GetShaderStageNameByType(const uint32_t type) noexcept
+        {
+            if(type == VK_SHADER_STAGE_VERTEX_BIT)   return "Vertex";
+            if(type == VK_SHADER_STAGE_FRAGMENT_BIT) return "Fragment";
+            if(type == VK_SHADER_STAGE_COMPUTE_BIT)  return "Compute";
+
+#ifdef VK_SHADER_STAGE_TASK_BIT_EXT
+            if(type == VK_SHADER_STAGE_TASK_BIT_EXT) return "Task";
+#endif
+
+#ifdef VK_SHADER_STAGE_MESH_BIT_EXT
+            if(type == VK_SHADER_STAGE_MESH_BIT_EXT) return "Mesh";
+#endif
+
+#ifdef VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI
+            if(type == VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI) return "ClusterCulling";
+#endif
+
+            return "Unknown";
+        }
+
+        static uint64_t HashSourceFNV1a64(const char *source) noexcept
+        {
+            if(!source)
+                return 0;
+
+            constexpr uint64_t offset = 1469598103934665603ull;
+            constexpr uint64_t prime  = 1099511628211ull;
+
+            uint64_t h = offset;
+            while(*source)
+            {
+                h ^= static_cast<uint8_t>(*source++);
+                h *= prime;
+            }
+            return h;
+        }
+
         enum class ShaderLanguageType
         {
             GLSL=0,
@@ -355,7 +394,7 @@ namespace hgl
                 gsi->FreeParseSPVData(parse_data);
         }
 
-        SPVData *CompileShader(const uint32_t type,const char *source)
+        SPVData *CompileShader(const uint32_t type,const char *source,const char *debug_context)
         {
             if(!gsi)
             {
@@ -387,8 +426,17 @@ namespace hgl
 
             if(!result)
             {
+                const uint64_t source_hash = HashSourceFNV1a64(source);
+                const char *stage_name = GetShaderStageNameByType(type);
+
                 std::string err="Compile shader failed, error info: ";
                 err+=spv->log?spv->log:"";
+                std::fprintf(stderr,
+                    "[GLSLCompiler] CompileShader FAILED | stage=%s(%u) | source_hash=0x%016llx | context=%s\n",
+                    stage_name,
+                    static_cast<unsigned>(type),
+                    static_cast<unsigned long long>(source_hash),
+                    debug_context&&debug_context[0]?debug_context:"<none>");
                 std::fprintf(stderr,"[GLSLCompiler] %s\n", err.c_str());
                 GLogError(err.c_str());
 

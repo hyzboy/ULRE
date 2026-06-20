@@ -65,7 +65,9 @@ SurfaceInput ResolveSurfaceInput()
 
     // viewDir
 #ifdef ENABLE_LIGHTING
-    si.viewDir = normalize(camera.pos - fragWorldPos);
+    // Use resolved world position so this path also works for billboard-style inputs
+    // that do not export HAS_POSITION varyings.
+    si.viewDir = normalize(camera.pos - si.worldPos);
 #elif defined(HAS_POSITION)
     si.viewDir = normalize(-fragWorldPos);
 #elif defined(HAS_DIRECTION)

@@ -23,7 +23,11 @@ void main()
     MaterialBindingInstance mi = GetMI();
 
     vec3 pos3 = GetPositionLocal();
-    vec2 psize = vec2(mi.BillboardSize) / vec2(viewport.canvas_resolution);
+    vec2 billboard_size_pixels = vec2(64.0, 64.0);
+#ifdef ULRE_SHADER_SCHEMA_BILLBOARD_SIZE_GLSL
+    billboard_size_pixels = vec2(mi.BillboardSize);
+#endif
+    vec2 psize = billboard_size_pixels / vec2(viewport.canvas_resolution);
     vec4 center_clip = camera.vp * GetTransform() * vec4(0.0, 0.0, 0.0, 1.0);
     vec2 center_ndc = center_clip.xy / center_clip.w;
     vec2 ndc = center_ndc + pos3.xy * psize;

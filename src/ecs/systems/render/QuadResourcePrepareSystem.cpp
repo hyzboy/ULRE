@@ -271,6 +271,9 @@ namespace hgl::ecs
         rec.preset = billboard_preset;
         rec.dim = graph::mtl::MaterialRecipe::Dim::D3;
         rec.prim = graph::PrimitiveType::Billboard;
+        rec.vertex_policy = fixed
+            ? graph::mtl::VertexTransformPolicy::BillboardAxisLocked
+            : graph::mtl::VertexTransformPolicy::BillboardCameraFacing;
         rec.pipeline = GetPresetForWorld(world);
         rec.billboard.fixed_size = fixed;
         rec.billboard.blend_mode = GetBlendModeForWorld(world);
@@ -292,6 +295,7 @@ namespace hgl::ecs
         // Create shared quad geometry (explicit quad for VS/FS-only billboard path)
         graph::GeometryVertexFormat quad_gvf;
         quad_gvf.Set(graph::VAN::Position, VF_V3F);
+        quad_gvf.Set(graph::VAN::TexCoord, VF_V2F);
         auto pc = std::make_unique<graph::GeometryCreater>(device, quad_gvf);
         pc->Init("Quad", 4, 6, graph::IndexType::U16);
 
@@ -303,8 +307,18 @@ namespace hgl::ecs
             -0.5f,  0.5f, 0.0f
         };
         static const uint16_t index_data[6] = { 0, 1, 2, 0, 2, 3 };
+        static const float texcoord_data[8] =
+        {
+            0.0f, 0.0f,
+            1.0f, 0.0f,
+            1.0f, 1.0f,
+            0.0f, 1.0f,
+        };
 
         if (!pc->WriteVAB(graph::VAN::Position, VF_V3F, position_data))
+            return false;
+
+        if (!pc->WriteVAB(graph::VAN::TexCoord, VF_V2F, texcoord_data))
             return false;
 
         if (!pc->WriteIBO(index_data))
@@ -408,6 +422,9 @@ namespace hgl::ecs
             rec.billboard.fixed_size         = domain_fixed;
             rec.dim       = graph::mtl::MaterialRecipe::Dim::D3;
             rec.prim      = graph::PrimitiveType::Billboard;
+            rec.vertex_policy = domain_fixed
+                ? graph::mtl::VertexTransformPolicy::BillboardAxisLocked
+                : graph::mtl::VertexTransformPolicy::BillboardCameraFacing;
             rec.pipeline  = GetPresetForWorld(world);
             rec.textures  = {
                 { graph::mtl::SamplerSlot::BaseColor, graph::mtl::TextureSourceMode::Array, "" },

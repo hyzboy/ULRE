@@ -30,7 +30,11 @@ layout(location=0) out vec4 outColor;
 void main()
 {
 #ifdef TEXTURE_ARRAY_MODE
-    _ULRE_InitTextureLayerIndices(MATERIAL_INSTANCE_ID_OVERRIDE);
+    #ifdef MATERIAL_INSTANCE_ID_OVERRIDE
+        _ULRE_InitTextureLayerIndices(MATERIAL_INSTANCE_ID_OVERRIDE);
+    #else
+        _ULRE_InitTextureLayerIndices();
+    #endif
 #endif
 
     SurfaceInput  si = ResolveSurfaceInput();

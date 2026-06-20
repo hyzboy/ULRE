@@ -359,6 +359,34 @@ static bool ApplyBuildModelSpec(const hgl::graph::mtl::MaterialCreateConfig &con
     return true;
 }
 
+static std::string BuildCompileDebugContext(const hgl::graph::mtl::MaterialCreateConfig &config,
+                                            const hgl::graph::ShaderStage stage,
+                                            const hgl::graph::mtl::MaterialInstanceBlock &material_instance)
+{
+    std::string text = "ShaderBuildPipeline::Build";
+    text += " stage=";
+    text += stage==hgl::graph::ShaderStage::Vertex?"Vertex":"Fragment";
+
+    text += " preset=";
+    text += config.preset_name&&config.preset_name[0]?config.preset_name:"<unnamed>";
+
+    text += " prim=";
+    text += std::to_string(static_cast<unsigned>(config.prim));
+
+    text += " stage_bits=0x";
+    char buf[32]{};
+    std::snprintf(buf,sizeof(buf),"%08x",static_cast<unsigned>(config.shader_stage_flag_bit));
+    text += buf;
+
+    if(material_instance.schema!=hgl::graph::mtl::ShaderDataSchema::None)
+    {
+        text += " schema=";
+        text += material_instance.schema_file.empty()?"<none>":material_instance.schema_file;
+    }
+
+    return text;
+}
+
 static bool HasSSBOSemantic(const hgl::graph::mtl::StaticMaterialDef &def,
                             const hgl::graph::mtl::SSBODescriptorSemantic semantic)
 {
@@ -1003,6 +1031,8 @@ ShaderGenResult<ShaderBuildResult> ShaderBuildPipeline::Build(const mtl::Materia
     }
 
     state=ShaderBuildState::SourceGenerated;
+
+    request.debug_context = BuildCompileDebugContext(config,request.stage,result.value.material_instance);
 
     if(result.value.material_instance.schema!=mtl::ShaderDataSchema::None)
     {

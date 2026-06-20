@@ -57,7 +57,18 @@ bool ShaderCreateInfo::CompileToSPV()
         spv_data=nullptr;
     }
 
-    spv_data=CompileShader(uint32_t(shader_stage),final_shader.c_str());
+    std::string debug_context = "ShaderCreateInfo::CompileToSPV stage=";
+    debug_context += GetShaderStageNameByStage(shader_stage);
+
+    if(stage_io)
+    {
+        debug_context += " stage_io=";
+        debug_context += stage_io->GetStageName();
+    }
+
+    spv_data=CompileShader(uint32_t(shader_stage),
+                          final_shader.c_str(),
+                          debug_context.c_str());
 
     if(!spv_data)
     {

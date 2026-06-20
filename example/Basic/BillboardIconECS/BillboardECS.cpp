@@ -47,6 +47,8 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
+#define SHOW_PLANE_GRID
+
 static Color4f white_color(1, 1, 1, 1);
 
 class BillboardECSApp : public WorkObject
@@ -56,11 +58,14 @@ private:
     ECSContext* ecs_context = nullptr;
 
     // Entities
-    Entity* grid_entity = nullptr;
+
     Entity* billboard_entity = nullptr;
     Entity* textured_quad_entity = nullptr;
     Entity* textured_quad_domain_entity = nullptr;
     Entity* camera_entity = nullptr;
+
+#ifdef SHOW_PLANE_GRID
+    Entity* grid_entity = nullptr;
 
     // PlaneGrid resources
     Geometry* geom_plane_grid = nullptr;
@@ -76,6 +81,7 @@ private:
         .has_explicit_schema = true,
         .pipeline      = GraphicsPipelinePreset::Solid3D,
     };
+#endif//SHOW_PLANE_GRID
 
     inline static const mtl::MaterialRecipe kTexturedQuadCfg {
         .id            = "billboard_ecs_texture_binding_quad",
@@ -163,14 +169,7 @@ private:
         last_key_3 = key_3;
     }
 
-    /**
-     * Initialize plane grid material and resources
-     */
-    bool InitPlaneGridResources()
-    {
-        return true;
-    }
-
+#ifdef SHOW_PLANE_GRID
     /**
      * Create render geometry and primitives
      */
@@ -211,6 +210,7 @@ private:
 
         return true;
     }
+#endif//SHOW_PLANE_GRID
 
     /**
      * Ensure render systems are registered
@@ -300,6 +300,7 @@ private:
         QuadResourcePrepareSystem::SetPresetForWorld(ecs_context, GraphicsPipelinePreset::Solid3D);
         QuadResourcePrepareSystem::SetChannelHintForWorld(ecs_context, TextureChannelHint::Grayscale);
 
+    #ifdef SHOW_PLANE_GRID
         std::cout << "\n[BillboardECS] Creating PlaneGrid entity..." << std::endl;
         // Create plane grid entity
         {
@@ -319,6 +320,7 @@ private:
             grid_primitive->SetVisible(true);
             std::cout << "  -> PrimitiveComponent added, visible=" << grid_primitive->IsVisible() << std::endl;
         }
+    #endif//SHOW_PLANE_GRID
 
         std::cout << "\n[BillboardECS] Creating Billboard entity..." << std::endl;
         // Create billboard entity with BillboardComponent
@@ -439,8 +441,10 @@ public:
 
         SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));
 
-        if (!InitPlaneGridResources()) return false;
+    #ifdef SHOW_PLANE_GRID
         if (!CreateGeometryAndPrimitives()) return false;
+    #endif//SHOW_PLANE_GRID
+
         if (!InitializeECS()) return false;
         if (!InitializeCamera()) return false;
 

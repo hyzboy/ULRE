@@ -31,4 +31,8 @@
 // Sampler getter functions (activated by HAS_SAMPLER_XXX defines set by InjectDefines)
 #include "common/sampler_getters.glsl"
 
+#if defined(TEXTURE_ARRAY_MODE) && !defined(MIT_TEXTURE_COUNT) && !defined(SSBO_MIT_GLSL)
+#include "common/ssbo_material_instance_texture.glsl"
+#endif
+
 #endif // ULRE_COMPOSITOR_FRAG_FORWARD_UBO_GLSL

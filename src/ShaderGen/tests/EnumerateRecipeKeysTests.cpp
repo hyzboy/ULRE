@@ -38,7 +38,9 @@ using namespace hgl::graph;
 static MaterialRecipe MakeBillboardRecipe(RenderAlphaMode blend)
 {
     MaterialRecipe r;
-    r.preset = MaterialPreset::Billboard2DDynamic;
+    r.preset = MaterialPreset::UnlitTexture3D;
+    r.prim = PrimitiveType::Billboard;
+    r.vertex_policy = VertexTransformPolicy::BillboardCameraFacing;
     r.billboard.blend_mode = blend;
     r.billboard.texture_id = "test";
     return r;

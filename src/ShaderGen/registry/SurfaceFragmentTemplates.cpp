@@ -16,7 +16,7 @@ namespace hgl::graph::mtl
 
     const SurfaceFragmentTemplate kSurfaceFragmentTemplates[] = {
         { "FS_PureColor", MaterialPreset::PureColor3D, SurfaceType::Unlit, SurfaceShadingModel::PureColor,
-          LightingModel::Lambert, 0u, 0u, 0u, "surface/purecolor3d_surface.glsl", "", {}, kMaterialInstanceFSContract, StaticMaterialDefIdHint::PureColor3D, ShaderDataSchema::Color4f },
+          LightingModel::Lambert, 0u, 0u, 0u, "surface/unlit_color3d_surface.glsl", "", {}, kMaterialInstanceFSContract, StaticMaterialDefIdHint::PureColor3D, ShaderDataSchema::Color4f },
 
         { "FS_VertexColor", MaterialPreset::VertexColor3D, SurfaceType::Unlit, SurfaceShadingModel::VertexColor,
           LightingModel::Lambert, 0u, 0u, 0u, "surface/unlit_vertexcolor_surface.glsl", "", {}, {}, StaticMaterialDefIdHint::VertexColor3D, ShaderDataSchema::Color4f },

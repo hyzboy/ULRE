@@ -100,3 +100,36 @@
 1. Billboard 专有 preset 与专有 shader 路径全部退场。
 2. 示例以通用 preset + vertex policy 运行稳定。
 3. 阶段回归记录完成，允许进入 Phase 1。
+
+---
+
+## 10. 实施状态（2026-06-20，首轮）
+
+### 10.1 已完成
+
+1. `QuadResourcePrepareSystem` 的 billboard recipe 已切换为通用 preset：
+   - preset 固定为 `UnlitTexture3D`
+   - 使用 `vertex_policy` 区分固定尺寸与动态朝向
+2. `QuadMaterialBindingSystem::BuildLegacyQuadRecipe` 已同步切换为通用 preset + `vertex_policy`。
+3. `RecipeToKey` 已支持 billboard-by-policy 语义：
+   - blend 覆写不再只依赖 Billboard 专有 preset
+   - geometry_mode 与 schema 可由 billboard prim/policy 正确推导
+4. `EnumerateRecipeKeysTests` 已迁移到新表达方式（不再依赖 Billboard 专有 preset）。
+5. `VariantRegistry` 已补齐 `UnlitTexture3D + Billboard*` 的兼容行（含 5 种 blend x 2 种 billboard policy），确保迁移调用链在当前 runtime 下可路由。
+
+### 10.2 本轮保留（未删除）
+
+1. `MaterialPreset::Billboard2DDynamic/Billboard2DFixed` 仍保留（兼容旧调用点）。
+2. Billboard 专有 VS/surface 资源仍保留（兼容现有 row）。
+3. `M_BillboardDynamicSize.cpp` / `M_BillboardFixedSize.cpp` 暂未从构建中移除。
+
+### 10.3 下一步（Phase 0 收尾）
+
+1. 完成旧 Billboard preset 调用点全量迁移。
+2. 确认无运行期回归后，删除 Billboard 专有 preset 与专有 shader 路径。
+3. 清理构建脚本中的 Billboard 专用源文件。
+
+### 10.4 验证备注
+
+1. 任务入口 `cmake --preset=default` 因本地生成器缓存不一致（VS17/VS18）未能完成构建。
+2. 已对本轮改动文件执行编辑器级错误检查，未发现新增语义错误（RecipeToKey 存在与工程 includePath 配置相关的已知环境告警）。

@@ -9,6 +9,33 @@
 #ifndef SSBO_MIT_GLSL
 #define SSBO_MIT_GLSL
 
+// Compatibility aliases: current forward assembly defines SAMPLER_*_ARRAY,
+// while some legacy paths still expect TEX_*_ARRAY.
+#if defined(SAMPLER_BASECOLOR_ARRAY) && !defined(TEX_BASECOLOR_ARRAY)
+#define TEX_BASECOLOR_ARRAY
+#endif
+#if defined(SAMPLER_NORMAL_ARRAY) && !defined(TEX_NORMAL_ARRAY)
+#define TEX_NORMAL_ARRAY
+#endif
+#if defined(SAMPLER_TANGENT_ARRAY) && !defined(TEX_TANGENT_ARRAY)
+#define TEX_TANGENT_ARRAY
+#endif
+#if defined(SAMPLER_METALLIC_ARRAY) && !defined(TEX_METALLIC_ARRAY)
+#define TEX_METALLIC_ARRAY
+#endif
+#if defined(SAMPLER_ROUGHNESS_ARRAY) && !defined(TEX_ROUGHNESS_ARRAY)
+#define TEX_ROUGHNESS_ARRAY
+#endif
+#if defined(SAMPLER_HEIGHT_ARRAY) && !defined(TEX_HEIGHT_ARRAY)
+#define TEX_HEIGHT_ARRAY
+#endif
+#if defined(SAMPLER_OPACITY_ARRAY) && !defined(TEX_OPACITY_ARRAY)
+#define TEX_OPACITY_ARRAY
+#endif
+#if defined(SAMPLER_TEXT_ARRAY) && !defined(TEX_TEXT_ARRAY)
+#define TEX_TEXT_ARRAY
+#endif
+
 struct MaterialInstanceTexture
 {
 #ifdef TEX_BASECOLOR_ARRAY
@@ -55,9 +82,9 @@ MaterialInstanceTexture GetMaterialInstanceTexture()
 }
 
 // Call once at the start of main() to populate all _tex_layer_X globals.
-void _ULRE_InitTextureLayerIndices()
+void _ULRE_InitTextureLayerIndices(uint instance_id)
 {
-    MaterialInstanceTexture _m = GetMaterialInstanceTexture();
+    MaterialInstanceTexture _m = mbi_texture.tex_id[instance_id];
 #ifdef TEX_BASECOLOR_ARRAY
     _tex_layer_BaseColor = _m.BaseColor;
 #endif
@@ -82,6 +109,11 @@ void _ULRE_InitTextureLayerIndices()
 #ifdef TEX_TEXT_ARRAY
     _tex_layer_Text = _m.Text;
 #endif
+}
+
+void _ULRE_InitTextureLayerIndices()
+{
+    _ULRE_InitTextureLayerIndices(MATERIAL_INSTANCE_ID_OVERRIDE);
 }
 
 #endif // SSBO_MIT_GLSL

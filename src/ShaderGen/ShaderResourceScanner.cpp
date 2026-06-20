@@ -227,7 +227,9 @@ namespace
         if (source.empty())
             return true;
 
-        SPVData *spv = CompileShader(stage_flags, source.c_str());
+        std::string debug_context = "ShaderResourceScanner::CollectReflectedStageResources stage="
+                      + std::to_string(stage_flags);
+        SPVData *spv = CompileShader(stage_flags, source.c_str(), debug_context.c_str());
         if (!spv)
         {
             if (diagnostics)
