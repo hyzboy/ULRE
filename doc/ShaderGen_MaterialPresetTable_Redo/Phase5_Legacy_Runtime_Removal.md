@@ -38,6 +38,13 @@
 1. 新功能扩展（overlay/pass resolver 完整注入）。
 2. 额外架构试验性重构。
 
+## 3.3 LogCode 契约（复用模板）
+
+1. 本阶段日志规则复用 `LogCode_Contract_Template.md`。
+2. 删除动作前后的路由来源必须可审计（旧表路径 -> PresetTable+Matcher）。
+3. 旧 runtime 入口若仍被触发，必须输出 `VT-ERR-*` 并标记阻断原因。
+4. 新主路由命中与退化日志继续使用 `MT-MATCH-*` / `MT-FALLBACK-*`。
+
 ---
 
 ## 4. 建议改动文件
@@ -72,6 +79,7 @@
 2. 代码中不存在旧表参与 runtime 决策的调用点。
 3. 所有关键示例可运行，核心测试通过。
 4. 文档与日志可清楚解释最终路由路径。
+5. 日志前缀与字段满足 `LogCode_Contract_Template.md`。
 
 ---
 

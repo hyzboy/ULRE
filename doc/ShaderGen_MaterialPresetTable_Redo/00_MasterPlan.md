@@ -45,12 +45,13 @@
 
 ### 4.1 本轮纳入
 
-1. Billboard 专有材质退场（改为 preset + vertex policy 组合）。
-2. ColorSource 新通路接入（先并存，再替换）。
-3. SFM 注解与 requirement 解析自检。
-4. MaterialPresetTable + Matcher + MatchedShaderSet 主路径接入。
-5. `GeometryMode` 清理与 key 简化。
-6. 旧 runtime 路由表退场与收尾清理。
+1. 顶点策略解耦：`2D->3D` 与 `旋转扭正` 分离为独立策略轴。
+2. Billboard/Quad 专有路径退场（迁移到通用策略组合）。
+3. ColorSource 新通路接入（先并存，再替换）。
+4. SFM 注解与 requirement 解析自检。
+5. MaterialPresetTable + Matcher + MatchedShaderSet 主路径接入。
+6. `GeometryMode` 清理与 key 简化。
+7. 旧 runtime 路由表退场与收尾清理。
 
 ### 4.2 本轮不纳入（延后）
 
@@ -65,7 +66,8 @@
 
 | 阶段 | 名称 | 核心目标 | 产物 | 风险等级 |
 |---|---|---|---|---|
-| Phase 0 | Billboard 退场 | 删除 Billboard 专有 preset/路径 | 统一到 vertex policy 组合 | 低 |
+| Phase 0R | VertexPolicy 解耦 | 将 `2D->3D` 与 `旋转扭正` 拆分成独立策略轴 | 可组合策略模型 + 兼容桥接层 | 中 |
+| Phase 0 | Billboard/Quad 退场 | 删除 Billboard/Quad 专有 preset 与专用路径 | 全部迁移到通用策略组合 | 中低 |
 | Phase 1 | ColorSource 接入 | CodegenRegistry 并入主流程（保留旧路） | 双路并存可切换 | 中低 |
 | Phase 2 | SFM 与 PositionProvider | requirement 自描述 + lint + provider 扩展 | 可审计的 shader 需求 | 中 |
 | Phase 3 | Matcher 主路由 | PresetTable + Matcher 接入 runtime 主路由 | MatchedShaderSet 生效 | 高 |
@@ -83,19 +85,48 @@
 3. `MatchedShaderSet`：Matcher 输出，作为 runtime 材质创建输入桥。
 4. `SFM`：GLSL 顶部注解，声明 require/optional/derive/supports_phase/surface_type。
 
-### 6.2 fallback 契约
+### 6.2 Vertex Source 分层模型（新增）
+
+运行时顶点处理统一为四层：
+
+1. Vertex Source Layer：`VBO3DDirect` / `VBO2DTo3D` / `PCG`。
+2. Geometry Lift Layer：`2D->3D` 升维规则（如 `XY_To_XY0` / `XY_To_X0Y`）。
+3. Orientation Layer：朝向/扭正（如 `FaceCameraFull` / `FaceCameraAxisLocked`）。
+4. Size Layer：世界尺寸/像素尺寸/混合尺寸。
+
+强约束：Layer2 输出后统一为 Local3D，Layer3/Layer4 不允许再按“来源是 2D 还是 3D”分支。
+
+### 6.3 fallback 契约
 
 1. 只允许在当前 preset 候选行内降级。
 2. 失败必须进入 `CheckerboardFallback` 或显式错误。
 3. 禁止回退时跨 preset 自动选中别的 surface。
 
-### 6.3 日志契约
+### 6.4 日志契约
 
 至少输出：
 
-1. 输入 recipe 的关键轴（preset、phase、quality、policy、position provider）。
+1. 输入 recipe 的关键轴（preset、phase、quality、position provider、VertexSourcePolicy、GeometryLiftPolicy、OrientationPolicy、SizePolicy）。
 2. 候选列表与每个候选失败原因（缺少 VA/tex/ubo/ssbo/phase 不支持）。
 3. 最终命中候选，或 fallback 原因。
+
+统一 `LogCode` 前缀规范（全阶段共享）：
+
+1. `VT-OK-*`：组合真值表中的合法命中路径（对应 `VT-001`~`VT-099`）。
+2. `VT-ERR-*`：组合真值表中的非法组合或资源缺失（对应 `VT-101` 起）。
+3. `MT-MATCH-*`：Matcher 候选匹配过程日志（候选筛选、能力不满足、同 preset 降级）。
+4. `MT-FALLBACK-*`：显式 fallback 路径（包括 `CheckerboardFallback` 触发原因）。
+
+编码规则：
+
+1. 一个决策路径至少包含 1 条阶段级 `LogCode`（`VT-*` 或 `MT-*`）。
+2. 失败日志必须包含“缺失能力键名”与“当前候选标识”。
+3. `VT-*` 与 Phase0R 真值表行号必须保持一一对应，禁止同一 `VT-*` 复用到语义不同的分支。
+4. 进入 Phase3 后，`MT-MATCH-*`/`MT-FALLBACK-*` 为强制输出；`VT-*` 继续用于策略组合验证与回归审计。
+
+实现落地建议：
+
+1. Phase1~Phase5 默认复用 `LogCode_Contract_Template.md`，除阶段特有扩展外不重复定义前缀语义。
 
 ---
 
@@ -106,6 +137,8 @@
 `doc/ShaderGen_MaterialPresetTable_Redo/`
 
 - `00_MasterPlan.md`（本文件）
+- `LogCode_Contract_Template.md`（Phase 通用日志合同模板）
+- `Phase0R_VertexPolicy_Decouple.md`
 - `Phase0_Billboard_Decommission.md`
 - `Phase1_ColorSource_Integration.md`
 - `Phase2_SFM_PositionProvider.md`
@@ -172,12 +205,13 @@
 
 ## 13. 阶段文档入口
 
-1. Phase0：`Phase0_Billboard_Decommission.md`
-2. Phase1：`Phase1_ColorSource_Integration.md`
-3. Phase2：`Phase2_SFM_PositionProvider.md`
-4. Phase3：`Phase3_MaterialPresetTable_Matcher.md`
-5. Phase4：`Phase4_Key_GeometryMode_Cleanup.md`
-6. Phase5：`Phase5_Legacy_Runtime_Removal.md`
+1. Phase0R：`Phase0R_VertexPolicy_Decouple.md`
+2. Phase0：`Phase0_Billboard_Decommission.md`
+3. Phase1：`Phase1_ColorSource_Integration.md`
+4. Phase2：`Phase2_SFM_PositionProvider.md`
+5. Phase3：`Phase3_MaterialPresetTable_Matcher.md`
+6. Phase4：`Phase4_Key_GeometryMode_Cleanup.md`
+7. Phase5：`Phase5_Legacy_Runtime_Removal.md`
 
 ---
 

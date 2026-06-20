@@ -67,6 +67,12 @@
    四处保持一致。
 3. 对 PCG/fullscreen triangle 场景，需单独验证输出坐标语义。
 
+## 4.1 LogCode 契约（复用模板）
+
+1. 本阶段日志规则复用 `LogCode_Contract_Template.md`。
+2. 解析/审计失败必须输出 `VT-ERR-*`，并带缺失或冲突键名。
+3. 进入候选评估链路时，筛选与退化分别输出 `MT-MATCH-*` / `MT-FALLBACK-*`。
+
 ---
 
 ## 5. 建议改动文件
@@ -105,6 +111,7 @@
 2. 审计测试能发现注解缺失/冲突问题。
 3. 新增 PositionProvider 在目标示例中行为正确。
 4. 不引入新增渲染错误或黑屏。
+5. 日志前缀与字段满足 `LogCode_Contract_Template.md`。
 
 ---
 

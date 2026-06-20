@@ -43,6 +43,15 @@
 2. 禁止 silent fallback。
 3. 禁止“部分字段来自命中候选、部分字段来自旧 fallback”混合行为。
 
+### 3.4 LogCode 契约（与 MasterPlan/Phase0R 对齐）
+
+1. 本阶段日志规则复用 `LogCode_Contract_Template.md`，本节仅定义 Phase3 增量约束。
+2. `MT-MATCH-*`：记录候选筛选、require 不满足、质量降级轨迹。
+3. `MT-FALLBACK-*`：记录 fallback 触发与最终 fallback 类型。
+4. `VT-OK-*`/`VT-ERR-*`：当输入命中 VertexPolicy 组合验证路径时，必须带出对应 `VT-*` 编号。
+5. 一次 `Matcher::Resolve(...)` 调用至少输出一条阶段级 `LogCode`。
+6. 失败日志必须包含：候选标识、缺失能力键名、当前 preset、phase、quality。
+
 ---
 
 ## 4. 接口与数据结构
@@ -110,6 +119,8 @@
 2. 不出现跨 preset fallback。
 3. 核心示例与测试通过。
 4. 回退开关可用（必要时临时回旧路）。
+5. 日志前缀符合约定：`MT-MATCH-*`、`MT-FALLBACK-*`、`VT-*`。
+6. 若命中 Phase0R 组合验证路径，`VT-*` 必须与真值表行语义一一对应。
 
 ---
 
