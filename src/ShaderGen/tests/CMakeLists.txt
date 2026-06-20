@@ -74,6 +74,19 @@ shadergen_set_test_runtime_dir(SFMAnnotationPolicyTests)
 
 add_test(NAME SFMAnnotationPolicyTests COMMAND SFMAnnotationPolicyTests)
 
+# SFMAnnotationScannerTests validates the parser-backed Week1-2 entry point
+# and the duplicate/conflict/derive diagnostics surfaced by the scanner.
+add_executable(SFMAnnotationScannerTests
+    SFMAnnotationScannerTests.cpp
+)
+
+target_link_libraries(SFMAnnotationScannerTests PRIVATE ${ULRE})
+
+set_property(TARGET SFMAnnotationScannerTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(SFMAnnotationScannerTests)
+
+add_test(NAME SFMAnnotationScannerTests COMMAND SFMAnnotationScannerTests)
+
 # MaterialKeyAbiSnapshot guards sizeof/alignof, constants, and hash stability.
 add_executable(MaterialKeyAbiSnapshot
     MaterialKeyAbiSnapshot.cpp

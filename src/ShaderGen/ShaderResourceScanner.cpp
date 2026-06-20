@@ -1,5 +1,6 @@
 ﻿#include <hgl/shadergen/ShaderResourceScanner.h>
 #include <hgl/mtl/DescriptorSemanticRegistry.h>
+#include <hgl/shadergen/registry/ErrorCodeRegistry.h>
 #include <hgl/shadergen/CompositorCompiler.h>
 #include "GLSLCompiler.h"
 
@@ -8,12 +9,108 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <map>
+#include <set>
 #include <vector>
 
 namespace hgl::graph::mtl
 {
 namespace
 {
+    static std::string TrimASCII(const std::string &text)
+    {
+        size_t begin = 0;
+        while (begin < text.size() && std::isspace(static_cast<unsigned char>(text[begin])))
+            ++begin;
+
+        size_t end = text.size();
+        while (end > begin && std::isspace(static_cast<unsigned char>(text[end - 1])))
+            --end;
+
+        return text.substr(begin, end - begin);
+    }
+
+    static std::vector<std::string> SplitASCIIWords(const std::string &text)
+    {
+        std::vector<std::string> out;
+        size_t pos = 0;
+        while (pos < text.size())
+        {
+            while (pos < text.size() && std::isspace(static_cast<unsigned char>(text[pos])))
+                ++pos;
+            const size_t begin = pos;
+            while (pos < text.size() && !std::isspace(static_cast<unsigned char>(text[pos])))
+                ++pos;
+            if (begin < pos)
+                out.emplace_back(text.substr(begin, pos - begin));
+        }
+        return out;
+    }
+
+    static std::string ToLowerASCII(std::string text)
+    {
+        for (char &c : text)
+            c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        return text;
+    }
+
+    static std::string JoinTokens(const std::vector<std::string> &tokens)
+    {
+        std::string out;
+        for (size_t i = 0; i < tokens.size(); ++i)
+        {
+            if (i)
+                out += ' ';
+            out += tokens[i];
+        }
+        return out;
+    }
+
+    static std::string MakeTokenKey(const std::string &directive, const std::vector<std::string> &args)
+    {
+        std::string out = ToLowerASCII(directive);
+        out += '|';
+        for (size_t i = 0; i < args.size(); ++i)
+        {
+            if (i)
+                out += ' ';
+            out += ToLowerASCII(args[i]);
+        }
+        return out;
+    }
+
+    static void AppendIssue(SFMAnnotationScanReport &report,
+                            const SFMAnnotationError error,
+                            const uint32_t line,
+                            const std::string &key,
+                            const std::string &detail)
+    {
+        SFMAnnotationIssue issue;
+        issue.error_code = EncodeSFMAnnotationError(error,
+                                                    GetSFMAnnotationKeyIndex(key),
+                                                    static_cast<uint8_t>(line & 0xFFu),
+                                                    0);
+        issue.line = line;
+        issue.key = key;
+        issue.detail = detail;
+        report.issues.emplace_back(std::move(issue));
+    }
+
+    static bool IsAnnotationLine(const std::string &line, std::string &payload)
+    {
+        std::string trimmed = TrimASCII(line);
+        if (trimmed.empty())
+            return false;
+
+        const auto pos = trimmed.find("@sfm:");
+        if (pos == std::string::npos)
+            return false;
+
+        payload = trimmed.substr(pos + 5);
+        payload = TrimASCII(payload);
+        return !payload.empty();
+    }
+
     struct ReflectedResource
     {
         std::string name;
@@ -325,6 +422,174 @@ namespace
 
         return true;
     }
+
+    static bool ParseSFMAnnotationLine(const std::string &payload,
+                                       const uint32_t line_no,
+                                       SFMAnnotationScanReport &report,
+                                       std::string *diagnostics)
+    {
+        const auto words = SplitASCIIWords(payload);
+        if (words.empty())
+        {
+            AppendIssue(report, SFMAnnotationError::InvalidDirective, line_no, "", "empty annotation payload");
+            if (diagnostics)
+                *diagnostics += "SFM annotation line " + std::to_string(line_no) + ": empty payload\n";
+            return false;
+        }
+
+        const std::string directive = ToLowerASCII(words[0]);
+        const std::vector<std::string> args(words.begin() + 1, words.end());
+
+        if (!IsKnownSFMAnnotationKey(directive))
+        {
+            AppendIssue(report, SFMAnnotationError::UnknownKey, line_no, directive,
+                        "unknown SFM directive key");
+            if (diagnostics)
+                *diagnostics += "SFM annotation line " + std::to_string(line_no) + ": unknown key '" + directive + "'\n";
+            return false;
+        }
+
+        const std::string dedup_key = MakeTokenKey(directive, args);
+        for (const auto &record : report.records)
+        {
+            if (MakeTokenKey(record.key, record.args) == dedup_key)
+            {
+                AppendIssue(report, SFMAnnotationError::DuplicateKey, line_no, directive,
+                            "duplicate annotation line");
+                if (diagnostics)
+                    *diagnostics += "SFM annotation line " + std::to_string(line_no) + ": duplicate '" + JoinTokens(words) + "'\n";
+                return false;
+            }
+        }
+
+        if (directive == "surface_type")
+        {
+            if (args.size() != 1)
+            {
+                AppendIssue(report, SFMAnnotationError::InvalidDirective, line_no, directive,
+                            "surface_type requires exactly 1 value");
+                if (diagnostics)
+                    *diagnostics += "SFM annotation line " + std::to_string(line_no) + ": surface_type requires 1 arg\n";
+                return false;
+            }
+        }
+        else if (directive == "supports_phase")
+        {
+            if (args.empty())
+            {
+                AppendIssue(report, SFMAnnotationError::InvalidDirective, line_no, directive,
+                            "supports_phase requires at least 1 value");
+                if (diagnostics)
+                    *diagnostics += "SFM annotation line " + std::to_string(line_no) + ": supports_phase requires args\n";
+                return false;
+            }
+        }
+        else if (directive == "require" || directive == "optional" || directive == "derive")
+        {
+            if (args.size() < 2)
+            {
+                AppendIssue(report, SFMAnnotationError::InvalidDirective, line_no, directive,
+                            directive + " requires <kind> <value...>");
+                if (diagnostics)
+                    *diagnostics += "SFM annotation line " + std::to_string(line_no) + ": " + directive + " requires kind+values\n";
+                return false;
+            }
+        }
+
+        SFMAnnotationRecord record;
+        record.key = directive;
+        record.args = args;
+        record.line = line_no;
+        report.records.emplace_back(std::move(record));
+        return true;
+    }
+}
+
+bool ParseSFMAnnotationsFromGLSL(const std::string &source,
+                                 SFMAnnotationScanReport &out_report,
+                                 std::string *diagnostics) noexcept
+{
+    out_report.records.clear();
+    out_report.issues.clear();
+
+    if (diagnostics)
+        diagnostics->clear();
+
+    std::set<std::string> surface_types;
+    std::set<std::string> phases;
+    std::set<std::string> required_tokens;
+    std::set<std::string> optional_tokens;
+    std::set<std::string> derived_tokens;
+    std::map<std::string, SFMAnnotationRecord> first_record_by_key;
+
+    size_t cursor = 0;
+    uint32_t line_no = 1;
+    while (cursor <= source.size())
+    {
+        const size_t next = source.find('\n', cursor);
+        const std::string line = source.substr(cursor, next == std::string::npos ? std::string::npos : next - cursor);
+
+        std::string payload;
+        if (IsAnnotationLine(line, payload))
+            ParseSFMAnnotationLine(payload, line_no, out_report, diagnostics);
+
+        if (next == std::string::npos)
+            break;
+        cursor = next + 1;
+        ++line_no;
+    }
+
+    // Validate collected records for duplicate/conflict/derive-range semantics.
+    for (const auto &record : out_report.records)
+    {
+        auto seen = first_record_by_key.find(record.key);
+        if (seen != first_record_by_key.end())
+        {
+            const bool same_payload = (seen->second.args == record.args);
+            AppendIssue(out_report,
+                        same_payload ? SFMAnnotationError::DuplicateKey : SFMAnnotationError::ConflictingKey,
+                        record.line,
+                        record.key,
+                        same_payload ? "duplicate annotation directive" : "conflicting annotation directive");
+            continue;
+        }
+        first_record_by_key.emplace(record.key, record);
+
+        if (record.key == "surface_type")
+        {
+            surface_types.insert(ToLowerASCII(record.args[0]));
+            continue;
+        }
+
+        if (record.key == "supports_phase")
+        {
+            for (const auto &phase : record.args)
+                phases.insert(ToLowerASCII(phase));
+            continue;
+        }
+
+        auto &target = (record.key == "optional") ? optional_tokens :
+                       (record.key == "derive") ? derived_tokens : required_tokens;
+
+        const std::string kind = ToLowerASCII(record.args[0]);
+        for (size_t i = 1; i < record.args.size(); ++i)
+        {
+            const std::string token = kind + ":" + ToLowerASCII(record.args[i]);
+            target.insert(token);
+        }
+    }
+
+    for (const auto &token : derived_tokens)
+    {
+        if (required_tokens.find(token) == required_tokens.end()
+         && optional_tokens.find(token) == optional_tokens.end())
+        {
+            AppendIssue(out_report, SFMAnnotationError::DeriveOutOfRange, 0, token,
+                        "derive token is not covered by require/optional");
+        }
+    }
+
+    return !out_report.HasErrors();
 }
 
 bool CollectShaderAutoRequirements(const StaticMaterialDef &base_def,
@@ -363,6 +628,15 @@ bool CollectShaderAutoRequirements(const StaticMaterialDef &base_def,
     {
         return false;
     }
+
+    // Phase2: comment-based SFM annotation pre-scan. This is a no-op for shader
+    // sources that have not yet been annotated, but it gives us the actual entry
+    // point for Week1-2 validation.
+    SFMAnnotationScanReport sfm_report;
+    if (!ParseSFMAnnotationsFromGLSL(prepared_vs, sfm_report, diagnostics))
+        return false;
+    if (!ParseSFMAnnotationsFromGLSL(prepared_fs, sfm_report, diagnostics))
+        return false;
 
     std::vector<ReflectedResource> resources;
     if (!CollectReflectedStageResources(uint32_t(VK_SHADER_STAGE_VERTEX_BIT), prepared_vs, resources, diagnostics))

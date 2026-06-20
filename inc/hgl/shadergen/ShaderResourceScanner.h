@@ -4,9 +4,49 @@
 #include <hgl/mtl/MaterialResourceManifest.h>
 #include <hgl/mtl/MaterialPrunePolicy.h>
 #include <string>
+#include <vector>
 
 namespace hgl::graph::mtl
 {
+    struct SFMAnnotationRecord
+    {
+        std::string key;
+        std::vector<std::string> args;
+        uint32_t line = 0;
+    };
+
+    struct SFMAnnotationIssue
+    {
+        uint32_t error_code = 0;
+        uint32_t line = 0;
+        std::string key;
+        std::string detail;
+    };
+
+    struct SFMAnnotationScanReport
+    {
+        std::vector<SFMAnnotationRecord> records;
+        std::vector<SFMAnnotationIssue> issues;
+
+        bool HasErrors() const noexcept { return !issues.empty(); }
+    };
+
+    /// Parse `@sfm:` annotation lines from GLSL source. The parser is comment-based
+    /// and accepts both `// @sfm:key ...` and lines starting with `@sfm:key ...`.
+    ///
+    /// The parser performs Phase2 checks:
+    /// - key whitelist validation
+    /// - duplicate line detection
+    /// - basic contradictory directive detection
+    /// - derive subset validation against require/optional tokens
+    ///
+    /// Returns true when the source is syntactically valid. Any issues are
+    /// appended to out_report. If diagnostics is non-null, a human-readable
+    /// summary is also appended.
+    bool ParseSFMAnnotationsFromGLSL(const std::string &source,
+                                     SFMAnnotationScanReport &out_report,
+                                     std::string *diagnostics = nullptr) noexcept;
+
     bool CollectShaderAutoRequirements(const StaticMaterialDef &base_def,
                                        const std::string &shader_library_path,
                                        const std::string &vertex_glsl,
