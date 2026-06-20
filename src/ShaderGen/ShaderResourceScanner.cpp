@@ -520,7 +520,7 @@ bool ParseSFMAnnotationsFromGLSL(const std::string &source,
     std::set<std::string> required_tokens;
     std::set<std::string> optional_tokens;
     std::set<std::string> derived_tokens;
-    std::map<std::string, SFMAnnotationRecord> first_record_by_key;
+    std::map<std::string, SFMAnnotationRecord> first_singleton_record_by_key;
 
     size_t cursor = 0;
     uint32_t line_no = 1;
@@ -542,18 +542,25 @@ bool ParseSFMAnnotationsFromGLSL(const std::string &source,
     // Validate collected records for duplicate/conflict/derive-range semantics.
     for (const auto &record : out_report.records)
     {
-        auto seen = first_record_by_key.find(record.key);
-        if (seen != first_record_by_key.end())
+        const bool is_singleton_key = (record.key == "surface_type"
+                                    || record.key == "supports_phase");
+
+        if (is_singleton_key)
         {
-            const bool same_payload = (seen->second.args == record.args);
-            AppendIssue(out_report,
-                        same_payload ? SFMAnnotationError::DuplicateKey : SFMAnnotationError::ConflictingKey,
-                        record.line,
-                        record.key,
-                        same_payload ? "duplicate annotation directive" : "conflicting annotation directive");
-            continue;
+            auto seen = first_singleton_record_by_key.find(record.key);
+            if (seen != first_singleton_record_by_key.end())
+            {
+                const bool same_payload = (seen->second.args == record.args);
+                AppendIssue(out_report,
+                            same_payload ? SFMAnnotationError::DuplicateKey : SFMAnnotationError::ConflictingKey,
+                            record.line,
+                            record.key,
+                            same_payload ? "duplicate annotation directive" : "conflicting annotation directive");
+                continue;
+            }
+
+            first_singleton_record_by_key.emplace(record.key, record);
         }
-        first_record_by_key.emplace(record.key, record);
 
         if (record.key == "surface_type")
         {

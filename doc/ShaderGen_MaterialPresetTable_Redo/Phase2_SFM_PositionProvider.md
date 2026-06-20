@@ -158,3 +158,28 @@
 1. SFM 注解与解析链路稳定可测。
 2. PositionProvider 扩展完成并可回归验证。
 3. 具备进入 Phase 3（Matcher 路由接入）的输入条件。
+
+---
+
+## 11. 当前实现进展（2026-06-21）
+
+已落地：
+
+1. `CompositorAssembler` 已接入 surface 级 SFM 约束检查：
+   - `@sfm:surface_type` 与 `MaterialVariantKey.surface_type` 一致性
+   - `@sfm:supports_phase` 与 `PassType` 对应 phase 一致性
+   - 非法/冲突注解通过 `VT-ERR-SFM-*` 失败返回
+2. 已补首批核心 surface 注解基线：
+   - `billboard_texture_surface.glsl`
+   - `unlit_texture3d_surface.glsl`
+   - `unlit_color3d_surface.glsl`
+   - `standard_surface.glsl`
+   - `sky_minimal_surface.glsl`
+3. 已新增测试：
+   - `CompositorAssemblerSFMConstraintTests.cpp`
+   - `SFMAuditSnapshotTests.cpp`
+
+当前阻塞：
+
+1. 本地 `windows-ninja-debug` 仍受 `ShaderVariableType.h` 既有 constexpr/union 编译问题影响，导致新增测试目标无法在该终端独立构建验收。
+2. 代码级与文件级校验已完成；建议在已知可通过链路执行上述测试目标确认。 

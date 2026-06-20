@@ -4,7 +4,9 @@
 #include <hgl/shadergen/CompositorFeatureFlags.h>
 #include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
+#include <hgl/shadergen/ShaderResourceScanner.h>
 #include <hgl/shadergen/VertexAttribMacroMap.h>
+#include <hgl/shadergen/registry/ErrorCodeRegistry.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/SkyLight.h>
@@ -12,6 +14,7 @@
 #include "BuiltinVariantEntry.h"
 #include <algorithm>
 #include <atomic>
+#include <set>
 #include <cstdio>
 
 namespace
@@ -586,6 +589,133 @@ namespace
         return msg;
     }
 
+    std::string ToLowerASCII(const std::string &text)
+    {
+        std::string out = text;
+        for (char &c : out)
+        {
+            if (c >= 'A' && c <= 'Z')
+                c = static_cast<char>(c - 'A' + 'a');
+        }
+        return out;
+    }
+
+    std::string PassToSFMPhaseToken(const hgl::graph::PassType pass)
+    {
+        using PT = hgl::graph::PassType;
+
+        switch (pass)
+        {
+            case PT::ForwardOpaque:
+            case PT::ForwardMasked:
+            case PT::ForwardTransparent:
+            case PT::ForwardDither:
+            case PT::ForwardA2C:
+                return "forward";
+
+            case PT::ShadowOpaque:
+            case PT::ShadowMasked:
+                return "shadow";
+
+            case PT::EarlyZSolid:
+            case PT::EarlyZMasked:
+                return "earlyz";
+
+            default:
+                return "forward";
+        }
+    }
+
+    bool ValidateSFMConstraints(const std::string &surface_rel,
+                                const std::string &surface_source,
+                                const hgl::graph::SurfaceType expected_surface_type,
+                                const hgl::graph::PassType expected_pass,
+                                std::string &out_error)
+    {
+        out_error.clear();
+
+        hgl::graph::mtl::SFMAnnotationScanReport sfm_report;
+        std::string diagnostics;
+        if (!hgl::graph::mtl::ParseSFMAnnotationsFromGLSL(surface_source, sfm_report, &diagnostics))
+        {
+            out_error = "VT-ERR-SFM-PARSE: surface='";
+            out_error += surface_rel;
+            out_error += "' ";
+
+            if (!sfm_report.issues.empty())
+            {
+                out_error += hgl::graph::mtl::FormatSFMAnnotationError(sfm_report.issues.front().error_code);
+                if (!sfm_report.issues.front().detail.empty())
+                {
+                    out_error += " detail='";
+                    out_error += sfm_report.issues.front().detail;
+                    out_error += "'";
+                }
+            }
+            else
+            {
+                out_error += "ParseSFMAnnotationsFromGLSL returned failure without issue payload.";
+            }
+
+            if (!diagnostics.empty())
+            {
+                out_error += " diagnostics='";
+                out_error += diagnostics;
+                out_error += "'";
+            }
+
+            return false;
+        }
+
+        if (sfm_report.records.empty())
+            return true;
+
+        std::set<std::string> surface_types;
+        std::set<std::string> phase_tokens;
+
+        for (const auto &record : sfm_report.records)
+        {
+            if (record.key == "surface_type" && !record.args.empty())
+                surface_types.insert(ToLowerASCII(record.args[0]));
+
+            if (record.key == "supports_phase")
+            {
+                for (const auto &arg : record.args)
+                    phase_tokens.insert(ToLowerASCII(arg));
+            }
+        }
+
+        if (!surface_types.empty())
+        {
+            const std::string expected_surface = ToLowerASCII(hgl::graph::GetSurfaceTypeName(expected_surface_type));
+            if (surface_types.find(expected_surface) == surface_types.end())
+            {
+                out_error = "VT-ERR-SFM-SURFACE-MISMATCH: surface='";
+                out_error += surface_rel;
+                out_error += "' expected='";
+                out_error += expected_surface;
+                out_error += "'";
+                return false;
+            }
+        }
+
+        if (!phase_tokens.empty())
+        {
+            const std::string expected_phase = PassToSFMPhaseToken(expected_pass);
+            if (phase_tokens.find(expected_phase) == phase_tokens.end())
+            {
+                out_error = "VT-ERR-SFM-PHASE-UNSUPPORTED: surface='";
+                out_error += surface_rel;
+                out_error += "' pass_phase='";
+                out_error += expected_phase;
+                out_error += "'";
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     std::string BuildPreprocessFailureMessage(const char *stage,
                                                       const std::string &template_path,
                                                       const std::string &detail,
@@ -770,6 +900,21 @@ namespace hgl::graph
 
         if (!ValidateBoundRowConsistency(key, desc, out_error))
             return false;
+
+        if (!surface_rel.empty())
+        {
+            std::string surface_source;
+            std::string read_error;
+            if (!ReadFileCached(surface_rel, surface_source, read_error))
+            {
+                out_error = BuildReadFailureMessage(
+                    "SFM", surface_rel, shader_lib_path_ + "/" + surface_rel, read_error);
+                return false;
+            }
+
+            if (!ValidateSFMConstraints(surface_rel, surface_source, key.surface_type, key.pass_hint, out_error))
+                return false;
+        }
 
         const mtl::MaterialVariantRow *resolved_row = ResolveVariantRow(key, desc, row);
         const char *fs_template_path = GetStageTemplatePath(desc.fs_template_path, resolved_row, false);

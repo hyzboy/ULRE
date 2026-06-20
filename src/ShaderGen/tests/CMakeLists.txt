@@ -70,6 +70,39 @@ shadergen_set_test_runtime_dir(PositionProviderRegistryTests)
 
 add_test(NAME PositionProviderRegistryTests COMMAND PositionProviderRegistryTests)
 
+add_executable(CompositorAssemblerPositionKindTests
+    CompositorAssemblerPositionKindTests.cpp
+)
+
+target_link_libraries(CompositorAssemblerPositionKindTests PRIVATE ${ULRE})
+
+set_property(TARGET CompositorAssemblerPositionKindTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(CompositorAssemblerPositionKindTests)
+
+add_test(NAME CompositorAssemblerPositionKindTests COMMAND CompositorAssemblerPositionKindTests)
+
+add_executable(CompositorAssemblerSFMConstraintTests
+    CompositorAssemblerSFMConstraintTests.cpp
+)
+
+target_link_libraries(CompositorAssemblerSFMConstraintTests PRIVATE ${ULRE})
+
+set_property(TARGET CompositorAssemblerSFMConstraintTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(CompositorAssemblerSFMConstraintTests)
+
+add_test(NAME CompositorAssemblerSFMConstraintTests COMMAND CompositorAssemblerSFMConstraintTests)
+
+add_executable(SFMAuditSnapshotTests
+    SFMAuditSnapshotTests.cpp
+)
+
+target_link_libraries(SFMAuditSnapshotTests PRIVATE ${ULRE})
+
+set_property(TARGET SFMAuditSnapshotTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(SFMAuditSnapshotTests)
+
+add_test(NAME SFMAuditSnapshotTests COMMAND SFMAuditSnapshotTests)
+
 # EnumerateRecipeKeysTests exercises EnumerateRecipeKeys() and the new
 # PassExpansion / StaticMaterialDefRegistry / toolchain-version code.
 add_executable(EnumerateRecipeKeysTests

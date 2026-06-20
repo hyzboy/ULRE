@@ -1,6 +1,10 @@
 #ifndef ULRE_SURFACE_UNLIT_COLOR3D_SURFACE_GLSL
 #define ULRE_SURFACE_UNLIT_COLOR3D_SURFACE_GLSL
 
+// @sfm:surface_type unlit
+// @sfm:supports_phase forward shadow
+// @sfm:require ssbo material_instance
+
 #include "common/surface_interface.glsl"
 
 #include "common/ssbo_material_instance.glsl"

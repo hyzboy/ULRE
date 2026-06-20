@@ -1,6 +1,10 @@
 #ifndef ULRE_SURFACE_UNLIT_TEXTURE3D_SURFACE_GLSL
 #define ULRE_SURFACE_UNLIT_TEXTURE3D_SURFACE_GLSL
 
+// @sfm:surface_type unlit
+// @sfm:supports_phase forward shadow
+// @sfm:require texture base_color
+
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
     vec4 texColor = GetSamplerBaseColor(si.uv0);

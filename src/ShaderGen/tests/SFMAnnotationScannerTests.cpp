@@ -85,12 +85,29 @@ static void test_rejects_derive_out_of_range()
     CHECK_TRUE(found);
 }
 
+static void test_accepts_multiple_require_directives()
+{
+    const std::string source =
+        "// @sfm:surface_type standard\n"
+        "// @sfm:supports_phase forward\n"
+        "// @sfm:require texture base_color normal\n"
+        "// @sfm:require ssbo material_instance\n"
+        "// @sfm:require ubo camera sky\n";
+
+    SFMAnnotationScanReport report;
+    std::string diagnostics;
+    CHECK_TRUE(ParseSFMAnnotationsFromGLSL(source, report, &diagnostics));
+    CHECK_TRUE(report.issues.empty());
+    CHECK_EQ(report.records.size(), static_cast<size_t>(5));
+}
+
 int main()
 {
     test_accepts_valid_annotations();
     test_rejects_duplicate_directives();
     test_rejects_unknown_key();
     test_rejects_derive_out_of_range();
+    test_accepts_multiple_require_directives();
 
     if (g_failures > 0)
     {

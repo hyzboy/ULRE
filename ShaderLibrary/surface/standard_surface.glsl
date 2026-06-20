@@ -1,6 +1,12 @@
 #ifndef ULRE_SURFACE_STANDARD_SURFACE_GLSL
 #define ULRE_SURFACE_STANDARD_SURFACE_GLSL
 
+// @sfm:surface_type standard
+// @sfm:supports_phase forward
+// @sfm:require texture base_color normal
+// @sfm:require ssbo material_instance
+// @sfm:require ubo camera sky
+
 #include "common/surface_interface.glsl"
 #include "common/ssbo_material_instance.glsl"
 #include "util/pbr_brdf.glsl"

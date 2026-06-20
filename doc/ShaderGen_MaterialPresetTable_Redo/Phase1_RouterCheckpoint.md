@@ -336,7 +336,20 @@ test_phase1_vt211_complete_phase3_registry_query()
 **立即可执行（优先级 P0）：**
 - ✅ 编写 Phase1 集成测试用例验证 RecipeToKey → RegistryQuery 链路（已实现）
 - ✅ 修复 VKInstance.h 编译障碍并完成测试执行
-- 转入 Phase2 Week2：PositionProvider/CompositorAssembler 下游联动
+- ✅ 转入 Phase2 Week2：PositionProvider/CompositorAssembler 下游联动（代码已接入）
+
+### Phase2 Week2 进展（2026-06-21）
+
+已完成：
+
+1. PositionProvider 新增整数域 provider：`VAB_IVec2` / `VAB_UVec2`（含 GLSL 与注册）。
+2. CompositorAssembler 已将 `VAB_Vec2/VAB_IVec2/VAB_UVec2` 统一映射为 `POSITION_KIND=1`。
+3. 新增测试 `PositionProviderRegistryTests`：验证 provider 注册可见性与 ID 稳定性。
+4. 新增测试 `CompositorAssemblerPositionKindTests`：验证 `DirectVec3=2`、`Vec2/IVec2/UVec2=1`、`PCG_FullscreenTriangle=0`。
+5. 已接入 SFM 约束到 `CompositorAssembler`，并新增 `CompositorAssemblerSFMConstraintTests`。
+6. 已建立首批核心 surface 的 `SFMAuditSnapshotTests` 基线。
+
+说明：当前 `windows-ninja-debug` 终端仍受 `ShaderVariableType.h` 既有全局编译阻塞影响，新增测试在本终端无法独立构建验收；请在已可通过的本地链路执行上述测试目标。
 
 **短期可执行（优先级 P1）：**
 - ✅ 实现并验证 VariantRegistry::InitializeBuiltinVariants
