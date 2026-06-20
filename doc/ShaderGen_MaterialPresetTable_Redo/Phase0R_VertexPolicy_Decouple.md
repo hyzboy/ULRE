@@ -191,3 +191,20 @@
 1. Phase0（Billboard/Quad 退场）依赖本阶段完成。
 2. Phase1~Phase3 可直接复用新策略轴，减少 matcher 维度耦合。
 3. Phase4（Key/Geometry 清理）将更容易移除 GeometryMode 的运行时关键地位。
+
+---
+
+## 10. 执行状态快照（2026-06-20）
+
+1. 已完成（Day 1）：
+   - 四轴枚举与 recipe 字段接入。
+   - Quad/Billboard 旧入口桥接四轴。
+   - `RecipeToKey` 增加 Phase0R 策略解析/校验 API 与最小 VT 测试。
+   - `MaterialRecipeStore` 内容哈希覆盖四轴字段。
+2. 已通过验证：
+   - `RecipeToKeyTest`、`MaterialRecipeStoreTests`、`01_Billboard`。
+3. 遗留收尾项：
+   - billboard size 仍存在固定常量路径，尚未完成 SizePolicy 的资源化消费。
+   - `VT-103/VT-104`（Camera/Viewport 缺失资源）尚未形成完整运行时校验闭环。
+4. 阶段关系决议：
+   - 允许进入 Phase2 主线实施；Phase0R 遗留项以并行收尾任务持续跟踪，禁止在未闭环前触发 Phase0 删除动作。

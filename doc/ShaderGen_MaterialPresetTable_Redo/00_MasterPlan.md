@@ -76,6 +76,21 @@
 
 ---
 
+### 5.1 当前执行状态（2026-06-20）
+
+1. Day 1（Phase0R 骨架）已完成并通过窄验证：
+   - 四轴类型与 recipe 字段接入（`VertexSourcePolicy/GeometryLiftPolicy/OrientationPolicy/SizePolicy`）。
+   - Quad/Billboard 旧入口完成四轴桥接映射（保持旧 `vertex_policy` 行为）。
+   - `RecipeToKey` 增加 Phase0R 策略解析与本地校验 API，补齐最小 VT 用例。
+   - `MaterialRecipeStore` 内容哈希已覆盖四轴字段，避免策略差异被误去重。
+2. 本阶段验证结果：`RecipeToKeyTest`、`MaterialRecipeStoreTests`、`01_Billboard` 均已通过。
+3. 已知遗留项（不阻塞进入 Phase2）：
+   - billboard 顶点着色器仍存在固定像素尺寸常量路径（未完成 SizePolicy 资源化消费）。
+   - 当前链路尚未为 billboard size 提供专用 UBO/SSBO 数据源。
+4. 阶段切换决议：即刻进入 Phase2（SFM 与 PositionProvider），同时将上述遗留项作为并行跟踪项保留在 Phase0R 收尾列表中。
+
+---
+
 ## 6. 全阶段统一术语与契约
 
 ### 6.1 核心对象

@@ -11,6 +11,15 @@
 3. PositionProvider 扩展（含整数域 provider）可用。
 4. lint/self-check 可阻断明显错误配置。
 
+### 1.1 启动条件与当前状态（2026-06-20）
+
+1. 进入条件已满足：
+   - Phase0R Day 1 骨架已完成（四轴类型、桥接、最小 VT 测试与日志接入）。
+   - `RecipeToKeyTest`、`MaterialRecipeStoreTests`、`01_Billboard` 已通过。
+2. 本阶段输入边界：
+   - 本阶段聚焦 SFM/Provider 的“需求可描述 + 可校验”。
+   - billboard size 资源化（UBO/SSBO）仍属 Phase0R 收尾并行项，不在本阶段主线内做结构性改造。
+
 ---
 
 ## 2. 范围定义
@@ -102,6 +111,17 @@
 4. 为 PositionProvider 新增项补 manifest 与实现。
 5. 建立 SFM 审计快照测试。
 6. 跑示例回归并核验日志。
+
+### 6.1 首批执行清单（Week 1）
+
+1. 建立 SFM 键名白名单与错误码表（`require/optional/derive/supports_phase/surface_type`）。
+2. 在 `ShaderRequirementSet` 中实现冲突检测（重复声明、矛盾声明、derive 越界）。
+3. 选取核心 surface 子集补注解（先覆盖 billboard/unlit/standard 最常用路径）。
+4. 为 PositionProvider 增加整数域样例并补齐 manifest/解析/模板三处一致性。
+5. 增加两类测试：
+   - 正向：注解完整时 requirement 集合稳定。
+   - 负向：缺失/冲突时返回 `VT-ERR-*` 且给出冲突键名。
+6. 输出第一版 SFM 审计快照，作为进入 Phase3 前的基线样本。
 
 ---
 
