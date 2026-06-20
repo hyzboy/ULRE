@@ -10,6 +10,8 @@ namespace hgl::graph
         //  id                             glsl_path                                                              vab  ssbo   ubo    samp
         { Id::DirectVec3,             "",                                                                          1, false, false, false },
         { Id::VAB_Vec2,               "ShaderLibrary/position_provider/vab_vec2.glsl",                            1, false, false, false },
+        { Id::VAB_IVec2,              "ShaderLibrary/position_provider/vab_ivec2.glsl",                           1, false, false, false },
+        { Id::VAB_UVec2,              "ShaderLibrary/position_provider/vab_uvec2.glsl",                           1, false, false, false },
         { Id::PCG_FullscreenTriangle, "ShaderLibrary/position_provider/pcg_fullscreen_triangle.glsl",             0, false, false, false },
         { Id::SSBO_PackedVec3,        "ShaderLibrary/position_provider/ssbo_packed.glsl",                         0, true,  false, false },
         { Id::TerrainGrid,            "ShaderLibrary/position_provider/terrain_grid.glsl",                        0, false, true,  true  },

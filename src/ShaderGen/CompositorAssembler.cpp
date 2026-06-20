@@ -146,7 +146,12 @@ namespace
         EmitEnabledVertexAttribDefines(writer, f);
 
         // Map PositionProviderId -> GLSL POSITION_KIND (0=None/procedural, 1=Vec2, 2=Vec3)
-        const int pos_kind = (f.position_provider == hgl::graph::PositionProviderId::VAB_Vec2) ? 1
+        const bool is_vec2_provider =
+            (f.position_provider == hgl::graph::PositionProviderId::VAB_Vec2)
+         || (f.position_provider == hgl::graph::PositionProviderId::VAB_IVec2)
+         || (f.position_provider == hgl::graph::PositionProviderId::VAB_UVec2);
+
+        const int pos_kind = is_vec2_provider ? 1
                            : (f.position_provider == hgl::graph::PositionProviderId::PCG_FullscreenTriangle) ? 0
                            : 2; // DirectVec3, SSBO_PackedVec3, etc.
         writer.EmitDefine("POSITION_KIND", std::to_string(pos_kind).c_str());

@@ -59,6 +59,17 @@ shadergen_set_test_runtime_dir(VariantRegistryTests)
 
 add_test(NAME VariantRegistryTests COMMAND VariantRegistryTests)
 
+add_executable(PositionProviderRegistryTests
+    PositionProviderRegistryTests.cpp
+)
+
+target_link_libraries(PositionProviderRegistryTests PRIVATE ${ULRE})
+
+set_property(TARGET PositionProviderRegistryTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(PositionProviderRegistryTests)
+
+add_test(NAME PositionProviderRegistryTests COMMAND PositionProviderRegistryTests)
+
 # EnumerateRecipeKeysTests exercises EnumerateRecipeKeys() and the new
 # PassExpansion / StaticMaterialDefRegistry / toolchain-version code.
 add_executable(EnumerateRecipeKeysTests
