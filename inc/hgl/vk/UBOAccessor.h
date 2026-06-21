@@ -228,7 +228,7 @@ public:
         if(this != &other)
         {
             UnmapInternal();
-            SetBuffer(nullptr, false);
+            SetBuffer(nullptr);
 
             MoveFrom(std::move(other));
             mapped_data = other.mapped_data;

@@ -169,12 +169,9 @@
    - `@sfm:surface_type` 与 `MaterialVariantKey.surface_type` 一致性
    - `@sfm:supports_phase` 与 `PassType` 对应 phase 一致性
    - 非法/冲突注解通过 `VT-ERR-SFM-*` 失败返回
-2. 已补首批核心 surface 注解基线：
-   - `billboard_texture_surface.glsl`
-   - `unlit_texture3d_surface.glsl`
-   - `unlit_color3d_surface.glsl`
-   - `standard_surface.glsl`
-   - `sky_minimal_surface.glsl`
+2. 已补全 `ShaderLibrary/surface/**/*.glsl` 的 SFM 注解覆盖（14/14）：
+   - 3D/Unlit/Standard/Sky/Terrain/Gizmo/ErrorIndicator
+   - 2D（`puretexture2d` / `text2d`）
 3. 已新增测试：
    - `CompositorAssemblerSFMConstraintTests.cpp`
    - `SFMAuditSnapshotTests.cpp`

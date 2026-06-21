@@ -206,7 +206,7 @@ namespace
 
 namespace hgl::ecs
 {
-    static void EnsureCoreEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt)
+    void EnsureCoreEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt)
     {
         auto *rc = ctx->GetRenderContext();
 

@@ -25,6 +25,14 @@ using SVBaseType=ShaderVariableBaseType;
 
 #pragma pack(push,1)
 
+// Sub-type structs for ShaderVariableType union members
+// Declared outside the anonymous union to satisfy GCC strict conformance
+struct SVScalarData    { VABaseType type; };
+struct SVVectorData    { VABaseType type; uint8 vec_size; };
+struct SVMatrixData    { VABaseType type; uint8 n; uint8 m; };
+struct SVSamplerData   { SamplerType type; };
+struct SVImageData     { ShaderImageType type; };
+
 struct ShaderVariableType
 {
     union
@@ -39,33 +47,11 @@ struct ShaderVariableType
 
                     union
                     {
-                        struct Scalar
-                        {
-                            VABaseType type;
-                        }scalar;
-
-                        struct Vector
-                        {
-                            VABaseType type;
-                            uint8 vec_size;
-                        }vector;
-
-                        struct Matrix
-                        {
-                            VABaseType type;
-                            uint8 n;
-                            uint8 m;
-                        }matrix;
-
-                        struct Sampler
-                        {
-                            SamplerType type;
-                        }sampler;
-
-                        struct Image
-                        {
-                            ShaderImageType type;
-                        }image;
+                        SVScalarData  scalar;
+                        SVVectorData  vector;
+                        SVMatrixData  matrix;
+                        SVSamplerData sampler;
+                        SVImageData   image;
                     };
                 };
 
@@ -108,6 +94,7 @@ public:
 
     const bool From(const VAType &vat, const uint16 count = 1);
 };//struct ShaderVariableType
+
 #pragma pack(pop)
 
 using SVType=ShaderVariableType;
@@ -115,51 +102,79 @@ using SVType=ShaderVariableType;
 // ? 工厂函数命名空间
 namespace SVTypeFactory
 {
+    // Helper functions to build type_code directly for constexpr evaluation
+    // Format: [base_type:8bit | extra_data:24bit]
+    constexpr uint32 BuildScalarCode(VABaseType type)
+    {
+        return (static_cast<uint32>(SVBaseType::Scalar) & 0xFF) | 
+               ((static_cast<uint32>(type) & 0xFF) << 8);
+    }
+
+    constexpr uint32 BuildVectorCode(VABaseType type, uint8 size)
+    {
+        return (static_cast<uint32>(SVBaseType::Vector) & 0xFF) |
+               ((static_cast<uint32>(type) & 0xFF) << 8) |
+               ((static_cast<uint32>(size) & 0xFF) << 16);
+    }
+
+    constexpr uint32 BuildMatrixCode(VABaseType type, uint8 rows, uint8 cols)
+    {
+        return (static_cast<uint32>(SVBaseType::Matrix) & 0xFF) |
+               ((static_cast<uint32>(type) & 0xFF) << 8) |
+               ((static_cast<uint32>(cols) & 0xFF) << 16) |
+               ((static_cast<uint32>(rows) & 0xFF) << 24);
+    }
+
+    constexpr uint32 BuildSamplerCode(SamplerType type)
+    {
+        return (static_cast<uint32>(SVBaseType::Sampler) & 0xFF) |
+               ((static_cast<uint32>(type) & 0xFF) << 8);
+    }
+
+    constexpr uint32 BuildImageCode(ShaderImageType type)
+    {
+        return (static_cast<uint32>(SVBaseType::Image) & 0xFF) |
+               ((static_cast<uint32>(type) & 0xFF) << 8);
+    }
+
     constexpr ShaderVariableType Scalar(VABaseType type, uint32 count = 1)
     {
         ShaderVariableType svt{};
-        svt.base_type = SVBaseType::Scalar;
-        svt.scalar.type = type;
-        svt.array_size = count;
+        // Build svt_code directly: [type_code:32bit | array_size:32bit]
+        svt.svt_code = (static_cast<uint64>(BuildScalarCode(type)) & 0xFFFFFFFFULL) |
+                       ((static_cast<uint64>(count) & 0xFFFFFFFFULL) << 32);
         return svt;
     }
 
     constexpr ShaderVariableType Vector(VABaseType type, uint8 size, uint32 count = 1)
     {
         ShaderVariableType svt{};
-        svt.base_type = SVBaseType::Vector;
-        svt.vector.type = type;
-        svt.vector.vec_size = size;
-        svt.array_size = count;
+        svt.svt_code = (static_cast<uint64>(BuildVectorCode(type, size)) & 0xFFFFFFFFULL) |
+                       ((static_cast<uint64>(count) & 0xFFFFFFFFULL) << 32);
         return svt;
     }
 
     constexpr ShaderVariableType Matrix(VABaseType type, uint8 rows, uint8 cols, uint32 count = 1)
     {
         ShaderVariableType svt{};
-        svt.base_type = SVBaseType::Matrix;
-        svt.matrix.type = type;
-        svt.matrix.m = rows;
-        svt.matrix.n = cols;
-        svt.array_size = count;
+        svt.svt_code = (static_cast<uint64>(BuildMatrixCode(type, rows, cols)) & 0xFFFFFFFFULL) |
+                       ((static_cast<uint64>(count) & 0xFFFFFFFFULL) << 32);
         return svt;
     }
 
     constexpr ShaderVariableType Sampler(SamplerType type, uint32 count = 1)
     {
         ShaderVariableType svt{};
-        svt.base_type = SVBaseType::Sampler;
-        svt.sampler.type = type;
-        svt.array_size = count;
+        svt.svt_code = (static_cast<uint64>(BuildSamplerCode(type)) & 0xFFFFFFFFULL) |
+                       ((static_cast<uint64>(count) & 0xFFFFFFFFULL) << 32);
         return svt;
     }
 
     constexpr ShaderVariableType Image(ShaderImageType type, uint32 count = 1)
     {
         ShaderVariableType svt{};
-        svt.base_type = SVBaseType::Image;
-        svt.image.type = type;
-        svt.array_size = count;
+        svt.svt_code = (static_cast<uint64>(BuildImageCode(type)) & 0xFFFFFFFFULL) |
+                       ((static_cast<uint64>(count) & 0xFFFFFFFFULL) << 32);
         return svt;
     }
 }
