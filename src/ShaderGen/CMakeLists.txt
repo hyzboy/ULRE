@@ -193,6 +193,7 @@ SOURCE_GROUP("Position Provider" FILES ${POSITION_PROVIDER_FILES})
 
 # Shader Library
 SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
+                            MaterialPresetTable.cpp
                             MaterialFactory3D.cpp
                             MaterialFactory3DRegistration.h
                             MaterialSpecValidator.cpp
@@ -205,10 +206,13 @@ SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             registry/SurfaceFragmentTemplates.cpp
                             registry/PipelineStateRows.cpp
                             ${STD_MTL_HEADER_PATH}/MaterialLibrary.h
+                            ${STD_MTL_HEADER_PATH}/MaterialPresetTable.h
+                            ${STD_MTL_HEADER_PATH}/RenderPhase.h
                             ${STD_MTL_HEADER_PATH}/MaterialSpec.h
                             ${STD_MTL_HEADER_PATH}/MaterialPreset.h
                             ${STD_MTL_HEADER_PATH}/MaterialVariantDesc.h
                             ${STD_MTL_HEADER_PATH}/MaterialVariantRegistry.h
+                            ${SHADERGEN_INCLUDE_PATH}/MatchedShaderSet.h
                             ${MTL_TYPE_INCLUDE_PATH}/VertexProgramTemplate.h
                             ${MTL_TYPE_INCLUDE_PATH}/SurfaceFragmentTemplate.h
                             ${MTL_TYPE_INCLUDE_PATH}/PipelineStateRow.h

@@ -148,3 +148,42 @@
 2. MatchedShaderSet 在材质创建链生效。
 3. fallback 契约被测试和日志双重证明。
 4. 允许进入 Phase 4。
+
+---
+
+## 12. 当前执行状态（2026-06-21）
+
+### 12.1 完成度基线
+
+1. Phase3 前置条件：100%（Phase2 已验收）。
+2. Phase3 代码落地：20%（`RenderPhase/MaterialPresetTable/MatchedShaderSet` 骨架已进入代码主线并编译通过）。
+3. Phase3 测试落地：0%（尚无 Phase3 专项单测/集成验证）。
+4. Phase3 门禁状态：进行中（已完成首批结构落地，待 Matcher 主路由接入）。
+
+### 12.2 首批执行清单（Week 1）
+
+1. 新增最小可运行数据结构：
+   - `RenderPhase`（Matcher 决策输入）。
+   - `MaterialPresetTable`（按 `preset,quality,phase` 给候选行）。
+   - `MatchedShaderSet`（命中输出结构）。
+   - 状态：已完成（2026-06-21）。
+2. 实现 `Matcher::Resolve(...)` 最小闭环：
+   - 先 phase 过滤，再 requirement 包含判断。
+   - 返回命中候选或显式 fallback。
+3. 接入 ProgramManager cache miss 主路径：
+   - 调用 Matcher 并记录最终采用路径来源。
+4. 接入 MaterialLibrary 创建桥：
+   - create info 优先使用 `matched.surface_path`。
+5. 增加日志最小门禁：
+   - `MT-MATCH-*`（候选筛选/失败原因）。
+   - `MT-FALLBACK-*`（fallback 原因与类型）。
+6. 增加最小测试：
+   - PresetTable 查询行为。
+   - Matcher require 集合判断。
+   - 禁止跨 preset fallback。
+
+### 12.3 本阶段退出条件
+
+1. 运行期日志可证明 Matcher 已成为主路径。
+2. fallback 仅在同 preset 候选集合内发生。
+3. 核心示例与测试通过，且可一键回滚到旧路径开关。
