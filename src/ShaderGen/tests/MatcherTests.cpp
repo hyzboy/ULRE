@@ -102,12 +102,70 @@ static void test_matcher_fallback_on_missing_requirement()
     const auto result = Matcher::Resolve(req);
     CHECK_TRUE(!result.matched);
     CHECK_TRUE(result.used_fallback);
+    CHECK_TRUE(result.failure_reason != nullptr);
+    CHECK_TRUE(std::string(result.failure_reason) == "MT-FALLBACK-NO-MATCH");
+}
+
+static void test_matcher_fallback_without_preset_table()
+{
+    MatcherResolveRequest req;
+    req.preset_table = nullptr;
+    req.shader_library_path = "ignored";
+    req.preset = MaterialPreset::VertexColor3D;
+
+    const auto result = Matcher::Resolve(req);
+    CHECK_TRUE(!result.matched);
+    CHECK_TRUE(result.used_fallback);
+    CHECK_TRUE(result.failure_reason != nullptr);
+    CHECK_TRUE(std::string(result.failure_reason) == "MT-FALLBACK-NO-PRESET-TABLE");
+}
+
+static void test_matcher_fallback_without_shader_library_path()
+{
+    MaterialPresetTable table;
+    MaterialPresetCandidate candidate;
+    candidate.surface_path = "surface/unused.glsl";
+    candidate.quality_level = MaterialLOD::Base;
+    candidate.render_phase = RenderPhase::Forward;
+    CHECK_TRUE(table.AddCandidate(MaterialPreset::VertexColor3D, candidate));
+
+    MatcherResolveRequest req;
+    req.preset_table = &table;
+    req.shader_library_path = nullptr;
+    req.preset = MaterialPreset::VertexColor3D;
+
+    const auto result = Matcher::Resolve(req);
+    CHECK_TRUE(!result.matched);
+    CHECK_TRUE(result.used_fallback);
+    CHECK_TRUE(result.failure_reason != nullptr);
+    CHECK_TRUE(std::string(result.failure_reason) == "MT-FALLBACK-NO-SHADER-LIB");
+}
+
+static void test_matcher_fallback_when_no_candidate()
+{
+    MaterialPresetTable table;
+
+    MatcherResolveRequest req;
+    req.preset_table = &table;
+    req.shader_library_path = "ignored";
+    req.preset = MaterialPreset::VertexColor3D;
+    req.phase = RenderPhase::Forward;
+    req.requested_quality = MaterialLOD::Base;
+
+    const auto result = Matcher::Resolve(req);
+    CHECK_TRUE(!result.matched);
+    CHECK_TRUE(result.used_fallback);
+    CHECK_TRUE(result.failure_reason != nullptr);
+    CHECK_TRUE(std::string(result.failure_reason) == "MT-FALLBACK-NO-CANDIDATE");
 }
 
 int main()
 {
     test_matcher_hits_supported_candidate();
     test_matcher_fallback_on_missing_requirement();
+    test_matcher_fallback_without_preset_table();
+    test_matcher_fallback_without_shader_library_path();
+    test_matcher_fallback_when_no_candidate();
 
     if (g_failures > 0)
     {
