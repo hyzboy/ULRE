@@ -173,7 +173,14 @@ add_executable(MatcherTests
     MatcherTests.cpp
 )
 
-target_link_libraries(MatcherTests PRIVATE ${ULRE})
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_libraries(MatcherTests PRIVATE
+        "-Wl,--start-group"
+        ${ULRE}
+        "-Wl,--end-group")
+else()
+    target_link_libraries(MatcherTests PRIVATE ${ULRE})
+endif()
 
 set_property(TARGET MatcherTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
 shadergen_set_test_runtime_dir(MatcherTests)
