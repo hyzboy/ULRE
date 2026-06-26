@@ -100,6 +100,23 @@ static void CollectMatcherCapabilities(const MaterialVariantKey &key,
     }
 }
 
+static const char *RenderPhaseName(const RenderPhase phase) noexcept
+{
+    switch (phase)
+    {
+    case RenderPhase::Shadow: return "shadow";
+    case RenderPhase::EarlyZ: return "earlyz";
+    default: return "forward";
+    }
+}
+
+static const char *SafeMatcherFailureReason(const MatchedShaderSet &matched) noexcept
+{
+    return (matched.failure_reason && matched.failure_reason[0])
+        ? matched.failure_reason
+        : "MT-FALLBACK-UNKNOWN";
+}
+
 static bool StageFeaturesDeclareAnyVertexAttrib(const ShaderStageFeatureDesc &features) noexcept
 {
     for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
@@ -1046,7 +1063,14 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     const MaterialPreset matcher_preset = lookup_opts.preferred_factory_type.value_or(MaterialPreset::Checkerboard3D);
     const MaterialPresetTable *matcher_table = ResolveMatcherPresetTable();
 
-    if (variant_desc && matcher_table && !matcher_table->Empty())
+    if (variant_desc && (!matcher_table || matcher_table->Empty()))
+    {
+        std::fprintf(stderr,
+            "[MT-ROUTE-BYPASS] preset=%u reason=%s\n",
+            static_cast<unsigned>(matcher_preset),
+            matcher_table ? "MT-BYPASS-EMPTY-PRESET-TABLE" : "MT-BYPASS-NO-PRESET-TABLE");
+    }
+    else if (variant_desc && matcher_table)
     {
         std::string shader_library_path = GetShaderLibraryPath();
 
@@ -1069,18 +1093,19 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             variant_desc = &matcher_desc;
 
             std::fprintf(stderr,
-                "[MaterialLibrary] matcher override hit: preset=%u variant=%s surface=%s phase=%u\n",
+                "[MT-ROUTE-HIT] preset=%u phase=%s variant=%s surface=%s\n",
                 static_cast<unsigned>(matcher_preset),
+                RenderPhaseName(request.phase),
                 variant_desc->variant_name.c_str(),
-                matcher_desc.surface_function_path.c_str(),
-                static_cast<unsigned>(request.phase));
+                matcher_desc.surface_function_path.c_str());
         }
-        else if (matched.used_fallback)
+        else
         {
             std::fprintf(stderr,
-                "[MaterialLibrary] matcher fallback: preset=%u reason=%s\n",
+                "[MT-ROUTE-FALLBACK] preset=%u phase=%s reason=%s\n",
                 static_cast<unsigned>(matcher_preset),
-                matched.failure_reason ? matched.failure_reason : "<unknown>");
+                RenderPhaseName(request.phase),
+                SafeMatcherFailureReason(matched));
         }
     }
 
