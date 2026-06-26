@@ -156,9 +156,9 @@
 ### 12.1 完成度基线
 
 1. Phase3 前置条件：100%（Phase2 已验收）。
-2. Phase3 代码落地：20%（`RenderPhase/MaterialPresetTable/MatchedShaderSet` 骨架已进入代码主线并编译通过）。
-3. Phase3 测试落地：0%（尚无 Phase3 专项单测/集成验证）。
-4. Phase3 门禁状态：进行中（已完成首批结构落地，待 Matcher 主路由接入）。
+2. Phase3 代码落地：40%（`RenderPhase/MaterialPresetTable/MatchedShaderSet/Matcher` 骨架已进入代码主线并通过 `ULRE.ShaderGen` 编译验证）。
+3. Phase3 测试落地：10%（已新增 `MatcherTests` 基础用例；当前受 windows-ninja-debug 既有链接链路问题影响，目标可编译但整链路暂不可链接运行）。
+4. Phase3 门禁状态：进行中（已完成首批结构 + 最小匹配闭环，待 ProgramManager/MaterialLibrary 主路径接入）。
 
 ### 12.2 首批执行清单（Week 1）
 
@@ -170,6 +170,7 @@
 2. 实现 `Matcher::Resolve(...)` 最小闭环：
    - 先 phase 过滤，再 requirement 包含判断。
    - 返回命中候选或显式 fallback。
+   - 状态：已完成（2026-06-21）。
 3. 接入 ProgramManager cache miss 主路径：
    - 调用 Matcher 并记录最终采用路径来源。
 4. 接入 MaterialLibrary 创建桥：
@@ -181,6 +182,7 @@
    - PresetTable 查询行为。
    - Matcher require 集合判断。
    - 禁止跨 preset fallback。
+   - 状态：进行中（已新增 `MatcherTests`，待链接链路恢复后纳入门禁执行）。
 
 ### 12.3 本阶段退出条件
 

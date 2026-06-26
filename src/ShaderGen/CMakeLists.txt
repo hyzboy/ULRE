@@ -194,6 +194,7 @@ SOURCE_GROUP("Position Provider" FILES ${POSITION_PROVIDER_FILES})
 # Shader Library
 SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             MaterialPresetTable.cpp
+                            Matcher.cpp
                             MaterialFactory3D.cpp
                             MaterialFactory3DRegistration.h
                             MaterialSpecValidator.cpp
@@ -208,6 +209,7 @@ SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
                             ${STD_MTL_HEADER_PATH}/MaterialLibrary.h
                             ${STD_MTL_HEADER_PATH}/MaterialPresetTable.h
                             ${STD_MTL_HEADER_PATH}/RenderPhase.h
+                            ${SHADERGEN_INCLUDE_PATH}/Matcher.h
                             ${STD_MTL_HEADER_PATH}/MaterialSpec.h
                             ${STD_MTL_HEADER_PATH}/MaterialPreset.h
                             ${STD_MTL_HEADER_PATH}/MaterialVariantDesc.h

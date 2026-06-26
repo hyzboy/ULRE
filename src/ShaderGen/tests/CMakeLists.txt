@@ -166,3 +166,16 @@ set_property(TARGET ShaderBuildPipelineSmokeTests PROPERTY FOLDER "ULRE/Tests/Sh
 shadergen_set_test_runtime_dir(ShaderBuildPipelineSmokeTests)
 
 add_test(NAME ShaderBuildPipelineSmokeTests COMMAND ShaderBuildPipelineSmokeTests)
+
+# MatcherTests validates the Phase3 minimal matcher loop:
+# candidate query -> SFM gate checks -> hit/fallback result.
+add_executable(MatcherTests
+    MatcherTests.cpp
+)
+
+target_link_libraries(MatcherTests PRIVATE ${ULRE})
+
+set_property(TARGET MatcherTests PROPERTY FOLDER "ULRE/Tests/ShaderGen")
+shadergen_set_test_runtime_dir(MatcherTests)
+
+add_test(NAME MatcherTests COMMAND MatcherTests)

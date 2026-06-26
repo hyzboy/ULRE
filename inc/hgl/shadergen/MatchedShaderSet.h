@@ -8,16 +8,16 @@
 #include <hgl/mtl/MaterialVariantRow.h>
 #include <hgl/common/PositionProvider.h>
 
-namespace hgl::graph
+namespace hgl::graph::mtl
 {
     struct MatchedShaderSet
     {
         bool matched = false;
         bool used_fallback = false;
 
-        mtl::MaterialPreset preset = mtl::MaterialPreset::Checkerboard3D;
-        mtl::MaterialLOD    quality_level = mtl::MaterialLOD::Base;
-        mtl::RenderPhase    render_phase = mtl::RenderPhase::Forward;
+        MaterialPreset preset = MaterialPreset::Checkerboard3D;
+        MaterialLOD    quality_level = MaterialLOD::Base;
+        RenderPhase    render_phase = RenderPhase::Forward;
 
         const char *surface_path = nullptr;
 
