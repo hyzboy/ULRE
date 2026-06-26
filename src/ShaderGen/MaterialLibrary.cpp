@@ -6,6 +6,7 @@
 #include<hgl/mtl/MaterialPrunePolicy.h>
 #include<hgl/mtl/RecipeToKey.h>
 #include<hgl/shadergen/ShaderLibraryPath.h>
+#include<hgl/shadergen/Matcher.h>
 #include<hgl/shadergen/device/DeviceProfile.h>
 #include<hgl/shadergen/MaterialFactory3D.h>
 #include<hgl/shadergen/RegistryQuery.h>
@@ -13,11 +14,91 @@
 #include<atomic>
 #include<cstring>
 #include<cstdio>
+#include<algorithm>
+#include<string>
 #include "BuiltinVariantEntry.h"
 
 namespace hgl::graph::mtl{
 
 namespace {
+
+const MaterialPresetTable *g_external_preset_table = nullptr;
+MaterialPresetTable g_builtin_preset_table;
+std::atomic_bool g_builtin_preset_table_initialized{false};
+
+static std::string ToLowerASCII(std::string text)
+{
+    std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c)
+    {
+        if (c >= 'A' && c <= 'Z')
+            return static_cast<char>(c - 'A' + 'a');
+        return static_cast<char>(c);
+    });
+    return text;
+}
+
+static void EnsureBuiltinMatcherPresetTableInitialized()
+{
+    if (g_builtin_preset_table_initialized.load(std::memory_order_acquire))
+        return;
+
+    MaterialPresetTable table;
+
+    for (size_t i = 0; i < kBuiltinVariantsCount; ++i)
+    {
+        const auto &entry = kBuiltinVariants[i];
+
+        if (!entry.surface_path || !entry.surface_path[0])
+            continue;
+
+        MaterialPresetCandidate candidate{};
+        candidate.surface_path = entry.surface_path;
+        candidate.quality_level = MaterialLOD::Base;
+        candidate.render_phase = ToRenderPhase(entry.pass);
+        candidate.has_pass_override = true;
+        candidate.pass_override = entry.pass;
+
+        table.AddCandidate(entry.preset, candidate);
+    }
+
+    g_builtin_preset_table = std::move(table);
+    g_builtin_preset_table_initialized.store(true, std::memory_order_release);
+}
+
+static const MaterialPresetTable *ResolveMatcherPresetTable() noexcept
+{
+    if (g_external_preset_table)
+        return g_external_preset_table;
+
+    EnsureBuiltinMatcherPresetTableInitialized();
+    return &g_builtin_preset_table;
+}
+
+static void CollectMatcherCapabilities(const MaterialVariantKey &key,
+                                       MatcherCapabilities &caps)
+{
+    for (size_t i = 0; i < static_cast<size_t>(VertexAttrib::RANGE_SIZE); ++i)
+    {
+        const VertexAttrib attrib = static_cast<VertexAttrib>(i);
+        if ((key.vertex_attribute_feature_bits & VertexAttribFeatureBit(attrib)) == 0)
+            continue;
+
+        const char *name = GetVertexAttribName(attrib);
+        if (name && name[0])
+            caps.vertex_attribs.insert(ToLowerASCII(name));
+    }
+
+    for (size_t i = 0; i < SamplerSlotCount; ++i)
+    {
+        const SamplerSlot slot = static_cast<SamplerSlot>(i);
+        if (key.GetTextureSourceMode(slot) == TextureSourceMode::None)
+            continue;
+
+        const char *slot_name = SamplerSlotNameList[i];
+        if (slot_name && slot_name[0])
+            caps.textures.insert(ToLowerASCII(slot_name));
+    }
+}
 
 static bool StageFeaturesDeclareAnyVertexAttrib(const ShaderStageFeatureDesc &features) noexcept
 {
@@ -511,6 +592,21 @@ static void NormalizeBuiltinPresetTextureOverrides(const MaterialPreset preset,
 
 }
 
+void SetGlobalMaterialPresetTable(const MaterialPresetTable *table) noexcept
+{
+    g_external_preset_table = table;
+}
+
+const MaterialPresetTable *GetGlobalMaterialPresetTable() noexcept
+{
+    return g_external_preset_table;
+}
+
+void ResetGlobalMaterialPresetTableToBuiltinDefaults() noexcept
+{
+    g_external_preset_table = nullptr;
+}
+
 MaterialLOD GetDefaultMaterialLOD()
 {
     // Temporary bootstrap fallback: current runtime only exposes one built-in material
@@ -944,6 +1040,48 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         }
 
         return nullptr;
+    }
+
+    MaterialVariantDesc matcher_desc{};
+    const MaterialPreset matcher_preset = lookup_opts.preferred_factory_type.value_or(MaterialPreset::Checkerboard3D);
+    const MaterialPresetTable *matcher_table = ResolveMatcherPresetTable();
+
+    if (variant_desc && matcher_table && !matcher_table->Empty())
+    {
+        std::string shader_library_path = GetShaderLibraryPath();
+
+        MatcherResolveRequest request{};
+        request.preset_table = matcher_table;
+        request.shader_library_path = shader_library_path.c_str();
+        request.preset = matcher_preset;
+        request.requested_quality = GetDefaultMaterialLOD();
+        request.phase = ToRenderPhase(key.pass_hint);
+        request.surface_type = key.surface_type;
+
+        CollectMatcherCapabilities(key, request.capabilities);
+
+        const MatchedShaderSet matched = Matcher::Resolve(request);
+        if (matched.IsValid())
+        {
+            matcher_desc = *variant_desc;
+            matcher_desc.variant_name += ".Matched";
+            matcher_desc.surface_function_path = matched.surface_path;
+            variant_desc = &matcher_desc;
+
+            std::fprintf(stderr,
+                "[MaterialLibrary] matcher override hit: preset=%u variant=%s surface=%s phase=%u\n",
+                static_cast<unsigned>(matcher_preset),
+                variant_desc->variant_name.c_str(),
+                matcher_desc.surface_function_path.c_str(),
+                static_cast<unsigned>(request.phase));
+        }
+        else if (matched.used_fallback)
+        {
+            std::fprintf(stderr,
+                "[MaterialLibrary] matcher fallback: preset=%u reason=%s\n",
+                static_cast<unsigned>(matcher_preset),
+                matched.failure_reason ? matched.failure_reason : "<unknown>");
+        }
     }
 
     std::fprintf(stderr,

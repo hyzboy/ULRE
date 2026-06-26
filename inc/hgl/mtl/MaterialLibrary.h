@@ -15,6 +15,7 @@ namespace hgl::graph::mtl{
 struct MaterialCreateConfig;
 class MaterialCreateInfo;
 struct MaterialVariantRow;
+class MaterialPresetTable;
 
 // Semantic entry path: MaterialPreset is authoring/content intent. The library resolves it through
 // runtime material LOD and then maps it to a concrete MaterialVariantKey / shading implementation.
@@ -62,6 +63,12 @@ MaterialVariantDesc CreateBuiltinRowBoundVariantDesc(const char *row_name,
                                                     const std::string &vs_path = {},
                                                     const std::string &fs_path = {},
                                                     const std::string &surface_path = {});
+
+// Phase 3 matcher routing bridge: caller can inject a custom preset table.
+// Passing nullptr disables the external table and falls back to builtin defaults.
+void SetGlobalMaterialPresetTable(const MaterialPresetTable *table) noexcept;
+const MaterialPresetTable *GetGlobalMaterialPresetTable() noexcept;
+void ResetGlobalMaterialPresetTableToBuiltinDefaults() noexcept;
 
 // ---------------------------------------------------------------------------
 // [Step 3.5 T1] Variant Key 单轨化路由入口
