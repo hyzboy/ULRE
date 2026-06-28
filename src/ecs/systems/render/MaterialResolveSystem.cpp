@@ -169,6 +169,96 @@ namespace hgl::ecs
 
 			return true;
 		}
+
+		static void EmitPeriodicDiagnosticsLogs(graph::GraphicsContext *gc,
+		                                       MaterialResolveDiagnostics *diag,
+		                                       const MaterialResolveR21DryRunStats &r21_dry_run_stats,
+		                                       uint32_t short_circuit_executed_frame,
+		                                       uint32_t short_circuit_failed_frame)
+		{
+			if (!gc || !diag || !diag->IsDecoupledCacheEnabled())
+				return;
+
+			const uint64_t now_ms = hgl::GetTimeMs();
+			if (!diag->ShouldEmitPeriodicStatsLog(now_ms))
+				return;
+
+			const auto stats = gc->GetMaterialResolveTieredCacheStats();
+
+			GLogInfo("[ECS::MaterialResolveSystem][R1.2] tiered_cache_stats: "
+			        "program(req=%llu hit=%llu miss=%llu create=%llu) "
+			        "payload(req=%llu hit=%llu miss=%llu create=%llu) "
+			        "binding(req=%llu hit=%llu miss=%llu create=%llu)",
+			        static_cast<unsigned long long>(stats.program_requests),
+			        static_cast<unsigned long long>(stats.program_hits),
+			        static_cast<unsigned long long>(stats.program_misses),
+			        static_cast<unsigned long long>(stats.program_creates),
+			        static_cast<unsigned long long>(stats.payload_requests),
+			        static_cast<unsigned long long>(stats.payload_hits),
+			        static_cast<unsigned long long>(stats.payload_misses),
+			        static_cast<unsigned long long>(stats.payload_creates),
+			        static_cast<unsigned long long>(stats.binding_requests),
+			        static_cast<unsigned long long>(stats.binding_hits),
+			        static_cast<unsigned long long>(stats.binding_misses),
+			        static_cast<unsigned long long>(stats.binding_creates));
+
+			GLogInfo("[ECS::MaterialResolveSystem][R2.1] dry_run_compare: "
+			        "tasks=%llu candidate_hits(program=%llu payload=%llu binding=%llu) "
+			        "miss(program=%llu payload=%llu binding=%llu) "
+			        "legacy_match(program=%llu payload=%llu binding=%llu) "
+			        "short_circuit(checks=%llu eligible=%llu would_execute=%llu executed=%llu failed=%llu auto_disable=%llu auto_reenable=%llu blocked_program=%llu blocked_payload=%llu blocked_binding=%llu guard_dirty=%llu guard_domain=%llu guard_vil=%llu guard_primitive=%llu)",
+			        static_cast<unsigned long long>(r21_dry_run_stats.tasks_seen),
+			        static_cast<unsigned long long>(r21_dry_run_stats.candidate_program_hits),
+			        static_cast<unsigned long long>(r21_dry_run_stats.candidate_payload_hits),
+			        static_cast<unsigned long long>(r21_dry_run_stats.candidate_binding_hits),
+			        static_cast<unsigned long long>(r21_dry_run_stats.miss_program),
+			        static_cast<unsigned long long>(r21_dry_run_stats.miss_payload),
+			        static_cast<unsigned long long>(r21_dry_run_stats.miss_binding),
+			        static_cast<unsigned long long>(r21_dry_run_stats.program_match_with_legacy),
+			        static_cast<unsigned long long>(r21_dry_run_stats.payload_match_with_legacy),
+			        static_cast<unsigned long long>(r21_dry_run_stats.binding_match_with_legacy),
+			        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_checks),
+			        static_cast<unsigned long long>(r21_dry_run_stats.dry_run_short_circuit_eligible),
+			        static_cast<unsigned long long>(r21_dry_run_stats.would_short_circuit_execute),
+			        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_executed),
+			        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_apply_failures),
+			        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_auto_disable_events),
+			        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_auto_reenable_events),
+			        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_program),
+			        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_payload),
+			        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_binding),
+			        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_guard_dirty),
+			        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_guard_domain),
+			        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_guard_vil),
+			        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_guard_primitive));
+
+			if (short_circuit_executed_frame > 0 || short_circuit_failed_frame > 0)
+			{
+				GLogInfo("[ECS::MaterialResolveSystem][R2-C] execute_summary: executed=%u failed=%u consecutive_failures=%u execute_enabled=%u",
+				        static_cast<unsigned>(short_circuit_executed_frame),
+				        static_cast<unsigned>(short_circuit_failed_frame),
+				        static_cast<unsigned>(diag->GetConsecutiveShortCircuitFailures()),
+				        diag->IsDecoupledCacheExecuteShortCircuitEnabled() ? 1u : 0u);
+			}
+
+			uint64_t failure_rate_percent = 0;
+			uint64_t short_circuit_samples = 0;
+			if (diag->TryConsumeFailureRateWarning(now_ms,
+			                                   r21_dry_run_stats.short_circuit_executed,
+			                                   r21_dry_run_stats.short_circuit_apply_failures,
+			                                   failure_rate_percent,
+			                                   short_circuit_samples))
+			{
+				GLogWarning("[ECS::MaterialResolveSystem][R2-C] short-circuit failure-rate warning: failed=%llu executed=%llu failure_rate=%llu%% threshold=%u%% samples=%llu",
+				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_apply_failures),
+				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_executed),
+				        static_cast<unsigned long long>(failure_rate_percent),
+				        static_cast<unsigned>(diag->GetDecoupledCacheExecuteShortCircuitWarningFailureRatePercentThreshold()),
+				        static_cast<unsigned long long>(short_circuit_samples));
+			}
+
+			diag->ResetFrameStats();
+		}
 	}
 
 	MaterialResolveSystem::MaterialResolveSystem(const std::string &name)
@@ -177,6 +267,11 @@ namespace hgl::ecs
 		SetSystemType(SystemType::ShaderMaterialProgram);
 		SetExecutionOrder(ExecutionPhase::RenderMaterialBind);
 		SetRenderElementType("Primitive");
+	}
+
+	MaterialResolveDiagnostics *MaterialResolveSystem::GetDiagnostics()
+	{
+		return world ? &world->GetMaterialResolveDiagnostics() : nullptr;
 	}
 
 	void MaterialResolveSystem::Update(float /*deltaTime*/)
@@ -191,8 +286,23 @@ namespace hgl::ecs
 		auto *registry = gc->GetMaterialAssetRegistry();
 		auto *prim_mgr = gc->GetPrimitiveManager();
 		auto *recipe_store = gc->GetRecipeStore();
-		if (!registry || !prim_mgr)
+		auto *diag = GetDiagnostics();
+		if (!registry || !prim_mgr || !diag)
 			return;
+
+		auto &r21_dry_run_stats = diag->GetFrameStats();
+
+		const uint64_t now_ms_for_state = hgl::GetTimeMs();
+		if (diag->TryAutoReenableShortCircuit(now_ms_for_state))
+		{
+			LogInfo("[ECS::MaterialResolveSystem][R2-C] auto-reenable short-circuit after cooldown=%llu ms",
+			        static_cast<unsigned long long>(diag->GetDecoupledCacheExecuteShortCircuitCooldownMs()));
+		}
+
+		if (diag->TryObserveManualDisableBypass())
+		{
+			LogInfo("[ECS::MaterialResolveSystem][R2-C] execute short-circuit is manually disabled; auto-reenable is bypassed");
+		}
 
 		std::vector<std::shared_ptr<PrimitiveComponent>> primitives;
 		world->GetComponents<PrimitiveComponent>(primitives);
@@ -209,6 +319,7 @@ namespace hgl::ecs
 		uint32_t primitive_recreated_count = 0;
 		uint32_t mi_bucket_count = 0;
 		uint32_t short_circuit_executed_frame = 0;
+		uint32_t short_circuit_failed_frame = 0;
         ApplyStageStats apply_stats{};
 
 		internal::BuildResolvePlan(primitives,
@@ -217,7 +328,7 @@ namespace hgl::ecs
 			prototype_buckets,
 			resolve_input_count);
 
-		if (decoupled_cache_enabled && decoupled_cache_execute_short_circuit_enabled)
+		if (diag->IsDecoupledCacheEnabled() && diag->IsDecoupledCacheExecuteShortCircuitEnabled())
 		{
 			auto &tiered_cache = gc->GetMaterialResolveTieredCache();
 
@@ -253,7 +364,17 @@ namespace hgl::ecs
 				if (TryApplyCachedLegacyBinding(task, prim_mgr, cached_binding))
 				{
 					++short_circuit_executed_frame;
-					++r21_dry_run_stats.short_circuit_executed;
+					diag->OnShortCircuitApplySuccess();
+				}
+				else
+				{
+					++short_circuit_failed_frame;
+					if (diag->OnShortCircuitApplyFailure(hgl::GetTimeMs()))
+					{
+						LogInfo("[ECS::MaterialResolveSystem][R2-C] auto-disable short-circuit after consecutive failures=%u (threshold=%u)",
+						        static_cast<unsigned>(diag->GetConsecutiveShortCircuitFailures()),
+						        static_cast<unsigned>(diag->GetDecoupledCacheExecuteShortCircuitFailureThreshold()));
+					}
 				}
 			}
 
@@ -287,7 +408,7 @@ namespace hgl::ecs
             apply_stats,
             resolve_fail_count);
 
-		if (decoupled_cache_enabled)
+		if (diag->IsDecoupledCacheEnabled())
 		{
 			auto &tiered_cache = gc->GetMaterialResolveTieredCache();
 
@@ -417,7 +538,7 @@ namespace hgl::ecs
 				                        && cached_binding->program == legacy_program
 				                        && cached_binding->domain == legacy_domain;
 
-				if (decoupled_cache_dryrun_short_circuit_check_enabled)
+				if (diag->IsDecoupledCacheDryRunShortCircuitCheckEnabled())
 				{
 					++r21_dry_run_stats.short_circuit_checks;
 
@@ -433,7 +554,7 @@ namespace hgl::ecs
 					if (program_match && payload_match && binding_match)
 						++r21_dry_run_stats.dry_run_short_circuit_eligible;
 
-					if (decoupled_cache_dryrun_whitelist_enabled)
+					if (diag->IsDecoupledCacheDryRunWhitelistEnabled())
 					{
 						const bool guard_dirty_ok = !task.slot->dirty;
 						const bool guard_domain_ok = legacy_domain_id != 0xFFFFFFFFu;
@@ -485,60 +606,10 @@ namespace hgl::ecs
 				primitive_recreated_count);
 		}
 
-		if (decoupled_cache_enabled)
-		{
-			const uint64_t now_ms = hgl::GetTimeMs();
-			if (now_ms - last_cache_stats_log_ms >= cache_stats_log_interval_ms)
-			{
-				last_cache_stats_log_ms = now_ms;
-				const auto stats = gc->GetMaterialResolveTieredCacheStats();
-
-				LogInfo("[ECS::MaterialResolveSystem][R1.2] tiered_cache_stats: "
-				        "program(req=%llu hit=%llu miss=%llu create=%llu) "
-				        "payload(req=%llu hit=%llu miss=%llu create=%llu) "
-				        "binding(req=%llu hit=%llu miss=%llu create=%llu)",
-				        static_cast<unsigned long long>(stats.program_requests),
-				        static_cast<unsigned long long>(stats.program_hits),
-				        static_cast<unsigned long long>(stats.program_misses),
-				        static_cast<unsigned long long>(stats.program_creates),
-				        static_cast<unsigned long long>(stats.payload_requests),
-				        static_cast<unsigned long long>(stats.payload_hits),
-				        static_cast<unsigned long long>(stats.payload_misses),
-				        static_cast<unsigned long long>(stats.payload_creates),
-				        static_cast<unsigned long long>(stats.binding_requests),
-				        static_cast<unsigned long long>(stats.binding_hits),
-				        static_cast<unsigned long long>(stats.binding_misses),
-				        static_cast<unsigned long long>(stats.binding_creates));
-
-				LogInfo("[ECS::MaterialResolveSystem][R2.1] dry_run_compare: "
-				        "tasks=%llu candidate_hits(program=%llu payload=%llu binding=%llu) "
-				        "miss(program=%llu payload=%llu binding=%llu) "
-				        "legacy_match(program=%llu payload=%llu binding=%llu) "
-				        "short_circuit(checks=%llu eligible=%llu would_execute=%llu executed=%llu blocked_program=%llu blocked_payload=%llu blocked_binding=%llu guard_dirty=%llu guard_domain=%llu guard_vil=%llu guard_primitive=%llu)",
-				        static_cast<unsigned long long>(r21_dry_run_stats.tasks_seen),
-				        static_cast<unsigned long long>(r21_dry_run_stats.candidate_program_hits),
-				        static_cast<unsigned long long>(r21_dry_run_stats.candidate_payload_hits),
-				        static_cast<unsigned long long>(r21_dry_run_stats.candidate_binding_hits),
-				        static_cast<unsigned long long>(r21_dry_run_stats.miss_program),
-				        static_cast<unsigned long long>(r21_dry_run_stats.miss_payload),
-				        static_cast<unsigned long long>(r21_dry_run_stats.miss_binding),
-				        static_cast<unsigned long long>(r21_dry_run_stats.program_match_with_legacy),
-				        static_cast<unsigned long long>(r21_dry_run_stats.payload_match_with_legacy),
-				        static_cast<unsigned long long>(r21_dry_run_stats.binding_match_with_legacy),
-				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_checks),
-				        static_cast<unsigned long long>(r21_dry_run_stats.dry_run_short_circuit_eligible),
-				        static_cast<unsigned long long>(r21_dry_run_stats.would_short_circuit_execute),
-				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_executed),
-				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_program),
-				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_payload),
-				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_binding),
-				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_guard_dirty),
-				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_guard_domain),
-				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_guard_vil),
-				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_guard_primitive));
-
-				r21_dry_run_stats = {};
-			}
-		}
+		EmitPeriodicDiagnosticsLogs(gc,
+		                           diag,
+		                           r21_dry_run_stats,
+		                           short_circuit_executed_frame,
+		                           short_circuit_failed_frame);
 	}
 }//namespace hgl::ecs

@@ -7,6 +7,7 @@
 /// 若 PrimitiveComponent 仅持有 unresolved_geometry，则同时创建 Primitive。
 
 #include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/MaterialResolveDiagnostics.h>
 #include<hgl/graph/module/MaterialResolveTieredCache.h>
 
 #include <cstdint>
@@ -22,12 +23,6 @@ namespace hgl::ecs
     private:
 
         ECSContext *world = nullptr;
-        bool decoupled_cache_enabled = false;   // Phase R1.2 placeholder, default off.
-        bool decoupled_cache_dryrun_short_circuit_check_enabled = true;
-        bool decoupled_cache_dryrun_whitelist_enabled = true;
-        bool decoupled_cache_execute_short_circuit_enabled = false;
-        uint64_t last_cache_stats_log_ms = 0;
-        uint64_t cache_stats_log_interval_ms = 1000;
 
         // Phase R2.0: shadow ownership for payload/binding objects used only by tiered-cache probing.
         uint64_t next_shadow_payload_id = 1;
@@ -41,36 +36,7 @@ namespace hgl::ecs
                    graph::ProgramInstanceBinding *,
                    graph::BindingCacheKeyHash> shadow_binding_index;
 
-        struct R21DryRunStats
-        {
-            uint64_t tasks_seen = 0;
-            uint64_t candidate_program_hits = 0;
-            uint64_t candidate_payload_hits = 0;
-            uint64_t candidate_binding_hits = 0;
-
-            uint64_t miss_program = 0;
-            uint64_t miss_payload = 0;
-            uint64_t miss_binding = 0;
-
-            uint64_t program_match_with_legacy = 0;
-            uint64_t payload_match_with_legacy = 0;
-            uint64_t binding_match_with_legacy = 0;
-
-            uint64_t short_circuit_checks = 0;
-            uint64_t dry_run_short_circuit_eligible = 0;
-            uint64_t would_short_circuit_execute = 0;
-            uint64_t short_circuit_executed = 0;
-            uint64_t short_circuit_blocked_by_program = 0;
-            uint64_t short_circuit_blocked_by_payload = 0;
-            uint64_t short_circuit_blocked_by_binding = 0;
-
-            uint64_t short_circuit_blocked_by_guard_dirty = 0;
-            uint64_t short_circuit_blocked_by_guard_domain = 0;
-            uint64_t short_circuit_blocked_by_guard_vil = 0;
-            uint64_t short_circuit_blocked_by_guard_primitive = 0;
-        };
-
-        R21DryRunStats r21_dry_run_stats{};
+        MaterialResolveDiagnostics *GetDiagnostics();
 
     public:
 
@@ -78,14 +44,6 @@ namespace hgl::ecs
         ~MaterialResolveSystem() override = default;
 
         void SetWorld(ECSContext *w) { world = w; }
-        void SetDecoupledCacheEnabled(bool enabled) { decoupled_cache_enabled = enabled; }
-        bool IsDecoupledCacheEnabled() const { return decoupled_cache_enabled; }
-        void SetDecoupledCacheDryRunShortCircuitCheckEnabled(bool enabled) { decoupled_cache_dryrun_short_circuit_check_enabled = enabled; }
-        bool IsDecoupledCacheDryRunShortCircuitCheckEnabled() const { return decoupled_cache_dryrun_short_circuit_check_enabled; }
-        void SetDecoupledCacheDryRunWhitelistEnabled(bool enabled) { decoupled_cache_dryrun_whitelist_enabled = enabled; }
-        bool IsDecoupledCacheDryRunWhitelistEnabled() const { return decoupled_cache_dryrun_whitelist_enabled; }
-        void SetDecoupledCacheExecuteShortCircuitEnabled(bool enabled) { decoupled_cache_execute_short_circuit_enabled = enabled; }
-        bool IsDecoupledCacheExecuteShortCircuitEnabled() const { return decoupled_cache_execute_short_circuit_enabled; }
 
         void Update(float deltaTime) override;
     };
