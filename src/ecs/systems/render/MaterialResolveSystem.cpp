@@ -131,16 +131,30 @@ namespace hgl::ecs
 				if (!task.slot)
 					continue;
 
+				++r21_dry_run_stats.tasks_seen;
+
 				const auto program_key = BuildProgramCacheKey(task);
 				auto *cached_program = tiered_cache.FindProgram(program_key);
+				if (cached_program)
+					++r21_dry_run_stats.candidate_program_hits;
+
+				auto *legacy_program = task.slot->resolved_material;
+				auto *legacy_domain = task.slot->resolved_domain;
+				const uint32_t legacy_domain_id = task.slot->resolved_domain_id;
+				const uint64_t legacy_instance_hash = task.instance_hash;
 				if (!cached_program && task.slot->resolved_material)
 				{
 					tiered_cache.UpsertProgram(program_key, task.slot->resolved_material, true);
 					cached_program = task.slot->resolved_material;
 				}
 
+				if (cached_program && cached_program == legacy_program)
+					++r21_dry_run_stats.program_match_with_legacy;
+
 				const auto payload_key = BuildPayloadCacheKey(task);
 				auto *cached_payload = tiered_cache.FindPayload(payload_key);
+				if (cached_payload)
+					++r21_dry_run_stats.candidate_payload_hits;
 				if (!cached_payload)
 				{
 					auto payload_it = shadow_payload_index.find(payload_key);
@@ -168,11 +182,20 @@ namespace hgl::ecs
 					tiered_cache.UpsertPayload(payload_key, cached_payload, true);
 				}
 
+				if (cached_payload
+				 && cached_payload->instance_hash == legacy_instance_hash
+				 && cached_payload->domain_id == legacy_domain_id)
+				{
+					++r21_dry_run_stats.payload_match_with_legacy;
+				}
+
 				if (!cached_program || !cached_payload)
 					continue;
 
 				const auto binding_key = BuildBindingCacheKey(task, cached_payload);
 				auto *cached_binding = tiered_cache.FindBinding(binding_key);
+				if (cached_binding)
+					++r21_dry_run_stats.candidate_binding_hits;
 				if (!cached_binding)
 				{
 					auto binding_it = shadow_binding_index.find(binding_key);
@@ -194,6 +217,25 @@ namespace hgl::ecs
 					}
 
 					tiered_cache.UpsertBinding(binding_key, cached_binding, true);
+				}
+
+				if (cached_binding
+				 && cached_binding->program == legacy_program
+				 && cached_binding->domain == legacy_domain)
+				{
+					++r21_dry_run_stats.binding_match_with_legacy;
+				}
+
+				if (cached_program
+				 && cached_program == legacy_program
+				 && cached_payload
+				 && cached_payload->instance_hash == legacy_instance_hash
+				 && cached_payload->domain_id == legacy_domain_id
+				 && cached_binding
+				 && cached_binding->program == legacy_program
+				 && cached_binding->domain == legacy_domain)
+				{
+					++r21_dry_run_stats.dry_run_short_circuit_eligible;
 				}
 			}
 		}
@@ -240,6 +282,21 @@ namespace hgl::ecs
 				        static_cast<unsigned long long>(stats.binding_hits),
 				        static_cast<unsigned long long>(stats.binding_misses),
 				        static_cast<unsigned long long>(stats.binding_creates));
+
+				LogInfo("[ECS::MaterialResolveSystem][R2.1] dry_run_compare: "
+				        "tasks=%llu candidate_hits(program=%llu payload=%llu binding=%llu) "
+				        "legacy_match(program=%llu payload=%llu binding=%llu) "
+				        "short_circuit_eligible=%llu",
+				        static_cast<unsigned long long>(r21_dry_run_stats.tasks_seen),
+				        static_cast<unsigned long long>(r21_dry_run_stats.candidate_program_hits),
+				        static_cast<unsigned long long>(r21_dry_run_stats.candidate_payload_hits),
+				        static_cast<unsigned long long>(r21_dry_run_stats.candidate_binding_hits),
+				        static_cast<unsigned long long>(r21_dry_run_stats.program_match_with_legacy),
+				        static_cast<unsigned long long>(r21_dry_run_stats.payload_match_with_legacy),
+				        static_cast<unsigned long long>(r21_dry_run_stats.binding_match_with_legacy),
+				        static_cast<unsigned long long>(r21_dry_run_stats.dry_run_short_circuit_eligible));
+
+				r21_dry_run_stats = {};
 			}
 		}
 	}

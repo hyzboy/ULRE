@@ -38,6 +38,22 @@ namespace hgl::ecs
                    graph::ProgramInstanceBinding *,
                    graph::BindingCacheKeyHash> shadow_binding_index;
 
+        struct R21DryRunStats
+        {
+            uint64_t tasks_seen = 0;
+            uint64_t candidate_program_hits = 0;
+            uint64_t candidate_payload_hits = 0;
+            uint64_t candidate_binding_hits = 0;
+
+            uint64_t program_match_with_legacy = 0;
+            uint64_t payload_match_with_legacy = 0;
+            uint64_t binding_match_with_legacy = 0;
+
+            uint64_t dry_run_short_circuit_eligible = 0;
+        };
+
+        R21DryRunStats r21_dry_run_stats{};
+
     public:
 
         MaterialResolveSystem(const std::string &name = "MaterialResolveSystem");
