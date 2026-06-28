@@ -214,6 +214,7 @@ namespace hgl
             void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunSystemUpdate(System *system, float deltaTime);
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
+            void EmitRenderDiagnosticsOncePerSecond();
 
         public:
 

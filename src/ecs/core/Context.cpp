@@ -684,6 +684,11 @@ namespace hgl
 
             RunRenderPhaseUpdates(ExecutionPhase::RenderFrameSync, deltaTime);
 
+            EmitRenderDiagnosticsOncePerSecond();
+        }
+
+        void ECSContext::EmitRenderDiagnosticsOncePerSecond()
+        {
         #if ULRE_ECS_DEBUG_API
             if (descriptor_contract_diag_log_enabled)
             {
