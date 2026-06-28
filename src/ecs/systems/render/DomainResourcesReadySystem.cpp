@@ -1,9 +1,16 @@
 #include <hgl/ecs/systems/render/DomainResourcesReadySystem.h>
 #include <hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
 #include <hgl/graph/module/TextureDomainRegistry.h>
+#include <hgl/log/Log.h>
+#include <hgl/time/Time.h>
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        static uint64_t g_domain_ready_last_log_ms = 0;
+    }
+
     DomainResourcesReadySystem::DomainResourcesReadySystem(const std::string &name)
         : System(name)
     {
@@ -17,8 +24,14 @@ namespace hgl::ecs
     {
         domain_states.clear();
 
+        uint32_t total_count = 0;
+        uint32_t ready_count = 0;
+        uint32_t not_ready_count = 0;
+        uint32_t dirty_count = 0;
+
         graph::TextureDomainRegistry::ForEach(
-            [this](const std::string &domain_tag, graph::TextureDomainRegistry::DomainEntry &entry)
+            [this, &total_count, &ready_count, &not_ready_count, &dirty_count]
+            (const std::string &domain_tag, graph::TextureDomainRegistry::DomainEntry &entry)
             {
                 DomainReadinessState state{};
                 state.exists = true;
@@ -36,8 +49,35 @@ namespace hgl::ecs
                            && state.has_dmb
                            && state.has_primitive;
 
+                ++total_count;
+                if (state.dirty)
+                    ++dirty_count;
+
+                if (state.ready)
+                    ++ready_count;
+                else
+                    ++not_ready_count;
+
                 domain_states[domain_tag] = state;
             });
+
+        const uint64_t now_ms = ::hgl::GetTimeMs();
+        if (g_domain_ready_last_log_ms == 0)
+        {
+            g_domain_ready_last_log_ms = now_ms;
+            return;
+        }
+
+        if (now_ms - g_domain_ready_last_log_ms < 1000)
+            return;
+
+        GLogInfo("[PhaseD][DomainResourcesReadySystem] domains=%u ready=%u not_ready=%u dirty=%u",
+                total_count,
+                ready_count,
+                not_ready_count,
+                dirty_count);
+
+        g_domain_ready_last_log_ms = now_ms;
     }
 
     bool DomainResourcesReadySystem::IsDomainReady(const std::string &domain_tag) const

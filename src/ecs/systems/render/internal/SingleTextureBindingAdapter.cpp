@@ -1,6 +1,6 @@
 #include "SingleTextureBindingAdapter.h"
 
-#include <Windows.h>
+#include <hgl/time/Time.h>
 
 namespace hgl::ecs::internal
 {
@@ -22,11 +22,6 @@ namespace hgl::ecs::internal
         };
 
         static SingleTextureBindingStatsState g_single_texture_binding_stats;
-
-        static uint64_t GetNowMs()
-        {
-            return static_cast<uint64_t>(::GetTickCount64());
-        }
 
         static void ResetSnapshotCounters(SingleTextureBindingStatsState &stats)
         {
@@ -87,7 +82,7 @@ namespace hgl::ecs::internal
     bool SingleTextureBindingStats::TryConsumePerSecondSnapshot(SingleTextureBindingStatsSnapshot &out_snapshot)
     {
         auto &stats = g_single_texture_binding_stats;
-        const uint64_t now_ms = GetNowMs();
+        const uint64_t now_ms = ::hgl::GetTimeMs();
 
         if (stats.last_emit_ms == 0)
         {
