@@ -11,6 +11,7 @@
 #include<hgl/mtl/RecipeToKey.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/log/Log.h>
+#include "internal/MaterialResolveInternals.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -20,110 +21,11 @@ namespace hgl::ecs
 {
 	namespace
 	{
-		struct ResolveTask
-		{
-			std::shared_ptr<PrimitiveComponent> comp;
-			graph::MaterialResolveRequest *slot = nullptr;
-			graph::Geometry *geometry = nullptr;
-			const graph::mtl::MaterialRecipe *recipe = nullptr;
-			graph::mtl::MaterialKey material_key{};   // computed once at loop entry
-			uint64_t gvf_hash = 0;
-			uint64_t instance_hash = 0;
-		};
-
-		struct PrototypeKey
-		{
-			graph::mtl::MaterialKey material_key{};
-			uint64_t gvf_hash = 0;
-
-			bool operator==(const PrototypeKey &o) const noexcept
-			{
-				return material_key == o.material_key && gvf_hash == o.gvf_hash;
-			}
-		};
-
-		struct PrototypeKeyHash
-		{
-			size_t operator()(const PrototypeKey &k) const noexcept
-			{
-				const size_t h1 = static_cast<size_t>(k.material_key.Hash());
-				const size_t h2 = static_cast<size_t>(k.gvf_hash + 0x9e3779b97f4a7c15ull);
-				return h1 ^ (h2 + 0x9e3779b9u + (h1 << 6) + (h1 >> 2));
-			}
-		};
-
-		struct MIKey
-		{
-			uint64_t prototype_hash = 0;
-			uint64_t instance_hash = 0;
-
-			bool operator==(const MIKey &o) const
-			{
-				return prototype_hash == o.prototype_hash
-					&& instance_hash == o.instance_hash;
-			}
-		};
-
-		struct MIKeyHash
-		{
-			size_t operator()(const MIKey &k) const
-			{
-				const size_t h1 = std::hash<uint64_t>{}(k.prototype_hash);
-				const size_t h2 = std::hash<uint64_t>{}(k.instance_hash);
-				return h1 ^ (h2 + 0x9e3779b9u + (h1 << 6) + (h1 >> 2));
-			}
-		};
-
-		static inline uint64_t HashBytes(const void *data, const uint32_t size)
-		{
-			if (!data || size == 0)
-				return 1469598103934665603ull;
-
-			const auto *bytes = static_cast<const uint8_t *>(data);
-			uint64_t h = 1469598103934665603ull;
-
-			for (uint32_t i = 0; i < size; ++i)
-			{
-				h ^= static_cast<uint64_t>(bytes[i]);
-				h *= 1099511628211ull;
-			}
-
-			return h;
-		}
-
-		static inline uint64_t HashGeometryVertexFormat(const graph::GeometryVertexFormat &gvf)
-		{
-			uint64_t h = 1469598103934665603ull;
-
-			const auto mix = [&h](const uint64_t v)
-			{
-				h ^= v;
-				h *= 1099511628211ull;
-			};
-
-			mix(static_cast<uint64_t>(gvf.GetActiveCount()));
-
-			for (int i = 0; i < static_cast<int>(graph::VertexAttrib::RANGE_SIZE); ++i)
-			{
-				const auto attrib = static_cast<graph::VertexAttrib>(i);
-				const auto *slot = gvf.GetSlot(attrib);
-				if (!slot)
-					continue;
-
-				mix(static_cast<uint64_t>(i + 1));
-				mix(static_cast<uint64_t>(slot->format));
-				mix(static_cast<uint64_t>(slot->stride));
-				mix(static_cast<uint64_t>(static_cast<uint32_t>(slot->binding + 1)));
-			}
-
-			return h;
-		}
-
-		static inline uint64_t HashPrototypeKey(const PrototypeKey &k) noexcept
-		{
-			const uint64_t mk = k.material_key.Hash();
-			return (mk * 1099511628211ull) ^ (k.gvf_hash + 0x9e3779b97f4a7c15ull + (mk << 6) + (mk >> 2));
-		}
+		using internal::MIKey;
+		using internal::MIKeyHash;
+		using internal::PrototypeKey;
+		using internal::PrototypeKeyHash;
+		using internal::ResolveTask;
 	}
 
 	MaterialResolveSystem::MaterialResolveSystem(const std::string &name)
@@ -192,8 +94,8 @@ namespace hgl::ecs
 			task.geometry = geom;
 			task.recipe = recipe;
 			task.material_key = graph::mtl::ResolveRecipePrimaryKey(*recipe);
-			task.gvf_hash = HashGeometryVertexFormat(gvf);
-			task.instance_hash = HashBytes(slot.GetInstanceDataPtr(), slot.GetInstanceDataSize());
+			task.gvf_hash = internal::HashGeometryVertexFormat(gvf);
+			task.instance_hash = internal::HashBytes(slot.GetInstanceDataPtr(), slot.GetInstanceDataSize());
 
 			LogInfo("[ECS::MaterialResolveSystem] resolve_input comp=%p recipe_id=%u preset=%u dim=%u recipe_prim=%u pipeline=%u geom=%p key_hash=0x%llx gvf_hash=0x%llx instance_hash=0x%llx",
 				comp.get(),
@@ -225,7 +127,7 @@ namespace hgl::ecs
 			std::unordered_map<MIKey, std::vector<size_t>, MIKeyHash> mi_buckets;
 			mi_buckets.reserve(indices.size());
 
-			const uint64_t proto_hash = HashPrototypeKey(pkey);
+			const uint64_t proto_hash = internal::HashPrototypeKey(pkey);
 
 			for (const size_t idx : indices)
 			{

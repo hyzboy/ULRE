@@ -143,6 +143,8 @@ set(ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES
 set(ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/MaterialResolveSystem.h
     systems/render/MaterialResolveSystem.cpp
+    systems/render/internal/MaterialResolveInternals.h
+    systems/render/internal/MaterialResolveInternals.cpp
 )
 
 set(ECS_SYS_11C_RenderMaterialBind_PrimitiveBindingCommitSystem_FILES
