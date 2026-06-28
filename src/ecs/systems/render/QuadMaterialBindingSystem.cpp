@@ -34,14 +34,15 @@ namespace hgl::ecs
             if (!internal::SingleTextureBindingStats::TryConsumePerSecondSnapshot(snapshot))
                 return;
 
-            if (snapshot.fallback_legacy_quad_hits == 0)
-                return;
-
-            GLogInfo("[PhaseC][SingleTextureBindingAdapter] fallback_legacy_quad_hits(last_sec)=%u fallback_total=%u reject_total=%u main_path_hits=%u",
-                    snapshot.fallback_legacy_quad_hits,
+            GLogInfo("[PhaseC][SingleTextureBindingAdapter] main_path_hits(last_sec)=%u fallback_hits=%u reject_hits=%u fallback_nondomain=%u fallback_legacy_quad=%u reject_missing_input=%u reject_missing_resource=%u reject_invalid_request=%u",
+                    snapshot.main_path_hits,
                     snapshot.fallback_hits,
                     snapshot.reject_hits,
-                    snapshot.main_path_hits);
+                    snapshot.fallback_nondomain_hits,
+                    snapshot.fallback_legacy_quad_hits,
+                    snapshot.reject_missing_input_hits,
+                    snapshot.reject_missing_resource_hits,
+                    snapshot.reject_invalid_request_hits);
         }
     }
 

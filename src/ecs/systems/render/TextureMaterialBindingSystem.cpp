@@ -27,23 +27,28 @@ namespace hgl::ecs
     {
         static uint64_t g_runtime_texture_binding_id = 1;
 
-        static void RecordNonDomainCompatibilityPathHit()
+        static void EmitSingleTextureBindingStatsIfReady()
         {
-            internal::SingleTextureBindingStats::RecordFallbackHit(
-                internal::SingleTextureFallbackReason::NonDomainCompatibility);
-
             internal::SingleTextureBindingStatsSnapshot snapshot{};
             if (!internal::SingleTextureBindingStats::TryConsumePerSecondSnapshot(snapshot))
                 return;
 
-            if (snapshot.fallback_nondomain_hits == 0)
-                return;
-
-            GLogInfo("[PhaseC][SingleTextureBindingAdapter] fallback_nondomain_hits(last_sec)=%u fallback_total=%u reject_total=%u main_path_hits=%u",
-                    snapshot.fallback_nondomain_hits,
+            GLogInfo("[PhaseC][SingleTextureBindingAdapter] main_path_hits(last_sec)=%u fallback_hits=%u reject_hits=%u fallback_nondomain=%u fallback_legacy_quad=%u reject_missing_input=%u reject_missing_resource=%u reject_invalid_request=%u",
+                    snapshot.main_path_hits,
                     snapshot.fallback_hits,
                     snapshot.reject_hits,
-                    snapshot.main_path_hits);
+                    snapshot.fallback_nondomain_hits,
+                    snapshot.fallback_legacy_quad_hits,
+                    snapshot.reject_missing_input_hits,
+                    snapshot.reject_missing_resource_hits,
+                    snapshot.reject_invalid_request_hits);
+        }
+
+        static void RecordNonDomainCompatibilityPathHit()
+        {
+            internal::SingleTextureBindingStats::RecordFallbackHit(
+                internal::SingleTextureFallbackReason::NonDomainCompatibility);
+            EmitSingleTextureBindingStatsIfReady();
         }
 
         static bool PatchTextureSlotRecipe(graph::mtl::MaterialRecipe &recipe,
@@ -63,6 +68,23 @@ namespace hgl::ecs
 
             recipe.textures.push_back({ slot, source_mode, path });
             return true;
+        }
+
+        static internal::SingleTextureBindingRequest BuildSingleTextureBindingRequest(const TextureBindingTask &binding)
+        {
+            internal::SingleTextureBindingRequest request{};
+            request.entity_id = binding.entity_id;
+            request.slot = binding.slot;
+            request.source_mode = binding.source_mode;
+            request.channel_hint = binding.channel_hint;
+            request.texture_path = binding.texture_path;
+            request.domain_tag = binding.domain_tag;
+            return request;
+        }
+
+        static bool IsValidSingleTextureBindingRequest(const internal::SingleTextureBindingRequest &request)
+        {
+            return request.entity_id.IsValid() && !request.texture_path.IsEmpty();
         }
 
         static bool BuildBoundRecipe(ECSContext *world,
@@ -227,8 +249,26 @@ namespace hgl::ecs
     bool TextureMaterialBindingSystem::EnsurePrimitiveTextureBinding(PrimitiveComponent *primitive,
                                                                      const TextureBindingTask &binding)
     {
+        const auto adapter_request = BuildSingleTextureBindingRequest(binding);
+        internal::SingleTextureBindingResult adapter_result{};
+
+        if (!IsValidSingleTextureBindingRequest(adapter_request))
+        {
+            internal::SingleTextureBindingStats::RecordRejectHit(
+                internal::SingleTextureFallbackReason::InvalidRequest);
+
+            LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] invalid adapter request: entity_valid=%d texture_empty=%d domain_tag='%s'",
+                    adapter_request.entity_id.IsValid() ? 1 : 0,
+                    adapter_request.texture_path.IsEmpty() ? 1 : 0,
+                    adapter_request.domain_tag.c_str());
+            return false;
+        }
+
         if (!world || !primitive)
         {
+            internal::SingleTextureBindingStats::RecordRejectHit(
+                internal::SingleTextureFallbackReason::MissingInput);
+
             LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] missing input: world=%p primitive=%p binding=%p",
                     static_cast<void *>(world),
                     static_cast<void *>(primitive),
@@ -243,6 +283,9 @@ namespace hgl::ecs
         auto *graphics_context = world->GetGraphicsContext();
         if (!graphics_context)
         {
+            internal::SingleTextureBindingStats::RecordRejectHit(
+                internal::SingleTextureFallbackReason::MissingResource);
+
             LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] graphics_context is null: primitive=%p", static_cast<void *>(primitive));
             return false;
         }
@@ -253,6 +296,9 @@ namespace hgl::ecs
         auto *recipe_registry = graphics_context->GetMaterialAssetRegistry();
         if (!texture_manager || !sampler_manager || !primitive_manager || !recipe_registry)
         {
+            internal::SingleTextureBindingStats::RecordRejectHit(
+                internal::SingleTextureFallbackReason::MissingResource);
+
             LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] missing managers: texture_manager=%p sampler_manager=%p primitive_manager=%p recipe_registry=%p",
                     static_cast<void *>(texture_manager),
                     static_cast<void *>(sampler_manager),
@@ -265,6 +311,9 @@ namespace hgl::ecs
                                                               : primitive->GetUnresolvedGeometry();
         if (!geometry)
         {
+            internal::SingleTextureBindingStats::RecordRejectHit(
+                internal::SingleTextureFallbackReason::MissingResource);
+
             LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] geometry is null: primitive=%p prim=%p unresolved_geom=%p",
                     static_cast<void *>(primitive),
                     static_cast<void *>(primitive->GetPrimitive()),
@@ -276,6 +325,9 @@ namespace hgl::ecs
         {
             // Phase A guard rail: keep non-domain compatibility path untouched.
             // Planned migration target: Phase C (unified adapter boundary).
+            adapter_result.used_fallback = true;
+            adapter_result.fallback_reason = internal::SingleTextureFallbackReason::NonDomainCompatibility;
+
             RecordNonDomainCompatibilityPathHit();
 
             auto *previous_material = primitive->GetShaderMaterialProgram();
@@ -288,6 +340,9 @@ namespace hgl::ecs
 
             if (!mi || !material)
             {
+                internal::SingleTextureBindingStats::RecordRejectHit(
+                    internal::SingleTextureFallbackReason::MissingResource);
+
                 LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] Non-domain: missing resolved state: primitive=%p mi=%p material=%p texture='%s'",
                         static_cast<void *>(primitive),
                         static_cast<void *>(mi),
@@ -310,6 +365,9 @@ namespace hgl::ecs
             auto *texture = texture_manager->LoadTexture2D(texture_path, true);
             if (!texture)
             {
+                internal::SingleTextureBindingStats::RecordRejectHit(
+                    internal::SingleTextureFallbackReason::MissingResource);
+
                 LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] LoadTexture2D failed: texture='%s'", texture_path.c_str());
                 return false;
             }
@@ -317,6 +375,9 @@ namespace hgl::ecs
             auto *sampler = sampler_manager->CreateSampler(texture);
             if (!sampler)
             {
+                internal::SingleTextureBindingStats::RecordRejectHit(
+                    internal::SingleTextureFallbackReason::MissingResource);
+
                 LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] sampler is null: texture='%s'",
                         texture_path.c_str());
                 return false;
@@ -381,12 +442,17 @@ namespace hgl::ecs
                     static_cast<void *>(graph::MaterialBindingInstanceInternalAccess::GetDomain(mi)),
                     mi->GetMIID(),
                     static_cast<unsigned>(mi->GetRenderPreset()));
+
+                        adapter_result.success = true;
             return true;
         }
 
         graph::mtl::MaterialRecipe recipe;
         if (!BuildBoundRecipe(world, primitive, binding, recipe))
         {
+            internal::SingleTextureBindingStats::RecordRejectHit(
+                internal::SingleTextureFallbackReason::MissingResource);
+
             LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] BuildBoundRecipe failed: primitive=%p texture='%s' domain_tag='%s'",
                     static_cast<void *>(primitive),
                     texture_path.c_str(),
@@ -406,6 +472,9 @@ namespace hgl::ecs
                                                                    &resolved_vil);
         if (!mi)
         {
+            internal::SingleTextureBindingStats::RecordRejectHit(
+                internal::SingleTextureFallbackReason::MissingResource);
+
             LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] ResolveOrCreateBindingInstance returned null: primitive=%p material_recipe_domain='%s' texture='%s'",
                     static_cast<void *>(primitive),
                     recipe.domain_id.c_str(),
@@ -416,6 +485,9 @@ namespace hgl::ecs
         auto *material = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
         if (!material)
         {
+            internal::SingleTextureBindingStats::RecordRejectHit(
+                internal::SingleTextureFallbackReason::MissingResource);
+
             LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] mi has null material: mi=%p", static_cast<void *>(mi));
             return false;
         }
@@ -524,6 +596,9 @@ namespace hgl::ecs
             const int layer = graph::TextureDomainRegistry::RegisterTexture(binding.domain_tag, texture_path);
             if (layer < 0)
             {
+                internal::SingleTextureBindingStats::RecordRejectHit(
+                    internal::SingleTextureFallbackReason::MissingResource);
+
                 LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] RegisterTexture failed: domain_tag='%s' texture='%s'",
                         binding.domain_tag.c_str(),
                         texture_path.c_str());
@@ -536,6 +611,9 @@ namespace hgl::ecs
             // TODO(Phase 5): replace execution-order dependency with a generic DomainResourcesReadySystem.
             if (!domain_resources || domain_resources->dirty || !domain_resources->texture_array || !domain_resources->sampler)
             {
+                internal::SingleTextureBindingStats::RecordRejectHit(
+                    internal::SingleTextureFallbackReason::MissingResource);
+
                 LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] domain resources not ready: domain_tag='%s' resources=%p dirty=%d texture_array=%p sampler=%p",
                         binding.domain_tag.c_str(),
                         static_cast<void *>(domain_resources),
@@ -547,6 +625,9 @@ namespace hgl::ecs
 
             if (!EnsurePrimitiveBindingInstance(primitive_manager, primitive, mi, resolved_vil))
             {
+                internal::SingleTextureBindingStats::RecordRejectHit(
+                    internal::SingleTextureFallbackReason::MissingResource);
+
                 LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] EnsurePrimitiveBindingInstance failed: primitive=%p mi=%p material=%p(%s) vil=%p",
                         static_cast<void *>(primitive),
                         static_cast<void *>(mi),
@@ -627,6 +708,12 @@ namespace hgl::ecs
                 static_cast<void *>(graph::MaterialBindingInstanceInternalAccess::GetDomain(mi)),
                 mi->GetMIID(),
                 static_cast<unsigned>(mi->GetRenderPreset()));
+
+            adapter_result.success = true;
+            adapter_result.used_fallback = false;
+            adapter_result.fallback_reason = internal::SingleTextureFallbackReason::None;
+            internal::SingleTextureBindingStats::RecordMainPathHit();
+            EmitSingleTextureBindingStatsIfReady();
         return true;
     }
 }//namespace hgl::ecs
