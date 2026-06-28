@@ -1,5 +1,4 @@
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/systems/render/RenderDiagnosticsService.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<algorithm>
@@ -24,24 +23,14 @@ namespace hgl
             return false;
         #else
             auto diagnostics_service = GetSystem<RenderDiagnosticsService>();
-            if (diagnostics_service)
-            {
-                return diagnostics_service->GetDescriptorContractDiagnostics(materials_checked,
-                                                                            materials_unresolved,
-                                                                            required_missing,
-                                                                            optional_missing,
-                                                                            fallback_hits);
-            }
-
-            auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
-            if (!descriptor_system)
+            if (!diagnostics_service)
                 return false;
 
-            return descriptor_system->GetContractDiagnosticsStats(materials_checked,
-                                                                  materials_unresolved,
-                                                                  required_missing,
-                                                                  optional_missing,
-                                                                  fallback_hits);
+            return diagnostics_service->GetDescriptorContractDiagnostics(materials_checked,
+                                                                        materials_unresolved,
+                                                                        required_missing,
+                                                                        optional_missing,
+                                                                        fallback_hits);
         #endif
         }
 
@@ -65,31 +54,16 @@ namespace hgl
             return false;
         #else
             auto diagnostics_service = GetSystem<RenderDiagnosticsService>();
-            if (diagnostics_service)
-            {
-                return diagnostics_service->GetDescriptorContractDiagnosticsExtended(materials_checked,
-                                                                                    materials_unresolved,
-                                                                                    required_missing,
-                                                                                    optional_missing,
-                                                                                    fallback_hits,
-                                                                                    materials_registered,
-                                                                                    binding_entries);
-            }
-
-            auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
-            if (!descriptor_system)
+            if (!diagnostics_service)
                 return false;
 
-            if (!descriptor_system->GetContractDiagnosticsStats(materials_checked,
-                                                                materials_unresolved,
-                                                                required_missing,
-                                                                optional_missing,
-                                                                fallback_hits))
-                return false;
-
-            descriptor_system->GetMaterialBindingRegistryStats(materials_registered,
-                                                               binding_entries);
-            return true;
+            return diagnostics_service->GetDescriptorContractDiagnosticsExtended(materials_checked,
+                                                                                materials_unresolved,
+                                                                                required_missing,
+                                                                                optional_missing,
+                                                                                fallback_hits,
+                                                                                materials_registered,
+                                                                                binding_entries);
         #endif
         }
 
@@ -103,16 +77,11 @@ namespace hgl
             return false;
         #else
             auto diagnostics_service = GetSystem<RenderDiagnosticsService>();
-            if (diagnostics_service)
-                return diagnostics_service->GetMaterialBindingRegistryStats(materials_registered,
-                                                                            binding_entries);
-
-            auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
-            if (!descriptor_system)
+            if (!diagnostics_service)
                 return false;
 
-            return descriptor_system->GetMaterialBindingRegistryStats(materials_registered,
-                                                                      binding_entries);
+            return diagnostics_service->GetMaterialBindingRegistryStats(materials_registered,
+                                                                        binding_entries);
         #endif
         }
 
@@ -125,14 +94,10 @@ namespace hgl
             return false;
         #else
             auto diagnostics_service = GetSystem<RenderDiagnosticsService>();
-            if (diagnostics_service)
-                return diagnostics_service->GetMaterialBindingKeys(material, out_keys);
-
-            auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
-            if (!descriptor_system)
+            if (!diagnostics_service)
                 return false;
 
-            return descriptor_system->GetMaterialBindingKeys(material, out_keys);
+            return diagnostics_service->GetMaterialBindingKeys(material, out_keys);
         #endif
         }
 

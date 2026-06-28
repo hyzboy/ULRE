@@ -39,6 +39,7 @@ namespace hgl::ecs
         class ECSContext *world = nullptr;
         uint64_t last_emit_ms = 0;
         mutable DiagnosticsSnapshot snapshot;
+        mutable uint32_t snapshot_frame_index = ~0u;
 
     private:
 

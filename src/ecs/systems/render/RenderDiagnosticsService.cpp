@@ -18,13 +18,18 @@ namespace hgl::ecs
 
     bool RenderDiagnosticsService::RefreshSnapshot() const
     {
-        snapshot = DiagnosticsSnapshot{};
-
 #if !ULRE_ECS_DEBUG_API
         return false;
 #else
         if (!world)
             return false;
+
+        const uint32_t frame_index = world->GetFrameIndex();
+        if (snapshot.valid && snapshot_frame_index == frame_index)
+            return true;
+
+        snapshot = DiagnosticsSnapshot{};
+        snapshot_frame_index = ~0u;
 
         auto descriptor_system = world->GetSystem<RenderDescriptorBindingSystem>();
         if (!descriptor_system)
@@ -84,6 +89,7 @@ namespace hgl::ecs
         }
 
         snapshot.valid = true;
+    snapshot_frame_index = frame_index;
         return true;
 #endif
     }
