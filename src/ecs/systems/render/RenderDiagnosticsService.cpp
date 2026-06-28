@@ -16,6 +16,115 @@ namespace hgl::ecs
         AddDependency<RenderDescriptorBindingSystem>();
     }
 
+    bool RenderDiagnosticsService::GetDescriptorContractDiagnostics(uint32_t &materials_checked,
+                                                                    uint32_t &materials_unresolved,
+                                                                    uint32_t &required_missing,
+                                                                    uint32_t &optional_missing,
+                                                                    uint32_t &fallback_hits) const
+    {
+        materials_checked = 0;
+        materials_unresolved = 0;
+        required_missing = 0;
+        optional_missing = 0;
+        fallback_hits = 0;
+
+#if !ULRE_ECS_DEBUG_API
+        return false;
+#else
+        if (!world)
+            return false;
+
+        auto descriptor_system = world->GetSystem<RenderDescriptorBindingSystem>();
+        if (!descriptor_system)
+            return false;
+
+        return descriptor_system->GetContractDiagnosticsStats(materials_checked,
+                                                              materials_unresolved,
+                                                              required_missing,
+                                                              optional_missing,
+                                                              fallback_hits);
+#endif
+    }
+
+    bool RenderDiagnosticsService::GetDescriptorContractDiagnosticsExtended(uint32_t &materials_checked,
+                                                                            uint32_t &materials_unresolved,
+                                                                            uint32_t &required_missing,
+                                                                            uint32_t &optional_missing,
+                                                                            uint32_t &fallback_hits,
+                                                                            uint32_t &materials_registered,
+                                                                            uint32_t &binding_entries) const
+    {
+        materials_checked = 0;
+        materials_unresolved = 0;
+        required_missing = 0;
+        optional_missing = 0;
+        fallback_hits = 0;
+        materials_registered = 0;
+        binding_entries = 0;
+
+#if !ULRE_ECS_DEBUG_API
+        return false;
+#else
+        if (!GetDescriptorContractDiagnostics(materials_checked,
+                                              materials_unresolved,
+                                              required_missing,
+                                              optional_missing,
+                                              fallback_hits))
+            return false;
+
+        if (!GetMaterialBindingRegistryStats(materials_registered, binding_entries))
+        {
+            materials_registered = 0;
+            binding_entries = 0;
+        }
+
+        return true;
+#endif
+    }
+
+    bool RenderDiagnosticsService::GetMaterialBindingRegistryStats(uint32_t &materials_registered,
+                                                                   uint32_t &binding_entries) const
+    {
+        materials_registered = 0;
+        binding_entries = 0;
+
+#if !ULRE_ECS_DEBUG_API
+        return false;
+#else
+        if (!world)
+            return false;
+
+        auto descriptor_system = world->GetSystem<RenderDescriptorBindingSystem>();
+        if (!descriptor_system)
+            return false;
+
+        return descriptor_system->GetMaterialBindingRegistryStats(materials_registered,
+                                                                  binding_entries);
+#endif
+    }
+
+    bool RenderDiagnosticsService::GetMaterialBindingKeys(const graph::ShaderMaterialProgram *material,
+                                                          std::vector<std::string> &out_keys) const
+    {
+        out_keys.clear();
+
+        if (!material)
+            return false;
+
+#if !ULRE_ECS_DEBUG_API
+        return false;
+#else
+        if (!world)
+            return false;
+
+        auto descriptor_system = world->GetSystem<RenderDescriptorBindingSystem>();
+        if (!descriptor_system)
+            return false;
+
+        return descriptor_system->GetMaterialBindingKeys(material, out_keys);
+#endif
+    }
+
     void RenderDiagnosticsService::Update(float)
     {
 #if ULRE_ECS_DEBUG_API
@@ -40,13 +149,13 @@ namespace hgl::ecs
         uint32_t materials_registered = 0;
         uint32_t binding_entries = 0;
 
-        if (world->GetDescriptorContractDiagnosticsExtended(materials_checked,
-                                                            materials_unresolved,
-                                                            required_missing,
-                                                            optional_missing,
-                                                            fallback_hits,
-                                                            materials_registered,
-                                                            binding_entries))
+        if (GetDescriptorContractDiagnosticsExtended(materials_checked,
+                                 materials_unresolved,
+                                 required_missing,
+                                 optional_missing,
+                                 fallback_hits,
+                                 materials_registered,
+                                 binding_entries))
         {
             LogInfo("[DescriptorContract][ECSContext] checked=%u unresolved=%u required_missing=%u optional_missing=%u fallback_hits=%u registered_materials=%u registered_bindings=%u",
                     materials_checked,

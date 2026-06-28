@@ -1,5 +1,6 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+#include<hgl/ecs/systems/render/RenderDiagnosticsService.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<algorithm>
 
@@ -22,6 +23,16 @@ namespace hgl
         #if !ULRE_ECS_DEBUG_API
             return false;
         #else
+            auto diagnostics_service = GetSystem<RenderDiagnosticsService>();
+            if (diagnostics_service)
+            {
+                return diagnostics_service->GetDescriptorContractDiagnostics(materials_checked,
+                                                                            materials_unresolved,
+                                                                            required_missing,
+                                                                            optional_missing,
+                                                                            fallback_hits);
+            }
+
             auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
             if (!descriptor_system)
                 return false;
@@ -53,6 +64,18 @@ namespace hgl
         #if !ULRE_ECS_DEBUG_API
             return false;
         #else
+            auto diagnostics_service = GetSystem<RenderDiagnosticsService>();
+            if (diagnostics_service)
+            {
+                return diagnostics_service->GetDescriptorContractDiagnosticsExtended(materials_checked,
+                                                                                    materials_unresolved,
+                                                                                    required_missing,
+                                                                                    optional_missing,
+                                                                                    fallback_hits,
+                                                                                    materials_registered,
+                                                                                    binding_entries);
+            }
+
             auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
             if (!descriptor_system)
                 return false;
@@ -79,6 +102,11 @@ namespace hgl
         #if !ULRE_ECS_DEBUG_API
             return false;
         #else
+            auto diagnostics_service = GetSystem<RenderDiagnosticsService>();
+            if (diagnostics_service)
+                return diagnostics_service->GetMaterialBindingRegistryStats(materials_registered,
+                                                                            binding_entries);
+
             auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
             if (!descriptor_system)
                 return false;
@@ -96,6 +124,10 @@ namespace hgl
         #if !ULRE_ECS_DEBUG_API
             return false;
         #else
+            auto diagnostics_service = GetSystem<RenderDiagnosticsService>();
+            if (diagnostics_service)
+                return diagnostics_service->GetMaterialBindingKeys(material, out_keys);
+
             auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
             if (!descriptor_system)
                 return false;
