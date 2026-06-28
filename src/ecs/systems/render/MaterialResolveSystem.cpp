@@ -8,10 +8,10 @@
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/mtl/MaterialRecipeStore.h>
-#include<hgl/mtl/RecipeToKey.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/log/Log.h>
 #include "internal/MaterialResolveInternals.h"
+#include "internal/MaterialResolvePlanBuilder.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -55,10 +55,7 @@ namespace hgl::ecs
 		world->GetComponents<PrimitiveComponent>(primitives);
 
 		std::vector<ResolveTask> tasks;
-		tasks.reserve(primitives.size());
-
 		std::unordered_map<PrototypeKey, std::vector<size_t>, PrototypeKeyHash> prototype_buckets;
-		prototype_buckets.reserve(primitives.size());
 
 		uint32_t resolve_input_count = 0;
 		uint32_t resolved_count = 0;
@@ -68,56 +65,11 @@ namespace hgl::ecs
 		uint32_t primitive_recreated_count = 0;
 		uint32_t mi_bucket_count = 0;
 
-		for (auto &comp : primitives)
-		{
-			if (!comp || !comp->NeedsMaterialBindingResolve())
-				continue;
-
-			auto &slot = comp->GetMaterialResolveRequest();
-
-			const graph::mtl::MaterialRecipe *recipe =
-				recipe_store ? recipe_store->GetRecipe(slot.recipe_id) : nullptr;
-			if (!recipe)
-				continue;
-
-			graph::Geometry *geom = comp->GetUnresolvedGeometry();
-			if (!geom && comp->GetPrimitive())
-				geom = comp->GetPrimitive()->GetGeometry();
-
-			if (!geom)
-				continue;
-
-			const auto &gvf = geom->GetGeometryVertexFormat();
-			ResolveTask task;
-			task.comp = comp;
-			task.slot = &slot;
-			task.geometry = geom;
-			task.recipe = recipe;
-			task.material_key = graph::mtl::ResolveRecipePrimaryKey(*recipe);
-			task.gvf_hash = internal::HashGeometryVertexFormat(gvf);
-			task.instance_hash = internal::HashBytes(slot.GetInstanceDataPtr(), slot.GetInstanceDataSize());
-
-			LogInfo("[ECS::MaterialResolveSystem] resolve_input comp=%p recipe_id=%u preset=%u dim=%u recipe_prim=%u pipeline=%u geom=%p key_hash=0x%llx gvf_hash=0x%llx instance_hash=0x%llx",
-				comp.get(),
-				static_cast<unsigned>(slot.recipe_id),
-				static_cast<unsigned>(recipe->preset),
-				static_cast<unsigned>(recipe->dim),
-				static_cast<unsigned>(recipe->prim),
-				static_cast<unsigned>(recipe->pipeline),
-				geom,
-				static_cast<unsigned long long>(task.material_key.Hash()),
-				static_cast<unsigned long long>(task.gvf_hash),
-				static_cast<unsigned long long>(task.instance_hash));
-
-			const size_t index = tasks.size();
-			tasks.push_back(task);
-			++resolve_input_count;
-
-			PrototypeKey pkey;
-			pkey.material_key = task.material_key;
-			pkey.gvf_hash = task.gvf_hash;
-			prototype_buckets[pkey].push_back(index);
-		}
+		internal::BuildResolvePlan(primitives,
+			recipe_store,
+			tasks,
+			prototype_buckets,
+			resolve_input_count);
 
 		for (const auto &[pkey, indices] : prototype_buckets)
 		{

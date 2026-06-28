@@ -145,6 +145,8 @@ set(ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES
     systems/render/MaterialResolveSystem.cpp
     systems/render/internal/MaterialResolveInternals.h
     systems/render/internal/MaterialResolveInternals.cpp
+    systems/render/internal/MaterialResolvePlanBuilder.h
+    systems/render/internal/MaterialResolvePlanBuilder.cpp
 )
 
 set(ECS_SYS_11C_RenderMaterialBind_PrimitiveBindingCommitSystem_FILES
