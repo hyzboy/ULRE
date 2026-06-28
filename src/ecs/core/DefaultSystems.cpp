@@ -16,6 +16,7 @@
 #include <hgl/ecs/systems/render/MaterialResolveSystem.h>
 #include <hgl/ecs/systems/render/PrimitiveBindingCommitSystem.h>
 #include <hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
+#include <hgl/ecs/systems/render/DomainResourcesReadySystem.h>
 #include <hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
 #include <hgl/ecs/systems/render/QuadMeshPrepareSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
@@ -74,6 +75,10 @@ namespace
         auto quad_mesh_prepare_system = EnsureRenderSystem<hgl::ecs::QuadMeshPrepareSystem>(ctx);
         if (quad_mesh_prepare_system)
             quad_mesh_prepare_system->SetWorld(ctx);
+
+        auto domain_ready_system = EnsureRenderSystem<hgl::ecs::DomainResourcesReadySystem>(ctx);
+        if (domain_ready_system)
+            domain_ready_system->SetWorld(ctx);
 
         // MaterialResolveSystem
         auto material_resolve_system = EnsureRenderSystem<hgl::ecs::MaterialResolveSystem>(ctx);

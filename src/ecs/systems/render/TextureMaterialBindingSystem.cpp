@@ -1,6 +1,6 @@
 #include<hgl/ecs/systems/render/TextureMaterialBindingSystem.h>
 #include<hgl/ecs/systems/render/MaterialResolveSystem.h>
-#include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>  // execution-order dependency only; no Quad API called
+#include<hgl/ecs/systems/render/DomainResourcesReadySystem.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
@@ -183,9 +183,9 @@ namespace hgl::ecs
         SetSystemType(SystemType::ShaderMaterialProgram);
         SetExecutionOrder(ExecutionPhase::RenderMaterialBind);
         SetRenderElementType("Primitive");
-        // Execution-order dependency only: ensures domain texture arrays are rebuilt before this system runs.
-        // TODO(Phase 5): replace with a generic DomainResourcesReadySystem.
-        AddDependency<QuadResourcePrepareSystem>();
+        // Phase D contract: bind path depends on explicit domain-readiness state,
+        // not directly on resource-prepare system execution order.
+        AddDependency<DomainResourcesReadySystem>();
         AddDependency<MaterialResolveSystem>();
     }
 
@@ -606,9 +606,26 @@ namespace hgl::ecs
             }
 
             auto *domain_resources = graph::TextureDomainRegistry::GetEntry(binding.domain_tag);
-            // Domain resources are built by QuadResourcePrepareSystem::Update() which runs first
-            // due to AddDependency<QuadResourcePrepareSystem>() in the constructor.
-            // TODO(Phase 5): replace execution-order dependency with a generic DomainResourcesReadySystem.
+
+            if (auto domain_ready_system = world->GetSystem<DomainResourcesReadySystem>())
+            {
+                if (const auto *ready_state = domain_ready_system->GetDomainState(binding.domain_tag))
+                {
+                    if (!ready_state->ready)
+                    {
+                        LogInfo("[TBV][TextureMaterialBindingSystem] domain readiness not satisfied: domain_tag='%s' dirty=%d tex_array=%p sampler=%p material=%p dmb=%p primitive=%p",
+                                binding.domain_tag.c_str(),
+                                ready_state->dirty ? 1 : 0,
+                                ready_state->has_texture_array ? static_cast<void *>(domain_resources ? domain_resources->texture_array : nullptr) : nullptr,
+                                ready_state->has_sampler ? static_cast<void *>(domain_resources ? domain_resources->sampler : nullptr) : nullptr,
+                                ready_state->has_material ? static_cast<void *>(domain_resources ? domain_resources->material : nullptr) : nullptr,
+                                ready_state->has_dmb ? static_cast<void *>(domain_resources ? domain_resources->dmb : nullptr) : nullptr,
+                                ready_state->has_primitive ? static_cast<void *>(domain_resources ? domain_resources->primitive : nullptr) : nullptr);
+                    }
+                }
+            }
+
+            // Domain resources are validated through the explicit readiness contract.
             if (!domain_resources || domain_resources->dirty || !domain_resources->texture_array || !domain_resources->sampler)
             {
                 internal::SingleTextureBindingStats::RecordRejectHit(
