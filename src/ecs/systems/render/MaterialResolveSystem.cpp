@@ -148,6 +148,9 @@ namespace hgl::ecs
 					cached_program = task.slot->resolved_material;
 				}
 
+				if (!cached_program)
+					++r21_dry_run_stats.miss_program;
+
 				if (cached_program && cached_program == legacy_program)
 					++r21_dry_run_stats.program_match_with_legacy;
 
@@ -181,6 +184,9 @@ namespace hgl::ecs
 
 					tiered_cache.UpsertPayload(payload_key, cached_payload, true);
 				}
+
+				if (!cached_payload)
+					++r21_dry_run_stats.miss_payload;
 
 				if (cached_payload
 				 && cached_payload->instance_hash == legacy_instance_hash
@@ -219,6 +225,9 @@ namespace hgl::ecs
 					tiered_cache.UpsertBinding(binding_key, cached_binding, true);
 				}
 
+				if (!cached_binding)
+					++r21_dry_run_stats.miss_binding;
+
 				if (cached_binding
 				 && cached_binding->program == legacy_program
 				 && cached_binding->domain == legacy_domain)
@@ -226,16 +235,29 @@ namespace hgl::ecs
 					++r21_dry_run_stats.binding_match_with_legacy;
 				}
 
-				if (cached_program
-				 && cached_program == legacy_program
-				 && cached_payload
-				 && cached_payload->instance_hash == legacy_instance_hash
-				 && cached_payload->domain_id == legacy_domain_id
-				 && cached_binding
-				 && cached_binding->program == legacy_program
-				 && cached_binding->domain == legacy_domain)
+				const bool program_match = cached_program && cached_program == legacy_program;
+				const bool payload_match = cached_payload
+				                        && cached_payload->instance_hash == legacy_instance_hash
+				                        && cached_payload->domain_id == legacy_domain_id;
+				const bool binding_match = cached_binding
+				                        && cached_binding->program == legacy_program
+				                        && cached_binding->domain == legacy_domain;
+
+				if (decoupled_cache_dryrun_short_circuit_check_enabled)
 				{
-					++r21_dry_run_stats.dry_run_short_circuit_eligible;
+					++r21_dry_run_stats.short_circuit_checks;
+
+					if (!program_match)
+						++r21_dry_run_stats.short_circuit_blocked_by_program;
+
+					if (!payload_match)
+						++r21_dry_run_stats.short_circuit_blocked_by_payload;
+
+					if (!binding_match)
+						++r21_dry_run_stats.short_circuit_blocked_by_binding;
+
+					if (program_match && payload_match && binding_match)
+						++r21_dry_run_stats.dry_run_short_circuit_eligible;
 				}
 			}
 		}
@@ -285,16 +307,24 @@ namespace hgl::ecs
 
 				LogInfo("[ECS::MaterialResolveSystem][R2.1] dry_run_compare: "
 				        "tasks=%llu candidate_hits(program=%llu payload=%llu binding=%llu) "
+				        "miss(program=%llu payload=%llu binding=%llu) "
 				        "legacy_match(program=%llu payload=%llu binding=%llu) "
-				        "short_circuit_eligible=%llu",
+				        "short_circuit(checks=%llu eligible=%llu blocked_program=%llu blocked_payload=%llu blocked_binding=%llu)",
 				        static_cast<unsigned long long>(r21_dry_run_stats.tasks_seen),
 				        static_cast<unsigned long long>(r21_dry_run_stats.candidate_program_hits),
 				        static_cast<unsigned long long>(r21_dry_run_stats.candidate_payload_hits),
 				        static_cast<unsigned long long>(r21_dry_run_stats.candidate_binding_hits),
+				        static_cast<unsigned long long>(r21_dry_run_stats.miss_program),
+				        static_cast<unsigned long long>(r21_dry_run_stats.miss_payload),
+				        static_cast<unsigned long long>(r21_dry_run_stats.miss_binding),
 				        static_cast<unsigned long long>(r21_dry_run_stats.program_match_with_legacy),
 				        static_cast<unsigned long long>(r21_dry_run_stats.payload_match_with_legacy),
 				        static_cast<unsigned long long>(r21_dry_run_stats.binding_match_with_legacy),
-				        static_cast<unsigned long long>(r21_dry_run_stats.dry_run_short_circuit_eligible));
+				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_checks),
+				        static_cast<unsigned long long>(r21_dry_run_stats.dry_run_short_circuit_eligible),
+				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_program),
+				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_payload),
+				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_binding));
 
 				r21_dry_run_stats = {};
 			}
