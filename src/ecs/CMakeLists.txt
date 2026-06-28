@@ -133,6 +133,11 @@ set(ECS_SYS_10C_RenderMaterialBind_TextureMaterialBindingSystem_FILES
     systems/render/TextureMaterialBindingSystem.cpp
 )
 
+set(ECS_SYS_10D_RenderMaterialBind_SingleTextureBindingAdapter_FILES
+    systems/render/internal/SingleTextureBindingAdapter.h
+    systems/render/internal/SingleTextureBindingAdapter.cpp
+)
+
 set(ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/QuadMaterialBindingSystem.h
     systems/render/QuadMaterialBindingSystem.cpp
@@ -365,6 +370,7 @@ set(ECS_SOURCE
     ${ECS_SYS_10_RenderResourceSetup_QuadResourcePrepareSystem_FILES}
     ${ECS_SYS_10B_RenderMaterialBind_QuadMeshPrepareSystem_FILES}
     ${ECS_SYS_10C_RenderMaterialBind_TextureMaterialBindingSystem_FILES}
+    ${ECS_SYS_10D_RenderMaterialBind_SingleTextureBindingAdapter_FILES}
     ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES}
     ${ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES}
     ${ECS_SYS_11C_RenderMaterialBind_PrimitiveBindingCommitSystem_FILES}
@@ -411,6 +417,7 @@ source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${EC
 source_group("ECS\\Systems\\10 RenderResourceSetup_QuadResourcePrepareSystem" FILES ${ECS_SYS_10_RenderResourceSetup_QuadResourcePrepareSystem_FILES})
 source_group("ECS\\Systems\\10B RenderMaterialBind_QuadMeshPrepareSystem" FILES ${ECS_SYS_10B_RenderMaterialBind_QuadMeshPrepareSystem_FILES})
 source_group("ECS\\Systems\\10C RenderMaterialBind_TextureMaterialBindingSystem" FILES ${ECS_SYS_10C_RenderMaterialBind_TextureMaterialBindingSystem_FILES})
+source_group("ECS\\Systems\\10D RenderMaterialBind_SingleTextureBindingAdapter" FILES ${ECS_SYS_10D_RenderMaterialBind_SingleTextureBindingAdapter_FILES})
 source_group("ECS\\Systems\\11 RenderMaterialBind_QuadMaterialBindingSystem" FILES ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES})
 source_group("ECS\\Systems\\11B RenderMaterialBind_MaterialResolveSystem" FILES ${ECS_SYS_11B_RenderMaterialBind_MaterialResolveSystem_FILES})
 source_group("ECS\\Systems\\11C RenderMaterialBind_PrimitiveBindingCommitSystem" FILES ${ECS_SYS_11C_RenderMaterialBind_PrimitiveBindingCommitSystem_FILES})
