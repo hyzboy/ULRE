@@ -12,6 +12,7 @@
 #include<hgl/log/Log.h>
 #include "internal/MaterialResolveInternals.h"
 #include "internal/MaterialResolvePlanBuilder.h"
+#include "internal/MaterialResolveBucketResolver.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -21,10 +22,9 @@ namespace hgl::ecs
 {
 	namespace
 	{
-		using internal::MIKey;
-		using internal::MIKeyHash;
 		using internal::PrototypeKey;
 		using internal::PrototypeKeyHash;
+		using internal::ResolvedMIBucket;
 		using internal::ResolveTask;
 	}
 
@@ -56,6 +56,7 @@ namespace hgl::ecs
 
 		std::vector<ResolveTask> tasks;
 		std::unordered_map<PrototypeKey, std::vector<size_t>, PrototypeKeyHash> prototype_buckets;
+		std::vector<ResolvedMIBucket> resolved_buckets;
 
 		uint32_t resolve_input_count = 0;
 		uint32_t resolved_count = 0;
@@ -71,60 +72,20 @@ namespace hgl::ecs
 			prototype_buckets,
 			resolve_input_count);
 
-		for (const auto &[pkey, indices] : prototype_buckets)
+		internal::ResolveMIBuckets(tasks,
+			prototype_buckets,
+			registry,
+			resolved_buckets,
+			mi_bucket_count,
+			resolve_fail_count);
+
+		for (const auto &resolved_bucket : resolved_buckets)
 		{
-			if (indices.empty())
-				continue;
+			graph::MaterialBindingInstance *mi = resolved_bucket.mi;
+			const graph::VIL *resolve_vil = resolved_bucket.resolve_vil;
 
-			std::unordered_map<MIKey, std::vector<size_t>, MIKeyHash> mi_buckets;
-			mi_buckets.reserve(indices.size());
-
-			const uint64_t proto_hash = internal::HashPrototypeKey(pkey);
-
-			for (const size_t idx : indices)
+			for (const size_t idx : resolved_bucket.task_indices)
 			{
-				const ResolveTask &task = tasks[idx];
-
-				MIKey mikey;
-				mikey.prototype_hash = proto_hash;
-				mikey.instance_hash = task.instance_hash;
-				mi_buckets[mikey].push_back(idx);
-			}
-
-			for (const auto &[mikey, mi_indices] : mi_buckets)
-			{
-				++mi_bucket_count;
-
-				if (mi_indices.empty())
-					continue;
-
-				const ResolveTask &seed = tasks[mi_indices.front()];
-				const auto &seed_gvf = seed.geometry->GetGeometryVertexFormat();
-
-				const graph::VIL *resolve_vil = nullptr;
-				graph::MaterialBindingInstance *mi =
-					registry->ResolveOrCreateBindingInstance(seed.material_key,
-														 *seed.recipe,
-															 seed_gvf,
-															 seed.slot->GetInstanceDataPtr(),
-															 seed.slot->GetInstanceDataSize(),
-															 nullptr,
-															 &resolve_vil);
-                LogInfo("[ECS::MaterialResolveSystem] resolve_bucket key_hash=0x%llx recipe_prim=%u pipeline=%u mi=%p vil=%p bucket_size=%u",
-					static_cast<unsigned long long>(seed.material_key.Hash()),
-					static_cast<unsigned>(seed.recipe->prim),
-					static_cast<unsigned>(seed.recipe->pipeline),
-					mi,
-					resolve_vil,
-					static_cast<unsigned>(mi_indices.size()));
-				if (!mi)
-				{
-					resolve_fail_count += static_cast<uint32_t>(mi_indices.size());
-					continue;
-				}
-
-				for (const size_t idx : mi_indices)
-				{
 					ResolveTask &task = tasks[idx];
 					graph::Primitive *previous_primitive = task.comp->GetPrimitive();
 					graph::Geometry *previous_unresolved_geometry = task.comp->GetUnresolvedGeometry();
@@ -214,7 +175,6 @@ namespace hgl::ecs
 					 && previous_unresolved_geometry != task.comp->GetUnresolvedGeometry()
 					 && (!task.comp->GetPrimitive() || previous_unresolved_geometry != task.comp->GetPrimitive()->GetGeometry()))
 						delete previous_unresolved_geometry;
-				}
 			}
 		}
 
