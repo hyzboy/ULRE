@@ -100,16 +100,16 @@ namespace hgl::ecs
             if (!environment_system)
             {
                 auto es = context->GetSystem<hgl::ecs::EnvironmentSystem>();
-                if (!es)
+                environment_system = es ? es.get() : nullptr;
+
+                if (!environment_system)
                 {
-                    es = context->RegisterRenderSystem<hgl::ecs::EnvironmentSystem>();
-                    if (es && context->IsActive())
+                    static std::unordered_set<const hgl::ecs::ECSContext *> warned_contexts;
+                    if (warned_contexts.insert(context).second)
                     {
-                        es->OnDependenciesReady();
-                        es->Initialize();
+                        GLogWarning("[RenderDescriptorBindingSystem] EnvironmentSystem is missing; sky UBO binding will be skipped until system is registered during setup.");
                     }
                 }
-                environment_system = es ? es.get() : nullptr;
             }
         }
 

@@ -301,7 +301,9 @@ private:
 
             auto prim = grid_entity->AddComponent<PrimitiveComponent>();
             prim->SetUnresolvedGeometry(geom_plane_grid);
+
             prim->SetMaterialRecipe(RegisterMaterialRecipe(kPlaneGridCfg), &white_color, sizeof(white_color));
+
             prim->SetVisible(true);
         }
 
