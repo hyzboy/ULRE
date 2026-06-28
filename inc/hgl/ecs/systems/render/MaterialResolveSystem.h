@@ -17,6 +17,9 @@ namespace hgl::ecs
     private:
 
         ECSContext *world = nullptr;
+        bool decoupled_cache_enabled = false;   // Phase R1.2 placeholder, default off.
+        uint64_t last_cache_stats_log_ms = 0;
+        uint64_t cache_stats_log_interval_ms = 1000;
 
     public:
 
@@ -24,6 +27,8 @@ namespace hgl::ecs
         ~MaterialResolveSystem() override = default;
 
         void SetWorld(ECSContext *w) { world = w; }
+        void SetDecoupledCacheEnabled(bool enabled) { decoupled_cache_enabled = enabled; }
+        bool IsDecoupledCacheEnabled() const { return decoupled_cache_enabled; }
 
         void Update(float deltaTime) override;
     };

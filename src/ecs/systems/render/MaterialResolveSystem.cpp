@@ -8,6 +8,7 @@
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/mtl/MaterialRecipeStore.h>
+#include<hgl/time/Time.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/log/Log.h>
 #include "internal/MaterialResolveInternals.h"
@@ -104,6 +105,33 @@ namespace hgl::ecs
 				primitive_created_count,
 				primitive_updated_count,
 				primitive_recreated_count);
+		}
+
+		if (decoupled_cache_enabled)
+		{
+			const uint64_t now_ms = hgl::GetTimeMs();
+			if (now_ms - last_cache_stats_log_ms >= cache_stats_log_interval_ms)
+			{
+				last_cache_stats_log_ms = now_ms;
+				const auto stats = gc->GetMaterialResolveTieredCacheStats();
+
+				LogInfo("[ECS::MaterialResolveSystem][R1.2] tiered_cache_stats: "
+				        "program(req=%llu hit=%llu miss=%llu create=%llu) "
+				        "payload(req=%llu hit=%llu miss=%llu create=%llu) "
+				        "binding(req=%llu hit=%llu miss=%llu create=%llu)",
+				        static_cast<unsigned long long>(stats.program_requests),
+				        static_cast<unsigned long long>(stats.program_hits),
+				        static_cast<unsigned long long>(stats.program_misses),
+				        static_cast<unsigned long long>(stats.program_creates),
+				        static_cast<unsigned long long>(stats.payload_requests),
+				        static_cast<unsigned long long>(stats.payload_hits),
+				        static_cast<unsigned long long>(stats.payload_misses),
+				        static_cast<unsigned long long>(stats.payload_creates),
+				        static_cast<unsigned long long>(stats.binding_requests),
+				        static_cast<unsigned long long>(stats.binding_hits),
+				        static_cast<unsigned long long>(stats.binding_misses),
+				        static_cast<unsigned long long>(stats.binding_creates));
+			}
 		}
 	}
 }//namespace hgl::ecs
