@@ -92,6 +92,9 @@ namespace hgl::graph
         SAFE_CLEAR(material_asset_registry)
         SAFE_CLEAR(recipe_store)
 
+        material_resolve_tiered_cache.Clear();
+        material_resolve_tiered_cache.ResetStats();
+
         // Clear all manager pointers (they're owned by module_manager)
         tex_manager = nullptr;
         rt_manager = nullptr;

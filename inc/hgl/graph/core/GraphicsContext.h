@@ -19,6 +19,7 @@
  */
 
 #include <hgl/vk/VKDevice.h>
+#include <hgl/graph/module/MaterialResolveTieredCache.h>
 #include <hgl/graph/module/ShaderGenValidationTypes.h>
 
 namespace hgl::graph
@@ -73,6 +74,7 @@ namespace hgl::graph
         PrimitiveManager *primitive_manager = nullptr;
         MaterialRecipeRegistry *material_asset_registry = nullptr;
         mtl::MaterialRecipeStore *recipe_store = nullptr;
+        MaterialResolveTieredCache material_resolve_tiered_cache;
 
     public:
         explicit GraphicsContext(VulkanDevice *dev);
@@ -120,6 +122,8 @@ namespace hgl::graph
         PrimitiveManager *GetPrimitiveManager() { return primitive_manager; }
         MaterialRecipeRegistry *GetMaterialAssetRegistry() { return material_asset_registry; }
         mtl::MaterialRecipeStore *GetRecipeStore() { return recipe_store; }
+        MaterialResolveTieredCache &GetMaterialResolveTieredCache() { return material_resolve_tiered_cache; }
+        const MaterialResolveTieredCache &GetMaterialResolveTieredCache() const { return material_resolve_tiered_cache; }
 
         // 扩展访问（不常用）
         GraphModuleManager *GetModuleManager() { return module_manager; }
@@ -133,6 +137,17 @@ namespace hgl::graph
         bool GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name = nullptr) const;
         std::vector<ShaderGenValidationReportRecord> GetShaderGenRecentValidationReports(uint32_t max_count = 64) const;
         std::map<std::string, uint32_t> GetShaderGenRecentValidationCategoryHistogram(uint32_t max_count = 128) const;
+
+        // Phase R1.1: tiered cache stats entry points (collect-only, no behavior changes).
+        MaterialResolveTieredCacheStats GetMaterialResolveTieredCacheStats() const
+        {
+            return material_resolve_tiered_cache.GetStats();
+        }
+
+        void ResetMaterialResolveTieredCacheStats()
+        {
+            material_resolve_tiered_cache.ResetStats();
+        }
     };
 
     // 向后兼容别名
