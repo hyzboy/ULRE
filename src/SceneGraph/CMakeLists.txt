@@ -18,6 +18,8 @@ SOURCE_GROUP("1.Core\\GraphicsContext" FILES ${GRAPHICS_CONTEXT_FILES})
 
 SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/GraphModuleManager.h
+                        ${SG_INCLUDE_PATH}/module/MaterialDecoupledTypes.h
+                        ${SG_INCLUDE_PATH}/module/MaterialResolveTieredCache.h
                         ${SG_INCLUDE_PATH}/module/TextureManager.h
                         ${SG_INCLUDE_PATH}/module/SamplerManager.h
                         ${SG_INCLUDE_PATH}/module/ShaderMaterialProgramManager.h
@@ -47,6 +49,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/MaterialFinalizeFlowAdapter.cpp
                         module/MaterialRecipeRegistry.cpp
                         module/MaterialRecipeStore.cpp
+                        module/MaterialResolveTieredCache.cpp
                         module/BufferManager.cpp
                         module/RenderTargetManager.cpp
                         module/GeometryManager.cpp
