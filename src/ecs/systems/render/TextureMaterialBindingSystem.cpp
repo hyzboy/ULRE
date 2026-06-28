@@ -19,36 +19,31 @@
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKDomainResourceBinding.h>
-#include<chrono>
+#include"internal/SingleTextureBindingAdapter.h"
 
 namespace hgl::ecs
 {
     namespace
     {
         static uint64_t g_runtime_texture_binding_id = 1;
-        static uint32_t g_texture_binding_nondomain_hits = 0;
-        static uint64_t g_texture_binding_nondomain_last_log_ms = 0;
 
         static void RecordNonDomainCompatibilityPathHit()
         {
-            using namespace std::chrono;
-            ++g_texture_binding_nondomain_hits;
+            internal::SingleTextureBindingStats::RecordFallbackHit(
+                internal::SingleTextureFallbackReason::NonDomainCompatibility);
 
-            const uint64_t now_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-            if (g_texture_binding_nondomain_last_log_ms == 0)
-            {
-                g_texture_binding_nondomain_last_log_ms = now_ms;
-                return;
-            }
-
-            if (now_ms - g_texture_binding_nondomain_last_log_ms < 1000)
+            internal::SingleTextureBindingStatsSnapshot snapshot{};
+            if (!internal::SingleTextureBindingStats::TryConsumePerSecondSnapshot(snapshot))
                 return;
 
-            GLogInfo("[PhaseA][TextureMaterialBindingSystem] non-domain compatibility path hits(last_sec)=%u",
-                    g_texture_binding_nondomain_hits);
+            if (snapshot.fallback_nondomain_hits == 0)
+                return;
 
-            g_texture_binding_nondomain_hits = 0;
-            g_texture_binding_nondomain_last_log_ms = now_ms;
+            GLogInfo("[PhaseC][SingleTextureBindingAdapter] fallback_nondomain_hits(last_sec)=%u fallback_total=%u reject_total=%u main_path_hits=%u",
+                    snapshot.fallback_nondomain_hits,
+                    snapshot.fallback_hits,
+                    snapshot.reject_hits,
+                    snapshot.main_path_hits);
         }
 
         static bool PatchTextureSlotRecipe(graph::mtl::MaterialRecipe &recipe,

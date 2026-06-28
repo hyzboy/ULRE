@@ -16,38 +16,32 @@
 #include<hgl/graph/module/MaterialRecipeRegistry.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
+#include"internal/SingleTextureBindingAdapter.h"
 #include<hgl/type/StdString.h>
 #include<hgl/log/Log.h>
-#include<chrono>
 #include<iostream>
 
 namespace hgl::ecs
 {
     namespace
     {
-        static uint32_t g_quad_legacy_path_hits = 0;
-        static uint64_t g_quad_legacy_path_last_log_ms = 0;
-
         static void RecordQuadLegacyPathHit()
         {
-            using namespace std::chrono;
-            ++g_quad_legacy_path_hits;
+            internal::SingleTextureBindingStats::RecordFallbackHit(
+                internal::SingleTextureFallbackReason::LegacyQuadPath);
 
-            const uint64_t now_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-            if (g_quad_legacy_path_last_log_ms == 0)
-            {
-                g_quad_legacy_path_last_log_ms = now_ms;
-                return;
-            }
-
-            if (now_ms - g_quad_legacy_path_last_log_ms < 1000)
+            internal::SingleTextureBindingStatsSnapshot snapshot{};
+            if (!internal::SingleTextureBindingStats::TryConsumePerSecondSnapshot(snapshot))
                 return;
 
-            GLogInfo("[PhaseA][QuadMaterialBindingSystem] legacy single-texture path hits(last_sec)=%u",
-                    g_quad_legacy_path_hits);
+            if (snapshot.fallback_legacy_quad_hits == 0)
+                return;
 
-            g_quad_legacy_path_hits = 0;
-            g_quad_legacy_path_last_log_ms = now_ms;
+            GLogInfo("[PhaseC][SingleTextureBindingAdapter] fallback_legacy_quad_hits(last_sec)=%u fallback_total=%u reject_total=%u main_path_hits=%u",
+                    snapshot.fallback_legacy_quad_hits,
+                    snapshot.fallback_hits,
+                    snapshot.reject_hits,
+                    snapshot.main_path_hits);
         }
     }
 

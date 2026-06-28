@@ -1,6 +1,6 @@
 #include "SingleTextureBindingAdapter.h"
 
-#include <chrono>
+#include <Windows.h>
 
 namespace hgl::ecs::internal
 {
@@ -25,8 +25,7 @@ namespace hgl::ecs::internal
 
         static uint64_t GetNowMs()
         {
-            using namespace std::chrono;
-            return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+            return static_cast<uint64_t>(::GetTickCount64());
         }
 
         static void ResetSnapshotCounters(SingleTextureBindingStatsState &stats)
