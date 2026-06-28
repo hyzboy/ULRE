@@ -152,6 +152,7 @@ namespace hgl
             bool descriptor_contract_diag_log_enabled = false;
             bool material_binding_query_log_enabled = false;
             bool material_resolve_decoupled_cache_enabled = false;
+            bool material_resolve_decoupled_cache_execute_short_circuit_enabled = false;
 
             uint32_t filtered_entity_count_last_frame = 0;
 
@@ -386,6 +387,10 @@ namespace hgl
             // Phase R1.3: unified feature switch for decoupled material resolve cache.
             void SetMaterialResolveDecoupledCacheEnabled(bool enabled);
             bool IsMaterialResolveDecoupledCacheEnabled() const;
+
+            // Phase R2-B: controlled execution switch for decoupled-cache short-circuit.
+            void SetMaterialResolveDecoupledCacheExecuteShortCircuitEnabled(bool enabled);
+            bool IsMaterialResolveDecoupledCacheExecuteShortCircuitEnabled() const;
 
             void SetDescriptorContractDiagnosticsLogEnabled(bool enabled) { descriptor_contract_diag_log_enabled = enabled; }
             bool IsDescriptorContractDiagnosticsLogEnabled() const { return descriptor_contract_diag_log_enabled; }

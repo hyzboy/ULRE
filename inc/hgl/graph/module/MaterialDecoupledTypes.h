@@ -7,6 +7,8 @@ namespace hgl::graph
 {
     class ShaderMaterialProgram;
     class ResourceDomain;
+    class MaterialBindingInstance;
+    class VertexInputLayout;
 
     using MaterialPayloadID = uint64_t;
     using ProgramBindingID = uint64_t;
@@ -29,5 +31,9 @@ namespace hgl::graph
         MaterialInstancePayload *payload = nullptr;
         ResourceDomain *domain = nullptr;
         uint64_t layout_signature = 0;
+
+        // Phase R2-B bridge: keeps a legacy MI pointer for controlled execution fallback/short-circuit.
+        MaterialBindingInstance *legacy_binding_instance = nullptr;
+        const VertexInputLayout *legacy_vil = nullptr;
     };
 }

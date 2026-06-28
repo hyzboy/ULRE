@@ -87,6 +87,8 @@ namespace
         {
             material_resolve_system->SetWorld(ctx);
             material_resolve_system->SetDecoupledCacheEnabled(ctx->IsMaterialResolveDecoupledCacheEnabled());
+            material_resolve_system->SetDecoupledCacheExecuteShortCircuitEnabled(
+                ctx->IsMaterialResolveDecoupledCacheExecuteShortCircuitEnabled());
         }
 
         // TextureMaterialBindingSystem: generic texture/sampler binding for Primitive + TextureBinding

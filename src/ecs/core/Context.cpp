@@ -248,6 +248,20 @@ namespace hgl
             return material_resolve_decoupled_cache_enabled;
         }
 
+        void ECSContext::SetMaterialResolveDecoupledCacheExecuteShortCircuitEnabled(bool enabled)
+        {
+            material_resolve_decoupled_cache_execute_short_circuit_enabled = enabled;
+
+            auto material_resolve_system = GetSystem<MaterialResolveSystem>();
+            if (material_resolve_system)
+                material_resolve_system->SetDecoupledCacheExecuteShortCircuitEnabled(enabled);
+        }
+
+        bool ECSContext::IsMaterialResolveDecoupledCacheExecuteShortCircuitEnabled() const
+        {
+            return material_resolve_decoupled_cache_execute_short_circuit_enabled;
+        }
+
         void ECSContext::Shutdown()
         {
             if (shutdown_in_progress)
