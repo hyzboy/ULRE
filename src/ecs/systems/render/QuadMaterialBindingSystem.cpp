@@ -17,10 +17,40 @@
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/type/StdString.h>
+#include<hgl/log/Log.h>
+#include<chrono>
 #include<iostream>
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        static uint32_t g_quad_legacy_path_hits = 0;
+        static uint64_t g_quad_legacy_path_last_log_ms = 0;
+
+        static void RecordQuadLegacyPathHit()
+        {
+            using namespace std::chrono;
+            ++g_quad_legacy_path_hits;
+
+            const uint64_t now_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+            if (g_quad_legacy_path_last_log_ms == 0)
+            {
+                g_quad_legacy_path_last_log_ms = now_ms;
+                return;
+            }
+
+            if (now_ms - g_quad_legacy_path_last_log_ms < 1000)
+                return;
+
+            GLogInfo("[PhaseA][QuadMaterialBindingSystem] legacy single-texture path hits(last_sec)=%u",
+                    g_quad_legacy_path_hits);
+
+            g_quad_legacy_path_hits = 0;
+            g_quad_legacy_path_last_log_ms = now_ms;
+        }
+    }
+
     struct QuadResolvedMaterialState
     {
         graph::MaterialBindingInstance *binding_instance = nullptr;
@@ -205,6 +235,9 @@ namespace hgl::ecs
             return EnsureQuadMaterialDomain(quad);
 
         // ── Legacy single-texture path ────────────────────────────
+        // Phase A guard rail: keep this path behavior intact, but track usage density.
+        // Planned migration target: Phase C adapter replacement.
+        RecordQuadLegacyPathHit();
 
         // If texture hasn't changed and a quad-specific primitive is already bound, skip
         if (!quad->IsTextureDirty() && quad->GetPrimitive() != QuadResourcePrepareSystem::GetSharedPrimitive())

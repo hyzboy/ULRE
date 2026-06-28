@@ -19,12 +19,37 @@
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKDomainResourceBinding.h>
+#include<chrono>
 
 namespace hgl::ecs
 {
     namespace
     {
         static uint64_t g_runtime_texture_binding_id = 1;
+        static uint32_t g_texture_binding_nondomain_hits = 0;
+        static uint64_t g_texture_binding_nondomain_last_log_ms = 0;
+
+        static void RecordNonDomainCompatibilityPathHit()
+        {
+            using namespace std::chrono;
+            ++g_texture_binding_nondomain_hits;
+
+            const uint64_t now_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+            if (g_texture_binding_nondomain_last_log_ms == 0)
+            {
+                g_texture_binding_nondomain_last_log_ms = now_ms;
+                return;
+            }
+
+            if (now_ms - g_texture_binding_nondomain_last_log_ms < 1000)
+                return;
+
+            GLogInfo("[PhaseA][TextureMaterialBindingSystem] non-domain compatibility path hits(last_sec)=%u",
+                    g_texture_binding_nondomain_hits);
+
+            g_texture_binding_nondomain_hits = 0;
+            g_texture_binding_nondomain_last_log_ms = now_ms;
+        }
 
         static bool PatchTextureSlotRecipe(graph::mtl::MaterialRecipe &recipe,
                                            graph::mtl::SamplerSlot slot,
@@ -254,6 +279,10 @@ namespace hgl::ecs
 
         if (!binding.HasDomainTag())
         {
+            // Phase A guard rail: keep non-domain compatibility path untouched.
+            // Planned migration target: Phase C (unified adapter boundary).
+            RecordNonDomainCompatibilityPathHit();
+
             auto *previous_material = primitive->GetShaderMaterialProgram();
             auto *descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>().get();
             const auto resolved_state = primitive->ResolveEffectiveMaterialState();
