@@ -258,6 +258,37 @@ namespace hgl::ecs
 
 					if (program_match && payload_match && binding_match)
 						++r21_dry_run_stats.dry_run_short_circuit_eligible;
+
+					if (decoupled_cache_dryrun_whitelist_enabled)
+					{
+						const bool guard_dirty_ok = !task.slot->dirty;
+						const bool guard_domain_ok = legacy_domain_id != 0xFFFFFFFFu;
+						const bool guard_vil_ok = task.slot->resolved_vil != nullptr;
+						const bool guard_primitive_ok = task.comp && task.comp->GetPrimitive() != nullptr;
+
+						if (!guard_dirty_ok)
+							++r21_dry_run_stats.short_circuit_blocked_by_guard_dirty;
+
+						if (!guard_domain_ok)
+							++r21_dry_run_stats.short_circuit_blocked_by_guard_domain;
+
+						if (!guard_vil_ok)
+							++r21_dry_run_stats.short_circuit_blocked_by_guard_vil;
+
+						if (!guard_primitive_ok)
+							++r21_dry_run_stats.short_circuit_blocked_by_guard_primitive;
+
+						if (program_match
+						 && payload_match
+						 && binding_match
+						 && guard_dirty_ok
+						 && guard_domain_ok
+						 && guard_vil_ok
+						 && guard_primitive_ok)
+						{
+							++r21_dry_run_stats.would_short_circuit_execute;
+						}
+					}
 				}
 			}
 		}
@@ -309,7 +340,7 @@ namespace hgl::ecs
 				        "tasks=%llu candidate_hits(program=%llu payload=%llu binding=%llu) "
 				        "miss(program=%llu payload=%llu binding=%llu) "
 				        "legacy_match(program=%llu payload=%llu binding=%llu) "
-				        "short_circuit(checks=%llu eligible=%llu blocked_program=%llu blocked_payload=%llu blocked_binding=%llu)",
+				        "short_circuit(checks=%llu eligible=%llu would_execute=%llu blocked_program=%llu blocked_payload=%llu blocked_binding=%llu guard_dirty=%llu guard_domain=%llu guard_vil=%llu guard_primitive=%llu)",
 				        static_cast<unsigned long long>(r21_dry_run_stats.tasks_seen),
 				        static_cast<unsigned long long>(r21_dry_run_stats.candidate_program_hits),
 				        static_cast<unsigned long long>(r21_dry_run_stats.candidate_payload_hits),
@@ -322,9 +353,14 @@ namespace hgl::ecs
 				        static_cast<unsigned long long>(r21_dry_run_stats.binding_match_with_legacy),
 				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_checks),
 				        static_cast<unsigned long long>(r21_dry_run_stats.dry_run_short_circuit_eligible),
+				        static_cast<unsigned long long>(r21_dry_run_stats.would_short_circuit_execute),
 				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_program),
 				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_payload),
-				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_binding));
+				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_binding),
+				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_guard_dirty),
+				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_guard_domain),
+				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_guard_vil),
+				        static_cast<unsigned long long>(r21_dry_run_stats.short_circuit_blocked_by_guard_primitive));
 
 				r21_dry_run_stats = {};
 			}

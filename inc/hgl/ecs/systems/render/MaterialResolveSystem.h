@@ -24,6 +24,7 @@ namespace hgl::ecs
         ECSContext *world = nullptr;
         bool decoupled_cache_enabled = false;   // Phase R1.2 placeholder, default off.
         bool decoupled_cache_dryrun_short_circuit_check_enabled = true;
+        bool decoupled_cache_dryrun_whitelist_enabled = true;
         uint64_t last_cache_stats_log_ms = 0;
         uint64_t cache_stats_log_interval_ms = 1000;
 
@@ -56,9 +57,15 @@ namespace hgl::ecs
 
             uint64_t short_circuit_checks = 0;
             uint64_t dry_run_short_circuit_eligible = 0;
+            uint64_t would_short_circuit_execute = 0;
             uint64_t short_circuit_blocked_by_program = 0;
             uint64_t short_circuit_blocked_by_payload = 0;
             uint64_t short_circuit_blocked_by_binding = 0;
+
+            uint64_t short_circuit_blocked_by_guard_dirty = 0;
+            uint64_t short_circuit_blocked_by_guard_domain = 0;
+            uint64_t short_circuit_blocked_by_guard_vil = 0;
+            uint64_t short_circuit_blocked_by_guard_primitive = 0;
         };
 
         R21DryRunStats r21_dry_run_stats{};
@@ -73,6 +80,8 @@ namespace hgl::ecs
         bool IsDecoupledCacheEnabled() const { return decoupled_cache_enabled; }
         void SetDecoupledCacheDryRunShortCircuitCheckEnabled(bool enabled) { decoupled_cache_dryrun_short_circuit_check_enabled = enabled; }
         bool IsDecoupledCacheDryRunShortCircuitCheckEnabled() const { return decoupled_cache_dryrun_short_circuit_check_enabled; }
+        void SetDecoupledCacheDryRunWhitelistEnabled(bool enabled) { decoupled_cache_dryrun_whitelist_enabled = enabled; }
+        bool IsDecoupledCacheDryRunWhitelistEnabled() const { return decoupled_cache_dryrun_whitelist_enabled; }
 
         void Update(float deltaTime) override;
     };
