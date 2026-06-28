@@ -18,7 +18,7 @@ BillboardIconECSBase::~BillboardIconECSBase()
 void BillboardIconECSBase::ConfigureQuadPipelineMode()
 {
     QuadResourcePrepareSystem::SetPresetForWorld(ecs_context, GraphicsPipelinePreset::Solid3D);
-    QuadResourcePrepareSystem::SetFixedSizeForWorld(ecs_context, false);    // dynamic world-space billboards
+    QuadResourcePrepareSystem::SetFixedSizeForWorld(ecs_context, UseFixedPixelSize());
 }
 
 #ifdef SHOW_PLANE_GRID
@@ -104,8 +104,24 @@ bool BillboardIconECSBase::CreatePrimitives()
 
             auto billboard = billboard_entity->AddComponent<BillboardComponent>();
             billboard->SetVisible(true);
-            billboard->SetFixedPixelSize(false);
-            billboard->SetWorldSize(8.0f, 8.0f);
+
+            const bool fixed_pixel_size = UseFixedPixelSize();
+            billboard->SetFixedPixelSize(fixed_pixel_size);
+            if (fixed_pixel_size)
+            {
+                uint32 pixel_w = 0;
+                uint32 pixel_h = 0;
+                GetFixedPixelSize(pixel_w, pixel_h);
+                billboard->SetPixelSize(pixel_w, pixel_h);
+            }
+            else
+            {
+                float world_w = 0.0f;
+                float world_h = 0.0f;
+                GetWorldSize(world_w, world_h);
+                billboard->SetWorldSize(world_w, world_h);
+            }
+
             billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
             billboard->SetTexture(GetIconTextures(i));
             billboard->SetDomainTag(GetDomainTag());

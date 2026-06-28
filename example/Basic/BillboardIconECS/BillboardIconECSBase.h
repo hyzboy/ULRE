@@ -85,6 +85,20 @@ protected:
     // Default returns GetEntityPrefix(); override for a custom tag.
     virtual const char* GetDomainTag() const { return GetEntityPrefix(); }
 
+    // Billboard scaling policy.
+    // Default uses fixed-pixel billboards to keep icon size stable across camera distance.
+    virtual bool UseFixedPixelSize() const { return true; }
+    virtual void GetFixedPixelSize(uint32 &w, uint32 &h) const
+    {
+        w = 128;
+        h = 128;
+    }
+    virtual void GetWorldSize(float &w, float &h) const
+    {
+        w = 8.0f;
+        h = 8.0f;
+    }
+
     bool CreatePrimitives();
     bool EnsureRenderSystems();
     bool InitializeECS();

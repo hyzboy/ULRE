@@ -1,5 +1,9 @@
 set(BILLBOARD_ICON_BASE  BillboardIconECSBase.cpp)
 
+CreateProject(00_BillboardStep01_Arrow2DModel      Step01_Arrow2DModel.cpp)
+CreateProject(00_BillboardStep02_Arrow2DTo3DAxes   Step02_Arrow2DTo3DAxes.cpp)
+CreateProject(00_BillboardStep03_UnifiedFacing     Step03_BillboardUnifiedFacing.cpp)
+
 CreateProject(01_Billboard                      BillboardTest.cpp)
 CreateProject(02_BillboardECS                   BillboardECS.cpp)
 CreateProject(03_BillboardPerspectiveECS        ${BILLBOARD_ICON_BASE}  BillboardPerspectiveECS.cpp)
@@ -11,6 +15,10 @@ CreateProject(08_DomainIsolationDemo            DomainIsolationDemo.cpp)
 CreateProject(09_TextureBindingValidation       09_TextureBindingValidation.cpp)
 
 set(BILLBOARD_TARGETS
+    00_BillboardStep01_Arrow2DModel
+    00_BillboardStep02_Arrow2DTo3DAxes
+    00_BillboardStep03_UnifiedFacing
+
     01_Billboard
     02_BillboardECS
     03_BillboardPerspectiveECS
