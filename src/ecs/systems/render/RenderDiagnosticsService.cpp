@@ -16,17 +16,9 @@ namespace hgl::ecs
         AddDependency<RenderDescriptorBindingSystem>();
     }
 
-    bool RenderDiagnosticsService::GetDescriptorContractDiagnostics(uint32_t &materials_checked,
-                                                                    uint32_t &materials_unresolved,
-                                                                    uint32_t &required_missing,
-                                                                    uint32_t &optional_missing,
-                                                                    uint32_t &fallback_hits) const
+    bool RenderDiagnosticsService::RefreshSnapshot() const
     {
-        materials_checked = 0;
-        materials_unresolved = 0;
-        required_missing = 0;
-        optional_missing = 0;
-        fallback_hits = 0;
+        snapshot = DiagnosticsSnapshot{};
 
 #if !ULRE_ECS_DEBUG_API
         return false;
@@ -38,12 +30,80 @@ namespace hgl::ecs
         if (!descriptor_system)
             return false;
 
-        return descriptor_system->GetContractDiagnosticsStats(materials_checked,
-                                                              materials_unresolved,
-                                                              required_missing,
-                                                              optional_missing,
-                                                              fallback_hits);
+        if (!descriptor_system->GetContractDiagnosticsStats(snapshot.materials_checked,
+                                                            snapshot.materials_unresolved,
+                                                            snapshot.required_missing,
+                                                            snapshot.optional_missing,
+                                                            snapshot.fallback_hits))
+            return false;
+
+        if (!descriptor_system->GetMaterialBindingRegistryStats(snapshot.materials_registered,
+                                                                snapshot.binding_entries))
+        {
+            snapshot.materials_registered = 0;
+            snapshot.binding_entries = 0;
+        }
+
+        std::map<std::string, uint32_t> category_histogram;
+        if (world->GetShaderGenValidationCategoryHistogram(category_histogram, 128))
+        {
+            const auto count_of = [&category_histogram](const char *category) -> uint32_t
+            {
+                auto it = category_histogram.find(category);
+                return it == category_histogram.end() ? 0u : it->second;
+            };
+
+            snapshot.strict_prebuild = count_of("StrictGate.Prebuild");
+            snapshot.strict_spv = count_of("StrictGate.Spv");
+            snapshot.strict_vertex = count_of("StrictGate.Vertex");
+            snapshot.strict_descriptor = count_of("StrictGate.Descriptor");
+            snapshot.strict_total = snapshot.strict_prebuild + snapshot.strict_spv + snapshot.strict_vertex + snapshot.strict_descriptor;
+
+            if (snapshot.strict_total > 0)
+            {
+                std::map<std::string, std::map<std::string, uint32_t>> material_category_matrix;
+                if (world->GetShaderGenValidationMaterialCategoryMatrix(material_category_matrix, 128))
+                {
+                    for (const auto &mat_pair : material_category_matrix)
+                    {
+                        bool has_strict = false;
+                        for (const auto &cat_pair : mat_pair.second)
+                        {
+                            if (cat_pair.second > 0 && cat_pair.first.rfind("StrictGate.", 0) == 0)
+                            {
+                                has_strict = true;
+                                break;
+                            }
+                        }
+
+                        if (has_strict)
+                            ++snapshot.strict_materials;
+                    }
+                }
+            }
+        }
+
+        snapshot.valid = true;
+        return true;
 #endif
+    }
+
+    bool RenderDiagnosticsService::GetDescriptorContractDiagnostics(uint32_t &materials_checked,
+                                                                    uint32_t &materials_unresolved,
+                                                                    uint32_t &required_missing,
+                                                                    uint32_t &optional_missing,
+                                                                    uint32_t &fallback_hits) const
+    {
+        DiagnosticsSnapshot out_snapshot;
+        if (!GetDiagnosticsSnapshot(out_snapshot))
+            return false;
+
+        materials_checked = out_snapshot.materials_checked;
+        materials_unresolved = out_snapshot.materials_unresolved;
+        required_missing = out_snapshot.required_missing;
+        optional_missing = out_snapshot.optional_missing;
+        fallback_hits = out_snapshot.fallback_hits;
+        return true;
     }
 
     bool RenderDiagnosticsService::GetDescriptorContractDiagnosticsExtended(uint32_t &materials_checked,
@@ -54,53 +114,30 @@ namespace hgl::ecs
                                                                             uint32_t &materials_registered,
                                                                             uint32_t &binding_entries) const
     {
-        materials_checked = 0;
-        materials_unresolved = 0;
-        required_missing = 0;
-        optional_missing = 0;
-        fallback_hits = 0;
-        materials_registered = 0;
-        binding_entries = 0;
-
-#if !ULRE_ECS_DEBUG_API
-        return false;
-#else
-        if (!GetDescriptorContractDiagnostics(materials_checked,
-                                              materials_unresolved,
-                                              required_missing,
-                                              optional_missing,
-                                              fallback_hits))
+        DiagnosticsSnapshot out_snapshot;
+        if (!GetDiagnosticsSnapshot(out_snapshot))
             return false;
 
-        if (!GetMaterialBindingRegistryStats(materials_registered, binding_entries))
-        {
-            materials_registered = 0;
-            binding_entries = 0;
-        }
-
+        materials_checked = out_snapshot.materials_checked;
+        materials_unresolved = out_snapshot.materials_unresolved;
+        required_missing = out_snapshot.required_missing;
+        optional_missing = out_snapshot.optional_missing;
+        fallback_hits = out_snapshot.fallback_hits;
+        materials_registered = out_snapshot.materials_registered;
+        binding_entries = out_snapshot.binding_entries;
         return true;
-#endif
     }
 
     bool RenderDiagnosticsService::GetMaterialBindingRegistryStats(uint32_t &materials_registered,
                                                                    uint32_t &binding_entries) const
     {
-        materials_registered = 0;
-        binding_entries = 0;
-
-#if !ULRE_ECS_DEBUG_API
-        return false;
-#else
-        if (!world)
+        DiagnosticsSnapshot out_snapshot;
+        if (!GetDiagnosticsSnapshot(out_snapshot))
             return false;
 
-        auto descriptor_system = world->GetSystem<RenderDescriptorBindingSystem>();
-        if (!descriptor_system)
-            return false;
-
-        return descriptor_system->GetMaterialBindingRegistryStats(materials_registered,
-                                                                  binding_entries);
-#endif
+        materials_registered = out_snapshot.materials_registered;
+        binding_entries = out_snapshot.binding_entries;
+        return true;
     }
 
     bool RenderDiagnosticsService::GetMaterialBindingKeys(const graph::ShaderMaterialProgram *material,
@@ -125,6 +162,15 @@ namespace hgl::ecs
 #endif
     }
 
+    bool RenderDiagnosticsService::GetDiagnosticsSnapshot(DiagnosticsSnapshot &out_snapshot) const
+    {
+        if (!RefreshSnapshot())
+            return false;
+
+        out_snapshot = snapshot;
+        return out_snapshot.valid;
+    }
+
     void RenderDiagnosticsService::Update(float)
     {
 #if ULRE_ECS_DEBUG_API
@@ -141,77 +187,27 @@ namespace hgl::ecs
         if (now_ms - last_emit_ms < 1000)
             return;
 
-        uint32_t materials_checked = 0;
-        uint32_t materials_unresolved = 0;
-        uint32_t required_missing = 0;
-        uint32_t optional_missing = 0;
-        uint32_t fallback_hits = 0;
-        uint32_t materials_registered = 0;
-        uint32_t binding_entries = 0;
-
-        if (GetDescriptorContractDiagnosticsExtended(materials_checked,
-                                 materials_unresolved,
-                                 required_missing,
-                                 optional_missing,
-                                 fallback_hits,
-                                 materials_registered,
-                                 binding_entries))
+        DiagnosticsSnapshot diag_snapshot;
+        if (GetDiagnosticsSnapshot(diag_snapshot))
         {
             LogInfo("[DescriptorContract][ECSContext] checked=%u unresolved=%u required_missing=%u optional_missing=%u fallback_hits=%u registered_materials=%u registered_bindings=%u",
-                    materials_checked,
-                    materials_unresolved,
-                    required_missing,
-                    optional_missing,
-                    fallback_hits,
-                    materials_registered,
-                    binding_entries);
+                    diag_snapshot.materials_checked,
+                    diag_snapshot.materials_unresolved,
+                    diag_snapshot.required_missing,
+                    diag_snapshot.optional_missing,
+                    diag_snapshot.fallback_hits,
+                    diag_snapshot.materials_registered,
+                    diag_snapshot.binding_entries);
 
-            std::map<std::string, uint32_t> category_histogram;
-            if (world->GetShaderGenValidationCategoryHistogram(category_histogram, 128))
+            if (diag_snapshot.strict_total > 0)
             {
-                const auto count_of = [&category_histogram](const char *category) -> uint32_t
-                {
-                    auto it = category_histogram.find(category);
-                    return it == category_histogram.end() ? 0u : it->second;
-                };
-
-                const uint32_t strict_prebuild = count_of("StrictGate.Prebuild");
-                const uint32_t strict_spv = count_of("StrictGate.Spv");
-                const uint32_t strict_vertex = count_of("StrictGate.Vertex");
-                const uint32_t strict_descriptor = count_of("StrictGate.Descriptor");
-                const uint32_t strict_total = strict_prebuild + strict_spv + strict_vertex + strict_descriptor;
-
-                if (strict_total > 0)
-                {
-                    uint32_t strict_materials = 0;
-                    std::map<std::string, std::map<std::string, uint32_t>> material_category_matrix;
-                    if (world->GetShaderGenValidationMaterialCategoryMatrix(material_category_matrix, 128))
-                    {
-                        for (const auto &mat_pair : material_category_matrix)
-                        {
-                            bool has_strict = false;
-                            for (const auto &cat_pair : mat_pair.second)
-                            {
-                                if (cat_pair.second > 0 && cat_pair.first.rfind("StrictGate.", 0) == 0)
-                                {
-                                    has_strict = true;
-                                    break;
-                                }
-                            }
-
-                            if (has_strict)
-                                ++strict_materials;
-                        }
-                    }
-
-                    LogInfo("[ShaderGenValidation][ECSContext] strict_total=%u prebuild=%u spv=%u vertex=%u descriptor=%u strict_materials=%u",
-                            strict_total,
-                            strict_prebuild,
-                            strict_spv,
-                            strict_vertex,
-                            strict_descriptor,
-                            strict_materials);
-                }
+                LogInfo("[ShaderGenValidation][ECSContext] strict_total=%u prebuild=%u spv=%u vertex=%u descriptor=%u strict_materials=%u",
+                        diag_snapshot.strict_total,
+                        diag_snapshot.strict_prebuild,
+                        diag_snapshot.strict_spv,
+                        diag_snapshot.strict_vertex,
+                        diag_snapshot.strict_descriptor,
+                        diag_snapshot.strict_materials);
             }
         }
 
