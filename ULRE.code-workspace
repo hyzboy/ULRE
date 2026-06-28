@@ -63,6 +63,33 @@
 				"presentation": {
 					"reveal": "silent"
 				}
+			},
+			{
+				"label": "🧪 Phase E Diagnostics Smoke (tolerant)",
+				"type": "shell",
+				"command": "powershell",
+				"args": [
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"scripts/ci/run_phasee_diagnostics_smoke.ps1"
+				],
+				"group": "test",
+				"problemMatcher": []
+			},
+			{
+				"label": "🧪 Phase E Diagnostics Smoke (strict)",
+				"type": "shell",
+				"command": "powershell",
+				"args": [
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					"scripts/ci/run_phasee_diagnostics_smoke.ps1",
+					"-StrictRuntime"
+				],
+				"group": "test",
+				"problemMatcher": []
 			}
 		]
 	}

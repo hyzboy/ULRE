@@ -1,0 +1,45 @@
+name: Phase E Diagnostics Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      strict_runtime:
+        description: Run in strict runtime mode
+        required: false
+        default: false
+        type: boolean
+      build_dir:
+        description: Build directory used by the smoke script
+        required: false
+        default: build/phasee_ci
+        type: string
+      launch_timeout_seconds:
+        description: Launch timeout before the process is treated as alive
+        required: false
+        default: 4
+        type: number
+
+jobs:
+  smoke:
+    name: Phase E smoke
+    runs-on: [self-hosted, windows]
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run diagnostics smoke
+        run: |
+          $args = @(
+            '-BuildDir', '${{ inputs.build_dir }}',
+            '-LaunchTimeoutSeconds', '${{ inputs.launch_timeout_seconds }}',
+            '-ConfigureIfMissing'
+          )
+
+          if ('${{ inputs.strict_runtime }}' -eq 'true') {
+            $args += '-StrictRuntime'
+          }
+
+          & .\scripts\ci\run_phasee_diagnostics_smoke.ps1 @args
