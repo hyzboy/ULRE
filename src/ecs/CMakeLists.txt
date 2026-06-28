@@ -183,6 +183,11 @@ set(ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES
     systems/render/RenderDescriptorBindingSystem.cpp
 )
 
+set(ECS_SYS_15C_RenderFrameSync_RenderDiagnosticsService_FILES
+    ${ECS_INCLUDE_PATH}/systems/render/RenderDiagnosticsService.h
+    systems/render/RenderDiagnosticsService.cpp
+)
+
 if(ULRE_ECS_DEBUG_API)
     list(APPEND ECS_CORE_FILES
         core/ContextDebug.cpp
@@ -383,6 +388,7 @@ set(ECS_SOURCE
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
     ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES}
     ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES}
+    ${ECS_SYS_15C_RenderFrameSync_RenderDiagnosticsService_FILES}
     ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES}
     ${ECS_SYS_16B_RenderCollect_AssetInstanceCollectSystem_FILES}
     ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES}
@@ -431,6 +437,7 @@ source_group("ECS\\Systems\\11C RenderMaterialBind_PrimitiveBindingCommitSystem"
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
 source_group("ECS\\Systems\\15 RenderFrameSync_RenderFrameBusinessSyncSystem" FILES ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES})
 source_group("ECS\\Systems\\15B RenderFrameSync_RenderDescriptorBindingSystem" FILES ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES})
+source_group("ECS\\Systems\\15C RenderFrameSync_RenderDiagnosticsService" FILES ${ECS_SYS_15C_RenderFrameSync_RenderDiagnosticsService_FILES})
 source_group("ECS\\Systems\\16 RenderCollect_RenderPrimitiveCollectSystem" FILES ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES})
 source_group("ECS\\Systems\\16B RenderCollect_AssetInstanceCollectSystem" FILES ${ECS_SYS_16B_RenderCollect_AssetInstanceCollectSystem_FILES})
 source_group("ECS\\Systems\\17 RenderCollect_RenderPrimitiveCullSystem" FILES ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES})

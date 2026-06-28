@@ -150,7 +150,6 @@ namespace hgl
             bool system_profiling_enabled = true;
             uint32_t frame_index = 0;
             bool descriptor_contract_diag_log_enabled = false;
-            uint64_t descriptor_contract_diag_last_log_ms = 0;
             bool material_binding_query_log_enabled = false;
 
             uint32_t filtered_entity_count_last_frame = 0;
@@ -214,8 +213,6 @@ namespace hgl
             void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunSystemUpdate(System *system, float deltaTime);
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
-            void EmitRenderDiagnosticsOncePerSecond();
-
         public:
 
             struct AssetInstance
