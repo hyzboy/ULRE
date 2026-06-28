@@ -84,7 +84,10 @@ namespace
         // MaterialResolveSystem
         auto material_resolve_system = EnsureRenderSystem<hgl::ecs::MaterialResolveSystem>(ctx);
         if (material_resolve_system)
+        {
             material_resolve_system->SetWorld(ctx);
+            material_resolve_system->SetDecoupledCacheEnabled(ctx->IsMaterialResolveDecoupledCacheEnabled());
+        }
 
         // TextureMaterialBindingSystem: generic texture/sampler binding for Primitive + TextureBinding
         auto texture_binding_system = EnsureRenderSystem<hgl::ecs::TextureMaterialBindingSystem>(ctx);
