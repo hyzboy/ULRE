@@ -7,6 +7,11 @@
 /// 若 PrimitiveComponent 仅持有 unresolved_geometry，则同时创建 Primitive。
 
 #include<hgl/ecs/core/System.h>
+#include<hgl/graph/module/MaterialResolveTieredCache.h>
+
+#include <cstdint>
+#include <deque>
+#include <unordered_map>
 
 namespace hgl::ecs
 {
@@ -20,6 +25,18 @@ namespace hgl::ecs
         bool decoupled_cache_enabled = false;   // Phase R1.2 placeholder, default off.
         uint64_t last_cache_stats_log_ms = 0;
         uint64_t cache_stats_log_interval_ms = 1000;
+
+        // Phase R2.0: shadow ownership for payload/binding objects used only by tiered-cache probing.
+        uint64_t next_shadow_payload_id = 1;
+        uint64_t next_shadow_binding_id = 1;
+        std::deque<graph::MaterialInstancePayload> shadow_payload_storage;
+        std::deque<graph::ProgramInstanceBinding> shadow_binding_storage;
+        std::unordered_map<graph::PayloadCacheKey,
+                   graph::MaterialInstancePayload *,
+                   graph::PayloadCacheKeyHash> shadow_payload_index;
+        std::unordered_map<graph::BindingCacheKey,
+                   graph::ProgramInstanceBinding *,
+                   graph::BindingCacheKeyHash> shadow_binding_index;
 
     public:
 

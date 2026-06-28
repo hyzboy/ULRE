@@ -2,6 +2,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/MaterialResolveTieredCache.h>
 #include<hgl/graph/module/MaterialRecipeRegistry.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/geo/VKGeometry.h>
@@ -29,6 +30,38 @@ namespace hgl::ecs
 		using internal::ApplyStageStats;
 		using internal::ResolvedMIBucket;
 		using internal::ResolveTask;
+
+		static graph::ProgramCacheKey BuildProgramCacheKey(const ResolveTask &task)
+		{
+			graph::ProgramCacheKey key{};
+			key.material_key = task.material_key;
+			key.gvf_hash = task.gvf_hash;
+			key.feature_mask = 0;
+			key.rule_version = 0;
+			key.capability_mask = 0;
+			return key;
+		}
+
+		static graph::PayloadCacheKey BuildPayloadCacheKey(const ResolveTask &task)
+		{
+			graph::PayloadCacheKey key{};
+			key.recipe_id = static_cast<uint32_t>(task.slot ? task.slot->recipe_id : hgl::graph::mtl::kInvalidMaterialRecipeID);
+			key.instance_data_hash = task.instance_hash;
+			key.domain_id = task.slot ? task.slot->resolved_domain_id : 0xFFFFFFFFu;
+			key.runtime_texture_generation = task.comp ? task.comp->GetRuntimeTextureBindingGeneration() : 0;
+			return key;
+		}
+
+		static graph::BindingCacheKey BuildBindingCacheKey(const ResolveTask &task,
+		                                                  const graph::MaterialInstancePayload *payload)
+		{
+			graph::BindingCacheKey key{};
+			key.program = task.slot ? task.slot->resolved_material : nullptr;
+			key.payload_id = payload ? payload->id : 0;
+			key.domain_id = task.slot ? task.slot->resolved_domain_id : 0xFFFFFFFFu;
+			key.layout_signature = 0;
+			return key;
+		}
 	}
 
 	MaterialResolveSystem::MaterialResolveSystem(const std::string &name)
@@ -88,6 +121,82 @@ namespace hgl::ecs
             prim_mgr,
             apply_stats,
             resolve_fail_count);
+
+		if (decoupled_cache_enabled)
+		{
+			auto &tiered_cache = gc->GetMaterialResolveTieredCache();
+
+			for (auto &task : tasks)
+			{
+				if (!task.slot)
+					continue;
+
+				const auto program_key = BuildProgramCacheKey(task);
+				auto *cached_program = tiered_cache.FindProgram(program_key);
+				if (!cached_program && task.slot->resolved_material)
+				{
+					tiered_cache.UpsertProgram(program_key, task.slot->resolved_material, true);
+					cached_program = task.slot->resolved_material;
+				}
+
+				const auto payload_key = BuildPayloadCacheKey(task);
+				auto *cached_payload = tiered_cache.FindPayload(payload_key);
+				if (!cached_payload)
+				{
+					auto payload_it = shadow_payload_index.find(payload_key);
+					if (payload_it != shadow_payload_index.end())
+					{
+						cached_payload = payload_it->second;
+					}
+					else
+					{
+						auto &payload = shadow_payload_storage.emplace_back();
+						payload.id = next_shadow_payload_id++;
+						payload.schema_version = 0;
+						payload.domain_id = payload_key.domain_id;
+						payload.instance_hash = payload_key.instance_data_hash;
+						if (task.slot->GetInstanceDataPtr() && task.slot->GetInstanceDataSize() > 0)
+						{
+							const auto *data = static_cast<const uint8_t *>(task.slot->GetInstanceDataPtr());
+							payload.bytes.assign(data, data + task.slot->GetInstanceDataSize());
+						}
+
+						cached_payload = &payload;
+						shadow_payload_index[payload_key] = cached_payload;
+					}
+
+					tiered_cache.UpsertPayload(payload_key, cached_payload, true);
+				}
+
+				if (!cached_program || !cached_payload)
+					continue;
+
+				const auto binding_key = BuildBindingCacheKey(task, cached_payload);
+				auto *cached_binding = tiered_cache.FindBinding(binding_key);
+				if (!cached_binding)
+				{
+					auto binding_it = shadow_binding_index.find(binding_key);
+					if (binding_it != shadow_binding_index.end())
+					{
+						cached_binding = binding_it->second;
+					}
+					else
+					{
+						auto &binding = shadow_binding_storage.emplace_back();
+						binding.id = next_shadow_binding_id++;
+						binding.program = cached_program;
+						binding.payload = cached_payload;
+						binding.domain = task.slot->resolved_domain;
+						binding.layout_signature = 0;
+
+						cached_binding = &binding;
+						shadow_binding_index[binding_key] = cached_binding;
+					}
+
+					tiered_cache.UpsertBinding(binding_key, cached_binding, true);
+				}
+			}
+		}
 
         resolved_count = apply_stats.resolved_count;
         primitive_created_count = apply_stats.primitive_created_count;
