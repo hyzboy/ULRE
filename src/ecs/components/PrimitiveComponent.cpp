@@ -174,8 +174,7 @@ namespace hgl::ecs
         staging_render_state.primitive = resolved_primitive ? resolved_primitive : primitive;
         staging_render_state.material_state = state;
         staging_render_state.generation = render_state_generation + 1;
-        staging_render_state.ready = state.binding_instance != nullptr
-                                  && state.material != nullptr
+        staging_render_state.ready = state.HasMaterial()
                                   && state.vil != nullptr;
     }
 
