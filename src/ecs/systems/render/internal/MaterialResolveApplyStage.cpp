@@ -22,6 +22,9 @@ namespace hgl::ecs::internal
             const graph::VIL *resolve_vil = resolved_bucket.resolve_vil;
             graph::ProgramInstanceBinding *resolved_program_binding = resolved_bucket.resolved_program_binding.get();
             graph::MaterialInstancePayload *resolved_payload = resolved_bucket.resolved_payload.get();
+            graph::ShaderMaterialProgram *resolved_program = resolved_program_binding
+                                                           ? resolved_program_binding->program
+                                                           : graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
 
             for (const size_t idx : resolved_bucket.task_indices)
             {
@@ -30,12 +33,12 @@ namespace hgl::ecs::internal
                 graph::Geometry *previous_unresolved_geometry = task.comp->GetUnresolvedGeometry();
 
                 task.slot->resolved_binding_instance = mi;
-                task.slot->resolved_material = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
                 task.slot->resolved_program_binding = resolved_program_binding;
-                task.slot->resolved_program = task.slot->resolved_material;
+                task.slot->resolved_program = resolved_program;
                 task.slot->resolved_payload = resolved_payload;
                 task.slot->resolved_binding_id = resolved_program_binding ? resolved_program_binding->id : 0;
                 task.slot->resolved_payload_id = resolved_payload ? resolved_payload->id : 0;
+                task.slot->resolved_material = task.slot->resolved_program;
                 task.slot->resolved_domain = graph::MaterialBindingInstanceInternalAccess::GetDomain(mi);
                 task.slot->resolved_domain_id = graph::MaterialBindingInstanceInternalAccess::GetDomainID(mi);
                 task.slot->resolved_vil = resolve_vil;
@@ -92,12 +95,12 @@ namespace hgl::ecs::internal
                 {
                     PrimitiveComponent::ResolvedMaterialState staged_state{};
                     staged_state.program_binding = task.slot->resolved_program_binding;
-                    staged_state.program = task.slot->resolved_program ? task.slot->resolved_program : task.slot->resolved_material;
+                    staged_state.program = task.slot->resolved_program;
                     staged_state.payload = task.slot->resolved_payload;
                     staged_state.binding_id = task.slot->resolved_binding_id;
                     staged_state.payload_id = task.slot->resolved_payload_id;
                     staged_state.binding_instance = task.slot->resolved_binding_instance;
-                    staged_state.material = staged_state.program ? staged_state.program : task.slot->resolved_material;
+                    staged_state.material = staged_state.program;
                     staged_state.domain = task.slot->resolved_domain;
                     staged_state.domain_id = task.slot->resolved_domain_id;
                     staged_state.vil = task.slot->resolved_vil;

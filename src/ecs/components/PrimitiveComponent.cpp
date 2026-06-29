@@ -37,13 +37,13 @@ namespace hgl::ecs
             state.runtime_texture_binding = runtime_binding;
 
             state.program_binding = request.resolved_program_binding;
-            state.program = request.resolved_program ? request.resolved_program : request.resolved_material;
+            state.program = request.resolved_program;
             state.payload = request.resolved_payload;
             state.binding_id = request.resolved_binding_id;
             state.payload_id = request.resolved_payload_id;
 
             state.binding_instance = request.resolved_binding_instance;
-            state.material = state.program ? state.program : request.resolved_material;
+            state.material = state.program;
             state.domain = request.resolved_domain;
             state.domain_id = request.resolved_domain_id;
             state.vil = request.resolved_vil;
