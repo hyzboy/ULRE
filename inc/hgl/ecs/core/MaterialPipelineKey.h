@@ -30,6 +30,8 @@ namespace hgl::ecs
      */
     struct MaterialPipelineKey
     {
+        // Legacy storage field kept for compatibility with existing serialization,
+        // hashing and map key behavior. Runtime reads should use GetProgram().
         hgl::graph::ShaderMaterialProgram*       material = nullptr;
         hgl::graph::GraphicsPipeline*       pipeline = nullptr;
         hgl::graph::ResourceDomain* domain   = nullptr;   ///< Phase 4: nullptr = default domain
@@ -41,10 +43,15 @@ namespace hgl::ecs
                             RenderQueue                 q = RenderQueue::Opaque)
             : material(m), pipeline(p), domain(d), queue(q) {}
 
+        hgl::graph::ShaderMaterialProgram* GetProgram() const { return material; }
+        void SetProgram(hgl::graph::ShaderMaterialProgram* p) { material = p; }
+
         bool operator<(const MaterialPipelineKey& other) const
         {
-            if (material < other.material) return true;
-            if (material > other.material) return false;
+            const auto *this_program = GetProgram();
+            const auto *other_program = other.GetProgram();
+            if (this_program < other_program) return true;
+            if (this_program > other_program) return false;
             if (pipeline < other.pipeline) return true;
             if (pipeline > other.pipeline) return false;
             if (domain < other.domain) return true;
@@ -54,7 +61,7 @@ namespace hgl::ecs
 
         bool operator==(const MaterialPipelineKey& other) const
         {
-            return material == other.material
+            return GetProgram() == other.GetProgram()
                 && pipeline == other.pipeline
                 && domain   == other.domain
                 && queue    == other.queue;
@@ -70,7 +77,7 @@ namespace std
     {
         size_t operator()(const hgl::ecs::MaterialPipelineKey& key) const noexcept
         {
-            size_t h1 = std::hash<hgl::graph::ShaderMaterialProgram*>{}(key.material);
+            size_t h1 = std::hash<hgl::graph::ShaderMaterialProgram*>{}(key.GetProgram());
             size_t h2 = std::hash<hgl::graph::GraphicsPipeline*>{}(key.pipeline);
             size_t h3 = std::hash<hgl::graph::ResourceDomain*>{}(key.domain);
             size_t h4 = std::hash<int>{}(static_cast<int>(key.queue));

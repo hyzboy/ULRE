@@ -116,7 +116,7 @@ namespace hgl
 
             for (const auto &pair : render_frame_cache.materialBatches)
             {
-                const hgl::graph::ShaderMaterialProgram *material = pair.first.material;
+                const hgl::graph::ShaderMaterialProgram *material = pair.first.GetProgram();
                 if (!material)
                     continue;
 
@@ -136,7 +136,7 @@ namespace hgl
 
                     for (const auto &pair : render_frame_cache.materialBatches)
                     {
-                        const hgl::graph::ShaderMaterialProgram *material = pair.first.material;
+                        const hgl::graph::ShaderMaterialProgram *material = pair.first.GetProgram();
                         if (!material)
                             continue;
 

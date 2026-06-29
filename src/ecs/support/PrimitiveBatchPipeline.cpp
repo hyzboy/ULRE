@@ -90,7 +90,7 @@ namespace hgl::ecs
             return RenderQueue::Opaque;
         }
 
-        graph::ShaderMaterialProgram *ResolveMaterialFromState(const RenderItem::ResolvedMaterialState &state)
+        graph::ShaderMaterialProgram *ResolveProgramFromState(const RenderItem::ResolvedMaterialState &state)
         {
             if (state.program)
                 return state.program;
@@ -102,7 +102,7 @@ namespace hgl::ecs
                 if (s_legacy_material_fallback_logs < 8)
                 {
                     ++s_legacy_material_fallback_logs;
-                    GLogWarning("[ECS::PrimitiveBatchPipeline] R5 legacy fallback: state.program is null, using state.material=%p",
+                    GLogWarning("[ECS::PrimitiveBatchPipeline] R5 legacy fallback: state.program is null, using legacy state.material=%p",
                                 static_cast<const void *>(state.material));
                 }
             }
@@ -575,33 +575,35 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::UpdateMaterialInstanceBuffer(MaterialBatch& batch)
     {
-        if (!batch.key.material || !batch.key.material->hasMI())
+        auto *key_program = batch.key.GetProgram();
+        if (!key_program || !key_program->hasMI())
             return;
 
 #ifdef _DEBUG
-        // Three-source consistency: every item's resolved program/material pointer must equal
-        // batch.key.material. The batch is keyed on ResolveMaterialFromState(state),
+    // Three-source consistency: every item's resolved program pointer (with legacy
+    // state.material fallback applied by ResolveProgramFromState) must equal
+        // batch.key.GetProgram(). The batch is keyed on ResolveProgramFromState(state),
         // so any divergence means an item was inserted into the wrong batch.
         for (auto* item : batch.items)
         {
             if (!item) continue;
             const auto item_state = item->GetResolvedMaterialState();
-            auto *resolved_material = ResolveMaterialFromState(item_state);
-            if (resolved_material && resolved_material != batch.key.material)
+            auto *resolved_program = ResolveProgramFromState(item_state);
+            if (resolved_program && resolved_program != key_program)
             {
                 GLogWarning("[ECS::PrimitiveBatchPipeline] Three-source consistency violation: "
-                            "item resolved material=%p (program=%p, material=%p) != batch.key.material=%p — item placed in wrong batch",
-                            static_cast<const void *>(resolved_material),
+                            "item resolved program=%p (state.program=%p, state.material=%p) != batch.key.program=%p — item placed in wrong batch",
+                            static_cast<const void *>(resolved_program),
                             static_cast<const void *>(item_state.program),
                             static_cast<const void *>(item_state.material),
-                            static_cast<const void *>(batch.key.material));
+                            static_cast<const void *>(key_program));
             }
         }
 #endif
 
         if (!batch.mi_buffer && !batch.items.empty())
         {
-            batch.mi_buffer = new MaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
+            batch.mi_buffer = new MaterialInstanceAssignmentBuffer(batch.buffer_manager, key_program);
 
             if (world)
                 batch.mi_buffer->SetDiagnostics(&world->GetMaterialResolveDiagnostics());
@@ -647,15 +649,15 @@ namespace hgl::ecs
                 continue;
 
             const auto state = item->GetResolvedMaterialState();
-            auto* material = ResolveMaterialFromState(state);
+            auto *program = ResolveProgramFromState(state);
 
             auto* primitive = item->GetPrimitive();
             graph::GraphicsPipeline* pipeline = nullptr;
 
 #ifdef _DEBUG
-            if (!material)
+            if (!program)
             {
-                GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state warning: resolved program/material is null for visible item");
+                GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state warning: resolved program is null (state.program and legacy state.material are both null) for visible item");
             }
 #endif
 
@@ -670,14 +672,14 @@ namespace hgl::ecs
 
             // Stage-4 prework: resolve pipeline before renderer hot path.
             // Resolve from MaterialBindingInstance preset instead of depending on an existing pipeline.
-            if (material && render_format)
+            if (program && render_format)
             {
                 const graph::GraphicsPipelineData* pipeline_data = nullptr;
                 const graph::VIL* vil = state.vil;
                 bool prim_restart = false;
                 graph::GraphicsPipelinePreset preset = state.preset;
 
-                const graph::VIL* default_vil = material->GetDefaultVIL();
+                const graph::VIL* default_vil = program->GetDefaultVIL();
 
                 if (!vil)
                     vil = default_vil;
@@ -692,11 +694,11 @@ namespace hgl::ecs
                     RecordPipelineResolveAttempt(g_pipeline_preresolve_counters);
 
                     graph::GraphicsPipelineBuildRequest req;
-                    req.material = material;
+                    req.material = program;
                     req.vil = vil;
                     req.render_format = render_format;
                     req.pipeline_data = pipeline_data;
-                    req.primitive = material->GetPrimitiveType();
+                    req.primitive = program->GetPrimitiveType();
                     req.primitive_restart = prim_restart;
 
                     if (graph::GraphicsPipeline* acquired = device->AcquireGraphicsPipeline(req))
@@ -714,10 +716,10 @@ namespace hgl::ecs
 
                         if (ShouldLogPow2(failures_total))
                         {
-                            LogWarning("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve failed: frame_failures=%u total_failures=%llu material=%s preset=%d",
+                            LogWarning("[ECS::PrimitiveBatchPipeline] GraphicsPipeline pre-resolve failed: frame_failures=%u total_failures=%llu program=%s preset=%d",
                                        frame_failures,
                                        static_cast<unsigned long long>(failures_total),
-                                       material->GetName().c_str(),
+                                       program->GetName().c_str(),
                                        int(preset));
                         }
                         // Keep original pipeline to preserve rendering continuity.
@@ -739,15 +741,15 @@ namespace hgl::ecs
                 }
             }
 
-            if (!material || !pipeline)
+            if (!program || !pipeline)
             {
                 if (batch_diag)
                 {
                     Entity* diag_entity = item->GetEntity();
                     const char* entity_name = diag_entity ? diag_entity->GetName().c_str() : "<null>";
-                    LogInfo("[BatchDiag] frame=%d SKIP entity='%s' material=%p pipeline=%p",
+                        LogInfo("[BatchDiag] frame=%d SKIP entity='%s' program=%p pipeline=%p",
                             s_batch_diag_frame, entity_name,
-                            static_cast<const void*>(material),
+                            static_cast<const void*>(program),
                             static_cast<const void*>(pipeline));
                 }
                 continue;
@@ -762,14 +764,14 @@ namespace hgl::ecs
             auto* domain = ResolveDomainFromState(state);
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 
-            MaterialPipelineKey key(material, pipeline, domain, queue);
+            MaterialPipelineKey key(program, pipeline, domain, queue);
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
             if (batch_diag)
             {
                 Entity* diag_entity = item->GetEntity();
                 const char* entity_name = diag_entity ? diag_entity->GetName().c_str() : "<null>";
-                const char* material_name = material ? material->GetName().c_str() : "<null>";
+                const char* program_name = program ? program->GetName().c_str() : "<null>";
                 const char* geom_name = "<no-prim>";
                 AnsiString geom_name_str;
                 if (primitive && primitive->GetGeometry())
@@ -778,8 +780,8 @@ namespace hgl::ecs
                     geom_name = geom_name_str.c_str();
                 }
                 const glm::vec3 wp = item->worldPosition;
-                LogInfo("[BatchDiag] frame=%d entity='%s' material='%s' geom='%s' world=(%.2f,%.2f,%.2f) domain=%p queue=%d",
-                        s_batch_diag_frame, entity_name, material_name, geom_name,
+                LogInfo("[BatchDiag] frame=%d entity='%s' program='%s' geom='%s' world=(%.2f,%.2f,%.2f) domain=%p queue=%d",
+                    s_batch_diag_frame, entity_name, program_name, geom_name,
                         wp.x, wp.y, wp.z,
                         static_cast<const void*>(domain),
                         int(queue));

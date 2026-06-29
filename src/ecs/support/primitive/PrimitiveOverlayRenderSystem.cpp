@@ -56,8 +56,10 @@ namespace hgl::ecs
                       if (!lhs || !rhs)
                           return lhs != nullptr;
 
-                      if (lhs->key.material != rhs->key.material)
-                          return lhs->key.material < rhs->key.material;
+                      auto *lhs_program = lhs->key.GetProgram();
+                      auto *rhs_program = rhs->key.GetProgram();
+                      if (lhs_program != rhs_program)
+                          return lhs_program < rhs_program;
 
                       if (lhs->key.domain != rhs->key.domain)
                           return lhs->key.domain < rhs->key.domain;
@@ -76,7 +78,8 @@ namespace hgl::ecs
                 continue;
 
             const auto& key = batch->key;
-            if (!key.material || !key.pipeline)
+            auto *key_program = key.GetProgram();
+            if (!key_program || !key.pipeline)
                 continue;
 
             if (batch->draw_batches_count == 0)
@@ -92,17 +95,17 @@ namespace hgl::ecs
                 auto *graphics_context = context->GetGraphicsContext();
                 auto *material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
                 if (material_manager)
-                    domain_binding = material_manager->FindDomainMaterialBinding(key.domain, key.material);
+                    domain_binding = material_manager->FindDomainMaterialBinding(key.domain, key_program);
             }
 
             const void *current_binding_token = domain_binding
                                               ? static_cast<const void *>(domain_binding)
-                                              : static_cast<const void *>(key.material);
+                                              : static_cast<const void *>(key_program);
 
             bool skip_pipeline_bind = false;
             bool skip_descriptor_bind = false;
             submit_stats.OnBatch(key.pipeline,
-                                 key.material,
+                                 key_program,
                                  current_binding_token,
                                  skip_pipeline_bind,
                                  skip_descriptor_bind);

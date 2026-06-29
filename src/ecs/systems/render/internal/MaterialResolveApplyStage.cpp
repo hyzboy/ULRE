@@ -110,7 +110,7 @@ namespace hgl::ecs::internal
 
                     task.comp->SetStagingRenderState(staged_state, resolved_primitive);
 
-                    GLogInfo("[ECS::MaterialResolveSystem] staged_render_state comp=%p primitive=%p mi=%p material=%p vil=%p domain=%p preset=%u",
+                        GLogInfo("[ECS::MaterialResolveSystem] staged_render_state comp=%p primitive=%p mi=%p program=%p vil=%p domain=%p preset=%u",
                             task.comp.get(),
                             resolved_primitive,
                             staged_state.binding_instance,

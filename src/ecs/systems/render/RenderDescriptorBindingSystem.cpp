@@ -29,21 +29,21 @@ namespace hgl::ecs
     {
         graph::DomainResourceBinding *ResolveDomainBinding(hgl::ecs::ECSContext *context,
                                                            graph::ResourceDomain *domain,
-                                                           graph::ShaderMaterialProgram *material)
+                                                           graph::ShaderMaterialProgram *program)
         {
-            if (!context || !domain || !material)
+            if (!context || !domain || !program)
                 return nullptr;
 
             auto *graphics_context = context->GetGraphicsContext();
             auto *material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
-            return material_manager ? material_manager->FindDomainMaterialBinding(domain, material) : nullptr;
+            return material_manager ? material_manager->FindDomainMaterialBinding(domain, program) : nullptr;
         }
 
-        void ApplySceneUBOBindings(graph::ShaderMaterialProgram *material,
+        void ApplySceneUBOBindings(graph::ShaderMaterialProgram *program,
                                    const graph::mtl::DescriptorBindingSlots &contract,
                                    const std::array<graph::UBOAccessorBase *, graph::mtl::UBODescriptorSemanticCount> &scene_ubo_resolvers)
         {
-            if (!material)
+            if (!program)
                 return;
 
             for (size_t i = 1; i < graph::mtl::UBODescriptorSemanticCount; ++i)
@@ -53,7 +53,7 @@ namespace hgl::ecs
 
                 auto *accessor = scene_ubo_resolvers[i];
                 if (accessor)
-                    material->BindUBO(accessor);
+                    program->BindUBO(accessor);
             }
         }
 
@@ -420,14 +420,14 @@ namespace hgl::ecs
 
         for (const auto &pair : cache.materialBatches)
         {
-            graph::ShaderMaterialProgram *material = pair.first.material;
-            if (!material)
+            graph::ShaderMaterialProgram *program = pair.first.GetProgram();
+            if (!program)
                 continue;
 
-            out_active.insert(material);
+            out_active.insert(program);
 
             const MaterialBatch *batch = pair.second.get();
-            graph::DomainResourceBinding *domain_binding = ResolveDomainBinding(context, pair.first.domain, material);
+            graph::DomainResourceBinding *domain_binding = ResolveDomainBinding(context, pair.first.domain, program);
             graph::MaterialParameters *domain_mp = domain_binding ? domain_binding->GetPerMaterialMP() : nullptr;
             graph::MaterialParameters *domain_po = domain_binding ? domain_binding->GetPerObjectMP()   : nullptr;
 
@@ -439,8 +439,8 @@ namespace hgl::ecs
                     mutable_batch->domain_binding = domain_binding;
             }
 
-            const auto &contract = material->GetBindingContract();
-            ApplySceneUBOBindings(material, contract, scene_ubo_resolvers);
+            const auto &contract = program->GetBindingContract();
+            ApplySceneUBOBindings(program, contract, scene_ubo_resolvers);
 
             for (size_t i = 1; i < graph::mtl::SSBODescriptorSemanticCount; ++i)
             {
@@ -453,7 +453,7 @@ namespace hgl::ecs
                 {
                     if (batch
                      && batch->transform_buffer
-                     && material->hasLocalToWorld())
+                     && program->hasLocalToWorld())
                     {
                         if (domain_po)
                         {
@@ -464,7 +464,7 @@ namespace hgl::ecs
                         }
                         else
                         {
-                            batch->transform_buffer->BindTransform(material);
+                            batch->transform_buffer->BindTransform(program);
                         }
                     }
                     break;
@@ -482,7 +482,7 @@ namespace hgl::ecs
                         }
                         else
                         {
-                            batch->transform_buffer->BindTransformID(material);
+                            batch->transform_buffer->BindTransformID(program);
                         }
                     }
                     break;
@@ -500,7 +500,7 @@ namespace hgl::ecs
                         }
                         else
                         {
-                            batch->mi_buffer->BindMaterialInstanceID(material);
+                            batch->mi_buffer->BindMaterialInstanceID(program);
                         }
                     }
                     break;
@@ -509,11 +509,11 @@ namespace hgl::ecs
                 {
                     const void *mi_bind_target = domain_mp
                         ? static_cast<const void *>(domain_mp)
-                        : static_cast<const void *>(material);
+                        : static_cast<const void *>(program);
 
                     if (batch
                      && batch->mi_buffer
-                     && material->hasMI()
+                     && program->hasMI()
                      && !mi_bound_targets.contains(mi_bind_target))
                     {
                         if (domain_mp)
@@ -525,7 +525,7 @@ namespace hgl::ecs
                         }
                         else
                         {
-                            batch->mi_buffer->BindMaterialInstance(material);
+                            batch->mi_buffer->BindMaterialInstance(program);
                         }
 
                         mi_bound_targets.insert(mi_bind_target);
@@ -543,15 +543,15 @@ namespace hgl::ecs
                             if (mit_gpu)
                             {
                                 domain_mp->BindSSBO(graph::mtl::SSBODescriptorSemantic::MaterialBindingInstanceTexture, mit_gpu);
-                                LogInfo("[RenderDescriptorBindingSystem] domain MI texture bind material=%s domain=%p gpu=%p",
-                                        material->GetName().c_str(),
+                                LogInfo("[RenderDescriptorBindingSystem] domain MI texture bind program=%s domain=%p gpu=%p",
+                                        program->GetName().c_str(),
                                         static_cast<void *>(pair.first.domain),
                                         static_cast<void *>(mit_gpu));
                             }
                         }
                         else
                         {
-                            batch->mi_buffer->BindMaterialInstanceTextureID(material);
+                            batch->mi_buffer->BindMaterialInstanceTextureID(program);
                         }
                     }
                     break;
@@ -564,35 +564,35 @@ namespace hgl::ecs
         }
 
         // Replay registered texture/sampler bindings into each active material's descriptor set.
-        for (auto &[material, slots] : material_resource_bindings)
+        for (auto &[program, slots] : material_resource_bindings)
         {
-            if (!material)
+            if (!program)
                 continue;
             bool updated = false;
             for (auto &[slot_key, res] : slots)
             {
                 if (!res.texture || !res.sampler)
                     continue;
-                material->BindResourceSampler(static_cast<graph::mtl::SamplerSlot>(slot_key), res.texture, res.sampler);
+                program->BindResourceSampler(static_cast<graph::mtl::SamplerSlot>(slot_key), res.texture, res.sampler);
                 updated = true;
             }
             if (updated)
-                material->Update();
+                program->Update();
         }
     }
 
     void RenderDescriptorBindingSystem::ApplyPipelineMaterialBindings(
         std::unordered_set<const graph::ShaderMaterialProgram *> &out_active)
     {
-        for (graph::ShaderMaterialProgram *material : pipeline_materials)
+        for (graph::ShaderMaterialProgram *program : pipeline_materials)
         {
-            if (!material)
+            if (!program)
                 continue;
 
-            out_active.insert(material);
+            out_active.insert(program);
 
-            const auto &contract = material->GetBindingContract();
-            ApplySceneUBOBindings(material, contract, scene_ubo_resolvers);
+            const auto &contract = program->GetBindingContract();
+            ApplySceneUBOBindings(program, contract, scene_ubo_resolvers);
 
             for (size_t i = 1; i < graph::mtl::SSBODescriptorSemanticCount; ++i)
             {
@@ -662,13 +662,13 @@ namespace hgl::ecs
         for (const auto &pair : cache.materialBatches)
         {
             const auto &key = pair.first;
-            const graph::ShaderMaterialProgram *material = key.material;
-            if (!material)
+            const graph::ShaderMaterialProgram *program = key.GetProgram();
+            if (!program)
                 continue;
 
             ++frame_stats.materials_checked;
 
-            const auto &contract = material->GetBindingContract();
+            const auto &contract = program->GetBindingContract();
             bool all_required_ok = true;
             std::string first_error;
 
@@ -710,18 +710,18 @@ namespace hgl::ecs
                 }
 }
 
-            auto it = contract_last_ok.find(const_cast<graph::ShaderMaterialProgram *>(material));
+            auto it = contract_last_ok.find(const_cast<graph::ShaderMaterialProgram *>(program));
             if (it == contract_last_ok.end())
             {
-                contract_last_ok.emplace(const_cast<graph::ShaderMaterialProgram *>(material), all_required_ok);
+                contract_last_ok.emplace(const_cast<graph::ShaderMaterialProgram *>(program), all_required_ok);
 
                 if (!all_required_ok)
                     ++frame_stats.materials_unresolved;
 
                 if (!all_required_ok)
                 {
-                    LogWarning("[DescriptorContract] material=%s unresolved required contract: %s",
-                               material->GetName().c_str(),
+                    LogWarning("[DescriptorContract] program=%s unresolved required contract: %s",
+                               program->GetName().c_str(),
                                first_error.c_str());
                 }
                 continue;
@@ -731,13 +731,13 @@ namespace hgl::ecs
             {
                 if (!all_required_ok)
                 {
-                    LogWarning("[DescriptorContract] material=%s contract changed to unresolved: %s",
-                               material->GetName().c_str(),
+                    LogWarning("[DescriptorContract] program=%s contract changed to unresolved: %s",
+                               program->GetName().c_str(),
                                first_error.c_str());
                 }
                 else
                 {
-                    LogInfo("[DescriptorContract] material=%s contract resolved", material->GetName().c_str());
+                    LogInfo("[DescriptorContract] program=%s contract resolved", program->GetName().c_str());
                 }
 
                 it->second = all_required_ok;

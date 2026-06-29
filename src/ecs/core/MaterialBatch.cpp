@@ -18,10 +18,11 @@ namespace hgl::ecs
         , draw_batches_count(0)
         , renderer(nullptr)
     {
-        if (key.material && key.pipeline)
+        auto *key_program = key.GetProgram();
+        if (key_program && key.pipeline)
         {
             // Create ECS renderer
-            renderer = new PipelineMaterialRenderer(key.material, key.pipeline);
+            renderer = new PipelineMaterialRenderer(key_program, key.pipeline);
         }
     }
 

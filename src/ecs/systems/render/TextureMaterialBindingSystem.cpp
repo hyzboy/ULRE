@@ -331,33 +331,33 @@ namespace hgl::ecs
 
             RecordNonDomainCompatibilityPathHit();
 
-            auto *previous_material = primitive->GetShaderMaterialProgram();
+            auto *previous_program = primitive->GetShaderMaterialProgram();
             auto *descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>().get();
             const auto resolved_state = primitive->ResolveEffectiveMaterialState();
             auto *mi = resolved_state.binding_instance;
             // R5: program is the runtime source of truth; material is legacy bridge fallback.
-            auto *material = resolved_state.program ? resolved_state.program : resolved_state.material;
+            auto *resolved_program = resolved_state.program ? resolved_state.program : resolved_state.material;
             auto *mi_binding = mi ? graph::MaterialBindingInstanceInternalAccess::GetDomainBinding(mi) : nullptr;
             const graph::VIL *resolved_vil = resolved_state.vil;
 
-            if (!mi || !material)
+            if (!mi || !resolved_program)
             {
                 internal::SingleTextureBindingStats::RecordRejectHit(
                     internal::SingleTextureFallbackReason::MissingResource);
 
-                LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] Non-domain: missing resolved state: primitive=%p mi=%p material=%p texture='%s'",
+                LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] Non-domain: missing resolved state: primitive=%p mi=%p program=%p texture='%s'",
                         static_cast<void *>(primitive),
                         static_cast<void *>(mi),
-                        static_cast<void *>(material),
+                    static_cast<void *>(resolved_program),
                         texture_path.c_str());
                 return false;
             }
 
-            LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain: reusing resolved state: primitive=%p mi=%p material=%p(%s) mi.binding=%p slot=%u",
+                LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain: reusing resolved state: primitive=%p mi=%p program=%p(%s) mi.binding=%p slot=%u",
                     static_cast<void *>(primitive),
                     static_cast<void *>(mi),
-                    static_cast<void *>(material),
-                    material->GetName().c_str(),
+                    static_cast<void *>(resolved_program),
+                    resolved_program->GetName().c_str(),
                     static_cast<void *>(mi_binding),
                     static_cast<unsigned>(binding.slot));
             LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain request source: texture='%s' source_mode=%u",
@@ -395,8 +395,8 @@ namespace hgl::ecs
 
             if (descriptor_binding_system)
             {
-                if (previous_material && previous_material != material)
-                    descriptor_binding_system->ClearMaterialBindings(previous_material);
+                if (previous_program && previous_program != resolved_program)
+                    descriptor_binding_system->ClearMaterialBindings(previous_program);
 
                 if (mi_binding)
                 {
@@ -407,7 +407,7 @@ namespace hgl::ecs
                                                                            sampler);
                 }
 
-                descriptor_binding_system->RegisterMaterialTextureSampler(material,
+                descriptor_binding_system->RegisterMaterialTextureSampler(resolved_program,
                                                                           binding.slot,
                                                                           texture,
                                                                           sampler);
@@ -429,17 +429,17 @@ namespace hgl::ecs
 
             primitive->SetStagingRenderState(BuildStagingMaterialState(primitive,
                                                                        mi,
-                                                                       material,
+                                               resolved_program,
                                                                        resolved_vil,
                                                                        primitive->GetRuntimeTextureBinding()),
                                              primitive->GetPrimitive());
             mi_binding = graph::MaterialBindingInstanceInternalAccess::GetDomainBinding(mi);
-            LogInfo("[TBV][TextureMaterialBindingSystem] Final resolved state updated (non-domain): primitive=%p primitive.prim=%p mi=%p material=%p(%s) mi.binding=%p resolved_domain=%p resolved_mi_id=%d preset=%u",
+                LogInfo("[TBV][TextureMaterialBindingSystem] Final resolved state updated (non-domain): primitive=%p primitive.prim=%p mi=%p program=%p(%s) mi.binding=%p resolved_domain=%p resolved_mi_id=%d preset=%u",
                     static_cast<void *>(primitive),
                     static_cast<void *>(primitive->GetPrimitive()),
                     static_cast<void *>(mi),
-                    static_cast<void *>(material),
-                    material->GetName().c_str(),
+                    static_cast<void *>(resolved_program),
+                    resolved_program->GetName().c_str(),
                     static_cast<void *>(mi_binding),
                     static_cast<void *>(graph::MaterialBindingInstanceInternalAccess::GetDomain(mi)),
                     mi->GetMIID(),
@@ -462,7 +462,7 @@ namespace hgl::ecs
             return false;
         }
 
-        auto *previous_material = primitive->GetShaderMaterialProgram();
+        auto *previous_program = primitive->GetShaderMaterialProgram();
         graph::MaterialDomainHandle handle;
         const graph::VIL *resolved_vil = nullptr;
         auto &resolve_request = primitive->GetMaterialResolveRequest();
@@ -484,23 +484,23 @@ namespace hgl::ecs
             return false;
         }
 
-        auto *material = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
-        if (!material)
+        auto *resolved_program = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
+        if (!resolved_program)
         {
             internal::SingleTextureBindingStats::RecordRejectHit(
                 internal::SingleTextureFallbackReason::MissingResource);
 
-            LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] mi has null material: mi=%p", static_cast<void *>(mi));
+            LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] mi has null program: mi=%p", static_cast<void *>(mi));
             return false;
         }
 
         auto *mi_binding = graph::MaterialBindingInstanceInternalAccess::GetDomainBinding(mi);
-        LogInfo("[TBV][TextureMaterialBindingSystem] Resolved binding instance: primitive=%p geometry=%p mi=%p material=%p(%s) handle.domain=%p handle.binding=%p mi.binding=%p vil=%p domain_tag='%s' texture='%s'",
+        LogInfo("[TBV][TextureMaterialBindingSystem] Resolved binding instance: primitive=%p geometry=%p mi=%p program=%p(%s) handle.domain=%p handle.binding=%p mi.binding=%p vil=%p domain_tag='%s' texture='%s'",
                 static_cast<void *>(primitive),
                 static_cast<void *>(geometry),
                 static_cast<void *>(mi),
-                static_cast<void *>(material),
-                material ? material->GetName().c_str() : "<null>",
+            static_cast<void *>(resolved_program),
+            resolved_program ? resolved_program->GetName().c_str() : "<null>",
                 static_cast<void *>(handle.domain),
                 static_cast<void *>(handle.binding),
                 static_cast<void *>(mi_binding),
@@ -518,10 +518,10 @@ namespace hgl::ecs
             runtime_binding.kind = RuntimeTextureBinding::Kind::SingleTexture;
             runtime_binding.status = RuntimeTextureBinding::Status::Pending;
 
-            LogInfo("[TBV][TextureMaterialBindingSystem] Enter non-domain branch: primitive=%p mi=%p material=%p handle.binding=%p mi.binding=%p slot=%u",
+                LogInfo("[TBV][TextureMaterialBindingSystem] Enter non-domain branch: primitive=%p mi=%p program=%p handle.binding=%p mi.binding=%p slot=%u",
                     static_cast<void *>(primitive),
                     static_cast<void *>(mi),
-                    static_cast<void *>(material),
+                    static_cast<void *>(resolved_program),
                     static_cast<void *>(handle.binding),
                     static_cast<void *>(mi_binding),
                     static_cast<unsigned>(binding.slot));
@@ -550,18 +550,18 @@ namespace hgl::ecs
             }
             else
             {
-                LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain handle.binding is null: primitive=%p mi=%p material=%p",
+                LogInfo("[TBV][TextureMaterialBindingSystem] Non-domain handle.binding is null: primitive=%p mi=%p program=%p",
                         static_cast<void *>(primitive),
                         static_cast<void *>(mi),
-                        static_cast<void *>(material));
+                        static_cast<void *>(resolved_program));
             }
 
             if (descriptor_binding_system)
             {
-                if (previous_material && previous_material != material)
-                    descriptor_binding_system->ClearMaterialBindings(previous_material);
+                if (previous_program && previous_program != resolved_program)
+                    descriptor_binding_system->ClearMaterialBindings(previous_program);
 
-                descriptor_binding_system->RegisterMaterialTextureSampler(material,
+                descriptor_binding_system->RegisterMaterialTextureSampler(resolved_program,
                                                                           binding.slot,
                                                                           texture,
                                                                           sampler);
@@ -586,10 +586,10 @@ namespace hgl::ecs
             runtime_binding.kind = RuntimeTextureBinding::Kind::TextureArray;
             runtime_binding.status = RuntimeTextureBinding::Status::Pending;
 
-            LogInfo("[TBV][TextureMaterialBindingSystem] Enter domain branch: primitive=%p mi=%p material=%p handle.binding=%p mi.binding=%p slot=%u domain_tag='%s'",
+                LogInfo("[TBV][TextureMaterialBindingSystem] Enter domain branch: primitive=%p mi=%p program=%p handle.binding=%p mi.binding=%p slot=%u domain_tag='%s'",
                     static_cast<void *>(primitive),
                     static_cast<void *>(mi),
-                    static_cast<void *>(material),
+                    static_cast<void *>(resolved_program),
                     static_cast<void *>(handle.binding),
                     static_cast<void *>(mi_binding),
                     static_cast<unsigned>(binding.slot),
@@ -615,7 +615,7 @@ namespace hgl::ecs
                 {
                     if (!ready_state->ready)
                     {
-                        LogInfo("[TBV][TextureMaterialBindingSystem] domain readiness not satisfied: domain_tag='%s' dirty=%d tex_array=%p sampler=%p material=%p dmb=%p primitive=%p",
+                        LogInfo("[TBV][TextureMaterialBindingSystem] domain readiness not satisfied: domain_tag='%s' dirty=%d tex_array=%p sampler=%p program=%p dmb=%p primitive=%p",
                                 binding.domain_tag.c_str(),
                                 ready_state->dirty ? 1 : 0,
                                 ready_state->has_texture_array ? static_cast<void *>(domain_resources ? domain_resources->texture_array : nullptr) : nullptr,
@@ -647,11 +647,11 @@ namespace hgl::ecs
                 internal::SingleTextureBindingStats::RecordRejectHit(
                     internal::SingleTextureFallbackReason::MissingResource);
 
-                LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] EnsurePrimitiveBindingInstance failed: primitive=%p mi=%p material=%p(%s) vil=%p",
+                LogInfo("[TBV][TextureMaterialBindingSystem][FAIL] EnsurePrimitiveBindingInstance failed: primitive=%p mi=%p program=%p(%s) vil=%p",
                         static_cast<void *>(primitive),
                         static_cast<void *>(mi),
-                        static_cast<void *>(material),
-                        material ? material->GetName().c_str() : "<null>",
+                    static_cast<void *>(resolved_program),
+                    resolved_program ? resolved_program->GetName().c_str() : "<null>",
                         static_cast<const void *>(resolved_vil));
                 return false;
             }
@@ -666,17 +666,17 @@ namespace hgl::ecs
             }
             else
             {
-                LogInfo("[TBV][TextureMaterialBindingSystem] Domain handle.binding is null: primitive=%p mi=%p material=%p domain_tag='%s'",
+                LogInfo("[TBV][TextureMaterialBindingSystem] Domain handle.binding is null: primitive=%p mi=%p program=%p domain_tag='%s'",
                         static_cast<void *>(primitive),
                         static_cast<void *>(mi),
-                        static_cast<void *>(material),
+                        static_cast<void *>(resolved_program),
                         binding.domain_tag.c_str());
             }
 
             if (descriptor_binding_system)
             {
-                if (previous_material && previous_material != material)
-                    descriptor_binding_system->ClearMaterialBindings(previous_material);
+                if (previous_program && previous_program != resolved_program)
+                    descriptor_binding_system->ClearMaterialBindings(previous_program);
 
                 if (handle.binding)
                 {
@@ -687,7 +687,7 @@ namespace hgl::ecs
                                                                            domain_resources->sampler);
                 }
 
-                descriptor_binding_system->RegisterMaterialTextureSampler(material,
+                descriptor_binding_system->RegisterMaterialTextureSampler(resolved_program,
                                                                           binding.slot,
                                                                           domain_resources->texture_array,
                                                                           domain_resources->sampler);
@@ -712,17 +712,17 @@ namespace hgl::ecs
 
         primitive->SetStagingRenderState(BuildStagingMaterialState(primitive,
                                                                    mi,
-                                                                   material,
+                                       resolved_program,
                                                                    resolved_vil,
                                                                    produced_runtime_binding),
                                          primitive->GetPrimitive());
         mi_binding = graph::MaterialBindingInstanceInternalAccess::GetDomainBinding(mi);
-        LogInfo("[TBV][TextureMaterialBindingSystem] Final resolved state updated: primitive=%p primitive.prim=%p mi=%p material=%p(%s) mi.binding=%p resolved_domain=%p resolved_mi_id=%d preset=%u",
+        LogInfo("[TBV][TextureMaterialBindingSystem] Final resolved state updated: primitive=%p primitive.prim=%p mi=%p program=%p(%s) mi.binding=%p resolved_domain=%p resolved_mi_id=%d preset=%u",
                 static_cast<void *>(primitive),
                 static_cast<void *>(primitive->GetPrimitive()),
                 static_cast<void *>(mi),
-                static_cast<void *>(material),
-                material ? material->GetName().c_str() : "<null>",
+            static_cast<void *>(resolved_program),
+            resolved_program ? resolved_program->GetName().c_str() : "<null>",
                 static_cast<void *>(mi_binding),
                 static_cast<void *>(graph::MaterialBindingInstanceInternalAccess::GetDomain(mi)),
                 mi->GetMIID(),
