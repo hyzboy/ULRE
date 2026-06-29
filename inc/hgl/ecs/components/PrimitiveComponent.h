@@ -81,8 +81,8 @@ namespace hgl::ecs
                 ready = false;
             }
 
-            bool HasBindingInstance() const { return material_state.binding_instance != nullptr; }
-            bool HasMaterial() const { return material_state.material != nullptr; }
+            bool HasBindingInstance() const { return material_state.HasBindingInstance(); }
+            bool HasMaterial() const { return material_state.HasMaterial(); }
         };
 
         using EffectiveMaterialState = ResolvedMaterialState;
