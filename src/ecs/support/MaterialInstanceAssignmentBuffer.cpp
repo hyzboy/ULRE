@@ -7,6 +7,8 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
+#include<hgl/graph/module/MaterialDecoupledTypes.h>
+#include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<hgl/mtl/ShaderDataSchema.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
@@ -18,15 +20,105 @@ namespace hgl::ecs
     namespace
     {
 #ifdef _DEBUG
-        graph::MaterialBindingInstance *ResolveMIStateOnly(const RenderItem *item)
+        struct R3StateDebugStats
+        {
+            uint32_t items_seen = 0;
+            uint32_t null_item = 0;
+            uint32_t null_binding_instance = 0;
+            uint32_t binding_id_mismatch = 0;
+            uint32_t program_binding_program_mismatch = 0;
+            uint32_t payload_binding_payload_mismatch = 0;
+            uint32_t payload_id_mismatch = 0;
+            uint32_t legacy_mi_program_mismatch = 0;
+
+            bool HasAnyMismatch() const
+            {
+                return null_item > 0
+                    || null_binding_instance > 0
+                    || binding_id_mismatch > 0
+                    || program_binding_program_mismatch > 0
+                    || payload_binding_payload_mismatch > 0
+                    || payload_id_mismatch > 0
+                    || legacy_mi_program_mismatch > 0;
+            }
+        };
+
+        static void LogR3StateDebugSummary(const char *scope,
+                                           const R3StateDebugStats &stats,
+                                           size_t item_count,
+                                           size_t unique_mi_count)
+        {
+            if (!stats.HasAnyMismatch())
+                return;
+
+            std::cout << "[MaterialInstanceAssignmentBuffer] DEBUG[" << (scope ? scope : "unknown") << "] "
+                      << "items=" << item_count
+                      << " unique_mi=" << unique_mi_count
+                      << " seen=" << stats.items_seen
+                      << " null_item=" << stats.null_item
+                      << " null_binding_instance=" << stats.null_binding_instance
+                      << " binding_id_mismatch=" << stats.binding_id_mismatch
+                      << " binding_program_mismatch=" << stats.program_binding_program_mismatch
+                      << " binding_payload_mismatch=" << stats.payload_binding_payload_mismatch
+                      << " payload_id_mismatch=" << stats.payload_id_mismatch
+                      << " legacy_mi_program_mismatch=" << stats.legacy_mi_program_mismatch
+                      << std::endl;
+        }
+
+        graph::MaterialBindingInstance *ResolveMIStateOnly(const RenderItem *item,
+                                                           R3StateDebugStats *stats = nullptr)
         {
             if (!item)
+            {
+                if (stats)
+                    ++stats->null_item;
                 return nullptr;
+            }
+
+            if (stats)
+                ++stats->items_seen;
 
             const auto state = item->GetResolvedMaterialState();
+            if (state.program_binding)
+            {
+                if (state.binding_id != 0 && state.binding_id != state.program_binding->id)
+                {
+                    if (stats)
+                        ++stats->binding_id_mismatch;
+                }
+
+                if (state.program && state.program_binding->program && state.program != state.program_binding->program)
+                {
+                    if (stats)
+                        ++stats->program_binding_program_mismatch;
+                }
+
+                if (state.payload && state.program_binding->payload && state.payload != state.program_binding->payload)
+                {
+                    if (stats)
+                        ++stats->payload_binding_payload_mismatch;
+                }
+            }
+
+            if (state.payload && state.payload_id != 0 && state.payload->id != state.payload_id)
+            {
+                if (stats)
+                    ++stats->payload_id_mismatch;
+            }
+
             if (!state.binding_instance)
             {
-                std::cout << "[MaterialInstanceAssignmentBuffer] DEBUG: state.binding_instance is null" << std::endl;
+                if (stats)
+                    ++stats->null_binding_instance;
+            }
+            else
+            {
+                auto *mi_program = hgl::graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(state.binding_instance);
+                if (state.program && mi_program && state.program != mi_program)
+                {
+                    if (stats)
+                        ++stats->legacy_mi_program_mismatch;
+                }
             }
 
             return state.binding_instance;
@@ -139,6 +231,10 @@ namespace hgl::ecs
     {
         const size_t item_count = items.size();
 
+#ifdef _DEBUG
+        R3StateDebugStats debug_stats{};
+#endif
+
         mi_set.Clear();
 
         // 收集所有唯一的材质实例
@@ -149,7 +245,12 @@ namespace hgl::ecs
             if (!item)
                 continue;
 
-            graph::MaterialBindingInstance *mi = ResolveMIStateOnly(item);
+            graph::MaterialBindingInstance *mi =
+#ifdef _DEBUG
+                ResolveMIStateOnly(item, &debug_stats);
+#else
+                ResolveMIStateOnly(item);
+#endif
 
             if (mi)
             {
@@ -158,6 +259,10 @@ namespace hgl::ecs
         }
 
         const size_t unique_mi_count = mi_set.GetCount();
+
+#ifdef _DEBUG
+        LogR3StateDebugSummary("StatMaterialInstance", debug_stats, item_count, unique_mi_count);
+#endif
 
         // 当后如需验证 MI 数量上限可通过 domain->GetCapacity() 实现
         if (material_instance_data_bytes > 0)
