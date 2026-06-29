@@ -4,6 +4,8 @@
 
 #include <hgl/graph/module/MaterialRecipeRegistry.h>
 
+#include <memory>
+
 #include <unordered_map>
 #include <vector>
 
@@ -13,6 +15,8 @@ namespace hgl::ecs::internal
     {
         graph::MaterialBindingInstance *mi = nullptr;
         const graph::VIL *resolve_vil = nullptr;
+        std::unique_ptr<graph::MaterialInstancePayload> resolved_payload;
+        std::unique_ptr<graph::ProgramInstanceBinding> resolved_program_binding;
         std::vector<size_t> task_indices;
     };
 

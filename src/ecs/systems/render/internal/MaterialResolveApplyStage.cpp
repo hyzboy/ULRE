@@ -20,6 +20,8 @@ namespace hgl::ecs::internal
         {
             graph::MaterialBindingInstance *mi = resolved_bucket.mi;
             const graph::VIL *resolve_vil = resolved_bucket.resolve_vil;
+            graph::ProgramInstanceBinding *resolved_program_binding = resolved_bucket.resolved_program_binding.get();
+            graph::MaterialInstancePayload *resolved_payload = resolved_bucket.resolved_payload.get();
 
             for (const size_t idx : resolved_bucket.task_indices)
             {
@@ -29,11 +31,11 @@ namespace hgl::ecs::internal
 
                 task.slot->resolved_binding_instance = mi;
                 task.slot->resolved_material = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
-                task.slot->resolved_program_binding = nullptr;
+                task.slot->resolved_program_binding = resolved_program_binding;
                 task.slot->resolved_program = task.slot->resolved_material;
-                task.slot->resolved_payload = nullptr;
-                task.slot->resolved_binding_id = 0;
-                task.slot->resolved_payload_id = 0;
+                task.slot->resolved_payload = resolved_payload;
+                task.slot->resolved_binding_id = resolved_program_binding ? resolved_program_binding->id : 0;
+                task.slot->resolved_payload_id = resolved_payload ? resolved_payload->id : 0;
                 task.slot->resolved_domain = graph::MaterialBindingInstanceInternalAccess::GetDomain(mi);
                 task.slot->resolved_domain_id = graph::MaterialBindingInstanceInternalAccess::GetDomainID(mi);
                 task.slot->resolved_vil = resolve_vil;
