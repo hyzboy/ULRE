@@ -300,6 +300,7 @@ set(ECS_SUPPORT_PRIMITIVE_FILES
     ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveSortSystem.h
     ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveBuildSystem.h
     ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveRenderSystem.h
+    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveRenderSubmitStats.h
     ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveOverlayRenderSystem.h
     ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveRenderPipelineGroup.h
     support/primitive/PrimitiveRenderPipeline.cpp
@@ -307,6 +308,7 @@ set(ECS_SUPPORT_PRIMITIVE_FILES
     support/primitive/PrimitiveSortSystem.cpp
     support/primitive/PrimitiveBuildSystem.cpp
     support/primitive/PrimitiveRenderSystem.cpp
+    support/primitive/PrimitiveRenderSubmitStats.cpp
     support/primitive/PrimitiveOverlayRenderSystem.cpp
     support/primitive/PrimitiveRenderPipelineGroup.cpp
 )
