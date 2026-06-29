@@ -49,6 +49,19 @@ namespace hgl::ecs
         bool short_circuit_disabled_by_auto_guardrail = false;
     };
 
+    struct MaterialResolveR3Stats
+    {
+        uint64_t stat_calls_total = 0;
+        uint64_t items_seen_total = 0;
+        uint64_t triad_present_total = 0;
+        uint64_t triad_bridge_compare_total = 0;
+        uint64_t triad_bridge_compare_equal_total = 0;
+        uint64_t triad_bridge_rescue_candidate_total = 0;
+        uint64_t triad_bridge_override_candidate_total = 0;
+        uint64_t shadow_switch_eval_total = 0;
+        uint64_t shadow_switch_would_change_total = 0;
+    };
+
     class MaterialResolveDiagnostics
     {
     private:
@@ -78,8 +91,11 @@ namespace hgl::ecs
         uint64_t last_cache_stats_log_ms = 0;
         uint64_t cache_stats_log_interval_ms = 1000;
 
+        bool r3_shadow_bridge_prefer_enabled = false;
+
         MaterialResolveR21DryRunStats frame_stats{};
         MaterialResolveR2CStats cumulative_stats{};
+        MaterialResolveR3Stats r3_stats{};
 
     public:
 
@@ -192,6 +208,39 @@ namespace hgl::ecs
         uint64_t GetCacheStatsLogIntervalMs() const { return cache_stats_log_interval_ms; }
         void SetCacheStatsLogIntervalMs(uint64_t value) { cache_stats_log_interval_ms = value > 0 ? value : 1; }
 
+        void SetR3ShadowBridgePreferEnabled(bool enabled) { r3_shadow_bridge_prefer_enabled = enabled; }
+        bool IsR3ShadowBridgePreferEnabled() const { return r3_shadow_bridge_prefer_enabled; }
+
+        void RecordR3MaterialInstanceAssignmentStats(uint64_t items_seen,
+                                                     uint64_t triad_present,
+                                                     uint64_t triad_bridge_compare_total,
+                                                     uint64_t triad_bridge_compare_equal,
+                                                     uint64_t triad_bridge_rescue_candidate,
+                                                     uint64_t triad_bridge_override_candidate,
+                                                     uint64_t shadow_switch_eval_total,
+                                                     uint64_t shadow_switch_would_change)
+        {
+            ++r3_stats.stat_calls_total;
+            r3_stats.items_seen_total += items_seen;
+            r3_stats.triad_present_total += triad_present;
+            r3_stats.triad_bridge_compare_total += triad_bridge_compare_total;
+            r3_stats.triad_bridge_compare_equal_total += triad_bridge_compare_equal;
+            r3_stats.triad_bridge_rescue_candidate_total += triad_bridge_rescue_candidate;
+            r3_stats.triad_bridge_override_candidate_total += triad_bridge_override_candidate;
+            r3_stats.shadow_switch_eval_total += shadow_switch_eval_total;
+            r3_stats.shadow_switch_would_change_total += shadow_switch_would_change;
+        }
+
+        void GetR3Stats(MaterialResolveR3Stats &out) const
+        {
+            out = r3_stats;
+        }
+
+        void ResetR3Stats()
+        {
+            r3_stats = {};
+        }
+
         MaterialResolveR21DryRunStats &GetFrameStats() { return frame_stats; }
         const MaterialResolveR21DryRunStats &GetFrameStats() const { return frame_stats; }
         void ResetFrameStats() { frame_stats = {}; }
@@ -209,6 +258,7 @@ namespace hgl::ecs
         {
             ResetFrameStats();
             ResetCumulativeStats();
+            ResetR3Stats();
             ResetRuntimeState();
         }
 

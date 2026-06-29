@@ -276,6 +276,7 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/PipelineMaterialRenderer.h
     ${ECS_INCLUDE_PATH}/support/TransformAssignmentBuffer.h
     ${ECS_INCLUDE_PATH}/support/MaterialInstanceAssignmentBuffer.h
+    ${ECS_INCLUDE_PATH}/support/MaterialInstanceAssignmentDebugStats.h
     ${ECS_INCLUDE_PATH}/support/TextHelper.h
     ${ECS_INCLUDE_PATH}/support/RenderPipelineBase.h
     ${ECS_INCLUDE_PATH}/support/RenderPipelineSystem.h
@@ -287,6 +288,7 @@ set(ECS_SUPPORT_FILES
     support/VisibilityDataStorage.cpp
     support/TransformAssignmentBuffer.cpp
     support/MaterialInstanceAssignmentBuffer.cpp
+    support/MaterialInstanceAssignmentDebugStats.cpp
     support/PipelineMaterialRenderer.cpp
     support/PrimitiveBatchPipeline.cpp
     support/TextRenderPipeline.cpp

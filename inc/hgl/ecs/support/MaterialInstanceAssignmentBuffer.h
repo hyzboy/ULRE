@@ -21,6 +21,8 @@ namespace hgl::graph
 
 namespace hgl::ecs
 {
+    class MaterialResolveDiagnostics;
+
     /**
      * 材质实例集合 - 用于去重和索引管理
      */
@@ -88,6 +90,7 @@ namespace hgl::ecs
     private:
         graph::BufferManager* buffer_manager;   ///<缓冲区管理器
         graph::ShaderMaterialProgram* material;              ///<所属材质
+        MaterialResolveDiagnostics* diagnostics = nullptr;
 
     private:    // 材质实例数据
         MaterialInstanceSet mi_set;         ///<材质实例集合（去重）
@@ -115,6 +118,8 @@ namespace hgl::ecs
     public:
         MaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::ShaderMaterialProgram* mtl);
         ~MaterialInstanceAssignmentBuffer() { Clear(); }
+
+        void SetDiagnostics(MaterialResolveDiagnostics* diag) { diagnostics = diag; }
 
         /**
          * 获取MaterialInstanceID SSBO VkBuffer（用于绑定到管线）

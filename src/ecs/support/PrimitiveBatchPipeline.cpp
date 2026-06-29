@@ -584,7 +584,12 @@ namespace hgl::ecs
 #endif
 
         if (!batch.mi_buffer && !batch.items.empty())
+        {
             batch.mi_buffer = new MaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
+
+            if (world)
+                batch.mi_buffer->SetDiagnostics(&world->GetMaterialResolveDiagnostics());
+        }
 
         if (batch.mi_buffer && !batch.items.empty())
             batch.mi_buffer->WriteItems(batch.items);
