@@ -76,8 +76,13 @@ namespace hgl::ecs
         const auto &comp_state = committed_state.material_state;
 
         RenderItem::ResolvedMaterialState state{};
+        state.program_binding = comp_state.program_binding;
+        state.program = comp_state.program ? comp_state.program : comp_state.material;
+        state.payload = comp_state.payload;
+        state.binding_id = comp_state.binding_id;
+        state.payload_id = comp_state.payload_id;
         state.binding_instance = comp_state.binding_instance;
-        state.material = comp_state.material;
+        state.material = state.program ? state.program : comp_state.material;
         state.domain = comp_state.domain;
         state.runtime_texture_binding = comp_state.runtime_texture_binding;
         state.domain_id = comp_state.domain_id;

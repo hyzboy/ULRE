@@ -12,6 +12,8 @@ namespace hgl
     {
         class Primitive;
         class ShaderMaterialProgram;
+        class ProgramInstanceBinding;
+        class MaterialInstancePayload;
         class MaterialBindingInstance;
         class ResourceDomain;
         class VertexInputLayout;
@@ -39,6 +41,11 @@ namespace hgl::ecs
     public:
         struct ResolvedMaterialState
         {
+            hgl::graph::ProgramInstanceBinding* program_binding = nullptr;
+            hgl::graph::ShaderMaterialProgram* program = nullptr;
+            hgl::graph::MaterialInstancePayload* payload = nullptr;
+            uint64_t binding_id = 0;
+            uint64_t payload_id = 0;
             hgl::graph::MaterialBindingInstance* binding_instance = nullptr;
             hgl::graph::ShaderMaterialProgram* material = nullptr;
             hgl::graph::ResourceDomain* domain = nullptr;
@@ -48,8 +55,8 @@ namespace hgl::ecs
             int mi_id = -1;
             hgl::graph::GraphicsPipelinePreset preset{};
 
-            bool HasBindingInstance() const { return binding_instance != nullptr; }
-            bool HasMaterial() const { return material != nullptr; }
+            bool HasBindingInstance() const { return program_binding != nullptr || binding_instance != nullptr; }
+            bool HasMaterial() const { return program != nullptr || material != nullptr; }
         };
 
         uint32_t index = 0;                      // Index in batch

@@ -124,8 +124,9 @@ namespace hgl::ecs
             const RuntimeTextureBinding &runtime_binding)
         {
             PrimitiveComponent::ResolvedMaterialState state{};
+            state.program = material;
             state.binding_instance = mi;
-            state.material = material;
+            state.material = state.program ? state.program : material;
             state.domain = graph::MaterialBindingInstanceInternalAccess::GetDomain(mi);
             state.domain_id = graph::MaterialBindingInstanceInternalAccess::GetDomainID(mi);
             state.runtime_texture_binding = runtime_binding;

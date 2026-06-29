@@ -9,6 +9,7 @@
 
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialRecipeID.h>
+#include<hgl/graph/module/MaterialDecoupledTypes.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelinePreset.h>
 #include<cstdint>
 #include<vector>
@@ -17,6 +18,8 @@ namespace hgl::graph
 {
     class MaterialBindingInstance;
     class ShaderMaterialProgram;
+    class MaterialInstancePayload;
+    class ProgramInstanceBinding;
     class ResourceDomain;
     class VertexInputLayout;
 
@@ -24,6 +27,15 @@ namespace hgl::graph
     {
         mtl::MaterialRecipeID recipe_id = mtl::kInvalidMaterialRecipeID; ///< 配方 ID（由 MaterialRecipeStore 分配）
         std::vector<uint8_t> instance_data;
+
+        // Phase R3: decoupled runtime triad state (Binding + Program + Payload)
+        ProgramInstanceBinding *resolved_program_binding = nullptr;
+        ShaderMaterialProgram *resolved_program = nullptr;
+        MaterialInstancePayload *resolved_payload = nullptr;
+        ProgramBindingID resolved_binding_id = 0;
+        MaterialPayloadID resolved_payload_id = 0;
+
+        // Compatibility bridge for legacy runtime paths.
         MaterialBindingInstance *resolved_binding_instance = nullptr;        ///< 已解析的 MI（由 MaterialResolveSystem 写入）
         ShaderMaterialProgram *resolved_material = nullptr;                  ///< 已解析材质（阶段5：运行时消费优先走该缓存）
         ResourceDomain *resolved_domain = nullptr;
@@ -53,6 +65,11 @@ namespace hgl::graph
         void Invalidate()
         {
             dirty = true;
+            resolved_program_binding = nullptr;
+            resolved_program = nullptr;
+            resolved_payload = nullptr;
+            resolved_binding_id = 0;
+            resolved_payload_id = 0;
             resolved_binding_instance = nullptr;
             resolved_material = nullptr;
             resolved_domain = nullptr;

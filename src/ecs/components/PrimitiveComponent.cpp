@@ -36,8 +36,14 @@ namespace hgl::ecs
             state.preset = hgl::graph::GraphicsPipelinePreset::Solid3D;
             state.runtime_texture_binding = runtime_binding;
 
+            state.program_binding = request.resolved_program_binding;
+            state.program = request.resolved_program ? request.resolved_program : request.resolved_material;
+            state.payload = request.resolved_payload;
+            state.binding_id = request.resolved_binding_id;
+            state.payload_id = request.resolved_payload_id;
+
             state.binding_instance = request.resolved_binding_instance;
-            state.material = request.resolved_material;
+            state.material = state.program ? state.program : request.resolved_material;
             state.domain = request.resolved_domain;
             state.domain_id = request.resolved_domain_id;
             state.vil = request.resolved_vil;
@@ -113,6 +119,11 @@ namespace hgl::ecs
                 if (material)
                 {
                     ResolvedMaterialState staged{};
+                    staged.program_binding = nullptr;
+                    staged.program          = material;
+                    staged.payload          = nullptr;
+                    staged.binding_id       = 0;
+                    staged.payload_id       = 0;
                     staged.binding_instance = mi;
                     staged.material         = material;
                     staged.domain           = domain;

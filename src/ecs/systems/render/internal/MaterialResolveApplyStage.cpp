@@ -29,6 +29,11 @@ namespace hgl::ecs::internal
 
                 task.slot->resolved_binding_instance = mi;
                 task.slot->resolved_material = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
+                task.slot->resolved_program_binding = nullptr;
+                task.slot->resolved_program = task.slot->resolved_material;
+                task.slot->resolved_payload = nullptr;
+                task.slot->resolved_binding_id = 0;
+                task.slot->resolved_payload_id = 0;
                 task.slot->resolved_domain = graph::MaterialBindingInstanceInternalAccess::GetDomain(mi);
                 task.slot->resolved_domain_id = graph::MaterialBindingInstanceInternalAccess::GetDomainID(mi);
                 task.slot->resolved_vil = resolve_vil;
@@ -84,8 +89,13 @@ namespace hgl::ecs::internal
                 if (resolved_primitive)
                 {
                     PrimitiveComponent::ResolvedMaterialState staged_state{};
+                    staged_state.program_binding = task.slot->resolved_program_binding;
+                    staged_state.program = task.slot->resolved_program ? task.slot->resolved_program : task.slot->resolved_material;
+                    staged_state.payload = task.slot->resolved_payload;
+                    staged_state.binding_id = task.slot->resolved_binding_id;
+                    staged_state.payload_id = task.slot->resolved_payload_id;
                     staged_state.binding_instance = task.slot->resolved_binding_instance;
-                    staged_state.material = task.slot->resolved_material;
+                    staged_state.material = staged_state.program ? staged_state.program : task.slot->resolved_material;
                     staged_state.domain = task.slot->resolved_domain;
                     staged_state.domain_id = task.slot->resolved_domain_id;
                     staged_state.vil = task.slot->resolved_vil;

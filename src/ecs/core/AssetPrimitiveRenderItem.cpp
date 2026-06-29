@@ -62,7 +62,8 @@ namespace hgl::ecs
         {
             // Stage-5: VIL is now sourced from Primitive (stored at construction in Stage-4).
             // material still comes from MI until MI.material field is removed in a later pass.
-            state.material  = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(state.binding_instance);
+            state.program   = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(state.binding_instance);
+            state.material  = state.program;
             state.vil       = primitive->GetVIL();
             state.domain    = graph::MaterialBindingInstanceInternalAccess::GetDomain(state.binding_instance);
             state.domain_id = graph::MaterialBindingInstanceInternalAccess::GetDomainID(state.binding_instance);
