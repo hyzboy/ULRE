@@ -12,6 +12,8 @@ namespace hgl::ecs
         ResolvedMaterialState state{};
         state.preset = hgl::graph::GraphicsPipelinePreset::Solid3D;
 
+        state.program = GetShaderMaterialProgram();
+        state.material = state.program;
         state.binding_instance = GetResolvedBindingInstance();
 
         if (state.binding_instance)

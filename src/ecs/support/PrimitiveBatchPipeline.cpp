@@ -92,7 +92,7 @@ namespace hgl::ecs
 
         graph::ShaderMaterialProgram *ResolveMaterialFromState(const RenderItem::ResolvedMaterialState &state)
         {
-            return state.material;
+            return state.program ? state.program : state.material;
         }
 
 #ifdef _DEBUG
@@ -507,17 +507,20 @@ namespace hgl::ecs
             return;
 
 #ifdef _DEBUG
-        // Three-source consistency: every item's resolved state.material must equal
-        // batch.key.material. The batch is keyed on state.material (via ResolveMaterialFromState),
+        // Three-source consistency: every item's resolved program/material pointer must equal
+        // batch.key.material. The batch is keyed on ResolveMaterialFromState(state),
         // so any divergence means an item was inserted into the wrong batch.
         for (auto* item : batch.items)
         {
             if (!item) continue;
             const auto item_state = item->GetResolvedMaterialState();
-            if (item_state.material && item_state.material != batch.key.material)
+            auto *resolved_material = ResolveMaterialFromState(item_state);
+            if (resolved_material && resolved_material != batch.key.material)
             {
                 GLogWarning("[ECS::PrimitiveBatchPipeline] Three-source consistency violation: "
-                            "item state.material=%p != batch.key.material=%p — item placed in wrong batch",
+                            "item resolved material=%p (program=%p, material=%p) != batch.key.material=%p — item placed in wrong batch",
+                            static_cast<const void *>(resolved_material),
+                            static_cast<const void *>(item_state.program),
                             static_cast<const void *>(item_state.material),
                             static_cast<const void *>(batch.key.material));
             }
@@ -575,7 +578,7 @@ namespace hgl::ecs
 #ifdef _DEBUG
             if (!material)
             {
-                GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state warning: state.material is null for visible item");
+                GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state warning: resolved program/material is null for visible item");
             }
 #endif
 
