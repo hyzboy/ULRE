@@ -85,13 +85,25 @@ namespace hgl::ecs
                       if (lhs->key.material != rhs->key.material)
                           return lhs->key.material < rhs->key.material;
 
+                      if (lhs->key.domain != rhs->key.domain)
+                          return lhs->key.domain < rhs->key.domain;
+
                       if (lhs->key.pipeline != rhs->key.pipeline)
                           return lhs->key.pipeline < rhs->key.pipeline;
 
-                      return lhs->key.domain < rhs->key.domain;
+                      return false;
                   });
 
         graph::GraphicsPipeline* last_pipeline = nullptr;
+        const void *last_binding_token = nullptr;
+
+        uint64_t frame_batches_seen = 0;
+        uint64_t frame_program_bind_calls = 0;
+        uint64_t frame_descriptor_bind_calls = 0;
+        uint64_t frame_program_switches = 0;
+        uint64_t frame_descriptor_switches = 0;
+
+        graph::ShaderMaterialProgram *last_program = nullptr;
 
         for (MaterialBatch* batch : ordered_batches)
         {
@@ -155,8 +167,38 @@ namespace hgl::ecs
                         batch->draw_batches_count);
             }
 
+            ++frame_batches_seen;
+
+            graph::ShaderMaterialProgram *current_program = key.material;
+            if (current_program && current_program != last_program)
+            {
+                ++frame_program_switches;
+                last_program = current_program;
+            }
+
+            const void *current_binding_token = domain_binding
+                                              ? static_cast<const void *>(domain_binding)
+                                              : static_cast<const void *>(key.material);
+
+            const bool binding_changed = (current_binding_token != last_binding_token);
+
+            if (current_binding_token && binding_changed)
+            {
+                ++frame_descriptor_switches;
+            }
+
             const bool skip_pipeline_bind = (key.pipeline == last_pipeline);
             last_pipeline = key.pipeline;
+            if (!skip_pipeline_bind)
+                ++frame_program_bind_calls;
+
+            const bool skip_descriptor_bind = !binding_changed
+                                           && (current_binding_token != nullptr)
+                                           && (frame_batches_seen > 1);
+            if (!skip_descriptor_bind)
+                ++frame_descriptor_bind_calls;
+
+            last_binding_token = current_binding_token;
 
             renderer->Render(cmdBuffer,
                              batch->draw_batches,
@@ -166,7 +208,28 @@ namespace hgl::ecs
                              batch->icb_draw,
                              batch->icb_draw_indexed,
                              domain_binding,
-                             skip_pipeline_bind);
+                             skip_pipeline_bind,
+                             skip_descriptor_bind);
+        }
+
+        auto &diag = context->GetMaterialResolveDiagnostics();
+        diag.RecordR4RenderSubmitStats(frame_batches_seen,
+                                       frame_program_bind_calls,
+                                       frame_descriptor_bind_calls,
+                                       frame_program_switches,
+                                       frame_descriptor_switches);
+
+        static uint64_t s_r4_submit_frames = 0;
+        ++s_r4_submit_frames;
+        if ((s_r4_submit_frames & (s_r4_submit_frames - 1)) == 0)
+        {
+            GLogInfo("[ECS::PrimitiveRenderSystem][R4] submit frame=%llu batches=%llu program_bind=%llu descriptor_bind=%llu program_switch=%llu descriptor_switch=%llu",
+                     static_cast<unsigned long long>(s_r4_submit_frames),
+                     static_cast<unsigned long long>(frame_batches_seen),
+                     static_cast<unsigned long long>(frame_program_bind_calls),
+                     static_cast<unsigned long long>(frame_descriptor_bind_calls),
+                     static_cast<unsigned long long>(frame_program_switches),
+                     static_cast<unsigned long long>(frame_descriptor_switches));
         }
     }
 }

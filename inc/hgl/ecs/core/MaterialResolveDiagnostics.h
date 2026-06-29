@@ -62,6 +62,18 @@ namespace hgl::ecs
         uint64_t shadow_switch_would_change_total = 0;
     };
 
+    struct MaterialResolveR4Stats
+    {
+        uint64_t submit_calls_total = 0;
+        uint64_t batches_seen_total = 0;
+        uint64_t program_bind_calls_total = 0;
+        uint64_t descriptor_bind_calls_total = 0;
+        uint64_t program_switches_total = 0;
+        uint64_t descriptor_switches_total = 0;
+        uint64_t program_bind_skipped_total = 0;
+        uint64_t descriptor_bind_skipped_total = 0;
+    };
+
     class MaterialResolveDiagnostics
     {
     private:
@@ -96,6 +108,7 @@ namespace hgl::ecs
         MaterialResolveR21DryRunStats frame_stats{};
         MaterialResolveR2CStats cumulative_stats{};
         MaterialResolveR3Stats r3_stats{};
+        MaterialResolveR4Stats r4_stats{};
 
     public:
 
@@ -241,6 +254,36 @@ namespace hgl::ecs
             r3_stats = {};
         }
 
+        void RecordR4RenderSubmitStats(uint64_t batches_seen,
+                                       uint64_t program_bind_calls,
+                                       uint64_t descriptor_bind_calls,
+                                       uint64_t program_switches,
+                                       uint64_t descriptor_switches)
+        {
+            ++r4_stats.submit_calls_total;
+            r4_stats.batches_seen_total += batches_seen;
+            r4_stats.program_bind_calls_total += program_bind_calls;
+            r4_stats.descriptor_bind_calls_total += descriptor_bind_calls;
+            r4_stats.program_switches_total += program_switches;
+            r4_stats.descriptor_switches_total += descriptor_switches;
+
+            if (batches_seen >= program_bind_calls)
+                r4_stats.program_bind_skipped_total += (batches_seen - program_bind_calls);
+
+            if (batches_seen >= descriptor_bind_calls)
+                r4_stats.descriptor_bind_skipped_total += (batches_seen - descriptor_bind_calls);
+        }
+
+        void GetR4Stats(MaterialResolveR4Stats &out) const
+        {
+            out = r4_stats;
+        }
+
+        void ResetR4Stats()
+        {
+            r4_stats = {};
+        }
+
         MaterialResolveR21DryRunStats &GetFrameStats() { return frame_stats; }
         const MaterialResolveR21DryRunStats &GetFrameStats() const { return frame_stats; }
         void ResetFrameStats() { frame_stats = {}; }
@@ -259,6 +302,7 @@ namespace hgl::ecs
             ResetFrameStats();
             ResetCumulativeStats();
             ResetR3Stats();
+            ResetR4Stats();
             ResetRuntimeState();
         }
 

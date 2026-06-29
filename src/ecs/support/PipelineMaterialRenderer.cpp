@@ -181,7 +181,8 @@ namespace hgl::ecs
                                               graph::IndirectDrawBuffer* icb_draw,
                                               graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
                                               graph::DomainResourceBinding* domain_binding,
-                                              bool skip_pipeline_bind)
+                                              bool skip_pipeline_bind,
+                                              bool skip_descriptor_bind)
     {
         // 前置条件检查
         if (!rcb)
@@ -217,10 +218,13 @@ namespace hgl::ecs
         }
 
         // 绑定材质描述符集（优先 domain+material 绑定，回退旧 material 绑定）
-        if (domain_binding)
-            cmd_buf->BindDescriptorSets(domain_binding);
-        else
-            cmd_buf->BindDescriptorSets(material);
+        if (!skip_descriptor_bind)
+        {
+            if (domain_binding)
+                cmd_buf->BindDescriptorSets(domain_binding);
+            else
+                cmd_buf->BindDescriptorSets(material);
+        }
 
         // 遍历绘制批次
         DrawBatch* batch = const_cast<DrawBatch*>(batches.data());

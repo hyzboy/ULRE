@@ -138,6 +138,7 @@ namespace hgl::ecs
                     graph::IndirectDrawBuffer* icb_draw,
                     graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
                     graph::DomainResourceBinding* domain_binding = nullptr,
-                    bool skip_pipeline_bind = false);
+                    bool skip_pipeline_bind = false,
+                    bool skip_descriptor_bind = false);
     };
 }//namespace hgl::ecs
