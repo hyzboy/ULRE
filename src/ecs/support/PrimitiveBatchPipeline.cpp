@@ -95,33 +95,89 @@ namespace hgl::ecs
             return state.program ? state.program : state.material;
         }
 
-#ifdef _DEBUG
-        void LogUnifiedStateMismatch(const RenderItem::ResolvedMaterialState &state,
-                                     graph::MaterialBindingInstance *mi)
+        graph::ResourceDomain *ResolveDomainFromState(const RenderItem::ResolvedMaterialState &state)
         {
-            if (!mi)
-                return;
+            if (state.domain)
+                return state.domain;
 
-            auto *mi_domain = graph::MaterialBindingInstanceInternalAccess::GetDomain(mi);
+            if (state.program_binding && state.program_binding->domain)
+                return state.program_binding->domain;
 
-            if (state.domain && state.domain != mi_domain)
+            if (state.binding_instance)
+                return graph::MaterialBindingInstanceInternalAccess::GetDomain(state.binding_instance);
+
+            return nullptr;
+        }
+
+#ifdef _DEBUG
+        void LogUnifiedStateMismatch(const RenderItem::ResolvedMaterialState &state)
+        {
+            const auto *binding = state.program_binding;
+            const auto *mi = state.binding_instance;
+            auto *mi_domain = mi ? graph::MaterialBindingInstanceInternalAccess::GetDomain(mi) : nullptr;
+
+            if (binding)
             {
-                GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain=%p mi.domain=%p",
-                            static_cast<void *>(state.domain),
-                            static_cast<void *>(mi_domain));
+                if (state.binding_id != 0 && state.binding_id != binding->id)
+                {
+                    GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.binding_id=%llu binding.id=%llu",
+                                static_cast<unsigned long long>(state.binding_id),
+                                static_cast<unsigned long long>(binding->id));
+                }
+
+                if (state.program && binding->program && state.program != binding->program)
+                {
+                    GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.program=%p binding.program=%p",
+                                static_cast<const void *>(state.program),
+                                static_cast<const void *>(binding->program));
+                }
+
+                if (state.payload && binding->payload && state.payload != binding->payload)
+                {
+                    GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.payload=%p binding.payload=%p",
+                                static_cast<const void *>(state.payload),
+                                static_cast<const void *>(binding->payload));
+                }
+
+                if (state.payload && state.payload_id != 0 && state.payload->id != state.payload_id)
+                {
+                    GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.payload_id=%llu payload.id=%llu",
+                                static_cast<unsigned long long>(state.payload_id),
+                                static_cast<unsigned long long>(state.payload->id));
+                }
+
+                if (state.domain && binding->domain && state.domain != binding->domain)
+                {
+                    GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain=%p binding.domain=%p",
+                                static_cast<void *>(state.domain),
+                                static_cast<void *>(binding->domain));
+                }
             }
 
-            if (state.preset != mi->GetRenderPreset())
+            if (mi && state.domain && state.domain != mi_domain)
+            {
+                GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain=%p mi.domain=%p",
+                            static_cast<const void *>(state.domain),
+                            static_cast<const void *>(mi_domain));
+            }
+
+            if (mi && state.preset != mi->GetRenderPreset())
             {
                 GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.preset=%d mi.preset=%d",
                             int(state.preset),
                             int(mi->GetRenderPreset()));
             }
 
+            if (!state.domain && (binding && binding->domain))
+            {
+                GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain is null but binding.domain=%p",
+                            static_cast<void *>(binding->domain));
+            }
+
             if (!state.domain && mi_domain)
             {
                 GLogWarning("[ECS::PrimitiveBatchPipeline] Unified-state mismatch: state.domain is null but mi.domain=%p",
-                            static_cast<void *>(mi_domain));
+                            static_cast<const void *>(mi_domain));
             }
         }
 #endif
@@ -678,13 +734,11 @@ namespace hgl::ecs
 
             // Phase 4: include ResourceDomain in batch key so items from different
             // domains are never merged into the same batch (nullptr = default domain).
-            auto* mi = state.binding_instance;
-
 #ifdef _DEBUG
-            LogUnifiedStateMismatch(state, mi);
+            LogUnifiedStateMismatch(state);
 #endif
 
-            auto* domain = state.domain;
+            auto* domain = ResolveDomainFromState(state);
             const RenderQueue queue = DetermineRenderQueue(pipeline);
 
             MaterialPipelineKey key(material, pipeline, domain, queue);

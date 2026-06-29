@@ -195,19 +195,19 @@ namespace hgl::ecs
         {
             if (!staged.program)
             {
-                LogWarning("[ECS::PrimitiveComponent] R3 consistency: program_binding=%p but program is null",
+                GLogWarning("[ECS::PrimitiveComponent] R3 consistency: program_binding=%p but program is null",
                            static_cast<const void *>(staged.program_binding));
             }
 
             if (!staged.payload && staged.payload_id != 0)
             {
-                LogWarning("[ECS::PrimitiveComponent] R3 consistency: payload pointer is null but payload_id=%llu",
+                GLogWarning("[ECS::PrimitiveComponent] R3 consistency: payload pointer is null but payload_id=%llu",
                            static_cast<unsigned long long>(staged.payload_id));
             }
 
             if (staged.payload && staged.payload_id != staged.payload->id)
             {
-                LogWarning("[ECS::PrimitiveComponent] R3 consistency: payload pointer/id mismatch payload=%p payload_id=%llu actual_id=%llu",
+                GLogWarning("[ECS::PrimitiveComponent] R3 consistency: payload pointer/id mismatch payload=%p payload_id=%llu actual_id=%llu",
                            static_cast<const void *>(staged.payload),
                            static_cast<unsigned long long>(staged.payload_id),
                            static_cast<unsigned long long>(staged.payload->id));
@@ -215,7 +215,7 @@ namespace hgl::ecs
 
             if (staged.binding_id != staged.program_binding->id)
             {
-                LogWarning("[ECS::PrimitiveComponent] R3 consistency: binding pointer/id mismatch binding=%p binding_id=%llu actual_id=%llu",
+                GLogWarning("[ECS::PrimitiveComponent] R3 consistency: binding pointer/id mismatch binding=%p binding_id=%llu actual_id=%llu",
                            static_cast<const void *>(staged.program_binding),
                            static_cast<unsigned long long>(staged.binding_id),
                            static_cast<unsigned long long>(staged.program_binding->id));
