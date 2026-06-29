@@ -39,6 +39,7 @@ namespace hgl::ecs
         ECSContext*                         context    = nullptr;
         std::shared_ptr<TransformComponent> transform;
         graph::Primitive*                   primitive  = nullptr;   ///< Non-owning; owned by StaticMesh
+        mutable graph::ShaderMaterialProgram* cached_program = nullptr;
         graph::AssetWorldDef::ID            asset_id   = graph::AssetWorldDef::INVALID_ID;
         glm::mat4                           world_matrix{1.0f};
 

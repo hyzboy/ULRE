@@ -29,6 +29,12 @@ namespace hgl::ecs
             world_matrix  = transform->GetWorldMatrix();
             worldPosition = transform->GetWorldPosition();
         }
+
+        if (primitive)
+        {
+            if (auto *mi = primitive->GetResolvedBindingInstance())
+                cached_program = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
+        }
     }
 
     Entity* AssetPrimitiveRenderItem::GetEntity() const
@@ -40,12 +46,21 @@ namespace hgl::ecs
 
     graph::MaterialBindingInstance* AssetPrimitiveRenderItem::GetResolvedBindingInstance() const
     {
-        return GetResolvedMaterialState().binding_instance;
+        return primitive ? primitive->GetResolvedBindingInstance() : nullptr;
     }
 
     graph::ShaderMaterialProgram* AssetPrimitiveRenderItem::GetShaderMaterialProgram() const
     {
-        return GetResolvedMaterialState().material;
+        if (cached_program)
+            return cached_program;
+
+        if (!primitive)
+            return nullptr;
+
+        if (auto *mi = primitive->GetResolvedBindingInstance())
+            cached_program = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
+
+        return cached_program;
     }
 
     RenderItem::ResolvedMaterialState AssetPrimitiveRenderItem::GetResolvedMaterialState() const
@@ -56,15 +71,28 @@ namespace hgl::ecs
         if (!primitive)
             return state;
 
+        state.program = cached_program;
+        state.material = state.program;
+        state.vil = primitive->GetVIL();
+
         state.binding_instance = primitive->GetResolvedBindingInstance();
 
         if (state.binding_instance)
         {
-            // Stage-5: VIL is now sourced from Primitive (stored at construction in Stage-4).
-            // material still comes from MI until MI.material field is removed in a later pass.
-            state.program   = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(state.binding_instance);
-            state.material  = state.program;
-            state.vil       = primitive->GetVIL();
+            auto *mi_program = graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(state.binding_instance);
+            if (!state.program)
+            {
+                state.program = mi_program;
+                state.material = state.program;
+                cached_program = state.program;
+            }
+            else if (mi_program && state.program != mi_program)
+            {
+                state.program = mi_program;
+                state.material = state.program;
+                cached_program = state.program;
+            }
+
             state.domain    = graph::MaterialBindingInstanceInternalAccess::GetDomain(state.binding_instance);
             state.domain_id = graph::MaterialBindingInstanceInternalAccess::GetDomainID(state.binding_instance);
 
@@ -72,7 +100,7 @@ namespace hgl::ecs
             state.preset = state.binding_instance->GetRenderPreset();
 
 #ifdef _DEBUG
-            assert(state.material  == graph::MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(state.binding_instance));
+            assert(state.material  == mi_program || state.material == nullptr);
             assert(state.domain    == graph::MaterialBindingInstanceInternalAccess::GetDomain(state.binding_instance));
             assert(state.domain_id == graph::MaterialBindingInstanceInternalAccess::GetDomainID(state.binding_instance));
 

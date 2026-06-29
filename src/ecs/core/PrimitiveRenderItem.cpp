@@ -57,12 +57,19 @@ namespace hgl::ecs
 
     hgl::graph::MaterialBindingInstance* PrimitiveRenderItem::GetResolvedBindingInstance() const
     {
-        return GetResolvedMaterialState().binding_instance;
+        if (!primitiveComp)
+            return nullptr;
+
+        const auto &committed_state = primitiveComp->GetCommittedRenderState();
+        if (!committed_state.ready)
+            return nullptr;
+
+        return committed_state.material_state.binding_instance;
     }
 
     hgl::graph::ShaderMaterialProgram* PrimitiveRenderItem::GetShaderMaterialProgram() const
     {
-        return GetResolvedMaterialState().material;
+        return GetResolvedMaterialState().program;
     }
 
     RenderItem::ResolvedMaterialState PrimitiveRenderItem::GetResolvedMaterialState() const
@@ -77,12 +84,12 @@ namespace hgl::ecs
 
         RenderItem::ResolvedMaterialState state{};
         state.program_binding = comp_state.program_binding;
-        state.program = comp_state.program ? comp_state.program : comp_state.material;
+        state.program = comp_state.program;
         state.payload = comp_state.payload;
         state.binding_id = comp_state.binding_id;
         state.payload_id = comp_state.payload_id;
         state.binding_instance = comp_state.binding_instance;
-        state.material = state.program ? state.program : comp_state.material;
+        state.material = state.program;
         state.domain = comp_state.domain;
         state.runtime_texture_binding = comp_state.runtime_texture_binding;
         state.domain_id = comp_state.domain_id;

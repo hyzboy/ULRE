@@ -45,6 +45,7 @@ namespace hgl::ecs
         struct LineResolvedMaterialState
         {
             graph::MaterialBindingInstance *binding_instance = nullptr;
+            graph::ShaderMaterialProgram *program = nullptr;
             graph::ShaderMaterialProgram *material = nullptr;
             const graph::VIL *vil = nullptr;
             graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid3D;
@@ -64,7 +65,8 @@ namespace hgl::ecs
         {
             LineResolvedMaterialState state{};
             state.binding_instance = mi;
-            state.material = expected_material;
+            state.program = expected_material;
+            state.material = state.program;
             state.vil = expected_vil;
 
             if (!mi)
@@ -393,7 +395,8 @@ namespace hgl::ecs
             return false;
 
         const auto state = ResolveLineMaterialState(mi_, material_, fixed_vil_);
-        if (!state.material || !state.vil)
+        auto *resolved_program = state.program ? state.program : state.material;
+        if (!resolved_program || !state.vil)
             return false;
 
         auto* render_target = context_->GetRenderTarget();
@@ -428,11 +431,11 @@ namespace hgl::ecs
         }
 
         graph::GraphicsPipelineBuildRequest req;
-    req.material = state.material;
-    req.vil = state.vil;
+        req.material = resolved_program;
+        req.vil = state.vil;
         req.render_format = render_format;
         req.pipeline_data = pipeline_data;
-    req.primitive = state.material->GetPrimitiveType();
+        req.primitive = resolved_program->GetPrimitiveType();
         req.primitive_restart = (pipeline_data->input_assembly.primitiveRestartEnable == VK_TRUE);
 
         graph::GraphicsPipeline* resolved = device_->AcquireGraphicsPipeline(req);
@@ -761,7 +764,7 @@ namespace hgl::ecs
         const uint64_t vkcreate_before = graph::RenderTargetFormat::GetVkCreateCount();
 
         const auto state = ResolveLineMaterialState(mi_, material_, fixed_vil_);
-        auto* mat = state.material;
+        auto *mat = state.program ? state.program : state.material;
         if (mat)
             cmd->BindDescriptorSets(mat);
 

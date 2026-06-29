@@ -127,6 +127,7 @@ namespace hgl::ecs
 			task.slot->resolved_binding_id = cached_binding->id;
 			task.slot->resolved_payload_id = cached_binding->payload ? cached_binding->payload->id : 0;
 			task.slot->resolved_binding_instance = mi;
+			// Legacy bridge only: keep mirrored for compatibility while runtime reads use resolved_program.
 			task.slot->resolved_material = task.slot->resolved_program;
 			task.slot->resolved_domain = graph::MaterialBindingInstanceInternalAccess::GetDomain(mi);
 			task.slot->resolved_domain_id = graph::MaterialBindingInstanceInternalAccess::GetDomainID(mi);

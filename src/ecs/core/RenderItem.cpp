@@ -14,7 +14,11 @@ namespace hgl::ecs
 
         state.program = GetShaderMaterialProgram();
         state.material = state.program;
-        state.binding_instance = GetResolvedBindingInstance();
+
+        // R5: program is the primary runtime material fact.
+        // Only query legacy MI accessor as a compatibility fallback when program is absent.
+        if (!state.program)
+            state.binding_instance = GetResolvedBindingInstance();
 
         if (state.binding_instance)
         {

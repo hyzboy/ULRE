@@ -37,7 +37,7 @@ namespace hgl::graph
 
         // Compatibility bridge for legacy runtime paths.
         MaterialBindingInstance *resolved_binding_instance = nullptr;        ///< 已解析的 MI（由 MaterialResolveSystem 写入）
-        ShaderMaterialProgram *resolved_material = nullptr;                  ///< 已解析材质（阶段5：运行时消费优先走该缓存）
+        ShaderMaterialProgram *resolved_material = nullptr;                  ///< Legacy compatibility bridge; should mirror resolved_program.
         ResourceDomain *resolved_domain = nullptr;
         uint32_t resolved_domain_id = 0xFFFFFFFFu;
         const VertexInputLayout *resolved_vil = nullptr;

@@ -38,6 +38,7 @@ namespace hgl::ecs::internal
                 task.slot->resolved_payload = resolved_payload;
                 task.slot->resolved_binding_id = resolved_program_binding ? resolved_program_binding->id : 0;
                 task.slot->resolved_payload_id = resolved_payload ? resolved_payload->id : 0;
+                // Legacy bridge only: keep mirrored for compatibility while runtime reads use resolved_program.
                 task.slot->resolved_material = task.slot->resolved_program;
                 task.slot->resolved_domain = graph::MaterialBindingInstanceInternalAccess::GetDomain(mi);
                 task.slot->resolved_domain_id = graph::MaterialBindingInstanceInternalAccess::GetDomainID(mi);
@@ -46,11 +47,11 @@ namespace hgl::ecs::internal
                 task.slot->resolved_preset = mi->GetRenderPreset();
                 task.slot->dirty = false;
 
-                GLogInfo("[ECS::MaterialResolveSystem] resolved_output comp=%p mi=%p material=%p material_prim=%u resolved_preset=%u domain_id=%u vil=%p",
+                GLogInfo("[ECS::MaterialResolveSystem] resolved_output comp=%p mi=%p program=%p program_prim=%u resolved_preset=%u domain_id=%u vil=%p",
                         task.comp.get(),
                         mi,
-                        task.slot->resolved_material,
-                        task.slot->resolved_material ? static_cast<unsigned>(task.slot->resolved_material->GetPrimitiveType()) : 0u,
+                    task.slot->resolved_program,
+                    task.slot->resolved_program ? static_cast<unsigned>(task.slot->resolved_program->GetPrimitiveType()) : 0u,
                         static_cast<unsigned>(task.slot->resolved_preset),
                         static_cast<unsigned>(task.slot->resolved_domain_id),
                         resolve_vil);

@@ -92,7 +92,23 @@ namespace hgl::ecs
 
         graph::ShaderMaterialProgram *ResolveMaterialFromState(const RenderItem::ResolvedMaterialState &state)
         {
-            return state.program ? state.program : state.material;
+            if (state.program)
+                return state.program;
+
+#ifdef _DEBUG
+            if (state.material)
+            {
+                static uint32_t s_legacy_material_fallback_logs = 0;
+                if (s_legacy_material_fallback_logs < 8)
+                {
+                    ++s_legacy_material_fallback_logs;
+                    GLogWarning("[ECS::PrimitiveBatchPipeline] R5 legacy fallback: state.program is null, using state.material=%p",
+                                static_cast<const void *>(state.material));
+                }
+            }
+#endif
+
+            return state.material;
         }
 
         graph::ResourceDomain *ResolveDomainFromState(const RenderItem::ResolvedMaterialState &state)

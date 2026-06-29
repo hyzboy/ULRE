@@ -125,7 +125,7 @@ namespace hgl::ecs
                     staged.binding_id       = 0;
                     staged.payload_id       = 0;
                     staged.binding_instance = mi;
-                    staged.material         = material;
+                    staged.material         = staged.program;
                     staged.domain           = domain;
                     staged.domain_id        = domain_id;
                     staged.vil              = primitive->GetVIL();
@@ -242,7 +242,8 @@ namespace hgl::ecs
 
     hgl::graph::ShaderMaterialProgram* PrimitiveComponent::GetShaderMaterialProgram() const
     {
-        return ResolveEffectiveMaterialState().material;
+        const auto state = ResolveEffectiveMaterialState();
+        return state.program ? state.program : state.material;
     }
 
     hgl::graph::ResourceDomain* PrimitiveComponent::GetResolvedDomain() const

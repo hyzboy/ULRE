@@ -43,6 +43,7 @@ namespace hgl::ecs
         struct TextResolvedMaterialState
         {
             graph::MaterialBindingInstance *binding_instance = nullptr;
+            graph::ShaderMaterialProgram *program = nullptr;
             graph::ShaderMaterialProgram *material = nullptr;
             const graph::VIL *vil = nullptr;
             graph::GraphicsPipelinePreset preset = graph::GraphicsPipelinePreset::Solid2D;
@@ -62,7 +63,8 @@ namespace hgl::ecs
         {
             TextResolvedMaterialState state{};
             state.binding_instance = mi;
-            state.material = expected_material;
+            state.program = expected_material;
+            state.material = state.program;
             state.vil = expected_vil;
 
             if (!mi)
@@ -457,7 +459,8 @@ namespace hgl::ecs
             return false;
 
         const auto state = ResolveTextMaterialState(resources.material_instance, resources.material, resources.fixed_vil);
-        if (!state.material || !state.vil)
+        auto *resolved_program = state.program ? state.program : state.material;
+        if (!resolved_program || !state.vil)
             return false;
 
         auto* render_format = render_target->GetRenderFormat();
@@ -473,11 +476,11 @@ namespace hgl::ecs
             return false;
 
         graph::GraphicsPipelineBuildRequest req;
-        req.material = state.material;
+        req.material = resolved_program;
         req.vil = state.vil;
         req.render_format = render_format;
         req.pipeline_data = pipeline_data;
-        req.primitive = state.material->GetPrimitiveType();
+        req.primitive = resolved_program->GetPrimitiveType();
         req.primitive_restart = (pipeline_data->input_assembly.primitiveRestartEnable == VK_TRUE);
 
         auto* resolved = device->AcquireGraphicsPipeline(req);

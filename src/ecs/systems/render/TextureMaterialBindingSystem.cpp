@@ -126,7 +126,7 @@ namespace hgl::ecs
             PrimitiveComponent::ResolvedMaterialState state{};
             state.program = material;
             state.binding_instance = mi;
-            state.material = state.program ? state.program : material;
+            state.material = state.program;
             state.domain = graph::MaterialBindingInstanceInternalAccess::GetDomain(mi);
             state.domain_id = graph::MaterialBindingInstanceInternalAccess::GetDomainID(mi);
             state.runtime_texture_binding = runtime_binding;
@@ -335,7 +335,8 @@ namespace hgl::ecs
             auto *descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>().get();
             const auto resolved_state = primitive->ResolveEffectiveMaterialState();
             auto *mi = resolved_state.binding_instance;
-            auto *material = resolved_state.material;
+            // R5: program is the runtime source of truth; material is legacy bridge fallback.
+            auto *material = resolved_state.program ? resolved_state.program : resolved_state.material;
             auto *mi_binding = mi ? graph::MaterialBindingInstanceInternalAccess::GetDomainBinding(mi) : nullptr;
             const graph::VIL *resolved_vil = resolved_state.vil;
 
