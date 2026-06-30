@@ -35,15 +35,4 @@ namespace hgl::ecs
         pipeline_.reset();
     }
 
-    std::unique_ptr<RenderPipelineBase> LineRenderPipelineGroup::CreatePipeline()
-    {
-        // GraphicsPipeline created in Initialize() with context
-        return nullptr;
-    }
-
-    void LineRenderPipelineGroup::RegisterSystems()
-    {
-        // Systems registered to Context in Initialize()
-    }
-
 }  // namespace hgl::ecs

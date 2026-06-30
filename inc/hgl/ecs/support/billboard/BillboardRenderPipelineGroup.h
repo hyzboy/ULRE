@@ -21,10 +21,6 @@ namespace hgl::ecs
 
         bool Initialize(ECSContext* context) override;
         void Shutdown(ECSContext* context)   override;
-
-    protected:
-        std::unique_ptr<RenderPipelineBase> CreatePipeline() override;
-        void RegisterSystems() override;
     };
 
 }  // namespace hgl::ecs

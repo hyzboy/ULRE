@@ -56,11 +56,9 @@ namespace hgl::ecs
         /**
          * Initialize the group
          * Derived classes should:
-         *   1. Call CreatePipeline() to instantiate the pipeline
-         *   2. Call RegisterSystems() to create and store systems
-         *   3. Register pipeline to context: context->RegisterRenderPipeline(name_, pipeline)
-         *   4. Register each system to context: context->AddSystem(system)
-         *   5. Return true on success
+         *   1. Create/register pipeline to context (if this group owns one)
+         *   2. Register all group systems to context
+         *   3. Return true on success
          * 
          * @param context The ECS context to register to
          * @return true if initialization successful
@@ -86,13 +84,6 @@ namespace hgl::ecs
 
         bool IsEnabled() const { return enabled_; }
         void SetEnabled(bool enabled) { enabled_ = enabled; }
-
-    protected:
-        /// Subclass implements: Create the pipeline instance
-        virtual std::unique_ptr<RenderPipelineBase> CreatePipeline() = 0;
-
-        /// Subclass implements: Create and store system instances in systems_ vector
-        virtual void RegisterSystems() = 0;
     };
 
 }  // namespace hgl::ecs

@@ -36,14 +36,4 @@ namespace hgl::ecs
         pipeline_.reset();
     }
 
-    std::unique_ptr<RenderPipelineBase> TextRenderPipelineGroup::CreatePipeline()
-    {
-        return nullptr;  // Created in Initialize() with context parameter
-    }
-
-    void TextRenderPipelineGroup::RegisterSystems()
-    {
-        // Systems registered to Context in Initialize()
-    }
-
 }  // namespace hgl::ecs

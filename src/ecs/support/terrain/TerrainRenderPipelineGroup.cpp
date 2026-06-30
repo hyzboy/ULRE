@@ -37,15 +37,4 @@ namespace hgl::ecs
         pipeline_.reset();
     }
 
-    std::unique_ptr<RenderPipelineBase> TerrainRenderPipelineGroup::CreatePipeline()
-    {
-        // Not used — pipeline created in Initialize() which has the context
-        return nullptr;
-    }
-
-    void TerrainRenderPipelineGroup::RegisterSystems()
-    {
-        // Not used — systems registered to Context directly in Initialize()
-    }
-
 }  // namespace hgl::ecs

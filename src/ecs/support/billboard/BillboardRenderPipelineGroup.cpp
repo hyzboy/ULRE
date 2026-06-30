@@ -35,15 +35,4 @@ namespace hgl::ecs
         pipeline_.reset();
     }
 
-    std::unique_ptr<RenderPipelineBase> BillboardRenderPipelineGroup::CreatePipeline()
-    {
-        // No dedicated pipeline — billboard geometry goes through the Primitive pipeline
-        return nullptr;
-    }
-
-    void BillboardRenderPipelineGroup::RegisterSystems()
-    {
-        // Systems registered directly to Context in Initialize()
-    }
-
 }  // namespace hgl::ecs

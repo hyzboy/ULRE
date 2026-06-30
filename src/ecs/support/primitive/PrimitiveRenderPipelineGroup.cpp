@@ -38,15 +38,4 @@ namespace hgl::ecs
         pipeline_.reset();
     }
 
-    std::unique_ptr<RenderPipelineBase> PrimitiveRenderPipelineGroup::CreatePipeline()
-    {
-        // Not used — pipeline is created in Initialize() with the context parameter
-        return nullptr;
-    }
-
-    void PrimitiveRenderPipelineGroup::RegisterSystems()
-    {
-        // Not used — systems are registered to Context directly in Initialize()
-    }
-
 }  // namespace hgl::ecs
