@@ -1,4 +1,4 @@
-# Logger Guard MCP Server Setup Guide
+# ULRE Policy Guard MCP Server Setup Guide
 
 ## Installation
 
@@ -18,7 +18,7 @@ npm -v
 ### Step 2: Install MCP server dependencies
 
 ```bash
-cd e:\ULRE\.ai\mcp\logger-guard-ts
+cd e:\ULRE\.ai\mcp\policy-guard-ts
 npm install
 ```
 
@@ -34,30 +34,21 @@ npm run build
 
 ### Method A: TypeScript Dev Mode
 ```bash
-cd e:\ULRE\.ai\mcp\logger-guard-ts
+cd e:\ULRE\.ai\mcp\policy-guard-ts
 npm run dev
 ```
 
 ### Method B: VS Code Task (Automated)
 1. Press `Ctrl+Shift+D` in VS Code  
-2. Select **"Run Logger Guard MCP Server"** from the task list  
+2. Select **"Run ULRE Policy Guard MCP Server"** from the task list  
 3. A terminal will open with the server running in the background
 
 ### Method C: TypeScript Build + Node
 ```bash
-cd e:\ULRE\.ai\mcp\logger-guard-ts
+cd e:\ULRE\.ai\mcp\policy-guard-ts
 npm run build
 npm start
 ```
-
-### Method D: Python Fallback (optional)
-```bash
-cd e:\ULRE
-pip install "mcp[cli]"
-python .ai/mcp/logger_guard_server.py
-```
-
----
 
 ## Integration with AI Tools
 
@@ -67,9 +58,9 @@ Add to your `~\.claude` or `%APPDATA%\Claude` config:
 ```json
 {
   "mcpServers": {
-    "logger-guard": {
+    "ulre-policy-guard": {
       "command": "node",
-      "args": ["E:\\ULRE\\.ai\\mcp\\logger-guard-ts\\dist\\index.js"],
+      "args": ["E:\\ULRE\\.ai\\mcp\\policy-guard-ts\\dist\\index.js"],
       "type": "stdio"
     }
   }
@@ -79,20 +70,20 @@ Add to your `~\.claude` or `%APPDATA%\Claude` config:
 ### For VS Code Copilot
 The MCP server runs via the VS Code Task. When the task is running, agents can invoke its tools.
 
-1. **Start the server**: Press `Ctrl+Shift+D` → Select "Run Logger Guard MCP Server"
+1. **Start the server**: Press `Ctrl+Shift+D` → Select "Run ULRE Policy Guard MCP Server"
 2. **Agent discovery**: Copilot will auto-detect available MCP tools once the server is running
 
 ### For Custom Agents
 Your agent framework can invoke tools via stdio:
 
 ```bash
-node .ai/mcp/logger-guard-ts/dist/index.js
+node .ai/mcp/policy-guard-ts/dist/index.js
 ```
 
 The server exposes:
-- **4 tools**: workspace scan, file check, code review, pattern guide
-- **2 resources**: logger best practices guide, forbidden patterns list  
-- **1 prompt template**: logger usage review prompt
+- **16 tools**: logger/hash/C-string/ULRE-string workspace scan, file check, code review, and guide retrieval
+- **8 resources**: logger/hash/C-string/ULRE-string best-practice guides and forbidden pattern lists
+- **4 prompt templates**: logger usage review + hash usage review + C-string usage review + ULRE string usage review
 
 ---
 
@@ -110,7 +101,7 @@ Add to `.vscode/settings.json`:
   }
 }
 ```
-Then configure the Logger Guard task with `"runOptions": {"runOn": "folderOpen"}` in tasks.json.
+Then configure the ULRE Policy Guard task with `"runOptions": {"runOn": "folderOpen"}` in tasks.json.
 
 **Note**: This requires VS Code 1.75+.
 
@@ -125,7 +116,7 @@ Create a `.vscode/launch.json` entry that pre-starts the MCP server before debug
 → Run `nvm use 20.18.0` and reopen VS Code terminal
 
 **"Cannot find module '@modelcontextprotocol/sdk'"**
-→ Run `npm install` in `.ai/mcp/logger-guard-ts`
+→ Run `npm install` in `.ai/mcp/policy-guard-ts`
 
 **Server starts but agents can't find tools**
 → Ensure the terminal shows "Listening on stdio" before invoking agents
@@ -137,11 +128,10 @@ Create a `.vscode/launch.json` entry that pre-starts the MCP server before debug
 
 ## File Locations
 
-- Server script: `.ai/mcp/logger_guard_server.py`  
-- TypeScript server: `.ai/mcp/logger-guard-ts/src/index.ts`
-- Built entry: `.ai/mcp/logger-guard-ts/dist/index.js`
+- TypeScript server: `.ai/mcp/policy-guard-ts/src/index.ts`
+- Built entry: `.ai/mcp/policy-guard-ts/dist/index.js`
 - Config: `.vscode/tasks.json` (VS Code integration)  
-- Dependencies: `.ai/mcp/logger-guard-ts/package.json`  
+- Dependencies: `.ai/mcp/policy-guard-ts/package.json`  
 - This guide: `.ai/mcp/SETUP.md`
 
 ---
@@ -150,9 +140,9 @@ Create a `.vscode/launch.json` entry that pre-starts the MCP server before debug
 
 | Task | Command |
 |------|---------|
-| Install Node deps | `npm install --prefix .ai/mcp/logger-guard-ts` |
-| Run server (dev) | `npm run dev --prefix .ai/mcp/logger-guard-ts` |
-| Run server (build) | `npm run build --prefix .ai/mcp/logger-guard-ts && npm start --prefix .ai/mcp/logger-guard-ts` |
-| Start from VS Code | `Ctrl+Shift+D` → "Run Logger Guard MCP Server" |
+| Install Node deps | `npm install --prefix .ai/mcp/policy-guard-ts` |
+| Run server (dev) | `npm run dev --prefix .ai/mcp/policy-guard-ts` |
+| Run server (build) | `npm run build --prefix .ai/mcp/policy-guard-ts && npm start --prefix .ai/mcp/policy-guard-ts` |
+| Start from VS Code | `Ctrl+Shift+D` → "Run ULRE Policy Guard MCP Server" |
 | Check server status | Look for "Listening on stdio" in terminal |
-| List server tools | Connect with any MCP client; server exposes 4 tools |
+| List server tools | Connect with any MCP client; server exposes 16 tools |

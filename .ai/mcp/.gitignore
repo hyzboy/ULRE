@@ -3,5 +3,5 @@ __pycache__/
 *.pyc
 
 # TypeScript/Node build artifacts
-logger-guard-ts/node_modules/
-logger-guard-ts/dist/
+policy-guard-ts/node_modules/
+policy-guard-ts/dist/
