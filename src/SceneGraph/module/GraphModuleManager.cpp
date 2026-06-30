@@ -1,4 +1,6 @@
-﻿#include<hgl/graph/module/GraphModule.h>
+#include<hgl/graph/module/GraphModule.h>
+#include<hgl/log/Logger.h>
+#include <sstream>
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 
@@ -61,10 +63,10 @@ bool GraphModuleManager::Unregister(GraphModule *gm)
 
 GraphModuleManager::~GraphModuleManager()
 {
-    std::cout << "[DEBUG] ~GraphModuleManager() - Start, module_list.size()=" << module_list.GetCount() << std::endl;
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] ~GraphModuleManager() - Start, module_list.size()=" << module_list.GetCount(); GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     // 阶段1: 反向调用所有模块的Release()方法，让它们清理资源
     // 释放顺序应与创建顺序相反，避免依赖先被销毁
-    std::cout << "[DEBUG] ~GraphModuleManager() - Phase 1: Calling Release() on all modules" << std::endl;
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] ~GraphModuleManager() - Phase 1: Calling Release() on all modules"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     {
         GraphModule **gm = module_list.last();
         GraphModule **begin = module_list.begin();
@@ -73,18 +75,17 @@ GraphModuleManager::~GraphModuleManager()
         {
             if (*gm)
             {
-                std::cout << "[DEBUG] Calling Release() on module: " << (*gm)->GetName().c_str() << std::endl;
+                do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] Calling Release() on module: " << (*gm)->GetName().c_str(); GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
                 (*gm)->Release();
-                std::cout << "[DEBUG] Release() complete for: " << (*gm)->GetName().c_str() << std::endl;
+                do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] Release() complete for: " << (*gm)->GetName().c_str(); GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
             }
             --gm;
         }
     }
-    std::cout << "[DEBUG] ~GraphModuleManager() - Phase 1 complete" << std::endl;
-
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] ~GraphModuleManager() - Phase 1 complete"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     // 阶段2: 删除所有模块
     // 此时GPU资源已经被Release()清理过了
-    std::cout << "[DEBUG] ~GraphModuleManager() - Phase 2: Deleting all modules" << std::endl;
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] ~GraphModuleManager() - Phase 2: Deleting all modules"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     {
         GraphModule **gm = module_list.begin();
         GraphModule **end = module_list.end();
@@ -93,7 +94,7 @@ GraphModuleManager::~GraphModuleManager()
         {
             if (*gm)
             {
-                std::cout << "[DEBUG] Deleting module: " << (*gm)->GetName().c_str() << std::endl;
+                do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] Deleting module: " << (*gm)->GetName().c_str(); GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
                 delete *gm;
             }
             ++gm;
@@ -101,7 +102,7 @@ GraphModuleManager::~GraphModuleManager()
     }
 
     module_list.Clear();
-    std::cout << "[DEBUG] ~GraphModuleManager() - Complete" << std::endl;
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] ~GraphModuleManager() - Complete"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
 }
 
 }//namespace hgl::graph

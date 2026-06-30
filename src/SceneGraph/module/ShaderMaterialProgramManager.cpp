@@ -1,4 +1,5 @@
-﻿#include<hgl/graph/module/ShaderMaterialProgramManager.h>
+#include<hgl/graph/module/ShaderMaterialProgramManager.h>
+#include<hgl/log/Logger.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/module/MaterialAssetLoader.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineLayoutData.h>
@@ -61,7 +62,7 @@ namespace
     {
         if (!manager || !shader_maps)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[ShaderMaterialProgramManager] BuildShaderModulesFromStageMap failed for '%s': manager=%p shader_maps=%p\n",
                 mtl_name.c_str(),
                 manager,
@@ -71,7 +72,7 @@ namespace
 
         if (sci_map.GetCount() < 2)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[ShaderMaterialProgramManager] BuildShaderModulesFromStageMap failed for '%s': shader count=%d (expected >= 2)\n",
                 mtl_name.c_str(),
                 sci_map.GetCount());
@@ -84,7 +85,7 @@ namespace
 
             if (!sci_ptr)
             {
-                std::fprintf(stderr,
+                GLogError(
                     "[ShaderMaterialProgramManager] BuildShaderModulesFromStageMap failed for '%s': shader create info is null\n",
                     mtl_name.c_str());
                 return false;
@@ -93,7 +94,7 @@ namespace
             const ShaderModule *module = manager->CreateShaderModule(mtl_name, sci_ptr);
             if (!module)
             {
-                std::fprintf(stderr,
+                GLogError(
                     "[ShaderMaterialProgramManager] BuildShaderModulesFromStageMap failed for '%s': CreateShaderModule returned null for stage=%u\n",
                     mtl_name.c_str(),
                     static_cast<unsigned>(sci_ptr->GetShaderStage()));
@@ -140,17 +141,17 @@ const ShaderModule *ShaderMaterialProgramManager::CreateShaderModule(const AnsiS
     VulkanDevice *device = GetDevice();
     if(!device)
     {
-        std::fprintf(stderr, "[ShaderMaterialProgramManager] CreateShaderModule failed: device is null for '%s'\n", sm_name.c_str());
+        GLogError( "[ShaderMaterialProgramManager] CreateShaderModule failed: device is null for '%s'\n", sm_name.c_str());
         return(nullptr);
     }
     if(sm_name.IsEmpty())
     {
-        std::fprintf(stderr, "[ShaderMaterialProgramManager] CreateShaderModule failed: shader module name is empty\n");
+        GLogError( "[ShaderMaterialProgramManager] CreateShaderModule failed: shader module name is empty\n");
         return(nullptr);
     }
     if(!sci)
     {
-        std::fprintf(stderr, "[ShaderMaterialProgramManager] CreateShaderModule failed for '%s': ShaderCreateInfo is null\n", sm_name.c_str());
+        GLogError( "[ShaderMaterialProgramManager] CreateShaderModule failed for '%s': ShaderCreateInfo is null\n", sm_name.c_str());
         return(nullptr);
     }
 
@@ -158,7 +159,7 @@ const ShaderModule *ShaderMaterialProgramManager::CreateShaderModule(const AnsiS
 
     if(bit_offset<0||bit_offset>VK_SHADER_STAGE_TYPE_COUNT)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateShaderModule failed for '%s': invalid stage bit offset=%d stage=%u\n",
             sm_name.c_str(),
             bit_offset,
@@ -177,7 +178,7 @@ const ShaderModule *ShaderMaterialProgramManager::CreateShaderModule(const AnsiS
 
     if(!sm)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateShaderModule failed for '%s': VulkanDevice::CreateShaderModule returned null (stage=%u spv_size=%zu)\n",
             sm_name.c_str(),
             static_cast<unsigned>(sci->GetShaderStage()),
@@ -250,7 +251,7 @@ GraphicsPipelineLayoutData *ShaderMaterialProgramManager::CreateMaterialGraphics
     VulkanDevice *device = GetDevice();
     if(!device)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateMaterialGraphicsPipelineLayoutData failed for '%s': device is null\n",
             mtl_name.c_str());
         return nullptr;
@@ -275,7 +276,7 @@ MaterialParameters *ShaderMaterialProgramManager::CreateMaterialMP(const AnsiStr
     VulkanDevice *device = GetDevice();
     if(!device)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateMaterialMP failed for '%s': device is null (set=%d)\n",
             mtl_name.c_str(),
             static_cast<int>(desc_set_type));
@@ -346,7 +347,7 @@ bool ShaderMaterialProgramManager::ExecuteMaterialBuildPipeline(ShaderMaterialPr
 {
     if(!mtl || !mci)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] ExecuteMaterialBuildPipeline failed for '%s': mtl=%p mci=%p\n",
             mtl_name.c_str(),
             mtl,
@@ -359,7 +360,7 @@ bool ShaderMaterialProgramManager::ExecuteMaterialBuildPipeline(ShaderMaterialPr
                                        sci_map,
                                        mtl->shader_maps))
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] ExecuteMaterialBuildPipeline failed for '%s': BuildShaderModulesFromStageMap returned false\n",
             mtl_name.c_str());
         return false;
@@ -387,7 +388,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const AnsiSt
 
     if(!mci)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateMaterial(name,mci) failed for '%s': mci is null\n",
             mtl_name.c_str());
         return(nullptr);
@@ -405,7 +406,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const AnsiSt
 
     if(precheck_decision != MaterialCreatePrecheckDecision::Proceed)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateMaterial(name,mci) failed for '%s': precheck decision=%d\n",
             mtl_name.c_str(),
             static_cast<int>(precheck_decision));
@@ -420,7 +421,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const AnsiSt
                                      mci,
                                      sci_map))
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateMaterial(name,mci) failed for '%s': ExecuteMaterialBuildPipeline returned false\n",
             mtl_name.c_str());
         return nullptr;
@@ -744,7 +745,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 
     if(!cfg)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateMaterial(preset=Standard/3D) failed: cfg is null (preset=%s)\n",
             mtl::GetMaterialPresetName(mtl_id));
         return(nullptr);
@@ -822,7 +823,7 @@ ShaderMaterialProgram *ShaderMaterialProgramManager::CreateMaterial(const mtl::M
 
     if(!cfg)
     {
-        std::fprintf(stderr, "[ShaderMaterialProgramManager] CreateMaterial(key/3D) failed: cfg is null\n");
+        GLogError( "[ShaderMaterialProgramManager] CreateMaterial(key/3D) failed: cfg is null\n");
         return(nullptr);
     }
 
@@ -964,7 +965,7 @@ DomainResourceBinding *ShaderMaterialProgramManager::CreateDomainMaterialBinding
 
     if (domain->GetShaderDataSchema() != mtl->GetShaderDataSchema())
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateDomainMaterialBinding: schema mismatch "
             "domain=%u mtl=%u\n",
             static_cast<unsigned>(domain->GetShaderDataSchema()),

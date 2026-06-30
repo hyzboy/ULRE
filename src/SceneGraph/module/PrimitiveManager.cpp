@@ -1,4 +1,5 @@
-﻿#include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/log/Logger.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include<cstdio>
@@ -51,7 +52,7 @@ Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialBindingInstanc
         return(nullptr);
 
     auto *material = MaterialBindingInstanceInternalAccess::GetShaderMaterialProgram(mi);
-    std::fprintf(stderr,
+    GLogError(
         "[PrimitiveManager] CreatePrimitive(geom,mi,vil): geom=%p mi=%p vil=%p material=%p material_prim=%u\n",
         r,
         mi,

@@ -1,4 +1,4 @@
-﻿/*
+/*
  统一 Gizmo 架构 - 通过 SubWorldComponent 管理三个 Gizmo 子世界
 
  结构：
@@ -10,6 +10,8 @@
 */
 
 #include"Gizmo.h"
+#include<hgl/log/Logger.h>
+#include <sstream>
 #include"GizmoInternal.h"
 #include"GizmoResource.h"
 #include"modes/GizmoModeRuntime.h"
@@ -204,18 +206,16 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
     auto *gizmo = new GizmoECS;
     gizmo->world = world;
-    std::cout << "[GizmoECS] Create begin name=" << (name ? name : "Gizmo") << std::endl;
-
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[GizmoECS] Create begin name=" << (name ? name : "Gizmo"); GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     // Create root entity for entire Gizmo
     gizmo->root = world->CreateEntity<hgl::ecs::Entity>(name ? name : "Gizmo");
     if (!gizmo->root)
     {
-        std::cout << "[GizmoECS] Create root entity failed" << std::endl;
+        do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[GizmoECS] Create root entity failed"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
         delete gizmo;
         return nullptr;
     }
-    std::cout << "[GizmoECS] Root entity id=" << gizmo->root->GetID().index << std::endl;
-
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[GizmoECS] Root entity id=" << gizmo->root->GetID().index; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     gizmo->root_transform = gizmo->root->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
     gizmo->root_transform->SetLocalTRS(glm::vec3(position), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
     gizmo->root_transform->SetMovable(true);
@@ -227,7 +227,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         gizmo->move_mode.entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Move");
         if (!gizmo->move_mode.entity)
         {
-            std::cout << "[GizmoECS] Create move entity failed" << std::endl;
+            do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[GizmoECS] Create move entity failed"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
@@ -249,7 +249,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         gizmo->rotate_mode.entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Rotate");
         if (!gizmo->rotate_mode.entity)
         {
-            std::cout << "[GizmoECS] Create rotate entity failed" << std::endl;
+            do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[GizmoECS] Create rotate entity failed"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
@@ -271,7 +271,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         gizmo->scale_mode.entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Scale");
         if (!gizmo->scale_mode.entity)
         {
-            std::cout << "[GizmoECS] Create scale entity failed" << std::endl;
+            do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[GizmoECS] Create scale entity failed"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
@@ -290,8 +290,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
     // Initialize with Move mode active
     SetTransformGizmoMode(gizmo, GizmoMode::MoveWorld);
-    std::cout << "[GizmoECS] Create done" << std::endl;
-
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[GizmoECS] Create done"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     return gizmo;
 }
 
@@ -314,8 +313,7 @@ void DestroyTransformGizmo(GizmoECS *gizmo)
     if (!gizmo)
         return;
 
-    std::cout << "[GizmoECS] Destroy begin" << std::endl;
-
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[GizmoECS] Destroy begin"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     gizmo->move_mode.EndDrag();
     gizmo->rotate_mode.EndDrag();
     gizmo->scale_mode.EndDrag();
@@ -339,7 +337,7 @@ void DestroyTransformGizmo(GizmoECS *gizmo)
     }
 
     delete gizmo;
-    std::cout << "[GizmoECS] Destroy done" << std::endl;
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[GizmoECS] Destroy done"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
 }
 
 void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode)
@@ -348,8 +346,7 @@ void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode)
         return;
 
     gizmo->current_mode = mode;
-    std::cout << "[GizmoECS] Set mode=" << static_cast<int>(mode) << std::endl;
-
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[GizmoECS] Set mode=" << static_cast<int>(mode); GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     SyncGizmoAssetModeBindings(gizmo);
     SyncAssetSubGizmoLocalTransforms(gizmo);
     gizmo->move_mode.EndDrag();
@@ -379,7 +376,7 @@ void SetTransformGizmoVisible(GizmoECS *gizmo, bool visible)
     if (vis_comp)
     {
         vis_comp->SetVisible(visible);
-        std::cout << "[GizmoECS] Set root visible=" << (visible ? 1 : 0) << std::endl;
+        do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[GizmoECS] Set root visible=" << (visible ? 1 : 0); GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     }
 
     SyncGizmoAssetModeBindings(gizmo);

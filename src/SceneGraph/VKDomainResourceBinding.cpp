@@ -1,4 +1,5 @@
 #include<hgl/vk/VKDomainResourceBinding.h>
+#include<hgl/log/Logger.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/log/Log.h>
 

@@ -1,4 +1,6 @@
-﻿#include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/TextureManager.h>
+#include<hgl/log/Logger.h>
+#include <sstream>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
@@ -18,10 +20,10 @@ GRAPH_MODULE_CONSTRUCT(TextureManager)
 
 TextureManager::~TextureManager()
 {
-    std::cout << "[DEBUG] ~TextureManager() - texture_queue=" << (void*)texture_queue << ", texture_cmd_buf=" << (void*)texture_cmd_buf << std::endl;
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] ~TextureManager() - texture_queue=" << (void*)texture_queue << ", texture_cmd_buf=" << (void*)texture_cmd_buf; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     SAFE_CLEAR(texture_queue);
     SAFE_CLEAR(texture_cmd_buf);
-    std::cout << "[DEBUG] ~TextureManager() - complete" << std::endl;
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] ~TextureManager() - complete"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
 }
 
 void TextureManager::Release()
@@ -31,7 +33,7 @@ void TextureManager::Release()
 
     released = true;
 
-    std::cout << "[DEBUG] TextureManager::Release() - Start, texture_queue=" << (void*)texture_queue << std::endl;
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] TextureManager::Release() - Start, texture_queue=" << (void*)texture_queue; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     // Delete using a stable snapshot so destructor-side unregister is safe.
     if (texture_set.GetCount() > 0)
     {
@@ -57,11 +59,11 @@ void TextureManager::Release()
         texture_by_filename.Clear();
 
     // Clean up texture transfer resources (queue holds fences that need cleanup)
-    std::cout << "[DEBUG] TextureManager::Release() - Deleting texture_queue=" << (void*)texture_queue << std::endl;
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] TextureManager::Release() - Deleting texture_queue=" << (void*)texture_queue; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     SAFE_CLEAR(texture_queue);
-    std::cout << "[DEBUG] TextureManager::Release() - texture_queue deleted, now deleting texture_cmd_buf" << std::endl;
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] TextureManager::Release() - texture_queue deleted, now deleting texture_cmd_buf"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
     SAFE_CLEAR(texture_cmd_buf);
-    std::cout << "[DEBUG] TextureManager::Release() - Complete" << std::endl;
+    do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] TextureManager::Release() - Complete"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
 }
 
 void TextureManager::OnGraphicsContextChanged(GraphicsContext *)

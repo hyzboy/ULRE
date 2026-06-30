@@ -1,4 +1,6 @@
-﻿#include <hgl/graph/core/GraphicsContext.h>
+#include <hgl/graph/core/GraphicsContext.h>
+#include<hgl/log/Logger.h>
+#include <sstream>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKPhysicalDevice.h>
 #include <hgl/graph/module/GraphModuleManager.h>
@@ -83,12 +85,11 @@ namespace hgl::graph
         if (device)
             device->WaitIdle();
 
-        std::cout << "[DEBUG] GraphicsContext::Shutdown() - Deleting GraphModuleManager" << std::endl;
+        do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] GraphicsContext::Shutdown() - Deleting GraphModuleManager"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
         // GraphModuleManager destructor will call Release() on all modules automatically
         // This ensures proper cleanup order
         SAFE_CLEAR(module_manager)
-        std::cout << "[DEBUG] GraphicsContext::Shutdown() - GraphModuleManager deleted" << std::endl;
-
+        do { std::ostringstream _ulre_log_oss; _ulre_log_oss << "[DEBUG] GraphicsContext::Shutdown() - GraphModuleManager deleted"; GLogInfo("%s", _ulre_log_oss.str().c_str()); } while(0);
         SAFE_CLEAR(material_asset_registry)
         SAFE_CLEAR(recipe_store)
 

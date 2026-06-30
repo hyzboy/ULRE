@@ -1,4 +1,5 @@
-﻿#include <hgl/graph/module/MaterialCreatePrecheckAdapter.h>
+#include <hgl/graph/module/MaterialCreatePrecheckAdapter.h>
+#include<hgl/log/Logger.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/MaterialStagePolicy.h>
 #include <cstdio>
@@ -15,7 +16,7 @@ namespace hgl::graph
 
         if (!mci)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialCreatePrecheck] Abort: MaterialCreateInfo is null for material '%s'\n",
                 material_name.c_str());
             return MaterialCreatePrecheckDecision::Abort;
@@ -31,7 +32,7 @@ namespace hgl::graph
         const uint32 stage_bits = mci->GetShaderStage();
         if (!mtl::IsSupportedMaterialShaderStageMask(stage_bits))
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialCreatePrecheck] Abort: unsupported material shader stage mask=0x%08X for material '%s' (expected VS|FS only)\n",
                 stage_bits,
                 material_name.c_str());
@@ -41,7 +42,7 @@ namespace hgl::graph
         const ShaderStageMap &sci_map = mci->GetShaderMap();
         if (sci_map.GetCount() < 2)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialCreatePrecheck] Abort: shader map count=%d for material '%s' (expected >= 2)\n",
                 sci_map.GetCount(),
                 material_name.c_str());
@@ -50,7 +51,7 @@ namespace hgl::graph
 
         if (!mci->GetStageShader(ShaderStage::Vertex))
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialCreatePrecheck] Abort: vertex shader missing for material '%s'\n",
                 material_name.c_str());
             return MaterialCreatePrecheckDecision::Abort;
@@ -58,7 +59,7 @@ namespace hgl::graph
 
         if (!mci->GetStageShader(ShaderStage::Fragment))
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialCreatePrecheck] Abort: fragment shader missing for material '%s'\n",
                 material_name.c_str());
             return MaterialCreatePrecheckDecision::Abort;

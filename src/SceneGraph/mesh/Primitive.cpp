@@ -1,4 +1,5 @@
-﻿#include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/mesh/Primitive.h>
+#include<hgl/log/Logger.h>
 #include<hgl/vk/VKMaterialBindingInstance.h>
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>

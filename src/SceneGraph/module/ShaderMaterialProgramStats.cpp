@@ -1,4 +1,5 @@
 #include <hgl/graph/module/ShaderMaterialProgramStats.h>
+#include<hgl/log/Logger.h>
 #include <hgl/vk/VKShaderMaterialProgram.h>
 
 namespace hgl::graph
@@ -208,7 +209,7 @@ namespace hgl::graph
         const auto key_stats = GetShaderProgramKeyCoverageStats();
         const auto shadow_stats = GetShaderProgramKeyShadowCacheStats();
 
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] KeyMap: by_key=%zu hits=%llu "
             "vkey(seen=%llu unique=%llu) fkey(seen=%llu unique=%llu) "
             "shadow(vhit=%llu vmiss=%llu fhit=%llu fmiss=%llu chit=%llu cmiss=%llu "
@@ -239,7 +240,7 @@ namespace hgl::graph
 
         const bool ready_for_shadow_cache_rollout = has_shadow_sample && mismatch_ratio <= 0.02;
 
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] ShadowCacheHint: sample=%llu mismatch_ratio=%.4f ready=%s "
             "(rule: combined_hits>=64 && mismatch_ratio<=0.02)\n",
             static_cast<unsigned long long>(combined_hits),
@@ -256,7 +257,7 @@ namespace hgl::graph
                                                                        has_local_to_world);
         const mtl::FragmentProgramKey fkey = mtl::BuildFragmentProgramKey(material_key.variant);
 
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] key_triplet(%s): material=0x%016llx vertex=0x%016llx fragment=0x%016llx\n",
             phase ? phase : "unknown",
             static_cast<unsigned long long>(material_key.Hash()),
@@ -276,7 +277,7 @@ namespace hgl::graph
 
         if(program_mask != request_mask)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[ShaderMaterialProgramManager] effective_feature_mask drift (%s): program=0x%016llx request=0x%016llx material='%s'\n",
                 phase ? phase : "unknown",
                 static_cast<unsigned long long>(program_mask),
@@ -293,31 +294,31 @@ namespace hgl::graph
             return;
 
         if (mismatch_mask & MATERIAL_KEY_MISMATCH_DEF_ID)
-            std::fprintf(stderr,
+            GLogError(
                 "[ShaderMaterialProgramManager] MaterialKey axis mismatch: def_id cached=%u request=%u\n",
                 static_cast<unsigned>(cached_key.def_id),
                 static_cast<unsigned>(request_key.def_id));
 
         if (mismatch_mask & MATERIAL_KEY_MISMATCH_SCHEMA)
-            std::fprintf(stderr,
+            GLogError(
                 "[ShaderMaterialProgramManager] MaterialKey axis mismatch: schema cached=%u request=%u\n",
                 static_cast<unsigned>(cached_key.schema),
                 static_cast<unsigned>(request_key.schema));
 
         if (mismatch_mask & MATERIAL_KEY_MISMATCH_GLSL_VERSION)
-            std::fprintf(stderr,
+            GLogError(
                 "[ShaderMaterialProgramManager] MaterialKey axis mismatch: glsl_version cached=%u request=%u\n",
                 static_cast<unsigned>(cached_key.glsl_version),
                 static_cast<unsigned>(request_key.glsl_version));
 
         if (mismatch_mask & MATERIAL_KEY_MISMATCH_VK_VERSION)
-            std::fprintf(stderr,
+            GLogError(
                 "[ShaderMaterialProgramManager] MaterialKey axis mismatch: vk_version cached=%u request=%u\n",
                 static_cast<unsigned>(cached_key.vk_version),
                 static_cast<unsigned>(request_key.vk_version));
 
         if (mismatch_mask & MATERIAL_KEY_MISMATCH_SPV_VERSION)
-            std::fprintf(stderr,
+            GLogError(
                 "[ShaderMaterialProgramManager] MaterialKey axis mismatch: spv_version cached=%u request=%u\n",
                 static_cast<unsigned>(cached_key.spv_version),
                 static_cast<unsigned>(request_key.spv_version));
@@ -328,7 +329,7 @@ namespace hgl::graph
                                                                         const uint32_t recipe_preset,
                                                                         const uint32_t recipe_pipeline) const
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] GetOrCreateProgramByKey: key_hash=0x%llx recipe_prim=%u preset=%u pipeline=%u\n",
             static_cast<unsigned long long>(key_hash),
             static_cast<unsigned>(recipe_prim),
@@ -341,7 +342,7 @@ namespace hgl::graph
         if(!program)
             return;
 
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] GetOrCreateProgramByKey: cache_hit material=%p name='%s' material_prim=%u\n",
             program,
             program->GetName().c_str(),
@@ -353,7 +354,7 @@ namespace hgl::graph
         if(!program)
             return;
 
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] GetOrCreateProgramByKey: created material=%p name='%s' material_prim=%u\n",
             program,
             program->GetName().c_str(),
@@ -362,7 +363,7 @@ namespace hgl::graph
 
     void ShaderMaterialProgramStats::LogGetOrCreateProgramByKeyAliasWarning(const uint64_t key_hash) const
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] WARN GetOrCreateProgramByKey: "
             "key.Hash=0x%llx not in material_by_key after creation — "
             "MaterialKey derivation may be inconsistent.\n",
@@ -376,7 +377,7 @@ namespace hgl::graph
                                                                          const uint32_t pipeline,
                                                                          const uint64_t key_hash) const
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateMaterialFromRecord: preset=%u dim=%u prim=%u l2w=%u pipeline=%u key_hash=0x%llx\n",
             static_cast<unsigned>(preset),
             static_cast<unsigned>(dim),
@@ -390,7 +391,7 @@ namespace hgl::graph
                                                                            const int use_texture_array,
                                                                            const int blend_mode) const
     {
-        std::fprintf(stderr,
+        GLogError(
             "[CreateMaterialFromRecord] Billboard preset=%d  use_texture_array=%d  blend=%d\n",
             preset,
             use_texture_array,
@@ -400,7 +401,7 @@ namespace hgl::graph
     void ShaderMaterialProgramStats::LogCreateMaterialFromRecord2D(const uint32_t prim,
                                                                     const uint32_t preset) const
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateMaterialFromRecord: 2D cfg.prim=%u preset=%u\n",
             static_cast<unsigned>(prim),
             static_cast<unsigned>(preset));
@@ -411,7 +412,7 @@ namespace hgl::graph
                                                                     const bool include_camera,
                                                                     const bool include_sky) const
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateMaterialFromRecord: 3D cfg.prim=%u preset=%u include_camera=%u include_sky=%u\n",
             static_cast<unsigned>(prim),
             static_cast<unsigned>(preset),
@@ -426,7 +427,7 @@ namespace hgl::graph
                                                                 const std::string &schema_file,
                                                                 const size_t descriptor_set_count) const
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] Finalize material='%s' mi_bytes=%u mi_max=%u schema=%u schema_file=%s descriptor_sets=%zu\n",
             material_name.c_str(),
             mi_data_bytes,
@@ -445,14 +446,14 @@ namespace hgl::graph
 
     void ShaderMaterialProgramStats::LogBillboardDomainArrayKey(const uint64_t cache_key_hash) const
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] Billboard domain: use_texture_array=true cache_key_hash=%llu\n",
             static_cast<unsigned long long>(cache_key_hash));
     }
 
     void ShaderMaterialProgramStats::LogCreateMaterialKey3DProfileNull(const uint64_t key_hash) const
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateMaterial(key/3D) warning: physical device profile is null (key_hash=%llu)\n",
             static_cast<unsigned long long>(key_hash));
     }
@@ -460,7 +461,7 @@ namespace hgl::graph
     void ShaderMaterialProgramStats::LogCreateMaterialKey3DCreateInfoFailed(const mtl::MaterialVariantKey &key,
                                                                              const std::string &cfg_hash) const
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderMaterialProgramManager] CreateMaterial(key/3D) failed: CreateMaterialCreateInfo returned null (key_hash=%llu surface=%u geom=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X cfg_hash=%s)\n",
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
@@ -475,6 +476,6 @@ namespace hgl::graph
     void ShaderMaterialProgramStats::LogLine(const std::string &line) const
     {
         if(!line.empty())
-            std::fprintf(stderr, "%s\n", line.c_str());
+            GLogError( "%s\n", line.c_str());
     }
 }

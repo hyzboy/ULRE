@@ -1,4 +1,5 @@
-﻿#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.h>
+#include<hgl/log/Logger.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/module/TextureManager.h>

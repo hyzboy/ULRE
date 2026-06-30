@@ -1,4 +1,5 @@
 #include <hgl/graph/module/MaterialRecipeRegistry.h>
+#include<hgl/log/Logger.h>
 #include <hgl/graph/module/MaterialAssetLoader.h>
 #include <hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include <hgl/graph/module/ShaderMaterialProgramManager.h>
@@ -129,7 +130,7 @@ MaterialRecipeRegistry::MaterialRecipeRegistry(
 
 MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialRecipe &rec)
 {
-    std::fprintf(stderr,
+    GLogError(
         "[MaterialRecipeRegistry] Acquire(recipe): preset=%u dim=%u prim=%u pipeline=%u domain='%s' textures=%zu key_hash=0x%llx\n",
         static_cast<unsigned>(rec.preset),
         static_cast<unsigned>(rec.dim),
@@ -145,7 +146,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
 {
     MaterialDomainHandle handle;
 
-    std::fprintf(stderr,
+    GLogError(
         "[MaterialRecipeRegistry] Acquire(key): key_hash=0x%llx preset=%u prim=%u pipeline=%u\n",
         static_cast<unsigned long long>(key.Hash()),
         static_cast<unsigned>(rec.preset),
@@ -157,7 +158,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
     if (!handle.material)
         return {};
 
-    std::fprintf(stderr,
+    GLogError(
         "[MaterialRecipeRegistry] Acquire(key): material=%p material_name='%s' material_prim=%u shader_schema=%u\n",
         handle.material,
         handle.material->GetName().c_str(),
@@ -193,7 +194,7 @@ MaterialDomainHandle MaterialRecipeRegistry::Acquire(const mtl::MaterialKey &key
 
         if (!rdm)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialRecipeRegistry] Acquire failed: ResourceDomainManager unavailable for material='%s' schema=%u domain_id=%u\n",
                 mat_name.c_str(),
                 static_cast<unsigned>(schema),
@@ -365,7 +366,7 @@ MaterialBindingInstance *MaterialRecipeRegistry::ResolveOrCreateBindingInstance(
     {
         MaterialBindingInstanceInternalAccess::SetDomainBinding(mi, handle.binding);
 
-        std::fprintf(stderr,
+        GLogError(
             "[MaterialRecipeRegistry] ResolveOrCreateBindingInstance(key+gvf): mi=%p material=%p material_prim=%u preset=%u domain=%p vil=%p\n",
             mi,
             handle.material,

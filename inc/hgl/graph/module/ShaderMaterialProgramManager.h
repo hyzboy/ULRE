@@ -10,6 +10,7 @@
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
 #include<hgl/graph/module/ShaderGenValidationTypes.h>
+#include<hgl/log/Logger.h>
 #include <map>
 #include <string>
 #include <vector>
@@ -160,7 +161,7 @@ public: // Override Release from GraphModule - cleanup all resources
 
         if (mat_stats.requests > 0 || mi_stats.requests > 0)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[ShaderMaterialProgramManager] AcquireStats: material(req=%llu lookup=%llu hit=%llu miss=%llu created=%llu fallback=%llu) mi(req=%llu created=%llu)\n",
                 static_cast<unsigned long long>(mat_stats.requests),
                 static_cast<unsigned long long>(mat_stats.cache_lookups),
