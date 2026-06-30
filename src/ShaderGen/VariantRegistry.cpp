@@ -1,4 +1,5 @@
 #include<hgl/mtl/MaterialVariantRegistry.h>
+#include<hgl/log/Log.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/shadergen/RegistryQuery.h>
@@ -31,7 +32,7 @@ static MaterialVariantKey CanonicalizeRegistryLookupKey(const MaterialVariantKey
         bool expected = false;
         if (s_warned_effective_mask_ignored.compare_exchange_strong(expected, true, std::memory_order_relaxed))
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[VariantRegistry] warning: effective_feature_mask is ignored for variant routing by default; "
                 "set RegistryLookupOptions::match_effective_feature_mask = true to include it in registry lookup.\n");
         }
@@ -498,7 +499,7 @@ void VariantRegistry::RegisterVariant(const MaterialVariantKey &key, const Mater
         const bool same_factory = existing.desc.factory_type == desc.factory_type;
         if (same_factory)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[VariantRegistry] duplicate variant ignored on RegisterVariant '%s' (hash=0x%016llx).\n",
                 desc.variant_name.empty() ? "<unnamed>" : desc.variant_name.c_str(),
                 static_cast<unsigned long long>(hash));
@@ -549,7 +550,7 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
 
   if (kVariantRegistryVerbose && !(request_key == key))
   {
-    std::fprintf(stderr,
+    GLogError(
       "[VariantRegistry] canonicalized lookup request={%s} canonical={%s}\n",
       FormatVariantKeyForLog(key).c_str(),
       FormatVariantKeyForLog(request_key).c_str());
@@ -561,7 +562,7 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
             s->OnExactMatch(request_key, *exact);
         if (kVariantRegistryVerbose)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[VariantRegistry] exact-match variant=%s %s\n",
                 exact->variant_name.empty() ? "<unnamed>" : exact->variant_name.c_str(),
                 FormatVariantKeyForLog(request_key).c_str());
@@ -574,7 +575,7 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
     if (auto *s = GetGlobalVariantRegistryStatsSink())
         s->OnMiss(request_key);
 
-    std::fprintf(stderr,
+    GLogError(
       "[VariantRegistry] miss request={%s}\n",
       FormatVariantKeyForLog(request_key).c_str());
 
@@ -593,8 +594,8 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
                 if (!same_preset || !same_surface || !same_geom)
                     continue;
                 if (close_count == 0)
-                    std::fprintf(stderr, "[VariantRegistry] miss candidates (same preset/surface/geom):\n");
-                std::fprintf(stderr,
+                    GLogError( "[VariantRegistry] miss candidates (same preset/surface/geom):\n");
+                GLogError(
                     "[VariantRegistry]   candidate variant='%s' tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X"
                     " (request tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X)\n",
                     entry.desc.variant_name.c_str(),
@@ -609,7 +610,7 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
             if (close_count >= 8) break;
         }
         if (close_count == 0)
-            std::fprintf(stderr, "[VariantRegistry] miss: no registered variant shares same preset/surface/geom\n");
+            GLogError( "[VariantRegistry] miss: no registered variant shares same preset/surface/geom\n");
     }
 
     return nullptr;
@@ -711,7 +712,7 @@ bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_
                     }
                     else if (!reflection_diag.empty())
                     {
-                        std::fprintf(stderr,
+                        GLogError(
                             "[VariantRegistry] Phase3 reflection warning for '%s': %s\n",
                             entry.desc.variant_name.c_str(),
                             reflection_diag.c_str());

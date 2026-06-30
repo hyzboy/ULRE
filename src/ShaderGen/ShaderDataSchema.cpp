@@ -1,4 +1,5 @@
 #include <hgl/mtl/ShaderDataSchema.h>
+#include <hgl/log/Log.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <cassert>
 #include <cstdio>
@@ -71,7 +72,7 @@ namespace
             const std::string path = graph::GetShaderLibraryPath() + "/common/schema/" + info.glsl_schema_file;
             if (!ReadTextFile(path, glsl))
             {
-                std::fprintf(stderr,
+                GLogError(
                     "[ShaderDataSchema] failed to read schema file: schema=%u file=%s\n",
                     i,
                     info.glsl_schema_file ? info.glsl_schema_file : "<null>");
@@ -82,7 +83,7 @@ namespace
             info.byte_size = static_cast<uint32_t>(CalculateGLSLStructSize(glsl));
             if (info.byte_size == 0)
             {
-                std::fprintf(stderr,
+                GLogError(
                     "[ShaderDataSchema] failed to compute schema byte size: schema=%u file=%s\n",
                     i,
                     info.glsl_schema_file ? info.glsl_schema_file : "<null>");

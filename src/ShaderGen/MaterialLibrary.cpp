@@ -1,4 +1,5 @@
-﻿#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/log/Log.h>
 #include<hgl/mtl/SamplerSlot.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -278,7 +279,7 @@ MaterialVariantDesc CreateBuiltinRowBoundVariantDesc(const char *row_name,
 
     if (!row)
     {
-        std::fprintf(stderr,
+        GLogError(
                      "[MaterialLibrary] warning: CreateBuiltinRowBoundVariantDesc failed to find builtin row '%s'. "
                      "The returned descriptor has no bound_row; prefer a valid builtin row name or explicit MaterialVariantDesc::CreateRowBound().\n",
                      row_name ? row_name : "<null>");
@@ -420,7 +421,7 @@ static void StripLegacyOverrideChannelsForBuiltinPreset(const MaterialPreset pre
     bool expected = false;
     if (s_warned.compare_exchange_strong(expected, true, std::memory_order_relaxed))
     {
-        std::fprintf(stderr,
+        GLogError(
                      "[MaterialLibrary] warning: builtin preset route preset=%u carried legacy override channels "
                      "(extra_bits=0x%08X, effective_feature_mask=0x%016llX). Clearing them to keep builtin row-driven routing on explicit row identity.\n",
                      static_cast<unsigned>(preset),
@@ -449,7 +450,7 @@ static void NormalizeBuiltinPresetParityOverrides(const MaterialPreset preset,
 
     if (cfg3d->lighting_model != routed_key.lighting_model)
     {
-        std::fprintf(stderr,
+        GLogError(
                      "[MaterialLibrary] warning: ignoring lighting_model override=%u for builtin preset=%u; builtin row-driven path requires strict parity with routed key=%u.\n",
                      static_cast<unsigned>(cfg3d->lighting_model),
                      static_cast<unsigned>(preset),
@@ -458,7 +459,7 @@ static void NormalizeBuiltinPresetParityOverrides(const MaterialPreset preset,
 
     if (cfg3d->sky_ambient_model != routed_key.sky_ambient_model)
     {
-        std::fprintf(stderr,
+        GLogError(
                      "[MaterialLibrary] warning: ignoring sky_ambient_model override=%u for builtin preset=%u; builtin row-driven path requires strict parity with routed key=%u.\n",
                      static_cast<unsigned>(cfg3d->sky_ambient_model),
                      static_cast<unsigned>(preset),
@@ -498,7 +499,7 @@ static void NormalizeBuiltinPresetTextureOverrides(const MaterialPreset preset,
     if (IsBuiltinTextureOverrideAllowedForKey(preset, key))
         return;
 
-    std::fprintf(stderr,
+    GLogError(
                  "[MaterialLibrary] warning: rejecting texture/sampler override for preset=%u; "
                  "the overridden key does not resolve to a registered builtin row — "
                  "keeping texture_source_bits/sampler_feature_bits at routed parity.\n",
@@ -559,7 +560,7 @@ MaterialVariantKey RouteKey(MaterialPreset preset,
 
     if (!found)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[MaterialLibrary] ERROR: RouteKey no builtin entry for preset=%u\n",
             static_cast<unsigned>(preset));
         return MaterialVariantKey{};
@@ -667,16 +668,16 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         const bool ok = ValidateBuiltinMaterialVariants(GetShaderLibraryPath(),diagnostics);
         if(ok)
         {
-            std::printf("[MaterialLibrary] Startup variant validation passed.\n");
+            GLogInfo("[MaterialLibrary] Startup variant validation passed.\n");
             return true;
         }
 
-        std::fprintf(stderr,
+        GLogError(
                      "[MaterialLibrary] Startup variant validation failed: %zu issue(s).\n",
                      diagnostics.size());
 
         for(const auto &msg:diagnostics)
-            std::fprintf(stderr,"[MaterialLibrary] %s\n",msg.c_str());
+            GLogError("[MaterialLibrary] %s\n",msg.c_str());
 
         return false;
     }();
@@ -695,7 +696,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                 ++entry_count;
                 if (!desc.factory_type.has_value())
                 {
-                    std::fprintf(stderr,
+                    GLogError(
                         "[MaterialLibrary] FATAL: routing self-test FAILED for entry[%zu] \"%s\""
                         " (missing factory_type)\n",
                         entry_count - 1,
@@ -713,7 +714,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                     && *found->factory_type == *desc.factory_type;
                 if (!entry_ok)
                 {
-                    std::fprintf(stderr,
+                    GLogError(
                         "[MaterialLibrary] FATAL: routing self-test FAILED for entry[%zu] \"%s\""
                         " (preset=%u): registry returned %s\n",
                         entry_count - 1,
@@ -728,12 +729,12 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             });
         if (!all_ok)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialLibrary] FATAL: BuiltinVariantEntry routing self-test failed"
                 " — aborting to prevent undefined behaviour in main loop.\n");
             std::abort();
         }
-        std::printf("[MaterialLibrary] BuiltinVariantEntry routing self-test passed"
+        GLogInfo("[MaterialLibrary] BuiltinVariantEntry routing self-test passed"
                     " (%zu entries).\n", entry_count);
         return true;
     }();
@@ -741,7 +742,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
 
     if(!cfg)
     {
-        std::fprintf(stderr, "[MaterialLibrary] CreateMaterialCreateInfo failed: cfg is null\n");
+        GLogError( "[MaterialLibrary] CreateMaterialCreateInfo failed: cfg is null\n");
         return nullptr;
     }
 
@@ -751,7 +752,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         Material3DCreateConfig *cfg3d = As3D(cfg);
         if(!cfg3d)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialLibrary] CreateMaterialCreateInfo failed: Checkerboard3D requires Material3DCreateConfig\n");
             return nullptr;
         }
@@ -765,7 +766,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
 
     if(!profile)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[MaterialLibrary] CreateMaterialCreateInfo warning: profile is null (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
@@ -824,7 +825,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                                                                                              lookup_opts);
     if(!variant_desc)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[MaterialLibrary] CreateMaterialCreateInfo failed: no registered variant"
             " (key_hash=%llu surface=%u geom=%u sky=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)"
             " [Phase 3: sky canonicalized to Simple=%s]\n",
@@ -863,7 +864,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             variant_desc = &phase3_desc;
             resolved_key = key;
 
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialLibrary] Phase3 route hit: vertex=%s fragment=%s pipeline=%s request={%s}\n",
                 phase3_query.vertex->name,
                 phase3_query.fragment->name,
@@ -904,7 +905,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                 static_cast<uint8_t>(key.texture_source_bits & 0xFF),
                 static_cast<uint8_t>(key.sampler_feature_bits & 0xFF));
 
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialLibrary] Phase2 FS-fallback: VS candidate='%s' (geom=%u)"
                 " error_code=0x%08X [%s]\n",
                 vs_candidate->variant_name.c_str(),
@@ -930,14 +931,14 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                 return ei_mci;
             }
 
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialLibrary] Phase2 FS-fallback failed: factory dispatch returned null"
                 " (candidate='%s')\n",
                 vs_candidate->variant_name.c_str());
         }
         else
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialLibrary] Phase2 FS-fallback: no geometry_mode=%u candidate found"
                 " — VS routing also failed\n",
                 static_cast<unsigned>(registry_lookup_key.geometry_mode));
@@ -946,7 +947,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         return nullptr;
     }
 
-    std::fprintf(stderr,
+    GLogError(
         "[MaterialLibrary] resolved variant=%s request={%s} lookup={%s} resolved={%s}\n",
         variant_desc->variant_name.c_str(),
         FormatVariantKeyForLog(key).c_str(),
@@ -970,7 +971,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
 
         if (sky_pruned || light_pruned || mi_pruned || mitex_pruned)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialLibrary] Phase4 prune: variant=%s pass=%u"
                 " sky=%d→%d light=%d→%d mi=%d→%d mitex=%d→%d\n",
                 variant_desc->variant_name.c_str(),
@@ -984,7 +985,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
 
     if(!variant_desc->factory_type)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[MaterialLibrary] CreateMaterialCreateInfo failed: variant has no factory_type assigned (variant=%s key_hash=%llu)\n",
             variant_desc->variant_name.c_str(),
             static_cast<unsigned long long>(key.Hash()));
@@ -996,7 +997,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     if(MaterialCreateInfo *mci=MaterialFactory3D::Create(factory_type,profile,variant_desc,key,cfg))
         return mci;
 
-    std::fprintf(stderr,
+    GLogError(
         "[MaterialLibrary] CreateMaterialCreateInfo failed: factory dispatch failed (variant=%s factory_type=%u key_hash=%llu resolved_key_hash=%llu)\n",
         variant_desc->variant_name.c_str(),
         static_cast<unsigned>(factory_type),
@@ -1069,7 +1070,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     const PresetResolveEntry *entry=FindPresetResolveEntry(mtl_id);
     if(entry&&resolved_preset!=mtl_id)
     {
-        std::printf(
+        GLogInfo(
             "[MaterialLibrary] Preset alias resolved preset=%u (%s) -> canonical=%u (lod=%u)\n",
             static_cast<unsigned>(mtl_id),
             entry->name?entry->name:"<null>",
@@ -1095,7 +1096,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             cfg3d->lighting_model = LightingModel::PBR;
     }
 
-    std::fprintf(stderr,
+    GLogError(
         "[MaterialLibrary] request preset=%u resolved_preset=%u key={%s}\n",
         static_cast<unsigned>(mtl_id),
         static_cast<unsigned>(resolved_preset),

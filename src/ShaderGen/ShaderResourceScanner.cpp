@@ -1,4 +1,5 @@
-﻿#include <hgl/shadergen/ShaderResourceScanner.h>
+#include <hgl/shadergen/ShaderResourceScanner.h>
+#include <hgl/log/Log.h>
 #include <hgl/mtl/DescriptorSemanticRegistry.h>
 #include <hgl/shadergen/CompositorCompiler.h>
 #include "GLSLCompiler.h"
@@ -58,13 +59,13 @@ namespace
     {
         if (requirements.ubos.empty())
         {
-            std::fprintf(stderr, "[ShaderResourceScanner]   UBO: (none)\n");
+            GLogError( "[ShaderResourceScanner]   UBO: (none)\n");
         }
         else
         {
             for (const auto semantic : requirements.ubos)
             {
-                std::fprintf(stderr,
+                GLogError(
                              "[ShaderResourceScanner]   UBO: semantic=%s\n",
                              GetUBODescriptorSemanticName(semantic));
             }
@@ -72,13 +73,13 @@ namespace
 
         if (requirements.ssbos.empty())
         {
-            std::fprintf(stderr, "[ShaderResourceScanner]   SSBO: (none)\n");
+            GLogError( "[ShaderResourceScanner]   SSBO: (none)\n");
         }
         else
         {
             for (const auto semantic : requirements.ssbos)
             {
-                std::fprintf(stderr,
+                GLogError(
                              "[ShaderResourceScanner]   SSBO: semantic=%s\n",
                              GetSSBODescriptorSemanticName(semantic));
             }
@@ -86,13 +87,13 @@ namespace
 
         if (requirements.samplers.empty())
         {
-            std::fprintf(stderr, "[ShaderResourceScanner]   TEX: (none)\n");
+            GLogError( "[ShaderResourceScanner]   TEX: (none)\n");
         }
         else
         {
             for (const auto &[slot, sampler] : requirements.samplers)
             {
-                std::fprintf(stderr,
+                GLogError(
                              "[ShaderResourceScanner]   TEX: slot=%s, type=%s, channel=%s\n",
                              SamplerSlotNameList[size_t(slot)],
                              GetSamplerTypeName(sampler.sampler_type),
@@ -372,7 +373,7 @@ bool CollectShaderAutoRequirements(const StaticMaterialDef &base_def,
     if (!BuildReflectedRequirements(base_def, resources, out_requirements, diagnostics))
         return false;
 
-    std::fprintf(stderr,
+    GLogError(
                  "[ShaderResourceScanner] reflection collection: shader_lib='%s', vs_bytes=%zu, fs_bytes=%zu\n",
                  shader_library_path.c_str(),
                  prepared_vs.size(),
@@ -457,7 +458,7 @@ bool ValidateManifestAgainstPolicy(
         msg += "' manifest contains '";
         msg += resource;
         msg += "' but effective policy disallows it";
-        std::fprintf(stderr, "%s\n", msg.c_str());
+        GLogError( "%s\n", msg.c_str());
         if (diagnostics)
         {
             *diagnostics += msg;
@@ -468,7 +469,7 @@ bool ValidateManifestAgainstPolicy(
 
     auto pruned_info = [&](const char *resource)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[ShaderResourceScanner] Phase5 PolicyRequires: material='%s'"
             " policy allows '%s' but manifest omits it (pruned by reflection — OK)\n",
             name, resource);

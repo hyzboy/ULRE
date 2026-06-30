@@ -1,4 +1,4 @@
-﻿#include "StandardVariantRouter.h"
+#include "StandardVariantRouter.h"
 
 #include "../common/DefaultVariantRouter.h"
 

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 /// Build2DCommon.h �?2D 材质转换公共辅助
 ///

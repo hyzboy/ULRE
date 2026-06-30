@@ -1,11 +1,11 @@
-﻿#include"GLSLCompiler.h"
+#include"GLSLCompiler.h"
+#include<hgl/log/Logger.h>
 #include"TBuiltInResourceCompat.h"
 #include"SPVParseData.h"
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include<hgl/platform/ExternalModule.h>
 #include<hgl/type/StringList.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/log/Logger.h>
 #include<hgl/shadergen/device/DeviceProfileTargetVersion.h>
 #include<hgl/shadergen/device/DeviceProfileJson.h>
 #include<vector>
@@ -86,7 +86,7 @@ namespace hgl
             if(!parse_data)
                 return;
 
-            std::fprintf(stderr,
+            GLogError(
                          "[GLSLCompiler] ParseSPV(stage=0x%08X): in=%u out=%u push=%u subpass=%u\n",
                          type,
                          parse_data->stage_io.input.count,
@@ -100,7 +100,7 @@ namespace hgl
                 if(bucket.count==0)
                     continue;
 
-                std::fprintf(stderr,
+                GLogError(
                              "[GLSLCompiler]   %s count=%u\n",
                              GetDescriptorTypeName(i),
                              bucket.count);
@@ -108,7 +108,7 @@ namespace hgl
                 for(uint32 j=0;j<bucket.count;j++)
                 {
                     const Descriptor &d=bucket.items[j];
-                    std::fprintf(stderr,
+                    GLogError(
                                  "[GLSLCompiler]     name=%s set=%u binding=%u\n",
                                  d.name,
                                  d.set,
@@ -240,7 +240,7 @@ namespace hgl
 
             if(!filesystem::GetCurrentPath(cur_path))
             {
-                std::fprintf(stderr,"[GLSLCompiler] Init failed: cannot get current path\n");
+                GLogError("[GLSLCompiler] Init failed: cannot get current path\n");
                 return(false);
             }
             glsl_compiler_fullname=filesystem::JoinPathWithFilename(cur_path,OS_TEXT("GLSLCompiler") HGL_PLUGIN_EXTNAME);
@@ -249,7 +249,7 @@ namespace hgl
 
             if(!gsi_module)
             {
-                std::fprintf(stderr,
+                GLogError(
                     "[GLSLCompiler] Init failed: cannot load GLSLCompiler plugin module\n");
                 return(false);
             }
@@ -273,16 +273,16 @@ namespace hgl
                         return(true);
                     }
 
-                    std::fprintf(stderr,"[GLSLCompiler] Init failed: plugin interface init returned false\n");
+                    GLogError("[GLSLCompiler] Init failed: plugin interface init returned false\n");
                 }
                 else
                 {
-                    std::fprintf(stderr,"[GLSLCompiler] Init failed: GetInterface returned null\n");
+                    GLogError("[GLSLCompiler] Init failed: GetInterface returned null\n");
                 }
             }
             else
             {
-                std::fprintf(stderr,"[GLSLCompiler] Init failed: cannot resolve GetInterface symbol\n");
+                GLogError("[GLSLCompiler] Init failed: cannot resolve GetInterface symbol\n");
             }
 
             delete gsi_module;
@@ -359,7 +359,7 @@ namespace hgl
         {
             if(!gsi)
             {
-                std::fprintf(stderr,
+                GLogError(
                     "[GLSLCompiler] CompileShader failed: compiler not initialized (GLSLCompiler plugin unavailable?)\n");
                 return(nullptr);
             }
@@ -371,7 +371,7 @@ namespace hgl
             else
             if(bom!=ByteOrderMask::NONE)
             {
-                std::fprintf(stderr,"[GLSLCompiler] CompileShader failed: unsupported BOM\n");
+                GLogError("[GLSLCompiler] CompileShader failed: unsupported BOM\n");
                 return(nullptr);
             }
 
@@ -379,7 +379,7 @@ namespace hgl
 
             if(!spv)
             {
-                std::fprintf(stderr,"[GLSLCompiler] CompileShader failed: gsi->Compile returned null\n");
+                GLogError("[GLSLCompiler] CompileShader failed: gsi->Compile returned null\n");
                 return(nullptr);
             }
 
@@ -389,7 +389,7 @@ namespace hgl
             {
                 std::string err="Compile shader failed, error info: ";
                 err+=spv->log?spv->log:"";
-                std::fprintf(stderr,"[GLSLCompiler] %s\n", err.c_str());
+                GLogError("[GLSLCompiler] %s\n", err.c_str());
                 GLogError(err.c_str());
 
                 FreeSPVData(spv);
@@ -410,7 +410,7 @@ namespace hgl
                 }
                 else
                 {
-                    std::fprintf(stderr,"[GLSLCompiler] ParseSPV returned null\n");
+                    GLogError("[GLSLCompiler] ParseSPV returned null\n");
                 }
             }
 

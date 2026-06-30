@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/SamplerSlot.h>

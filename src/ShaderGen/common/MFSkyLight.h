@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // 统一 SkyLight 资源注入工具。
 // GLSL 天光函数实现已迁移到 ShaderLibrary/common/skylight_*.glsl 文件，

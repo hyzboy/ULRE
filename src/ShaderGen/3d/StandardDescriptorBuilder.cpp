@@ -1,4 +1,4 @@
-﻿#include "StandardDescriptorBuilder.h"
+#include "StandardDescriptorBuilder.h"
 
 #include "../common/MFSkyLight.h"
 

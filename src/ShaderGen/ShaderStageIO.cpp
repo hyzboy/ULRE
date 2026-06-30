@@ -1,4 +1,4 @@
-﻿#include<hgl/shadergen/ShaderStageIO.h>
+#include<hgl/shadergen/ShaderStageIO.h>
 
 namespace hgl{namespace graph{
 ShaderStageIO::ShaderStageIO(ShaderStage flag_bit)

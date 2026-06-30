@@ -1,4 +1,4 @@
-﻿/// ShaderLayoutResolver.cpp
+/// ShaderLayoutResolver.cpp
 ///
 /// Builds ShaderLayoutContract from a MaterialCreateInfo after Resort() has run.
 /// Three buckets are filled:

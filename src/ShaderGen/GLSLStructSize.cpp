@@ -1,4 +1,5 @@
 #include <string>
+#include<hgl/log/Logger.h>
 #include <string_view>
 #include <cctype>
 #include <cstdint>
@@ -422,6 +423,6 @@ std::size_t CalculateGLSLStructSize(const std::string &glslStructText)
 #include <iostream>
 int main() {
     std::string s = "{\n    vec3 pos;\n    float time;\n    mat4 transform;\n    vec3 normals[2];\n}";
-    std::cout << "size = " << CalculateGLSLStructSize(s) << "\n";
+    GLogInfo("size = %zu", CalculateGLSLStructSize(s));
 }
 */

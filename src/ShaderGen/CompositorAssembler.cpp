@@ -1,4 +1,5 @@
-﻿#include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/log/Log.h>
 #include <hgl/shadergen/CompositorTemplateRouter.h>
 #include <hgl/shadergen/internal/GLSLSourceUtils.h>
 #include <hgl/shadergen/CompositorFeatureFlags.h>
@@ -100,7 +101,7 @@ namespace
 
         if (row)
         {
-            std::fprintf(stderr,
+            GLogError(
                          "[CompositorAssembler][VS] path=%s variant='%s' row='%s' policy=%s vs_template='%s' row_vs_features=[%s] key_va_bits=[%s] pos_provider=%u blend=%u pass=%u\n",
                          source_tag,
                          desc.variant_name.c_str(),
@@ -115,7 +116,7 @@ namespace
             return;
         }
 
-        std::fprintf(stderr,
+        GLogError(
                      "[CompositorAssembler][VS] path=%s variant='%s' row=<none> key_va_bits=[%s] pos_provider=%u blend=%u pass=%u\n",
                      source_tag,
                      desc.variant_name.c_str(),
@@ -314,7 +315,7 @@ namespace
         if (!s_warned.compare_exchange_strong(expected, true, std::memory_order_relaxed))
             return;
 
-        std::fprintf(stderr,
+        GLogError(
                      "[CompositorAssembler] warning: using legacy key fallback for %s stage variant='%s' factory=%s surface=%u geometry=%u. "
                      "This path is compatibility-only; prefer CreateBuiltinRowBoundVariantDesc() or MaterialVariantDesc::CreateRowBound()/BindRow() with explicit MaterialVariantRow binding.\n",
                      stage,

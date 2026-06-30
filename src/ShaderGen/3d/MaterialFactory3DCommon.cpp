@@ -1,6 +1,7 @@
 /// MaterialFactory3D.cpp — 通用 3D 工厂函数实现
 
 #include"MaterialFactory3DCommon.h"
+#include<hgl/log/Logger.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
@@ -20,7 +21,7 @@ MaterialCreateInfo *CreateFromFixedDef3D(
 {
     if (cfg && cfg->prim != def.primitive_type)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[%s] Primitive mismatch: cfg->prim=%u def.primitive_type=%u (using cfg value)\n",
             debug_tag ? debug_tag : "3DFactory",
             static_cast<unsigned>(cfg->prim),
@@ -42,7 +43,7 @@ MaterialCreateInfo *CreateFromFixedDef3D(
 
     if (!result.success)
     {
-        std::fprintf(stderr, "[%s] CompositorAssembler failed: %s\n",
+        GLogError( "[%s] CompositorAssembler failed: %s\n",
             debug_tag, result.error_message.c_str());
         return nullptr;
     }
@@ -66,7 +67,7 @@ MaterialCreateInfo *CreateFromFixedDef3D(
         cfg);
 
     if (!mci)
-        std::fprintf(stderr, "[%s] CompileCompositorMaterial failed\n", debug_tag);
+        GLogError( "[%s] CompileCompositorMaterial failed\n", debug_tag);
 
     return mci;
 }

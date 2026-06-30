@@ -1,4 +1,5 @@
-﻿#include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/log/Logger.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
@@ -15,7 +16,7 @@ namespace
 {
     static void PrintPBRColorRouteKey(const char *label, const MaterialVariantKey &key)
     {
-        std::fprintf(stderr,
+        GLogError(
             "[PBRColor3D] %s hash=%llu surface=%u geom=%u sky=%u light=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X\n",
             label ? label : "route",
             static_cast<unsigned long long>(key.Hash()),
@@ -93,7 +94,7 @@ namespace
 
         PrintPBRColorRouteKey("VariantRegistry resolved route-request", var_key);
         PrintPBRColorRouteKey("VariantRegistry resolved route-final", var_key);
-        std::fprintf(stderr,
+        GLogError(
             "[PBRColor3D] VariantRegistry resolved variant=%s\n",
             desc->variant_name.c_str());
 
@@ -103,7 +104,7 @@ namespace
 
         if (!result.success)
         {
-            std::fprintf(stderr, "[PBRColor3D] CompositorAssembler failed: %s\n",
+            GLogError( "[PBRColor3D] CompositorAssembler failed: %s\n",
                 result.error_message.c_str());
             return nullptr;
         }
@@ -116,7 +117,7 @@ namespace
             pbr_cfg);
 
         if (!mci)
-            std::fprintf(stderr, "[PBRColor3D] CompileCompositorMaterial failed\n");
+            GLogError( "[PBRColor3D] CompileCompositorMaterial failed\n");
 
         return mci;
     }

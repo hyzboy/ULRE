@@ -1,4 +1,5 @@
 #include <hgl/shadergen/CompositorCompiler.h>
+#include<hgl/log/Logger.h>
 #include <hgl/shadergen/MaterialBuilder.h>
 #include <hgl/shadergen/internal/GLSLSourceUtils.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
@@ -99,7 +100,7 @@ void EmitInferenceMismatchDiagnostics(
 
             message += "; compiler inference is diagnostics-only";
 
-            std::fprintf(stderr, "%s\n", message.c_str());
+            GLogError( "%s\n", message.c_str());
             AppendDiagnosticLine(diagnostics, message);
         };
 

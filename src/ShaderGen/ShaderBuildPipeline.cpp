@@ -1,4 +1,5 @@
 #include<hgl/shadergen/ShaderBuildPipeline.h>
+#include<hgl/log/Logger.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/DescriptorLayoutBuilder.h>
 #include<hgl/shadergen/MaterialDescriptorDB.h>
@@ -125,7 +126,7 @@ static void EmitInferenceMismatchDiagnostics(const hgl::graph::mtl::StaticMateri
 
         message += "; compiler inference is diagnostics-only";
 
-        std::fprintf(stderr,"%s\n",message.c_str());
+        GLogError("%s\n",message.c_str());
         AppendDiagnosticLine(diagnostics,message);
     };
 

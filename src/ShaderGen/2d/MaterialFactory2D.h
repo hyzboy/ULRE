@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/mtl/StaticMaterialDef.h>
 #include <hgl/mtl/MaterialVariantKey.h>

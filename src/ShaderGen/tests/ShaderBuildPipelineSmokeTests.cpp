@@ -1,4 +1,5 @@
 #include <hgl/shadergen/ShaderBuildPipeline.h>
+#include<hgl/log/Logger.h>
 #include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/MaterialBuilder.h>
@@ -20,7 +21,7 @@ static int g_failures = 0;
 #define CHECK_TRUE(expr)                                                    \
     do {                                                                    \
         if (!(expr)) {                                                      \
-            std::fprintf(stderr, "FAIL (%s:%d): %s\n", __FILE__, __LINE__, #expr); \
+            GLogError( "FAIL (%s:%d): %s\n", __FILE__, __LINE__, #expr); \
             ++g_failures;                                                   \
         }                                                                   \
     } while (0)
@@ -419,7 +420,7 @@ int main()
 {
     if(!hgl::graph::InitShaderCompiler())
     {
-        std::fprintf(stderr,"Failed to initialize shader compiler.\n");
+        GLogError("Failed to initialize shader compiler.\n");
         return 1;
     }
 

@@ -1,4 +1,5 @@
-﻿#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/log/Log.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -76,11 +77,11 @@ namespace
         if (use_array)
             assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Array);
 
-        std::fprintf(stderr, "[BillboardDynamic] use_array=%d  blend=%d  samplerType=%s\n",
+        GLogError( "[BillboardDynamic] use_array=%d  blend=%d  samplerType=%s\n",
             (int)use_array, (int)billboard_cfg->blend_mode,
             use_array ? "Sampler2DArray" : "Sampler2D");
 
-        std::fprintf(stderr,
+        GLogError(
             "[BillboardDynamic] variant=%s routing_hash=%llu assemble_hash=%llu\n",
             desc->variant_name.c_str(),
             static_cast<unsigned long long>(routing_key.Hash()),
@@ -92,12 +93,12 @@ namespace
 
         if (!result.success)
         {
-            std::fprintf(stderr, "[BillboardDynamic] CompositorAssembler failed: %s\n",
+            GLogError( "[BillboardDynamic] CompositorAssembler failed: %s\n",
                 result.error_message.c_str());
             return nullptr;
         }
 
-        std::fprintf(stderr, "[BillboardDynamic] assemble OK, compiling material...\n");
+        GLogError( "[BillboardDynamic] assemble OK, compiling material...\n");
 
         MaterialCreateInfo *mci = CompileCompositorMaterial(
             profile,
@@ -107,9 +108,13 @@ namespace
             billboard_cfg);
 
         if (!mci)
-            std::fprintf(stderr, "[BillboardDynamic] CompileCompositorMaterial failed\n");
+        {
+            GLogError( "[BillboardDynamic] CompileCompositorMaterial failed\n");
+        }
         else
-            std::fprintf(stderr, "[BillboardDynamic] material created OK\n");
+        {
+            GLogError( "[BillboardDynamic] material created OK\n");
+        }
 
         return mci;
     }

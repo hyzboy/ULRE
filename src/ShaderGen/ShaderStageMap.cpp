@@ -1,4 +1,4 @@
-﻿#include<hgl/shadergen/ShaderStageMap.h>
+#include<hgl/shadergen/ShaderStageMap.h>
 #include<hgl/shadergen/ShaderCreateInfo.h>
 
 namespace hgl{namespace graph{

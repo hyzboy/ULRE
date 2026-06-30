@@ -1,4 +1,5 @@
-﻿#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/log/Logger.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -80,11 +81,11 @@ namespace
         if (use_array)
             assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Array);
 
-        std::fprintf(stderr, "[BillboardFixed] use_array=%d  blend=%d  samplerType=%s\n",
+        GLogError( "[BillboardFixed] use_array=%d  blend=%d  samplerType=%s\n",
             (int)use_array, (int)billboard_cfg->blend_mode,
             use_array ? "Sampler2DArray" : "Sampler2D");
 
-        std::fprintf(stderr,
+        GLogError(
             "[BillboardFixed] variant=%s routing_hash=%llu assemble_hash=%llu\n",
             desc->variant_name.c_str(),
             static_cast<unsigned long long>(routing_key.Hash()),
@@ -96,12 +97,12 @@ namespace
 
         if (!result.success)
         {
-            std::fprintf(stderr, "[BillboardFixed] CompositorAssembler failed: %s\n",
+            GLogError( "[BillboardFixed] CompositorAssembler failed: %s\n",
                 result.error_message.c_str());
             return nullptr;
         }
 
-        std::fprintf(stderr, "[BillboardFixed] assemble OK, compiling material...\n");
+        GLogError( "[BillboardFixed] assemble OK, compiling material...\n");
 
         MaterialCreateInfo *mci = CompileCompositorMaterial(
             profile,
@@ -111,9 +112,13 @@ namespace
             billboard_cfg);
 
         if (!mci)
-            std::fprintf(stderr, "[BillboardFixed] CompileCompositorMaterial failed\n");
+        {
+            GLogError( "[BillboardFixed] CompileCompositorMaterial failed\n");
+        }
         else
-            std::fprintf(stderr, "[BillboardFixed] material created OK\n");
+        {
+            GLogError( "[BillboardFixed] material created OK\n");
+        }
 
         return mci;
     }

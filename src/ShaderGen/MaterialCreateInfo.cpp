@@ -1,4 +1,5 @@
-﻿#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/log/Logger.h>
 #include<hgl/shadergen/BindingContractBuilder.h>
 #include<hgl/shadergen/DescriptorLayoutBuilder.h>
 #include<hgl/shadergen/MaterialDescriptorStageBinder.h>

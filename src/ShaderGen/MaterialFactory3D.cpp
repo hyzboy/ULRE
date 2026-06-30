@@ -1,4 +1,5 @@
 #include <hgl/shadergen/MaterialFactory3D.h>
+#include <hgl/log/Log.h>
 #include <ankerl/unordered_dense.h>
 #include <cstdio>
 
@@ -26,7 +27,7 @@ namespace hgl::graph::mtl
         auto &r = Registry();
         if (r.contains(preset))
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialFactory3D] WARN: duplicate registration for preset=%u name=%s (kept first)\n",
                 static_cast<unsigned>(preset), name ? name : "<null>");
             return false;
@@ -46,7 +47,7 @@ namespace hgl::graph::mtl
         auto  it = r.find(preset);
         if (it == r.end())
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[MaterialFactory3D] ERROR: no factory registered for preset=%u\n",
                 static_cast<unsigned>(preset));
             return nullptr;

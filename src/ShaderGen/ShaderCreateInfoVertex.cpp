@@ -1,4 +1,4 @@
-﻿#include<hgl/shadergen/ShaderCreateInfoVertex.h>
+#include<hgl/shadergen/ShaderCreateInfoVertex.h>
 
 namespace hgl::graph{
 

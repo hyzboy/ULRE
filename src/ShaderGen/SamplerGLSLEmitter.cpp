@@ -1,4 +1,4 @@
-﻿#include <hgl/shadergen/SamplerGLSLEmitter.h>
+#include <hgl/shadergen/SamplerGLSLEmitter.h>
 #include <hgl/shadergen/MaterialDescriptorDB.h>
 #include <hgl/shadergen/ShaderWriter.h>
 #include <hgl/mtl/SamplerSlot.h>

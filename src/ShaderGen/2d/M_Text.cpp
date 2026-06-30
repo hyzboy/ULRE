@@ -1,4 +1,5 @@
-﻿#include"Build2DCommon.h"
+#include"Build2DCommon.h"
+#include<hgl/log/Logger.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/CompositorCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
@@ -28,7 +29,7 @@ static MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLit
     const auto result = assembler.Assemble(key, desc);
     if (!result.success)
     {
-        std::fprintf(stderr, "[Text2D] CompositorAssembler failed: %s\n", result.error_message.c_str());
+        GLogError( "[Text2D] CompositorAssembler failed: %s\n", result.error_message.c_str());
         return nullptr;
     }
 
@@ -55,7 +56,7 @@ static MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLit
                                                         fs,
                                                         static_cast<const MaterialCreateConfig *>(&new_cfg));
     if(!mci)
-        std::fprintf(stderr, "[Text2D] CompileCompositorMaterial failed\n");
+        GLogError( "[Text2D] CompileCompositorMaterial failed\n");
     return mci;
 }
 

@@ -1,4 +1,5 @@
 #include <hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/log/Logger.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/CompositorCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
@@ -27,7 +28,7 @@ namespace
         if (!kStandardVerbose)
             return;
 
-        std::fprintf(stderr,
+        GLogError(
             "[Standard] %s hash=%llu surface=%u geom=%u sky=%u light=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X any_array=%d\n",
             label ? label : "route",
             static_cast<unsigned long long>(key.Hash()),
@@ -92,13 +93,13 @@ namespace
         auto *cfg_3d=static_cast<const Material3DCreateConfig *>(cfg);
         if (!cfg_3d)
         {
-            std::fprintf(stderr, "[Standard] CreateStandardVariant failed: cfg is null\n");
+            GLogError( "[Standard] CreateStandardVariant failed: cfg is null\n");
             return nullptr;
         }
 
         if (!profile)
         {
-            std::fprintf(stderr, "[Standard] CreateStandardVariant warning: profile is null\n");
+            GLogError( "[Standard] CreateStandardVariant warning: profile is null\n");
         }
 
         const StandardVariantPolicyResult policy = BuildStandardVariantPolicy(input_key);
@@ -147,7 +148,7 @@ namespace
         PrintStandardRouteKey("VariantRegistry resolved route-final", route_key, any_array);
         if (kStandardVerbose)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[Standard] VariantRegistry resolved variant=%s\n",
                 desc->variant_name.c_str());
         }
@@ -163,7 +164,7 @@ namespace
 
         if (!result.success)
         {
-            std::fprintf(stderr, "[Standard] CompositorAssembler failed: %s\n",
+            GLogError( "[Standard] CompositorAssembler failed: %s\n",
                 result.error_message.c_str());
             return nullptr;
         }
@@ -176,7 +177,7 @@ namespace
             &cfg_with_mi);
 
         if (!mci)
-            std::fprintf(stderr, "[Standard] CompileCompositorMaterial failed\n");
+            GLogError( "[Standard] CompileCompositorMaterial failed\n");
         return mci;
     }
 

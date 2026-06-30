@@ -1,4 +1,5 @@
 #include <hgl/shadergen/ErrorIndicatorAssembler.h>
+#include <hgl/log/Log.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
@@ -59,7 +60,7 @@ namespace hgl::graph
 
         if (!fs_result.success)
         {
-            std::fprintf(stderr,
+            GLogError(
                 "[ErrorIndicatorAssembler] AssembleFragmentShader failed for ErrorIndicator "
                 "(error_code=0x%08X): %s — falling back to pure-red FS\n",
                 error_code,

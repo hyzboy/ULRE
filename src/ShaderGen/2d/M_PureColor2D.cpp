@@ -1,4 +1,4 @@
-﻿#include"Build2DCommon.h"
+#include"Build2DCommon.h"
 #include"MaterialFactory2D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 

@@ -5,6 +5,7 @@
 // returned vector.
 
 #include <hgl/mtl/RecipeToKey.h>
+#include <hgl/log/Log.h>
 #include <hgl/mtl/StaticMaterialDefRegistry.h>
 #include <hgl/mtl/MaterialKeyToolchainVersion.h>
 
@@ -19,7 +20,7 @@ static int g_failures = 0;
 #define CHECK_TRUE(expr)                                                    \
     do {                                                                    \
         if (!(expr)) {                                                      \
-            std::fprintf(stderr, "FAIL (%s:%d): %s\n",                    \
+            GLogError( "FAIL (%s:%d): %s\n",                    \
                          __FILE__, __LINE__, #expr);                        \
             ++g_failures;                                                   \
         }                                                                   \
@@ -192,9 +193,13 @@ int main()
     test_toolchain_version_constants();
 
     if (g_failures == 0)
-        std::printf("All tests passed.\n");
+    {
+        GLogInfo("All tests passed.\n");
+    }
     else
-        std::fprintf(stderr, "%d test(s) FAILED.\n", g_failures);
+    {
+        GLogError( "%d test(s) FAILED.\n", g_failures);
+    }
 
     return g_failures;
 }

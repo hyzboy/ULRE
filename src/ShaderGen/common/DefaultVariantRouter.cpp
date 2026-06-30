@@ -1,4 +1,4 @@
-﻿#include "DefaultVariantRouter.h"
+#include "DefaultVariantRouter.h"
 
 namespace hgl::graph::mtl
 {

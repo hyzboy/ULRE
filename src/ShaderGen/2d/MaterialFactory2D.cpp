@@ -1,4 +1,5 @@
-﻿#include"MaterialFactory2D.h"
+#include"MaterialFactory2D.h"
+#include<hgl/log/Logger.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/CompositorCompiler.h>
@@ -30,7 +31,7 @@ MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
     const auto result = assembler.Assemble(assemble_key, var_desc);
     if(!result.success)
     {
-        std::fprintf(stderr, "[%s] CompositorAssembler failed: %s\n",
+        GLogError( "[%s] CompositorAssembler failed: %s\n",
                      debug_tag ? debug_tag : "2DFactory",
                      result.error_message.c_str());
         return nullptr;
@@ -45,7 +46,7 @@ MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
                                                         fs,
                                                         static_cast<const MaterialCreateConfig *>(cfg));
     if(!mci)
-        std::fprintf(stderr, "[%s] CompileCompositorMaterial failed\n", debug_tag ? debug_tag : "2DFactory");
+        GLogError( "[%s] CompileCompositorMaterial failed\n", debug_tag ? debug_tag : "2DFactory");
 
     return mci;
 }

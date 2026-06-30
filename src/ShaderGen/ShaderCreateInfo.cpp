@@ -1,4 +1,5 @@
-﻿#include<hgl/shadergen/ShaderCreateInfo.h>
+#include<hgl/shadergen/ShaderCreateInfo.h>
+#include<hgl/log/Logger.h>
 #include<hgl/shadergen/ShaderStageIO.h>
 #include<hgl/shadergen/MaterialDescriptorDB.h>
 #include<hgl/mtl/UBOCommon.h>

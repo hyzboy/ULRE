@@ -1,4 +1,5 @@
 #include"MaterialFactory3DCommon.h"
+#include<hgl/log/Log.h>
 #include"Build3DCommon.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/math/Vector.h>
@@ -40,7 +41,7 @@ namespace
         if (cfg_3d)
             def.primitive_type = cfg_3d->prim;
 
-        std::fprintf(stderr,
+        GLogError(
                      "[VertexLuminance2D] route primitive=%u va_bits=0x%08X\n",
                      static_cast<unsigned>(def.primitive_type),
                      key.vertex_attribute_feature_bits);

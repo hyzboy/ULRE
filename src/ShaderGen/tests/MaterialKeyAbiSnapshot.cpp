@@ -5,6 +5,7 @@
 // or a constant was redefined.
 
 #include <hgl/mtl/MaterialKey.h>
+#include <hgl/log/Log.h>
 #include <hgl/mtl/MaterialKeyToolchainVersion.h>
 #include <hgl/mtl/RecipeToKey.h>
 #include <hgl/mtl/StaticMaterialDefRegistry.h>
@@ -19,7 +20,7 @@ static int g_failures = 0;
 #define CHECK_TRUE(expr)                                                    \
     do {                                                                    \
         if (!(expr)) {                                                      \
-            std::fprintf(stderr, "FAIL (%s:%d): %s\n",                    \
+            GLogError( "FAIL (%s:%d): %s\n",                    \
                          __FILE__, __LINE__, #expr);                        \
             ++g_failures;                                                   \
         }                                                                   \
@@ -93,11 +94,11 @@ static void test_deterministic_hash_for_standard_opaque()
 /// This is NOT a pass/fail check — it just reports the current size.
 static void print_sizeof_report()
 {
-    std::printf("[ABI] sizeof(MaterialKey)   = %zu bytes\n", sizeof(MaterialKey));
-    std::printf("[ABI] sizeof(MaterialVariantKey) = %zu bytes\n",
+    GLogInfo("[ABI] sizeof(MaterialKey)   = %zu bytes\n", sizeof(MaterialKey));
+    GLogInfo("[ABI] sizeof(MaterialVariantKey) = %zu bytes\n",
                 sizeof(MaterialVariantKey));
-    std::printf("[ABI] alignof(MaterialKey)  = %zu bytes\n", alignof(MaterialKey));
-    std::printf("[ABI] kMaterialKeySchemaVersion = %u\n", kMaterialKeySchemaVersion);
+    GLogInfo("[ABI] alignof(MaterialKey)  = %zu bytes\n", alignof(MaterialKey));
+    GLogInfo("[ABI] kMaterialKeySchemaVersion = %u\n", kMaterialKeySchemaVersion);
 }
 
 // ---------------------------------------------------------------------------
@@ -115,9 +116,13 @@ int main()
     test_deterministic_hash_for_standard_opaque();
 
     if (g_failures == 0)
-        std::printf("All ABI snapshot tests passed.\n");
+    {
+        GLogInfo("All ABI snapshot tests passed.\n");
+    }
     else
-        std::fprintf(stderr, "%d ABI snapshot test(s) FAILED.\n", g_failures);
+    {
+        GLogError( "%d ABI snapshot test(s) FAILED.\n", g_failures);
+    }
 
     return g_failures;
 }

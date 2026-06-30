@@ -1,4 +1,4 @@
-﻿#include<hgl/shadergen/MaterialDescriptorDB.h>
+#include<hgl/shadergen/MaterialDescriptorDB.h>
 #include<cassert>
 
 namespace hgl{namespace graph{

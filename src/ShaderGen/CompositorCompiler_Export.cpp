@@ -1,4 +1,5 @@
 #include <hgl/shadergen/CompositorCompiler.h>
+#include<hgl/log/Logger.h>
 #include <hgl/shadergen/ShaderBuildPipeline.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
@@ -23,7 +24,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
     auto result = pipeline.BuildProduct(def,build_cfg,profile,vs_glsl,fs_glsl);
     if(!result.success)
     {
-        std::fprintf(stderr,
+        GLogError(
                      "[CompileCompositorMaterial] material=%s build failed: %s\n",
                      def.name ? def.name : "<unnamed>",
                      result.diagnostics.empty() ? "<unknown>" : result.diagnostics.front().message.c_str());
