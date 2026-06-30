@@ -1,0 +1,7 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# TypeScript/Node build artifacts
+logger-guard-ts/node_modules/
+logger-guard-ts/dist/
