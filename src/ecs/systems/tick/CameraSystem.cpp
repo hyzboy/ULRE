@@ -434,14 +434,6 @@ namespace hgl::ecs
         if (mouse_blocked)
             input_state.mouse_delta = math::Vector2i(0, 0);
 
-        //if (wheel_delta != 0.0f || raw_wheel_delta != 0.0f)
-        //{
-        //    std::cout << "[CameraSystem] Wheel collect action="
-        //              << input_system->GetActionAnalog1D(CameraInputMapping::kActionZoomWheel)
-        //              << " raw=" << raw_wheel_delta
-        //              << " result=" << wheel_delta << "\n";
-        //}
-
         // 获取键盘状态
         input_state.move_forward = input_system->IsActionActive(CameraInputMapping::kActionMoveForward);
         input_state.move_backward = input_system->IsActionActive(CameraInputMapping::kActionMoveBackward);

@@ -23,6 +23,7 @@
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKFormat.h>
+#include<hgl/log/Log.h>
 #include<cstdint>
 #include<unordered_map>
 
@@ -391,8 +392,11 @@ namespace hgl::ecs
             const auto blend_mode     = GetBlendModeForWorld(world);
             const auto channel_hint   = GetChannelHintForWorld(world);
 
-            std::fprintf(stderr, "[QuadResPrepare] EnsureDomainResources domain='%s'  blend=%d  fixed=%d  preset=%d\n",
-                domain_tag.c_str(), (int)blend_mode, (int)domain_fixed, (int)domain_preset);
+            GLogInfo("[QuadResPrepare] EnsureDomainResources domain='%s' blend=%d fixed=%d preset=%d",
+                     domain_tag.c_str(),
+                     static_cast<int>(blend_mode),
+                     static_cast<int>(domain_fixed),
+                     static_cast<int>(domain_preset));
 
             auto* recipe_registry = graphics_context->GetMaterialAssetRegistry();
             if (!recipe_registry)
@@ -416,8 +420,8 @@ namespace hgl::ecs
             graph::MaterialDomainHandle handle = recipe_registry->Acquire(rec);
             if (!handle.IsValid())
             {
-                std::fprintf(stderr, "[QuadResPrepare] registry.Acquire FAILED for domain '%s'\n",
-                    domain_tag.c_str());
+                GLogError("[QuadResPrepare] registry.Acquire FAILED for domain '%s'",
+                          domain_tag.c_str());
                 return false;
             }
 
@@ -425,8 +429,8 @@ namespace hgl::ecs
             entry.material = handle.material;
             entry.material->SetTextureArraySlotFlags(
                 uint8_t(1u << uint8_t(graph::mtl::SamplerSlot::BaseColor)));
-            std::fprintf(stderr, "[QuadResPrepare] registry.Acquire OK for domain '%s'\n",
-                domain_tag.c_str());
+            GLogInfo("[QuadResPrepare] registry.Acquire OK for domain '%s'",
+                     domain_tag.c_str());
             return true;
         };
 

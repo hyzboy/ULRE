@@ -78,9 +78,6 @@ namespace hgl::ecs
 
                 case io::MouseAction::Wheel:
                     wheel_delta += med->y;
-                    //std::cout << "[InputSystem] Wheel event y=" << med->y
-                    //          << " wheel_delta=" << wheel_delta
-                    //          << " time=" << current_time << "\n";
                     break;
 
                 default:

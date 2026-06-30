@@ -3,8 +3,7 @@
 #include <hgl/ecs/core/RenderItem.h>
 #include <hgl/graph/module/MaterialBindingInstanceInternalAccess.h>
 #include <hgl/graph/module/MaterialDecoupledTypes.h>
-
-#include <iostream>
+#include <hgl/log/Log.h>
 
 namespace hgl::ecs
 {
@@ -188,33 +187,33 @@ namespace hgl::ecs
                                                   ? static_cast<uint32_t>((static_cast<uint64_t>(shadow_would_change) * 100ull) / shadow_eval_total)
                                                   : 0u;
 
-        std::cout << "[MaterialInstanceAssignmentBuffer] DEBUG[" << (scope ? scope : "unknown") << "] "
-                  << "seq=" << summary_seq
-                  << "items=" << item_count
-                  << " unique_mi=" << unique_mi_count
-                  << " seen=" << stats.items_seen
-                  << " null_item=" << stats.null_item
-                  << " triad_present=" << stats.triad_present
-                  << " triad_only_candidate=" << stats.triad_only_candidate
-                  << " triad_bridge_available=" << stats.triad_bridge_available
-                  << " triad_bridge_mismatch=" << stats.triad_bridge_mismatch
-                  << " triad_bridge_rescue_candidate=" << stats.triad_bridge_rescue_candidate
-                  << " triad_bridge_override_candidate=" << stats.triad_bridge_override_candidate
-                  << " triad_bridge_compare_total=" << compare_total
-                  << " triad_bridge_compare_equal=" << compare_equal
-                  << " triad_bridge_compare_diff=" << compare_diff
-                  << " triad_bridge_compare_diff_rate=" << diff_rate_percent << "%"
-                  << " shadow_switch_enabled=" << (IsMaterialInstanceShadowBridgePreferEnabled(diag) ? 1 : 0)
-                  << " shadow_switch_eval_total=" << shadow_eval_total
-                  << " shadow_switch_would_change=" << shadow_would_change
-                  << " shadow_switch_change_rate=" << shadow_change_rate_percent << "%"
-                  << " null_binding_instance=" << stats.null_binding_instance
-                  << " binding_id_mismatch=" << stats.binding_id_mismatch
-                  << " binding_program_mismatch=" << stats.program_binding_program_mismatch
-                  << " binding_payload_mismatch=" << stats.payload_binding_payload_mismatch
-                  << " payload_id_mismatch=" << stats.payload_id_mismatch
-                  << " legacy_mi_program_mismatch=" << stats.legacy_mi_program_mismatch
-                  << std::endl;
+        GLogWarning("[MaterialInstanceAssignmentBuffer] DEBUG[%s] seq=%llu items=%llu unique_mi=%llu seen=%u null_item=%u triad_present=%u triad_only_candidate=%u triad_bridge_available=%u triad_bridge_mismatch=%u triad_bridge_rescue_candidate=%u triad_bridge_override_candidate=%u triad_bridge_compare_total=%u triad_bridge_compare_equal=%u triad_bridge_compare_diff=%u triad_bridge_compare_diff_rate=%u%% shadow_switch_enabled=%d shadow_switch_eval_total=%u shadow_switch_would_change=%u shadow_switch_change_rate=%u%% null_binding_instance=%u binding_id_mismatch=%u binding_program_mismatch=%u binding_payload_mismatch=%u payload_id_mismatch=%u legacy_mi_program_mismatch=%u",
+                scope ? scope : "unknown",
+                static_cast<unsigned long long>(summary_seq),
+                static_cast<unsigned long long>(item_count),
+                static_cast<unsigned long long>(unique_mi_count),
+                stats.items_seen,
+                stats.null_item,
+                stats.triad_present,
+                stats.triad_only_candidate,
+                stats.triad_bridge_available,
+                stats.triad_bridge_mismatch,
+                stats.triad_bridge_rescue_candidate,
+                stats.triad_bridge_override_candidate,
+                compare_total,
+                compare_equal,
+                compare_diff,
+                diff_rate_percent,
+                IsMaterialInstanceShadowBridgePreferEnabled(diag) ? 1 : 0,
+                shadow_eval_total,
+                shadow_would_change,
+                shadow_change_rate_percent,
+                stats.null_binding_instance,
+                stats.binding_id_mismatch,
+                stats.program_binding_program_mismatch,
+                stats.payload_binding_payload_mismatch,
+                stats.payload_id_mismatch,
+                stats.legacy_mi_program_mismatch);
     #endif
     }
 }

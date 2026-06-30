@@ -13,6 +13,7 @@
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/common/RenderOptions.h>
+#include<hgl/log/Log.h>
 #include <algorithm>
 
 namespace hgl::ecs
@@ -66,13 +67,13 @@ namespace hgl::ecs
     {
         if (!mtl)
         {
-            std::cout << "[MaterialInstanceAssignmentBuffer::BindMaterialInstance] WARNING: ShaderMaterialProgram is null" << std::endl;
+            GLogWarning("[MaterialInstanceAssignmentBuffer::BindMaterialInstance] ShaderMaterialProgram is null");
             return;
         }
 
         if (!material_instance_buffer)
         {
-            std::cout << "[MaterialInstanceAssignmentBuffer::BindMaterialInstance] WARNING: MI buffer not created" << std::endl;
+            GLogWarning("[MaterialInstanceAssignmentBuffer::BindMaterialInstance] MI buffer not created");
             return;
         }
 
@@ -185,7 +186,7 @@ namespace hgl::ecs
 
             if (!material_instance_buffer)
             {
-                std::cout << "[MaterialInstanceAssignmentBuffer::StatMaterialInstance] WARNING: MI buffer allocation failed" << std::endl;
+                GLogWarning("[MaterialInstanceAssignmentBuffer::StatMaterialInstance] MI buffer allocation failed");
             }
             else
             {
@@ -277,13 +278,13 @@ namespace hgl::ecs
     {
         if (!item)
         {
-            std::cout << "[MaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] ERROR: Item is null" << std::endl;
+            GLogError("[MaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] Item is null");
             return;
         }
 
         if (!material_instance_id_buffer)
         {
-            std::cout << "[MaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] ERROR: MI ID SSBO not created" << std::endl;
+            GLogError("[MaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] MI ID SSBO not created");
             return;
         }
 
@@ -308,7 +309,7 @@ namespace hgl::ecs
 
         if (item_count == 0)
         {
-            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: No items to write" << std::endl;
+            GLogWarning("[MaterialInstanceAssignmentBuffer::WriteItems] No items to write");
             return;
         }
 
@@ -317,7 +318,7 @@ namespace hgl::ecs
 
         if (mi_set.GetCount() == 0)
         {
-            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: No MaterialBindingInstanceData collected" << std::endl;
+            GLogWarning("[MaterialInstanceAssignmentBuffer::WriteItems] No MaterialBindingInstanceData collected");
             return;
         }
 
@@ -371,7 +372,7 @@ namespace hgl::ecs
 
             if (!material_instance_id_buffer)
             {
-                std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI ID SSBO allocation failed" << std::endl;
+                GLogWarning("[MaterialInstanceAssignmentBuffer::WriteItems] MI ID SSBO allocation failed");
                 return;
             }
         }
@@ -383,7 +384,7 @@ namespace hgl::ecs
 
             if (!mid_ptr)
             {
-                std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI ID SSBO map failed" << std::endl;
+                GLogWarning("[MaterialInstanceAssignmentBuffer::WriteItems] MI ID SSBO map failed");
                 return;
             }
 
@@ -400,13 +401,6 @@ namespace hgl::ecs
                 graph::MaterialBindingInstance* mi = ResolveMaterialInstanceFromStateWithDebugStats(item, diagnostics);
                 uint16 mi_index = mi ? mi_set.Find(mi) : 0;
                 *mid_ptr++ = static_cast<uint32_t>(mi_index);
-
-                // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个
-                // {
-                //     std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems]   Item[" << i
-                //               << "] -> MI_index=" << mi_index
-                //               << ", MI=" << (void*)mi << std::endl;
-                // }
             }
 
             if (mid_gpu)

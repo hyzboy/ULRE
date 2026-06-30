@@ -13,9 +13,7 @@
 #include<hgl/log/Log.h>
 #include<algorithm>
 #include<limits>
-#include<iostream>
 #include<cstdint>
-#include<cstdio>
 
 namespace hgl::ecs
 {
@@ -170,13 +168,13 @@ namespace hgl::ecs
     {
         if (!mtl)
         {
-            std::cout << "[TransformAssignmentBuffer::BindTransform] WARNING: ShaderMaterialProgram is null" << std::endl;
+            GLogWarning("[TransformAssignmentBuffer::BindTransform] ShaderMaterialProgram is null");
             return;
         }
 
         if (!transform_buffer)
         {
-            std::cout << "[TransformAssignmentBuffer::BindTransform] WARNING: Transform buffer not created" << std::endl;
+            GLogWarning("[TransformAssignmentBuffer::BindTransform] Transform buffer not created");
             return;
         }
 
@@ -1013,8 +1011,8 @@ namespace hgl::ecs
         if (sizeof(uint32_t) == sizeof(uint16_t)
          && total_count > max_transform_id + 1)
         {
-            std::cout << "[TransformAssignmentBuffer::WriteItems] WARNING: Transform count exceeds R16 limit ("
-                      << total_count << ")" << std::endl;
+            GLogWarning("[TransformAssignmentBuffer::WriteItems] Transform count exceeds R16 limit (%u)",
+                        total_count);
         }
 
         last_static_count = static_count;

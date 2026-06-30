@@ -19,9 +19,9 @@ namespace hgl::ecs
 
     TransformSystem::~TransformSystem()
     {
-        std::cout << "[TransformSystem] Destructor called, clearing transform_buffer..." << std::endl;
+        GLogInfo("[TransformSystem] Destructor called, clearing transform_buffer...");
         SAFE_CLEAR(transform_buffer);
-        std::cout << "[TransformSystem] Destructor complete" << std::endl;
+        GLogInfo("[TransformSystem] Destructor complete");
     }
 
     TransformAssignmentBuffer* TransformSystem::GetTransformBuffer() const
