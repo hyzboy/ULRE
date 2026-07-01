@@ -68,7 +68,7 @@
         {
             "name": "default",
             "displayName": "Default Windows Debug (build)",
-            "description": "Default local Windows debug build using Visual Studio 2022, E:/vcpkg and the shared build directory",
+            "description": "Default local Windows debug build using Visual Studio 2026, E:/vcpkg and the shared build directory",
             "inherits": "windows-msvc-debug-build"
         },
         {
@@ -76,7 +76,7 @@
             "displayName": "Windows MSVC Debug",
             "description": "Windows debug build with MSVC",
             "inherits": "windows-base",
-            "generator": "Visual Studio 17 2022",
+            "generator": "Visual Studio 18 2026",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreadedDebug"
@@ -93,7 +93,7 @@
             "displayName": "Windows MSVC Release",
             "description": "Windows release build with MSVC",
             "inherits": "windows-base",
-            "generator": "Visual Studio 17 2022",
+            "generator": "Visual Studio 18 2026",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded"
