@@ -407,3 +407,17 @@ if(ULRE_ECS_DEBUG_API)
 else()
     target_compile_definitions(ULRE.ECS PUBLIC ULRE_ECS_DEBUG_API=0)
 endif()
+
+if(BUILD_TESTING)
+    add_executable(ECSWorldLifecycleSmokeTest
+        tests/WorldLifecycleSmokeTest.cpp
+    )
+
+    target_link_libraries(ECSWorldLifecycleSmokeTest PRIVATE ${ULRE})
+
+    set_property(TARGET ECSWorldLifecycleSmokeTest PROPERTY FOLDER "ULRE/Tests/ECS")
+    set_target_properties(ECSWorldLifecycleSmokeTest PROPERTIES
+        VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+
+    add_test(NAME ECSWorldLifecycleSmokeTest COMMAND ECSWorldLifecycleSmokeTest)
+endif()

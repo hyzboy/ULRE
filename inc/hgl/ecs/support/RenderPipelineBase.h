@@ -16,21 +16,21 @@ namespace hgl::ecs
 
     /**
      * RenderPipelineBase - Abstract base class for all render pipelines
-     * 
+     *
      * Provides a unified interface for geometry/text/line/billboard/particle rendering.
-     * All pipelines follow the same multi-phase pattern:
-     *   1. PrepareFrame() — initialize per-frame state (optional phase before Collect)
-     *   2. RunCollect() — RenderCollect phase: gather visible components
-     *   3. RunCull() — RenderCull phase: frustum/occlusion culling (optional)
-     *   4. RunSort() — RenderSort phase: depth/distance sorting (optional)
-     *   5. RunBuild() — RenderBatch phase: write VABs/batches, mark buffers dirty
-     *   6. RunSync() — RenderBufferUpload/FrameSync phase: sync descriptors/UBOs
+     * The current ECS execution flow is:
+     *   1. PrepareFrame() — initialize per-frame state before collection (optional)
+     *   2. RunCollect() — RenderCollect: gather visible components
+     *   3. RunCull() — optional culling step, typically called by a collect-stage system
+     *   4. RunSort() — optional sort step, typically called in RenderBatch stage
+     *   5. RunBuild() — RenderBatch: write VABs/batches, mark buffers dirty
+     *   6. RunSync() — RenderFrameSync: sync descriptors/UBOs after buffer upload
      *   7. GetRenderPrimitives() — query scheduled primitives for draw call recording
-     *   8. Render(cmd) — RenderDrawSubmit phase: record GPU draw commands
-     * 
-     * Systems call these methods in order, no internal system ordering needed.
-     * GraphicsPipeline maintains all per-frame state (collected items, batches, etc.)
-     * and makes it available to systems at different phases.
+     *   8. Render(cmd) — RenderDrawSubmit: record GPU draw commands
+     *
+     * Systems call these methods in order while ECS controls phase scheduling.
+     * RenderPipelineBase stores per-frame state (collected items, batches, etc.)
+     * that is shared across systems in different phases.
      */
     class RenderPipelineBase
     {
@@ -51,16 +51,16 @@ namespace hgl::ecs
         /// RenderCollect phase: gather visible components
         virtual void RunCollect() = 0;
 
-        /// RenderCull phase: frustum/occlusion/etc. culling (optional for some pipelines)
+        /// Optional culling step, usually triggered by a collect-stage system
         virtual void RunCull() {}
 
-        /// RenderSort phase: depth/distance sorting (optional for some pipelines)
+        /// Optional sorting step, usually triggered by a batch-stage system
         virtual void RunSort() {}
 
         /// RenderBatch phase: build batches, write VABs, mark buffers dirty
         virtual void RunBuild() = 0;
 
-        /// RenderBufferUpload/FrameSync phase: sync descriptors, UBOs after upload (optional)
+        /// RenderFrameSync phase: sync descriptors/UBOs after buffer upload (optional)
         virtual void RunSync() {}
 
         /// Get all primitives scheduled for this frame (for recording draw calls)

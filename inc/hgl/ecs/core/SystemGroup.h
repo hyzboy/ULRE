@@ -52,9 +52,6 @@ namespace hgl
         class SystemGroupRegistry
         {
         private:
-            /// Static singleton instance
-            static SystemGroupRegistry* instance;
-
             /// Map from group name to group definition
             std::map<std::string, SystemGroup> groups;
 

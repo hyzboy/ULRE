@@ -6,14 +6,10 @@ namespace hgl
 {
     namespace ecs
     {
-        // Static instance initialization
-        SystemGroupRegistry* SystemGroupRegistry::instance = nullptr;
-
         SystemGroupRegistry& SystemGroupRegistry::Get()
         {
-            if (!instance)
-                instance = new SystemGroupRegistry();
-            return *instance;
+            static SystemGroupRegistry instance;
+            return instance;
         }
 
         void SystemGroupRegistry::RegisterGroup(const SystemGroup& group)

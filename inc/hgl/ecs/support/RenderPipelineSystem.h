@@ -6,20 +6,20 @@
 namespace hgl::ecs
 {
     /**
-     * RenderPipelineSystem - Base class for all GraphicsPipeline-driven System classes
-     * 
-     * This class standardizes how Systems interact with RenderPipeline objects.
-     * Derived classes implement stage-specific virtual methods (OnCollect, OnBuild, etc.)
-     * and declare which pipeline they control via GetPipeline().
-     * 
+     * RenderPipelineSystem - Base class for pipeline-driven ECS systems
+     *
+     * This class standardizes how systems interact with RenderPipelineBase objects.
+     * Derived classes implement stage hooks (OnCollect, OnBuild, etc.) and
+     * declare which pipeline they control via GetPipeline().
+     *
      * The base class handles:
-     *   - GraphicsPipeline lookup and validation
+     *   - Pipeline lookup and validation
      *   - Error handling (missing pipelines, disabled pipelines)
-     *   - Automatic phase registration
-     * 
-     * Derived classes only need to:
-     *   1. Implement GetPipeline(context) - return the specific pipeline
-     *   2. Override the appropriate On*() method for their phase
+     *
+     * Derived classes should:
+     *   1. Implement GetPipeline(context)
+     *   2. Override the matching On*() stage hook
+     *   3. Set execution phase/order in constructor as needed
      */
     class RenderPipelineSystem : public System
     {
@@ -47,7 +47,7 @@ namespace hgl::ecs
     };
 
     // ──────────────────────────────────────────────────────────────────────────
-    // Stage-specific System base classes (one per ExecutionPhase)
+    // Stage-specific helper base classes
     // ──────────────────────────────────────────────────────────────────────────
 
     /**
@@ -68,8 +68,8 @@ namespace hgl::ecs
     };
 
     /**
-     * CullSystem - RenderCull phase (optional, not all pipelines need it)
-     * Performs frustum/occlusion culling
+     * CullSystem - Optional culling stage hook
+     * Usually scheduled in RenderCollect for current ECS phase model.
      */
     class CullSystem : public RenderPipelineSystem
     {
@@ -85,8 +85,8 @@ namespace hgl::ecs
     };
 
     /**
-     * SortSystem - RenderSort phase (optional, not all pipelines need it)
-     * Sorts visible items by distance, priority, etc.
+     * SortSystem - Optional sorting stage hook
+     * Usually scheduled in RenderBatch for current ECS phase model.
      */
     class SortSystem : public RenderPipelineSystem
     {
@@ -119,8 +119,8 @@ namespace hgl::ecs
     };
 
     /**
-     * SyncSystem - RenderBufferUpload/FrameSync phase (optional)
-     * Syncs descriptors, UBOs after GPU buffer uploads
+     * SyncSystem - RenderFrameSync phase hook (optional)
+     * Syncs descriptors/UBOs after GPU buffer upload.
      */
     class SyncSystem : public RenderPipelineSystem
     {

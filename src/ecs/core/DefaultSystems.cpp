@@ -269,11 +269,10 @@ namespace hgl::ecs
         return true;
     }
 
-    DefaultEcsSystems RegisterDefaultEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt)
+    std::shared_ptr<InputSystem> RegisterDefaultEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt)
     {
-        DefaultEcsSystems systems;
         if (!ctx)
-            return systems;
+            return nullptr;
 
         EnsureCoreEcsSystems(ctx, default_rt);
         RegisterSystemGroupInstallers();
@@ -282,12 +281,7 @@ namespace hgl::ecs
         EnsureSystemGroupSystems(ctx, "Billboard", default_rt);
         EnsureSystemGroupSystems(ctx, "Line", default_rt);
 
-        systems.input_system                = ctx->GetSystem<ecs::InputSystem>();
-        systems.camera_system               = ctx->GetSystem<ecs::CameraSystem>();
-        systems.line_bounds_update_system   = ctx->GetSystem<ecs::LineBoundsUpdateSystem>();
-        systems.line_stats_system           = ctx->GetSystem<ecs::LineStatsSystem>();
-
-        return systems;
+        return ctx->GetSystem<ecs::InputSystem>();
     }
 }
 

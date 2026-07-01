@@ -5,10 +5,10 @@
 namespace hgl::ecs
 {
     /**
-     * PrimitiveCullSystem - RenderCull phase for primitives
-     * 
-     * Performs frustum culling and visibility tests on collected primitive items.
-     * Derived from CullSystem to provide unified System interface.
+     * PrimitiveCullSystem - RenderCollect stage culling for primitives
+     *
+     * Performs frustum/visibility culling on collected primitive items.
+     * This system currently runs in ExecutionPhase::RenderCollect.
      */
     class PrimitiveCullSystem : public CullSystem
     {

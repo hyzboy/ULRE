@@ -246,9 +246,9 @@ namespace hgl
         // Register ECS systems
         if (default_ecs_context)
         {
-            auto systems = ecs::RegisterDefaultEcsSystems(default_ecs_context, GetSwapchainRenderTarget());
-            if (systems.input_system)
-                AddChildDispatcher(systems.input_system->GetEventDispatcher());
+            auto input_system = ecs::RegisterDefaultEcsSystems(default_ecs_context, GetSwapchainRenderTarget());
+            if (input_system)
+                AddChildDispatcher(input_system->GetEventDispatcher());
 
             default_ecs_context->Initialize();
         }

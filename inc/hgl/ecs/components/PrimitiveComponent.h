@@ -40,7 +40,7 @@ namespace hgl::ecs
      * - Holds reference to hgl::graph::Primitive
      * - Supports MaterialBindingInstanceData override
      * - Provides access to ShaderMaterialProgram, GraphicsPipeline, and AABB data
-     * - Compatible with RenderCollector for batched rendering
+    * - Compatible with RenderCollect/RenderBatch pipeline for batched rendering
      */
     class PrimitiveComponent : public RenderableComponent
     {
