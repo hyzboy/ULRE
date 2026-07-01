@@ -1,5 +1,6 @@
 #include <hgl/ecs/support/primitive/PrimitiveBuildSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipeline.h>
+#include <hgl/ecs/support/primitive/PrimitiveSortSystem.h>
 #include <hgl/ecs/core/Context.h>
 
 namespace hgl::ecs
@@ -10,6 +11,7 @@ namespace hgl::ecs
         SetSystemType(SystemType::RenderBatch);
         SetExecutionOrder(ExecutionPhase::RenderBatch);
         SetRenderElementType("Primitive");
+        AddDependency<PrimitiveSortSystem>();
     }
 
     RenderPipelineBase* PrimitiveBuildSystem::GetPipeline(ECSContext* context)

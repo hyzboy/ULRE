@@ -5,7 +5,7 @@
 namespace hgl::ecs
 {
     /**
-     * PrimitiveSortSystem - RenderSort phase for primitives
+        * PrimitiveSortSystem - RenderBatch stage sort for primitives
      * 
      * Sorts collected primitive items by distance and material.
      * Derived from SortSystem to provide unified System interface.

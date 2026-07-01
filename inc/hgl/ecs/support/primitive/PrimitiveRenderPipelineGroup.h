@@ -9,7 +9,7 @@ namespace hgl::ecs
      * 
      * Encapsulates the complete primitive rendering stack:
      *   - PrimitiveRenderPipeline (wraps PrimitiveBatchPipeline)
-     *   - PrimitiveCullSystem  (RenderBatch phase, calls pipeline->RunCull)
+    *   - PrimitiveCullSystem  (RenderCollect phase, calls pipeline->RunCull)
      *   - PrimitiveSortSystem  (RenderBatch phase, calls pipeline->RunSort)
      *   - PrimitiveBuildSystem (RenderBatch phase, calls pipeline->RunBuild)
      *   - PrimitiveRenderSystem (RenderDrawSubmit phase, calls pipeline->Render)
