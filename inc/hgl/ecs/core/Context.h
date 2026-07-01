@@ -604,16 +604,6 @@ namespace hgl
             template<typename T, typename... Args>
             std::shared_ptr<T> RegisterTickSystemScoped(SystemOwnershipScope scope, Args&&... args)
             {
-                if (!CanRegisterGameplaySystemInThisContext())
-                {
-                #if ULRE_ECS_DEBUG_API
-                    LogWarning("[ECS] Tick system registration rejected by context gate. context='%s' system_type='%s'",
-                               GetName().c_str(),
-                               typeid(T).name());
-                #endif
-                    return nullptr;
-                }
-
                 if (scope == SystemOwnershipScope::GlobalShared && context_role == ContextRole::LocalSubWorld)
                 {
                 #if ULRE_ECS_DEBUG_API
@@ -767,7 +757,6 @@ namespace hgl
             void SetRenderSystemRegistrationAllowed(bool value) { allow_render_system_registration = value; }
             bool IsRenderSystemRegistrationAllowed() const { return allow_render_system_registration; }
             bool CanRegisterRenderSystemInThisContext() const { return allow_render_system_registration; }
-            bool CanRegisterGameplaySystemInThisContext() const { return true; }
 
             /// Context role used by scoped ownership registration checks.
             void SetContextRole(ContextRole value) { context_role = value; }
