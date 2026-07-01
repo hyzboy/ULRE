@@ -215,50 +215,6 @@ set(ECS_SYS_16B_RenderCollect_AssetInstanceCollectSystem_FILES
     components/AssetInstanceComponent.cpp
 )
 
-set(ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES
-    # REMOVED: replaced by support/primitive/PrimitiveCullSystem
-)
-
-set(ECS_SYS_18_RenderCollect_TextCollectSystem_FILES
-    # REMOVED: replaced by support/text/TextCollectSystem
-)
-
-set(ECS_SYS_18B_RenderCollect_LineCollectSystem_FILES
-    # REMOVED: replaced by support/line/LineCollectSystem
-)
-
-set(ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES
-    # REMOVED: replaced by support/primitive/PrimitiveSortSystem
-)
-
-set(ECS_SYS_20_RenderBatch_RenderPrimitiveBatchBuildSystem_FILES
-    # REMOVED: replaced by support/primitive/PrimitiveBuildSystem
-)
-
-set(ECS_SYS_21_RenderBatch_RenderPrimitiveBatchFinalizeSystem_FILES
-    # REMOVED: replaced by support/primitive/PrimitiveBuildSystem
-)
-
-set(ECS_SYS_22_RenderBatch_TextBuildSystem_FILES
-    # REMOVED: replaced by support/text/TextBuildSystem
-)
-
-set(ECS_SYS_23_RenderBatch_TextResourceSyncSystem_FILES
-    # REMOVED: replaced by support/text/TextSyncSystem
-)
-
-set(ECS_SYS_24_RenderDrawSubmit_RenderPrimitiveSubmitSystem_FILES
-    # REMOVED: replaced by support/primitive/PrimitiveRenderSystem
-)
-
-set(ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES
-    # REMOVED: replaced by support/text/TextRenderSystem
-)
-
-set(ECS_SYS_26_RenderBatch_LineRenderSystem_FILES
-    # REMOVED: replaced by support/line/LineRenderSystem
-)
-
 set(ECS_SYS_26B_RenderStat_LineStatsSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/LineStatsSystem.h
     systems/render/LineStatsSystem.cpp
@@ -395,17 +351,6 @@ set(ECS_SOURCE
     ${ECS_SYS_15C_RenderFrameSync_RenderDiagnosticsService_FILES}
     ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES}
     ${ECS_SYS_16B_RenderCollect_AssetInstanceCollectSystem_FILES}
-    ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES}
-    ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES}
-    ${ECS_SYS_18B_RenderCollect_LineCollectSystem_FILES}
-    ${ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES}
-    ${ECS_SYS_20_RenderBatch_RenderPrimitiveBatchBuildSystem_FILES}
-    ${ECS_SYS_21_RenderBatch_RenderPrimitiveBatchFinalizeSystem_FILES}
-    ${ECS_SYS_22_RenderBatch_TextBuildSystem_FILES}
-    ${ECS_SYS_23_RenderBatch_TextResourceSyncSystem_FILES}
-    ${ECS_SYS_24_RenderDrawSubmit_RenderPrimitiveSubmitSystem_FILES}
-    ${ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES}
-    ${ECS_SYS_26_RenderBatch_LineRenderSystem_FILES}
     ${ECS_SYS_26B_RenderStat_LineStatsSystem_FILES}
     ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES}
     ${ECS_SUPPORT_FILES}
@@ -444,16 +389,6 @@ source_group("ECS\\Systems\\15B RenderFrameSync_RenderDescriptorBindingSystem" F
 source_group("ECS\\Systems\\15C RenderFrameSync_RenderDiagnosticsService" FILES ${ECS_SYS_15C_RenderFrameSync_RenderDiagnosticsService_FILES})
 source_group("ECS\\Systems\\16 RenderCollect_RenderPrimitiveCollectSystem" FILES ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES})
 source_group("ECS\\Systems\\16B RenderCollect_AssetInstanceCollectSystem" FILES ${ECS_SYS_16B_RenderCollect_AssetInstanceCollectSystem_FILES})
-source_group("ECS\\Systems\\17 RenderCollect_RenderPrimitiveCullSystem" FILES ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES})
-source_group("ECS\\Systems\\18 RenderCollect_TextCollectSystem" FILES ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES})
-source_group("ECS\\Systems\\19 RenderBatch_RenderPrimitiveSortSystem" FILES ${ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES})
-source_group("ECS\\Systems\\20 RenderBatch_RenderPrimitiveBatchBuildSystem" FILES ${ECS_SYS_20_RenderBatch_RenderPrimitiveBatchBuildSystem_FILES})
-source_group("ECS\\Systems\\21 RenderBatch_RenderPrimitiveBatchFinalizeSystem" FILES ${ECS_SYS_21_RenderBatch_RenderPrimitiveBatchFinalizeSystem_FILES})
-source_group("ECS\\Systems\\22 RenderBatch_TextBuildSystem" FILES ${ECS_SYS_22_RenderBatch_TextBuildSystem_FILES})
-source_group("ECS\\Systems\\23 RenderBatch_TextResourceSyncSystem" FILES ${ECS_SYS_23_RenderBatch_TextResourceSyncSystem_FILES})
-source_group("ECS\\Systems\\24 RenderDrawSubmit_RenderPrimitiveSubmitSystem" FILES ${ECS_SYS_24_RenderDrawSubmit_RenderPrimitiveSubmitSystem_FILES})
-source_group("ECS\\Systems\\25 RenderDrawSubmit_TextRenderSubmitSystem" FILES ${ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES})
-source_group("ECS\\Systems\\26 RenderBatch_LineRenderSystem" FILES ${ECS_SYS_26_RenderBatch_LineRenderSystem_FILES})
 source_group("ECS\\Systems\\26B RenderStat_LineStatsSystem" FILES ${ECS_SYS_26B_RenderStat_LineStatsSystem_FILES})
 source_group("ECS\\Systems\\27 RenderSubmit_SwapchainSubmitSystem" FILES ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES})
 source_group("ECS\\Support" FILES ${ECS_SUPPORT_FILES})
