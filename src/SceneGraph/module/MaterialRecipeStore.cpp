@@ -1,5 +1,5 @@
 #include <hgl/mtl/MaterialRecipeStore.h>
-#include <hgl/type/FNV1a.h>
+#include <hgl/util/hash/FNV1a.h>
 
 namespace hgl::graph::mtl
 {

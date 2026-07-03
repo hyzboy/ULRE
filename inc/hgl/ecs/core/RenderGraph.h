@@ -2,7 +2,7 @@
 
 #include <hgl/ecs/core/System.h>
 #include <hgl/ecs/core/SystemGroup.h>
-#include <hgl/type/FNV1a.h>
+#include <hgl/util/hash/FNV1a.h>
 #include <vector>
 #include <functional>
 #include <set>

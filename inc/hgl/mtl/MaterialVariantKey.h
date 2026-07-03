@@ -8,7 +8,7 @@
 #include <hgl/mtl/LightingModel.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/common/PositionProvider.h>
-#include <hgl/type/FNV1a.h>
+#include <hgl/util/hash/FNV1a.h>
 
 namespace hgl::graph::mtl
 {

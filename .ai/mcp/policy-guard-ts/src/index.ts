@@ -113,10 +113,11 @@ const FORBIDDEN_PATTERNS: Array<{ name: string; regex: RegExp; recommendation: s
 ];
 
 const CORE_HASH_FILES = new Set([
+  "cmcoretype/inc/hgl/util/hash/fnv1a.h",
   "cmcoretype/inc/hgl/util/hash/quickhash.h",
   "cmcoretype/inc/hgl/util/hash/securehash.h",
-  "cmcoretype/inc/wyhash/wyhash.h",
-  "cmcoretype/inc/wyhash/wyhash32.h",
+  "cmcoretype/inc/hgl/util/hash/wyhash.h",
+  "cmcoretype/inc/hgl/util/hash/wyhash32.h",
 ]);
 
 const CORE_CSTRING_ROOT = "cmcoretype/inc/hgl/type/";
@@ -145,7 +146,7 @@ const HASH_FORBIDDEN_PATTERNS: Array<{
     regex: /\b(?:hash|digest|fingerprint|checksum)[A-Za-z0-9_]*\s*=\s*0x[0-9a-fA-F]{8,16}(?:[uU](?:[lL]{1,2})?|[lL]{2})?\b/,
     severity: "error",
     recommendation:
-      "Replace fixed hash constants with runtime hashing through hgl::ComputeOptimalHash(value) or hgl::ComputeOptimalHash(data, size).",
+      "Replace fixed hash constants with canonical runtime hashing: hgl::ComputeOptimalHash(value/data,size) or FNV1a helpers where incremental hashing is required.",
     rationale:
       "Hardcoded hash values hide intent and are fragile when string/token inputs change.",
   },
@@ -163,35 +164,36 @@ const HASH_FORBIDDEN_PATTERNS: Array<{
     regex: /\b(?:2166136261|16777619|14695981039346656037|1099511628211)(?:u|ul|ull|ll)?\b/,
     severity: "warning",
     recommendation:
-      "Do not re-implement FNV in feature code. Use hgl::ComputeOptimalHash wrappers for project-consistent behavior.",
+      "Do not re-implement FNV constants/loops in feature code. Prefer hgl::ComputeOptimalHash(...) or the canonical FNV1a helpers in hgl/util/hash/FNV1a.h.",
     rationale:
       "Inline ad-hoc hash constants usually indicate a local hash implementation that bypasses project policy.",
+    allowInCoreHashFiles: true,
   },
   {
     name: "djb2_style_mix",
     regex: /\(\s*hash\s*<<\s*5\s*\)\s*\+\s*hash/,
     severity: "warning",
     recommendation:
-      "Avoid manual djb2-style loops; route through hgl::ComputeOptimalHash for deterministic project behavior.",
+      "Avoid manual djb2-style loops; route through hgl::ComputeOptimalHash or canonical FNV1a helpers for deterministic project behavior.",
     rationale:
       "Custom hash loops tend to diverge and break cross-module consistency.",
   },
   {
     name: "direct_wyhash_call",
-    regex: /\bwyhash\s*\(/,
+    regex: /\bwyhash(?:32)?\s*\(/,
     severity: "warning",
     recommendation:
-      "Outside core hash files, call hgl::ComputeOptimalHash(...) instead of raw wyhash(...).",
+      "Outside core hash files, call hgl::ComputeOptimalHash(...) instead of raw wyhash(...)/wyhash32(...).",
     rationale:
       "Direct wyhash use spreads low-level details and causes inconsistent call conventions.",
     allowInCoreHashFiles: true,
   },
   {
     name: "direct_wyhash_header_include",
-    regex: /#include\s*<wyhash\/wyhash(?:32)?\.h>/,
+    regex: /#include\s*<(?:wyhash\/wyhash(?:32)?|hgl\/util\/hash\/wyhash(?:32)?)\.h>/,
     severity: "warning",
     recommendation:
-      "Prefer including hgl/util/hash/QuickHash.h or hgl/util/hash/SecureHash.h in feature code.",
+      "Prefer including hgl/util/hash/QuickHash.h or hgl/util/hash/SecureHash.h in feature code. Reserve direct wyhash headers for core hash implementation files.",
     rationale:
       "Feature code should depend on project hash wrappers, not low-level backend headers.",
     allowInCoreHashFiles: true,
@@ -340,15 +342,36 @@ Use ULRE's canonical hash wrappers and avoid hardcoded hash literals or ad-hoc h
 
 ## Core Hash Files (Allowed Low-Level Area)
 
+- CMCoreType/inc/hgl/util/hash/FNV1a.h
 - CMCoreType/inc/hgl/util/hash/QuickHash.h
 - CMCoreType/inc/hgl/util/hash/SecureHash.h
-- CMCoreType/inc/wyhash/wyhash.h
-- CMCoreType/inc/wyhash/wyhash32.h
+- CMCoreType/inc/hgl/util/hash/wyhash.h
+- CMCoreType/inc/hgl/util/hash/wyhash32.h
 
 ## Preferred APIs for Feature Code
 
 - hgl::ComputeOptimalHash(value) for integral/enum/pointer/value types.
 - hgl::ComputeOptimalHash(data, size) for raw bytes / strings.
+
+## Canonical Hash API Names and Usage
+
+1. FNV1a helpers (incremental / compile-time-friendly)
+- hgl::hash::FNV1aInit<uint32>() / hgl::hash::FNV1aInit<uint64>()
+- hgl::hash::FNV1aAppend(hash, value)
+- hgl::hash::FNV1aAppendBytes(hash, data, size)
+- hgl::hash::FNV1aAppendValueBytes(hash, value)
+
+2. QuickHash wrapper (default fast/common path)
+- hgl::ComputeOptimalHash(const T &value)
+- hgl::ComputeOptimalHash(const void *data, size_t size)
+
+3. SecureHash wrapper (same API shape as QuickHash in current code)
+- hgl::ComputeOptimalHash(const T &value)
+- hgl::ComputeOptimalHash(const void *data, size_t size)
+
+4. Low-level wyhash APIs (core hash files only)
+- wyhash(data, len, seed, _wyp)
+- wyhash32(data, len, seed)
 
 Example for string-like data:
 
@@ -359,8 +382,8 @@ uint64 id_hash = hgl::ComputeOptimalHash(name.data(), name.size());
 - Do not assign magic constants to hash/digest/fingerprint fields.
 - Do not dispatch logic with switch-case on opaque hash literals.
 - Do not re-implement djb2/fnv/hash loops.
-- Do not call wyhash(...) directly (except in the four core hash files above).
-- Do not include <wyhash/wyhash.h> directly outside the core hash files.
+- Do not call wyhash(...) / wyhash32(...) directly (except in core hash files above).
+- Do not include raw wyhash headers directly outside core hash files.
 
 ## Why
 
@@ -533,7 +556,8 @@ function scanHashText(filePath: string, root: string, text: string): HashFinding
           pattern: pattern.name,
           severity: pattern.severity,
           snippet: line.trim(),
-          preferred_api: "hgl::ComputeOptimalHash(const T&) / hgl::ComputeOptimalHash(const void*, size_t)",
+          preferred_api:
+            "hgl::ComputeOptimalHash(const T&) / hgl::ComputeOptimalHash(const void*, size_t) / hgl::hash::FNV1aInit + FNV1aAppend(+Bytes)",
           replacement: pattern.recommendation,
           why_it_matters: pattern.rationale,
           auto_fixable: true,
@@ -714,8 +738,8 @@ server.registerResource(
           "- hardcoded hash literal assignments",
           "- switch/case on magic hash values",
           "- ad-hoc djb2/fnv style implementations",
-          "- direct wyhash(...) calls outside core hash files",
-          "- direct include of <wyhash/wyhash.h> outside core hash files",
+          "- direct wyhash(...) / wyhash32(...) calls outside core hash files",
+          "- direct include of raw wyhash headers outside core hash files",
         ].join("\n"),
         mimeType: "text/plain",
       },
@@ -831,7 +855,7 @@ server.registerPrompt(
         content: {
           type: "text",
           text:
-            "Review the following code against the ULRE hash policy. Reject hardcoded hash literals, ad-hoc hash loops, and direct wyhash usage outside core hash files. Prefer hgl::ComputeOptimalHash(...) wrappers and explain exact rewrites.\n\n" +
+            "Review the following code against the ULRE hash policy. Reject hardcoded hash literals, ad-hoc hash loops, and direct wyhash/wyhash32 usage outside core hash files. Prefer hgl::ComputeOptimalHash(...) and canonical FNV1a helpers when incremental hashing is needed; explain exact rewrites.\n\n" +
             source,
         },
       },
@@ -1076,9 +1100,9 @@ server.registerTool(
       },
       matches,
       guidance:
-        "Use hgl::ComputeOptimalHash wrappers in feature code. Reserve direct wyhash internals to core hash files only.",
+        "Use hgl::ComputeOptimalHash wrappers in feature code; use canonical FNV1a helpers only when incremental hashing is required. Reserve direct wyhash internals to core hash files only.",
       recommended_next_step:
-        "Replace each finding with ComputeOptimalHash-based code, then rerun the hash scan.",
+        "Replace each finding with ComputeOptimalHash/FNV1a canonical code, then rerun the hash scan.",
     };
 
     return {
@@ -1428,9 +1452,9 @@ server.registerTool(
       },
       matches,
       guidance:
-        "Avoid hardcoded hash values and ad-hoc hash implementations. Use hgl::ComputeOptimalHash wrappers.",
+        "Avoid hardcoded hash values and ad-hoc hash implementations. Use hgl::ComputeOptimalHash wrappers or canonical FNV1a helpers.",
       recommended_next_step:
-        "Rewrite hash logic with ComputeOptimalHash-based calls, then rerun this review.",
+        "Rewrite hash logic with ComputeOptimalHash/FNV1a canonical calls, then rerun this review.",
     };
 
     return {

@@ -1,5 +1,5 @@
 #include <hgl/mtl/StaticMaterialDefRegistry.h>
-#include <hgl/type/FNV1a.h>
+#include <hgl/util/hash/FNV1a.h>
 #include <mutex>
 #include <vector>
 #include <utility>

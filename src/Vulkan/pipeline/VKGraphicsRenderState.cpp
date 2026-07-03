@@ -1,6 +1,6 @@
 #include<hgl/vk/pipeline/VKGraphicsRenderState.h>
 #include<hgl/vk/pipeline/VKGraphicsPipelineData.h>
-#include<hgl/type/FNV1a.h>
+#include<hgl/util/hash/FNV1a.h>
 #include<cstring>
 
 namespace hgl::graph{

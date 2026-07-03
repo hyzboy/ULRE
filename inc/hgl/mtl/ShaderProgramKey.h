@@ -2,7 +2,7 @@
 
 #include <hgl/mtl/MaterialVariantKey.h>
 #include <hgl/common/PrimitiveTypeDef.h>
-#include <hgl/type/FNV1a.h>
+#include <hgl/util/hash/FNV1a.h>
 
 namespace hgl::graph::mtl
 {

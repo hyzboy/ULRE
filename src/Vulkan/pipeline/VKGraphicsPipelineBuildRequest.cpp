@@ -4,7 +4,7 @@
 #include<hgl/vk/VKShaderMaterialProgram.h>
 #include<hgl/vk/pipeline/VKRenderTargetFormat.h>
 #include<hgl/vk/VKVertexInputLayout.h>
-#include<hgl/type/FNV1a.h>
+#include<hgl/util/hash/FNV1a.h>
 #include<hgl/mtl/DescriptorSemanticRegistry.h>
 #include<cstring>
 #include<cstddef>
