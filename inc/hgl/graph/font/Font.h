@@ -2,6 +2,7 @@
 
 #include<hgl/CoreType.h>
 #include<hgl/type/OrderedSet.h>
+#include<hgl/util/hash/HashMergeGolden64.h>
 #include<compare>
 
 namespace hgl::graph
@@ -118,11 +119,11 @@ namespace std
             }
 
             // Combine with other attributes
-            h ^= hash<int>{}(font.width) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= hash<int>{}(font.height) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= hash<bool>{}(font.bold) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= hash<bool>{}(font.italic) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= hash<bool>{}(font.anti) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h = ::hgl::hash::HashMergeGolden64(h, hash<int>{}(font.width));
+            h = ::hgl::hash::HashMergeGolden64(h, hash<int>{}(font.height));
+            h = ::hgl::hash::HashMergeGolden64(h, hash<bool>{}(font.bold));
+            h = ::hgl::hash::HashMergeGolden64(h, hash<bool>{}(font.italic));
+            h = ::hgl::hash::HashMergeGolden64(h, hash<bool>{}(font.anti));
 
             return h;
         }
