@@ -1,40 +1,33 @@
 #include <hgl/graph/module/MaterialResolveTieredCache.h>
+#include <hgl/util/hash/HashMergeGolden64.h>
 
 namespace hgl::graph
 {
-    namespace
-    {
-        static size_t HashCombine(size_t seed, size_t value)
-        {
-            return seed ^ (value + 0x9e3779b97f4a7c15ULL + (seed << 6U) + (seed >> 2U));
-        }
-    }
-
     size_t ProgramCacheKeyHash::operator()(const ProgramCacheKey &k) const
     {
         size_t h = std::hash<uint64_t>{}(k.material_key.Hash());
-        h = HashCombine(h, std::hash<uint64_t>{}(k.gvf_hash));
-        h = HashCombine(h, std::hash<uint64_t>{}(k.feature_mask));
-        h = HashCombine(h, std::hash<uint32_t>{}(k.rule_version));
-        h = HashCombine(h, std::hash<uint64_t>{}(k.capability_mask));
+        h = ::hgl::hash::HashMergeGolden64(h, std::hash<uint64_t>{}(k.gvf_hash));
+        h = ::hgl::hash::HashMergeGolden64(h, std::hash<uint64_t>{}(k.feature_mask));
+        h = ::hgl::hash::HashMergeGolden64(h, std::hash<uint32_t>{}(k.rule_version));
+        h = ::hgl::hash::HashMergeGolden64(h, std::hash<uint64_t>{}(k.capability_mask));
         return h;
     }
 
     size_t PayloadCacheKeyHash::operator()(const PayloadCacheKey &k) const
     {
         size_t h = std::hash<uint32_t>{}(k.recipe_id);
-        h = HashCombine(h, std::hash<uint64_t>{}(k.instance_data_hash));
-        h = HashCombine(h, std::hash<uint32_t>{}(k.domain_id));
-        h = HashCombine(h, std::hash<uint32_t>{}(k.runtime_texture_generation));
+        h = ::hgl::hash::HashMergeGolden64(h, std::hash<uint64_t>{}(k.instance_data_hash));
+        h = ::hgl::hash::HashMergeGolden64(h, std::hash<uint32_t>{}(k.domain_id));
+        h = ::hgl::hash::HashMergeGolden64(h, std::hash<uint32_t>{}(k.runtime_texture_generation));
         return h;
     }
 
     size_t BindingCacheKeyHash::operator()(const BindingCacheKey &k) const
     {
         size_t h = std::hash<const ShaderMaterialProgram *>{}(k.program);
-        h = HashCombine(h, std::hash<uint64_t>{}(k.payload_id));
-        h = HashCombine(h, std::hash<uint32_t>{}(k.domain_id));
-        h = HashCombine(h, std::hash<uint64_t>{}(k.layout_signature));
+        h = ::hgl::hash::HashMergeGolden64(h, std::hash<uint64_t>{}(k.payload_id));
+        h = ::hgl::hash::HashMergeGolden64(h, std::hash<uint32_t>{}(k.domain_id));
+        h = ::hgl::hash::HashMergeGolden64(h, std::hash<uint64_t>{}(k.layout_signature));
         return h;
     }
 
