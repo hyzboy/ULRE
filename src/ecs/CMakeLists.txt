@@ -138,8 +138,6 @@ set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
 set(ECS_SYS_16B_RenderCollect_AssetInstanceCollectSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/AssetInstanceCollectSystem.h
     systems/render/AssetInstanceCollectSystem.cpp
-    ${ECS_INCLUDE_PATH}/components/AssetInstanceComponent.h
-    components/AssetInstanceComponent.cpp
 )
 
 set(ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES
