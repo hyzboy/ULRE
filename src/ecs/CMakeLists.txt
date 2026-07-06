@@ -264,21 +264,6 @@ set(ECS_SUPPORT_LINE_FILES
     support/line/LineRenderPipelineGroup.cpp
 )
 
-set(ECS_SUPPORT_TERRAIN_FILES
-    ${ECS_INCLUDE_PATH}/support/terrain/TerrainTileBuffer.h
-    ${ECS_INCLUDE_PATH}/support/terrain/TerrainRenderPipeline.h
-    ${ECS_INCLUDE_PATH}/support/terrain/TerrainRenderPipelineGroup.h
-    ${ECS_INCLUDE_PATH}/support/terrain/TerrainCollectSystem.h
-    ${ECS_INCLUDE_PATH}/support/terrain/TerrainBuildSystem.h
-    ${ECS_INCLUDE_PATH}/support/terrain/TerrainRenderSystem.h
-    support/terrain/TerrainTileBuffer.cpp
-    support/terrain/TerrainRenderPipeline.cpp
-    support/terrain/TerrainRenderPipelineGroup.cpp
-    support/terrain/TerrainCollectSystem.cpp
-    support/terrain/TerrainBuildSystem.cpp
-    support/terrain/TerrainRenderSystem.cpp
-)
-
 set(ECS_SERIALIZATION_FILES
     serialization/ContextSerialization.cpp
     serialization/RenderableComponentSerialization.cpp
@@ -319,7 +304,6 @@ set(ECS_SOURCE
     ${ECS_SUPPORT_PRIMITIVE_FILES}
     ${ECS_SUPPORT_TEXT_FILES}
     ${ECS_SUPPORT_LINE_FILES}
-    ${ECS_SUPPORT_TERRAIN_FILES}
     ${ECS_SERIALIZATION_FILES}
 )
 
@@ -354,7 +338,6 @@ source_group("ECS\\Support" FILES ${ECS_SUPPORT_FILES})
 source_group("ECS\\Support\\Primitive" FILES ${ECS_SUPPORT_PRIMITIVE_FILES})
 source_group("ECS\\Support\\Text" FILES ${ECS_SUPPORT_TEXT_FILES})
 source_group("ECS\\Support\\Line" FILES ${ECS_SUPPORT_LINE_FILES})
-source_group("ECS\\Support\\Terrain" FILES ${ECS_SUPPORT_TERRAIN_FILES})
 source_group("ECS\\Serialization" FILES ${ECS_SERIALIZATION_FILES})
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_INCLUDE_PATH}
