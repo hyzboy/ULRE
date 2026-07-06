@@ -33,7 +33,6 @@ namespace hgl {
         class GraphicsContext;  // 图形资源管理器（原IGraphicsContext）
         class VulkanDevice;
         class RenderContext;
-        class AssetWorldRegistry;
     }
 }
 
@@ -42,7 +41,7 @@ namespace hgl
     namespace ecs
     {
         class CameraSystem;
-    class RenderSystemCore;
+        class RenderSystemCore;
         class RenderPipelineBase;
         class MaterialBatch;
         class RenderItem;

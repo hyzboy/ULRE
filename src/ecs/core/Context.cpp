@@ -5,8 +5,6 @@
 #include<hgl/ecs/systems/tick/VisibilitySystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/components/SubWorldComponent.h>
-#include<hgl/ecs/components/SubSceneMembershipComponent.h>
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/MaterialBatch.h>

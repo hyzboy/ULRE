@@ -134,11 +134,6 @@ set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
     ${ECS_INCLUDE_PATH}/components/RenderableComponent.h
 )
 
-set(ECS_SYS_16B_RenderCollect_AssetInstanceCollectSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/AssetInstanceCollectSystem.h
-    systems/render/AssetInstanceCollectSystem.cpp
-)
-
 set(ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES
     # REMOVED: replaced by support/primitive/PrimitiveCullSystem
 )
@@ -261,11 +256,6 @@ set(ECS_SUPPORT_LINE_FILES
     support/line/LineRenderPipelineGroup.cpp
 )
 
-set(ECS_SERIALIZATION_FILES
-    serialization/ContextSerialization.cpp
-    serialization/RenderableComponentSerialization.cpp
-)
-
 set(ECS_SOURCE
     ${ECS_CORE_FILES}
     ${ECS_SYS_00_RenderSystemCore_FILES}
@@ -301,7 +291,6 @@ set(ECS_SOURCE
     ${ECS_SUPPORT_PRIMITIVE_FILES}
     ${ECS_SUPPORT_TEXT_FILES}
     ${ECS_SUPPORT_LINE_FILES}
-    ${ECS_SERIALIZATION_FILES}
 )
 
 source_group("ECS\\Core" FILES ${ECS_CORE_FILES})
@@ -335,7 +324,6 @@ source_group("ECS\\Support" FILES ${ECS_SUPPORT_FILES})
 source_group("ECS\\Support\\Primitive" FILES ${ECS_SUPPORT_PRIMITIVE_FILES})
 source_group("ECS\\Support\\Text" FILES ${ECS_SUPPORT_TEXT_FILES})
 source_group("ECS\\Support\\Line" FILES ${ECS_SUPPORT_LINE_FILES})
-source_group("ECS\\Serialization" FILES ${ECS_SERIALIZATION_FILES})
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_INCLUDE_PATH}
 ${ECS_SOURCE})

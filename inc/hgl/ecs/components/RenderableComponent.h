@@ -9,8 +9,8 @@
 
 namespace hgl::ecs
 {
-    struct ComponentRecord;
     class TransformComponent;
+
     /**
     * Base renderable component interface
     * Derived classes should implement specific rendering needs
@@ -41,14 +41,6 @@ namespace hgl::ecs
 
         // Override in derived classes for specific rendering
         virtual void Render(const glm::mat4& worldMatrix) {}
-
-        static const char* GetSerializationType();
-        static bool SerializeToRecord(const std::shared_ptr<Component>& component,
-                                      const hgl::UnorderedMap<EntityID, int32_t>& entity_index,
-                                      ComponentRecord& out_record);
-        static void DeserializeFromRecord(const ComponentRecord& record,
-                                          Entity* entity,
-                                          std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>& pending_parents);
     };
 }//namespace hgl::ecs
 

@@ -1,6 +1,5 @@
 ﻿#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/core/ComponentRecords.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
@@ -9,57 +8,6 @@
 
 namespace hgl::ecs
 {
-    namespace
-    {
-        struct RenderableRecord
-        {
-            bool visible = true;
-            float boundingRadius = 1.0f;
-        };
-
-        struct PrimitiveRecord
-        {
-            RenderableRecord renderable;
-            bool hasPrimitive = false;
-            bool hasOverrideMaterial = false;
-        };
-    }
-
-    const char* PrimitiveComponent::GetSerializationType()
-    {
-        return "Primitive";
-    }
-
-    bool PrimitiveComponent::SerializeToRecord(const std::shared_ptr<Component>& component,
-                                               const hgl::UnorderedMap<EntityID, int32_t>&,
-                                               ComponentRecord& out_record)
-    {
-        auto primitive = std::dynamic_pointer_cast<PrimitiveComponent>(component);
-        if (!primitive)
-            return false;
-
-        PrimitiveRecord data{};
-        data.renderable.visible = primitive->IsVisible();
-        data.renderable.boundingRadius = primitive->GetBoundingRadius();
-        data.hasPrimitive = primitive->GetPrimitive() != nullptr;
-        data.hasOverrideMaterial = primitive->GetOverrideMaterial() != nullptr;
-
-        out_record.type = GetSerializationType();
-        out_record.payload = data;
-        return true;
-    }
-
-    void PrimitiveComponent::DeserializeFromRecord(const ComponentRecord& record,
-                                                   Entity* entity,
-                                                   std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>&)
-    {
-        const auto& data = std::any_cast<const PrimitiveRecord&>(record.payload);
-        auto primitive = std::make_shared<PrimitiveComponent>();
-        primitive->SetVisible(data.renderable.visible);
-        primitive->SetBoundingRadius(data.renderable.boundingRadius);
-        entity->AddComponentInstance(primitive);
-    }
-
     void PrimitiveComponent::SetPrimitive(hgl::graph::Primitive* prim)
     {
         primitive = prim;

@@ -2,7 +2,6 @@
 #include<hgl/ecs/core/SystemGroup.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/SubWorldComponent.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/vk/VKRenderTarget.h>

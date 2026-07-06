@@ -182,15 +182,8 @@ namespace hgl
                 return storage;
             }
 
-            static const char* GetSerializationType();
-            static bool SerializeToRecord(const std::shared_ptr<Component>& component,
-                                          const hgl::UnorderedMap<EntityID, int32_t>& entity_index,
-                                          ComponentRecord& out_record);
-            static void DeserializeFromRecord(const ComponentRecord& record,
-                                              Entity* entity,
-                                              std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>& pending_parents);
-
         private:
+
             void UpdateWorldMatrix();
             void MigrateStorage(Mobility target_mobility);
             std::shared_ptr<TransformDataStorage> GetStorage() const;

@@ -1,6 +1,5 @@
 ﻿#include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/core/ComponentRecords.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/camera/ViewportInfo.h>
@@ -676,47 +675,6 @@ namespace hgl
                     ctx->MigrateTransformComponent(this, to_movable);
                 }
             }
-        }
-
-        const char* TransformComponent::GetSerializationType()
-        {
-            return "Transform";
-        }
-
-        bool TransformComponent::SerializeToRecord(const std::shared_ptr<Component>& component,
-                                                    const hgl::UnorderedMap<EntityID, int32_t>& entity_index,
-                                                    ComponentRecord& out_record)
-        {
-            auto transform = std::dynamic_pointer_cast<TransformComponent>(component);
-            if (!transform)
-                return false;
-
-            TransformRecord data{};
-            data.position = ToArray3(transform->GetLocalPosition());
-            data.rotation = ToArray4(transform->GetLocalRotation());
-            data.scale = ToArray3(transform->GetLocalScale());
-            data.movable = transform->IsMovable();
-
-            const auto parent_id = transform->GetParentID();
-            auto index = entity_index.GetValuePointer(parent_id);
-            if (parent_id.IsValid() && index)
-                data.parentIndex = *index;
-
-            out_record.type = GetSerializationType();
-            out_record.payload = data;
-            return true;
-        }
-
-        void TransformComponent::DeserializeFromRecord(const ComponentRecord& record,
-                                                        Entity* entity,
-                                                        std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>& pending_parents)
-        {
-            const auto& data = std::any_cast<const TransformRecord&>(record.payload);
-            auto transform = std::make_shared<TransformComponent>(data.movable ? Mobility::Movable : Mobility::Static);
-            transform->SetLocalTRS(ToVec3(data.position), ToQuat(data.rotation), ToVec3(data.scale));
-            entity->AddComponentInstance(transform);
-
-            pending_parents.emplace_back(transform, data.parentIndex);
         }
     }//namespace ecs
 }//namespace hgl
