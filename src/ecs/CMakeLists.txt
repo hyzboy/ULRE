@@ -16,7 +16,6 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/SystemGroup.h
     ${ECS_INCLUDE_PATH}/core/World.h
     ${ECS_INCLUDE_PATH}/core/DefaultSystems.h
-    ${ECS_INCLUDE_PATH}/core/ComponentRecords.h
     ${ECS_INCLUDE_PATH}/core/MaterialBatch.h
     ${ECS_INCLUDE_PATH}/core/MaterialPipelineKey.h
     ${ECS_INCLUDE_PATH}/core/RenderItem.h
