@@ -42,13 +42,6 @@ set(ECS_CORE_FILES
     systems/render/RenderSystemCore.cpp
 )
 
-set(ECS_COMPONENT_FILES
-    ${ECS_INCLUDE_PATH}/components/SubWorldComponent.h
-    ${ECS_INCLUDE_PATH}/components/SubSceneMembershipComponent.h
-    components/SubWorldComponent.cpp
-    components/SubSceneMembershipComponent.cpp
-)
-
 set(ECS_SYS_00_RenderSystemCore_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
     systems/render/RenderSystemCore.cpp
@@ -89,13 +82,6 @@ set(ECS_SYS_05_TickCamera_CameraSystem_FILES
     components/CameraComponent.cpp
 )
 
-set(ECS_SYS_06_TickPostCamera_FacingTransformSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/transform/FacingTransformSystem.h
-    systems/transform/FacingTransformSystem.cpp
-    ${ECS_INCLUDE_PATH}/components/FacingTransformComponent.h
-    components/FacingTransformComponent.cpp
-)
-
 set(ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/tick/LineBoundsUpdateSystem.h
     systems/tick/LineBoundsUpdateSystem.cpp
@@ -114,18 +100,6 @@ set(ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES
 set(ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/EnvironmentSystem.h
     systems/render/EnvironmentSystem.cpp
-)
-
-set(ECS_SYS_10_RenderResourceSetup_QuadResourcePrepareSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/QuadResourcePrepareSystem.h
-    systems/render/QuadResourcePrepareSystem.cpp
-)
-
-set(ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/QuadMaterialBindingSystem.h
-    systems/render/QuadMaterialBindingSystem.cpp
-    ${ECS_INCLUDE_PATH}/components/QuadComponent.h
-    components/QuadComponent.cpp
 )
 
 set(ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES
@@ -159,8 +133,6 @@ set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
     ${ECS_INCLUDE_PATH}/components/PrimitiveComponent.h
     components/PrimitiveComponent.cpp
     ${ECS_INCLUDE_PATH}/components/RenderableComponent.h
-    ${ECS_INCLUDE_PATH}/components/BillboardComponent.h
-    components/BillboardComponent.cpp
 )
 
 set(ECS_SYS_16B_RenderCollect_AssetInstanceCollectSystem_FILES
@@ -292,11 +264,6 @@ set(ECS_SUPPORT_LINE_FILES
     support/line/LineRenderPipelineGroup.cpp
 )
 
-set(ECS_SUPPORT_BILLBOARD_FILES
-    ${ECS_INCLUDE_PATH}/support/billboard/BillboardRenderPipelineGroup.h
-    support/billboard/BillboardRenderPipelineGroup.cpp
-)
-
 set(ECS_SUPPORT_TERRAIN_FILES
     ${ECS_INCLUDE_PATH}/support/terrain/TerrainTileBuffer.h
     ${ECS_INCLUDE_PATH}/support/terrain/TerrainRenderPipeline.h
@@ -319,20 +286,17 @@ set(ECS_SERIALIZATION_FILES
 
 set(ECS_SOURCE
     ${ECS_CORE_FILES}
-    ${ECS_COMPONENT_FILES}
     ${ECS_SYS_00_RenderSystemCore_FILES}
     ${ECS_SYS_01_TickInput_InputSystem_FILES}
     ${ECS_SYS_02_TickTransform_TransformSystem_FILES}
     ${ECS_SYS_03_TickTransform_BoundingBoxUpdateSystem_FILES}
     ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES}
     ${ECS_SYS_05_TickCamera_CameraSystem_FILES}
-    ${ECS_SYS_06_TickPostCamera_FacingTransformSystem_FILES}
     ${ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES}
     ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES}
     ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES}
     ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES}
-    ${ECS_SYS_10_RenderResourceSetup_QuadResourcePrepareSystem_FILES}
-    ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES}
+
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
     ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES}
     ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES}
@@ -355,25 +319,20 @@ set(ECS_SOURCE
     ${ECS_SUPPORT_PRIMITIVE_FILES}
     ${ECS_SUPPORT_TEXT_FILES}
     ${ECS_SUPPORT_LINE_FILES}
-    ${ECS_SUPPORT_BILLBOARD_FILES}
     ${ECS_SUPPORT_TERRAIN_FILES}
     ${ECS_SERIALIZATION_FILES}
 )
 
 source_group("ECS\\Core" FILES ${ECS_CORE_FILES})
-source_group("ECS\\Components" FILES ${ECS_COMPONENT_FILES})
 source_group("ECS\\Systems\\00 RenderSystemCore" FILES ${ECS_SYS_00_RenderSystemCore_FILES})
 source_group("ECS\\Systems\\01 TickInput_InputSystem" FILES ${ECS_SYS_01_TickInput_InputSystem_FILES})
 source_group("ECS\\Systems\\02 TickTransform_TransformSystem" FILES ${ECS_SYS_02_TickTransform_TransformSystem_FILES})
 source_group("ECS\\Systems\\03 TickTransform_BoundingBoxUpdateSystem" FILES ${ECS_SYS_03_TickTransform_BoundingBoxUpdateSystem_FILES})
 source_group("ECS\\Systems\\04 TickTransform_VisibilitySystem" FILES ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES})
 source_group("ECS\\Systems\\05 TickCamera_CameraSystem" FILES ${ECS_SYS_05_TickCamera_CameraSystem_FILES})
-source_group("ECS\\Systems\\06 TickPostCamera_FacingTransformSystem" FILES ${ECS_SYS_06_TickPostCamera_FacingTransformSystem_FILES})
 source_group("ECS\\Systems\\07 RenderSwapchainNextImage_SwapchainAcquireSystem" FILES ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES})
 source_group("ECS\\Systems\\08 RenderPreBeginFrame_RenderTargetSystem" FILES ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES})
 source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES})
-source_group("ECS\\Systems\\10 RenderResourceSetup_QuadResourcePrepareSystem" FILES ${ECS_SYS_10_RenderResourceSetup_QuadResourcePrepareSystem_FILES})
-source_group("ECS\\Systems\\11 RenderMaterialBind_QuadMaterialBindingSystem" FILES ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES})
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
 source_group("ECS\\Systems\\15 RenderFrameSync_RenderFrameBusinessSyncSystem" FILES ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES})
 source_group("ECS\\Systems\\15B RenderFrameSync_RenderDescriptorBindingSystem" FILES ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES})
@@ -395,7 +354,6 @@ source_group("ECS\\Support" FILES ${ECS_SUPPORT_FILES})
 source_group("ECS\\Support\\Primitive" FILES ${ECS_SUPPORT_PRIMITIVE_FILES})
 source_group("ECS\\Support\\Text" FILES ${ECS_SUPPORT_TEXT_FILES})
 source_group("ECS\\Support\\Line" FILES ${ECS_SUPPORT_LINE_FILES})
-source_group("ECS\\Support\\Billboard" FILES ${ECS_SUPPORT_BILLBOARD_FILES})
 source_group("ECS\\Support\\Terrain" FILES ${ECS_SUPPORT_TERRAIN_FILES})
 source_group("ECS\\Serialization" FILES ${ECS_SERIALIZATION_FILES})
 
