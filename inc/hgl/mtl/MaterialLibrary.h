@@ -6,6 +6,7 @@
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterializationSpec.h>
 #include<hgl/mtl/MaterializationResolver.h>
+#include<hgl/mtl/MaterializationPools.h>
 #include<hgl/mtl/new/MaterialVariantKey.h>
 
 namespace hgl::graph::mtl{
