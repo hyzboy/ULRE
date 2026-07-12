@@ -102,7 +102,7 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
             }
             else
             if(group==uint(VertexInputGroup::DataIndexID)
-            || group==uint(VertexInputGroup::MaterialInstanceID))
+            )
             {
                 attr_desc->format   =Assign::DataIndexID::VAB_FMT;
                 bind_desc->inputRate=VK_VERTEX_INPUT_RATE_INSTANCE;

@@ -39,13 +39,4 @@ namespace hgl::graph::Assign
         constexpr const uint32_t    STRIDE_BYTES    = sizeof(ValueType);
     }
 
-    namespace MaterialInstanceID
-    {
-        // Legacy alias (Phase 3 compatibility): equals DataIndexID.
-        using ValueType = DataIndexID::ValueType;
-        constexpr VkFormat          VAB_FMT         = DataIndexID::VAB_FMT;
-        constexpr const char *      VIS_NAME        = "MaterialInstanceID";
-        constexpr VAType            VAT_FMT         = DataIndexID::VAT_FMT;
-        constexpr const uint32_t    STRIDE_BYTES    = DataIndexID::STRIDE_BYTES;
-    }
 }

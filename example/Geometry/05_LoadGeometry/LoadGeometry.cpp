@@ -212,8 +212,7 @@ namespace
 
             if(vif->group==VertexInputGroup::TransformID
              ||vif->group==VertexInputGroup::DataIndexID
-             ||vif->group==VertexInputGroup::TextureLayerID
-             ||vif->group==VertexInputGroup::MaterialInstanceID)
+             ||vif->group==VertexInputGroup::TextureLayerID)
                 continue;
 
             const char *attr_name = vif->name;
