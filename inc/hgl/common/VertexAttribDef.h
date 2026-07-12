@@ -8,15 +8,15 @@ namespace hgl::graph
 #pragma pack(push,1)
     enum class VertexInputGroup:uint8
     {
-        Basic,
+        Basic = 0,
 
-        TransformID,
-        DataIndexID,
-        TextureLayerID,
-        MaterialInstanceID,
+        TransformID = 1,
+        DataIndexID = 2,
+        TextureLayerID = 3,
+        ReservedLegacySlot = 4,     ///< 保留历史枚举槽位，避免后续编号漂移
 
-        JointID,
-        JointWeight,
+        JointID = 5,
+        JointWeight = 6,
 
         ENUM_CLASS_RANGE(Basic,JointWeight)
     };
@@ -28,7 +28,7 @@ namespace hgl::graph
         "TransformID",
         "DataIndexID",
         "TextureLayerID",
-        "MaterialInstanceID",
+        "ReservedLegacySlot",
 
         "JointID",
         "JointWeight"
