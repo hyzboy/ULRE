@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VK.h>
 #include<hgl/ecs/core/Object.h>
@@ -45,13 +45,6 @@ namespace hgl
         class RenderPipelineBase;
         class MaterialBatch;
         class RenderItem;
-
-        struct SubSceneState
-        {
-            bool paused = false;
-            bool tick_enabled = true;
-            bool render_enabled = true;
-        };
 
         struct RenderFrameCache
         {
@@ -143,7 +136,6 @@ namespace hgl
 
             bool active = false;
             bool shutdown_in_progress = false;
-            bool sub_world_auto_update = true;
             ContextRole context_role = ContextRole::RootShared;
             bool allow_render_system_registration = true;
             uint32_t rejected_render_system_registration_count = 0;
@@ -158,7 +150,6 @@ namespace hgl
             bool descriptor_contract_diag_log_enabled = false;
             uint64_t descriptor_contract_diag_last_log_ms = 0;
             bool material_binding_query_log_enabled = false;
-            std::unordered_map<uint64_t, SubSceneState> subscene_states;
             uint32_t filtered_entity_count_last_frame = 0;
 
             /// Unified render pipeline registry: name → RenderPipelineBase
@@ -194,9 +185,6 @@ namespace hgl
             hgl::graph::GraphicsContext* graphics_context = nullptr;
             hgl::graph::RenderContext* render_context = nullptr;
 
-            /// Asset definition registry (non-owning; assigned by the Application)
-            hgl::graph::AssetWorldRegistry* asset_registry = nullptr;
-
             /// Resource naming prefix for hierarchical tracking (e.g., "RenderToTexture:OffscreenRT")
             /// Used by systems when creating GPU resources for better leak tracking
             std::string resource_name_prefix;
@@ -220,8 +208,6 @@ namespace hgl
             void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunSystemUpdate(System *system, float deltaTime);
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
-            uint64_t ResolveEntitySubsceneID(const Entity* entity) const;
-
         public:
 
             struct AssetInstance
@@ -429,9 +415,6 @@ namespace hgl
             const hgl::graph::RenderContext* GetRenderContext() const { return render_context; }
 
             /// Asset world registry (Phase 3)
-            void SetAssetWorldRegistry(hgl::graph::AssetWorldRegistry* reg) { asset_registry = reg; }
-            hgl::graph::AssetWorldRegistry* GetAssetWorldRegistry() { return asset_registry; }
-            const hgl::graph::AssetWorldRegistry* GetAssetWorldRegistry() const { return asset_registry; }
 
             /// Unified render pipeline registry
             /// Get a pipeline by name (e.g., "Primitive", "Text", "Line", "Quad")
@@ -571,14 +554,8 @@ namespace hgl
                     entity_manager->GetAllEntityPointers(out_entities);
             }
 
-            void SetSubsceneState(uint64_t subscene_id, bool paused, bool tick_enabled, bool render_enabled);
-            bool GetSubsceneState(uint64_t subscene_id, SubSceneState& out_state) const;
-            void RemoveSubsceneState(uint64_t subscene_id);
-            bool IsSubsceneTickEnabled(uint64_t subscene_id) const;
-            bool IsSubsceneRenderEnabled(uint64_t subscene_id) const;
             bool IsEntityTickEnabled(const Entity* entity) const;
             bool IsEntityRenderEnabled(const Entity* entity) const;
-            uint32_t GetActiveSubSceneCount() const { return static_cast<uint32_t>(subscene_states.size()); }
             uint32_t GetFilteredEntityCountLastFrame() const { return filtered_entity_count_last_frame; }
 
             /// Ensure CameraSystem exists in this context.
@@ -772,11 +749,6 @@ namespace hgl
             /// Check if world is active
             bool IsActive() const { return active; }
 
-            /// Enable/disable auto-updating SubWorldComponent trees inside ECSContext::Tick/Render.
-            /// When using World as the scheduler, this should be disabled and driven by World instead.
-            void SetSubWorldAutoUpdate(bool value) { sub_world_auto_update = value; }
-            bool IsSubWorldAutoUpdateEnabled() const { return sub_world_auto_update; }
-
             /// Gate for local render-system registration. Used by hybrid SubWorld policy.
             void SetRenderSystemRegistrationAllowed(bool value) { allow_render_system_registration = value; }
             bool IsRenderSystemRegistrationAllowed() const { return allow_render_system_registration; }
@@ -861,5 +833,4 @@ namespace hgl
         };
     }//namespace ecs
 }//namespace hgl
-
 

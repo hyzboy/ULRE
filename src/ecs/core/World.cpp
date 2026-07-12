@@ -25,7 +25,6 @@ namespace hgl::ecs
     {
         if (context)
         {
-            context->SetSubWorldAutoUpdate(false);
             context->Initialize();
         }
     }

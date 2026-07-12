@@ -144,24 +144,6 @@ namespace hgl
             SetCurrentRenderCmd(render_core->GetRenderCmd());
             PrepareRenderPassSetup(render_core->GetSwapchainImageIndex(), 0.0f);
 
-            // Prepare all sub-worlds BEFORE opening the render pass.
-            // This runs each sub-world's Collect → Batch → BufferUpload so that
-            // StagedBuffers (e.g. transform_vab) are fully uploaded to GPU before
-            // BeginRenderPass — vkCmdCopyBuffer is not allowed inside a render pass.
-            if (sub_world_auto_update)
-            {
-                std::vector<std::shared_ptr<SubWorldComponent>> sub_worlds;
-                GetComponents(sub_worlds);
-                for (const auto& sw : sub_worlds)
-                {
-                    if (sw)
-                    {
-                        LogDebug("[ECS RENDER] PrepareSubWorld: %s", sw->GetName().c_str());
-                        sw->PrepareSubWorld(deltaTime);
-                    }
-                }
-            }
-
             LogInfo("[ECS RENDER] Calling BeginRenderPass");
             if (!render_core->BeginRenderPass())
             {
@@ -240,23 +222,6 @@ namespace hgl
                 }
 
                 LogDebug("[ECS RENDER] Completed pass %zu", pass_idx);
-            }
-
-            // Draw sub-worlds inside the render pass.
-            // Their CPU work (Collect/Batch/Upload) was already done by PrepareSubWorld()
-            // above — only GPU draw commands are issued here.
-            if (sub_world_auto_update)
-            {
-                std::vector<std::shared_ptr<SubWorldComponent>> sub_worlds;
-                GetComponents(sub_worlds);
-                for (const auto& sub_world : sub_worlds)
-                {
-                    if (sub_world)
-                    {
-                        LogDebug("[ECS RENDER] DrawSubWorld: %s", sub_world->GetName().c_str());
-                        sub_world->DrawSubWorld(render_core->GetRenderCmd(), deltaTime);
-                    }
-                }
             }
 
             LogInfo("[ECS RENDER] Calling EndFrame");

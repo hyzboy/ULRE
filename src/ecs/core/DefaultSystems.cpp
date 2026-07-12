@@ -8,19 +8,16 @@
 #include <hgl/ecs/support/line/LineRenderPipelineGroup.h>
 #include <hgl/ecs/support/line/LineCollectSystem.h>
 #include <hgl/ecs/support/line/LineRenderSystem.h>
-#include <hgl/ecs/support/billboard/BillboardRenderPipelineGroup.h>
 #include <hgl/ecs/systems/render/LineStatsSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
-#include <hgl/ecs/support/terrain/TerrainRenderPipelineGroup.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include <hgl/ecs/systems/render/RenderFrameBusinessSyncSystem.h>
 #include <hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
-#include <hgl/ecs/systems/render/AssetInstanceCollectSystem.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/vk/VKRenderTarget.h>
 
@@ -97,28 +94,6 @@ namespace
         return true;
     }
 
-    bool InstallBillboardGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
-    {
-        if (!ctx)
-            return false;
-
-        // New unified pipeline group replaces inline system registration
-        hgl::ecs::BillboardRenderPipelineGroup group;
-        group.Initialize(ctx);
-
-        return true;
-    }
-
-    bool InstallTerrainGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
-    {
-        if (!ctx)
-            return false;
-
-        hgl::ecs::TerrainRenderPipelineGroup group;
-        group.Initialize(ctx);
-
-        return true;
-    }
 
     bool InstallLineGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
     {
@@ -140,25 +115,6 @@ namespace
         return true;
     }
 
-    bool InstallAssetInstanceGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
-    {
-        if (!ctx)
-            return false;
-
-        const hgl::graph::CameraInfo *camera_info = nullptr;
-        if (auto camera_system = ctx->GetSystem<hgl::ecs::CameraSystem>())
-            camera_info = camera_system->GetCameraInfo();
-
-        auto collect_system = EnsureRenderSystem<hgl::ecs::AssetInstanceCollectSystem>(ctx);
-        if (collect_system)
-        {
-            collect_system->SetWorld(ctx);
-            collect_system->SetCameraInfo(camera_info);
-        }
-
-        return true;
-    }
-
     void RegisterBuiltinSystemGroupInstallers()
     {
         static bool registered = false;
@@ -167,11 +123,8 @@ namespace
 
         auto& registry = hgl::ecs::SystemGroupRegistry::Get();
         registry.RegisterGroupInstaller("Primitive", InstallPrimitiveGroup);
-        registry.RegisterGroupInstaller("AssetInstance", InstallAssetInstanceGroup);
         registry.RegisterGroupInstaller("Text", InstallTextGroup);
-        registry.RegisterGroupInstaller("Billboard", InstallBillboardGroup);
         registry.RegisterGroupInstaller("Line", InstallLineGroup);
-        registry.RegisterGroupInstaller("Terrain", InstallTerrainGroup);
 
         registered = true;
     }
