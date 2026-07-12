@@ -121,6 +121,11 @@ namespace hgl::graph::mtl
             return states.find(struct_name) != states.end();
         }
 
+        size_t GetLayoutCount() const
+        {
+            return states.size();
+        }
+
         bool TryAllocate(const std::string &struct_name, StructPoolAllocation &out_alloc)
         {
             auto it = states.find(struct_name);
@@ -291,4 +296,3 @@ namespace hgl::graph::mtl
         return true;
     }
 }
-

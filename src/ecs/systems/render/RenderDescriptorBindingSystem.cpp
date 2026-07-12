@@ -66,6 +66,8 @@ namespace hgl::ecs
             if (*env == '1' || *env == 'y' || *env == 'Y' || *env == 't' || *env == 'T')
                 enable_legacy_material_binding_fallback = false;
         }
+
+        EnsureMaterializationCallbacks();
     }
 
     RenderDescriptorBindingSystem::~RenderDescriptorBindingSystem()
@@ -197,6 +199,61 @@ namespace hgl::ecs
     {
         if (material)
             pipeline_materials.erase(material);
+    }
+
+    bool RenderDescriptorBindingSystem::RegisterMaterialStructLayout(const std::string &struct_name,
+                                                                     graph::mtl::SSBOCategory category,
+                                                                     uint32_t byte_stride)
+    {
+        return materialization_struct_pool.RegisterLayout(struct_name, category, byte_stride);
+    }
+
+    void RenderDescriptorBindingSystem::ResetMaterializationFrameData()
+    {
+        materialization_struct_pool.ResetAllocations();
+        materialization_index_tables.Clear();
+    }
+
+    bool RenderDescriptorBindingSystem::ResolveMaterialRecipe(const graph::mtl::MaterialRecipe &recipe,
+                                                              graph::mtl::MaterializationSpec &out_spec,
+                                                              uint32_t *out_texture_layer_row,
+                                                              uint32_t *out_data_index_row)
+    {
+        EnsureMaterializationCallbacks();
+
+        if (!graph::mtl::ResolveMaterializationSpec(recipe, materialization_callbacks, out_spec))
+            return false;
+
+        uint32_t texture_row = 0;
+        uint32_t data_row = 0;
+        if (!graph::mtl::WriteSpecToIndexTables(out_spec, materialization_index_tables, texture_row, data_row))
+            return false;
+
+        if (out_texture_layer_row)
+            *out_texture_layer_row = texture_row;
+
+        if (out_data_index_row)
+            *out_data_index_row = data_row;
+
+        return true;
+    }
+
+    bool RenderDescriptorBindingSystem::GetMaterializationPoolStats(uint32_t &texture_count,
+                                                                    uint32_t &struct_layout_count,
+                                                                    uint32_t &texture_layer_rows,
+                                                                    uint32_t &data_index_rows) const
+    {
+        texture_count = static_cast<uint32_t>(materialization_texture_pool.GetCount());
+        struct_layout_count = static_cast<uint32_t>(materialization_struct_pool.GetLayoutCount());
+        texture_layer_rows = static_cast<uint32_t>(materialization_index_tables.GetTextureLayerRowCount());
+        data_index_rows = static_cast<uint32_t>(materialization_index_tables.GetDataIndexRowCount());
+        return true;
+    }
+
+    void RenderDescriptorBindingSystem::EnsureMaterializationCallbacks()
+    {
+        if (!materialization_callbacks.resolve_texture || !materialization_callbacks.resolve_struct)
+            materialization_callbacks = graph::mtl::MakePoolResolveCallbacks(materialization_texture_pool, materialization_struct_pool);
     }
 
     const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::Material *material, const char *name) const

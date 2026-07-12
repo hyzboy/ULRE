@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/mtl/DescriptorBindingContract.h>
+#include<hgl/mtl/MaterializationPools.h>
 #include<hgl/type/String.h>
 #include<vector>
 #include<unordered_map>
@@ -78,6 +79,10 @@ namespace hgl::ecs
         bool enable_legacy_material_binding_fallback = true;
         ContractDiagStats last_contract_stats{};
         std::unordered_set<graph::Material *> pipeline_materials;
+        graph::mtl::BindlessTexturePool materialization_texture_pool;
+        graph::mtl::StructDataPool materialization_struct_pool;
+        graph::mtl::MaterializationIndexTables materialization_index_tables;
+        graph::mtl::MaterializationResolveCallbacks materialization_callbacks;
 
     public:
         RenderDescriptorBindingSystem(const std::string& name = "RenderDescriptorBindingSystem");
@@ -111,6 +116,18 @@ namespace hgl::ecs
         void UnregisterPipelineMaterial(graph::Material *material);
         void SetLegacyMaterialBindingFallbackEnabled(bool enabled) { enable_legacy_material_binding_fallback = enabled; }
         bool IsLegacyMaterialBindingFallbackEnabled() const { return enable_legacy_material_binding_fallback; }
+        bool RegisterMaterialStructLayout(const std::string &struct_name,
+                                          graph::mtl::SSBOCategory category,
+                                          uint32_t byte_stride);
+        void ResetMaterializationFrameData();
+        bool ResolveMaterialRecipe(const graph::mtl::MaterialRecipe &recipe,
+                                   graph::mtl::MaterializationSpec &out_spec,
+                                   uint32_t *out_texture_layer_row = nullptr,
+                                   uint32_t *out_data_index_row = nullptr);
+        bool GetMaterializationPoolStats(uint32_t &texture_count,
+                                         uint32_t &struct_layout_count,
+                                         uint32_t &texture_layer_rows,
+                                         uint32_t &data_index_rows) const;
 
     private:
 
@@ -121,6 +138,7 @@ namespace hgl::ecs
         const graph::IGPUBuffer *ResolveViewportUBO() const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();
+        void EnsureMaterializationCallbacks();
         const MaterialResourceBinding *FindMaterialResourceBinding(const graph::Material *material, const char *name) const;
         void ValidateContractsSideChannel();
         bool IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const;
