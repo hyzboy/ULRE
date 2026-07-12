@@ -218,7 +218,8 @@ namespace hgl::ecs
         material_instance_vab->Unmap();
     }
 
-    void MaterialInstanceAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items)
+    void MaterialInstanceAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items,
+                                                      const std::vector<uint16> *data_index_rows)
     {
         const size_t item_count = items.size();
 
@@ -366,8 +367,13 @@ namespace hgl::ecs
 
                 graph::MaterialInstance* mi = item->GetMaterialInstance();
                 uint16 mi_index = mi_set.Find(mi);
+                uint16 data_index = mi_index;
+
+                if (data_index_rows && i < data_index_rows->size())
+                    data_index = (*data_index_rows)[i];
+
                 *mi_ptr = mi_index;
-                *data_index_ptr = mi_index;
+                *data_index_ptr = data_index;
                 ++mi_ptr;
                 ++data_index_ptr;
 

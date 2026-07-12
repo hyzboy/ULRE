@@ -7,11 +7,13 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
@@ -25,11 +27,31 @@
 #include<limits>
 #include<chrono>
 #include<cstdint>
+#include<string>
 
 namespace hgl::ecs
 {
     namespace
     {
+        graph::mtl::MaterialRecipe BuildLegacyBatchRecipe(const uint32_t mi_data_bytes)
+        {
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "ECSLegacyBatchRecipe";
+            recipe.shading_model = "Legacy";
+            recipe.domain = "ECS";
+
+            if (mi_data_bytes > 0)
+            {
+                graph::mtl::RecipeStructBinding ref{};
+                ref.slot = graph::mtl::DataSlot::PBRSurface;
+                ref.struct_name = "LegacyMaterialInstance_" + std::to_string(mi_data_bytes);
+                ref.shared_across_instances = false;
+                recipe.structs.emplace_back(std::move(ref));
+            }
+
+            return recipe;
+        }
+
         void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
         {
             if (!draw_cmd || !batch || !batch->geom_draw_range)
@@ -484,7 +506,43 @@ namespace hgl::ecs
             batch.mi_buffer = new MaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
 
         if (batch.mi_buffer && !batch.items.empty())
-            batch.mi_buffer->WriteItems(batch.items);
+        {
+            std::shared_ptr<RenderDescriptorBindingSystem> descriptor_binding_system{};
+            if (world)
+                descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>();
+
+            const uint32_t mi_data_bytes = batch.key.material->GetMIDataBytes();
+            if (descriptor_binding_system && mi_data_bytes > 0)
+            {
+                std::vector<uint16> data_index_rows(batch.items.size(), 0);
+
+                const std::string struct_name = "LegacyMaterialInstance_" + std::to_string(mi_data_bytes);
+                descriptor_binding_system->RegisterMaterialStructLayout(struct_name,
+                                                                       graph::mtl::SSBOCategory::PBRSurface,
+                                                                       mi_data_bytes);
+
+                graph::mtl::MaterializationSpec spec{};
+                const graph::mtl::MaterialRecipe recipe = BuildLegacyBatchRecipe(mi_data_bytes);
+
+                for (size_t i = 0; i < batch.items.size(); ++i)
+                {
+                    uint32_t data_row = 0;
+                    if (!descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, &data_row))
+                        continue;
+
+                    if (data_row > std::numeric_limits<uint16>::max())
+                        continue;
+
+                    data_index_rows[i] = static_cast<uint16>(data_row);
+                }
+
+                batch.mi_buffer->WriteItems(batch.items, &data_index_rows);
+            }
+            else
+            {
+                batch.mi_buffer->WriteItems(batch.items);
+            }
+        }
     }
 
     void PrimitiveBatchPipeline::EnsureTransformVAB(MaterialBatch& batch)

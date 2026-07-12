@@ -219,6 +219,16 @@ namespace hgl::ecs
                                                               uint32_t *out_texture_layer_row,
                                                               uint32_t *out_data_index_row)
     {
+        if (context)
+        {
+            const uint32_t frame_index = context->GetFrameIndex();
+            if (materialization_last_reset_frame != frame_index)
+            {
+                ResetMaterializationFrameData();
+                materialization_last_reset_frame = frame_index;
+            }
+        }
+
         EnsureMaterializationCallbacks();
 
         if (!graph::mtl::ResolveMaterializationSpec(recipe, materialization_callbacks, out_spec))

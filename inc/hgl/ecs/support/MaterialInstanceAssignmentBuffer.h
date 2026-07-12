@@ -131,8 +131,10 @@ namespace hgl::ecs
         /**
          * 写入所有RenderItem的材质实例数据
          * @param items RenderItem列表
+         * @param data_index_rows 可选 DataIndex 行索引（与 items 一一对应）
          */
-        void WriteItems(const std::vector<RenderItem*>& items);
+        void WriteItems(const std::vector<RenderItem*>& items,
+                        const std::vector<uint16> *data_index_rows = nullptr);
 
         /**
          * 更新单个RenderItem的材质实例数据
