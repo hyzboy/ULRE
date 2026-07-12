@@ -14,13 +14,13 @@ namespace hgl::graph::mtl::func
 //   3) Legacy Helper 仅保留兼容，不再扩展
 
 /// 统一的 MaterialInstance 获取函数（唯一标准名称）
-/// Vertex Shader: 直接从顶点属性 MaterialInstanceID 索引
+/// Vertex Shader: 直接从顶点属性 DataIndexID 索引
 constexpr const char MF_GetMI_VS[] = 
-    "\nMaterialInstance GetMI(){return mtl.mi[MaterialInstanceID];}\n";
+    "\nMaterialInstance GetMI(){return mtl.mi[DataIndexID];}\n";
 
-/// Fragment/Geometry Shader: 从插值输入 Input.MaterialInstanceID 索引
+/// Fragment/Geometry Shader: 从插值输入 Input.DataIndexID 索引
 constexpr const char MF_GetMI_Other[] = 
-    "\nMaterialInstance GetMI(){return mtl.mi[Input.MaterialInstanceID];}\n";
+    "\nMaterialInstance GetMI(){return mtl.mi[Input.DataIndexID];}\n";
 
 /// 规范映射（文档/代码统一口径）
 ///   Canonical: GetMI()
@@ -35,13 +35,13 @@ constexpr const char MF_GetMI_Other[] =
 constexpr const char MF_GetLocalToWorld_ByAssign[] = 
     "\nmat4 GetLocalToWorld(){return l2w.mats[TransformID];}\n";
 
-constexpr const char MI_ID_OUTPUT[] = "MaterialInstanceID";
+constexpr const char MI_ID_OUTPUT[] = "DataIndexID";
 
 constexpr const char MF_HandoverMI_VS[] = 
-    "\nvoid HandoverMI(){Output.MaterialInstanceID=MaterialInstanceID;}\n";
+    "\nvoid HandoverMI(){Output.DataIndexID=DataIndexID;}\n";
 constexpr const char MF_HandoverMI_GS[] = 
-    "\nvoid HandoverMI(){Output.MaterialInstanceID=Input[0].MaterialInstanceID;}\n";
+    "\nvoid HandoverMI(){Output.DataIndexID=Input[0].DataIndexID;}\n";
 constexpr const char MF_HandoverMI_OTHER[] = 
-    "\nvoid HandoverMI(){Output.MaterialInstanceID=Input.MaterialInstanceID;}\n";
+    "\nvoid HandoverMI(){Output.DataIndexID=Input.DataIndexID;}\n";
 
 }//namespace hgl::graph::mtl::func

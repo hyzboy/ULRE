@@ -112,6 +112,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const bool infer_has_mi     = HasDescriptorNamed(def, "mtl")
                                || HasDescriptorNamed(def, "MaterialInstanceData")
                                || HasPerMaterialDescriptor(def)
+                               || HasVertexEntry(def, Assign::DataIndexID::VIS_NAME)
                                || HasVertexEntry(def, Assign::MaterialInstanceID::VIS_NAME)
                                || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
 

@@ -101,11 +101,19 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
                 bind_desc->stride   =Assign::TransformID::STRIDE_BYTES;
             }
             else
-                if(group==uint(VertexInputGroup::MaterialInstanceID))
+            if(group==uint(VertexInputGroup::DataIndexID)
+            || group==uint(VertexInputGroup::MaterialInstanceID))
             {
-                attr_desc->format   =Assign::MaterialInstanceID::VAB_FMT;
+                attr_desc->format   =Assign::DataIndexID::VAB_FMT;
                 bind_desc->inputRate=VK_VERTEX_INPUT_RATE_INSTANCE;
-                bind_desc->stride   =Assign::MaterialInstanceID::STRIDE_BYTES;
+                bind_desc->stride   =Assign::DataIndexID::STRIDE_BYTES;
+            }
+            else
+            if(group==uint(VertexInputGroup::TextureLayerID))
+            {
+                attr_desc->format   =Assign::TextureLayerID::VAB_FMT;
+                bind_desc->inputRate=VK_VERTEX_INPUT_RATE_INSTANCE;
+                bind_desc->stride   =Assign::TextureLayerID::STRIDE_BYTES;
             }
             else
             {

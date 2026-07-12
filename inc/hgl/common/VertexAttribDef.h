@@ -11,6 +11,8 @@ namespace hgl::graph
         Basic,
 
         TransformID,
+        DataIndexID,
+        TextureLayerID,
         MaterialInstanceID,
 
         JointID,
@@ -24,6 +26,8 @@ namespace hgl::graph
         "Basic",
 
         "TransformID",
+        "DataIndexID",
+        "TextureLayerID",
         "MaterialInstanceID",
 
         "JointID",

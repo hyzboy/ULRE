@@ -18,7 +18,8 @@ namespace
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Normal },
         { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
-        { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
+        { Assign::DataIndexID::VAT_FMT,    VertexInputGroup::DataIndexID,    VertexInputRate::Instance, Assign::DataIndexID::VIS_NAME },
+        { Assign::TextureLayerID::VAT_FMT, VertexInputGroup::TextureLayerID, VertexInputRate::Instance, Assign::TextureLayerID::VIS_NAME },
     };
 
     constexpr FixedDescriptorEntry GIZMO_3D_DESCRIPTORS[] = {
