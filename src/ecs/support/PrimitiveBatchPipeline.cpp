@@ -488,52 +488,9 @@ namespace hgl::ecs
 
         if (batch.mi_buffer && !batch.items.empty())
         {
-            std::shared_ptr<RenderDescriptorBindingSystem> descriptor_binding_system{};
-            if (world)
-                descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>();
-
-            if (descriptor_binding_system)
-            {
-                const uint32_t mi_data_bytes = batch.key.material->GetMIDataBytes();
-                graph::mtl::MaterializationSpec spec{};
-
-                for (size_t i = 0; i < batch.items.size(); ++i)
-                {
-                    RenderItem *item = batch.items[i];
-                    if (!item)
-                        continue;
-
-                    graph::mtl::MaterialRecipe recipe{};
-                    if (!descriptor_binding_system->BuildMaterialRecipeForRenderItem(item, recipe))
-                        continue;
-
-                    if (mi_data_bytes > 0)
-                    {
-                        for (const auto &struct_ref : recipe.structs)
-                        {
-                            if (struct_ref.struct_name.empty())
-                                continue;
-
-                            descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.struct_name,
-                                                                                   graph::mtl::DefaultCategoryForDataSlot(struct_ref.slot),
-                                                                                   mi_data_bytes);
-                        }
-                    }
-
-                    // 注意：
-                    // 当前 shader 仍直接以 DataIndexID 索引 mtl.mi[]，因此这里不能写全局 data_row。
-                    // 否则跨批次会出现 ID 连续增长并越界。
-                    // 现阶段仅执行 Resolve 以维持物化链路，VAB 仍由 WriteItems() 写入批内 MI 索引。
-                    descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, nullptr);
-                }
-
-                // DataIndexID = 批内 MaterialInstance 索引；TextureLayerID 默认 0（由 shader 侧兼容逻辑兜底）。
-                batch.mi_buffer->WriteItems(batch.items);
-            }
-            else
-            {
-                batch.mi_buffer->WriteItems(batch.items);
-            }
+            // DataIndexID = 批内 MaterialInstance 索引；TextureLayerID 默认 0（由 shader 侧兼容逻辑兜底）。
+            // Phase 4: Probe/Resolve 已在 BuildMaterialBatches() 前置执行，此处仅写实例索引缓冲。
+            batch.mi_buffer->WriteItems(batch.items);
         }
     }
 
@@ -643,6 +600,9 @@ namespace hgl::ecs
         }
 
         auto buffer_manager = GetBufferManager();
+        std::shared_ptr<RenderDescriptorBindingSystem> descriptor_binding_system{};
+        if (world)
+            descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>();
 
         for (auto& itemPtr : cache.renderItems)
         {
@@ -656,7 +616,34 @@ namespace hgl::ecs
             if (!material || !pipeline)
                 continue;
 
-            MaterialPipelineKey key(material, pipeline);
+            uint64_t spec_hash = 0;
+            if (descriptor_binding_system)
+            {
+                graph::mtl::MaterialRecipe recipe{};
+                graph::mtl::MaterializationSpec spec{};
+
+                if (descriptor_binding_system->BuildMaterialRecipeForRenderItem(item, recipe))
+                {
+                    const uint32_t mi_data_bytes = material->GetMIDataBytes();
+                    if (mi_data_bytes > 0)
+                    {
+                        for (const auto &struct_ref : recipe.structs)
+                        {
+                            if (struct_ref.struct_name.empty())
+                                continue;
+
+                            descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.struct_name,
+                                                                                   graph::mtl::DefaultCategoryForDataSlot(struct_ref.slot),
+                                                                                   mi_data_bytes);
+                        }
+                    }
+
+                    if (descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, nullptr))
+                        spec_hash = spec.spec_hash;
+                }
+            }
+
+            MaterialPipelineKey key(material, pipeline, spec_hash);
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
             if (!batch_ptr)

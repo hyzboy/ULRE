@@ -410,6 +410,7 @@ namespace hgl::ecs
     {
         materialization_struct_pool.ResetAllocations();
         materialization_index_tables.Clear();
+        materialization_resolve_cache.clear();
     }
 
     bool RenderDescriptorBindingSystem::ResolveMaterialRecipe(const graph::mtl::MaterialRecipe &recipe,
@@ -429,6 +430,21 @@ namespace hgl::ecs
 
         EnsureMaterializationCallbacks();
 
+        const uint64_t recipe_hash = graph::mtl::HashMaterialRecipe(recipe);
+        auto cache_it = materialization_resolve_cache.find(recipe_hash);
+        if (cache_it != materialization_resolve_cache.end())
+        {
+            out_spec = cache_it->second.spec;
+
+            if (out_texture_layer_row)
+                *out_texture_layer_row = cache_it->second.texture_layer_row;
+
+            if (out_data_index_row)
+                *out_data_index_row = cache_it->second.data_index_row;
+
+            return true;
+        }
+
         if (!graph::mtl::ResolveMaterializationSpec(recipe, materialization_callbacks, out_spec))
             return false;
 
@@ -442,6 +458,12 @@ namespace hgl::ecs
 
         if (out_data_index_row)
             *out_data_index_row = data_row;
+
+        MaterializationResolveCacheEntry cache_entry{};
+        cache_entry.spec = out_spec;
+        cache_entry.texture_layer_row = texture_row;
+        cache_entry.data_index_row = data_row;
+        materialization_resolve_cache[recipe_hash] = std::move(cache_entry);
 
         return true;
     }

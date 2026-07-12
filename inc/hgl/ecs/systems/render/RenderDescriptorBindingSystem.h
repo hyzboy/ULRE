@@ -5,6 +5,7 @@
 #include<hgl/mtl/MaterializationPools.h>
 #include<hgl/type/String.h>
 #include<limits>
+#include<cstdint>
 #include<vector>
 #include<unordered_map>
 #include<unordered_set>
@@ -72,6 +73,13 @@ namespace hgl::ecs
             }
         };
 
+        struct MaterializationResolveCacheEntry
+        {
+            graph::mtl::MaterializationSpec spec;
+            uint32_t texture_layer_row = 0;
+            uint32_t data_index_row = 0;
+        };
+
         // Viewport UBO — owned here, stable across swapchain resize.
         graph::StructuredBufferAccessor<graph::ViewportInfo> *viewport_ubo = nullptr;
         uint32_t pending_viewport_width  = 0;
@@ -86,6 +94,7 @@ namespace hgl::ecs
         graph::mtl::StructDataPool materialization_struct_pool;
         graph::mtl::MaterializationIndexTables materialization_index_tables;
         graph::mtl::MaterializationResolveCallbacks materialization_callbacks;
+        std::unordered_map<uint64_t, MaterializationResolveCacheEntry> materialization_resolve_cache;
         uint32_t materialization_last_reset_frame = std::numeric_limits<uint32_t>::max();
 
     public:

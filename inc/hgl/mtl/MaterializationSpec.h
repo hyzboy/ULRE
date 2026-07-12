@@ -50,6 +50,7 @@ namespace hgl::graph::mtl
 
     // 计算 MaterializationSpec 的稳定内容哈希。
     // 目的：作为 Shader/PSO/布局缓存键，保证同内容同 key，不同内容不同 key。
+    // 注意：不纳入 struct_index/byte_offset 等运行时分配位置信息，避免跨帧分配顺序扰动缓存键。
     inline uint64_t HashMaterializationSpec(const MaterializationSpec &spec) noexcept
     {
         uint64 hash = hgl::hash::FNV1aInit<uint64>();
@@ -77,8 +78,6 @@ namespace hgl::graph::mtl
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.category);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_binding);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.struct_index);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.byte_offset);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.byte_stride);
         }
 

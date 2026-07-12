@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <functional>
+#include <cstdint>
 
 namespace hgl
 {
@@ -21,20 +22,27 @@ namespace hgl::ecs
     {
         hgl::graph::Material* material;
         hgl::graph::Pipeline* pipeline;
+        uint64_t materialization_spec_hash;
 
-        MaterialPipelineKey(hgl::graph::Material* m = nullptr, hgl::graph::Pipeline* p = nullptr)
-            : material(m), pipeline(p) {}
+        MaterialPipelineKey(hgl::graph::Material* m = nullptr,
+                            hgl::graph::Pipeline* p = nullptr,
+                            uint64_t spec_hash = 0)
+            : material(m), pipeline(p), materialization_spec_hash(spec_hash) {}
 
         bool operator<(const MaterialPipelineKey& other) const
         {
             if (material < other.material) return true;
             if (material > other.material) return false;
-            return pipeline < other.pipeline;
+            if (pipeline < other.pipeline) return true;
+            if (pipeline > other.pipeline) return false;
+            return materialization_spec_hash < other.materialization_spec_hash;
         }
 
         bool operator==(const MaterialPipelineKey& other) const
         {
-            return material == other.material && pipeline == other.pipeline;
+            return material == other.material
+                && pipeline == other.pipeline
+                && materialization_spec_hash == other.materialization_spec_hash;
         }
     };
 }//namespace hgl::ecs
@@ -49,8 +57,8 @@ namespace std
         {
             size_t h1 = std::hash<hgl::graph::Material*>{}(key.material);
             size_t h2 = std::hash<hgl::graph::Pipeline*>{}(key.pipeline);
-            // Combine hashes using XOR and bit shift
-            return h1 ^ (h2 << 1);
+            size_t h3 = std::hash<uint64_t>{}(key.materialization_spec_hash);
+            return h1 ^ (h2 << 1) ^ (h3 << 2);
         }
     };
 }//namespace std
