@@ -74,6 +74,7 @@ namespace hgl::ecs
         if (mi_buffer)
         {
             VkBuffer data_index_vab = mi_buffer->GetDataIndexVAB();
+            VkBuffer texture_layer_vab = mi_buffer->GetTextureLayerVAB();
 
             if (data_index_vab == VK_NULL_HANDLE)
             {
@@ -84,6 +85,15 @@ namespace hgl::ecs
                 if (!vab_list->IsFull() && !vab_list->Add(data_index_vab, 0))
                 {
                     std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS DataIndex VAB!" << std::endl;
+                    return false;
+                }
+            }
+
+            if (texture_layer_vab != VK_NULL_HANDLE && !vab_list->IsFull())
+            {
+                if (!vab_list->Add(texture_layer_vab, 0))
+                {
+                    std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS TextureLayer VAB!" << std::endl;
                     return false;
                 }
             }

@@ -5,6 +5,7 @@
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/core/MaterialBatch.h>
+#include<hgl/ecs/core/RenderItem.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -320,6 +321,29 @@ namespace hgl::ecs
             fallback_struct.struct_name = "LegacyMaterialInstance_" + std::to_string(material->GetMIDataBytes());
             fallback_struct.shared_across_instances = false;
             out_recipe.structs.emplace_back(std::move(fallback_struct));
+        }
+
+        return true;
+    }
+
+    bool RenderDescriptorBindingSystem::BuildMaterialRecipeForRenderItem(const RenderItem *item,
+                                                                         graph::mtl::MaterialRecipe &out_recipe) const
+    {
+        out_recipe = {};
+        if (!item)
+            return false;
+
+        graph::Material *material = item->GetMaterial();
+        if (!BuildMaterialRecipeForMaterial(material, out_recipe))
+            return false;
+
+        graph::MaterialInstance *mi = item->GetMaterialInstance();
+        if (mi)
+        {
+            if (!out_recipe.domain.empty())
+                out_recipe.domain += "|";
+            out_recipe.domain += "mi:";
+            out_recipe.domain += std::to_string(mi->GetMIID());
         }
 
         return true;

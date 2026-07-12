@@ -494,35 +494,42 @@ namespace hgl::ecs
 
             if (descriptor_binding_system)
             {
-                graph::mtl::MaterialRecipe recipe{};
-                if (!descriptor_binding_system->BuildMaterialRecipeForMaterial(batch.key.material, recipe))
-                {
-                    batch.mi_buffer->WriteItems(batch.items);
-                    return;
-                }
-
                 const uint32_t mi_data_bytes = batch.key.material->GetMIDataBytes();
-                if (mi_data_bytes > 0)
-                {
-                    for (const auto &struct_ref : recipe.structs)
-                    {
-                        if (struct_ref.struct_name.empty())
-                            continue;
-
-                        descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.struct_name,
-                                                                               graph::mtl::DefaultCategoryForDataSlot(struct_ref.slot),
-                                                                               mi_data_bytes);
-                    }
-                }
 
                 std::vector<uint16> data_index_rows(batch.items.size(), 0);
+                std::vector<uint16> texture_layer_rows(batch.items.size(), 0);
                 graph::mtl::MaterializationSpec spec{};
 
                 for (size_t i = 0; i < batch.items.size(); ++i)
                 {
-                    uint32_t data_row = 0;
-                    if (!descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, &data_row))
+                    RenderItem *item = batch.items[i];
+                    if (!item)
                         continue;
+
+                    graph::mtl::MaterialRecipe recipe{};
+                    if (!descriptor_binding_system->BuildMaterialRecipeForRenderItem(item, recipe))
+                        continue;
+
+                    if (mi_data_bytes > 0)
+                    {
+                        for (const auto &struct_ref : recipe.structs)
+                        {
+                            if (struct_ref.struct_name.empty())
+                                continue;
+
+                            descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.struct_name,
+                                                                                   graph::mtl::DefaultCategoryForDataSlot(struct_ref.slot),
+                                                                                   mi_data_bytes);
+                        }
+                    }
+
+                    uint32_t texture_row = 0;
+                    uint32_t data_row = 0;
+                    if (!descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, &texture_row, &data_row))
+                        continue;
+
+                    if (texture_row <= std::numeric_limits<uint16>::max())
+                        texture_layer_rows[i] = static_cast<uint16>(texture_row);
 
                     if (data_row > std::numeric_limits<uint16>::max())
                         continue;
@@ -530,7 +537,7 @@ namespace hgl::ecs
                     data_index_rows[i] = static_cast<uint16>(data_row);
                 }
 
-                batch.mi_buffer->WriteItems(batch.items, &data_index_rows);
+                batch.mi_buffer->WriteItems(batch.items, &data_index_rows, &texture_layer_rows);
             }
             else
             {

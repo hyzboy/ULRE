@@ -104,6 +104,9 @@ namespace hgl::ecs
         uint32_t data_index_node_count;             ///<DataIndex节点数量
         graph::VAB* data_index_vab;                 ///<DataIndex行索引分发VAB(R16UI格式)
         VkBuffer data_index_vab_buffer;             ///<DataIndex行索引分发Buffer
+        uint32_t texture_layer_node_count;          ///<TextureLayer节点数量
+        graph::VAB* texture_layer_vab;              ///<TextureLayer行索引分发VAB(R16UI格式)
+        VkBuffer texture_layer_vab_buffer;          ///<TextureLayer行索引分发Buffer
 
     private:
         void Clear();
@@ -124,6 +127,11 @@ namespace hgl::ecs
         const VkBuffer GetDataIndexVAB() const { return data_index_vab_buffer; }
 
         /**
+         * TextureLayer 间接表行索引 VAB（为后续绘制输入接线预留）。
+         */
+        const VkBuffer GetTextureLayerVAB() const { return texture_layer_vab_buffer; }
+
+        /**
          * 绑定材质实例数据到材质
          */
         void BindMaterialInstance(graph::Material* mtl) const;
@@ -132,9 +140,11 @@ namespace hgl::ecs
          * 写入所有RenderItem的材质实例数据
          * @param items RenderItem列表
          * @param data_index_rows 可选 DataIndex 行索引（与 items 一一对应）
+         * @param texture_layer_rows 可选 TextureLayer 行索引（与 items 一一对应）
          */
         void WriteItems(const std::vector<RenderItem*>& items,
-                        const std::vector<uint16> *data_index_rows = nullptr);
+                        const std::vector<uint16> *data_index_rows = nullptr,
+                        const std::vector<uint16> *texture_layer_rows = nullptr);
 
         /**
          * 更新单个RenderItem的材质实例数据

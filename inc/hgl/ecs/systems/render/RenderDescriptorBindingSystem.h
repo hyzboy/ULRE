@@ -30,6 +30,8 @@ namespace hgl::graph
 
 namespace hgl::ecs
 {
+    class RenderItem;
+
     /**
      * RenderDescriptorBindingSystem
      *
@@ -128,6 +130,8 @@ namespace hgl::ecs
                                    uint32_t *out_data_index_row = nullptr);
         bool BuildMaterialRecipeForMaterial(const graph::Material *material,
                                             graph::mtl::MaterialRecipe &out_recipe) const;
+        bool BuildMaterialRecipeForRenderItem(const RenderItem *item,
+                                              graph::mtl::MaterialRecipe &out_recipe) const;
         bool GetMaterializationPoolStats(uint32_t &texture_count,
                                          uint32_t &struct_layout_count,
                                          uint32_t &texture_layer_rows,

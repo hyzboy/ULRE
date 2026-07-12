@@ -24,6 +24,9 @@ namespace hgl::ecs
         , data_index_node_count(0)
         , data_index_vab(nullptr)
         , data_index_vab_buffer(nullptr)
+        , texture_layer_node_count(0)
+        , texture_layer_vab(nullptr)
+        , texture_layer_vab_buffer(nullptr)
     {
         if (mtl)
         {
@@ -65,22 +68,28 @@ namespace hgl::ecs
                 buffer_manager->Release(material_instance_vab);
             if (data_index_vab)
                 buffer_manager->Release(data_index_vab);
+            if (texture_layer_vab)
+                buffer_manager->Release(texture_layer_vab);
             material_instance_buffer = nullptr;
             material_instance_vab = nullptr;
             data_index_vab = nullptr;
+            texture_layer_vab = nullptr;
         }
         else
         {
             SAFE_CLEAR(material_instance_buffer);
             SAFE_CLEAR(material_instance_vab);
             SAFE_CLEAR(data_index_vab);
+            SAFE_CLEAR(texture_layer_vab);
         }
 
         mi_set.Clear();
         node_count = 0;
         data_index_node_count = 0;
+        texture_layer_node_count = 0;
         material_instance_vab_buffer = nullptr;
         data_index_vab_buffer = nullptr;
+        texture_layer_vab_buffer = nullptr;
     }
 
     void MaterialInstanceAssignmentBuffer::StatMaterialInstance(const std::vector<RenderItem*>& items)
@@ -219,7 +228,8 @@ namespace hgl::ecs
     }
 
     void MaterialInstanceAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items,
-                                                      const std::vector<uint16> *data_index_rows)
+                                                      const std::vector<uint16> *data_index_rows,
+                                                      const std::vector<uint16> *texture_layer_rows)
     {
         const size_t item_count = items.size();
 
@@ -337,18 +347,67 @@ namespace hgl::ecs
             }
         }
 
+        // 2.2 创建或重用 TextureLayer VAB（行索引分发）
+        {
+            if (!texture_layer_vab)
+            {
+                texture_layer_node_count = power_to_2(item_count);
+            }
+            else if (texture_layer_node_count < item_count)
+            {
+                texture_layer_node_count = power_to_2(item_count);
+                if (buffer_manager)
+                {
+                    buffer_manager->Release(texture_layer_vab);
+                    texture_layer_vab = nullptr;
+                }
+                else
+                {
+                    SAFE_CLEAR(texture_layer_vab);
+                }
+            }
+
+            if (!texture_layer_vab)
+            {
+                if (buffer_manager)
+                {
+                    texture_layer_vab = buffer_manager->CreateVAB(VK_FORMAT_R16_UINT, texture_layer_node_count);
+                    texture_layer_vab_buffer = texture_layer_vab ? texture_layer_vab->GetVkBuffer() : nullptr;
+
+                #ifdef _DEBUG
+                    auto device = buffer_manager->GetDevice();
+                    graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
+                    if (du && texture_layer_vab)
+                    {
+                        du->SetBuffer(texture_layer_vab->GetVkBuffer(), "ECS:VAB:Buffer:TextureLayerRow");
+                        du->SetDeviceMemory(texture_layer_vab->GetVkMemory(), "ECS:VAB:Memory:TextureLayerRow");
+                    }
+                #endif//_DEBUG
+                }
+            }
+
+            if (!texture_layer_vab)
+            {
+                std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: TextureLayer VAB allocation failed" << std::endl;
+                return;
+            }
+        }
+
         // 3. 生成材质实例索引列表
         {
             uint16* mi_ptr = (uint16*)(material_instance_vab->Map(0, item_count));
             uint16* data_index_ptr = (uint16*)(data_index_vab->Map(0, item_count));
+            uint16* texture_layer_ptr = (uint16*)(texture_layer_vab->Map(0, item_count));
 
-            if (!mi_ptr || !data_index_ptr)
+            if (!mi_ptr || !data_index_ptr || !texture_layer_ptr)
             {
                 std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: index VAB map failed" << std::endl;
                 if (mi_ptr)
                     material_instance_vab->Unmap();
                 if (data_index_ptr)
                     data_index_vab->Unmap();
+                if (texture_layer_ptr)
+                    texture_layer_vab->Unmap();
                 return;
             }
 
@@ -360,22 +419,29 @@ namespace hgl::ecs
                 {
                     *mi_ptr = 0;
                     *data_index_ptr = 0;
+                    *texture_layer_ptr = 0;
                     ++mi_ptr;
                     ++data_index_ptr;
+                    ++texture_layer_ptr;
                     continue;
                 }
 
                 graph::MaterialInstance* mi = item->GetMaterialInstance();
                 uint16 mi_index = mi_set.Find(mi);
                 uint16 data_index = mi_index;
+                uint16 texture_layer = 0;
 
                 if (data_index_rows && i < data_index_rows->size())
                     data_index = (*data_index_rows)[i];
+                if (texture_layer_rows && i < texture_layer_rows->size())
+                    texture_layer = (*texture_layer_rows)[i];
 
                 *mi_ptr = mi_index;
                 *data_index_ptr = data_index;
+                *texture_layer_ptr = texture_layer;
                 ++mi_ptr;
                 ++data_index_ptr;
+                ++texture_layer_ptr;
 
                 // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个
                 // {
@@ -387,6 +453,7 @@ namespace hgl::ecs
 
             material_instance_vab->Unmap();
             data_index_vab->Unmap();
+            texture_layer_vab->Unmap();
         }
     }
 }//namespace hgl::ecs
