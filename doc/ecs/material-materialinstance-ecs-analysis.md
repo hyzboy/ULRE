@@ -180,7 +180,7 @@ ECS 使用 `MaterialPipelineKey {material*, pipeline*}` 作为 batch key。
 关键点：
 
 - descriptor 里已经有 LocalToWorld / MaterialInstance 的大数组缓冲。
-- 顶点输入里有 TransformID / MaterialInstanceID 两个实例属性。
+- 顶点输入里有 TransformID / DataIndexID（新路径可附带 TextureLayerID）实例属性。
 - shader 可用 ID 去索引对应数组，拿到矩阵与材质实例参数。
 
 ---

@@ -17,7 +17,7 @@ SCENE_CAMERA_UBO;
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
 
-// Vertex attributes: Position + Color + TransformID（无 MaterialInstanceID）
+// Vertex attributes: Position + Color + TransformID（无 DataIndexID/TextureLayerID）
 layout(location=0) in vec3 Position;
 layout(location=1) in vec4 Color;
 layout(location=2) in uint TransformID;

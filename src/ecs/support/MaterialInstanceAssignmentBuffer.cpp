@@ -287,8 +287,8 @@ namespace hgl::ecs
                     graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
                     if (du && material_instance_vab)
                     {
-                        du->SetBuffer(material_instance_vab->GetVkBuffer(), "ECS:VAB:Buffer:MaterialInstanceID");
-                        du->SetDeviceMemory(material_instance_vab->GetVkMemory(), "ECS:VAB:Memory:MaterialInstanceID");
+                        du->SetBuffer(material_instance_vab->GetVkBuffer(), "ECS:VAB:Buffer:MaterialDataIndex");
+                        du->SetDeviceMemory(material_instance_vab->GetVkMemory(), "ECS:VAB:Memory:MaterialDataIndex");
                     }
                 #endif//_DEBUG
                 }
@@ -411,6 +411,11 @@ namespace hgl::ecs
                 return;
             }
 
+            const uint16 max_valid_data_index = mi_set.GetCount() > 0
+                                              ? static_cast<uint16>(mi_set.GetCount() - 1)
+                                              : static_cast<uint16>(0);
+            bool warned_invalid_data_index = false;
+
             for (size_t i = 0; i < item_count; i++)
             {
                 RenderItem* item = items[i];
@@ -432,7 +437,22 @@ namespace hgl::ecs
                 uint16 texture_layer = 0;
 
                 if (data_index_rows && i < data_index_rows->size())
+                {
                     data_index = (*data_index_rows)[i];
+                    if (data_index > max_valid_data_index)
+                    {
+                        if (!warned_invalid_data_index)
+                        {
+                            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: DataIndexID overflow detected, fallback to 0. "
+                                      << "value=" << data_index
+                                      << ", max_valid=" << max_valid_data_index
+                                      << ", item_count=" << item_count
+                                      << std::endl;
+                            warned_invalid_data_index = true;
+                        }
+                        data_index = 0;
+                    }
+                }
                 if (texture_layer_rows && i < texture_layer_rows->size())
                     texture_layer = (*texture_layer_rows)[i];
 

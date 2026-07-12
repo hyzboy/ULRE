@@ -7,7 +7,7 @@ namespace hgl::graph{
 /**
 * <summary>
 *
-*    layout(location=?) in uint MaterialInstanceID
+*    layout(location=?) in uint DataIndexID
 *
 *    #define MI_MAX_COUNT ???                //该值由引擎根据 UBORange/sizeof(MaterialInstance) 计算出来
 *
@@ -25,7 +25,7 @@ namespace hgl::graph{
 *
 *    void main()
 *    {
-*        MaterialInstance mi=mtl.mi[(MaterialInstanceID>=MI_MAX_COUNT)?:0:MaterialInstanceID];   //如果超出范围则使用0号材质实例数据
+*        MaterialInstance mi=mtl.mi[(DataIndexID>=MI_MAX_COUNT)?:0:DataIndexID];   //如果超出范围则使用0号材质实例数据
 *
 *        vec4 BaseColor  =mi.BaseColor;
 *        vec4 Emissive   =mi.Emissive;
