@@ -3,6 +3,8 @@
 #include<hgl/vk/VK.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/mtl/StdMaterial.h>
+#include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/mtl/MaterializationSpec.h>
 #include<hgl/mtl/new/MaterialVariantKey.h>
 
 namespace hgl::graph::mtl{
@@ -55,4 +57,3 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id);
 bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out_preset);
 
 }//namespace hgl::graph::mtl
-
