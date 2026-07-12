@@ -17,18 +17,20 @@ SCENE_CAMERA_UBO;
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
 
-// Vertex attributes: Position + TexCoord + Normal + TransformID + MaterialInstanceID
+// Vertex attributes: Position + TexCoord + Normal + TransformID + DataIndexID + TextureLayerID
 layout(location=0) in vec3 Position;
 layout(location=1) in vec2 TexCoord;
 layout(location=2) in vec3 Normal;
 layout(location=3) in uint TransformID;
-layout(location=4) in uint MaterialInstanceID;
+layout(location=4) in uint DataIndexID;
+layout(location=5) in uint TextureLayerID;
 
 // Outputs to FS
-layout(location=0) flat out uint fragMaterialInstanceID;
-layout(location=1) out vec3 fragWorldPos;
-layout(location=2) out vec3 fragWorldNormal;
-layout(location=3) out vec2 fragUV0;
+layout(location=0) flat out uint fragDataIndexID;
+layout(location=1) flat out uint fragTextureLayerID;
+layout(location=2) out vec3 fragWorldPos;
+layout(location=3) out vec3 fragWorldNormal;
+layout(location=4) out vec2 fragUV0;
 
 void main()
 {
@@ -36,7 +38,8 @@ void main()
     vec4 worldPos = l2w_mat * vec4(Position, 1.0);
     vec3 worldNormal = normalize(mat3(l2w_mat) * Normal);
 
-    fragMaterialInstanceID = MaterialInstanceID;
+    fragDataIndexID = DataIndexID;
+    fragTextureLayerID = TextureLayerID;
     fragWorldPos   = worldPos.xyz;
     fragWorldNormal = worldNormal;
     fragUV0        = TexCoord;

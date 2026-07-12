@@ -17,22 +17,25 @@ SCENE_CAMERA_UBO;
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
 
-// Vertex attributes: Position + Luminance + TransformID + MaterialInstanceID
+// Vertex attributes: Position + Luminance + TransformID + DataIndexID + TextureLayerID
 layout(location=0) in vec3 Position;
 layout(location=1) in float Luminance;
 layout(location=2) in uint TransformID;
-layout(location=3) in uint MaterialInstanceID;
+layout(location=3) in uint DataIndexID;
+layout(location=4) in uint TextureLayerID;
 
 // Output to FS
-layout(location=0) flat out uint fragMaterialInstanceID;
-layout(location=1)      out float fragLuminance;
+layout(location=0) flat out uint fragDataIndexID;
+layout(location=1) flat out uint fragTextureLayerID;
+layout(location=2)      out float fragLuminance;
 
 void main()
 {
     mat4 l2w_mat = l2w.mats[TransformID];
     vec4 worldPos = l2w_mat * vec4(Position, 1.0);
 
-    fragMaterialInstanceID = MaterialInstanceID;
+    fragDataIndexID = DataIndexID;
+    fragTextureLayerID = TextureLayerID;
     fragLuminance = Luminance;
 
     gl_Position = camera.vp * worldPos;

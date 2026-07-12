@@ -30,15 +30,16 @@ struct MaterialInstance {
 };
 MI_SSBO_SCALAR;
 
-// Vertex attributes: Position + TransformID + MaterialInstanceID
+// Vertex attributes: Position + TransformID + DataIndexID + TextureLayerID
 layout(location=0) in vec3  Position;
 layout(location=1) in uint  TransformID;
-layout(location=2) in uint  MaterialInstanceID;
+layout(location=2) in uint  DataIndexID;
+layout(location=3) in uint  TextureLayerID;
 
 // Output to FS
 layout(location=0) out vec2 fragTexCoord;
 
-MaterialInstance GetMI() { return mtl.mi[MaterialInstanceID]; }
+MaterialInstance GetMI() { return mtl.mi[DataIndexID]; }
 
 void main()
 {

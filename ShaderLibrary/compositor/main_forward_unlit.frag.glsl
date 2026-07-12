@@ -9,7 +9,8 @@
 //   Transform set=1 : l2w=0
 //   Material set=2 : mtl=0
 
-layout(location=0) flat in uint fragMaterialInstanceID;
+layout(location=0) flat in uint fragDataIndexID;
+layout(location=1) flat in uint fragTextureLayerID;
 
 layout(location=0) out vec4 outColor;
 
@@ -27,8 +28,9 @@ void main()
     si.viewDir     = vec3(0.0, 0.0, 1.0);
     si.screenPos   = vec2(0.0);
     si.luminance   = 0.0;
+    si.textureLayerID = fragTextureLayerID;
 
-    SurfaceOutput so = EvalSurface(si, fragMaterialInstanceID);
+    SurfaceOutput so = EvalSurface(si, fragDataIndexID);
 
     // Unlit: 直接输出 baseColor，不做任何光照计算
     outColor = vec4(so.baseColor, so.alpha);

@@ -29,20 +29,24 @@ L2W_SSBO;
 
 // ECS instance-rate attributes (dual ID)
 #if GEOMETRY_FETCH_SSBO
-    // SSBO 平台: TransformID = gl_InstanceIndex, MaterialInstanceID 由 push constant 或 SSBO 提供
+    // SSBO 平台: TransformID/DataIndexID/TextureLayerID 由实例索引暂代
     #define GET_TRANSFORM_ID()          gl_InstanceIndex
-    #define GET_MATERIAL_INSTANCE_ID()  gl_InstanceIndex
+    #define GET_DATA_INDEX_ID()         gl_InstanceIndex
+    #define GET_TEXTURE_LAYER_ID()      gl_InstanceIndex
 #else
     layout(location=3) in uint TransformID;
-    layout(location=4) in uint MaterialInstanceID;
+    layout(location=4) in uint DataIndexID;
+    layout(location=5) in uint TextureLayerID;
     #define GET_TRANSFORM_ID()          TransformID
-    #define GET_MATERIAL_INSTANCE_ID()  MaterialInstanceID
+    #define GET_DATA_INDEX_ID()         DataIndexID
+    #define GET_TEXTURE_LAYER_ID()      TextureLayerID
 #endif
 
 layout(location=0) out vec3 fragWorldPos;
 layout(location=1) out vec3 fragWorldNormal;
 layout(location=2) out vec2 fragUV0;
-layout(location=3) flat out uint fragMaterialInstanceID;
+layout(location=3) flat out uint fragDataIndexID;
+layout(location=4) flat out uint fragTextureLayerID;
 
 void main()
 {
@@ -63,7 +67,8 @@ void main()
     fragWorldPos = worldPos.xyz;
     fragWorldNormal = mat3(l2w_mat) * normal;
     fragUV0 = uv0;
-    fragMaterialInstanceID = GET_MATERIAL_INSTANCE_ID();
+    fragDataIndexID = GET_DATA_INDEX_ID();
+    fragTextureLayerID = GET_TEXTURE_LAYER_ID();
 
     gl_Position = camera.vp * worldPos;   // vp 已是 camera-relative
 }

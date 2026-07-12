@@ -1,10 +1,10 @@
 // PureColor2D vertex shader
 #include "2d/common/vertex_prefix_2d.glsl"
 
-layout(location=0) flat out uint fragMIID;
+layout(location=0) flat out uint fragDataIndexID;
 
 void main()
 {
-    fragMIID = MaterialInstanceID;
+    fragDataIndexID = DataIndexID;
     gl_Position = GetPosition2D();
 }

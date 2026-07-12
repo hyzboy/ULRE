@@ -3,12 +3,12 @@
 
 layout(location=NEXT_LOC) in vec2 TexCoord;
 
-layout(location=0) flat out uint fragMIID;
+layout(location=0) flat out uint fragDataIndexID;
 layout(location=1) out vec2 fragTexCoord;
 
 void main()
 {
-    fragMIID = MaterialInstanceID;
+    fragDataIndexID = DataIndexID;
     fragTexCoord = TexCoord;
     gl_Position = GetPosition2D();
 }

@@ -8,8 +8,9 @@
 //   Transform set=1 : (unused in FS)
 //   Material set=2 : mtl=0 (MI SSBO, 由 surface function 声明)
 
-layout(location=0) flat in uint fragMaterialInstanceID;
-layout(location=1) in float fragLuminance;
+layout(location=0) flat in uint fragDataIndexID;
+layout(location=1) flat in uint fragTextureLayerID;
+layout(location=2) in float fragLuminance;
 
 layout(location=0) out vec4 outColor;
 
@@ -27,8 +28,9 @@ void main()
     si.viewDir     = vec3(0.0, 0.0, 1.0);
     si.screenPos   = vec2(0.0);
     si.luminance   = fragLuminance;
+    si.textureLayerID = fragTextureLayerID;
 
-    SurfaceOutput so = EvalSurface(si, fragMaterialInstanceID);
+    SurfaceOutput so = EvalSurface(si, fragDataIndexID);
 
     outColor = vec4(so.baseColor, so.alpha);
 }

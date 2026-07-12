@@ -65,7 +65,10 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     vec3 skyAmbient = ULRE_GetSkyAmbientColor();
 
     vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
-    float layer = float(mi.texture_id);
+    uint layer_u = si.textureLayerID;
+    if (layer_u == 0u && mi.texture_id != 0u)
+        layer_u = mi.texture_id;
+    float layer = float(layer_u);
     albedo *= texture(TexAlbedo, vec3(si.uv0, layer)).rgb;
 
     float metallic  = clamp(mi.metallic,  0.0, 1.0);

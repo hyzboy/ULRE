@@ -211,6 +211,8 @@ namespace
             }
 
             if(vif->group==VertexInputGroup::TransformID
+             ||vif->group==VertexInputGroup::DataIndexID
+             ||vif->group==VertexInputGroup::TextureLayerID
              ||vif->group==VertexInputGroup::MaterialInstanceID)
                 continue;
 

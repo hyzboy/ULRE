@@ -495,9 +495,6 @@ namespace hgl::ecs
             if (descriptor_binding_system)
             {
                 const uint32_t mi_data_bytes = batch.key.material->GetMIDataBytes();
-
-                std::vector<uint16> data_index_rows(batch.items.size(), 0);
-                std::vector<uint16> texture_layer_rows(batch.items.size(), 0);
                 graph::mtl::MaterializationSpec spec{};
 
                 for (size_t i = 0; i < batch.items.size(); ++i)
@@ -523,21 +520,15 @@ namespace hgl::ecs
                         }
                     }
 
-                    uint32_t texture_row = 0;
-                    uint32_t data_row = 0;
-                    if (!descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, &texture_row, &data_row))
-                        continue;
-
-                    if (texture_row <= std::numeric_limits<uint16>::max())
-                        texture_layer_rows[i] = static_cast<uint16>(texture_row);
-
-                    if (data_row > std::numeric_limits<uint16>::max())
-                        continue;
-
-                    data_index_rows[i] = static_cast<uint16>(data_row);
+                    // 注意：
+                    // 当前 shader 仍直接以 DataIndexID 索引 mtl.mi[]，因此这里不能写全局 data_row。
+                    // 否则跨批次会出现 ID 连续增长并越界。
+                    // 现阶段仅执行 Resolve 以维持物化链路，VAB 仍由 WriteItems() 写入批内 MI 索引。
+                    descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, nullptr);
                 }
 
-                batch.mi_buffer->WriteItems(batch.items, &data_index_rows, &texture_layer_rows);
+                // DataIndexID = 批内 MaterialInstance 索引；TextureLayerID 默认 0（由 shader 侧兼容逻辑兜底）。
+                batch.mi_buffer->WriteItems(batch.items);
             }
             else
             {

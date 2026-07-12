@@ -27,16 +27,20 @@ L2W_SSBO;
 // ECS instance-rate attributes (dual ID)
 #if GEOMETRY_FETCH_SSBO
     #define GET_TRANSFORM_ID()          gl_InstanceIndex
-    #define GET_MATERIAL_INSTANCE_ID()  gl_InstanceIndex
+    #define GET_DATA_INDEX_ID()         gl_InstanceIndex
+    #define GET_TEXTURE_LAYER_ID()      gl_InstanceIndex
 #else
     layout(location=1) in uint TransformID;
-    layout(location=2) in uint MaterialInstanceID;
+    layout(location=2) in uint DataIndexID;
+    layout(location=3) in uint TextureLayerID;
     #define GET_TRANSFORM_ID()          TransformID
-    #define GET_MATERIAL_INSTANCE_ID()  MaterialInstanceID
+    #define GET_DATA_INDEX_ID()         DataIndexID
+    #define GET_TEXTURE_LAYER_ID()      TextureLayerID
 #endif
 
 // Outputs to FS
-layout(location=0) flat out uint fragMaterialInstanceID;
+layout(location=0) flat out uint fragDataIndexID;
+layout(location=1) flat out uint fragTextureLayerID;
 
 void main()
 {
@@ -50,6 +54,7 @@ void main()
 #endif
 
     vec4 worldPos = l2w_mat * vec4(pos, 1.0);
-    fragMaterialInstanceID = GET_MATERIAL_INSTANCE_ID();
+    fragDataIndexID = GET_DATA_INDEX_ID();
+    fragTextureLayerID = GET_TEXTURE_LAYER_ID();
     gl_Position = camera.vp * worldPos;
 }

@@ -23,6 +23,7 @@ void main()
     si.viewDir     = vec3(0.0, 0.0, 1.0);
     si.screenPos   = vec2(0.0);
     si.luminance   = 0.0;
+    si.textureLayerID = 0u;
 
     SurfaceOutput so = EvalSurface(si, 0u);
 

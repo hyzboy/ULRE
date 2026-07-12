@@ -13,9 +13,10 @@
 #include "common/scene_ubo.glsl"
 SCENE_CAMERA_UBO;
 
-layout(location=0) flat in uint fragMaterialInstanceID;
-layout(location=1) in vec3 fragWorldPos;
-layout(location=2) in vec3 fragWorldNormal;
+layout(location=0) flat in uint fragDataIndexID;
+layout(location=1) flat in uint fragTextureLayerID;
+layout(location=2) in vec3 fragWorldPos;
+layout(location=3) in vec3 fragWorldNormal;
 
 layout(location=0) out vec4 outColor;
 
@@ -33,8 +34,9 @@ void main()
     si.viewDir     = normalize(-fragWorldPos);   // camera-relative: camera at origin
     si.screenPos   = vec2(0.0);
     si.luminance   = 0.0;
+    si.textureLayerID = fragTextureLayerID;
 
-    SurfaceOutput so = EvalSurface(si, fragMaterialInstanceID);
+    SurfaceOutput so = EvalSurface(si, fragDataIndexID);
 
     // Unlit: 直接输出 Surface Function 的结果（光照由 Surface Function 内部处理）
     outColor = vec4(so.baseColor, so.alpha);

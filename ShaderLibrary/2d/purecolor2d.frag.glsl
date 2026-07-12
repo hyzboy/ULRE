@@ -8,11 +8,11 @@ struct MaterialInstance {
 
 MI_SSBO;
 
-layout(location=0) flat in uint fragMIID;
+layout(location=0) flat in uint fragDataIndexID;
 
 layout(location=0) out vec4 FragColor;
 
 void main()
 {
-    FragColor = mtl.mi[fragMIID].Color;
+    FragColor = mtl.mi[fragDataIndexID].Color;
 }

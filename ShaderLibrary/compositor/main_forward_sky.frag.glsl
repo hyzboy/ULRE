@@ -32,6 +32,7 @@ void main()
     si.viewDir      = fragDirection;
     si.screenPos    = vec2(0.0);
     si.luminance    = 0.0;
+    si.textureLayerID = 0u;
 
     SurfaceOutput so = EvalSurface(si, 0u);
 

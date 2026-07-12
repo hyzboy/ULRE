@@ -10,7 +10,8 @@
 layout(location=0) in vec3 fragWorldPos;
 layout(location=1) in vec3 fragWorldNormal;
 layout(location=2) in vec2 fragUV0;
-layout(location=3) flat in uint fragMaterialInstanceID;
+layout(location=3) flat in uint fragDataIndexID;
+layout(location=4) flat in uint fragTextureLayerID;
 
 layout(location=0) out vec4 outColor;
 
@@ -34,13 +35,14 @@ MI_SSBO;
 
 void main()
 {
-    MaterialInstance mi = mtl.mi[fragMaterialInstanceID];
+    MaterialInstance mi = mtl.mi[fragDataIndexID];
 
     SurfaceInput si;
     si.worldPos    = fragWorldPos;
     si.worldNormal = normalize(fragWorldNormal);
     si.uv0         = fragUV0;
     si.viewDir     = normalize(camera.pos - fragWorldPos);
+    si.textureLayerID = fragTextureLayerID;
 
     SurfaceOutput so = EvalSurface(si, mi);
 
