@@ -70,20 +70,20 @@ namespace hgl::ecs
             }
         }
 
-        // 如果有ECS MaterialInstance分配缓冲，绑定MaterialInstance索引VAB
+        // Phase 3: 绑定 DataIndex 行索引 VAB（迁移期间数值与 MI 索引保持一致）
         if (mi_buffer)
         {
-            VkBuffer mi_vab = mi_buffer->GetMaterialInstanceVAB();
+            VkBuffer data_index_vab = mi_buffer->GetDataIndexVAB();
 
-            if (mi_vab == VK_NULL_HANDLE)
+            if (data_index_vab == VK_NULL_HANDLE)
             {
-                std::cout << "[PipelineMaterialRenderer::BindVAB] WARNING: MI VAB is null!" << std::endl;
+                std::cout << "[PipelineMaterialRenderer::BindVAB] WARNING: DataIndex VAB is null!" << std::endl;
             }
             else
             {
-                if (!vab_list->IsFull() && !vab_list->Add(mi_vab, 0))
+                if (!vab_list->IsFull() && !vab_list->Add(data_index_vab, 0))
                 {
-                    std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS MI VAB!" << std::endl;
+                    std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS DataIndex VAB!" << std::endl;
                     return false;
                 }
             }
@@ -258,4 +258,3 @@ namespace hgl::ecs
         }
     }
 }//namespace hgl::ecs
-

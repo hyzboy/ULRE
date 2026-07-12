@@ -4,6 +4,7 @@
 #include<hgl/mtl/DescriptorBindingContract.h>
 #include<hgl/mtl/MaterializationPools.h>
 #include<hgl/type/String.h>
+#include<limits>
 #include<vector>
 #include<unordered_map>
 #include<unordered_set>
@@ -83,6 +84,7 @@ namespace hgl::ecs
         graph::mtl::StructDataPool materialization_struct_pool;
         graph::mtl::MaterializationIndexTables materialization_index_tables;
         graph::mtl::MaterializationResolveCallbacks materialization_callbacks;
+        uint32_t materialization_last_reset_frame = std::numeric_limits<uint32_t>::max();
 
     public:
         RenderDescriptorBindingSystem(const std::string& name = "RenderDescriptorBindingSystem");

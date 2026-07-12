@@ -288,6 +288,13 @@ namespace hgl::ecs
         if (!context)
             return;
 
+        const uint32_t frame_index = context->GetFrameIndex();
+        if (materialization_last_reset_frame != frame_index)
+        {
+            ResetMaterializationFrameData();
+            materialization_last_reset_frame = frame_index;
+        }
+
         if (run_contract_diagnostics)
             ValidateContractsSideChannel();
 

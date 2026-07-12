@@ -21,6 +21,9 @@ namespace hgl::ecs
         , node_count(0)
         , material_instance_vab(nullptr)
         , material_instance_vab_buffer(nullptr)
+        , data_index_node_count(0)
+        , data_index_vab(nullptr)
+        , data_index_vab_buffer(nullptr)
     {
         if (mtl)
         {
@@ -60,18 +63,24 @@ namespace hgl::ecs
                 buffer_manager->Release(material_instance_buffer);
             if (material_instance_vab)
                 buffer_manager->Release(material_instance_vab);
+            if (data_index_vab)
+                buffer_manager->Release(data_index_vab);
             material_instance_buffer = nullptr;
             material_instance_vab = nullptr;
+            data_index_vab = nullptr;
         }
         else
         {
             SAFE_CLEAR(material_instance_buffer);
             SAFE_CLEAR(material_instance_vab);
+            SAFE_CLEAR(data_index_vab);
         }
 
         mi_set.Clear();
         node_count = 0;
+        data_index_node_count = 0;
         material_instance_vab_buffer = nullptr;
+        data_index_vab_buffer = nullptr;
     }
 
     void MaterialInstanceAssignmentBuffer::StatMaterialInstance(const std::vector<RenderItem*>& items)
@@ -281,13 +290,64 @@ namespace hgl::ecs
             }
         }
 
+        // 2.1 创建或重用 DataIndex VAB（迁移期间与 MI 索引值保持一致）
+        {
+            if (!data_index_vab)
+            {
+                data_index_node_count = power_to_2(item_count);
+            }
+            else if (data_index_node_count < item_count)
+            {
+                data_index_node_count = power_to_2(item_count);
+                if (buffer_manager)
+                {
+                    buffer_manager->Release(data_index_vab);
+                    data_index_vab = nullptr;
+                }
+                else
+                {
+                    SAFE_CLEAR(data_index_vab);
+                }
+            }
+
+            if (!data_index_vab)
+            {
+                if (buffer_manager)
+                {
+                    data_index_vab = buffer_manager->CreateVAB(VK_FORMAT_R16_UINT, data_index_node_count);
+                    data_index_vab_buffer = data_index_vab ? data_index_vab->GetVkBuffer() : nullptr;
+
+                #ifdef _DEBUG
+                    auto device = buffer_manager->GetDevice();
+                    graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
+                    if (du && data_index_vab)
+                    {
+                        du->SetBuffer(data_index_vab->GetVkBuffer(), "ECS:VAB:Buffer:DataIndexRow");
+                        du->SetDeviceMemory(data_index_vab->GetVkMemory(), "ECS:VAB:Memory:DataIndexRow");
+                    }
+                #endif//_DEBUG
+                }
+            }
+
+            if (!data_index_vab)
+            {
+                std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: DataIndex VAB allocation failed" << std::endl;
+                return;
+            }
+        }
+
         // 3. 生成材质实例索引列表
         {
             uint16* mi_ptr = (uint16*)(material_instance_vab->Map(0, item_count));
+            uint16* data_index_ptr = (uint16*)(data_index_vab->Map(0, item_count));
 
-            if (!mi_ptr)
+            if (!mi_ptr || !data_index_ptr)
             {
-                std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI VAB map failed" << std::endl;
+                std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: index VAB map failed" << std::endl;
+                if (mi_ptr)
+                    material_instance_vab->Unmap();
+                if (data_index_ptr)
+                    data_index_vab->Unmap();
                 return;
             }
 
@@ -298,14 +358,18 @@ namespace hgl::ecs
                 if (!item)
                 {
                     *mi_ptr = 0;
+                    *data_index_ptr = 0;
                     ++mi_ptr;
+                    ++data_index_ptr;
                     continue;
                 }
 
                 graph::MaterialInstance* mi = item->GetMaterialInstance();
                 uint16 mi_index = mi_set.Find(mi);
                 *mi_ptr = mi_index;
+                *data_index_ptr = mi_index;
                 ++mi_ptr;
+                ++data_index_ptr;
 
                 // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个
                 // {
@@ -316,6 +380,7 @@ namespace hgl::ecs
             }
 
             material_instance_vab->Unmap();
+            data_index_vab->Unmap();
         }
     }
 }//namespace hgl::ecs

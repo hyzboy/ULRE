@@ -101,6 +101,9 @@ namespace hgl::ecs
         uint32_t node_count;                        ///<节点数量
         graph::VAB* material_instance_vab;          ///<材质实例ID分发数据VAB(R16UI格式)
         VkBuffer material_instance_vab_buffer;      ///<材质实例ID分发数据Buffer
+        uint32_t data_index_node_count;             ///<DataIndex节点数量
+        graph::VAB* data_index_vab;                 ///<DataIndex行索引分发VAB(R16UI格式)
+        VkBuffer data_index_vab_buffer;             ///<DataIndex行索引分发Buffer
 
     private:
         void Clear();
@@ -113,6 +116,12 @@ namespace hgl::ecs
          * 获取MaterialInstance VAB缓冲（用于绑定到管线）
          */
         const VkBuffer GetMaterialInstanceVAB() const { return material_instance_vab_buffer; }
+
+        /**
+         * Phase 3 迁移接口：DataIndex 间接表行索引 VAB
+         * 当前为独立分发缓冲，数值与 MI 索引保持一致，后续会切换为真实 DataIndex 行索引。
+         */
+        const VkBuffer GetDataIndexVAB() const { return data_index_vab_buffer; }
 
         /**
          * 绑定材质实例数据到材质
@@ -132,5 +141,3 @@ namespace hgl::ecs
         void UpdateMaterialInstanceData(RenderItem* item);
     };
 }//namespace hgl::ecs
-
-
