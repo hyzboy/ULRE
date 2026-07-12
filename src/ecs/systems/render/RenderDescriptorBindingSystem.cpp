@@ -11,11 +11,16 @@
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKTexture.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/UBOCommon.h>
+#include<array>
+#include<algorithm>
+#include<cctype>
+#include<cstdint>
 #include<unordered_set>
 #include<cstdlib>
 #include<string>
@@ -32,6 +37,67 @@ namespace hgl::ecs
         std::string ToBindingKey(const AnsiString &name)
         {
             return ToBindingKey(name.c_str());
+        }
+
+        std::string ToLowerAscii(std::string value)
+        {
+            std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c)
+            {
+                return static_cast<char>(std::tolower(c));
+            });
+            return value;
+        }
+
+        bool ContainsToken(const std::string &haystack, const char *needle)
+        {
+            return needle && *needle && haystack.find(needle) != std::string::npos;
+        }
+
+        graph::mtl::TextureSlot InferTextureSlotFromBindingName(const std::string &binding_name_lower, bool &out_known)
+        {
+            out_known = true;
+
+            if (ContainsToken(binding_name_lower, "normal"))
+                return graph::mtl::TextureSlot::Normal;
+            if (ContainsToken(binding_name_lower, "metallic") || ContainsToken(binding_name_lower, "metalness"))
+                return graph::mtl::TextureSlot::Metallic;
+            if (ContainsToken(binding_name_lower, "roughness") || ContainsToken(binding_name_lower, "rough"))
+                return graph::mtl::TextureSlot::Roughness;
+            if (ContainsToken(binding_name_lower, "emissive") || ContainsToken(binding_name_lower, "emission"))
+                return graph::mtl::TextureSlot::Emissive;
+            if (ContainsToken(binding_name_lower, "occlusion") || ContainsToken(binding_name_lower, "ambientocclusion") || ContainsToken(binding_name_lower, "ao"))
+                return graph::mtl::TextureSlot::Occlusion;
+            if (ContainsToken(binding_name_lower, "opacity") || ContainsToken(binding_name_lower, "alphamask") || ContainsToken(binding_name_lower, "alpha") || ContainsToken(binding_name_lower, "mask"))
+                return graph::mtl::TextureSlot::OpacityMask;
+            if (ContainsToken(binding_name_lower, "height") || ContainsToken(binding_name_lower, "parallax") || ContainsToken(binding_name_lower, "displacement"))
+                return graph::mtl::TextureSlot::Height;
+            if (ContainsToken(binding_name_lower, "basecolor") || ContainsToken(binding_name_lower, "albedo") || ContainsToken(binding_name_lower, "diffuse") || ContainsToken(binding_name_lower, "color"))
+                return graph::mtl::TextureSlot::BaseColor;
+
+            out_known = false;
+            return graph::mtl::TextureSlot::Custom0;
+        }
+
+        graph::mtl::DataSlot InferDataSlotFromStructName(const char *struct_name)
+        {
+            const std::string lower_name = ToLowerAscii(ToBindingKey(struct_name));
+
+            if (ContainsToken(lower_name, "emissive"))
+                return graph::mtl::DataSlot::EmissiveSurface;
+            if (ContainsToken(lower_name, "clearcoat"))
+                return graph::mtl::DataSlot::ClearCoatSurface;
+            if (ContainsToken(lower_name, "transmission") || ContainsToken(lower_name, "refract"))
+                return graph::mtl::DataSlot::TransmissionSurface;
+
+            return graph::mtl::DataSlot::PBRSurface;
+        }
+
+        std::string BuildTextureResourceId(const graph::Texture *texture)
+        {
+            if (!texture)
+                return {};
+
+            return "texid:" + std::to_string(texture->GetID());
         }
 
         graph::BufferManager *GetBufferManager(hgl::ecs::ECSContext *ctx)
@@ -148,6 +214,114 @@ namespace hgl::ecs
 
         auto &slot = material_resource_bindings[material][ToBindingKey(name)];
         slot.texture = texture;
+        return true;
+    }
+
+    bool RenderDescriptorBindingSystem::BuildMaterialRecipeForMaterial(const graph::Material *material,
+                                                                       graph::mtl::MaterialRecipe &out_recipe) const
+    {
+        out_recipe = {};
+        if (!material)
+            return false;
+
+        const char *material_name = material->GetName().c_str();
+        if (material_name && *material_name)
+            out_recipe.recipe_name = material_name;
+        else
+            out_recipe.recipe_name = "Material@" + std::to_string(reinterpret_cast<uintptr_t>(material));
+
+        out_recipe.shading_model = "Legacy";
+        out_recipe.domain = "ECS";
+
+        constexpr size_t texture_slot_count = static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE);
+        std::array<bool, texture_slot_count> used_texture_slots{};
+        std::unordered_set<std::string> emitted_texture_keys;
+        uint32_t custom_slot_cursor = 0;
+
+        const auto &contract = material->GetBindingContract();
+        for (const auto &req : contract.requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialTexture
+             && req.semantic != graph::mtl::DescriptorSemantic::MaterialSampler)
+                continue;
+
+            if (!req.name || !*req.name)
+                continue;
+
+            const std::string key = ToBindingKey(req.name);
+            if (key.empty())
+                continue;
+
+            if (emitted_texture_keys.find(key) != emitted_texture_keys.end())
+                continue;
+            emitted_texture_keys.insert(key);
+
+            const MaterialResourceBinding *binding = FindMaterialResourceBinding(material, req.name);
+            std::string resource_id = binding ? BuildTextureResourceId(binding->texture) : std::string();
+
+            if (resource_id.empty() && !req.required)
+                continue;
+
+            const std::string key_lower = ToLowerAscii(key);
+            bool known_slot = false;
+            graph::mtl::TextureSlot slot = InferTextureSlotFromBindingName(key_lower, known_slot);
+
+            if (!known_slot)
+            {
+                if (custom_slot_cursor == 0)
+                    slot = graph::mtl::TextureSlot::Custom0;
+                else if (custom_slot_cursor == 1)
+                    slot = graph::mtl::TextureSlot::Custom1;
+                else
+                    continue;
+
+                ++custom_slot_cursor;
+            }
+
+            const size_t slot_index = static_cast<size_t>(slot);
+            if (slot_index >= used_texture_slots.size() || used_texture_slots[slot_index])
+                continue;
+            used_texture_slots[slot_index] = true;
+
+            graph::mtl::RecipeTextureBinding texture_binding{};
+            texture_binding.slot = slot;
+            texture_binding.resource_id = std::move(resource_id);
+            texture_binding.required = req.required;
+            out_recipe.textures.emplace_back(std::move(texture_binding));
+        }
+
+        std::unordered_set<std::string> emitted_struct_names;
+        for (const auto &req : contract.requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            if (!req.struct_name || !*req.struct_name)
+                continue;
+
+            const std::string struct_name = ToBindingKey(req.struct_name);
+            if (struct_name.empty())
+                continue;
+            if (emitted_struct_names.find(struct_name) != emitted_struct_names.end())
+                continue;
+            emitted_struct_names.insert(struct_name);
+
+            graph::mtl::RecipeStructBinding struct_binding{};
+            struct_binding.slot = InferDataSlotFromStructName(req.struct_name);
+            struct_binding.struct_name = struct_name;
+            struct_binding.shared_across_instances = false;
+            out_recipe.structs.emplace_back(std::move(struct_binding));
+        }
+
+        if (out_recipe.structs.empty() && material->hasMI() && material->GetMIDataBytes() > 0)
+        {
+            graph::mtl::RecipeStructBinding fallback_struct{};
+            fallback_struct.slot = graph::mtl::DataSlot::PBRSurface;
+            fallback_struct.struct_name = "LegacyMaterialInstance_" + std::to_string(material->GetMIDataBytes());
+            fallback_struct.shared_across_instances = false;
+            out_recipe.structs.emplace_back(std::move(fallback_struct));
+        }
+
         return true;
     }
 

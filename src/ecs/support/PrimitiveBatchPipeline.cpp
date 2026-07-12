@@ -33,25 +33,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        graph::mtl::MaterialRecipe BuildLegacyBatchRecipe(const uint32_t mi_data_bytes)
-        {
-            graph::mtl::MaterialRecipe recipe{};
-            recipe.recipe_name = "ECSLegacyBatchRecipe";
-            recipe.shading_model = "Legacy";
-            recipe.domain = "ECS";
-
-            if (mi_data_bytes > 0)
-            {
-                graph::mtl::RecipeStructBinding ref{};
-                ref.slot = graph::mtl::DataSlot::PBRSurface;
-                ref.struct_name = "LegacyMaterialInstance_" + std::to_string(mi_data_bytes);
-                ref.shared_across_instances = false;
-                recipe.structs.emplace_back(std::move(ref));
-            }
-
-            return recipe;
-        }
-
         void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
         {
             if (!draw_cmd || !batch || !batch->geom_draw_range)
@@ -511,18 +492,31 @@ namespace hgl::ecs
             if (world)
                 descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>();
 
-            const uint32_t mi_data_bytes = batch.key.material->GetMIDataBytes();
-            if (descriptor_binding_system && mi_data_bytes > 0)
+            if (descriptor_binding_system)
             {
+                graph::mtl::MaterialRecipe recipe{};
+                if (!descriptor_binding_system->BuildMaterialRecipeForMaterial(batch.key.material, recipe))
+                {
+                    batch.mi_buffer->WriteItems(batch.items);
+                    return;
+                }
+
+                const uint32_t mi_data_bytes = batch.key.material->GetMIDataBytes();
+                if (mi_data_bytes > 0)
+                {
+                    for (const auto &struct_ref : recipe.structs)
+                    {
+                        if (struct_ref.struct_name.empty())
+                            continue;
+
+                        descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.struct_name,
+                                                                               graph::mtl::DefaultCategoryForDataSlot(struct_ref.slot),
+                                                                               mi_data_bytes);
+                    }
+                }
+
                 std::vector<uint16> data_index_rows(batch.items.size(), 0);
-
-                const std::string struct_name = "LegacyMaterialInstance_" + std::to_string(mi_data_bytes);
-                descriptor_binding_system->RegisterMaterialStructLayout(struct_name,
-                                                                       graph::mtl::SSBOCategory::PBRSurface,
-                                                                       mi_data_bytes);
-
                 graph::mtl::MaterializationSpec spec{};
-                const graph::mtl::MaterialRecipe recipe = BuildLegacyBatchRecipe(mi_data_bytes);
 
                 for (size_t i = 0; i < batch.items.size(); ++i)
                 {
