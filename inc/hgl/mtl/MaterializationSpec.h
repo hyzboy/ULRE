@@ -48,17 +48,6 @@ namespace hgl::graph::mtl
         std::vector<ResolvedStructRef> struct_refs; // 所有已解析结构体数据引用
     };
 
-    namespace detail
-    {
-        inline uint64 HashString(uint64 hash, const std::string &s) noexcept
-        {
-            if (s.empty())
-                return hash;
-
-            return hgl::hash::FNV1aAppendBytes(hash, s.data(), s.size());
-        }
-    }
-
     // 计算 MaterializationSpec 的稳定内容哈希。
     // 目的：作为 Shader/PSO/布局缓存键，保证同内容同 key，不同内容不同 key。
     inline uint64_t HashMaterializationSpec(const MaterializationSpec &spec) noexcept
@@ -66,7 +55,8 @@ namespace hgl::graph::mtl
         uint64 hash = hgl::hash::FNV1aInit<uint64>();
 
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.recipe_hash);
-        hash = detail::HashString(hash, spec.shading_model);
+        if (!spec.shading_model.empty())
+            hash = hgl::hash::FNV1aAppendBytes(hash, spec.shading_model.data(), spec.shading_model.size());
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.double_sided);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_test);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_cutoff);
@@ -93,5 +83,29 @@ namespace hgl::graph::mtl
         }
 
         return static_cast<uint64_t>(hash);
+    }
+
+    // 由 Recipe 生成一个“未解析资源”的 Spec 初稿：
+    // - 拷贝与渲染状态相关的公共字段；
+    // - 计算 recipe_hash；
+    // - resources/struct_refs 留空，等待后续 Resolve 阶段填充。
+    inline MaterializationSpec MakeMaterializationSpecSkeleton(const MaterialRecipe &recipe)
+    {
+        MaterializationSpec spec;
+
+        spec.recipe_hash = HashMaterialRecipe(recipe);
+        spec.shading_model = recipe.shading_model;
+        spec.double_sided = recipe.double_sided;
+        spec.alpha_test = recipe.alpha_test;
+        spec.alpha_cutoff = recipe.alpha_cutoff;
+
+        spec.spec_hash = HashMaterializationSpec(spec);
+        return spec;
+    }
+
+    // 当 Resolve 阶段写入 resources/struct_refs 后，调用该函数刷新 spec_hash。
+    inline void RefreshMaterializationSpecHash(MaterializationSpec &spec) noexcept
+    {
+        spec.spec_hash = HashMaterializationSpec(spec);
     }
 }

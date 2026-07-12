@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/type/EnumUtil.h>
+#include <hgl/util/hash/FNV1a.h>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -82,4 +83,47 @@ namespace hgl::graph::mtl
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
         std::vector<RecipeStructBinding> structs;   // 所有结构体语义绑定
     };
+
+    // 计算 MaterialRecipe 的稳定内容哈希（只看声明内容，不依赖运行时句柄）。
+    // 该哈希可用于：
+    // 1) Recipe 去重/缓存；
+    // 2) MaterializationSpec::recipe_hash 的来源值；
+    // 3) “同输入应产出同 spec”的一致性校验。
+    inline uint64_t HashMaterialRecipe(const MaterialRecipe &recipe) noexcept
+    {
+        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+
+        if (!recipe.recipe_name.empty())
+            hash = hgl::hash::FNV1aAppendBytes(hash, recipe.recipe_name.data(), recipe.recipe_name.size());
+        if (!recipe.shading_model.empty())
+            hash = hgl::hash::FNV1aAppendBytes(hash, recipe.shading_model.data(), recipe.shading_model.size());
+        if (!recipe.domain.empty())
+            hash = hgl::hash::FNV1aAppendBytes(hash, recipe.domain.data(), recipe.domain.size());
+
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.double_sided);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_test);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_cutoff);
+
+        const uint32_t texture_count = static_cast<uint32_t>(recipe.textures.size());
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, texture_count);
+        for (const auto &texture : recipe.textures)
+        {
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.slot);
+            if (!texture.resource_id.empty())
+                hash = hgl::hash::FNV1aAppendBytes(hash, texture.resource_id.data(), texture.resource_id.size());
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.required);
+        }
+
+        const uint32_t struct_count = static_cast<uint32_t>(recipe.structs.size());
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
+        for (const auto &s : recipe.structs)
+        {
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.slot);
+            if (!s.struct_name.empty())
+                hash = hgl::hash::FNV1aAppendBytes(hash, s.struct_name.data(), s.struct_name.size());
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.shared_across_instances);
+        }
+
+        return static_cast<uint64_t>(hash);
+    }
 }
