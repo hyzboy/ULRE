@@ -113,7 +113,6 @@ MaterialCreateInfo *CompileCompositorMaterial(
                                || HasDescriptorNamed(def, "MaterialInstanceData")
                                || HasPerMaterialDescriptor(def)
                                || HasVertexEntry(def, Assign::DataIndexID::VIS_NAME)
-                               || HasVertexEntry(def, Assign::MaterialInstanceID::VIS_NAME)
                                || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
 
     cfg.camera           = cfg.camera           || infer_has_camera;

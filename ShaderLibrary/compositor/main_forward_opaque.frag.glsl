@@ -29,14 +29,8 @@ SCENE_CAMERA_UBO;
 SCENE_SKY_UBO;
 SCENE_VIEWPORT_UBO;
 
-// --- MI SSBO ---
-#include "common/material_instance_ssbo.glsl"
-MI_SSBO;
-
 void main()
 {
-    MaterialInstance mi = mtl.mi[fragDataIndexID];
-
     SurfaceInput si;
     si.worldPos    = fragWorldPos;
     si.worldNormal = normalize(fragWorldNormal);
@@ -44,7 +38,7 @@ void main()
     si.viewDir     = normalize(camera.pos - fragWorldPos);
     si.textureLayerID = fragTextureLayerID;
 
-    SurfaceOutput so = EvalSurface(si, mi);
+    SurfaceOutput so = EvalSurface(si, fragDataIndexID);
 
     vec3 litColor = EvalLighting(so, si.viewDir, sky.sun_direction.xyz, sky.sun_color.rgb);
     litColor += so.baseColor * sky.base_sky_color.rgb * so.ao;
