@@ -5,6 +5,7 @@
 #include<hgl/mtl/StdMaterial.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterializationSpec.h>
+#include<hgl/mtl/MaterializationResolver.h>
 #include<hgl/mtl/new/MaterialVariantKey.h>
 
 namespace hgl::graph::mtl{
