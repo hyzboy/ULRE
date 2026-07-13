@@ -16,27 +16,11 @@
 #include <cstdio>
 #include <string>
 
-#include "common/MFCommon.h"
-
 namespace hgl::graph::mtl {
 
 static bool CStrEq(const char *lhs, const char *rhs)
 {
     return lhs && rhs && std::strcmp(lhs, rhs) == 0;
-}
-
-static bool HasVertexEntry(const FixedMaterialDef &def, const char *name)
-{
-    if (!name || !*name)
-        return false;
-
-    for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
-    {
-        if (CStrEq(def.vertex_entries[i].name, name))
-            return true;
-    }
-
-    return false;
 }
 
 static bool HasDescriptorNamed(const FixedMaterialDef &def, const char *name)
@@ -49,17 +33,6 @@ static bool HasDescriptorNamed(const FixedMaterialDef &def, const char *name)
         const auto &entry = def.descriptor_entries[i];
         if (CStrEq(entry.name, name)
          || CStrEq(entry.struct_name, name))
-            return true;
-    }
-
-    return false;
-}
-
-static bool HasPerMaterialDescriptor(const FixedMaterialDef &def)
-{
-    for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
-    {
-        if (def.descriptor_entries[i].set_type == DescriptorSetType::Material)
             return true;
     }
 
@@ -111,8 +84,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const bool infer_has_l2w    = HasDescriptorNamed(def, "l2w")    || HasDescriptorNamed(def, "LocalToWorldData");
     const bool infer_has_mi     = HasDescriptorNamed(def, "mtl")
                                || HasDescriptorNamed(def, "MaterialInstanceData")
-                               || HasPerMaterialDescriptor(def)
-                               || HasVertexEntry(def, Assign::DataIndexID::VIS_NAME)
+                               || HasDescriptorNamed(def, "MaterialInstance")
                                || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
 
     cfg.camera           = cfg.camera           || infer_has_camera;

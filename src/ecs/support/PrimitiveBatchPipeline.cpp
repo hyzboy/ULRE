@@ -497,14 +497,7 @@ namespace hgl::ecs
 
         bool has_material_instance_semantic = false;
         const auto &contract = batch.key.material->GetBindingContract();
-        for (const auto &req : contract.requirements)
-        {
-            if (req.semantic == graph::mtl::DescriptorSemantic::MaterialInstance)
-            {
-                has_material_instance_semantic = true;
-                break;
-            }
-        }
+        has_material_instance_semantic = HasMaterialInstanceSemantic(contract);
 
         if (!has_material_instance_semantic)
             return;
@@ -653,42 +646,31 @@ namespace hgl::ecs
                 }
                 else
                 {
-                    const auto &contract = material->GetBindingContract();
-                    const bool has_mi_semantic = HasMaterialInstanceSemantic(contract);
+                    graph::mtl::MaterialRecipe recipe{};
+                    graph::mtl::MaterializationSpec spec{};
 
-                    if (material->hasMI() && !has_mi_semantic)
+                    // 批处理分桶必须使用“材质级”语义，不能带实例身份（如 MIID），
+                    // 否则会把本可合并的实例拆成 1 instance / batch。
+                    if (descriptor_binding_system->BuildMaterialRecipeForMaterial(material, recipe))
                     {
-                        // 合法路径：上层可提供完整 MI 数据，但当前材质契约未声明 MI 语义时，本帧变体不消费该数据。
-                        // 因此这里静默跳过 materialization resolve，不将其视为错误。
-                    }
-                    else
-                    {
-                        graph::mtl::MaterialRecipe recipe{};
-                        graph::mtl::MaterializationSpec spec{};
-
-                        // 批处理分桶必须使用“材质级”语义，不能带实例身份（如 MIID），
-                        // 否则会把本可合并的实例拆成 1 instance / batch。
-                        if (descriptor_binding_system->BuildMaterialRecipeForMaterial(material, recipe))
+                        if (!recipe.structs.empty() || !recipe.textures.empty())
                         {
-                            if (!recipe.structs.empty() || !recipe.textures.empty())
+                            const uint32_t mi_data_bytes = material->GetMIDataBytes();
+                            if (mi_data_bytes > 0)
                             {
-                                const uint32_t mi_data_bytes = material->GetMIDataBytes();
-                                if (mi_data_bytes > 0)
+                                for (const auto &struct_ref : recipe.structs)
                                 {
-                                    for (const auto &struct_ref : recipe.structs)
-                                    {
-                                        if (struct_ref.struct_name.empty())
-                                            continue;
+                                    if (struct_ref.struct_name.empty())
+                                        continue;
 
-                                        descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.struct_name,
-                                                                                               graph::mtl::DefaultCategoryForDataSlot(struct_ref.slot),
-                                                                                               mi_data_bytes);
-                                    }
+                                    descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.struct_name,
+                                                                                           graph::mtl::DefaultCategoryForDataSlot(struct_ref.slot),
+                                                                                           mi_data_bytes);
                                 }
-
-                                if (descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, nullptr))
-                                    spec_hash = spec.spec_hash;
                             }
+
+                            if (descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, nullptr))
+                                spec_hash = spec.spec_hash;
                         }
                     }
 
