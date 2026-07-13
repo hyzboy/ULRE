@@ -304,6 +304,8 @@ namespace hgl::ecs
 
             graph::mtl::RecipeStructBinding struct_binding{};
             struct_binding.slot = InferDataSlotFromStructName(req.struct_name);
+            struct_binding.ssbo_type = graph::mtl::DefaultSSBOTypeForDataSlot(struct_binding.slot);
+            struct_binding.resource_domain_id = 0;
             struct_binding.struct_name = struct_name;
             struct_binding.shared_across_instances = false;
             out_recipe.structs.emplace_back(std::move(struct_binding));
@@ -385,11 +387,12 @@ namespace hgl::ecs
             pipeline_materials.erase(material);
     }
 
-    bool RenderDescriptorBindingSystem::RegisterMaterialStructLayout(const std::string &struct_name,
-                                                                     graph::mtl::SSBOCategory category,
-                                                                     uint32_t byte_stride)
+    bool RenderDescriptorBindingSystem::RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
+                                                                     uint32_t resource_domain_id,
+                                                                     uint32_t byte_stride,
+                                                                     const std::string &struct_name)
     {
-        return materialization_struct_pool.RegisterLayout(struct_name, category, byte_stride);
+        return materialization_struct_pool.RegisterLayout(ssbo_type, resource_domain_id, byte_stride, struct_name);
     }
 
     void RenderDescriptorBindingSystem::ResetMaterializationFrameData()

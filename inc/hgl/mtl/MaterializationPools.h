@@ -66,16 +66,18 @@ namespace hgl::graph::mtl
     // 结构体池布局声明（一个 struct_name 对应一种布局）。
     struct StructPoolLayout
     {
+        SSBOType ssbo_type = SSBOType::UserDefined;
+        uint32_t resource_domain_id = 0;
         std::string struct_name;
-        SSBOCategory category = SSBOCategory::UserDefined;
         uint32_t byte_stride = 0;
     };
 
     // 一次结构体池分配结果（用于填充 ResolvedStructRef）。
     struct StructPoolAllocation
     {
+        SSBOType ssbo_type = SSBOType::UserDefined;
+        uint32_t resource_domain_id = 0;
         std::string struct_name;
-        SSBOCategory category = SSBOCategory::UserDefined;
         uint32_t struct_index = 0;
         uint32_t byte_offset = 0;
         uint32_t byte_stride = 0;
@@ -91,34 +93,85 @@ namespace hgl::graph::mtl
             uint32_t next_index = 0;
         };
 
-        std::unordered_map<std::string, LayoutState> states;
+        std::unordered_map<uint64_t, LayoutState> states;
+        std::unordered_map<std::string, uint64_t> legacy_name_to_key;
 
-    public:
-        bool RegisterLayout(const std::string &struct_name,
-                            const SSBOCategory category,
-                            const uint32_t byte_stride)
+        static uint64_t BuildLayoutKey(const SSBOType ssbo_type, const uint32_t resource_domain_id) noexcept
         {
-            if (struct_name.empty() || byte_stride == 0)
+            return (static_cast<uint64_t>(ssbo_type) << 32) | static_cast<uint64_t>(resource_domain_id);
+        }
+
+        bool AllocateByKey(const uint64_t key, StructPoolAllocation &out_alloc)
+        {
+            auto it = states.find(key);
+            if (it == states.end())
                 return false;
 
-            auto it = states.find(struct_name);
+            auto &state = it->second;
+            const uint32_t index = state.next_index++;
+
+            out_alloc.ssbo_type = state.layout.ssbo_type;
+            out_alloc.resource_domain_id = state.layout.resource_domain_id;
+            out_alloc.struct_name = state.layout.struct_name;
+            out_alloc.struct_index = index;
+            out_alloc.byte_stride = state.layout.byte_stride;
+            out_alloc.byte_offset = index * state.layout.byte_stride;
+            return true;
+        }
+
+    public:
+        bool RegisterLayout(const SSBOType ssbo_type,
+                            const uint32_t resource_domain_id,
+                            const uint32_t byte_stride,
+                            const std::string &struct_name = {})
+        {
+            if (byte_stride == 0)
+                return false;
+
+            const uint64_t key = BuildLayoutKey(ssbo_type, resource_domain_id);
+            auto it = states.find(key);
             if (it == states.end())
             {
                 LayoutState state{};
+                state.layout.ssbo_type = ssbo_type;
+                state.layout.resource_domain_id = resource_domain_id;
                 state.layout.struct_name = struct_name;
-                state.layout.category = category;
                 state.layout.byte_stride = byte_stride;
-                states.emplace(struct_name, std::move(state));
+                states.emplace(key, std::move(state));
+                if (!struct_name.empty())
+                    legacy_name_to_key[struct_name] = key;
                 return true;
             }
 
             // 已存在时只允许相同布局重复注册。
-            return it->second.layout.category == category && it->second.layout.byte_stride == byte_stride;
+            if (!struct_name.empty() && it->second.layout.struct_name.empty())
+            {
+                it->second.layout.struct_name = struct_name;
+                legacy_name_to_key[struct_name] = key;
+            }
+
+            return it->second.layout.byte_stride == byte_stride;
+        }
+
+        bool RegisterLayout(const std::string &struct_name,
+                            const SSBOType ssbo_type,
+                            const uint32_t byte_stride)
+        {
+            if (struct_name.empty())
+                return false;
+
+            return RegisterLayout(ssbo_type, 0, byte_stride, struct_name);
+        }
+
+        bool HasLayout(const SSBOType ssbo_type, const uint32_t resource_domain_id) const
+        {
+            const uint64_t key = BuildLayoutKey(ssbo_type, resource_domain_id);
+            return states.find(key) != states.end();
         }
 
         bool HasLayout(const std::string &struct_name) const
         {
-            return states.find(struct_name) != states.end();
+            return legacy_name_to_key.find(struct_name) != legacy_name_to_key.end();
         }
 
         size_t GetLayoutCount() const
@@ -126,21 +179,20 @@ namespace hgl::graph::mtl
             return states.size();
         }
 
+        bool TryAllocate(const SSBOType ssbo_type,
+                         const uint32_t resource_domain_id,
+                         StructPoolAllocation &out_alloc)
+        {
+            return AllocateByKey(BuildLayoutKey(ssbo_type, resource_domain_id), out_alloc);
+        }
+
         bool TryAllocate(const std::string &struct_name, StructPoolAllocation &out_alloc)
         {
-            auto it = states.find(struct_name);
-            if (it == states.end())
+            auto it = legacy_name_to_key.find(struct_name);
+            if (it == legacy_name_to_key.end())
                 return false;
 
-            auto &state = it->second;
-            const uint32_t index = state.next_index++;
-
-            out_alloc.struct_name = state.layout.struct_name;
-            out_alloc.category = state.layout.category;
-            out_alloc.struct_index = index;
-            out_alloc.byte_stride = state.layout.byte_stride;
-            out_alloc.byte_offset = index * state.layout.byte_stride;
-            return true;
+            return AllocateByKey(it->second, out_alloc);
         }
 
         void ResetAllocations()
@@ -152,6 +204,7 @@ namespace hgl::graph::mtl
         void Clear()
         {
             states.clear();
+            legacy_name_to_key.clear();
         }
     };
 
@@ -212,16 +265,21 @@ namespace hgl::graph::mtl
     };
 
     // 将 DataSlot 映射到默认 SSBO 分类（可在后续阶段替换为可配置策略）。
-    inline SSBOCategory DefaultCategoryForDataSlot(const DataSlot slot) noexcept
+    inline SSBOType DefaultSSBOTypeForDataSlot(const DataSlot slot) noexcept
     {
         switch (slot)
         {
-        case DataSlot::PBRSurface: return SSBOCategory::PBRSurface;
-        case DataSlot::EmissiveSurface: return SSBOCategory::EmissiveSurface;
-        case DataSlot::ClearCoatSurface: return SSBOCategory::ClearCoatSurface;
-        case DataSlot::TransmissionSurface: return SSBOCategory::TransmissionSurface;
-        default: return SSBOCategory::UserDefined;
+        case DataSlot::PBRSurface: return SSBOType::PBRSurface;
+        case DataSlot::EmissiveSurface: return SSBOType::EmissiveSurface;
+        case DataSlot::ClearCoatSurface: return SSBOType::ClearCoatSurface;
+        case DataSlot::TransmissionSurface: return SSBOType::TransmissionSurface;
+        default: return SSBOType::UserDefined;
         }
+    }
+
+    inline SSBOCategory DefaultCategoryForDataSlot(const DataSlot slot) noexcept
+    {
+        return DefaultSSBOTypeForDataSlot(slot);
     }
 
     // 用池对象构建 Recipe->Spec 解析回调。
@@ -245,12 +303,21 @@ namespace hgl::graph::mtl
         callbacks.resolve_struct = [&struct_pool](const RecipeStructBinding &input, ResolvedStructRef &output)
         {
             StructPoolAllocation alloc{};
-            if (!struct_pool.TryAllocate(input.struct_name, alloc))
+            bool allocated = false;
+
+            if (input.ssbo_type != SSBOType::UserDefined || input.resource_domain_id != 0)
+                allocated = struct_pool.TryAllocate(input.ssbo_type, input.resource_domain_id, alloc);
+
+            if (!allocated && !input.struct_name.empty())
+                allocated = struct_pool.TryAllocate(input.struct_name, alloc);
+
+            if (!allocated)
                 return false;
 
             output.slot = input.slot;
-            output.category = alloc.category;
-            output.ssbo_binding = static_cast<uint32_t>(alloc.category); // 临时默认映射，后续由布局系统接管
+            output.ssbo_type = alloc.ssbo_type;
+            output.resource_domain_id = alloc.resource_domain_id;
+            output.ssbo_binding = static_cast<uint32_t>(alloc.ssbo_type); // 临时默认映射，后续由布局系统接管
             output.struct_index = alloc.struct_index;
             output.byte_offset = alloc.byte_offset;
             output.byte_stride = alloc.byte_stride;

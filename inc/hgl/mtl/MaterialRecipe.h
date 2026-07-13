@@ -39,8 +39,8 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(PBRSurface, User1)
     };
 
-    // SSBO 类型分类：描述数据最终落在哪类 GPU 缓冲体系中。
-    enum class SSBOCategory : uint8_t
+    // SSBO 类型枚举：用于在 Recipe/Spec 中以稳定整数传递“结构体数据落在哪类缓冲”。
+    enum class SSBOType : uint16_t
     {
         TextureLayer = 0,    // 纹理层/句柄索引表
         DataIndex,           // 间接数据索引表（实例 -> 结构体索引）
@@ -53,6 +53,31 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(TextureLayer, UserDefined)
     };
 
+    // 兼容旧命名（过渡期保留）。
+    using SSBOCategory = SSBOType;
+
+    // SSBOType -> 稳定名称映射（供 ShaderGen/GLSL 文件定位使用）。
+    inline const char *GetSSBOTypeName(const SSBOType type) noexcept
+    {
+        switch (type)
+        {
+        case SSBOType::TextureLayer: return "TextureLayer";
+        case SSBOType::DataIndex: return "DataIndex";
+        case SSBOType::PBRSurface: return "PBRSurface";
+        case SSBOType::EmissiveSurface: return "EmissiveSurface";
+        case SSBOType::ClearCoatSurface: return "ClearCoatSurface";
+        case SSBOType::TransmissionSurface: return "TransmissionSurface";
+        case SSBOType::UserDefined: return "UserDefined";
+        default: return "Unknown";
+        }
+    }
+
+    // 预留：后续可接入 C++/GLSL 结构版本硬校验。
+    inline uint32_t GetSSBOTypeStructVersion(const SSBOType /*type*/) noexcept
+    {
+        return 0;
+    }
+
     // Recipe 中的纹理绑定声明（纯输入，不包含任何运行时句柄）。
     struct RecipeTextureBinding
     {
@@ -64,9 +89,11 @@ namespace hgl::graph::mtl
     // Recipe 中的结构体绑定声明（告诉 Resolve 需要哪类参数结构）。
     struct RecipeStructBinding
     {
-        DataSlot slot = DataSlot::PBRSurface; // 目标数据语义槽
-        std::string struct_name;              // CPU/Shader 约定的结构体名
-        bool shared_across_instances = false; // true: 多实例共享同一结构体数据
+        DataSlot slot = DataSlot::PBRSurface;              // 目标数据语义槽
+        SSBOType ssbo_type = SSBOType::UserDefined;        // 结构体所属 SSBO 类型（主字段）
+        uint32_t resource_domain_id = 0;                   // 结构体资源域 ID（主字段）
+        std::string struct_name;                           // 过渡字段：旧路径结构名（后续移除）
+        bool shared_across_instances = false;              // true: 多实例共享同一结构体数据
     };
 
     // 纯声明式材质输入（不含 Vulkan/运行时句柄），是 MaterializationSpec 的上游输入。
@@ -119,6 +146,8 @@ namespace hgl::graph::mtl
         for (const auto &s : recipe.structs)
         {
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.slot);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_type);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.resource_domain_id);
             if (!s.struct_name.empty())
                 hash = hgl::hash::FNV1aAppendBytes(hash, s.struct_name.data(), s.struct_name.size());
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.shared_across_instances);

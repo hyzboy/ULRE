@@ -660,12 +660,10 @@ namespace hgl::ecs
                             {
                                 for (const auto &struct_ref : recipe.structs)
                                 {
-                                    if (struct_ref.struct_name.empty())
-                                        continue;
-
-                                    descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.struct_name,
-                                                                                           graph::mtl::DefaultCategoryForDataSlot(struct_ref.slot),
-                                                                                           mi_data_bytes);
+                                    descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.ssbo_type,
+                                                                                           struct_ref.resource_domain_id,
+                                                                                           mi_data_bytes,
+                                                                                           struct_ref.struct_name);
                                 }
                             }
 

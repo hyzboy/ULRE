@@ -21,12 +21,13 @@ namespace hgl::graph::mtl
     // 作用：把 Recipe 的 DataSlot 映射到具体 SSBO 池与结构体偏移/步长。
     struct ResolvedStructRef
     {
-        DataSlot slot = DataSlot::PBRSurface;          // 语义数据槽（PBRSurface/ClearCoat...）
-        SSBOCategory category = SSBOCategory::UserDefined; // 实际落入的 SSBO 池类别
-        uint32_t ssbo_binding = 0;                     // 目标 SSBO binding（管线布局侧）
-        uint32_t struct_index = 0;                     // 结构体池中的逻辑索引（实例通过它间接访问）
-        uint32_t byte_offset = 0;                      // 结构体在 SSBO 内的字节偏移
-        uint32_t byte_stride = 0;                      // 同类结构体的字节步长
+        DataSlot slot = DataSlot::PBRSurface;       // 语义数据槽（PBRSurface/ClearCoat...）
+        SSBOType ssbo_type = SSBOType::UserDefined; // 目标 SSBO 类型（契约主字段）
+        uint32_t resource_domain_id = 0;            // 目标资源域 ID（契约主字段）
+        uint32_t ssbo_binding = 0;                  // 目标 SSBO binding（管线布局侧）
+        uint32_t struct_index = 0;                  // 结构体池中的逻辑索引（实例通过它间接访问）
+        uint32_t byte_offset = 0;                   // 结构体在 SSBO 内的字节偏移
+        uint32_t byte_stride = 0;                   // 同类结构体的字节步长
     };
 
     // MaterializationSpec 是 MaterialRecipe 的“已物化 IR”：
@@ -76,7 +77,8 @@ namespace hgl::graph::mtl
         for (const auto &ref : spec.struct_refs)
         {
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.category);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.resource_domain_id);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_binding);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.byte_stride);
         }
