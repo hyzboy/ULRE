@@ -86,6 +86,73 @@ namespace hgl::graph::mtl
         return static_cast<uint64_t>(hash);
     }
 
+    // ProgramSignature：仅表达“会不会影响 shader program/布局”的语义信息。
+    // 说明：
+    // - 不包含 resource_domain_id、bindless handle、texture layer 等绑定时态信息；
+    // - 用于 program 级缓存与批次中的“程序等价”判断。
+    inline uint64_t HashMaterializationProgramSignature(const MaterializationSpec &spec) noexcept
+    {
+        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+
+        if (!spec.shading_model.empty())
+            hash = hgl::hash::FNV1aAppendBytes(hash, spec.shading_model.data(), spec.shading_model.size());
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.double_sided);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_test);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_cutoff);
+
+        const uint32_t resource_count = static_cast<uint32_t>(spec.resources.size());
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, resource_count);
+        for (const auto &resource : spec.resources)
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource.slot);
+
+        const uint32_t struct_count = static_cast<uint32_t>(spec.struct_refs.size());
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
+        for (const auto &ref : spec.struct_refs)
+        {
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_binding);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.byte_stride);
+        }
+
+        return static_cast<uint64_t>(hash);
+    }
+
+    // BindingSignature：表达“绑定资源是否等价”。
+    // 说明：
+    // - 包含 domain_id/句柄/层等绑定身份；
+    // - 不影响 shader 代码，但影响是否可共享同一次绑定与 draw batch。
+    inline uint64_t HashMaterializationBindingSignature(const MaterializationSpec &spec) noexcept
+    {
+        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+
+        const uint32_t resource_count = static_cast<uint32_t>(spec.resources.size());
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, resource_count);
+        for (const auto &resource : spec.resources)
+        {
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource.slot);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource.bindless_handle);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource.texture_layer);
+        }
+
+        const uint32_t struct_count = static_cast<uint32_t>(spec.struct_refs.size());
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
+        for (const auto &ref : spec.struct_refs)
+        {
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.resource_domain_id);
+        }
+
+        return static_cast<uint64_t>(hash);
+    }
+
+    // 兼容旧命名：DomainSignature 语义升级为 BindingSignature。
+    inline uint64_t HashMaterializationDomainSignature(const MaterializationSpec &spec) noexcept
+    {
+        return HashMaterializationBindingSignature(spec);
+    }
+
     // 由 Recipe 生成一个“未解析资源”的 Spec 初稿：
     // - 拷贝与渲染状态相关的公共字段；
     // - 计算 recipe_hash；

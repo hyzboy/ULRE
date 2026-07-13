@@ -622,7 +622,13 @@ namespace hgl::ecs
         std::shared_ptr<RenderDescriptorBindingSystem> descriptor_binding_system{};
         if (world)
             descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>();
-        std::unordered_map<graph::Material *, uint64_t> material_spec_hash_cache;
+        struct MaterialSpecCacheValue
+        {
+            uint64_t program_signature = 0;
+            uint64_t binding_signature = 0;
+        };
+
+        std::unordered_map<graph::Material *, MaterialSpecCacheValue> material_spec_hash_cache;
 
         for (auto& itemPtr : cache.renderItems)
         {
@@ -636,13 +642,15 @@ namespace hgl::ecs
             if (!material || !pipeline)
                 continue;
 
-            uint64_t spec_hash = 0;
+            uint64_t program_signature = 0;
+            uint64_t binding_signature = 0;
             if (descriptor_binding_system)
             {
                 auto it = material_spec_hash_cache.find(material);
                 if (it != material_spec_hash_cache.end())
                 {
-                    spec_hash = it->second;
+                    program_signature = it->second.program_signature;
+                    binding_signature = it->second.binding_signature;
                 }
                 else
                 {
@@ -668,15 +676,18 @@ namespace hgl::ecs
                             }
 
                             if (descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, nullptr))
-                                spec_hash = spec.spec_hash;
+                            {
+                                program_signature = graph::mtl::HashMaterializationProgramSignature(spec);
+                                binding_signature = graph::mtl::HashMaterializationBindingSignature(spec);
+                            }
                         }
                     }
 
-                    material_spec_hash_cache.emplace(material, spec_hash);
+                    material_spec_hash_cache.emplace(material, MaterialSpecCacheValue{program_signature, binding_signature});
                 }
             }
 
-            MaterialPipelineKey key(material, pipeline, spec_hash);
+            MaterialPipelineKey key(material, pipeline, program_signature, binding_signature);
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
             if (!batch_ptr)
