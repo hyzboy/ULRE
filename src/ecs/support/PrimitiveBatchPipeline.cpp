@@ -56,6 +56,17 @@ namespace hgl::ecs
             indexed_draw_cmd->vertexOffset = batch->geom_draw_range->vertex_offset;
             indexed_draw_cmd->firstInstance = batch->first_instance;
         }
+
+        bool HasMaterialInstanceSemantic(const graph::mtl::BindingContract &contract)
+        {
+            for (const auto &req : contract.requirements)
+            {
+                if (req.semantic == graph::mtl::DescriptorSemantic::MaterialInstance)
+                    return true;
+            }
+
+            return false;
+        }
     }
 
     bool PrimitiveBatchPipeline::PrepareFrame(ECSContext* ctx)
@@ -642,29 +653,43 @@ namespace hgl::ecs
                 }
                 else
                 {
-                    graph::mtl::MaterialRecipe recipe{};
-                    graph::mtl::MaterializationSpec spec{};
+                    const auto &contract = material->GetBindingContract();
+                    const bool has_mi_semantic = HasMaterialInstanceSemantic(contract);
 
-                    // 批处理分桶必须使用“材质级”语义，不能带实例身份（如 MIID），
-                    // 否则会把本可合并的实例拆成 1 instance / batch。
-                    if (descriptor_binding_system->BuildMaterialRecipeForMaterial(material, recipe))
+                    if (material->hasMI() && !has_mi_semantic)
                     {
-                        const uint32_t mi_data_bytes = material->GetMIDataBytes();
-                        if (mi_data_bytes > 0)
-                        {
-                            for (const auto &struct_ref : recipe.structs)
-                            {
-                                if (struct_ref.struct_name.empty())
-                                    continue;
+                        // 合法路径：上层可提供完整 MI 数据，但当前材质契约未声明 MI 语义时，本帧变体不消费该数据。
+                        // 因此这里静默跳过 materialization resolve，不将其视为错误。
+                    }
+                    else
+                    {
+                        graph::mtl::MaterialRecipe recipe{};
+                        graph::mtl::MaterializationSpec spec{};
 
-                                descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.struct_name,
-                                                                                       graph::mtl::DefaultCategoryForDataSlot(struct_ref.slot),
-                                                                                       mi_data_bytes);
+                        // 批处理分桶必须使用“材质级”语义，不能带实例身份（如 MIID），
+                        // 否则会把本可合并的实例拆成 1 instance / batch。
+                        if (descriptor_binding_system->BuildMaterialRecipeForMaterial(material, recipe))
+                        {
+                            if (!recipe.structs.empty() || !recipe.textures.empty())
+                            {
+                                const uint32_t mi_data_bytes = material->GetMIDataBytes();
+                                if (mi_data_bytes > 0)
+                                {
+                                    for (const auto &struct_ref : recipe.structs)
+                                    {
+                                        if (struct_ref.struct_name.empty())
+                                            continue;
+
+                                        descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.struct_name,
+                                                                                               graph::mtl::DefaultCategoryForDataSlot(struct_ref.slot),
+                                                                                               mi_data_bytes);
+                                    }
+                                }
+
+                                if (descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, nullptr))
+                                    spec_hash = spec.spec_hash;
                             }
                         }
-
-                        if (descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, nullptr))
-                            spec_hash = spec.spec_hash;
                     }
 
                     material_spec_hash_cache.emplace(material, spec_hash);
