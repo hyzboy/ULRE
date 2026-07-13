@@ -55,6 +55,22 @@ constexpr const ShaderBufferSource SBS_MaterialInstance=
     "MaterialInstanceData"
 };
 
+constexpr const ShaderBufferSource SBS_MaterialTextureLayerRows=
+{
+    DescriptorSetType::Material,
+
+    "mtl_texture_layer_rows",
+    "TextureLayerRows"
+};
+
+constexpr const ShaderBufferSource SBS_MaterialDataIndexRows=
+{
+    DescriptorSetType::Material,
+
+    "mtl_data_index_rows",
+    "DataIndexRows"
+};
+
 constexpr const ShaderBufferSource SBS_JointInfo=
 {
     DescriptorSetType::Transform,

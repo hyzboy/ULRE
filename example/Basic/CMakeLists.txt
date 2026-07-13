@@ -23,5 +23,4 @@ CreateProject(06c_TextureBlinnPhongMeshesECS    06c_TextureBlinnPhongMeshesECS.c
 CreateProject(07_RenderBoundBox                 RenderBoundBox.cpp)
 CreateProject(08_RenderToTexture                RenderToTexture.cpp)
 CreateProject(09_RecursiveCube                  RecursiveCube.cpp)
-CreateProject(10_CompositorRenderTest           CompositorRenderTest.cpp)
 
