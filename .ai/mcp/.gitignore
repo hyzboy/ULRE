@@ -1,0 +1,7 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# TypeScript/Node build artifacts
+policy-guard-ts/node_modules/
+policy-guard-ts/dist/
