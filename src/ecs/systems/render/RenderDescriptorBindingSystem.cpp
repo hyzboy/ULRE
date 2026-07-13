@@ -15,6 +15,7 @@
 #include<hgl/vk/VKTexture.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/UBOCommon.h>
@@ -114,6 +115,23 @@ namespace hgl::ecs
 
             if (auto *gc = ctx->GetGraphicsContext())
                 return gc->GetBufferManager();
+
+            return nullptr;
+        }
+
+        graph::ResourceDomainManager *GetResourceDomainManager(hgl::ecs::ECSContext *ctx)
+        {
+            if (!ctx)
+                return nullptr;
+
+            if (auto *rc = ctx->GetRenderContext())
+            {
+                if (auto *gc = rc->GetGraphicsContext())
+                    return gc->GetResourceDomainManager();
+            }
+
+            if (auto *gc = ctx->GetGraphicsContext())
+                return gc->GetResourceDomainManager();
 
             return nullptr;
         }
@@ -392,6 +410,9 @@ namespace hgl::ecs
                                                                      uint32_t byte_stride,
                                                                      const std::string &struct_name)
     {
+        if (auto *domain_manager = GetResourceDomainManager(context))
+            domain_manager->Touch(ssbo_type, resource_domain_id);
+
         return materialization_struct_pool.RegisterLayout(ssbo_type, resource_domain_id, byte_stride, struct_name);
     }
 
@@ -479,18 +500,27 @@ namespace hgl::ecs
 
     void RenderDescriptorBindingSystem::ReleaseMaterializationIndexBuffers()
     {
-        auto *bm = GetBufferManager(context);
-        if (bm)
+        auto *domain_manager = GetResourceDomainManager(context);
+        if (domain_manager)
         {
-            if (materialization_texture_layer_ssbo)
-                bm->Release(materialization_texture_layer_ssbo);
-            if (materialization_data_index_ssbo)
-                bm->Release(materialization_data_index_ssbo);
+            domain_manager->ClearDomain(graph::mtl::SSBOType::TextureLayer, 0);
+            domain_manager->ClearDomain(graph::mtl::SSBOType::DataIndex, 0);
         }
         else
         {
-            delete materialization_texture_layer_ssbo;
-            delete materialization_data_index_ssbo;
+            auto *bm = GetBufferManager(context);
+            if (bm)
+            {
+                if (materialization_texture_layer_ssbo)
+                    bm->Release(materialization_texture_layer_ssbo);
+                if (materialization_data_index_ssbo)
+                    bm->Release(materialization_data_index_ssbo);
+            }
+            else
+            {
+                delete materialization_texture_layer_ssbo;
+                delete materialization_data_index_ssbo;
+            }
         }
 
         materialization_texture_layer_ssbo = nullptr;
@@ -525,7 +555,28 @@ namespace hgl::ecs
         const uint32_t texture_capacity = ensure_capacity(texture_rows);
         const uint32_t data_capacity = ensure_capacity(data_rows);
 
-        if (texture_capacity > materialization_texture_layer_capacity)
+        auto *domain_manager = GetResourceDomainManager(context);
+
+        if (domain_manager)
+        {
+            if (texture_capacity > 0)
+            {
+                const VkDeviceSize byte_size = static_cast<VkDeviceSize>(texture_capacity) * sizeof(graph::mtl::TextureLayerRow);
+                materialization_texture_layer_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOType::TextureLayer,
+                                                                                  0,
+                                                                                  "ECS:Materialization:TextureLayerRows",
+                                                                                  byte_size,
+                                                                                  texture_capacity,
+                                                                                  graph::SharingMode::Exclusive);
+            }
+            else
+            {
+                materialization_texture_layer_ssbo = domain_manager->GetBuffer(graph::mtl::SSBOType::TextureLayer, 0);
+            }
+
+            materialization_texture_layer_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOType::TextureLayer, 0);
+        }
+        else if (texture_capacity > materialization_texture_layer_capacity)
         {
             if (materialization_texture_layer_ssbo)
                 bm->Release(materialization_texture_layer_ssbo);
@@ -535,7 +586,26 @@ namespace hgl::ecs
             materialization_texture_layer_capacity = materialization_texture_layer_ssbo ? texture_capacity : 0;
         }
 
-        if (data_capacity > materialization_data_index_capacity)
+        if (domain_manager)
+        {
+            if (data_capacity > 0)
+            {
+                const VkDeviceSize byte_size = static_cast<VkDeviceSize>(data_capacity) * sizeof(graph::mtl::DataIndexRow);
+                materialization_data_index_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOType::DataIndex,
+                                                                               0,
+                                                                               "ECS:Materialization:DataIndexRows",
+                                                                               byte_size,
+                                                                               data_capacity,
+                                                                               graph::SharingMode::Exclusive);
+            }
+            else
+            {
+                materialization_data_index_ssbo = domain_manager->GetBuffer(graph::mtl::SSBOType::DataIndex, 0);
+            }
+
+            materialization_data_index_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOType::DataIndex, 0);
+        }
+        else if (data_capacity > materialization_data_index_capacity)
         {
             if (materialization_data_index_ssbo)
                 bm->Release(materialization_data_index_ssbo);
@@ -764,14 +834,26 @@ namespace hgl::ecs
                 }
                 case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
                 {
-                    if (materialization_texture_layer_ssbo && materialization_texture_layer_ssbo->GetGPUBuffer())
-                        material->BindSSBO(req.set_type, req.name, materialization_texture_layer_ssbo->GetGPUBuffer(), false);
+                    const graph::IGPUBuffer *table_buffer = nullptr;
+                    if (auto *domain_manager = GetResourceDomainManager(context))
+                        table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::TextureLayer, 0);
+                    else if (materialization_texture_layer_ssbo)
+                        table_buffer = materialization_texture_layer_ssbo->GetGPUBuffer();
+
+                    if (table_buffer)
+                        material->BindSSBO(req.set_type, req.name, table_buffer, false);
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
                 {
-                    if (materialization_data_index_ssbo && materialization_data_index_ssbo->GetGPUBuffer())
-                        material->BindSSBO(req.set_type, req.name, materialization_data_index_ssbo->GetGPUBuffer(), false);
+                    const graph::IGPUBuffer *table_buffer = nullptr;
+                    if (auto *domain_manager = GetResourceDomainManager(context))
+                        table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::DataIndex, 0);
+                    else if (materialization_data_index_ssbo)
+                        table_buffer = materialization_data_index_ssbo->GetGPUBuffer();
+
+                    if (table_buffer)
+                        material->BindSSBO(req.set_type, req.name, table_buffer, false);
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::MaterialTexture:
@@ -841,14 +923,26 @@ namespace hgl::ecs
                 }
                 case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
                 {
-                    if (materialization_texture_layer_ssbo && materialization_texture_layer_ssbo->GetGPUBuffer())
-                        material->BindSSBO(req.set_type, req.name, materialization_texture_layer_ssbo->GetGPUBuffer(), false);
+                    const graph::IGPUBuffer *table_buffer = nullptr;
+                    if (auto *domain_manager = GetResourceDomainManager(context))
+                        table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::TextureLayer, 0);
+                    else if (materialization_texture_layer_ssbo)
+                        table_buffer = materialization_texture_layer_ssbo->GetGPUBuffer();
+
+                    if (table_buffer)
+                        material->BindSSBO(req.set_type, req.name, table_buffer, false);
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
                 {
-                    if (materialization_data_index_ssbo && materialization_data_index_ssbo->GetGPUBuffer())
-                        material->BindSSBO(req.set_type, req.name, materialization_data_index_ssbo->GetGPUBuffer(), false);
+                    const graph::IGPUBuffer *table_buffer = nullptr;
+                    if (auto *domain_manager = GetResourceDomainManager(context))
+                        table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::DataIndex, 0);
+                    else if (materialization_data_index_ssbo)
+                        table_buffer = materialization_data_index_ssbo->GetGPUBuffer();
+
+                    if (table_buffer)
+                        material->BindSSBO(req.set_type, req.name, table_buffer, false);
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::MaterialSampler:
@@ -909,8 +1003,12 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::MaterialSampler:
             return true;
         case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
+            if (auto *domain_manager = GetResourceDomainManager(context))
+                return domain_manager->GetGPUBuffer(graph::mtl::SSBOType::TextureLayer, 0) != nullptr;
             return materialization_texture_layer_ssbo && materialization_texture_layer_ssbo->GetGPUBuffer();
         case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+            if (auto *domain_manager = GetResourceDomainManager(context))
+                return domain_manager->GetGPUBuffer(graph::mtl::SSBOType::DataIndex, 0) != nullptr;
             return materialization_data_index_ssbo && materialization_data_index_ssbo->GetGPUBuffer();
         case graph::mtl::DescriptorSemantic::Custom:
             return true;

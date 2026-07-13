@@ -10,6 +10,7 @@
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
+#include <hgl/graph/module/ResourceDomainManager.h>
 
 namespace hgl::graph
 {
@@ -62,6 +63,10 @@ namespace hgl::graph
         if (!buffer_manager)
             return false;
 
+        resource_domain_manager = module_manager->GetOrCreate<ResourceDomainManager>();
+        if (!resource_domain_manager)
+            return false;
+
         // Set graphics context for module manager
         module_manager->SetGraphicsContext(this);
 
@@ -88,6 +93,7 @@ namespace hgl::graph
         sampler_manager = nullptr;
         geometry_manager = nullptr;
         primitive_manager = nullptr;
+        resource_domain_manager = nullptr;
     }
 
     void GraphicsContext::OnResize(const VkExtent2D &extent)
