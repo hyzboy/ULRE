@@ -22,6 +22,7 @@
 #include<algorithm>
 #include<cctype>
 #include<cstdint>
+#include<cstring>
 #include<unordered_set>
 #include<cstdlib>
 #include<string>
@@ -139,6 +140,7 @@ namespace hgl::ecs
 
     RenderDescriptorBindingSystem::~RenderDescriptorBindingSystem()
     {
+        ReleaseMaterializationIndexBuffers();
         ReleaseViewportUBO();
     }
 
@@ -411,6 +413,7 @@ namespace hgl::ecs
         materialization_struct_pool.ResetAllocations();
         materialization_index_tables.Clear();
         materialization_resolve_cache.clear();
+        materialization_index_tables_dirty = true;
     }
 
     bool RenderDescriptorBindingSystem::ResolveMaterialRecipe(const graph::mtl::MaterialRecipe &recipe,
@@ -464,6 +467,7 @@ namespace hgl::ecs
         cache_entry.texture_layer_row = texture_row;
         cache_entry.data_index_row = data_row;
         materialization_resolve_cache[recipe_hash] = std::move(cache_entry);
+        materialization_index_tables_dirty = true;
 
         return true;
     }
@@ -484,6 +488,117 @@ namespace hgl::ecs
     {
         if (!materialization_callbacks.resolve_texture || !materialization_callbacks.resolve_struct)
             materialization_callbacks = graph::mtl::MakePoolResolveCallbacks(materialization_texture_pool, materialization_struct_pool);
+    }
+
+    void RenderDescriptorBindingSystem::ReleaseMaterializationIndexBuffers()
+    {
+        auto *bm = GetBufferManager(context);
+        if (bm)
+        {
+            if (materialization_texture_layer_ssbo)
+                bm->Release(materialization_texture_layer_ssbo);
+            if (materialization_data_index_ssbo)
+                bm->Release(materialization_data_index_ssbo);
+        }
+        else
+        {
+            delete materialization_texture_layer_ssbo;
+            delete materialization_data_index_ssbo;
+        }
+
+        materialization_texture_layer_ssbo = nullptr;
+        materialization_data_index_ssbo = nullptr;
+        materialization_texture_layer_capacity = 0;
+        materialization_data_index_capacity = 0;
+    }
+
+    void RenderDescriptorBindingSystem::UploadMaterializationIndexTables()
+    {
+        if (!materialization_index_tables_dirty)
+            return;
+
+        auto *bm = GetBufferManager(context);
+        if (!bm)
+            return;
+
+        const uint32_t texture_rows = static_cast<uint32_t>(materialization_index_tables.GetTextureLayerRowCount());
+        const uint32_t data_rows = static_cast<uint32_t>(materialization_index_tables.GetDataIndexRowCount());
+
+        auto ensure_capacity = [](uint32_t required) -> uint32_t
+        {
+            if (required == 0)
+                return 0;
+
+            uint32_t cap = 1;
+            while (cap < required)
+                cap <<= 1;
+            return cap;
+        };
+
+        const uint32_t texture_capacity = ensure_capacity(texture_rows);
+        const uint32_t data_capacity = ensure_capacity(data_rows);
+
+        if (texture_capacity > materialization_texture_layer_capacity)
+        {
+            if (materialization_texture_layer_ssbo)
+                bm->Release(materialization_texture_layer_ssbo);
+
+            const VkDeviceSize byte_size = static_cast<VkDeviceSize>(texture_capacity) * sizeof(graph::mtl::TextureLayerRow);
+            materialization_texture_layer_ssbo = bm->CreateSSBO("ECS:Materialization:TextureLayerRows", byte_size, graph::SharingMode::Exclusive);
+            materialization_texture_layer_capacity = materialization_texture_layer_ssbo ? texture_capacity : 0;
+        }
+
+        if (data_capacity > materialization_data_index_capacity)
+        {
+            if (materialization_data_index_ssbo)
+                bm->Release(materialization_data_index_ssbo);
+
+            const VkDeviceSize byte_size = static_cast<VkDeviceSize>(data_capacity) * sizeof(graph::mtl::DataIndexRow);
+            materialization_data_index_ssbo = bm->CreateSSBO("ECS:Materialization:DataIndexRows", byte_size, graph::SharingMode::Exclusive);
+            materialization_data_index_capacity = materialization_data_index_ssbo ? data_capacity : 0;
+        }
+
+        if (texture_rows > 0 && materialization_texture_layer_ssbo && materialization_texture_layer_ssbo->GetGPUBuffer())
+        {
+            auto *gpu = materialization_texture_layer_ssbo->GetGPUBuffer();
+            auto *dst = static_cast<std::uint8_t *>(gpu->Map(0, static_cast<VkDeviceSize>(texture_rows) * sizeof(graph::mtl::TextureLayerRow)));
+            if (dst)
+            {
+                for (uint32_t i = 0; i < texture_rows; ++i)
+                {
+                    const auto *row = materialization_index_tables.GetTextureLayerRow(i);
+                    if (!row)
+                        break;
+
+                    std::memcpy(dst + static_cast<size_t>(i) * sizeof(graph::mtl::TextureLayerRow),
+                                row,
+                                sizeof(graph::mtl::TextureLayerRow));
+                }
+                gpu->Unmap();
+            }
+        }
+
+        if (data_rows > 0 && materialization_data_index_ssbo && materialization_data_index_ssbo->GetGPUBuffer())
+        {
+            auto *gpu = materialization_data_index_ssbo->GetGPUBuffer();
+            auto *dst = static_cast<std::uint8_t *>(gpu->Map(0, static_cast<VkDeviceSize>(data_rows) * sizeof(graph::mtl::DataIndexRow)));
+            if (dst)
+            {
+                for (uint32_t i = 0; i < data_rows; ++i)
+                {
+                    const auto *row = materialization_index_tables.GetDataIndexRow(i);
+                    if (!row)
+                        break;
+
+                    std::memcpy(dst + static_cast<size_t>(i) * sizeof(graph::mtl::DataIndexRow),
+                                row,
+                                sizeof(graph::mtl::DataIndexRow));
+                }
+                gpu->Unmap();
+            }
+        }
+
+        materialization_index_tables_dirty = false;
     }
 
     const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::Material *material, const char *name) const
@@ -527,6 +642,8 @@ namespace hgl::ecs
 
         if (run_contract_diagnostics)
             ValidateContractsSideChannel();
+
+        UploadMaterializationIndexTables();
 
         EnsureViewportUBO();
 

@@ -13,6 +13,7 @@
 namespace hgl::graph {
     template<typename> class StructuredBufferAccessor;
     struct ViewportInfo;
+    class DeviceBuffer;
 }
 
 #ifndef ULRE_ECS_DEBUG_API
@@ -96,6 +97,11 @@ namespace hgl::ecs
         graph::mtl::MaterializationResolveCallbacks materialization_callbacks;
         std::unordered_map<uint64_t, MaterializationResolveCacheEntry> materialization_resolve_cache;
         uint32_t materialization_last_reset_frame = std::numeric_limits<uint32_t>::max();
+        graph::DeviceBuffer *materialization_texture_layer_ssbo = nullptr;
+        graph::DeviceBuffer *materialization_data_index_ssbo = nullptr;
+        uint32_t materialization_texture_layer_capacity = 0;
+        uint32_t materialization_data_index_capacity = 0;
+        bool materialization_index_tables_dirty = false;
 
     public:
         RenderDescriptorBindingSystem(const std::string& name = "RenderDescriptorBindingSystem");
@@ -156,6 +162,8 @@ namespace hgl::ecs
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();
         void EnsureMaterializationCallbacks();
+        void ReleaseMaterializationIndexBuffers();
+        void UploadMaterializationIndexTables();
         const MaterialResourceBinding *FindMaterialResourceBinding(const graph::Material *material, const char *name) const;
         void ValidateContractsSideChannel();
         bool IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const;
