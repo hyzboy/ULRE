@@ -240,14 +240,10 @@ namespace hgl::ecs
         std::array<bool, texture_slot_count> used_texture_slots{};
         std::unordered_set<std::string> emitted_texture_keys;
         uint32_t custom_slot_cursor = 0;
-        bool has_material_contract_requirement = false;
 
         const auto &contract = material->GetBindingContract();
         for (const auto &req : contract.requirements)
         {
-            if (req.set_type == graph::DescriptorSetType::Material)
-                has_material_contract_requirement = true;
-
             if (req.semantic != graph::mtl::DescriptorSemantic::MaterialTexture
              && req.semantic != graph::mtl::DescriptorSemantic::MaterialSampler)
                 continue;
@@ -323,7 +319,7 @@ namespace hgl::ecs
         if (out_recipe.structs.empty()
          && material->hasMI()
          && material->GetMIDataBytes() > 0
-         && !has_material_contract_requirement)
+         && contract.requirements.empty())
         {
             graph::mtl::RecipeStructBinding fallback_struct{};
             fallback_struct.slot = graph::mtl::DataSlot::PBRSurface;
