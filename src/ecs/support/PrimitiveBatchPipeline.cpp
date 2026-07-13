@@ -622,7 +622,9 @@ namespace hgl::ecs
                 graph::mtl::MaterialRecipe recipe{};
                 graph::mtl::MaterializationSpec spec{};
 
-                if (descriptor_binding_system->BuildMaterialRecipeForRenderItem(item, recipe))
+                // 批处理分桶必须使用“材质级”语义，不能带实例身份（如 MIID），
+                // 否则会把本可合并的实例拆成 1 instance / batch。
+                if (descriptor_binding_system->BuildMaterialRecipeForMaterial(material, recipe))
                 {
                     const uint32_t mi_data_bytes = material->GetMIDataBytes();
                     if (mi_data_bytes > 0)

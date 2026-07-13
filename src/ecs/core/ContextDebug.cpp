@@ -1,7 +1,9 @@
 #include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/vk/VKMaterial.h>
 #include<algorithm>
+#include<set>
 
 namespace hgl
 {
@@ -173,6 +175,57 @@ namespace hgl
             }
 
             return GetMaterialBindingKeys(matched_material, out_keys);
+        #endif
+        }
+
+        bool ECSContext::GetMaterialBatchSpecHashStats(uint32_t &active_batch_count,
+                                                       uint32_t &total_item_count,
+                                                       uint32_t &unique_material_pipeline_count,
+                                                       uint32_t &unique_spec_hash_count,
+                                                       uint32_t &split_material_pipeline_count) const
+        {
+            active_batch_count = 0;
+            total_item_count = 0;
+            unique_material_pipeline_count = 0;
+            unique_spec_hash_count = 0;
+            split_material_pipeline_count = 0;
+
+        #if !ULRE_ECS_DEBUG_API
+            return false;
+        #else
+            using MaterialPipelinePair = std::pair<const hgl::graph::Material *, const hgl::graph::Pipeline *>;
+
+            std::set<MaterialPipelinePair> unique_pairs;
+            std::set<uint64_t> unique_spec_hashes;
+            std::map<MaterialPipelinePair, std::set<uint64_t>> pair_spec_hashes;
+
+            for (const auto &entry : render_frame_cache.materialBatches)
+            {
+                const MaterialPipelineKey &key = entry.first;
+                const MaterialBatch *batch = entry.second.get();
+
+                if (!key.material || !key.pipeline || !batch || batch->items.empty())
+                    continue;
+
+                ++active_batch_count;
+                total_item_count += static_cast<uint32_t>(batch->items.size());
+
+                const MaterialPipelinePair pair_key{key.material, key.pipeline};
+                unique_pairs.insert(pair_key);
+                unique_spec_hashes.insert(key.materialization_spec_hash);
+                pair_spec_hashes[pair_key].insert(key.materialization_spec_hash);
+            }
+
+            unique_material_pipeline_count = static_cast<uint32_t>(unique_pairs.size());
+            unique_spec_hash_count = static_cast<uint32_t>(unique_spec_hashes.size());
+
+            for (const auto &entry : pair_spec_hashes)
+            {
+                if (entry.second.size() > 1)
+                    ++split_material_pipeline_count;
+            }
+
+            return true;
         #endif
         }
 

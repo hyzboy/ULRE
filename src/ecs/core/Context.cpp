@@ -705,6 +705,11 @@ namespace hgl
                     uint32_t fallback_hits = 0;
                     uint32_t materials_registered = 0;
                     uint32_t binding_entries = 0;
+                    uint32_t active_batch_count = 0;
+                    uint32_t total_batch_items = 0;
+                    uint32_t unique_material_pipeline_count = 0;
+                    uint32_t unique_spec_hash_count = 0;
+                    uint32_t split_material_pipeline_count = 0;
 
                     if (GetDescriptorContractDiagnosticsExtended(materials_checked,
                                                                  materials_unresolved,
@@ -722,6 +727,20 @@ namespace hgl
                                 fallback_hits,
                                 materials_registered,
                                 binding_entries);
+
+                        if (GetMaterialBatchSpecHashStats(active_batch_count,
+                                                          total_batch_items,
+                                                          unique_material_pipeline_count,
+                                                          unique_spec_hash_count,
+                                                          split_material_pipeline_count))
+                        {
+                            LogInfo("[MaterialBatching][ECSContext] active_batches=%u total_items=%u unique_material_pipeline=%u unique_spec_hash=%u split_material_pipeline=%u",
+                                    active_batch_count,
+                                    total_batch_items,
+                                    unique_material_pipeline_count,
+                                    unique_spec_hash_count,
+                                    split_material_pipeline_count);
+                        }
 
                         std::map<std::string, uint32_t> category_histogram;
                         if (GetShaderGenValidationCategoryHistogram(category_histogram, 128))
