@@ -484,6 +484,20 @@ namespace hgl::ecs
         if (!batch.key.material || !batch.key.material->hasMI())
             return;
 
+        bool has_material_instance_semantic = false;
+        const auto &contract = batch.key.material->GetBindingContract();
+        for (const auto &req : contract.requirements)
+        {
+            if (req.semantic == graph::mtl::DescriptorSemantic::MaterialInstance)
+            {
+                has_material_instance_semantic = true;
+                break;
+            }
+        }
+
+        if (!has_material_instance_semantic)
+            return;
+
         if (!batch.mi_buffer && !batch.items.empty())
             batch.mi_buffer = new MaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
 

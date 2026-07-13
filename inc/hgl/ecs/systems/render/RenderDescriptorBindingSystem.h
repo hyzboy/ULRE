@@ -88,7 +88,6 @@ namespace hgl::ecs
         std::unordered_map<const graph::Material *, bool> contract_last_ok;
         std::unordered_map<const graph::Material *, std::unordered_map<std::string, MaterialResourceBinding>> material_resource_bindings;
         bool contract_diagnostics_enabled = true;
-        bool enable_legacy_material_binding_fallback = true;
         ContractDiagStats last_contract_stats{};
         std::unordered_set<graph::Material *> pipeline_materials;
         graph::mtl::BindlessTexturePool materialization_texture_pool;
@@ -133,8 +132,6 @@ namespace hgl::ecs
         void ClearMaterialBindings(graph::Material *material);
         void RegisterPipelineMaterial(graph::Material *material);
         void UnregisterPipelineMaterial(graph::Material *material);
-        void SetLegacyMaterialBindingFallbackEnabled(bool enabled) { enable_legacy_material_binding_fallback = enabled; }
-        bool IsLegacyMaterialBindingFallbackEnabled() const { return enable_legacy_material_binding_fallback; }
         bool RegisterMaterialStructLayout(const std::string &struct_name,
                                           graph::mtl::SSBOCategory category,
                                           uint32_t byte_stride);

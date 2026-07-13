@@ -24,7 +24,6 @@
 #include<cstdint>
 #include<cstring>
 #include<unordered_set>
-#include<cstdlib>
 #include<string>
 
 namespace hgl::ecs
@@ -128,12 +127,6 @@ namespace hgl::ecs
         AddDependency<EnvironmentSystem>();
         AddDependency<RenderTargetSystem>();
         AddDependency<CameraSystem>();
-
-        if (const char *env = std::getenv("HGL_ECS_DISABLE_LEGACY_BINDING_FALLBACK"))
-        {
-            if (*env == '1' || *env == 'y' || *env == 'Y' || *env == 't' || *env == 'T')
-                enable_legacy_material_binding_fallback = false;
-        }
 
         EnsureMaterializationCallbacks();
     }
@@ -314,18 +307,6 @@ namespace hgl::ecs
             struct_binding.struct_name = struct_name;
             struct_binding.shared_across_instances = false;
             out_recipe.structs.emplace_back(std::move(struct_binding));
-        }
-
-        if (out_recipe.structs.empty()
-         && material->hasMI()
-         && material->GetMIDataBytes() > 0
-         && contract.requirements.empty())
-        {
-            graph::mtl::RecipeStructBinding fallback_struct{};
-            fallback_struct.slot = graph::mtl::DataSlot::PBRSurface;
-            fallback_struct.struct_name = "LegacyMaterialInstance_" + std::to_string(material->GetMIDataBytes());
-            fallback_struct.shared_across_instances = false;
-            out_recipe.structs.emplace_back(std::move(fallback_struct));
         }
 
         return true;
@@ -809,29 +790,6 @@ namespace hgl::ecs
                 }
             }
 
-            // Legacy compatibility fallback:
-            // Some existing materials may still rely on hasLocalToWorld/hasMI flags
-            // without fully populated contract semantics.
-            if (enable_legacy_material_binding_fallback)
-            {
-                if (batch
-                 && batch->transform_buffer
-                 && material->hasLocalToWorld()
-                 && !l2w_bound_materials.contains(material))
-                {
-                    batch->transform_buffer->BindTransform(material);
-                    l2w_bound_materials.insert(material);
-                }
-
-                if (batch
-                 && batch->mi_buffer
-                 && material->hasMI()
-                 && !mi_bound_materials.contains(material))
-                {
-                    batch->mi_buffer->BindMaterialInstance(material);
-                    mi_bound_materials.insert(material);
-                }
-            }
         }
 
         // Bind scene-level UBOs to pipeline-registered materials (Line, Terrain, etc.)
