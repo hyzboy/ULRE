@@ -28,6 +28,7 @@
 #include<chrono>
 #include<cstdint>
 #include<string>
+#include<unordered_map>
 
 namespace hgl::ecs
 {
@@ -603,6 +604,7 @@ namespace hgl::ecs
         std::shared_ptr<RenderDescriptorBindingSystem> descriptor_binding_system{};
         if (world)
             descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>();
+        std::unordered_map<graph::Material *, uint64_t> material_spec_hash_cache;
 
         for (auto& itemPtr : cache.renderItems)
         {
@@ -619,29 +621,39 @@ namespace hgl::ecs
             uint64_t spec_hash = 0;
             if (descriptor_binding_system)
             {
-                graph::mtl::MaterialRecipe recipe{};
-                graph::mtl::MaterializationSpec spec{};
-
-                // 批处理分桶必须使用“材质级”语义，不能带实例身份（如 MIID），
-                // 否则会把本可合并的实例拆成 1 instance / batch。
-                if (descriptor_binding_system->BuildMaterialRecipeForMaterial(material, recipe))
+                auto it = material_spec_hash_cache.find(material);
+                if (it != material_spec_hash_cache.end())
                 {
-                    const uint32_t mi_data_bytes = material->GetMIDataBytes();
-                    if (mi_data_bytes > 0)
-                    {
-                        for (const auto &struct_ref : recipe.structs)
-                        {
-                            if (struct_ref.struct_name.empty())
-                                continue;
+                    spec_hash = it->second;
+                }
+                else
+                {
+                    graph::mtl::MaterialRecipe recipe{};
+                    graph::mtl::MaterializationSpec spec{};
 
-                            descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.struct_name,
-                                                                                   graph::mtl::DefaultCategoryForDataSlot(struct_ref.slot),
-                                                                                   mi_data_bytes);
+                    // 批处理分桶必须使用“材质级”语义，不能带实例身份（如 MIID），
+                    // 否则会把本可合并的实例拆成 1 instance / batch。
+                    if (descriptor_binding_system->BuildMaterialRecipeForMaterial(material, recipe))
+                    {
+                        const uint32_t mi_data_bytes = material->GetMIDataBytes();
+                        if (mi_data_bytes > 0)
+                        {
+                            for (const auto &struct_ref : recipe.structs)
+                            {
+                                if (struct_ref.struct_name.empty())
+                                    continue;
+
+                                descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.struct_name,
+                                                                                       graph::mtl::DefaultCategoryForDataSlot(struct_ref.slot),
+                                                                                       mi_data_bytes);
+                            }
                         }
+
+                        if (descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, nullptr))
+                            spec_hash = spec.spec_hash;
                     }
 
-                    if (descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, nullptr))
-                        spec_hash = spec.spec_hash;
+                    material_spec_hash_cache.emplace(material, spec_hash);
                 }
             }
 

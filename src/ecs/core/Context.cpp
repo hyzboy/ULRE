@@ -29,6 +29,8 @@
 #include<hgl/object/ObjectTracker.h>
 #include<algorithm>
 #include<chrono>
+#include<cstdio>
+#include<vector>
 
 namespace hgl
 {
@@ -740,6 +742,57 @@ namespace hgl
                                     unique_material_pipeline_count,
                                     unique_spec_hash_count,
                                     split_material_pipeline_count);
+
+                            std::map<uint64_t, uint32_t> spec_histogram;
+                            if (GetMaterialBatchSpecHashHistogram(spec_histogram, 8))
+                            {
+                                uint64_t top_spec_hash = 0;
+                                uint32_t top_spec_batch_count = 0;
+                                std::string top_preview;
+
+                                for (const auto &kv : spec_histogram)
+                                {
+                                    if (kv.second > top_spec_batch_count)
+                                    {
+                                        top_spec_hash = kv.first;
+                                        top_spec_batch_count = kv.second;
+                                    }
+                                }
+
+                                std::vector<std::pair<uint64_t, uint32_t>> sorted_hist;
+                                sorted_hist.reserve(spec_histogram.size());
+                                for (const auto &kv : spec_histogram)
+                                    sorted_hist.emplace_back(kv.first, kv.second);
+
+                                std::sort(sorted_hist.begin(), sorted_hist.end(),
+                                          [](const auto &a, const auto &b)
+                                          {
+                                              if (a.second != b.second)
+                                                  return a.second > b.second;
+                                              return a.first < b.first;
+                                          });
+
+                                constexpr size_t preview_limit = 3;
+                                for (size_t i = 0; i < sorted_hist.size() && i < preview_limit; ++i)
+                                {
+                                    if (!top_preview.empty())
+                                        top_preview += ", ";
+
+                                    char buf[96]{};
+                                    std::snprintf(buf,
+                                                  sizeof(buf),
+                                                  "0x%llX:%u",
+                                                  static_cast<unsigned long long>(sorted_hist[i].first),
+                                                  sorted_hist[i].second);
+                                    top_preview += buf;
+                                }
+
+                                LogInfo("[MaterialBatching][ECSContext] spec_histogram_buckets=%u top_spec_hash=0x%llX top_spec_batches=%u preview=[%s]",
+                                        static_cast<uint32_t>(spec_histogram.size()),
+                                        static_cast<unsigned long long>(top_spec_hash),
+                                        top_spec_batch_count,
+                                        top_preview.c_str());
+                            }
                         }
 
                         std::map<std::string, uint32_t> category_histogram;

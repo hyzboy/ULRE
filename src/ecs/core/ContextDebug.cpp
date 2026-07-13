@@ -229,6 +229,50 @@ namespace hgl
         #endif
         }
 
+        bool ECSContext::GetMaterialBatchSpecHashHistogram(std::map<uint64_t, uint32_t> &out_histogram,
+                                                           uint32_t max_count) const
+        {
+            out_histogram.clear();
+
+        #if !ULRE_ECS_DEBUG_API
+            (void)max_count;
+            return false;
+        #else
+            for (const auto &entry : render_frame_cache.materialBatches)
+            {
+                const MaterialPipelineKey &key = entry.first;
+                const MaterialBatch *batch = entry.second.get();
+
+                if (!key.material || !key.pipeline || !batch || batch->items.empty())
+                    continue;
+
+                ++out_histogram[key.materialization_spec_hash];
+            }
+
+            if (max_count > 0 && out_histogram.size() > max_count)
+            {
+                std::vector<std::pair<uint64_t, uint32_t>> sorted;
+                sorted.reserve(out_histogram.size());
+                for (const auto &kv : out_histogram)
+                    sorted.emplace_back(kv.first, kv.second);
+
+                std::sort(sorted.begin(), sorted.end(),
+                          [](const auto &a, const auto &b)
+                          {
+                              if (a.second != b.second)
+                                  return a.second > b.second;
+                              return a.first < b.first;
+                          });
+
+                out_histogram.clear();
+                for (size_t i = 0; i < sorted.size() && i < max_count; ++i)
+                    out_histogram[sorted[i].first] = sorted[i].second;
+            }
+
+            return true;
+        #endif
+        }
+
         bool ECSContext::GetShaderGenValidationCategoryHistogram(std::map<std::string, uint32_t> &out_histogram,
                                                                  uint32_t max_count) const
         {

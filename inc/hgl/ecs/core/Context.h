@@ -374,6 +374,9 @@ namespace hgl
                                                uint32_t &unique_spec_hash_count,
                                                uint32_t &split_material_pipeline_count) const;
 
+            bool GetMaterialBatchSpecHashHistogram(std::map<uint64_t, uint32_t> &out_histogram,
+                                                   uint32_t max_count = 128) const;
+
             bool GetShaderGenValidationCategoryHistogram(std::map<std::string, uint32_t> &out_histogram,
                                                          uint32_t max_count = 128) const;
 
