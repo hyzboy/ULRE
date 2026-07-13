@@ -775,6 +775,18 @@ namespace hgl::ecs
                     }
                     break;
                 }
+                case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
+                {
+                    if (materialization_texture_layer_ssbo && materialization_texture_layer_ssbo->GetGPUBuffer())
+                        material->BindSSBO(req.set_type, req.name, materialization_texture_layer_ssbo->GetGPUBuffer(), false);
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+                {
+                    if (materialization_data_index_ssbo && materialization_data_index_ssbo->GetGPUBuffer())
+                        material->BindSSBO(req.set_type, req.name, materialization_data_index_ssbo->GetGPUBuffer(), false);
+                    break;
+                }
                 case graph::mtl::DescriptorSemantic::MaterialTexture:
                 {
                     const auto *binding = FindMaterialResourceBinding(material, req.name);
@@ -863,6 +875,18 @@ namespace hgl::ecs
                         material->BindTexture(req.set_type, req.name, binding->texture);
                     break;
                 }
+                case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
+                {
+                    if (materialization_texture_layer_ssbo && materialization_texture_layer_ssbo->GetGPUBuffer())
+                        material->BindSSBO(req.set_type, req.name, materialization_texture_layer_ssbo->GetGPUBuffer(), false);
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+                {
+                    if (materialization_data_index_ssbo && materialization_data_index_ssbo->GetGPUBuffer())
+                        material->BindSSBO(req.set_type, req.name, materialization_data_index_ssbo->GetGPUBuffer(), false);
+                    break;
+                }
                 case graph::mtl::DescriptorSemantic::MaterialSampler:
                 {
                     const auto *binding = FindMaterialResourceBinding(material, req.name);
@@ -919,6 +943,11 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::MaterialInstance:
         case graph::mtl::DescriptorSemantic::MaterialTexture:
         case graph::mtl::DescriptorSemantic::MaterialSampler:
+            return true;
+        case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
+            return materialization_texture_layer_ssbo && materialization_texture_layer_ssbo->GetGPUBuffer();
+        case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+            return materialization_data_index_ssbo && materialization_data_index_ssbo->GetGPUBuffer();
         case graph::mtl::DescriptorSemantic::Custom:
             return true;
 

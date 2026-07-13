@@ -20,6 +20,8 @@ namespace hgl::graph::mtl
 
         MaterialTexture,
         MaterialSampler,
+        MaterialTextureLayerTable,
+        MaterialDataIndexTable,
 
         Custom,
     };
@@ -48,6 +50,11 @@ namespace hgl::graph::mtl
         return lhs && rhs && std::strcmp(lhs, rhs) == 0;
     }
 
+    inline bool _DBC_CStrContains(const char *text, const char *token)
+    {
+        return text && token && *token && std::strstr(text, token) != nullptr;
+    }
+
     inline DescriptorSemantic InferDescriptorSemantic(const FixedDescriptorEntry &entry)
     {
         if (_DBC_CStrEq(entry.struct_name, "ViewportInfo") || _DBC_CStrEq(entry.name, "viewport"))
@@ -64,6 +71,25 @@ namespace hgl::graph::mtl
 
         if (_DBC_CStrEq(entry.struct_name, "MaterialInstanceData") || _DBC_CStrEq(entry.struct_name, "MaterialInstance") || _DBC_CStrEq(entry.name, "mtl"))
             return DescriptorSemantic::MaterialInstance;
+
+        if (entry.kind == DescriptorKind::SSBO)
+        {
+            if (_DBC_CStrEq(entry.struct_name, "TextureLayerRow")
+             || _DBC_CStrEq(entry.struct_name, "TextureLayerRows")
+             || _DBC_CStrEq(entry.struct_name, "TextureLayerTable")
+             || _DBC_CStrEq(entry.name, "texture_layer_rows")
+             || _DBC_CStrEq(entry.name, "texture_layer_table")
+             || _DBC_CStrContains(entry.name, "textureLayer"))
+                return DescriptorSemantic::MaterialTextureLayerTable;
+
+            if (_DBC_CStrEq(entry.struct_name, "DataIndexRow")
+             || _DBC_CStrEq(entry.struct_name, "DataIndexRows")
+             || _DBC_CStrEq(entry.struct_name, "DataIndexTable")
+             || _DBC_CStrEq(entry.name, "data_index_rows")
+             || _DBC_CStrEq(entry.name, "data_index_table")
+             || _DBC_CStrContains(entry.name, "dataIndex"))
+                return DescriptorSemantic::MaterialDataIndexTable;
+        }
 
         if (entry.kind == DescriptorKind::Texture)
             return DescriptorSemantic::MaterialTexture;
@@ -84,6 +110,8 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::SkyInfo:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
+        case DescriptorSemantic::MaterialTextureLayerTable:
+        case DescriptorSemantic::MaterialDataIndexTable:
             return false;
         default:
             return true;
@@ -97,6 +125,8 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::SkyInfo:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
+        case DescriptorSemantic::MaterialTextureLayerTable:
+        case DescriptorSemantic::MaterialDataIndexTable:
             return true;
         default:
             return false;
@@ -120,6 +150,8 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialInstance:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
+        case DescriptorSemantic::MaterialTextureLayerTable:
+        case DescriptorSemantic::MaterialDataIndexTable:
             return DescriptorSetType::Material;
 
         default:
@@ -168,6 +200,8 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialInstance: return "MaterialInstance";
         case DescriptorSemantic::MaterialTexture:  return "MaterialTexture";
         case DescriptorSemantic::MaterialSampler:  return "MaterialSampler";
+        case DescriptorSemantic::MaterialTextureLayerTable: return "MaterialTextureLayerTable";
+        case DescriptorSemantic::MaterialDataIndexTable: return "MaterialDataIndexTable";
         case DescriptorSemantic::Custom:           return "Custom";
         }
 
