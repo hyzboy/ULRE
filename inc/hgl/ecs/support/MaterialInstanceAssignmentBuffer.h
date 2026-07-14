@@ -99,13 +99,13 @@ namespace hgl::ecs
 
     private:    // 分发数据
         uint32_t node_count;                        ///<节点数量
-        graph::VAB* material_instance_vab;          ///<材质实例ID分发数据VAB(R16UI格式)
+        graph::VAB* material_instance_vab;          ///<材质实例ID分发数据VAB（当前为 R16UI）
         VkBuffer material_instance_vab_buffer;      ///<材质实例ID分发数据Buffer
         uint32_t data_index_node_count;             ///<DataIndex节点数量
-        graph::VAB* data_index_vab;                 ///<DataIndex行索引分发VAB(R16UI格式)
+        graph::VAB* data_index_vab;                 ///<DataIndex行索引分发VAB（格式见 Assign::DataIndexID）
         VkBuffer data_index_vab_buffer;             ///<DataIndex行索引分发Buffer
         uint32_t texture_layer_node_count;          ///<TextureLayer节点数量
-        graph::VAB* texture_layer_vab;              ///<TextureLayer行索引分发VAB(R16UI格式)
+        graph::VAB* texture_layer_vab;              ///<TextureLayer行索引分发VAB（格式见 Assign::TextureLayerID）
         VkBuffer texture_layer_vab_buffer;          ///<TextureLayer行索引分发Buffer
 
     private:
@@ -143,8 +143,8 @@ namespace hgl::ecs
          * @param texture_layer_rows 可选 TextureLayer 行索引（与 items 一一对应）
          */
         void WriteItems(const std::vector<RenderItem*>& items,
-                        const std::vector<uint16> *data_index_rows = nullptr,
-                        const std::vector<uint16> *texture_layer_rows = nullptr);
+                        const std::vector<uint32> *data_index_rows = nullptr,
+                        const std::vector<uint32> *texture_layer_rows = nullptr);
 
         /**
          * 更新单个RenderItem的材质实例数据

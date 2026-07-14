@@ -470,8 +470,17 @@ namespace hgl::ecs
 
         uint32_t texture_row = 0;
         uint32_t data_row = 0;
-        if (!graph::mtl::WriteSpecToIndexTables(out_spec, materialization_index_tables, texture_row, data_row))
-            return false;
+        if (kP15V1ScopeLockMIOnly)
+        {
+            const graph::mtl::DataIndexRow data_index_row = graph::mtl::BuildDataIndexRow(out_spec);
+            data_row = materialization_index_tables.PushDataIndexRow(data_index_row);
+            texture_row = 0;
+        }
+        else
+        {
+            if (!graph::mtl::WriteSpecToIndexTables(out_spec, materialization_index_tables, texture_row, data_row))
+                return false;
+        }
 
         if (out_texture_layer_row)
             *out_texture_layer_row = texture_row;
@@ -547,7 +556,9 @@ namespace hgl::ecs
         if (!bm)
             return;
 
-        const uint32_t texture_rows = static_cast<uint32_t>(materialization_index_tables.GetTextureLayerRowCount());
+        const uint32_t texture_rows = kP15V1ScopeLockMIOnly
+                                    ? 0
+                                    : static_cast<uint32_t>(materialization_index_tables.GetTextureLayerRowCount());
         const uint32_t data_rows = static_cast<uint32_t>(materialization_index_tables.GetDataIndexRowCount());
 
         auto ensure_capacity = [](uint32_t required) -> uint32_t

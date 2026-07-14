@@ -219,6 +219,8 @@ namespace hgl::graph::mtl
     {
         std::array<uint32_t, static_cast<size_t>(DataSlot::RANGE_SIZE)> values{};
     };
+    static_assert(sizeof(DataIndexRow::values[0]) == sizeof(uint32_t),
+                  "DataIndexRow values must remain uint32_t for SSBO row format stability.");
 
     // TextureLayer/DataIndex 间接表容器（Phase 3 最小骨架）。
     class MaterializationIndexTables

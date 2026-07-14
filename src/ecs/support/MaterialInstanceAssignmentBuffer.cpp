@@ -10,6 +10,7 @@
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<limits>
 
 namespace hgl::ecs
 {
@@ -48,14 +49,9 @@ namespace hgl::ecs
             return;
         }
 
-    #ifdef HGL_MI_USE_SSBO
         mtl->BindSSBO(hgl::graph::mtl::SBS_MaterialInstance.set_type,
-                  hgl::graph::mtl::SBS_MaterialInstance.name,
-                  material_instance_buffer->GetGPUBuffer());
-    #endif
-    #ifdef HGL_MI_USE_UBO
-        mtl->BindUBO(&hgl::graph::mtl::SBS_MaterialInstance, material_instance_buffer->GetGPUBuffer());
-    #endif
+                      hgl::graph::mtl::SBS_MaterialInstance.name,
+                      material_instance_buffer->GetGPUBuffer());
     }
 
     void MaterialInstanceAssignmentBuffer::Clear()
@@ -129,18 +125,10 @@ namespace hgl::ecs
         {
             const size_t buffer_size = material_instance_data_bytes * mi_set.GetAllocCount();
 
-#ifdef HGL_MI_USE_SSBO
             material_instance_buffer = buffer_manager->CreateSSBO("ECS:MaterialInstanceData",
                                                                   buffer_size,
                                                                   nullptr,
                                                                   graph::SharingMode::Exclusive);
-#endif
-#ifdef HGL_MI_USE_UBO
-            material_instance_buffer = buffer_manager->CreateUBO("ECS:MaterialInstanceData",
-                                                                 buffer_size,
-                                                                 nullptr,
-                                                                 graph::SharingMode::Exclusive);
-#endif
         }
 
     if (!material_instance_buffer)
@@ -228,8 +216,8 @@ namespace hgl::ecs
     }
 
     void MaterialInstanceAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items,
-                                                      const std::vector<uint16> *data_index_rows,
-                                                      const std::vector<uint16> *texture_layer_rows)
+                                                      const std::vector<uint32> *data_index_rows,
+                                                      const std::vector<uint32> *texture_layer_rows)
     {
         const size_t item_count = items.size();
 
@@ -325,7 +313,7 @@ namespace hgl::ecs
             {
                 if (buffer_manager)
                 {
-                    data_index_vab = buffer_manager->CreateVAB(VK_FORMAT_R16_UINT, data_index_node_count);
+                    data_index_vab = buffer_manager->CreateVAB(graph::Assign::DataIndexID::VAB_FMT, data_index_node_count);
                     data_index_vab_buffer = data_index_vab ? data_index_vab->GetVkBuffer() : nullptr;
 
                 #ifdef _DEBUG
@@ -371,7 +359,7 @@ namespace hgl::ecs
             {
                 if (buffer_manager)
                 {
-                    texture_layer_vab = buffer_manager->CreateVAB(VK_FORMAT_R16_UINT, texture_layer_node_count);
+                    texture_layer_vab = buffer_manager->CreateVAB(graph::Assign::TextureLayerID::VAB_FMT, texture_layer_node_count);
                     texture_layer_vab_buffer = texture_layer_vab ? texture_layer_vab->GetVkBuffer() : nullptr;
 
                 #ifdef _DEBUG
@@ -396,8 +384,10 @@ namespace hgl::ecs
         // 3. 生成材质实例索引列表
         {
             uint16* mi_ptr = (uint16*)(material_instance_vab->Map(0, item_count));
-            uint16* data_index_ptr = (uint16*)(data_index_vab->Map(0, item_count));
-            uint16* texture_layer_ptr = (uint16*)(texture_layer_vab->Map(0, item_count));
+            graph::Assign::DataIndexID::ValueType *data_index_ptr =
+                (graph::Assign::DataIndexID::ValueType *)(data_index_vab->Map(0, item_count));
+            graph::Assign::TextureLayerID::ValueType *texture_layer_ptr =
+                (graph::Assign::TextureLayerID::ValueType *)(texture_layer_vab->Map(0, item_count));
 
             if (!mi_ptr || !data_index_ptr || !texture_layer_ptr)
             {
@@ -411,10 +401,16 @@ namespace hgl::ecs
                 return;
             }
 
-            const uint16 max_valid_data_index = mi_set.GetCount() > 0
-                                              ? static_cast<uint16>(mi_set.GetCount() - 1)
-                                              : static_cast<uint16>(0);
+            const uint32 max_valid_data_index = mi_set.GetCount() > 0
+                                              ? static_cast<uint32>(mi_set.GetCount() - 1)
+                                              : 0u;
+            constexpr uint32 max_data_index_value =
+                static_cast<uint32>(std::numeric_limits<graph::Assign::DataIndexID::ValueType>::max());
+            constexpr uint32 max_texture_layer_value =
+                static_cast<uint32>(std::numeric_limits<graph::Assign::TextureLayerID::ValueType>::max());
             bool warned_invalid_data_index = false;
+            bool warned_data_index_range = false;
+            bool warned_texture_layer_range = false;
 
             for (size_t i = 0; i < item_count; i++)
             {
@@ -433,8 +429,8 @@ namespace hgl::ecs
 
                 graph::MaterialInstance* mi = item->GetMaterialInstance();
                 uint16 mi_index = mi_set.Find(mi);
-                uint16 data_index = mi_index;
-                uint16 texture_layer = 0;
+                uint32 data_index = static_cast<uint32>(mi_index);
+                uint32 texture_layer = 0;
 
                 if (data_index_rows && i < data_index_rows->size())
                 {
@@ -456,9 +452,35 @@ namespace hgl::ecs
                 if (texture_layer_rows && i < texture_layer_rows->size())
                     texture_layer = (*texture_layer_rows)[i];
 
+                if (data_index > max_data_index_value)
+                {
+                    if (!warned_data_index_range)
+                    {
+                        std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: DataIndexID exceeds VAB value range, fallback to 0. "
+                                  << "value=" << data_index
+                                  << ", max_allowed=" << max_data_index_value
+                                  << std::endl;
+                        warned_data_index_range = true;
+                    }
+                    data_index = 0;
+                }
+
+                if (texture_layer > max_texture_layer_value)
+                {
+                    if (!warned_texture_layer_range)
+                    {
+                        std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: TextureLayerID exceeds VAB value range, fallback to 0. "
+                                  << "value=" << texture_layer
+                                  << ", max_allowed=" << max_texture_layer_value
+                                  << std::endl;
+                        warned_texture_layer_range = true;
+                    }
+                    texture_layer = 0;
+                }
+
                 *mi_ptr = mi_index;
-                *data_index_ptr = data_index;
-                *texture_layer_ptr = texture_layer;
+                *data_index_ptr = static_cast<graph::Assign::DataIndexID::ValueType>(data_index);
+                *texture_layer_ptr = static_cast<graph::Assign::TextureLayerID::ValueType>(texture_layer);
                 ++mi_ptr;
                 ++data_index_ptr;
                 ++texture_layer_ptr;
