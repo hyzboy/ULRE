@@ -31,6 +31,11 @@ namespace hgl::ecs
 {
     namespace
     {
+        // P1.5-v1-01: scope lock (MI-only materialization).
+        // Keep MaterialRecipe resolve path focused on MaterialInstance data only.
+        // Texture materialization (including array-specific rows) is deferred to P1.6.
+        constexpr bool kP15V1ScopeLockMIOnly = true;
+
         std::string ToBindingKey(const char *name)
         {
             return name ? std::string(name) : std::string();
@@ -247,61 +252,65 @@ namespace hgl::ecs
         out_recipe.shading_model = "Legacy";
         out_recipe.domain = "ECS";
 
-        constexpr size_t texture_slot_count = static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE);
-        std::array<bool, texture_slot_count> used_texture_slots{};
-        std::unordered_set<std::string> emitted_texture_keys;
-        uint32_t custom_slot_cursor = 0;
-
         const auto &contract = material->GetBindingContract();
-        for (const auto &req : contract.requirements)
+
+        if (!kP15V1ScopeLockMIOnly)
         {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialTexture
-             && req.semantic != graph::mtl::DescriptorSemantic::MaterialSampler)
-                continue;
+            constexpr size_t texture_slot_count = static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE);
+            std::array<bool, texture_slot_count> used_texture_slots{};
+            std::unordered_set<std::string> emitted_texture_keys;
+            uint32_t custom_slot_cursor = 0;
 
-            if (!req.name || !*req.name)
-                continue;
-
-            const std::string key = ToBindingKey(req.name);
-            if (key.empty())
-                continue;
-
-            if (emitted_texture_keys.find(key) != emitted_texture_keys.end())
-                continue;
-            emitted_texture_keys.insert(key);
-
-            const MaterialResourceBinding *binding = FindMaterialResourceBinding(material, req.name);
-            std::string resource_id = binding ? BuildTextureResourceId(binding->texture) : std::string();
-
-            if (resource_id.empty() && !req.required)
-                continue;
-
-            const std::string key_lower = ToLowerAscii(key);
-            bool known_slot = false;
-            graph::mtl::TextureSlot slot = InferTextureSlotFromBindingName(key_lower, known_slot);
-
-            if (!known_slot)
+            for (const auto &req : contract.requirements)
             {
-                if (custom_slot_cursor == 0)
-                    slot = graph::mtl::TextureSlot::Custom0;
-                else if (custom_slot_cursor == 1)
-                    slot = graph::mtl::TextureSlot::Custom1;
-                else
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialTexture
+                 && req.semantic != graph::mtl::DescriptorSemantic::MaterialSampler)
                     continue;
 
-                ++custom_slot_cursor;
+                if (!req.name || !*req.name)
+                    continue;
+
+                const std::string key = ToBindingKey(req.name);
+                if (key.empty())
+                    continue;
+
+                if (emitted_texture_keys.find(key) != emitted_texture_keys.end())
+                    continue;
+                emitted_texture_keys.insert(key);
+
+                const MaterialResourceBinding *binding = FindMaterialResourceBinding(material, req.name);
+                std::string resource_id = binding ? BuildTextureResourceId(binding->texture) : std::string();
+
+                if (resource_id.empty() && !req.required)
+                    continue;
+
+                const std::string key_lower = ToLowerAscii(key);
+                bool known_slot = false;
+                graph::mtl::TextureSlot slot = InferTextureSlotFromBindingName(key_lower, known_slot);
+
+                if (!known_slot)
+                {
+                    if (custom_slot_cursor == 0)
+                        slot = graph::mtl::TextureSlot::Custom0;
+                    else if (custom_slot_cursor == 1)
+                        slot = graph::mtl::TextureSlot::Custom1;
+                    else
+                        continue;
+
+                    ++custom_slot_cursor;
+                }
+
+                const size_t slot_index = static_cast<size_t>(slot);
+                if (slot_index >= used_texture_slots.size() || used_texture_slots[slot_index])
+                    continue;
+                used_texture_slots[slot_index] = true;
+
+                graph::mtl::RecipeTextureBinding texture_binding{};
+                texture_binding.slot = slot;
+                texture_binding.resource_id = std::move(resource_id);
+                texture_binding.required = req.required;
+                out_recipe.textures.emplace_back(std::move(texture_binding));
             }
-
-            const size_t slot_index = static_cast<size_t>(slot);
-            if (slot_index >= used_texture_slots.size() || used_texture_slots[slot_index])
-                continue;
-            used_texture_slots[slot_index] = true;
-
-            graph::mtl::RecipeTextureBinding texture_binding{};
-            texture_binding.slot = slot;
-            texture_binding.resource_id = std::move(resource_id);
-            texture_binding.required = req.required;
-            out_recipe.textures.emplace_back(std::move(texture_binding));
         }
 
         std::unordered_set<std::string> emitted_struct_names;
