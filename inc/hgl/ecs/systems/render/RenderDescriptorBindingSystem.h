@@ -133,7 +133,7 @@ namespace hgl::ecs
         void RegisterPipelineMaterial(graph::Material *material);
         void UnregisterPipelineMaterial(graph::Material *material);
         bool RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
-                                          uint32_t resource_domain_id,
+                                          uint32_t ssbo_id,
                                           uint32_t byte_stride,
                                           const std::string &struct_name = {});
         void ResetMaterializationFrameData();

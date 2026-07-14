@@ -67,7 +67,7 @@ namespace hgl::graph::mtl
     struct StructPoolLayout
     {
         SSBOType ssbo_type = SSBOType::UserDefined;
-        uint32_t resource_domain_id = 0;
+        uint32_t ssbo_id = 0;
         std::string struct_name;
         uint32_t byte_stride = 0;
     };
@@ -76,7 +76,7 @@ namespace hgl::graph::mtl
     struct StructPoolAllocation
     {
         SSBOType ssbo_type = SSBOType::UserDefined;
-        uint32_t resource_domain_id = 0;
+        uint32_t ssbo_id = 0;
         std::string struct_name;
         uint32_t struct_index = 0;
         uint32_t byte_offset = 0;
@@ -96,9 +96,9 @@ namespace hgl::graph::mtl
         std::unordered_map<uint64_t, LayoutState> states;
         std::unordered_map<std::string, uint64_t> legacy_name_to_key;
 
-        static uint64_t BuildLayoutKey(const SSBOType ssbo_type, const uint32_t resource_domain_id) noexcept
+        static uint64_t BuildLayoutKey(const SSBOType ssbo_type, const uint32_t ssbo_id) noexcept
         {
-            return (static_cast<uint64_t>(ssbo_type) << 32) | static_cast<uint64_t>(resource_domain_id);
+            return (static_cast<uint64_t>(ssbo_type) << 32) | static_cast<uint64_t>(ssbo_id);
         }
 
         bool AllocateByKey(const uint64_t key, StructPoolAllocation &out_alloc)
@@ -111,7 +111,7 @@ namespace hgl::graph::mtl
             const uint32_t index = state.next_index++;
 
             out_alloc.ssbo_type = state.layout.ssbo_type;
-            out_alloc.resource_domain_id = state.layout.resource_domain_id;
+            out_alloc.ssbo_id = state.layout.ssbo_id;
             out_alloc.struct_name = state.layout.struct_name;
             out_alloc.struct_index = index;
             out_alloc.byte_stride = state.layout.byte_stride;
@@ -121,20 +121,20 @@ namespace hgl::graph::mtl
 
     public:
         bool RegisterLayout(const SSBOType ssbo_type,
-                            const uint32_t resource_domain_id,
+                            const uint32_t ssbo_id,
                             const uint32_t byte_stride,
                             const std::string &struct_name = {})
         {
             if (byte_stride == 0)
                 return false;
 
-            const uint64_t key = BuildLayoutKey(ssbo_type, resource_domain_id);
+            const uint64_t key = BuildLayoutKey(ssbo_type, ssbo_id);
             auto it = states.find(key);
             if (it == states.end())
             {
                 LayoutState state{};
                 state.layout.ssbo_type = ssbo_type;
-                state.layout.resource_domain_id = resource_domain_id;
+                state.layout.ssbo_id = ssbo_id;
                 state.layout.struct_name = struct_name;
                 state.layout.byte_stride = byte_stride;
                 states.emplace(key, std::move(state));
@@ -163,9 +163,9 @@ namespace hgl::graph::mtl
             return RegisterLayout(ssbo_type, 0, byte_stride, struct_name);
         }
 
-        bool HasLayout(const SSBOType ssbo_type, const uint32_t resource_domain_id) const
+        bool HasLayout(const SSBOType ssbo_type, const uint32_t ssbo_id) const
         {
-            const uint64_t key = BuildLayoutKey(ssbo_type, resource_domain_id);
+            const uint64_t key = BuildLayoutKey(ssbo_type, ssbo_id);
             return states.find(key) != states.end();
         }
 
@@ -180,10 +180,10 @@ namespace hgl::graph::mtl
         }
 
         bool TryAllocate(const SSBOType ssbo_type,
-                         const uint32_t resource_domain_id,
+                         const uint32_t ssbo_id,
                          StructPoolAllocation &out_alloc)
         {
-            return AllocateByKey(BuildLayoutKey(ssbo_type, resource_domain_id), out_alloc);
+            return AllocateByKey(BuildLayoutKey(ssbo_type, ssbo_id), out_alloc);
         }
 
         bool TryAllocate(const std::string &struct_name, StructPoolAllocation &out_alloc)
@@ -306,10 +306,9 @@ namespace hgl::graph::mtl
         {
             StructPoolAllocation alloc{};
             bool allocated = false;
-            const uint32_t ssbo_id = GetRecipeStructSSBOId(input);
 
-            if (input.ssbo_type != SSBOType::UserDefined || ssbo_id != 0)
-                allocated = struct_pool.TryAllocate(input.ssbo_type, ssbo_id, alloc);
+            if (input.ssbo_type != SSBOType::UserDefined || input.ssbo_id != 0)
+                allocated = struct_pool.TryAllocate(input.ssbo_type, input.ssbo_id, alloc);
 
             if (!allocated && !input.struct_name.empty())
                 allocated = struct_pool.TryAllocate(input.struct_name, alloc);
@@ -319,8 +318,7 @@ namespace hgl::graph::mtl
 
             output.slot = input.slot;
             output.ssbo_type = alloc.ssbo_type;
-            output.ssbo_id = alloc.resource_domain_id;
-            output.resource_domain_id = alloc.resource_domain_id;
+            output.ssbo_id = alloc.ssbo_id;
             output.ssbo_binding = static_cast<uint32_t>(alloc.ssbo_type); // 临时默认映射，后续由布局系统接管
             output.struct_index = alloc.struct_index;
             output.byte_offset = alloc.byte_offset;

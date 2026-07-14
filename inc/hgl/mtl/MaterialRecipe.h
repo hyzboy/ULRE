@@ -147,18 +147,9 @@ namespace hgl::graph::mtl
         DataSlot slot = DataSlot::PBRSurface;              // 目标数据语义槽
         SSBOType ssbo_type = SSBOType::UserDefined;        // 结构体所属 SSBO 类型（主字段）
         uint32_t ssbo_id = 0;                              // 结构体 SSBO 资源 ID（主字段，P1.55）
-        uint32_t resource_domain_id = 0;                   // 兼容字段（过渡期与 ssbo_id 保持一致）
         std::string struct_name;                           // 过渡字段：旧路径结构名（后续移除）
         bool shared_across_instances = false;              // true: 多实例共享同一结构体数据
     };
-
-    inline uint32_t GetRecipeStructSSBOId(const RecipeStructBinding &binding) noexcept
-    {
-        if (binding.ssbo_id == 0 && binding.resource_domain_id != 0)
-            return binding.resource_domain_id;
-
-        return binding.ssbo_id;
-    }
 
     // 纯声明式材质输入（不含 Vulkan/运行时句柄），是 MaterializationSpec 的上游输入。
     struct MaterialRecipe
@@ -209,10 +200,9 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &s : recipe.structs)
         {
-            const uint32_t ssbo_id = GetRecipeStructSSBOId(s);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo_id);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_id);
             if (!s.struct_name.empty())
                 hash = hgl::hash::FNV1aAppendBytes(hash, s.struct_name.data(), s.struct_name.size());
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.shared_across_instances);

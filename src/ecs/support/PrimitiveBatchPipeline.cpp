@@ -669,7 +669,7 @@ namespace hgl::ecs
                                 for (const auto &struct_ref : recipe.structs)
                                 {
                                     descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.ssbo_type,
-                                                                                           struct_ref.resource_domain_id,
+                                                                                           struct_ref.ssbo_id,
                                                                                            mi_data_bytes,
                                                                                            struct_ref.struct_name);
                                 }

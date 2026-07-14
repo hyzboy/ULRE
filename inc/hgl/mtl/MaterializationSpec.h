@@ -24,20 +24,11 @@ namespace hgl::graph::mtl
         DataSlot slot = DataSlot::PBRSurface;       // 语义数据槽（PBRSurface/ClearCoat...）
         SSBOType ssbo_type = SSBOType::UserDefined; // 目标 SSBO 类型（契约主字段）
         uint32_t ssbo_id = 0;                       // 目标 SSBO 资源 ID（主字段，P1.55）
-        uint32_t resource_domain_id = 0;            // 兼容字段（过渡期与 ssbo_id 保持一致）
         uint32_t ssbo_binding = 0;                  // 目标 SSBO binding（管线布局侧）
         uint32_t struct_index = 0;                  // 结构体池中的逻辑索引（实例通过它间接访问）
         uint32_t byte_offset = 0;                   // 结构体在 SSBO 内的字节偏移
         uint32_t byte_stride = 0;                   // 同类结构体的字节步长
     };
-
-    inline uint32_t GetResolvedStructSSBOId(const ResolvedStructRef &ref) noexcept
-    {
-        if (ref.ssbo_id == 0 && ref.resource_domain_id != 0)
-            return ref.resource_domain_id;
-
-        return ref.ssbo_id;
-    }
 
     // MaterializationSpec 是 MaterialRecipe 的“已物化 IR”：
     // - Recipe 只表达“要什么”；
@@ -85,10 +76,9 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &ref : spec.struct_refs)
         {
-            const uint32_t ssbo_id = GetResolvedStructSSBOId(ref);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo_id);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_id);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_binding);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.byte_stride);
         }
@@ -98,7 +88,7 @@ namespace hgl::graph::mtl
 
     // ProgramSignature：仅表达“会不会影响 shader program/布局”的语义信息。
     // 说明：
-    // - 不包含 resource_domain_id、bindless handle、texture layer 等绑定时态信息；
+    // - 不包含 ssbo_id、bindless handle、texture layer 等绑定时态信息；
     // - 用于 program 级缓存与批次中的“程序等价”判断。
     inline uint64_t HashMaterializationProgramSignature(const MaterializationSpec &spec) noexcept
     {
@@ -130,7 +120,7 @@ namespace hgl::graph::mtl
 
     // BindingSignature：表达“绑定资源是否等价”。
     // 说明：
-    // - 包含 domain_id/句柄/层等绑定身份；
+    // - 包含 ssbo_id/句柄/层等绑定身份；
     // - 不影响 shader 代码，但影响是否可共享同一次绑定与 draw batch。
     inline uint64_t HashMaterializationBindingSignature(const MaterializationSpec &spec) noexcept
     {
@@ -149,19 +139,12 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &ref : spec.struct_refs)
         {
-            const uint32_t ssbo_id = GetResolvedStructSSBOId(ref);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo_id);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_id);
         }
 
         return static_cast<uint64_t>(hash);
-    }
-
-    // 兼容旧命名：DomainSignature 语义升级为 BindingSignature。
-    inline uint64_t HashMaterializationDomainSignature(const MaterializationSpec &spec) noexcept
-    {
-        return HashMaterializationBindingSignature(spec);
     }
 
     // 由 Recipe 生成一个“未解析资源”的 Spec 初稿：

@@ -9,20 +9,20 @@ GRAPH_MODULE_CONSTRUCT(ResourceDomainManager)
 {
 }
 
-uint64_t ResourceDomainManager::MakeKey(const mtl::SSBOType ssbo_type, const uint32_t resource_domain_id) noexcept
+uint64_t ResourceDomainManager::MakeKey(const mtl::SSBOAddress &address) noexcept
 {
-    return (static_cast<uint64_t>(ssbo_type) << 32) | static_cast<uint64_t>(resource_domain_id);
+    return (static_cast<uint64_t>(address.ssbo_type) << 32) | static_cast<uint64_t>(address.ssbo_id);
 }
 
-ResourceDomainBinding *ResourceDomainManager::FindMutable(const mtl::SSBOType ssbo_type, const uint32_t resource_domain_id)
+ResourceDomainBinding *ResourceDomainManager::FindMutable(const mtl::SSBOAddress &address)
 {
-    auto it = domain_map.find(MakeKey(ssbo_type, resource_domain_id));
+    auto it = domain_map.find(MakeKey(address));
     return it == domain_map.end() ? nullptr : &it->second;
 }
 
-const ResourceDomainBinding *ResourceDomainManager::Find(const mtl::SSBOType ssbo_type, const uint32_t resource_domain_id) const
+const ResourceDomainBinding *ResourceDomainManager::Find(const mtl::SSBOAddress &address) const
 {
-    auto it = domain_map.find(MakeKey(ssbo_type, resource_domain_id));
+    auto it = domain_map.find(MakeKey(address));
     return it == domain_map.end() ? nullptr : &it->second;
 }
 
@@ -48,29 +48,28 @@ void ResourceDomainManager::Release()
     domain_map.clear();
 }
 
-bool ResourceDomainManager::Touch(const mtl::SSBOType ssbo_type, const uint32_t resource_domain_id)
+bool ResourceDomainManager::Touch(const mtl::SSBOAddress &address)
 {
-    const uint64_t key = MakeKey(ssbo_type, resource_domain_id);
+    const uint64_t key = MakeKey(address);
     auto it = domain_map.find(key);
     if (it != domain_map.end())
         return true;
 
     ResourceDomainBinding binding{};
-    binding.ssbo_type = ssbo_type;
-    binding.resource_domain_id = resource_domain_id;
+    binding.ssbo_type = address.ssbo_type;
+    binding.ssbo_id = address.ssbo_id;
     domain_map.emplace(key, binding);
     return true;
 }
 
-bool ResourceDomainManager::RegisterBuffer(const mtl::SSBOType ssbo_type,
-                                           const uint32_t resource_domain_id,
+bool ResourceDomainManager::RegisterBuffer(const mtl::SSBOAddress &address,
                                            DeviceBuffer *buffer,
                                            const uint32_t element_capacity)
 {
     if (!buffer)
         return false;
 
-    const uint64_t key = MakeKey(ssbo_type, resource_domain_id);
+    const uint64_t key = MakeKey(address);
     auto &binding = domain_map[key];
 
     if (binding.buffer && binding.buffer != buffer)
@@ -82,32 +81,31 @@ bool ResourceDomainManager::RegisterBuffer(const mtl::SSBOType ssbo_type,
             delete binding.buffer;
     }
 
-    binding.ssbo_type = ssbo_type;
-    binding.resource_domain_id = resource_domain_id;
+    binding.ssbo_type = address.ssbo_type;
+    binding.ssbo_id = address.ssbo_id;
     binding.buffer = buffer;
     binding.element_capacity = element_capacity;
     return true;
 }
 
-DeviceBuffer *ResourceDomainManager::EnsureBuffer(const mtl::SSBOType ssbo_type,
-                                                  const uint32_t resource_domain_id,
+DeviceBuffer *ResourceDomainManager::EnsureBuffer(const mtl::SSBOAddress &address,
                                                   const AnsiString &name,
                                                   const VkDeviceSize byte_size,
                                                   const uint32_t required_capacity,
                                                   const SharingMode sm)
 {
     if (byte_size == 0 || required_capacity == 0)
-        return GetBuffer(ssbo_type, resource_domain_id);
+        return GetBuffer(address);
 
     auto *gc = GetGraphicsContext();
     auto *buffer_manager = gc ? gc->GetBufferManager() : nullptr;
     if (!buffer_manager)
         return nullptr;
 
-    const uint64_t key = MakeKey(ssbo_type, resource_domain_id);
+    const uint64_t key = MakeKey(address);
     auto &binding = domain_map[key];
-    binding.ssbo_type = ssbo_type;
-    binding.resource_domain_id = resource_domain_id;
+    binding.ssbo_type = address.ssbo_type;
+    binding.ssbo_id = address.ssbo_id;
 
     if (binding.buffer && binding.element_capacity >= required_capacity)
         return binding.buffer;
@@ -126,9 +124,9 @@ DeviceBuffer *ResourceDomainManager::EnsureBuffer(const mtl::SSBOType ssbo_type,
     return binding.buffer;
 }
 
-bool ResourceDomainManager::ClearDomain(const mtl::SSBOType ssbo_type, const uint32_t resource_domain_id)
+bool ResourceDomainManager::ClearDomain(const mtl::SSBOAddress &address)
 {
-    auto it = domain_map.find(MakeKey(ssbo_type, resource_domain_id));
+    auto it = domain_map.find(MakeKey(address));
     if (it == domain_map.end())
         return false;
 
@@ -146,22 +144,36 @@ bool ResourceDomainManager::ClearDomain(const mtl::SSBOType ssbo_type, const uin
     return true;
 }
 
-DeviceBuffer *ResourceDomainManager::GetBuffer(const mtl::SSBOType ssbo_type, const uint32_t resource_domain_id) const
+bool ResourceDomainManager::HasBinding(const mtl::SSBOAddress &address) const
 {
-    const auto *binding = Find(ssbo_type, resource_domain_id);
+    return Find(address) != nullptr;
+}
+
+bool ResourceDomainManager::TryGetBinding(const mtl::SSBOAddress &address, ResourceDomainBinding &out_binding) const
+{
+    const auto *binding = Find(address);
+    if (!binding)
+        return false;
+
+    out_binding = *binding;
+    return true;
+}
+
+DeviceBuffer *ResourceDomainManager::GetBuffer(const mtl::SSBOAddress &address) const
+{
+    const auto *binding = Find(address);
     return binding ? binding->buffer : nullptr;
 }
 
-const IGPUBuffer *ResourceDomainManager::GetGPUBuffer(const mtl::SSBOType ssbo_type, const uint32_t resource_domain_id) const
+const IGPUBuffer *ResourceDomainManager::GetGPUBuffer(const mtl::SSBOAddress &address) const
 {
-    const auto *buffer = GetBuffer(ssbo_type, resource_domain_id);
+    const auto *buffer = GetBuffer(address);
     return buffer ? buffer->GetGPUBuffer() : nullptr;
 }
 
-uint32_t ResourceDomainManager::GetElementCapacity(const mtl::SSBOType ssbo_type, const uint32_t resource_domain_id) const
+uint32_t ResourceDomainManager::GetElementCapacity(const mtl::SSBOAddress &address) const
 {
-    const auto *binding = Find(ssbo_type, resource_domain_id);
+    const auto *binding = Find(address);
     return binding ? binding->element_capacity : 0;
 }
 } // namespace hgl::graph
-

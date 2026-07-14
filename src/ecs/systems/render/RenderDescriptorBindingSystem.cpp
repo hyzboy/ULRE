@@ -333,7 +333,6 @@ namespace hgl::ecs
             struct_binding.slot = InferDataSlotFromStructName(req.struct_name);
             struct_binding.ssbo_type = graph::mtl::DefaultSSBOTypeForDataSlot(struct_binding.slot);
             struct_binding.ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
-            struct_binding.resource_domain_id = struct_binding.ssbo_id;
             struct_binding.struct_name = struct_name;
             struct_binding.shared_across_instances = false;
             out_recipe.structs.emplace_back(std::move(struct_binding));
@@ -416,14 +415,14 @@ namespace hgl::ecs
     }
 
     bool RenderDescriptorBindingSystem::RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
-                                                                     uint32_t resource_domain_id,
+                                                                     uint32_t ssbo_id,
                                                                      uint32_t byte_stride,
                                                                      const std::string &struct_name)
     {
         if (auto *domain_manager = GetResourceDomainManager(context))
-            domain_manager->Touch(ssbo_type, resource_domain_id);
+            domain_manager->Touch(graph::mtl::SSBOAddress{ssbo_type, ssbo_id, 0});
 
-        return materialization_struct_pool.RegisterLayout(ssbo_type, resource_domain_id, byte_stride, struct_name);
+        return materialization_struct_pool.RegisterLayout(ssbo_type, ssbo_id, byte_stride, struct_name);
     }
 
     void RenderDescriptorBindingSystem::ResetMaterializationFrameData()
@@ -522,8 +521,8 @@ namespace hgl::ecs
         auto *domain_manager = GetResourceDomainManager(context);
         if (domain_manager)
         {
-            domain_manager->ClearDomain(graph::mtl::SSBOType::TextureLayer, 0);
-            domain_manager->ClearDomain(graph::mtl::SSBOType::DataIndex, 0);
+            domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
+            domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0});
         }
         else
         {
@@ -583,19 +582,18 @@ namespace hgl::ecs
             if (texture_capacity > 0)
             {
                 const VkDeviceSize byte_size = static_cast<VkDeviceSize>(texture_capacity) * sizeof(graph::mtl::TextureLayerRow);
-                materialization_texture_layer_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOType::TextureLayer,
-                                                                                  0,
-                                                                                  "ECS:Materialization:TextureLayerRows",
-                                                                                  byte_size,
-                                                                                  texture_capacity,
-                                                                                  graph::SharingMode::Exclusive);
+                materialization_texture_layer_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0},
+                                                                                   "ECS:Materialization:TextureLayerRows",
+                                                                                   byte_size,
+                                                                                   texture_capacity,
+                                                                                   graph::SharingMode::Exclusive);
             }
             else
             {
-                materialization_texture_layer_ssbo = domain_manager->GetBuffer(graph::mtl::SSBOType::TextureLayer, 0);
+                materialization_texture_layer_ssbo = domain_manager->GetBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
             }
 
-            materialization_texture_layer_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOType::TextureLayer, 0);
+            materialization_texture_layer_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
         }
         else if (texture_capacity > materialization_texture_layer_capacity)
         {
@@ -612,19 +610,18 @@ namespace hgl::ecs
             if (data_capacity > 0)
             {
                 const VkDeviceSize byte_size = static_cast<VkDeviceSize>(data_capacity) * sizeof(graph::mtl::DataIndexRow);
-                materialization_data_index_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOType::DataIndex,
-                                                                               0,
-                                                                               "ECS:Materialization:DataIndexRows",
-                                                                               byte_size,
-                                                                               data_capacity,
-                                                                               graph::SharingMode::Exclusive);
+                materialization_data_index_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0},
+                                                                                "ECS:Materialization:DataIndexRows",
+                                                                                byte_size,
+                                                                                data_capacity,
+                                                                                graph::SharingMode::Exclusive);
             }
             else
             {
-                materialization_data_index_ssbo = domain_manager->GetBuffer(graph::mtl::SSBOType::DataIndex, 0);
+                materialization_data_index_ssbo = domain_manager->GetBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0});
             }
 
-            materialization_data_index_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOType::DataIndex, 0);
+            materialization_data_index_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0});
         }
         else if (data_capacity > materialization_data_index_capacity)
         {
@@ -791,14 +788,14 @@ namespace hgl::ecs
         if (!kP15V1ScopeLockMIOnly)
         {
             if (domain_manager)
-                texture_layer_table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::TextureLayer, 0);
+                texture_layer_table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
             else if (materialization_texture_layer_ssbo)
                 texture_layer_table_buffer = materialization_texture_layer_ssbo->GetGPUBuffer();
         }
 
         const graph::IGPUBuffer *data_index_table_buffer = nullptr;
         if (domain_manager)
-            data_index_table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::DataIndex, 0);
+            data_index_table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0});
         else if (materialization_data_index_ssbo)
             data_index_table_buffer = materialization_data_index_ssbo->GetGPUBuffer();
 
@@ -978,11 +975,11 @@ namespace hgl::ecs
             if (kP15V1ScopeLockMIOnly)
                 return false;
             if (auto *domain_manager = GetResourceDomainManager(context))
-                return domain_manager->GetGPUBuffer(graph::mtl::SSBOType::TextureLayer, 0) != nullptr;
+                return domain_manager->GetGPUBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0}) != nullptr;
             return materialization_texture_layer_ssbo && materialization_texture_layer_ssbo->GetGPUBuffer();
         case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
             if (auto *domain_manager = GetResourceDomainManager(context))
-                return domain_manager->GetGPUBuffer(graph::mtl::SSBOType::DataIndex, 0) != nullptr;
+                return domain_manager->GetGPUBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0}) != nullptr;
             return materialization_data_index_ssbo && materialization_data_index_ssbo->GetGPUBuffer();
         case graph::mtl::DescriptorSemantic::Custom:
             return true;
