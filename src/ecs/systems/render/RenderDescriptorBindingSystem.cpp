@@ -843,6 +843,9 @@ namespace hgl::ecs
                 }
                 case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
                 {
+                    if (kP15V1ScopeLockMIOnly)
+                        break;
+
                     const graph::IGPUBuffer *table_buffer = nullptr;
                     if (auto *domain_manager = GetResourceDomainManager(context))
                         table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::TextureLayer, 0);
@@ -932,6 +935,9 @@ namespace hgl::ecs
                 }
                 case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
                 {
+                    if (kP15V1ScopeLockMIOnly)
+                        break;
+
                     const graph::IGPUBuffer *table_buffer = nullptr;
                     if (auto *domain_manager = GetResourceDomainManager(context))
                         table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::TextureLayer, 0);
