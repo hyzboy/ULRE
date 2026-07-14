@@ -781,14 +781,113 @@ namespace hgl::ecs
         if (!context)
             return;
 
+        const auto *viewport_ubo = ResolveViewportUBO();
         const auto *camera_ubo = ResolveCameraUBO();
         const auto *sky_ubo = ResolveSkyUBO();
+        auto *domain_manager = GetResourceDomainManager(context);
+
+        const graph::IGPUBuffer *texture_layer_table_buffer = nullptr;
+        if (!kP15V1ScopeLockMIOnly)
+        {
+            if (domain_manager)
+                texture_layer_table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::TextureLayer, 0);
+            else if (materialization_texture_layer_ssbo)
+                texture_layer_table_buffer = materialization_texture_layer_ssbo->GetGPUBuffer();
+        }
+
+        const graph::IGPUBuffer *data_index_table_buffer = nullptr;
+        if (domain_manager)
+            data_index_table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::DataIndex, 0);
+        else if (materialization_data_index_ssbo)
+            data_index_table_buffer = materialization_data_index_ssbo->GetGPUBuffer();
 
         const auto &cache = context->GetRenderFrameCache();
 
         std::unordered_set<graph::Material *> l2w_bound_materials;
         std::unordered_set<graph::Material *> mi_bound_materials;
         std::unordered_set<const graph::Material *> active_materials;
+
+        auto apply_requirement = [&](graph::Material *material,
+                                     const MaterialBatch *batch,
+                                     const graph::mtl::DescriptorRequirement &req)
+        {
+            switch (req.semantic)
+            {
+            case graph::mtl::DescriptorSemantic::ViewportInfo:
+            {
+                if (viewport_ubo)
+                    material->BindUBO(req.set_type, req.name, viewport_ubo, false);
+                break;
+            }
+            case graph::mtl::DescriptorSemantic::CameraInfo:
+            {
+                if (camera_ubo)
+                    material->BindUBO(req.set_type, req.name, camera_ubo, false);
+                break;
+            }
+            case graph::mtl::DescriptorSemantic::SkyInfo:
+            {
+                if (sky_ubo)
+                    material->BindUBO(req.set_type, req.name, sky_ubo, false);
+                break;
+            }
+            case graph::mtl::DescriptorSemantic::LocalToWorld:
+            {
+                if (batch
+                 && batch->transform_buffer
+                 && material->hasLocalToWorld()
+                 && !l2w_bound_materials.contains(material))
+                {
+                    batch->transform_buffer->BindTransform(material);
+                    l2w_bound_materials.insert(material);
+                }
+                break;
+            }
+            case graph::mtl::DescriptorSemantic::MaterialInstance:
+            {
+                if (batch
+                 && batch->mi_buffer
+                 && material->hasMI()
+                 && !mi_bound_materials.contains(material))
+                {
+                    batch->mi_buffer->BindMaterialInstance(material);
+                    mi_bound_materials.insert(material);
+                }
+                break;
+            }
+            case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
+            {
+                if (kP15V1ScopeLockMIOnly)
+                    break;
+
+                if (texture_layer_table_buffer)
+                    material->BindSSBO(req.set_type, req.name, texture_layer_table_buffer, false);
+                break;
+            }
+            case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+            {
+                if (data_index_table_buffer)
+                    material->BindSSBO(req.set_type, req.name, data_index_table_buffer, false);
+                break;
+            }
+            case graph::mtl::DescriptorSemantic::MaterialTexture:
+            {
+                const auto *binding = FindMaterialResourceBinding(material, req.name);
+                if (binding && binding->texture)
+                    material->BindTexture(req.set_type, req.name, binding->texture);
+                break;
+            }
+            case graph::mtl::DescriptorSemantic::MaterialSampler:
+            {
+                const auto *binding = FindMaterialResourceBinding(material, req.name);
+                if (binding && binding->texture && binding->sampler)
+                    material->BindTextureSampler(req.set_type, req.name, binding->texture, binding->sampler);
+                break;
+            }
+            default:
+                break;
+            }
+        };
 
         for (const auto &pair : cache.materialBatches)
         {
@@ -806,96 +905,7 @@ namespace hgl::ecs
             {
                 if (!req.name || !*req.name)
                     continue;
-
-                switch (req.semantic)
-                {
-                case graph::mtl::DescriptorSemantic::ViewportInfo:
-                {
-                    const auto *ubo = ResolveViewportUBO();
-                    if (ubo)
-                        material->BindUBO(req.set_type, req.name, ubo, false);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::CameraInfo:
-                {
-                    if (camera_ubo)
-                        material->BindUBO(req.set_type, req.name, camera_ubo, false);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::SkyInfo:
-                {
-                    if (sky_ubo)
-                        material->BindUBO(req.set_type, req.name, sky_ubo, false);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::LocalToWorld:
-                {
-                    if (batch
-                     && batch->transform_buffer
-                     && material->hasLocalToWorld()
-                     && !l2w_bound_materials.contains(material))
-                    {
-                        batch->transform_buffer->BindTransform(material);
-                        l2w_bound_materials.insert(material);
-                    }
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialInstance:
-                {
-                    if (batch
-                     && batch->mi_buffer
-                     && material->hasMI()
-                     && !mi_bound_materials.contains(material))
-                    {
-                        batch->mi_buffer->BindMaterialInstance(material);
-                        mi_bound_materials.insert(material);
-                    }
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
-                {
-                    if (kP15V1ScopeLockMIOnly)
-                        break;
-
-                    const graph::IGPUBuffer *table_buffer = nullptr;
-                    if (auto *domain_manager = GetResourceDomainManager(context))
-                        table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::TextureLayer, 0);
-                    else if (materialization_texture_layer_ssbo)
-                        table_buffer = materialization_texture_layer_ssbo->GetGPUBuffer();
-
-                    if (table_buffer)
-                        material->BindSSBO(req.set_type, req.name, table_buffer, false);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
-                {
-                    const graph::IGPUBuffer *table_buffer = nullptr;
-                    if (auto *domain_manager = GetResourceDomainManager(context))
-                        table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::DataIndex, 0);
-                    else if (materialization_data_index_ssbo)
-                        table_buffer = materialization_data_index_ssbo->GetGPUBuffer();
-
-                    if (table_buffer)
-                        material->BindSSBO(req.set_type, req.name, table_buffer, false);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialTexture:
-                {
-                    const auto *binding = FindMaterialResourceBinding(material, req.name);
-                    if (binding && binding->texture)
-                        material->BindTexture(req.set_type, req.name, binding->texture);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialSampler:
-                {
-                    const auto *binding = FindMaterialResourceBinding(material, req.name);
-                    if (binding && binding->texture && binding->sampler)
-                        material->BindTextureSampler(req.set_type, req.name, binding->texture, binding->sampler);
-                    break;
-                }
-                default:
-                    break;
-                }
+                apply_requirement(material, batch, req);
             }
 
         }
@@ -915,72 +925,7 @@ namespace hgl::ecs
             {
                 if (!req.name || !*req.name)
                     continue;
-
-                switch (req.semantic)
-                {
-                case graph::mtl::DescriptorSemantic::ViewportInfo:
-                {
-                    const auto *ubo = ResolveViewportUBO();
-                    if (ubo)
-                        material->BindUBO(req.set_type, req.name, ubo, false);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::CameraInfo:
-                {
-                    if (camera_ubo)
-                        material->BindUBO(req.set_type, req.name, camera_ubo, false);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::SkyInfo:
-                {
-                    if (sky_ubo)
-                        material->BindUBO(req.set_type, req.name, sky_ubo, false);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialTexture:
-                {
-                    const auto *binding = FindMaterialResourceBinding(material, req.name);
-                    if (binding && binding->texture)
-                        material->BindTexture(req.set_type, req.name, binding->texture);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
-                {
-                    if (kP15V1ScopeLockMIOnly)
-                        break;
-
-                    const graph::IGPUBuffer *table_buffer = nullptr;
-                    if (auto *domain_manager = GetResourceDomainManager(context))
-                        table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::TextureLayer, 0);
-                    else if (materialization_texture_layer_ssbo)
-                        table_buffer = materialization_texture_layer_ssbo->GetGPUBuffer();
-
-                    if (table_buffer)
-                        material->BindSSBO(req.set_type, req.name, table_buffer, false);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
-                {
-                    const graph::IGPUBuffer *table_buffer = nullptr;
-                    if (auto *domain_manager = GetResourceDomainManager(context))
-                        table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOType::DataIndex, 0);
-                    else if (materialization_data_index_ssbo)
-                        table_buffer = materialization_data_index_ssbo->GetGPUBuffer();
-
-                    if (table_buffer)
-                        material->BindSSBO(req.set_type, req.name, table_buffer, false);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialSampler:
-                {
-                    const auto *binding = FindMaterialResourceBinding(material, req.name);
-                    if (binding && binding->texture && binding->sampler)
-                        material->BindTextureSampler(req.set_type, req.name, binding->texture, binding->sampler);
-                    break;
-                }
-                default:
-                    break;
-                }
+                apply_requirement(material, nullptr, req);
             }
         }
 
@@ -1029,6 +974,8 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::MaterialSampler:
             return true;
         case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
+            if (kP15V1ScopeLockMIOnly)
+                return false;
             if (auto *domain_manager = GetResourceDomainManager(context))
                 return domain_manager->GetGPUBuffer(graph::mtl::SSBOType::TextureLayer, 0) != nullptr;
             return materialization_texture_layer_ssbo && materialization_texture_layer_ssbo->GetGPUBuffer();
