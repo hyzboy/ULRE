@@ -18,6 +18,7 @@ namespace hgl::graph
 {
     class BufferManager;
     class DeviceBuffer;
+    class ResourceDomainManager;
 }
 
 namespace hgl::ecs
@@ -27,8 +28,7 @@ namespace hgl::ecs
      *
      * 职责：
      * - 管理所有 RenderItem 的 LocalToWorld 矩阵数据（UBO/SSBO）
-     * - 生成 Transform 索引分发数据（VAB）
-     * - 为每个实例分配唯一的 transform_index
+     * - 生成 TransformID 行表（SSBO）
      * - 支持动态更新变换矩阵
      */
     class TransformAssignmentBuffer
@@ -44,6 +44,7 @@ namespace hgl::ecs
     private:
         uint32_t MaxTransformCount;             ///<单个SSBO最大支持的变换数量
         graph::BufferManager* buffer_manager;   ///<BufferManager用于创建缓冲区
+        graph::ResourceDomainManager* resource_domain_manager; ///<全局SSBO域管理器（可空）
 
     private:    // LocalToWorld矩阵数据
         uint32_t transform_buffer_max_count;    ///<LocalToWorld矩阵最大数量
@@ -91,21 +92,21 @@ namespace hgl::ecs
                       const uint32_t static_count,
                       const uint32_t dynamic_count,
                       const uint32_t total_count);
-        bool EnsureTransformVABCapacity(const size_t item_count);
-        bool WriteTransformIDVAB(const std::vector<RenderItem*>& items,
-                     const size_t item_count,
-                     const uint32_t max_transform_id);
+        bool EnsureTransformIndexRowsCapacity(const uint32_t required_count);
+        bool WriteTransformIndexRows(const uint32_t static_count, const uint32_t dynamic_count);
 
     private:    // 分发数据
-        uint32_t node_count;                    ///<节点数量
-        graph::VAB* transform_vab;              ///<LocalToWorld矩阵ID分发数据VAB(R16UI格式)
-        VkBuffer transform_vab_buffer;          ///<LocalToWorld矩阵ID分发数据Buffer
+        uint32_t transform_index_rows_max_count; ///<TransformID行表容量（uint32 行）
+        graph::DeviceBuffer* transform_index_rows_buffer; ///<TransformID行表SSBO
 
     private:
         void Clear();
 
     public:
-        TransformAssignmentBuffer(graph::BufferManager* bm, const Mode m = Mode::MovableOnly, uint32_t ring_frames = HGL_L2W_RING_FRAMES);
+        TransformAssignmentBuffer(graph::BufferManager* bm,
+                                  graph::ResourceDomainManager* rdm = nullptr,
+                                  const Mode m = Mode::MovableOnly,
+                                  uint32_t ring_frames = HGL_L2W_RING_FRAMES);
         ~TransformAssignmentBuffer() { Clear(); }
 
         /**
@@ -113,12 +114,8 @@ namespace hgl::ecs
          */
         void SetCameraOffset(const math::Vector3d& offset) { camera_offset_ = offset; }
 
-        /**
-         * 获取Transform VAB缓冲（用于绑定到管线）
-         */
-        const VkBuffer GetTransformVAB() const { return transform_vab_buffer; }
-
         graph::DeviceBuffer* GetTransformDataBuffer() const { return transform_buffer; }
+        graph::DeviceBuffer* GetTransformIndexRowsBuffer() const { return transform_index_rows_buffer; }
 
         /**
          * 绑定Transform数据到材质
@@ -168,4 +165,3 @@ namespace hgl::ecs
         static void SetFrameIndex(const uint32_t index);
     };
 }//namespace hgl::ecs
-

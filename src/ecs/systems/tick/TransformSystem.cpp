@@ -391,7 +391,10 @@ namespace hgl::ecs
         if (render_target)
             ring_frames = render_target->GetFrameCount();
 
-        transform_buffer = new TransformAssignmentBuffer(buffer_manager, TransformAssignmentBuffer::Mode::MovableOnly, ring_frames);
+        transform_buffer = new TransformAssignmentBuffer(buffer_manager,
+                                                         graphics_context->GetResourceDomainManager(),
+                                                         TransformAssignmentBuffer::Mode::MovableOnly,
+                                                         ring_frames);
         static_dirty = true;
     }
 
@@ -499,4 +502,3 @@ namespace hgl::ecs
         last_seen_version[handle] = comp->GetVersion();
     }
 }//namespace hgl::ecs
-

@@ -48,6 +48,8 @@ namespace hgl::graph::mtl
         EmissiveSurface,     // EmissiveSurface 结构体池
         ClearCoatSurface,    // ClearCoatSurface 结构体池
         TransmissionSurface, // TransmissionSurface 结构体池
+        TransformIndexRows,  // TransformID 行表（实例/分组 -> L2W 索引）
+        LocalToWorld,        // LocalToWorld 矩阵池
         UserDefined,         // 预留扩展池
 
         ENUM_CLASS_RANGE(TextureLayer, UserDefined)
@@ -67,6 +69,8 @@ namespace hgl::graph::mtl
         case SSBOType::EmissiveSurface: return "EmissiveSurface";
         case SSBOType::ClearCoatSurface: return "ClearCoatSurface";
         case SSBOType::TransmissionSurface: return "TransmissionSurface";
+        case SSBOType::TransformIndexRows: return "TransformIndexRows";
+        case SSBOType::LocalToWorld: return "LocalToWorld";
         case SSBOType::UserDefined: return "UserDefined";
         default: return "Unknown";
         }

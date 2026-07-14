@@ -4,12 +4,12 @@
 
 #include<hgl/common/RenderOptions.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
-#include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKRenderAssign.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/mtl/UBOCommon.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
@@ -24,6 +24,14 @@ namespace hgl::ecs
     {
         constexpr uint32_t kIdentityL2WSlot = 0;
         constexpr uint32_t kFirstObjectL2WSlot = 1;
+        constexpr graph::mtl::SSBOAddress kTransformIndexRowsAddress{
+            graph::mtl::SSBOType::TransformIndexRows,
+            graph::mtl::ECSReservedSSBOId::TransformIndexRows,
+            0};
+        constexpr graph::mtl::SSBOAddress kLocalToWorldAddress{
+            graph::mtl::SSBOType::LocalToWorld,
+            graph::mtl::ECSReservedSSBOId::LocalToWorldData,
+            0};
 
         static bool ShouldEmitPeriodicLog(const uint32_t period = 120)
         {
@@ -145,16 +153,19 @@ namespace hgl::ecs
 
     std::vector<TransformAssignmentBuffer*> TransformAssignmentBuffer::all_instances;
 
-    TransformAssignmentBuffer::TransformAssignmentBuffer(graph::BufferManager* bm, const Mode m, uint32_t ring_frames)
+    TransformAssignmentBuffer::TransformAssignmentBuffer(graph::BufferManager* bm,
+                                                         graph::ResourceDomainManager* rdm,
+                                                         const Mode m,
+                                                         uint32_t ring_frames)
         : buffer_manager(bm)
+        , resource_domain_manager(rdm)
         , transform_buffer_max_count(0)
         , transform_buffer(nullptr)
         , transform_policy(graph::BufferAllocPolicy::Auto)
         , static_only(false)
         , mode(m)
-        , node_count(0)
-        , transform_vab(nullptr)
-        , transform_vab_buffer(nullptr)
+        , transform_index_rows_max_count(0)
+        , transform_index_rows_buffer(nullptr)
         , ring_writer(nullptr, sizeof(math::Matrix4f), ring_frames ? ring_frames : HGL_L2W_RING_FRAMES)
     {
 #ifdef HGL_L2W_USE_SSBO
@@ -211,6 +222,7 @@ namespace hgl::ecs
     {
         const uint32_t total_count = ring_writer.GetTotalCount(static_count + kFirstObjectL2WSlot, dynamic_count);
         StatTransform(total_count, policy);
+        WriteTransformIndexRows(static_count, dynamic_count);
 
         if (ShouldEmitPeriodicLog())
         {
@@ -571,24 +583,30 @@ namespace hgl::ecs
 
     void TransformAssignmentBuffer::Clear()
     {
-        if (buffer_manager)
+        if (resource_domain_manager)
+        {
+            resource_domain_manager->ClearDomain(kLocalToWorldAddress);
+            resource_domain_manager->ClearDomain(kTransformIndexRowsAddress);
+            transform_buffer = nullptr;
+            transform_index_rows_buffer = nullptr;
+        }
+        else if (buffer_manager)
         {
             if (transform_buffer)
                 buffer_manager->Release(transform_buffer);
-            if (transform_vab)
-                buffer_manager->Release(transform_vab);
+            if (transform_index_rows_buffer)
+                buffer_manager->Release(transform_index_rows_buffer);
             transform_buffer = nullptr;
-            transform_vab = nullptr;
+            transform_index_rows_buffer = nullptr;
         }
         else
         {
             SAFE_CLEAR(transform_buffer);
-            SAFE_CLEAR(transform_vab);
+            SAFE_CLEAR(transform_index_rows_buffer);
         }
 
         transform_buffer_max_count = 0;
-        node_count = 0;
-        transform_vab_buffer = nullptr;
+        transform_index_rows_max_count = 0;
         pending_updates.clear();
     }
 
@@ -605,7 +623,12 @@ namespace hgl::ecs
         else if (required_count > transform_buffer_max_count)
         {
             transform_buffer_max_count = hgl::power_to_2(required_count);
-            if (buffer_manager)
+            if (resource_domain_manager)
+            {
+                resource_domain_manager->ClearDomain(kLocalToWorldAddress);
+                transform_buffer = nullptr;
+            }
+            else if (buffer_manager)
             {
                 buffer_manager->Release(transform_buffer);
                 transform_buffer = nullptr;
@@ -621,7 +644,12 @@ namespace hgl::ecs
         // Recreate if policy changed
         if (transform_buffer && transform_policy != policy)
         {
-            if (buffer_manager)
+            if (resource_domain_manager)
+            {
+                resource_domain_manager->ClearDomain(kLocalToWorldAddress);
+                transform_buffer = nullptr;
+            }
+            else if (buffer_manager)
             {
                 buffer_manager->Release(transform_buffer);
                 transform_buffer = nullptr;
@@ -653,6 +681,13 @@ namespace hgl::ecs
 #endif
 
             recreated = true;
+        }
+
+        if (resource_domain_manager && transform_buffer)
+        {
+            resource_domain_manager->RegisterBuffer(kLocalToWorldAddress,
+                                                    transform_buffer,
+                                                    transform_buffer_max_count);
         }
 
         ring_writer.SetBuffer(transform_buffer);
@@ -933,166 +968,90 @@ namespace hgl::ecs
         return true;
     }
 
-    bool TransformAssignmentBuffer::EnsureTransformVABCapacity(const size_t item_count)
+    bool TransformAssignmentBuffer::EnsureTransformIndexRowsCapacity(const uint32_t required_count)
     {
         bool recreated = false;
 
-        if (!transform_vab)
+        if (!transform_index_rows_buffer)
         {
-            node_count = power_to_2(item_count);
+            transform_index_rows_max_count = hgl::power_to_2(required_count);
             recreated = true;
         }
-        else if (node_count < item_count)
+        else if (transform_index_rows_max_count < required_count)
         {
-            node_count = power_to_2(item_count);
-            if (buffer_manager)
+            transform_index_rows_max_count = hgl::power_to_2(required_count);
+            if (resource_domain_manager)
             {
-                buffer_manager->Release(transform_vab);
-                transform_vab = nullptr;
+                resource_domain_manager->ClearDomain(kTransformIndexRowsAddress);
+                transform_index_rows_buffer = nullptr;
+            }
+            else if (buffer_manager)
+            {
+                buffer_manager->Release(transform_index_rows_buffer);
+                transform_index_rows_buffer = nullptr;
             }
             else
             {
-                SAFE_CLEAR(transform_vab);
+                SAFE_CLEAR(transform_index_rows_buffer);
             }
-
             recreated = true;
         }
 
-        if (!transform_vab)
+        if (!transform_index_rows_buffer && buffer_manager)
         {
-            graph::BufferAllocPolicy vab_policy = static_only ? graph::BufferAllocPolicy::GPUOnly : graph::BufferAllocPolicy::Auto;
-            if (buffer_manager)
-            {
-                transform_vab = buffer_manager->CreateVAB(graph::Assign::TransformID::VAB_FMT, node_count, nullptr, vab_policy);
-                transform_vab_buffer = transform_vab ? transform_vab->GetVkBuffer() : nullptr;
-
-            #ifdef _DEBUG
-                auto device = buffer_manager->GetDevice();
-                graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
-                if (du && transform_vab)
-                {
-                    du->SetBuffer(transform_vab->GetVkBuffer(), "ECS:VAB:Buffer:TransformID");
-                    du->SetDeviceMemory(transform_vab->GetVkMemory(), "ECS:VAB:Memory:TransformID");
-                }
-            #endif//_DEBUG
-            }
+            transform_index_rows_buffer = buffer_manager->CreateSSBO("ECS:TransformIndexRows",
+                                                                     sizeof(uint32_t) * transform_index_rows_max_count,
+                                                                     nullptr,
+                                                                     graph::SharingMode::Exclusive);
+            recreated = true;
         }
 
-        if (recreated && transform_vab)
+        if (resource_domain_manager && transform_index_rows_buffer)
         {
-            auto *gpu = transform_vab->GetGPUBuffer();
-            GLogInfo("[TransformAssignmentBuffer] TransformID VAB ready: item_count=%u capacity=%u bytes=%llu gpu=0x%llX vk=0x%llX",
-                     static_cast<uint32_t>(item_count),
-                     node_count,
+            resource_domain_manager->RegisterBuffer(kTransformIndexRowsAddress,
+                                                    transform_index_rows_buffer,
+                                                    transform_index_rows_max_count);
+        }
+
+        if (recreated && transform_index_rows_buffer)
+        {
+            auto *gpu = transform_index_rows_buffer->GetGPUBuffer();
+            GLogInfo("[TransformAssignmentBuffer] TransformIndexRows buffer ready: required=%u capacity=%u bytes=%llu gpu=0x%llX",
+                     required_count,
+                     transform_index_rows_max_count,
                      static_cast<unsigned long long>(gpu ? gpu->GetSize() : 0ULL),
-                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)),
-                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)));
-        }
-        else if (ShouldEmitPeriodicLog(120) && transform_vab)
-        {
-            auto *gpu = transform_vab->GetGPUBuffer();
-            GLogInfo("[TransformAssignmentBuffer] TransformID VAB reuse: item_count=%u capacity=%u bytes=%llu dirty=%d",
-                     static_cast<uint32_t>(item_count),
-                     node_count,
-                     static_cast<unsigned long long>(gpu ? gpu->GetSize() : 0ULL),
-                     gpu ? (gpu->IsDirty() ? 1 : 0) : -1);
+                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)));
         }
 
-        return transform_vab != nullptr;
+        return transform_index_rows_buffer != nullptr;
     }
 
-    bool TransformAssignmentBuffer::WriteTransformIDVAB(const std::vector<RenderItem*>& items,
-                                                        const size_t item_count,
-                                                        const uint32_t max_transform_id)
+    bool TransformAssignmentBuffer::WriteTransformIndexRows(const uint32_t static_count, const uint32_t dynamic_count)
     {
-        if (!transform_vab)
+        const uint32_t required_count = static_count + dynamic_count + 1; // slot 0 保留 identity
+        if (!EnsureTransformIndexRowsCapacity(required_count))
             return false;
 
-        graph::IGPUBuffer *transform_gpu = transform_vab->GetGPUBuffer();
-        if (!transform_gpu)
-        {
-            GLogError("[TransformAssignmentBuffer::WriteItems] TransformID VAB GPU buffer is null");
+        auto *gpu = transform_index_rows_buffer ? transform_index_rows_buffer->GetGPUBuffer() : nullptr;
+        if (!gpu)
             return false;
-        }
 
-        graph::Assign::TransformID::ValueType* transform_ptr =
-            transform_gpu
-                ? (graph::Assign::TransformID::ValueType*)(transform_gpu->Map(0, transform_gpu->GetSize()))
-                : nullptr;
+        std::vector<uint32_t> rows(required_count, 0);
+        rows[0] = 0;
 
-        if (!transform_ptr)
-        {
-            GLogWarning("[TransformAssignmentBuffer::WriteItems] TransformID VAB map failed: items=%u bytes=%llu",
-                        static_cast<uint32_t>(item_count),
-                        static_cast<unsigned long long>(transform_gpu->GetSize()));
+        for (uint32_t i = 0; i < static_count; ++i)
+            rows[1 + i] = 1 + i;
+
+        const uint32_t dynamic_base = ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
+        for (uint32_t i = 0; i < dynamic_count; ++i)
+            rows[1 + static_count + i] = dynamic_base + i;
+
+        const VkDeviceSize byte_size = static_cast<VkDeviceSize>(rows.size()) * sizeof(uint32_t);
+        if (!gpu->Write(rows.data(), 0, byte_size))
             return false;
-        }
 
-        bool warned_overflow = false;
-        uint32_t nonzero_transform_ids = 0;
-        uint32_t min_transform_id = std::numeric_limits<uint32_t>::max();
-        uint32_t max_written_transform_id = 0;
-
-        for (size_t i = 0; i < item_count; i++)
-        {
-            RenderItem* item = items[i];
-
-            if (!item)
-            {
-                *transform_ptr = 0;
-                ++transform_ptr;
-                continue;
-            }
-
-            const uint32_t idx = item->transform_index;
-            if (idx > max_transform_id)
-            {
-                if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
-                {
-                    std::cout << "[TransformAssignmentBuffer::WriteItems] WARNING: TransformID overflow ("
-                              << idx << ")" << std::endl;
-                    warned_overflow = true;
-                }
-
-                *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);
-            }
-            else
-            {
-                *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(idx);
-
-                if (idx != 0)
-                {
-                    ++nonzero_transform_ids;
-                    min_transform_id = hgl_min(min_transform_id, idx);
-                    max_written_transform_id = hgl_max(max_written_transform_id, idx);
-                }
-            }
-            ++transform_ptr;
-        }
-
-        transform_vab->Unmap();
-
-        GLogInfo("[TransformAssignmentBuffer::WriteItems] TransformID VAB write complete: items=%u nonzero=%u min=%u max=%u vab_capacity=%u dirty=%d vkbuf=0x%llX frame=%u",
-                  static_cast<uint32_t>(item_count),
-                  nonzero_transform_ids,
-                  min_transform_id == std::numeric_limits<uint32_t>::max() ? 0 : min_transform_id,
-                  max_written_transform_id,
-                  node_count,
-                  transform_gpu->IsDirty() ? 1 : 0,
-                  static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)),
-                  ring_writer.GetFrameIndex());
-
-        std::fprintf(stderr,
-                     "[TransformAssignmentBuffer::WriteItems] TransformID VAB write complete: items=%u nonzero=%u min=%u max=%u vab_capacity=%u dirty=%d vkbuf=0x%llX frame=%u\n",
-                     static_cast<uint32_t>(item_count),
-                     nonzero_transform_ids,
-                     min_transform_id == std::numeric_limits<uint32_t>::max() ? 0 : min_transform_id,
-                     max_written_transform_id,
-                     node_count,
-                     transform_gpu->IsDirty() ? 1 : 0,
-                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)),
-                     ring_writer.GetFrameIndex());
-
+        graph::IGPUBuffer::DirtyRange dirty{0, byte_size};
+        transform_index_rows_buffer->FlushRanges(&dirty, 1);
         return true;
     }
 
@@ -1120,7 +1079,6 @@ namespace hgl::ecs
         const uint32_t ring_frames = ring_writer.GetRingFrames();
         const uint32_t ring_base = ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
         const uint32_t total_count = ring_writer.GetTotalCount(static_count + kFirstObjectL2WSlot, dynamic_count);
-        const uint32_t max_transform_id = std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
 
         if (ShouldEmitPeriodicLog(60) || (dynamic_count > 0 && static_count == 0))
         {
@@ -1132,13 +1090,6 @@ namespace hgl::ecs
                      total_count,
                      ring_writer.GetFrameIndex(),
                      static_cast<int>(mode));
-        }
-
-        if (sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t)
-         && total_count > max_transform_id + 1)
-        {
-            std::cout << "[TransformAssignmentBuffer::WriteItems] WARNING: Transform count exceeds R16 limit ("
-                      << total_count << ")" << std::endl;
         }
 
         last_static_count = static_count;
@@ -1161,11 +1112,7 @@ namespace hgl::ecs
         AssignTransformIndices(static_items, movable_items, ring_base);
 
         WriteAllLocalToWorld(static_items, movable_items, static_count, dynamic_count, total_count);
-
-        if (!EnsureTransformVABCapacity(item_count))
-            return;
-
-        WriteTransformIDVAB(items, item_count, max_transform_id);
+        WriteTransformIndexRows(static_count, dynamic_count);
     }
 
     void TransformAssignmentBuffer::FlushPendingUpdates()
@@ -1259,4 +1206,3 @@ namespace hgl::ecs
         }
     }
 }//namespace hgl::ecs
-
