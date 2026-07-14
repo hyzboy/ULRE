@@ -19,9 +19,12 @@ namespace hgl::ecs
         , material(mtl)
         , material_instance_data_bytes(0)
         , material_instance_buffer(nullptr)
-        , node_count(0)
-        , material_instance_vab(nullptr)
-        , material_instance_vab_buffer(nullptr)
+        , material_instance_row_count(0)
+        , material_instance_rows_buffer(nullptr)
+        , data_index_row_count(0)
+        , data_index_rows_buffer(nullptr)
+        , texture_layer_row_count(0)
+        , texture_layer_rows_buffer(nullptr)
         , data_index_node_count(0)
         , data_index_vab(nullptr)
         , data_index_vab_buffer(nullptr)
@@ -60,30 +63,39 @@ namespace hgl::ecs
         {
             if (material_instance_buffer)
                 buffer_manager->Release(material_instance_buffer);
-            if (material_instance_vab)
-                buffer_manager->Release(material_instance_vab);
+            if (material_instance_rows_buffer)
+                buffer_manager->Release(material_instance_rows_buffer);
+            if (data_index_rows_buffer)
+                buffer_manager->Release(data_index_rows_buffer);
+            if (texture_layer_rows_buffer)
+                buffer_manager->Release(texture_layer_rows_buffer);
             if (data_index_vab)
                 buffer_manager->Release(data_index_vab);
             if (texture_layer_vab)
                 buffer_manager->Release(texture_layer_vab);
             material_instance_buffer = nullptr;
-            material_instance_vab = nullptr;
+            material_instance_rows_buffer = nullptr;
+            data_index_rows_buffer = nullptr;
+            texture_layer_rows_buffer = nullptr;
             data_index_vab = nullptr;
             texture_layer_vab = nullptr;
         }
         else
         {
             SAFE_CLEAR(material_instance_buffer);
-            SAFE_CLEAR(material_instance_vab);
+            SAFE_CLEAR(material_instance_rows_buffer);
+            SAFE_CLEAR(data_index_rows_buffer);
+            SAFE_CLEAR(texture_layer_rows_buffer);
             SAFE_CLEAR(data_index_vab);
             SAFE_CLEAR(texture_layer_vab);
         }
 
         mi_set.Clear();
-        node_count = 0;
+        material_instance_row_count = 0;
+        data_index_row_count = 0;
+        texture_layer_row_count = 0;
         data_index_node_count = 0;
         texture_layer_node_count = 0;
-        material_instance_vab_buffer = nullptr;
         data_index_vab_buffer = nullptr;
         texture_layer_vab_buffer = nullptr;
     }
@@ -200,19 +212,32 @@ namespace hgl::ecs
             return;
         }
 
-        if (!material_instance_vab)
+        if (!material_instance_rows_buffer)
         {
-            std::cout << "[MaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] ERROR: MI VAB not created" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] ERROR: MI rows SSBO not created" << std::endl;
             return;
         }
 
-        const size_t offset = sizeof(uint16) * item->index;
-        uint16* mip = (uint16*)(material_instance_vab->Map(offset, sizeof(uint16)));
+        const size_t offset = sizeof(uint32) * item->index;
+        auto *gpu = material_instance_rows_buffer->GetGPUBuffer();
+        uint32 *mip = gpu ? static_cast<uint32 *>(gpu->Map(offset, sizeof(uint32))) : nullptr;
 
         graph::MaterialInstance* mi = item->GetMaterialInstance();
-        *mip = mi_set.Find(mi);
+        if (mip)
+        {
+            *mip = static_cast<uint32>(mi_set.Find(mi));
+            gpu->Unmap();
+        }
 
-        material_instance_vab->Unmap();
+        if (offset < data_index_node_count * sizeof(graph::Assign::DataIndexID::ValueType) && data_index_vab)
+        {
+            auto *data_ptr = static_cast<graph::Assign::DataIndexID::ValueType *>(data_index_vab->Map(offset, sizeof(graph::Assign::DataIndexID::ValueType)));
+            if (data_ptr)
+            {
+                *data_ptr = static_cast<graph::Assign::DataIndexID::ValueType>(mi_set.Find(mi));
+                data_index_vab->Unmap();
+            }
+        }
     }
 
     void MaterialInstanceAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items,
@@ -243,50 +268,42 @@ namespace hgl::ecs
             return;
         }
 
-        // 2. 创建或重用 Material Instance VAB（索引缓冲）
+        // 2. Material channel 三张实例行表 SSBO（instance -> row/index）
+        auto ensure_row_ssbo = [&](graph::DeviceBuffer *&buffer, uint32_t &capacity, const char *name) -> bool
         {
-            if (!material_instance_vab)
+            if (!buffer)
             {
-                node_count = power_to_2(item_count);
+                capacity = power_to_2(item_count);
             }
-            else if (node_count < item_count)
+            else if (capacity < item_count)
             {
-                node_count = power_to_2(item_count);
+                capacity = power_to_2(item_count);
                 if (buffer_manager)
                 {
-                    buffer_manager->Release(material_instance_vab);
-                    material_instance_vab = nullptr;
+                    buffer_manager->Release(buffer);
+                    buffer = nullptr;
                 }
                 else
                 {
-                    SAFE_CLEAR(material_instance_vab);
+                    SAFE_CLEAR(buffer);
                 }
             }
 
-            if (!material_instance_vab)
+            if (!buffer && buffer_manager)
             {
-                if (buffer_manager)
-                {
-                    material_instance_vab = buffer_manager->CreateVAB(VK_FORMAT_R16_UINT, node_count);
-                    material_instance_vab_buffer = material_instance_vab ? material_instance_vab->GetVkBuffer() : nullptr;
-
-                #ifdef _DEBUG
-                    auto device = buffer_manager->GetDevice();
-                    graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
-                    if (du && material_instance_vab)
-                    {
-                        du->SetBuffer(material_instance_vab->GetVkBuffer(), "ECS:VAB:Buffer:MaterialDataIndex");
-                        du->SetDeviceMemory(material_instance_vab->GetVkMemory(), "ECS:VAB:Memory:MaterialDataIndex");
-                    }
-                #endif//_DEBUG
-                }
+                const VkDeviceSize byte_size = static_cast<VkDeviceSize>(capacity) * sizeof(uint32);
+                buffer = buffer_manager->CreateSSBO(name, byte_size, nullptr, graph::SharingMode::Exclusive);
             }
 
-            if (!material_instance_vab)
-            {
-                std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI VAB allocation failed" << std::endl;
-                return;
-            }
+            return buffer != nullptr;
+        };
+
+        if (!ensure_row_ssbo(material_instance_rows_buffer, material_instance_row_count, "ECS:MaterialInstanceRows")
+         || !ensure_row_ssbo(data_index_rows_buffer, data_index_row_count, "ECS:DataIndexRows")
+         || !ensure_row_ssbo(texture_layer_rows_buffer, texture_layer_row_count, "ECS:TextureLayerRows"))
+        {
+            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: rows SSBO allocation failed" << std::endl;
+            return;
         }
 
         // 2.1 创建或重用 DataIndex VAB（迁移期间与 MI 索引值保持一致）
@@ -383,17 +400,26 @@ namespace hgl::ecs
 
         // 3. 生成材质实例索引列表
         {
-            uint16* mi_ptr = (uint16*)(material_instance_vab->Map(0, item_count));
+            auto *mi_rows_gpu = material_instance_rows_buffer ? material_instance_rows_buffer->GetGPUBuffer() : nullptr;
+            auto *data_rows_gpu = data_index_rows_buffer ? data_index_rows_buffer->GetGPUBuffer() : nullptr;
+            auto *texture_rows_gpu = texture_layer_rows_buffer ? texture_layer_rows_buffer->GetGPUBuffer() : nullptr;
+            uint32 *mi_row_ptr = mi_rows_gpu ? static_cast<uint32 *>(mi_rows_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint32))) : nullptr;
+            uint32 *data_row_ptr = data_rows_gpu ? static_cast<uint32 *>(data_rows_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint32))) : nullptr;
+            uint32 *texture_row_ptr = texture_rows_gpu ? static_cast<uint32 *>(texture_rows_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint32))) : nullptr;
             graph::Assign::DataIndexID::ValueType *data_index_ptr =
                 (graph::Assign::DataIndexID::ValueType *)(data_index_vab->Map(0, item_count));
             graph::Assign::TextureLayerID::ValueType *texture_layer_ptr =
                 (graph::Assign::TextureLayerID::ValueType *)(texture_layer_vab->Map(0, item_count));
 
-            if (!mi_ptr || !data_index_ptr || !texture_layer_ptr)
+            if (!mi_row_ptr || !data_row_ptr || !texture_row_ptr || !data_index_ptr || !texture_layer_ptr)
             {
                 std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: index VAB map failed" << std::endl;
-                if (mi_ptr)
-                    material_instance_vab->Unmap();
+                if (mi_row_ptr)
+                    mi_rows_gpu->Unmap();
+                if (data_row_ptr)
+                    data_rows_gpu->Unmap();
+                if (texture_row_ptr)
+                    texture_rows_gpu->Unmap();
                 if (data_index_ptr)
                     data_index_vab->Unmap();
                 if (texture_layer_ptr)
@@ -418,10 +444,14 @@ namespace hgl::ecs
 
                 if (!item)
                 {
-                    *mi_ptr = 0;
+                    *mi_row_ptr = 0;
+                    *data_row_ptr = 0;
+                    *texture_row_ptr = 0;
                     *data_index_ptr = 0;
                     *texture_layer_ptr = 0;
-                    ++mi_ptr;
+                    ++mi_row_ptr;
+                    ++data_row_ptr;
+                    ++texture_row_ptr;
                     ++data_index_ptr;
                     ++texture_layer_ptr;
                     continue;
@@ -478,10 +508,14 @@ namespace hgl::ecs
                     texture_layer = 0;
                 }
 
-                *mi_ptr = mi_index;
+                *mi_row_ptr = static_cast<uint32>(mi_index);
+                *data_row_ptr = data_index;
+                *texture_row_ptr = texture_layer;
                 *data_index_ptr = static_cast<graph::Assign::DataIndexID::ValueType>(data_index);
                 *texture_layer_ptr = static_cast<graph::Assign::TextureLayerID::ValueType>(texture_layer);
-                ++mi_ptr;
+                ++mi_row_ptr;
+                ++data_row_ptr;
+                ++texture_row_ptr;
                 ++data_index_ptr;
                 ++texture_layer_ptr;
 
@@ -493,7 +527,9 @@ namespace hgl::ecs
                 // }
             }
 
-            material_instance_vab->Unmap();
+            mi_rows_gpu->Unmap();
+            data_rows_gpu->Unmap();
+            texture_rows_gpu->Unmap();
             data_index_vab->Unmap();
             texture_layer_vab->Unmap();
         }

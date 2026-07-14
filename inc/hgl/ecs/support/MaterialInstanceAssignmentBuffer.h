@@ -16,6 +16,7 @@
 namespace hgl::graph
 {
     class BufferManager;
+    class DeviceBuffer;
 }
 
 namespace hgl::ecs
@@ -98,9 +99,12 @@ namespace hgl::ecs
         void StatMaterialInstance(const std::vector<RenderItem*>& items);
 
     private:    // 分发数据
-        uint32_t node_count;                        ///<节点数量
-        graph::VAB* material_instance_vab;          ///<材质实例ID分发数据VAB（当前为 R16UI）
-        VkBuffer material_instance_vab_buffer;      ///<材质实例ID分发数据Buffer
+        uint32_t material_instance_row_count;       ///<MaterialInstance 行表容量
+        graph::DeviceBuffer* material_instance_rows_buffer; ///<MaterialInstance 行表 SSBO（instance -> mi index）
+        uint32_t data_index_row_count;              ///<DataIndex 行表容量
+        graph::DeviceBuffer* data_index_rows_buffer;///<DataIndex 行表 SSBO（instance -> data row）
+        uint32_t texture_layer_row_count;           ///<TextureLayer 行表容量
+        graph::DeviceBuffer* texture_layer_rows_buffer; ///<TextureLayer 行表 SSBO（instance -> texture row）
         uint32_t data_index_node_count;             ///<DataIndex节点数量
         graph::VAB* data_index_vab;                 ///<DataIndex行索引分发VAB（格式见 Assign::DataIndexID）
         VkBuffer data_index_vab_buffer;             ///<DataIndex行索引分发Buffer
@@ -116,11 +120,6 @@ namespace hgl::ecs
         ~MaterialInstanceAssignmentBuffer() { Clear(); }
 
         /**
-         * 获取MaterialInstance VAB缓冲（用于绑定到管线）
-         */
-        const VkBuffer GetMaterialInstanceVAB() const { return material_instance_vab_buffer; }
-
-        /**
          * Phase 3 迁移接口：DataIndex 间接表行索引 VAB
          * 当前为独立分发缓冲，数值与 MI 索引保持一致，后续会切换为真实 DataIndex 行索引。
          */
@@ -130,6 +129,9 @@ namespace hgl::ecs
          * TextureLayer 间接表行索引 VAB（为后续绘制输入接线预留）。
          */
         const VkBuffer GetTextureLayerVAB() const { return texture_layer_vab_buffer; }
+        graph::DeviceBuffer *GetMaterialInstanceRowsBuffer() const { return material_instance_rows_buffer; }
+        graph::DeviceBuffer *GetDataIndexRowsBuffer() const { return data_index_rows_buffer; }
+        graph::DeviceBuffer *GetTextureLayerRowsBuffer() const { return texture_layer_rows_buffer; }
 
         /**
          * 绑定材质实例数据到材质
