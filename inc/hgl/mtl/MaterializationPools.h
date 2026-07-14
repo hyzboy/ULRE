@@ -306,9 +306,10 @@ namespace hgl::graph::mtl
         {
             StructPoolAllocation alloc{};
             bool allocated = false;
+            const uint32_t ssbo_id = GetRecipeStructSSBOId(input);
 
-            if (input.ssbo_type != SSBOType::UserDefined || input.resource_domain_id != 0)
-                allocated = struct_pool.TryAllocate(input.ssbo_type, input.resource_domain_id, alloc);
+            if (input.ssbo_type != SSBOType::UserDefined || ssbo_id != 0)
+                allocated = struct_pool.TryAllocate(input.ssbo_type, ssbo_id, alloc);
 
             if (!allocated && !input.struct_name.empty())
                 allocated = struct_pool.TryAllocate(input.struct_name, alloc);
@@ -318,6 +319,7 @@ namespace hgl::graph::mtl
 
             output.slot = input.slot;
             output.ssbo_type = alloc.ssbo_type;
+            output.ssbo_id = alloc.resource_domain_id;
             output.resource_domain_id = alloc.resource_domain_id;
             output.ssbo_binding = static_cast<uint32_t>(alloc.ssbo_type); // 临时默认映射，后续由布局系统接管
             output.struct_index = alloc.struct_index;

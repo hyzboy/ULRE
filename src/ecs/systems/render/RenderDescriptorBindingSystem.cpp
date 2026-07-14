@@ -332,7 +332,8 @@ namespace hgl::ecs
             graph::mtl::RecipeStructBinding struct_binding{};
             struct_binding.slot = InferDataSlotFromStructName(req.struct_name);
             struct_binding.ssbo_type = graph::mtl::DefaultSSBOTypeForDataSlot(struct_binding.slot);
-            struct_binding.resource_domain_id = 0;
+            struct_binding.ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
+            struct_binding.resource_domain_id = struct_binding.ssbo_id;
             struct_binding.struct_name = struct_name;
             struct_binding.shared_across_instances = false;
             out_recipe.structs.emplace_back(std::move(struct_binding));

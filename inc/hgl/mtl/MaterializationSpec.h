@@ -23,12 +23,21 @@ namespace hgl::graph::mtl
     {
         DataSlot slot = DataSlot::PBRSurface;       // 语义数据槽（PBRSurface/ClearCoat...）
         SSBOType ssbo_type = SSBOType::UserDefined; // 目标 SSBO 类型（契约主字段）
-        uint32_t resource_domain_id = 0;            // 目标资源域 ID（契约主字段）
+        uint32_t ssbo_id = 0;                       // 目标 SSBO 资源 ID（主字段，P1.55）
+        uint32_t resource_domain_id = 0;            // 兼容字段（过渡期与 ssbo_id 保持一致）
         uint32_t ssbo_binding = 0;                  // 目标 SSBO binding（管线布局侧）
         uint32_t struct_index = 0;                  // 结构体池中的逻辑索引（实例通过它间接访问）
         uint32_t byte_offset = 0;                   // 结构体在 SSBO 内的字节偏移
         uint32_t byte_stride = 0;                   // 同类结构体的字节步长
     };
+
+    inline uint32_t GetResolvedStructSSBOId(const ResolvedStructRef &ref) noexcept
+    {
+        if (ref.ssbo_id == 0 && ref.resource_domain_id != 0)
+            return ref.resource_domain_id;
+
+        return ref.ssbo_id;
+    }
 
     // MaterializationSpec 是 MaterialRecipe 的“已物化 IR”：
     // - Recipe 只表达“要什么”；
@@ -76,9 +85,10 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &ref : spec.struct_refs)
         {
+            const uint32_t ssbo_id = GetResolvedStructSSBOId(ref);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.resource_domain_id);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo_id);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_binding);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.byte_stride);
         }
@@ -139,9 +149,10 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &ref : spec.struct_refs)
         {
+            const uint32_t ssbo_id = GetResolvedStructSSBOId(ref);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.resource_domain_id);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo_id);
         }
 
         return static_cast<uint64_t>(hash);

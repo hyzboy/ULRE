@@ -78,6 +78,61 @@ namespace hgl::graph::mtl
         return 0;
     }
 
+    // SSBO ID 命名空间约定（P1.55-01 冻结）：
+    // - 最高位=0：Recipe/资产侧可分配；
+    // - 最高位=1：ECS 内生通道保留（如 TransformDataStorage 产物）。
+    constexpr uint32_t SSBOIdNamespaceBit = 0x80000000u;
+    constexpr uint32_t SSBOIdLocalMask = 0x7fffffffu;
+
+    constexpr uint32_t MakeRecipeSSBOId(const uint32_t local_id) noexcept
+    {
+        return local_id & SSBOIdLocalMask;
+    }
+
+    constexpr uint32_t MakeECSSSBOId(const uint32_t local_id) noexcept
+    {
+        return (local_id & SSBOIdLocalMask) | SSBOIdNamespaceBit;
+    }
+
+    constexpr bool IsECSSSBOId(const uint32_t ssbo_id) noexcept
+    {
+        return (ssbo_id & SSBOIdNamespaceBit) != 0;
+    }
+
+    constexpr uint32_t GetSSBOIdLocalPart(const uint32_t ssbo_id) noexcept
+    {
+        return ssbo_id & SSBOIdLocalMask;
+    }
+
+    namespace ECSReservedSSBOId
+    {
+        // Transform 通道（ECS 内生，来自 TransformDataStorage）
+        constexpr uint32_t TransformIndexRows   = MakeECSSSBOId(1);
+        constexpr uint32_t LocalToWorldData     = MakeECSSSBOId(2);
+
+        // Material 通道（ECS 生产，供 recipe/材质按需消费）
+        constexpr uint32_t MaterialInstanceRows = MakeECSSSBOId(3);
+        constexpr uint32_t MaterialInstanceData = MakeECSSSBOId(4);
+        constexpr uint32_t TextureLayerRows     = MakeECSSSBOId(5);
+    }
+
+    struct SSBOAddress
+    {
+        SSBOType ssbo_type = SSBOType::UserDefined;
+        uint32_t ssbo_id = 0;
+        uint32_t slot = 0;
+    };
+
+    inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const DataSlot slot) noexcept
+    {
+        return SSBOAddress{ssbo_type, ssbo_id, static_cast<uint32_t>(slot)};
+    }
+
+    inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const TextureSlot slot) noexcept
+    {
+        return SSBOAddress{ssbo_type, ssbo_id, static_cast<uint32_t>(slot)};
+    }
+
     // Recipe 中的纹理绑定声明（纯输入，不包含任何运行时句柄）。
     struct RecipeTextureBinding
     {
@@ -91,10 +146,19 @@ namespace hgl::graph::mtl
     {
         DataSlot slot = DataSlot::PBRSurface;              // 目标数据语义槽
         SSBOType ssbo_type = SSBOType::UserDefined;        // 结构体所属 SSBO 类型（主字段）
-        uint32_t resource_domain_id = 0;                   // 结构体资源域 ID（主字段）
+        uint32_t ssbo_id = 0;                              // 结构体 SSBO 资源 ID（主字段，P1.55）
+        uint32_t resource_domain_id = 0;                   // 兼容字段（过渡期与 ssbo_id 保持一致）
         std::string struct_name;                           // 过渡字段：旧路径结构名（后续移除）
         bool shared_across_instances = false;              // true: 多实例共享同一结构体数据
     };
+
+    inline uint32_t GetRecipeStructSSBOId(const RecipeStructBinding &binding) noexcept
+    {
+        if (binding.ssbo_id == 0 && binding.resource_domain_id != 0)
+            return binding.resource_domain_id;
+
+        return binding.ssbo_id;
+    }
 
     // 纯声明式材质输入（不含 Vulkan/运行时句柄），是 MaterializationSpec 的上游输入。
     struct MaterialRecipe
@@ -145,9 +209,10 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &s : recipe.structs)
         {
+            const uint32_t ssbo_id = GetRecipeStructSSBOId(s);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.resource_domain_id);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo_id);
             if (!s.struct_name.empty())
                 hash = hgl::hash::FNV1aAppendBytes(hash, s.struct_name.data(), s.struct_name.size());
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.shared_across_instances);
