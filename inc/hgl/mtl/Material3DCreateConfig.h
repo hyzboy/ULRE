@@ -72,19 +72,6 @@ DECLARE_MATERIAL_CREATOR(Gizmo3D,           Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(Standard,          const Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(StandardTextureArray,const Material3DCreateConfig)
 
-struct TerrainGridCreateConfig:public Material3DCreateConfig
-{
-public:
-
-    TerrainGridCreateConfig()
-        :Material3DCreateConfig(PrimitiveType::Triangles,
-                                WithCamera::With,WithLocalToWorld::With,WithSky::With)
-    {
-    }
-};
-
-DECLARE_MATERIAL_CREATOR(TerrainGrid,       const TerrainGridCreateConfig)
-
 struct SkyMinimalCreateConfig:public Material3DCreateConfig
 {
 public:

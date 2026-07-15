@@ -105,12 +105,6 @@ namespace hgl::ecs
         graph::DeviceBuffer* data_index_rows_buffer;///<DataIndex 行表 SSBO（instance -> data row）
         uint32_t texture_layer_row_count;           ///<TextureLayer 行表容量
         graph::DeviceBuffer* texture_layer_rows_buffer; ///<TextureLayer 行表 SSBO（instance -> texture row）
-        uint32_t data_index_node_count;             ///<DataIndex节点数量
-        graph::VAB* data_index_vab;                 ///<DataIndex行索引分发VAB（格式见 Assign::DataIndexID）
-        VkBuffer data_index_vab_buffer;             ///<DataIndex行索引分发Buffer
-        uint32_t texture_layer_node_count;          ///<TextureLayer节点数量
-        graph::VAB* texture_layer_vab;              ///<TextureLayer行索引分发VAB（格式见 Assign::TextureLayerID）
-        VkBuffer texture_layer_vab_buffer;          ///<TextureLayer行索引分发Buffer
 
     private:
         void Clear();
@@ -119,16 +113,6 @@ namespace hgl::ecs
         MaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::Material* mtl);
         ~MaterialInstanceAssignmentBuffer() { Clear(); }
 
-        /**
-         * Phase 3 迁移接口：DataIndex 间接表行索引 VAB
-         * 当前为独立分发缓冲，数值与 MI 索引保持一致，后续会切换为真实 DataIndex 行索引。
-         */
-        const VkBuffer GetDataIndexVAB() const { return data_index_vab_buffer; }
-
-        /**
-         * TextureLayer 间接表行索引 VAB（为后续绘制输入接线预留）。
-         */
-        const VkBuffer GetTextureLayerVAB() const { return texture_layer_vab_buffer; }
         graph::DeviceBuffer *GetMaterialInstanceRowsBuffer() const { return material_instance_rows_buffer; }
         graph::DeviceBuffer *GetDataIndexRowsBuffer() const { return data_index_rows_buffer; }
         graph::DeviceBuffer *GetTextureLayerRowsBuffer() const { return texture_layer_rows_buffer; }

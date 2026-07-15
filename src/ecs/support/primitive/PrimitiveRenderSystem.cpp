@@ -88,9 +88,9 @@ namespace hgl::ecs
                              batch->draw_batches_count,
                              batch->transform_buffer,
                              batch->mi_buffer,
-                             batch->transform_vab_buffer,
                              batch->icb_draw,
                              batch->icb_draw_indexed);
         }
     }
 }
+

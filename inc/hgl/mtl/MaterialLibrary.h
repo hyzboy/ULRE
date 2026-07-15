@@ -28,7 +28,7 @@ enum class MaterialPreset:uint8
     VertexLuminance3D,
     VertexPattleColor3D,
     Gizmo3D,
-    TerrainGrid,
+
     SkyMinimal,
     Billboard2D,
     Standard,

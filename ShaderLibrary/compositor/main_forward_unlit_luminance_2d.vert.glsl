@@ -21,12 +21,9 @@ L2W_INDEX_ROWS_SSBO;
 DATA_INDEX_ROWS_SSBO;
 TEXTURE_LAYER_ROWS_SSBO;
 
-// Vertex attributes: Position(vec2) + Luminance + TransformID + DataIndexID + TextureLayerID
+// Vertex attributes: Position(vec2) + Luminance
 layout(location=0) in vec2 Position;
 layout(location=1) in float Luminance;
-layout(location=2) in uint TransformID;
-layout(location=3) in uint DataIndexID;
-layout(location=4) in uint TextureLayerID;
 
 // Output to FS
 layout(location=0) flat out uint fragDataIndexID;

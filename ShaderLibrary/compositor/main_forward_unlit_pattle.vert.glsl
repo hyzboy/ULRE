@@ -25,10 +25,9 @@ L2W_INDEX_ROWS_SSBO;
 // Color palette UBO (Material set, VS only)
 layout(scalar, set=MATERIAL_SET, binding=0) uniform ColorPattle { vec4 color[256]; } color_pattle;
 
-// Vertex attributes: Position + ColorIndex(uint) + TransformID
+// Vertex attributes: Position + ColorIndex(uint)
 layout(location=0) in vec3  Position;
 layout(location=1) in uint  ColorIndex;
-layout(location=2) in uint  TransformID;
 
 // Output to FS
 layout(location=0) out vec4 fragVertexColor;

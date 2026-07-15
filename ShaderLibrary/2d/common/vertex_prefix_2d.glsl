@@ -33,23 +33,7 @@ TEXTURE_LAYER_ROWS_SSBO;
 
 // ---- Vertex inputs (location 连续排列) ----
 layout(location=0) in POSITION_FORMAT Position;
-
-#ifdef HAS_L2W
-layout(location=1) in uint TransformID;
-  #ifdef HAS_MI
-layout(location=2) in uint DataIndexID;
-layout(location=3) in uint TextureLayerID;
-    #define NEXT_LOC 4
-  #else
-    #define NEXT_LOC 2
-  #endif
-#elif defined(HAS_MI)
-layout(location=1) in uint DataIndexID;
-layout(location=2) in uint TextureLayerID;
-  #define NEXT_LOC 3
-#else
-  #define NEXT_LOC 1
-#endif
+#define NEXT_LOC 1
 
 // ---- Helper functions ----
 #ifdef HAS_L2W

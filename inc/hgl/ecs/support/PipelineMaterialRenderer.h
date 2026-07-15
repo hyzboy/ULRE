@@ -1,4 +1,4 @@
-﻿/**
+/**
  * PipelineMaterialRenderer.h - ECS Pipeline材质渲染器
  *
  * 参照 PipelineMaterialRenderer 设计，但支持 ECS 版本的 Assignment Buffers
@@ -85,12 +85,10 @@ namespace hgl::ecs
         /**
          * 绑定顶点属性缓冲
          * @param batch 绘制批次
-         * @param transform_buffer ECS Transform分配缓冲
          * @param mi_buffer ECS 材质实例分配缓冲
          * @return 绑定是否成功
          */
         bool BindVAB(const DrawBatch* batch,
-                     VkBuffer transform_vab,
                      MaterialInstanceAssignmentBuffer* mi_buffer);
 
         /**
@@ -113,7 +111,6 @@ namespace hgl::ecs
         bool Draw(DrawBatch* batch,
                   TransformAssignmentBuffer* transform_buffer,
                   MaterialInstanceAssignmentBuffer* mi_buffer,
-                  VkBuffer transform_vab,
                   graph::IndirectDrawBuffer* icb_draw,
                   graph::IndirectDrawIndexedBuffer* icb_draw_indexed);
 
@@ -136,7 +133,6 @@ namespace hgl::ecs
                     uint32_t batch_count,
                     TransformAssignmentBuffer* transform_buffer,
                     MaterialInstanceAssignmentBuffer* mi_buffer,
-                    VkBuffer transform_vab,
                     graph::IndirectDrawBuffer* icb_draw,
                     graph::IndirectDrawIndexedBuffer* icb_draw_indexed);
     };

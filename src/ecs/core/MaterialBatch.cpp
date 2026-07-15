@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/core/MaterialBatch.h>
+#include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKDevice.h>
@@ -30,13 +30,6 @@ namespace hgl::ecs
             delete icb_draw_indexed;
         if (icb_draw)
             delete icb_draw;
-        if (transform_vab)
-        {
-            if (buffer_manager)
-                buffer_manager->Release(transform_vab);
-            else
-                delete transform_vab;
-        }
         if (l2w_index_rows_buffer)
         {
             if (buffer_manager)

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/core/MaterialPipelineKey.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
@@ -49,10 +49,6 @@ namespace hgl::ecs
 
         graph::IndirectDrawBuffer *             icb_draw                = nullptr;          ///<间接绘制命令缓冲（无索引）
         graph::IndirectDrawIndexedBuffer *      icb_draw_indexed        = nullptr;          ///<间接绘制命令缓冲（有索引）
-
-        graph::VAB *                            transform_vab           = nullptr;          ///<Transform索引VAB
-        VkBuffer                                transform_vab_buffer    = VK_NULL_HANDLE;   ///<Transform索引VAB缓冲
-        uint32_t                                transform_vab_node_count= 0;                ///<Transform VAB容量
 
         // Per-batch L2W index rows SSBO — written in draw order so gl_InstanceIndex
         // directly maps to the correct L2W matrix slot.

@@ -15,7 +15,6 @@ namespace hgl::graph
         Foliage,
         ClearCoat,
         Water,
-        Terrain,
         Sky,
 
         ENUM_CLASS_RANGE(Unlit, Sky)
@@ -23,7 +22,7 @@ namespace hgl::graph
 
     constexpr const char* SurfaceTypeNames[] = {
         "Unlit", "Standard", "Skin", "Hair", "Cloth",
-        "Eye", "Foliage", "ClearCoat", "Water", "Terrain", "Sky"
+        "Eye", "Foliage", "ClearCoat", "Water", "Sky"
     };
 
     inline const char* GetSurfaceTypeName(SurfaceType st)

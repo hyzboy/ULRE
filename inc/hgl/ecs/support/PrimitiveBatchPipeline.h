@@ -65,7 +65,7 @@ namespace hgl::ecs
         void FinalizeBatch(MaterialBatch& batch);
         void SortBatchItems(MaterialBatch& batch);
         void UpdateMaterialInstanceBuffer(MaterialBatch& batch);
-        void EnsureTransformVAB(MaterialBatch& batch);
-        void WriteTransformIndices(MaterialBatch& batch);
+        void EnsureBatchIndexRows(MaterialBatch& batch);
+        void WriteBatchIndexRows(MaterialBatch& batch);
     };
 }

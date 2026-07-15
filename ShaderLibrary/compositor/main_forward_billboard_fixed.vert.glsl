@@ -36,11 +36,8 @@ MI_SSBO_SCALAR;
 DATA_INDEX_ROWS_SSBO;
 TEXTURE_LAYER_ROWS_SSBO;
 
-// Vertex attributes: Position + TransformID + DataIndexID + TextureLayerID
+// Vertex attributes: Position
 layout(location=0) in vec3  Position;
-layout(location=1) in uint  TransformID;
-layout(location=2) in uint  DataIndexID;
-layout(location=3) in uint  TextureLayerID;
 
 // Output to FS
 layout(location=0) out vec2 fragTexCoord;

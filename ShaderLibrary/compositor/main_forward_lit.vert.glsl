@@ -21,13 +21,10 @@ L2W_INDEX_ROWS_SSBO;
 DATA_INDEX_ROWS_SSBO;
 TEXTURE_LAYER_ROWS_SSBO;
 
-// Vertex attributes: Position + TexCoord + Normal + TransformID + DataIndexID + TextureLayerID
+// Vertex attributes: Position + TexCoord + Normal
 layout(location=0) in vec3 Position;
 layout(location=1) in vec2 TexCoord;
 layout(location=2) in vec3 Normal;
-layout(location=3) in uint TransformID;
-layout(location=4) in uint DataIndexID;
-layout(location=5) in uint TextureLayerID;
 
 // Outputs to FS
 layout(location=0) flat out uint fragDataIndexID;

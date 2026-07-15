@@ -19,10 +19,9 @@ L2W_SSBO;
 #include "common/instance_rows_ssbo.glsl"
 L2W_INDEX_ROWS_SSBO;
 
-// Vertex attributes: Position + Color + TransformID（无 DataIndexID/TextureLayerID）
+// Vertex attributes: Position + Color
 layout(location=0) in vec3 Position;
 layout(location=1) in vec4 Color;
-layout(location=2) in uint TransformID;
 
 // Output to FS
 layout(location=0) out vec4 fragVertexColor;

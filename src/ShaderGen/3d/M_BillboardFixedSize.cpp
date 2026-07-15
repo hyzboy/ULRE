@@ -13,9 +13,6 @@ namespace
 
     constexpr FixedVertexEntry BILLBOARD_FIXED_VERTEX[] = {
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
-        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
-        { Assign::DataIndexID::VAT_FMT,    VertexInputGroup::DataIndexID,    VertexInputRate::Instance, Assign::DataIndexID::VIS_NAME },
-        { Assign::TextureLayerID::VAT_FMT, VertexInputGroup::TextureLayerID, VertexInputRate::Instance, Assign::TextureLayerID::VIS_NAME },
     };
 
     constexpr FixedDescriptorEntry BILLBOARD_FIXED_DESCRIPTORS[] = {

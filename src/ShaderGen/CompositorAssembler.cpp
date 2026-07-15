@@ -127,7 +127,6 @@ namespace hgl::graph
         case SurfaceType::Foliage:    return "surface/foliage_surface.glsl";     // 后续实现
         case SurfaceType::ClearCoat:  return "surface/clearcoat_surface.glsl";   // 后续实现
         case SurfaceType::Water:      return "surface/water_surface.glsl";       // 后续实现
-        case SurfaceType::Terrain:    return "surface/terrain_surface.glsl";     // 后续实现
         case SurfaceType::Sky:        return "surface/sky_surface.glsl";         // 后续实现
         default:                      return "surface/standard_surface.glsl";
         }

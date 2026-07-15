@@ -18,9 +18,8 @@ L2W_SSBO;
 #include "common/instance_rows_ssbo.glsl"
 L2W_INDEX_ROWS_SSBO;
 
-// Vertex attributes: Position + TransformID
+// Vertex attributes: Position
 layout(location=0) in vec3 Position;
-layout(location=1) in uint TransformID;
 
 // Output to FS: sky direction
 layout(location=0) out vec3 fragDirection;

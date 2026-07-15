@@ -28,14 +28,6 @@ TEXTURE_LAYER_ROWS_SSBO;
     layout(location=0) in vec3 Position;
 #endif
 
-// ECS instance-rate attributes (dual ID)
-#if GEOMETRY_FETCH_SSBO
-#else
-    layout(location=1) in uint TransformID;
-    layout(location=2) in uint DataIndexID;
-    layout(location=3) in uint TextureLayerID;
-#endif
-
 #define GET_TRANSFORM_ID()          ResolveTransformID(gl_InstanceIndex)
 #define GET_DATA_INDEX_ID()         ResolveDataIndexID(gl_InstanceIndex)
 #define GET_TEXTURE_LAYER_ID()      ResolveTextureLayerID(gl_InstanceIndex)

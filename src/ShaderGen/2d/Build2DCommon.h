@@ -127,17 +127,6 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
 {
     // Position
     v.push_back({cfg->position_format, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position});
-
-    // TransformID (if L2W)
-    if(cfg->local_to_world)
-        v.push_back({Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME});
-
-    // DataIndexID + TextureLayerID (if MI)
-    if(cfg->material_instance)
-    {
-        v.push_back({Assign::DataIndexID::VAT_FMT, VertexInputGroup::DataIndexID, VertexInputRate::Instance, Assign::DataIndexID::VIS_NAME});
-        v.push_back({Assign::TextureLayerID::VAT_FMT, VertexInputGroup::TextureLayerID, VertexInputRate::Instance, Assign::TextureLayerID::VIS_NAME});
-    }
 }
 
 // ─────────────────────────────────────────────────────────────

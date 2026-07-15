@@ -24,9 +24,6 @@ L2W_INDEX_ROWS_SSBO;
 layout(set=MATERIAL_SET, binding=0) uniform sampler2D TextureHeight;
 layout(set=MATERIAL_SET, binding=1) uniform sampler2D TextureNormal;
 
-// Vertex attributes: TransformID only (no Position!)
-layout(location=0) in uint TransformID;
-
 // Output to FS
 layout(location=0) out vec4 fragClipPos;
 layout(location=1) out vec3 fragWorldNormal;

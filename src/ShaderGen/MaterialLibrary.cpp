@@ -69,10 +69,6 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
             key.geometry_mode = GeometryMode::Mesh3D;
             key.feature_bits = VF_DebugShading;
             break;
-        case MaterialPreset::TerrainGrid:
-            key.surface_type = SurfaceType::Terrain;
-            key.geometry_mode = GeometryMode::Mesh3D;
-            break;
         case MaterialPreset::SkyMinimal:
             key.surface_type = SurfaceType::Sky;
             key.geometry_mode = GeometryMode::Mesh3D;
@@ -174,12 +170,6 @@ bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out
         }
     }
 
-    if (key.surface_type == SurfaceType::Terrain)
-    {
-        out_preset = MaterialPreset::TerrainGrid;
-        return true;
-    }
-
     if (key.surface_type == SurfaceType::Sky)
     {
         out_preset = MaterialPreset::SkyMinimal;
@@ -204,7 +194,6 @@ const char *GetMaterialPresetName(const MaterialPreset mtl_id)
         case MaterialPreset::VertexLuminance3D:     return "VertexLuminance3D";
         case MaterialPreset::VertexPattleColor3D:   return "VertexPattleColor3D";
         case MaterialPreset::Gizmo3D:               return "Gizmo3D";
-        case MaterialPreset::TerrainGrid:           return "TerrainGrid";
         case MaterialPreset::SkyMinimal:            return "SkyMinimal";
         case MaterialPreset::Billboard2D:           return "Billboard2D";
         case MaterialPreset::Standard:              return "Standard";
@@ -235,7 +224,6 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         case MaterialPreset::VertexLuminance3D:     return CreateVertexLuminance3D  (profile,(Material3DCreateConfig *)cfg);
         case MaterialPreset::VertexPattleColor3D:   return CreateVertexPattleColor3D(profile,(const Material3DCreateConfig *)cfg);
         case MaterialPreset::Gizmo3D:               return CreateGizmo3D            (profile,(Material3DCreateConfig *)cfg);
-        case MaterialPreset::TerrainGrid:           return CreateTerrainGrid        (profile,(const TerrainGridCreateConfig *)cfg);
         case MaterialPreset::SkyMinimal:            return CreateSkyMinimal         (profile,(const SkyMinimalCreateConfig *)cfg);
         case MaterialPreset::Billboard2D:           return CreateBillboard2D        (profile,(BillboardMaterialCreateConfig *)cfg);
         case MaterialPreset::Standard:              return CreateStandard           (profile,(const Material3DCreateConfig *)cfg);
