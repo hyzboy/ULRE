@@ -9,8 +9,8 @@ layout(location=2) out vec2 fragTexCoord;
 
 void main()
 {
-    fragDataIndexID = DataIndexID;
-    fragTextureLayerID = TextureLayerID;
+    fragDataIndexID = GetDataIndexID2D();
+    fragTextureLayerID = GetTextureLayerID2D();
     fragTexCoord = TexCoord;
     gl_Position = GetPosition2D();
 }

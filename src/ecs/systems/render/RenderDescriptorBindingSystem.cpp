@@ -841,6 +841,36 @@ namespace hgl::ecs
                 }
                 break;
             }
+            case graph::mtl::DescriptorSemantic::LocalToWorldIndexTable:
+            {
+                const graph::IGPUBuffer *table_buffer = nullptr;
+
+                // Prefer the per-batch buffer written in draw order by PrimitiveBatchPipeline.
+                if (batch && batch->l2w_index_rows_buffer)
+                {
+                    table_buffer = batch->l2w_index_rows_buffer->GetGPUBuffer();
+                }
+
+                // Fallback: global TransformIndexRows from TransformAssignmentBuffer.
+                if (!table_buffer && batch && batch->transform_buffer)
+                {
+                    auto *rows_buffer = batch->transform_buffer->GetTransformIndexRowsBuffer();
+                    table_buffer = rows_buffer ? rows_buffer->GetGPUBuffer() : nullptr;
+                }
+
+                if (!table_buffer && domain_manager)
+                {
+                    table_buffer = domain_manager->GetGPUBuffer(
+                        graph::mtl::SSBOAddress{
+                            graph::mtl::SSBOType::TransformIndexRows,
+                            graph::mtl::ECSReservedSSBOId::TransformIndexRows,
+                            0});
+                }
+
+                if (table_buffer)
+                    material->BindSSBO(req.set_type, req.name, table_buffer, false);
+                break;
+            }
             case graph::mtl::DescriptorSemantic::MaterialInstance:
             {
                 if (batch
@@ -855,17 +885,34 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
             {
-                if (kP15V1ScopeLockMIOnly)
-                    break;
+                const graph::IGPUBuffer *table_buffer = nullptr;
+                if (batch && batch->mi_buffer)
+                {
+                    auto *rows_buffer = batch->mi_buffer->GetTextureLayerRowsBuffer();
+                    table_buffer = rows_buffer ? rows_buffer->GetGPUBuffer() : nullptr;
+                }
 
-                if (texture_layer_table_buffer)
-                    material->BindSSBO(req.set_type, req.name, texture_layer_table_buffer, false);
+                if (!table_buffer)
+                    table_buffer = texture_layer_table_buffer;
+
+                if (table_buffer)
+                    material->BindSSBO(req.set_type, req.name, table_buffer, false);
                 break;
             }
             case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
             {
-                if (data_index_table_buffer)
-                    material->BindSSBO(req.set_type, req.name, data_index_table_buffer, false);
+                const graph::IGPUBuffer *table_buffer = nullptr;
+                if (batch && batch->mi_buffer)
+                {
+                    auto *rows_buffer = batch->mi_buffer->GetDataIndexRowsBuffer();
+                    table_buffer = rows_buffer ? rows_buffer->GetGPUBuffer() : nullptr;
+                }
+
+                if (!table_buffer)
+                    table_buffer = data_index_table_buffer;
+
+                if (table_buffer)
+                    material->BindSSBO(req.set_type, req.name, table_buffer, false);
                 break;
             }
             case graph::mtl::DescriptorSemantic::MaterialTexture:
@@ -967,20 +1014,15 @@ namespace hgl::ecs
         }
 
         case graph::mtl::DescriptorSemantic::LocalToWorld:
+        case graph::mtl::DescriptorSemantic::LocalToWorldIndexTable:
         case graph::mtl::DescriptorSemantic::MaterialInstance:
         case graph::mtl::DescriptorSemantic::MaterialTexture:
         case graph::mtl::DescriptorSemantic::MaterialSampler:
             return true;
         case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
-            if (kP15V1ScopeLockMIOnly)
-                return false;
-            if (auto *domain_manager = GetResourceDomainManager(context))
-                return domain_manager->GetGPUBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0}) != nullptr;
-            return materialization_texture_layer_ssbo && materialization_texture_layer_ssbo->GetGPUBuffer();
+            return true;
         case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
-            if (auto *domain_manager = GetResourceDomainManager(context))
-                return domain_manager->GetGPUBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0}) != nullptr;
-            return materialization_data_index_ssbo && materialization_data_index_ssbo->GetGPUBuffer();
+            return true;
         case graph::mtl::DescriptorSemantic::Custom:
             return true;
 
@@ -1088,3 +1130,4 @@ namespace hgl::ecs
         }
     }
 }
+

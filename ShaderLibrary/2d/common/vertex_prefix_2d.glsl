@@ -21,6 +21,14 @@ SCENE_VIEWPORT_UBO;
 #ifdef HAS_L2W
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
+#include "common/instance_rows_ssbo.glsl"
+L2W_INDEX_ROWS_SSBO;
+#endif
+
+#ifdef HAS_MI
+#include "common/instance_rows_ssbo.glsl"
+DATA_INDEX_ROWS_SSBO;
+TEXTURE_LAYER_ROWS_SSBO;
 #endif
 
 // ---- Vertex inputs (location 连续排列) ----
@@ -45,7 +53,12 @@ layout(location=2) in uint TextureLayerID;
 
 // ---- Helper functions ----
 #ifdef HAS_L2W
-mat4 GetLocalToWorld() { return l2w.mats[TransformID]; }
+mat4 GetLocalToWorld() { return l2w.mats[ResolveTransformID(gl_InstanceIndex)]; }
+#endif
+
+#ifdef HAS_MI
+uint GetDataIndexID2D() { return ResolveDataIndexID(gl_InstanceIndex); }
+uint GetTextureLayerID2D() { return ResolveTextureLayerID(gl_InstanceIndex); }
 #endif
 
 vec4 GetPosition2D()

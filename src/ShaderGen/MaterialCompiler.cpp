@@ -239,16 +239,61 @@ MaterialCreateInfo *CompileCompositorMaterial(
 
     // ─────────────────────────────────────────────────────────────
     // Step 6: Set complete GLSL (bypass ProcXXX pipeline)
+    //
+    // Inject binding-offset defines so compositor shaders use the
+    // correct binding numbers after Resort() (alphabetical order
+    // inside each set puts Texture... before mtl...).
     // ─────────────────────────────────────────────────────────────
+
+    // Count textures in the Material set — Resort() puts them at binding 0..N-1.
+    // SSBOs (mtl, mtl_data_index_rows, mtl_texture_layer_rows) land at N, N+1, N+2.
+    uint32_t material_set_texture_count = 0;
+    for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
+    {
+        const auto &e = def.descriptor_entries[i];
+        if (e.set_type == DescriptorSetType::Material &&
+            (e.kind == DescriptorKind::Texture || e.kind == DescriptorKind::TextureSampler))
+            ++material_set_texture_count;
+    }
+
+    const uint32_t mi_binding          = material_set_texture_count;
+    const uint32_t data_rows_binding   = material_set_texture_count + 1;
+    const uint32_t texlayer_binding    = material_set_texture_count + 2;
+
+    // Only inject when bindings differ from descriptor_macros.glsl defaults (1, 2)
+    // to avoid unnecessary preamble bloat for no-texture materials.
+    std::string binding_preamble;
+    if (material_set_texture_count > 0)
+    {
+        binding_preamble =
+            "#define MI_BINDING "                  + std::to_string(mi_binding)        + "\n"
+            "#define MI_DATA_INDEX_ROWS_BINDING "  + std::to_string(data_rows_binding) + "\n"
+            "#define MI_TEXTURE_LAYER_ROWS_BINDING " + std::to_string(texlayer_binding) + "\n";
+    }
+
+    // GLSL requires #version to be the very first token.
+    // Insert the binding defines after the first line (the #version line).
+    auto InsertAfterVersionLine = [](const std::string &glsl, const std::string &inject) -> std::string
+    {
+        if (inject.empty())
+            return glsl;
+        const auto pos = glsl.find('\n');
+        if (pos == std::string::npos)
+            return glsl + "\n" + inject;
+        return glsl.substr(0, pos + 1) + inject + glsl.substr(pos + 1);
+    };
+
+    std::string vs_final = InsertAfterVersionLine(vs_glsl, binding_preamble);
+    std::string fs_final = InsertAfterVersionLine(fs_glsl, binding_preamble);
 
     ShaderCreateInfoVertex   *vert = mci->GetVertexShader();
     ShaderCreateInfo         *frag = mci->GetStageShader(ShaderStage::Fragment);
 
     if (vert)
-        vert->SetFinalGLSL(vs_glsl);
+        vert->SetFinalGLSL(vs_final);
 
     if (frag)
-        frag->SetFinalGLSL(fs_glsl);
+        frag->SetFinalGLSL(fs_final);
 
     // ─────────────────────────────────────────────────────────────
     // Step 6b: Build BindingContract from descriptor entries

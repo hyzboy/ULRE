@@ -16,6 +16,10 @@ SCENE_CAMERA_UBO;
 // L2W SSBO
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
+#include "common/instance_rows_ssbo.glsl"
+L2W_INDEX_ROWS_SSBO;
+DATA_INDEX_ROWS_SSBO;
+TEXTURE_LAYER_ROWS_SSBO;
 
 // Vertex attributes: Position + Normal + TransformID + DataIndexID + TextureLayerID
 layout(location=0) in vec3 Position;
@@ -32,12 +36,15 @@ layout(location=3) out vec3 fragWorldNormal;
 
 void main()
 {
-    mat4 l2w_mat = l2w.mats[TransformID];
+    const uint transform_id = ResolveTransformID(gl_InstanceIndex);
+    const uint data_index_id = ResolveDataIndexID(gl_InstanceIndex);
+    const uint texture_layer_id = ResolveTextureLayerID(gl_InstanceIndex);
+    mat4 l2w_mat = l2w.mats[transform_id];
     vec4 worldPos = l2w_mat * vec4(Position, 1.0);
     vec3 worldNormal = normalize(mat3(l2w_mat) * Normal);
 
-    fragDataIndexID = DataIndexID;
-    fragTextureLayerID = TextureLayerID;
+    fragDataIndexID = data_index_id;
+    fragTextureLayerID = texture_layer_id;
     fragWorldPos   = worldPos.xyz;
     fragWorldNormal = worldNormal;
 

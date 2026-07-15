@@ -16,6 +16,7 @@ namespace hgl::graph::mtl
         SkyInfo,
 
         LocalToWorld,
+        LocalToWorldIndexTable,
         MaterialInstance,
 
         MaterialTexture,
@@ -68,6 +69,12 @@ namespace hgl::graph::mtl
 
         if (_DBC_CStrEq(entry.struct_name, "LocalToWorldData") || _DBC_CStrEq(entry.struct_name, "LocalToWorld") || _DBC_CStrEq(entry.name, "l2w"))
             return DescriptorSemantic::LocalToWorld;
+
+        if (_DBC_CStrEq(entry.struct_name, "LocalToWorldIndexRows")
+         || _DBC_CStrEq(entry.struct_name, "TransformIndexRows")
+         || _DBC_CStrEq(entry.name, "l2w_index_rows")
+         || _DBC_CStrEq(entry.name, "transform_index_rows"))
+            return DescriptorSemantic::LocalToWorldIndexTable;
 
         if (_DBC_CStrEq(entry.struct_name, "MaterialInstanceData") || _DBC_CStrEq(entry.struct_name, "MaterialInstance") || _DBC_CStrEq(entry.name, "mtl"))
             return DescriptorSemantic::MaterialInstance;
@@ -145,6 +152,7 @@ namespace hgl::graph::mtl
             return DescriptorSetType::Scene;
 
         case DescriptorSemantic::LocalToWorld:
+        case DescriptorSemantic::LocalToWorldIndexTable:
             return DescriptorSetType::Transform;
 
         case DescriptorSemantic::MaterialInstance:
@@ -197,6 +205,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::CameraInfo:       return "CameraInfo";
         case DescriptorSemantic::SkyInfo:          return "SkyInfo";
         case DescriptorSemantic::LocalToWorld:     return "LocalToWorld";
+        case DescriptorSemantic::LocalToWorldIndexTable: return "LocalToWorldIndexTable";
         case DescriptorSemantic::MaterialInstance: return "MaterialInstance";
         case DescriptorSemantic::MaterialTexture:  return "MaterialTexture";
         case DescriptorSemantic::MaterialSampler:  return "MaterialSampler";

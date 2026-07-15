@@ -5,6 +5,6 @@ layout(location=0) flat out uint fragDataIndexID;
 
 void main()
 {
-    fragDataIndexID = DataIndexID;
+    fragDataIndexID = GetDataIndexID2D();
     gl_Position = GetPosition2D();
 }

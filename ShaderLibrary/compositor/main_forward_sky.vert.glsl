@@ -15,6 +15,8 @@ SCENE_CAMERA_UBO;
 // L2W SSBO
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
+#include "common/instance_rows_ssbo.glsl"
+L2W_INDEX_ROWS_SSBO;
 
 // Vertex attributes: Position + TransformID
 layout(location=0) in vec3 Position;
@@ -27,6 +29,6 @@ void main()
 {
     fragDirection = normalize(Position);
 
-    mat4 l2w_mat = l2w.mats[TransformID];
+    mat4 l2w_mat = l2w.mats[ResolveTransformID(gl_InstanceIndex)];
     gl_Position = camera.vp * l2w_mat * vec4(Position, 1.0);
 }

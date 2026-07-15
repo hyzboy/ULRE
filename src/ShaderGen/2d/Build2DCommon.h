@@ -59,6 +59,8 @@ inline std::string BuildDescriptorDefines(
     {
         defs += "#define L2W_SET "    + std::to_string(set) + "\n";
         defs += "#define L2W_BINDING 0\n";
+        defs += "#define L2W_INDEX_ROWS_SET " + std::to_string(set) + "\n";
+        defs += "#define L2W_INDEX_ROWS_BINDING 1\n";
         set++;
     }
 
@@ -75,6 +77,10 @@ inline std::string BuildDescriptorDefines(
         {
             defs += "#define MI_SET "      + std::to_string(set) + "\n";
             defs += "#define MI_BINDING "  + std::to_string(binding++) + "\n";
+            defs += "#define MI_DATA_INDEX_ROWS_SET " + std::to_string(set) + "\n";
+            defs += "#define MI_DATA_INDEX_ROWS_BINDING " + std::to_string(binding++) + "\n";
+            defs += "#define MI_TEXTURE_LAYER_ROWS_SET " + std::to_string(set) + "\n";
+            defs += "#define MI_TEXTURE_LAYER_ROWS_BINDING " + std::to_string(binding++) + "\n";
         }
         set++;
     }
@@ -153,12 +159,16 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
 
     // L2W (Transform set) — only if L2W
     if(cfg->local_to_world)
+    {
         v.push_back({DescriptorSetType::Transform, L2W_KIND_2D, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr});
+        v.push_back({DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr});
+    }
 
     if(cfg->material_instance)
     {
         v.push_back({DescriptorSetType::Material, MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr});
         v.push_back({DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr});
+        v.push_back({DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_texture_layer_rows", "TextureLayerRows", nullptr});
     }
 }
 

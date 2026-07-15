@@ -16,6 +16,10 @@ SCENE_CAMERA_UBO;
 // L2W SSBO — camera-relative local-to-world matrices, indexed by TransformID
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
+#include "common/instance_rows_ssbo.glsl"
+L2W_INDEX_ROWS_SSBO;
+DATA_INDEX_ROWS_SSBO;
+TEXTURE_LAYER_ROWS_SSBO;
 
 #if GEOMETRY_FETCH_SSBO
     // SSBO 顶点获取
@@ -29,18 +33,15 @@ L2W_SSBO;
 
 // ECS instance-rate attributes (dual ID)
 #if GEOMETRY_FETCH_SSBO
-    // SSBO 平台: TransformID/DataIndexID/TextureLayerID 由实例索引暂代
-    #define GET_TRANSFORM_ID()          gl_InstanceIndex
-    #define GET_DATA_INDEX_ID()         gl_InstanceIndex
-    #define GET_TEXTURE_LAYER_ID()      gl_InstanceIndex
 #else
     layout(location=3) in uint TransformID;
     layout(location=4) in uint DataIndexID;
     layout(location=5) in uint TextureLayerID;
-    #define GET_TRANSFORM_ID()          TransformID
-    #define GET_DATA_INDEX_ID()         DataIndexID
-    #define GET_TEXTURE_LAYER_ID()      TextureLayerID
 #endif
+
+#define GET_TRANSFORM_ID()          ResolveTransformID(gl_InstanceIndex)
+#define GET_DATA_INDEX_ID()         ResolveDataIndexID(gl_InstanceIndex)
+#define GET_TEXTURE_LAYER_ID()      ResolveTextureLayerID(gl_InstanceIndex)
 
 layout(location=0) out vec3 fragWorldPos;
 layout(location=1) out vec3 fragWorldNormal;

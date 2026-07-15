@@ -37,6 +37,14 @@ constexpr const ShaderBufferSource SBS_LocalToWorld=
     "LocalToWorldData"
 };
 
+constexpr const ShaderBufferSource SBS_LocalToWorldIndexRows=
+{
+    DescriptorSetType::Transform,
+
+    "l2w_index_rows",
+    "LocalToWorldIndexRows"
+};
+
 constexpr const ShaderBufferSource SBS_ColorPattle =
 {
     DescriptorSetType::Material,

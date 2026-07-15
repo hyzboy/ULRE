@@ -37,6 +37,13 @@ namespace hgl::ecs
             else
                 delete transform_vab;
         }
+        if (l2w_index_rows_buffer)
+        {
+            if (buffer_manager)
+                buffer_manager->Release(l2w_index_rows_buffer);
+            else
+                delete l2w_index_rows_buffer;
+        }
         if (mi_buffer)
             delete mi_buffer;
         if (renderer)

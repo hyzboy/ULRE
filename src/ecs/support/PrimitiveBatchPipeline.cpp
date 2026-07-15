@@ -541,6 +541,28 @@ namespace hgl::ecs
                                                                     graph::BufferAllocPolicy::Auto);
             batch.transform_vab_buffer = batch.transform_vab ? batch.transform_vab->GetVkBuffer() : VK_NULL_HANDLE;
         }
+
+        // Per-batch L2W index rows SSBO — same capacity as VAB, written in draw order.
+        if (!batch.l2w_index_rows_buffer || batch.l2w_index_rows_capacity < item_count)
+        {
+            batch.l2w_index_rows_capacity = new_node_count;
+
+            if (batch.l2w_index_rows_buffer)
+            {
+                if (batch.buffer_manager)
+                    batch.buffer_manager->Release(batch.l2w_index_rows_buffer);
+                else
+                    delete batch.l2w_index_rows_buffer;
+                batch.l2w_index_rows_buffer = nullptr;
+            }
+
+            if (batch.buffer_manager)
+            {
+                const VkDeviceSize byte_size = static_cast<VkDeviceSize>(batch.l2w_index_rows_capacity) * sizeof(uint32_t);
+                batch.l2w_index_rows_buffer = batch.buffer_manager->CreateSSBO(
+                    "ECS:Batch:L2WIndexRows", byte_size, nullptr, graph::SharingMode::Exclusive);
+            }
+        }
     }
 
     void PrimitiveBatchPipeline::WriteTransformIndices(MaterialBatch& batch)
@@ -593,6 +615,27 @@ namespace hgl::ecs
         }
 
         batch.transform_vab->Unmap();
+
+        // Also write per-batch L2W index rows SSBO in the same draw order.
+        // This is what the shader reads via ResolveTransformID(gl_InstanceIndex).
+        if (batch.l2w_index_rows_buffer)
+        {
+            auto *l2w_gpu = batch.l2w_index_rows_buffer->GetGPUBuffer();
+            if (l2w_gpu)
+            {
+                uint32_t *l2w_ptr = static_cast<uint32_t *>(l2w_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint32_t)));
+                if (l2w_ptr)
+                {
+                    for (size_t i = 0; i < item_count; ++i)
+                    {
+                        RenderItem* item = batch.items[i];
+                        *l2w_ptr = item ? item->transform_index : 0;
+                        ++l2w_ptr;
+                    }
+                    l2w_gpu->Unmap();
+                }
+            }
+        }
 
         LogInfo("[ECS::PrimitiveBatchPipeline] TransformID VAB write complete: items=%u dirty=%d vkbuf=0x%llX",
                  item_count,

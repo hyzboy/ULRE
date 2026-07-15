@@ -20,15 +20,21 @@ SCENE_VIEWPORT_UBO;
 // L2W SSBO
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
+#include "common/instance_rows_ssbo.glsl"
+L2W_INDEX_ROWS_SSBO;
 
 // MI SSBO (Material set, VS only)
 // Resort() 字母序: TextureBaseColor=0, mtl=1
 #define MI_BINDING 1
+#define MI_DATA_INDEX_ROWS_BINDING 2
+#define MI_TEXTURE_LAYER_ROWS_BINDING 3
 #include "common/material_instance_ssbo.glsl"
 struct MaterialInstance {
     uvec2 BillboardSize;
 };
 MI_SSBO_SCALAR;
+DATA_INDEX_ROWS_SSBO;
+TEXTURE_LAYER_ROWS_SSBO;
 
 // Vertex attributes: Position + TransformID + DataIndexID + TextureLayerID
 layout(location=0) in vec3  Position;
@@ -39,14 +45,14 @@ layout(location=3) in uint  TextureLayerID;
 // Output to FS
 layout(location=0) out vec2 fragTexCoord;
 
-MaterialInstance GetMI() { return mtl.mi[DataIndexID]; }
+MaterialInstance GetMI() { return mtl.mi[ResolveDataIndexID(gl_InstanceIndex)]; }
 
 void main()
 {
     MaterialInstance mi = GetMI();
 
     vec2 psize = vec2(mi.BillboardSize) / vec2(viewport.canvas_resolution);
-    vec4 center_clip = camera.vp * l2w.mats[TransformID] * vec4(0.0, 0.0, 0.0, 1.0);
+    vec4 center_clip = camera.vp * l2w.mats[ResolveTransformID(gl_InstanceIndex)] * vec4(0.0, 0.0, 0.0, 1.0);
     vec2 center_ndc = center_clip.xy / center_clip.w;
     vec2 ndc = center_ndc + Position.xy * psize;
 

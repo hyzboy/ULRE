@@ -37,6 +37,32 @@
 #define L2W_BINDING 0
 #endif
 
+#ifndef L2W_INDEX_ROWS_SET
+#define L2W_INDEX_ROWS_SET TRANSFORM_SET
+#endif
+
+#ifndef L2W_INDEX_ROWS_BINDING
+#define L2W_INDEX_ROWS_BINDING 1
+#endif
+
+// ── Material set rows (instance-index indirection) ──
+
+#ifndef MI_DATA_INDEX_ROWS_SET
+#define MI_DATA_INDEX_ROWS_SET MATERIAL_SET
+#endif
+
+#ifndef MI_DATA_INDEX_ROWS_BINDING
+#define MI_DATA_INDEX_ROWS_BINDING 1
+#endif
+
+#ifndef MI_TEXTURE_LAYER_ROWS_SET
+#define MI_TEXTURE_LAYER_ROWS_SET MATERIAL_SET
+#endif
+
+#ifndef MI_TEXTURE_LAYER_ROWS_BINDING
+#define MI_TEXTURE_LAYER_ROWS_BINDING 2
+#endif
+
 // ── Scene set (Resort 字母序: camera < sky < viewport) ──
 // 当 sky 不存在时: camera=0, viewport=1 → 在 shader 中 #define VIEWPORT_BINDING 1
 

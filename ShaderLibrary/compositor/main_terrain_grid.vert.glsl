@@ -17,6 +17,8 @@ SCENE_CAMERA_UBO;
 // L2W SSBO
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
+#include "common/instance_rows_ssbo.glsl"
+L2W_INDEX_ROWS_SSBO;
 
 // VS textures (Material set) — texelFetch 不需要 sampler
 layout(set=MATERIAL_SET, binding=0) uniform sampler2D TextureHeight;
@@ -47,7 +49,7 @@ void main()
     vec3 pos = vec3(float(coord.x), float(coord.y), h);
 
     // Transform to world and clip space
-    mat4 l2w_mat = l2w.mats[TransformID];
+    mat4 l2w_mat = l2w.mats[ResolveTransformID(gl_InstanceIndex)];
     vec4 wp = l2w_mat * vec4(pos, 1.0);
 
     // Transform normal to world (approx; ignore non-uniform scale)

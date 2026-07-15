@@ -54,6 +54,11 @@ namespace hgl::ecs
         VkBuffer                                transform_vab_buffer    = VK_NULL_HANDLE;   ///<Transform索引VAB缓冲
         uint32_t                                transform_vab_node_count= 0;                ///<Transform VAB容量
 
+        // Per-batch L2W index rows SSBO — written in draw order so gl_InstanceIndex
+        // directly maps to the correct L2W matrix slot.
+        graph::DeviceBuffer *                   l2w_index_rows_buffer   = nullptr;          ///<每批 L2W 行表 SSBO（draw order）
+        uint32_t                                l2w_index_rows_capacity = 0;                ///<行表容量（元素数）
+
         TransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<Transform分配缓冲(非拥有)
         MaterialInstanceAssignmentBuffer *   mi_buffer               = nullptr;          ///<材质实例分配缓冲
 
