@@ -78,6 +78,10 @@
 #define VIEWPORT_BINDING 2
 #endif
 
+#ifndef BINDLESS_SET
+#define BINDLESS_SET 4
+#endif
+
 // ── VertexData set (SSBO 顶点获取) ──
 
 #ifndef VTX_DATA_BINDING

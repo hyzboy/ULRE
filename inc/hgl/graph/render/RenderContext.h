@@ -5,6 +5,7 @@
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/mtl/new/NewDescriptorSetLayoutFactory.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 
 namespace hgl
 {
@@ -58,6 +59,9 @@ namespace hgl
 
         // 新 4-Set 管线布局 (与旧布局双轨共存)
         NewPipelineLayoutData* new_pipeline_layout_data_ = nullptr;
+
+        // 全局 Bindless 纹理管理器（Set 4）
+        BindlessTextureManager* bindless_texture_manager_ = nullptr;
 
     public:
         RenderContext() = default;
@@ -120,6 +124,11 @@ namespace hgl
         void SetNewPipelineLayoutData(NewPipelineLayoutData* pld) { new_pipeline_layout_data_ = pld; }
         NewPipelineLayoutData* GetNewPipelineLayoutData() const { return new_pipeline_layout_data_; }
         VkPipelineLayout GetNewPipelineLayout() const { return new_pipeline_layout_data_ ? new_pipeline_layout_data_->pipeline_layout : VK_NULL_HANDLE; }
+
+    public:
+        // ===== 全局 Bindless 纹理管理器 =====
+        void SetBindlessTextureManager(BindlessTextureManager* mgr) { bindless_texture_manager_ = mgr; }
+        BindlessTextureManager* GetBindlessTextureManager() const { return bindless_texture_manager_; }
 
         }; // class RenderContext
 

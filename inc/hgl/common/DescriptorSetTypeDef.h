@@ -14,8 +14,9 @@ namespace hgl::graph
         Transform,
         Material,
         VertexData,
+        Bindless,           ///< 全局 Bindless 纹理数组集合（Set 4）
 
-        ENUM_CLASS_RANGE(Scene,VertexData)
+        ENUM_CLASS_RANGE(Scene,Bindless)
     };
 
     constexpr const size_t DESCRIPTOR_SET_TYPE_COUNT=size_t(DescriptorSetType::RANGE_SIZE);
@@ -25,7 +26,8 @@ namespace hgl::graph
         "Scene",
         "Transform",
         "Material",
-        "VertexData"
+        "VertexData",
+        "Bindless"
     };
 
     inline const char *GetDescriptorSetTypeName(const enum class DescriptorSetType &type)

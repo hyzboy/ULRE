@@ -230,7 +230,9 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features{};
     descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
     descriptor_indexing_features.pNext = nullptr;
-    descriptor_indexing_features.descriptorBindingPartiallyBound = VK_TRUE;
+    descriptor_indexing_features.descriptorBindingPartiallyBound             = VK_TRUE;
+    descriptor_indexing_features.runtimeDescriptorArray                      = VK_TRUE;
+    descriptor_indexing_features.descriptorBindingSampledImageUpdateAfterBind= VK_TRUE;
 
     // Chain descriptor indexing features
     {

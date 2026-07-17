@@ -260,7 +260,8 @@ SET(VK_BUFFER_OPS_FILES         VKDeviceMemory.cpp
                                 VKDeviceImage.cpp
                                 VKDeviceSampler.cpp
                                 VKDeviceFramebuffer.cpp
-                                VKDeviceMaterial.cpp)
+                                VKDeviceMaterial.cpp
+                                VKBindlessTextureManager.cpp)
 
 SOURCE_GROUP("BufferOperations" FILES ${VK_BUFFER_OPS_FILES})
 
