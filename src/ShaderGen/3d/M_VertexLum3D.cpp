@@ -13,13 +13,13 @@ namespace
     constexpr const uint32_t VERTEX_LUMINANCE_3D_MI_BYTES = sizeof(hgl::math::Vector4f);
 
     constexpr FixedVertexEntry VERTEX_LUMINANCE_3D_VERTEX_VEC3[] = {
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
-        { VAT_FLOAT, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Luminance },
+        { VAT_VEC3, VAN::Position },
+        { VAT_FLOAT, VAN::Luminance },
     };
 
     constexpr FixedVertexEntry VERTEX_LUMINANCE_3D_VERTEX_VEC2[] = {
-        { VAT_VEC2, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
-        { VAT_FLOAT, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Luminance },
+        { VAT_VEC2, VAN::Position },
+        { VAT_FLOAT, VAN::Luminance },
     };
 
       constexpr FixedDescriptorEntry VERTEX_LUMINANCE_3D_DESCRIPTORS[] = {
@@ -102,3 +102,4 @@ MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfil
     return mci;
 }
 }//namespace hgl::graph::mtl
+

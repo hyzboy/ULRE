@@ -6,41 +6,6 @@
 namespace hgl::graph
 {
 #pragma pack(push,1)
-    enum class VertexInputGroup:uint8
-    {
-        Basic = 0,
-
-        TransformID = 1,
-        DataIndexID = 2,
-        TextureLayerID = 3,
-        ReservedLegacySlot = 4,     ///< 保留历史枚举槽位，避免后续编号漂移
-
-        JointID = 5,
-        JointWeight = 6,
-
-        ENUM_CLASS_RANGE(Basic,JointWeight)
-    };
-
-    constexpr const char *VertexInputGroupName[]=
-    {
-        "Basic",
-
-        "TransformID",
-        "DataIndexID",
-        "TextureLayerID",
-        "ReservedLegacySlot",
-
-        "JointID",
-        "JointWeight"
-    };
-
-    inline const char *GetVertexInputGroupName(const VertexInputGroup vig)
-    {
-        RANGE_CHECK_RETURN_NULLPTR(vig);
-
-        return VertexInputGroupName[(int)vig];
-    }
-
     enum class VertexAttribBaseType:uint8
     {
         Bool=0,
@@ -160,3 +125,4 @@ namespace hgl::graph
 
 #define VAN VertexAttribName
 }
+

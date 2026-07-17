@@ -21,9 +21,9 @@ namespace
     constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 3;
 
     constexpr FixedVertexEntry STANDARD_VERTEX[] = {
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
-        { VAT_VEC2, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::TexCoord },
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Normal },
+        { VAT_VEC3, VAN::Position },
+        { VAT_VEC2, VAN::TexCoord },
+        { VAT_VEC3, VAN::Normal },
     };
 
     constexpr FixedDescriptorEntry STANDARD_DESCRIPTORS[] = {
@@ -107,3 +107,4 @@ MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *pr
 }
 
 }//namespace hgl::graph::mtl
+

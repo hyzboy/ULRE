@@ -210,11 +210,6 @@ namespace
                 return false;
             }
 
-            if(vif->group==VertexInputGroup::TransformID
-             ||vif->group==VertexInputGroup::DataIndexID
-             ||vif->group==VertexInputGroup::TextureLayerID)
-                continue;
-
             const char *attr_name = vif->name;
 
             // find this attribute in meta by name

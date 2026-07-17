@@ -9,7 +9,7 @@ namespace hgl::graph::mtl{
 namespace
 {
     constexpr FixedVertexEntry SKY_MINIMAL_VERTEX[] = {
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
+        { VAT_VEC3, VAN::Position },
     };
 
     constexpr FixedDescriptorEntry SKY_MINIMAL_DESCRIPTORS[] = {
@@ -66,3 +66,4 @@ MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *
     return mci;
 }
 }//namespace hgl::graph::mtl
+

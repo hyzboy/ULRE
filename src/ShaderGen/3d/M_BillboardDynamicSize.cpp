@@ -9,7 +9,7 @@ namespace hgl::graph::mtl{
 namespace
 {
     constexpr FixedVertexEntry BILLBOARD_DYNAMIC_VERTEX[] = {
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
+        { VAT_VEC3, VAN::Position },
     };
 
     constexpr FixedDescriptorEntry BILLBOARD_DYNAMIC_DESCRIPTORS[] = {
@@ -71,3 +71,4 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
     return mci;
 }
 }//namespace hgl::graph::mtl
+

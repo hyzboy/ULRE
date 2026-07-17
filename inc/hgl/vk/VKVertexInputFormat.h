@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<vulkan/vulkan.h>
 #include<hgl/vk/VertexAttrib.h>
@@ -13,9 +13,8 @@ namespace hgl::graph
 
         const char *        name;
         int                 binding;
-        VkVertexInputRate   input_rate;
-        VertexInputGroup    group;
     };//struct VertexInputFormat
 
     using VIF=VertexInputFormat;
 }//namespace hgl::graph
+

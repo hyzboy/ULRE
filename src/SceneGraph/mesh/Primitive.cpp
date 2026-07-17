@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
@@ -81,7 +81,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
     if(*vil!=*p->GetVIL())
         return(nullptr);
 
-    const uint32_t input_count=vil->GetVertexAttribCount(VertexInputGroup::Basic);       //不统计Bone/LocalToWorld组的
+    const uint32_t input_count=vil->GetVertexAttribCount();
     const AnsiString &mtl_name=mi->GetMaterial()->GetName();
 
     if(geom->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
@@ -91,7 +91,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
         return(nullptr);
     }
 
-    const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
+    const VertexInputFormat *vif=vil->GetVIFList();
 
     uint32_t max_binding=0;
     for(uint i=0;i<input_count;i++)
@@ -160,8 +160,8 @@ bool GeometryDataBuffer::Update(const Geometry *geom,const VIL *vil)
         vab_offset[i]=0;
     }
 
-    const uint32_t input_count=vil->GetVertexAttribCount(VertexInputGroup::Basic);
-    const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
+    const uint32_t input_count=vil->GetVertexAttribCount();
+    const VertexInputFormat *vif=vil->GetVIFList();
 
     for(uint i=0;i<input_count;i++)
     {
@@ -213,3 +213,4 @@ bool Primitive::SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t
 }
 
 }//namespace hgl::graph
+

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
@@ -20,6 +20,7 @@ namespace hgl::graph
         ~ShaderCreateInfoVertex()override=default;
 
         int AddInput(VIAList &);
-        int AddInput(const VAType &type,const std::string &name,const VertexInputRate input_rate=VertexInputRate::Vertex,const VertexInputGroup &group=VertexInputGroup::Basic);
+        int AddInput(const VAType &type,const std::string &name);
     };//class ShaderCreateInfoVertex:public ShaderCreateInfo
 }//namespace hgl::graph
+

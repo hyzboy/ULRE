@@ -15,8 +15,8 @@ namespace
     // ─────────────────────────────────────────────────────────────────────────────
 
     constexpr FixedVertexEntry GIZMO_3D_VERTEX[] = {
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Normal },
+        { VAT_VEC3, VAN::Position },
+        { VAT_VEC3, VAN::Normal },
     };
 
     constexpr FixedDescriptorEntry GIZMO_3D_DESCRIPTORS[] = {
@@ -86,3 +86,4 @@ MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *pro
     return mci;
 }
 }//namespace hgl::graph::mtl
+

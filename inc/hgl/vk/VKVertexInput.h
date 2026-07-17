@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include<hgl/vk/VKFormat.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/type/OrderedSet.h>
@@ -13,11 +13,9 @@ class VertexInputConfig
     VAType *type_list;
     const char **name_list;
 
-    uint count_by_group[size_t(VertexInputGroup::RANGE_SIZE)];
-
 public:
 
-    const uint      GetCount()const{return via_array.count;}
+    const uint GetCount()const{return via_array.count;}
 
 public:
 

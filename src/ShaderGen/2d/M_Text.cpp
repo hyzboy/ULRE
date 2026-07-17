@@ -23,7 +23,7 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, &new_cfg);
-    vertices.push_back({VAT_VEC2, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::TexCoord});
+    vertices.push_back({ VAT_VEC2, VAN::TexCoord });
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, &new_cfg);
@@ -46,3 +46,4 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     return mci;
 }
 }//namespace hgl::graph::mtl
+

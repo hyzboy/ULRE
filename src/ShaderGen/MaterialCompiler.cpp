@@ -1,4 +1,4 @@
-﻿/// MaterialCompiler.cpp — FixedMaterialDef → MaterialCreateInfo 编译器实现
+/// MaterialCompiler.cpp — FixedMaterialDef → MaterialCreateInfo 编译器实现
 ///
 /// 流程：
 ///   1. 从 FixedDescriptorEntry[] 构建 MaterialDescriptorInfo（描述符布局）
@@ -221,7 +221,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
         for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
         {
             const FixedVertexEntry &entry = def.vertex_entries[i];
-            vsc->AddInput(entry.type, entry.name, entry.input_rate, entry.group);
+            vsc->AddInput(entry.type, entry.name);
         }
     }
 

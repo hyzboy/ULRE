@@ -126,7 +126,7 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_t
 inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Material2DCreateConfig *cfg)
 {
     // Position
-    v.push_back({cfg->position_format, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position});
+    v.push_back({ cfg->position_format, VAN::Position });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -163,3 +163,4 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
 
 }//namespace build2d
 }//namespace hgl::graph::mtl
+

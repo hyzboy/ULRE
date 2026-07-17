@@ -11,7 +11,7 @@ MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLit
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, cfg);
-    vertices.push_back({VAT_VEC4, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Color});
+    vertices.push_back({ VAT_VEC4, VAN::Color });
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, cfg);
@@ -34,3 +34,4 @@ MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLit
 }
 
 }//namespace hgl::graph::mtl
+
