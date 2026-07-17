@@ -25,19 +25,21 @@ L2W_INDEX_ROWS_SSBO;
 // Color palette UBO (Material set, VS only)
 layout(scalar, set=MATERIAL_SET, binding=0) uniform ColorPattle { vec4 color[256]; } color_pattle;
 
-// Vertex attributes: Position + ColorIndex(uint)
+// Vertex attributes: Position + ColorIndex(uint) + TransformID
 layout(location=0) in vec3  Position;
 layout(location=1) in uint  ColorIndex;
+layout(location=2) in uint  TransformID;
 
 // Output to FS
 layout(location=0) out vec4 fragVertexColor;
 
 void main()
 {
-    mat4 l2w_mat = l2w.mats[ResolveTransformID(gl_InstanceIndex)];
+    mat4 l2w_mat = l2w.mats[TransformID];
     vec4 worldPos = l2w_mat * vec4(Position, 1.0);
 
     fragVertexColor = color_pattle.color[ColorIndex];
 
     gl_Position = camera.vp * worldPos;
 }
+

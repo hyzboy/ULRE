@@ -192,8 +192,20 @@ namespace hgl::ecs
 
     void LineRenderPipeline::LineWidthSlot::Draw(graph::RenderCmdBuffer* cmd)
     {
-        if (line_count == 0 || !primitive)
+        if (!cmd)
+        {
+            GLogWarning("[LineRenderPipeline] Draw skipped: cmd is null");
             return;
+        }
+
+        if (line_count == 0)
+            return;
+
+        if (!primitive)
+        {
+            GLogWarning("[LineRenderPipeline] Draw skipped: primitive is null while line_count=%u", line_count);
+            return;
+        }
 
         const graph::GeometryDataBuffer *data_buffer = primitive->GetDataBuffer();
         bool bound_ok = false;
@@ -225,6 +237,13 @@ namespace hgl::ecs
             cmd->BindDataBuffer(data_buffer);
 
         cmd->Draw(primitive->GetDataBuffer(), primitive->GetRenderData());
+
+        GLogInfo("[LineRenderPipeline] Draw issued: primitive=%p data_buffer=%p line_count=%u vertex_count=%u bound_with_tid=%d",
+                 primitive,
+                 data_buffer,
+                 line_count,
+                 line_count * 2u,
+                 bound_ok ? 1 : 0);
     }
 
     // -------------------------------------------------------------------------
@@ -469,12 +488,29 @@ namespace hgl::ecs
             collected_.push_back(comp);
             ++stats_.visible_components;
         }
+
+        GLogInfo("[LineRenderPipeline] Collect summary: total=%u visible=%u collected=%zu culled_visibility=%u culled_frustum=%u culled_hzb=%u",
+                 stats_.total_components,
+                 stats_.visible_components,
+                 collected_.size(),
+                 stats_.culled_by_visibility,
+                 stats_.culled_by_frustum,
+                 stats_.culled_by_hzb);
     }
 
     void LineRenderPipeline::RunBuild()
     {
-        if (!initialized_ || collected_.empty())
+        if (!initialized_)
+        {
+            GLogWarning("[LineRenderPipeline] RunBuild skipped: pipeline not initialized");
             return;
+        }
+
+        if (collected_.empty())
+        {
+            GLogInfo("[LineRenderPipeline] RunBuild skipped: no collected line components");
+            return;
+        }
 
         std::shared_ptr<TransformSystem> transform_system_sp = context_ ? context_->GetSystem<TransformSystem>() : nullptr;
         TransformSystem* transform_system = transform_system_sp.get();
@@ -503,10 +539,13 @@ namespace hgl::ecs
         // First pass: count lines per slot
         uint32_t slot_counts[MAX_WIDTHS] = {};
         uint32_t expected_total = 0;
+        uint32_t non_empty_slots = 0;
         for (const auto& comp : collected_)
         {
             const uint32_t idx = GetSlotIndex(comp->width);
             const uint32_t cnt = static_cast<uint32_t>(comp->lines.size());
+            if (slot_counts[idx] == 0 && cnt > 0)
+                ++non_empty_slots;
             slot_counts[idx] += cnt;
             expected_total += cnt;
         }
@@ -630,6 +669,13 @@ namespace hgl::ecs
                          dynamic_base);
             }
         }
+
+        GLogInfo("[LineRenderPipeline] Build summary: collected=%zu non_empty_slots=%u expected_lines=%u built_lines=%u write_fail=%u",
+                 collected_.size(),
+                 non_empty_slots,
+                 expected_total,
+                 total_line_count_,
+                 write_fail_count);
     }
 
     void LineRenderPipeline::FlushPaletteToGPU()
@@ -657,11 +703,33 @@ namespace hgl::ecs
 
     void LineRenderPipeline::Render(hgl::graph::RenderCmdBuffer* cmd)
     {
-        if (!cmd || !initialized_ || total_line_count_ == 0)
+        if (!cmd)
+        {
+            GLogWarning("[LineRenderPipeline] Render skipped: cmd is null");
             return;
+        }
+
+        if (!initialized_)
+        {
+            GLogWarning("[LineRenderPipeline] Render skipped: pipeline not initialized");
+            return;
+        }
+
+        if (total_line_count_ == 0)
+        {
+            GLogInfo("[LineRenderPipeline] Render skipped: total_line_count=0 (visible_components=%u total_components=%u)",
+                     stats_.visible_components,
+                     stats_.total_components);
+            return;
+        }
 
         if (!pipeline_ || !mi_)
+        {
+            GLogWarning("[LineRenderPipeline] Render skipped: invalid render resources (pipeline=%p mi=%p)",
+                        pipeline_,
+                        mi_);
             return;
+        }
 
         auto* mat = mi_->GetMaterial();
         if (mat)
@@ -671,6 +739,11 @@ namespace hgl::ecs
 
         const uint32_t num_slots = support_wide_lines_ ? MAX_WIDTHS : 1;
         uint32_t draw_lines = 0;
+        GLogInfo("[LineRenderPipeline] Render begin: total_line_count=%u num_slots=%u wide_lines=%d",
+                 total_line_count_,
+                 num_slots,
+                 support_wide_lines_ ? 1 : 0);
+
         for (uint32_t i = 0; i < num_slots; ++i)
         {
             if (slots_[i].line_count == 0)
@@ -679,6 +752,11 @@ namespace hgl::ecs
             if (support_wide_lines_)
                 cmd->SetLineWidth(static_cast<float>(i + 1));
 
+            GLogInfo("[LineRenderPipeline] Render slot: slot=%u line_count=%u capacity=%u primitive=%p",
+                     i + 1,
+                     slots_[i].line_count,
+                     slots_[i].gpu_capacity,
+                     slots_[i].primitive);
             slots_[i].Draw(cmd);
             draw_lines += slots_[i].line_count;
         }
@@ -689,6 +767,10 @@ namespace hgl::ecs
                         total_line_count_,
                         draw_lines);
         }
+
+        GLogInfo("[LineRenderPipeline] Render end: submitted_lines=%u expected_lines=%u",
+                 draw_lines,
+                 total_line_count_);
     }
 
     void LineRenderPipeline::Shutdown()
