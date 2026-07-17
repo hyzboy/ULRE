@@ -4,6 +4,7 @@
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
@@ -858,6 +859,23 @@ namespace hgl::ecs
                     table_buffer = rows_buffer ? rows_buffer->GetGPUBuffer() : nullptr;
                 }
 
+                                // Pipeline-only materials (no MaterialBatch) still need l2w_index_rows.
+                // Resolve from TransformSystem directly before falling back to domain cache.
+                if (!table_buffer && context)
+                {
+                    auto transform_system = context->GetSystem<TransformSystem>();
+                    if (transform_system)
+                    {
+                        transform_system->EnsureTransformBuffer();
+                        auto *transform_buffer = transform_system->GetTransformBuffer();
+                        if (transform_buffer)
+                        {
+                            auto *rows_buffer = transform_buffer->GetTransformIndexRowsBuffer();
+                            table_buffer = rows_buffer ? rows_buffer->GetGPUBuffer() : nullptr;
+                        }
+                    }
+                }
+
                 if (!table_buffer && domain_manager)
                 {
                     table_buffer = domain_manager->GetGPUBuffer(
@@ -1130,4 +1148,7 @@ namespace hgl::ecs
         }
     }
 }
+
+
+
 
