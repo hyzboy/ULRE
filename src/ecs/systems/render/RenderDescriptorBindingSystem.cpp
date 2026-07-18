@@ -251,9 +251,6 @@ namespace hgl::ecs
             if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                 continue;
 
-            if (!req.struct_name || !*req.struct_name)
-                continue;
-
             const uint64_t struct_key =
                 (static_cast<uint64_t>(req.ssbo_type) << 32) | static_cast<uint64_t>(req.data_slot);
             if (emitted_struct_keys.find(struct_key) != emitted_struct_keys.end())
@@ -264,7 +261,8 @@ namespace hgl::ecs
             struct_binding.slot = req.data_slot;
             struct_binding.ssbo_type = req.ssbo_type;
             struct_binding.ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
-            struct_binding.struct_name = ToBindingKey(req.struct_name);
+            if (req.struct_name && *req.struct_name)
+                struct_binding.struct_name = ToBindingKey(req.struct_name);
             struct_binding.shared_across_instances = false;
             out_recipe.structs.emplace_back(std::move(struct_binding));
         }

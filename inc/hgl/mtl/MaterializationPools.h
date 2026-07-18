@@ -334,11 +334,13 @@ namespace hgl::graph::mtl
         {
             StructPoolAllocation alloc{};
             bool allocated = false;
+            const bool has_explicit_ssbo_key = (input.ssbo_type != SSBOType::UserDefined || input.ssbo_id != 0);
 
-            if (input.ssbo_type != SSBOType::UserDefined || input.ssbo_id != 0)
+            if (has_explicit_ssbo_key)
                 allocated = struct_pool.TryAllocate(input.ssbo_type, input.ssbo_id, alloc);
 
-            if (!allocated && !input.struct_name.empty())
+            // Legacy name-based fallback is only allowed for legacy recipes without explicit ssbo key.
+            if (!allocated && !has_explicit_ssbo_key && !input.struct_name.empty())
                 allocated = struct_pool.TryAllocate(input.struct_name, alloc);
 
             if (!allocated)
