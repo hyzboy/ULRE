@@ -1035,8 +1035,8 @@ namespace hgl::ecs
             }
         }
 
-        // Bind global bindless descriptor set (Set 4) only for materials that
-        // do not use classic TextureSampler descriptors in their contract.
+        // Bind global bindless descriptor set only for materials that explicitly
+        // declare the bindless texture-layer indirection table semantic.
         if (auto *render_context = context->GetRenderContext())
         {
             auto *bindless_mgr = render_context->GetBindlessTextureManager();
@@ -1051,17 +1051,17 @@ namespace hgl::ecs
                     if (!material)
                         continue;
 
-                    bool uses_texture_sampler = false;
+                    bool needs_bindless_set = false;
                     const auto &contract = material->GetBindingContract();
                     for (const auto &req : contract.requirements)
                     {
-                        if (req.kind == graph::mtl::DescriptorKind::TextureSampler)
+                        if (req.semantic == graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
                         {
-                            uses_texture_sampler = true;
+                            needs_bindless_set = true;
                             break;
                         }
                     }
-                    if (uses_texture_sampler)
+                    if (!needs_bindless_set)
                         continue;
 
                     const VkPipelineLayout pipeline_layout = material->GetPipelineLayout();

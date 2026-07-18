@@ -115,6 +115,7 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
     if(!mtl)return(false);
 
     pipeline_layout=mtl->GetPipelineLayout();
+    uint32_t bound_set_index = 0;
 
     ENUM_CLASS_FOR(DescriptorSetType,int,i)
     {
@@ -125,7 +126,9 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
         mp->Update();
 
         const VkDescriptorSet ds=mp->GetVkDescriptorSet();
-        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,uint32_t(i),1,&ds,0,nullptr);
+        // PipelineLayoutData compacts non-bindless set layouts; bind by compact order, not enum value.
+        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,bound_set_index,1,&ds,0,nullptr);
+        ++bound_set_index;
     }
 
     return(true);
