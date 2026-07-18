@@ -25,9 +25,6 @@ L2W_INDEX_ROWS_SSBO;
 
 // MI SSBO (Material set, VS only)
 // Resort() 字母序: TextureBaseColor=0, mtl=1
-#define MI_BINDING 1
-#define MI_DATA_INDEX_ROWS_BINDING 2
-#define MI_TEXTURE_LAYER_ROWS_BINDING 3
 #include "common/material_instance_ssbo.glsl"
 struct MaterialInstance {
     uvec2 BillboardSize;
@@ -57,3 +54,4 @@ void main()
 
     gl_Position = vec4(ndc * center_clip.w, center_clip.z, center_clip.w);
 }
+
