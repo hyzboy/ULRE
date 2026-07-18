@@ -172,6 +172,17 @@ namespace hgl::ecs
                                             graph::Sampler *sampler,
                                             graph::BindlessTextureManager *bindless_mgr);
 
+        /**
+         * RegisterTexture2DResource 的 2DArray 对称版本。
+         * 用于图标集、地形 TILE、植被、NPC 部件等统一格式资产池。
+         * 内部调用 bindless_mgr->Register2DArray，handle 写入 bindless_tex2darray[]（binding=1）。
+         * @return 1-based handle，失败返回 0
+         */
+        uint32_t RegisterTexture2DArrayResource(const std::string &resource_id,
+                                                 graph::Texture *tex,
+                                                 graph::Sampler *sampler,
+                                                 graph::BindlessTextureManager *bindless_mgr);
+
     private:
 
         void EnsureViewportUBO();

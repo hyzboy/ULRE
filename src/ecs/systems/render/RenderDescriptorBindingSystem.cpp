@@ -538,6 +538,24 @@ namespace hgl::ecs
         return bindless_mgr->Register2DWithResource(materialization_texture_pool, rid, tex, sampler);
     }
 
+    uint32_t RenderDescriptorBindingSystem::RegisterTexture2DArrayResource(const std::string &resource_id,
+                                                                             graph::Texture *tex,
+                                                                             graph::Sampler *sampler,
+                                                                             graph::BindlessTextureManager *bindless_mgr)
+    {
+        if (!tex || !sampler || !bindless_mgr)
+            return 0;
+
+        std::string rid = resource_id;
+        if (rid.empty())
+            rid = BuildTextureResourceId(tex);
+
+        if (rid.empty())
+            return 0;
+
+        return bindless_mgr->Register2DArrayWithResource(materialization_texture_pool, rid, tex, sampler);
+    }
+
     void RenderDescriptorBindingSystem::EnsureMaterializationCallbacks()
     {
         if (!materialization_callbacks.resolve_texture || !materialization_callbacks.resolve_struct)
