@@ -3,7 +3,6 @@
 // Material set bindings: mtl=0
 
 // MI SSBO
-#define MI_BINDING 0
 #include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {
@@ -112,3 +111,4 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     so.alpha     = 1.0;
     return so;
 }
+
