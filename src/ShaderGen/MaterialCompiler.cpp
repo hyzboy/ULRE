@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace hgl::graph::mtl {
 
@@ -285,7 +286,21 @@ MaterialCreateInfo *CompileCompositorMaterial(
     // Step 6b: Build BindingContract from descriptor entries
     // ─────────────────────────────────────────────────────────────
 
-    mci->SetBindingContract(BuildBindingContract(def.descriptor_entries, def.descriptor_entry_count));
+    const BindingContract binding_contract = BuildBindingContract(def.descriptor_entries, def.descriptor_entry_count);
+    std::vector<std::string> contract_diagnostics;
+    if (!ValidateBindingContract(binding_contract, contract_diagnostics))
+    {
+        for (const auto &diag : contract_diagnostics)
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial][BindingContract] material=%s: %s\n",
+                def.name ? def.name : "<unnamed>",
+                diag.c_str());
+        }
+        return FailAfterMci("BindingContract validation failed");
+    }
+
+    mci->SetBindingContract(binding_contract);
 
     // ─────────────────────────────────────────────────────────────
     // Step 7: Compile directly → SPV

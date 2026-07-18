@@ -158,12 +158,15 @@ namespace hgl::graph::mtl
         {
             if (req.semantic == DescriptorSemantic::Unknown)
             {
-                diagnostics.emplace_back("Descriptor semantic is Unknown; add explicit semantic mapping or mark as Custom.");
+                diagnostics.emplace_back("Descriptor semantic is Unknown; every descriptor must use an explicit semantic enum.");
                 continue;
             }
 
             if (req.semantic == DescriptorSemantic::Custom)
+            {
+                diagnostics.emplace_back("Descriptor semantic is Custom; runtime contract requires concrete semantic enums.");
                 continue;
+            }
 
             const DescriptorSetType expected_set = GetExpectedSetType(req.semantic);
             if (expected_set != DescriptorSetType::Unknow && expected_set != req.set_type)
