@@ -424,8 +424,6 @@ bool MaterialCreateInfo::CreateShaderDirect()
     if(shader_map.IsEmpty())
         return(false);
 
-    descriptor_db.Resort();
-
     for(auto& kv : shader_map)
     {
         ShaderCreateInfo *sc = kv.second;

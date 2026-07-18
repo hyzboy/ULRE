@@ -1,8 +1,4 @@
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
-#include<vector>
-#include<algorithm>
-#include<unordered_map>
-
 namespace hgl{namespace graph{
 MaterialDescriptorInfo::MaterialDescriptorInfo()
 {
@@ -120,6 +116,9 @@ TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(const std::s
 
 void MaterialDescriptorInfo::Resort()
 {
+    // S9: descriptor set/binding are assigned during descriptor insertion.
+    // Keep Resort as a compatibility no-op that only refreshes set indices
+    // and aggregate descriptor count.
     descriptor_count = 0;
 
     for(auto &p:desc_set_array)
@@ -129,66 +128,8 @@ void MaterialDescriptorInfo::Resort()
             continue;
 
         descriptor_count += p.count;
-
-        std::vector<std::string> keys;
-        keys.reserve(static_cast<size_t>(p.count));
-
-        for(const auto &kv:p.descriptor_map)
-            keys.emplace_back(kv.first.c_str()?kv.first.c_str():"");
-
-        std::sort(keys.begin(),keys.end());
-
-        std::unordered_map<std::string,int> fixed_binding_map;
-        int next_binding = 0;
-
-        switch(p.set_type)
-        {
-        case DescriptorSetType::Scene:
-            fixed_binding_map["camera"] = 0;
-            fixed_binding_map["sky"] = 1;
-            fixed_binding_map["viewport"] = 2;
-            next_binding = 3;
-            break;
-        case DescriptorSetType::Transform:
-            fixed_binding_map["l2w"] = 0;
-            fixed_binding_map["l2w_index_rows"] = 1;
-            next_binding = 2;
-            break;
-        case DescriptorSetType::VertexData:
-            fixed_binding_map["VertexDataBuffer"] = 18;
-            fixed_binding_map["IndexDataBuffer"] = 19;
-            fixed_binding_map["vtx_data"] = 18;
-            fixed_binding_map["idx_data"] = 19;
-            next_binding = 20;
-            break;
-        default:
-            break;
-        }
-
-        for(const auto &key:keys)
-        {
-            if(!p.descriptor_map.ContainsKey(key.c_str()))
-                continue;
-
-            auto *sd = p.descriptor_map.GetValueRef(key.c_str());
-            sd->set = int(p.set_type);
-
-            auto fit = fixed_binding_map.find(key);
-            if(fit != fixed_binding_map.end())
-            {
-                sd->binding = fit->second;
-                continue;
-            }
-
-            while(std::find_if(fixed_binding_map.begin(), fixed_binding_map.end(),
-                               [&](const auto &pair){ return pair.second == next_binding; }) != fixed_binding_map.end())
-                ++next_binding;
-
-            sd->binding = next_binding++;
-        }
     }
 }
 }}//namespace hgl::graph
-
 
 

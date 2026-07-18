@@ -30,8 +30,9 @@ inline const char *GLSLInputType(const VAType &vat)
 }
 
 // ─────────────────────────────────────────────────────────────
-// Descriptor layout macros — Resort() compacts away empty sets,
-// so we generate #define lines for GLSL to reference.
+// Descriptor layout macros for fixed descriptor set plan.
+// Set IDs are now stable (Scene=0, Transform=1, Material=2...),
+// so we generate matching #define lines for GLSL to reference.
 //
 // Produced macros (only when the feature is active):
 //   SCENE_SET    / VIEWPORT_BINDING  — Scene set (Ortho only)
@@ -159,5 +160,4 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
 
 }//namespace build2d
 }//namespace hgl::graph::mtl
-
 

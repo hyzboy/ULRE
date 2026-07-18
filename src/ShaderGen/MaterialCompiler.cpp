@@ -247,7 +247,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
     // MI_BINDING / MI_*_ROWS_BINDING are injected only when classic textures
     // co-exist in the Material set (e.g. StandardTextureArray with sampler2DArray).
     // Once those materials are migrated to bindless (S6/S7), this block can be
-    // deleted entirely — Resort() + Build2DCommon.h will own the numbering.
+    // deleted entirely — descriptor insertion + Build2DCommon.h own the numbering.
     // ─────────────────────────────────────────────────────────────
 
     uint32_t material_set_texture_count = 0;

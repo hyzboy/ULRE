@@ -100,11 +100,17 @@ public:
         return GetSetType(std::string(name?name:""));
     }
 
-    void Resort();      //排序产生set号与binding号
+    void Resort();      //兼容入口：仅刷新统计，不再重排set/binding
 
     const uint GetCount()const
     {
-        return descriptor_count;
+        uint count = 0;
+
+        for (const auto &p : desc_set_array)
+            if (p.count > 0)
+                count += static_cast<uint>(p.count);
+
+        return count;
     }
 
     const ShaderDescriptorSetArray &Get()const
