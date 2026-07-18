@@ -21,7 +21,6 @@
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 #include<memory>
-#include<string>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -224,11 +223,7 @@ private:
         if (!bindless_mgr)
             return false;
 
-        const uint32_t handle = bindless_mgr->Register2DArray(texture, sampler);
-        if (handle == 0)
-            return false;
-        const std::string resource_id = "texid:" + std::to_string(texture->GetID());
-        if (!rdbs->RegisterBindlessTextureResource(resource_id, handle))
+        if (rdbs->RegisterTexture2DArrayResource("", texture, sampler, bindless_mgr) == 0)
             return false;
         if (!rdbs->RegisterMaterialTexture(material, mtl::SamplerName::BaseColor, texture))
             return false;
