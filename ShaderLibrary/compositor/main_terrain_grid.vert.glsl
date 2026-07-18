@@ -4,8 +4,8 @@
 // 无顶点 Position 输入 — 通过 gl_VertexID 生成网格坐标
 // VS 中 texelFetch 采样高度图和法线图
 //
-// Descriptor binding 约定（Resort() 按字母序分配）：
-//   Scene     set=0 : camera=0, viewport=1
+// Descriptor binding 约定（固定布局）：
+//   Scene     set=0 : camera=0, viewport=2
 //   Transform set=1 : l2w=0
 //   Material  set=2 : TextureHeight=0, TextureNormal=1
 

@@ -3,7 +3,7 @@
 // === Compositor Template: Forward Sky VS ===
 // Sky dome 专用 — Position(0) + TransformID(1), 输出 Direction
 //
-// Descriptor binding 约定（Resort() 按字母序分配）：
+// Descriptor binding 约定（固定布局）：
 //   Scene     set=0 : camera=0, sky=1, viewport=2
 //   Transform set=1 : l2w=0
 

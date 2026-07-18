@@ -3,8 +3,8 @@
 // === Compositor Template: Forward Unlit VS (Luminance, vec3 Position) ===
 // 顶点亮度材质 — 用于 VertexLuminance3D (vec3)
 //
-// Descriptor binding 约定（Resort() 按字母序分配）：
-//   Scene    set=0 : camera=0, viewport=1
+// Descriptor binding 约定（固定布局）：
+//   Scene    set=0 : camera=0, viewport=2
 //   Transform set=1 : l2w=0
 //   Material set=2 : mtl=0
 

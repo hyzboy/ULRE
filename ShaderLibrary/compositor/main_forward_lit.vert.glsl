@@ -3,7 +3,7 @@
 // === Compositor Template: Forward Lit VS ===
 // Lit 材质共用顶点模板 — BasicLit, PBRColor3D, TextureBlinnPhong
 //
-// Descriptor binding 约定（Resort() 按字母序分配）：
+// Descriptor binding 约定（固定布局）：
 //   Scene     set=0 : camera=0, sky=1, viewport=2
 //   Transform set=1 : l2w=0
 //   Material  set=2 : (varies per surface function)

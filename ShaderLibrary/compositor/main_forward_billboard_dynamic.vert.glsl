@@ -3,8 +3,8 @@
 // === Compositor Template: Billboard Dynamic Size VS ===
 // 动态尺寸 Billboard — 世界空间展开，面积不随距离变化
 //
-// Descriptor binding 约定（Resort() 按字母序分配）：
-//   Scene     set=0 : camera=0, viewport=1
+// Descriptor binding 约定（固定布局）：
+//   Scene     set=0 : camera=0, viewport=2
 //   Transform set=1 : l2w=0
 //   （无 Material set 在 VS 中使用）
 

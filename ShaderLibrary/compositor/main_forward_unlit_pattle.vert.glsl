@@ -4,8 +4,8 @@
 // 调色板索引材质 — 用于 VertexPattleColor3D
 // VS 从 color_pattle UBO 查表得到 vec4，传给 FS
 //
-// Descriptor binding 约定（Resort() 按字母序分配）：
-//   Scene     set=0 : camera=0, viewport=1
+// Descriptor binding 约定（固定布局）：
+//   Scene     set=0 : camera=0, viewport=2
 //   Transform set=1 : l2w=0
 //   Material  set=2 : color_pattle=0
 
@@ -42,4 +42,3 @@ void main()
 
     gl_Position = camera.vp * worldPos;
 }
-

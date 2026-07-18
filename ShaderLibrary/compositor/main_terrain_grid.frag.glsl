@@ -4,7 +4,7 @@
 // 地形网格 — 从 VS 接收 clip-space 位置和世界法线
 //
 // Descriptor binding 约定：
-//   Scene set=0 : camera=0, viewport=1
+//   Scene set=0 : camera=0, viewport=2
 
 // Scene UBO (for specular half-vector)
 #include "common/descriptor_macros.glsl"

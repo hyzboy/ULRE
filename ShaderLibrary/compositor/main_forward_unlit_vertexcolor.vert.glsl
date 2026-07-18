@@ -3,8 +3,8 @@
 // === Compositor Template: Forward Unlit VS (Vertex Color) ===
 // 无 MI 的顶点色材质 — 用于 VertexColor3D
 //
-// Descriptor binding 约定（Resort() 按字母序分配）：
-//   Scene    set=0 : camera=0, viewport=1
+// Descriptor binding 约定（固定布局）：
+//   Scene    set=0 : camera=0, viewport=2
 //   Transform set=1 : l2w=0
 //   （无 Material set）
 

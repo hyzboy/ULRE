@@ -6,12 +6,12 @@
 namespace hgl::graph::mtl::func
 {
 // ═════════════════════════════════════════════════════════════════════════════
-// Phase B 规范化 MaterialInstance Helper（强制使用，符合 SHADER_HELPER_FUNCTION_SPEC.md）
+// MaterialInstance helper 统一入口（符合 SHADER_HELPER_FUNCTION_SPEC.md）
 // ═════════════════════════════════════════════════════════════════════════════
 // 规范约束：
-//   1) 新增材质逻辑必须使用 GetMI()（不要新增 GetMaterialInstance() 调用点）
+//   1) 新增材质逻辑统一使用 GetMI()
 //   2) Vertex/Fragment/Geometry 各阶段名称保持一致，只允许索引来源不同
-//   3) Legacy Helper 仅保留兼容，不再扩展
+//   3) GetMaterialInstance() 仅作为旧 helper 别名保留，不再扩展
 
 /// 统一的 MaterialInstance 获取函数（唯一标准名称）
 /// Vertex Shader: 通过 rows SSBO + gl_InstanceIndex 索引
@@ -24,10 +24,10 @@ constexpr const char MF_GetMI_Other[] =
 
 /// 规范映射（文档/代码统一口径）
 ///   Canonical: GetMI()
-///   Legacy   : GetMaterialInstance()  (deprecated, compatibility only)
+///   Alias    : GetMaterialInstance()（仅旧 helper 别名）
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Legacy Helper（Phase C 前保留兼容性）
+// 旧 helper 别名区
 // ═════════════════════════════════════════════════════════════════════════════
 
 // C++端使用一个RG8UI或RGB16UI格式的顶点输入流来传递Assign数据，其中x为LocalToWorld ID，y为MaterialInstance ID

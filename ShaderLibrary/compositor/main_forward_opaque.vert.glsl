@@ -3,7 +3,7 @@
 // === Compositor Template: Forward Opaque VS ===
 // 自动生成 — 不要手动编辑此文件
 //
-// Descriptor binding 约定（Resort() 按字母序分配）：
+// Descriptor binding 约定（固定布局）：
 //   Scene    set=0 : camera=0, sky=1, viewport=2
 //   Transform set=1 : l2w=0
 //   Material set=2 : mtl=0

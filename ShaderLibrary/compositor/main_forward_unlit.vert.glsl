@@ -3,7 +3,7 @@
 // === Compositor Template: Forward Unlit VS ===
 // Unlit 材质专用 — 仅需 Position，无 Normal/UV
 //
-// Descriptor binding 约定（Resort() 按字母序分配）：
+// Descriptor binding 约定（固定布局）：
 //   Scene    set=0 : camera=0, sky=1, viewport=2
 //   Transform set=1 : l2w=0
 //   Material set=2 : mtl=0

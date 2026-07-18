@@ -4,8 +4,8 @@
 // Unlit 输出（无框架光照），但提供 worldPos/worldNormal/camera 给 Surface Function
 // 用于 Gizmo3D 等材质在 Surface Function 中做自定义光照
 //
-// Descriptor binding 约定（Resort() 按字母序分配）：
-//   Scene    set=0 : camera=0, viewport=1
+// Descriptor binding 约定（固定布局）：
+//   Scene    set=0 : camera=0, viewport=2
 //   Transform set=1 : l2w=0
 //   Material set=2 : mtl=0
 

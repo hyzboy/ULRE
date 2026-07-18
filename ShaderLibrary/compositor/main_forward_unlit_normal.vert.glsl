@@ -3,8 +3,8 @@
 // === Compositor Template: Forward Unlit VS (with Normal) ===
 // Unlit 材质 + Normal 属性 — 用于 Gizmo3D 等需要法线做自定义光照的材质
 //
-// Descriptor binding 约定（Resort() 按字母序分配）：
-//   Scene    set=0 : camera=0, viewport=1
+// Descriptor binding 约定（固定布局）：
+//   Scene    set=0 : camera=0, viewport=2
 //   Transform set=1 : l2w=0
 //   Material set=2 : mtl=0
 

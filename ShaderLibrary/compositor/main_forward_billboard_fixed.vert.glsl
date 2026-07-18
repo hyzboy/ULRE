@@ -3,10 +3,10 @@
 // === Compositor Template: Billboard Fixed Size VS ===
 // 固定像素尺寸 Billboard — 屏幕空间展开，面积不变
 //
-// Descriptor binding 约定（Resort() 按字母序分配）：
-//   Scene     set=0 : camera=0, viewport=1
+// Descriptor binding 约定（固定布局）：
+//   Scene     set=0 : camera=0, viewport=2
 //   Transform set=1 : l2w=0
-//   Material  set=2 : mtl=0（MI SSBO, VS only）, TextureBaseColor=1（FS only）
+//   Material  set=2 : mtl=0（MI SSBO, VS only）, TextureBaseColor=3（FS only）
 
 #extension GL_EXT_scalar_block_layout : require
 
@@ -24,7 +24,7 @@ L2W_SSBO;
 L2W_INDEX_ROWS_SSBO;
 
 // MI SSBO (Material set, VS only)
-// Resort() 字母序: TextureBaseColor=0, mtl=1
+// 固定 Material 绑定：mtl=0；若同 set 含经典纹理采样器，则从 binding 3 起分配
 #include "common/material_instance_ssbo.glsl"
 struct MaterialInstance {
     uvec2 BillboardSize;
@@ -54,5 +54,3 @@ void main()
 
     gl_Position = vec4(ndc * center_clip.w, center_clip.z, center_clip.w);
 }
-
-
