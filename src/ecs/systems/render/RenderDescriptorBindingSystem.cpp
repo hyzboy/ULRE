@@ -253,8 +253,6 @@ namespace hgl::ecs
             struct_binding.slot = req.data_slot;
             struct_binding.ssbo_type = req.ssbo_type;
             struct_binding.ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
-            if (req.struct_name && *req.struct_name)
-                struct_binding.struct_name = ToBindingKey(req.struct_name);
             struct_binding.shared_across_instances = false;
             out_recipe.structs.emplace_back(std::move(struct_binding));
         }

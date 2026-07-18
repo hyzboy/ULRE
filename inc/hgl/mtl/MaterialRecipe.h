@@ -151,7 +151,7 @@ namespace hgl::graph::mtl
         DataSlot slot = DataSlot::PBRSurface;              // 目标数据语义槽
         SSBOType ssbo_type = SSBOType::UserDefined;        // 结构体所属 SSBO 类型（主字段）
         uint32_t ssbo_id = 0;                              // 结构体 SSBO 资源 ID（主字段，P1.55）
-        std::string struct_name;                           // 过渡字段：旧路径结构名（后续移除）
+        std::string struct_name;                           // 调试字段：不参与分配/哈希/运行时决策
         bool shared_across_instances = false;              // true: 多实例共享同一结构体数据
     };
 
@@ -207,8 +207,6 @@ namespace hgl::graph::mtl
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_id);
-            if (!s.struct_name.empty())
-                hash = hgl::hash::FNV1aAppendBytes(hash, s.struct_name.data(), s.struct_name.size());
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.shared_across_instances);
         }
 
