@@ -28,7 +28,7 @@ MaterialCreateInfo *CreateRectTexture2DArray(const contract::PhysicalDeviceProfi
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, &inner);
-    descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::BaseColor, nullptr, "sampler2DArray"});
+    descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::BaseColor, nullptr, "sampler2DArray", DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor});
 
     FixedMaterialDef def {
         "RectTexture2DArray",
@@ -47,4 +47,3 @@ MaterialCreateInfo *CreateRectTexture2DArray(const contract::PhysicalDeviceProfi
     return mci;
 }
 }//namespace hgl::graph::mtl
-

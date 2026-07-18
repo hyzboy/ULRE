@@ -2,6 +2,8 @@
 
 #include<hgl/CoreType.h>
 #include<hgl/mtl/DescriptorKind.h>
+#include<hgl/mtl/DescriptorSemantic.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
 
 namespace hgl::graph::mtl
@@ -14,5 +16,9 @@ namespace hgl::graph::mtl
         const char *        name;
         const char *        struct_name;
         const char *        glsl_type;
+        DescriptorSemantic  semantic = DescriptorSemantic::Unknown;
+        TextureSlot         texture_slot = TextureSlot::BaseColor;
+        DataSlot            data_slot = DataSlot::PBRSurface;
+        SSBOType            ssbo_type = SSBOType::UserDefined;
     };
 }//namespace hgl::graph::mtl

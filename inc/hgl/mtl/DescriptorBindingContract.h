@@ -1,34 +1,12 @@
 #pragma once
 
 #include<hgl/mtl/FixedDescriptorEntry.h>
-#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterializationPools.h>
 #include<vector>
 #include<string>
-#include<cstring>
 
 namespace hgl::graph::mtl
 {
-    enum class DescriptorSemantic : uint8
-    {
-        Unknown = 0,
-
-        ViewportInfo,
-        CameraInfo,
-        SkyInfo,
-
-        LocalToWorld,
-        LocalToWorldIndexTable,
-        MaterialInstance,
-
-        MaterialTexture,
-        MaterialSampler,
-        MaterialTextureLayerTable,
-        MaterialDataIndexTable,
-
-        Custom,
-    };
-
     struct DescriptorRequirement
     {
         DescriptorSemantic semantic = DescriptorSemantic::Unknown;
@@ -50,124 +28,6 @@ namespace hgl::graph::mtl
     {
         std::vector<DescriptorRequirement> requirements;
     };
-
-    inline bool _DBC_CStrEq(const char *lhs, const char *rhs)
-    {
-        return lhs && rhs && std::strcmp(lhs, rhs) == 0;
-    }
-
-    inline bool _DBC_CStrContains(const char *text, const char *token)
-    {
-        return text && token && *token && std::strstr(text, token) != nullptr;
-    }
-
-    inline char _DBC_ToLowerAsciiChar(const char c)
-    {
-        return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
-    }
-
-    inline std::string _DBC_ToLowerAscii(const char *text)
-    {
-        std::string value = text ? text : "";
-        for (char &c : value)
-            c = _DBC_ToLowerAsciiChar(c);
-        return value;
-    }
-
-    inline TextureSlot InferTextureSlotFromDescriptorName(const char *name, uint32_t &custom_slot_cursor)
-    {
-        const std::string lower_name = _DBC_ToLowerAscii(name);
-
-        if (_DBC_CStrContains(lower_name.c_str(), "normal"))
-            return TextureSlot::Normal;
-        if (_DBC_CStrContains(lower_name.c_str(), "metallic") || _DBC_CStrContains(lower_name.c_str(), "metalness"))
-            return TextureSlot::Metallic;
-        if (_DBC_CStrContains(lower_name.c_str(), "roughness") || _DBC_CStrContains(lower_name.c_str(), "rough"))
-            return TextureSlot::Roughness;
-        if (_DBC_CStrContains(lower_name.c_str(), "emissive") || _DBC_CStrContains(lower_name.c_str(), "emission"))
-            return TextureSlot::Emissive;
-        if (_DBC_CStrContains(lower_name.c_str(), "occlusion") || _DBC_CStrContains(lower_name.c_str(), "ambientocclusion") || _DBC_CStrContains(lower_name.c_str(), "ao"))
-            return TextureSlot::Occlusion;
-        if (_DBC_CStrContains(lower_name.c_str(), "opacity") || _DBC_CStrContains(lower_name.c_str(), "alphamask") || _DBC_CStrContains(lower_name.c_str(), "alpha") || _DBC_CStrContains(lower_name.c_str(), "mask"))
-            return TextureSlot::OpacityMask;
-        if (_DBC_CStrContains(lower_name.c_str(), "height") || _DBC_CStrContains(lower_name.c_str(), "parallax") || _DBC_CStrContains(lower_name.c_str(), "displacement"))
-            return TextureSlot::Height;
-        if (_DBC_CStrContains(lower_name.c_str(), "basecolor") || _DBC_CStrContains(lower_name.c_str(), "albedo") || _DBC_CStrContains(lower_name.c_str(), "diffuse") || _DBC_CStrContains(lower_name.c_str(), "color") || _DBC_CStrContains(lower_name.c_str(), "text"))
-            return TextureSlot::BaseColor;
-
-        const TextureSlot fallback = (custom_slot_cursor == 0) ? TextureSlot::Custom0 : TextureSlot::Custom1;
-        if (custom_slot_cursor < 2)
-            ++custom_slot_cursor;
-        return fallback;
-    }
-
-    inline DataSlot InferDataSlotFromStructName(const char *struct_name)
-    {
-        const std::string lower_name = _DBC_ToLowerAscii(struct_name);
-
-        if (_DBC_CStrContains(lower_name.c_str(), "emissive"))
-            return DataSlot::EmissiveSurface;
-        if (_DBC_CStrContains(lower_name.c_str(), "clearcoat"))
-            return DataSlot::ClearCoatSurface;
-        if (_DBC_CStrContains(lower_name.c_str(), "transmission") || _DBC_CStrContains(lower_name.c_str(), "refract"))
-            return DataSlot::TransmissionSurface;
-
-        return DataSlot::PBRSurface;
-    }
-
-    inline DescriptorSemantic InferDescriptorSemantic(const FixedDescriptorEntry &entry)
-    {
-        if (_DBC_CStrEq(entry.struct_name, "ViewportInfo") || _DBC_CStrEq(entry.name, "viewport"))
-            return DescriptorSemantic::ViewportInfo;
-
-        if (_DBC_CStrEq(entry.struct_name, "CameraInfo") || _DBC_CStrEq(entry.name, "camera"))
-            return DescriptorSemantic::CameraInfo;
-
-        if (_DBC_CStrEq(entry.struct_name, "SkyInfo") || _DBC_CStrEq(entry.name, "sky"))
-            return DescriptorSemantic::SkyInfo;
-
-        if (_DBC_CStrEq(entry.struct_name, "LocalToWorldData") || _DBC_CStrEq(entry.struct_name, "LocalToWorld") || _DBC_CStrEq(entry.name, "l2w"))
-            return DescriptorSemantic::LocalToWorld;
-
-        if (_DBC_CStrEq(entry.struct_name, "LocalToWorldIndexRows")
-         || _DBC_CStrEq(entry.struct_name, "TransformIndexRows")
-         || _DBC_CStrEq(entry.name, "l2w_index_rows")
-         || _DBC_CStrEq(entry.name, "transform_index_rows"))
-            return DescriptorSemantic::LocalToWorldIndexTable;
-
-        if (_DBC_CStrEq(entry.struct_name, "MaterialInstanceData") || _DBC_CStrEq(entry.struct_name, "MaterialInstance") || _DBC_CStrEq(entry.name, "mtl"))
-            return DescriptorSemantic::MaterialInstance;
-
-        if (entry.kind == DescriptorKind::SSBO)
-        {
-            if (_DBC_CStrEq(entry.struct_name, "TextureLayerRow")
-             || _DBC_CStrEq(entry.struct_name, "TextureLayerRows")
-             || _DBC_CStrEq(entry.struct_name, "TextureLayerTable")
-             || _DBC_CStrEq(entry.name, "texture_layer_rows")
-             || _DBC_CStrEq(entry.name, "texture_layer_table")
-             || _DBC_CStrContains(entry.name, "textureLayer"))
-                return DescriptorSemantic::MaterialTextureLayerTable;
-
-            if (_DBC_CStrEq(entry.struct_name, "DataIndexRow")
-             || _DBC_CStrEq(entry.struct_name, "DataIndexRows")
-             || _DBC_CStrEq(entry.struct_name, "DataIndexTable")
-             || _DBC_CStrEq(entry.name, "data_index_rows")
-             || _DBC_CStrEq(entry.name, "data_index_table")
-             || _DBC_CStrContains(entry.name, "dataIndex"))
-                return DescriptorSemantic::MaterialDataIndexTable;
-        }
-
-        if (entry.kind == DescriptorKind::Texture)
-            return DescriptorSemantic::MaterialTexture;
-
-        if (entry.kind == DescriptorKind::TextureSampler)
-            return DescriptorSemantic::MaterialSampler;
-
-        if (entry.struct_name || entry.name)
-            return DescriptorSemantic::Custom;
-
-        return DescriptorSemantic::Unknown;
-    }
 
     inline bool IsSemanticRequired(DescriptorSemantic semantic)
     {
@@ -234,14 +94,13 @@ namespace hgl::graph::mtl
             return contract;
 
         contract.requirements.reserve(descriptor_entry_count);
-        uint32_t custom_texture_slot_cursor = 0;
 
         for (uint32_t i = 0; i < descriptor_entry_count; ++i)
         {
             const FixedDescriptorEntry &entry = descriptor_entries[i];
 
             DescriptorRequirement req;
-            req.semantic = InferDescriptorSemantic(entry);
+            req.semantic = entry.semantic;
             req.set_type = entry.set_type;
             req.kind = entry.kind;
             req.name = entry.name;
@@ -253,13 +112,15 @@ namespace hgl::graph::mtl
             if (req.semantic == DescriptorSemantic::MaterialTexture
              || req.semantic == DescriptorSemantic::MaterialSampler)
             {
-                req.texture_slot = InferTextureSlotFromDescriptorName(entry.name, custom_texture_slot_cursor);
+                req.texture_slot = entry.texture_slot;
             }
 
             if (req.semantic == DescriptorSemantic::MaterialInstance)
             {
-                req.data_slot = InferDataSlotFromStructName(entry.struct_name);
-                req.ssbo_type = DefaultSSBOTypeForDataSlot(req.data_slot);
+                req.data_slot = entry.data_slot;
+                req.ssbo_type = (entry.ssbo_type == SSBOType::UserDefined)
+                              ? DefaultSSBOTypeForDataSlot(req.data_slot)
+                              : entry.ssbo_type;
             }
 
             contract.requirements.push_back(req);

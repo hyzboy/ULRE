@@ -27,7 +27,7 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, &new_cfg);
-    descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::Text, nullptr, "sampler2D"});
+    descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::Text, nullptr, "sampler2D", DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor});
 
     FixedMaterialDef def {
         "Text2D",
@@ -46,4 +46,3 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     return mci;
 }
 }//namespace hgl::graph::mtl
-
