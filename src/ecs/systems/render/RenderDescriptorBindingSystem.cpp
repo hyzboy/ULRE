@@ -31,11 +31,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        // P1.5-v1-01: scope lock (MI-only materialization).
-        // Keep MaterialRecipe resolve path focused on MaterialInstance data only.
-        // Texture materialization (including array-specific rows) is deferred to P1.6.
-        constexpr bool kP15V1ScopeLockMIOnly = false;
-
         std::string ToBindingKey(const char *name)
         {
             return name ? std::string(name) : std::string();
@@ -201,48 +196,45 @@ namespace hgl::ecs
 
         const auto &contract = material->GetBindingContract();
 
-        if (!kP15V1ScopeLockMIOnly)
+        constexpr size_t texture_slot_count = static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE);
+        std::array<bool, texture_slot_count> used_texture_slots{};
+        std::unordered_set<std::string> emitted_texture_keys;
+
+        for (const auto &req : contract.requirements)
         {
-            constexpr size_t texture_slot_count = static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE);
-            std::array<bool, texture_slot_count> used_texture_slots{};
-            std::unordered_set<std::string> emitted_texture_keys;
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialTexture
+             && req.semantic != graph::mtl::DescriptorSemantic::MaterialSampler)
+                continue;
 
-            for (const auto &req : contract.requirements)
-            {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialTexture
-                 && req.semantic != graph::mtl::DescriptorSemantic::MaterialSampler)
-                    continue;
+            if (!req.name || !*req.name)
+                continue;
 
-                if (!req.name || !*req.name)
-                    continue;
+            const std::string key = ToBindingKey(req.name);
+            if (key.empty())
+                continue;
 
-                const std::string key = ToBindingKey(req.name);
-                if (key.empty())
-                    continue;
+            if (emitted_texture_keys.find(key) != emitted_texture_keys.end())
+                continue;
+            emitted_texture_keys.insert(key);
 
-                if (emitted_texture_keys.find(key) != emitted_texture_keys.end())
-                    continue;
-                emitted_texture_keys.insert(key);
+            const MaterialResourceBinding *binding = FindMaterialResourceBinding(material, req.name);
+            std::string resource_id = binding ? BuildTextureResourceId(binding->texture) : std::string();
 
-                const MaterialResourceBinding *binding = FindMaterialResourceBinding(material, req.name);
-                std::string resource_id = binding ? BuildTextureResourceId(binding->texture) : std::string();
+            if (resource_id.empty() && !req.required)
+                continue;
 
-                if (resource_id.empty() && !req.required)
-                    continue;
+            const graph::mtl::TextureSlot slot = req.texture_slot;
 
-                const graph::mtl::TextureSlot slot = req.texture_slot;
+            const size_t slot_index = static_cast<size_t>(slot);
+            if (slot_index >= used_texture_slots.size() || used_texture_slots[slot_index])
+                continue;
+            used_texture_slots[slot_index] = true;
 
-                const size_t slot_index = static_cast<size_t>(slot);
-                if (slot_index >= used_texture_slots.size() || used_texture_slots[slot_index])
-                    continue;
-                used_texture_slots[slot_index] = true;
-
-                graph::mtl::RecipeTextureBinding texture_binding{};
-                texture_binding.slot = slot;
-                texture_binding.resource_id = std::move(resource_id);
-                texture_binding.required = req.required;
-                out_recipe.textures.emplace_back(std::move(texture_binding));
-            }
+            graph::mtl::RecipeTextureBinding texture_binding{};
+            texture_binding.slot = slot;
+            texture_binding.resource_id = std::move(resource_id);
+            texture_binding.required = req.required;
+            out_recipe.textures.emplace_back(std::move(texture_binding));
         }
 
         std::unordered_set<uint64_t> emitted_struct_keys;
@@ -399,17 +391,8 @@ namespace hgl::ecs
 
         uint32_t texture_row = 0;
         uint32_t data_row = 0;
-        if (kP15V1ScopeLockMIOnly)
-        {
-            const graph::mtl::DataIndexRow data_index_row = graph::mtl::BuildDataIndexRow(out_spec);
-            data_row = materialization_index_tables.PushDataIndexRow(data_index_row);
-            texture_row = 0;
-        }
-        else
-        {
-            if (!graph::mtl::WriteSpecToIndexTables(out_spec, materialization_index_tables, texture_row, data_row))
-                return false;
-        }
+        if (!graph::mtl::WriteSpecToIndexTables(out_spec, materialization_index_tables, texture_row, data_row))
+            return false;
 
         if (out_texture_layer_row)
             *out_texture_layer_row = texture_row;
@@ -513,9 +496,7 @@ namespace hgl::ecs
         if (!domain_manager)
             return;
 
-        const uint32_t texture_rows = kP15V1ScopeLockMIOnly
-                                    ? 0
-                                    : static_cast<uint32_t>(materialization_index_tables.GetTextureLayerRowCount());
+        const uint32_t texture_rows = static_cast<uint32_t>(materialization_index_tables.GetTextureLayerRowCount());
         const uint32_t data_rows = static_cast<uint32_t>(materialization_index_tables.GetDataIndexRowCount());
 
         auto ensure_capacity = [](uint32_t required) -> uint32_t
@@ -730,11 +711,8 @@ namespace hgl::ecs
         auto *domain_manager = GetResourceDomainManager(context);
 
         const graph::IGPUBuffer *texture_layer_table_buffer = nullptr;
-        if (!kP15V1ScopeLockMIOnly)
-        {
-            if (domain_manager)
-                texture_layer_table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
-        }
+        if (domain_manager)
+            texture_layer_table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
 
         const graph::IGPUBuffer *data_index_table_buffer = nullptr;
         if (domain_manager)
