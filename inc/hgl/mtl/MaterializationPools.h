@@ -122,7 +122,6 @@ namespace hgl::graph::mtl
         };
 
         std::unordered_map<uint64_t, LayoutState> states;
-        std::unordered_map<std::string, uint64_t> legacy_name_to_key;
 
         static uint64_t BuildLayoutKey(const SSBOType ssbo_type, const uint32_t ssbo_id) noexcept
         {
@@ -166,40 +165,20 @@ namespace hgl::graph::mtl
                 state.layout.struct_name = struct_name;
                 state.layout.byte_stride = byte_stride;
                 states.emplace(key, std::move(state));
-                if (!struct_name.empty())
-                    legacy_name_to_key[struct_name] = key;
                 return true;
             }
 
             // 已存在时只允许相同布局重复注册。
             if (!struct_name.empty() && it->second.layout.struct_name.empty())
-            {
                 it->second.layout.struct_name = struct_name;
-                legacy_name_to_key[struct_name] = key;
-            }
 
             return it->second.layout.byte_stride == byte_stride;
-        }
-
-        bool RegisterLayout(const std::string &struct_name,
-                            const SSBOType ssbo_type,
-                            const uint32_t byte_stride)
-        {
-            if (struct_name.empty())
-                return false;
-
-            return RegisterLayout(ssbo_type, 0, byte_stride, struct_name);
         }
 
         bool HasLayout(const SSBOType ssbo_type, const uint32_t ssbo_id) const
         {
             const uint64_t key = BuildLayoutKey(ssbo_type, ssbo_id);
             return states.find(key) != states.end();
-        }
-
-        bool HasLayout(const std::string &struct_name) const
-        {
-            return legacy_name_to_key.find(struct_name) != legacy_name_to_key.end();
         }
 
         size_t GetLayoutCount() const
@@ -214,15 +193,6 @@ namespace hgl::graph::mtl
             return AllocateByKey(BuildLayoutKey(ssbo_type, ssbo_id), out_alloc);
         }
 
-        bool TryAllocate(const std::string &struct_name, StructPoolAllocation &out_alloc)
-        {
-            auto it = legacy_name_to_key.find(struct_name);
-            if (it == legacy_name_to_key.end())
-                return false;
-
-            return AllocateByKey(it->second, out_alloc);
-        }
-
         void ResetAllocations()
         {
             for (auto &kv : states)
@@ -232,7 +202,6 @@ namespace hgl::graph::mtl
         void Clear()
         {
             states.clear();
-            legacy_name_to_key.clear();
         }
     };
 
@@ -333,17 +302,7 @@ namespace hgl::graph::mtl
         callbacks.resolve_struct = [&struct_pool](const RecipeStructBinding &input, ResolvedStructRef &output)
         {
             StructPoolAllocation alloc{};
-            bool allocated = false;
-            const bool has_explicit_ssbo_key = (input.ssbo_type != SSBOType::UserDefined || input.ssbo_id != 0);
-
-            if (has_explicit_ssbo_key)
-                allocated = struct_pool.TryAllocate(input.ssbo_type, input.ssbo_id, alloc);
-
-            // Legacy name-based fallback is only allowed for legacy recipes without explicit ssbo key.
-            if (!allocated && !has_explicit_ssbo_key && !input.struct_name.empty())
-                allocated = struct_pool.TryAllocate(input.struct_name, alloc);
-
-            if (!allocated)
+            if (!struct_pool.TryAllocate(input.ssbo_type, input.ssbo_id, alloc))
                 return false;
 
             output.slot = input.slot;
