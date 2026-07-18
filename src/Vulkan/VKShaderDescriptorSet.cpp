@@ -38,6 +38,24 @@ namespace
             }
             return false;
 
+        case DescriptorSetType::Material:
+            if (strcmp(name, "mtl") == 0)
+            {
+                out_binding = 0;
+                return true;
+            }
+            if (strcmp(name, "mtl_data_index_rows") == 0)
+            {
+                out_binding = 1;
+                return true;
+            }
+            if (strcmp(name, "mtl_texture_layer_rows") == 0)
+            {
+                out_binding = 2;
+                return true;
+            }
+            return false;
+
         default:
             return false;
         }
@@ -49,6 +67,7 @@ namespace
         {
         case DescriptorSetType::Scene:     return 3;
         case DescriptorSetType::Transform: return 2;
+        case DescriptorSetType::Material:  return 0;
         case DescriptorSetType::VertexData:return 20;
         default:                           return 0;
         }

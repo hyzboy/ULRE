@@ -47,6 +47,7 @@ inline std::string BuildDescriptorDefines(
     bool has_mi)
 {
     std::string defs;
+    const int tex_binding = has_mi ? 3 : 0;
 
     if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
     {
@@ -65,21 +66,17 @@ inline std::string BuildDescriptorDefines(
     if(has_texture)
     {
         defs += "#define TEX_SET 2\n";
-        defs += "#define TEX_BINDING 0\n";
+        defs += "#define TEX_BINDING " + std::to_string(tex_binding) + "\n";
     }
 
     if(has_mi)
     {
-        const int mi_binding = has_texture ? 1 : 0;
-        const int data_rows_binding = has_texture ? 2 : 1;
-        const int texture_rows_binding = has_texture ? 3 : 2;
-
         defs += "#define MI_SET 2\n";
-        defs += "#define MI_BINDING " + std::to_string(mi_binding) + "\n";
+        defs += "#define MI_BINDING 0\n";
         defs += "#define MI_DATA_INDEX_ROWS_SET 2\n";
-        defs += "#define MI_DATA_INDEX_ROWS_BINDING " + std::to_string(data_rows_binding) + "\n";
+        defs += "#define MI_DATA_INDEX_ROWS_BINDING 1\n";
         defs += "#define MI_TEXTURE_LAYER_ROWS_SET 2\n";
-        defs += "#define MI_TEXTURE_LAYER_ROWS_BINDING " + std::to_string(texture_rows_binding) + "\n";
+        defs += "#define MI_TEXTURE_LAYER_ROWS_BINDING 2\n";
     }
 
     return defs;
@@ -160,4 +157,3 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
 
 }//namespace build2d
 }//namespace hgl::graph::mtl
-
