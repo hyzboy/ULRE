@@ -1,6 +1,8 @@
 #pragma once
 
 #include<hgl/mtl/FixedDescriptorEntry.h>
+#include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/mtl/MaterializationPools.h>
 #include<vector>
 #include<string>
 #include<cstring>
@@ -32,6 +34,9 @@ namespace hgl::graph::mtl
         DescriptorSemantic semantic = DescriptorSemantic::Unknown;
         DescriptorSetType set_type = DescriptorSetType::Unknow;
         DescriptorKind kind = DescriptorKind::UBO;
+        TextureSlot texture_slot = TextureSlot::BaseColor;
+        DataSlot data_slot = DataSlot::PBRSurface;
+        SSBOType ssbo_type = SSBOType::UserDefined;
 
         const char *name = nullptr;
         const char *struct_name = nullptr;
@@ -54,6 +59,60 @@ namespace hgl::graph::mtl
     inline bool _DBC_CStrContains(const char *text, const char *token)
     {
         return text && token && *token && std::strstr(text, token) != nullptr;
+    }
+
+    inline char _DBC_ToLowerAsciiChar(const char c)
+    {
+        return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+    }
+
+    inline std::string _DBC_ToLowerAscii(const char *text)
+    {
+        std::string value = text ? text : "";
+        for (char &c : value)
+            c = _DBC_ToLowerAsciiChar(c);
+        return value;
+    }
+
+    inline TextureSlot InferTextureSlotFromDescriptorName(const char *name, uint32_t &custom_slot_cursor)
+    {
+        const std::string lower_name = _DBC_ToLowerAscii(name);
+
+        if (_DBC_CStrContains(lower_name.c_str(), "normal"))
+            return TextureSlot::Normal;
+        if (_DBC_CStrContains(lower_name.c_str(), "metallic") || _DBC_CStrContains(lower_name.c_str(), "metalness"))
+            return TextureSlot::Metallic;
+        if (_DBC_CStrContains(lower_name.c_str(), "roughness") || _DBC_CStrContains(lower_name.c_str(), "rough"))
+            return TextureSlot::Roughness;
+        if (_DBC_CStrContains(lower_name.c_str(), "emissive") || _DBC_CStrContains(lower_name.c_str(), "emission"))
+            return TextureSlot::Emissive;
+        if (_DBC_CStrContains(lower_name.c_str(), "occlusion") || _DBC_CStrContains(lower_name.c_str(), "ambientocclusion") || _DBC_CStrContains(lower_name.c_str(), "ao"))
+            return TextureSlot::Occlusion;
+        if (_DBC_CStrContains(lower_name.c_str(), "opacity") || _DBC_CStrContains(lower_name.c_str(), "alphamask") || _DBC_CStrContains(lower_name.c_str(), "alpha") || _DBC_CStrContains(lower_name.c_str(), "mask"))
+            return TextureSlot::OpacityMask;
+        if (_DBC_CStrContains(lower_name.c_str(), "height") || _DBC_CStrContains(lower_name.c_str(), "parallax") || _DBC_CStrContains(lower_name.c_str(), "displacement"))
+            return TextureSlot::Height;
+        if (_DBC_CStrContains(lower_name.c_str(), "basecolor") || _DBC_CStrContains(lower_name.c_str(), "albedo") || _DBC_CStrContains(lower_name.c_str(), "diffuse") || _DBC_CStrContains(lower_name.c_str(), "color") || _DBC_CStrContains(lower_name.c_str(), "text"))
+            return TextureSlot::BaseColor;
+
+        const TextureSlot fallback = (custom_slot_cursor == 0) ? TextureSlot::Custom0 : TextureSlot::Custom1;
+        if (custom_slot_cursor < 2)
+            ++custom_slot_cursor;
+        return fallback;
+    }
+
+    inline DataSlot InferDataSlotFromStructName(const char *struct_name)
+    {
+        const std::string lower_name = _DBC_ToLowerAscii(struct_name);
+
+        if (_DBC_CStrContains(lower_name.c_str(), "emissive"))
+            return DataSlot::EmissiveSurface;
+        if (_DBC_CStrContains(lower_name.c_str(), "clearcoat"))
+            return DataSlot::ClearCoatSurface;
+        if (_DBC_CStrContains(lower_name.c_str(), "transmission") || _DBC_CStrContains(lower_name.c_str(), "refract"))
+            return DataSlot::TransmissionSurface;
+
+        return DataSlot::PBRSurface;
     }
 
     inline DescriptorSemantic InferDescriptorSemantic(const FixedDescriptorEntry &entry)
@@ -175,6 +234,7 @@ namespace hgl::graph::mtl
             return contract;
 
         contract.requirements.reserve(descriptor_entry_count);
+        uint32_t custom_texture_slot_cursor = 0;
 
         for (uint32_t i = 0; i < descriptor_entry_count; ++i)
         {
@@ -189,6 +249,18 @@ namespace hgl::graph::mtl
             req.glsl_type = entry.glsl_type;
             req.required = IsSemanticRequired(req.semantic);
             req.allow_fallback = IsSemanticFallbackAllowed(req.semantic);
+
+            if (req.semantic == DescriptorSemantic::MaterialTexture
+             || req.semantic == DescriptorSemantic::MaterialSampler)
+            {
+                req.texture_slot = InferTextureSlotFromDescriptorName(entry.name, custom_texture_slot_cursor);
+            }
+
+            if (req.semantic == DescriptorSemantic::MaterialInstance)
+            {
+                req.data_slot = InferDataSlotFromStructName(entry.struct_name);
+                req.ssbo_type = DefaultSSBOTypeForDataSlot(req.data_slot);
+            }
 
             contract.requirements.push_back(req);
         }
