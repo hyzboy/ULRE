@@ -1010,10 +1010,8 @@ namespace hgl::ecs
             return true;
         case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
             return true;
-        case graph::mtl::DescriptorSemantic::Custom:
-            return true;
-
         case graph::mtl::DescriptorSemantic::Unknown:
+        case graph::mtl::DescriptorSemantic::Custom:
         default:
             return false;
         }
