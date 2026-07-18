@@ -241,13 +241,15 @@ MaterialCreateInfo *CompileCompositorMaterial(
     // ─────────────────────────────────────────────────────────────
     // Step 6: Set complete GLSL (bypass ProcXXX pipeline)
     //
-    // Inject binding-offset defines so compositor shaders use the
-    // correct binding numbers after Resort() (alphabetical order
-    // inside each set puts Texture... before mtl...).
+    // TEXTURE_SLOT_RANGE_SIZE is injected to keep C++ TextureSlot::RANGE_SIZE
+    // aligned with the GLSL side.
+    //
+    // MI_BINDING / MI_*_ROWS_BINDING are injected only when classic textures
+    // co-exist in the Material set (e.g. StandardTextureArray with sampler2DArray).
+    // Once those materials are migrated to bindless (S6/S7), this block can be
+    // deleted entirely — Resort() + Build2DCommon.h will own the numbering.
     // ─────────────────────────────────────────────────────────────
 
-    // Count textures in the Material set — Resort() puts them at binding 0..N-1.
-    // SSBOs (mtl, mtl_data_index_rows, mtl_texture_layer_rows) land at N, N+1, N+2.
     uint32_t material_set_texture_count = 0;
     for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
     {
@@ -257,27 +259,23 @@ MaterialCreateInfo *CompileCompositorMaterial(
             ++material_set_texture_count;
     }
 
-    const uint32_t mi_binding          = material_set_texture_count;
-    const uint32_t data_rows_binding   = material_set_texture_count + 1;
-    const uint32_t texlayer_binding    = material_set_texture_count + 2;
-
-    // Keep GLSL texture-slot row width aligned with C++ enum cardinality.
-    // This macro is consumed by ShaderLibrary/common/bindless_textures.glsl.
     constexpr uint32_t texture_slot_range_size = static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
 
-    // Only inject binding overrides when bindings differ from descriptor_macros.glsl defaults (1, 2)
-    // to avoid unnecessary preamble bloat for no-texture materials.
     std::string binding_preamble;
     binding_preamble +=
         "#define TEXTURE_SLOT_RANGE_SIZE " + std::to_string(texture_slot_range_size) + "u\n";
 
     if (material_set_texture_count > 0)
     {
+        const uint32_t mi_binding        = material_set_texture_count;
+        const uint32_t data_rows_binding = material_set_texture_count + 1;
+        const uint32_t texlayer_binding  = material_set_texture_count + 2;
         binding_preamble +=
-            "#define MI_BINDING "                  + std::to_string(mi_binding)        + "\n"
-            "#define MI_DATA_INDEX_ROWS_BINDING "  + std::to_string(data_rows_binding) + "\n"
-            "#define MI_TEXTURE_LAYER_ROWS_BINDING " + std::to_string(texlayer_binding) + "\n";
+            "#define MI_BINDING "                    + std::to_string(mi_binding)        + "\n"
+            "#define MI_DATA_INDEX_ROWS_BINDING "    + std::to_string(data_rows_binding) + "\n"
+            "#define MI_TEXTURE_LAYER_ROWS_BINDING " + std::to_string(texlayer_binding)  + "\n";
     }
+
 
     // GLSL requires #version to be the very first token.
     // Insert the binding defines after the first line (the #version line).
