@@ -11,7 +11,7 @@
 #extension GL_EXT_scalar_block_layout : require
 
 // Scene UBOs
-#define VIEWPORT_BINDING 1
+#define VIEWPORT_BINDING 2
 #include "common/descriptor_macros.glsl"
 #include "common/scene_ubo.glsl"
 SCENE_CAMERA_UBO;
@@ -54,4 +54,5 @@ void main()
 
     gl_Position = vec4(ndc * center_clip.w, center_clip.z, center_clip.w);
 }
+
 

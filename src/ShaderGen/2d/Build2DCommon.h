@@ -46,43 +46,39 @@ inline std::string BuildDescriptorDefines(
     bool has_mi)
 {
     std::string defs;
-    int set = 0;
 
     if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
     {
-        defs += "#define SCENE_SET "       + std::to_string(set) + "\n";
-        defs += "#define VIEWPORT_BINDING 0\n";
-        set++;
+        defs += "#define SCENE_SET 0\n";
+        defs += "#define VIEWPORT_BINDING 2\n";
     }
 
     if(cfg->local_to_world)
     {
-        defs += "#define L2W_SET "    + std::to_string(set) + "\n";
+        defs += "#define L2W_SET 1\n";
         defs += "#define L2W_BINDING 0\n";
-        defs += "#define L2W_INDEX_ROWS_SET " + std::to_string(set) + "\n";
+        defs += "#define L2W_INDEX_ROWS_SET 1\n";
         defs += "#define L2W_INDEX_ROWS_BINDING 1\n";
-        set++;
     }
 
-    if(has_texture || has_mi)
+    if(has_texture)
     {
-        // Resort sorts by name: "Texture..." (T=84) < "mtl" (m=109)
-        int binding = 0;
-        if(has_texture)
-        {
-            defs += "#define TEX_SET "     + std::to_string(set) + "\n";
-            defs += "#define TEX_BINDING " + std::to_string(binding++) + "\n";
-        }
-        if(has_mi)
-        {
-            defs += "#define MI_SET "      + std::to_string(set) + "\n";
-            defs += "#define MI_BINDING "  + std::to_string(binding++) + "\n";
-            defs += "#define MI_DATA_INDEX_ROWS_SET " + std::to_string(set) + "\n";
-            defs += "#define MI_DATA_INDEX_ROWS_BINDING " + std::to_string(binding++) + "\n";
-            defs += "#define MI_TEXTURE_LAYER_ROWS_SET " + std::to_string(set) + "\n";
-            defs += "#define MI_TEXTURE_LAYER_ROWS_BINDING " + std::to_string(binding++) + "\n";
-        }
-        set++;
+        defs += "#define TEX_SET 2\n";
+        defs += "#define TEX_BINDING 0\n";
+    }
+
+    if(has_mi)
+    {
+        const int mi_binding = has_texture ? 1 : 0;
+        const int data_rows_binding = has_texture ? 2 : 1;
+        const int texture_rows_binding = has_texture ? 3 : 2;
+
+        defs += "#define MI_SET 2\n";
+        defs += "#define MI_BINDING " + std::to_string(mi_binding) + "\n";
+        defs += "#define MI_DATA_INDEX_ROWS_SET 2\n";
+        defs += "#define MI_DATA_INDEX_ROWS_BINDING " + std::to_string(data_rows_binding) + "\n";
+        defs += "#define MI_TEXTURE_LAYER_ROWS_SET 2\n";
+        defs += "#define MI_TEXTURE_LAYER_ROWS_BINDING " + std::to_string(texture_rows_binding) + "\n";
     }
 
     return defs;
@@ -163,4 +159,5 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
 
 }//namespace build2d
 }//namespace hgl::graph::mtl
+
 

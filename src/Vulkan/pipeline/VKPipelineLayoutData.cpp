@@ -1,101 +1,140 @@
-﻿#include<hgl/vk/pipeline/VKPipelineLayoutData.h>
+#include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 
 namespace hgl::graph{
-PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager,
-                                                               VkDescriptorSetLayout bindless_layout)
+namespace
 {
-    PipelineLayoutData *pld=new PipelineLayoutData();  // 使用 new 而不是 hgl_zero_new（因为有析构函数）
-    memset(pld, 0, sizeof(PipelineLayoutData));  // 手动清零需要的部分
-
-    if(desc_manager)
+    static VkDescriptorSetLayout CreateEmptyDescriptorSetLayout(VkDevice device)
     {
-        ENUM_CLASS_FOR(DescriptorSetType,int,i)
+        VkDescriptorSetLayoutCreateInfo empty_ci{};
+        empty_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        empty_ci.bindingCount = 0;
+
+        VkDescriptorSetLayout empty_layout = VK_NULL_HANDLE;
+        if(vkCreateDescriptorSetLayout(device, &empty_ci, nullptr, &empty_layout) != VK_SUCCESS)
+            return VK_NULL_HANDLE;
+
+        return empty_layout;
+    }
+
+    static VkDescriptorSetLayout CreateFallbackBindlessSetLayout(VkDevice device)
+    {
+        VkDescriptorSetLayoutBinding bindings[2]{};
+
+        bindings[0].binding         = 0;
+        bindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        bindings[0].descriptorCount = BindlessTextureManager::kMax2D;
+        bindings[0].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        bindings[1].binding         = 1;
+        bindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        bindings[1].descriptorCount = BindlessTextureManager::kMax2DArray;
+        bindings[1].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        VkDescriptorBindingFlags binding_flags[2] = {
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
+        };
+
+        VkDescriptorSetLayoutBindingFlagsCreateInfo flags_ci{};
+        flags_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+        flags_ci.bindingCount  = 2;
+        flags_ci.pBindingFlags = binding_flags;
+
+        VkDescriptorSetLayoutCreateInfo layout_ci{};
+        layout_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layout_ci.pNext        = &flags_ci;
+        layout_ci.flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+        layout_ci.bindingCount = 2;
+        layout_ci.pBindings    = bindings;
+
+        VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+        if(vkCreateDescriptorSetLayout(device, &layout_ci, nullptr, &layout) != VK_SUCCESS)
+            return VK_NULL_HANDLE;
+
+        return layout;
+    }
+}
+
+PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager,
+                                                           VkDescriptorSetLayout bindless_layout)
+{
+    PipelineLayoutData *pld = new PipelineLayoutData();
+    memset(pld, 0, sizeof(PipelineLayoutData));
+    pld->device = attr->device;
+
+    for(int i = int(DescriptorSetType::Scene); i <= int(DescriptorSetType::VertexData); ++i)
+    {
+        VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+
+        if(desc_manager)
         {
-            // Bindless slot 由外部传入，不走 desc_manager
-            if(i==int(DescriptorSetType::Bindless))
-                continue;
-
-            const DescriptorSetLayoutCreateInfo *dslci=desc_manager->GetDSLCI((DescriptorSetType)i);
-
-            if(!dslci||dslci->bindingCount<=0)
-                continue;
-
-            if(pld->layouts[i])
-                vkDestroyDescriptorSetLayout(attr->device,pld->layouts[i],nullptr);
-
-            if(vkCreateDescriptorSetLayout(attr->device,dslci,nullptr,pld->layouts+i)!=VK_SUCCESS)
+            const DescriptorSetLayoutCreateInfo *dslci = desc_manager->GetDSLCI((DescriptorSetType)i);
+            if(dslci && dslci->bindingCount > 0)
             {
-                delete pld;
-                return(nullptr);
+                if(vkCreateDescriptorSetLayout(attr->device, dslci, nullptr, &layout) != VK_SUCCESS)
+                {
+                    delete pld;
+                    return nullptr;
+                }
+                pld->vab_count[i] = dslci->bindingCount;
             }
-
-            pld->vab_count[i]=dslci->bindingCount;
-
-            pld->fin_dsl[pld->fin_dsl_count]=pld->layouts[i];
-            ++pld->fin_dsl_count;
+            else
+            {
+                layout = CreateEmptyDescriptorSetLayout(attr->device);
+                if(layout == VK_NULL_HANDLE)
+                {
+                    delete pld;
+                    return nullptr;
+                }
+                pld->vab_count[i] = 0;
+            }
         }
-
-        if(pld->fin_dsl_count<=0)
+        else
         {
-            delete pld;
-            return(nullptr);
-        }
-    }
-    else
-    {
-        //没有任何DescriptorSet的情况也是存在的
-    }
-
-    // 注入 bindless layout（Set 4）
-    // 若前面的某些 set 被压缩掉，需要用占位空 layout 补齐，保证 bindless 在正确的 set index
-    if(bindless_layout != VK_NULL_HANDLE)
-    {
-        constexpr int kBindlessIdx = int(DescriptorSetType::Bindless); // = 4
-
-        // 为缺失的中间 set 创建占位空 layout
-        while(pld->fin_dsl_count < kBindlessIdx)
-        {
-            VkDescriptorSetLayoutCreateInfo empty_ci{};
-            empty_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            empty_ci.bindingCount = 0;
-
-            VkDescriptorSetLayout empty_layout = VK_NULL_HANDLE;
-            if(vkCreateDescriptorSetLayout(attr->device, &empty_ci, nullptr, &empty_layout) != VK_SUCCESS)
+            layout = CreateEmptyDescriptorSetLayout(attr->device);
+            if(layout == VK_NULL_HANDLE)
             {
                 delete pld;
                 return nullptr;
             }
-
-            pld->placeholder_layouts.push_back(empty_layout);
-            pld->fin_dsl[pld->fin_dsl_count++] = empty_layout;
+            pld->vab_count[i] = 0;
         }
 
-        pld->fin_dsl[pld->fin_dsl_count] = bindless_layout;
-        pld->bindless_set_index = pld->fin_dsl_count;
-        ++pld->fin_dsl_count;
+        pld->layouts[i] = layout;
+        pld->fin_dsl[i] = layout;
+    }
+
+    constexpr int kBindlessIdx = int(DescriptorSetType::Bindless);
+    if(bindless_layout != VK_NULL_HANDLE)
+    {
+        pld->fin_dsl[kBindlessIdx] = bindless_layout;
+        pld->layouts[kBindlessIdx] = VK_NULL_HANDLE;
     }
     else
     {
-        pld->bindless_set_index = -1;
+        VkDescriptorSetLayout fallback_bindless = CreateFallbackBindlessSetLayout(attr->device);
+        if(fallback_bindless == VK_NULL_HANDLE)
+        {
+            delete pld;
+            return nullptr;
+        }
+        pld->layouts[kBindlessIdx] = fallback_bindless;
+        pld->fin_dsl[kBindlessIdx] = fallback_bindless;
     }
 
-    //VkPushConstantRange push_constant_range;
-
-    //push_constant_range.stageFlags   = VK_SHADER_STAGE_VERTEX_BIT;
-    //push_constant_range.size         = MAX_PUSH_CONSTANT_BYTES;
-    //push_constant_range.offset       = 0;
+    pld->bindless_set_index = kBindlessIdx;
+    pld->vab_count[kBindlessIdx] = 0;
+    pld->fin_dsl_count = uint32_t(DESCRIPTOR_SET_TYPE_COUNT);
 
     PipelineLayoutCreateInfo pPipelineLayoutCreateInfo;
-
     pPipelineLayoutCreateInfo.setLayoutCount            = pld->fin_dsl_count;
     pPipelineLayoutCreateInfo.pSetLayouts               = pld->fin_dsl;
-    pPipelineLayoutCreateInfo.pushConstantRangeCount    = 0;//1;
-    pPipelineLayoutCreateInfo.pPushConstantRanges       = nullptr;//&push_constant_range;
-
-    pld->device=attr->device;
+    pPipelineLayoutCreateInfo.pushConstantRangeCount    = 0;
+    pPipelineLayoutCreateInfo.pPushConstantRanges       = nullptr;
 
     if(vkCreatePipelineLayout(attr->device,&pPipelineLayoutCreateInfo,nullptr,&(pld->pipeline_layout))!=VK_SUCCESS)
     {
@@ -108,16 +147,18 @@ PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescrip
 
 PipelineLayoutData::~PipelineLayoutData()
 {
-    vkDestroyPipelineLayout(device,pipeline_layout,nullptr);
+    if(device == VK_NULL_HANDLE)
+        return;
+
+    if(pipeline_layout != VK_NULL_HANDLE)
+        vkDestroyPipelineLayout(device,pipeline_layout,nullptr);
 
     ENUM_CLASS_FOR(DescriptorSetType,int,i)
         if(layouts[i])
             vkDestroyDescriptorSetLayout(device,layouts[i],nullptr);
 
-    // 释放 bindless 占位空 layouts
     for(auto pl : placeholder_layouts)
         if(pl != VK_NULL_HANDLE)
             vkDestroyDescriptorSetLayout(device, pl, nullptr);
 }
 }//namespace hgl::graph
-

@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKFramebuffer.h>
 #include<hgl/graph/mesh/Primitive.h>
@@ -115,7 +115,6 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
     if(!mtl)return(false);
 
     pipeline_layout=mtl->GetPipelineLayout();
-    uint32_t bound_set_index = 0;
 
     ENUM_CLASS_FOR(DescriptorSetType,int,i)
     {
@@ -126,14 +125,11 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
         mp->Update();
 
         const VkDescriptorSet ds=mp->GetVkDescriptorSet();
-        // PipelineLayoutData compacts non-bindless set layouts; bind by compact order, not enum value.
-        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,bound_set_index,1,&ds,0,nullptr);
-        ++bound_set_index;
+        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,uint32_t(i),1,&ds,0,nullptr);
     }
 
     return(true);
 }
-
 void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,const VkDeviceSize byte_offset)
 {
     //LogVerbose(u"BindIBO entry");
@@ -289,3 +285,5 @@ void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const Geom
 //                     0);                //first instance
 //}
 }//namespace hgl::graph
+
+

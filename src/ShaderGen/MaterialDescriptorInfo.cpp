@@ -1,6 +1,7 @@
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
 #include<vector>
 #include<algorithm>
+#include<unordered_map>
 
 namespace hgl{namespace graph{
 MaterialDescriptorInfo::MaterialDescriptorInfo()
@@ -119,21 +120,16 @@ TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(const std::s
 
 void MaterialDescriptorInfo::Resort()
 {
-    descriptor_count=0;
-
-    //重新生成set/binding
-    int set=0;
+    descriptor_count = 0;
 
     for(auto &p:desc_set_array)
     {
-        if(p.count<=0)
+        p.set = int(p.set_type);
+        if(p.count <= 0)
             continue;
 
-        descriptor_count+=p.count;
+        descriptor_count += p.count;
 
-        p.set=set;
-
-        int i = 0;
         std::vector<std::string> keys;
         keys.reserve(static_cast<size_t>(p.count));
 
@@ -142,16 +138,57 @@ void MaterialDescriptorInfo::Resort()
 
         std::sort(keys.begin(),keys.end());
 
-        for(const auto &key:keys)
+        std::unordered_map<std::string,int> fixed_binding_map;
+        int next_binding = 0;
+
+        switch(p.set_type)
         {
-            if(!p.descriptor_map.ContainsKey(key.c_str()))continue;
-            auto* sd=p.descriptor_map.GetValueRef(key.c_str());
-            sd->set = set;
-            sd->binding = i;
-            ++i;
+        case DescriptorSetType::Scene:
+            fixed_binding_map["camera"] = 0;
+            fixed_binding_map["sky"] = 1;
+            fixed_binding_map["viewport"] = 2;
+            next_binding = 3;
+            break;
+        case DescriptorSetType::Transform:
+            fixed_binding_map["l2w"] = 0;
+            fixed_binding_map["l2w_index_rows"] = 1;
+            next_binding = 2;
+            break;
+        case DescriptorSetType::VertexData:
+            fixed_binding_map["VertexDataBuffer"] = 18;
+            fixed_binding_map["IndexDataBuffer"] = 19;
+            fixed_binding_map["vtx_data"] = 18;
+            fixed_binding_map["idx_data"] = 19;
+            next_binding = 20;
+            break;
+        default:
+            break;
         }
 
-        ++set;
+        for(const auto &key:keys)
+        {
+            if(!p.descriptor_map.ContainsKey(key.c_str()))
+                continue;
+
+            auto *sd = p.descriptor_map.GetValueRef(key.c_str());
+            sd->set = int(p.set_type);
+
+            auto fit = fixed_binding_map.find(key);
+            if(fit != fixed_binding_map.end())
+            {
+                sd->binding = fit->second;
+                continue;
+            }
+
+            while(std::find_if(fixed_binding_map.begin(), fixed_binding_map.end(),
+                               [&](const auto &pair){ return pair.second == next_binding; }) != fixed_binding_map.end())
+                ++next_binding;
+
+            sd->binding = next_binding++;
+        }
     }
 }
 }}//namespace hgl::graph
+
+
+
