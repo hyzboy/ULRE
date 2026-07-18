@@ -306,7 +306,7 @@ private:
                 d.metallic   = metallic;
                 d.roughness  = roughness;
                 d.normal_scale = 0.35f;
-                d.texture_id = col;
+                d.texture_id = row;
 
                 auto &store = sphere_mi_data[row][col];
                 store.base_color = d.base_color;
