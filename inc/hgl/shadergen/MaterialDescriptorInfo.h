@@ -12,7 +12,6 @@ namespace hgl{namespace graph{
 */
 class MaterialDescriptorInfo
 {
-    uint descriptor_count;
     ShaderDescriptorSetArray desc_set_array;
 
     ankerl::unordered_dense::map<std::string,std::string> struct_map;
@@ -99,8 +98,6 @@ public:
     {
         return GetSetType(std::string(name?name:""));
     }
-
-    void Resort();      //兼容入口：仅刷新统计，不再重排set/binding
 
     const uint GetCount()const
     {

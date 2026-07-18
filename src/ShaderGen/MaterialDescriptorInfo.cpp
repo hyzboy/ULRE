@@ -13,8 +13,6 @@ MaterialDescriptorInfo::MaterialDescriptorInfo()
         p.set=-1;
         p.count=0;
     }
-
-    descriptor_count=0;
 }
 
 const DescriptorSetType MaterialDescriptorInfo::GetSetType(const std::string &name)const
@@ -113,23 +111,5 @@ TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(const std::s
 
     return(nullptr);
 }
-
-void MaterialDescriptorInfo::Resort()
-{
-    // S9: descriptor set/binding are assigned during descriptor insertion.
-    // Keep Resort as a compatibility no-op that only refreshes set indices
-    // and aggregate descriptor count.
-    descriptor_count = 0;
-
-    for(auto &p:desc_set_array)
-    {
-        p.set = int(p.set_type);
-        if(p.count <= 0)
-            continue;
-
-        descriptor_count += p.count;
-    }
-}
 }}//namespace hgl::graph
-
 

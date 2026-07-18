@@ -1,7 +1,7 @@
 // standard_texturearray_surface.glsl — Standard Lit Surface with Texture2DArray sampling
 // S6: Texture sampling migrated to bindless (bindless_tex2darray[], binding=1 on Set 4).
-// Classic sampler2DArray descriptors are retained in the material layout for legacy contract
-// binding (TextureBaseColor/TextureNormal) but are no longer referenced in this shader.
+// Texture semantic declarations remain in the material contract for recipe extraction,
+// but actual sampling is fully bindless in this shader.
 // Layer index still comes from MI (mi.texture_id); handle from per-instance TextureLayerRows.
 
 #include "common/surface_interface.glsl"
