@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/vk/StructuredBufferAccessor.h>
@@ -135,6 +135,7 @@ namespace hgl
                 cfg.sky_ambient_model = skylight_model;
             }
 
+            void Initialize() override;
             void Update(float deltaTime) override;
 
         private:
@@ -158,4 +159,5 @@ namespace hgl
         };
     }//namespace ecs
 }//namespace hgl
+
 

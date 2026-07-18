@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -80,18 +80,20 @@ namespace hgl::ecs
             sky_ubo->MarkDirty();
     }
 
+    void EnvironmentSystem::Initialize()
+    {
+        EnsureResources();
+        SyncSkyUBO();
+    }
+
     void EnvironmentSystem::Update(float /*deltaTime*/)
     {
         EnsureResources();
 
-        // SkyLight 资源未就绪时，仅保持 UBO 存在，不做额外同步推进。
-        // 后续阶段在这里接入真实 CubeMap/SH/IBL 资源热切换与绑定。
-        if (!IsSkyLightResourceReady())
-            return;
-
+        // S2: SkyInfo UBO 必须长期存在并保持可同步，不能因为天空资源未就绪而消失。
+        // 真实 CubeMap/SH/IBL 资源热切换与绑定后续再接入；当前阶段先稳定 Scene set 的 sky 槽位。
         SyncSkyUBO();
     }
-
     void EnvironmentSystem::EnsureResources()
     {
         if (sky_ubo)
@@ -130,4 +132,5 @@ namespace hgl::ecs
         }
     }
 }//namespace hgl::ecs
+
 
