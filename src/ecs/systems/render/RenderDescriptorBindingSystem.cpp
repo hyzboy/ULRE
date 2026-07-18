@@ -745,6 +745,13 @@ namespace hgl::ecs
                     material->BindUBO(req.set_type, req.name, sky_ubo, false);
                 break;
             }
+            case graph::mtl::DescriptorSemantic::SkyCubemapSampler:
+            {
+                const auto *binding = FindMaterialResourceBinding(material, req.name);
+                if (binding && binding->texture && binding->sampler)
+                    material->BindTextureSampler(req.set_type, req.name, binding->texture, binding->sampler);
+                break;
+            }
             case graph::mtl::DescriptorSemantic::LocalToWorld:
             {
                 if (batch
@@ -860,6 +867,12 @@ namespace hgl::ecs
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture && binding->sampler)
                     material->BindTextureSampler(req.set_type, req.name, binding->texture, binding->sampler);
+                break;
+            }
+            case graph::mtl::DescriptorSemantic::MaterialColorPalette:
+            {
+                // MaterialColorPalette is explicitly declared and validated at compile time.
+                // Runtime binding is currently handled by non-ECS material setup paths.
                 break;
             }
             default:
@@ -983,9 +996,12 @@ namespace hgl::ecs
             auto environment_system = context->GetSystem<EnvironmentSystem>();
             return environment_system && environment_system->GetSkyUBO();
         }
+        case graph::mtl::DescriptorSemantic::SkyCubemapSampler:
+            return true;
 
         case graph::mtl::DescriptorSemantic::LocalToWorld:
         case graph::mtl::DescriptorSemantic::LocalToWorldIndexTable:
+        case graph::mtl::DescriptorSemantic::MaterialColorPalette:
         case graph::mtl::DescriptorSemantic::MaterialInstance:
         case graph::mtl::DescriptorSemantic::MaterialTexture:
         case graph::mtl::DescriptorSemantic::MaterialSampler:

@@ -33,6 +33,7 @@ namespace hgl::graph::mtl
     {
         switch (semantic)
         {
+        case DescriptorSemantic::SkyCubemapSampler:
         case DescriptorSemantic::SkyInfo:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
@@ -48,6 +49,7 @@ namespace hgl::graph::mtl
     {
         switch (semantic)
         {
+        case DescriptorSemantic::SkyCubemapSampler:
         case DescriptorSemantic::SkyInfo:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
@@ -68,12 +70,14 @@ namespace hgl::graph::mtl
 
         case DescriptorSemantic::CameraInfo:
         case DescriptorSemantic::SkyInfo:
+        case DescriptorSemantic::SkyCubemapSampler:
             return DescriptorSetType::Scene;
 
         case DescriptorSemantic::LocalToWorld:
         case DescriptorSemantic::LocalToWorldIndexTable:
             return DescriptorSetType::Transform;
 
+        case DescriptorSemantic::MaterialColorPalette:
         case DescriptorSemantic::MaterialInstance:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
@@ -137,8 +141,10 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::ViewportInfo:     return "ViewportInfo";
         case DescriptorSemantic::CameraInfo:       return "CameraInfo";
         case DescriptorSemantic::SkyInfo:          return "SkyInfo";
+        case DescriptorSemantic::SkyCubemapSampler:return "SkyCubemapSampler";
         case DescriptorSemantic::LocalToWorld:     return "LocalToWorld";
         case DescriptorSemantic::LocalToWorldIndexTable: return "LocalToWorldIndexTable";
+        case DescriptorSemantic::MaterialColorPalette: return "MaterialColorPalette";
         case DescriptorSemantic::MaterialInstance: return "MaterialInstance";
         case DescriptorSemantic::MaterialTexture:  return "MaterialTexture";
         case DescriptorSemantic::MaterialSampler:  return "MaterialSampler";

@@ -11,10 +11,12 @@ namespace hgl::graph::mtl
         ViewportInfo,
         CameraInfo,
         SkyInfo,
+        SkyCubemapSampler,
 
         LocalToWorld,
         LocalToWorldIndexTable,
         MaterialInstance,
+        MaterialColorPalette,
 
         MaterialTexture,
         MaterialSampler,
