@@ -2,7 +2,6 @@
 // Bindless 纹理采样：通过 GetTextureHandle(si.textureLayerID, slot) 查表
 
 // MI SSBO
-#define MI_BINDING 3
 #include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {
@@ -114,3 +113,5 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     so.alpha     = 1.0;
     return so;
 }
+
+

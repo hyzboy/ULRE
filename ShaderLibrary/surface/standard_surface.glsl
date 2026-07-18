@@ -9,7 +9,6 @@
 #include "common/surface_interface.glsl"
 
 // ─── MI SSBO ─────────────────────────────────────────────────────────────────
-#define MI_BINDING 3
 #include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {
@@ -147,3 +146,5 @@ float EvalAlpha(SurfaceInput si, uint miID)
 {
     return 1.0;
 }
+
+
