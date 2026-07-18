@@ -1,5 +1,6 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -15,6 +16,7 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -58,6 +60,7 @@ private:
     Texture2D* normal_texture = nullptr;
     Texture2D* roughness_texture = nullptr;
     Sampler* sampler = nullptr;
+    std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
     std::vector<std::unique_ptr<RenderMesh>> meshes;
 
@@ -76,8 +79,19 @@ private:
         auto* material_manager = graphics_context->GetMaterialManager();
         auto* texture_manager = graphics_context->GetTextureManager();
         auto* sampler_manager = graphics_context->GetSamplerManager();
-        if (!material_manager || !texture_manager || !sampler_manager)
+        auto* device = graphics_context->GetDevice();
+        if (!material_manager || !texture_manager || !sampler_manager || !device)
             return false;
+
+        if (!bindless_texture_manager)
+        {
+            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
+            if (!bindless_texture_manager->Init(VkDevice(*device)))
+                return false;
+
+            render_context->SetBindlessTextureManager(bindless_texture_manager.get());
+            material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
+        }
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
                                         mtl::WithCamera::With,
@@ -104,23 +118,7 @@ private:
         if (!sampler)
             return false;
 
-        if (!material->BindTextureSampler(DescriptorSetType::Material,
-                                          mtl::SamplerName::BaseColor,
-                                          base_texture,
-                                          sampler))
-            return false;
-
-        if (!material->BindTextureSampler(DescriptorSetType::Material,
-                                          "TextureNormal",
-                                          normal_texture,
-                                          sampler))
-            return false;
-
-        if (!material->BindTextureSampler(DescriptorSetType::Material,
-                                          "TextureRoughness",
-                                          roughness_texture,
-                                          sampler))
-            return false;
+        // Bindless registration is deferred to InitScene() after ECS systems are ready.
 
         mtl::StandardMaterialInstance mi_data{};
         mi_data.base_color = 0xFFFFFFFFu;
@@ -137,6 +135,37 @@ private:
         pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
 
         return pipeline != nullptr;
+    }
+
+    bool InitBindlessTextureResources()
+    {
+        if (!ecs_context || !material || !base_texture || !normal_texture || !roughness_texture || !sampler)
+            return false;
+
+        auto rdbs = ecs_context->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs)
+            return false;
+
+        auto* render_context = GetRenderContext();
+        auto* bindless_mgr = render_context ? render_context->GetBindlessTextureManager() : nullptr;
+        if (!bindless_mgr)
+            return false;
+
+        if (rdbs->RegisterTexture2DResource("", base_texture, sampler, bindless_mgr) == 0)
+            return false;
+        if (rdbs->RegisterTexture2DResource("", normal_texture, sampler, bindless_mgr) == 0)
+            return false;
+        if (rdbs->RegisterTexture2DResource("", roughness_texture, sampler, bindless_mgr) == 0)
+            return false;
+
+        if (!rdbs->RegisterMaterialTexture(material, mtl::SamplerName::BaseColor, base_texture))
+            return false;
+        if (!rdbs->RegisterMaterialTexture(material, "TextureNormal", normal_texture))
+            return false;
+        if (!rdbs->RegisterMaterialTexture(material, "TextureRoughness", roughness_texture))
+            return false;
+
+        return true;
     }
 
     bool InitVDM()
@@ -456,6 +485,9 @@ private:
     {
         ecs_context = GetECSContext();
         if (!ecs_context)
+            return false;
+
+        if (!InitBindlessTextureResources())
             return false;
 
         if (!InitVDM())

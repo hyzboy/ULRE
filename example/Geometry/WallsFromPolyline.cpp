@@ -1,5 +1,6 @@
 ﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -17,9 +18,11 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
+#include<memory>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -38,6 +41,7 @@ private:
     Pipeline *pipeline = nullptr;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
+    std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
     VertexDataManager *mesh_vdm = nullptr;
 
@@ -113,10 +117,21 @@ public:
         auto* material_manager = graphics_context->GetMaterialManager();
         auto* texture_manager = graphics_context->GetTextureManager();
         auto* sampler_manager = graphics_context->GetSamplerManager();
+        auto* device = graphics_context->GetDevice();
         if (!material_manager)
             return false;
-        if (!texture_manager || !sampler_manager)
+        if (!texture_manager || !sampler_manager || !device)
             return false;
+
+        if (!bindless_texture_manager)
+        {
+            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
+            if (!bindless_texture_manager->Init(VkDevice(*device)))
+                return false;
+
+            render_context->SetBindlessTextureManager(bindless_texture_manager.get());
+            material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
+        }
 
         auto* geometry_manager = graphics_context->GetGeometryManager();
         if (!geometry_manager)
@@ -144,11 +159,7 @@ public:
         if (!sampler)
             return false;
 
-        if (!material->BindTextureSampler(DescriptorSetType::Material,
-                                          mtl::SamplerName::BaseColor,
-                                          base_color_texture,
-                                          sampler))
-            return false;
+        // Bindless registration deferred until ECS context is ready.
 
         material_instance = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &mi_data);
         if(!material_instance) return false;
@@ -322,6 +333,22 @@ public:
         ecs_context = GetECSContext();
         if(!ecs_context) return false;
 
+        {
+            auto rdbs = ecs_context->GetSystem<hgl::ecs::RenderDescriptorBindingSystem>();
+            if (!rdbs)
+                return false;
+
+            auto* render_context2 = GetRenderContext();
+            auto* bindless_mgr = render_context2 ? render_context2->GetBindlessTextureManager() : nullptr;
+            if (!bindless_mgr)
+                return false;
+
+            if (rdbs->RegisterTexture2DResource("", base_color_texture, sampler, bindless_mgr) == 0)
+                return false;
+            if (!rdbs->RegisterMaterialTexture(material, mtl::SamplerName::BaseColor, base_color_texture))
+                return false;
+        }
+
 
         if(!InitECSScene())
             return false;
@@ -337,4 +364,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Walls From Polyline Example - Complex"), argc, argv, 1280, 720);
 }
-

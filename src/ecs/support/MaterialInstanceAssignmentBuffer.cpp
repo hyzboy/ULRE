@@ -7,6 +7,7 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/mtl/UBOCommon.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/module/BufferManager.h>
 
 namespace hgl::ecs
@@ -212,7 +213,8 @@ namespace hgl::ecs
 
     void MaterialInstanceAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items,
                                                       const std::vector<uint32> *data_index_rows,
-                                                      const std::vector<uint32> *texture_layer_rows)
+                                                      const std::vector<uint32> *texture_layer_rows,
+                                                      const std::array<uint32_t, static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE)> *texture_slot_handles)
     {
         const size_t item_count = items.size();
 
@@ -238,7 +240,13 @@ namespace hgl::ecs
             return;
         }
 
-        // 2. Material channel 三张实例行表 SSBO（instance -> row/index）
+        // 2. Material channel 三张实例行表 SSBO（instance -> row/index or per-instance handle table）
+        // Must stay aligned with GLSL TEXTURE_SLOT_RANGE_SIZE (see bindless_textures.glsl).
+        constexpr uint32_t kTextureSlotCount = static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
+        const bool use_texture_handle_table = (texture_slot_handles != nullptr);
+        const size_t texture_value_count = use_texture_handle_table
+                                         ? (item_count * static_cast<size_t>(kTextureSlotCount))
+                                         : item_count;
         auto ensure_row_ssbo = [&](graph::DeviceBuffer *&buffer, uint32_t &capacity, const char *name) -> bool
         {
             if (!buffer)
@@ -268,13 +276,63 @@ namespace hgl::ecs
             return buffer != nullptr;
         };
 
+        auto ensure_texture_row_ssbo = [&](graph::DeviceBuffer *&buffer, uint32_t &capacity, const char *name) -> bool
+        {
+            const uint32_t required = static_cast<uint32_t>(texture_value_count);
+
+            if (!buffer)
+            {
+                capacity = power_to_2(required > 0 ? required : 1u);
+            }
+            else if (capacity < required)
+            {
+                capacity = power_to_2(required > 0 ? required : 1u);
+                if (buffer_manager)
+                {
+                    buffer_manager->Release(buffer);
+                    buffer = nullptr;
+                }
+                else
+                {
+                    SAFE_CLEAR(buffer);
+                }
+            }
+
+            if (!buffer && buffer_manager)
+            {
+                const VkDeviceSize byte_size = static_cast<VkDeviceSize>(capacity) * sizeof(uint32);
+                buffer = buffer_manager->CreateSSBO(name, byte_size, nullptr, graph::SharingMode::Exclusive);
+            }
+
+            return buffer != nullptr;
+        };
+
         if (!ensure_row_ssbo(material_instance_rows_buffer, material_instance_row_count, "ECS:MaterialInstanceRows")
          || !ensure_row_ssbo(data_index_rows_buffer, data_index_row_count, "ECS:DataIndexRows")
-         || !ensure_row_ssbo(texture_layer_rows_buffer, texture_layer_row_count, "ECS:TextureLayerRows"))
+         || !ensure_texture_row_ssbo(texture_layer_rows_buffer, texture_layer_row_count, "ECS:TextureLayerRows"))
         {
             std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: rows SSBO allocation failed" << std::endl;
             return;
         }
+
+#ifdef _DEBUG
+        if (buffer_manager)
+        {
+            if (auto *vk_device = buffer_manager->GetDevice())
+            {
+                if (auto *du = vk_device->GetDebugUtils())
+                {
+                    if (material_instance_rows_buffer)
+                        du->SetBuffer(material_instance_rows_buffer->GetBuffer(), "ECS.MaterialInstanceRows");
+                    if (data_index_rows_buffer)
+                        du->SetBuffer(data_index_rows_buffer->GetBuffer(), "ECS.MaterialDataIndexRows");
+                    if (texture_layer_rows_buffer)
+                        du->SetBuffer(texture_layer_rows_buffer->GetBuffer(),
+                                      use_texture_handle_table ? "ECS.MaterialTextureLayerHandleTable" : "ECS.MaterialTextureLayerRows");
+                }
+            }
+        }
+#endif
 
         // 3. 生成材质实例索引列表
         {
@@ -283,7 +341,7 @@ namespace hgl::ecs
             auto *texture_rows_gpu = texture_layer_rows_buffer ? texture_layer_rows_buffer->GetGPUBuffer() : nullptr;
             uint32 *mi_row_ptr = mi_rows_gpu ? static_cast<uint32 *>(mi_rows_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint32))) : nullptr;
             uint32 *data_row_ptr = data_rows_gpu ? static_cast<uint32 *>(data_rows_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint32))) : nullptr;
-            uint32 *texture_row_ptr = texture_rows_gpu ? static_cast<uint32 *>(texture_rows_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint32))) : nullptr;
+            uint32 *texture_row_ptr = texture_rows_gpu ? static_cast<uint32 *>(texture_rows_gpu->Map(0, static_cast<VkDeviceSize>(texture_value_count) * sizeof(uint32))) : nullptr;
 
             if (!mi_row_ptr || !data_row_ptr || !texture_row_ptr)
             {
@@ -344,10 +402,20 @@ namespace hgl::ecs
 
                 *mi_row_ptr = static_cast<uint32>(mi_index);
                 *data_row_ptr = data_index;
-                *texture_row_ptr = texture_layer;
                 ++mi_row_ptr;
                 ++data_row_ptr;
-                ++texture_row_ptr;
+
+                if (use_texture_handle_table)
+                {
+                    const size_t base = i * static_cast<size_t>(kTextureSlotCount);
+                    for (size_t slot = 0; slot < static_cast<size_t>(kTextureSlotCount); ++slot)
+                        texture_row_ptr[base + slot] = (*texture_slot_handles)[slot];
+                }
+                else
+                {
+                    *texture_row_ptr = texture_layer;
+                    ++texture_row_ptr;
+                }
 
                 // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个
                 // {

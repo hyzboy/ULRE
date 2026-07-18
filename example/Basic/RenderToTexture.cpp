@@ -1,5 +1,6 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/module/RenderTargetManager.h>
@@ -26,6 +27,7 @@
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 
 #include <memory>
@@ -231,9 +233,11 @@ private:
     Sampler *cube_sampler = nullptr;
     Primitive *cube_primitive = nullptr;
 
+    Texture2D *base_tex = nullptr;
     Texture2D *fallback_albedo = nullptr;
     Texture2D *normal_tex = nullptr;
     Texture2D *roughness_tex = nullptr;
+    std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
     std::shared_ptr<TransformComponent> cube_transform;
     float cube_theta = 0.0f;
@@ -313,7 +317,7 @@ private:
         if (!cube_sampler)
             return false;
 
-        Texture2D *base_tex = offscreen ? offscreen->GetColorTexture() : nullptr;
+        base_tex = offscreen ? offscreen->GetColorTexture() : nullptr;
         if (!base_tex)
         {
             fallback_albedo = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
@@ -326,22 +330,36 @@ private:
         if (!base_tex || !normal_tex || !roughness_tex)
             return false;
 
-        if (!cube_mtl->BindTextureSampler(DescriptorSetType::Material,
-                                          mtl::SamplerName::BaseColor,
-                                          base_tex,
-                                          cube_sampler))
+        if (!bindless_texture_manager)
+        {
+            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
+            if (!bindless_texture_manager->Init(VkDevice(*device)))
+                return false;
+
+            rc->SetBindlessTextureManager(bindless_texture_manager.get());
+            mm->SetBindlessLayout(bindless_texture_manager->GetLayout());
+        }
+
+        auto rdbs = ecs_context ? ecs_context->GetSystem<RenderDescriptorBindingSystem>() : nullptr;
+        if (!rdbs)
             return false;
 
-        if (!cube_mtl->BindTextureSampler(DescriptorSetType::Material,
-                                          "TextureNormal",
-                                          normal_tex,
-                                          cube_sampler))
+        auto* bindless_mgr = rc->GetBindlessTextureManager();
+        if (!bindless_mgr)
             return false;
 
-        if (!cube_mtl->BindTextureSampler(DescriptorSetType::Material,
-                                          "TextureRoughness",
-                                          roughness_tex,
-                                          cube_sampler))
+        if (rdbs->RegisterTexture2DResource("", base_tex, cube_sampler, bindless_mgr) == 0)
+            return false;
+        if (rdbs->RegisterTexture2DResource("", normal_tex, cube_sampler, bindless_mgr) == 0)
+            return false;
+        if (rdbs->RegisterTexture2DResource("", roughness_tex, cube_sampler, bindless_mgr) == 0)
+            return false;
+
+        if (!rdbs->RegisterMaterialTexture(cube_mtl, mtl::SamplerName::BaseColor, base_tex))
+            return false;
+        if (!rdbs->RegisterMaterialTexture(cube_mtl, "TextureNormal", normal_tex))
+            return false;
+        if (!rdbs->RegisterMaterialTexture(cube_mtl, "TextureRoughness", roughness_tex))
             return false;
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
@@ -429,6 +447,7 @@ public:
         cube_mtl = nullptr;
         cube_sampler = nullptr;
         cube_pipeline = nullptr;
+        base_tex = nullptr;
         fallback_albedo = nullptr;
         normal_tex = nullptr;
         roughness_tex = nullptr;
@@ -484,4 +503,3 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<RenderToTextureApp>(OS_TEXT("Render To Texture (ECS)"), argc, argv, 1280, 720);
 }
-

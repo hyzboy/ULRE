@@ -1,6 +1,7 @@
 // 画一个带纹理的四边形 (ECS)
 #include<hgl/framework/WorkManager.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -13,9 +14,11 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
+#include<memory>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -46,9 +49,13 @@ private:
     ECSContext *        ecs_world           = nullptr;
     Entity *            quad_entity         = nullptr;
 
+    Texture2D *         texture             = nullptr;
+    Sampler *           sampler             = nullptr;
+    Material *          material            = nullptr;
     MaterialInstance *  material_instance   = nullptr;
     Pipeline *          pipeline            = nullptr;
     Primitive *         prim_quad           = nullptr;
+    std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
 private:
 
@@ -68,10 +75,6 @@ private:
         if (!material_manager || !sampler_manager || !tex_manager)
             return false;
 
-        Texture2D * texture = nullptr;
-        Sampler *   sampler = nullptr;
-        Material *  material= nullptr;
-
         mtl::Material2DCreateConfig cfg(PrimitiveType::Fan,
                                         CoordinateSystem2D::NDC,
                                         mtl::WithLocalToWorld::Without);
@@ -88,17 +91,25 @@ private:
         if(!pipeline)
             return(false);
 
+        auto* device = graphics_context->GetDevice();
+        if (!device)
+            return false;
+
+        if (!bindless_texture_manager)
+        {
+            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
+            if (!bindless_texture_manager->Init(VkDevice(*device)))
+                return false;
+
+            render_context->SetBindlessTextureManager(bindless_texture_manager.get());
+            material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
+        }
+
         texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
         if(!texture)return(false);
 
         sampler=sampler_manager->CreateSampler();
-
-        if(!material->BindTextureSampler( DescriptorSetType::Material,
-                                        mtl::SamplerName::BaseColor,
-                                        texture,
-                                        sampler))
-            return(false);
 
         material_instance=material_manager->CreateMaterialInstance(material);
 
@@ -147,6 +158,20 @@ private:
         if(!ecs_world)
             return false;
 
+        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs)
+            return false;
+
+        auto* render_context = GetRenderContext();
+        auto* bindless_mgr = render_context ? render_context->GetBindlessTextureManager() : nullptr;
+        if (!bindless_mgr)
+            return false;
+
+        if (rdbs->RegisterTexture2DResource("", texture, sampler, bindless_mgr) == 0)
+            return false;
+        if (!rdbs->RegisterMaterialTexture(material, mtl::SamplerName::BaseColor, texture))
+            return false;
+
         quad_entity = ecs_world->CreateEntity<Entity>("TextureQuad");
         auto quad_transform = quad_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto quad_primitive = quad_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -182,4 +207,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw a quad with texture"),argc,argv,256,256);
 }
-

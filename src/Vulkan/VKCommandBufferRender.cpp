@@ -114,31 +114,18 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
 {
     if(!mtl)return(false);
 
+    pipeline_layout=mtl->GetPipelineLayout();
+
+    ENUM_CLASS_FOR(DescriptorSetType,int,i)
     {
-        uint32_t count=0;
+        MaterialParameters *mp=mtl->GetMP((DescriptorSetType)i);
+        if(!mp)
+            continue;
 
-        MaterialParameters *mp;
-        VkDescriptorSet ds[DESCRIPTOR_SET_TYPE_COUNT];
+        mp->Update();
 
-        ENUM_CLASS_FOR(DescriptorSetType,int,i)
-        {
-            mp=mtl->GetMP((DescriptorSetType)i);
-
-            if(mp)
-            {
-                mp->Update();
-
-                ds[count]=mp->GetVkDescriptorSet();
-                ++count;
-            }
-        }
-
-        if(count>0)
-        {
-            pipeline_layout=mtl->GetPipelineLayout();
-
-            vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,count,ds,0,0);
-        }
+        const VkDescriptorSet ds=mp->GetVkDescriptorSet();
+        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,uint32_t(i),1,&ds,0,nullptr);
     }
 
     return(true);

@@ -4,6 +4,7 @@
 #include <hgl/type/String.h>
 #include <vector>
 #include <unordered_map>
+#include <string>
 
 namespace hgl::graph
 {
@@ -87,6 +88,41 @@ namespace hgl::graph
          * @param set_index      绑定到第几个 descriptor set（通常 = 4）
          */
         void BindToCmd(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout, uint32_t set_index) const;
+
+        /**
+         * 同时向 Vulkan 描述符数组注册纹理，并向 BindlessTexturePool 预注册 handle，
+         * 从而使 Recipe 路径和直接路径使用一致的 handle。
+         * @param pool        RDBS 持有的 BindlessTexturePool
+         * @param resource_id 逻辑资源标识（与 RecipeTextureBinding.resource_id 一致）
+         * @param tex         目标纹理
+         * @param sampler     目标采样器
+         * @return 1-based handle，失败返回 0
+         */
+        template<typename BindlessTexturePool>
+        uint32_t Register2DWithResource(BindlessTexturePool &pool,
+                                         const std::string &resource_id,
+                                         Texture *tex,
+                                         Sampler *sampler)
+        {
+            const uint32_t handle = Register2D(tex, sampler);
+            if (handle == 0)
+                return 0;
+            pool.RegisterWithHandle(resource_id, handle);
+            return handle;
+        }
+
+        template<typename BindlessTexturePool>
+        uint32_t Register2DArrayWithResource(BindlessTexturePool &pool,
+                                              const std::string &resource_id,
+                                              Texture *tex,
+                                              Sampler *sampler)
+        {
+            const uint32_t handle = Register2DArray(tex, sampler);
+            if (handle == 0)
+                return 0;
+            pool.RegisterWithHandle(resource_id, handle);
+            return handle;
+        }
     };
 
 }//namespace hgl::graph

@@ -212,7 +212,7 @@ bool DescriptorSet::BindTexture(const int binding,Texture *tex)
     DescriptorImageInfo image_info(tex);
 
     const int image_index = image_list.Add(image_info);
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,(const VkDescriptorImageInfo *)nullptr));
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,(const VkDescriptorImageInfo *)nullptr,VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE));
     wds_buffer_info_indices.Add(-1);
     wds_image_info_indices.Add(image_index);
     SyncWriteDescriptorInfoPointers();

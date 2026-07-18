@@ -28,6 +28,7 @@ namespace hgl::graph
     class IGPUBuffer;
     class Texture;
     class Sampler;
+    class BindlessTextureManager;
 }
 
 namespace hgl::ecs
@@ -150,12 +151,33 @@ namespace hgl::ecs
                                          uint32_t &texture_layer_rows,
                                          uint32_t &data_index_rows) const;
 
+        /**
+         * 向 bindless 纹理池预注册一个逻辑资源 ID 与 bindless handle 的映射。
+         * 必须在调用 ResolveMaterialRecipe 之前调用，以确保 recipe 中的 resource_id
+         * 能被正确解析为 bindless handle。
+         *
+         * 典型用法：
+         *   uint32_t handle = bindless_mgr->Register2D(tex, sampler);
+         *   rdbs->RegisterBindlessTextureResource("Albedo", handle);
+         *   // 然后 recipe.textures[i].resource_id = "Albedo"
+         */
+        bool RegisterBindlessTextureResource(const std::string &resource_id, uint32_t bindless_handle);
+
+        /**
+         * 便利版本：同时向 BindlessTextureManager 注册 Vulkan 侧描述符并预注册 pool 映射。
+         * @return 1-based handle，失败返回 0
+         */
+        uint32_t RegisterTexture2DResource(const std::string &resource_id,
+                                            graph::Texture *tex,
+                                            graph::Sampler *sampler,
+                                            graph::BindlessTextureManager *bindless_mgr);
+
     private:
 
         void EnsureViewportUBO();
         void ReleaseViewportUBO();
-        void SyncBindingsForCurrentCommand(bool run_contract_diagnostics);
-        void ApplyContractBindings();
+        void SyncBindingsForCurrentCommand(graph::RenderCmdBuffer *cmd, bool run_contract_diagnostics);
+        void ApplyContractBindings(graph::RenderCmdBuffer *cmd);
         const graph::IGPUBuffer *ResolveViewportUBO() const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();

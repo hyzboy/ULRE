@@ -1,5 +1,5 @@
 // textureblinnphong_surface.glsl — Texture Blinn-Phong surface function (world-space)
-// Material set bindings (alphabetical): TextureBaseColor=0, TextureNormal=1, TextureRoughness=2, mtl=3
+// Bindless 纹理采样：通过 GetTextureHandle(si.textureLayerID, slot) 查表
 
 // MI SSBO
 #define MI_BINDING 3
@@ -10,10 +10,11 @@ struct MaterialInstance
 };
 MI_SSBO;
 
-// Textures
-layout(set=MATERIAL_SET, binding=0) uniform sampler2D TextureBaseColor;
-layout(set=MATERIAL_SET, binding=1) uniform sampler2D TextureNormal;
-layout(set=MATERIAL_SET, binding=2) uniform sampler2D TextureRoughness;
+// Bindless 纹理
+#include "common/descriptor_macros.glsl"
+#include "common/instance_rows_ssbo.glsl"
+TEXTURE_LAYER_ROWS_SSBO;
+#include "common/bindless_textures.glsl"
 
 // Sky light
 #include "common/skylight_simple.glsl"
@@ -38,13 +39,13 @@ vec2 ResolveSurfaceUV(vec2 uv)
     return fract(abs(uv));
 }
 
-vec3 ResolveAlbedoColor(vec2 uv)
+vec3 ResolveAlbedoColor(uint iid, vec2 uv)
 {
-    vec4 c = texture(TextureBaseColor, uv);
+    vec4 c = SAMPLE_BINDLESS_SLOT_2D(iid, TEXTURE_SLOT_BASE_COLOR, uv);
     vec3 rgb = c.rgb;
     if (max(max(rgb.r, rgb.g), rgb.b) < 0.0001)
     {
-        vec4 center = texture(TextureBaseColor, vec2(0.5, 0.5));
+        vec4 center = SAMPLE_BINDLESS_SLOT_2D(iid, TEXTURE_SLOT_BASE_COLOR, vec2(0.5, 0.5));
         rgb = center.rgb;
         if (max(max(rgb.r, rgb.g), rgb.b) < 0.0001)
             rgb = vec3(max(c.a, center.a));
@@ -52,16 +53,16 @@ vec3 ResolveAlbedoColor(vec2 uv)
     return rgb;
 }
 
-vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv, float normal_strength)
+vec3 ResolveSurfaceNormal(uint iid, vec3 input_normal, vec2 uv, float normal_strength)
 {
-    vec3 sampled_normal = texture(TextureNormal, uv).xyz * 2.0 - 1.0;
+    vec3 sampled_normal = SAMPLE_BINDLESS_SLOT_2D(iid, TEXTURE_SLOT_NORMAL, uv).xyz * 2.0 - 1.0;
     sampled_normal.y = -sampled_normal.y;
     return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * normal_strength);
 }
 
-float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
+float ResolveSurfaceRoughness(uint iid, float base_roughness, vec2 uv)
 {
-    float roughness_tex = texture(TextureRoughness, uv).r;
+    float roughness_tex = SAMPLE_BINDLESS_SLOT_2D(iid, TEXTURE_SLOT_ROUGHNESS, uv).r;
     return clamp(base_roughness * roughness_tex, 0.04, 1.0);
 }
 
@@ -70,18 +71,19 @@ float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
 SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 {
     MaterialInstance mi = mtl.mi[miID];
+    const uint iid = si.textureLayerID;
 
     const float spec_strength = 0.6;
     const float F0            = 0.04;
 
     vec2 uv = ResolveSurfaceUV(si.uv0);
-    vec3 base_color = ResolveAlbedoColor(uv);
+    vec3 base_color = ResolveAlbedoColor(iid, uv);
 
     float ns = mi.normal_strength > 0.0001 ? mi.normal_strength : 0.35;
-    float roughness  = ResolveSurfaceRoughness(0.8, uv);
+    float roughness  = ResolveSurfaceRoughness(iid, 0.8, uv);
     float spec_power = mix(96.0, 8.0, roughness);
 
-    vec3 N = ResolveSurfaceNormal(si.worldNormal, uv, ns);
+    vec3 N = ResolveSurfaceNormal(iid, si.worldNormal, uv, ns);
     vec3 V = si.viewDir;
     vec3 L = normalize(ULRE_GetSkyLightDir());
     vec3 H = normalize(L + V);

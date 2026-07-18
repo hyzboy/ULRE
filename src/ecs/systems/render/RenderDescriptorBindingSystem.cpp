@@ -14,6 +14,7 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKTexture.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
@@ -35,7 +36,7 @@ namespace hgl::ecs
         // P1.5-v1-01: scope lock (MI-only materialization).
         // Keep MaterialRecipe resolve path focused on MaterialInstance data only.
         // Texture materialization (including array-specific rows) is deferred to P1.6.
-        constexpr bool kP15V1ScopeLockMIOnly = true;
+        constexpr bool kP15V1ScopeLockMIOnly = false;
 
         std::string ToBindingKey(const char *name)
         {
@@ -511,6 +512,32 @@ namespace hgl::ecs
         return true;
     }
 
+    bool RenderDescriptorBindingSystem::RegisterBindlessTextureResource(const std::string &resource_id, uint32_t bindless_handle)
+    {
+        if (resource_id.empty() || bindless_handle == 0)
+            return false;
+
+        return materialization_texture_pool.RegisterWithHandle(resource_id, bindless_handle) != 0;
+    }
+
+    uint32_t RenderDescriptorBindingSystem::RegisterTexture2DResource(const std::string &resource_id,
+                                                                      graph::Texture *tex,
+                                                                      graph::Sampler *sampler,
+                                                                      graph::BindlessTextureManager *bindless_mgr)
+    {
+        if (!tex || !sampler || !bindless_mgr)
+            return 0;
+
+        std::string rid = resource_id;
+        if (rid.empty())
+            rid = BuildTextureResourceId(tex);
+
+        if (rid.empty())
+            return 0;
+
+        return bindless_mgr->Register2DWithResource(materialization_texture_pool, rid, tex, sampler);
+    }
+
     void RenderDescriptorBindingSystem::EnsureMaterializationCallbacks()
     {
         if (!materialization_callbacks.resolve_texture || !materialization_callbacks.resolve_struct)
@@ -674,6 +701,22 @@ namespace hgl::ecs
             }
         }
 
+#ifdef _DEBUG
+        if (context)
+        {
+            if (auto *vk_device = context->GetGPUDevice())
+            {
+                if (auto *du = vk_device->GetDebugUtils())
+                {
+                    if (materialization_texture_layer_ssbo)
+                        du->SetBuffer(materialization_texture_layer_ssbo->GetBuffer(), "ECS.Materialization.TextureLayerRows");
+                    if (materialization_data_index_ssbo)
+                        du->SetBuffer(materialization_data_index_ssbo->GetBuffer(), "ECS.Materialization.DataIndexRows");
+                }
+            }
+        }
+#endif
+
         materialization_index_tables_dirty = false;
     }
 
@@ -695,16 +738,16 @@ namespace hgl::ecs
 
     void RenderDescriptorBindingSystem::Update(float /*deltaTime*/)
     {
-        SyncBindingsForCurrentCommand(true);
+        SyncBindingsForCurrentCommand(nullptr, true);
     }
 
-    void RenderDescriptorBindingSystem::Render(graph::RenderCmdBuffer * /*cmd*/, float /*deltaTime*/)
+    void RenderDescriptorBindingSystem::Render(graph::RenderCmdBuffer *cmd, float /*deltaTime*/)
     {
         // Critical for RenderDrawOnly path: Update() is not called there.
-        SyncBindingsForCurrentCommand(false);
+        SyncBindingsForCurrentCommand(cmd, false);
     }
 
-    void RenderDescriptorBindingSystem::SyncBindingsForCurrentCommand(bool run_contract_diagnostics)
+    void RenderDescriptorBindingSystem::SyncBindingsForCurrentCommand(graph::RenderCmdBuffer *cmd, bool run_contract_diagnostics)
     {
         if (!context)
             return;
@@ -723,7 +766,7 @@ namespace hgl::ecs
 
         EnsureViewportUBO();
 
-        ApplyContractBindings();
+        ApplyContractBindings(cmd);
     }
 
     const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveViewportUBO() const
@@ -775,7 +818,7 @@ namespace hgl::ecs
         return sky_ubo->GetGPUBuffer();
     }
 
-    void RenderDescriptorBindingSystem::ApplyContractBindings()
+    void RenderDescriptorBindingSystem::ApplyContractBindings(graph::RenderCmdBuffer *cmd)
     {
         if (!context)
             return;
@@ -992,6 +1035,44 @@ namespace hgl::ecs
             }
         }
 
+        // Bind global bindless descriptor set (Set 4) only for materials that
+        // do not use classic TextureSampler descriptors in their contract.
+        if (auto *render_context = context->GetRenderContext())
+        {
+            auto *bindless_mgr = render_context->GetBindlessTextureManager();
+            auto *current_cmd = cmd ? cmd : render_context->GetCurrentRenderCmdBuffer();
+
+            if (bindless_mgr && bindless_mgr->IsValid() && current_cmd)
+            {
+                constexpr uint32_t bindless_set = static_cast<uint32_t>(graph::DescriptorSetType::Bindless);
+
+                for (const graph::Material *material : active_materials)
+                {
+                    if (!material)
+                        continue;
+
+                    bool uses_texture_sampler = false;
+                    const auto &contract = material->GetBindingContract();
+                    for (const auto &req : contract.requirements)
+                    {
+                        if (req.kind == graph::mtl::DescriptorKind::TextureSampler)
+                        {
+                            uses_texture_sampler = true;
+                            break;
+                        }
+                    }
+                    if (uses_texture_sampler)
+                        continue;
+
+                    const VkPipelineLayout pipeline_layout = material->GetPipelineLayout();
+                    if (pipeline_layout == VK_NULL_HANDLE)
+                        continue;
+
+                    bindless_mgr->BindToCmd(*current_cmd, pipeline_layout, bindless_set);
+                }
+            }
+        }
+
         for (auto it = material_resource_bindings.begin(); it != material_resource_bindings.end();)
         {
             if (active_materials.find(it->first) == active_materials.end())
@@ -1148,7 +1229,3 @@ namespace hgl::ecs
         }
     }
 }
-
-
-
-

@@ -193,7 +193,7 @@ PipelineLayoutData *MaterialManager::CreateMaterialPipelineLayoutData(const Ansi
     VulkanDevice *device = GetDevice();
     if(!device) return nullptr;
 
-    PipelineLayoutData *pld = device->CreatePipelineLayoutData(desc_manager);
+    PipelineLayoutData *pld = device->CreatePipelineLayoutData(desc_manager, bindless_layout_);
 
     if(pld)
     {

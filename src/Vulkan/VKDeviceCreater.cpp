@@ -158,6 +158,8 @@ namespace
         VkDescriptorPoolSize pool_size[]=
         {
             {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, sets_count},
+            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          sets_count},
+            {VK_DESCRIPTOR_TYPE_SAMPLER,                sets_count},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         sets_count},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, sets_count},
             {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         sets_count},
@@ -230,6 +232,7 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features{};
     descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
     descriptor_indexing_features.pNext = nullptr;
+    descriptor_indexing_features.shaderSampledImageArrayNonUniformIndexing   = VK_TRUE;
     descriptor_indexing_features.descriptorBindingPartiallyBound             = VK_TRUE;
     descriptor_indexing_features.runtimeDescriptorArray                      = VK_TRUE;
     descriptor_indexing_features.descriptorBindingSampledImageUpdateAfterBind= VK_TRUE;

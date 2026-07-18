@@ -19,7 +19,7 @@ L2W_SSBO;
 #include "common/instance_rows_ssbo.glsl"
 L2W_INDEX_ROWS_SSBO;
 DATA_INDEX_ROWS_SSBO;
-TEXTURE_LAYER_ROWS_SSBO;
+// TEXTURE_LAYER_ROWS 不在 VS 中声明，由 FS surface file 负责（bindless 多槽查找）
 
 #if GEOMETRY_FETCH_SSBO
     // SSBO 顶点获取
@@ -33,7 +33,7 @@ TEXTURE_LAYER_ROWS_SSBO;
 
 #define GET_TRANSFORM_ID()          ResolveTransformID(gl_InstanceIndex)
 #define GET_DATA_INDEX_ID()         ResolveDataIndexID(gl_InstanceIndex)
-#define GET_TEXTURE_LAYER_ID()      ResolveTextureLayerID(gl_InstanceIndex)
+#define GET_TEXTURE_LAYER_ID()      gl_InstanceIndex   // bindless: row index into texture_layer_rows
 
 layout(location=0) out vec3 fragWorldPos;
 layout(location=1) out vec3 fragWorldNormal;

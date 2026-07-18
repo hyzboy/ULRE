@@ -43,6 +43,8 @@ private:
 
 private:
 
+    VkDescriptorSetLayout bindless_layout_ = VK_NULL_HANDLE;   ///< 全局 Bindless Texture Set 布局（Set 4）
+
     MaterialManager(GraphicsContext *);
     ~MaterialManager()=default;
 
@@ -64,6 +66,9 @@ public: //Add
 
     MaterialID              Add(Material *          mtl ){return rm_material.Add(mtl);}
     MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
+
+    /** 设置全局 Bindless Texture Set 布局（必须在创建任何材质前调用）*/
+    void SetBindlessLayout(VkDescriptorSetLayout layout) { bindless_layout_ = layout; }
 
 public: //Get
 

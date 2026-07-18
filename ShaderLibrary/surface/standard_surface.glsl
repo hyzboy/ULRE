@@ -20,15 +20,12 @@ struct MaterialInstance
 };
 MI_SSBO;
 
-// ─── Textures (tier-gated) ───────────────────────────────────────────────────
+// ─── Bindless 纹理（tier-gated） ─────────────────────────────────────────────
 #if QUALITY_TIER >= 1
-layout(set=MATERIAL_SET, binding=0) uniform sampler2D TexAlbedo;
-#endif
-#if QUALITY_TIER >= 2
-layout(set=MATERIAL_SET, binding=1) uniform sampler2D TexNormal;
-#endif
-#if QUALITY_TIER >= 4
-layout(set=MATERIAL_SET, binding=2) uniform sampler2D TexMR;   // R=metallic, G=roughness
+#include "common/descriptor_macros.glsl"
+#include "common/instance_rows_ssbo.glsl"
+TEXTURE_LAYER_ROWS_SSBO;
+#include "common/bindless_textures.glsl"
 #endif
 
 // ─── Sky Light ────────────────────────────────────────────────────────────────
@@ -81,7 +78,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     // ── Base color ────────────────────────────────────────────────────────────
     vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
 #if QUALITY_TIER >= 1
-    albedo *= texture(TexAlbedo, si.uv0).rgb;
+    albedo *= SAMPLE_BINDLESS_SLOT_2D(si.textureLayerID, TEXTURE_SLOT_BASE_COLOR, si.uv0).rgb;
 #endif
 
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
@@ -89,14 +86,14 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 
 #if QUALITY_TIER >= 2
     // ── Normal Map ────────────────────────────────────────────────────────────
-    vec3 nm = texture(TexNormal, si.uv0).xyz * 2.0 - 1.0;
+    vec3 nm = SAMPLE_BINDLESS_SLOT_2D(si.textureLayerID, TEXTURE_SLOT_NORMAL, si.uv0).xyz * 2.0 - 1.0;
     nm.y = -nm.y;
     N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
 #endif
 
 #if QUALITY_TIER >= 4
     // ── MR Map ────────────────────────────────────────────────────────────────
-    vec2 mr    = texture(TexMR, si.uv0).rg;
+    vec2 mr    = SAMPLE_BINDLESS_SLOT_2D(si.textureLayerID, TEXTURE_SLOT_METALLIC, si.uv0).rg;
     metallic   = clamp(metallic  * mr.r, 0.0, 1.0);
     roughness  = clamp(roughness * mr.g, 0.04, 1.0);
 

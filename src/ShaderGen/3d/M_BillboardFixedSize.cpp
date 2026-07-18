@@ -22,8 +22,8 @@ namespace
         { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr },
         { DescriptorSetType::Material,  MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_VERTEX_BIT),   "mtl",      "MaterialInstanceData", nullptr },
         { DescriptorSetType::Material,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr },
-        { DescriptorSetType::Material,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_texture_layer_rows", "TextureLayerRows", nullptr },
-        { DescriptorSetType::Material,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2D" },
+        { DescriptorSetType::Material,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_texture_layer_rows", "TextureLayerRows", nullptr },
+        { DescriptorSetType::Material,  DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2D" },
     };
 
     constexpr FixedMaterialDef BILLBOARD_FIXED_DEF {
@@ -78,4 +78,3 @@ MaterialCreateInfo *CreateBillboard2DFixedSize(const contract::PhysicalDevicePro
     return mci;
 }
 }//namespace hgl::graph::mtl
-

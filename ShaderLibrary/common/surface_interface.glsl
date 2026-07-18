@@ -16,7 +16,7 @@ struct SurfaceInput
     vec3 viewDir;        // normalize(-worldPos)，因为 cameraPos 恒为 0
     vec2 screenPos;
     float luminance;     // 顶点亮度（VertexLuminance 材质使用）
-    uint textureLayerID; // TextureLayer 间接表行里解析出的当前采样层
+    uint textureLayerID; // bindless 纹理行索引（= gl_InstanceIndex），用于 GetTextureHandle(textureLayerID, slot) 查表
 };
 
 struct SurfaceOutput

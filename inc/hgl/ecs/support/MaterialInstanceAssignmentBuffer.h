@@ -9,7 +9,9 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKRingBufferWrapper.h>
 #include<hgl/ecs/core/RenderItem.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/VKMaterialInstance.h>
+#include<array>
 #include<vector>
 #include <hgl/type/UnorderedMap.h>
 
@@ -130,7 +132,8 @@ namespace hgl::ecs
          */
         void WriteItems(const std::vector<RenderItem*>& items,
                         const std::vector<uint32> *data_index_rows = nullptr,
-                        const std::vector<uint32> *texture_layer_rows = nullptr);
+                        const std::vector<uint32> *texture_layer_rows = nullptr,
+                        const std::array<uint32_t, static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE)> *texture_slot_handles = nullptr);
 
         /**
          * 更新单个RenderItem的材质实例数据

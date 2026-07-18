@@ -61,6 +61,34 @@ namespace hgl::graph::mtl
             handle_by_resource[resource_id] = handle;
             return entries.back();
         }
+
+        /**
+         * 用外部已分配好的 handle 预注册一个 resource_id。
+         * 用于将 BindlessTextureManager 分配的 Vulkan 侧 handle 和 Recipe 侧 pool handle 对齐。
+         * @return 注册成功返回 handle，若 resource_id 已存在且 handle 不同则返回 0（冲突）。
+         */
+        uint32_t RegisterWithHandle(const std::string &resource_id, const uint32_t handle)
+        {
+            if (resource_id.empty() || handle == 0)
+                return 0;
+
+            auto it = handle_by_resource.find(resource_id);
+            if (it != handle_by_resource.end())
+                return (it->second == handle) ? handle : 0; // 已存在，验证一致性
+
+            BindlessTextureEntry entry{};
+            entry.resource_id = resource_id;
+            entry.bindless_handle = handle;
+            entry.texture_layer = handle - 1;
+
+            // 确保 entries 数组足够大
+            if (handle > static_cast<uint32_t>(entries.size()))
+                entries.resize(handle);
+
+            entries[handle - 1] = entry;
+            handle_by_resource[resource_id] = handle;
+            return handle;
+        }
     };
 
     // 结构体池布局声明（一个 struct_name 对应一种布局）。
@@ -329,7 +357,8 @@ namespace hgl::graph::mtl
         return callbacks;
     }
 
-    // 从已解析 spec 构建单实例 TextureLayer/DataIndex 行。
+    // 从已解析 spec 构建单实例 TextureLayer 行。
+    // 注意：bindless 模式下，row.values[slot] = bindless_handle（非 texture_layer）。
     inline TextureLayerRow BuildTextureLayerRow(const MaterializationSpec &spec)
     {
         TextureLayerRow row{};
@@ -337,7 +366,7 @@ namespace hgl::graph::mtl
         {
             const size_t idx = static_cast<size_t>(res.slot);
             if (idx < row.values.size())
-                row.values[idx] = res.texture_layer;
+                row.values[idx] = res.bindless_handle;   // bindless: 直接存 handle（1-based）
         }
         return row;
     }

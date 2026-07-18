@@ -2,6 +2,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -14,9 +15,11 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
+#include<memory>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -55,6 +58,7 @@ private:
     MaterialInstance *  material_instance   = nullptr;
     Pipeline *          pipeline            = nullptr;
     Primitive *         prim_rect           = nullptr;
+    std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
 private:
 
@@ -71,7 +75,8 @@ private:
         auto* material_manager = graphics_context->GetMaterialManager();
         auto* sampler_manager = graphics_context->GetSamplerManager();
         auto* tex_manager = graphics_context->GetTextureManager();
-        if (!material_manager || !sampler_manager || !tex_manager)
+        auto* device = graphics_context->GetDevice();
+        if (!material_manager || !sampler_manager || !tex_manager || !device)
             return false;
 
         mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
@@ -90,17 +95,21 @@ private:
         if(!pipeline)
             return(false);
 
+        if (!bindless_texture_manager)
+        {
+            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
+            if (!bindless_texture_manager->Init(VkDevice(*device)))
+                return false;
+
+            render_context->SetBindlessTextureManager(bindless_texture_manager.get());
+            material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
+        }
+
         texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
         if(!texture)return(false);
 
         sampler=sampler_manager->CreateSampler();
-
-        if(!material->BindTextureSampler( DescriptorSetType::Material,
-                                        mtl::SamplerName::BaseColor,
-                                        texture,
-                                        sampler))
-            return(false);
 
         material_instance=material_manager->CreateMaterialInstance(material);
 
@@ -149,6 +158,20 @@ private:
         if(!ecs_world)
             return false;
 
+        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs)
+            return false;
+
+        auto* render_context = GetRenderContext();
+        auto* bindless_mgr = render_context ? render_context->GetBindlessTextureManager() : nullptr;
+        if (!bindless_mgr)
+            return false;
+
+        if (rdbs->RegisterTexture2DResource("", texture, sampler, bindless_mgr) == 0)
+            return false;
+        if (!rdbs->RegisterMaterialTexture(material, mtl::SamplerName::BaseColor, texture))
+            return false;
+
         rect_entity = ecs_world->CreateEntity<Entity>("TextureRect");
         auto rect_transform = rect_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto rect_primitive = rect_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -184,4 +207,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw a rectangle with texture"),argc,argv,256,256);
 }
-

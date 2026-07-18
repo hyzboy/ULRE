@@ -22,6 +22,7 @@
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
+#include<array>
 #include<chrono>
 #include<cstdint>
 #include<string>
@@ -504,9 +505,12 @@ namespace hgl::ecs
 
         if (batch.mi_buffer && !batch.items.empty())
         {
-            // DataIndexID = 批内 MaterialInstance 索引；TextureLayerID 默认 0（由 shader 侧兼容逻辑兜底）。
-            // Phase 4: Probe/Resolve 已在 BuildMaterialBatches() 前置执行，此处仅写实例索引缓冲。
-            batch.mi_buffer->WriteItems(batch.items);
+            // DataIndexID = 批内 MaterialInstance 索引。
+            // 纹理行表在 bindless 路径下写为“每实例 TextureSlot->handle 平铺表”。
+            batch.mi_buffer->WriteItems(batch.items,
+                                        nullptr,
+                                        nullptr,
+                                        batch.has_texture_slot_handles ? &batch.texture_slot_handles : nullptr);
         }
     }
 
@@ -593,6 +597,8 @@ namespace hgl::ecs
         {
             uint64_t program_signature = 0;
             uint64_t binding_signature = 0;
+            std::array<uint32_t, static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE)> texture_slot_handles{};
+            bool has_texture_slot_handles = false;
         };
 
         std::unordered_map<graph::Material *, MaterialSpecCacheValue> material_spec_hash_cache;
@@ -623,6 +629,8 @@ namespace hgl::ecs
                 {
                     graph::mtl::MaterialRecipe recipe{};
                     graph::mtl::MaterializationSpec spec{};
+                    std::array<uint32_t, static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE)> texture_slot_handles{};
+                    bool has_texture_slot_handles = false;
 
                     // 批处理分桶必须使用“材质级”语义，不能带实例身份（如 MIID），
                     // 否则会把本可合并的实例拆成 1 instance / batch。
@@ -646,11 +654,27 @@ namespace hgl::ecs
                             {
                                 program_signature = graph::mtl::HashMaterializationProgramSignature(spec);
                                 binding_signature = graph::mtl::HashMaterializationBindingSignature(spec);
+
+                                for (const auto &resolved : spec.resources)
+                                {
+                                    const size_t slot = static_cast<size_t>(resolved.slot);
+                                    if (slot >= texture_slot_handles.size())
+                                        continue;
+
+                                    texture_slot_handles[slot] = resolved.bindless_handle;
+                                    if (resolved.bindless_handle != 0)
+                                        has_texture_slot_handles = true;
+                                }
                             }
                         }
                     }
 
-                    material_spec_hash_cache.emplace(material, MaterialSpecCacheValue{program_signature, binding_signature});
+                    MaterialSpecCacheValue cache_value{};
+                    cache_value.program_signature = program_signature;
+                    cache_value.binding_signature = binding_signature;
+                    cache_value.texture_slot_handles = texture_slot_handles;
+                    cache_value.has_texture_slot_handles = has_texture_slot_handles;
+                    material_spec_hash_cache.emplace(material, std::move(cache_value));
                 }
             }
 
@@ -662,6 +686,15 @@ namespace hgl::ecs
                 auto batch = std::make_unique<MaterialBatch>(key, device, buffer_manager);
                 batch->cameraInfo = camera_info;
                 batch->transform_buffer = shared_transform_buffer;
+                if (descriptor_binding_system)
+                {
+                    auto cache_it = material_spec_hash_cache.find(material);
+                    if (cache_it != material_spec_hash_cache.end())
+                    {
+                        batch->texture_slot_handles = cache_it->second.texture_slot_handles;
+                        batch->has_texture_slot_handles = cache_it->second.has_texture_slot_handles;
+                    }
+                }
                 batch->AddItem(item);
                 cache.materialBatches[key] = std::move(batch);
             }
@@ -669,6 +702,15 @@ namespace hgl::ecs
             {
                 (*batch_ptr)->buffer_manager = buffer_manager;
                 (*batch_ptr)->transform_buffer = shared_transform_buffer;
+                if (descriptor_binding_system)
+                {
+                    auto cache_it = material_spec_hash_cache.find(material);
+                    if (cache_it != material_spec_hash_cache.end())
+                    {
+                        (*batch_ptr)->texture_slot_handles = cache_it->second.texture_slot_handles;
+                        (*batch_ptr)->has_texture_slot_handles = cache_it->second.has_texture_slot_handles;
+                    }
+                }
                 (*batch_ptr)->AddItem(item);
             }
         }

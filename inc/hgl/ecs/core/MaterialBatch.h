@@ -2,7 +2,9 @@
 
 #include<hgl/ecs/core/MaterialPipelineKey.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/VK.h>
+#include<array>
 #include<vector>
 
 namespace hgl
@@ -57,6 +59,8 @@ namespace hgl::ecs
 
         TransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<Transform分配缓冲(非拥有)
         MaterialInstanceAssignmentBuffer *   mi_buffer               = nullptr;          ///<材质实例分配缓冲
+        std::array<uint32_t, static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE)> texture_slot_handles{}; ///<每材质纹理槽的 bindless handle（用于实例纹理行表）
+        bool                                  has_texture_slot_handles = false;
 
         DrawBatchArray                          draw_batches;                               ///<绘制批次数组
         uint32_t                                draw_batches_count      = 0;                ///<有效批次数量
@@ -74,9 +78,10 @@ namespace hgl::ecs
             static_count = 0;
             draw_batches.clear();
             draw_batches_count = 0;
+            texture_slot_handles.fill(0);
+            has_texture_slot_handles = false;
         }
         void AddItem(RenderItem* item);
         bool HasMovableRange() const { return static_count < items.size(); }
     };
 }//namespace hgl::ecs
-

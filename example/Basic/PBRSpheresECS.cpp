@@ -7,6 +7,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -24,6 +25,7 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
 #include<glm/glm.hpp>
@@ -74,6 +76,7 @@ private:
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
+    std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
     VertexDataManager * mesh_vdm = nullptr;
     Geometry *          builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
@@ -135,7 +138,8 @@ private:
 
         auto* material_manager = graphics_context->GetMaterialManager();
         auto* sampler_manager = graphics_context->GetSamplerManager();
-        if (!material_manager || !sampler_manager || !base_color_texture || !normal_texture) {
+        auto* device = graphics_context->GetDevice();
+        if (!material_manager || !sampler_manager || !base_color_texture || !normal_texture || !device) {
             printf("[ERROR] InitMaterial: Failed manager/texture checks - material_mgr=%p sampler_mgr=%p base=%p normal=%p\n",
                    material_manager, sampler_manager, base_color_texture, normal_texture);
             return false;
@@ -157,20 +161,16 @@ private:
             return false;
         }
 
-        if (!material->BindTextureSampler(DescriptorSetType::Material,
-                                          mtl::SamplerName::BaseColor,
-                                          base_color_texture,
-                                          sampler)) {
-            printf("[ERROR] InitMaterial: Failed to bind BaseColor texture sampler\n");
-            return false;
-        }
+        if (!bindless_texture_manager)
+        {
+            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
+            if (!bindless_texture_manager->Init(VkDevice(*device))) {
+                printf("[ERROR] InitMaterial: Failed to init bindless texture manager\n");
+                return false;
+            }
 
-        if (!material->BindTextureSampler(DescriptorSetType::Material,
-                                          "TextureNormal",
-                                          normal_texture,
-                                          sampler)) {
-            printf("[ERROR] InitMaterial: Failed to bind TextureNormal sampler\n");
-            return false;
+            render_context->SetBindlessTextureManager(bindless_texture_manager.get());
+            material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
         }
 
         auto* render_target = render_context->GetCurrentRenderTarget();
@@ -502,6 +502,41 @@ private:
         ecs_world = GetECSContext();
         if (!ecs_world) {
             printf("[ERROR] InitECS: No ecs_world\n");
+            return false;
+        }
+
+        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs) {
+            printf("[ERROR] InitECS: No RenderDescriptorBindingSystem\n");
+            return false;
+        }
+
+        auto* render_context = GetRenderContext();
+        auto* bindless_mgr = render_context ? render_context->GetBindlessTextureManager() : nullptr;
+        if (!bindless_mgr) {
+            printf("[ERROR] InitECS: No bindless texture manager\n");
+            return false;
+        }
+
+        const uint32_t base_handle = bindless_mgr->Register2DArray(base_color_texture, sampler);
+        const std::string base_resource_id = "texid:" + std::to_string(base_color_texture->GetID());
+        if (base_handle == 0 || !rdbs->RegisterBindlessTextureResource(base_resource_id, base_handle)) {
+            printf("[ERROR] InitECS: Failed to register base color bindless texture\n");
+            return false;
+        }
+        if (!rdbs->RegisterMaterialTextureSampler(material, mtl::SamplerName::BaseColor, base_color_texture, sampler)) {
+            printf("[ERROR] InitECS: Failed to map base color texture+sampler to material\n");
+            return false;
+        }
+
+        const uint32_t normal_handle = bindless_mgr->Register2DArray(normal_texture, sampler);
+        const std::string normal_resource_id = "texid:" + std::to_string(normal_texture->GetID());
+        if (normal_handle == 0 || !rdbs->RegisterBindlessTextureResource(normal_resource_id, normal_handle)) {
+            printf("[ERROR] InitECS: Failed to register normal bindless texture\n");
+            return false;
+        }
+        if (!rdbs->RegisterMaterialTextureSampler(material, "TextureNormal", normal_texture, sampler)) {
+            printf("[ERROR] InitECS: Failed to map normal texture+sampler to material\n");
             return false;
         }
 

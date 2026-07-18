@@ -12,6 +12,7 @@
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/mtl/UBOCommon.h>
+#include <hgl/mtl/MaterialRecipe.h>
 #include <cstring>
 #include <cstdio>
 #include <string>
@@ -260,12 +261,19 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const uint32_t data_rows_binding   = material_set_texture_count + 1;
     const uint32_t texlayer_binding    = material_set_texture_count + 2;
 
-    // Only inject when bindings differ from descriptor_macros.glsl defaults (1, 2)
+    // Keep GLSL texture-slot row width aligned with C++ enum cardinality.
+    // This macro is consumed by ShaderLibrary/common/bindless_textures.glsl.
+    constexpr uint32_t texture_slot_range_size = static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
+
+    // Only inject binding overrides when bindings differ from descriptor_macros.glsl defaults (1, 2)
     // to avoid unnecessary preamble bloat for no-texture materials.
     std::string binding_preamble;
+    binding_preamble +=
+        "#define TEXTURE_SLOT_RANGE_SIZE " + std::to_string(texture_slot_range_size) + "u\n";
+
     if (material_set_texture_count > 0)
     {
-        binding_preamble =
+        binding_preamble +=
             "#define MI_BINDING "                  + std::to_string(mi_binding)        + "\n"
             "#define MI_DATA_INDEX_ROWS_BINDING "  + std::to_string(data_rows_binding) + "\n"
             "#define MI_TEXTURE_LAYER_ROWS_BINDING " + std::to_string(texlayer_binding) + "\n";
