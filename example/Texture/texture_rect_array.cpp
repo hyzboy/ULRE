@@ -225,7 +225,7 @@ private:
 
         if (rdbs->RegisterTexture2DArrayResource("", texture, sampler, bindless_mgr) == 0)
             return false;
-        if (!rdbs->RegisterMaterialTexture(material, mtl::SamplerName::BaseColor, texture))
+        if (!rdbs->RegisterMaterialTextureSampler(material, mtl::SamplerName::BaseColor, texture, sampler))
             return false;
 
         math::Vector3f offset(1.0f/float(TexCount),0,0);

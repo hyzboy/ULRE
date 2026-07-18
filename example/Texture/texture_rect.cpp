@@ -169,7 +169,7 @@ private:
 
         if (rdbs->RegisterTexture2DResource("", texture, sampler, bindless_mgr) == 0)
             return false;
-        if (!rdbs->RegisterMaterialTexture(material, mtl::SamplerName::BaseColor, texture))
+        if (!rdbs->RegisterMaterialTextureSampler(material, mtl::SamplerName::BaseColor, texture, sampler))
             return false;
 
         rect_entity = ecs_world->CreateEntity<Entity>("TextureRect");
