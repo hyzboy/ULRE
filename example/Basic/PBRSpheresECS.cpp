@@ -518,10 +518,12 @@ private:
             return false;
         }
 
-        const uint32_t base_handle = bindless_mgr->Register2DArray(base_color_texture, sampler);
-        const std::string base_resource_id = "texid:" + std::to_string(base_color_texture->GetID());
-        if (base_handle == 0 || !rdbs->RegisterBindlessTextureResource(base_resource_id, base_handle)) {
-            printf("[ERROR] InitECS: Failed to register base color bindless texture\n");
+        // S6: Use RegisterTexture2DArrayResource (S5 new API) to register both
+        // the bindless pool handle and the classic Vulkan descriptor in one call.
+        // RegisterMaterialTextureSampler is kept to write the classic descriptor
+        // (TextureBaseColor/TextureNormal binding slots in Material set layout).
+        if (rdbs->RegisterTexture2DArrayResource("", base_color_texture, sampler, bindless_mgr) == 0) {
+            printf("[ERROR] InitECS: Failed to register base color 2DArray bindless resource\n");
             return false;
         }
         if (!rdbs->RegisterMaterialTextureSampler(material, mtl::SamplerName::BaseColor, base_color_texture, sampler)) {
@@ -529,10 +531,8 @@ private:
             return false;
         }
 
-        const uint32_t normal_handle = bindless_mgr->Register2DArray(normal_texture, sampler);
-        const std::string normal_resource_id = "texid:" + std::to_string(normal_texture->GetID());
-        if (normal_handle == 0 || !rdbs->RegisterBindlessTextureResource(normal_resource_id, normal_handle)) {
-            printf("[ERROR] InitECS: Failed to register normal bindless texture\n");
+        if (rdbs->RegisterTexture2DArrayResource("", normal_texture, sampler, bindless_mgr) == 0) {
+            printf("[ERROR] InitECS: Failed to register normal 2DArray bindless resource\n");
             return false;
         }
         if (!rdbs->RegisterMaterialTextureSampler(material, "TextureNormal", normal_texture, sampler)) {

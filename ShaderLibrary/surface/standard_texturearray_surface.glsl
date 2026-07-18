@@ -1,4 +1,8 @@
 // standard_texturearray_surface.glsl — Standard Lit Surface with Texture2DArray sampling
+// S6: Texture sampling migrated to bindless (bindless_tex2darray[], binding=1 on Set 4).
+// Classic sampler2DArray descriptors are retained in the material layout for legacy contract
+// binding (TextureBaseColor/TextureNormal) but are no longer referenced in this shader.
+// Layer index still comes from MI (mi.texture_id); handle from per-instance TextureLayerRows.
 
 #include "common/surface_interface.glsl"
 #include "common/material_instance_ssbo.glsl"
@@ -12,13 +16,10 @@ struct MaterialInstance
 };
 MI_SSBO;
 
-layout(set=MATERIAL_SET, binding=0) uniform sampler2DArray TexAlbedo;
-#if QUALITY_TIER >= 2
-layout(set=MATERIAL_SET, binding=1) uniform sampler2DArray TexNormal;
-#endif
-#if QUALITY_TIER >= 4
-layout(set=MATERIAL_SET, binding=2) uniform sampler2DArray TexMR;   // R=metallic, G=roughness
-#endif
+// Bindless 2DArray rows + bindless sampler arrays
+#include "common/instance_rows_ssbo.glsl"
+TEXTURE_LAYER_ROWS_SSBO;
+#include "common/bindless_textures.glsl"
 
 #include "common/skylight_simple.glsl"
 
@@ -62,24 +63,26 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     vec3 sunColor   = max(ULRE_GetSkyLightColor(), vec3(0.2));
     vec3 skyAmbient = ULRE_GetSkyAmbientColor();
 
+    // Layer index driven by per-instance payload (mi.texture_id).
+    // Handle resolved from per-instance TextureLayerRows via GetTextureHandle().
+    float layer = float(mi.texture_id);
+    const uint iid = si.textureLayerID;
+
     vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
-    // Texture2DArray path is driven by per-instance material payload (mi.texture_id),
-    // not by bindless textureLayerID row index.
-    uint layer_u = mi.texture_id;
-    float layer = float(layer_u);
-    albedo *= texture(TexAlbedo, vec3(si.uv0, layer)).rgb;
+    albedo *= SampleBindless2DArray(GetTextureHandle(iid, TEXTURE_SLOT_BASE_COLOR), si.uv0, layer).rgb;
 
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
 
 #if QUALITY_TIER >= 2
-    vec3 nm = texture(TexNormal, vec3(si.uv0, layer)).xyz * 2.0 - 1.0;
+    vec3 nm = SampleBindless2DArray(GetTextureHandle(iid, TEXTURE_SLOT_NORMAL), si.uv0, layer).xyz * 2.0 - 1.0;
     nm.y = -nm.y;
     N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
 #endif
 
 #if QUALITY_TIER >= 4
-    vec2 mr    = texture(TexMR, vec3(si.uv0, layer)).rg;
+    // TEXTURE_SLOT_METALLIC stores the combined metallic-roughness (r=metallic, g=roughness).
+    vec2 mr    = SampleBindless2DArray(GetTextureHandle(iid, TEXTURE_SLOT_METALLIC), si.uv0, layer).rg;
     metallic   = clamp(metallic  * mr.r, 0.0, 1.0);
     roughness  = clamp(roughness * mr.g, 0.04, 1.0);
 
@@ -130,5 +133,3 @@ float EvalAlpha(SurfaceInput si, uint miID)
 {
     return 1.0;
 }
-
-
