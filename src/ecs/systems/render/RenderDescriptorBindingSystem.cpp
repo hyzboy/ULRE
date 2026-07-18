@@ -335,13 +335,12 @@ namespace hgl::ecs
 
     bool RenderDescriptorBindingSystem::RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
                                                                      uint32_t ssbo_id,
-                                                                     uint32_t byte_stride,
-                                                                     const std::string &struct_name)
+                                                                     uint32_t byte_stride)
     {
         if (auto *domain_manager = GetResourceDomainManager(context))
             domain_manager->Touch(graph::mtl::SSBOAddress{ssbo_type, ssbo_id, 0});
 
-        return materialization_struct_pool.RegisterLayout(ssbo_type, ssbo_id, byte_stride, struct_name);
+        return materialization_struct_pool.RegisterLayout(ssbo_type, ssbo_id, byte_stride);
     }
 
     void RenderDescriptorBindingSystem::ResetMaterializationFrameData()

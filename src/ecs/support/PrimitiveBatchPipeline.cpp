@@ -645,8 +645,7 @@ namespace hgl::ecs
                                 {
                                     descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.ssbo_type,
                                                                                            struct_ref.ssbo_id,
-                                                                                           mi_data_bytes,
-                                                                                           struct_ref.struct_name);
+                                                                                           mi_data_bytes);
                                 }
                             }
 

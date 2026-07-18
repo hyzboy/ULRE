@@ -96,7 +96,6 @@ namespace hgl::graph::mtl
     {
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = 0;
-        std::string struct_name;
         uint32_t byte_stride = 0;
     };
 
@@ -105,7 +104,6 @@ namespace hgl::graph::mtl
     {
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = 0;
-        std::string struct_name;
         uint32_t struct_index = 0;
         uint32_t byte_offset = 0;
         uint32_t byte_stride = 0;
@@ -139,7 +137,6 @@ namespace hgl::graph::mtl
 
             out_alloc.ssbo_type = state.layout.ssbo_type;
             out_alloc.ssbo_id = state.layout.ssbo_id;
-            out_alloc.struct_name = state.layout.struct_name;
             out_alloc.struct_index = index;
             out_alloc.byte_stride = state.layout.byte_stride;
             out_alloc.byte_offset = index * state.layout.byte_stride;
@@ -149,8 +146,7 @@ namespace hgl::graph::mtl
     public:
         bool RegisterLayout(const SSBOType ssbo_type,
                             const uint32_t ssbo_id,
-                            const uint32_t byte_stride,
-                            const std::string &struct_name = {})
+                            const uint32_t byte_stride)
         {
             if (byte_stride == 0)
                 return false;
@@ -162,15 +158,10 @@ namespace hgl::graph::mtl
                 LayoutState state{};
                 state.layout.ssbo_type = ssbo_type;
                 state.layout.ssbo_id = ssbo_id;
-                state.layout.struct_name = struct_name;
                 state.layout.byte_stride = byte_stride;
                 states.emplace(key, std::move(state));
                 return true;
             }
-
-            // 已存在时只允许相同布局重复注册。
-            if (!struct_name.empty() && it->second.layout.struct_name.empty())
-                it->second.layout.struct_name = struct_name;
 
             return it->second.layout.byte_stride == byte_stride;
         }
