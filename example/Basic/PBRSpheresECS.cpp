@@ -518,16 +518,14 @@ private:
             return false;
         }
 
-        // S6: Use RegisterTexture2DArrayResource (S5 new API) to register both
-        // the bindless pool handle and the classic Vulkan descriptor in one call.
-        // RegisterMaterialTextureSampler is kept to write the classic descriptor
-        // (TextureBaseColor/TextureNormal binding slots in Material set layout).
+        // S8: ECS main path no longer depends on RegisterMaterialTextureSampler.
+        // Keep only bindless resource registration + semantic texture mapping.
         if (rdbs->RegisterTexture2DArrayResource("", base_color_texture, sampler, bindless_mgr) == 0) {
             printf("[ERROR] InitECS: Failed to register base color 2DArray bindless resource\n");
             return false;
         }
-        if (!rdbs->RegisterMaterialTextureSampler(material, mtl::SamplerName::BaseColor, base_color_texture, sampler)) {
-            printf("[ERROR] InitECS: Failed to map base color texture+sampler to material\n");
+        if (!rdbs->RegisterMaterialTexture(material, mtl::SamplerName::BaseColor, base_color_texture)) {
+            printf("[ERROR] InitECS: Failed to map base color texture to material\n");
             return false;
         }
 
@@ -535,8 +533,8 @@ private:
             printf("[ERROR] InitECS: Failed to register normal 2DArray bindless resource\n");
             return false;
         }
-        if (!rdbs->RegisterMaterialTextureSampler(material, "TextureNormal", normal_texture, sampler)) {
-            printf("[ERROR] InitECS: Failed to map normal texture+sampler to material\n");
+        if (!rdbs->RegisterMaterialTexture(material, "TextureNormal", normal_texture)) {
+            printf("[ERROR] InitECS: Failed to map normal texture to material\n");
             return false;
         }
 
