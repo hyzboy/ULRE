@@ -110,6 +110,11 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
                         AnsiString(") Semantic(")+GetVertexSemanticName(first_issue->semantic)+
                         AnsiString(") MaterialFormat(")+(GetVulkanFormatName(first_issue->material_format)?GetVulkanFormatName(first_issue->material_format):"Unknown")+
                         AnsiString(") GeometryFormat(")+(GetVulkanFormatName(first_issue->geometry_format)?GetVulkanFormatName(first_issue->geometry_format):"Unknown")+
+                        AnsiString(") HasConversionRule(")+(first_issue->has_conversion_rule?"true":"false")+
+                        AnsiString(") AutoApply(")+(first_issue->conversion_allow_auto_apply?"true":"false")+
+                        AnsiString(") Lossless(")+(first_issue->conversion_lossless?"true":"false")+
+                        AnsiString(") Precision(")+GetAttributePrecisionGradeName(first_issue->conversion_precision)+
+                        AnsiString(") RuntimeCost(")+GetAttributeRuntimeCostName(first_issue->conversion_runtime_cost)+
                         AnsiString(")");
         }
         else
@@ -221,5 +226,4 @@ bool Primitive::SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t
 }
 
 }//namespace hgl::graph
-
 

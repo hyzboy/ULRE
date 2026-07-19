@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/common/VertexAttribDef.h>
+#include <hgl/graph/geo/AttributeCompatibility.h>
 #include <hgl/vk/VKVertexInputFormat.h>
 #include <vector>
 #include <cstring>
@@ -98,6 +99,13 @@ namespace hgl::graph
         uint32_t material_stride = 0;
         uint8_t geometry_vec_size = 0;
         uint8_t material_vec_size = 0;
+        // True means "there is a registered rule for this source->target pair", even if current runtime still refuses to auto-run it.
+        bool has_conversion_rule = false;
+        // Distinguishes "compatible and can auto-run" from "known conversion but diagnostics only".
+        bool conversion_allow_auto_apply = false;
+        bool conversion_lossless = false;
+        AttributePrecisionGrade conversion_precision = AttributePrecisionGrade::Unknown;
+        AttributeRuntimeCost conversion_runtime_cost = AttributeRuntimeCost::High;
     };
 
     struct GeometryVertexFormatMatch
@@ -117,25 +125,14 @@ namespace hgl::graph
         }
     };
 
-    inline bool SupportsFutureFormatCompatibility(const VertexSemantic semantic)
-    {
-        switch (semantic)
-        {
-        case VertexSemantic::Normal:
-        case VertexSemantic::Tangent:
-        case VertexSemantic::Bitangent:
-        case VertexSemantic::Color:
-        case VertexSemantic::TexCoord:
-            return true;
-        default:
-            return false;
-        }
-    }
-
     inline GeometryVertexMatchKind MatchGeometryVertexAttribute(
         const GeometryVertexAttributeFormat &geometry_attribute,
-        const VertexInputFormat &material_attribute)
+        const VertexInputFormat &material_attribute,
+        const AttributeConversionOp **out_conversion_op = nullptr)
     {
+        if (out_conversion_op)
+            *out_conversion_op = nullptr;
+
         if (geometry_attribute.format == material_attribute.format
          && geometry_attribute.stride == material_attribute.stride
          && geometry_attribute.vec_size == material_attribute.vec_size)
@@ -143,11 +140,22 @@ namespace hgl::graph
             return GeometryVertexMatchKind::Exact;
         }
 
-        if (geometry_attribute.vec_size == material_attribute.vec_size
-         && geometry_attribute.stride == material_attribute.stride
-         && SupportsFutureFormatCompatibility(geometry_attribute.semantic))
+        // Any non-exact match must be backed by an explicit registered conversion rule.
+        const AttributeConversionOp *op = FindAttributeConversionOp(
+            geometry_attribute.semantic,
+            geometry_attribute.format,
+            geometry_attribute.vec_size,
+            geometry_attribute.stride,
+            material_attribute.format,
+            uint8(material_attribute.vec_size),
+            uint32(material_attribute.stride));
+
+        if (op)
         {
-            return GeometryVertexMatchKind::Unsupported;
+            if (out_conversion_op)
+                *out_conversion_op = op;
+
+            return op->allow_auto_apply ? GeometryVertexMatchKind::Compatible : GeometryVertexMatchKind::Unsupported;
         }
 
         return GeometryVertexMatchKind::Mismatch;
@@ -183,7 +191,17 @@ namespace hgl::graph
                 match.geometry_format = geometry_attribute->format;
                 match.geometry_stride = geometry_attribute->stride;
                 match.geometry_vec_size = geometry_attribute->vec_size;
-                match.kind = MatchGeometryVertexAttribute(*geometry_attribute, *material_attribute);
+
+                const AttributeConversionOp *op = nullptr;
+                match.kind = MatchGeometryVertexAttribute(*geometry_attribute, *material_attribute, &op);
+                if (op)
+                {
+                    match.has_conversion_rule = true;
+                    match.conversion_allow_auto_apply = op->allow_auto_apply;
+                    match.conversion_lossless = op->lossless;
+                    match.conversion_precision = op->precision;
+                    match.conversion_runtime_cost = op->runtime_cost;
+                }
             }
 
             if (match.kind == GeometryVertexMatchKind::Mismatch)
