@@ -1,7 +1,6 @@
 #pragma once
 
 #include <hgl/CoreType.h>
-#include <hgl/type/EnumUtil.h>
 
 namespace hgl::graph::mtl
 {
@@ -11,9 +10,7 @@ namespace hgl::graph::mtl
         UBO,
         SSBO,
         Texture,
-        Sampler,
-
-        ENUM_CLASS_RANGE(UBO,Sampler)
+        Sampler
     };
 
     enum class DescriptorSemantic : uint8
@@ -36,6 +33,25 @@ namespace hgl::graph::mtl
         MaterialDataIndexTable,
 
         Custom,
+    };
+
+    enum class UBODescriptorSemantic : uint8
+    {
+        ViewportInfo = 0,
+        CameraInfo,
+        SkyInfo,
+        LocalToWorld,
+        MaterialInstance,
+        MaterialColorPalette
+    };
+
+    enum class SSBODescriptorSemantic : uint8
+    {
+        LocalToWorld = 0,
+        LocalToWorldIndexTable,
+        MaterialInstance,
+        MaterialTextureLayerTable,
+        MaterialDataIndexTable
     };
 
     inline const char *GetDescriptorSemanticLayerName(const DescriptorSemanticLayer layer)
@@ -62,17 +78,17 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialColorPalette:
             return DescriptorSemanticLayer::UBO;
 
+        case DescriptorSemantic::SkyCubemapSampler:
+        case DescriptorSemantic::MaterialTexture:
+            return DescriptorSemanticLayer::Texture;
+
+        case DescriptorSemantic::MaterialSampler:
+            return DescriptorSemanticLayer::Sampler;
+
         case DescriptorSemantic::LocalToWorldIndexTable:
         case DescriptorSemantic::MaterialTextureLayerTable:
         case DescriptorSemantic::MaterialDataIndexTable:
             return DescriptorSemanticLayer::SSBO;
-
-        case DescriptorSemantic::MaterialTexture:
-            return DescriptorSemanticLayer::Texture;
-
-        case DescriptorSemantic::SkyCubemapSampler:
-        case DescriptorSemantic::MaterialSampler:
-            return DescriptorSemanticLayer::Sampler;
 
         case DescriptorSemantic::LocalToWorld:
         case DescriptorSemantic::MaterialInstance:
@@ -82,5 +98,36 @@ namespace hgl::graph::mtl
         }
 
         return DescriptorSemanticLayer::Unknown;
+    }
+
+    inline bool TryGetUBODescriptorSemantic(const DescriptorSemantic semantic, UBODescriptorSemantic &out)
+    {
+        switch (semantic)
+        {
+        case DescriptorSemantic::ViewportInfo: out = UBODescriptorSemantic::ViewportInfo; return true;
+        case DescriptorSemantic::CameraInfo: out = UBODescriptorSemantic::CameraInfo; return true;
+        case DescriptorSemantic::SkyInfo: out = UBODescriptorSemantic::SkyInfo; return true;
+        case DescriptorSemantic::LocalToWorld: out = UBODescriptorSemantic::LocalToWorld; return true;
+        case DescriptorSemantic::MaterialInstance: out = UBODescriptorSemantic::MaterialInstance; return true;
+        case DescriptorSemantic::MaterialColorPalette: out = UBODescriptorSemantic::MaterialColorPalette; return true;
+        default: break;
+        }
+
+        return false;
+    }
+
+    inline bool TryGetSSBODescriptorSemantic(const DescriptorSemantic semantic, SSBODescriptorSemantic &out)
+    {
+        switch (semantic)
+        {
+        case DescriptorSemantic::LocalToWorld: out = SSBODescriptorSemantic::LocalToWorld; return true;
+        case DescriptorSemantic::LocalToWorldIndexTable: out = SSBODescriptorSemantic::LocalToWorldIndexTable; return true;
+        case DescriptorSemantic::MaterialInstance: out = SSBODescriptorSemantic::MaterialInstance; return true;
+        case DescriptorSemantic::MaterialTextureLayerTable: out = SSBODescriptorSemantic::MaterialTextureLayerTable; return true;
+        case DescriptorSemantic::MaterialDataIndexTable: out = SSBODescriptorSemantic::MaterialDataIndexTable; return true;
+        default: break;
+        }
+
+        return false;
     }
 }

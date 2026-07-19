@@ -43,17 +43,6 @@ static bool HasDescriptorSemantic(const FixedMaterialDef &def, const DescriptorS
     return false;
 }
 
-static const ShaderBufferSource *ResolveShaderBufferSourceByStructName(const Material3DCreateConfig *cfg,const char *struct_name)
-{
-    if(cfg)
-    {
-        if(const ShaderBufferSource *sbs=cfg->FindPrivateShaderBufferSourceByStructName(struct_name))
-            return sbs;
-    }
-
-    return FindShaderBufferSourceByStructName(struct_name);
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // CompileCompositorMaterial — Compositor 模板完整 GLSL → MaterialCreateInfo
 //
@@ -126,42 +115,51 @@ MaterialCreateInfo *CompileCompositorMaterial(
         switch (entry.kind)
         {
         case DescriptorKind::UBO:
-            if (entry.struct_name)
+            switch (entry.semantic)
             {
-                if (CStrEq(entry.struct_name, SBS_ViewportInfo.struct_name))
-                    { mci->AddUBOStruct(stage_bits, SBS_ViewportInfo); break; }
-                if (CStrEq(entry.struct_name, SBS_CameraInfo.struct_name))
-                    { mci->AddUBOStruct(stage_bits, SBS_CameraInfo); break; }
-                if (CStrEq(entry.struct_name, SBS_SkyInfo.struct_name))
-                    { mci->AddUBOStruct(stage_bits, SBS_SkyInfo); break; }
-                if (CStrEq(entry.struct_name, SBS_LocalToWorld.struct_name))
-                    { mci->SetLocalToWorld(stage_bits); break; }
-                if (CStrEq(entry.struct_name, SBS_MaterialInstance.struct_name))
-                    { mi_stage_bits = stage_bits; break; }
-
-                // Custom UBO via private/global ShaderBufferSource registry
-                if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
-                {
-                    mci->AddUBOStruct(stage_bits, *sbs);
-                    break;
-                }
+            case DescriptorSemantic::ViewportInfo:
+                mci->AddUBOStruct(stage_bits, SBS_ViewportInfo);
+                break;
+            case DescriptorSemantic::CameraInfo:
+                mci->AddUBOStruct(stage_bits, SBS_CameraInfo);
+                break;
+            case DescriptorSemantic::SkyInfo:
+                mci->AddUBOStruct(stage_bits, SBS_SkyInfo);
+                break;
+            case DescriptorSemantic::LocalToWorld:
+                mci->SetLocalToWorld(stage_bits);
+                break;
+            case DescriptorSemantic::MaterialInstance:
+                mi_stage_bits = stage_bits;
+                break;
+            case DescriptorSemantic::MaterialColorPalette:
+                mci->AddUBOStruct(stage_bits, SBS_ColorPattle);
+                break;
+            default:
+                break;
             }
             break;
 
         case DescriptorKind::SSBO:
-            if (entry.struct_name)
+            switch (entry.semantic)
             {
-                if (CStrEq(entry.struct_name, SBS_LocalToWorld.struct_name))
-                    { mci->SetLocalToWorld(stage_bits); break; }
-                if (CStrEq(entry.struct_name, SBS_MaterialInstance.struct_name))
-                    { mi_stage_bits = stage_bits; break; }
-
-                // Custom SSBO via private/global ShaderBufferSource registry
-                if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
-                {
-                    mci->AddSSBOStruct(stage_bits, *sbs);
-                    break;
-                }
+            case DescriptorSemantic::LocalToWorld:
+                mci->SetLocalToWorld(stage_bits);
+                break;
+            case DescriptorSemantic::LocalToWorldIndexTable:
+                mci->AddSSBOStruct(stage_bits, SBS_LocalToWorldIndexRows);
+                break;
+            case DescriptorSemantic::MaterialInstance:
+                mi_stage_bits = stage_bits;
+                break;
+            case DescriptorSemantic::MaterialTextureLayerTable:
+                mci->AddSSBOStruct(stage_bits, SBS_MaterialTextureLayerRows);
+                break;
+            case DescriptorSemantic::MaterialDataIndexTable:
+                mci->AddSSBOStruct(stage_bits, SBS_MaterialDataIndexRows);
+                break;
+            default:
+                break;
             }
             break;
 
