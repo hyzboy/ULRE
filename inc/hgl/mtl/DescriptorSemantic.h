@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/CoreType.h>
+#include <hgl/mtl/DescriptorKind.h>
 
 namespace hgl::graph::mtl
 {
@@ -78,10 +79,10 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialColorPalette:
             return DescriptorSemanticLayer::UBO;
 
-        case DescriptorSemantic::SkyCubemapSampler:
         case DescriptorSemantic::MaterialTexture:
             return DescriptorSemanticLayer::Texture;
 
+        case DescriptorSemantic::SkyCubemapSampler:
         case DescriptorSemantic::MaterialSampler:
             return DescriptorSemanticLayer::Sampler;
 
@@ -100,6 +101,18 @@ namespace hgl::graph::mtl
         return DescriptorSemanticLayer::Unknown;
     }
 
+
+    constexpr DescriptorSemanticLayer GetDescriptorSemanticLayerByKind(const DescriptorKind kind)
+    {
+        switch (kind)
+        {
+        case DescriptorKind::UBO: return DescriptorSemanticLayer::UBO;
+        case DescriptorKind::SSBO: return DescriptorSemanticLayer::SSBO;
+        case DescriptorKind::Texture: return DescriptorSemanticLayer::Texture;
+        case DescriptorKind::TextureSampler: return DescriptorSemanticLayer::Sampler;
+        default: return DescriptorSemanticLayer::Unknown;
+        }
+    }
     inline bool TryGetUBODescriptorSemantic(const DescriptorSemantic semantic, UBODescriptorSemantic &out)
     {
         switch (semantic)
@@ -131,3 +144,5 @@ namespace hgl::graph::mtl
         return false;
     }
 }
+
+
