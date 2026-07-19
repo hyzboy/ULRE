@@ -5,6 +5,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/log/Log.h>
 #include<hgl/type/BlockAllocator.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph{
 
@@ -64,6 +65,7 @@ public:
     const   uint32_t        GetIndexCount   ()const;
             IndexBuffer *   GetIBO          ()const;
     const   uint32_t        GetFirstIndex   ()const;                        ///<取得第一个索引
+    const   GeometryVertexFormat &GetGeometryVertexFormat()const;
 
     VertexDataManager *     GetVDM          ()const;                        ///<取得顶点数据管理器
 

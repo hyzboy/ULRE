@@ -11,6 +11,9 @@ namespace hgl::graph::mtl{
 
 UBODescriptor *CreateUBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits);
 SSBODescriptor *CreateSSBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits);
+
+// ShaderGen/private-layout helper only. Runtime resource binding must not use
+// struct_name as the main routing key anymore.
 const ShaderBufferSource *FindShaderBufferSourceByStructName(const char *struct_name);
 
 constexpr const ShaderBufferSource SBS_ViewportInfo=

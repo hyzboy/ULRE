@@ -3,6 +3,7 @@
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKMemory.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph{
 
@@ -26,6 +27,7 @@ class GeometryData
 protected:
 
     const VIL *     vil;
+    GeometryVertexFormat geometry_vertex_format;
 
     uint32_t        vertex_count;
     uint32_t        index_count;
@@ -50,6 +52,7 @@ public:
     const   uint32_t        GetVertexCount  ()const{return vertex_count;}
     const   uint32_t        GetVABCount     ()const;
     const   int             GetVABIndex     (const AnsiString &name)const;
+    const   GeometryVertexFormat &GetGeometryVertexFormat()const{return geometry_vertex_format;}
 
             bool            CreateAllVAB(const AnsiString &geometry_name="Geometry");     //根据VIL创建所有VAB
 

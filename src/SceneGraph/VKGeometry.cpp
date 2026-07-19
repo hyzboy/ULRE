@@ -89,6 +89,11 @@ const uint32_t Geometry::GetIndexCount()const
     return geometry_data->GetIndexCount();
 }
 
+const GeometryVertexFormat &Geometry::GetGeometryVertexFormat()const
+{
+    return geometry_data->GetGeometryVertexFormat();
+}
+
 IndexBuffer *Geometry::GetIBO()const
 {
     return geometry_data->GetIBO();

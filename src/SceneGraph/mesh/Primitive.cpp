@@ -3,6 +3,8 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
+#include<hgl/vk/VKFormat.h>
 
 namespace hgl::graph{
 GeometryDataBuffer::GeometryDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManager *_vdm)
@@ -83,10 +85,33 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
 
     const uint32_t input_count=vil->GetVertexAttribCount();
     const AnsiString &mtl_name=mi->GetMaterial()->GetName();
+    const GeometryVertexFormatMatch match_result=MatchGeometryVertexFormat(geom->GetGeometryVertexFormat(),*vil);
 
     if(geom->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
         GLogError("[FATAL ERROR] input buffer count of Primitive lesser than Material, Material name: "+mtl_name);
+
+        return(nullptr);
+    }
+
+    if(match_result.overall!=GeometryVertexMatchKind::Exact)
+    {
+        const GeometryVertexAttributeMatch *first_issue=match_result.FirstNonExact();
+
+        if(first_issue)
+        {
+            GLogError(  "[FATAL ERROR] GeometryVertexFormat can't satisfy Material vertex input, Material(")+mtl_name+
+                        AnsiString(") Attribute(")+AnsiString(first_issue->name)+
+                        AnsiString(") Match(")+GetGeometryVertexMatchKindName(first_issue->kind)+
+                        AnsiString(") Semantic(")+GetGeometryVertexSemanticName(first_issue->semantic)+
+                        AnsiString(") MaterialFormat(")+(GetVulkanFormatName(first_issue->material_format)?GetVulkanFormatName(first_issue->material_format):"Unknown")+
+                        AnsiString(") GeometryFormat(")+(GetVulkanFormatName(first_issue->geometry_format)?GetVulkanFormatName(first_issue->geometry_format):"Unknown")+
+                        AnsiString(")");
+        }
+        else
+        {
+            GLogError("[FATAL ERROR] GeometryVertexFormat can't satisfy Material vertex input, Material: "+mtl_name);
+        }
 
         return(nullptr);
     }
@@ -114,26 +139,6 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
         if(!vab)
         {
             GLogError("[FATAL ERROR] not found VAB \""+AnsiString(vif->name)+"\" in Material: "+mtl_name);
-            return(nullptr);
-        }
-
-        if(vab->GetFormat()!=vif->format)
-        {
-            GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
-                        AnsiString("\" format can't match Primitive, Material(")+mtl_name+
-                        AnsiString(") Format(")+GetVulkanFormatName(vif->format)+
-                        AnsiString(") , VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
-                        ")");
-            return(nullptr);
-        }
-
-        if(vab->GetStride()!=vif->stride)
-        {
-            GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
-                        AnsiString("\" stride can't match Primitive, Material(")+mtl_name+
-                        AnsiString(") stride(")+AnsiString::numberOf(vif->stride)+
-                        AnsiString(") , VAB stride(")+AnsiString::numberOf(vab->GetStride())+
-                        ")");
             return(nullptr);
         }
 
@@ -213,4 +218,3 @@ bool Primitive::SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t
 }
 
 }//namespace hgl::graph
-

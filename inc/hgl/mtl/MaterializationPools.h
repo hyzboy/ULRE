@@ -91,7 +91,8 @@ namespace hgl::graph::mtl
         }
     };
 
-    // 结构体池布局声明（一个 struct_name 对应一种布局）。
+    // 结构体池布局声明。运行时主键是 (ssbo_type, ssbo_id)；
+    // struct_name 只保留在 ShaderGen/调试兼容层，不再作为运行时路由键。
     struct StructPoolLayout
     {
         SSBOType ssbo_type = SSBOType::UserDefined;

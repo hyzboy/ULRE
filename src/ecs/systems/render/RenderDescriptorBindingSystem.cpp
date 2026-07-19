@@ -871,8 +871,9 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialColorPalette:
             {
-                // MaterialColorPalette is explicitly declared and validated at compile time.
-                // Runtime binding is currently handled by non-ECS material setup paths.
+                // MaterialColorPalette is explicitly declared and contract-validated.
+                // The current owner-bound path is non-ECS (for example LineRenderPipeline
+                // binds SBS_ColorPattle directly), so RDBS intentionally does not inject it.
                 break;
             }
             default:
