@@ -42,10 +42,10 @@ namespace hgl::graph
         ci->view_line              =cam->viewDirection;
         ci->world_up               =cam->world_up;
 
-        // http://www.opengl-tutorial.org/intermediate-tutorials/billboards-particles/billboards/
+        // Camera-facing basis vectors from current view matrix.
 
-        ci->billboard_right        =math::Vector3f(ci->view[0][0],ci->view[1][0],ci->view[2][0]);
-        ci->billboard_up           =math::Vector3f(ci->view[0][1],ci->view[1][1],ci->view[2][1]);
+        ci->camera_facing_right    =math::Vector3f(ci->view[0][0],ci->view[1][0],ci->view[2][0]);
+        ci->camera_facing_up       =math::Vector3f(ci->view[0][1],ci->view[1][1],ci->view[2][1]);
 
         ci->znear                  =cam->znear;
         ci->zfar                   =cam->zfar;

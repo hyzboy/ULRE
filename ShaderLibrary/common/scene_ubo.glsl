@@ -41,8 +41,8 @@
         vec3 pos; \
         vec3 view_line; \
         vec3 world_up; \
-        vec3 billboard_up; \
-        vec3 billboard_right; \
+        vec3 camera_facing_up; \
+        vec3 camera_facing_right; \
         float znear, zfar; \
         uint use_reversed_z; \
         float _pad_ci0; \

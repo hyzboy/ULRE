@@ -29,8 +29,8 @@ void main()
     vec3 center = PositionSourceObjectOrigin(l2w_mat);
     vec3 world_pos = TransformPolicyCameraFacing(center,
                                                  local_pos,
-                                                 camera.billboard_right,
-                                                 camera.billboard_up);
+                                                 camera.camera_facing_right,
+                                                 camera.camera_facing_up);
 
     fragTexCoord = vec2(Position.x + 0.5, Position.y * -1.0 + 0.5);
 
