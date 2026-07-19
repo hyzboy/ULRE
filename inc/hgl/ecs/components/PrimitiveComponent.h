@@ -1,6 +1,8 @@
 #pragma once
 
 #include<hgl/ecs/components/RenderableComponent.h>
+#include<hgl/ecs/support/PositionSourceSpec.h>
+#include<hgl/ecs/support/TransformPolicySpec.h>
 #include<glm/glm.hpp>
 
 // Forward declarations to avoid heavy includes
@@ -41,6 +43,8 @@ namespace hgl::ecs
         hgl::graph::Primitive* primitive;                // The primitive to render (not owned)
         hgl::graph::MaterialInstance* overrideMaterial;   // Optional material override (not owned)
         hgl::graph::Pipeline* overridePipeline;           // Optional pipeline override (not owned)
+        PositionSourceSpec positionSourceSpec;            // Unified position source ingress policy
+        TransformPolicySpec transformPolicySpec;           // Unified transform policy ingress
 
     public:
 
@@ -49,6 +53,8 @@ namespace hgl::ecs
             , primitive(nullptr)
             , overrideMaterial(nullptr)
             , overridePipeline(nullptr)
+            , positionSourceSpec(PositionSourceSpec::MeshVertex)
+            , transformPolicySpec{}
         {
         }
 
@@ -70,6 +76,11 @@ namespace hgl::ecs
         void SetOverridePipeline(hgl::graph::Pipeline* p) { overridePipeline = p; }
         hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }
         void ClearOverridePipeline() { overridePipeline = nullptr; }
+
+        void SetTransformPolicySpec(const TransformPolicySpec& spec) { transformPolicySpec = spec; }
+        const TransformPolicySpec& GetTransformPolicySpec() const { return transformPolicySpec; }
+        void SetPositionSourceSpec(PositionSourceSpec spec) { positionSourceSpec = spec; }
+        PositionSourceSpec GetPositionSourceSpec() const { return positionSourceSpec; }
 
         // Material access (returns override if set, otherwise primitive's material)
         hgl::graph::MaterialInstance* GetMaterialInstance() const;
@@ -95,4 +106,3 @@ namespace hgl::ecs
         void OnDetach() override;
     };
 }//namespace hgl::ecs
-

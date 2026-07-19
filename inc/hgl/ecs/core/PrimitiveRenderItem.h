@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/core/RenderItem.h>
 
@@ -58,9 +58,10 @@ namespace hgl::ecs
         hgl::graph::MaterialInstance* GetMaterialInstance() const override;
         hgl::graph::Material* GetMaterial() const override;
         hgl::graph::Pipeline* GetPipeline() const override;
+        TransformPolicySpec GetTransformPolicySpec() const override;
+        PositionSourceSpec GetPositionSourceSpec() const override;
 
         // Update world matrix from transform
         void UpdateWorldMatrix();
     };
 }//namespace hgl::ecs
-

@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/core/PrimitiveRenderItem.h>
+#include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
@@ -62,6 +62,16 @@ namespace hgl::ecs
         return primitiveComp ? primitiveComp->GetPipeline() : nullptr;
     }
 
+    TransformPolicySpec PrimitiveRenderItem::GetTransformPolicySpec() const
+    {
+        return primitiveComp ? primitiveComp->GetTransformPolicySpec() : TransformPolicySpec{};
+    }
+
+    PositionSourceSpec PrimitiveRenderItem::GetPositionSourceSpec() const
+    {
+        return primitiveComp ? primitiveComp->GetPositionSourceSpec() : PositionSourceSpec::MeshVertex;
+    }
+
     void PrimitiveRenderItem::UpdateWorldMatrix()
     {
         if (transform)
@@ -71,4 +81,3 @@ namespace hgl::ecs
         }
     }
 }//namespace hgl::ecs
-

@@ -253,7 +253,32 @@ namespace hgl::ecs
             if (transform_system &&
                 transform_system->TryGetTransformGroupIndex(handle, transform->IsMovable(), group_index))
             {
-                item->transform_index = transform->IsMovable() ? (dynamic_base + group_index) : (group_index + 1);
+                const PositionSourceSpec position_source_spec = item->GetPositionSourceSpec();
+                const TransformPolicySpec transform_policy_spec = item->GetTransformPolicySpec();
+
+                switch (position_source_spec)
+                {
+                case PositionSourceSpec::MeshVertex:
+                case PositionSourceSpec::Quad2DGenerated:
+                case PositionSourceSpec::TerrainHeightmapGrid:
+                case PositionSourceSpec::ProceduralGenerated:
+                default:
+                    switch (transform_policy_spec.facing)
+                    {
+                    case FacingPolicy::None:
+                    case FacingPolicy::CameraFacing:
+                    case FacingPolicy::AxisLocked:
+                    default:
+                        // Fixed screen-space scaling is a separate policy switch from facing.
+                        if (transform_policy_spec.fixedScreenSpaceScale)
+                        {
+                            // R08 ingress-only stage: keep transform index behavior unchanged.
+                        }
+                        item->transform_index = transform->IsMovable() ? (dynamic_base + group_index) : (group_index + 1);
+                        break;
+                    }
+                    break;
+                }
             }
             else
             {

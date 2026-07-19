@@ -1,6 +1,8 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/core/EntityHandle.h>
+#include<hgl/ecs/support/PositionSourceSpec.h>
+#include<hgl/ecs/support/TransformPolicySpec.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<memory>
 
@@ -56,9 +58,12 @@ namespace hgl::ecs
         virtual hgl::graph::Material* GetMaterial() const = 0;
         virtual hgl::graph::Pipeline* GetPipeline() const = 0;
 
+        // Unified transform ingress for R08 (behavior stays unchanged until strategy rollout)
+        virtual TransformPolicySpec GetTransformPolicySpec() const { return TransformPolicySpec{}; }
+        virtual PositionSourceSpec GetPositionSourceSpec() const { return PositionSourceSpec::MeshVertex; }
+
         // Comparison for sorting
         virtual int Compare(const RenderItem& other) const;
     };
 
 }//namespace hgl::ecs
-
