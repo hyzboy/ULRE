@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hgl/common/VertexAttribDef.h>
-#include <hgl/vk/VKVertexInputLayout.h>
+#include <hgl/vk/VKVertexInputFormat.h>
 #include <vector>
 #include <cstring>
 
@@ -67,16 +67,16 @@ namespace hgl::graph
             return true;
         }
 
-        static GeometryVertexFormat FromVIL(const VIL &vil)
+        static GeometryVertexFormat FromVertexInputFormats(const VertexInputFormat *vif_list,const uint32_t vif_count)
         {
             GeometryVertexFormat result;
 
-            for (uint32_t i = 0; i < vil.GetVertexAttribCount(); ++i)
-            {
-                const VertexInputFormat *vif = vil.GetConfig(i);
+            if(!vif_list||vif_count==0)
+                return result;
 
-                if (!vif)
-                    continue;
+            for (uint32_t i = 0; i < vif_count; ++i)
+            {
+                const VertexInputFormat *vif=vif_list+i;
 
                 result.Add(vif->semantic, vif->format, uint8_t(vif->vec_size), uint32_t(vif->stride));
             }
@@ -171,15 +171,17 @@ namespace hgl::graph
 
     inline GeometryVertexFormatMatch MatchGeometryVertexFormat(
         const GeometryVertexFormat &geometry_format,
-        const VIL &material_vil)
+        const VertexInputFormat *material_vif_list,
+        const uint32_t material_vif_count)
     {
         GeometryVertexFormatMatch result;
 
-        for (uint32_t i = 0; i < material_vil.GetVertexAttribCount(); ++i)
+        if(!material_vif_list||material_vif_count==0)
+            return result;
+
+        for (uint32_t i = 0; i < material_vif_count; ++i)
         {
-            const VertexInputFormat *material_attribute = material_vil.GetConfig(i);
-            if (!material_attribute)
-                continue;
+            const VertexInputFormat *material_attribute=material_vif_list+i;
 
             GeometryVertexAttributeMatch match;
             match.semantic = material_attribute->semantic;

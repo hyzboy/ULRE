@@ -11,7 +11,7 @@ namespace hgl::graph{
 GeometryData::GeometryData(const VIL *_vil,const uint32_t vc)
 {
     vil=_vil;
-    geometry_vertex_format=GeometryVertexFormat::FromVIL(*_vil);
+    geometry_vertex_format=GeometryVertexFormat::FromVertexInputFormats(_vil->GetVIFList(),_vil->GetVertexAttribCount());
 
     vertex_count=vc;
     index_count=0;
