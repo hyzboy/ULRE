@@ -3,6 +3,7 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/graph/geo/VKGeometryData.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 
 namespace hgl::graph
 {
@@ -34,7 +35,8 @@ namespace hgl::graph
         max_count=power_to_2(cc);
         draw_char_count=cc;
 
-        geometry_data=CreateGeometryData(device,vil,max_count);
+        const GeometryVertexFormat geometry_vertex_format=BuildGeometryVertexFormatFromVIFList(vil->GetVIFList(),vil->GetVertexAttribCount());
+        geometry_data=CreateGeometryData(device,geometry_vertex_format,max_count);
 
         geometry_data->CreateAllVAB();
 

@@ -8,6 +8,7 @@
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/geo/VKGeometryData.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/io/MiniPack.h>
 #include<hgl/io/MemoryInputStream.h>
 
@@ -372,7 +373,8 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const VIL *vil,hgl:
         return nullptr;
 
     // 3) Create GeometryData and VABs
-    GeometryData *geo_data=CreateGeometryData(device,vil,header.vertexCount);
+    const GeometryVertexFormat geometry_vertex_format=BuildGeometryVertexFormatFromVIFList(vil->GetVIFList(),vil->GetVertexAttribCount());
+    GeometryData *geo_data=CreateGeometryData(device,geometry_vertex_format,header.vertexCount);
 
     if(!geo_data)
     {

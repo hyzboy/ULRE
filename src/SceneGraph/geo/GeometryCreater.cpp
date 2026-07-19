@@ -6,6 +6,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/geo/VKGeometryData.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/graph/module/BufferManager.h>
 
 namespace hgl::graph{
@@ -80,18 +81,20 @@ bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,c
 
     vertices_number=vertex_count;
 
+    const GeometryVertexFormat geometry_vertex_format=BuildGeometryVertexFormatFromVIFList(vil->GetVIFList(),vil->GetVertexAttribCount());
+
     if(vdm)
     {
-        geometry_data=CreateGeometryData(vdm,vertices_number);
+        geometry_data=CreateGeometryData(vdm,geometry_vertex_format,vertices_number);
 
         index_type=vdm->GetIndexType();
     }
     else
     {
         if (buffer_manager)
-            geometry_data=CreateGeometryData(buffer_manager,vil,vertices_number,buffer_policy);
+            geometry_data=CreateGeometryData(buffer_manager,geometry_vertex_format,vertices_number,buffer_policy);
         else
-            geometry_data=CreateGeometryData(device,vil,vertices_number,buffer_policy);
+            geometry_data=CreateGeometryData(device,geometry_vertex_format,vertices_number,buffer_policy);
     }
 
     if(!geometry_data)return(false);
@@ -119,14 +122,13 @@ const int GeometryCreater::InitVAB(const VertexSemantic semantic,const VkFormat 
 
     const int vab_index=geometry_data->GetVABIndex(semantic);
 
-    if(vab_index<0||vab_index>=vil->GetVertexAttribCount())
+    if(vab_index<0||vab_index>=int(geometry_data->GetVABCount()))
         return(-1);
 
     if(format!=VK_FORMAT_UNDEFINED)
     {
-        const VIF *vif=vil->GetConfig(vab_index);
-
-        if(vif->format!=format)
+        const GeometryVertexAttributeFormat *attribute=geometry_data->GetGeometryVertexFormat().Find(semantic);
+        if(!attribute||attribute->format!=format)
             return(-2);
     }
 
@@ -236,9 +238,11 @@ Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString 
         }
     }
 
+    const GeometryVertexFormat geometry_vertex_format=BuildGeometryVertexFormatFromVIFList(vil->GetVIFList(),vil->GetVertexAttribCount());
+
 // 创建 GeometryData（使用 device 分配私有缓冲）
-    GeometryData *pd = bm ? CreateGeometryData(bm, vil, vertex_count, policy)
-                          : CreateGeometryData(device, vil, vertex_count, policy);
+    GeometryData *pd = bm ? CreateGeometryData(bm, geometry_vertex_format, vertex_count, policy)
+                          : CreateGeometryData(device, geometry_vertex_format, vertex_count, policy);
 
     if(!pd)
         return nullptr;
