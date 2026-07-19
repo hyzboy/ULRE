@@ -16,7 +16,6 @@
 #include<ctime>
 #include<chrono>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -32,6 +31,16 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    GeometryVertexFormat CreateClockGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V2F, 2, sizeof(float) * 2);
+        return gvf;
+    }
+}
 
 constexpr uint32_t VERTEX_COUNT = 3;
 
@@ -172,10 +181,7 @@ private:
         if (!device || !buffer_manager || !geometry_manager)
             return false;
 
-        GeometryCreater pc(device,
-                           BuildGeometryVertexFormatFromVIFList(material->GetDefaultVIL()->GetVIFList(),
-                                                                material->GetDefaultVIL()->GetVertexAttribCount()),
-                           buffer_manager);
+        GeometryCreater pc(device, CreateClockGeometryVertexFormat(), buffer_manager);
         pc.Init("TriangleForClock", VERTEX_COUNT);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data))
             return false;

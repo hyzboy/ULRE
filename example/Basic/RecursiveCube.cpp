@@ -7,7 +7,6 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -32,6 +31,17 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        return gvf;
+    }
+}
 
 class RecursiveCubeApp:public WorkObject
 {
@@ -153,8 +163,7 @@ private:
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
-            BuildGeometryVertexFormatFromVIFList(material->GetDefaultVIL()->GetVIFList(),
-                                                 material->GetDefaultVIL()->GetVertexAttribCount()));
+            CreateGizmo3DGeometryVertexFormat());
 
         CubeCreateInfo cci;
         cci.segments_x = 1;

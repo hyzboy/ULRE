@@ -19,7 +19,6 @@
 
 // 引入几何创建器
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
@@ -30,6 +29,16 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    GeometryVertexFormat CreateAutoMergeGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V2F, 2, sizeof(float) * 2);
+        return gvf;
+    }
+}
 
 constexpr uint32_t VERTEX_COUNT=3;
 
@@ -156,10 +165,7 @@ private:
         if (!device || !buffer_manager || !geometry_manager)
             return false;
 
-        GeometryCreater pc(device,
-                           BuildGeometryVertexFormatFromVIFList(material->GetDefaultVIL()->GetVIFList(),
-                                                                material->GetDefaultVIL()->GetVertexAttribCount()),
-                           buffer_manager);
+        GeometryCreater pc(device, CreateAutoMergeGeometryVertexFormat(), buffer_manager);
         pc.Init("Triangle", VERTEX_COUNT);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data))
             return false;

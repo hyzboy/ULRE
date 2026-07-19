@@ -3,7 +3,6 @@
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -31,6 +30,18 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    GeometryVertexFormat CreateStandardGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        gvf.Add(VertexSemantic::TexCoord, VF_V2F, 2, sizeof(float) * 2);
+        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        return gvf;
+    }
+}
 
 class BasicLitMeshesECSApp : public WorkObject
 {
@@ -190,8 +201,7 @@ private:
 
         mesh_vdm = new VertexDataManager(
             buffer_manager,
-            BuildGeometryVertexFormatFromVIFList(material->GetDefaultVIL()->GetVIFList(),
-                                                 material->GetDefaultVIL()->GetVertexAttribCount()));
+            CreateStandardGeometryVertexFormat());
         if (!mesh_vdm)
             return false;
 

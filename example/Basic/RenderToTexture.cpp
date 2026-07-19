@@ -11,7 +11,6 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/color/Color.h>
 #include<hgl/log/Log.h>
@@ -40,6 +39,23 @@ using namespace hgl::ecs;
 
 namespace
 {
+    GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        return gvf;
+    }
+
+    GeometryVertexFormat CreateStandardGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        gvf.Add(VertexSemantic::TexCoord, VF_V2F, 2, sizeof(float) * 2);
+        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        return gvf;
+    }
+
     void LogTextureInfo(const char *tag, Texture2D *tex)
     {
         if (!tex)
@@ -173,8 +189,7 @@ public:
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
-            BuildGeometryVertexFormatFromVIFList(mtl->GetDefaultVIL()->GetVIFList(),
-                                                 mtl->GetDefaultVIL()->GetVertexAttribCount()));
+            CreateGizmo3DGeometryVertexFormat());
         geometry = inline_geometry::CreateSphere(pc.get(), 64);
         if (!geometry)
             return false;
@@ -389,8 +404,7 @@ private:
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
-            BuildGeometryVertexFormatFromVIFList(cube_mtl->GetDefaultVIL()->GetVIFList(),
-                                                 cube_mtl->GetDefaultVIL()->GetVertexAttribCount()));
+            CreateStandardGeometryVertexFormat());
         inline_geometry::CubeCreateInfo cci{};
         cci.tex_coord = true;
         cci.normal = true;

@@ -12,7 +12,6 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -36,6 +35,24 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        return gvf;
+    }
+
+    GeometryVertexFormat CreatePureColor3DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        return gvf;
+    }
+}
 
 constexpr const COLOR TestColor[]=
 {
@@ -215,8 +232,7 @@ private:
 
         mesh_vdm = new VertexDataManager(
             buffer_manager,
-            BuildGeometryVertexFormatFromVIFList(solid.vil->GetVIFList(),
-                                                 solid.vil->GetVertexAttribCount()));
+            CreateGizmo3DGeometryVertexFormat());
         if (!mesh_vdm)
             return false;
         if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))
@@ -527,8 +543,7 @@ private:
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
-            BuildGeometryVertexFormatFromVIFList(wire.material->GetDefaultVIL()->GetVIFList(),
-                                                 wire.material->GetDefaultVIL()->GetVertexAttribCount()));
+            CreatePureColor3DGeometryVertexFormat());
 
         inline_geometry::BoundingBoxCreateInfo bbci;
         bbox_geometry = CreateBoundingBox(pc.get(),&bbci);

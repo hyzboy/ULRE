@@ -12,7 +12,6 @@
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -26,6 +25,17 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    GeometryVertexFormat CreateAutoInstanceGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V2F, 2, sizeof(float) * 2);
+        gvf.Add(VertexSemantic::Color, VF_V4UN8, 4, sizeof(uint8));
+        return gvf;
+    }
+}
 
 constexpr uint32_t VERTEX_COUNT=3;
 
@@ -115,10 +125,7 @@ private:
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
-        GeometryCreater pc(device,
-                           BuildGeometryVertexFormatFromVIFList(material_instance->GetVIL()->GetVIFList(),
-                                                                material_instance->GetVIL()->GetVertexAttribCount()),
-                           buffer_manager);
+        GeometryCreater pc(device, CreateAutoInstanceGeometryVertexFormat(), buffer_manager);
         pc.Init("Triangle", VERTEX_COUNT);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
             !pc.WriteVAB(VAN::Color, VF_V4UN8, color_data))

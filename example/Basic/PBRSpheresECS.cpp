@@ -10,7 +10,6 @@
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -37,6 +36,18 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    GeometryVertexFormat CreateStandardTextureArrayGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        gvf.Add(VertexSemantic::TexCoord, VF_V2F, 2, sizeof(float) * 2);
+        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        return gvf;
+    }
+}
 
 // 10×10 grid params
 static constexpr uint GRID_SIZE       = 10;    // spheres per axis
@@ -350,8 +361,7 @@ private:
 
         mesh_vdm = new VertexDataManager(
             buffer_manager,
-            BuildGeometryVertexFormatFromVIFList(material->GetDefaultVIL()->GetVIFList(),
-                                                 material->GetDefaultVIL()->GetVertexAttribCount()));
+            CreateStandardTextureArrayGeometryVertexFormat());
         if (!mesh_vdm) {
             printf("[ERROR] InitVDM: Failed to create VertexDataManager\n");
             return false;
