@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
@@ -38,8 +38,6 @@ public:
         SAFE_CLEAR(data_buffer);
     }
 
-            void                UpdatePipeline      (Pipeline *p){pipeline=p;}
-
             Pipeline *          GetPipeline         (){return pipeline;}
             VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
             Material *          GetMaterial         (){return mat_inst->GetMaterial();}
@@ -59,18 +57,6 @@ public:
 
 public:
 
-            bool                ChangeMaterialInstance(MaterialInstance *mi)
-            {
-                if(!mi)
-                    return(false);
-
-                if(mi->GetMaterial()!=mat_inst->GetMaterial())      //不能换母材质
-                    return(false);
-
-                mat_inst=mi;
-                return(true);
-            }
-
             // 设置绘制数量（vertex/index），若大于数据量会被裁剪至数据量
             bool                SetDrawCounts(uint32_t draw_vertex_count,uint32_t draw_index_count=0);
 
@@ -84,3 +70,5 @@ public:
 
 Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
 }//namespace hgl::graph
+
+
