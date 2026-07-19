@@ -6,6 +6,7 @@
 #include <hgl/graph/mesh/StaticMesh.h>
 #include <hgl/graph/mesh/Primitive.h>
 #include <hgl/graph/module/GeometryManager.h>
+#include <hgl/vk/VKVertexInputLayout.h>
 #include <hgl/io/MiniPack.h>
 #include <hgl/type/StdString.h>
 #include <hgl/log/Log.h>
@@ -23,11 +24,28 @@ namespace hgl::graph
 {
 
 // LoadGeometry 在同一可执行文件的 LoadGeometry.cpp 中定义
-Geometry *LoadGeometry(VulkanDevice *device, const VIL *vil, const OSString &filename);
-Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device, const VIL *vil, const void *bytes, const uint32 size, const OSString &debug_name);
+Geometry *LoadGeometry(VulkanDevice *device, const GeometryVertexFormat &geometry_vertex_format, const OSString &filename);
+Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device, const GeometryVertexFormat &geometry_vertex_format, const void *bytes, const uint32 size, const OSString &debug_name);
 
 namespace
 {
+GeometryVertexFormat CreateGeometryVertexFormatFromVIL(const VIL *vil)
+{
+    GeometryVertexFormat gvf;
+    if(!vil)
+        return gvf;
+
+    const uint32_t count = vil->GetVertexAttribCount();
+    const VertexInputFormat *vif_list = vil->GetVIFList();
+
+    for(uint32_t i=0;i<count;i++)
+    {
+        const VertexInputFormat &vif = vif_list[i];
+        gvf.Add(vif.semantic, vif.format, uint8_t(vif.vec_size), uint32_t(vif.stride));
+    }
+
+    return gvf;
+}
 
 // ---- packed structures (mirror the exporter layout) ------------------------
 
@@ -151,7 +169,7 @@ static bool TryLoadScene(
     hgl::io::minipack::MiniPackMemory *mpm,
     VulkanDevice             *device,
     GeometryManager          *geo_mgr,
-    const VIL                *vil,
+    const GeometryVertexFormat &geometry_vertex_format,
     MaterialInstance * const *mi_array,
     int                       mi_count,
     Pipeline                 *default_pipeline,
@@ -329,7 +347,7 @@ static bool TryLoadScene(
             const OSString geo_debug_name =
                 pack_path + OS_TEXT("#GeometryBlob[") + OSString::numberOf(i) + OS_TEXT("]");
 
-            Geometry *geo = LoadGeometryFromMiniPackBytes(device, vil, geo_blob, gv[i].blob_size, geo_debug_name);
+            Geometry *geo = LoadGeometryFromMiniPackBytes(device, geometry_vertex_format, geo_blob, gv[i].blob_size, geo_debug_name);
             if (!geo)
             {
                 MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: failed to load inlined geometry #") + OSString::numberOf(i) + OS_TEXT(" from ") + pack_path);
@@ -405,7 +423,7 @@ static bool TryLoadScene(
 
                         const OSString geo_path = base_dir + OS_TEXT("/") + hgl::ToOSString(geo_file);
 
-                        geo = LoadGeometry(device, vil, geo_path);
+                        geo = LoadGeometry(device, geometry_vertex_format, geo_path);
                         if (!geo)
                         {
                             MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: failed to load geometry: ") + geo_path);
@@ -707,6 +725,8 @@ StaticMesh *LoadStaticMeshScene(
         return nullptr;
     }
 
+    const GeometryVertexFormat geometry_vertex_format = CreateGeometryVertexFormatFromVIL(vil);
+
     MiniPackMemory *mpm = GetMiniPackMemory(pack_path);
     if (!mpm)
     {
@@ -724,7 +744,7 @@ StaticMesh *LoadStaticMeshScene(
                 mpm,
                 device,
                 geo_mgr,
-                vil,
+                geometry_vertex_format,
                 mi_array,
                 mi_count,
                 default_pipeline,
@@ -852,7 +872,7 @@ StaticMesh *LoadStaticMeshScene(
 
                 const OSString geo_path = base_dir + OS_TEXT("/") + hgl::ToOSString(geo_file);
 
-                Geometry *geo = LoadGeometry(device, vil, geo_path);
+                Geometry *geo = LoadGeometry(device, geometry_vertex_format, geo_path);
                 if (!geo)
                 {
                     MLogError(LoadStaticMesh,

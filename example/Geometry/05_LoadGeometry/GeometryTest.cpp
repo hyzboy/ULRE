@@ -2,6 +2,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -31,6 +32,24 @@ using namespace hgl::graph;
 
 namespace
 {
+    GeometryVertexFormat CreateGeometryVertexFormatFromVIL(const VIL *vil)
+    {
+        GeometryVertexFormat gvf;
+        if(!vil)
+            return gvf;
+
+        const uint32_t count = vil->GetVertexAttribCount();
+        const VertexInputFormat *vif_list = vil->GetVIFList();
+
+        for(uint32_t i=0;i<count;i++)
+        {
+            const VertexInputFormat &vif = vif_list[i];
+            gvf.Add(vif.semantic, vif.format, uint8_t(vif.vec_size), uint32_t(vif.stride));
+        }
+
+        return gvf;
+    }
+
     GeometryVertexFormat CreatePureColor3DGeometryVertexFormat()
     {
         GeometryVertexFormat gvf;
@@ -40,7 +59,7 @@ namespace
 }
 
 namespace hgl::graph{
-Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filename);
+Geometry *LoadGeometry(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,const OSString &filename);
 }//namespace hgl::graph
 
 constexpr const COLOR TestColor[] =
@@ -261,12 +280,13 @@ private:
     bool CreateGeometryMesh()
     {
         int count=0;
+        const GeometryVertexFormat geometry_vertex_format = CreateGeometryVertexFormatFromVIL(solid.vil);
 
         for(int i=0;i< COLOR_COUNT;i++)
         {
             OSString fn = OSString(OS_TEXT("res/model/Chess/ABeautifulGame.")) + OSString::numberOf(i) + OS_TEXT(".geometry");
 
-            Geometry *geo = LoadGeometry(GetDevice(),solid.vil,fn);
+            Geometry *geo = LoadGeometry(GetDevice(),geometry_vertex_format,fn);
 
             if(!geo)
                 continue;

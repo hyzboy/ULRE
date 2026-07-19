@@ -16,24 +16,6 @@ DEFINE_LOGGER_MODULE(LoadGeometry)
 namespace hgl::graph{
 namespace
 {
-    GeometryVertexFormat CreateGeometryVertexFormatFromVIL(const VIL *vil)
-    {
-        GeometryVertexFormat gvf;
-        if(!vil)
-            return gvf;
-
-        const uint32_t count = vil->GetVertexAttribCount();
-        const VertexInputFormat *vif_list = vil->GetVIFList();
-
-        for(uint32_t i=0;i<count;i++)
-        {
-            const VertexInputFormat &vif = vif_list[i];
-            gvf.Add(vif.semantic, vif.format, uint8_t(vif.vec_size), uint32_t(vif.stride));
-        }
-
-        return gvf;
-    }
-
 #pragma pack(push,1)
     struct GeometryHeader
     {
@@ -179,107 +161,81 @@ namespace
     // Read attributes/VBOs using AttributeMeta views
     bool ReadAttributesVBO(hgl::io::minipack::MiniPackReader *mpr,
                            GeometryData *geo_data,
-                           const VIL *vil,
+                           const GeometryVertexFormat &geometry_vertex_format,
                            const GeometryHeader &header,
                            const uint8_t *attribute_format,
                            const uint8_t *attribute_name_length,
                            const char *names_ptr,
                            const OSString &filename)
     {
-        if(!vil)
+        const uint32_t gvf_attr_count = geometry_vertex_format.GetCount();
+        if(gvf_attr_count == 0)
         {
-            MLogError(LoadGeometry,OS_TEXT("VIL is null for file ") + filename);
+            MLogError(LoadGeometry,OS_TEXT("GeometryVertexFormat has no attributes for file ") + filename);
             return false;
         }
 
-        const uint32_t vil_attr_count = vil->GetVertexAttribCount();
-        if(header.attributeCount < vil_attr_count)
+        if(header.attributeCount < gvf_attr_count)
         {
-            MLogNotice(LoadGeometry,OS_TEXT("File has fewer attributes(") + OSString::numberOf(header.attributeCount) + OS_TEXT(") than VIL(") + OSString::numberOf(vil_attr_count) + OS_TEXT(") in ") + filename);
+            MLogError(LoadGeometry,OS_TEXT("File has fewer attributes(") + OSString::numberOf(header.attributeCount)
+                + OS_TEXT(") and GeometryVertexFormat(") + OSString::numberOf(gvf_attr_count) + OS_TEXT(") in ") + filename);
+            return false;
         }
 
-        // helper to find meta index by name
-        auto find_meta_index_by_name = [&](const char *target_name, uint8_t &out_len)->int
+        if(header.attributeCount > gvf_attr_count)
         {
-            const char *p = names_ptr;
-            for(uint32_t i = 0; i < header.attributeCount; ++i)
-            {
-                const uint8_t len = attribute_name_length[i];
-                // compare lengths first
-                if(static_cast<size_t>(len) == hgl::strlen(target_name))
-                {
-                    if(::hgl::stricmp(p, target_name, len) == 0)
-                    {
-                        out_len = len;
-                        return static_cast<int>(i);
-                    }
-                }
-                p += len + 1; // skip 0
-            }
-            return -1;
-        };
+            MLogNotice(LoadGeometry,OS_TEXT("File has extra attributes(") + OSString::numberOf(header.attributeCount)
+                + OS_TEXT(") than GeometryVertexFormat(") + OSString::numberOf(gvf_attr_count) + OS_TEXT(") in ") + filename);
+        }
 
-        for(uint32_t vab_index = 0; vab_index < vil_attr_count; ++vab_index)
+        const char *name_ptr = names_ptr;
+        for(uint32_t vab_index = 0; vab_index < gvf_attr_count; ++vab_index)
         {
-            const VIF *vif = vil->GetConfig(vab_index);
-            if(!vif || !vif->name)
+            const GeometryVertexAttributeFormat *geometry_attribute = geometry_vertex_format.Get(vab_index);
+            if(!geometry_attribute)
             {
-                MLogError(LoadGeometry,OS_TEXT("Invalid VIF at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
+                MLogError(LoadGeometry,OS_TEXT("Invalid GeometryVertexFormat attribute index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
                 return false;
             }
 
-            const char *attr_name = vif->name;
-
-            // find this attribute in meta by name
-            uint8_t meta_name_len = 0;
-            int meta_index = find_meta_index_by_name(attr_name, meta_name_len);
-            if(meta_index < 0)
+            if(geometry_attribute->format != static_cast<VkFormat>(attribute_format[vab_index]))
             {
-                // attribute expected by VIL but not present in file meta
-                MLogNotice(LoadGeometry,OS_TEXT("Attribute name '") + ToOSString(attr_name) + OS_TEXT("' not found in AttributeMeta, file ") + filename);
-                // try to read by name anyway; if missing, we'll error below
-            }
-            else
-            {
-                // verify format match if meta has it
-                if(vif->format != static_cast<VkFormat>(attribute_format[meta_index]))
-                {
-                    MLogError(LoadGeometry,OS_TEXT("Attribute format mismatch for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
-                    return false;
-                }
+                MLogError(LoadGeometry,OS_TEXT("Attribute format mismatch at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
+                return false;
             }
 
-            // locate entry in minipack by this VIL-provided name
-            const int32 attr_entry_index = mpr->FindFile(AnsiStringView(attr_name));
+            const uint8_t attr_name_length = attribute_name_length[vab_index];
+            const int32 attr_entry_index = mpr->FindFile(AnsiStringView(name_ptr, attr_name_length));
             if(attr_entry_index < 0)
             {
-                MLogError(LoadGeometry,OS_TEXT("Attribute entry '") + ToOSString(attr_name) + OS_TEXT("' not found in minipack, file ") + filename);
+                MLogError(LoadGeometry,OS_TEXT("Attribute entry not found at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
                 return false;
             }
 
             VAB *vab = geo_data->GetVAB(vab_index);
             if(!vab)
             {
-                MLogError(LoadGeometry,OS_TEXT("Cannot get VAB for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
+                MLogError(LoadGeometry,OS_TEXT("Cannot get VAB for attribute index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
                 return false;
             }
 
             void *vab_ptr = vab->Map(0, header.vertexCount);
             if(!vab_ptr)
             {
-                MLogError(LoadGeometry,OS_TEXT("Cannot map VAB for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
+                MLogError(LoadGeometry,OS_TEXT("Cannot map VAB for attribute index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
                 return false;
             }
 
-            const size_t attribute_size = size_t(header.vertexCount) * GetStrideByFormat(vif->format);
+            const size_t attribute_size = size_t(header.vertexCount) * GetStrideByFormat(geometry_attribute->format);
             if(mpr->ReadFile(attr_entry_index, vab_ptr, 0, static_cast<uint32>(attribute_size)) != attribute_size)
             {
-                MLogError(LoadGeometry,OS_TEXT("Cannot read attribute data for attribute '") + ToOSString(attr_name) + OS_TEXT("' from file ") + filename);
+                MLogError(LoadGeometry,OS_TEXT("Cannot read attribute data for attribute index ") + OSString::numberOf(vab_index) + OS_TEXT(" from file ") + filename);
                 vab->Unmap();
                 return false;
             }
 
             vab->Unmap();
+            name_ptr += attr_name_length + 1;
         }
 
         return true;
@@ -342,7 +298,7 @@ namespace
     // Orchestrate reading attributes and indices into GeometryData
     bool ReadGeometryData(hgl::io::minipack::MiniPackReader *mpr,
                           GeometryData *geo_data,
-                          const VIL *vil,
+                          const GeometryVertexFormat &geometry_vertex_format,
                           const GeometryHeader &header,
                           const OSString &filename)
     {
@@ -362,7 +318,7 @@ namespace
             if(!ReadAttributeMeta(mpr, header, filename, attrmeta, attribute_format, attribute_name_length, names_ptr))
                 return false;
 
-            if(!ReadAttributesVBO(mpr, geo_data, vil, header, attribute_format, attribute_name_length, names_ptr, filename))
+            if(!ReadAttributesVBO(mpr, geo_data, geometry_vertex_format, header, attribute_format, attribute_name_length, names_ptr, filename))
                 return false;
         }
 
@@ -376,7 +332,7 @@ namespace
     }
 }
 
-static Geometry *LoadGeometryFromReader(VulkanDevice *device,const VIL *vil,hgl::io::minipack::MiniPackReader *mpr,const OSString &debug_name)
+static Geometry *LoadGeometryFromReader(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,hgl::io::minipack::MiniPackReader *mpr,const OSString &debug_name)
 {
     // 1) Read GeometryHeader
     GeometryHeader header{};
@@ -390,7 +346,6 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const VIL *vil,hgl:
         return nullptr;
 
     // 3) Create GeometryData and VABs
-    const GeometryVertexFormat geometry_vertex_format=CreateGeometryVertexFormatFromVIL(vil);
     GeometryData *geo_data=CreateGeometryData(device,geometry_vertex_format,header.vertexCount);
 
     if(!geo_data)
@@ -407,7 +362,7 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const VIL *vil,hgl:
     }
 
     // 4) Read attributes and indices into GeometryData
-    if(!ReadGeometryData(mpr, geo_data, vil, header, debug_name))
+    if(!ReadGeometryData(mpr, geo_data, geometry_vertex_format, header, debug_name))
     {
         delete geo_data;
         return nullptr;
@@ -428,7 +383,7 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const VIL *vil,hgl:
     return geometry;
 }
 
-Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filename)
+Geometry *LoadGeometry(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,const OSString &filename)
 {
     using namespace hgl::io::minipack;
 
@@ -440,13 +395,13 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
         return(nullptr);
     }
 
-    Geometry *geometry = LoadGeometryFromReader(device,vil,mpr,filename);
+    Geometry *geometry = LoadGeometryFromReader(device,geometry_vertex_format,mpr,filename);
 
     delete mpr;
     return geometry;
 }
 
-Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device,const VIL *vil,const void *bytes,const uint32 size,const OSString &debug_name)
+Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,const void *bytes,const uint32 size,const OSString &debug_name)
 {
     using namespace hgl::io;
     using namespace hgl::io::minipack;
@@ -473,7 +428,7 @@ Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device,const VIL *vil,cons
         return nullptr;
     }
 
-    Geometry *geometry = LoadGeometryFromReader(device,vil,mpr,debug_name);
+    Geometry *geometry = LoadGeometryFromReader(device,geometry_vertex_format,mpr,debug_name);
 
     delete mpr;
     return geometry;
