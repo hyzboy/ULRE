@@ -4,7 +4,6 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/Extruded.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -26,6 +25,17 @@
 
 using namespace hgl;
 using namespace hgl::graph;
+
+namespace
+{
+    GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        return gvf;
+    }
+}
 
 class ExtrudedPolygonTestApp : public WorkObject
 {
@@ -92,8 +102,7 @@ private:
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
-            BuildGeometryVertexFormatFromVIFList(material_instance->GetVIL()->GetVIFList(),
-                                                 material_instance->GetVIL()->GetVertexAttribCount()));
+            CreateGizmo3DGeometryVertexFormat());
 
         // 测试1: 矩形挤压成立方体
         prim_rect_cube = CreateExtrudedRectangle(pc.get(), 2.0f, 1.5f, 1.0f, math::Vector3f(0, 0, 1));

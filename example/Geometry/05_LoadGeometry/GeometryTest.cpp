@@ -2,7 +2,6 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -29,6 +28,16 @@
 
 using namespace hgl;
 using namespace hgl::graph;
+
+namespace
+{
+    GeometryVertexFormat CreatePureColor3DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        return gvf;
+    }
+}
 
 namespace hgl::graph{
 Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filename);
@@ -201,9 +210,7 @@ private:
         if (!device || !geometry_manager)
             return false;
 
-        const GeometryVertexFormat geometry_vertex_format=
-            BuildGeometryVertexFormatFromVIFList(wire.material->GetDefaultVIL()->GetVIFList(),wire.material->GetDefaultVIL()->GetVertexAttribCount());
-        auto pc = std::make_unique<GeometryCreater>(device, geometry_vertex_format);
+        auto pc = std::make_unique<GeometryCreater>(device, CreatePureColor3DGeometryVertexFormat());
 
         inline_geometry::BoundingBoxCreateInfo bbci;
 

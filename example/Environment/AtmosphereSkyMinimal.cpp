@@ -1,7 +1,6 @@
-﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -20,6 +19,16 @@
 
 using namespace hgl;
 using namespace hgl::graph;
+
+namespace
+{
+    GeometryVertexFormat CreateSkyMinimalGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        return gvf;
+    }
+}
 
 class TestApp:public WorkObject
 {
@@ -81,8 +90,7 @@ private:
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
-            BuildGeometryVertexFormatFromVIFList(mi_sky_sphere->GetVIL()->GetVIFList(),
-                                                 mi_sky_sphere->GetVIL()->GetVertexAttribCount()));
+            CreateSkyMinimalGeometryVertexFormat());
 
         struct HexSphereCreateInfo hsci;
 

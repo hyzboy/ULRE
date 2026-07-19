@@ -8,7 +8,6 @@
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/geo/VKGeometryData.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/io/MiniPack.h>
 #include<hgl/io/MemoryInputStream.h>
 
@@ -17,6 +16,24 @@ DEFINE_LOGGER_MODULE(LoadGeometry)
 namespace hgl::graph{
 namespace
 {
+    GeometryVertexFormat CreateGeometryVertexFormatFromVIL(const VIL *vil)
+    {
+        GeometryVertexFormat gvf;
+        if(!vil)
+            return gvf;
+
+        const uint32_t count = vil->GetVertexAttribCount();
+        const VertexInputFormat *vif_list = vil->GetVIFList();
+
+        for(uint32_t i=0;i<count;i++)
+        {
+            const VertexInputFormat &vif = vif_list[i];
+            gvf.Add(vif.semantic, vif.format, uint8_t(vif.vec_size), uint32_t(vif.stride));
+        }
+
+        return gvf;
+    }
+
 #pragma pack(push,1)
     struct GeometryHeader
     {
@@ -373,7 +390,7 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const VIL *vil,hgl:
         return nullptr;
 
     // 3) Create GeometryData and VABs
-    const GeometryVertexFormat geometry_vertex_format=BuildGeometryVertexFormatFromVIFList(vil->GetVIFList(),vil->GetVertexAttribCount());
+    const GeometryVertexFormat geometry_vertex_format=CreateGeometryVertexFormatFromVIL(vil);
     GeometryData *geo_data=CreateGeometryData(device,geometry_vertex_format,header.vertexCount);
 
     if(!geo_data)

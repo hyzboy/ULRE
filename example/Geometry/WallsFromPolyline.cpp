@@ -3,7 +3,6 @@
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
@@ -27,6 +26,18 @@
 
 using namespace hgl;
 using namespace hgl::graph;
+
+namespace
+{
+    GeometryVertexFormat CreateStandardGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        gvf.Add(VertexSemantic::TexCoord, VF_V2F, 2, sizeof(float) * 2);
+        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        return gvf;
+    }
+}
 
 class TestApp:public WorkObject
 {
@@ -170,14 +181,13 @@ public:
         pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
         if(!pipeline) return false;
 
-        const VIL *vil = material->GetDefaultVIL();
         auto* buffer_manager = graphics_context->GetBufferManager();
         if (!buffer_manager)
             return false;
 
         mesh_vdm = new VertexDataManager(
             buffer_manager,
-            BuildGeometryVertexFormatFromVIFList(vil->GetVIFList(),vil->GetVertexAttribCount()));
+            CreateStandardGeometryVertexFormat());
         if (!mesh_vdm)
             return false;
         if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))
