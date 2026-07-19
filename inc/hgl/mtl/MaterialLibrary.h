@@ -30,7 +30,6 @@ enum class MaterialPreset:uint8
     Gizmo3D,
 
     SkyMinimal,
-    Billboard2D,
     Standard,
     StandardTextureArray,
     PBRColor3D,

@@ -84,21 +84,6 @@ public:
 
 DECLARE_MATERIAL_CREATOR(SkyMinimal,        const SkyMinimalCreateConfig)
 
-struct BillboardMaterialCreateConfig:public Material3DCreateConfig
-{
-    bool        fixed_size;             ///<固定大小(指像素尺寸)
-
-    Vector2u    pixel_size;             ///<像素尺寸
-
-    VkFrontFace front_face=VK_FRONT_FACE_CLOCKWISE; ///<正面朝向
-
-public:
-
-    using Material3DCreateConfig::Material3DCreateConfig;
-};
-
-DECLARE_MATERIAL_CREATOR(Billboard2D, BillboardMaterialCreateConfig)
-
 struct StandardMaterialInstance
 {
     uint32 base_color;      ///<基础颜色
