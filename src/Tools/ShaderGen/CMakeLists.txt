@@ -30,8 +30,28 @@ CreateProject(VulkanPhysicalDeviceProfileCollector)
 
 ####################################################################################################
 
+add_executable(BindingContractRegressionGate
+    BindingContractRegressionGate.cpp)
+
+target_link_libraries(BindingContractRegressionGate
+    PRIVATE ULRE.ShaderGen
+            CMCore
+            CMMath
+            CMCoreType)
+
+CreateProject(BindingContractRegressionGate)
+
+if(BUILD_TESTING)
+    add_test(
+        NAME binding_contract_regression_gate
+        COMMAND BindingContractRegressionGate)
+endif()
+
+####################################################################################################
+
 
 # 需要时可直接运行：
 #   cmake --build <build_dir> --target MaterialPresetExhaustiveCompile
+#   cmake --build <build_dir> --target BindingContractRegressionGate
 # 在生成目录执行：
 #   .\\test\\Debug\\MaterialPresetExhaustiveCompile.exe
