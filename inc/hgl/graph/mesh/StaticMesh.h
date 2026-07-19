@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/type/ManagedArray.h>
 #include <hgl/type/OrderedSet.h>
@@ -81,7 +81,7 @@ public: // Primitive 管理
 
     void                        ClearPrimitives     ();                                                                 ///< 清空并销毁所有 Primitive
 
-    void                        UpdatePrimitives  ();                                                                   ///< 当 Geometry/VIL 数据发生变化时,更新所有 Primitive 的渲染数据
+    void                        UpdatePrimitives  ();                                                                   ///< 当 Geometry/顶点绑定数据发生变化时,更新所有 Primitive 的渲染数据
 
 public: // 包围盒
 
@@ -103,3 +103,4 @@ public: // 场景树
 
 };//class StaticMesh
 }//namespace hgl::graph
+

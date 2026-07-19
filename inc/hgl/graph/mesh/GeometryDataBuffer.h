@@ -1,8 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VK.h>
+#include<hgl/vk/VKVertexInputFormat.h>
 
 namespace hgl::graph{
+
+
 /**
 * 原始图元数据缓冲区<Br>
 * 提供在渲染之前的数据绑定信息
@@ -53,7 +56,6 @@ public:
         // Compare vab_offset arrays
         if(auto cmp = mem_compare(vab_offset, geom_data_buffer.vab_offset, vab_count); cmp != 0)
             return cmp <=> 0;
-
         // Compare ibo pointers
         return ibo <=> geom_data_buffer.ibo;
     }
@@ -81,7 +83,6 @@ public:
         // 比较 vab_offset 数组
         if(mem_compare(vab_offset, other.vab_offset, vab_count) != 0)
             return false;
-
         // 比较 ibo 指针
         if(ibo != other.ibo)
             return false;
@@ -99,6 +100,8 @@ public:
         return !(*this == other);
     }
 
-    bool Update(const Geometry *,const VIL *);
+    bool Update(const Geometry *,const VertexInputFormat *,uint32_t);
 };//struct GeometryDataBuffer
 }//namespace hgl::graph
+
+

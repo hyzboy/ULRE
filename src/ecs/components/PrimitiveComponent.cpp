@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterial.h>
@@ -61,6 +61,9 @@ namespace hgl::ecs
 
     hgl::graph::Pipeline* PrimitiveComponent::GetPipeline() const
     {
+        if (overridePipeline)
+            return overridePipeline;
+
         if (!primitive)
             return nullptr;
 
@@ -115,7 +118,9 @@ namespace hgl::ecs
         // Just clear our references
         primitive = nullptr;
         overrideMaterial = nullptr;
+        overridePipeline = nullptr;
     }
 }//namespace hgl::ecs
+
 
 

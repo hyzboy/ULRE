@@ -70,7 +70,8 @@ bool Primitive::UpdateGeometry()
     if(draw_range.index_count>draw_range.data_index_count)
         draw_range.index_count = draw_range.data_index_count;
 
-    return data_buffer->Update(geometry,mat_inst->GetVIL());
+    const VIL *vil = mat_inst ? mat_inst->GetVIL() : nullptr;
+    return data_buffer->Update(geometry, vil ? vil->GetVIFList() : nullptr, vil ? vil->GetVertexAttribCount() : 0);
 }
 
 Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p)
@@ -154,9 +155,12 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
     return(new Primitive(geom,mi,p,geom_data_buffer));
 }
 
-bool GeometryDataBuffer::Update(const Geometry *geom,const VIL *vil)
+bool GeometryDataBuffer::Update(const Geometry *geom,const VertexInputFormat *vif_list,uint32_t vif_count)
 {
-    if(!geom||!vil)
+    if(!geom)
+        return(false);
+
+    if(vif_count>0 && !vif_list)
         return(false);
 
     ibo=geom->GetIBO();
@@ -168,18 +172,14 @@ bool GeometryDataBuffer::Update(const Geometry *geom,const VIL *vil)
         vab_offset[i]=0;
     }
 
-    const uint32_t input_count=vil->GetVertexAttribCount();
-    const VertexInputFormat *vif=vil->GetVIFList();
-
-    for(uint i=0;i<input_count;i++)
+    for(uint32_t i=0;i<vif_count;i++)
     {
-        if(vif->binding<vab_count)
+        const VertexInputFormat &vif = vif_list[i];
+        if(vif.binding>=0 && uint32_t(vif.binding)<vab_count)
         {
-            vab_list[vif->binding]=geom->GetVkBuffer(vif->semantic);
-            vab_offset[vif->binding]=0;
+            vab_list[vif.binding]=geom->GetVkBuffer(vif.semantic);
+            vab_offset[vif.binding]=0;
         }
-
-        ++vif;
     }
 
     return(true);
@@ -221,3 +221,5 @@ bool Primitive::SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t
 }
 
 }//namespace hgl::graph
+
+

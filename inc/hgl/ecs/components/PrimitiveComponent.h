@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<glm/glm.hpp>
@@ -38,8 +38,9 @@ namespace hgl::ecs
     {
     private:
 
-        hgl::graph::Primitive* primitive;              // The primitive to render (not owned)
-        hgl::graph::MaterialInstance* overrideMaterial; // Optional material override (not owned)
+        hgl::graph::Primitive* primitive;                // The primitive to render (not owned)
+        hgl::graph::MaterialInstance* overrideMaterial;   // Optional material override (not owned)
+        hgl::graph::Pipeline* overridePipeline;           // Optional pipeline override (not owned)
 
     public:
 
@@ -47,6 +48,7 @@ namespace hgl::ecs
             : RenderableComponent(name)
             , primitive(nullptr)
             , overrideMaterial(nullptr)
+            , overridePipeline(nullptr)
         {
         }
 
@@ -64,6 +66,10 @@ namespace hgl::ecs
         void SetOverrideMaterial(hgl::graph::MaterialInstance* mi);
         hgl::graph::MaterialInstance* GetOverrideMaterial() const { return overrideMaterial; }
         void ClearOverrideMaterial() { overrideMaterial = nullptr; }
+
+        void SetOverridePipeline(hgl::graph::Pipeline* p) { overridePipeline = p; }
+        hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }
+        void ClearOverridePipeline() { overridePipeline = nullptr; }
 
         // Material access (returns override if set, otherwise primitive's material)
         hgl::graph::MaterialInstance* GetMaterialInstance() const;
@@ -89,3 +95,4 @@ namespace hgl::ecs
         void OnDetach() override;
     };
 }//namespace hgl::ecs
+
