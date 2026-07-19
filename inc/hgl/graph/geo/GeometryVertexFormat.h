@@ -135,6 +135,32 @@ namespace hgl::graph
         GeometryVertexMatchKind overall = GeometryVertexMatchKind::Exact;
         std::vector<GeometryVertexAttributeMatch> attributes;
 
+        const GeometryVertexAttributeMatch *FirstByKind(const GeometryVertexMatchKind expected_kind) const
+        {
+            for (const auto &attribute : attributes)
+            {
+                if (attribute.kind == expected_kind)
+                    return &attribute;
+            }
+
+            return nullptr;
+        }
+
+        bool HasMismatch() const
+        {
+            return FirstByKind(GeometryVertexMatchKind::Mismatch) != nullptr;
+        }
+
+        bool HasUnsupported() const
+        {
+            return FirstByKind(GeometryVertexMatchKind::Unsupported) != nullptr;
+        }
+
+        bool HasCompatible() const
+        {
+            return FirstByKind(GeometryVertexMatchKind::Compatible) != nullptr;
+        }
+
         bool IsDirectBindSatisfied() const
         {
             return overall == GeometryVertexMatchKind::Exact;

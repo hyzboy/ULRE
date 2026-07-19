@@ -101,7 +101,13 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
     if(!match_result.IsDirectBindSatisfied())
     {
         const GeometryVertexAttributeMatch *first_issue=match_result.FirstNonExact();
+        const GeometryVertexAttributeMatch *first_mismatch=match_result.FirstByKind(GeometryVertexMatchKind::Mismatch);
+        const GeometryVertexAttributeMatch *first_unsupported=match_result.FirstByKind(GeometryVertexMatchKind::Unsupported);
+        const GeometryVertexAttributeMatch *first_compatible=match_result.FirstByKind(GeometryVertexMatchKind::Compatible);
         const GeometryVertexAttributeMatch *first_compatibility=match_result.FirstRegisteredCompatibilityRule();
+        const char *failure_kind = match_result.HasMismatch() ? "Mismatch"
+                                  : (match_result.HasUnsupported() ? "Unsupported"
+                                  : (match_result.HasCompatible() ? "Compatible" : "Unknown"));
 
         if(first_issue)
         {
@@ -117,6 +123,13 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
                         AnsiString(") Precision(")+GetAttributePrecisionGradeName(first_issue->compatibility_precision)+
                         AnsiString(") RuntimeCost(")+GetAttributeRuntimeCostName(first_issue->compatibility_runtime_cost)+
                         AnsiString(") RequiresExplicitHandling(")+(match_result.RequiresExplicitHandling()?"true":"false")+
+                        AnsiString(") FailureKind(")+failure_kind+
+                        AnsiString(") HasMismatch(")+(match_result.HasMismatch()?"true":"false")+
+                        AnsiString(") HasUnsupported(")+(match_result.HasUnsupported()?"true":"false")+
+                        AnsiString(") HasCompatible(")+(match_result.HasCompatible()?"true":"false")+
+                        AnsiString(") FirstMismatchSemantic(")+(first_mismatch?GetVertexSemanticName(first_mismatch->semantic):"None")+
+                        AnsiString(") FirstUnsupportedSemantic(")+(first_unsupported?GetVertexSemanticName(first_unsupported->semantic):"None")+
+                        AnsiString(") FirstCompatibleSemantic(")+(first_compatible?GetVertexSemanticName(first_compatible->semantic):"None")+
                         AnsiString(") HasAnyRegisteredCompatibility(")+(first_compatibility?"true":"false")+
                         AnsiString(")");
         }
