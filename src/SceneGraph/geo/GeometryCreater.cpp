@@ -6,7 +6,6 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/geo/VKGeometryData.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/graph/module/BufferManager.h>
 
 namespace hgl::graph{
@@ -212,21 +211,6 @@ Geometry *GeometryCreater::Create()
 // -----------------------------------------------------------------------------
 //  新增：直接创建 Geometry 的便捷函数
 // -----------------------------------------------------------------------------
-Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString &name, const uint32_t vertex_count, const uint32_t index_count , IndexType it, BufferManager *bm, BufferAllocPolicy policy)
-{
-    if(!vil)
-        return nullptr;
-
-    return CreateGeometry(device,
-                          BuildGeometryVertexFormatFromVIFList(vil->GetVIFList(),vil->GetVertexAttribCount()),
-                          name,
-                          vertex_count,
-                          index_count,
-                          it,
-                          bm,
-                          policy);
-}
-
 Geometry *CreateGeometry(VulkanDevice *device, const GeometryVertexFormat &geometry_vertex_format, const AnsiString &name, const uint32_t vertex_count, const uint32_t index_count , IndexType it, BufferManager *bm, BufferAllocPolicy policy)
 {
     if(!device || name.IsEmpty() || vertex_count==0)

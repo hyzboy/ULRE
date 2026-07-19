@@ -136,13 +136,4 @@ Geometry *CreateGeometry(         VulkanDevice *  device,
                                     IndexType       it          = IndexType::AUTO,
                                     BufferManager * bm          = nullptr,
                                     BufferAllocPolicy policy    = BufferAllocPolicy::GPUOnly);
-
-Geometry *CreateGeometry(         VulkanDevice *  device,
-                            const   VIL *           vil,
-                            const   AnsiString &    name,
-                            const   uint32_t        vertex_count,
-                            const   uint32_t        index_count = 0,
-                                    IndexType       it          = IndexType::AUTO,
-                                    BufferManager * bm          = nullptr,
-                                    BufferAllocPolicy policy    = BufferAllocPolicy::GPUOnly);
 }//namespace hgl::graph

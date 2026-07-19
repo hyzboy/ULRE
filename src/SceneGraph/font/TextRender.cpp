@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/font/TextRender.h>
+#include<hgl/graph/font/TextRender.h>
 #include<hgl/graph/font/TextGeometry.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextLayout.h>
@@ -206,7 +206,7 @@ namespace hgl::graph
 
     TextGeometry *TextRender::Begin(const TextGeometryType &tpt,int limit)
     {
-        TextGeometry *tr=new TextGeometry(device,mi_fs->GetVIL(),limit);
+        TextGeometry *tr=new TextGeometry(device,CreateTextGeometryVertexFormat(),limit);
 
         text_geometry_set.Add(tr);
 

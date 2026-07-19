@@ -16,13 +16,15 @@ namespace hgl::graph
         class TextLayout;
     }//namespace layout
 
+    GeometryVertexFormat CreateTextGeometryVertexFormat();
+
     /**
     * 文本图元
     */
     class TextGeometry:public Geometry
     {
         VulkanDevice *  device;
-        const VIL *     vil;
+        GeometryVertexFormat geometry_vertex_format;
 
         uint        max_count=0;                                      ///<缓冲区最大容量
         uint        draw_char_count=0;
@@ -46,7 +48,7 @@ namespace hgl::graph
 
     public:
 
-        TextGeometry(VulkanDevice *dev,const VIL *_vil,const uint32_t mc);
+        TextGeometry(VulkanDevice *dev,const GeometryVertexFormat &gvf,const uint32_t mc);
 
         void SetCharCount   (const uint);
 

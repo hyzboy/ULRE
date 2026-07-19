@@ -33,6 +33,23 @@
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        graph::GeometryVertexFormat CreateLineGeometryVertexFormat()
+        {
+            graph::GeometryVertexFormat gvf;
+
+            gvf.Add(graph::VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT, 3, sizeof(float) * 3);
+            gvf.Add(graph::VertexSemantic::Color, VK_FORMAT_R8_UINT, 1, sizeof(uint8_t));
+            gvf.Add(graph::Assign::TransformID::VIS_SEMANTIC,
+                    graph::Assign::TransformID::VAB_FMT,
+                    1,
+                    graph::Assign::TransformID::STRIDE_BYTES);
+
+            return gvf;
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Type aliases (local to this TU)
     // -------------------------------------------------------------------------
@@ -98,7 +115,9 @@ namespace hgl::ecs
 
         // Create new geometry (2 verts per line)
         const graph::AnsiString name = graph::AnsiString("LineSlot_W") + graph::AnsiString::numberOf(width);
-        geometry = graph::CreateGeometry(dev, mi->GetVIL(), name, new_cap * 2, 0,
+        geometry = graph::CreateGeometry(dev,
+                         CreateLineGeometryVertexFormat(),
+                         name, new_cap * 2, 0,
                          graph::IndexType::AUTO, nullptr,
                          graph::BufferAllocPolicy::StagedUpload);
         if (!geometry)

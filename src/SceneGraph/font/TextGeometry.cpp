@@ -3,14 +3,23 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/graph/geo/VKGeometryData.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 
 namespace hgl::graph
 {
-    TextGeometry::TextGeometry(VulkanDevice *dev,const VIL *_vil,const uint32_t mc):Geometry("TextGeometry",nullptr)
+    GeometryVertexFormat CreateTextGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+
+        gvf.Add(VertexSemantic::Position, VK_FORMAT_R16G16_SINT, 2, sizeof(int16) * 2);
+        gvf.Add(VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT, 2, sizeof(float) * 2);
+
+        return gvf;
+    }
+
+    TextGeometry::TextGeometry(VulkanDevice *dev,const GeometryVertexFormat &gvf,const uint32_t mc):Geometry("TextGeometry",nullptr)
     {
         device=dev;
-        vil=_vil;
+        geometry_vertex_format=gvf;
 
         max_count=0;
         draw_char_count=0;
@@ -35,7 +44,6 @@ namespace hgl::graph
         max_count=power_to_2(cc);
         draw_char_count=cc;
 
-        const GeometryVertexFormat geometry_vertex_format=BuildGeometryVertexFormatFromVIFList(vil->GetVIFList(),vil->GetVertexAttribCount());
         geometry_data=CreateGeometryData(device,geometry_vertex_format,max_count);
 
         geometry_data->CreateAllVAB();
