@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "../common/MFSkyLight.h"
+#include "StandardSharedSpec.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -26,34 +27,6 @@ namespace
         { VAT_VEC2, VAN::TexCoord },
         { VAT_VEC3, VAN::Normal },
     };
-
-    constexpr FixedDescriptorEntry STANDARD_ARRAY_DESCRIPTORS[] = {
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo },
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo },
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "sky", "SkyInfo", nullptr, DescriptorSemantic::SkyInfo },
-        { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld },
-        { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable },
-        { DescriptorSetType::Material, MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr, DescriptorSemantic::MaterialInstance, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::PBRSurface },
-        { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable },
-        { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable },
-        // Texture semantic declarations are kept for Recipe/contract extraction.
-        // Actual sampling is bindless 2DArray via Set 4.
-        { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2DArray", DescriptorSemantic::MaterialTexture, TextureSlot::BaseColor },
-        { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureNormal", nullptr, "sampler2DArray", DescriptorSemantic::MaterialTexture, TextureSlot::Normal },
-        { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureRoughness", nullptr, "sampler2DArray", DescriptorSemantic::MaterialTexture, TextureSlot::Roughness },
-    };
-
-    constexpr FixedMaterialDef STANDARD_ARRAY_DEF {
-        "StandardTextureArray_v1",
-        PrimitiveType::Triangles,
-        STANDARD_ARRAY_VERTEX,
-        uint32_t(sizeof(STANDARD_ARRAY_VERTEX) / sizeof(STANDARD_ARRAY_VERTEX[0])),
-        STANDARD_ARRAY_DESCRIPTORS,
-        uint32_t(sizeof(STANDARD_ARRAY_DESCRIPTORS) / sizeof(STANDARD_ARRAY_DESCRIPTORS[0])),
-        mi_codes,
-        mi_bytes,
-    };
-
 }
 
 MaterialCreateInfo *CreateStandardTextureArray(const contract::PhysicalDeviceProfileLite *profile, const Material3DCreateConfig *cfg)
@@ -63,9 +36,8 @@ MaterialCreateInfo *CreateStandardTextureArray(const contract::PhysicalDevicePro
 
     SkyLightAmbientModel ambient = cfg_with_mi.sky_ambient_model;
 
-    std::vector<FixedDescriptorEntry> dynamic_descriptors(
-        STANDARD_ARRAY_DESCRIPTORS,
-        STANDARD_ARRAY_DESCRIPTORS + uint32_t(sizeof(STANDARD_ARRAY_DESCRIPTORS) / sizeof(STANDARD_ARRAY_DESCRIPTORS[0])));
+    // Adapter layer: only difference from Standard is "sampler2DArray".
+    std::vector<FixedDescriptorEntry> dynamic_descriptors = BuildStandardDescriptors("sampler2DArray");
 
     std::vector<const char *> unused_resources;
     ApplySkyLightResourceInjection(
@@ -73,9 +45,16 @@ MaterialCreateInfo *CreateStandardTextureArray(const contract::PhysicalDevicePro
         dynamic_descriptors,
         unused_resources);
 
-    FixedMaterialDef dynamic_def = STANDARD_ARRAY_DEF;
-    dynamic_def.descriptor_entries = dynamic_descriptors.data();
-    dynamic_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
+    FixedMaterialDef dynamic_def {
+        "StandardTextureArray_v1",
+        PrimitiveType::Triangles,
+        STANDARD_ARRAY_VERTEX,
+        uint32_t(sizeof(STANDARD_ARRAY_VERTEX) / sizeof(STANDARD_ARRAY_VERTEX[0])),
+        dynamic_descriptors.data(),
+        uint32_t(dynamic_descriptors.size()),
+        mi_codes,
+        mi_bytes,
+    };
 
     CompositorAssembler assembler("ShaderLibrary");
 
@@ -87,7 +66,7 @@ MaterialCreateInfo *CreateStandardTextureArray(const contract::PhysicalDevicePro
         PlatformBackend::PC,
         "compositor/main_forward_lit.vert.glsl",
         "compositor/main_forward_lit.frag.glsl",
-        "surface/standard_texturearray_surface.glsl"
+        "surface/standard_texturearray_surface.glsl"  // adapter: 2DArray surface
     );
 
     if (!result.success)
