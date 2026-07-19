@@ -10,6 +10,7 @@ namespace hgl::graph::mtl
     struct DescriptorRequirement
     {
         DescriptorSemantic semantic = DescriptorSemantic::Unknown;
+        DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
         DescriptorSetType set_type = DescriptorSetType::Unknow;
         DescriptorKind kind = DescriptorKind::UBO;
         TextureSlot texture_slot = TextureSlot::BaseColor;
@@ -90,6 +91,37 @@ namespace hgl::graph::mtl
         }
     }
 
+    inline DescriptorSemanticLayer GetDescriptorLayerByKind(const DescriptorKind kind)
+    {
+        switch (kind)
+        {
+        case DescriptorKind::UBO: return DescriptorSemanticLayer::UBO;
+        case DescriptorKind::SSBO: return DescriptorSemanticLayer::SSBO;
+        case DescriptorKind::Texture: return DescriptorSemanticLayer::Texture;
+        case DescriptorKind::TextureSampler: return DescriptorSemanticLayer::Sampler;
+        default:
+            return DescriptorSemanticLayer::Unknown;
+        }
+    }
+
+    inline DescriptorSemanticLayer NormalizeSemanticLayer(const FixedDescriptorEntry &entry)
+    {
+        if (entry.semantic_layer != DescriptorSemanticLayer::Unknown)
+            return entry.semantic_layer;
+
+        const DescriptorSemanticLayer inferred = GetDescriptorSemanticLayer(entry.semantic);
+        if (inferred != DescriptorSemanticLayer::Unknown)
+            return inferred;
+
+        if (entry.semantic == DescriptorSemantic::LocalToWorld
+         || entry.semantic == DescriptorSemantic::MaterialInstance)
+        {
+            return GetDescriptorLayerByKind(entry.kind);
+        }
+
+        return DescriptorSemanticLayer::Unknown;
+    }
+
     inline BindingContract BuildBindingContract(const FixedDescriptorEntry *descriptor_entries,
                                                 const uint32_t descriptor_entry_count)
     {
@@ -105,6 +137,7 @@ namespace hgl::graph::mtl
 
             DescriptorRequirement req;
             req.semantic = entry.semantic;
+            req.semantic_layer = NormalizeSemanticLayer(entry);
             req.set_type = entry.set_type;
             req.kind = entry.kind;
             req.name = entry.name;
@@ -113,19 +146,21 @@ namespace hgl::graph::mtl
             req.required = IsSemanticRequired(req.semantic);
             req.allow_fallback = IsSemanticFallbackAllowed(req.semantic);
 
-            if (req.semantic == DescriptorSemantic::MaterialTexture
-             || req.semantic == DescriptorSemantic::MaterialSampler)
-            {
-                req.texture_slot = entry.texture_slot;
-            }
+            req.texture_slot = entry.texture_slot;
+            req.data_slot = entry.data_slot;
+            req.ssbo_type = entry.ssbo_type;
 
-            if (req.semantic == DescriptorSemantic::MaterialInstance)
-            {
-                req.data_slot = entry.data_slot;
-                req.ssbo_type = (entry.ssbo_type == SSBOType::UserDefined)
-                              ? DefaultSSBOTypeForDataSlot(req.data_slot)
-                              : entry.ssbo_type;
-            }
+            if (req.semantic == DescriptorSemantic::MaterialInstance && req.ssbo_type == SSBOType::UserDefined)
+                req.ssbo_type = DefaultSSBOTypeForDataSlot(req.data_slot);
+
+            if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable && req.ssbo_type == SSBOType::UserDefined)
+                req.ssbo_type = SSBOType::TextureLayer;
+
+            if (req.semantic == DescriptorSemantic::MaterialDataIndexTable && req.ssbo_type == SSBOType::UserDefined)
+                req.ssbo_type = SSBOType::DataIndex;
+
+            if (req.semantic == DescriptorSemantic::LocalToWorldIndexTable && req.ssbo_type == SSBOType::UserDefined)
+                req.ssbo_type = SSBOType::TransformIndexRows;
 
             contract.requirements.push_back(req);
         }
@@ -156,6 +191,37 @@ namespace hgl::graph::mtl
         return "Unknown";
     }
 
+    inline const char *GetDescriptorKindName(DescriptorKind kind)
+    {
+        switch (kind)
+        {
+        case DescriptorKind::UBO: return "UBO";
+        case DescriptorKind::SSBO: return "SSBO";
+        case DescriptorKind::Texture: return "Texture";
+        case DescriptorKind::TextureSampler: return "TextureSampler";
+        }
+
+        return "Unknown";
+    }
+
+    inline void AppendDiagnosticContext(std::string &message, const DescriptorRequirement &req)
+    {
+        message += " [semantic=";
+        message += GetDescriptorSemanticName(req.semantic);
+        message += ", layer=";
+        message += GetDescriptorSemanticLayerName(req.semantic_layer);
+        message += ", kind=";
+        message += GetDescriptorKindName(req.kind);
+
+        if (req.name)
+        {
+            message += ", name=";
+            message += req.name;
+        }
+
+        message += "]";
+    }
+
     inline bool ValidateBindingContract(const BindingContract &contract, std::vector<std::string> &diagnostics)
     {
         diagnostics.clear();
@@ -164,33 +230,90 @@ namespace hgl::graph::mtl
         {
             if (req.semantic == DescriptorSemantic::Unknown)
             {
-                diagnostics.emplace_back("Descriptor semantic is Unknown; every descriptor must use an explicit semantic enum.");
+                std::string message = "Descriptor semantic is Unknown; every descriptor must use an explicit semantic enum.";
+                AppendDiagnosticContext(message, req);
+                diagnostics.emplace_back(std::move(message));
                 continue;
             }
 
             if (req.semantic == DescriptorSemantic::Custom)
             {
-                diagnostics.emplace_back("Descriptor semantic is Custom; runtime contract requires concrete semantic enums.");
+                std::string message = "Descriptor semantic is Custom; runtime contract requires concrete semantic enums.";
+                AppendDiagnosticContext(message, req);
+                diagnostics.emplace_back(std::move(message));
+                continue;
+            }
+
+            if (req.semantic_layer == DescriptorSemanticLayer::Unknown)
+            {
+                std::string message = "Descriptor semantic layer is Unknown; S1 requires explicit layered semantics.";
+                AppendDiagnosticContext(message, req);
+                diagnostics.emplace_back(std::move(message));
+                continue;
+            }
+
+            const DescriptorSemanticLayer semantic_expected_layer = GetDescriptorSemanticLayer(req.semantic);
+            if (semantic_expected_layer != DescriptorSemanticLayer::Unknown && req.semantic_layer != semantic_expected_layer)
+            {
+                std::string message = "Descriptor semantic layer mismatch: expected layer=";
+                message += GetDescriptorSemanticLayerName(semantic_expected_layer);
+                message += ", actual layer=";
+                message += GetDescriptorSemanticLayerName(req.semantic_layer);
+                AppendDiagnosticContext(message, req);
+                diagnostics.emplace_back(std::move(message));
                 continue;
             }
 
             const DescriptorSetType expected_set = GetExpectedSetType(req.semantic);
             if (expected_set != DescriptorSetType::Unknow && expected_set != req.set_type)
             {
-                std::string message = "Descriptor semantic set mismatch: semantic=";
-                message += GetDescriptorSemanticName(req.semantic);
-                message += ", expected set=";
+                std::string message = "Descriptor semantic set mismatch: expected set=";
                 message += GetDescriptorSetTypeName(expected_set);
                 message += ", actual set=";
                 message += GetDescriptorSetTypeName(req.set_type);
+                AppendDiagnosticContext(message, req);
+                diagnostics.push_back(std::move(message));
+            }
 
-                if (req.name)
+            const DescriptorSemanticLayer kind_layer = GetDescriptorLayerByKind(req.kind);
+            if (kind_layer != req.semantic_layer)
+            {
+                std::string message = "Descriptor semantic layer-kind mismatch: expected kind-layer=";
+                message += GetDescriptorSemanticLayerName(req.semantic_layer);
+                message += ", actual kind-layer=";
+                message += GetDescriptorSemanticLayerName(kind_layer);
+                AppendDiagnosticContext(message, req);
+                diagnostics.push_back(std::move(message));
+            }
+
+            if (req.semantic == DescriptorSemantic::MaterialTexture
+             || req.semantic == DescriptorSemantic::MaterialSampler)
+            {
+                if (!hgl::RangeCheck(req.texture_slot))
                 {
-                    message += ", name=";
-                    message += req.name;
+                    std::string message = "Material texture semantic requires valid texture_slot.";
+                    AppendDiagnosticContext(message, req);
+                    diagnostics.push_back(std::move(message));
+                }
+            }
+
+            if (req.semantic == DescriptorSemantic::MaterialInstance
+             || req.semantic == DescriptorSemantic::MaterialTextureLayerTable
+             || req.semantic == DescriptorSemantic::MaterialDataIndexTable)
+            {
+                if (!hgl::RangeCheck(req.data_slot))
+                {
+                    std::string message = "Material SSBO semantic requires valid data_slot.";
+                    AppendDiagnosticContext(message, req);
+                    diagnostics.push_back(std::move(message));
                 }
 
-                diagnostics.push_back(std::move(message));
+                if (req.ssbo_type == SSBOType::UserDefined)
+                {
+                    std::string message = "Material SSBO semantic requires explicit ssbo_type (not UserDefined).";
+                    AppendDiagnosticContext(message, req);
+                    diagnostics.push_back(std::move(message));
+                }
             }
         }
 

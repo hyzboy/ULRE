@@ -20,5 +20,6 @@ namespace hgl::graph::mtl
         TextureSlot         texture_slot = TextureSlot::BaseColor;
         DataSlot            data_slot = DataSlot::PBRSurface;
         SSBOType            ssbo_type = SSBOType::UserDefined;
+        DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
     };
 }//namespace hgl::graph::mtl
