@@ -12,6 +12,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -212,7 +213,10 @@ private:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, solid.vil);
+        mesh_vdm = new VertexDataManager(
+            buffer_manager,
+            BuildGeometryVertexFormatFromVIFList(solid.vil->GetVIFList(),
+                                                 solid.vil->GetVertexAttribCount()));
         if (!mesh_vdm)
             return false;
         if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))
@@ -521,7 +525,10 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, wire.material->GetDefaultVIL());
+        auto pc = std::make_unique<GeometryCreater>(
+            device,
+            BuildGeometryVertexFormatFromVIFList(wire.material->GetDefaultVIL()->GetVIFList(),
+                                                 wire.material->GetDefaultVIL()->GetVertexAttribCount()));
 
         inline_geometry::BoundingBoxCreateInfo bbci;
         bbox_geometry = CreateBoundingBox(pc.get(),&bbci);
@@ -717,4 +724,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Render Bounding Box (ECS)"),argc,argv,1280,720);
 }
-

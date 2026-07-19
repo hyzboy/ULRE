@@ -11,6 +11,7 @@
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -138,7 +139,10 @@ private:
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
-        GeometryCreater pc(device, material_instance->GetVIL(), buffer_manager);
+        GeometryCreater pc(device,
+                           BuildGeometryVertexFormatFromVIFList(material_instance->GetVIL()->GetVIFList(),
+                                                                material_instance->GetVIL()->GetVertexAttribCount()),
+                           buffer_manager);
         pc.Init("Triangle", VERTEX_COUNT);
         if (!pc.WriteVAB(VAN::Position, POSITION_DATA_FORMAT, position_data) ||
             !pc.WriteVAB(VAN::Color, COLOR_DATA_FORMAT, color_data))
@@ -229,4 +233,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw triangle use ECS"),argc,argv);
 }
-

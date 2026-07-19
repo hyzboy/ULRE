@@ -1,7 +1,6 @@
-﻿#include<hgl/vk/VertexDataManager.h>
+#include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKVertexInputFormat.h>
-#include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/module/BufferManager.h>
 
@@ -9,14 +8,13 @@ DEFINE_LOGGER_MODULE(VertexDataManager)
 
 namespace hgl::graph
 {
-    VertexDataManager::VertexDataManager(VulkanDevice *dev,const VIL *_vil)
+    VertexDataManager::VertexDataManager(VulkanDevice *dev,const GeometryVertexFormat &gvf)
     {
         buffer_manager=nullptr;
         device=dev;
 
-        vil=_vil;
-        vi_count=_vil->GetVertexAttribCount();
-        vif_list=_vil->GetVIFList();     //来自于Material，不会被释放，所以指针有效
+        geometry_vertex_format=gvf;
+        vi_count=geometry_vertex_format.GetCount();
 
         vab_max_size=0;
         vab_cur_size=0;
@@ -25,17 +23,16 @@ namespace hgl::graph
         ibo_cur_size=0;
         ibo=nullptr;
 
-        LogVerbose(OS_TEXT("VertexDataManager constructed: vi_count=") + OSString::numberOf(vi_count) + OS_TEXT(", vif_list=") + OSString::numberOf((uintptr_t)vif_list));
+        LogVerbose(OS_TEXT("VertexDataManager constructed: vi_count=") + OSString::numberOf(vi_count));
     }
 
-    VertexDataManager::VertexDataManager(BufferManager *bm,const VIL *_vil)
+    VertexDataManager::VertexDataManager(BufferManager *bm,const GeometryVertexFormat &gvf)
     {
         buffer_manager=bm;
         device=bm?bm->GetDevice():nullptr;
 
-        vil=_vil;
-        vi_count=_vil->GetVertexAttribCount();
-        vif_list=_vil->GetVIFList();     //来自于Material，不会被释放，所以指针有效
+        geometry_vertex_format=gvf;
+        vi_count=geometry_vertex_format.GetCount();
 
         vab_max_size=0;
         vab_cur_size=0;
@@ -44,7 +41,7 @@ namespace hgl::graph
         ibo_cur_size=0;
         ibo=nullptr;
 
-        LogVerbose(OS_TEXT("VertexDataManager constructed: vi_count=") + OSString::numberOf(vi_count) + OS_TEXT(", vif_list=") + OSString::numberOf((uintptr_t)vif_list));
+        LogVerbose(OS_TEXT("VertexDataManager constructed: vi_count=") + OSString::numberOf(vi_count));
     }
 
     VertexDataManager::~VertexDataManager()
@@ -106,12 +103,19 @@ namespace hgl::graph
 
         for(uint i=0;i<vi_count;i++)
         {
-            LogVerbose(OS_TEXT("Creating VAB[") + OSString::numberOf(i) + OS_TEXT("] format=") + OSString::numberOf((int)vif_list[i].format) + OS_TEXT(", size=") + OSString::numberOf(vab_max_size));
+            const GeometryVertexAttributeFormat *attribute=geometry_vertex_format.Get(i);
+            if(!attribute)
+            {
+                LogError(OS_TEXT("Init failed: missing geometry vertex attribute for index=") + OSString::numberOf(i));
+                return(false);
+            }
+
+            LogVerbose(OS_TEXT("Creating VAB[") + OSString::numberOf(i) + OS_TEXT("] format=") + OSString::numberOf((int)attribute->format) + OS_TEXT(", size=") + OSString::numberOf(vab_max_size));
 
             if (buffer_manager)
-                vab[i]=buffer_manager->CreateVAB(vif_list[i].format,vab_max_size);
+                vab[i]=buffer_manager->CreateVAB(attribute->format,vab_max_size);
             else
-                vab[i]=device->CreateVAB(vif_list[i].format,vab_max_size);
+                vab[i]=device->CreateVAB(attribute->format,vab_max_size);
             if(!vab[i])
             {
                 LogError(OS_TEXT("CreateVAB failed for index=") + OSString::numberOf(i));

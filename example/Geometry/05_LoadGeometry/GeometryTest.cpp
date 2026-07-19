@@ -2,6 +2,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -200,7 +201,9 @@ private:
         if (!device || !geometry_manager)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, wire.material->GetDefaultVIL());
+        const GeometryVertexFormat geometry_vertex_format=
+            BuildGeometryVertexFormatFromVIFList(wire.material->GetDefaultVIL()->GetVIFList(),wire.material->GetDefaultVIL()->GetVertexAttribCount());
+        auto pc = std::make_unique<GeometryCreater>(device, geometry_vertex_format);
 
         inline_geometry::BoundingBoxCreateInfo bbci;
 

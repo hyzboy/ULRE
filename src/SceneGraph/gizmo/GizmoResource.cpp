@@ -8,6 +8,7 @@
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/geo/InlineGeometry.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -134,7 +135,10 @@ namespace hgl::graph
                 return(false);
 
             {
-                gizmo_triangle.vdm=new VertexDataManager(buffer_manager,gizmo_triangle.mtl->GetDefaultVIL());
+                gizmo_triangle.vdm=new VertexDataManager(
+                    buffer_manager,
+                    BuildGeometryVertexFormatFromVIFList(gizmo_triangle.mtl->GetDefaultVIL()->GetVIFList(),
+                                                         gizmo_triangle.mtl->GetDefaultVIL()->GetVertexAttribCount()));
 
                 if(!gizmo_triangle.vdm)
                     return(false);

@@ -4,6 +4,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -189,7 +190,10 @@ private:
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
-        GeometryCreater pc(device, render_obj[0].mi->GetVIL(), buffer_manager);
+        GeometryCreater pc(device,
+                           BuildGeometryVertexFormatFromVIFList(render_obj[0].mi->GetVIL()->GetVIFList(),
+                                                                render_obj[0].mi->GetVIL()->GetVertexAttribCount()),
+                           buffer_manager);
         pc.Init("TextureRect", 6);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
             !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))

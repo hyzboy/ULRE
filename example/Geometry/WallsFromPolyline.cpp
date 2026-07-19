@@ -3,6 +3,7 @@
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
@@ -174,7 +175,9 @@ public:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, vil);
+        mesh_vdm = new VertexDataManager(
+            buffer_manager,
+            BuildGeometryVertexFormatFromVIFList(vil->GetVIFList(),vil->GetVertexAttribCount()));
         if (!mesh_vdm)
             return false;
         if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))

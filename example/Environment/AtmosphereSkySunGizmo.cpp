@@ -8,6 +8,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -84,7 +85,10 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, mi_sky_sphere->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(
+            device,
+            BuildGeometryVertexFormatFromVIFList(mi_sky_sphere->GetVIL()->GetVIFList(),
+                                                 mi_sky_sphere->GetVIL()->GetVertexAttribCount()));
 
         HexSphereCreateInfo hsci;
         hsci.subdivisions = 3;

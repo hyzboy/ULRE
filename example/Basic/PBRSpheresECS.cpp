@@ -10,6 +10,7 @@
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -347,7 +348,10 @@ private:
             return false;
         }
 
-        mesh_vdm = new VertexDataManager(buffer_manager, material->GetDefaultVIL());
+        mesh_vdm = new VertexDataManager(
+            buffer_manager,
+            BuildGeometryVertexFormatFromVIFList(material->GetDefaultVIL()->GetVIFList(),
+                                                 material->GetDefaultVIL()->GetVertexAttribCount()));
         if (!mesh_vdm) {
             printf("[ERROR] InitVDM: Failed to create VertexDataManager\n");
             return false;

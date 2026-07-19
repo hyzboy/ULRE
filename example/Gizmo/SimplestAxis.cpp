@@ -5,6 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -86,7 +87,10 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material_instance->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(
+            device,
+            BuildGeometryVertexFormatFromVIFList(material_instance->GetVIL()->GetVIFList(),
+                                                 material_instance->GetVIL()->GetVertexAttribCount()));
 
         inline_geometry::AxisCreateInfo aci;
 
@@ -197,4 +201,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("SimplestAxis"),argc,argv,1280,720);
 }
-

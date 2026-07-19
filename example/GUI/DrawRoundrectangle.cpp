@@ -4,6 +4,7 @@
 #include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/math/Math.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -131,7 +132,10 @@ private:
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
-        GeometryCreater pc(device, material_instance->GetVIL(), buffer_manager);
+        GeometryCreater pc(device,
+                           BuildGeometryVertexFormatFromVIFList(material_instance->GetVIL()->GetVIFList(),
+                                                                material_instance->GetVIL()->GetVertexAttribCount()),
+                           buffer_manager);
         pc.Init("TextureRect", 6);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
             !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))
@@ -186,4 +190,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw a rectangle with texture"),argc,argv,256,256);
 }
-

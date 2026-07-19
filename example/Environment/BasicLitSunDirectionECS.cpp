@@ -3,6 +3,7 @@
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
@@ -141,7 +142,10 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, sky_material_instance->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(
+            device,
+            BuildGeometryVertexFormatFromVIFList(sky_material_instance->GetVIL()->GetVIFList(),
+                                                 sky_material_instance->GetVIL()->GetVertexAttribCount()));
         if (!pc)
             return false;
 
@@ -274,7 +278,10 @@ private:
         if (!buffer_manager)
             return false;
 
-        mesh_vdm = new VertexDataManager(buffer_manager, material->GetDefaultVIL());
+        mesh_vdm = new VertexDataManager(
+            buffer_manager,
+            BuildGeometryVertexFormatFromVIFList(material->GetDefaultVIL()->GetVIFList(),
+                                                 material->GetDefaultVIL()->GetVertexAttribCount()));
         if (!mesh_vdm)
             return false;
 

@@ -13,6 +13,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
@@ -153,7 +154,10 @@ private:
 
         // === 创建平面网格几何体 ===
         {
-            auto pc = std::make_unique<GeometryCreater>(device, mi_plane_grid->GetVIL());
+            auto pc = std::make_unique<GeometryCreater>(
+                device,
+                BuildGeometryVertexFormatFromVIFList(mi_plane_grid->GetVIL()->GetVIFList(),
+                                                     mi_plane_grid->GetVIL()->GetVertexAttribCount()));
 
             struct PlaneGridCreateInfo pgci;
 
@@ -179,7 +183,10 @@ private:
             if (!device || !buffer_manager || !geometry_manager)
                 return false;
 
-            GeometryCreater pc(device, mi_line->GetVIL(), buffer_manager);
+            GeometryCreater pc(device,
+                               BuildGeometryVertexFormatFromVIFList(mi_line->GetVIL()->GetVIFList(),
+                                                                    mi_line->GetVIL()->GetVertexAttribCount()),
+                               buffer_manager);
             pc.Init("RayLine", 2);
             if (!pc.WriteVAB(VAN::Position, VF_V3F, position_data) ||
                 !pc.WriteVAB(VAN::Luminance, VF_V1UN8, lumiance_data))
@@ -367,4 +374,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("RayPicking (ECS Version)"),argc,argv,1280,720);
 }
-

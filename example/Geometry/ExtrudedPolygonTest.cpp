@@ -4,6 +4,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/Extruded.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -89,7 +90,10 @@ private:
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material_instance->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(
+            device,
+            BuildGeometryVertexFormatFromVIFList(material_instance->GetVIL()->GetVIFList(),
+                                                 material_instance->GetVIL()->GetVertexAttribCount()));
 
         // 测试1: 矩形挤压成立方体
         prim_rect_cube = CreateExtrudedRectangle(pc.get(), 2.0f, 1.5f, 1.0f, math::Vector3f(0, 0, 1));
@@ -272,4 +276,3 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<ExtrudedPolygonTestApp>(OS_TEXT("Extruded Polygon"),argc,argv,1280,720);
 }
-

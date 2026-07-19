@@ -10,12 +10,12 @@
 #include<hgl/graph/module/BufferManager.h>
 
 namespace hgl::graph{
-GeometryCreater::GeometryCreater(VulkanDevice *dev,const VIL *v,BufferManager *bm)
+GeometryCreater::GeometryCreater(VulkanDevice *dev,const GeometryVertexFormat &gvf,BufferManager *bm)
 {
     device          =dev;
     buffer_manager  =bm;
     vdm             =nullptr;
-    vil             =v;
+    geometry_vertex_format=gvf;
 
     has_index       =false;
     geometry_data   =nullptr;
@@ -24,7 +24,7 @@ GeometryCreater::GeometryCreater(VulkanDevice *dev,const VIL *v,BufferManager *b
 }
 
 GeometryCreater::GeometryCreater(VertexDataManager *_vdm)
-    :GeometryCreater(_vdm->GetDevice(),_vdm->GetVIL(),_vdm->GetBufferManager())
+    :GeometryCreater(_vdm->GetDevice(),_vdm->GetGeometryVertexFormat(),_vdm->GetBufferManager())
 {
     vdm=_vdm;
 
@@ -59,6 +59,7 @@ bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,c
 
     if(pname.IsEmpty())return(false);
     if(vertex_count<=0)return(false);
+    if(geometry_vertex_format.GetCount()==0)return(false);
 
     if(index_count>0)
     {
@@ -80,8 +81,6 @@ bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,c
     }
 
     vertices_number=vertex_count;
-
-    const GeometryVertexFormat geometry_vertex_format=BuildGeometryVertexFormatFromVIFList(vil->GetVIFList(),vil->GetVertexAttribCount());
 
     if(vdm)
     {
@@ -215,7 +214,25 @@ Geometry *GeometryCreater::Create()
 // -----------------------------------------------------------------------------
 Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString &name, const uint32_t vertex_count, const uint32_t index_count , IndexType it, BufferManager *bm, BufferAllocPolicy policy)
 {
-    if(!device || !vil || name.IsEmpty() || vertex_count==0)
+    if(!vil)
+        return nullptr;
+
+    return CreateGeometry(device,
+                          BuildGeometryVertexFormatFromVIFList(vil->GetVIFList(),vil->GetVertexAttribCount()),
+                          name,
+                          vertex_count,
+                          index_count,
+                          it,
+                          bm,
+                          policy);
+}
+
+Geometry *CreateGeometry(VulkanDevice *device, const GeometryVertexFormat &geometry_vertex_format, const AnsiString &name, const uint32_t vertex_count, const uint32_t index_count , IndexType it, BufferManager *bm, BufferAllocPolicy policy)
+{
+    if(!device || name.IsEmpty() || vertex_count==0)
+        return nullptr;
+
+    if(geometry_vertex_format.GetCount()==0)
         return nullptr;
 
     IndexType index_type = IndexType::ERR;
@@ -237,8 +254,6 @@ Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString 
             index_type = it;
         }
     }
-
-    const GeometryVertexFormat geometry_vertex_format=BuildGeometryVertexFormatFromVIFList(vil->GetVIFList(),vil->GetVertexAttribCount());
 
 // 创建 GeometryData（使用 device 分配私有缓冲）
     GeometryData *pd = bm ? CreateGeometryData(bm, geometry_vertex_format, vertex_count, policy)

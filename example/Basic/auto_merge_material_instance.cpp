@@ -19,6 +19,7 @@
 
 // 引入几何创建器
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
@@ -155,7 +156,10 @@ private:
         if (!device || !buffer_manager || !geometry_manager)
             return false;
 
-        GeometryCreater pc(device, material->GetDefaultVIL(), buffer_manager);
+        GeometryCreater pc(device,
+                           BuildGeometryVertexFormatFromVIFList(material->GetDefaultVIL()->GetVIFList(),
+                                                                material->GetDefaultVIL()->GetVertexAttribCount()),
+                           buffer_manager);
         pc.Init("Triangle", VERTEX_COUNT);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data))
             return false;
@@ -296,4 +300,3 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Auto Merge Material Instance (ECS Version)"), argc, argv, 1024, 1024);
 }
-

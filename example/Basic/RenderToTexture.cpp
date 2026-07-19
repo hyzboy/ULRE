@@ -11,6 +11,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/color/Color.h>
 #include<hgl/log/Log.h>
@@ -170,7 +171,10 @@ public:
         if (!mi)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, mtl->GetDefaultVIL());
+        auto pc = std::make_unique<GeometryCreater>(
+            device,
+            BuildGeometryVertexFormatFromVIFList(mtl->GetDefaultVIL()->GetVIFList(),
+                                                 mtl->GetDefaultVIL()->GetVertexAttribCount()));
         geometry = inline_geometry::CreateSphere(pc.get(), 64);
         if (!geometry)
             return false;
@@ -383,7 +387,10 @@ private:
         if (!cube_mi)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, cube_mtl->GetDefaultVIL());
+        auto pc = std::make_unique<GeometryCreater>(
+            device,
+            BuildGeometryVertexFormatFromVIFList(cube_mtl->GetDefaultVIL()->GetVIFList(),
+                                                 cube_mtl->GetDefaultVIL()->GetVertexAttribCount()));
         inline_geometry::CubeCreateInfo cci{};
         cci.tex_coord = true;
         cci.normal = true;

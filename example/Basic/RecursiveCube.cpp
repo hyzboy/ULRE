@@ -7,6 +7,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -150,7 +151,10 @@ private:
         if (!device)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material->GetDefaultVIL());
+        auto pc = std::make_unique<GeometryCreater>(
+            device,
+            BuildGeometryVertexFormatFromVIFList(material->GetDefaultVIL()->GetVIFList(),
+                                                 material->GetDefaultVIL()->GetVertexAttribCount()));
 
         CubeCreateInfo cci;
         cci.segments_x = 1;

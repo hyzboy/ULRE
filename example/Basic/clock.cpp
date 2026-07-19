@@ -16,6 +16,7 @@
 #include<ctime>
 #include<chrono>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -171,7 +172,10 @@ private:
         if (!device || !buffer_manager || !geometry_manager)
             return false;
 
-        GeometryCreater pc(device, material->GetDefaultVIL(), buffer_manager);
+        GeometryCreater pc(device,
+                           BuildGeometryVertexFormatFromVIFList(material->GetDefaultVIL()->GetVIFList(),
+                                                                material->GetDefaultVIL()->GetVertexAttribCount()),
+                           buffer_manager);
         pc.Init("TriangleForClock", VERTEX_COUNT);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data))
             return false;
@@ -394,4 +398,3 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<ClockApp>(OS_TEXT("Clock (Static and Movable Transform Separation with ECS)"), argc, argv, 1024, 1024);
 }
-

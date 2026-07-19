@@ -11,6 +11,7 @@
 #include<hgl/math/VectorTypes.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -105,7 +106,10 @@ private:
             if(!grid_pipeline)
                 return false;
 
-            auto pc = std::make_unique<GeometryCreater>(device, grid_mi->GetVIL());
+            auto pc = std::make_unique<GeometryCreater>(
+                device,
+                BuildGeometryVertexFormatFromVIFList(grid_mi->GetVIL()->GetVIFList(),
+                                                     grid_mi->GetVIL()->GetVertexAttribCount()));
 
             inline_geometry::PlaneGridCreateInfo pgci;
             pgci.grid_size.Set(64, 64);
@@ -140,7 +144,10 @@ private:
             if(!cube_pipeline)
                 return false;
 
-            auto pc = std::make_unique<GeometryCreater>(device, cube_material->GetDefaultVIL());
+            auto pc = std::make_unique<GeometryCreater>(
+                device,
+                BuildGeometryVertexFormatFromVIFList(cube_material->GetDefaultVIL()->GetVIFList(),
+                                                     cube_material->GetDefaultVIL()->GetVertexAttribCount()));
 
             inline_geometry::CubeCreateInfo cci;
             cci.segments_x = 2;
@@ -341,4 +348,3 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<GizmoExampleApp>(OS_TEXT("Gizmo Usage Example"), argc, argv, 1280, 720);
 }
-

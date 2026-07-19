@@ -4,6 +4,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -112,7 +113,10 @@ private:
         pgci.lum=180;
         pgci.sub_lum=255;
 
-        auto pc = std::make_unique<GeometryCreater>(device, material_instance[0]->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(
+            device,
+            BuildGeometryVertexFormatFromVIFList(material_instance[0]->GetVIL()->GetVIFList(),
+                                                 material_instance[0]->GetVIL()->GetVertexAttribCount()));
 
         geom_plane_grid=CreatePlaneGrid2D(pc.get(),&pgci);
         if (geom_plane_grid)
@@ -236,4 +240,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("PlaneGrid3D"),argc,argv,1280,720);
 }
-
