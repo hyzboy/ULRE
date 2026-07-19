@@ -8,7 +8,6 @@
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -24,6 +23,13 @@ namespace hgl::graph
 
     namespace
     {
+        GeometryVertexFormat CreateGizmoGeometryVertexFormat()
+        {
+            GeometryVertexFormat gvf;
+            gvf.Add(VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT, 3, sizeof(float) * 3);
+            return gvf;
+        }
+
         static GraphicsContext *graphics_context=nullptr;
         static RenderPass *gizmo_render_pass=nullptr;
         static MaterialManager *gizmo_mtl_manager=nullptr;
@@ -137,8 +143,7 @@ namespace hgl::graph
             {
                 gizmo_triangle.vdm=new VertexDataManager(
                     buffer_manager,
-                    BuildGeometryVertexFormatFromVIFList(gizmo_triangle.mtl->GetDefaultVIL()->GetVIFList(),
-                                                         gizmo_triangle.mtl->GetDefaultVIL()->GetVertexAttribCount()));
+                    CreateGizmoGeometryVertexFormat());
 
                 if(!gizmo_triangle.vdm)
                     return(false);
