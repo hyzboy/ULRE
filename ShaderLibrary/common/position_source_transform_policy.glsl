@@ -35,3 +35,28 @@ vec4 TransformPolicyFixedScreenScale(vec4 center_clip,
     vec2 ndc = center_ndc + local_xy * normalized_screen_scale;
     return vec4(ndc * center_clip.w, center_clip.z, center_clip.w);
 }
+
+vec4 PositionSource2DLocal(vec2 position_xy)
+{
+    return vec4(position_xy, 0.0, 1.0);
+}
+
+vec4 PositionSource2DZeroToOne(vec2 position_xy)
+{
+    return vec4(position_xy * 2.0 - 1.0, 0.0, 1.0);
+}
+
+vec4 TransformPolicyApplyL2W(mat4 l2w_mat, vec4 local_pos)
+{
+    return l2w_mat * local_pos;
+}
+
+vec4 TransformPolicyApplyOrtho(mat4 ortho_matrix, vec4 local_pos)
+{
+    return ortho_matrix * local_pos;
+}
+
+vec4 TransformPolicyApplyOrthoThenL2W(mat4 l2w_mat, mat4 ortho_matrix, vec4 local_pos)
+{
+    return l2w_mat * ortho_matrix * local_pos;
+}

@@ -25,6 +25,8 @@ L2W_SSBO;
 L2W_INDEX_ROWS_SSBO;
 #endif
 
+#include "common/position_source_transform_policy.glsl"
+
 #ifdef HAS_MI
 #include "common/instance_rows_ssbo.glsl"
 DATA_INDEX_ROWS_SSBO;
@@ -47,18 +49,21 @@ uint GetTextureLayerID2D() { return ResolveTextureLayerID(gl_InstanceIndex); }
 
 vec4 GetPosition2D()
 {
+    vec4 local_pos = PositionSource2DLocal(vec2(Position));
+
 #if defined(COORD_ORTHO) && defined(HAS_L2W)
-    return GetLocalToWorld() * viewport.ortho_matrix * vec4(vec2(Position), 0, 1);
+    return TransformPolicyApplyOrthoThenL2W(GetLocalToWorld(), viewport.ortho_matrix, local_pos);
 #elif defined(COORD_ORTHO)
-    return viewport.ortho_matrix * vec4(vec2(Position), 0, 1);
+    return TransformPolicyApplyOrtho(viewport.ortho_matrix, local_pos);
 #elif defined(COORD_ZEROTOONE) && defined(HAS_L2W)
-    return GetLocalToWorld() * vec4(vec2(Position) * 2.0 - 1.0, 0, 1);
+    vec4 local_pos_zero_to_one = PositionSource2DZeroToOne(vec2(Position));
+    return TransformPolicyApplyL2W(GetLocalToWorld(), local_pos_zero_to_one);
 #elif defined(COORD_ZEROTOONE)
-    return vec4(vec2(Position) * 2.0 - 1.0, 0, 1);
+    return PositionSource2DZeroToOne(vec2(Position));
 #elif defined(HAS_L2W)
-    return GetLocalToWorld() * vec4(vec2(Position), 0, 1);
+    return TransformPolicyApplyL2W(GetLocalToWorld(), local_pos);
 #else
-    return vec4(vec2(Position), 0, 1);
+    return local_pos;
 #endif
 }
 
