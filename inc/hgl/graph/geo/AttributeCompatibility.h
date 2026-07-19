@@ -44,7 +44,7 @@ namespace hgl::graph
         }
     }
 
-    struct AttributeConversionOp
+    struct AttributeCompatibilityRule
     {
         VertexSemantic semantic = VertexSemantic::Unknown;
         VkFormat source_format = VK_FORMAT_UNDEFINED;
@@ -65,8 +65,8 @@ namespace hgl::graph
         bool allow_auto_apply = false;
     };
 
-    inline bool MatchAttributeConversionOp(
-        const AttributeConversionOp &op,
+    inline bool MatchAttributeCompatibilityRule(
+        const AttributeCompatibilityRule &rule,
         const VertexSemantic semantic,
         const VkFormat source_format,
         const uint8 source_vec_size,
@@ -75,42 +75,42 @@ namespace hgl::graph
         const uint8 target_vec_size,
         const uint32 target_stride)
     {
-        if (op.semantic != semantic)
+        if (rule.semantic != semantic)
             return false;
 
-        if (op.source_format != source_format || op.target_format != target_format)
+        if (rule.source_format != source_format || rule.target_format != target_format)
             return false;
 
-        if (op.source_vec_size != source_vec_size || op.target_vec_size != target_vec_size)
+        if (rule.source_vec_size != source_vec_size || rule.target_vec_size != target_vec_size)
             return false;
 
-        if (op.source_stride != 0 && source_stride != op.source_stride)
+        if (rule.source_stride != 0 && source_stride != rule.source_stride)
             return false;
 
-        if (op.target_stride != 0 && target_stride != op.target_stride)
+        if (rule.target_stride != 0 && target_stride != rule.target_stride)
             return false;
 
         return true;
     }
 
-    inline const std::array<AttributeConversionOp, 3> &GetDefaultAttributeConversionOps()
+    inline const std::array<AttributeCompatibilityRule, 3> &GetDefaultAttributeCompatibilityRules()
     {
-        // These are registration records, not executable conversions yet.
-        static const std::array<AttributeConversionOp, 3> ops =
+        // These are compatibility registrations, not executable conversion jobs.
+        static const std::array<AttributeCompatibilityRule, 3> rules =
         {
-            AttributeConversionOp{
+            AttributeCompatibilityRule{
                 VertexSemantic::Normal,
                 VK_FORMAT_R32G32B32_SFLOAT, 3, 0,
                 VK_FORMAT_R32G32B32_SFLOAT, 3, 0,
                 true, AttributePrecisionGrade::High, AttributeRuntimeCost::Low, false
             },
-            AttributeConversionOp{
+            AttributeCompatibilityRule{
                 VertexSemantic::Normal,
                 VK_FORMAT_R16G16B16_SFLOAT, 3, 0,
                 VK_FORMAT_R32G32B32_SFLOAT, 3, 0,
                 false, AttributePrecisionGrade::Medium, AttributeRuntimeCost::Medium, false
             },
-            AttributeConversionOp{
+            AttributeCompatibilityRule{
                 VertexSemantic::Normal,
                 VK_FORMAT_R8G8B8_UNORM, 3, 0,
                 VK_FORMAT_R32G32B32_SFLOAT, 3, 0,
@@ -118,10 +118,10 @@ namespace hgl::graph
             }
         };
 
-        return ops;
+        return rules;
     }
 
-    inline const AttributeConversionOp *FindAttributeConversionOp(
+    inline const AttributeCompatibilityRule *FindAttributeCompatibilityRule(
         const VertexSemantic semantic,
         const VkFormat source_format,
         const uint8 source_vec_size,
@@ -130,11 +130,11 @@ namespace hgl::graph
         const uint8 target_vec_size,
         const uint32 target_stride)
     {
-        const auto &ops = GetDefaultAttributeConversionOps();
-        for (const AttributeConversionOp &op : ops)
+        const auto &rules = GetDefaultAttributeCompatibilityRules();
+        for (const AttributeCompatibilityRule &rule : rules)
         {
-            if (MatchAttributeConversionOp(op, semantic, source_format, source_vec_size, source_stride, target_format, target_vec_size, target_stride))
-                return &op;
+            if (MatchAttributeCompatibilityRule(rule, semantic, source_format, source_vec_size, source_stride, target_format, target_vec_size, target_stride))
+                return &rule;
         }
 
         return nullptr;

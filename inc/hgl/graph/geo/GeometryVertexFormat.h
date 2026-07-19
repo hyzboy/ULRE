@@ -89,6 +89,28 @@ namespace hgl::graph
         }
     }
 
+    struct GeometryVertexCompatibilityDecision
+    {
+        GeometryVertexMatchKind kind = GeometryVertexMatchKind::Mismatch;
+        const AttributeCompatibilityRule *compatibility_rule = nullptr;
+
+        bool IsDirectBindSatisfied() const
+        {
+            return kind == GeometryVertexMatchKind::Exact;
+        }
+
+        bool HasRegisteredCompatibilityRule() const
+        {
+            return compatibility_rule != nullptr;
+        }
+
+        bool RequiresExplicitHandling() const
+        {
+            return kind == GeometryVertexMatchKind::Compatible
+                || kind == GeometryVertexMatchKind::Unsupported;
+        }
+    };
+
     struct GeometryVertexAttributeMatch
     {
         GeometryVertexMatchKind kind = GeometryVertexMatchKind::Mismatch;
@@ -99,19 +121,41 @@ namespace hgl::graph
         uint32_t material_stride = 0;
         uint8_t geometry_vec_size = 0;
         uint8_t material_vec_size = 0;
-        // True means "there is a registered rule for this source->target pair", even if current runtime still refuses to auto-run it.
-        bool has_conversion_rule = false;
-        // Distinguishes "compatible and can auto-run" from "known conversion but diagnostics only".
-        bool conversion_allow_auto_apply = false;
-        bool conversion_lossless = false;
-        AttributePrecisionGrade conversion_precision = AttributePrecisionGrade::Unknown;
-        AttributeRuntimeCost conversion_runtime_cost = AttributeRuntimeCost::High;
+        // True means "there is a registered compatibility rule for this source->target pair".
+        bool has_compatibility_rule = false;
+        // Reserved for a future explicitly-enabled path; current R09 runtime does not auto-apply anything.
+        bool compatibility_allow_auto_apply = false;
+        bool compatibility_lossless = false;
+        AttributePrecisionGrade compatibility_precision = AttributePrecisionGrade::Unknown;
+        AttributeRuntimeCost compatibility_runtime_cost = AttributeRuntimeCost::High;
     };
 
     struct GeometryVertexFormatMatch
     {
         GeometryVertexMatchKind overall = GeometryVertexMatchKind::Exact;
         std::vector<GeometryVertexAttributeMatch> attributes;
+
+        bool IsDirectBindSatisfied() const
+        {
+            return overall == GeometryVertexMatchKind::Exact;
+        }
+
+        bool RequiresExplicitHandling() const
+        {
+            return overall == GeometryVertexMatchKind::Compatible
+                || overall == GeometryVertexMatchKind::Unsupported;
+        }
+
+        const GeometryVertexAttributeMatch *FirstRegisteredCompatibilityRule() const
+        {
+            for (const auto &attribute : attributes)
+            {
+                if (attribute.has_compatibility_rule)
+                    return &attribute;
+            }
+
+            return nullptr;
+        }
 
         const GeometryVertexAttributeMatch *FirstNonExact() const
         {
@@ -125,23 +169,22 @@ namespace hgl::graph
         }
     };
 
-    inline GeometryVertexMatchKind MatchGeometryVertexAttribute(
+    inline GeometryVertexCompatibilityDecision EvaluateGeometryVertexAttributeCompatibility(
         const GeometryVertexAttributeFormat &geometry_attribute,
-        const VertexInputFormat &material_attribute,
-        const AttributeConversionOp **out_conversion_op = nullptr)
+        const VertexInputFormat &material_attribute)
     {
-        if (out_conversion_op)
-            *out_conversion_op = nullptr;
+        GeometryVertexCompatibilityDecision decision;
 
         if (geometry_attribute.format == material_attribute.format
          && geometry_attribute.stride == material_attribute.stride
          && geometry_attribute.vec_size == material_attribute.vec_size)
         {
-            return GeometryVertexMatchKind::Exact;
+            decision.kind = GeometryVertexMatchKind::Exact;
+            return decision;
         }
 
-        // Any non-exact match must be backed by an explicit registered conversion rule.
-        const AttributeConversionOp *op = FindAttributeConversionOp(
+        // Any non-exact match must be backed by an explicit registered compatibility rule.
+        decision.compatibility_rule = FindAttributeCompatibilityRule(
             geometry_attribute.semantic,
             geometry_attribute.format,
             geometry_attribute.vec_size,
@@ -150,15 +193,33 @@ namespace hgl::graph
             uint8(material_attribute.vec_size),
             uint32(material_attribute.stride));
 
-        if (op)
+        if (decision.compatibility_rule)
         {
-            if (out_conversion_op)
-                *out_conversion_op = op;
-
-            return op->allow_auto_apply ? GeometryVertexMatchKind::Compatible : GeometryVertexMatchKind::Unsupported;
+            decision.kind = decision.compatibility_rule->allow_auto_apply
+                ? GeometryVertexMatchKind::Compatible
+                : GeometryVertexMatchKind::Unsupported;
+            return decision;
         }
 
-        return GeometryVertexMatchKind::Mismatch;
+        decision.kind = GeometryVertexMatchKind::Mismatch;
+        return decision;
+    }
+
+    inline GeometryVertexMatchKind MatchGeometryVertexAttribute(
+        const GeometryVertexAttributeFormat &geometry_attribute,
+        const VertexInputFormat &material_attribute,
+        const AttributeCompatibilityRule **out_compatibility_rule = nullptr)
+    {
+        if (out_compatibility_rule)
+            *out_compatibility_rule = nullptr;
+
+        const GeometryVertexCompatibilityDecision decision =
+            EvaluateGeometryVertexAttributeCompatibility(geometry_attribute, material_attribute);
+
+        if (out_compatibility_rule)
+            *out_compatibility_rule = decision.compatibility_rule;
+
+        return decision.kind;
     }
 
     inline GeometryVertexFormatMatch MatchGeometryVertexFormat(
@@ -192,15 +253,17 @@ namespace hgl::graph
                 match.geometry_stride = geometry_attribute->stride;
                 match.geometry_vec_size = geometry_attribute->vec_size;
 
-                const AttributeConversionOp *op = nullptr;
-                match.kind = MatchGeometryVertexAttribute(*geometry_attribute, *material_attribute, &op);
-                if (op)
+                const GeometryVertexCompatibilityDecision decision =
+                    EvaluateGeometryVertexAttributeCompatibility(*geometry_attribute, *material_attribute);
+
+                match.kind = decision.kind;
+                if (decision.compatibility_rule)
                 {
-                    match.has_conversion_rule = true;
-                    match.conversion_allow_auto_apply = op->allow_auto_apply;
-                    match.conversion_lossless = op->lossless;
-                    match.conversion_precision = op->precision;
-                    match.conversion_runtime_cost = op->runtime_cost;
+                    match.has_compatibility_rule = true;
+                    match.compatibility_allow_auto_apply = decision.compatibility_rule->allow_auto_apply;
+                    match.compatibility_lossless = decision.compatibility_rule->lossless;
+                    match.compatibility_precision = decision.compatibility_rule->precision;
+                    match.compatibility_runtime_cost = decision.compatibility_rule->runtime_cost;
                 }
             }
 
