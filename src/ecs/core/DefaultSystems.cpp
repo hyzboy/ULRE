@@ -201,7 +201,6 @@ namespace hgl::ecs
         EnsureCoreEcsSystems(ctx, default_rt);
         EnsureSystemGroupSystems(ctx, "Primitive", default_rt);
         EnsureSystemGroupSystems(ctx, "Text", default_rt);
-        EnsureSystemGroupSystems(ctx, "Billboard", default_rt);
         EnsureSystemGroupSystems(ctx, "Line", default_rt);
 
         systems.input_system = ctx->GetSystem<ecs::InputSystem>();

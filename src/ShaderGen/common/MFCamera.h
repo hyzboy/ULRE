@@ -5,7 +5,7 @@
 namespace hgl::graph::mtl{
 namespace func
 {
-    //@link http://www.opengl-tutorial.org/intermediate-tutorials/billboards-particles/billboards/
+    //@link http://www.opengl-tutorial.org/intermediate-tutorials/billboards-particles/
 
 constexpr const char *GetCameraViewMatrix=R"(
 mat4 GetCameraViewMatrix()

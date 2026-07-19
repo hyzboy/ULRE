@@ -53,7 +53,7 @@ namespace hgl
             // Optimization settings
             Mobility mobility;
 
-            // Fixed pixel-size mode (for gizmo/billboard-like controls)
+            // Fixed pixel-size mode (for gizmo/facing-quad-like controls)
             bool fixed_pixel_sizing_enabled;
             float fixed_pixel_diameter;
             float fixed_pixel_reference_world_diameter;
@@ -113,7 +113,7 @@ namespace hgl
 
         public:
 
-            // Pixel-constant sizing helpers (useful for editor gizmos/billboards)
+            // Pixel-constant sizing helpers (useful for editor gizmos/facing quads)
             float ComputeWorldUnitsPerPixel(const hgl::graph::CameraInfo* camera_info,
                                             const hgl::graph::ViewportInfo* viewport_info);
             float ComputeFixedPixelUniformScale(const hgl::graph::CameraInfo* camera_info,
@@ -190,5 +190,4 @@ namespace hgl
         };
     }//namespace ecs
 }//namespace hgl
-
 

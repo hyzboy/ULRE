@@ -27,7 +27,7 @@ namespace hgl
          */
         struct SystemGroup
         {
-            /// Unique name identifying this group (e.g., "Primitive", "Text", "Line", "Billboard")
+            /// Unique name identifying this group (e.g., "Primitive", "Text", "Line")
             std::string name;
 
             /// Starting ExecutionPhase for this group

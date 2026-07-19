@@ -12,10 +12,10 @@ namespace hgl::graph::mtl
         Mesh3D = 0,
         Quad2D,
         ScreenRect,
-        BillboardCameraFacing,
-        BillboardAxisLocked,
+        CameraFacingQuad,
+        AxisLockedQuad,
 
-        ENUM_CLASS_RANGE(Mesh3D, BillboardAxisLocked)
+        ENUM_CLASS_RANGE(Mesh3D, AxisLockedQuad)
     };
 
     enum class TextureSourceMode : uint8

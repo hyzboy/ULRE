@@ -23,7 +23,7 @@ L2W_INDEX_ROWS_SSBO;
 // MI SSBO (Material set, VS only)
 #include "common/material_instance_ssbo.glsl"
 struct MaterialInstance {
-    uvec2 BillboardSize;
+    uvec2 FixedScreenSize;
 };
 MI_SSBO_SCALAR;
 DATA_INDEX_ROWS_SSBO;
@@ -41,7 +41,7 @@ void main()
 {
     MaterialInstance mi = GetMI();
 
-    vec2 psize = vec2(mi.BillboardSize) / vec2(viewport.canvas_resolution);
+    vec2 psize = vec2(mi.FixedScreenSize) / vec2(viewport.canvas_resolution);
     vec4 center_clip = camera.vp * l2w.mats[ResolveTransformID(gl_InstanceIndex)] * vec4(0.0, 0.0, 0.0, 1.0);
     vec3 local_pos = PositionSourceQuadLocal(Position);
 

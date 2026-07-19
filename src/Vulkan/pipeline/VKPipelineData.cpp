@@ -302,29 +302,10 @@ void PipelineData::InitVertexInputState(const VIL *vil)
 }
 namespace
 {
-    struct ComplexPrimitiveTopologyToOrigin
-    {
-        VkPrimitiveTopology vk_prim;
-        PrimitiveType geometry;
-    };
-
-    constexpr const ComplexPrimitiveTopologyToOrigin ComplexPrimitiveTopologyToOriginList[]=
-    {
-        {VK_PRIMITIVE_TOPOLOGY_POINT_LIST,  PrimitiveType::SolidRectangles},
-        {VK_PRIMITIVE_TOPOLOGY_POINT_LIST,  PrimitiveType::SolidCircles},
-        {VK_PRIMITIVE_TOPOLOGY_LINE_LIST,   PrimitiveType::WireRectangles},
-        {VK_PRIMITIVE_TOPOLOGY_LINE_LIST,   PrimitiveType::WireCircles},
-        {VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,PrimitiveType::Billboard}
-    };
-
     const VkPrimitiveTopology GetVkPrimitive(const PrimitiveType &p)
     {
         if(RangeCheck(p))
             return VkPrimitiveTopology(p);
-
-        for(const ComplexPrimitiveTopologyToOrigin &cptol:ComplexPrimitiveTopologyToOriginList)
-            if(cptol.geometry==p)
-                return cptol.vk_prim;
 
         return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
     }

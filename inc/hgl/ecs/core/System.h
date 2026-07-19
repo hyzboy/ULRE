@@ -26,7 +26,7 @@ namespace hgl
             TickInput,              // user input
             TickTransform,          // transforms, bounds, visibility
             TickCamera,             // camera matrices
-            TickPostCamera,         // billboard / facing transforms
+            TickPostCamera,         // facing-policy transforms
 
             // ── Render setup (before command buffer opens) ─────────────────
             RenderSwapchainNextImage,   // acquire swapchain image
@@ -185,4 +185,3 @@ namespace hgl
         };
     }//namespace ecs
 }//namespace hgl
-

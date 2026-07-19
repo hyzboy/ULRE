@@ -19,16 +19,6 @@ namespace hgl::graph
         TriangleStripAdj,
         Patchs,
 
-        SolidRectangles=0x100,
-        SolidCircles,
-
-        WireRectangles=0x200,
-        WireCircles,
-
-        Billboard=0x500,
-
-        OBB=0x600,
-
         ENUM_CLASS_RANGE(Points,Patchs),
 
         Error

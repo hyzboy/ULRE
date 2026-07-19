@@ -17,7 +17,7 @@ namespace hgl::ecs
     /**
      * RenderPipelineBase - Abstract base class for all render pipelines
      * 
-     * Provides a unified interface for geometry/text/line/billboard/particle rendering.
+     * Provides a unified interface for geometry/text/line/particle rendering.
      * All pipelines follow the same multi-phase pattern:
      *   1. PrepareFrame() — initialize per-frame state (optional phase before Collect)
      *   2. RunCollect() — RenderCollect phase: gather visible components
