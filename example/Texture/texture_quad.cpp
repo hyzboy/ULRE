@@ -3,7 +3,6 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -24,6 +23,17 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    GeometryVertexFormat CreatePureTexture2DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V2F, 2, sizeof(float) * 2);
+        gvf.Add(VertexSemantic::TexCoord, VF_V2F, 2, sizeof(float) * 2);
+        return gvf;
+    }
+}
 
 constexpr uint32_t VERTEX_COUNT=4;
 
@@ -134,10 +144,7 @@ private:
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
-        GeometryCreater pc(device,
-                           BuildGeometryVertexFormatFromVIFList(material_instance->GetVIL()->GetVIFList(),
-                                                                material_instance->GetVIL()->GetVertexAttribCount()),
-                           buffer_manager);
+        GeometryCreater pc(device, CreatePureTexture2DGeometryVertexFormat(), buffer_manager);
         pc.Init("TextureQuad", VERTEX_COUNT);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
             !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))

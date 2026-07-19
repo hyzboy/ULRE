@@ -11,7 +11,6 @@
 #include<hgl/math/VectorTypes.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -36,6 +35,25 @@
 
 using namespace hgl;
 using namespace hgl::graph;
+
+namespace
+{
+    GeometryVertexFormat CreateVertexLuminance2DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V2F, 2, sizeof(float) * 2);
+        gvf.Add(VertexSemantic::Luminance, VF_V1UN8, 1, sizeof(uint8));
+        return gvf;
+    }
+
+    GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        return gvf;
+    }
+}
 
 const math::Vector3f GizmoPosition(0, 0, 0);
 
@@ -108,8 +126,7 @@ private:
 
             auto pc = std::make_unique<GeometryCreater>(
                 device,
-                BuildGeometryVertexFormatFromVIFList(grid_mi->GetVIL()->GetVIFList(),
-                                                     grid_mi->GetVIL()->GetVertexAttribCount()));
+                CreateVertexLuminance2DGeometryVertexFormat());
 
             inline_geometry::PlaneGridCreateInfo pgci;
             pgci.grid_size.Set(64, 64);
@@ -146,8 +163,7 @@ private:
 
             auto pc = std::make_unique<GeometryCreater>(
                 device,
-                BuildGeometryVertexFormatFromVIFList(cube_material->GetDefaultVIL()->GetVIFList(),
-                                                     cube_material->GetDefaultVIL()->GetVertexAttribCount()));
+                CreateGizmo3DGeometryVertexFormat());
 
             inline_geometry::CubeCreateInfo cci;
             cci.segments_x = 2;

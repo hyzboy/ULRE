@@ -5,7 +5,6 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
@@ -27,6 +26,17 @@
 
 using namespace hgl;
 using namespace hgl::graph;
+
+namespace
+{
+    GeometryVertexFormat CreateVertexColor3DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        gvf.Add(VertexSemantic::Color, VF_V4F, 4, sizeof(float) * 4);
+        return gvf;
+    }
+}
 
 class TestApp:public WorkObject
 {
@@ -89,8 +99,7 @@ private:
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
-            BuildGeometryVertexFormatFromVIFList(material_instance->GetVIL()->GetVIFList(),
-                                                 material_instance->GetVIL()->GetVertexAttribCount()));
+            CreateVertexColor3DGeometryVertexFormat());
 
         inline_geometry::AxisCreateInfo aci;
 

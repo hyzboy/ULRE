@@ -13,7 +13,6 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
@@ -37,6 +36,25 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    GeometryVertexFormat CreateVertexLuminance2DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V2F, 2, sizeof(float) * 2);
+        gvf.Add(VertexSemantic::Luminance, VF_V1UN8, 1, sizeof(uint8));
+        return gvf;
+    }
+
+    GeometryVertexFormat CreateVertexLuminance3DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
+        gvf.Add(VertexSemantic::Luminance, VF_V1UN8, 1, sizeof(uint8));
+        return gvf;
+    }
+}
 
 static float position_data[2][3]=
 {
@@ -156,8 +174,7 @@ private:
         {
             auto pc = std::make_unique<GeometryCreater>(
                 device,
-                BuildGeometryVertexFormatFromVIFList(mi_plane_grid->GetVIL()->GetVIFList(),
-                                                     mi_plane_grid->GetVIL()->GetVertexAttribCount()));
+                CreateVertexLuminance2DGeometryVertexFormat());
 
             struct PlaneGridCreateInfo pgci;
 
@@ -184,8 +201,7 @@ private:
                 return false;
 
             GeometryCreater pc(device,
-                               BuildGeometryVertexFormatFromVIFList(mi_line->GetVIL()->GetVIFList(),
-                                                                    mi_line->GetVIL()->GetVertexAttribCount()),
+                               CreateVertexLuminance3DGeometryVertexFormat(),
                                buffer_manager);
             pc.Init("RayLine", 2);
             if (!pc.WriteVAB(VAN::Position, VF_V3F, position_data) ||

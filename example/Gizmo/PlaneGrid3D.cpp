@@ -4,7 +4,6 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/geo/GeometryVertexFormatBridge.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -27,6 +26,17 @@
 
 using namespace hgl;
 using namespace hgl::graph;
+
+namespace
+{
+    GeometryVertexFormat CreateVertexLuminance2DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf;
+        gvf.Add(VertexSemantic::Position, VF_V2F, 2, sizeof(float) * 2);
+        gvf.Add(VertexSemantic::Luminance, VF_V1UN8, 1, sizeof(uint8));
+        return gvf;
+    }
+}
 
 class TestApp:public WorkObject
 {
@@ -115,8 +125,7 @@ private:
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
-            BuildGeometryVertexFormatFromVIFList(material_instance[0]->GetVIL()->GetVIFList(),
-                                                 material_instance[0]->GetVIL()->GetVertexAttribCount()));
+            CreateVertexLuminance2DGeometryVertexFormat());
 
         geom_plane_grid=CreatePlaneGrid2D(pc.get(),&pgci);
         if (geom_plane_grid)
