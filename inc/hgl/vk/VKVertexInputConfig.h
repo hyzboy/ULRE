@@ -34,6 +34,12 @@ public:
     using Base=hgl::UnorderedMap<AnsiString,VAConfig>;
 
     using Base::Base;
+    using Base::Get;
+
+    bool Add(const VertexSemantic semantic,const VAConfig &cfg)
+    {
+        return Add(AnsiString(GetVertexSemanticName(semantic)),cfg);
+    }
 
     bool Add(const AnsiString &name,const VAConfig &cfg)
     {
@@ -41,6 +47,11 @@ public:
             return(false);
 
         return static_cast<Base *>(this)->Add(name,cfg);
+    }
+
+    bool Get(const VertexSemantic semantic,VAConfig &cfg)const
+    {
+        return static_cast<const Base *>(this)->Get(AnsiString(GetVertexSemanticName(semantic)),cfg);
     }
 
     auto operator <=> (const VILConfig &vc)const

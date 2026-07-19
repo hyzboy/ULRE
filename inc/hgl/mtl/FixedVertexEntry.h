@@ -8,8 +8,7 @@ namespace hgl::graph::mtl{
 struct FixedVertexEntry
 {
     VAType              type;
-    const char *        name;
+    VertexSemantic      semantic;
 };
 
 }//namespace hgl::graph::mtl
-

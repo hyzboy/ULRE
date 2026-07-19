@@ -15,7 +15,7 @@ VertexInputConfig::VertexInputConfig(const VIAArray &viaa)
 
     for(uint i=0;i<via_array.count;i++)
     {
-        name_list[i]            =sa->name;
+        name_list[i]            =GetVertexSemanticName(sa->semantic);
         type_list[i].basetype   =VABaseType(sa->basetype);
         type_list[i].vec_size   =sa->vec_size;
 
@@ -51,8 +51,8 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
 
         ++binding;
 
-        const bool is_joint_id=(std::strcmp(via->name,VAN::JointID)==0);
-        const bool is_joint_weight=(std::strcmp(via->name,VAN::JointWeight)==0);
+        const bool is_joint_id=(via->semantic==VertexSemantic::JointID);
+        const bool is_joint_weight=(via->semantic==VertexSemantic::JointWeight);
 
         if(is_joint_id)
         {
@@ -69,7 +69,13 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
         {
             if(!cfg||!cfg->Get(via->name,vac))
             {
-                attr_desc->format    =GetVulkanFormat(via);
+                if(!cfg||!cfg->Get(via->semantic,vac))
+                    attr_desc->format    =GetVulkanFormat(via);
+                else
+                {
+                    attr_desc->format    =(vac.format==PF_UNDEFINED?GetVulkanFormat(via):vac.format);
+                    bind_desc->inputRate =vac.input_rate;
+                }
             }
             else
             {
@@ -80,10 +86,11 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
             bind_desc->stride=GetStrideByFormat(attr_desc->format);
         }
 
+        vif->semantic   =via->semantic;
         vif->format     =attr_desc->format;
         vif->vec_size   =via->vec_size;
         vif->stride     =bind_desc->stride;
-        vif->name       =via->name;
+        vif->name       =GetVertexSemanticName(via->semantic);
         vif->binding    =attr_desc->binding;
 
         ++vif;
@@ -150,8 +157,7 @@ namespace
         for(uint i=0;i<viaa.count;i++)
         {
             result+="[\"";
-
-            result+=via->name;
+            result+=GetVertexSemanticName(via->semantic);
             result+="\",location:";
             result+=AnsiString::numberOf(via->location);
             result+=",type:";

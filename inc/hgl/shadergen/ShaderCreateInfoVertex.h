@@ -20,7 +20,7 @@ namespace hgl::graph
         ~ShaderCreateInfoVertex()override=default;
 
         int AddInput(VIAList &);
+        int AddInput(const VAType &type,const VertexSemantic semantic);
         int AddInput(const VAType &type,const std::string &name);
     };//class ShaderCreateInfoVertex:public ShaderCreateInfo
 }//namespace hgl::graph
-

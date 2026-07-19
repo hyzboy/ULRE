@@ -48,17 +48,16 @@ public:
 
     const   bool            IsValid         ()const{ return geometry_data!=nullptr; }///<是否有效
 
-    virtual
-    const   VkDeviceSize    GetVertexCount  ()const;
+            virtual
+            const   VkDeviceSize    GetVertexCount  ()const;
 
-    const   uint32_t        GetVABCount     ()const;
-    const   int             GetVABIndex     (const AnsiString &name)const;
+            const   uint32_t        GetVABCount     ()const;
+            const   int             GetVABIndex     (const VertexSemantic semantic)const;
 
             VAB *           GetVAB          (const int)const;
+            VAB *           GetVAB          (const VertexSemantic semantic)const;
             VkBuffer        GetVkBuffer     (const int index)const;
-
-            VAB *           GetVAB          (const AnsiString &name)const{return GetVAB(GetVABIndex(name));}
-            VkBuffer        GetVkBuffer     (const AnsiString &name)const;
+            VkBuffer        GetVkBuffer     (const VertexSemantic semantic)const;
 
     const   int32_t         GetVertexOffset ()const;                        ///<取得顶点偏移(注意是顶点不是字节)
 

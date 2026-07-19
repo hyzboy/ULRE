@@ -51,13 +51,13 @@ public:
 
     const   uint32_t        GetVertexCount  ()const{return vertex_count;}
     const   uint32_t        GetVABCount     ()const;
-    const   int             GetVABIndex     (const AnsiString &name)const;
+    const   int             GetVABIndex     (const VertexSemantic semantic)const;
     const   GeometryVertexFormat &GetGeometryVertexFormat()const{return geometry_vertex_format;}
 
             bool            CreateAllVAB(const AnsiString &geometry_name="Geometry");     //根据VIL创建所有VAB
 
             VAB *           GetVAB          (const int index)const;
-            VAB *           GetVAB          (const AnsiString &name)const;
+            VAB *           GetVAB          (const VertexSemantic semantic)const;
 
             VAB *           InitVAB         (const int vab_index,const void *data,const AnsiString &name="VAB");
 

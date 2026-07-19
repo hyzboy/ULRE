@@ -101,9 +101,9 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
         if(first_issue)
         {
             GLogError(  "[FATAL ERROR] GeometryVertexFormat can't satisfy Material vertex input, Material(")+mtl_name+
-                        AnsiString(") Attribute(")+AnsiString(first_issue->name)+
+                        AnsiString(") Attribute(")+AnsiString(GetVertexSemanticName(first_issue->semantic))+
                         AnsiString(") Match(")+GetGeometryVertexMatchKindName(first_issue->kind)+
-                        AnsiString(") Semantic(")+GetGeometryVertexSemanticName(first_issue->semantic)+
+                        AnsiString(") Semantic(")+GetVertexSemanticName(first_issue->semantic)+
                         AnsiString(") MaterialFormat(")+(GetVulkanFormatName(first_issue->material_format)?GetVulkanFormatName(first_issue->material_format):"Unknown")+
                         AnsiString(") GeometryFormat(")+(GetVulkanFormatName(first_issue->geometry_format)?GetVulkanFormatName(first_issue->geometry_format):"Unknown")+
                         AnsiString(")");
@@ -134,11 +134,11 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
         //注: VIF来自于材质，但VAB来自于Geometry。
         //    两个并不一定一样，排序也不一定一样。所以不能让PRIMTIVE直接提供BUFFER_LIST/OFFSET来搞一次性绑定。
 
-        vab=geom->GetVAB(vif->name);
+        vab=geom->GetVAB(vif->semantic);
 
         if(!vab)
         {
-            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(vif->name)+"\" in Material: "+mtl_name);
+            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(GetVertexSemanticName(vif->semantic))+"\" in Material: "+mtl_name);
             return(nullptr);
         }
 
@@ -172,7 +172,7 @@ bool GeometryDataBuffer::Update(const Geometry *geom,const VIL *vil)
     {
         if(vif->binding<vab_count)
         {
-            vab_list[vif->binding]=geom->GetVkBuffer(vif->name);
+            vab_list[vif->binding]=geom->GetVkBuffer(vif->semantic);
             vab_offset[vif->binding]=0;
         }
 

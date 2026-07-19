@@ -31,11 +31,9 @@ const uint32_t GeometryData::GetVABCount()const
     return vil->GetVertexAttribCount();
 }
 
-const int GeometryData::GetVABIndex(const AnsiString &name) const
+const int GeometryData::GetVABIndex(const VertexSemantic semantic) const
 {
-    if(name.IsEmpty())return(-1);
-
-    return vil->GetIndex(name);
+    return vil->GetIndex(semantic);
 }
 
 bool GeometryData::CreateAllVAB(const AnsiString &geometry_name)
@@ -67,11 +65,9 @@ VAB *GeometryData::GetVAB(const int index)const
     return vab_list[index];
 }
 
-VAB *GeometryData::GetVAB(const AnsiString &name)const
+VAB *GeometryData::GetVAB(const VertexSemantic semantic)const
 {
-    if(name.IsEmpty())return(nullptr);
-
-    const int index=vil->GetIndex(name);
+    const int index=vil->GetIndex(semantic);
 
     if(index<0||index>=vil->GetVertexAttribCount())
         return(nullptr);

@@ -16,7 +16,7 @@ namespace hgl::graph::Assign
         using ValueType = uint16_t;
         constexpr VkFormat          VAB_FMT         = VK_FORMAT_R16_UINT;
     #endif
-        constexpr const char *      VIS_NAME        = "TransformID";
+        constexpr VertexSemantic    VIS_SEMANTIC    = VertexSemantic::TransformID;
         constexpr VAType            VAT_FMT         = VAT_UINT;
         constexpr const uint32_t    STRIDE_BYTES    = sizeof(ValueType);
     }
@@ -25,7 +25,7 @@ namespace hgl::graph::Assign
     {
         using ValueType = uint16_t;
         constexpr VkFormat          VAB_FMT         = VK_FORMAT_R16_UINT;
-        constexpr const char *      VIS_NAME        = "DataIndexID";
+        constexpr VertexSemantic    VIS_SEMANTIC    = VertexSemantic::DataIndexID;
         constexpr VAType            VAT_FMT         = VAT_UINT;
         constexpr const uint32_t    STRIDE_BYTES    = sizeof(ValueType);
     }
@@ -34,7 +34,7 @@ namespace hgl::graph::Assign
     {
         using ValueType = uint16_t;
         constexpr VkFormat          VAB_FMT         = VK_FORMAT_R16_UINT;
-        constexpr const char *      VIS_NAME        = "TextureLayerID";
+        constexpr VertexSemantic    VIS_SEMANTIC    = VertexSemantic::TextureLayerID;
         constexpr VAType            VAT_FMT         = VAT_UINT;
         constexpr const uint32_t    STRIDE_BYTES    = sizeof(ValueType);
     }

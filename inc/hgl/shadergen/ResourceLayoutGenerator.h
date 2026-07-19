@@ -98,7 +98,7 @@ public:
     ///
     /// **注意**：
     ///   - location 编号自动分配（0, 1, 2, ...）
-    ///   - 名称从 FixedVertexEntry::name 获取
+    ///   - 名称从 FixedVertexEntry::semantic 经映射获取
     std::string GenVertexInputLayout(const FixedVertexEntry* entries, uint32_t count);
 
     /// 生成片段着色器输出布局声明

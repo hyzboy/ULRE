@@ -7,6 +7,7 @@ namespace hgl::graph
 {
     struct VertexInputFormat
     {
+        VertexSemantic semantic;
         VkFormat    format;
         uint        vec_size;
         uint        stride;
@@ -17,4 +18,3 @@ namespace hgl::graph
 
     using VIF=VertexInputFormat;
 }//namespace hgl::graph
-

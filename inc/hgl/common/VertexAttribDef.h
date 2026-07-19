@@ -2,10 +2,34 @@
 
 #include <hgl/type/EnumUtil.h>
 #include <compare>
+#include <cstring>
 
 namespace hgl::graph
 {
 #pragma pack(push,1)
+    enum class VertexSemantic:uint8
+    {
+        Unknown=0,
+        Position,
+        Normal,
+        Tangent,
+        Bitangent,
+        Color,
+        Luminance,
+        TexCoord,
+        AO,
+        Size,
+        Rotation,
+        Assign,
+        JointID,
+        JointWeight,
+        TransformID,
+        DataIndexID,
+        TextureLayerID,
+
+        ENUM_CLASS_RANGE(Unknown,TextureLayerID)
+    };
+
     enum class VertexAttribBaseType:uint8
     {
         Bool=0,
@@ -67,6 +91,54 @@ namespace hgl::graph
 
     using VAType=VertexAttribType;
 
+    inline const char *GetVertexSemanticName(const VertexSemantic semantic)
+    {
+        switch(semantic)
+        {
+            case VertexSemantic::Position:         return "Position";
+            case VertexSemantic::Normal:           return "Normal";
+            case VertexSemantic::Tangent:          return "Tangent";
+            case VertexSemantic::Bitangent:        return "Bitangent";
+            case VertexSemantic::Color:            return "Color";
+            case VertexSemantic::Luminance:        return "Luminance";
+            case VertexSemantic::TexCoord:         return "TexCoord";
+            case VertexSemantic::AO:               return "AO";
+            case VertexSemantic::Size:             return "Size";
+            case VertexSemantic::Rotation:         return "Rotation";
+            case VertexSemantic::Assign:           return "Assign";
+            case VertexSemantic::JointID:          return "JointID";
+            case VertexSemantic::JointWeight:      return "JointWeight";
+            case VertexSemantic::TransformID:      return "TransformID";
+            case VertexSemantic::DataIndexID:      return "DataIndexID";
+            case VertexSemantic::TextureLayerID:   return "TextureLayerID";
+            default:                               return "Unknown";
+        }
+    }
+
+    inline VertexSemantic GetVertexSemanticByName(const char *name)
+    {
+        if(!name||!*name)return VertexSemantic::Unknown;
+
+        if(std::strcmp(name,"Position")==0)       return VertexSemantic::Position;
+        if(std::strcmp(name,"Normal")==0)         return VertexSemantic::Normal;
+        if(std::strcmp(name,"Tangent")==0)        return VertexSemantic::Tangent;
+        if(std::strcmp(name,"Bitangent")==0)      return VertexSemantic::Bitangent;
+        if(std::strcmp(name,"Color")==0)          return VertexSemantic::Color;
+        if(std::strcmp(name,"Luminance")==0)      return VertexSemantic::Luminance;
+        if(std::strcmp(name,"TexCoord")==0)       return VertexSemantic::TexCoord;
+        if(std::strcmp(name,"AO")==0)             return VertexSemantic::AO;
+        if(std::strcmp(name,"Size")==0)           return VertexSemantic::Size;
+        if(std::strcmp(name,"Rotation")==0)       return VertexSemantic::Rotation;
+        if(std::strcmp(name,"Assign")==0)         return VertexSemantic::Assign;
+        if(std::strcmp(name,"JointID")==0)        return VertexSemantic::JointID;
+        if(std::strcmp(name,"JointWeight")==0)    return VertexSemantic::JointWeight;
+        if(std::strcmp(name,"TransformID")==0)    return VertexSemantic::TransformID;
+        if(std::strcmp(name,"DataIndexID")==0)    return VertexSemantic::DataIndexID;
+        if(std::strcmp(name,"TextureLayerID")==0) return VertexSemantic::TextureLayerID;
+
+        return VertexSemantic::Unknown;
+    }
+
     bool ParseVertexAttribType(VAType *,const char *);
 
     const char *GetVertexAttribName(const VABaseType &base_type,const uint vec_size);
@@ -99,30 +171,23 @@ namespace hgl::graph
 
     constexpr const size_t VERTEX_ATTRIB_NAME_MAX_LENGTH=32;
 
-    namespace VertexAttribName
+    namespace VAN
     {
-#define VAN_DEFINE(name)    constexpr const char name[]=#name;
-        VAN_DEFINE(Position)
-
-        VAN_DEFINE(Normal)
-        VAN_DEFINE(Tangent)
-        VAN_DEFINE(Bitangent)
-        VAN_DEFINE(Color)
-        VAN_DEFINE(Luminance)
-        VAN_DEFINE(TexCoord)
-
-        VAN_DEFINE(AO)
-
-        VAN_DEFINE(Size)
-        VAN_DEFINE(Rotation)
-
-        VAN_DEFINE(Assign)
-
-        VAN_DEFINE(JointID)
-        VAN_DEFINE(JointWeight)
-#undef VAN_DEFINE
+        constexpr VertexSemantic Position       = VertexSemantic::Position;
+        constexpr VertexSemantic Normal         = VertexSemantic::Normal;
+        constexpr VertexSemantic Tangent        = VertexSemantic::Tangent;
+        constexpr VertexSemantic Bitangent      = VertexSemantic::Bitangent;
+        constexpr VertexSemantic Color          = VertexSemantic::Color;
+        constexpr VertexSemantic Luminance      = VertexSemantic::Luminance;
+        constexpr VertexSemantic TexCoord       = VertexSemantic::TexCoord;
+        constexpr VertexSemantic AO             = VertexSemantic::AO;
+        constexpr VertexSemantic Size           = VertexSemantic::Size;
+        constexpr VertexSemantic Rotation       = VertexSemantic::Rotation;
+        constexpr VertexSemantic Assign         = VertexSemantic::Assign;
+        constexpr VertexSemantic JointID        = VertexSemantic::JointID;
+        constexpr VertexSemantic JointWeight    = VertexSemantic::JointWeight;
+        constexpr VertexSemantic TransformID    = VertexSemantic::TransformID;
+        constexpr VertexSemantic DataIndexID    = VertexSemantic::DataIndexID;
+        constexpr VertexSemantic TextureLayerID = VertexSemantic::TextureLayerID;
     }
-
-#define VAN VertexAttribName
 }
-

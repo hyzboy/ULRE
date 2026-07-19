@@ -16,6 +16,7 @@ namespace hgl::graph
 #pragma pack(push,1)
     struct VertexInputAttribute
     {
+        VertexSemantic semantic;
         char    name[VERTEX_ATTRIB_NAME_MAX_LENGTH];
         uint8   location;
 
@@ -31,7 +32,7 @@ namespace hgl::graph
     using VIAList=ValueArray<VIA>;
 
     inline bool operator==(const VertexInputAttribute& lhs, const VertexInputAttribute& rhs) {
-        return std::strcmp(lhs.name, rhs.name) == 0 &&
+        return lhs.semantic == rhs.semantic &&
                lhs.location == rhs.location &&
                lhs.basetype == rhs.basetype &&
                lhs.vec_size == rhs.vec_size &&
@@ -115,21 +116,32 @@ namespace hgl::graph
             return(true);
         }
 
-        bool Contains(const char *name)const
+        bool Contains(const VertexSemantic semantic)const
         {
             if(count<=0)
                 return(false);
 
             for(uint i=0;i<count;i++)
-                if(::hgl::strcmp(items[i].name,name)==0)
+                if(items[i].semantic==semantic)
                     return(true);
 
             return(false);
         }
 
+        bool Contains(const char *name)const
+        {
+            return Contains(GetVertexSemanticByName(name));
+        }
+
         bool Add(VIA &via)
         {
-            if(Contains(via.name))
+            if(via.semantic==VertexSemantic::Unknown && *via.name)
+                via.semantic=GetVertexSemanticByName(via.name);
+
+            if(via.semantic!=VertexSemantic::Unknown)
+                hgl::strcpy(via.name,sizeof(via.name),GetVertexSemanticName(via.semantic));
+
+            if(Contains(via.semantic))
                 return(false);
 
             via.location=count;
@@ -175,5 +187,4 @@ namespace hgl::graph
 
     using VIAArray=VertexInputAttributeArray;
 }
-
 

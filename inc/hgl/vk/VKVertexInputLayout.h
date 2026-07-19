@@ -29,19 +29,19 @@ public:
     ~VertexInputLayout();
 
     const uint32_t              GetVertexAttribCount()const{return count;}
-    const int                   GetIndex(const AnsiString &name)const;
+    const int                   GetIndex(const VertexSemantic semantic)const;
 
     const VertexInputFormat *   GetVIFList()const{return vif_list;}
 
-    const VkFormat GetVulkanFormat(const AnsiString &name)const
+    const VkFormat GetVulkanFormat(const VertexSemantic semantic)const
     {
-        const int index=GetIndex(name);
+        const int index=GetIndex(semantic);
 
         return index==-1?VK_FORMAT_UNDEFINED:vif_list[index].format;
     }
 
     const VertexInputFormat *GetConfig(const uint index)const{return (index>=count)?nullptr:vif_list+index;}
-    const VertexInputFormat *GetConfig(const AnsiString &name)const{return GetConfig(GetIndex(name));}
+    const VertexInputFormat *GetConfig(const VertexSemantic semantic)const{return GetConfig(GetIndex(semantic));}
 
 public:
 

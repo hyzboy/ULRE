@@ -55,14 +55,19 @@ const uint32_t Geometry::GetVABCount()const
     return geometry_data->GetVABCount();
 }
 
-const int Geometry::GetVABIndex(const AnsiString &name)const
+const int Geometry::GetVABIndex(const VertexSemantic semantic)const
 {
-    return geometry_data->GetVABIndex(name);
+    return geometry_data->GetVABIndex(semantic);
 }
 
 VAB *Geometry::GetVAB(const int vab_index)const
 {
     return geometry_data->GetVAB(vab_index);
+}
+
+VAB *Geometry::GetVAB(const VertexSemantic semantic)const
+{
+    return geometry_data->GetVAB(semantic);
 }
 
 VkBuffer Geometry::GetVkBuffer(const int index)const
@@ -72,9 +77,9 @@ VkBuffer Geometry::GetVkBuffer(const int index)const
     return vab->GetVkBuffer();
 }
 
-VkBuffer Geometry::GetVkBuffer(const AnsiString &name)const
+VkBuffer Geometry::GetVkBuffer(const VertexSemantic semantic)const
 {
-    VAB *vab=GetVAB(name);
+    VAB *vab=GetVAB(semantic);
     if(!vab)return(VK_NULL_HANDLE);
     return vab->GetVkBuffer();
 }

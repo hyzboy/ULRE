@@ -231,12 +231,13 @@ std::string ResourceLayoutGenerator::GenVertexInputLayout(const FixedVertexEntry
         
         // 获取 GLSL 类型字符串
         const char* glsl_type = VAType_To_GLSL(entry.type);
+        const char* input_name = GetVertexSemanticName(entry.semantic);
         
         // 生成 layout(location=N) in TYPE name;
         char buf[256];
         snprintf(buf, sizeof(buf),
             "layout(location=%u) in %s %s;\n",
-            i, glsl_type, entry.name);
+            i, glsl_type, input_name);
         result += buf;
     }
     

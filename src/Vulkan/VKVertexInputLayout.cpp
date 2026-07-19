@@ -18,12 +18,12 @@ VertexInputLayout::~VertexInputLayout()
     delete[] attr_list;
 }
 
-const int VertexInputLayout::GetIndex(const AnsiString &name)const
+const int VertexInputLayout::GetIndex(const VertexSemantic semantic)const
 {
-    if(name.IsEmpty())return(-1);
+    if(semantic==VertexSemantic::Unknown)return(-1);
 
     for(uint32_t i=0;i<count;i++)
-        if(name.CaseComp(vif_list[i].name)==0)
+        if(vif_list[i].semantic==semantic)
             return(i);
 
     return -1;

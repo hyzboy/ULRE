@@ -23,9 +23,15 @@ int ShaderCreateInfoVertex::AddInput(VIAList &via_list)
 
 int ShaderCreateInfoVertex::AddInput(const VAType &type,const std::string &name)
 {
+    return AddInput(type,GetVertexSemanticByName(name.c_str()));
+}
+
+int ShaderCreateInfoVertex::AddInput(const VAType &type,const VertexSemantic semantic)
+{
     VIA via;
 
-    hgl::strcpy(via.name,sizeof(via.name),name.c_str());
+    via.semantic=semantic;
+    hgl::strcpy(via.name,sizeof(via.name),GetVertexSemanticName(semantic));
 
     via.basetype=(uint8)type.basetype;
     via.vec_size=       type.vec_size;
