@@ -81,7 +81,41 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
     return key;
 }
 
-bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out_preset)
+bool TryMapVariantKeyToPreset2D(const MaterialVariantKey &key, MaterialPreset &out_preset)
+{
+    if (key.surface_type != SurfaceType::Unlit)
+        return false;
+
+    if (key.texture_source_mode == TextureSourceMode::Atlas)
+    {
+        out_preset = MaterialPreset::Text2D;
+        return true;
+    }
+
+    if (key.texture_source_mode == TextureSourceMode::Tex2DArray)
+    {
+        out_preset = MaterialPreset::RectTexture2DArray;
+        return true;
+    }
+
+    if (key.texture_source_mode == TextureSourceMode::Tex2D
+     || (key.feature_bits & VF_HasBaseColorTex) != 0)
+    {
+        out_preset = MaterialPreset::PureTexture2D;
+        return true;
+    }
+
+    if ((key.feature_bits & VF_UseVertexColor) != 0)
+    {
+        out_preset = MaterialPreset::VertexColor2D;
+        return true;
+    }
+
+    out_preset = MaterialPreset::PureColor2D;
+    return true;
+}
+
+bool TryMapVariantKeyToPreset3D(const MaterialVariantKey &key, MaterialPreset &out_preset)
 {
     if (key.surface_type == SurfaceType::Standard)
     {
@@ -96,56 +130,42 @@ bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out
         return true;
     }
 
-    if (key.surface_type == SurfaceType::Unlit)
+    if (key.surface_type != SurfaceType::Unlit)
+        return false;
+
+    if ((key.feature_bits & VF_UseVertexLum) != 0)
     {
-        if (key.texture_source_mode == TextureSourceMode::Atlas)
-        {
-            out_preset = MaterialPreset::Text2D;
-            return true;
-        }
-
-        if ((key.feature_bits & VF_UseVertexLum) != 0)
-        {
-            out_preset = MaterialPreset::VertexLuminance3D;
-            return true;
-        }
-
-        if ((key.feature_bits & VF_DebugShading) != 0)
-        {
-            out_preset = ((key.feature_bits & VF_UseVertexColor) != 0)
-                ? MaterialPreset::VertexPattleColor3D
-                : MaterialPreset::Gizmo3D;
-            return true;
-        }
-
-        if (key.texture_source_mode == TextureSourceMode::Tex2DArray)
-        {
-            out_preset = MaterialPreset::RectTexture2DArray;
-            return true;
-        }
-
-        if (key.texture_source_mode == TextureSourceMode::Tex2D
-         || (key.feature_bits & VF_HasBaseColorTex) != 0)
-        {
-            out_preset = MaterialPreset::PureTexture2D;
-            return true;
-        }
-
-        if ((key.feature_bits & VF_UseVertexColor) != 0)
-        {
-            out_preset = MaterialPreset::VertexColor3D;
-            return true;
-        }
-
-        out_preset = MaterialPreset::PureColor3D;
+        out_preset = MaterialPreset::VertexLuminance3D;
         return true;
     }
 
-    if (key.surface_type == SurfaceType::Sky)
+    if ((key.feature_bits & VF_DebugShading) != 0)
     {
-        out_preset = MaterialPreset::SkyMinimal;
+        out_preset = ((key.feature_bits & VF_UseVertexColor) != 0)
+            ? MaterialPreset::VertexPattleColor3D
+            : MaterialPreset::Gizmo3D;
         return true;
     }
+
+    if ((key.feature_bits & VF_UseVertexColor) != 0)
+    {
+        out_preset = MaterialPreset::VertexColor3D;
+        return true;
+    }
+
+    out_preset = MaterialPreset::PureColor3D;
+    return true;
+}
+
+bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out_preset)
+{
+    // Compatibility fallback: keep a generic entrypoint for existing callers.
+    // Prefer 2D mapping first to preserve legacy unlit texture defaults.
+    if (TryMapVariantKeyToPreset2D(key, out_preset))
+        return true;
+
+    if (TryMapVariantKeyToPreset3D(key, out_preset))
+        return true;
 
     return false;
 }

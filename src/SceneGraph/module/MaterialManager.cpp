@@ -407,19 +407,9 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     if (!cfg)
         return nullptr;
 
-    mtl::MaterialPreset preset = mtl::MaterialPreset::PureColor2D;
-    if (key.surface_type != SurfaceType::Unlit)
+    mtl::MaterialPreset preset;
+    if (!mtl::TryMapVariantKeyToPreset2D(key, preset))
         return nullptr;
-
-    if (key.texture_source_mode == mtl::TextureSourceMode::Atlas)
-        preset = mtl::MaterialPreset::Text2D;
-    else if (key.texture_source_mode == mtl::TextureSourceMode::Tex2DArray)
-        preset = mtl::MaterialPreset::RectTexture2DArray;
-    else if (key.texture_source_mode == mtl::TextureSourceMode::Tex2D
-          || (key.feature_bits & mtl::VF_HasBaseColorTex) != 0)
-        preset = mtl::MaterialPreset::PureTexture2D;
-    else if ((key.feature_bits & mtl::VF_UseVertexColor) != 0)
-        preset = mtl::MaterialPreset::VertexColor2D;
 
     return CreateMaterial(preset,cfg);
 }
@@ -429,37 +419,9 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     if (!cfg)
         return nullptr;
 
-    mtl::MaterialPreset preset = mtl::MaterialPreset::PureColor3D;
-
-    if (key.surface_type == SurfaceType::Sky)
-    {
-        preset = mtl::MaterialPreset::SkyMinimal;
-    }
-    else if (key.surface_type == SurfaceType::Standard)
-    {
-        if (key.texture_source_mode == mtl::TextureSourceMode::Tex2DArray)
-            preset = mtl::MaterialPreset::StandardTextureArray;
-        else if ((key.feature_bits & (mtl::VF_HasBaseColorTex | mtl::VF_HasNormalTex | mtl::VF_HasRoughnessTex)) != 0
-              || key.texture_source_mode == mtl::TextureSourceMode::Tex2D)
-            preset = mtl::MaterialPreset::Standard;
-        else
-            preset = mtl::MaterialPreset::PBRColor3D;
-    }
-    else if (key.surface_type == SurfaceType::Unlit)
-    {
-        if ((key.feature_bits & mtl::VF_UseVertexLum) != 0)
-            preset = mtl::MaterialPreset::VertexLuminance3D;
-        else if ((key.feature_bits & mtl::VF_DebugShading) != 0)
-            preset = ((key.feature_bits & mtl::VF_UseVertexColor) != 0)
-                ? mtl::MaterialPreset::VertexPattleColor3D
-                : mtl::MaterialPreset::Gizmo3D;
-        else if ((key.feature_bits & mtl::VF_UseVertexColor) != 0)
-            preset = mtl::MaterialPreset::VertexColor3D;
-    }
-    else
-    {
+    mtl::MaterialPreset preset;
+    if (!mtl::TryMapVariantKeyToPreset3D(key, preset))
         return nullptr;
-    }
 
     return CreateMaterial(preset,cfg);
 }
