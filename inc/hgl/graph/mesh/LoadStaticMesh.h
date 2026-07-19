@@ -7,9 +7,8 @@ namespace hgl::graph
     class StaticMesh;
     class VulkanDevice;
     class GeometryManager;
+    class GeometryVertexFormat;
     class MaterialInstance;
-    class VertexInputLayout;
-    using VIL = VertexInputLayout;
 
     // Forward-declared in VKPipeline.h
     class Pipeline;
@@ -19,7 +18,7 @@ namespace hgl::graph
      *
      * @param device          Vulkan 设备，用于加载 Geometry
      * @param geo_mgr         GeometryManager，加载的 Geometry 注册到此（接管生命周期）
-     * @param vil             顶点输入布局，必须与 default_mi 的材质匹配
+     * @param geometry_vertex_format 几何顶点格式，必须与材质输入语义匹配
      * @param mi_array        材质实例数组，按 material_index % mi_count 路由颜色
      * @param mi_count        数组长度
      * @param default_pipeline 默认管线，对所有 primitive 使用同一管线
@@ -33,7 +32,7 @@ namespace hgl::graph
     StaticMesh *LoadStaticMeshScene(
         VulkanDevice             *device,
         GeometryManager          *geo_mgr,
-        const VIL                *vil,
+        const GeometryVertexFormat &geometry_vertex_format,
         MaterialInstance * const *mi_array,
         int                       mi_count,
         Pipeline                 *default_pipeline,

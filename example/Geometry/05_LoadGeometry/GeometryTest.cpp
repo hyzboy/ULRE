@@ -89,7 +89,7 @@ private:
     struct MaterialData
     {
         Material *material = nullptr;
-        const VIL *vil = nullptr;
+        GeometryVertexFormat geometry_vertex_format;
 
         Pipeline *pipeline = nullptr;
         MaterialInstance *mi[COLOR_COUNT]{};
@@ -160,9 +160,9 @@ private:
                 return(false);
         }
 
-        md->vil = md->material->GetDefaultVIL();
-
-        if(!md->vil)
+        const VIL *vil = md->material->GetDefaultVIL();
+        md->geometry_vertex_format = CreateGeometryVertexFormatFromVIL(vil);
+        if(md->geometry_vertex_format.GetCount()==0)
             return(false);
 
         auto* render_target = render_context->GetCurrentRenderTarget();
@@ -280,7 +280,7 @@ private:
     bool CreateGeometryMesh()
     {
         int count=0;
-        const GeometryVertexFormat geometry_vertex_format = CreateGeometryVertexFormatFromVIL(solid.vil);
+        const GeometryVertexFormat &geometry_vertex_format = solid.geometry_vertex_format;
 
         for(int i=0;i< COLOR_COUNT;i++)
         {

@@ -6,7 +6,6 @@
 #include <hgl/graph/mesh/StaticMesh.h>
 #include <hgl/graph/mesh/Primitive.h>
 #include <hgl/graph/module/GeometryManager.h>
-#include <hgl/vk/VKVertexInputLayout.h>
 #include <hgl/io/MiniPack.h>
 #include <hgl/type/StdString.h>
 #include <hgl/log/Log.h>
@@ -29,24 +28,6 @@ Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device, const GeometryVert
 
 namespace
 {
-GeometryVertexFormat CreateGeometryVertexFormatFromVIL(const VIL *vil)
-{
-    GeometryVertexFormat gvf;
-    if(!vil)
-        return gvf;
-
-    const uint32_t count = vil->GetVertexAttribCount();
-    const VertexInputFormat *vif_list = vil->GetVIFList();
-
-    for(uint32_t i=0;i<count;i++)
-    {
-        const VertexInputFormat &vif = vif_list[i];
-        gvf.Add(vif.semantic, vif.format, uint8_t(vif.vec_size), uint32_t(vif.stride));
-    }
-
-    return gvf;
-}
-
 // ---- packed structures (mirror the exporter layout) ------------------------
 
 #pragma pack(push, 1)
@@ -709,7 +690,7 @@ std::vector<StaticMeshNode> ParseNodeList(
 StaticMesh *LoadStaticMeshScene(
     VulkanDevice             *device,
     GeometryManager          *geo_mgr,
-    const VIL                *vil,
+    const GeometryVertexFormat &geometry_vertex_format,
     MaterialInstance * const *mi_array,
     int                       mi_count,
     Pipeline                 *default_pipeline,
@@ -719,13 +700,11 @@ StaticMesh *LoadStaticMeshScene(
     using namespace hgl::io::minipack;
     using namespace hgl::math;
 
-    if (!device || !geo_mgr || !vil || !mi_array || mi_count <= 0 || !default_pipeline)
+    if (!device || !geo_mgr || geometry_vertex_format.GetCount() == 0 || !mi_array || mi_count <= 0 || !default_pipeline)
     {
         MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: null argument"));
         return nullptr;
     }
-
-    const GeometryVertexFormat geometry_vertex_format = CreateGeometryVertexFormatFromVIL(vil);
 
     MiniPackMemory *mpm = GetMiniPackMemory(pack_path);
     if (!mpm)

@@ -5,6 +5,7 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
+#include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/color/Color.h>
 #include<hgl/type/StdString.h>
 #include<filesystem>
@@ -28,6 +29,27 @@
 
 using namespace hgl;
 using namespace hgl::graph;
+
+namespace
+{
+    GeometryVertexFormat CreateGeometryVertexFormatFromVIL(const VIL *vil)
+    {
+        GeometryVertexFormat gvf;
+        if(!vil)
+            return gvf;
+
+        const uint32_t count = vil->GetVertexAttribCount();
+        const VertexInputFormat *vif_list = vil->GetVIFList();
+
+        for(uint32_t i=0;i<count;i++)
+        {
+            const VertexInputFormat &vif = vif_list[i];
+            gvf.Add(vif.semantic, vif.format, uint8_t(vif.vec_size), uint32_t(vif.stride));
+        }
+
+        return gvf;
+    }
+}
 
 constexpr const COLOR TestColor[] =
 {
@@ -56,7 +78,7 @@ private:
     struct MaterialData
     {
         Material *material = nullptr;
-        const VIL *vil = nullptr;
+        GeometryVertexFormat geometry_vertex_format;
 
         Pipeline *pipeline = nullptr;
         MaterialInstance *mi[COLOR_COUNT]{};
@@ -105,9 +127,9 @@ private:
                 return(false);
         }
 
-        md->vil = md->material->GetDefaultVIL();
-
-        if(!md->vil)
+        const VIL *vil = md->material->GetDefaultVIL();
+        md->geometry_vertex_format = CreateGeometryVertexFormatFromVIL(vil);
+        if(md->geometry_vertex_format.GetCount()==0)
             return(false);
 
         auto* render_target = render_context->GetCurrentRenderTarget();
@@ -161,7 +183,7 @@ private:
 
         scene_mesh_ = LoadStaticMeshScene(
             device, geo_mgr,
-            solid.vil, solid.mi, (int)COLOR_COUNT, solid.pipeline,
+            solid.geometry_vertex_format, solid.mi, (int)COLOR_COUNT, solid.pipeline,
             pack_path, base_dir);
 
         return scene_mesh_ != nullptr;
