@@ -7,17 +7,6 @@
 
 namespace hgl::graph::mtl
 {
-    enum class GeometryMode : uint8
-    {
-        Mesh3D = 0,
-        Quad2D,
-        ScreenRect,
-        CameraFacingQuad,
-        AxisLockedQuad,
-
-        ENUM_CLASS_RANGE(Mesh3D, AxisLockedQuad)
-    };
-
     enum class TextureSourceMode : uint8
     {
         None = 0,
@@ -42,7 +31,6 @@ namespace hgl::graph::mtl
     struct MaterialVariantKey
     {
         SurfaceType       surface_type        = SurfaceType::Unlit;
-        GeometryMode      geometry_mode       = GeometryMode::Mesh3D;
         TextureSourceMode texture_source_mode = TextureSourceMode::None;
         uint32            feature_bits        = VF_None;
         BlendMode         blend_mode          = BlendMode::Opaque;
@@ -52,7 +40,6 @@ namespace hgl::graph::mtl
         bool operator==(const MaterialVariantKey &rhs) const noexcept
         {
             return surface_type == rhs.surface_type
-                && geometry_mode == rhs.geometry_mode
                 && texture_source_mode == rhs.texture_source_mode
                 && feature_bits == rhs.feature_bits
                 && blend_mode == rhs.blend_mode

@@ -13,81 +13,66 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
     {
         case MaterialPreset::VertexColor2D:
             key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Quad2D;
             key.feature_bits = VF_UseVertexColor;
             break;
         case MaterialPreset::PureColor2D:
             key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Quad2D;
             break;
         case MaterialPreset::PureTexture2D:
             key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Quad2D;
             key.texture_source_mode = TextureSourceMode::Tex2D;
             key.feature_bits = VF_HasBaseColorTex;
             break;
         case MaterialPreset::RectTexture2D:
             key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::ScreenRect;
             key.texture_source_mode = TextureSourceMode::Tex2D;
             key.feature_bits = VF_HasBaseColorTex;
             break;
         case MaterialPreset::RectTexture2DArray:
             key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::ScreenRect;
             key.texture_source_mode = TextureSourceMode::Tex2DArray;
             key.feature_bits = VF_HasBaseColorTex;
             break;
         case MaterialPreset::Text2D:
             key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Quad2D;
             key.texture_source_mode = TextureSourceMode::Atlas;
             key.feature_bits = VF_HasBaseColorTex;
             break;
 
         case MaterialPreset::PureColor3D:
             key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Mesh3D;
             break;
         case MaterialPreset::VertexColor3D:
             key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Mesh3D;
             key.feature_bits = VF_UseVertexColor;
             break;
         case MaterialPreset::VertexLuminance3D:
             key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Mesh3D;
             key.feature_bits = VF_UseVertexLum;
             break;
         case MaterialPreset::VertexPattleColor3D:
             key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Mesh3D;
             key.feature_bits = VF_UseVertexColor | VF_DebugShading;
             break;
         case MaterialPreset::Gizmo3D:
             key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Mesh3D;
             key.feature_bits = VF_DebugShading;
             break;
         case MaterialPreset::SkyMinimal:
             key.surface_type = SurfaceType::Sky;
-            key.geometry_mode = GeometryMode::Mesh3D;
             break;
         case MaterialPreset::Standard:
             key.surface_type = SurfaceType::Standard;
-            key.geometry_mode = GeometryMode::Mesh3D;
             key.texture_source_mode = TextureSourceMode::Tex2D;
             key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
             break;
         case MaterialPreset::StandardTextureArray:
             key.surface_type = SurfaceType::Standard;
-            key.geometry_mode = GeometryMode::Mesh3D;
             key.texture_source_mode = TextureSourceMode::Tex2DArray;
             key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex;
             break;
         case MaterialPreset::PBRColor3D:
             key.surface_type = SurfaceType::Standard;
-            key.geometry_mode = GeometryMode::Mesh3D;
             break;
         default:
             break;
@@ -98,63 +83,62 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
 
 bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out_preset)
 {
-    if (key.surface_type == SurfaceType::Standard && key.geometry_mode == GeometryMode::Mesh3D)
+    if (key.surface_type == SurfaceType::Standard)
     {
-        out_preset = MaterialPreset::Standard;
+        if (key.texture_source_mode == TextureSourceMode::Tex2DArray)
+            out_preset = MaterialPreset::StandardTextureArray;
+        else if ((key.feature_bits & (VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex)) != 0
+              || key.texture_source_mode == TextureSourceMode::Tex2D)
+            out_preset = MaterialPreset::Standard;
+        else
+            out_preset = MaterialPreset::PBRColor3D;
+
         return true;
     }
 
     if (key.surface_type == SurfaceType::Unlit)
     {
-        if (key.geometry_mode == GeometryMode::ScreenRect)
+        if (key.texture_source_mode == TextureSourceMode::Atlas)
         {
-            out_preset = (key.texture_source_mode == TextureSourceMode::Tex2DArray)
-                ? MaterialPreset::RectTexture2DArray
-                : MaterialPreset::RectTexture2D;
+            out_preset = MaterialPreset::Text2D;
             return true;
         }
 
-        if (key.geometry_mode == GeometryMode::Quad2D)
+        if ((key.feature_bits & VF_UseVertexLum) != 0)
         {
-            if ((key.feature_bits & VF_UseVertexColor) != 0)
-            {
-                out_preset = MaterialPreset::VertexColor2D;
-                return true;
-            }
-
-            if ((key.feature_bits & VF_HasBaseColorTex) != 0)
-            {
-                out_preset = MaterialPreset::PureTexture2D;
-                return true;
-            }
-
-            out_preset = MaterialPreset::PureColor2D;
+            out_preset = MaterialPreset::VertexLuminance3D;
             return true;
         }
 
-        if (key.geometry_mode == GeometryMode::Mesh3D)
+        if ((key.feature_bits & VF_DebugShading) != 0)
         {
-            if ((key.feature_bits & VF_UseVertexLum) != 0)
-            {
-                out_preset = MaterialPreset::VertexLuminance3D;
-                return true;
-            }
-
-            if ((key.feature_bits & VF_UseVertexColor) != 0)
-            {
-                out_preset = MaterialPreset::VertexColor3D;
-                return true;
-            }
-
-            if ((key.feature_bits & VF_DebugShading) != 0)
-            {
-                out_preset = MaterialPreset::Gizmo3D;
-                return true;
-            }
-
-            out_preset = MaterialPreset::PureColor3D;
+            out_preset = ((key.feature_bits & VF_UseVertexColor) != 0)
+                ? MaterialPreset::VertexPattleColor3D
+                : MaterialPreset::Gizmo3D;
             return true;
         }
+
+        if (key.texture_source_mode == TextureSourceMode::Tex2DArray)
+        {
+            out_preset = MaterialPreset::RectTexture2DArray;
+            return true;
+        }
+
+        if (key.texture_source_mode == TextureSourceMode::Tex2D
+         || (key.feature_bits & VF_HasBaseColorTex) != 0)
+        {
+            out_preset = MaterialPreset::PureTexture2D;
+            return true;
+        }
+
+        if ((key.feature_bits & VF_UseVertexColor) != 0)
+        {
+            out_preset = MaterialPreset::VertexColor3D;
+            return true;
+        }
+
+        out_preset = MaterialPreset::PureColor3D;
+        return true;
     }
 
     if (key.surface_type == SurfaceType::Sky)
