@@ -358,7 +358,6 @@ namespace hgl::ecs
 
     void RenderDescriptorBindingSystem::ResetMaterializationFrameData()
     {
-        materialization_struct_pool.ResetAllocations();
         materialization_index_tables.Clear();
         materialization_resolve_cache.clear();
         materialization_index_tables_dirty = true;

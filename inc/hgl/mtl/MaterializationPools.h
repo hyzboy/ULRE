@@ -106,7 +106,6 @@ namespace hgl::graph::mtl
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = 0;
         uint32_t struct_index = 0;
-        uint32_t byte_offset = 0;
         uint32_t byte_stride = 0;
     };
 
@@ -117,7 +116,6 @@ namespace hgl::graph::mtl
         struct LayoutState
         {
             StructPoolLayout layout;
-            uint32_t next_index = 0;
         };
 
         std::unordered_map<uint64_t, LayoutState> states;
@@ -127,20 +125,19 @@ namespace hgl::graph::mtl
             return (static_cast<uint64_t>(ssbo_type) << 32) | static_cast<uint64_t>(ssbo_id);
         }
 
-        bool AllocateByKey(const uint64_t key, StructPoolAllocation &out_alloc)
+        bool ResolveByKey(const uint64_t key, StructPoolAllocation &out_alloc) const
         {
             auto it = states.find(key);
             if (it == states.end())
                 return false;
 
-            auto &state = it->second;
-            const uint32_t index = state.next_index++;
+            const auto &state = it->second;
+            const uint32_t index = state.layout.ssbo_id;
 
             out_alloc.ssbo_type = state.layout.ssbo_type;
             out_alloc.ssbo_id = state.layout.ssbo_id;
             out_alloc.struct_index = index;
             out_alloc.byte_stride = state.layout.byte_stride;
-            out_alloc.byte_offset = index * state.layout.byte_stride;
             return true;
         }
 
@@ -183,17 +180,11 @@ namespace hgl::graph::mtl
             return states.size();
         }
 
-        bool TryAllocate(const SSBOType ssbo_type,
-                         const uint32_t ssbo_id,
-                         StructPoolAllocation &out_alloc)
+        bool TryResolve(const SSBOType ssbo_type,
+                        const uint32_t ssbo_id,
+                        StructPoolAllocation &out_alloc) const
         {
-            return AllocateByKey(BuildLayoutKey(ssbo_type, ssbo_id), out_alloc);
-        }
-
-        void ResetAllocations()
-        {
-            for (auto &kv : states)
-                kv.second.next_index = 0;
+            return ResolveByKey(BuildLayoutKey(ssbo_type, ssbo_id), out_alloc);
         }
 
         void Clear()
@@ -299,7 +290,7 @@ namespace hgl::graph::mtl
         callbacks.resolve_struct = [&struct_pool](const RecipeStructBinding &input, ResolvedStructRef &output)
         {
             StructPoolAllocation alloc{};
-            if (!struct_pool.TryAllocate(input.ssbo_type, input.ssbo_id, alloc))
+            if (!struct_pool.TryResolve(input.ssbo_type, input.ssbo_id, alloc))
                 return false;
 
             output.slot = input.slot;
@@ -307,7 +298,6 @@ namespace hgl::graph::mtl
             output.ssbo_id = alloc.ssbo_id;
             output.ssbo_binding = static_cast<uint32_t>(alloc.ssbo_type); // 临时默认映射，后续由布局系统接管
             output.struct_index = alloc.struct_index;
-            output.byte_offset = alloc.byte_offset;
             output.byte_stride = alloc.byte_stride;
             return true;
         };

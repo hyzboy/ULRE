@@ -25,8 +25,7 @@ namespace hgl::graph::mtl
         SSBOType ssbo_type = SSBOType::UserDefined; // 目标 SSBO 类型（契约主字段）
         uint32_t ssbo_id = 0;                       // 目标 SSBO 资源 ID（主字段，P1.55）
         uint32_t ssbo_binding = 0;                  // 目标 SSBO binding（管线布局侧）
-        uint32_t struct_index = 0;                  // 结构体池中的逻辑索引（实例通过它间接访问）
-        uint32_t byte_offset = 0;                   // 结构体在 SSBO 内的字节偏移
+        uint32_t struct_index = 0;                  // 结构数据索引（R12 起与 ssbo_id 一致，不再依赖帧内分配序）
         uint32_t byte_stride = 0;                   // 同类结构体的字节步长
     };
 
@@ -51,7 +50,7 @@ namespace hgl::graph::mtl
 
     // 计算 MaterializationSpec 的稳定内容哈希。
     // 目的：作为 Shader/PSO/布局缓存键，保证同内容同 key，不同内容不同 key。
-    // 注意：不纳入 struct_index/byte_offset 等运行时分配位置信息，避免跨帧分配顺序扰动缓存键。
+    // 注意：不纳入 struct_index 等运行时分配位置信息，避免跨帧分配顺序扰动缓存键。
     inline uint64_t HashMaterializationSpec(const MaterializationSpec &spec) noexcept
     {
         uint64 hash = hgl::hash::FNV1aInit<uint64>();
