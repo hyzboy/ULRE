@@ -1,5 +1,6 @@
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<algorithm>
+#include<limits>
 
 namespace hgl::ecs
 {
@@ -41,6 +42,24 @@ namespace hgl::ecs
         for (const auto &pair : material_resource_bindings)
             binding_entries += static_cast<uint32_t>(pair.second.size());
 
+        return true;
+    #endif
+    }
+
+    bool RenderDescriptorBindingSystem::GetCompatibilityId0FallbackStats(uint32_t &current_frame_hits,
+                                                                          uint32_t &last_summary_hits,
+                                                                          uint32_t &last_summary_frame) const
+    {
+        current_frame_hits = 0;
+        last_summary_hits = 0;
+        last_summary_frame = std::numeric_limits<uint32_t>::max();
+
+    #if !ULRE_ECS_DEBUG_API
+        return false;
+    #else
+        current_frame_hits = compat_id0_fallback_hits_current_frame;
+        last_summary_hits = compat_id0_fallback_hits_last_summary;
+        last_summary_frame = compat_id0_fallback_summary_frame;
         return true;
     #endif
     }

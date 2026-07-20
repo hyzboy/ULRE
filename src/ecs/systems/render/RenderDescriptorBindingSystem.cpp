@@ -376,6 +376,7 @@ namespace hgl::ecs
             {
                 ResetMaterializationFrameData();
                 materialization_last_reset_frame = frame_index;
+                compat_id0_fallback_hits_current_frame = 0;
             }
         }
 
@@ -581,7 +582,7 @@ namespace hgl::ecs
                 const graph::mtl::SSBOAddress alias_address{ssbo_type, alias_ssbo_id, slot};
                 if (!domain_manager->RegisterBuffer(alias_address, buffer, element_capacity))
                 {
-                    GLogError("[R12] Failed to register materialization alias domain: type=%s ssbo_id=%u slot=%u",
+                    GLogError("[MaterializationAlias] Failed to register alias domain: type=%s ssbo_id=%u slot=%u",
                               graph::mtl::GetSSBOTypeName(ssbo_type),
                               alias_ssbo_id,
                               slot);
@@ -704,6 +705,17 @@ namespace hgl::ecs
         EnsureViewportUBO();
 
         ApplyContractBindings(cmd);
+
+        if (run_contract_diagnostics
+         && compat_id0_fallback_hits_current_frame > 0
+         && compat_id0_fallback_summary_frame != frame_index)
+        {
+            GLogWarning("[DescriptorBindingCompat] id=0 fallback summary: frame=%u hits=%u",
+                        frame_index,
+                        compat_id0_fallback_hits_current_frame);
+            compat_id0_fallback_hits_last_summary = compat_id0_fallback_hits_current_frame;
+            compat_id0_fallback_summary_frame = frame_index;
+        }
     }
 
     const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveViewportUBO() const
@@ -856,6 +868,28 @@ namespace hgl::ecs
         std::unordered_set<graph::Material *> l2w_bound_materials;
         std::unordered_set<graph::Material *> mi_bound_materials;
         std::unordered_set<const graph::Material *> active_materials;
+        std::unordered_set<std::string> fallback_warned_keys;
+
+        auto log_compat_id0_fallback_once = [&](const char *semantic_tag,
+                                                const graph::mtl::SSBOType ssbo_type,
+                                                const uint32_t req_ssbo_id,
+                                                const uint32_t slot) -> bool
+        {
+            std::string key = std::to_string(static_cast<uint32_t>(ssbo_type))
+                            + ":" + std::to_string(req_ssbo_id)
+                            + ":" + std::to_string(slot)
+                            + ":" + (semantic_tag ? semantic_tag : "UnknownSemantic");
+            const bool inserted = fallback_warned_keys.insert(std::move(key)).second;
+            if (!inserted)
+                return false;
+
+            GLogWarning("[DescriptorBindingCompat] Fallback to ssbo_id=0 for %s: type=%s requested_ssbo_id=%u slot=%u",
+                        semantic_tag ? semantic_tag : "UnknownSemantic",
+                        graph::mtl::GetSSBOTypeName(ssbo_type),
+                        req_ssbo_id,
+                        slot);
+            return true;
+        };
 
         auto apply_requirement = [&](graph::Material *material,
                                      const MaterialBatch *batch,
@@ -1009,7 +1043,9 @@ namespace hgl::ecs
                             req.ssbo_id,
                             static_cast<uint32_t>(req.texture_slot)},
                         "MaterialTextureLayerTable");
-                    if (!table_buffer && req.ssbo_id != graph::mtl::MakeRecipeSSBOId(0))
+                    if (!table_buffer
+                     && compat_id0_fallback_enabled
+                     && req.ssbo_id != graph::mtl::MakeRecipeSSBOId(0))
                     {
                         table_buffer = resolve_domain_ssbo(
                             graph::mtl::SSBOAddress{
@@ -1017,6 +1053,14 @@ namespace hgl::ecs
                                 graph::mtl::MakeRecipeSSBOId(0),
                                 static_cast<uint32_t>(req.texture_slot)},
                             "MaterialTextureLayerTable");
+                        if (table_buffer)
+                        {
+                            ++compat_id0_fallback_hits_current_frame;
+                            log_compat_id0_fallback_once("MaterialTextureLayerTable",
+                                                         req.ssbo_type,
+                                                         req.ssbo_id,
+                                                         static_cast<uint32_t>(req.texture_slot));
+                        }
                     }
                 }
 
@@ -1050,7 +1094,9 @@ namespace hgl::ecs
                             req.ssbo_id,
                             static_cast<uint32_t>(req.data_slot)},
                         "MaterialDataIndexTable");
-                    if (!table_buffer && req.ssbo_id != graph::mtl::MakeRecipeSSBOId(0))
+                    if (!table_buffer
+                     && compat_id0_fallback_enabled
+                     && req.ssbo_id != graph::mtl::MakeRecipeSSBOId(0))
                     {
                         table_buffer = resolve_domain_ssbo(
                             graph::mtl::SSBOAddress{
@@ -1058,6 +1104,14 @@ namespace hgl::ecs
                                 graph::mtl::MakeRecipeSSBOId(0),
                                 static_cast<uint32_t>(req.data_slot)},
                             "MaterialDataIndexTable");
+                        if (table_buffer)
+                        {
+                            ++compat_id0_fallback_hits_current_frame;
+                            log_compat_id0_fallback_once("MaterialDataIndexTable",
+                                                         req.ssbo_type,
+                                                         req.ssbo_id,
+                                                         static_cast<uint32_t>(req.data_slot));
+                        }
                     }
                 }
 

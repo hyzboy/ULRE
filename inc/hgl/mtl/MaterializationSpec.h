@@ -25,7 +25,7 @@ namespace hgl::graph::mtl
         SSBOType ssbo_type = SSBOType::UserDefined; // 目标 SSBO 类型（契约主字段）
         uint32_t ssbo_id = 0;                       // 目标 SSBO 资源 ID（主字段，P1.55）
         uint32_t ssbo_binding = 0;                  // 目标 SSBO binding（管线布局侧）
-        uint32_t struct_index = 0;                  // 结构数据索引（R12 起与 ssbo_id 一致，不再依赖帧内分配序）
+        uint32_t struct_index = 0;                  // 结构数据索引（与 ssbo_id 对齐，不依赖帧内分配序）
         uint32_t byte_stride = 0;                   // 同类结构体的字节步长
     };
 

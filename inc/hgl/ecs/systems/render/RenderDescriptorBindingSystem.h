@@ -102,6 +102,10 @@ namespace hgl::ecs
         uint32_t materialization_texture_layer_capacity = 0;
         uint32_t materialization_data_index_capacity = 0;
         bool materialization_index_tables_dirty = false;
+        uint32_t compat_id0_fallback_hits_current_frame = 0;
+        uint32_t compat_id0_fallback_hits_last_summary = 0;
+        uint32_t compat_id0_fallback_summary_frame = std::numeric_limits<uint32_t>::max();
+        bool compat_id0_fallback_enabled = false;
 
     public:
         RenderDescriptorBindingSystem(const std::string& name = "RenderDescriptorBindingSystem");
@@ -120,6 +124,11 @@ namespace hgl::ecs
                                         uint32_t &fallback_hits) const;
         bool GetMaterialBindingRegistryStats(uint32_t &materials_registered,
                              uint32_t &binding_entries) const;
+        bool GetCompatibilityId0FallbackStats(uint32_t &current_frame_hits,
+                                              uint32_t &last_summary_hits,
+                                              uint32_t &last_summary_frame) const;
+        void SetCompatibilityId0FallbackEnabled(bool enabled) { compat_id0_fallback_enabled = enabled; }
+        bool IsCompatibilityId0FallbackEnabled() const { return compat_id0_fallback_enabled; }
         bool GetMaterialBindingKeys(const graph::Material *material,
                         std::vector<std::string> &out_keys) const;
         bool RegisterMaterialTexture(graph::Material *material,
