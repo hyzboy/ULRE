@@ -15,6 +15,7 @@ struct ResourceDomainBinding
     uint32_t ssbo_id = 0;
     DeviceBuffer *buffer = nullptr;
     uint32_t element_capacity = 0;
+    uint32_t element_stride = 0;
 };
 
 GRAPH_MODULE_CLASS(ResourceDomainManager)

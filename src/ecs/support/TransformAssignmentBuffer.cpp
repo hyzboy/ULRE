@@ -201,6 +201,21 @@ namespace hgl::ecs
             return;
         }
 
+        const uint32_t expected_version = graph::mtl::GetSSBOTypeStructVersion(graph::mtl::SSBOType::LocalToWorld);
+        const uint32_t expected_stride = graph::mtl::GetSSBOTypeStructStride(graph::mtl::SSBOType::LocalToWorld);
+        if (expected_version > 0 && expected_stride > 0)
+        {
+            const VkDeviceSize buffer_size = transform_buffer->GetSize();
+            if (buffer_size == 0 || (buffer_size % expected_stride) != 0)
+            {
+                GLogError("[R11] Skip LocalToWorld bind: version=%u expected_stride=%u buffer_size=%llu",
+                          expected_version,
+                          expected_stride,
+                          static_cast<unsigned long long>(buffer_size));
+                return;
+            }
+        }
+
         LogDeviceBufferSnapshot("[TransformAssignmentBuffer::BindTransform] before bind", transform_buffer);
 
     #ifdef HGL_L2W_USE_SSBO
@@ -685,9 +700,22 @@ namespace hgl::ecs
 
         if (resource_domain_manager && transform_buffer)
         {
-            resource_domain_manager->RegisterBuffer(kLocalToWorldAddress,
-                                                    transform_buffer,
-                                                    transform_buffer_max_count);
+            if (!resource_domain_manager->RegisterBuffer(kLocalToWorldAddress,
+                                                         transform_buffer,
+                                                         transform_buffer_max_count))
+            {
+                GLogError("[R11] Failed to register LocalToWorld domain buffer: capacity=%u bytes=%llu",
+                          transform_buffer_max_count,
+                          static_cast<unsigned long long>(transform_buffer->GetSize()));
+
+                if (buffer_manager)
+                    buffer_manager->Release(transform_buffer);
+                else
+                    SAFE_CLEAR(transform_buffer);
+
+                transform_buffer = nullptr;
+                return;
+            }
         }
 
         ring_writer.SetBuffer(transform_buffer);
@@ -1008,9 +1036,23 @@ namespace hgl::ecs
 
         if (resource_domain_manager && transform_index_rows_buffer)
         {
-            resource_domain_manager->RegisterBuffer(kTransformIndexRowsAddress,
-                                                    transform_index_rows_buffer,
-                                                    transform_index_rows_max_count);
+            if (!resource_domain_manager->RegisterBuffer(kTransformIndexRowsAddress,
+                                                         transform_index_rows_buffer,
+                                                         transform_index_rows_max_count))
+            {
+                GLogError("[R11] Failed to register TransformIndexRows domain buffer: capacity=%u bytes=%llu",
+                          transform_index_rows_max_count,
+                          static_cast<unsigned long long>(transform_index_rows_buffer->GetSize()));
+
+                if (buffer_manager)
+                    buffer_manager->Release(transform_index_rows_buffer);
+                else
+                    SAFE_CLEAR(transform_index_rows_buffer);
+
+                transform_index_rows_buffer = nullptr;
+                transform_index_rows_max_count = 0;
+                return false;
+            }
         }
 
         if (recreated && transform_index_rows_buffer)

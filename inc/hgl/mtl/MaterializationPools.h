@@ -152,6 +152,11 @@ namespace hgl::graph::mtl
             if (byte_stride == 0)
                 return false;
 
+            const uint32_t expected_version = GetSSBOTypeStructVersion(ssbo_type);
+            const uint32_t expected_stride = GetSSBOTypeStructStride(ssbo_type);
+            if (expected_version > 0 && expected_stride > 0 && byte_stride != expected_stride)
+                return false;
+
             const uint64_t key = BuildLayoutKey(ssbo_type, ssbo_id);
             auto it = states.find(key);
             if (it == states.end())

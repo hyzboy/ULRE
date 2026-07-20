@@ -167,11 +167,38 @@ bool DescriptorSet::BindUBO(const int binding,const IGPUBuffer *gpu,bool dynamic
     if(binding<0||!gpu)
         return(false);
 
-    if(binded_sets.Contains(binding))return(false);
-
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    const VkDescriptorBufferInfo new_info = gpu->GetDescriptorBufferInfo();
 
-    const int buf_index=vab_list.Add(gpu->GetDescriptorBufferInfo());
+    const int write_count = wds_list.GetCount();
+    for (int i = 0; i < write_count; ++i)
+    {
+        VkWriteDescriptorSet &wds = wds_list[i];
+        if (static_cast<int>(wds.dstBinding) != binding || wds.descriptorType != desc_type)
+            continue;
+
+        const int existing_buf_index = (i < wds_buffer_info_indices.GetCount()) ? wds_buffer_info_indices[i] : -1;
+        if (existing_buf_index >= 0 && existing_buf_index < vab_list.GetCount())
+        {
+            vab_list[existing_buf_index] = new_info;
+        }
+        else
+        {
+            const int buf_index = vab_list.Add(new_info);
+            if (i >= wds_buffer_info_indices.GetCount())
+                wds_buffer_info_indices.Add(buf_index);
+            else
+                wds_buffer_info_indices[i] = buf_index;
+        }
+
+        if (i < wds_image_info_indices.GetCount())
+            wds_image_info_indices[i] = -1;
+        SyncWriteDescriptorInfoPointers();
+        is_dirty = true;
+        return true;
+    }
+
+    const int buf_index=vab_list.Add(new_info);
     wds_list.Add(WriteDescriptorSet(desc_set,binding,(const VkDescriptorBufferInfo *)nullptr,desc_type));
     wds_buffer_info_indices.Add(buf_index);
     wds_image_info_indices.Add(-1);
@@ -187,11 +214,38 @@ bool DescriptorSet::BindSSBO(const int binding,const IGPUBuffer *gpu,bool dynami
     if(binding<0||!gpu)
         return(false);
 
-    if(binded_sets.Contains(binding))return(false);
-
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    const VkDescriptorBufferInfo new_info = gpu->GetDescriptorBufferInfo();
 
-    const int buf_index=vab_list.Add(gpu->GetDescriptorBufferInfo());
+    const int write_count = wds_list.GetCount();
+    for (int i = 0; i < write_count; ++i)
+    {
+        VkWriteDescriptorSet &wds = wds_list[i];
+        if (static_cast<int>(wds.dstBinding) != binding || wds.descriptorType != desc_type)
+            continue;
+
+        const int existing_buf_index = (i < wds_buffer_info_indices.GetCount()) ? wds_buffer_info_indices[i] : -1;
+        if (existing_buf_index >= 0 && existing_buf_index < vab_list.GetCount())
+        {
+            vab_list[existing_buf_index] = new_info;
+        }
+        else
+        {
+            const int buf_index = vab_list.Add(new_info);
+            if (i >= wds_buffer_info_indices.GetCount())
+                wds_buffer_info_indices.Add(buf_index);
+            else
+                wds_buffer_info_indices[i] = buf_index;
+        }
+
+        if (i < wds_image_info_indices.GetCount())
+            wds_image_info_indices[i] = -1;
+        SyncWriteDescriptorInfoPointers();
+        is_dirty = true;
+        return true;
+    }
+
+    const int buf_index=vab_list.Add(new_info);
     wds_list.Add(WriteDescriptorSet(desc_set,binding,(const VkDescriptorBufferInfo *)nullptr,desc_type));
     wds_buffer_info_indices.Add(buf_index);
     wds_image_info_indices.Add(-1);

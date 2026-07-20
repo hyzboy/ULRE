@@ -337,6 +337,19 @@ namespace hgl::ecs
                                                                      uint32_t ssbo_id,
                                                                      uint32_t byte_stride)
     {
+        const uint32_t expected_version = graph::mtl::GetSSBOTypeStructVersion(ssbo_type);
+        const uint32_t expected_stride = graph::mtl::GetSSBOTypeStructStride(ssbo_type);
+        if (expected_version > 0 && expected_stride > 0 && byte_stride != expected_stride)
+        {
+            GLogError("[R11] SSBO struct layout rejected: type=%s version=%u expected_stride=%u actual_stride=%u ssbo_id=%u",
+                      graph::mtl::GetSSBOTypeName(ssbo_type),
+                      expected_version,
+                      expected_stride,
+                      byte_stride,
+                      ssbo_id);
+            return false;
+        }
+
         if (auto *domain_manager = GetResourceDomainManager(context))
             domain_manager->Touch(graph::mtl::SSBOAddress{ssbo_type, ssbo_id, 0});
 
@@ -707,13 +720,91 @@ namespace hgl::ecs
         const auto *sky_ubo = ResolveSkyUBO();
         auto *domain_manager = GetResourceDomainManager(context);
 
+        auto resolve_domain_ssbo = [&](const graph::mtl::SSBOAddress &address, const char *semantic_tag) -> const graph::IGPUBuffer *
+        {
+            if (!domain_manager)
+                return nullptr;
+
+            graph::ResourceDomainBinding binding{};
+            if (!domain_manager->TryGetBinding(address, binding) || !binding.buffer)
+                return nullptr;
+
+            const uint32_t expected_version = graph::mtl::GetSSBOTypeStructVersion(address.ssbo_type);
+            const uint32_t expected_stride = graph::mtl::GetSSBOTypeStructStride(address.ssbo_type);
+            if (expected_version > 0 && expected_stride > 0)
+            {
+                if (binding.element_stride != 0 && binding.element_stride != expected_stride)
+                {
+                    GLogError("[R11] Skip binding %s: type=%s ssbo_id=%u version=%u expected_stride=%u actual_stride=%u",
+                              semantic_tag ? semantic_tag : "UnknownSemantic",
+                              graph::mtl::GetSSBOTypeName(address.ssbo_type),
+                              address.ssbo_id,
+                              expected_version,
+                              expected_stride,
+                              binding.element_stride);
+                    return nullptr;
+                }
+            }
+
+            return binding.buffer->GetGPUBuffer();
+        };
+
+        auto validate_runtime_ssbo_stride = [&](const char *semantic_tag,
+                                                const graph::mtl::SSBOType ssbo_type,
+                                                const graph::IGPUBuffer *buffer,
+                                                const uint32_t element_count,
+                                                const uint32_t expected_stride_override = 0) -> bool
+        {
+            if (!buffer)
+                return false;
+
+            const uint32_t expected_version = graph::mtl::GetSSBOTypeStructVersion(ssbo_type);
+            const uint32_t expected_stride = expected_stride_override > 0
+                                           ? expected_stride_override
+                                           : graph::mtl::GetSSBOTypeStructStride(ssbo_type);
+            if (expected_version == 0 || expected_stride == 0)
+                return true;
+
+            if (element_count == 0)
+                return false;
+
+            const VkDeviceSize byte_size = buffer->GetSize();
+            if (byte_size == 0 || (byte_size % element_count) != 0)
+            {
+                GLogError("[R11] Skip binding %s: type=%s version=%u invalid byte_size=%llu for element_count=%u",
+                          semantic_tag ? semantic_tag : "UnknownSemantic",
+                          graph::mtl::GetSSBOTypeName(ssbo_type),
+                          expected_version,
+                          static_cast<unsigned long long>(byte_size),
+                          element_count);
+                return false;
+            }
+
+            const uint32_t actual_stride = static_cast<uint32_t>(byte_size / element_count);
+            if (actual_stride != expected_stride)
+            {
+                GLogError("[R11] Skip binding %s: type=%s version=%u expected_stride=%u actual_stride=%u element_count=%u",
+                          semantic_tag ? semantic_tag : "UnknownSemantic",
+                          graph::mtl::GetSSBOTypeName(ssbo_type),
+                          expected_version,
+                          expected_stride,
+                          actual_stride,
+                          element_count);
+                return false;
+            }
+
+            return true;
+        };
+
         const graph::IGPUBuffer *texture_layer_table_buffer = nullptr;
-        if (domain_manager)
-            texture_layer_table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
+        texture_layer_table_buffer = resolve_domain_ssbo(
+            graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0},
+            "MaterialTextureLayerTable");
 
         const graph::IGPUBuffer *data_index_table_buffer = nullptr;
-        if (domain_manager)
-            data_index_table_buffer = domain_manager->GetGPUBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0});
+        data_index_table_buffer = resolve_domain_ssbo(
+            graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0},
+            "MaterialDataIndexTable");
 
         const auto &cache = context->GetRenderFrameCache();
 
@@ -771,14 +862,32 @@ namespace hgl::ecs
                 // Prefer the per-batch buffer written in draw order by PrimitiveBatchPipeline.
                 if (batch && batch->l2w_index_rows_buffer)
                 {
-                    table_buffer = batch->l2w_index_rows_buffer->GetGPUBuffer();
+                    const auto *candidate = batch->l2w_index_rows_buffer->GetGPUBuffer();
+                    const uint32_t element_count = static_cast<uint32_t>(batch->items.size());
+                    if (validate_runtime_ssbo_stride("LocalToWorldIndexTable",
+                                                     graph::mtl::SSBOType::TransformIndexRows,
+                                                     candidate,
+                                                     element_count,
+                                                     sizeof(uint32_t)))
+                    {
+                        table_buffer = candidate;
+                    }
                 }
 
                 // Fallback: global TransformIndexRows from TransformAssignmentBuffer.
                 if (!table_buffer && batch && batch->transform_buffer)
                 {
                     auto *rows_buffer = batch->transform_buffer->GetTransformIndexRowsBuffer();
-                    table_buffer = rows_buffer ? rows_buffer->GetGPUBuffer() : nullptr;
+                    const auto *candidate = rows_buffer ? rows_buffer->GetGPUBuffer() : nullptr;
+                    const uint32_t element_count = static_cast<uint32_t>(batch->items.size());
+                    if (validate_runtime_ssbo_stride("LocalToWorldIndexTable",
+                                                     graph::mtl::SSBOType::TransformIndexRows,
+                                                     candidate,
+                                                     element_count,
+                                                     sizeof(uint32_t)))
+                    {
+                        table_buffer = candidate;
+                    }
                 }
 
                                 // Pipeline-only materials (no MaterialBatch) still need l2w_index_rows.
@@ -800,11 +909,12 @@ namespace hgl::ecs
 
                 if (!table_buffer && domain_manager)
                 {
-                    table_buffer = domain_manager->GetGPUBuffer(
+                    table_buffer = resolve_domain_ssbo(
                         graph::mtl::SSBOAddress{
                             graph::mtl::SSBOType::TransformIndexRows,
                             graph::mtl::ECSReservedSSBOId::TransformIndexRows,
-                            0});
+                            0},
+                        "LocalToWorldIndexTable");
                 }
 
                 if (table_buffer)
@@ -829,7 +939,21 @@ namespace hgl::ecs
                 if (batch && batch->mi_buffer)
                 {
                     auto *rows_buffer = batch->mi_buffer->GetTextureLayerRowsBuffer();
-                    table_buffer = rows_buffer ? rows_buffer->GetGPUBuffer() : nullptr;
+                    const auto *candidate = rows_buffer ? rows_buffer->GetGPUBuffer() : nullptr;
+                    uint32_t element_count = static_cast<uint32_t>(batch->items.size());
+                    if (batch->has_texture_slot_handles)
+                    {
+                        element_count *= static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
+                    }
+
+                    if (validate_runtime_ssbo_stride("MaterialTextureLayerTable",
+                                                     graph::mtl::SSBOType::TextureLayer,
+                                                     candidate,
+                                                     element_count,
+                                                     sizeof(uint32_t)))
+                    {
+                        table_buffer = candidate;
+                    }
                 }
 
                 if (!table_buffer)
@@ -845,7 +969,16 @@ namespace hgl::ecs
                 if (batch && batch->mi_buffer)
                 {
                     auto *rows_buffer = batch->mi_buffer->GetDataIndexRowsBuffer();
-                    table_buffer = rows_buffer ? rows_buffer->GetGPUBuffer() : nullptr;
+                    const auto *candidate = rows_buffer ? rows_buffer->GetGPUBuffer() : nullptr;
+                    const uint32_t element_count = static_cast<uint32_t>(batch->items.size());
+                    if (validate_runtime_ssbo_stride("MaterialDataIndexTable",
+                                                     graph::mtl::SSBOType::DataIndex,
+                                                     candidate,
+                                                     element_count,
+                                                     sizeof(uint32_t)))
+                    {
+                        table_buffer = candidate;
+                    }
                 }
 
                 if (!table_buffer)

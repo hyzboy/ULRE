@@ -76,9 +76,42 @@ namespace hgl::graph::mtl
         }
     }
 
-    // 预留：后续可接入 C++/GLSL 结构版本硬校验。
-    inline uint32_t GetSSBOTypeStructVersion(const SSBOType /*type*/) noexcept
+    // SSBO 结构版本（R11）：仅对已冻结布局类型返回非 0 版本号。
+    // 返回 0 表示该类型尚未纳入硬校验（例如用户自定义/可变布局类型）。
+    inline uint32_t GetSSBOTypeStructVersion(const SSBOType type) noexcept
     {
+        switch (type)
+        {
+        case SSBOType::TextureLayer:
+        case SSBOType::DataIndex:
+        case SSBOType::TransformIndexRows:
+        case SSBOType::LocalToWorld:
+            return 1;
+        default:
+            break;
+        }
+
+        return 0;
+    }
+
+    // SSBO 类型对应的冻结字节步长（R11）。
+    // 返回 0 表示当前类型没有固定步长约束。
+    inline uint32_t GetSSBOTypeStructStride(const SSBOType type) noexcept
+    {
+        switch (type)
+        {
+        case SSBOType::TextureLayer:
+            return sizeof(uint32_t) * static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
+        case SSBOType::DataIndex:
+            return sizeof(uint32_t) * static_cast<uint32_t>(DataSlot::RANGE_SIZE);
+        case SSBOType::TransformIndexRows:
+            return sizeof(uint32_t);
+        case SSBOType::LocalToWorld:
+            return sizeof(float) * 16;
+        default:
+            break;
+        }
+
         return 0;
     }
 
