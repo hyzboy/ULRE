@@ -26,6 +26,51 @@ int ShaderCreateInfoVertex::AddInput(const VAType &type,const std::string &name)
     return AddInput(type,GetVertexSemanticByName(name.c_str()));
 }
 
+namespace {
+    // Convert VkFormat to {VABaseType, vec_size} for VIA construction.
+    // Covers common vertex input formats; others fall back to {Float,4}.
+    bool VkFormatToVATypeComponents(VkFormat fmt,
+                                    VertexAttribBaseType &out_basetype,
+                                    uint8_t &out_vec_size)
+    {
+        switch (fmt)
+        {
+        case VK_FORMAT_R32_SFLOAT:              out_basetype=VertexAttribBaseType::Float;  out_vec_size=1; return true;
+        case VK_FORMAT_R32G32_SFLOAT:           out_basetype=VertexAttribBaseType::Float;  out_vec_size=2; return true;
+        case VK_FORMAT_R32G32B32_SFLOAT:        out_basetype=VertexAttribBaseType::Float;  out_vec_size=3; return true;
+        case VK_FORMAT_R32G32B32A32_SFLOAT:     out_basetype=VertexAttribBaseType::Float;  out_vec_size=4; return true;
+        case VK_FORMAT_R32_SINT:                out_basetype=VertexAttribBaseType::Int;    out_vec_size=1; return true;
+        case VK_FORMAT_R32G32_SINT:             out_basetype=VertexAttribBaseType::Int;    out_vec_size=2; return true;
+        case VK_FORMAT_R32G32B32_SINT:          out_basetype=VertexAttribBaseType::Int;    out_vec_size=3; return true;
+        case VK_FORMAT_R32G32B32A32_SINT:       out_basetype=VertexAttribBaseType::Int;    out_vec_size=4; return true;
+        case VK_FORMAT_R32_UINT:                out_basetype=VertexAttribBaseType::UInt;   out_vec_size=1; return true;
+        case VK_FORMAT_R32G32_UINT:             out_basetype=VertexAttribBaseType::UInt;   out_vec_size=2; return true;
+        case VK_FORMAT_R32G32B32_UINT:          out_basetype=VertexAttribBaseType::UInt;   out_vec_size=3; return true;
+        case VK_FORMAT_R32G32B32A32_UINT:       out_basetype=VertexAttribBaseType::UInt;   out_vec_size=4; return true;
+        // 16-bit uint: shader still sees it as uint (uint with stride 2)
+        case VK_FORMAT_R16_UINT:                out_basetype=VertexAttribBaseType::UInt;   out_vec_size=1; return true;
+        case VK_FORMAT_R16G16_UINT:             out_basetype=VertexAttribBaseType::UInt;   out_vec_size=2; return true;
+        default:
+            out_basetype=VertexAttribBaseType::Float;
+            out_vec_size=4;
+            return false;
+        }
+    }
+}
+
+int ShaderCreateInfoVertex::AddInput(const VkFormat format, const VertexSemantic semantic)
+{
+    VertexAttribBaseType basetype;
+    uint8_t vec_size;
+    VkFormatToVATypeComponents(format, basetype, vec_size);
+
+    VAType va_type;
+    va_type.basetype = basetype;
+    va_type.vec_size = vec_size;
+
+    return AddInput(va_type, semantic);
+}
+
 int ShaderCreateInfoVertex::AddInput(const VAType &type,const VertexSemantic semantic)
 {
     VIA via;

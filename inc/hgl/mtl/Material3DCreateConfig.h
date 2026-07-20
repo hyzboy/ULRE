@@ -3,7 +3,7 @@
 #include<hgl/mtl/SkyLight.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
-#include<hgl/vk/VertexAttrib.h>
+#include<vulkan/vulkan.h>
 
 namespace hgl::graph::mtl{
 
@@ -15,7 +15,7 @@ struct Material3DCreateConfig:public MaterialCreateConfig
 
     bool                sky;                    ///<是否包含天空信息(主要是太阳光和大气散射相关)
 
-    VAType              position_format;        ///<position格式
+    VkFormat            position_format;        ///<position格式
 
     SkyLightAmbientModel sky_ambient_model;     ///<天空环境光实现方式（按材质配置）
 
@@ -37,7 +37,7 @@ public:
 
         sky=(s==WithSky::With);
 
-        position_format=VAT_VEC3;
+        position_format=VK_FORMAT_R32G32B32_SFLOAT;
 
         sky_ambient_model=SkyLightAmbientModel::Simple;
 

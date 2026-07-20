@@ -17,16 +17,19 @@ namespace hgl::graph::mtl{
 namespace build2d{
 
 // ─────────────────────────────────────────────────────────────
-// GLSL type string from VAType
+// GLSL type string from VkFormat
 // ─────────────────────────────────────────────────────────────
 
-inline const char *GLSLInputType(const VAType &vat)
+inline const char *GLSLInputType(const VkFormat fmt)
 {
-    if(vat==VAT_IVEC2) return "ivec2";
-    if(vat==VAT_VEC2)  return "vec2";
-    if(vat==VAT_VEC3)  return "vec3";
-    if(vat==VAT_VEC4)  return "vec4";
-    return "vec2";
+    switch (fmt)
+    {
+    case VK_FORMAT_R32G32_SINT:             return "ivec2";
+    case VK_FORMAT_R32G32_SFLOAT:           return "vec2";
+    case VK_FORMAT_R32G32B32_SFLOAT:        return "vec3";
+    case VK_FORMAT_R32G32B32A32_SFLOAT:     return "vec4";
+    default:                                return "vec2";
+    }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -120,7 +123,7 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_t
 inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Material2DCreateConfig *cfg)
 {
     // Position
-    v.push_back({ cfg->position_format, VAN::Position });
+    v.push_back({ cfg->position_format, VertexSemantic::Position });
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/common/PrimitiveTypeDef.h>
-#include <hgl/common/VertexAttribDef.h>
+#include <hgl/vk/VKFormat.h>
 #include<string>
 
 namespace hgl::graph::mtl{
@@ -77,10 +77,10 @@ std::string Material2DCreateConfig::ToHashStdString()
         hash+="_L2W";
 
     hash+="_";
-    if(const char *attrib_name=GetVertexAttribName(&position_format))
-        hash+=attrib_name;
+    if(const char *fmt_name=hgl::graph::GetVulkanFormatName(position_format))
+        hash+=fmt_name;
     else
-        hash+="UnknownVA";
+        hash+="UnknownFmt";
 
     return hash;
 }
@@ -103,10 +103,10 @@ std::string Material3DCreateConfig::ToHashStdString()
         hash+="_L2W";
 
     hash+="_";
-    if(const char *attrib_name=GetVertexAttribName(&position_format))
-        hash+=attrib_name;
+    if(const char *fmt_name=hgl::graph::GetVulkanFormatName(position_format))
+        hash+=fmt_name;
     else
-        hash+="UnknownVA";
+        hash+="UnknownFmt";
 
     return hash;
 }

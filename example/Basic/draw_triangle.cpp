@@ -31,8 +31,8 @@ namespace
     GeometryVertexFormat CreateDrawTriangleGeometryVertexFormat()
     {
         GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V2I16, 2, sizeof(int16) * 2);
-        gvf.Add(VertexSemantic::Color, VF_V4UN8, 4, sizeof(uint8));
+        gvf.Add(VertexSemantic::Position, VF_V2I, 2, sizeof(int32) * 2);
+        gvf.Add(VertexSemantic::Color, VF_V4F, 4, sizeof(float) * 4);
         return gvf;
     }
 }
@@ -46,19 +46,19 @@ static float position_data_float[VERTEX_COUNT][2]=
     {0.25,  0.75}
 };
 
-static int16 position_data[VERTEX_COUNT][2]={};
+static int32 position_data[VERTEX_COUNT][2]={};
 
-constexpr uint8 color_data[VERTEX_COUNT*4]=
+constexpr float color_data[VERTEX_COUNT][4]=
 {
-    255,0,0,255,
-    0,255,0,255,
-    0,0,255,255
+    {1.0f,0.0f,0.0f,1.0f},
+    {0.0f,1.0f,0.0f,1.0f},
+    {0.0f,0.0f,1.0f,1.0f}
 };
 
-constexpr VAType   POSITION_SHADER_FORMAT   =VAT_IVEC2;
-constexpr VkFormat POSITION_DATA_FORMAT     =VF_V2I16;
+constexpr VkFormat POSITION_SHADER_FORMAT   =VK_FORMAT_R32G32_SINT;
+constexpr VkFormat POSITION_DATA_FORMAT     =VF_V2I;
 
-constexpr VkFormat COLOR_DATA_FORMAT        =VF_V4UN8;
+constexpr VkFormat COLOR_DATA_FORMAT        =VF_V4F;
 
 class TestApp:public WorkObject
 {
@@ -100,9 +100,9 @@ private:
                                 //      ^
                                 //      +  这上下两种格式要配套，否则会出错
                                 //      v
-        vil_config.Add(VAN::Position,   POSITION_DATA_FORMAT);     //这里指定VAB中使用RG16I当做顶点数据格式
+        vil_config.Add(VAN::Position,   POSITION_DATA_FORMAT);     //这里指定VAB中使用RG32I当做顶点数据格式
 
-        vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
+        vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA32F当做颜色数据格式
 
         material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor2D,&cfg,&vil_config);
 
@@ -150,7 +150,8 @@ private:
             return false;
 
         GeometryCreater pc(device, CreateDrawTriangleGeometryVertexFormat(), buffer_manager);
-        pc.Init("Triangle", VERTEX_COUNT);
+        if (!pc.Init("Triangle", VERTEX_COUNT))
+            return false;
         if (!pc.WriteVAB(VAN::Position, POSITION_DATA_FORMAT, position_data) ||
             !pc.WriteVAB(VAN::Color, COLOR_DATA_FORMAT, color_data))
             return false;

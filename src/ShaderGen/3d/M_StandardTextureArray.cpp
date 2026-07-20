@@ -23,9 +23,9 @@ namespace
     constexpr const uint32_t mi_bytes = sizeof(uint32_t) * 2 + sizeof(float) * 3;
 
     constexpr FixedVertexEntry STANDARD_ARRAY_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
-        { VAT_VEC2, VAN::TexCoord },
-        { VAT_VEC3, VAN::Normal },
+        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },
+        { VK_FORMAT_R32G32_SFLOAT,    VertexSemantic::TexCoord },
+        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Normal },
     };
 }
 

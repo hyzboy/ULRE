@@ -13,13 +13,13 @@ namespace
     constexpr const uint32_t VERTEX_LUMINANCE_3D_MI_BYTES = sizeof(hgl::math::Vector4f);
 
     constexpr FixedVertexEntry VERTEX_LUMINANCE_3D_VERTEX_VEC3[] = {
-        { VAT_VEC3, VAN::Position },
-        { VAT_FLOAT, VAN::Luminance },
+        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },
+        { VK_FORMAT_R32_SFLOAT,       VertexSemantic::Luminance },
     };
 
     constexpr FixedVertexEntry VERTEX_LUMINANCE_3D_VERTEX_VEC2[] = {
-        { VAT_VEC2, VAN::Position },
-        { VAT_FLOAT, VAN::Luminance },
+        { VK_FORMAT_R32G32_SFLOAT, VertexSemantic::Position },
+        { VK_FORMAT_R32_SFLOAT,    VertexSemantic::Luminance },
     };
 
       constexpr FixedDescriptorEntry VERTEX_LUMINANCE_3D_DESCRIPTORS[] = {
@@ -59,7 +59,7 @@ MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfil
 {
     cfg->material_instance=true;
 
-    const bool use_vec2_position = cfg && cfg->position_format.ToCode() == VAT_VEC2.ToCode();
+    const bool use_vec2_position = cfg && cfg->position_format == VK_FORMAT_R32G32_SFLOAT;
 
     const FixedMaterialDef &fixed_def = use_vec2_position
         ? VERTEX_LUMINANCE_3D_DEF_VEC2

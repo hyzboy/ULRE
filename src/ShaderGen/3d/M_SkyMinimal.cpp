@@ -9,7 +9,7 @@ namespace hgl::graph::mtl{
 namespace
 {
     constexpr FixedVertexEntry SKY_MINIMAL_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
+        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },
     };
 
     constexpr FixedDescriptorEntry SKY_MINIMAL_DESCRIPTORS[] = {

@@ -3,14 +3,14 @@
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
 #include<hgl/common/CoordinateSystem.h>
-#include<hgl/vk/VertexAttrib.h>
+#include<vulkan/vulkan.h>
 
 namespace hgl::graph::mtl{
 struct Material2DCreateConfig:public MaterialCreateConfig
 {
     CoordinateSystem2D  coordinate_system;      ///<使用的坐标系
 
-    VAType              position_format;        ///<position格式
+    VkFormat            position_format;        ///<position格式
 
 public:
 
@@ -25,7 +25,7 @@ public:
 
         coordinate_system=cs;
 
-        position_format=VAT_VEC2;
+        position_format=VK_FORMAT_R32G32_SFLOAT;
     }
 
     std::strong_ordering operator<=>(const Material2DCreateConfig &cfg)const
@@ -57,7 +57,7 @@ public:
     {
         material_instance=true;        //包含材质实例
 
-        position_format=VAT_IVEC2;
+        position_format=VK_FORMAT_R32G32_SINT;
     }
 };
 

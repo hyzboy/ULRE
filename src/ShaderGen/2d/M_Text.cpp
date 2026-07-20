@@ -15,7 +15,7 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
 
     Text2DMaterialCreateConfig new_cfg=*cfg;
     new_cfg.prim=PrimitiveType::Triangles;
-    new_cfg.position_format=VAT_IVEC2;
+    new_cfg.position_format=VK_FORMAT_R32G32_SINT;
     new_cfg.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
 
     // Build DEF
@@ -23,7 +23,7 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, &new_cfg);
-    vertices.push_back({ VAT_VEC2, VAN::TexCoord });
+    vertices.push_back({ VK_FORMAT_R32G32_SFLOAT, VertexSemantic::TexCoord });
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, &new_cfg);

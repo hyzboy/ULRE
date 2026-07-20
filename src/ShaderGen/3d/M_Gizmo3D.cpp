@@ -15,8 +15,8 @@ namespace
     // ─────────────────────────────────────────────────────────────────────────────
 
     constexpr FixedVertexEntry GIZMO_3D_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
-        { VAT_VEC3, VAN::Normal },
+        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },
+        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Normal },
     };
 
     constexpr FixedDescriptorEntry GIZMO_3D_DESCRIPTORS[] = {

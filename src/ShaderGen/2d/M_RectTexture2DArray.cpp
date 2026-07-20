@@ -16,7 +16,7 @@ MaterialCreateInfo *CreateRectTexture2DArray(const contract::PhysicalDeviceProfi
     mtl::Material2DCreateConfig inner=*cfg;
     inner.prim=PrimitiveType::Triangles;
     inner.material_instance=true;
-    inner.position_format=VAT_VEC2;
+    inner.position_format=VK_FORMAT_R32G32_SFLOAT;
     inner.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
 
     // Build DEF
@@ -24,7 +24,7 @@ MaterialCreateInfo *CreateRectTexture2DArray(const contract::PhysicalDeviceProfi
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, &inner);
-    vertices.push_back({ VAT_VEC2, VAN::TexCoord });
+    vertices.push_back({ VK_FORMAT_R32G32_SFLOAT, VertexSemantic::TexCoord });
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, &inner);

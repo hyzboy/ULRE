@@ -119,7 +119,7 @@ private:
         vil_config.Add(VAN::Luminance,VF_V1UN8);
 
         {
-            cfg.position_format=VAT_VEC2;
+            cfg.position_format=VK_FORMAT_R32G32_SFLOAT;
 
             mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
             if(!mtl_plane_grid)return(false);
@@ -134,7 +134,7 @@ private:
         }
 
         {
-            cfg.position_format=VAT_VEC3;
+            cfg.position_format=VK_FORMAT_R32G32B32_SFLOAT;
 
             mtl_line = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
             if(!mtl_line)return(false);

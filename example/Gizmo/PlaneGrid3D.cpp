@@ -70,7 +70,7 @@ private:
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world=true;
-        cfg.position_format=VAT_VEC2;
+        cfg.position_format=VK_FORMAT_R32G32_SFLOAT;
 
         material = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
         if(!material)return(false);

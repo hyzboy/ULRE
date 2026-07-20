@@ -1,14 +1,14 @@
 #pragma once
 
-#include<hgl/vk/VKVertexInputAttribute.h>
-#include<hgl/vk/VertexAttrib.h>
+#include<vulkan/vulkan.h>
+#include<hgl/common/VertexAttribDef.h>
 
 namespace hgl::graph::mtl{
 
 struct FixedVertexEntry
 {
-    VAType              type;
-    VertexSemantic      semantic;
+    VkFormat        format;
+    VertexSemantic  semantic;
 };
 
 }//namespace hgl::graph::mtl

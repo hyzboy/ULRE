@@ -14,62 +14,42 @@
 namespace hgl::graph::mtl {
 
 namespace {
-    // VAType 转 GLSL 类型字符串
-    const char* VAType_To_GLSL(const VAType& va_type) {
-        // VertexAttribBaseType: Bool=0, Int, UInt, Float, Double
-        // vec_size: 1, 2, 3, 4
-        
-        const uint8_t bt = static_cast<uint8_t>(va_type.basetype);
-        const uint8_t vs = va_type.vec_size;
-        
-        if (vs < 1 || vs > 4) {
-            fprintf(stderr, "ERROR: Invalid VAType vec_size: %u\n", vs);
-            return "vec4";  // fallback
+    // VkFormat 转 GLSL 类型字符串
+    // 仅覆盖顶点输入常用格式；未知格式退化为 "vec4"。
+    const char* VkFormatToGLSLType(VkFormat fmt)
+    {
+        switch (fmt)
+        {
+        // float scalars / vectors
+        case VK_FORMAT_R32_SFLOAT:              return "float";
+        case VK_FORMAT_R32G32_SFLOAT:           return "vec2";
+        case VK_FORMAT_R32G32B32_SFLOAT:        return "vec3";
+        case VK_FORMAT_R32G32B32A32_SFLOAT:     return "vec4";
+        // double scalars / vectors
+        case VK_FORMAT_R64_SFLOAT:              return "double";
+        case VK_FORMAT_R64G64_SFLOAT:           return "dvec2";
+        case VK_FORMAT_R64G64B64_SFLOAT:        return "dvec3";
+        case VK_FORMAT_R64G64B64A64_SFLOAT:     return "dvec4";
+        // signed int scalars / vectors
+        case VK_FORMAT_R32_SINT:                return "int";
+        case VK_FORMAT_R32G32_SINT:             return "ivec2";
+        case VK_FORMAT_R32G32B32_SINT:          return "ivec3";
+        case VK_FORMAT_R32G32B32A32_SINT:       return "ivec4";
+        // unsigned int scalars / vectors
+        case VK_FORMAT_R32_UINT:                return "uint";
+        case VK_FORMAT_R32G32_UINT:             return "uvec2";
+        case VK_FORMAT_R32G32B32_UINT:          return "uvec3";
+        case VK_FORMAT_R32G32B32A32_UINT:       return "uvec4";
+        // bool scalars / vectors (packed as uint, interpreted as bool in GLSL)
+        case VK_FORMAT_R8_UINT:                 return "bool";
+        case VK_FORMAT_R8G8_UINT:               return "bvec2";
+        case VK_FORMAT_R8G8B8_UINT:             return "bvec3";
+        case VK_FORMAT_R8G8B8A8_UINT:           return "bvec4";
+        default:
+            fprintf(stderr, "VkFormatToGLSLType: unhandled format %d, falling back to vec4\n",
+                    static_cast<int>(fmt));
+            return "vec4";
         }
-        
-        // 根据不同的基础类型生成 GLSL 类型
-        switch (va_type.basetype) {
-            case VertexAttribBaseType::Bool:
-                if (vs == 1) return "bool";
-                if (vs == 2) return "bvec2";
-                if (vs == 3) return "bvec3";
-                if (vs == 4) return "bvec4";
-                break;
-            
-            case VertexAttribBaseType::Int:
-                if (vs == 1) return "int";
-                if (vs == 2) return "ivec2";
-                if (vs == 3) return "ivec3";
-                if (vs == 4) return "ivec4";
-                break;
-            
-            case VertexAttribBaseType::UInt:
-                if (vs == 1) return "uint";
-                if (vs == 2) return "uvec2";
-                if (vs == 3) return "uvec3";
-                if (vs == 4) return "uvec4";
-                break;
-            
-            case VertexAttribBaseType::Float:
-                if (vs == 1) return "float";
-                if (vs == 2) return "vec2";
-                if (vs == 3) return "vec3";
-                if (vs == 4) return "vec4";
-                break;
-            
-            case VertexAttribBaseType::Double:
-                if (vs == 1) return "double";
-                if (vs == 2) return "dvec2";
-                if (vs == 3) return "dvec3";
-                if (vs == 4) return "dvec4";
-                break;
-            
-            default:
-                fprintf(stderr, "ERROR: Unknown VertexAttribBaseType: %u\n", bt);
-                return "vec4";
-        }
-        
-        return "vec4";  // fallback
     }
 }
 
@@ -230,7 +210,7 @@ std::string ResourceLayoutGenerator::GenVertexInputLayout(const FixedVertexEntry
         const auto& entry = entries[i];
         
         // 获取 GLSL 类型字符串
-        const char* glsl_type = VAType_To_GLSL(entry.type);
+        const char* glsl_type = VkFormatToGLSLType(entry.format);
         const char* input_name = GetVertexSemanticName(entry.semantic);
         
         // 生成 layout(location=N) in TYPE name;

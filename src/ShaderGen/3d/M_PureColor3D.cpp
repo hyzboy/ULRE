@@ -13,7 +13,7 @@ namespace
     constexpr const uint32_t pure_color_3d_mi_bytes = 16;
 
     constexpr FixedVertexEntry PURE_COLOR_3D_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
+        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },
     };
 
     constexpr FixedDescriptorEntry PURE_COLOR_3D_DESCRIPTORS[] = {

@@ -20,9 +20,9 @@ namespace
     constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 2;
 
     constexpr FixedVertexEntry PBR_COLOR_3D_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
-        { VAT_VEC2, VAN::TexCoord },
-        { VAT_VEC3, VAN::Normal },
+        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },
+        { VK_FORMAT_R32G32_SFLOAT,    VertexSemantic::TexCoord },
+        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Normal },
     };
 
     constexpr FixedDescriptorEntry PBR_COLOR_3D_DESCRIPTORS[] = {

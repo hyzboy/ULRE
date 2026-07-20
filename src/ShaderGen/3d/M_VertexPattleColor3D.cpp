@@ -21,9 +21,9 @@ namespace hgl::graph::mtl{
 namespace
 {
     constexpr FixedVertexEntry VERTEX_PATTLE_COLOR_3D_VERTEX[] = {
-        { VAT_VEC3, VAN::Position },
-        { VAT_UINT, VAN::Color },
-        { Assign::TransformID::VAT_FMT, Assign::TransformID::VIS_SEMANTIC },
+        { VK_FORMAT_R32G32B32_SFLOAT,    VertexSemantic::Position },
+        { VK_FORMAT_R32_UINT,            VertexSemantic::Color },
+        { Assign::TransformID::VAB_FMT,  Assign::TransformID::VIS_SEMANTIC },
     };
 
     constexpr FixedDescriptorEntry VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[] = {
