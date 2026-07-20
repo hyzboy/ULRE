@@ -2,7 +2,6 @@
 
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/vk/VKVertexInputFormat.h>
-#include <array>
 
 namespace hgl::graph
 {
@@ -93,50 +92,19 @@ namespace hgl::graph
         return true;
     }
 
-    inline const std::array<AttributeCompatibilityRule, 3> &GetDefaultAttributeCompatibilityRules()
-    {
-        // These are compatibility registrations, not executable conversion jobs.
-        static const std::array<AttributeCompatibilityRule, 3> rules =
-        {
-            AttributeCompatibilityRule{
-                VertexSemantic::Normal,
-                VK_FORMAT_R32G32B32_SFLOAT, 3, 0,
-                VK_FORMAT_R32G32B32_SFLOAT, 3, 0,
-                true, AttributePrecisionGrade::High, AttributeRuntimeCost::Low, false
-            },
-            AttributeCompatibilityRule{
-                VertexSemantic::Normal,
-                VK_FORMAT_R16G16B16_SFLOAT, 3, 0,
-                VK_FORMAT_R32G32B32_SFLOAT, 3, 0,
-                false, AttributePrecisionGrade::Medium, AttributeRuntimeCost::Medium, false
-            },
-            AttributeCompatibilityRule{
-                VertexSemantic::Normal,
-                VK_FORMAT_R8G8B8_UNORM, 3, 0,
-                VK_FORMAT_R32G32B32_SFLOAT, 3, 0,
-                false, AttributePrecisionGrade::Low, AttributeRuntimeCost::Medium, false
-            }
-        };
+    // Register a custom compatibility rule into the global registry.
+    // Default rules (normal-direction candidates) are pre-registered at startup.
+    // Registered rules are diagnostics-only: none are auto-applied unless allow_auto_apply is set.
+    void RegisterAttributeCompatibilityRule(const AttributeCompatibilityRule &rule);
 
-        return rules;
-    }
-
-    inline const AttributeCompatibilityRule *FindAttributeCompatibilityRule(
+    // Look up the first registered rule that matches the given source->target pair.
+    // Returns nullptr when no rule covers this combination (i.e., the mismatch is hard).
+    const AttributeCompatibilityRule *FindAttributeCompatibilityRule(
         const VertexSemantic semantic,
         const VkFormat source_format,
         const uint8 source_vec_size,
         const uint32 source_stride,
         const VkFormat target_format,
         const uint8 target_vec_size,
-        const uint32 target_stride)
-    {
-        const auto &rules = GetDefaultAttributeCompatibilityRules();
-        for (const AttributeCompatibilityRule &rule : rules)
-        {
-            if (MatchAttributeCompatibilityRule(rule, semantic, source_format, source_vec_size, source_stride, target_format, target_vec_size, target_stride))
-                return &rule;
-        }
-
-        return nullptr;
-    }
+        const uint32 target_stride);
 }

@@ -126,7 +126,9 @@ SET(GEOMETRY_CORE_FILES ${SG_INCLUDE_PATH}/geo/VKGeometry.h
                         VKGeometry.cpp
                         VKGeometryData.cpp
                         ${SG_INCLUDE_PATH}/geo/GeometryCreater.h
-                        geo/GeometryCreater.cpp)
+                        geo/GeometryCreater.cpp
+                        ${SG_INCLUDE_PATH}/geo/AttributeCompatibility.h
+                        geo/AttributeCompatibilityRegistry.cpp)
 
 SOURCE_GROUP("5.Geometry\\Core" FILES ${GEOMETRY_CORE_FILES})
 
