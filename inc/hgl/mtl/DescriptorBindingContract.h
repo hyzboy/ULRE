@@ -219,11 +219,21 @@ namespace hgl::graph::mtl
             {
                 req.ssbo_type = SSBOType::TextureLayer;
             }
+            if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
+             && req.ssbo_id == MakeRecipeSSBOId(0))
+            {
+                req.ssbo_id = MakeRecipeSSBOId(static_cast<uint32_t>(req.texture_slot));
+            }
 
             if (req.semantic == DescriptorSemantic::MaterialDataIndexTable
              && req.ssbo_type == SSBOType::UserDefined)
             {
                 req.ssbo_type = SSBOType::DataIndex;
+            }
+            if (req.semantic == DescriptorSemantic::MaterialDataIndexTable
+             && req.ssbo_id == MakeRecipeSSBOId(0))
+            {
+                req.ssbo_id = MakeRecipeSSBOId(static_cast<uint32_t>(req.data_slot));
             }
 
             if (req.semantic == DescriptorSemantic::LocalToWorldIndexTable
