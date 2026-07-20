@@ -489,6 +489,20 @@ namespace hgl::ecs
         {
             domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
             domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0});
+
+            const uint32_t texture_slot_count = static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
+            for (uint32_t slot = 1; slot < texture_slot_count; ++slot)
+            {
+                const uint32_t alias_ssbo_id = graph::mtl::MakeRecipeSSBOId(slot);
+                domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, alias_ssbo_id, slot});
+            }
+
+            const uint32_t data_slot_count = static_cast<uint32_t>(graph::mtl::DataSlot::RANGE_SIZE);
+            for (uint32_t slot = 1; slot < data_slot_count; ++slot)
+            {
+                const uint32_t alias_ssbo_id = graph::mtl::MakeRecipeSSBOId(slot);
+                domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, alias_ssbo_id, slot});
+            }
         }
 
         materialization_texture_layer_ssbo = nullptr;
@@ -552,6 +566,37 @@ namespace hgl::ecs
             materialization_data_index_ssbo = domain_manager->GetBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0});
         }
         materialization_data_index_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0});
+
+        auto register_domain_aliases = [&](const graph::mtl::SSBOType ssbo_type,
+                                           graph::DeviceBuffer *buffer,
+                                           const uint32_t element_capacity,
+                                           const uint32_t slot_count)
+        {
+            if (!buffer || element_capacity == 0 || slot_count <= 1)
+                return;
+
+            for (uint32_t slot = 1; slot < slot_count; ++slot)
+            {
+                const uint32_t alias_ssbo_id = graph::mtl::MakeRecipeSSBOId(slot);
+                const graph::mtl::SSBOAddress alias_address{ssbo_type, alias_ssbo_id, slot};
+                if (!domain_manager->RegisterBuffer(alias_address, buffer, element_capacity))
+                {
+                    GLogError("[R12] Failed to register materialization alias domain: type=%s ssbo_id=%u slot=%u",
+                              graph::mtl::GetSSBOTypeName(ssbo_type),
+                              alias_ssbo_id,
+                              slot);
+                }
+            }
+        };
+
+        register_domain_aliases(graph::mtl::SSBOType::TextureLayer,
+                                materialization_texture_layer_ssbo,
+                                materialization_texture_layer_capacity,
+                                static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE));
+        register_domain_aliases(graph::mtl::SSBOType::DataIndex,
+                                materialization_data_index_ssbo,
+                                materialization_data_index_capacity,
+                                static_cast<uint32_t>(graph::mtl::DataSlot::RANGE_SIZE));
 
         if (texture_rows > 0 && materialization_texture_layer_ssbo && materialization_texture_layer_ssbo->GetGPUBuffer())
         {
