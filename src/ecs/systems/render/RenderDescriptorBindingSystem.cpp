@@ -806,16 +806,6 @@ namespace hgl::ecs
             return true;
         };
 
-        const graph::IGPUBuffer *texture_layer_table_buffer = nullptr;
-        texture_layer_table_buffer = resolve_domain_ssbo(
-            graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0},
-            "MaterialTextureLayerTable");
-
-        const graph::IGPUBuffer *data_index_table_buffer = nullptr;
-        data_index_table_buffer = resolve_domain_ssbo(
-            graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0},
-            "MaterialDataIndexTable");
-
         const auto &cache = context->GetRenderFrameCache();
 
         std::unordered_set<graph::Material *> l2w_bound_materials;
@@ -967,7 +957,14 @@ namespace hgl::ecs
                 }
 
                 if (!table_buffer)
-                    table_buffer = texture_layer_table_buffer;
+                {
+                    table_buffer = resolve_domain_ssbo(
+                        graph::mtl::SSBOAddress{
+                            req.ssbo_type,
+                            req.ssbo_id,
+                            static_cast<uint32_t>(req.texture_slot)},
+                        "MaterialTextureLayerTable");
+                }
 
                 if (table_buffer)
                     material->BindSSBO(req.set_type, req.name, table_buffer, false);
@@ -992,7 +989,14 @@ namespace hgl::ecs
                 }
 
                 if (!table_buffer)
-                    table_buffer = data_index_table_buffer;
+                {
+                    table_buffer = resolve_domain_ssbo(
+                        graph::mtl::SSBOAddress{
+                            req.ssbo_type,
+                            req.ssbo_id,
+                            static_cast<uint32_t>(req.data_slot)},
+                        "MaterialDataIndexTable");
+                }
 
                 if (table_buffer)
                     material->BindSSBO(req.set_type, req.name, table_buffer, false);
