@@ -103,6 +103,10 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
         const GeometryVertexFailureSummary failure_summary = match_result.BuildFailureSummary();
         const GeometryVertexAttributeMatch *first_issue = failure_summary.first_failure;
 
+        // R09 behavioral boundary: ALL non-Exact paths return nullptr.
+        // ExplicitHandling (Compatible/Unsupported) is still a hard failure here because no
+        // conversion executor has been wired in. A future R10+ path may handle Compatible
+        // by forking to an explicit pre-processing step, but only after an explicit sign-off.
         if(first_issue)
         {
             GLogError(  "[FATAL ERROR] GeometryVertexFormat can't satisfy Material vertex input, Material(")+mtl_name+
