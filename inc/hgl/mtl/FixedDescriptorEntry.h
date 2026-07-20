@@ -21,5 +21,6 @@ namespace hgl::graph::mtl
         DataSlot            data_slot = DataSlot::PBRSurface;
         SSBOType            ssbo_type = SSBOType::UserDefined;
         DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
+        uint32_t            ssbo_id = MakeRecipeSSBOId(0);
     };
 }//namespace hgl::graph::mtl

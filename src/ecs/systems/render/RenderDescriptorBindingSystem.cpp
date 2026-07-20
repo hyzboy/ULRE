@@ -237,14 +237,15 @@ namespace hgl::ecs
             out_recipe.textures.emplace_back(std::move(texture_binding));
         }
 
-        std::unordered_set<uint64_t> emitted_struct_keys;
+        std::unordered_set<std::string> emitted_struct_keys;
         for (const auto &req : contract.requirements)
         {
             if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                 continue;
 
-            const uint64_t struct_key =
-                (static_cast<uint64_t>(req.ssbo_type) << 32) | static_cast<uint64_t>(req.data_slot);
+            const std::string struct_key = std::to_string(static_cast<uint32_t>(req.ssbo_type))
+                                         + ":" + std::to_string(req.ssbo_id)
+                                         + ":" + std::to_string(static_cast<uint32_t>(req.data_slot));
             if (emitted_struct_keys.find(struct_key) != emitted_struct_keys.end())
                 continue;
             emitted_struct_keys.insert(struct_key);
@@ -252,7 +253,7 @@ namespace hgl::ecs
             graph::mtl::RecipeStructBinding struct_binding{};
             struct_binding.slot = req.data_slot;
             struct_binding.ssbo_type = req.ssbo_type;
-            struct_binding.ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
+            struct_binding.ssbo_id = req.ssbo_id;
             struct_binding.shared_across_instances = false;
             out_recipe.structs.emplace_back(std::move(struct_binding));
         }

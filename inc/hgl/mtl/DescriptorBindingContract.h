@@ -17,6 +17,7 @@ namespace hgl::graph::mtl
         TextureSlot texture_slot = TextureSlot::BaseColor;
         DataSlot data_slot = DataSlot::PBRSurface;
         SSBOType ssbo_type = SSBOType::UserDefined;
+        uint32_t ssbo_id = MakeRecipeSSBOId(0);
 
         const char *name = nullptr;
         const char *struct_name = nullptr;
@@ -184,6 +185,7 @@ namespace hgl::graph::mtl
             req.texture_slot = entry.texture_slot;
             req.data_slot = entry.data_slot;
             req.ssbo_type = entry.ssbo_type;
+            req.ssbo_id = entry.ssbo_id;
             req.name = entry.name;
             req.struct_name = entry.struct_name;
             req.glsl_type = entry.glsl_type;
@@ -208,6 +210,8 @@ namespace hgl::graph::mtl
                 req.ssbo_type = (entry.ssbo_type == SSBOType::UserDefined)
                               ? DefaultSSBOTypeForDataSlot(req.data_slot)
                               : entry.ssbo_type;
+                if (req.ssbo_id == MakeRecipeSSBOId(0))
+                    req.ssbo_id = MakeRecipeSSBOId(static_cast<uint32_t>(req.data_slot));
             }
 
             if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
