@@ -535,7 +535,18 @@ namespace hgl::ecs
             {
                 primitive = primitive_manager->CreatePrimitive(geometry, mi, resources->pipeline);
                 if (!primitive)
+                {
+                    const graph::GeometryVertexFormatMatch match =
+                        graph::QueryGeometryVertexCompatibility(geometry, mi);
+                    const graph::GeometryVertexFailureSummary summary = match.BuildFailureSummary();
+                    GLogError(graph::AnsiString("[TextRenderPipeline] CreatePrimitive failed: ") +
+                              "HandlingPath(" + summary.GetHandlingPathName() + ")" +
+                              " FailureKind(" + summary.GetFailureKindName() + ")" +
+                              " FirstFailureSemantic(" +
+                              (summary.first_failure ?
+                                  graph::GetVertexSemanticName(summary.first_failure->semantic) : "None") + ")");
                     continue;
+                }
 
                 resources->primitive = primitive;
             }

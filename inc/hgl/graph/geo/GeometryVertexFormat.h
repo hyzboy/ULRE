@@ -89,6 +89,23 @@ namespace hgl::graph
         }
     }
 
+    enum class GeometryVertexHandlingPath : uint8
+    {
+        DirectBind = 0,
+        ExplicitHandling,
+        Reject
+    };
+
+    inline const char *GetGeometryVertexHandlingPathName(const GeometryVertexHandlingPath path)
+    {
+        switch (path)
+        {
+        case GeometryVertexHandlingPath::DirectBind: return "DirectBind";
+        case GeometryVertexHandlingPath::ExplicitHandling: return "ExplicitHandling";
+        default: return "Reject";
+        }
+    }
+
     struct GeometryVertexCompatibilityDecision
     {
         GeometryVertexMatchKind kind = GeometryVertexMatchKind::Mismatch;
@@ -130,10 +147,50 @@ namespace hgl::graph
         AttributeRuntimeCost compatibility_runtime_cost = AttributeRuntimeCost::High;
     };
 
+    struct GeometryVertexFailureSummary
+    {
+        GeometryVertexMatchKind failure_kind = GeometryVertexMatchKind::Exact;
+        GeometryVertexHandlingPath handling_path = GeometryVertexHandlingPath::DirectBind;
+        bool requires_explicit_handling = false;
+        bool has_mismatch = false;
+        bool has_unsupported = false;
+        bool has_compatible = false;
+        bool has_only_registered_compatibility_differences = false;
+
+        const GeometryVertexAttributeMatch *first_failure = nullptr;
+        const GeometryVertexAttributeMatch *first_mismatch = nullptr;
+        const GeometryVertexAttributeMatch *first_unsupported = nullptr;
+        const GeometryVertexAttributeMatch *first_compatible = nullptr;
+        const GeometryVertexAttributeMatch *first_registered_compatibility = nullptr;
+
+        const char *GetFailureKindName() const
+        {
+            return GetGeometryVertexMatchKindName(failure_kind);
+        }
+
+        const char *GetHandlingPathName() const
+        {
+            return GetGeometryVertexHandlingPathName(handling_path);
+        }
+    };
+
     struct GeometryVertexFormatMatch
     {
         GeometryVertexMatchKind overall = GeometryVertexMatchKind::Exact;
         std::vector<GeometryVertexAttributeMatch> attributes;
+
+        GeometryVertexMatchKind GetFailureKind() const
+        {
+            if (HasMismatch()) return GeometryVertexMatchKind::Mismatch;
+            if (HasUnsupported()) return GeometryVertexMatchKind::Unsupported;
+            if (HasCompatible()) return GeometryVertexMatchKind::Compatible;
+            return GeometryVertexMatchKind::Exact;
+        }
+
+        const char *GetFailureKindName() const
+        {
+            return GetGeometryVertexMatchKindName(GetFailureKind());
+        }
 
         const GeometryVertexAttributeMatch *FirstByKind(const GeometryVertexMatchKind expected_kind) const
         {
@@ -159,6 +216,33 @@ namespace hgl::graph
         bool HasCompatible() const
         {
             return FirstByKind(GeometryVertexMatchKind::Compatible) != nullptr;
+        }
+
+        const GeometryVertexAttributeMatch *FirstFailureAttribute() const
+        {
+            const GeometryVertexMatchKind failure_kind = GetFailureKind();
+            return (failure_kind == GeometryVertexMatchKind::Exact) ? nullptr : FirstByKind(failure_kind);
+        }
+
+        bool HasOnlyRegisteredCompatibilityDifferences() const
+        {
+            return !HasMismatch() && (HasUnsupported() || HasCompatible());
+        }
+
+        GeometryVertexHandlingPath GetHandlingPath() const
+        {
+            if (IsDirectBindSatisfied())
+                return GeometryVertexHandlingPath::DirectBind;
+
+            if (HasMismatch())
+                return GeometryVertexHandlingPath::Reject;
+
+            return GeometryVertexHandlingPath::ExplicitHandling;
+        }
+
+        const char *GetHandlingPathName() const
+        {
+            return GetGeometryVertexHandlingPathName(GetHandlingPath());
         }
 
         bool IsDirectBindSatisfied() const
@@ -192,6 +276,27 @@ namespace hgl::graph
             }
 
             return nullptr;
+        }
+
+        GeometryVertexFailureSummary BuildFailureSummary() const
+        {
+            GeometryVertexFailureSummary summary;
+
+            summary.failure_kind = GetFailureKind();
+            summary.handling_path = GetHandlingPath();
+            summary.requires_explicit_handling = RequiresExplicitHandling();
+            summary.has_mismatch = HasMismatch();
+            summary.has_unsupported = HasUnsupported();
+            summary.has_compatible = HasCompatible();
+            summary.has_only_registered_compatibility_differences = HasOnlyRegisteredCompatibilityDifferences();
+
+            summary.first_failure = FirstFailureAttribute();
+            summary.first_mismatch = FirstByKind(GeometryVertexMatchKind::Mismatch);
+            summary.first_unsupported = FirstByKind(GeometryVertexMatchKind::Unsupported);
+            summary.first_compatible = FirstByKind(GeometryVertexMatchKind::Compatible);
+            summary.first_registered_compatibility = FirstRegisteredCompatibilityRule();
+
+            return summary;
         }
     };
 

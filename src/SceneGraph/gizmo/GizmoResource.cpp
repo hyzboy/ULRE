@@ -11,6 +11,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/mesh/Primitive.h>
 #include"GizmoResource.h"
 
 namespace hgl::graph
@@ -60,6 +61,18 @@ namespace hgl::graph
                 {
                     auto *primitive_manager = graphics_context->GetPrimitiveManager();
                     primitive = primitive_manager ? primitive_manager->CreatePrimitive(geometry,gizmo_triangle.mi[0],gizmo_triangle.pipeline) : nullptr;
+                    if (!primitive)
+                    {
+                        const GeometryVertexFormatMatch match =
+                            QueryGeometryVertexCompatibility(geometry, gizmo_triangle.mi[0]);
+                        const GeometryVertexFailureSummary summary = match.BuildFailureSummary();
+                        GLogError(AnsiString("[GizmoResource] CreatePrimitive failed: ") +
+                                  "HandlingPath(" + summary.GetHandlingPathName() + ")" +
+                                  " FailureKind(" + summary.GetFailureKindName() + ")" +
+                                  " FirstFailureSemantic(" +
+                                  (summary.first_failure ?
+                                      GetVertexSemanticName(summary.first_failure->semantic) : "None") + ")");
+                    }
                 }
                 else
                 {

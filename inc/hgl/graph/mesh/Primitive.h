@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/graph/geo/VKGeometry.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKMaterial.h>
@@ -69,6 +70,12 @@ public:
 };//class Primitive
 
 Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
+
+// Pre-flight compatibility check: matches geometry vertex format against the
+// material's VIL and returns the full failure summary without creating a primitive.
+// Useful for callsites that want to emit context-rich diagnostics before or instead
+// of calling DirectCreatePrimitive.
+GeometryVertexFormatMatch QueryGeometryVertexCompatibility(const Geometry *geom, const MaterialInstance *mi);
 }//namespace hgl::graph
 
 

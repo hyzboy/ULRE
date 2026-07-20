@@ -100,14 +100,8 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
 
     if(!match_result.IsDirectBindSatisfied())
     {
-        const GeometryVertexAttributeMatch *first_issue=match_result.FirstNonExact();
-        const GeometryVertexAttributeMatch *first_mismatch=match_result.FirstByKind(GeometryVertexMatchKind::Mismatch);
-        const GeometryVertexAttributeMatch *first_unsupported=match_result.FirstByKind(GeometryVertexMatchKind::Unsupported);
-        const GeometryVertexAttributeMatch *first_compatible=match_result.FirstByKind(GeometryVertexMatchKind::Compatible);
-        const GeometryVertexAttributeMatch *first_compatibility=match_result.FirstRegisteredCompatibilityRule();
-        const char *failure_kind = match_result.HasMismatch() ? "Mismatch"
-                                  : (match_result.HasUnsupported() ? "Unsupported"
-                                  : (match_result.HasCompatible() ? "Compatible" : "Unknown"));
+        const GeometryVertexFailureSummary failure_summary = match_result.BuildFailureSummary();
+        const GeometryVertexAttributeMatch *first_issue = failure_summary.first_failure;
 
         if(first_issue)
         {
@@ -122,15 +116,17 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
                         AnsiString(") Lossless(")+(first_issue->compatibility_lossless?"true":"false")+
                         AnsiString(") Precision(")+GetAttributePrecisionGradeName(first_issue->compatibility_precision)+
                         AnsiString(") RuntimeCost(")+GetAttributeRuntimeCostName(first_issue->compatibility_runtime_cost)+
-                        AnsiString(") RequiresExplicitHandling(")+(match_result.RequiresExplicitHandling()?"true":"false")+
-                        AnsiString(") FailureKind(")+failure_kind+
-                        AnsiString(") HasMismatch(")+(match_result.HasMismatch()?"true":"false")+
-                        AnsiString(") HasUnsupported(")+(match_result.HasUnsupported()?"true":"false")+
-                        AnsiString(") HasCompatible(")+(match_result.HasCompatible()?"true":"false")+
-                        AnsiString(") FirstMismatchSemantic(")+(first_mismatch?GetVertexSemanticName(first_mismatch->semantic):"None")+
-                        AnsiString(") FirstUnsupportedSemantic(")+(first_unsupported?GetVertexSemanticName(first_unsupported->semantic):"None")+
-                        AnsiString(") FirstCompatibleSemantic(")+(first_compatible?GetVertexSemanticName(first_compatible->semantic):"None")+
-                        AnsiString(") HasAnyRegisteredCompatibility(")+(first_compatibility?"true":"false")+
+                        AnsiString(") RequiresExplicitHandling(")+(failure_summary.requires_explicit_handling?"true":"false")+
+                        AnsiString(") HandlingPath(")+failure_summary.GetHandlingPathName()+
+                        AnsiString(") HasOnlyRegisteredCompatibilityDifferences(")+(failure_summary.has_only_registered_compatibility_differences?"true":"false")+
+                        AnsiString(") FailureKind(")+failure_summary.GetFailureKindName()+
+                        AnsiString(") HasMismatch(")+(failure_summary.has_mismatch?"true":"false")+
+                        AnsiString(") HasUnsupported(")+(failure_summary.has_unsupported?"true":"false")+
+                        AnsiString(") HasCompatible(")+(failure_summary.has_compatible?"true":"false")+
+                        AnsiString(") FirstMismatchSemantic(")+(failure_summary.first_mismatch?GetVertexSemanticName(failure_summary.first_mismatch->semantic):"None")+
+                        AnsiString(") FirstUnsupportedSemantic(")+(failure_summary.first_unsupported?GetVertexSemanticName(failure_summary.first_unsupported->semantic):"None")+
+                        AnsiString(") FirstCompatibleSemantic(")+(failure_summary.first_compatible?GetVertexSemanticName(failure_summary.first_compatible->semantic):"None")+
+                        AnsiString(") HasAnyRegisteredCompatibility(")+(failure_summary.first_registered_compatibility?"true":"false")+
                         AnsiString(")");
         }
         else
@@ -175,6 +171,22 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
 
     return(new Primitive(geom,mi,p,geom_data_buffer));
 }
+
+GeometryVertexFormatMatch QueryGeometryVertexCompatibility(const Geometry *geom, const MaterialInstance *mi)
+{
+    if (!geom || !mi)
+        return GeometryVertexFormatMatch{};
+
+    const VIL *vil = mi->GetVIL();
+    if (!vil)
+        return GeometryVertexFormatMatch{};
+
+    return MatchGeometryVertexFormat(
+        geom->GetGeometryVertexFormat(),
+        vil->GetVIFList(),
+        vil->GetVertexAttribCount());
+}
+
 
 bool GeometryDataBuffer::Update(const Geometry *geom,const VertexInputFormat *vif_list,uint32_t vif_count)
 {

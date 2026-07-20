@@ -126,6 +126,15 @@ namespace hgl::ecs
         primitive = graph::DirectCreatePrimitive(geometry, mi, p);
         if (!primitive)
         {
+            const graph::GeometryVertexFormatMatch match =
+                graph::QueryGeometryVertexCompatibility(geometry, mi);
+            const graph::GeometryVertexFailureSummary summary = match.BuildFailureSummary();
+            GLogError(graph::AnsiString("[LineRenderPipeline] DirectCreatePrimitive failed: ") +
+                      "HandlingPath(" + summary.GetHandlingPathName() + ")" +
+                      " FailureKind(" + summary.GetFailureKindName() + ")" +
+                      " FirstFailureSemantic(" +
+                      (summary.first_failure ?
+                          graph::GetVertexSemanticName(summary.first_failure->semantic) : "None") + ")");
             SAFE_CLEAR(geometry);
             return false;
         }
