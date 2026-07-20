@@ -964,6 +964,15 @@ namespace hgl::ecs
                             req.ssbo_id,
                             static_cast<uint32_t>(req.texture_slot)},
                         "MaterialTextureLayerTable");
+                    if (!table_buffer && req.ssbo_id != graph::mtl::MakeRecipeSSBOId(0))
+                    {
+                        table_buffer = resolve_domain_ssbo(
+                            graph::mtl::SSBOAddress{
+                                req.ssbo_type,
+                                graph::mtl::MakeRecipeSSBOId(0),
+                                static_cast<uint32_t>(req.texture_slot)},
+                            "MaterialTextureLayerTable");
+                    }
                 }
 
                 if (table_buffer)
@@ -996,6 +1005,15 @@ namespace hgl::ecs
                             req.ssbo_id,
                             static_cast<uint32_t>(req.data_slot)},
                         "MaterialDataIndexTable");
+                    if (!table_buffer && req.ssbo_id != graph::mtl::MakeRecipeSSBOId(0))
+                    {
+                        table_buffer = resolve_domain_ssbo(
+                            graph::mtl::SSBOAddress{
+                                req.ssbo_type,
+                                graph::mtl::MakeRecipeSSBOId(0),
+                                static_cast<uint32_t>(req.data_slot)},
+                            "MaterialDataIndexTable");
+                    }
                 }
 
                 if (table_buffer)
