@@ -769,27 +769,37 @@ namespace hgl::ecs
                 return false;
 
             const VkDeviceSize byte_size = buffer->GetSize();
-            if (byte_size == 0 || (byte_size % element_count) != 0)
+            if (byte_size == 0)
             {
-                GLogError("[R11] Skip binding %s: type=%s version=%u invalid byte_size=%llu for element_count=%u",
+                GLogError("[R11] Skip binding %s: type=%s version=%u invalid byte_size=0",
                           semantic_tag ? semantic_tag : "UnknownSemantic",
                           graph::mtl::GetSSBOTypeName(ssbo_type),
-                          expected_version,
-                          static_cast<unsigned long long>(byte_size),
-                          element_count);
+                          expected_version);
                 return false;
             }
 
-            const uint32_t actual_stride = static_cast<uint32_t>(byte_size / element_count);
-            if (actual_stride != expected_stride)
+            const VkDeviceSize min_required = static_cast<VkDeviceSize>(expected_stride) * static_cast<VkDeviceSize>(element_count);
+            if (byte_size < min_required)
             {
-                GLogError("[R11] Skip binding %s: type=%s version=%u expected_stride=%u actual_stride=%u element_count=%u",
+                GLogError("[R11] Skip binding %s: type=%s version=%u expected_stride=%u element_count=%u min_required=%llu actual_size=%llu",
                           semantic_tag ? semantic_tag : "UnknownSemantic",
                           graph::mtl::GetSSBOTypeName(ssbo_type),
                           expected_version,
                           expected_stride,
-                          actual_stride,
-                          element_count);
+                          element_count,
+                          static_cast<unsigned long long>(min_required),
+                          static_cast<unsigned long long>(byte_size));
+                return false;
+            }
+
+            if ((byte_size % expected_stride) != 0)
+            {
+                GLogError("[R11] Skip binding %s: type=%s version=%u expected_stride=%u invalid_byte_size=%llu",
+                          semantic_tag ? semantic_tag : "UnknownSemantic",
+                          graph::mtl::GetSSBOTypeName(ssbo_type),
+                          expected_version,
+                          expected_stride,
+                          static_cast<unsigned long long>(byte_size));
                 return false;
             }
 
