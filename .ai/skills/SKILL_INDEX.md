@@ -1,6 +1,6 @@
 # ECS Render System SKILL合集
 
-本目录包含6个SKILL文档，涵盖HGL自有库类型参考、添加新Component/System、系统分组、ExecutionPhase、RenderGraph和快速参考。
+本目录包含7个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、添加新Component/System、系统分组、ExecutionPhase、RenderGraph和快速参考。
 
 ## ⚠️ 首先必读
 
@@ -26,6 +26,35 @@
 需要动态数组/Map？
 需要哈希计算？
 需要文件IO？
+→ 使用这个SKILL
+```
+
+---
+
+### 0.1 [SKILL_CMCORETYPE_REFERENCE.md](SKILL_CMCORETYPE_REFERENCE.md)
+**适用：查找CMCoreType底层库的基础类型、内存/对齐/枚举工具、数学、颜色、时间常量等**
+
+- 🔢 基础类型别名（int8/uint8/f32/f64/u8char 等）
+- 🧹 内存安全宏（SAFE_CLEAR, SAFE_FREE 等）
+- 🏗️ 平台宏（NO_COPY, NO_MOVE, OS/CPU 检测）
+- ⚙️ 对齐工具（align_to, align_up, divide_ceil）
+- 📐 MemoryAlloc / ObjectUtil（zero_new, construct_at, destroy_at）
+- 🔢 枚举工具（ENUM_CLASS_RANGE, ToInt, RangeCheck, ENUM_CLASS_FOR）
+- 📊 常量（HGL_SIZE_1KB, HGL_U32_MAX, HGL_TIME_ONE_DAY 等）
+- 🎨 颜色类型（Color4f, Color3f, Color4ub, COLOR 枚举）
+- 🧮 数学工具（Clamp, IsNearlyZero, IsNaN, IsValid, PhysicsConstants）
+- 🕐 时间常量（Weekday, Month, HGL_TIME_* 系列）
+- 🎯 事件系统（EventFunc, Property, DefEvent, SetEventCall）
+
+**快速导航：**
+```
+需要基础类型 int8/uint8/f32/i64？
+需要 SAFE_CLEAR / SAFE_FREE？
+需要 NO_COPY / NO_MOVE 宏？
+需要对齐计算 align_to / align_up？
+需要枚举工具 ToInt / RangeCheck？
+需要颜色类型 Color4f？
+需要浮点验证 IsNaN / IsValid？
 → 使用这个SKILL
 ```
 
@@ -212,6 +241,7 @@
 .ai/skills/ 目录结构
 ├── SKILL_*.md (本集合，6个文件)
 │   ├── SKILL_HGL_TYPES_REFERENCE.md  ← 新增：HGL类型参考（必读）
+│   ├── SKILL_CMCORETYPE_REFERENCE.md ← 新增：CMCoreType底层库完整参考
 │   ├── SKILL_ADD_NEW_RENDER_COMPONENT.md
 │   ├── SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md
 │   ├── SKILL_EXECUTION_PHASE_ORDERING.md
@@ -262,6 +292,7 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 | 文件 | 深度 | 时长 | 难度 | 实践 |
 |------|------|------|------|------|
 | SKILL_HGL_TYPES_REFERENCE.md | 📊 浅 | 5 min | ⭐ | ✓ |
+| SKILL_CMCORETYPE_REFERENCE.md | 📊 深 | 10 min | ⭐ | ✓ |
 | SKILL_QUICK_REFERENCE.md | 📊 浅 | 5 min | ⭐ | ✓ |
 | SKILL_ADD_NEW_RENDER_COMPONENT.md | 📘 深 | 20 min | ⭐⭐ | ✓✓ |
 | SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md | 📗 中等 | 15 min | ⭐⭐ | ✓ |
@@ -278,6 +309,26 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 | 动态数组/集合 | HGL_TYPES_REFERENCE | 集合章节 |
 | FNV1a哈希 | HGL_TYPES_REFERENCE | 哈希章节 |
 | 文件IO | HGL_TYPES_REFERENCE | IO章节 |
+| 基础类型(int8/f32等) | CMCORETYPE_REFERENCE | §1 CoreType |
+| SAFE_CLEAR/SAFE_FREE | CMCORETYPE_REFERENCE | §2 Macro |
+| NO_COPY/NO_MOVE | CMCORETYPE_REFERENCE | §3 Platform |
+| align_to/align_up | CMCORETYPE_REFERENCE | §4 AlignUtil |
+| zero_new/new_copy | CMCORETYPE_REFERENCE | §5 MemoryAlloc |
+| construct_at/destroy_at | CMCORETYPE_REFERENCE | §6 ObjectUtil |
+| ENUM_CLASS_RANGE/ToInt | CMCORETYPE_REFERENCE | §7 EnumUtil |
+| HGL_SIZE_1KB/HGL_U32_MAX | CMCORETYPE_REFERENCE | §8 Constants |
+| numeric_max/numeric_min | CMCORETYPE_REFERENCE | §9 TypeLimits |
+| GetMipLevel | CMCORETYPE_REFERENCE | §10 MipmapUtil |
+| Clamp/ClampU8 | CMCORETYPE_REFERENCE | §11.1 ClampUtil |
+| IsNearlyZero/IsNearlyEqual | CMCORETYPE_REFERENCE | §11.2 FloatPrecision |
+| IsNaN/IsValid | CMCORETYPE_REFERENCE | §11.3 FloatValidation |
+| 时间常量/Weekday/Month | CMCORETYPE_REFERENCE | §12 TimeConst |
+| Color4f/Color3f/COLOR | CMCORETYPE_REFERENCE | §13 Color |
+| FindDataPositionInArray | CMCORETYPE_REFERENCE | §14 ArrayItemProcess |
+| ComputeOptimalHash | CMCORETYPE_REFERENCE | §17 QuickHash |
+| HashMergeGolden64 | CMCORETYPE_REFERENCE | §17 HashMerge |
+| DefEvent/SetEventCall | CMCORETYPE_REFERENCE | §18 EventFunc |
+| Property<T> | CMCORETYPE_REFERENCE | §18 Property |
 | 创建新Component | ADD_NEW_RENDER_COMPONENT | 第2步 |
 | 创建新System | ADD_NEW_RENDER_COMPONENT | 第3步 |
 | SetRenderElementType() | SYSTEM_GROUPING_AND_ENABLEMENT | API参考 |
@@ -305,7 +356,7 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 
 ## ✨ 总结
 
-这5个SKILL文档提供了从零到精通的**完整路径**，支持：
+这7个SKILL文档提供了从零到精通的**完整路径**，支持：
 
 - ✅ 快速上手（QUICK_REFERENCE）
 - ✅ 详细学习（各topic SKILL）
