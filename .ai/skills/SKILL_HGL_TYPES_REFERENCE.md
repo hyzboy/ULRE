@@ -197,7 +197,7 @@ int count = map.GetCount();
 
 // 遍历（使用迭代器）
 hgl::UnorderedMap<AnsiString,int>::iterator it = map.GetBegin();
-while (map.IsEnd(it)) {
+while (!map.IsEnd(it)) {
     const AnsiString &k = it->key;
     int v = it->value;
     ++it;
