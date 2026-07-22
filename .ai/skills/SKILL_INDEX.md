@@ -1,8 +1,35 @@
 # ECS Render System SKILL合集
 
-本目录包含5个SKILL文档，涵盖添加新Component/System、系统分组、ExecutionPhase、RenderGraph和快速参考。
+本目录包含6个SKILL文档，涵盖HGL自有库类型参考、添加新Component/System、系统分组、ExecutionPhase、RenderGraph和快速参考。
+
+## ⚠️ 首先必读
+
+在编写任何代码前，请先查阅 [SKILL_HGL_TYPES_REFERENCE.md](SKILL_HGL_TYPES_REFERENCE.md)，确保使用HGL自有库而非STL。
+
+---
 
 ## 🎯 SKILL导航
+
+### 0. [SKILL_HGL_TYPES_REFERENCE.md](SKILL_HGL_TYPES_REFERENCE.md)
+**适用：查找字符串、集合、哈希、IO等基础类型的正确HGL用法**
+
+- 📋 STL → HGL 完整替换对照表
+- 🔤 `AnsiString`/`UTF8String`/`OSString` 使用示例
+- 📦 `ArrayList`/`UnorderedMap`/`SortedSet` 使用示例
+- 🔑 FNV1a哈希正确用法（禁止手写）
+- 📁 IO读写完整示例
+- ❌ 常见错误 vs ✅ 正确写法对比
+
+**快速导航：**
+```
+需要字符串操作？
+需要动态数组/Map？
+需要哈希计算？
+需要文件IO？
+→ 使用这个SKILL
+```
+
+---
 
 ### 1. [SKILL_ADD_NEW_RENDER_COMPONENT.md](SKILL_ADD_NEW_RENDER_COMPONENT.md)
 **适用：首次添加新的渲染元素类型**
@@ -161,13 +188,14 @@
 ## 🎓 学习顺序建议
 
 ### 🟢 初学者路线（2小时）
-1. 阅读 [SKILL_QUICK_REFERENCE.md](SKILL_QUICK_REFERENCE.md) - 5 min
-2. 完成第一个元素（用Checklist）- 45 min
-3. 阅读 [SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md](SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md) - 15 min
-4. 尝试3个不同Element Type - 45 min
+1. 阅读 [SKILL_HGL_TYPES_REFERENCE.md](SKILL_HGL_TYPES_REFERENCE.md) - 5 min（**必读**）
+2. 阅读 [SKILL_QUICK_REFERENCE.md](SKILL_QUICK_REFERENCE.md) - 5 min
+3. 完成第一个元素（用Checklist）- 45 min
+4. 阅读 [SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md](SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md) - 15 min
+5. 尝试3个不同Element Type - 45 min
 
 ### 🟡 进阶路线（3小时）
-1. 阅读所有5个SKILL - 60 min
+1. 阅读所有6个SKILL - 60 min
 2. 创建多系统元素（如Particle例子）- 60 min
 3. 尝试自定义RenderGraph和质量预设 - 60 min
 
@@ -181,8 +209,9 @@
 ## 🔗 与项目其他文件的关系
 
 ```
-doc/ 目录结构
-├── SKILL_*.md (本集合，5个文件)
+.ai/skills/ 目录结构
+├── SKILL_*.md (本集合，6个文件)
+│   ├── SKILL_HGL_TYPES_REFERENCE.md  ← 新增：HGL类型参考（必读）
 │   ├── SKILL_ADD_NEW_RENDER_COMPONENT.md
 │   ├── SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md
 │   ├── SKILL_EXECUTION_PHASE_ORDERING.md
@@ -215,7 +244,7 @@ doc/ 目录结构
 ## ❓ 常见问题
 
 **Q: 应该从哪个SKILL开始？**  
-A: 如果你不知道，从 [SKILL_QUICK_REFERENCE.md](SKILL_QUICK_REFERENCE.md) 开始。
+A: 先阅读 [SKILL_HGL_TYPES_REFERENCE.md](SKILL_HGL_TYPES_REFERENCE.md)（了解禁止使用STL的规则），再从 [SKILL_QUICK_REFERENCE.md](SKILL_QUICK_REFERENCE.md) 开始。
 
 **Q: 能否离线使用这些SKILL？**  
 A: 可以。所有SKILL都是本地markdown文件，使用VS Code直接打开即可。
@@ -232,6 +261,7 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 
 | 文件 | 深度 | 时长 | 难度 | 实践 |
 |------|------|------|------|------|
+| SKILL_HGL_TYPES_REFERENCE.md | 📊 浅 | 5 min | ⭐ | ✓ |
 | SKILL_QUICK_REFERENCE.md | 📊 浅 | 5 min | ⭐ | ✓ |
 | SKILL_ADD_NEW_RENDER_COMPONENT.md | 📘 深 | 20 min | ⭐⭐ | ✓✓ |
 | SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md | 📗 中等 | 15 min | ⭐⭐ | ✓ |
@@ -244,6 +274,10 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 
 | 主题 | 相关SKILL | 快速用法 |
 |------|---------|---------|
+| 字符串/AnsiString | HGL_TYPES_REFERENCE | 字符串章节 |
+| 动态数组/集合 | HGL_TYPES_REFERENCE | 集合章节 |
+| FNV1a哈希 | HGL_TYPES_REFERENCE | 哈希章节 |
+| 文件IO | HGL_TYPES_REFERENCE | IO章节 |
 | 创建新Component | ADD_NEW_RENDER_COMPONENT | 第2步 |
 | 创建新System | ADD_NEW_RENDER_COMPONENT | 第3步 |
 | SetRenderElementType() | SYSTEM_GROUPING_AND_ENABLEMENT | API参考 |
