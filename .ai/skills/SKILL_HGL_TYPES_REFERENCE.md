@@ -13,7 +13,15 @@
 5. [智能指针与内存](#5-智能指针与内存)
 6. [日志](#6-日志)
 7. [时间](#7-时间)
-8. [常见错误 vs 正确写法](#8-常见错误-vs-正确写法)
+8. [C标准库字符函数替代（CharType）](#8-c标准库字符函数替代chartype)
+9. [C风格字符串操作函数](#9-c风格字符串操作函数)
+10. [数字字符串转换](#10-数字字符串转换)
+11. [十六进制字符串转换](#11-十六进制字符串转换)
+12. [字符串修剪与截取（TrimClip）](#12-字符串修剪与截取trimclip)
+13. [内存操作（MemoryUtil）](#13-内存操作memoryutil)
+14. [位操作（BitOperations）](#14-位操作bitoperations)
+15. [比较与限制工具（CompareUtil）](#15-比较与限制工具compareutil)
+16. [常见错误 vs 正确写法](#16-常见错误-vs-正确写法)
 
 ---
 
@@ -456,9 +464,688 @@ int64 us = hgl::GetMicroSecond();
 
 ---
 
-## 8. 常见错误 vs 正确写法
+## 8. C标准库字符函数替代（CharType）
 
-### ❌ 错误：使用 `std::string`
+> 替代 `<ctype.h>` / `<cctype>` 中的 `isalpha`、`isdigit`、`isspace` 等。
+
+### 头文件
+```cpp
+#include <hgl/type/CharType.h>
+```
+
+### 字符分类函数（对照 ctype.h）
+
+| C标准库 (`<ctype.h>`) | HGL等价函数 | 说明 |
+|----------------------|-------------|------|
+| `isalpha(c)` | `hgl::is_alpha(ch)` | 是否为字母（a-z / A-Z） |
+| `islower(c)` | `hgl::is_lower_alpha(ch)` | 是否为小写字母（a-z） |
+| `isupper(c)` | `hgl::is_upper_alpha(ch)` | 是否为大写字母（A-Z） |
+| `isdigit(c)` | `hgl::is_digit(ch)` | 是否为十进制数字（0-9） |
+| `isxdigit(c)` | `hgl::is_hex_digit(ch)` | 是否为十六进制字符（0-9, a-f, A-F） |
+| `isspace(c)` | `hgl::is_space(ch)` | 是否为空白字符 |
+| `isalnum(c)` | `hgl::is_alpha(ch) \|\| hgl::is_digit(ch)` | 是否为字母或数字（无直接等价） |
+| 无 | `hgl::is_float_char(ch)` | 是否可出现在浮点数文本中（含 `+-./eEfF`） |
+| 无 | `hgl::is_integer_char(ch)` | 是否可出现在整数文本中（含 `+-`） |
+
+所有函数均为模板，支持 `char`、`wchar_t`、`char8_t` 等任意整型字符类型。
+
+```cpp
+#include <hgl/type/CharType.h>
+
+char c = 'A';
+
+if (hgl::is_alpha(c))        { /* 字母 */ }
+if (hgl::is_upper_alpha(c))  { /* 大写字母 */ }
+if (hgl::is_lower_alpha(c))  { /* 小写字母 */ }
+if (hgl::is_digit(c))        { /* 数字 */ }
+if (hgl::is_hex_digit(c))    { /* 十六进制字符 */ }
+if (hgl::is_space(c))        { /* 空白字符 */ }
+if (hgl::is_float_char(c))   { /* 浮点数字符 */ }
+if (hgl::is_integer_char(c)) { /* 整数字符 */ }
+```
+
+---
+
+## 9. C风格字符串操作函数
+
+> 替代 `<string.h>` / `<cstring>` 中的 `strlen`、`strcmp`、`strcpy`、`strcat`、`strstr`、`strchr` 等。
+>
+> ⚠️ 所有HGL字符串函数均为模板，支持 `char`、`wchar_t`、`u8char` 等多种字符类型，且对 `nullptr` 安全。
+
+### 9.1 字符串长度（Str.Length.h）
+
+```cpp
+#include <hgl/type/Str.Length.h>
+```
+
+| C标准库 | HGL等价 | 说明 |
+|---------|---------|------|
+| `strlen(s)` | `hgl::strlen(str)` | 字符串长度（nullptr 安全，返回 0） |
+| `strnlen(s, n)` | `hgl::strlen(str, max_len)` | 最大 max_len 个字符的长度 |
+
+```cpp
+#include <hgl/type/Str.Length.h>
+
+const char *s = "hello";
+int len = hgl::strlen(s);               // 5
+int limited = hgl::strlen(s, 3);        // 3
+
+// 支持宽字符
+const wchar_t *ws = L"world";
+int wlen = hgl::strlen(ws);             // 5
+```
+
+### 9.2 字符串比较（Str.Comp.h）
+
+```cpp
+#include <hgl/type/Str.Comp.h>
+```
+
+| C标准库 | HGL等价 | 说明 |
+|---------|---------|------|
+| `strcmp(s1, s2)` | `hgl::strcmp(src, dst)` | 字符串比较，返回 <0/0/>0 |
+| `strncmp(s1, s2, n)` | `hgl::strcmp(src, dst, count)` | 最多 n 个字符比较 |
+| `strcasecmp(s1, s2)` | `hgl::stricmp(src, dst)` | 大小写无关比较 |
+| `strncasecmp(s1, s2, n)` | `hgl::stricmp(src, dst, count)` | 大小写无关、最多 n 个字符 |
+| 无 | `hgl::strcmp_ordering(src, dst)` | 返回 `std::strong_ordering` |
+| 无 | `hgl::stricmp_ordering(src, dst)` | 大小写无关，返回 `std::strong_ordering` |
+| 无 | `hgl::strcmp(src, src_size, dst, dst_size)` | 带长度的比较 |
+| 无 | `hgl::strcmp_content(src, src_size, dst, dst_size)` | 内容比较（ordering） |
+| 无 | `hgl::stricmp_content(src, src_size, dst, dst_size)` | 大小写无关内容比较 |
+
+```cpp
+#include <hgl/type/Str.Comp.h>
+
+const char *a = "hello";
+const char *b = "HELLO";
+
+int r = hgl::strcmp(a, b);                  // 非0（不等）
+int ri = hgl::stricmp(a, b);               // 0（大小写无关相等）
+
+// 带长度比较
+int r2 = hgl::strcmp(a, 5, b, 5);
+
+// C++20 ordering 版本
+auto ord = hgl::strcmp_ordering(a, b);     // std::strong_ordering::greater
+auto ordi = hgl::stricmp_ordering(a, b);   // std::strong_ordering::equal
+```
+
+### 9.3 字符串复制（Str.Copy.h）
+
+```cpp
+#include <hgl/type/Str.Copy.h>
+```
+
+| C标准库 | HGL等价 | 说明 |
+|---------|---------|------|
+| `strcpy(dst, src)` | `hgl::strcpy(dst, count, src)` | 复制，count 为 dst 总容量（含终止符） |
+| `strncpy(dst, src, n)` | `hgl::strcpy(dst, dst_count, src, count)` | 限制源和目标长度的复制 |
+| `strcat(dst, src)` | `hgl::strcat(dst, max_count, src, count)` | 追加字符串 |
+| 无 | `hgl::strcat(dst, max_count, ch)` | 追加单个字符 |
+| `strdup(str)` | `hgl::create_copy(str, size=-1)` | 堆上创建字符串副本，需手动 `delete[]` |
+
+```cpp
+#include <hgl/type/Str.Copy.h>
+
+char buf[64];
+
+// 复制（count = 目标缓冲区总容量）
+int written = hgl::strcpy(buf, 64, "hello");  // written = 5
+
+// 限制源长度
+int written2 = hgl::strcpy(buf, 64, "hello world", 5);  // 仅复制 "hello"
+
+// 追加
+hgl::strcat(buf, 64, "_suffix", 7);
+
+// 追加单个字符
+hgl::strcat(buf, 64, '!');
+
+// 创建堆上副本（用完需 delete[]）
+char *copy = hgl::create_copy("hello");
+// ...
+delete[] copy;
+```
+
+### 9.4 字符串大小写转换（Str.Case.h）
+
+```cpp
+#include <hgl/type/Str.Case.h>
+```
+
+| C标准库 | HGL等价 | 说明 |
+|---------|---------|------|
+| 无（需逐字符 `toupper`） | `hgl::to_upper_char(s)` | 就地转大写 |
+| 无（需逐字符 `tolower`） | `hgl::to_lower_char(s)` | 就地转小写 |
+| 无 | `hgl::to_upper_char(src, dst)` | 转大写并写入 dst |
+| 无 | `hgl::to_lower_char(src, dst)` | 转小写并写入 dst |
+| 无 | `hgl::upper_cpy(dst, src)` | 复制并转大写，返回写入字符数 |
+| 无 | `hgl::lower_cpy(dst, src)` | 复制并转小写，返回写入字符数 |
+| 无 | `hgl::upper_clip_cpy(dst, src)` | 复制 + 转大写 + 去除空格 |
+| 无 | `hgl::lower_clip_cpy(dst, src)` | 复制 + 转小写 + 去除空格 |
+
+```cpp
+#include <hgl/type/Str.Case.h>
+
+char s[] = "Hello World";
+
+// 就地大小写转换
+hgl::to_upper_char(s);   // s == "HELLO WORLD"
+hgl::to_lower_char(s);   // s == "hello world"
+
+// 复制并转换
+char dst[64];
+hgl::to_upper_char("hello", dst);    // dst == "HELLO"
+hgl::to_lower_char("HELLO", dst);    // dst == "hello"
+
+// 复制 + 转换 + 去除空格
+hgl::upper_clip_cpy(dst, "hello world");  // dst == "HELLOWORLD"
+hgl::lower_clip_cpy(dst, "HELLO WORLD"); // dst == "helloworld"
+```
+
+### 9.5 字符串查找（Str.Search.h）
+
+```cpp
+#include <hgl/type/Str.Search.h>
+```
+
+| C标准库 | HGL等价 | 说明 |
+|---------|---------|------|
+| `strstr(s, needle)` | `hgl::strstr(haystack, haystack_len, needle, needle_len)` | 查找子串 |
+| 无 | `hgl::strrstr(haystack, haystack_len, needle, needle_len)` | 反向查找子串 |
+| 无 | `hgl::stristr(haystack, haystack_len, needle, needle_len)` | 大小写无关查找子串 |
+| `strchr(s, c)` | `hgl::strchr(str, ch)` | 查找字符（从前向后） |
+| 无 | `hgl::strchr(str, ch, n)` | 查找字符，最多前 n 个字符 |
+| 无 | `hgl::strchr(str, set, set_count)` | 查找字符集中任意字符 |
+| `strrchr(s, c)` | `hgl::strrchr(str, ch)` | 从后向前查找字符 |
+| 无 | `hgl::strrchr(str, length, ch)` | 指定长度从后向前查找 |
+| 无 | `hgl::strechr(str, ch)` | 找到字符后，返回其后的位置 |
+| 无 | `hgl::replace_extname(new_fn, old_fn, max_len, new_ext)` | 替换文件扩展名 |
+| 无 | `hgl::replace(str, old_ch, new_ch)` | 替换所有指定字符 |
+
+> ⚠️ HGL 的 `strstr`/`strrchr` 等函数需要显式传入长度参数，比C标准库更安全。
+
+```cpp
+#include <hgl/type/Str.Search.h>
+
+const char *text = "hello world hello";
+const int text_len = hgl::strlen(text);
+
+// 查找子串
+const char *p = hgl::strstr(text, text_len, "world", 5);
+// p 指向 "world hello"
+
+// 反向查找子串
+const char *last = hgl::strrstr(text, text_len, "hello", 5);
+// last 指向最后的 "hello"
+
+// 大小写无关查找
+const char *ci = hgl::stristr(text, text_len, "WORLD", 5);
+
+// 查找字符
+const char *pos = hgl::strchr(text, 'o');         // 第一个 'o'
+const char *rpos = hgl::strrchr(text, text_len, 'o'); // 最后一个 'o'
+
+// 替换文件扩展名
+char new_name[256];
+hgl::replace_extname(new_name, "model.obj", 256, "fbx");
+// new_name == "model.fbx"
+
+// 替换字符
+char buf[] = "a.b.c.d";
+hgl::replace(buf, '.', '/');
+// buf == "a/b/c/d"
+```
+
+---
+
+## 10. 数字字符串转换
+
+> 替代 `<cstdlib>` / `<cstdio>` 中的 `atoi`、`atof`、`strtol`、`sprintf` 等，以及 `itoa`、`utoa`。
+
+### 头文件
+```cpp
+#include <hgl/type/Str.Number.h>
+```
+
+### 字符串→数字（返回 bool 表示成功/失败）
+
+| C标准库 | HGL等价 | 说明 |
+|---------|---------|------|
+| `atoi(s)` / `strtol(s, ...)` | `hgl::stoi(str, out_result)` | 十进制整数字符串 → 有符号整数 |
+| `strtoul(s, ...)` | `hgl::stou(str, out_result)` | 十进制整数字符串 → 无符号整数 |
+| `strtoul(s, ..., 16)` | `hgl::xtou(str, out_result)` | 十六进制字符串 → 无符号整数 |
+| `strtoul(s, ..., 8)` | `hgl::stoo(str, out_result)` | 八进制字符串 → 无符号整数 |
+| `atof(s)` / `strtod(s, ...)` | `hgl::stof(str, out_result)` | 浮点数字符串 → 浮点数 |
+| 无 | `hgl::etof(str, out_result)` | 科学计数法字符串 → 浮点数 |
+| 无 | `hgl::stob(str, out_value)` | `"true"`/`"false"` → bool |
+
+所有函数均为模板，支持任意字符类型（`char`、`wchar_t` 等）。
+
+```cpp
+#include <hgl/type/Str.Number.h>
+
+// 字符串 → 整数
+int32 i;
+if (hgl::stoi("42", i))      { /* i == 42 */ }
+if (hgl::stoi("-123", i))    { /* i == -123 */ }
+
+// 字符串 → 无符号整数
+uint32 u;
+if (hgl::stou("255", u))     { /* u == 255 */ }
+
+// 十六进制字符串 → 整数
+uint32 hex;
+if (hgl::xtou("FF", hex))    { /* hex == 255 */ }
+if (hgl::xtou("0xFF", hex))  { /* hex == 255 */ }
+
+// 八进制字符串 → 整数
+uint32 oct;
+if (hgl::stoo("17", oct))    { /* oct == 15 */ }
+
+// 字符串 → 浮点数
+float f;
+if (hgl::stof("3.14", f))    { /* f == 3.14f */ }
+if (hgl::stof("-1.5e2", f))  { /* f == -150.0f */ }
+
+// 科学计数法
+double d;
+if (hgl::etof("1.23E+4", d)) { /* d == 12300.0 */ }
+
+// 字符串 → bool
+bool b;
+if (hgl::stob("true", b))    { /* b == true */ }
+if (hgl::stob("false", b))   { /* b == false */ }
+
+// 带长度参数的版本
+int32 i2;
+if (hgl::stoi("42abc", 2, i2))  { /* 只解析前2字符, i2 == 42 */ }
+```
+
+### 数字→字符串
+
+| C标准库 | HGL等价 | 说明 |
+|---------|---------|------|
+| `itoa(n, buf, 10)` / `sprintf(buf, "%d", n)` | `hgl::itos(str, size, num)` | 有符号整数 → 十进制字符串 |
+| `utoa(n, buf, 10)` / `sprintf(buf, "%u", n)` | `hgl::utos(str, size, value)` | 无符号整数 → 十进制字符串 |
+| `sprintf(buf, "%x", n)` | `hgl::utos(str, size, value, 16)` | 无符号整数 → 十六进制字符串 |
+
+```cpp
+#include <hgl/type/Str.Number.h>
+
+char buf[32];
+
+// 整数 → 字符串
+hgl::itos(buf, 32, -42);       // buf == "-42"
+hgl::utos(buf, 32, 255u);      // buf == "255"
+hgl::utos(buf, 32, 255u, 16);  // buf == "ff"（十六进制）
+hgl::utos(buf, 32, 255u, 16, true);  // buf == "FF"（大写十六进制）
+```
+
+---
+
+## 11. 十六进制字符串转换
+
+```cpp
+#include <hgl/type/Str.Hex.h>
+```
+
+### 解析十六进制字符串
+
+```cpp
+// 十六进制字符串 → 字节数组
+uint8 data[4];
+hgl::ParseHexStr(data, "DEADBEEF", 4);   // data = {0xDE, 0xAD, 0xBE, 0xEF}
+
+// 十六进制字符串 → 固定类型
+uint32 value;
+hgl::ParseHexStr(value, "DEADBEEF");     // value = 0xDEADBEEF
+```
+
+### 生成十六进制字符串
+
+```cpp
+char str[9];
+
+// 数值 → 十六进制字符串
+hgl::Hex2String(str, (uint32)0xDEADBEEF);          // str == "DEADBEEF"
+hgl::Hex2String(str, (uint32)0xDEADBEEF, false);   // str == "deadbeef"
+
+// 字节数组 → 十六进制字符串
+uint8 data[] = {0xDE, 0xAD, 0xBE, 0xEF};
+char hexstr[9];
+hgl::DataToUpperHexStr(hexstr, data, 4);   // hexstr == "DEADBEEF"
+hgl::DataToLowerHexStr(hexstr, data, 4);   // hexstr == "deadbeef"
+
+// 带间隔符
+char hexstr2[12];
+hgl::DataToUpperHexStr(hexstr2, data, 4, ':'); // hexstr2 == "DE:AD:BE:EF"
+
+// 固定类型 → 十六进制字符串
+uint32 v = 0xDEADBEEF;
+char out[9];
+hgl::ToUpperHexStr(out, v);   // out == "DEADBEEF"
+hgl::ToLowerHexStr(out, v);   // out == "deadbeef"
+```
+
+---
+
+## 12. 字符串修剪与截取（TrimClip）
+
+```cpp
+#include <hgl/type/Str.TrimClip.h>
+```
+
+> ⚠️ 这些函数操作的是 **指针+长度** 对，不修改原始字符串，返回新起始指针，长度通过引用参数更新。
+
+| 函数 | 说明 |
+|------|------|
+| `hgl::trimleft(src, len)` | 去除前端空白字符（返回新起始指针，更新 len） |
+| `hgl::trimright(src, len)` | 去除尾端空白字符（更新 len） |
+| `hgl::trim(src, len)` | 去除两端空白字符 |
+| `hgl::clipleft(src, len)` | 截取前端非空白部分（更新 len 为截取长度） |
+| `hgl::clipright(src, len)` | 截取尾端非空白部分 |
+
+可以传入自定义谓词函数替代默认的 `is_space`。
+
+```cpp
+#include <hgl/type/Str.TrimClip.h>
+
+const char *s = "   hello world   ";
+int len = hgl::strlen(s);   // 17
+
+// 去两端空白
+const char *trimmed = hgl::trim(s, len);
+// trimmed 指向 "hello world   "，len == 11
+
+// 去前端空白
+std::size_t l2 = hgl::strlen(s);
+const char *left = hgl::trimleft(s, l2);
+// left 指向 "hello world   "，l2 == 14
+
+// 截取前端非空白部分
+const char *text = "hello world";
+int tlen = hgl::strlen(text);
+const char *word = hgl::clipleft(text, tlen);
+// word 指向 "hello world"，tlen == 5（"hello"的长度）
+```
+
+---
+
+## 13. 内存操作（MemoryUtil）
+
+> 替代 `<cstring>` 中的 `memcpy`、`memmove`、`memset`、`memcmp`。
+> 所有函数均为模板，类型安全，trivially_copyable 类型自动优化为 C 标准库底层实现。
+
+```cpp
+#include <hgl/type/MemoryUtil.h>
+```
+
+### 内存复制
+
+| C标准库 | HGL等价 | 说明 |
+|---------|---------|------|
+| `memcpy(&dst, &src, sizeof(T))` | `hgl::mem_copy(dst, src)` | 复制单个对象 |
+| `memcpy(dst, src, n*sizeof(T))` | `hgl::mem_copy(dst, src, count)` | 复制 count 个元素（不可重叠） |
+| `memmove(dst, src, n*sizeof(T))` | `hgl::mem_move(dst, src, count)` | 复制 count 个元素（支持重叠） |
+| 无 | `hgl::convert_copy(dst, src, count)` | 跨类型转换复制（`D(*src)` 逐元素转换） |
+
+```cpp
+#include <hgl/type/MemoryUtil.h>
+
+int src[] = {1, 2, 3, 4, 5};
+int dst[5];
+
+// 复制数组
+hgl::mem_copy(dst, src, 5);    // dst == {1,2,3,4,5}
+
+// 支持重叠区域的复制
+hgl::mem_move(src + 1, src, 4); // 向右偏移1位
+
+// 跨类型复制（int → float）
+float fdst[5];
+hgl::convert_copy(fdst, src, 5);  // fdst == {1.0f, 2.0f, ...}
+
+// 复制单个对象
+MyStruct a, b;
+hgl::mem_copy(a, b);  // a = b（类型安全）
+```
+
+### 内存填充
+
+| C标准库 | HGL等价 | 说明 |
+|---------|---------|------|
+| `memset(data, 0, n)` | `hgl::mem_zero(data, count)` | 数组清零 |
+| `memset(&data, 0, sizeof(T))` | `hgl::mem_zero(data)` | 单个对象清零 |
+| `memset(data, v, n)`（仅字节） | `hgl::mem_fill(data, value, count)` | 类型安全填充（支持任意类型值） |
+| 无 | `hgl::mem_fill_pattern(data, pattern, count)` | 用同一对象填充整个数组 |
+
+```cpp
+int arr[10];
+hgl::mem_zero(arr, 10);         // 全部清零
+
+hgl::mem_fill(arr, 42, 10);     // 全部设为 42
+
+int pattern = 99;
+hgl::mem_fill_pattern(arr, &pattern, 10);  // 全部设为 99
+
+MyStruct s;
+hgl::mem_zero(s);               // 对象清零
+```
+
+### 内存比较
+
+| C标准库 | HGL等价 | 说明 |
+|---------|---------|------|
+| `memcmp(&a, &b, sizeof(T))` | `hgl::mem_compare(a, b)` | 比较单个对象，返回 <0/0/>0 |
+| `memcmp(a, b, n*sizeof(T))` | `hgl::mem_compare(a, b, count)` | 比较 count 个元素 |
+| 无 | `hgl::mem_compare_ordering(a, b)` | 返回 `std::strong_ordering` |
+| 无 | `hgl::mem_compare_ordering(a, b, count)` | 数组比较，返回 `std::strong_ordering` |
+
+```cpp
+int a = 1, b = 2;
+int r = hgl::mem_compare(a, b);    // < 0
+
+auto ord = hgl::mem_compare_ordering(a, b);
+if (ord == std::strong_ordering::less) { /* ... */ }
+```
+
+---
+
+## 14. 位操作（BitOperations）
+
+```cpp
+#include <hgl/type/BitOperations.h>
+```
+
+> 基于 C++20 `<bit>` 标准库封装，所有函数均为模板，支持任意整型类型。
+
+### 宏定义
+
+```cpp
+HGL_BIT(n)      // 1 << n （32位）
+HGL_64BIT(n)    // 1LL << n （64位）
+```
+
+### 位检测与设置
+
+| 函数 | 说明 |
+|------|------|
+| `hgl::is_bit_set(value, offset)` | 检测指定位是否为1 |
+| `hgl::is_bit_clear(value, offset)` | 检测指定位是否为0 |
+| `hgl::set_bit(value, offset)` | 设置指定位为1 |
+| `hgl::clear_bit(value, offset)` | 设置指定位为0 |
+| `hgl::set_bit_value(value, offset, b)` | 设置指定位为指定值 |
+| `hgl::toggle_bit(value, offset)` | 翻转指定位 |
+
+```cpp
+#include <hgl/type/BitOperations.h>
+
+uint32 flags = 0b00001010;
+
+bool b = hgl::is_bit_set(flags, 1);    // true（第1位为1）
+bool c = hgl::is_bit_clear(flags, 0);  // true（第0位为0）
+
+hgl::set_bit(flags, 0);     // flags = 0b00001011
+hgl::clear_bit(flags, 1);   // flags = 0b00001001
+hgl::toggle_bit(flags, 3);  // flags = 0b00000001
+hgl::set_bit_value(flags, 7, true);  // 设置第7位为1
+```
+
+### 位计数与位位置
+
+| 函数 | 说明 |
+|------|------|
+| `hgl::popcount(value)` | 统计1的个数（C++20 `std::popcount`） |
+| `hgl::popcount(value, bit_count)` | 统计指定位数范围内1的个数 |
+| `hgl::bit_offset(value)` | 最低位1的位置（0起）；无1则返回-1 |
+| `hgl::bit_width(value)` | 最高位1的位置（使用 `std::bit_width`） |
+| `hgl::has_single_bit(value)` | 是否恰好只有1位为1（是否为2的幂） |
+| `hgl::bit_floor(value)` | 向下取整到最大不超过 value 的2的幂 |
+| `hgl::bit_ceil(value)` | 向上取整到最小不小于 value 的2的幂 |
+| `hgl::rotl(value, shift)` | 循环左移 |
+| `hgl::rotr(value, shift)` | 循环右移 |
+
+```cpp
+uint32 v = 0b00101100;
+
+int ones   = hgl::popcount(v);         // 3（有3个1）
+int lowest = hgl::bit_offset(v);       // 2（最低位1在第2位）
+int width  = hgl::bit_width(v);        // 6（最高位1在第5位，返回6）
+bool pow2  = hgl::has_single_bit(v);   // false
+
+uint32 ceil  = hgl::bit_ceil(v);       // 32（大于0b101100的最小2的幂）
+uint32 floor = hgl::bit_floor(v);      // 32（不超过0b101100的最大2的幂）
+
+uint32 rotated = hgl::rotl(v, 2);      // 循环左移2位
+uint32 rotatedr = hgl::rotr(v, 2);     // 循环右移2位
+```
+
+---
+
+## 15. 比较与限制工具（CompareUtil）
+
+```cpp
+#include <hgl/type/CompareUtil.h>
+```
+
+| 函数 | C标准库/STL等价 | 说明 |
+|------|----------------|------|
+| `hgl::clamp(value, min_v, max_v)` | `std::clamp` | 限制值在 [min_v, max_v] 范围内 |
+| `hgl::abs(value)` | `std::abs` | 绝对值（无符号类型直接返回） |
+| `hgl::min(a, b)` | `std::min` | 返回较小值 |
+| `hgl::max(a, b)` | `std::max` | 返回较大值 |
+| `hgl::update_min(a, b)` | 无直接等价 | 若 b < a，则将 a 更新为 b |
+| `hgl::update_max(a, b)` | 无直接等价 | 若 b > a，则将 a 更新为 b |
+| `hgl::min_element_value(data, count, default)` | `*std::min_element` | 数组中的最小值 |
+| `hgl::max_element_value(data, count, default)` | `*std::max_element` | 数组中的最大值 |
+
+```cpp
+#include <hgl/type/CompareUtil.h>
+
+// 限制范围
+float v = hgl::clamp(1.5f, 0.0f, 1.0f);   // v == 1.0f
+int clamped = hgl::clamp(-5, 0, 100);      // clamped == 0
+
+// 绝对值
+int a = hgl::abs(-42);    // 42
+float f = hgl::abs(-3.14f);  // 3.14f
+
+// 最大/最小
+int lo = hgl::min(3, 7);   // 3
+int hi = hgl::max(3, 7);   // 7
+
+// 就地更新最大/最小（常用于遍历求极值）
+int cur_max = 0;
+int arr[] = {5, 2, 8, 1, 9, 3};
+for (int x : arr) hgl::update_max(cur_max, x);  // cur_max == 9
+
+int cur_min = INT_MAX;
+for (int x : arr) hgl::update_min(cur_min, x);  // cur_min == 1
+
+// 数组最大/最小
+int min_val = hgl::min_element_value(arr, 6, INT_MAX);  // 1
+int max_val = hgl::max_element_value(arr, 6, INT_MIN);  // 9
+```
+
+---
+
+## 16. 常见错误 vs 正确写法
+
+### ❌ 错误：使用 `strlen` / `strcmp` / `strcpy`
+```cpp
+// 错误
+#include <cstring>
+size_t len = strlen(str);
+int r = strcmp(s1, s2);
+strcpy(dst, src);
+```
+### ✅ 正确：使用 HGL 字符串函数
+```cpp
+// 正确
+#include <hgl/type/Str.Length.h>
+#include <hgl/type/Str.Comp.h>
+#include <hgl/type/Str.Copy.h>
+int len = hgl::strlen(str);
+int r = hgl::strcmp(s1, s2);
+hgl::strcpy(dst, sizeof(dst), src);
+```
+
+---
+
+### ❌ 错误：使用 `isdigit` / `isalpha`
+```cpp
+// 错误
+#include <cctype>
+if (isdigit(c)) { ... }
+if (isalpha(c)) { ... }
+```
+### ✅ 正确：使用 `hgl::CharType`
+```cpp
+// 正确
+#include <hgl/type/CharType.h>
+if (hgl::is_digit(c))  { ... }
+if (hgl::is_alpha(c))  { ... }
+```
+
+---
+
+### ❌ 错误：使用 `atoi` / `atof`
+```cpp
+// 错误
+#include <cstdlib>
+int n = atoi("42");
+float f = atof("3.14");
+```
+### ✅ 正确：使用 `hgl::stoi` / `hgl::stof`（返回 bool 表示成功）
+```cpp
+// 正确
+#include <hgl/type/Str.Number.h>
+int32 n; hgl::stoi("42", n);
+float f; hgl::stof("3.14", f);
+```
+
+---
+
+### ❌ 错误：使用 `memcpy` / `memset` / `memcmp`
+```cpp
+// 错误
+#include <cstring>
+memcpy(dst, src, count * sizeof(T));
+memset(arr, 0, count * sizeof(T));
+memcmp(&a, &b, sizeof(T));
+```
+### ✅ 正确：使用 HGL 内存函数
+```cpp
+// 正确
+#include <hgl/type/MemoryUtil.h>
+hgl::mem_copy(dst, src, count);
+hgl::mem_zero(arr, count);
+hgl::mem_compare(a, b);
+```
+
+---
+
 ```cpp
 // 错误
 #include <string>
@@ -581,5 +1268,24 @@ std::mutex m;
 - 日志：`inc/hgl/log/Log.h`
 - 时间：`inc/hgl/time/Time.h`
 - 智能指针：`inc/hgl/type/Smart.h`
-- 内存：`inc/hgl/type/MemoryUtil.h`、`inc/hgl/type/AlignUtil.h`
+- 内存：`inc/hgl/type/MemoryUtil.h`、`inc/hgl/type/AlignUtil.h`、`inc/hgl/type/MemoryAlloc.h`
 - 文件系统：`inc/hgl/filesystem/FileSystem.h`
+- **C标准库字符函数替代**：`CMCoreType/inc/hgl/type/CharType.h`
+- **字符串长度**：`CMCoreType/inc/hgl/type/Str.Length.h`
+- **字符串比较**：`CMCoreType/inc/hgl/type/Str.Comp.h`
+- **字符串复制**：`CMCoreType/inc/hgl/type/Str.Copy.h`
+- **字符串大小写**：`CMCoreType/inc/hgl/type/Str.Case.h`
+- **字符串查找**：`CMCoreType/inc/hgl/type/Str.Search.h`
+- **字符串数字转换**：`CMCoreType/inc/hgl/type/Str.Number.h`
+- **十六进制字符串**：`CMCoreType/inc/hgl/type/Str.Hex.h`
+- **字符串修剪截取**：`CMCoreType/inc/hgl/type/Str.TrimClip.h`
+- **字符串之间查找**：`CMCoreType/inc/hgl/type/Str.Between.h`
+- **字符串数字数组**：`CMCoreType/inc/hgl/type/Str.NumberArray.h`
+- **字符串字符串数组**：`CMCoreType/inc/hgl/type/Str.StringArray.h`
+- **内存操作**：`CMCoreType/inc/hgl/type/MemoryUtil.h`
+- **位操作**：`CMCoreType/inc/hgl/type/BitOperations.h`
+- **比较与限制工具**：`CMCoreType/inc/hgl/type/CompareUtil.h`
+- **对象工具**：`CMCoreType/inc/hgl/type/ObjectUtil.h`
+- **类型限制**：`CMCoreType/inc/hgl/type/TypeLimits.h`
+- **枚举工具**：`CMCoreType/inc/hgl/type/EnumUtil.h`
+- **字节缓冲**：`CMCoreType/inc/hgl/type/StdByteBuffer.h`
